@@ -4,14 +4,17 @@ project(minEngine)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(ENGINE_NAME Engine)
-set(CLIENT_NAME SandBox)
+set(ENGINE_NAME minEngine)
 
 # set path
-set(HEADER_PATH ${PROJECT_SOURCE_DIR}/${ENGINE_NAME}/src)
+# Third-Party libraries
+set(THIRD_PARTY_PATH ${PROJECT_SOURCE_DIR}/${ENGINE_NAME}/Third-Party)
+
+
+# Output paths
 set(EXECUTABLE_PATH ${PROJECT_SOURCE_DIR}/bin)
-set(LIB_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 
 add_subdirectory(${ENGINE_NAME})
-add_subdirectory(${CLIENT_NAME})
+
+
