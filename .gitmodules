@@ -1,3 +1,6 @@
 [submodule "minEngine/Engine/vendor/spdlog"]
 	path = minEngine/Engine/vendor/spdlog/spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "minEngine/minEngine/Third-Party/assimp"]
+	path = minEngine/minEngine/Third-Party/assimp
+	url = https://github.com/assimp/assimp.git

@@ -1,8 +1,7 @@
 #include "GLFWWindowSystem.h"
 
 #include "Core.h"
-#include "glad/glad.h"
-#include "GLFW/glfw3.h"
+
 
 
 
@@ -13,9 +12,7 @@
 namespace minEngine
 {
     GLFWWindowSystem::~GLFWWindowSystem()
-    {
-        Shutdown();
-    }
+    {}
 
     void GLFWWindowSystem::Initialize()
     {
@@ -41,6 +38,8 @@ namespace minEngine
             return;
         }
 
+
+        // TODO: maybe we will add vulkan or other rendering API support later
         // Make the OpenGL context current
         glfwMakeContextCurrent(m_Window);
 
@@ -53,6 +52,16 @@ namespace minEngine
 
         // Set the viewport
         glViewport(0, 0, m_Width, m_Height);
+
+        glfwSetWindowUserPointer(m_Window, this);
+        glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        SetupWindowEventCallbacks();
+
+        RegisterOnWindowSizeCallback([this](int width, int height)
+        {
+            glViewport(0, 0, width, height);
+        });
+
         ME_CORE_INFO("GLFW Window Initialized");
     }
 
@@ -70,48 +79,40 @@ namespace minEngine
     }
 
     // Check if the window should close
-    bool GLFWWindowSystem::ShouldClose() const
+    bool GLFWWindowSystem::ShouldClose() const { return glfwWindowShouldClose(m_Window); }
+
+    void GLFWWindowSystem::Close()
     {
-        return glfwWindowShouldClose(m_Window);
+        glfwSetWindowShouldClose(m_Window, GLFW_TRUE);
+    }
+
+    void GLFWWindowSystem::SetTitle(const char *title) { glfwSetWindowTitle(m_Window, title);}
+
+    void GLFWWindowSystem::SetClearColor(Vector3 color)
+    {
+        glClearColor(color.x, color.y, color.z, 1.0f);
     }
 
     // Clear the window
     void GLFWWindowSystem::Clear()
     {
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
     // Swap the front and back buffers
-    void GLFWWindowSystem::SwapBuffers()
-    {
-        glfwSwapBuffers(m_Window);
-    }
+    void GLFWWindowSystem::SwapBuffers() { glfwSwapBuffers(m_Window);}
 
     // Poll for and process events
-    void GLFWWindowSystem::PollEvents() const
-    {
-        glfwPollEvents();
-    }
-
-    // Process input (placeholder for actual input handling)
-    void GLFWWindowSystem::ProcessInput() const
-    {
-        if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        {
-            glfwSetWindowShouldClose(m_Window, true);
-        }
-    }
+    void GLFWWindowSystem::PollEvents() const { glfwPollEvents(); }
 
     // Set GLFW callbacks
-    void GLFWWindowSystem::SetCallbacks()
+    void GLFWWindowSystem::SetupWindowEventCallbacks()
     {
-        // Set GLFW callbacks here as needed
-        glfwSetWindowSizeCallback(m_Window,
-            [](GLFWwindow* window, int width, int height)
-            {
-                glViewport(0, 0, width, height);
-            });
+        // Bind the static callback functions to GLFW
+        glfwSetKeyCallback(m_Window, KeyCallback);
+        glfwSetMouseButtonCallback(m_Window, MouseButtonCallback);
+        glfwSetCursorPosCallback(m_Window, CursorPosCallback);
+        glfwSetWindowSizeCallback(m_Window, WindowSizeCallback);
     }
 
 

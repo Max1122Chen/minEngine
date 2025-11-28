@@ -17,4 +17,10 @@ namespace minEngine
 
         ME_CORE_INFO("LogSystem Initialized");
     }
+
+    void LogSystem::Shutdown()
+    {
+        ME_CORE_INFO("LogSystem Shutdown");
+        spdlog::shutdown();
+    }
 }

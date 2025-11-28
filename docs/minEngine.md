@@ -28,7 +28,7 @@ Engine会被制作成dll来灵活加载
 
 
 
-## Logging
+## LogSystem
 
 使用spdlog
 
@@ -64,9 +64,30 @@ Engine会被制作成dll来灵活加载
 
 
 
+## DeltaTime
+
+
+
+
+
 ## Abstract RHI into classes
 
 尽管我们可以只使用单一的RHI，但是显然基于一定的可拓展性更有趣
 
 我们至少需要把OpenGL的API抽象成自定义C++类
 
+
+
+## Camera
+
+
+
+## Texture
+
+OpenGL的纹理有“位置”这个属性，为了可以在同一个shader中使用多个纹理
+
+
+
+## Mesh
+
+minEngine使用assimp库来导入模型，使用mingGW构建assimp库参考文献：[Windows环境下使用CMake+MinGW-w64编译模型加载库assimp | SIRLIS](https://sirlis.cn/posts/windows-mingw64-assimp/)

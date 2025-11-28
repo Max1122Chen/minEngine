@@ -22,8 +22,9 @@ namespace minEngine
         void TickOneFrame(float deltaTime);
         void LogicalTick(float deltaTime);
         void RendererTick(float deltaTime);
-
+        
+        float CalculateDeltaTime();
     private:
-        std::shared_ptr<RenderSystem> m_RenderSystem;
+        std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
     };
 }
