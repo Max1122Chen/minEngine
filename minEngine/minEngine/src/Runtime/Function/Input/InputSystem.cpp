@@ -34,6 +34,10 @@ namespace minEngine
         
     }
 
+    void InputSystem::Tick(float deltaTime)
+    {
+    }
+
     void InputSystem::OnKey(int key, int scancode, int action, int mods)
     {
         // just for testing

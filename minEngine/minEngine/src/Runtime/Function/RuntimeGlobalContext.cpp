@@ -1,9 +1,10 @@
 #include "RuntimeGlobalContext.h"
 
-#include "Log/LogSystem.h"
-#include "Render/GLFWWindowSystem.h"
-#include "Input/InputSystem.h"
-#include "Render/RenderSystem.h"
+#include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Render/GLFWWindowSystem.h"
+#include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Framework/World/WorldManager.h"
 
 namespace minEngine
 {
@@ -23,6 +24,9 @@ namespace minEngine
 
         m_RenderSystem = std::make_shared<RenderSystem>();
         m_RenderSystem->Initialize();
+
+        m_WorldManager = std::make_shared<WorldManager>();
+        m_WorldManager->Initialize();
     }
 
     void RuntimeGlobalContext::ShutdownSystems()

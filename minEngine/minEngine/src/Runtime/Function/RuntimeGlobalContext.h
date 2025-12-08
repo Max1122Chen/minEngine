@@ -7,6 +7,7 @@ namespace minEngine
     class WindowSystem;
     class InputSystem;
     class RenderSystem;
+    class WorldManager;
 
 
     class RuntimeGlobalContext
@@ -28,6 +29,7 @@ namespace minEngine
     std::shared_ptr<WindowSystem> m_WindowSystem;
     std::shared_ptr<InputSystem> m_InputSystem;
     std::shared_ptr<RenderSystem> m_RenderSystem;
+    std::shared_ptr<WorldManager> m_WorldManager;
 
 
     private:

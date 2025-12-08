@@ -32,12 +32,17 @@ namespace minEngine
     {
     public:
         RHITexture() = default;
+        RHITexture(std::string filepath, uint32_t unit)
+            : m_FilePath(filepath), m_Unit(unit)
+        {
+        }
         virtual ~RHITexture() = default;
 
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
 
     protected:
+        std::string m_FilePath;
         uint32_t m_Unit;
         TextureType m_Type;
         TextureWrapping m_Wrapping;

@@ -1,26 +1,15 @@
-aux_source_directory(./src SRC)
-aux_source_directory(./src/Runtime RUNTIME)
-aux_source_directory(./src/Runtime/Core CORE)
-aux_source_directory(./src/Runtime/Core/Log LOG)
-aux_source_directory(./src/Runtime/Function FUNCTION)
-aux_source_directory(./src/Runtime/Function/Input INPUT)
-aux_source_directory(./src/Runtime/Function/Render RENDER)
-aux_source_directory(./src/Runtime/Function/Render/OpenGL OPENGL_API)
+file(GLOB_RECURSE SRC ./src/*.cpp)
+file(GLOB_RECURSE HEADERS ./src/*.h ./src/*.hpp)
+
 
 
 set(EXECUTABLE_OUTPUT_PATH ${EXECUTABLE_PATH})
+set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_PATH})
 
-add_executable(${ENGINE_NAME} ${SRC}
-                              ${CORE} 
-                              ${LOG} 
-                              ${INPUT}
-                              ${FUNCTION} 
-                              ${RENDER}
-                              ${OPENGL_API}
-                              ${RUNTIME}
-                              ${THIRD_PARTY_PATH}/glad/src/glad.c
-                              ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
-                              )
+add_library(${ENGINE_NAME} SHARED ${SRC}
+                                  ${THIRD_PARTY_PATH}/glad/src/glad.c
+                                  ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
+                                  )
 
 
 target_include_directories(${ENGINE_NAME} PUBLIC ./src

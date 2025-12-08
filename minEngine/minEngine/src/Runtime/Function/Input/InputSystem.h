@@ -13,6 +13,8 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
+        void Tick(float deltaTime);
+
         void OnKey(int key, int scancode, int action, int mods);
         void OnCursorPos(double xPos, double yPos);
 

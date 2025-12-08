@@ -6,6 +6,8 @@ in vec3 Normal;
 in vec2 TexCoord;
 
 uniform sampler2D u_Texture1;
+uniform sampler2D u_Texture2;
+
 uniform vec3 u_LightColor;
 uniform vec3 u_LigthPosition;
 uniform vec3 u_ViewPosition;

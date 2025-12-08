@@ -1,12 +1,14 @@
 #pragma once
-#include "Core.h"
-
+#include "Runtime/Core/Core.h"
 
 
 namespace minEngine
 {
+    class RenderScene;
     class RHI;
     class RenderCamera;
+    class PrimitiveSceneProxy;
+
 
     class RenderSystem
     {
@@ -25,6 +27,9 @@ namespace minEngine
     private:
 
 
+    public:
+        std::shared_ptr<RenderScene> m_RenderScene;
+    
     private:
         std::shared_ptr<RHI> m_RHI;
         std::shared_ptr<RenderCamera> m_Camera;

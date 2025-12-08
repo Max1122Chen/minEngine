@@ -1,6 +1,9 @@
 #include "Engine.h"
 
 #include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Render/WindowSystem.h"
+#include "Runtime/Function/Framework/World/WorldManager.h"
 
 namespace minEngine
 {
@@ -18,22 +21,34 @@ namespace minEngine
     void Engine::Run()
     {
         // TODO: change to proper game loop
-        TickOneFrame(0.016f); // Assume 60 FPS for now
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetInstance();
+        WindowSystem* windowSystem = globalContext.m_WindowSystem.get();
+        while (!windowSystem->ShouldClose())
+        {
+            float deltaTime = CalculateDeltaTime();
+            TickOneFrame(deltaTime);
+        }
     }
 
     // Tick one frame
     void Engine::TickOneFrame(float deltaTime)
     {
-        // Logical tick
         LogicalTick(deltaTime);
 
-        // Renderer tick
         RendererTick(deltaTime);
+
+        RuntimeGlobalContext::GetInstance().m_WindowSystem->PollEvents();
     }
 
     void Engine::LogicalTick(float deltaTime)
     {
         // TODO: implement logical tick
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetInstance();
+        globalContext.m_WorldManager->Tick(deltaTime);
+        globalContext.m_InputSystem->Tick(deltaTime);
+
+        globalContext.m_WorldManager->SendAllEndOfFrameUpdates();
+    
     }
 
     void Engine::RendererTick(float deltaTime)

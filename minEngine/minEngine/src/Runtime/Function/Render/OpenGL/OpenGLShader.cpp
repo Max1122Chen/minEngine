@@ -99,6 +99,11 @@ namespace minEngine
         glUniform1i(glGetUniformLocation(m_ID, name.c_str()), value);
     }
 
+    void OpenGLShader::UploadUniformFloat(const std::string &name, float value)
+    {
+        glUniform1f(glGetUniformLocation(m_ID, name.c_str()), value);
+    }
+
     void OpenGLShader::UploadUniformFloat3(const std::string &name, Vector3 value)
     {
         glUniform3f(glGetUniformLocation(m_ID, name.c_str()), value.x, value.y, value.z);

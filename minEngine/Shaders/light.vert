@@ -5,7 +5,6 @@ uniform mat4 u_Model;
 uniform mat4 u_View;
 uniform mat4 u_Projection;
 
-out vec2 TexCoord;
 
 void main()
 {

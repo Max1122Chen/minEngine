@@ -1,13 +1,15 @@
 #pragma once
-#include "Runtime/Function/Render/RHI.h"
 #include "Core.h"
-
-#include "OpenGLShader.h"
-#include "OpenGLBuffer.h"
+#include "Runtime/Function/Render/RHI.h"
 
 
 namespace minEngine
 {
+    class VertexBuffer;
+    class IndexBuffer;
+    class RHITexture;
+    class RHIShader;
+
     class WindowSystem;
 
     class OpenGLRHI : public RHI
@@ -21,13 +23,18 @@ namespace minEngine
         virtual void Initialize() override;
         virtual void Shutdown() override;
 
-        virtual void EnableDepthTest();
-        virtual void DisableDepthTest();
+        virtual void EnableDepthTest() override;
+        virtual void DisableDepthTest() override;
+
+        virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size) override;
+        virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t count) override;
+        virtual std::shared_ptr<RHITexture> CreateTexture(const char* filepath, uint32_t unit) override;
+        virtual std::shared_ptr<RHIShader> CreateShader(const char* vertexSource, const char* fragmentSource) override;
+
        
     
 
     private:
-        // OpenGL specific resources can be declared here
         std::shared_ptr<WindowSystem> m_WindowSystem;
     };
 }

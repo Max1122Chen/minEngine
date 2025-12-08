@@ -5,6 +5,7 @@ project(minEngine)
 set(CMAKE_CXX_STANDARD 17)
 
 set(ENGINE_NAME minEngine)
+set(PLAYGROUND_NAME Playground)
 
 # set path
 # Third-Party libraries
@@ -16,5 +17,6 @@ set(EXECUTABLE_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 
 add_subdirectory(${ENGINE_NAME})
+add_subdirectory(${PLAYGROUND_NAME})
 
 

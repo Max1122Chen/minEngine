@@ -8,9 +8,8 @@
 namespace minEngine
 {
     OpenGLTexture::OpenGLTexture(const char *path, uint32_t unit)
+        : RHITexture(path, unit)
     {
-        m_Unit = unit;
-
         glGenTextures(1, &m_ID);
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D, m_ID);
@@ -44,6 +43,8 @@ namespace minEngine
         }
         stbi_image_free(data);
     }
+
+    // TODO: move these logic to material
     void OpenGLTexture::Bind()
     {
         glActiveTexture(GL_TEXTURE0 + m_Unit);
