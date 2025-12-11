@@ -56,7 +56,8 @@ namespace minEngine
         template<typename T>
         std::shared_ptr<T> CreateAndAddComponent()
         {
-            std::shared_ptr<T> newComponent = std::make_shared<T>(std::shared_ptr<GameObject>(this));
+            std::shared_ptr<T> newComponent = std::make_shared<T>();
+            newComponent->SetOwner(this);
             m_Components.push_back(newComponent);
 
             return newComponent;

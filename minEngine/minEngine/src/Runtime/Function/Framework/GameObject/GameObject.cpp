@@ -4,9 +4,7 @@ namespace minEngine
 {
     GameObject::GameObject(uint64_t id)
         : m_ID(id)
-    {
-        m_RootComponent = CreateAndAddComponent<SceneComponent>();
-    }
+    {}
 
     void GameObject::Tick(float deltaTime)
     {

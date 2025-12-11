@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Framework/Transform/Transform.h"
 
 namespace minEngine
 {
@@ -9,6 +10,6 @@ namespace minEngine
         PrimitiveSceneProxy() = default;
         virtual ~PrimitiveSceneProxy() = default;
 
-
+        Transform m_Transform;
     };
 }

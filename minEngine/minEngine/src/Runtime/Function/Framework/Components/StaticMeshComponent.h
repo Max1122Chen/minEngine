@@ -1,8 +1,6 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
-#include "Runtime/Function/Render/StaticMesh.h"
-#include "Runtime/Function/Render/Material.h"
 
 namespace minEngine
 {
@@ -13,15 +11,14 @@ namespace minEngine
     class StaticMeshComponent : public PrimitiveComponent    
     {
     public:
-        StaticMeshComponent() = default;
-        StaticMeshComponent(std::shared_ptr<GameObject> owner) : PrimitiveComponent(owner) {}
+        StaticMeshComponent();
         virtual ~StaticMeshComponent() = default;
 
         void SetMesh(const std::shared_ptr<StaticMesh>& mesh);
-        std::shared_ptr<StaticMesh> GetMesh() const { return m_Mesh; }
+        StaticMesh* GetMesh() const { return m_Mesh.get(); }
 
         void SetMaterial(const std::shared_ptr<Material>& material);
-        std::shared_ptr<Material> GetMaterial() const { return m_Material; }
+        Material* GetMaterial() const { return m_Material.get(); }
 
         // PrimitiveComponent Contract
         virtual PrimitiveSceneProxy* CreateSceneProxy() override;

@@ -8,7 +8,7 @@ namespace minEngine
     class OpenGLVertexBuffer : public VertexBuffer
     {
     public:
-        OpenGLVertexBuffer(float *vertices, uint32_t size);
+        OpenGLVertexBuffer(float *vertices, uint32_t size, uint32_t numVertices);
         virtual ~OpenGLVertexBuffer();
 
         virtual void Bind() const override;
@@ -22,16 +22,14 @@ namespace minEngine
     class OpenGLIndexBuffer : public IndexBuffer
     {
     public:
-        OpenGLIndexBuffer(uint32_t *indices, uint32_t count);
+        OpenGLIndexBuffer(uint32_t *indices, uint32_t numIndices);
         virtual ~OpenGLIndexBuffer();
 
         virtual void Bind() const override;
         virtual void Unbind() const override;
-        virtual uint32_t GetCount() const;
 
     private:
         uint32_t m_EBO;
-        uint32_t m_Count;
     };
 
 }

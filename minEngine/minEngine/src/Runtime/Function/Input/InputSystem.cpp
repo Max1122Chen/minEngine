@@ -13,7 +13,7 @@ namespace minEngine
 {
     void InputSystem::Initialize()
     {
-        WindowSystem* windowSystem = RuntimeGlobalContext::GetInstance().m_WindowSystem.get();
+        WindowSystem* windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem.get();
 
         // TODO: maybe we will wrap these logic into a private function later
         windowSystem->RegisterOnKeyCallback([this](int key, int scancode, int action, int mods)
@@ -41,7 +41,7 @@ namespace minEngine
     void InputSystem::OnKey(int key, int scancode, int action, int mods)
     {
         // just for testing
-        RuntimeGlobalContext& context = RuntimeGlobalContext::GetInstance();
+        RuntimeGlobalContext& context = RuntimeGlobalContext::GetRuntimeGlobalContext();
         RenderSystem& renderSystem = *context.m_RenderSystem;
         RenderCamera& camera = *renderSystem.GetMainCamera();
 
@@ -66,10 +66,13 @@ namespace minEngine
                     camera.m_CameraVelocity.x = 1.0f;
                     break;
                 case GLFW_KEY_Q:
-                    camera.m_CameraVelocity.y = 1.0f;
+                    camera.m_CameraVelocity.y = -1.0f;
                     break;
                 case GLFW_KEY_E:
-                    camera.m_CameraVelocity.y = -1.0f;
+                    camera.m_CameraVelocity.y = 1.0f;
+                    break;
+                case GLFW_KEY_LEFT_SHIFT:
+                    camera.m_CameraVelocity *= 2.0f;
                     break;
                 default:
                     break;
@@ -91,6 +94,8 @@ namespace minEngine
                 case GLFW_KEY_E:
                     camera.m_CameraVelocity.y = 0.0f;
                     break;
+                case GLFW_KEY_LEFT_SHIFT:
+                    camera.m_CameraVelocity /= 2.0f;
                 default:
                     break;
             }
@@ -99,7 +104,7 @@ namespace minEngine
 
     void InputSystem::OnCursorPos(double xPos, double yPos)
     {
-        RuntimeGlobalContext& context = RuntimeGlobalContext::GetInstance();
+        RuntimeGlobalContext& context = RuntimeGlobalContext::GetRuntimeGlobalContext();
         RenderSystem& renderSystem = *context.m_RenderSystem;
         RenderCamera& camera = *renderSystem.GetMainCamera();
 

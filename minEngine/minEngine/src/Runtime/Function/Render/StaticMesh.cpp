@@ -1,8 +1,6 @@
 #include "StaticMesh.h"
-#include "assimp/Importer.hpp"
-#include "assimp/scene.h"
-#include "assimp/postprocess.h"
-#include "glm/glm.hpp"
+
+#include "Runtime/Resource/AssetManager.h"
 
 
 
@@ -11,21 +9,22 @@ namespace minEngine
     // TODO: Fix this
     StaticMesh::StaticMesh(std::string path)
     {
-        
+        AssetManager::GetAssetManager().LoadStaticMesh(path, this);
     }
 
-    StaticMesh::StaticMesh(float *vertices, uint32_t vertexSize, std::initializer_list<VertexElement> elements)
+    StaticMesh::StaticMesh(float *vertices, uint32_t verticesSize, uint32_t numVertices, std::initializer_list<VertexElement> elements)
     {
-        // TODO: Use RHI factory to create buffers. This is an important change
-        m_VertexBuffer = std::make_shared<OpenGLVertexBuffer>(vertices, vertexSize);
-        m_VertexDefinition = std::make_shared<OpenGLVertexArrayObject>(elements);
+        // Becareful: we must create vertex buffer before vertex definition. This is because
+        // some RHI implementations (OpenGL) may need to query vertex buffer info when creating vertex definition.
+        m_VertexBuffer = VertexBuffer::Create(vertices, verticesSize, numVertices);
+        m_VertexDefinition = VertexDefinition::Create(elements);
+
     }
 
-    StaticMesh::StaticMesh(float *vertices, uint32_t vertexSize, std::initializer_list<VertexElement> elements, uint32_t *indices, uint32_t indexCount)
+    StaticMesh::StaticMesh(float *vertices, uint32_t verticesSize, uint32_t numVertices, std::initializer_list<VertexElement> elements, uint32_t *indices, uint32_t numIndices)
     {
-        // TODO: Use RHI factory to create buffers. This is an important change
-        m_VertexBuffer = std::make_shared<OpenGLVertexBuffer>(vertices, vertexSize);
-        m_VertexDefinition = std::make_shared<OpenGLVertexArrayObject>(elements);
-        m_IndexBuffer = std::make_shared<OpenGLIndexBuffer>(indices, indexCount);
+        m_VertexBuffer = VertexBuffer::Create(vertices, verticesSize, numVertices);
+        m_VertexDefinition = VertexDefinition::Create(elements);
+        m_IndexBuffer = IndexBuffer::Create(indices, numIndices);
     }
 }

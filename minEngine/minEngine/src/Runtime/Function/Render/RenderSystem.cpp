@@ -1,28 +1,25 @@
 #include "RenderSystem.h"
 
-// Include RHI implementations
 #include "OpenGL/OpenGLRHI.h"
 #include "GLFWWindowSystem.h"
 #include "RenderCamera.h"
-#include "RenderScene.h"
-
 
 
 #include "OpenGL/OpenGLShader.h"
 #include "OpenGL/OpenGLVertexArrayObject.h"
 #include "OpenGL/OpenGLBuffer.h"
 #include "OpenGL/OpenGLTexture.h"
-#include "StaticMesh.h"
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+
+#include "Runtime/Function/Render/StaticMeshSceneProxy.h"
 #include "Runtime/Function/Render/Material.h"
 
+#include "PointLightSceneProxy.h"
+#include "DirectionalLightSceneProxy.h"
+#include "SpotLightSceneProxy.h"
+
 #include "RuntimeGlobalContext.h"
-#include "Runtime/Function/Framework/World/WorldManager.h"
 
-#include "Runtime/Function/Render/PrimitiveSceneProxy.h"
-#include "Runtime/Function/Render/StaticMeshSceneProxy.h"
-
+#include "RenderScene.h"
 
 #include "glm/gtc/type_ptr.hpp"
 
@@ -64,68 +61,64 @@ namespace minEngine
         // Clear the window
         static_cast<OpenGLRHI*>(m_RHI.get())-> m_WindowSystem->Clear();
 
+        // Update camera position based on velocity. TODO: move this to camera update function
         m_Camera->m_Position += m_Camera->m_CameraVelocity.z * m_Camera->m_Forward * deltaTime;
         m_Camera->m_Position += m_Camera->m_CameraVelocity.y * m_Camera->m_Up * deltaTime;
         m_Camera->m_Position += m_Camera->m_CameraVelocity.x * m_Camera->m_Right * deltaTime;
 
-
+        // render all primitives but only static mesh for now
         for(auto& primitiveProxy : m_RenderScene->m_PrimitiveSceneProxies)
         {
             StaticMeshSceneProxy* meshProxy = dynamic_cast<StaticMeshSceneProxy*>(primitiveProxy);
             if(meshProxy)
             {
-                Matrix4 model = glm::mat4(1.0f);
-                model = glm::translate(model, meshProxy->m_Transform.Position);
-                model = glm::rotate(model, glm::radians(meshProxy->m_Transform.Rotation.x), Vector3(1.0f, 0.0f, 0.0f));
-                model = glm::rotate(model, glm::radians(meshProxy->m_Transform.Rotation.y), Vector3(0.0f, 1.0f, 0.0f));
-                model = glm::rotate(model, glm::radians(meshProxy->m_Transform.Rotation.z), Vector3(0.0f, 0.0f, 1.0f));
-                model = glm::scale(model, meshProxy->m_Transform.Scale);
+                Matrix4 model = meshProxy->m_Transform.ToMatrix();
 
                 auto shader = meshProxy->m_Material->m_Shader;
+
                 shader->Use();
-                shader->UploadUniformInt("u_Texture1", 0);
-                shader->UploadUniformFloat3("u_LigthPosition", Vector3(1.2f, 1.0f, 2.0f));
-                shader->UploadUniformFloat3("u_LightColor", Vector3(1.0f, 1.0f, 1.0f));
+                shader->UploadUniformInt("u_DiffuseMap", 0);
                 shader->UploadUniformMat4("u_Model", glm::value_ptr(model));
                 shader->UploadUniformMat4("u_View", glm::value_ptr(m_Camera->GetViewMatrix()));
                 shader->UploadUniformMat4("u_Projection", glm::value_ptr(m_Camera->GetProjectionMatrix()));
+                shader->UploadUniformMat4("u_MVP", glm::value_ptr(m_Camera->GetProjectionMatrix() * m_Camera->GetViewMatrix() * model));
                 shader->UploadUniformFloat3("u_ViewPosition", m_Camera->m_Position);
 
+                for(auto& dirLight : m_RenderScene->m_DirectionalLightSceneProxies)
+                {
+                    shader->UploadUniformFloat3("u_DirLight.Direction", dirLight->m_Direction);
+                    shader->UploadUniformFloat3("u_DirLight.Color", dirLight->m_LightColor);
+                }
+
+                for(auto& pointLight : m_RenderScene->m_PointLightSceneProxies)
+                {
+                    // For simplicity, only upload the first point light
+                    shader->UploadUniformFloat3("u_PointLight.Position", pointLight->m_Position);
+                    shader->UploadUniformFloat3("u_PointLight.Color", pointLight->m_LightColor);
+                    break;
+                }
+
+                for(auto& spotLight : m_RenderScene->m_SpotLightSceneProxies)
+                {
+                    // For simplicity, only upload the first spot light
+                    shader->UploadUniformFloat3("u_SpotLight.Position", spotLight->m_Position);
+                    shader->UploadUniformFloat3("u_SpotLight.Direction", spotLight->m_Direction);
+                    shader->UploadUniformFloat3("u_SpotLight.Color", spotLight->m_LightColor);
+                    shader->UploadUniformFloat("u_SpotLight.InnerConeAngleCos", cos(glm::radians(spotLight->m_InnerConeAngle)));
+                    shader->UploadUniformFloat("u_SpotLight.OuterConeAngleCos", cos(glm::radians(spotLight->m_OuterConeAngle)));
+                    break;
+                }
+                
+
                 static_cast<OpenGLVertexArrayObject*>(meshProxy->m_VertexDefinition)->Bind();
+
                 glDrawArrays(GL_TRIANGLES, 0, 36);
+
+                
             }
         }
 
         static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SwapBuffers();
-
-        // WorldManager* worldManager = RuntimeGlobalContext::GetInstance().m_WorldManager.get();
-        // for(auto& component : worldManager->m_ComponentsThatNeedEndOfFrameUpdate)
-        // {
-        //     StaticMeshComponent* meshComponent = dynamic_cast<StaticMeshComponent*>(component);
-        //     if(meshComponent)
-        //     {
-        //         Matrix4 model = glm::mat4(1.0f);
-        //         model = glm::translate(model, meshComponent->m_Transform.Position);
-        //         model = glm::rotate(model, glm::radians(meshComponent->m_Transform.Rotation.x), Vector3(1.0f, 0.0f, 0.0f));
-        //         model = glm::rotate(model, glm::radians(meshComponent->m_Transform.Rotation.y), Vector3(0.0f, 1.0f, 0.0f));
-        //         model = glm::rotate(model, glm::radians(meshComponent->m_Transform.Rotation.z), Vector3(0.0f, 0.0f, 1.0f));
-        //         model = glm::scale(model, meshComponent->m_Transform.Scale);
-        //         auto shader = meshComponent->GetMaterial()->m_Shader;
-        //         shader->Use();
-        //         shader->UploadUniformInt("u_Texture1", 0);
-        //         shader->UploadUniformFloat3("u_LigthPosition", Vector3(1.2f, 1.0f, 2.0f));
-        //         shader->UploadUniformFloat3("u_LightColor", Vector3(1.0f, 1.0f, 1.0f));
-        //         shader->UploadUniformMat4("u_Model", glm::value_ptr(model));
-        //         shader->UploadUniformMat4("u_View", glm::value_ptr(m_Camera->GetViewMatrix()));
-        //         shader->UploadUniformMat4("u_Projection", glm::value_ptr(m_Camera->GetProjectionMatrix()));
-        //         shader->UploadUniformFloat3("u_ViewPosition", m_Camera->m_Position);
-
-        //         static_cast<OpenGLVertexArrayObject*>(meshComponent->GetMesh()->m_VertexDefinition.get())->Bind();
-        //         glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        //     }
-        // }
-        // static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SwapBuffers();
     }
 
 }

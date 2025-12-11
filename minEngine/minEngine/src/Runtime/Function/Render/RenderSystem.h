@@ -1,5 +1,5 @@
 #pragma once
-#include "Runtime/Core/Core.h"
+#include "Core.h"
 
 
 namespace minEngine
@@ -7,7 +7,6 @@ namespace minEngine
     class RenderScene;
     class RHI;
     class RenderCamera;
-    class PrimitiveSceneProxy;
 
 
     class RenderSystem
@@ -22,7 +21,8 @@ namespace minEngine
 
         void Tick(float deltaTime);
 
-        std::shared_ptr<RenderCamera> GetMainCamera() const { return m_Camera; }
+        RHI* GetRHI() const { return m_RHI.get(); }
+        RenderCamera* GetMainCamera() const { return m_Camera.get(); }
 
     private:
 

@@ -96,21 +96,49 @@ namespace minEngine
 
     void OpenGLShader::UploadUniformInt(const std::string &name, int value)
     {
-        glUniform1i(glGetUniformLocation(m_ID, name.c_str()), value);
+        int uniformLocation = -1;
+        if(IsValidUniform(name, uniformLocation))
+        {
+            glUniform1i(uniformLocation, value);
+        }
     }
 
     void OpenGLShader::UploadUniformFloat(const std::string &name, float value)
     {
-        glUniform1f(glGetUniformLocation(m_ID, name.c_str()), value);
+        int uniformLocation = -1;
+        if(IsValidUniform(name, uniformLocation))
+        {
+            glUniform1f(uniformLocation, value);
+        }
     }
 
     void OpenGLShader::UploadUniformFloat3(const std::string &name, Vector3 value)
     {
-        glUniform3f(glGetUniformLocation(m_ID, name.c_str()), value.x, value.y, value.z);
+        int uniformLocation = -1;
+        if(IsValidUniform(name, uniformLocation))
+        {
+            glUniform3f(uniformLocation, value.x,  value.y, value.z);
+        }
+
     }
 
     void OpenGLShader::UploadUniformMat4(const std::string &name, const float *matrix)
     {
-        glUniformMatrix4fv(glGetUniformLocation(m_ID, name.c_str()), 1, GL_FALSE, matrix);
+        int uniformLocation = -1;
+        if(IsValidUniform(name, uniformLocation))
+        {
+            glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, matrix);
+        }
+    }
+
+    bool OpenGLShader::IsValidUniform(const std::string &name, int &uniformLocation)
+    {
+        uniformLocation = glGetUniformLocation(m_ID, name.c_str());     // TODO: cache uniform locations later
+        if(uniformLocation == -1)
+        {
+            // ME_CORE_ERROR("Uniform {} not found in shader!", name);
+            return false;
+        }
+        return true;
     }
 }

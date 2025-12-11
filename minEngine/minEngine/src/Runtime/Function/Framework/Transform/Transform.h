@@ -1,12 +1,13 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Core/Math/Math.h"
 
 namespace minEngine
 {
     struct Transform
     {
         Vector3 Position{ 0.0f, 0.0f, 0.0f };
-        Vector3 Rotation{ 0.0f, 0.0f, 0.0f };
+        Vector3 Rotation{ 0.0f, 0.0f, 0.0f };   // TODO: use quaternion later
         Vector3 Scale{ 1.0f, 1.0f, 1.0f };
 
         Transform() = default;
@@ -20,6 +21,17 @@ namespace minEngine
             Rotation = other.Rotation;
             Scale = other.Scale;
         };
+        
+        Matrix4 ToMatrix() const
+        {
+            Matrix4 model = glm::mat4(1.0f);
+            model = glm::translate(model, Position);                                            // translation
+            model = glm::rotate(model, glm::radians(Rotation.x), Vector3(1.0f, 0.0f, 0.0f));    // rotation x
+            model = glm::rotate(model, glm::radians(Rotation.y), Vector3(0.0f, 1.0f, 0.0f));    // rotation y
+            model = glm::rotate(model, glm::radians(Rotation.z), Vector3(0.0f, 0.0f, 1.0f));    // rotation z
+            model = glm::scale(model, Scale);                                                   // scale
+            return model;
+        }
 
         void SetPosition(const Vector3& position) { Position = position; }
         void SetRotation(const Vector3& rotation) { Rotation = rotation; }

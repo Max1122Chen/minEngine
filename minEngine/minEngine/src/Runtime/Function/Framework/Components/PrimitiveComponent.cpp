@@ -1,25 +1,20 @@
 #include "PrimitiveComponent.h"
-#include "Runtime/Function/Render/PrimitiveSceneProxy.h"
+#include "Runtime/Function/Framework/World/WorldManager.h"
+#include "Runtime/Function/Render/RenderScene.h"
 
 namespace minEngine
 {
-    void PrimitiveComponent::MarkRenderStateDirty()
+    PrimitiveComponent::PrimitiveComponent()
     {
-        m_bRenderStateDirty = true;
-        MarkForNeededEndOfFrameUpdate();
     }
 
-    void PrimitiveComponent::SetTransform(const Transform &inTransform)
+    void PrimitiveComponent::DoEndOfFrameUpdate()
     {
-        if(m_Transform == inTransform)
+        if(m_bRenderStateDirty)     // why do we need this check again? 
         {
-            return;
+            WorldManager::GetWorldManager().GetRenderScene()->UpdatePrimitive(this);
+            m_bRenderStateDirty = false;
         }
-        m_Transform = inTransform;
-        MarkRenderStateDirty();
     }
-} 
 
-
-
-
+}

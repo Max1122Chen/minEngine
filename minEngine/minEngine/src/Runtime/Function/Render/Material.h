@@ -23,10 +23,9 @@ namespace minEngine
 
         std::shared_ptr<RHIShader> m_Shader;
 
-        MaterialParameters m_Albedo;
+        MaterialParameters m_Diffuse;
         MaterialParameters m_Specular;
         MaterialParameters m_Normal;
-        MaterialParameters m_Emission;
         
     };
 }

@@ -1,31 +1,54 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
-#include "Runtime/Function/Framework/Transform.h"
+#include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 
 namespace minEngine
 {
+    class Component;
+
+    enum class AttachmentTransformRules
+    {
+        KeepRelativeTransform,
+        KeepWorldTransform
+    };
+    
     class SceneComponent : public Component
     {
     public:
-        SceneComponent() = default;
-        SceneComponent(std::shared_ptr<GameObject> owner);
+        SceneComponent();
         virtual ~SceneComponent() = default;
 
+        void MarkRenderStateDirty();
 
         const Transform& GetTransform() const { return m_Transform; }
-        void SetTransform(const Transform& inTransform) { m_Transform = inTransform; }
+        void SetTransform(const Transform& inTransform);
 
         const Vector3& GetPosition() const { return m_Transform.Position; }
-        void SetPosition(const Vector3& position) { m_Transform.Position = position; }
+        void SetPosition(const Vector3& position);
 
         const Vector3& GetRotation() const { return m_Transform.Rotation; }
-        void SetRotation(const Vector3& rotation) { m_Transform.Rotation = rotation; }
+        void SetRotation(const Vector3& rotation);
 
         const Vector3& GetScale() const { return m_Transform.Scale; }
-        void SetScale(const Vector3& scale) { m_Transform.Scale = scale; }
+        void SetScale(const Vector3& scale);
 
+        virtual void SetOwner(GameObject* inOwner) override;
+
+        // We don't implicitly attach to parent in constructor, because at that time.
+        // You should explicitly call AttachToComponent to avoid confusion.
+        bool AttachToComponent(SceneComponent* inParent, AttachmentTransformRules attachRules);     // return false if failed
+        void AttachToParent(SceneComponent* inParent, AttachmentTransformRules attachRules);
+        SceneComponent* GetAttachParent() const { return m_AttachParent.get(); }
+        void SetAttachParent(SceneComponent* inParent);
+
+    protected:
+        
+        std::shared_ptr<SceneComponent> m_AttachParent{ nullptr };          // should we use shared_ptr here? UE does use shared ptr for parent
+        std::vector<std::shared_ptr<SceneComponent>> m_AttachChildren;
+
+        bool m_bRenderStateDirty{ false };
         Transform m_Transform;
     };
 }

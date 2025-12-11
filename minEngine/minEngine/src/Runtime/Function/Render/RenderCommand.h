@@ -8,7 +8,8 @@ namespace minEngine
     public:
         RenderCommand() = default;
         virtual ~RenderCommand() = default;
-
+        
+        virtual void Execute() = 0;
     };
 
     class RenderCommandQueue

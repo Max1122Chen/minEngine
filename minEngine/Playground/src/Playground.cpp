@@ -24,21 +24,14 @@ class Playground : public minEngine::Application
 
     virtual void Run() override
     {
-        minEngine::WorldManager* worldManager = minEngine::RuntimeGlobalContext::GetInstance().m_WorldManager.get();
+        minEngine::WorldManager* worldManager = minEngine::RuntimeGlobalContext::GetRuntimeGlobalContext().m_WorldManager.get();
 
         worldManager->m_CurrentActiveLevel = std::make_shared<minEngine::Level>();
 
         minEngine::Level& level = *worldManager->m_CurrentActiveLevel;
-        
-        auto cube = level.CreateGameObject();
-        std::shared_ptr<minEngine::StaticMeshComponent> cubeMeshComponent = cube->CreateAndAddComponent<minEngine::StaticMeshComponent>();
-        cubeMeshComponent->MarkRenderStateDirty();
+       
 
-        auto light = level.CreateGameObject();
-        std::shared_ptr<minEngine::StaticMeshComponent> lightMeshComponent = light->CreateAndAddComponent<minEngine::StaticMeshComponent>();
-        lightMeshComponent->MarkRenderStateDirty();
-
-        // cube vertex data
+        // cube vertex data --------------------------------
         float modelVertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,  0.0f, 0.0f, -1.0f,
@@ -127,43 +120,104 @@ class Playground : public minEngine::Application
         -0.5f,  0.5f, -0.5f, 
         };
 
+        // ----------------------------------------------
+
         // create cube
-        minEngine::StaticMesh cubeMesh(modelVertices, sizeof(modelVertices), {
+        minEngine::StaticMesh cubeMesh(modelVertices, sizeof(modelVertices), 36,{
             minEngine::VertexElement("a_Position", minEngine::VertexElementType::Float3),
             minEngine::VertexElement("a_TexCoord", minEngine::VertexElementType::Float2),
             minEngine::VertexElement("a_Normal", minEngine::VertexElementType::Float3)
         });
 
+
         // create light
-        minEngine::StaticMesh lightMesh(lightVertices, sizeof(lightVertices), {
+        minEngine::StaticMesh lightMesh(lightVertices, sizeof(lightVertices), 36,{
             minEngine::VertexElement("a_Position", minEngine::VertexElementType::Float3)
         });
 
         minEngine::Material cubeMaterial;
         cubeMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        cubeMaterial.m_Albedo.Texture = std::make_shared<minEngine::OpenGLTexture>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
+        cubeMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
 
         // create light material
         minEngine::Material lightMaterial;
         lightMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.frag");
-        lightMaterial.m_Albedo.Value = minEngine::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+        lightMaterial.m_Diffuse.Value = minEngine::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
-        cubeMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(cubeMesh));
-        cubeMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(cubeMaterial));
+        minEngine::Material spotLightMaterial;
+        spotLightMaterial.m_Shader = lightMaterial.m_Shader;
+        spotLightMaterial.m_Diffuse.Value = minEngine::Vector4(145.0f/255.0f, 245.0f/255.0f, 138.0f/255.0f, 1.0f);
+
+        // create Cube game object
+        std::vector<minEngine::Transform> cubeTransforms = 
+        {
+            minEngine::Transform(minEngine::Vector3(0.0f, 0.0f, 0.0f), minEngine::Vector3(15.0f, 15.0f, 15.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f)),
+            minEngine::Transform(minEngine::Vector3(2.0f, 1.0f, -1.0f), minEngine::Vector3(30.0f, 45.0f, 60.0f), minEngine::Vector3(1.5f, 1.5f, 1.5f)),
+            minEngine::Transform(minEngine::Vector3(-2.0f, -1.0f, 1.0f), minEngine::Vector3(45.0f, 30.0f, 15.0f), minEngine::Vector3(0.5f, 0.5f, 0.5f)),
+            minEngine::Transform(minEngine::Vector3(1.0f, -2.0f, -2.0f), minEngine::Vector3(60.0f, 45.0f, 30.0f), minEngine::Vector3(2.5f, 2.5f, 2.5f)),
+            minEngine::Transform(minEngine::Vector3(-1.0f, 2.0f, 2.0f), minEngine::Vector3(75.0f, 60.0f, 45.0f), minEngine::Vector3(0.1f, 0.1f, 0.1f))
+        };
+        std::vector<std::shared_ptr<minEngine::GameObject>> cubes;
+        for(int i = 0; i < 5; ++i)
+        {
+            auto cube = level.CreateGameObject();
+            std::shared_ptr<minEngine::StaticMeshComponent> cubeMeshComponent = cube->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+            cube->SetRootComponent(cubeMeshComponent);
+
+            // set cube mesh and material
+            cubeMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(cubeMesh));
+            cubeMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(cubeMaterial));
+
+            // set cube transforms
+            cube->SetTransform(cubeTransforms[i]);
+
+            cubes.push_back(cube);
+        }
+
+        // create PointLight game object
+        auto light = level.CreateGameObject();
+        std::shared_ptr<minEngine::StaticMeshComponent> lightMeshComponent = light->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+        light->SetRootComponent(lightMeshComponent);
+
+        std::shared_ptr<minEngine::PointLightComponent> lightComponent = light->CreateAndAddComponent<minEngine::PointLightComponent>();
+        lightComponent->AttachToComponent(lightMeshComponent.get(), minEngine::AttachmentTransformRules::KeepRelativeTransform);
+
+        // create DirectionalLight game object
+        auto dirLight = level.CreateGameObject();
+        std::shared_ptr<minEngine::DirectionalLightComponent> dirLightComponent = dirLight->CreateAndAddComponent<minEngine::DirectionalLightComponent>();
+        dirLight->SetRootComponent(dirLightComponent);
+
+        // create SpotLight game object
+        auto spotLight = level.CreateGameObject();
+        std::shared_ptr<minEngine::StaticMeshComponent> spotLightMeshComponent = spotLight->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+        spotLight->SetRootComponent(spotLightMeshComponent);
+
+        std::shared_ptr<minEngine::SpotLightComponent> spotLightComponent = spotLight->CreateAndAddComponent<minEngine::SpotLightComponent>();
+        spotLightComponent->AttachToComponent(spotLightMeshComponent.get(), minEngine::AttachmentTransformRules::KeepRelativeTransform);
 
         // set light mesh and material
         lightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
         lightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(lightMaterial));
 
-        // set cube transforms
-        cube->SetPosition(minEngine::Vector3(0.0f, 0.0f, 0.0f));
-        cube->SetScale(minEngine::Vector3(2.0f, 2.0f, 2.0f));
-        cube->SetRotation(minEngine::Vector3(45.0f, 0.0f, 0.0f));
+        // set spot light mesh and material
+        spotLightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
+        spotLightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(spotLightMaterial));
+
 
         // set light transforms
-        light->SetPosition(minEngine::Vector3(0.0f, 0.0f, 0.0f));
-        light->SetScale(minEngine::Vector3(0.2f, 0.2f, 0.2f));
-        light->SetRotation(minEngine::Vector3(0.0f, 0.0f, 0.0f));
+        light->SetPosition(minEngine::Vector3(2.0f, -2.0f, 2.0f));
+        light->SetScale(minEngine::Vector3(0.5f, 0.5f, 0.5f));
+        light->SetRotation(minEngine::Vector3(0.0f, 45.0f, 0.0f));
+
+        lightComponent->SetLightColor(minEngine::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+
+        dirLightComponent->SetDirection(minEngine::Vector3(0.0f, -1.0f, -0.5f));
+        dirLightComponent->SetLightColor(minEngine::Vector4(138.0/255.0f, 245.0/255.0f, 228.0/255.0f, 1.0f));
+
+        spotLight->SetPosition(minEngine::Vector3(-2.0f, 2.0f, 2.0f) * 2.0f);
+        spotLightComponent->SetDirection(minEngine::Vector3(1.0f, -1.0f, -1.0f));
+        spotLightComponent->SetLightColor(minEngine::Vector4(227.0/255.0f, 138.0/255.0f, 245.0/255.0f, 1.0f));
+
 
         engine->Run();
     }

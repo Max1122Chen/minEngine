@@ -2,10 +2,16 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+
 #include "Runtime/Function/Render/StaticMeshSceneProxy.h"
+#include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/Material.h"
 
 namespace minEngine
 {
+    StaticMeshComponent::StaticMeshComponent()
+    {
+    }
 
     void StaticMeshComponent::SetMesh(const std::shared_ptr<StaticMesh>& mesh)
     {
@@ -31,14 +37,9 @@ namespace minEngine
     {
         StaticMeshSceneProxy* SceneProxy = new StaticMeshSceneProxy();
 
-        if(m_Owner)
-        {
-            SceneProxy->m_Transform = m_Owner->GetTransform();
-        }
-        else
-        {
-            SceneProxy->m_Transform = m_Transform;
-        }
+        assert(m_Owner);
+        SceneProxy->m_Transform = m_Owner->GetTransform();
+
 
         if (m_Mesh)
         {

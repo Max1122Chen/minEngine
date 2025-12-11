@@ -9,23 +9,24 @@ namespace minEngine
 {
     void Engine::Initialize()
     {
-        RuntimeGlobalContext::GetInstance().StartSystems();
+        RuntimeGlobalContext::GetRuntimeGlobalContext().StartSystems();
     }
 
     void Engine::Shutdown()
     {
         ME_CORE_INFO("Engine Shutdown Started"); 
-        RuntimeGlobalContext::GetInstance().ShutdownSystems();          
+        RuntimeGlobalContext::GetRuntimeGlobalContext().ShutdownSystems();          
     }
 
     void Engine::Run()
     {
         // TODO: change to proper game loop
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetInstance();
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
         WindowSystem* windowSystem = globalContext.m_WindowSystem.get();
         while (!windowSystem->ShouldClose())
         {
             float deltaTime = CalculateDeltaTime();
+            windowSystem->SetTitle(("minEngine - FPS: " + std::to_string(CalculateFPS(deltaTime))).c_str());
             TickOneFrame(deltaTime);
         }
     }
@@ -37,13 +38,13 @@ namespace minEngine
 
         RendererTick(deltaTime);
 
-        RuntimeGlobalContext::GetInstance().m_WindowSystem->PollEvents();
+        RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->PollEvents();
     }
 
     void Engine::LogicalTick(float deltaTime)
     {
         // TODO: implement logical tick
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetInstance();
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
         globalContext.m_WorldManager->Tick(deltaTime);
         globalContext.m_InputSystem->Tick(deltaTime);
 
@@ -53,7 +54,7 @@ namespace minEngine
 
     void Engine::RendererTick(float deltaTime)
     {
-        RuntimeGlobalContext::GetInstance().m_RenderSystem->Tick(deltaTime);
+        RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->Tick(deltaTime);
     }
 
     float Engine::CalculateDeltaTime()
@@ -69,5 +70,10 @@ namespace minEngine
             m_LastTickTimePoint = tickTimePoint;
         }
         return deltaTime;
+    }
+
+    float Engine::CalculateFPS(float deltaTime)
+    {
+        return 1.0f / deltaTime;
     }
 }

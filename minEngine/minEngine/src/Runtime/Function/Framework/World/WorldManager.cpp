@@ -1,15 +1,11 @@
 #include "WorldManager.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
-#include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Render/RenderScene.h"
-#include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
-#include "Runtime/Function/Framework/Level/Level.h"
+#include "Runtime/Function/Framework/Components/Component.h"
 
 namespace minEngine
 {
     void WorldManager::Initialize()
     {
-        m_RenderScene = RuntimeGlobalContext::GetInstance().m_RenderSystem->m_RenderScene.get();
+        m_RenderScene = RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->m_RenderScene.get();
     }
 
     void WorldManager::Shutdown()
@@ -42,21 +38,13 @@ namespace minEngine
 
     void WorldManager::SendAllEndOfFrameUpdates()
     {
-        m_RenderScene->m_PrimitiveSceneProxies.clear();
         for(Component* component : m_ComponentsThatNeedEndOfFrameUpdate)
         {
             if(component)
             {
                 component->SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate::Unmarked);
-                PrimitiveComponent* primComp = dynamic_cast<PrimitiveComponent*>(component);
-                if(primComp)
-                {
-                    PrimitiveSceneProxy* proxy = primComp->CreateSceneProxy();
-                    if (proxy)
-                    {
-                        m_RenderScene->m_PrimitiveSceneProxies.push_back(proxy);
-                    }
-                }
+
+                component->DoEndOfFrameUpdate();
             }
         }
         // m_ComponentsThatNeedEndOfFrameUpdate.clear();    // TODO：discomment after testing

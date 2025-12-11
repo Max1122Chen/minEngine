@@ -1,8 +1,12 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Framework/Level/Level.h"
 
 namespace minEngine
 {
+    class RuntimeGlobalContext;
     class Level;
     class RenderScene;
     class Component;
@@ -16,8 +20,11 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
+        static WorldManager& GetWorldManager() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_WorldManager; }
         
         void Tick(float deltaTime);
+
+        RenderScene* GetRenderScene() const { return m_RenderScene; }
 
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
         void SendAllEndOfFrameUpdates();    // to render thread

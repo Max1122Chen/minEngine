@@ -27,5 +27,8 @@ namespace minEngine
         virtual void UploadUniformFloat(const std::string& name, float value) override;
         virtual void UploadUniformFloat3(const std::string& name, Vector3 value) override;
         virtual void UploadUniformMat4(const std::string& name, const float* matrix) override;
+
+    private:
+        bool IsValidUniform(const std::string& name, int& uniformLocation);
     };
 }

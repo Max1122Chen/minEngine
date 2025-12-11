@@ -2,8 +2,7 @@
 
 #include "glad/glad.h"
 
-// TODO: wrap stb_image into a ResourceManager
-#include "stb_image.h"
+#include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
 {
@@ -21,9 +20,10 @@ namespace minEngine
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         // load and generate the texture
+        AssetManager& assetManager = AssetManager::GetAssetManager();
+        
         int width, height, nrChannels;
-        stbi_set_flip_vertically_on_load(true); // flip the texture on load
-        unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
+        unsigned char *data = assetManager.LoadImage(path, width, height, nrChannels);
         if (data)
         {
             GLenum format;
@@ -36,12 +36,9 @@ namespace minEngine
 
             glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
             glGenerateMipmap(GL_TEXTURE_2D);
+            assetManager.FreeImage(data);
         }
-        else
-        {
-            ME_CORE_ERROR("Failed to load texture: {}", path);
-        }
-        stbi_image_free(data);
+
     }
 
     // TODO: move these logic to material

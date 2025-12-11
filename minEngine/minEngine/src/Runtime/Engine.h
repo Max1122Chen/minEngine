@@ -24,6 +24,7 @@ namespace minEngine
         void RendererTick(float deltaTime);
         
         float CalculateDeltaTime();
+        float CalculateFPS(float deltaTime);
     private:
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
     };

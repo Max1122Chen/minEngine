@@ -90,9 +90,12 @@ namespace minEngine
             m_Stride = offset;
         }
 
-        VertexDefinition() {}
+
+        static std::shared_ptr<VertexDefinition> Create(std::initializer_list<VertexElement> elements);
+
 
         inline const std::vector<VertexElement>& GetElements() const { return m_Elements; }
+        inline const uint32_t GetStride() const { return m_Stride; }
 
         std::vector<VertexElement>::iterator begin() { return m_Elements.begin(); }
         std::vector<VertexElement>::iterator end() { return m_Elements.end(); }
@@ -108,9 +111,14 @@ namespace minEngine
     public:
         virtual ~VertexBuffer() = default;
 
+        static std::shared_ptr<VertexBuffer> Create(float* vertices, uint32_t size, uint32_t numVertices);
+
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
+        uint32_t GetNumVertices() const { return m_NumVertices; }
 
+    protected:
+        uint32_t m_NumVertices = 0;
     };
 
     class IndexBuffer
@@ -118,8 +126,13 @@ namespace minEngine
     public:
         virtual ~IndexBuffer() = default;
 
+        static std::shared_ptr<IndexBuffer> Create(uint32_t* indices, uint32_t numIndices);
+
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
-        virtual uint32_t GetCount() const = 0;
+        uint32_t GetNumIndices() const { return m_NumIndices; }
+
+    protected:
+        uint32_t m_NumIndices = 0;
     };
 }
