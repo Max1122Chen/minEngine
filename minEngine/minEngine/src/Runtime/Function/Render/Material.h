@@ -20,6 +20,7 @@ namespace minEngine
         Material() = default;
         virtual ~Material() = default;
 
+        virtual void BindTextures() const;
 
         std::shared_ptr<RHIShader> m_Shader;
 

@@ -89,7 +89,7 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 
     // Combine results
     vec3 diffuse = diff * light.Color * vec3(texture(u_Material.DiffuseMap, TexCoord));
-    vec3 specular = spec * light.Color * vec3(texture(u_Material.DiffuseMap, TexCoord));     // Note: using diffuse map for specular for simplicity
+    vec3 specular = spec * light.Color * vec3(texture(u_Material.SpecularMap, TexCoord));     // Note: using diffuse map for specular for simplicity
 
     return (ambient + diffuse + specular);
 }
@@ -111,7 +111,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 
     // Combine results
     vec3 diffuse = diff * light.Color * vec3(texture(u_Material.DiffuseMap, TexCoord));
-    vec3 specular = spec * light.Color * vec3(texture(u_Material.DiffuseMap, TexCoord));    // Note: using diffuse map for specular for simplicity
+    vec3 specular = spec * light.Color * vec3(texture(u_Material.SpecularMap, TexCoord));    // Note: using diffuse map for specular for simplicity
     return (ambient + diffuse + specular);
 }
 
@@ -132,7 +132,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 
     // Combine results
     vec3 diffuse = diff * light.Color * vec3(texture(u_Material.DiffuseMap, TexCoord));
-    vec3 specular = spec * light.Color * vec3(texture(u_Material.DiffuseMap, TexCoord));    // Note: using diffuse map for specular for simplicity
+    vec3 specular = spec * light.Color * vec3(texture(u_Material.SpecularMap, TexCoord));    // Note: using diffuse map for specular for simplicity
     diffuse *= intensity;
     specular *= intensity;
     

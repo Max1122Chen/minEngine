@@ -122,6 +122,9 @@ class Playground : public minEngine::Application
 
         // ----------------------------------------------
 
+        // create backpack 
+        minEngine::StaticMesh backpackMesh("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/backpack.obj");
+
         // create cube
         minEngine::StaticMesh cubeMesh(modelVertices, sizeof(modelVertices), 36,{
             minEngine::VertexElement("a_Position", minEngine::VertexElementType::Float3),
@@ -134,6 +137,11 @@ class Playground : public minEngine::Application
         minEngine::StaticMesh lightMesh(lightVertices, sizeof(lightVertices), 36,{
             minEngine::VertexElement("a_Position", minEngine::VertexElementType::Float3)
         });
+
+        minEngine::Material backpackMaterial;
+        backpackMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
+        backpackMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
+        backpackMaterial.m_Specular.Texture = std::make_shared<minEngine::OpenGLTexture>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
 
         minEngine::Material cubeMaterial;
         cubeMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
@@ -148,6 +156,16 @@ class Playground : public minEngine::Application
         spotLightMaterial.m_Shader = lightMaterial.m_Shader;
         spotLightMaterial.m_Diffuse.Value = minEngine::Vector4(145.0f/255.0f, 245.0f/255.0f, 138.0f/255.0f, 1.0f);
 
+        // create Backpack game object
+        auto backpack = level.CreateGameObject();
+        std::shared_ptr<minEngine::StaticMeshComponent> backpackMeshComponent = backpack->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+        backpack->SetRootComponent(backpackMeshComponent);
+        backpackMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(backpackMesh));
+        backpackMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(backpackMaterial));
+        backpack->SetPosition(minEngine::Vector3(0.0f, 0.0f, 0.5f));
+        backpack->SetScale(minEngine::Vector3(1.0f, 1.0f, 1.0f));
+        
+
         // create Cube game object
         std::vector<minEngine::Transform> cubeTransforms = 
         {
@@ -158,7 +176,7 @@ class Playground : public minEngine::Application
             minEngine::Transform(minEngine::Vector3(-1.0f, 2.0f, 2.0f), minEngine::Vector3(75.0f, 60.0f, 45.0f), minEngine::Vector3(0.1f, 0.1f, 0.1f))
         };
         std::vector<std::shared_ptr<minEngine::GameObject>> cubes;
-        for(int i = 0; i < 5; ++i)
+        for(int i = 0; i < 1; ++i)
         {
             auto cube = level.CreateGameObject();
             std::shared_ptr<minEngine::StaticMeshComponent> cubeMeshComponent = cube->CreateAndAddComponent<minEngine::StaticMeshComponent>();

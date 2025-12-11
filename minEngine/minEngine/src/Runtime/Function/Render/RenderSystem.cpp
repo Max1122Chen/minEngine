@@ -74,7 +74,9 @@ namespace minEngine
             {
                 Matrix4 model = meshProxy->m_Transform.ToMatrix();
 
-                auto shader = meshProxy->m_Material->m_Shader;
+                auto material = meshProxy->m_Material;
+                material->BindTextures();
+                auto shader = material->m_Shader;
 
                 shader->Use();
                 shader->UploadUniformInt("u_DiffuseMap", 0);
@@ -112,7 +114,16 @@ namespace minEngine
 
                 static_cast<OpenGLVertexArrayObject*>(meshProxy->m_VertexDefinition)->Bind();
 
-                glDrawArrays(GL_TRIANGLES, 0, 36);
+                if(meshProxy->m_IndexBuffer)
+                {
+                    static_cast<OpenGLIndexBuffer*>(meshProxy->m_IndexBuffer)->Bind();
+                    glDrawElements(GL_TRIANGLES, meshProxy->m_IndexBuffer->GetNumIndices(), GL_UNSIGNED_INT, nullptr);
+                    static_cast<OpenGLIndexBuffer*>(meshProxy->m_IndexBuffer)->Unbind();
+                }
+                else
+                {
+                    glDrawArrays(GL_TRIANGLES, 0, meshProxy->m_VertexBuffer->GetNumVertices());
+                }
 
                 
             }

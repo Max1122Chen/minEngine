@@ -44,8 +44,8 @@ namespace minEngine
         struct Vertex
         {
             Vector3 Position;
-            Vector3 Normal;
             Vector2 TexCoord;
+            Vector3 Normal;
         };
 
         Assimp::Importer importer;
@@ -79,7 +79,9 @@ namespace minEngine
                 // vertices.resize(vertices.size() + mesh->mNumVertices); // should we resize the vector first?
 
                 StaticMeshSectionInfo sectionInfo;
-                sectionInfo.FirstIndex = static_cast<uint32_t>(indices.size() - 1);
+                sectionInfo.FirstIndex = static_cast<uint32_t>(indices.size());
+
+                uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
 
                 // Fill vertices
                 for(unsigned int j = 0; j < mesh->mNumVertices; j++)
@@ -106,7 +108,7 @@ namespace minEngine
                     NumIndices += face.mNumIndices;
                     for(unsigned int k = 0; k < face.mNumIndices; k++)
                     {
-                        indices.push_back(face.mIndices[k]);
+                        indices.push_back(face.mIndices[k] + baseVertex);   // Since we are merging multiple meshes, need to offset by baseVertex.( Assimp's indices are relative to each mesh )
                     }
                 }
                 sectionInfo.NumIndices = NumIndices;
@@ -130,14 +132,15 @@ namespace minEngine
         }
 
         // Create vertex buffer
+        outMesh->m_VertexBuffer = VertexBuffer::Create(reinterpret_cast<float*>(vertices.data()),
+                                                       static_cast<uint32_t>(vertices.size() * sizeof(Vertex)),
+                                                       static_cast<uint32_t>(vertices.size()));
         outMesh->m_VertexDefinition = VertexDefinition::Create(
             {
                 VertexElement("a_Position", VertexElementType::Float3),
-                VertexElement("a_Normal", VertexElementType::Float3),
-                VertexElement("a_TexCoord", VertexElementType::Float2)
+                VertexElement("a_TexCoord", VertexElementType::Float2),
+                VertexElement("a_Normal", VertexElementType::Float3)
             });
-        uint32_t vertexSize = outMesh->m_VertexDefinition->GetStride();
-        outMesh->m_VertexBuffer = VertexBuffer::Create(reinterpret_cast<float*>(vertices.data()), static_cast<uint32_t>(vertices.size() * sizeof(Vertex)), static_cast<uint32_t>(vertices.size() * sizeof(Vertex)) / vertexSize);
         outMesh->m_IndexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size()));
         
     }
