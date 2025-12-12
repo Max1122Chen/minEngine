@@ -1,5 +1,6 @@
 #include "StaticMesh.h"
 
+#include "Runtime/Function/Render/RHI/RHIBuffer.h"
 #include "Runtime/Resource/AssetManager.h"
 
 
@@ -7,8 +8,9 @@
 namespace minEngine
 {
     // TODO: Fix this
-    StaticMesh::StaticMesh(std::string path)
+    StaticMesh::StaticMesh(const std::string& path)
     {
+        m_Path = path;
         AssetManager::GetAssetManager().LoadStaticMesh(path, this);
     }
 

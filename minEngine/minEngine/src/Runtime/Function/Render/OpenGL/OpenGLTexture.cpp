@@ -6,8 +6,8 @@
 
 namespace minEngine
 {
-    OpenGLTexture::OpenGLTexture(const char *path, uint32_t unit)
-        : RHITexture(path, unit)
+    OpenGLTexture2D::OpenGLTexture2D(const std::string& path, uint32_t unit)
+        : RHITexture2D(path, unit)
     {
         glGenTextures(1, &m_ID);
         glActiveTexture(GL_TEXTURE0 + m_Unit);
@@ -42,13 +42,13 @@ namespace minEngine
     }
 
     // TODO: move these logic to material
-    void OpenGLTexture::Bind()
+    void OpenGLTexture2D::Bind()
     {
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D, m_ID);
     }
 
-    void OpenGLTexture::Unbind()
+    void OpenGLTexture2D::Unbind()
     {
         glBindTexture(GL_TEXTURE_2D, 0);    
     }

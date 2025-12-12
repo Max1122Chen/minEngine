@@ -1,5 +1,5 @@
 #include "DirectionalLightComponent.h"
-#include "Runtime/Function/Render/DirectionalLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 
 namespace minEngine
 {

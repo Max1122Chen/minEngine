@@ -140,12 +140,12 @@ class Playground : public minEngine::Application
 
         minEngine::Material backpackMaterial;
         backpackMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        backpackMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
-        backpackMaterial.m_Specular.Texture = std::make_shared<minEngine::OpenGLTexture>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
+        backpackMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
+        backpackMaterial.m_Specular.Texture = std::make_shared<minEngine::OpenGLTexture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
 
         minEngine::Material cubeMaterial;
         cubeMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        cubeMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
+        cubeMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
 
         // create light material
         minEngine::Material lightMaterial;

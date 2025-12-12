@@ -1,7 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
-#include "Runtime/Function/Render/LightSceneProxy.h"
+#include "LightSceneProxy.h"
 
 namespace minEngine
 {

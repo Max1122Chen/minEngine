@@ -1,17 +1,17 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
-#include "Runtime/Function/Render/RHIShader.h"
-#include "Runtime/Function/Render/RHITexture.h"
+#include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Function/Render/RHI/RHITexture.h"
 
 namespace minEngine
 {
-    class RHITexture;
+    class RHITexture2D;
 
     struct MaterialParameters
     {
         Vector4 Value{ 1.0f, 1.0f, 1.0f, 1.0f };
-        std::shared_ptr<RHITexture> Texture{ nullptr };
+        std::shared_ptr<RHITexture2D> Texture{ nullptr };
     };
 
     class Material

@@ -33,6 +33,16 @@ namespace minEngine
         glDisable(GL_DEPTH_TEST);
     }
 
+    void OpenGLRHI::EnableCullFace()
+    {
+        glEnable(GL_CULL_FACE);
+    }
+
+    void OpenGLRHI::DisableCullFace()
+    {
+        glDisable(GL_CULL_FACE);
+    }
+
     std::shared_ptr<VertexBuffer> OpenGLRHI::CreateVertexBuffer(float *vertices, uint32_t size, uint32_t numVertices)
     {
         return std::make_shared<OpenGLVertexBuffer>(vertices, size, numVertices);
@@ -48,9 +58,9 @@ namespace minEngine
         return std::make_shared<OpenGLVertexArrayObject>(elements);
     }
 
-    std::shared_ptr<RHITexture> OpenGLRHI::CreateTexture(const char *filepath, uint32_t unit)
+    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateTexture2D(const char *filepath, uint32_t unit)
     {
-        return std::make_shared<OpenGLTexture>(filepath, unit);
+        return std::make_shared<OpenGLTexture2D>(filepath, unit);
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::CreateShader(const char *vertexSource, const char *fragmentSource)

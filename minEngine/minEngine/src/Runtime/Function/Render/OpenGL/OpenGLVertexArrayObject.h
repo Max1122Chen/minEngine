@@ -1,6 +1,6 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/Render/RHIBuffer.h"
+#include "Runtime/Function/Render/RHI/RHIBuffer.h"
 #include <glad/glad.h>
 
 namespace minEngine

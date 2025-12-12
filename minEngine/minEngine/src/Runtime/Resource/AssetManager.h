@@ -4,6 +4,7 @@
 
 namespace minEngine
 {
+    class Texture;
     class StaticMesh;
 
     class AssetManager
@@ -24,7 +25,9 @@ namespace minEngine
 
         // Static mesh loading using 
         void LoadStaticMesh(const std::string& path, StaticMesh* outMesh);
+        
     private:
-
+        std::unordered_map<std::string, std::shared_ptr<Texture>> m_LoadedTextureCache;
+        std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_LoadedStaticMeshCache;
     };
 }

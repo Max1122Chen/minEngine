@@ -1,7 +1,7 @@
 #include "RHIBuffer.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Render/RHI.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 
 namespace minEngine
 {

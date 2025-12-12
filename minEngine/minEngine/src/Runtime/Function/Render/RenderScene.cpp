@@ -1,12 +1,12 @@
 #include "RenderScene.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"   // TODO: maybe remove this include later
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
-#include "Runtime/Function/Render/PrimitiveSceneProxy.h"
+#include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 
 #include "Runtime/Function/Framework/Components/LightComponent.h"
-#include "Runtime/Function/Render/DirectionalLightSceneProxy.h"
-#include "Runtime/Function/Render/PointLightSceneProxy.h"
-#include "Runtime/Function/Render/SpotLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 
 
 namespace minEngine

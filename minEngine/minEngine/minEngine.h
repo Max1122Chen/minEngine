@@ -12,19 +12,15 @@
 
 // render
 #include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Render/RHI.h"
-#include "Runtime/Function/Render/RHIBuffer.h"
-#include "Runtime/Function/Render/RHIShader.h"
-#include "Runtime/Function/Render/RHITexture.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBuffer.h"
+#include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
-    // lights
-#include "Runtime/Function/Framework/Components/LightComponent.h"
-#include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
-#include "Runtime/Function/Framework/Components/PointLightComponent.h"
-#include "Runtime/Function/Framework/Components/SpotLightComponent.h"
+
 
 
 // OpenGL
@@ -38,7 +34,11 @@
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 
-
+    // lights Components
+#include "Runtime/Function/Framework/Components/LightComponent.h"
+#include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
+#include "Runtime/Function/Framework/Components/PointLightComponent.h"
+#include "Runtime/Function/Framework/Components/SpotLightComponent.h"
 
 
 

@@ -9,7 +9,7 @@
 #include "assimp/postprocess.h"
 
 #include "Runtime/Function/Render/StaticMesh.h"
-#include "Runtime/Function/Render/RHIBuffer.h"
+#include "Runtime/Function/Render/RHI/RHIBuffer.h"
 
 
 namespace minEngine
@@ -41,6 +41,15 @@ namespace minEngine
 
     void AssetManager::LoadStaticMesh(const std::string &path, StaticMesh *outMesh)
     {
+        // Check if the static mesh has already been loaded
+        auto it = m_LoadedStaticMeshCache.find(path);
+        if (it != m_LoadedStaticMeshCache.end())
+        {
+            // Mesh already loaded, return the cached version
+            *outMesh = *(it->second);
+            return;
+        }
+
         struct Vertex
         {
             Vector3 Position;
@@ -143,5 +152,7 @@ namespace minEngine
             });
         outMesh->m_IndexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size()));
         
+        // Cache the loaded static mesh
+        m_LoadedStaticMeshCache[path] = std::shared_ptr<StaticMesh>(outMesh);
     }
 }

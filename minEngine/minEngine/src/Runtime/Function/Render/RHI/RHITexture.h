@@ -28,21 +28,21 @@ namespace minEngine
         LinearMipmapLinear
     };
 
-    class RHITexture
+    class RHITexture2D
     {
     public:
-        RHITexture() = default;
-        RHITexture(std::string filepath, uint32_t unit)
-            : m_FilePath(filepath), m_Unit(unit)
+        RHITexture2D() = default;
+        RHITexture2D(const std::string& path, uint32_t unit)
+            : m_Path(path), m_Unit(unit)
         {
         }
-        virtual ~RHITexture() = default;
+        virtual ~RHITexture2D() = default;
 
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
 
     protected:
-        std::string m_FilePath;
+        std::string m_Path;
         uint32_t m_Unit;
         TextureType m_Type;
         TextureWrapping m_Wrapping;

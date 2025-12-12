@@ -1,13 +1,12 @@
 #pragma once
 
 #include "Core.h"
-#include "Runtime/Function/Render/RHIBuffer.h"
-
 
 namespace minEngine
 {
     class VertexBuffer;
     class IndexBuffer;
+    class VertexElement;
     class VertexDefinition;
     class Material;
 
@@ -22,7 +21,7 @@ namespace minEngine
     class StaticMesh
     {
     public:
-        StaticMesh(std::string path);   // create from file
+        StaticMesh(const std::string& path);   // create from file
         StaticMesh(float* vertices, 
                    uint32_t verticesSize,
                    uint32_t numVertices,
@@ -34,6 +33,7 @@ namespace minEngine
                    uint32_t* indices, uint32_t numIndices);
         ~StaticMesh() = default;
 
+        std::string m_Path;
         std::shared_ptr<VertexBuffer> m_VertexBuffer = nullptr;
         std::shared_ptr<VertexDefinition> m_VertexDefinition = nullptr;
         std::shared_ptr<IndexBuffer> m_IndexBuffer = nullptr;

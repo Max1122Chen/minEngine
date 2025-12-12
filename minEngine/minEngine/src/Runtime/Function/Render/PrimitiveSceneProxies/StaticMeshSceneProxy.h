@@ -1,7 +1,7 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/Render/PrimitiveSceneProxy.h"
-#include "Runtime/Function/Render/RHIBuffer.h"
+#include "PrimitiveSceneProxy.h"
+#include "Runtime/Function/Render/RHI/RHIBuffer.h"
 #include "Runtime/Function/Render/Material.h"
 
 namespace minEngine

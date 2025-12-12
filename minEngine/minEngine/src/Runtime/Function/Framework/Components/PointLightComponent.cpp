@@ -1,5 +1,5 @@
 #include "PointLightComponent.h"
-#include "Runtime/Function/Render/PointLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 
 namespace minEngine
 {

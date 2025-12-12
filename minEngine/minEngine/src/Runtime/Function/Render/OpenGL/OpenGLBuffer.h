@@ -1,5 +1,5 @@
 #pragma once
-#include "Runtime/Function/Render/RHIBuffer.h"
+#include "Runtime/Function/Render/RHI/RHIBuffer.h"
 
 namespace minEngine
 {

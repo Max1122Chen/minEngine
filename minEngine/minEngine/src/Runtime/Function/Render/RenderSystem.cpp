@@ -10,12 +10,12 @@
 #include "OpenGL/OpenGLBuffer.h"
 #include "OpenGL/OpenGLTexture.h"
 
-#include "Runtime/Function/Render/StaticMeshSceneProxy.h"
+#include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 #include "Runtime/Function/Render/Material.h"
 
-#include "PointLightSceneProxy.h"
-#include "DirectionalLightSceneProxy.h"
-#include "SpotLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 
 #include "RuntimeGlobalContext.h"
 
@@ -39,8 +39,8 @@ namespace minEngine
         m_RenderScene = std::make_shared<RenderScene>();
 
         // TODO: set up default render states
-        // enable depth testing
-        static_cast<OpenGLRHI*>(m_RHI.get())->EnableDepthTest();
+        m_RHI->EnableDepthTest();
+        m_RHI->EnableCullFace();
 
         // set clear color
         static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SetClearColor(Vector3(0.1f, 0.1f, 0.1f));

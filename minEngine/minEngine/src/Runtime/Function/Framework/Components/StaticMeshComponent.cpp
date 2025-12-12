@@ -3,7 +3,7 @@
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 
-#include "Runtime/Function/Render/StaticMeshSceneProxy.h"
+#include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Material.h"
 
