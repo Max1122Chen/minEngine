@@ -1,4 +1,13 @@
 #include "InputSystem.h"
+
+#include "InputKeys.h"
+#include "InputKeyState.h"
+
+#include "InputMappingContext.h"
+
+#include "InputModifiers.h"
+#include "Framework/Components/InputComponent.h"
+
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
@@ -26,6 +35,12 @@ namespace minEngine
             this->OnCursorPos(xPos, yPos);
         });
     
+        m_InputKeys.Initialize();
+        for(const auto& key : m_InputKeys.GetAllKeys())
+        {
+            m_KeyStateMap.emplace(key, InputKeyState{});
+        }
+
         ME_CORE_INFO("InputSystem Initialized"); 
     }
 
@@ -36,103 +51,230 @@ namespace minEngine
 
     void InputSystem::Tick(float deltaTime)
     {
+        // Clear actions with events last frame
+        m_ActionsWithEventThisTick.clear();
+
+        // bool bConsumed = false; TODO: maybe we will need it later
+
+        for(auto& activeContext : m_ActiveContexts)
+        {
+            for(const auto& mapping : activeContext.Context->GetMappings())
+            {
+                InputAction* action = mapping.Action;
+
+                if(!action)
+                {
+                    continue;
+                }
+
+                InputTriggerStateTracker triggerStateTracker;
+
+                InputActionInstance* instance = FindInputActionInstance(action);
+
+                // Reset if we cannot find the action instance, which means its value is not updated this frame
+                bool bShouldResetAction = (m_ActionsWithEventThisTick.end() == 
+                    std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action));
+
+                const InputKey& key = mapping.Key;
+                if(GetKeyState(key)->bDown)
+                {
+                    if(bShouldResetAction)
+                    {
+                        instance->Value.Reset();
+                        m_ActionsWithEventThisTick.push_back(action);
+                    }
+
+                    InputActionValue rawValue = GetKeyState(key)->RawValue;
+                    InputActionValue modifiedValue = ApplyModifiers(mapping.GetModifiers(), rawValue, deltaTime);
+                    instance->Value += modifiedValue;   // we directly accumulate values from multiple mappings. TODO: maybe distinguish different behaviors of accumulation later
+                
+                    // Evaluate trigger state
+                    InputTriggerState newState = triggerStateTracker.EvaluateTriggerState(mapping.GetTriggers(), modifiedValue, deltaTime);
+                    
+                    // handle no trigger situation. Same behavior as InputTriggerDown
+                    triggerStateTracker.SetNoTriggerState(modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
+
+                    instance->TriggerStateTracker = std::max(instance->TriggerStateTracker, triggerStateTracker);
+                }
+                
+            }
+        }
+
+        // Apply action modifiers and evaluate triggers. Then finalize action instances
+        for(auto& [action, instance] : m_ActionInstances)
+        {
+            bool bActionUpdatedThisFrame = !(m_ActionsWithEventThisTick.end() == 
+                    std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action));
+
+            if(bActionUpdatedThisFrame)
+            {
+                InputActionValue modifiedValue = ApplyModifiers(action->GetModifiers(), instance.Value, deltaTime);
+                instance.Value = modifiedValue;
+
+                InputTriggerState prevState = instance.TriggerStateTracker.GetState();
+
+                instance.TriggerStateTracker.SetNoTriggerState(modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
+                InputTriggerState newState = instance.TriggerStateTracker.EvaluateTriggerState(action->GetTriggers(), modifiedValue, deltaTime);
+                
+                instance.TriggerEvent = GetTriggerStateChangeEvent(prevState, newState);
+                instance.LastState = newState;
+            }
+        }
+
+        // Notify Input Components
+        for(auto* inputComponent : m_InputComponents)
+        {
+            for(auto* action : m_ActionsWithEventThisTick)
+            {
+                InputActionInstance* instance = FindInputActionInstance(action);
+                if(instance)
+                {
+                    inputComponent->ProcessInputAction(action, instance->TriggerEvent, instance->Value);
+                }
+            }
+        }
+    }
+
+    void InputSystem::AddInputComponent(InputComponent *component)
+    {
+        m_InputComponents.push_back(component);
+    }
+
+    void InputSystem::RemoveInputComponent(InputComponent *component)
+    {
+        m_InputComponents.erase(
+            std::remove(m_InputComponents.begin(), m_InputComponents.end(), component),
+            m_InputComponents.end());
+    }
+
+    void InputSystem::AddInputMappingContext(InputMappingContext *context, int priority)
+    {
+        m_ActiveContexts.push_back({context, priority});
+        std::sort(m_ActiveContexts.begin(), m_ActiveContexts.end(), 
+        [](const ActiveInputMappingContext& a, const ActiveInputMappingContext& b)
+        {
+            return a.Priority > b.Priority; // Higher priority first
+        });
+
+        // setup action instances
+        for(const auto& mapping : context->GetMappings())
+        {
+            // create action instance if not exist
+            if(m_ActionInstances.find(mapping.Action) == m_ActionInstances.end())
+                m_ActionInstances.emplace(mapping.Action, InputActionInstance{mapping.Action});
+        }
+    }
+
+    void InputSystem::RemoveInputMappingContext(InputMappingContext *context)
+    {
+        // clean up action instances // TODO: we will not remove IMC now, so this is fine
+        for(const auto& mapping : context->GetMappings())
+        {
+            m_ActionInstances.erase(mapping.Action);
+        }
+
+        m_ActiveContexts.erase(
+            std::remove_if(m_ActiveContexts.begin(), m_ActiveContexts.end(),
+                [context](const ActiveInputMappingContext& activeContext)
+                {
+                    return activeContext.Context == context;
+                }),
+            m_ActiveContexts.end());
+    }
+
+    InputActionInstance *InputSystem::FindInputActionInstance(InputAction *action)
+    {
+        auto it = m_ActionInstances.find(action);
+        if(it != m_ActionInstances.end())
+        {
+            return &it->second;
+        }
+        return nullptr;
     }
 
     void InputSystem::OnKey(int key, int scancode, int action, int mods)
     {
-        // just for testing
-        RuntimeGlobalContext& context = RuntimeGlobalContext::GetRuntimeGlobalContext();
-        RenderSystem& renderSystem = *context.m_RenderSystem;
-        RenderCamera& camera = *renderSystem.GetMainCamera();
-
-        // TODO: remove dependency on GLFW key codes later
-        if(action == GLFW_PRESS)
+        InputKey inputKey = m_InputKeys.ConvertGLFWKeyToInputKey(key);
+        auto it = m_KeyStateMap.find(inputKey);
+        if(it != m_KeyStateMap.end())
         {
-            switch(key)
-            {
-                case GLFW_KEY_ESCAPE:
-                    context.m_WindowSystem->Close();
-                    break;
-                case GLFW_KEY_W:
-                    camera.m_CameraVelocity.z = 1.0f;
-                    break;
-                case GLFW_KEY_S:
-                    camera.m_CameraVelocity.z = -1.0f;
-                    break;
-                case GLFW_KEY_A:
-                    camera.m_CameraVelocity.x = -1.0f;
-                    break;
-                case GLFW_KEY_D:
-                    camera.m_CameraVelocity.x = 1.0f;
-                    break;
-                case GLFW_KEY_Q:
-                    camera.m_CameraVelocity.y = -1.0f;
-                    break;
-                case GLFW_KEY_E:
-                    camera.m_CameraVelocity.y = 1.0f;
-                    break;
-                case GLFW_KEY_LEFT_SHIFT:
-                    camera.m_CameraVelocity *= 2.0f;
-                    break;
-                default:
-                    break;
-            }
-        }
-        else if(action == GLFW_RELEASE)
-        {
-            switch(key)
-            {
-                case GLFW_KEY_W:
-                case GLFW_KEY_S:
-                    camera.m_CameraVelocity.z = 0.0f;
-                    break;
-                case GLFW_KEY_A:
-                case GLFW_KEY_D:
-                    camera.m_CameraVelocity.x = 0.0f;
-                    break;
-                case GLFW_KEY_Q:
-                case GLFW_KEY_E:
-                    camera.m_CameraVelocity.y = 0.0f;
-                    break;
-                case GLFW_KEY_LEFT_SHIFT:
-                    camera.m_CameraVelocity /= 2.0f;
-                default:
-                    break;
-            }
+            InputKeyState& keyState = it->second;
+            
+            keyState.bDown = (action != GLFW_RELEASE);
+            keyState.RawValue = keyState.bDown ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 0.0f, 0.0f);
         }
     }
 
     void InputSystem::OnCursorPos(double xPos, double yPos)
     {
-        RuntimeGlobalContext& context = RuntimeGlobalContext::GetRuntimeGlobalContext();
-        RenderSystem& renderSystem = *context.m_RenderSystem;
-        RenderCamera& camera = *renderSystem.GetMainCamera();
+        double deltaX = xPos - m_LastCursorX;
+        double deltaY = m_LastCursorY - yPos; // Invert Y axis
 
-        double xOffset = xPos - m_LastCursorX;
-        double yOffset = m_LastCursorY - yPos; // Reversed since y-coordinates go from bottom to top
+        auto it = m_KeyStateMap.find(InputKeys::Mouse2D);
+        if(it != m_KeyStateMap.end())
+        {
+            InputKeyState& keyState = it->second;
 
-        m_LastCursorX = static_cast<int>(xPos);
-        m_LastCursorY = static_cast<int>(yPos);
-
-        xOffset *= m_CursorSensitivity;
-        yOffset *= m_CursorSensitivity;
-
-        camera.m_Yaw += static_cast<float>(xOffset);
-        camera.m_Pitch += static_cast<float>(yOffset);
-
-        // Constrain the pitch
-        if (camera.m_Pitch > 89.0f)
-            camera.m_Pitch = 89.0f; 
-        if (camera.m_Pitch < -89.0f)
-            camera.m_Pitch = -89.0f;
+            keyState.bDown = (deltaX != 0.0 || deltaY != 0.0);
+            keyState.RawValue = Vector3(static_cast<float>(deltaX), static_cast<float>(deltaY), 0.0f);
+        }
         
-        // Update camera front vector
-        Vector3 front;
-        front.x = cos(glm::radians(camera.m_Yaw)) * cos(glm::radians(camera.m_Pitch));
-        front.y = sin(glm::radians(camera.m_Pitch));
-        front.z = sin(glm::radians(camera.m_Yaw)) * cos(glm::radians(camera.m_Pitch));
-        camera.m_Forward = glm::normalize(front);
-        camera.m_Right = glm::normalize(glm::cross(camera.m_Forward, Vector3(0.0f, 1.0f, 0.0f)));
-        camera.m_Up = glm::normalize(glm::cross(camera.m_Right, camera.m_Forward));
+
+        m_LastCursorX = xPos;;
+        m_LastCursorY = yPos;
+    }
+
+
+    InputActionValue InputSystem::ApplyModifiers(const std::vector<std::shared_ptr<InputModifier>> &modifiers, const InputActionValue &rawValue, float deltaTime)
+    {
+        InputActionValue modifiedValue = rawValue;
+        for(auto modifier : modifiers)
+        {
+            modifiedValue = modifier->ModifyRaw(modifiedValue, deltaTime);
+        }
+        return modifiedValue;return InputActionValue();
+    }
+
+    InputTriggerEvent InputSystem::GetTriggerStateChangeEvent(InputTriggerState lastState, InputTriggerState newState)
+    {
+        switch(lastState)
+        {
+            case InputTriggerState::None:
+                if(newState == InputTriggerState::Ongoing)
+                {
+                    return InputTriggerEvent::Started;
+                }
+                else if(newState == InputTriggerState::Triggered)
+                {
+                    return InputTriggerEvent::Triggered;
+                }
+                break;
+            case InputTriggerState::Ongoing:
+                if(newState == InputTriggerState::Triggered)
+                {
+                    return InputTriggerEvent::Triggered;
+                }
+                else if(newState == InputTriggerState::None)
+                {
+                    return InputTriggerEvent::Canceled;
+                }
+                break;
+            case InputTriggerState::Triggered:
+                if(newState == InputTriggerState::Triggered)
+                {
+                    return InputTriggerEvent::Triggered;
+                }
+                else if(newState == InputTriggerState::Ongoing)
+                {
+                    return InputTriggerEvent::Ongoing;
+                }
+                else if(newState == InputTriggerState::None)
+                {
+                    return InputTriggerEvent::Completed;
+                }
+                break;
+        }
+
+        return InputTriggerEvent::None;
     }
 }

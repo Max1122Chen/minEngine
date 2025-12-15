@@ -34,19 +34,19 @@ namespace minEngine
     // Tick one frame
     void Engine::TickOneFrame(float deltaTime)
     {
+        RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->PollEvents();
         LogicalTick(deltaTime);
 
         RendererTick(deltaTime);
-
-        RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->PollEvents();
     }
 
     void Engine::LogicalTick(float deltaTime)
     {
         // TODO: implement logical tick
         RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
-        globalContext.m_WorldManager->Tick(deltaTime);
         globalContext.m_InputSystem->Tick(deltaTime);
+        globalContext.m_WorldManager->Tick(deltaTime);
+
 
         globalContext.m_WorldManager->SendAllEndOfFrameUpdates();
     

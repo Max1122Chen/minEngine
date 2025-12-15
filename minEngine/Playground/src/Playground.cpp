@@ -1,16 +1,23 @@
-#include "../minEngine.h"
+#include "minEngine.h"
 
-class Playground : public minEngine::Application
+#include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Input/InputAction.h"
+#include "Runtime/Function/Input/InputMappingContext.h"
+#include "Runtime/Function/Input/InputModifiers.h"
+
+using namespace minEngine;
+
+class Playground : public Application
 {
-    public:
+public:
     Playground() = default;
     ~Playground() = default;
 
-    minEngine::Engine* engine = nullptr;
+    Engine* engine = nullptr;
 
     virtual void Initialize() override
     {
-        engine = new minEngine::Engine();
+        engine = new Engine();
         engine->Initialize();
 
     }
@@ -24,12 +31,41 @@ class Playground : public minEngine::Application
 
     virtual void Run() override
     {
-        minEngine::WorldManager* worldManager = minEngine::RuntimeGlobalContext::GetRuntimeGlobalContext().m_WorldManager.get();
+        // Set up IMC
+        InputAction* IA_Look = new InputAction("IA_Look", InputActionValueType::Axis2D);
+        InputAction* IA_Move = new InputAction("IA_Move", InputActionValueType::Axis3D);
+        InputAction* IA_UpAndDown = new InputAction("IA_UpAndDown", InputActionValueType::Axis1D);
+        
+        InputMappingContext* inputMappingContext = new InputMappingContext({
+            { IA_Look, InputKeys::Mouse2D },
+            { IA_Move, InputKeys::Key_W },
+            { IA_Move, InputKeys::Key_S, { std::make_shared<InputModifierNegate>() } },
+            { IA_Move, InputKeys::Key_A, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
+            { IA_Move, InputKeys::Key_D, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
+            { IA_UpAndDown, InputKeys::Key_E, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } },
+            { IA_UpAndDown, InputKeys::Key_Q, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } }
+        });
 
-        worldManager->m_CurrentActiveLevel = std::make_shared<minEngine::Level>();
+        InputSystem::GetInputSystem().AddInputMappingContext(inputMappingContext, 0);
 
-        minEngine::Level& level = *worldManager->m_CurrentActiveLevel;
+        // Set up a level
+        minEngine::WorldManager& worldManager = minEngine::WorldManager::GetWorldManager();
+
+        worldManager.m_CurrentActiveLevel = std::make_shared<minEngine::Level>();
+
+        minEngine::Level& level = *worldManager.m_CurrentActiveLevel;
        
+        // Create a player game object
+        std::shared_ptr<GameObject> player = level.CreateGameObject();
+        auto playerSceneComponent = player->CreateAndAddComponent<SceneComponent>();
+        player->SetRootComponent(playerSceneComponent);
+        auto inputComponent = player->CreateAndAddComponent<InputComponent>();
+        inputComponent->RegisterInputComponent();
+        inputComponent->BindAction(IA_Move, InputTriggerEvent::Triggered,
+            [](const InputActionValue& value)
+            {
+                ME_CORE_INFO("IA_Move Action Triggered: Value = ({}, {}, {})", value.Value.x, value.Value.y, value.Value.z);
+            });
 
         // cube vertex data --------------------------------
         float modelVertices[] = {
@@ -123,7 +159,7 @@ class Playground : public minEngine::Application
         // ----------------------------------------------
 
         // create backpack 
-        minEngine::StaticMesh backpackMesh("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/backpack.obj");
+        // minEngine::StaticMesh backpackMesh("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/backpack.obj");
 
         // create cube
         minEngine::StaticMesh cubeMesh(modelVertices, sizeof(modelVertices), 36,{
@@ -157,13 +193,13 @@ class Playground : public minEngine::Application
         spotLightMaterial.m_Diffuse.Value = minEngine::Vector4(145.0f/255.0f, 245.0f/255.0f, 138.0f/255.0f, 1.0f);
 
         // create Backpack game object
-        auto backpack = level.CreateGameObject();
-        std::shared_ptr<minEngine::StaticMeshComponent> backpackMeshComponent = backpack->CreateAndAddComponent<minEngine::StaticMeshComponent>();
-        backpack->SetRootComponent(backpackMeshComponent);
-        backpackMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(backpackMesh));
-        backpackMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(backpackMaterial));
-        backpack->SetPosition(minEngine::Vector3(0.0f, 0.0f, 0.5f));
-        backpack->SetScale(minEngine::Vector3(1.0f, 1.0f, 1.0f));
+        // auto backpack = level.CreateGameObject();
+        // std::shared_ptr<minEngine::StaticMeshComponent> backpackMeshComponent = backpack->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+        // backpack->SetRootComponent(backpackMeshComponent);
+        // backpackMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(backpackMesh));
+        // backpackMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(backpackMaterial));
+        // backpack->SetPosition(minEngine::Vector3(0.0f, 0.0f, 0.5f));
+        // backpack->SetScale(minEngine::Vector3(1.0f, 1.0f, 1.0f));
         
 
         // create Cube game object

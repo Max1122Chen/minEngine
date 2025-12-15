@@ -30,6 +30,8 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 
 #include "Runtime/Function/Framework/Components/Component.h"
+
+    // Scnene Components
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
@@ -40,7 +42,6 @@
 #include "Runtime/Function/Framework/Components/PointLightComponent.h"
 #include "Runtime/Function/Framework/Components/SpotLightComponent.h"
 
-
-
-
+    // Input Components
+#include "Runtime/Function/Framework/Components/InputComponent.h"
 

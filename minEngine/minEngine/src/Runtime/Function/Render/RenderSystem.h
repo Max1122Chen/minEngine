@@ -18,11 +18,15 @@ namespace minEngine
         // Initialize
         void Initialize();
         void Shutdown();
+        static RenderSystem& GetRenderSystem();
+
 
         void Tick(float deltaTime);
 
         RHI* GetRHI() const { return m_RHI.get(); }
-        RenderCamera* GetMainCamera() const { return m_Camera.get(); }
+
+        RenderCamera* GetMainCamera() const { return m_MainCamera.get(); }
+        void SetMainCamera(std::shared_ptr<RenderCamera> inCamera) { m_MainCamera = inCamera; }
 
     private:
 
@@ -32,6 +36,6 @@ namespace minEngine
     
     private:
         std::shared_ptr<RHI> m_RHI;
-        std::shared_ptr<RenderCamera> m_Camera;
+        std::shared_ptr<RenderCamera> m_MainCamera;
     };
 }

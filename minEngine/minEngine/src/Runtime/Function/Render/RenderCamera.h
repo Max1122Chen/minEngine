@@ -23,12 +23,18 @@ namespace minEngine
         const Vector3& GetRotation() const { return m_Rotation; }
 
         Matrix4 GetViewMatrix() const;
+        void SetViewMatrix(const Matrix4& viewMatrix) { m_ViewMatrix = viewMatrix; }
         Matrix4 GetProjectionMatrix() const;
+        void SetProjectionMatrix(const Matrix4& projectionMatrix) { m_ProjectionMatrix = projectionMatrix; }
 
     public:
         Vector3 m_CameraVelocity;
     
     // private:
+        Matrix4 m_ViewMatrix;
+        Matrix4 m_ProjectionMatrix;
+
+
         Vector3 m_Position;
         Vector3 m_Rotation;
 

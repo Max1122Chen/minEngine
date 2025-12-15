@@ -14,5 +14,4 @@
 
 // minEngine core
 #include "Assert/Assert.h"
-#define assert MINENGINE_ASSERT
 #include "Log/LogSystem.h"

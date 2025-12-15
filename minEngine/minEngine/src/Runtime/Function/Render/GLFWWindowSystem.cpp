@@ -96,13 +96,13 @@ namespace minEngine
     // Clear the window
     void GLFWWindowSystem::Clear()
     {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);     // TODO: should not do this here
     }
 
     // Swap the front and back buffers
     void GLFWWindowSystem::SwapBuffers() { glfwSwapBuffers(m_Window);}
 
-    // Poll for and process events
+    // Poll events
     void GLFWWindowSystem::PollEvents() const { glfwPollEvents(); }
 
     // Set GLFW callbacks

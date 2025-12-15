@@ -32,8 +32,8 @@ namespace minEngine
         m_RHI->Initialize();
 
         // Create RenderCamera
-        m_Camera = std::make_shared<RenderCamera>();
-        m_Camera->Initialize();
+        m_MainCamera = std::make_shared<RenderCamera>();
+        m_MainCamera->Initialize();
 
         // Create RenderScene
         m_RenderScene = std::make_shared<RenderScene>();
@@ -56,15 +56,20 @@ namespace minEngine
         ME_CORE_INFO("RenderSystem Shutdown");
     }
 
+    RenderSystem &RenderSystem::GetRenderSystem()
+    {
+        return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem;
+    }
+
     void RenderSystem::Tick(float deltaTime)
     {
         // Clear the window
         static_cast<OpenGLRHI*>(m_RHI.get())-> m_WindowSystem->Clear();
 
         // Update camera position based on velocity. TODO: move this to camera update function
-        m_Camera->m_Position += m_Camera->m_CameraVelocity.z * m_Camera->m_Forward * deltaTime;
-        m_Camera->m_Position += m_Camera->m_CameraVelocity.y * m_Camera->m_Up * deltaTime;
-        m_Camera->m_Position += m_Camera->m_CameraVelocity.x * m_Camera->m_Right * deltaTime;
+        m_MainCamera->m_Position += m_MainCamera->m_CameraVelocity.z * m_MainCamera->m_Forward * deltaTime;
+        m_MainCamera->m_Position += m_MainCamera->m_CameraVelocity.y * m_MainCamera->m_Up * deltaTime;
+        m_MainCamera->m_Position += m_MainCamera->m_CameraVelocity.x * m_MainCamera->m_Right * deltaTime;
 
         // render all primitives but only static mesh for now
         for(auto& primitiveProxy : m_RenderScene->m_PrimitiveSceneProxies)
@@ -81,10 +86,10 @@ namespace minEngine
                 shader->Use();
                 shader->UploadUniformInt("u_DiffuseMap", 0);
                 shader->UploadUniformMat4("u_Model", glm::value_ptr(model));
-                shader->UploadUniformMat4("u_View", glm::value_ptr(m_Camera->GetViewMatrix()));
-                shader->UploadUniformMat4("u_Projection", glm::value_ptr(m_Camera->GetProjectionMatrix()));
-                shader->UploadUniformMat4("u_MVP", glm::value_ptr(m_Camera->GetProjectionMatrix() * m_Camera->GetViewMatrix() * model));
-                shader->UploadUniformFloat3("u_ViewPosition", m_Camera->m_Position);
+                shader->UploadUniformMat4("u_View", glm::value_ptr(m_MainCamera->GetViewMatrix()));
+                shader->UploadUniformMat4("u_Projection", glm::value_ptr(m_MainCamera->GetProjectionMatrix()));
+                shader->UploadUniformMat4("u_MVP", glm::value_ptr(m_MainCamera->GetProjectionMatrix() * m_MainCamera->GetViewMatrix() * model));
+                shader->UploadUniformFloat3("u_ViewPosition", m_MainCamera->m_Position);
 
                 for(auto& dirLight : m_RenderScene->m_DirectionalLightSceneProxies)
                 {

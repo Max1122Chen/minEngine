@@ -7,6 +7,7 @@ add_executable(${PLAYGROUND_NAME} ${SRC})
 
 target_include_directories(${PLAYGROUND_NAME} PUBLIC ./src
                                               PUBLIC ../minEngine
+                                              PUBLIC ../minEngine/src
                                           )
 
 target_link_libraries(${PLAYGROUND_NAME} PRIVATE ${ENGINE_NAME})

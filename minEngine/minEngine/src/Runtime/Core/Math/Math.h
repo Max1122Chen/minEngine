@@ -16,6 +16,7 @@ namespace minEngine
 
     class Math
     {
+    public:
         static float abs(float value) { return std::abs(value); }
         static float sqr(float value) { return value * value; }
         static float sqrt(float value) { return std::sqrt(value); }
@@ -23,6 +24,8 @@ namespace minEngine
         static float cos(float angle) { return std::cos(angle); }
         static float tan(float angle) { return std::tan(angle); }
 
-        
+        static float radians(float degrees) { return glm::radians(degrees); }
+
+
     };
 }
