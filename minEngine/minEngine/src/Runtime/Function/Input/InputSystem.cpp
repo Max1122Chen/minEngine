@@ -215,7 +215,7 @@ namespace minEngine
         {
             InputKeyState& keyState = it->second;
 
-            keyState.bDown = (deltaX != 0.0 || deltaY != 0.0);
+            keyState.bDown = (Math::abs(deltaX) > 0.1f || Math::abs(deltaY) > 0.1f);
             keyState.RawValue = Vector3(static_cast<float>(deltaX), static_cast<float>(deltaY), 0.0f);
         }
         

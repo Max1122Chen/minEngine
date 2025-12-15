@@ -22,30 +22,22 @@ namespace minEngine
         const Vector3& GetPosition() const { return m_Position; }
         const Vector3& GetRotation() const { return m_Rotation; }
 
-        Matrix4 GetViewMatrix() const;
+        Matrix4 GetViewMatrix() const { return m_ViewMatrix; }
         void SetViewMatrix(const Matrix4& viewMatrix) { m_ViewMatrix = viewMatrix; }
-        Matrix4 GetProjectionMatrix() const;
+        void UpdateViewMatrix();
+
+        Matrix4 GetProjectionMatrix() const { return m_ProjectionMatrix; }
         void SetProjectionMatrix(const Matrix4& projectionMatrix) { m_ProjectionMatrix = projectionMatrix; }
+        void UpdateProjectionMatrix();
 
     public:
-        Vector3 m_CameraVelocity;
     
     // private:
         Matrix4 m_ViewMatrix;
         Matrix4 m_ProjectionMatrix;
 
-
         Vector3 m_Position;
         Vector3 m_Rotation;
-
-        float m_Yaw = -90.0f;   // Initialized to -90.0 degrees to look along the negative Z axis
-        float m_Pitch = 0.0f;
-        // float m_Roll = 0.0f;
-
-        Vector3 m_Target;
-        Vector3 m_Forward;
-        Vector3 m_Right;
-        Vector3 m_Up;
         
         // Currently hardcoded projection parameters
         float m_FOV = 45.0f;

@@ -66,6 +66,31 @@ namespace minEngine
         }
     }
 
+    Vector3 SceneComponent::GetForwardVector() const
+    {
+        // We assume the forward vector is along the local X axis (1,0,0)
+        Matrix4 rotationMatrix = glm::mat4(1.0f);
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Transform.Rotation.x), Vector3(1.0f, 0.0f, 0.0f));
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Transform.Rotation.y), Vector3(0.0f, 1.0f, 0.0f));
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Transform.Rotation.z), Vector3(0.0f, 0.0f, 1.0f));
+
+        return glm::normalize(Vector3(rotationMatrix * Vector4(1.0f, 0.0f, 0.0f, 0.0f)));
+    }
+
+    Vector3 SceneComponent::GetRightVector() const
+    {
+        Vector3 forward = GetForwardVector();
+        Vector3 up(0.0f, 1.0f, 0.0f);
+        return glm::normalize(glm::cross(forward, up));
+    }
+
+    Vector3 SceneComponent::GetUpVector() const
+    {
+        Vector3 forward = GetForwardVector();
+        Vector3 right = GetRightVector();
+        return glm::normalize(glm::cross(right, forward));
+    }
+
     void SceneComponent::SetOwner(GameObject *inOwner)
     {
         Component::SetOwner(inOwner);

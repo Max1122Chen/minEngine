@@ -34,6 +34,10 @@ namespace minEngine
         const Vector3& GetScale() const { return m_Transform.Scale; }
         void SetScale(const Vector3& scale);
 
+        Vector3 GetForwardVector() const;
+        Vector3 GetRightVector() const;
+        Vector3 GetUpVector() const;
+
         virtual void SetOwner(GameObject* inOwner) override;
 
         // We don't implicitly attach to parent in constructor, because at that time.

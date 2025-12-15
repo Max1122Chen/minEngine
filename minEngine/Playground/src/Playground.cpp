@@ -1,5 +1,8 @@
 #include "minEngine.h"
 
+#include "Runtime/Function/Framework/Components/CameraComponent.h"
+#include "Runtime/Function/Framework/Components/MovementComponent.h"
+
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Input/InputAction.h"
 #include "Runtime/Function/Input/InputMappingContext.h"
@@ -59,13 +62,28 @@ public:
         std::shared_ptr<GameObject> player = level.CreateGameObject();
         auto playerSceneComponent = player->CreateAndAddComponent<SceneComponent>();
         player->SetRootComponent(playerSceneComponent);
+
+        player->CreateAndAddComponent<MovementComponent>();
+
         auto inputComponent = player->CreateAndAddComponent<InputComponent>();
         inputComponent->RegisterInputComponent();
         inputComponent->BindAction(IA_Move, InputTriggerEvent::Triggered,
-            [](const InputActionValue& value)
+            [inputComponent](const InputActionValue& value)
             {
-                ME_CORE_INFO("IA_Move Action Triggered: Value = ({}, {}, {})", value.Value.x, value.Value.y, value.Value.z);
+                Vector3 forward = inputComponent->GetOwner()->GetRootComponent()->GetForwardVector() * value.Value.x ;
+                Vector3 right = inputComponent->GetOwner()->GetRootComponent()->GetRightVector() * value.Value.z ;
+                inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward + right, value.GetMagnitude() * 0.01f);
             });
+        inputComponent->BindAction(IA_Look, InputTriggerEvent::Triggered,
+            [inputComponent](const InputActionValue& value)
+            {
+            });
+
+
+        auto playerCameraComponent = player->CreateAndAddComponent<CameraComponent>();
+        playerCameraComponent->AttachToComponent(playerSceneComponent.get(), AttachmentTransformRules::KeepRelativeTransform);
+        playerCameraComponent->SetSelfAsMainCamera();
+        playerSceneComponent->SetPosition(Vector3(-5.0f, 0.0f, 0.0f));
 
         // cube vertex data --------------------------------
         float modelVertices[] = {
@@ -259,7 +277,7 @@ public:
 
 
         // set light transforms
-        light->SetPosition(minEngine::Vector3(2.0f, -2.0f, 2.0f));
+        light->SetPosition(minEngine::Vector3(0.0f, 3.0f, 0.0f));
         light->SetScale(minEngine::Vector3(0.5f, 0.5f, 0.5f));
         light->SetRotation(minEngine::Vector3(0.0f, 45.0f, 0.0f));
 

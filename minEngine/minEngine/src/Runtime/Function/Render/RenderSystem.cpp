@@ -66,11 +66,6 @@ namespace minEngine
         // Clear the window
         static_cast<OpenGLRHI*>(m_RHI.get())-> m_WindowSystem->Clear();
 
-        // Update camera position based on velocity. TODO: move this to camera update function
-        m_MainCamera->m_Position += m_MainCamera->m_CameraVelocity.z * m_MainCamera->m_Forward * deltaTime;
-        m_MainCamera->m_Position += m_MainCamera->m_CameraVelocity.y * m_MainCamera->m_Up * deltaTime;
-        m_MainCamera->m_Position += m_MainCamera->m_CameraVelocity.x * m_MainCamera->m_Right * deltaTime;
-
         // render all primitives but only static mesh for now
         for(auto& primitiveProxy : m_RenderScene->m_PrimitiveSceneProxies)
         {

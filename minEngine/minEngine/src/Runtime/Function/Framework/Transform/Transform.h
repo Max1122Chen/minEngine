@@ -24,11 +24,14 @@ namespace minEngine
         
         Matrix4 ToMatrix() const
         {
+            // In the game, we use axis x for forward, y for up , z for right
+            // but in glm, axis x for right, y for up, -z for forward
             Matrix4 model = glm::mat4(1.0f);
-            model = glm::translate(model, Position);                                            // translation
-            model = glm::rotate(model, glm::radians(Rotation.x), Vector3(1.0f, 0.0f, 0.0f));    // rotation x
+            Vector3 renderingPosition = Vector3(Position.z, Position.y, -Position.x);
+            model = glm::translate(model, renderingPosition);                                   // translation
+            model = glm::rotate(model, glm::radians(Rotation.z), Vector3(1.0f, 0.0f, 0.0f));    // rotation x
             model = glm::rotate(model, glm::radians(Rotation.y), Vector3(0.0f, 1.0f, 0.0f));    // rotation y
-            model = glm::rotate(model, glm::radians(Rotation.z), Vector3(0.0f, 0.0f, 1.0f));    // rotation z
+            model = glm::rotate(model, glm::radians(-Rotation.x), Vector3(0.0f, 0.0f, 1.0f));    // rotation z
             model = glm::scale(model, Scale);                                                   // scale
             return model;
         }

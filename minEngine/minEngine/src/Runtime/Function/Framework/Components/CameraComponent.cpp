@@ -38,17 +38,7 @@ namespace minEngine
             m_RenderCamera->SetPosition(GetPosition());
             m_RenderCamera->SetRotation(GetRotation());
 
-            // Update View Matrix and cache it in RenderCamera to avoid redundant calculations
-            Matrix4 viewMatrix = Matrix4(1.0f);
-            viewMatrix = glm::lookAt(m_RenderCamera->m_Position, m_RenderCamera->m_Position + m_RenderCamera->m_Forward, m_RenderCamera->m_Up);
-            m_RenderCamera->SetViewMatrix(viewMatrix);
-
-            // we assume only transform changes will happen now
-
-            // Update Projection Matrix and cache it in RenderCamera to avoid redundant calculations
-            // Matrix4 projectionMatrix = Matrix4(1.0f);
-            // projectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
-            // m_RenderCamera->SetProjectionMatrix(projectionMatrix);
+            m_RenderCamera->UpdateViewMatrix();
 
             
         }

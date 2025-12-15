@@ -5,34 +5,32 @@ namespace minEngine
 {
     void RenderCamera::Initialize()
     {
-        // Initialization code for RenderCamera
-        m_Position = Vector3(0.0f, 0.0f, 10.0f);
-        m_Rotation = Vector3(0.0f, 0.0f, 0.0f);
-
-        m_Target = Vector3(0.0f, 0.0f, 0.0f);
-        m_Forward = glm::normalize(Vector3(0.0f, 0.0f, -1.0f));
-        m_Right = glm::normalize(glm::cross(m_Forward, Vector3(0.0f, 1.0f, 0.0f)));
-        m_Up = glm::normalize(glm::cross(m_Right, m_Forward));
+        UpdateViewMatrix();
+        UpdateProjectionMatrix();
     }
 
-    Matrix4 RenderCamera::GetViewMatrix() const
+    void RenderCamera::UpdateViewMatrix()
     {
-        // TODO: Implement view matrix calculation based on position and rotation
-        Matrix4 viewMatrix = Matrix4(1.0f);
-        viewMatrix = glm::lookAt(m_Position, m_Position + m_Forward, m_Up);
+        // Calculate Logic Forward Vector based on Rotation
+        Matrix4 rotationMatrix = glm::mat4(1.0f);
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Rotation.x), Vector3(1.0f, 0.0f, 0.0f));
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Rotation.y), Vector3(0.0f, 1.0f, 0.0f));
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Rotation.z), Vector3(0.0f, 0.0f, 1.0f));
 
-        // return glm::inverse(viewMatrix); // Don't need to invert since lookAt gives the correct view matrix
-        return viewMatrix;
+        Vector3 logicForward = glm::normalize(Vector3(rotationMatrix * Vector4(1.0f, 0.0f, 0.0f, 0.0f)));
+
+        // Convert Logic Forward to Render Forward
+        // Logic: X=Forward, Y=Up, Z=Right
+        // Render: -Z=Forward, Y=Up, X=Right
+        // Mapping: Logic(x,y,z) -> Render(z, y, -x)
+        Vector3 renderForward = Vector3(logicForward.z, logicForward.y, -logicForward.x);
+
+        Vector3 renderingPosition = Vector3(m_Position.z, m_Position.y, -m_Position.x);
+        m_ViewMatrix = glm::lookAt(renderingPosition, renderingPosition + renderForward, Vector3(0.0f, 1.0f, 0.0f));
     }
 
-    Matrix4 RenderCamera::GetProjectionMatrix() const
+    void RenderCamera::UpdateProjectionMatrix()
     {
-        // TODO: Implement projection matrix calculation
-        Matrix4 projectionMatrix = Matrix4(1.0f);
-
-        // TODO: Figure out the principle behind glm::perspective parameters
-        projectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
-
-        return projectionMatrix;
+        m_ProjectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
     }
 }
