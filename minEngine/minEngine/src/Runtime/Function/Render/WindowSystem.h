@@ -12,6 +12,7 @@ namespace minEngine
 
         virtual void Initialize() = 0;
         virtual void Shutdown() = 0;
+
         virtual bool ShouldClose() const = 0;
         virtual void Close() = 0;
         virtual void SetTitle(const char* title) = 0;
@@ -21,6 +22,8 @@ namespace minEngine
 
         virtual void SwapBuffers() = 0;
         virtual void PollEvents() const = 0;
+
+        virtual void* GetWindowHandle() const = 0;
 
         // Window event callback function types
         typedef std::function<void()>                       OnResetFunc;

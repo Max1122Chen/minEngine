@@ -1,5 +1,9 @@
 #include "RenderSystem.h"
 
+#include "imgui.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
+
 #include "OpenGL/OpenGLRHI.h"
 #include "GLFWWindowSystem.h"
 #include "RenderCamera.h"
@@ -128,6 +132,10 @@ namespace minEngine
                 
             }
         }
+
+        // Render ImGui
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SwapBuffers();
     }

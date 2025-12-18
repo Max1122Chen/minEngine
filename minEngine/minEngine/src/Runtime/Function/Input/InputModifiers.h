@@ -8,6 +8,10 @@ namespace minEngine
     struct InputActionValue;
     struct InputActionInstance;
 
+    /**
+     * @brief 
+     * Owned by InputAction or InputActionInstance.  Modifies the raw input value before it is evaluated by InputTriggers.
+     */
     class InputModifier
     {
     public:

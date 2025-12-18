@@ -9,6 +9,10 @@ namespace minEngine
     enum class InputActionValueType;
     class InputActionValue;
 
+    /**
+     * @brief 
+     * Abstraction of an "Input Action". e.g., "Jump", "Move", "Look", etc.
+     */
     class InputAction
     {
     public:
@@ -38,12 +42,17 @@ namespace minEngine
         InputActionValueType m_ValueType;
         bool m_bConsumeInput = true;
 
+        // IA's own triggers, which will be applied to all its "Instances"
         std::vector<std::shared_ptr<InputTrigger>> m_Triggers;
 
         // IA's own modifiers, which will be applied to all its "Instances"
         std::vector<std::shared_ptr<InputModifier>> m_Modifiers;
     };
 
+    /**
+     * @brief 
+     * Helper struct to track the combined trigger state from multiple triggers
+     */
     struct InputTriggerStateTracker
     {
         void SetNoTriggerState(InputTriggerState inState)
@@ -67,6 +76,10 @@ namespace minEngine
         bool bBlocking = false;
     }; 
 
+    /**
+     * @brief 
+     * Instance of an Input Action for specific Input Mapping Context
+     */
     struct InputActionInstance
     {
         InputAction* SourceAction = nullptr;

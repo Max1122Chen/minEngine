@@ -2,7 +2,9 @@ file(GLOB_RECURSE SRC ./src/*.cpp)
 
 file(GLOB_RECURSE HEADERS ./src/*.h ./src/*.hpp)
 
-
+file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
+                ${THIRD_PARTY_PATH}/imgui/backends/*.cpp
+)
 
 set(EXECUTABLE_OUTPUT_PATH ${EXECUTABLE_PATH})
 set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_PATH})
@@ -10,6 +12,7 @@ set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_PATH})
 add_library(${ENGINE_NAME} SHARED ${SRC}
                                   ${THIRD_PARTY_PATH}/glad/src/glad.c
                                   ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
+                                  ${IMGUI}
                                   )
 
 
@@ -23,6 +26,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/glad/include
                                           PUBLIC ${THIRD_PARTY_PATH}/stb_image
                                           PUBLIC ${THIRD_PARTY_PATH}/assimp/include
+                                          PUBLIC ${THIRD_PARTY_PATH}/imgui
                                           )
 
 target_link_libraries(${ENGINE_NAME} PRIVATE glfw3 opengl32 assimp-6)

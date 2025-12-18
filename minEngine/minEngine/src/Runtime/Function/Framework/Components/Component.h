@@ -11,7 +11,10 @@ namespace minEngine
         Unmarked
     };
 
-
+    /**
+     * @brief 
+     * Base class for all components that can be attached to GameObjects.
+     */
     class Component
     {
     public:

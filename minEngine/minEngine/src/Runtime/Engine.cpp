@@ -1,5 +1,9 @@
 #include "Engine.h"
 
+#include "imgui.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
+
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
@@ -44,6 +48,13 @@ namespace minEngine
     {
         // TODO: implement logical tick
         RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
+
+        // Start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        // ImGui::ShowDemoWindow(); // Show demo window! :)
+
         globalContext.m_InputSystem->Tick(deltaTime);
         globalContext.m_WorldManager->Tick(deltaTime);
 

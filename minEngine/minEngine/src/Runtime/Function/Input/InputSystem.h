@@ -5,15 +5,13 @@
 #include "InputKeyState.h"
 #include "InputAction.h"
 
-#include "glfw/glfw3.h" // For GLFW key codes. TODO: remove dependency later
 
 namespace minEngine
 {
     class RuntimeGlobalContext;
 
-    class InputActionKeyMapping;
-    class InputMappingContext;
     class InputComponent;
+    class InputMappingContext;
 
     struct ActiveInputMappingContext
     {
@@ -21,9 +19,17 @@ namespace minEngine
         int Priority = 0;
     };
 
-    // TODO: To support multiple players later, we may need to have PlayerInputSystem or LocalInputSystem
-    class InputSystem
+    /**
+     * @brief 
+     * A simple input system that handles input events, manages input mappings, and processes input actions.
+     * Inspired by Unreal Engine's Enhanced Input System.
+     * Implemented Feature List:
+     * - Input Mapping Context ( IMC ). With InputKeyActionMapping.
+     * - Input Actions ( IA ). With InputTrigger and InputModifier.
+     */
+    class InputSystem       
     {
+    // TODO: To support multiple players later, we may need to have PlayerInputSystem or LocalInputSystem
     public:
         InputSystem() = default;
         ~InputSystem() = default;

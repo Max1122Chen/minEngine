@@ -15,6 +15,8 @@ namespace minEngine
         OpenGLTexture2D() = default;
         virtual ~OpenGLTexture2D() = default;
         
+        virtual int GetID() const override { return m_ID; }
+
         virtual void Bind() override;
         virtual void Unbind() override;
     };

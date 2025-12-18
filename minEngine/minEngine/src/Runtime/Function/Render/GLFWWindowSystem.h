@@ -40,7 +40,7 @@ namespace minEngine
         virtual void SwapBuffers() override;
         virtual void PollEvents() const override;
         
-
+        virtual void* GetWindowHandle() const override { return m_Window; }
     protected:
         // Window events callbacks
         static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)

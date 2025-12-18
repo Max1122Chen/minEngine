@@ -19,4 +19,10 @@ namespace minEngine
     {
         return RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->GetRHI()->CreateVertexDefinition(elements);
     }
+
+    std::shared_ptr<FrameBuffer> FrameBuffer::Create(uint32_t width, uint32_t height, bool bHasDepth)
+    {
+       // TODO: add different RHI implementations
+       return nullptr; 
+    }
 }

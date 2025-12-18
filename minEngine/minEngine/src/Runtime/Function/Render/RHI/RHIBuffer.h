@@ -30,8 +30,7 @@ namespace minEngine
         default:                         return 0;
         }
 
-        // Should not reach here, and maybe we will write a assert here later
-        __debugbreak();
+       MINENGINE_ASSERT(false, "Unknown VertexElementType!"); 
         return 0;
     }
 
@@ -53,8 +52,7 @@ namespace minEngine
         default:                         return 0;
         }
 
-        // Should not reach here, and maybe we will write a assert here later
-        __debugbreak();
+        MINENGINE_ASSERT(false, "Unknown VertexElementType!");
         return 0;
     }
 
@@ -134,5 +132,24 @@ namespace minEngine
 
     protected:
         uint32_t m_NumIndices = 0;
+    };
+
+    class RHITexture2D;
+    class FrameBuffer
+    {
+    public:
+        virtual ~FrameBuffer() = default;
+
+        static std::shared_ptr<FrameBuffer> Create(uint32_t width, uint32_t height, bool bHasDepth = true);
+
+        virtual void Bind() const = 0;
+        virtual void Unbind() const = 0;
+
+        virtual void AttachTexture(RHITexture2D* texture) = 0;
+        virtual std::shared_ptr<RHITexture2D> GetColorAttachment() const = 0;
+
+    private:
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
     };
 }

@@ -12,6 +12,11 @@ namespace minEngine
         Axis3D
     };
     
+    /**
+     * @brief 
+     * minEngine predefined input keys.
+     * Help to abstract different input devices and APIs.
+     */
     struct InputKey
     {
         std::string Name;
@@ -78,6 +83,8 @@ namespace minEngine
 
         const std::vector<InputKey>& GetAllKeys() const { return m_Keys; }
 
+
+        // Support function for converting key codes in different APIs to InputKey
         static const InputKey& ConvertGLFWKeyToInputKey(int glfwKey);
     
     private:

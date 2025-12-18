@@ -12,6 +12,10 @@ namespace minEngine
         Axis3D
     };
 
+    /**
+     * @brief 
+     * Abstraction of an "Input Action" value. e.g., button press (bool), axis movement (float, Vector2, Vector3)
+     */
     struct InputActionValue
     {
         // using Button = bool;
@@ -52,7 +56,11 @@ namespace minEngine
             }
         }
 
-        // Get magnitude squared
+        /**
+         * @brief Get the  Magnitude Squared
+         * 
+         * @return float 
+         */
         float GetMagnitudeSq() const
         {
             switch(Type)
@@ -69,11 +77,11 @@ namespace minEngine
             }
         }
 
-        bool IsNonZero(float tolerance = 0.0001f)
-        {
-            return GetMagnitudeSq() > (tolerance * tolerance);
-        }
-
+        /**
+         * @brief Get the Magnitude
+         * 
+         * @return float 
+         */
         float GetMagnitude() const
         {
             switch(Type)
@@ -90,7 +98,13 @@ namespace minEngine
             }
         }
 
+        bool IsNonZero(float tolerance = 0.0001f)
+        {
+            return GetMagnitudeSq() > (tolerance * tolerance);
+        }
+
         // Operations
+
         bool operator==(const InputActionValue& rhs) const
         {
             return (Type == rhs.Type) && (Value == rhs.Value);
@@ -134,7 +148,7 @@ namespace minEngine
         }
         InputActionValueType GetType() const { return Type; }
 
-
+    public:
         InputActionValueType Type = InputActionValueType::Boolean;
 
         Vector3 Value = {0.0f, 0.0f, 0.0f}; // Vector3::Zero

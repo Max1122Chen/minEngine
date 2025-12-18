@@ -31,6 +31,10 @@ namespace minEngine
         Completed
     };
 
+    /**
+     * @brief 
+     * Owned by InputAction or InputActionInstance.  Defines when an InputAction should be triggered based on the modified input value.
+     */
     class InputTrigger
     {
     public:
