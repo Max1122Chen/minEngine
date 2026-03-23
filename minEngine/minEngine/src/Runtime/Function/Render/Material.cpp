@@ -1,4 +1,6 @@
 #include "Material.h"
+#include "Texture.h"
+#include "RHI/RHITexture.h"
 
 namespace minEngine
 {
@@ -7,7 +9,7 @@ namespace minEngine
         // TODO: bind other textures (specular, normal, etc.) as needed
         if (m_Diffuse.Texture)
         {
-            m_Diffuse.Texture->Bind();
+            m_Diffuse.Texture->GetRHITexture()->Bind();
         }
     }
 }

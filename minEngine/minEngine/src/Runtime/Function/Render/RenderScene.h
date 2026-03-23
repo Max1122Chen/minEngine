@@ -3,8 +3,6 @@
 
 namespace minEngine
 {
-    class GameObject;
-    class Component;
     class PrimitiveComponent;
     class PrimitiveSceneProxy;
     class LightComponent;

@@ -4,6 +4,7 @@
 
 namespace minEngine
 {
+
     class PrimitiveSceneProxy
     {
     public:

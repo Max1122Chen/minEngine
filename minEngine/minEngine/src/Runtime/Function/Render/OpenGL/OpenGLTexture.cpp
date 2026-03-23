@@ -6,39 +6,34 @@
 
 namespace minEngine
 {
-    OpenGLTexture2D::OpenGLTexture2D(const std::string& path, uint32_t unit)
-        : RHITexture2D(path, unit)
+    OpenGLTexture2D::OpenGLTexture2D(const unsigned char *data, RHITextureDesc desc, int unit)
     {
+        m_Unit = unit;
         glGenTextures(1, &m_ID);
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D, m_ID);
 
-        // set the texture wrapping/filtering options (on the currently bound texture object)
+        // set the texture wrapping/filtering options (on the currently bound texture object). TODO: make these configurable
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        // load and generate the texture
-        AssetManager& assetManager = AssetManager::GetAssetManager();
-        
-        int width, height, nrChannels;
-        unsigned char *data = assetManager.LoadImage(path, width, height, nrChannels);
-        if (data)
+        if(data)
         {
             GLenum format;
-            if (nrChannels == 1)
+            if (desc.Format == TextureFormat::RED)
                 format = GL_RED;
-            else if (nrChannels == 3)
+            else if (desc.Format == TextureFormat::RGB8)
                 format = GL_RGB;
-            else if (nrChannels == 4)
+            else if (desc.Format == TextureFormat::RGBA8)
                 format = GL_RGBA;
+            else if (desc.Format == TextureFormat::DEPTH24STENCIL8)
+                format = GL_DEPTH24_STENCIL8;
 
-            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            glTexImage2D(GL_TEXTURE_2D, 0, format, desc.Width, desc.Height, 0, format, GL_UNSIGNED_BYTE, data);
             glGenerateMipmap(GL_TEXTURE_2D);
-            assetManager.FreeImage(data);
         }
-
     }
 
     // TODO: move these logic to material

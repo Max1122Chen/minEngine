@@ -1,12 +1,13 @@
 #pragma once
 #include "Core.h"
 #include "PrimitiveSceneProxy.h"
-#include "Runtime/Function/Render/RHI/RHIBuffer.h"
-#include "Runtime/Function/Render/Material.h"
 
 namespace minEngine
 {
-    struct Transform;
+    class VertexBuffer;
+    class VertexDefinition;
+    class IndexBuffer;
+    class Material;
 
     class StaticMeshSceneProxy : public PrimitiveSceneProxy
     {

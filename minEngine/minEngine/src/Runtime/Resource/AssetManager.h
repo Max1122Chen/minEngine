@@ -4,7 +4,7 @@
 
 namespace minEngine
 {
-    class Texture;
+    class Texture2D;
     class StaticMesh;
 
     class AssetManager
@@ -21,13 +21,13 @@ namespace minEngine
 
         // Image loading using stb_image
         unsigned char* LoadImage(const std::string& path, int& width, int& height, int& channels, bool bFlip = true);
-        void          FreeImage(unsigned char* data);
+        void           FreeImage(unsigned char* data);
 
         // Static mesh loading using 
         void LoadStaticMesh(const std::string& path, StaticMesh* outMesh);
         
     private:
-        std::unordered_map<std::string, std::shared_ptr<Texture>> m_LoadedTextureCache;
+        std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_LoadedTexture2DCache;
         std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_LoadedStaticMeshCache;
     };
 }

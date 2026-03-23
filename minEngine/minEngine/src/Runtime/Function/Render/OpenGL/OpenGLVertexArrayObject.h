@@ -1,10 +1,12 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/Render/RHI/RHIBuffer.h"
-#include <glad/glad.h>
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 
 namespace minEngine
 {
+    class VertexDefinition;
+    struct VertexElement;
+
     class OpenGLVertexArrayObject final : public VertexDefinition
     {
     public:

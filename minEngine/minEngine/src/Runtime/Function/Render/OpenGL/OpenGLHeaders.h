@@ -1,5 +1,5 @@
 #pragma once
-#include "OpenGLBuffer.h"
+#include "OpenGLBuffers.h"
 #include "OpenGLShader.h"
 #include "OpenGLTexture.h"
 #include "OpenGLVertexArrayObject.h"

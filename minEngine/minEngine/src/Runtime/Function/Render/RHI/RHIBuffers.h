@@ -135,21 +135,48 @@ namespace minEngine
     };
 
     class RHITexture2D;
+
+    enum class FrameBufferAttachmentType
+    {
+        Color = 0,
+        Depth,
+        Stencil,
+        DepthStencil
+    };
+
+    struct FrameBufferAttachment
+    {
+        FrameBufferAttachmentType Type;
+        RHITexture2D* Texture;
+    };
+
     class FrameBuffer
     {
     public:
         virtual ~FrameBuffer() = default;
 
-        static std::shared_ptr<FrameBuffer> Create(uint32_t width, uint32_t height, bool bHasDepth = true);
-
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
 
-        virtual void AttachTexture(RHITexture2D* texture) = 0;
-        virtual std::shared_ptr<RHITexture2D> GetColorAttachment() const = 0;
+        const std::vector<std::shared_ptr<RHITexture2D>>& GetColorBuffers() const { return m_ColorBuffers; }
+        virtual void AttachColorBuffer(std::shared_ptr<RHITexture2D> texture)
+        {
+            m_ColorBuffers.push_back(texture);
+        }
+        
+        const std::shared_ptr<RHITexture2D>& GetDepthBuffer() const { return m_DepthBuffer; }
+        virtual void AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture)
+        {
+            m_DepthBuffer = texture;
+        }
 
     private:
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
+
+        std::vector<std::shared_ptr<RHITexture2D>> m_ColorBuffers;
+        std::shared_ptr<RHITexture2D> m_DepthBuffer;
+        std::shared_ptr<RHITexture2D> m_StencilBuffer;
+        std::shared_ptr<RHITexture2D> m_DepthStencilBuffer;
     };
 }

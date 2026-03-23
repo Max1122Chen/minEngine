@@ -9,23 +9,15 @@
 #include "RenderCamera.h"
 
 
-#include "OpenGL/OpenGLShader.h"
-#include "OpenGL/OpenGLVertexArrayObject.h"
-#include "OpenGL/OpenGLBuffer.h"
-#include "OpenGL/OpenGLTexture.h"
 
-#include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
-#include "Runtime/Function/Render/Material.h"
-
-#include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
-#include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
-#include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 
 #include "RuntimeGlobalContext.h"
 
 #include "RenderScene.h"
 
 #include "glm/gtc/type_ptr.hpp"
+
+#include "RenderPasses/MainCameraPass.h"
 
 namespace minEngine
 {
@@ -41,10 +33,6 @@ namespace minEngine
 
         // Create RenderScene
         m_RenderScene = std::make_shared<RenderScene>();
-
-        // TODO: set up default render states
-        m_RHI->EnableDepthTest();
-        m_RHI->EnableCullFace();
 
         // set clear color
         static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SetClearColor(Vector3(0.1f, 0.1f, 0.1f));
@@ -70,68 +58,8 @@ namespace minEngine
         // Clear the window
         static_cast<OpenGLRHI*>(m_RHI.get())-> m_WindowSystem->Clear();
 
-        // render all primitives but only static mesh for now
-        for(auto& primitiveProxy : m_RenderScene->m_PrimitiveSceneProxies)
-        {
-            StaticMeshSceneProxy* meshProxy = dynamic_cast<StaticMeshSceneProxy*>(primitiveProxy);
-            if(meshProxy)
-            {
-                Matrix4 model = meshProxy->m_Transform.ToMatrix();
-
-                auto material = meshProxy->m_Material;
-                material->BindTextures();
-                auto shader = material->m_Shader;
-
-                shader->Use();
-                shader->UploadUniformInt("u_DiffuseMap", 0);
-                shader->UploadUniformMat4("u_Model", glm::value_ptr(model));
-                shader->UploadUniformMat4("u_View", glm::value_ptr(m_MainCamera->GetViewMatrix()));
-                shader->UploadUniformMat4("u_Projection", glm::value_ptr(m_MainCamera->GetProjectionMatrix()));
-                shader->UploadUniformMat4("u_MVP", glm::value_ptr(m_MainCamera->GetProjectionMatrix() * m_MainCamera->GetViewMatrix() * model));
-                shader->UploadUniformFloat3("u_ViewPosition", m_MainCamera->m_Position);
-
-                for(auto& dirLight : m_RenderScene->m_DirectionalLightSceneProxies)
-                {
-                    shader->UploadUniformFloat3("u_DirLight.Direction", dirLight->m_Direction);
-                    shader->UploadUniformFloat3("u_DirLight.Color", dirLight->m_LightColor);
-                }
-
-                for(auto& pointLight : m_RenderScene->m_PointLightSceneProxies)
-                {
-                    // For simplicity, only upload the first point light
-                    shader->UploadUniformFloat3("u_PointLight.Position", pointLight->m_Position);
-                    shader->UploadUniformFloat3("u_PointLight.Color", pointLight->m_LightColor);
-                    break;
-                }
-
-                for(auto& spotLight : m_RenderScene->m_SpotLightSceneProxies)
-                {
-                    // For simplicity, only upload the first spot light
-                    shader->UploadUniformFloat3("u_SpotLight.Position", spotLight->m_Position);
-                    shader->UploadUniformFloat3("u_SpotLight.Direction", spotLight->m_Direction);
-                    shader->UploadUniformFloat3("u_SpotLight.Color", spotLight->m_LightColor);
-                    shader->UploadUniformFloat("u_SpotLight.InnerConeAngleCos", cos(glm::radians(spotLight->m_InnerConeAngle)));
-                    shader->UploadUniformFloat("u_SpotLight.OuterConeAngleCos", cos(glm::radians(spotLight->m_OuterConeAngle)));
-                    break;
-                }
-                
-
-                static_cast<OpenGLVertexArrayObject*>(meshProxy->m_VertexDefinition)->Bind();
-
-                if(meshProxy->m_IndexBuffer)
-                {
-                    static_cast<OpenGLIndexBuffer*>(meshProxy->m_IndexBuffer)->Bind();
-                    glDrawElements(GL_TRIANGLES, meshProxy->m_IndexBuffer->GetNumIndices(), GL_UNSIGNED_INT, nullptr);
-                    static_cast<OpenGLIndexBuffer*>(meshProxy->m_IndexBuffer)->Unbind();
-                }
-                else
-                {
-                    glDrawArrays(GL_TRIANGLES, 0, meshProxy->m_VertexBuffer->GetNumVertices());
-                }
-
-                
-            }
-        }
+        MainCameraPass mainCameraPass;
+        mainCameraPass.Render();
 
         // Render ImGui
         ImGui::Render();

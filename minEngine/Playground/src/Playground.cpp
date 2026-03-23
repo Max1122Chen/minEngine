@@ -12,6 +12,8 @@
 #include "Runtime/Function/Input/InputMappingContext.h"
 #include "Runtime/Function/Input/InputModifiers.h"
 
+#include "Runtime/Function/Render/Texture.h"
+
 using namespace minEngine;
 
 class Playground : public Application
@@ -195,26 +197,25 @@ public:
 
         // create cube
         minEngine::StaticMesh cubeMesh(modelVertices, sizeof(modelVertices), 36,{
-            minEngine::VertexElement("a_Position", minEngine::VertexElementType::Float3),
-            minEngine::VertexElement("a_TexCoord", minEngine::VertexElementType::Float2),
-            minEngine::VertexElement("a_Normal", minEngine::VertexElementType::Float3)
+            VertexElement("a_Position", VertexElementType::Float3),
+            VertexElement("a_TexCoord", VertexElementType::Float2),
+            VertexElement("a_Normal", VertexElementType::Float3)
         });
 
 
         // create light
         minEngine::StaticMesh lightMesh(lightVertices, sizeof(lightVertices), 36,{
-            minEngine::VertexElement("a_Position", minEngine::VertexElementType::Float3)
+            VertexElement("a_Position", VertexElementType::Float3)
         });
 
         minEngine::Material backpackMaterial;
         backpackMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        backpackMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
-        backpackMaterial.m_Specular.Texture = std::make_shared<minEngine::OpenGLTexture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
+        backpackMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
+        backpackMaterial.m_Specular.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
 
         minEngine::Material cubeMaterial;
         cubeMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        cubeMaterial.m_Diffuse.Texture = std::make_shared<minEngine::OpenGLTexture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
-
+        cubeMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
         // create light material
         minEngine::Material lightMaterial;
         lightMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.frag");

@@ -131,6 +131,12 @@ namespace minEngine
         }
     }
 
+    void OpenGLShader::UploadUniformMat4(const std::string &name, const Matrix4 &matrix)
+    {
+        const float* matPtr = glm::value_ptr(matrix);
+        UploadUniformMat4(name, matPtr);
+    }
+
     bool OpenGLShader::IsValidUniform(const std::string &name, int &uniformLocation)
     {
         uniformLocation = glGetUniformLocation(m_ID, name.c_str());     // TODO: cache uniform locations later

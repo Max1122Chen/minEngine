@@ -15,5 +15,6 @@ namespace minEngine
         virtual void UploadUniformFloat(const std::string& name, float value) = 0;
         virtual void UploadUniformFloat3(const std::string& name, Vector3 value) = 0;
         virtual void UploadUniformMat4(const std::string& name, const float* matrix) = 0;
+        virtual void UploadUniformMat4(const std::string& name, const Matrix4& matrix) = 0;
     };
 } 

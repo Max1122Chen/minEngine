@@ -9,7 +9,7 @@
 #include "assimp/postprocess.h"
 
 #include "Runtime/Function/Render/StaticMesh.h"
-#include "Runtime/Function/Render/RHI/RHIBuffer.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 
 
 namespace minEngine
@@ -140,6 +140,7 @@ namespace minEngine
             }
         }
 
+        // TODO: change this to a RHICommand later
         // Create vertex buffer
         outMesh->m_VertexBuffer = VertexBuffer::Create(reinterpret_cast<float*>(vertices.data()),
                                                        static_cast<uint32_t>(vertices.size() * sizeof(Vertex)),

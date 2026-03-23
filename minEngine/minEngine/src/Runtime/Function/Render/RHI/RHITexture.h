@@ -3,51 +3,52 @@
 
 namespace minEngine
 {
-    enum class TextureType
+    enum class TextureFormat
     {
         None = 0,
+        RED,
+        RGB8,
+        RGBA8,
+        DEPTH24STENCIL8
     };
 
-    enum class TextureWrapping
+    enum class TextureUsage
     {
         None = 0,
-        Repeat,
-        MirroredRepeat,
-        ClampToEdge,
-        ClampToBorder
+        TextureBinding,
+        RenderTarget,
+        DepthStencil,
     };
 
-    enum class TextureFiltering
+    struct RHITextureDesc
     {
-        None = 0,
-        Nearest,
-        Linear,
-        NearestMipmapNearest,
-        LinearMipmapNearest,
-        NearestMipmapLinear,
-        LinearMipmapLinear
+        uint32_t        Width       = 0;
+        uint32_t        Height      = 0;
+        TextureFormat   Format      = TextureFormat::None;
+        TextureUsage    Usage       = TextureUsage::None;
     };
 
     class RHITexture2D
     {
     public:
         RHITexture2D() = default;
-        RHITexture2D(const std::string& path, uint32_t unit)
-            : m_Path(path), m_Unit(unit)
-        {
-        }
         virtual ~RHITexture2D() = default;
 
-        virtual int GetID() const = 0;
+        uint32_t GetID() const { return m_ID; }
+        int GetUnit() const { return m_Unit; }
+        const RHITextureDesc& GetDesc() const { return m_Desc; }
+        const uint32_t GetWidth() const { return m_Desc.Width; }
+        const uint32_t GetHeight() const { return m_Desc.Height; }
+        const TextureFormat GetFormat() const { return m_Desc.Format; }
+        const TextureUsage GetUsage() const { return m_Desc.Usage; }
 
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
 
     protected:
-        std::string m_Path;
-        uint32_t m_Unit;
-        TextureType m_Type;
-        TextureWrapping m_Wrapping;
-        TextureFiltering m_Filtering;
+        uint32_t m_ID;
+        int m_Unit;
+        RHITextureDesc m_Desc;
+
     };
 }

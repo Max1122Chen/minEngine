@@ -1,5 +1,5 @@
 #pragma once
-#include "Runtime/Function/Render/RHI/RHIBuffer.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 
 namespace minEngine
 {
@@ -35,21 +35,16 @@ namespace minEngine
     class OpenGLFrameBuffer : public FrameBuffer
     {
     public:
-        OpenGLFrameBuffer(uint32_t width, uint32_t height);
+        OpenGLFrameBuffer(uint32_t width, uint32_t height, bool bHasDepth);
         virtual ~OpenGLFrameBuffer();
 
         virtual void Bind() const override;
         virtual void Unbind() const override;
 
-        virtual void AttachTexture(RHITexture2D* texture) override;
-        virtual std::shared_ptr<RHITexture2D> GetColorAttachment() const override { return m_ColorAttachment; }
-
-        void AttachRenderBuffer(uint32_t RBO);
+        virtual void AttachColorBuffer(std::shared_ptr<RHITexture2D> texture) override;
+        virtual void AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture) override;
 
     private:
-        std::shared_ptr<RHITexture2D> m_ColorAttachment;
         uint32_t m_FBO;
-        uint32_t m_RBO;
-
     };
 }

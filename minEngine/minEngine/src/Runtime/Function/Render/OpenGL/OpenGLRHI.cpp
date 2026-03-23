@@ -2,7 +2,7 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 
-#include "OpenGLBuffer.h"
+#include "OpenGLBuffers.h"
 #include "OpenGLVertexArrayObject.h"
 #include "OpenGLTexture.h"
 #include "OpenGLShader.h"
@@ -58,9 +58,9 @@ namespace minEngine
         return std::make_shared<OpenGLVertexArrayObject>(elements);
     }
 
-    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateTexture2D(const char *filepath, uint32_t unit)
+    std::shared_ptr<FrameBuffer> OpenGLRHI::CreateFrameBuffer(uint32_t width, uint32_t height, bool bHasDepth)
     {
-        return std::make_shared<OpenGLTexture2D>(filepath, unit);
+        return std::make_shared<OpenGLFrameBuffer>(width, height, bHasDepth);
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::CreateShader(const char *vertexSource, const char *fragmentSource)

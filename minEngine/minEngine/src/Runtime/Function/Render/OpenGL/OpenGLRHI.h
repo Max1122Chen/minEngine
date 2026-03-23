@@ -5,10 +5,6 @@
 
 namespace minEngine
 {
-    class VertexBuffer;
-    class IndexBuffer;
-    class RHITexture2D;
-    class RHIShader;
 
     class WindowSystem;
 
@@ -31,7 +27,7 @@ namespace minEngine
         virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size, uint32_t numVertices) override;
         virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) override;
         virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<VertexElement> elements) override;
-        virtual std::shared_ptr<RHITexture2D> CreateTexture2D(const char* filepath, uint32_t unit) override;
+        virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height, bool bHasDepth) override;
         virtual std::shared_ptr<RHIShader> CreateShader(const char* vertexSource, const char* fragmentSource) override;
 
        
