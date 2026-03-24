@@ -25,6 +25,9 @@ namespace minEngine
 
         virtual void* GetWindowHandle() const = 0;
 
+        virtual uint32_t GetWidth() = 0;
+        virtual uint32_t GetHeight() = 0;
+
         // Window event callback function types
         typedef std::function<void()>                       OnResetFunc;
         typedef std::function<void(int, int, int, int)>     OnKeyFunc;

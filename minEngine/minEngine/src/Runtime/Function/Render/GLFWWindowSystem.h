@@ -41,6 +41,10 @@ namespace minEngine
         virtual void PollEvents() const override;
         
         virtual void* GetWindowHandle() const override { return m_Window; }
+
+        virtual uint32_t GetWidth() override { return m_Width; }
+        virtual uint32_t GetHeight() override { return m_Height; }
+
     protected:
         // Window events callbacks
         static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)

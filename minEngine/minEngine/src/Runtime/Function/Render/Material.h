@@ -1,11 +1,11 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/Render/Texture.h"
 
 namespace minEngine
 {
     class RHIShader;
-    class Texture2D;
 
     struct MaterialParameters
     {
@@ -27,5 +27,10 @@ namespace minEngine
         MaterialParameters m_Specular;
         MaterialParameters m_Normal;
         
+        bool IsTranslucent() const
+        {
+            // A material is considered translucent if its diffuse color has an alpha value less than 1, or if it has a diffuse texture with 4 channels (indicating it has an alpha channel)
+            return m_Diffuse.Value.a < 1.0f || (m_Diffuse.Texture && m_Diffuse.Texture->GetChannels() == 4);
+        }
     };
 }

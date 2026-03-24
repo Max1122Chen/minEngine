@@ -155,6 +155,8 @@ namespace minEngine
     public:
         virtual ~FrameBuffer() = default;
 
+        static std::shared_ptr<FrameBuffer> Create(uint32_t width, uint32_t height);
+
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
 
@@ -168,6 +170,18 @@ namespace minEngine
         virtual void AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture)
         {
             m_DepthBuffer = texture;
+        }
+
+        const std::shared_ptr<RHITexture2D>& GetStencilBuffer() const { return m_StencilBuffer; }
+        virtual void AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture)
+        {
+            m_StencilBuffer = texture;
+        }
+
+        const std::shared_ptr<RHITexture2D>& GetDepthStencilBuffer() const { return m_DepthStencilBuffer; }
+        virtual void AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture)
+        {
+            m_DepthStencilBuffer = texture;
         }
 
     private:

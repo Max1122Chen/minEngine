@@ -17,7 +17,8 @@
 
 #include "glm/gtc/type_ptr.hpp"
 
-#include "RenderPasses/MainCameraPass.h"
+#include "RenderPipeline.h"
+#include "RenderPasses/BasePass.h"
 
 namespace minEngine
 {
@@ -58,8 +59,7 @@ namespace minEngine
         // Clear the window
         static_cast<OpenGLRHI*>(m_RHI.get())-> m_WindowSystem->Clear();
 
-        MainCameraPass mainCameraPass;
-        mainCameraPass.Render();
+        m_RenderPipeline.Execute();
 
         // Render ImGui
         ImGui::Render();

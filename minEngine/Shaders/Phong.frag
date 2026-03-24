@@ -60,6 +60,10 @@ void main()
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(u_ViewPosition - FragPos);
 
+    vec4 texColor = texture(u_Material.DiffuseMap, TexCoord);
+    if(texColor.a < 0.1)
+        discard;
+
     vec3 DirLightResult = CalcDirLight(u_DirLight, norm, viewDir);
 
     // Only support one point light for now
@@ -69,7 +73,7 @@ void main()
     vec3 SpotLightResult = CalcSpotLight(u_SpotLight, norm, FragPos, viewDir);
 
     vec3 result = DirLightResult + PointLightResult + SpotLightResult;
-    FragColor = vec4(result, 1.0);
+    FragColor = vec4(result, texColor.a);
 }
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)

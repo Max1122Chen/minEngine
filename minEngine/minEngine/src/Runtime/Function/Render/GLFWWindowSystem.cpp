@@ -96,7 +96,7 @@ namespace minEngine
     // Clear the window
     void GLFWWindowSystem::Clear()
     {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);     // TODO: should not do this here
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);     // TODO: should not do this here
     }
 
     // Swap the front and back buffers

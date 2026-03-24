@@ -2,7 +2,6 @@
 #include "RenderSystem.h"
 #include "RHI/RHI.h"
 #include "RHI/RHITexture.h"
-#include "OpenGL/OpenGLTexture.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -26,7 +25,7 @@ namespace minEngine
         if(data)
         {
             // Create RHI texture. Directly call rhi, maybe later we should use RHICommand.
-            m_RHITexture = std::make_shared<OpenGLTexture2D>(data, RHITextureDesc{
+            m_RHITexture = rhi->CreateRHITexture2D(data, RHITextureDesc{
                 .Width = m_Width,
                 .Height = m_Height,
                 .Format = (channels == 4) ? TextureFormat::RGBA8 : TextureFormat::RGB8,

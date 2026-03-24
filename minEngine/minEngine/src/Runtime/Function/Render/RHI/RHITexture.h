@@ -16,7 +16,9 @@ namespace minEngine
     {
         None = 0,
         TextureBinding,
-        RenderTarget,
+        Color,
+        Depth,
+        Stencil,
         DepthStencil,
     };
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "Core.h"
-
+#include "RenderPipeline.h"
 
 namespace minEngine
 {
@@ -37,5 +37,7 @@ namespace minEngine
     private:
         std::shared_ptr<RHI> m_RHI;
         std::shared_ptr<RenderCamera> m_MainCamera;
+
+        RenderPipeline m_RenderPipeline;
     };
 }

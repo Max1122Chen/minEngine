@@ -19,20 +19,73 @@ namespace minEngine
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        if(data)
-        {
-            GLenum format;
-            if (desc.Format == TextureFormat::RED)
-                format = GL_RED;
-            else if (desc.Format == TextureFormat::RGB8)
-                format = GL_RGB;
-            else if (desc.Format == TextureFormat::RGBA8)
-                format = GL_RGBA;
-            else if (desc.Format == TextureFormat::DEPTH24STENCIL8)
-                format = GL_DEPTH24_STENCIL8;
+        GLint internalFormat = 0;
+        GLenum dataFormat = 0;
+        GLenum dataType = GL_UNSIGNED_BYTE;
 
-            glTexImage2D(GL_TEXTURE_2D, 0, format, desc.Width, desc.Height, 0, format, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
+        if (desc.Format == TextureFormat::RED)
+        {
+            internalFormat = GL_R8;
+            dataFormat = GL_RED;
+        }
+        else if (desc.Format == TextureFormat::RGB8)
+        {
+            internalFormat = GL_RGB8;
+            dataFormat = GL_RGB;
+        }
+        else if (desc.Format == TextureFormat::RGBA8)
+        {
+            internalFormat = GL_RGBA8;
+            dataFormat = GL_RGBA;
+        }
+        else if (desc.Format == TextureFormat::DEPTH24STENCIL8)
+        {
+            internalFormat = GL_DEPTH24_STENCIL8;
+            dataFormat = GL_DEPTH_STENCIL;
+            dataType = GL_UNSIGNED_INT_24_8;
+        }
+
+        // Apply Usage overrides or defaults if Format was not sufficient
+        if (internalFormat == 0)
+        {
+            if (desc.Usage == TextureUsage::Depth)
+            {
+                internalFormat = GL_DEPTH_COMPONENT;
+                dataFormat = GL_DEPTH_COMPONENT;
+            }
+            else if (desc.Usage == TextureUsage::Stencil)
+            {
+                internalFormat = GL_STENCIL_INDEX;
+                dataFormat = GL_STENCIL_INDEX;
+            }
+            else if (desc.Usage == TextureUsage::DepthStencil)
+            {
+                internalFormat = GL_DEPTH_STENCIL;
+                dataFormat = GL_DEPTH_STENCIL;
+                dataType = GL_UNSIGNED_INT_24_8;
+            }
+        }
+
+        bool isDepthStencil = (desc.Format == TextureFormat::DEPTH24STENCIL8) ||
+                              (desc.Usage == TextureUsage::Depth) ||
+                              (desc.Usage == TextureUsage::Stencil) ||
+                              (desc.Usage == TextureUsage::DepthStencil);
+
+        if (isDepthStencil)
+        {
+            // Depth/Stencil textures usually don't support mipmaps or we don't restart them often
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+
+        if (internalFormat != 0 && desc.Width > 0 && desc.Height > 0)
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, desc.Width, desc.Height, 0, dataFormat, dataType, data);
+            
+            if (!isDepthStencil)
+            {
+               glGenerateMipmap(GL_TEXTURE_2D);
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 #include "OpenGLBuffers.h"
 #include "glad/glad.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
+#include "OpenGLTexture.h"
 
 namespace minEngine
 {
@@ -53,20 +54,9 @@ namespace minEngine
     }
 
     // OpenGLFrameBuffer
-    OpenGLFrameBuffer::OpenGLFrameBuffer(uint32_t width, uint32_t height, bool bHasDepth)
+    OpenGLFrameBuffer::OpenGLFrameBuffer(uint32_t width, uint32_t height)
     {
         glGenFramebuffers(1, &m_FBO);
-        glBindFramebuffer(GL_FRAMEBUFFER, m_FBO);
-
-        // By default, we create a color attachment. Temporary implementation.
-        unsigned int texColorBuffer;
-        glGenTextures(1, &texColorBuffer);
-        glBindTexture(GL_TEXTURE_2D, texColorBuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texColorBuffer, 0);
     }
 
     OpenGLFrameBuffer::~OpenGLFrameBuffer()
@@ -87,7 +77,11 @@ namespace minEngine
     void OpenGLFrameBuffer::AttachColorBuffer(std::shared_ptr<RHITexture2D> texture)
     {
         FrameBuffer::AttachColorBuffer(texture);
-        // Currently, we do not support multiple color attachments in OpenGLFrameBuffer.
+
+        Bind();
+        OpenGLTexture2D* glTexture = static_cast<OpenGLTexture2D*>(texture.get());
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, glTexture->GetID(), 0);
+        Unbind();
     }
 
     void OpenGLFrameBuffer::AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture)
@@ -95,4 +89,21 @@ namespace minEngine
         FrameBuffer::AttachDepthBuffer(texture);
         // Currently, we do not support depth attachment in OpenGLFrameBuffer.
     }
+
+    void OpenGLFrameBuffer::AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture)
+    {
+        FrameBuffer::AttachStencilBuffer(texture);
+        // Not implemented yet
+    }
+
+    void OpenGLFrameBuffer::AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture)
+    {
+        FrameBuffer::AttachDepthStencilBuffer(texture);
+        
+        Bind();
+        OpenGLTexture2D* glTexture = static_cast<OpenGLTexture2D*>(texture.get());
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, glTexture->GetID(), 0);
+        Unbind();
+    }
+    
 }

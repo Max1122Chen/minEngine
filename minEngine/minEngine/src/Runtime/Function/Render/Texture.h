@@ -40,6 +40,7 @@ namespace minEngine
         uint32_t GetHeight() const { return m_Height; }
         TextureWrapping GetWrapping() const { return m_Wrapping; }
         TextureFiltering GetFiltering() const { return m_Filtering; }
+        uint32_t GetChannels() const { return m_Channels; }
 
     protected:
         std::shared_ptr<RHITexture2D> m_RHITexture;

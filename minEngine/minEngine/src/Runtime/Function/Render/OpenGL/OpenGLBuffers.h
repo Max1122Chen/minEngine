@@ -35,7 +35,7 @@ namespace minEngine
     class OpenGLFrameBuffer : public FrameBuffer
     {
     public:
-        OpenGLFrameBuffer(uint32_t width, uint32_t height, bool bHasDepth);
+        OpenGLFrameBuffer(uint32_t width, uint32_t height);
         virtual ~OpenGLFrameBuffer();
 
         virtual void Bind() const override;
@@ -43,6 +43,8 @@ namespace minEngine
 
         virtual void AttachColorBuffer(std::shared_ptr<RHITexture2D> texture) override;
         virtual void AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture) override;
+        virtual void AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture) override;
+        virtual void AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture) override;  
 
     private:
         uint32_t m_FBO;

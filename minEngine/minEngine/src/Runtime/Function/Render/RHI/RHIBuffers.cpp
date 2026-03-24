@@ -20,4 +20,9 @@ namespace minEngine
         return RenderSystem::GetRenderSystem().GetRHI()->CreateVertexDefinition(elements);
     }
 
+    std::shared_ptr<FrameBuffer> FrameBuffer::Create(uint32_t width, uint32_t height)
+    {
+        return RenderSystem::GetRenderSystem().GetRHI()->CreateFrameBuffer(width, height);
+    }
+
 }

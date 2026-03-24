@@ -192,6 +192,25 @@ public:
 
         // ----------------------------------------------
 
+        // create grass
+        float planeVertices[] = {
+            // positions          // texcoords   // normals
+             1.0f, 0.0f,  1.0f,  1.0f, 0.0f,   0.0f, 1.0f, 0.0f,
+             1.0f, 0.0f, -1.0f,  1.0f, 1.0f,   0.0f, 1.0f, 0.0f,
+            -1.0f, 0.0f, -1.0f,  0.0f, 1.0f,   0.0f, 1.0f, 0.0f,
+
+             1.0f, 0.0f,  1.0f,  1.0f, 0.0f,   0.0f, 1.0f, 0.0f,
+            -1.0f, 0.0f, -1.0f,  0.0f, 1.0f,   0.0f, 1.0f, 0.0f,
+            -1.0f, 0.0f,  1.0f,  0.0f, 0.0f,   0.0f, 1.0f, 0.0f
+        };
+
+        // create plane
+        minEngine::StaticMesh plane(planeVertices, sizeof(planeVertices), 6,{
+            VertexElement("a_Position", VertexElementType::Float3),
+            VertexElement("a_TexCoord", VertexElementType::Float2),
+            VertexElement("a_Normal", VertexElementType::Float3)
+        });
+
         // create backpack 
         // minEngine::StaticMesh backpackMesh("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/backpack.obj");
 
@@ -207,6 +226,14 @@ public:
         minEngine::StaticMesh lightMesh(lightVertices, sizeof(lightVertices), 36,{
             VertexElement("a_Position", VertexElementType::Float3)
         });
+
+        minEngine::Material windowMaterial;
+        windowMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
+        windowMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/window.png", 0);
+
+        minEngine::Material grassMaterial;
+        grassMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
+        grassMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/grass.png", 0);
 
         minEngine::Material backpackMaterial;
         backpackMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
@@ -259,6 +286,55 @@ public:
             cube->SetTransform(cubeTransforms[i]);
 
             cubes.push_back(cube);
+        }
+
+        // create window game object
+        std::vector<minEngine::Transform> windowTransforms = 
+        {
+            minEngine::Transform(minEngine::Vector3(0.0f, 0.0f, -5.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f)),
+            minEngine::Transform(minEngine::Vector3(5.0f, 0.0f, -10.0f), minEngine::Vector3(0.0f, 45.0f, 90.0f), minEngine::Vector3(2.0f, 2.0f, 2.0f)),
+            minEngine::Transform(minEngine::Vector3(-5.0f, 0.0f, -10.0f), minEngine::Vector3(0.0f, -45.0f, 90.0f), minEngine::Vector3(2.0f, 2.0f, 2.0f))            
+        };
+        std::vector<std::shared_ptr<minEngine::GameObject>> windows;
+        for(int i = 0; i < windowTransforms.size(); ++i)
+        {
+            auto window = level.CreateGameObject();
+            std::shared_ptr<minEngine::StaticMeshComponent> windowMeshComponent = window->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+            window->SetRootComponent(windowMeshComponent);
+
+            // set window mesh and material
+            windowMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(plane));
+            windowMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(windowMaterial));
+
+            // set window transforms
+            window->SetTransform(windowTransforms[i]);
+
+            windows.push_back(window);
+        }
+
+
+        // create grass game object
+        std::vector<minEngine::Transform> grassTransforms = 
+        {
+            minEngine::Transform(minEngine::Vector3(0.0f, -0.5f, 0.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f)),
+            minEngine::Transform(minEngine::Vector3(5.0f, -0.5f, 5.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f)),
+            minEngine::Transform(minEngine::Vector3(10.0f, -0.5f, 10.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f))            
+        };
+        std::vector<std::shared_ptr<minEngine::GameObject>> grasses;
+        for(int i = 0; i < grassTransforms.size(); ++i)
+        {
+            auto grass = level.CreateGameObject();
+            std::shared_ptr<minEngine::StaticMeshComponent> grassMeshComponent = grass->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+            grass->SetRootComponent(grassMeshComponent);
+
+            // set grass mesh and material
+            grassMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(plane));
+            grassMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(grassMaterial));
+
+            // set grass transforms
+            grass->SetTransform(grassTransforms[i]);
+
+            grasses.push_back(grass);
         }
 
         // create PointLight game object

@@ -7,6 +7,7 @@ namespace minEngine
 {
 
     class WindowSystem;
+    class FrameBuffer;
 
     class OpenGLRHI : public RHI
     {
@@ -21,16 +22,24 @@ namespace minEngine
 
         virtual void EnableDepthTest() override;
         virtual void DisableDepthTest() override;
+        virtual void SetDepthMask(bool bEnable) override;
+
+        virtual void EnableStencilTest() override;
+        virtual void DisableStencilTest() override;
+        virtual void SetStencilMask(uint32_t mask) override;
+
+        virtual void EnableBlend() override;
+        virtual void DisableBlend() override;
+
         virtual void EnableCullFace() override;
         virtual void DisableCullFace() override;
 
         virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size, uint32_t numVertices) override;
         virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) override;
         virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<VertexElement> elements) override;
-        virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height, bool bHasDepth) override;
+        virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) override;
+        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc, int unit = 0) override;
         virtual std::shared_ptr<RHIShader> CreateShader(const char* vertexSource, const char* fragmentSource) override;
-
-       
     
 
     private:

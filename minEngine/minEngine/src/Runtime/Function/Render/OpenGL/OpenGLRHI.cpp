@@ -33,6 +33,38 @@ namespace minEngine
         glDisable(GL_DEPTH_TEST);
     }
 
+    void OpenGLRHI::SetDepthMask(bool bEnable)
+    {
+        glDepthMask(bEnable ? GL_TRUE : GL_FALSE);
+    }
+
+    void OpenGLRHI::EnableStencilTest()
+    {
+        glEnable(GL_STENCIL_TEST);
+    }
+
+    void OpenGLRHI::DisableStencilTest()
+    {
+        glDisable(GL_STENCIL_TEST);
+    }
+
+    void OpenGLRHI::SetStencilMask(uint32_t mask)
+    {
+        glStencilMask(mask);
+    }
+
+    void OpenGLRHI::EnableBlend()
+    {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // Set default blend function for alpha blending
+    }
+
+    void OpenGLRHI::DisableBlend()
+    {
+        glDisable(GL_BLEND);
+
+    }
+
     void OpenGLRHI::EnableCullFace()
     {
         glEnable(GL_CULL_FACE);
@@ -58,13 +90,19 @@ namespace minEngine
         return std::make_shared<OpenGLVertexArrayObject>(elements);
     }
 
-    std::shared_ptr<FrameBuffer> OpenGLRHI::CreateFrameBuffer(uint32_t width, uint32_t height, bool bHasDepth)
+    std::shared_ptr<FrameBuffer> OpenGLRHI::CreateFrameBuffer(uint32_t width, uint32_t height)
     {
-        return std::make_shared<OpenGLFrameBuffer>(width, height, bHasDepth);
+        return std::make_shared<OpenGLFrameBuffer>(width, height);
+    }
+
+    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2D(const unsigned char *data, RHITextureDesc desc, int unit)
+    {
+        return std::make_shared<OpenGLTexture2D>(data, desc, unit);
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::CreateShader(const char *vertexSource, const char *fragmentSource)
     {
         return std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
     }
+
 }
