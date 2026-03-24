@@ -11,9 +11,12 @@ namespace minEngine
         BasePass() = default;
         virtual ~BasePass() = default;
 
-        std::vector<MeshDrawCommand> m_DrawCommands;
-
         virtual void Execute() override;
+
+    private:
         virtual void Render() override;
+
+    public:
+        std::vector<MeshDrawCommand> m_DrawCommands;
     };
 }

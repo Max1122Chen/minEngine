@@ -11,6 +11,8 @@ namespace minEngine
         virtual ~PostProcessPass() = default;
 
         virtual void Execute() override;
+
+    private:
         virtual void Render() override;
 
 

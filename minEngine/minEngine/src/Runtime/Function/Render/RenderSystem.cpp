@@ -38,6 +38,7 @@ namespace minEngine
         // set clear color
         static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SetClearColor(Vector3(0.1f, 0.1f, 0.1f));
 
+        m_RenderPipeline.Initialize();
 
         // Finished Initialization
         ME_CORE_INFO("RenderSystem Initialized");
@@ -45,6 +46,7 @@ namespace minEngine
 
     void RenderSystem::Shutdown()
     {
+        m_RenderPipeline.Shutdown();
         // TODO: implement shutdown logic
         ME_CORE_INFO("RenderSystem Shutdown");
     }

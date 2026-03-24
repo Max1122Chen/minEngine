@@ -12,6 +12,8 @@ namespace minEngine
         virtual ~RenderPassBase() = default;
 
         virtual void Execute() = 0;
+
+    private:
         virtual void Render() = 0;
 
     public:

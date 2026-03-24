@@ -13,8 +13,8 @@ namespace minEngine
         OpenGLVertexArrayObject(std::initializer_list<VertexElement> elements);
         ~OpenGLVertexArrayObject() = default;
 
-        void Bind() const;
-        void Unbind() const;
+        virtual void Bind() const override;
+        virtual void Unbind() const override;
 
     private:
         uint32_t m_VAO;    

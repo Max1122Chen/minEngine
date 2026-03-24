@@ -88,6 +88,10 @@ namespace minEngine
             m_Stride = offset;
         }
 
+        virtual ~VertexDefinition() = default;
+
+        virtual void Bind() const = 0;
+        virtual void Unbind() const = 0;
 
         static std::shared_ptr<VertexDefinition> Create(std::initializer_list<VertexElement> elements);
 

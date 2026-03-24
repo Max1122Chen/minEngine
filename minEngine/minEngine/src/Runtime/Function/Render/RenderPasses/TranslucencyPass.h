@@ -11,12 +11,13 @@ namespace minEngine
         TranslucencyPass() = default;
         virtual ~TranslucencyPass() = default;
 
+        virtual void Execute() override;
+        
+    public:
         std::vector<MeshDrawCommand> m_DrawCommands;
 
-        virtual void Execute() override;
-        virtual void Render() override;
-
     private:
+        virtual void Render() override;
         void SortDrawCommands();
     };
 }

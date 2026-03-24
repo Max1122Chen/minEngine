@@ -1,7 +1,9 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/Render/RenderPasses/BasePass.h"
-#include "Runtime/Function/Render/RenderPasses/TranslucencyPass.h"
+#include "RenderPasses/BasePass.h"
+#include "RenderPasses/TranslucencyPass.h"
+#include "RenderPasses/PresentPass.h"
+
 
 namespace minEngine
 {
@@ -19,13 +21,16 @@ namespace minEngine
         void Execute();
 
     private:
-        std::shared_ptr<FrameBuffer> m_sceneBuffer;
         
-        std::shared_ptr<RHITexture2D> m_sceneColorTexture;
-        std::shared_ptr<RHITexture2D> m_sceneDepthTexture;
+
+        std::shared_ptr<FrameBuffer> m_SceneBuffer;
+        
+        std::shared_ptr<RHITexture2D> m_SceneColorTexture;
+        std::shared_ptr<RHITexture2D> m_SceneDepthTexture;
 
         BasePass m_BasePass;
         TranslucencyPass m_TranslucentPass;
+        PresentPass m_PresentPass;
 
         std::vector<MeshDrawCommand> m_OpaqueQueue;
         std::vector<MeshDrawCommand> m_TranslucentQueue;
