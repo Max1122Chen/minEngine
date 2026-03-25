@@ -29,7 +29,10 @@ namespace minEngine
         virtual void UploadUniformMat4(const std::string& name, const float* matrix) override;
         virtual void UploadUniformMat4(const std::string& name, const Matrix4& matrix) override;
 
+        virtual void BindUniformBlock(const std::string& blockName, uint32_t bindingPoint) override;
+
     private:
         bool IsValidUniform(const std::string& name, int& uniformLocation);
+        bool IsValidUniformBlock(const std::string& blockName, int& blockIndex);
     };
 }

@@ -20,6 +20,9 @@ namespace minEngine
         virtual void Initialize() override;
         virtual void Shutdown() override;
 
+        virtual void SetClearColor(Vector4 clearColor) override;
+        virtual void Clear() override;
+
         virtual void EnableDepthTest() override;
         virtual void DisableDepthTest() override;
         virtual void SetDepthMask(bool bEnable) override;
@@ -38,6 +41,7 @@ namespace minEngine
         virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) override;
         virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<VertexElement> elements) override;
         virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) override;
+        virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) override;
         virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc, int unit = 0) override;
         virtual std::shared_ptr<RHIShader> CreateShader(const char* vertexSource, const char* fragmentSource) override;
     

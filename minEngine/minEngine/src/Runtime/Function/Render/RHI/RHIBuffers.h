@@ -197,4 +197,19 @@ namespace minEngine
         std::shared_ptr<RHITexture2D> m_StencilBuffer;
         std::shared_ptr<RHITexture2D> m_DepthStencilBuffer;
     };
+
+    class UniformBuffer
+    {
+    public:
+        virtual ~UniformBuffer() = default;
+
+        static std::shared_ptr<UniformBuffer> Create(uint32_t size, uint32_t bindingPoint = 0);
+
+        // virtual void Bind() const = 0;
+        // virtual void Unbind() const = 0;
+        virtual void BindToBindingPoint(uint32_t bindingPoint) const = 0;
+        virtual void BindToBindingPoint(uint32_t bindingPoint, uint32_t offset, uint32_t size) const = 0;
+
+        virtual void UpdateData(const void* data, uint32_t offset, uint32_t size) const = 0;
+    };
 }

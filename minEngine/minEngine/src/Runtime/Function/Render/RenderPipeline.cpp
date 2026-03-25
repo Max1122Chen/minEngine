@@ -9,6 +9,7 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "RHI/RHIBuffers.h"
+#include "RenderCamera.h"
 #include <glad/glad.h>
 
 namespace minEngine
@@ -21,7 +22,12 @@ namespace minEngine
 
         RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
 
+        rhi->SetClearColor(Vector4(0.1f, 0.1f, 0.1f, 1.0f));
 
+        // Create per-frame uniform buffer
+        m_PerFrameUniformBuffer = rhi->CreateUniformBuffer(sizeof(PerFrameData), 0);
+
+        // Create Framebuffer and its attachments
         RHITextureDesc colorDesc{
                 .Width = width,
                 .Height = height,
@@ -58,15 +64,29 @@ namespace minEngine
 
     void RenderPipeline::Execute()
     {
+        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        
+        // Update per-frame uniform buffer
+        RenderCamera* mainCamera = RenderSystem::GetRenderSystem().GetMainCamera();
+        PerFrameData perFrameData;
+        perFrameData.View = mainCamera->GetViewMatrix();
+        perFrameData.Proj = mainCamera->GetProjectionMatrix();
+        perFrameData.ViewProj = perFrameData.Proj * perFrameData.View;
+        perFrameData.CameraPos = Vector4(mainCamera->m_Position, 1.0f);
+        m_PerFrameUniformBuffer->UpdateData(&perFrameData, 0, sizeof(PerFrameData));
+        m_PerFrameUniformBuffer->BindToBindingPoint(0); // Bind the uniform buffer to the binding point for this frame
+
+
+        // Build render queue for this frame
         BuildRenderQueue();
         m_BasePass.m_DrawCommands = m_OpaqueQueue;
         m_TranslucentPass.m_DrawCommands = m_TranslucentQueue;
 
         m_SceneBuffer->Bind();  // Bind the scene framebuffer before executing the render passes
         
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
+        // Clear the framebuffer at the beginning of the render pipeline execution
+        // Dont change the order
+        rhi->Clear();
 
         m_BasePass.Execute();
         m_TranslucentPass.Execute();

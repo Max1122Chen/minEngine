@@ -41,6 +41,14 @@ in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoord;
 
+layout (std140) uniform PerFrameData
+{
+    mat4 View;
+    mat4 Proj;
+    mat4 ViewProj;
+    vec4 CameraPos;
+};
+
 // Light infos
 uniform int u_PointLightCount;
 uniform int u_SpotLightCount;
@@ -53,12 +61,12 @@ uniform SpotLight u_SpotLight;      // Only support one spot light for now
 uniform Material u_Material;
 
 // View info
-uniform vec3 u_ViewPosition;
+// uniform vec3 u_ViewPosition;
 
 void main()
 {
     vec3 norm = normalize(Normal);
-    vec3 viewDir = normalize(u_ViewPosition - FragPos);
+    vec3 viewDir = normalize(CameraPos.xyz - FragPos);
 
     vec4 texColor = texture(u_Material.DiffuseMap, TexCoord);
     if(texColor.a < 0.1)

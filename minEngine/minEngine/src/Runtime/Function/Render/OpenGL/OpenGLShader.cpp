@@ -137,12 +137,32 @@ namespace minEngine
         UploadUniformMat4(name, matPtr);
     }
 
+    void OpenGLShader::BindUniformBlock(const std::string &blockName, uint32_t bindingPoint)
+    {
+        int blockIndex = -1;
+        if(IsValidUniformBlock(blockName, blockIndex))
+        {
+            glUniformBlockBinding(m_ID, blockIndex, bindingPoint);
+        }
+    }
+
     bool OpenGLShader::IsValidUniform(const std::string &name, int &uniformLocation)
     {
         uniformLocation = glGetUniformLocation(m_ID, name.c_str());     // TODO: cache uniform locations later
         if(uniformLocation == -1)
         {
             // ME_CORE_ERROR("Uniform {} not found in shader!", name);
+            return false;
+        }
+        return true;
+    }
+
+    bool OpenGLShader::IsValidUniformBlock(const std::string &blockName, int &blockIndex)
+    {
+        blockIndex = glGetUniformBlockIndex(m_ID, blockName.c_str());
+        if(blockIndex == GL_INVALID_INDEX)
+        {
+            // ME_CORE_ERROR("Uniform block {} not found in shader!", blockName);
             return false;
         }
         return true;

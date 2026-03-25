@@ -23,6 +23,16 @@ namespace minEngine
         // Clean up OpenGL specific resources here
     }
 
+    void OpenGLRHI::SetClearColor(Vector4 clearColor)
+    {
+        glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+    }
+
+    void OpenGLRHI::Clear()
+    {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    }
+
     void OpenGLRHI::EnableDepthTest()
     {
         glEnable(GL_DEPTH_TEST);
@@ -93,6 +103,11 @@ namespace minEngine
     std::shared_ptr<FrameBuffer> OpenGLRHI::CreateFrameBuffer(uint32_t width, uint32_t height)
     {
         return std::make_shared<OpenGLFrameBuffer>(width, height);
+    }
+
+    std::shared_ptr<UniformBuffer> OpenGLRHI::CreateUniformBuffer(uint32_t size, uint32_t bindingPoint)
+    {
+        return std::make_shared<OpenGLUniformBuffer>(size, bindingPoint);
     }
 
     std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2D(const unsigned char *data, RHITextureDesc desc, int unit)

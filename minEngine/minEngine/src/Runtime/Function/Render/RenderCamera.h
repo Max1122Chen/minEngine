@@ -30,11 +30,16 @@ namespace minEngine
         void SetProjectionMatrix(const Matrix4& projectionMatrix) { m_ProjectionMatrix = projectionMatrix; }
         void UpdateProjectionMatrix();
 
+        Matrix4 GetViewProjMatrix() const { return m_ViewProjMatrix; }
+        void SetViewProjMatrix(const Matrix4& viewProjMatrix) { m_ViewProjMatrix = viewProjMatrix; }
+        void UpdateViewProjMatrix();
+
     public:
     
     // private:
         Matrix4 m_ViewMatrix;
         Matrix4 m_ProjectionMatrix;
+        Matrix4 m_ViewProjMatrix;
 
         Vector3 m_Position;
         Vector3 m_Rotation;

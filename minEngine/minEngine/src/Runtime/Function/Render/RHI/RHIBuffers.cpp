@@ -25,4 +25,9 @@ namespace minEngine
         return RenderSystem::GetRenderSystem().GetRHI()->CreateFrameBuffer(width, height);
     }
 
+    std::shared_ptr<UniformBuffer> UniformBuffer::Create(uint32_t size, uint32_t bindingPoint)
+    {
+        return RenderSystem::GetRenderSystem().GetRHI()->CreateUniformBuffer(size, bindingPoint);
+    }
+
 }

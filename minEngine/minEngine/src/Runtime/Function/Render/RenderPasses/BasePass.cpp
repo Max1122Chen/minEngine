@@ -41,11 +41,11 @@ namespace minEngine
 
             shader->Use();
             shader->UploadUniformInt("u_DiffuseMap", 0);
+
+            shader->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
+
             shader->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
-            shader->UploadUniformMat4("u_View", mainCamera->GetViewMatrix());
-            shader->UploadUniformMat4("u_Projection", mainCamera->GetProjectionMatrix());
-            shader->UploadUniformMat4("u_MVP", mainCamera->GetProjectionMatrix() * mainCamera->GetViewMatrix() * drawCommand.m_ModelMatrix);
-            shader->UploadUniformFloat3("u_ViewPosition", mainCamera->m_Position);
+
 
             for(auto& dirLight : renderScene->m_DirectionalLightSceneProxies)
             {

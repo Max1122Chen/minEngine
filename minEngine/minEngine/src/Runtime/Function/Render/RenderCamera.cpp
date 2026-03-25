@@ -7,6 +7,7 @@ namespace minEngine
     {
         UpdateViewMatrix();
         UpdateProjectionMatrix();
+        UpdateViewProjMatrix();
     }
 
     void RenderCamera::UpdateViewMatrix()
@@ -32,5 +33,10 @@ namespace minEngine
     void RenderCamera::UpdateProjectionMatrix()
     {
         m_ProjectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
+    }
+
+    void RenderCamera::UpdateViewProjMatrix()
+    {
+        m_ViewProjMatrix = m_ProjectionMatrix * m_ViewMatrix;
     }
 }

@@ -7,8 +7,26 @@
 
 namespace minEngine
 {
+    class UniformBuffer;
     class FrameBuffer;
     class RHITexture2D;
+
+    /**
+     * UBO binding point layout:
+     * - 0: Per-frame data (view/proj matrices, camera position, etc.) 
+     * 
+     */
+
+
+
+    struct PerFrameData
+    {
+        Matrix4 View;
+        Matrix4 Proj;
+        Matrix4 ViewProj;
+
+        Vector4 CameraPos;
+    };
 
     class RenderPipeline
     {
@@ -21,7 +39,7 @@ namespace minEngine
         void Execute();
 
     private:
-        
+        std::shared_ptr<UniformBuffer> m_PerFrameUniformBuffer;
 
         std::shared_ptr<FrameBuffer> m_SceneBuffer;
         

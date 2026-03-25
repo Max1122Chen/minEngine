@@ -105,5 +105,28 @@ namespace minEngine
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, glTexture->GetID(), 0);
         Unbind();
     }
-    
+
+    OpenGLUniformBuffer::OpenGLUniformBuffer(uint32_t size, uint32_t bindingPoint)
+    {
+        glGenBuffers(1, &m_UBO);
+        glBindBuffer(GL_UNIFORM_BUFFER, m_UBO);
+        glBufferData(GL_UNIFORM_BUFFER, size, nullptr, GL_STATIC_DRAW);
+        glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, m_UBO);
+    }
+
+    void OpenGLUniformBuffer::BindToBindingPoint(uint32_t bindingPoint) const
+    {
+        glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, m_UBO);
+    }
+
+    void OpenGLUniformBuffer::BindToBindingPoint(uint32_t bindingPoint, uint32_t offset, uint32_t size) const
+    {
+        glBindBufferRange(GL_UNIFORM_BUFFER, bindingPoint, m_UBO, offset, size);
+    }
+
+    void OpenGLUniformBuffer::UpdateData(const void *data, uint32_t offset, uint32_t size) const
+    {
+        glBindBuffer(GL_UNIFORM_BUFFER, m_UBO);
+        glBufferSubData(GL_UNIFORM_BUFFER, offset, size, data);
+    }
 }

@@ -49,4 +49,21 @@ namespace minEngine
     private:
         uint32_t m_FBO;
     };
+
+    class OpenGLUniformBuffer : public UniformBuffer
+    {
+    public:
+        OpenGLUniformBuffer(uint32_t size, uint32_t bindingPoint = 0);
+        virtual ~OpenGLUniformBuffer() = default;
+
+        // virtual void Bind() const override;
+        // virtual void Unbind() const override;
+        virtual void BindToBindingPoint(uint32_t bindingPoint) const override;
+        virtual void BindToBindingPoint(uint32_t bindingPoint, uint32_t offset, uint32_t size) const override;
+
+        virtual void UpdateData(const void* data, uint32_t offset, uint32_t size) const override;
+
+    private:
+        uint32_t m_UBO;
+    };
 }
