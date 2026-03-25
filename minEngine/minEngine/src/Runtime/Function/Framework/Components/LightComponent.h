@@ -34,6 +34,9 @@ namespace minEngine
         void SetSpecularFactor(float inSpecularFactor);
         float GetSpecularFactor() const { return m_SpecularFactor; }
 
+        void SetCastShadow(bool bInCastShadow);
+        bool CastShadow() const { return m_CastShadow; }
+
         virtual void DoEndOfFrameUpdate() override;
 
         virtual LightSceneProxy* CreateSceneProxy() = 0;
@@ -46,6 +49,8 @@ namespace minEngine
 
         float m_DiffuseFactor{ 1.0f };
         float m_SpecularFactor{ 1.0f };
+
+        bool m_CastShadow{ false };
         
 
         //

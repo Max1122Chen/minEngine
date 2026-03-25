@@ -115,6 +115,11 @@ namespace minEngine
         return std::make_shared<OpenGLTexture2D>(data, desc, unit);
     }
 
+    std::shared_ptr<RHITextureCube> OpenGLRHI::CreateRHITextureCube(const std::vector<unsigned char *> faceData, RHITextureDesc desc, int unit)
+    {
+        return std::make_shared<OpenGLTextureCube>(faceData, desc, unit);
+    }
+
     std::shared_ptr<RHIShader> OpenGLRHI::CreateShader(const char *vertexSource, const char *fragmentSource)
     {
         return std::make_shared<OpenGLShader>(vertexSource, fragmentSource);

@@ -13,7 +13,7 @@ namespace minEngine
 
         virtual void Execute() = 0;
 
-    private:
+    protected:
         virtual void Render() = 0;
 
     public:

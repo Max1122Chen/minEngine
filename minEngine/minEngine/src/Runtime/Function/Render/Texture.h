@@ -4,6 +4,7 @@
 namespace minEngine
 {
     class RHITexture2D;
+    class RHITextureCube;
 
     enum class TextureWrapping
     {
@@ -50,4 +51,28 @@ namespace minEngine
         TextureWrapping m_Wrapping;
         TextureFiltering m_Filtering;
     };
+
+    class TextureCube
+    {
+    public:
+        TextureCube() = default;
+        TextureCube(const std::vector<std::string>& facePaths, uint32_t unit,
+                    TextureWrapping wrapping = TextureWrapping::ClampToEdge,
+                    TextureFiltering filtering = TextureFiltering::Linear);
+
+        virtual ~TextureCube() = default;
+
+        RHITextureCube* GetRHITexture() const { return m_RHITexture.get(); }
+        uint32_t GetSize() const { return m_Size; }
+        TextureWrapping GetWrapping() const { return m_Wrapping; }
+        TextureFiltering GetFiltering() const { return m_Filtering; }
+
+    protected:
+        std::shared_ptr<RHITextureCube> m_RHITexture;
+        uint32_t m_Size; // Cube maps are square, so we can just store one dimension
+        uint32_t m_Channels;
+        TextureWrapping m_Wrapping;
+        TextureFiltering m_Filtering;
+    };
+
 }

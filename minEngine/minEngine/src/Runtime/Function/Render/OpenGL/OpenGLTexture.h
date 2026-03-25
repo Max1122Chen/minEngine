@@ -20,4 +20,15 @@ namespace minEngine
 
     private:
     };
+
+    class OpenGLTextureCube : public RHITextureCube
+    {
+    public:
+        OpenGLTextureCube(const std::vector<unsigned char*>& faceData, RHITextureDesc desc, int unit = 0);
+        OpenGLTextureCube() = default;
+        virtual ~OpenGLTextureCube() = default;
+
+        virtual void Bind() override;
+        virtual void Unbind() override;
+    };
 }
