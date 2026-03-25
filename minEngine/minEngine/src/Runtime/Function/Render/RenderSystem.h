@@ -28,7 +28,10 @@ namespace minEngine
         RenderCamera* GetMainCamera() const { return m_MainCamera.get(); }
         void SetMainCamera(std::shared_ptr<RenderCamera> inCamera) { m_MainCamera = inCamera; }
 
-    private:
+    public:
+        static constexpr uint32_t MAX_POINT_LIGHTS = ::minEngine::MAX_POINT_LIGHTS;
+        static constexpr uint32_t MAX_SPOT_LIGHTS = ::minEngine::MAX_SPOT_LIGHTS;
+
 
 
     public:
