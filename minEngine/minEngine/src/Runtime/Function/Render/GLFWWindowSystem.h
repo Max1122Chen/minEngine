@@ -120,6 +120,9 @@ namespace minEngine
 
     private:
         GLFWWindowSystem() = delete;
+
+        bool m_IsGlfwInitialized = false;
+        bool m_IsInitialized = false;
        
 
 

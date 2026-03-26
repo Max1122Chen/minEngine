@@ -54,7 +54,10 @@ namespace minEngine
     {
     public:
         OpenGLUniformBuffer(uint32_t size, uint32_t bindingPoint = 0);
-        virtual ~OpenGLUniformBuffer() = default;
+        virtual ~OpenGLUniformBuffer() override;
+
+        OpenGLUniformBuffer(const OpenGLUniformBuffer&) = delete;
+        OpenGLUniformBuffer& operator=(const OpenGLUniformBuffer&) = delete;
 
         // virtual void Bind() const override;
         // virtual void Unbind() const override;

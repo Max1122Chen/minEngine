@@ -47,7 +47,16 @@ namespace minEngine
     void RenderSystem::Shutdown()
     {
         m_RenderPipeline.Shutdown();
-        // TODO: implement shutdown logic
+
+        m_RenderScene.reset();
+        m_MainCamera.reset();
+
+        if (m_RHI)
+        {
+            m_RHI->Shutdown();
+            m_RHI.reset();
+        }
+
         ME_CORE_INFO("RenderSystem Shutdown");
     }
 

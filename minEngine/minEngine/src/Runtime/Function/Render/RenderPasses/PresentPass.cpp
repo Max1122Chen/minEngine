@@ -44,6 +44,17 @@ namespace minEngine
     void PresentPass::Render()
     {
         RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
+
+        if (!m_ScreenQuadVertexDefinition || !m_ScreenQuadShader || !m_SceneColorTexture)
+        {
+            ME_CORE_ERROR("PresentPass resources are not ready");
+            return;
+        }
+
         rhi->DisableDepthTest();
         rhi->DisableBlend();
 

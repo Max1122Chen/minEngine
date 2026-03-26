@@ -36,6 +36,7 @@ namespace minEngine
     PrimitiveSceneProxy* StaticMeshComponent::CreateSceneProxy()
     {
         StaticMeshSceneProxy* SceneProxy = new StaticMeshSceneProxy();
+        SceneProxy->m_PrimitiveComponent = this;
 
         assert(m_Owner);
         SceneProxy->m_Transform = m_Owner->GetTransform();

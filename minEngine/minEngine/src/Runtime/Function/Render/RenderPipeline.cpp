@@ -96,11 +96,48 @@ namespace minEngine
 
     void RenderPipeline::Shutdown()
     {
+        m_OpaqueQueue.clear();
+        m_TranslucentQueue.clear();
+
+        m_DirLightShadowEntries.clear();
+        m_ShadowPass.m_DirLightShadowEntries.clear();
+        m_ShadowPass.m_OpaqueQueue.clear();
+
+        m_PresentPass.m_SceneColorTexture.reset();
+        m_ShadowPass.m_LightViewProjUniformBuffer = nullptr;
+
+        m_ShadowPass.m_FrameBuffer = nullptr;
+        m_BasePass.m_FrameBuffer = nullptr;
+        m_TranslucentPass.m_FrameBuffer = nullptr;
+
+        m_SceneDepthTexture.reset();
+        m_SceneColorTexture.reset();
+        m_SceneBuffer.reset();
+        m_ShadowBuffer.reset();
+
+        m_LightUniformBuffer.reset();
+        m_PerFrameUniformBuffer.reset();
+        m_LightViewProjUniformBuffer.reset();
     }
 
     void RenderPipeline::Execute()
     {
         RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
+
+        if (!m_ShadowBuffer || !m_SceneBuffer || !m_SceneColorTexture)
+        {
+            ME_CORE_ERROR("RenderPipeline resources are not ready");
+            return;
+        }
+
+        if (RenderSystem::GetRenderSystem().m_RenderScene)
+        {
+            RenderSystem::GetRenderSystem().m_RenderScene->CollectOrphanedSceneProxies();
+        }
         
         // Build render queue for this frame
         // Build RenderQueue before shadow entries because we need to get all opauque objects to generate shadow maps
@@ -148,6 +185,11 @@ namespace minEngine
     {
         // Update per-frame uniform buffer
         RenderCamera* mainCamera = RenderSystem::GetRenderSystem().GetMainCamera();
+        if (!mainCamera || !m_PerFrameUniformBuffer)
+        {
+            return;
+        }
+
         PerFrameData perFrameData;
         perFrameData.View = mainCamera->GetViewMatrix();
         perFrameData.Proj = mainCamera->GetProjectionMatrix();
@@ -160,6 +202,10 @@ namespace minEngine
     void RenderPipeline::UpdateLightUBO()
     {
         RenderScene* renderScene = RenderSystem::GetRenderSystem().m_RenderScene.get();
+        if (!renderScene || !m_LightUniformBuffer)
+        {
+            return;
+        }
 
         // Update light uniform buffer
         LightsData lightsData{};
@@ -167,9 +213,19 @@ namespace minEngine
         // ... populate lightsData with actual light information ...
 
         // Support only one directional light for now, we can extend this to support multiple lights later
-        if(renderScene->m_DirectionalLightSceneProxies.size() > 0)
+        DirectionalLightSceneProxy* firstValidDirectionalLight = nullptr;
+        for (auto* dirLightProxy : renderScene->m_DirectionalLightSceneProxies)
         {
-            DirectionalLightSceneProxy* dirLightProxy = renderScene->m_DirectionalLightSceneProxies[0];
+            if (dirLightProxy && dirLightProxy->m_LightComponent)
+            {
+                firstValidDirectionalLight = dirLightProxy;
+                break;
+            }
+        }
+
+        if(firstValidDirectionalLight)
+        {
+            DirectionalLightSceneProxy* dirLightProxy = firstValidDirectionalLight;
             lightsData.DirectionalLight.Direction = Vector4(dirLightProxy->m_Direction, 0.0f);
             lightsData.DirectionalLight.Color = Vector4(dirLightProxy->m_LightColor, dirLightProxy->m_Intensity);
             int shadowMapIndex = m_DirLightShadowEntries.size() > 0 ? 0 : -1; // If we have generated a shadow map for this directional light, set the index to 0, otherwise set it to -1
@@ -180,8 +236,12 @@ namespace minEngine
         for(size_t i = 0; i < renderScene->m_PointLightSceneProxies.size() && i < RenderSystem::MAX_POINT_LIGHTS; ++i)
         {
             PointLightSceneProxy* pointLightProxy = renderScene->m_PointLightSceneProxies[i];
-            lightsData.PointLights[i].Position = Vector4(pointLightProxy->m_Position, 1.0f); // w can be used for radius if needed
-            lightsData.PointLights[i].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
+            if (!pointLightProxy || !pointLightProxy->m_LightComponent)
+            {
+                continue;
+            }
+            lightsData.PointLights[pLightCount].Position = Vector4(pointLightProxy->m_Position, 1.0f); // w can be used for radius if needed
+            lightsData.PointLights[pLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
             pLightCount++;
         }
         lightsData.PointLightsCount = pLightCount;
@@ -190,11 +250,15 @@ namespace minEngine
         for(size_t i = 0; i < renderScene->m_SpotLightSceneProxies.size() && i < RenderSystem::MAX_SPOT_LIGHTS; ++i)
         {
             SpotLightSceneProxy* spotLightProxy = renderScene->m_SpotLightSceneProxies[i];
-            lightsData.SpotLights[i].Position = Vector4(spotLightProxy->m_Position, 1.0f);
-            lightsData.SpotLights[i].Direction = Vector4(spotLightProxy->m_Direction, 0.0f);
-            lightsData.SpotLights[i].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
+            if (!spotLightProxy || !spotLightProxy->m_LightComponent)
+            {
+                continue;
+            }
+            lightsData.SpotLights[sLightCount].Position = Vector4(spotLightProxy->m_Position, 1.0f);
+            lightsData.SpotLights[sLightCount].Direction = Vector4(spotLightProxy->m_Direction, 0.0f);
+            lightsData.SpotLights[sLightCount].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
             
-            lightsData.SpotLights[i].Params = Vector4(spotLightProxy->m_InnerConeAngle, spotLightProxy->m_OuterConeAngle, 0.0f, 0.0f); // inner cone angle, outer cone angle
+            lightsData.SpotLights[sLightCount].Params = Vector4(spotLightProxy->m_InnerConeAngle, spotLightProxy->m_OuterConeAngle, 0.0f, 0.0f); // inner cone angle, outer cone angle
             sLightCount++;
         }
         lightsData.SpotLightsCount = sLightCount;
@@ -211,6 +275,11 @@ namespace minEngine
 
         for(auto& dirLightProxy : RenderSystem::GetRenderSystem().m_RenderScene->m_DirectionalLightSceneProxies)
         {
+            if (!dirLightProxy || !dirLightProxy->m_LightComponent)
+            {
+                continue;
+            }
+
             if(dirLightProxy->m_CastsShadow)
             {
                 DirLightShadowEntry shadowEntry;
@@ -219,13 +288,23 @@ namespace minEngine
                 shadowEntry.LightViewProjMatrix = shadowEntry.CalculateLightViewProjMatrix();
 
                 // Create shadow map for this directional light
+                RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+                if (!rhi)
+                {
+                    continue;
+                }
+
                 RHITextureDesc shadowMapDesc{
                     .Width = shadowEntry.Resolution,
                     .Height = shadowEntry.Resolution,
                     .Format = TextureFormat::DEPTH32,
                     .Usage = TextureUsage::Depth
                 };
-                auto shadowMap = RenderSystem::GetRenderSystem().GetRHI()->CreateRHITexture2D(nullptr, shadowMapDesc, 8); // set the texture unit to 8 for shadow map in shadow pass shader
+                auto shadowMap = rhi->CreateRHITexture2D(nullptr, shadowMapDesc, 8); // set the texture unit to 8 for shadow map in shadow pass shader
+                if (!shadowMap)
+                {
+                    continue;
+                }
                 shadowEntry.CascadeShadowMaps.push_back(shadowMap);
 
                 m_DirLightShadowEntries.push_back(shadowEntry);
@@ -246,6 +325,11 @@ namespace minEngine
 
         for(auto& primitiveProxy : renderScene->m_PrimitiveSceneProxies)
         {
+            if (!primitiveProxy || !primitiveProxy->m_PrimitiveComponent)
+            {
+                continue;
+            }
+
             StaticMeshSceneProxy* staticMeshProxy = dynamic_cast<StaticMeshSceneProxy*>(primitiveProxy);
             if(staticMeshProxy)
             {
@@ -256,6 +340,11 @@ namespace minEngine
                 command.m_Material = staticMeshProxy->m_Material;
                 command.m_ModelMatrix = staticMeshProxy->m_Transform.ToMatrix(); 
                 command.m_CastShadow = staticMeshProxy->m_CastShadow;
+
+                if (!command.m_Material || !command.m_VertexDefinition || !command.m_VertexBuffer)
+                {
+                    continue;
+                }
                   
                 if(command.m_Material->IsTranslucent())
                 {

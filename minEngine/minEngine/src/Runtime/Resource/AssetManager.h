@@ -17,14 +17,16 @@ namespace minEngine
 
 
         void Initialize() {}
-        void Shutdown() {}
+        void Shutdown();
 
+    
         // Image loading using stb_image
         unsigned char* LoadImage(const std::string& path, int& width, int& height, int& channels, bool bFlip = true);
         void           FreeImage(unsigned char* data);
 
-        // Static mesh loading using 
-        void LoadStaticMesh(const std::string& path, StaticMesh* outMesh);
+        // Static mesh loading
+        std::shared_ptr<StaticMesh> LoadStaticMesh(const std::string& path);
+        std::shared_ptr<Texture2D> LoadTexture2D(const std::string& path, uint32_t unit);
         
     private:
         std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_LoadedTexture2DCache;

@@ -28,6 +28,10 @@ namespace minEngine
     void BasePass::Render()
     {
         RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
         rhi->EnableDepthTest();
 
         // render all primitives but only static mesh for now
@@ -37,8 +41,17 @@ namespace minEngine
         for(auto& drawCommand : m_DrawCommands)
         {
             auto material = drawCommand.m_Material;
+            if (!material || !drawCommand.m_VertexDefinition || !drawCommand.m_VertexBuffer)
+            {
+                continue;
+            }
+
             material->BindTextures();
             auto shader = material->m_Shader;
+            if (!shader)
+            {
+                continue;
+            }
 
             shader->Use();
             // shader->UploadUniformInt("u_DiffuseMap", 0);

@@ -12,16 +12,24 @@
 namespace minEngine
 {
     GLFWWindowSystem::~GLFWWindowSystem()
-    {}
+    {
+        Shutdown();
+    }
 
     void GLFWWindowSystem::Initialize()
     {
+        if (m_IsInitialized)
+        {
+            return;
+        }
+
         if (!glfwInit())
         {
             // Initialization failed
             ME_CORE_ERROR("Failed to initialize GLFW");
             return;
         }
+        m_IsGlfwInitialized = true;
 
         // Set GLFW window hints here as needed
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -35,6 +43,7 @@ namespace minEngine
             // Window creation failed
             ME_CORE_ERROR("Failed to create GLFW window");
             glfwTerminate();
+            m_IsGlfwInitialized = false;
             return;
         }
 
@@ -47,6 +56,10 @@ namespace minEngine
         {
             // GLAD initialization failed
             ME_CORE_ERROR("Failed to initialize GLAD");
+            glfwDestroyWindow(m_Window);
+            m_Window = nullptr;
+            glfwTerminate();
+            m_IsGlfwInitialized = false;
             return;
         }
 
@@ -63,19 +76,31 @@ namespace minEngine
         });
 
         ME_CORE_INFO("GLFW Window Initialized");
+        m_IsInitialized = true;
     }
 
     // Shutdown and clean up resources
     void GLFWWindowSystem::Shutdown()
     {
+        if (!m_IsInitialized && !m_IsGlfwInitialized && m_Window == nullptr)
+        {
+            return;
+        }
+
         if (m_Window)
         {
             glfwDestroyWindow(m_Window);
             m_Window = nullptr;
         }
-        ME_CORE_INFO("GLFW Terminated");
         
-        glfwTerminate();
+        if (m_IsGlfwInitialized)
+        {
+            glfwTerminate();
+            m_IsGlfwInitialized = false;
+            ME_CORE_INFO("GLFW Terminated");
+        }
+
+        m_IsInitialized = false;
     }
 
     // Check if the window should close

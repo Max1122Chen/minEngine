@@ -20,7 +20,8 @@ namespace minEngine
 
     void OpenGLRHI::Shutdown()
     {
-        // Clean up OpenGL specific resources here
+        m_WindowSystem.reset();
+        ME_CORE_INFO("OpenGLRHI Shutdown");
     }
 
     void OpenGLRHI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)

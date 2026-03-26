@@ -11,7 +11,10 @@ namespace minEngine
     {
     public:
         OpenGLVertexArrayObject(std::initializer_list<VertexElement> elements);
-        ~OpenGLVertexArrayObject() = default;
+        virtual ~OpenGLVertexArrayObject() override;
+
+        OpenGLVertexArrayObject(const OpenGLVertexArrayObject&) = delete;
+        OpenGLVertexArrayObject& operator=(const OpenGLVertexArrayObject&) = delete;
 
         virtual void Bind() const override;
         virtual void Unbind() const override;

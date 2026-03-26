@@ -17,7 +17,10 @@ namespace minEngine
         unsigned int m_ID;
 
         OpenGLShader(const char* vertexShaderPath, const char* fragmentShaderPath);
-        virtual ~OpenGLShader() override {} // TODO: add glDeleteProgram(m_ID);
+        virtual ~OpenGLShader() override;
+
+        OpenGLShader(const OpenGLShader&) = delete;
+        OpenGLShader& operator=(const OpenGLShader&) = delete;
 
         // use program
         virtual void Use() override;

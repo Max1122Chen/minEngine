@@ -9,7 +9,11 @@
 
 namespace minEngine
 {
-    std::shared_ptr<RuntimeGlobalContext> RuntimeGlobalContext::s_Instance = std::make_shared<RuntimeGlobalContext>();
+    RuntimeGlobalContext& RuntimeGlobalContext::GetRuntimeGlobalContext()
+    {
+        static RuntimeGlobalContext instance;
+        return instance;
+    }
 
     void RuntimeGlobalContext::StartSystems()
     {
@@ -35,6 +39,41 @@ namespace minEngine
 
     void RuntimeGlobalContext::ShutdownSystems()
     {
+        if (m_WorldManager)
+        {
+            m_WorldManager->Shutdown();
+            m_WorldManager.reset();
+        }
+
+        if (m_InputSystem)
+        {
+            m_InputSystem->Shutdown();
+            m_InputSystem.reset();
+        }
+
+        if (m_RenderSystem)
+        {
+            m_RenderSystem->Shutdown();
+            m_RenderSystem.reset();
+        }
+
+        if (m_WindowSystem)
+        {
+            m_WindowSystem->Shutdown();
+            m_WindowSystem.reset();
+        }
+
+        if (m_AssetManager)
+        {
+            m_AssetManager->Shutdown();
+            m_AssetManager.reset();
+        }
+
+        if (m_LogSystem)
+        {
+            m_LogSystem->Shutdown();
+            m_LogSystem.reset();
+        }
 
     }
 }

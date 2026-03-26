@@ -47,6 +47,16 @@ namespace minEngine
             index++;
         }
     }
+
+    OpenGLVertexArrayObject::~OpenGLVertexArrayObject()
+    {
+        if (m_VAO != 0)
+        {
+            glDeleteVertexArrays(1, &m_VAO);
+            m_VAO = 0;
+        }
+    }
+
     void OpenGLVertexArrayObject::Bind() const
     {
         glBindVertexArray(m_VAO);

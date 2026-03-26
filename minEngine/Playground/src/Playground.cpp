@@ -13,6 +13,7 @@
 #include "Runtime/Function/Input/InputModifiers.h"
 
 #include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Resource/AssetManager.h"
 
 using namespace minEngine;
 
@@ -51,21 +52,21 @@ public:
     virtual void Run() override
     {
         // Set up IMC
-        InputAction* IA_Look = new InputAction("IA_Look", InputActionValueType::Axis2D);
-        InputAction* IA_Move = new InputAction("IA_Move", InputActionValueType::Axis3D);
-        InputAction* IA_UpAndDown = new InputAction("IA_UpAndDown", InputActionValueType::Axis1D);
+        InputAction IA_Look("IA_Look", InputActionValueType::Axis2D);
+        InputAction IA_Move("IA_Move", InputActionValueType::Axis3D);
+        InputAction IA_UpAndDown("IA_UpAndDown", InputActionValueType::Axis1D);
         
-        InputMappingContext* inputMappingContext = new InputMappingContext({
-            { IA_Look, InputKeys::Mouse2D },
-            { IA_Move, InputKeys::Key_W },
-            { IA_Move, InputKeys::Key_S, { std::make_shared<InputModifierNegate>() } },
-            { IA_Move, InputKeys::Key_A, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
-            { IA_Move, InputKeys::Key_D, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
-            { IA_UpAndDown, InputKeys::Key_E, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } },
-            { IA_UpAndDown, InputKeys::Key_Q, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } }
+        InputMappingContext inputMappingContext({
+            { &IA_Look, InputKeys::Mouse2D },
+            { &IA_Move, InputKeys::Key_W },
+            { &IA_Move, InputKeys::Key_S, { std::make_shared<InputModifierNegate>() } },
+            { &IA_Move, InputKeys::Key_A, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
+            { &IA_Move, InputKeys::Key_D, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
+            { &IA_UpAndDown, InputKeys::Key_E, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } },
+            { &IA_UpAndDown, InputKeys::Key_Q, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } }
         });
 
-        InputSystem::GetInputSystem().AddInputMappingContext(inputMappingContext, 0);
+        InputSystem::GetInputSystem().AddInputMappingContext(&inputMappingContext, 0);
 
         // Set up a level
         minEngine::WorldManager& worldManager = minEngine::WorldManager::GetWorldManager();
@@ -83,14 +84,14 @@ public:
 
         auto inputComponent = player->CreateAndAddComponent<InputComponent>();
         inputComponent->RegisterInputComponent();
-        inputComponent->BindAction(IA_Move, InputTriggerEvent::Triggered,
+        inputComponent->BindAction(&IA_Move, InputTriggerEvent::Triggered,
             [inputComponent](const InputActionValue& value)
             {
                 Vector3 forward = inputComponent->GetOwner()->GetRootComponent()->GetForwardVector() * value.Value.x ;
                 Vector3 right = inputComponent->GetOwner()->GetRootComponent()->GetRightVector() * value.Value.z ;
                 inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward + right, value.GetMagnitude() * 0.01f);
             });
-        inputComponent->BindAction(IA_Look, InputTriggerEvent::Triggered,
+        inputComponent->BindAction(&IA_Look, InputTriggerEvent::Triggered,
             [inputComponent](const InputActionValue& value)
             {
             });
@@ -229,20 +230,20 @@ public:
 
         minEngine::Material windowMaterial;
         windowMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        windowMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/window.png", 0);
+        windowMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/window.png", 0);
 
         minEngine::Material grassMaterial;
         grassMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        grassMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/grass.png", 0);
+        grassMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/grass.png", 0);
 
         minEngine::Material backpackMaterial;
         backpackMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        backpackMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
-        backpackMaterial.m_Specular.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
+        backpackMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
+        backpackMaterial.m_Specular.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
 
         minEngine::Material cubeMaterial;
         cubeMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        cubeMaterial.m_Diffuse.Texture = std::make_shared<Texture2D>("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
+        cubeMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
         // create light material
         minEngine::Material lightMaterial;
         lightMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.frag");
@@ -398,6 +399,8 @@ public:
 
 
         engine->Run();
+
+        InputSystem::GetInputSystem().RemoveInputMappingContext(&inputMappingContext);
     }
 };
 

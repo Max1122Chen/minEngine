@@ -118,6 +118,15 @@ namespace minEngine
         glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, m_UBO);
     }
 
+    OpenGLUniformBuffer::~OpenGLUniformBuffer()
+    {
+        if (m_UBO != 0)
+        {
+            glDeleteBuffers(1, &m_UBO);
+            m_UBO = 0;
+        }
+    }
+
     void OpenGLUniformBuffer::BindToBindingPoint(uint32_t bindingPoint) const
     {
         glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, m_UBO);

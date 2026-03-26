@@ -20,7 +20,10 @@ namespace minEngine
             m_Transform = inTransform;
             for(auto& child : m_AttachChildren)
             {
-                child->SetTransform(inTransform);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                if (child)
+                {
+                    child->SetTransform(inTransform);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                }
             }
 
             MarkRenderStateDirty();
@@ -34,7 +37,10 @@ namespace minEngine
             m_Transform.Position = position;
             for(auto& child : m_AttachChildren)
             {
-                child->SetPosition(position);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                if (child)
+                {
+                    child->SetPosition(position);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                }
             }
             MarkRenderStateDirty();
         }
@@ -47,7 +53,10 @@ namespace minEngine
             m_Transform.Rotation = rotation;
             for(auto& child : m_AttachChildren)
             {
-                child->SetRotation(rotation);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                if (child)
+                {
+                    child->SetRotation(rotation);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                }
             }
             MarkRenderStateDirty();
         }
@@ -60,7 +69,10 @@ namespace minEngine
             m_Transform.Scale = scale;
             for(auto& child : m_AttachChildren)
             {
-                child->SetScale(scale);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                if (child)
+                {
+                    child->SetScale(scale);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                }
             }
             MarkRenderStateDirty();
         }
@@ -107,12 +119,12 @@ namespace minEngine
         if (GetAttachParent() != nullptr)
         {
             auto& siblings = m_AttachParent->m_AttachChildren;
-            siblings.erase(std::remove(siblings.begin(), siblings.end(), std::shared_ptr<SceneComponent>(this)), siblings.end());
+            siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
         }
 
         // Attach to new parent
         SetAttachParent(inParent);
-        inParent->m_AttachChildren.push_back(std::shared_ptr<SceneComponent>(this));    // add self to parent's children list
+        inParent->m_AttachChildren.push_back(this);    // add self to parent's children list
 
         // Update transform simply for now. Just use parent's world transform.
         // if (attachRules == AttachmentTransformRules::KeepWorldTransform)
@@ -124,6 +136,6 @@ namespace minEngine
 
     void SceneComponent::SetAttachParent(SceneComponent *inParent)
     {
-        m_AttachParent = std::shared_ptr<SceneComponent>(inParent);
+        m_AttachParent = inParent;
     }
 }

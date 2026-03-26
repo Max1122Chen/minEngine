@@ -44,13 +44,13 @@ namespace minEngine
         // You should explicitly call AttachToComponent to avoid confusion.
         bool AttachToComponent(SceneComponent* inParent, AttachmentTransformRules attachRules);     // return false if failed
         void AttachToParent(SceneComponent* inParent, AttachmentTransformRules attachRules);
-        SceneComponent* GetAttachParent() const { return m_AttachParent.get(); }
+        SceneComponent* GetAttachParent() const { return m_AttachParent; }
         void SetAttachParent(SceneComponent* inParent);
 
     protected:
         
-        std::shared_ptr<SceneComponent> m_AttachParent{ nullptr };          // should we use shared_ptr here? UE does use shared ptr for parent
-        std::vector<std::shared_ptr<SceneComponent>> m_AttachChildren;
+        SceneComponent* m_AttachParent{ nullptr };
+        std::vector<SceneComponent*> m_AttachChildren;
 
         bool m_bRenderStateDirty{ false };
         Transform m_Transform;

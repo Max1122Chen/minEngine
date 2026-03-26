@@ -1,18 +1,10 @@
 #include "StaticMesh.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
-#include "Runtime/Resource/AssetManager.h"
 
 
 
 namespace minEngine
 {
-    // TODO: Fix this
-    StaticMesh::StaticMesh(const std::string& path)
-    {
-        m_Path = path;
-        AssetManager::GetAssetManager().LoadStaticMesh(path, this);
-    }
-
     StaticMesh::StaticMesh(float *vertices, uint32_t verticesSize, uint32_t numVertices, std::initializer_list<VertexElement> elements)
     {
         // Becareful: we must create vertex buffer before vertex definition. This is because

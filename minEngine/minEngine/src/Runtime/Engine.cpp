@@ -19,7 +19,7 @@ namespace minEngine
     void Engine::Shutdown()
     {
         ME_CORE_INFO("Engine Shutdown Started"); 
-        RuntimeGlobalContext::GetRuntimeGlobalContext().ShutdownSystems();          
+        RuntimeGlobalContext::GetRuntimeGlobalContext().ShutdownSystems();
     }
 
     void Engine::Run()

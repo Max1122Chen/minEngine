@@ -4,6 +4,7 @@
 
 namespace minEngine
 {
+    class PrimitiveComponent;
 
     class PrimitiveSceneProxy
     {
@@ -11,6 +12,7 @@ namespace minEngine
         PrimitiveSceneProxy() = default;
         virtual ~PrimitiveSceneProxy() = default;
 
+        PrimitiveComponent* m_PrimitiveComponent{ nullptr };
         Transform m_Transform;
         bool m_CastShadow = true;
     };

@@ -17,7 +17,12 @@ namespace minEngine
         RuntimeGlobalContext() = default;
         ~RuntimeGlobalContext() = default;
 
-        static RuntimeGlobalContext& GetRuntimeGlobalContext() { return *s_Instance; }
+        RuntimeGlobalContext(const RuntimeGlobalContext&) = delete;
+        RuntimeGlobalContext& operator=(const RuntimeGlobalContext&) = delete;
+        RuntimeGlobalContext(RuntimeGlobalContext&&) = delete;
+        RuntimeGlobalContext& operator=(RuntimeGlobalContext&&) = delete;
+
+        static RuntimeGlobalContext& GetRuntimeGlobalContext();
 
 
         void StartSystems();
@@ -34,11 +39,5 @@ namespace minEngine
     std::shared_ptr<WorldManager> m_WorldManager;
 
 
-    private:
-        // Singleton instance
-        static std::shared_ptr<RuntimeGlobalContext> s_Instance;
-
-
-    
     };
 }

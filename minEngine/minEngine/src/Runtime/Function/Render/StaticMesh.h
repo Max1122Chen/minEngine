@@ -21,7 +21,7 @@ namespace minEngine
     class StaticMesh
     {
     public:
-        StaticMesh(const std::string& path);   // create from file
+        StaticMesh() = default;
         StaticMesh(float* vertices, 
                    uint32_t verticesSize,
                    uint32_t numVertices,

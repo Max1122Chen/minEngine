@@ -11,7 +11,7 @@ namespace minEngine
     {
     public:
         PrimitiveComponent();
-        virtual ~PrimitiveComponent() = default;
+        virtual ~PrimitiveComponent() override;
 
         void SetCastShadow(bool bInCastShadow)
         {

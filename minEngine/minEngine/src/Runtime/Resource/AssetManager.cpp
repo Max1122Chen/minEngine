@@ -9,7 +9,10 @@
 #include "assimp/postprocess.h"
 
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHITexture.h"
 
 
 namespace minEngine
@@ -39,16 +42,66 @@ namespace minEngine
         stbi_image_free(data);
     }
 
-    void AssetManager::LoadStaticMesh(const std::string &path, StaticMesh *outMesh)
+    void AssetManager::Shutdown()
+    {
+        m_LoadedTexture2DCache.clear();
+        m_LoadedStaticMeshCache.clear();
+    }
+
+    std::shared_ptr<Texture2D> AssetManager::LoadTexture2D(const std::string &path, uint32_t unit)
+    {
+        const std::string cacheKey = path + "#" + std::to_string(unit);
+        auto cached = m_LoadedTexture2DCache.find(cacheKey);
+        if (cached != m_LoadedTexture2DCache.end())
+        {
+            return cached->second;
+        }
+
+        int width = 0;
+        int height = 0;
+        int channels = 0;
+        unsigned char* data = LoadImage(path, width, height, channels);
+        if (!data)
+        {
+            return nullptr;
+        }
+
+        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        if (!rhi)
+        {
+            FreeImage(data);
+            return nullptr;
+        }
+
+        auto texture = std::make_shared<Texture2D>();
+        texture->m_Width = static_cast<uint32_t>(width);
+        texture->m_Height = static_cast<uint32_t>(height);
+        texture->m_Channels = static_cast<uint32_t>(channels);
+        texture->m_RHITexture = rhi->CreateRHITexture2D(data, RHITextureDesc{
+            .Width = texture->m_Width,
+            .Height = texture->m_Height,
+            .Format = (channels == 4) ? TextureFormat::RGBA8 : TextureFormat::RGB8,
+            .Usage = TextureUsage::TextureBinding
+        }, static_cast<int>(unit));
+
+        FreeImage(data);
+
+        m_LoadedTexture2DCache[cacheKey] = texture;
+        return texture;
+    }
+
+    std::shared_ptr<StaticMesh> AssetManager::LoadStaticMesh(const std::string &path)
     {
         // Check if the static mesh has already been loaded
         auto it = m_LoadedStaticMeshCache.find(path);
         if (it != m_LoadedStaticMeshCache.end())
         {
             // Mesh already loaded, return the cached version
-            *outMesh = *(it->second);
-            return;
+            return it->second;
         }
+
+        auto outMesh = std::make_shared<StaticMesh>();
+        outMesh->m_Path = path;
 
         struct Vertex
         {
@@ -63,11 +116,8 @@ namespace minEngine
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             ME_CORE_ERROR("Assimp failed to load mesh: {}. Failure reason: {}", path, importer.GetErrorString());
-            return;
+            return nullptr;
         }
-
-        RuntimeGlobalContext& context = RuntimeGlobalContext::GetRuntimeGlobalContext();
-        RHI* rhi = context.m_RenderSystem->GetRHI();
         
 
         std::vector<Vertex> vertices;
@@ -154,6 +204,7 @@ namespace minEngine
         outMesh->m_IndexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size()));
         
         // Cache the loaded static mesh
-        m_LoadedStaticMeshCache[path] = std::shared_ptr<StaticMesh>(outMesh);
+        m_LoadedStaticMeshCache[path] = outMesh;
+        return outMesh;
     }
 }

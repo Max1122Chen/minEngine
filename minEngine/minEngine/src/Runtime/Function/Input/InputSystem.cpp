@@ -46,7 +46,15 @@ namespace minEngine
 
     void InputSystem::Shutdown()
     {
-        
+        m_InputComponents.clear();
+        m_ActiveContexts.clear();
+        m_ActionInstances.clear();
+        m_ActionsWithEventThisTick.clear();
+        m_KeyStateMap.clear();
+
+        m_DefaultContext.reset();
+
+        ME_CORE_INFO("InputSystem Shutdown");
     }
 
     void InputSystem::Tick(float deltaTime)
@@ -58,6 +66,11 @@ namespace minEngine
 
         for(auto& activeContext : m_ActiveContexts)
         {
+            if (!activeContext.Context)
+            {
+                continue;
+            }
+
             for(const auto& mapping : activeContext.Context->GetMappings())
             {
                 InputAction* action = mapping.Action;
@@ -70,6 +83,10 @@ namespace minEngine
                 InputTriggerStateTracker triggerStateTracker;
 
                 InputActionInstance* instance = FindInputActionInstance(action);
+                if (!instance)
+                {
+                    continue;
+                }
 
                 // Reset if we cannot find the action instance, which means its value is not updated this frame
                 bool bShouldResetAction = (m_ActionsWithEventThisTick.end() == 
@@ -137,6 +154,16 @@ namespace minEngine
 
     void InputSystem::AddInputComponent(InputComponent *component)
     {
+        if (!component)
+        {
+            return;
+        }
+
+        if (std::find(m_InputComponents.begin(), m_InputComponents.end(), component) != m_InputComponents.end())
+        {
+            return;
+        }
+
         m_InputComponents.push_back(component);
     }
 
@@ -149,6 +176,11 @@ namespace minEngine
 
     void InputSystem::AddInputMappingContext(InputMappingContext *context, int priority)
     {
+        if (!context)
+        {
+            return;
+        }
+
         m_ActiveContexts.push_back({context, priority});
         std::sort(m_ActiveContexts.begin(), m_ActiveContexts.end(), 
         [](const ActiveInputMappingContext& a, const ActiveInputMappingContext& b)
@@ -167,10 +199,9 @@ namespace minEngine
 
     void InputSystem::RemoveInputMappingContext(InputMappingContext *context)
     {
-        // clean up action instances // TODO: we will not remove IMC now, so this is fine
-        for(const auto& mapping : context->GetMappings())
+        if (!context)
         {
-            m_ActionInstances.erase(mapping.Action);
+            return;
         }
 
         m_ActiveContexts.erase(
@@ -180,6 +211,24 @@ namespace minEngine
                     return activeContext.Context == context;
                 }),
             m_ActiveContexts.end());
+
+        // Rebuild action instances from remaining active contexts.
+        m_ActionInstances.clear();
+        for (const auto& activeContext : m_ActiveContexts)
+        {
+            if (!activeContext.Context)
+            {
+                continue;
+            }
+
+            for (const auto& mapping : activeContext.Context->GetMappings())
+            {
+                if (mapping.Action && m_ActionInstances.find(mapping.Action) == m_ActionInstances.end())
+                {
+                    m_ActionInstances.emplace(mapping.Action, InputActionInstance{mapping.Action});
+                }
+            }
+        }
     }
 
     InputActionInstance *InputSystem::FindInputActionInstance(InputAction *action)

@@ -3,6 +3,7 @@
 
 namespace minEngine
 {
+    class AssetManager;
     class RHITexture2D;
     class RHITextureCube;
 
@@ -30,9 +31,6 @@ namespace minEngine
     {
     public:
         Texture2D() = default;
-        Texture2D(const std::string& path, uint32_t unit,
-                  TextureWrapping wrapping = TextureWrapping::Repeat,
-                  TextureFiltering filtering = TextureFiltering::Linear);
 
         virtual ~Texture2D() = default;
 
@@ -44,12 +42,14 @@ namespace minEngine
         uint32_t GetChannels() const { return m_Channels; }
 
     protected:
+        friend class AssetManager;
+
         std::shared_ptr<RHITexture2D> m_RHITexture;
-        uint32_t m_Width;
-        uint32_t m_Height;
-        uint32_t m_Channels;
-        TextureWrapping m_Wrapping;
-        TextureFiltering m_Filtering;
+        uint32_t m_Width {0};
+        uint32_t m_Height {0};
+        uint32_t m_Channels {0};
+        TextureWrapping m_Wrapping {TextureWrapping::Repeat};
+        TextureFiltering m_Filtering {TextureFiltering::Linear};
     };
 
     class TextureCube

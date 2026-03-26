@@ -10,6 +10,9 @@ namespace minEngine
 
     void WorldManager::Shutdown()
     {
+        m_ComponentsThatNeedEndOfFrameUpdate.clear();
+        m_CurrentActiveLevel.reset();
+        m_RenderScene = nullptr;
     }
 
     void WorldManager::Tick(float deltaTime)
@@ -47,7 +50,7 @@ namespace minEngine
                 component->DoEndOfFrameUpdate();
             }
         }
-        // m_ComponentsThatNeedEndOfFrameUpdate.clear();    // TODO：discomment after testing
+        m_ComponentsThatNeedEndOfFrameUpdate.clear();
     }
 
 } // namespace minEngine

@@ -11,7 +11,7 @@ namespace minEngine
 
     void Component::SetOwner(GameObject *inOwner)
     {
-        m_Owner = std::shared_ptr<GameObject>(inOwner);
+        m_Owner = inOwner;
     }
 
     void Component::MarkForNeededEndOfFrameUpdate()

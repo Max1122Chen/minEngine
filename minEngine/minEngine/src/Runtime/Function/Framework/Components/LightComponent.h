@@ -18,7 +18,7 @@ namespace minEngine
     {
     public:
         LightComponent();
-        virtual ~LightComponent() = default;
+        virtual ~LightComponent() override;
 
         virtual LightType GetLightType() const = 0;
 

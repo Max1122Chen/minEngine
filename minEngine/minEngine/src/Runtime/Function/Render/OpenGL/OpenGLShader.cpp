@@ -2,6 +2,15 @@
 
 namespace minEngine
 {
+    OpenGLShader::~OpenGLShader()
+    {
+        if (m_ID != 0)
+        {
+            glDeleteProgram(m_ID);
+            m_ID = 0;
+        }
+    }
+
     OpenGLShader::OpenGLShader(const char *vertexShaderPath, const char *fragmentShaderPath)
     {
         std::string vertexShaderCode;

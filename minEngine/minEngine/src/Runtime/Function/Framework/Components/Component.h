@@ -24,7 +24,7 @@ namespace minEngine
         virtual void Tick(float deltaTime) {}
 
         virtual void SetOwner(GameObject* inOwner);
-        GameObject* GetOwner() const { return m_Owner.get(); }
+        GameObject* GetOwner() const { return m_Owner; }
 
         bool CanEverTick() const { return m_bCanEverTick; }
 
@@ -34,7 +34,7 @@ namespace minEngine
         virtual void DoEndOfFrameUpdate() {}
     
     protected:
-        std::shared_ptr<GameObject> m_Owner{ nullptr };
+        GameObject* m_Owner{ nullptr };
         bool m_bCanEverTick{ true };
         ComponentMarkedForNeededEndOfFrameUpdate m_MarkedForNeededEndOfFrameUpdate{ Unmarked };
 

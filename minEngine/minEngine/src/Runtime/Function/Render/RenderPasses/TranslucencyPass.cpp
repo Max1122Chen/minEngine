@@ -27,6 +27,11 @@ namespace minEngine
     void TranslucencyPass::Render()
     {
         RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
+
         rhi->EnableBlend();
         // rhi->SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         rhi->EnableDepthTest();
@@ -39,8 +44,17 @@ namespace minEngine
         for(auto& drawCommand : m_DrawCommands)
         {
             auto material = drawCommand.m_Material;
+            if (!material || !drawCommand.m_VertexDefinition || !drawCommand.m_VertexBuffer)
+            {
+                continue;
+            }
+
             material->BindTextures();
             auto shader = material->m_Shader;
+            if (!shader)
+            {
+                continue;
+            }
 
             shader->Use();
             shader->UploadUniformInt("u_DiffuseMap", 0);
@@ -71,9 +85,19 @@ namespace minEngine
 
     void TranslucencyPass::SortDrawCommands()
     {
+        RenderCamera* mainCamera = RenderSystem::GetRenderSystem().GetMainCamera();
+        if (!mainCamera)
+        {
+            return;
+        }
+
         std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [](const MeshDrawCommand& a, const MeshDrawCommand& b) {
             // Sort by distance from camera (back to front)
             RenderCamera* mainCamera = RenderSystem::GetRenderSystem().GetMainCamera();
+            if (!mainCamera)
+            {
+                return false;
+            }
             float distanceA = glm::length(mainCamera->m_Position - glm::vec3(a.m_ModelMatrix[3]));
             float distanceB = glm::length(mainCamera->m_Position - glm::vec3(b.m_ModelMatrix[3]));
             return distanceA > distanceB; // Sort back to front

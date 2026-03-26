@@ -1,12 +1,12 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 
 namespace minEngine
 {
     class PrimitiveComponent;
-    class PrimitiveSceneProxy;
     class LightComponent;
-    class LightSceneProxy;
     class DirectionalLightSceneProxy;
     class PointLightSceneProxy;
     class SpotLightSceneProxy;
@@ -15,11 +15,15 @@ namespace minEngine
     {
     public:
         RenderScene() = default;
-        virtual ~RenderScene() = default;
+        virtual ~RenderScene();
 
         void UpdatePrimitive(PrimitiveComponent* primitiveComponent);
+        void RemovePrimitive(const PrimitiveComponent* primitiveComponent);
 
         void UpdateLight(LightComponent* lightComponent);
+        void RemoveLight(const LightComponent* lightComponent);
+
+        void CollectOrphanedSceneProxies();
 
         // Light scene proxies
         std::vector<DirectionalLightSceneProxy*> m_DirectionalLightSceneProxies;
@@ -28,5 +32,10 @@ namespace minEngine
 
         // Primitive scene proxies
         std::vector<PrimitiveSceneProxy*> m_PrimitiveSceneProxies;
+
+    private:
+        // Single ownership of all scene proxies; raw-pointer vectors above are non-owning views.
+        std::vector<std::unique_ptr<PrimitiveSceneProxy>> m_PrimitiveSceneProxyOwners;
+        std::vector<std::unique_ptr<LightSceneProxy>> m_LightSceneProxyOwners;
     };
 }
