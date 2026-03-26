@@ -62,3 +62,16 @@ When finishing a task, AI should:
 Keep this file stable and high-level. Put fast-changing details into:
 - docs/ai/PROGRESS_LOG.md (timeline)
 - docs/ai/sessions/*.md (task-level temporary context)
+
+## 7) Input System and Playground Controls (Today)
+
+Recent input-related architecture and behavior changes:
+- Added mouse wheel callback flow through WindowSystem -> GLFWWindowSystem -> InputSystem.
+- Unified wheel key naming to MouseScroll in input key definitions.
+- Added player vertical flight control action in Playground (up/down movement).
+- Added mouse-driven camera look behavior in Playground with pitch clamp and tunable sensitivity.
+- Corrected horizontal mouse look direction sign to match expected control feel.
+
+Current practical note:
+- Mouse2D value in InputSystem is currently used by Playground as a cursor-position-like stream and then converted to delta inside Playground logic.
+- MouseScroll is handled as event-driven input via OnMouseScroll callback path.

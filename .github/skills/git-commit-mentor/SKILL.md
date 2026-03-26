@@ -67,6 +67,13 @@ Type guidance:
 - docs: documentation changes
 - chore: maintenance or tooling
 
+## Language policy
+
+- Default: English-only commit message unless user explicitly requests otherwise.
+- Use bilingual (Chinese + English) commit message only when the version has broad scope and large change volume across multiple subsystems.
+- For bilingual commits, keep the same factual content in both languages and avoid adding mismatched claims.
+- If change scope is small or localized, do not use bilingual by default.
+
 ## Quality rules
 
 - Subject line should be specific, not vague.
@@ -74,6 +81,7 @@ Type guidance:
 - Mention important bug root cause when known.
 - Avoid claiming unverified outcomes.
 - Keep language concise and readable.
+- Apply language policy consistently before drafting options.
 
 ## Approval prompt template
 

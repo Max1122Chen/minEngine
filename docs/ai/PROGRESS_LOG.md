@@ -60,3 +60,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-03-26 - Playground player control enhancement
+- Goal:
+	Add vertical flight and improve camera control experience in Playground.
+- Main changes:
+	Added IA_UpAndDown for E/Q vertical movement.
+	Added IA_Look camera rotation logic with pitch clamp and sensitivity.
+	Added wheel input support path via WindowSystem/GLFWWindowSystem/InputSystem and mapped MouseScroll in Playground.
+	Fixed horizontal look direction sign to match expected user control direction.
+- Risks or caveats:
+	Mouse2D and MouseScroll semantics are still evolving between engine-side abstraction and gameplay-side handling.
+	Future refactor may separate event-like input and state-like input more clearly.
+- Validation done:
+	CMake build completed successfully after control/input changes.
+	Manual interaction checks performed in Playground for movement and look direction.
+- Next step:
+	Standardize mouse delta semantics at one layer only (engine or gameplay) to avoid double-delta bugs.
