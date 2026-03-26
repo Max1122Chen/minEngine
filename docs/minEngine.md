@@ -1,5 +1,13 @@
 # minEngine
 
+## AI Context Entry
+
+For AI collaboration context, see:
+
+- docs/ai/PROJECT_CONTEXT.md
+- docs/ai/PROGRESS_LOG.md
+- docs/ai/WORKING_WITH_AI.md
+
 ## Engine Design
 
 refs：
@@ -72,7 +80,7 @@ Engine会被制作成dll来灵活加载
 
 ## Abstract RHI into classes
 
-尽管我们可以只使用单一的RHI，但是显然基于一定的可拓展性更有趣
+尽管我们可以只使用单一的RHI，但是显然给予一定的可拓展性更有趣
 
 我们至少需要把OpenGL的API抽象成自定义C++类
 
