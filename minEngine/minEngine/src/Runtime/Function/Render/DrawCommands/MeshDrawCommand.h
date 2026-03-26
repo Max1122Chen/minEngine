@@ -49,6 +49,7 @@ namespace minEngine
         Material* m_Material = nullptr;
 
         Matrix4 m_ModelMatrix;
+        bool m_CastShadow = true;
 
         MeshDrawCommandSortKey m_SortKey;
     };

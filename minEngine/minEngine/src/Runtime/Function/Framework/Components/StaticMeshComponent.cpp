@@ -39,6 +39,7 @@ namespace minEngine
 
         assert(m_Owner);
         SceneProxy->m_Transform = m_Owner->GetTransform();
+        SceneProxy->m_CastShadow = CastShadow();
 
 
         if (m_Mesh)

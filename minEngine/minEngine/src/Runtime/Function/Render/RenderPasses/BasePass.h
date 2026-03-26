@@ -5,6 +5,8 @@
 
 namespace minEngine
 {
+    struct DirLightShadowEntry;
+
     class BasePass : public RenderPassBase
     {
     public:
@@ -18,5 +20,7 @@ namespace minEngine
 
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;
+
+        std::vector<DirLightShadowEntry> m_DirLightShadowEntries;
     };
 }

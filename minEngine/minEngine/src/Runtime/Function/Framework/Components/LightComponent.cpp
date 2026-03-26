@@ -43,6 +43,16 @@ namespace minEngine
             MarkRenderStateDirty();
         }
     }
+
+    void LightComponent::SetCastShadow(bool bInCastShadow)
+    {
+        if(!(m_CastShadow == bInCastShadow))
+        {
+            m_CastShadow = bInCastShadow;
+            MarkRenderStateDirty();
+        }
+    }
+    
     void LightComponent::DoEndOfFrameUpdate()
     {
         if(m_bRenderStateDirty)     

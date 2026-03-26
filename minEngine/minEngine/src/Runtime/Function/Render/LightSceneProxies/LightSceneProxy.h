@@ -13,6 +13,7 @@ namespace minEngine
         LightSceneProxy() = default;
         virtual ~LightSceneProxy() = default;
 
+    public:
         // Light properties
         LightType m_LightType;
 
@@ -21,6 +22,7 @@ namespace minEngine
         float m_Intensity;
         float m_DiffuseFactor;
         float m_SpecularFactor;
+        bool m_CastsShadow;
 
         LightComponent* m_LightComponent;
     };

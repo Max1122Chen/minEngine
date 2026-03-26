@@ -23,6 +23,11 @@ namespace minEngine
         // Clean up OpenGL specific resources here
     }
 
+    void OpenGLRHI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    {
+        glViewport(x, y, width, height);
+    }
+
     void OpenGLRHI::SetClearColor(Vector4 clearColor)
     {
         glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
@@ -31,6 +36,30 @@ namespace minEngine
     void OpenGLRHI::Clear()
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    }
+
+    void OpenGLRHI::SetDrawBuffer(uint32_t index)
+    {
+        if(index == -1) // GL_NONE
+        {
+            glDrawBuffer(GL_NONE);
+        }
+        else
+        {
+            glDrawBuffer(GL_COLOR_ATTACHMENT0 + index);
+        }
+    }
+
+    void OpenGLRHI::SetReadBuffer(uint32_t index)
+    {
+        if(index == -1) // GL_NONE
+        {
+            glReadBuffer(GL_NONE);
+        }
+        else
+        {
+            glReadBuffer(GL_COLOR_ATTACHMENT0 + index);
+        }
     }
 
     void OpenGLRHI::EnableDepthTest()

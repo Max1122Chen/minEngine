@@ -12,12 +12,14 @@ struct DirectionalLightData
 {
     vec4 Direction;
     vec4 Color;     // w for intensity
+    vec4 Params;    // w for shadow map index
 };
 
 struct PointLightData
 {
     vec4 Position;  // w for radius
     vec4 Color;     // w for intensity
+    vec4 Params;    // w for shadow map index
 };
 
 struct SpotLightData
@@ -25,20 +27,18 @@ struct SpotLightData
     vec4 Direction;
     vec4 Position;
     vec4 Color;      // w for intensity
-    vec4 ConeAngles; // x=inner, y=outer
+    vec4 Params;     // x=inner, y=outer, w=shadow map index
 };
 
-vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir);
+vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fragPosLightSpace);
 vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir);
-
-
-out vec4 FragColor;
 
 // Vertex Attributes
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoord;
+in vec4 FragPosLightSpace;
 
 layout (std140) uniform PerFrameData
 {
@@ -60,8 +60,10 @@ layout (std140) uniform LightsData
 // Material info
 uniform Material u_Material;
 
-// View info
-// uniform vec3 u_ViewPosition;
+// Shadow maps
+uniform sampler2D u_DirLightShadowMap;
+
+out vec4 FragColor;
 
 void main()
 {
@@ -70,7 +72,7 @@ void main()
 
     vec4 texColor = texture(u_Material.DiffuseMap, TexCoord);
 
-    vec3 DirLightResult = CalcDirLight(DirectionalLight, norm, viewDir);
+    vec3 DirLightResult = CalcDirLight(DirectionalLight, norm, viewDir, FragPosLightSpace);
 
     vec3 PointLightResult = vec3(0.0);
     for(uint i = 0u; i < PointLightsCount && i < 16u; ++i)
@@ -88,8 +90,25 @@ void main()
     FragColor = vec4(result, texColor.a);
 }
 
-vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir)
+vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fragPosLightSpace)
 {
+    float shadow = 0.0;
+    if(light.Params.w >= 0.0)
+    {
+        vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+        projCoords = projCoords * 0.5 + 0.5; // Transform from NDC to [0,1] range
+
+        // Only sample shadow map when the fragment is inside light frustum.
+        if(projCoords.x >= 0.0 && projCoords.x <= 1.0 &&
+           projCoords.y >= 0.0 && projCoords.y <= 1.0 &&
+           projCoords.z >= 0.0 && projCoords.z <= 1.0)
+        {
+            float closestDepth = texture(u_DirLightShadowMap, projCoords.xy).r; // Depth from shadow map
+            float currentDepth = projCoords.z; // Depth of current fragment from light's perspective
+            shadow = currentDepth - 0.005 > closestDepth ? 1.0 : 0.0; // Simple shadow factor with bias
+        }
+    }
+
     vec3 lightDir = normalize(-light.Direction.xyz);
     vec3 lightColor = light.Color.rgb * light.Color.w;
 
@@ -108,7 +127,7 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir)
     vec3 diffuse = diff * lightColor * vec3(texture(u_Material.DiffuseMap, TexCoord));
     vec3 specular = spec * lightColor * vec3(texture(u_Material.SpecularMap, TexCoord));     // Note: using diffuse map for specular for simplicity
 
-    return (ambient + diffuse + specular);
+    return (ambient + (diffuse + specular) * (1.0 - shadow));
 }
 
 vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir)
@@ -140,8 +159,8 @@ vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir)
     
     float theta = dot(lightDir, normalize(-light.Direction.xyz));
     
-    float innerCos = cos(radians(light.ConeAngles.x));
-    float outerCos = cos(radians(light.ConeAngles.y));
+    float innerCos = cos(radians(light.Params.x));
+    float outerCos = cos(radians(light.Params.y));
     
     float epsilon = innerCos - outerCos;
     float intensity = clamp((theta - outerCos) / epsilon, 0.0, 1.0);

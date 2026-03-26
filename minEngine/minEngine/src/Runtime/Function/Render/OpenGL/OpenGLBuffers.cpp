@@ -81,19 +81,24 @@ namespace minEngine
         Bind();
         OpenGLTexture2D* glTexture = static_cast<OpenGLTexture2D*>(texture.get());
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, glTexture->GetID(), 0);
-        Unbind();
     }
 
     void OpenGLFrameBuffer::AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture)
     {
         FrameBuffer::AttachDepthBuffer(texture);
-        // Currently, we do not support depth attachment in OpenGLFrameBuffer.
+
+        Bind();
+        OpenGLTexture2D* glTexture = static_cast<OpenGLTexture2D*>(texture.get());
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, glTexture->GetID(), 0);
     }
 
     void OpenGLFrameBuffer::AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture)
     {
         FrameBuffer::AttachStencilBuffer(texture);
-        // Not implemented yet
+        
+        Bind();
+        OpenGLTexture2D* glTexture = static_cast<OpenGLTexture2D*>(texture.get());
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, glTexture->GetID(), 0);
     }
 
     void OpenGLFrameBuffer::AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture)
@@ -103,14 +108,13 @@ namespace minEngine
         Bind();
         OpenGLTexture2D* glTexture = static_cast<OpenGLTexture2D*>(texture.get());
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, glTexture->GetID(), 0);
-        Unbind();
     }
 
     OpenGLUniformBuffer::OpenGLUniformBuffer(uint32_t size, uint32_t bindingPoint)
     {
         glGenBuffers(1, &m_UBO);
         glBindBuffer(GL_UNIFORM_BUFFER, m_UBO);
-        glBufferData(GL_UNIFORM_BUFFER, size, nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_UNIFORM_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, m_UBO);
     }
 

@@ -9,6 +9,9 @@ namespace minEngine
         RED,
         RGB8,
         RGBA8,
+        DEPTH16,
+        DEPTH24,
+        DEPTH32,
         DEPTH24STENCIL8
     };
 

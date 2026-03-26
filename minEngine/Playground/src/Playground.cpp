@@ -102,7 +102,7 @@ public:
         playerSceneComponent->SetPosition(Vector3(-5.0f, 0.0f, 0.0f));
 
         // cube vertex data --------------------------------
-        float modelVertices[] = {
+        float cubeVertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,  0.0f, 0.0f, -1.0f,
         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,  0.0f, 0.0f, -1.0f,
@@ -204,7 +204,7 @@ public:
             -1.0f, 0.0f,  1.0f,  0.0f, 0.0f,   0.0f, 1.0f, 0.0f
         };
 
-        // create plane
+        // create plane mesh
         minEngine::StaticMesh plane(planeVertices, sizeof(planeVertices), 6,{
             VertexElement("a_Position", VertexElementType::Float3),
             VertexElement("a_TexCoord", VertexElementType::Float2),
@@ -214,15 +214,15 @@ public:
         // create backpack 
         // minEngine::StaticMesh backpackMesh("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/backpack.obj");
 
-        // create cube
-        minEngine::StaticMesh cubeMesh(modelVertices, sizeof(modelVertices), 36,{
+        // create cube mesh
+        minEngine::StaticMesh cubeMesh(cubeVertices, sizeof(cubeVertices), 36,{
             VertexElement("a_Position", VertexElementType::Float3),
             VertexElement("a_TexCoord", VertexElementType::Float2),
             VertexElement("a_Normal", VertexElementType::Float3)
         });
 
 
-        // create light
+        // create light mesh
         minEngine::StaticMesh lightMesh(lightVertices, sizeof(lightVertices), 36,{
             VertexElement("a_Position", VertexElementType::Float3)
         });
@@ -316,7 +316,7 @@ public:
         // create grass game object
         std::vector<minEngine::Transform> grassTransforms = 
         {
-            minEngine::Transform(minEngine::Vector3(0.0f, -0.5f, 0.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f)),
+            minEngine::Transform(minEngine::Vector3(5.0f, -0.5f, 0.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f)),
             minEngine::Transform(minEngine::Vector3(5.0f, -0.5f, 5.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f)),
             minEngine::Transform(minEngine::Vector3(10.0f, -0.5f, 10.0f), minEngine::Vector3(0.0f, 0.0f, 90.0f), minEngine::Vector3(1.0f, 1.0f, 1.0f))            
         };
@@ -336,6 +336,18 @@ public:
 
             grasses.push_back(grass);
         }
+
+        // create plane game object
+        auto planeGO = level.CreateGameObject();
+        std::shared_ptr<minEngine::StaticMeshComponent> planeMeshComponent = planeGO->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+        planeGO->SetRootComponent(planeMeshComponent);
+
+        // create plane mesh and material
+        planeMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(plane));
+        planeMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(cubeMaterial));
+
+        planeGO->SetTransform(minEngine::Transform(minEngine::Vector3(0.0f, -1.0f, 0.0f), minEngine::Vector3(0.0f, 0.0f, 0.0f), minEngine::Vector3(10.0f, 1.0f, 10.0f)));
+
 
         // create PointLight game object
         auto light = level.CreateGameObject();
@@ -361,10 +373,12 @@ public:
         // set light mesh and material
         lightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
         lightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(lightMaterial));
+        lightMeshComponent->SetCastShadow(false);
 
         // set spot light mesh and material
         spotLightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
         spotLightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(spotLightMaterial));
+        spotLightMeshComponent->SetCastShadow(false);
 
 
         // set light transforms
@@ -376,6 +390,7 @@ public:
 
         dirLightComponent->SetDirection(minEngine::Vector3(0.0f, -1.0f, -0.5f));
         dirLightComponent->SetLightColor(minEngine::Vector4(138.0/255.0f, 245.0/255.0f, 228.0/255.0f, 1.0f));
+        dirLightComponent->SetCastShadow(true);
 
         spotLight->SetPosition(minEngine::Vector3(-2.0f, 2.0f, 2.0f) * 2.0f);
         spotLightComponent->SetDirection(minEngine::Vector3(1.0f, -1.0f, -1.0f));

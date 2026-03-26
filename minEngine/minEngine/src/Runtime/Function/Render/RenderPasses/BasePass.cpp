@@ -12,6 +12,7 @@
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
+#include "Render/RHI/RHITexture.h"
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -40,38 +41,20 @@ namespace minEngine
             auto shader = material->m_Shader;
 
             shader->Use();
-            shader->UploadUniformInt("u_DiffuseMap", 0);
+            // shader->UploadUniformInt("u_DiffuseMap", 0);
 
             shader->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
             shader->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader
 
+            if(m_DirLightShadowEntries.size() > 0)
+            {
+                DirLightShadowEntry& shadowEntry = m_DirLightShadowEntries[0];
+                shadowEntry.CascadeShadowMaps[0]->Bind(); // Bind the shadow map to texture unit 8
+                shader->UploadUniformMat4("u_LightViewProj", shadowEntry.LightViewProjMatrix); // Upload the light view projection matrix for shadow mapping
+            }
+            shader->UploadUniformInt("u_DirLightShadowMap", 8); // Bind the shadow map to texture unit 8 in the shader
+            
             shader->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
-
-
-            // for(auto& dirLight : renderScene->m_DirectionalLightSceneProxies)
-            // {
-            //     shader->UploadUniformFloat3("u_DirLight.Direction", dirLight->m_Direction);
-            //     shader->UploadUniformFloat3("u_DirLight.Color", dirLight->m_LightColor);
-            // }
-
-            // for(auto& pointLight : renderScene->m_PointLightSceneProxies)
-            // {
-            //     // For simplicity, only upload the first point light
-            //     shader->UploadUniformFloat3("u_PointLight.Position", pointLight->m_Position);
-            //     shader->UploadUniformFloat3("u_PointLight.Color", pointLight->m_LightColor);
-            //     break;
-            // }
-
-            // for(auto& spotLight : renderScene->m_SpotLightSceneProxies)
-            // {
-            //     // For simplicity, only upload the first spot light
-            //     shader->UploadUniformFloat3("u_SpotLight.Position", spotLight->m_Position);
-            //     shader->UploadUniformFloat3("u_SpotLight.Direction", spotLight->m_Direction);
-            //     shader->UploadUniformFloat3("u_SpotLight.Color", spotLight->m_LightColor);
-            //     shader->UploadUniformFloat("u_SpotLight.InnerConeAngleCos", cos(glm::radians(spotLight->m_InnerConeAngle)));
-            //     shader->UploadUniformFloat("u_SpotLight.OuterConeAngleCos", cos(glm::radians(spotLight->m_OuterConeAngle)));
-            //     break;
-            // }
             
 
             static_cast<OpenGLVertexArrayObject*>(drawCommand.m_VertexDefinition)->Bind();

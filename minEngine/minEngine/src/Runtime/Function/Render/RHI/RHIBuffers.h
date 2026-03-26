@@ -140,20 +140,6 @@ namespace minEngine
 
     class RHITexture2D;
 
-    enum class FrameBufferAttachmentType
-    {
-        Color = 0,
-        Depth,
-        Stencil,
-        DepthStencil
-    };
-
-    struct FrameBufferAttachment
-    {
-        FrameBufferAttachmentType Type;
-        RHITexture2D* Texture;
-    };
-
     class FrameBuffer
     {
     public:

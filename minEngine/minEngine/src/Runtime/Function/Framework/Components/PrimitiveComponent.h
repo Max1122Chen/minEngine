@@ -13,6 +13,16 @@ namespace minEngine
         PrimitiveComponent();
         virtual ~PrimitiveComponent() = default;
 
+        void SetCastShadow(bool bInCastShadow)
+        {
+            if (m_CastShadow != bInCastShadow)
+            {
+                m_CastShadow = bInCastShadow;
+                MarkRenderStateDirty();
+            }
+        }
+
+        bool CastShadow() const { return m_CastShadow; }
 
         virtual void DoEndOfFrameUpdate() override;
 
@@ -20,6 +30,7 @@ namespace minEngine
         PrimitiveSceneProxy* GetSceneProxy() const { return m_SceneProxy; }
 
     protected:
+        bool m_CastShadow{ true };
 
 
         PrimitiveSceneProxy* m_SceneProxy{ nullptr };

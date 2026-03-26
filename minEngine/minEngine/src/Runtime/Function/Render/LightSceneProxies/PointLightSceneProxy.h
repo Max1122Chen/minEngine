@@ -10,7 +10,6 @@ namespace minEngine
     public:
         PointLightSceneProxy() = default;
         virtual ~PointLightSceneProxy() = default;
-
         
     };
 }

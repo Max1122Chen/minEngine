@@ -24,8 +24,13 @@ namespace minEngine
         virtual void Initialize() = 0;
         virtual void Shutdown() = 0;
 
+        virtual void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
+
         virtual void SetClearColor(Vector4 clearColor) = 0;
         virtual void Clear() = 0;
+
+        virtual void SetDrawBuffer(uint32_t index) = 0;
+        virtual void SetReadBuffer(uint32_t index) = 0;
 
         virtual void EnableDepthTest() = 0;
         virtual void DisableDepthTest() = 0;

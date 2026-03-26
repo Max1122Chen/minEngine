@@ -6,9 +6,19 @@
 
 namespace minEngine
 {
+    OpenGLTexture2D::~OpenGLTexture2D()
+    {
+        if (m_ID != 0)
+        {
+            glDeleteTextures(1, &m_ID);
+            m_ID = 0;
+        }
+    }
+
     OpenGLTexture2D::OpenGLTexture2D(const unsigned char *data, RHITextureDesc desc, int unit)
     {
         m_Unit = unit;
+        m_Desc = desc;
         glGenTextures(1, &m_ID);
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D, m_ID);
@@ -38,6 +48,24 @@ namespace minEngine
             internalFormat = GL_RGBA8;
             dataFormat = GL_RGBA;
         }
+        else if (desc.Format == TextureFormat::DEPTH16)
+        {
+            internalFormat = GL_DEPTH_COMPONENT16;
+            dataFormat = GL_DEPTH_COMPONENT;
+            dataType = GL_UNSIGNED_SHORT;
+        }
+        else if (desc.Format == TextureFormat::DEPTH24)
+        {
+            internalFormat = GL_DEPTH_COMPONENT24;
+            dataFormat = GL_DEPTH_COMPONENT;
+            dataType = GL_UNSIGNED_INT;
+        }
+        else if (desc.Format == TextureFormat::DEPTH32)
+        {
+            internalFormat = GL_DEPTH_COMPONENT32;
+            dataFormat = GL_DEPTH_COMPONENT;
+            dataType = GL_UNSIGNED_INT;
+        }
         else if (desc.Format == TextureFormat::DEPTH24STENCIL8)
         {
             internalFormat = GL_DEPTH24_STENCIL8;
@@ -66,9 +94,11 @@ namespace minEngine
             }
         }
 
-        bool isDepthStencil = (desc.Format == TextureFormat::DEPTH24STENCIL8) ||
+        bool isDepthStencil = (desc.Format == TextureFormat::DEPTH16) ||
+                              (desc.Format == TextureFormat::DEPTH24) ||
+                              (desc.Format == TextureFormat::DEPTH32) ||
+                              (desc.Format == TextureFormat::DEPTH24STENCIL8) ||
                               (desc.Usage == TextureUsage::Depth) ||
-                              (desc.Usage == TextureUsage::Stencil) ||
                               (desc.Usage == TextureUsage::DepthStencil);
 
         if (isDepthStencil)
@@ -76,6 +106,10 @@ namespace minEngine
             // Depth/Stencil textures usually don't support mipmaps or we don't restart them often
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
         }
 
         if (internalFormat != 0 && desc.Width > 0 && desc.Height > 0)
@@ -104,6 +138,7 @@ namespace minEngine
     OpenGLTextureCube::OpenGLTextureCube(const std::vector<unsigned char *> &faceData, RHITextureDesc desc, int unit)
     {
         m_Unit = unit;
+        m_Desc = desc;
         glGenTextures(1, &m_ID);
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_ID);
@@ -125,6 +160,15 @@ namespace minEngine
     {
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_ID);
+    }
+
+    OpenGLTextureCube::~OpenGLTextureCube()
+    {
+        if (m_ID != 0)
+        {
+            glDeleteTextures(1, &m_ID);
+            m_ID = 0;
+        }
     }
 
     void OpenGLTextureCube::Unbind()

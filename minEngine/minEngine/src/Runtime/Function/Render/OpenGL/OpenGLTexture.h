@@ -13,7 +13,7 @@ namespace minEngine
         OpenGLTexture2D(const std::string& path, int unit = 0);
 
         OpenGLTexture2D() = default;
-        virtual ~OpenGLTexture2D() = default;
+        virtual ~OpenGLTexture2D() override;
 
         virtual void Bind() override;
         virtual void Unbind() override;
@@ -26,7 +26,7 @@ namespace minEngine
     public:
         OpenGLTextureCube(const std::vector<unsigned char*>& faceData, RHITextureDesc desc, int unit = 0);
         OpenGLTextureCube() = default;
-        virtual ~OpenGLTextureCube() = default;
+        virtual ~OpenGLTextureCube() override;
 
         virtual void Bind() override;
         virtual void Unbind() override;

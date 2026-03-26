@@ -42,8 +42,10 @@ namespace minEngine
         proxy->m_Intensity = GetIntensity();
         proxy->m_DiffuseFactor = GetDiffuseFactor();
         proxy->m_SpecularFactor = GetSpecularFactor();
+        proxy->m_CastsShadow = CastShadow();
         proxy->m_InnerConeAngle = GetInnerConeAngle();
         proxy->m_OuterConeAngle = GetOuterConeAngle();
+        m_LightSceneProxy = proxy;
         return proxy;
     }
 } // namespace minEngine

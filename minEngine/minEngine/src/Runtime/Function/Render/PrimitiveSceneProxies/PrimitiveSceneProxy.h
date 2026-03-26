@@ -12,5 +12,6 @@ namespace minEngine
         virtual ~PrimitiveSceneProxy() = default;
 
         Transform m_Transform;
+        bool m_CastShadow = true;
     };
 }
