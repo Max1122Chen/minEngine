@@ -45,7 +45,7 @@ namespace minEngine
         static const InputKey MouseX;
         static const InputKey MouseY;
         static const InputKey Mouse2D;
-        static const InputKey MouseScrollUp;
+        static const InputKey MouseScroll;
         static const InputKey MouseScrollDown;
 
     // Keyboard keys

@@ -33,12 +33,14 @@ namespace minEngine
         typedef std::function<void(int, int, int, int)>     OnKeyFunc;
         typedef std::function<void(int, int)>               OnMouseButtonFunc;
         typedef std::function<void(double, double)>         OnCursorPosFunc;
+        typedef std::function<void(double, double)>         OnMouseScrollFunc;
         typedef std::function<void(int, int)>               OnWindowSizeFunc;
 
         void RegisterOnResetCallback(const OnResetFunc& callback) { m_OnResetCallbacks.push_back(callback); }
         void RegisterOnKeyCallback(const OnKeyFunc& callback) { m_OnKeyCallbacks.push_back(callback); }
         void RegisterOnMouseButtonCallback(const OnMouseButtonFunc& callback) { m_OnMouseButtonCallbacks.push_back(callback); }
         void RegisterOnCursorPosCallback(const OnCursorPosFunc& callback) { m_OnCursorPosCallbacks.push_back(callback); }
+        void RegisterOnMouseScrollCallback(const OnMouseScrollFunc& callback) { m_OnMouseScrollCallbacks.push_back(callback); }
         void RegisterOnWindowSizeCallback(const OnWindowSizeFunc& callback) { m_OnWindowSizeCallbacks.push_back(callback); }
 
     protected:
@@ -46,6 +48,7 @@ namespace minEngine
         std::vector<OnKeyFunc>              m_OnKeyCallbacks;
         std::vector<OnMouseButtonFunc>      m_OnMouseButtonCallbacks;
         std::vector<OnCursorPosFunc>        m_OnCursorPosCallbacks;
+        std::vector<OnMouseScrollFunc>      m_OnMouseScrollCallbacks;
         std::vector<OnWindowSizeFunc>       m_OnWindowSizeCallbacks;
 
     };

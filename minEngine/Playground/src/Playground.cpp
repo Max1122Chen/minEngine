@@ -55,6 +55,7 @@ public:
         InputAction IA_Look("IA_Look", InputActionValueType::Axis2D);
         InputAction IA_Move("IA_Move", InputActionValueType::Axis3D);
         InputAction IA_UpAndDown("IA_UpAndDown", InputActionValueType::Axis1D);
+        InputAction IA_ScrollMove("IA_ScrollMove", InputActionValueType::Axis1D);
         
         InputMappingContext inputMappingContext({
             { &IA_Look, InputKeys::Mouse2D },
@@ -62,8 +63,9 @@ public:
             { &IA_Move, InputKeys::Key_S, { std::make_shared<InputModifierNegate>() } },
             { &IA_Move, InputKeys::Key_A, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
             { &IA_Move, InputKeys::Key_D, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
-            { &IA_UpAndDown, InputKeys::Key_E, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } },
-            { &IA_UpAndDown, InputKeys::Key_Q, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::YXZ) } }
+            { &IA_UpAndDown, InputKeys::Key_E },
+            { &IA_UpAndDown, InputKeys::Key_Q, { std::make_shared<InputModifierNegate>() } },
+            { &IA_ScrollMove, InputKeys::MouseScroll },
         });
 
         InputSystem::GetInputSystem().AddInputMappingContext(&inputMappingContext, 0);
@@ -91,9 +93,47 @@ public:
                 Vector3 right = inputComponent->GetOwner()->GetRootComponent()->GetRightVector() * value.Value.z ;
                 inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward + right, value.GetMagnitude() * 0.01f);
             });
-        inputComponent->BindAction(&IA_Look, InputTriggerEvent::Triggered,
+        inputComponent->BindAction(&IA_UpAndDown, InputTriggerEvent::Triggered,
             [inputComponent](const InputActionValue& value)
             {
+                Vector3 up = inputComponent->GetOwner()->GetRootComponent()->GetUpVector();
+                inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(up, value.Value.x * 0.01f);
+            });
+        inputComponent->BindAction(&IA_ScrollMove, InputTriggerEvent::Triggered,
+            [inputComponent](const InputActionValue& value)
+            {
+                Vector3 forward = inputComponent->GetOwner()->GetRootComponent()->GetForwardVector();
+                inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward, value.Value.x * 0.05f);
+            });
+
+        float lastMouseX = 0.0f;
+        float lastMouseY = 0.0f;
+        inputComponent->BindAction(&IA_Look, InputTriggerEvent::Triggered,
+            [inputComponent, &lastMouseX, &lastMouseY](const InputActionValue& value)
+            {
+                constexpr float kMouseSensitivity = 0.08f;
+                constexpr float kPitchMin = -89.0f;
+                constexpr float kPitchMax = 89.0f;
+
+                auto root = inputComponent->GetOwner()->GetRootComponent();
+                Vector3 rotation = root->GetRotation();
+                float deltaX = value.Value.x - lastMouseX;
+                float deltaY = lastMouseY - value.Value.y; // Invert Y axis
+                lastMouseX = value.Value.x;
+                lastMouseY = value.Value.y;
+                rotation.y -= deltaX * kMouseSensitivity;
+                rotation.z += deltaY * kMouseSensitivity;
+
+                if (rotation.z < kPitchMin)
+                {
+                    rotation.z = kPitchMin;
+                }
+                else if (rotation.z > kPitchMax)
+                {
+                    rotation.z = kPitchMax;
+                }
+
+                root->SetRotation(rotation);
             });
 
 

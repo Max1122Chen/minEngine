@@ -34,6 +34,11 @@ namespace minEngine
         {
             this->OnCursorPos(xPos, yPos);
         });
+
+        windowSystem->RegisterOnMouseScrollCallback([this](double xOffset, double yOffset)
+        {
+            this->OnMouseScroll(xOffset, yOffset);
+        });
     
         m_InputKeys.Initialize();
         for(const auto& key : m_InputKeys.GetAllKeys())
@@ -150,6 +155,7 @@ namespace minEngine
                 }
             }
         }
+
     }
 
     void InputSystem::AddInputComponent(InputComponent *component)
@@ -256,21 +262,28 @@ namespace minEngine
 
     void InputSystem::OnCursorPos(double xPos, double yPos)
     {
-        double deltaX = xPos - m_LastCursorX;
-        double deltaY = m_LastCursorY - yPos; // Invert Y axis
-
         auto it = m_KeyStateMap.find(InputKeys::Mouse2D);
         if(it != m_KeyStateMap.end())
         {
             InputKeyState& keyState = it->second;
 
-            keyState.bDown = (Math::abs(deltaX) > 0.1f || Math::abs(deltaY) > 0.1f);
-            keyState.RawValue = Vector3(static_cast<float>(deltaX), static_cast<float>(deltaY), 0.0f);
+            keyState.bDown = (Math::abs(xPos) > 0.1f || Math::abs(yPos) > 0.1f);
+            keyState.RawValue = Vector3(static_cast<float>(xPos), static_cast<float>(yPos), 0.0f);
         }
-        
+    }
 
-        m_LastCursorX = xPos;;
-        m_LastCursorY = yPos;
+    void InputSystem::OnMouseScroll(double xOffset, double yOffset)
+    {
+        (void)xOffset;
+
+        InputKeyState* scrollState = GetKeyState(InputKeys::MouseScroll);
+
+        scrollState->bDown = false;
+        scrollState->RawValue = Vector3(0.0f, 0.0f, 0.0f);
+
+
+        scrollState->bDown = true;
+        scrollState->RawValue = Vector3(static_cast<float>(yOffset), 0.0f, 0.0f);
     }
 
 

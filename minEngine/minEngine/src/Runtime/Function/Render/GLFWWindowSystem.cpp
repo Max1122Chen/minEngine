@@ -137,6 +137,7 @@ namespace minEngine
         glfwSetKeyCallback(m_Window, KeyCallback);
         glfwSetMouseButtonCallback(m_Window, MouseButtonCallback);
         glfwSetCursorPosCallback(m_Window, CursorPosCallback);
+        glfwSetScrollCallback(m_Window, MouseScrollCallback);
         glfwSetWindowSizeCallback(m_Window, WindowSizeCallback);
     }
 

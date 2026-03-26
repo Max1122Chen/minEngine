@@ -74,6 +74,15 @@ namespace minEngine
             }
         }
 
+        static void MouseScrollCallback(GLFWwindow* window, double xOffset, double yOffset)
+        {
+            GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
+            if (windowSystem)
+            {
+                windowSystem->OnMouseScroll(xOffset, yOffset);
+            }
+        }
+
         static void WindowSizeCallback(GLFWwindow* window, int width, int height)
         {
             GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
@@ -105,6 +114,14 @@ namespace minEngine
             for (const auto& callback : m_OnCursorPosCallbacks)
             {
                 callback(xPos, yPos);
+            }
+        }
+
+        void OnMouseScroll(double xOffset, double yOffset)
+        {
+            for (const auto& callback : m_OnMouseScrollCallbacks)
+            {
+                callback(xOffset, yOffset);
             }
         }
 

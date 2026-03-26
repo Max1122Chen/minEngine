@@ -53,6 +53,7 @@ namespace minEngine
 
         void OnKey(int key, int scancode, int action, int mods);
         void OnCursorPos(double xPos, double yPos);
+        void OnMouseScroll(double xOffset, double yOffset);
 
 
     private:
@@ -80,11 +81,5 @@ namespace minEngine
 
         // Registered Input Components
         std::vector<InputComponent*> m_InputComponents;
-
-        float m_CursorSensitivity = 0.01f;
-
-        float m_LastCursorX = 0;
-        float m_LastCursorY = 0;
-        
     };
 }

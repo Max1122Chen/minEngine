@@ -9,8 +9,8 @@ namespace minEngine
     const InputKey InputKeys::MouseX("MouseX", InputAxisType::Axis1D);
     const InputKey InputKeys::MouseY("MouseY", InputAxisType::Axis1D);
     const InputKey InputKeys::Mouse2D("Mouse2D", InputAxisType::Axis2D);
-    const InputKey InputKeys::MouseScrollUp("MouseScrollUp", InputAxisType::Axis1D);
-    const InputKey InputKeys::MouseScrollDown("MouseScrollDown", InputAxisType::Axis1D);
+    const InputKey InputKeys::MouseScroll("MouseScroll", InputAxisType::Axis1D);
+
 
     // Keyboard keys
     // Alphabet keys
@@ -49,8 +49,7 @@ namespace minEngine
         AddKey(MouseX);
         AddKey(MouseY);
         AddKey(Mouse2D);
-        AddKey(MouseScrollUp);
-        AddKey(MouseScrollDown);
+        AddKey(MouseScroll);
 
         AddKey(Key_A);
         AddKey(Key_B);
