@@ -4,10 +4,11 @@
 #include "RenderPasses/BasePass.h"
 #include "RenderPasses/TranslucencyPass.h"
 #include "RenderPasses/PresentPass.h"
-#include "Render/LightSceneProxies/LightSceneProxy.h"
-#include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
-#include "Render/LightSceneProxies/PointLightSceneProxy.h"
-#include "Render/LightSceneProxies/SpotLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
+#include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
+#include "Shadow/ShadowResourceManager.h"
 
 
 namespace minEngine
@@ -18,28 +19,9 @@ namespace minEngine
 
     /**
      * UBO binding point layout:
-     * - 0: Per-frame data (view/proj matrices, camera position, etc.) 
+     * - 0: Per-frame data (view/proj matrices, camera position, etc.)
      * - 1: Light data (directional light, point lights, spot lights, etc.)
      */
-
-    struct ShadowEntry
-    {
-        Matrix4 LightViewProjMatrix;
-
-        uint32_t Resolution; // e.g., 1024 for a 1024x1024 shadow map
-
-        virtual Matrix4 CalculateLightViewProjMatrix() const = 0;
-    };
-
-    struct DirLightShadowEntry : public ShadowEntry
-    {
-        DirectionalLightSceneProxy* LightProxy;
-        // Currently we only generate one shadow map for the directional light, but we can extend this to support cascaded shadow maps in the future
-        std::vector<std::shared_ptr<RHITexture2D>> CascadeShadowMaps; // One shadow map per cascade
-
-        virtual Matrix4 CalculateLightViewProjMatrix() const override;
-
-    };
 
     constexpr uint32_t MAX_POINT_LIGHTS = 16;
     constexpr uint32_t MAX_SPOT_LIGHTS = 16;
@@ -108,7 +90,11 @@ namespace minEngine
         std::shared_ptr<RHITexture2D> m_SceneColorTexture;
         std::shared_ptr<RHITexture2D> m_SceneDepthTexture;
 
-        std::vector<DirLightShadowEntry> m_DirLightShadowEntries;
+        std::vector<ShadowRequest> m_ShadowRequests;
+        std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
+
+        ShadowResourceHandle m_DirectionalShadowHandle;
+        Matrix4 m_DirectionalLightViewProj = Matrix4(1.0f);
 
         ShadowPass m_ShadowPass;
         BasePass m_BasePass;
@@ -118,10 +104,14 @@ namespace minEngine
         std::vector<MeshDrawCommand> m_OpaqueQueue;
         std::vector<MeshDrawCommand> m_TranslucentQueue;
 
+        ShadowResourceManager m_ShadowResourceManager;
+        uint64_t m_FrameIndex = 0;
+
     private:
         void UpdatePerFrameUBO();
         void UpdateLightUBO();
-        void BuildShadowEntries();
+        void CollectShadowRequests();
+        void BuildShadowDrawCommands();
         void BuildRenderQueue();
     };
 }

@@ -2,14 +2,14 @@
 #include "Core.h"
 #include "RenderPassBase.h"
 #include "Math/Math.h"
+#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 
 namespace minEngine
 {
     class MeshDrawCommand;
     class UniformBuffer;
     class FrameBuffer;
-    class RHITexture2D;
-    class DirLightShadowEntry;
+    class RHITexture2DArray;
     class RHIShader;
 
 
@@ -31,9 +31,8 @@ namespace minEngine
         UniformBuffer* m_LightViewProjUniformBuffer;
         std::vector<MeshDrawCommand> m_OpaqueQueue; // We only do depth test for opaque objects in the shadow pass
 
-        std::vector<DirLightShadowEntry> m_DirLightShadowEntries;
-        // std::vector<PointLightShadowEntry> m_PointLightShadowEntries;
-        // std::vector<SpotLightShadowEntry> m_SpotLightShadowEntries;
+        std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
+        std::shared_ptr<RHITexture2DArray> m_DirectionalShadowArray;
 
     private:
         std::shared_ptr<RHIShader> m_DepthOnlyShader; // A simple shader that only outputs depth, used for shadow pass

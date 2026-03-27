@@ -59,11 +59,10 @@ namespace minEngine
             shader->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
             shader->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader
 
-            if(m_DirLightShadowEntries.size() > 0)
+            if(m_DirectionalShadowHandle.Valid && m_DirectionalShadowArray)
             {
-                DirLightShadowEntry& shadowEntry = m_DirLightShadowEntries[0];
-                shadowEntry.CascadeShadowMaps[0]->Bind(); // Bind the shadow map to texture unit 8
-                shader->UploadUniformMat4("u_LightViewProj", shadowEntry.LightViewProjMatrix); // Upload the light view projection matrix for shadow mapping
+                m_DirectionalShadowArray->Bind(); // Bind shadow array to texture unit 8
+                shader->UploadUniformMat4("u_LightViewProj", m_DirectionalLightViewProj); // Upload the light view projection matrix for shadow mapping
             }
             shader->UploadUniformInt("u_DirLightShadowMap", 8); // Bind the shadow map to texture unit 8 in the shader
             

@@ -17,26 +17,28 @@
 
 namespace minEngine
 {
-    Matrix4 DirLightShadowEntry::CalculateLightViewProjMatrix() const
+    namespace
     {
-        if(!LightProxy)
+        Matrix4 CalculateDirectionalLightViewProjMatrix(const DirectionalLightSceneProxy* lightProxy)
         {
-            return Matrix4(1.0f);
+            if(!lightProxy)
+            {
+                return Matrix4(1.0f);
+            }
+
+            // For simplicity, we will use an orthographic projection for directional light shadow mapping.
+            float orthoSize = 20.0f; // TODO: make this configurable later.
+            Matrix4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 0.1f, 100.0f);
+
+            // The light's view matrix is calculated based on its direction and a target point.
+            Vector3 lightDir = lightProxy->m_Direction;
+            Vector3 target = Vector3(0.0f);
+            Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
+
+            Matrix4 lightView = glm::lookAt(-lightDir * 10.0f, target, up);
+
+            return lightProj * lightView;
         }
-
-        // For simplicity, we will use an orthographic projection for directional light shadow mapping
-        // In a real implementation, you would want to calculate the orthographic bounds based on the scene's bounding box and the light direction
-        float orthoSize = 20.0f; // This should be large enough to cover the scene, you can make this configurable later
-        Matrix4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 0.1f, 100.0f);
-
-        // The light's view matrix is calculated based on its direction and a target point (we'll use the origin for simplicity)
-        Vector3 lightDir = LightProxy->m_Direction;
-        Vector3 target = Vector3(0.0f); // You can calculate this based on the scene's bounding box later
-        Vector3 up = Vector3(0.0f, 1.0f, 0.0f); // Y-up world
-
-        Matrix4 lightView = glm::lookAt(-lightDir * 10.0f, target, up); // Position the light far away in the opposite direction of its direction
-
-        return lightProj * lightView;
     }
 
     void RenderPipeline::Initialize()
@@ -46,6 +48,8 @@ namespace minEngine
         uint32_t height = windowSystem->GetHeight();
 
         RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        m_ShadowResourceManager.Initialize(rhi);
+        m_FrameIndex = 0;
 
         rhi->SetClearColor(Vector4(0.1f, 0.1f, 0.1f, 1.0f));
 
@@ -96,12 +100,24 @@ namespace minEngine
 
     void RenderPipeline::Shutdown()
     {
+        m_ShadowResourceManager.Shutdown();
+
         m_OpaqueQueue.clear();
         m_TranslucentQueue.clear();
 
-        m_DirLightShadowEntries.clear();
-        m_ShadowPass.m_DirLightShadowEntries.clear();
+        m_ShadowRequests.clear();
+        m_ShadowDrawCommands.clear();
+
+        m_DirectionalShadowHandle = ShadowResourceHandle{};
+        m_DirectionalLightViewProj = Matrix4(1.0f);
+
+        m_ShadowPass.m_ShadowDrawCommands.clear();
+        m_ShadowPass.m_DirectionalShadowArray.reset();
         m_ShadowPass.m_OpaqueQueue.clear();
+
+        m_BasePass.m_DirectionalShadowArray.reset();
+        m_BasePass.m_DirectionalShadowHandle = ShadowResourceHandle{};
+        m_BasePass.m_DirectionalLightViewProj = Matrix4(1.0f);
 
         m_PresentPass.m_SceneColorTexture.reset();
         m_ShadowPass.m_LightViewProjUniformBuffer = nullptr;
@@ -134,6 +150,8 @@ namespace minEngine
             return;
         }
 
+        m_ShadowResourceManager.BeginFrame(m_FrameIndex);
+
         if (RenderSystem::GetRenderSystem().m_RenderScene)
         {
             RenderSystem::GetRenderSystem().m_RenderScene->CollectOrphanedSceneProxies();
@@ -143,12 +161,14 @@ namespace minEngine
         // Build RenderQueue before shadow entries because we need to get all opauque objects to generate shadow maps
         BuildRenderQueue();
 
-        // Build shadow entries for this frame
-        BuildShadowEntries();
+        // Build shadow requests and draw commands for this frame.
+        CollectShadowRequests();
+        BuildShadowDrawCommands();
 
         // For simplicity, we will render all opaque objects in the shadow pass.
         m_ShadowPass.m_OpaqueQueue = m_OpaqueQueue; 
-        m_ShadowPass.m_DirLightShadowEntries = m_DirLightShadowEntries;
+        m_ShadowPass.m_ShadowDrawCommands = m_ShadowDrawCommands;
+        m_ShadowPass.m_DirectionalShadowArray = m_ShadowResourceManager.GetDirectionalShadowArray();
 
         m_ShadowBuffer->Bind();
         m_ShadowPass.Execute();
@@ -159,7 +179,9 @@ namespace minEngine
 
 
         m_BasePass.m_DrawCommands = m_OpaqueQueue;
-        m_BasePass.m_DirLightShadowEntries = m_DirLightShadowEntries;
+        m_BasePass.m_DirectionalShadowArray = m_ShadowResourceManager.GetDirectionalShadowArray();
+        m_BasePass.m_DirectionalShadowHandle = m_DirectionalShadowHandle;
+        m_BasePass.m_DirectionalLightViewProj = m_DirectionalLightViewProj;
         m_TranslucentPass.m_DrawCommands = m_TranslucentQueue;
 
         // Shadow pass disables color output; restore state for scene pass.
@@ -178,6 +200,9 @@ namespace minEngine
         m_SceneBuffer->Unbind();
 
         m_PresentPass.Execute();
+
+        m_ShadowResourceManager.EndFrame();
+        ++m_FrameIndex;
         
     }
 
@@ -228,7 +253,11 @@ namespace minEngine
             DirectionalLightSceneProxy* dirLightProxy = firstValidDirectionalLight;
             lightsData.DirectionalLight.Direction = Vector4(dirLightProxy->m_Direction, 0.0f);
             lightsData.DirectionalLight.Color = Vector4(dirLightProxy->m_LightColor, dirLightProxy->m_Intensity);
-            int shadowMapIndex = m_DirLightShadowEntries.size() > 0 ? 0 : -1; // If we have generated a shadow map for this directional light, set the index to 0, otherwise set it to -1
+            int shadowMapIndex = -1;
+            if (m_DirectionalShadowHandle.Valid)
+            {
+                shadowMapIndex = m_DirectionalShadowHandle.ArrayBaseLayer;
+            }
             lightsData.DirectionalLight.Params = Vector4(0.0f, 0.0f, 0.0f, static_cast<float>(shadowMapIndex));
         }
 
@@ -268,47 +297,84 @@ namespace minEngine
         m_LightUniformBuffer->BindToBindingPoint(1); // Bind the uniform buffer to the binding point for light data
     }
 
-    void RenderPipeline::BuildShadowEntries()
+    void RenderPipeline::CollectShadowRequests()
     {
-        // Clear previous shadow entries
-        m_DirLightShadowEntries.clear();
+        m_ShadowRequests.clear();
 
-        for(auto& dirLightProxy : RenderSystem::GetRenderSystem().m_RenderScene->m_DirectionalLightSceneProxies)
+        RenderScene* renderScene = RenderSystem::GetRenderSystem().m_RenderScene.get();
+        if (!renderScene)
+        {
+            return;
+        }
+
+        for (auto* dirLightProxy : renderScene->m_DirectionalLightSceneProxies)
         {
             if (!dirLightProxy || !dirLightProxy->m_LightComponent)
             {
                 continue;
             }
 
-            if(dirLightProxy->m_CastsShadow)
+            if (!dirLightProxy->m_CastsShadow)
             {
-                DirLightShadowEntry shadowEntry;
-                shadowEntry.LightProxy = dirLightProxy;
-                shadowEntry.Resolution = 2048; // TODO: make this configurable later
-                shadowEntry.LightViewProjMatrix = shadowEntry.CalculateLightViewProjMatrix();
-
-                // Create shadow map for this directional light
-                RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
-                if (!rhi)
-                {
-                    continue;
-                }
-
-                RHITextureDesc shadowMapDesc{
-                    .Width = shadowEntry.Resolution,
-                    .Height = shadowEntry.Resolution,
-                    .Format = TextureFormat::DEPTH32,
-                    .Usage = TextureUsage::Depth
-                };
-                auto shadowMap = rhi->CreateRHITexture2D(nullptr, shadowMapDesc, 8); // set the texture unit to 8 for shadow map in shadow pass shader
-                if (!shadowMap)
-                {
-                    continue;
-                }
-                shadowEntry.CascadeShadowMaps.push_back(shadowMap);
-
-                m_DirLightShadowEntries.push_back(shadowEntry);
+                continue;
             }
+
+            ShadowRequest shadowRequest{};
+            shadowRequest.Key.Type = LightType::Directional;
+            shadowRequest.Key.LightProxyPtr = dirLightProxy;
+            shadowRequest.Resolution = ShadowResolution{
+                .Width = 2048,
+                .Height = 2048
+            };
+            shadowRequest.Priority = 0;
+            m_ShadowRequests.push_back(shadowRequest);
+        }
+    }
+
+    void RenderPipeline::BuildShadowDrawCommands()
+    {
+        m_ShadowDrawCommands.clear();
+        m_DirectionalShadowHandle = ShadowResourceHandle{};
+        m_DirectionalLightViewProj = Matrix4(1.0f);
+
+        constexpr uint32_t kDirectionalCascadeCount = 1;
+
+        for (const auto& shadowRequest : m_ShadowRequests)
+        {
+            if (shadowRequest.Key.Type != LightType::Directional)
+            {
+                continue;
+            }
+
+            auto* dirLightProxy = static_cast<DirectionalLightSceneProxy*>(
+                const_cast<void*>(shadowRequest.Key.LightProxyPtr));
+            if (!dirLightProxy)
+            {
+                continue;
+            }
+
+            // Current lighting path only consumes one directional shadow.
+            if (m_DirectionalShadowHandle.Valid)
+            {
+                continue;
+            }
+
+            ShadowResourceHandle handle = m_ShadowResourceManager.AcquireDirectional(shadowRequest, kDirectionalCascadeCount);
+            if (!handle.Valid)
+            {
+                continue;
+            }
+
+            ShadowDrawCommand shadowDrawCommand{};
+            shadowDrawCommand.Type = LightType::Directional;
+            shadowDrawCommand.Handle = handle;
+            shadowDrawCommand.ViewProj = CalculateDirectionalLightViewProjMatrix(dirLightProxy);
+            shadowDrawCommand.TargetLayer = handle.ArrayBaseLayer;
+            shadowDrawCommand.TargetFace = -1;
+
+            m_ShadowDrawCommands.push_back(shadowDrawCommand);
+            m_DirectionalShadowHandle = handle;
+            m_DirectionalLightViewProj = shadowDrawCommand.ViewProj;
         }
     }
 

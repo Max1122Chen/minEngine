@@ -61,7 +61,7 @@ layout (std140) uniform LightsData
 uniform Material u_Material;
 
 // Shadow maps
-uniform sampler2D u_DirLightShadowMap;
+uniform sampler2DArray u_DirLightShadowMap;
 
 out vec4 FragColor;
 
@@ -103,7 +103,7 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fr
            projCoords.y >= 0.0 && projCoords.y <= 1.0 &&
            projCoords.z >= 0.0 && projCoords.z <= 1.0)
         {
-            float closestDepth = texture(u_DirLightShadowMap, projCoords.xy).r; // Depth from shadow map
+            float closestDepth = texture(u_DirLightShadowMap, vec3(projCoords.xy, light.Params.w)).r; // Depth from shadow map array
             float currentDepth = projCoords.z; // Depth of current fragment from light's perspective
             shadow = currentDepth - 0.005 > closestDepth ? 1.0 : 0.0; // Simple shadow factor with bias
         }

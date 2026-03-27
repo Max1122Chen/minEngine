@@ -2,10 +2,11 @@
 #include "Core.h"
 #include "Runtime/Function/Render/RenderPipeline/RenderPasses/RenderPassBase.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
+#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 
 namespace minEngine
 {
-    struct DirLightShadowEntry;
+    class RHITexture2DArray;
 
     class BasePass : public RenderPassBase
     {
@@ -20,7 +21,8 @@ namespace minEngine
 
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;
-
-        std::vector<DirLightShadowEntry> m_DirLightShadowEntries;
+        std::shared_ptr<RHITexture2DArray> m_DirectionalShadowArray;
+        ShadowResourceHandle m_DirectionalShadowHandle;
+        Matrix4 m_DirectionalLightViewProj = Matrix4(1.0f);
     };
 }

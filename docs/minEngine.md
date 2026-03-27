@@ -12,6 +12,8 @@ For AI collaboration context, see:
 
 refs：
 
+- [阴影系统小而美设计（v1）](./shadow-minimal-design.md)
+
 [How To Make a Game Engine: The Easy Way](https://gamedesigning.org/learn/make-a-game-engine/)
 
 [从零手写游戏引擎 - 知乎](https://www.zhihu.com/column/c_1352653422265643008)

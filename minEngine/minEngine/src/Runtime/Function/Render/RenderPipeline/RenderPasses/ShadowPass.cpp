@@ -37,18 +37,30 @@ namespace minEngine
         m_DepthOnlyShader->Use();
         m_DepthOnlyShader->BindUniformBlock("LightViewProj", 8); // Bind the light view projection uniform buffer to the shader
 
-        for(auto& shadowEntry : m_DirLightShadowEntries)
+        for(const auto& shadowDrawCommand : m_ShadowDrawCommands)
         {
-            // Set the viewport to the shadow map resolution
-            rhi->SetViewport(0, 0, shadowEntry.Resolution, shadowEntry.Resolution);
+            if (shadowDrawCommand.Type != LightType::Directional)
+            {
+                continue;
+            }
 
-            // Bind the shadow map to the framebuffer
-            m_FrameBuffer->AttachDepthBuffer(shadowEntry.CascadeShadowMaps[0]); // For now we only have one cascade
+            if (!shadowDrawCommand.Handle.Valid || !m_DirectionalShadowArray)
+            {
+                continue;
+            }
+
+            const ShadowResolution& resolution = shadowDrawCommand.Handle.Resolution;
+            rhi->SetViewport(0, 0, resolution.Width, resolution.Height);
+
+            // Bind the shadow array layer to the framebuffer.
+            m_FrameBuffer->AttachDepthBufferLayer(
+                m_DirectionalShadowArray,
+                static_cast<uint32_t>(shadowDrawCommand.TargetLayer));
             // AttachDepthBuffer currently unbinds FBO internally, so bind again before clear/draw.
             m_FrameBuffer->Bind();
             rhi->Clear();
 
-            UpdateLightViewProjBuffer(shadowEntry.LightViewProjMatrix);
+            UpdateLightViewProjBuffer(shadowDrawCommand.ViewProj);
             m_LightViewProjUniformBuffer->BindToBindingPoint(8); // Binding point 8 for light view projection matrix in shadow pass
 
             // Render all opaque objects for this shadow entry

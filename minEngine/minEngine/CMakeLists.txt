@@ -1,6 +1,6 @@
-file(GLOB_RECURSE SRC ./src/*.cpp)
+file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
 
-file(GLOB_RECURSE HEADERS ./src/*.h ./src/*.hpp)
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS ./src/*.h ./src/*.hpp)
 
 file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
                 ${THIRD_PARTY_PATH}/imgui/backends/*.cpp
