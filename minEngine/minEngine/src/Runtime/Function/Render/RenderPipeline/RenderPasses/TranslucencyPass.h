@@ -1,6 +1,6 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/Render/RenderPasses/RenderPassBase.h"
+#include "RenderPassBase.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
 
 namespace minEngine

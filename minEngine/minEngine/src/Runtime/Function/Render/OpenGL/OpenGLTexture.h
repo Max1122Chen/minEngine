@@ -31,4 +31,15 @@ namespace minEngine
         virtual void Bind() override;
         virtual void Unbind() override;
     };
+
+    class OpenGLTexture2DArray : public RHITexture2DArray
+    {
+    public:
+        OpenGLTexture2DArray(const unsigned char* data, RHITextureDesc desc, int unit = 0);
+        OpenGLTexture2DArray() = default;
+        virtual ~OpenGLTexture2DArray() override;
+
+        virtual void Bind() override;
+        virtual void Unbind() override;
+    };
 }

@@ -92,6 +92,25 @@ namespace minEngine
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, glTexture->GetID(), 0);
     }
 
+    void OpenGLFrameBuffer::AttachDepthBufferLayer(std::shared_ptr<RHITexture2DArray> texture, uint32_t layer)
+    {
+        FrameBuffer::AttachDepthBufferLayer(texture, layer);
+
+        Bind();
+        OpenGLTexture2DArray* glTexture = static_cast<OpenGLTexture2DArray*>(texture.get());
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, glTexture->GetID(), 0, static_cast<GLint>(layer));
+    }
+
+    void OpenGLFrameBuffer::AttachDepthCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face)
+    {
+        FrameBuffer::AttachDepthCubeFace(texture, face);
+
+        Bind();
+        OpenGLTextureCube* glTexture = static_cast<OpenGLTextureCube*>(texture.get());
+        GLenum faceTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + (face % 6);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, faceTarget, glTexture->GetID(), 0);
+    }
+
     void OpenGLFrameBuffer::AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture)
     {
         FrameBuffer::AttachStencilBuffer(texture);

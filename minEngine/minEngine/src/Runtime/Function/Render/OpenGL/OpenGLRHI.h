@@ -49,6 +49,7 @@ namespace minEngine
         virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) override;
         virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc, int unit = 0) override;
         virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(const std::vector<unsigned char*> faceData, RHITextureDesc desc, int unit = 0) override;
+        virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc, int unit = 0) override;
         virtual std::shared_ptr<RHIShader> CreateShader(const char* vertexSource, const char* fragmentSource) override;
     
 

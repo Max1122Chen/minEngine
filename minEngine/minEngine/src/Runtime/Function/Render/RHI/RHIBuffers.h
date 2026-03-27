@@ -139,6 +139,8 @@ namespace minEngine
     };
 
     class RHITexture2D;
+    class RHITexture2DArray;
+    class RHITextureCube;
 
     class FrameBuffer
     {
@@ -162,6 +164,18 @@ namespace minEngine
             m_DepthBuffer = texture;
         }
 
+        virtual void AttachDepthBufferLayer(std::shared_ptr<RHITexture2DArray> texture, uint32_t layer)
+        {
+            m_DepthBufferArray = texture;
+            m_DepthBufferLayer = layer;
+        }
+
+        virtual void AttachDepthCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face)
+        {
+            m_DepthCubeBuffer = texture;
+            m_DepthCubeFace = face;
+        }
+
         const std::shared_ptr<RHITexture2D>& GetStencilBuffer() const { return m_StencilBuffer; }
         virtual void AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture)
         {
@@ -182,6 +196,11 @@ namespace minEngine
         std::shared_ptr<RHITexture2D> m_DepthBuffer;
         std::shared_ptr<RHITexture2D> m_StencilBuffer;
         std::shared_ptr<RHITexture2D> m_DepthStencilBuffer;
+        std::shared_ptr<RHITexture2DArray> m_DepthBufferArray;
+        std::shared_ptr<RHITextureCube> m_DepthCubeBuffer;
+
+        uint32_t m_DepthBufferLayer = 0;
+        uint32_t m_DepthCubeFace = 0;
     };
 
     class UniformBuffer

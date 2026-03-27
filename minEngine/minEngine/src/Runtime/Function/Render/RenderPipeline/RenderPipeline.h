@@ -4,10 +4,10 @@
 #include "RenderPasses/BasePass.h"
 #include "RenderPasses/TranslucencyPass.h"
 #include "RenderPasses/PresentPass.h"
-#include "LightSceneProxies/LightSceneProxy.h"
-#include "LightSceneProxies/DirectionalLightSceneProxy.h"
-#include "LightSceneProxies/PointLightSceneProxy.h"
-#include "LightSceneProxies/SpotLightSceneProxy.h"
+#include "Render/LightSceneProxies/LightSceneProxy.h"
+#include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
+#include "Render/LightSceneProxies/PointLightSceneProxy.h"
+#include "Render/LightSceneProxies/SpotLightSceneProxy.h"
 
 
 namespace minEngine

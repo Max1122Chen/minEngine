@@ -6,6 +6,86 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        void ResolveOpenGLTextureFormat(const RHITextureDesc& desc, GLint& internalFormat, GLenum& dataFormat, GLenum& dataType)
+        {
+            internalFormat = 0;
+            dataFormat = 0;
+            dataType = GL_UNSIGNED_BYTE;
+
+            if (desc.Format == TextureFormat::RED)
+            {
+                internalFormat = GL_R8;
+                dataFormat = GL_RED;
+            }
+            else if (desc.Format == TextureFormat::RGB8)
+            {
+                internalFormat = GL_RGB8;
+                dataFormat = GL_RGB;
+            }
+            else if (desc.Format == TextureFormat::RGBA8)
+            {
+                internalFormat = GL_RGBA8;
+                dataFormat = GL_RGBA;
+            }
+            else if (desc.Format == TextureFormat::DEPTH16)
+            {
+                internalFormat = GL_DEPTH_COMPONENT16;
+                dataFormat = GL_DEPTH_COMPONENT;
+                dataType = GL_UNSIGNED_SHORT;
+            }
+            else if (desc.Format == TextureFormat::DEPTH24)
+            {
+                internalFormat = GL_DEPTH_COMPONENT24;
+                dataFormat = GL_DEPTH_COMPONENT;
+                dataType = GL_UNSIGNED_INT;
+            }
+            else if (desc.Format == TextureFormat::DEPTH32)
+            {
+                internalFormat = GL_DEPTH_COMPONENT32;
+                dataFormat = GL_DEPTH_COMPONENT;
+                dataType = GL_UNSIGNED_INT;
+            }
+            else if (desc.Format == TextureFormat::DEPTH24STENCIL8)
+            {
+                internalFormat = GL_DEPTH24_STENCIL8;
+                dataFormat = GL_DEPTH_STENCIL;
+                dataType = GL_UNSIGNED_INT_24_8;
+            }
+
+            if (internalFormat == 0)
+            {
+                if (desc.Usage == TextureUsage::Depth)
+                {
+                    internalFormat = GL_DEPTH_COMPONENT;
+                    dataFormat = GL_DEPTH_COMPONENT;
+                }
+                else if (desc.Usage == TextureUsage::Stencil)
+                {
+                    internalFormat = GL_STENCIL_INDEX;
+                    dataFormat = GL_STENCIL_INDEX;
+                }
+                else if (desc.Usage == TextureUsage::DepthStencil)
+                {
+                    internalFormat = GL_DEPTH_STENCIL;
+                    dataFormat = GL_DEPTH_STENCIL;
+                    dataType = GL_UNSIGNED_INT_24_8;
+                }
+            }
+        }
+
+        bool IsDepthLikeTexture(const RHITextureDesc& desc)
+        {
+            return (desc.Format == TextureFormat::DEPTH16) ||
+                   (desc.Format == TextureFormat::DEPTH24) ||
+                   (desc.Format == TextureFormat::DEPTH32) ||
+                   (desc.Format == TextureFormat::DEPTH24STENCIL8) ||
+                   (desc.Usage == TextureUsage::Depth) ||
+                   (desc.Usage == TextureUsage::DepthStencil);
+        }
+    }
+
     OpenGLTexture2D::~OpenGLTexture2D()
     {
         if (m_ID != 0)
@@ -32,74 +112,9 @@ namespace minEngine
         GLint internalFormat = 0;
         GLenum dataFormat = 0;
         GLenum dataType = GL_UNSIGNED_BYTE;
+        ResolveOpenGLTextureFormat(desc, internalFormat, dataFormat, dataType);
 
-        if (desc.Format == TextureFormat::RED)
-        {
-            internalFormat = GL_R8;
-            dataFormat = GL_RED;
-        }
-        else if (desc.Format == TextureFormat::RGB8)
-        {
-            internalFormat = GL_RGB8;
-            dataFormat = GL_RGB;
-        }
-        else if (desc.Format == TextureFormat::RGBA8)
-        {
-            internalFormat = GL_RGBA8;
-            dataFormat = GL_RGBA;
-        }
-        else if (desc.Format == TextureFormat::DEPTH16)
-        {
-            internalFormat = GL_DEPTH_COMPONENT16;
-            dataFormat = GL_DEPTH_COMPONENT;
-            dataType = GL_UNSIGNED_SHORT;
-        }
-        else if (desc.Format == TextureFormat::DEPTH24)
-        {
-            internalFormat = GL_DEPTH_COMPONENT24;
-            dataFormat = GL_DEPTH_COMPONENT;
-            dataType = GL_UNSIGNED_INT;
-        }
-        else if (desc.Format == TextureFormat::DEPTH32)
-        {
-            internalFormat = GL_DEPTH_COMPONENT32;
-            dataFormat = GL_DEPTH_COMPONENT;
-            dataType = GL_UNSIGNED_INT;
-        }
-        else if (desc.Format == TextureFormat::DEPTH24STENCIL8)
-        {
-            internalFormat = GL_DEPTH24_STENCIL8;
-            dataFormat = GL_DEPTH_STENCIL;
-            dataType = GL_UNSIGNED_INT_24_8;
-        }
-
-        // Apply Usage overrides or defaults if Format was not sufficient
-        if (internalFormat == 0)
-        {
-            if (desc.Usage == TextureUsage::Depth)
-            {
-                internalFormat = GL_DEPTH_COMPONENT;
-                dataFormat = GL_DEPTH_COMPONENT;
-            }
-            else if (desc.Usage == TextureUsage::Stencil)
-            {
-                internalFormat = GL_STENCIL_INDEX;
-                dataFormat = GL_STENCIL_INDEX;
-            }
-            else if (desc.Usage == TextureUsage::DepthStencil)
-            {
-                internalFormat = GL_DEPTH_STENCIL;
-                dataFormat = GL_DEPTH_STENCIL;
-                dataType = GL_UNSIGNED_INT_24_8;
-            }
-        }
-
-        bool isDepthStencil = (desc.Format == TextureFormat::DEPTH16) ||
-                              (desc.Format == TextureFormat::DEPTH24) ||
-                              (desc.Format == TextureFormat::DEPTH32) ||
-                              (desc.Format == TextureFormat::DEPTH24STENCIL8) ||
-                              (desc.Usage == TextureUsage::Depth) ||
-                              (desc.Usage == TextureUsage::DepthStencil);
+        bool isDepthStencil = IsDepthLikeTexture(desc);
 
         if (isDepthStencil)
         {
@@ -174,5 +189,81 @@ namespace minEngine
     void OpenGLTextureCube::Unbind()
     {
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    }
+
+    OpenGLTexture2DArray::OpenGLTexture2DArray(const unsigned char *data, RHITextureDesc desc, int unit)
+    {
+        m_Unit = unit;
+        m_Desc = desc;
+
+        uint32_t layerCount = (m_Desc.Layers == 0) ? 1 : m_Desc.Layers;
+        m_Desc.Layers = layerCount;
+
+        glGenTextures(1, &m_ID);
+        glActiveTexture(GL_TEXTURE0 + m_Unit);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, m_ID);
+
+        GLint internalFormat = 0;
+        GLenum dataFormat = 0;
+        GLenum dataType = GL_UNSIGNED_BYTE;
+        ResolveOpenGLTextureFormat(desc, internalFormat, dataFormat, dataType);
+        const bool isDepthLike = IsDepthLikeTexture(desc);
+
+        if (isDepthLike)
+        {
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);
+        }
+        else
+        {
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+
+        if (internalFormat != 0 && m_Desc.Width > 0 && m_Desc.Height > 0)
+        {
+            glTexImage3D(
+                GL_TEXTURE_2D_ARRAY,
+                0,
+                internalFormat,
+                static_cast<GLsizei>(m_Desc.Width),
+                static_cast<GLsizei>(m_Desc.Height),
+                static_cast<GLsizei>(layerCount),
+                0,
+                dataFormat,
+                dataType,
+                data);
+
+            if (!isDepthLike)
+            {
+                glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+            }
+        }
+    }
+
+    OpenGLTexture2DArray::~OpenGLTexture2DArray()
+    {
+        if (m_ID != 0)
+        {
+            glDeleteTextures(1, &m_ID);
+            m_ID = 0;
+        }
+    }
+
+    void OpenGLTexture2DArray::Bind()
+    {
+        glActiveTexture(GL_TEXTURE0 + m_Unit);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, m_ID);
+    }
+
+    void OpenGLTexture2DArray::Unbind()
+    {
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
     }
 }

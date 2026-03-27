@@ -17,8 +17,7 @@
 
 #include "glm/gtc/type_ptr.hpp"
 
-#include "RenderPipeline.h"
-#include "RenderPasses/BasePass.h"
+#include "RenderPipeline/RenderPipeline.h"
 
 namespace minEngine
 {

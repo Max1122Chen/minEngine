@@ -1,6 +1,6 @@
 #pragma once
 #include "Core.h"
-#include "RenderPipeline.h"
+#include "RenderPipeline/RenderPipeline.h"
 
 namespace minEngine
 {

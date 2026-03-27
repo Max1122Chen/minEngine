@@ -156,6 +156,14 @@ namespace minEngine
             }
         }
 
+        // Special handling for scroll input to reset its state after processing to avoid continuous scroll input
+        InputKeyState* mouseScrollState = GetKeyState(InputKeys::MouseScroll);
+        if(mouseScrollState->bDown)
+        {
+            // Reset scroll state after processing to avoid continuous scroll input
+            mouseScrollState->bDown = false;
+            mouseScrollState->RawValue = Vector3(0.0f, 0.0f, 0.0f);
+        }
     }
 
     void InputSystem::AddInputComponent(InputComponent *component)
