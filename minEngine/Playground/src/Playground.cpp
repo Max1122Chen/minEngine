@@ -390,52 +390,52 @@ public:
         planeGO->SetTransform(minEngine::Transform(minEngine::Vector3(0.0f, -1.0f, 0.0f), minEngine::Vector3(0.0f, 0.0f, 0.0f), minEngine::Vector3(10.0f, 1.0f, 10.0f)));
 
 
-        // create PointLight game object
-        auto light = level.CreateGameObject();
-        std::shared_ptr<minEngine::StaticMeshComponent> lightMeshComponent = light->CreateAndAddComponent<minEngine::StaticMeshComponent>();
-        light->SetRootComponent(lightMeshComponent);
+        // // create PointLight game object
+        // auto light = level.CreateGameObject();
+        // std::shared_ptr<minEngine::StaticMeshComponent> lightMeshComponent = light->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+        // light->SetRootComponent(lightMeshComponent);
 
-        std::shared_ptr<minEngine::PointLightComponent> lightComponent = light->CreateAndAddComponent<minEngine::PointLightComponent>();
-        lightComponent->AttachToComponent(lightMeshComponent.get(), minEngine::AttachmentTransformRules::KeepRelativeTransform);
+        // std::shared_ptr<minEngine::PointLightComponent> lightComponent = light->CreateAndAddComponent<minEngine::PointLightComponent>();
+        // lightComponent->AttachToComponent(lightMeshComponent.get(), minEngine::AttachmentTransformRules::KeepRelativeTransform);
 
         // create DirectionalLight game object
         auto dirLight = level.CreateGameObject();
         std::shared_ptr<minEngine::DirectionalLightComponent> dirLightComponent = dirLight->CreateAndAddComponent<minEngine::DirectionalLightComponent>();
         dirLight->SetRootComponent(dirLightComponent);
 
-        // create SpotLight game object
-        auto spotLight = level.CreateGameObject();
-        std::shared_ptr<minEngine::StaticMeshComponent> spotLightMeshComponent = spotLight->CreateAndAddComponent<minEngine::StaticMeshComponent>();
-        spotLight->SetRootComponent(spotLightMeshComponent);
+        // // create SpotLight game object
+        // auto spotLight = level.CreateGameObject();
+        // std::shared_ptr<minEngine::StaticMeshComponent> spotLightMeshComponent = spotLight->CreateAndAddComponent<minEngine::StaticMeshComponent>();
+        // spotLight->SetRootComponent(spotLightMeshComponent);
 
-        std::shared_ptr<minEngine::SpotLightComponent> spotLightComponent = spotLight->CreateAndAddComponent<minEngine::SpotLightComponent>();
-        spotLightComponent->AttachToComponent(spotLightMeshComponent.get(), minEngine::AttachmentTransformRules::KeepRelativeTransform);
+        // std::shared_ptr<minEngine::SpotLightComponent> spotLightComponent = spotLight->CreateAndAddComponent<minEngine::SpotLightComponent>();
+        // spotLightComponent->AttachToComponent(spotLightMeshComponent.get(), minEngine::AttachmentTransformRules::KeepRelativeTransform);
 
-        // set light mesh and material
-        lightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
-        lightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(lightMaterial));
-        lightMeshComponent->SetCastShadow(false);
+        // // set light mesh and material
+        // lightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
+        // lightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(lightMaterial));
+        // lightMeshComponent->SetCastShadow(false);
 
-        // set spot light mesh and material
-        spotLightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
-        spotLightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(spotLightMaterial));
-        spotLightMeshComponent->SetCastShadow(false);
+        // // set spot light mesh and material
+        // spotLightMeshComponent->SetMesh(std::make_shared<minEngine::StaticMesh>(lightMesh));
+        // spotLightMeshComponent->SetMaterial(std::make_shared<minEngine::Material>(spotLightMaterial));
+        // spotLightMeshComponent->SetCastShadow(false);
 
 
-        // set light transforms
-        light->SetPosition(minEngine::Vector3(0.0f, 3.0f, 0.0f));
-        light->SetScale(minEngine::Vector3(0.5f, 0.5f, 0.5f));
-        light->SetRotation(minEngine::Vector3(0.0f, 45.0f, 0.0f));
+        // // set light transforms
+        // light->SetPosition(minEngine::Vector3(0.0f, 3.0f, 0.0f));
+        // light->SetScale(minEngine::Vector3(0.5f, 0.5f, 0.5f));
+        // light->SetRotation(minEngine::Vector3(0.0f, 45.0f, 0.0f));
 
-        lightComponent->SetLightColor(minEngine::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        // lightComponent->SetLightColor(minEngine::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
-        dirLightComponent->SetDirection(minEngine::Vector3(0.0f, -1.0f, -0.5f));
+        dirLightComponent->SetDirection(minEngine::Vector3(0.0f, -1.0f, -2.0f));
         dirLightComponent->SetLightColor(minEngine::Vector4(138.0/255.0f, 245.0/255.0f, 228.0/255.0f, 1.0f));
         dirLightComponent->SetCastShadow(true);
 
-        spotLight->SetPosition(minEngine::Vector3(-2.0f, 2.0f, 2.0f) * 2.0f);
-        spotLightComponent->SetDirection(minEngine::Vector3(1.0f, -1.0f, -1.0f));
-        spotLightComponent->SetLightColor(minEngine::Vector4(227.0/255.0f, 138.0/255.0f, 245.0/255.0f, 1.0f));
+        // spotLight->SetPosition(minEngine::Vector3(-2.0f, 2.0f, 2.0f) * 2.0f);
+        // spotLightComponent->SetDirection(minEngine::Vector3(1.0f, -1.0f, -1.0f));
+        // spotLightComponent->SetLightColor(minEngine::Vector4(227.0/255.0f, 138.0/255.0f, 245.0/255.0f, 1.0f));
 
 
         engine->Run();

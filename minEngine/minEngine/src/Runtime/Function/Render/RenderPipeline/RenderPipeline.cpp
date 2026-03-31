@@ -31,11 +31,10 @@ namespace minEngine
             Matrix4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 0.1f, 100.0f);
 
             // The light's view matrix is calculated based on its direction and a target point.
-            Vector3 lightDir = lightProxy->m_Direction;
-            Vector3 target = Vector3(0.0f);
+            Vector3 lightDir = Vector3(lightProxy->m_Direction.z, lightProxy->m_Direction.y, -lightProxy->m_Direction.x); // Light direction points from the scene to the light
             Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
 
-            Matrix4 lightView = glm::lookAt(-lightDir * 10.0f, target, up);
+            Matrix4 lightView = glm::lookAt(-lightDir * 10.0f, lightDir, up);
 
             return lightProj * lightView;
         }
@@ -251,7 +250,9 @@ namespace minEngine
         if(firstValidDirectionalLight)
         {
             DirectionalLightSceneProxy* dirLightProxy = firstValidDirectionalLight;
-            lightsData.DirectionalLight.Direction = Vector4(dirLightProxy->m_Direction, 0.0f);
+            // Convert light direction to render space. Ref: RenderCamera.
+            Vector4 lightRenderDir = Vector4(dirLightProxy->m_Direction.z, dirLightProxy->m_Direction.y, -dirLightProxy->m_Direction.x, 0.0f);
+            lightsData.DirectionalLight.Direction = lightRenderDir;
             lightsData.DirectionalLight.Color = Vector4(dirLightProxy->m_LightColor, dirLightProxy->m_Intensity);
             int shadowMapIndex = -1;
             if (m_DirectionalShadowHandle.Valid)
@@ -261,7 +262,7 @@ namespace minEngine
             lightsData.DirectionalLight.Params = Vector4(0.0f, 0.0f, 0.0f, static_cast<float>(shadowMapIndex));
         }
 
-        uint32_t pLightCount = 0;
+        uint32_t pointLightCount = 0;
         for(size_t i = 0; i < renderScene->m_PointLightSceneProxies.size() && i < RenderSystem::MAX_POINT_LIGHTS; ++i)
         {
             PointLightSceneProxy* pointLightProxy = renderScene->m_PointLightSceneProxies[i];
@@ -269,13 +270,14 @@ namespace minEngine
             {
                 continue;
             }
-            lightsData.PointLights[pLightCount].Position = Vector4(pointLightProxy->m_Position, 1.0f); // w can be used for radius if needed
-            lightsData.PointLights[pLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
-            pLightCount++;
+            Vector4 lightRenderPos = Vector4(pointLightProxy->m_Position.z, pointLightProxy->m_Position.y, -pointLightProxy->m_Position.x, 1.0f); // Convert to render space
+            lightsData.PointLights[pointLightCount].Position = lightRenderPos;
+            lightsData.PointLights[pointLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
+            pointLightCount++;
         }
-        lightsData.PointLightsCount = pLightCount;
+        lightsData.PointLightsCount = pointLightCount;
 
-        uint32_t sLightCount = 0;
+        uint32_t spotLightCount = 0;
         for(size_t i = 0; i < renderScene->m_SpotLightSceneProxies.size() && i < RenderSystem::MAX_SPOT_LIGHTS; ++i)
         {
             SpotLightSceneProxy* spotLightProxy = renderScene->m_SpotLightSceneProxies[i];
@@ -283,14 +285,16 @@ namespace minEngine
             {
                 continue;
             }
-            lightsData.SpotLights[sLightCount].Position = Vector4(spotLightProxy->m_Position, 1.0f);
-            lightsData.SpotLights[sLightCount].Direction = Vector4(spotLightProxy->m_Direction, 0.0f);
-            lightsData.SpotLights[sLightCount].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
+            Vector4 lightRenderPos = Vector4(spotLightProxy->m_Position.z, spotLightProxy->m_Position.y, -spotLightProxy->m_Position.x, 1.0f); // Convert to render space
+            Vector4 lightRenderDir = Vector4(spotLightProxy->m_Direction.z, spotLightProxy->m_Direction.y, -spotLightProxy->m_Direction.x, 0.0f); // Convert to render space
+            lightsData.SpotLights[spotLightCount].Position = lightRenderPos;
+            lightsData.SpotLights[spotLightCount].Direction = lightRenderDir;
+            lightsData.SpotLights[spotLightCount].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
             
-            lightsData.SpotLights[sLightCount].Params = Vector4(spotLightProxy->m_InnerConeAngle, spotLightProxy->m_OuterConeAngle, 0.0f, 0.0f); // inner cone angle, outer cone angle
-            sLightCount++;
+            lightsData.SpotLights[spotLightCount].Params = Vector4(spotLightProxy->m_InnerConeAngle, spotLightProxy->m_OuterConeAngle, 0.0f, 0.0f); // inner cone angle, outer cone angle
+            spotLightCount++;
         }
-        lightsData.SpotLightsCount = sLightCount;
+        lightsData.SpotLightsCount = spotLightCount;
 
 
         m_LightUniformBuffer->UpdateData(&lightsData, 0, sizeof(LightsData));
