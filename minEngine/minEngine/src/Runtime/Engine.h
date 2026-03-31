@@ -18,13 +18,17 @@ namespace minEngine
 
         void Run();
 
-    private:
+    public:
         void TickOneFrame(float deltaTime);
+        float CalculateDeltaTime();
+        float CalculateFPS(float deltaTime);
+        
+    private:
         void LogicalTick(float deltaTime);
         void RendererTick(float deltaTime);
         
-        float CalculateDeltaTime();
-        float CalculateFPS(float deltaTime);
+        
+
     private:
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
     };

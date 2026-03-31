@@ -21,7 +21,7 @@ class Playground : public Application
 {
 public:
     Playground() = default;
-    ~Playground() = default;
+    virtual ~Playground() = default;
 
     Engine* engine = nullptr;
 
