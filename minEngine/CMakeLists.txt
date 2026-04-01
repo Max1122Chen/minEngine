@@ -20,7 +20,7 @@ if(BUILD_PLAYGROUND)
 	add_subdirectory(Playground)
 endif()
 
-if(BUILD_EDITOR)
+if(BUILD_EDITOR) 
 	add_subdirectory(Editor)
 endif()
 

@@ -5,6 +5,12 @@
 
 namespace minEngine
 {
+    namespace LogChannelNames
+    {
+        inline constexpr const char* Core = "MINENGINE";
+        inline constexpr const char* Client = "APP";
+    }
+
     class LogSystem
     {
     public:

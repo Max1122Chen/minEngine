@@ -1,4 +1,5 @@
 #include "LogSystem.h"
+#include "LogConsole.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 namespace minEngine
@@ -8,12 +9,20 @@ namespace minEngine
 
     void LogSystem::Initialize()
     {
-        spdlog::set_pattern("%^[%T] %n: %v%$");
-        s_CoreLogger = spdlog::stdout_color_mt("MINENGINE");
-        s_CoreLogger->set_level(spdlog::level::trace);
+        auto stdoutSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        stdoutSink->set_pattern("%^[%T] %n: %v%$");
 
-        s_ClientLogger = spdlog::stdout_color_mt("APP");
+        auto consoleSink = std::make_shared<LogConsoleSink>();
+
+        std::vector<spdlog::sink_ptr> sinks {stdoutSink, consoleSink};
+
+        s_CoreLogger = std::make_shared<spdlog::logger>(LogChannelNames::Core, sinks.begin(), sinks.end());
+        s_CoreLogger->set_level(spdlog::level::trace);
+        spdlog::register_logger(s_CoreLogger);
+
+        s_ClientLogger = std::make_shared<spdlog::logger>(LogChannelNames::Client, sinks.begin(), sinks.end());
         s_ClientLogger->set_level(spdlog::level::trace);
+        spdlog::register_logger(s_ClientLogger);
 
         ME_CORE_INFO("LogSystem Initialized");
     }

@@ -17,6 +17,7 @@
 
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Core/Log/LogConsole.h"
 
 namespace minEngine
 {
@@ -36,17 +37,12 @@ namespace minEngine
             ImGuiIO& io = ImGui::GetIO();
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-            m_ConsoleLines.push_back("[Editor] Docking enabled.");
             io.FontGlobalScale = 1.25f;
             ImGui::StyleColorsDark();
             ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->GetWindowHandle()), true);
             ImGui_ImplOpenGL3_Init();
 
             RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
-            m_ConsoleLines.push_back("[Editor] Cursor set to visible mode.");
-
-            m_ConsoleLines.push_back("[Editor] Console initialized.");
-            m_ConsoleLines.push_back("[Engine] Ready.");
         }
 
         virtual void Shutdown() override
@@ -118,19 +114,16 @@ namespace minEngine
             if (ImGui::Button(m_IsPlaying ? "Stop" : "Play"))
             {
                 m_IsPlaying = !m_IsPlaying;
-                m_ConsoleLines.push_back(m_IsPlaying ? "[Editor] Play pressed." : "[Editor] Stop pressed.");
             }
 
             ImGui::SameLine();
             if (ImGui::Button("Pause"))
             {
-                m_ConsoleLines.push_back("[Editor] Pause pressed.");
             }
 
             ImGui::SameLine();
             if (ImGui::Button("Step"))
             {
-                m_ConsoleLines.push_back("[Editor] Step pressed.");
             }
 
             ImGui::SameLine();
@@ -200,13 +193,27 @@ namespace minEngine
             ImGui::Begin("Console");
             if (ImGui::Button("Clear"))
             {
-                m_ConsoleLines.clear();
+                LogConsoleStorage::Clear();
             }
             ImGui::Separator();
+
+            const std::vector<LogConsoleEntry> entries = LogConsoleStorage::Snapshot();
+
             ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
-            for (const std::string& line : m_ConsoleLines)
+            for (const LogConsoleEntry& entry : entries)
             {
-                ImGui::TextUnformatted(line.c_str());
+                const char* source = "UNKNOWN";
+                if (entry.source == LogSource::Core)
+                {
+                    source = "CORE";
+                }
+                else if (entry.source == LogSource::Client)
+                {
+                    source = "CLIENT";
+                }
+
+                const char* level = LogLevel::ToString(entry.level);
+                ImGui::Text("[%s] [%s] [%s] %s", entry.timestamp.c_str(), source, level, entry.message.c_str());
             }
             if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
             {
@@ -611,7 +618,6 @@ namespace minEngine
         bool m_ShowDemoWindow = false;
         float m_LastDeltaTime = 0.0f;
 
-        std::vector<std::string> m_ConsoleLines;
         std::vector<std::string> m_HierarchyItems {"MainCamera", "DirectionalLight", "Cube_01", "Plane_01"};
         int m_SelectedHierarchyIndex = 0;
         std::string m_InspectorName = "MainCamera";
