@@ -39,6 +39,7 @@ namespace minEngine
 
         virtual void SwapBuffers() override;
         virtual void PollEvents() const override;
+        virtual void SetCursorVisible(bool visible) override;
         
         virtual void* GetWindowHandle() const override { return m_Window; }
 

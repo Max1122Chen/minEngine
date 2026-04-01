@@ -130,6 +130,11 @@ namespace minEngine
     // Poll events
     void GLFWWindowSystem::PollEvents() const { glfwPollEvents(); }
 
+    void GLFWWindowSystem::SetCursorVisible(bool visible)
+    {
+        glfwSetInputMode(m_Window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+    }
+
     // Set GLFW callbacks
     void GLFWWindowSystem::SetupWindowEventCallbacks()
     {

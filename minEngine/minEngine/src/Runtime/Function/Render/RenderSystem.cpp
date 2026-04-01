@@ -70,8 +70,6 @@ namespace minEngine
         static_cast<OpenGLRHI*>(m_RHI.get())-> m_WindowSystem->Clear();
 
         m_RenderPipeline.Execute();
-
-        static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SwapBuffers();
     }
 
 }

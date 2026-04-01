@@ -15,7 +15,7 @@ set(THIRD_PARTY_PATH ${PROJECT_SOURCE_DIR}/${ENGINE_NAME}/Third-Party)
 set(EXECUTABLE_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 add_subdirectory(${ENGINE_NAME})
-
+ 
 if(BUILD_PLAYGROUND)
 	add_subdirectory(Playground)
 endif()

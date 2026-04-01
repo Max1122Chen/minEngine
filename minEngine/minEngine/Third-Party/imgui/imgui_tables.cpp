@@ -1,4 +1,4 @@
-// dear imgui, v1.92.6 WIP
+// dear imgui, v1.92.7 WIP
 // (tables and columns code)
 
 /*
@@ -240,6 +240,7 @@ Index of this file:
 #pragma GCC diagnostic ignored "-Wformat"                           // warning: format '%p' expects argument of type 'int'/'void*', but argument X has type 'unsigned int'/'ImGuiWindow*'
 #pragma GCC diagnostic ignored "-Wstrict-overflow"
 #pragma GCC diagnostic ignored "-Wclass-memaccess"                  // [__GNUC__ >= 8] warning: 'memset/memcpy' clearing/writing an object of type 'xxxx' with no trivial copy-assignment; use assignment or value-initialization instead
+#pragma GCC diagnostic ignored "-Wsign-conversion"                  // warning: conversion to 'xxxx' from 'xxxx' may change the sign of the result
 #endif
 
 //-----------------------------------------------------------------------------
@@ -698,36 +699,14 @@ void ImGui::TableBeginApplyRequests(ImGuiTable* table)
     }
 
     // Handle reordering request
-    // Note: we don't clear ReorderColumn after handling the request.
+    // Note: we don't clear ReorderColumn after handling the request (FIXME: clarify why or add a test).
     if (table->InstanceCurrent == 0)
     {
-        if (table->HeldHeaderColumn == -1 && table->ReorderColumn != -1)
-            table->ReorderColumn = -1;
         table->HeldHeaderColumn = -1;
-        if (table->ReorderColumn != -1 && table->ReorderColumnDir != 0)
+        if (table->ReorderColumn != -1 && table->ReorderColumnDstOrder != -1)
         {
-            // We need to handle reordering across hidden columns.
-            // In the configuration below, moving C to the right of E will lead to:
-            //    ... C [D] E  --->  ... [D] E  C   (Column name/index)
-            //    ... 2  3  4        ...  2  3  4   (Display order)
-            const int reorder_dir = table->ReorderColumnDir;
-            IM_ASSERT(reorder_dir == -1 || reorder_dir == +1);
-            IM_ASSERT(table->Flags & ImGuiTableFlags_Reorderable);
-            ImGuiTableColumn* src_column = &table->Columns[table->ReorderColumn];
-            ImGuiTableColumn* dst_column = &table->Columns[(reorder_dir == -1) ? src_column->PrevEnabledColumn : src_column->NextEnabledColumn];
-            IM_UNUSED(dst_column);
-            const int src_order = src_column->DisplayOrder;
-            const int dst_order = dst_column->DisplayOrder;
-            src_column->DisplayOrder = (ImGuiTableColumnIdx)dst_order;
-            for (int order_n = src_order + reorder_dir; order_n != dst_order + reorder_dir; order_n += reorder_dir)
-                table->Columns[table->DisplayOrderToIndex[order_n]].DisplayOrder -= (ImGuiTableColumnIdx)reorder_dir;
-            IM_ASSERT(dst_column->DisplayOrder == dst_order - reorder_dir);
-
-            // Display order is stored in both columns->IndexDisplayOrder and table->DisplayOrder[]. Rebuild later from the former.
-            for (int column_n = 0; column_n < table->ColumnsCount; column_n++)
-                table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx)column_n;
-            table->ReorderColumnDir = 0;
-            table->IsSettingsDirty = true;
+            TableSetColumnDisplayOrder(table, table->ReorderColumn, table->ReorderColumnDstOrder);
+            table->ReorderColumnDstOrder = -1;
         }
     }
 
@@ -739,6 +718,49 @@ void ImGui::TableBeginApplyRequests(ImGuiTable* table)
         table->IsResetDisplayOrderRequest = false;
         table->IsSettingsDirty = true;
     }
+}
+
+// Apply immediately. See TableQueueSetColumnDisplayOrder() for additional checks/constraints.
+void ImGui::TableSetColumnDisplayOrder(ImGuiTable* table, int column_n, int dst_order)
+{
+    IM_ASSERT(column_n >= 0 && column_n < table->ColumnsCount);
+    IM_ASSERT(dst_order >= 0 && dst_order < table->ColumnsCount);
+
+    ImGuiTableColumn* src_column = &table->Columns[column_n];
+    const int src_order = src_column->DisplayOrder;
+    if (src_order == dst_order)
+        return;
+    const int reorder_dir = (dst_order < src_order) ? -1 : +1;
+
+    src_column->DisplayOrder = (ImGuiTableColumnIdx)dst_order;
+    for (int order_n = src_order + reorder_dir; order_n != dst_order + reorder_dir; order_n += reorder_dir)
+        table->Columns[table->DisplayOrderToIndex[order_n]].DisplayOrder -= (ImGuiTableColumnIdx)reorder_dir;
+    //IM_ASSERT(dst_column->DisplayOrder == dst_order - reorder_dir);
+
+    // Display order is stored in both columns->IndexDisplayOrder and table->DisplayOrder[]. Rebuild later from the former.
+    // FIXME-OPT: If this is called multiple times we'd effectively have a O(N^2) thing going on.
+    for (int n = 0; n < table->ColumnsCount; n++)
+        table->DisplayOrderToIndex[table->Columns[n].DisplayOrder] = (ImGuiTableColumnIdx)n;
+    table->IsSettingsDirty = true;
+}
+
+// Reorder requested by user indirection needs to verify
+// - That we don't reorder columns with the ImGuiTableColumnFlags_NoReorder flag.
+// - That we don't cross the frozen column limit.
+//   (that TableSetupScrollFreeze() enforce a display order range for frozen columns.
+//    so reordering a column across the frozen column barrier is illegal and will be undone.)
+void ImGui::TableQueueSetColumnDisplayOrder(ImGuiTable* table, int column_n, int dst_order)
+{
+    ImGuiTableColumn* src_column = &table->Columns[column_n];
+    ImGuiTableColumn* dst_column = &table->Columns[table->DisplayOrderToIndex[dst_order]];
+    if ((src_column->Flags | dst_column->Flags) & ImGuiTableColumnFlags_NoReorder) // FIXME: Perform a sweep test?
+        return;
+    int src_i = (src_column->IndexWithinEnabledSet != -1) ? src_column->IndexWithinEnabledSet : table->Columns.index_from_ptr(src_column); // FIXME: Hidden columns don't count into the FreezeColumns count, so what to do here is ill-defined. For now we use regular index.
+    int dst_i = (dst_column->IndexWithinEnabledSet != -1) ? dst_column->IndexWithinEnabledSet : table->Columns.index_from_ptr(dst_column);
+    if ((src_i < table->FreezeColumnsRequest) != (dst_i < table->FreezeColumnsRequest))
+        return;
+    table->ReorderColumn = (ImGuiTableColumnIdx)column_n;
+    table->ReorderColumnDstOrder = (ImGuiTableColumnIdx)dst_order;
 }
 
 // Adjust flags: default width mode + stretch columns are not allowed when auto extending
@@ -1348,11 +1370,7 @@ void    ImGui::EndTable()
 {
     ImGuiContext& g = *GImGui;
     ImGuiTable* table = g.CurrentTable;
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "EndTable() call should only be done while in BeginTable() scope!");
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "EndTable() call should only be done while in BeginTable() scope!");
 
     // This assert would be very useful to catch a common error... unfortunately it would probably trigger in some
     // cases, and for consistency user may sometimes output empty tables (and still benefit from e.g. outer border)
@@ -1601,18 +1619,10 @@ void ImGui::TableSetupColumn(const char* label, ImGuiTableColumnFlags flags, flo
 {
     ImGuiContext& g = *GImGui;
     ImGuiTable* table = g.CurrentTable;
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "Call should only be done while in BeginTable() scope!");
-        return;
-    }
-    IM_ASSERT(table->IsLayoutLocked == false && "Need to call TableSetupColumn() before first row!");
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "Call should only be done while in BeginTable() scope!");
+    IM_ASSERT_USER_ERROR_RET(table->DeclColumnsCount < table->ColumnsCount, "TableSetupColumn(): called too many times!");
+    IM_ASSERT_USER_ERROR_RET(table->IsLayoutLocked == false, "TableSetupColumn(): need to call before first row!");
     IM_ASSERT((flags & ImGuiTableColumnFlags_StatusMask_) == 0 && "Illegal to pass StatusMask values to TableSetupColumn()");
-    if (table->DeclColumnsCount >= table->ColumnsCount)
-    {
-        IM_ASSERT_USER_ERROR(table->DeclColumnsCount < table->ColumnsCount, "Called TableSetupColumn() too many times!");
-        return;
-    }
 
     ImGuiTableColumn* column = &table->Columns[table->DeclColumnsCount];
     table->DeclColumnsCount++;
@@ -1620,7 +1630,7 @@ void ImGui::TableSetupColumn(const char* label, ImGuiTableColumnFlags flags, flo
     // Assert when passing a width or weight if policy is entirely left to default, to avoid storing width into weight and vice-versa.
     // Give a grace to users of ImGuiTableFlags_ScrollX.
     if (table->IsDefaultSizingPolicy && (flags & ImGuiTableColumnFlags_WidthMask_) == 0 && (flags & ImGuiTableFlags_ScrollX) == 0)
-        IM_ASSERT(init_width_or_weight <= 0.0f && "Can only specify width/weight if sizing policy is set explicitly in either Table or Column.");
+        IM_ASSERT_USER_ERROR_RET(init_width_or_weight <= 0.0f, "TableSetupColumn(): can only specify width/weight if sizing policy is set explicitly in either Table or Column.");
 
     // When passing a width automatically enforce WidthFixed policy
     // (whereas TableSetupColumnFlags would default to WidthAuto if table is not resizable)
@@ -1662,12 +1672,8 @@ void ImGui::TableSetupScrollFreeze(int columns, int rows)
 {
     ImGuiContext& g = *GImGui;
     ImGuiTable* table = g.CurrentTable;
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "Call should only be done while in BeginTable() scope!");
-        return;
-    }
-    IM_ASSERT(table->IsLayoutLocked == false && "Need to call TableSetupColumn() before first row!");
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "Call should only be done while in BeginTable() scope!");
+    IM_ASSERT(table->IsLayoutLocked == false && "TableSetupColumn(): need to call before first row!");
     IM_ASSERT(columns >= 0 && columns < IMGUI_TABLE_MAX_COLUMNS);
     IM_ASSERT(rows >= 0 && rows < 128); // Arbitrary limit
 
@@ -1743,11 +1749,7 @@ void ImGui::TableSetColumnEnabled(int column_n, bool enabled)
 {
     ImGuiContext& g = *GImGui;
     ImGuiTable* table = g.CurrentTable;
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "Call should only be done while in BeginTable() scope!");
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "Call should only be done while in BeginTable() scope!");
     IM_ASSERT(table->Flags & ImGuiTableFlags_Hideable); // See comments above
     if (column_n < 0)
         column_n = table->CurrentColumn;
@@ -1825,12 +1827,8 @@ void ImGui::TableSetBgColor(ImGuiTableBgTarget target, ImU32 color, int column_n
 {
     ImGuiContext& g = *GImGui;
     ImGuiTable* table = g.CurrentTable;
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "Call should only be done while in BeginTable() scope!");
     IM_ASSERT(target != ImGuiTableBgTarget_None);
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "Call should only be done while in BeginTable() scope!");
-        return;
-    }
 
     if (color == IM_COL32_DISABLE)
         color = 0;
@@ -2128,11 +2126,7 @@ bool ImGui::TableSetColumnIndex(int column_n)
     {
         if (table->CurrentColumn != -1)
             TableEndCell(table);
-        if ((column_n >= 0 && column_n < table->ColumnsCount) == false)
-        {
-            IM_ASSERT_USER_ERROR(column_n >= 0 && column_n < table->ColumnsCount, "TableSetColumnIndex() invalid column index!");
-            return false;
-        }
+        IM_ASSERT_USER_ERROR_RETV(column_n >= 0 && column_n < table->ColumnsCount, false, "TableSetColumnIndex() invalid column index!");
         TableBeginCell(table, column_n);
     }
 
@@ -2624,7 +2618,7 @@ void ImGui::TableMergeDrawChannels(ImGuiTable* table)
     const int size_for_masks_bitarrays_one = (int)ImBitArrayGetStorageSizeInBytes(max_draw_channels);
     g.TempBuffer.reserve(size_for_masks_bitarrays_one * 5);
     memset(g.TempBuffer.Data, 0, size_for_masks_bitarrays_one * 5);
-    for (int n = 0; n < IM_ARRAYSIZE(merge_groups); n++)
+    for (int n = 0; n < IM_COUNTOF(merge_groups); n++)
         merge_groups[n].ChannelsMask = (ImBitArrayPtr)(void*)(g.TempBuffer.Data + (size_for_masks_bitarrays_one * n));
     ImBitArrayPtr remaining_mask = (ImBitArrayPtr)(void*)(g.TempBuffer.Data + (size_for_masks_bitarrays_one * 4));
 
@@ -2681,7 +2675,7 @@ void ImGui::TableMergeDrawChannels(ImGuiTable* table)
     // [DEBUG] Display merge groups
 #if 0
     if (g.IO.KeyShift)
-        for (int merge_group_n = 0; merge_group_n < IM_ARRAYSIZE(merge_groups); merge_group_n++)
+        for (int merge_group_n = 0; merge_group_n < IM_COUNTOF(merge_groups); merge_group_n++)
         {
             MergeGroup* merge_group = &merge_groups[merge_group_n];
             if (merge_group->ChannelsCount == 0)
@@ -2709,7 +2703,7 @@ void ImGui::TableMergeDrawChannels(ImGuiTable* table)
         int remaining_count = splitter->_Count - (has_freeze_v ? LEADING_DRAW_CHANNELS + 1 : LEADING_DRAW_CHANNELS);
         //ImRect host_rect = (table->InnerWindow == table->OuterWindow) ? table->InnerClipRect : table->HostClipRect;
         ImRect host_rect = table->HostClipRect;
-        for (int merge_group_n = 0; merge_group_n < IM_ARRAYSIZE(merge_groups); merge_group_n++)
+        for (int merge_group_n = 0; merge_group_n < IM_COUNTOF(merge_groups); merge_group_n++)
         {
             if (int merge_channels_count = merge_groups[merge_group_n].ChannelsCount)
             {
@@ -3118,11 +3112,7 @@ void ImGui::TableHeadersRow()
 {
     ImGuiContext& g = *GImGui;
     ImGuiTable* table = g.CurrentTable;
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "Call should only be done while in BeginTable() scope!");
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "Call should only be done while in BeginTable() scope!");
 
     // Call layout if not already done. This is automatically done by TableNextRow: we do it here _only_ to make
     // it easier to debug-step in TableUpdateLayout(). Your own version of this function doesn't need this.
@@ -3167,12 +3157,7 @@ void ImGui::TableHeader(const char* label)
         return;
 
     ImGuiTable* table = g.CurrentTable;
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "Call should only be done while in BeginTable() scope!");
-        return;
-    }
-
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "Call should only be done while in BeginTable() scope!");
     IM_ASSERT(table->CurrentColumn != -1);
     const int column_n = table->CurrentColumn;
     ImGuiTableColumn* column = &table->Columns[column_n];
@@ -3202,7 +3187,7 @@ void ImGui::TableHeader(const char* label)
             sort_arrow = true;
         if (column->SortOrder > 0)
         {
-            ImFormatString(sort_order_suf, IM_ARRAYSIZE(sort_order_suf), "%d", column->SortOrder + 1);
+            ImFormatString(sort_order_suf, IM_COUNTOF(sort_order_suf), "%d", column->SortOrder + 1);
             w_sort_text = g.Style.ItemInnerSpacing.x + CalcTextSize(sort_order_suf).x;
         }
     }
@@ -3247,21 +3232,19 @@ void ImGui::TableHeader(const char* label)
     // FIXME-TABLE: Scroll request while reordering a column and it lands out of the scrolling zone.
     if (held && (table->Flags & ImGuiTableFlags_Reorderable) && IsMouseDragging(0) && !g.DragDropActive)
     {
-        // While moving a column it will jump on the other side of the mouse, so we also test for MouseDelta.x
-        table->ReorderColumn = (ImGuiTableColumnIdx)column_n;
+        // - While moving a column it will jump on the other side of the mouse, so we also test for MouseDelta.x
+        // - We need to handle reordering across hidden columns.
+        //   In the configuration below, moving C to the right of E will lead to:
+        //      ... C [D] E  --->  ... [D] E  C   (Column name/index)
+        //      ... 2  3  4        ...  2  3  4   (Display order)
+        // - The other constraints are enforced by TableQueueSetColumnDisplayOrder() which might early out.
         table->InstanceInteracted = table->InstanceCurrent;
-
-        // We don't reorder: through the frozen<>unfrozen line, or through a column that is marked with ImGuiTableColumnFlags_NoReorder.
         if (g.IO.MouseDelta.x < 0.0f && g.IO.MousePos.x < cell_r.Min.x)
             if (ImGuiTableColumn* prev_column = (column->PrevEnabledColumn != -1) ? &table->Columns[column->PrevEnabledColumn] : NULL)
-                if (!((column->Flags | prev_column->Flags) & ImGuiTableColumnFlags_NoReorder))
-                    if ((column->IndexWithinEnabledSet < table->FreezeColumnsRequest) == (prev_column->IndexWithinEnabledSet < table->FreezeColumnsRequest))
-                        table->ReorderColumnDir = -1;
+                TableQueueSetColumnDisplayOrder(table, column_n, prev_column->DisplayOrder);
         if (g.IO.MouseDelta.x > 0.0f && g.IO.MousePos.x > cell_r.Max.x)
             if (ImGuiTableColumn* next_column = (column->NextEnabledColumn != -1) ? &table->Columns[column->NextEnabledColumn] : NULL)
-                if (!((column->Flags | next_column->Flags) & ImGuiTableColumnFlags_NoReorder))
-                    if ((column->IndexWithinEnabledSet < table->FreezeColumnsRequest) == (next_column->IndexWithinEnabledSet < table->FreezeColumnsRequest))
-                        table->ReorderColumnDir = +1;
+                TableQueueSetColumnDisplayOrder(table, column_n, next_column->DisplayOrder);
     }
 
     // Sort order arrow
@@ -3300,7 +3283,7 @@ void ImGui::TableHeader(const char* label)
         SetItemTooltip("%.*s", (int)(label_end - label), label);
 
     // We don't use BeginPopupContextItem() because we want the popup to stay up even after the column is hidden
-    if (IsMouseReleased(1) && IsItemHovered())
+    if (IsPopupOpenRequestForItem(ImGuiPopupFlags_None, id))
         TableOpenContextMenu(column_n);
 }
 
@@ -3347,11 +3330,7 @@ void ImGui::TableAngledHeadersRowEx(ImGuiID row_id, float angle, float max_label
     ImGuiTable* table = g.CurrentTable;
     ImGuiWindow* window = g.CurrentWindow;
     ImDrawList* draw_list = window->DrawList;
-    if (table == NULL)
-    {
-        IM_ASSERT_USER_ERROR(table != NULL, "Call should only be done while in BeginTable() scope!");
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(table != NULL, "Call should only be done while in BeginTable() scope!");
     IM_ASSERT(table->CurrentRow == -1 && "Must be first row");
 
     if (max_label_width == 0.0f)
@@ -4094,7 +4073,7 @@ void ImGui::DebugNodeTable(ImGuiTable* table)
         ImGuiTableColumn* column = &table->Columns[n];
         const char* name = TableGetColumnName(table, n);
         char buf[512];
-        ImFormatString(buf, IM_ARRAYSIZE(buf),
+        ImFormatString(buf, IM_COUNTOF(buf),
             "Column %d order %d '%s': offset %+.2f to %+.2f%s\n"
             "Enabled: %d, VisibleX/Y: %d/%d, RequestOutput: %d, SkipItems: %d, DrawChannels: %d,%d\n"
             "WidthGiven: %.1f, Request/Auto: %.1f/%.1f, StretchWeight: %.3f (%.1f%%)\n"

@@ -22,6 +22,7 @@ namespace minEngine
 
         virtual void SwapBuffers() = 0;
         virtual void PollEvents() const = 0;
+        virtual void SetCursorVisible(bool visible) = 0;
 
         virtual void* GetWindowHandle() const = 0;
 

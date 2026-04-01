@@ -1,11 +1,6 @@
-#include "minEngine.h"
+#include "DebugScene.h"
 
-#include "imgui.h"
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
-
-#include <string>
-#include <vector>
+#include
 
 #include "Runtime/Function/Framework/Components/CameraComponent.h"
 #include "Runtime/Function/Framework/Components/MovementComponent.h"
@@ -20,222 +15,26 @@
 
 namespace minEngine
 {
-    class Editor : public Application
+    inline void SetupDebugScene()
     {
-    public:
-        Editor() = default;
-        virtual ~Editor() = default;
+        // Set up IMC
+            InputAction IA_Look("IA_Look", InputActionValueType::Axis2D);
+            InputAction IA_Move("IA_Move", InputActionValueType::Axis3D);
+            InputAction IA_UpAndDown("IA_UpAndDown", InputActionValueType::Axis1D);
+            InputAction IA_ScrollMove("IA_ScrollMove", InputActionValueType::Axis1D);
+            
+            InputMappingContext inputMappingContext({
+                { &IA_Look, InputKeys::Mouse2D },
+                { &IA_Move, InputKeys::Key_W },
+                { &IA_Move, InputKeys::Key_S, { std::make_shared<InputModifierNegate>() } },
+                { &IA_Move, InputKeys::Key_A, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
+                { &IA_Move, InputKeys::Key_D, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
+                { &IA_UpAndDown, InputKeys::Key_E },
+                { &IA_UpAndDown, InputKeys::Key_Q, { std::make_shared<InputModifierNegate>() } },
+                { &IA_ScrollMove, InputKeys::MouseScroll },
+            });
 
-        virtual void Initialize() override
-        {
-            engine = new Engine();
-            engine->Initialize();
-
-            // Set up IMGUI
-            ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
-            io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-            m_ConsoleLines.push_back("[Editor] Docking enabled.");
-            io.FontGlobalScale = 1.25f;
-            ImGui::StyleColorsDark();
-            ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->GetWindowHandle()), true);
-            ImGui_ImplOpenGL3_Init();
-
-            RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
-            m_ConsoleLines.push_back("[Editor] Cursor set to visible mode.");
-
-            m_ConsoleLines.push_back("[Editor] Console initialized.");
-            m_ConsoleLines.push_back("[Engine] Ready.");
-        }
-
-        virtual void Shutdown() override
-        {
-            ImGui_ImplOpenGL3_Shutdown();
-            ImGui_ImplGlfw_Shutdown();
-            ImGui::DestroyContext();
-
-            engine->Shutdown();
-            delete engine;
-            engine = nullptr;
-        }
-
-        virtual void Run() override
-        {
-            SetupDebugScene();
-            WindowSystem* windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem.get();
-            while (!windowSystem->ShouldClose())
-            {
-                // Engine tick
-                float deltaTime = engine->CalculateDeltaTime();
-                engine->TickOneFrame(deltaTime);
-
-                // Start the Dear ImGui frame
-                ImGui_ImplOpenGL3_NewFrame();
-                ImGui_ImplGlfw_NewFrame();
-                ImGui::NewFrame();
-
-                DrawEditorUI(deltaTime);
-
-                // Render ImGui
-                ImGui::Render();
-                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-                windowSystem->SwapBuffers();
-            }
-        }
-
-        void DrawEditorUI(float deltaTime)
-        {
-            ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
-
-            DrawToolbar();
-            DrawViewportWindow();
-            DrawHierarchyWindow();
-            DrawInspectorWindow();
-            DrawConsoleWindow();
-
-            if (m_ShowDemoWindow)
-            {
-                ImGui::ShowDemoWindow(&m_ShowDemoWindow);
-            }
-
-            m_LastDeltaTime = deltaTime;
-        }
-
-        void DrawToolbar()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(viewport->Pos);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, 36.0f));
-
-            ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoTitleBar |
-                                            ImGuiWindowFlags_NoResize |
-                                            ImGuiWindowFlags_NoMove |
-                                            ImGuiWindowFlags_NoScrollbar |
-                                            ImGuiWindowFlags_NoSavedSettings;
-
-            ImGui::Begin("Toolbar", nullptr, toolbarFlags);
-            if (ImGui::Button(m_IsPlaying ? "Stop" : "Play"))
-            {
-                m_IsPlaying = !m_IsPlaying;
-                m_ConsoleLines.push_back(m_IsPlaying ? "[Editor] Play pressed." : "[Editor] Stop pressed.");
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("Pause"))
-            {
-                m_ConsoleLines.push_back("[Editor] Pause pressed.");
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("Step"))
-            {
-                m_ConsoleLines.push_back("[Editor] Step pressed.");
-            }
-
-            ImGui::SameLine();
-            ImGui::Checkbox("Demo", &m_ShowDemoWindow);
-
-            ImGui::SameLine();
-            ImGui::Text("FPS: %.1f", (m_LastDeltaTime > 0.0f) ? (1.0f / m_LastDeltaTime) : 0.0f);
-            ImGui::End();
-        }
-
-        void DrawViewportWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 280.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x - 560.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Viewport");
-            ImVec2 avail = ImGui::GetContentRegionAvail();
-            ImGui::Text("Game Viewport (minimal)");
-            ImGui::Separator();
-            ImGui::Text("Size: %.0f x %.0f", avail.x, avail.y);
-            ImGui::TextWrapped("Current minimal setup keeps engine rendering to main framebuffer. Next step is rendering to an offscreen texture and presenting it here.");
-            ImGui::End();
-        }
-
-        void DrawHierarchyWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 8.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(260.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Hierarchy");
-            for (int i = 0; i < static_cast<int>(m_HierarchyItems.size()); ++i)
-            {
-                const bool selected = (m_SelectedHierarchyIndex == i);
-                if (ImGui::Selectable(m_HierarchyItems[i].c_str(), selected))
-                {
-                    m_SelectedHierarchyIndex = i;
-                    m_InspectorName = m_HierarchyItems[i];
-                }
-            }
-            ImGui::End();
-        }
-
-        void DrawInspectorWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - 268.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(260.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Inspector");
-            ImGui::Text("Selected: %s", m_InspectorName.c_str());
-            ImGui::Separator();
-            ImGui::DragFloat3("Position", m_InspectorPosition, 0.05f);
-            ImGui::DragFloat3("Rotation", m_InspectorRotation, 0.5f);
-            ImGui::DragFloat3("Scale", m_InspectorScale, 0.05f, 0.01f, 100.0f);
-            ImGui::ColorEdit3("Tint", m_InspectorTint);
-            ImGui::End();
-        }
-
-        void DrawConsoleWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 8.0f, viewport->Pos.y + viewport->Size.y - 228.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x - 16.0f, 220.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Console");
-            if (ImGui::Button("Clear"))
-            {
-                m_ConsoleLines.clear();
-            }
-            ImGui::Separator();
-            ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
-            for (const std::string& line : m_ConsoleLines)
-            {
-                ImGui::TextUnformatted(line.c_str());
-            }
-            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-            {
-                ImGui::SetScrollHereY(1.0f);
-            }
-            ImGui::EndChild();
-            ImGui::End();
-        }
-
-        inline void SetupDebugScene()
-        {
-            // Set up IMC
-            std::shared_ptr<InputAction> IA_Look = std::make_shared<InputAction>("IA_Look", InputActionValueType::Axis2D);
-            std::shared_ptr<InputAction> IA_Move = std::make_shared<InputAction>("IA_Move", InputActionValueType::Axis3D);
-            std::shared_ptr<InputAction> IA_UpAndDown = std::make_shared<InputAction>("IA_UpAndDown", InputActionValueType::Axis1D);
-            std::shared_ptr<InputAction> IA_ScrollMove = std::make_shared<InputAction>("IA_ScrollMove", InputActionValueType::Axis1D);
-
-            // InputMappingContext inputMappingContext({
-            //     { IA_Look.get(), InputKeys::Mouse2D },
-            //     { IA_Move.get(), InputKeys::Key_W },
-            //     { IA_Move.get(), InputKeys::Key_S, { std::make_shared<InputModifierNegate>() } },
-            //     { IA_Move.get(), InputKeys::Key_A, { std::make_shared<InputModifierNegate>(), std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
-            //     { IA_Move.get(), InputKeys::Key_D, { std::make_shared<InputModifierSwizzleAxis>(InputSwizzleAxisOrder::ZYX) } },
-            //     { IA_UpAndDown.get(), InputKeys::Key_E },
-            //     { IA_UpAndDown.get(), InputKeys::Key_Q, { std::make_shared<InputModifierNegate>() } },
-            //     { IA_ScrollMove.get(), InputKeys::MouseScroll },
-            // });
-
-            // InputSystem::GetInputSystem().AddInputMappingContext(&inputMappingContext, 0);
+            InputSystem::GetInputSystem().AddInputMappingContext(&inputMappingContext, 0);
 
             // Set up a level
             minEngine::WorldManager& worldManager = minEngine::WorldManager::GetWorldManager();
@@ -253,55 +52,55 @@ namespace minEngine
 
             auto inputComponent = player->CreateAndAddComponent<InputComponent>();
             inputComponent->RegisterInputComponent();
-            // inputComponent->BindAction(IA_Move.get(), InputTriggerEvent::Triggered,
-            //     [inputComponent](const InputActionValue& value)
-            //     {
-            //         Vector3 forward = inputComponent->GetOwner()->GetRootComponent()->GetForwardVector() * value.Value.x ;
-            //         Vector3 right = inputComponent->GetOwner()->GetRootComponent()->GetRightVector() * value.Value.z ;
-            //         inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward + right, value.GetMagnitude() * 0.01f);
-            //     });
-            // inputComponent->BindAction(IA_UpAndDown.get(), InputTriggerEvent::Triggered,
-            //     [inputComponent](const InputActionValue& value)
-            //     {
-            //         Vector3 up = inputComponent->GetOwner()->GetRootComponent()->GetUpVector();
-            //         inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(up, value.Value.x * 0.01f);
-            //     });
-            // inputComponent->BindAction(IA_ScrollMove.get(), InputTriggerEvent::Triggered,
-            //     [inputComponent](const InputActionValue& value)
-            //     {
-            //         Vector3 forward = inputComponent->GetOwner()->GetRootComponent()->GetForwardVector();
-            //         inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward, value.Value.x * 0.05f);
-            //     });
+            inputComponent->BindAction(&IA_Move, InputTriggerEvent::Triggered,
+                [inputComponent](const InputActionValue& value)
+                {
+                    Vector3 forward = inputComponent->GetOwner()->GetRootComponent()->GetForwardVector() * value.Value.x ;
+                    Vector3 right = inputComponent->GetOwner()->GetRootComponent()->GetRightVector() * value.Value.z ;
+                    inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward + right, value.GetMagnitude() * 0.01f);
+                });
+            inputComponent->BindAction(&IA_UpAndDown, InputTriggerEvent::Triggered,
+                [inputComponent](const InputActionValue& value)
+                {
+                    Vector3 up = inputComponent->GetOwner()->GetRootComponent()->GetUpVector();
+                    inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(up, value.Value.x * 0.01f);
+                });
+            inputComponent->BindAction(&IA_ScrollMove, InputTriggerEvent::Triggered,
+                [inputComponent](const InputActionValue& value)
+                {
+                    Vector3 forward = inputComponent->GetOwner()->GetRootComponent()->GetForwardVector();
+                    inputComponent->GetOwner()->GetComponent<MovementComponent>()->AddMovementInput(forward, value.Value.x * 0.05f);
+                });
 
-            // float lastMouseX = 0.0f;
-            // float lastMouseY = 0.0f;
-            // inputComponent->BindAction(IA_Look.get(), InputTriggerEvent::Triggered,
-            //     [inputComponent, &lastMouseX, &lastMouseY](const InputActionValue& value)
-            //     {
-            //         constexpr float kMouseSensitivity = 0.08f;
-            //         constexpr float kPitchMin = -89.0f;
-            //         constexpr float kPitchMax = 89.0f;
+            float lastMouseX = 0.0f;
+            float lastMouseY = 0.0f;
+            inputComponent->BindAction(&IA_Look, InputTriggerEvent::Triggered,
+                [inputComponent, &lastMouseX, &lastMouseY](const InputActionValue& value)
+                {
+                    constexpr float kMouseSensitivity = 0.08f;
+                    constexpr float kPitchMin = -89.0f;
+                    constexpr float kPitchMax = 89.0f;
 
-            //         auto root = inputComponent->GetOwner()->GetRootComponent();
-            //         Vector3 rotation = root->GetRotation();
-            //         float deltaX = value.Value.x - lastMouseX;
-            //         float deltaY = lastMouseY - value.Value.y; // Invert Y axis
-            //         lastMouseX = value.Value.x;
-            //         lastMouseY = value.Value.y;
-            //         rotation.y -= deltaX * kMouseSensitivity;
-            //         rotation.z += deltaY * kMouseSensitivity;
+                    auto root = inputComponent->GetOwner()->GetRootComponent();
+                    Vector3 rotation = root->GetRotation();
+                    float deltaX = value.Value.x - lastMouseX;
+                    float deltaY = lastMouseY - value.Value.y; // Invert Y axis
+                    lastMouseX = value.Value.x;
+                    lastMouseY = value.Value.y;
+                    rotation.y -= deltaX * kMouseSensitivity;
+                    rotation.z += deltaY * kMouseSensitivity;
 
-            //         if (rotation.z < kPitchMin)
-            //         {
-            //             rotation.z = kPitchMin;
-            //         }
-            //         else if (rotation.z > kPitchMax)
-            //         {
-            //             rotation.z = kPitchMax;
-            //         }
+                    if (rotation.z < kPitchMin)
+                    {
+                        rotation.z = kPitchMin;
+                    }
+                    else if (rotation.z > kPitchMax)
+                    {
+                        rotation.z = kPitchMax;
+                    }
 
-            //         root->SetRotation(rotation);
-            //     });
+                    root->SetRotation(rotation);
+                });
 
 
             auto playerCameraComponent = player->CreateAndAddComponent<CameraComponent>();
@@ -603,27 +402,6 @@ namespace minEngine
             // spotLight->SetPosition(minEngine::Vector3(-2.0f, 2.0f, 2.0f) * 2.0f);
             // spotLightComponent->SetDirection(minEngine::Vector3(1.0f, -1.0f, -1.0f));
             // spotLightComponent->SetLightColor(minEngine::Vector4(227.0/255.0f, 138.0/255.0f, 245.0/255.0f, 1.0f));
-        }
-
-    private: 
-        Engine* engine = nullptr;
-        bool m_IsPlaying = false;
-        bool m_ShowDemoWindow = false;
-        float m_LastDeltaTime = 0.0f;
-
-        std::vector<std::string> m_ConsoleLines;
-        std::vector<std::string> m_HierarchyItems {"MainCamera", "DirectionalLight", "Cube_01", "Plane_01"};
-        int m_SelectedHierarchyIndex = 0;
-        std::string m_InspectorName = "MainCamera";
-
-        float m_InspectorPosition[3] = {0.0f, 0.0f, 0.0f};
-        float m_InspectorRotation[3] = {0.0f, 0.0f, 0.0f};
-        float m_InspectorScale[3] = {1.0f, 1.0f, 1.0f};
-        float m_InspectorTint[3] = {1.0f, 1.0f, 1.0f};
-    };
-
-    Application* CreateApplication()
-    {
-        return new Editor();
+        
     }
 }

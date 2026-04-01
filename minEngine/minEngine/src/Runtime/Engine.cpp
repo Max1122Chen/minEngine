@@ -32,6 +32,7 @@ namespace minEngine
             float deltaTime = CalculateDeltaTime();
             windowSystem->SetTitle(("minEngine - FPS: " + std::to_string(CalculateFPS(deltaTime))).c_str());
             TickOneFrame(deltaTime);
+            windowSystem->SwapBuffers();
         }
     }
 
