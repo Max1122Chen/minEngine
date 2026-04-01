@@ -49,12 +49,6 @@ namespace minEngine
         // TODO: implement logical tick
         RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
 
-        // Start the Dear ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        // ImGui::ShowDemoWindow(); // Show demo window! :)
-
         globalContext.m_InputSystem->Tick(deltaTime);
         globalContext.m_WorldManager->Tick(deltaTime);
 

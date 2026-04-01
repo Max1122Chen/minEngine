@@ -29,21 +29,10 @@ public:
     {
         engine = new Engine();
         engine->Initialize();
-
-        // Set up IMGUI
-        ImGui::CreateContext();
-        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->GetWindowHandle()), true);
-        ImGui_ImplOpenGL3_Init();
-
     }
 
     virtual void Shutdown() override
     {
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
-
         engine->Shutdown();
         delete engine;
         engine = nullptr;

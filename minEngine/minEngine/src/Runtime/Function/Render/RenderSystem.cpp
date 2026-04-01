@@ -71,10 +71,6 @@ namespace minEngine
 
         m_RenderPipeline.Execute();
 
-        // Render ImGui
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
         static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SwapBuffers();
     }
 

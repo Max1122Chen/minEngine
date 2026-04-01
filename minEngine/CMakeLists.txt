@@ -1,22 +1,27 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(minEngine)
- 
+project(minEngine LANGUAGES C CXX)
+
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Build options for application targets.
+option(BUILD_PLAYGROUND "Build the Playground game target" OFF)
+option(BUILD_EDITOR "Build the Editor target" ON)
 
 set(ENGINE_NAME minEngine)
-set(PLAYGROUND_NAME Playground)
-
-# set path
-# Third-Party libraries
 set(THIRD_PARTY_PATH ${PROJECT_SOURCE_DIR}/${ENGINE_NAME}/Third-Party)
-
-
-# Output paths
 set(EXECUTABLE_PATH ${PROJECT_SOURCE_DIR}/bin)
 
-
 add_subdirectory(${ENGINE_NAME})
-add_subdirectory(${PLAYGROUND_NAME})
+
+if(BUILD_PLAYGROUND)
+	add_subdirectory(Playground)
+endif()
+
+if(BUILD_EDITOR)
+	add_subdirectory(Editor)
+endif()
 
 

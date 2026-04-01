@@ -1,19 +1,20 @@
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
 
-file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS ./src/*.h ./src/*.hpp)
-
 file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
                 ${THIRD_PARTY_PATH}/imgui/backends/*.cpp
 )
-
-set(EXECUTABLE_OUTPUT_PATH ${EXECUTABLE_PATH})
-set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_PATH})
 
 add_library(${ENGINE_NAME} SHARED ${SRC}
                                   ${THIRD_PARTY_PATH}/glad/src/glad.c
                                   ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
                                   ${IMGUI}
                                   )
+
+set_target_properties(${ENGINE_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
+    LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
+    ARCHIVE_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
+)
 
 
 target_include_directories(${ENGINE_NAME} PUBLIC ./src
