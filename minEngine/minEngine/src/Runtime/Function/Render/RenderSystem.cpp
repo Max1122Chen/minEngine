@@ -66,10 +66,43 @@ namespace minEngine
 
     void RenderSystem::Tick(float deltaTime)
     {
+        if (m_HasPendingSceneResize)
+        {
+            m_RenderPipeline.ResizeSceneTargets(m_PendingSceneWidth, m_PendingSceneHeight);
+            m_HasPendingSceneResize = false;
+        }
+
         // Clear the window
         static_cast<OpenGLRHI*>(m_RHI.get())-> m_WindowSystem->Clear();
 
         m_RenderPipeline.Execute();
+    }
+
+    void RenderSystem::SetPresentPassEnabled(bool enabled)
+    {
+        m_RenderPipeline.SetPresentPassEnabled(enabled);
+    }
+
+    const std::shared_ptr<RHITexture2D>& RenderSystem::GetSceneColorTexture() const
+    {
+        return m_RenderPipeline.GetSceneColorTexture();
+    }
+
+    void RenderSystem::RequestSceneViewportResize(uint32_t width, uint32_t height)
+    {
+        if (width == 0 || height == 0)
+        {
+            return;
+        }
+
+        if (m_RenderPipeline.GetSceneWidth() == width && m_RenderPipeline.GetSceneHeight() == height)
+        {
+            return;
+        }
+
+        m_PendingSceneWidth = width;
+        m_PendingSceneHeight = height;
+        m_HasPendingSceneResize = true;
     }
 
 }

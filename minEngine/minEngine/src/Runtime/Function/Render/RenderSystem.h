@@ -7,6 +7,7 @@ namespace minEngine
     class RenderScene;
     class RHI;
     class RenderCamera;
+    class RHITexture2D;
 
 
     class RenderSystem
@@ -22,6 +23,10 @@ namespace minEngine
 
 
         void Tick(float deltaTime);
+
+        void SetPresentPassEnabled(bool enabled);
+        const std::shared_ptr<RHITexture2D>& GetSceneColorTexture() const;
+        void RequestSceneViewportResize(uint32_t width, uint32_t height);
 
         RHI* GetRHI() const { return m_RHI.get(); }
 
@@ -42,5 +47,8 @@ namespace minEngine
         std::shared_ptr<RenderCamera> m_MainCamera;
 
         RenderPipeline m_RenderPipeline;
+        uint32_t m_PendingSceneWidth = 0;
+        uint32_t m_PendingSceneHeight = 0;
+        bool m_HasPendingSceneResize = false;
     };
 }

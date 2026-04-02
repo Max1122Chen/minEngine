@@ -78,6 +78,27 @@ namespace minEngine
         void Initialize();
         void Shutdown();
         void Execute();
+        void ResizeSceneTargets(uint32_t width, uint32_t height);
+
+        void SetPresentPassEnabled(bool enabled)
+        {
+            m_EnablePresentPass = enabled;
+        }
+
+        const std::shared_ptr<RHITexture2D>& GetSceneColorTexture() const
+        {
+            return m_SceneColorTexture;
+        }
+
+        uint32_t GetSceneWidth() const
+        {
+            return m_SceneWidth;
+        }
+
+        uint32_t GetSceneHeight() const
+        {
+            return m_SceneHeight;
+        }
 
     private:
         std::shared_ptr<UniformBuffer> m_LightViewProjUniformBuffer; // Uniform buffer for light view projection matrices, used in shadow pass
@@ -106,6 +127,9 @@ namespace minEngine
 
         ShadowResourceManager m_ShadowResourceManager;
         uint64_t m_FrameIndex = 0;
+        bool m_EnablePresentPass = true;
+        uint32_t m_SceneWidth = 0;
+        uint32_t m_SceneHeight = 0;
 
     private:
         void UpdatePerFrameUBO();

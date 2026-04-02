@@ -59,15 +59,42 @@ namespace minEngine
 
         // Create framebuffers
         m_ShadowBuffer = rhi->CreateFrameBuffer(2048, 2048); // Shadow map framebuffer, we will use a fixed size for now
-        m_SceneBuffer = rhi->CreateFrameBuffer(width, height);
 
         // Assign framebuffers to render passes
         m_ShadowPass.m_FrameBuffer = m_ShadowBuffer.get();
+        ResizeSceneTargets(width, height);
 
-        m_BasePass.m_FrameBuffer = m_SceneBuffer.get();
-        m_TranslucentPass.m_FrameBuffer = m_SceneBuffer.get();
+        // Set up ShadowPass
+        m_ShadowPass.Initialize();
+        m_ShadowPass.m_LightViewProjUniformBuffer = m_LightViewProjUniformBuffer.get();
 
-        // Create SceneBuffer's attachments
+        // Set up PresentPass
+        m_PresentPass.Initialize();
+        m_PresentPass.m_SceneColorTexture = m_SceneColorTexture;
+    }
+
+    void RenderPipeline::ResizeSceneTargets(uint32_t width, uint32_t height)
+    {
+        if (width == 0 || height == 0)
+        {
+            return;
+        }
+
+        if (m_SceneColorTexture && m_SceneColorTexture->GetWidth() == width && m_SceneColorTexture->GetHeight() == height)
+        {
+            return;
+        }
+
+        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
+
+        m_SceneBuffer = rhi->CreateFrameBuffer(width, height);
+        m_SceneWidth = width;
+        m_SceneHeight = height;
+
         RHITextureDesc colorDesc{
                 .Width = width,
                 .Height = height,
@@ -88,13 +115,11 @@ namespace minEngine
         m_SceneBuffer->AttachColorBuffer(m_SceneColorTexture);
         m_SceneBuffer->AttachDepthStencilBuffer(m_SceneDepthTexture);
 
-        // Set up ShadowPass
-        m_ShadowPass.Initialize();
-        m_ShadowPass.m_LightViewProjUniformBuffer = m_LightViewProjUniformBuffer.get();
-
-        // Set up PresentPass
-        m_PresentPass.Initialize();
+        m_BasePass.m_FrameBuffer = m_SceneBuffer.get();
+        m_TranslucentPass.m_FrameBuffer = m_SceneBuffer.get();
         m_PresentPass.m_SceneColorTexture = m_SceneColorTexture;
+
+        ME_CORE_INFO("Resize scene render targets to {}x{}", width, height);
     }
 
     void RenderPipeline::Shutdown()
@@ -198,7 +223,10 @@ namespace minEngine
 
         m_SceneBuffer->Unbind();
 
-        m_PresentPass.Execute();
+        if (m_EnablePresentPass)
+        {
+            m_PresentPass.Execute();
+        }
 
         m_ShadowResourceManager.EndFrame();
         ++m_FrameIndex;

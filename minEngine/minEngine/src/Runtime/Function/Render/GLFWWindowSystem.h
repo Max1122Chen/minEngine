@@ -128,6 +128,9 @@ namespace minEngine
 
         void OnWindowSize(int width, int height)
         {
+            m_Width = width;
+            m_Height = height;
+
             for (const auto& callback : m_OnWindowSizeCallbacks)
             {
                 callback(width, height);

@@ -17,7 +17,13 @@
 
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/AssetManager.h"
-#include "Runtime/Core/Log/LogConsole.h"
+#include "UI/MainMenuBar.h"
+#include "UI/Panels/ConsolePanel.h"
+#include "UI/Panels/EditorState.h"
+#include "UI/Panels/HierarchyPanel.h"
+#include "UI/Panels/InspectorPanel.h"
+#include "UI/Panels/PanelManager.h"
+#include "UI/Panels/ViewportPanel.h"
 
 namespace minEngine
 {
@@ -32,21 +38,31 @@ namespace minEngine
             engine = new Engine();
             engine->Initialize();
 
+            RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->SetPresentPassEnabled(false);
+
             // Set up IMGUI
             ImGui::CreateContext();
             ImGuiIO& io = ImGui::GetIO();
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
             io.FontGlobalScale = 1.25f;
-            ImGui::StyleColorsDark();
+            ImGui::StyleColorsLight();
             ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->GetWindowHandle()), true);
             ImGui_ImplOpenGL3_Init();
 
             RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
+
+            InitializePanels();
         }
 
         virtual void Shutdown() override
         {
+            PanelContext panelContext;
+            panelContext.editor = this;
+            panelContext.state = &m_EditorState;
+            panelContext.deltaTime = 0.0f;
+            m_PanelManager.Shutdown(panelContext);
+
             ImGui_ImplOpenGL3_Shutdown();
             ImGui_ImplGlfw_Shutdown();
             ImGui::DestroyContext();
@@ -82,145 +98,36 @@ namespace minEngine
 
         void DrawEditorUI(float deltaTime)
         {
-            ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+            m_MainMenuBar.Draw(m_PanelManager, m_EditorState);
+            ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-            DrawToolbar();
-            DrawViewportWindow();
-            DrawHierarchyWindow();
-            DrawInspectorWindow();
-            DrawConsoleWindow();
+            PanelContext panelContext;
+            panelContext.editor = this;
+            panelContext.state = &m_EditorState;
+            panelContext.deltaTime = deltaTime;
 
-            if (m_ShowDemoWindow)
+            m_PanelManager.TickPanels(panelContext);
+            m_PanelManager.DrawPanels(panelContext);
+
+            if (m_EditorState.showDemoWindow)
             {
-                ImGui::ShowDemoWindow(&m_ShowDemoWindow);
+                ImGui::ShowDemoWindow(&m_EditorState.showDemoWindow);
             }
 
-            m_LastDeltaTime = deltaTime;
+            m_EditorState.lastDeltaTime = deltaTime;
         }
 
-        void DrawToolbar()
+        void InitializePanels()
         {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(viewport->Pos);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, 36.0f));
+            PanelContext panelContext;
+            panelContext.editor = this;
+            panelContext.state = &m_EditorState;
+            panelContext.deltaTime = 0.0f;
 
-            ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoTitleBar |
-                                            ImGuiWindowFlags_NoResize |
-                                            ImGuiWindowFlags_NoMove |
-                                            ImGuiWindowFlags_NoScrollbar |
-                                            ImGuiWindowFlags_NoSavedSettings;
-
-            ImGui::Begin("Toolbar", nullptr, toolbarFlags);
-            if (ImGui::Button(m_IsPlaying ? "Stop" : "Play"))
-            {
-                m_IsPlaying = !m_IsPlaying;
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("Pause"))
-            {
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("Step"))
-            {
-            }
-
-            ImGui::SameLine();
-            ImGui::Checkbox("Demo", &m_ShowDemoWindow);
-
-            ImGui::SameLine();
-            ImGui::Text("FPS: %.1f", (m_LastDeltaTime > 0.0f) ? (1.0f / m_LastDeltaTime) : 0.0f);
-            ImGui::End();
-        }
-
-        void DrawViewportWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 280.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x - 560.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Viewport");
-            ImVec2 avail = ImGui::GetContentRegionAvail();
-            ImGui::Text("Game Viewport (minimal)");
-            ImGui::Separator();
-            ImGui::Text("Size: %.0f x %.0f", avail.x, avail.y);
-            ImGui::TextWrapped("Current minimal setup keeps engine rendering to main framebuffer. Next step is rendering to an offscreen texture and presenting it here.");
-            ImGui::End();
-        }
-
-        void DrawHierarchyWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 8.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(260.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Hierarchy");
-            for (int i = 0; i < static_cast<int>(m_HierarchyItems.size()); ++i)
-            {
-                const bool selected = (m_SelectedHierarchyIndex == i);
-                if (ImGui::Selectable(m_HierarchyItems[i].c_str(), selected))
-                {
-                    m_SelectedHierarchyIndex = i;
-                    m_InspectorName = m_HierarchyItems[i];
-                }
-            }
-            ImGui::End();
-        }
-
-        void DrawInspectorWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - 268.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(260.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Inspector");
-            ImGui::Text("Selected: %s", m_InspectorName.c_str());
-            ImGui::Separator();
-            ImGui::DragFloat3("Position", m_InspectorPosition, 0.05f);
-            ImGui::DragFloat3("Rotation", m_InspectorRotation, 0.5f);
-            ImGui::DragFloat3("Scale", m_InspectorScale, 0.05f, 0.01f, 100.0f);
-            ImGui::ColorEdit3("Tint", m_InspectorTint);
-            ImGui::End();
-        }
-
-        void DrawConsoleWindow()
-        {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 8.0f, viewport->Pos.y + viewport->Size.y - 228.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x - 16.0f, 220.0f), ImGuiCond_Once);
-
-            ImGui::Begin("Console");
-            if (ImGui::Button("Clear"))
-            {
-                LogConsoleStorage::Clear();
-            }
-            ImGui::Separator();
-
-            const std::vector<LogConsoleEntry> entries = LogConsoleStorage::Snapshot();
-
-            ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
-            for (const LogConsoleEntry& entry : entries)
-            {
-                const char* source = "UNKNOWN";
-                if (entry.source == LogSource::Core)
-                {
-                    source = "CORE";
-                }
-                else if (entry.source == LogSource::Client)
-                {
-                    source = "CLIENT";
-                }
-
-                const char* level = LogLevel::ToString(entry.level);
-                ImGui::Text("[%s] [%s] [%s] %s", entry.timestamp.c_str(), source, level, entry.message.c_str());
-            }
-            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-            {
-                ImGui::SetScrollHereY(1.0f);
-            }
-            ImGui::EndChild();
-            ImGui::End();
+            m_PanelManager.RegisterPanel(std::make_unique<ViewportPanel>(), panelContext);
+            m_PanelManager.RegisterPanel(std::make_unique<HierarchyPanel>(), panelContext);
+            m_PanelManager.RegisterPanel(std::make_unique<InspectorPanel>(), panelContext);
+            m_PanelManager.RegisterPanel(std::make_unique<ConsolePanel>(), panelContext);
         }
 
         inline void SetupDebugScene()
@@ -614,18 +521,9 @@ namespace minEngine
 
     private: 
         Engine* engine = nullptr;
-        bool m_IsPlaying = false;
-        bool m_ShowDemoWindow = false;
-        float m_LastDeltaTime = 0.0f;
-
-        std::vector<std::string> m_HierarchyItems {"MainCamera", "DirectionalLight", "Cube_01", "Plane_01"};
-        int m_SelectedHierarchyIndex = 0;
-        std::string m_InspectorName = "MainCamera";
-
-        float m_InspectorPosition[3] = {0.0f, 0.0f, 0.0f};
-        float m_InspectorRotation[3] = {0.0f, 0.0f, 0.0f};
-        float m_InspectorScale[3] = {1.0f, 1.0f, 1.0f};
-        float m_InspectorTint[3] = {1.0f, 1.0f, 1.0f};
+        MainMenuBar m_MainMenuBar;
+        PanelManager m_PanelManager;
+        EditorState m_EditorState;
     };
 
     Application* CreateApplication()
