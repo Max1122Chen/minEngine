@@ -28,10 +28,6 @@ namespace minEngine
 
         void OnDraw(const PanelContext&) override
         {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 280.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x - 560.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
             ImGuiWindowFlags viewportFlags = ImGuiWindowFlags_NoScrollbar |
                                              ImGuiWindowFlags_NoScrollWithMouse |
                                              ImGuiWindowFlags_NoCollapse;

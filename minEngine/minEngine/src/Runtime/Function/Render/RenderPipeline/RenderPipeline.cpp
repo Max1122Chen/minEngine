@@ -119,7 +119,7 @@ namespace minEngine
         m_TranslucentPass.m_FrameBuffer = m_SceneBuffer.get();
         m_PresentPass.m_SceneColorTexture = m_SceneColorTexture;
 
-        ME_CORE_INFO("Resize scene render targets to {}x{}", width, height);
+        // ME_CORE_INFO("Resize scene render targets to {}x{}", width, height);
     }
 
     void RenderPipeline::Shutdown()

@@ -27,18 +27,35 @@ namespace minEngine
             return m_Title;
         }
 
-        void OnDraw(const PanelContext&) override
+        void OnDraw(const PanelContext& context) override
         {
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 8.0f, viewport->Pos.y + viewport->Size.y - 228.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x - 16.0f, 220.0f), ImGuiCond_Once);
+            const bool isPlaying = (context.state != nullptr) ? context.state->isPlaying : false;
+            if (m_ClearOnPlay && isPlaying && !m_LastIsPlaying)
+            {
+                LogConsoleStorage::Clear();
+            }
+            m_LastIsPlaying = isPlaying;
 
             ImGui::Begin(m_Title.c_str());
+            bool requestCopyVisible = false;
+
             if (ImGui::Button("Clear"))
             {
                 LogConsoleStorage::Clear();
             }
             ImGui::SameLine();
+            if (ImGui::Button("Copy"))
+            {
+                requestCopyVisible = true;
+            }
+            ImGui::SameLine();
+            ImGui::Checkbox("AutoScroll", &m_AutoScroll);
+            ImGui::SameLine();
+            ImGui::Checkbox("Pause", &m_PauseStream);
+            ImGui::SameLine();
+            ImGui::Checkbox("ClearOnPlay", &m_ClearOnPlay);
+
+            ImGui::Separator();
             ImGui::Checkbox("Core", &m_ShowCore);
             ImGui::SameLine();
             ImGui::Checkbox("Client", &m_ShowClient);
@@ -62,7 +79,24 @@ namespace minEngine
             ImGui::InputTextWithHint("##ConsoleSearch", "Search message...", m_SearchText, sizeof(m_SearchText));
             ImGui::Separator();
 
-            const std::vector<LogConsoleEntry> entries = LogConsoleStorage::Snapshot();
+            const std::vector<LogConsoleEntry> liveEntries = LogConsoleStorage::Snapshot();
+            if (m_PauseStream)
+            {
+                if (!m_HasPausedSnapshot)
+                {
+                    m_PausedEntries = liveEntries;
+                    m_HasPausedSnapshot = true;
+                }
+            }
+            else if (m_HasPausedSnapshot)
+            {
+                m_PausedEntries.clear();
+                m_HasPausedSnapshot = false;
+            }
+
+            const std::vector<LogConsoleEntry>& entries = m_PauseStream ? m_PausedEntries : liveEntries;
+
+            std::string clipboardText;
 
             ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
             const bool wasAtBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f);
@@ -84,13 +118,32 @@ namespace minEngine
                 }
 
                 const char* level = LogLevel::ToString(entry.level);
-                ImGui::Text("[%s] [%s] [%s] %s", entry.timestamp.c_str(), source, level, entry.message.c_str());
+                ImGui::TextColored(GetLevelColor(entry.level), "[%s] [%s] [%s] %s", entry.timestamp.c_str(), source, level, entry.message.c_str());
+
+                if (requestCopyVisible)
+                {
+                    clipboardText += "[";
+                    clipboardText += entry.timestamp;
+                    clipboardText += "] [";
+                    clipboardText += source;
+                    clipboardText += "] [";
+                    clipboardText += level;
+                    clipboardText += "] ";
+                    clipboardText += entry.message;
+                    clipboardText += "\n";
+                }
             }
-            if (wasAtBottom)
+            if (m_AutoScroll && wasAtBottom)
             {
                 ImGui::SetScrollHereY(1.0f);
             }
             ImGui::EndChild();
+
+            if (requestCopyVisible)
+            {
+                ImGui::SetClipboardText(clipboardText.c_str());
+            }
+
             ImGui::End();
         }
 
@@ -150,6 +203,20 @@ namespace minEngine
             return it != text.end();
         }
 
+        static ImVec4 GetLevelColor(LogLevel::Level level)
+        {
+            switch (level)
+            {
+                case LogLevel::Level::Trace: return ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+                case LogLevel::Level::Debug: return ImVec4(0.20f, 0.85f, 1.00f, 1.0f);
+                case LogLevel::Level::Info: return ImVec4(0.35f, 0.90f, 0.35f, 1.0f);
+                case LogLevel::Level::Warn: return ImVec4(1.00f, 0.90f, 0.20f, 1.0f);
+                case LogLevel::Level::Error: return ImVec4(1.00f, 0.35f, 0.35f, 1.0f);
+                case LogLevel::Level::Critical: return ImVec4(1.00f, 0.10f, 0.10f, 1.0f);
+                default: return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+            }
+        }
+
     private:
         const std::string m_Id = "console";
         const std::string m_Title = "Console";
@@ -161,6 +228,12 @@ namespace minEngine
         bool m_ShowWarn = true;
         bool m_ShowError = true;
         bool m_ShowCritical = true;
+        bool m_AutoScroll = true;
+        bool m_PauseStream = false;
+        bool m_ClearOnPlay = false;
+        bool m_LastIsPlaying = false;
+        bool m_HasPausedSnapshot = false;
+        std::vector<LogConsoleEntry> m_PausedEntries;
         char m_SearchText[128] = {};
     };
 }

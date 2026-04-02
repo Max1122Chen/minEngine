@@ -1,6 +1,7 @@
 #include "minEngine.h"
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
@@ -30,6 +31,11 @@ namespace minEngine
     class Editor : public Application
     {
     public:
+        // Default dock layout ratios for quick tuning.
+        static constexpr float kDefaultInspectorSplitRatio = 0.22f;
+        static constexpr float kDefaultHierarchySplitRatio = 0.28f;
+        static constexpr float kDefaultConsoleSplitRatio = 0.30f;
+
         Editor() = default;
         virtual ~Editor() = default;
 
@@ -45,7 +51,7 @@ namespace minEngine
             ImGuiIO& io = ImGui::GetIO();
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-            io.FontGlobalScale = 1.25f;
+            io.FontGlobalScale = 1.50f;
             ImGui::StyleColorsLight();
             ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->GetWindowHandle()), true);
             ImGui_ImplOpenGL3_Init();
@@ -99,7 +105,24 @@ namespace minEngine
         void DrawEditorUI(float deltaTime)
         {
             m_MainMenuBar.Draw(m_PanelManager, m_EditorState);
-            ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+            const ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
+            if (!m_EditorState.dockLayoutInitialized || m_EditorState.requestResetLayout)
+            {
+                BuildDefaultDockLayout(dockspaceId);
+                m_EditorState.dockLayoutInitialized = true;
+                m_EditorState.requestResetLayout = false;
+            }
+
+            if (m_EditorState.requestSaveLayout)
+            {
+                const char* iniFilename = ImGui::GetIO().IniFilename;
+                if (iniFilename && iniFilename[0] != '\0')
+                {
+                    ImGui::SaveIniSettingsToDisk(iniFilename);
+                }
+                m_EditorState.requestSaveLayout = false;
+            }
 
             PanelContext panelContext;
             panelContext.editor = this;
@@ -115,6 +138,25 @@ namespace minEngine
             }
 
             m_EditorState.lastDeltaTime = deltaTime;
+        }
+
+        void BuildDefaultDockLayout(ImGuiID dockspaceId)
+        {
+            ImGui::DockBuilderRemoveNode(dockspaceId);
+            ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
+
+            ImGuiID mainArea = dockspaceId;
+            ImGuiID inspectorArea = ImGui::DockBuilderSplitNode(mainArea, ImGuiDir_Right, kDefaultInspectorSplitRatio, nullptr, &mainArea);
+            ImGuiID hierarchyArea = ImGui::DockBuilderSplitNode(mainArea, ImGuiDir_Right, kDefaultHierarchySplitRatio, nullptr, &mainArea);
+            ImGuiID consoleArea = ImGui::DockBuilderSplitNode(mainArea, ImGuiDir_Down, kDefaultConsoleSplitRatio, nullptr, &mainArea);
+
+            ImGui::DockBuilderDockWindow("Viewport", mainArea);
+            ImGui::DockBuilderDockWindow("Console", consoleArea);
+            ImGui::DockBuilderDockWindow("Hierarchy", hierarchyArea);
+            ImGui::DockBuilderDockWindow("Inspector", inspectorArea);
+
+            ImGui::DockBuilderFinish(dockspaceId);
         }
 
         void InitializePanels()

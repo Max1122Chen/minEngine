@@ -28,10 +28,6 @@ namespace minEngine
                 return;
             }
 
-            ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + 8.0f, viewport->Pos.y + 44.0f), ImGuiCond_Once);
-            ImGui::SetNextWindowSize(ImVec2(260.0f, viewport->Size.y - 280.0f), ImGuiCond_Once);
-
             ImGui::Begin(m_Title.c_str());
             for (int i = 0; i < static_cast<int>(context.state->hierarchyItems.size()); ++i)
             {

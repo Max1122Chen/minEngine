@@ -10,6 +10,9 @@ namespace minEngine
         bool isPlaying = false;
         bool showDemoWindow = false;
         float lastDeltaTime = 0.0f;
+        bool dockLayoutInitialized = false;
+        bool requestSaveLayout = false;
+        bool requestResetLayout = false;
 
         std::vector<std::string> hierarchyItems {"MainCamera", "DirectionalLight", "Cube_01", "Plane_01"};
         int selectedHierarchyIndex = 0;

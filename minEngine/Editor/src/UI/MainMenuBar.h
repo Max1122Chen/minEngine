@@ -58,6 +58,20 @@ namespace minEngine
                     ImGui::EndMenu();
                 }
 
+                if (ImGui::BeginMenu("Layout"))
+                {
+                    if (ImGui::MenuItem("Save Layout"))
+                    {
+                        editorState.requestSaveLayout = true;
+                    }
+
+                    if (ImGui::MenuItem("Reset To Default"))
+                    {
+                        editorState.requestResetLayout = true;
+                    }
+                    ImGui::EndMenu();
+                }
+
                 ImGui::Separator();
                 ImGui::MenuItem("ImGui Demo", nullptr, &editorState.showDemoWindow);
                 ImGui::EndMenu();
