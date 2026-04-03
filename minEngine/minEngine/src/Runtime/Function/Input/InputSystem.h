@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "InputKeys.h"
+#include "InputKeyTypes.h"
 #include "InputKeyState.h"
 #include "InputAction.h"
 
@@ -51,7 +52,7 @@ namespace minEngine
 
         InputActionInstance* FindInputActionInstance(InputAction* action);
 
-        void OnKey(int key, int scancode, int action, int mods);
+        void OnKey(InputKey key, int scancode, InputKeyAction action, int mods);
         void OnCursorPos(double xPos, double yPos);
         void OnMouseScroll(double xOffset, double yOffset);
 

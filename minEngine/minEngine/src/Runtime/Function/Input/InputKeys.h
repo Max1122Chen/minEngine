@@ -1,16 +1,9 @@
 #pragma once
 #include "Core.h"
+#include "InputKeyTypes.h"
 
 namespace minEngine
 {
-    enum class InputAxisType : uint8_t
-    {
-        None,
-        Button,
-        Axis1D,
-        Axis2D,
-        Axis3D
-    };
     
     /**
      * @brief 
@@ -35,6 +28,9 @@ namespace minEngine
                 return std::hash<std::string>()(key.Name);
             }
         };
+
+
+
     };
 
     struct InputKeys
@@ -46,7 +42,9 @@ namespace minEngine
         static const InputKey MouseY;
         static const InputKey Mouse2D;
         static const InputKey MouseScroll;
-        static const InputKey MouseScrollDown;
+        static const InputKey Mouse_Left;
+        static const InputKey Mouse_Middle;
+        static const InputKey Mouse_Right;
 
     // Keyboard keys
         // Alphabet keys
@@ -76,6 +74,55 @@ namespace minEngine
         static const InputKey Key_X;
         static const InputKey Key_Y;
         static const InputKey Key_Z;
+        
+        // Number keys
+        static const InputKey Key_0;
+        static const InputKey Key_1;
+        static const InputKey Key_2;
+        static const InputKey Key_3;
+        static const InputKey Key_4;
+        static const InputKey Key_5;
+        static const InputKey Key_6;
+        static const InputKey Key_7;
+        static const InputKey Key_8;
+        static const InputKey Key_9;
+        
+        // Function keys
+        static const InputKey Key_F1;
+        static const InputKey Key_F2;
+        static const InputKey Key_F3;
+        static const InputKey Key_F4;
+        static const InputKey Key_F5;
+        static const InputKey Key_F6;
+        static const InputKey Key_F7;
+        static const InputKey Key_F8;
+        static const InputKey Key_F9;
+        static const InputKey Key_F10;
+        static const InputKey Key_F11;
+        static const InputKey Key_F12;
+        
+        // Arrow keys
+        static const InputKey Key_Up;
+        static const InputKey Key_Down;
+        static const InputKey Key_Left;
+        static const InputKey Key_Right;
+        
+        // Other common keys
+        static const InputKey Key_Space;
+        static const InputKey Key_Enter;
+        static const InputKey Key_Escape;
+        static const InputKey Key_Tab;
+        static const InputKey Key_Backspace;
+        static const InputKey Key_Shift;
+        static const InputKey Key_Control;
+        static const InputKey Key_Alt;
+        static const InputKey Key_CapsLock;
+        static const InputKey Key_LeftShift;
+        static const InputKey Key_RightShift;
+        static const InputKey Key_LeftControl;
+        static const InputKey Key_RightControl;
+        static const InputKey Key_LeftAlt;
+        static const InputKey Key_RightAlt;
 
     public:
         void Initialize();
@@ -83,9 +130,6 @@ namespace minEngine
 
         const std::vector<InputKey>& GetAllKeys() const { return m_Keys; }
 
-
-        // Support function for converting key codes in different APIs to InputKey
-        static const InputKey& ConvertGLFWKeyToInputKey(int glfwKey);
     
     private:
         std::vector<InputKey> m_Keys;

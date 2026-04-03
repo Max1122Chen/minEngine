@@ -2,6 +2,9 @@
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
 
+#include "Input/InputKeys.h"
+#include "Input/InputKeyTypes.h"
+
 namespace minEngine
 {
     class WindowSystem
@@ -30,12 +33,12 @@ namespace minEngine
         virtual uint32_t GetHeight() = 0;
 
         // Window event callback function types
-        typedef std::function<void()>                       OnResetFunc;
-        typedef std::function<void(int, int, int, int)>     OnKeyFunc;
-        typedef std::function<void(int, int)>               OnMouseButtonFunc;
-        typedef std::function<void(double, double)>         OnCursorPosFunc;
-        typedef std::function<void(double, double)>         OnMouseScrollFunc;
-        typedef std::function<void(int, int)>               OnWindowSizeFunc;
+        typedef std::function<void()>                                              OnResetFunc;
+        typedef std::function<void(InputKey, int, InputKeyAction, int)>            OnKeyFunc;
+        typedef std::function<void(int, int)>                                      OnMouseButtonFunc;
+        typedef std::function<void(double, double)>                                OnCursorPosFunc;
+        typedef std::function<void(double, double)>                                OnMouseScrollFunc;
+        typedef std::function<void(int, int)>                                      OnWindowSizeFunc;
 
         void RegisterOnResetCallback(const OnResetFunc& callback) { m_OnResetCallbacks.push_back(callback); }
         void RegisterOnKeyCallback(const OnKeyFunc& callback) { m_OnKeyCallbacks.push_back(callback); }

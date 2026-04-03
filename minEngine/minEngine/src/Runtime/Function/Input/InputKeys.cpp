@@ -10,6 +10,9 @@ namespace minEngine
     const InputKey InputKeys::MouseY("MouseY", InputAxisType::Axis1D);
     const InputKey InputKeys::Mouse2D("Mouse2D", InputAxisType::Axis2D);
     const InputKey InputKeys::MouseScroll("MouseScroll", InputAxisType::Axis1D);
+    const InputKey InputKeys::Mouse_Left("Mouse_Left", InputAxisType::Button);
+    const InputKey InputKeys::Mouse_Middle("Mouse_Middle", InputAxisType::Button);
+    const InputKey InputKeys::Mouse_Right("Mouse_Right", InputAxisType::Button);
 
 
     // Keyboard keys
@@ -40,6 +43,55 @@ namespace minEngine
     const InputKey InputKeys::Key_X("Key_X", InputAxisType::Button);
     const InputKey InputKeys::Key_Y("Key_Y", InputAxisType::Button);
     const InputKey InputKeys::Key_Z("Key_Z", InputAxisType::Button);
+    
+    // Number keys
+    const InputKey InputKeys::Key_0("Key_0", InputAxisType::Button);
+    const InputKey InputKeys::Key_1("Key_1", InputAxisType::Button);
+    const InputKey InputKeys::Key_2("Key_2", InputAxisType::Button);
+    const InputKey InputKeys::Key_3("Key_3", InputAxisType::Button);
+    const InputKey InputKeys::Key_4("Key_4", InputAxisType::Button);
+    const InputKey InputKeys::Key_5("Key_5", InputAxisType::Button);
+    const InputKey InputKeys::Key_6("Key_6", InputAxisType::Button);
+    const InputKey InputKeys::Key_7("Key_7", InputAxisType::Button);
+    const InputKey InputKeys::Key_8("Key_8", InputAxisType::Button);
+    const InputKey InputKeys::Key_9("Key_9", InputAxisType::Button);
+    
+    // Function keys
+    const InputKey InputKeys::Key_F1("Key_F1", InputAxisType::Button);
+    const InputKey InputKeys::Key_F2("Key_F2", InputAxisType::Button);
+    const InputKey InputKeys::Key_F3("Key_F3", InputAxisType::Button);
+    const InputKey InputKeys::Key_F4("Key_F4", InputAxisType::Button);
+    const InputKey InputKeys::Key_F5("Key_F5", InputAxisType::Button);
+    const InputKey InputKeys::Key_F6("Key_F6", InputAxisType::Button);
+    const InputKey InputKeys::Key_F7("Key_F7", InputAxisType::Button);
+    const InputKey InputKeys::Key_F8("Key_F8", InputAxisType::Button);
+    const InputKey InputKeys::Key_F9("Key_F9", InputAxisType::Button);
+    const InputKey InputKeys::Key_F10("Key_F10", InputAxisType::Button);
+    const InputKey InputKeys::Key_F11("Key_F11", InputAxisType::Button);
+    const InputKey InputKeys::Key_F12("Key_F12", InputAxisType::Button);
+    
+    // Arrow keys
+    const InputKey InputKeys::Key_Up("Key_Up", InputAxisType::Button);
+    const InputKey InputKeys::Key_Down("Key_Down", InputAxisType::Button);
+    const InputKey InputKeys::Key_Left("Key_Left", InputAxisType::Button);
+    const InputKey InputKeys::Key_Right("Key_Right", InputAxisType::Button);
+    
+    // Other common keys
+    const InputKey InputKeys::Key_Space("Key_Space", InputAxisType::Button);
+    const InputKey InputKeys::Key_Enter("Key_Enter", InputAxisType::Button);
+    const InputKey InputKeys::Key_Escape("Key_Escape", InputAxisType::Button);
+    const InputKey InputKeys::Key_Tab("Key_Tab", InputAxisType::Button);
+    const InputKey InputKeys::Key_Backspace("Key_Backspace", InputAxisType::Button);
+    const InputKey InputKeys::Key_Shift("Key_Shift", InputAxisType::Button);
+    const InputKey InputKeys::Key_Control("Key_Control", InputAxisType::Button);
+    const InputKey InputKeys::Key_Alt("Key_Alt", InputAxisType::Button);
+    const InputKey InputKeys::Key_CapsLock("Key_CapsLock", InputAxisType::Button);
+    const InputKey InputKeys::Key_LeftShift("Key_LeftShift", InputAxisType::Button);
+    const InputKey InputKeys::Key_RightShift("Key_RightShift", InputAxisType::Button);
+    const InputKey InputKeys::Key_LeftControl("Key_LeftControl", InputAxisType::Button);
+    const InputKey InputKeys::Key_RightControl("Key_RightControl", InputAxisType::Button);
+    const InputKey InputKeys::Key_LeftAlt("Key_LeftAlt", InputAxisType::Button);
+    const InputKey InputKeys::Key_RightAlt("Key_RightAlt", InputAxisType::Button);
 
 
     void InputKeys::Initialize()
@@ -50,6 +102,9 @@ namespace minEngine
         AddKey(MouseY);
         AddKey(Mouse2D);
         AddKey(MouseScroll);
+        AddKey(Mouse_Left);
+        AddKey(Mouse_Middle);
+        AddKey(Mouse_Right);
 
         AddKey(Key_A);
         AddKey(Key_B);
@@ -77,71 +132,59 @@ namespace minEngine
         AddKey(Key_X);
         AddKey(Key_Y);
         AddKey(Key_Z);
+        
+        // Number keys
+        AddKey(Key_0);
+        AddKey(Key_1);
+        AddKey(Key_2);
+        AddKey(Key_3);
+        AddKey(Key_4);
+        AddKey(Key_5);
+        AddKey(Key_6);
+        AddKey(Key_7);
+        AddKey(Key_8);
+        AddKey(Key_9);
+        
+        // Function keys
+        AddKey(Key_F1);
+        AddKey(Key_F2);
+        AddKey(Key_F3);
+        AddKey(Key_F4);
+        AddKey(Key_F5);
+        AddKey(Key_F6);
+        AddKey(Key_F7);
+        AddKey(Key_F8);
+        AddKey(Key_F9);
+        AddKey(Key_F10);
+        AddKey(Key_F11);
+        AddKey(Key_F12);
+        
+        // Arrow keys
+        AddKey(Key_Up);
+        AddKey(Key_Down);
+        AddKey(Key_Left);
+        AddKey(Key_Right);
+        
+        // Other common keys
+        AddKey(Key_Space);
+        AddKey(Key_Enter);
+        AddKey(Key_Escape);
+        AddKey(Key_Tab);
+        AddKey(Key_Backspace);
+        AddKey(Key_Shift);
+        AddKey(Key_Control);
+        AddKey(Key_Alt);
+        AddKey(Key_CapsLock);
+        AddKey(Key_LeftShift);
+        AddKey(Key_RightShift);
+        AddKey(Key_LeftControl);
+        AddKey(Key_RightControl);
+        AddKey(Key_LeftAlt);
+        AddKey(Key_RightAlt);
     }
 
     void InputKeys::AddKey(const InputKey &key)
     {
         m_Keys.push_back(key);
-    }
-
-    const InputKey &InputKeys::ConvertGLFWKeyToInputKey(int glfwKey)
-    {
-        switch(glfwKey)
-        {
-            case GLFW_KEY_A:
-                return Key_A;
-            case GLFW_KEY_B:
-                return Key_B;
-            case GLFW_KEY_C:
-                return Key_C;
-            case GLFW_KEY_D:
-                return Key_D;
-            case GLFW_KEY_E:
-                return Key_E;
-            case GLFW_KEY_F:
-                return Key_F;
-            case GLFW_KEY_G:
-                return Key_G;
-            case GLFW_KEY_H:
-                return Key_H;
-            case GLFW_KEY_I:
-                return Key_I;
-            case GLFW_KEY_J:
-                return Key_J;
-            case GLFW_KEY_K:
-                return Key_K;
-            case GLFW_KEY_L:
-                return Key_L;
-            case GLFW_KEY_M:
-                return Key_M;
-            case GLFW_KEY_N:
-                return Key_N;
-            case GLFW_KEY_O:
-                return Key_O;
-            case GLFW_KEY_P:
-                return Key_P;
-            case GLFW_KEY_Q:
-                return Key_Q;
-            case GLFW_KEY_R:
-                return Key_R;
-            case GLFW_KEY_S:
-                return Key_S;
-            case GLFW_KEY_T:
-                return Key_T;
-            case GLFW_KEY_U:
-                return Key_U;
-            case GLFW_KEY_V:
-                return Key_V;
-            case GLFW_KEY_W:
-                return Key_W;
-            case GLFW_KEY_X:
-                return Key_X;
-            case GLFW_KEY_Y:
-                return Key_Y;
-            case GLFW_KEY_Z:
-                return Key_Z;
-            default:
-                return AnyKey;
-        }
     }
 }

@@ -2,7 +2,6 @@
 #include "Core.h"
 
 #include "Application.h"
-#include "main.h"
 #include "Runtime/Engine.h"
 
 #include "Runtime/Function/RuntimeGlobalContext.h"

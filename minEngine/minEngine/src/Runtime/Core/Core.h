@@ -13,5 +13,8 @@
 #include <functional>
 
 // minEngine core
+#include "Reflection/Reflection.h"
+#include "Reflection/ReflectionAnnotations.h"
+
 #include "Assert/Assert.h"
 #include "Log/LogSystem.h"

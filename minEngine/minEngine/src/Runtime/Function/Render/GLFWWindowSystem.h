@@ -10,7 +10,6 @@ struct GLFWwindow;
 
 namespace minEngine
 {
-    
 
     class GLFWWindowSystem : public WindowSystem
     {
@@ -53,7 +52,10 @@ namespace minEngine
             GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
             if (windowSystem)
             {
-                windowSystem->OnKey(key, scancode, action, mods);
+                const InputKey& inputKey = ConvertGLFWKeyToInputKey(key);
+                InputKeyAction keyAction = ConvertGLFWKeyActionToInputKeyAction(action);
+                
+                windowSystem->OnKey(inputKey, scancode, keyAction, mods);
             }
         }
 
@@ -94,7 +96,7 @@ namespace minEngine
         }
 
         // 
-        void OnKey(int key, int scancode, int action, int mods)
+        void OnKey(InputKey key, int scancode, InputKeyAction action, int mods)
         {
             for (const auto& callback : m_OnKeyCallbacks)
             {
@@ -149,6 +151,8 @@ namespace minEngine
 
     private:
         void SetupWindowEventCallbacks();
+        const static InputKey& ConvertGLFWKeyToInputKey(int glfwKey);
+        const static InputKeyAction ConvertGLFWKeyActionToInputKeyAction(int action);
 
     };
 }

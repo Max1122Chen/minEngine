@@ -5,6 +5,7 @@
 #include "imgui/backends/imgui_impl_opengl3.h"
 
 #include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Render/RenderSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Framework/World/WorldManager.h"

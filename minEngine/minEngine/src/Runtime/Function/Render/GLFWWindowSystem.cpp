@@ -146,5 +146,107 @@ namespace minEngine
         glfwSetWindowSizeCallback(m_Window, WindowSizeCallback);
     }
 
-
+    const InputKey &GLFWWindowSystem::ConvertGLFWKeyToInputKey(int glfwKey)
+    {
+        switch(glfwKey)
+        {
+            // Alphabet keys
+            case GLFW_KEY_A:    return InputKeys::Key_A;
+            case GLFW_KEY_B:    return InputKeys::Key_B;
+            case GLFW_KEY_C:    return InputKeys::Key_C;
+            case GLFW_KEY_D:    return InputKeys::Key_D;
+            case GLFW_KEY_E:    return InputKeys::Key_E;
+            case GLFW_KEY_F:    return InputKeys::Key_F;
+            case GLFW_KEY_G:    return InputKeys::Key_G;
+            case GLFW_KEY_H:    return InputKeys::Key_H;
+            case GLFW_KEY_I:    return InputKeys::Key_I;
+            case GLFW_KEY_J:    return InputKeys::Key_J;
+            case GLFW_KEY_K:    return InputKeys::Key_K;
+            case GLFW_KEY_L:    return InputKeys::Key_L;
+            case GLFW_KEY_M:    return InputKeys::Key_M;
+            case GLFW_KEY_N:    return InputKeys::Key_N;
+            case GLFW_KEY_O:    return InputKeys::Key_O;
+            case GLFW_KEY_P:    return InputKeys::Key_P;
+            case GLFW_KEY_Q:    return InputKeys::Key_Q;
+            case GLFW_KEY_R:    return InputKeys::Key_R;
+            case GLFW_KEY_S:    return InputKeys::Key_S;
+            case GLFW_KEY_T:    return InputKeys::Key_T;
+            case GLFW_KEY_U:    return InputKeys::Key_U;
+            case GLFW_KEY_V:    return InputKeys::Key_V;
+            case GLFW_KEY_W:    return InputKeys::Key_W;
+            case GLFW_KEY_X:    return InputKeys::Key_X;
+            case GLFW_KEY_Y:    return InputKeys::Key_Y;
+            case GLFW_KEY_Z:    return InputKeys::Key_Z;
+            
+            // Number keys
+            case GLFW_KEY_0:    return InputKeys::Key_0;
+            case GLFW_KEY_1:    return InputKeys::Key_1;
+            case GLFW_KEY_2:    return InputKeys::Key_2;
+            case GLFW_KEY_3:    return InputKeys::Key_3;
+            case GLFW_KEY_4:    return InputKeys::Key_4;
+            case GLFW_KEY_5:    return InputKeys::Key_5;
+            case GLFW_KEY_6:    return InputKeys::Key_6;
+            case GLFW_KEY_7:    return InputKeys::Key_7;
+            case GLFW_KEY_8:    return InputKeys::Key_8;
+            case GLFW_KEY_9:    return InputKeys::Key_9;
+            
+            // Function keys
+            case GLFW_KEY_F1:    return InputKeys::Key_F1;
+            case GLFW_KEY_F2:    return InputKeys::Key_F2;
+            case GLFW_KEY_F3:    return InputKeys::Key_F3;
+            case GLFW_KEY_F4:    return InputKeys::Key_F4;
+            case GLFW_KEY_F5:    return InputKeys::Key_F5;
+            case GLFW_KEY_F6:    return InputKeys::Key_F6;
+            case GLFW_KEY_F7:    return InputKeys::Key_F7;
+            case GLFW_KEY_F8:    return InputKeys::Key_F8;
+            case GLFW_KEY_F9:    return InputKeys::Key_F9;
+            case GLFW_KEY_F10:   return InputKeys::Key_F10;
+            case GLFW_KEY_F11:   return InputKeys::Key_F11;
+            case GLFW_KEY_F12:   return InputKeys::Key_F12;
+            
+            // Arrow keys
+            case GLFW_KEY_UP:    return InputKeys::Key_Up;
+            case GLFW_KEY_DOWN:  return InputKeys::Key_Down;
+            case GLFW_KEY_LEFT:  return InputKeys::Key_Left;
+            case GLFW_KEY_RIGHT: return InputKeys::Key_Right;
+            
+            // Other common keys
+            case GLFW_KEY_SPACE:     return InputKeys::Key_Space;
+            case GLFW_KEY_ENTER:     return InputKeys::Key_Enter;
+            case GLFW_KEY_ESCAPE:    return InputKeys::Key_Escape;
+            case GLFW_KEY_TAB:       return InputKeys::Key_Tab;
+            case GLFW_KEY_BACKSPACE: return InputKeys::Key_Backspace;
+            case GLFW_KEY_CAPS_LOCK: return InputKeys::Key_CapsLock;
+            
+            // Shift keys
+            case GLFW_KEY_LEFT_SHIFT:  return InputKeys::Key_LeftShift;
+            case GLFW_KEY_RIGHT_SHIFT: return InputKeys::Key_RightShift;
+            
+            // Control keys
+            case GLFW_KEY_LEFT_CONTROL:  return InputKeys::Key_LeftControl;
+            case GLFW_KEY_RIGHT_CONTROL: return InputKeys::Key_RightControl;
+            
+            // Alt keys
+            case GLFW_KEY_LEFT_ALT:  return InputKeys::Key_LeftAlt;
+            case GLFW_KEY_RIGHT_ALT: return InputKeys::Key_RightAlt;
+            
+            // Mouse buttons
+            case GLFW_MOUSE_BUTTON_LEFT:   return InputKeys::Mouse_Left;
+            case GLFW_MOUSE_BUTTON_MIDDLE: return InputKeys::Mouse_Middle;
+            case GLFW_MOUSE_BUTTON_RIGHT:  return InputKeys::Mouse_Right;
+            
+            default:            return InputKeys::AnyKey;
+        }
+    }
+    
+    const InputKeyAction GLFWWindowSystem::ConvertGLFWKeyActionToInputKeyAction(int action)
+    {
+        switch(action)
+        {
+            case GLFW_PRESS:    return InputKeyAction::Down;
+            case GLFW_REPEAT:   return InputKeyAction::Down;
+            case GLFW_RELEASE:  return InputKeyAction::Release;
+            default:            return InputKeyAction::Release;
+        }
+    }
 }

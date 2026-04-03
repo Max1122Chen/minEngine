@@ -25,7 +25,7 @@ namespace minEngine
         WindowSystem* windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem.get();
 
         // TODO: maybe we will wrap these logic into a private function later
-        windowSystem->RegisterOnKeyCallback([this](int key, int scancode, int action, int mods)
+        windowSystem->RegisterOnKeyCallback([this](InputKey key, int scancode, InputKeyAction action, int mods)
         {
             this->OnKey(key, scancode, action, mods);
         });
@@ -255,15 +255,14 @@ namespace minEngine
         return nullptr;
     }
 
-    void InputSystem::OnKey(int key, int scancode, int action, int mods)
+    void InputSystem::OnKey(InputKey key, int scancode, InputKeyAction action, int mods)
     {
-        InputKey inputKey = m_InputKeys.ConvertGLFWKeyToInputKey(key);
-        auto it = m_KeyStateMap.find(inputKey);
+        auto it = m_KeyStateMap.find(key);
         if(it != m_KeyStateMap.end())
         {
             InputKeyState& keyState = it->second;
             
-            keyState.bDown = (action != GLFW_RELEASE);
+            keyState.bDown = (action != InputKeyAction::Release);
             keyState.RawValue = keyState.bDown ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 0.0f, 0.0f);
         }
     }
@@ -302,7 +301,7 @@ namespace minEngine
         {
             modifiedValue = modifier->ModifyRaw(modifiedValue, deltaTime);
         }
-        return modifiedValue;return InputActionValue();
+        return modifiedValue;
     }
 
     InputTriggerEvent InputSystem::GetTriggerStateChangeEvent(InputTriggerState lastState, InputTriggerState newState)

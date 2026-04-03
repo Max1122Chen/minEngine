@@ -1,13 +1,18 @@
 #pragma once
 #include "Core.h"
+#include "Core/Reflection/ReflectionAnnotations.h"
 #include "Runtime/Core/Math/Math.h"
 
 namespace minEngine
 {
+    ME_CLASS(Category = "Math")
     struct Transform
     {
+        ME_PROPERTY(EditAnywhere, Category = "Location")
         Vector3 Position{ 0.0f, 0.0f, 0.0f };
+        ME_PROPERTY(EditAnywhere, Category = "Rotation")
         Vector3 Rotation{ 0.0f, 0.0f, 0.0f };   // TODO: use quaternion later
+        ME_PROPERTY(EditAnywhere, Category = "Scale")
         Vector3 Scale{ 1.0f, 1.0f, 1.0f };
 
         Transform() = default;
@@ -46,3 +51,5 @@ namespace minEngine
         }
     };
 }
+
+#include "Generated/Reflection/Transform.gen.h"

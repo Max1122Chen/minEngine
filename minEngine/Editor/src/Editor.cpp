@@ -1,8 +1,13 @@
 #include "Editor.h"
 
+#include "main.h"
+
 #include "imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
+
+#include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Function/Framework/Transform/Transform.h"
 
 namespace minEngine
 {
@@ -26,6 +31,26 @@ namespace minEngine
 
         RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
         m_EditorGUIManager.Initialize(*this);
+
+        const Reflection::TypeInfo* transformTypeInfo = Reflection::ReflectionSystem::Get().GetTypeInfo<Transform>();
+        if (transformTypeInfo == nullptr)
+        {
+            ME_CORE_WARN("[Reflection] Transform type info not found at editor startup.");
+        }
+        else
+        {
+            ME_CORE_INFO("[Reflection] Type: {} (size: {}, properties: {})",
+                         transformTypeInfo->name,
+                         transformTypeInfo->size,
+                         transformTypeInfo->fields.size());
+            for (const auto& field : transformTypeInfo->fields)
+            {
+                ME_CORE_INFO("[Reflection] Transform property: {} | type: {} | offset: {}",
+                             field.name,
+                             field.typeName,
+                             field.offset);
+            }
+        }
     }
 
     void Editor::Shutdown()
@@ -66,3 +91,5 @@ namespace minEngine
         return new Editor();
     }
 }
+
+
