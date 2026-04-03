@@ -1,16 +1,33 @@
 #pragma once
 
+#include "Core.h"
+
 #include "imgui.h"
 
-#include "Panels/EditorState.h"
-#include "Panels/PanelManager.h"
+#include "Editor.h"
+#include "EditorWindow.h"
 
 namespace minEngine
 {
-    class MainMenuBar
+    class MainMenuWindow final : public EditorWindow
     {
     public:
-        void Draw(PanelManager& panelManager, EditorState& editorState)
+        explicit MainMenuWindow(Editor& editor)
+            : EditorWindow(editor)
+        {
+        }
+
+        const std::string& GetId() const override
+        {
+            return m_Id;
+        }
+
+        const std::string& GetTitle() const override
+        {
+            return m_Title;
+        }
+
+        void OnDraw() override
         {
             const ImVec2 framePadding = ImGui::GetStyle().FramePadding;
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(framePadding.x, framePadding.y + 3.0f));
@@ -45,35 +62,29 @@ namespace minEngine
 
             if (ImGui::BeginMenu("View"))
             {
-                if (ImGui::BeginMenu("Panels"))
+                if (ImGui::BeginMenu("Windows"))
                 {
-                    for (const auto& panel : panelManager.GetPanels())
+                    for (const auto& window : m_Editor.GetGUIManager().GetWindows())
                     {
-                        const bool isOpen = panel->IsOpen();
-                        if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, isOpen))
+                        if (window->GetId() == m_Id)
                         {
-                            panel->SetOpen(!isOpen);
+                            continue;
                         }
+
+                        const bool isOpen = window->IsOpen();
+                        ImGui::MenuItem(window->GetTitle().c_str(), nullptr, isOpen, false);
                     }
                     ImGui::EndMenu();
                 }
 
                 if (ImGui::BeginMenu("Layout"))
                 {
-                    if (ImGui::MenuItem("Save Layout"))
-                    {
-                        editorState.requestSaveLayout = true;
-                    }
-
-                    if (ImGui::MenuItem("Reset To Default"))
-                    {
-                        editorState.requestResetLayout = true;
-                    }
+                    ImGui::MenuItem("Reset To Default", nullptr, false, false);
                     ImGui::EndMenu();
                 }
 
                 ImGui::Separator();
-                ImGui::MenuItem("ImGui Demo", nullptr, &editorState.showDemoWindow);
+                ImGui::MenuItem("ImGui Demo", nullptr, m_Editor.showDemoWindow, false);
                 ImGui::EndMenu();
             }
 
@@ -96,5 +107,9 @@ namespace minEngine
             ImGui::EndMainMenuBar();
             ImGui::PopStyleVar();
         }
+
+    private:
+        const std::string m_Id = "main_menu";
+        const std::string m_Title = "MainMenu";
     };
 }

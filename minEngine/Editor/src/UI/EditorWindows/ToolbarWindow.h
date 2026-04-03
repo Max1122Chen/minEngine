@@ -1,16 +1,22 @@
 #pragma once
 
-#include <string>
+#include "Core.h"
 
 #include "imgui.h"
 
-#include "IPanel.h"
+#include "Editor.h"
+#include "EditorWindow.h"
 
 namespace minEngine
 {
-    class ToolbarPanel final : public IPanel
+    class ToolbarWindow final : public EditorWindow
     {
     public:
+        explicit ToolbarWindow(Editor& editor)
+            : EditorWindow(editor)
+        {
+        }
+
         const std::string& GetId() const override
         {
             return m_Id;
@@ -21,13 +27,8 @@ namespace minEngine
             return m_Title;
         }
 
-        void OnDraw(const PanelContext& context) override
+        void OnDraw() override
         {
-            if (context.state == nullptr)
-            {
-                return;
-            }
-
             ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowPos(viewport->Pos);
             ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, 36.0f));
@@ -39,10 +40,7 @@ namespace minEngine
                                             ImGuiWindowFlags_NoSavedSettings;
 
             ImGui::Begin(m_Title.c_str(), nullptr, toolbarFlags);
-            if (ImGui::Button(context.state->isPlaying ? "Stop" : "Play"))
-            {
-                context.state->isPlaying = !context.state->isPlaying;
-            }
+            ImGui::Button(m_Editor.isPlaying ? "Stop" : "Play");
 
             ImGui::SameLine();
             if (ImGui::Button("Pause"))
@@ -55,10 +53,12 @@ namespace minEngine
             }
 
             ImGui::SameLine();
-            ImGui::Checkbox("Demo", &context.state->showDemoWindow);
+            bool showDemoWindow = m_Editor.showDemoWindow;
+            ImGui::Checkbox("Demo", &showDemoWindow);
 
             ImGui::SameLine();
-            ImGui::Text("FPS: %.1f", (context.state->lastDeltaTime > 0.0f) ? (1.0f / context.state->lastDeltaTime) : 0.0f);
+            const float deltaTime = m_Editor.lastDeltaTime;
+            ImGui::Text("FPS: %.1f", (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f);
             ImGui::End();
         }
 

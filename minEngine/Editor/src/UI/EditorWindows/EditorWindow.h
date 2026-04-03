@@ -1,15 +1,23 @@
 #pragma once
 
-#include <string>
-
-#include "PanelContext.h"
+#include "Core.h"
 
 namespace minEngine
 {
-    class IPanel
+    class Editor;
+}
+
+namespace minEngine
+{
+    class EditorWindow
     {
     public:
-        virtual ~IPanel() = default;
+        explicit EditorWindow(Editor& editor)
+            : m_Editor(editor)
+        {
+        }
+
+        virtual ~EditorWindow() = default;
 
         virtual const std::string& GetId() const = 0;
         virtual const std::string& GetTitle() const = 0;
@@ -24,22 +32,23 @@ namespace minEngine
             m_IsOpen = isOpen;
         }
 
-        virtual void OnAttach(const PanelContext& context)
+        virtual void OnAttach()
         {
-            (void)context;
         }
 
-        virtual void OnDetach(const PanelContext& context)
+        virtual void OnDetach()
         {
-            (void)context;
         }
 
-        virtual void OnTick(const PanelContext& context)
+        virtual void OnTick()
         {
-            (void)context;
         }
 
-        virtual void OnDraw(const PanelContext& context) = 0;
+        virtual void OnDraw() = 0;
+
+    private:
+    protected:
+        Editor& m_Editor;
 
     private:
         bool m_IsOpen = true;

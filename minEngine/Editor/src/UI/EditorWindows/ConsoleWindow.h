@@ -1,22 +1,24 @@
 #pragma once
 
-#include <algorithm>
-#include <cctype>
-#include <cstring>
-#include <string>
-#include <vector>
+#include "Core.h"
 
 #include "imgui.h"
 
 #include "Runtime/Core/Log/LogConsole.h"
 
-#include "IPanel.h"
+#include "Editor.h"
+#include "EditorWindow.h"
 
 namespace minEngine
 {
-    class ConsolePanel final : public IPanel
+    class ConsoleWindow final : public EditorWindow
     {
     public:
+        explicit ConsoleWindow(Editor& editor)
+            : EditorWindow(editor)
+        {
+        }
+
         const std::string& GetId() const override
         {
             return m_Id;
@@ -27,22 +29,15 @@ namespace minEngine
             return m_Title;
         }
 
-        void OnDraw(const PanelContext& context) override
+        void OnDraw() override
         {
-            const bool isPlaying = (context.state != nullptr) ? context.state->isPlaying : false;
-            if (m_ClearOnPlay && isPlaying && !m_LastIsPlaying)
-            {
-                LogConsoleStorage::Clear();
-            }
+            const bool isPlaying = m_Editor.isPlaying;
             m_LastIsPlaying = isPlaying;
 
             ImGui::Begin(m_Title.c_str());
             bool requestCopyVisible = false;
 
-            if (ImGui::Button("Clear"))
-            {
-                LogConsoleStorage::Clear();
-            }
+            ImGui::Button("Clear");
             ImGui::SameLine();
             if (ImGui::Button("Copy"))
             {
@@ -52,8 +47,6 @@ namespace minEngine
             ImGui::Checkbox("AutoScroll", &m_AutoScroll);
             ImGui::SameLine();
             ImGui::Checkbox("Pause", &m_PauseStream);
-            ImGui::SameLine();
-            ImGui::Checkbox("ClearOnPlay", &m_ClearOnPlay);
 
             ImGui::Separator();
             ImGui::Checkbox("Core", &m_ShowCore);
@@ -230,7 +223,6 @@ namespace minEngine
         bool m_ShowCritical = true;
         bool m_AutoScroll = true;
         bool m_PauseStream = false;
-        bool m_ClearOnPlay = false;
         bool m_LastIsPlaying = false;
         bool m_HasPausedSnapshot = false;
         std::vector<LogConsoleEntry> m_PausedEntries;

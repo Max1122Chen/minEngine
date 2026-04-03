@@ -1,6 +1,6 @@
 set(EDITOR_NAME Editor)
 
-aux_source_directory(./src SRC)
+file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
 
 add_executable(${EDITOR_NAME} ${SRC})
 
