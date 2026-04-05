@@ -1,9 +1,9 @@
-#include "Level.h"
+#include "Scene.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 
 namespace minEngine
 {
-    void Level::Tick(float deltaTime)
+    void Scene::Tick(float deltaTime)
     {
         for (auto& [id, gameObject] : m_GameObjects)
         {
@@ -11,7 +11,7 @@ namespace minEngine
         }
     }
 
-    std::shared_ptr<GameObject> Level::CreateGameObject()
+    std::shared_ptr<GameObject> Scene::CreateGameObject()
     {
         static uint64_t nextID = 0; // simple ID generator
         uint64_t id = nextID++;

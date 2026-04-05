@@ -1,29 +1,29 @@
-#include "WorldManager.h"
+#include "SceneManager.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 
 namespace minEngine
 {
-    void WorldManager::Initialize()
+    void SceneManager::Initialize()
     {
         m_RenderScene = RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->m_RenderScene.get();
     }
 
-    void WorldManager::Shutdown()
+    void SceneManager::Shutdown()
     {
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
-        m_CurrentActiveLevel.reset();
+        m_CurrentActiveScene.reset();
         m_RenderScene = nullptr;
     }
 
-    void WorldManager::Tick(float deltaTime)
+    void SceneManager::Tick(float deltaTime)
     {
-        if (m_CurrentActiveLevel)
+        if (m_CurrentActiveScene)
         {
-            m_CurrentActiveLevel->Tick(deltaTime);
+            m_CurrentActiveScene->Tick(deltaTime);
         }
     }
 
-    void WorldManager::MarkComponentForNeededEndOfFrameUpdate(Component *component)
+    void SceneManager::MarkComponentForNeededEndOfFrameUpdate(Component *component)
     {
         if(component == nullptr) return;
 
@@ -39,7 +39,7 @@ namespace minEngine
         }
     }
 
-    void WorldManager::SendAllEndOfFrameUpdates()
+    void SceneManager::SendAllEndOfFrameUpdates()
     {
         for(Component* component : m_ComponentsThatNeedEndOfFrameUpdate)
         {

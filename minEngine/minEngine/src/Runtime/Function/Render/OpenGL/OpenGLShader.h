@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 
 namespace minEngine
 {
@@ -35,6 +36,9 @@ namespace minEngine
         virtual void BindUniformBlock(const std::string& blockName, uint32_t bindingPoint) override;
 
     private:
+        std::unordered_map<std::string, int> m_UniformLocationCache;
+        std::unordered_map<std::string, int> m_UniformBlockIndexCache;
+
         bool IsValidUniform(const std::string& name, int& uniformLocation);
         bool IsValidUniformBlock(const std::string& blockName, int& blockIndex);
     };

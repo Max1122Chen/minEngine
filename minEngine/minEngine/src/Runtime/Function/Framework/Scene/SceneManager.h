@@ -2,25 +2,25 @@
 #include "Core.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Framework/Level/Level.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
 
 namespace minEngine
 {
     class RuntimeGlobalContext;
-    class Level;
+    class Scene;
     class RenderScene;
     class Component;
     class PrimitiveComponent;
 
-    class WorldManager
+    class SceneManager
     {
     public:
-        WorldManager() = default;
-        virtual ~WorldManager() = default;
+        SceneManager() = default;
+        virtual ~SceneManager() = default;
 
         void Initialize();
         void Shutdown();
-        static WorldManager& GetWorldManager() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_WorldManager; }
+        static SceneManager& GetSceneManager() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_SceneManager; }
         
         void Tick(float deltaTime);
 
@@ -29,11 +29,11 @@ namespace minEngine
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
         void SendAllEndOfFrameUpdates();    // to render thread
 
-        // TODO: add level loading functionality
-        // void LoadLevel(const std::shared_ptr<Level>& level);
+        // TODO: add scene loading functionality
+        // void LoadScene(const std::shared_ptr<Scene>& scene);
 
     // private: // temporarily public for testing
-        std::shared_ptr<Level> m_CurrentActiveLevel{ nullptr };
+        std::shared_ptr<Scene> m_CurrentActiveScene{ nullptr };
 
         // Components that need end of frame render data update
         std::vector<Component*> m_ComponentsThatNeedEndOfFrameUpdate;

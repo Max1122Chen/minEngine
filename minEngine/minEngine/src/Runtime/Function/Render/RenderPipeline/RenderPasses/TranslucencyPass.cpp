@@ -91,15 +91,15 @@ namespace minEngine
             return;
         }
 
-        std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [](const MeshDrawCommand& a, const MeshDrawCommand& b) {
+        const Vector3 cameraPos = mainCamera->m_Position;
+
+        std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [cameraPos](const MeshDrawCommand& a, const MeshDrawCommand& b) {
             // Sort by distance from camera (back to front)
-            RenderCamera* mainCamera = RenderSystem::GetRenderSystem().GetMainCamera();
-            if (!mainCamera)
-            {
-                return false;
-            }
-            float distanceA = glm::length(mainCamera->m_Position - glm::vec3(a.m_ModelMatrix[3]));
-            float distanceB = glm::length(mainCamera->m_Position - glm::vec3(b.m_ModelMatrix[3]));
+            Vector3 deltaA = cameraPos - glm::vec3(a.m_ModelMatrix[3]);
+            Vector3 deltaB = cameraPos - glm::vec3(b.m_ModelMatrix[3]);
+
+            float distanceA = glm::dot(deltaA, deltaA);
+            float distanceB = glm::dot(deltaB, deltaB);
             return distanceA > distanceB; // Sort back to front
         });
     }

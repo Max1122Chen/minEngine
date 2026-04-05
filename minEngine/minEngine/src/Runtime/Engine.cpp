@@ -8,7 +8,7 @@
 #include "Render/RenderSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
-#include "Runtime/Function/Framework/World/WorldManager.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 namespace minEngine
 {
@@ -31,7 +31,7 @@ namespace minEngine
         while (!windowSystem->ShouldClose())
         {
             float deltaTime = CalculateDeltaTime();
-            windowSystem->SetTitle(("minEngine - FPS: " + std::to_string(CalculateFPS(deltaTime))).c_str());
+            // windowSystem->SetTitle(("minEngine - FPS: " + std::to_string(CalculateFPS(deltaTime))).c_str());
             TickOneFrame(deltaTime);
             windowSystem->SwapBuffers();
         }
@@ -52,10 +52,10 @@ namespace minEngine
         RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
 
         globalContext.m_InputSystem->Tick(deltaTime);
-        globalContext.m_WorldManager->Tick(deltaTime);
+        globalContext.m_SceneManager->Tick(deltaTime);
 
 
-        globalContext.m_WorldManager->SendAllEndOfFrameUpdates();
+        globalContext.m_SceneManager->SendAllEndOfFrameUpdates();
     
     }
 

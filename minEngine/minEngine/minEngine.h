@@ -6,8 +6,8 @@
 
 #include "Runtime/Function/RuntimeGlobalContext.h"
 
-#include "Runtime/Function/Framework/World/WorldManager.h"
-#include "Runtime/Function/Framework/Level/Level.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
 
 // render
 #include "Runtime/Function/Render/RenderSystem.h"

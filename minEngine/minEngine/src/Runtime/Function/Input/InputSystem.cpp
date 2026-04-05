@@ -94,7 +94,7 @@ namespace minEngine
                 }
 
                 // Reset if we cannot find the action instance, which means its value is not updated this frame
-                bool bShouldResetAction = (m_ActionsWithEventThisTick.end() == 
+                bool bShouldResetAction = !(m_ActionsWithEventThisTick.end() != 
                     std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action));
 
                 const InputKey& key = mapping.Key;

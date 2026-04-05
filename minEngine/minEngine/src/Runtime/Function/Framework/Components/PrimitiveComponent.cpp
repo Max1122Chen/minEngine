@@ -1,5 +1,5 @@
 #include "PrimitiveComponent.h"
-#include "Runtime/Function/Framework/World/WorldManager.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
@@ -19,9 +19,9 @@ namespace minEngine
 
         bool removedFromScene = false;
         RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
-        if (globalContext.m_WorldManager)
+        if (globalContext.m_SceneManager)
         {
-            RenderScene* renderScene = globalContext.m_WorldManager->GetRenderScene();
+            RenderScene* renderScene = globalContext.m_SceneManager->GetRenderScene();
             if (renderScene)
             {
                 renderScene->RemovePrimitive(this);
@@ -41,7 +41,7 @@ namespace minEngine
     {
         if(m_bRenderStateDirty)     // why do we need this check again? 
         {
-            WorldManager::GetWorldManager().GetRenderScene()->UpdatePrimitive(this);
+            SceneManager::GetSceneManager().GetRenderScene()->UpdatePrimitive(this);
             m_bRenderStateDirty = false;
         }
     }

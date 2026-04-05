@@ -157,7 +157,17 @@ namespace minEngine
 
     bool OpenGLShader::IsValidUniform(const std::string &name, int &uniformLocation)
     {
-        uniformLocation = glGetUniformLocation(m_ID, name.c_str());     // TODO: cache uniform locations later
+        auto cacheIt = m_UniformLocationCache.find(name);
+        if (cacheIt != m_UniformLocationCache.end())
+        {
+            uniformLocation = cacheIt->second;
+        }
+        else
+        {
+            uniformLocation = glGetUniformLocation(m_ID, name.c_str());
+            m_UniformLocationCache.emplace(name, uniformLocation);
+        }
+
         if(uniformLocation == -1)
         {
             // ME_CORE_ERROR("Uniform {} not found in shader!", name);
@@ -168,7 +178,17 @@ namespace minEngine
 
     bool OpenGLShader::IsValidUniformBlock(const std::string &blockName, int &blockIndex)
     {
-        blockIndex = glGetUniformBlockIndex(m_ID, blockName.c_str());
+        auto cacheIt = m_UniformBlockIndexCache.find(blockName);
+        if (cacheIt != m_UniformBlockIndexCache.end())
+        {
+            blockIndex = cacheIt->second;
+        }
+        else
+        {
+            blockIndex = static_cast<int>(glGetUniformBlockIndex(m_ID, blockName.c_str()));
+            m_UniformBlockIndexCache.emplace(blockName, blockIndex);
+        }
+
         if(blockIndex == GL_INVALID_INDEX)
         {
             // ME_CORE_ERROR("Uniform block {} not found in shader!", blockName);

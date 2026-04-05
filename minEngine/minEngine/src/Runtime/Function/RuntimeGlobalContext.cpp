@@ -5,7 +5,7 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Framework/World/WorldManager.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 namespace minEngine
 {
@@ -33,16 +33,16 @@ namespace minEngine
         m_RenderSystem = std::make_shared<RenderSystem>();
         m_RenderSystem->Initialize();
 
-        m_WorldManager = std::make_shared<WorldManager>();
-        m_WorldManager->Initialize();
+        m_SceneManager = std::make_shared<SceneManager>();
+        m_SceneManager->Initialize();
     }
 
     void RuntimeGlobalContext::ShutdownSystems()
     {
-        if (m_WorldManager)
+        if (m_SceneManager)
         {
-            m_WorldManager->Shutdown();
-            m_WorldManager.reset();
+            m_SceneManager->Shutdown();
+            m_SceneManager.reset();
         }
 
         if (m_InputSystem)

@@ -6,11 +6,11 @@ namespace minEngine
 {
     class GameObject;
 
-    class Level
+    class Scene
     {  
     public:
-        Level() = default;
-        virtual ~Level() = default;
+        Scene() = default;
+        virtual ~Scene() = default;
 
         void Tick(float deltaTime);
 
