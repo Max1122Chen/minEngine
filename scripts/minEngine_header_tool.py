@@ -21,13 +21,17 @@ from pathlib import Path
 from typing import Any
 
 CLASS_DECL_RE = re.compile(r"\b(class|struct)\s+(\w+)\s*[^\{;]*\{", re.MULTILINE)
+ENUM_DECL_RE = re.compile(r"\benum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\{", re.MULTILINE)
 PROPERTY_MARK_RE = re.compile(r"^\s*ME_PROPERTY\s*\((.*?)\)\s*$")
 MEMBER_DECL_RE = re.compile(r"^\s*([\w:<>]+)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
+
+TOOL_CACHE_VERSION = 3
 
 
 @dataclass
 class PropertyMeta:
     name: str
+    metadata: dict[str, str]
 
 
 @dataclass
@@ -37,8 +41,28 @@ class ClassMeta:
     source_file: str
     source_include: str
     source_rel: str
+    decl_pos: int
     class_hash: str
     properties: list[PropertyMeta]
+
+
+@dataclass
+class EnumValueMeta:
+    name: str
+    value_expr: str
+
+
+@dataclass
+class EnumMeta:
+    namespace: str
+    enum_name: str
+    source_file: str
+    source_include: str
+    source_rel: str
+    decl_pos: int
+    enum_hash: str
+    scoped: bool
+    values: list[EnumValueMeta]
 
 
 @dataclass
@@ -48,6 +72,7 @@ class FileRecord:
     file_hash: str
     has_markers: bool
     class_keys: list[str]
+    enum_keys: list[str]
 
 
 def sha256_text(text: str) -> str:
@@ -56,6 +81,72 @@ def sha256_text(text: str) -> str:
 
 def normalize_path(path: Path) -> str:
     return str(path).replace("\\", "/")
+
+
+def trim_quotes(text: str) -> str:
+    text = text.strip()
+    if len(text) >= 2 and ((text[0] == '"' and text[-1] == '"') or (text[0] == "'" and text[-1] == "'")):
+        return text[1:-1]
+    return text
+
+
+def escape_cpp_string(text: str) -> str:
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def split_top_level_args(arg_text: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    quote = ""
+
+    for ch in arg_text:
+        if quote:
+            current.append(ch)
+            if ch == quote:
+                quote = ""
+            continue
+
+        if ch in ('"', "'"):
+            quote = ch
+            current.append(ch)
+            continue
+
+        if ch == '(':
+            depth += 1
+            current.append(ch)
+            continue
+
+        if ch == ')':
+            depth = max(0, depth - 1)
+            current.append(ch)
+            continue
+
+        if ch == ',' and depth == 0:
+            part = "".join(current).strip()
+            if part:
+                parts.append(part)
+            current = []
+            continue
+
+        current.append(ch)
+
+    part = "".join(current).strip()
+    if part:
+        parts.append(part)
+
+    return parts
+
+
+def parse_property_metadata(arg_text: str) -> dict[str, str]:
+    metadata: dict[str, str] = {}
+    for part in split_top_level_args(arg_text):
+        if "=" in part:
+            key, value = part.split("=", 1)
+            metadata[key.strip()] = trim_quotes(value.strip())
+        else:
+            metadata[part.strip()] = "true"
+    return metadata
 
 
 def parse_namespace_prefix(source: str, class_pos: int) -> str:
@@ -84,7 +175,13 @@ def find_matching_brace(source: str, open_brace_index: int) -> int:
 def has_class_marker(source: str, class_start: int) -> bool:
     window_start = max(0, class_start - 256)
     window = source[window_start:class_start]
-    return re.search(r"ME_CLASS\s*\((.*?)\)", window, re.DOTALL) is not None
+    return re.search(r"ME_(?:CLASS|STRUCT)\s*\((.*?)\)", window, re.DOTALL) is not None
+
+
+def has_enum_marker(source: str, enum_start: int) -> bool:
+    window_start = max(0, enum_start - 256)
+    window = source[window_start:enum_start]
+    return re.search(r"ME_ENUM\s*\((.*?)\)", window, re.DOTALL) is not None
 
 
 def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> list[ClassMeta]:
@@ -115,6 +212,8 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 i += 1
                 continue
 
+            metadata = parse_property_metadata(marker_match.group(1))
+
             j = i + 1
             while j < len(body_lines) and not body_lines[j].strip():
                 j += 1
@@ -125,7 +224,7 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
             member_match = MEMBER_DECL_RE.match(body_lines[j])
             if member_match:
                 field_name = member_match.group(2)
-                props.append(PropertyMeta(name=field_name))
+                props.append(PropertyMeta(name=field_name, metadata=metadata))
                 i = j + 1
             else:
                 i = j + 1
@@ -148,12 +247,99 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 source_file=source_file,
                 source_include=source_include,
                 source_rel=source_rel,
+                decl_pos=class_start,
                 class_hash=class_hash,
                 properties=props,
             )
         )
 
     return classes
+
+
+def strip_line_comment(text: str) -> str:
+    return text.split("//", 1)[0].strip()
+
+
+def enum_key(meta: EnumMeta) -> str:
+    if meta.namespace:
+        return f"{meta.namespace}::{meta.enum_name}"
+    return meta.enum_name
+
+
+def full_enum_name(meta: EnumMeta) -> str:
+    return enum_key(meta)
+
+
+def parse_reflected_enums(file_path: Path, src_root: Path, source: str) -> list[EnumMeta]:
+    enums: list[EnumMeta] = []
+
+    for match in ENUM_DECL_RE.finditer(source):
+        scoped = bool(match.group(1))
+        enum_name = match.group(2)
+        enum_start = match.start()
+        open_brace = source.find("{", match.end() - 1)
+        if open_brace < 0:
+            continue
+
+        close_brace = find_matching_brace(source, open_brace)
+        if close_brace < 0:
+            continue
+
+        if not has_enum_marker(source, enum_start):
+            continue
+
+        namespace_name = parse_namespace_prefix(source, enum_start)
+        full_enum_qualifier = f"{namespace_name}::{enum_name}" if namespace_name else enum_name
+
+        body = source[open_brace + 1:close_brace]
+        enum_values: list[EnumValueMeta] = []
+        for raw_value in split_top_level_args(body):
+            entry = strip_line_comment(raw_value).strip()
+            if not entry:
+                continue
+
+            if "=" in entry:
+                name, value_expr = entry.split("=", 1)
+                value_name = name.strip()
+                value_expression = value_expr.strip()
+            else:
+                value_name = entry.strip()
+                if scoped:
+                    value_expression = f"{full_enum_qualifier}::{value_name}"
+                else:
+                    if namespace_name:
+                        value_expression = f"{namespace_name}::{value_name}"
+                    else:
+                        value_expression = value_name
+
+            if value_name:
+                enum_values.append(EnumValueMeta(name=value_name, value_expr=value_expression))
+
+        if not enum_values:
+            continue
+
+        enum_text = source[enum_start:close_brace + 1]
+        enum_hash = sha256_text(enum_text)
+
+        source_file = normalize_path(file_path)
+        source_include = normalize_path(file_path.relative_to(src_root))
+        source_rel = source_include
+
+        enums.append(
+            EnumMeta(
+                namespace=namespace_name,
+                enum_name=enum_name,
+                source_file=source_file,
+                source_include=source_include,
+                source_rel=source_rel,
+                decl_pos=enum_start,
+                enum_hash=enum_hash,
+                scoped=scoped,
+                values=enum_values,
+            )
+        )
+
+    return enums
 
 
 def class_key(meta: ClassMeta) -> str:
@@ -181,6 +367,13 @@ def header_output_name(key: str, class_name_counts: dict[str, int]) -> str:
     return f"{class_name}_{short_class_hash(key)}.gen.h"
 
 
+def source_output_name(source_rel: str, source_name_counts: dict[str, int]) -> str:
+    source_stem = Path(source_rel).stem
+    if source_name_counts.get(source_stem, 0) <= 1:
+        return f"{source_stem}.gen.h"
+    return f"{source_stem}_{sha256_text(source_rel)[:8]}.gen.h"
+
+
 def render_class_gen_header(meta: ClassMeta) -> str:
     lines: list[str] = []
     type_name = full_type_name(meta)
@@ -192,10 +385,88 @@ def render_class_gen_header(meta: ClassMeta) -> str:
     lines.append("")
     lines.append(f"ME_REFLECT_TYPE_BEGIN({type_name})")
     for prop in meta.properties:
-        lines.append(f"    ME_REFLECT_FIELD({type_name}, {prop.name})")
+        if prop.metadata:
+            metadata_entries = ", ".join(
+                f'minEngine::Reflection::MetaKV("{escape_cpp_string(key)}", "{escape_cpp_string(value)}")'
+                for key, value in sorted(prop.metadata.items())
+            )
+            lines.append(f"    ME_REFLECT_FIELD_META({type_name}, {prop.name}, {metadata_entries})")
+        else:
+            lines.append(f"    ME_REFLECT_FIELD({type_name}, {prop.name})")
     lines.append(f"ME_REFLECT_TYPE_END({type_name})")
     lines.append("")
 
+    return "\n".join(lines)
+
+
+def render_enum_gen_header(meta: EnumMeta) -> str:
+    lines: list[str] = []
+    enum_name = full_enum_name(meta)
+
+    lines.append("// Auto-generated by minEngine_header_tool.py. Do not edit manually.")
+    lines.append("#pragma once")
+    lines.append("")
+    lines.append('#include "Runtime/Core/Reflection/ReflectionMacros.h"')
+    lines.append("")
+    lines.append(f"ME_REFLECT_ENUM_BEGIN({enum_name})")
+    for enum_value in meta.values:
+        lines.append(f"    ME_REFLECT_ENUM_VALUE({enum_value.name}, {enum_value.value_expr})")
+    lines.append(f"ME_REFLECT_ENUM_END({enum_name})")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def render_class_registration(meta: ClassMeta) -> list[str]:
+    lines: list[str] = []
+    type_name = full_type_name(meta)
+    lines.append(f"ME_REFLECT_TYPE_BEGIN({type_name})")
+    for prop in meta.properties:
+        if prop.metadata:
+            metadata_entries = ", ".join(
+                f'minEngine::Reflection::MetaKV("{escape_cpp_string(key)}", "{escape_cpp_string(value)}")'
+                for key, value in sorted(prop.metadata.items())
+            )
+            lines.append(f"    ME_REFLECT_FIELD_META({type_name}, {prop.name}, {metadata_entries})")
+        else:
+            lines.append(f"    ME_REFLECT_FIELD({type_name}, {prop.name})")
+    lines.append(f"ME_REFLECT_TYPE_END({type_name})")
+    return lines
+
+
+def render_enum_registration(meta: EnumMeta) -> list[str]:
+    lines: list[str] = []
+    enum_name = full_enum_name(meta)
+    lines.append(f"ME_REFLECT_ENUM_BEGIN({enum_name})")
+    for enum_value in meta.values:
+        lines.append(f"    ME_REFLECT_ENUM_VALUE({enum_value.name}, {enum_value.value_expr})")
+    lines.append(f"ME_REFLECT_ENUM_END({enum_name})")
+    return lines
+
+
+def render_source_gen_header(classes: list[ClassMeta], enums: list[EnumMeta]) -> str:
+    lines: list[str] = []
+    lines.append("// Auto-generated by minEngine_header_tool.py. Do not edit manually.")
+    lines.append("#pragma once")
+    lines.append("")
+    lines.append('#include "Runtime/Core/Reflection/ReflectionMacros.h"')
+    lines.append("")
+
+    ordered_items: list[tuple[int, str, Any]] = []
+    ordered_items.extend((meta.decl_pos, "class", meta) for meta in classes)
+    ordered_items.extend((meta.decl_pos, "enum", meta) for meta in enums)
+    ordered_items.sort(key=lambda item: item[0])
+
+    for idx, (_, kind, meta) in enumerate(ordered_items):
+        if kind == "class":
+            lines.extend(render_class_registration(meta))
+        else:
+            lines.extend(render_enum_registration(meta))
+
+        if idx != len(ordered_items) - 1:
+            lines.append("")
+
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -205,25 +476,64 @@ def class_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> ClassMeta
     if "::" in key:
         namespace, class_name = key.rsplit("::", 1)
 
-    properties = [PropertyMeta(name=name) for name in entry.get("properties", [])]
+    properties: list[PropertyMeta] = []
+    for property_entry in entry.get("properties", []):
+        if isinstance(property_entry, str):
+            properties.append(PropertyMeta(name=property_entry, metadata={}))
+        else:
+            properties.append(
+                PropertyMeta(
+                    name=property_entry.get("name", ""),
+                    metadata=property_entry.get("metadata", {}),
+                )
+            )
     return ClassMeta(
         namespace=namespace,
         class_name=class_name,
         source_file=entry.get("source_file", ""),
         source_include=entry.get("source_include", ""),
         source_rel=entry.get("source_rel", entry.get("source_include", "")),
+        decl_pos=entry.get("decl_pos", 0),
         class_hash=entry.get("class_hash", ""),
         properties=properties,
     )
 
 
-def parse_file_task(file_path: Path, src_root: Path) -> tuple[str, FileRecord, list[ClassMeta]]:
+def enum_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> EnumMeta:
+    namespace = ""
+    enum_name = key
+    if "::" in key:
+        namespace, enum_name = key.rsplit("::", 1)
+
+    values = [
+        EnumValueMeta(name=value_entry.get("name", ""), value_expr=value_entry.get("value_expr", ""))
+        for value_entry in entry.get("values", [])
+    ]
+
+    return EnumMeta(
+        namespace=namespace,
+        enum_name=enum_name,
+        source_file=entry.get("source_file", ""),
+        source_include=entry.get("source_include", ""),
+        source_rel=entry.get("source_rel", entry.get("source_include", "")),
+        decl_pos=entry.get("decl_pos", 0),
+        enum_hash=entry.get("enum_hash", ""),
+        scoped=entry.get("scoped", False),
+        values=values,
+    )
+
+
+def parse_file_task(file_path: Path, src_root: Path) -> tuple[str, FileRecord, list[ClassMeta], list[EnumMeta]]:
     rel_path = normalize_path(file_path.relative_to(src_root))
     stat = file_path.stat()
     text = file_path.read_text(encoding="utf-8", errors="ignore")
     file_hash = sha256_text(text)
 
-    has_markers = "ME_CLASS(" in text and "ME_PROPERTY(" in text
+    has_markers = (
+        "ME_ENUM(" in text
+        or ("ME_CLASS(" in text and "ME_PROPERTY(" in text)
+        or ("ME_STRUCT(" in text and "ME_PROPERTY(" in text)
+    )
     if not has_markers:
         record = FileRecord(
             mtime_ns=stat.st_mtime_ns,
@@ -231,19 +541,23 @@ def parse_file_task(file_path: Path, src_root: Path) -> tuple[str, FileRecord, l
             file_hash=file_hash,
             has_markers=False,
             class_keys=[],
+            enum_keys=[],
         )
-        return rel_path, record, []
+        return rel_path, record, [], []
 
     classes = parse_reflected_classes(file_path, src_root, text)
+    enums = parse_reflected_enums(file_path, src_root, text)
     keys = sorted(class_key(meta) for meta in classes)
+    enum_keys = sorted(enum_key(meta) for meta in enums)
     record = FileRecord(
         mtime_ns=stat.st_mtime_ns,
         size=stat.st_size,
         file_hash=file_hash,
         has_markers=True,
         class_keys=keys,
+        enum_keys=enum_keys,
     )
-    return rel_path, record, classes
+    return rel_path, record, classes, enums
 
 
 def write_if_changed(path: Path, content: str) -> bool:
@@ -256,7 +570,7 @@ def write_if_changed(path: Path, content: str) -> bool:
 
 def load_manifest(path: Path) -> dict[str, Any]:
     if not path.exists():
-        return {"files": {}, "classes": {}}
+        return {"files": {}, "classes": {}, "enums": {}}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -285,10 +599,13 @@ def main() -> int:
     manifest_path = Path(args.manifest).resolve()
 
     manifest = load_manifest(manifest_path)
-    previous_files: dict[str, Any] = manifest.get("files", {})
-    previous_classes: dict[str, Any] = manifest.get("classes", {})
+    cache_compatible = manifest.get("tool_cache_version") == TOOL_CACHE_VERSION
+    previous_files: dict[str, Any] = manifest.get("files", {}) if cache_compatible else {}
+    previous_classes: dict[str, Any] = manifest.get("classes", {}) if cache_compatible else {}
+    previous_enums: dict[str, Any] = manifest.get("enums", {}) if cache_compatible else {}
 
-    parsed_by_key: dict[str, ClassMeta] = {}
+    parsed_classes_by_key: dict[str, ClassMeta] = {}
+    parsed_enums_by_key: dict[str, EnumMeta] = {}
     new_file_records: dict[str, FileRecord] = {}
     headers = collect_headers(src_root)
 
@@ -305,6 +622,7 @@ def main() -> int:
                 file_hash=prev.get("file_hash", ""),
                 has_markers=prev.get("has_markers", False),
                 class_keys=prev.get("class_keys", []),
+                enum_keys=prev.get("enum_keys", []),
             )
             new_file_records[rel] = record
 
@@ -314,9 +632,15 @@ def main() -> int:
                     if key not in previous_classes:
                         all_cached = False
                         break
+                for key in record.enum_keys:
+                    if key not in previous_enums:
+                        all_cached = False
+                        break
                 if all_cached:
                     for key in record.class_keys:
-                        parsed_by_key[key] = class_meta_from_manifest_entry(key, previous_classes[key])
+                        parsed_classes_by_key[key] = class_meta_from_manifest_entry(key, previous_classes[key])
+                    for key in record.enum_keys:
+                        parsed_enums_by_key[key] = enum_meta_from_manifest_entry(key, previous_enums[key])
                 else:
                     files_to_parse.append(header)
             continue
@@ -328,10 +652,12 @@ def main() -> int:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = [pool.submit(parse_file_task, path, src_root) for path in files_to_parse]
             for future in concurrent.futures.as_completed(futures):
-                rel_path, record, classes = future.result()
+                rel_path, record, classes, enums = future.result()
                 new_file_records[rel_path] = record
                 for meta in classes:
-                    parsed_by_key[class_key(meta)] = meta
+                    parsed_classes_by_key[class_key(meta)] = meta
+                for meta in enums:
+                    parsed_enums_by_key[enum_key(meta)] = meta
 
     # Remove file records for deleted headers.
     current_rel_paths = {normalize_path(path.relative_to(src_root)) for path in headers}
@@ -342,62 +668,78 @@ def main() -> int:
     generated_count = 0
     removed_count = 0
 
-    class_name_counts: dict[str, int] = {}
-    for key in parsed_by_key.keys():
-        class_name = class_name_from_key(key)
-        class_name_counts[class_name] = class_name_counts.get(class_name, 0) + 1
+    sources_with_reflection = {
+        meta.source_rel for meta in parsed_classes_by_key.values()
+    } | {
+        meta.source_rel for meta in parsed_enums_by_key.values()
+    }
+    source_name_counts: dict[str, int] = {}
+    for source_rel in sources_with_reflection:
+        source_stem = Path(source_rel).stem
+        source_name_counts[source_stem] = source_name_counts.get(source_stem, 0) + 1
+
+    output_for_source: dict[str, str] = {}
+    for source_rel in sorted(sources_with_reflection):
+        output_for_source[source_rel] = source_output_name(source_rel, source_name_counts)
+
+    source_to_classes: dict[str, list[ClassMeta]] = {}
+    for meta in parsed_classes_by_key.values():
+        source_to_classes.setdefault(meta.source_rel, []).append(meta)
+
+    source_to_enums: dict[str, list[EnumMeta]] = {}
+    for meta in parsed_enums_by_key.values():
+        source_to_enums.setdefault(meta.source_rel, []).append(meta)
+
+    for source_rel in sorted(sources_with_reflection):
+        classes = source_to_classes.get(source_rel, [])
+        enums = source_to_enums.get(source_rel, [])
+        output_name = output_for_source[source_rel]
+        header_path = out_dir / output_name
+        header_content = render_source_gen_header(classes, enums)
+
+        if write_if_changed(header_path, header_content):
+            generated_count += 1
 
     class_entries: dict[str, Any] = {}
-    for key in sorted(parsed_by_key.keys()):
-        cls = parsed_by_key[key]
-        old = previous_classes.get(key, {})
-
-        output_name = header_output_name(key, class_name_counts)
+    for key in sorted(parsed_classes_by_key.keys()):
+        cls = parsed_classes_by_key[key]
+        output_name = output_for_source.get(cls.source_rel, source_output_name(cls.source_rel, source_name_counts))
         header_path = out_dir / output_name
-
-        header_content = render_class_gen_header(cls)
-        header_hash = sha256_text(header_content)
-
-        old_output = old.get("output_header")
-        if old_output and normalize_path(Path(old_output)) != normalize_path(header_path):
-            old_path = Path(old_output)
-            if old_path.exists():
-                old_path.unlink()
-                removed_count += 1
-
-        if old.get("class_hash") != cls.class_hash or old.get("content_hash") != header_hash or not header_path.exists():
-            if write_if_changed(header_path, header_content):
-                generated_count += 1
-
         class_entries[key] = {
             "namespace": cls.namespace,
             "class_name": cls.class_name,
+            "decl_pos": cls.decl_pos,
             "class_hash": cls.class_hash,
-            "content_hash": header_hash,
+            "content_hash": sha256_text(render_class_registration(cls).__repr__()),
             "output_header": normalize_path(header_path),
             "source_file": cls.source_file,
             "source_include": cls.source_include,
             "source_rel": cls.source_rel,
-            "properties": [p.name for p in cls.properties],
+            "properties": [{"name": p.name, "metadata": p.metadata} for p in cls.properties],
         }
 
-    for key, old in previous_classes.items():
-        if key in class_entries:
-            continue
-        old_header = old.get("output_header") or old.get("output_cpp")
-        if old_header:
-            old_path = Path(old_header)
-            if old_path.exists():
-                old_path.unlink()
-                removed_count += 1
+    enum_entries: dict[str, Any] = {}
+    for key in sorted(parsed_enums_by_key.keys()):
+        enum_meta = parsed_enums_by_key[key]
+        output_name = output_for_source.get(enum_meta.source_rel, source_output_name(enum_meta.source_rel, source_name_counts))
+        header_path = out_dir / output_name
+        enum_entries[key] = {
+            "namespace": enum_meta.namespace,
+            "enum_name": enum_meta.enum_name,
+            "decl_pos": enum_meta.decl_pos,
+            "enum_hash": enum_meta.enum_hash,
+            "content_hash": sha256_text(render_enum_registration(enum_meta).__repr__()),
+            "output_header": normalize_path(header_path),
+            "source_file": enum_meta.source_file,
+            "source_include": enum_meta.source_include,
+            "source_rel": enum_meta.source_rel,
+            "scoped": enum_meta.scoped,
+            "values": [{"name": v.name, "value_expr": v.value_expr} for v in enum_meta.values],
+        }
 
-    # Cleanup stale generated headers that are not referenced anymore.
+    # Keep unmatched .gen.h files to avoid breaking temporary/manual includes.
     referenced_outputs = {entry["output_header"] for entry in class_entries.values()}
-    for generated_header in out_dir.glob("*.gen.h"):
-        generated_header_norm = normalize_path(generated_header)
-        if generated_header_norm not in referenced_outputs:
-            generated_header.unlink()
-            removed_count += 1
+    referenced_outputs.update(entry["output_header"] for entry in enum_entries.values())
 
     # Cleanup legacy generated outputs in the output tree.
     for legacy_cpp in out_dir.rglob("*.reflection.gen.cpp"):
@@ -425,17 +767,24 @@ def main() -> int:
         "removed_count": removed_count,
         "scanned_files": len(headers),
         "parsed_files": len(files_to_parse),
-        "classes": sorted(parsed_by_key.keys()),
+        "sources": sorted(sources_with_reflection),
+        "classes": sorted(parsed_classes_by_key.keys()),
+        "enums": sorted(parsed_enums_by_key.keys()),
     }
     write_if_changed(out_dir / "index.reflection.json", json.dumps(index_payload, indent=2, ensure_ascii=False) + "\n")
 
     new_manifest = {
+        "tool_cache_version": TOOL_CACHE_VERSION,
         "files": {k: asdict(v) for k, v in sorted(new_file_records.items())},
         "classes": class_entries,
+        "enums": enum_entries,
     }
     save_manifest(manifest_path, new_manifest)
 
-    print(f"[minEngine_header_tool] classes={len(parsed_by_key)} generated={generated_count} removed={removed_count}")
+    print(
+        f"[minEngine_header_tool] classes={len(parsed_classes_by_key)} enums={len(parsed_enums_by_key)} "
+        f"generated={generated_count} removed={removed_count}"
+    )
     print(f"[minEngine_header_tool] output={normalize_path(out_dir)}")
     return 0
 
