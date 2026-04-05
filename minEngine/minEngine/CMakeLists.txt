@@ -48,6 +48,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ./src/Runtime
                                           PUBLIC ./src/Runtime/Core
                                           PUBLIC ./src/Runtime/Function
+                                          PUBLIC ${REFLECTION_GENERATED_DIR}
                                           PUBLIC ${THIRD_PARTY_PATH}
                                           PUBLIC ${THIRD_PARTY_PATH}/spdlog/include
                                           PUBLIC ${THIRD_PARTY_PATH}/glfw/include

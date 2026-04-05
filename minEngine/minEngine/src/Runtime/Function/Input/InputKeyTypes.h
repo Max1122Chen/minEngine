@@ -3,6 +3,7 @@
 
 namespace minEngine
 {
+    ME_ENUM()
     enum InputKeyAction
     {
         Press,
@@ -10,6 +11,7 @@ namespace minEngine
         Release
     };
 
+    ME_ENUM()
     enum class InputAxisType : uint8_t
     {
         None,
@@ -19,3 +21,5 @@ namespace minEngine
         Axis3D
     };
 }
+
+#include "Generated/Reflection/InputKeyTypes.gen.h"

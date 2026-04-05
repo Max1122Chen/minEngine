@@ -8,6 +8,7 @@
 
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
+#include "ReflectionSample.h"
 
 namespace minEngine
 {
@@ -32,23 +33,36 @@ namespace minEngine
         RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
         m_EditorGUIManager.Initialize(*this);
 
-        const Reflection::TypeInfo* transformTypeInfo = Reflection::ReflectionSystem::Get().GetTypeInfo<Transform>();
-        if (transformTypeInfo == nullptr)
+        const Reflection::TypeInfo* reflectionSampleTypeInfo = Reflection::ReflectionSystem::Get().GetTypeInfo<ReflectionSampleClass>();
+        if (reflectionSampleTypeInfo == nullptr)
         {
-            ME_CORE_WARN("[Reflection] Transform type info not found at editor startup.");
+            ME_CORE_WARN("[Reflection] ReflectionSampleClass type info not found at editor startup.");
         }
         else
         {
             ME_CORE_INFO("[Reflection] Type: {} (size: {}, properties: {})",
-                         transformTypeInfo->name,
-                         transformTypeInfo->size,
-                         transformTypeInfo->fields.size());
-            for (const auto& field : transformTypeInfo->fields)
+                         reflectionSampleTypeInfo->name,
+                         reflectionSampleTypeInfo->size,
+                         reflectionSampleTypeInfo->fields.size());
+            for (const auto& field : reflectionSampleTypeInfo->fields)
             {
-                ME_CORE_INFO("[Reflection] Transform property: {} | type: {} | offset: {}",
+                ME_CORE_INFO("[Reflection] ReflectionSampleClass property: {} | type: {} | offset: {}",
                              field.name,
                              field.typeName,
                              field.offset);
+
+                if (field.metadata.empty())
+                {
+                    ME_CORE_INFO("[Reflection]   metadata: <none>");
+                    continue;
+                }
+
+                for (const auto& metadataEntry : field.metadata)
+                {
+                    ME_CORE_INFO("[Reflection]   metadata: {} = {}",
+                                 metadataEntry.first,
+                                 metadataEntry.second);
+                }
             }
         }
     }

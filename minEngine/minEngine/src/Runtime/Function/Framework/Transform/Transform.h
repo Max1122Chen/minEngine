@@ -5,14 +5,16 @@
 
 namespace minEngine
 {
-    ME_CLASS(Category = "Math")
+    // ME_STRUCT()
     struct Transform
     {
-        ME_PROPERTY(EditAnywhere, Category = "Location")
+        // ME_PROPERTY(EditAnywhere)
         Vector3 Position{ 0.0f, 0.0f, 0.0f };
-        ME_PROPERTY(EditAnywhere, Category = "Rotation")
+
+        // ME_PROPERTY(EditAnywhere)
         Vector3 Rotation{ 0.0f, 0.0f, 0.0f };   // TODO: use quaternion later
-        ME_PROPERTY(EditAnywhere, Category = "Scale")
+
+        // ME_PROPERTY(EditAnywhere)
         Vector3 Scale{ 1.0f, 1.0f, 1.0f };
 
         Transform() = default;
@@ -53,3 +55,4 @@ namespace minEngine
 }
 
 #include "Generated/Reflection/Transform.gen.h"
+

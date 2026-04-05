@@ -8,7 +8,7 @@
 #define ME_REFLECT_TYPE_BEGIN(TYPE) \
 namespace \
 { \
-    [[maybe_unused]] const bool ME_REFLECT_CONCAT(_me_reflect_registered_line_, __LINE__) = []() \
+    [[maybe_unused]] const bool ME_REFLECT_CONCAT(_me_reflect_registered_line_, __COUNTER__) = []() \
     { \
         minEngine::Reflection::TypeInfo typeInfo; \
         typeInfo.name = #TYPE; \
@@ -18,34 +18,47 @@ namespace \
         typeInfo.fields.push_back(minEngine::Reflection::FieldInfo { \
             #FIELD, \
             minEngine::Reflection::GetTypeName<decltype(TYPE::FIELD)>(), \
-            offsetof(TYPE, FIELD) \
+            offsetof(TYPE, FIELD), \
+            {} \
         });
 
+#define ME_REFLECT_FIELD_META(TYPE, FIELD, ...) \
+        { \
+            minEngine::Reflection::FieldInfo fieldInfo; \
+            fieldInfo.name = #FIELD; \
+            fieldInfo.typeName = minEngine::Reflection::GetTypeName<decltype(TYPE::FIELD)>(); \
+            fieldInfo.offset = offsetof(TYPE, FIELD); \
+            fieldInfo.metadata = minEngine::Reflection::BuildMetadata({ __VA_ARGS__ }); \
+            typeInfo.fields.push_back(std::move(fieldInfo)); \
+        }
+
 #define ME_REFLECT_TYPE_END(TYPE) \
-        minEngine::Reflection::ReflectionSystem::Get().RegisterType<TYPE>(std::move(typeInfo)); \
+        minEngine::Reflection::ReflectionSystem::Get().RegisterType<TYPE>( \
+            std::move(typeInfo), \
+            &minEngine::Reflection::CreateDefaultInstance<TYPE> \
+        ); \
         return true; \
     }(); \
 }
 
-/*
-Usage Example:
+#define ME_REFLECT_ENUM_BEGIN(ENUM_TYPE) \
+namespace \
+{ \
+    [[maybe_unused]] const bool ME_REFLECT_CONCAT(_me_reflect_enum_registered_line_, __COUNTER__) = []() \
+    { \
+        minEngine::Reflection::EnumInfo enumInfo; \
+        enumInfo.name = #ENUM_TYPE;
 
-struct TransformData
-{
-    float x = 0.0f;
-    float y = 0.0f;
-    float z = 0.0f;
-    bool visible = true;
-};
+#define ME_REFLECT_ENUM_VALUE(VALUE_NAME, VALUE_EXPR) \
+        enumInfo.entries.push_back(minEngine::Reflection::EnumValueInfo { \
+            #VALUE_NAME, \
+            static_cast<int64_t>(VALUE_EXPR) \
+        });
 
-ME_REFLECT_TYPE_BEGIN(TransformData)
-    ME_REFLECT_FIELD(TransformData, x)
-    ME_REFLECT_FIELD(TransformData, y)
-    ME_REFLECT_FIELD(TransformData, z)
-    ME_REFLECT_FIELD(TransformData, visible)
-ME_REFLECT_TYPE_END(TransformData)
+#define ME_REFLECT_ENUM_END(ENUM_TYPE) \
+        minEngine::Reflection::ReflectionSystem::Get().RegisterEnum<ENUM_TYPE>(std::move(enumInfo)); \
+        return true; \
+    }(); \
+}
 
-// Query type info:
-// const auto* info = minEngine::Reflection::ReflectionSystem::Get().GetTypeInfo<TransformData>();
-// if (info) { for (const auto& field : info->fields) { ... } }
-*/
+

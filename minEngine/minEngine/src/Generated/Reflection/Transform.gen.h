@@ -4,7 +4,7 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECT_TYPE_BEGIN(minEngine::Transform)
-    ME_REFLECT_FIELD(minEngine::Transform, Position)
-    ME_REFLECT_FIELD(minEngine::Transform, Rotation)
-    ME_REFLECT_FIELD(minEngine::Transform, Scale)
+    ME_REFLECT_FIELD_META(minEngine::Transform, Position, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META(minEngine::Transform, Rotation, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META(minEngine::Transform, Scale, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
 ME_REFLECT_TYPE_END(minEngine::Transform)
