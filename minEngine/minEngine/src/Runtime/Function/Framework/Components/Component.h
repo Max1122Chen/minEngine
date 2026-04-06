@@ -15,6 +15,7 @@ namespace minEngine
      * @brief 
      * Base class for all components that can be attached to GameObjects.
      */
+    ME_CLASS()
     class Component
     {
     public:
@@ -40,3 +41,5 @@ namespace minEngine
 
     };
 }
+
+#include "Generated/Reflection/Component.gen.h"

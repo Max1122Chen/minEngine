@@ -8,6 +8,7 @@ namespace minEngine
     class StaticMesh;
     class Material;
 
+    ME_CLASS()
     class StaticMeshComponent : public PrimitiveComponent    
     {
     public:
@@ -28,3 +29,5 @@ namespace minEngine
         std::shared_ptr<Material> m_Material{ nullptr };
     };
 }
+
+#include "Generated/Reflection/StaticMeshComponent.gen.h"

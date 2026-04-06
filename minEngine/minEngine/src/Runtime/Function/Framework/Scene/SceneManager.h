@@ -28,7 +28,7 @@ namespace minEngine
         RenderScene* GetRenderScene() const { return m_RenderScene; }
 
         std::shared_ptr<Scene> CreateNewScene(const std::string& sceneName);
-        void LoadScene(const std::string& sceneName);
+        bool LoadScene(const std::string& sceneName);
         
 
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);

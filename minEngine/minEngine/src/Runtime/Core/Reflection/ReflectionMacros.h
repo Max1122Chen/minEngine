@@ -14,6 +14,23 @@ namespace \
         typeInfo.name = #TYPE; \
         typeInfo.size = sizeof(TYPE);
 
+#define ME_REFLECT_BASE(TYPE, BASE) \
+        { \
+            minEngine::Reflection::TypeInfo::BaseTypeInfo baseInfo; \
+            baseInfo.typeName = #BASE; \
+            baseInfo.constUpcast = [](const void* object) -> const void* { \
+                const TYPE* typedObject = static_cast<const TYPE*>(object); \
+                const BASE* baseObject = static_cast<const BASE*>(typedObject); \
+                return static_cast<const void*>(baseObject); \
+            }; \
+            baseInfo.mutableUpcast = [](void* object) -> void* { \
+                TYPE* typedObject = static_cast<TYPE*>(object); \
+                BASE* baseObject = static_cast<BASE*>(typedObject); \
+                return static_cast<void*>(baseObject); \
+            }; \
+            typeInfo.directBases.push_back(std::move(baseInfo)); \
+        }
+
 #define ME_REFLECT_FIELD(TYPE, FIELD) \
         { \
             minEngine::Reflection::FieldInfo fieldInfo; \

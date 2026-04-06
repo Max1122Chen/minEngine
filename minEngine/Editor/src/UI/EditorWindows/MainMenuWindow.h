@@ -44,12 +44,12 @@ namespace minEngine
             {
                 if (ImGui::MenuItem("New Scene", "Ctrl+N"))
                 {
-                    m_Editor.CreateNewScene("Assets/Scenes/EditorDefault.scene.json");
+                    QueueFileAction(PendingFileAction::NewScene, "Assets/Scenes/EditorDefault.scene.json");
                 }
 
                 if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
                 {
-                    m_Editor.OpenScene("Assets/Scenes/EditorDefault.scene.json");
+                    QueueFileAction(PendingFileAction::OpenScene, "Assets/Scenes/EditorDefault.scene.json");
                 }
 
                 const bool hasScene = static_cast<bool>(m_Editor.GetActiveScene());
@@ -73,7 +73,7 @@ namespace minEngine
                 ImGui::Separator();
                 if (ImGui::MenuItem("Exit"))
                 {
-                    m_Editor.RequestExit();
+                    QueueFileAction(PendingFileAction::ExitEditor, "");
                 }
                 ImGui::EndMenu();
             }
@@ -135,10 +135,95 @@ namespace minEngine
 
             ImGui::EndMainMenuBar();
             ImGui::PopStyleVar();
+
+            DrawUnsavedChangesPopup();
         }
 
     private:
+        enum class PendingFileAction
+        {
+            None,
+            NewScene,
+            OpenScene,
+            ExitEditor,
+        };
+
+        void QueueFileAction(PendingFileAction action, std::string targetPath)
+        {
+            if (!m_Editor.IsSceneDirty())
+            {
+                ExecuteFileAction(action, targetPath);
+                return;
+            }
+
+            m_PendingAction = action;
+            m_PendingPath = std::move(targetPath);
+            ImGui::OpenPopup("Unsaved Scene Changes");
+        }
+
+        void ExecutePendingAction()
+        {
+            ExecuteFileAction(m_PendingAction, m_PendingPath);
+            m_PendingAction = PendingFileAction::None;
+            m_PendingPath.clear();
+        }
+
+        void ExecuteFileAction(PendingFileAction action, const std::string& targetPath)
+        {
+            switch (action)
+            {
+            case PendingFileAction::NewScene:
+                m_Editor.CreateNewScene(targetPath);
+                break;
+            case PendingFileAction::OpenScene:
+                m_Editor.OpenScene(targetPath);
+                break;
+            case PendingFileAction::ExitEditor:
+                m_Editor.RequestExit();
+                break;
+            case PendingFileAction::None:
+            default:
+                break;
+            }
+        }
+
+        void DrawUnsavedChangesPopup()
+        {
+            if (ImGui::BeginPopupModal("Unsaved Scene Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                ImGui::TextUnformatted("Current scene has unsaved changes.");
+                ImGui::TextUnformatted("Do you want to save before continuing?");
+                ImGui::Spacing();
+
+                if (ImGui::Button("Save", ImVec2(110.0f, 0.0f)))
+                {
+                    if (m_Editor.SaveCurrentScene())
+                    {
+                        ExecutePendingAction();
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Don't Save", ImVec2(110.0f, 0.0f)))
+                {
+                    ExecutePendingAction();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel", ImVec2(110.0f, 0.0f)))
+                {
+                    m_PendingAction = PendingFileAction::None;
+                    m_PendingPath.clear();
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::EndPopup();
+            }
+        }
+
         const std::string m_Id = "main_menu";
         const std::string m_Title = "MainMenu";
+        PendingFileAction m_PendingAction = PendingFileAction::None;
+        std::string m_PendingPath;
     };
 }

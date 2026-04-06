@@ -12,6 +12,7 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneSerializer.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Core/Reflection/ReflectionSample.h"
 
 #include <algorithm>
@@ -127,6 +128,55 @@ namespace minEngine
         RenameGameObject(m_SelectedGameObjectId, newName);
     }
 
+    std::vector<std::string> Editor::GetAllComponentTypeNames() const
+    {
+        std::vector<std::string> componentTypeNames;
+
+        const Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+        const Reflection::TypeInfo* componentTypeInfo = reflectionSystem.GetTypeInfo<Component>();
+        if (componentTypeInfo == nullptr)
+        {
+            return componentTypeNames;
+        }
+
+        for (const auto& [typeName, _] : reflectionSystem.GetAllTypeInfo())
+        {
+            if (typeName == componentTypeInfo->name)
+            {
+                continue;
+            }
+
+            if (reflectionSystem.IsDerivedFrom(typeName, componentTypeInfo->name))
+            {
+                componentTypeNames.push_back(typeName);
+            }
+        }
+
+        std::sort(componentTypeNames.begin(), componentTypeNames.end());
+        return componentTypeNames;
+    }
+
+    bool Editor::AddComponentToSelectedGameObject(const std::string& componentTypeName)
+    {
+        std::shared_ptr<GameObject> gameObject = GetSelectedGameObject();
+        if (!gameObject || componentTypeName.empty())
+        {
+            return false;
+        }
+
+        std::shared_ptr<Component> component = Reflection::ReflectionSystem::Get().CreateInstanceAs<Component>(componentTypeName);
+        if (!component)
+        {
+            ME_CORE_WARN("[Editor] Failed to create component '{}'. It may be abstract or missing default constructor.", componentTypeName);
+            return false;
+        }
+
+        component->SetOwner(gameObject.get());
+        gameObject->GetComponents().push_back(component);
+        MarkSceneDirty();
+        return true;
+    }
+
     void Editor::MarkSceneDirty()
     {
         m_SceneDirty = true;
@@ -150,8 +200,7 @@ namespace minEngine
 
     bool Editor::OpenScene(const std::string& scenePath)
     {
-        SceneManager::GetSceneManager().LoadScene(scenePath);
-        const bool success = static_cast<bool>(GetActiveScene());
+        const bool success = SceneManager::GetSceneManager().LoadScene(scenePath);
         if (success)
         {
             ClearSceneDirty();

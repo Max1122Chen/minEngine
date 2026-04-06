@@ -7,6 +7,7 @@ namespace minEngine
 {
     class RenderCamera;
 
+    ME_CLASS()
     class CameraComponent : public SceneComponent
     {
     public:
@@ -39,3 +40,5 @@ namespace minEngine
 
     };
 }
+
+#include "Generated/Reflection/CameraComponent.gen.h"

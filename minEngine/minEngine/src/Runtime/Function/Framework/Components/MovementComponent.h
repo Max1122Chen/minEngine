@@ -6,6 +6,7 @@
 
 namespace minEngine
 {
+    ME_CLASS()
     class MovementComponent : public Component
     {
     public:
@@ -16,3 +17,5 @@ namespace minEngine
         void AddRotationInput(const Vector3& deltaRotation);
     };
 }
+
+#include "Generated/Reflection/MovementComponent.gen.h"

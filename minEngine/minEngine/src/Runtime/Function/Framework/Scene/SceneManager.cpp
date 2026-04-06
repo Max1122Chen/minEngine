@@ -89,7 +89,7 @@ namespace minEngine
         return m_CurrentActiveScene;
     }
 
-    void SceneManager::LoadScene(const std::string& sceneName)
+    bool SceneManager::LoadScene(const std::string& sceneName)
     {
         std::filesystem::path scenePath = ResolveScenePath(sceneName);
 
@@ -97,11 +97,12 @@ namespace minEngine
         if (!SceneSerializer::LoadScene(scenePath, *loadedScene))
         {
             ME_CORE_ERROR("[SceneManager] Failed to load scene '{}'", scenePath.string());
-            return;
+            return false;
         }
 
         loadedScene->sceneName = scenePath.string();
         m_CurrentActiveScene = loadedScene;
+        return true;
     }
 
     void SceneManager::MarkComponentForNeededEndOfFrameUpdate(Component *component)

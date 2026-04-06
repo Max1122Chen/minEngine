@@ -34,7 +34,7 @@ namespace minEngine
     class ReflectionSampleComponent : public Component
     {
     public:
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere) 
         Vector3 Position;
 
         ME_PROPERTY(EditAnywhere)

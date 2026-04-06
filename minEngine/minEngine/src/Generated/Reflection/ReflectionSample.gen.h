@@ -17,6 +17,7 @@ ME_REFLECT_TYPE_BEGIN(minEngine::ReflectionSampleClass)
 ME_REFLECT_TYPE_END(minEngine::ReflectionSampleClass)
 
 ME_REFLECT_TYPE_BEGIN(minEngine::ReflectionSampleComponent)
+    ME_REFLECT_BASE(minEngine::ReflectionSampleComponent, minEngine::Component)
     ME_REFLECT_FIELD_META(minEngine::ReflectionSampleComponent, Position, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
     ME_REFLECT_FIELD_META(minEngine::ReflectionSampleComponent, Rotation, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
     ME_REFLECT_FIELD_META(minEngine::ReflectionSampleComponent, Scale, minEngine::Reflection::MetaKV("EditAnywhere", "true"))

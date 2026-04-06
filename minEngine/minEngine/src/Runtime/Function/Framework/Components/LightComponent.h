@@ -14,6 +14,7 @@ namespace minEngine
     class SceneComponent;
     class LightSceneProxy;
 
+    ME_CLASS()
     class LightComponent : public SceneComponent
     {
     public:
@@ -57,3 +58,5 @@ namespace minEngine
         LightSceneProxy* m_LightSceneProxy{ nullptr };
     };
 }
+
+#include "Generated/Reflection/LightComponent.gen.h"

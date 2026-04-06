@@ -47,6 +47,8 @@ namespace minEngine
         std::string GetSelectedGameObjectName() const;
         bool RenameGameObject(uint64_t gameObjectId, const std::string& newName);
         void RenameSelectedGameObject(const std::string& newName);
+        std::vector<std::string> GetAllComponentTypeNames() const;
+        bool AddComponentToSelectedGameObject(const std::string& componentTypeName);
 
         void MarkSceneDirty();
         void ClearSceneDirty();

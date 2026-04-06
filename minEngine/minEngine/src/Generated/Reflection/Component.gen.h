@@ -3,5 +3,5 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
-ME_REFLECT_TYPE_BEGIN(minEngine::Transform)
-ME_REFLECT_TYPE_END(minEngine::Transform)
+ME_REFLECT_TYPE_BEGIN(minEngine::Component)
+ME_REFLECT_TYPE_END(minEngine::Component)

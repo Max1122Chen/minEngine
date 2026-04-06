@@ -6,6 +6,7 @@
 namespace minEngine
 {
 
+    ME_CLASS()
     class SpotLightComponent : public PointLightComponent
     {
     public:
@@ -31,3 +32,5 @@ namespace minEngine
         float m_OuterConeAngle{ 20.0f }; // degrees
     };
 }
+
+#include "Generated/Reflection/SpotLightComponent.gen.h"

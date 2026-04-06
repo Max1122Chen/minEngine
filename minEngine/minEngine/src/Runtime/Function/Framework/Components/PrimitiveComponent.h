@@ -7,6 +7,7 @@ namespace minEngine
     class SceneComponent;
     class PrimitiveSceneProxy;
 
+    ME_CLASS()
     class PrimitiveComponent : public SceneComponent
     {
     public:
@@ -36,3 +37,5 @@ namespace minEngine
         PrimitiveSceneProxy* m_SceneProxy{ nullptr };
     };
 }
+
+#include "Generated/Reflection/PrimitiveComponent.gen.h"

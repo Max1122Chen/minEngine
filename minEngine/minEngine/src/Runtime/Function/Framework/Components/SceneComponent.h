@@ -14,6 +14,7 @@ namespace minEngine
         KeepWorldTransform
     };
     
+    ME_CLASS()
     class SceneComponent : public Component
     {
     public:
@@ -56,3 +57,5 @@ namespace minEngine
         Transform m_Transform;
     };
 }
+
+#include "Generated/Reflection/SceneComponent.gen.h"

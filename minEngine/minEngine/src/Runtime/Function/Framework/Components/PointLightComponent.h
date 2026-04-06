@@ -8,6 +8,7 @@ namespace minEngine
     class LightComponent;
     class LightSceneProxy;
 
+    ME_CLASS()
     class PointLightComponent : public LightComponent
     {
     public:
@@ -19,3 +20,5 @@ namespace minEngine
         virtual LightSceneProxy* CreateSceneProxy() override;
     };
 }
+
+#include "Generated/Reflection/PointLightComponent.gen.h"

@@ -13,6 +13,7 @@ namespace minEngine
         std::function<void(const InputActionValue&)> Callback;
     };
 
+    ME_CLASS()
     class InputComponent : public Component
     {
     using InputActionCallback =  std::function<void(const InputActionValue&)>;
@@ -56,3 +57,5 @@ namespace minEngine
         std::vector<InputActionEventBinding> m_ActionEventBindings;
     };
 }
+
+#include "Generated/Reflection/InputComponent.gen.h"

@@ -11,6 +11,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace minEngine
@@ -66,6 +67,48 @@ namespace minEngine
                 }
 
                 ImGui::EndTable();
+            }
+
+            ImGui::Separator();
+
+            const std::vector<std::string> componentTypeNames = m_Editor.GetAllComponentTypeNames();
+            if (!componentTypeNames.empty())
+            {
+                if (std::find(componentTypeNames.begin(), componentTypeNames.end(), m_SelectedAddComponentTypeName) == componentTypeNames.end())
+                {
+                    m_SelectedAddComponentTypeName = componentTypeNames.front();
+                }
+
+                ImGui::PushItemWidth(260.0f);
+                if (ImGui::BeginCombo("##AddComponentCombo", m_SelectedAddComponentTypeName.c_str()))
+                {
+                    for (const std::string& typeName : componentTypeNames)
+                    {
+                        const bool isSelected = (typeName == m_SelectedAddComponentTypeName);
+                        if (ImGui::Selectable(typeName.c_str(), isSelected))
+                        {
+                            m_SelectedAddComponentTypeName = typeName;
+                        }
+
+                        if (isSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+                ImGui::PopItemWidth();
+
+                ImGui::SameLine();
+                if (ImGui::Button("Add Component"))
+                {
+                    m_Editor.AddComponentToSelectedGameObject(m_SelectedAddComponentTypeName);
+                }
+            }
+            else
+            {
+                ImGui::TextUnformatted("No reflected Component derived types found.");
             }
 
             ImGui::Separator();
@@ -251,5 +294,6 @@ namespace minEngine
     private:
         const std::string m_Id = "inspector";
         const std::string m_Title = "Inspector";
+        std::string m_SelectedAddComponentTypeName;
     };
 }

@@ -1,6 +1,7 @@
 #include "Serializer.h"
 
 #include <fstream>
+#include <unordered_set>
 
 namespace minEngine
 {
@@ -165,24 +166,43 @@ namespace minEngine
         Json result = Json::object();
         result["__type"] = typeInfo.name;
 
-        for (const Reflection::FieldInfo& field : typeInfo.fields)
-        {
-            const void* fieldPtr = Reflection::ReflectionSystem::GetFieldPtr(object, field);
-            if (fieldPtr == nullptr)
+        Json fieldsByType = Json::object();
+        const Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+        reflectionSystem.ForEachFieldInHierarchy(typeInfo.name,
+            [&](const Reflection::TypeInfo& declaringType, const Reflection::FieldInfo& field)
             {
-                ME_CORE_WARN("[Serializer] Field pointer is null for '{}'", field.name);
-                continue;
-            }
+                const void* declaredObjectPtr = reflectionSystem.CastObjectToType(object, typeInfo.name, declaringType.name);
+                if (declaredObjectPtr == nullptr)
+                {
+                    ME_CORE_WARN("[Serializer] Failed to cast '{}' object to declaring type '{}' for field '{}'.",
+                                 typeInfo.name,
+                                 declaringType.name,
+                                 field.name);
+                    return true;
+                }
 
-            Json fieldValue;
-            if (!WriteFieldValue(field, fieldPtr, fieldValue))
-            {
-                ME_CORE_WARN("[Serializer] Unsupported field type '{}' on field '{}'", field.typeName, field.name);
-                continue;
-            }
+                const void* fieldPtr = Reflection::ReflectionSystem::GetFieldPtr(declaredObjectPtr, field);
+                if (fieldPtr == nullptr)
+                {
+                    ME_CORE_WARN("[Serializer] Field pointer is null for '{}::{}'", declaringType.name, field.name);
+                    return true;
+                }
 
-            result[field.name] = std::move(fieldValue);
-        }
+                Json fieldValue;
+                if (!WriteFieldValue(field, fieldPtr, fieldValue))
+                {
+                    ME_CORE_WARN("[Serializer] Unsupported field type '{}' on field '{}::{}'",
+                                 field.typeName,
+                                 declaringType.name,
+                                 field.name);
+                    return true;
+                }
+
+                fieldsByType[declaringType.name][field.name] = std::move(fieldValue);
+                return true;
+            });
+
+        result["fieldsByType"] = std::move(fieldsByType);
 
         return result;
     }
@@ -194,25 +214,85 @@ namespace minEngine
             return false;
         }
 
-        for (const Reflection::FieldInfo& field : typeInfo.fields)
+        const Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+        const bool hasFieldsByType = json.contains("fieldsByType") && json["fieldsByType"].is_object();
+        std::unordered_set<std::string> seenLegacyFieldNames;
+
+        bool success = true;
+        reflectionSystem.ForEachFieldInHierarchy(typeInfo.name,
+            [&](const Reflection::TypeInfo& declaringType, const Reflection::FieldInfo& field)
+            {
+                void* declaredObjectPtr = reflectionSystem.CastObjectToType(object, typeInfo.name, declaringType.name);
+                if (declaredObjectPtr == nullptr)
+                {
+                    ME_CORE_WARN("[Serializer] Failed to cast '{}' object to declaring type '{}' for field '{}'.",
+                                 typeInfo.name,
+                                 declaringType.name,
+                                 field.name);
+                    success = false;
+                    return false;
+                }
+
+                void* fieldPtr = Reflection::ReflectionSystem::GetFieldPtr(declaredObjectPtr, field);
+                if (fieldPtr == nullptr)
+                {
+                    ME_CORE_WARN("[Serializer] Field pointer is null for '{}::{}'", declaringType.name, field.name);
+                    success = false;
+                    return false;
+                }
+
+                if (hasFieldsByType)
+                {
+                    const Json& fieldsByType = json["fieldsByType"];
+                    if (!fieldsByType.contains(declaringType.name) || !fieldsByType[declaringType.name].is_object())
+                    {
+                        return true;
+                    }
+
+                    const Json& typeBucket = fieldsByType[declaringType.name];
+                    if (!typeBucket.contains(field.name))
+                    {
+                        return true;
+                    }
+
+                    if (!ReadFieldValue(field, typeBucket[field.name], fieldPtr))
+                    {
+                        ME_CORE_WARN("[Serializer] Failed to read field '{}::{}' with type '{}'",
+                                     declaringType.name,
+                                     field.name,
+                                     field.typeName);
+                        success = false;
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                // Backward compatibility for legacy flat format.
+                if (!json.contains(field.name))
+                {
+                    return true;
+                }
+
+                if (!seenLegacyFieldNames.insert(field.name).second)
+                {
+                    ME_CORE_WARN("[Serializer] Legacy flat json field '{}' is ambiguous across inheritance hierarchy; skip duplicate.", field.name);
+                    return true;
+                }
+
+                if (!ReadFieldValue(field, json[field.name], fieldPtr))
+                {
+                    ME_CORE_WARN("[Serializer] Failed to read legacy field '{}' with type '{}'", field.name, field.typeName);
+                    success = false;
+                    return false;
+                }
+
+                return true;
+            });
+
+        if (!success)
         {
-            if (!json.contains(field.name))
-            {
-                continue;
-            }
-
-            void* fieldPtr = Reflection::ReflectionSystem::GetFieldPtr(object, field);
-            if (fieldPtr == nullptr)
-            {
-                ME_CORE_WARN("[Serializer] Field pointer is null for '{}'", field.name);
-                return false;
-            }
-
-            if (!ReadFieldValue(field, json[field.name], fieldPtr))
-            {
-                ME_CORE_WARN("[Serializer] Failed to read field '{}' with type '{}'", field.name, field.typeName);
-                return false;
-            }
+            return false;
         }
 
         return true;

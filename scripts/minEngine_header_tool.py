@@ -20,12 +20,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLASS_DECL_RE = re.compile(r"\b(class|struct)\s+(\w+)\s*[^\{;]*\{", re.MULTILINE)
-ENUM_DECL_RE = re.compile(r"\benum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\{", re.MULTILINE)
+CLASS_DECL_RE = re.compile(r"^\s*(class|struct)\s+(\w+)\s*[^\{;]*\{", re.MULTILINE)
+ENUM_DECL_RE = re.compile(r"^\s*enum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\{", re.MULTILINE)
 PROPERTY_MARK_RE = re.compile(r"^\s*ME_PROPERTY\s*\((.*?)\)\s*$")
 MEMBER_DECL_RE = re.compile(r"^\s*([\w:<>]+)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
 
-TOOL_CACHE_VERSION = 3
+TOOL_CACHE_VERSION = 4
 
 
 @dataclass
@@ -43,6 +43,8 @@ class ClassMeta:
     source_rel: str
     decl_pos: int
     class_hash: str
+    base_types: list[str]
+    has_virtual_inheritance: bool
     properties: list[PropertyMeta]
 
 
@@ -157,6 +159,50 @@ def parse_namespace_prefix(source: str, class_pos: int) -> str:
     return ns_matches[-1].group(1)
 
 
+def qualify_type_name(type_name: str, namespace_name: str) -> str:
+    type_name = type_name.strip()
+    if not type_name:
+        return type_name
+
+    if "::" in type_name:
+        return type_name
+
+    if namespace_name:
+        return f"{namespace_name}::{type_name}"
+    return type_name
+
+
+def parse_base_type_list(class_decl_head: str, namespace_name: str) -> tuple[list[str], bool]:
+    if ":" not in class_decl_head:
+        return [], False
+
+    _, base_clause = class_decl_head.split(":", 1)
+    base_specs = split_top_level_args(base_clause)
+    base_types: list[str] = []
+    has_virtual_inheritance = False
+
+    for base_spec in base_specs:
+        if not base_spec:
+            continue
+
+        sanitized_spec = base_spec.strip()
+        tokens = [token for token in sanitized_spec.split() if token]
+        if not tokens:
+            continue
+
+        if "virtual" in tokens:
+            has_virtual_inheritance = True
+
+        filtered_tokens = [token for token in tokens if token not in {"public", "protected", "private", "virtual", "final"}]
+        if not filtered_tokens:
+            continue
+
+        base_type_name = " ".join(filtered_tokens)
+        base_types.append(qualify_type_name(base_type_name, namespace_name))
+
+    return base_types, has_virtual_inheritance
+
+
 def find_matching_brace(source: str, open_brace_index: int) -> int:
     depth = 0
     i = open_brace_index
@@ -202,6 +248,9 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
             continue
 
         body = source[open_brace + 1:close_brace]
+        class_decl_head = source[class_start:open_brace]
+        namespace_name = parse_namespace_prefix(source, class_start)
+        base_types, has_virtual_inheritance = parse_base_type_list(class_decl_head, namespace_name)
         body_lines = body.splitlines()
         props: list[PropertyMeta] = []
 
@@ -229,12 +278,8 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
             else:
                 i = j + 1
 
-        if not props:
-            continue
-
         class_text = source[class_start:close_brace + 1]
         class_hash = sha256_text(class_text)
-        namespace_name = parse_namespace_prefix(source, class_start)
 
         source_file = normalize_path(file_path)
         source_include = normalize_path(file_path.relative_to(src_root))
@@ -249,6 +294,8 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 source_rel=source_rel,
                 decl_pos=class_start,
                 class_hash=class_hash,
+                base_types=base_types,
+                has_virtual_inheritance=has_virtual_inheritance,
                 properties=props,
             )
         )
@@ -421,6 +468,8 @@ def render_class_registration(meta: ClassMeta) -> list[str]:
     lines: list[str] = []
     type_name = full_type_name(meta)
     lines.append(f"ME_REFLECT_TYPE_BEGIN({type_name})")
+    for base_type in meta.base_types:
+        lines.append(f"    ME_REFLECT_BASE({type_name}, {base_type})")
     for prop in meta.properties:
         if prop.metadata:
             metadata_entries = ", ".join(
@@ -495,8 +544,81 @@ def class_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> ClassMeta
         source_rel=entry.get("source_rel", entry.get("source_include", "")),
         decl_pos=entry.get("decl_pos", 0),
         class_hash=entry.get("class_hash", ""),
+        base_types=entry.get("base_types", []),
+        has_virtual_inheritance=entry.get("has_virtual_inheritance", False),
         properties=properties,
     )
+
+
+def detect_cycle(classes_by_key: dict[str, ClassMeta]) -> list[str]:
+    errors: list[str] = []
+    color: dict[str, int] = {}
+    stack: list[str] = []
+
+    def dfs(node: str) -> None:
+        state = color.get(node, 0)
+        if state == 1:
+            cycle_path = stack[stack.index(node):] + [node]
+            errors.append("Detected inheritance cycle: " + " -> ".join(cycle_path))
+            return
+        if state == 2:
+            return
+
+        color[node] = 1
+        stack.append(node)
+        cls = classes_by_key.get(node)
+        if cls:
+            for base in cls.base_types:
+                if base in classes_by_key:
+                    dfs(base)
+        stack.pop()
+        color[node] = 2
+
+    for key in classes_by_key.keys():
+        if color.get(key, 0) == 0:
+            dfs(key)
+
+    return errors
+
+
+def detect_diamond(classes_by_key: dict[str, ClassMeta]) -> list[str]:
+    errors: list[str] = []
+
+    for root in classes_by_key.keys():
+        counts: dict[str, int] = {}
+
+        def dfs(current: str) -> None:
+            cls = classes_by_key.get(current)
+            if cls is None:
+                return
+            for base in cls.base_types:
+                if base not in classes_by_key:
+                    continue
+                counts[base] = counts.get(base, 0) + 1
+                dfs(base)
+
+        dfs(root)
+        duplicated_ancestors = [name for name, count in counts.items() if count > 1]
+        if duplicated_ancestors:
+            duplicate_text = ", ".join(sorted(set(duplicated_ancestors)))
+            errors.append(f"Detected diamond inheritance for {root}: duplicated ancestors [{duplicate_text}]")
+
+    return errors
+
+
+def validate_inheritance_constraints(classes_by_key: dict[str, ClassMeta]) -> list[str]:
+    errors: list[str] = []
+
+    for class_key_name, class_meta in classes_by_key.items():
+        if class_meta.has_virtual_inheritance:
+            errors.append(f"Virtual inheritance is not supported: {class_key_name}")
+
+        if class_key_name in class_meta.base_types:
+            errors.append(f"Self inheritance is invalid: {class_key_name}")
+
+    errors.extend(detect_cycle(classes_by_key))
+    errors.extend(detect_diamond(classes_by_key))
+    return errors
 
 
 def enum_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> EnumMeta:
@@ -531,8 +653,8 @@ def parse_file_task(file_path: Path, src_root: Path) -> tuple[str, FileRecord, l
 
     has_markers = (
         "ME_ENUM(" in text
-        or ("ME_CLASS(" in text and "ME_PROPERTY(" in text)
-        or ("ME_STRUCT(" in text and "ME_PROPERTY(" in text)
+        or "ME_CLASS(" in text
+        or "ME_STRUCT(" in text
     )
     if not has_markers:
         record = FileRecord(
@@ -665,6 +787,12 @@ def main() -> int:
     for key in stale_file_keys:
         del new_file_records[key]
 
+    inheritance_errors = validate_inheritance_constraints(parsed_classes_by_key)
+    if inheritance_errors:
+        for error in inheritance_errors:
+            print(f"[minEngine_header_tool][ERROR] {error}")
+        return 2
+
     generated_count = 0
     removed_count = 0
 
@@ -710,6 +838,8 @@ def main() -> int:
             "class_name": cls.class_name,
             "decl_pos": cls.decl_pos,
             "class_hash": cls.class_hash,
+            "base_types": cls.base_types,
+            "has_virtual_inheritance": cls.has_virtual_inheritance,
             "content_hash": sha256_text(render_class_registration(cls).__repr__()),
             "output_header": normalize_path(header_path),
             "source_file": cls.source_file,

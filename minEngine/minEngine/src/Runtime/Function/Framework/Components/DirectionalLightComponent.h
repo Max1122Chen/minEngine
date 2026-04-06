@@ -5,6 +5,7 @@
 
 namespace minEngine
 {
+    ME_CLASS()
     class DirectionalLightComponent : public LightComponent
     {
     public:
@@ -22,3 +23,5 @@ namespace minEngine
         Vector3 m_Direction{ 0.0f, -1.0f, 0.0f };   // default direction pointing downwards
     };
 }
+
+#include "Generated/Reflection/DirectionalLightComponent.gen.h"
