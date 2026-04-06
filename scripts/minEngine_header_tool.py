@@ -25,12 +25,13 @@ ENUM_DECL_RE = re.compile(r"^\s*enum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\
 PROPERTY_MARK_RE = re.compile(r"^\s*ME_PROPERTY\s*\((.*?)\)\s*$")
 MEMBER_DECL_RE = re.compile(r"^\s*([\w:<>]+)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
 
-TOOL_CACHE_VERSION = 4
+TOOL_CACHE_VERSION = 6
 
 
 @dataclass
 class PropertyMeta:
     name: str
+    type_name: str
     metadata: dict[str, str]
 
 
@@ -172,6 +173,41 @@ def qualify_type_name(type_name: str, namespace_name: str) -> str:
     return type_name
 
 
+def qualify_field_type_name(field_type: str, namespace_name: str) -> str:
+    primitive_types = {
+        "bool", "char", "signed char", "unsigned char",
+        "short", "unsigned short", "int", "unsigned int",
+        "long", "unsigned long", "long long", "unsigned long long",
+        "float", "double", "long double",
+        "size_t", "ptrdiff_t", "int8_t", "int16_t", "int32_t", "int64_t",
+        "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+    }
+
+    token = field_type.strip()
+    if not token:
+        return token
+
+    if token in primitive_types or "::" in token:
+        return token
+
+    const_prefix = ""
+    if token.startswith("const "):
+        const_prefix = "const "
+        token = token[len("const "):].strip()
+
+    suffix = ""
+    while token.endswith("*") or token.endswith("&"):
+        suffix = token[-1] + suffix
+        token = token[:-1].strip()
+
+    if token in primitive_types or "::" in token:
+        qualified_core = token
+    else:
+        qualified_core = qualify_type_name(token, namespace_name)
+
+    return f"{const_prefix}{qualified_core}{suffix}"
+
+
 def parse_base_type_list(class_decl_head: str, namespace_name: str) -> tuple[list[str], bool]:
     if ":" not in class_decl_head:
         return [], False
@@ -272,8 +308,9 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
 
             member_match = MEMBER_DECL_RE.match(body_lines[j])
             if member_match:
+                field_type = qualify_field_type_name(member_match.group(1), namespace_name)
                 field_name = member_match.group(2)
-                props.append(PropertyMeta(name=field_name, metadata=metadata))
+                props.append(PropertyMeta(name=field_name, type_name=field_type, metadata=metadata))
                 i = j + 1
             else:
                 i = j + 1
@@ -471,15 +508,26 @@ def render_class_registration(meta: ClassMeta) -> list[str]:
     for base_type in meta.base_types:
         lines.append(f"    ME_REFLECT_BASE({type_name}, {base_type})")
     for prop in meta.properties:
+        field_type_name = prop.type_name.strip() if prop.type_name.strip() else "auto"
         if prop.metadata:
             metadata_entries = ", ".join(
                 f'minEngine::Reflection::MetaKV("{escape_cpp_string(key)}", "{escape_cpp_string(value)}")'
                 for key, value in sorted(prop.metadata.items())
             )
-            lines.append(f"    ME_REFLECT_FIELD_META({type_name}, {prop.name}, {metadata_entries})")
+            lines.append(f"    ME_REFLECT_FIELD_META_T({type_name}, {prop.name}, {field_type_name}, {metadata_entries})")
         else:
-            lines.append(f"    ME_REFLECT_FIELD({type_name}, {prop.name})")
+            lines.append(f"    ME_REFLECT_FIELD_T({type_name}, {prop.name}, {field_type_name})")
     lines.append(f"ME_REFLECT_TYPE_END({type_name})")
+    return lines
+
+
+def render_class_accessor(meta: ClassMeta) -> list[str]:
+    lines: list[str] = []
+    type_name = full_type_name(meta)
+    lines.append(f"ME_REFLECT_ACCESSOR_BEGIN({type_name})")
+    for prop in meta.properties:
+        lines.append(f"    ME_REFLECT_ACCESSOR_FIELD({type_name}, {prop.name})")
+    lines.append("ME_REFLECT_ACCESSOR_END()")
     return lines
 
 
@@ -508,6 +556,8 @@ def render_source_gen_header(classes: list[ClassMeta], enums: list[EnumMeta]) ->
 
     for idx, (_, kind, meta) in enumerate(ordered_items):
         if kind == "class":
+            lines.extend(render_class_accessor(meta))
+            lines.append("")
             lines.extend(render_class_registration(meta))
         else:
             lines.extend(render_enum_registration(meta))
@@ -528,11 +578,12 @@ def class_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> ClassMeta
     properties: list[PropertyMeta] = []
     for property_entry in entry.get("properties", []):
         if isinstance(property_entry, str):
-            properties.append(PropertyMeta(name=property_entry, metadata={}))
+            properties.append(PropertyMeta(name=property_entry, type_name="", metadata={}))
         else:
             properties.append(
                 PropertyMeta(
                     name=property_entry.get("name", ""),
+                    type_name=property_entry.get("type_name", ""),
                     metadata=property_entry.get("metadata", {}),
                 )
             )
@@ -845,7 +896,7 @@ def main() -> int:
             "source_file": cls.source_file,
             "source_include": cls.source_include,
             "source_rel": cls.source_rel,
-            "properties": [{"name": p.name, "metadata": p.metadata} for p in cls.properties],
+            "properties": [{"name": p.name, "type_name": p.type_name, "metadata": p.metadata} for p in cls.properties],
         }
 
     enum_entries: dict[str, Any] = {}

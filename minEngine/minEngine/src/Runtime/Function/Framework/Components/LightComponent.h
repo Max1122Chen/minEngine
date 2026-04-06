@@ -17,6 +17,8 @@ namespace minEngine
     ME_CLASS()
     class LightComponent : public SceneComponent
     {
+        ME_REFLECT_FRIEND(LightComponent)
+
     public:
         LightComponent();
         virtual ~LightComponent() override;
@@ -44,13 +46,19 @@ namespace minEngine
         LightSceneProxy* GetSceneProxy() const { return m_LightSceneProxy; }
 
         // properties
+        ME_PROPERTY(EditAnywhere)
         Vector4 m_LightColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
+        ME_PROPERTY(EditAnywhere)
         float m_Intensity{ 1.0f };
 
+        ME_PROPERTY(EditAnywhere)
         float m_DiffuseFactor{ 1.0f };
+
+        ME_PROPERTY(EditAnywhere)
         float m_SpecularFactor{ 1.0f };
 
+        ME_PROPERTY(EditAnywhere)
         bool m_CastShadow{ false };
         
 

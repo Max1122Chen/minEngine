@@ -31,38 +31,56 @@ namespace \
             typeInfo.directBases.push_back(std::move(baseInfo)); \
         }
 
-#define ME_REFLECT_FIELD(TYPE, FIELD) \
+#define ME_REFLECT_ACCESSOR_BEGIN(TYPE) \
+namespace minEngine::Reflection \
+{ \
+    template<> \
+    struct TypeAccessor<TYPE> \
+    {
+
+#define ME_REFLECT_ACCESSOR_FIELD(TYPE, FIELD) \
+        static const void* ME_REFLECT_CONCAT(GetConst_, FIELD)(const void* object) \
+        { \
+            const TYPE* typedObject = static_cast<const TYPE*>(object); \
+            return static_cast<const void*>(&(typedObject->FIELD)); \
+        } \
+\
+        static void* ME_REFLECT_CONCAT(GetMutable_, FIELD)(void* object) \
+        { \
+            TYPE* typedObject = static_cast<TYPE*>(object); \
+            return static_cast<void*>(&(typedObject->FIELD)); \
+        }
+
+#define ME_REFLECT_ACCESSOR_END() \
+    }; \
+}
+
+#define ME_REFLECT_FIELD_T(TYPE, FIELD, FIELD_TYPE) \
         { \
             minEngine::Reflection::FieldInfo fieldInfo; \
             fieldInfo.name = #FIELD; \
-            fieldInfo.typeName = minEngine::Reflection::GetTypeName<decltype(TYPE::FIELD)>(); \
-            fieldInfo.constAccessor = [](const void* object) -> const void* { \
-                const TYPE* typedObject = static_cast<const TYPE*>(object); \
-                return static_cast<const void*>(&(typedObject->FIELD)); \
-            }; \
-            fieldInfo.mutableAccessor = [](void* object) -> void* { \
-                TYPE* typedObject = static_cast<TYPE*>(object); \
-                return static_cast<void*>(&(typedObject->FIELD)); \
-            }; \
+            fieldInfo.typeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
+            fieldInfo.constAccessor = &minEngine::Reflection::TypeAccessor<TYPE>::ME_REFLECT_CONCAT(GetConst_, FIELD); \
+            fieldInfo.mutableAccessor = &minEngine::Reflection::TypeAccessor<TYPE>::ME_REFLECT_CONCAT(GetMutable_, FIELD); \
             typeInfo.fields.push_back(std::move(fieldInfo)); \
         }
 
-#define ME_REFLECT_FIELD_META(TYPE, FIELD, ...) \
+#define ME_REFLECT_FIELD_META_T(TYPE, FIELD, FIELD_TYPE, ...) \
         { \
             minEngine::Reflection::FieldInfo fieldInfo; \
             fieldInfo.name = #FIELD; \
-            fieldInfo.typeName = minEngine::Reflection::GetTypeName<decltype(TYPE::FIELD)>(); \
-            fieldInfo.constAccessor = [](const void* object) -> const void* { \
-                const TYPE* typedObject = static_cast<const TYPE*>(object); \
-                return static_cast<const void*>(&(typedObject->FIELD)); \
-            }; \
-            fieldInfo.mutableAccessor = [](void* object) -> void* { \
-                TYPE* typedObject = static_cast<TYPE*>(object); \
-                return static_cast<void*>(&(typedObject->FIELD)); \
-            }; \
+            fieldInfo.typeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
+            fieldInfo.constAccessor = &minEngine::Reflection::TypeAccessor<TYPE>::ME_REFLECT_CONCAT(GetConst_, FIELD); \
+            fieldInfo.mutableAccessor = &minEngine::Reflection::TypeAccessor<TYPE>::ME_REFLECT_CONCAT(GetMutable_, FIELD); \
             fieldInfo.metadata = minEngine::Reflection::BuildMetadata({ __VA_ARGS__ }); \
             typeInfo.fields.push_back(std::move(fieldInfo)); \
         }
+
+#define ME_REFLECT_FIELD(TYPE, FIELD) \
+        ME_REFLECT_FIELD_T(TYPE, FIELD, decltype(std::declval<TYPE>().FIELD))
+
+#define ME_REFLECT_FIELD_META(TYPE, FIELD, ...) \
+    ME_REFLECT_FIELD_META_T(TYPE, FIELD, decltype(std::declval<TYPE>().FIELD), __VA_ARGS__)
 
 #define ME_REFLECT_TYPE_END(TYPE) \
         minEngine::Reflection::ReflectionSystem::Get().RegisterType<TYPE>( \

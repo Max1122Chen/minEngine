@@ -8,6 +8,8 @@ namespace minEngine
     ME_CLASS()
     class DirectionalLightComponent : public LightComponent
     {
+        ME_REFLECT_FRIEND(DirectionalLightComponent)
+
     public:
         DirectionalLightComponent() = default;
         virtual ~DirectionalLightComponent() = default;
@@ -20,6 +22,7 @@ namespace minEngine
         virtual LightSceneProxy* CreateSceneProxy() override;
 
     protected:
+        ME_PROPERTY(EditAnywhere)
         Vector3 m_Direction{ 0.0f, -1.0f, 0.0f };   // default direction pointing downwards
     };
 }

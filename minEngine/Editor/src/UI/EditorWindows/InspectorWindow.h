@@ -16,6 +16,17 @@
 
 namespace minEngine
 {
+    inline std::string GetShortTypeName(const std::string& fullTypeName)
+    {
+        const size_t scopePos = fullTypeName.rfind("::");
+        if (scopePos == std::string::npos)
+        {
+            return fullTypeName;
+        }
+
+        return fullTypeName.substr(scopePos + 2);
+    }
+
     class InspectorWindow final : public EditorWindow
     {
     public:
@@ -80,12 +91,14 @@ namespace minEngine
                 }
 
                 ImGui::PushItemWidth(260.0f);
-                if (ImGui::BeginCombo("##AddComponentCombo", m_SelectedAddComponentTypeName.c_str()))
+                const std::string selectedDisplayName = GetShortTypeName(m_SelectedAddComponentTypeName);
+                if (ImGui::BeginCombo("##AddComponentCombo", selectedDisplayName.c_str()))
                 {
                     for (const std::string& typeName : componentTypeNames)
                     {
                         const bool isSelected = (typeName == m_SelectedAddComponentTypeName);
-                        if (ImGui::Selectable(typeName.c_str(), isSelected))
+                        const std::string displayName = GetShortTypeName(typeName);
+                        if (ImGui::Selectable(displayName.c_str(), isSelected))
                         {
                             m_SelectedAddComponentTypeName = typeName;
                         }
@@ -172,7 +185,7 @@ namespace minEngine
                     continue;
                 }
 
-                const std::string headerLabel = typeInfo->name + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+                const std::string headerLabel = GetShortTypeName(typeInfo->name) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
                 if (!ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
                 {
                     continue;
@@ -186,103 +199,128 @@ namespace minEngine
 
                 ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
                 ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
-
-                for (const Reflection::FieldInfo& field : typeInfo->fields)
-                {
-                    void* fieldPtr = Reflection::ReflectionSystem::GetFieldPtr(component.get(), field);
-                    if (fieldPtr == nullptr)
+                bool hasAnyReflectedField = false;
+                const Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+                reflectionSystem.ForEachFieldInHierarchy(typeInfo->name,
+                    [&](const Reflection::TypeInfo& declaringType, const Reflection::FieldInfo& field)
                     {
-                        continue;
-                    }
+                        void* declaredObjectPtr = reflectionSystem.CastObjectToType(component.get(), typeInfo->name, declaringType.name);
+                        if (declaredObjectPtr == nullptr)
+                        {
+                            return true;
+                        }
 
-                    ImGui::PushID(field.name.c_str());
+                        void* fieldPtr = Reflection::ReflectionSystem::GetFieldPtr(declaredObjectPtr, field);
+                        if (fieldPtr == nullptr)
+                        {
+                            return true;
+                        }
+
+                        hasAnyReflectedField = true;
+                        const std::string shortFieldTypeName = GetShortTypeName(field.typeName);
+                        const bool isInheritedField = (declaringType.name != typeInfo->name);
+                        const std::string displayFieldName = isInheritedField
+                            ? (GetShortTypeName(declaringType.name) + "::" + field.name)
+                            : field.name;
+
+                        ImGui::PushID((declaringType.name + "::" + field.name).c_str());
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::TextUnformatted(displayFieldName.c_str());
+                        ImGui::TableSetColumnIndex(1);
+
+                        if (field.typeName == "int" || shortFieldTypeName == "int")
+                        {
+                            if (ImGui::DragInt("##Value", static_cast<int*>(fieldPtr)))
+                            {
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else if (field.typeName == "float" || shortFieldTypeName == "float")
+                        {
+                            if (ImGui::DragFloat("##Value", static_cast<float*>(fieldPtr), 0.1f))
+                            {
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else if (field.typeName == "double" || shortFieldTypeName == "double")
+                        {
+                            if (ImGui::DragScalar("##Value", ImGuiDataType_Double, fieldPtr, 0.1f))
+                            {
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else if (field.typeName == "bool" || shortFieldTypeName == "bool")
+                        {
+                            if (ImGui::Checkbox("##Value", static_cast<bool*>(fieldPtr)))
+                            {
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else if (field.typeName == "std::string" || shortFieldTypeName == "string")
+                        {
+                            std::string* stringValue = static_cast<std::string*>(fieldPtr);
+                            char textBuffer[256] = {};
+                            std::strncpy(textBuffer, stringValue->c_str(), sizeof(textBuffer) - 1);
+                            if (ImGui::InputText("##Value", textBuffer, sizeof(textBuffer)))
+                            {
+                                *stringValue = textBuffer;
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else if (field.typeName == "Vector2" || shortFieldTypeName == "Vector2")
+                        {
+                            Vector2* value = static_cast<Vector2*>(fieldPtr);
+                            float data[2] = {value->x, value->y};
+                            if (ImGui::DragFloat2("##Value", data, 0.1f))
+                            {
+                                value->x = data[0];
+                                value->y = data[1];
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else if (field.typeName == "Vector3" || shortFieldTypeName == "Vector3")
+                        {
+                            Vector3* value = static_cast<Vector3*>(fieldPtr);
+                            float data[3] = {value->x, value->y, value->z};
+                            if (ImGui::DragFloat3("##Value", data, 0.1f))
+                            {
+                                value->x = data[0];
+                                value->y = data[1];
+                                value->z = data[2];
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else if (field.typeName == "Vector4" || shortFieldTypeName == "Vector4")
+                        {
+                            Vector4* value = static_cast<Vector4*>(fieldPtr);
+                            float data[4] = {value->x, value->y, value->z, value->w};
+                            if (ImGui::DragFloat4("##Value", data, 0.1f))
+                            {
+                                value->x = data[0];
+                                value->y = data[1];
+                                value->z = data[2];
+                                value->w = data[3];
+                                m_Editor.MarkSceneDirty();
+                            }
+                        }
+                        else
+                        {
+                            const std::string unsupportedLabel = "unsupported: " + field.typeName;
+                            ImGui::TextUnformatted(unsupportedLabel.c_str());
+                        }
+
+                        ImGui::PopID();
+                        return true;
+                    });
+
+                if (!hasAnyReflectedField)
+                {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::TextUnformatted(field.name.c_str());
+                    ImGui::TextUnformatted("Info");
                     ImGui::TableSetColumnIndex(1);
-
-                    if (field.typeName == "int")
-                    {
-                        if (ImGui::DragInt("##Value", static_cast<int*>(fieldPtr)))
-                        {
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else if (field.typeName == "float")
-                    {
-                        if (ImGui::DragFloat("##Value", static_cast<float*>(fieldPtr), 0.1f))
-                        {
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else if (field.typeName == "double")
-                    {
-                        if (ImGui::DragScalar("##Value", ImGuiDataType_Double, fieldPtr, 0.1f))
-                        {
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else if (field.typeName == "bool")
-                    {
-                        if (ImGui::Checkbox("##Value", static_cast<bool*>(fieldPtr)))
-                        {
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else if (field.typeName == "std::string")
-                    {
-                        std::string* stringValue = static_cast<std::string*>(fieldPtr);
-                        char textBuffer[256] = {};
-                        std::strncpy(textBuffer, stringValue->c_str(), sizeof(textBuffer) - 1);
-                        if (ImGui::InputText("##Value", textBuffer, sizeof(textBuffer)))
-                        {
-                            *stringValue = textBuffer;
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else if (field.typeName == "Vector2")
-                    {
-                        Vector2* value = static_cast<Vector2*>(fieldPtr);
-                        float data[2] = {value->x, value->y};
-                        if (ImGui::DragFloat2("##Value", data, 0.1f))
-                        {
-                            value->x = data[0];
-                            value->y = data[1];
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else if (field.typeName == "Vector3")
-                    {
-                        Vector3* value = static_cast<Vector3*>(fieldPtr);
-                        float data[3] = {value->x, value->y, value->z};
-                        if (ImGui::DragFloat3("##Value", data, 0.1f))
-                        {
-                            value->x = data[0];
-                            value->y = data[1];
-                            value->z = data[2];
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else if (field.typeName == "Vector4")
-                    {
-                        Vector4* value = static_cast<Vector4*>(fieldPtr);
-                        float data[4] = {value->x, value->y, value->z, value->w};
-                        if (ImGui::DragFloat4("##Value", data, 0.1f))
-                        {
-                            value->x = data[0];
-                            value->y = data[1];
-                            value->z = data[2];
-                            value->w = data[3];
-                            m_Editor.MarkSceneDirty();
-                        }
-                    }
-                    else
-                    {
-                        const std::string unsupportedLabel = "unsupported: " + field.typeName;
-                        ImGui::TextUnformatted(unsupportedLabel.c_str());
-                    }
-
-                    ImGui::PopID();
+                    ImGui::TextUnformatted("No reflected fields.");
                 }
 
                 ImGui::EndTable();

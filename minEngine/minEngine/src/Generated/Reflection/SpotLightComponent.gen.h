@@ -3,6 +3,15 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECT_ACCESSOR_BEGIN(minEngine::SpotLightComponent)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::SpotLightComponent, m_Direction)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::SpotLightComponent, m_InnerConeAngle)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::SpotLightComponent, m_OuterConeAngle)
+ME_REFLECT_ACCESSOR_END()
+
 ME_REFLECT_TYPE_BEGIN(minEngine::SpotLightComponent)
     ME_REFLECT_BASE(minEngine::SpotLightComponent, minEngine::PointLightComponent)
+    ME_REFLECT_FIELD_META_T(minEngine::SpotLightComponent, m_Direction, minEngine::Vector3, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META_T(minEngine::SpotLightComponent, m_InnerConeAngle, float, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META_T(minEngine::SpotLightComponent, m_OuterConeAngle, float, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
 ME_REFLECT_TYPE_END(minEngine::SpotLightComponent)

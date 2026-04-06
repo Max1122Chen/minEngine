@@ -3,6 +3,9 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECT_ACCESSOR_BEGIN(minEngine::InputComponent)
+ME_REFLECT_ACCESSOR_END()
+
 ME_REFLECT_TYPE_BEGIN(minEngine::InputComponent)
     ME_REFLECT_BASE(minEngine::InputComponent, minEngine::Component)
 ME_REFLECT_TYPE_END(minEngine::InputComponent)

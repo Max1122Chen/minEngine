@@ -9,6 +9,8 @@ namespace minEngine
     ME_CLASS()
     class SpotLightComponent : public PointLightComponent
     {
+        ME_REFLECT_FRIEND(SpotLightComponent)
+
     public:
         SpotLightComponent() = default;
         virtual ~SpotLightComponent() = default;
@@ -27,8 +29,13 @@ namespace minEngine
         virtual LightSceneProxy* CreateSceneProxy() override;
 
     protected:
+        ME_PROPERTY(EditAnywhere)
         Vector3 m_Direction{ 0.0f, -1.0f, 0.0f };   // default direction pointing downwards
+        
+        ME_PROPERTY(EditAnywhere)
         float m_InnerConeAngle{ 15.0f }; // degrees
+
+        ME_PROPERTY(EditAnywhere)
         float m_OuterConeAngle{ 20.0f }; // degrees
     };
 }

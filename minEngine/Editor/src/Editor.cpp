@@ -377,6 +377,24 @@ namespace minEngine
             m_Engine->TickOneFrame(deltaTime);
             SyncSelectionWithScene();
 
+            std::string sceneDisplayName = "Untitled";
+            if (const std::shared_ptr<Scene> activeScene = GetActiveScene())
+            {
+                const std::filesystem::path scenePath(activeScene->GetSceneName());
+                if (!scenePath.empty())
+                {
+                    sceneDisplayName = scenePath.filename().string();
+                    if (sceneDisplayName.empty())
+                    {
+                        sceneDisplayName = activeScene->GetSceneName();
+                    }
+                }
+            }
+
+            const char* dirtySuffix = IsSceneDirty() ? " *" : "";
+            const std::string windowTitle = "minEngine Editor - " + sceneDisplayName + dirtySuffix;
+            windowSystem->SetTitle(windowTitle.c_str());
+
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();

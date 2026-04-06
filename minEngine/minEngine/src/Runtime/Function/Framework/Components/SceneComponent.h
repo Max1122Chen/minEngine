@@ -17,6 +17,8 @@ namespace minEngine
     ME_CLASS()
     class SceneComponent : public Component
     {
+        ME_REFLECT_FRIEND(SceneComponent)
+
     public:
         SceneComponent();
         virtual ~SceneComponent() = default;
@@ -49,12 +51,15 @@ namespace minEngine
         void SetAttachParent(SceneComponent* inParent);
 
     protected:
-        
+    
+        ME_PROPERTY(EditAnywhere)
+        Transform m_Transform;
+
         SceneComponent* m_AttachParent{ nullptr };
         std::vector<SceneComponent*> m_AttachChildren;
 
         bool m_bRenderStateDirty{ false };
-        Transform m_Transform;
+        
     };
 }
 

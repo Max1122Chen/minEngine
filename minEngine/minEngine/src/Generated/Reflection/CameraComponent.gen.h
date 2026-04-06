@@ -3,6 +3,9 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECT_ACCESSOR_BEGIN(minEngine::CameraComponent)
+ME_REFLECT_ACCESSOR_END()
+
 ME_REFLECT_TYPE_BEGIN(minEngine::CameraComponent)
     ME_REFLECT_BASE(minEngine::CameraComponent, minEngine::SceneComponent)
 ME_REFLECT_TYPE_END(minEngine::CameraComponent)

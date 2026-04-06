@@ -18,6 +18,10 @@
 
 namespace minEngine::Reflection
 {
+
+    template<typename T>
+    struct TypeAccessor;
+
     using SharedFactoryFn = std::shared_ptr<void> (*)();
     using FieldConstAccessorFn = const void* (*)(const void*);
     using FieldMutableAccessorFn = void* (*)(void*);
@@ -135,61 +139,6 @@ namespace minEngine::Reflection
     };
 
     template<typename T>
-    inline std::string GetTypeName()
-    {
-        using RawType = std::remove_cv_t<std::remove_reference_t<T>>;
-        return typeid(RawType).name();
-    }
-
-    template<>
-    inline std::string GetTypeName<bool>()
-    {
-        return "bool";
-    }
-
-    template<>
-    inline std::string GetTypeName<int>()
-    {
-        return "int";
-    }
-
-    template<>
-    inline std::string GetTypeName<float>()
-    {
-        return "float";
-    }
-
-    template<>
-    inline std::string GetTypeName<double>()
-    {
-        return "double";
-    }
-
-    template<>
-    inline std::string GetTypeName<std::string>()
-    {
-        return "std::string";
-    }
-
-    template<>
-    inline std::string GetTypeName<Vector2>()
-    {
-        return "Vector2";
-    }
-
-    template<>
-    inline std::string GetTypeName<Vector3>()
-    {
-        return "Vector3";
-    }
-
-    template<>
-    inline std::string GetTypeName<Vector4>()
-    {
-        return "Vector4";
-    }
-
-    template<typename T>
     inline std::shared_ptr<void> CreateDefaultInstance()
     {
         if constexpr (std::is_default_constructible_v<T> && !std::is_abstract_v<T>)
@@ -277,6 +226,17 @@ namespace minEngine::Reflection
             }
 
             return GetTypeInfo(typeIdIter->second);
+        }
+
+        std::string GetDeclaredTypeNameByTypeId(const std::string& typeId) const
+        {
+            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeId);
+            if (typeIdIter == m_DeclaredNameByTypeId.end())
+            {
+                return {};
+            }
+
+            return typeIdIter->second;
         }
 
         const std::unordered_map<std::string, TypeInfo>& GetAllTypeInfo() const
@@ -416,6 +376,17 @@ namespace minEngine::Reflection
                 return nullptr;
             }
             return GetEnumInfo(typeIdIter->second);
+        }
+
+        std::string GetDeclaredEnumNameByTypeId(const std::string& typeId) const
+        {
+            const auto typeIdIter = m_DeclaredEnumNameByTypeId.find(typeId);
+            if (typeIdIter == m_DeclaredEnumNameByTypeId.end())
+            {
+                return {};
+            }
+
+            return typeIdIter->second;
         }
 
         const std::unordered_map<std::string, EnumInfo>& GetAllEnumInfo() const
@@ -850,4 +821,84 @@ namespace minEngine::Reflection
         std::unordered_map<std::string, EnumInfo> m_EnumInfoByDeclaredName;
         std::unordered_map<std::string, std::string> m_DeclaredEnumNameByTypeId;
     };
+
+    template<typename T>
+    inline std::string GetTypeName()
+    {
+        using RawType = std::remove_cv_t<std::remove_reference_t<T>>;
+        ReflectionSystem& system = ReflectionSystem::Get();
+        const std::string typeIdName = typeid(RawType).name();
+        const std::string declaredTypeName = system.GetDeclaredTypeNameByTypeId(typeIdName);
+        if (!declaredTypeName.empty())
+        {
+            return declaredTypeName;
+        }
+
+        return typeIdName;
+    }
+
+    template<typename T>
+    inline std::string GetEnumName()
+    {
+        using RawType = std::remove_cv_t<std::remove_reference_t<T>>;
+        static_assert(std::is_enum_v<RawType>, "GetEnumName<T>() requires an enum type.");
+
+        ReflectionSystem& system = ReflectionSystem::Get();
+        const std::string typeIdName = typeid(RawType).name();
+        const std::string declaredEnumName = system.GetDeclaredEnumNameByTypeId(typeIdName);
+        if (!declaredEnumName.empty())
+        {
+            return declaredEnumName;
+        }
+
+        return typeIdName;
+    }
+
+    template<>
+    inline std::string GetTypeName<bool>()
+    {
+        return "bool";
+    }
+
+    template<>
+    inline std::string GetTypeName<int>()
+    {
+        return "int";
+    }
+
+    template<>
+    inline std::string GetTypeName<float>()
+    {
+        return "float";
+    }
+
+    template<>
+    inline std::string GetTypeName<double>()
+    {
+        return "double";
+    }
+
+    template<>
+    inline std::string GetTypeName<std::string>()
+    {
+        return "std::string";
+    }
+
+    template<>
+    inline std::string GetTypeName<Vector2>()
+    {
+        return "Vector2";
+    }
+
+    template<>
+    inline std::string GetTypeName<Vector3>()
+    {
+        return "Vector3";
+    }
+
+    template<>
+    inline std::string GetTypeName<Vector4>()
+    {
+        return "Vector4";
+    }
 }

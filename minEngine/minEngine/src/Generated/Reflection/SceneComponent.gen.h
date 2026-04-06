@@ -3,6 +3,11 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECT_ACCESSOR_BEGIN(minEngine::SceneComponent)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::SceneComponent, m_Transform)
+ME_REFLECT_ACCESSOR_END()
+
 ME_REFLECT_TYPE_BEGIN(minEngine::SceneComponent)
     ME_REFLECT_BASE(minEngine::SceneComponent, minEngine::Component)
+    ME_REFLECT_FIELD_META_T(minEngine::SceneComponent, m_Transform, minEngine::Transform, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
 ME_REFLECT_TYPE_END(minEngine::SceneComponent)

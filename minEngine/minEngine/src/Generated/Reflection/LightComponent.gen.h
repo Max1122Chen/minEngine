@@ -3,6 +3,19 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECT_ACCESSOR_BEGIN(minEngine::LightComponent)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::LightComponent, m_LightColor)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::LightComponent, m_Intensity)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::LightComponent, m_DiffuseFactor)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::LightComponent, m_SpecularFactor)
+    ME_REFLECT_ACCESSOR_FIELD(minEngine::LightComponent, m_CastShadow)
+ME_REFLECT_ACCESSOR_END()
+
 ME_REFLECT_TYPE_BEGIN(minEngine::LightComponent)
     ME_REFLECT_BASE(minEngine::LightComponent, minEngine::SceneComponent)
+    ME_REFLECT_FIELD_META_T(minEngine::LightComponent, m_LightColor, minEngine::Vector4, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META_T(minEngine::LightComponent, m_Intensity, float, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META_T(minEngine::LightComponent, m_DiffuseFactor, float, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META_T(minEngine::LightComponent, m_SpecularFactor, float, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD_META_T(minEngine::LightComponent, m_CastShadow, bool, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
 ME_REFLECT_TYPE_END(minEngine::LightComponent)
