@@ -13,10 +13,20 @@ namespace minEngine
 
     std::shared_ptr<GameObject> Scene::CreateGameObject()
     {
-        static uint64_t nextID = 0; // simple ID generator
-        uint64_t id = nextID++;
+        const uint64_t id = m_NextObjectId++;
         auto gameObject = std::make_shared<GameObject>(id);
         m_GameObjects[id] = gameObject;
+        return gameObject;
+    }
+
+    std::shared_ptr<GameObject> Scene::CreateGameObject(uint64_t id)
+    {
+        auto gameObject = std::make_shared<GameObject>(id);
+        m_GameObjects[id] = gameObject;
+        if (id >= m_NextObjectId)
+        {
+            m_NextObjectId = id + 1;
+        }
         return gameObject;
     }
 }

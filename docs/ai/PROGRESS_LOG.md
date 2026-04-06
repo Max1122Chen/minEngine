@@ -77,3 +77,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	Manual interaction checks performed in Playground for movement and look direction.
 - Next step:
 	Standardize mouse delta semantics at one layer only (engine or gameplay) to avoid double-delta bugs.
+
+### 2026-04-06 - Scene serialization MVP pipeline wiring
+- Goal:
+	Wire a minimal end-to-end scene save/load loop for editor usage.
+- Main changes:
+	Added SceneSerializer with JSON save/load for scene name and game object transform list.
+	Extended Scene object creation to support explicit object IDs for deterministic reload.
+	Implemented SceneManager::CreateNewScene/LoadScene and default scene path resolution.
+	Wired Editor File menu actions (New/Open/Save/Exit) to SceneManager and SceneSerializer.
+	Created default editor scene on startup for immediate save/load testing.
+- Risks or caveats:
+	Current MVP only serializes scene name, object id, and transform; component graph is not serialized yet.
+	Open Scene currently uses a fixed default path and has no file dialog.
+- Validation done:
+	File-level diagnostics passed for all touched scene/editor source files.
+- Next step:
+	Add component type registry and polymorphic component serialization/deserialization.

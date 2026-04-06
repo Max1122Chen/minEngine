@@ -40,7 +40,7 @@ add_dependencies(${ENGINE_NAME} reflection_codegen)
 set_target_properties(${ENGINE_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
     LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
-    ARCHIVE_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
+    ARCHIVE_OUTPUT_DIRECTORY ${EXECUTABLE_PATH} 
 )
 
 
@@ -56,6 +56,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/stb_image
                                           PUBLIC ${THIRD_PARTY_PATH}/assimp/include
                                           PUBLIC ${THIRD_PARTY_PATH}/imgui
+                                          PUBLIC ${THIRD_PARTY_PATH}/json
                                           )
 
 target_link_libraries(${ENGINE_NAME} PRIVATE glfw3 opengl32 assimp-6)

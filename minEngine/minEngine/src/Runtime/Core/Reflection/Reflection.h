@@ -16,6 +16,8 @@
 namespace minEngine::Reflection
 {
     using SharedFactoryFn = std::shared_ptr<void> (*)();
+    using FieldConstAccessorFn = const void* (*)(const void*);
+    using FieldMutableAccessorFn = void* (*)(void*);
 
     using MetadataMap = std::unordered_map<std::string, std::string>;
 
@@ -38,7 +40,8 @@ namespace minEngine::Reflection
     {
         std::string name;
         std::string typeName;
-        size_t offset = 0;
+        FieldConstAccessorFn constAccessor = nullptr;
+        FieldMutableAccessorFn mutableAccessor = nullptr;
         MetadataMap metadata;
 
         const std::string* FindMetadata(const std::string& key) const
@@ -241,6 +244,17 @@ namespace minEngine::Reflection
             return GetTypeInfo(typeIdIter->second);
         }
 
+        const TypeInfo* GetTypeInfoByTypeId(const std::string& typeId) const
+        {
+            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeId);
+            if (typeIdIter == m_DeclaredNameByTypeId.end())
+            {
+                return nullptr;
+            }
+
+            return GetTypeInfo(typeIdIter->second);
+        }
+
         const std::unordered_map<std::string, TypeInfo>& GetAllTypeInfo() const
         {
             return m_TypeInfoByDeclaredName;
@@ -331,12 +345,20 @@ namespace minEngine::Reflection
 
         static void* GetFieldPtr(void* object, const FieldInfo& field)
         {
-            return static_cast<void*>(static_cast<char*>(object) + field.offset);
+            if (object == nullptr || field.mutableAccessor == nullptr)
+            {
+                return nullptr;
+            }
+            return field.mutableAccessor(object);
         }
 
         static const void* GetFieldPtr(const void* object, const FieldInfo& field)
         {
-            return static_cast<const void*>(static_cast<const char*>(object) + field.offset);
+            if (object == nullptr || field.constAccessor == nullptr)
+            {
+                return nullptr;
+            }
+            return field.constAccessor(object);
         }
 
         template<typename TObject, typename TField>
@@ -348,7 +370,13 @@ namespace minEngine::Reflection
                 return false;
             }
 
-            outValue = *reinterpret_cast<const TField*>(GetFieldPtr(&object, *field));
+            const void* fieldPtr = GetFieldPtr(&object, *field);
+            if (fieldPtr == nullptr)
+            {
+                return false;
+            }
+
+            outValue = *reinterpret_cast<const TField*>(fieldPtr);
             return true;
         }
 
@@ -361,7 +389,13 @@ namespace minEngine::Reflection
                 return false;
             }
 
-            *reinterpret_cast<TField*>(GetFieldPtr(&object, *field)) = value;
+            void* fieldPtr = GetFieldPtr(&object, *field);
+            if (fieldPtr == nullptr)
+            {
+                return false;
+            }
+
+            *reinterpret_cast<TField*>(fieldPtr) = value;
             return true;
         }
 

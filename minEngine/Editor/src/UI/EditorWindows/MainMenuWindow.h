@@ -7,6 +7,8 @@
 #include "Editor.h"
 #include "EditorWindow.h"
 
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
+
 namespace minEngine
 {
     class MainMenuWindow final : public EditorWindow
@@ -40,12 +42,39 @@ namespace minEngine
 
             if (ImGui::BeginMenu("File"))
             {
-                ImGui::MenuItem("New Scene", "Ctrl+N", false, false);
-                ImGui::MenuItem("Open Scene...", "Ctrl+O", false, false);
-                ImGui::MenuItem("Save", "Ctrl+S", false, false);
-                ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, false);
+                if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+                {
+                    m_Editor.CreateNewScene("Assets/Scenes/EditorDefault.scene.json");
+                }
+
+                if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
+                {
+                    m_Editor.OpenScene("Assets/Scenes/EditorDefault.scene.json");
+                }
+
+                const bool hasScene = static_cast<bool>(m_Editor.GetActiveScene());
+                const bool canSave = hasScene && m_Editor.IsSceneDirty();
+                if (ImGui::MenuItem("Save", "Ctrl+S", false, canSave))
+                {
+                    m_Editor.SaveCurrentScene();
+                }
+
+                if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, hasScene))
+                {
+                    std::filesystem::path sourcePath = m_Editor.GetCurrentScenePath();
+                    const std::string stem = sourcePath.stem().string().empty() ? std::string("Scene") : sourcePath.stem().string();
+                    std::filesystem::path saveAsPath = sourcePath.parent_path() / (stem + "_SaveAs.scene.json");
+                    if (saveAsPath.empty())
+                    {
+                        saveAsPath = std::filesystem::path("Assets/Scenes/EditorDefault_SaveAs.scene.json");
+                    }
+                    m_Editor.SaveCurrentSceneAs(saveAsPath);
+                }
                 ImGui::Separator();
-                ImGui::MenuItem("Exit", nullptr, false, false);
+                if (ImGui::MenuItem("Exit"))
+                {
+                    m_Editor.RequestExit();
+                }
                 ImGui::EndMenu();
             }
 

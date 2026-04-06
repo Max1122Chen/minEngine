@@ -5,8 +5,14 @@
 
 #include "EditorGUIManager.h"
 
+#include <filesystem>
+#include <limits>
+
 namespace minEngine
 {
+    class Scene;
+    class GameObject;
+
     class Editor : public Application
     {
     public:
@@ -32,6 +38,28 @@ namespace minEngine
             m_ExitRequested = true;
         }
 
+        std::shared_ptr<Scene> GetActiveScene() const;
+        std::vector<std::shared_ptr<GameObject>> GetHierarchyGameObjects() const;
+        std::shared_ptr<GameObject> GetSelectedGameObject() const;
+        void SelectGameObject(uint64_t gameObjectId);
+        bool IsGameObjectSelected(uint64_t gameObjectId) const;
+        std::string GetGameObjectDisplayName(const GameObject& gameObject) const;
+        std::string GetSelectedGameObjectName() const;
+        bool RenameGameObject(uint64_t gameObjectId, const std::string& newName);
+        void RenameSelectedGameObject(const std::string& newName);
+
+        void MarkSceneDirty();
+        void ClearSceneDirty();
+        bool IsSceneDirty() const { return m_SceneDirty; }
+
+        bool CreateNewScene(const std::string& scenePath);
+        bool OpenScene(const std::string& scenePath);
+        bool SaveCurrentScene();
+        bool SaveCurrentSceneAs(const std::filesystem::path& filePath);
+
+        std::filesystem::path GetCurrentScenePath() const;
+        void SyncSelectionWithScene();
+
     public:
         bool isPlaying = false;
         bool showDemoWindow = false;
@@ -43,19 +71,12 @@ namespace minEngine
         bool viewportHovered = false;
         bool viewportFocused = false;
 
-        std::vector<std::string> hierarchyItems {"MainCamera", "DirectionalLight", "Cube_01", "Plane_01"};
-        int selectedHierarchyIndex = 0;
-        std::string inspectorName = "MainCamera";
-
-        float inspectorPosition[3] = {0.0f, 0.0f, 0.0f};
-        float inspectorRotation[3] = {0.0f, 0.0f, 0.0f};
-        float inspectorScale[3] = {1.0f, 1.0f, 1.0f};
-        float inspectorTint[3] = {1.0f, 1.0f, 1.0f};
-
     private:
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
         bool m_ExitRequested = false;
+        bool m_SceneDirty = false;
+        uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
     };
 
     Application* CreateApplication();

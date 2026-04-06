@@ -14,12 +14,15 @@ namespace minEngine
     class GameObject
     {
     public:
-        GameObject(uint64_t id);
+        explicit GameObject(uint64_t id, std::string name = "");
         virtual ~GameObject() = default;
 
         void Tick(float deltaTime);
 
         uint64_t m_ID{ 0 };
+
+        const std::string& GetName() const { return m_Name; }
+        void SetName(const std::string& name) { m_Name = name; }
 
         const Transform& GetTransform() { return m_RootComponent->GetTransform(); }     // TODO: change this dangerous design later
         void SetTransform(const Transform& inTransform) { m_RootComponent->SetTransform(inTransform); }
@@ -64,6 +67,7 @@ namespace minEngine
         }
 
     private:
+        std::string m_Name;
         std::shared_ptr<SceneComponent> m_RootComponent{ nullptr };
         std::vector<std::shared_ptr<Component>> m_Components;
 

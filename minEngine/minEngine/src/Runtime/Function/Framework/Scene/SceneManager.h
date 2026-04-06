@@ -24,7 +24,12 @@ namespace minEngine
         
         void Tick(float deltaTime);
 
+        std::shared_ptr<Scene> GetCurrentActiveScene() const { return m_CurrentActiveScene; }
         RenderScene* GetRenderScene() const { return m_RenderScene; }
+
+        std::shared_ptr<Scene> CreateNewScene(const std::string& sceneName);
+        void LoadScene(const std::string& sceneName);
+        
 
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
         void SendAllEndOfFrameUpdates();    // to render thread
@@ -38,7 +43,7 @@ namespace minEngine
         // Components that need end of frame render data update
         std::vector<Component*> m_ComponentsThatNeedEndOfFrameUpdate;
 
-    private: 
+    private:
         RenderScene* m_RenderScene{ nullptr };
 
     };

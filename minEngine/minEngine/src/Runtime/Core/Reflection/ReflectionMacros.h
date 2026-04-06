@@ -15,19 +15,34 @@ namespace \
         typeInfo.size = sizeof(TYPE);
 
 #define ME_REFLECT_FIELD(TYPE, FIELD) \
-        typeInfo.fields.push_back(minEngine::Reflection::FieldInfo { \
-            #FIELD, \
-            minEngine::Reflection::GetTypeName<decltype(TYPE::FIELD)>(), \
-            offsetof(TYPE, FIELD), \
-            {} \
-        });
+        { \
+            minEngine::Reflection::FieldInfo fieldInfo; \
+            fieldInfo.name = #FIELD; \
+            fieldInfo.typeName = minEngine::Reflection::GetTypeName<decltype(TYPE::FIELD)>(); \
+            fieldInfo.constAccessor = [](const void* object) -> const void* { \
+                const TYPE* typedObject = static_cast<const TYPE*>(object); \
+                return static_cast<const void*>(&(typedObject->FIELD)); \
+            }; \
+            fieldInfo.mutableAccessor = [](void* object) -> void* { \
+                TYPE* typedObject = static_cast<TYPE*>(object); \
+                return static_cast<void*>(&(typedObject->FIELD)); \
+            }; \
+            typeInfo.fields.push_back(std::move(fieldInfo)); \
+        }
 
 #define ME_REFLECT_FIELD_META(TYPE, FIELD, ...) \
         { \
             minEngine::Reflection::FieldInfo fieldInfo; \
             fieldInfo.name = #FIELD; \
             fieldInfo.typeName = minEngine::Reflection::GetTypeName<decltype(TYPE::FIELD)>(); \
-            fieldInfo.offset = offsetof(TYPE, FIELD); \
+            fieldInfo.constAccessor = [](const void* object) -> const void* { \
+                const TYPE* typedObject = static_cast<const TYPE*>(object); \
+                return static_cast<const void*>(&(typedObject->FIELD)); \
+            }; \
+            fieldInfo.mutableAccessor = [](void* object) -> void* { \
+                TYPE* typedObject = static_cast<TYPE*>(object); \
+                return static_cast<void*>(&(typedObject->FIELD)); \
+            }; \
             fieldInfo.metadata = minEngine::Reflection::BuildMetadata({ __VA_ARGS__ }); \
             typeInfo.fields.push_back(std::move(fieldInfo)); \
         }

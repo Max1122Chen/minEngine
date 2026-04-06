@@ -17,7 +17,7 @@ namespace minEngine
     {
         m_Editor = &editor;
         RegisterWindow(std::make_unique<MainMenuWindow>(editor));
-        RegisterWindow(std::make_unique<ToolbarWindow>(editor));
+        // RegisterWindow(std::make_unique<ToolbarWindow>(editor));
         RegisterWindow(std::make_unique<ViewportWindow>(editor));
         RegisterWindow(std::make_unique<HierarchyWindow>(editor));
         RegisterWindow(std::make_unique<InspectorWindow>(editor));
