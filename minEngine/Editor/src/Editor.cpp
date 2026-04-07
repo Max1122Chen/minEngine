@@ -13,7 +13,6 @@
 #include "Runtime/Function/Framework/Scene/SceneSerializer.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Components/Component.h"
-#include "Runtime/Core/Reflection/ReflectionSample.h"
 
 #include <algorithm>
 
@@ -179,30 +178,7 @@ namespace minEngine
 
     std::vector<std::string> Editor::GetAllComponentTypeNames() const
     {
-        std::vector<std::string> componentTypeNames;
-
-        const Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-        const Reflection::TypeInfo* componentTypeInfo = reflectionSystem.GetTypeInfo<Component>();
-        if (componentTypeInfo == nullptr)
-        {
-            return componentTypeNames;
-        }
-
-        for (const auto& [typeName, _] : reflectionSystem.GetAllTypeInfo())
-        {
-            if (typeName == componentTypeInfo->name)
-            {
-                continue;
-            }
-
-            if (reflectionSystem.IsDerivedFrom(typeName, componentTypeInfo->name))
-            {
-                componentTypeNames.push_back(typeName);
-            }
-        }
-
-        std::sort(componentTypeNames.begin(), componentTypeNames.end());
-        return componentTypeNames;
+        return std::vector<std::string>();
     }
 
     bool Editor::AddComponentToSelectedGameObject(const std::string& componentTypeName)
@@ -370,39 +346,6 @@ namespace minEngine
         m_EditorGUIManager.Initialize(*this);
 
         CreateNewScene("Assets/Scenes/EditorDefault.scene.json");
-
-        const Reflection::TypeInfo* reflectionSampleTypeInfo = Reflection::ReflectionSystem::Get().GetTypeInfo<ReflectionSampleClass>();
-        if (reflectionSampleTypeInfo == nullptr)
-        {
-            ME_CORE_WARN("[Reflection] ReflectionSampleClass type info not found at editor startup.");
-        }
-        else
-        {
-            ME_CORE_INFO("[Reflection] Type: {} (size: {}, properties: {})",
-                         reflectionSampleTypeInfo->name,
-                         reflectionSampleTypeInfo->size,
-                         reflectionSampleTypeInfo->fields.size());
-            for (const auto& field : reflectionSampleTypeInfo->fields)
-            {
-                ME_CORE_INFO("[Reflection] ReflectionSampleClass property: {} | type: {} | hasAccessor: {}",
-                             field.name,
-                             field.typeName,
-                             field.mutableAccessor != nullptr);
-
-                if (field.metadata.empty())
-                {
-                    ME_CORE_INFO("[Reflection]   metadata: <none>");
-                    continue;
-                }
-
-                for (const auto& metadataEntry : field.metadata)
-                {
-                    ME_CORE_INFO("[Reflection]   metadata: {} = {}",
-                                 metadataEntry.first,
-                                 metadataEntry.second);
-                }
-            }
-        }
     }
 
     void Editor::Shutdown()

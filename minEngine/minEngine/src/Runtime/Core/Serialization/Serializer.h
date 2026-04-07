@@ -1,8 +1,9 @@
 #pragma once
 
 #include "Runtime/Core/Core.h"
+#include "Runtime/Core/Math/Math.h"
 
-#include "../../../../Third-Party/json/json.hpp"
+#include "Json.h"
 
 #include <filesystem>
 
@@ -11,41 +12,23 @@ namespace minEngine
 	class Serializer
 	{
 	public:
-		using Json = nlohmann::json;
 
-		template<typename TValue>
-		static Json Write(const TValue& value);
+		template<typename T>
+		static Json Write(const T& value);
 
-		template<typename TValue>
-		static bool Read(const Json& json, TValue& outValue);
-
-		static Json ToJsonByTypeInfo(const void* object, const Reflection::TypeInfo& typeInfo);
-		static bool FromJsonByTypeInfo(const Json& json, void* object, const Reflection::TypeInfo& typeInfo);
+		template<typename T>
+		static bool Read(const Json& json, T& outValue);
 
 		template<typename TObject>
 		static Json ToJson(const TObject& object)
 		{
-			const Reflection::TypeInfo* typeInfo = Reflection::ReflectionSystem::Get().GetTypeInfo<TObject>();
-			if (typeInfo == nullptr)
-			{
-				ME_CORE_ERROR("[Serializer] Type is not registered in reflection system.");
-				return Json::object();
-			}
-
-			return ToJsonByTypeInfo(&object, *typeInfo);
+			return Write(object);
 		}
 
 		template<typename TObject>
 		static bool FromJson(const Json& json, TObject& object)
 		{
-			const Reflection::TypeInfo* typeInfo = Reflection::ReflectionSystem::Get().GetTypeInfo<TObject>();
-			if (typeInfo == nullptr)
-			{
-				ME_CORE_ERROR("[Serializer] Type is not registered in reflection system.");
-				return false;
-			}
-
-			return FromJsonByTypeInfo(json, &object, *typeInfo);
+			return Read(json, object);
 		}
 
 		static bool SaveJsonToFile(const Json& json, const std::filesystem::path& filePath);
@@ -69,29 +52,25 @@ namespace minEngine
 
 			return FromJson(json, outObject);
 		}
-
-	private:
-		static bool WriteFieldValue(const Reflection::FieldInfo& field, const void* fieldPtr, Json& outValue);
-		static bool ReadFieldValue(const Reflection::FieldInfo& field, const Json& value, void* fieldPtr);
 	};
 
 	// Explicit specialization declarations.
 	template<>
-	Serializer::Json Serializer::Write<int>(const int& value);
+	Json Serializer::Write<int>(const int& value);
 	template<>
-	Serializer::Json Serializer::Write<float>(const float& value);
+	Json Serializer::Write<float>(const float& value);
 	template<>
-	Serializer::Json Serializer::Write<double>(const double& value);
+	Json Serializer::Write<double>(const double& value);
 	template<>
-	Serializer::Json Serializer::Write<bool>(const bool& value);
+	Json Serializer::Write<bool>(const bool& value);
 	template<>
-	Serializer::Json Serializer::Write<std::string>(const std::string& value);
+	Json Serializer::Write<std::string>(const std::string& value);
 	template<>
-	Serializer::Json Serializer::Write<Vector2>(const Vector2& value);
+	Json Serializer::Write<minEngine::Vector2>(const minEngine::Vector2& value);
 	template<>
-	Serializer::Json Serializer::Write<Vector3>(const Vector3& value);
+	Json Serializer::Write<minEngine::Vector3>(const minEngine::Vector3& value);
 	template<>
-	Serializer::Json Serializer::Write<Vector4>(const Vector4& value);
+	Json Serializer::Write<minEngine::Vector4>(const minEngine::Vector4& value);
 
 	template<>
 	bool Serializer::Read<int>(const Json& json, int& outValue);
@@ -104,10 +83,10 @@ namespace minEngine
 	template<>
 	bool Serializer::Read<std::string>(const Json& json, std::string& outValue);
 	template<>
-	bool Serializer::Read<Vector2>(const Json& json, Vector2& outValue);
+	bool Serializer::Read<minEngine::Vector2>(const Json& json, minEngine::Vector2& outValue);
 	template<>
-	bool Serializer::Read<Vector3>(const Json& json, Vector3& outValue);
+	bool Serializer::Read<minEngine::Vector3>(const Json& json, minEngine::Vector3& outValue);
 	template<>
-	bool Serializer::Read<Vector4>(const Json& json, Vector4& outValue);
+	bool Serializer::Read<minEngine::Vector4>(const Json& json, minEngine::Vector4& outValue);
 }
 
