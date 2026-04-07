@@ -19,6 +19,55 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        void ApplyEditorTheme()
+        {
+            ImGuiStyle& style = ImGui::GetStyle();
+            ImVec4* colors = style.Colors;
+
+            style.WindowRounding = 7.0f;
+            style.ChildRounding = 6.0f;
+            style.FrameRounding = 5.0f;
+            style.PopupRounding = 6.0f;
+            style.GrabRounding = 4.0f;
+            style.TabRounding = 6.0f;
+            style.ScrollbarRounding = 8.0f;
+
+            style.WindowPadding = ImVec2(10.0f, 10.0f);
+            style.FramePadding = ImVec2(9.0f, 6.0f);
+            style.ItemSpacing = ImVec2(8.0f, 7.0f);
+            style.ItemInnerSpacing = ImVec2(6.0f, 5.0f);
+
+            colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.12f, 0.15f, 1.00f);
+            colors[ImGuiCol_ChildBg] = ImVec4(0.12f, 0.14f, 0.18f, 1.00f);
+            colors[ImGuiCol_PopupBg] = ImVec4(0.12f, 0.14f, 0.18f, 1.00f);
+            colors[ImGuiCol_Border] = ImVec4(0.23f, 0.29f, 0.35f, 1.00f);
+            colors[ImGuiCol_Separator] = ImVec4(0.24f, 0.31f, 0.39f, 1.00f);
+
+            colors[ImGuiCol_FrameBg] = ImVec4(0.16f, 0.19f, 0.25f, 1.00f);
+            colors[ImGuiCol_FrameBgHovered] = ImVec4(0.19f, 0.24f, 0.31f, 1.00f);
+            colors[ImGuiCol_FrameBgActive] = ImVec4(0.23f, 0.30f, 0.39f, 1.00f);
+
+            colors[ImGuiCol_Header] = ImVec4(0.18f, 0.24f, 0.33f, 1.00f);
+            colors[ImGuiCol_HeaderHovered] = ImVec4(0.23f, 0.32f, 0.43f, 1.00f);
+            colors[ImGuiCol_HeaderActive] = ImVec4(0.19f, 0.28f, 0.39f, 1.00f);
+
+            colors[ImGuiCol_Button] = ImVec4(0.23f, 0.35f, 0.53f, 1.00f);
+            colors[ImGuiCol_ButtonHovered] = ImVec4(0.27f, 0.43f, 0.64f, 1.00f);
+            colors[ImGuiCol_ButtonActive] = ImVec4(0.19f, 0.29f, 0.46f, 1.00f);
+
+            colors[ImGuiCol_Tab] = ImVec4(0.11f, 0.15f, 0.22f, 1.00f);
+            colors[ImGuiCol_TabHovered] = ImVec4(0.24f, 0.38f, 0.59f, 1.00f);
+            colors[ImGuiCol_TabActive] = ImVec4(0.27f, 0.43f, 0.65f, 1.00f);
+            colors[ImGuiCol_TabUnfocused] = ImVec4(0.09f, 0.12f, 0.18f, 1.00f);
+            colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.20f, 0.31f, 0.47f, 1.00f);
+
+            colors[ImGuiCol_Text] = ImVec4(0.92f, 0.95f, 0.98f, 1.00f);
+            colors[ImGuiCol_TextDisabled] = ImVec4(0.58f, 0.64f, 0.71f, 1.00f);
+        }
+    }
+
     std::shared_ptr<Scene> Editor::GetActiveScene() const
     {
         return SceneManager::GetSceneManager().GetCurrentActiveScene();
@@ -310,7 +359,8 @@ namespace minEngine
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.FontGlobalScale = 1.50f;
-        ImGui::StyleColorsLight();
+        ImGui::StyleColorsDark();
+        ApplyEditorTheme();
 
         GLFWwindow* windowHandle = static_cast<GLFWwindow*>(RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->GetWindowHandle());
         ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);

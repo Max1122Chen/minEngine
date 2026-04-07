@@ -6,6 +6,8 @@
 
 #include "Runtime/Core/Log/LogConsole.h"
 
+#include "UI/Widgets/MultiSelectFilterDropdown.h"
+
 #include "Editor.h"
 #include "EditorWindow.h"
 
@@ -34,41 +36,60 @@ namespace minEngine
             const bool isPlaying = m_Editor.isPlaying;
             m_LastIsPlaying = isPlaying;
 
-            ImGui::Begin(m_Title.c_str());
+            ImGui::Begin(m_Title.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
             bool requestCopyVisible = false;
 
-            ImGui::Button("Clear");
-            ImGui::SameLine();
-            if (ImGui::Button("Copy"))
             {
-                requestCopyVisible = true;
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
+                if (ImGui::Button("Clear"))
+                {
+                    LogConsoleStorage::Clear();
+                    m_PausedEntries.clear();
+                    m_HasPausedSnapshot = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Copy"))
+                {
+                    requestCopyVisible = true;
+                }
+                ImGui::SameLine();
+                ImGui::Checkbox("AutoScroll", &m_AutoScroll);
+                ImGui::SameLine();
+                ImGui::Checkbox("Pause", &m_PauseStream);
+                ImGui::PopStyleVar();
             }
-            ImGui::SameLine();
-            ImGui::Checkbox("AutoScroll", &m_AutoScroll);
-            ImGui::SameLine();
-            ImGui::Checkbox("Pause", &m_PauseStream);
 
             ImGui::Separator();
-            ImGui::Checkbox("Core", &m_ShowCore);
-            ImGui::SameLine();
-            ImGui::Checkbox("Client", &m_ShowClient);
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
+                std::vector<UI::FilterSection> filterSections = {
+                    {
+                        "Source",
+                        {
+                            {"Core", &m_ShowCore},
+                            {"Client", &m_ShowClient},
+                        },
+                    },
+                    {
+                        "Level",
+                        {
+                            {"Trace", &m_ShowTrace},
+                            {"Debug", &m_ShowDebug},
+                            {"Info", &m_ShowInfo},
+                            {"Warn", &m_ShowWarn},
+                            {"Error", &m_ShowError},
+                            {"Critical", &m_ShowCritical},
+                        },
+                    },
+                };
+
+                ImGui::SetNextItemWidth(180.0f);
+                UI::DrawFilterDropdown("##ConsoleFilterCombo", filterSections);
+                ImGui::PopStyleVar();
+            }
 
             ImGui::SameLine();
-            ImGui::Text("Level:");
-            ImGui::SameLine();
-            ImGui::Checkbox("Trace", &m_ShowTrace);
-            ImGui::SameLine();
-            ImGui::Checkbox("Debug", &m_ShowDebug);
-            ImGui::SameLine();
-            ImGui::Checkbox("Info", &m_ShowInfo);
-            ImGui::SameLine();
-            ImGui::Checkbox("Warn", &m_ShowWarn);
-            ImGui::SameLine();
-            ImGui::Checkbox("Error", &m_ShowError);
-            ImGui::SameLine();
-            ImGui::Checkbox("Critical", &m_ShowCritical);
-
-            ImGui::SetNextItemWidth(260.0f);
+            ImGui::SetNextItemWidth(300.0f);
             ImGui::InputTextWithHint("##ConsoleSearch", "Search message...", m_SearchText, sizeof(m_SearchText));
             ImGui::Separator();
 
@@ -90,15 +111,18 @@ namespace minEngine
             const std::vector<LogConsoleEntry>& entries = m_PauseStream ? m_PausedEntries : liveEntries;
 
             std::string clipboardText;
+            int visibleCount = 0;
 
             ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
             const bool wasAtBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f);
+            int rowIndex = 0;
             for (const LogConsoleEntry& entry : entries)
             {
                 if (!PassFilter(entry))
                 {
                     continue;
                 }
+                ++visibleCount;
 
                 const char* source = "UNKNOWN";
                 if (entry.source == LogSource::Core)
@@ -111,7 +135,16 @@ namespace minEngine
                 }
 
                 const char* level = LogLevel::ToString(entry.level);
+
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.24f, 0.33f, 0.35f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.24f, 0.33f, 0.45f, 0.50f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.24f, 0.33f, 0.45f, 0.50f));
+                ImGui::PushID(rowIndex++);
+                ImGui::Selectable("##ConsoleRow", false, ImGuiSelectableFlags_SpanAllColumns);
+                ImGui::SameLine(0.0f, 6.0f);
                 ImGui::TextColored(GetLevelColor(entry.level), "[%s] [%s] [%s] %s", entry.timestamp.c_str(), source, level, entry.message.c_str());
+                ImGui::PopID();
+                ImGui::PopStyleColor(3);
 
                 if (requestCopyVisible)
                 {
@@ -131,6 +164,9 @@ namespace minEngine
                 ImGui::SetScrollHereY(1.0f);
             }
             ImGui::EndChild();
+
+            ImGui::Separator();
+            ImGui::Text("Visible: %d / Total: %d", visibleCount, static_cast<int>(entries.size()));
 
             if (requestCopyVisible)
             {

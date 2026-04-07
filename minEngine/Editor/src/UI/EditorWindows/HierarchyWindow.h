@@ -36,6 +36,9 @@ namespace minEngine
         {
             ImGui::Begin(m_Title.c_str());
 
+            ImGui::TextDisabled("Double-click or F2 to rename");
+            ImGui::Separator();
+
             const std::vector<std::shared_ptr<GameObject>> gameObjects = m_Editor.GetHierarchyGameObjects();
             if (gameObjects.empty())
             {
@@ -69,8 +72,13 @@ namespace minEngine
                         m_RequestRenameFocus = false;
                     }
 
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.19f, 0.28f, 0.40f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.35f, 0.50f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.22f, 0.32f, 0.46f, 1.0f));
                     const bool committed = ImGui::InputText("##Rename", m_RenameBuffer, sizeof(m_RenameBuffer),
                                                             ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue);
+                    ImGui::PopStyleColor(3);
+
                     if (committed || ImGui::IsItemDeactivatedAfterEdit())
                     {
                         m_Editor.RenameGameObject(gameObject->m_ID, m_RenameBuffer);
@@ -86,10 +94,28 @@ namespace minEngine
                 }
 
                 const bool selected = m_Editor.IsGameObjectSelected(gameObject->m_ID);
-                const std::string label = m_Editor.GetGameObjectDisplayName(*gameObject);
-                if (ImGui::Selectable(label.c_str(), selected))
+                const std::string displayName = m_Editor.GetGameObjectDisplayName(*gameObject);
+                const std::string label = std::string("  ") + displayName;
+
+                if (selected)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.23f, 0.36f, 0.54f, 0.75f));
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.27f, 0.42f, 0.61f, 0.85f));
+                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.21f, 0.33f, 0.49f, 0.95f));
+                }
+
+                if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns))
                 {
                     m_Editor.SelectGameObject(gameObject->m_ID);
+                }
+
+                if (selected)
+                {
+                    ImGui::PopStyleColor(3);
+                    ImVec2 minPos = ImGui::GetItemRectMin();
+                    ImVec2 maxPos = ImGui::GetItemRectMax();
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    drawList->AddRectFilled(ImVec2(minPos.x + 3.0f, minPos.y + 4.0f), ImVec2(minPos.x + 7.0f, maxPos.y - 4.0f), IM_COL32(102, 178, 255, 255), 2.0f);
                 }
 
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))

@@ -12,7 +12,9 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 
 #include <algorithm>
+#include <cfloat>
 #include <cstring>
+#include <limits>
 
 namespace minEngine
 {
@@ -57,32 +59,73 @@ namespace minEngine
                 return;
             }
 
-            char nameBuffer[256] = {};
+            const bool requestRenameByHotkey = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)
+                && ImGui::IsKeyPressed(ImGuiKey_F2, false);
+            if (requestRenameByHotkey)
+            {
+                BeginRenameSelectedGameObject(*gameObject);
+            }
+
+            if (m_RenameTargetGameObjectId != gameObject->m_ID)
+            {
+                m_IsRenamingSelectedGameObject = false;
+            }
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 7.0f));
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.21f, 0.31f, 0.45f, 0.95f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.25f, 0.37f, 0.53f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.23f, 0.34f, 0.49f, 1.0f));
+
             const std::string selectedName = m_Editor.GetSelectedGameObjectName();
-            std::strncpy(nameBuffer, selectedName.c_str(), sizeof(nameBuffer) - 1);
+            if (m_IsRenamingSelectedGameObject && m_RenameTargetGameObjectId == gameObject->m_ID)
+            {
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.18f, 0.27f, 0.40f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.23f, 0.34f, 0.49f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.21f, 0.31f, 0.45f, 1.0f));
+
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (m_RequestRenameFocus)
+                {
+                    ImGui::SetKeyboardFocusHere();
+                    m_RequestRenameFocus = false;
+                }
+
+                const bool committed = ImGui::InputText("##SelectedGameObjectRename",
+                    m_RenameBuffer,
+                    sizeof(m_RenameBuffer),
+                    ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue);
+
+                if (committed || ImGui::IsItemDeactivatedAfterEdit())
+                {
+                    m_Editor.RenameGameObject(gameObject->m_ID, m_RenameBuffer);
+                    m_IsRenamingSelectedGameObject = false;
+                }
+                else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+                {
+                    m_IsRenamingSelectedGameObject = false;
+                }
+
+                ImGui::PopStyleColor(3);
+            }
+            else
+            {
+                const std::string headerLabel = "  " + selectedName + "##SelectedGameObjectHeader";
+                ImGui::Selectable(headerLabel.c_str(), true, ImGuiSelectableFlags_SpanAllColumns);
+                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                {
+                    BeginRenameSelectedGameObject(*gameObject);
+                }
+            }
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar();
 
             ImGui::Text("Selected ID: %llu", static_cast<unsigned long long>(gameObject->m_ID));
 
-            if (ImGui::BeginTable("InspectorMainFields", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
-            {
-                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
-
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted("Name");
-                ImGui::TableSetColumnIndex(1);
-                if (ImGui::InputText("##GameObjectName", nameBuffer, sizeof(nameBuffer)))
-                {
-                    m_Editor.RenameSelectedGameObject(nameBuffer);
-                }
-
-                ImGui::EndTable();
-            }
-
-            ImGui::Separator();
+            ImGui::Spacing();
 
             const std::vector<std::string> componentTypeNames = m_Editor.GetAllComponentTypeNames();
+            ImGui::SeparatorText("Add Component");
             if (!componentTypeNames.empty())
             {
                 if (std::find(componentTypeNames.begin(), componentTypeNames.end(), m_SelectedAddComponentTypeName) == componentTypeNames.end())
@@ -124,10 +167,11 @@ namespace minEngine
                 ImGui::TextUnformatted("No reflected Component derived types found.");
             }
 
-            ImGui::Separator();
+            ImGui::Spacing();
 
             if (const std::shared_ptr<SceneComponent> rootComponent = gameObject->GetRootComponent())
             {
+                ImGui::SeparatorText("Transform");
                 Transform transform = rootComponent->GetTransform();
 
                 float position[3] = {transform.Position.x, transform.Position.y, transform.Position.z};
@@ -135,7 +179,7 @@ namespace minEngine
                 float scale[3] = {transform.Scale.x, transform.Scale.y, transform.Scale.z};
 
                 bool transformDirty = false;
-                if (ImGui::BeginTable("TransformFields", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+                if (ImGui::BeginTable("TransformFields", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
                 {
                     ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
@@ -144,19 +188,31 @@ namespace minEngine
                     ImGui::TableSetColumnIndex(0);
                     ImGui::TextUnformatted("Position");
                     ImGui::TableSetColumnIndex(1);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                    ImGui::SetNextItemWidth(-FLT_MIN);
                     transformDirty |= ImGui::DragFloat3("##TransformPosition", position, 0.05f);
+                    ImGui::PopStyleVar(2);
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::TextUnformatted("Rotation");
                     ImGui::TableSetColumnIndex(1);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                    ImGui::SetNextItemWidth(-FLT_MIN);
                     transformDirty |= ImGui::DragFloat3("##TransformRotation", rotation, 0.5f);
+                    ImGui::PopStyleVar(2);
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::TextUnformatted("Scale");
                     ImGui::TableSetColumnIndex(1);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                    ImGui::SetNextItemWidth(-FLT_MIN);
                     transformDirty |= ImGui::DragFloat3("##TransformScale", scale, 0.05f, 0.01f, 100.0f);
+                    ImGui::PopStyleVar(2);
 
                     ImGui::EndTable();
                 }
@@ -170,6 +226,9 @@ namespace minEngine
                     m_Editor.MarkSceneDirty();
                 }
             }
+
+            ImGui::Spacing();
+            ImGui::SeparatorText("Components");
 
             for (const std::shared_ptr<Component>& component : gameObject->GetComponents())
             {
@@ -185,14 +244,21 @@ namespace minEngine
                     continue;
                 }
 
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.26f, 0.36f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.23f, 0.33f, 0.46f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.30f, 0.42f, 1.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
                 const std::string headerLabel = GetShortTypeName(typeInfo->name) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
-                if (!ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+                const bool componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(3);
+                if (!componentOpen)
                 {
                     continue;
                 }
 
                 const std::string tableId = "ComponentTable##" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
-                if (!ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+                if (!ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
                 {
                     continue;
                 }
@@ -272,17 +338,24 @@ namespace minEngine
                         {
                             Vector2* value = static_cast<Vector2*>(fieldPtr);
                             float data[2] = {value->x, value->y};
+                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                            ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                            ImGui::SetNextItemWidth(-FLT_MIN);
                             if (ImGui::DragFloat2("##Value", data, 0.1f))
                             {
                                 value->x = data[0];
                                 value->y = data[1];
                                 m_Editor.MarkSceneDirty();
                             }
+                            ImGui::PopStyleVar(2);
                         }
                         else if (field.typeName == "Vector3" || shortFieldTypeName == "Vector3")
                         {
                             Vector3* value = static_cast<Vector3*>(fieldPtr);
                             float data[3] = {value->x, value->y, value->z};
+                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                            ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                            ImGui::SetNextItemWidth(-FLT_MIN);
                             if (ImGui::DragFloat3("##Value", data, 0.1f))
                             {
                                 value->x = data[0];
@@ -290,11 +363,15 @@ namespace minEngine
                                 value->z = data[2];
                                 m_Editor.MarkSceneDirty();
                             }
+                            ImGui::PopStyleVar(2);
                         }
                         else if (field.typeName == "Vector4" || shortFieldTypeName == "Vector4")
                         {
                             Vector4* value = static_cast<Vector4*>(fieldPtr);
                             float data[4] = {value->x, value->y, value->z, value->w};
+                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                            ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                            ImGui::SetNextItemWidth(-FLT_MIN);
                             if (ImGui::DragFloat4("##Value", data, 0.1f))
                             {
                                 value->x = data[0];
@@ -303,6 +380,7 @@ namespace minEngine
                                 value->w = data[3];
                                 m_Editor.MarkSceneDirty();
                             }
+                            ImGui::PopStyleVar(2);
                         }
                         else
                         {
@@ -330,8 +408,23 @@ namespace minEngine
         }
 
     private:
+        static constexpr uint64_t kInvalidGameObjectId = std::numeric_limits<uint64_t>::max();
+
+        void BeginRenameSelectedGameObject(const GameObject& gameObject)
+        {
+            m_IsRenamingSelectedGameObject = true;
+            m_RenameTargetGameObjectId = gameObject.m_ID;
+            std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+            std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
+            m_RequestRenameFocus = true;
+        }
+
         const std::string m_Id = "inspector";
         const std::string m_Title = "Inspector";
         std::string m_SelectedAddComponentTypeName;
+        bool m_IsRenamingSelectedGameObject = false;
+        bool m_RequestRenameFocus = false;
+        uint64_t m_RenameTargetGameObjectId = kInvalidGameObjectId;
+        char m_RenameBuffer[256] = {};
     };
 }
