@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Runtime/Core/Core.h"
-#include "Runtime/Core/Math/Math.h"
 
 #include "Json.h"
 
@@ -13,46 +12,43 @@ namespace minEngine
 	{
 	public:
 
+		static Json WriteByName(const std::string& typeName, const void* value);
+
 		template<typename T>
 		static Json Write(const T& value);
 
 		template<typename T>
 		static bool Read(const Json& json, T& outValue);
 
-		template<typename TObject>
-		static Json ToJson(const TObject& object)
-		{
-			return Write(object);
-		}
-
-		template<typename TObject>
-		static bool FromJson(const Json& json, TObject& object)
-		{
-			return Read(json, object);
-		}
-
-		static bool SaveJsonToFile(const Json& json, const std::filesystem::path& filePath);
-
-		template<typename TObject>
-		static bool SaveToFile(const TObject& object, const std::filesystem::path& filePath)
-		{
-			return SaveJsonToFile(ToJson(object), filePath);
-		}
-
-		static bool LoadJsonFromFile(const std::filesystem::path& filePath, Json& outJson);
-
-		template<typename TObject>
-		static bool LoadFromFile(const std::filesystem::path& filePath, TObject& outObject)
-		{
-			Json json;
-			if (!LoadJsonFromFile(filePath, json))
-			{
-				return false;
-			}
-
-			return FromJson(json, outObject);
-		}
 	};
+
+
+	template<typename T>
+    Json Serializer::Write(const T& value)
+    {
+        Json result = Json::object();
+        const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo<T>();
+        if (typeInfo)
+        {
+            for (const auto& fieldInfo : typeInfo->fields)
+            {
+                const Reflection::TypeInfo* fieldTypeInfo = Reflection::GetTypeInfo(fieldInfo.fieldTypeName);
+                if(fieldTypeInfo && fieldTypeInfo->writeToJson)
+                {
+                    const void* fieldValuePtr = fieldInfo.constAccessor(&value);
+                    if (fieldValuePtr)
+                    {
+                        result[fieldInfo.fieldName] = WriteByName(fieldInfo.fieldTypeName, fieldValuePtr);
+                    }
+                    else
+                    {
+                        ME_CORE_ERROR("[Serializer] Failed to access field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
+                    }
+                }
+            }
+        }
+        return result;
+    }
 
 	// Explicit specialization declarations.
 	template<>

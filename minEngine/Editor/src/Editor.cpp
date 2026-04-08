@@ -183,22 +183,22 @@ namespace minEngine
 
     bool Editor::AddComponentToSelectedGameObject(const std::string& componentTypeName)
     {
-        std::shared_ptr<GameObject> gameObject = GetSelectedGameObject();
-        if (!gameObject || componentTypeName.empty())
-        {
-            return false;
-        }
+        // std::shared_ptr<GameObject> gameObject = GetSelectedGameObject();
+        // if (!gameObject || componentTypeName.empty())
+        // {
+        //     return false;
+        // }
 
-        std::shared_ptr<Component> component = Reflection::ReflectionSystem::Get().CreateInstanceAs<Component>(componentTypeName);
-        if (!component)
-        {
-            ME_CORE_WARN("[Editor] Failed to create component '{}'. It may be abstract or missing default constructor.", componentTypeName);
-            return false;
-        }
+        // std::shared_ptr<Component> component = Reflection::ReflectionSystem::Get().CreateInstanceAs<Component>(componentTypeName);
+        // if (!component)
+        // {
+        //     ME_CORE_WARN("[Editor] Failed to create component '{}'. It may be abstract or missing default constructor.", componentTypeName);
+        //     return false;
+        // }
 
-        component->SetOwner(gameObject.get());
-        gameObject->GetComponents().push_back(component);
-        MarkSceneDirty();
+        // component->SetOwner(gameObject.get());
+        // gameObject->GetComponents().push_back(component);
+        // MarkSceneDirty();
         return true;
     }
 

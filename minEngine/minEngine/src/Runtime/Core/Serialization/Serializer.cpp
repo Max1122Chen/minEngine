@@ -1,15 +1,10 @@
 #include "Serializer.h"
 
+
 #include <fstream>
 
 namespace minEngine
 {
-    template<typename T>
-    Json Serializer::Write(const T& value)
-    {
-        static_assert(!std::is_same_v<T, T>, "Write is not implemented for this type.");
-        return Json();
-    }
 
     template<typename T>
     bool Serializer::Read(const Json&, T& outValue)
@@ -160,40 +155,60 @@ namespace minEngine
         return true;
     }
 
-    bool Serializer::SaveJsonToFile(const Json& json, const std::filesystem::path& filePath)
-    {
-        std::ofstream file(filePath, std::ios::out | std::ios::trunc);
-        if (!file.is_open())
+
+    Json Serializer::WriteByName(const std::string& typeName, const void* value)
+	{
+        // Check if the type has a registered writeToJson function in the reflection system first.
+		const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
+		if (typeInfo && typeInfo->writeToJson)
+		{
+			return typeInfo->writeToJson(value);
+		}
+		
+        // Then check for built-in types with explicit specializations.
+		if(typeName == "int")
+		{
+			return Write<int>(*static_cast<const int*>(value));
+		}
+		else if(typeName == "float")
+		{
+			return Write<float>(*static_cast<const float*>(value));
+		}
+		else if(typeName == "double")
+		{
+			return Write<double>(*static_cast<const double*>(value));
+		}
+		else if(typeName == "bool")
+		{
+			return Write<bool>(*static_cast<const bool*>(value));
+		}
+		else if(typeName == "std::string")
+		{
+			return Write<std::string>(*static_cast<const std::string*>(value));
+		}
+		else if(typeName == "minEngine::Vector2")
+		{
+			return Write<minEngine::Vector2>(*static_cast<const minEngine::Vector2*>(value));
+		}
+		else if(typeName == "minEngine::Vector3")
+		{
+			return Write<minEngine::Vector3>(*static_cast<const minEngine::Vector3*>(value));
+		}
+		else if(typeName == "minEngine::Vector4")
+		{
+			return Write<minEngine::Vector4>(*static_cast<const minEngine::Vector4*>(value));
+		}
+
+        // Lastly, check if the type is a enum and serialize it as its underlying integer type.
+        const Reflection::EnumInfo* enumInfo = Reflection::GetEnumInfo(typeName);
+        if (enumInfo)
         {
-            ME_CORE_ERROR("[Serializer] Failed to open file for write: {}", filePath.string());
-            return false;
+            const Reflection::EnumValueInfo* enumValueInfo = enumInfo->FindByValue(*static_cast<const int64_t*>(value));
+            return Write<std::string>(enumValueInfo->name);
         }
 
-        file << json.dump(4);
-        file.flush();
-        return file.good();
-    }
-
-    bool Serializer::LoadJsonFromFile(const std::filesystem::path& filePath, Json& outJson)
-    {
-        std::ifstream file(filePath);
-        if (!file.is_open())
-        {
-            ME_CORE_ERROR("[Serializer] Failed to open file for read: {}", filePath.string());
-            return false;
-        }
-
-        try
-        {
-            file >> outJson;
-        }
-        catch (const std::exception& e)
-        {
-            ME_CORE_ERROR("[Serializer] Failed to parse json file '{}': {}", filePath.string(), e.what());
-            return false;
-        }
-
-        return true;
-    }
+		ME_CORE_ERROR("[Serializer] No serialization function found for type '{}'", typeName);
+		return Json();
+	}
 
 }
