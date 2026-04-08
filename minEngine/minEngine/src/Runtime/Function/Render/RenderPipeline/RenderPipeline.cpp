@@ -46,7 +46,7 @@ namespace minEngine
         uint32_t width = windowSystem->GetWidth();
         uint32_t height = windowSystem->GetHeight();
 
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
         m_ShadowResourceManager.Initialize(rhi);
         m_FrameIndex = 0;
 
@@ -85,7 +85,7 @@ namespace minEngine
             return;
         }
 
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
             return;
@@ -162,7 +162,7 @@ namespace minEngine
 
     void RenderPipeline::Execute()
     {
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
             return;
@@ -176,9 +176,9 @@ namespace minEngine
 
         m_ShadowResourceManager.BeginFrame(m_FrameIndex);
 
-        if (RenderSystem::GetRenderSystem().m_RenderScene)
+        if (RenderSystem::Get().m_RenderScene)
         {
-            RenderSystem::GetRenderSystem().m_RenderScene->CollectOrphanedSceneProxies();
+            RenderSystem::Get().m_RenderScene->CollectOrphanedSceneProxies();
         }
         
         // Build render queue for this frame
@@ -236,7 +236,7 @@ namespace minEngine
     void RenderPipeline::UpdatePerFrameUBO()
     {
         // Update per-frame uniform buffer
-        RenderCamera* mainCamera = RenderSystem::GetRenderSystem().GetMainCamera();
+        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
         if (!mainCamera || !m_PerFrameUniformBuffer)
         {
             return;
@@ -253,7 +253,7 @@ namespace minEngine
 
     void RenderPipeline::UpdateLightUBO()
     {
-        RenderScene* renderScene = RenderSystem::GetRenderSystem().m_RenderScene.get();
+        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
         if (!renderScene || !m_LightUniformBuffer)
         {
             return;
@@ -333,7 +333,7 @@ namespace minEngine
     {
         m_ShadowRequests.clear();
 
-        RenderScene* renderScene = RenderSystem::GetRenderSystem().m_RenderScene.get();
+        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
         if (!renderScene)
         {
             return;
@@ -415,7 +415,7 @@ namespace minEngine
         m_OpaqueQueue.clear();
         m_TranslucentQueue.clear();
 
-        RenderScene* renderScene = RenderSystem::GetRenderSystem().m_RenderScene.get();
+        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
         if(!renderScene)
         {
             return;

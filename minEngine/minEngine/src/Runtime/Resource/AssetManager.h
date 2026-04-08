@@ -3,6 +3,7 @@
 #include "Runtime/Core/Math/Math.h"
 #include "Runtime/Core/Serialization/Json.h"
 #include "Runtime/Core/Serialization/Serializer.h"
+#include "SceneSerializer.h"
 
 #include <filesystem>
 #include <fstream>
@@ -19,7 +20,7 @@ namespace minEngine
         AssetManager() = default;
         ~AssetManager() = default;
 
-        static AssetManager& GetAssetManager();
+        static AssetManager& Get();
 
 
         void Initialize() {}
@@ -96,6 +97,20 @@ namespace minEngine
         std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_LoadedTexture2DCache;
         std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_LoadedStaticMeshCache;
     };
+
+    template<>
+    inline bool AssetManager::LoadAsset<Scene>(const std::string& path, Scene& asset) const
+    {
+        std::filesystem::path assetPath(path);
+        return SceneSerializer::LoadScene(assetPath, asset);
+    }
+
+    template<>
+    inline bool AssetManager::SaveAsset<Scene>(const std::string& path, const Scene& asset) const
+    {
+        std::filesystem::path assetPath(path);
+        return SceneSerializer::SaveScene(assetPath, asset);
+    }
 
     
 }

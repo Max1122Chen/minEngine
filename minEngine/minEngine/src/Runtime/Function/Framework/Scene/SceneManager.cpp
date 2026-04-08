@@ -2,26 +2,8 @@
 #include "Runtime/Core/Reflection/ReflectionSample.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "SceneSerializer.h"
-
-namespace
-{
-    std::filesystem::path ResolveScenePath(const std::string& sceneName)
-    {
-        std::filesystem::path scenePath(sceneName);
-        if (scenePath.extension().empty())
-        {
-            scenePath += ".scene.json";
-        }
-
-        if (!scenePath.has_parent_path())
-        {
-            scenePath = std::filesystem::path("Assets/Scenes") / scenePath;
-        }
-
-        return scenePath;
-    }
-}
+#include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Resource/SceneSerializer.h"
 
 namespace minEngine
 {
@@ -47,61 +29,57 @@ namespace minEngine
 
     std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string& sceneName)
     {
-        std::filesystem::path scenePath = ResolveScenePath(sceneName);
-
-        std::shared_ptr<Scene> newScene = std::make_shared<Scene>();
-        newScene->sceneName = scenePath.string();
-
-        auto createSampleGameObject = [&newScene](const std::string& objectName, const Vector3& position, const Vector3& rotation, const Vector3& scale)
-        {
-            std::shared_ptr<GameObject> gameObject = newScene->CreateGameObject();
-            if (!gameObject)
-            {
-                return;
-            }
-
-            gameObject->SetName(objectName);
-
-            std::shared_ptr<ReflectionSampleComponent> sampleComponent = gameObject->CreateAndAddComponent<ReflectionSampleComponent>();
-            if (!sampleComponent)
-            {
-                return;
-            }
-
-            sampleComponent->Position = position;
-            sampleComponent->Rotation = rotation;
-            sampleComponent->Scale = scale;
-        };
-
-        createSampleGameObject("MainCamera", Vector3(0.0f, 1.5f, -6.0f), Vector3(0.0f, 0.0f, 0.0f), Vector3(1.0f, 1.0f, 1.0f));
-        createSampleGameObject("DirectionalLight", Vector3(2.0f, 4.0f, 1.0f), Vector3(-35.0f, 20.0f, 0.0f), Vector3(1.0f, 1.0f, 1.0f));
-        createSampleGameObject("Cube_A", Vector3(-1.5f, 0.5f, 0.0f), Vector3(0.0f, 30.0f, 0.0f), Vector3(1.0f, 1.0f, 1.0f));
-        createSampleGameObject("Cube_B", Vector3(1.5f, 0.5f, 0.0f), Vector3(0.0f, -15.0f, 0.0f), Vector3(1.25f, 1.25f, 1.25f));
-        createSampleGameObject("Ground", Vector3(0.0f, -0.5f, 0.0f), Vector3(0.0f, 0.0f, 0.0f), Vector3(8.0f, 1.0f, 8.0f));
-
-        m_CurrentActiveScene = newScene;
-
-        if (!SceneSerializer::SaveScene(*newScene, scenePath))
-        {
-            ME_CORE_WARN("[SceneManager] Failed to save new scene '{}'", scenePath.string());
-        }
-
+        m_CurrentActiveScene = std::make_shared<Scene>();
+        m_CurrentActiveScene->sceneName = sceneName;
         return m_CurrentActiveScene;
     }
 
     bool SceneManager::LoadScene(const std::string& sceneName)
     {
-        std::filesystem::path scenePath = ResolveScenePath(sceneName);
-
-        std::shared_ptr<Scene> loadedScene = std::make_shared<Scene>();
-        if (!SceneSerializer::LoadScene(scenePath, *loadedScene))
+        if (sceneName.empty())
         {
-            ME_CORE_ERROR("[SceneManager] Failed to load scene '{}'", scenePath.string());
             return false;
         }
 
-        loadedScene->sceneName = scenePath.string();
-        m_CurrentActiveScene = loadedScene;
+        std::shared_ptr<Scene> loadedScene = std::make_shared<Scene>();
+        if (!SceneSerializer::LoadScene(sceneName, *loadedScene))
+        {
+            return false;
+        }
+
+        if (loadedScene->sceneName.empty())
+        {
+            loadedScene->sceneName = sceneName;
+        }
+
+        m_CurrentActiveScene = std::move(loadedScene);
+        return true;
+    }
+
+    bool SceneManager::SaveScene(const std::string& sceneName)
+    {
+        if (!m_CurrentActiveScene)
+        {
+            return false;
+        }
+
+        std::string outputPath = sceneName;
+        if (outputPath.empty())
+        {
+            outputPath = m_CurrentActiveScene->sceneName;
+        }
+
+        if (outputPath.empty())
+        {
+            return false;
+        }
+
+        if (!SceneSerializer::SaveScene(outputPath, *m_CurrentActiveScene))
+        {
+            return false;
+        }
+
+        m_CurrentActiveScene->sceneName = outputPath;
         return true;
     }
 

@@ -20,7 +20,7 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
-        static SceneManager& GetSceneManager() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_SceneManager; }
+        static SceneManager& Get() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_SceneManager; }
         
         void Tick(float deltaTime);
 
@@ -29,6 +29,7 @@ namespace minEngine
 
         std::shared_ptr<Scene> CreateNewScene(const std::string& sceneName);
         bool LoadScene(const std::string& sceneName);
+        bool SaveScene(const std::string& sceneName);
         
 
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);

@@ -13,6 +13,7 @@ namespace minEngine
 	public:
 
 		static Json WriteByName(const std::string& typeName, const void* value);
+		static bool ReadByName(const std::string& typeName, const Json& json, void* outValue);
 
 		template<typename T>
 		static Json Write(const T& value);
@@ -22,33 +23,74 @@ namespace minEngine
 
 	};
 
-
+	// Template Function for class/structs that are reflected
 	template<typename T>
     Json Serializer::Write(const T& value)
     {
-        Json result = Json::object();
+        Json result;
         const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo<T>();
         if (typeInfo)
         {
             for (const auto& fieldInfo : typeInfo->fields)
             {
-                const Reflection::TypeInfo* fieldTypeInfo = Reflection::GetTypeInfo(fieldInfo.fieldTypeName);
-                if(fieldTypeInfo && fieldTypeInfo->writeToJson)
+				const void* fieldValuePtr = fieldInfo.constAccessor(&value);
+				if (fieldValuePtr)
                 {
-                    const void* fieldValuePtr = fieldInfo.constAccessor(&value);
-                    if (fieldValuePtr)
-                    {
-                        result[fieldInfo.fieldName] = WriteByName(fieldInfo.fieldTypeName, fieldValuePtr);
-                    }
-                    else
-                    {
-                        ME_CORE_ERROR("[Serializer] Failed to access field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
-                    }
+					result[fieldInfo.fieldName] = WriteByName(fieldInfo.fieldTypeName, fieldValuePtr);
+				}
+				else
+				{
+					ME_CORE_ERROR("[Serializer] Failed to access field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
                 }
             }
         }
         return result;
     }
+
+	template<typename T>
+	bool Serializer::Read(const Json& json, T& outValue)
+	{
+		const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo<T>();
+		if (typeInfo == nullptr)
+		{
+			ME_CORE_ERROR("[Serializer] Read is not implemented for type '{}'", typeid(T).name());
+			return false;
+		}
+
+		const Json* context = &json;
+		if (json.is_object() && json.contains("$context"))
+		{
+			context = &json["$context"];
+		}
+
+		if (!context->is_object())
+		{
+			return false;
+		}
+
+		for (const auto& fieldInfo : typeInfo->fields)
+		{
+			if (!context->contains(fieldInfo.fieldName))
+			{
+				continue;
+			}
+
+			void* fieldValuePtr = fieldInfo.mutableAccessor(&outValue);
+			if (fieldValuePtr == nullptr)
+			{
+				ME_CORE_ERROR("[Serializer] Failed to access mutable field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
+				return false;
+			}
+
+			if (!ReadByName(fieldInfo.fieldTypeName, (*context)[fieldInfo.fieldName], fieldValuePtr))
+			{
+				ME_CORE_ERROR("[Serializer] Failed to deserialize field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
+				return false;
+			}
+		}
+
+		return true;
+	}
 
 	// Explicit specialization declarations.
 	template<>

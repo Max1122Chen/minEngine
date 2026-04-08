@@ -41,7 +41,7 @@ namespace minEngine
     {
         if(m_bRenderStateDirty)     // why do we need this check again? 
         {
-            SceneManager::GetSceneManager().GetRenderScene()->UpdatePrimitive(this);
+            SceneManager::Get().GetRenderScene()->UpdatePrimitive(this);
             m_bRenderStateDirty = false;
         }
     }

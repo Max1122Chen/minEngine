@@ -5,16 +5,16 @@
 
 namespace minEngine
 {
-    // ME_STRUCT()
+    ME_STRUCT()
     struct Transform
     {
-        // ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere)
         Vector3 Position{ 0.0f, 0.0f, 0.0f };
 
-        // ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere)
         Vector3 Rotation{ 0.0f, 0.0f, 0.0f };   // TODO: use quaternion later
 
-        // ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere)
         Vector3 Scale{ 1.0f, 1.0f, 1.0f };
 
         Transform() = default;

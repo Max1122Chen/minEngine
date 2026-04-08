@@ -9,7 +9,7 @@ namespace minEngine
     TextureCube::TextureCube(const std::vector<std::string> &facePaths, uint32_t unit, TextureWrapping wrapping, TextureFiltering filtering)
         : m_Wrapping(wrapping), m_Filtering(filtering)
     {
-        RenderSystem& renderSystem = RenderSystem::GetRenderSystem();
+        RenderSystem& renderSystem = RenderSystem::Get();
         RHI* rhi = renderSystem.GetRHI();
 
         // Load textures for each face
@@ -18,7 +18,7 @@ namespace minEngine
         int width, height, channels;
         for (int i = 0; i < 6; ++i)
         {
-            faceData[i] = AssetManager::GetAssetManager().LoadImage(facePaths[i], width, height, channels);
+            faceData[i] = AssetManager::Get().LoadImage(facePaths[i], width, height, channels);
             if(width != height)
             {
                 ME_CORE_ERROR("Cubemap face textures must be square. Invalid texture: {}", facePaths[0]);
@@ -38,7 +38,7 @@ namespace minEngine
 
         for(int i = 0; i < 6; ++i)
         {
-            AssetManager::GetAssetManager().FreeImage(faceData[i]);
+            AssetManager::Get().FreeImage(faceData[i]);
         }
     }
 

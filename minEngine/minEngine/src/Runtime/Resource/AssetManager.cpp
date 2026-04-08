@@ -17,7 +17,7 @@
 
 namespace minEngine
 {
-    AssetManager& AssetManager::GetAssetManager()
+    AssetManager& AssetManager::Get()
     {
         return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_AssetManager;
     }
@@ -66,7 +66,7 @@ namespace minEngine
             return nullptr;
         }
 
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
             FreeImage(data);

@@ -34,7 +34,7 @@ namespace minEngine
         {
             return InputTriggerState::None;
         }
-        InputSystem& inputSystem = InputSystem::GetInputSystem();
+        InputSystem& inputSystem = InputSystem::Get();
         InputActionInstance* instance = inputSystem.FindInputActionInstance(ChordAction);
         
         return instance ? instance->TriggerStateTracker.GetState() : InputTriggerState::None;

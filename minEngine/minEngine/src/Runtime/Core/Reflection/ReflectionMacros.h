@@ -65,6 +65,7 @@ namespace \
 
 #define ME_REFLECT_FIELD_T(TYPE, FIELD, FIELD_TYPE) \
         { \
+            minEngine::Reflection::TryRegisterArrayType<FIELD_TYPE>(); \
             minEngine::Reflection::FieldInfo fieldInfo; \
             fieldInfo.fieldName = #FIELD; \
             fieldInfo.fieldTypeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
@@ -75,6 +76,7 @@ namespace \
 
 #define ME_REFLECT_FIELD_META_T(TYPE, FIELD, FIELD_TYPE, ...) \
         { \
+            minEngine::Reflection::TryRegisterArrayType<FIELD_TYPE>(); \
             minEngine::Reflection::FieldInfo fieldInfo; \
             fieldInfo.fieldName = #FIELD; \
             fieldInfo.fieldTypeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \

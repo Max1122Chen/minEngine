@@ -1,9 +1,12 @@
 #pragma once
 
 #include "ReflectionTypes.h"
+#include "TypeTraits.h"
 
 namespace minEngine::Reflection
 {
+    
+
     class ReflectionSystem
     {
     public:
@@ -20,6 +23,11 @@ namespace minEngine::Reflection
         {
             const std::string declaredName = info.typeName;
             const std::string typeIdName = typeid(T).name();
+
+            if (info.createInstance == nullptr)
+            {
+                info.createInstance = &CreateDefaultInstance<T>;
+            }
 
             m_TypeInfoByDeclaredName[declaredName] = std::move(info);
             m_DeclaredNameByTypeId[typeIdName] = declaredName;
@@ -47,6 +55,63 @@ namespace minEngine::Reflection
             }
 
             return GetTypeInfo(typeIdIter->second);
+        }
+
+        const TypeInfo* GetTypeInfoByTypeId(const std::string& typeIdName) const
+        {
+            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeIdName);
+            if (typeIdIter == m_DeclaredNameByTypeId.end())
+            {
+                return nullptr;
+            }
+
+            return GetTypeInfo(typeIdIter->second);
+        }
+
+        std::string GetDeclaredTypeNameByTypeId(const std::string& typeIdName) const
+        {
+            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeIdName);
+            if (typeIdIter == m_DeclaredNameByTypeId.end())
+            {
+                return {};
+            }
+
+            return typeIdIter->second;
+        }
+
+        std::shared_ptr<void> CreateInstance(const std::string& declaredName) const
+        {
+            const TypeInfo* typeInfo = GetTypeInfo(declaredName);
+            if (typeInfo == nullptr || typeInfo->createInstance == nullptr)
+            {
+                return nullptr;
+            }
+
+            return typeInfo->createInstance();
+        }
+
+        template<typename TBase>
+        std::shared_ptr<TBase> CreateInstanceAs(const std::string& declaredName) const
+        {
+            std::shared_ptr<void> instance = CreateInstance(declaredName);
+            if (!instance)
+            {
+                return nullptr;
+            }
+
+            const TypeInfo* baseTypeInfo = GetTypeInfo<TBase>();
+            if (baseTypeInfo == nullptr)
+            {
+                return std::shared_ptr<TBase>(instance, static_cast<TBase*>(instance.get()));
+            }
+
+            void* basePtr = CastObjectToType(instance.get(), declaredName, baseTypeInfo->typeName);
+            if (basePtr == nullptr)
+            {
+                return nullptr;
+            }
+
+            return std::shared_ptr<TBase>(instance, static_cast<TBase*>(basePtr));
         }
 
         // Helper function to get field pointer
@@ -88,6 +153,28 @@ namespace minEngine::Reflection
                 return nullptr;
             }
             return GetDirectBaseTypes(typeIdIter->second);
+        }
+
+        // Array type registration and querying
+        void RegisterArrayType(ArrayTypeInfo info)
+        {
+            const std::string declaredName = info.typeName;
+            if (declaredName.empty())
+            {
+                return;
+            }
+
+            m_ArrayTypeInfoByDeclaredName[declaredName] = std::move(info);
+        }
+
+        const ArrayTypeInfo* GetArrayTypeInfo(const std::string& declaredName) const
+        {
+            const auto iter = m_ArrayTypeInfoByDeclaredName.find(declaredName);
+            if (iter == m_ArrayTypeInfoByDeclaredName.end())
+            {
+                return nullptr;
+            }
+            return &iter->second;
         }
 
         bool ForEachFieldInHierarchy(const std::string& rootTypeName, const FieldVisitorFn& visitor) const
@@ -176,6 +263,19 @@ namespace minEngine::Reflection
 
     private:
 
+        template<typename T>
+        static std::shared_ptr<void> CreateDefaultInstance()
+        {
+            if constexpr (std::is_default_constructible_v<T> && !std::is_abstract_v<T>)
+            {
+                return std::make_shared<T>();
+            }
+            else
+            {
+                return nullptr;
+            }
+        }
+
         bool ForEachFieldInHierarchy_Recursive(const TypeInfo& typeInfo,
                                                const FieldVisitorFn& visitor,
                                                std::unordered_set<std::string>& visitedTypeNames) const
@@ -258,6 +358,8 @@ namespace minEngine::Reflection
         std::unordered_map<std::string, TypeInfo> m_TypeInfoByDeclaredName;
         std::unordered_map<std::string, std::string> m_DeclaredNameByTypeId;
 
+        std::unordered_map<std::string, ArrayTypeInfo> m_ArrayTypeInfoByDeclaredName;
+
         std::unordered_map<std::string, std::vector<std::string>> m_DirectBaseNamesByType;
         std::unordered_map<std::string, std::vector<std::string>> m_DirectDerivedNamesByType;
 
@@ -276,11 +378,129 @@ namespace minEngine::Reflection
         return ReflectionSystem::Get().GetTypeInfo<T>();
     }
 
+    inline const TypeInfo* GetTypeInfoByTypeId(const std::string& typeIdName)
+    {
+        return ReflectionSystem::Get().GetTypeInfoByTypeId(typeIdName);
+    }
+
+    inline std::string GetDeclaredTypeNameByTypeId(const std::string& typeIdName)
+    {
+        return ReflectionSystem::Get().GetDeclaredTypeNameByTypeId(typeIdName);
+    }
+
+    inline std::shared_ptr<void> CreateInstance(const std::string& declaredName)
+    {
+        return ReflectionSystem::Get().CreateInstance(declaredName);
+    }
+
+    template<typename TBase>
+    inline std::shared_ptr<TBase> CreateInstanceAs(const std::string& declaredName)
+    {
+        return ReflectionSystem::Get().CreateInstanceAs<TBase>(declaredName);
+    }
+
     template<typename T>
     inline static std::string GetTypeName()
     {
-        static_assert(!std::is_same_v<T, T>, "GetTypeName is not implemented for this type.");
-        return "";
+        using RawType = std::remove_cv_t<std::remove_reference_t<T>>;
+
+        if constexpr (is_vector<RawType>::value)
+        {
+            using ElementType = typename is_vector<RawType>::ElementType;
+            return std::string("std::vector<") + GetTypeName<ElementType>() + ">";
+        }
+        else
+        {
+            if (const TypeInfo* typeInfo = ReflectionSystem::Get().GetTypeInfo<RawType>())
+            {
+                return typeInfo->typeName;
+            }
+
+            if (const EnumInfo* enumInfo = ReflectionSystem::Get().GetEnumInfo<RawType>())
+            {
+                return enumInfo->enumName;
+            }
+
+            return typeid(RawType).name();
+        }
+    }
+
+    template<typename T>
+    inline void TryRegisterArrayType()
+    {
+        using RawType = std::remove_cv_t<std::remove_reference_t<T>>;
+
+        if constexpr (is_vector<RawType>::value)
+        {
+            using ElementType = typename is_vector<RawType>::ElementType;
+
+            ArrayTypeInfo arrayInfo;
+            arrayInfo.typeName = GetTypeName<RawType>();
+            arrayInfo.elementTypeName = GetTypeName<ElementType>();
+
+            if constexpr (is_smart_ptr<ElementType>::value)
+            {
+                // Traits the pointee type of the smart pointer element. 
+                using PointeeType = typename is_smart_ptr<ElementType>::pointee;
+                arrayInfo.isArrayOfPtr = true;
+                arrayInfo.elementPointeeTypeName = GetTypeName<PointeeType>();
+            }
+            arrayInfo.getSize = [](const void* arrayObject) -> size_t
+            {
+                if (arrayObject == nullptr)
+                {
+                    return 0;
+                }
+                const RawType* typedArray = static_cast<const RawType*>(arrayObject);
+                return typedArray->size();
+            };
+            arrayInfo.getConstElement = [](const void* arrayObject, size_t index) -> const void*
+            {
+                if (arrayObject == nullptr)
+                {
+                    return nullptr;
+                }
+
+                const RawType* typedArray = static_cast<const RawType*>(arrayObject);
+                if (index >= typedArray->size())
+                {
+                    return nullptr;
+                }
+
+                return static_cast<const void*>(&((*typedArray)[index]));
+            };
+            arrayInfo.resize = [](void* arrayObject, size_t newSize)
+            {
+                if (arrayObject == nullptr)
+                {
+                    return;
+                }
+                RawType* typedArray = static_cast<RawType*>(arrayObject);
+                typedArray->resize(newSize);
+            };
+            arrayInfo.getMutableElement = [](void* arrayObject, size_t index) -> void*
+            {
+                if (arrayObject == nullptr)
+                {
+                    return nullptr;
+                }
+
+                RawType* typedArray = static_cast<RawType*>(arrayObject);
+                if (index >= typedArray->size())
+                {
+                    return nullptr;
+                }
+
+                return static_cast<void*>(&((*typedArray)[index]));
+            };
+
+            ReflectionSystem::Get().RegisterArrayType(std::move(arrayInfo));
+        }
+    }
+
+    inline const ArrayTypeInfo* GetArrayTypeInfo(const std::string& declaredName)
+    {
+        return ReflectionSystem::Get().GetArrayTypeInfo(declaredName);
     }
 
     // Explicit specialization of GetTypeName for some common types.

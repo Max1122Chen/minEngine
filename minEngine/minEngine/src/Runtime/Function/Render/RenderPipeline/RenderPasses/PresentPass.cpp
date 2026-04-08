@@ -43,7 +43,7 @@ namespace minEngine
 
     void PresentPass::Render()
     {
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
             return;

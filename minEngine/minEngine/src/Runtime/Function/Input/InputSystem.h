@@ -37,7 +37,7 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
-        static InputSystem& GetInputSystem() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_InputSystem; }
+        static InputSystem& Get() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_InputSystem; }
 
         void Tick(float deltaTime);
 

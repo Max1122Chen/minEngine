@@ -24,7 +24,7 @@ namespace minEngine
 
         // Set this camera as the main camera in the RenderSystem
         MINENGINE_ASSERT(m_RenderCamera, "RenderCamera is null!");
-        RenderSystem::GetRenderSystem().SetMainCamera(m_RenderCamera);
+        RenderSystem::Get().SetMainCamera(m_RenderCamera);
         m_bIsMainCamera = true;
     }
 

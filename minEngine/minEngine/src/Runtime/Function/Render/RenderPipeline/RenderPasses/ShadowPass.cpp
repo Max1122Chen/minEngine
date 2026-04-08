@@ -12,7 +12,7 @@ namespace minEngine
 {
     void ShadowPass::Initialize()
     {
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
 
         m_DepthOnlyShader = rhi->CreateShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.frag");
     }
@@ -24,7 +24,7 @@ namespace minEngine
 
     void ShadowPass::Render()
     {
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
         rhi->SetDrawBuffer(-1); // No color output for shadow pass
         rhi->SetReadBuffer(-1);
         rhi->EnableDepthTest();
@@ -32,7 +32,7 @@ namespace minEngine
         // For simplicity, we will render all opaque objects in the shadow pass.
         // In a real implementation, you would want to cull objects that are outside the light's frustum to improve performance.
 
-        RenderScene* renderScene = RenderSystem::GetRenderSystem().m_RenderScene.get();
+        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
 
         m_DepthOnlyShader->Use();
         m_DepthOnlyShader->BindUniformBlock("LightViewProj", 8); // Bind the light view projection uniform buffer to the shader

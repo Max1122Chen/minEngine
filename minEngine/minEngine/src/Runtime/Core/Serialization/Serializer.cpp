@@ -5,14 +5,6 @@
 
 namespace minEngine
 {
-
-    template<typename T>
-    bool Serializer::Read(const Json&, T& outValue)
-    {
-        static_assert(!std::is_same_v<T, T>, "Read is not implemented for this type.");
-        return false;
-    }
-
     template<>
     Json Serializer::Write<int>(const int& value)
     {
@@ -158,11 +150,38 @@ namespace minEngine
 
     Json Serializer::WriteByName(const std::string& typeName, const void* value)
 	{
+        const Reflection::ArrayTypeInfo* arrayTypeInfo = Reflection::GetArrayTypeInfo(typeName);
+        if (arrayTypeInfo != nullptr)
+        {
+            Json arrayContext = Json::array();
+            if (value == nullptr || arrayTypeInfo->getSize == nullptr || arrayTypeInfo->getConstElement == nullptr)
+            {
+                return arrayContext;
+            }
+
+            const size_t count = arrayTypeInfo->getSize(value);
+            for (size_t index = 0; index < count; ++index)
+            {
+                const void* elementPtr = arrayTypeInfo->getConstElement(value, index);
+                if (elementPtr == nullptr)
+                {
+                    arrayContext.push_back(Json());
+                    continue;
+                }
+
+                arrayContext.push_back(WriteByName(arrayTypeInfo->elementTypeName, elementPtr));
+            }
+
+            return arrayContext;
+        }
+
         // Check if the type has a registered writeToJson function in the reflection system first.
 		const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
 		if (typeInfo && typeInfo->writeToJson)
 		{
-			return typeInfo->writeToJson(value);
+            Json result = {{"$typeName", Json(typeName)},
+                           {"$context", typeInfo->writeToJson(value)}};
+			return result;
 		}
 		
         // Then check for built-in types with explicit specializations.
@@ -186,15 +205,15 @@ namespace minEngine
 		{
 			return Write<std::string>(*static_cast<const std::string*>(value));
 		}
-		else if(typeName == "minEngine::Vector2")
+        else if(typeName == "Vector2" || typeName == "minEngine::Vector2")
 		{
 			return Write<minEngine::Vector2>(*static_cast<const minEngine::Vector2*>(value));
 		}
-		else if(typeName == "minEngine::Vector3")
+        else if(typeName == "Vector3" || typeName == "minEngine::Vector3")
 		{
 			return Write<minEngine::Vector3>(*static_cast<const minEngine::Vector3*>(value));
 		}
-		else if(typeName == "minEngine::Vector4")
+        else if(typeName == "Vector4" || typeName == "minEngine::Vector4")
 		{
 			return Write<minEngine::Vector4>(*static_cast<const minEngine::Vector4*>(value));
 		}
@@ -210,5 +229,111 @@ namespace minEngine
 		ME_CORE_ERROR("[Serializer] No serialization function found for type '{}'", typeName);
 		return Json();
 	}
+
+    bool Serializer::ReadByName(const std::string& typeName, const Json& json, void* outValue)
+    {
+        if (outValue == nullptr)
+        {
+            return false;
+        }
+
+        const Reflection::ArrayTypeInfo* arrayTypeInfo = Reflection::GetArrayTypeInfo(typeName);
+        if (arrayTypeInfo != nullptr)
+        {
+            if (!json.is_array() || arrayTypeInfo->resize == nullptr || arrayTypeInfo->getMutableElement == nullptr)
+            {
+                return false;
+            }
+
+            arrayTypeInfo->resize(outValue, json.size());
+            for (size_t index = 0; index < json.size(); ++index)
+            {
+                void* elementPtr = arrayTypeInfo->getMutableElement(outValue, index);
+                if (elementPtr == nullptr)
+                {
+                    return false;
+                }
+
+                if (!ReadByName(arrayTypeInfo->elementTypeName, json[index], elementPtr))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
+        if (typeInfo != nullptr)
+        {
+            const Json* context = &json;
+            if (json.is_object() && json.contains("$context"))
+            {
+                context = &json["$context"];
+            }
+
+            if (!context->is_object())
+            {
+                return false;
+            }
+
+            for (const Reflection::FieldInfo& fieldInfo : typeInfo->fields)
+            {
+                if (!context->contains(fieldInfo.fieldName))
+                {
+                    continue;
+                }
+
+                void* fieldValuePtr = fieldInfo.mutableAccessor(outValue);
+                if (fieldValuePtr == nullptr)
+                {
+                    return false;
+                }
+
+                if (!ReadByName(fieldInfo.fieldTypeName, (*context)[fieldInfo.fieldName], fieldValuePtr))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if(typeName == "int")
+        {
+            return Read<int>(json, *static_cast<int*>(outValue));
+        }
+        else if(typeName == "float")
+        {
+            return Read<float>(json, *static_cast<float*>(outValue));
+        }
+        else if(typeName == "double")
+        {
+            return Read<double>(json, *static_cast<double*>(outValue));
+        }
+        else if(typeName == "bool")
+        {
+            return Read<bool>(json, *static_cast<bool*>(outValue));
+        }
+        else if(typeName == "std::string")
+        {
+            return Read<std::string>(json, *static_cast<std::string*>(outValue));
+        }
+        else if(typeName == "Vector2" || typeName == "minEngine::Vector2")
+        {
+            return Read<minEngine::Vector2>(json, *static_cast<minEngine::Vector2*>(outValue));
+        }
+        else if(typeName == "Vector3" || typeName == "minEngine::Vector3")
+        {
+            return Read<minEngine::Vector3>(json, *static_cast<minEngine::Vector3*>(outValue));
+        }
+        else if(typeName == "Vector4" || typeName == "minEngine::Vector4")
+        {
+            return Read<minEngine::Vector4>(json, *static_cast<minEngine::Vector4*>(outValue));
+        }
+
+        ME_CORE_ERROR("[Serializer] No deserialization function found for type '{}'", typeName);
+        return false;
+    }
 
 }

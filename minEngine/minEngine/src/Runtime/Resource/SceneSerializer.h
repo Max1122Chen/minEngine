@@ -1,7 +1,5 @@
 #pragma once
-
 #include "Core.h"
-#include "Runtime/Core/Serialization/Serializer.h"
 
 namespace minEngine
 {
@@ -10,7 +8,7 @@ namespace minEngine
     class SceneSerializer
     {
     public:
-        static bool SaveScene(const Scene& scene, const std::filesystem::path& filePath);
         static bool LoadScene(const std::filesystem::path& filePath, Scene& outScene);
+        static bool SaveScene(const std::filesystem::path& filePath, const Scene& scene);
     };
 }

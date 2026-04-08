@@ -19,7 +19,7 @@ namespace minEngine
         // Initialize
         void Initialize();
         void Shutdown();
-        static RenderSystem& GetRenderSystem();
+        static RenderSystem& Get();
 
 
         void Tick(float deltaTime);

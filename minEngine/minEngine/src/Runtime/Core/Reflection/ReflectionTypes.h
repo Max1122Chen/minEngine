@@ -27,12 +27,18 @@ namespace minEngine::Reflection
     using FieldVisitorFn = std::function<bool(const FieldInfo&)>;
 
     using WriteToJsonFn = Json (*)(const void*);
+    using CreateInstanceFn = std::shared_ptr<void> (*)();
 
     using FieldConstAccessorFn = const void* (*)(const void*);
     using FieldMutableAccessorFn = void* (*)(void*);
     
     using UpcastConstFn = const void* (*)(const void*);
     using UpcastMutableFn = void* (*)(void*);
+
+    using ArrayGetSizeFn = size_t (*)(const void*);
+    using ArrayGetConstElementFn = const void* (*)(const void*, size_t);
+    using ArrayResizeFn = void (*)(void*, size_t);
+    using ArrayGetMutableElementFn = void* (*)(void*, size_t);
 
     using MetadataMap = std::unordered_map<std::string, std::string>;
 
@@ -83,6 +89,21 @@ namespace minEngine::Reflection
         std::vector<FieldInfo> fields;
 
         WriteToJsonFn writeToJson;
+        CreateInstanceFn createInstance = nullptr;
+    };
+
+    struct ArrayTypeInfo
+    {
+        std::string typeName;
+        std::string elementTypeName;
+
+        bool isArrayOfPtr = false;
+        std::string elementPointeeTypeName;
+
+        ArrayGetSizeFn getSize = nullptr;
+        ArrayGetConstElementFn getConstElement = nullptr;
+        ArrayResizeFn resize = nullptr;
+        ArrayGetMutableElementFn getMutableElement = nullptr;
     };
 
     struct EnumValueInfo

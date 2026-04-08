@@ -10,9 +10,10 @@
 #include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
-#include "Runtime/Function/Framework/Scene/SceneSerializer.h"
+#include "Runtime/Resource/SceneSerializer.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
 
 #include <algorithm>
 
@@ -20,6 +21,37 @@ namespace minEngine
 {
     namespace
     {
+        void EnsureRootComponent(GameObject& gameObject)
+        {
+            if (gameObject.GetRootComponent())
+            {
+                return;
+            }
+
+            std::shared_ptr<SceneComponent> root = std::make_shared<SceneComponent>();
+            root->SetOwner(&gameObject);
+            gameObject.SetRootComponent(root);
+            gameObject.GetComponents().push_back(root);
+        }
+
+        void PopulateEditorDefaultScene(Scene& scene)
+        {
+            std::shared_ptr<GameObject> cameraGO = scene.CreateGameObject();
+            cameraGO->SetName("EditorCamera");
+            EnsureRootComponent(*cameraGO);
+            cameraGO->SetPosition(Vector3(0.0f, 2.0f, 6.0f));
+
+            std::shared_ptr<GameObject> lightGO = scene.CreateGameObject();
+            lightGO->SetName("KeyLight");
+            EnsureRootComponent(*lightGO);
+            lightGO->SetPosition(Vector3(-2.0f, 3.0f, 1.0f));
+
+            std::shared_ptr<GameObject> cubeGO = scene.CreateGameObject();
+            cubeGO->SetName("SampleCube");
+            EnsureRootComponent(*cubeGO);
+            cubeGO->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+        }
+
         void ApplyEditorTheme()
         {
             ImGuiStyle& style = ImGui::GetStyle();
@@ -69,7 +101,7 @@ namespace minEngine
 
     std::shared_ptr<Scene> Editor::GetActiveScene() const
     {
-        return SceneManager::GetSceneManager().GetCurrentActiveScene();
+        return SceneManager::Get().GetCurrentActiveScene();
     }
 
     std::vector<std::shared_ptr<GameObject>> Editor::GetHierarchyGameObjects() const
@@ -214,7 +246,7 @@ namespace minEngine
 
     bool Editor::CreateNewScene(const std::string& scenePath)
     {
-        std::shared_ptr<Scene> scene = SceneManager::GetSceneManager().CreateNewScene(scenePath);
+        std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene(scenePath);
         const bool success = static_cast<bool>(scene);
         if (success)
         {
@@ -225,7 +257,7 @@ namespace minEngine
 
     bool Editor::OpenScene(const std::string& scenePath)
     {
-        const bool success = SceneManager::GetSceneManager().LoadScene(scenePath);
+        const bool success = SceneManager::Get().LoadScene(scenePath);
         if (success)
         {
             ClearSceneDirty();
@@ -248,7 +280,7 @@ namespace minEngine
             currentScene->sceneName = scenePath.string();
         }
 
-        if (!SceneSerializer::SaveScene(*currentScene, scenePath))
+        if (!SceneSerializer::SaveScene(scenePath, *currentScene))
         {
             return false;
         }
@@ -276,7 +308,7 @@ namespace minEngine
             outputPath += ".scene.json";
         }
 
-        if (!SceneSerializer::SaveScene(*currentScene, outputPath))
+        if (!SceneSerializer::SaveScene(outputPath, *currentScene))
         {
             return false;
         }
@@ -345,7 +377,28 @@ namespace minEngine
         RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
         m_EditorGUIManager.Initialize(*this);
 
-        CreateNewScene("Assets/Scenes/EditorDefault.scene.json");
+        const std::filesystem::path defaultScenePath("Assets/Scenes/EditorDefault.scene.json");
+        if (std::filesystem::exists(defaultScenePath))
+        {
+            if (!OpenScene(defaultScenePath.string()))
+            {
+                CreateNewScene(defaultScenePath.string());
+                if (std::shared_ptr<Scene> scene = GetActiveScene())
+                {
+                    PopulateEditorDefaultScene(*scene);
+                    MarkSceneDirty();
+                }
+            }
+        }
+        else
+        {
+            CreateNewScene(defaultScenePath.string());
+            if (std::shared_ptr<Scene> scene = GetActiveScene())
+            {
+                PopulateEditorDefaultScene(*scene);
+                MarkSceneDirty();
+            }
+        }
     }
 
     void Editor::Shutdown()

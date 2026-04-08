@@ -32,7 +32,7 @@ namespace minEngine
 
         void RegisterInputComponent()
         {
-            InputSystem::GetInputSystem().AddInputComponent(this);
+            InputSystem::Get().AddInputComponent(this);
         }
 
 

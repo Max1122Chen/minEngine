@@ -27,7 +27,7 @@ namespace minEngine
 
     void BasePass::Render()
     {
-        RHI* rhi = RenderSystem::GetRenderSystem().GetRHI();
+        RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
             return;
@@ -35,8 +35,8 @@ namespace minEngine
         rhi->EnableDepthTest();
 
         // render all primitives but only static mesh for now
-        RenderScene* renderScene = RenderSystem::GetRenderSystem().m_RenderScene.get();
-        RenderCamera* mainCamera = RenderSystem::GetRenderSystem().GetMainCamera();
+        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
+        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
 
         for(auto& drawCommand : m_DrawCommands)
         {

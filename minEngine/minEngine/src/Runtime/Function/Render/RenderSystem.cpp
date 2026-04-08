@@ -59,7 +59,7 @@ namespace minEngine
         ME_CORE_INFO("RenderSystem Shutdown");
     }
 
-    RenderSystem &RenderSystem::GetRenderSystem()
+    RenderSystem &RenderSystem::Get()
     {
         return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem;
     }

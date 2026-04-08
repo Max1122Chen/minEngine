@@ -86,7 +86,7 @@ namespace minEngine
     {
         if(m_bRenderStateDirty)     
         {
-            SceneManager::GetSceneManager().GetRenderScene()->UpdateLight(this);
+            SceneManager::Get().GetRenderScene()->UpdateLight(this);
             m_bRenderStateDirty = false;
         }
     }
