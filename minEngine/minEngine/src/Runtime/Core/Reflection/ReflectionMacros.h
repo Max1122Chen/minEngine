@@ -43,7 +43,14 @@ namespace \
         minEngine::Reflection::TypeInfo typeInfo; \
         typeInfo.typeName = #TYPE; \
         typeInfo.size = sizeof(TYPE); \
+        typeInfo.category = minEngine::Reflection::GetTypeCategory<TYPE>(); \
         typeInfo.writeToJson = &minEngine::Reflection::WriteToJsonErased<TYPE>; \
+        // typeInfo.writePointerToJson = &minEngine::Reflection::WritePointerToJsonErased<TYPE>;
+
+#define ME_REFLECT_TYPE_META(...) \
+        { \
+            typeInfo.BuildMetadata({ __VA_ARGS__ }); \
+        }
 
 #define ME_REFLECT_BASE(TYPE, BASE) \
         { \
@@ -70,6 +77,7 @@ namespace \
             minEngine::Reflection::FieldInfo fieldInfo; \
             fieldInfo.fieldName = #FIELD; \
             fieldInfo.fieldTypeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
+            fieldInfo.category = minEngine::Reflection::GetTypeCategory<FIELD_TYPE>(); \
             fieldInfo.constAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetConst_, FIELD); \
             fieldInfo.mutableAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetMutable_, FIELD); \
             typeInfo.fields.push_back(std::move(fieldInfo)); \
@@ -82,6 +90,7 @@ namespace \
             minEngine::Reflection::FieldInfo fieldInfo; \
             fieldInfo.fieldName = #FIELD; \
             fieldInfo.fieldTypeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
+            fieldInfo.category = minEngine::Reflection::GetTypeCategory<FIELD_TYPE>(); \
             fieldInfo.constAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetConst_, FIELD); \
             fieldInfo.mutableAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetMutable_, FIELD); \
             fieldInfo.BuildMetadata({ __VA_ARGS__ }); \

@@ -1,0 +1,58 @@
+{
+    "gameObjects": [
+        {
+            "components": [
+                {
+                    "$context": {
+                        "m_Transform": {
+                            "$context": {
+                                "Position": [
+                                    0.0,
+                                    0.0,
+                                    0.0
+                                ],
+                                "Rotation": [
+                                    0.0,
+                                    0.0,
+                                    0.0
+                                ],
+                                "Scale": [
+                                    1.0,
+                                    1.0,
+                                    1.0
+                                ]
+                            },
+                            "$typeName": "minEngine::Transform"
+                        }
+                    },
+                    "$typeName": "minEngine::SceneComponent"
+                },
+                {
+                    "$context": {
+                        "IntArray": [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ],
+                        "SampleData": {
+                            "$context": {
+                                "EnumField": "ValueB",
+                                "FloatField": 3.140000104904175,
+                                "IntField": 42,
+                                "StringField": "Hello, Reflection!"
+                            },
+                            "$typeName": "minEngine::ReflectionSampleClass"
+                        }
+                    },
+                    "$typeName": "minEngine::ReflectionSampleComponent"
+                }
+            ],
+            "id": 0,
+            "name": "SampleObject"
+        }
+    ],
+    "sceneName": "Assets/Scenes/EditorDefault.scene.json",
+    "sceneVersion": 1
+}

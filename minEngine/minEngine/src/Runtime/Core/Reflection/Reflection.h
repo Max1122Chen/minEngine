@@ -367,6 +367,41 @@ namespace minEngine::Reflection
         std::unordered_map<std::string, std::string> m_DeclaredEnumNameByTypeId;
     };
 
+    template<typename T>
+    inline const TypeCategory GetTypeCategory()
+    {
+        if constexpr (std::is_arithmetic_v<T>           ||
+                      std::is_same_v<T, std::string>    ||
+                      std::is_same_v<T, Vector2>        || // TODO: currently treating glm::vec2/3/4 as primitive types for simplicity, but we might want to have special handling for them in the future (e.g. to display them nicely in editor UI)
+                      std::is_same_v<T, Vector3>        ||
+                      std::is_same_v<T, Vector4>
+                    )
+        {
+            return TypeCategory::Primitive;
+        }
+        else if constexpr (std::is_enum_v<T>)
+        {
+            return TypeCategory::Enum;
+        }
+        else if constexpr (std::is_pointer_v<T>)
+        {
+            return TypeCategory::Pointer;
+        }
+        else if constexpr (minEngine::is_vector<T>::value)
+        {
+            return TypeCategory::Array;
+        }
+        else if constexpr (std::is_class_v<T>)
+        {
+            return TypeCategory::Object;
+        }
+        else 
+        {
+            static_assert(!sizeof(T), "Unsupported field type");
+            return TypeCategory::Unknown;
+        }
+    }
+
     inline const TypeInfo* GetTypeInfo(const std::string& declaredName)
     {
         return ReflectionSystem::Get().GetTypeInfo(declaredName);
@@ -421,6 +456,7 @@ namespace minEngine::Reflection
                 return enumInfo->enumName;
             }
 
+            // Return the raw type name as a fallback. This can lead to different strings for the same type across different compilers or even different runs, but it ensures that we always get some kind of name for any type.
             return typeid(RawType).name();
         }
     }
@@ -437,6 +473,7 @@ namespace minEngine::Reflection
             ArrayTypeInfo arrayInfo;
             arrayInfo.typeName = GetTypeName<RawType>();
             arrayInfo.elementTypeName = GetTypeName<ElementType>();
+            arrayInfo.elementCategory = GetTypeCategory<ElementType>();
 
             arrayInfo.getSize = [](const void* arrayObject) -> size_t
             {

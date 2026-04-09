@@ -27,6 +27,8 @@ namespace minEngine::Reflection
     using FieldVisitorFn = std::function<bool(const FieldInfo&)>;
 
     using WriteToJsonFn = Json (*)(const void*);
+    using WritePointerToJsonFn = Json (*)(const void*);
+
     using CreateInstanceFn = std::shared_ptr<void> (*)();
 
     using FieldConstAccessorFn = const void* (*)(const void*);
@@ -47,10 +49,21 @@ namespace minEngine::Reflection
         return { key, value };
     }
 
+    enum class TypeCategory
+    {
+        Unknown,
+        Primitive,
+        Enum,
+        Object,
+        Pointer,
+        Array
+    };
+
     struct FieldInfo
     {
         std::string fieldName;
         std::string fieldTypeName;
+        TypeCategory category;
         FieldConstAccessorFn constAccessor = nullptr;
         FieldMutableAccessorFn mutableAccessor = nullptr;
         MetadataMap metadata;
@@ -84,18 +97,42 @@ namespace minEngine::Reflection
     struct TypeInfo
     {
         std::string typeName;
+        TypeCategory category;
         size_t size = 0;
         std::vector<BaseTypeInfo> directBases;
         std::vector<FieldInfo> fields;
 
         WriteToJsonFn writeToJson;
+        WritePointerToJsonFn writePointerToJson;
         CreateInstanceFn createInstance = nullptr;
+
+        MetadataMap metadata;
+
+        const void BuildMetadata(std::initializer_list<std::pair<std::string, std::string>> entries)
+        {
+            for (const auto& entry : entries)
+            {
+                metadata[entry.first] = entry.second;
+            }
+        }
+
+        const std::string* FindMetadata(const std::string& key) const
+        {
+            const auto iter = metadata.find(key);
+            if (iter == metadata.end())
+            {
+                return nullptr;
+            }
+            return &iter->second;
+        }
     };
 
     struct ArrayTypeInfo
     {
+        using ElementTypeCategory = Reflection::TypeCategory;
         std::string typeName;
         std::string elementTypeName;
+        ElementTypeCategory elementCategory;
 
         ArrayGetSizeFn getSize = nullptr;
         ArrayResizeFn resize = nullptr;

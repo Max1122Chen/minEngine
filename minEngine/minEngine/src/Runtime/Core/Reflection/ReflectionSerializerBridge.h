@@ -8,4 +8,11 @@ namespace minEngine::Reflection
     {
         return minEngine::Serializer::Write(*static_cast<const T*>(value));
     }
+
+    template<typename T>
+    static Json WritePointerToJsonErased(const void* value)
+    {
+        // return minEngine::Serializer::WritePointer(*static_cast<const T*>(value));
+        return Json(); // TODO: implement this later
+    }
 }

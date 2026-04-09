@@ -6,6 +6,7 @@
 namespace minEngine
 {
     // Container traits
+    // Vector trait
     template<typename T>
     struct is_vector : std::false_type
     {};

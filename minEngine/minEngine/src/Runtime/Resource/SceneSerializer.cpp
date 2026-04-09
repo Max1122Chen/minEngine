@@ -136,7 +136,7 @@ namespace minEngine
                     continue;
                 }
 
-                components.push_back(Serializer::WriteByName(dynamicTypeName, component.get()));
+                components.push_back(Serializer::WriteByName(dynamicTypeName, Reflection::GetTypeCategory<Component>(), component.get()));
             }
 
             objectJson["components"] = std::move(components);

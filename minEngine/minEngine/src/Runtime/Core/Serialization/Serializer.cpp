@@ -148,8 +148,90 @@ namespace minEngine
     }
 
 
-    Json Serializer::WriteByName(const std::string& typeName, const void* value)
+    Json Serializer::WriteByName(const std::string& typeName, Reflection::TypeCategory category, const void* value)
 	{
+        switch(category)
+        {
+            case Reflection::TypeCategory::Primitive:      return WriteByName_Primitive(typeName, value);
+            case Reflection::TypeCategory::Object:         return WriteByName_Object(typeName, value);      
+            case Reflection::TypeCategory::Enum:           return WriteByName_Enum(typeName, value);
+            case Reflection::TypeCategory::Array:          return WriteByName_Array(typeName, value);       
+        }
+
+		ME_CORE_ERROR("[Serializer] No serialization function found for type '{}'", typeName);
+		return Json();
+	}
+
+    Json Serializer::WriteByName_Primitive(const std::string& typeName, const void* value)
+    {
+        if (typeName == "int")
+        {
+            return Write<int>(*static_cast<const int*>(value));
+        }
+        else if (typeName == "float")
+        {
+            return Write<float>(*static_cast<const float*>(value));
+        }
+        else if (typeName == "double")
+        {
+            return Write<double>(*static_cast<const double*>(value));
+        }
+        else if (typeName == "bool")
+        {
+            return Write<bool>(*static_cast<const bool*>(value));
+        }
+        else if (typeName == "std::string")
+        {
+            return Write<std::string>(*static_cast<const std::string*>(value));
+        }
+        else if (typeName == "Vector2" || typeName == "minEngine::Vector2")
+        {
+            return Write<minEngine::Vector2>(*static_cast<const minEngine::Vector2*>(value));
+        }
+        else if (typeName == "Vector3" || typeName == "minEngine::Vector3")
+        {
+            return Write<minEngine::Vector3>(*static_cast<const minEngine::Vector3*>(value));
+        }
+        else if (typeName == "Vector4" || typeName == "minEngine::Vector4")
+        {
+            return Write<minEngine::Vector4>(*static_cast<const minEngine::Vector4*>(value));
+        }
+
+        ME_CORE_ERROR("[Serializer] No primitive serialization function found for type '{}'", typeName);
+        return Json();
+    }
+
+    Json Serializer::WriteByName_Object(const std::string& typeName, const void* value)
+    {
+        // Check for registered types in the reflection system with write functions.
+        const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
+        if (typeInfo && typeInfo->writeToJson)
+        {
+            Json result = {{"$typeName", Json(typeName)},
+                           {"$context", typeInfo->writeToJson(value)}};
+            return result;
+        }
+
+        ME_CORE_ERROR("[Serializer] No object serialization function found for type '{}'", typeName);
+        return Json();
+    }
+
+    Json Serializer::WriteByName_Enum(const std::string& typeName, const void* value)
+    {
+        // Check if the type is a enum and serialize it as its underlying integer type.
+        const Reflection::EnumInfo* enumInfo = Reflection::GetEnumInfo(typeName);
+        if (enumInfo)
+        {
+            const Reflection::EnumValueInfo* enumValueInfo = enumInfo->FindByValue(*static_cast<const int64_t*>(value));
+            return Write<std::string>(enumValueInfo->name);
+        }
+
+        ME_CORE_ERROR("[Serializer] No enum serialization function found for type '{}'", typeName);
+        return Json();
+    }
+
+    Json Serializer::WriteByName_Array(const std::string& typeName, const void* value)
+    {
         // Check if it's an array type first, since array is also a "type" that has a TypeInfo
         const Reflection::ArrayTypeInfo* arrayTypeInfo = Reflection::GetArrayTypeInfo(typeName);
         if (arrayTypeInfo != nullptr)
@@ -170,66 +252,28 @@ namespace minEngine
                     continue;
                 }
 
-                arrayContext.push_back(WriteByName(arrayTypeInfo->elementTypeName, elementPtr));
+                arrayContext.push_back(WriteByName(arrayTypeInfo->elementTypeName, arrayTypeInfo->elementCategory, elementPtr));
             }
 
             return arrayContext;
         }
 
-        // Check if the type has a registered writeToJson function in the reflection system first.
-		const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
-		if (typeInfo && typeInfo->writeToJson)
-		{
-            Json result = {{"$typeName", Json(typeName)},
-                           {"$context", typeInfo->writeToJson(value)}};
-			return result;
-		}
-		
-        // Then check for built-in types with explicit specializations.
-		if(typeName == "int")
-		{
-			return Write<int>(*static_cast<const int*>(value));
-		}
-		else if(typeName == "float")
-		{
-			return Write<float>(*static_cast<const float*>(value));
-		}
-		else if(typeName == "double")
-		{
-			return Write<double>(*static_cast<const double*>(value));
-		}
-		else if(typeName == "bool")
-		{
-			return Write<bool>(*static_cast<const bool*>(value));
-		}
-		else if(typeName == "std::string")
-		{
-			return Write<std::string>(*static_cast<const std::string*>(value));
-		}
-        else if(typeName == "Vector2" || typeName == "minEngine::Vector2")
-		{
-			return Write<minEngine::Vector2>(*static_cast<const minEngine::Vector2*>(value));
-		}
-        else if(typeName == "Vector3" || typeName == "minEngine::Vector3")
-		{
-			return Write<minEngine::Vector3>(*static_cast<const minEngine::Vector3*>(value));
-		}
-        else if(typeName == "Vector4" || typeName == "minEngine::Vector4")
-		{
-			return Write<minEngine::Vector4>(*static_cast<const minEngine::Vector4*>(value));
-		}
+        ME_CORE_ERROR("[Serializer] No array serialization function found for type '{}'", typeName);
+        return Json();
+    }
 
-        // Lastly, check if the type is a enum and serialize it as its underlying integer type.
-        const Reflection::EnumInfo* enumInfo = Reflection::GetEnumInfo(typeName);
-        if (enumInfo)
+    Json Serializer::WriteByName_Pointer(const std::string& typeName, const void* value)
+    {
+        if (value == nullptr)
         {
-            const Reflection::EnumValueInfo* enumValueInfo = enumInfo->FindByValue(*static_cast<const int64_t*>(value));
-            return Write<std::string>(enumValueInfo->name);
+            return Json();
         }
 
-		ME_CORE_ERROR("[Serializer] No serialization function found for type '{}'", typeName);
-		return Json();
-	}
+        // TODO: Complete this
+        return Json();
+    }
+
+
 
     bool Serializer::ReadByName(const std::string& typeName, const Json& json, void* outValue)
     {

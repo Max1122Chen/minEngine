@@ -12,14 +12,30 @@ namespace minEngine
 	{
 	public:
 
-		static Json WriteByName(const std::string& typeName, const void* value);
+		static Json WriteByName(const std::string& typeName, Reflection::TypeCategory category, const void* value);
 		static bool ReadByName(const std::string& typeName, const Json& json, void* outValue);
 
 		template<typename T>
 		static Json Write(const T& value);
 
 		template<typename T>
+		static Json WritePointer(const T*& value);
+
+		template<typename T>
 		static bool Read(const Json& json, T& outValue);
+
+	private:
+		Serializer() = delete;
+		Serializer(const Serializer&) = delete;
+		Serializer& operator=(const Serializer&) = delete;
+
+		static Json WriteByName_Primitive(const std::string& typeName, const void* value);
+		static Json WriteByName_Object(const std::string& typeName, const void* value);
+		static Json WriteByName_Enum(const std::string& typeName, const void* value);
+		static Json WriteByName_Array(const std::string& typeName, const void* value);
+		static Json WriteByName_Pointer(const std::string& typeName, const void* value);
+
+		// TODO: read by name for different categories as well.
 
 	};
 
@@ -27,6 +43,7 @@ namespace minEngine
 	template<typename T>
     Json Serializer::Write(const T& value)
     {
+		// Write Object
         Json result;
         const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo<T>();
         if (typeInfo)
@@ -36,7 +53,7 @@ namespace minEngine
 				const void* fieldValuePtr = fieldInfo.constAccessor(&value);
 				if (fieldValuePtr)
                 {
-					result[fieldInfo.fieldName] = WriteByName(fieldInfo.fieldTypeName, fieldValuePtr);
+					result[fieldInfo.fieldName] = WriteByName(fieldInfo.fieldTypeName, fieldInfo.category, fieldValuePtr);
 				}
 				else
 				{
@@ -44,8 +61,22 @@ namespace minEngine
                 }
             }
         }
+		else
+		{
+			ME_CORE_ERROR("[Serializer] Write is not implemented for type '{}'", typeid(T).name());
+		}
         return result;
     }
+
+	template<typename T>
+	Json Serializer::WritePointer(const T*& value)
+	{
+		if(value == nullptr)
+		{
+			return Json();
+		}
+		return Write<T>(*value);
+	}
 
 	template<typename T>
 	bool Serializer::Read(const Json& json, T& outValue)

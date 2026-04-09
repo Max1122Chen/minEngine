@@ -24,8 +24,9 @@ CLASS_DECL_RE = re.compile(r"^\s*(class|struct)\s+(\w+)\s*[^\{;]*\{", re.MULTILI
 ENUM_DECL_RE = re.compile(r"^\s*enum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\{", re.MULTILINE)
 PROPERTY_MARK_RE = re.compile(r"^\s*ME_PROPERTY\s*\((.*?)\)\s*$")
 MEMBER_DECL_RE = re.compile(r"^\s*([\w:<>]+)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
+CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\((.*?)\)", re.DOTALL)
 
-TOOL_CACHE_VERSION = 6
+TOOL_CACHE_VERSION = 7
 
 
 @dataclass
@@ -44,6 +45,7 @@ class ClassMeta:
     source_rel: str
     decl_pos: int
     class_hash: str
+    metadata: dict[str, str]
     base_types: list[str]
     has_virtual_inheritance: bool
     properties: list[PropertyMeta]
@@ -257,7 +259,21 @@ def find_matching_brace(source: str, open_brace_index: int) -> int:
 def has_class_marker(source: str, class_start: int) -> bool:
     window_start = max(0, class_start - 256)
     window = source[window_start:class_start]
-    return re.search(r"ME_(?:CLASS|STRUCT)\s*\((.*?)\)", window, re.DOTALL) is not None
+    return CLASS_MARK_RE.search(window) is not None
+
+
+def parse_class_metadata(source: str, class_start: int) -> dict[str, str]:
+    window_start = max(0, class_start - 256)
+    window = source[window_start:class_start]
+    matches = list(CLASS_MARK_RE.finditer(window))
+    if not matches:
+        return {}
+
+    marker_arg_text = matches[-1].group(1).strip()
+    if not marker_arg_text:
+        return {}
+
+    return parse_property_metadata(marker_arg_text)
 
 
 def has_enum_marker(source: str, enum_start: int) -> bool:
@@ -286,6 +302,7 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
         body = source[open_brace + 1:close_brace]
         class_decl_head = source[class_start:open_brace]
         namespace_name = parse_namespace_prefix(source, class_start)
+        class_metadata = parse_class_metadata(source, class_start)
         base_types, has_virtual_inheritance = parse_base_type_list(class_decl_head, namespace_name)
         body_lines = body.splitlines()
         props: list[PropertyMeta] = []
@@ -331,6 +348,7 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 source_rel=source_rel,
                 decl_pos=class_start,
                 class_hash=class_hash,
+                metadata=class_metadata,
                 base_types=base_types,
                 has_virtual_inheritance=has_virtual_inheritance,
                 properties=props,
@@ -468,6 +486,12 @@ def render_class_gen_header(meta: ClassMeta) -> str:
     lines.append('#include "Runtime/Core/Reflection/ReflectionMacros.h"')
     lines.append("")
     lines.append(f"ME_REFLECT_TYPE_BEGIN({type_name})")
+    if meta.metadata:
+        metadata_entries = ", ".join(
+            f'minEngine::Reflection::MetaKV("{escape_cpp_string(key)}", "{escape_cpp_string(value)}")'
+            for key, value in sorted(meta.metadata.items())
+        )
+        lines.append(f"    ME_REFLECT_TYPE_META({metadata_entries})")
     for prop in meta.properties:
         if prop.metadata:
             metadata_entries = ", ".join(
@@ -505,6 +529,12 @@ def render_class_registration(meta: ClassMeta) -> list[str]:
     lines: list[str] = []
     type_name = full_type_name(meta)
     lines.append(f"ME_REFLECT_TYPE_BEGIN({type_name})")
+    if meta.metadata:
+        metadata_entries = ", ".join(
+            f'minEngine::Reflection::MetaKV("{escape_cpp_string(key)}", "{escape_cpp_string(value)}")'
+            for key, value in sorted(meta.metadata.items())
+        )
+        lines.append(f"    ME_REFLECT_TYPE_META({metadata_entries})")
     for base_type in meta.base_types:
         lines.append(f"    ME_REFLECT_BASE({type_name}, {base_type})")
     for prop in meta.properties:
@@ -595,6 +625,7 @@ def class_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> ClassMeta
         source_rel=entry.get("source_rel", entry.get("source_include", "")),
         decl_pos=entry.get("decl_pos", 0),
         class_hash=entry.get("class_hash", ""),
+        metadata=entry.get("metadata", {}),
         base_types=entry.get("base_types", []),
         has_virtual_inheritance=entry.get("has_virtual_inheritance", False),
         properties=properties,
@@ -889,6 +920,7 @@ def main() -> int:
             "class_name": cls.class_name,
             "decl_pos": cls.decl_pos,
             "class_hash": cls.class_hash,
+            "metadata": cls.metadata,
             "base_types": cls.base_types,
             "has_virtual_inheritance": cls.has_virtual_inheritance,
             "content_hash": sha256_text(render_class_registration(cls).__repr__()),
