@@ -150,6 +150,7 @@ namespace minEngine
 
     Json Serializer::WriteByName(const std::string& typeName, const void* value)
 	{
+        // Check if it's an array type first, since array is also a "type" that has a TypeInfo
         const Reflection::ArrayTypeInfo* arrayTypeInfo = Reflection::GetArrayTypeInfo(typeName);
         if (arrayTypeInfo != nullptr)
         {
@@ -237,6 +238,7 @@ namespace minEngine
             return false;
         }
 
+        // Check if it's an array type first, since array is also a "type" that has a TypeInfo
         const Reflection::ArrayTypeInfo* arrayTypeInfo = Reflection::GetArrayTypeInfo(typeName);
         if (arrayTypeInfo != nullptr)
         {
@@ -263,6 +265,7 @@ namespace minEngine
             return true;
         }
 
+        // Then check for registered types in the reflection system with read/write functions.
         const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
         if (typeInfo != nullptr)
         {
@@ -330,6 +333,24 @@ namespace minEngine
         else if(typeName == "Vector4" || typeName == "minEngine::Vector4")
         {
             return Read<minEngine::Vector4>(json, *static_cast<minEngine::Vector4*>(outValue));
+        }
+
+        // Lastly, check if the type is a enum and deserialize it as its underlying integer type.
+        const Reflection::EnumInfo* enumInfo = Reflection::GetEnumInfo(typeName);
+        if (enumInfo)
+        {
+            if (!json.is_string())
+            {
+                return false;
+            }
+            std::string enumValueName = json.get<std::string>();
+            const Reflection::EnumValueInfo* enumValueInfo = enumInfo->FindByName(enumValueName);
+            if (enumValueInfo == nullptr)
+            {
+                return false;
+            }
+            *static_cast<int64_t*>(outValue) = enumValueInfo->value;
+            return true;
         }
 
         ME_CORE_ERROR("[Serializer] No deserialization function found for type '{}'", typeName);

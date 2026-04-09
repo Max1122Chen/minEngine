@@ -34,14 +34,11 @@ namespace minEngine
     class ReflectionSampleComponent : public Component
     {
     public:
-        ME_PROPERTY(EditAnywhere) 
-        Vector3 Position;
+        ME_PROPERTY(EditAnywhere)
+        ReflectionSampleClass SampleData;
 
         ME_PROPERTY(EditAnywhere)
-        Vector3 Rotation;
-
-        ME_PROPERTY(EditAnywhere)
-        Vector3 Scale = Vector3(1.0f);
+        std::vector<int> IntArray{ 1, 2, 3, 4, 5 };
     };
 }
 

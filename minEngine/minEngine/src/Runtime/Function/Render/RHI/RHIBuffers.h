@@ -30,7 +30,7 @@ namespace minEngine
         default:                         return 0;
         }
 
-       MINENGINE_ASSERT(false, "Unknown VertexElementType!"); 
+       ME_ASSERT(false, "Unknown VertexElementType!"); 
         return 0;
     }
 
@@ -52,7 +52,7 @@ namespace minEngine
         default:                         return 0;
         }
 
-        MINENGINE_ASSERT(false, "Unknown VertexElementType!");
+        ME_ASSERT(false, "Unknown VertexElementType!");
         return 0;
     }
 

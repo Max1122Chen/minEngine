@@ -15,6 +15,8 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 
+#include "Runtime/Core/Reflection/ReflectionSample.h"
+
 #include <algorithm>
 
 namespace minEngine
@@ -36,20 +38,13 @@ namespace minEngine
 
         void PopulateEditorDefaultScene(Scene& scene)
         {
-            std::shared_ptr<GameObject> cameraGO = scene.CreateGameObject();
-            cameraGO->SetName("EditorCamera");
-            EnsureRootComponent(*cameraGO);
-            cameraGO->SetPosition(Vector3(0.0f, 2.0f, 6.0f));
+            std::shared_ptr<GameObject> sampleGO = scene.CreateGameObject();
+            sampleGO->SetName("SampleObject");
+            EnsureRootComponent(*sampleGO);
+            sampleGO->CreateAndAddComponent<ReflectionSampleComponent>();
+            
 
-            std::shared_ptr<GameObject> lightGO = scene.CreateGameObject();
-            lightGO->SetName("KeyLight");
-            EnsureRootComponent(*lightGO);
-            lightGO->SetPosition(Vector3(-2.0f, 3.0f, 1.0f));
-
-            std::shared_ptr<GameObject> cubeGO = scene.CreateGameObject();
-            cubeGO->SetName("SampleCube");
-            EnsureRootComponent(*cubeGO);
-            cubeGO->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            
         }
 
         void ApplyEditorTheme()

@@ -63,6 +63,7 @@ namespace \
             typeInfo.directBases.push_back(std::move(baseInfo)); \
         }
 
+// Macro for reflecting a field.
 #define ME_REFLECT_FIELD_T(TYPE, FIELD, FIELD_TYPE) \
         { \
             minEngine::Reflection::TryRegisterArrayType<FIELD_TYPE>(); \
@@ -74,6 +75,7 @@ namespace \
             typeInfo.fields.push_back(std::move(fieldInfo)); \
         }
 
+// Macro with metadata support.
 #define ME_REFLECT_FIELD_META_T(TYPE, FIELD, FIELD_TYPE, ...) \
         { \
             minEngine::Reflection::TryRegisterArrayType<FIELD_TYPE>(); \

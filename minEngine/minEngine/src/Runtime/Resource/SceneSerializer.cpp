@@ -11,41 +11,6 @@
 
 namespace minEngine
 {
-    namespace
-    {
-        Json WriteTransformJson(const Transform& transform)
-        {
-            Json result = Json::object();
-            result["position"] = Serializer::Write<Vector3>(transform.Position);
-            result["rotation"] = Serializer::Write<Vector3>(transform.Rotation);
-            result["scale"] = Serializer::Write<Vector3>(transform.Scale);
-            return result;
-        }
-
-        bool ReadTransformJson(const Json& json, Transform& outTransform)
-        {
-            if (!json.is_object())
-            {
-                return false;
-            }
-
-            if (json.contains("position"))
-            {
-                Serializer::Read<Vector3>(json["position"], outTransform.Position);
-            }
-            if (json.contains("rotation"))
-            {
-                Serializer::Read<Vector3>(json["rotation"], outTransform.Rotation);
-            }
-            if (json.contains("scale"))
-            {
-                Serializer::Read<Vector3>(json["scale"], outTransform.Scale);
-            }
-
-            return true;
-        }
-    }
-
     bool SceneSerializer::LoadScene(const std::filesystem::path& filePath, Scene& outScene)
     {
         std::ifstream input(filePath);
@@ -94,24 +59,8 @@ namespace minEngine
                 continue;
             }
 
-            if (!gameObject->GetRootComponent())
-            {
-                std::shared_ptr<SceneComponent> rootComponent = std::make_shared<SceneComponent>();
-                rootComponent->SetOwner(gameObject.get());
-                gameObject->SetRootComponent(rootComponent);
-                gameObject->GetComponents().push_back(rootComponent);
-            }
-
+            // Set GO name to "GameObject_{id}" currently
             gameObject->SetName(objectJson.value("name", std::string("GameObject_") + std::to_string(objectId)));
-
-            if (objectJson.contains("transform") && gameObject->GetRootComponent())
-            {
-                Transform transform = gameObject->GetRootComponent()->GetTransform();
-                if (ReadTransformJson(objectJson["transform"], transform))
-                {
-                    gameObject->SetTransform(transform);
-                }
-            }
 
             if (!objectJson.contains("components") || !objectJson["components"].is_array())
             {
@@ -171,11 +120,6 @@ namespace minEngine
             Json objectJson = Json::object();
             objectJson["id"] = id;
             objectJson["name"] = gameObject->GetName();
-
-            if (gameObject->GetRootComponent())
-            {
-                objectJson["transform"] = WriteTransformJson(gameObject->GetRootComponent()->GetTransform());
-            }
 
             Json components = Json::array();
             for (const std::shared_ptr<Component>& component : gameObject->GetComponents())

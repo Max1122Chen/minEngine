@@ -53,7 +53,7 @@ namespace minEngine
                 }
 
                 const bool hasScene = static_cast<bool>(m_Editor.GetActiveScene());
-                const bool canSave = hasScene && m_Editor.IsSceneDirty();
+                const bool canSave = hasScene /* && m_Editor.IsSceneDirty() */; // Allow saving even if there are no changes to avoid accidentally losing work by closing the editor without saving.
                 if (ImGui::MenuItem("Save", "Ctrl+S", false, canSave))
                 {
                     m_Editor.SaveCurrentScene();

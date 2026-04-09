@@ -24,7 +24,7 @@ namespace minEngine::Reflection
             const std::string declaredName = info.typeName;
             const std::string typeIdName = typeid(T).name();
 
-            if (info.createInstance == nullptr)
+            if(info.createInstance == nullptr)
             {
                 info.createInstance = &CreateDefaultInstance<T>;
             }
@@ -438,13 +438,6 @@ namespace minEngine::Reflection
             arrayInfo.typeName = GetTypeName<RawType>();
             arrayInfo.elementTypeName = GetTypeName<ElementType>();
 
-            if constexpr (is_smart_ptr<ElementType>::value)
-            {
-                // Traits the pointee type of the smart pointer element. 
-                using PointeeType = typename is_smart_ptr<ElementType>::pointee;
-                arrayInfo.isArrayOfPtr = true;
-                arrayInfo.elementPointeeTypeName = GetTypeName<PointeeType>();
-            }
             arrayInfo.getSize = [](const void* arrayObject) -> size_t
             {
                 if (arrayObject == nullptr)
@@ -503,6 +496,30 @@ namespace minEngine::Reflection
         return ReflectionSystem::Get().GetArrayTypeInfo(declaredName);
     }
 
+    bool ForEachFieldInHierarchy(const std::string& rootTypeName, const FieldVisitorFn& visitor);
+
+    const void* CastObjectToType(const void* object, const std::string& sourceTypeName, const std::string& targetTypeName);
+
+    void* CastObjectToType(void* object, const std::string& sourceTypeName, const std::string& targetTypeName);
+
+    template<typename T>
+    inline static const EnumInfo* GetEnumInfo()
+    {
+        return ReflectionSystem::Get().GetEnumInfo<T>();
+    }
+
+    inline static const EnumInfo* GetEnumInfo(const std::string& declaredName)
+    {
+        return ReflectionSystem::Get().GetEnumInfo(declaredName);
+    }
+
+
+
+
+
+
+
+    // ------------------------------------------------------------
     // Explicit specialization of GetTypeName for some common types.
     template<>
     inline std::string GetTypeName<bool>()
@@ -550,22 +567,5 @@ namespace minEngine::Reflection
     inline std::string GetTypeName<Vector4>()
     {
         return "Vector4";
-    }
-
-    bool ForEachFieldInHierarchy(const std::string& rootTypeName, const FieldVisitorFn& visitor);
-
-    const void* CastObjectToType(const void* object, const std::string& sourceTypeName, const std::string& targetTypeName);
-
-    void* CastObjectToType(void* object, const std::string& sourceTypeName, const std::string& targetTypeName);
-
-    template<typename T>
-    inline static const EnumInfo* GetEnumInfo()
-    {
-        return ReflectionSystem::Get().GetEnumInfo<T>();
-    }
-
-    inline static const EnumInfo* GetEnumInfo(const std::string& declaredName)
-    {
-        return ReflectionSystem::Get().GetEnumInfo(declaredName);
     }
 }

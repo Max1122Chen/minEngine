@@ -97,12 +97,9 @@ namespace minEngine::Reflection
         std::string typeName;
         std::string elementTypeName;
 
-        bool isArrayOfPtr = false;
-        std::string elementPointeeTypeName;
-
         ArrayGetSizeFn getSize = nullptr;
-        ArrayGetConstElementFn getConstElement = nullptr;
         ArrayResizeFn resize = nullptr;
+        ArrayGetConstElementFn getConstElement = nullptr;
         ArrayGetMutableElementFn getMutableElement = nullptr;
     };
 

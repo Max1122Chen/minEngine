@@ -23,7 +23,7 @@ namespace minEngine
         }
 
         // Set this camera as the main camera in the RenderSystem
-        MINENGINE_ASSERT(m_RenderCamera, "RenderCamera is null!");
+        ME_ASSERT(m_RenderCamera, "RenderCamera is null!");
         RenderSystem::Get().SetMainCamera(m_RenderCamera);
         m_bIsMainCamera = true;
     }
@@ -33,7 +33,7 @@ namespace minEngine
         if(m_bRenderStateDirty)
         {
             // Update RenderCamera's View and Projection Matrices based on CameraComponent's Transform
-            MINENGINE_ASSERT(m_RenderCamera, "RenderCamera is null!");
+            ME_ASSERT(m_RenderCamera, "RenderCamera is null!");
             
             m_RenderCamera->SetPosition(GetPosition());
             m_RenderCamera->SetRotation(GetRotation());
