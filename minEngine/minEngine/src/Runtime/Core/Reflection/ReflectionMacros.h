@@ -14,6 +14,8 @@ namespace minEngine::Reflection \
     {
 
 #define ME_REFLECT_ACCESSOR_FIELD(TYPE, FIELD) \
+    using ME_REFLECT_CONCAT(FieldType_, FIELD) = decltype(std::declval<TYPE>().FIELD); \
+\
         static const void* ME_REFLECT_CONCAT(GetConst_, FIELD)(const void* object) \
         { \
             const TYPE* typedObject = static_cast<const TYPE*>(object); \
@@ -70,38 +72,20 @@ namespace \
             typeInfo.directBases.push_back(std::move(baseInfo)); \
         }
 
-// Macro for reflecting a field.
-#define ME_REFLECT_FIELD_T(TYPE, FIELD, FIELD_TYPE) \
-        { \
-            minEngine::Reflection::TryRegisterArrayType<FIELD_TYPE>(); \
-            minEngine::Reflection::FieldInfo fieldInfo; \
-            fieldInfo.fieldName = #FIELD; \
-            fieldInfo.fieldTypeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
-            fieldInfo.category = minEngine::Reflection::GetTypeCategory<FIELD_TYPE>(); \
-            fieldInfo.constAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetConst_, FIELD); \
-            fieldInfo.mutableAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetMutable_, FIELD); \
-            typeInfo.fields.push_back(std::move(fieldInfo)); \
-        }
-
-// Macro with metadata support.
-#define ME_REFLECT_FIELD_META_T(TYPE, FIELD, FIELD_TYPE, ...) \
-        { \
-            minEngine::Reflection::TryRegisterArrayType<FIELD_TYPE>(); \
-            minEngine::Reflection::FieldInfo fieldInfo; \
-            fieldInfo.fieldName = #FIELD; \
-            fieldInfo.fieldTypeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
-            fieldInfo.category = minEngine::Reflection::GetTypeCategory<FIELD_TYPE>(); \
-            fieldInfo.constAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetConst_, FIELD); \
-            fieldInfo.mutableAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetMutable_, FIELD); \
-            fieldInfo.BuildMetadata({ __VA_ARGS__ }); \
-            typeInfo.fields.push_back(std::move(fieldInfo)); \
-        }
-
-#define ME_REFLECT_FIELD(TYPE, FIELD) \
-        ME_REFLECT_FIELD_T(TYPE, FIELD, decltype(std::declval<TYPE>().FIELD))
-
-#define ME_REFLECT_FIELD_META(TYPE, FIELD, ...) \
-    ME_REFLECT_FIELD_META_T(TYPE, FIELD, decltype(std::declval<TYPE>().FIELD), __VA_ARGS__)
+// Auto-deduced field reflection macro. Metadata entries are optional.
+#define ME_REFLECT_FIELD(TYPE, FIELD, ...) \
+    { \
+            using FIELD_TYPE = typename minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(FieldType_, FIELD); \
+        minEngine::Reflection::TryRegisterArrayType<FIELD_TYPE>(); \
+        minEngine::Reflection::FieldInfo fieldInfo; \
+        fieldInfo.fieldName = #FIELD; \
+        fieldInfo.fieldTypeName = minEngine::Reflection::GetTypeName<FIELD_TYPE>(); \
+        fieldInfo.category = minEngine::Reflection::GetTypeCategory<FIELD_TYPE>(); \
+        fieldInfo.constAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetConst_, FIELD); \
+        fieldInfo.mutableAccessor = &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECT_CONCAT(GetMutable_, FIELD); \
+        fieldInfo.BuildMetadata({ __VA_ARGS__ }); \
+        typeInfo.fields.push_back(std::move(fieldInfo)); \
+    }
 
 #define ME_REFLECT_TYPE_END(TYPE) \
         minEngine::Reflection::ReflectionSystem::Get().RegisterType<TYPE>( \

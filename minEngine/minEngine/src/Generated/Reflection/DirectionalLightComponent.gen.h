@@ -9,5 +9,5 @@ ME_REFLECT_ACCESSOR_END()
 
 ME_REFLECT_TYPE_BEGIN(minEngine::DirectionalLightComponent)
     ME_REFLECT_BASE(minEngine::DirectionalLightComponent, minEngine::LightComponent)
-    ME_REFLECT_FIELD_META_T(minEngine::DirectionalLightComponent, m_Direction, minEngine::Vector3, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
+    ME_REFLECT_FIELD(minEngine::DirectionalLightComponent, m_Direction, minEngine::Reflection::MetaKV("EditAnywhere", "true"))
 ME_REFLECT_TYPE_END(minEngine::DirectionalLightComponent)
