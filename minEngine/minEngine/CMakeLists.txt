@@ -2,7 +2,13 @@ file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-set(REFLECTION_GENERATOR_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool.py)
+option(USE_NEW_REFLECTION_HEADER_TOOL "Use new MEReflection header tool" OFF)
+
+if(USE_NEW_REFLECTION_HEADER_TOOL)
+    set(REFLECTION_GENERATOR_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool_new.py)
+else()
+    set(REFLECTION_GENERATOR_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool.py)
+endif()
 set(REFLECTION_SCAN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(REFLECTION_GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Generated/Reflection)
 set(REFLECTION_GENERATED_MANIFEST ${REFLECTION_GENERATED_DIR}/manifest.json)
