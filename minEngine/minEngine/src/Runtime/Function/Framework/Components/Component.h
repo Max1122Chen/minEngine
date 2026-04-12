@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Core/Object/MEObject.h"
 
 namespace minEngine
 {
@@ -16,7 +17,7 @@ namespace minEngine
      * Base class for all components that can be attached to GameObjects.
      */
     ME_CLASS()
-    class Component
+    class Component : public MEObject
     {
     public:
         Component();

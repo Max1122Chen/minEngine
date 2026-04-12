@@ -1,307 +1,806 @@
 #pragma once
 
-#include "ReflectionTypes.h"
+#include <algorithm>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <typeindex>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
+#include "MEClass.h"
+#include "Math/Math.h"
 #include "TypeTraits.h"
 
 namespace minEngine::Reflection
 {
-    
+    using PropertyVisitorFn = std::function<bool(const MEProperty&)>;
+
+    enum class ReflectionSystemState
+    {
+        Collecting,
+        Finalizing,
+        Ready,
+        Failed
+    };
+
+
+
+    template<typename T>
+    inline constexpr bool kIsPointerLike = PointerLike<RemoveCvRefT<T>>::value;
+
+    template<typename T>
+    using PointeeT = typename PointerLike<RemoveCvRefT<T>>::Type;
+
+    template<typename T>
+    inline constexpr bool kIsPrimitiveLike = std::is_arithmetic_v<T>
+                                           || std::is_same_v<T, std::string>
+                                           || std::is_same_v<T, Vector2>
+                                           || std::is_same_v<T, Vector3>
+                                           || std::is_same_v<T, Vector4>
+                                           || std::is_enum_v<T>;
+
+    struct PendingSuperClassRef
+    {
+        MEClass* derivedClass = nullptr;
+        std::type_index superTypeIndex = typeid(void);
+    };
+
+    struct PendingPropertyClassRef
+    {
+        MEClass* ownerClass = nullptr;
+        MEProperty* property = nullptr;
+        std::type_index referencedTypeIndex = typeid(void);
+    };
 
     class ReflectionSystem
     {
     public:
-
         static ReflectionSystem& Get()
         {
             static ReflectionSystem system;
             return system;
         }
 
-        // Type registration and querying
+        ~ReflectionSystem()
+        {
+            Reset();
+        }
+
+        // Non-copyable and non-movable
+        ReflectionSystem(const ReflectionSystem&) = delete;
+        ReflectionSystem& operator=(const ReflectionSystem&) = delete;
+        ReflectionSystem(ReflectionSystem&&) = delete;
+        ReflectionSystem& operator=(ReflectionSystem&&) = delete;
+
+        // Reflection type creation methods
+        MEClass* CreateClass(const std::string& className)
+        {
+            MEClass* classInfo = new MEClass(className);
+            m_OwnedClasses.push_back(classInfo);
+            return classInfo;
+        }
+
+        template<typename TProperty, typename... TArgs>
+        TProperty* CreateProperty(TArgs&&... args)
+        {
+            TProperty* property = new TProperty(std::forward<TArgs>(args)...);
+            m_OwnedProperties.push_back(property);
+            return property;
+        }
+
+        MEEnum* CreateEnum(const std::string& enumName)
+        {
+            MEEnum* enumInfo = new MEEnum(enumName);
+            m_OwnedEnums.push_back(enumInfo);
+            return enumInfo;
+        }
+
+        // Reflection type registration methods
         template<typename T>
-        void RegisterType(TypeInfo info)
+        bool RegisterClass(MEClass* classInfo)
         {
-            const std::string declaredName = info.typeName;
-            const std::string typeIdName = typeid(T).name();
-
-            if(info.createInstance == nullptr)
+            if (classInfo == nullptr)
             {
-                info.createInstance = &CreateDefaultInstance<T>;
+                AppendError("[Reflection] Typed RegisterClass received null class info.");
+                return false;
             }
 
-            m_TypeInfoByDeclaredName[declaredName] = std::move(info);
-            m_DeclaredNameByTypeId[typeIdName] = declaredName;
+            if (!classInfo->HasFactory())
+            {
+                classInfo->SetFactory(&MEClass::CreateDefaultInstance<T>);
+            }
+
+            if (!RegisterClass_Internal(classInfo))
+            {
+                return false;
+            }
+
+            m_DeclaredNameByTypeIndex[std::type_index(typeid(T))] = classInfo->GetName();
+            return true;
         }
 
-
-        const TypeInfo* GetTypeInfo(const std::string& declaredName) const
+        std::shared_ptr<void> CreateInstance(const std::string& className) const
         {
-            const auto iter = m_TypeInfoByDeclaredName.find(declaredName);
-            if (iter == m_TypeInfoByDeclaredName.end())
+            const MEClass* classInfo = FindClass(className);
+            if (classInfo == nullptr)
             {
                 return nullptr;
             }
 
-            return &iter->second;
+            return classInfo->CreateInstance();
         }
 
-        template<typename T>
-        const TypeInfo* GetTypeInfo() const
+        bool RegisterEnum(MEEnum* enumInfo)
         {
-            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeid(T).name());
-            if (typeIdIter == m_DeclaredNameByTypeId.end())
+            if (enumInfo == nullptr)
             {
-                return nullptr;
+                AppendError("[Reflection] RegisterEnum received null enum info.");
+                return false;
             }
 
-            return GetTypeInfo(typeIdIter->second);
+            if (!EnsureCanRegister("RegisterEnum"))
+            {
+                return false;
+            }
+
+            const std::string& enumName = enumInfo->GetName();
+            if (enumName.empty())
+            {
+                AppendError("[Reflection] RegisterEnum rejected empty enum name.");
+                return false;
+            }
+
+            if (m_EnumsByName.find(enumName) != m_EnumsByName.end())
+            {
+                AppendError("[Reflection] Duplicate enum registration: '" + enumName + "'.");
+                return false;
+            }
+
+            m_EnumsByName[enumName] = enumInfo;
+            return true;
         }
 
-        const TypeInfo* GetTypeInfoByTypeId(const std::string& typeIdName) const
+        template<typename TEnum>
+        bool RegisterEnum(MEEnum* enumInfo)
         {
-            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeIdName);
-            if (typeIdIter == m_DeclaredNameByTypeId.end())
+            static_assert(std::is_enum_v<TEnum>, "RegisterEnum<TEnum> requires enum type");
+
+            if (!RegisterEnum(enumInfo))
             {
-                return nullptr;
+                return false;
             }
 
-            return GetTypeInfo(typeIdIter->second);
+            m_DeclaredEnumNameByTypeIndex[std::type_index(typeid(TEnum))] = enumInfo->GetName();
+            return true;
         }
 
-        std::string GetDeclaredTypeNameByTypeId(const std::string& typeIdName) const
+        template<typename TSuper>
+        void AddPendingSuperClass(MEClass* derivedClass)
         {
-            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeIdName);
-            if (typeIdIter == m_DeclaredNameByTypeId.end())
-            {
-                return {};
-            }
-
-            return typeIdIter->second;
-        }
-
-        std::shared_ptr<void> CreateInstance(const std::string& declaredName) const
-        {
-            const TypeInfo* typeInfo = GetTypeInfo(declaredName);
-            if (typeInfo == nullptr || typeInfo->createInstance == nullptr)
-            {
-                return nullptr;
-            }
-
-            return typeInfo->createInstance();
-        }
-
-        template<typename TBase>
-        std::shared_ptr<TBase> CreateInstanceAs(const std::string& declaredName) const
-        {
-            std::shared_ptr<void> instance = CreateInstance(declaredName);
-            if (!instance)
-            {
-                return nullptr;
-            }
-
-            const TypeInfo* baseTypeInfo = GetTypeInfo<TBase>();
-            if (baseTypeInfo == nullptr)
-            {
-                return std::shared_ptr<TBase>(instance, static_cast<TBase*>(instance.get()));
-            }
-
-            void* basePtr = CastObjectToType(instance.get(), declaredName, baseTypeInfo->typeName);
-            if (basePtr == nullptr)
-            {
-                return nullptr;
-            }
-
-            return std::shared_ptr<TBase>(instance, static_cast<TBase*>(basePtr));
-        }
-
-        // Helper function to get field pointer
-        static void* GetFieldPtr(void* object, const FieldInfo& field)
-        {
-            if (object == nullptr || field.mutableAccessor == nullptr)
-            {
-                return nullptr;
-            }
-            return field.mutableAccessor(object);
-        }
-
-        static const void* GetFieldPtr(const void* object, const FieldInfo& field)
-        {
-            if (object == nullptr || field.constAccessor == nullptr)
-            {
-                return nullptr;
-            }
-            return field.constAccessor(object);
-        }
-
-        // Type Inheritance related
-        const std::vector<BaseTypeInfo>* GetDirectBaseTypes(const std::string& declaredName) const
-        {
-            const auto it = m_TypeInfoByDeclaredName.find(declaredName);
-            if (it == m_TypeInfoByDeclaredName.end())
-            {
-                return nullptr;
-            }
-            return &it->second.directBases;
-        }
-
-        template<typename T>
-        const std::vector<BaseTypeInfo>* GetDirectBaseTypes() const
-        {
-            const auto typeIdIter = m_DeclaredNameByTypeId.find(typeid(T).name());
-            if (typeIdIter == m_DeclaredNameByTypeId.end())
-            {
-                return nullptr;
-            }
-            return GetDirectBaseTypes(typeIdIter->second);
-        }
-
-        // Array type registration and querying
-        void RegisterArrayType(ArrayTypeInfo info)
-        {
-            const std::string declaredName = info.typeName;
-            if (declaredName.empty())
+            if (derivedClass == nullptr)
             {
                 return;
             }
 
-            m_ArrayTypeInfoByDeclaredName[declaredName] = std::move(info);
+            using RawSuperType = RemoveCvRefT<TSuper>;
+            m_PendingSuperClassRefs.push_back(PendingSuperClassRef{derivedClass, std::type_index(typeid(RawSuperType))});
         }
 
-        const ArrayTypeInfo* GetArrayTypeInfo(const std::string& declaredName) const
+        template<typename TReferenced>
+        void AddPendingPropertyClass(MEClass* ownerClass, MEProperty* property)
         {
-            const auto iter = m_ArrayTypeInfoByDeclaredName.find(declaredName);
-            if (iter == m_ArrayTypeInfoByDeclaredName.end())
+            if (ownerClass == nullptr || property == nullptr)
+            {
+                return;
+            }
+
+            using RawReferencedType = RemoveCvRefT<TReferenced>;
+            m_PendingPropertyClassRefs.push_back(PendingPropertyClassRef{ownerClass, property, std::type_index(typeid(RawReferencedType))});
+        }
+
+        template<typename TOwner, typename TField>
+        MEProperty* AddFieldByType(MEClass* ownerClass,
+                                   const std::string& fieldName,
+                                   FieldConstAccessorFn constAccessor,
+                                   FieldMutableAccessorFn mutableAccessor)
+        {
+            if (ownerClass == nullptr)
             {
                 return nullptr;
             }
-            return &iter->second;
+
+            MEProperty* property = CreatePropertyByType<TField>(ownerClass, fieldName);
+            if (property == nullptr)
+            {
+                AppendError("[Reflection] Failed to create property for field '" + ownerClass->GetName() + "::" + fieldName + "'.");
+                return nullptr;
+            }
+
+            property->constAccessor = constAccessor;
+            property->mutableAccessor = mutableAccessor;
+            ownerClass->AddProperty(property);
+            return property;
         }
 
-        bool ForEachFieldInHierarchy(const std::string& rootTypeName, const FieldVisitorFn& visitor) const
+        bool FinalizeReflection()
         {
-            if (!visitor)
+            if (m_State == ReflectionSystemState::Finalizing)
             {
+                AppendError("[Reflection] FinalizeReflection re-entered.");
                 return false;
             }
 
-            const TypeInfo* rootTypeInfo = GetTypeInfo(rootTypeName);
-            if (rootTypeInfo == nullptr)
+            m_LastErrors.clear();
+            m_State = ReflectionSystemState::Finalizing;
+
+            PrepareForResolve();
+
+            bool succeeded = true;
+            if (!ResolvePendingSuperClasses())
             {
-                return false;
+                succeeded = false;
             }
 
-            std::unordered_set<std::string> visitedTypeNames;
-            return ForEachFieldInHierarchy_Recursive(*rootTypeInfo, visitor, visitedTypeNames);
-        }
-
-        const void* CastObjectToType(const void* object,
-                                     const std::string& sourceTypeName,
-                                     const std::string& targetTypeName) const
-        {
-            if (object == nullptr)
+            if (!ValidateInheritanceGraph())
             {
-                return nullptr;
+                succeeded = false;
             }
 
-            if (sourceTypeName == targetTypeName)
+            if (!ResolvePendingPropertyClasses())
             {
-                return object;
+                succeeded = false;
             }
 
-            const TypeInfo* sourceType = GetTypeInfo(sourceTypeName);
-            const TypeInfo* targetType = GetTypeInfo(targetTypeName);
-            if (sourceType == nullptr || targetType == nullptr)
+            if (succeeded)
             {
-                return nullptr;
-            }
-
-            std::unordered_set<std::string> visitedTypeNames;
-            return CastObjectToType_Recursive(object, *sourceType, *targetType, visitedTypeNames);
-        }
-
-        void* CastObjectToType(void* object,
-                               const std::string& sourceTypeName,
-                               const std::string& targetTypeName) const
-        {
-            return const_cast<void*>(
-                CastObjectToType(static_cast<const void*>(object), sourceTypeName, targetTypeName));
-        }
-
-        
-
-        // Enum registration and querying
-        template<typename T>
-        void RegisterEnum(EnumInfo info)
-        {
-            const std::string declaredName = info.enumName;
-            const std::string typeIdName = typeid(T).name();
-
-            m_EnumInfoByDeclaredName[declaredName] = std::move(info);
-            m_DeclaredEnumNameByTypeId[typeIdName] = declaredName;
-        }
-
-        const EnumInfo* GetEnumInfo(const std::string& declaredName) const
-        {
-            const auto iter = m_EnumInfoByDeclaredName.find(declaredName);
-            if (iter == m_EnumInfoByDeclaredName.end())
-            {
-                return nullptr;
-            }
-            return &iter->second;
-        }
-
-        template<typename T>
-        const EnumInfo* GetEnumInfo() const
-        {
-            const auto typeIdIter = m_DeclaredEnumNameByTypeId.find(typeid(T).name());
-            if (typeIdIter == m_DeclaredEnumNameByTypeId.end())
-            {
-                return nullptr;
-            }
-            return GetEnumInfo(typeIdIter->second);
-        }
-
-    private:
-
-        template<typename T>
-        static std::shared_ptr<void> CreateDefaultInstance()
-        {
-            if constexpr (std::is_default_constructible_v<T> && !std::is_abstract_v<T>)
-            {
-                return std::make_shared<T>();
+                BuildDerivedClassLinks();
+                m_State = ReflectionSystemState::Ready;
             }
             else
             {
+                m_State = ReflectionSystemState::Failed;
+            }
+
+            return succeeded;
+        }
+
+        void Reset()
+        {
+            m_ClassesByName.clear();
+            m_DeclaredNameByTypeIndex.clear();
+            m_EnumsByName.clear();
+            m_DeclaredEnumNameByTypeIndex.clear();
+            m_PendingSuperClassRefs.clear();
+            m_PendingPropertyClassRefs.clear();
+            m_LastErrors.clear();
+
+            for (MEProperty* property : m_OwnedProperties)
+            {
+                delete property;
+            }
+            m_OwnedProperties.clear();
+
+            for (MEClass* classInfo : m_OwnedClasses)
+            {
+                delete classInfo;
+            }
+            m_OwnedClasses.clear();
+
+            for (MEEnum* enumInfo : m_OwnedEnums)
+            {
+                delete enumInfo;
+            }
+            m_OwnedEnums.clear();
+
+            m_State = ReflectionSystemState::Collecting;
+        }
+
+        ReflectionSystemState GetState() const
+        {
+            return m_State;
+        }
+
+        bool IsReady() const
+        {
+            return m_State == ReflectionSystemState::Ready;
+        }
+
+        MEClass* FindClass(const std::string& className)
+        {
+            auto iter = m_ClassesByName.find(className);
+            if (iter == m_ClassesByName.end())
+            {
+                return nullptr;
+            }
+            return iter->second;
+        }
+
+        const MEClass* FindClass(const std::string& className) const
+        {
+            auto iter = m_ClassesByName.find(className);
+            if (iter == m_ClassesByName.end())
+            {
+                return nullptr;
+            }
+            return iter->second;
+        }
+
+        template<typename T>
+        const MEClass* FindClass() const
+        {
+            auto iter = m_DeclaredNameByTypeIndex.find(std::type_index(typeid(T)));
+            if (iter == m_DeclaredNameByTypeIndex.end())
+            {
+                return nullptr;
+            }
+            return FindClass(iter->second);
+        }
+
+        MEEnum* FindEnum(const std::string& enumName)
+        {
+            auto iter = m_EnumsByName.find(enumName);
+            if (iter == m_EnumsByName.end())
+            {
+                return nullptr;
+            }
+            return iter->second;
+        }
+
+        const MEEnum* FindEnum(const std::string& enumName) const
+        {
+            auto iter = m_EnumsByName.find(enumName);
+            if (iter == m_EnumsByName.end())
+            {
+                return nullptr;
+            }
+            return iter->second;
+        }
+
+        template<typename TEnum>
+        const MEEnum* FindEnum() const
+        {
+            auto iter = m_DeclaredEnumNameByTypeIndex.find(std::type_index(typeid(TEnum)));
+            if (iter == m_DeclaredEnumNameByTypeIndex.end())
+            {
+                return nullptr;
+            }
+            return FindEnum(iter->second);
+        }
+
+        const std::vector<std::string>& GetLastErrors() const
+        {
+            return m_LastErrors;
+        }
+
+        bool ForEachPropertyInHierarchy(const std::string& rootClassName, const PropertyVisitorFn& visitor) const
+        {
+            if (!visitor || m_State != ReflectionSystemState::Ready)
+            {
+                return false;
+            }
+
+            const MEClass* rootClass = FindClass(rootClassName);
+            if (rootClass == nullptr)
+            {
+                return false;
+            }
+
+            std::unordered_set<const MEClass*> visited;
+            return ForEachPropertyInHierarchyRecursive(*rootClass, visitor, visited);
+        }
+
+    private:
+        ReflectionSystem() = default;
+
+        enum class VisitColor
+        {
+            White,
+            Gray,
+            Black
+        };
+
+        // Reflection type registration helpers
+        bool RegisterClass_Internal(MEClass* classInfo)
+        {
+            if (!EnsureCanRegister("RegisterClass"))
+            {
+                return false;
+            }
+
+            const std::string& className = classInfo->GetName();
+            if (className.empty())
+            {
+                AppendError("[Reflection] RegisterClass rejected empty class name.");
+                return false;
+            }
+
+            if (m_ClassesByName.find(className) != m_ClassesByName.end())
+            {
+                AppendError("[Reflection] Duplicate class registration: '" + className + "'.");
+                return false;
+            }
+
+            m_ClassesByName[className] = classInfo;
+            return true;
+        }
+
+        template<typename TField>
+        MEProperty* CreatePropertyByType(MEClass* ownerClass, const std::string& propertyName)
+        {
+            using RawFieldType = minEngine::RemoveCvRefT<TField>;
+
+            // First check if it's an array type (currently we only support std::vector as array, but we can extend this in the future if needed)
+            if constexpr (minEngine::is_vector<RawFieldType>::value)
+            {
+                using ElementType = RemoveCvRefT<typename minEngine::is_vector<RawFieldType>::ElementType>;
+                if constexpr(minEngine::is_vector<ElementType>::value)
+                {
+                    static_assert(false, "Nested vectors are not supported for reflection properties.");
+                }
+                // TODO: prevent array of struct/class instance in the same struct/class.
+
+                MEProperty* innerProperty = CreatePropertyByType<ElementType>(ownerClass, propertyName + "_Inner");
+                MEArrayProperty* arrayProperty = CreateProperty<MEArrayProperty>(propertyName, innerProperty);
+                arrayProperty->SetArrayAccessors(
+                    [](const void* arrayObject) -> size_t
+                    {
+                        if (arrayObject == nullptr)
+                        {
+                            return 0;
+                        }
+
+                        const RawFieldType* typedArray = static_cast<const RawFieldType*>(arrayObject);
+                        return typedArray->size();
+                    },
+                    [](const void* arrayObject, size_t index) -> const void*
+                    {
+                        if (arrayObject == nullptr)
+                        {
+                            return nullptr;
+                        }
+
+                        const RawFieldType* typedArray = static_cast<const RawFieldType*>(arrayObject);
+                        if (index >= typedArray->size())
+                        {
+                            return nullptr;
+                        }
+
+                        return static_cast<const void*>(&((*typedArray)[index]));
+                    },
+                    [](void* arrayObject, size_t newSize)
+                    {
+                        if (arrayObject == nullptr)
+                        {
+                            return;
+                        }
+
+                        RawFieldType* typedArray = static_cast<RawFieldType*>(arrayObject);
+                        typedArray->resize(newSize);
+                    },
+                    [](void* arrayObject, size_t index) -> void*
+                    {
+                        if (arrayObject == nullptr)
+                        {
+                            return nullptr;
+                        }
+
+                        RawFieldType* typedArray = static_cast<RawFieldType*>(arrayObject);
+                        if (index >= typedArray->size())
+                        {
+                            return nullptr;
+                        }
+
+                        return static_cast<void*>(&((*typedArray)[index]));
+                    });
+                return arrayProperty;
+            }
+            // Then check if it's a pointer-like type (raw pointer, smart pointer, etc.)
+            else if constexpr (kIsPointerLike<RawFieldType>)
+            {
+                using PointeeType = RemoveCvRefT<PointeeT<RawFieldType>>;   // This traits will give us the type that the pointer-like type is pointing to (e.g. for Foo* & std::shared_ptr<Foo>, it will give us Foo)
+                if constexpr (std::is_class_v<PointeeType>)
+                {
+                    // TODO: raw pointer and smart pointer should be treated differently, we might want to have different property types for them in the future if needed (e.g. MEObjectRawPtrProperty and MEObjectSmartPtrProperty), and we also need to consider how to handle the factory and instance creation for them since currently we only support default constructor without parameters.
+                    if constexpr (std::is_pointer_v<RawFieldType>)
+                    {
+                        
+                    }
+                    else if constexpr (minEngine::is_smart_ptr<RawFieldType>::value)
+                    {
+                        
+                    }
+                    
+                    MEObjectPtrProperty* property = CreateProperty<MEObjectPtrProperty>(propertyName);
+                    AddPendingPropertyClass<PointeeType>(ownerClass, property);
+                    return property;
+                }
+                else
+                {
+                    // We do not support pointer-like property for non-class types!!!
+                    AppendError("[Reflection] Unsupported pointer-like property type: '" + std::string(typeid(RawFieldType).name()) + "'. Only pointer-like types pointing to class types are supported.");
+                }
+            }
+            // Then check if it's a primitive-like type (arithmetic types, std::string, Vector2/3/4, enum, etc.)
+            else if constexpr (kIsPrimitiveLike<RawFieldType>)
+            {
+                // TODO: here we are not distinguishing between different primitive types, we might want to have more specific property types for some of them (e.g. int, float, enum, etc.)
+                return CreateProperty<MEPrimitiveProperty>(propertyName, typeid(RawFieldType).name());
+            }
+            // Finally, if it's a class type, we treat it as an object property
+            else if constexpr (std::is_class_v<RawFieldType>)
+            {
+                MEObjectProperty* property = CreateProperty<MEObjectProperty>(propertyName);
+                AddPendingPropertyClass<RawFieldType>(ownerClass, property);
+                return property;
+            }
+            else
+            {
+                AppendError("[Reflection] Unsupported property type: '" + std::string(typeid(RawFieldType).name()) + "'.");
                 return nullptr;
             }
         }
 
-        bool ForEachFieldInHierarchy_Recursive(const TypeInfo& typeInfo,
-                                               const FieldVisitorFn& visitor,
-                                               std::unordered_set<std::string>& visitedTypeNames) const
+        void PrepareForResolve()
         {
-            if (!visitedTypeNames.insert(typeInfo.typeName).second)
+            for (auto& [_, classInfo] : m_ClassesByName)
+            {
+                classInfo->SetResolvedSuperClass(nullptr);
+                classInfo->ClearDirectDerivedClasses();
+
+                for (MEProperty* property : classInfo->GetProperties())
+                {
+                    ResetPropertyResolvedRefs(property);
+                }
+            }
+        }
+
+        static void ResetPropertyResolvedRefs(MEProperty* property)
+        {
+            if (property == nullptr)
+            {
+                return;
+            }
+
+            if (property->GetCategory() == MEPropertyCategory::Object
+                || property->GetCategory() == MEPropertyCategory::ObjectPtr)
+            {
+                static_cast<MEObjectProperty*>(property)->SetValueClass(nullptr);
+                return;
+            }
+
+            if (property->GetCategory() == MEPropertyCategory::Array)
+            {
+                MEArrayProperty* arrayProperty = static_cast<MEArrayProperty*>(property);
+                ResetPropertyResolvedRefs(arrayProperty->GetInnerProperty());
+            }
+        }
+
+        void AppendError(std::string message)
+        {
+            m_LastErrors.push_back(std::move(message));
+        }
+
+        bool EnsureCanRegister(const char* operationName)
+        {
+            if (m_State == ReflectionSystemState::Finalizing)
+            {
+                AppendError(std::string("[Reflection] ") + operationName + " is not allowed while finalizing.");
+                return false;
+            }
+
+            if (m_State == ReflectionSystemState::Ready)
+            {
+                AppendError(std::string("[Reflection] ") + operationName + " is not allowed after reflection is ready.");
+                return false;
+            }
+
+            if (m_State == ReflectionSystemState::Failed)
+            {
+                m_State = ReflectionSystemState::Collecting;
+            }
+
+            return true;
+        }
+
+        MEClass* FindClassByTypeIndex(const std::type_index& typeIndex)
+        {
+            auto nameIter = m_DeclaredNameByTypeIndex.find(typeIndex);
+            if (nameIter == m_DeclaredNameByTypeIndex.end())
+            {
+                return nullptr;
+            }
+
+            return FindClass(nameIter->second);
+        }
+
+        bool ResolvePendingSuperClasses()
+        {
+            bool succeeded = true;
+
+            for (const PendingSuperClassRef& ref : m_PendingSuperClassRefs)
+            {
+                if (ref.derivedClass == nullptr)
+                {
+                    AppendError("[Reflection] Null derived class found in pending super class references.");
+                    succeeded = false;
+                    continue;
+                }
+
+                MEClass* resolvedSuperClass = FindClassByTypeIndex(ref.superTypeIndex);
+                if (resolvedSuperClass == nullptr)
+                {
+                    AppendError("[Reflection] Unresolved super class type for '" + ref.derivedClass->GetName() + "'.");
+                    succeeded = false;
+                    continue;
+                }
+
+                if (resolvedSuperClass == ref.derivedClass)
+                {
+                    AppendError("[Reflection] Class '" + ref.derivedClass->GetName() + "' cannot inherit from itself.");
+                    succeeded = false;
+                    continue;
+                }
+
+                if (ref.derivedClass->GetSuperClass() != nullptr && ref.derivedClass->GetSuperClass() != resolvedSuperClass)
+                {
+                    AppendError("[Reflection] Class '" + ref.derivedClass->GetName() + "' has multiple direct super classes.");
+                    succeeded = false;
+                    continue;
+                }
+
+                ref.derivedClass->SetResolvedSuperClass(resolvedSuperClass);
+            }
+
+            return succeeded;
+        }
+
+        bool ResolvePendingPropertyClasses()
+        {
+            bool succeeded = true;
+
+            for (const PendingPropertyClassRef& ref : m_PendingPropertyClassRefs)
+            {
+                if (ref.ownerClass == nullptr || ref.property == nullptr)
+                {
+                    AppendError("[Reflection] Null owner/property found in pending property references.");
+                    succeeded = false;
+                    continue;
+                }
+
+                MEClass* resolvedClass = FindClassByTypeIndex(ref.referencedTypeIndex);
+                if (resolvedClass == nullptr)
+                {
+                    AppendError("[Reflection] Unresolved property type for '" + ref.ownerClass->GetName() + "::" + ref.property->name + "'.");
+                    succeeded = false;
+                    continue;
+                }
+
+                if (ref.property->GetCategory() == MEPropertyCategory::Object
+                    || ref.property->GetCategory() == MEPropertyCategory::ObjectPtr)
+                {
+                    static_cast<MEObjectProperty*>(ref.property)->SetValueClass(resolvedClass);
+                }
+                else
+                {
+                    AppendError("[Reflection] Pending class reference is bound to a non-object property '" + ref.ownerClass->GetName() + "::" + ref.property->name + "'.");
+                    succeeded = false;
+                }
+            }
+
+            return succeeded;
+        }
+
+        bool ValidateInheritanceGraph()
+        {
+            bool succeeded = true;
+            std::unordered_map<const MEClass*, VisitColor> visitMap;
+            std::vector<const MEClass*> stack;
+
+            for (const auto& [_, classInfo] : m_ClassesByName)
+            {
+                if (!VisitClassForCycle(*classInfo, visitMap, stack))
+                {
+                    succeeded = false;
+                }
+            }
+
+            return succeeded;
+        }
+
+        bool VisitClassForCycle(const MEClass& classInfo,
+                                std::unordered_map<const MEClass*, VisitColor>& visitMap,
+                                std::vector<const MEClass*>& stack)
+        {
+            VisitColor& color = visitMap[&classInfo];
+            if (color == VisitColor::Black)
             {
                 return true;
             }
 
-            for (const BaseTypeInfo& baseInfo : typeInfo.directBases)
+            if (color == VisitColor::Gray)
             {
-                const TypeInfo* baseType = GetTypeInfo(baseInfo.typeName);
-                if (baseType == nullptr)
+                auto beginIter = std::find(stack.begin(), stack.end(), &classInfo);
+                std::string cycleMessage = "[MEReflection] Inheritance cycle detected: ";
+                if (beginIter == stack.end())
                 {
-                    continue;
+                    cycleMessage += classInfo.GetName() + " -> " + classInfo.GetName();
+                }
+                else
+                {
+                    for (auto iter = beginIter; iter != stack.end(); ++iter)
+                    {
+                        if (iter != beginIter)
+                        {
+                            cycleMessage += " -> ";
+                        }
+                        cycleMessage += (*iter)->GetName();
+                    }
+                    cycleMessage += " -> " + classInfo.GetName();
                 }
 
-                if (!ForEachFieldInHierarchy_Recursive(*baseType, visitor, visitedTypeNames))
+                AppendError(std::move(cycleMessage));
+                return false;
+            }
+
+            color = VisitColor::Gray;
+            stack.push_back(&classInfo);
+
+            bool succeeded = true;
+            const MEClass* superClass = classInfo.GetSuperClass();
+            if (superClass != nullptr)
+            {
+                succeeded = VisitClassForCycle(*superClass, visitMap, stack);
+            }
+
+            stack.pop_back();
+            color = VisitColor::Black;
+            return succeeded;
+        }
+
+        void BuildDerivedClassLinks()
+        {
+            for (auto& [_, classInfo] : m_ClassesByName)
+            {
+                classInfo->ClearDirectDerivedClasses();
+            }
+
+            for (auto& [_, classInfo] : m_ClassesByName)
+            {
+                MEClass* superClass = classInfo->GetSuperClass();
+                if (superClass != nullptr)
+                {
+                    superClass->AddDirectDerivedClass(classInfo);
+                }
+            }
+        }
+
+        bool ForEachPropertyInHierarchyRecursive(const MEClass& classInfo,
+                                                 const PropertyVisitorFn& visitor,
+                                                 std::unordered_set<const MEClass*>& visited) const
+        {
+            if (visited.find(&classInfo) != visited.end())
+            {
+                return true;
+            }
+            visited.insert(&classInfo);
+
+            const MEClass* superClass = classInfo.GetSuperClass();
+            if (superClass != nullptr)
+            {
+                if (!ForEachPropertyInHierarchyRecursive(*superClass, visitor, visited))
                 {
                     return false;
                 }
             }
 
-            for (const FieldInfo& field : typeInfo.fields)
+            for (MEProperty* property : classInfo.GetProperties())
             {
-                if (!visitor(field))
+                if (property != nullptr && !visitor(*property))
                 {
                     return false;
                 }
@@ -310,299 +809,20 @@ namespace minEngine::Reflection
             return true;
         }
 
-        const void* CastObjectToType_Recursive(const void* object,
-                                               const TypeInfo& sourceType,
-                                               const TypeInfo& targetType,
-                                               std::unordered_set<std::string>& visitedTypeNames) const
-        {
-            if (!visitedTypeNames.insert(sourceType.typeName).second)
-            {
-                return nullptr;
-            }
+    private:
+        std::vector<MEClass*> m_OwnedClasses;
+        std::vector<MEProperty*> m_OwnedProperties;
+        std::vector<MEEnum*> m_OwnedEnums;
 
-            if (sourceType.typeName == targetType.typeName)
-            {
-                return object;
-            }
+        std::unordered_map<std::string, MEClass*> m_ClassesByName;
+        std::unordered_map<std::type_index, std::string> m_DeclaredNameByTypeIndex;
+        std::unordered_map<std::string, MEEnum*> m_EnumsByName;
+        std::unordered_map<std::type_index, std::string> m_DeclaredEnumNameByTypeIndex;
 
-            for (const BaseTypeInfo& baseInfo : sourceType.directBases)
-            {
-                if (baseInfo.constUpcast == nullptr)
-                {
-                    continue;
-                }
+        std::vector<PendingSuperClassRef> m_PendingSuperClassRefs;
+        std::vector<PendingPropertyClassRef> m_PendingPropertyClassRefs;
 
-                const TypeInfo* baseType = GetTypeInfo(baseInfo.typeName);
-                if (baseType == nullptr)
-                {
-                    continue;
-                }
-
-                const void* baseObject = baseInfo.constUpcast(object);
-                if (baseObject == nullptr)
-                {
-                    continue;
-                }
-
-                const void* castedObject = CastObjectToType_Recursive(baseObject, *baseType, targetType, visitedTypeNames);
-                if (castedObject != nullptr)
-                {
-                    return castedObject;
-                }
-            }
-
-            return nullptr;
-        }
-
-
-        std::unordered_map<std::string, TypeInfo> m_TypeInfoByDeclaredName;
-        std::unordered_map<std::string, std::string> m_DeclaredNameByTypeId;
-
-        std::unordered_map<std::string, ArrayTypeInfo> m_ArrayTypeInfoByDeclaredName;
-
-        std::unordered_map<std::string, std::vector<std::string>> m_DirectBaseNamesByType;
-        std::unordered_map<std::string, std::vector<std::string>> m_DirectDerivedNamesByType;
-
-        std::unordered_map<std::string, EnumInfo> m_EnumInfoByDeclaredName;
-        std::unordered_map<std::string, std::string> m_DeclaredEnumNameByTypeId;
+        std::vector<std::string> m_LastErrors;
+        ReflectionSystemState m_State = ReflectionSystemState::Collecting;
     };
-
-    template<typename T>
-    inline const TypeCategory GetTypeCategory()
-    {
-        if constexpr (std::is_arithmetic_v<T>           ||
-                      std::is_same_v<T, std::string>    ||
-                      std::is_same_v<T, Vector2>        || // TODO: currently treating glm::vec2/3/4 as primitive types for simplicity, but we might want to have special handling for them in the future (e.g. to display them nicely in editor UI)
-                      std::is_same_v<T, Vector3>        ||
-                      std::is_same_v<T, Vector4>
-                    )
-        {
-            return TypeCategory::Primitive;
-        }
-        else if constexpr (std::is_enum_v<T>)
-        {
-            return TypeCategory::Enum;
-        }
-        else if constexpr (std::is_pointer_v<T>)
-        {
-            return TypeCategory::Pointer;
-        }
-        else if constexpr (minEngine::is_vector<T>::value)
-        {
-            return TypeCategory::Array;
-        }
-        else if constexpr (std::is_class_v<T>)
-        {
-            return TypeCategory::Object;
-        }
-        else 
-        {
-            static_assert(!sizeof(T), "Unsupported field type");
-            return TypeCategory::Unknown;
-        }
-    }
-
-    inline const TypeInfo* GetTypeInfo(const std::string& declaredName)
-    {
-        return ReflectionSystem::Get().GetTypeInfo(declaredName);
-    }
-
-    template<typename T>
-    inline const TypeInfo* GetTypeInfo()
-    {
-        return ReflectionSystem::Get().GetTypeInfo<T>();
-    }
-
-    inline const TypeInfo* GetTypeInfoByTypeId(const std::string& typeIdName)
-    {
-        return ReflectionSystem::Get().GetTypeInfoByTypeId(typeIdName);
-    }
-
-    inline std::string GetDeclaredTypeNameByTypeId(const std::string& typeIdName)
-    {
-        return ReflectionSystem::Get().GetDeclaredTypeNameByTypeId(typeIdName);
-    }
-
-    inline std::shared_ptr<void> CreateInstance(const std::string& declaredName)
-    {
-        return ReflectionSystem::Get().CreateInstance(declaredName);
-    }
-
-    template<typename TBase>
-    inline std::shared_ptr<TBase> CreateInstanceAs(const std::string& declaredName)
-    {
-        return ReflectionSystem::Get().CreateInstanceAs<TBase>(declaredName);
-    }
-
-    template<typename T>
-    inline static std::string GetTypeName()
-    {
-        using RawType = std::remove_cv_t<std::remove_reference_t<T>>;
-
-        if constexpr (is_vector<RawType>::value)
-        {
-            using ElementType = typename is_vector<RawType>::ElementType;
-            return std::string("std::vector<") + GetTypeName<ElementType>() + ">";
-        }
-        else
-        {
-            if (const TypeInfo* typeInfo = ReflectionSystem::Get().GetTypeInfo<RawType>())
-            {
-                return typeInfo->typeName;
-            }
-
-            if (const EnumInfo* enumInfo = ReflectionSystem::Get().GetEnumInfo<RawType>())
-            {
-                return enumInfo->enumName;
-            }
-
-            // Return the raw type name as a fallback. This can lead to different strings for the same type across different compilers or even different runs, but it ensures that we always get some kind of name for any type.
-            return typeid(RawType).name();
-        }
-    }
-
-    template<typename T>
-    inline void TryRegisterArrayType()
-    {
-        using RawType = std::remove_cv_t<std::remove_reference_t<T>>;
-
-        if constexpr (is_vector<RawType>::value)
-        {
-            using ElementType = typename is_vector<RawType>::ElementType;
-
-            ArrayTypeInfo arrayInfo;
-            arrayInfo.typeName = GetTypeName<RawType>();
-            arrayInfo.elementTypeName = GetTypeName<ElementType>();
-            arrayInfo.elementCategory = GetTypeCategory<ElementType>();
-
-            arrayInfo.getSize = [](const void* arrayObject) -> size_t
-            {
-                if (arrayObject == nullptr)
-                {
-                    return 0;
-                }
-                const RawType* typedArray = static_cast<const RawType*>(arrayObject);
-                return typedArray->size();
-            };
-            arrayInfo.getConstElement = [](const void* arrayObject, size_t index) -> const void*
-            {
-                if (arrayObject == nullptr)
-                {
-                    return nullptr;
-                }
-
-                const RawType* typedArray = static_cast<const RawType*>(arrayObject);
-                if (index >= typedArray->size())
-                {
-                    return nullptr;
-                }
-
-                return static_cast<const void*>(&((*typedArray)[index]));
-            };
-            arrayInfo.resize = [](void* arrayObject, size_t newSize)
-            {
-                if (arrayObject == nullptr)
-                {
-                    return;
-                }
-                RawType* typedArray = static_cast<RawType*>(arrayObject);
-                typedArray->resize(newSize);
-            };
-            arrayInfo.getMutableElement = [](void* arrayObject, size_t index) -> void*
-            {
-                if (arrayObject == nullptr)
-                {
-                    return nullptr;
-                }
-
-                RawType* typedArray = static_cast<RawType*>(arrayObject);
-                if (index >= typedArray->size())
-                {
-                    return nullptr;
-                }
-
-                return static_cast<void*>(&((*typedArray)[index]));
-            };
-
-            ReflectionSystem::Get().RegisterArrayType(std::move(arrayInfo));
-        }
-    }
-
-    inline const ArrayTypeInfo* GetArrayTypeInfo(const std::string& declaredName)
-    {
-        return ReflectionSystem::Get().GetArrayTypeInfo(declaredName);
-    }
-
-    bool ForEachFieldInHierarchy(const std::string& rootTypeName, const FieldVisitorFn& visitor);
-
-    const void* CastObjectToType(const void* object, const std::string& sourceTypeName, const std::string& targetTypeName);
-
-    void* CastObjectToType(void* object, const std::string& sourceTypeName, const std::string& targetTypeName);
-
-    template<typename T>
-    inline static const EnumInfo* GetEnumInfo()
-    {
-        return ReflectionSystem::Get().GetEnumInfo<T>();
-    }
-
-    inline static const EnumInfo* GetEnumInfo(const std::string& declaredName)
-    {
-        return ReflectionSystem::Get().GetEnumInfo(declaredName);
-    }
-
-
-
-
-
-
-
-    // ------------------------------------------------------------
-    // Explicit specialization of GetTypeName for some common types.
-    template<>
-    inline std::string GetTypeName<bool>()
-    {
-        return "bool";
-    }
-
-    template<>
-    inline std::string GetTypeName<int>()
-    {
-        return "int";
-    }
-
-    template<>
-    inline std::string GetTypeName<float>()
-    {
-        return "float";
-    }
-
-    template<>
-    inline std::string GetTypeName<double>()
-    {
-        return "double";
-    }
-
-    template<>
-    inline std::string GetTypeName<std::string>()
-    {
-        return "std::string";
-    }
-
-    template<>
-    inline std::string GetTypeName<Vector2>()
-    {
-        return "Vector2";
-    }
-
-    template<>
-    inline std::string GetTypeName<Vector3>()
-    {
-        return "Vector3";
-    }
-
-    template<>
-    inline std::string GetTypeName<Vector4>()
-    {
-        return "Vector4";
-    }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/Serialization/Serializer.h"
+#include "Runtime/Core/Serialization/Legacy/Serializer_Legacy.h"
 namespace minEngine::Reflection
 {
     template<typename T>

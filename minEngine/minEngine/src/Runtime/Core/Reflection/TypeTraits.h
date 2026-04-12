@@ -50,6 +50,45 @@ namespace minEngine
 
     template<typename T>
     struct is_smart_ptr : std::integral_constant<bool, is_shared_ptr<T>::value || is_unique_ptr<T>::value || is_weak_ptr<T>::value>
-    {};
+    {
+        using pointee = T;
+    };
+
+    template<typename T>
+    using RemoveCvRefT = std::remove_cv_t<std::remove_reference_t<T>>;
+
+    template<typename T>
+    struct PointerLike
+    {
+        static constexpr bool value = false;
+    };
+
+    template<typename T>
+    struct PointerLike<T*>
+    {
+        static constexpr bool value = true;
+        using Type = T;
+    };
+
+    template<typename T>
+    struct PointerLike<std::shared_ptr<T>>
+    {
+        static constexpr bool value = true;
+        using Type = T;
+    };
+
+    template<typename T, typename TDeleter>
+    struct PointerLike<std::unique_ptr<T, TDeleter>>
+    {
+        static constexpr bool value = true;
+        using Type = T;
+    };
+
+    template<typename T>
+    struct PointerLike<std::weak_ptr<T>>
+    {
+        static constexpr bool value = true;
+        using Type = T;
+    };
 
 }

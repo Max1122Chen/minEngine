@@ -1,404 +1,450 @@
 #include "Serializer.h"
 
+#include "PrimitiveCodecRegistry.h"
+#include "Runtime/Core/Reflection/Reflection.h"
 
-#include <fstream>
-
-namespace minEngine
+namespace minEngine::Serialization
 {
-    template<>
-    Json Serializer::Write<int>(const int& value)
-    {
-        return Json(value);
-    }
+    using minEngine::Reflection::MEArrayProperty;
+    using minEngine::Reflection::MEClass;
+    using minEngine::Reflection::MEObjectProperty;
+    using minEngine::Reflection::MEPrimitiveProperty;
+    using minEngine::Reflection::MEProperty;
+    using minEngine::Reflection::MEPropertyCategory;
+    using minEngine::Reflection::ReflectionSystem;
 
-    template<>
-    Json Serializer::Write<float>(const float& value)
+    SerializeResult Serializer::Serialize(const std::string& rootClassName,
+                                                   const void* rootObject,
+                                                   WriterArchive& archive,
+                                                   const SerializerOptions& options)
     {
-        return Json(value);
-    }
-
-    template<>
-    Json Serializer::Write<double>(const double& value)
-    {
-        return Json(value);
-    }
-
-    template<>
-    Json Serializer::Write<bool>(const bool& value)
-    {
-        return Json(value);
-    }
-
-    template<>
-    Json Serializer::Write<std::string>(const std::string& value)
-    {
-        return Json(value);
-    }
-
-    template<>
-    Json Serializer::Write<minEngine::Vector2>(const minEngine::Vector2& value)
-    {
-        return Json::array({value.x, value.y});
-    }
-
-    template<>
-    Json Serializer::Write<minEngine::Vector3>(const minEngine::Vector3& value)
-    {
-        return Json::array({value.x, value.y, value.z});
-    }
-
-    template<>
-    Json Serializer::Write<minEngine::Vector4>(const minEngine::Vector4& value)
-    {
-        return Json::array({value.x, value.y, value.z, value.w});
-    }
-
-    template<>
-    bool Serializer::Read<int>(const Json& json, int& outValue)
-    {
-        if (!json.is_number_integer())
+        if (rootObject == nullptr)
         {
-            return false;
-        }
-        outValue = json.get<int>();
-        return true;
-    }
-
-    template<>
-    bool Serializer::Read<float>(const Json& json, float& outValue)
-    {
-        if (!json.is_number())
-        {
-            return false;
-        }
-        outValue = json.get<float>();
-        return true;
-    }
-
-    template<>
-    bool Serializer::Read<double>(const Json& json, double& outValue)
-    {
-        if (!json.is_number())
-        {
-            return false;
-        }
-        outValue = json.get<double>();
-        return true;
-    }
-
-    template<>
-    bool Serializer::Read<bool>(const Json& json, bool& outValue)
-    {
-        if (!json.is_boolean())
-        {
-            return false;
-        }
-        outValue = json.get<bool>();
-        return true;
-    }
-
-    template<>
-    bool Serializer::Read<std::string>(const Json& json, std::string& outValue)
-    {
-        if (!json.is_string())
-        {
-            return false;
-        }
-        outValue = json.get<std::string>();
-        return true;
-    }
-
-    template<>
-    bool Serializer::Read<minEngine::Vector2>(const Json& json, minEngine::Vector2& outValue)
-    {
-        if (!json.is_array() || json.size() != 2)
-        {
-            return false;
-        }
-        outValue.x = json[0].get<float>();
-        outValue.y = json[1].get<float>();
-        return true;
-    }
-
-    template<>
-    bool Serializer::Read<minEngine::Vector3>(const Json& json, minEngine::Vector3& outValue)
-    {
-        if (!json.is_array() || json.size() != 3)
-        {
-            return false;
-        }
-        outValue.x = json[0].get<float>();
-        outValue.y = json[1].get<float>();
-        outValue.z = json[2].get<float>();
-        return true;
-    }
-
-    template<>
-    bool Serializer::Read<minEngine::Vector4>(const Json& json, minEngine::Vector4& outValue)
-    {
-        if (!json.is_array() || json.size() != 4)
-        {
-            return false;
-        }
-        outValue.x = json[0].get<float>();
-        outValue.y = json[1].get<float>();
-        outValue.z = json[2].get<float>();
-        outValue.w = json[3].get<float>();
-        return true;
-    }
-
-
-    Json Serializer::WriteByName(const std::string& typeName, Reflection::TypeCategory category, const void* value)
-	{
-        switch(category)
-        {
-            case Reflection::TypeCategory::Primitive:      return WriteByName_Primitive(typeName, value);
-            case Reflection::TypeCategory::Object:         return WriteByName_Object(typeName, value);      
-            case Reflection::TypeCategory::Enum:           return WriteByName_Enum(typeName, value);
-            case Reflection::TypeCategory::Array:          return WriteByName_Array(typeName, value);       
+            return SerializeResult::Failure("Serialize failed: rootObject is null.", rootClassName);
         }
 
-		ME_CORE_ERROR("[Serializer] No serialization function found for type '{}'", typeName);
-		return Json();
-	}
-
-    Json Serializer::WriteByName_Primitive(const std::string& typeName, const void* value)
-    {
-        if (typeName == "int")
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
         {
-            return Write<int>(*static_cast<const int*>(value));
-        }
-        else if (typeName == "float")
-        {
-            return Write<float>(*static_cast<const float*>(value));
-        }
-        else if (typeName == "double")
-        {
-            return Write<double>(*static_cast<const double*>(value));
-        }
-        else if (typeName == "bool")
-        {
-            return Write<bool>(*static_cast<const bool*>(value));
-        }
-        else if (typeName == "std::string")
-        {
-            return Write<std::string>(*static_cast<const std::string*>(value));
-        }
-        else if (typeName == "Vector2" || typeName == "minEngine::Vector2")
-        {
-            return Write<minEngine::Vector2>(*static_cast<const minEngine::Vector2*>(value));
-        }
-        else if (typeName == "Vector3" || typeName == "minEngine::Vector3")
-        {
-            return Write<minEngine::Vector3>(*static_cast<const minEngine::Vector3*>(value));
-        }
-        else if (typeName == "Vector4" || typeName == "minEngine::Vector4")
-        {
-            return Write<minEngine::Vector4>(*static_cast<const minEngine::Vector4*>(value));
+            return SerializeResult::Failure("Serialize failed: root class not found.", rootClassName);
         }
 
-        ME_CORE_ERROR("[Serializer] No primitive serialization function found for type '{}'", typeName);
-        return Json();
+        return SerializeObject(rootClass, rootObject, archive, options, rootClassName);
     }
 
-    Json Serializer::WriteByName_Object(const std::string& typeName, const void* value)
+    SerializeResult Serializer::Deserialize(const std::string& rootClassName,
+                                                     ReaderArchive& archive,
+                                                     void* outRootObject,
+                                                     const SerializerOptions& options)
     {
-        // Check for registered types in the reflection system with write functions.
-        const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
-        if (typeInfo && typeInfo->writeToJson)
+        if (outRootObject == nullptr)
         {
-            Json result = {{"$typeName", Json(typeName)},
-                           {"$context", typeInfo->writeToJson(value)}};
-            return result;
+            return SerializeResult::Failure("Deserialize failed: outRootObject is null.", rootClassName);
         }
 
-        ME_CORE_ERROR("[Serializer] No object serialization function found for type '{}'", typeName);
-        return Json();
-    }
-
-    Json Serializer::WriteByName_Enum(const std::string& typeName, const void* value)
-    {
-        // Check if the type is a enum and serialize it as its underlying integer type.
-        const Reflection::EnumInfo* enumInfo = Reflection::GetEnumInfo(typeName);
-        if (enumInfo)
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
         {
-            const Reflection::EnumValueInfo* enumValueInfo = enumInfo->FindByValue(*static_cast<const int64_t*>(value));
-            return Write<std::string>(enumValueInfo->name);
+            return SerializeResult::Failure("Deserialize failed: root class not found.", rootClassName);
         }
 
-        ME_CORE_ERROR("[Serializer] No enum serialization function found for type '{}'", typeName);
-        return Json();
+        return DeserializeObject(rootClass, archive, outRootObject, options, rootClassName);
     }
 
-    Json Serializer::WriteByName_Array(const std::string& typeName, const void* value)
+    SerializeResult Serializer::SerializeObject(const MEClass* classInfo,
+                                                        const void* objectPtr,
+                                                        WriterArchive& archive,
+                                                        const SerializerOptions& options,
+                                                        const std::string& path)
     {
-        // Check if it's an array type first, since array is also a "type" that has a TypeInfo
-        const Reflection::ArrayTypeInfo* arrayTypeInfo = Reflection::GetArrayTypeInfo(typeName);
-        if (arrayTypeInfo != nullptr)
+        if (objectPtr == nullptr)
         {
-            Json arrayContext = Json::array();
-            if (value == nullptr || arrayTypeInfo->getSize == nullptr || arrayTypeInfo->getConstElement == nullptr)
+            return SerializeResult::Failure("Serialize class failed: object pointer is null.", path);
+        }
+
+        if (!archive.BeginObject(classInfo->GetName()))
+        {
+            return SerializeResult::Failure("Serialize class failed: BeginObject returned false.", path);
+        }
+
+        SerializeResult result = SerializeResult::Success();
+        const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
+            classInfo->GetName(),
+            [&](const MEProperty& property) -> bool
             {
-                return arrayContext;
+                if (property.constAccessor == nullptr)
+                {
+                    result = SerializeResult::Failure("Serialize property failed: const accessor is null.", JoinPath(path, property.name));
+                    return false;
+                }
+
+                const void* valuePtr = property.constAccessor(objectPtr);
+                if (valuePtr == nullptr)
+                {
+                    result = SerializeResult::Failure("Serialize property failed: value pointer is null.", JoinPath(path, property.name));
+                    return false;
+                }
+
+                if (!archive.BeginField(property.name))
+                {
+                    result = SerializeResult::Failure("Serialize property failed: BeginField returned false.", JoinPath(path, property.name));
+                    return false;
+                }
+
+                result = SerializeProperty(property, valuePtr, archive, options, JoinPath(path, property.name));
+                if (!result.ok)
+                {
+                    return false;
+                }
+
+                if (!archive.EndField())
+                {
+                    result = SerializeResult::Failure("Serialize property failed: EndField returned false.", JoinPath(path, property.name));
+                    return false;
+                }
+
+                return true;
+            });
+
+        if (!iterationOk)
+        {
+            if (!archive.EndObject())
+            {
+                return SerializeResult::Failure("Serialize class failed after property error: EndObject returned false.", path);
+            }
+            return result.ok ? SerializeResult::Failure("Serialize class failed during property iteration.", path) : result;
+        }
+
+        if (!archive.EndObject())
+        {
+            return SerializeResult::Failure("Serialize class failed: EndObject returned false.", path);
+        }
+
+        return result;
+    }
+
+    SerializeResult Serializer::SerializeProperty(const MEProperty& property,
+                                                           const void* valuePtr,
+                                                           WriterArchive& archive,
+                                                           const SerializerOptions& options,
+                                                           const std::string& path)
+    {
+        switch (property.GetCategory())
+        {
+        case MEPropertyCategory::Primitive:
+        {
+            const auto* primitive = dynamic_cast<const MEPrimitiveProperty*>(&property);
+            if (primitive == nullptr)
+            {
+                return SerializeResult::Failure("Serialize primitive failed: invalid property type.", path);
             }
 
-            const size_t count = arrayTypeInfo->getSize(value);
+            const PrimitiveCodec* codec = PrimitiveCodecRegistry::Get().Find(primitive->primitiveTypeName);
+            if (codec == nullptr)
+            {
+                return SerializeResult::Failure("Serialize primitive failed: codec not found for type '" + primitive->primitiveTypeName + "'.", path);
+            }
+
+            if (!codec->write(archive, valuePtr))
+            {
+                return SerializeResult::Failure("Serialize primitive failed: codec write returned false.", path);
+            }
+
+            return SerializeResult::Success();
+        }
+        case MEPropertyCategory::Object:
+        {
+            const auto* objectProperty = dynamic_cast<const MEObjectProperty*>(&property);
+            if (objectProperty == nullptr)
+            {
+                return SerializeResult::Failure("Serialize object failed: invalid property type.", path);
+            }
+
+            const MEClass* valueClass = objectProperty->GetValueClass();
+            if (valueClass == nullptr)
+            {
+                return SerializeResult::Failure("Serialize object failed: value class is unresolved.", path);
+            }
+
+            return SerializeObject(valueClass, valuePtr, archive, options, path);
+        }
+        case MEPropertyCategory::ObjectPtr:
+        {
+            // TODO: support object pointer later
+            if (!options.allowObjectPtrSerialization)
+            {
+                return SerializeResult::Failure("Serialize object pointer failed: object pointer serialization is disabled in MVP.", path);
+            }
+
+            return archive.WriteNull()
+                ? SerializeResult::Success()
+                : SerializeResult::Failure("Serialize object pointer failed: WriteNull returned false.", path);
+        }
+        case MEPropertyCategory::Array:
+        {
+            const auto* arrayProperty = dynamic_cast<const MEArrayProperty*>(&property);
+            if (arrayProperty == nullptr)
+            {
+                return SerializeResult::Failure("Serialize array failed: invalid property type.", path);
+            }
+
+            MEProperty* innerProperty = arrayProperty->GetInnerProperty();
+            if (innerProperty == nullptr)
+            {
+                return SerializeResult::Failure("Serialize array failed: inner property is null.", path);
+            }
+
+            const size_t count = arrayProperty->GetSize(valuePtr);
+            if (!archive.BeginArray(count))
+            {
+                return SerializeResult::Failure("Serialize array failed: BeginArray returned false.", path);
+            }
+
             for (size_t index = 0; index < count; ++index)
             {
-                const void* elementPtr = arrayTypeInfo->getConstElement(value, index);
+                const void* elementPtr = arrayProperty->GetConstElement(valuePtr, index);
                 if (elementPtr == nullptr)
                 {
-                    arrayContext.push_back(Json());
+                    if (!archive.WriteNull())
+                    {
+                        return SerializeResult::Failure("Serialize array failed: WriteNull returned false.", JoinPath(path, "[" + std::to_string(index) + "]"));
+                    }
                     continue;
                 }
 
-                arrayContext.push_back(WriteByName(arrayTypeInfo->elementTypeName, arrayTypeInfo->elementCategory, elementPtr));
+                SerializeResult elementResult = SerializeProperty(*innerProperty,
+                                                                  elementPtr,
+                                                                  archive,
+                                                                  options,
+                                                                  JoinPath(path, "[" + std::to_string(index) + "]"));
+                if (!elementResult.ok)
+                {
+                    return elementResult;
+                }
             }
 
-            return arrayContext;
-        }
-
-        ME_CORE_ERROR("[Serializer] No array serialization function found for type '{}'", typeName);
-        return Json();
-    }
-
-    Json Serializer::WriteByName_Pointer(const std::string& typeName, const void* value)
-    {
-        if (value == nullptr)
-        {
-            return Json();
-        }
-
-        // TODO: Complete this
-        return Json();
-    }
-
-
-
-    bool Serializer::ReadByName(const std::string& typeName, const Json& json, void* outValue)
-    {
-        if (outValue == nullptr)
-        {
-            return false;
-        }
-
-        // Check if it's an array type first, since array is also a "type" that has a TypeInfo
-        const Reflection::ArrayTypeInfo* arrayTypeInfo = Reflection::GetArrayTypeInfo(typeName);
-        if (arrayTypeInfo != nullptr)
-        {
-            if (!json.is_array() || arrayTypeInfo->resize == nullptr || arrayTypeInfo->getMutableElement == nullptr)
+            if (!archive.EndArray())
             {
-                return false;
+                return SerializeResult::Failure("Serialize array failed: EndArray returned false.", path);
             }
 
-            arrayTypeInfo->resize(outValue, json.size());
-            for (size_t index = 0; index < json.size(); ++index)
+            return SerializeResult::Success();
+        }
+        default:
+            return SerializeResult::Failure("Serialize failed: unsupported property category.", path);
+        }
+    }
+
+    SerializeResult Serializer::DeserializeObject(const MEClass* classInfo,
+                                                          ReaderArchive& archive,
+                                                          void* objectPtr,
+                                                          const SerializerOptions& options,
+                                                          const std::string& path)
+    {
+        if (objectPtr == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize class failed: object pointer is null.", path);
+        }
+
+        if (!archive.BeginObject(classInfo->GetName()))
+        {
+            return SerializeResult::Failure("Deserialize class failed: BeginObject returned false.", path);
+        }
+
+        SerializeResult result = SerializeResult::Success();
+        const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
+            classInfo->GetName(),
+            [&](const MEProperty& property) -> bool
             {
-                void* elementPtr = arrayTypeInfo->getMutableElement(outValue, index);
+                const std::string propertyPath = JoinPath(path, property.name);
+                const bool hasField = archive.EnterField(property.name);
+                if (!hasField)
+                {
+                    if (options.skipUnknownField)
+                    {
+                        return true;
+                    }
+
+                    result = SerializeResult::Failure("Deserialize property failed: missing field.", propertyPath);
+                    return false;
+                }
+
+                if (property.mutableAccessor == nullptr)
+                {
+                    result = SerializeResult::Failure("Deserialize property failed: mutable accessor is null.", propertyPath);
+                    return false;
+                }
+
+                void* valuePtr = property.mutableAccessor(objectPtr);
+                if (valuePtr == nullptr)
+                {
+                    result = SerializeResult::Failure("Deserialize property failed: value pointer is null.", propertyPath);
+                    return false;
+                }
+
+                result = DeserializeProperty(property, archive, valuePtr, options, propertyPath);
+                const bool leaveOk = archive.LeaveField();
+                if (!leaveOk)
+                {
+                    result = SerializeResult::Failure("Deserialize property failed: LeaveField returned false.", propertyPath);
+                    return false;
+                }
+
+                return result.ok;
+            });
+
+        if (!iterationOk)
+        {
+            if (!archive.EndObject())
+            {
+                return SerializeResult::Failure("Deserialize class failed after property error: EndObject returned false.", path);
+            }
+            return result.ok ? SerializeResult::Failure("Deserialize class failed during property iteration.", path) : result;
+        }
+
+        if (!archive.EndObject())
+        {
+            return SerializeResult::Failure("Deserialize class failed: EndObject returned false.", path);
+        }
+
+        return result;
+    }
+
+    SerializeResult Serializer::DeserializeProperty(const MEProperty& property,
+                                                             ReaderArchive& archive,
+                                                             void* outValuePtr,
+                                                             const SerializerOptions& options,
+                                                             const std::string& path)
+    {
+        switch (property.GetCategory())
+        {
+        case MEPropertyCategory::Primitive:
+        {
+            const auto* primitive = dynamic_cast<const MEPrimitiveProperty*>(&property);
+            if (primitive == nullptr)
+            {
+                return SerializeResult::Failure("Deserialize primitive failed: invalid property type.", path);
+            }
+
+            const PrimitiveCodec* codec = PrimitiveCodecRegistry::Get().Find(primitive->primitiveTypeName);
+            if (codec == nullptr)
+            {
+                return SerializeResult::Failure("Deserialize primitive failed: codec not found for type '" + primitive->primitiveTypeName + "'.", path);
+            }
+
+            if (!codec->read(archive, outValuePtr))
+            {
+                return SerializeResult::Failure("Deserialize primitive failed: codec read returned false.", path);
+            }
+
+            return SerializeResult::Success();
+        }
+        case MEPropertyCategory::Object:
+        {
+            const auto* objectProperty = dynamic_cast<const MEObjectProperty*>(&property);
+            if (objectProperty == nullptr)
+            {
+                return SerializeResult::Failure("Deserialize object failed: invalid property type.", path);
+            }
+
+            const MEClass* valueClass = objectProperty->GetValueClass();
+            if (valueClass == nullptr)
+            {
+                return SerializeResult::Failure("Deserialize object failed: value class is unresolved.", path);
+            }
+
+            return DeserializeObject(valueClass, archive, outValuePtr, options, path);
+        }
+        case MEPropertyCategory::ObjectPtr:
+        {
+            // TODO: support object pointer later
+            if (!options.allowObjectPtrSerialization)
+            {
+                return SerializeResult::Failure("Deserialize object pointer failed: object pointer serialization is disabled in MVP.", path);
+            }
+
+            if (!archive.ReadNull())
+            {
+                return SerializeResult::Failure("Deserialize object pointer failed: only null is supported in MVP.", path);
+            }
+
+            return SerializeResult::Success();
+        }
+        case MEPropertyCategory::Array:
+        {
+            const auto* arrayProperty = dynamic_cast<const MEArrayProperty*>(&property);
+            if (arrayProperty == nullptr)
+            {
+                return SerializeResult::Failure("Deserialize array failed: invalid property type.", path);
+            }
+
+            MEProperty* innerProperty = arrayProperty->GetInnerProperty();
+            if (innerProperty == nullptr)
+            {
+                return SerializeResult::Failure("Deserialize array failed: inner property is null.", path);
+            }
+
+            size_t count = 0;
+            if (!archive.BeginArray(count))
+            {
+                return SerializeResult::Failure("Deserialize array failed: BeginArray returned false.", path);
+            }
+
+            arrayProperty->Resize(outValuePtr, count);
+            for (size_t index = 0; index < count; ++index)
+            {
+                if (!archive.EnterArrayElement(index))
+                {
+                    return SerializeResult::Failure("Deserialize array failed: EnterArrayElement returned false.", JoinPath(path, "[" + std::to_string(index) + "]"));
+                }
+
+                void* elementPtr = arrayProperty->GetMutableElement(outValuePtr, index);
                 if (elementPtr == nullptr)
                 {
-                    return false;
+                    return SerializeResult::Failure("Deserialize array failed: mutable element pointer is null.", JoinPath(path, "[" + std::to_string(index) + "]"));
                 }
 
-                if (!ReadByName(arrayTypeInfo->elementTypeName, json[index], elementPtr))
+                SerializeResult elementResult = DeserializeProperty(*innerProperty,
+                                                                    archive,
+                                                                    elementPtr,
+                                                                    options,
+                                                                    JoinPath(path, "[" + std::to_string(index) + "]"));
+
+                if (!archive.LeaveArrayElement())
                 {
-                    return false;
+                    return SerializeResult::Failure("Deserialize array failed: LeaveArrayElement returned false.", JoinPath(path, "[" + std::to_string(index) + "]"));
                 }
-            }
 
-            return true;
-        }
-
-        // Then check for registered types in the reflection system with read/write functions.
-        const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo(typeName);
-        if (typeInfo != nullptr)
-        {
-            const Json* context = &json;
-            if (json.is_object() && json.contains("$context"))
-            {
-                context = &json["$context"];
-            }
-
-            if (!context->is_object())
-            {
-                return false;
-            }
-
-            for (const Reflection::FieldInfo& fieldInfo : typeInfo->fields)
-            {
-                if (!context->contains(fieldInfo.fieldName))
+                if (!elementResult.ok)
                 {
-                    continue;
-                }
-
-                void* fieldValuePtr = fieldInfo.mutableAccessor(outValue);
-                if (fieldValuePtr == nullptr)
-                {
-                    return false;
-                }
-
-                if (!ReadByName(fieldInfo.fieldTypeName, (*context)[fieldInfo.fieldName], fieldValuePtr))
-                {
-                    return false;
+                    return elementResult;
                 }
             }
 
-            return true;
-        }
-
-        if(typeName == "int")
-        {
-            return Read<int>(json, *static_cast<int*>(outValue));
-        }
-        else if(typeName == "float")
-        {
-            return Read<float>(json, *static_cast<float*>(outValue));
-        }
-        else if(typeName == "double")
-        {
-            return Read<double>(json, *static_cast<double*>(outValue));
-        }
-        else if(typeName == "bool")
-        {
-            return Read<bool>(json, *static_cast<bool*>(outValue));
-        }
-        else if(typeName == "std::string")
-        {
-            return Read<std::string>(json, *static_cast<std::string*>(outValue));
-        }
-        else if(typeName == "Vector2" || typeName == "minEngine::Vector2")
-        {
-            return Read<minEngine::Vector2>(json, *static_cast<minEngine::Vector2*>(outValue));
-        }
-        else if(typeName == "Vector3" || typeName == "minEngine::Vector3")
-        {
-            return Read<minEngine::Vector3>(json, *static_cast<minEngine::Vector3*>(outValue));
-        }
-        else if(typeName == "Vector4" || typeName == "minEngine::Vector4")
-        {
-            return Read<minEngine::Vector4>(json, *static_cast<minEngine::Vector4*>(outValue));
-        }
-
-        // Lastly, check if the type is a enum and deserialize it as its underlying integer type.
-        const Reflection::EnumInfo* enumInfo = Reflection::GetEnumInfo(typeName);
-        if (enumInfo)
-        {
-            if (!json.is_string())
+            if (!archive.EndArray())
             {
-                return false;
+                return SerializeResult::Failure("Deserialize array failed: EndArray returned false.", path);
             }
-            std::string enumValueName = json.get<std::string>();
-            const Reflection::EnumValueInfo* enumValueInfo = enumInfo->FindByName(enumValueName);
-            if (enumValueInfo == nullptr)
-            {
-                return false;
-            }
-            *static_cast<int64_t*>(outValue) = enumValueInfo->value;
-            return true;
-        }
 
-        ME_CORE_ERROR("[Serializer] No deserialization function found for type '{}'", typeName);
-        return false;
+            return SerializeResult::Success();
+        }
+        default:
+            return SerializeResult::Failure("Deserialize failed: unsupported property category.", path);
+        }
     }
 
+    std::string Serializer::JoinPath(const std::string& basePath, const std::string& nextSegment)
+    {
+        if (basePath.empty())
+        {
+            return nextSegment;
+        }
+
+        if (!nextSegment.empty() && nextSegment.front() == '[')
+        {
+            return basePath + nextSegment;
+        }
+
+        return basePath + "." + nextSegment;
+    }
 }

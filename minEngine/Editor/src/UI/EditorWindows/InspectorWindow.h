@@ -237,35 +237,35 @@ namespace minEngine
                     continue;
                 }
 
-                const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfoByTypeId(typeid(*component).name());
-                if (typeInfo == nullptr)
-                {
-                    ImGui::TextUnformatted("Component type info missing.");
-                    continue;
-                }
+                // const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfoByTypeId(typeid(*component).name());
+                // if (typeInfo == nullptr)
+                // {
+                //     ImGui::TextUnformatted("Component type info missing.");
+                //     continue;
+                // }
 
-                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.26f, 0.36f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.23f, 0.33f, 0.46f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.30f, 0.42f, 1.0f));
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
-                const std::string headerLabel = GetShortTypeName(typeInfo->typeName) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
-                const bool componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-                ImGui::PopStyleVar();
-                ImGui::PopStyleColor(3);
-                if (!componentOpen)
-                {
-                    continue;
-                }
+                // ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.26f, 0.36f, 1.0f));
+                // ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.23f, 0.33f, 0.46f, 1.0f));
+                // ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.30f, 0.42f, 1.0f));
+                // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
+                // const std::string headerLabel = GetShortTypeName(typeInfo->typeName) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+                // const bool componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                // ImGui::PopStyleVar();
+                // ImGui::PopStyleColor(3);
+                // if (!componentOpen)
+                // {
+                //     continue;
+                // }
 
-                const std::string tableId = "ComponentTable##" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
-                if (!ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
-                {
-                    continue;
-                }
+                // const std::string tableId = "ComponentTable##" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+                // if (!ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
+                // {
+                //     continue;
+                // }
 
-                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
-                bool hasAnyReflectedField = false;
+                // ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
+                // ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
+                // bool hasAnyReflectedField = false;
                 // Reflection::ForEachFieldInHierarchy(typeInfo->typeName,
             //     [&](const Reflection::TypeInfo& declaringType, const Reflection::FieldInfo& field)
             //     {
@@ -400,7 +400,7 @@ namespace minEngine
             //     ImGui::TextUnformatted("No reflected fields.");
             // }
 
-                ImGui::EndTable();
+                // ImGui::EndTable();
             }
 
             ImGui::End();

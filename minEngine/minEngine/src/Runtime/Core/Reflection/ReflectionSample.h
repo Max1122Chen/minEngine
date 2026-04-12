@@ -42,4 +42,3 @@ namespace minEngine
     };
 }
 
-#include "ReflectionSample.gen.h"

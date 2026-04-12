@@ -1,14 +1,12 @@
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
+list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Serialization/Legacy/.*")
+list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Reflection/Legacy/.*")
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-option(USE_NEW_REFLECTION_HEADER_TOOL "Use new MEReflection header tool" OFF)
 
-if(USE_NEW_REFLECTION_HEADER_TOOL)
-    set(REFLECTION_GENERATOR_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool_new.py)
-else()
-    set(REFLECTION_GENERATOR_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool.py)
-endif()
+set(REFLECTION_GENERATOR_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool.py)
+
 set(REFLECTION_SCAN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(REFLECTION_GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Generated/Reflection)
 set(REFLECTION_GENERATED_MANIFEST ${REFLECTION_GENERATED_DIR}/manifest.json)
@@ -16,7 +14,8 @@ file(GLOB_RECURSE REFLECTION_SCAN_HEADERS CONFIGURE_DEPENDS
     ${REFLECTION_SCAN_ROOT}/*.h
     ${REFLECTION_SCAN_ROOT}/*.hpp
 )
-
+list(FILTER REFLECTION_SCAN_HEADERS EXCLUDE REGEX ".*/Runtime/Core/Serialization/Legacy/.*")
+list(FILTER REFLECTION_SCAN_HEADERS EXCLUDE REGEX ".*/Runtime/Core/Reflection/Legacy/.*")
 add_custom_command(
     OUTPUT ${REFLECTION_GENERATED_MANIFEST}
     COMMAND ${Python3_EXECUTABLE} ${REFLECTION_GENERATOR_SCRIPT}
