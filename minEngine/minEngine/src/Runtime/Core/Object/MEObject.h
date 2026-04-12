@@ -6,6 +6,7 @@ namespace minEngine
     ME_CLASS()
     class MEObject
     {
+        ME_REFLECTION_FRIEND(MEObject)
     public:
         virtual ~MEObject() = default;
 
@@ -14,7 +15,10 @@ namespace minEngine
 
 
     protected:
+        ME_PROPERTY()
         std::string m_Name;
         MEObject* m_Outer = nullptr;
     };
 }
+
+#include "MEObject.gen.h"

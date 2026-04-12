@@ -14,6 +14,11 @@ namespace minEngine
 {
     void Engine::Initialize()
     {
+        LogSystem::Get().Initialize();
+
+        FinializeReflection();
+    
+        ME_CORE_INFO("Engine Initialization Started");
         RuntimeGlobalContext::GetRuntimeGlobalContext().StartSystems();
     }
 
@@ -44,6 +49,25 @@ namespace minEngine
         LogicalTick(deltaTime);
 
         RendererTick(deltaTime);
+    }
+
+    void Engine::FinializeReflection()
+    {
+        Reflection::ReflectionSystem::Get().FinalizeReflection();
+        const std::vector<std::string>& reflectionErrors = Reflection::ReflectionSystem::Get().GetLastErrors();
+        if (!reflectionErrors.empty())
+        {
+            for (const std::string& error : reflectionErrors)
+            {
+                ME_CORE_ERROR(error);
+            }
+            ME_ASSERT(false, "Reflection System finalization failed. See previous errors for details.");
+        }
+        else
+        {
+            ME_CORE_INFO("Reflection System finalized successfully.");
+            Reflection::ReflectionSystem::Get().ClearErrors();
+        }
     }
 
     void Engine::LogicalTick(float deltaTime)

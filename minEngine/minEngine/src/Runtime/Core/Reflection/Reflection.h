@@ -243,16 +243,19 @@ namespace minEngine::Reflection
             bool succeeded = true;
             if (!ResolvePendingSuperClasses())
             {
+                AppendError("[Reflection] Failed to resolve superclass references when Finalizing.");
                 succeeded = false;
             }
 
             if (!ValidateInheritanceGraph())
             {
+                AppendError("[Reflection] Inheritance graph validation failed when Finalizing (possible cycle detected).");
                 succeeded = false;
             }
 
             if (!ResolvePendingPropertyClasses())
             {
+                AppendError("[Reflection] Failed to resolve property class references when Finalizing.");
                 succeeded = false;
             }
 
@@ -375,6 +378,11 @@ namespace minEngine::Reflection
         const std::vector<std::string>& GetLastErrors() const
         {
             return m_LastErrors;
+        }
+
+        void ClearErrors()
+        {
+            m_LastErrors.clear();
         }
 
         bool ForEachPropertyInHierarchy(const std::string& rootClassName, const PropertyVisitorFn& visitor) const

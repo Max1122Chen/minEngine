@@ -6,6 +6,8 @@
 
 namespace minEngine::Serialization
 {
+    // Archive interfaces for serialization and deserialization.
+
     class WriterArchive
     {
     public:

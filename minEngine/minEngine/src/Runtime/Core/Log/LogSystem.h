@@ -17,6 +17,12 @@ namespace minEngine
         static void Initialize();
         static void Shutdown();
 
+        static LogSystem& Get()
+        {
+            static LogSystem instance;
+            return instance;
+        }
+
         inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
         inline static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
         

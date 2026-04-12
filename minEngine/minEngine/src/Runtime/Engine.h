@@ -24,6 +24,7 @@ namespace minEngine
         float CalculateFPS(float deltaTime);
         
     private:
+        void FinializeReflection();
         void LogicalTick(float deltaTime);
         void RendererTick(float deltaTime);
         

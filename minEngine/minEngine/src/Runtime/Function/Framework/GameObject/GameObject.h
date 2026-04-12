@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 
@@ -11,8 +12,10 @@ namespace minEngine
     class Component;
     class SceneComponent;
 
-    class GameObject
+    ME_CLASS()
+    class GameObject : public MEObject
     {
+        ME_REFLECTION_FRIEND(GameObject)
     public:
         explicit GameObject(uint64_t id, std::string name = "");
         virtual ~GameObject() = default;
@@ -21,20 +24,17 @@ namespace minEngine
 
         uint64_t m_ID{ 0 };
 
-        const std::string& GetName() const { return m_Name; }
-        void SetName(const std::string& name) { m_Name = name; }
+        const Transform& GetTransform();
+        void SetTransform(const Transform& inTransform);
 
-        const Transform& GetTransform() { return m_RootComponent->GetTransform(); }     // TODO: change this dangerous design later
-        void SetTransform(const Transform& inTransform) { m_RootComponent->SetTransform(inTransform); }
+        const Vector3& GetPosition();
+        void SetPosition(const Vector3& position);
 
-        const Vector3& GetPosition() { return m_RootComponent->GetPosition(); }
-        void SetPosition(const Vector3& position) { m_RootComponent->SetPosition(position); }
+        const Vector3& GetRotation();
+        void SetRotation(const Vector3& rotation);
 
-        const Vector3& GetRotation() { return m_RootComponent->GetRotation(); }
-        void SetRotation(const Vector3& rotation) { m_RootComponent->SetRotation(rotation); }
-
-        const Vector3& GetScale() { return m_RootComponent->GetScale(); }
-        void SetScale(const Vector3& scale) { m_RootComponent->SetScale(scale); }
+        const Vector3& GetScale();
+        void SetScale(const Vector3& scale);
 
     
         std::shared_ptr<SceneComponent> GetRootComponent() const { return m_RootComponent; }
@@ -67,11 +67,10 @@ namespace minEngine
         }
 
     private:
-        std::string m_Name;
         std::shared_ptr<SceneComponent> m_RootComponent{ nullptr };
         std::vector<std::shared_ptr<Component>> m_Components;
 
     };
-
-    
 }
+
+#include "GameObject.gen.h"

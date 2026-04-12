@@ -1,6 +1,5 @@
 #include "RuntimeGlobalContext.h"
 
-#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
@@ -18,8 +17,6 @@ namespace minEngine
     void RuntimeGlobalContext::StartSystems()
     {
         // Initialize global systems
-        m_LogSystem = std::make_shared<LogSystem>();
-        m_LogSystem->Initialize();
 
         m_AssetManager = std::make_shared<AssetManager>();
         m_AssetManager->Initialize();
@@ -67,12 +64,6 @@ namespace minEngine
         {
             m_AssetManager->Shutdown();
             m_AssetManager.reset();
-        }
-
-        if (m_LogSystem)
-        {
-            m_LogSystem->Shutdown();
-            m_LogSystem.reset();
         }
 
     }

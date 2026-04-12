@@ -9,7 +9,7 @@ namespace minEngine
     ME_CLASS()
     class SpotLightComponent : public PointLightComponent
     {
-        ME_REFLECT_FRIEND(SpotLightComponent)
+        ME_REFLECTION_FRIEND(SpotLightComponent)
 
     public:
         SpotLightComponent() = default;

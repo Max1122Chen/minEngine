@@ -15,7 +15,7 @@ namespace minEngine::Reflection
     struct PointingValueAccessor
     {
         
-    }
+    };
 
     using FieldConstAccessorFn = const void* (*)(const void*);
     using FieldMutableAccessorFn = void* (*)(void*);

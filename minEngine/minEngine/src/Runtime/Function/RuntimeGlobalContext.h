@@ -31,7 +31,6 @@ namespace minEngine
     public:
     
     // Add global systems and contexts here
-    std::shared_ptr<LogSystem> m_LogSystem;
     std::shared_ptr<AssetManager> m_AssetManager;
     std::shared_ptr<WindowSystem> m_WindowSystem;
     std::shared_ptr<InputSystem> m_InputSystem;
