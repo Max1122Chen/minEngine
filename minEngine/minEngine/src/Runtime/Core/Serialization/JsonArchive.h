@@ -30,8 +30,9 @@ namespace minEngine::Serialization
         bool WriteDouble(double value) override;
         bool WriteString(const std::string& value) override;
 
-        const Json& GetRoot() const;
-        Json&& MoveRoot();
+        const Json& GetRoot() const { return m_Root; };
+        void ResetRoot() { m_Root = Json(); m_HasRoot = false; m_Stack.clear(); };
+        Json&& MoveRoot() { return std::move(m_Root); };
 
     private:
         struct WriteContext
@@ -56,6 +57,7 @@ namespace minEngine::Serialization
         {
         }
 
+        bool BeginObject(const minEngine::Reflection::MEClass* baseClassInfo) override;
         bool BeginObject(const std::string& expectedTypeName) override;
         bool EndObject() override;
 

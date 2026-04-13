@@ -1,12 +1,13 @@
 #pragma once
 #include "Core.h"
-
+#include "Runtime/Core/Object/MEObject.h"
 
 namespace minEngine
 {
     class GameObject;
 
-    class Scene
+    ME_CLASS()
+    class Scene : public MEObject
     {  
     public:
         Scene() = default;
@@ -26,3 +27,5 @@ namespace minEngine
         uint64_t m_NextObjectId{ 0 };
     };
 }
+
+#include "Scene.gen.h"

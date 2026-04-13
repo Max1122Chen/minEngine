@@ -15,84 +15,47 @@ namespace minEngine
         }
     }
 
+    GameObject::GameObject()
+    {}
+
     const Transform &GameObject::GetTransform()
     {
-        if(m_RootComponent)
-        {
-            return m_RootComponent->GetTransform();
-        }
-        else
-        {
-            return Transform();
-        }
+        return m_RootComponent->GetTransform();
     }
 
     void GameObject::SetTransform(const Transform &inTransform)
     {
-        if(m_RootComponent)
-        {
-            m_RootComponent->SetTransform(inTransform);
-        }
+        m_RootComponent->SetTransform(inTransform);
     }
 
     const Vector3 &GameObject::GetPosition()
     {
-        if(m_RootComponent)
-        {
-            return m_RootComponent->GetPosition();
-        }
-        else
-        {
-            return Vector3();
-        }
+        return m_RootComponent->GetPosition();
     }
 
     void GameObject::SetPosition(const Vector3 &position)
     {
-        if(m_RootComponent)
-        {
-            m_RootComponent->SetPosition(position);
-        }
+        m_RootComponent->SetPosition(position);
     }
 
     const Vector3 &GameObject::GetRotation()
     {
-        if(m_RootComponent)
-        {
-            return m_RootComponent->GetRotation();
-        }
-        else
-        {
-            return Vector3();
-        }
+        return m_RootComponent->GetRotation();
     }
 
     void GameObject::SetRotation(const Vector3 &rotation)
     {
-        if(m_RootComponent)
-        {
-            m_RootComponent->SetRotation(rotation);
-        }
+        m_RootComponent->SetRotation(rotation);
     }
 
     const Vector3 &GameObject::GetScale()
     {
-        if(m_RootComponent)
-        {
-            return m_RootComponent->GetScale();
-        }
-        else
-        {
-            return Vector3();
-        }
+        return m_RootComponent->GetScale();
     }
 
     void GameObject::SetScale(const Vector3 &scale)
     {
-        if(m_RootComponent)
-        {
-            m_RootComponent->SetScale(scale);
-        }
+        m_RootComponent->SetScale(scale);
     }
 
     void GameObject::Tick(float deltaTime)

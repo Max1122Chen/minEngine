@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <string>
 #include <utility>
+#include "TypeTraits.h"
 
 namespace minEngine::Reflection
 {
@@ -11,14 +12,15 @@ namespace minEngine::Reflection
     template<typename T>
     struct FieldAccessor;
 
-    template<typename TPointee>
-    struct PointingValueAccessor
-    {
-        
-    };
-
+    // Field accessor function types
     using FieldConstAccessorFn = const void* (*)(const void*);
     using FieldMutableAccessorFn = void* (*)(void*);
+
+    // Data underlying a pointer accessor function type, used for both raw pointers and smart pointers
+    using PointingDataConstAccessorFn = const void* (*)(const void*);
+    using PointingDataMutableAccessorFn = void* (*)(void*);
+
+    // Array accessor function types
     using MEArrayGetSizeFn = size_t (*)(const void*);
     using MEArrayGetConstElementFn = const void* (*)(const void*, size_t);
     using MEArrayResizeFn = void (*)(void*, size_t);
@@ -30,6 +32,13 @@ namespace minEngine::Reflection
         Object,
         ObjectPtr,
         Array
+    };
+
+    enum class MEObjectPtrCategory
+    {
+        Invalid,
+        Raw,
+        Shared
     };
 
     class MEProperty
@@ -72,25 +81,18 @@ namespace minEngine::Reflection
     public:
         explicit MEObjectProperty(std::string inName)
             : MEProperty(std::move(inName))
-        {
-        }
+        {}
 
         MEPropertyCategory GetCategory() const override
         {
             return MEPropertyCategory::Object;
         }
 
-        void SetValueClass(MEClass* inClass)
-        {
-            valueClass = inClass;
-        }
+        void SetValueClass(MEClass* inClass) { valueClass = inClass; }
 
-        MEClass* GetValueClass() const
-        {
-            return valueClass;
-        }
+        MEClass* GetValueClass() const { return valueClass; }
 
-    private:
+    protected:
         MEClass* valueClass = nullptr;
     };
 
@@ -100,13 +102,38 @@ namespace minEngine::Reflection
     public:
         explicit MEObjectPtrProperty(std::string inName)
             : MEObjectProperty(std::move(inName))
-        {
-        }
+        {}
 
         MEPropertyCategory GetCategory() const override
         {
             return MEPropertyCategory::ObjectPtr;
         }
+
+        void SetPointingDataAccessors(PointingDataConstAccessorFn inConstAccessor,
+                                     PointingDataMutableAccessorFn inMutableAccessor)
+        {
+            pointingDataConstAccessor = inConstAccessor;
+            pointingDataMutableAccessor = inMutableAccessor;
+        }
+
+        const void* GetConstPointingData(void* ptrToPtr) const
+        {
+            return pointingDataConstAccessor == nullptr ? nullptr : pointingDataConstAccessor(ptrToPtr);
+        }
+
+        void* GetMutablePointingData(void* ptrToPtr) const
+        {
+            return pointingDataMutableAccessor == nullptr ? nullptr : pointingDataMutableAccessor(ptrToPtr);
+        }
+
+        void SetPtrCategory(MEObjectPtrCategory inPtrCategory) { ptrCategory = inPtrCategory; }
+        MEObjectPtrCategory GetPtrCategory() const { return ptrCategory; }
+
+    private:
+        PointingDataConstAccessorFn pointingDataConstAccessor = nullptr;
+        PointingDataMutableAccessorFn pointingDataMutableAccessor = nullptr;
+
+        MEObjectPtrCategory ptrCategory = MEObjectPtrCategory::Invalid;
     };
 
     class MEArrayProperty final : public MEProperty

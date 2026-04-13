@@ -4,8 +4,10 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::GameObject)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::GameObject, m_Components)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_BEGIN(minEngine::GameObject)
     ME_REFLECTION_CLASS_SUPER(minEngine::MEObject)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::GameObject, m_Components)
 ME_REFLECTION_CLASS_END(minEngine::GameObject)

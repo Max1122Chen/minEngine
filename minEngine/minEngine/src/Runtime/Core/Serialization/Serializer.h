@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core.h"
 #include "Archive.h"
 #include "SerializationTypes.h"
 
@@ -9,6 +10,8 @@ namespace minEngine::Reflection
 {
     class MEClass;
     class MEProperty;
+    class MEObjectProperty;
+    class MEObjectPtrProperty;
 }
 
 namespace minEngine::Serialization
@@ -39,7 +42,7 @@ namespace minEngine::Serialization
                                                  const SerializerOptions& options,
                                                  const std::string& path);
 
-        static SerializeResult DeserializeObject(const minEngine::Reflection::MEClass* classInfo,
+        static SerializeResult DeserializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                                 ReaderArchive& archive,
                                                 void* objectPtr,
                                                 const SerializerOptions& options,
@@ -51,6 +54,32 @@ namespace minEngine::Serialization
                                                    const SerializerOptions& options,
                                                    const std::string& path);
 
+        static SerializeResult DeserializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty& objectPtrProperty,
+                                                   ReaderArchive& archive,
+                                                   void* ptrToPtr,
+                                                   const SerializerOptions& options,
+                                                   const std::string& path);
+
+        static bool DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
+                                                ReaderArchive& archive,
+                                                void* objectPtr,
+                                                const SerializerOptions& options,
+                                                const std::string& path);
+
         static std::string JoinPath(const std::string& basePath, const std::string& nextSegment);
+
+    public:
+        
+    private:
+        static bool IsHandlingPtr()
+        {
+            return m_IsHandlingPtr;
+        }
+
+        static void SetHandlingPtr(bool handling)
+        {
+            m_IsHandlingPtr = handling;
+        }
+        static bool m_IsHandlingPtr;
     };
 }

@@ -12,6 +12,9 @@ namespace minEngine::Reflection
 {
     using MEClassFactoryFn = std::shared_ptr<void> (*)();
 
+    // Take in a type-erased shared_ptr<void> and set it to the dst, which actually points to a shared_ptr of the correct type. This is used for handling shared pointer properties in a generic way without knowing the actual type at compile time.
+    using MEClassSetSharedPtrFn = bool (*)(const std::shared_ptr<void>& src, void* dst);
+
     // 
     class MEStruct
     {
@@ -56,10 +59,10 @@ namespace minEngine::Reflection
             return m_Factory;
         }
 
-        bool HasFactory() const
-        {
-            return m_Factory != nullptr;
-        }
+        bool HasFactory() const { return m_Factory != nullptr; }
+
+        void SetSharedPtrSetter(MEClassSetSharedPtrFn inSetSharedPtr) { m_SetSharedPtr = inSetSharedPtr; }
+        bool HasSharedPtrSetter() const { return m_SetSharedPtr != nullptr; }
 
         std::shared_ptr<void> CreateInstance() const
         {
@@ -82,6 +85,29 @@ namespace minEngine::Reflection
             {
                 return nullptr;
             }
+        }
+
+        bool SetSharedPtr(const std::shared_ptr<void>& src, void* dst) const
+        {
+            if (m_SetSharedPtr == nullptr)
+            {
+                return false;
+            }
+
+            return m_SetSharedPtr(src, dst);
+        }
+
+        template<typename T>
+        static bool SetSharedPtrImpl(const std::shared_ptr<void>& src, void* dst)
+        {
+            if (src == nullptr || dst == nullptr)
+            {
+                return false;
+            }
+
+            std::shared_ptr<T>* typedDst = static_cast<std::shared_ptr<T>*>(dst);
+            *typedDst = std::static_pointer_cast<T>(src);
+            return true;
         }
 
         void SetResolvedSuperClass(MEClass* inSuperClass)
@@ -137,6 +163,7 @@ namespace minEngine::Reflection
 
     private:
         MEClassFactoryFn m_Factory = nullptr;
+        MEClassSetSharedPtrFn m_SetSharedPtr = nullptr;
         MEClass* m_SuperClass = nullptr;
         std::vector<MEProperty*> m_Properties;
         std::vector<MEClass*> m_DirectDerivedClasses;

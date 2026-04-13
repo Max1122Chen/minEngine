@@ -23,28 +23,19 @@ namespace minEngine
 {
     namespace
     {
-        void EnsureRootComponent(GameObject& gameObject)
-        {
-            if (gameObject.GetRootComponent())
-            {
-                return;
-            }
-
-            std::shared_ptr<SceneComponent> root = std::make_shared<SceneComponent>();
-            root->SetOwner(&gameObject);
-            gameObject.SetRootComponent(root);
-            gameObject.GetComponents().push_back(root);
-        }
-
         void PopulateEditorDefaultScene(Scene& scene)
         {
-            std::shared_ptr<GameObject> sampleGO = scene.CreateGameObject();
-            sampleGO->SetName("SampleObject");
-            EnsureRootComponent(*sampleGO);
-            sampleGO->CreateAndAddComponent<ReflectionSampleComponent>();
-            
+            std::shared_ptr<GameObject> sampleGO01 = scene.CreateGameObject();
+            sampleGO01->SetName("SampleObject01");
+            auto root1 = sampleGO01->AddComponent<SceneComponent>();
+            sampleGO01->SetRootComponent(root1);
+            sampleGO01->AddComponent<ReflectionSampleComponent>();
 
-            
+            std::shared_ptr<GameObject> sampleGO02 = scene.CreateGameObject();
+            sampleGO02->SetName("SampleObject02");
+            auto root2 = sampleGO02->AddComponent<SceneComponent>();
+            sampleGO02->SetRootComponent(root2);
+            sampleGO02->AddComponent<ReflectionSampleComponent>();
         }
 
         void ApplyEditorTheme()
@@ -377,12 +368,17 @@ namespace minEngine
         {
             if (!OpenScene(defaultScenePath.string()))
             {
+                ME_CORE_WARN("Failed to load default editor scene '{}'. We will create a new scene instead.", defaultScenePath.string());
                 CreateNewScene(defaultScenePath.string());
                 if (std::shared_ptr<Scene> scene = GetActiveScene())
                 {
                     PopulateEditorDefaultScene(*scene);
                     MarkSceneDirty();
                 }
+            }
+            else
+            {
+                ME_CORE_INFO("Loaded default editor scene '{}'.", defaultScenePath.string());
             }
         }
         else

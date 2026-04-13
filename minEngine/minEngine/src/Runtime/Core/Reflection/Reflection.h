@@ -115,6 +115,11 @@ namespace minEngine::Reflection
                 classInfo->SetFactory(&MEClass::CreateDefaultInstance<T>);
             }
 
+            if(!classInfo->HasSharedPtrSetter())
+            {
+                classInfo->SetSharedPtrSetter(&MEClass::SetSharedPtrImpl<T>);
+            }
+
             if (!RegisterClass_Internal(classInfo))
             {
                 return false;
@@ -344,6 +349,17 @@ namespace minEngine::Reflection
             return FindClass(iter->second);
         }
 
+        MEClass* FindClassByTypeIndex(const std::type_index& typeIndex)
+        {
+            auto nameIter = m_DeclaredNameByTypeIndex.find(typeIndex);
+            if (nameIter == m_DeclaredNameByTypeIndex.end())
+            {
+                return nullptr;
+            }
+
+            return FindClass(nameIter->second);
+        }
+
         MEEnum* FindEnum(const std::string& enumName)
         {
             auto iter = m_EnumsByName.find(enumName);
@@ -513,17 +529,44 @@ namespace minEngine::Reflection
                 using PointeeType = RemoveCvRefT<PointeeT<RawFieldType>>;   // This traits will give us the type that the pointer-like type is pointing to (e.g. for Foo* & std::shared_ptr<Foo>, it will give us Foo)
                 if constexpr (std::is_class_v<PointeeType>)
                 {
-                    // TODO: raw pointer and smart pointer should be treated differently, we might want to have different property types for them in the future if needed (e.g. MEObjectRawPtrProperty and MEObjectSmartPtrProperty), and we also need to consider how to handle the factory and instance creation for them since currently we only support default constructor without parameters.
+                    MEObjectPtrProperty* property = CreateProperty<MEObjectPtrProperty>(propertyName);
                     if constexpr (std::is_pointer_v<RawFieldType>)
                     {
-                        
+                        property->SetPtrCategory(MEObjectPtrCategory::Raw);
+                        property->SetPointingDataAccessors(
+                        [](const void* ptrToPtr) -> const void*
+                        {
+                            const PointeeType** typedPtrToPtr = static_cast<const PointeeType**>(ptrToPtr);
+                            return static_cast<const void*>(*typedPtrToPtr);
+                        },
+                        [](void* ptrToPtr) -> void*
+                        {
+                            PointeeType** typedPtrToPtr = static_cast<PointeeType**>(ptrToPtr);
+                            return static_cast<void*>(*typedPtrToPtr);
+                        });
                     }
                     else if constexpr (minEngine::is_smart_ptr<RawFieldType>::value)
                     {
-                        
+                        if constexpr (minEngine::is_shared_ptr<RawFieldType>::value)
+                        {
+                            property->SetPtrCategory(MEObjectPtrCategory::Shared);
+                            property->SetPointingDataAccessors(
+                            [](const void* ptrToSmartPtr) -> const void*
+                            {
+                                const std::shared_ptr<PointeeType>* typedPtrToSmartPtr = static_cast<const std::shared_ptr<PointeeType>*>(ptrToSmartPtr);
+                                return static_cast<const void*>(typedPtrToSmartPtr->get());
+                            },
+                            [](void* ptrToSmartPtr) -> void*
+                            {
+                                std::shared_ptr<PointeeType>* typedPtrToSmartPtr = static_cast<std::shared_ptr<PointeeType>*>(ptrToSmartPtr);
+                                return static_cast<void*>(typedPtrToSmartPtr->get());
+                            });
+                        }
+                        else
+                        {
+                            static_assert(false, "Unsupported smart pointer type for reflection property. Currently only std::shared_ptr is supported.");
+                        }
                     }
-                    
-                    MEObjectPtrProperty* property = CreateProperty<MEObjectPtrProperty>(propertyName);
                     AddPendingPropertyClass<PointeeType>(ownerClass, property);
                     return property;
                 }
@@ -613,17 +656,6 @@ namespace minEngine::Reflection
             }
 
             return true;
-        }
-
-        MEClass* FindClassByTypeIndex(const std::type_index& typeIndex)
-        {
-            auto nameIter = m_DeclaredNameByTypeIndex.find(typeIndex);
-            if (nameIter == m_DeclaredNameByTypeIndex.end())
-            {
-                return nullptr;
-            }
-
-            return FindClass(nameIter->second);
         }
 
         bool ResolvePendingSuperClasses()

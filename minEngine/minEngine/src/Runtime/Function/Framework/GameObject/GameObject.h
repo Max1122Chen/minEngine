@@ -17,7 +17,8 @@ namespace minEngine
     {
         ME_REFLECTION_FRIEND(GameObject)
     public:
-        explicit GameObject(uint64_t id, std::string name = "");
+        GameObject(uint64_t id, std::string name = "");
+        GameObject();
         virtual ~GameObject() = default;
 
         void Tick(float deltaTime);
@@ -38,7 +39,7 @@ namespace minEngine
 
     
         std::shared_ptr<SceneComponent> GetRootComponent() const { return m_RootComponent; }
-        void SetRootComponent(const std::shared_ptr<SceneComponent>& rootComponent) { m_RootComponent = rootComponent; }
+        void SetRootComponent(std::shared_ptr<SceneComponent> rootComponent) { m_RootComponent = rootComponent; }
         std::vector<std::shared_ptr<Component>>& GetComponents() { return m_Components; }
 
         // just a simple implementation for demo purposes
@@ -57,10 +58,9 @@ namespace minEngine
         }
         
         template<typename T>
-        std::shared_ptr<T> CreateAndAddComponent()
+        std::shared_ptr<T> AddComponent()
         {
-            std::shared_ptr<T> newComponent = std::make_shared<T>();
-            newComponent->SetOwner(this);
+            std::shared_ptr<T> newComponent = NewObject<T>("",this);
             m_Components.push_back(newComponent);
 
             return newComponent;
@@ -68,6 +68,8 @@ namespace minEngine
 
     private:
         std::shared_ptr<SceneComponent> m_RootComponent{ nullptr };
+
+        ME_PROPERTY()
         std::vector<std::shared_ptr<Component>> m_Components;
 
     };

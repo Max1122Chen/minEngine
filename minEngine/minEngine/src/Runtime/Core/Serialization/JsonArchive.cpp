@@ -1,4 +1,5 @@
 #include "JsonArchive.h"
+#include "Reflection/MEClass.h"
 
 namespace minEngine::Serialization
 {
@@ -143,16 +144,6 @@ namespace minEngine::Serialization
         return AttachValue(Json(value)) != nullptr;
     }
 
-    const Json& JsonWriterArchive::GetRoot() const
-    {
-        return m_Root;
-    }
-
-    Json&& JsonWriterArchive::MoveRoot()
-    {
-        return std::move(m_Root);
-    }
-
     const Json* JsonReaderArchive::CurrentValue() const
     {
         if (!m_ValueStack.empty())
@@ -168,6 +159,48 @@ namespace minEngine::Serialization
         return &m_Root;
     }
 
+    bool JsonReaderArchive::BeginObject(const Reflection::MEClass* baseClassInfo)
+    {
+        const Json* value = CurrentValue();
+        if (value == nullptr || !value->is_object())
+        {
+            return false;
+        }
+
+        // If baseClassInfo is provided, check the $typeName field in the JSON object. If it exists and does not match baseClassInfo's name or any of its derived classes' names, return false.
+        if (baseClassInfo != nullptr
+            && value->contains("$typeName")
+            && (*value)["$typeName"].is_string())
+        {
+            const std::string typeName = (*value)["$typeName"].get<std::string>();
+           bool typeMatch = false;
+            if (typeName == baseClassInfo->GetName())
+            {
+                typeMatch = true;
+            }
+            else
+            {
+                const std::vector<Reflection::MEClass*>& derivedClasses = baseClassInfo->GetDirectDerivedClasses();
+                for (const Reflection::MEClass* derivedClass : derivedClasses)
+                {
+                    if (typeName == derivedClass->GetName())
+                    {
+                        typeMatch = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!typeMatch)
+            {
+                return false;
+            }
+        }
+
+        m_ContextStack.push_back(value);
+        return true;
+    }
+
     bool JsonReaderArchive::BeginObject(const std::string& expectedTypeName)
     {
         const Json* value = CurrentValue();
@@ -176,6 +209,7 @@ namespace minEngine::Serialization
             return false;
         }
 
+        // If expectedTypeName is provided, check the $typeName field in the JSON object. If it exists and does not match expectedTypeName, return false.
         if (!expectedTypeName.empty()
             && value->contains("$typeName")
             && (*value)["$typeName"].is_string()

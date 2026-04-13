@@ -4,6 +4,12 @@
 #include <cstdint>
 #include <string>
 
+namespace minEngine::Reflection
+{
+    class MEClass;
+    class MEProperty;
+}
+
 namespace minEngine::Serialization
 {
     // Archive interfaces for serialization and deserialization.
@@ -35,6 +41,7 @@ namespace minEngine::Serialization
     public:
         virtual ~ReaderArchive() = default;
 
+        virtual bool BeginObject(const minEngine::Reflection::MEClass* baseClassInfo) = 0;
         virtual bool BeginObject(const std::string& expectedTypeName) = 0;
         virtual bool EndObject() = 0;
 

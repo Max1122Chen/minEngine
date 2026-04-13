@@ -28,7 +28,7 @@ namespace minEngine
 
     std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string& sceneName)
     {
-        m_CurrentActiveScene = std::make_shared<Scene>();
+        m_CurrentActiveScene = NewObject<Scene>();
         m_CurrentActiveScene->sceneName = sceneName;
         return m_CurrentActiveScene;
     }
@@ -40,7 +40,7 @@ namespace minEngine
             return false;
         }
 
-        std::shared_ptr<Scene> loadedScene = std::make_shared<Scene>();
+        std::shared_ptr<Scene> loadedScene = NewObject<Scene>();
         if (!SceneSerializer::LoadScene(sceneName, *loadedScene))
         {
             return false;
