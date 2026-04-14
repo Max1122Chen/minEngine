@@ -291,29 +291,29 @@ namespace minEngine::Serialization
         classInfo->GetName(),
         [&](const MEProperty& property) -> bool
         {
-            if (property.constAccessor == nullptr)
+            if (property.GetConstAccessor() == nullptr)
             {
-                result = SerializeResult::Failure("Serialize property failed: const accessor is null.", JoinPath(path, property.name));
+                result = SerializeResult::Failure("Serialize property failed: const accessor is null.", JoinPath(path, property.GetName()));
                 ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
-            const void* valuePtr = property.constAccessor(objectPtr);
+            const void* valuePtr = property.GetConst(objectPtr);
             if (valuePtr == nullptr)
             {
-                result = SerializeResult::Failure("Serialize property failed: value pointer is null.", JoinPath(path, property.name));
+                result = SerializeResult::Failure("Serialize property failed: value pointer is null.", JoinPath(path, property.GetName()));
                 ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
-            if (!archive.BeginField(property.name))
+            if (!archive.BeginField(property.GetName()))
             {
-                result = SerializeResult::Failure("Serialize property failed: BeginField returned false.", JoinPath(path, property.name));
+                result = SerializeResult::Failure("Serialize property failed: BeginField returned false.", JoinPath(path, property.GetName()));
                 ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
-            result = SerializeProperty(property, valuePtr, archive, options, JoinPath(path, property.name));
+            result = SerializeProperty(property, valuePtr, archive, options, JoinPath(path, property.GetName()));
             if (!result.ok)
             {
                 ME_CORE_ERROR(result.message, result.fieldPath);
@@ -322,7 +322,7 @@ namespace minEngine::Serialization
 
             if (!archive.EndField())
             {
-                result = SerializeResult::Failure("Serialize property failed: EndField returned false.", JoinPath(path, property.name));
+                result = SerializeResult::Failure("Serialize property failed: EndField returned false.", JoinPath(path, property.GetName()));
                 ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
@@ -562,8 +562,8 @@ namespace minEngine::Serialization
         classInfo->GetName(),
         [&](const MEProperty& property) -> bool
         {
-            const std::string propertyPath = JoinPath(path, property.name);
-            const bool hasField = archive.EnterField(property.name);
+            const std::string propertyPath = JoinPath(path, property.GetName());
+            const bool hasField = archive.EnterField(property.GetName());
             if (!hasField)
             {
                 if (options.skipUnknownField)
@@ -576,14 +576,14 @@ namespace minEngine::Serialization
                 return false;
             }
 
-            if (property.mutableAccessor == nullptr)
+            if (property.GetMutableAccessor() == nullptr)
             {
                 result = SerializeResult::Failure("Deserialize property failed: mutable accessor is null.", propertyPath);
                 ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
-            void* valuePtr = property.mutableAccessor(objectPtr);
+            void* valuePtr = property.GetMutable(objectPtr);
             if (valuePtr == nullptr)
             {
                 result = SerializeResult::Failure("Deserialize property failed: value pointer is null.", propertyPath);

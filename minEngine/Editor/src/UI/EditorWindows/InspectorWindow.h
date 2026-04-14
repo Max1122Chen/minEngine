@@ -237,170 +237,70 @@ namespace minEngine
                     continue;
                 }
 
-                // const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfoByTypeId(typeid(*component).name());
-                // if (typeInfo == nullptr)
-                // {
-                //     ImGui::TextUnformatted("Component type info missing.");
-                //     continue;
-                // }
+                const Reflection::MEClass* classInfo = component->GetClass();
+                if (classInfo == nullptr)
+                {
+                    ImGui::TextUnformatted("Component type info missing.");
+                    continue;
+                }
 
-                // ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.26f, 0.36f, 1.0f));
-                // ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.23f, 0.33f, 0.46f, 1.0f));
-                // ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.30f, 0.42f, 1.0f));
-                // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
-                // const std::string headerLabel = GetShortTypeName(typeInfo->typeName) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
-                // const bool componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-                // ImGui::PopStyleVar();
-                // ImGui::PopStyleColor(3);
-                // if (!componentOpen)
-                // {
-                //     continue;
-                // }
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.26f, 0.36f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.23f, 0.33f, 0.46f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.30f, 0.42f, 1.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
+                const std::string headerLabel = GetShortTypeName(classInfo->GetName()) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+                const bool componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(3);
+                if (!componentOpen)
+                {
+                    continue;
+                }
 
-                // const std::string tableId = "ComponentTable##" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
-                // if (!ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
-                // {
-                //     continue;
-                // }
+                const std::string tableId = "ComponentTable##" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+                if (!ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
+                {
+                    continue;
+                }
 
-                // ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
-                // ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
-                // bool hasAnyReflectedField = false;
-                // Reflection::ForEachFieldInHierarchy(typeInfo->typeName,
-            //     [&](const Reflection::TypeInfo& declaringType, const Reflection::FieldInfo& field)
-            //     {
-            //         void* declaredObjectPtr = reflectionSystem.CastObjectToType(component.get(), typeInfo->typeName, declaringType.typeName);
-            //         if (declaredObjectPtr == nullptr)
-            //         {
-            //             return true;
-            //         }
+                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
+                bool hasAnyReflectedField = false;
+                MEObject* componentObject = static_cast<MEObject*>(component.get());
+                if (componentObject == nullptr)
+                {
+                    ImGui::EndTable();
+                    continue;
+                }
+                const Reflection::MEClass* compClass = componentObject->GetClass();
+                if (compClass == nullptr)
+                {
+                    ImGui::TextUnformatted("Component class info missing.");
+                    ImGui::EndTable();
+                    continue;
+                }
+                const std::string& compClassName = compClass->GetName();
+                Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+                reflectionSystem.ForEachPropertyInHierarchy(compClassName,
+                [&](const Reflection::MEProperty& property) -> bool
+                {
+                    hasAnyReflectedField = true;
+                    void* valuePtr = property.GetMutable(componentObject);
+                    DrawProperty(property, valuePtr);
+                    return true;
+                });
 
-            //         void* fieldPtr = Reflection::ReflectionSystem::GetFieldPtr(declaredObjectPtr, field);
-            //         if (fieldPtr == nullptr)
-            //         {
-            //             return true;
-            //         }
+                
+                if (!hasAnyReflectedField)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted("Info");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextUnformatted("No reflected fields.");
+                }
 
-            //         hasAnyReflectedField = true;
-            //         const std::string shortFieldTypeName = GetShortTypeName(field.typeName);
-            //         const bool isInheritedField = (declaringType.name != typeInfo->name);
-            //         const std::string displayFieldName = isInheritedField
-            //             ? (GetShortTypeName(declaringType.name) + "::" + field.name)
-            //             : field.name;
-
-            //         ImGui::PushID((declaringType.name + "::" + field.name).c_str());
-            //         ImGui::TableNextRow();
-            //         ImGui::TableSetColumnIndex(0);
-            //         ImGui::TextUnformatted(displayFieldName.c_str());
-            //         ImGui::TableSetColumnIndex(1);
-
-            //         if (field.typeName == "int" || shortFieldTypeName == "int")
-            //         {
-            //             if (ImGui::DragInt("##Value", static_cast<int*>(fieldPtr)))
-            //             {
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //         }
-            //         else if (field.typeName == "float" || shortFieldTypeName == "float")
-            //         {
-            //             if (ImGui::DragFloat("##Value", static_cast<float*>(fieldPtr), 0.1f))
-            //             {
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //         }
-            //         else if (field.typeName == "double" || shortFieldTypeName == "double")
-            //         {
-            //             if (ImGui::DragScalar("##Value", ImGuiDataType_Double, fieldPtr, 0.1f))
-            //             {
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //         }
-            //         else if (field.typeName == "bool" || shortFieldTypeName == "bool")
-            //         {
-            //             if (ImGui::Checkbox("##Value", static_cast<bool*>(fieldPtr)))
-            //             {
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //         }
-            //         else if (field.typeName == "std::string" || shortFieldTypeName == "string")
-            //         {
-            //             std::string* stringValue = static_cast<std::string*>(fieldPtr);
-            //             char textBuffer[256] = {};
-            //             std::strncpy(textBuffer, stringValue->c_str(), sizeof(textBuffer) - 1);
-            //             if (ImGui::InputText("##Value", textBuffer, sizeof(textBuffer)))
-            //             {
-            //                 *stringValue = textBuffer;
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //         }
-            //         else if (field.typeName == "Vector2" || shortFieldTypeName == "Vector2")
-            //         {
-            //             Vector2* value = static_cast<Vector2*>(fieldPtr);
-            //             float data[2] = {value->x, value->y};
-            //             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-            //             ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
-            //             ImGui::SetNextItemWidth(-FLT_MIN);
-            //             if (ImGui::DragFloat2("##Value", data, 0.1f))
-            //             {
-            //                 value->x = data[0];
-            //                 value->y = data[1];
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //             ImGui::PopStyleVar(2);
-            //         }
-            //         else if (field.typeName == "Vector3" || shortFieldTypeName == "Vector3")
-            //         {
-            //             Vector3* value = static_cast<Vector3*>(fieldPtr);
-            //             float data[3] = {value->x, value->y, value->z};
-            //             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-            //             ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
-            //             ImGui::SetNextItemWidth(-FLT_MIN);
-            //             if (ImGui::DragFloat3("##Value", data, 0.1f))
-            //             {
-            //                 value->x = data[0];
-            //                 value->y = data[1];
-            //                 value->z = data[2];
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //             ImGui::PopStyleVar(2);
-            //         }
-            //         else if (field.typeName == "Vector4" || shortFieldTypeName == "Vector4")
-            //         {
-            //             Vector4* value = static_cast<Vector4*>(fieldPtr);
-            //             float data[4] = {value->x, value->y, value->z, value->w};
-            //             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-            //             ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
-            //             ImGui::SetNextItemWidth(-FLT_MIN);
-            //             if (ImGui::DragFloat4("##Value", data, 0.1f))
-            //             {
-            //                 value->x = data[0];
-            //                 value->y = data[1];
-            //                 value->z = data[2];
-            //                 value->w = data[3];
-            //                 m_Editor.MarkSceneDirty();
-            //             }
-            //             ImGui::PopStyleVar(2);
-            //         }
-            //         else
-            //         {
-            //             const std::string unsupportedLabel = "unsupported: " + field.typeName;
-            //             ImGui::TextUnformatted(unsupportedLabel.c_str());
-            //         }
-
-            //         ImGui::PopID();
-            //         return true;
-            //     });
-
-            // if (!hasAnyReflectedField)
-            // {
-            //     ImGui::TableNextRow();
-            //     ImGui::TableSetColumnIndex(0);
-            //     ImGui::TextUnformatted("Info");
-            //     ImGui::TableSetColumnIndex(1);
-            //     ImGui::TextUnformatted("No reflected fields.");
-            // }
-
-                // ImGui::EndTable();
+                ImGui::EndTable();
             }
 
             ImGui::End();
@@ -408,6 +308,121 @@ namespace minEngine
 
     private:
         static constexpr uint64_t kInvalidGameObjectId = std::numeric_limits<uint64_t>::max();
+
+        void DrawProperty(const Reflection::MEProperty& property, void* propertyPtr)
+        {
+            Reflection::MEPrimitiveProperty* primitiveProperty = dynamic_cast<Reflection::MEPrimitiveProperty*>(const_cast<Reflection::MEProperty*>(&property));
+            std::string shortPropertyTypeName;
+            if (primitiveProperty)            
+            {
+                shortPropertyTypeName = GetShortTypeName(primitiveProperty->primitiveTypeName);
+            }
+            else
+            {
+                shortPropertyTypeName = "Unsupported Type";
+            }
+
+            ImGui::PushID(property.GetName().c_str());
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(property.GetName().c_str());
+            ImGui::TableSetColumnIndex(1);
+
+            if (shortPropertyTypeName == "int")
+            {
+                if (ImGui::DragInt("##Value", static_cast<int*>(propertyPtr), 1))
+                {
+                    m_Editor.MarkSceneDirty();
+                }
+            }
+            else if (shortPropertyTypeName == "float")
+            {
+                if (ImGui::DragFloat("##Value", static_cast<float*>(propertyPtr), 0.1f))
+                {
+                    m_Editor.MarkSceneDirty();
+                }
+            }
+            else if (shortPropertyTypeName == "double")
+            {
+                if (ImGui::DragScalar("##Value", ImGuiDataType_Double, propertyPtr, 0.1f))
+                {
+                    m_Editor.MarkSceneDirty();
+                }
+            }
+            else if (shortPropertyTypeName == "bool")
+            {
+                if (ImGui::Checkbox("##Value", static_cast<bool*>(propertyPtr)))
+                {
+                    m_Editor.MarkSceneDirty();
+                }
+            }
+            else if (shortPropertyTypeName == "string")
+            {
+                std::string* stringValue = static_cast<std::string*>(propertyPtr);
+                char textBuffer[256] = {};
+                std::strncpy(textBuffer, stringValue->c_str(), sizeof(textBuffer) - 1);
+                if (ImGui::InputText("##Value", textBuffer, sizeof(textBuffer)))
+                {
+                    *stringValue = textBuffer;
+                    m_Editor.MarkSceneDirty();
+                }
+            }
+            else if (shortPropertyTypeName == "Vector2")
+            {
+                Vector2* value = static_cast<Vector2*>(propertyPtr);
+                float data[2] = {value->x, value->y};
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (ImGui::DragFloat2("##Value", data, 0.1f))
+                {
+                    value->x = data[0];
+                    value->y = data[1];
+                    m_Editor.MarkSceneDirty();
+                }
+                ImGui::PopStyleVar(2);
+            }
+            else if (shortPropertyTypeName == "Vector3")
+            {
+                Vector3* value = static_cast<Vector3*>(propertyPtr);
+                float data[3] = {value->x, value->y, value->z};
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (ImGui::DragFloat3("##Value", data, 0.1f))
+                {
+                    value->x = data[0];
+                    value->y = data[1];
+                    value->z = data[2];
+                    m_Editor.MarkSceneDirty();
+                }
+                ImGui::PopStyleVar(2);
+            }
+            else if (shortPropertyTypeName == "Vector4")
+            {
+                Vector4* value = static_cast<Vector4*>(propertyPtr);
+                float data[4] = {value->x, value->y, value->z, value->w};
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (ImGui::DragFloat4("##Value", data, 0.1f))
+                {
+                    value->x = data[0];
+                    value->y = data[1];
+                    value->z = data[2];
+                    value->w = data[3];
+                    m_Editor.MarkSceneDirty();
+                }
+                ImGui::PopStyleVar(2);
+            }
+            else
+            {
+                const std::string unsupportedLabel = "unsupported: " + property.GetName();
+                ImGui::TextUnformatted(unsupportedLabel.c_str());
+            }
+
+            ImGui::PopID();
+        }
 
         void BeginRenameSelectedGameObject(const GameObject& gameObject)
         {

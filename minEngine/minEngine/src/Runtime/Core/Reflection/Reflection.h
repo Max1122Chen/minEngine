@@ -224,8 +224,7 @@ namespace minEngine::Reflection
                 return nullptr;
             }
 
-            property->constAccessor = constAccessor;
-            property->mutableAccessor = mutableAccessor;
+            property->SetAccessors(constAccessor, mutableAccessor);
             ownerClass->AddProperty(property);
             return property;
         }
@@ -535,7 +534,41 @@ namespace minEngine::Reflection
             else if constexpr (kIsPrimitiveLike<RawFieldType>)
             {
                 // TODO: here we are not distinguishing between different primitive types, we might want to have more specific property types for some of them (e.g. int, float, enum, etc.)
-                return CreateProperty<MEPrimitiveProperty>(propertyName, typeid(RawFieldType).name());
+                std::string primitiveTypeName;
+                if constexpr(std::is_same_v<RawFieldType, int>)
+                {
+                    primitiveTypeName = "int";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, float>)
+                {
+                    primitiveTypeName = "float";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, double>)
+                {
+                    primitiveTypeName = "double";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, bool>)
+                {
+                    primitiveTypeName = "bool";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, std::string>)
+                {
+                    primitiveTypeName = "std::string";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, Vector2>)
+                {
+                    primitiveTypeName = "Vector2";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, Vector3>)
+                {
+                    primitiveTypeName = "Vector3";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, Vector4>)
+                {
+                    primitiveTypeName = "Vector4";
+                }
+
+                return CreateProperty<MEPrimitiveProperty>(propertyName, primitiveTypeName);
             }
             // Finally, if it's a class type, we treat it as an object property
             else if constexpr (std::is_class_v<RawFieldType>)
@@ -670,7 +703,7 @@ namespace minEngine::Reflection
                 MEClass* resolvedClass = FindClassByTypeIndex(ref.referencedTypeIndex);
                 if (resolvedClass == nullptr)
                 {
-                    AppendError("[Reflection] Unresolved property type for '" + ref.ownerClass->GetName() + "::" + ref.property->name + "'.");
+                    AppendError("[Reflection] Unresolved property type for '" + ref.ownerClass->GetName() + "::" + ref.property->GetName() + "'.");
                     succeeded = false;
                     continue;
                 }
@@ -682,7 +715,7 @@ namespace minEngine::Reflection
                 }
                 else
                 {
-                    AppendError("[Reflection] Pending class reference is bound to a non-object property '" + ref.ownerClass->GetName() + "::" + ref.property->name + "'.");
+                    AppendError("[Reflection] Pending class reference is bound to a non-object property '" + ref.ownerClass->GetName() + "::" + ref.property->GetName() + "'.");
                     succeeded = false;
                 }
             }

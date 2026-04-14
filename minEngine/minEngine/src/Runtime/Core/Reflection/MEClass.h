@@ -11,6 +11,7 @@
 namespace minEngine::Reflection
 {
     using MEClassFactoryFn = std::shared_ptr<void> (*)();
+    using MEClassCasterFn = void* (*)(void* objectPtr);
 
     // Take in a type-erased shared_ptr<void> and set it to the dst, which actually points to a shared_ptr of the correct type. This is used for handling shared pointer properties in a generic way without knowing the actual type at compile time.
     using MEClassSetSharedPtrFn = bool (*)(const std::shared_ptr<void>& src, void* dst);
@@ -49,30 +50,18 @@ namespace minEngine::Reflection
         {
         }
 
-        void SetFactory(MEClassFactoryFn inFactory)
-        {
-            m_Factory = inFactory;
-        }
-
-        MEClassFactoryFn GetFactory() const
-        {
-            return m_Factory;
-        }
-
+        MEClassFactoryFn GetFactory() const { return m_Factory; }
+        void SetFactory(MEClassFactoryFn inFactory) { m_Factory = inFactory; }
         bool HasFactory() const { return m_Factory != nullptr; }
+
+        MEClassCasterFn GetCaster() const { return m_Caster; }
+        void SetCaster(MEClassCasterFn inCaster) { m_Caster = inCaster; }
+        bool HasCaster() const { return m_Caster != nullptr; }
 
         void SetSharedPtrSetter(MEClassSetSharedPtrFn inSetSharedPtr) { m_SetSharedPtr = inSetSharedPtr; }
         bool HasSharedPtrSetter() const { return m_SetSharedPtr != nullptr; }
 
-        std::shared_ptr<void> CreateInstance() const
-        {
-            if (m_Factory == nullptr)
-            {
-                return nullptr;
-            }
-
-            return m_Factory();
-        }
+        std::shared_ptr<void> CreateInstance() const { return (m_Factory != nullptr) ? m_Factory() : nullptr; }
 
         template<typename T>
         static std::shared_ptr<void> CreateDefaultInstance()
@@ -87,16 +76,21 @@ namespace minEngine::Reflection
             }
         }
 
-        bool SetSharedPtr(const std::shared_ptr<void>& src, void* dst) const
+        void* CastObject(void* objectPtr) const { return (m_Caster != nullptr) ? m_Caster(objectPtr) : nullptr; }
+        template<typename T>
+        void* CastObjectImpl(void* objectPtr) const
         {
-            if (m_SetSharedPtr == nullptr)
+            if (objectPtr == nullptr)
             {
-                return false;
+                return nullptr;
             }
 
-            return m_SetSharedPtr(src, dst);
+            T* typedPtr = static_cast<T*>(objectPtr);
+            return static_cast<void*>(typedPtr);
         }
 
+        bool SetSharedPtr(const std::shared_ptr<void>& src, void* dst) const { return (m_SetSharedPtr != nullptr) ? m_SetSharedPtr(src, dst) : false; }
+         
         template<typename T>
         static bool SetSharedPtrImpl(const std::shared_ptr<void>& src, void* dst)
         {
@@ -110,20 +104,10 @@ namespace minEngine::Reflection
             return true;
         }
 
-        void SetResolvedSuperClass(MEClass* inSuperClass)
-        {
-            m_SuperClass = inSuperClass;
-        }
+        void SetResolvedSuperClass(MEClass* inSuperClass) { m_SuperClass = inSuperClass; }
 
-        MEClass* GetSuperClass()
-        {
-            return m_SuperClass;
-        }
-
-        const MEClass* GetSuperClass() const
-        {
-            return m_SuperClass;
-        }
+        MEClass* GetSuperClass() { return m_SuperClass; }
+        const MEClass* GetSuperClass() const { return m_SuperClass; }
 
         void AddProperty(MEProperty* property)
         {
@@ -133,21 +117,10 @@ namespace minEngine::Reflection
             }
         }
 
-        std::vector<MEProperty*>& GetProperties()
-        {
-            return m_Properties;
-        }
+        std::vector<MEProperty*>& GetProperties() { return m_Properties; }
+        const std::vector<MEProperty*>& GetProperties() const { return m_Properties; }
 
-        const std::vector<MEProperty*>& GetProperties() const
-        {
-            return m_Properties;
-        }
-
-        void ClearDirectDerivedClasses()
-        {
-            m_DirectDerivedClasses.clear();
-        }
-
+        void ClearDirectDerivedClasses() { m_DirectDerivedClasses.clear(); }
         void AddDirectDerivedClass(MEClass* derivedClass)
         {
             if (derivedClass != nullptr)
@@ -155,14 +128,12 @@ namespace minEngine::Reflection
                 m_DirectDerivedClasses.push_back(derivedClass);
             }
         }
-
-        const std::vector<MEClass*>& GetDirectDerivedClasses() const
-        {
-            return m_DirectDerivedClasses;
-        }
+        const std::vector<MEClass*>& GetDirectDerivedClasses() const { return m_DirectDerivedClasses; }
+        
 
     private:
         MEClassFactoryFn m_Factory = nullptr;
+        MEClassCasterFn m_Caster = nullptr;
         MEClassSetSharedPtrFn m_SetSharedPtr = nullptr;
         MEClass* m_SuperClass = nullptr;
         std::vector<MEProperty*> m_Properties;

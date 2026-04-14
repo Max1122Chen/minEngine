@@ -51,11 +51,26 @@ namespace minEngine::Reflection
 
         virtual ~MEProperty() = default;
 
+        const std::string& GetName() const { return name; }
+        void SetName(const std::string& inName) { name = inName; }
+
+        FieldConstAccessorFn GetConstAccessor() const { return constAccessor; }
+        FieldMutableAccessorFn GetMutableAccessor() const { return mutableAccessor; }
+        void SetAccessors(FieldConstAccessorFn inConstAccessor, FieldMutableAccessorFn inMutableAccessor)
+        {
+            constAccessor = inConstAccessor;
+            mutableAccessor = inMutableAccessor;
+        }
+
+        void* GetMutable(void* ptr) const { return mutableAccessor == nullptr ? nullptr : mutableAccessor(ptr); }
+        const void* GetConst(const void* ptr) const { return constAccessor == nullptr ? nullptr : constAccessor(ptr); }
+
+        virtual MEPropertyCategory GetCategory() const = 0;
+
+    private:
         std::string name;
         FieldConstAccessorFn constAccessor = nullptr;
         FieldMutableAccessorFn mutableAccessor = nullptr;
-
-        virtual MEPropertyCategory GetCategory() const = 0;
     };
 
     class MINENGINE_API MEPrimitiveProperty : public MEProperty
