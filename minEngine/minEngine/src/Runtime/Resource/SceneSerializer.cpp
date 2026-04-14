@@ -77,8 +77,9 @@ namespace minEngine
             }
         }
 
+        Json firstGO = archive.GetRoot();
         std::ofstream outputFile(filePath);
-        outputFile << jsonScene.dump(4);
+        outputFile << firstGO.dump(4);
         outputFile.close();
         return true;
 

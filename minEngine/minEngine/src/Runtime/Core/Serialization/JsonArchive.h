@@ -9,13 +9,16 @@
 
 namespace minEngine::Serialization
 {
-    class JsonWriterArchive final : public WriterArchive
+    class MINENGINE_API JsonWriterArchive final : public WriterArchive
     {
     public:
         JsonWriterArchive() = default;
 
         bool BeginObject(const std::string& typeName) override;
         bool EndObject() override;
+
+        bool BeginObjectPtr(const std::string& typeName) override;
+        bool EndObjectPtr() override;
 
         bool BeginField(const std::string& fieldName) override;
         bool EndField() override;
@@ -49,7 +52,7 @@ namespace minEngine::Serialization
         std::vector<WriteContext> m_Stack;
     };
 
-    class JsonReaderArchive final : public ReaderArchive
+    class MINENGINE_API JsonReaderArchive final : public ReaderArchive
     {
     public:
         explicit JsonReaderArchive(const Json& root)
@@ -60,6 +63,9 @@ namespace minEngine::Serialization
         bool BeginObject(const minEngine::Reflection::MEClass* baseClassInfo) override;
         bool BeginObject(const std::string& expectedTypeName) override;
         bool EndObject() override;
+
+        bool BeginObjectPtr(const minEngine::Reflection::MEClass* baseClassInfo, std::string& outClassName) override;
+        bool EndObjectPtr() override;
 
         bool EnterField(const std::string& fieldName) override;
         bool LeaveField() override;

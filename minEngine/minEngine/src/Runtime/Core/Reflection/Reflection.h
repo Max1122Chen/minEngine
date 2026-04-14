@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "EngineAPI.h"
 #include "MEClass.h"
 #include "Math/Math.h"
 #include "TypeTraits.h"
@@ -57,14 +58,10 @@ namespace minEngine::Reflection
         std::type_index referencedTypeIndex = typeid(void);
     };
 
-    class ReflectionSystem
+    class  MINENGINE_API ReflectionSystem
     {
     public:
-        static ReflectionSystem& Get()
-        {
-            static ReflectionSystem system;
-            return system;
-        }
+        static ReflectionSystem& Get();
 
         ~ReflectionSystem()
         {
@@ -181,6 +178,7 @@ namespace minEngine::Reflection
             }
 
             m_DeclaredEnumNameByTypeIndex[std::type_index(typeid(TEnum))] = enumInfo->GetName();
+            m_DeclaredEnumNameByTypeIdName[typeid(TEnum).name()] = enumInfo->GetName();
             return true;
         }
 
@@ -232,50 +230,7 @@ namespace minEngine::Reflection
             return property;
         }
 
-        bool FinalizeReflection()
-        {
-            if (m_State == ReflectionSystemState::Finalizing)
-            {
-                AppendError("[Reflection] FinalizeReflection re-entered.");
-                return false;
-            }
-
-            m_LastErrors.clear();
-            m_State = ReflectionSystemState::Finalizing;
-
-            PrepareForResolve();
-
-            bool succeeded = true;
-            if (!ResolvePendingSuperClasses())
-            {
-                AppendError("[Reflection] Failed to resolve superclass references when Finalizing.");
-                succeeded = false;
-            }
-
-            if (!ValidateInheritanceGraph())
-            {
-                AppendError("[Reflection] Inheritance graph validation failed when Finalizing (possible cycle detected).");
-                succeeded = false;
-            }
-
-            if (!ResolvePendingPropertyClasses())
-            {
-                AppendError("[Reflection] Failed to resolve property class references when Finalizing.");
-                succeeded = false;
-            }
-
-            if (succeeded)
-            {
-                BuildDerivedClassLinks();
-                m_State = ReflectionSystemState::Ready;
-            }
-            else
-            {
-                m_State = ReflectionSystemState::Failed;
-            }
-
-            return succeeded;
-        }
+        bool FinalizeReflection();
 
         void Reset()
         {
@@ -849,6 +804,8 @@ namespace minEngine::Reflection
             return true;
         }
 
+        void SetCodecForEnums();
+
     private:
         std::vector<MEClass*> m_OwnedClasses;
         std::vector<MEProperty*> m_OwnedProperties;
@@ -856,8 +813,10 @@ namespace minEngine::Reflection
 
         std::unordered_map<std::string, MEClass*> m_ClassesByName;
         std::unordered_map<std::type_index, std::string> m_DeclaredNameByTypeIndex;
+
         std::unordered_map<std::string, MEEnum*> m_EnumsByName;
         std::unordered_map<std::type_index, std::string> m_DeclaredEnumNameByTypeIndex;
+        std::unordered_map<std::string, std::string> m_DeclaredEnumNameByTypeIdName;    // Used for register enum codec for serialization
 
         std::vector<PendingSuperClassRef> m_PendingSuperClassRefs;
         std::vector<PendingPropertyClassRef> m_PendingPropertyClassRefs;

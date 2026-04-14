@@ -24,6 +24,8 @@ namespace minEngine::Serialization
 
         void RegisterDefaultCodecs();
 
+        void RegisterCodecWithAliases(PrimitiveCodec codec, std::initializer_list<std::string> aliases);
+
     private:
         bool m_DefaultCodecsRegistered = false;
         std::unordered_map<std::string, PrimitiveCodec> m_CodecsByTypeName;

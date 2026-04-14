@@ -34,7 +34,7 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Serialize failed: root class not found.", rootClassName);
         }
 
-        return SerializeObject(rootClass, rootObject, archive, options, rootClassName);
+        return SerializeObjectInstance(rootClass, rootObject, archive, options, rootClassName);
     }
 
     SerializeResult Serializer::Deserialize(const std::string& rootClassName,
@@ -57,7 +57,7 @@ namespace minEngine::Serialization
     }
 
     // Private methods for serialization
-    SerializeResult Serializer::SerializeObject(const MEClass* classInfo,
+    SerializeResult Serializer::SerializeObjectInstance(const MEClass* classInfo,
                                                         const void* objectPtr,
                                                         WriterArchive& archive,
                                                         const SerializerOptions& options,
@@ -73,57 +73,12 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Serialize class failed: BeginObject returned false.", path);
         }
 
-        SerializeResult result = SerializeResult::Success();
-        const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
-            classInfo->GetName(),
-            [&](const MEProperty& property) -> bool
-            {
-                if (property.constAccessor == nullptr)
-                {
-                    result = SerializeResult::Failure("Serialize property failed: const accessor is null.", JoinPath(path, property.name));
-                    ME_CORE_ERROR(result.message, result.fieldPath);
-                    return false;
-                }
-
-                const void* valuePtr = property.constAccessor(objectPtr);
-                if (valuePtr == nullptr)
-                {
-                    result = SerializeResult::Failure("Serialize property failed: value pointer is null.", JoinPath(path, property.name));
-                    ME_CORE_ERROR(result.message, result.fieldPath);
-                    return false;
-                }
-
-                if (!archive.BeginField(property.name))
-                {
-                    result = SerializeResult::Failure("Serialize property failed: BeginField returned false.", JoinPath(path, property.name));
-                    ME_CORE_ERROR(result.message, result.fieldPath);
-                    return false;
-                }
-
-                result = SerializeProperty(property, valuePtr, archive, options, JoinPath(path, property.name));
-                if (!result.ok)
-                {
-                    ME_CORE_ERROR(result.message, result.fieldPath);
-                    return false;
-                }
-
-                if (!archive.EndField())
-                {
-                    result = SerializeResult::Failure("Serialize property failed: EndField returned false.", JoinPath(path, property.name));
-                    ME_CORE_ERROR(result.message, result.fieldPath);
-                    return false;
-                }
-
-                return true;
-            });
+        // Iterate properties in the class hierarchy and serialize them
+        bool iterationOk = SerializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
 
         if (!iterationOk)
         {
-            if (!archive.EndObject())
-            {
-                return SerializeResult::Failure("Serialize class failed after property error: EndObject returned false.", path);
-            }
-            return result.ok ? SerializeResult::Failure("Serialize class failed during property iteration.", path) : result;
+            return SerializeResult::Failure("Serialize class failed during property iteration.", path);
         }
 
         if (!archive.EndObject())
@@ -131,7 +86,7 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Serialize class failed: EndObject returned false.", path);
         }
 
-        return result;
+        return SerializeResult::Success();
     }
 
     SerializeResult Serializer::SerializeProperty(const MEProperty& property,
@@ -177,7 +132,7 @@ namespace minEngine::Serialization
                 return SerializeResult::Failure("Serialize object failed: value class is unresolved.", path);
             }
 
-            return SerializeObject(valueClass, valuePtr, archive, options, path);
+            return SerializeObjectInstance(valueClass, valuePtr, archive, options, path);
         }
         case MEPropertyCategory::ObjectPtr:
         {
@@ -187,23 +142,8 @@ namespace minEngine::Serialization
             {
                 return SerializeResult::Failure("Serialize object pointer failed: invalid property type.", path);
             }
-            const MEObject* pointedPojectPtr = static_cast<const MEObject*>(objectPtrProperty->GetConstPointingData(const_cast<void*>(valuePtr)));
-            if (pointedPojectPtr == nullptr)
-            {
-                return archive.WriteNull()
-                ? SerializeResult::Success()
-                : SerializeResult::Failure("Serialize object pointer failed: WriteNull returned false.", path);
-            }
-            else
-            {
-                const MEClass* valueClass = pointedPojectPtr->GetClass();
-                if (valueClass == nullptr)
-                {
-                    return SerializeResult::Failure("Serialize object pointer failed: value class is unresolved.", path);
-                }
 
-                return SerializeObject(valueClass, pointedPojectPtr, archive, options, path);
-            }
+            return SerializeObjectPtr(*objectPtrProperty, archive, valuePtr, options, path);
 
         }
         case MEPropertyCategory::Array:
@@ -259,6 +199,136 @@ namespace minEngine::Serialization
         default:
             return SerializeResult::Failure("Serialize failed: unsupported property category.", path);
         }
+    }
+
+    SerializeResult Serializer::SerializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty &objectPtrProperty, 
+                                                                                    WriterArchive &archive, 
+                                                                                    const void *ptrToPtr, 
+                                                                                    const SerializerOptions &options, 
+                                                                                    const std::string &path)
+    {
+        if (ptrToPtr == nullptr)
+        {
+            return SerializeResult::Failure("Serialize object pointer failed: pointer to pointer is null.", path);
+        }
+
+        MEObjectPtrCategory ptrCategory = objectPtrProperty.GetPtrCategory();
+        MEObject* objectPtr = static_cast<MEObject*>(objectPtrProperty.GetMutablePointingData(const_cast<void*>(ptrToPtr)));
+
+        // Handle null pointer case first.
+        // Write null to archive for nullptr object pointer.
+        if(objectPtr == nullptr)
+        {
+            if(ptrCategory == MEObjectPtrCategory::Invalid)
+            {
+                return SerializeResult::Failure("Serialize object pointer failed: invalid pointer category.", path);
+            }
+            // Write null to archive for nullptr object pointer.
+            if (!archive.WriteNull())
+            {
+                return SerializeResult::Failure("Serialize object pointer failed: WriteNull returned false.", path);
+            }
+            return SerializeResult::Success();
+        }
+
+        // Then handle non-null pointer case. 
+        // We need to get the class info from the pointed object instance instead of the property, because the property only tells us the static type of the pointer (e.g. base class).
+        // But the actual pointed object instance may be of a derived class, so we need to get the class info from the actual pointed object instance to ensure we serialize all the properties in the class hierarchy correctly.
+        // For example, for a shared_pointer<Component> which actually points to a SceneComponent instance, we need to get the class info from the SceneComponent instance instead of the Component class, so that we can serialize the properties defined in SceneComponent class as well.
+        const MEClass* classInfo = objectPtr->GetClass();
+        if(classInfo == nullptr)
+        {
+            return SerializeResult::Failure("Serialize object pointer failed: value class is unresolved.", path);
+        }
+
+        // TODO: currently we only support serializing object pointer with "inline value" semantic
+        // For "reference" semantic, we will need a more complex solution to handle object identity and references, which may require changes in the archive interface to allow recording unresolved references during serialization and resolving them later during deserialization.
+        // So for now we will just return failure for "reference" semantic if the pointer category is raw pointer, until we have a complete solution for handling object references in place.
+        if (!archive.BeginObjectPtr(classInfo->GetName()))
+        {
+            return SerializeResult::Failure("Serialize class failed: BeginObjectPtr returned false.", path);
+        }
+        
+        if(ptrCategory == MEObjectPtrCategory::Invalid)
+        {
+            return SerializeResult::Failure("Serialize object pointer failed: invalid pointer category.", path);
+        }
+
+        if(ptrCategory == MEObjectPtrCategory::Raw)
+        {
+            // We only allow raw pointer for "Reference" semantic, which means the pointed object is owned by other object and this property just holds a non-owning raw pointer to it. 
+            // We will try to resolve the pointed object from the archive and set the raw pointer to point to the resolved object.
+            // So here we just set the raw pointer to nullptr first and return. 
+            // TODO: NO, actually we must notify the serializer for the unresolved reference so that it can record the reference and resolve it later after the whole object graph is deserialized. We can add an API like "archive.WriteUnresolvedReference(className, objectId)" for this purpose. The archive implementation can decide how to record the unresolved reference info (e.g. in a list, or write it to the output stream immediately, etc.) and how to resolve it later.
+            // For now we just return failure to indicate that we don't support deserializing raw pointer property yet, until we have a complete solution for handling object references in place.
+            return SerializeResult::Failure("Serialize object pointer failed: serializing raw pointer property is not supported for inline value semantic.", path);
+        }
+
+        // Iterate the properties in hierarchy and deserialize each property.
+        const bool iterationOk = SerializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
+        if (!iterationOk)
+        {
+            return SerializeResult::Failure("Serialize class failed during property iteration.", path);
+        }
+
+
+        if (!archive.EndObjectPtr())
+        {
+            return SerializeResult::Failure("Serialize class failed: EndObjectPtr returned false.", path);
+        }
+
+        return SerializeResult::Success();
+    }
+
+    bool Serializer::SerializeObject_IterateProps(const minEngine::Reflection::MEClass *classInfo, 
+                                                                            const void *objectPtr, 
+                                                                            WriterArchive &archive, 
+                                                                            const SerializerOptions &options, 
+                                                                            const std::string &path)
+    {
+        SerializeResult result = SerializeResult::Success();
+        return ReflectionSystem::Get().ForEachPropertyInHierarchy(
+        classInfo->GetName(),
+        [&](const MEProperty& property) -> bool
+        {
+            if (property.constAccessor == nullptr)
+            {
+                result = SerializeResult::Failure("Serialize property failed: const accessor is null.", JoinPath(path, property.name));
+                ME_CORE_ERROR(result.message, result.fieldPath);
+                return false;
+            }
+
+            const void* valuePtr = property.constAccessor(objectPtr);
+            if (valuePtr == nullptr)
+            {
+                result = SerializeResult::Failure("Serialize property failed: value pointer is null.", JoinPath(path, property.name));
+                ME_CORE_ERROR(result.message, result.fieldPath);
+                return false;
+            }
+
+            if (!archive.BeginField(property.name))
+            {
+                result = SerializeResult::Failure("Serialize property failed: BeginField returned false.", JoinPath(path, property.name));
+                ME_CORE_ERROR(result.message, result.fieldPath);
+                return false;
+            }
+
+            result = SerializeProperty(property, valuePtr, archive, options, JoinPath(path, property.name));
+            if (!result.ok)
+            {
+                ME_CORE_ERROR(result.message, result.fieldPath);
+                return false;
+            }
+
+            if (!archive.EndField())
+            {
+                result = SerializeResult::Failure("Serialize property failed: EndField returned false.", JoinPath(path, property.name));
+                ME_CORE_ERROR(result.message, result.fieldPath);
+                return false;
+            }
+
+            return true;
+        });
     }
 
     // Private methods for deserialization

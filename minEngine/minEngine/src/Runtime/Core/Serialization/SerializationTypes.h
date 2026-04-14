@@ -5,7 +5,7 @@
 
 namespace minEngine::Serialization
 {
-    struct SerializerOptions
+    struct MINENGINE_API SerializerOptions
     {
         bool enumAsString = true;
         bool strictTypeCheck = true;
@@ -13,7 +13,7 @@ namespace minEngine::Serialization
         bool allowObjectPtrSerialization = false;
     };
 
-    struct SerializeResult
+    struct MINENGINE_API SerializeResult
     {
         bool ok = false;
         std::string message;

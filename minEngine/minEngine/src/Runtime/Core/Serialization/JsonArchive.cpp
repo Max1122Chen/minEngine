@@ -69,6 +69,29 @@ namespace minEngine::Serialization
         return true;
     }
 
+    bool JsonWriterArchive::BeginObjectPtr(const std::string& typeName)
+    {
+        Json value = Json::object();
+        if (!typeName.empty())
+        {
+            value["$ptr_typeName"] = typeName;
+        }
+
+        Json* inserted = AttachValue(std::move(value));
+        if (inserted == nullptr || !inserted->is_object())
+        {
+            return false;
+        }
+
+        m_Stack.push_back(WriteContext{inserted, true, {}});
+        return true;
+    }
+
+    bool JsonWriterArchive::EndObjectPtr()
+    {
+        return EndObject();
+    }
+
     bool JsonWriterArchive::BeginField(const std::string& fieldName)
     {
         if (m_Stack.empty() || !m_Stack.back().isObject || fieldName.empty())
@@ -231,6 +254,61 @@ namespace minEngine::Serialization
 
         m_ContextStack.pop_back();
         return true;
+    }
+
+    bool JsonReaderArchive::BeginObjectPtr(const Reflection::MEClass* baseClassInfo, std::string& outClassName)
+    {
+        const Json* value = CurrentValue();
+        if (value == nullptr || !value->is_object())
+        {
+            return false;
+        }
+
+        // Check the $ptr_typeName field in the JSON object. If it exists, it must match baseClassInfo's name or any of its derived classes' names. If it does not exist, it's also considered valid. If the check fails, return false.
+        if (value->contains("$ptr_typeName") && (*value)["$ptr_typeName"].is_string())
+        {
+            const std::string typeName = (*value)["$ptr_typeName"].get<std::string>();
+            bool typeMatch = false;
+            if (baseClassInfo != nullptr)
+            {
+                if (typeName == baseClassInfo->GetName())
+                {
+                    typeMatch = true;
+                }
+                else
+                {
+                    const std::vector<Reflection::MEClass*>& derivedClasses = baseClassInfo->GetDirectDerivedClasses();
+                    for (const Reflection::MEClass* derivedClass : derivedClasses)
+                    {
+                        if (typeName == derivedClass->GetName())
+                        {
+                            typeMatch = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // If baseClassInfo is not provided, we can still accept the object pointer as long as the $ptr_typeName field exists and is a string. In this case we just return true here and let the caller handle the type checking based on the outClassName.
+                typeMatch = true;
+            }
+
+            if (!typeMatch)
+            {
+                return false;
+            }
+
+            outClassName = typeName;
+        }
+
+        m_ContextStack.push_back(value);
+        return true;
+    }
+
+    bool JsonReaderArchive::EndObjectPtr()
+    {
+        return EndObject();
     }
 
     bool JsonReaderArchive::EnterField(const std::string& fieldName)

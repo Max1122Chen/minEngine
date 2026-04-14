@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineAPI.h"
 
 // standard library
 #include <cstdint>

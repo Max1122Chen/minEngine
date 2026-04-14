@@ -16,7 +16,7 @@ namespace minEngine::Reflection
 
 namespace minEngine::Serialization
 {
-    class Serializer
+    class MINENGINE_API Serializer
     {
     public:
         static SerializeResult Serialize(const std::string& rootClassName,
@@ -30,7 +30,7 @@ namespace minEngine::Serialization
                                            const SerializerOptions& options = SerializerOptions{});
 
     private:
-        static SerializeResult SerializeObject(const minEngine::Reflection::MEClass* classInfo,
+        static SerializeResult SerializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                               const void* objectPtr,
                                               WriterArchive& archive,
                                               const SerializerOptions& options,
@@ -41,6 +41,18 @@ namespace minEngine::Serialization
                                                  WriterArchive& archive,
                                                  const SerializerOptions& options,
                                                  const std::string& path);
+
+        static SerializeResult SerializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty& objectPtrProperty,
+                                                 WriterArchive& archive,
+                                                 const void* ptrToPtr,
+                                                 const SerializerOptions& options,
+                                                 const std::string& path);
+
+        static bool SerializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
+                                        const void* objectPtr,
+                                        WriterArchive& archive,
+                                        const SerializerOptions& options,
+                                        const std::string& path);
 
         static SerializeResult DeserializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                                 ReaderArchive& archive,

@@ -16,6 +16,7 @@ namespace minEngine
     ME_CLASS()
     class ReflectionSampleClass
     {
+        ME_REFLECTION_FRIEND(ReflectionSampleClass)
     public:
         ME_PROPERTY(EditAnywhere)
         int IntField = 42;
@@ -33,6 +34,7 @@ namespace minEngine
     ME_CLASS()
     class ReflectionSampleComponent : public Component
     {
+        ME_REFLECTION_FRIEND(ReflectionSampleComponent)
     public:
         ME_PROPERTY(EditAnywhere)
         ReflectionSampleClass SampleData;
@@ -41,4 +43,6 @@ namespace minEngine
         std::vector<int> IntArray{ 1, 2, 3, 4, 5 };
     };
 }
+
+#include "ReflectionSample.gen.h"
 

@@ -11,17 +11,13 @@ namespace minEngine
         inline constexpr const char* Client = "APP";
     }
 
-    class LogSystem
+    class MINENGINE_API LogSystem
     {
     public:
         static void Initialize();
         static void Shutdown();
 
-        static LogSystem& Get()
-        {
-            static LogSystem instance;
-            return instance;
-        }
+        static LogSystem& Get();
 
         inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
         inline static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }

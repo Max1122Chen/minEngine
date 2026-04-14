@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineAPI.h"
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -14,13 +15,16 @@ namespace minEngine::Serialization
 {
     // Archive interfaces for serialization and deserialization.
 
-    class WriterArchive
+    class MINENGINE_API WriterArchive
     {
     public:
         virtual ~WriterArchive() = default;
 
         virtual bool BeginObject(const std::string& typeName) = 0;
         virtual bool EndObject() = 0;
+
+        virtual bool BeginObjectPtr(const std::string& typeName) = 0;
+        virtual bool EndObjectPtr() = 0;
 
         virtual bool BeginField(const std::string& fieldName) = 0;
         virtual bool EndField() = 0;
@@ -36,7 +40,7 @@ namespace minEngine::Serialization
         virtual bool WriteString(const std::string& value) = 0;
     };
 
-    class ReaderArchive
+    class MINENGINE_API ReaderArchive
     {
     public:
         virtual ~ReaderArchive() = default;
@@ -44,6 +48,9 @@ namespace minEngine::Serialization
         virtual bool BeginObject(const minEngine::Reflection::MEClass* baseClassInfo) = 0;
         virtual bool BeginObject(const std::string& expectedTypeName) = 0;
         virtual bool EndObject() = 0;
+
+        virtual bool BeginObjectPtr(const minEngine::Reflection::MEClass* baseClassInfo, std::string& outClassName) = 0;
+        virtual bool EndObjectPtr() = 0;
 
         virtual bool EnterField(const std::string& fieldName) = 0;
         virtual bool LeaveField() = 0;

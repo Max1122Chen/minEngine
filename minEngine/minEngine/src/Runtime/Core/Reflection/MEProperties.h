@@ -41,7 +41,7 @@ namespace minEngine::Reflection
         Shared
     };
 
-    class MEProperty
+    class MINENGINE_API MEProperty
     {
     public:
         explicit MEProperty(std::string inName)
@@ -58,7 +58,7 @@ namespace minEngine::Reflection
         virtual MEPropertyCategory GetCategory() const = 0;
     };
 
-    class MEPrimitiveProperty : public MEProperty
+    class MINENGINE_API MEPrimitiveProperty : public MEProperty
     {
     public:
         MEPrimitiveProperty(std::string inName, std::string inPrimitiveTypeName)
@@ -76,7 +76,7 @@ namespace minEngine::Reflection
         std::string primitiveTypeName;
     };
 
-    class MEObjectProperty : public MEProperty
+    class MINENGINE_API MEObjectProperty : public MEProperty
     {
     public:
         explicit MEObjectProperty(std::string inName)
@@ -97,7 +97,7 @@ namespace minEngine::Reflection
     };
 
     // Inherits from MEObjectProperty so that ObjectPtrProperty can reuse the valueClass member to store the class of the pointed object
-    class MEObjectPtrProperty final : public MEObjectProperty
+    class MINENGINE_API MEObjectPtrProperty final : public MEObjectProperty
     {
     public:
         explicit MEObjectPtrProperty(std::string inName)
@@ -136,7 +136,7 @@ namespace minEngine::Reflection
         MEObjectPtrCategory ptrCategory = MEObjectPtrCategory::Invalid;
     };
 
-    class MEArrayProperty final : public MEProperty
+    class MINENGINE_API MEArrayProperty final : public MEProperty
     {
     public:
         MEArrayProperty(std::string inName, MEProperty* inInnerProperty)
@@ -234,14 +234,4 @@ namespace minEngine::Reflection
         MEArrayResizeFn resize = nullptr;
         MEArrayGetMutableElementFn getMutableElement = nullptr;
     };
-
-    class MEIntProperty final : public MEPrimitiveProperty
-    {
-    public:
-        explicit MEIntProperty(std::string inName)
-            : MEPrimitiveProperty(std::move(inName), "int")
-        {
-        }
-    };
-
 }

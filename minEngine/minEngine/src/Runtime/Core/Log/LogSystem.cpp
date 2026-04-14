@@ -32,4 +32,10 @@ namespace minEngine
         ME_CORE_INFO("LogSystem Shutdown");
         spdlog::shutdown();
     }
+
+    LogSystem &LogSystem::Get()
+    {
+        static LogSystem instance;
+        return instance;
+    }
 }

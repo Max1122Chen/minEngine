@@ -48,6 +48,7 @@ set_target_properties(${ENGINE_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${EXECUTABLE_PATH} 
 )
 
+target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD)
 
 target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ./src/Runtime

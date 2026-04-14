@@ -16,7 +16,7 @@ namespace minEngine::Reflection
     using MEClassSetSharedPtrFn = bool (*)(const std::shared_ptr<void>& src, void* dst);
 
     // 
-    class MEStruct
+    class MINENGINE_API MEStruct
     {
     public:
         explicit MEStruct(std::string inName)
@@ -41,7 +41,7 @@ namespace minEngine::Reflection
     };
 
     // 
-    class MEClass final : public MEStruct
+    class MINENGINE_API MEClass final : public MEStruct
     {
     public:
         explicit MEClass(std::string inName)
@@ -176,7 +176,7 @@ namespace minEngine::Reflection
         int64_t value = 0;
     };
 
-    class MEEnum
+    class MINENGINE_API MEEnum
     {
     public:
         explicit MEEnum(std::string inName)

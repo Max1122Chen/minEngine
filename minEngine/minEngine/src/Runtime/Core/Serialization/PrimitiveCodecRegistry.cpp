@@ -8,19 +8,7 @@
 #include <typeinfo>
 
 namespace minEngine::Serialization
-{
-    namespace
-    {
-        void RegisterCodecWithAliases(PrimitiveCodecRegistry& registry,
-                                      PrimitiveCodec codec,
-                                      std::initializer_list<std::string> aliases)
-        {
-            for (const std::string& alias : aliases)
-            {
-                registry.Register(alias, codec);
-            }
-        }
-    }
+{   
 
     PrimitiveCodecRegistry& PrimitiveCodecRegistry::Get()
     {
@@ -68,7 +56,6 @@ namespace minEngine::Serialization
         }
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -89,7 +76,6 @@ namespace minEngine::Serialization
             {"bool", typeid(bool).name()});
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -123,7 +109,6 @@ namespace minEngine::Serialization
             {"int", typeid(int).name()});
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -152,7 +137,6 @@ namespace minEngine::Serialization
             {"float", typeid(float).name()});
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -173,7 +157,6 @@ namespace minEngine::Serialization
             {"double", typeid(double).name()});
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -194,7 +177,6 @@ namespace minEngine::Serialization
             {"std::string", typeid(std::string).name()});
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -242,7 +224,6 @@ namespace minEngine::Serialization
             {"Vector2", "minEngine::Vector2", typeid(Vector2).name()});
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -297,7 +278,6 @@ namespace minEngine::Serialization
             {"Vector3", "minEngine::Vector3", typeid(Vector3).name()});
 
         RegisterCodecWithAliases(
-            *this,
             PrimitiveCodec{
                 [](WriterArchive& archive, const void* valuePtr) -> bool
                 {
@@ -359,5 +339,14 @@ namespace minEngine::Serialization
             {"Vector4", "minEngine::Vector4", typeid(Vector4).name()});
 
         m_DefaultCodecsRegistered = true;
+    }
+
+    void PrimitiveCodecRegistry::RegisterCodecWithAliases( PrimitiveCodec codec,
+                                   std::initializer_list<std::string> aliases)
+    {
+        for (const std::string& alias : aliases)
+        {
+            Register(alias, codec);
+        }
     }
 }
