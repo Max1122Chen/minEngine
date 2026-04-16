@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
 #include "Runtime/Core/Serialization/Json.h"
+#include "AssetMeta.h"
 #include "SceneSerializer.h"
 
 #include <filesystem>
@@ -22,8 +23,20 @@ namespace minEngine
         static AssetManager& Get();
 
 
-        void Initialize() {}
+        void Initialize();
         void Shutdown();
+
+        void ScanAssets(const std::string& directory);
+        void RegisterAsset(const std::string& path, const std::string& type);
+
+        const AssetMeta* FindAssetMetaByPath(const std::string& path) const;
+        const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
+
+        std::shared_ptr<StaticMesh> LoadStaticMeshByMeta(const AssetMeta& meta);
+        std::shared_ptr<Texture2D> LoadTexture2DByMeta(const AssetMeta& meta, uint32_t unit);
+
+        std::shared_ptr<StaticMesh> LoadStaticMeshByGuid(const GUID& guid);
+        std::shared_ptr<Texture2D> LoadTexture2DByGuid(const GUID& guid, uint32_t unit);
     
         // Image loading using stb_image
         unsigned char* LoadImage(const std::string& path, int& width, int& height, int& channels, bool bFlip = true);
@@ -49,6 +62,16 @@ namespace minEngine
         }
         
     private:
+        std::string NormalizeAssetPath(const std::string& path) const;
+        std::string InferAssetType(const std::filesystem::path& path) const;
+        std::filesystem::path BuildMetaPath(const std::filesystem::path& assetPath) const;
+        bool LoadMetaFromDisk(const std::filesystem::path& metaPath, AssetMeta& outMeta) const;
+        bool SaveMetaToDisk(const std::filesystem::path& metaPath, const AssetMeta& meta) const;
+        void CacheMeta(const AssetMeta& meta);
+
+        std::unordered_map<std::string, AssetMeta> m_AssetRegistry; // Maps asset paths to their metadata
+        std::unordered_map<GUID, std::string, GUIDHasher> m_AssetPathByGuid;
+
         std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_LoadedTexture2DCache;
         std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_LoadedStaticMeshCache;
     };

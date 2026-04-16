@@ -94,12 +94,19 @@ namespace minEngine::Reflection
         template<typename T>
         static bool SetSharedPtrImpl(const std::shared_ptr<void>& src, void* dst)
         {
-            if (src == nullptr || dst == nullptr)
+            if (dst == nullptr)
             {
                 return false;
             }
 
             std::shared_ptr<T>* typedDst = static_cast<std::shared_ptr<T>*>(dst);
+
+            if (src == nullptr)
+            {
+                typedDst->reset();
+                return true;
+            }
+
             *typedDst = std::static_pointer_cast<T>(src);
             return true;
         }

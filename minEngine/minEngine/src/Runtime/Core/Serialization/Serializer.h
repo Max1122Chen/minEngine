@@ -25,8 +25,8 @@ namespace minEngine::Serialization
                                          const SerializerOptions& options = SerializerOptions{});
 
         static SerializeResult Deserialize(const std::string& rootClassName,
-                                           ReaderArchive& archive,
                                            void* outRootObject,
+                                           ReaderArchive& archive,
                                            const SerializerOptions& options = SerializerOptions{});
 
     private:
@@ -38,13 +38,15 @@ namespace minEngine::Serialization
 
         static SerializeResult SerializeProperty(const minEngine::Reflection::MEProperty& property,
                                                  const void* valuePtr,
+                                                 const void* ownerObjectPtr,
                                                  WriterArchive& archive,
                                                  const SerializerOptions& options,
                                                  const std::string& path);
 
         static SerializeResult SerializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty& objectPtrProperty,
-                                                 WriterArchive& archive,
                                                  const void* ptrToPtr,
+                                                 const void* ownerObjectPtr,
+                                                 WriterArchive& archive,
                                                  const SerializerOptions& options,
                                                  const std::string& path);
 
@@ -55,26 +57,26 @@ namespace minEngine::Serialization
                                         const std::string& path);
 
         static SerializeResult DeserializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
-                                                ReaderArchive& archive,
                                                 void* objectPtr,
+                                                ReaderArchive& archive,
                                                 const SerializerOptions& options,
                                                 const std::string& path);
 
         static SerializeResult DeserializeProperty(const minEngine::Reflection::MEProperty& property,
-                                                   ReaderArchive& archive,
                                                    void* outValuePtr,
+                                                   ReaderArchive& archive,
                                                    const SerializerOptions& options,
                                                    const std::string& path);
 
         static SerializeResult DeserializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty& objectPtrProperty,
-                                                   ReaderArchive& archive,
                                                    void* ptrToPtr,
+                                                   ReaderArchive& archive,
                                                    const SerializerOptions& options,
                                                    const std::string& path);
 
         static bool DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
-                                                ReaderArchive& archive,
                                                 void* objectPtr,
+                                                ReaderArchive& archive,
                                                 const SerializerOptions& options,
                                                 const std::string& path);
 

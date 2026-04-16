@@ -14,8 +14,9 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
-
 #include "Runtime/Core/Reflection/ReflectionSample.h"
+
+#include "EditorDefaultScene.h"
 
 #include <algorithm>
 
@@ -23,21 +24,6 @@ namespace minEngine
 {
     namespace
     {
-        void PopulateEditorDefaultScene(Scene& scene)
-        {
-            std::shared_ptr<GameObject> sampleGO01 = scene.CreateGameObject();
-            sampleGO01->SetName("SampleObject01");
-            auto root1 = sampleGO01->AddComponent<SceneComponent>();
-            sampleGO01->SetRootComponent(root1);
-            sampleGO01->AddComponent<ReflectionSampleComponent>();
-
-            std::shared_ptr<GameObject> sampleGO02 = scene.CreateGameObject();
-            sampleGO02->SetName("SampleObject02");
-            auto root2 = sampleGO02->AddComponent<SceneComponent>();
-            sampleGO02->SetRootComponent(root2);
-            sampleGO02->AddComponent<ReflectionSampleComponent>();
-        }
-
         void ApplyEditorTheme()
         {
             ImGuiStyle& style = ImGui::GetStyle();
@@ -364,31 +350,13 @@ namespace minEngine
         m_EditorGUIManager.Initialize(*this);
 
         const std::filesystem::path defaultScenePath("Assets/Scenes/EditorDefault.scene.json");
-        if (std::filesystem::exists(defaultScenePath))
+        
+        // Create a new scene defaultly.
+        CreateNewScene(defaultScenePath.string());
+        if (std::shared_ptr<Scene> scene = GetActiveScene())
         {
-            if (!OpenScene(defaultScenePath.string()))
-            {
-                ME_CORE_WARN("Failed to load default editor scene '{}'. We will create a new scene instead.", defaultScenePath.string());
-                CreateNewScene(defaultScenePath.string());
-                if (std::shared_ptr<Scene> scene = GetActiveScene())
-                {
-                    PopulateEditorDefaultScene(*scene);
-                    MarkSceneDirty();
-                }
-            }
-            else
-            {
-                ME_CORE_INFO("Loaded default editor scene '{}'.", defaultScenePath.string());
-            }
-        }
-        else
-        {
-            CreateNewScene(defaultScenePath.string());
-            if (std::shared_ptr<Scene> scene = GetActiveScene())
-            {
-                PopulateEditorDefaultScene(*scene);
-                MarkSceneDirty();
-            }
+            PopulateEditorDefaultScene(*scene);
+            MarkSceneDirty();
         }
     }
 

@@ -39,8 +39,8 @@ namespace minEngine
         std::shared_ptr<GameObject> tempGO = NewObject<GameObject>();
         Serialization::SerializeResult result = Serialization::Serializer::Deserialize(
             "minEngine::GameObject",
-            archive,
             tempGO.get(),
+            archive,
             options);
         if(!result.ok)
         {

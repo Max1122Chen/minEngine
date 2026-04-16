@@ -9,6 +9,10 @@
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Resource/AssetManager.h"
+
+#include <array>
+#include <filesystem>
 
 namespace minEngine
 {
@@ -20,6 +24,34 @@ namespace minEngine
     
         ME_CORE_INFO("Engine Initialization Started");
         RuntimeGlobalContext::GetRuntimeGlobalContext().StartSystems();
+
+        // Scan assets after all systems are initialized, in case asset loading requires any of the systems (e.g., RenderSystem for creating GPU resources for textures)
+        const std::array<std::string, 4> scanCandidates = {
+            "Assets/EngineDefault",
+            "../Assets/EngineDefault",
+            "../../Assets/EngineDefault",
+            "minEngine/Assets/EngineDefault"
+        };
+
+        bool scanned = false;
+        for (const std::string& relativePath : scanCandidates)
+        {
+            const std::filesystem::path candidatePath = std::filesystem::absolute(relativePath).lexically_normal();
+            if (!std::filesystem::exists(candidatePath) || !std::filesystem::is_directory(candidatePath))
+            {
+                continue;
+            }
+
+            ME_CORE_INFO("Scanning engine default assets: {}", candidatePath.string());
+            AssetManager::Get().ScanAssets(candidatePath.string());
+            scanned = true;
+            break;
+        }
+
+        if (!scanned)
+        {
+            ME_CORE_WARN("Engine default asset directory was not found. Expected one of the EngineDefault candidates around current working directory.");
+        }
     }
 
     void Engine::Shutdown()
