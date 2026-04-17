@@ -98,7 +98,7 @@ namespace minEngine
                     std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action));
 
                 const InputKey& key = mapping.Key;
-                if(GetKeyState(key)->bDown)
+                if(GetKeyState(key)->action & (InputKeyAction::Press | InputKeyAction::Down))
                 {
                     if(bShouldResetAction)
                     {
@@ -158,10 +158,10 @@ namespace minEngine
 
         // Special handling for scroll input to reset its state after processing to avoid continuous scroll input
         InputKeyState* mouseScrollState = GetKeyState(InputKeys::MouseScroll);
-        if(mouseScrollState->bDown)
+        if(mouseScrollState->action == InputKeyAction::Down)
         {
             // Reset scroll state after processing to avoid continuous scroll input
-            mouseScrollState->bDown = false;
+            mouseScrollState->action = InputKeyAction::Idle;
             mouseScrollState->RawValue = Vector3(0.0f, 0.0f, 0.0f);
         }
     }
@@ -255,16 +255,34 @@ namespace minEngine
         return nullptr;
     }
 
+    Vector2 InputSystem::GetMousePosition()
+    {
+        auto it = Get().m_KeyStateMap.find(InputKeys::Mouse2D);
+        if(it != Get().m_KeyStateMap.end())        
+        {
+            return Vector2(it->second.RawValue.x, it->second.RawValue.y);
+        }
+        return Vector2(0.0f, 0.0f);
+    }
+
+    Vector2 InputSystem::GetMouseScrollDelta()
+    {
+        auto it = Get().m_KeyStateMap.find(InputKeys::MouseScroll);
+        if(it != Get().m_KeyStateMap.end())
+        {
+            return Vector2(it->second.RawValue.x, it->second.RawValue.y);
+        }
+        return Vector2(0.0f, 0.0f);
+    }
+
     void InputSystem::OnKey(InputKey key, int scancode, InputKeyAction action, int mods)
     {
-        auto it = m_KeyStateMap.find(key);
-        if(it != m_KeyStateMap.end())
-        {
-            InputKeyState& keyState = it->second;
-            
-            keyState.bDown = (action != InputKeyAction::Release);
-            keyState.RawValue = keyState.bDown ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 0.0f, 0.0f);
-        }
+        OnKeyOrMouseButton_Internal(key, scancode, action, mods);
+    }
+
+    void InputSystem::OnMouseButton(InputKey key, InputKeyAction action, int mods)
+    {
+        OnKeyOrMouseButton_Internal(key, 0, action, mods);
     }
 
     void InputSystem::OnCursorPos(double xPos, double yPos)
@@ -274,25 +292,71 @@ namespace minEngine
         {
             InputKeyState& keyState = it->second;
 
-            keyState.bDown = (Math::abs(xPos) > 0.1f || Math::abs(yPos) > 0.1f);
+            keyState.action = (Math::abs(xPos) > 0.1f || Math::abs(yPos) > 0.1f) ? InputKeyAction::Down : InputKeyAction::Idle;
             keyState.RawValue = Vector3(static_cast<float>(xPos), static_cast<float>(yPos), 0.0f);
         }
     }
 
     void InputSystem::OnMouseScroll(double xOffset, double yOffset)
     {
-        (void)xOffset;
-
         InputKeyState* scrollState = GetKeyState(InputKeys::MouseScroll);
 
-        scrollState->bDown = false;
+        scrollState->action = InputKeyAction::Idle;
         scrollState->RawValue = Vector3(0.0f, 0.0f, 0.0f);
 
-
-        scrollState->bDown = true;
-        scrollState->RawValue = Vector3(static_cast<float>(yOffset), 0.0f, 0.0f);
+        scrollState->action = InputKeyAction::Down;
+        scrollState->RawValue = Vector3(static_cast<float>(xOffset), static_cast<float>(yOffset), 0.0f);
     }
 
+    void InputSystem::OnKeyOrMouseButton_Internal(InputKey key, int scancode, InputKeyAction action, int mods)
+    {
+        auto it = m_KeyStateMap.find(key);
+        if(it != m_KeyStateMap.end())
+        {
+            InputKeyState& keyState = it->second;
+            InputKeyAction prevAction = keyState.action;
+            
+            keyState.action = CalculateKeyAction(prevAction, action);
+            keyState.RawValue = keyState.action & (InputKeyAction::Press | InputKeyAction::Down) ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 0.0f, 0.0f);
+        }
+    }
+
+    InputKeyAction InputSystem::CalculateKeyAction(InputKeyAction prevAction, InputKeyAction newAction)
+    {
+        switch(prevAction)
+        {
+            case InputKeyAction::Idle:
+                switch(newAction)
+                {
+                    case InputKeyAction::Press:     return InputKeyAction::Press;
+                    case InputKeyAction::Down:      return InputKeyAction::Press; // Treat as Press if we receive Down event while Idle, which can happen for mouse scroll input
+                    default:                        return InputKeyAction::Idle;
+                }
+            case InputKeyAction::Press:
+                switch(newAction)
+                {
+                    case InputKeyAction::Release:   return InputKeyAction::Release;
+                    case InputKeyAction::Down:      return InputKeyAction::Down;
+                    default:                        return InputKeyAction::Press;
+                }
+            case InputKeyAction::Down:
+                switch(newAction)
+                {
+                    case InputKeyAction::Release:   return InputKeyAction::Release;
+                    case InputKeyAction::Down:      return InputKeyAction::Down;
+                    default:                        return InputKeyAction::Down;
+                }
+            case InputKeyAction::Release:
+                switch(newAction)
+                {
+                    case InputKeyAction::Press:     return InputKeyAction::Press;
+                    case InputKeyAction::Down:      return InputKeyAction::Press; // Treat as Press if we receive Down event while Release, which can happen for mouse scroll input
+                    default:                        return InputKeyAction::Idle;
+                }
+            default:
+                return InputKeyAction::Idle;
+        }
+    }
 
     InputActionValue InputSystem::ApplyModifiers(const std::vector<std::shared_ptr<InputModifier>> &modifiers, const InputActionValue &rawValue, float deltaTime)
     {

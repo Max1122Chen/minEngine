@@ -4,9 +4,12 @@
 #include "minEngine.h"
 
 #include "EditorGUIManager.h"
+#include "Viewport/EditorViewportClient.h"
 
 #include <filesystem>
 #include <limits>
+#include <memory>
+#include <unordered_map>
 
 namespace minEngine
 {
@@ -62,6 +65,13 @@ namespace minEngine
         std::filesystem::path GetCurrentScenePath() const;
         void SyncSelectionWithScene();
 
+        EditorViewportClient& GetOrCreateViewportClient(const std::string& viewportId,
+                                const std::string& viewportTitle = "Viewport");
+        EditorViewportClient* FindViewportClient(const std::string& viewportId);
+        const EditorViewportClient* FindViewportClient(const std::string& viewportId) const;
+        void RemoveViewportClient(const std::string& viewportId);
+        void ClearViewportClients();
+
     public:
         bool isPlaying = false;
         bool showDemoWindow = false;
@@ -70,12 +80,10 @@ namespace minEngine
         bool dockLayoutInitialized = false;
         bool requestResetLayout = false;
 
-        bool viewportHovered = false;
-        bool viewportFocused = false;
-
     private:
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
+        std::unordered_map<std::string, std::unique_ptr<EditorViewportClient>> m_ViewportClients;
         bool m_ExitRequested = false;
         bool m_SceneDirty = false;
         uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();

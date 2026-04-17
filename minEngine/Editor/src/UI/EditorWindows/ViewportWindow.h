@@ -8,19 +8,25 @@
 #include "Runtime/Function/Render/RenderSystem.h"
 
 #include "UI/Widgets/DraggableOverlay.h"
+#include "Viewport/EditorViewportClient.h"
 
 #include "Editor.h"
 #include "EditorWindow.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace minEngine
 {
     class ViewportWindow final : public EditorWindow
     {
     public:
-        explicit ViewportWindow(Editor& editor)
+        explicit ViewportWindow(Editor& editor,
+                                std::string id = "viewport",
+                                std::string title = "Viewport")
             : EditorWindow(editor)
+            , m_Id(std::move(id))
+            , m_Title(std::move(title))
         {
         }
 
@@ -34,11 +40,29 @@ namespace minEngine
             return m_Title;
         }
 
+        EditorViewportClient& GetViewportClient()
+        {
+            return m_Editor.GetOrCreateViewportClient(m_Id, m_Title);
+        }
+
+        void OnAttach() override
+        {
+            m_Editor.GetOrCreateViewportClient(m_Id, m_Title);
+        }
+
+        void OnDetach() override
+        {
+            m_Editor.RemoveViewportClient(m_Id);
+        }
+
         void OnDraw() override
         {
             ImGuiWindowFlags viewportFlags = ImGuiWindowFlags_NoScrollbar |
                                              ImGuiWindowFlags_NoScrollWithMouse |
                                              ImGuiWindowFlags_NoCollapse;
+
+            EditorViewportClient& viewportClient = GetViewportClient();
+            viewportClient.BeginFrame(m_Editor.lastDeltaTime);
 
             ImGui::Begin(m_Title.c_str(), nullptr, viewportFlags);
 
@@ -49,6 +73,7 @@ namespace minEngine
             {
                 ImGui::TextWrapped("RenderSystem is not ready.");
                 ImGui::End();
+                viewportClient.EndFrame();
                 return;
             }
 
@@ -57,30 +82,37 @@ namespace minEngine
             {
                 ImGui::TextWrapped("Scene color texture is not ready.");
                 ImGui::End();
+                viewportClient.EndFrame();
                 return;
             }
 
             const ImTextureID textureID = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(sceneColor->GetID()));
             ImGui::Image(textureID, avail, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-            const ImVec2 imageMin = ImGui::GetItemRectMin();
-            const ImVec2 imageSize = ImGui::GetItemRectSize();
+            const ImVec2 ImageMin = ImGui::GetItemRectMin();
+            const ImVec2 ImageSize = ImGui::GetItemRectSize();
 
-            m_Editor.viewportHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
-            m_Editor.viewportFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+            ViewportFrameState frameState;
+            frameState.Hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+            frameState.Focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+            frameState.ContentSize = { avail.x, avail.y };
+            frameState.ImageMin = { ImageMin.x, ImageMin.y };
+            frameState.ImageSize = { ImageSize.x, ImageSize.y };
+            viewportClient.UpdateFrameState(frameState);
 
-            const float deltaTime = m_Editor.lastDeltaTime;
+            const float deltaTime = viewportClient.GetLastDeltaTime();
             const float fps = (deltaTime > 0.0001f) ? (1.0f / deltaTime) : 0.0f;
             const std::string sceneName = m_Editor.GetCurrentScenePath().filename().string().empty()
                 ? std::string("Untitled")
                 : m_Editor.GetCurrentScenePath().filename().string();
 
-            m_OverlayConfig.expandedSize = ImVec2(std::max(220.0f, std::min(420.0f, imageSize.x * 0.46f)), 96.0f);
-            UI::ClampOverlayOffset(m_OverlayState, m_OverlayConfig, imageSize);
+            m_OverlayConfig.expandedSize = ImVec2(std::max(220.0f, std::min(420.0f, ImageSize.x * 0.46f)), 96.0f);
+            UI::ClampOverlayOffset(m_OverlayState, m_OverlayConfig, ImageSize);
             {
-                ImGui::SetCursorScreenPos(UI::GetOverlayScreenPos(m_OverlayState, imageMin));
+                const std::string overlayId = m_Id + "_overlay";
+                ImGui::SetCursorScreenPos(UI::GetOverlayScreenPos(m_OverlayState, ImageMin));
                 ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.10f, 0.13f, 0.82f));
                 ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.27f, 0.37f, 0.50f, 0.95f));
-                if (ImGui::BeginChild("ViewportOverlay", UI::GetOverlaySize(m_OverlayState, m_OverlayConfig), true,
+                if (ImGui::BeginChild(overlayId.c_str(), UI::GetOverlaySize(m_OverlayState, m_OverlayConfig), true,
                                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav))
                 {
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
@@ -113,7 +145,7 @@ namespace minEngine
                         ImGui::Text("Viewport: %.0f x %.0f", avail.x, avail.y);
                     }
 
-                    UI::HandleOverlayDragging(m_OverlayState, m_OverlayConfig, imageSize);
+                    UI::HandleOverlayDragging(m_OverlayState, m_OverlayConfig, ImageSize);
                     ImGui::PopStyleVar();
                 }
                 ImGui::EndChild();
@@ -121,11 +153,13 @@ namespace minEngine
             }
 
             ImGui::End();
+
+            viewportClient.EndFrame();
         }
 
     private:
-        const std::string m_Id = "viewport";
-        const std::string m_Title = "Viewport";
+        std::string m_Id;
+        std::string m_Title;
         UI::DraggableOverlayState m_OverlayState;
         UI::DraggableOverlayConfig m_OverlayConfig;
     };

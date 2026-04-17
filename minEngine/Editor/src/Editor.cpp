@@ -327,6 +327,54 @@ namespace minEngine
         }
     }
 
+    EditorViewportClient& Editor::GetOrCreateViewportClient(const std::string& viewportId,
+                                                             const std::string& viewportTitle)
+    {
+        const std::string key = viewportId.empty() ? viewportTitle : viewportId;
+        auto iter = m_ViewportClients.find(key);
+        if (iter != m_ViewportClients.end() && iter->second)
+        {
+            return *iter->second;
+        }
+
+        auto client = std::make_unique<EditorViewportClient>(viewportTitle.empty() ? key : viewportTitle);
+        EditorViewportClient* createdClient = client.get();
+        m_ViewportClients[key] = std::move(client);
+        return *createdClient;
+    }
+
+    EditorViewportClient* Editor::FindViewportClient(const std::string& viewportId)
+    {
+        const auto iter = m_ViewportClients.find(viewportId);
+        if (iter == m_ViewportClients.end() || !iter->second)
+        {
+            return nullptr;
+        }
+
+        return iter->second.get();
+    }
+
+    const EditorViewportClient* Editor::FindViewportClient(const std::string& viewportId) const
+    {
+        const auto iter = m_ViewportClients.find(viewportId);
+        if (iter == m_ViewportClients.end() || !iter->second)
+        {
+            return nullptr;
+        }
+
+        return iter->second.get();
+    }
+
+    void Editor::RemoveViewportClient(const std::string& viewportId)
+    {
+        m_ViewportClients.erase(viewportId);
+    }
+
+    void Editor::ClearViewportClients()
+    {
+        m_ViewportClients.clear();
+    }
+
     void Editor::Initialize()
     {
         m_Engine = new Engine();
@@ -363,6 +411,7 @@ namespace minEngine
     void Editor::Shutdown()
     {
         m_EditorGUIManager.Shutdown();
+        ClearViewportClients();
 
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();

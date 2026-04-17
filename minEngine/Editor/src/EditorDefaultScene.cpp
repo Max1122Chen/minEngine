@@ -9,6 +9,10 @@
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/AssetManager.h"
 
+#include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Function/Render/RHI/RHITexture.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
+
 #include <array>
 #include <filesystem>
 #include <initializer_list>
@@ -160,23 +164,23 @@ namespace minEngine
     {
         AssetManager& assetManager = AssetManager::Get();
 
-        const AssetMeta* awesomefaceMeta = FindAssetMetaByRelativePath(assetManager, "Assets/EngineDefault/Textures/awesomeface.png");
+        const AssetMeta* albedoMeta = FindAssetMetaByRelativePath(assetManager, "Assets/EngineDefault/Textures/albedo.jpg");
         std::shared_ptr<Texture2D> diffuseTexture = nullptr;
-        if (awesomefaceMeta != nullptr)
+        if (albedoMeta != nullptr)
         {
-            diffuseTexture = assetManager.LoadTexture2DByMeta(*awesomefaceMeta, 0);
+            diffuseTexture = assetManager.LoadTexture2DByMeta(*albedoMeta, 0);
             if (diffuseTexture)
             {
-                ME_CORE_INFO("Loaded default scene texture from meta: {}", awesomefaceMeta->AssetPath);
+                ME_CORE_INFO("Loaded default scene texture from meta: {}", albedoMeta->AssetPath);
             }
             else
             {
-                ME_CORE_WARN("Failed to load default scene texture by meta: {}", awesomefaceMeta->AssetPath);
+                ME_CORE_WARN("Failed to load default scene texture by meta: {}", albedoMeta->AssetPath);
             }
         }
         else
         {
-            ME_CORE_WARN("Default scene texture meta not found in AssetManager registry: Assets/EngineDefault/Textures/awesomeface.png");
+            ME_CORE_WARN("Default scene texture meta not found in AssetManager registry: Assets/EngineDefault/Textures/albedo.jpg");
         }
 
         const std::shared_ptr<Material> sharedMaterial = BuildDefaultMaterial(diffuseTexture);

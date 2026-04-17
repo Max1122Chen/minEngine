@@ -12,6 +12,6 @@ namespace minEngine
     {
         Vector3 RawValue;
 
-        bool bDown = false;
+        InputKeyAction action = InputKeyAction::Release;
     };
 }

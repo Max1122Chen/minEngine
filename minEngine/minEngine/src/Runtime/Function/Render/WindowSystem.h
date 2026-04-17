@@ -35,7 +35,7 @@ namespace minEngine
         // Window event callback function types
         typedef std::function<void()>                                              OnResetFunc;
         typedef std::function<void(InputKey, int, InputKeyAction, int)>            OnKeyFunc;
-        typedef std::function<void(int, int)>                                      OnMouseButtonFunc;
+        typedef std::function<void(InputKey, InputKeyAction, int)>                 OnMouseButtonFunc;
         typedef std::function<void(double, double)>                                OnCursorPosFunc;
         typedef std::function<void(double, double)>                                OnMouseScrollFunc;
         typedef std::function<void(int, int)>                                      OnWindowSizeFunc;

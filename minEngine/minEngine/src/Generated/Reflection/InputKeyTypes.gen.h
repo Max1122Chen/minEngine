@@ -4,9 +4,11 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ENUM_BEGIN(minEngine::InputKeyAction)
-    ME_REFLECTION_ENUM_VALUE(Press, minEngine::Press)
-    ME_REFLECTION_ENUM_VALUE(Down, minEngine::Down)
-    ME_REFLECTION_ENUM_VALUE(Release, minEngine::Release)
+    ME_REFLECTION_ENUM_VALUE(Idle, 1 << 0)
+    ME_REFLECTION_ENUM_VALUE(Press, 1 << 1)
+    ME_REFLECTION_ENUM_VALUE(Down, 1 << 2)
+    ME_REFLECTION_ENUM_VALUE(Release, 1 << 3)
+    ME_REFLECTION_ENUM_VALUE(Repeat, 1 << 4)
 ME_REFLECTION_ENUM_END(minEngine::InputKeyAction)
 
 ME_REFLECTION_ENUM_BEGIN(minEngine::InputAxisType)

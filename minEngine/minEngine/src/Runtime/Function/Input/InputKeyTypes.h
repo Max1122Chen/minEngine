@@ -6,9 +6,11 @@ namespace minEngine
     ME_ENUM()
     enum InputKeyAction
     {
-        Press,
-        Down,
-        Release
+        Idle = 1 << 0,
+        Press = 1 << 1,
+        Down = 1 << 2,
+        Release = 1 << 3,
+        Repeat = 1 << 4
     };
 
     ME_ENUM()

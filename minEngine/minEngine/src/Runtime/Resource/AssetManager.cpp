@@ -451,7 +451,6 @@ namespace minEngine
         const aiScene* scene = importer.ReadFile(
             path,
             aiProcess_Triangulate |
-            aiProcess_FlipUVs |
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals);
 
@@ -491,6 +490,26 @@ namespace minEngine
                 const bool hasNormals = mesh->HasNormals() && mesh->mNormals != nullptr;
                 const bool hasTexCoords = mesh->HasTextureCoords(0) && mesh->mTextureCoords[0] != nullptr;
 
+                float minX = 0.0f;
+                float maxX = 1.0f;
+                float minZ = 0.0f;
+                float maxZ = 1.0f;
+                if (!hasTexCoords && mesh->mNumVertices > 0)
+                {
+                    minX = maxX = mesh->mVertices[0].x;
+                    minZ = maxZ = mesh->mVertices[0].z;
+                    for (unsigned int j = 1; j < mesh->mNumVertices; ++j)
+                    {
+                        minX = std::min(minX, mesh->mVertices[j].x);
+                        maxX = std::max(maxX, mesh->mVertices[j].x);
+                        minZ = std::min(minZ, mesh->mVertices[j].z);
+                        maxZ = std::max(maxZ, mesh->mVertices[j].z);
+                    }
+                }
+
+                const float uvExtentX = std::max(maxX - minX, 1e-6f);
+                const float uvExtentZ = std::max(maxZ - minZ, 1e-6f);
+
                 // vertices.resize(vertices.size() + mesh->mNumVertices); // should we resize the vector first?
 
                 StaticMeshSectionInfo sectionInfo;
@@ -518,7 +537,10 @@ namespace minEngine
                     }
                     else
                     {
-                        vertex.TexCoord = Vector2(0.0f, 0.0f);
+                        // Fallback UV projection for meshes without texture coordinates.
+                        vertex.TexCoord = Vector2(
+                            (vertex.Position.x - minX) / uvExtentX,
+                            (vertex.Position.z - minZ) / uvExtentZ);
                     }
                     vertices.push_back(vertex);
                 }
@@ -599,6 +621,11 @@ namespace minEngine
                     }
 
                     ME_CORE_WARN("Mesh '{}' has no normal data. Fallback normals were generated in AssetManager.", path);
+                }
+
+                if (!hasTexCoords)
+                {
+                    ME_CORE_WARN("Mesh '{}' has no UV data. Fallback planar UVs were generated in AssetManager.", path);
                 }
 
                 // TODO: handle material loading later

@@ -64,7 +64,9 @@ namespace minEngine
             GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
             if (windowSystem)
             {
-                windowSystem->OnMouseButton(button, action, mods);
+                const InputKey& inputKey = ConvertGLFWKeyToInputKey(button);
+                InputKeyAction keyAction = ConvertGLFWKeyActionToInputKeyAction(action);
+                windowSystem->OnKey(inputKey, 0, keyAction, mods);
             }
         }
 
@@ -95,51 +97,11 @@ namespace minEngine
             }
         }
 
-        // 
-        void OnKey(InputKey key, int scancode, InputKeyAction action, int mods)
-        {
-            for (const auto& callback : m_OnKeyCallbacks)
-            {
-                callback(key, scancode, action, mods);
-            }
-        }
-
-        void OnMouseButton(int button, int action, int mods)
-        {
-            for (const auto& callback : m_OnMouseButtonCallbacks)
-            {
-                callback(button, action);
-            }
-        }
-
-        void OnCursorPos(double xPos, double yPos)
-        {
-            for (const auto& callback : m_OnCursorPosCallbacks)
-            {
-                callback(xPos, yPos);
-            }
-        }
-
-        void OnMouseScroll(double xOffset, double yOffset)
-        {
-            for (const auto& callback : m_OnMouseScrollCallbacks)
-            {
-                callback(xOffset, yOffset);
-            }
-        }
-
-        void OnWindowSize(int width, int height)
-        {
-            m_Width = width;
-            m_Height = height;
-
-            for (const auto& callback : m_OnWindowSizeCallbacks)
-            {
-                callback(width, height);
-            }
-        }
-
-
+        void OnKey(InputKey key, int scancode, InputKeyAction action, int mods);
+        void OnMouseButton(InputKey key, InputKeyAction action, int mods);
+        void OnCursorPos(double xPos, double yPos);
+        void OnMouseScroll(double xOffset, double yOffset);
+        void OnWindowSize(int width, int height);
 
     private:
         GLFWWindowSystem() = delete;

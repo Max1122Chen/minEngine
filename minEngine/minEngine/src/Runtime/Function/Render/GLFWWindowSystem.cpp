@@ -135,6 +135,49 @@ namespace minEngine
         glfwSetInputMode(m_Window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
     }
 
+    void GLFWWindowSystem::OnKey(InputKey key, int scancode, InputKeyAction action, int mods)
+    {
+        for (const auto& callback : m_OnKeyCallbacks)
+        {
+            callback(key, scancode, action, mods);
+        }
+    }
+
+    void GLFWWindowSystem::OnMouseButton(InputKey key, InputKeyAction action, int mods)
+    {
+        for (const auto& callback : m_OnMouseButtonCallbacks)
+        {
+            callback(key, action, mods);
+        }
+    }
+
+    void GLFWWindowSystem::OnCursorPos(double xPos, double yPos)
+    {
+        for (const auto& callback : m_OnCursorPosCallbacks)
+        {
+            callback(xPos, yPos);
+        }
+    }
+
+    void GLFWWindowSystem::OnMouseScroll(double xOffset, double yOffset)
+    {
+        for (const auto& callback : m_OnMouseScrollCallbacks)
+        {
+            callback(xOffset, yOffset);
+        }
+    }
+
+    void GLFWWindowSystem::OnWindowSize(int width, int height)
+    {
+        m_Width = width;
+        m_Height = height;
+
+        for (const auto& callback : m_OnWindowSizeCallbacks)
+        {
+            callback(width, height);
+        }
+    }
+
     // Set GLFW callbacks
     void GLFWWindowSystem::SetupWindowEventCallbacks()
     {
@@ -243,10 +286,10 @@ namespace minEngine
     {
         switch(action)
         {
-            case GLFW_PRESS:    return InputKeyAction::Down;
-            case GLFW_REPEAT:   return InputKeyAction::Down;
+            case GLFW_PRESS:    return InputKeyAction::Press;
+            case GLFW_REPEAT:   return InputKeyAction::Repeat;
             case GLFW_RELEASE:  return InputKeyAction::Release;
-            default:            return InputKeyAction::Release;
+            default:            return InputKeyAction::Idle;
         }
     }
 }

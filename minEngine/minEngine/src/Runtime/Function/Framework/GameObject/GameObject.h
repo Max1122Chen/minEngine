@@ -61,6 +61,7 @@ namespace minEngine
         std::shared_ptr<T> AddComponent()
         {
             std::shared_ptr<T> newComponent = NewObject<T>("",this);
+            newComponent->SetOwner(this);
             m_Components.push_back(newComponent);
 
             return newComponent;
