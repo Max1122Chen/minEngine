@@ -52,14 +52,19 @@ namespace \
 #define ME_REFLECTION_CLASS_SET_FACTORY(FACTORY_FN) \
     meClass->SetFactory(FACTORY_FN);
 
-#define ME_REFLECTION_CLASS_ADD_FIELD(TYPE, FIELD) \
+#define ME_REFLECTION_CLASS_SET_ANNOTATIONS(SPECIFIER_MASK, ...) \
+    meClass->SetAnnotations(SPECIFIER_MASK, __VA_ARGS__);
+
+#define ME_REFLECTION_CLASS_ADD_FIELD(TYPE, FIELD, SPECIFIER_MASK, ...) \
         { \
             using FIELD_TYPE = typename minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECTION_CONCAT(FieldType_, FIELD); \
             meSystem.AddFieldByType<TYPE, FIELD_TYPE>( \
                 meClass, \
                 #FIELD, \
                 &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECTION_CONCAT(GetConst_, FIELD), \
-                &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECTION_CONCAT(GetMutable_, FIELD)); \
+                &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECTION_CONCAT(GetMutable_, FIELD), \
+                SPECIFIER_MASK, \
+                __VA_ARGS__); \
         }
 
 #define ME_REFLECTION_CLASS_END(TYPE) \

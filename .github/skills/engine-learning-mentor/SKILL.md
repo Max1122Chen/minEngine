@@ -46,6 +46,11 @@ Use clear teaching language, explain terms before depth, and avoid unnecessary j
 - Prefer evidence-backed explanations by reading real engine source when useful.
 - Use Unreal Engine source as a learning reference and map concepts back to this project's scale.
 
+6. Forward-only iteration by default (development phase)
+- During active development, prioritize forward iteration over backward compatibility.
+- Do not preserve old interfaces, legacy call paths, or migration shims unless the user explicitly asks for compatibility.
+- If compatibility is intentionally deferred, state that clearly and keep the implementation path singular.
+
 ## When to use
 
 - In this repository, treat any technical question as a trigger by default.
@@ -102,6 +107,10 @@ Use this priority order when choosing solutions:
 3. Debuggability
 4. Extensibility
 5. Performance optimization (unless user explicitly asks to optimize)
+
+Compatibility policy:
+- Default: do not optimize for backward compatibility in this repository while it is in active development.
+- Exception: apply compatibility constraints only when the user explicitly requests them.
 
 ## Typical outputs
 

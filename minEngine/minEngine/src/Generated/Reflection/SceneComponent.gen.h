@@ -8,6 +8,7 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SceneComponent)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_BEGIN(minEngine::SceneComponent)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::Component)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SceneComponent, m_Transform)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SceneComponent, m_Transform, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_END(minEngine::SceneComponent)

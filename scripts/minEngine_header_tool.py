@@ -20,19 +20,37 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLASS_DECL_RE = re.compile(r"^\s*(class|struct)\s+(\w+)\s*[^\{;]*\{", re.MULTILINE)
+CLASS_DECL_RE = re.compile(r"^\s*(class|struct)\s+([^\{;]+)\{", re.MULTILINE)
 ENUM_DECL_RE = re.compile(r"^\s*enum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\{", re.MULTILINE)
 PROPERTY_MARK_RE = re.compile(r"^\s*ME_PROPERTY\s*\((.*?)\)\s*$")
 MEMBER_DECL_RE = re.compile(r"^\s*([\w:<>]+)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
-CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\((.*?)\)", re.DOTALL)
+CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\(", re.DOTALL)
 
-TOOL_CACHE_VERSION = 8
+TOOL_CACHE_VERSION = 9
+
+PROPERTY_SPECIFIER_MAP = {
+    "transient": "Transient",
+    "editanywhere": "EditAnywhere",
+    "editdefaultsonly": "EditDefaultsOnly",
+    "editinstanceonly": "EditInstanceOnly",
+}
+
+CLASS_SPECIFIER_MAP = {
+    "abstract": "Abstract",
+    "transient": "Transient",
+    "editoronly": "EditorOnly",
+}
+
+CLASS_DECL_SKIP_TOKENS = {
+    "MINENGINE_API",
+}
 
 
 @dataclass
 class PropertyMeta:
     name: str
     type_name: str
+    specifiers: list[str]
     metadata: dict[str, str]
 
 
@@ -45,6 +63,7 @@ class ClassMeta:
     source_rel: str
     decl_pos: int
     class_hash: str
+    specifiers: list[str]
     metadata: dict[str, str]
     base_types: list[str]
     has_virtual_inheritance: bool
@@ -143,7 +162,49 @@ def split_top_level_args(arg_text: str) -> list[str]:
     return parts
 
 
-def parse_property_metadata(arg_text: str) -> dict[str, str]:
+def extract_class_name_from_decl_tail(decl_tail: str) -> str | None:
+    decl_prefix = decl_tail.split(":", 1)[0]
+    tokens = [token.strip() for token in decl_prefix.split() if token.strip()]
+
+    identifier_re = re.compile(r"^[A-Za-z_]\w*$")
+    for token in tokens:
+        if token in {"class", "struct", "final"}:
+            continue
+        if token in CLASS_DECL_SKIP_TOKENS or token.endswith("_API"):
+            continue
+        if identifier_re.fullmatch(token):
+            return token
+
+    return None
+
+
+def extract_balanced_parentheses_content(text: str, open_paren_index: int) -> str | None:
+    depth = 0
+    for idx in range(open_paren_index, len(text)):
+        ch = text[idx]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return text[open_paren_index + 1:idx]
+    return None
+
+
+def extract_last_class_marker_args(window: str) -> str | None:
+    matches = list(CLASS_MARK_RE.finditer(window))
+    if not matches:
+        return None
+
+    last = matches[-1]
+    open_paren_index = window.find("(", last.start())
+    if open_paren_index < 0:
+        return None
+
+    return extract_balanced_parentheses_content(window, open_paren_index)
+
+
+def parse_annotation_metadata(arg_text: str) -> dict[str, str]:
     metadata: dict[str, str] = {}
     for part in split_top_level_args(arg_text):
         if "=" in part:
@@ -152,6 +213,110 @@ def parse_property_metadata(arg_text: str) -> dict[str, str]:
         else:
             metadata[part.strip()] = "true"
     return metadata
+
+
+def normalize_property_specifier(token: str) -> str | None:
+    key = "".join(token.split()).lower()
+    return PROPERTY_SPECIFIER_MAP.get(key)
+
+
+def normalize_class_specifier(token: str) -> str | None:
+    key = "".join(token.split()).lower()
+    return CLASS_SPECIFIER_MAP.get(key)
+
+
+def parse_property_annotations(arg_text: str) -> tuple[list[str], dict[str, str]]:
+    specifiers: list[str] = []
+    metadata: dict[str, str] = {}
+
+    for part in split_top_level_args(arg_text):
+        token = part.strip()
+        if not token:
+            continue
+
+        if "=" in token:
+            key, value = token.split("=", 1)
+            key = key.strip()
+            if key.lower() != "meta":
+                raise ValueError(f"Unsupported assignment token '{token}'. Use meta = (key = value, ...).")
+
+            value = value.strip()
+            if len(value) < 2 or not value.startswith("(") or not value.endswith(")"):
+                raise ValueError(f"Invalid meta format '{token}'. Expected meta = (key = value, ...).")
+
+            inner_text = value[1:-1].strip()
+            if not inner_text:
+                continue
+
+            for entry in split_top_level_args(inner_text):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                if "=" not in entry:
+                    raise ValueError(f"Invalid meta entry '{entry}'. Expected key = value.")
+
+                meta_key, meta_value = entry.split("=", 1)
+                meta_key = meta_key.strip()
+                if not meta_key:
+                    raise ValueError(f"Invalid meta entry '{entry}'. Key cannot be empty.")
+
+                metadata[meta_key] = trim_quotes(meta_value.strip())
+            continue
+
+        normalized_specifier = normalize_property_specifier(token)
+        if normalized_specifier is None:
+            raise ValueError(f"Unknown property specifier '{token}'.")
+        specifiers.append(normalized_specifier)
+
+    dedup_specifiers = list(dict.fromkeys(specifiers))
+    return dedup_specifiers, metadata
+
+
+def parse_class_annotations(arg_text: str) -> tuple[list[str], dict[str, str]]:
+    specifiers: list[str] = []
+    metadata: dict[str, str] = {}
+
+    for part in split_top_level_args(arg_text):
+        token = part.strip()
+        if not token:
+            continue
+
+        if "=" in token:
+            key, value = token.split("=", 1)
+            key = key.strip()
+            if key.lower() != "meta":
+                raise ValueError(f"Unsupported assignment token '{token}'. Use meta = (key = value, ...).")
+
+            value = value.strip()
+            if len(value) < 2 or not value.startswith("(") or not value.endswith(")"):
+                raise ValueError(f"Invalid meta format '{token}'. Expected meta = (key = value, ...).")
+
+            inner_text = value[1:-1].strip()
+            if not inner_text:
+                continue
+
+            for entry in split_top_level_args(inner_text):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                if "=" not in entry:
+                    raise ValueError(f"Invalid meta entry '{entry}'. Expected key = value.")
+
+                meta_key, meta_value = entry.split("=", 1)
+                meta_key = meta_key.strip()
+                if not meta_key:
+                    raise ValueError(f"Invalid meta entry '{entry}'. Key cannot be empty.")
+
+                metadata[meta_key] = trim_quotes(meta_value.strip())
+            continue
+
+        normalized_specifier = normalize_class_specifier(token)
+        if normalized_specifier is None:
+            raise ValueError(f"Unknown class specifier '{token}'.")
+        specifiers.append(normalized_specifier)
+
+    dedup_specifiers = list(dict.fromkeys(specifiers))
+    return dedup_specifiers, metadata
 
 
 def parse_namespace_prefix(source: str, class_pos: int) -> str:
@@ -259,21 +424,21 @@ def find_matching_brace(source: str, open_brace_index: int) -> int:
 def has_class_marker(source: str, class_start: int) -> bool:
     window_start = max(0, class_start - 256)
     window = source[window_start:class_start]
-    return CLASS_MARK_RE.search(window) is not None
+    return extract_last_class_marker_args(window) is not None
 
 
-def parse_class_metadata(source: str, class_start: int) -> dict[str, str]:
+def parse_class_annotations_at(source: str, class_start: int) -> tuple[list[str], dict[str, str]]:
     window_start = max(0, class_start - 256)
     window = source[window_start:class_start]
-    matches = list(CLASS_MARK_RE.finditer(window))
-    if not matches:
-        return {}
+    marker_arg_text = extract_last_class_marker_args(window)
+    if marker_arg_text is None:
+        return [], {}
 
-    marker_arg_text = matches[-1].group(1).strip()
+    marker_arg_text = marker_arg_text.strip()
     if not marker_arg_text:
-        return {}
+        return [], {}
 
-    return parse_property_metadata(marker_arg_text)
+    return parse_class_annotations(marker_arg_text)
 
 
 def has_enum_marker(source: str, enum_start: int) -> bool:
@@ -286,7 +451,7 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
     classes: list[ClassMeta] = []
 
     for match in CLASS_DECL_RE.finditer(source):
-        class_name = match.group(2)
+        class_decl_tail = match.group(2)
         class_start = match.start()
         open_brace = source.find("{", match.end() - 1)
         if open_brace < 0:
@@ -299,12 +464,22 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
         if not has_class_marker(source, class_start):
             continue
 
+        class_name = extract_class_name_from_decl_tail(class_decl_tail)
+        if not class_name:
+            class_line = source[:class_start].count("\n") + 1
+            raise ValueError(f"{normalize_path(file_path)}:{class_line}: Failed to resolve class name from declaration tail '{class_decl_tail.strip()}'.")
+
         body = source[open_brace + 1:close_brace]
         class_decl_head = source[class_start:open_brace]
         namespace_name = parse_namespace_prefix(source, class_start)
-        class_metadata = parse_class_metadata(source, class_start)
+        try:
+            class_specifiers, class_metadata = parse_class_annotations_at(source, class_start)
+        except ValueError as exc:
+            class_line = source[:class_start].count("\n") + 1
+            raise ValueError(f"{normalize_path(file_path)}:{class_line}: {exc}") from exc
         base_types, has_virtual_inheritance = parse_base_type_list(class_decl_head, namespace_name)
         body_lines = body.splitlines()
+        body_start_line = source[:open_brace + 1].count("\n") + 1
         props: list[PropertyMeta] = []
 
         i = 0
@@ -314,7 +489,11 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 i += 1
                 continue
 
-            metadata = parse_property_metadata(marker_match.group(1))
+            try:
+                specifiers, metadata = parse_property_annotations(marker_match.group(1))
+            except ValueError as exc:
+                marker_line = body_start_line + i
+                raise ValueError(f"{normalize_path(file_path)}:{marker_line}: {exc}") from exc
 
             j = i + 1
             while j < len(body_lines) and not body_lines[j].strip():
@@ -327,7 +506,10 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
             if member_match:
                 field_type = qualify_field_type_name(member_match.group(1), namespace_name)
                 field_name = member_match.group(2)
-                props.append(PropertyMeta(name=field_name, type_name=field_type, metadata=metadata))
+                props.append(PropertyMeta(name=field_name,
+                                          type_name=field_type,
+                                          specifiers=specifiers,
+                                          metadata=metadata))
                 i = j + 1
             else:
                 i = j + 1
@@ -348,6 +530,7 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 source_rel=source_rel,
                 decl_pos=class_start,
                 class_hash=class_hash,
+                specifiers=class_specifiers,
                 metadata=class_metadata,
                 base_types=base_types,
                 has_virtual_inheritance=has_virtual_inheritance,
@@ -476,14 +659,71 @@ def source_output_name(source_rel: str, source_name_counts: dict[str, int]) -> s
     return f"{source_stem}_{sha256_text(source_rel)[:8]}.gen.h"
 
 
+def render_property_specifier_mask_expr(specifiers: list[str]) -> str:
+    if not specifiers:
+        return "static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None)"
+
+    specifier_expr = " | ".join(
+        f"static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::{name})"
+        for name in specifiers
+    )
+    return f"({specifier_expr})"
+
+
+def render_property_metadata_expr(metadata: dict[str, str]) -> str:
+    if not metadata:
+        return "(minEngine::Reflection::PropertyMetadata{})"
+
+    entries = []
+    for key in sorted(metadata.keys()):
+        value = metadata[key]
+        entries.append(
+            f'{{"{escape_cpp_string(key)}", "{escape_cpp_string(value)}"}}'
+        )
+
+    return f"(minEngine::Reflection::PropertyMetadata{{{', '.join(entries)}}})"
+
+
+def render_class_specifier_mask_expr(specifiers: list[str]) -> str:
+    if not specifiers:
+        return "static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None)"
+
+    specifier_expr = " | ".join(
+        f"static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::{name})"
+        for name in specifiers
+    )
+    return f"({specifier_expr})"
+
+
+def render_class_metadata_expr(metadata: dict[str, str]) -> str:
+    if not metadata:
+        return "(minEngine::Reflection::ClassMetadata{})"
+
+    entries = []
+    for key in sorted(metadata.keys()):
+        value = metadata[key]
+        entries.append(
+            f'{{"{escape_cpp_string(key)}", "{escape_cpp_string(value)}"}}'
+        )
+
+    return f"(minEngine::Reflection::ClassMetadata{{{', '.join(entries)}}})"
+
+
 def render_class_registration(meta: ClassMeta) -> list[str]:
     lines: list[str] = []
     type_name = full_type_name(meta)
     lines.append(f"ME_REFLECTION_CLASS_BEGIN({type_name})")
+    class_specifier_expr = render_class_specifier_mask_expr(meta.specifiers)
+    class_metadata_expr = render_class_metadata_expr(meta.metadata)
+    lines.append(f"    ME_REFLECTION_CLASS_SET_ANNOTATIONS({class_specifier_expr}, {class_metadata_expr})")
     for base_type in meta.base_types:
         lines.append(f"    ME_REFLECTION_CLASS_SUPER({base_type})")
     for prop in meta.properties:
-        lines.append(f"    ME_REFLECTION_CLASS_ADD_FIELD({type_name}, {prop.name})")
+        specifier_expr = render_property_specifier_mask_expr(prop.specifiers)
+        metadata_expr = render_property_metadata_expr(prop.metadata)
+        lines.append(
+            f"    ME_REFLECTION_CLASS_ADD_FIELD({type_name}, {prop.name}, {specifier_expr}, {metadata_expr})"
+        )
     lines.append(f"ME_REFLECTION_CLASS_END({type_name})")
     return lines
 
@@ -547,12 +787,13 @@ def class_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> ClassMeta
     properties: list[PropertyMeta] = []
     for property_entry in entry.get("properties", []):
         if isinstance(property_entry, str):
-            properties.append(PropertyMeta(name=property_entry, type_name="", metadata={}))
+            properties.append(PropertyMeta(name=property_entry, type_name="", specifiers=[], metadata={}))
         else:
             properties.append(
                 PropertyMeta(
                     name=property_entry.get("name", ""),
                     type_name=property_entry.get("type_name", ""),
+                    specifiers=property_entry.get("specifiers", []),
                     metadata=property_entry.get("metadata", {}),
                 )
             )
@@ -564,6 +805,7 @@ def class_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> ClassMeta
         source_rel=entry.get("source_rel", entry.get("source_include", "")),
         decl_pos=entry.get("decl_pos", 0),
         class_hash=entry.get("class_hash", ""),
+        specifiers=entry.get("specifiers", []),
         metadata=entry.get("metadata", {}),
         base_types=entry.get("base_types", []),
         has_virtual_inheritance=entry.get("has_virtual_inheritance", False),
@@ -869,6 +1111,7 @@ def main() -> int:
             "class_name": cls.class_name,
             "decl_pos": cls.decl_pos,
             "class_hash": cls.class_hash,
+            "specifiers": cls.specifiers,
             "metadata": cls.metadata,
             "base_types": cls.base_types,
             "has_virtual_inheritance": cls.has_virtual_inheritance,
@@ -877,7 +1120,15 @@ def main() -> int:
             "source_file": cls.source_file,
             "source_include": cls.source_include,
             "source_rel": cls.source_rel,
-            "properties": [{"name": p.name, "type_name": p.type_name, "metadata": p.metadata} for p in cls.properties],
+            "properties": [
+                {
+                    "name": p.name,
+                    "type_name": p.type_name,
+                    "specifiers": p.specifiers,
+                    "metadata": p.metadata,
+                }
+                for p in cls.properties
+            ],
         }
 
     enum_entries: dict[str, Any] = {}

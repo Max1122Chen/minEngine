@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -12,6 +14,17 @@ namespace minEngine::Reflection
 {
     using MEClassFactoryFn = std::shared_ptr<void> (*)();
     using MEClassCasterFn = void* (*)(void* objectPtr);
+
+    enum class ClassSpecifier : uint32_t
+    {
+        None = 0u,
+        Abstract = 1u << 0,
+        Transient = 1u << 1,
+        EditorOnly = 1u << 2,
+    };
+
+    using ClassSpecifierMask = uint32_t;
+    using ClassMetadata = std::unordered_map<std::string, std::string>;
 
     // Take in a type-erased shared_ptr<void> and set it to the dst, which actually points to a shared_ptr of the correct type. This is used for handling shared pointer properties in a generic way without knowing the actual type at compile time.
     using MEClassSetSharedPtrFn = bool (*)(const std::shared_ptr<void>& src, void* dst);
@@ -116,6 +129,30 @@ namespace minEngine::Reflection
         MEClass* GetSuperClass() { return m_SuperClass; }
         const MEClass* GetSuperClass() const { return m_SuperClass; }
 
+        ClassSpecifierMask GetSpecifierMask() const { return m_SpecifierMask; }
+        void SetAnnotations(ClassSpecifierMask inSpecifierMask, ClassMetadata inMetadata)
+        {
+            m_SpecifierMask = inSpecifierMask;
+            m_Metadata = std::move(inMetadata);
+        }
+
+        bool HasSpecifier(ClassSpecifier specifier) const
+        {
+            return (m_SpecifierMask & static_cast<ClassSpecifierMask>(specifier)) != 0;
+        }
+
+        const ClassMetadata& GetMetadata() const { return m_Metadata; }
+
+        const std::string* FindMetadata(const std::string& key) const
+        {
+            auto iter = m_Metadata.find(key);
+            if (iter == m_Metadata.end())
+            {
+                return nullptr;
+            }
+            return &iter->second;
+        }
+
         void AddProperty(MEProperty* property)
         {
             if (property != nullptr)
@@ -142,6 +179,8 @@ namespace minEngine::Reflection
         MEClassFactoryFn m_Factory = nullptr;
         MEClassCasterFn m_Caster = nullptr;
         MEClassSetSharedPtrFn m_SetSharedPtr = nullptr;
+        ClassSpecifierMask m_SpecifierMask = static_cast<ClassSpecifierMask>(ClassSpecifier::None);
+        ClassMetadata m_Metadata;
         MEClass* m_SuperClass = nullptr;
         std::vector<MEProperty*> m_Properties;
         std::vector<MEClass*> m_DirectDerivedClasses;

@@ -7,5 +7,6 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::PrimitiveComponent)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_BEGIN(minEngine::PrimitiveComponent)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::SceneComponent)
 ME_REFLECTION_CLASS_END(minEngine::PrimitiveComponent)

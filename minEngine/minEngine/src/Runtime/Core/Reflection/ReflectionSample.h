@@ -13,12 +13,12 @@ namespace minEngine
         ValueC
     };
 
-    ME_CLASS()
-    class ReflectionSampleClass
+    ME_CLASS(Transient, meta = (Category = "ReflectionSample", DisplayName = "ReflectionSampleClass"))
+    class MINENGINE_API ReflectionSampleClass
     {
         ME_REFLECTION_FRIEND(ReflectionSampleClass)
     public:
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(Transient, meta = (Category = "Sample", DisplayName = "Sample Int"), EditAnywhere)
         int IntField = 42;
 
         ME_PROPERTY(EditAnywhere)

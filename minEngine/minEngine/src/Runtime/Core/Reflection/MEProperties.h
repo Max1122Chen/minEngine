@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include "TypeTraits.h"
 
@@ -41,6 +43,18 @@ namespace minEngine::Reflection
         Shared
     };
 
+    enum class PropertySpecifier : uint32_t
+    {
+        None = 0u,
+        Transient = 1u << 0,
+        EditAnywhere = 1u << 1,
+        EditDefaultsOnly = 1u << 2,
+        EditInstanceOnly = 1u << 3,
+    };
+
+    using PropertySpecifierMask = uint32_t;
+    using PropertyMetadata = std::unordered_map<std::string, std::string>;
+
     class MINENGINE_API MEProperty
     {
     public:
@@ -65,12 +79,38 @@ namespace minEngine::Reflection
         void* GetMutable(void* ptr) const { return mutableAccessor == nullptr ? nullptr : mutableAccessor(ptr); }
         const void* GetConst(const void* ptr) const { return constAccessor == nullptr ? nullptr : constAccessor(ptr); }
 
+        PropertySpecifierMask GetSpecifierMask() const { return specifierMask; }
+        void SetAnnotations(PropertySpecifierMask inSpecifierMask, PropertyMetadata inMetadata)
+        {
+            specifierMask = inSpecifierMask;
+            metadata = std::move(inMetadata);
+        }
+
+        bool HasSpecifier(PropertySpecifier specifier) const
+        {
+            return (specifierMask & static_cast<PropertySpecifierMask>(specifier)) != 0;
+        }
+
+        const PropertyMetadata& GetMetadata() const { return metadata; }
+
+        const std::string* FindMetadata(const std::string& key) const
+        {
+            auto iter = metadata.find(key);
+            if (iter == metadata.end())
+            {
+                return nullptr;
+            }
+            return &iter->second;
+        }
+
         virtual MEPropertyCategory GetCategory() const = 0;
 
     private:
         std::string name;
         FieldConstAccessorFn constAccessor = nullptr;
         FieldMutableAccessorFn mutableAccessor = nullptr;
+        PropertySpecifierMask specifierMask = static_cast<PropertySpecifierMask>(PropertySpecifier::None);
+        PropertyMetadata metadata;
     };
 
     class MINENGINE_API MEPrimitiveProperty : public MEProperty

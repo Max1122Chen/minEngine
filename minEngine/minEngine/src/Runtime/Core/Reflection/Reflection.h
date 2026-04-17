@@ -210,7 +210,9 @@ namespace minEngine::Reflection
         MEProperty* AddFieldByType(MEClass* ownerClass,
                                    const std::string& fieldName,
                                    FieldConstAccessorFn constAccessor,
-                                   FieldMutableAccessorFn mutableAccessor)
+                                   FieldMutableAccessorFn mutableAccessor,
+                                   PropertySpecifierMask specifierMask,
+                                   PropertyMetadata metadata)
         {
             if (ownerClass == nullptr)
             {
@@ -225,6 +227,7 @@ namespace minEngine::Reflection
             }
 
             property->SetAccessors(constAccessor, mutableAccessor);
+            property->SetAnnotations(specifierMask, std::move(metadata));
             ownerClass->AddProperty(property);
             return property;
         }
