@@ -116,6 +116,60 @@ namespace minEngine::Serialization
                     {
                         return false;
                     }
+                    return archive.WriteUInt64(static_cast<uint64_t>(*static_cast<const uint32_t*>(valuePtr)));
+                },
+                [](ReaderArchive& archive, void* outValuePtr) -> bool
+                {
+                    if (outValuePtr == nullptr)
+                    {
+                        return false;
+                    }
+
+                    uint64_t value = 0;
+                    if (!archive.ReadUInt64(value))
+                    {
+                        return false;
+                    }
+
+                    if (value > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()))
+                    {
+                        return false;
+                    }
+
+                    *static_cast<uint32_t*>(outValuePtr) = static_cast<uint32_t>(value);
+                    return true;
+                }},
+            {"uint32_t", "unsigned int", typeid(uint32_t).name(), typeid(unsigned int).name()});
+
+        RegisterCodecWithAliases(
+            PrimitiveCodec{
+                [](WriterArchive& archive, const void* valuePtr) -> bool
+                {
+                    if (valuePtr == nullptr)
+                    {
+                        return false;
+                    }
+                    return archive.WriteUInt64(*static_cast<const uint64_t*>(valuePtr));
+                },
+                [](ReaderArchive& archive, void* outValuePtr) -> bool
+                {
+                    if (outValuePtr == nullptr)
+                    {
+                        return false;
+                    }
+
+                    return archive.ReadUInt64(*static_cast<uint64_t*>(outValuePtr));
+                }},
+            {"uint64_t", "unsigned long long", typeid(uint64_t).name(), typeid(unsigned long long).name()});
+
+        RegisterCodecWithAliases(
+            PrimitiveCodec{
+                [](WriterArchive& archive, const void* valuePtr) -> bool
+                {
+                    if (valuePtr == nullptr)
+                    {
+                        return false;
+                    }
                     return archive.WriteDouble(static_cast<double>(*static_cast<const float*>(valuePtr)));
                 },
                 [](ReaderArchive& archive, void* outValuePtr) -> bool

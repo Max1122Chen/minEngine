@@ -7,7 +7,7 @@ extern minEngine::Application* minEngine::CreateApplication();
 int main(int argc, char** argv)
 {
     minEngine::Application* app = minEngine::CreateApplication();
-    app->Initialize();
+    app->Initialize(argc, argv);
     app->Run();
     app->Shutdown();
     delete app;

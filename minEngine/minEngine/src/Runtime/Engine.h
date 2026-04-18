@@ -12,10 +12,8 @@ namespace minEngine
         Engine() = default;
         ~Engine() = default;
 
-        void Initialize();
-
+        void Initialize(int argc, char** argv);
         void Shutdown();
-
         void Run();
 
     public:

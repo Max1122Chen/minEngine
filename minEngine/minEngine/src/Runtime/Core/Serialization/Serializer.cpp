@@ -147,11 +147,10 @@ namespace minEngine::Serialization
         }
 
         // Iterate properties in the class hierarchy and serialize them
-        bool iterationOk = SerializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
-
-        if (!iterationOk)
+        SerializeResult iterationResult = SerializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
+        if (!iterationResult.ok)
         {
-            return SerializeResult::Failure("Serialize class failed during property iteration.", path);
+            return iterationResult;
         }
 
         if (!archive.EndObject())
@@ -373,10 +372,10 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Serialize class failed: BeginObjectPtr returned false.", path);
         }
 
-        const bool iterationOk = SerializeObject_IterateProps(dynamicClass, objectPtr, archive, options, path);
-        if (!iterationOk)
+        SerializeResult iterationResult = SerializeObject_IterateProps(dynamicClass, objectPtr, archive, options, path);
+        if (!iterationResult.ok)
         {
-            return SerializeResult::Failure("Serialize class failed during property iteration.", path);
+            return iterationResult;
         }
 
         if (!archive.EndObjectPtr())
@@ -387,21 +386,20 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
-    bool Serializer::SerializeObject_IterateProps(const minEngine::Reflection::MEClass *classInfo, 
-                                                                            const void *objectPtr, 
-                                                                            WriterArchive &archive, 
-                                                                            const SerializerOptions &options, 
-                                                                            const std::string &path)
+    SerializeResult Serializer::SerializeObject_IterateProps(const minEngine::Reflection::MEClass *classInfo,
+                                                             const void *objectPtr,
+                                                             WriterArchive &archive,
+                                                             const SerializerOptions &options,
+                                                             const std::string &path)
     {
         SerializeResult result = SerializeResult::Success();
-        return ReflectionSystem::Get().ForEachPropertyInHierarchy(
+        const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
         classInfo->GetName(),
         [&](const MEProperty& property) -> bool
         {
             if (property.GetConstAccessor() == nullptr)
             {
                 result = SerializeResult::Failure("Serialize property failed: const accessor is null.", JoinPath(path, property.GetName()));
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
@@ -409,14 +407,12 @@ namespace minEngine::Serialization
             if (valuePtr == nullptr)
             {
                 result = SerializeResult::Failure("Serialize property failed: value pointer is null.", JoinPath(path, property.GetName()));
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
             if (!archive.BeginField(property.GetName()))
             {
                 result = SerializeResult::Failure("Serialize property failed: BeginField returned false.", JoinPath(path, property.GetName()));
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
@@ -424,19 +420,29 @@ namespace minEngine::Serialization
             result = SerializeProperty(property, valuePtr, objectPtr, archive, options, JoinPath(path, property.GetName()));
             if (!result.ok)
             {
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
             if (!archive.EndField())
             {
                 result = SerializeResult::Failure("Serialize property failed: EndField returned false.", JoinPath(path, property.GetName()));
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
             return true;
         });
+
+        if (!iterationOk)
+        {
+            if (!result.ok)
+            {
+                return result;
+            }
+
+            return SerializeResult::Failure("Serialize class failed during property iteration.", path);
+        }
+
+        return SerializeResult::Success();
     }
 
     // Private methods for deserialization
@@ -457,11 +463,10 @@ namespace minEngine::Serialization
         }
 
         // Iterate the properties in hierarchy and deserialize each property.
-        const bool iterationOk = DeserializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
-
-        if (!iterationOk)
+        SerializeResult iterationResult = DeserializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
+        if (!iterationResult.ok)
         {
-            return SerializeResult::Failure("Deserialize class failed during property iteration.", path);
+            return iterationResult;
         }
 
         if (!archive.EndObject())
@@ -696,8 +701,8 @@ namespace minEngine::Serialization
                 registeredManagedObject = true;
             }
 
-            const bool iterationOk = DeserializeObject_IterateProps(dynamicClassInfo, objectPtr, archive, options, path);
-            if (!iterationOk)
+            SerializeResult iterationResult = DeserializeObject_IterateProps(dynamicClassInfo, objectPtr, archive, options, path);
+            if (!iterationResult.ok)
             {
                 if (registeredManagedObject)
                 {
@@ -709,7 +714,7 @@ namespace minEngine::Serialization
                 {
                     return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after property iteration failure.", path);
                 }
-                return SerializeResult::Failure("Deserialize class failed during property iteration.", path);
+                return iterationResult;
             }
 
             if (ptrCategory == MEObjectPtrCategory::Raw)
@@ -808,14 +813,14 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
-    bool Serializer::DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
-                                                void* objectPtr,
-                                                ReaderArchive& archive,
-                                                const SerializerOptions& options,
-                                                const std::string& path)
+    SerializeResult Serializer::DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
+                                                               void* objectPtr,
+                                                               ReaderArchive& archive,
+                                                               const SerializerOptions& options,
+                                                               const std::string& path)
     {
         SerializeResult result = SerializeResult::Success();
-        return ReflectionSystem::Get().ForEachPropertyInHierarchy(
+        const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
         classInfo->GetName(),
         [&](const MEProperty& property) -> bool
         {
@@ -829,14 +834,12 @@ namespace minEngine::Serialization
                 }
 
                 result = SerializeResult::Failure("Deserialize property failed: missing field.", propertyPath);
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
             if (property.GetMutableAccessor() == nullptr)
             {
                 result = SerializeResult::Failure("Deserialize property failed: mutable accessor is null.", propertyPath);
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
@@ -844,14 +847,12 @@ namespace minEngine::Serialization
             if (valuePtr == nullptr)
             {
                 result = SerializeResult::Failure("Deserialize property failed: value pointer is null.", propertyPath);
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
             result = DeserializeProperty(property, valuePtr, objectPtr, archive, options, propertyPath);
             if (!result.ok)
             {
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
@@ -859,12 +860,23 @@ namespace minEngine::Serialization
             if (!leaveOk)
             {
                 result = SerializeResult::Failure("Deserialize property failed: LeaveField returned false.", propertyPath);
-                ME_CORE_ERROR(result.message, result.fieldPath);
                 return false;
             }
 
             return result.ok;
         });
+
+        if (!iterationOk)
+        {
+            if (!result.ok)
+            {
+                return result;
+            }
+
+            return SerializeResult::Failure("Deserialize class failed during property iteration.", path);
+        }
+
+        return SerializeResult::Success();
     }
 
     bool Serializer::ResolvePendingObjectRef(const PendingObjectRef& pendingRef,

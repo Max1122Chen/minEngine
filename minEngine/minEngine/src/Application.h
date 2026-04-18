@@ -9,7 +9,7 @@ namespace minEngine
         Application()  = default;
         virtual ~Application() = default;
 
-        virtual void Initialize() {}
+        virtual void Initialize(int argc, char** argv) {}
         virtual void Shutdown() {}
         virtual void Run() {}
     };

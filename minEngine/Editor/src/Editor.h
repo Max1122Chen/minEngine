@@ -22,7 +22,7 @@ namespace minEngine
         Editor() = default;
         ~Editor() override = default;
 
-        void Initialize() override;
+        void Initialize(int argc, char** argv) override;
         void Shutdown() override;
         void Run() override;
 

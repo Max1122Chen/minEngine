@@ -272,3 +272,37 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	Runtime log verification shows pending reference resolve pass `resolved=5, unresolved=0`.
 - Next step:
 	Optionally add an automatic scene GUID migration pass for legacy files with unresolved asset GUID references.
+
+### 2026-04-18 - ProjectManager skeleton bootstrap
+- Goal:
+	Start project-system architecture separation by introducing a dedicated `ProjectManager` subsystem scaffold.
+- Main changes:
+	Added `Runtime/Function/Framework/Project/ProjectManager.h/.cpp` with empty open/close interfaces and baseline data-model structs (`ProjectDescriptor`, `ProjectContext`, `ProjectOpenResult`).
+	Added project file naming constants for new convention: `.meproject` and `.measset`.
+	Added startup-scene resolution interface with engine-default fallback path placeholder.
+	Registered `ProjectManager` in `RuntimeGlobalContext` startup/shutdown lifecycle.
+- Risks or caveats:
+	Current `OpenProject` behavior is intentionally non-functional (`NotImplemented`) to keep this iteration architecture-only.
+	No runtime feature wiring to editor startup path yet.
+- Validation done:
+	File-level diagnostics passed for new and updated framework files.
+	No build/run step executed in this task (per user request).
+- Next step:
+	Implement minimal project discovery/load flow and wire editor startup to `ProjectManager` scene resolution chain.
+
+### 2026-04-18 - ProjectManager descriptor split and open-flow implementation
+- Goal:
+	Move project metadata into a dedicated header and replace `OpenProject` placeholder logic with real descriptor loading/validation.
+- Main changes:
+	Split project metadata into `Runtime/Function/Framework/Project/ProjectDescriptor.h`.
+	Added `ProjectDescriptorSerializer.h/.cpp` to load/save descriptor files through the generic archive layer (`JsonArchive` read/write APIs).
+	Implemented `ProjectManager::OpenProject` flow: normalize root, locate descriptor, deserialize, validate required fields, fill defaults (`Assets` / `Config`), resolve startup scene with engine-default fallback and diagnostics.
+	Moved `ProjectManager::Get()` implementation to cpp, decoupling header from direct `RuntimeGlobalContext` include.
+- Risks or caveats:
+	Descriptor format is now strict on required fields (`schemaVersion`, `projectName`, `projectId`).
+	Startup-scene fallback currently records diagnostics but does not yet emit UI-level notifications.
+- Validation done:
+	File-level diagnostics passed for `ProjectDescriptor.h`, `ProjectDescriptorSerializer.h/.cpp`, `ProjectManager.h/.cpp`.
+	No build/run step executed in this task (per user request).
+- Next step:
+	Wire editor startup bootstrap to call `ProjectManager::OpenProject`, then consume `ResolveEditorStartupScenePath()` as the scene-entry source.

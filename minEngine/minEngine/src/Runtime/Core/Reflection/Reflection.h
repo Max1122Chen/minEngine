@@ -570,6 +570,14 @@ namespace minEngine::Reflection
                 {
                     primitiveTypeName = "bool";
                 }
+                else if constexpr (std::is_same_v<RawFieldType, uint32_t>)
+                {
+                    primitiveTypeName = "uint32_t";
+                }
+                else if constexpr (std::is_same_v<RawFieldType, uint64_t>)
+                {
+                    primitiveTypeName = "uint64_t";
+                }
                 else if constexpr (std::is_same_v<RawFieldType, std::string>)
                 {
                     primitiveTypeName = "std::string";

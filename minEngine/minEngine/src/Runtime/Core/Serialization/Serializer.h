@@ -68,7 +68,7 @@ namespace minEngine::Serialization
                                                  const SerializerOptions& options,
                                                  const std::string& path);
 
-        static bool SerializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
+        static SerializeResult SerializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
                                         const void* objectPtr,
                                         WriterArchive& archive,
                                         const SerializerOptions& options,
@@ -94,7 +94,7 @@ namespace minEngine::Serialization
                                                    const SerializerOptions& options,
                                                    const std::string& path);
 
-        static bool DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
+        static SerializeResult DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
                                                 void* objectPtr,
                                                 ReaderArchive& archive,
                                                 const SerializerOptions& options,

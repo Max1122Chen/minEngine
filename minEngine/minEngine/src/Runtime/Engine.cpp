@@ -1,9 +1,5 @@
 #include "Engine.h"
 
-#include "imgui.h"
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
-
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Render/RenderSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
@@ -16,7 +12,7 @@
 
 namespace minEngine
 {
-    void Engine::Initialize()
+    void Engine::Initialize(int argc, char** argv)
     {
         LogSystem::Get().Initialize();
 

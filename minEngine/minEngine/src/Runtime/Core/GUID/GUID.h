@@ -1,4 +1,5 @@
 #pragma once
+#include "Reflection/ReflectionAnnotations.h"
 #include <cstdint>
 #include <cstdio>
 #include <functional>
@@ -6,9 +7,15 @@
 
 namespace minEngine
 {
+    ME_STRUCT()
     struct GUID
     {
+        ME_REFLECTION_FRIEND(GUID)
+
+        ME_PROPERTY()
         uint64_t High;
+
+        ME_PROPERTY()
         uint64_t Low;
 
         GUID() : High(0), Low(0) {}
@@ -60,3 +67,5 @@ namespace minEngine
     // Using UUID v4 (random) for GUID generation
     GUID GenerateGUID();
 }
+
+#include "GUID.gen.h"

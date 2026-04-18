@@ -7,6 +7,7 @@
 #include "imgui/backends/imgui_impl_opengl3.h"
 
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -19,6 +20,7 @@
 #include "EditorDefaultScene.h"
 
 #include <algorithm>
+#include <array>
 
 namespace minEngine
 {
@@ -380,13 +382,15 @@ namespace minEngine
         m_ViewportClients.clear();
     }
 
-    void Editor::Initialize()
+    void Editor::Initialize(int argc, char** argv)
     {
         m_Engine = new Engine();
-        m_Engine->Initialize();
+        m_Engine->Initialize(argc, argv);
 
         RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->SetPresentPassEnabled(false);
 
+        
+        // Initialize ImGui for the editor window
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -402,15 +406,119 @@ namespace minEngine
         RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
         m_EditorGUIManager.Initialize(*this);
 
-        const std::filesystem::path defaultScenePath("Assets/Scenes/EditorDefault.scene.json");
-        
-        // Create a new scene defaultly.
-        CreateNewScene(defaultScenePath.string());
-        if (Scene* scene = GetActiveScene())
+        ProjectManager& projManager = ProjectManager::Get();
+        ProjectOpenResult result;
+        bool openAttempted = false;
+        std::filesystem::path requestedProjectPath;
+
+        // Try opening project from command-line argument first.
+        if (argc > 1 && argv != nullptr && argv[1] != nullptr)
         {
-            PopulateEditorDefaultScene(*scene);
-            MarkSceneDirty();
+            requestedProjectPath = std::filesystem::path(argv[1]);
+            if (!requestedProjectPath.empty())
+            {
+                openAttempted = true;
+                result = projManager.OpenProject(requestedProjectPath);
+                if (!result.IsSuccess())
+                {
+                    ME_CORE_WARN("[Editor] Failed to open requested project path '{}'. Reason: {}",
+                                 requestedProjectPath.string(),
+                                 result.Message);
+                }
+            }
         }
+
+        // If command-line argument failed or is missing, try default project candidates.
+        if (!result.IsSuccess())
+        {
+            const std::array<std::string, 4> defaultProjectCandidates = {
+                "DefaultProjects/Playground",
+                "../DefaultProjects/Playground",
+                "../../DefaultProjects/Playground",
+                "minEngine/DefaultProjects/Playground"
+            };
+
+            for (const std::string& relativePath : defaultProjectCandidates)
+            {
+                const std::filesystem::path candidatePath = std::filesystem::absolute(relativePath).lexically_normal();
+                if (!std::filesystem::exists(candidatePath) || !std::filesystem::is_directory(candidatePath))
+                {
+                    continue;
+                }
+
+                openAttempted = true;
+                result = projManager.OpenProject(candidatePath);
+                if (result.IsSuccess())
+                {
+                    ME_CORE_INFO("[Editor] Opened default project candidate '{}'.", candidatePath.string());
+                    break;
+                }
+
+                ME_CORE_WARN("[Editor] Failed to open default project candidate '{}'. Reason: {}",
+                             candidatePath.string(),
+                             result.Message);
+            }
+        }
+
+        bool sceneLoaded = false;
+        if (result.IsSuccess())
+        {
+            ME_CORE_INFO("[Editor] {}", result.Message);
+
+            const ProjectContext& projectContext = projManager.GetCurrentProject();
+            for (const std::string& diagnostic : projectContext.Diagnostics)
+            {
+                ME_CORE_WARN("[Editor][ProjectDiag] {}", diagnostic);
+            }
+
+            // Fallback chain: project default scene -> engine default scene.
+            const std::filesystem::path startupScenePath = projManager.ResolveEditorStartupScenePath();
+            if (!startupScenePath.empty())
+            {
+                sceneLoaded = OpenScene(startupScenePath.string());
+                if (!sceneLoaded)
+                {
+                    ME_CORE_ERROR("[Editor] Failed to open project startup scene at '{}'.",
+                                  startupScenePath.string());
+                }
+            }
+
+            const std::filesystem::path engineDefaultScenePath = projManager.GetEngineDefaultScenePath();
+            if (!sceneLoaded
+                && !engineDefaultScenePath.empty()
+                && startupScenePath.lexically_normal() != engineDefaultScenePath.lexically_normal())
+            {
+                sceneLoaded = OpenScene(engineDefaultScenePath.string());
+                if (!sceneLoaded)
+                {
+                    ME_CORE_ERROR("[Editor] Failed to open engine default scene at '{}'.",
+                                  engineDefaultScenePath.string());
+                }
+            }
+        }
+        else if (openAttempted)
+        {
+            ME_CORE_ERROR("[Editor] Failed to open project. Reason: {}", result.Message);
+        }
+        else
+        {
+            ME_CORE_WARN("[Editor] No project argument and no default project found. Fallback to bootstrap scene.");
+        }
+
+        // Final fallback: bootstrap a simple scene in memory.
+        if (!sceneLoaded)
+        {
+            const std::filesystem::path bootstrapScenePath = projManager.GetEngineDefaultScenePath();
+            CreateNewScene(bootstrapScenePath.string());
+            if (Scene* scene = GetActiveScene())
+            {
+                PopulateEditorDefaultScene(*scene);
+                MarkSceneDirty();
+            }
+
+            ME_CORE_WARN("[Editor] Using bootstrap in-memory default scene.");
+        }
+
     }
 
     void Editor::Shutdown()

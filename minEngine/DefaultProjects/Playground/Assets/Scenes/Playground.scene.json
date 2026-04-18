@@ -1,0 +1,9 @@
+{
+    "version": 2,
+    "sceneData": {
+        "$typeName": "minEngine::Scene",
+        "m_GameObjects": [],
+        "m_Name": "Playground",
+        "sceneName": "Assets/Scenes/Playground.scene.json"
+    }
+}

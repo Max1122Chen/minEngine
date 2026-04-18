@@ -5,6 +5,7 @@ namespace minEngine
 {
     class LogSystem;
     class ObjectManager;
+    class ProjectManager;
     class AssetManager;
     class WindowSystem;
     class InputSystem;
@@ -33,6 +34,7 @@ namespace minEngine
     
     // Add global systems and contexts here
     std::shared_ptr<ObjectManager> m_ObjectManager;
+    std::shared_ptr<ProjectManager> m_ProjectManager;
     std::shared_ptr<AssetManager> m_AssetManager;
     std::shared_ptr<WindowSystem> m_WindowSystem;
     std::shared_ptr<InputSystem> m_InputSystem;
