@@ -129,6 +129,27 @@ namespace minEngine::Reflection
         MEClass* GetSuperClass() { return m_SuperClass; }
         const MEClass* GetSuperClass() const { return m_SuperClass; }
 
+        bool IsA(const MEClass* baseClass) const
+        {
+            if (baseClass == nullptr)
+            {
+                return false;
+            }
+
+            const MEClass* current = this;
+            while (current != nullptr)
+            {
+                if (current == baseClass)
+                {
+                    return true;
+                }
+
+                current = current->GetSuperClass();
+            }
+
+            return false;
+        }
+
         ClassSpecifierMask GetSpecifierMask() const { return m_SpecifierMask; }
         void SetAnnotations(ClassSpecifierMask inSpecifierMask, ClassMetadata inMetadata)
         {

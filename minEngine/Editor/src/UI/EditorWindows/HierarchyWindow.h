@@ -39,7 +39,7 @@ namespace minEngine
             ImGui::TextDisabled("Double-click or F2 to rename");
             ImGui::Separator();
 
-            const std::vector<std::shared_ptr<GameObject>> gameObjects = m_Editor.GetHierarchyGameObjects();
+            const std::vector<GameObject*> gameObjects = m_Editor.GetHierarchyGameObjects();
             if (gameObjects.empty())
             {
                 ImGui::TextUnformatted("No GameObject in current scene.");
@@ -49,22 +49,22 @@ namespace minEngine
 
             if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_F2, false))
             {
-                if (const std::shared_ptr<GameObject> selected = m_Editor.GetSelectedGameObject())
+                if (GameObject* selected = m_Editor.GetSelectedGameObject())
                 {
                     BeginRename(*selected);
                 }
             }
 
-            for (const std::shared_ptr<GameObject>& gameObject : gameObjects)
+            for (GameObject* gameObject : gameObjects)
             {
                 if (!gameObject)
                 {
                     continue;
                 }
 
-                ImGui::PushID(static_cast<int>(gameObject->m_ID));
+                ImGui::PushID(static_cast<int>(gameObject->GetID()));
 
-                if (m_RenamingGameObjectId == gameObject->m_ID)
+                if (m_RenamingGameObjectId == gameObject->GetID())
                 {
                     if (m_RequestRenameFocus)
                     {
@@ -81,7 +81,7 @@ namespace minEngine
 
                     if (committed || ImGui::IsItemDeactivatedAfterEdit())
                     {
-                        m_Editor.RenameGameObject(gameObject->m_ID, m_RenameBuffer);
+                        m_Editor.RenameGameObject(gameObject->GetID(), m_RenameBuffer);
                         m_RenamingGameObjectId = kInvalidGameObjectId;
                     }
                     else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
@@ -93,7 +93,7 @@ namespace minEngine
                     continue;
                 }
 
-                const bool selected = m_Editor.IsGameObjectSelected(gameObject->m_ID);
+                const bool selected = m_Editor.IsGameObjectSelected(gameObject->GetID());
                 const std::string displayName = m_Editor.GetGameObjectDisplayName(*gameObject);
                 const std::string label = std::string("  ") + displayName;
 
@@ -106,7 +106,7 @@ namespace minEngine
 
                 if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns))
                 {
-                    m_Editor.SelectGameObject(gameObject->m_ID);
+                    m_Editor.SelectGameObject(gameObject->GetID());
                 }
 
                 if (selected)
@@ -120,7 +120,7 @@ namespace minEngine
 
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 {
-                    m_Editor.SelectGameObject(gameObject->m_ID);
+                    m_Editor.SelectGameObject(gameObject->GetID());
                     BeginRename(*gameObject);
                 }
 
@@ -135,7 +135,7 @@ namespace minEngine
 
         void BeginRename(const GameObject& gameObject)
         {
-            m_RenamingGameObjectId = gameObject.m_ID;
+            m_RenamingGameObjectId = gameObject.GetID();
             std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
             std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
             m_RequestRenameFocus = true;

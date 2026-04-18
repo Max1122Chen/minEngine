@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EngineAPI.h"
+#include "Runtime/Core/GUID/GUID.h"
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -25,6 +26,9 @@ namespace minEngine::Serialization
 
         virtual bool BeginObjectPtr(const std::string& typeName) = 0;
         virtual bool EndObjectPtr() = 0;
+
+        virtual bool BeginGuidRef(const minEngine::GUID& guid) = 0;
+        virtual bool EndGuidRef() = 0;
 
         virtual bool BeginField(const std::string& fieldName) = 0;
         virtual bool EndField() = 0;
@@ -51,6 +55,9 @@ namespace minEngine::Serialization
 
         virtual bool BeginObjectPtr(const minEngine::Reflection::MEClass* baseClassInfo, std::string& outClassName) = 0;
         virtual bool EndObjectPtr() = 0;
+
+        virtual bool BeginGuidRef(minEngine::GUID& outGuid) = 0;
+        virtual bool EndGuidRef() = 0;
 
         virtual bool EnterField(const std::string& fieldName) = 0;
         virtual bool LeaveField() = 0;

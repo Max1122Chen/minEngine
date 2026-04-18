@@ -4,9 +4,11 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::StaticMeshComponent)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::StaticMeshComponent, m_Mesh)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_BEGIN(minEngine::StaticMeshComponent)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::PrimitiveComponent)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::StaticMeshComponent, m_Mesh, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_END(minEngine::StaticMeshComponent)

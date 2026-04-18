@@ -1,5 +1,6 @@
 #include "JsonArchive.h"
 #include "Reflection/MEClass.h"
+#include "Reflection/Reflection.h"
 
 namespace minEngine::Serialization
 {
@@ -88,6 +89,29 @@ namespace minEngine::Serialization
     }
 
     bool JsonWriterArchive::EndObjectPtr()
+    {
+        return EndObject();
+    }
+
+    bool JsonWriterArchive::BeginGuidRef(const GUID& guid)
+    {
+        Json value = Json::object();
+        value["$guid"] = {
+            {"high", guid.High},
+            {"low", guid.Low}
+        };
+
+        Json* inserted = AttachValue(std::move(value));
+        if (inserted == nullptr || !inserted->is_object())
+        {
+            return false;
+        }
+
+        m_Stack.push_back(WriteContext{inserted, true, {}});
+        return true;
+    }
+
+    bool JsonWriterArchive::EndGuidRef()
     {
         return EndObject();
     }
@@ -190,31 +214,13 @@ namespace minEngine::Serialization
             return false;
         }
 
-        // If baseClassInfo is provided, check the $typeName field in the JSON object. If it exists and does not match baseClassInfo's name or any of its derived classes' names, return false.
+        // If baseClassInfo is provided, validate $typeName against the full inheritance chain.
         if (baseClassInfo != nullptr
             && value->contains("$typeName")
             && (*value)["$typeName"].is_string())
         {
             const std::string typeName = (*value)["$typeName"].get<std::string>();
-           bool typeMatch = false;
-            if (typeName == baseClassInfo->GetName())
-            {
-                typeMatch = true;
-            }
-            else
-            {
-                const std::vector<Reflection::MEClass*>& derivedClasses = baseClassInfo->GetDirectDerivedClasses();
-                for (const Reflection::MEClass* derivedClass : derivedClasses)
-                {
-                    if (typeName == derivedClass->GetName())
-                    {
-                        typeMatch = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!typeMatch)
+            if (!Reflection::ReflectionSystem::Get().IsClassNameSameOrDerived(typeName, baseClassInfo))
             {
                 return false;
             }
@@ -264,49 +270,66 @@ namespace minEngine::Serialization
             return false;
         }
 
-        // Check the $ptr_typeName field in the JSON object. If it exists, it must match baseClassInfo's name or any of its derived classes' names. If it does not exist, it's also considered valid. If the check fails, return false.
-        if (value->contains("$ptr_typeName") && (*value)["$ptr_typeName"].is_string())
+        // Object-ptr inline node must carry $ptr_typeName.
+        // This allows upper-layer probing logic to clearly distinguish it from GUID reference nodes.
+        if (!value->contains("$ptr_typeName") || !(*value)["$ptr_typeName"].is_string())
         {
-            const std::string typeName = (*value)["$ptr_typeName"].get<std::string>();
-            bool typeMatch = false;
-            if (baseClassInfo != nullptr)
-            {
-                if (typeName == baseClassInfo->GetName())
-                {
-                    typeMatch = true;
-                }
-                else
-                {
-                    const std::vector<Reflection::MEClass*>& derivedClasses = baseClassInfo->GetDirectDerivedClasses();
-                    for (const Reflection::MEClass* derivedClass : derivedClasses)
-                    {
-                        if (typeName == derivedClass->GetName())
-                        {
-                            typeMatch = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // If baseClassInfo is not provided, we can still accept the object pointer as long as the $ptr_typeName field exists and is a string. In this case we just return true here and let the caller handle the type checking based on the outClassName.
-                typeMatch = true;
-            }
-
-            if (!typeMatch)
-            {
-                return false;
-            }
-
-            outClassName = typeName;
+            return false;
         }
+
+        const std::string typeName = (*value)["$ptr_typeName"].get<std::string>();
+        if (baseClassInfo != nullptr
+            && !Reflection::ReflectionSystem::Get().IsClassNameSameOrDerived(typeName, baseClassInfo))
+        {
+            return false;
+        }
+
+        outClassName = typeName;
 
         m_ContextStack.push_back(value);
         return true;
     }
 
     bool JsonReaderArchive::EndObjectPtr()
+    {
+        return EndObject();
+    }
+
+    bool JsonReaderArchive::BeginGuidRef(GUID& outGuid)
+    {
+        const Json* value = CurrentValue();
+        if (value == nullptr || !value->is_object())
+        {
+            return false;
+        }
+
+        if (!value->contains("$guid") || !(*value)["$guid"].is_object())
+        {
+            return false;
+        }
+
+        const Json& guidNode = (*value)["$guid"];
+        if (!guidNode.contains("high") || !guidNode.contains("low"))
+        {
+            return false;
+        }
+
+        const Json& highNode = guidNode["high"];
+        const Json& lowNode = guidNode["low"];
+        if ((!highNode.is_number_unsigned() && !highNode.is_number_integer())
+            || (!lowNode.is_number_unsigned() && !lowNode.is_number_integer()))
+        {
+            return false;
+        }
+
+        outGuid.High = highNode.get<uint64_t>();
+        outGuid.Low = lowNode.get<uint64_t>();
+
+        m_ContextStack.push_back(value);
+        return true;
+    }
+
+    bool JsonReaderArchive::EndGuidRef()
     {
         return EndObject();
     }

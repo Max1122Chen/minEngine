@@ -174,3 +174,101 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	Local scope and file topology are in place; full fresh build validation has not been recorded yet for this WIP batch.
 - Next step:
 	Implement meta read/write + GUID reuse strategy, then run full build and editor open/save smoke test.
+
+### 2026-04-17 - ObjectPtr probe-based GUID reference path
+- Goal:
+	Continue serializer evolution after ObjectManager became the central owner of runtime objects.
+- Main changes:
+	Added GUID reference node interfaces to Archive/JsonArchive (`BeginGuidRef`/`EndGuidRef`).
+	Implemented probe-based object pointer deserialization in Serializer: try inline object node first, then GUID reference node.
+	Implemented direct-Outer ownership rule in object pointer serialization: direct child uses inline serialization, otherwise writes GUID reference.
+	Hooked GUID reference resolve chain in deserialization: ObjectManager first, then AssetManager fallback for known asset types.
+	When deserializing inline MEObject-derived pointers, assign Class/Outer and register into ObjectManager.
+- Risks or caveats:
+	Current object-pointer serializer path still assumes MEObject-derived pointer property types for full ownership semantics.
+	Asset fallback currently relies on known class-name mapping (`StaticMesh`/`Texture2D`) and may need extension once more resource wrapper types are reflected.
+- Validation done:
+	File-level diagnostics passed for touched serialization files (Archive/JsonArchive/Serializer).
+- Next step:
+	Add a focused round-trip case for mixed inline + GUID references (including cross-owner references) to lock behavior.
+
+### 2026-04-18 - Scene vector ownership serialization alignment
+- Goal:
+	Align scene save/load flow with vector-owned GameObject data and non-persistent runtime IDs.
+- Main changes:
+	Switched Scene tick path to iterate m_GameObjects vector (ownership source of truth).
+	Added Scene::RebuildRuntimeGameObjectIndex to compact null entries, rebuild id->pointer query map, and reassign runtime GameObject IDs after load.
+	Refactored SceneSerializer to serialize/deserialize Scene directly through Serializer (sceneData payload) and removed persisted per-GameObject id fields.
+	Added Scene reflection fields for sceneName and m_GameObjects in generated Scene.gen.h so direct Scene serialization includes required data.
+	Kept pending object reference workflow intact: clear queue before load, deserialize scene, rebuild runtime index, resolve pending refs at load-unit end.
+- Risks or caveats:
+	Scene file format changed to version 2 and currently follows forward-only path (no legacy id-based scene schema compatibility).
+	Pylance/Problems diagnostics for SceneSerializer still showed stale legacy entries in this session despite file content update; no legacy symbols remain in source file.
+- Validation done:
+	File-level diagnostics passed for Scene.h, Scene.cpp, Scene.gen.h.
+	Source grep confirmed legacy id-serialization symbols were removed from SceneSerializer.cpp.
+- Next step:
+	Run editor-level save/load smoke test with at least one cross-GameObject reference case to verify runtime id remap and pending reference resolve behavior end-to-end.
+
+### 2026-04-18 - Editor Scene API alignment follow-up
+- Goal:
+	Migrate editor-side scene/gameobject queries to the new Scene storage model and encapsulated GameObject ID accessor.
+- Main changes:
+	Updated Editor::GetHierarchyGameObjects to read from Scene::GetGameObjects() and sort by GameObject::GetID().
+	Updated Editor::GetSelectedGameObject / RenameGameObject to use vector scan by GetID instead of old map-style find on m_GameObjects.
+	Updated Editor::SyncSelectionWithScene to use Scene::GetGameObjectsById() for existence check and fallback to hierarchy list front item.
+	Updated HierarchyWindow and InspectorWindow to use GameObject::GetID() instead of direct m_ID field access.
+- Risks or caveats:
+	Current editor selection lookup by ID is linear over scene gameobject vector when shared_ptr ownership is needed.
+	Pylance diagnostics may lag in this session; source-level grep confirms old m_ID and old m_GameObjects.find usage in editor code paths were removed.
+- Validation done:
+	File contents verified for Editor.cpp / HierarchyWindow.h / InspectorWindow.h with new Scene/GameObject access pattern.
+- Next step:
+	Decide whether to introduce non-owning raw pointer query APIs for hierarchy/selection to reduce shared_ptr churn in per-frame UI code.
+
+### 2026-04-18 - Editor non-owning raw pointer query pass
+- Goal:
+	Adopt non-owning raw pointer query APIs for per-frame editor scene inspection paths.
+- Main changes:
+	Changed Editor API signatures: GetActiveScene -> Scene*, GetHierarchyGameObjects -> vector<GameObject*>, GetSelectedGameObject -> GameObject*.
+	Updated Editor.cpp callsites accordingly, while preserving Scene/SceneManager ownership via shared_ptr internally.
+	Updated HierarchyWindow and InspectorWindow to consume raw pointer query results.
+	Selection and rename lookups now use Scene::GetGameObjectsById() map for direct ID lookup.
+- Risks or caveats:
+	Returned raw pointers are non-owning and only valid while scene ownership remains stable in current frame.
+	Callers must not cache returned pointers across scene reload/destruction events.
+- Validation done:
+	File-level diagnostics passed for Editor.h, Editor.cpp, HierarchyWindow.h, InspectorWindow.h, MainMenuWindow.h.
+- Next step:
+	Optionally add naming convention docs (e.g., *Raw suffix) if both owning and non-owning query APIs coexist later.
+
+### 2026-04-18 - Reflection derived-check centralization
+- Goal:
+	Eliminate duplicated ad-hoc inheritance checks in serialization paths by adding a reusable reflection-level API.
+- Main changes:
+	Added `MEClass::IsA(const MEClass*)` as the canonical class ancestry query (self match included by default).
+	Added `ReflectionSystem::IsClassSameOrDerived` and `ReflectionSystem::IsClassNameSameOrDerived` utility methods.
+	Refactored Serializer to remove local `IsClassSameOrDerived` helper and use `ReflectionSystem` APIs.
+	Refactored JsonArchive object/object-ptr type checks to use reflection system class-name derived matching instead of direct-child-only scans.
+- Risks or caveats:
+	Type-name checks now require reflected type names to be registered in `ReflectionSystem`; unresolved names fail fast.
+- Validation done:
+	File-level diagnostics passed for MEClass.h, Reflection.h, Serializer.cpp, JsonArchive.cpp.
+	Source grep confirmed serializer-local inheritance helper was removed.
+- Next step:
+	Re-run scene load smoke test and confirm no "neither inline object node nor GUID reference node" error on multi-level inheritance pointer fields.
+
+### 2026-04-18 - Resource reference GUID stabilization and scene migration
+- Goal:
+	Fix unresolved asset references during scene deserialization by ensuring serialized resource GUIDs match asset meta GUIDs.
+- Main changes:
+	Updated AssetManager static-mesh loading path to normalize cache key/path consistently.
+	Updated `LoadStaticMeshByMeta` and `LoadStaticMesh` to bind loaded `StaticMesh` runtime object GUID to asset meta GUID.
+	Migrated `bin/Assets/Scenes/EditorDefault.scene.json` mesh GUID nodes from stale random values to current mesh meta GUIDs.
+- Risks or caveats:
+	If older scene files contain random runtime GUIDs that have no corresponding `.meta` entries, they still require migration.
+- Validation done:
+	Rebuilt CMake targets successfully (minEngine + Editor).
+	Runtime log verification shows pending reference resolve pass `resolved=5, unresolved=0`.
+- Next step:
+	Optionally add an automatic scene GUID migration pass for legacy files with unresolved asset GUID references.

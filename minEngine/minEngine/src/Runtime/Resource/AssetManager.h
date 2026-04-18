@@ -70,7 +70,7 @@ namespace minEngine
         void CacheMeta(const AssetMeta& meta);
 
         std::unordered_map<std::string, AssetMeta> m_AssetRegistry; // Maps asset paths to their metadata
-        std::unordered_map<GUID, std::string, GUIDHasher> m_AssetPathByGuid;
+        std::unordered_map<GUID, std::string, GUID::Hash> m_AssetPathByGuid;
 
         std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_LoadedTexture2DCache;
         std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_LoadedStaticMeshCache;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Core/Object/MEObject.h"
 
 namespace minEngine
 {
@@ -18,7 +19,8 @@ namespace minEngine
         uint32_t NumIndices {0};
     };
 
-    class StaticMesh
+    ME_CLASS()
+    class StaticMesh : public MEObject
     {
     public:
         StaticMesh() = default;
@@ -42,3 +44,5 @@ namespace minEngine
         std::vector<std::shared_ptr<Material>> m_Materials;
     };
 }
+
+#include "StaticMesh.gen.h"

@@ -41,9 +41,9 @@ namespace minEngine
             m_ExitRequested = true;
         }
 
-        std::shared_ptr<Scene> GetActiveScene() const;
-        std::vector<std::shared_ptr<GameObject>> GetHierarchyGameObjects() const;
-        std::shared_ptr<GameObject> GetSelectedGameObject() const;
+        Scene* GetActiveScene() const;
+        std::vector<GameObject*> GetHierarchyGameObjects() const;
+        GameObject* GetSelectedGameObject() const;
         void SelectGameObject(uint64_t gameObjectId);
         bool IsGameObjectSelected(uint64_t gameObjectId) const;
         std::string GetGameObjectDisplayName(const GameObject& gameObject) const;

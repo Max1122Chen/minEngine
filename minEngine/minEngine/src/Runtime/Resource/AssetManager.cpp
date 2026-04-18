@@ -215,7 +215,18 @@ namespace minEngine
             return nullptr;
         }
 
-        return LoadStaticMesh(meta.AssetPath);
+        std::shared_ptr<StaticMesh> mesh = LoadStaticMesh(meta.AssetPath);
+        if (mesh == nullptr)
+        {
+            return nullptr;
+        }
+
+        if (mesh->GetGuid() != meta.Guid)
+        {
+            mesh->SetGuid(meta.Guid);
+        }
+
+        return mesh;
     }
 
     std::shared_ptr<Texture2D> AssetManager::LoadTexture2DByMeta(const AssetMeta& meta, uint32_t unit)
@@ -429,16 +440,30 @@ namespace minEngine
 
     std::shared_ptr<StaticMesh> AssetManager::LoadStaticMesh(const std::string &path)
     {
+        const std::string normalizedPath = NormalizeAssetPath(path);
+        if (normalizedPath.empty())
+        {
+            return nullptr;
+        }
+
         // Check if the static mesh has already been loaded
-        auto it = m_LoadedStaticMeshCache.find(path);
+        auto it = m_LoadedStaticMeshCache.find(normalizedPath);
         if (it != m_LoadedStaticMeshCache.end())
         {
+            if (const AssetMeta* meta = FindAssetMetaByPath(normalizedPath))
+            {
+                if (it->second != nullptr && it->second->GetGuid() != meta->Guid)
+                {
+                    it->second->SetGuid(meta->Guid);
+                }
+            }
+
             // Mesh already loaded, return the cached version
             return it->second;
         }
 
         auto outMesh = std::make_shared<StaticMesh>();
-        outMesh->m_Path = path;
+        outMesh->m_Path = normalizedPath;
 
         struct Vertex
         {
@@ -449,14 +474,14 @@ namespace minEngine
 
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
-            path,
+            normalizedPath,
             aiProcess_Triangulate |
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
-            ME_CORE_ERROR("Assimp failed to load mesh: {}. Failure reason: {}", path, importer.GetErrorString());
+            ME_CORE_ERROR("Assimp failed to load mesh: {}. Failure reason: {}", normalizedPath, importer.GetErrorString());
             return nullptr;
         }
         
@@ -477,13 +502,13 @@ namespace minEngine
                 aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
                 if (mesh == nullptr)
                 {
-                    ME_CORE_WARN("Assimp returned a null mesh pointer while loading '{}'.", path);
+                    ME_CORE_WARN("Assimp returned a null mesh pointer while loading '{}'.", normalizedPath);
                     continue;
                 }
 
                 if (!mesh->HasPositions() || mesh->mVertices == nullptr)
                 {
-                    ME_CORE_WARN("Skip mesh without positions while loading '{}'.", path);
+                    ME_CORE_WARN("Skip mesh without positions while loading '{}'.", normalizedPath);
                     continue;
                 }
 
@@ -555,7 +580,7 @@ namespace minEngine
                         if (face.mIndices[k] >= mesh->mNumVertices)
                         {
                             ME_CORE_WARN("Skip invalid face index while loading '{}'. meshVertexCount={}, index={}",
-                                         path,
+                                         normalizedPath,
                                          mesh->mNumVertices,
                                          face.mIndices[k]);
                             continue;
@@ -620,12 +645,12 @@ namespace minEngine
                         }
                     }
 
-                    ME_CORE_WARN("Mesh '{}' has no normal data. Fallback normals were generated in AssetManager.", path);
+                    ME_CORE_WARN("Mesh '{}' has no normal data. Fallback normals were generated in AssetManager.", normalizedPath);
                 }
 
                 if (!hasTexCoords)
                 {
-                    ME_CORE_WARN("Mesh '{}' has no UV data. Fallback planar UVs were generated in AssetManager.", path);
+                    ME_CORE_WARN("Mesh '{}' has no UV data. Fallback planar UVs were generated in AssetManager.", normalizedPath);
                 }
 
                 // TODO: handle material loading later
@@ -647,7 +672,7 @@ namespace minEngine
 
         if (vertices.empty())
         {
-            ME_CORE_ERROR("Failed to load mesh '{}': no valid vertices were produced.", path);
+            ME_CORE_ERROR("Failed to load mesh '{}': no valid vertices were produced.", normalizedPath);
             return nullptr;
         }
 
@@ -664,8 +689,16 @@ namespace minEngine
             });
         outMesh->m_IndexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size()));
         
+        if (const AssetMeta* meta = FindAssetMetaByPath(normalizedPath))
+        {
+            if (outMesh->GetGuid() != meta->Guid)
+            {
+                outMesh->SetGuid(meta->Guid);
+            }
+        }
+
         // Cache the loaded static mesh
-        m_LoadedStaticMeshCache[path] = outMesh;
+        m_LoadedStaticMeshCache[normalizedPath] = outMesh;
         return outMesh;
     }
 }

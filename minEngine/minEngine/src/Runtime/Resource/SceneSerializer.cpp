@@ -1,16 +1,21 @@
 #include "SceneSerializer.h"
 
-#include "Runtime/Function/Framework/Scene/Scene.h"
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
 
 #include <fstream>
 
-
 namespace minEngine
 {
+    namespace
+    {
+        constexpr const char* kSceneVersionField = "version";
+        constexpr const char* kSceneDataField = "sceneData";
+        constexpr int kSceneFileVersion = 2;
+        constexpr const char* kSceneClassName = "minEngine::Scene";
+    }
+
     bool SceneSerializer::LoadScene(const std::filesystem::path& filePath, Scene& outScene)
     {
         std::ifstream inputFile(filePath);
@@ -19,6 +24,7 @@ namespace minEngine
             ME_CORE_ERROR("Failed to open scene file '{}'", filePath.string());
             return false;
         }
+
         Json jsonScene;
         try
         {
@@ -29,24 +35,62 @@ namespace minEngine
             ME_CORE_ERROR("Failed to parse scene file '{}': {}", filePath.string(), e.what());
             return false;
         }
-        Serialization::JsonReaderArchive archive = Serialization::JsonReaderArchive(jsonScene);
+
+        if (!jsonScene.is_object())
+        {
+            ME_CORE_ERROR("Invalid scene json root for '{}': root is not an object.", filePath.string());
+            return false;
+        }
+
+        if (!jsonScene.contains(kSceneDataField) || !jsonScene[kSceneDataField].is_object())
+        {
+            ME_CORE_ERROR("Invalid scene json for '{}': missing '{}' object.", filePath.string(), kSceneDataField);
+            return false;
+        }
+
         Serialization::SerializerOptions options = {
             .enumAsString = true,
             .strictTypeCheck = true,
             .skipUnknownField = false,
             .allowObjectPtrSerialization = true
         };
-        std::shared_ptr<GameObject> tempGO = NewObject<GameObject>();
-        Serialization::SerializeResult result = Serialization::Serializer::Deserialize(
-            "minEngine::GameObject",
-            tempGO.get(),
+
+        Serialization::Serializer::ClearPendingObjectRefs();
+        outScene.Reset();
+        outScene.sceneName = filePath.string();
+
+        Serialization::JsonReaderArchive archive(jsonScene[kSceneDataField]);
+        Serialization::SerializeResult deserializeResult = Serialization::Serializer::Deserialize(
+            kSceneClassName,
+            &outScene,
             archive,
             options);
-        if(!result.ok)
+        if (!deserializeResult.ok)
         {
-            ME_CORE_ERROR("Failed to deserialize GameObject from scene file '{}': {}", filePath.string(), result.message);
+            ME_CORE_ERROR("Failed to deserialize Scene from '{}': {}", filePath.string(), deserializeResult.message);
+            Serialization::Serializer::ClearPendingObjectRefs();
             return false;
         }
+
+        outScene.RebuildRuntimeGameObjectIndex();
+
+        Serialization::SerializeResult resolveResult = Serialization::Serializer::ResolvePendingObjectRefs();
+        if (!resolveResult.ok)
+        {
+            ME_CORE_ERROR("Failed to resolve pending scene references for '{}'. pendingCount={}, reason={}",
+                          filePath.string(),
+                          Serialization::Serializer::GetPendingObjectRefCount(),
+                          resolveResult.message);
+            Serialization::Serializer::ClearPendingObjectRefs();
+            return false;
+        }
+
+        if (outScene.sceneName.empty())
+        {
+            outScene.sceneName = filePath.string();
+        }
+
+        Serialization::Serializer::ClearPendingObjectRefs();
 
         return true;
     }
@@ -60,30 +104,36 @@ namespace minEngine
             .skipUnknownField = false,
             .allowObjectPtrSerialization = true
         };
-        Json jsonScene;
-        for(auto GO : scene.m_GameObjects)
+
+        Serialization::SerializeResult serializeResult = Serialization::Serializer::Serialize(
+            kSceneClassName,
+            &scene,
+            archive,
+            options);
+        if (!serializeResult.ok)
         {
-            // Serialize one GO currently
-            archive.ResetRoot();
-            Serialization::SerializeResult result = Serialization::Serializer::Serialize(
-                "minEngine::GameObject",
-                GO.second.get(),
-                archive,
-                options);
-            if (!result.ok)            
-            {
-                ME_CORE_ERROR("Failed to serialize GameObject '{}': {}", GO.second->GetName(), result.message);
-                // return false;
-            }
+            ME_CORE_ERROR("Failed to serialize Scene '{}': {}", filePath.string(), serializeResult.message);
+            return false;
         }
 
-        Json firstGO = archive.GetRoot();
+        Json jsonScene = Json::object();
+        jsonScene[kSceneVersionField] = kSceneFileVersion;
+        jsonScene[kSceneDataField] = archive.GetRoot();
+
         std::ofstream outputFile(filePath);
-        outputFile << firstGO.dump(4);
-        outputFile.close();
+        if (!outputFile.is_open())
+        {
+            ME_CORE_ERROR("Failed to open output scene file '{}'.", filePath.string());
+            return false;
+        }
+
+        outputFile << jsonScene.dump(4);
+        if (!outputFile.good())
+        {
+            ME_CORE_ERROR("Failed to write scene file '{}'.", filePath.string());
+            return false;
+        }
+
         return true;
-
     }
-
-    
 }

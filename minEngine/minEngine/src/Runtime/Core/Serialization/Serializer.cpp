@@ -1,8 +1,10 @@
 #include "Serializer.h"
 
 #include "PrimitiveCodecRegistry.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine::Serialization
 {
@@ -17,6 +19,7 @@ namespace minEngine::Serialization
     using minEngine::Reflection::ReflectionSystem;
 
     bool Serializer::m_IsHandlingPtr = false;
+    std::vector<Serializer::PendingObjectRef> Serializer::m_PendingObjectRefs;
 
     SerializeResult Serializer::Serialize(const std::string& rootClassName,
                                                    const void* rootObject,
@@ -54,6 +57,76 @@ namespace minEngine::Serialization
         }
 
         return DeserializeObjectInstance(rootClass, outRootObject, archive, options, rootClassName);
+    }
+
+    SerializeResult Serializer::ResolvePendingObjectRefs()
+    {
+        if (m_PendingObjectRefs.empty())
+        {
+            return SerializeResult::Success();
+        }
+
+        std::vector<PendingObjectRef> unresolvedReferences;
+        unresolvedReferences.reserve(m_PendingObjectRefs.size());
+
+        size_t resolvedCount = 0;
+        for (const PendingObjectRef& pendingRef : m_PendingObjectRefs)
+        {
+            std::shared_ptr<void> resolvedSharedPtr;
+            void* resolvedRawPtr = nullptr;
+            std::string resolveError;
+            if (!ResolvePendingObjectRef(pendingRef, resolvedSharedPtr, resolvedRawPtr, resolveError))
+            {
+                unresolvedReferences.push_back(pendingRef);
+                ME_CORE_WARN("Pending object reference unresolved. path='{}', guid='{}', reason='{}'",
+                             pendingRef.fieldPath,
+                             pendingRef.refGuid.ToString(),
+                             resolveError);
+                continue;
+            }
+
+            if (pendingRef.isRawPointer)
+            {
+                *static_cast<void**>(pendingRef.ptrToPtr) = resolvedRawPtr;
+                ++resolvedCount;
+                continue;
+            }
+
+            if (pendingRef.expectedClass == nullptr
+                || !pendingRef.expectedClass->SetSharedPtr(resolvedSharedPtr, pendingRef.ptrToPtr))
+            {
+                unresolvedReferences.push_back(pendingRef);
+                ME_CORE_WARN("Pending object reference assignment failed. path='{}', guid='{}'",
+                             pendingRef.fieldPath,
+                             pendingRef.refGuid.ToString());
+                continue;
+            }
+
+            ++resolvedCount;
+        }
+
+        m_PendingObjectRefs = std::move(unresolvedReferences);
+
+        ME_CORE_INFO("Pending object reference resolve pass finished. resolved={}, unresolved={}",
+                     resolvedCount,
+                     m_PendingObjectRefs.size());
+
+        if (!m_PendingObjectRefs.empty())
+        {
+            return SerializeResult::Failure("Resolve pending object references finished with unresolved entries.", "PendingObjectReferences");
+        }
+
+        return SerializeResult::Success();
+    }
+
+    void Serializer::ClearPendingObjectRefs()
+    {
+        m_PendingObjectRefs.clear();
+    }
+
+    size_t Serializer::GetPendingObjectRefCount()
+    {
+        return m_PendingObjectRefs.size();
     }
 
     // Private methods for serialization
@@ -214,25 +287,44 @@ namespace minEngine::Serialization
         {
             return SerializeResult::Failure("Serialize object pointer failed: pointer to pointer is null.", path);
         }
-        if(ownerObjectPtr == nullptr)
+        if (ownerObjectPtr == nullptr)
         {
             return SerializeResult::Failure("Serialize object pointer failed: owner object pointer is null.", path);
         }
 
+        const MEClass* staticValueClass = objectPtrProperty.GetValueClass();
+        if (staticValueClass == nullptr)
+        {
+            return SerializeResult::Failure("Serialize object pointer failed: value class is unresolved.", path);
+        }
+
         MEObjectPtrCategory ptrCategory = objectPtrProperty.GetPtrCategory();
-        if(ptrCategory == MEObjectPtrCategory::Invalid)
+        if (ptrCategory == MEObjectPtrCategory::Invalid)
         {
             return SerializeResult::Failure("Serialize object pointer failed: invalid pointer category.", path);
         }
 
-        // The original ptr must be a pointer of MEObject
+        (void)ptrCategory;
+
+        const MEClass* meObjectClass = ReflectionSystem::Get().FindClass("minEngine::MEObject");
+        if (meObjectClass == nullptr)
+        {
+            meObjectClass = ReflectionSystem::Get().FindClass("MEObject");
+        }
+        if (meObjectClass == nullptr)
+        {
+            return SerializeResult::Failure("Serialize object pointer failed: MEObject reflection class is unresolved.", path);
+        }
+
+        if (!ReflectionSystem::Get().IsClassSameOrDerived(staticValueClass, meObjectClass))
+        {
+            return SerializeResult::Failure("Serialize object pointer failed: only MEObject-derived pointer properties are supported.", path);
+        }
+
         MEObject* objectPtr = static_cast<MEObject*>(objectPtrProperty.GetMutablePointingData(const_cast<void*>(ptrToPtr)));
 
-        // Handle null pointer case first.
-        // Write null to archive for nullptr object pointer.
-        if(objectPtr == nullptr)
+        if (objectPtr == nullptr)
         {
-            // Write null to archive for nullptr object pointer.
             if (!archive.WriteNull())
             {
                 return SerializeResult::Failure("Serialize object pointer failed: WriteNull returned false.", path);
@@ -240,37 +332,52 @@ namespace minEngine::Serialization
             return SerializeResult::Success();
         }
 
-        if(ptrCategory == MEObjectPtrCategory::Raw)
+        const MEObject* ownerObject = static_cast<const MEObject*>(ownerObjectPtr);
+        const bool shouldSerializeInline = (objectPtr->GetOuter() == ownerObject);
+
+        const MEClass* dynamicClass = objectPtr->GetClass();
+        if (dynamicClass == nullptr)
         {
-            // Reference-semantic pointer serialization is not implemented yet.
-            return SerializeResult::Failure("Serialize object pointer failed: serializing raw pointer property is not supported for inline value semantic.", path);
+            dynamicClass = staticValueClass;
         }
 
-        // Then handle non-null pointer case. 
-        // We need to get the class info from the pointed object instance instead of the property, because the property only tells us the static type of the pointer (e.g. base class).
-        // But the actual pointed object instance may be of a derived class, so we need to get the class info from the actual pointed object instance to ensure we serialize all the properties in the class hierarchy correctly.
-        // For example, for a shared_pointer<Component> which actually points to a SceneComponent instance, we need to get the class info from the SceneComponent instance instead of the Component class, so that we can serialize the properties defined in SceneComponent class as well.
-        const MEClass* classInfo = objectPtr->GetClass();
-        if(classInfo == nullptr)
+        if (dynamicClass == nullptr)
         {
             return SerializeResult::Failure("Serialize object pointer failed: value class is unresolved.", path);
         }
 
-        // TODO: currently we only support serializing object pointer with "inline value" semantic
-        // For "reference" semantic, we will need a more complex solution to handle object identity and references, which may require changes in the archive interface to allow recording unresolved references during serialization and resolving them later during deserialization.
-        // So for now we will just return failure for "reference" semantic if the pointer category is raw pointer, until we have a complete solution for handling object references in place.
-        if (!archive.BeginObjectPtr(classInfo->GetName()))
+        if (!shouldSerializeInline)
+        {
+            GUID guid = objectPtr->GetGuid();
+            if (guid.IsZero())
+            {
+                guid = GenerateGUID();
+                objectPtr->SetGuid(guid);
+            }
+
+            if (!archive.BeginGuidRef(guid))
+            {
+                return SerializeResult::Failure("Serialize object pointer failed: BeginGuidRef returned false.", path);
+            }
+
+            if (!archive.EndGuidRef())
+            {
+                return SerializeResult::Failure("Serialize object pointer failed: EndGuidRef returned false.", path);
+            }
+
+            return SerializeResult::Success();
+        }
+
+        if (!archive.BeginObjectPtr(dynamicClass->GetName()))
         {
             return SerializeResult::Failure("Serialize class failed: BeginObjectPtr returned false.", path);
         }
 
-        // Iterate the properties in hierarchy and deserialize each property.
-        const bool iterationOk = SerializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
+        const bool iterationOk = SerializeObject_IterateProps(dynamicClass, objectPtr, archive, options, path);
         if (!iterationOk)
         {
             return SerializeResult::Failure("Serialize class failed during property iteration.", path);
         }
-
 
         if (!archive.EndObjectPtr())
         {
@@ -367,6 +474,7 @@ namespace minEngine::Serialization
 
     SerializeResult Serializer::DeserializeProperty(const MEProperty& property,
                                                           void* outValuePtr,
+                                                          void* ownerObjectPtr,
                                                           ReaderArchive& archive,
                                                           const SerializerOptions& options,
                                                           const std::string& path)
@@ -426,7 +534,7 @@ namespace minEngine::Serialization
             }
 
             // outValuePtr actually serves as a pointer to pointer for object pointer property, we need to dereference it first to get the current pointer value.
-            return DeserializeObjectPtr(*objectPtrProperty, outValuePtr, archive, options, path);
+            return DeserializeObjectPtr(*objectPtrProperty, outValuePtr, ownerObjectPtr, archive, options, path);
 
         }
         case MEPropertyCategory::Array:
@@ -465,6 +573,7 @@ namespace minEngine::Serialization
 
                 SerializeResult elementResult = DeserializeProperty(*innerProperty,
                                                                     elementPtr,
+                                                                    ownerObjectPtr,
                                                                     archive,
                                                                     options,
                                                                     JoinPath(path, "[" + std::to_string(index) + "]"));
@@ -494,6 +603,7 @@ namespace minEngine::Serialization
 
     SerializeResult Serializer::DeserializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty &objectPtrProperty,
                                                                                 void *ptrToPtr,
+                                                                                void* ownerObjectPtr,
                                                                                 ReaderArchive &archive, 
                                                                                 const SerializerOptions &options, 
                                                                                 const std::string &path)
@@ -502,18 +612,30 @@ namespace minEngine::Serialization
         {
             return SerializeResult::Failure("Deserialize class failed: object pointer is null.", path);
         }
+
+        if (ownerObjectPtr == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize object pointer failed: owner object pointer is null.", path);
+        }
         
         const MEClass* classInfo = objectPtrProperty.GetValueClass();
-        if(classInfo == nullptr)
+        if (classInfo == nullptr)
         {
             return SerializeResult::Failure("Deserialize object pointer failed: value class is unresolved.", path);
         }
 
         MEObjectPtrCategory ptrCategory = objectPtrProperty.GetPtrCategory();
-        if(ptrCategory == MEObjectPtrCategory::Invalid)
+        if (ptrCategory == MEObjectPtrCategory::Invalid)
         {
             return SerializeResult::Failure("Deserialize object pointer failed: invalid pointer category.", path);
         }
+
+        const MEClass* meObjectClass = ReflectionSystem::Get().FindClass("minEngine::MEObject");
+        if (meObjectClass == nullptr)
+        {
+            meObjectClass = ReflectionSystem::Get().FindClass("MEObject");
+        }
+        const bool supportsMEObject = (meObjectClass != nullptr) && ReflectionSystem::Get().IsClassSameOrDerived(classInfo, meObjectClass);
 
         if (archive.ReadNull())
         {
@@ -531,74 +653,156 @@ namespace minEngine::Serialization
             return SerializeResult::Success();
         }
 
-        if(ptrCategory == MEObjectPtrCategory::Raw)
-        {
-            // Reference-semantic pointer deserialization is not implemented yet.
-            return SerializeResult::Failure("Deserialize object pointer failed: deserializing raw pointer property is not supported for inline value semantic.", path);
-        }
-
         std::string dynamicClassName;
-        if (!archive.BeginObjectPtr(classInfo, dynamicClassName))
+        if (archive.BeginObjectPtr(classInfo, dynamicClassName))
         {
-            return SerializeResult::Failure("Deserialize class failed: BeginObjectPtr returned false.", path);
-        }
+            const MEClass* dynamicClassInfo = classInfo;
+            if (!dynamicClassName.empty())
+            {
+                dynamicClassInfo = ReflectionSystem::Get().FindClass(dynamicClassName);
+                if (dynamicClassInfo == nullptr)
+                {
+                    const bool closed = archive.EndObjectPtr();
+                    if (!closed)
+                    {
+                        return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after unresolved dynamic type.", path);
+                    }
+                    return SerializeResult::Failure("Deserialize object pointer failed: dynamic class not found.", path);
+                }
+            }
 
-        const MEClass* dynamicClassInfo = classInfo;
-        if (!dynamicClassName.empty())
-        {
-            dynamicClassInfo = ReflectionSystem::Get().FindClass(dynamicClassName);
-            if (dynamicClassInfo == nullptr)
+            std::shared_ptr<void> newObjectPtr = dynamicClassInfo->CreateInstance();
+            if (newObjectPtr == nullptr)
             {
                 const bool closed = archive.EndObjectPtr();
                 if (!closed)
                 {
-                    return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after unresolved dynamic type.", path);
+                    return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after factory failure.", path);
                 }
-                return SerializeResult::Failure("Deserialize object pointer failed: dynamic class not found.", path);
+                return SerializeResult::Failure("Deserialize object pointer failed: failed to create dynamic object instance.", path);
             }
+
+            void* objectPtr = newObjectPtr.get();
+            std::shared_ptr<MEObject> managedObject;
+            bool registeredManagedObject = false;
+            if (supportsMEObject)
+            {
+                MEObject* meObjectPtr = static_cast<MEObject*>(objectPtr);
+                meObjectPtr->SetClass(dynamicClassInfo);
+                meObjectPtr->SetOuter(static_cast<MEObject*>(ownerObjectPtr));
+
+                managedObject = std::static_pointer_cast<MEObject>(newObjectPtr);
+                ObjectManager::Get().RegisterObject(managedObject);
+                registeredManagedObject = true;
+            }
+
+            const bool iterationOk = DeserializeObject_IterateProps(dynamicClassInfo, objectPtr, archive, options, path);
+            if (!iterationOk)
+            {
+                if (registeredManagedObject)
+                {
+                    ObjectManager::Get().UnregisterObject(managedObject.get());
+                }
+
+                const bool closed = archive.EndObjectPtr();
+                if (!closed)
+                {
+                    return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after property iteration failure.", path);
+                }
+                return SerializeResult::Failure("Deserialize class failed during property iteration.", path);
+            }
+
+            if (ptrCategory == MEObjectPtrCategory::Raw)
+            {
+                if (!supportsMEObject)
+                {
+                    if (registeredManagedObject)
+                    {
+                        ObjectManager::Get().UnregisterObject(managedObject.get());
+                    }
+
+                    const bool closed = archive.EndObjectPtr();
+                    if (!closed)
+                    {
+                        return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false for unsupported raw pointer type.", path);
+                    }
+                    return SerializeResult::Failure("Deserialize object pointer failed: inline raw pointer requires MEObject-derived type.", path);
+                }
+
+                *static_cast<void**>(ptrToPtr) = objectPtr;
+            }
+            else
+            {
+                if (!classInfo->SetSharedPtr(newObjectPtr, ptrToPtr))
+                {
+                    if (registeredManagedObject)
+                    {
+                        ObjectManager::Get().UnregisterObject(managedObject.get());
+                    }
+
+                    const bool closed = archive.EndObjectPtr();
+                    if (!closed)
+                    {
+                        return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after assigning shared pointer.", path);
+                    }
+                    return SerializeResult::Failure("Deserialize object pointer failed: failed to assign shared pointer.", path);
+                }
+            }
+
+            if (!archive.EndObjectPtr())
+            {
+                return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false.", path);
+            }
+
+            return SerializeResult::Success();
         }
 
-        std::shared_ptr<void> newObjectPtr = dynamicClassInfo->CreateInstance();
-        if (newObjectPtr == nullptr)
+        GUID referenceGuid;
+        if (!archive.BeginGuidRef(referenceGuid))
         {
-            const bool closed = archive.EndObjectPtr();
+            return SerializeResult::Failure("Deserialize object pointer failed: neither inline object node nor GUID reference node was found.", path);
+        }
+
+        if (referenceGuid.IsZero())
+        {
+            const bool closed = archive.EndGuidRef();
             if (!closed)
             {
-                return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after factory failure.", path);
+                return SerializeResult::Failure("Deserialize object pointer failed: EndGuidRef returned false after invalid GUID.", path);
             }
-            return SerializeResult::Failure("Deserialize object pointer failed: failed to create dynamic object instance.", path);
+            return SerializeResult::Failure("Deserialize object pointer failed: reference GUID is zero.", path);
         }
-        void* objectPtr = newObjectPtr.get();
 
-        // Iterate the properties in hierarchy and deserialize each property.
-        const bool iterationOk = DeserializeObject_IterateProps(dynamicClassInfo, objectPtr, archive, options, path);
+        PendingObjectRef pendingRef;
+        pendingRef.ptrToPtr = ptrToPtr;
+        pendingRef.ownerObjectPtr = ownerObjectPtr;
+        pendingRef.refGuid = referenceGuid;
+        pendingRef.expectedClass = classInfo;
+        pendingRef.isRawPointer = (ptrCategory == MEObjectPtrCategory::Raw);
+        pendingRef.expectsMEObject = supportsMEObject;
+        pendingRef.fieldPath = path;
+        m_PendingObjectRefs.push_back(std::move(pendingRef));
 
-        if (!iterationOk)
+        if (ptrCategory == MEObjectPtrCategory::Raw)
         {
-            const bool closed = archive.EndObjectPtr();
-            if (!closed)
+            *static_cast<void**>(ptrToPtr) = nullptr;
+        }
+        else
+        {
+            if (!classInfo->SetSharedPtr(std::shared_ptr<void>{}, ptrToPtr))
             {
-                return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after property iteration failure.", path);
+                const bool closed = archive.EndGuidRef();
+                if (!closed)
+                {
+                    return SerializeResult::Failure("Deserialize object pointer failed: EndGuidRef returned false after shared pointer reset failure.", path);
+                }
+                return SerializeResult::Failure("Deserialize object pointer failed: failed to reset shared pointer before deferred resolve.", path);
             }
-            return SerializeResult::Failure("Deserialize class failed during property iteration.", path);
         }
 
-        // Fill the shared pointer with the new object pointer we just created after we deserialized the object data into it.
-        // This prevents poluting the shared pointer with a partially deserialized object in case some error happens during the deserialization of the object data.
-        if (!classInfo->SetSharedPtr(newObjectPtr, ptrToPtr))
+        if (!archive.EndGuidRef())
         {
-            const bool closed = archive.EndObjectPtr();
-            if (!closed)
-            {
-                return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after assigning shared pointer.", path);
-            }
-            return SerializeResult::Failure("Deserialize object pointer failed: failed to assign shared pointer.", path);
-        }
-
-
-        if (!archive.EndObjectPtr())
-        {
-            return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false.", path);
+            return SerializeResult::Failure("Deserialize object pointer failed: EndGuidRef returned false.", path);
         }
 
         return SerializeResult::Success();
@@ -644,7 +848,13 @@ namespace minEngine::Serialization
                 return false;
             }
 
-            result = DeserializeProperty(property, valuePtr, archive, options, propertyPath);
+            result = DeserializeProperty(property, valuePtr, objectPtr, archive, options, propertyPath);
+            if (!result.ok)
+            {
+                ME_CORE_ERROR(result.message, result.fieldPath);
+                return false;
+            }
+
             const bool leaveOk = archive.LeaveField();
             if (!leaveOk)
             {
@@ -655,6 +865,84 @@ namespace minEngine::Serialization
 
             return result.ok;
         });
+    }
+
+    bool Serializer::ResolvePendingObjectRef(const PendingObjectRef& pendingRef,
+                                                         std::shared_ptr<void>& outResolvedSharedPtr,
+                                                         void*& outResolvedRawPtr,
+                                                         std::string& outErrorMessage)
+    {
+        outResolvedSharedPtr.reset();
+        outResolvedRawPtr = nullptr;
+        outErrorMessage.clear();
+
+        if (pendingRef.ptrToPtr == nullptr)
+        {
+            outErrorMessage = "ptrToPtr is null";
+            return false;
+        }
+
+        if (pendingRef.refGuid.IsZero())
+        {
+            outErrorMessage = "reference guid is zero";
+            return false;
+        }
+
+        std::shared_ptr<MEObject> trackedObject = minEngine::FindObject(pendingRef.refGuid);
+        if (trackedObject != nullptr)
+        {
+            if (pendingRef.expectsMEObject && pendingRef.expectedClass != nullptr)
+            {
+                const MEClass* trackedClass = trackedObject->GetClass();
+                if (trackedClass != nullptr && !ReflectionSystem::Get().IsClassSameOrDerived(trackedClass, pendingRef.expectedClass))
+                {
+                    outErrorMessage = "resolved object type mismatch";
+                    return false;
+                }
+            }
+
+            outResolvedSharedPtr = std::static_pointer_cast<void>(trackedObject);
+            outResolvedRawPtr = trackedObject.get();
+            return true;
+        }
+
+        const AssetMeta* assetMeta = AssetManager::Get().FindAssetMetaByGuid(pendingRef.refGuid);
+        if (assetMeta == nullptr)
+        {
+            outErrorMessage = "guid not found in object manager or asset registry";
+            return false;
+        }
+
+        if (assetMeta->AssetType == "StaticMesh")
+        {
+            std::shared_ptr<StaticMesh> staticMesh = AssetManager::Get().LoadStaticMeshByMeta(*assetMeta);
+            if (staticMesh == nullptr)
+            {
+                outErrorMessage = "failed to load static mesh by guid";
+                return false;
+            }
+
+            outResolvedSharedPtr = std::static_pointer_cast<void>(staticMesh);
+            outResolvedRawPtr = staticMesh.get();
+            return true;
+        }
+
+        if (assetMeta->AssetType == "Texture2D")
+        {
+            std::shared_ptr<Texture2D> texture = AssetManager::Get().LoadTexture2DByMeta(*assetMeta, 0);
+            if (texture == nullptr)
+            {
+                outErrorMessage = "failed to load texture by guid";
+                return false;
+            }
+
+            outResolvedSharedPtr = std::static_pointer_cast<void>(texture);
+            outResolvedRawPtr = texture.get();
+            return true;
+        }
+
+        outErrorMessage = "unsupported asset type '" + assetMeta->AssetType + "'";
+        return false;
     }
 
     std::string Serializer::JoinPath(const std::string& basePath, const std::string& nextSegment)

@@ -51,7 +51,7 @@ namespace minEngine
         {
             ImGui::Begin(m_Title.c_str());
 
-            const std::shared_ptr<GameObject> gameObject = m_Editor.GetSelectedGameObject();
+            GameObject* gameObject = m_Editor.GetSelectedGameObject();
             if (!gameObject)
             {
                 ImGui::TextUnformatted("No selected GameObject.");
@@ -66,7 +66,7 @@ namespace minEngine
                 BeginRenameSelectedGameObject(*gameObject);
             }
 
-            if (m_RenameTargetGameObjectId != gameObject->m_ID)
+            if (m_RenameTargetGameObjectId != gameObject->GetID())
             {
                 m_IsRenamingSelectedGameObject = false;
             }
@@ -77,7 +77,7 @@ namespace minEngine
             ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.23f, 0.34f, 0.49f, 1.0f));
 
             const std::string selectedName = m_Editor.GetSelectedGameObjectName();
-            if (m_IsRenamingSelectedGameObject && m_RenameTargetGameObjectId == gameObject->m_ID)
+            if (m_IsRenamingSelectedGameObject && m_RenameTargetGameObjectId == gameObject->GetID())
             {
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.18f, 0.27f, 0.40f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.23f, 0.34f, 0.49f, 1.0f));
@@ -97,7 +97,7 @@ namespace minEngine
 
                 if (committed || ImGui::IsItemDeactivatedAfterEdit())
                 {
-                    m_Editor.RenameGameObject(gameObject->m_ID, m_RenameBuffer);
+                    m_Editor.RenameGameObject(gameObject->GetID(), m_RenameBuffer);
                     m_IsRenamingSelectedGameObject = false;
                 }
                 else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
@@ -120,7 +120,7 @@ namespace minEngine
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar();
 
-            ImGui::Text("Selected ID: %llu", static_cast<unsigned long long>(gameObject->m_ID));
+            ImGui::Text("Selected ID: %llu", static_cast<unsigned long long>(gameObject->GetID()));
 
             ImGui::Spacing();
 
@@ -427,7 +427,7 @@ namespace minEngine
         void BeginRenameSelectedGameObject(const GameObject& gameObject)
         {
             m_IsRenamingSelectedGameObject = true;
-            m_RenameTargetGameObjectId = gameObject.m_ID;
+            m_RenameTargetGameObjectId = gameObject.GetID();
             std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
             std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
             m_RequestRenameFocus = true;

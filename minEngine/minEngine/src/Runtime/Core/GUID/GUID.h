@@ -14,6 +14,16 @@ namespace minEngine
         GUID() : High(0), Low(0) {}
         GUID(uint64_t high, uint64_t low) : High(high), Low(low) {}
 
+        bool IsZero() const
+        {
+            return High == 0 && Low == 0;
+        }
+
+        bool IsValid() const
+        {
+            return !IsZero();   // TODO: check version and variant bits if we want to be more strict
+        }
+
         std::string ToString() const
         {
             char buffer[37];
@@ -35,15 +45,17 @@ namespace minEngine
         {
             return !(*this == other);
         }
+
+        struct Hash
+        {
+            std::size_t operator()(const GUID& guid) const
+            {
+                return std::hash<uint64_t>()(guid.High) ^ (std::hash<uint64_t>()(guid.Low) << 1);
+            }
+         };
     };
 
-    struct GUIDHasher
-    {
-        std::size_t operator()(const GUID& guid) const
-        {
-            return std::hash<uint64_t>()(guid.High) ^ (std::hash<uint64_t>()(guid.Low) << 1);
-        }
-    };
+    
 
     // Using UUID v4 (random) for GUID generation
     GUID GenerateGUID();

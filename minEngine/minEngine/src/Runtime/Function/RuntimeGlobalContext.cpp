@@ -1,5 +1,6 @@
 #include "RuntimeGlobalContext.h"
 
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
@@ -17,6 +18,9 @@ namespace minEngine
     void RuntimeGlobalContext::StartSystems()
     {
         // Initialize global systems
+
+        m_ObjectManager = std::make_shared<ObjectManager>();
+        m_ObjectManager->Initialize();
 
         m_AssetManager = std::make_shared<AssetManager>();
         m_AssetManager->Initialize();
@@ -40,6 +44,12 @@ namespace minEngine
         {
             m_SceneManager->Shutdown();
             m_SceneManager.reset();
+        }
+
+        if (m_ObjectManager)
+        {
+            m_ObjectManager->Shutdown();
+            m_ObjectManager.reset();
         }
 
         if (m_InputSystem)

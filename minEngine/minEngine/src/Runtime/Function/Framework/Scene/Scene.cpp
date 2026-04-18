@@ -6,30 +6,56 @@ namespace minEngine
 {
     void Scene::Tick(float deltaTime)
     {
-        for (auto& [id, gameObject] : m_GameObjects)
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
         {
-            gameObject->Tick(deltaTime);
+            if (gameObject)
+            {
+                gameObject->Tick(deltaTime);
+            }
         }
     }
 
     std::shared_ptr<GameObject> Scene::CreateGameObject()
     {
-        const uint64_t id = m_NextObjectId++;
+        const uint64_t id = m_NextGOId++;
         auto gameObject = NewObject<GameObject>("", this);
-        gameObject->m_ID = id;
-        m_GameObjects[id] = gameObject;
+        gameObject->SetID(id);
+        m_GameObjects.push_back(gameObject);
+        m_GameObjectsById[id] = gameObject.get();
         return gameObject;
     }
 
-    std::shared_ptr<GameObject> Scene::CreateGameObject(uint64_t id)
+    void Scene::Reset()
     {
-        auto gameObject = NewObject<GameObject>("", this);
-        gameObject->m_ID = id;
-        m_GameObjects[id] = gameObject;
-        if (id >= m_NextObjectId)
+        m_GameObjects.clear();
+        m_GameObjectsById.clear();
+        m_NextGOId = 0;
+    }
+
+    void Scene::RebuildRuntimeGameObjectIndex()
+    {
+        std::vector<std::shared_ptr<GameObject>> compactGameObjects;
+        compactGameObjects.reserve(m_GameObjects.size());
+
+        m_GameObjectsById.clear();
+        m_NextGOId = 0;
+
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
         {
-            m_NextObjectId = id + 1;
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            gameObject->SetOuter(this);
+
+            const uint64_t newId = m_NextGOId++;
+            gameObject->SetID(newId);
+            m_GameObjectsById[newId] = gameObject.get();
+
+            compactGameObjects.push_back(gameObject);
         }
-        return gameObject;
+
+        m_GameObjects = std::move(compactGameObjects);
     }
 }

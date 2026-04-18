@@ -20,6 +20,9 @@ namespace minEngine::Serialization
         bool BeginObjectPtr(const std::string& typeName) override;
         bool EndObjectPtr() override;
 
+        bool BeginGuidRef(const GUID& guid) override;
+        bool EndGuidRef() override;
+
         bool BeginField(const std::string& fieldName) override;
         bool EndField() override;
 
@@ -66,6 +69,9 @@ namespace minEngine::Serialization
 
         bool BeginObjectPtr(const minEngine::Reflection::MEClass* baseClassInfo, std::string& outClassName) override;
         bool EndObjectPtr() override;
+
+        bool BeginGuidRef(GUID& outGuid) override;
+        bool EndGuidRef() override;
 
         bool EnterField(const std::string& fieldName) override;
         bool LeaveField() override;

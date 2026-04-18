@@ -11,6 +11,7 @@ namespace minEngine
     ME_CLASS()
     class StaticMeshComponent : public PrimitiveComponent    
     {
+        ME_REFLECTION_FRIEND(StaticMeshComponent)
     public:
         StaticMeshComponent();
         virtual ~StaticMeshComponent() = default;
@@ -25,6 +26,7 @@ namespace minEngine
         virtual PrimitiveSceneProxy* CreateSceneProxy() override;
 
     private:
+        ME_PROPERTY()
         std::shared_ptr<StaticMesh> m_Mesh{ nullptr };
         std::shared_ptr<Material> m_Material{ nullptr };
     };

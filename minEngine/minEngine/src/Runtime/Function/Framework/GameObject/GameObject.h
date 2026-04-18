@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 
@@ -17,13 +18,13 @@ namespace minEngine
     {
         ME_REFLECTION_FRIEND(GameObject)
     public:
-        GameObject(uint64_t id, std::string name = "");
         GameObject();
         virtual ~GameObject() = default;
 
         void Tick(float deltaTime);
 
-        uint64_t m_ID{ 0 };
+        uint64_t GetID() const { return m_ID; }
+        void SetID(uint64_t id) { m_ID = id; }
 
         const Transform& GetTransform();
         void SetTransform(const Transform& inTransform);
@@ -68,6 +69,7 @@ namespace minEngine
         }
 
     private:
+        uint64_t m_ID{ 0 };
         std::shared_ptr<SceneComponent> m_RootComponent{ nullptr };
 
         ME_PROPERTY()

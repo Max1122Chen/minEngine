@@ -2,19 +2,6 @@
 
 namespace minEngine
 {
-    GameObject::GameObject(uint64_t id, std::string name)
-        : m_ID(id)
-    {
-        if (name.empty())
-        {
-            m_Name = "GameObject_" + std::to_string(m_ID);
-        }
-        else
-        {
-            m_Name = std::move(name);
-        }
-    }
-
     GameObject::GameObject()
     {}
 

@@ -295,6 +295,22 @@ namespace minEngine::Reflection
             return iter->second;
         }
 
+        bool IsClassSameOrDerived(const MEClass* classInfo, const MEClass* baseClass) const
+        {
+            if (classInfo == nullptr)
+            {
+                return false;
+            }
+
+            return classInfo->IsA(baseClass);
+        }
+
+        bool IsClassNameSameOrDerived(const std::string& className, const MEClass* baseClass) const
+        {
+            const MEClass* classInfo = FindClass(className);
+            return IsClassSameOrDerived(classInfo, baseClass);
+        }
+
         template<typename T>
         const MEClass* FindClass() const
         {

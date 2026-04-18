@@ -71,47 +71,49 @@ namespace minEngine
         }
     }
 
-    std::shared_ptr<Scene> Editor::GetActiveScene() const
+    Scene* Editor::GetActiveScene() const
     {
-        return SceneManager::Get().GetCurrentActiveScene();
+        return SceneManager::Get().GetCurrentActiveScene().get();
     }
 
-    std::vector<std::shared_ptr<GameObject>> Editor::GetHierarchyGameObjects() const
+    std::vector<GameObject*> Editor::GetHierarchyGameObjects() const
     {
-        std::vector<std::shared_ptr<GameObject>> result;
-        const std::shared_ptr<Scene> scene = GetActiveScene();
+        std::vector<GameObject*> result;
+        Scene* scene = GetActiveScene();
         if (!scene)
         {
             return result;
         }
 
-        result.reserve(scene->m_GameObjects.size());
-        for (const auto& [id, gameObject] : scene->m_GameObjects)
+        const std::vector<std::shared_ptr<GameObject>>& gameObjects = scene->GetGameObjects();
+        result.reserve(gameObjects.size());
+        for (const std::shared_ptr<GameObject>& gameObject : gameObjects)
         {
             if (gameObject)
             {
-                result.push_back(gameObject);
+                result.push_back(gameObject.get());
             }
         }
 
-        std::sort(result.begin(), result.end(), [](const std::shared_ptr<GameObject>& lhs, const std::shared_ptr<GameObject>& rhs)
+        std::sort(result.begin(), result.end(), [](const GameObject* lhs, const GameObject* rhs)
         {
-            return lhs->m_ID < rhs->m_ID;
+            return lhs->GetID() < rhs->GetID();
         });
 
         return result;
     }
 
-    std::shared_ptr<GameObject> Editor::GetSelectedGameObject() const
+    GameObject* Editor::GetSelectedGameObject() const
     {
-        const std::shared_ptr<Scene> scene = GetActiveScene();
+        Scene* scene = GetActiveScene();
         if (!scene)
         {
             return nullptr;
         }
 
-        const auto iter = scene->m_GameObjects.find(m_SelectedGameObjectId);
-        if (iter == scene->m_GameObjects.end())
+        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
+        const auto iter = gameObjectsById.find(m_SelectedGameObjectId);
+        if (iter == gameObjectsById.end())
         {
             return nullptr;
         }
@@ -136,7 +138,7 @@ namespace minEngine
 
     std::string Editor::GetSelectedGameObjectName() const
     {
-        const std::shared_ptr<GameObject> gameObject = GetSelectedGameObject();
+        GameObject* gameObject = GetSelectedGameObject();
         if (!gameObject)
         {
             return std::string();
@@ -147,23 +149,24 @@ namespace minEngine
 
     bool Editor::RenameGameObject(uint64_t gameObjectId, const std::string& newName)
     {
-        const std::shared_ptr<Scene> scene = GetActiveScene();
+        Scene* scene = GetActiveScene();
         if (!scene)
         {
             return false;
         }
 
-        const auto iter = scene->m_GameObjects.find(gameObjectId);
-        if (iter == scene->m_GameObjects.end() || !iter->second)
+        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
+        const auto iter = gameObjectsById.find(gameObjectId);
+        if (iter == gameObjectsById.end() || iter->second == nullptr)
         {
             return false;
         }
 
-        std::shared_ptr<GameObject> gameObject = iter->second;
+        GameObject* gameObject = iter->second;
         std::string sanitizedName = newName;
         if (sanitizedName.empty())
         {
-            sanitizedName = "GameObject_" + std::to_string(gameObject->m_ID);
+            sanitizedName = "GameObject_" + std::to_string(gameObject->GetID());
         }
 
         if (gameObject->GetName() != sanitizedName)
@@ -239,7 +242,7 @@ namespace minEngine
 
     bool Editor::SaveCurrentScene()
     {
-        std::shared_ptr<Scene> currentScene = GetActiveScene();
+        Scene* currentScene = GetActiveScene();
         if (!currentScene)
         {
             return false;
@@ -263,7 +266,7 @@ namespace minEngine
 
     bool Editor::SaveCurrentSceneAs(const std::filesystem::path& filePath)
     {
-        std::shared_ptr<Scene> currentScene = GetActiveScene();
+        Scene* currentScene = GetActiveScene();
         if (!currentScene)
         {
             return false;
@@ -292,7 +295,7 @@ namespace minEngine
 
     std::filesystem::path Editor::GetCurrentScenePath() const
     {
-        const std::shared_ptr<Scene> currentScene = GetActiveScene();
+        Scene* currentScene = GetActiveScene();
         if (!currentScene)
         {
             return std::filesystem::path();
@@ -303,27 +306,29 @@ namespace minEngine
 
     void Editor::SyncSelectionWithScene()
     {
-        const std::shared_ptr<Scene> scene = GetActiveScene();
-        if (!scene || scene->m_GameObjects.empty())
+        Scene* scene = GetActiveScene();
+        if (!scene)
         {
             m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
             return;
         }
 
-        if (scene->m_GameObjects.find(m_SelectedGameObjectId) != scene->m_GameObjects.end())
+        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
+        if (gameObjectsById.empty())
+        {
+            m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
+            return;
+        }
+
+        if (gameObjectsById.find(m_SelectedGameObjectId) != gameObjectsById.end())
         {
             return;
         }
 
-        auto iter = std::min_element(scene->m_GameObjects.begin(), scene->m_GameObjects.end(),
-            [](const auto& lhs, const auto& rhs)
-            {
-                return lhs.first < rhs.first;
-            });
-
-        if (iter != scene->m_GameObjects.end())
+        const std::vector<GameObject*> hierarchyGameObjects = GetHierarchyGameObjects();
+        if (!hierarchyGameObjects.empty())
         {
-            m_SelectedGameObjectId = iter->first;
+            m_SelectedGameObjectId = hierarchyGameObjects.front()->GetID();
         }
     }
 
@@ -401,7 +406,7 @@ namespace minEngine
         
         // Create a new scene defaultly.
         CreateNewScene(defaultScenePath.string());
-        if (std::shared_ptr<Scene> scene = GetActiveScene())
+        if (Scene* scene = GetActiveScene())
         {
             PopulateEditorDefaultScene(*scene);
             MarkSceneDirty();
@@ -432,7 +437,7 @@ namespace minEngine
             SyncSelectionWithScene();
 
             std::string sceneDisplayName = "Untitled";
-            if (const std::shared_ptr<Scene> activeScene = GetActiveScene())
+            if (const Scene* activeScene = GetActiveScene())
             {
                 const std::filesystem::path scenePath(activeScene->GetSceneName());
                 if (!scenePath.empty())

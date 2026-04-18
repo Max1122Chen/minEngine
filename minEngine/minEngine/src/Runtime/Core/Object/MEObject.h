@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Core/GUID/GUID.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 
 namespace minEngine
@@ -17,6 +18,9 @@ namespace minEngine
         const std::string& GetName() const { return m_Name; }
         void SetName(const std::string& inName) { m_Name = inName; }
 
+        const GUID& GetGuid() const { return m_Guid; }
+        void SetGuid(const GUID& inGuid) { m_Guid = inGuid; }
+
         const MEObject* GetOuter() const { return m_Outer; }
         void SetOuter(MEObject* inOuter) { m_Outer = inOuter; }
 
@@ -26,19 +30,11 @@ namespace minEngine
 
         ME_PROPERTY()
         std::string m_Name;
+        GUID m_Guid;
         MEObject* m_Outer = nullptr;
     };
 
-    template<typename T>
-    static std::shared_ptr<T> NewObject(const std::string& name = "", MEObject* outer = nullptr)
-    {
-        static_assert(std::is_base_of_v<MEObject, T>, "T must be derived from MEObject");
-        std::shared_ptr<T> newObj = std::make_shared<T>();
-        newObj->SetClass(Reflection::ReflectionSystem::Get().FindClass<T>());
-        newObj->SetName(name);
-        newObj->SetOuter(outer);
-        return newObj;
-    }
+    
 }
 
 #include "MEObject.gen.h"
