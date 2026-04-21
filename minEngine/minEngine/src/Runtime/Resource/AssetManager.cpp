@@ -781,34 +781,20 @@ namespace minEngine
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const
     {
         const std::filesystem::path scenePath(meta.AssetPath);
-        const std::filesystem::path parentPath = scenePath.parent_path();
-        if (!parentPath.empty())
-        {
-            std::error_code errorCode;
-            std::filesystem::create_directories(parentPath, errorCode);
-            if (errorCode)
-            {
-                ME_CORE_ERROR("Failed to create scene directory '{}'. Error: {}",
-                              parentPath.string(),
-                              errorCode.message());
-                return false;
-            }
-        }
 
         Serialization::JsonWriterArchive archive;
-        const Serialization::SerializerOptions options{
-            .enumAsString = true,
-            .strictTypeCheck = true,
-            .skipUnknownField = false,
-            .allowObjectPtrSerialization = true
-        };
-
+        
         const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
             meta.AssetPath,
             "minEngine::Scene",
             &asset,
             archive,
-            options);
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = false,
+                .allowObjectPtrSerialization = true
+            });
 
         if (!result.ok)
         {

@@ -394,7 +394,7 @@ namespace minEngine::Serialization
         }
 
         const MEObject* ownerObject = static_cast<const MEObject*>(ownerObjectPtr);
-        const bool shouldSerializeInline = (objectPtr->GetOuter() == ownerObject && objectPtrProperty.HasSpecifier(Reflection::PropertySpecifier::Instanced));
+        const bool shouldSerializeInline = (objectPtr->GetOuter() == ownerObject && static_cast<int>(PropertySpecifier::Instanced) & propertySpecifierMask);
 
         const MEClass* dynamicClass = objectPtr->GetClass();
         if (dynamicClass == nullptr)

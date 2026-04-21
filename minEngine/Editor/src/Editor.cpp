@@ -201,7 +201,27 @@ namespace minEngine
             ME_CORE_ERROR("Failed to add component of type '{}' to GameObject '{}'.", componentTypeName, gameObject->GetName());
             return false;
         }
+        MarkSceneDirty();
         return true;
+    }
+
+    void Editor::SaveCurrentScene()
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)        
+        {
+            ME_CORE_ERROR("No active scene to save.");
+            return;
+        }
+        if (SceneManager::Get().SaveCurrentScene())
+        {
+            ClearSceneDirty();
+            ME_CORE_INFO("Scene '{}' saved successfully.", scene->GetSceneName());
+        }
+        else
+        {
+            ME_CORE_ERROR("Failed to save scene '{}'.", scene->GetSceneName());
+        }
     }
 
     void Editor::SyncSelectionWithScene()

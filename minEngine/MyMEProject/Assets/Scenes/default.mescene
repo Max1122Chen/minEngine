@@ -1,42 +1,19 @@
 {
-    "m_Name": "default",
-    "m_Guid": {
-        "High": 7367244129909950825,
-        "Low": 9860694885641468740
-    },
-    "m_SceneName": "default",
     "m_GameObjects": [
         {
             "$ptr_typeName": "minEngine::GameObject",
-            "m_Name": "Cube",
-            "m_Guid": {
-                "High": 1111111111111111111,
-                "Low": 2222222222222222222
-            },
-            "m_RootComponent": {
-                "$guid": {
-                    "high": 3333333333333333333,
-                    "low": 4444444444444444444
-                }
-            },
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
-                    "m_Name": "SMC_Test",
                     "m_Guid": {
                         "High": 3333333333333333333,
                         "Low": 4444444444444444444
                     },
-                    "m_Owner": {
+                    "m_Material": {
                         "$guid": {
-                            "high": 1111111111111111111,
-                            "low": 2222222222222222222
+                            "high": 9593452550215845710,
+                            "low": 10983393021693110497
                         }
-                    },
-                    "m_Transform": {
-                        "Position": [5.0, 0.0, 0.0],
-                        "Rotation": [0.0, 0.0, 0.0],
-                        "Scale": [1.0, 1.0, 1.0]
                     },
                     "m_Mesh": {
                         "$guid": {
@@ -44,55 +21,138 @@
                             "low": 11320094043071953413
                         }
                     },
-                    "m_Material": {
+                    "m_Name": "SMC_Test",
+                    "m_Owner": {
                         "$guid": {
-                            "high": 9593452550215845710,
-                            "low": 10983393021693110497
+                            "high": 1111111111111111111,
+                            "low": 2222222222222222222
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            5.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            42.099998474121094,
+                            0.0
+                        ],
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                },
+                {
+                    "$ptr_typeName": "minEngine::ReflectionSampleComponent",
+                    "IntArray": [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5
+                    ],
+                    "SampleData": {
+                        "EnumField": 1,
+                        "FloatField": 3.140000104904175,
+                        "IntField": 42,
+                        "StringField": "Hello, Reflection!"
+                    },
+                    "m_Guid": {
+                        "High": 17525128019335988717,
+                        "Low": 12555000036774437383
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 1111111111111111111,
+                            "low": 2222222222222222222
                         }
                     }
                 }
-            ]
+            ],
+            "m_Guid": {
+                "High": 1111111111111111111,
+                "Low": 2222222222222222222
+            },
+            "m_Name": "Cube",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 3333333333333333333,
+                    "low": 4444444444444444444
+                }
+            }
         },
         {
             "$ptr_typeName": "minEngine::GameObject",
-            "m_Name": "DirectionalLight",
-            "m_Guid": {
-                "High": 5555555555555555555,
-                "Low": 6666666666666666666
-            },
-            "m_RootComponent": {
-                "$guid": {
-                    "high": 7777777777777777777,
-                    "low": 8888888888888888888
-                }
-            },
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::DirectionalLightComponent",
-                    "m_Name": "DLC_Test",
+                    "m_CastShadow": true,
+                    "m_DiffuseFactor": 1.0,
+                    "m_Direction": [
+                        0.3499999940395355,
+                        -1.0,
+                        -0.20000000298023224
+                    ],
                     "m_Guid": {
                         "High": 7777777777777777777,
                         "Low": 8888888888888888888
                     },
+                    "m_Intensity": 2.0,
+                    "m_LightColor": [
+                        1.0,
+                        0.9800000190734863,
+                        0.9200000166893005,
+                        1.0
+                    ],
+                    "m_Name": "DLC_Test",
                     "m_Owner": {
                         "$guid": {
                             "high": 5555555555555555555,
                             "low": 6666666666666666666
                         }
                     },
-                    "m_Transform": {
-                        "Position": [0.0, 100.0, 0.0],
-                        "Rotation": [0.0, 0.0, 0.0],
-                        "Scale": [1.0, 1.0, 1.0]
-                    },
-                    "m_Direction": [0.35, -1.0, -0.20],
-                    "m_LightColor": [1.0, 0.98, 0.92, 1.0],
-                    "m_Intensity": 2.0,
-                    "m_DiffuseFactor": 1.0,
                     "m_SpecularFactor": 0.5,
-                    "m_CastShadow": true
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            100.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
                 }
-            ]
+            ],
+            "m_Guid": {
+                "High": 5555555555555555555,
+                "Low": 6666666666666666666
+            },
+            "m_Name": "DirectionalLight",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 7777777777777777777,
+                    "low": 8888888888888888888
+                }
+            }
         }
-    ]
+    ],
+    "m_Guid": {
+        "High": 7367244129909950825,
+        "Low": 9860694885641468740
+    },
+    "m_Name": "default",
+    "m_SceneName": "default"
 }

@@ -612,6 +612,10 @@ namespace minEngine::Reflection
                 {
                     primitiveTypeName = "Vector4";
                 }
+                else if constexpr (std::is_enum_v<RawFieldType>)
+                {
+                    primitiveTypeName = FindEnum<RawFieldType>()->GetName();
+                }
 
                 return CreateProperty<MEPrimitiveProperty>(propertyName, primitiveTypeName);
             }

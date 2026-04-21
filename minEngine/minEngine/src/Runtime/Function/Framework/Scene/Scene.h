@@ -29,7 +29,7 @@ namespace minEngine
         ME_PROPERTY()
         std::string m_SceneName;
 
-        ME_PROPERTY()
+        ME_PROPERTY(Instanced)
         std::vector<std::shared_ptr<GameObject>> m_GameObjects;
 
         std::unordered_map<uint64_t, GameObject*> m_GameObjectsById;

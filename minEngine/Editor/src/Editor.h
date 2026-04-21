@@ -43,6 +43,7 @@ namespace minEngine
         const std::vector<std::string>& GetAllComponentTypeNames() const;
         bool AddComponentToSelectedGameObject(const std::string& componentTypeName);
 
+        void SaveCurrentScene();
         void MarkSceneDirty() { m_SceneDirty = true; }
         void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }
