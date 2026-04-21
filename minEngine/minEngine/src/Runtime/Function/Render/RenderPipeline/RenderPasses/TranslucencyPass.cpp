@@ -58,7 +58,7 @@ namespace minEngine
             }
 
             shader->GetRHIShader()->Use();
-            shader->GetRHIShader()->UploadUniformInt("u_DiffuseMap", 0);
+            shader->GetRHIShader()->UploadUniformInt("u_Material.DiffuseMap", 0);
 
             shader->GetRHIShader()->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
             shader->GetRHIShader()->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader

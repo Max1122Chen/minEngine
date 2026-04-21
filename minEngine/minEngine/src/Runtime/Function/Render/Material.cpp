@@ -6,10 +6,10 @@ namespace minEngine
 {
     void Material::BindTextures() const
     {
-        // TODO: bind other textures (specular, normal, etc.) as needed
+        // Keep material samplers on deterministic texture units.
         if (m_Diffuse.Texture)
         {
-            m_Diffuse.Texture->GetRHITexture()->Bind(1); // Bind diffuse texture to texture unit 1
+            m_Diffuse.Texture->GetRHITexture()->Bind(0); // Bind diffuse texture to texture unit 0
         }
     }
 }
