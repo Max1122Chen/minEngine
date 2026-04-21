@@ -2,6 +2,8 @@
 #include "Reflection/MEClass.h"
 #include "Reflection/Reflection.h"
 
+#include <fstream>
+
 namespace minEngine::Serialization
 {
     Json* JsonWriterArchive::AttachValue(Json&& value)
@@ -191,6 +193,47 @@ namespace minEngine::Serialization
         return AttachValue(Json(value)) != nullptr;
     }
 
+    void JsonWriterArchive::ResetWriteState()
+    {
+        ResetRoot();
+        m_LastArchiveError.clear();
+    }
+
+    bool JsonWriterArchive::WriteToFile(const std::string& filePath)
+    {
+        m_LastArchiveError.clear();
+
+        if (!m_HasRoot)
+        {
+            m_LastArchiveError = "archive root is empty";
+            return false;
+        }
+
+        std::ofstream output(filePath, std::ios::trunc);
+        if (!output.is_open())
+        {
+            m_LastArchiveError = "failed to open file for writing";
+            return false;
+        }
+
+        output << m_Root.dump(4);
+        if (!output.good())
+        {
+            m_LastArchiveError = "failed to write JSON content to file";
+            return false;
+        }
+
+        return true;
+    }
+
+    void JsonReaderArchive::BindRoot(const Json& root)
+    {
+        m_Root = &root;
+        m_ContextStack.clear();
+        m_ValueStack.clear();
+        m_LastArchiveError.clear();
+    }
+
     const Json* JsonReaderArchive::CurrentValue() const
     {
         if (!m_ValueStack.empty())
@@ -203,7 +246,7 @@ namespace minEngine::Serialization
             return m_ContextStack.back();
         }
 
-        return &m_Root;
+        return m_Root;
     }
 
     bool JsonReaderArchive::BeginObject(const Reflection::MEClass* baseClassInfo)
@@ -478,6 +521,38 @@ namespace minEngine::Serialization
         }
 
         outValue = value->get<std::string>();
+        return true;
+    }
+
+    void JsonReaderArchive::ResetReadState()
+    {
+        m_ContextStack.clear();
+        m_ValueStack.clear();
+        m_LastArchiveError.clear();
+    }
+
+    bool JsonReaderArchive::ReadFromFile(const std::string& filePath)
+    {
+        ResetReadState();
+
+        std::ifstream input(filePath);
+        if (!input.is_open())
+        {
+            m_LastArchiveError = "failed to open file for reading";
+            return false;
+        }
+
+        try
+        {
+            input >> m_OwnedRoot;
+        }
+        catch (const std::exception& e)
+        {
+            m_LastArchiveError = std::string("failed to parse JSON: ") + e.what();
+            return false;
+        }
+
+        m_Root = &m_OwnedRoot;
         return true;
     }
 }

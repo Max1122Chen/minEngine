@@ -1,9 +1,9 @@
 {
-    "assetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Meshes/BasicShapes/convexmesh.obj",
-    "assetType": "StaticMesh",
-    "guid": {
-        "high": 10865618598657147661,
-        "low": 13004607113118405076
-    },
-    "version": 1
+    "AssetName": "convexmesh",
+    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Meshes/BasicShapes/convexmesh.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 2988795121305602697,
+        "Low": 13137073092164625071
+    }
 }

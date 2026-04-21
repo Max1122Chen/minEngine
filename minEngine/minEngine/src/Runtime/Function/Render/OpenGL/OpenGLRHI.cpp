@@ -140,22 +140,22 @@ namespace minEngine
         return std::make_shared<OpenGLUniformBuffer>(size, bindingPoint);
     }
 
-    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2D(const unsigned char *data, RHITextureDesc desc, int unit)
+    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2D(const unsigned char *data, RHITextureDesc desc)
     {
-        return std::make_shared<OpenGLTexture2D>(data, desc, unit);
+        return std::make_shared<OpenGLTexture2D>(data, desc);
     }
 
-    std::shared_ptr<RHITextureCube> OpenGLRHI::CreateRHITextureCube(const std::vector<unsigned char *> faceData, RHITextureDesc desc, int unit)
+    std::shared_ptr<RHITextureCube> OpenGLRHI::CreateRHITextureCube(const std::vector<unsigned char *> faceData, RHITextureDesc desc)
     {
-        return std::make_shared<OpenGLTextureCube>(faceData, desc, unit);
+        return std::make_shared<OpenGLTextureCube>(faceData, desc);
     }
 
-    std::shared_ptr<RHITexture2DArray> OpenGLRHI::CreateRHITexture2DArray(const unsigned char *data, RHITextureDesc desc, int unit)
+    std::shared_ptr<RHITexture2DArray> OpenGLRHI::CreateRHITexture2DArray(const unsigned char *data, RHITextureDesc desc)
     {
-        return std::make_shared<OpenGLTexture2DArray>(data, desc, unit);
+        return std::make_shared<OpenGLTexture2DArray>(data, desc);
     }
 
-    std::shared_ptr<RHIShader> OpenGLRHI::CreateShader(const char *vertexSource, const char *fragmentSource)
+    std::shared_ptr<RHIShader> OpenGLRHI::CreateRHIShader(const char *vertexSource, const char *fragmentSource)
     {
         return std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
     }

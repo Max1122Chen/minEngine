@@ -44,36 +44,24 @@ namespace minEngine
             {
                 if (ImGui::MenuItem("New Scene", "Ctrl+N"))
                 {
-                    QueueFileAction(PendingFileAction::NewScene, "Assets/Scenes/EditorDefault.scene.json");
                 }
 
                 if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
                 {
-                    QueueFileAction(PendingFileAction::OpenScene, "Assets/Scenes/EditorDefault.scene.json");
                 }
 
                 const bool hasScene = static_cast<bool>(m_Editor.GetActiveScene());
                 const bool canSave = hasScene /* && m_Editor.IsSceneDirty() */; // Allow saving even if there are no changes to avoid accidentally losing work by closing the editor without saving.
                 if (ImGui::MenuItem("Save", "Ctrl+S", false, canSave))
                 {
-                    m_Editor.SaveCurrentScene();
                 }
 
-                if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, hasScene))
+                if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, false))
                 {
-                    std::filesystem::path sourcePath = m_Editor.GetCurrentScenePath();
-                    const std::string stem = sourcePath.stem().string().empty() ? std::string("Scene") : sourcePath.stem().string();
-                    std::filesystem::path saveAsPath = sourcePath.parent_path() / (stem + "_SaveAs.scene.json");
-                    if (saveAsPath.empty())
-                    {
-                        saveAsPath = std::filesystem::path("Assets/Scenes/EditorDefault_SaveAs.scene.json");
-                    }
-                    m_Editor.SaveCurrentSceneAs(saveAsPath);
                 }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Exit"))
                 {
-                    QueueFileAction(PendingFileAction::ExitEditor, "");
                 }
                 ImGui::EndMenu();
             }
@@ -136,94 +124,11 @@ namespace minEngine
             ImGui::EndMainMenuBar();
             ImGui::PopStyleVar();
 
-            DrawUnsavedChangesPopup();
         }
 
     private:
-        enum class PendingFileAction
-        {
-            None,
-            NewScene,
-            OpenScene,
-            ExitEditor,
-        };
-
-        void QueueFileAction(PendingFileAction action, std::string targetPath)
-        {
-            if (!m_Editor.IsSceneDirty())
-            {
-                ExecuteFileAction(action, targetPath);
-                return;
-            }
-
-            m_PendingAction = action;
-            m_PendingPath = std::move(targetPath);
-            ImGui::OpenPopup("Unsaved Scene Changes");
-        }
-
-        void ExecutePendingAction()
-        {
-            ExecuteFileAction(m_PendingAction, m_PendingPath);
-            m_PendingAction = PendingFileAction::None;
-            m_PendingPath.clear();
-        }
-
-        void ExecuteFileAction(PendingFileAction action, const std::string& targetPath)
-        {
-            switch (action)
-            {
-            case PendingFileAction::NewScene:
-                m_Editor.CreateNewScene(targetPath);
-                break;
-            case PendingFileAction::OpenScene:
-                m_Editor.OpenScene(targetPath);
-                break;
-            case PendingFileAction::ExitEditor:
-                m_Editor.RequestExit();
-                break;
-            case PendingFileAction::None:
-            default:
-                break;
-            }
-        }
-
-        void DrawUnsavedChangesPopup()
-        {
-            if (ImGui::BeginPopupModal("Unsaved Scene Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-            {
-                ImGui::TextUnformatted("Current scene has unsaved changes.");
-                ImGui::TextUnformatted("Do you want to save before continuing?");
-                ImGui::Spacing();
-
-                if (ImGui::Button("Save", ImVec2(110.0f, 0.0f)))
-                {
-                    if (m_Editor.SaveCurrentScene())
-                    {
-                        ExecutePendingAction();
-                        ImGui::CloseCurrentPopup();
-                    }
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Don't Save", ImVec2(110.0f, 0.0f)))
-                {
-                    ExecutePendingAction();
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Cancel", ImVec2(110.0f, 0.0f)))
-                {
-                    m_PendingAction = PendingFileAction::None;
-                    m_PendingPath.clear();
-                    ImGui::CloseCurrentPopup();
-                }
-
-                ImGui::EndPopup();
-            }
-        }
 
         const std::string m_Id = "main_menu";
         const std::string m_Title = "MainMenu";
-        PendingFileAction m_PendingAction = PendingFileAction::None;
-        std::string m_PendingPath;
     };
 }

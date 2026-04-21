@@ -17,321 +17,175 @@ namespace minEngine
 
     void ProjectManager::Initialize()
     {
-        m_CurrentProject.Reset();
     }
 
     void ProjectManager::Shutdown()
     {
-        CloseProject();
+        CloseCurrentProject();
     }
 
     ProjectOpenResult ProjectManager::OpenProject(const std::filesystem::path& projectRoot)
     {
-        CloseProject();
-
-        if (projectRoot.empty())
+        CloseCurrentProject();
+        
+        if (std::filesystem::exists(projectRoot))
         {
-            return ProjectOpenResult(ProjectOpenStatus::InvalidProjectRoot, "Project root is empty.");
-        }
-
-        std::error_code absolutePathError;
-        std::filesystem::path normalizedInputPath = std::filesystem::absolute(projectRoot, absolutePathError);
-        if (absolutePathError)
-        {
-            return ProjectOpenResult(ProjectOpenStatus::InvalidProjectRoot,
-                                     "Failed to resolve input path to absolute path.");
-        }
-        normalizedInputPath = normalizedInputPath.lexically_normal();
-
-        std::filesystem::path normalizedProjectRoot;
-        std::filesystem::path descriptorPath;
-
-        std::error_code directoryCheckError;
-        const bool inputIsDirectory = std::filesystem::is_directory(normalizedInputPath, directoryCheckError);
-        if (!directoryCheckError && inputIsDirectory)
-        {
-            normalizedProjectRoot = normalizedInputPath;
-            descriptorPath = BuildProjectDescPath(normalizedProjectRoot);
-        }
-        else
-        {
-            std::error_code fileCheckError;
-            const bool inputIsFile = std::filesystem::is_regular_file(normalizedInputPath, fileCheckError);
-            if (!fileCheckError
-                && inputIsFile
-                && normalizedInputPath.extension() == kProjectDescriptorExtension)
+            std::filesystem::path descriptorPath;
+            std::filesystem::path settingsPath;
+            
+            bool descriptorFound = false;
+            bool settingsFound = false;
+            // Handle the case where the path is a directory (e.g., C:/Projects/MyProject)
+            if (std::filesystem::is_directory(projectRoot))
             {
-                descriptorPath = normalizedInputPath;
-                normalizedProjectRoot = descriptorPath.parent_path();
+                // Look for the project descriptor file (e.g., MyProject.meproject) in the directory
+                for(auto& entry : std::filesystem::directory_iterator(projectRoot))
+                {
+                    if (entry.is_regular_file())
+                    {
+                        if (entry.path().extension() == kMEProjectExtension)
+                        {
+                            descriptorPath = entry.path();
+                            descriptorFound = true;
+                        }
+                        if (entry.path().extension() == kMEProjectSettingsExtension)
+                        {
+                            settingsPath = entry.path();
+                            settingsFound = true;
+                        }
+                    }
+                }
+                if (!descriptorFound)
+                {
+                    return ProjectOpenResult(ProjectOpenStatus::DescriptorNotFound, "Project descriptor file not found in the specified directory.");
+                }
             }
             else
             {
-                return ProjectOpenResult(
-                    ProjectOpenStatus::InvalidProjectRoot,
-                    "Input path must be a project directory or a .meproject descriptor file.");
+                // Handle the case where the path is directly to a potential project descriptor file (e.g., C:/Projects/MyProject/MyProject.meproject)
+                if (projectRoot.extension() == kMEProjectExtension)
+                {
+                    descriptorPath = projectRoot;
+
+                    const std::filesystem::path descriptorDir = descriptorPath.parent_path();
+                    if (!descriptorDir.empty() && std::filesystem::exists(descriptorDir) && std::filesystem::is_directory(descriptorDir))
+                    {
+                        for (auto& entry : std::filesystem::directory_iterator(descriptorDir))
+                        {
+                            if (entry.is_regular_file() && entry.path().extension() == kMEProjectSettingsExtension)
+                            {
+                                settingsPath = entry.path();
+                                settingsFound = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    return ProjectOpenResult(ProjectOpenStatus::WrongDescriptorExtension, "Specified project file does not have the correct extension.");
+                }
             }
-        }
+            
+            // Try to load and parse the project descriptor file
+            ProjectDescriptor descriptor;
+            bool descriptorLoaded = LoadProjectDesc(descriptorPath, descriptor);
 
-        if (!IsLikelyProjectRoot(normalizedProjectRoot))
-        {
-            return ProjectOpenResult(ProjectOpenStatus::InvalidProjectRoot,
-                                     "Project root is not a valid directory.");
-        }
-
-        if (descriptorPath.empty())
-        {
-            return ProjectOpenResult(ProjectOpenStatus::DescriptorNotFound,
-                                     "Project descriptor path is empty.");
-        }
-
-        std::error_code existsError;
-        const bool descriptorExists = std::filesystem::exists(descriptorPath, existsError);
-        if (existsError || !descriptorExists)
-        {
-            return ProjectOpenResult(ProjectOpenStatus::DescriptorNotFound,
-                                     "Project descriptor file does not exist.");
-        }
-
-        ProjectDescriptor descriptor;
-        std::string loadError;
-        if (!LoadProjectDesc(descriptorPath, descriptor, &loadError))
-        {
-            return ProjectOpenResult(ProjectOpenStatus::InvalidDescriptor,
-                                     std::string("Failed to load project descriptor: ") + loadError);
-        }
-
-        if (descriptor.SchemaVersion == 0)
-        {
-            return ProjectOpenResult(ProjectOpenStatus::InvalidDescriptor,
-                                     "Project descriptor schemaVersion must be greater than zero.");
-        }
-
-        if (descriptor.ProjectName.empty())
-        {
-            return ProjectOpenResult(ProjectOpenStatus::InvalidDescriptor,
-                              "Project descriptor projectName is empty.");
-        }
-
-        if (!descriptor.ProjectId.IsValid())
-        {
-            return ProjectOpenResult(ProjectOpenStatus::InvalidDescriptor,
-                              "Project descriptor projectId is invalid.");
-        }
-
-        ProjectContext openedProject;
-        openedProject.IsOpened = true;
-        openedProject.ProjectRoot = normalizedProjectRoot;
-        openedProject.ProjectFile = descriptorPath;
-
-        if (descriptor.ContentRoot.empty())
-        {
-            descriptor.ContentRoot = std::filesystem::path("Assets").string();
-            openedProject.Diagnostics.emplace_back(
-                "Descriptor contentRoot is empty; defaulting to 'Assets'.");
-        }
-
-        if (descriptor.ConfigRoot.empty())
-        {
-            descriptor.ConfigRoot = std::filesystem::path("Config").string();
-            openedProject.Diagnostics.emplace_back(
-                "Descriptor configRoot is empty; defaulting to 'Config'.");
-        }
-
-        openedProject.Descriptor = descriptor;
-
-        const std::filesystem::path resolvedContentRoot = ResolveProjectPath(
-            normalizedProjectRoot,
-            openedProject.Descriptor.ContentRoot);
-        if (resolvedContentRoot.empty())
-        {
-            openedProject.Diagnostics.emplace_back(
-                "Resolved content root path is empty.");
-        }
-        else
-        {
-            std::error_code contentRootCheckError;
-            const bool contentRootExists = std::filesystem::exists(resolvedContentRoot, contentRootCheckError);
-            const bool contentRootIsDirectory =
-                contentRootExists && std::filesystem::is_directory(resolvedContentRoot, contentRootCheckError);
-
-            if (!contentRootCheckError && contentRootIsDirectory)
+            if (!descriptorLoaded)
             {
-                AssetManager::Get().ScanAssets(resolvedContentRoot.string());
-                openedProject.Diagnostics.emplace_back(
-                    std::string("Scanned project content root: ") + resolvedContentRoot.generic_string());
+                return ProjectOpenResult(ProjectOpenStatus::InvalidDescriptor, "Failed to parse project descriptor file.");
+            }
+
+            // TODO: maybe we should also validate the content of the descriptor (e.g., check if required fields are present, if the project root path in the descriptor matches the actual project root, etc.)
+            // TODO: later we may correct the project root path in the descriptor if it's missing or doesn't match the actual project root, to make it more robust against user errors
+            
+
+            // If everything is good, we can set the current project context (e.g., store the descriptor, load project-specific settings, etc.)
+            m_CurrentProjectCtx.Descriptor = descriptor;
+
+            // Try to load project-specific settings (e.g., MyProject.mesettings), but we won't fail opening the project if the settings file is missing or failed to parse, since the settings are optional and we can just use default settings in that case
+            if (settingsFound)
+            {
+                ProjectSettings settings;
+                bool settingsLoaded = LoadProjectSettings(settingsPath, settings);
+                if (settingsLoaded)
+                {
+                    m_CurrentProjectCtx.Settings = settings;
+                }
+            }
+            
+            // For now, we just try to scan the project's "Assets" directory and then return success
+            const std::filesystem::path assetsPath = std::filesystem::path(descriptor.ProjectRoot) / "Assets";
+            if (std::filesystem::exists(assetsPath) && std::filesystem::is_directory(assetsPath))
+            {
+                // Here we pass a absolute path to ScanAssets
+                AssetManager::Get().ScanAssets(assetsPath);
+                // TODO: maybe we should also load other types of project-specific data here (e.g., editorDefaultScene, editor settings, etc.)
             }
             else
             {
-                openedProject.Diagnostics.emplace_back(
-                    std::string("Project content root not found or not a directory: ")
-                    + resolvedContentRoot.generic_string());
+                ME_CORE_WARN("Assets directory not found in the project: {}", assetsPath.string());
             }
-        }
-
-        std::filesystem::path resolvedProjectScene = ResolveProjectPath(
-            normalizedProjectRoot,
-            openedProject.Descriptor.EditorDefaultScene);
-        if (!resolvedProjectScene.empty())
-        {
-            std::error_code sceneExistsError;
-            const bool sceneExists = std::filesystem::exists(resolvedProjectScene, sceneExistsError);
-            if (!sceneExistsError && sceneExists)
-            {
-                openedProject.ResolvedEditorStartupScene = resolvedProjectScene;
-            }
-            else
-            {
-                openedProject.Diagnostics.emplace_back(
-                    std::string("Project default scene missing, fallback to engine default: ")
-                    + resolvedProjectScene.generic_string());
-            }
+            return ProjectOpenResult(ProjectOpenStatus::Success, "Project " + descriptor.ProjectName + " opened successfully.");
         }
         else
         {
-            openedProject.Diagnostics.emplace_back(
-                "Descriptor editorDefaultScene is empty; fallback to engine default scene.");
+            return ProjectOpenResult(ProjectOpenStatus::PathNotFound, "Specified project path does not exist.");
         }
-
-        if (openedProject.ResolvedEditorStartupScene.empty())
-        {
-            openedProject.ResolvedEditorStartupScene = m_EngineDefaultScenePath;
-        }
-
-        m_CurrentProject = std::move(openedProject);
-
-        return ProjectOpenResult(ProjectOpenStatus::Success,
-                     std::string("Project opened successfully: ") + m_CurrentProject.Descriptor.ProjectName);
     }
 
-    void ProjectManager::CloseProject()
+    void ProjectManager::CloseCurrentProject()
     {
-        m_CurrentProject.Reset();
-        // TODO: add more cleanup if needed (e.g. unload assets, scenes, etc.)
+        // TODO: add any necessary cleanup logic here (e.g., unloading assets, closing scenes, etc.)
+        m_CurrentProjectCtx.Reset();
     }
 
-    std::filesystem::path ProjectManager::ResolveEditorStartupScenePath() const
+    bool ProjectManager::LoadProjectDesc(const std::filesystem::path &descriptorPath, ProjectDescriptor &outDescriptor)
     {
-        if (!m_CurrentProject.ResolvedEditorStartupScene.empty())
-        {
-            return m_CurrentProject.ResolvedEditorStartupScene;
-        }
-
-        return m_EngineDefaultScenePath;
-    }
-
-    bool ProjectManager::IsLikelyProjectRoot(const std::filesystem::path& projectRoot) const
-    {
-        if (projectRoot.empty())
-        {
-            return false;
-        }
-
-        std::error_code directoryError;
-        const bool isDirectory = std::filesystem::is_directory(projectRoot, directoryError);
-        return !directoryError && isDirectory;
-    }
-
-    std::filesystem::path ProjectManager::BuildProjectDescPath(const std::filesystem::path& projectRoot) const
-    {
-        if (projectRoot.empty())
-        {
-            return std::filesystem::path();
-        }
-
-        return projectRoot / kDefaultProjectDescriptorFileName;
-    }
-
-    std::filesystem::path ProjectManager::ResolveProjectPath(const std::filesystem::path &projectRoot, const std::string &configuredPath) const
-    {
-        if (configuredPath.empty())
-        {
-            return std::filesystem::path();
-        }
-
-        const std::filesystem::path pathValue(configuredPath);
-        if (pathValue.is_absolute())
-        {
-            return pathValue.lexically_normal();
-        }
-
-        return (projectRoot / pathValue).lexically_normal();
-    }
-
-    bool ProjectManager::LoadProjectDesc(const std::filesystem::path& descriptorPath,
-                                         ProjectDescriptor& outDesc,
-                                         std::string* outErrorMessage) const
-    {
-        if (outErrorMessage != nullptr)
-        {
-            outErrorMessage->clear();
-        }
-
-        std::ifstream inputFile(descriptorPath);
-        if (!inputFile.is_open())
-        {
-            if (outErrorMessage != nullptr)
-            {
-                *outErrorMessage = "Failed to open descriptor file.";
-            }
-            ME_CORE_ERROR("Failed to open project descriptor file '{}'", descriptorPath.string());
-            return false;
-        }
-
-        Json jsonDesc;
-        try
-        {
-            inputFile >> jsonDesc;
-        }
-        catch (const std::exception& e)
-        {
-            if (outErrorMessage != nullptr)
-            {
-                *outErrorMessage = std::string("Failed to parse descriptor JSON: ") + e.what();
-            }
-            ME_CORE_ERROR("Failed to parse project descriptor file '{}': {}", descriptorPath.string(), e.what());
-            return false;
-        }
-
-        if (!jsonDesc.is_object())
-        {
-            if (outErrorMessage != nullptr)
-            {
-                *outErrorMessage = "Descriptor JSON root must be an object.";
-            }
-            ME_CORE_ERROR("Invalid project descriptor json root for '{}': root is not an object.", descriptorPath.string());
-            return false;
-        }
-
-        const Json* descriptorNode = &jsonDesc;
-        if (jsonDesc.contains("projectData") && jsonDesc["projectData"].is_object())
-        {
-            descriptorNode = &jsonDesc["projectData"];
-        }
-
-        Serialization::SerializerOptions options = {
-            .enumAsString = true,
-            .strictTypeCheck = true,
-            .skipUnknownField = false,
-            .allowObjectPtrSerialization = true
-        };
-
-        Serialization::JsonReaderArchive archive(*descriptorNode);
-        Serialization::SerializeResult deserializeResult = Serialization::Serializer::Deserialize(
-            kProjectDescClassName,
-            &outDesc,
+        Serialization::JsonReaderArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+            descriptorPath.string(),
+            "minEngine::ProjectDescriptor",
+            &outDescriptor,
             archive,
-            options);
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = true,
+                .allowObjectPtrSerialization = false
+            });
 
-        if (!deserializeResult.ok)
+        if(!result.ok)
         {
-            if (outErrorMessage != nullptr)
-            {
-                *outErrorMessage = deserializeResult.message;
-            }
-            ME_CORE_ERROR("Failed to deserialize ProjectDescriptor from '{}': {}", descriptorPath.string(), deserializeResult.message);
-            return false;
+            ME_CORE_ERROR("Failed to load project descriptor. Error: {}. Field path: {}. Descriptor file: {}",
+                          result.message,
+                          result.fieldPath,
+                          descriptorPath.string());
         }
+        return result.ok;
+    }
 
-        return true;
+    bool ProjectManager::LoadProjectSettings(const std::filesystem::path &settingsPath, ProjectSettings &outSettings)
+    {
+        Serialization::JsonReaderArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+            settingsPath.string(),
+            "minEngine::ProjectSettings",
+            &outSettings,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = true,
+                .allowObjectPtrSerialization = false
+            });
+        if(!result.ok)
+        {
+            ME_CORE_ERROR("Failed to load project settings. Error: {}. Field path: {}. Settings file: {}",
+                          result.message,
+                          result.fieldPath,
+                          settingsPath.string());
+        }
+        return result.ok;
     }
 }

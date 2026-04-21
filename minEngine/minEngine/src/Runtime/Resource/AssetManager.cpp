@@ -1,6 +1,8 @@
 #include "AssetManager.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Core/Serialization/Serializer.h"
+#include "Runtime/Core/Serialization/JsonArchive.h"
 
 #include "stb_image.h"
 
@@ -8,11 +10,19 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
+#include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
+#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Resource/AssetResources/MaterialResource.h"
+#include "Runtime/Function/Render/Shader.h"
+#include "Runtime/Resource/AssetResources/ShaderResource.h"
+
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 
 #include "AssetMeta.h"
 
@@ -22,31 +32,6 @@
 
 namespace minEngine
 {
-    namespace
-    {
-        std::string ToLowerCopy(std::string value)
-        {
-            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
-            {
-                return static_cast<char>(std::tolower(c));
-            });
-            return value;
-        }
-
-        bool IsLikelySceneJson(const std::filesystem::path& path)
-        {
-            std::string fileName = ToLowerCopy(path.filename().string());
-            constexpr const char* suffix = ".scene.json";
-            constexpr size_t suffixLen = 11;
-            if (fileName.size() < suffixLen)
-            {
-                return false;
-            }
-
-            return fileName.compare(fileName.size() - suffixLen, suffixLen, suffix) == 0;
-        }
-    }
-
     AssetManager& AssetManager::Get()
     {
         return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_AssetManager;
@@ -59,26 +44,25 @@ namespace minEngine
     {
         m_AssetPathByGuid.clear();
         m_AssetRegistry.clear();
-        m_LoadedTexture2DCache.clear();
-        m_LoadedStaticMeshCache.clear();
+        m_LoadedAssetCache.clear();
     }
 
-    void AssetManager::ScanAssets(const std::string &directory)
+    // TODO: currently "directory" should be an absolute path, but maybe we should also support relative path and resolve it to absolute path internally 
+    void AssetManager::ScanAssets(const std::filesystem::path &directory)
     {
-        const std::filesystem::path rootPath = std::filesystem::absolute(std::filesystem::path(directory)).lexically_normal();
-        if (!std::filesystem::exists(rootPath))
+        if (!std::filesystem::exists(directory))
         {
-            ME_CORE_WARN("Skip scanning assets because directory does not exist: {}", rootPath.string());
+            ME_CORE_WARN("Skip scanning assets because directory does not exist: {}", directory.string());
             return;
         }
 
-        if (!std::filesystem::is_directory(rootPath))
+        if (!std::filesystem::is_directory(directory))
         {
-            ME_CORE_WARN("Skip scanning assets because path is not a directory: {}", rootPath.string());
+            ME_CORE_WARN("Skip scanning assets because path is not a directory: {}", directory.string());
             return;
         }
 
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(rootPath))
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
         {
             if (!entry.is_regular_file())
             {
@@ -92,28 +76,87 @@ namespace minEngine
                 continue;
             }
 
-            RegisterAsset(assetPath.string(), assetType);
+            AssetMeta meta = RegisterAsset(assetPath.string(), assetType);
+
+            // TODO: maybe later we should register different types of assets to different subsystems (e.g., register scene assets to scene manager
+            // If the asset is a scene, also register it to the scene manager
+            if (assetType == "Scene")
+            { 
+                SceneManager::Get().RegisterScene(meta.AssetName, meta.AssetPath);
+            }
         }
     }
 
-    void AssetManager::RegisterAsset(const std::string &path, const std::string &type)
+    AssetMeta AssetManager::RegisterAsset(const std::string &path, const std::string &type)
     {
         const std::string normalizedPath = NormalizeAssetPath(path);
         if (normalizedPath.empty())
         {
-            return;
+            return AssetMeta();
         }
 
         const bool alreadyRegistered = (m_AssetRegistry.find(normalizedPath) != m_AssetRegistry.end());
 
         std::filesystem::path assetPath(normalizedPath);
         const std::filesystem::path metaPath = BuildMetaPath(assetPath);
+        const std::string inferredAssetName = assetPath.stem().string();
+
+        const Serialization::SerializerOptions metaSerializerOptions{
+            .enumAsString = true,
+            .strictTypeCheck = true,
+            .skipUnknownField = true,
+            .allowObjectPtrSerialization = false
+        };
+
+        auto loadMetaFromFile = [&](AssetMeta& outMeta) -> bool
+        {
+            Serialization::JsonReaderArchive archive;
+            const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+                metaPath.string(),
+                "minEngine::AssetMeta",
+                &outMeta,
+                archive,
+                metaSerializerOptions);
+
+            if (!result.ok)
+            {
+                ME_CORE_WARN("Failed to deserialize asset meta. Error: {}. Field path: {}. Meta file: {}",
+                             result.message,
+                             result.fieldPath,
+                             metaPath.string());
+                return false;
+            }
+
+            return true;
+        };
+
+        auto saveMetaToFile = [&](const AssetMeta& inMeta) -> bool
+        {
+            Serialization::JsonWriterArchive archive;
+            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+                metaPath.string(),
+                "minEngine::AssetMeta",
+                &inMeta,
+                archive,
+                metaSerializerOptions);
+
+            if (!result.ok)
+            {
+                ME_CORE_WARN("Failed to serialize asset meta. Error: {}. Field path: {}. Meta file: {}",
+                             result.message,
+                             result.fieldPath,
+                             metaPath.string());
+                return false;
+            }
+
+            return true;
+        };
 
         AssetMeta meta;
         bool loadedExistingMeta = false;
         if (std::filesystem::exists(metaPath))
         {
-            loadedExistingMeta = LoadMetaFromDisk(metaPath, meta);
+            loadedExistingMeta = loadMetaFromFile(meta);
             if (!loadedExistingMeta)
             {
                 ME_CORE_WARN("Failed to parse asset meta, regenerate it: {}", metaPath.string());
@@ -122,11 +165,12 @@ namespace minEngine
 
         if (!loadedExistingMeta)
         {
+            meta.AssetName = inferredAssetName;
             meta.AssetPath = normalizedPath;
             meta.AssetType = type;
             meta.Guid = GenerateGUID();
 
-            if (!SaveMetaToDisk(metaPath, meta))
+            if (!saveMetaToFile(meta))
             {
                 ME_CORE_WARN("Failed to save new asset meta: {}", metaPath.string());
             }
@@ -134,6 +178,12 @@ namespace minEngine
         else
         {
             bool needsRewrite = false;
+            if (meta.AssetName.empty())
+            {
+                meta.AssetName = inferredAssetName;
+                needsRewrite = true;
+            }
+
             if (meta.AssetPath != normalizedPath)
             {
                 meta.AssetPath = normalizedPath;
@@ -152,7 +202,7 @@ namespace minEngine
                 needsRewrite = true;
             }
 
-            if (needsRewrite && !SaveMetaToDisk(metaPath, meta))
+            if (needsRewrite && !saveMetaToFile(meta))
             {
                 ME_CORE_WARN("Failed to rewrite asset meta: {}", metaPath.string());
             }
@@ -163,7 +213,7 @@ namespace minEngine
         {
             ME_CORE_WARN("GUID collision detected between '{}' and '{}'. Regenerating GUID for current asset.", guidIt->second, normalizedPath);
             meta.Guid = GenerateGUID();
-            if (!SaveMetaToDisk(metaPath, meta))
+            if (!saveMetaToFile(meta))
             {
                 ME_CORE_WARN("Failed to save regenerated GUID to asset meta: {}", metaPath.string());
             }
@@ -176,6 +226,82 @@ namespace minEngine
                      meta.AssetType,
                      meta.AssetPath,
                      meta.Guid.ToString());
+
+        return meta;
+    }
+
+    std::shared_ptr<void> AssetManager::LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage)
+    {
+        outErrorMessage.clear();
+
+        const AssetMeta* assetMeta = FindAssetMetaByGuid(guid);
+        if (assetMeta == nullptr)
+        {
+            outErrorMessage = "guid not found in object manager or asset registry";
+            return nullptr;
+        }
+
+        if(assetMeta->AssetType == "StaticMesh")
+        {
+            std::shared_ptr<StaticMesh> asset = LoadAsset_Impl<StaticMesh>(*assetMeta);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load static mesh by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<void>(asset);
+        }
+
+        if(assetMeta->AssetType == "Texture2D")
+        {
+            std::shared_ptr<Texture2D> asset = LoadAsset_Impl<Texture2D>(*assetMeta);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load texture2d by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<void>(asset);
+        }
+
+        if (assetMeta->AssetType == "Scene")
+        {
+            std::shared_ptr<Scene> asset = LoadAsset_Impl<Scene>(*assetMeta);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load scene by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<void>(asset);
+        }
+
+        if (assetMeta->AssetType == "Material")
+        {
+            std::shared_ptr<Material> asset = LoadAsset_Impl<Material>(*assetMeta);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load material by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<void>(asset);
+        }
+
+        if (assetMeta->AssetType == "Shader")
+        {
+            std::shared_ptr<Shader> asset = LoadAsset_Impl<Shader>(*assetMeta);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load shader by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<void>(asset);
+        }
+
+        outErrorMessage = "unsupported asset type '" + assetMeta->AssetType + "'";
+
+        return nullptr;
     }
 
     const AssetMeta* AssetManager::FindAssetMetaByPath(const std::string& path) const
@@ -207,61 +333,6 @@ namespace minEngine
         return &pathIter->second;
     }
 
-    std::shared_ptr<StaticMesh> AssetManager::LoadStaticMeshByMeta(const AssetMeta& meta)
-    {
-        if (meta.AssetType != "StaticMesh")
-        {
-            ME_CORE_WARN("Asset type mismatch. Expected StaticMesh but got '{}': {}", meta.AssetType, meta.AssetPath);
-            return nullptr;
-        }
-
-        std::shared_ptr<StaticMesh> mesh = LoadStaticMesh(meta.AssetPath);
-        if (mesh == nullptr)
-        {
-            return nullptr;
-        }
-
-        if (mesh->GetGuid() != meta.Guid)
-        {
-            mesh->SetGuid(meta.Guid);
-        }
-
-        return mesh;
-    }
-
-    std::shared_ptr<Texture2D> AssetManager::LoadTexture2DByMeta(const AssetMeta& meta, uint32_t unit)
-    {
-        if (meta.AssetType != "Texture2D")
-        {
-            ME_CORE_WARN("Asset type mismatch. Expected Texture2D but got '{}': {}", meta.AssetType, meta.AssetPath);
-            return nullptr;
-        }
-
-        return LoadTexture2D(meta.AssetPath, unit);
-    }
-
-    std::shared_ptr<StaticMesh> AssetManager::LoadStaticMeshByGuid(const GUID& guid)
-    {
-        const AssetMeta* meta = FindAssetMetaByGuid(guid);
-        if (meta == nullptr)
-        {
-            return nullptr;
-        }
-
-        return LoadStaticMeshByMeta(*meta);
-    }
-
-    std::shared_ptr<Texture2D> AssetManager::LoadTexture2DByGuid(const GUID& guid, uint32_t unit)
-    {
-        const AssetMeta* meta = FindAssetMetaByGuid(guid);
-        if (meta == nullptr)
-        {
-            return nullptr;
-        }
-
-        return LoadTexture2DByMeta(*meta, unit);
-    }
-
     std::string AssetManager::NormalizeAssetPath(const std::string& path) const
     {
         if (path.empty())
@@ -279,7 +350,7 @@ namespace minEngine
 
     std::string AssetManager::InferAssetType(const std::filesystem::path& path) const
     {
-        const std::string extension = ToLowerCopy(path.extension().string());
+        const std::string extension = path.extension().string();
         if (extension == ".png" || extension == ".jpg" || extension == ".jpeg")
         {
             return "Texture2D";
@@ -290,7 +361,17 @@ namespace minEngine
             return "StaticMesh";
         }
 
-        if (IsLikelySceneJson(path))
+        if (extension == ".memtl")
+        {
+            return "Material";
+        }
+
+        if(extension == ".meshader")
+        {
+            return "Shader";
+        }
+
+        if (extension == ".mescene")
         {
             return "Scene";
         }
@@ -301,69 +382,6 @@ namespace minEngine
     std::filesystem::path AssetManager::BuildMetaPath(const std::filesystem::path& assetPath) const
     {
         return std::filesystem::path(assetPath.string() + ".meta");
-    }
-
-    bool AssetManager::LoadMetaFromDisk(const std::filesystem::path& metaPath, AssetMeta& outMeta) const
-    {
-        std::ifstream input(metaPath);
-        if (!input.is_open())
-        {
-            return false;
-        }
-
-        Json metaJson;
-        try
-        {
-            input >> metaJson;
-        }
-        catch (const std::exception&)
-        {
-            return false;
-        }
-
-        if (!metaJson.is_object())
-        {
-            return false;
-        }
-
-        if (!metaJson.contains("assetPath") || !metaJson.contains("assetType") || !metaJson.contains("guid"))
-        {
-            return false;
-        }
-
-        const Json& guidJson = metaJson["guid"];
-        if (!guidJson.is_object() || !guidJson.contains("high") || !guidJson.contains("low"))
-        {
-            return false;
-        }
-
-        outMeta.AssetPath = metaJson["assetPath"].get<std::string>();
-        outMeta.AssetType = metaJson["assetType"].get<std::string>();
-        outMeta.Guid.High = guidJson["high"].get<uint64_t>();
-        outMeta.Guid.Low = guidJson["low"].get<uint64_t>();
-
-        return !outMeta.AssetPath.empty() && !outMeta.AssetType.empty();
-    }
-
-    bool AssetManager::SaveMetaToDisk(const std::filesystem::path& metaPath, const AssetMeta& meta) const
-    {
-        Json metaJson;
-        metaJson["version"] = 1;
-        metaJson["assetPath"] = meta.AssetPath;
-        metaJson["assetType"] = meta.AssetType;
-        metaJson["guid"] = {
-            {"high", meta.Guid.High},
-            {"low", meta.Guid.Low}
-        };
-
-        std::ofstream output(metaPath, std::ios::trunc);
-        if (!output.is_open())
-        {
-            return false;
-        }
-
-        output << metaJson.dump(4);
-        return output.good();
     }
 
     void AssetManager::CacheMeta(const AssetMeta& meta)
@@ -392,78 +410,47 @@ namespace minEngine
         stbi_image_free(data);
     }
 
-
-
-
-
-    std::shared_ptr<Texture2D> AssetManager::LoadTexture2D(const std::string &path, uint32_t unit)
+    template<>
+    std::shared_ptr<Scene> AssetManager::LoadAsset_Impl<Scene>(const AssetMeta& meta)
     {
-        const std::string cacheKey = path + "#" + std::to_string(unit);
-        auto cached = m_LoadedTexture2DCache.find(cacheKey);
-        if (cached != m_LoadedTexture2DCache.end())
-        {
-            return cached->second;
-        }
+        std::shared_ptr<Scene> scene = NewObject<Scene>(meta.AssetName, nullptr, meta.Guid);
+        scene->Reset();
+        scene->m_SceneName = meta.AssetName;
 
-        int width = 0;
-        int height = 0;
-        int channels = 0;
-        unsigned char* data = LoadImage(path, width, height, channels);
-        if (!data)
+        Serialization::JsonReaderArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+            meta.AssetPath,
+            "minEngine::Scene",
+            scene.get(),
+            archive,
+            Serialization::SerializerOptions {
+            .enumAsString = true,
+            .strictTypeCheck = true,
+            .skipUnknownField = false,
+            .allowObjectPtrSerialization = true
+        });
+
+        if (!result.ok)
         {
+            ObjectManager::Get().UnregisterObject(scene.get());
+            ME_CORE_ERROR("Failed to deserialize scene '{}'. Error: {}. Field path: {}",
+                          meta.AssetPath,
+                          result.message,
+                          result.fieldPath);
             return nullptr;
         }
 
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        if (!rhi)
-        {
-            FreeImage(data);
-            return nullptr;
-        }
+        scene->RebuildRuntimeGameObjectIndex();
 
-        auto texture = std::make_shared<Texture2D>();
-        texture->m_Width = static_cast<uint32_t>(width);
-        texture->m_Height = static_cast<uint32_t>(height);
-        texture->m_Channels = static_cast<uint32_t>(channels);
-        texture->m_RHITexture = rhi->CreateRHITexture2D(data, RHITextureDesc{
-            .Width = texture->m_Width,
-            .Height = texture->m_Height,
-            .Format = (channels == 4) ? TextureFormat::RGBA8 : TextureFormat::RGB8,
-            .Usage = TextureUsage::TextureBinding
-        }, static_cast<int>(unit));
-
-        FreeImage(data);
-
-        m_LoadedTexture2DCache[cacheKey] = texture;
-        return texture;
+        return scene;
     }
 
-    std::shared_ptr<StaticMesh> AssetManager::LoadStaticMesh(const std::string &path)
+    
+    template<>
+    std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta)
     {
-        const std::string normalizedPath = NormalizeAssetPath(path);
-        if (normalizedPath.empty())
-        {
-            return nullptr;
-        }
-
-        // Check if the static mesh has already been loaded
-        auto it = m_LoadedStaticMeshCache.find(normalizedPath);
-        if (it != m_LoadedStaticMeshCache.end())
-        {
-            if (const AssetMeta* meta = FindAssetMetaByPath(normalizedPath))
-            {
-                if (it->second != nullptr && it->second->GetGuid() != meta->Guid)
-                {
-                    it->second->SetGuid(meta->Guid);
-                }
-            }
-
-            // Mesh already loaded, return the cached version
-            return it->second;
-        }
-
-        auto outMesh = std::make_shared<StaticMesh>();
-        outMesh->m_Path = normalizedPath;
+        std::shared_ptr<StaticMesh> outMesh = NewObject<StaticMesh>(meta.AssetName);
+        outMesh->SetGuid(meta.Guid);
 
         struct Vertex
         {
@@ -474,14 +461,14 @@ namespace minEngine
 
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
-            normalizedPath,
+            meta.AssetPath.c_str(),
             aiProcess_Triangulate |
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
-            ME_CORE_ERROR("Assimp failed to load mesh: {}. Failure reason: {}", normalizedPath, importer.GetErrorString());
+            ME_CORE_ERROR("Assimp failed to load mesh: {}. Failure reason: {}", meta.AssetPath, importer.GetErrorString());
             return nullptr;
         }
         
@@ -502,13 +489,13 @@ namespace minEngine
                 aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
                 if (mesh == nullptr)
                 {
-                    ME_CORE_WARN("Assimp returned a null mesh pointer while loading '{}'.", normalizedPath);
+                    ME_CORE_WARN("Assimp returned a null mesh pointer while loading '{}'.", meta.AssetPath);
                     continue;
                 }
 
                 if (!mesh->HasPositions() || mesh->mVertices == nullptr)
                 {
-                    ME_CORE_WARN("Skip mesh without positions while loading '{}'.", normalizedPath);
+                    ME_CORE_WARN("Skip mesh without positions while loading '{}'.", meta.AssetPath);
                     continue;
                 }
 
@@ -580,7 +567,7 @@ namespace minEngine
                         if (face.mIndices[k] >= mesh->mNumVertices)
                         {
                             ME_CORE_WARN("Skip invalid face index while loading '{}'. meshVertexCount={}, index={}",
-                                         normalizedPath,
+                                         meta.AssetPath,
                                          mesh->mNumVertices,
                                          face.mIndices[k]);
                             continue;
@@ -645,12 +632,12 @@ namespace minEngine
                         }
                     }
 
-                    ME_CORE_WARN("Mesh '{}' has no normal data. Fallback normals were generated in AssetManager.", normalizedPath);
+                    ME_CORE_WARN("Mesh '{}' has no normal data. Fallback normals were generated in AssetManager.", meta.AssetPath);
                 }
 
                 if (!hasTexCoords)
                 {
-                    ME_CORE_WARN("Mesh '{}' has no UV data. Fallback planar UVs were generated in AssetManager.", normalizedPath);
+                    ME_CORE_WARN("Mesh '{}' has no UV data. Fallback planar UVs were generated in AssetManager.", meta.AssetPath);
                 }
 
                 // TODO: handle material loading later
@@ -672,7 +659,7 @@ namespace minEngine
 
         if (vertices.empty())
         {
-            ME_CORE_ERROR("Failed to load mesh '{}': no valid vertices were produced.", normalizedPath);
+            ME_CORE_ERROR("Failed to load mesh '{}': no valid vertices were produced.", meta.AssetPath);
             return nullptr;
         }
 
@@ -689,16 +676,151 @@ namespace minEngine
             });
         outMesh->m_IndexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size()));
         
-        if (const AssetMeta* meta = FindAssetMetaByPath(normalizedPath))
+        // TODO: Cache the loaded mesh in m_LoadedAssetCache
+        return outMesh;
+    }
+
+    template<>
+    std::shared_ptr<Texture2D> AssetManager::LoadAsset_Impl<Texture2D>(const AssetMeta& meta)
+    {
+        int width = 0;
+        int height = 0;
+        int channels = 0;
+        unsigned char* data = LoadImage(meta.AssetPath.c_str(), width, height, channels);
+        if (!data)
         {
-            if (outMesh->GetGuid() != meta->Guid)
+            return nullptr;
+        }
+
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (!rhi)
+        {
+            FreeImage(data);
+            return nullptr;
+        }
+
+        std::shared_ptr<Texture2D> texture = NewObject<Texture2D>(meta.AssetName);
+        texture->SetGuid(meta.Guid);
+
+        texture->m_Width = static_cast<uint32_t>(width);
+        texture->m_Height = static_cast<uint32_t>(height);
+        texture->m_Channels = static_cast<uint32_t>(channels);
+        texture->m_RHITexture = rhi->CreateRHITexture2D(data, RHITextureDesc{
+            .Width = texture->m_Width,
+            .Height = texture->m_Height,
+            .Format = (channels == 4) ? TextureFormat::RGBA8 : TextureFormat::RGB8,
+            .Usage = TextureUsage::TextureBinding
+        });
+
+        FreeImage(data);
+
+        return texture;
+    }
+
+    template<>
+    std::shared_ptr<Material> AssetManager::LoadAsset_Impl<Material>(const AssetMeta& meta)
+    {
+        MaterialResource resource;
+        Serialization::JsonReaderArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+            meta.AssetPath,
+            "minEngine::MaterialResource",
+            &resource,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = false,
+                .allowObjectPtrSerialization = true
+            });
+        if (!result.ok)
+        {
+            ME_CORE_ERROR("Failed to deserialize material resource '{}'. Error: {}. Field path: {}",
+                          meta.AssetPath,
+                          result.message,
+                          result.fieldPath);
+            return nullptr;
+        }
+        std::shared_ptr<Material> material = NewObject<Material>(meta.AssetName, nullptr, meta.Guid);
+        material->m_Shader = LoadAsset<Shader>(resource.m_ShaderPath);
+        material->m_Diffuse = resource.m_Diffuse;
+        return material;
+    }
+
+    template<>
+    std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta)
+    {
+        ShaderResource resource;
+        Serialization::JsonReaderArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+            meta.AssetPath,
+            "minEngine::ShaderResource",
+            &resource,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = false,
+                .allowObjectPtrSerialization = true
+            });
+        if (!result.ok)
+        {
+            ME_CORE_ERROR("Failed to deserialize shader resource '{}'. Error: {}. Field path: {}",
+                          meta.AssetPath,
+                          result.message,
+                          result.fieldPath);
+            return nullptr;
+        }
+        std::shared_ptr<Shader> shader = NewObject<Shader>(meta.AssetName, nullptr, meta.Guid);
+        shader->m_RHIShader = RenderSystem::Get().GetRHI()->CreateRHIShader(resource.m_VertexPath.c_str(), resource.m_FragmentPath.c_str());
+        return shader;
+    }
+
+
+    template<>
+    bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const
+    {
+        const std::filesystem::path scenePath(meta.AssetPath);
+        const std::filesystem::path parentPath = scenePath.parent_path();
+        if (!parentPath.empty())
+        {
+            std::error_code errorCode;
+            std::filesystem::create_directories(parentPath, errorCode);
+            if (errorCode)
             {
-                outMesh->SetGuid(meta->Guid);
+                ME_CORE_ERROR("Failed to create scene directory '{}'. Error: {}",
+                              parentPath.string(),
+                              errorCode.message());
+                return false;
             }
         }
 
-        // Cache the loaded static mesh
-        m_LoadedStaticMeshCache[normalizedPath] = outMesh;
-        return outMesh;
+        Serialization::JsonWriterArchive archive;
+        const Serialization::SerializerOptions options{
+            .enumAsString = true,
+            .strictTypeCheck = true,
+            .skipUnknownField = false,
+            .allowObjectPtrSerialization = true
+        };
+
+        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+            meta.AssetPath,
+            "minEngine::Scene",
+            &asset,
+            archive,
+            options);
+
+        if (!result.ok)
+        {
+            ME_CORE_ERROR("Failed to serialize scene '{}'. Error: {}. Field path: {}",
+                          meta.AssetPath,
+                          result.message,
+                          result.fieldPath);
+            return false;
+        }
+
+        return true;
     }
+
+    
 }

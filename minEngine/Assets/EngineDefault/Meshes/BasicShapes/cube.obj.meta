@@ -1,9 +1,9 @@
 {
-    "assetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Meshes/BasicShapes/cube.obj",
-    "assetType": "StaticMesh",
-    "guid": {
-        "high": 1865042588941501123,
-        "low": 11410891476629597177
-    },
-    "version": 1
+    "AssetName": "cube",
+    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Meshes/BasicShapes/cube.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 3261796229342842325,
+        "Low": 12919005764743737232
+    }
 }

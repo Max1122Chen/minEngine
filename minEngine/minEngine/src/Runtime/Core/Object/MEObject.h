@@ -30,6 +30,7 @@ namespace minEngine
 
         ME_PROPERTY()
         std::string m_Name;
+        ME_PROPERTY()
         GUID m_Guid;
         MEObject* m_Outer = nullptr;
     };

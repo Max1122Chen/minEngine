@@ -95,9 +95,8 @@ namespace minEngine
         }
     }
 
-    OpenGLTexture2D::OpenGLTexture2D(const unsigned char *data, RHITextureDesc desc, int unit)
+    OpenGLTexture2D::OpenGLTexture2D(const unsigned char *data, RHITextureDesc desc)
     {
-        m_Unit = unit;
         m_Desc = desc;
         glGenTextures(1, &m_ID);
         glActiveTexture(GL_TEXTURE0 + m_Unit);
@@ -139,8 +138,12 @@ namespace minEngine
     }
 
     // TODO: move these logic to material
-    void OpenGLTexture2D::Bind()
+    void OpenGLTexture2D::Bind(int unit)
     {
+        if(unit != m_Unit)
+        {
+            m_Unit = unit;
+        }
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D, m_ID);
     }
@@ -150,9 +153,8 @@ namespace minEngine
         glBindTexture(GL_TEXTURE_2D, 0);    
     }
 
-    OpenGLTextureCube::OpenGLTextureCube(const std::vector<unsigned char *> &faceData, RHITextureDesc desc, int unit)
+    OpenGLTextureCube::OpenGLTextureCube(const std::vector<unsigned char *> &faceData, RHITextureDesc desc)
     {
-        m_Unit = unit;
         m_Desc = desc;
         glGenTextures(1, &m_ID);
         glActiveTexture(GL_TEXTURE0 + m_Unit);
@@ -171,8 +173,12 @@ namespace minEngine
         }
     }
 
-    void OpenGLTextureCube::Bind()
+    void OpenGLTextureCube::Bind(int unit)
     {
+        if(unit != m_Unit)
+        {
+            m_Unit = unit;
+        }
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_ID);
     }
@@ -191,9 +197,8 @@ namespace minEngine
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     }
 
-    OpenGLTexture2DArray::OpenGLTexture2DArray(const unsigned char *data, RHITextureDesc desc, int unit)
+    OpenGLTexture2DArray::OpenGLTexture2DArray(const unsigned char *data, RHITextureDesc desc)
     {
-        m_Unit = unit;
         m_Desc = desc;
 
         uint32_t layerCount = (m_Desc.Layers == 0) ? 1 : m_Desc.Layers;
@@ -256,8 +261,12 @@ namespace minEngine
         }
     }
 
-    void OpenGLTexture2DArray::Bind()
+    void OpenGLTexture2DArray::Bind(int unit)
     {
+        if(unit != m_Unit)
+        {
+            m_Unit = unit;
+        }
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D_ARRAY, m_ID);
     }

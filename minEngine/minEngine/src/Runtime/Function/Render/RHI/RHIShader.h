@@ -1,10 +1,12 @@
 #pragma once
 #include "Core.h"
 #include "Core/Math/Math.h"
+#include "Runtime/Core/Object/MEObject.h"
 
 namespace minEngine
 {
-    class RHIShader
+    ME_CLASS()
+    class RHIShader : public MEObject
     {
     public:
         RHIShader() = default;
@@ -20,3 +22,6 @@ namespace minEngine
         virtual void BindUniformBlock(const std::string& blockName, uint32_t bindingPoint) = 0;
     };
 } 
+
+#include "RHIShader.gen.h"
+

@@ -1,0 +1,13 @@
+{
+    "m_Name": "SimpleMat",
+    "m_ShaderPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Shaders/Simple.meshader",
+    "m_Diffuse": {
+        "Value": [0.85, 0.72, 0.40, 1.00],
+        "Texture": {
+            "$guid": {
+                "high": 8033953010412506573,
+                "low": 13401631266206953859
+            }
+        }
+    }
+}

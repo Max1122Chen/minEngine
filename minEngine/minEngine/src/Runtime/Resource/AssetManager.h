@@ -1,17 +1,17 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
-#include "Runtime/Core/Serialization/Json.h"
 #include "AssetMeta.h"
-#include "SceneSerializer.h"
 
 #include <filesystem>
-#include <fstream>
 
 namespace minEngine
 {
+    class MEObject;
     class Texture2D;
     class StaticMesh;
+    class Material;
+    class Shader;
     class Scene;
 
     class AssetManager
@@ -26,69 +26,113 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
-        void ScanAssets(const std::string& directory);
-        void RegisterAsset(const std::string& path, const std::string& type);
+        void ScanAssets(const std::filesystem::path& directory);
+        AssetMeta RegisterAsset(const std::string& path, const std::string& type);
+
+        std::shared_ptr<void> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
 
         const AssetMeta* FindAssetMetaByPath(const std::string& path) const;
         const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
-
-        std::shared_ptr<StaticMesh> LoadStaticMeshByMeta(const AssetMeta& meta);
-        std::shared_ptr<Texture2D> LoadTexture2DByMeta(const AssetMeta& meta, uint32_t unit);
-
-        std::shared_ptr<StaticMesh> LoadStaticMeshByGuid(const GUID& guid);
-        std::shared_ptr<Texture2D> LoadTexture2DByGuid(const GUID& guid, uint32_t unit);
     
-        // Image loading using stb_image
-        unsigned char* LoadImage(const std::string& path, int& width, int& height, int& channels, bool bFlip = true);
-        void           FreeImage(unsigned char* data);
-
-        // Static mesh loading
-        std::shared_ptr<StaticMesh> LoadStaticMesh(const std::string& path);
-        std::shared_ptr<Texture2D> LoadTexture2D(const std::string& path, uint32_t unit);
-
-        std::shared_ptr<Scene> CreateNewScene(const std::string& sceneName);
-        std::shared_ptr<Scene> LoadScene(const std::string& sceneName);
-
         template<typename T>
-        bool LoadAsset(const std::string& path, T& asset) const
+        std::shared_ptr<T> LoadAsset(const std::string& path)
         {
-            return true;
+            // TODO: check the cache first before loading from disk, and populate the cache after loading
+            
+            // TODO: then check if the assetmeta exists and matches the expected type, to fail faster if the caller is trying to load an asset with the wrong type
+
+            const AssetMeta* meta = FindAssetMetaByPath(path);
+            if (meta == nullptr)
+            {
+                return nullptr;
+            }
+
+            return LoadAsset_Impl<T>(*meta);
         }
 
         template<typename T>
         bool SaveAsset(const std::string& path, const T& asset) const
         {
-            return true;
+            const AssetMeta* meta = FindAssetMetaByPath(path);
+            if (meta == nullptr)
+            {
+                return false;
+            }
+
+            return SaveAsset_Impl<T>(*meta, asset);
         }
         
+    private:
+        template<typename T>
+        struct AlwaysFalse
+        {
+            static constexpr bool value = false;
+        };
+
+        template<typename T>
+        std::shared_ptr<T> CreateAsset(const std::string& name, const std::string& directory)
+        {
+            static_assert(AlwaysFalse<T>::value, "CreateAsset<T> is not implemented for this type T");
+            (void)name;
+            (void)directory;
+            return nullptr;
+        }
+
+        template<typename T>
+        std::shared_ptr<T> RemoveAsset(const std::string& path)
+        {
+            static_assert(AlwaysFalse<T>::value, "RemoveAsset<T> is not implemented for this type T");
+            (void)path;
+            return nullptr;
+        }
+
+        template<typename T>
+        std::shared_ptr<T> LoadAsset_Impl(const AssetMeta& meta)
+        {
+            static_assert(AlwaysFalse<T>::value, "LoadAsset_Impl<T> is not implemented for this type T");
+            (void)meta;
+            return nullptr;
+        }
+
+        template<typename T>
+        bool SaveAsset_Impl(const AssetMeta& meta, const T& asset) const
+        {
+            static_assert(AlwaysFalse<T>::value, "SaveAsset_Impl<T> is not implemented for this type T");
+            (void)meta;
+            (void)asset;
+            return true;
+        }
+
+        // Image loading using stb_image
+        unsigned char* LoadImage(const std::string& path, int& width, int& height, int& channels, bool bFlip = true);
+        void           FreeImage(unsigned char* data);
+
     private:
         std::string NormalizeAssetPath(const std::string& path) const;
         std::string InferAssetType(const std::filesystem::path& path) const;
         std::filesystem::path BuildMetaPath(const std::filesystem::path& assetPath) const;
-        bool LoadMetaFromDisk(const std::filesystem::path& metaPath, AssetMeta& outMeta) const;
-        bool SaveMetaToDisk(const std::filesystem::path& metaPath, const AssetMeta& meta) const;
         void CacheMeta(const AssetMeta& meta);
 
         std::unordered_map<std::string, AssetMeta> m_AssetRegistry; // Maps asset paths to their metadata
         std::unordered_map<GUID, std::string, GUID::Hash> m_AssetPathByGuid;
 
-        std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_LoadedTexture2DCache;
-        std::unordered_map<std::string, std::shared_ptr<StaticMesh>> m_LoadedStaticMeshCache;
+        std::unordered_map<std::string, std::weak_ptr<MEObject>> m_LoadedAssetCache; // Generic cache for loaded assets by path
     };
-
-    template<>
-    inline bool AssetManager::LoadAsset<Scene>(const std::string& path, Scene& asset) const
-    {
-        std::filesystem::path assetPath(path);
-        return SceneSerializer::LoadScene(assetPath, asset);
-    }
-
-    template<>
-    inline bool AssetManager::SaveAsset<Scene>(const std::string& path, const Scene& asset) const
-    {
-        std::filesystem::path assetPath(path);
-        return SceneSerializer::SaveScene(assetPath, asset);
-    }
-
     
+    // Load Asset Impl specializations
+    template<>
+    std::shared_ptr<Scene> AssetManager::LoadAsset_Impl<Scene>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<Texture2D> AssetManager::LoadAsset_Impl<Texture2D>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<Material> AssetManager::LoadAsset_Impl<Material>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta);
+
+
+    // Save Asset Impl specializations
+    template<>
+    bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
 }

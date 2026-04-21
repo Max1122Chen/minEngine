@@ -101,9 +101,7 @@ namespace minEngine
 
             const float deltaTime = viewportClient.GetLastDeltaTime();
             const float fps = (deltaTime > 0.0001f) ? (1.0f / deltaTime) : 0.0f;
-            const std::string sceneName = m_Editor.GetCurrentScenePath().filename().string().empty()
-                ? std::string("Untitled")
-                : m_Editor.GetCurrentScenePath().filename().string();
+            const std::string sceneName = "TODO: get correct scene name later"; // TODO: implement getting current scene name logic later
 
             m_OverlayConfig.expandedSize = ImVec2(std::max(220.0f, std::min(420.0f, ImageSize.x * 0.46f)), 96.0f);
             UI::ClampOverlayOffset(m_OverlayState, m_OverlayConfig, ImageSize);

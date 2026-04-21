@@ -2,7 +2,8 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Resource/AssetManager.h"
-#include "Runtime/Resource/SceneSerializer.h"
+
+#include <filesystem>
 
 namespace minEngine
 {
@@ -15,6 +16,7 @@ namespace minEngine
     {
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
         m_CurrentActiveScene.reset();
+        m_RegisteredScenes.clear();
         m_RenderScene = nullptr;
     }
 
@@ -26,60 +28,92 @@ namespace minEngine
         }
     }
 
-    std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string& sceneName)
+    bool SceneManager::RegisterScene(const std::string &sceneName, const std::string &path)
     {
+        m_RegisteredScenes[sceneName] = path;
+        return true;
+    }
+
+    bool SceneManager::UnregisterScene(const std::string &sceneName)
+    {
+        auto it = m_RegisteredScenes.find(sceneName);
+        if (it != m_RegisteredScenes.end())
+        {
+            m_RegisteredScenes.erase(it);
+            return true;
+        }
+        return false;
+    }
+
+    std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string &sceneName)
+    {
+        // TODO: change this logic
         m_CurrentActiveScene = NewObject<Scene>();
-        m_CurrentActiveScene->sceneName = sceneName;
+        m_CurrentActiveScene->m_SceneName = sceneName;
         return m_CurrentActiveScene;
     }
 
     bool SceneManager::LoadScene(const std::string& sceneName)
     {
-        if (sceneName.empty())
+        if (m_RegisteredScenes.find(sceneName) == m_RegisteredScenes.end())
         {
             return false;
         }
-
-        std::shared_ptr<Scene> loadedScene = NewObject<Scene>();
-        if (!SceneSerializer::LoadScene(sceneName, *loadedScene))
-        {
-            return false;
-        }
-
-        if (loadedScene->sceneName.empty())
-        {
-            loadedScene->sceneName = sceneName;
-        }
-
-        m_CurrentActiveScene = std::move(loadedScene);
-        return true;
+        const std::string& path = m_RegisteredScenes[sceneName];
+        return LoadSceneByPath(path);
     }
 
-    bool SceneManager::SaveScene(const std::string& sceneName)
+    bool SceneManager::LoadSceneByPath(const std::string& path)
     {
-        if (!m_CurrentActiveScene)
+        std::shared_ptr<Scene> scene = AssetManager::Get().LoadAsset<Scene>(path);
+        if (scene)
+        {
+            m_CurrentActiveScene = scene;
+            // Mark all scene components for end of frame update to make sure the render scene gets updated with the new scene's data
+            for (const std::shared_ptr<GameObject>& gameObject : m_CurrentActiveScene->GetGameObjects())
+            {
+                if (gameObject)
+                {
+                    for (const std::shared_ptr<Component>& component : gameObject->GetComponents())
+                    {
+                        if (component)
+                        {
+                            MarkComponentForNeededEndOfFrameUpdate(component.get());
+                        }
+                        SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get());
+                        if(sceneComponent)
+                        {
+                            sceneComponent->MarkRenderStateDirty();
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    bool SceneManager::SaveCurrentScene()
+    {
+        if (!m_CurrentActiveScene || m_CurrentActiveScene->m_SceneName.empty())
         {
             return false;
         }
-
-        std::string outputPath = sceneName;
-        if (outputPath.empty())
-        {
-            outputPath = m_CurrentActiveScene->sceneName;
-        }
-
-        if (outputPath.empty())
+        if ( m_CurrentActiveScene->m_SceneName.empty())
         {
             return false;
         }
-
-        if (!SceneSerializer::SaveScene(outputPath, *m_CurrentActiveScene))
+        if (m_RegisteredScenes.find(m_CurrentActiveScene->m_SceneName) == m_RegisteredScenes.end())
         {
             return false;
         }
-
-        m_CurrentActiveScene->sceneName = outputPath;
-        return true;
+        const std::string& path = m_RegisteredScenes[m_CurrentActiveScene->m_SceneName];
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(path);
+        if (meta == nullptr || meta->AssetType != "Scene")
+        {
+            return false;
+        }
+        return AssetManager::Get().SaveAsset<Scene>(path, *m_CurrentActiveScene);
     }
 
     void SceneManager::MarkComponentForNeededEndOfFrameUpdate(Component *component)

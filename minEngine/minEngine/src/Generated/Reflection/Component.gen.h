@@ -4,9 +4,11 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Component)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Component, m_Owner)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_BEGIN(minEngine::Component)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MEObject)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::Component, m_Owner, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_END(minEngine::Component)

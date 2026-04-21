@@ -9,7 +9,7 @@ namespace minEngine
         // TODO: bind other textures (specular, normal, etc.) as needed
         if (m_Diffuse.Texture)
         {
-            m_Diffuse.Texture->GetRHITexture()->Bind();
+            m_Diffuse.Texture->GetRHITexture()->Bind(1); // Bind diffuse texture to texture unit 1
         }
     }
 }

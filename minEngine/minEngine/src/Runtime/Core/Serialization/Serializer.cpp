@@ -19,7 +19,6 @@ namespace minEngine::Serialization
     using minEngine::Reflection::ReflectionSystem;
 
     bool Serializer::m_IsHandlingPtr = false;
-    std::vector<Serializer::PendingObjectRef> Serializer::m_PendingObjectRefs;
 
     SerializeResult Serializer::Serialize(const std::string& rootClassName,
                                                    const void* rootObject,
@@ -43,6 +42,7 @@ namespace minEngine::Serialization
     SerializeResult Serializer::Deserialize(const std::string& rootClassName,
                                                      void* outRootObject,
                                                      ReaderArchive& archive,
+                                                     std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                      const SerializerOptions& options)
     {
         if (outRootObject == nullptr)
@@ -56,28 +56,28 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Deserialize failed: root class not found.", rootClassName);
         }
 
-        return DeserializeObjectInstance(rootClass, outRootObject, archive, options, rootClassName);
+        return DeserializeObjectInstance(rootClass, outRootObject, archive, outUnresolvedRefs, options, rootClassName);
     }
 
-    SerializeResult Serializer::ResolvePendingObjectRefs()
+    SerializeResult Serializer::ResolvePendingObjectRefs(std::vector<PendingObjectRef>& unresolvedRefs)
     {
-        if (m_PendingObjectRefs.empty())
+        if (unresolvedRefs.empty())
         {
             return SerializeResult::Success();
         }
 
-        std::vector<PendingObjectRef> unresolvedReferences;
-        unresolvedReferences.reserve(m_PendingObjectRefs.size());
+        std::vector<PendingObjectRef> remainingRefs;
+        remainingRefs.reserve(unresolvedRefs.size());
 
         size_t resolvedCount = 0;
-        for (const PendingObjectRef& pendingRef : m_PendingObjectRefs)
+        for (const PendingObjectRef& pendingRef : unresolvedRefs)
         {
             std::shared_ptr<void> resolvedSharedPtr;
             void* resolvedRawPtr = nullptr;
             std::string resolveError;
             if (!ResolvePendingObjectRef(pendingRef, resolvedSharedPtr, resolvedRawPtr, resolveError))
             {
-                unresolvedReferences.push_back(pendingRef);
+                remainingRefs.push_back(pendingRef);
                 ME_CORE_WARN("Pending object reference unresolved. path='{}', guid='{}', reason='{}'",
                              pendingRef.fieldPath,
                              pendingRef.refGuid.ToString(),
@@ -95,7 +95,7 @@ namespace minEngine::Serialization
             if (pendingRef.expectedClass == nullptr
                 || !pendingRef.expectedClass->SetSharedPtr(resolvedSharedPtr, pendingRef.ptrToPtr))
             {
-                unresolvedReferences.push_back(pendingRef);
+                remainingRefs.push_back(pendingRef);
                 ME_CORE_WARN("Pending object reference assignment failed. path='{}', guid='{}'",
                              pendingRef.fieldPath,
                              pendingRef.refGuid.ToString());
@@ -105,13 +105,13 @@ namespace minEngine::Serialization
             ++resolvedCount;
         }
 
-        m_PendingObjectRefs = std::move(unresolvedReferences);
+        unresolvedRefs = std::move(remainingRefs);
 
         ME_CORE_INFO("Pending object reference resolve pass finished. resolved={}, unresolved={}",
                      resolvedCount,
-                     m_PendingObjectRefs.size());
+                     unresolvedRefs.size());
 
-        if (!m_PendingObjectRefs.empty())
+        if (!unresolvedRefs.empty())
         {
             return SerializeResult::Failure("Resolve pending object references finished with unresolved entries.", "PendingObjectReferences");
         }
@@ -119,14 +119,74 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
-    void Serializer::ClearPendingObjectRefs()
+    SerializeResult Serializer::ToFile(const std::string& filePath,
+                                       const std::string& rootClassName,
+                                       const void* rootObject,
+                                       WriterArchive& archive,
+                                       const SerializerOptions& options)
     {
-        m_PendingObjectRefs.clear();
+        if (filePath.empty())
+        {
+            return SerializeResult::Failure("ToFile failed: filePath is empty.", rootClassName);
+        }
+
+        archive.ResetWriteState();
+
+        SerializeResult serializeResult = Serialize(rootClassName, rootObject, archive, options);
+        if (!serializeResult.ok)
+        {
+            return serializeResult;
+        }
+
+        if (!archive.WriteToFile(filePath))
+        {
+            std::string message = "ToFile failed: archive write failed.";
+            const std::string& archiveError = archive.GetLastArchiveError();
+            if (!archiveError.empty())
+            {
+                message += " reason: " + archiveError;
+            }
+
+            return SerializeResult::Failure(message, filePath);
+        }
+
+        return SerializeResult::Success();
     }
 
-    size_t Serializer::GetPendingObjectRefCount()
+    SerializeResult Serializer::FromFile(const std::string& filePath,
+                                         const std::string& rootClassName,
+                                         void* outRootObject,
+                                         ReaderArchive& archive,
+                                         const SerializerOptions& options)
     {
-        return m_PendingObjectRefs.size();
+        if (filePath.empty())
+        {
+            return SerializeResult::Failure("FromFile failed: filePath is empty.", rootClassName);
+        }
+
+        std::vector<PendingObjectRef> unresolvedRefs;
+        archive.ResetReadState();
+
+        if (!archive.ReadFromFile(filePath))
+        {
+            std::string message = "FromFile failed: archive read failed.";
+            const std::string& archiveError = archive.GetLastArchiveError();
+            if (!archiveError.empty())
+            {
+                message += " reason: " + archiveError;
+            }
+
+            return SerializeResult::Failure(message, filePath);
+        }
+
+        SerializeResult deserializeResult = Deserialize(rootClassName, outRootObject, archive, unresolvedRefs, options);
+        if (!deserializeResult.ok)
+        {
+            return deserializeResult;
+        }
+
+        SerializeResult resolveResult = ResolvePendingObjectRefs(unresolvedRefs);
+        return resolveResult;
     }
 
     // Private methods for serialization
@@ -141,7 +201,8 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Serialize class failed: object pointer is null.", path);
         }
 
-        if (!archive.BeginObject(classInfo->GetName()))
+        const std::string objectTypeName = options.writeObjectTypeName ? classInfo->GetName() : std::string();
+        if (!archive.BeginObject(objectTypeName))
         {
             return SerializeResult::Failure("Serialize class failed: BeginObject returned false.", path);
         }
@@ -449,6 +510,7 @@ namespace minEngine::Serialization
     SerializeResult Serializer::DeserializeObjectInstance(const MEClass* classInfo,
                                                           void* objectPtr,
                                                           ReaderArchive& archive,
+                                                          std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                           const SerializerOptions& options,
                                                           const std::string& path)
     {
@@ -463,7 +525,7 @@ namespace minEngine::Serialization
         }
 
         // Iterate the properties in hierarchy and deserialize each property.
-        SerializeResult iterationResult = DeserializeObject_IterateProps(classInfo, objectPtr, archive, options, path);
+        SerializeResult iterationResult = DeserializeObject_IterateProps(classInfo, objectPtr, archive, outUnresolvedRefs, options, path);
         if (!iterationResult.ok)
         {
             return iterationResult;
@@ -481,6 +543,7 @@ namespace minEngine::Serialization
                                                           void* outValuePtr,
                                                           void* ownerObjectPtr,
                                                           ReaderArchive& archive,
+                                                          std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                           const SerializerOptions& options,
                                                           const std::string& path)
     {
@@ -521,7 +584,7 @@ namespace minEngine::Serialization
                 return SerializeResult::Failure("Deserialize object failed: value class is unresolved.", path);
             }
 
-            return DeserializeObjectInstance(valueClass, outValuePtr, archive, options, path);
+            return DeserializeObjectInstance(valueClass, outValuePtr, archive, outUnresolvedRefs, options, path);
         }
         case MEPropertyCategory::ObjectPtr:
         {
@@ -539,7 +602,7 @@ namespace minEngine::Serialization
             }
 
             // outValuePtr actually serves as a pointer to pointer for object pointer property, we need to dereference it first to get the current pointer value.
-            return DeserializeObjectPtr(*objectPtrProperty, outValuePtr, ownerObjectPtr, archive, options, path);
+            return DeserializeObjectPtr(*objectPtrProperty, outValuePtr, ownerObjectPtr, archive, outUnresolvedRefs, options, path);
 
         }
         case MEPropertyCategory::Array:
@@ -580,6 +643,7 @@ namespace minEngine::Serialization
                                                                     elementPtr,
                                                                     ownerObjectPtr,
                                                                     archive,
+                                                                    outUnresolvedRefs,
                                                                     options,
                                                                     JoinPath(path, "[" + std::to_string(index) + "]"));
 
@@ -610,6 +674,7 @@ namespace minEngine::Serialization
                                                                                 void *ptrToPtr,
                                                                                 void* ownerObjectPtr,
                                                                                 ReaderArchive &archive, 
+                                                                                std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                                                 const SerializerOptions &options, 
                                                                                 const std::string &path)
     {
@@ -676,6 +741,7 @@ namespace minEngine::Serialization
                 }
             }
 
+            // Create the object shell first and then deserialize properties into it.
             std::shared_ptr<void> newObjectPtr = dynamicClassInfo->CreateInstance();
             if (newObjectPtr == nullptr)
             {
@@ -688,27 +754,11 @@ namespace minEngine::Serialization
             }
 
             void* objectPtr = newObjectPtr.get();
-            std::shared_ptr<MEObject> managedObject;
-            bool registeredManagedObject = false;
-            if (supportsMEObject)
-            {
-                MEObject* meObjectPtr = static_cast<MEObject*>(objectPtr);
-                meObjectPtr->SetClass(dynamicClassInfo);
-                meObjectPtr->SetOuter(static_cast<MEObject*>(ownerObjectPtr));
+            
 
-                managedObject = std::static_pointer_cast<MEObject>(newObjectPtr);
-                ObjectManager::Get().RegisterObject(managedObject);
-                registeredManagedObject = true;
-            }
-
-            SerializeResult iterationResult = DeserializeObject_IterateProps(dynamicClassInfo, objectPtr, archive, options, path);
+            SerializeResult iterationResult = DeserializeObject_IterateProps(dynamicClassInfo, objectPtr, archive, outUnresolvedRefs, options, path);
             if (!iterationResult.ok)
             {
-                if (registeredManagedObject)
-                {
-                    ObjectManager::Get().UnregisterObject(managedObject.get());
-                }
-
                 const bool closed = archive.EndObjectPtr();
                 if (!closed)
                 {
@@ -721,11 +771,6 @@ namespace minEngine::Serialization
             {
                 if (!supportsMEObject)
                 {
-                    if (registeredManagedObject)
-                    {
-                        ObjectManager::Get().UnregisterObject(managedObject.get());
-                    }
-
                     const bool closed = archive.EndObjectPtr();
                     if (!closed)
                     {
@@ -740,11 +785,6 @@ namespace minEngine::Serialization
             {
                 if (!classInfo->SetSharedPtr(newObjectPtr, ptrToPtr))
                 {
-                    if (registeredManagedObject)
-                    {
-                        ObjectManager::Get().UnregisterObject(managedObject.get());
-                    }
-
                     const bool closed = archive.EndObjectPtr();
                     if (!closed)
                     {
@@ -757,6 +797,18 @@ namespace minEngine::Serialization
             if (!archive.EndObjectPtr())
             {
                 return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false.", path);
+            }
+
+            // If everything goes well, register the new MEObject.
+            std::shared_ptr<MEObject> managedObject;
+            if (supportsMEObject)
+            {
+                MEObject* meObjectPtr = static_cast<MEObject*>(objectPtr);
+                meObjectPtr->SetClass(dynamicClassInfo);
+                meObjectPtr->SetOuter(static_cast<MEObject*>(ownerObjectPtr));
+
+                managedObject = std::static_pointer_cast<MEObject>(newObjectPtr);
+                ObjectManager::Get().RegisterObject(managedObject);
             }
 
             return SerializeResult::Success();
@@ -786,7 +838,7 @@ namespace minEngine::Serialization
         pendingRef.isRawPointer = (ptrCategory == MEObjectPtrCategory::Raw);
         pendingRef.expectsMEObject = supportsMEObject;
         pendingRef.fieldPath = path;
-        m_PendingObjectRefs.push_back(std::move(pendingRef));
+        outUnresolvedRefs.push_back(std::move(pendingRef));
 
         if (ptrCategory == MEObjectPtrCategory::Raw)
         {
@@ -816,6 +868,7 @@ namespace minEngine::Serialization
     SerializeResult Serializer::DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
                                                                void* objectPtr,
                                                                ReaderArchive& archive,
+                                                               std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                                const SerializerOptions& options,
                                                                const std::string& path)
     {
@@ -850,7 +903,7 @@ namespace minEngine::Serialization
                 return false;
             }
 
-            result = DeserializeProperty(property, valuePtr, objectPtr, archive, options, propertyPath);
+            result = DeserializeProperty(property, valuePtr, objectPtr, archive, outUnresolvedRefs, options, propertyPath);
             if (!result.ok)
             {
                 return false;
@@ -900,6 +953,7 @@ namespace minEngine::Serialization
             return false;
         }
 
+        // First try to find the referenced object in the object manager using the GUID.
         std::shared_ptr<MEObject> trackedObject = minEngine::FindObject(pendingRef.refGuid);
         if (trackedObject != nullptr)
         {
@@ -918,43 +972,25 @@ namespace minEngine::Serialization
             return true;
         }
 
-        const AssetMeta* assetMeta = AssetManager::Get().FindAssetMetaByGuid(pendingRef.refGuid);
-        if (assetMeta == nullptr)
+        // Then try to find the referenced asset in the asset registry using the GUID and load it.
+        return ResolvePendingAssetRef(pendingRef, outResolvedSharedPtr, outResolvedRawPtr, outErrorMessage);
+    }
+
+    bool Serializer::ResolvePendingAssetRef(const PendingObjectRef &pendingRef, std::shared_ptr<void> &outResolvedSharedPtr, void *&outResolvedRawPtr, std::string &outErrorMessage)
+    {
+        outResolvedSharedPtr = AssetManager::Get().LoadAssetByGUID(pendingRef.refGuid, outErrorMessage);
+        outResolvedRawPtr = outResolvedSharedPtr.get();
+
+        if (outResolvedSharedPtr == nullptr)
         {
-            outErrorMessage = "guid not found in object manager or asset registry";
+            if (outErrorMessage.empty())
+            {
+                outErrorMessage = "asset resolve returned null";
+            }
             return false;
         }
 
-        if (assetMeta->AssetType == "StaticMesh")
-        {
-            std::shared_ptr<StaticMesh> staticMesh = AssetManager::Get().LoadStaticMeshByMeta(*assetMeta);
-            if (staticMesh == nullptr)
-            {
-                outErrorMessage = "failed to load static mesh by guid";
-                return false;
-            }
-
-            outResolvedSharedPtr = std::static_pointer_cast<void>(staticMesh);
-            outResolvedRawPtr = staticMesh.get();
-            return true;
-        }
-
-        if (assetMeta->AssetType == "Texture2D")
-        {
-            std::shared_ptr<Texture2D> texture = AssetManager::Get().LoadTexture2DByMeta(*assetMeta, 0);
-            if (texture == nullptr)
-            {
-                outErrorMessage = "failed to load texture by guid";
-                return false;
-            }
-
-            outResolvedSharedPtr = std::static_pointer_cast<void>(texture);
-            outResolvedRawPtr = texture.get();
-            return true;
-        }
-
-        outErrorMessage = "unsupported asset type '" + assetMeta->AssetType + "'";
-        return false;
+        return true;
     }
 
     std::string Serializer::JoinPath(const std::string& basePath, const std::string& nextSegment)

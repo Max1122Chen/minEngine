@@ -36,6 +36,10 @@ namespace minEngine::Serialization
         bool WriteDouble(double value) override;
         bool WriteString(const std::string& value) override;
 
+        void ResetWriteState() override;
+        bool WriteToFile(const std::string& filePath) override;
+        const std::string& GetLastArchiveError() const override { return m_LastArchiveError; }
+
         const Json& GetRoot() const { return m_Root; };
         void ResetRoot() { m_Root = Json(); m_HasRoot = false; m_Stack.clear(); };
         Json&& MoveRoot() { return std::move(m_Root); };
@@ -53,15 +57,20 @@ namespace minEngine::Serialization
         Json m_Root;
         bool m_HasRoot = false;
         std::vector<WriteContext> m_Stack;
+        std::string m_LastArchiveError;
     };
 
     class MINENGINE_API JsonReaderArchive final : public ReaderArchive
     {
     public:
+        JsonReaderArchive() = default;
+
         explicit JsonReaderArchive(const Json& root)
-            : m_Root(root)
         {
+            BindRoot(root);
         }
+
+        void BindRoot(const Json& root);
 
         bool BeginObject(const minEngine::Reflection::MEClass* baseClassInfo) override;
         bool BeginObject(const std::string& expectedTypeName) override;
@@ -88,11 +97,17 @@ namespace minEngine::Serialization
         bool ReadDouble(double& outValue) override;
         bool ReadString(std::string& outValue) override;
 
+        void ResetReadState() override;
+        bool ReadFromFile(const std::string& filePath) override;
+        const std::string& GetLastArchiveError() const override { return m_LastArchiveError; }
+
     private:
         const Json* CurrentValue() const;
 
-        const Json& m_Root;
+        const Json* m_Root = nullptr;
+        Json m_OwnedRoot;
         std::vector<const Json*> m_ContextStack;
         std::vector<const Json*> m_ValueStack;
+        std::string m_LastArchiveError;
     };
 }

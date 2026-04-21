@@ -4,6 +4,7 @@
 
 namespace minEngine
 {
+    // TODO: do we really need these static Create functions in the buffer classes ? maybe we can just call the RHI's CreateBuffer functions directly without these wrapper functions, since they don't really add any abstraction or functionality on top of the RHI's CreateBuffer functions, and they just forward the parameters to the RHI's CreateBuffer functions. We can always add these wrapper functions later if we need them for some reason, but for now I think it's simpler to just call the RHI's CreateBuffer functions directly without these wrapper functions.
     // TODO: change these to RHICommand later ?
     std::shared_ptr<VertexBuffer> VertexBuffer::Create(float *vertices, uint32_t size, uint32_t numVertices)
     {

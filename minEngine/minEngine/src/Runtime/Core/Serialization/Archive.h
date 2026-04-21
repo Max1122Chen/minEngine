@@ -42,6 +42,10 @@ namespace minEngine::Serialization
         virtual bool WriteUInt64(uint64_t value) = 0;
         virtual bool WriteDouble(double value) = 0;
         virtual bool WriteString(const std::string& value) = 0;
+
+        virtual void ResetWriteState() = 0;
+        virtual bool WriteToFile(const std::string& filePath) = 0;
+        virtual const std::string& GetLastArchiveError() const = 0;
     };
 
     class MINENGINE_API ReaderArchive
@@ -73,5 +77,9 @@ namespace minEngine::Serialization
         virtual bool ReadUInt64(uint64_t& outValue) = 0;
         virtual bool ReadDouble(double& outValue) = 0;
         virtual bool ReadString(std::string& outValue) = 0;
+
+        virtual void ResetReadState() = 0;
+        virtual bool ReadFromFile(const std::string& filePath) = 0;
+        virtual const std::string& GetLastArchiveError() const = 0;
     };
 }

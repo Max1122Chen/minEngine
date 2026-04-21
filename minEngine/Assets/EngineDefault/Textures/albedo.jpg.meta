@@ -1,9 +1,9 @@
 {
-    "assetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Textures/albedo.jpg",
-    "assetType": "Texture2D",
-    "guid": {
-        "high": 13784935731574425138,
-        "low": 10390527090048195992
-    },
-    "version": 1
+    "AssetName": "albedo",
+    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Textures/albedo.jpg",
+    "AssetType": "Texture2D",
+    "Guid": {
+        "High": 9160804005867110789,
+        "Low": 12487764467558216504
+    }
 }

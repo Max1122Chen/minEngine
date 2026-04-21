@@ -109,8 +109,8 @@ namespace minEngine
                 .Usage = TextureUsage::DepthStencil
         };
 
-        m_SceneColorTexture = rhi->CreateRHITexture2D(nullptr, colorDesc, 0);
-        m_SceneDepthTexture = rhi->CreateRHITexture2D(nullptr, depthDesc, 0);
+        m_SceneColorTexture = rhi->CreateRHITexture2D(nullptr, colorDesc);
+        m_SceneDepthTexture = rhi->CreateRHITexture2D(nullptr, depthDesc);
 
         m_SceneBuffer->AttachColorBuffer(m_SceneColorTexture);
         m_SceneBuffer->AttachDepthStencilBuffer(m_SceneDepthTexture);

@@ -13,6 +13,7 @@
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 #include "Render/RHI/RHITexture.h"
+#include "Render/Shader.h"
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -53,20 +54,20 @@ namespace minEngine
                 continue;
             }
 
-            shader->Use();
+            shader->GetRHIShader()->Use();
             // shader->UploadUniformInt("u_DiffuseMap", 0);
 
-            shader->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
-            shader->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader
+            shader->GetRHIShader()->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
+            shader->GetRHIShader()->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader
 
             if(m_DirectionalShadowHandle.Valid && m_DirectionalShadowArray)
             {
-                m_DirectionalShadowArray->Bind(); // Bind shadow array to texture unit 8
-                shader->UploadUniformMat4("u_LightViewProj", m_DirectionalLightViewProj); // Upload the light view projection matrix for shadow mapping
+                m_DirectionalShadowArray->Bind(8); // Bind shadow array to texture unit 8
+                shader->GetRHIShader()->UploadUniformMat4("u_LightViewProj", m_DirectionalLightViewProj); // Upload the light view projection matrix for shadow mapping
             }
-            shader->UploadUniformInt("u_DirLightShadowMap", 8); // Bind the shadow map to texture unit 8 in the shader
-            
-            shader->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
+            shader->GetRHIShader()->UploadUniformInt("u_DirLightShadowMap", 8); // Bind the shadow map to texture unit 8 in the shader
+
+            shader->GetRHIShader()->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
             
 
             static_cast<OpenGLVertexArrayObject*>(drawCommand.m_VertexDefinition)->Bind();

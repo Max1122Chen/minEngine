@@ -21,6 +21,8 @@ namespace minEngine
         GUID() : High(0), Low(0) {}
         GUID(uint64_t high, uint64_t low) : High(high), Low(low) {}
 
+        static GUID Zero() { return GUID(0, 0); }
+
         bool IsZero() const
         {
             return High == 0 && Low == 0;

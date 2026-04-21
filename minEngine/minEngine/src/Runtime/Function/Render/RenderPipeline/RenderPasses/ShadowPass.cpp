@@ -14,7 +14,7 @@ namespace minEngine
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
 
-        m_DepthOnlyShader = rhi->CreateShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.frag");
+        m_DepthOnlyShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.frag");
     }
 
     void minEngine::ShadowPass::Execute()

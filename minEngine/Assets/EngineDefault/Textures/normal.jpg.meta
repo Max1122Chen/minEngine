@@ -1,9 +1,9 @@
 {
-    "assetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Textures/normal.jpg",
-    "assetType": "Texture2D",
-    "guid": {
-        "high": 11205835986309497905,
-        "low": 9717361555884417888
-    },
-    "version": 1
+    "AssetName": "normal",
+    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Textures/normal.jpg",
+    "AssetType": "Texture2D",
+    "Guid": {
+        "High": 237166801311256011,
+        "Low": 10388528746668448378
+    }
 }

@@ -36,14 +36,14 @@ namespace minEngine
         }
 
         template<typename T>
-        std::shared_ptr<T> NewObject(const std::string& name = "", MEObject* outer = nullptr)
+        std::shared_ptr<T> NewObject(const std::string& inName = "", MEObject* inOuter = nullptr, const GUID& inGuid = GenerateGUID())
         {
             static_assert(std::is_base_of_v<MEObject, T>, "T must be derived from MEObject");
             std::shared_ptr<T> newObj = std::make_shared<T>();
             newObj->SetClass(Reflection::ReflectionSystem::Get().FindClass<T>());
-            newObj->SetName(name);
-            newObj->SetGuid(GenerateGUID());
-            newObj->SetOuter(outer);
+            newObj->SetName(inName);
+            newObj->SetGuid(inGuid);
+            newObj->SetOuter(inOuter);
             RegisterObject(newObj);
             return newObj;
         }
@@ -57,9 +57,9 @@ namespace minEngine
 
     // Convenience static methods for global access
     template<typename T>
-    static std::shared_ptr<T> NewObject(const std::string& name = "", MEObject* outer = nullptr)
+    static std::shared_ptr<T> NewObject(const std::string& inName = "", MEObject* inOuter = nullptr, const GUID& inGuid = GenerateGUID())
     {
-        return ObjectManager::Get().NewObject<T>(name, outer);
+        return ObjectManager::Get().NewObject<T>(inName, inOuter, inGuid);
     }
 
     template<typename T>

@@ -94,7 +94,8 @@ namespace minEngine
         desc.Format = TextureFormat::DEPTH32;
         desc.Usage = TextureUsage::Depth;
 
-        auto newArray = m_RHI->CreateRHITexture2DArray(nullptr, desc, m_DirectionalConfig.TextureUnit);
+        // TODO: asign texture unit based on some allocation strategy if we support more shadow resources in the future.
+        auto newArray = m_RHI->CreateRHITexture2DArray(nullptr, desc);
         if (!newArray)
         {
             return false;

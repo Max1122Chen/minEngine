@@ -122,7 +122,7 @@ namespace minEngine::Reflection
                 return false;
             }
 
-            m_DeclaredNameByTypeIndex[std::type_index(typeid(T))] = classInfo->GetName();
+            m_DeclaredNameByTypeIndex[std::type_index(typeid(T*))] = classInfo->GetName();
             return true;
         }
 
@@ -191,7 +191,7 @@ namespace minEngine::Reflection
             }
 
             using RawSuperType = RemoveCvRefT<TSuper>;
-            m_PendingSuperClassRefs.push_back(PendingSuperClassRef{derivedClass, std::type_index(typeid(RawSuperType))});
+            m_PendingSuperClassRefs.push_back(PendingSuperClassRef{derivedClass, std::type_index(typeid(RawSuperType*))});
         }
 
         template<typename TReferenced>
@@ -203,7 +203,7 @@ namespace minEngine::Reflection
             }
 
             using RawReferencedType = RemoveCvRefT<TReferenced>;
-            m_PendingPropertyClassRefs.push_back(PendingPropertyClassRef{ownerClass, property, std::type_index(typeid(RawReferencedType))});
+            m_PendingPropertyClassRefs.push_back(PendingPropertyClassRef{ownerClass, property, std::type_index(typeid(RawReferencedType*))});
         }
 
         template<typename TOwner, typename TField>
@@ -314,7 +314,7 @@ namespace minEngine::Reflection
         template<typename T>
         const MEClass* FindClass() const
         {
-            auto iter = m_DeclaredNameByTypeIndex.find(std::type_index(typeid(T)));
+            auto iter = m_DeclaredNameByTypeIndex.find(std::type_index(typeid(T*)));
             if (iter == m_DeclaredNameByTypeIndex.end())
             {
                 return nullptr;
@@ -509,7 +509,7 @@ namespace minEngine::Reflection
                         property->SetPointingDataAccessors(
                         [](const void* ptrToPtr) -> const void*
                         {
-                            const PointeeType** typedPtrToPtr = static_cast<const PointeeType**>(ptrToPtr);
+                            PointeeType* const* typedPtrToPtr = static_cast<PointeeType* const*>(ptrToPtr);
                             return static_cast<const void*>(*typedPtrToPtr);
                         },
                         [](void* ptrToPtr) -> void*
@@ -872,7 +872,7 @@ namespace minEngine::Reflection
         std::vector<MEEnum*> m_OwnedEnums;
 
         std::unordered_map<std::string, MEClass*> m_ClassesByName;
-        std::unordered_map<std::type_index, std::string> m_DeclaredNameByTypeIndex;
+        std::unordered_map<std::type_index, std::string> m_DeclaredNameByTypeIndex;    // Use type_index(typeid(T*)) as key to avoid including the header of T when registering class info for T
 
         std::unordered_map<std::string, MEEnum*> m_EnumsByName;
         std::unordered_map<std::type_index, std::string> m_DeclaredEnumNameByTypeIndex;

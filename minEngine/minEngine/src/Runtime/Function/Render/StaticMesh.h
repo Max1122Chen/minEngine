@@ -34,8 +34,7 @@ namespace minEngine
                    std::initializer_list<VertexElement> elements,
                    uint32_t* indices, uint32_t numIndices);
         ~StaticMesh() = default;
-
-        std::string m_Path;
+        
         std::shared_ptr<VertexBuffer> m_VertexBuffer = nullptr;
         std::shared_ptr<VertexDefinition> m_VertexDefinition = nullptr;
         std::shared_ptr<IndexBuffer> m_IndexBuffer = nullptr;

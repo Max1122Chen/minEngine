@@ -12,6 +12,7 @@
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
+#include "Render/Shader.h"
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -56,13 +57,13 @@ namespace minEngine
                 continue;
             }
 
-            shader->Use();
-            shader->UploadUniformInt("u_DiffuseMap", 0);
+            shader->GetRHIShader()->Use();
+            shader->GetRHIShader()->UploadUniformInt("u_DiffuseMap", 0);
 
-            shader->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
-            shader->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader
+            shader->GetRHIShader()->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
+            shader->GetRHIShader()->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader
 
-            shader->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
+            shader->GetRHIShader()->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
 
 
             static_cast<OpenGLVertexArrayObject*>(drawCommand.m_VertexDefinition)->Bind();

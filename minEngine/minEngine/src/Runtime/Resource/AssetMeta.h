@@ -10,13 +10,17 @@ namespace minEngine
         ME_REFLECTION_FRIEND(AssetMeta)
 
         ME_PROPERTY()
+        std::string AssetName;
+
+        ME_PROPERTY()
         std::string AssetPath;
 
         ME_PROPERTY()
         std::string AssetType; // e.g., "Texture2D", "StaticMesh", "Scene"
         
+        ME_PROPERTY()
         GUID Guid;
     };
 }
 
-#include "Generated/Reflection/AssetMeta.gen.h"
+#include "AssetMeta.gen.h"

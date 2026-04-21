@@ -19,6 +19,7 @@ namespace minEngine
     ME_CLASS()
     class Component : public MEObject
     {
+        ME_REFLECTION_FRIEND(Component)
     public:
         Component();
         virtual ~Component() = default;
@@ -36,6 +37,7 @@ namespace minEngine
         virtual void DoEndOfFrameUpdate() {}
     
     protected:
+        ME_PROPERTY()
         GameObject* m_Owner{ nullptr };
         bool m_bCanEverTick{ true };
         ComponentMarkedForNeededEndOfFrameUpdate m_MarkedForNeededEndOfFrameUpdate{ Unmarked };

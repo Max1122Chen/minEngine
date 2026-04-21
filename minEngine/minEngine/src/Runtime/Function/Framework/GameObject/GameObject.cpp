@@ -5,44 +5,56 @@ namespace minEngine
     GameObject::GameObject()
     {}
 
-    const Transform &GameObject::GetTransform()
+    Transform GameObject::GetTransform()
     {
-        return m_RootComponent->GetTransform();
+        return m_RootComponent ? m_RootComponent->GetTransform() : Transform();
     }
 
     void GameObject::SetTransform(const Transform &inTransform)
     {
-        m_RootComponent->SetTransform(inTransform);
+        if (m_RootComponent)
+        {
+            m_RootComponent->SetTransform(inTransform);
+        }
     }
 
-    const Vector3 &GameObject::GetPosition()
+    Vector3 GameObject::GetPosition()
     {
-        return m_RootComponent->GetPosition();
+        return m_RootComponent ? m_RootComponent->GetPosition() : Vector3();
     }
 
     void GameObject::SetPosition(const Vector3 &position)
     {
-        m_RootComponent->SetPosition(position);
+        if (m_RootComponent)
+        {
+            m_RootComponent->SetPosition(position);
+        }
     }
 
-    const Vector3 &GameObject::GetRotation()
+    Vector3 GameObject::GetRotation()
     {
-        return m_RootComponent->GetRotation();
+        return m_RootComponent ? m_RootComponent->GetRotation() : Vector3();
     }
 
     void GameObject::SetRotation(const Vector3 &rotation)
     {
-        m_RootComponent->SetRotation(rotation);
+        if (m_RootComponent)
+        {
+            m_RootComponent->SetRotation(rotation);
+        }
     }
 
-    const Vector3 &GameObject::GetScale()
+    Vector3 GameObject::GetScale()
     {
-        return m_RootComponent->GetScale();
+        return m_RootComponent ? m_RootComponent->GetScale() : Vector3();
     }
 
     void GameObject::SetScale(const Vector3 &scale)
     {
-        m_RootComponent->SetScale(scale);
+        if (m_RootComponent)
+        {
+            m_RootComponent->SetScale(scale);
+        }
     }
 
     void GameObject::Tick(float deltaTime)

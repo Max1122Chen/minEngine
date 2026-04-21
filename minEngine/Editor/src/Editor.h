@@ -26,20 +26,10 @@ namespace minEngine
         void Shutdown() override;
         void Run() override;
 
-        EditorGUIManager& GetGUIManager()
-        {
-            return m_EditorGUIManager;
-        }
+        EditorGUIManager& GetGUIManager() { return m_EditorGUIManager; }
+        const EditorGUIManager& GetGUIManager() const { return m_EditorGUIManager; }
 
-        const EditorGUIManager& GetGUIManager() const
-        {
-            return m_EditorGUIManager;
-        }
-
-        void RequestExit()
-        {
-            m_ExitRequested = true;
-        }
+        void RequestExit(){ m_ExitRequested = true; }
 
         Scene* GetActiveScene() const;
         std::vector<GameObject*> GetHierarchyGameObjects() const;
@@ -53,16 +43,10 @@ namespace minEngine
         std::vector<std::string> GetAllComponentTypeNames() const;
         bool AddComponentToSelectedGameObject(const std::string& componentTypeName);
 
-        void MarkSceneDirty();
-        void ClearSceneDirty();
+        void MarkSceneDirty() { m_SceneDirty = true; }
+        void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }
 
-        bool CreateNewScene(const std::string& scenePath);
-        bool OpenScene(const std::string& scenePath);
-        bool SaveCurrentScene();
-        bool SaveCurrentSceneAs(const std::filesystem::path& filePath);
-
-        std::filesystem::path GetCurrentScenePath() const;
         void SyncSelectionWithScene();
 
         EditorViewportClient& GetOrCreateViewportClient(const std::string& viewportId,
@@ -79,6 +63,8 @@ namespace minEngine
 
         bool dockLayoutInitialized = false;
         bool requestResetLayout = false;
+
+    private:
 
     private:
         Engine* m_Engine = nullptr;

@@ -17,6 +17,17 @@ namespace minEngine::Reflection
 
 namespace minEngine::Serialization
 {
+    struct PendingObjectRef
+    {
+        void* ptrToPtr = nullptr;
+        void* ownerObjectPtr = nullptr;
+        GUID refGuid;
+        const minEngine::Reflection::MEClass* expectedClass = nullptr;
+        bool isRawPointer = false;
+        bool expectsMEObject = false;
+        std::string fieldPath;
+    };
+
     class MINENGINE_API Serializer
     {
     public:
@@ -28,26 +39,24 @@ namespace minEngine::Serialization
         static SerializeResult Deserialize(const std::string& rootClassName,
                                            void* outRootObject,
                                            ReaderArchive& archive,
+                                           std::vector<PendingObjectRef>& outUnresolvedRefs,
                                            const SerializerOptions& options = SerializerOptions{});
 
         // Resolve GUID-based object references captured during deserialization.
         // This should be called manually after a load unit (scene/material/etc.) finishes.
-        static SerializeResult ResolvePendingObjectRefs();
-        static void ClearPendingObjectRefs();
-        static size_t GetPendingObjectRefCount();
+        static SerializeResult ResolvePendingObjectRefs(std::vector<PendingObjectRef>& unresolvedRefs);
 
+        static SerializeResult ToFile(const std::string& filePath,
+                          const std::string& rootClassName,
+                          const void* rootObject,
+                          WriterArchive& archive,
+                          const SerializerOptions& options = SerializerOptions{});
+        static SerializeResult FromFile(const std::string& filePath,
+                        const std::string& rootClassName,
+                        void* outRootObject,
+                        ReaderArchive& archive,
+                        const SerializerOptions& options = SerializerOptions{});
     private:
-        struct PendingObjectRef
-        {
-            void* ptrToPtr = nullptr;
-            void* ownerObjectPtr = nullptr;
-            GUID refGuid;
-            const minEngine::Reflection::MEClass* expectedClass = nullptr;
-            bool isRawPointer = false;
-            bool expectsMEObject = false;
-            std::string fieldPath;
-        };
-
         static SerializeResult SerializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                               const void* objectPtr,
                                               WriterArchive& archive,
@@ -77,6 +86,7 @@ namespace minEngine::Serialization
         static SerializeResult DeserializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                                 void* objectPtr,
                                                 ReaderArchive& archive,
+                                                std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                 const SerializerOptions& options,
                                                 const std::string& path);
 
@@ -84,6 +94,7 @@ namespace minEngine::Serialization
                                                    void* outValuePtr,
                                                    void* ownerObjectPtr,
                                                    ReaderArchive& archive,
+                                                   std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                    const SerializerOptions& options,
                                                    const std::string& path);
 
@@ -91,16 +102,23 @@ namespace minEngine::Serialization
                                                    void* ptrToPtr,
                                                    void* ownerObjectPtr,
                                                    ReaderArchive& archive,
+                                                   std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                    const SerializerOptions& options,
                                                    const std::string& path);
 
         static SerializeResult DeserializeObject_IterateProps(const minEngine::Reflection::MEClass* classInfo,
                                                 void* objectPtr,
                                                 ReaderArchive& archive,
+                                                std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                 const SerializerOptions& options,
                                                 const std::string& path);
 
         static bool ResolvePendingObjectRef(const PendingObjectRef& pendingRef,
+                                std::shared_ptr<void>& outResolvedSharedPtr,
+                                void*& outResolvedRawPtr,
+                                std::string& outErrorMessage);
+
+        static bool ResolvePendingAssetRef(const PendingObjectRef& pendingRef,
                                 std::shared_ptr<void>& outResolvedSharedPtr,
                                 void*& outResolvedRawPtr,
                                 std::string& outErrorMessage);
@@ -120,6 +138,5 @@ namespace minEngine::Serialization
             m_IsHandlingPtr = handling;
         }
         static bool m_IsHandlingPtr;
-        static std::vector<PendingObjectRef> m_PendingObjectRefs;
     };
 }

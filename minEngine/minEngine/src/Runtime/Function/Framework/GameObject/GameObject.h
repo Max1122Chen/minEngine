@@ -26,16 +26,16 @@ namespace minEngine
         uint64_t GetID() const { return m_ID; }
         void SetID(uint64_t id) { m_ID = id; }
 
-        const Transform& GetTransform();
+        Transform GetTransform();
         void SetTransform(const Transform& inTransform);
 
-        const Vector3& GetPosition();
+        Vector3 GetPosition();
         void SetPosition(const Vector3& position);
 
-        const Vector3& GetRotation();
+        Vector3 GetRotation();
         void SetRotation(const Vector3& rotation);
 
-        const Vector3& GetScale();
+        Vector3 GetScale();
         void SetScale(const Vector3& scale);
 
     

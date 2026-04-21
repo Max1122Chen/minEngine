@@ -1,30 +1,42 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Function/Render/Shader.h"
 
 namespace minEngine
 {
-    class RHIShader;
+    class Shader;
 
+    ME_STRUCT()
     struct MaterialParameters
     {
+        ME_REFLECTION_FRIEND(MaterialParameters)
+
+        ME_PROPERTY()
         Vector4 Value{ 1.0f, 1.0f, 1.0f, 1.0f };
+        ME_PROPERTY()
         std::shared_ptr<Texture2D> Texture{ nullptr };
     };
 
-    class Material
+    ME_CLASS()
+    class Material : public MEObject
     {
+        ME_REFLECTION_FRIEND(Material)
     public:
         Material() = default;
         virtual ~Material() = default;
 
         virtual void BindTextures() const;
 
-        std::shared_ptr<RHIShader> m_Shader;
-
+        ME_PROPERTY()
+        std::shared_ptr<Shader> m_Shader;
+        ME_PROPERTY()
         MaterialParameters m_Diffuse;
+        ME_PROPERTY()
         MaterialParameters m_Specular;
+        ME_PROPERTY()
         MaterialParameters m_Normal;
         
         bool IsTranslucent() const
@@ -34,3 +46,5 @@ namespace minEngine
         }
     };
 }
+
+#include "Material.gen.h"

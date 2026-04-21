@@ -32,7 +32,7 @@ namespace minEngine
             { "a_TexCoord", VertexElementType::Float2, false }
         });
 
-        m_ScreenQuadShader = rhi->CreateShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.frag");
+        m_ScreenQuadShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.frag");
 
     }
 
@@ -59,7 +59,7 @@ namespace minEngine
         rhi->DisableBlend();
 
         m_ScreenQuadVertexDefinition->Bind();
-        m_SceneColorTexture->Bind();
+        m_SceneColorTexture->Bind(0); // Bind the scene color texture to texture unit 0
 
         m_ScreenQuadShader->Use();
         m_ScreenQuadShader->UploadUniformInt("u_SceneColor", 0);

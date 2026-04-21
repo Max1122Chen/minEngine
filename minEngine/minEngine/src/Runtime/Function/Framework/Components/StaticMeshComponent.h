@@ -28,6 +28,7 @@ namespace minEngine
     private:
         ME_PROPERTY()
         std::shared_ptr<StaticMesh> m_Mesh{ nullptr };
+        ME_PROPERTY()
         std::shared_ptr<Material> m_Material{ nullptr };
     };
 }

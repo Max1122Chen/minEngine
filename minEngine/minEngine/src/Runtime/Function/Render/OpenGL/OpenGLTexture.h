@@ -9,13 +9,12 @@ namespace minEngine
     public:
 
         // TODO: Add other texture creation methods (from memory, from data, etc.)
-        OpenGLTexture2D(const unsigned char* data, RHITextureDesc desc, int unit = 0);
-        OpenGLTexture2D(const std::string& path, int unit = 0);
+        OpenGLTexture2D(const unsigned char* data, RHITextureDesc desc);
 
         OpenGLTexture2D() = default;
         virtual ~OpenGLTexture2D() override;
 
-        virtual void Bind() override;
+        virtual void Bind(int unit) override;
         virtual void Unbind() override;
 
     private:
@@ -24,22 +23,22 @@ namespace minEngine
     class OpenGLTextureCube : public RHITextureCube
     {
     public:
-        OpenGLTextureCube(const std::vector<unsigned char*>& faceData, RHITextureDesc desc, int unit = 0);
+        OpenGLTextureCube(const std::vector<unsigned char*>& faceData, RHITextureDesc desc);
         OpenGLTextureCube() = default;
         virtual ~OpenGLTextureCube() override;
 
-        virtual void Bind() override;
+        virtual void Bind(int unit) override;
         virtual void Unbind() override;
     };
 
     class OpenGLTexture2DArray : public RHITexture2DArray
     {
     public:
-        OpenGLTexture2DArray(const unsigned char* data, RHITextureDesc desc, int unit = 0);
+        OpenGLTexture2DArray(const unsigned char* data, RHITextureDesc desc);
         OpenGLTexture2DArray() = default;
         virtual ~OpenGLTexture2DArray() override;
 
-        virtual void Bind() override;
+        virtual void Bind(int unit) override;
         virtual void Unbind() override;
     };
 }

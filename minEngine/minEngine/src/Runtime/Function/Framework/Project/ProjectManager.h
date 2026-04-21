@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "ProjectDescriptor.h"
+#include "ProjectSettings.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -14,10 +15,10 @@ namespace minEngine
     enum class ProjectOpenStatus : uint8_t
     {
         Success = 0,
-        InvalidProjectRoot,
-        DescriptorNotFound,
-        InvalidDescriptor,
-        NotImplemented,
+        PathNotFound,           // The specified path does not exist
+        DescriptorNotFound,     // No project descriptor file found at the specified path
+        WrongDescriptorExtension,  // Project descriptor file has wrong extension
+        InvalidDescriptor,      // Project descriptor file is found but failed to parse or has invalid content
     };
 
     struct ProjectOpenResult
@@ -27,7 +28,7 @@ namespace minEngine
             : Status(inStatus), Message(std::move(inMessage))
         {
         }
-        ProjectOpenStatus Status = ProjectOpenStatus::NotImplemented;
+        ProjectOpenStatus Status = ProjectOpenStatus::InvalidDescriptor;
         std::string Message;
 
         bool IsSuccess() const
@@ -38,21 +39,13 @@ namespace minEngine
 
     struct ProjectContext
     {
-        bool IsOpened = false;
-        std::filesystem::path ProjectRoot;
-        std::filesystem::path ProjectFile;
         ProjectDescriptor Descriptor;
-        std::filesystem::path ResolvedEditorStartupScene;
-        std::vector<std::string> Diagnostics;
+        ProjectSettings Settings;
 
         void Reset()
         {
-            IsOpened = false;
-            ProjectRoot.clear();
-            ProjectFile.clear();
             Descriptor = ProjectDescriptor{};
-            ResolvedEditorStartupScene.clear();
-            Diagnostics.clear();
+            Settings = ProjectSettings{};
         }
     };
 
@@ -67,30 +60,18 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
-        ProjectOpenResult OpenProject(const std::filesystem::path& projectRoot);
-        void CloseProject();
-
-        bool HasOpenProject() const { return m_CurrentProject.IsOpened; }
-        const ProjectContext& GetCurrentProject() const { return m_CurrentProject; }
-
-        std::filesystem::path ResolveEditorStartupScenePath() const;
-        const std::filesystem::path& GetEngineDefaultScenePath() const { return m_EngineDefaultScenePath; }
-
-        bool IsLikelyProjectRoot(const std::filesystem::path& projectRoot) const;
-        std::filesystem::path BuildProjectDescPath(const std::filesystem::path& projectRoot) const;
-
-    public:
-        static constexpr const char* kProjectDescriptorExtension = ".meproject";
-        static constexpr const char* kAssetMetadataExtension = ".measset";
-        static constexpr const char* kDefaultProjectDescriptorFileName = "Project.meproject";
+        const ProjectContext& GetCurrentProjectCtx() { return m_CurrentProjectCtx; }
+        ProjectOpenResult OpenProject(const std::filesystem::path& projectRoot);    // TODO: currently we only accept absolute path, e.g. C:/Projects/MyProject, but maybe we should also support relative path like ./MyProject or MyProject, and we can resolve them to absolute path internally
+        void CloseCurrentProject();
 
     private:
-        std::filesystem::path ResolveProjectPath(const std::filesystem::path& projectRoot, const std::string& configuredPath) const;
-        bool LoadProjectDesc(const std::filesystem::path& descriptorPath, ProjectDescriptor& outDescriptor, std::string* outErrorMessage) const;
+        bool LoadProjectDesc(const std::filesystem::path& descriptorPath, ProjectDescriptor& outDescriptor);
+        bool LoadProjectSettings(const std::filesystem::path& settingsPath, ProjectSettings& outSettings);
+
 
     private:
-        static constexpr const char* kProjectDescClassName = "minEngine::ProjectDescriptor";
-        ProjectContext m_CurrentProject;
-        std::filesystem::path m_EngineDefaultScenePath{"Assets/Scenes/EditorDefault.scene.json"};
+        static constexpr const char* kMEProjectExtension = ".meproject";
+        static constexpr const char* kMEProjectSettingsExtension = ".mesettings";
+        ProjectContext m_CurrentProjectCtx;
     };
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Core/Object/MEObject.h"
 
 namespace minEngine
 {
@@ -27,8 +28,10 @@ namespace minEngine
         LinearMipmapLinear
     };
 
-    class Texture2D
+    ME_CLASS()
+    class Texture2D : public MEObject
     {
+        ME_REFLECTION_FRIEND(Texture2D)
     public:
         Texture2D() = default;
 
@@ -56,9 +59,6 @@ namespace minEngine
     {
     public:
         TextureCube() = default;
-        TextureCube(const std::vector<std::string>& facePaths, uint32_t unit,
-                    TextureWrapping wrapping = TextureWrapping::ClampToEdge,
-                    TextureFiltering filtering = TextureFiltering::Linear);
 
         virtual ~TextureCube() = default;
 
@@ -76,3 +76,5 @@ namespace minEngine
     };
 
 }
+
+#include "Texture.gen.h"

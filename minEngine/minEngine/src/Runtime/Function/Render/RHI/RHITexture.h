@@ -48,12 +48,12 @@ namespace minEngine
         const TextureFormat GetFormat() const { return m_Desc.Format; }
         const TextureUsage GetUsage() const { return m_Desc.Usage; }
 
-        virtual void Bind() = 0;
+        virtual void Bind(int unit) = 0;
         virtual void Unbind() = 0;
 
     protected:
-        uint32_t m_ID;
-        int m_Unit;
+        uint32_t m_ID { 0 };
+        int m_Unit { 0 };
         RHITextureDesc m_Desc;
 
     };
@@ -72,12 +72,12 @@ namespace minEngine
         const TextureFormat GetFormat() const { return m_Desc.Format; }
         const TextureUsage GetUsage() const { return m_Desc.Usage; }
 
-        virtual void Bind() = 0;
+        virtual void Bind(int unit) = 0;
         virtual void Unbind() = 0;
 
     protected:
-        uint32_t m_ID;
-        int m_Unit;
+        uint32_t m_ID { 0 };
+        int m_Unit { 0 };
         RHITextureDesc m_Desc;
     };
 
@@ -96,12 +96,12 @@ namespace minEngine
         const TextureFormat GetFormat() const { return m_Desc.Format; }
         const TextureUsage GetUsage() const { return m_Desc.Usage; }
 
-        virtual void Bind() = 0;
+        virtual void Bind(int unit) = 0;
         virtual void Unbind() = 0;
 
     protected:
-        uint32_t m_ID = 0;
-        int m_Unit = 0;
+        uint32_t m_ID { 0 };
+        int m_Unit { 0 };
         RHITextureDesc m_Desc;
     };
 

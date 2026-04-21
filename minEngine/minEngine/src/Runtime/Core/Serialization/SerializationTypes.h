@@ -10,6 +10,7 @@ namespace minEngine::Serialization
         bool enumAsString = true;
         bool strictTypeCheck = true;
         bool skipUnknownField = true;
+        bool writeObjectTypeName = false;
         bool allowObjectPtrSerialization = false;
     };
 

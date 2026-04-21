@@ -52,9 +52,9 @@ namespace minEngine
         virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<VertexElement> elements) = 0;
         virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) = 0;
         virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) = 0;
-        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc, int unit = 0) = 0;
-        virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(const std::vector<unsigned char*> faceData, RHITextureDesc desc, int unit = 0) = 0;
-        virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc, int unit = 0) = 0;
-        virtual std::shared_ptr<RHIShader> CreateShader(const char* vertexSource, const char* fragmentSource) = 0;
+        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc) = 0;
+        virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(const std::vector<unsigned char*> faceData, RHITextureDesc desc) = 0;
+        virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc) = 0;
+        virtual std::shared_ptr<RHIShader> CreateRHIShader(const char* vertexSource, const char* fragmentSource) = 0;
     };
 }

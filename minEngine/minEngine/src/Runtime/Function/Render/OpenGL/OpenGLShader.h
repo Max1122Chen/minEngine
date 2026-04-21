@@ -1,4 +1,5 @@
 #pragma once
+#include "Core.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Core/Math/Math.h"
 #include "glad/glad.h"

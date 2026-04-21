@@ -20,14 +20,14 @@ namespace minEngine
         std::shared_ptr<GameObject> CreateGameObject();
         void Reset();
         void RebuildRuntimeGameObjectIndex();
-        const std::string& GetSceneName() const { return sceneName; }
+        const std::string& GetSceneName() const { return m_SceneName; }
         const std::vector<std::shared_ptr<GameObject>>& GetGameObjects() const { return m_GameObjects; }
         const std::unordered_map<uint64_t, GameObject*>& GetGameObjectsById() const { return m_GameObjectsById; }
         uint64_t IncrementNextGOId() { return m_NextGOId++; }
 
     // private: // temporarily public for testing
         ME_PROPERTY()
-        std::string sceneName;
+        std::string m_SceneName;
 
         ME_PROPERTY()
         std::vector<std::shared_ptr<GameObject>> m_GameObjects;

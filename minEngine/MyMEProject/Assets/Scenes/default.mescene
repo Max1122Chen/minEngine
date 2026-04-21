@@ -1,0 +1,86 @@
+{
+    "m_Name": "default",
+    "m_Guid": {
+        "High": 7367244129909950825,
+        "Low": 9860694885641468740
+    },
+    "m_SceneName": "default",
+    "m_GameObjects": [
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Name": "Cube",
+            "m_Guid": {
+                "High": 1111111111111111111,
+                "Low": 2222222222222222222
+            },
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_Name": "SMC_Test",
+                    "m_Guid": {
+                        "High": 3333333333333333333,
+                        "Low": 4444444444444444444
+                    },
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 1111111111111111111,
+                            "low": 2222222222222222222
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [10.0, 0.0, 0.0],
+                        "Rotation": [0.0, 0.0, 0.0],
+                        "Scale": [1.0, 1.0, 1.0]
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 1195769813414201913,
+                            "low": 11320094043071953413
+                        }
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 9593452550215845710,
+                            "low": 10983393021693110497
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Name": "DirectionalLight",
+            "m_Guid": {
+                "High": 5555555555555555555,
+                "Low": 6666666666666666666
+            },
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::DirectionalLightComponent",
+                    "m_Name": "DLC_Test",
+                    "m_Guid": {
+                        "High": 7777777777777777777,
+                        "Low": 8888888888888888888
+                    },
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 5555555555555555555,
+                            "low": 6666666666666666666
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [0.0, 100.0, 0.0],
+                        "Rotation": [0.0, 0.0, 0.0],
+                        "Scale": [1.0, 1.0, 1.0]
+                    },
+                    "m_Direction": [0.35, -1.0, -0.20],
+                    "m_LightColor": [1.0, 0.98, 0.92, 1.0],
+                    "m_Intensity": 2.0,
+                    "m_DiffuseFactor": 1.0,
+                    "m_SpecularFactor": 0.5,
+                    "m_CastShadow": true
+                }
+            ]
+        }
+    ]
+}
