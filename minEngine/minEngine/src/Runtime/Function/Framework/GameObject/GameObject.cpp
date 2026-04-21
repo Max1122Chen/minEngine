@@ -57,6 +57,20 @@ namespace minEngine
         }
     }
 
+    std::shared_ptr<Component> GameObject::AddComponent(const std::string &componentTypeName)
+    {
+        ObjectManager& objectManager = ObjectManager::Get();
+        std::shared_ptr<MEObject> newComponentBase = objectManager.NewObject(componentTypeName, "", this);
+        if (!newComponentBase)        
+        {
+            return nullptr;
+        }
+        std::shared_ptr<Component> component = std::static_pointer_cast<Component>(newComponentBase);
+        component->SetOwner(this);
+        m_Components.push_back(component);
+        return component;
+    }
+
     void GameObject::Tick(float deltaTime)
     {
         for (auto& component : m_Components)

@@ -68,11 +68,15 @@ namespace minEngine
             return newComponent;
         }
 
+        std::shared_ptr<Component> AddComponent(const std::string& componentTypeName);
+
     private:
         uint64_t m_ID{ 0 };
-        std::shared_ptr<SceneComponent> m_RootComponent{ nullptr };
 
         ME_PROPERTY()
+        std::shared_ptr<SceneComponent> m_RootComponent{ nullptr };
+
+        ME_PROPERTY(Instanced)
         std::vector<std::shared_ptr<Component>> m_Components;
 
     };

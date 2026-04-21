@@ -82,4 +82,28 @@ namespace minEngine
         }
         return nullptr;
     }
+
+    std::shared_ptr<MEObject> ObjectManager::NewObject(const std::string &className, const std::string &inName, MEObject *inOuter, const GUID &inGuid)
+    {
+        const Reflection::MEClass* classInfo = Reflection::ReflectionSystem::Get().FindClass(className);
+        if (classInfo == nullptr)
+        {
+            ME_CORE_ERROR("Failed to find class info for class name '{}'.", className);
+            return nullptr;
+        }
+
+        std::shared_ptr<MEObject> newObj = std::static_pointer_cast<MEObject>(classInfo->CreateInstance());
+        if (newObj == nullptr)
+        {
+            ME_CORE_ERROR("Failed to create instance of class '{}'.", className);
+            return nullptr;
+        }
+
+        newObj->SetClass(classInfo);
+        newObj->SetName(inName);
+        newObj->SetGuid(inGuid);
+        newObj->SetOuter(inOuter);
+        RegisterObject(newObj);
+        return newObj;
+    }
 }

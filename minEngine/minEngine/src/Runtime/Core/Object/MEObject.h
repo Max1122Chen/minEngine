@@ -28,9 +28,9 @@ namespace minEngine
     protected:
         const Reflection::MEClass* m_Class = nullptr;
 
-        ME_PROPERTY()
+        ME_PROPERTY(Invisible)
         std::string m_Name;
-        ME_PROPERTY()
+        ME_PROPERTY(Invisible)
         GUID m_Guid;
         MEObject* m_Outer = nullptr;
     };

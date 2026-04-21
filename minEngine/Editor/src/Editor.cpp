@@ -184,13 +184,23 @@ namespace minEngine
         RenameGameObject(m_SelectedGameObjectId, newName);
     }
 
-    std::vector<std::string> Editor::GetAllComponentTypeNames() const
+    const std::vector<std::string>& Editor::GetAllComponentTypeNames() const
     {
-        return std::vector<std::string>();
+        return m_AllComponentTypeNames;
     }
 
     bool Editor::AddComponentToSelectedGameObject(const std::string& componentTypeName)
     {
+        GameObject* gameObject = GetSelectedGameObject();
+        if (!gameObject)        
+        {
+            return false;
+        }
+        if(!gameObject->AddComponent(componentTypeName))
+        {
+            ME_CORE_ERROR("Failed to add component of type '{}' to GameObject '{}'.", componentTypeName, gameObject->GetName());
+            return false;
+        }
         return true;
     }
 
@@ -270,6 +280,19 @@ namespace minEngine
         m_ViewportClients.clear();
     }
 
+    void Editor::InitializeAllComponentTypeNames()
+    {
+        Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+        const std::vector<const Reflection::MEClass*>& allClasses = reflectionSystem.GetAllClasses();
+        for (const Reflection::MEClass* classInfo : allClasses)
+        {
+            if (classInfo->IsA(reflectionSystem.FindClass<Component>()))
+            {
+                m_AllComponentTypeNames.push_back(classInfo->GetName());
+            }
+        }
+    }
+
     void Editor::Initialize(int argc, char** argv)
     {
         m_Engine = new Engine();
@@ -292,6 +315,8 @@ namespace minEngine
 
         RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
         m_EditorGUIManager.Initialize(*this);
+
+        InitializeAllComponentTypeNames();
 
         std::string projectPath;
         // TODO: try to open the project

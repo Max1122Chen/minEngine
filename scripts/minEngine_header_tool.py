@@ -36,6 +36,11 @@ PROPERTY_SPECIFIER_MAP = {
     "editanywhere": "EditAnywhere",
     "editdefaultsonly": "EditDefaultsOnly",
     "editinstanceonly": "EditInstanceOnly",
+    "visibleanywhere": "VisibleAnywhere",
+    "visibledefaultsonly": "VisibleDefaultsOnly",
+    "visibleinstanceonly": "VisibleInstanceOnly",
+    "invisible": "Invisible",
+    "instanced": "Instanced",
 }
 
 CLASS_SPECIFIER_MAP = {

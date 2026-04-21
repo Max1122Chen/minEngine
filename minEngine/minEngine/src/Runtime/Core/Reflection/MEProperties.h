@@ -50,6 +50,11 @@ namespace minEngine::Reflection
         EditAnywhere = 1u << 1,
         EditDefaultsOnly = 1u << 2,
         EditInstanceOnly = 1u << 3,
+        VisibleAnywhere = 1u << 4,
+        VisibleDefaultsOnly = 1u << 5,
+        VisibleInstanceOnly = 1u << 6,
+        Invisible = 1u << 7,
+        Instanced = 1u << 8,
     };
 
     using PropertySpecifierMask = uint32_t;

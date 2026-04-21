@@ -64,6 +64,7 @@ namespace minEngine::Serialization
                                               const std::string& path);
 
         static SerializeResult SerializeProperty(const minEngine::Reflection::MEProperty& property,
+                                                 const Reflection::PropertySpecifierMask propertySpecifierMask,
                                                  const void* valuePtr,
                                                  const void* ownerObjectPtr,
                                                  WriterArchive& archive,
@@ -71,6 +72,7 @@ namespace minEngine::Serialization
                                                  const std::string& path);
 
         static SerializeResult SerializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty& objectPtrProperty,
+                                                 const Reflection::PropertySpecifierMask propertySpecifierMask,
                                                  const void* ptrToPtr,
                                                  const void* ownerObjectPtr,
                                                  WriterArchive& archive,

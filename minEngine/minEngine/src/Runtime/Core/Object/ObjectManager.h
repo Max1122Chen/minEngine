@@ -47,6 +47,9 @@ namespace minEngine
             RegisterObject(newObj);
             return newObj;
         }
+
+        std::shared_ptr<MEObject> NewObject(const std::string& className, const std::string& inName = "", MEObject* inOuter = nullptr, const GUID& inGuid = GenerateGUID());
+
         size_t GetTrackedObjectCount() const { return m_ObjectsByGuid.size(); }
 
     private:

@@ -29,8 +29,6 @@ namespace minEngine::Reflection
         Failed
     };
 
-
-
     template<typename T>
     inline constexpr bool kIsPointerLike = PointerLike<RemoveCvRefT<T>>::value;
 
@@ -364,6 +362,16 @@ namespace minEngine::Reflection
             return FindEnum(iter->second);
         }
 
+        const std::vector<const MEClass*> GetAllClasses() const
+        {
+            std::vector<const MEClass*> classes;
+            for (const auto& pair : m_ClassesByName)
+            {
+                classes.push_back(pair.second);
+            }
+            return classes;
+        }
+
         const std::vector<std::string>& GetLastErrors() const
         {
             return m_LastErrors;
@@ -376,19 +384,29 @@ namespace minEngine::Reflection
 
         bool ForEachPropertyInHierarchy(const std::string& rootClassName, const PropertyVisitorFn& visitor) const
         {
-            if (!visitor || m_State != ReflectionSystemState::Ready)
-            {
-                return false;
-            }
-
             const MEClass* rootClass = FindClass(rootClassName);
             if (rootClass == nullptr)
             {
                 return false;
             }
 
+            return ForEachPropertyInHierarchy(rootClass, visitor);
+        }
+
+        bool ForEachPropertyInHierarchy(const MEClass* rootClass, const PropertyVisitorFn& visitor) const
+        {
+            if (!visitor || m_State != ReflectionSystemState::Ready)
+            {
+                return false;
+            }
+
+            if (rootClass == nullptr)
+            {
+                return false;
+            }
+
             std::unordered_set<const MEClass*> visited;
-            return ForEachPropertyInHierarchyRecursive(*rootClass, visitor, visited);
+            return ForEachPropertyInHierarchy_Recursive(*rootClass, visitor, visited);
         }
 
     private:
@@ -834,7 +852,7 @@ namespace minEngine::Reflection
             }
         }
 
-        bool ForEachPropertyInHierarchyRecursive(const MEClass& classInfo,
+        bool ForEachPropertyInHierarchy_Recursive(const MEClass& classInfo,
                                                  const PropertyVisitorFn& visitor,
                                                  std::unordered_set<const MEClass*>& visited) const
         {
@@ -847,7 +865,7 @@ namespace minEngine::Reflection
             const MEClass* superClass = classInfo.GetSuperClass();
             if (superClass != nullptr)
             {
-                if (!ForEachPropertyInHierarchyRecursive(*superClass, visitor, visited))
+                if (!ForEachPropertyInHierarchy_Recursive(*superClass, visitor, visited))
                 {
                     return false;
                 }

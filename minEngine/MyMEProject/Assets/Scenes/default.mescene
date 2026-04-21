@@ -13,6 +13,12 @@
                 "High": 1111111111111111111,
                 "Low": 2222222222222222222
             },
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 3333333333333333333,
+                    "low": 4444444444444444444
+                }
+            },
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
@@ -28,7 +34,7 @@
                         }
                     },
                     "m_Transform": {
-                        "Position": [10.0, 0.0, 0.0],
+                        "Position": [5.0, 0.0, 0.0],
                         "Rotation": [0.0, 0.0, 0.0],
                         "Scale": [1.0, 1.0, 1.0]
                     },
@@ -53,6 +59,12 @@
             "m_Guid": {
                 "High": 5555555555555555555,
                 "Low": 6666666666666666666
+            },
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 7777777777777777777,
+                    "low": 8888888888888888888
+                }
             },
             "m_Components": [
                 {

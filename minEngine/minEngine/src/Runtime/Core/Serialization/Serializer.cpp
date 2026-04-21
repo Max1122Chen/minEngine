@@ -17,6 +17,8 @@ namespace minEngine::Serialization
     using minEngine::Reflection::MEProperty;
     using minEngine::Reflection::MEPropertyCategory;
     using minEngine::Reflection::ReflectionSystem;
+    using minEngine::Reflection::PropertySpecifier;
+    using minEngine::Reflection::PropertySpecifierMask;
 
     bool Serializer::m_IsHandlingPtr = false;
 
@@ -223,11 +225,12 @@ namespace minEngine::Serialization
     }
 
     SerializeResult Serializer::SerializeProperty(const MEProperty& property,
-                                                           const void* valuePtr,
-                                                           const void* ownerObjectPtr,
-                                                           WriterArchive& archive,
-                                                           const SerializerOptions& options,
-                                                           const std::string& path)
+                                                  const Reflection::PropertySpecifierMask propertySpecifierMask,
+                                                  const void* valuePtr,
+                                                  const void* ownerObjectPtr,
+                                                  WriterArchive& archive,
+                                                  const SerializerOptions& options,
+                                                  const std::string& path)
     {
         switch (property.GetCategory())
         {
@@ -277,7 +280,7 @@ namespace minEngine::Serialization
                 return SerializeResult::Failure("Serialize object pointer failed: invalid property type.", path);
             }
 
-            return SerializeObjectPtr(*objectPtrProperty, valuePtr, ownerObjectPtr, archive, options, path);
+            return SerializeObjectPtr(*objectPtrProperty, objectPtrProperty->GetSpecifierMask() | propertySpecifierMask, valuePtr, ownerObjectPtr, archive, options, path);
 
         }
         case MEPropertyCategory::Array:
@@ -313,6 +316,7 @@ namespace minEngine::Serialization
                 }
 
                 SerializeResult elementResult = SerializeProperty(*innerProperty,
+                                                                  propertySpecifierMask,
                                                                   elementPtr,
                                                                   ownerObjectPtr,
                                                                   archive,
@@ -337,11 +341,12 @@ namespace minEngine::Serialization
     }
 
     SerializeResult Serializer::SerializeObjectPtr(const minEngine::Reflection::MEObjectPtrProperty &objectPtrProperty, 
-                                                                                    const void *ptrToPtr, 
-                                                                                    const void* ownerObjectPtr,
-                                                                                    WriterArchive &archive, 
-                                                                                    const SerializerOptions &options, 
-                                                                                    const std::string &path)
+                                                    const Reflection::PropertySpecifierMask propertySpecifierMask,
+                                                    const void *ptrToPtr, 
+                                                    const void* ownerObjectPtr,
+                                                    WriterArchive &archive, 
+                                                    const SerializerOptions &options, 
+                                                    const std::string &path)
     {
         if (ptrToPtr == nullptr)
         {
@@ -366,11 +371,7 @@ namespace minEngine::Serialization
 
         (void)ptrCategory;
 
-        const MEClass* meObjectClass = ReflectionSystem::Get().FindClass("minEngine::MEObject");
-        if (meObjectClass == nullptr)
-        {
-            meObjectClass = ReflectionSystem::Get().FindClass("MEObject");
-        }
+        const MEClass* meObjectClass = ReflectionSystem::Get().FindClass<MEObject>();
         if (meObjectClass == nullptr)
         {
             return SerializeResult::Failure("Serialize object pointer failed: MEObject reflection class is unresolved.", path);
@@ -393,7 +394,7 @@ namespace minEngine::Serialization
         }
 
         const MEObject* ownerObject = static_cast<const MEObject*>(ownerObjectPtr);
-        const bool shouldSerializeInline = (objectPtr->GetOuter() == ownerObject);
+        const bool shouldSerializeInline = (objectPtr->GetOuter() == ownerObject && objectPtrProperty.HasSpecifier(Reflection::PropertySpecifier::Instanced));
 
         const MEClass* dynamicClass = objectPtr->GetClass();
         if (dynamicClass == nullptr)
@@ -478,7 +479,7 @@ namespace minEngine::Serialization
             }
 
             // Pass ownerObjectPtr to SerializeProperty for potential use in serializing object pointer property
-            result = SerializeProperty(property, valuePtr, objectPtr, archive, options, JoinPath(path, property.GetName()));
+            result = SerializeProperty(property, property.GetSpecifierMask(), valuePtr, objectPtr, archive, options, JoinPath(path, property.GetName()));
             if (!result.ok)
             {
                 return false;
