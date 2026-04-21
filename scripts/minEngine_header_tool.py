@@ -20,13 +20,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLASS_DECL_RE = re.compile(r"^\s*(class|struct)\s+([^\{;]+)\{", re.MULTILINE)
+CLASS_DECL_RE = re.compile(
+    r"^\s*(?:ME_(?:CLASS|STRUCT)\s*\([^\n]*\)\s*)?(?P<class_kind>class|struct)\s+(?P<decl_tail>[^\{;]+)\{",
+    re.MULTILINE,
+)
 ENUM_DECL_RE = re.compile(r"^\s*enum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\{", re.MULTILINE)
-PROPERTY_MARK_RE = re.compile(r"^\s*ME_PROPERTY\s*\((.*?)\)\s*$")
-MEMBER_DECL_RE = re.compile(r"^\s*([\w:<>]+)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
+PROPERTY_MARK_PREFIX_RE = re.compile(r"^\s*ME_PROPERTY\s*\(")
+MEMBER_DECL_RE = re.compile(r"^\s*([\w:\<\>,\s\*&]+?)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
 CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\(", re.DOTALL)
 
-TOOL_CACHE_VERSION = 9
+TOOL_CACHE_VERSION = 10
 
 PROPERTY_SPECIFIER_MAP = {
     "transient": "Transient",
@@ -319,6 +322,29 @@ def parse_class_annotations(arg_text: str) -> tuple[list[str], dict[str, str]]:
     return dedup_specifiers, metadata
 
 
+def parse_property_marker_line(line: str) -> tuple[str, str] | None:
+    if PROPERTY_MARK_PREFIX_RE.match(line) is None:
+        return None
+
+    open_paren_index = line.find("(")
+    if open_paren_index < 0:
+        return None
+
+    depth = 0
+    for idx in range(open_paren_index, len(line)):
+        ch = line[idx]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                arg_text = line[open_paren_index + 1:idx]
+                trailing_text = line[idx + 1:].strip()
+                return arg_text, trailing_text
+
+    return None
+
+
 def parse_namespace_prefix(source: str, class_pos: int) -> str:
     prefix = source[:class_pos]
     ns_matches = list(re.finditer(r"\bnamespace\s+([\w:]+)\s*\{", prefix))
@@ -451,8 +477,8 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
     classes: list[ClassMeta] = []
 
     for match in CLASS_DECL_RE.finditer(source):
-        class_decl_tail = match.group(2)
-        class_start = match.start()
+        class_decl_tail = match.group("decl_tail")
+        class_start = match.start("class_kind")
         open_brace = source.find("{", match.end() - 1)
         if open_brace < 0:
             continue
@@ -484,25 +510,35 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
 
         i = 0
         while i < len(body_lines):
-            marker_match = PROPERTY_MARK_RE.match(body_lines[i])
-            if not marker_match:
+            marker_info = parse_property_marker_line(body_lines[i])
+            if marker_info is None:
                 i += 1
                 continue
 
+            marker_arg_text, inline_decl_text = marker_info
+
             try:
-                specifiers, metadata = parse_property_annotations(marker_match.group(1))
+                specifiers, metadata = parse_property_annotations(marker_arg_text)
             except ValueError as exc:
                 marker_line = body_start_line + i
                 raise ValueError(f"{normalize_path(file_path)}:{marker_line}: {exc}") from exc
 
-            j = i + 1
-            while j < len(body_lines) and not body_lines[j].strip():
-                j += 1
+            member_line_index = i
+            member_candidate = inline_decl_text
+            member_match = MEMBER_DECL_RE.match(member_candidate)
 
-            if j >= len(body_lines):
-                break
+            if member_match is None:
+                j = i + 1
+                while j < len(body_lines) and not body_lines[j].strip():
+                    j += 1
 
-            member_match = MEMBER_DECL_RE.match(body_lines[j])
+                if j >= len(body_lines):
+                    break
+
+                member_line_index = j
+                member_candidate = body_lines[j]
+                member_match = MEMBER_DECL_RE.match(member_candidate)
+
             if member_match:
                 field_type = qualify_field_type_name(member_match.group(1), namespace_name)
                 field_name = member_match.group(2)
@@ -510,9 +546,9 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                                           type_name=field_type,
                                           specifiers=specifiers,
                                           metadata=metadata))
-                i = j + 1
+                i = member_line_index + 1
             else:
-                i = j + 1
+                i = member_line_index + 1
 
         class_text = source[class_start:close_brace + 1]
         class_hash = sha256_text(class_text)
