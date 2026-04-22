@@ -37,7 +37,7 @@ namespace minEngine
         virtual void DoEndOfFrameUpdate() {}
     
     protected:
-        ME_PROPERTY()
+        ME_PROPERTY(Invisible)
         GameObject* m_Owner{ nullptr };
         bool m_bCanEverTick{ true };
         ComponentMarkedForNeededEndOfFrameUpdate m_MarkedForNeededEndOfFrameUpdate{ Unmarked };

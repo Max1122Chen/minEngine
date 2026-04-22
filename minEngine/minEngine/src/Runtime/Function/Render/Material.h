@@ -4,6 +4,7 @@
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Shader.h"
+#include "Runtime/Resource/Asset.h"
 
 namespace minEngine
 {
@@ -21,7 +22,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class Material : public MEObject
+    class Material : public Asset
     {
         ME_REFLECTION_FRIEND(Material)
     public:

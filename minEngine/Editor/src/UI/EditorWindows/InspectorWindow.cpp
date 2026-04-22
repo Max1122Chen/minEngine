@@ -1,4 +1,5 @@
 #include "InspectorWindow.h"
+#include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
 {
@@ -456,7 +457,7 @@ namespace minEngine
         {
             bool valueChanged = false;
             Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-            valueChanged |= reflectionSystem.ForEachPropertyInHierarchy(valueClass, 
+            reflectionSystem.ForEachPropertyInHierarchy(valueClass, 
                 [&](const Reflection::MEProperty& property) -> bool
             {
                 void* valuePtr = property.GetMutable(propertyPtr);
@@ -470,8 +471,81 @@ namespace minEngine
 
     bool InspectorWindow::DrawObjectPtrProperty(const Reflection::MEObjectPtrProperty& objectPtrProperty, void* propertyPtr)
     {
-        ImGui::TextUnformatted("Object pointer properties are not supported in this version.");
+        const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
+        if (valueClass)
+        {
+            if (valueClass->IsA(Reflection::ReflectionSystem::Get().FindClass<Asset>()))
+            {
+                return DrawAssetRef(objectPtrProperty, propertyPtr);
+            }
+            else
+            {
+                // TODO: handle non-asset object references (e.g. reference to another component or game object). This requires a way to select the target object in the editor, which is more complex than selecting an asset. For now we will just display a placeholder text.
+                ImGui::TextUnformatted("Object references are not supported in this version.");
+            }
+        }
         return false;
+    }
+
+    bool InspectorWindow::DrawAssetRef(const Reflection::MEObjectPtrProperty &objectPtrProperty, void *propertyPtr)
+    {
+        // TODO: infer the "Asset Type" from the typeName
+        const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
+        const std::string& typeName = valueClass->GetName();
+        const Asset* currentAsset = static_cast<const Asset*>(objectPtrProperty.GetConstPointingData(propertyPtr));
+        const AssetMeta* currentAssetMeta = currentAsset ? currentAsset->GetMeta() : nullptr;
+        std::string selectedAssetName = currentAssetMeta ? currentAssetMeta->AssetName : "None";
+        
+        const std::vector<AssetMeta*> assetMetas = AssetManager::Get().FindAssetMetasByType(typeName);
+        bool valueChanged = false;
+        if (!assetMetas.empty())
+        {
+            if(std::find_if(assetMetas.begin(), assetMetas.end(), [&](const AssetMeta* meta) { return meta->AssetName == selectedAssetName; }) == assetMetas.end())
+            {
+                selectedAssetName = assetMetas.front()->AssetName;
+            }
+
+            ImGui::PushItemWidth(260.0f);
+            if (ImGui::BeginCombo("##AssetRefCombo", selectedAssetName.c_str()))
+            {
+                for (const AssetMeta* meta : assetMetas)
+                {
+                    const bool isSelected = (meta->AssetName == selectedAssetName);
+                    if (ImGui::Selectable(meta->AssetName.c_str(), isSelected))
+                    {
+                        selectedAssetName = meta->AssetName;
+                        std::string errorMessage;
+                        std::shared_ptr<Asset> asset = AssetManager::Get().LoadAssetByPath(meta->AssetPath, errorMessage);
+                        if(asset)
+                        {
+                            // TODO: Implement this
+                            if (objectPtrProperty.GetPtrCategory() == Reflection::MEObjectPtrCategory::Raw)
+                            {
+                                *static_cast<void**>(propertyPtr) = asset.get();
+                                valueChanged = true;
+                            }
+                            else if (objectPtrProperty.GetPtrCategory() == Reflection::MEObjectPtrCategory::Shared)
+                            {
+                                valueChanged = valueClass->SetSharedPtr(asset, propertyPtr);
+                                if (valueChanged != true)
+                                {
+                                    ME_ERROR("Failed to set shared pointer for property '%s'", objectPtrProperty.GetName().c_str());
+                                }
+                            }
+                        }
+                    }
+
+                    if (isSelected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+            ImGui::PopItemWidth();
+        }   
+        return valueChanged;
     }
 
     bool InspectorWindow::DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr)

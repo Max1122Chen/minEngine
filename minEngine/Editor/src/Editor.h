@@ -32,6 +32,8 @@ namespace minEngine
         void RequestExit(){ m_ExitRequested = true; }
 
         Scene* GetActiveScene() const;
+
+        // GameObject modification related
         std::vector<GameObject*> GetHierarchyGameObjects() const;
         GameObject* GetSelectedGameObject() const;
         void SelectGameObject(uint64_t gameObjectId);
@@ -43,13 +45,16 @@ namespace minEngine
         const std::vector<std::string>& GetAllComponentTypeNames() const;
         bool AddComponentToSelectedGameObject(const std::string& componentTypeName);
 
+        // Scene management
         void SaveCurrentScene();
+        void AddEmptyGOToScene();
         void MarkSceneDirty() { m_SceneDirty = true; }
         void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }
 
         void SyncSelectionWithScene();
 
+        // ViewportClient management
         EditorViewportClient& GetOrCreateViewportClient(const std::string& viewportId,
                                 const std::string& viewportTitle = "Viewport");
         EditorViewportClient* FindViewportClient(const std::string& viewportId);

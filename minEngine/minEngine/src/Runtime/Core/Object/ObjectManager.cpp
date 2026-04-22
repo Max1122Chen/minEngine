@@ -83,6 +83,19 @@ namespace minEngine
         return nullptr;
     }
 
+    std::vector<std::shared_ptr<MEObject>> ObjectManager::FindObjectsByClass(const Reflection::MEClass *classInfo) const
+    {
+        std::vector<std::shared_ptr<MEObject>> result;
+        for(auto& [guid, obj] : m_ObjectsByGuid)
+        {
+            if (obj && obj->GetClass() == classInfo)
+            {
+                result.push_back(obj);
+            }
+        }
+        return result;
+    }
+
     std::shared_ptr<MEObject> ObjectManager::NewObject(const std::string &className, const std::string &inName, MEObject *inOuter, const GUID &inGuid)
     {
         const Reflection::MEClass* classInfo = Reflection::ReflectionSystem::Get().FindClass(className);

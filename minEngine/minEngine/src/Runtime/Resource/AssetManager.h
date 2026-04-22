@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
 #include "AssetMeta.h"
+#include "Asset.h"
 
 #include <filesystem>
 
@@ -13,6 +14,7 @@ namespace minEngine
     class Material;
     class Shader;
     class Scene;
+    class Asset;
 
     class AssetManager
     {
@@ -29,25 +31,50 @@ namespace minEngine
         void ScanAssets(const std::filesystem::path& directory);
         AssetMeta RegisterAsset(const std::string& path, const std::string& type);
 
-        std::shared_ptr<void> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
+        std::shared_ptr<Asset> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
+        std::shared_ptr<Asset> LoadAssetByPath(const std::string& path, std::string& outErrorMessage);
+        std::shared_ptr<Asset> LoadAssetByMeta(const AssetMeta& meta, std::string& outErrorMessage);
+
 
         const AssetMeta* FindAssetMetaByPath(const std::string& path) const;
         const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
+        std::vector<AssetMeta*> FindAssetMetasByType(const std::string& type) const;
     
         template<typename T>
         std::shared_ptr<T> LoadAsset(const std::string& path)
         {
-            // TODO: check the cache first before loading from disk, and populate the cache after loading
-            
-            // TODO: then check if the assetmeta exists and matches the expected type, to fail faster if the caller is trying to load an asset with the wrong type
+            if constexpr (!std::is_base_of_v<Asset, T>)
+            {
+                static_assert(AlwaysFalse<T>::value, "LoadAsset<T> is only implemented for types derived from Asset");
+                return nullptr;
+            }
 
+            // TODO: check the cache first before loading from disk, and populate the cache after loading
+            if (m_LoadedAssetCache.find(path) != m_LoadedAssetCache.end())
+            {
+                std::shared_ptr<MEObject> cachedAsset = std::static_pointer_cast<MEObject>(m_LoadedAssetCache[path].lock());
+                if (cachedAsset)
+                {
+                    return std::dynamic_pointer_cast<T>(cachedAsset);
+                }
+            }
+
+            // Then check if the assetmeta exists and matches the expected type, to fail faster if the caller is trying to load an asset with the wrong type
             const AssetMeta* meta = FindAssetMetaByPath(path);
             if (meta == nullptr)
             {
                 return nullptr;
             }
 
-            return LoadAsset_Impl<T>(*meta);
+            std::shared_ptr<T> asset = LoadAsset_Impl<T>(*meta);
+            if (asset)
+            {
+                m_LoadedAssetCache[path] = asset;
+                std::shared_ptr<Asset> genericAsset = std::static_pointer_cast<Asset>(asset);
+                genericAsset->SetMeta(const_cast<AssetMeta*>(meta)); // We need to set the meta for the asset after loading it, so that the asset can access its own meta data if needed
+            }
+
+            return asset;
         }
 
         template<typename T>
@@ -108,8 +135,10 @@ namespace minEngine
         void           FreeImage(unsigned char* data);
 
     private:
+        std::shared_ptr<Asset> LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage);
         std::string NormalizeAssetPath(const std::string& path) const;
-        std::string InferAssetType(const std::filesystem::path& path) const;
+        std::string InferAssetTypeFromExtension(const std::filesystem::path& path) const;
+        std::string InferAssetTypeFromClassName(const std::string& className) const;
         std::filesystem::path BuildMetaPath(const std::filesystem::path& assetPath) const;
         void CacheMeta(const AssetMeta& meta);
 

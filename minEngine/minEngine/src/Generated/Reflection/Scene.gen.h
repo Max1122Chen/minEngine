@@ -10,7 +10,7 @@ ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_BEGIN(minEngine::Scene)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_SUPER(minEngine::MEObject)
+    ME_REFLECTION_CLASS_SUPER(minEngine::Asset)
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::Scene, m_SceneName, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::Scene, m_GameObjects, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Instanced)), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_END(minEngine::Scene)

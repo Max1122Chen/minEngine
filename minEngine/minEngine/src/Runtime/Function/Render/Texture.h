@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Resource/Asset.h"
 
 namespace minEngine
 {
@@ -29,7 +30,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class Texture2D : public MEObject
+    class Texture2D : public Asset
     {
         ME_REFLECTION_FRIEND(Texture2D)
     public:

@@ -2,11 +2,12 @@
 #include "Core.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Resource/Asset.h"
 
 namespace minEngine
 {
     ME_CLASS()
-    class Shader : public MEObject
+    class Shader : public Asset
     {
         ME_REFLECTION_FRIEND(Shader)
         friend class AssetManager;

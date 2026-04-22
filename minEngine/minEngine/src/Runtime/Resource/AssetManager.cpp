@@ -70,7 +70,7 @@ namespace minEngine
             }
 
             const std::filesystem::path assetPath = entry.path().lexically_normal();
-            const std::string assetType = InferAssetType(assetPath);
+            const std::string assetType = InferAssetTypeFromExtension(assetPath);
             if (assetType.empty())
             {
                 continue;
@@ -230,7 +230,26 @@ namespace minEngine
         return meta;
     }
 
-    std::shared_ptr<void> AssetManager::LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage)
+    std::shared_ptr<Asset> AssetManager::LoadAssetByPath(const std::string &path, std::string &outErrorMessage)
+    {
+        outErrorMessage.clear();
+
+        const AssetMeta* meta = FindAssetMetaByPath(path);
+        if (meta == nullptr)        
+        {
+            outErrorMessage = "asset meta not found for path: " + path;
+            return nullptr;
+        }
+        return LoadAssetByMeta_Internal(*meta, outErrorMessage);
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta(const AssetMeta &meta, std::string &outErrorMessage)
+    {
+        outErrorMessage.clear();
+        return LoadAssetByMeta_Internal(meta, outErrorMessage);
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage)
     {
         outErrorMessage.clear();
 
@@ -241,67 +260,7 @@ namespace minEngine
             return nullptr;
         }
 
-        if(assetMeta->AssetType == "StaticMesh")
-        {
-            std::shared_ptr<StaticMesh> asset = LoadAsset_Impl<StaticMesh>(*assetMeta);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load static mesh by guid";
-                return nullptr;
-            }
-
-            return std::static_pointer_cast<void>(asset);
-        }
-
-        if(assetMeta->AssetType == "Texture2D")
-        {
-            std::shared_ptr<Texture2D> asset = LoadAsset_Impl<Texture2D>(*assetMeta);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load texture2d by guid";
-                return nullptr;
-            }
-
-            return std::static_pointer_cast<void>(asset);
-        }
-
-        if (assetMeta->AssetType == "Scene")
-        {
-            std::shared_ptr<Scene> asset = LoadAsset_Impl<Scene>(*assetMeta);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load scene by guid";
-                return nullptr;
-            }
-
-            return std::static_pointer_cast<void>(asset);
-        }
-
-        if (assetMeta->AssetType == "Material")
-        {
-            std::shared_ptr<Material> asset = LoadAsset_Impl<Material>(*assetMeta);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load material by guid";
-                return nullptr;
-            }
-            return std::static_pointer_cast<void>(asset);
-        }
-
-        if (assetMeta->AssetType == "Shader")
-        {
-            std::shared_ptr<Shader> asset = LoadAsset_Impl<Shader>(*assetMeta);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load shader by guid";
-                return nullptr;
-            }
-            return std::static_pointer_cast<void>(asset);
-        }
-
-        outErrorMessage = "unsupported asset type '" + assetMeta->AssetType + "'";
-
-        return nullptr;
+        return LoadAssetByMeta_Internal(*assetMeta, outErrorMessage);
     }
 
     const AssetMeta* AssetManager::FindAssetMetaByPath(const std::string& path) const
@@ -333,7 +292,84 @@ namespace minEngine
         return &pathIter->second;
     }
 
-    std::string AssetManager::NormalizeAssetPath(const std::string& path) const
+    std::vector<AssetMeta *> AssetManager::FindAssetMetasByType(const std::string &type) const
+    {
+        std::vector<AssetMeta*> result;
+        for (const auto& pair : m_AssetRegistry)
+        {
+            if (pair.second.AssetType == InferAssetTypeFromClassName(type))
+            {
+                result.push_back(const_cast<AssetMeta*>(&pair.second));
+            }
+        }
+        return result;
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta &meta, std::string &outErrorMessage)
+    {
+        if(meta.AssetType == "StaticMesh")
+        {
+            std::shared_ptr<StaticMesh> asset = LoadAsset<StaticMesh>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load static mesh by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if(meta.AssetType == "Texture2D")
+        {
+            std::shared_ptr<Texture2D> asset = LoadAsset<Texture2D>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load texture2d by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "Scene")
+        {
+            std::shared_ptr<Scene> asset = LoadAsset<Scene>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load scene by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "Material")
+        {
+            std::shared_ptr<Material> asset = LoadAsset<Material>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load material by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "Shader")
+        {
+            std::shared_ptr<Shader> asset = LoadAsset<Shader>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load shader by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        outErrorMessage = "unsupported asset type '" + meta.AssetType + "'";
+        return nullptr;
+    }
+
+    std::string AssetManager::NormalizeAssetPath(const std::string &path) const
     {
         if (path.empty())
         {
@@ -348,7 +384,7 @@ namespace minEngine
         return absolutePath.lexically_normal().generic_string();
     }
 
-    std::string AssetManager::InferAssetType(const std::filesystem::path& path) const
+    std::string AssetManager::InferAssetTypeFromExtension(const std::filesystem::path& path) const
     {
         const std::string extension = path.extension().string();
         if (extension == ".png" || extension == ".jpg" || extension == ".jpeg")
@@ -374,6 +410,36 @@ namespace minEngine
         if (extension == ".mescene")
         {
             return "Scene";
+        }
+
+        return std::string();
+    }
+
+    std::string AssetManager::InferAssetTypeFromClassName(const std::string &className) const
+    {
+        if (className == "minEngine::Scene")
+        {
+            return "Scene";
+        }
+
+        if (className == "minEngine::StaticMesh")
+        {
+            return "StaticMesh";
+        }
+
+        if (className == "minEngine::Texture2D")
+        {
+            return "Texture2D";
+        }
+
+        if (className == "minEngine::Material")
+        {
+            return "Material";
+        }
+
+        if (className == "minEngine::Shader")
+        {
+            return "Shader";
         }
 
         return std::string();

@@ -23,6 +23,8 @@ namespace minEngine
         std::shared_ptr<MEObject> FindObject(const GUID& guid) const;
         std::shared_ptr<MEObject> FindObject(const std::string& name) const;
 
+        std::vector<std::shared_ptr<MEObject>> FindObjectsByClass(const Reflection::MEClass* classInfo) const;
+
         template<typename T>
         std::shared_ptr<T> FindObjectAs(const GUID& guid) const
         {
@@ -53,7 +55,6 @@ namespace minEngine
         size_t GetTrackedObjectCount() const { return m_ObjectsByGuid.size(); }
 
     private:
-
 
         std::unordered_map<GUID, std::shared_ptr<MEObject>, GUID::Hash> m_ObjectsByGuid;
     };

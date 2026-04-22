@@ -224,6 +224,28 @@ namespace minEngine
         }
     }
 
+    void Editor::AddEmptyGOToScene()
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)        
+        {
+            ME_CORE_ERROR("No active scene to add GameObject to.");
+            return;
+        }
+        std::shared_ptr<GameObject> newGO = scene->CreateGameObject();
+        if (newGO)
+        {
+            newGO->SetName("GameObject");
+            MarkSceneDirty();
+            SelectGameObject(newGO->GetID());
+            ME_CORE_INFO("Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());
+        }
+        else
+        {
+            ME_CORE_ERROR("Failed to create new GameObject in scene '{}'.", scene->GetSceneName());
+        }
+    }
+
     void Editor::SyncSelectionWithScene()
     {
         Scene* scene = GetActiveScene();

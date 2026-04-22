@@ -1,7 +1,10 @@
 #include "RenderScene.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"   // TODO: maybe remove this include later
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
+#include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
+#include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
@@ -27,11 +30,26 @@ namespace minEngine
         }
         else
         {
+            // TODO: This is a big hack!!!
+            // TODO: currently, the logic below can work properly for single threaded scenario. If we want to support multi-threaded rendering in the future, we might need to implement a command queue system to avoid direct modification of scene proxies in game thread.
             // Update existing scene proxy
-
             // Simply update the transform for now. TODO: update other data if needed // P.S. we should not get transform from owner GameObject here. This is just a temporary design.
-            primitiveComponent->GetSceneProxy()->m_Transform = primitiveComponent->GetOwner()->GetTransform();
-            primitiveComponent->GetSceneProxy()->m_CastShadow = primitiveComponent->CastShadow();
+            PrimitiveSceneProxy* proxy = primitiveComponent->GetSceneProxy();
+            proxy->m_Transform = primitiveComponent->GetOwner()->GetTransform();
+            proxy->m_CastShadow = primitiveComponent->CastShadow();
+            StaticMeshComponent* staticMeshComp = dynamic_cast<StaticMeshComponent*>(primitiveComponent);
+            if (staticMeshComp)
+            {
+                StaticMeshSceneProxy* staticMeshProxy = dynamic_cast<StaticMeshSceneProxy*>(proxy);
+                if (staticMeshProxy)
+                {
+                    staticMeshProxy->m_VertexBuffer = staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexBuffer.get() : nullptr;
+                    staticMeshProxy->m_VertexDefinition = staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexDefinition.get() : nullptr;
+                    staticMeshProxy->m_IndexBuffer = staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_IndexBuffer.get() : nullptr;
+                    staticMeshProxy->m_Material = staticMeshComp->GetMaterial();
+                }
+
+            }
         }
     }
 
@@ -101,6 +119,7 @@ namespace minEngine
         }
         else
         {
+            // TODO: currently, the logic below can work properly for single threaded scenario. If we want to support multi-threaded rendering in the future, we might need to implement a command queue system to avoid direct modification of scene proxies in game thread.
             // Update existing scene proxy
             // Keep the scene proxy in sync when light properties are changed.
             LightSceneProxy* sceneProxy = lightComponent->GetSceneProxy();

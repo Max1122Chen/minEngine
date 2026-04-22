@@ -1,14 +1,14 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Object/MEObject.h"
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Resource/Asset.h"
 
 namespace minEngine
 {
     class GameObject;
 
     ME_CLASS()
-    class Scene : public MEObject
+    class Scene : public Asset
     {  
         ME_REFLECTION_FRIEND(Scene)
     public:

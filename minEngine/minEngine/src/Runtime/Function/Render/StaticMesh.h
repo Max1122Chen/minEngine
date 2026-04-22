@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Core/Object/MEObject.h"
+#include "Runtime/Resource/Asset.h"
 
 namespace minEngine
 {
@@ -20,7 +21,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class StaticMesh : public MEObject
+    class StaticMesh : public Asset
     {
     public:
         StaticMesh() = default;

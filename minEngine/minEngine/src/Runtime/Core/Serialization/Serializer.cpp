@@ -710,6 +710,7 @@ namespace minEngine::Serialization
 
         if (archive.ReadNull())
         {
+            // Here is a good example of how we assign any value to the pointer.
             if (ptrCategory == MEObjectPtrCategory::Raw)
             {
                 *static_cast<void**>(ptrToPtr) = nullptr;
@@ -979,7 +980,7 @@ namespace minEngine::Serialization
 
     bool Serializer::ResolvePendingAssetRef(const PendingObjectRef &pendingRef, std::shared_ptr<void> &outResolvedSharedPtr, void *&outResolvedRawPtr, std::string &outErrorMessage)
     {
-        outResolvedSharedPtr = AssetManager::Get().LoadAssetByGUID(pendingRef.refGuid, outErrorMessage);
+        outResolvedSharedPtr = std::static_pointer_cast<void>(AssetManager::Get().LoadAssetByGUID(pendingRef.refGuid, outErrorMessage));
         outResolvedRawPtr = outResolvedSharedPtr.get();
 
         if (outResolvedSharedPtr == nullptr)
