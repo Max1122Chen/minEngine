@@ -46,7 +46,6 @@ namespace minEngine
         // We don't implicitly attach to parent in constructor, because at that time.
         // You should explicitly call AttachToComponent to avoid confusion.
         bool AttachToComponent(SceneComponent* inParent, AttachmentTransformRules attachRules);     // return false if failed
-        void AttachToParent(SceneComponent* inParent, AttachmentTransformRules attachRules);
         SceneComponent* GetAttachParent() const { return m_AttachParent; }
         void SetAttachParent(SceneComponent* inParent);
 

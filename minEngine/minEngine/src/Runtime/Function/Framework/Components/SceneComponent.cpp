@@ -22,6 +22,7 @@ namespace minEngine
             {
                 if (child)
                 {
+                    // TODO: handle relative transform?
                     child->SetTransform(inTransform);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
                 }
             }
@@ -125,10 +126,6 @@ namespace minEngine
         // Attach to new parent
         SetAttachParent(inParent);
         inParent->m_AttachChildren.push_back(this);    // add self to parent's children list
-
-        // Update transform simply for now. Just use parent's world transform.
-        // if (attachRules == AttachmentTransformRules::KeepWorldTransform)
-        SetTransform(inParent->GetTransform());
 
         MarkRenderStateDirty();
         return true;

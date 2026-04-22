@@ -64,6 +64,7 @@ namespace minEngine
             std::shared_ptr<T> newComponent = NewObject<T>("",this);
             newComponent->SetOwner(this);
             m_Components.push_back(newComponent);
+            // TODO: attach to root component by default if it's a SceneComponent, and handle the case when root component is missing
 
             return newComponent;
         }

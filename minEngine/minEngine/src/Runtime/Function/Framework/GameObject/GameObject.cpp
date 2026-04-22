@@ -1,5 +1,5 @@
 #include "GameObject.h"
-
+#include "Core/Reflection/Reflection.h"
 namespace minEngine
 {
     GameObject::GameObject()
@@ -65,10 +65,24 @@ namespace minEngine
         {
             return nullptr;
         }
-        std::shared_ptr<Component> component = std::static_pointer_cast<Component>(newComponentBase);
-        component->SetOwner(this);
-        m_Components.push_back(component);
-        return component;
+        std::shared_ptr<Component> newComponent = std::static_pointer_cast<Component>(newComponentBase);
+        newComponent->SetOwner(this);
+        m_Components.push_back(newComponent);
+        Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+        if (newComponent->GetClass() && reflectionSystem.IsClassSameOrDerived(newComponent->GetClass(), reflectionSystem.FindClass<SceneComponent>()))
+        {
+            // Set the first added SceneComponent as the RootComponent by default
+            if (!m_RootComponent)
+            {
+                m_RootComponent = std::static_pointer_cast<SceneComponent>(newComponent);
+            }
+            else
+            {
+                SceneComponent* sceneComponent = static_cast<SceneComponent*>(newComponent.get());
+                sceneComponent->AttachToComponent(m_RootComponent.get(), AttachmentTransformRules::KeepRelativeTransform);
+            }
+        }
+        return newComponent;
     }
 
     void GameObject::Tick(float deltaTime)
