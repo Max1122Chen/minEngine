@@ -26,7 +26,7 @@ namespace minEngine
 
         void SetPresentPassEnabled(bool enabled);
         const std::shared_ptr<RHITexture2D>& GetSceneColorTexture() const;
-        void RequestSceneViewportResize(uint32_t width, uint32_t height);
+        void RequestSceneViewportResize(float widthRatio, float heightRatio);
 
         RHI* GetRHI() const { return m_RHI.get(); }
 

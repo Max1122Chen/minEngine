@@ -351,15 +351,16 @@ namespace minEngine
             return;
         }
 
-        const uint32_t targetWidth = m_FrameState.ImageSize.x > 0 ? static_cast<uint32_t>(m_FrameState.ImageSize.x) : 1;
-        const uint32_t targetHeight = m_FrameState.ImageSize.y > 0 ? static_cast<uint32_t>(m_FrameState.ImageSize.y) : 1;
-        if (targetWidth == m_LastRequestedWidth && targetHeight == m_LastRequestedHeight)
-        {
-            return;
-        }
+        // Calculate the delta ratio between the requested size and the last requested size, and request the render system to resize the scene viewport accordingly.
+        // Because the actual render target resolution is not necessarily the same as the viewport's content size, we use the delta ratio to ensure the render target size can track the viewport size changes in a more consistent way.
+        // For example, the render target may have resolution of 1920 * 1080 while the viewport content size is 1280 * 720, and later the viewport content size changes to 1600 * 900. In this case, we want the render target to be resized to 1920 * 1080 * (1600/1280) * (900/720) = 2400 * 1350, instead of just resized to 1600 * 900.
+        uint32_t requestedWidth = m_FrameState.ImageSize.x > 0 ? static_cast<uint32_t>(m_FrameState.ImageSize.x) : 1;
+        uint32_t requestedHeight = m_FrameState.ImageSize.y > 0 ? static_cast<uint32_t>(m_FrameState.ImageSize.y) : 1;
+        const float targetWidthRatio = static_cast<float>(requestedWidth) / static_cast<float>(m_LastRequestedWidth);
+        const float targetHeightRatio = static_cast<float>(requestedHeight) / static_cast<float>(m_LastRequestedHeight);
 
-        renderSystem->RequestSceneViewportResize(targetWidth, targetHeight);
-        m_LastRequestedWidth = targetWidth;
-        m_LastRequestedHeight = targetHeight;
+        renderSystem->RequestSceneViewportResize(targetWidthRatio, targetHeightRatio);
+        m_LastRequestedWidth = requestedWidth;
+        m_LastRequestedHeight = requestedHeight;
     }
 }

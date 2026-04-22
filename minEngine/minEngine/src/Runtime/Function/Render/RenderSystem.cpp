@@ -88,20 +88,21 @@ namespace minEngine
         return m_RenderPipeline.GetSceneColorTexture();
     }
 
-    void RenderSystem::RequestSceneViewportResize(uint32_t width, uint32_t height)
+    void RenderSystem::RequestSceneViewportResize(float widthRatio, float heightRatio)
     {
-        if (width == 0 || height == 0)
+        if (widthRatio == 0 || heightRatio == 0)
         {
             return;
         }
 
-        if (m_RenderPipeline.GetSceneWidth() == width && m_RenderPipeline.GetSceneHeight() == height)
+        const float epsilon = 0.0001f;
+        if (std::abs(widthRatio - 1.0f) < epsilon && std::abs(heightRatio - 1.0f) < epsilon)
         {
-            return;
+             return;
         }
 
-        m_PendingSceneWidth = width;
-        m_PendingSceneHeight = height;
+        m_PendingSceneWidth = static_cast<uint32_t>(m_RenderPipeline.GetSceneWidth() * widthRatio);
+        m_PendingSceneHeight = static_cast<uint32_t>(m_RenderPipeline.GetSceneHeight() * heightRatio);
         m_HasPendingSceneResize = true;
     }
 

@@ -27,7 +27,7 @@ namespace minEngine
             }
 
             // For simplicity, we will use an orthographic projection for directional light shadow mapping.
-            float orthoSize = 20.0f; // TODO: make this configurable later.
+            float orthoSize = 10.0f; // TODO: make this configurable later.
             Matrix4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 0.1f, 100.0f);
 
             // The light's view matrix is calculated based on its direction and a target point.
@@ -43,8 +43,12 @@ namespace minEngine
     void RenderPipeline::Initialize()
     {
         WindowSystem* windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem.get();
-        uint32_t width = windowSystem->GetWidth();
-        uint32_t height = windowSystem->GetHeight();
+
+        // TODO: When render in Editor, we will use a resolution that may not same as the window's size
+        // When render in the game, we should use window's size as the scene color buffer's resolution.
+        // Now we just hardcode it as 1080p for simplicity.
+        uint32_t width = 1920; // windowSystem->GetWidth();
+        uint32_t height = 1080; // windowSystem->GetHeight();
 
         RHI* rhi = RenderSystem::Get().GetRHI();
         m_ShadowResourceManager.Initialize(rhi);
@@ -58,7 +62,7 @@ namespace minEngine
         m_LightUniformBuffer = rhi->CreateUniformBuffer(sizeof(LightsData), 1); // Binding point 1 for light data
 
         // Create framebuffers
-        m_ShadowBuffer = rhi->CreateFrameBuffer(2048, 2048); // Shadow map framebuffer, we will use a fixed size for now
+        m_ShadowBuffer = rhi->CreateFrameBuffer(512, 512); // Shadow map framebuffer, we will use a fixed size for now
 
         // Assign framebuffers to render passes
         m_ShadowPass.m_FrameBuffer = m_ShadowBuffer.get();
@@ -354,9 +358,9 @@ namespace minEngine
             ShadowRequest shadowRequest{};
             shadowRequest.Key.Type = LightType::Directional;
             shadowRequest.Key.LightProxyPtr = dirLightProxy;
-            shadowRequest.Resolution = ShadowResolution{
-                .Width = 2048,
-                .Height = 2048
+            shadowRequest.Resolution = ShadowResolution{    // Currently we use a fixed shadow map resolution for simplicity, we can make this configurable later.
+                .Width = 512,
+                .Height = 512
             };
             shadowRequest.Priority = 0;
             m_ShadowRequests.push_back(shadowRequest);
