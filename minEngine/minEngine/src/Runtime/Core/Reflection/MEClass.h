@@ -8,7 +8,13 @@
 #include <utility>
 #include <vector>
 
+#include "EngineAPI.h"
 #include "MEProperties.h"
+
+namespace minEngine
+{
+    class MEObject;
+}
 
 namespace minEngine::Reflection
 {
@@ -29,7 +35,6 @@ namespace minEngine::Reflection
     // Take in a type-erased shared_ptr<void> and set it to the dst, which actually points to a shared_ptr of the correct type. This is used for handling shared pointer properties in a generic way without knowing the actual type at compile time.
     using MEClassSetSharedPtrFn = bool (*)(const std::shared_ptr<void>& src, void* dst);
 
-    // 
     class MINENGINE_API MEStruct
     {
     public:
@@ -54,30 +59,106 @@ namespace minEngine::Reflection
         std::string m_Name;
     };
 
-    // 
     class MINENGINE_API MEClass final : public MEStruct
     {
+        friend class ReflectionSystem;
     public:
         explicit MEClass(std::string inName)
             : MEStruct(std::move(inName))
         {
         }
 
-        MEClassFactoryFn GetFactory() const { return m_Factory; }
+        std::shared_ptr<void> CreateDefaultInstance() const { return (m_Factory != nullptr) ? m_Factory() : nullptr; }
+        void* CastObject(void* objectPtr) const { return (m_Caster != nullptr) ? m_Caster(objectPtr) : nullptr; }   // TODO: the caster is not correct now, the static cast in CastObject_Impl may case UB if the cast is not valid.
+        bool SetSharedPtr(const std::shared_ptr<void>& src, void* dst) const { return (m_SetSharedPtr != nullptr) ? m_SetSharedPtr(src, dst) : false; }
+
+        const MEClass* GetSuperClass() const { return m_SuperClass; }
+
+        bool IsA(const MEClass* other) const
+        {
+            if (other == nullptr)
+            {
+                return false;
+            }
+
+            const MEClass* current = this;
+            while (current != nullptr)
+            {
+                if (current == other)
+                {
+                    return true;
+                }
+
+                current = current->GetSuperClass();
+            }
+
+            return false;
+        }
+
+        ClassSpecifierMask GetSpecifierMask() const { return m_SpecifierMask; }
+        void SetAnnotations(ClassSpecifierMask inSpecifierMask, ClassMetadata inMetadata)
+        {
+            m_SpecifierMask = inSpecifierMask;
+            m_Metadata = std::move(inMetadata);
+        }
+        bool HasSpecifier(ClassSpecifier specifier) const
+        {
+            return (m_SpecifierMask & static_cast<ClassSpecifierMask>(specifier)) != 0;
+        }
+
+        const ClassMetadata& GetMetadata() const { return m_Metadata; }
+        const std::string* FindMetadata(const std::string& key) const
+        {
+            auto iter = m_Metadata.find(key);
+            if (iter == m_Metadata.end())
+            {
+                return nullptr;
+            }
+            return &iter->second;
+        }
+
+        const std::vector<MEProperty*>& GetProperties() const { return m_Properties; }
+        const std::vector<MEClass*>& GetDirectDerivedClasses() const { return m_DirectDerivedClasses; }
+        
+
+    private:
+        MEClass(const MEClass&) = delete;
+        MEClass(MEClass&&) = delete;
+        MEClass& operator=(const MEClass&) = delete;
+        MEClass& operator=(MEClass&&) = delete;
+
+        MEClass* GetSuperClass() { return m_SuperClass; }
+
+        void AddProperty(MEProperty* property)
+        {
+            if (property != nullptr)
+            {
+                m_Properties.push_back(property);
+            }
+        }
+        void SetResolvedSuperClass(MEClass* inSuperClass) { m_SuperClass = inSuperClass; }
+        void ClearDirectDerivedClasses() { m_DirectDerivedClasses.clear(); }
+        void AddDirectDerivedClass(MEClass* derivedClass)
+        {
+            if (derivedClass != nullptr)
+            {
+                m_DirectDerivedClasses.push_back(derivedClass);
+            }
+        }
+
+        // Setters for internal use by the ReflectionSystem during registration. These should not be exposed publicly as they can break the integrity of the reflection data if used incorrectly.
         void SetFactory(MEClassFactoryFn inFactory) { m_Factory = inFactory; }
         bool HasFactory() const { return m_Factory != nullptr; }
 
-        MEClassCasterFn GetCaster() const { return m_Caster; }
         void SetCaster(MEClassCasterFn inCaster) { m_Caster = inCaster; }
         bool HasCaster() const { return m_Caster != nullptr; }
 
         void SetSharedPtrSetter(MEClassSetSharedPtrFn inSetSharedPtr) { m_SetSharedPtr = inSetSharedPtr; }
         bool HasSharedPtrSetter() const { return m_SetSharedPtr != nullptr; }
 
-        std::shared_ptr<void> CreateInstance() const { return (m_Factory != nullptr) ? m_Factory() : nullptr; }
 
         template<typename T>
-        static std::shared_ptr<void> CreateDefaultInstance()
+        static std::shared_ptr<void> CreateDefaultInstance_Impl()
         {
             if constexpr (std::is_default_constructible_v<T> && !std::is_abstract_v<T>)
             {
@@ -88,10 +169,8 @@ namespace minEngine::Reflection
                 return nullptr;
             }
         }
-
-        void* CastObject(void* objectPtr) const { return (m_Caster != nullptr) ? m_Caster(objectPtr) : nullptr; }
         template<typename T>
-        void* CastObjectImpl(void* objectPtr) const
+        static void* CastObject_Impl(void* objectPtr)
         {
             if (objectPtr == nullptr)
             {
@@ -101,11 +180,8 @@ namespace minEngine::Reflection
             T* typedPtr = static_cast<T*>(objectPtr);
             return static_cast<void*>(typedPtr);
         }
-
-        bool SetSharedPtr(const std::shared_ptr<void>& src, void* dst) const { return (m_SetSharedPtr != nullptr) ? m_SetSharedPtr(src, dst) : false; }
-         
         template<typename T>
-        static bool SetSharedPtrImpl(const std::shared_ptr<void>& src, void* dst)
+        static bool SetSharedPtr_Impl(const std::shared_ptr<void>& src, void* dst)
         {
             if (dst == nullptr)
             {
@@ -123,77 +199,6 @@ namespace minEngine::Reflection
             *typedDst = std::static_pointer_cast<T>(src);
             return true;
         }
-
-        void SetResolvedSuperClass(MEClass* inSuperClass) { m_SuperClass = inSuperClass; }
-
-        MEClass* GetSuperClass() { return m_SuperClass; }
-        const MEClass* GetSuperClass() const { return m_SuperClass; }
-
-        bool IsA(const MEClass* baseClass) const
-        {
-            if (baseClass == nullptr)
-            {
-                return false;
-            }
-
-            const MEClass* current = this;
-            while (current != nullptr)
-            {
-                if (current == baseClass)
-                {
-                    return true;
-                }
-
-                current = current->GetSuperClass();
-            }
-
-            return false;
-        }
-
-        ClassSpecifierMask GetSpecifierMask() const { return m_SpecifierMask; }
-        void SetAnnotations(ClassSpecifierMask inSpecifierMask, ClassMetadata inMetadata)
-        {
-            m_SpecifierMask = inSpecifierMask;
-            m_Metadata = std::move(inMetadata);
-        }
-
-        bool HasSpecifier(ClassSpecifier specifier) const
-        {
-            return (m_SpecifierMask & static_cast<ClassSpecifierMask>(specifier)) != 0;
-        }
-
-        const ClassMetadata& GetMetadata() const { return m_Metadata; }
-
-        const std::string* FindMetadata(const std::string& key) const
-        {
-            auto iter = m_Metadata.find(key);
-            if (iter == m_Metadata.end())
-            {
-                return nullptr;
-            }
-            return &iter->second;
-        }
-
-        void AddProperty(MEProperty* property)
-        {
-            if (property != nullptr)
-            {
-                m_Properties.push_back(property);
-            }
-        }
-
-        std::vector<MEProperty*>& GetProperties() { return m_Properties; }
-        const std::vector<MEProperty*>& GetProperties() const { return m_Properties; }
-
-        void ClearDirectDerivedClasses() { m_DirectDerivedClasses.clear(); }
-        void AddDirectDerivedClass(MEClass* derivedClass)
-        {
-            if (derivedClass != nullptr)
-            {
-                m_DirectDerivedClasses.push_back(derivedClass);
-            }
-        }
-        const std::vector<MEClass*>& GetDirectDerivedClasses() const { return m_DirectDerivedClasses; }
         
 
     private:
@@ -207,62 +212,4 @@ namespace minEngine::Reflection
         std::vector<MEClass*> m_DirectDerivedClasses;
     };
 
-    // 
-    struct MEEnumEntry
-    {
-        std::string name;
-        int64_t value = 0;
-    };
-
-    class MINENGINE_API MEEnum
-    {
-    public:
-        explicit MEEnum(std::string inName)
-            : m_Name(std::move(inName))
-        {
-        }
-
-        const std::string& GetName() const
-        {
-            return m_Name;
-        }
-
-        void AddEntry(std::string name, int64_t value)
-        {
-            m_Entries.push_back(MEEnumEntry{std::move(name), value});
-        }
-
-        const MEEnumEntry* FindByName(const std::string& enumName) const
-        {
-            for (const MEEnumEntry& entry : m_Entries)
-            {
-                if (entry.name == enumName)
-                {
-                    return &entry;
-                }
-            }
-            return nullptr;
-        }
-
-        const MEEnumEntry* FindByValue(int64_t enumValue) const
-        {
-            for (const MEEnumEntry& entry : m_Entries)
-            {
-                if (entry.value == enumValue)
-                {
-                    return &entry;
-                }
-            }
-            return nullptr;
-        }
-
-        const std::vector<MEEnumEntry>& GetEntries() const
-        {
-            return m_Entries;
-        }
-
-    private:
-        std::string m_Name;
-        std::vector<MEEnumEntry> m_Entries;
-    };
 }

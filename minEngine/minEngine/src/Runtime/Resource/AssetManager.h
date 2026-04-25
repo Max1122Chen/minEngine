@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Core/TypeTraits.h"
 #include "Runtime/Core/Math/Math.h"
 #include "AssetMeta.h"
 #include "Asset.h"
@@ -90,12 +91,6 @@ namespace minEngine
         }
         
     private:
-        template<typename T>
-        struct AlwaysFalse
-        {
-            static constexpr bool value = false;
-        };
-
         template<typename T>
         std::shared_ptr<T> CreateAsset(const std::string& name, const std::string& directory)
         {

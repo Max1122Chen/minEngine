@@ -1,6 +1,7 @@
 #include "PrimitiveCodecRegistry.h"
 
 #include "Runtime/Core/Math/Math.h"
+#include "Reflection/ReflectionUtils.h"
 
 #include <initializer_list>
 #include <limits>
@@ -50,6 +51,7 @@ namespace minEngine::Serialization
 
     void PrimitiveCodecRegistry::RegisterDefaultCodecs()
     {
+        using namespace minEngine::Reflection;
         if (m_DefaultCodecsRegistered)
         {
             return;
@@ -73,7 +75,7 @@ namespace minEngine::Serialization
                     }
                     return archive.ReadBool(*static_cast<bool*>(outValuePtr));
                 }},
-            {"bool", typeid(bool).name()});
+            { GetPrimitiveName<bool>(), typeid(bool).name()});
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -106,7 +108,7 @@ namespace minEngine::Serialization
                     *static_cast<int*>(outValuePtr) = static_cast<int>(value);
                     return true;
                 }},
-            {"int", typeid(int).name()});
+            { GetPrimitiveName<int32_t>(), typeid(int32_t).name()});
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -139,7 +141,7 @@ namespace minEngine::Serialization
                     *static_cast<uint32_t*>(outValuePtr) = static_cast<uint32_t>(value);
                     return true;
                 }},
-            {"uint32_t", "unsigned int", typeid(uint32_t).name(), typeid(unsigned int).name()});
+            { GetPrimitiveName<uint32_t>(), typeid(uint32_t).name()});
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -160,7 +162,7 @@ namespace minEngine::Serialization
 
                     return archive.ReadUInt64(*static_cast<uint64_t*>(outValuePtr));
                 }},
-            {"uint64_t", "unsigned long long", typeid(uint64_t).name(), typeid(unsigned long long).name()});
+            { GetPrimitiveName<uint64_t>(), typeid(uint64_t).name() });
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -188,7 +190,7 @@ namespace minEngine::Serialization
                     *static_cast<float*>(outValuePtr) = static_cast<float>(value);
                     return true;
                 }},
-            {"float", typeid(float).name()});
+            { GetPrimitiveName<float>(), typeid(float).name() });
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -208,7 +210,7 @@ namespace minEngine::Serialization
                     }
                     return archive.ReadDouble(*static_cast<double*>(outValuePtr));
                 }},
-            {"double", typeid(double).name()});
+            { GetPrimitiveName<double>(), typeid(double).name() });
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -228,7 +230,7 @@ namespace minEngine::Serialization
                     }
                     return archive.ReadString(*static_cast<std::string*>(outValuePtr));
                 }},
-            {"std::string", typeid(std::string).name()});
+            { GetPrimitiveName<std::string>(), typeid(std::string).name() });
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -275,7 +277,7 @@ namespace minEngine::Serialization
 
                     return archive.EndArray();
                 }},
-            {"Vector2", "minEngine::Vector2", typeid(Vector2).name()});
+            { GetPrimitiveName<Vector2>(), typeid(Vector2).name() });
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -329,7 +331,7 @@ namespace minEngine::Serialization
 
                     return archive.EndArray();
                 }},
-            {"Vector3", "minEngine::Vector3", typeid(Vector3).name()});
+            { GetPrimitiveName<Vector3>(), typeid(Vector3).name() });
 
         RegisterCodecWithAliases(
             PrimitiveCodec{
@@ -390,7 +392,7 @@ namespace minEngine::Serialization
 
                     return archive.EndArray();
                 }},
-            {"Vector4", "minEngine::Vector4", typeid(Vector4).name()});
+            { GetPrimitiveName<Vector4>(), typeid(Vector4).name() });
 
         m_DefaultCodecsRegistered = true;
     }

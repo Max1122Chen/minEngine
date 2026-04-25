@@ -105,7 +105,7 @@ namespace minEngine
             return nullptr;
         }
 
-        std::shared_ptr<MEObject> newObj = std::static_pointer_cast<MEObject>(classInfo->CreateInstance());
+        std::shared_ptr<MEObject> newObj = std::static_pointer_cast<MEObject>(classInfo->CreateDefaultInstance());
         if (newObj == nullptr)
         {
             ME_CORE_ERROR("Failed to create instance of class '{}'.", className);

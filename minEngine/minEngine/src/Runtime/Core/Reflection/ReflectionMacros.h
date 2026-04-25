@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Reflection.h"
+#include "ReflectionUtils.h"
 
 #define ME_REFLECTION_CONCAT_INNER(a, b) a##b
 #define ME_REFLECTION_CONCAT(a, b) ME_REFLECTION_CONCAT_INNER(a, b)
@@ -35,6 +36,11 @@ namespace minEngine::Reflection \
 
 
 #define ME_REFLECTION_CLASS_BEGIN(TYPE) \
+template<> \
+inline std::string minEngine::Reflection::GetClassName<TYPE>() \
+{ \
+    return #TYPE; \
+} \
 namespace \
 { \
     [[maybe_unused]] const bool ME_REFLECTION_CONCAT(_me_reflection_registered_line_, __COUNTER__) = []() \

@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+
+#include "EngineAPI.h"
 #include "TypeTraits.h"
 
 namespace minEngine::Reflection

@@ -91,4 +91,10 @@ namespace minEngine
         using Type = T;
     };
 
+    // Helper for static_assert false in templates
+    template<typename T>
+    struct AlwaysFalse
+    {
+        static constexpr bool value = false;
+    };
 }

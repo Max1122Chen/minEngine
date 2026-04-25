@@ -417,27 +417,28 @@ namespace minEngine
 
     std::string AssetManager::InferAssetTypeFromClassName(const std::string &className) const
     {
-        if (className == "minEngine::Scene")
+        using namespace minEngine::Reflection;
+        if (className == GetClassName<Scene>())
         {
             return "Scene";
         }
 
-        if (className == "minEngine::StaticMesh")
+        if (className == GetClassName<StaticMesh>())
         {
             return "StaticMesh";
         }
 
-        if (className == "minEngine::Texture2D")
+        if (className == GetClassName<Texture2D>())
         {
             return "Texture2D";
         }
 
-        if (className == "minEngine::Material")
+        if (className == GetClassName<Material>())
         {
             return "Material";
         }
 
-        if (className == "minEngine::Shader")
+        if (className == GetClassName<Shader>())
         {
             return "Shader";
         }
@@ -486,7 +487,7 @@ namespace minEngine
         Serialization::JsonReaderArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             meta.AssetPath,
-            "minEngine::Scene",
+            minEngine::Reflection::GetClassName<Scene>(),
             scene.get(),
             archive,
             Serialization::SerializerOptions {
@@ -515,8 +516,7 @@ namespace minEngine
     template<>
     std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta)
     {
-        std::shared_ptr<StaticMesh> outMesh = NewObject<StaticMesh>(meta.AssetName);
-        outMesh->SetGuid(meta.Guid);
+        std::shared_ptr<StaticMesh> outMesh = NewObject<StaticMesh>(meta.AssetName, nullptr, meta.Guid);
 
         struct Vertex
         {

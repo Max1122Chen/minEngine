@@ -744,7 +744,7 @@ namespace minEngine::Serialization
             }
 
             // Create the object shell first and then deserialize properties into it.
-            std::shared_ptr<void> newObjectPtr = dynamicClassInfo->CreateInstance();
+            std::shared_ptr<void> newObjectPtr = dynamicClassInfo->CreateDefaultInstance();
             if (newObjectPtr == nullptr)
             {
                 const bool closed = archive.EndObjectPtr();
