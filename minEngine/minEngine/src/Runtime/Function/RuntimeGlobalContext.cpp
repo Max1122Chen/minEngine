@@ -10,7 +10,7 @@
 
 namespace minEngine
 {
-    RuntimeGlobalContext& RuntimeGlobalContext::GetRuntimeGlobalContext()
+    RuntimeGlobalContext& RuntimeGlobalContext::Get()
     {
         static RuntimeGlobalContext instance;
         return instance;

@@ -91,14 +91,19 @@ namespace minEngine
             return m_SceneColorTexture;
         }
 
-        uint32_t GetSceneWidth() const
+        Vector2 GetSceneBufferSize() const
         {
-            return m_SceneWidth;
+            return Vector2(m_SceneBufferWidth, m_SceneBufferHeight);
         }
 
-        uint32_t GetSceneHeight() const
+        uint32_t GetSceneBufferWidth() const
         {
-            return m_SceneHeight;
+            return m_SceneBufferWidth;
+        }
+
+        uint32_t GetSceneBufferHeight() const
+        {
+            return m_SceneBufferHeight;
         }
 
     private:
@@ -130,8 +135,8 @@ namespace minEngine
         ShadowResourceManager m_ShadowResourceManager;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
-        uint32_t m_SceneWidth = 0;
-        uint32_t m_SceneHeight = 0;
+        uint32_t m_SceneBufferWidth = 0;
+        uint32_t m_SceneBufferHeight = 0;
 
     private:
         void UpdatePerFrameUBO();

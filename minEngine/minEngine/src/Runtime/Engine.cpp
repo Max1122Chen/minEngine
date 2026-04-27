@@ -17,19 +17,19 @@ namespace minEngine
         LogSystem::Get().Initialize();
 
         FinializeReflection();
-        RuntimeGlobalContext::GetRuntimeGlobalContext().StartSystems();
+        RuntimeGlobalContext::Get().StartSystems();
     }
 
     void Engine::Shutdown()
     {
         ME_CORE_INFO("Engine Shutdown Started"); 
-        RuntimeGlobalContext::GetRuntimeGlobalContext().ShutdownSystems();
+        RuntimeGlobalContext::Get().ShutdownSystems();
     }
 
     void Engine::Run()
     {
         // TODO: change to proper game loop
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
         WindowSystem* windowSystem = globalContext.m_WindowSystem.get();
         while (!windowSystem->ShouldClose())
         {
@@ -43,7 +43,7 @@ namespace minEngine
     // Tick one frame
     void Engine::TickOneFrame(float deltaTime)
     {
-        RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->PollEvents();
+        RuntimeGlobalContext::Get().m_WindowSystem->PollEvents();
         LogicalTick(deltaTime);
 
         RendererTick(deltaTime);
@@ -71,7 +71,7 @@ namespace minEngine
     void Engine::LogicalTick(float deltaTime)
     {
         // TODO: implement logical tick
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
 
         globalContext.m_InputSystem->Tick(deltaTime);
         globalContext.m_SceneManager->Tick(deltaTime);
@@ -83,7 +83,7 @@ namespace minEngine
 
     void Engine::RendererTick(float deltaTime)
     {
-        RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->Tick(deltaTime);
+        RuntimeGlobalContext::Get().m_RenderSystem->Tick(deltaTime);
     }
 
     float Engine::CalculateDeltaTime()

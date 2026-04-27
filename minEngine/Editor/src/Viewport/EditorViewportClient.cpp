@@ -1,18 +1,37 @@
-#include "Viewport/EditorViewportClient.h"
+#include "EditorViewportClient.h"
 
+#include "Math/Math.h"
+#include "Math/Geometry/Ray.h"
+#include "Math/Geometry/AABB.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
-#include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Render/RenderCamera.h"
-#include "Runtime/Function/Render/WindowSystem.h"
+#include "Render/RenderSystem.h"
+#include "Render/RenderCamera.h"
+#include "Render/WindowSystem.h"
+#include "Render/RenderScene.h"
 #include "Runtime/Function/Input/InputSystem.h"
 
+#include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
+#include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
+#include "Function/Framework/Components/PrimitiveComponent.h"
+#include "Function/Framework/Components/StaticMeshComponent.h"
+#include "Render/StaticMesh.h"
+#include "Function/Framework/GameObject/GameObject.h"
+#include "Editor.h"
+
 #include <algorithm>
+#include <limits>
+
 
 namespace minEngine
 {
     EditorViewportClient::EditorViewportClient(std::string debugName)
         : m_DebugName(std::move(debugName))
     {
+    }
+
+    void EditorViewportClient::SetInputBlockedByGizmo(bool blocked)
+    {
+        m_InputBlockedByGizmo = blocked;
     }
 
     void EditorViewportClient::BeginFrame(float deltaTime)
@@ -80,7 +99,8 @@ namespace minEngine
             { InputKeys::Key_LeftShift, ViewportInputTriggerType::Down,   ViewportInputCommandType::SpeedBoost },
             { InputKeys::MouseScroll, ViewportInputTriggerType::Down,     ViewportInputCommandType::AdjustMoveSpeed },
             { InputKeys::Key_F,       ViewportInputTriggerType::Pressed,  ViewportInputCommandType::FocusSelection },
-            { InputKeys::Key_Escape,  ViewportInputTriggerType::Pressed,  ViewportInputCommandType::Cancel }
+            { InputKeys::Key_Escape,  ViewportInputTriggerType::Pressed,  ViewportInputCommandType::Cancel },
+            { InputKeys::Mouse_Left,  ViewportInputTriggerType::Pressed,  ViewportInputCommandType::Select }
         };
 
         m_DefaultInputBindingsRegistered = true;
@@ -122,7 +142,7 @@ namespace minEngine
 
     void EditorViewportClient::ExecuteInputCommands()
     {
-        const auto& renderSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem;
+        const auto& renderSystem = RuntimeGlobalContext::Get().m_RenderSystem;
         if (!renderSystem)
         {
             return;
@@ -142,6 +162,7 @@ namespace minEngine
         bool requestCancel = false;
         bool speedBoostEnabled = false;
         bool hasSpeedAdjustment = false;
+        bool requestSelection = false;
 
         for (const ViewportInputCommand& command : commands)
         {
@@ -162,6 +183,9 @@ namespace minEngine
             case ViewportInputCommandType::AdjustMoveSpeed:
                 hasSpeedAdjustment = true;
                 break;
+            case ViewportInputCommandType::Select:
+                requestSelection = true;
+                break;
             default:
                 break;
             }
@@ -180,6 +204,11 @@ namespace minEngine
         if (hasSpeedAdjustment)
         {
             ApplyMoveSpeedFromScroll();
+        }
+
+        if (requestSelection && IsHovered() && IsFocused() && !m_IsNavigating && !m_InputBlockedByGizmo)
+        {
+            TrySelectAtMousePosition();
         }
 
         if (!m_IsNavigating)
@@ -232,10 +261,96 @@ namespace minEngine
         m_IsNavigating = navigating;
         m_HasLastMousePositionSample = false;
 
-        const auto& windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem;
+        const auto& windowSystem = RuntimeGlobalContext::Get().m_WindowSystem;
         if (windowSystem)
         {
             windowSystem->SetCursorVisible(!m_IsNavigating);
+        }
+    }
+
+    void EditorViewportClient::TrySelectAtMousePosition()
+    {
+        RuntimeGlobalContext& context = RuntimeGlobalContext::Get();
+        if (!context.m_RenderSystem)
+        {
+            return;
+        }
+
+        Vector2 mousePosition = InputSystem::GetMousePosition();
+        mousePosition -= m_FrameState.ImageMin;
+
+        Vector2 viewportSize = m_FrameState.ImageSize;
+        if (viewportSize.x <= 0.0f || viewportSize.y <= 0.0f)
+        {
+            return;
+        }
+
+        Vector2 sceneBufferSize = context.m_RenderSystem->GetSceneBufferSize();
+        if (sceneBufferSize.x <= 0.0f || sceneBufferSize.y <= 0.0f)
+        {
+            return;
+        }
+
+        float xRatio = sceneBufferSize.x / viewportSize.x;
+        float yRatio = sceneBufferSize.y / viewportSize.y;
+        Vector2 scaledMousePosition = mousePosition * Vector2(xRatio, yRatio);
+
+        RenderCamera* mainCamera = context.m_RenderSystem->GetMainCamera();
+        if (!mainCamera)
+        {
+            return;
+        }
+
+        Geometry::Ray pickRay = mainCamera->ScreenPointToRay(scaledMousePosition);
+
+        RenderScene* scene = context.m_RenderSystem->m_RenderScene.get();
+        if (!scene)
+        {
+            return;
+        }
+
+        float closestHitDistance = std::numeric_limits<float>::max();
+        GameObject* closestHitObject = nullptr;
+        for (const PrimitiveSceneProxy* proxy : scene->m_PrimitiveSceneProxies)
+        {
+            if (!proxy)
+            {
+                continue;
+            }
+
+            PrimitiveComponent* primitiveComponent = proxy->m_PrimitiveComponent;
+            if (!primitiveComponent)
+            {
+                continue;
+            }
+
+            StaticMeshComponent* staticMeshComponent = dynamic_cast<StaticMeshComponent*>(primitiveComponent);
+            if (!staticMeshComponent)
+            {
+                continue;
+            }
+
+            StaticMesh* staticMesh = staticMeshComponent->GetMesh();
+            if (!staticMesh)
+            {
+                continue;
+            }
+
+            Geometry::AABB boundingBox = staticMesh->m_BoundingBox;
+
+            Geometry::AABB worldBoundingBox = Geometry::Transform(boundingBox, staticMeshComponent->GetTransform().ToMatrix());
+            float distance = std::numeric_limits<float>::max();
+            bool intersected = worldBoundingBox.IntersectRay(pickRay, distance);
+            if (intersected && distance < closestHitDistance)
+            {
+                closestHitDistance = distance;
+                closestHitObject = staticMeshComponent->GetOwner();
+            }
+        }
+
+        if (closestHitObject)
+        {
+            m_Editor->SelectGameObject(closestHitObject->GetID());
         }
     }
 
@@ -345,7 +460,7 @@ namespace minEngine
 
     void EditorViewportClient::SyncRenderTargetSize()
     {
-        const auto& renderSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem;
+        const auto& renderSystem = RuntimeGlobalContext::Get().m_RenderSystem;
         if (!renderSystem)
         {
             return;

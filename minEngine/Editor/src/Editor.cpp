@@ -106,25 +106,36 @@ namespace minEngine
 
     GameObject* Editor::GetSelectedGameObject() const
     {
-        Scene* scene = GetActiveScene();
-        if (!scene)
-        {
-            return nullptr;
-        }
+        return m_SelectedGameObject;
+    }
 
-        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
-        const auto iter = gameObjectsById.find(m_SelectedGameObjectId);
-        if (iter == gameObjectsById.end())
-        {
-            return nullptr;
-        }
-
-        return iter->second;
+    bool Editor::HasSelectedGameObject() const
+    {
+        return GetSelectedGameObject() != nullptr;
     }
 
     void Editor::SelectGameObject(uint64_t gameObjectId)
     {
         m_SelectedGameObjectId = gameObjectId;
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
+            m_SelectedGameObject = nullptr;
+            return;
+        }
+
+        m_SelectedGameObject = scene->FindGameObjectById(gameObjectId);
+        if (!m_SelectedGameObject)
+        {
+            m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
+        }
+    }
+
+    void Editor::ClearSelectedGameObject()
+    {
+        m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
+        m_SelectedGameObject = nullptr;
     }
 
     bool Editor::IsGameObjectSelected(uint64_t gameObjectId) const
@@ -285,7 +296,9 @@ namespace minEngine
         }
 
         auto client = std::make_unique<EditorViewportClient>(viewportTitle.empty() ? key : viewportTitle);
+
         EditorViewportClient* createdClient = client.get();
+        createdClient->m_Editor = this;
         m_ViewportClients[key] = std::move(client);
         return *createdClient;
     }
@@ -340,7 +353,7 @@ namespace minEngine
         m_Engine = new Engine();
         m_Engine->Initialize(argc, argv);
 
-        RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->SetPresentPassEnabled(false);
+        RuntimeGlobalContext::Get().m_RenderSystem->SetPresentPassEnabled(false);
         
         // Initialize ImGui for the editor window
         ImGui::CreateContext();
@@ -351,11 +364,11 @@ namespace minEngine
         ImGui::StyleColorsDark();
         ApplyEditorTheme();
 
-        GLFWwindow* windowHandle = static_cast<GLFWwindow*>(RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->GetWindowHandle());
+        GLFWwindow* windowHandle = static_cast<GLFWwindow*>(RuntimeGlobalContext::Get().m_WindowSystem->GetWindowHandle());
         ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
         ImGui_ImplOpenGL3_Init();
 
-        RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem->SetCursorVisible(true);
+        RuntimeGlobalContext::Get().m_WindowSystem->SetCursorVisible(true);
         m_EditorGUIManager.Initialize(*this);
 
         InitializeAllComponentTypeNames();
@@ -411,7 +424,7 @@ namespace minEngine
 
     void Editor::Run()
     {
-        WindowSystem* windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem.get();
+        WindowSystem* windowSystem = RuntimeGlobalContext::Get().m_WindowSystem.get();
         while (!windowSystem->ShouldClose() && !m_ExitRequested)
         {
             const float deltaTime = m_Engine->CalculateDeltaTime();

@@ -6,10 +6,16 @@
 #include "Runtime/Function/Input/InputKeys.h"
 
 #include <cstdint>
+#include <limits>
 
 namespace minEngine
 {
+    class Editor;
     class RenderCamera;
+    class RenderScene;
+    class PrimitiveSceneProxy;
+    class GameObject;
+    struct AABB;
 
     struct ViewportFrameState
     {
@@ -40,7 +46,8 @@ namespace minEngine
         SpeedBoost,
         AdjustMoveSpeed,
         FocusSelection,
-        Cancel
+        Cancel,
+        Select
     };
 
     struct ViewportInputBinding
@@ -54,6 +61,21 @@ namespace minEngine
     {
         ViewportInputCommandType Type = ViewportInputCommandType::Cancel;
         ViewportInputTriggerType Trigger = ViewportInputTriggerType::Pressed;
+    };
+
+    struct ViewportPickQuery
+    {
+        const RenderCamera* Camera = nullptr;
+        const RenderScene* Scene = nullptr;
+        Vector2 MousePosition = Vector2(0.0f, 0.0f);
+    };
+
+    struct ViewportPickHitResult
+    {
+        GameObject* HitGameObject = nullptr;
+        const PrimitiveSceneProxy* HitPrimitive = nullptr;
+        float HitDistance = std::numeric_limits<float>::max();
+        Vector3 HitPosition = Vector3(0.0f, 0.0f, 0.0f);
     };
 
     // Backend state holder for one viewport window.
@@ -70,7 +92,11 @@ namespace minEngine
         const ViewportFrameState& GetFrameState() const { return m_FrameState; }
         bool IsHovered() const { return m_FrameState.Hovered; }
         bool IsFocused() const { return m_FrameState.Focused; }
+        bool IsNavigating() const { return m_IsNavigating; }
         float GetLastDeltaTime() const { return m_LastDeltaTime; }
+
+        void SetInputBlockedByGizmo(bool blocked);
+        bool IsInputBlockedByGizmo() const { return m_InputBlockedByGizmo; }
 
         const std::vector<ViewportInputCommand>& GetPendingInputCommands() const { return m_PendingInputCommands; }
         std::vector<ViewportInputCommand> ConsumePendingInputCommands();
@@ -81,14 +107,21 @@ namespace minEngine
         bool IsBindingTriggered(const ViewportInputBinding& binding) const;
         void EmitInputCommand(ViewportInputCommandType commandType, ViewportInputTriggerType triggerType);
         void ExecuteInputCommands();
+
         void EnsureCameraStateInitialized(const RenderCamera& camera);
         void SyncStateFromRenderCamera(const RenderCamera& camera);
         void ApplyStateToRenderCamera(RenderCamera& camera);
         void SetNavigating(bool navigating);
+
+        void TrySelectAtMousePosition();
+
         bool ApplyLookFromMouse();
         bool ApplyMovementFromCommands(const std::vector<ViewportInputCommand>& commands, bool speedBoostEnabled);
         void ApplyMoveSpeedFromScroll();
         void SyncRenderTargetSize();
+
+    public:
+        Editor* m_Editor = nullptr;
 
     private:
         std::string m_DebugName;
@@ -96,7 +129,9 @@ namespace minEngine
         std::vector<ViewportInputBinding> m_InputBindings;
         std::vector<ViewportInputCommand> m_PendingInputCommands;
         bool m_DefaultInputBindingsRegistered = false;
+        bool m_InputBlockedByGizmo = false;
         bool m_IsNavigating = false;
+
         bool m_CameraStateInitialized = false;
         bool m_HasLastMousePositionSample = false;
         Vector2 m_LastMousePosition = Vector2(0.0f, 0.0f);
@@ -111,6 +146,7 @@ namespace minEngine
         float m_MinPitch = -89.0f;
         float m_MaxPitch = 89.0f;
         float m_LastDeltaTime = 0.0f;
+
         uint32_t m_LastRequestedWidth = 0;
         uint32_t m_LastRequestedHeight = 0;
     };

@@ -36,7 +36,9 @@ namespace minEngine
         // GameObject modification related
         std::vector<GameObject*> GetHierarchyGameObjects() const;
         GameObject* GetSelectedGameObject() const;
+        bool HasSelectedGameObject() const;
         void SelectGameObject(uint64_t gameObjectId);
+        void ClearSelectedGameObject();
         bool IsGameObjectSelected(uint64_t gameObjectId) const;
         std::string GetGameObjectDisplayName(const GameObject& gameObject) const;
         std::string GetSelectedGameObjectName() const;
@@ -80,6 +82,7 @@ namespace minEngine
         bool m_ExitRequested = false;
         bool m_SceneDirty = false;
         uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
+        GameObject* m_SelectedGameObject = nullptr;
 
         std::vector<std::string> m_AllComponentTypeNames;
     };

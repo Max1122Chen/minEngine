@@ -10,6 +10,7 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
+#include "Core/Math/Math.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
@@ -34,7 +35,7 @@ namespace minEngine
 {
     AssetManager& AssetManager::Get()
     {
-        return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_AssetManager;
+        return *RuntimeGlobalContext::Get().m_AssetManager;
     }
 
     void AssetManager::Initialize()
@@ -542,6 +543,11 @@ namespace minEngine
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
 
+        Geometry::AABB boundingBox;
+        boundingBox.Min = Vector3(std::numeric_limits<float>::max());
+        boundingBox.Max = Vector3(std::numeric_limits<float>::lowest());
+
+
         aiNode* node = scene->mRootNode;
         std::queue<aiNode*> nodeQueue;
         nodeQueue.push(node);
@@ -583,6 +589,12 @@ namespace minEngine
                         minZ = std::min(minZ, mesh->mVertices[j].z);
                         maxZ = std::max(maxZ, mesh->mVertices[j].z);
                     }
+                }
+
+                // Update bounding box
+                for (unsigned int j = 0; j < mesh->mNumVertices; ++j)
+                {
+                    boundingBox.Encapsulate(Vector3(mesh->mVertices[j].x, mesh->mVertices[j].y, mesh->mVertices[j].z));
                 }
 
                 const float uvExtentX = std::max(maxX - minX, 1e-6f);
@@ -729,6 +741,7 @@ namespace minEngine
             return nullptr;
         }
 
+        outMesh->m_BoundingBox = boundingBox;
         // TODO: change this to a RHICommand later
         // Create vertex buffer
         outMesh->m_VertexBuffer = VertexBuffer::Create(reinterpret_cast<float*>(vertices.data()),

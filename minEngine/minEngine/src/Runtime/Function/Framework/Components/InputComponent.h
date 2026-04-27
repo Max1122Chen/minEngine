@@ -23,7 +23,7 @@ namespace minEngine
         InputComponent() = default;
         virtual ~InputComponent() override
         {
-            RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
+            RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
             if (globalContext.m_InputSystem)
             {
                 globalContext.m_InputSystem->RemoveInputComponent(this);

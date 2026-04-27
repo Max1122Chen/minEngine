@@ -9,7 +9,7 @@ namespace minEngine
 {
     void SceneManager::Initialize()
     {
-        m_RenderScene = RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->m_RenderScene.get();
+        m_RenderScene = RuntimeGlobalContext::Get().m_RenderSystem->m_RenderScene.get();
     }
 
     void SceneManager::Shutdown()

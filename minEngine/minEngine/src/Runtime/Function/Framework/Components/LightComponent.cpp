@@ -18,7 +18,7 @@ namespace minEngine
         }
 
         bool removedFromScene = false;
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::GetRuntimeGlobalContext();
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
         if (globalContext.m_SceneManager)
         {
             RenderScene* renderScene = globalContext.m_SceneManager->GetRenderScene();

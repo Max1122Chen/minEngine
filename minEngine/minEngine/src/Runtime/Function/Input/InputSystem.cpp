@@ -22,7 +22,7 @@ namespace minEngine
 {
     void InputSystem::Initialize()
     {
-        WindowSystem* windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem.get();
+        WindowSystem* windowSystem = RuntimeGlobalContext::Get().m_WindowSystem.get();
 
         // TODO: maybe we will wrap these logic into a private function later
         windowSystem->RegisterOnKeyCallback([this](InputKey key, int scancode, InputKeyAction action, int mods)

@@ -24,7 +24,7 @@ namespace minEngine
         RuntimeGlobalContext(RuntimeGlobalContext&&) = delete;
         RuntimeGlobalContext& operator=(RuntimeGlobalContext&&) = delete;
 
-        static RuntimeGlobalContext& GetRuntimeGlobalContext();
+        static RuntimeGlobalContext& Get();
 
 
         void StartSystems();

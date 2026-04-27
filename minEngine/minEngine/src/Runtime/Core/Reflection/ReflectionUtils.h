@@ -80,10 +80,10 @@ namespace minEngine::Reflection
 
     // Vector types
     template<>
-    inline std::string GetPrimitiveName<minEngine::Vector2>() { return "Vector2"; }
+    inline std::string GetPrimitiveName<minEngine::Math::Vector2>() { return "Vector2"; }
     template<>
-    inline std::string GetPrimitiveName<minEngine::Vector3>() { return "Vector3"; }
+    inline std::string GetPrimitiveName<minEngine::Math::Vector3>() { return "Vector3"; }
     template<>
-    inline std::string GetPrimitiveName<minEngine::Vector4>() { return "Vector4"; }
+    inline std::string GetPrimitiveName<minEngine::Math::Vector4>() { return "Vector4"; }
 
 }

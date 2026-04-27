@@ -61,7 +61,7 @@ namespace minEngine
 
     RenderSystem &RenderSystem::Get()
     {
-        return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem;
+        return *RuntimeGlobalContext::Get().m_RenderSystem;
     }
 
     void RenderSystem::Tick(float deltaTime)
@@ -101,9 +101,13 @@ namespace minEngine
              return;
         }
 
-        m_PendingSceneWidth = static_cast<uint32_t>(m_RenderPipeline.GetSceneWidth() * widthRatio);
-        m_PendingSceneHeight = static_cast<uint32_t>(m_RenderPipeline.GetSceneHeight() * heightRatio);
+        m_PendingSceneWidth = static_cast<uint32_t>(m_RenderPipeline.GetSceneBufferWidth() * widthRatio);
+        m_PendingSceneHeight = static_cast<uint32_t>(m_RenderPipeline.GetSceneBufferHeight() * heightRatio);
         m_HasPendingSceneResize = true;
     }
 
+    Vector2 RenderSystem::GetSceneBufferSize() const
+    {
+        return m_RenderPipeline.GetSceneBufferSize();
+    }
 }

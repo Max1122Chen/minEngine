@@ -34,10 +34,13 @@ file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
                 ${THIRD_PARTY_PATH}/imgui/backends/*.cpp
 )
 
+file(GLOB IMGUIZMO ${THIRD_PARTY_PATH}/ImGuizmo/*.cpp)
+
 add_library(${ENGINE_NAME} SHARED ${SRC}
                                   ${THIRD_PARTY_PATH}/glad/src/glad.c
                                   ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
                                   ${IMGUI}
+                                  ${IMGUIZMO}
                                   )
 
 add_dependencies(${ENGINE_NAME} reflection_codegen)
@@ -63,6 +66,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/assimp/include
                                           PUBLIC ${THIRD_PARTY_PATH}/imgui
                                           PUBLIC ${THIRD_PARTY_PATH}/json
+                                          PUBLIC ${THIRD_PARTY_PATH}/ImGuizmo
                                           )
 
 target_link_libraries(${ENGINE_NAME} PRIVATE glfw3 opengl32 assimp-6)

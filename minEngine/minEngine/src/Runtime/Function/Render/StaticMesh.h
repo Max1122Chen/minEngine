@@ -1,8 +1,11 @@
 #pragma once
 
 #include "Core.h"
+#include "Math/Math.h"
+#include "Math/Geometry/AABB.h"
 #include "Core/Object/MEObject.h"
 #include "Runtime/Resource/Asset.h"
+
 
 namespace minEngine
 {
@@ -18,7 +21,10 @@ namespace minEngine
 
         uint32_t FirstIndex {0};
         uint32_t NumIndices {0};
+        // TODO: do we need a bounding box for each section? maybe we can use it for frustum culling later
     };
+
+
 
     ME_CLASS()
     class StaticMesh : public Asset
@@ -37,6 +43,8 @@ namespace minEngine
                    uint32_t* indices, uint32_t numIndices);
         ~StaticMesh() = default;
         
+        Math::Geometry::AABB m_BoundingBox;
+
         std::shared_ptr<VertexBuffer> m_VertexBuffer = nullptr;
         std::shared_ptr<VertexDefinition> m_VertexDefinition = nullptr;
         std::shared_ptr<IndexBuffer> m_IndexBuffer = nullptr;

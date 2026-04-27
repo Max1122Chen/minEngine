@@ -20,7 +20,7 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
-        static SceneManager& Get() { return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_SceneManager; }
+        static SceneManager& Get() { return *RuntimeGlobalContext::Get().m_SceneManager; }
         
         void Tick(float deltaTime);
 

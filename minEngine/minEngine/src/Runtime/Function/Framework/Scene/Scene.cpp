@@ -58,4 +58,15 @@ namespace minEngine
 
         m_GameObjects = std::move(compactGameObjects);
     }
+
+    GameObject *Scene::FindGameObjectById(uint64_t id) const
+    {
+        const auto iter = m_GameObjectsById.find(id);
+        if (iter == m_GameObjectsById.end())
+        {
+            return nullptr;
+        }
+
+        return iter->second;
+    }
 }

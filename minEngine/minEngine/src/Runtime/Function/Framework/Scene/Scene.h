@@ -23,6 +23,7 @@ namespace minEngine
         const std::string& GetSceneName() const { return m_SceneName; }
         const std::vector<std::shared_ptr<GameObject>>& GetGameObjects() const { return m_GameObjects; }
         const std::unordered_map<uint64_t, GameObject*>& GetGameObjectsById() const { return m_GameObjectsById; }
+        GameObject* FindGameObjectById(uint64_t id) const;
         uint64_t IncrementNextGOId() { return m_NextGOId++; }
 
     // private: // temporarily public for testing

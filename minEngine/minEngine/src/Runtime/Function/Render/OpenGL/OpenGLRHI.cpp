@@ -12,7 +12,7 @@ namespace minEngine
     void OpenGLRHI::Initialize()
     {
         // Initialize OpenGL specific resources here
-        m_WindowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem;
+        m_WindowSystem = RuntimeGlobalContext::Get().m_WindowSystem;
         
         ME_CORE_INFO("OpenGLRHI Initialized"); 
 

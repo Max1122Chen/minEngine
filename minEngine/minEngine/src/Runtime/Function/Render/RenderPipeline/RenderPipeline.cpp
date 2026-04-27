@@ -42,7 +42,7 @@ namespace minEngine
 
     void RenderPipeline::Initialize()
     {
-        WindowSystem* windowSystem = RuntimeGlobalContext::GetRuntimeGlobalContext().m_WindowSystem.get();
+        WindowSystem* windowSystem = RuntimeGlobalContext::Get().m_WindowSystem.get();
 
         // TODO: When render in Editor, we will use a resolution that may not same as the window's size
         // When render in the game, we should use window's size as the scene color buffer's resolution.
@@ -135,8 +135,8 @@ namespace minEngine
         }
 
         m_SceneBuffer = rhi->CreateFrameBuffer(width, height);
-        m_SceneWidth = width;
-        m_SceneHeight = height;
+        m_SceneBufferWidth = width;
+        m_SceneBufferHeight = height;
 
         RHITextureDesc colorDesc{
                 .Width = width,

@@ -16,6 +16,6 @@ namespace minEngine
 
     void Component::MarkForNeededEndOfFrameUpdate()
     {
-        RuntimeGlobalContext::GetRuntimeGlobalContext().m_SceneManager->MarkComponentForNeededEndOfFrameUpdate(this);
+        RuntimeGlobalContext::Get().m_SceneManager->MarkComponentForNeededEndOfFrameUpdate(this);
     }
 }

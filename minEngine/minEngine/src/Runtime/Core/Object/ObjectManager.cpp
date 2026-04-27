@@ -5,7 +5,7 @@ namespace minEngine
 {
     ObjectManager &ObjectManager::Get()
     {
-        return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_ObjectManager;
+        return *RuntimeGlobalContext::Get().m_ObjectManager;
     }
 
     void ObjectManager::Initialize()

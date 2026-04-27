@@ -3,9 +3,8 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-namespace minEngine
+namespace minEngine::Math
 {
-
     typedef glm::vec2 Vector2;
     typedef glm::vec3 Vector3;
     typedef glm::vec4 Vector4;
@@ -13,19 +12,15 @@ namespace minEngine
     typedef glm::mat4 Matrix4;
 
 
+    inline float abs(float value) { return std::abs(value); }
+    inline float sqr(float value) { return value * value; }
+    inline float sqrt(float value) { return std::sqrt(value); }
+    inline float sin(float angle) { return std::sin(angle); }  
+    inline float cos(float angle) { return std::cos(angle); }
+    inline float tan(float angle) { return std::tan(angle); }
 
-    class Math
-    {
-    public:
-        static float abs(float value) { return std::abs(value); }
-        static float sqr(float value) { return value * value; }
-        static float sqrt(float value) { return std::sqrt(value); }
-        static float sin(float angle) { return std::sin(angle); }  
-        static float cos(float angle) { return std::cos(angle); }
-        static float tan(float angle) { return std::tan(angle); }
+    inline float radians(float degrees) { return glm::radians(degrees); }
 
-        static float radians(float degrees) { return glm::radians(degrees); }
-
-
-    };
 }
+
+using namespace minEngine::Math;

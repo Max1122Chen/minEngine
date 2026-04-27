@@ -12,7 +12,7 @@ namespace minEngine
 {
     ProjectManager& ProjectManager::Get()
     {
-        return *RuntimeGlobalContext::GetRuntimeGlobalContext().m_ProjectManager;
+        return *RuntimeGlobalContext::Get().m_ProjectManager;
     }
 
     void ProjectManager::Initialize()

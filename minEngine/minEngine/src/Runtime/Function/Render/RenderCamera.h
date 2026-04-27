@@ -2,6 +2,7 @@
 #include "Core.h"
 
 #include "Runtime/Core/Math/Math.h"
+#include "Math/Geometry/Ray.h"
 
 namespace minEngine
 {
@@ -34,6 +35,7 @@ namespace minEngine
         void SetViewProjMatrix(const Matrix4& viewProjMatrix) { m_ViewProjMatrix = viewProjMatrix; }
         void UpdateViewProjMatrix();
 
+        Geometry::Ray ScreenPointToRay(const Vector2& screenPoint) const;
     public:
     
     // private:
