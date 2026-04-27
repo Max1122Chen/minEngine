@@ -30,7 +30,9 @@ namespace minEngine
         // uniform tool functions
         virtual void UploadUniformInt(const std::string& name, int value) override;
         virtual void UploadUniformFloat(const std::string& name, float value) override;
-        virtual void UploadUniformFloat3(const std::string& name, Vector3 value) override;
+        virtual void UploadUniformFloat2(const std::string& name, const Vector2& value) override;
+        virtual void UploadUniformFloat3(const std::string& name, const Vector3& value) override;
+        virtual void UploadUniformFloat4(const std::string& name, const Vector4& value) override;
         virtual void UploadUniformMat4(const std::string& name, const float* matrix) override;
         virtual void UploadUniformMat4(const std::string& name, const Matrix4& matrix) override;
 

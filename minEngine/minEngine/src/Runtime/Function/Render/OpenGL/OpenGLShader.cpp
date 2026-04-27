@@ -121,7 +121,16 @@ namespace minEngine
         }
     }
 
-    void OpenGLShader::UploadUniformFloat3(const std::string &name, Vector3 value)
+    void OpenGLShader::UploadUniformFloat2(const std::string &name, const Vector2& value)
+    {
+        int uniformLocation = -1;
+        if(IsValidUniform(name, uniformLocation))
+        {
+            glUniform2f(uniformLocation, value.x, value.y);
+        }
+    }
+
+    void OpenGLShader::UploadUniformFloat3(const std::string &name, const Vector3& value)
     {
         int uniformLocation = -1;
         if(IsValidUniform(name, uniformLocation))
@@ -129,6 +138,15 @@ namespace minEngine
             glUniform3f(uniformLocation, value.x,  value.y, value.z);
         }
 
+    }
+
+    void OpenGLShader::UploadUniformFloat4(const std::string &name, const Vector4& value)
+    {
+        int uniformLocation = -1;
+        if(IsValidUniform(name, uniformLocation))
+        {
+            glUniform4f(uniformLocation, value.x, value.y, value.z, value.w);
+        }
     }
 
     void OpenGLShader::UploadUniformMat4(const std::string &name, const float *matrix)

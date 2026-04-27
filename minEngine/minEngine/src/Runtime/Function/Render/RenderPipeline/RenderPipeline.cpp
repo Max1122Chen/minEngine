@@ -68,13 +68,52 @@ namespace minEngine
         m_ShadowPass.m_FrameBuffer = m_ShadowBuffer.get();
         ResizeSceneTargets(width, height);
 
+        // No set up needed for BasePass and TranslucentPass for now, we will set their resources in Execute() when we have the actual data.
+
         // Set up ShadowPass
         m_ShadowPass.Initialize();
         m_ShadowPass.m_LightViewProjUniformBuffer = m_LightViewProjUniformBuffer.get();
 
+        // Prepare a screen quad for post-processing and presenting
+        float quadVertices[] = {
+        // pos      // uv
+        -1, -1,     0, 0,
+        1, -1,     1, 0,
+        1,  1,     1, 1,
+
+        -1, -1,     0, 0,
+        1,  1,     1, 1,
+        -1,  1,     0, 1
+        };
+        std::shared_ptr<minEngine::VertexBuffer> screenQuadVertexBuffer = rhi->CreateVertexBuffer(quadVertices, sizeof(quadVertices), 6);
+        std::shared_ptr<minEngine::VertexDefinition> screenQuadVertexDefinition = rhi->CreateVertexDefinition({
+            { "a_Position", VertexElementType::Float2, false },
+            { "a_TexCoord", VertexElementType::Float2, false }
+        });
+
+        // Set up PostProcessPasses
+        
+        // Add a FXAA post-process pass first, we can add more post-process passes later if needed.
+        std::shared_ptr<RHIShader> FXAAShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/FXAA.frag");
+        m_PostProcessPasses.emplace_back();
+        m_PostProcessPasses.back().m_SceneColorTexture = m_SceneColorTexture;
+        m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
+        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
+        m_PostProcessPasses.back().m_PostProcessShader = FXAAShader;
+
+        // Add a sharpen pass after FXAA
+        std::shared_ptr<RHIShader> SharpenShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Sharpen.frag");
+        m_PostProcessPasses.emplace_back();
+        m_PostProcessPasses.back().m_SceneColorTexture = m_SceneColorTexture;
+        m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
+        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
+        m_PostProcessPasses.back().m_PostProcessShader = SharpenShader;
+
         // Set up PresentPass
         m_PresentPass.Initialize();
         m_PresentPass.m_SceneColorTexture = m_SceneColorTexture;
+        m_PresentPass.m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
+        m_PresentPass.m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
     }
 
     void RenderPipeline::ResizeSceneTargets(uint32_t width, uint32_t height)
@@ -121,6 +160,10 @@ namespace minEngine
 
         m_BasePass.m_FrameBuffer = m_SceneBuffer.get();
         m_TranslucentPass.m_FrameBuffer = m_SceneBuffer.get();
+        for(auto& postProcessPass : m_PostProcessPasses)
+        {
+            postProcessPass.m_SceneColorTexture = m_SceneColorTexture;
+        }
         m_PresentPass.m_SceneColorTexture = m_SceneColorTexture;
 
         // ME_CORE_INFO("Resize scene render targets to {}x{}", width, height);
@@ -224,6 +267,11 @@ namespace minEngine
 
         m_BasePass.Execute();
         m_TranslucentPass.Execute();
+
+        for(auto& postProcessPass : m_PostProcessPasses)
+        {
+            postProcessPass.Execute();
+        }
 
         m_SceneBuffer->Unbind();
 

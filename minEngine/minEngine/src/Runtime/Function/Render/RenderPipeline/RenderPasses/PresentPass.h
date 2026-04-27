@@ -12,6 +12,7 @@ namespace minEngine
 
     class PresentPass : public RenderPassBase
     {
+        friend class RenderPipeline;
     public:
         PresentPass() = default;
         virtual ~PresentPass() = default;
@@ -20,15 +21,14 @@ namespace minEngine
 
         virtual void Execute() override;
 
+    public:
+        std::shared_ptr<RHITexture2D> m_SceneColorTexture;
+
     private:
         std::shared_ptr<VertexBuffer> m_ScreenQuadVertexBuffer;
         std::shared_ptr<VertexDefinition> m_ScreenQuadVertexDefinition;
         std::shared_ptr<RHIShader> m_ScreenQuadShader;
 
         virtual void Render() override;
-
-    public:
-        std::shared_ptr<RHITexture2D> m_SceneColorTexture;
-
     };
 }

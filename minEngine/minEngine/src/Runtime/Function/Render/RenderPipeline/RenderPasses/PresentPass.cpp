@@ -14,26 +14,8 @@ namespace minEngine
 
     void PresentPass::Initialize()
     {
-        float quadVertices[] = {
-        // pos      // uv
-        -1, -1,     0, 0,
-        1, -1,     1, 0,
-        1,  1,     1, 1,
-
-        -1, -1,     0, 0,
-        1,  1,     1, 1,
-        -1,  1,     0, 1
-        };
-
-        RHI* rhi = RuntimeGlobalContext::GetRuntimeGlobalContext().m_RenderSystem->GetRHI();
-        m_ScreenQuadVertexBuffer = rhi->CreateVertexBuffer(quadVertices, sizeof(quadVertices), 6);
-        m_ScreenQuadVertexDefinition = rhi->CreateVertexDefinition({
-            { "a_Position", VertexElementType::Float2, false },
-            { "a_TexCoord", VertexElementType::Float2, false }
-        });
-
+        RHI* rhi = RenderSystem::Get().GetRHI();
         m_ScreenQuadShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.frag");
-
     }
 
     void PresentPass::Execute()

@@ -3,6 +3,7 @@
 #include "RenderPasses/ShadowPass.h"
 #include "RenderPasses/BasePass.h"
 #include "RenderPasses/TranslucencyPass.h"
+#include "RenderPasses/PostProcessPass.h"
 #include "RenderPasses/PresentPass.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
@@ -120,6 +121,7 @@ namespace minEngine
         ShadowPass m_ShadowPass;
         BasePass m_BasePass;
         TranslucencyPass m_TranslucentPass;
+        std::vector<PostProcessPass> m_PostProcessPasses;
         PresentPass m_PresentPass;
 
         std::vector<MeshDrawCommand> m_OpaqueQueue;

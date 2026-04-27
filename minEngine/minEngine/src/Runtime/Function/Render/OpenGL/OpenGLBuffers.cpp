@@ -56,6 +56,8 @@ namespace minEngine
     // OpenGLFrameBuffer
     OpenGLFrameBuffer::OpenGLFrameBuffer(uint32_t width, uint32_t height)
     {
+        m_Width = width;
+        m_Height = height;
         glGenFramebuffers(1, &m_FBO);
     }
 

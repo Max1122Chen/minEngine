@@ -155,6 +155,7 @@ namespace minEngine
         const std::vector<std::shared_ptr<RHITexture2D>>& GetColorBuffers() const { return m_ColorBuffers; }
         virtual void AttachColorBuffer(std::shared_ptr<RHITexture2D> texture)
         {
+            // TODO: check if the texture's size matches the framebuffer's size
             m_ColorBuffers.push_back(texture);
         }
         
@@ -188,7 +189,7 @@ namespace minEngine
             m_DepthStencilBuffer = texture;
         }
 
-    private:
+    protected:
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
 
