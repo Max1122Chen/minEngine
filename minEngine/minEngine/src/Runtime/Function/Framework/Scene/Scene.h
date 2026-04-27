@@ -10,7 +10,7 @@ namespace minEngine
     ME_CLASS()
     class Scene : public Asset
     {  
-        ME_REFLECTION_FRIEND(Scene)
+        ME_GENERATED_BODY(Scene)
     public:
         Scene() = default;
         virtual ~Scene() = default;

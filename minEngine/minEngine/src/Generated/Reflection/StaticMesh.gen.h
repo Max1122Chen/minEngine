@@ -6,7 +6,4 @@
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::StaticMesh)
 ME_REFLECTION_ACCESSOR_END()
 
-ME_REFLECTION_CLASS_BEGIN(minEngine::StaticMesh)
-    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_SUPER(minEngine::Asset)
-ME_REFLECTION_CLASS_END(minEngine::StaticMesh)
+ME_REFLECTION_CLASS_DECLARE(minEngine::StaticMesh, GReflectionClassRegister_StaticMesh_d4eaf1fb)

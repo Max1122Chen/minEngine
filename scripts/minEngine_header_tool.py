@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-minEngine lightweight header tool (.gen.h mode, new MEReflection pipeline).
+minEngine lightweight header tool (.gen.h + .gen.cpp mode, new MEReflection pipeline).
 - Detects ME_CLASS / ME_PROPERTY markers
-- Generates one .gen.h file per reflected class
+- Generates one .gen.h + one .gen.cpp per reflection source file
 - Uses ME_REFLECTION_* macros so property category dispatch is handled by C++ type traits
 - Uses file-level + class-level incremental regeneration
 - Scans changed files in parallel
@@ -29,7 +29,7 @@ PROPERTY_MARK_PREFIX_RE = re.compile(r"^\s*ME_PROPERTY\s*\(")
 MEMBER_DECL_RE = re.compile(r"^\s*([\w:\<\>,\s\*&]+?)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
 CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\(", re.DOTALL)
 
-TOOL_CACHE_VERSION = 10
+TOOL_CACHE_VERSION = 11
 
 PROPERTY_SPECIFIER_MAP = {
     "transient": "Transient",
@@ -700,6 +700,24 @@ def source_output_name(source_rel: str, source_name_counts: dict[str, int]) -> s
     return f"{source_stem}_{sha256_text(source_rel)[:8]}.gen.h"
 
 
+def source_cpp_output_name(header_output_name: str) -> str:
+    if header_output_name.endswith(".gen.h"):
+        return header_output_name[:-1] + "cpp"
+    return f"{Path(header_output_name).stem}.cpp"
+
+
+def class_registration_symbol(meta: ClassMeta) -> str:
+    key = class_key(meta)
+    class_name = class_name_from_key(key)
+    return f"GReflectionClassRegister_{class_name}_{short_class_hash(key)}"
+
+
+def enum_registration_symbol(meta: EnumMeta) -> str:
+    key = enum_key(meta)
+    enum_name = class_name_from_key(key)
+    return f"GReflectionEnumRegister_{enum_name}_{short_class_hash(key)}"
+
+
 def render_property_specifier_mask_expr(specifiers: list[str]) -> str:
     if not specifiers:
         return "static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None)"
@@ -750,10 +768,17 @@ def render_class_metadata_expr(metadata: dict[str, str]) -> str:
     return f"(minEngine::Reflection::ClassMetadata{{{', '.join(entries)}}})"
 
 
-def render_class_registration(meta: ClassMeta) -> list[str]:
+def render_class_registration_declaration(meta: ClassMeta) -> list[str]:
+    type_name = full_type_name(meta)
+    symbol_name = class_registration_symbol(meta)
+    return [f"ME_REFLECTION_CLASS_DECLARE({type_name}, {symbol_name})"]
+
+
+def render_class_registration_definition(meta: ClassMeta) -> list[str]:
     lines: list[str] = []
     type_name = full_type_name(meta)
-    lines.append(f"ME_REFLECTION_CLASS_BEGIN({type_name})")
+    symbol_name = class_registration_symbol(meta)
+    lines.append(f"ME_REFLECTION_CLASS_DEFINE_BEGIN({type_name}, {symbol_name})")
     class_specifier_expr = render_class_specifier_mask_expr(meta.specifiers)
     class_metadata_expr = render_class_metadata_expr(meta.metadata)
     lines.append(f"    ME_REFLECTION_CLASS_SET_ANNOTATIONS({class_specifier_expr}, {class_metadata_expr})")
@@ -765,7 +790,7 @@ def render_class_registration(meta: ClassMeta) -> list[str]:
         lines.append(
             f"    ME_REFLECTION_CLASS_ADD_FIELD({type_name}, {prop.name}, {specifier_expr}, {metadata_expr})"
         )
-    lines.append(f"ME_REFLECTION_CLASS_END({type_name})")
+    lines.append(f"ME_REFLECTION_CLASS_DEFINE_END({type_name})")
     return lines
 
 
@@ -779,13 +804,20 @@ def render_class_accessor(meta: ClassMeta) -> list[str]:
     return lines
 
 
-def render_enum_registration(meta: EnumMeta) -> list[str]:
+def render_enum_registration_declaration(meta: EnumMeta) -> list[str]:
+    enum_name = full_enum_name(meta)
+    symbol_name = enum_registration_symbol(meta)
+    return [f"ME_REFLECTION_ENUM_DECLARE({enum_name}, {symbol_name})"]
+
+
+def render_enum_registration_definition(meta: EnumMeta) -> list[str]:
     lines: list[str] = []
     enum_name = full_enum_name(meta)
-    lines.append(f"ME_REFLECTION_ENUM_BEGIN({enum_name})")
+    symbol_name = enum_registration_symbol(meta)
+    lines.append(f"ME_REFLECTION_ENUM_DEFINE_BEGIN({enum_name}, {symbol_name})")
     for value in meta.values:
         lines.append(f"    ME_REFLECTION_ENUM_VALUE({value.name}, {value.value_expr})")
-    lines.append(f"ME_REFLECTION_ENUM_END({enum_name})")
+    lines.append(f"ME_REFLECTION_ENUM_DEFINE_END({enum_name})")
     return lines
 
 
@@ -806,9 +838,35 @@ def render_source_gen_header(classes: list[ClassMeta], enums: list[EnumMeta]) ->
         if kind == "class":
             lines.extend(render_class_accessor(meta))
             lines.append("")
-            lines.extend(render_class_registration(meta))
+            lines.extend(render_class_registration_declaration(meta))
         else:
-            enum_lines = render_enum_registration(meta)
+            enum_lines = render_enum_registration_declaration(meta)
+            if enum_lines:
+                lines.extend(enum_lines)
+
+        if idx != len(ordered_items) - 1:
+            lines.append("")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_source_gen_cpp(source_include: str, classes: list[ClassMeta], enums: list[EnumMeta]) -> str:
+    lines: list[str] = []
+    lines.append("// Auto-generated by minEngine_header_tool_new.py. Do not edit manually.")
+    lines.append(f'#include "{source_include}"')
+    lines.append("")
+
+    ordered_items: list[tuple[int, str, Any]] = []
+    ordered_items.extend((meta.decl_pos, "class", meta) for meta in classes)
+    ordered_items.extend((meta.decl_pos, "enum", meta) for meta in enums)
+    ordered_items.sort(key=lambda item: item[0])
+
+    for idx, (_, kind, meta) in enumerate(ordered_items):
+        if kind == "class":
+            lines.extend(render_class_registration_definition(meta))
+        else:
+            enum_lines = render_enum_registration_definition(meta)
             if enum_lines:
                 lines.extend(enum_lines)
 
@@ -1024,7 +1082,7 @@ def collect_headers(src_root: Path) -> list[Path]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate reflection .gen.h code from marker macros")
+    parser = argparse.ArgumentParser(description="Generate reflection .gen.h/.gen.cpp code from marker macros")
     parser.add_argument("--src-root", required=True, help="Source root to scan")
     parser.add_argument("--out-dir", required=True, help="Output directory root for generated headers")
     parser.add_argument("--manifest", required=True, help="Path to manifest json")
@@ -1120,9 +1178,11 @@ def main() -> int:
         source_stem = Path(source_rel).stem
         source_name_counts[source_stem] = source_name_counts.get(source_stem, 0) + 1
 
-    output_for_source: dict[str, str] = {}
+    output_header_for_source: dict[str, str] = {}
+    output_cpp_for_source: dict[str, str] = {}
     for source_rel in sorted(sources_with_reflection):
-        output_for_source[source_rel] = source_output_name(source_rel, source_name_counts)
+        output_header_for_source[source_rel] = source_output_name(source_rel, source_name_counts)
+        output_cpp_for_source[source_rel] = source_cpp_output_name(output_header_for_source[source_rel])
 
     source_to_classes: dict[str, list[ClassMeta]] = {}
     for meta in parsed_classes_by_key.values():
@@ -1135,18 +1195,23 @@ def main() -> int:
     for source_rel in sorted(sources_with_reflection):
         classes = source_to_classes.get(source_rel, [])
         enums = source_to_enums.get(source_rel, [])
-        output_name = output_for_source[source_rel]
-        header_path = out_dir / output_name
+        header_path = out_dir / output_header_for_source[source_rel]
+        cpp_path = out_dir / output_cpp_for_source[source_rel]
         header_content = render_source_gen_header(classes, enums)
+        cpp_content = render_source_gen_cpp(source_rel, classes, enums)
 
         if write_if_changed(header_path, header_content):
+            generated_count += 1
+        if write_if_changed(cpp_path, cpp_content):
             generated_count += 1
 
     class_entries: dict[str, Any] = {}
     for key in sorted(parsed_classes_by_key.keys()):
         cls = parsed_classes_by_key[key]
-        output_name = output_for_source.get(cls.source_rel, source_output_name(cls.source_rel, source_name_counts))
-        header_path = out_dir / output_name
+        output_header_name = output_header_for_source.get(cls.source_rel, source_output_name(cls.source_rel, source_name_counts))
+        output_cpp_name = output_cpp_for_source.get(cls.source_rel, source_cpp_output_name(output_header_name))
+        header_path = out_dir / output_header_name
+        cpp_path = out_dir / output_cpp_name
         class_entries[key] = {
             "namespace": cls.namespace,
             "class_name": cls.class_name,
@@ -1156,8 +1221,9 @@ def main() -> int:
             "metadata": cls.metadata,
             "base_types": cls.base_types,
             "has_virtual_inheritance": cls.has_virtual_inheritance,
-            "content_hash": sha256_text(render_class_registration(cls).__repr__()),
+            "content_hash": sha256_text(render_class_registration_definition(cls).__repr__()),
             "output_header": normalize_path(header_path),
+            "output_source": normalize_path(cpp_path),
             "source_file": cls.source_file,
             "source_include": cls.source_include,
             "source_rel": cls.source_rel,
@@ -1175,15 +1241,18 @@ def main() -> int:
     enum_entries: dict[str, Any] = {}
     for key in sorted(parsed_enums_by_key.keys()):
         enum_meta = parsed_enums_by_key[key]
-        output_name = output_for_source.get(enum_meta.source_rel, source_output_name(enum_meta.source_rel, source_name_counts))
-        header_path = out_dir / output_name
+        output_header_name = output_header_for_source.get(enum_meta.source_rel, source_output_name(enum_meta.source_rel, source_name_counts))
+        output_cpp_name = output_cpp_for_source.get(enum_meta.source_rel, source_cpp_output_name(output_header_name))
+        header_path = out_dir / output_header_name
+        cpp_path = out_dir / output_cpp_name
         enum_entries[key] = {
             "namespace": enum_meta.namespace,
             "enum_name": enum_meta.enum_name,
             "decl_pos": enum_meta.decl_pos,
             "enum_hash": enum_meta.enum_hash,
-            "content_hash": sha256_text(render_enum_registration(enum_meta).__repr__()),
+            "content_hash": sha256_text(render_enum_registration_definition(enum_meta).__repr__()),
             "output_header": normalize_path(header_path),
+            "output_source": normalize_path(cpp_path),
             "source_file": enum_meta.source_file,
             "source_include": enum_meta.source_include,
             "source_rel": enum_meta.source_rel,
@@ -1192,8 +1261,10 @@ def main() -> int:
         }
 
     # Keep unmatched .gen.h files to avoid breaking temporary/manual includes.
-    referenced_outputs = {entry["output_header"] for entry in class_entries.values()}
-    referenced_outputs.update(entry["output_header"] for entry in enum_entries.values())
+    referenced_headers = {entry["output_header"] for entry in class_entries.values()}
+    referenced_headers.update(entry["output_header"] for entry in enum_entries.values())
+    referenced_sources = {entry["output_source"] for entry in class_entries.values()}
+    referenced_sources.update(entry["output_source"] for entry in enum_entries.values())
 
     # Cleanup legacy generated outputs in the output tree.
     for legacy_cpp in out_dir.rglob("*.reflection.gen.cpp"):
@@ -1206,6 +1277,12 @@ def main() -> int:
     for legacy_header in out_dir.rglob("*.reflection.gen.h"):
         legacy_header.unlink()
         removed_count += 1
+
+    # Remove stale per-source generated cpp files so registration does not drift on deleted/renamed headers.
+    for generated_cpp in out_dir.rglob("*.gen.cpp"):
+        if normalize_path(generated_cpp) not in referenced_sources:
+            generated_cpp.unlink()
+            removed_count += 1
 
     # Remove empty legacy subdirectories after flattening output layout.
     for directory in sorted((p for p in out_dir.rglob("*") if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
@@ -1222,6 +1299,8 @@ def main() -> int:
         "scanned_files": len(headers),
         "parsed_files": len(files_to_parse),
         "sources": sorted(sources_with_reflection),
+        "generated_headers": sorted(referenced_headers),
+        "generated_sources": sorted(referenced_sources),
         "classes": sorted(parsed_classes_by_key.keys()),
         "enums": sorted(parsed_enums_by_key.keys()),
     }

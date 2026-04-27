@@ -25,7 +25,7 @@ namespace minEngine
     ME_STRUCT()
     struct ProjectDescriptor
     {
-        ME_REFLECTION_FRIEND(ProjectDescriptor)
+        ME_GENERATED_BODY(ProjectDescriptor)
 
         ME_PROPERTY()
         std::string ProjectName;

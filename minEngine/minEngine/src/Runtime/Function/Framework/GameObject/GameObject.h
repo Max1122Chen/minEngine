@@ -16,7 +16,7 @@ namespace minEngine
     ME_CLASS()
     class GameObject : public MEObject
     {
-        ME_REFLECTION_FRIEND(GameObject)
+        ME_GENERATED_BODY(GameObject)
     public:
         GameObject();
         virtual ~GameObject() = default;

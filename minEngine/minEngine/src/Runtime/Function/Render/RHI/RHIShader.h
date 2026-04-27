@@ -8,6 +8,7 @@ namespace minEngine
     ME_CLASS()
     class RHIShader : public MEObject
     {
+        ME_GENERATED_BODY(RHIShader)
     public:
         RHIShader() = default;
         virtual ~RHIShader() = default;

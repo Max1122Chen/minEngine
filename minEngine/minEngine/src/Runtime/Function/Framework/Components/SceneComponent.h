@@ -17,7 +17,7 @@ namespace minEngine
     ME_CLASS()
     class SceneComponent : public Component
     {
-        ME_REFLECTION_FRIEND(SceneComponent)
+        ME_GENERATED_BODY(SceneComponent)
 
     public:
         SceneComponent();

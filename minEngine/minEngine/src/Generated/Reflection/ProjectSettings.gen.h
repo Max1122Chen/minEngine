@@ -7,7 +7,4 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ProjectSettings)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, EditorDefaultSceneName)
 ME_REFLECTION_ACCESSOR_END()
 
-ME_REFLECTION_CLASS_BEGIN(minEngine::ProjectSettings)
-    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ProjectSettings, EditorDefaultSceneName, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
-ME_REFLECTION_CLASS_END(minEngine::ProjectSettings)
+ME_REFLECTION_CLASS_DECLARE(minEngine::ProjectSettings, GReflectionClassRegister_ProjectSettings_1698c332)

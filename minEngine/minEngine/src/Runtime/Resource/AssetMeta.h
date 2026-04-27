@@ -7,7 +7,7 @@ namespace minEngine
     ME_STRUCT()
     struct AssetMeta
     {
-        ME_REFLECTION_FRIEND(AssetMeta)
+        ME_GENERATED_BODY(AssetMeta)
 
         ME_PROPERTY()
         std::string AssetName;

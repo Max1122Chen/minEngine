@@ -6,7 +6,7 @@ namespace minEngine
     ME_CLASS()
     class Texture2DResource
     {
-        ME_REFLECTION_FRIEND(Texture2DResource)
+        ME_GENERATED_BODY(Texture2DResource)
     public:
         Texture2DResource() = default;
         ~Texture2DResource() = default;

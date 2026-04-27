@@ -13,10 +13,34 @@ namespace minEngine::Reflection
     }
 
     template<typename T>
+    inline std::string GetEnumName()
+    {
+        static_assert(minEngine::AlwaysFalse<T>::value, "GetEnumName<T> is not specialized for this type T. Please provide a specialization that returns the enum name for this type.");
+        return "";
+    }
+
+    template<typename T>
     inline std::string GetPrimitiveName()
     {
         static_assert(minEngine::AlwaysFalse<T>::value, "GetPrimitiveName<T> is not specialized for this type T. Please provide a specialization that returns the primitive type name for this type.");
         return "";
+    }
+
+    template<typename T>
+    inline std::string GetTypeName()
+    {
+        if constexpr (std::is_enum_v<T>)
+        {
+            return GetEnumName<T>();
+        }
+        else if constexpr (kIsPrimitiveLike<T>)
+        {
+            return GetPrimitiveName<T>();
+        }
+        else
+        {
+            return GetClassName<T>();
+        }
     }
 
     // Specializations for primitive types

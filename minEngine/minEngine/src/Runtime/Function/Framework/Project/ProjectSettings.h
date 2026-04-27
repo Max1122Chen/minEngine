@@ -6,7 +6,7 @@ namespace minEngine
     ME_STRUCT()
     struct ProjectSettings
     {
-        ME_REFLECTION_FRIEND(ProjectSettings)
+        ME_GENERATED_BODY(ProjectSettings)
 
         ME_PROPERTY()
         std::string EditorDefaultSceneName;

@@ -9,6 +9,7 @@ namespace minEngine
     ME_CLASS()
     class MovementComponent : public Component
     {
+        ME_GENERATED_BODY(MovementComponent)
     public:
         MovementComponent() = default;
         virtual ~MovementComponent() = default;

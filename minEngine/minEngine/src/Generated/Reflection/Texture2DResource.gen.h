@@ -7,7 +7,4 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Texture2DResource)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Texture2DResource, assetPath)
 ME_REFLECTION_ACCESSOR_END()
 
-ME_REFLECTION_CLASS_BEGIN(minEngine::Texture2DResource)
-    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::Texture2DResource, assetPath, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
-ME_REFLECTION_CLASS_END(minEngine::Texture2DResource)
+ME_REFLECTION_CLASS_DECLARE(minEngine::Texture2DResource, GReflectionClassRegister_Texture2DResource_ae085b39)

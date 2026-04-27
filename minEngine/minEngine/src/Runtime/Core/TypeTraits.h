@@ -2,6 +2,7 @@
 #include <type_traits>
 #include <vector>
 #include <memory>
+#include "Math/Math.h"
 
 namespace minEngine
 {
@@ -90,6 +91,21 @@ namespace minEngine
         static constexpr bool value = true;
         using Type = T;
     };
+
+    // Some type traits helpers for reflection system
+    template<typename T>
+    inline constexpr bool kIsPointerLike = PointerLike<RemoveCvRefT<T>>::value;
+
+    template<typename T>
+    using PointeeT = typename PointerLike<RemoveCvRefT<T>>::Type;
+
+    template<typename T>
+    inline constexpr bool kIsPrimitiveLike = std::is_arithmetic_v<T>
+                                           || std::is_same_v<T, std::string>
+                                           || std::is_same_v<T, Vector2>
+                                           || std::is_same_v<T, Vector3>
+                                           || std::is_same_v<T, Vector4>
+                                           || std::is_enum_v<T>;
 
     // Helper for static_assert false in templates
     template<typename T>

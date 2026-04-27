@@ -32,7 +32,7 @@ namespace minEngine
     ME_CLASS()
     class Texture2D : public Asset
     {
-        ME_REFLECTION_FRIEND(Texture2D)
+        ME_GENERATED_BODY(Texture2D)
     public:
         Texture2D() = default;
 

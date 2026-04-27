@@ -3,18 +3,6 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
-ME_REFLECTION_ENUM_BEGIN(minEngine::InputKeyAction)
-    ME_REFLECTION_ENUM_VALUE(Idle, 1 << 0)
-    ME_REFLECTION_ENUM_VALUE(Press, 1 << 1)
-    ME_REFLECTION_ENUM_VALUE(Down, 1 << 2)
-    ME_REFLECTION_ENUM_VALUE(Release, 1 << 3)
-    ME_REFLECTION_ENUM_VALUE(Repeat, 1 << 4)
-ME_REFLECTION_ENUM_END(minEngine::InputKeyAction)
+ME_REFLECTION_ENUM_DECLARE(minEngine::InputKeyAction, GReflectionEnumRegister_InputKeyAction_629263a1)
 
-ME_REFLECTION_ENUM_BEGIN(minEngine::InputAxisType)
-    ME_REFLECTION_ENUM_VALUE(None, minEngine::InputAxisType::None)
-    ME_REFLECTION_ENUM_VALUE(Button, minEngine::InputAxisType::Button)
-    ME_REFLECTION_ENUM_VALUE(Axis1D, minEngine::InputAxisType::Axis1D)
-    ME_REFLECTION_ENUM_VALUE(Axis2D, minEngine::InputAxisType::Axis2D)
-    ME_REFLECTION_ENUM_VALUE(Axis3D, minEngine::InputAxisType::Axis3D)
-ME_REFLECTION_ENUM_END(minEngine::InputAxisType)
+ME_REFLECTION_ENUM_DECLARE(minEngine::InputAxisType, GReflectionEnumRegister_InputAxisType_938d63d8)

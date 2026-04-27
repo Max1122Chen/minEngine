@@ -8,6 +8,8 @@ namespace minEngine
     ME_STRUCT()
     struct Transform
     {
+        ME_GENERATED_BODY(Transform)
+        
         ME_PROPERTY(EditAnywhere)
         Vector3 Position{ 0.0f, 0.0f, 0.0f };
 

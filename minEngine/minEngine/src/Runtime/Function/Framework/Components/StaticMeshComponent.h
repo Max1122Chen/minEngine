@@ -11,7 +11,7 @@ namespace minEngine
     ME_CLASS()
     class StaticMeshComponent : public PrimitiveComponent    
     {
-        ME_REFLECTION_FRIEND(StaticMeshComponent)
+        ME_GENERATED_BODY(StaticMeshComponent)
     public:
         StaticMeshComponent();
         virtual ~StaticMeshComponent() = default;

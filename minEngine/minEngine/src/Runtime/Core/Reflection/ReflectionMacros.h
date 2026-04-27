@@ -10,6 +10,7 @@
 #define ME_REFLECTION_CONCAT_INNER(a, b) a##b
 #define ME_REFLECTION_CONCAT(a, b) ME_REFLECTION_CONCAT_INNER(a, b)
 
+// Class reflection macros
 #define ME_REFLECTION_ACCESSOR_BEGIN(TYPE) \
 namespace minEngine::Reflection \
 { \
@@ -34,23 +35,28 @@ namespace minEngine::Reflection \
     }; \
 }
 
+#define ME_REFLECTION_CLASS_DECLARE(TYPE, REGISTER_SYMBOL) \
+namespace minEngine::Reflection \
+{ \
+    template<> \
+    std::string GetClassName<TYPE>(); \
+    extern const bool REGISTER_SYMBOL; \
+}
 
-#define ME_REFLECTION_CLASS_BEGIN(TYPE) \
+#define ME_REFLECTION_CLASS_DEFINE_BEGIN(TYPE, REGISTER_SYMBOL) \
 template<> \
-inline std::string minEngine::Reflection::GetClassName<TYPE>() \
+std::string minEngine::Reflection::GetClassName<TYPE>() \
 { \
     return #TYPE; \
 } \
-namespace \
+const bool minEngine::Reflection::REGISTER_SYMBOL = []() \
 { \
-    [[maybe_unused]] const bool ME_REFLECTION_CONCAT(_me_reflection_registered_line_, __COUNTER__) = []() \
+    auto& meSystem = minEngine::Reflection::ReflectionSystem::Get(); \
+    if (meSystem.FindClass<TYPE>() != nullptr) \
     { \
-        auto& meSystem = minEngine::Reflection::ReflectionSystem::Get(); \
-        if (meSystem.FindClass(#TYPE) != nullptr) \
-        { \
-            return true; \
-        } \
-        minEngine::Reflection::MEClass* meClass = meSystem.CreateClass(#TYPE);
+        return true; \
+    } \
+    minEngine::Reflection::MEClass* meClass = meSystem.CreateClass(#TYPE);
 
 #define ME_REFLECTION_CLASS_SUPER(SUPER_TYPE) \
         meSystem.AddPendingSuperClass<SUPER_TYPE>(meClass);
@@ -73,27 +79,70 @@ namespace \
                 __VA_ARGS__); \
         }
 
-#define ME_REFLECTION_CLASS_END(TYPE) \
-        return meSystem.RegisterClass<TYPE>(meClass); \
-    }(); \
+#define ME_REFLECTION_CLASS_DEFINE_END(TYPE) \
+    return meSystem.RegisterClass<TYPE>(meClass); \
+}(); \
+const minEngine::Reflection::MEClass* TYPE::StaticClass() \
+{ \
+    static const minEngine::Reflection::MEClass* cachedClass = nullptr; \
+    if (cachedClass == nullptr) \
+    { \
+        cachedClass = minEngine::Reflection::ReflectionSystem::Get().FindClass<TYPE>(); \
+    } \
+    return cachedClass; \
 }
 
+// Enum reflection macros
+#define ME_REFLECTION_ENUM_DECLARE(ENUM_TYPE, REGISTER_SYMBOL) \
+namespace minEngine::Reflection \
+{ \
+    template<> \
+    std::string GetEnumName<ENUM_TYPE>(); \
+    extern const bool REGISTER_SYMBOL; \
+}
+
+#define ME_REFLECTION_ENUM_DEFINE_BEGIN(ENUM_TYPE, REGISTER_SYMBOL) \
+template<> \
+std::string minEngine::Reflection::GetEnumName<ENUM_TYPE>() \
+{ \
+    return #ENUM_TYPE; \
+} \
+const bool minEngine::Reflection::REGISTER_SYMBOL = []() \
+{ \
+    auto& meSystem = minEngine::Reflection::ReflectionSystem::Get(); \
+    if (meSystem.FindEnum<ENUM_TYPE>() != nullptr) \
+    { \
+        return true; \
+    } \
+    minEngine::Reflection::MEEnum* meEnum = meSystem.CreateEnum(#ENUM_TYPE);
+
+#define ME_REFLECTION_ENUM_VALUE(VALUE_NAME, VALUE_EXPR) \
+    meEnum->AddEntry(#VALUE_NAME, static_cast<int64_t>(VALUE_EXPR));
+
+#define ME_REFLECTION_ENUM_DEFINE_END(ENUM_TYPE) \
+    return meSystem.RegisterEnum<ENUM_TYPE>(meEnum); \
+}();
+
+
+/* Legacy macros: keep old behavior temporarily for compatibility. */
 #define ME_REFLECTION_ENUM_BEGIN(ENUM_TYPE) \
+template<> \
+inline std::string minEngine::Reflection::GetEnumName<ENUM_TYPE>() \
+{ \
+    return #ENUM_TYPE; \
+} \
 namespace \
 { \
     [[maybe_unused]] const bool ME_REFLECTION_CONCAT(_me_reflection_enum_registered_line_, __COUNTER__) = []() \
     { \
         auto& meSystem = minEngine::Reflection::ReflectionSystem::Get(); \
-        if (meSystem.FindEnum(#ENUM_TYPE) != nullptr) \
+        if (meSystem.FindEnum<ENUM_TYPE>() != nullptr) \
         { \
             return true; \
         } \
         minEngine::Reflection::MEEnum* meEnum = meSystem.CreateEnum(#ENUM_TYPE);
 
-#define ME_REFLECTION_ENUM_VALUE(VALUE_NAME, VALUE_EXPR) \
-        meEnum->AddEntry(#VALUE_NAME, static_cast<int64_t>(VALUE_EXPR));
-
 #define ME_REFLECTION_ENUM_END(ENUM_TYPE) \
-        return meSystem.RegisterEnum<ENUM_TYPE>(meEnum); \
-    }(); \
+    return meSystem.RegisterEnum<ENUM_TYPE>(meEnum); \
+}(); \
 }

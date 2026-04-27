@@ -3,11 +3,7 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
-ME_REFLECTION_ENUM_BEGIN(minEngine::ReflectionSampleEnum)
-    ME_REFLECTION_ENUM_VALUE(ValueA, minEngine::ValueA)
-    ME_REFLECTION_ENUM_VALUE(ValueB, minEngine::ValueB)
-    ME_REFLECTION_ENUM_VALUE(ValueC, minEngine::ValueC)
-ME_REFLECTION_ENUM_END(minEngine::ReflectionSampleEnum)
+ME_REFLECTION_ENUM_DECLARE(minEngine::ReflectionSampleEnum, GReflectionEnumRegister_ReflectionSampleEnum_fa501ee3)
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ReflectionSampleClass)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleClass, IntField)
@@ -16,22 +12,11 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ReflectionSampleClass)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleClass, EnumField)
 ME_REFLECTION_ACCESSOR_END()
 
-ME_REFLECTION_CLASS_BEGIN(minEngine::ReflectionSampleClass)
-    ME_REFLECTION_CLASS_SET_ANNOTATIONS((static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::Transient)), (minEngine::Reflection::ClassMetadata{{"Category", "ReflectionSample"}, {"DisplayName", "ReflectionSampleClass"}}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ReflectionSampleClass, IntField, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Transient) | static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{{"Category", "Sample"}, {"DisplayName", "Sample Int"}}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ReflectionSampleClass, FloatField, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ReflectionSampleClass, StringField, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ReflectionSampleClass, EnumField, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
-ME_REFLECTION_CLASS_END(minEngine::ReflectionSampleClass)
+ME_REFLECTION_CLASS_DECLARE(minEngine::ReflectionSampleClass, GReflectionClassRegister_ReflectionSampleClass_7a3bc910)
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ReflectionSampleComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleComponent, SampleData)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleComponent, IntArray)
 ME_REFLECTION_ACCESSOR_END()
 
-ME_REFLECTION_CLASS_BEGIN(minEngine::ReflectionSampleComponent)
-    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_SUPER(minEngine::Component)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ReflectionSampleComponent, SampleData, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ReflectionSampleComponent, IntArray, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
-ME_REFLECTION_CLASS_END(minEngine::ReflectionSampleComponent)
+ME_REFLECTION_CLASS_DECLARE(minEngine::ReflectionSampleComponent, GReflectionClassRegister_ReflectionSampleComponent_95cd1884)

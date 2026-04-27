@@ -19,7 +19,7 @@ namespace minEngine
     ME_CLASS()
     class Component : public MEObject
     {
-        ME_REFLECTION_FRIEND(Component)
+        ME_GENERATED_BODY(Component)
     public:
         Component();
         virtual ~Component() = default;

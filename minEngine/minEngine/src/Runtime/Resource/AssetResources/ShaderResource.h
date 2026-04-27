@@ -6,7 +6,7 @@ namespace minEngine
     ME_CLASS()
     class ShaderResource
     {
-        ME_REFLECTION_FRIEND(ShaderResource)
+        ME_GENERATED_BODY(ShaderResource)
     public:
         ShaderResource() = default;
         ~ShaderResource() = default;

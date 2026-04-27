@@ -20,20 +20,7 @@
 
 namespace minEngine::Reflection
 {
-    // Some type traits helpers for reflection system
-    template<typename T>
-    inline constexpr bool kIsPointerLike = PointerLike<RemoveCvRefT<T>>::value;
-
-    template<typename T>
-    using PointeeT = typename PointerLike<RemoveCvRefT<T>>::Type;
-
-    template<typename T>
-    inline constexpr bool kIsPrimitiveLike = std::is_arithmetic_v<T>
-                                           || std::is_same_v<T, std::string>
-                                           || std::is_same_v<T, Vector2>
-                                           || std::is_same_v<T, Vector3>
-                                           || std::is_same_v<T, Vector4>
-                                           || std::is_enum_v<T>;
+    
 
     // For iterating properties in a class hierarchy, the visitor returns a bool indicating whether to continue iterating (true) or stop (false)
     using PropertyVisitorFn = std::function<bool(const MEProperty&)>;
@@ -254,7 +241,7 @@ namespace minEngine::Reflection
         template<typename T>
         const MEClass* FindClass() const
         {
-            return FindClassByTypeIndex(std::type_index(typeid(T*)));
+            return FindClass(GetClassName<T>());
         }
 
         const MEClass* FindClassByTypeIndex(const std::type_index& typeIndex) const 

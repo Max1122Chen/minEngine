@@ -13,7 +13,7 @@ namespace minEngine
     ME_STRUCT()
     struct MaterialParameters
     {
-        ME_REFLECTION_FRIEND(MaterialParameters)
+        ME_GENERATED_BODY(MaterialParameters)
 
         ME_PROPERTY()
         Vector4 Value{ 1.0f, 1.0f, 1.0f, 1.0f };
@@ -24,7 +24,7 @@ namespace minEngine
     ME_CLASS()
     class Material : public Asset
     {
-        ME_REFLECTION_FRIEND(Material)
+        ME_GENERATED_BODY(Material)
     public:
         Material() = default;
         virtual ~Material() = default;

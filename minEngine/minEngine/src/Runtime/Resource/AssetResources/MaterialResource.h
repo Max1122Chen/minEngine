@@ -7,7 +7,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialResource
     {
-        ME_REFLECTION_FRIEND(MaterialResource)
+        ME_GENERATED_BODY(MaterialResource)
     public:
         MaterialResource() = default;
         ~MaterialResource() = default;

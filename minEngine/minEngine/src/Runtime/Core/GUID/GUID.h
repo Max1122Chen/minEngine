@@ -10,7 +10,7 @@ namespace minEngine
     ME_STRUCT()
     struct GUID
     {
-        ME_REFLECTION_FRIEND(GUID)
+        ME_GENERATED_BODY(GUID)
 
         ME_PROPERTY()
         uint64_t High;

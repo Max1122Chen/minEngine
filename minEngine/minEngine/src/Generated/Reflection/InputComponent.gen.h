@@ -6,7 +6,4 @@
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::InputComponent)
 ME_REFLECTION_ACCESSOR_END()
 
-ME_REFLECTION_CLASS_BEGIN(minEngine::InputComponent)
-    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_SUPER(minEngine::Component)
-ME_REFLECTION_CLASS_END(minEngine::InputComponent)
+ME_REFLECTION_CLASS_DECLARE(minEngine::InputComponent, GReflectionClassRegister_InputComponent_bd0315c5)

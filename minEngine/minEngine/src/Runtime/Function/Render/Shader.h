@@ -9,7 +9,7 @@ namespace minEngine
     ME_CLASS()
     class Shader : public Asset
     {
-        ME_REFLECTION_FRIEND(Shader)
+        ME_GENERATED_BODY(Shader)
         friend class AssetManager;
     public:
         Shader() = default;

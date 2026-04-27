@@ -8,7 +8,7 @@ namespace minEngine
     ME_CLASS()
     class DirectionalLightComponent : public LightComponent
     {
-        ME_REFLECTION_FRIEND(DirectionalLightComponent)
+        ME_GENERATED_BODY(DirectionalLightComponent)
 
     public:
         DirectionalLightComponent() = default;

@@ -16,8 +16,8 @@ namespace minEngine
     ME_CLASS()
     class InputComponent : public Component
     {
-    using InputActionCallback =  std::function<void(const InputActionValue&)>;
-
+        ME_GENERATED_BODY(InputComponent)
+        using InputActionCallback =  std::function<void(const InputActionValue&)>;
 
     public:
         InputComponent() = default;
