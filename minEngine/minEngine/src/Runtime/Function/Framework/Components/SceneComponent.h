@@ -30,12 +30,15 @@ namespace minEngine
 
         const Vector3& GetPosition() const { return m_Transform.Position; }
         void SetPosition(const Vector3& position);
+        void Translate(const Vector3& delta);
 
         const Vector3& GetRotation() const { return m_Transform.Rotation; }
         void SetRotation(const Vector3& rotation);
+        void Rotate(const glm::quat& delta, Space relativeTo = Space::Local);
 
         const Vector3& GetScale() const { return m_Transform.Scale; }
         void SetScale(const Vector3& scale);
+        void ScaleBy(const Vector3& scaleFactor);
 
         Vector3 GetForwardVector() const;
         Vector3 GetRightVector() const;

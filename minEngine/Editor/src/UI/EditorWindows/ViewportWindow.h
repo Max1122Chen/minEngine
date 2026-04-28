@@ -53,7 +53,9 @@ namespace minEngine
         virtual void OnDraw() override;
 
     private:
-        void DrawGizmo(ViewportFrameState& frameState);
+        void DrawGizmo(EditorViewportClient& client);
+        Matrix4 CalculateViewMatrixForGizmo(const RenderCamera& camera) const;
+        Matrix4 CalculateProjectionMatrixForGizmo(const RenderCamera& camera) const;
 
     private:
         std::string m_Id;

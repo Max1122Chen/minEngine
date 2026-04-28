@@ -47,6 +47,15 @@ namespace minEngine
         }
     }
 
+    void SceneComponent::Translate(const Vector3 &delta)
+    {
+        Transform tempTransform = m_Transform;
+        tempTransform.Translate(delta);
+        SetPosition(tempTransform.Position);
+        // Use SetPosition(GetPosition() + delta) may be correct, but here we'd like to reuse the code in Transform to make sure the logic is consistent.
+        // Same for Rotate and ScaleBy below.
+    }
+
     void SceneComponent::SetRotation(const Vector3 &rotation)
     {
         if(!(m_Transform.Rotation == rotation))
@@ -63,6 +72,13 @@ namespace minEngine
         }
     }
 
+    void SceneComponent::Rotate(const glm::quat &delta, Space relativeTo)
+    {
+        Transform tempTransform = m_Transform;
+        tempTransform.Rotate(delta, relativeTo);
+        SetRotation(tempTransform.Rotation);
+    }
+
     void SceneComponent::SetScale(const Vector3 &scale)
     {
         if(!(m_Transform.Scale == scale))
@@ -77,6 +93,13 @@ namespace minEngine
             }
             MarkRenderStateDirty();
         }
+    }
+
+    void SceneComponent::ScaleBy(const Vector3 &scaleFactor)
+    {
+        Transform tempTransform = m_Transform;
+        tempTransform.ScaleBy(scaleFactor);
+        SetScale(tempTransform.Scale);
     }
 
     Vector3 SceneComponent::GetForwardVector() const

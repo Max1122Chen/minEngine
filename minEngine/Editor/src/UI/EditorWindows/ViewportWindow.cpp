@@ -99,28 +99,86 @@ namespace minEngine
         }
 
         // Draw gizmos
-        DrawGizmo(frameState);
+        DrawGizmo(viewportClient);
 
         ImGui::End();
 
         viewportClient.EndFrame();
     }
 
-    void ViewportWindow::DrawGizmo(ViewportFrameState& frameState)
+    void ViewportWindow::DrawGizmo(EditorViewportClient& client)
     {
         ImGuizmo::SetOrthographic(false);
+        ImGuizmo::BeginFrame();
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetGizmoSizeClipSpace(0.15f);
+        ImGuizmo::Enable(true);
 
+        const ViewportFrameState& frameState = client.GetFrameState();
         ImGuizmo::SetRect(frameState.ImageMin.x, frameState.ImageMin.y, frameState.ImageSize.x, frameState.ImageSize.y);
+        // Update Gizmo state
+        GizmoState& gizmoState = client.GetGizmoState();
+        // Draw and manipulate gizmo based on current mode
         if (GameObject* selected = m_Editor.GetSelectedGameObject())
         {
             RenderCamera* mainCamera = RuntimeGlobalContext::Get().m_RenderSystem->GetMainCamera();
             Matrix4 view = mainCamera->GetViewMatrix();
             Matrix4 projection = mainCamera->GetProjectionMatrix();
-            Matrix4 model = selected->GetTransform().ToMatrix();
+            Matrix4 model = selected->GetTransform().ToMatrixForRendering();
+            Matrix4 deltaMatrix;
 
-            ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), ImGuizmo::TRANSLATE, ImGuizmo::WORLD, glm::value_ptr(model));
+            ImGuizmo::OPERATION operation;
+            switch (gizmoState.mode)
+            {
+            case GizmoState::Mode::Translate:   operation = ImGuizmo::TRANSLATE; break;
+            case GizmoState::Mode::Rotate:      operation = ImGuizmo::ROTATE;    break;
+            case GizmoState::Mode::Scale:       operation = ImGuizmo::SCALE;     break;
+            default:                            operation = ImGuizmo::TRANSLATE; break;
+            }
+            gizmoState.Hovering = ImGuizmo::IsOver();
+            gizmoState.Using = ImGuizmo::IsUsing();
+            ImGuizmo::Manipulate(value_ptr(view), value_ptr(projection), operation, ImGuizmo::LOCAL, value_ptr(model), value_ptr(deltaMatrix));
+            client.SetInputBlockedByGizmo(gizmoState.Using || gizmoState.Hovering);
+            if(gizmoState.Using)
+            {
+                // We will consume the delta in EditorViewClient and apply it to the selected GameObject later in the frame instead of applying it immediately here.
+                // The "delta" below doesn't represent the actual delta transform in our logical world space. It is the delta in the render space. 
+                // So when we apply it to the GameObject's transform later, we will need to apply it to the render transform of the Object. Then convert the updated render transform back to the logical transform and set it to the GO.
+                gizmoState.Manipulated = true;
+                Vector3 translation = Vector3(deltaMatrix[3]);
+                Matrix3 rotMat = Matrix3(deltaMatrix);
+                rotMat[0] = glm::normalize(rotMat[0]);
+                rotMat[1] = glm::normalize(rotMat[1]);
+                rotMat[2] = glm::normalize(rotMat[2]);
+                glm::quat orientation = glm::quat_cast(deltaMatrix);
+                Vector3 scale = Vector3(
+                    glm::length(Vector3(deltaMatrix[0])),
+                    glm::length(Vector3(deltaMatrix[1])),
+                    glm::length(Vector3(deltaMatrix[2])));
+                gizmoState.Delta = {
+                    translation,
+                    orientation,
+                    scale
+                };
+            }
+            
         }
     }
+
+    Matrix4 ViewportWindow::CalculateViewMatrixForGizmo(const RenderCamera &camera) const
+    {
+        Matrix4 rotationMatrix = glm::mat4(1.0f);
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(camera.GetRotation().x), Vector3(1.0f, 0.0f, 0.0f));    // rotation x
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(camera.GetRotation().y), Vector3(0.0f, 1.0f, 0.0f));    // rotation y
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(camera.GetRotation().z), Vector3(0.0f, 0.0f, 1.0f));    // rotation z
+        Vector3 forward = glm::normalize(rotationMatrix * Vector4(1.0f, 0.0f, 0.0f, 0.0f));
+        Vector3 position = camera.GetPosition();
+        return glm::lookAt(position, position + forward, Vector3(0.0f, 1.0f, 0.0f));
+    }
+
+    Matrix4 ViewportWindow::CalculateProjectionMatrixForGizmo(const RenderCamera &camera) const
+    {
+        return Matrix4();
+    }
+
 }

@@ -3,8 +3,17 @@
 #include "Core/Reflection/ReflectionAnnotations.h"
 #include "Runtime/Core/Math/Math.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/matrix_decompose.hpp"
+
 namespace minEngine
 {
+    enum class Space
+    {
+        Local,
+        World
+    };
+
     ME_STRUCT()
     struct Transform
     {
@@ -31,10 +40,47 @@ namespace minEngine
             Scale = other.Scale;
         };
         
+        void SetPosition(const Vector3& position) { Position = position; }
+        void SetRotation(const Vector3& rotation) { Rotation = rotation; }
+        void SetScale(const Vector3& scale) { Scale = scale; }
+
+        void Translate(const Vector3& delta) { Position += delta; }
+        void Rotate(const glm::quat& delta, Space relativeTo = Space::Local)
+        {
+            glm::quat quatCurrent = glm::quat(glm::radians(Rotation));
+            if (relativeTo == Space::Local)
+            {
+                // For local rotation, we can simply concatenate the delta rotation with the current rotation.
+                glm::quat quatNew = delta * quatCurrent;
+                Vector3 euler = glm::degrees(glm::eulerAngles(quatNew));
+                Rotation = Vector3(euler.x, euler.y, euler.z);
+            }
+            else
+            {
+                // For world rotation, we need to convert the delta rotation from world space to local space before concatenating it with the current rotation.
+                glm::quat quatNew = quatCurrent * delta;
+                Vector3 euler = glm::degrees(glm::eulerAngles(quatNew));
+                Rotation = Vector3(euler.x, euler.y, euler.z);
+            }
+        }
+        void ScaleBy(const Vector3& scaleFactor) { Scale *= scaleFactor; }
+
+        // Return the transformation matrix in the game coordinate system (x for forward, y for up, z for right)
         Matrix4 ToMatrix() const
         {
-            // In the game, we use axis x for forward, y for up , z for right
-            // but in glm, axis x for right, y for up, -z for forward
+            Matrix4 model = glm::mat4(1.0f);
+            Vector3 renderingPosition = Vector3(Position.z, Position.y, -Position.x);
+            model = glm::translate(model, renderingPosition);                                   // translation
+            model = glm::rotate(model, glm::radians(Rotation.x), Vector3(1.0f, 0.0f, 0.0f));    // rotation x
+            model = glm::rotate(model, glm::radians(Rotation.y), Vector3(0.0f, 1.0f, 0.0f));    // rotation y
+            model = glm::rotate(model, glm::radians(Rotation.z), Vector3(0.0f, 0.0f, 1.0f));    // rotation z
+            model = glm::scale(model, Scale);                                                   // scale
+            return model;
+        }
+
+        // Return the transformation matrix in the rendering coordinate system (x for right, y for up, -z for forward)
+        Matrix4 ToMatrixForRendering() const
+        {
             Matrix4 model = glm::mat4(1.0f);
             Vector3 renderingPosition = Vector3(Position.z, Position.y, -Position.x);
             model = glm::translate(model, renderingPosition);                                   // translation
@@ -44,10 +90,6 @@ namespace minEngine
             model = glm::scale(model, Scale);                                                   // scale
             return model;
         }
-
-        void SetPosition(const Vector3& position) { Position = position; }
-        void SetRotation(const Vector3& rotation) { Rotation = rotation; }
-        void SetScale(const Vector3& scale) { Scale = scale; }
 
         bool operator==(const Transform& other) const
         {

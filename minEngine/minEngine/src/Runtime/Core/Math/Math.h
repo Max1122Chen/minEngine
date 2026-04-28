@@ -20,7 +20,6 @@ namespace minEngine::Math
     inline float tan(float angle) { return std::tan(angle); }
 
     inline float radians(float degrees) { return glm::radians(degrees); }
-
 }
 
 using namespace minEngine::Math;

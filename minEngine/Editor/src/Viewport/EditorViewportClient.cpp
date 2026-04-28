@@ -27,6 +27,7 @@ namespace minEngine
     EditorViewportClient::EditorViewportClient(std::string debugName)
         : m_DebugName(std::move(debugName))
     {
+        m_GizmoState.mode = GizmoState::Mode::Translate;
     }
 
     void EditorViewportClient::SetInputBlockedByGizmo(bool blocked)
@@ -37,6 +38,12 @@ namespace minEngine
     void EditorViewportClient::BeginFrame(float deltaTime)
     {
         m_LastDeltaTime = deltaTime;
+        // Clear Gizmo manipulation state at the beginning of each frame but not the mode
+        m_GizmoState.Using = false;
+        m_GizmoState.Hovering = false;
+        m_GizmoState.Manipulated = false;
+        m_GizmoState.axis = GizmoState::Axis::None;
+        m_GizmoState.Delta.Reset();
     }
 
     void EditorViewportClient::UpdateFrameState(const ViewportFrameState& frameState)
@@ -46,6 +53,7 @@ namespace minEngine
 
     void EditorViewportClient::EndFrame()
     {
+        ConsumeGizmoManipulation();
         InputKeys();
         ExecuteInputCommands();
         SyncRenderTargetSize();
@@ -88,6 +96,7 @@ namespace minEngine
         }
 
         m_InputBindings = {
+            // Navigation
             { InputKeys::Mouse_Right, ViewportInputTriggerType::Pressed,  ViewportInputCommandType::BeginNavigate },
             { InputKeys::Mouse_Right, ViewportInputTriggerType::Released, ViewportInputCommandType::EndNavigate },
             { InputKeys::Key_W,       ViewportInputTriggerType::Down,     ViewportInputCommandType::MoveForward },
@@ -100,7 +109,15 @@ namespace minEngine
             { InputKeys::MouseScroll, ViewportInputTriggerType::Down,     ViewportInputCommandType::AdjustMoveSpeed },
             { InputKeys::Key_F,       ViewportInputTriggerType::Pressed,  ViewportInputCommandType::FocusSelection },
             { InputKeys::Key_Escape,  ViewportInputTriggerType::Pressed,  ViewportInputCommandType::Cancel },
+
+            // Gizmo Mode Switching
+            { InputKeys::Key_W,       ViewportInputTriggerType::Pressed,  ViewportInputCommandType::SetGizmoModeTranslate },
+            { InputKeys::Key_E,       ViewportInputTriggerType::Pressed,  ViewportInputCommandType::SetGizmoModeRotate },
+            { InputKeys::Key_R,       ViewportInputTriggerType::Pressed,  ViewportInputCommandType::SetGizmoModeScale },
+
+            // GameObject Selection
             { InputKeys::Mouse_Left,  ViewportInputTriggerType::Pressed,  ViewportInputCommandType::Select }
+    
         };
 
         m_DefaultInputBindingsRegistered = true;
@@ -162,12 +179,14 @@ namespace minEngine
         bool requestCancel = false;
         bool speedBoostEnabled = false;
         bool hasSpeedAdjustment = false;
+        GizmoState::Mode requestedGizmoMode = GizmoState::Mode::None;
         bool requestSelection = false;
 
         for (const ViewportInputCommand& command : commands)
         {
             switch (command.Type)
             {
+            // Navigation
             case ViewportInputCommandType::BeginNavigate:
                 requestBeginNavigate = true;
                 break;
@@ -183,6 +202,17 @@ namespace minEngine
             case ViewportInputCommandType::AdjustMoveSpeed:
                 hasSpeedAdjustment = true;
                 break;
+            // Gizmo Mode Switching
+            case ViewportInputCommandType::SetGizmoModeTranslate:
+                requestedGizmoMode = GizmoState::Mode::Translate;
+                break;
+            case ViewportInputCommandType::SetGizmoModeRotate:
+                requestedGizmoMode = GizmoState::Mode::Rotate;
+                break;
+            case ViewportInputCommandType::SetGizmoModeScale:
+                requestedGizmoMode = GizmoState::Mode::Scale;
+                break;
+            // GameObject Selection
             case ViewportInputCommandType::Select:
                 requestSelection = true;
                 break;
@@ -209,6 +239,12 @@ namespace minEngine
         if (requestSelection && IsHovered() && IsFocused() && !m_IsNavigating && !m_InputBlockedByGizmo)
         {
             TrySelectAtMousePosition();
+        }
+
+        if (requestedGizmoMode != GizmoState::Mode::None && m_GizmoState.mode != requestedGizmoMode && IsHovered() && IsFocused() && !m_IsNavigating)
+        {
+            // Update Gizmo mode
+            m_GizmoState.mode = requestedGizmoMode;
         }
 
         if (!m_IsNavigating)
@@ -265,6 +301,39 @@ namespace minEngine
         if (windowSystem)
         {
             windowSystem->SetCursorVisible(!m_IsNavigating);
+        }
+    }
+
+    void EditorViewportClient::ConsumeGizmoManipulation()
+    {
+        //Consume the Gizmo's new transform and apply it to the selected GameObject if there is any first in case new GO is going to be selected this frame.
+        if (m_GizmoState.Manipulated)
+        {
+            if (GameObject* selected = m_Editor->GetSelectedGameObject())
+            {
+                switch(m_GizmoState.mode)
+                {
+                case GizmoState::Mode::Translate:
+                {   
+                    Vector3 worldpositionDelta = Vector3(-m_GizmoState.Delta.PositionDelta.z, m_GizmoState.Delta.PositionDelta.y, m_GizmoState.Delta.PositionDelta.x);
+                    m_Editor->GetSelectedGameObject()->Translate(worldpositionDelta); 
+                    break;
+                }
+                case GizmoState::Mode::Rotate:    
+                {
+                    // TODO: There is something wrong with rotation. But I dont know how to fix it yet.
+                    m_Editor->GetSelectedGameObject()->Rotate(m_GizmoState.Delta.RotationDelta);
+                    break;
+                }
+                case GizmoState::Mode::Scale:
+                {
+                    Vector3 worldScaleDelta = Vector3(m_GizmoState.Delta.ScaleDelta.x, m_GizmoState.Delta.ScaleDelta.y, -m_GizmoState.Delta.ScaleDelta.z);
+                    m_Editor->GetSelectedGameObject()->ScaleBy(worldScaleDelta);
+                    break;
+                }
+                default: break;
+                }
+            }
         }
     }
 
@@ -338,7 +407,7 @@ namespace minEngine
 
             Geometry::AABB boundingBox = staticMesh->m_BoundingBox;
 
-            Geometry::AABB worldBoundingBox = Geometry::Transform(boundingBox, staticMeshComponent->GetTransform().ToMatrix());
+            Geometry::AABB worldBoundingBox = Geometry::Transform(boundingBox, staticMeshComponent->GetTransform().ToMatrixForRendering());
             float distance = std::numeric_limits<float>::max();
             bool intersected = worldBoundingBox.IntersectRay(pickRay, distance);
             if (intersected && distance < closestHitDistance)

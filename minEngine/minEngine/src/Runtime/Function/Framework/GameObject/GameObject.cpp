@@ -31,6 +31,14 @@ namespace minEngine
         }
     }
 
+    void GameObject::Translate(const Vector3 &delta)
+    {
+        if (m_RootComponent)
+        {
+            m_RootComponent->Translate(delta);
+        }
+    }
+
     Vector3 GameObject::GetRotation()
     {
         return m_RootComponent ? m_RootComponent->GetRotation() : Vector3();
@@ -44,6 +52,14 @@ namespace minEngine
         }
     }
 
+    void GameObject::Rotate(const glm::quat &delta, Space relativeTo)
+    {
+        if (m_RootComponent)
+        {
+            m_RootComponent->Rotate(delta, relativeTo);
+        }
+    }
+
     Vector3 GameObject::GetScale()
     {
         return m_RootComponent ? m_RootComponent->GetScale() : Vector3();
@@ -54,6 +70,14 @@ namespace minEngine
         if (m_RootComponent)
         {
             m_RootComponent->SetScale(scale);
+        }
+    }
+
+    void GameObject::ScaleBy(const Vector3 &scaleFactor)
+    {
+        if (m_RootComponent)
+        {
+            m_RootComponent->ScaleBy(scaleFactor);
         }
     }
 

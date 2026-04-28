@@ -31,12 +31,15 @@ namespace minEngine
 
         Vector3 GetPosition();
         void SetPosition(const Vector3& position);
+        void Translate(const Vector3& delta);
 
         Vector3 GetRotation();
         void SetRotation(const Vector3& rotation);
+        void Rotate(const glm::quat& delta, Space relativeTo = Space::Local);
 
         Vector3 GetScale();
         void SetScale(const Vector3& scale);
+        void ScaleBy(const Vector3& scaleFactor);
 
     
         std::shared_ptr<SceneComponent> GetRootComponent() const { return m_RootComponent; }
