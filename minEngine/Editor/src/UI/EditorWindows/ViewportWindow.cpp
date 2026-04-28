@@ -116,15 +116,16 @@ namespace minEngine
 
         const ViewportFrameState& frameState = client.GetFrameState();
         ImGuizmo::SetRect(frameState.ImageMin.x, frameState.ImageMin.y, frameState.ImageSize.x, frameState.ImageSize.y);
+        RenderCamera* mainCamera = RuntimeGlobalContext::Get().m_RenderSystem->GetMainCamera();
+        Matrix4 view = mainCamera->GetViewMatrix();
+        Matrix4 projection = mainCamera->GetProjectionMatrix();
+        ImGuizmo::DrawGrid(value_ptr(view), value_ptr(projection), value_ptr(Matrix4(1.0f)), 100.0f);
         // Update Gizmo state
         GizmoState& gizmoState = client.GetGizmoState();
         // Draw and manipulate gizmo based on current mode
         if (GameObject* selected = m_Editor.GetSelectedGameObject())
         {
-            RenderCamera* mainCamera = RuntimeGlobalContext::Get().m_RenderSystem->GetMainCamera();
-            Matrix4 view = mainCamera->GetViewMatrix();
-            Matrix4 projection = mainCamera->GetProjectionMatrix();
-            Matrix4 model = selected->GetTransform().ToMatrixForRendering();
+            Matrix4 model = selected->GetTransform().ToMatrix();
             Matrix4 deltaMatrix;
 
             ImGuizmo::OPERATION operation;
@@ -137,14 +138,14 @@ namespace minEngine
             }
             gizmoState.Hovering = ImGuizmo::IsOver();
             gizmoState.Using = ImGuizmo::IsUsing();
-            ImGuizmo::Manipulate(value_ptr(view), value_ptr(projection), operation, ImGuizmo::LOCAL, value_ptr(model), value_ptr(deltaMatrix));
+            // Currently we only support World mode, local mode is too complicated to implement.
+            gizmoState.Manipulated = ImGuizmo::Manipulate(value_ptr(view), value_ptr(projection), operation, ImGuizmo::WORLD, value_ptr(model), value_ptr(deltaMatrix));
             client.SetInputBlockedByGizmo(gizmoState.Using || gizmoState.Hovering);
-            if(gizmoState.Using)
+            if(gizmoState.Using && gizmoState.Manipulated)
             {
                 // We will consume the delta in EditorViewClient and apply it to the selected GameObject later in the frame instead of applying it immediately here.
                 // The "delta" below doesn't represent the actual delta transform in our logical world space. It is the delta in the render space. 
                 // So when we apply it to the GameObject's transform later, we will need to apply it to the render transform of the Object. Then convert the updated render transform back to the logical transform and set it to the GO.
-                gizmoState.Manipulated = true;
                 Vector3 translation = Vector3(deltaMatrix[3]);
                 Matrix3 rotMat = Matrix3(deltaMatrix);
                 rotMat[0] = glm::normalize(rotMat[0]);

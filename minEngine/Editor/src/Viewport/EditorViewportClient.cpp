@@ -315,20 +315,17 @@ namespace minEngine
                 {
                 case GizmoState::Mode::Translate:
                 {   
-                    Vector3 worldpositionDelta = Vector3(-m_GizmoState.Delta.PositionDelta.z, m_GizmoState.Delta.PositionDelta.y, m_GizmoState.Delta.PositionDelta.x);
-                    m_Editor->GetSelectedGameObject()->Translate(worldpositionDelta); 
+                    m_Editor->GetSelectedGameObject()->Translate(m_GizmoState.Delta.PositionDelta); 
                     break;
                 }
                 case GizmoState::Mode::Rotate:    
                 {
-                    // TODO: There is something wrong with rotation. But I dont know how to fix it yet.
-                    m_Editor->GetSelectedGameObject()->Rotate(m_GizmoState.Delta.RotationDelta);
+                    m_Editor->GetSelectedGameObject()->Rotate(m_GizmoState.Delta.RotationDelta, Space::World);
                     break;
                 }
                 case GizmoState::Mode::Scale:
                 {
-                    Vector3 worldScaleDelta = Vector3(m_GizmoState.Delta.ScaleDelta.x, m_GizmoState.Delta.ScaleDelta.y, -m_GizmoState.Delta.ScaleDelta.z);
-                    m_Editor->GetSelectedGameObject()->ScaleBy(worldScaleDelta);
+                    m_Editor->GetSelectedGameObject()->ScaleBy(m_GizmoState.Delta.ScaleDelta);
                     break;
                 }
                 default: break;
@@ -407,7 +404,7 @@ namespace minEngine
 
             Geometry::AABB boundingBox = staticMesh->m_BoundingBox;
 
-            Geometry::AABB worldBoundingBox = Geometry::Transform(boundingBox, staticMeshComponent->GetTransform().ToMatrixForRendering());
+            Geometry::AABB worldBoundingBox = Geometry::Transform(boundingBox, staticMeshComponent->GetTransform().ToMatrix());
             float distance = std::numeric_limits<float>::max();
             bool intersected = worldBoundingBox.IntersectRay(pickRay, distance);
             if (intersected && distance < closestHitDistance)

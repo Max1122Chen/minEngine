@@ -488,7 +488,7 @@ namespace minEngine
                 command.m_VertexDefinition = staticMeshProxy->m_VertexDefinition;
                 command.m_IndexBuffer = staticMeshProxy->m_IndexBuffer;
                 command.m_Material = staticMeshProxy->m_Material;
-                command.m_ModelMatrix = staticMeshProxy->m_Transform.ToMatrixForRendering(); 
+                command.m_ModelMatrix = staticMeshProxy->m_Transform.ToMatrix(); 
                 command.m_CastShadow = staticMeshProxy->m_CastShadow;
 
                 if (!command.m_Material || !command.m_VertexDefinition || !command.m_VertexBuffer)
