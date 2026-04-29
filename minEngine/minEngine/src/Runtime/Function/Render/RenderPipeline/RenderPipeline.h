@@ -70,6 +70,18 @@ namespace minEngine
         uint32_t SpotLightsCount;
     };
 
+    // CSM cascade split data structure
+    struct CascadeSplit
+    {
+        float Near;
+        float Far;
+    };
+
+    struct Frustum
+    {
+        Vector4 Corners[8];
+    };
+
     class RenderPipeline
     {
     public:
@@ -144,5 +156,13 @@ namespace minEngine
         void CollectShadowRequests();
         void BuildShadowDrawCommands();
         void BuildRenderQueue();
+
+        // Directional shadow command building 
+        std::vector<ShadowDrawCommand> BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 
+                                                            const ShadowResourceHandle& handle, 
+                                                            const DirectionalLightSceneProxy* lightProxy,
+                                                            uint32_t cascadeCount);
+        
+        std::vector<CascadeSplit> CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount);
     };
 }

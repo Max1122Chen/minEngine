@@ -6,6 +6,7 @@
 
 namespace minEngine
 {
+    class RHI;
     class MeshDrawCommand;
     class UniformBuffer;
     class FrameBuffer;
@@ -38,5 +39,6 @@ namespace minEngine
         std::shared_ptr<RHIShader> m_DepthOnlyShader; // A simple shader that only outputs depth, used for shadow pass
 
         void UpdateLightViewProjBuffer(Matrix4 inMatrix);
+        void RenderDirectionalShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);
     };
 }

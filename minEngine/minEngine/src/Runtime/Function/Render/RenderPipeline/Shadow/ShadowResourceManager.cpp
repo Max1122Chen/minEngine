@@ -32,12 +32,12 @@ namespace minEngine
     {
         if (!req.Resolution.IsValid() || cascadeCount == 0)
         {
-            return BuildInvalidHandle();
+            return ShadowResourceHandle::InvalidHandle();
         }
 
         if (!EnsureDirectionalResource(req, cascadeCount))
         {
-            return BuildInvalidHandle();
+            return ShadowResourceHandle::InvalidHandle();
         }
 
         ShadowResourceHandle handle{};
@@ -55,19 +55,14 @@ namespace minEngine
     {
         (void)req;
         // Interface placeholder: future spot shadow atlas allocation.
-        return BuildInvalidHandle();
+        return ShadowResourceHandle::InvalidHandle();
     }
 
     ShadowResourceHandle ShadowResourceManager::AcquirePoint(const ShadowRequest& req)
     {
         (void)req;
         // Interface placeholder: future point light cube shadow allocation.
-        return BuildInvalidHandle();
-    }
-
-    ShadowResourceHandle ShadowResourceManager::BuildInvalidHandle() const
-    {
-        return ShadowResourceHandle{};
+        return ShadowResourceHandle::InvalidHandle();
     }
 
     bool ShadowResourceManager::EnsureDirectionalResource(const ShadowRequest& req, uint32_t cascadeCount)

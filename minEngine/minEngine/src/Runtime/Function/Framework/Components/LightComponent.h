@@ -6,6 +6,7 @@ namespace minEngine
 {
     enum class LightType : uint8_t
     {
+        None,
         Directional,
         Point,
         Spot

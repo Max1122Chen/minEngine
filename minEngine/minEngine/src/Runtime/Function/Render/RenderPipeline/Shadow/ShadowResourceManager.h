@@ -36,7 +36,6 @@ namespace minEngine
         };
 
     private:
-        ShadowResourceHandle BuildInvalidHandle() const;
         bool EnsureDirectionalResource(const ShadowRequest& req, uint32_t cascadeCount);
 
     private:

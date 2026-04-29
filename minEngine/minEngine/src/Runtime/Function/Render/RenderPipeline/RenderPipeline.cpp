@@ -13,7 +13,9 @@
 #include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Render/LightSceneProxies/SpotLightSceneProxy.h"
+#include "Math/Geometry/AABB.h"
 #include <glad/glad.h>
+
 
 namespace minEngine
 {
@@ -31,7 +33,7 @@ namespace minEngine
             Matrix4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 0.1f, 100.0f);
 
             // The light's view matrix is calculated based on its direction and a target point.
-            Vector3 lightDir = Vector3(lightProxy->m_Direction.z, lightProxy->m_Direction.y, -lightProxy->m_Direction.x); // Light direction points from the scene to the light
+            Vector3 lightDir = lightProxy->m_Direction;
             Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
 
             Matrix4 lightView = glm::lookAt(-lightDir * 10.0f, lightDir, up);
@@ -404,8 +406,8 @@ namespace minEngine
             }
 
             ShadowRequest shadowRequest{};
-            shadowRequest.Key.Type = LightType::Directional;
-            shadowRequest.Key.LightProxyPtr = dirLightProxy;
+            shadowRequest.Type = LightType::Directional;
+            shadowRequest.LightProxy = dirLightProxy;
             shadowRequest.Resolution = ShadowResolution{    // Currently we use a fixed shadow map resolution for simplicity, we can make this configurable later.
                 .Width = 512,
                 .Height = 512
@@ -421,44 +423,30 @@ namespace minEngine
         m_DirectionalShadowHandle = ShadowResourceHandle{};
         m_DirectionalLightViewProj = Matrix4(1.0f);
 
-        constexpr uint32_t kDirectionalCascadeCount = 1;
+        constexpr uint32_t kDirectionalCascadeCount = 1;    // Currently we only support one cascade for directional light shadow, we can extend this to support multiple cascades later.
 
         for (const auto& shadowRequest : m_ShadowRequests)
         {
-            if (shadowRequest.Key.Type != LightType::Directional)
+            // Currently we only support directional light shadow.
+            if (shadowRequest.Type != LightType::Directional)
             {
                 continue;
             }
 
-            auto* dirLightProxy = static_cast<DirectionalLightSceneProxy*>(
-                const_cast<void*>(shadowRequest.Key.LightProxyPtr));
-            if (!dirLightProxy)
+            if (shadowRequest.Type == LightType::Directional)
             {
-                continue;
+                auto* dirLightProxy = static_cast<DirectionalLightSceneProxy*>(shadowRequest.LightProxy);
+                ShadowResourceHandle handle = m_ShadowResourceManager.AcquireDirectional(shadowRequest, kDirectionalCascadeCount);
+                if (!dirLightProxy || !handle.Valid)
+                {
+                    continue;
+                }
+
+                std::vector<ShadowDrawCommand> commands = BuildDirectionalShadowDrawCommands(shadowRequest, handle, dirLightProxy, kDirectionalCascadeCount);
+                m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), commands.begin(), commands.end());
+                m_DirectionalShadowHandle = handle;
+                m_DirectionalLightViewProj = CalculateDirectionalLightViewProjMatrix(dirLightProxy);
             }
-
-            // Current lighting path only consumes one directional shadow.
-            if (m_DirectionalShadowHandle.Valid)
-            {
-                continue;
-            }
-
-            ShadowResourceHandle handle = m_ShadowResourceManager.AcquireDirectional(shadowRequest, kDirectionalCascadeCount);
-            if (!handle.Valid)
-            {
-                continue;
-            }
-
-            ShadowDrawCommand shadowDrawCommand{};
-            shadowDrawCommand.Type = LightType::Directional;
-            shadowDrawCommand.Handle = handle;
-            shadowDrawCommand.ViewProj = CalculateDirectionalLightViewProjMatrix(dirLightProxy);
-            shadowDrawCommand.TargetLayer = handle.ArrayBaseLayer;
-            shadowDrawCommand.TargetFace = -1;
-
-            m_ShadowDrawCommands.push_back(shadowDrawCommand);
-            m_DirectionalShadowHandle = handle;
-            m_DirectionalLightViewProj = shadowDrawCommand.ViewProj;
         }
     }
 
@@ -508,6 +496,156 @@ namespace minEngine
         }
     }
 
+    std::vector<ShadowDrawCommand> RenderPipeline::BuildDirectionalShadowDrawCommands(const ShadowRequest &shadowRequest, 
+                                                                                     const ShadowResourceHandle &handle, 
+                                                                                     const DirectionalLightSceneProxy* lightProxy, 
+                                                                                     uint32_t cascadeCount)
+    {
+        std::vector<ShadowDrawCommand> commands;
 
+        // === Prepare camera matrices ===
+        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
+        if(!mainCamera)
+        {
+            ME_CORE_ERROR("Main camera is not available when building directional shadow draw commands");
+            return commands;
+        }
+        float nearPlane = mainCamera->m_zNear;
+        float farPlane = mainCamera->m_zFar;
+        Vector3 cameraPos = mainCamera->m_Position;
+        Matrix4 cameraView = mainCamera->GetViewMatrix();
+        Matrix4 cameraProj = mainCamera->GetProjectionMatrix();
+        Matrix4 cameraViewProj = mainCamera->GetViewProjMatrix();
+        Matrix4 invCameraViewProj = glm::inverse(cameraViewProj);
 
+        // === Prepare light view matrix ===
+        Matrix4 lightView = glm::lookAt(cameraPos, cameraPos - lightProxy->m_Direction * 100.0f, Vector3(0.0f, 1.0f, 0.0f));
+
+        // === Split cascade ===
+        std::vector<CascadeSplit> cascadeSplits = CalculateCascadeSplits(nearPlane, farPlane, cascadeCount);
+
+        // === Split the camera frustum ===
+        // An OpenGL NDC cube has corners from (-1, -1, -1) to (1, 1, 1)
+        Vector4 ndcCorners[8] = {
+            Vector4(-1, -1, -1, 1), // Near bottom left
+            Vector4(1, -1, -1, 1),  // Near bottom right
+            Vector4(1, 1, -1, 1),   // Near top right
+            Vector4(-1, 1, -1, 1),  // Near top left
+            Vector4(-1, -1, 1, 1), // Far bottom left
+            Vector4(1, -1, 1, 1),  // Far bottom right
+            Vector4(1, 1, 1, 1),   // Far top right
+            Vector4(-1, 1, 1, 1)   // Far top left
+        };
+        // Build the whole camera frustum corners in world space
+        Frustum cameraFrustumWS;    // "WS" stands for "world space"
+        for(int i = 0; i < 4; i++)
+        {
+            Vector4 nearCorner = ndcCorners[i];
+            Vector4 farCorner = ndcCorners[i + 4];
+            cameraFrustumWS.Corners[i] = invCameraViewProj * nearCorner;
+            cameraFrustumWS.Corners[i + 4] = invCameraViewProj * farCorner;
+            cameraFrustumWS.Corners[i] /= cameraFrustumWS.Corners[i].w;
+            cameraFrustumWS.Corners[i + 4] /= cameraFrustumWS.Corners[i + 4].w;
+        }
+
+        // Split the frustum corners for each cascade based on the cascade splits
+        std::vector<Frustum> cascadeFrustumsWS(cascadeCount);
+        for(int i = 0; i < cascadeCount; i++)
+        {
+            float nearSplit = cascadeSplits[i].Near;
+            float farSplit = cascadeSplits[i].Far;
+            for(int j = 0; j < 4; j++)
+            {
+                Vector4 nearCorner = cameraFrustumWS.Corners[j];
+                Vector4 farCorner = cameraFrustumWS.Corners[j + 4];
+                Vector4 splitCorner = nearCorner + (farCorner - nearCorner) * (farSplit - nearPlane) / (farPlane - nearPlane);
+                cascadeFrustumsWS[i].Corners[j] = splitCorner;
+            }
+            for(int j = 0; j < 4; j++)
+            {
+                Vector4 nearCorner = cameraFrustumWS.Corners[j];
+                Vector4 farCorner = cameraFrustumWS.Corners[j + 4];
+                Vector4 splitCorner = nearCorner + (farCorner - nearCorner) * (nearSplit - nearPlane) / (farPlane - nearPlane);
+                cascadeFrustumsWS[i].Corners[j + 4] = splitCorner;
+            }
+        }
+
+        // Calculate the far plane of each cascade in camera view space, we will need them to help determine which cascade the fragment belongs to in the Object shader.
+        std::vector<float> cascadeFarPlanesVS(cascadeCount);
+        for(int i = 0; i < cascadeCount; i++)
+        {
+            float maxZ = std::numeric_limits<float>::lowest();
+            for(int j = 0; j < 8; j++)
+            {
+                Vector4 cornerVS = cameraView * cascadeFrustumsWS[i].Corners[j];
+                maxZ = std::max(maxZ, -cornerVS.z); // We take the negative of z because in view space, the camera looks towards negative z direction
+            }
+            cascadeFarPlanesVS[i] = maxZ;
+        }
+        // TODO: pass the cascade far planes to shader.
+
+        // === Calculate the light view-projection matrix for each cascade ===
+        using Math::Geometry::AABB;
+        std::vector<Matrix4> cascadeLightViewProjs(cascadeCount);
+        for(int i = 0; i < cascadeCount; i++)
+        {
+            AABB aabb;
+            for(int j = 0; j < 8; j++)
+            {
+                Vector4 cornerLS = lightView * cascadeFrustumsWS[i].Corners[j];
+                aabb.Encapsulate(Vector3(cornerLS.x, cornerLS.y, cornerLS.z));
+                // TODO: encapsulte the potential objects in the scene. We may implement this later.
+            }
+            
+            Matrix4 lightProj = glm::ortho(aabb.Min.x, aabb.Max.x, aabb.Min.y, aabb.Max.y, -aabb.Max.z, -aabb.Min.z);
+            Matrix4 lightViewProj = lightProj * lightView;
+            cascadeLightViewProjs[i] = lightViewProj;
+        }
+
+        // === Finally build shadow draw commands for each cascade layer ===
+        for(uint32_t layerIndex = 0; layerIndex < cascadeCount; ++layerIndex)
+        {
+            ShadowDrawCommand command{};
+            command.Type = LightType::Directional;
+            command.Handle = handle;
+            command.ViewProj = CalculateDirectionalLightViewProjMatrix(lightProxy);
+            command.TargetLayer = layerIndex;
+            command.TargetFace = -1;
+            commands.push_back(command);
+        }
+
+        return commands;
+    }
+
+    std::vector<CascadeSplit> RenderPipeline::CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount)
+    {
+        std::vector<CascadeSplit> splits(cascadeCount);
+
+        float lambda = 0.6f; // Cascade split factor, controls how the splits are distributed between logarithmic and linear. 0 means linear, 1 means logarithmic.
+
+        std::vector<float> splitDepths(cascadeCount + 1);
+
+        splitDepths[0] = nearPlane;
+
+        for (uint32_t i = 1; i <= cascadeCount; i++)
+        {
+            float p = (float)i / (float)cascadeCount;
+
+            float logSplit = nearPlane * std::pow(farPlane / nearPlane, p);
+            float linSplit = nearPlane + (farPlane - nearPlane) * p;
+
+            float split = glm::mix(linSplit, logSplit, lambda);
+
+            splitDepths[i] = split;
+        }
+
+        // To Near / Far for each cascade layer
+        for (uint32_t i = 0; i < cascadeCount; i++)
+        {
+            splits[i].Near = splitDepths[i];
+            splits[i].Far  = splitDepths[i + 1];
+        }
+
+        return splits;
+    }
 }

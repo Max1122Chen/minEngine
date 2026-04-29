@@ -37,54 +37,21 @@ namespace minEngine
         m_DepthOnlyShader->Use();
         m_DepthOnlyShader->BindUniformBlock("LightViewProj", 8); // Bind the light view projection uniform buffer to the shader
 
-        for(const auto& shadowDrawCommand : m_ShadowDrawCommands)
+        for(const auto& command : m_ShadowDrawCommands)
         {
-            if (shadowDrawCommand.Type != LightType::Directional)
+            if (!command.Handle.Valid)
             {
                 continue;
             }
 
-            if (!shadowDrawCommand.Handle.Valid || !m_DirectionalShadowArray)
+            if(command.Type == LightType::Directional)
             {
-                continue;
+                RenderDirectionalShadow(*rhi, command);
             }
-
-            const ShadowResolution& resolution = shadowDrawCommand.Handle.Resolution;
-            rhi->SetViewport(0, 0, resolution.Width, resolution.Height);
-
-            // Bind the shadow array layer to the framebuffer.
-            m_FrameBuffer->AttachDepthBufferLayer(
-                m_DirectionalShadowArray,
-                static_cast<uint32_t>(shadowDrawCommand.TargetLayer));
-            // AttachDepthBuffer currently unbinds FBO internally, so bind again before clear/draw.
-            m_FrameBuffer->Bind();
-            rhi->Clear();
-
-            UpdateLightViewProjBuffer(shadowDrawCommand.ViewProj);
-            m_LightViewProjUniformBuffer->BindToBindingPoint(8); // Binding point 8 for light view projection matrix in shadow pass
-
-            // Render all opaque objects for this shadow entry
-            for(auto& command : m_OpaqueQueue)
+            else
             {
-                if(!command.m_CastShadow)
-                {
-                    continue;
-                }
-
-                m_DepthOnlyShader->UploadUniformMat4("u_Model", command.m_ModelMatrix);
-                static_cast<OpenGLVertexArrayObject*>(command.m_VertexDefinition)->Bind();
-                if(command.m_IndexBuffer)
-                {
-                    command.m_IndexBuffer->Bind();
-                    glDrawElements(GL_TRIANGLES, command.m_IndexBuffer->GetNumIndices(), GL_UNSIGNED_INT, nullptr);
-                }
-                else
-                {
-                    glDrawArrays(GL_TRIANGLES, 0, command.m_VertexBuffer->GetNumVertices());
-                }
+                ME_CORE_ERROR("Unsupported light type in ShadowPass::Render");
             }
-
-            
         }
 
         m_FrameBuffer->Unbind();
@@ -93,5 +60,49 @@ namespace minEngine
     void ShadowPass::UpdateLightViewProjBuffer(Matrix4 inMatrix)
     {
         m_LightViewProjUniformBuffer->UpdateData(&inMatrix, 0, sizeof(Matrix4));
+    }
+
+    void ShadowPass::RenderDirectionalShadow(RHI& rhi, const ShadowDrawCommand& command)
+    {
+        if (!m_DirectionalShadowArray)
+        {
+            ME_CORE_ERROR("Directional shadow array is not available in ShadowPass::RenderDirectionalShadow");
+            return;
+        }
+
+        const ShadowResolution& resolution = command.Handle.Resolution;
+        rhi.SetViewport(0, 0, resolution.Width, resolution.Height);
+
+        // Bind the shadow array layer to the framebuffer.
+        m_FrameBuffer->AttachDepthBufferLayer(
+            m_DirectionalShadowArray,
+            static_cast<uint32_t>(command.TargetLayer));
+        // AttachDepthBuffer currently unbinds FBO internally, so bind again before clear/draw.
+        m_FrameBuffer->Bind();
+        rhi.Clear();
+
+        UpdateLightViewProjBuffer(command.ViewProj);
+        m_LightViewProjUniformBuffer->BindToBindingPoint(8); // Binding point 8 for light view projection matrix in shadow pass
+
+        // Render all opaque objects for this shadow entry
+        for(auto& command : m_OpaqueQueue)
+        {
+            if(!command.m_CastShadow)
+            {
+                continue;
+            }
+
+            m_DepthOnlyShader->UploadUniformMat4("u_Model", command.m_ModelMatrix);
+            static_cast<OpenGLVertexArrayObject*>(command.m_VertexDefinition)->Bind();
+            if(command.m_IndexBuffer)
+            {
+                command.m_IndexBuffer->Bind();
+                glDrawElements(GL_TRIANGLES, command.m_IndexBuffer->GetNumIndices(), GL_UNSIGNED_INT, nullptr);
+            }
+            else
+            {
+                glDrawArrays(GL_TRIANGLES, 0, command.m_VertexBuffer->GetNumVertices());
+            }
+        }
     }
 }

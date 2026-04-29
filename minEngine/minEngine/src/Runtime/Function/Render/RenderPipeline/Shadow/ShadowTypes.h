@@ -33,34 +33,26 @@ namespace minEngine
         }
     };
 
-    struct ShadowLightKey
-    {
-        LightType Type = LightType::Directional;
-        const void* LightProxyPtr = nullptr;
-
-        bool operator==(const ShadowLightKey& rhs) const
-        {
-            return Type == rhs.Type && LightProxyPtr == rhs.LightProxyPtr;
-        }
-    };
-
     struct ShadowResourceHandle
     {
         ShadowResourceType ResourceType = ShadowResourceType::Invalid;
+        ShadowResolution Resolution{};
+
         int TextureUnit = -1;
 
         int ArrayBaseLayer = -1;
         int LayerCount = 0;
 
         int CubeIndex = -1;
-
-        ShadowResolution Resolution{};
         bool Valid = false;
+
+        static ShadowResourceHandle InvalidHandle() { return ShadowResourceHandle{}; }
     };
 
     struct ShadowRequest
     {
-        ShadowLightKey Key{};
+        LightType Type = LightType::None;
+        LightSceneProxy* LightProxy = nullptr;
         ShadowResolution Resolution{};
         uint32_t Priority = 0;
     };
