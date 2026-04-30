@@ -64,6 +64,9 @@ namespace minEngine
             {
                 m_DirectionalShadowArray->Bind(8); // Bind shadow array to texture unit 8
                 shader->GetRHIShader()->UploadUniformMat4("u_LightViewProj", m_DirectionalLightViewProj); // Upload the light view projection matrix for shadow mapping
+
+                shader->GetRHIShader()->BindUniformBlock("DirLightViewProjs", 9); // Bind the directional light view projection uniform buffer to the shader for CSM
+                shader->GetRHIShader()->BindUniformBlock("CascadeFarPlanes", 10); // Bind the CSM cascade far plane uniform buffer to the shader for CSM
             }
             shader->GetRHIShader()->UploadUniformInt("u_DirLightShadowMap", 8); // Bind the shadow map to texture unit 8 in the shader
 

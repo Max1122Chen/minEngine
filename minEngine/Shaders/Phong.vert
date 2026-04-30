@@ -18,6 +18,7 @@ out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoord;
 out vec4 FragPosLightSpace;
+out vec4 FragPosViewSpace;
 
 void main()
 {
@@ -25,5 +26,6 @@ void main()
     Normal = mat3(transpose(inverse(u_Model))) * a_Normal;
     TexCoord = a_TexCoord;
     FragPosLightSpace = u_LightViewProj * vec4(FragPos, 1.0);
+    FragPosViewSpace = View * vec4(FragPos, 1.0);
     gl_Position =  ViewProj * vec4(FragPos, 1.0);               // Since FragPos has been transformed to world space, we can directly use the global ViewProj matrix to transform it to clip space for rendering
 }

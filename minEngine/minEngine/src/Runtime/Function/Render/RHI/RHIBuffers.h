@@ -149,6 +149,9 @@ namespace minEngine
 
         static std::shared_ptr<FrameBuffer> Create(uint32_t width, uint32_t height);
 
+        uint32_t GetWidth() const { return m_Width; }
+        uint32_t GetHeight() const { return m_Height; }
+
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
 

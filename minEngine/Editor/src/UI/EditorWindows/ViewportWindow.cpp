@@ -119,7 +119,7 @@ namespace minEngine
         RenderCamera* mainCamera = RuntimeGlobalContext::Get().m_RenderSystem->GetMainCamera();
         Matrix4 view = mainCamera->GetViewMatrix();
         Matrix4 projection = mainCamera->GetProjectionMatrix();
-        ImGuizmo::DrawGrid(value_ptr(view), value_ptr(projection), value_ptr(Matrix4(1.0f)), 100.0f);
+        // ImGuizmo::DrawGrid(value_ptr(view), value_ptr(projection), value_ptr(Matrix4(1.0f)), 100.0f);
         // Update Gizmo state
         GizmoState& gizmoState = client.GetGizmoState();
         // Draw and manipulate gizmo based on current mode

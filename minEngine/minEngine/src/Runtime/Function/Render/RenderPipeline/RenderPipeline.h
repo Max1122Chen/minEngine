@@ -26,6 +26,7 @@ namespace minEngine
 
     constexpr uint32_t MAX_POINT_LIGHTS = 16;
     constexpr uint32_t MAX_SPOT_LIGHTS = 16;
+    constexpr uint32_t MAX_CASCADES = 4;
 
     // Data structure for per-frame uniform buffer
     struct PerFrameData
@@ -60,7 +61,7 @@ namespace minEngine
         Vector4 Params;     // x = inner cone angle in degrees, y = outer cone angle in degrees, w component can be used for shadow map index
     };
 
-    struct LightsData
+    struct LightsData   // Be careful about the std140 layout requirement for this structure, we need to make sure the data is aligned properly.
     {
         DirectionalLightData DirectionalLight;
         PointLightData PointLights[MAX_POINT_LIGHTS];
@@ -80,6 +81,12 @@ namespace minEngine
     struct Frustum
     {
         Vector4 Corners[8];
+    };
+
+    struct DirShadowCommandBuildResult
+    {
+        std::vector<ShadowDrawCommand> Commands;
+        std::vector<float> CascadeFarPlaneVS;
     };
 
     class RenderPipeline
@@ -119,9 +126,12 @@ namespace minEngine
         }
 
     private:
-        std::shared_ptr<UniformBuffer> m_LightViewProjUniformBuffer; // Uniform buffer for light view projection matrices, used in shadow pass
+        std::shared_ptr<UniformBuffer> m_LightViewProjUniformBuffer; // Uniform buffer for light view projection matrices used in shadow pass
         std::shared_ptr<UniformBuffer> m_PerFrameUniformBuffer;
-        std::shared_ptr<UniformBuffer> m_LightUniformBuffer;
+        std::shared_ptr<UniformBuffer> m_LightDataUniformBuffer;
+
+        std::shared_ptr<UniformBuffer> m_DirLightViewProjUniformBuffer; // Uniform buffer for directional light view projection matrix used in base pass for CSM
+        std::shared_ptr<UniformBuffer> m_CascadeFarPlaneUniformBuffer; // Uniform buffer for CSM cascade far plane distances used in base pass for CSM
 
         std::shared_ptr<FrameBuffer> m_ShadowBuffer;
         std::shared_ptr<FrameBuffer> m_SceneBuffer;
@@ -158,7 +168,7 @@ namespace minEngine
         void BuildRenderQueue();
 
         // Directional shadow command building 
-        std::vector<ShadowDrawCommand> BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 
+        DirShadowCommandBuildResult BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 
                                                             const ShadowResourceHandle& handle, 
                                                             const DirectionalLightSceneProxy* lightProxy,
                                                             uint32_t cascadeCount);

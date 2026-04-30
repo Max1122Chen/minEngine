@@ -61,10 +61,15 @@ namespace minEngine
         // Create uniform buffers
         m_LightViewProjUniformBuffer = rhi->CreateUniformBuffer(sizeof(Matrix4), 8); // Binding point 8 for light view projection matrix in shadow pass
         m_PerFrameUniformBuffer = rhi->CreateUniformBuffer(sizeof(PerFrameData), 0);
-        m_LightUniformBuffer = rhi->CreateUniformBuffer(sizeof(LightsData), 1); // Binding point 1 for light data
+        m_LightDataUniformBuffer = rhi->CreateUniformBuffer(sizeof(LightsData), 1); // Binding point 1 for light data
+
+        m_DirLightViewProjUniformBuffer = rhi->CreateUniformBuffer(sizeof(Matrix4) * MAX_CASCADES, 9); // Binding point 9 for directional light view projection matrix in base pass for CSM
+        m_CascadeFarPlaneUniformBuffer = rhi->CreateUniformBuffer(sizeof(float) * 4 * MAX_CASCADES, 10); // Binding point 10 for CSM cascade far plane distances in base pass for CSM
 
         // Create framebuffers
-        m_ShadowBuffer = rhi->CreateFrameBuffer(512, 512); // Shadow map framebuffer, we will use a fixed size for now
+        m_ShadowBuffer = rhi->CreateFrameBuffer(1024, 1024); // Shadow map framebuffer, we will use a fixed size for now
+
+        // Set up BasePass
 
         // Assign framebuffers to render passes
         m_ShadowPass.m_FrameBuffer = m_ShadowBuffer.get();
@@ -204,7 +209,7 @@ namespace minEngine
         m_SceneBuffer.reset();
         m_ShadowBuffer.reset();
 
-        m_LightUniformBuffer.reset();
+        m_LightDataUniformBuffer.reset();
         m_PerFrameUniformBuffer.reset();
         m_LightViewProjUniformBuffer.reset();
     }
@@ -299,7 +304,7 @@ namespace minEngine
         PerFrameData perFrameData;
         perFrameData.View = mainCamera->GetViewMatrix();
         perFrameData.Proj = mainCamera->GetProjectionMatrix();
-        perFrameData.ViewProj = perFrameData.Proj * perFrameData.View;
+        perFrameData.ViewProj = mainCamera->GetViewProjMatrix();
         perFrameData.CameraPos = Vector4(mainCamera->m_Position, 1.0f);
         m_PerFrameUniformBuffer->UpdateData(&perFrameData, 0, sizeof(PerFrameData));
         m_PerFrameUniformBuffer->BindToBindingPoint(0); // Bind the uniform buffer to the binding point for this frame
@@ -308,7 +313,7 @@ namespace minEngine
     void RenderPipeline::UpdateLightUBO()
     {
         RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
-        if (!renderScene || !m_LightUniformBuffer)
+        if (!renderScene || !m_LightDataUniformBuffer)
         {
             return;
         }
@@ -332,9 +337,7 @@ namespace minEngine
         if(firstValidDirectionalLight)
         {
             DirectionalLightSceneProxy* dirLightProxy = firstValidDirectionalLight;
-            // Convert light direction to render space. Ref: RenderCamera.
-            Vector4 lightRenderDir = Vector4(dirLightProxy->m_Direction.z, dirLightProxy->m_Direction.y, -dirLightProxy->m_Direction.x, 0.0f);
-            lightsData.DirectionalLight.Direction = lightRenderDir;
+            lightsData.DirectionalLight.Direction = Vector4(dirLightProxy->m_Direction, 0.0f);
             lightsData.DirectionalLight.Color = Vector4(dirLightProxy->m_LightColor, dirLightProxy->m_Intensity);
             int shadowMapIndex = -1;
             if (m_DirectionalShadowHandle.Valid)
@@ -379,8 +382,8 @@ namespace minEngine
         lightsData.SpotLightsCount = spotLightCount;
 
 
-        m_LightUniformBuffer->UpdateData(&lightsData, 0, sizeof(LightsData));
-        m_LightUniformBuffer->BindToBindingPoint(1); // Bind the uniform buffer to the binding point for light data
+        m_LightDataUniformBuffer->UpdateData(&lightsData, 0, sizeof(LightsData));
+        m_LightDataUniformBuffer->BindToBindingPoint(1); // Bind the uniform buffer to the binding point for light data
     }
 
     void RenderPipeline::CollectShadowRequests()
@@ -409,8 +412,8 @@ namespace minEngine
             shadowRequest.Type = LightType::Directional;
             shadowRequest.LightProxy = dirLightProxy;
             shadowRequest.Resolution = ShadowResolution{    // Currently we use a fixed shadow map resolution for simplicity, we can make this configurable later.
-                .Width = 512,
-                .Height = 512
+                .Width = m_ShadowBuffer->GetWidth(),
+                .Height = m_ShadowBuffer->GetHeight()
             };
             shadowRequest.Priority = 0;
             m_ShadowRequests.push_back(shadowRequest);
@@ -423,7 +426,7 @@ namespace minEngine
         m_DirectionalShadowHandle = ShadowResourceHandle{};
         m_DirectionalLightViewProj = Matrix4(1.0f);
 
-        constexpr uint32_t kDirectionalCascadeCount = 1;    // Currently we only support one cascade for directional light shadow, we can extend this to support multiple cascades later.
+        
 
         for (const auto& shadowRequest : m_ShadowRequests)
         {
@@ -436,16 +439,25 @@ namespace minEngine
             if (shadowRequest.Type == LightType::Directional)
             {
                 auto* dirLightProxy = static_cast<DirectionalLightSceneProxy*>(shadowRequest.LightProxy);
-                ShadowResourceHandle handle = m_ShadowResourceManager.AcquireDirectional(shadowRequest, kDirectionalCascadeCount);
+                ShadowResourceHandle handle = m_ShadowResourceManager.AcquireDirectional(shadowRequest, MAX_CASCADES);
                 if (!dirLightProxy || !handle.Valid)
                 {
                     continue;
                 }
 
-                std::vector<ShadowDrawCommand> commands = BuildDirectionalShadowDrawCommands(shadowRequest, handle, dirLightProxy, kDirectionalCascadeCount);
-                m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), commands.begin(), commands.end());
+                DirShadowCommandBuildResult result = BuildDirectionalShadowDrawCommands(shadowRequest, handle, dirLightProxy, MAX_CASCADES);
+                m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), result.Commands.begin(), result.Commands.end());
                 m_DirectionalShadowHandle = handle;
                 m_DirectionalLightViewProj = CalculateDirectionalLightViewProjMatrix(dirLightProxy);
+                
+                // Update the directional light view projection matrix for CSM in the base pass uniform buffer
+                for(int i = 0; i < MAX_CASCADES; i++)
+                {
+                    auto& command = result.Commands[i];
+                    m_CascadeFarPlaneUniformBuffer->UpdateData(&result.CascadeFarPlaneVS[i], sizeof(float) * 4 * i, sizeof(float));
+                    m_DirLightViewProjUniformBuffer->UpdateData(&command.ViewProj, sizeof(Matrix4) * i, sizeof(Matrix4));
+                }
+                
             }
         }
     }
@@ -496,19 +508,19 @@ namespace minEngine
         }
     }
 
-    std::vector<ShadowDrawCommand> RenderPipeline::BuildDirectionalShadowDrawCommands(const ShadowRequest &shadowRequest, 
+    DirShadowCommandBuildResult RenderPipeline::BuildDirectionalShadowDrawCommands(const ShadowRequest &shadowRequest, 
                                                                                      const ShadowResourceHandle &handle, 
                                                                                      const DirectionalLightSceneProxy* lightProxy, 
                                                                                      uint32_t cascadeCount)
     {
-        std::vector<ShadowDrawCommand> commands;
+        DirShadowCommandBuildResult result;
 
         // === Prepare camera matrices ===
         RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
         if(!mainCamera)
         {
             ME_CORE_ERROR("Main camera is not available when building directional shadow draw commands");
-            return commands;
+            return result;
         }
         float nearPlane = mainCamera->m_zNear;
         float farPlane = mainCamera->m_zFar;
@@ -519,10 +531,17 @@ namespace minEngine
         Matrix4 invCameraViewProj = glm::inverse(cameraViewProj);
 
         // === Prepare light view matrix ===
-        Matrix4 lightView = glm::lookAt(cameraPos, cameraPos - lightProxy->m_Direction * 100.0f, Vector3(0.0f, 1.0f, 0.0f));
+        Matrix4 lightView = glm::lookAt(Vector3(0.0f), lightProxy->m_Direction * 100.0f, Vector3(0.0f, 1.0f, 0.0f));
 
         // === Split cascade ===
         std::vector<CascadeSplit> cascadeSplits = CalculateCascadeSplits(nearPlane, farPlane, cascadeCount);
+        // Calculate the far plane of each cascade in camera view space, we will need them to help determine which cascade the fragment belongs to in the Object shader.
+        std::vector<float> cascadeFarPlanesVS(cascadeCount);
+        for(int i = 0; i < cascadeCount; i++)
+        {
+            cascadeFarPlanesVS[i] = cascadeSplits[i].Far;
+        }
+        result.CascadeFarPlaneVS = cascadeFarPlanesVS;
 
         // === Split the camera frustum ===
         // An OpenGL NDC cube has corners from (-1, -1, -1) to (1, 1, 1)
@@ -558,31 +577,12 @@ namespace minEngine
             {
                 Vector4 nearCorner = cameraFrustumWS.Corners[j];
                 Vector4 farCorner = cameraFrustumWS.Corners[j + 4];
-                Vector4 splitCorner = nearCorner + (farCorner - nearCorner) * (farSplit - nearPlane) / (farPlane - nearPlane);
-                cascadeFrustumsWS[i].Corners[j] = splitCorner;
-            }
-            for(int j = 0; j < 4; j++)
-            {
-                Vector4 nearCorner = cameraFrustumWS.Corners[j];
-                Vector4 farCorner = cameraFrustumWS.Corners[j + 4];
-                Vector4 splitCorner = nearCorner + (farCorner - nearCorner) * (nearSplit - nearPlane) / (farPlane - nearPlane);
-                cascadeFrustumsWS[i].Corners[j + 4] = splitCorner;
+                Vector4 splitFarCorner = nearCorner + (farCorner - nearCorner) * (farSplit - nearPlane) / (farPlane - nearPlane);  // Calculate the far corner of the split
+                Vector4 splitNearCorner = nearCorner + (farCorner - nearCorner) * (nearSplit - nearPlane) / (farPlane - nearPlane);  // Calculate the near corner of the split
+                cascadeFrustumsWS[i].Corners[j] = splitFarCorner;
+                cascadeFrustumsWS[i].Corners[j + 4] = splitNearCorner;
             }
         }
-
-        // Calculate the far plane of each cascade in camera view space, we will need them to help determine which cascade the fragment belongs to in the Object shader.
-        std::vector<float> cascadeFarPlanesVS(cascadeCount);
-        for(int i = 0; i < cascadeCount; i++)
-        {
-            float maxZ = std::numeric_limits<float>::lowest();
-            for(int j = 0; j < 8; j++)
-            {
-                Vector4 cornerVS = cameraView * cascadeFrustumsWS[i].Corners[j];
-                maxZ = std::max(maxZ, -cornerVS.z); // We take the negative of z because in view space, the camera looks towards negative z direction
-            }
-            cascadeFarPlanesVS[i] = maxZ;
-        }
-        // TODO: pass the cascade far planes to shader.
 
         // === Calculate the light view-projection matrix for each cascade ===
         using Math::Geometry::AABB;
@@ -597,7 +597,26 @@ namespace minEngine
                 // TODO: encapsulte the potential objects in the scene. We may implement this later.
             }
             
+            // Texel snapping 
+            Vector3 aabbSize = aabb.GetSize();
+            float texelSizeX = aabbSize.x / shadowRequest.Resolution.Width;
+            float texelSizeY = aabbSize.y / shadowRequest.Resolution.Height;
+            Vector3 aabbCenter = aabb.GetCenter();
+            // Snap the center of the bounding box to the nearest texel to reduce shimmering when the camera or light moves slightly.
+            aabbCenter.x = std::floor(aabbCenter.x / texelSizeX) * texelSizeX;
+            aabbCenter.y = std::floor(aabbCenter.y / texelSizeY) * texelSizeY;
+            aabb.Min = aabbCenter - aabb.GetExtent();
+            aabb.Max = aabbCenter + aabb.GetExtent();
+
+
+            // Build the light Matrices for this cascade based on the bounding box of the split frustum in light space.
             Matrix4 lightProj = glm::ortho(aabb.Min.x, aabb.Max.x, aabb.Min.y, aabb.Max.y, -aabb.Max.z, -aabb.Min.z);
+            // TODO: what's wrong with this?
+            // Vector4 aabbCenterWS = glm::inverse(lightView) * Vector4(aabb.GetCenter(), 1.0f);
+            // aabbCenterWS /= aabbCenterWS.w;
+            // Vector3 aabbCenterWS3 = Vector3(aabbCenterWS.x, aabbCenterWS.y, aabbCenterWS.z);
+            // Matrix4 cascadeLightView = glm::lookAt(aabbCenterWS3 - lightProxy->m_Direction * 100.0f, aabbCenterWS3, Vector3(0.0f, 1.0f, 0.0f));
+
             Matrix4 lightViewProj = lightProj * lightView;
             cascadeLightViewProjs[i] = lightViewProj;
         }
@@ -608,13 +627,14 @@ namespace minEngine
             ShadowDrawCommand command{};
             command.Type = LightType::Directional;
             command.Handle = handle;
-            command.ViewProj = CalculateDirectionalLightViewProjMatrix(lightProxy);
+            command.ViewProj = cascadeLightViewProjs[layerIndex];
+            // command.ViewProj = CalculateDirectionalLightViewProjMatrix(lightProxy); // For simplicity, we use the same view projection matrix for all cascades for now, we can use the actual cascade-specific view projection matrix later.
             command.TargetLayer = layerIndex;
             command.TargetFace = -1;
-            commands.push_back(command);
+            result.Commands.push_back(command);
         }
 
-        return commands;
+        return result;
     }
 
     std::vector<CascadeSplit> RenderPipeline::CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount)

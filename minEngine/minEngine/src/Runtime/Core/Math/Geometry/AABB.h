@@ -7,10 +7,10 @@ namespace minEngine::Math::Geometry
 
     struct AABB
     {
-        Vector3 Min;
-        Vector3 Max;
+        Vector3 Min = Vector3(std::numeric_limits<float>::max());
+        Vector3 Max = Vector3(-std::numeric_limits<float>::max());
         Vector3 GetCenter() const { return (Min + Max) * 0.5f; }
-        Vector3 GetExtent() const { return Max - Min; }
+        Vector3 GetExtent() const { return (Max - Min) * 0.5f; }
         Vector3 GetSize() const { return Max - Min; }
         bool Intersect(const AABB& other) const;
         bool IntersectRay(const Ray& ray, float& outDistance) const;

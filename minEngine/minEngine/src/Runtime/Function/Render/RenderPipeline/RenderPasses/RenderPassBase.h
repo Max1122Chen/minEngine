@@ -3,6 +3,7 @@
 
 namespace minEngine
 {
+    class RenderPipeline;
     class FrameBuffer;
 
     class RenderPassBase
@@ -17,6 +18,7 @@ namespace minEngine
         virtual void Render() = 0;
 
     public:
+        RenderPipeline* pipeline;
         FrameBuffer* m_FrameBuffer = nullptr;
     };
 }

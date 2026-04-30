@@ -34,12 +34,14 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fr
 vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir);
 float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias);
+vec3 GetCascadeDebugColor(int cascadeIndex);
 
 // Vertex Attributes
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoord;
 in vec4 FragPosLightSpace;
+in vec4 FragPosViewSpace;
 
 layout (std140) uniform PerFrameData
 {
@@ -56,6 +58,16 @@ layout (std140) uniform LightsData
     SpotLightData SpotLights[16];
     uint PointLightsCount;
     uint SpotLightsCount;
+};
+
+layout (std140) uniform DirLightViewProjs
+{
+    mat4 DirLightViewProj[4];
+};
+
+layout (std140) uniform CascadeFarPlanes
+{
+    float FarPlanes[4];
 };
 
 // Material info
@@ -101,10 +113,23 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fr
     float bias = max(0.0005, 0.005 * (1.0 - ndotl));
 
     float shadow = 0.0;
-    if(light.Params.w >= 0.0)
+    
+    // Determine which cascade to sample based on the fragment's view space depth
+    float viewDepth = -FragPosViewSpace.z;
+    int cascadeIndex = 3; // Default to the last cascade if beyond all far planes
+
+    for(int i = 0; i < 4; i++)
     {
-        shadow = SampleDirShadowPCF(fragPosLightSpace, light.Params.w, bias);
+        if(viewDepth < FarPlanes[i])
+        {
+            cascadeIndex = i;
+            break;
+        }
     }
+    lightColor = GetCascadeDebugColor(cascadeIndex); // Debug: visualize cascade splits with colors
+    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(FragPos, 1.0);
+    shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
+    
 
     // Ambient shading
     float ambientStrength = 0.1;    // TODO: make it configurable
@@ -204,4 +229,13 @@ vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir)
     specular *= intensity;
     
     return (diffuse + specular);
+}
+
+vec3 GetCascadeDebugColor(int cascadeIndex)
+{
+    if(cascadeIndex == 0) return vec3(1.0, 0.0, 0.0); // Red for cascade 0
+    else if(cascadeIndex == 1) return vec3(0.0, 1.0, 0.0); // Green for cascade 1
+    else if(cascadeIndex == 2) return vec3(0.0, 0.0, 1.0); // Blue for cascade 2
+    else if(cascadeIndex == 3) return vec3(1.0, 1.0, 0.0); // Yellow for cascade 3
+    else return vec3(1.0); // White for out of range
 }
