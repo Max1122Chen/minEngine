@@ -86,7 +86,7 @@ namespace minEngine
             return result;
         }
 
-        const std::vector<std::shared_ptr<GameObject>>& gameObjects = scene->GetGameObjects();
+        const std::vector<std::shared_ptr<GameObject>>& gameObjects = scene->GetAllGameObjects();
         result.reserve(gameObjects.size());
         for (const std::shared_ptr<GameObject>& gameObject : gameObjects)
         {
@@ -254,6 +254,31 @@ namespace minEngine
         else
         {
             ME_CORE_ERROR("Failed to create new GameObject in scene '{}'.", scene->GetSceneName());
+        }
+    }
+
+    bool Editor::RemoveGameObjectFromScene(uint64_t gameObjectId)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)        
+        {
+            ME_CORE_ERROR("No active scene to remove GameObject from.");
+            return false;
+        }
+        if (scene->RemoveGameObjectById(gameObjectId))
+        {
+            MarkSceneDirty();
+            if (IsGameObjectSelected(gameObjectId))
+            {
+                ClearSelectedGameObject();
+            }
+            ME_CORE_INFO("Removed GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
+            return true;
+        }
+        else
+        {
+            ME_CORE_ERROR("Failed to remove GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
+            return false;
         }
     }
 

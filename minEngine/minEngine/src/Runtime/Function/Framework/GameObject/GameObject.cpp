@@ -90,23 +90,94 @@ namespace minEngine
             return nullptr;
         }
         std::shared_ptr<Component> newComponent = std::static_pointer_cast<Component>(newComponentBase);
+        AddComponent_Internal(newComponent);
+        return newComponent;
+    }
+
+    bool GameObject::RemoveComponent(std::shared_ptr<Component> target)
+    {
+        auto it = std::find(m_Components.begin(),m_Components.end(),target);
+        if ( it != m_Components.end())
+        {
+            // Handle the case if the component to remove is a SceneComponent
+            if(target->GetClass() && target->IsA(SceneComponent::StaticClass()))
+            {
+                std::shared_ptr<SceneComponent> sceneComponent = std::static_pointer_cast<SceneComponent>(target);
+                if (sceneComponent.get() == m_RootComponent)
+                {
+                    m_RootComponent = nullptr;
+                    // Here we try to find another SceneComponent to be the new RootComponent, and reattach other SceneComponents to it
+                    // First we try to find the first child SceneComponent of the removed RootComponent to be the new RootComponent, and reattach other child SceneComponents to it
+                    SceneComponent* removedRoot = sceneComponent.get();
+                    SceneComponent* newRootCandidate = nullptr;
+                    for (SceneComponent* child : removedRoot->GetAttachChildren())
+                    {
+                        if (child != removedRoot)
+                        {
+                            newRootCandidate = child;
+                            break;
+                        }
+                    }
+                    if(newRootCandidate)
+                    {
+                        SetRootComponent(newRootCandidate);
+                    }
+                    // If there is no child SceneComponent, we find the first SceneComponent in the components list to be the new RootComponent
+                    else
+                    {
+                        for (auto& component : m_Components)
+                        {
+                            if (component->GetClass() && component->IsA(SceneComponent::StaticClass()))
+                            {
+                                newRootCandidate = std::static_pointer_cast<SceneComponent>(component).get();
+                                break;
+                            }
+                        }
+                        if(newRootCandidate)
+                        {
+                            SetRootComponent(newRootCandidate);
+                        }
+                    }
+                    // Finally we reattach all other SceneComponents to the new RootComponent
+                    if(newRootCandidate)
+                    {
+                        for (SceneComponent* child : removedRoot->GetAttachChildren())
+                        {
+                            if (child != removedRoot && child != newRootCandidate)
+                            {
+                                child->AttachToComponent(newRootCandidate, AttachmentTransformRules::KeepRelativeTransform);
+                            }
+                        }
+                    }
+                }
+            }
+            m_Components.erase(it);
+            return true;
+        }
+        return false;
+    }
+
+    void GameObject::AddComponent_Internal(std::shared_ptr<Component> newComponent)
+    {
+        if(!newComponent)
+        {
+            return;
+        }
         newComponent->SetOwner(this);
         m_Components.push_back(newComponent);
-        Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-        if (newComponent->GetClass() && reflectionSystem.IsClassSameOrDerived(newComponent->GetClass(), reflectionSystem.FindClass<SceneComponent>()))
+        if (newComponent->GetClass() && newComponent->IsA(Component::StaticClass()))
         {
             // Set the first added SceneComponent as the RootComponent by default
             if (!m_RootComponent)
             {
-                m_RootComponent = std::static_pointer_cast<SceneComponent>(newComponent);
+                m_RootComponent = std::static_pointer_cast<SceneComponent>(newComponent).get();
             }
             else
             {
                 SceneComponent* sceneComponent = static_cast<SceneComponent*>(newComponent.get());
-                sceneComponent->AttachToComponent(m_RootComponent.get(), AttachmentTransformRules::KeepRelativeTransform);
+                sceneComponent->AttachToComponent(m_RootComponent, AttachmentTransformRules::KeepRelativeTransform);
             }
         }
-        return newComponent;
     }
 
     void GameObject::Tick(float deltaTime)

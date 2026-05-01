@@ -5,6 +5,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "TypeTraits.h"
 
 namespace minEngine
 {
@@ -19,7 +20,22 @@ namespace minEngine
         ME_GENERATED_BODY(GameObject)
     public:
         GameObject();
-        virtual ~GameObject() = default;
+        virtual ~GameObject()
+        {
+            // A simple implementation for demo purposes. We will handle component ownership and lifecycle more robustly in the future.
+            // TODO: handle lifecycle of components more robustly, we may want to implement a component system that can manage the lifecycle of components instead of relying on the game object to destroy them, we may also want to implement a reference counting system for components to avoid dangling pointers.
+            for(auto& component : m_Components)
+            {
+                if (component)
+                {
+                    component->SetOwner(nullptr);
+                    RemoveObject(component.get());
+                    component.reset();
+                }
+            }
+            m_Components.clear();
+            ME_CORE_INFO("GameObject with ID {} and name '{}' is being destroyed.", m_ID, GetName());
+        }
 
         void Tick(float deltaTime);
 
@@ -42,43 +58,44 @@ namespace minEngine
         void ScaleBy(const Vector3& scaleFactor);
 
     
-        std::shared_ptr<SceneComponent> GetRootComponent() const { return m_RootComponent; }
-        void SetRootComponent(std::shared_ptr<SceneComponent> rootComponent) { m_RootComponent = rootComponent; }
-        std::vector<std::shared_ptr<Component>>& GetComponents() { return m_Components; }
+        SceneComponent* GetRootComponent() const { return m_RootComponent; }
+        void SetRootComponent(SceneComponent* rootComponent) { m_RootComponent = rootComponent; }
+        std::vector<std::shared_ptr<Component>>& GetAllComponents() { return m_Components; }
 
         // just a simple implementation for demo purposes
         template<typename T>
-        std::shared_ptr<T> GetComponent()
+        std::vector<std::shared_ptr<T>> GetComponentsOfType()
         {
+            std::vector<std::shared_ptr<T>> result;
             for(auto& component : m_Components)
             {
-                std::shared_ptr<T> castedComponent = std::dynamic_pointer_cast<T>(component);
-                if(castedComponent)
-                {
-                    return castedComponent;
-                }
+                component->GetClass()->IsA(T::StaticClass()) ? result.push_back(std::static_pointer_cast<T>(component)) : void();
             }
-            return nullptr;
+            return result;
         }
         
         template<typename T>
         std::shared_ptr<T> AddComponent()
         {
-            std::shared_ptr<T> newComponent = NewObject<T>("",this);
-            newComponent->SetOwner(this);
-            m_Components.push_back(newComponent);
-            // TODO: attach to root component by default if it's a SceneComponent, and handle the case when root component is missing
-
+            static_assert(std::is_base_of_v<minEngine::Component,T>,"Tried to use AddComponent<T> with a non-component type!!!");
+            std::shared_ptr<T> newComponentBase = NewObject<T>("",this);
+            std::shared_ptr<Component> newComponent = std::static_pointer_cast<Component>(newComponentBase);
+            AddComponent_Internal(newComponent);
             return newComponent;
         }
 
         std::shared_ptr<Component> AddComponent(const std::string& componentTypeName);
 
+        bool RemoveComponent(std::shared_ptr<Component> target);
+
+    private:
+        void AddComponent_Internal(std::shared_ptr<Component> newComponent);
+
     private:
         uint64_t m_ID{ 0 };
 
         ME_PROPERTY()
-        std::shared_ptr<SceneComponent> m_RootComponent{ nullptr };
+        SceneComponent* m_RootComponent{ nullptr };
 
         ME_PROPERTY(Instanced)
         std::vector<std::shared_ptr<Component>> m_Components;

@@ -6,21 +6,13 @@ namespace minEngine
 {
     void MovementComponent::AddMovementInput(const Vector3& worldDirection, float scale)
     {
-        SceneComponent* ownerSceneComponent = GetOwner()->GetComponent<SceneComponent>().get();
-        if(ownerSceneComponent)
-        {
-            Vector3 newPosition = ownerSceneComponent->GetPosition() + worldDirection * scale;
-            ownerSceneComponent->SetPosition(newPosition);
-        }
+        // TODO: implement movement logic, currently just a placeholder to demonstrate how to use the component system
+        return;
     }
 
     void MovementComponent::AddRotationInput(const Vector3& deltaRotation)
     {
-        SceneComponent* ownerSceneComponent = dynamic_cast<SceneComponent*>(GetOwner()->GetComponent<SceneComponent>().get());
-        if(ownerSceneComponent)
-        {
-            Vector3 newRotation = ownerSceneComponent->GetRotation() + deltaRotation;
-            ownerSceneComponent->SetRotation(newRotation);
-        }
+        // TODO: implement rotation logic, currently just a placeholder to demonstrate how to use the component system
+        return;
     }
 }

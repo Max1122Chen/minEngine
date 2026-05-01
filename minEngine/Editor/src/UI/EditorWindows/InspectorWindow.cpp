@@ -142,7 +142,7 @@ namespace minEngine
                 ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
                 ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
                 
-                const std::shared_ptr<SceneComponent>& rootComponent = gameObject->GetRootComponent();
+                SceneComponent* rootComponent = gameObject->GetRootComponent();
                 const Reflection::MEClass* classInfo = rootComponent->GetClass();
                 bool valueChanged = false;
                 if (classInfo)
@@ -152,7 +152,7 @@ namespace minEngine
                     {
                         if(property.GetName() == "m_Transform")
                         {
-                            void* valuePtr = property.GetMutable(rootComponent.get());
+                            void* valuePtr = property.GetMutable(static_cast<void*>(rootComponent));
                             valueChanged |= DrawProperty(property, valuePtr);
                         }
                         return true;
@@ -175,7 +175,7 @@ namespace minEngine
         ImGui::Spacing();
         ImGui::SeparatorText("Components");
 
-        for (const std::shared_ptr<Component>& component : gameObject->GetComponents())
+        for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
         {
             if (!component)
             {

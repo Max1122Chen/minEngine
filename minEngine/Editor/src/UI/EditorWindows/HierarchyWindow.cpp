@@ -20,14 +20,9 @@ namespace minEngine
             return;
         }
 
-        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_F2, false))
-        {
-            if (GameObject* selected = m_Editor.GetSelectedGameObject())
-            {
-                BeginRename(*selected);
-            }
-        }
+        TryCaptureF2RenameRequest();
 
+        // For each GO in hierarchy, we draw a selectable item. Clicking on it will select the GO, and right-clicking will open a context menu for that GO.
         for (GameObject* gameObject : gameObjects)
         {
             if (!gameObject)
@@ -82,6 +77,7 @@ namespace minEngine
                 m_Editor.SelectGameObject(gameObject->GetID());
             }
 
+            // Custom selection highlight
             if (selected)
             {
                 ImGui::PopStyleColor(3);
@@ -97,9 +93,62 @@ namespace minEngine
                 BeginRename(*gameObject);
             }
 
+            TryDrawRightClickGOMenu(*gameObject);
+
             ImGui::PopID();
         }
 
+        // TryDrawRightClickBlankSpaceMenu();
+
         ImGui::End();
+    }
+
+    void HierarchyWindow::TryCaptureF2RenameRequest()
+    {
+        // Rename on F2 key pressed while the window is focused
+        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        {
+            if (GameObject* selected = m_Editor.GetSelectedGameObject())
+            {
+                BeginRename(*selected);
+            }
+        }
+    }
+
+    void HierarchyWindow::BeginRename(const GameObject &gameObject)
+    {
+        m_RenamingGameObjectId = gameObject.GetID();
+        std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+        std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
+        m_RequestRenameFocus = true;
+    }
+
+    void HierarchyWindow::TryDrawRightClickBlankSpaceMenu()
+    {
+        if (ImGui::BeginPopupContextWindow())
+        {
+            if (ImGui::MenuItem("Create Empty"))
+            {
+                m_Editor.AddEmptyGOToScene();
+            }
+            ImGui::EndPopup();
+        }
+    }
+
+    void HierarchyWindow::TryDrawRightClickGOMenu(GameObject &gameObject)
+    {
+        if (ImGui::BeginPopupContextItem())
+        {
+            m_Editor.SelectGameObject(gameObject.GetID());
+            if (ImGui::MenuItem("Rename"))
+            {
+                BeginRename(gameObject);
+            }
+            if (ImGui::MenuItem("Delete"))
+            {
+                m_Editor.RemoveGameObjectFromScene(gameObject.GetID());
+            }
+            ImGui::EndPopup();
+        }
     }
 }

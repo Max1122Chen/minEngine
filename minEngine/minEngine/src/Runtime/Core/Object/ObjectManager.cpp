@@ -16,6 +16,7 @@ namespace minEngine
     void ObjectManager::Shutdown()
     {
         m_ObjectsByGuid.clear();
+        ME_CORE_INFO("ObjectManager Shutdown.");
     }
 
     void ObjectManager::RegisterObject(const std::shared_ptr<MEObject>& object)
@@ -35,24 +36,38 @@ namespace minEngine
         m_ObjectsByGuid[guid] = object;
     }
 
-    void ObjectManager::UnregisterObject(const GUID& guid)
+    bool ObjectManager::UnregisterObject(const GUID& guid)
     {
         if (guid.IsZero())
         {
-            return;
+            return false;
         }
 
-        m_ObjectsByGuid.erase(guid);
+        auto iter = m_ObjectsByGuid.find(guid);
+        if (iter == m_ObjectsByGuid.end())
+        {
+            return false;
+        }
+
+        // Copy the shared_ptr out before erasing the map entry. This prevents
+        // the object's destructor running inside unordered_map::erase(), which
+        // could re-enter ObjectManager and mutate the hashtable while it's in
+        // an inconsistent state (leading to crashes). Holding a local copy
+        // ensures destruction happens after erase completes.
+        std::shared_ptr<MEObject> obj = iter->second;
+        m_ObjectsByGuid.erase(iter);
+        (void)obj; // keep obj alive until end of scope
+        return true;
     }
 
-    void ObjectManager::UnregisterObject(const MEObject* object)
+    bool ObjectManager::UnregisterObject(const MEObject* object)
     {
         if (object == nullptr)
         {
-            return;
+            return false;
         }
 
-        UnregisterObject(object->GetGuid());
+        return UnregisterObject(object->GetGuid());
     }
 
     std::shared_ptr<MEObject> ObjectManager::FindObject(const GUID& guid) const
@@ -118,5 +133,15 @@ namespace minEngine
         newObj->SetOuter(inOuter);
         RegisterObject(newObj);
         return newObj;
+    }
+
+    bool ObjectManager::RemoveObject(const GUID &guid)
+    {
+        return UnregisterObject(guid);
+    }
+
+    bool ObjectManager::RemoveObject(const MEObject *object)
+    {
+        return UnregisterObject(object);
     }
 }

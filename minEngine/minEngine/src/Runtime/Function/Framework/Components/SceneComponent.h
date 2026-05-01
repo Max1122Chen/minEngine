@@ -51,6 +51,8 @@ namespace minEngine
         bool AttachToComponent(SceneComponent* inParent, AttachmentTransformRules attachRules);     // return false if failed
         SceneComponent* GetAttachParent() const { return m_AttachParent; }
         void SetAttachParent(SceneComponent* inParent);
+        std::vector<SceneComponent*>& GetAttachChildren() { return m_AttachChildren; }
+        void DetachFromParent(AttachmentTransformRules detachRules);
 
     protected:
     

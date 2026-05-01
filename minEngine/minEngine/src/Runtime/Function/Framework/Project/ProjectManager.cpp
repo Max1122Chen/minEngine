@@ -22,6 +22,7 @@ namespace minEngine
     void ProjectManager::Shutdown()
     {
         CloseCurrentProject();
+        ME_CORE_INFO("ProjectManager Shutdown.");
     }
 
     ProjectOpenResult ProjectManager::OpenProject(const std::filesystem::path& projectRoot)
@@ -145,7 +146,7 @@ namespace minEngine
         Serialization::JsonReaderArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             descriptorPath.string(),
-            "minEngine::ProjectDescriptor",
+            minEngine::Reflection::GetClassName<ProjectDescriptor>(),
             &outDescriptor,
             archive,
             Serialization::SerializerOptions{
@@ -170,7 +171,7 @@ namespace minEngine
         Serialization::JsonReaderArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             settingsPath.string(),
-            "minEngine::ProjectSettings",
+            minEngine::Reflection::GetClassName<ProjectSettings>(),
             &outSettings,
             archive,
             Serialization::SerializerOptions{

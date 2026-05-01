@@ -17,4 +17,5 @@ namespace minEngine::Reflection
 #define ME_PROPERTY(...)
 #define ME_GENERATED_BODY(TYPE) \
 	template<typename T> friend struct ::minEngine::Reflection::FieldAccessor; \
+public: \
 	static const minEngine::Reflection::MEClass* StaticClass();

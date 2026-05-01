@@ -37,13 +37,10 @@ namespace minEngine
     private:
         static constexpr uint64_t kInvalidGameObjectId = std::numeric_limits<uint64_t>::max();
 
-        void BeginRename(const GameObject& gameObject)
-        {
-            m_RenamingGameObjectId = gameObject.GetID();
-            std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
-            std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
-            m_RequestRenameFocus = true;
-        }
+        void TryCaptureF2RenameRequest();
+        void BeginRename(const GameObject& gameObject);
+        void TryDrawRightClickBlankSpaceMenu();
+        void TryDrawRightClickGOMenu(GameObject& gameObject);
 
         const std::string m_Id = "hierarchy";
         const std::string m_Title = "Hierarchy";

@@ -18,10 +18,10 @@ namespace minEngine
         }
 
         bool removedFromScene = false;
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
-        if (globalContext.m_SceneManager)
+        SceneManager& sceneManager = SceneManager::Get();
+        if (sceneManager.GetRenderScene())
         {
-            RenderScene* renderScene = globalContext.m_SceneManager->GetRenderScene();
+            RenderScene* renderScene = sceneManager.GetRenderScene();
             if (renderScene)
             {
                 renderScene->RemovePrimitive(this);

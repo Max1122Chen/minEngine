@@ -56,12 +56,6 @@ namespace minEngine
             m_SceneManager.reset();
         }
 
-        if (m_ObjectManager)
-        {
-            m_ObjectManager->Shutdown();
-            m_ObjectManager.reset();
-        }
-
         if (m_InputSystem)
         {
             m_InputSystem->Shutdown();
@@ -84,6 +78,12 @@ namespace minEngine
         {
             m_AssetManager->Shutdown();
             m_AssetManager.reset();
+        }
+
+        if (m_ObjectManager)
+        {
+            m_ObjectManager->Shutdown();
+            m_ObjectManager.reset();
         }
 
     }

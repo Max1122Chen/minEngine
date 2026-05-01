@@ -114,7 +114,7 @@ namespace minEngine
             Serialization::JsonReaderArchive archive;
             const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
                 metaPath.string(),
-                "minEngine::AssetMeta",
+                minEngine::Reflection::GetClassName<AssetMeta>(),
                 &outMeta,
                 archive,
                 metaSerializerOptions);
@@ -136,7 +136,7 @@ namespace minEngine
             Serialization::JsonWriterArchive archive;
             const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
                 metaPath.string(),
-                "minEngine::AssetMeta",
+                minEngine::Reflection::GetClassName<AssetMeta>(),
                 &inMeta,
                 archive,
                 metaSerializerOptions);

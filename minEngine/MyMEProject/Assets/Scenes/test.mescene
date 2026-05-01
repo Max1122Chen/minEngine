@@ -1,0 +1,132 @@
+{
+    "m_GameObjects": [
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_CastShadow": true,
+                    "m_Guid": {
+                        "High": 5681744671202297115,
+                        "Low": 9920725021353707969
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 9593452550215845710,
+                            "low": 10983393021693110497
+                        }
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 1195769813414201913,
+                            "low": 11320094043071953413
+                        }
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 2269251532856313338,
+                            "low": 11094257267653316277
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            2.299999952316284,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                }
+            ],
+            "m_Guid": {
+                "High": 2269251532856313338,
+                "Low": 11094257267653316277
+            },
+            "m_Name": "Cube",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 5681744671202297115,
+                    "low": 9920725021353707969
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::DirectionalLightComponent",
+                    "m_CastShadow": false,
+                    "m_DiffuseFactor": 1.0,
+                    "m_Direction": [
+                        0.0,
+                        -1.0,
+                        0.0
+                    ],
+                    "m_Guid": {
+                        "High": 6184531821558383057,
+                        "Low": 12354846377014207710
+                    },
+                    "m_Intensity": 14.300000190734863,
+                    "m_LightColor": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 16521649457768057250,
+                            "low": 13137137897327963153
+                        }
+                    },
+                    "m_SpecularFactor": 1.0,
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            100.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                }
+            ],
+            "m_Guid": {
+                "High": 16521649457768057250,
+                "Low": 13137137897327963153
+            },
+            "m_Name": "Dirlight",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 6184531821558383057,
+                    "low": 12354846377014207710
+                }
+            }
+        }
+    ],
+    "m_Guid": {
+        "High": 5632001753596053347,
+        "Low": 10737996181551276332
+    },
+    "m_Name": "test",
+    "m_SceneName": "test"
+}

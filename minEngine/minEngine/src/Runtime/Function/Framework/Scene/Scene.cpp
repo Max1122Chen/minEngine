@@ -4,6 +4,20 @@
 
 namespace minEngine
 {
+    Scene::~Scene()
+    {
+        ME_CORE_INFO("Scene '{}' is being destroyed. Cleaning up {} game objects.", m_SceneName, m_GameObjects.size());
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        {
+            if (gameObject)
+            {
+                RemoveObject(gameObject.get());
+            }
+        }
+        m_GameObjects.clear();
+        m_GameObjectsById.clear();
+    }
+
     void Scene::Tick(float deltaTime)
     {
         for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
@@ -68,5 +82,21 @@ namespace minEngine
         }
 
         return iter->second;
+    }
+
+    bool Scene::RemoveGameObjectById(uint64_t id)
+    {
+        GameObject* gameObject = FindGameObjectById(id);
+        if (!gameObject)
+        {
+            return false;
+        }
+
+        m_GameObjects.erase(std::remove_if(m_GameObjects.begin(), m_GameObjects.end(), [gameObject](const std::shared_ptr<GameObject>& go) {
+            return go->GetID() == gameObject->GetID();
+        }), m_GameObjects.end());
+        m_GameObjectsById.erase(id);
+        RemoveObject(gameObject);
+        return true;
     }
 }

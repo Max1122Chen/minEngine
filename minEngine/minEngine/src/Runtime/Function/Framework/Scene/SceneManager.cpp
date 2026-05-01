@@ -15,9 +15,14 @@ namespace minEngine
     void SceneManager::Shutdown()
     {
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
-        m_CurrentActiveScene.reset();
+        if (m_CurrentActiveScene)
+        {
+            RemoveObject(m_CurrentActiveScene.get());   // TODO: manually manage the lifecycle of the scene asset instead of relying on the object manager to destroy it, we may change this in the future.
+            m_CurrentActiveScene.reset();
+        }
         m_RegisteredScenes.clear();
         m_RenderScene = nullptr;
+        ME_CORE_INFO("SceneManager Shutdown.");
     }
 
     void SceneManager::Tick(float deltaTime)
@@ -70,11 +75,11 @@ namespace minEngine
         {
             m_CurrentActiveScene = scene;
             // Mark all scene components for end of frame update to make sure the render scene gets updated with the new scene's data
-            for (const std::shared_ptr<GameObject>& gameObject : m_CurrentActiveScene->GetGameObjects())
+            for (const std::shared_ptr<GameObject>& gameObject : m_CurrentActiveScene->GetAllGameObjects())
             {
                 if (gameObject)
                 {
-                    for (const std::shared_ptr<Component>& component : gameObject->GetComponents())
+                    for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
                     {
                         if (component)
                         {

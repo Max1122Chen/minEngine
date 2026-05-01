@@ -17,8 +17,8 @@ namespace minEngine
         void Shutdown();
 
         void RegisterObject(const std::shared_ptr<MEObject>& object);
-        void UnregisterObject(const GUID& guid);
-        void UnregisterObject(const MEObject* object);
+        bool UnregisterObject(const GUID& guid);
+        bool UnregisterObject(const MEObject* object);
 
         std::shared_ptr<MEObject> FindObject(const GUID& guid) const;
         std::shared_ptr<MEObject> FindObject(const std::string& name) const;
@@ -52,6 +52,10 @@ namespace minEngine
 
         std::shared_ptr<MEObject> NewObject(const std::string& className, const std::string& inName = "", MEObject* inOuter = nullptr, const GUID& inGuid = GenerateGUID());
 
+        // Cancel the reference to the object with the given GUID, allowing it to be destroyed if there are no other references. Returns true if the object was found and unregistered, false otherwise.
+        bool RemoveObject(const GUID& guid);
+        bool RemoveObject(const MEObject* object);
+
         size_t GetTrackedObjectCount() const { return m_ObjectsByGuid.size(); }
 
     private:
@@ -59,27 +63,37 @@ namespace minEngine
         std::unordered_map<GUID, std::shared_ptr<MEObject>, GUID::Hash> m_ObjectsByGuid;
     };
 
-    // Convenience static methods for global access
+    // Convenience methods for global access
     template<typename T>
-    static std::shared_ptr<T> NewObject(const std::string& inName = "", MEObject* inOuter = nullptr, const GUID& inGuid = GenerateGUID())
+    inline std::shared_ptr<T> NewObject(const std::string& inName = "", MEObject* inOuter = nullptr, const GUID& inGuid = GenerateGUID())
     {
         return ObjectManager::Get().NewObject<T>(inName, inOuter, inGuid);
     }
 
     template<typename T>
-    static std::shared_ptr<T> FindObjectAs(const GUID& guid)
+    inline std::shared_ptr<T> FindObjectAs(const GUID& guid)
     {
         return ObjectManager::Get().FindObjectAs<T>(guid);
     }
 
-    static std::shared_ptr<MEObject> FindObject(const GUID& guid)
+    inline std::shared_ptr<MEObject> FindObject(const GUID& guid)
     {
         return ObjectManager::Get().FindObject(guid);
     }
 
-    static std::shared_ptr<MEObject> FindObject(const std::string& name)
+    inline std::shared_ptr<MEObject> FindObject(const std::string& name)
     {
         return ObjectManager::Get().FindObject(name);
+    }
+
+    inline bool RemoveObject(const GUID& guid)
+    {
+        return ObjectManager::Get().RemoveObject(guid);
+    }
+
+    inline bool RemoveObject(const MEObject* object)
+    {
+        return ObjectManager::Get().RemoveObject(object);
     }
     
 }
