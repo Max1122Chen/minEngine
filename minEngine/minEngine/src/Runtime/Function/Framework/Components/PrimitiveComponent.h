@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Math/Geometry/AABB.h"
 
 namespace minEngine
 {
@@ -25,6 +26,7 @@ namespace minEngine
         }
 
         bool CastShadow() const { return m_CastShadow; }
+        virtual Math::Geometry::AABB GetBoundingBox() const = 0;
 
         virtual void DoEndOfFrameUpdate() override;
 
@@ -32,6 +34,7 @@ namespace minEngine
         PrimitiveSceneProxy* GetSceneProxy() const { return m_SceneProxy; }
 
     protected:
+        ME_PROPERTY()
         bool m_CastShadow{ true };
 
 

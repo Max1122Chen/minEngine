@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Math/Geometry/AABB.h"
 
 namespace minEngine
 {
@@ -49,6 +50,7 @@ namespace minEngine
         Material* m_Material = nullptr;
 
         Matrix4 m_ModelMatrix;
+        Math::Geometry::AABB m_BoundingBox;
         bool m_CastShadow = true;
 
         MeshDrawCommandSortKey m_SortKey;

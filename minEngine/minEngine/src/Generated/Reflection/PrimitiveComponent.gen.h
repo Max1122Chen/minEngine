@@ -4,6 +4,7 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::PrimitiveComponent)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrimitiveComponent, m_CastShadow)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::PrimitiveComponent, GReflectionClassRegister_PrimitiveComponent_f5875afd)

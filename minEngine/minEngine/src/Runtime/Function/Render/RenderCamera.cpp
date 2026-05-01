@@ -21,7 +21,8 @@ namespace minEngine
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Rotation.z), Vector3(0.0f, 0.0f, 1.0f));
 
         Vector3 forward = glm::normalize(Vector3(rotationMatrix * Vector4(1.0f, 0.0f, 0.0f, 0.0f)));
-        m_ViewMatrix = glm::lookAt(m_Position, m_Position + forward, Vector3(0.0f, 1.0f, 0.0f));
+        Vector3 up = Math::abs(forward.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
+        m_ViewMatrix = glm::lookAt(m_Position, m_Position + forward, up);
     }
 
     void RenderCamera::UpdateProjectionMatrix()

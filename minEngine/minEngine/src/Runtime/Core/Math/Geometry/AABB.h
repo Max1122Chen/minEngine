@@ -8,7 +8,7 @@ namespace minEngine::Math::Geometry
     struct AABB
     {
         Vector3 Min = Vector3(std::numeric_limits<float>::max());
-        Vector3 Max = Vector3(-std::numeric_limits<float>::max());
+        Vector3 Max = Vector3(std::numeric_limits<float>::min());
         Vector3 GetCenter() const { return (Min + Max) * 0.5f; }
         Vector3 GetExtent() const { return (Max - Min) * 0.5f; }
         Vector3 GetSize() const { return Max - Min; }
@@ -16,6 +16,7 @@ namespace minEngine::Math::Geometry
         bool IntersectRay(const Ray& ray, float& outDistance) const;
         bool Contains(const Vector3& point) const;
         void Encapsulate(const Vector3& point);
+        bool IsValid() const { return Min.x <= Max.x && Min.y <= Max.y && Min.z <= Max.z; }
 
         AABB() = default;
         AABB(const Vector3& min, const Vector3& max)

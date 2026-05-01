@@ -4,6 +4,7 @@
 #include "Render/RenderSystem.h"
 #include "Render/RenderScene.h"
 #include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
+#include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/Material.h"
 #include "Render/RHI/RHI.h"
@@ -67,7 +68,7 @@ namespace minEngine
         m_CascadeFarPlaneUniformBuffer = rhi->CreateUniformBuffer(sizeof(float) * 4 * MAX_CASCADES, 10); // Binding point 10 for CSM cascade far plane distances in base pass for CSM
 
         // Create framebuffers
-        m_ShadowBuffer = rhi->CreateFrameBuffer(1024, 1024); // Shadow map framebuffer, we will use a fixed size for now
+        m_ShadowBuffer = rhi->CreateFrameBuffer(512, 512); // Shadow map framebuffer, we will use a fixed size for now
 
         // Set up BasePass
 
@@ -490,6 +491,7 @@ namespace minEngine
                 command.m_Material = staticMeshProxy->m_Material;
                 command.m_ModelMatrix = staticMeshProxy->m_Transform.ToMatrix(); 
                 command.m_CastShadow = staticMeshProxy->m_CastShadow;
+                command.m_BoundingBox = staticMeshProxy->m_PrimitiveComponent->GetBoundingBox();
 
                 if (!command.m_Material || !command.m_VertexDefinition || !command.m_VertexBuffer)
                 {
@@ -524,14 +526,13 @@ namespace minEngine
         }
         float nearPlane = mainCamera->m_zNear;
         float farPlane = mainCamera->m_zFar;
-        Vector3 cameraPos = mainCamera->m_Position;
-        Matrix4 cameraView = mainCamera->GetViewMatrix();
-        Matrix4 cameraProj = mainCamera->GetProjectionMatrix();
         Matrix4 cameraViewProj = mainCamera->GetViewProjMatrix();
         Matrix4 invCameraViewProj = glm::inverse(cameraViewProj);
 
         // === Prepare light view matrix ===
-        Matrix4 lightView = glm::lookAt(Vector3(0.0f), lightProxy->m_Direction * 100.0f, Vector3(0.0f, 1.0f, 0.0f));
+        Vector3 lightDir = glm::normalize(lightProxy->m_Direction);
+        Vector3 up = Math::abs(lightDir.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
+        Matrix4 lightView = glm::lookAt(Vector3(0.0f), lightDir * 100.0f, up);
 
         // === Split cascade ===
         std::vector<CascadeSplit> cascadeSplits = CalculateCascadeSplits(nearPlane, farPlane, cascadeCount);
@@ -594,8 +595,9 @@ namespace minEngine
             {
                 Vector4 cornerLS = lightView * cascadeFrustumsWS[i].Corners[j];
                 aabb.Encapsulate(Vector3(cornerLS.x, cornerLS.y, cornerLS.z));
-                // TODO: encapsulte the potential objects in the scene. We may implement this later.
             }
+
+            ExpandCascadeZForShadowCasters(aabb, lightView);
             
             // Texel snapping 
             Vector3 aabbSize = aabb.GetSize();
@@ -663,9 +665,37 @@ namespace minEngine
         for (uint32_t i = 0; i < cascadeCount; i++)
         {
             splits[i].Near = splitDepths[i];
-            splits[i].Far  = splitDepths[i + 1];
+            splits[i].Far  = splitDepths[i + 1] * ( i == cascadeCount - 1 ? 1.0f : 1.05f); // Add a small bias to the far plane of each cascade except the last one to blur the transition between cascades.
         }
 
         return splits;
+    }
+
+    void RenderPipeline::ExpandCascadeZForShadowCasters(Math::Geometry::AABB &frustumAABB, const Matrix4& lightView)
+    {
+        using Math::Geometry::AABB;
+        for(const auto& command : m_OpaqueQueue)
+        {
+            if (command.m_CastShadow)
+            {
+                AABB meshAABB = command.m_BoundingBox;
+                if (!meshAABB.IsValid())
+                {
+                    ME_CORE_WARN("Invalid mesh AABB for shadow caster, skipping it in cascade Z expansion");
+                    continue;
+                }
+                // Calculate the bounding sphere of the mesh in world space
+                Vector3 meshCenterWS = meshAABB.GetCenter();
+                Vector3 meshExtentWS = meshAABB.GetExtent();
+                float meshBoundingSphereRadius = glm::length(meshExtentWS);
+                // Transform the mesh center to light space
+                Vector4 meshCenterLS = lightView * Vector4(meshCenterWS, 1.0f);
+
+                if (meshCenterLS.z + meshBoundingSphereRadius > frustumAABB.Max.z)
+                {
+                    frustumAABB.Max.z = meshCenterLS.z + meshBoundingSphereRadius;
+                }
+            }
+        }
     }
 }

@@ -49,7 +49,7 @@ namespace minEngine
         // Currently hardcoded projection parameters
         float m_FOV = 45.0f;
         float m_zNear = 1.0f;
-        float m_zFar = 500.0f;
+        float m_zFar = 1000.0f;
         float m_AspectRatio = 16.0f / 9.0f;
 
 

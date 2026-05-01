@@ -174,5 +174,6 @@ namespace minEngine
                                                             uint32_t cascadeCount);
         
         std::vector<CascadeSplit> CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount);
+        void ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB, const Matrix4& lightView);
     };
 }

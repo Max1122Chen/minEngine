@@ -4,4 +4,5 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::PrimitiveComponent, GReflectionClassRegister_PrimitiveComponent_f5875afd)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::SceneComponent)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::PrimitiveComponent, m_CastShadow, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::PrimitiveComponent)

@@ -5,6 +5,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_CastShadow": true,
                     "m_Guid": {
                         "High": 3333333333333333333,
                         "Low": 4444444444444444444
@@ -30,9 +31,9 @@
                     },
                     "m_Transform": {
                         "Position": [
-                            2.299999952316284,
-                            0.30000001192092896,
-                            0.0
+                            51.21331024169922,
+                            -37.58085632324219,
+                            -23.163541793823242
                         ],
                         "Rotation": [
                             -5.800000190734863,
@@ -40,37 +41,10 @@
                             0.0
                         ],
                         "Scale": [
-                            1.0,
-                            1.0,
-                            1.0
+                            10.0,
+                            10.0,
+                            10.0
                         ]
-                    }
-                },
-                {
-                    "$ptr_typeName": "minEngine::ReflectionSampleComponent",
-                    "IntArray": [
-                        1,
-                        2,
-                        3,
-                        4,
-                        5
-                    ],
-                    "SampleData": {
-                        "EnumField": 1,
-                        "FloatField": 3.140000104904175,
-                        "IntField": 42,
-                        "StringField": "Hello, Reflection!"
-                    },
-                    "m_Guid": {
-                        "High": 17525128019335988717,
-                        "Low": 12555000036774437383
-                    },
-                    "m_Name": "",
-                    "m_Owner": {
-                        "$guid": {
-                            "high": 1111111111111111111,
-                            "low": 2222222222222222222
-                        }
                     }
                 }
             ],
@@ -78,7 +52,7 @@
                 "High": 1111111111111111111,
                 "Low": 2222222222222222222
             },
-            "m_Name": "Sphere",
+            "m_Name": "Cube",
             "m_RootComponent": {
                 "$guid": {
                     "high": 3333333333333333333,
@@ -92,11 +66,11 @@
                 {
                     "$ptr_typeName": "minEngine::DirectionalLightComponent",
                     "m_CastShadow": true,
-                    "m_DiffuseFactor": 1.0,
+                    "m_DiffuseFactor": 24.200000762939453,
                     "m_Direction": [
-                        0.3499999940395355,
-                        -1.0,
-                        -0.20000000298023224
+                        0.6499999761581421,
+                        -1.399999976158142,
+                        -0.800000011920929
                     ],
                     "m_Guid": {
                         "High": 7777777777777777777,
@@ -104,10 +78,10 @@
                     },
                     "m_Intensity": 2.0,
                     "m_LightColor": [
-                        0.30000001192092896,
-                        1.2000000476837158,
-                        0.8199999928474426,
-                        1.0
+                        0.8500000238418579,
+                        0.6399999856948853,
+                        0.125,
+                        2.799999952316284
                     ],
                     "m_Name": "DLC_Test",
                     "m_Owner": {
@@ -116,7 +90,7 @@
                             "low": 6666666666666666666
                         }
                     },
-                    "m_SpecularFactor": 0.5,
+                    "m_SpecularFactor": 5.400000095367432,
                     "m_Transform": {
                         "Position": [
                             0.0,
@@ -153,6 +127,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_CastShadow": true,
                     "m_Guid": {
                         "High": 9826189678835353112,
                         "Low": 11830612901178431771
@@ -178,9 +153,9 @@
                     },
                     "m_Transform": {
                         "Position": [
-                            2.0,
-                            -0.4000000059604645,
-                            0.0
+                            3.299999952316284,
+                            -99.5999984741211,
+                            -13.399999618530273
                         ],
                         "Rotation": [
                             0.0,
@@ -188,9 +163,9 @@
                             0.0
                         ],
                         "Scale": [
-                            100.0,
+                            1000.0,
                             1.0,
-                            100.0
+                            1000.0
                         ]
                     }
                 }
@@ -204,6 +179,186 @@
                 "$guid": {
                     "high": 9826189678835353112,
                     "low": 11830612901178431771
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_CastShadow": true,
+                    "m_Guid": {
+                        "High": 16880725467179075291,
+                        "Low": 13666763253638058063
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 9593452550215845710,
+                            "low": 10983393021693110497
+                        }
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 4072227309906316303,
+                            "low": 9519394673055252044
+                        }
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 13799719766216622163,
+                            "low": 11084270825214013271
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            72.81334686279297,
+                            -46.42574691772461,
+                            154.8736572265625
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                }
+            ],
+            "m_Guid": {
+                "High": 13799719766216622163,
+                "Low": 11084270825214013271
+            },
+            "m_Name": "Armadillo",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 16880725467179075291,
+                    "low": 13666763253638058063
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_CastShadow": true,
+                    "m_Guid": {
+                        "High": 14845847555114092609,
+                        "Low": 10280036475710748334
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 9593452550215845710,
+                            "low": 10983393021693110497
+                        }
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 17095877878277229582,
+                            "low": 11963506552663036228
+                        }
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 2649957860348480870,
+                            "low": 11330836934544707321
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            -81.39122009277344,
+                            -19.152421951293945,
+                            291.4161376953125
+                        ],
+                        "Rotation": [
+                            0.0,
+                            -43.79999923706055,
+                            0.0
+                        ],
+                        "Scale": [
+                            2.0,
+                            2.0,
+                            2.0
+                        ]
+                    }
+                }
+            ],
+            "m_Guid": {
+                "High": 2649957860348480870,
+                "Low": 11330836934544707321
+            },
+            "m_Name": "dragon",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 14845847555114092609,
+                    "low": 10280036475710748334
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_CastShadow": true,
+                    "m_Guid": {
+                        "High": 16572995236737795425,
+                        "Low": 11635784814011946637
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 9593452550215845710,
+                            "low": 10983393021693110497
+                        }
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 12342586155336551981,
+                            "low": 10965108327474216720
+                        }
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 10392662626155120546,
+                            "low": 10065169192493381691
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            340.7584533691406,
+                            -131.6513214111328,
+                            381.0638122558594
+                        ],
+                        "Rotation": [
+                            0.0,
+                            -128.8000030517578,
+                            0.0
+                        ],
+                        "Scale": [
+                            1000.0,
+                            1000.0,
+                            1000.0
+                        ]
+                    }
+                }
+            ],
+            "m_Guid": {
+                "High": 10392662626155120546,
+                "Low": 10065169192493381691
+            },
+            "m_Name": "bunny",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 16572995236737795425,
+                    "low": 11635784814011946637
                 }
             }
         }

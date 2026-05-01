@@ -185,7 +185,7 @@ namespace minEngine
         Vector2 m_LastMousePosition = Vector2(0.0f, 0.0f);
         Vector3 m_CameraPosition = Vector3(0.0f, 0.0f, 0.0f);
         Vector3 m_CameraRotation = Vector3(0.0f, 0.0f, 0.0f);
-        float m_MoveSpeed = 3.0f;
+        float m_MoveSpeed = 10.0f;
         float m_MoveSpeedMin = 0.5f;
         float m_MoveSpeedMax = 64.0f;
         float m_MoveSpeedStep = 1.0f;

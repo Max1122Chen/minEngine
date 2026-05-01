@@ -126,7 +126,7 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fr
             break;
         }
     }
-    lightColor = GetCascadeDebugColor(cascadeIndex); // Debug: visualize cascade splits with colors
+    // lightColor = GetCascadeDebugColor(cascadeIndex); // Debug: visualize cascade splits with colors
     vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(FragPos, 1.0);
     shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
     

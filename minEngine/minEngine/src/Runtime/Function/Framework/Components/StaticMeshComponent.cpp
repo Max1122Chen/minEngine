@@ -33,6 +33,15 @@ namespace minEngine
         MarkRenderStateDirty();
     }
 
+    Math::Geometry::AABB StaticMeshComponent::GetBoundingBox() const
+    {
+        if(m_Mesh)
+        {
+            return m_Mesh->m_BoundingBox;
+        }
+        return Math::Geometry::AABB();
+    }
+
     PrimitiveSceneProxy* StaticMeshComponent::CreateSceneProxy()
     {
         StaticMeshSceneProxy* SceneProxy = new StaticMeshSceneProxy();

@@ -23,6 +23,7 @@ namespace minEngine
         Material* GetMaterial() const { return m_Material.get(); }
 
         // PrimitiveComponent Contract
+        virtual Math::Geometry::AABB GetBoundingBox() const override;
         virtual PrimitiveSceneProxy* CreateSceneProxy() override;
 
     private:
