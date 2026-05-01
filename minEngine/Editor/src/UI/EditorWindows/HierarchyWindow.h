@@ -39,8 +39,8 @@ namespace minEngine
 
         void TryCaptureF2RenameRequest();
         void BeginRename(const GameObject& gameObject);
-        void TryDrawRightClickBlankSpaceMenu();
-        void TryDrawRightClickGOMenu(GameObject& gameObject);
+        bool TryDrawRightClickBlankSpaceMenu();
+        bool TryDrawRightClickGOMenu(GameObject& gameObject);
 
         const std::string m_Id = "hierarchy";
         const std::string m_Title = "Hierarchy";

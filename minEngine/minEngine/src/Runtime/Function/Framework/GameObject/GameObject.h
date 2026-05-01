@@ -86,7 +86,7 @@ namespace minEngine
 
         std::shared_ptr<Component> AddComponent(const std::string& componentTypeName);
 
-        bool RemoveComponent(std::shared_ptr<Component> target);
+        bool RemoveComponent(Component& target);
 
     private:
         void AddComponent_Internal(std::shared_ptr<Component> newComponent);

@@ -23,6 +23,7 @@ namespace minEngine
         TryCaptureF2RenameRequest();
 
         // For each GO in hierarchy, we draw a selectable item. Clicking on it will select the GO, and right-clicking will open a context menu for that GO.
+        bool anyGoMenuOpened = false;
         for (GameObject* gameObject : gameObjects)
         {
             if (!gameObject)
@@ -92,13 +93,18 @@ namespace minEngine
                 m_Editor.SelectGameObject(gameObject->GetID());
                 BeginRename(*gameObject);
             }
-
-            TryDrawRightClickGOMenu(*gameObject);
-
+            
+            // TODO: there are some issues with the current implementation of right-click context menu, 
+            // For example, only the last GO's menu can be correctly opened. Right-clicking on the other GOs will open the blank space menu instead.
+            anyGoMenuOpened = TryDrawRightClickGOMenu(*gameObject);
             ImGui::PopID();
         }
 
-        // TryDrawRightClickBlankSpaceMenu();
+        // only show blank space menu if no GO menu is opened, otherwise the blank space menu will interfere with GO menu
+        if (!anyGoMenuOpened)
+        {
+            TryDrawRightClickBlankSpaceMenu();
+        }
 
         ImGui::End();
     }
@@ -123,7 +129,7 @@ namespace minEngine
         m_RequestRenameFocus = true;
     }
 
-    void HierarchyWindow::TryDrawRightClickBlankSpaceMenu()
+    bool HierarchyWindow::TryDrawRightClickBlankSpaceMenu()
     {
         if (ImGui::BeginPopupContextWindow())
         {
@@ -132,10 +138,12 @@ namespace minEngine
                 m_Editor.AddEmptyGOToScene();
             }
             ImGui::EndPopup();
+            return true;
         }
+        return false;
     }
 
-    void HierarchyWindow::TryDrawRightClickGOMenu(GameObject &gameObject)
+    bool HierarchyWindow::TryDrawRightClickGOMenu(GameObject &gameObject)
     {
         if (ImGui::BeginPopupContextItem())
         {
@@ -149,6 +157,8 @@ namespace minEngine
                 m_Editor.RemoveGameObjectFromScene(gameObject.GetID());
             }
             ImGui::EndPopup();
+            return true;
         }
+        return false;
     }
 }

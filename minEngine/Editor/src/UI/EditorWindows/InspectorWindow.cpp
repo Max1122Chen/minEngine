@@ -236,13 +236,14 @@ namespace minEngine
             });
             if(valueChanged)
             {
-                if(reflectionSystem.IsClassSameOrDerived(compClass, reflectionSystem.FindClass<SceneComponent>()))
+                if(compClass->IsA(SceneComponent::StaticClass()))
                 {
                     SceneComponent* sceneComponent = static_cast<SceneComponent*>(componentObject);
                     sceneComponent->MarkRenderStateDirty(); // Mark render state dirty to ensure changes are reflected in the editor viewport
                 }
             }
 
+            TryDrawComponentContextMenu(*component);
             
             if (!hasAnyReflectedField)
             {
@@ -552,6 +553,23 @@ namespace minEngine
     {
         ImGui::TextUnformatted("Array properties are not supported in this version.");
         return false;
+    }
+
+    bool InspectorWindow::TryDrawComponentContextMenu(Component &component)
+    {
+        if (ImGui::BeginPopupContextItem(("ComponentContextMenu##" + std::to_string(reinterpret_cast<uintptr_t>(&component))).c_str()))
+        {
+            if (ImGui::MenuItem("Remove"))
+            {
+                if(m_Editor.RemoveComponentFromGO(*component.GetOwner(), component))
+                {
+                    ME_CORE_INFO("Component '{}' removed from GameObject '{}'.", component.GetClass()->GetName(), component.GetOwner()->GetName());
+                }
+            }
+            ImGui::EndPopup();
+            return true;
+         }
+         return false;
     }
 
     std::string InspectorWindow::GetShortTypeName(const std::string& fullTypeName)

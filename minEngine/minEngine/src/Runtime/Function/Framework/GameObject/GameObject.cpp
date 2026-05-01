@@ -94,21 +94,24 @@ namespace minEngine
         return newComponent;
     }
 
-    bool GameObject::RemoveComponent(std::shared_ptr<Component> target)
+    bool GameObject::RemoveComponent(Component& target)
     {
-        auto it = std::find(m_Components.begin(),m_Components.end(),target);
+        auto it = std::find_if(m_Components.begin(),m_Components.end(),[&target](const std::shared_ptr<Component>& componentPtr)
+        {
+            return componentPtr.get() == &target;
+        });
         if ( it != m_Components.end())
         {
             // Handle the case if the component to remove is a SceneComponent
-            if(target->GetClass() && target->IsA(SceneComponent::StaticClass()))
+            if(target.GetClass() && target.IsA(SceneComponent::StaticClass()))
             {
-                std::shared_ptr<SceneComponent> sceneComponent = std::static_pointer_cast<SceneComponent>(target);
-                if (sceneComponent.get() == m_RootComponent)
+                SceneComponent* sceneComponent = static_cast<SceneComponent*>(it->get());
+                if (sceneComponent == m_RootComponent)
                 {
                     m_RootComponent = nullptr;
                     // Here we try to find another SceneComponent to be the new RootComponent, and reattach other SceneComponents to it
                     // First we try to find the first child SceneComponent of the removed RootComponent to be the new RootComponent, and reattach other child SceneComponents to it
-                    SceneComponent* removedRoot = sceneComponent.get();
+                    SceneComponent* removedRoot = sceneComponent;
                     SceneComponent* newRootCandidate = nullptr;
                     for (SceneComponent* child : removedRoot->GetAttachChildren())
                     {

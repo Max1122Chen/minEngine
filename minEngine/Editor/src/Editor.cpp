@@ -216,6 +216,22 @@ namespace minEngine
         return true;
     }
 
+    bool Editor::RemoveComponentFromGO(GameObject &gameObject, Component &targetComponent)
+    {
+        // Make sure the component belongs to the game object before trying to remove it.
+        if (targetComponent.GetOwner() != &gameObject)
+        {
+            ME_CORE_ERROR("Failed to remove component '{}' from GameObject '{}': component does not belong to the specified GameObject.", targetComponent.GetClass()->GetName(), gameObject.GetName());
+            return false;
+        }
+        if(gameObject.RemoveComponent(targetComponent))
+        {
+            MarkSceneDirty();
+            return true;
+        }
+        return false;
+    }
+
     void Editor::SaveCurrentScene()
     {
         Scene* scene = GetActiveScene();

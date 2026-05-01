@@ -74,6 +74,8 @@ namespace minEngine
             m_RequestRenameFocus = true;
         }
 
+        bool TryDrawComponentContextMenu(Component& component);
+
         const std::string m_Id = "inspector";
         const std::string m_Title = "Inspector";
         std::string m_SelectedAddComponentTypeName;
