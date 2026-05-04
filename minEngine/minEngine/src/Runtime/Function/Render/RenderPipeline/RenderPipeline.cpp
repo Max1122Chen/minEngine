@@ -17,32 +17,16 @@
 #include "Math/Geometry/AABB.h"
 #include <glad/glad.h>
 
+namespace
+{
+    constexpr float kSpotShadowNear = 0.1f;
+    constexpr float kSpotShadowFar = 50.0f;
+    constexpr float kPointShadowNear = 0.1f;
+    constexpr float kPointShadowFar = 50.0f;
+}
 
 namespace minEngine
 {
-    namespace
-    {
-        Matrix4 CalculateDirectionalLightViewProjMatrix(const DirectionalLightSceneProxy* lightProxy)
-        {
-            if(!lightProxy)
-            {
-                return Matrix4(1.0f);
-            }
-
-            // For simplicity, we will use an orthographic projection for directional light shadow mapping.
-            float orthoSize = 10.0f; // TODO: make this configurable later.
-            Matrix4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 0.1f, 100.0f);
-
-            // The light's view matrix is calculated based on its direction and a target point.
-            Vector3 lightDir = lightProxy->m_Direction;
-            Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
-
-            Matrix4 lightView = glm::lookAt(-lightDir * 10.0f, lightDir, up);
-
-            return lightProj * lightView;
-        }
-    }
-
     void RenderPipeline::Initialize()
     {
         WindowSystem* windowSystem = RuntimeGlobalContext::Get().m_WindowSystem.get();
@@ -66,6 +50,7 @@ namespace minEngine
 
         m_DirLightViewProjUniformBuffer = rhi->CreateUniformBuffer(sizeof(Matrix4) * MAX_CASCADES, 9); // Binding point 9 for directional light view projection matrix in base pass for CSM
         m_CascadeFarPlaneUniformBuffer = rhi->CreateUniformBuffer(sizeof(float) * 4 * MAX_CASCADES, 10); // Binding point 10 for CSM cascade far plane distances in base pass for CSM
+        m_SpotLightViewProjUniformBuffer = rhi->CreateUniformBuffer(sizeof(Matrix4) * MAX_SPOT_LIGHTS, 11); // Binding point 11 for spot light view projection matrices in base pass
 
         // Create framebuffers
         m_ShadowBuffer = rhi->CreateFrameBuffer(512, 512); // Shadow map framebuffer, we will use a fixed size for now
@@ -188,15 +173,11 @@ namespace minEngine
         m_ShadowDrawCommands.clear();
 
         m_DirectionalShadowHandle = ShadowResourceHandle{};
-        m_DirectionalLightViewProj = Matrix4(1.0f);
 
         m_ShadowPass.m_ShadowDrawCommands.clear();
-        m_ShadowPass.m_DirectionalShadowArray.reset();
         m_ShadowPass.m_OpaqueQueue.clear();
 
-        m_BasePass.m_DirectionalShadowArray.reset();
         m_BasePass.m_DirectionalShadowHandle = ShadowResourceHandle{};
-        m_BasePass.m_DirectionalLightViewProj = Matrix4(1.0f);
 
         m_PresentPass.m_SceneColorTexture.reset();
         m_ShadowPass.m_LightViewProjUniformBuffer = nullptr;
@@ -213,6 +194,7 @@ namespace minEngine
         m_LightDataUniformBuffer.reset();
         m_PerFrameUniformBuffer.reset();
         m_LightViewProjUniformBuffer.reset();
+        m_SpotLightViewProjUniformBuffer.reset();
     }
 
     void RenderPipeline::Execute()
@@ -247,7 +229,6 @@ namespace minEngine
         // For simplicity, we will render all opaque objects in the shadow pass.
         m_ShadowPass.m_OpaqueQueue = m_OpaqueQueue; 
         m_ShadowPass.m_ShadowDrawCommands = m_ShadowDrawCommands;
-        m_ShadowPass.m_DirectionalShadowArray = m_ShadowResourceManager.GetDirectionalShadowArray();
 
         m_ShadowBuffer->Bind();
         m_ShadowPass.Execute();
@@ -258,9 +239,9 @@ namespace minEngine
 
 
         m_BasePass.m_DrawCommands = m_OpaqueQueue;
-        m_BasePass.m_DirectionalShadowArray = m_ShadowResourceManager.GetDirectionalShadowArray();
         m_BasePass.m_DirectionalShadowHandle = m_DirectionalShadowHandle;
-        m_BasePass.m_DirectionalLightViewProj = m_DirectionalLightViewProj;
+        m_BasePass.m_SpotShadowHandles = m_SpotShadowHandles;
+        m_BasePass.m_PointShadowHandles = m_PointShadowHandles;
         m_TranslucentPass.m_DrawCommands = m_TranslucentQueue;
 
         // Shadow pass disables color output; restore state for scene pass.
@@ -341,7 +322,7 @@ namespace minEngine
             lightsData.DirectionalLight.Direction = Vector4(dirLightProxy->m_Direction, 0.0f);
             lightsData.DirectionalLight.Color = Vector4(dirLightProxy->m_LightColor, dirLightProxy->m_Intensity);
             int shadowMapIndex = -1;
-            if (m_DirectionalShadowHandle.Valid)
+            if (m_DirectionalShadowHandle.IsValid())
             {
                 shadowMapIndex = m_DirectionalShadowHandle.ArrayBaseLayer;
             }
@@ -359,6 +340,17 @@ namespace minEngine
             Vector4 lightRenderPos = Vector4(pointLightProxy->m_Position.z, pointLightProxy->m_Position.y, -pointLightProxy->m_Position.x, 1.0f); // Convert to render space
             lightsData.PointLights[pointLightCount].Position = lightRenderPos;
             lightsData.PointLights[pointLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
+            int shadowIndex = -1;
+            auto pointShadowIt = m_PointShadowHandleMap.find(pointLightProxy);
+            if (pointShadowIt != m_PointShadowHandleMap.end() && pointShadowIt->second.IsValid())
+            {
+                shadowIndex = pointShadowIt->second.TextureUnit - POINT_SHADOW_MAP_BASE_UNIT;
+                if (shadowIndex < 0 || shadowIndex >= MAX_POINT_SHADOW_MAPS)
+                {
+                    shadowIndex = -1;
+                }
+            }
+            lightsData.PointLights[pointLightCount].Params = Vector4(0.0f, 0.0f, kPointShadowFar, static_cast<float>(shadowIndex));
             pointLightCount++;
         }
         lightsData.PointLightsCount = pointLightCount;
@@ -376,8 +368,32 @@ namespace minEngine
             lightsData.SpotLights[spotLightCount].Position = lightRenderPos;
             lightsData.SpotLights[spotLightCount].Direction = lightRenderDir;
             lightsData.SpotLights[spotLightCount].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
-            
-            lightsData.SpotLights[spotLightCount].Params = Vector4(spotLightProxy->m_InnerConeAngle, spotLightProxy->m_OuterConeAngle, 0.0f, 0.0f); // inner cone angle, outer cone angle
+            int shadowIndex = -1;
+            auto spotShadowIt = m_SpotShadowHandleMap.find(spotLightProxy);
+            if (spotShadowIt != m_SpotShadowHandleMap.end() && spotShadowIt->second.IsValid())
+            {
+                shadowIndex = spotShadowIt->second.TextureUnit - SPOT_SHADOW_MAP_BASE_UNIT;
+                if (shadowIndex < 0 || shadowIndex >= MAX_SPOT_SHADOW_MAPS)
+                {
+                    shadowIndex = -1;
+                }
+            }
+            lightsData.SpotLights[spotLightCount].Params = Vector4(spotLightProxy->m_InnerConeAngle, spotLightProxy->m_OuterConeAngle, 0.0f, static_cast<float>(shadowIndex)); // inner cone angle, outer cone angle
+
+            Vector3 lightPos = spotLightProxy->m_Position;
+            Vector3 lightDir = glm::normalize(spotLightProxy->m_Direction);
+            Vector3 up = Math::abs(lightDir.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
+
+            float outerAngle = glm::clamp(spotLightProxy->m_OuterConeAngle, 1.0f, 89.0f);
+            float fov = glm::radians(glm::clamp(outerAngle * 2.0f, 1.0f, 179.0f));
+
+            Matrix4 lightView = glm::lookAt(lightPos, lightPos + lightDir, up);
+            Matrix4 lightProj = glm::perspective(fov, 1.0f, kSpotShadowNear, kSpotShadowFar);
+            Matrix4 lightViewProj = lightProj * lightView;
+            if (m_SpotLightViewProjUniformBuffer)
+            {
+                m_SpotLightViewProjUniformBuffer->UpdateData(&lightViewProj, sizeof(Matrix4) * spotLightCount, sizeof(Matrix4));
+            }
             spotLightCount++;
         }
         lightsData.SpotLightsCount = spotLightCount;
@@ -399,12 +415,7 @@ namespace minEngine
 
         for (auto* dirLightProxy : renderScene->m_DirectionalLightSceneProxies)
         {
-            if (!dirLightProxy || !dirLightProxy->m_LightComponent)
-            {
-                continue;
-            }
-
-            if (!dirLightProxy->m_CastsShadow)
+            if (!dirLightProxy || !dirLightProxy->m_LightComponent || !dirLightProxy->m_CastsShadow)
             {
                 continue;
             }
@@ -419,29 +430,74 @@ namespace minEngine
             shadowRequest.Priority = 0;
             m_ShadowRequests.push_back(shadowRequest);
         }
+
+        uint32_t spotShadowCount = 0;
+        for (auto* spotLightProxy : renderScene->m_SpotLightSceneProxies)
+        {
+            if (!spotLightProxy || !spotLightProxy->m_LightComponent || !spotLightProxy->m_CastsShadow)
+            {
+                continue;
+            }
+
+            if (spotShadowCount >= MAX_SPOT_SHADOW_MAPS)
+            {
+                break;
+            }
+
+            ShadowRequest shadowRequest{};
+            shadowRequest.Type = LightType::Spot;
+            shadowRequest.LightProxy = spotLightProxy;
+            shadowRequest.Resolution = ShadowResolution{
+                .Width = m_ShadowBuffer->GetWidth(),
+                .Height = m_ShadowBuffer->GetHeight()
+            };
+            shadowRequest.Priority = 0;
+            m_ShadowRequests.push_back(shadowRequest);
+            spotShadowCount++;
+        }
+
+        uint32_t pointShadowCount = 0;
+        for (auto* pointLightProxy : renderScene->m_PointLightSceneProxies)
+        {
+            if (!pointLightProxy || !pointLightProxy->m_LightComponent || !pointLightProxy->m_CastsShadow)
+            {
+                continue;
+            }
+
+            if (pointShadowCount >= MAX_POINT_SHADOW_MAPS)
+            {
+                break;
+            }
+
+            ShadowRequest shadowRequest{};
+            shadowRequest.Type = LightType::Point;
+            shadowRequest.LightProxy = pointLightProxy;
+            shadowRequest.Resolution = ShadowResolution{
+                .Width = m_ShadowBuffer->GetWidth(),
+                .Height = m_ShadowBuffer->GetHeight()
+            };
+            shadowRequest.Priority = 0;
+            m_ShadowRequests.push_back(shadowRequest);
+            pointShadowCount++;
+        }
     }
 
     void RenderPipeline::BuildShadowDrawCommands()
     {
         m_ShadowDrawCommands.clear();
         m_DirectionalShadowHandle = ShadowResourceHandle{};
-        m_DirectionalLightViewProj = Matrix4(1.0f);
-
-        
+        m_SpotShadowHandles.clear();
+        m_PointShadowHandles.clear();
+        m_SpotShadowHandleMap.clear();
+        m_PointShadowHandleMap.clear();
 
         for (const auto& shadowRequest : m_ShadowRequests)
         {
-            // Currently we only support directional light shadow.
-            if (shadowRequest.Type != LightType::Directional)
-            {
-                continue;
-            }
-
             if (shadowRequest.Type == LightType::Directional)
             {
-                auto* dirLightProxy = static_cast<DirectionalLightSceneProxy*>(shadowRequest.LightProxy);
+                auto dirLightProxy = static_cast<DirectionalLightSceneProxy*>(shadowRequest.LightProxy);
                 ShadowResourceHandle handle = m_ShadowResourceManager.AcquireDirectional(shadowRequest, MAX_CASCADES);
-                if (!dirLightProxy || !handle.Valid)
+                if (!dirLightProxy || !handle.IsValid())
                 {
                     continue;
                 }
@@ -449,7 +505,6 @@ namespace minEngine
                 DirShadowCommandBuildResult result = BuildDirectionalShadowDrawCommands(shadowRequest, handle, dirLightProxy, MAX_CASCADES);
                 m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), result.Commands.begin(), result.Commands.end());
                 m_DirectionalShadowHandle = handle;
-                m_DirectionalLightViewProj = CalculateDirectionalLightViewProjMatrix(dirLightProxy);
                 
                 // Update the directional light view projection matrix for CSM in the base pass uniform buffer
                 for(int i = 0; i < MAX_CASCADES; i++)
@@ -458,7 +513,37 @@ namespace minEngine
                     m_CascadeFarPlaneUniformBuffer->UpdateData(&result.CascadeFarPlaneVS[i], sizeof(float) * 4 * i, sizeof(float));
                     m_DirLightViewProjUniformBuffer->UpdateData(&command.ViewProj, sizeof(Matrix4) * i, sizeof(Matrix4));
                 }
-                
+            }
+            else if (shadowRequest.Type == LightType::Spot)
+            {
+                auto spotLightProxy = static_cast<SpotLightSceneProxy*>(shadowRequest.LightProxy);
+                ShadowResourceHandle handle = m_ShadowResourceManager.AcquireSpot(shadowRequest);
+                if (!spotLightProxy || !handle.IsValid())                
+                {
+                    continue;
+                }
+                m_SpotShadowHandleMap[spotLightProxy] = handle;
+                if (m_SpotShadowHandles.size() < MAX_SPOT_SHADOW_MAPS)
+                {
+                    m_SpotShadowHandles.push_back(handle);
+                }
+                m_ShadowDrawCommands.push_back(BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy));
+            }
+            else if(shadowRequest.Type == LightType::Point)
+            {
+                auto pointLightProxy = static_cast<PointLightSceneProxy*>(shadowRequest.LightProxy);
+                ShadowResourceHandle handle = m_ShadowResourceManager.AcquirePoint(shadowRequest);
+                if (!pointLightProxy || !handle.IsValid())
+                {
+                    continue;
+                }
+                m_PointShadowHandleMap[pointLightProxy] = handle;
+                if (m_PointShadowHandles.size() < MAX_POINT_SHADOW_MAPS)
+                {
+                    m_PointShadowHandles.push_back(handle);
+                }
+                std::vector<ShadowDrawCommand> commands = BuildPointShadowDrawCommands(shadowRequest, handle, pointLightProxy);
+                m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), commands.begin(), commands.end());
             }
         }
     }
@@ -631,12 +716,92 @@ namespace minEngine
             command.Handle = handle;
             command.ViewProj = cascadeLightViewProjs[layerIndex];
             // command.ViewProj = CalculateDirectionalLightViewProjMatrix(lightProxy); // For simplicity, we use the same view projection matrix for all cascades for now, we can use the actual cascade-specific view projection matrix later.
-            command.TargetLayer = layerIndex;
-            command.TargetFace = -1;
+            command.Target.TargetLayer = layerIndex;
             result.Commands.push_back(command);
         }
 
         return result;
+    }
+
+    ShadowDrawCommand RenderPipeline::BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,
+                                                                  const ShadowResourceHandle& handle,
+                                                                  const SpotLightSceneProxy* lightProxy)
+    {
+        (void)shadowRequest;
+
+        ShadowDrawCommand command{};
+        command.Type = LightType::Spot;
+        command.Handle = handle;
+        command.Target.TargetLayer = 0;
+
+        if (!lightProxy)
+        {
+            return command;
+        }
+
+        Vector3 lightPos = lightProxy->m_Position;
+        Vector3 lightDir = glm::normalize(lightProxy->m_Direction);
+        Vector3 up = Math::abs(lightDir.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
+
+        float outerAngle = glm::clamp(lightProxy->m_OuterConeAngle, 1.0f, 89.0f);
+        float fov = glm::radians(glm::clamp(outerAngle * 2.0f, 1.0f, 179.0f));
+
+        Matrix4 lightView = glm::lookAt(lightPos, lightPos + lightDir, up);
+        Matrix4 lightProj = glm::perspective(fov, 1.0f, kSpotShadowNear, kSpotShadowFar);
+        command.ViewProj = lightProj * lightView;
+
+        return command;
+    }
+
+    std::vector<ShadowDrawCommand> RenderPipeline::BuildPointShadowDrawCommands(const ShadowRequest& shadowRequest,
+                                                                                 const ShadowResourceHandle& handle,
+                                                                                 const PointLightSceneProxy* lightProxy)
+    {
+        (void)shadowRequest;
+
+        std::vector<ShadowDrawCommand> commands;
+        if (!lightProxy)
+        {
+            return commands;
+        }
+
+        const Vector3 lightPos = lightProxy->m_Position;
+        Matrix4 lightProj = glm::perspective(glm::radians(90.0f), 1.0f, kPointShadowNear, kPointShadowFar);
+
+        const Vector3 directions[6] = {
+            Vector3(1.0f, 0.0f, 0.0f),
+            Vector3(-1.0f, 0.0f, 0.0f),
+            Vector3(0.0f, 1.0f, 0.0f),
+            Vector3(0.0f, -1.0f, 0.0f),
+            Vector3(0.0f, 0.0f, 1.0f),
+            Vector3(0.0f, 0.0f, -1.0f)
+        };
+
+        const Vector3 ups[6] = {
+            Vector3(0.0f, -1.0f, 0.0f),
+            Vector3(0.0f, -1.0f, 0.0f),
+            Vector3(0.0f, 0.0f, 1.0f),
+            Vector3(0.0f, 0.0f, -1.0f),
+            Vector3(0.0f, -1.0f, 0.0f),
+            Vector3(0.0f, -1.0f, 0.0f)
+        };
+
+        commands.reserve(6);
+        for (int face = 0; face < 6; ++face)
+        {
+            ShadowDrawCommand command{};
+            command.Type = LightType::Point;
+            command.Handle = handle;
+            command.Target.TargetFace = face;
+            command.LightPosition = lightPos;
+            command.FarPlane = kPointShadowFar;
+
+            Matrix4 lightView = glm::lookAt(lightPos, lightPos + directions[face], ups[face]);
+            command.ViewProj = lightProj * lightView;
+            commands.push_back(command);
+        }
+
+        return commands;
     }
 
     std::vector<CascadeSplit> RenderPipeline::CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount)

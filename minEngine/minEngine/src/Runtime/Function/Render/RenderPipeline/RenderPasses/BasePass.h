@@ -21,8 +21,8 @@ namespace minEngine
 
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;
-        std::shared_ptr<RHITexture2DArray> m_DirectionalShadowArray;
         ShadowResourceHandle m_DirectionalShadowHandle;
-        Matrix4 m_DirectionalLightViewProj = Matrix4(1.0f);
+        std::vector<ShadowResourceHandle> m_SpotShadowHandles;
+        std::vector<ShadowResourceHandle> m_PointShadowHandles;
     };
 }

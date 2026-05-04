@@ -33,12 +33,13 @@ namespace minEngine
         std::vector<MeshDrawCommand> m_OpaqueQueue; // We only do depth test for opaque objects in the shadow pass
 
         std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
-        std::shared_ptr<RHITexture2DArray> m_DirectionalShadowArray;
 
     private:
         std::shared_ptr<RHIShader> m_DepthOnlyShader; // A simple shader that only outputs depth, used for shadow pass
 
         void UpdateLightViewProjBuffer(Matrix4 inMatrix);
         void RenderDirectionalShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);
+        void RenderSpotShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);
+        void RenderPointShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);
     };
 }

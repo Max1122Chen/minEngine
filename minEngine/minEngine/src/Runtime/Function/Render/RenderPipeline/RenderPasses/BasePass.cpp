@@ -17,6 +17,7 @@
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <string>
 
 namespace minEngine
 {
@@ -60,15 +61,68 @@ namespace minEngine
             shader->GetRHIShader()->BindUniformBlock("PerFrameData", 0); // Bind the per-frame uniform buffer to the shader
             shader->GetRHIShader()->BindUniformBlock("LightsData", 1); // Bind the light uniform buffer to the shader
 
-            if(m_DirectionalShadowHandle.Valid && m_DirectionalShadowArray)
+            if(m_DirectionalShadowHandle.IsValid())
             {
-                m_DirectionalShadowArray->Bind(8); // Bind shadow array to texture unit 8
-                shader->GetRHIShader()->UploadUniformMat4("u_LightViewProj", m_DirectionalLightViewProj); // Upload the light view projection matrix for shadow mapping
+                m_DirectionalShadowHandle.GetAs2DArray()->Bind(8); // Bind shadow array to texture unit 8
+                shader->GetRHIShader()->UploadUniformInt("u_DirLightShadowMap", 8); // Bind the shadow map to texture unit 8 in the shader
 
                 shader->GetRHIShader()->BindUniformBlock("DirLightViewProjs", 9); // Bind the directional light view projection uniform buffer to the shader for CSM
                 shader->GetRHIShader()->BindUniformBlock("CascadeFarPlanes", 10); // Bind the CSM cascade far plane uniform buffer to the shader for CSM
             }
-            shader->GetRHIShader()->UploadUniformInt("u_DirLightShadowMap", 8); // Bind the shadow map to texture unit 8 in the shader
+
+            if (!m_SpotShadowHandles.empty())
+            {
+                shader->GetRHIShader()->BindUniformBlock("SpotLightViewProjs", 11);
+                for (const auto& handle : m_SpotShadowHandles)
+                {
+                    if (!handle.IsValid())
+                    {
+                        continue;
+                    }
+
+                    auto texture = handle.GetAs2D();
+                    if (!texture)
+                    {
+                        continue;
+                    }
+
+                    int slot = handle.TextureUnit - SPOT_SHADOW_MAP_BASE_UNIT;
+                    if (slot < 0 || slot >= MAX_SPOT_SHADOW_MAPS)
+                    {
+                        continue;
+                    }
+
+                    texture->Bind(handle.TextureUnit);
+                    shader->GetRHIShader()->UploadUniformInt("u_SpotShadowMaps[" + std::to_string(slot) + "]", handle.TextureUnit);
+                }
+            }
+
+            if (!m_PointShadowHandles.empty())
+            {
+                for (const auto& handle : m_PointShadowHandles)
+                {
+                    if (!handle.IsValid())
+                    {
+                        continue;
+                    }
+
+                    auto texture = handle.GetAsCube();
+                    if (!texture)
+                    {
+                        continue;
+                    }
+
+                    int slot = handle.TextureUnit - POINT_SHADOW_MAP_BASE_UNIT;
+                    if (slot < 0 || slot >= MAX_POINT_SHADOW_MAPS)
+                    {
+                        continue;
+                    }
+
+                    texture->Bind(handle.TextureUnit);
+                    shader->GetRHIShader()->UploadUniformInt("u_PointShadowMaps[" + std::to_string(slot) + "]", handle.TextureUnit);
+                }
+            }
+            
 
             shader->GetRHIShader()->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
             

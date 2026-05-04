@@ -9,7 +9,11 @@ layout (std140) uniform LightViewProj
 };
 uniform mat4 u_Model;
 
+out vec3 WorldPos;
+
 void main()
 {
-    gl_Position = ViewProj * u_Model * vec4(a_Position, 1.0);
+    vec4 worldPos = u_Model * vec4(a_Position, 1.0);
+    WorldPos = worldPos.xyz;
+    gl_Position = ViewProj * worldPos;
 }

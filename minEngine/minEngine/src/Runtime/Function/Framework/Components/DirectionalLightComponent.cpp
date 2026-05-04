@@ -3,6 +3,11 @@
 
 namespace minEngine
 {
+    Vector3 DirectionalLightComponent::GetDirection() const
+    {
+        return -GetUpVector();
+    }
+
     void DirectionalLightComponent::SetDirection(const Vector3 &inDirection)
     {
         if(!(m_Direction == inDirection))

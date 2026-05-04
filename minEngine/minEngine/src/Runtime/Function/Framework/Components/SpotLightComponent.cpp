@@ -3,6 +3,11 @@
 
 namespace minEngine
 {
+    Vector3 SpotLightComponent::GetDirection() const
+    {
+        return -GetUpVector();
+    }
+
     void SpotLightComponent::SetDirection(const Vector3 &inDirection)
     {
         if(!(m_Direction == inDirection))

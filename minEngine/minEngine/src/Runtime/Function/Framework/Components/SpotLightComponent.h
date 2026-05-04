@@ -17,7 +17,7 @@ namespace minEngine
 
         virtual LightType GetLightType() const override { return LightType::Spot; }
 
-        const Vector3& GetDirection() const { return m_Direction; }
+        Vector3 GetDirection() const;
         void SetDirection(const Vector3& inDirection);
 
         float GetInnerConeAngle() const { return m_InnerConeAngle; }

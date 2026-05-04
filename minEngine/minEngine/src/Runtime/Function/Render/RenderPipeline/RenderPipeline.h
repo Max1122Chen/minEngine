@@ -11,6 +11,8 @@
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 #include "Shadow/ShadowResourceManager.h"
 
+#include <unordered_map>
+
 
 namespace minEngine
 {
@@ -100,30 +102,11 @@ namespace minEngine
         void Execute();
         void ResizeSceneTargets(uint32_t width, uint32_t height);
 
-        void SetPresentPassEnabled(bool enabled)
-        {
-            m_EnablePresentPass = enabled;
-        }
-
-        const std::shared_ptr<RHITexture2D>& GetSceneColorTexture() const
-        {
-            return m_SceneColorTexture;
-        }
-
-        Vector2 GetSceneBufferSize() const
-        {
-            return Vector2(m_SceneBufferWidth, m_SceneBufferHeight);
-        }
-
-        uint32_t GetSceneBufferWidth() const
-        {
-            return m_SceneBufferWidth;
-        }
-
-        uint32_t GetSceneBufferHeight() const
-        {
-            return m_SceneBufferHeight;
-        }
+        void SetPresentPassEnabled(bool enabled) { m_EnablePresentPass = enabled; }
+        const std::shared_ptr<RHITexture2D>& GetSceneColorTexture() const { return m_SceneColorTexture; }
+        Vector2 GetSceneBufferSize() const { return Vector2(static_cast<float>(m_SceneBufferWidth), static_cast<float>(m_SceneBufferHeight)); }
+        uint32_t GetSceneBufferWidth() const { return m_SceneBufferWidth; }
+        uint32_t GetSceneBufferHeight() const { return m_SceneBufferHeight; }
 
     private:
         std::shared_ptr<UniformBuffer> m_LightViewProjUniformBuffer; // Uniform buffer for light view projection matrices used in shadow pass
@@ -132,6 +115,7 @@ namespace minEngine
 
         std::shared_ptr<UniformBuffer> m_DirLightViewProjUniformBuffer; // Uniform buffer for directional light view projection matrix used in base pass for CSM
         std::shared_ptr<UniformBuffer> m_CascadeFarPlaneUniformBuffer; // Uniform buffer for CSM cascade far plane distances used in base pass for CSM
+        std::shared_ptr<UniformBuffer> m_SpotLightViewProjUniformBuffer; // Uniform buffer for spot light view projection matrices used in base pass
 
         std::shared_ptr<FrameBuffer> m_ShadowBuffer;
         std::shared_ptr<FrameBuffer> m_SceneBuffer;
@@ -143,7 +127,10 @@ namespace minEngine
         std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
 
         ShadowResourceHandle m_DirectionalShadowHandle;
-        Matrix4 m_DirectionalLightViewProj = Matrix4(1.0f);
+        std::vector<ShadowResourceHandle> m_SpotShadowHandles;
+        std::vector<ShadowResourceHandle> m_PointShadowHandles;
+        std::unordered_map<const SpotLightSceneProxy*, ShadowResourceHandle> m_SpotShadowHandleMap;
+        std::unordered_map<const PointLightSceneProxy*, ShadowResourceHandle> m_PointShadowHandleMap;
 
         ShadowPass m_ShadowPass;
         BasePass m_BasePass;
@@ -175,5 +162,15 @@ namespace minEngine
         
         std::vector<CascadeSplit> CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount);
         void ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB, const Matrix4& lightView);
+
+        // Spot shadow command building
+        ShadowDrawCommand BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,
+                                                      const ShadowResourceHandle& handle,
+                                                      const SpotLightSceneProxy* lightProxy);
+
+        // Point shadow command building
+        std::vector<ShadowDrawCommand> BuildPointShadowDrawCommands(const ShadowRequest& shadowRequest,
+                                                                     const ShadowResourceHandle& handle,
+                                                                     const PointLightSceneProxy* lightProxy);
     };
 }

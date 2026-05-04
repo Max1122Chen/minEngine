@@ -4,6 +4,8 @@
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 
+#include <algorithm>
+
 namespace minEngine
 {
     LightComponent::LightComponent()
@@ -39,9 +41,10 @@ namespace minEngine
 
     void LightComponent::SetLightColor(const Vector4 &inColor)
     {
-        if(!(m_LightColor == inColor))
+        Vector4 clampedColor = glm::clamp(inColor, Vector4(0.0f), Vector4(1.0f));
+        if(!(m_LightColor == clampedColor))
         {
-            m_LightColor = inColor;
+            m_LightColor = clampedColor;
             MarkRenderStateDirty();
         }
     }
@@ -86,6 +89,21 @@ namespace minEngine
     {
         if(m_bRenderStateDirty)     
         {
+            Vector4 clampedColor = glm::clamp(m_LightColor, Vector4(0.0f), Vector4(1.0f));
+            m_LightColor = clampedColor;
+            if (m_Intensity < 0.0f)
+            {
+                m_Intensity = 0.0f;
+            }
+            if (m_DiffuseFactor < 0.0f)
+            {
+                m_DiffuseFactor = 0.0f;
+            }
+            if (m_SpecularFactor < 0.0f)
+            {
+                m_SpecularFactor = 0.0f;
+            }
+
             SceneManager::Get().GetRenderScene()->UpdateLight(this);
             m_bRenderStateDirty = false;
         }

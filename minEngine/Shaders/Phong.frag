@@ -1,5 +1,8 @@
 #version 330 core
 
+#define MAX_SPOT_SHADOW_MAPS 2
+#define MAX_POINT_SHADOW_MAPS 2
+
 struct Material
 {
     // TODO: support simple value input
@@ -30,10 +33,12 @@ struct SpotLightData
     vec4 Params;     // x=inner, y=outer, w=shadow map index
 };
 
-vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fragPosLightSpace);
-vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir);
-vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir);
+vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir);   // We only support one directional light for simplicity, so no params needed.
+vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex);
+vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex);
 float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias);
+float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias);
+float SamplePointShadow(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
 vec3 GetCascadeDebugColor(int cascadeIndex);
 
 // Vertex Attributes
@@ -65,6 +70,11 @@ layout (std140) uniform DirLightViewProjs
     mat4 DirLightViewProj[4];
 };
 
+layout (std140) uniform SpotLightViewProjs
+{
+    mat4 SpotLightViewProj[16];
+};
+
 layout (std140) uniform CascadeFarPlanes
 {
     float FarPlanes[4];
@@ -75,6 +85,8 @@ uniform Material u_Material;
 
 // Shadow maps
 uniform sampler2DArray u_DirLightShadowMap;
+uniform sampler2D u_SpotShadowMaps[MAX_SPOT_SHADOW_MAPS];
+uniform samplerCube u_PointShadowMaps[MAX_POINT_SHADOW_MAPS];
 
 out vec4 FragColor;
 
@@ -85,25 +97,25 @@ void main()
 
     vec4 texColor = texture(u_Material.DiffuseMap, TexCoord);
 
-    vec3 DirLightResult = CalcDirLight(DirectionalLight, norm, viewDir, FragPosLightSpace);
+    vec3 DirLightResult = CalcDirLight(DirectionalLight, norm, viewDir);
 
     vec3 PointLightResult = vec3(0.0);
     for(uint i = 0u; i < PointLightsCount && i < 16u; ++i)
     {
-        PointLightResult += CalcPointLight(PointLights[i], norm, FragPos, viewDir);
+        PointLightResult += CalcPointLight(PointLights[i], norm, FragPos, viewDir, int(i));
     }
 
     vec3 SpotLightResult = vec3(0.0);
     for(uint i = 0u; i < SpotLightsCount && i < 16u; ++i)
     {
-        SpotLightResult += CalcSpotLight(SpotLights[i], norm, FragPos, viewDir);
+        SpotLightResult += CalcSpotLight(SpotLights[i], norm, FragPos, viewDir, int(i));
     }
 
     vec3 result = DirLightResult + PointLightResult + SpotLightResult;
     FragColor = vec4(result, texColor.a);
 }
 
-vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir, vec4 fragPosLightSpace)
+vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir)
 {
     vec3 lightDir = normalize(-light.Direction.xyz);
     vec3 lightColor = light.Color.rgb * light.Color.w;
@@ -180,10 +192,57 @@ float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
     return shadow / 9.0;
 }
 
-vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir)
+float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
+       projCoords.y < 0.0 || projCoords.y > 1.0 ||
+       projCoords.z < 0.0 || projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
+    float currentDepth = projCoords.z;
+
+    float shadow = 0.0;
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            vec2 offset = vec2(float(x), float(y)) * texelSize;
+            vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+            float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
+            shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+        }
+    }
+
+    return shadow / 9.0;
+}
+
+float SamplePointShadow(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
+{
+    vec3 fragToLight = fragPos - lightPos;
+    float currentDepth = length(fragToLight) / farPlane;
+    float sampledDepth = texture(u_PointShadowMaps[shadowIndex], fragToLight).r;
+    return (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+}
+
+vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex)
 {
     vec3 lightDir = normalize(light.Position.xyz - fragPos);
     vec3 lightColor = light.Color.rgb * light.Color.w;
+
+    float shadow = 0.0;
+    int shadowIndex = int(light.Params.w + 0.5);
+    if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
+    {
+        float ndotl = max(dot(normalize(normal), lightDir), 0.0);
+        float bias = max(0.002, 0.01 * (1.0 - ndotl));
+        shadow = SamplePointShadow(fragPos, light.Position.xyz, light.Params.z, shadowIndex, bias);
+    }
 
     // Ambient shading
     float ambientStrength = 0.1;    // TODO: make it configurable
@@ -199,10 +258,10 @@ vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDi
     // Combine results
     vec3 diffuse = diff * lightColor * vec3(texture(u_Material.DiffuseMap, TexCoord));
     vec3 specular = spec * lightColor * vec3(texture(u_Material.SpecularMap, TexCoord));    // Note: using diffuse map for specular for simplicity
-    return (ambient + diffuse + specular);
+    return (ambient + (diffuse + specular) * (1.0 - shadow));
 }
 
-vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir)
+vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex)
 {
     vec3 lightDir = normalize(light.Position.xyz - fragPos);
     vec3 lightColor = light.Color.rgb * light.Color.w;
@@ -227,8 +286,18 @@ vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir)
     vec3 specular = spec * lightColor * vec3(texture(u_Material.SpecularMap, TexCoord));    // Note: using diffuse map for specular for simplicity
     diffuse *= intensity;
     specular *= intensity;
+
+    float shadow = 0.0;
+    int shadowIndex = int(light.Params.w + 0.5);
+    if (shadowIndex >= 0 && shadowIndex < MAX_SPOT_SHADOW_MAPS)
+    {
+        float ndotl = max(dot(normalize(normal), lightDir), 0.0);
+        float bias = max(0.0005, 0.005 * (1.0 - ndotl));
+        vec4 fragPosLightSpace = SpotLightViewProj[lightIndex] * vec4(fragPos, 1.0);
+        shadow = SampleSpotShadowPCF(fragPosLightSpace, shadowIndex, bias);
+    }
     
-    return (diffuse + specular);
+    return (diffuse + specular) * (1.0 - shadow);
 }
 
 vec3 GetCascadeDebugColor(int cascadeIndex)

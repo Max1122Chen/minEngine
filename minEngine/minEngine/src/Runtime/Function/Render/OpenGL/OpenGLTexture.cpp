@@ -167,9 +167,21 @@ namespace minEngine
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+        GLint internalFormat = 0;
+        GLenum dataFormat = 0;
+        GLenum dataType = GL_UNSIGNED_BYTE;
+        ResolveOpenGLTextureFormat(desc, internalFormat, dataFormat, dataType);
+
+        if (internalFormat == 0)
+        {
+            internalFormat = GL_RGBA8;
+            dataFormat = GL_RGBA;
+            dataType = GL_UNSIGNED_BYTE;
+        }
+
         for (unsigned int i = 0; i < 6; i++)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA8, desc.Width, desc.Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, faceData[i]);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, desc.Width, desc.Height, 0, dataFormat, dataType, faceData[i]);
         }
     }
 
