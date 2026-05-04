@@ -99,10 +99,6 @@ namespace minEngine
                 ImGui::MenuItem("Reset To Default", nullptr, false, false);
                 ImGui::EndMenu();
             }
-
-            ImGui::Separator();
-            ImGui::MenuItem("ImGui Demo", nullptr, m_Editor.showDemoWindow, false);
-            ImGui::EndMenu();
         }
     }
 

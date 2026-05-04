@@ -53,10 +53,6 @@ namespace minEngine
             }
 
             ImGui::SameLine();
-            bool showDemoWindow = m_Editor.showDemoWindow;
-            ImGui::Checkbox("Demo", &showDemoWindow);
-
-            ImGui::SameLine();
             const float deltaTime = m_Editor.lastDeltaTime;
             ImGui::Text("FPS: %.1f", (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f);
             ImGui::End();

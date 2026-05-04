@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "minEngine.h"
+#include "Runtime/EngineConfig.h"
 
 #include "EditorGUIManager.h"
 #include "Viewport/EditorViewportClient.h"
@@ -30,6 +31,10 @@ namespace minEngine
         const EditorGUIManager& GetGUIManager() const { return m_EditorGUIManager; }
 
         void RequestExit(){ m_ExitRequested = true; }
+
+        // Project management
+        bool OpenProject(const std::string& projectPath);
+        void CloseProject();
 
         Scene* GetActiveScene() const;
 
@@ -68,7 +73,6 @@ namespace minEngine
 
     public:
         bool isPlaying = false;
-        bool showDemoWindow = false;
         float lastDeltaTime = 0.0f;
 
         bool dockLayoutInitialized = false;
@@ -76,9 +80,12 @@ namespace minEngine
 
     private:
         void InitializeAllComponentTypeNames();
+        bool LoadEngineConfig();
 
     private:
         Engine* m_Engine = nullptr;
+        static constexpr const char* kEngineConfigExtension = ".meconfig";
+        EngineConfig m_EngineConfig;
         EditorGUIManager m_EditorGUIManager;
         std::unordered_map<std::string, std::unique_ptr<EditorViewportClient>> m_ViewportClients;
         bool m_ExitRequested = false;

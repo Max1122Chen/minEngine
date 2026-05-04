@@ -475,7 +475,7 @@ namespace minEngine
         const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
         if (valueClass)
         {
-            if (valueClass->IsA(Reflection::ReflectionSystem::Get().FindClass<Asset>()))
+            if (valueClass->IsA(Asset::StaticClass()))
             {
                 return DrawAssetRef(objectPtrProperty, propertyPtr);
             }
@@ -496,14 +496,16 @@ namespace minEngine
         const Asset* currentAsset = static_cast<const Asset*>(objectPtrProperty.GetConstPointingData(propertyPtr));
         const AssetMeta* currentAssetMeta = currentAsset ? currentAsset->GetMeta() : nullptr;
         std::string selectedAssetName = currentAssetMeta ? currentAssetMeta->AssetName : "None";
+        GUID selectedGuid = currentAssetMeta ? currentAssetMeta->Guid : GUID::Zero();
         
         const std::vector<AssetMeta*> assetMetas = AssetManager::Get().FindAssetMetasByType(typeName);
         bool valueChanged = false;
         if (!assetMetas.empty())
         {
-            if(std::find_if(assetMetas.begin(), assetMetas.end(), [&](const AssetMeta* meta) { return meta->AssetName == selectedAssetName; }) == assetMetas.end())
+            // Use guid as the unique identifier for the asset reference, and display the asset name in the combo box. If the current selected guid is not in the list of available assets (e.g. the asset has been deleted), display "None".
+            if(std::find_if(assetMetas.begin(), assetMetas.end(), [&](const AssetMeta* meta) { return meta->Guid == selectedGuid; }) == assetMetas.end())
             {
-                selectedAssetName = assetMetas.front()->AssetName;
+                selectedAssetName = "None";
             }
 
             ImGui::PushItemWidth(260.0f);
@@ -511,7 +513,8 @@ namespace minEngine
             {
                 for (const AssetMeta* meta : assetMetas)
                 {
-                    const bool isSelected = (meta->AssetName == selectedAssetName);
+                    const bool isSelected = (meta->Guid == selectedGuid);
+                    ImGui::PushID(meta->Guid.ToString().c_str());
                     if (ImGui::Selectable(meta->AssetName.c_str(), isSelected))
                     {
                         selectedAssetName = meta->AssetName;
@@ -535,6 +538,7 @@ namespace minEngine
                             }
                         }
                     }
+                    ImGui::PopID();
 
                     if (isSelected)
                     {

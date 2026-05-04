@@ -172,11 +172,5 @@ namespace minEngine
 
             window->OnDraw();
         }
-
-        Editor& editor = GetEditor();
-        if (editor.showDemoWindow)
-        {
-            ImGui::ShowDemoWindow(&editor.showDemoWindow);
-        }
     }
 }

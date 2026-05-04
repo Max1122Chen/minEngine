@@ -15,6 +15,9 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Core/Reflection/ReflectionSample.h"
+#include "Serialization/JsonArchive.h"
+#include "Serialization/Serializer.h"
+#include "Resource/AssetManager.h"
 
 #include "EditorDefaultScene.h"
 
@@ -72,7 +75,39 @@ namespace minEngine
         }
     }
 
-    Scene* Editor::GetActiveScene() const
+    bool Editor::OpenProject(const std::string &projectPath)
+    {
+        ProjectManager& projectManager = ProjectManager::Get();
+        ProjectOpenResult result = projectManager.OpenProject(projectPath);
+        if (result.IsSuccess())
+        {
+            ME_CORE_INFO(result.Message);
+            // Try to load the editor default scene after project is opened, if no scene is currently open
+            const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
+            bool sceneLoaded = SceneManager::Get().LoadScene(projectCtx.Settings.EditorDefaultSceneName);
+            if(!sceneLoaded)
+            {
+                ME_CORE_WARN("Failed to load editor default scene '{}'.", projectCtx.Settings.EditorDefaultSceneName);
+            }
+            else
+            {
+                ME_CORE_INFO("Editor default scene '{}' loaded successfully.", projectCtx.Settings.EditorDefaultSceneName);
+                return true;
+            }
+        }
+        else
+        {
+            ME_CORE_ERROR(result.Message);
+        }
+        return false;
+    }
+
+    void Editor::CloseProject()
+    {
+        // TODO: implement this
+    }
+
+    Scene *Editor::GetActiveScene() const
     {
         return SceneManager::Get().GetCurrentActiveScene().get();
     }
@@ -389,6 +424,38 @@ namespace minEngine
         }
     }
 
+    bool Editor::LoadEngineConfig()
+    {
+        std::filesystem::path cwd = std::filesystem::current_path();
+        std::filesystem::path configPath = cwd / ("EngineConfig" + std::string(kEngineConfigExtension));
+        if (!std::filesystem::exists(configPath))
+        {
+            ME_CORE_ERROR("Engine config file not found at current working directory: '{}'.", cwd.string());
+            return false;
+        }
+        
+        Serialization::JsonReaderArchive reader;
+        Serialization::SerializeResult result = 
+            Serialization::Serializer::FromFile(configPath.string(), 
+                minEngine::Reflection::GetClassName<EngineConfig>(), 
+                &m_EngineConfig,
+                reader,
+                Serialization::SerializerOptions
+                {
+                    .enumAsString = true,
+                    .strictTypeCheck = true,
+                    .skipUnknownField = true,
+                    .writeObjectTypeName = false,
+                    .allowObjectPtrSerialization = true
+                });
+        if (!result.ok)
+        {
+            ME_CORE_ERROR("Failed to load engine config from file '{}'. Error: {}. Field path: {}", configPath.string(), result.message, result.fieldPath);
+            return false;
+        }
+        return true;
+    }
+
     void Editor::Initialize(int argc, char** argv)
     {
         m_Engine = new Engine();
@@ -414,8 +481,15 @@ namespace minEngine
 
         InitializeAllComponentTypeNames();
 
+        // Load engine config before opening project, so that any config in the file can take effect before project loading.
+        bool engineConfigLoaded = LoadEngineConfig();
+        // Scan engine default assets if engine config is loaded successfully, so that the default assets can be used when opening project and loading scenes.
+        if (engineConfigLoaded)
+        {
+            AssetManager::Get().ScanAssets(m_EngineConfig.EngineDefaultAssetsRoot);
+        }
+
         std::string projectPath;
-        // TODO: try to open the project
         if (argc > 1)
         {
             projectPath = argv[1];
@@ -423,30 +497,12 @@ namespace minEngine
         }
         else
         {
+            // Open a default project for easier development and testing if no project path is provided via command line arguments.
+            // This is just a convenience for development and can be removed later.
             projectPath = "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject";
         }
 
-        ProjectManager& projectManager = ProjectManager::Get();
-        ProjectOpenResult result = projectManager.OpenProject(projectPath);
-        if (result.IsSuccess())
-        {
-            ME_CORE_INFO(result.Message);
-            // Try to load the editor default scene after project is opened, if no scene is currently open
-            const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
-            bool sceneLoaded = SceneManager::Get().LoadScene(projectCtx.Settings.EditorDefaultSceneName);
-            if(!sceneLoaded)
-            {
-                ME_CORE_WARN("Failed to load editor default scene '{}'.", projectCtx.Settings.EditorDefaultSceneName);
-            }
-            else
-            {
-                ME_CORE_INFO("Editor default scene '{}' loaded successfully.", projectCtx.Settings.EditorDefaultSceneName);
-            }
-        }
-        else
-        {
-            ME_CORE_ERROR(result.Message);
-        }
+        bool projectOpened = OpenProject(projectPath);
     }
 
     void Editor::Shutdown()
