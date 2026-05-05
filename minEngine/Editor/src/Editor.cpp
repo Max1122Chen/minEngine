@@ -431,9 +431,10 @@ namespace minEngine
         if (!std::filesystem::exists(configPath))
         {
             ME_CORE_ERROR("Engine config file not found at current working directory: '{}'.", cwd.string());
-            return false;
+            configPath = std::filesystem::path("D:/Dev/GitRepo/minEngine/minEngine/EngineConfig.meconfig");
+            ME_CORE_WARN("Using hardcoded engine config path '{}' instead of '{}'. This is just for development convenience and should be removed later.", configPath.string(), cwd.string());
         }
-        
+            
         Serialization::JsonReaderArchive reader;
         Serialization::SerializeResult result = 
             Serialization::Serializer::FromFile(configPath.string(), 

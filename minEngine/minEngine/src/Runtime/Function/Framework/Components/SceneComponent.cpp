@@ -104,27 +104,20 @@ namespace minEngine
 
     Vector3 SceneComponent::GetForwardVector() const
     {
-        // We assume the forward vector is along the local X axis (1,0,0)
-        Matrix4 rotationMatrix = glm::mat4(1.0f);
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Transform.Rotation.x), Vector3(1.0f, 0.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Transform.Rotation.y), Vector3(0.0f, 1.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Transform.Rotation.z), Vector3(0.0f, 0.0f, 1.0f));
-
-        return glm::normalize(Vector3(rotationMatrix * Vector4(1.0f, 0.0f, 0.0f, 0.0f)));
+        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
+        return glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));   // forward vector is along x axis in our coordinate system
     }
 
     Vector3 SceneComponent::GetRightVector() const
     {
-        Vector3 forward = GetForwardVector();
-        Vector3 up(0.0f, 1.0f, 0.0f);
-        return glm::normalize(glm::cross(forward, up));
+        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
+        return glm::normalize(rotationQuat * Vector3(0.0f, 0.0f, 1.0f));   // right vector is along z axis in our coordinate system
     }
 
     Vector3 SceneComponent::GetUpVector() const
     {
-        Vector3 forward = GetForwardVector();
-        Vector3 right = GetRightVector();
-        return glm::normalize(glm::cross(right, forward));
+        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
+        return glm::normalize(rotationQuat * Vector3(0.0f, 1.0f, 0.0f));   // up vector is along y axis in our coordinate system
     }
 
     void SceneComponent::SetOwner(GameObject *inOwner)

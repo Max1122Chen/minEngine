@@ -16,14 +16,11 @@ namespace minEngine
 
         virtual LightType GetLightType() const override { return LightType::Directional; }
 
-        Vector3 GetDirection() const;
-        void SetDirection(const Vector3& inDirection);        
+        Vector3 GetDirection() const;       
 
         virtual LightSceneProxy* CreateSceneProxy() override;
 
     protected:
-        ME_PROPERTY(EditAnywhere)
-        Vector3 m_Direction{ 0.0f, -1.0f, 0.0f };   // default direction pointing downwards
     };
 }
 

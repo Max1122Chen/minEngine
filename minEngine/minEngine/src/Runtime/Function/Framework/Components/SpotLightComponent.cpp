@@ -8,15 +8,6 @@ namespace minEngine
         return -GetUpVector();
     }
 
-    void SpotLightComponent::SetDirection(const Vector3 &inDirection)
-    {
-        if(!(m_Direction == inDirection))
-        {
-            m_Direction = inDirection;
-            MarkRenderStateDirty();
-        }
-    }
-
     void SpotLightComponent::SetInnerConeAngle(float inInnerConeAngle)
     {
         if(!(m_InnerConeAngle == inInnerConeAngle))

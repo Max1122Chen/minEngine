@@ -18,7 +18,6 @@ namespace minEngine
         virtual LightType GetLightType() const override { return LightType::Spot; }
 
         Vector3 GetDirection() const;
-        void SetDirection(const Vector3& inDirection);
 
         float GetInnerConeAngle() const { return m_InnerConeAngle; }
         void SetInnerConeAngle(float inInnerConeAngle);
@@ -29,9 +28,6 @@ namespace minEngine
         virtual LightSceneProxy* CreateSceneProxy() override;
 
     protected:
-        ME_PROPERTY(EditAnywhere)
-        Vector3 m_Direction{ 0.0f, -1.0f, 0.0f };   // default direction pointing downwards
-        
         ME_PROPERTY(EditAnywhere)
         float m_InnerConeAngle{ 15.0f }; // degrees
 

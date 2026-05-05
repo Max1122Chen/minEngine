@@ -4,5 +4,4 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::DirectionalLightComponent, GReflectionClassRegister_DirectionalLightComponent_faeeb366)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::LightComponent)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::DirectionalLightComponent, m_Direction, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::DirectionalLightComponent)

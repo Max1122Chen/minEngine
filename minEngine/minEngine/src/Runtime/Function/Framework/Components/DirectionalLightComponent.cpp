@@ -8,15 +8,6 @@ namespace minEngine
         return -GetUpVector();
     }
 
-    void DirectionalLightComponent::SetDirection(const Vector3 &inDirection)
-    {
-        if(!(m_Direction == inDirection))
-        {
-            m_Direction = inDirection;
-            MarkRenderStateDirty();
-        }
-    }
-
     LightSceneProxy *DirectionalLightComponent::CreateSceneProxy()
     {
         DirectionalLightSceneProxy* proxy = new DirectionalLightSceneProxy();

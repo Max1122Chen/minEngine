@@ -4,7 +4,6 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SpotLightComponent)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpotLightComponent, m_Direction)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpotLightComponent, m_InnerConeAngle)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpotLightComponent, m_OuterConeAngle)
 ME_REFLECTION_ACCESSOR_END()

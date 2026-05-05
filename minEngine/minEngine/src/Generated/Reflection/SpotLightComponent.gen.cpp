@@ -4,7 +4,6 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::SpotLightComponent, GReflectionClassRegister_SpotLightComponent_12d2285d)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::PointLightComponent)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SpotLightComponent, m_Direction, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SpotLightComponent, m_InnerConeAngle, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SpotLightComponent, m_OuterConeAngle, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::SpotLightComponent)

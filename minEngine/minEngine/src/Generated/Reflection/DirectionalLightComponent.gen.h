@@ -4,7 +4,6 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::DirectionalLightComponent)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::DirectionalLightComponent, m_Direction)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::DirectionalLightComponent, GReflectionClassRegister_DirectionalLightComponent_faeeb366)

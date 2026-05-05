@@ -337,8 +337,7 @@ namespace minEngine
             {
                 continue;
             }
-            Vector4 lightRenderPos = Vector4(pointLightProxy->m_Position.z, pointLightProxy->m_Position.y, -pointLightProxy->m_Position.x, 1.0f); // Convert to render space
-            lightsData.PointLights[pointLightCount].Position = lightRenderPos;
+            lightsData.PointLights[pointLightCount].Position = Vector4(pointLightProxy->m_Position, 1.0f);
             lightsData.PointLights[pointLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
             int shadowIndex = -1;
             auto pointShadowIt = m_PointShadowHandleMap.find(pointLightProxy);
@@ -363,10 +362,8 @@ namespace minEngine
             {
                 continue;
             }
-            Vector4 lightRenderPos = Vector4(spotLightProxy->m_Position.z, spotLightProxy->m_Position.y, -spotLightProxy->m_Position.x, 1.0f); // Convert to render space
-            Vector4 lightRenderDir = Vector4(spotLightProxy->m_Direction.z, spotLightProxy->m_Direction.y, -spotLightProxy->m_Direction.x, 0.0f); // Convert to render space
-            lightsData.SpotLights[spotLightCount].Position = lightRenderPos;
-            lightsData.SpotLights[spotLightCount].Direction = lightRenderDir;
+            lightsData.SpotLights[spotLightCount].Position = Vector4(spotLightProxy->m_Position, 1.0f);
+            lightsData.SpotLights[spotLightCount].Direction = Vector4(spotLightProxy->m_Direction, 0.0f);
             lightsData.SpotLights[spotLightCount].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
             int shadowIndex = -1;
             auto spotShadowIt = m_SpotShadowHandleMap.find(spotLightProxy);
@@ -379,21 +376,6 @@ namespace minEngine
                 }
             }
             lightsData.SpotLights[spotLightCount].Params = Vector4(spotLightProxy->m_InnerConeAngle, spotLightProxy->m_OuterConeAngle, 0.0f, static_cast<float>(shadowIndex)); // inner cone angle, outer cone angle
-
-            Vector3 lightPos = spotLightProxy->m_Position;
-            Vector3 lightDir = glm::normalize(spotLightProxy->m_Direction);
-            Vector3 up = Math::abs(lightDir.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
-
-            float outerAngle = glm::clamp(spotLightProxy->m_OuterConeAngle, 1.0f, 89.0f);
-            float fov = glm::radians(glm::clamp(outerAngle * 2.0f, 1.0f, 179.0f));
-
-            Matrix4 lightView = glm::lookAt(lightPos, lightPos + lightDir, up);
-            Matrix4 lightProj = glm::perspective(fov, 1.0f, kSpotShadowNear, kSpotShadowFar);
-            Matrix4 lightViewProj = lightProj * lightView;
-            if (m_SpotLightViewProjUniformBuffer)
-            {
-                m_SpotLightViewProjUniformBuffer->UpdateData(&lightViewProj, sizeof(Matrix4) * spotLightCount, sizeof(Matrix4));
-            }
             spotLightCount++;
         }
         lightsData.SpotLightsCount = spotLightCount;
@@ -491,6 +473,9 @@ namespace minEngine
         m_SpotShadowHandleMap.clear();
         m_PointShadowHandleMap.clear();
 
+        int directionalLightCount = 0;
+        int spotLightCount = 0;
+        int pointLightCount = 0;
         for (const auto& shadowRequest : m_ShadowRequests)
         {
             if (shadowRequest.Type == LightType::Directional)
@@ -505,7 +490,7 @@ namespace minEngine
                 DirShadowCommandBuildResult result = BuildDirectionalShadowDrawCommands(shadowRequest, handle, dirLightProxy, MAX_CASCADES);
                 m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), result.Commands.begin(), result.Commands.end());
                 m_DirectionalShadowHandle = handle;
-                
+                directionalLightCount++;
                 // Update the directional light view projection matrix for CSM in the base pass uniform buffer
                 for(int i = 0; i < MAX_CASCADES; i++)
                 {
@@ -527,7 +512,10 @@ namespace minEngine
                 {
                     m_SpotShadowHandles.push_back(handle);
                 }
-                m_ShadowDrawCommands.push_back(BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy));
+                ShadowDrawCommand command = BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy);
+                m_ShadowDrawCommands.push_back(command);
+                m_SpotLightViewProjUniformBuffer->UpdateData(&command.ViewProj, sizeof(Matrix4) * spotLightCount, sizeof(Matrix4)); // Update the spot light view projection matrix in the base pass uniform buffer
+                spotLightCount++;
             }
             else if(shadowRequest.Type == LightType::Point)
             {
@@ -544,6 +532,7 @@ namespace minEngine
                 }
                 std::vector<ShadowDrawCommand> commands = BuildPointShadowDrawCommands(shadowRequest, handle, pointLightProxy);
                 m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), commands.begin(), commands.end());
+                pointLightCount++;
             }
         }
     }
@@ -616,7 +605,7 @@ namespace minEngine
 
         // === Prepare light view matrix ===
         Vector3 lightDir = glm::normalize(lightProxy->m_Direction);
-        Vector3 up = Math::abs(lightDir.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
+        Vector3 up = Math::abs(glm::dot(lightDir, Vector3(0.0f, 1.0f, 0.0f))) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
         Matrix4 lightView = glm::lookAt(Vector3(0.0f), lightDir * 100.0f, up);
 
         // === Split cascade ===
@@ -741,7 +730,8 @@ namespace minEngine
 
         Vector3 lightPos = lightProxy->m_Position;
         Vector3 lightDir = glm::normalize(lightProxy->m_Direction);
-        Vector3 up = Math::abs(lightDir.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
+        // Vector3 lightDir = glm::normalize(Vector3(1,-1,0));
+        Vector3 up = Math::abs(glm::dot(lightDir, Vector3(0.0f, 1.0f, 0.0f))) > 0.99f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
 
         float outerAngle = glm::clamp(lightProxy->m_OuterConeAngle, 1.0f, 89.0f);
         float fov = glm::radians(glm::clamp(outerAngle * 2.0f, 1.0f, 179.0f));

@@ -14,7 +14,7 @@ namespace minEngine
 
     void RenderCamera::UpdateViewMatrix()
     {
-        // Calculate Logic Forward Vector based on Rotation
+        // WARNING: This is a very naive implementation that directly converts Euler angles to forward vector without considering gimbal lock or other issues. It also assumes a specific order of rotation (yaw-pitch-roll).
         Matrix4 rotationMatrix = glm::mat4(1.0f);
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Rotation.x), Vector3(1.0f, 0.0f, 0.0f));
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(m_Rotation.y), Vector3(0.0f, 1.0f, 0.0f));
@@ -23,6 +23,11 @@ namespace minEngine
         Vector3 forward = glm::normalize(Vector3(rotationMatrix * Vector4(1.0f, 0.0f, 0.0f, 0.0f)));
         Vector3 up = Math::abs(forward.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
         m_ViewMatrix = glm::lookAt(m_Position, m_Position + forward, up);
+
+        // glm::quat rotationQuat = glm::quat(glm::radians(m_Rotation));
+        // Vector3 forward = glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));
+        // Vector3 up = glm::normalize(rotationQuat * Vector3(0.0f, 1.0f, 0.0f));
+        // m_ViewMatrix = glm::lookAt(m_Position, m_Position + forward, up);
     }
 
     void RenderCamera::UpdateProjectionMatrix()

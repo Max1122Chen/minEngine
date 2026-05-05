@@ -33,7 +33,7 @@ struct SpotLightData
     vec4 Params;     // x=inner, y=outer, w=shadow map index
 };
 
-vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir);   // We only support one directional light for simplicity, so no params needed.
+vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 fragPos, vec3 viewDir);   // We only support one directional light for simplicity, so no params needed.
 vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex);
 vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex);
 float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias);
@@ -97,7 +97,7 @@ void main()
 
     vec4 texColor = texture(u_Material.DiffuseMap, TexCoord);
 
-    vec3 DirLightResult = CalcDirLight(DirectionalLight, norm, viewDir);
+    vec3 DirLightResult = CalcDirLight(DirectionalLight, norm, FragPos, viewDir);
 
     vec3 PointLightResult = vec3(0.0);
     for(uint i = 0u; i < PointLightsCount && i < 16u; ++i)
@@ -115,7 +115,7 @@ void main()
     FragColor = vec4(result, texColor.a);
 }
 
-vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir)
+vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 fragPos, vec3 viewDir)
 {
     vec3 lightDir = normalize(-light.Direction.xyz);
     vec3 lightColor = light.Color.rgb * light.Color.w;
@@ -139,7 +139,7 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir)
         }
     }
     // lightColor = GetCascadeDebugColor(cascadeIndex); // Debug: visualize cascade splits with colors
-    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(FragPos, 1.0);
+    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
     shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
     
 
@@ -159,75 +159,7 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 viewDir)
     vec3 specular = spec * lightColor * vec3(texture(u_Material.SpecularMap, TexCoord));     // Note: using diffuse map for specular for simplicity
 
     return (ambient + (diffuse + specular) * (1.0 - shadow));
-}
-
-float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
-{
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5; // Transform from NDC to [0,1] range
-
-    // Outside light frustum means no valid shadow contribution in this pass.
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
-    {
-        return 0.0;
-    }
-
-    vec2 texelSize = 1.0 / vec2(textureSize(u_DirLightShadowMap, 0).xy);
-    float currentDepth = projCoords.z;
-
-    float shadow = 0.0;
-    for(int x = -1; x <= 1; ++x)
-    {
-        for(int y = -1; y <= 1; ++y)
-        {
-            vec2 offset = vec2(float(x), float(y)) * texelSize;
-            vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
-            float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
-            shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
-        }
-    }
-
-    return shadow / 9.0;
-}
-
-float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
-{
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
-
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
-    {
-        return 0.0;
-    }
-
-    vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
-    float currentDepth = projCoords.z;
-
-    float shadow = 0.0;
-    for(int x = -1; x <= 1; ++x)
-    {
-        for(int y = -1; y <= 1; ++y)
-        {
-            vec2 offset = vec2(float(x), float(y)) * texelSize;
-            vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
-            float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
-            shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
-        }
-    }
-
-    return shadow / 9.0;
-}
-
-float SamplePointShadow(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
-{
-    vec3 fragToLight = fragPos - lightPos;
-    float currentDepth = length(fragToLight) / farPlane;
-    float sampledDepth = texture(u_PointShadowMaps[shadowIndex], fragToLight).r;
-    return (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    // return vec3(1.0, 1.0, 1.0) * shadow; // For debugging: visualize shadow intensity to check correctness of light space transformation and depth range mapping.
 }
 
 vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex)
@@ -293,11 +225,87 @@ vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir,
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);
         float bias = max(0.0005, 0.005 * (1.0 - ndotl));
-        vec4 fragPosLightSpace = SpotLightViewProj[lightIndex] * vec4(fragPos, 1.0);
+        vec4 fragPosLightSpace = SpotLightViewProj[shadowIndex] * vec4(fragPos, 1.0);
         shadow = SampleSpotShadowPCF(fragPosLightSpace, shadowIndex, bias);
     }
-    
+
     return (diffuse + specular) * (1.0 - shadow);
+    // return vec3(1.0, 1.0, 1.0) * shadow; // For debugging: visualize shadow intensity to check correctness of light space transformation and depth range mapping.
+}
+
+float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5; // Transform from NDC to [0,1] range
+
+    // Outside light frustum means no valid shadow contribution in this pass.
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
+       projCoords.y < 0.0 || projCoords.y > 1.0 ||
+       projCoords.z < 0.0 || projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_DirLightShadowMap, 0).xy);
+    float currentDepth = projCoords.z;
+
+    float shadow = 0.0;
+    float sampledDepth;
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            vec2 offset = vec2(float(x), float(y)) * texelSize;
+            vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+            // float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
+            sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
+            shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+        }
+    }
+
+    return shadow / 9.0;
+    // return sampledDepth; // For debugging: visualize raw depth values from shadow map to check correctness of light space transformation and depth range mapping.
+}
+
+float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
+       projCoords.y < 0.0 || projCoords.y > 1.0 ||
+       projCoords.z < 0.0 || projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
+    float currentDepth = projCoords.z;
+
+    float shadow = 0.0;
+    float sampledDepth;
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            vec2 offset = vec2(float(x), float(y)) * texelSize;
+            vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+            // float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
+            sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
+            shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+        }
+    }
+
+    return shadow / 9.0;
+    // return sampledDepth; // For debugging: visualize raw depth values from shadow map to check correctness of light space transformation and depth range mapping.
+}
+
+float SamplePointShadow(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
+{
+    vec3 fragToLight = fragPos - lightPos;
+    float currentDepth = length(fragToLight) / farPlane;
+    float sampledDepth = texture(u_PointShadowMaps[shadowIndex], fragToLight).r;
+    return (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
 }
 
 vec3 GetCascadeDebugColor(int cascadeIndex)

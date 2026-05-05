@@ -67,11 +67,6 @@
                     "$ptr_typeName": "minEngine::DirectionalLightComponent",
                     "m_CastShadow": true,
                     "m_DiffuseFactor": 24.200000762939453,
-                    "m_Direction": [
-                        0.6499999761581421,
-                        -1.399999976158142,
-                        -0.800000011920929
-                    ],
                     "m_Guid": {
                         "High": 7777777777777777777,
                         "Low": 8888888888888888888
