@@ -3,6 +3,26 @@
 #define MAX_SPOT_SHADOW_MAPS 2
 #define MAX_POINT_SHADOW_MAPS 2
 
+#define SHADOW_FILTER_BOX 0
+#define SHADOW_FILTER_POISSON 1
+#define SHADOW_FILTER_POISSON_PCSS 2
+
+#ifndef DIR_SHADOW_FILTER
+#define DIR_SHADOW_FILTER SHADOW_FILTER_POISSON
+#endif
+
+#ifndef SPOT_SHADOW_FILTER
+#define SPOT_SHADOW_FILTER SHADOW_FILTER_POISSON
+#endif
+
+#ifndef POINT_SHADOW_FILTER
+#define POINT_SHADOW_FILTER SHADOW_FILTER_POISSON
+#endif
+
+#ifndef POISSON_SAMPLE_COUNT
+#define POISSON_SAMPLE_COUNT 16
+#endif
+
 struct Material
 {
     // TODO: support simple value input
@@ -37,8 +57,19 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 fragPos, vec3 vi
 vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex);
 vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir, int lightIndex);
 float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias);
+float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bias);
+float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, float bias);
+float SampleDirShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, float shadowLayer, float bias);
+
 float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias);
-float SamplePointShadow(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
+float SampleSpotShadowPCF_Box(vec4 fragPosLightSpace, int shadowIndex, float bias);
+float SampleSpotShadowPCF_Poisson(vec4 fragPosLightSpace, int shadowIndex, float bias);
+float SampleSpotShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, int shadowIndex, float bias);
+
+float SamplePointShadowPCF(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
+float SamplePointShadowPCF_Box(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
+float SamplePointShadowPCF_Poisson(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
+float SamplePointShadowPCF_PoissonPCSS(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
 vec3 GetCascadeDebugColor(int cascadeIndex);
 
 // Vertex Attributes
@@ -87,6 +118,54 @@ uniform Material u_Material;
 uniform sampler2DArray u_DirLightShadowMap;
 uniform sampler2D u_SpotShadowMaps[MAX_SPOT_SHADOW_MAPS];
 uniform samplerCube u_PointShadowMaps[MAX_POINT_SHADOW_MAPS];
+
+const int kMaxPoissonSamples = 8;
+const int kPoissonSampleCount = (POISSON_SAMPLE_COUNT <= kMaxPoissonSamples) ? POISSON_SAMPLE_COUNT : kMaxPoissonSamples;
+const float kDirBoxRadius = 1.0;
+const float kSpotBoxRadius = 1.0;
+const float kDirPoissonRadius = 2.0;
+const float kSpotPoissonRadius = 2.0;
+const float kPointBoxRadius = 0.04;
+const float kPointPoissonRadius = 0.05;
+const float kDirPcssSearchRadius = 3.0;
+const float kSpotPcssSearchRadius = 3.0;
+const float kDirPcssLightSize = 20.0;
+const float kSpotPcssLightSize = 20.0;
+const float kDirPcssMaxRadius = 12.0;
+const float kSpotPcssMaxRadius = 12.0;
+const float kPointPcssScale = 0.15;
+const float kPointPcssMaxRadius = 0.2;
+
+const vec2 kPoissonDisk[kMaxPoissonSamples] = vec2[](
+    vec2(-0.94201624, -0.39906216),
+    vec2(0.94558609, -0.76890725),
+    vec2(-0.09418410, -0.92938870),
+    vec2(0.34495938, 0.29387760),
+    vec2(-0.91588581, 0.45771432),
+    vec2(-0.81544232, -0.87912464),
+    vec2(-0.38277543, 0.27676845),
+    vec2(0.97484398, 0.75648379),
+    vec2(0.44323325, -0.97511554),
+    vec2(0.53742981, -0.47373420),
+    vec2(-0.26496911, -0.41893023),
+    vec2(0.79197514, 0.19090188),
+    vec2(-0.24188840, 0.99706507),
+    vec2(-0.81409955, 0.91437590),
+    vec2(0.19984126, 0.78641367),
+    vec2(0.14383161, -0.14100790)
+);
+
+float Hash12(vec2 p)
+{
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
+}
+
+vec2 Rotate2D(vec2 v, float angle)
+{
+    float s = sin(angle);
+    float c = cos(angle);
+    return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
+}
 
 out vec4 FragColor;
 
@@ -173,7 +252,7 @@ vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDi
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);
         float bias = max(0.002, 0.01 * (1.0 - ndotl));
-        shadow = SamplePointShadow(fragPos, light.Position.xyz, light.Params.z, shadowIndex, bias);
+        shadow = SamplePointShadowPCF(fragPos, light.Position.xyz, light.Params.z, shadowIndex, bias);
     }
 
     // Ambient shading
@@ -233,12 +312,31 @@ vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir,
     // return vec3(1.0, 1.0, 1.0) * shadow; // For debugging: visualize shadow intensity to check correctness of light space transformation and depth range mapping.
 }
 
+void BuildPointShadowBasis(vec3 dir, out vec3 tangent, out vec3 bitangent)
+{
+    vec3 up = abs(dir.y) > 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+    tangent = normalize(cross(up, dir));
+    bitangent = cross(dir, tangent);
+}
+
 float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
+{
+#if DIR_SHADOW_FILTER == SHADOW_FILTER_BOX
+    return SampleDirShadowPCF_Box(fragPosLightSpace, shadowLayer, bias);
+#elif DIR_SHADOW_FILTER == SHADOW_FILTER_POISSON
+    return SampleDirShadowPCF_Poisson(fragPosLightSpace, shadowLayer, bias);
+#elif DIR_SHADOW_FILTER == SHADOW_FILTER_POISSON_PCSS
+    return SampleDirShadowPCF_PoissonPCSS(fragPosLightSpace, shadowLayer, bias);
+#else
+    return SampleDirShadowPCF_Box(fragPosLightSpace, shadowLayer, bias);
+#endif
+}
+
+float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5; // Transform from NDC to [0,1] range
 
-    // Outside light frustum means no valid shadow contribution in this pass.
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
        projCoords.z < 0.0 || projCoords.z > 1.0)
@@ -250,24 +348,115 @@ float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
     float currentDepth = projCoords.z;
 
     float shadow = 0.0;
-    float sampledDepth;
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
-            vec2 offset = vec2(float(x), float(y)) * texelSize;
+            vec2 offset = vec2(float(x), float(y)) * texelSize * kDirBoxRadius;
             vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
-            // float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
-            sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
+            float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
             shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
         }
     }
 
     return shadow / 9.0;
-    // return sampledDepth; // For debugging: visualize raw depth values from shadow map to check correctness of light space transformation and depth range mapping.
+}
+
+float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
+       projCoords.y < 0.0 || projCoords.y > 1.0 ||
+       projCoords.z < 0.0 || projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_DirLightShadowMap, 0).xy);
+    float currentDepth = projCoords.z;
+    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+
+    float shadow = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kDirPoissonRadius;
+        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
+        shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    }
+
+    return shadow / float(kPoissonSampleCount);
+}
+
+float SampleDirShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, float shadowLayer, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
+       projCoords.y < 0.0 || projCoords.y > 1.0 ||
+       projCoords.z < 0.0 || projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_DirLightShadowMap, 0).xy);
+    float currentDepth = projCoords.z;
+    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+
+    // PCSS step 1: blocker search.
+    float blockerDepthSum = 0.0;
+    float blockerCount = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kDirPcssSearchRadius;
+        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
+        if (currentDepth - bias > sampledDepth)
+        {
+            blockerDepthSum += sampledDepth;
+            blockerCount += 1.0;
+        }
+    }
+
+    if (blockerCount <= 0.0)
+    {
+        return 0.0;
+    }
+
+    float avgBlockerDepth = blockerDepthSum / blockerCount;
+    float penumbra = (currentDepth - avgBlockerDepth) / max(avgBlockerDepth, 0.0001) * kDirPcssLightSize;
+    float filterRadius = clamp(penumbra, kDirPoissonRadius, kDirPcssMaxRadius);
+
+    // PCSS step 2: filter with penumbra radius.
+    float shadow = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * filterRadius;
+        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
+        shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    }
+
+    return shadow / float(kPoissonSampleCount);
 }
 
 float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
+{
+#if SPOT_SHADOW_FILTER == SHADOW_FILTER_BOX
+    return SampleSpotShadowPCF_Box(fragPosLightSpace, shadowIndex, bias);
+#elif SPOT_SHADOW_FILTER == SHADOW_FILTER_POISSON
+    return SampleSpotShadowPCF_Poisson(fragPosLightSpace, shadowIndex, bias);
+#elif SPOT_SHADOW_FILTER == SHADOW_FILTER_POISSON_PCSS
+    return SampleSpotShadowPCF_PoissonPCSS(fragPosLightSpace, shadowIndex, bias);
+#else
+    return SampleSpotShadowPCF_Box(fragPosLightSpace, shadowIndex, bias);
+#endif
+}
+
+float SampleSpotShadowPCF_Box(vec4 fragPosLightSpace, int shadowIndex, float bias)
 {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
@@ -283,29 +472,187 @@ float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
     float currentDepth = projCoords.z;
 
     float shadow = 0.0;
-    float sampledDepth;
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
-            vec2 offset = vec2(float(x), float(y)) * texelSize;
+            vec2 offset = vec2(float(x), float(y)) * texelSize * kSpotBoxRadius;
             vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
-            // float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
-            sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
+            float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
             shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
         }
     }
 
     return shadow / 9.0;
-    // return sampledDepth; // For debugging: visualize raw depth values from shadow map to check correctness of light space transformation and depth range mapping.
 }
 
-float SamplePointShadow(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
+float SampleSpotShadowPCF_Poisson(vec4 fragPosLightSpace, int shadowIndex, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
+       projCoords.y < 0.0 || projCoords.y > 1.0 ||
+       projCoords.z < 0.0 || projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
+    float currentDepth = projCoords.z;
+    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+
+    float shadow = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kSpotPoissonRadius;
+        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
+        shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    }
+
+    return shadow / float(kPoissonSampleCount);
+}
+
+float SampleSpotShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, int shadowIndex, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
+       projCoords.y < 0.0 || projCoords.y > 1.0 ||
+       projCoords.z < 0.0 || projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
+    float currentDepth = projCoords.z;
+    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+
+    float blockerDepthSum = 0.0;
+    float blockerCount = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kSpotPcssSearchRadius;
+        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
+        if (currentDepth - bias > sampledDepth)
+        {
+            blockerDepthSum += sampledDepth;
+            blockerCount += 1.0;
+        }
+    }
+
+    if (blockerCount <= 0.0)
+    {
+        return 0.0;
+    }
+
+    float avgBlockerDepth = blockerDepthSum / blockerCount;
+    float penumbra = (currentDepth - avgBlockerDepth) / max(avgBlockerDepth, 0.0001) * kSpotPcssLightSize;
+    float filterRadius = clamp(penumbra, kSpotPoissonRadius, kSpotPcssMaxRadius);
+
+    float shadow = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * filterRadius;
+        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
+        shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    }
+
+    return shadow / float(kPoissonSampleCount);
+}
+
+float SamplePointShadowPCF(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
+{
+#if POINT_SHADOW_FILTER == SHADOW_FILTER_BOX
+    return SamplePointShadowPCF_Box(fragPos, lightPos, farPlane, shadowIndex, bias);
+#elif POINT_SHADOW_FILTER == SHADOW_FILTER_POISSON
+    return SamplePointShadowPCF_Poisson(fragPos, lightPos, farPlane, shadowIndex, bias);
+#elif POINT_SHADOW_FILTER == SHADOW_FILTER_POISSON_PCSS
+    return SamplePointShadowPCF_PoissonPCSS(fragPos, lightPos, farPlane, shadowIndex, bias);
+#else
+    return SamplePointShadowPCF_Box(fragPos, lightPos, farPlane, shadowIndex, bias);
+#endif
+}
+
+float SamplePointShadowPCF_Box(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
 {
     vec3 fragToLight = fragPos - lightPos;
     float currentDepth = length(fragToLight) / farPlane;
-    float sampledDepth = texture(u_PointShadowMaps[shadowIndex], fragToLight).r;
-    return (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    vec3 dir = normalize(fragToLight);
+
+    vec3 tangent;
+    vec3 bitangent;
+    BuildPointShadowBasis(dir, tangent, bitangent);
+
+    float shadow = 0.0;
+    float samples = 0.0;
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            vec2 offset = vec2(float(x), float(y)) * kPointBoxRadius;
+            vec3 sampleDir = normalize(dir + tangent * offset.x + bitangent * offset.y);
+            float sampledDepth = texture(u_PointShadowMaps[shadowIndex], sampleDir).r;
+            shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+            samples += 1.0;
+        }
+    }
+
+    return shadow / samples;
+}
+
+float SamplePointShadowPCF_Poisson(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
+{
+    vec3 fragToLight = fragPos - lightPos;
+    float currentDepth = length(fragToLight) / farPlane;
+    vec3 dir = normalize(fragToLight);
+
+    vec3 tangent;
+    vec3 bitangent;
+    BuildPointShadowBasis(dir, tangent, bitangent);
+
+    float angle = Hash12(vec2(dir.x + dir.z, dir.y - dir.z)) * 6.2831853;
+    float shadow = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 disk = Rotate2D(kPoissonDisk[i], angle);
+        vec3 sampleDir = normalize(dir + (tangent * disk.x + bitangent * disk.y) * kPointPoissonRadius);
+        float sampledDepth = texture(u_PointShadowMaps[shadowIndex], sampleDir).r;
+        shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    }
+
+    return shadow / float(kPoissonSampleCount);
+}
+
+float SamplePointShadowPCF_PoissonPCSS(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias)
+{
+    vec3 fragToLight = fragPos - lightPos;
+    float currentDepth = length(fragToLight) / farPlane;
+    vec3 dir = normalize(fragToLight);
+
+    vec3 tangent;
+    vec3 bitangent;
+    BuildPointShadowBasis(dir, tangent, bitangent);
+
+    float angle = Hash12(vec2(dir.x + dir.z, dir.y - dir.z)) * 6.2831853;
+    float filterRadius = clamp(kPointPoissonRadius + currentDepth * kPointPcssScale,
+                               kPointPoissonRadius,
+                               kPointPcssMaxRadius);
+
+    float shadow = 0.0;
+    for(int i = 0; i < kPoissonSampleCount; ++i)
+    {
+        vec2 disk = Rotate2D(kPoissonDisk[i], angle);
+        vec3 sampleDir = normalize(dir + (tangent * disk.x + bitangent * disk.y) * filterRadius);
+        float sampledDepth = texture(u_PointShadowMaps[shadowIndex], sampleDir).r;
+        shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+    }
+
+    return shadow / float(kPoissonSampleCount);
 }
 
 vec3 GetCascadeDebugColor(int cascadeIndex)

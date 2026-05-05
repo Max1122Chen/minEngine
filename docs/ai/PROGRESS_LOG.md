@@ -306,3 +306,35 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	No build/run step executed in this task (per user request).
 - Next step:
 	Wire editor startup bootstrap to call `ProjectManager::OpenProject`, then consume `ResolveEditorStartupScenePath()` as the scene-entry source.
+
+### 2026-05-04 - Spot/Point shadow pass MVP
+- Goal:
+	Add shadow rendering support for spot lights and point lights without changing the base pass sampling yet.
+- Main changes:
+	Added spot/point shadow requests and draw command building paths.
+	Implemented spot and point shadow rendering in ShadowPass, including cube face rendering for point lights.
+	Added spot 2D depth and point cube depth resource allocation in ShadowResourceManager.
+	Extended OpenGL cubemap creation to respect depth texture formats.
+- Risks or caveats:
+	Spot/point shadow resources are single-instance MVP allocations; multiple shadow-casting lights will overwrite in this stage.
+	Point light shadow range uses a fixed near/far plane; sampling path must match this later.
+- Validation done:
+	No build/run step executed in this task.
+- Next step:
+	Wire base pass sampling for spot and point shadows and pass down required parameters (shadow map index, far plane).
+
+### 2026-05-04 - BasePass shadow sampling (spot/point)
+- Goal:
+	Connect spot and point shadow maps into BasePass sampling with a fixed resource limit of two each.
+- Main changes:
+	Added spot/point shadow sampler arrays and view-projection UBO in the Phong shader.
+	Bound spot/point shadow textures in BasePass and wired shadow indices through light Params.w.
+	Added spot view-projection UBO updates and point shadow far-plane data in light UBO updates.
+	Made point-shadow cubemap depth linear in shadow pass for correct distance comparisons.
+- Risks or caveats:
+	Shadow resource maps are capped at two per light type; extra shadow-casting lights skip shadows.
+	Point/spot shadow near/far planes are fixed constants; keep sampling logic consistent if they change.
+- Validation done:
+	No build/run step executed in this task.
+- Next step:
+	Run an editor scene with multiple spot/point lights to verify shadow indexing and bias tuning.
