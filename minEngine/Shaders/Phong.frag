@@ -119,7 +119,7 @@ uniform sampler2DArray u_DirLightShadowMap;
 uniform sampler2D u_SpotShadowMaps[MAX_SPOT_SHADOW_MAPS];
 uniform samplerCube u_PointShadowMaps[MAX_POINT_SHADOW_MAPS];
 
-const int kMaxPoissonSamples = 8;
+const int kMaxPoissonSamples = 16;
 const int kPoissonSampleCount = (POISSON_SAMPLE_COUNT <= kMaxPoissonSamples) ? POISSON_SAMPLE_COUNT : kMaxPoissonSamples;
 const float kDirBoxRadius = 1.0;
 const float kSpotBoxRadius = 1.0;

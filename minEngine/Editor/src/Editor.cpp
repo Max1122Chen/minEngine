@@ -18,6 +18,7 @@
 #include "Serialization/JsonArchive.h"
 #include "Serialization/Serializer.h"
 #include "Resource/AssetManager.h"
+#include "Runtime/Function/Render/Material/MaterialIR/MaterialIRTest.h"
 
 #include "EditorDefaultScene.h"
 
@@ -28,6 +29,14 @@ namespace minEngine
 {
     namespace
     {
+        void DumpMaterialMvpStartupSample()
+        {
+            const std::string irDump = BuildMaterialMvpIRDump();
+            const std::string glslSource = BuildMaterialMvpGLSLSource();
+            ME_CORE_INFO("Material IR MVP dump:\n{}", irDump);
+            ME_CORE_INFO("Material GLSL MVP output:\n{}", glslSource);
+        }
+
         void ApplyEditorTheme()
         {
             ImGuiStyle& style = ImGui::GetStyle();
@@ -504,6 +513,10 @@ namespace minEngine
         }
 
         bool projectOpened = OpenProject(projectPath);
+        if (projectOpened)
+        {
+            DumpMaterialMvpStartupSample();
+        }
     }
 
     void Editor::Shutdown()

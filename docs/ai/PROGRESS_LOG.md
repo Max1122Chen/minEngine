@@ -338,3 +338,37 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	No build/run step executed in this task.
 - Next step:
 	Run an editor scene with multiple spot/point lights to verify shadow indexing and bias tuning.
+
+### 2026-05-08 - Material IR MVP pipeline bootstrap
+- Goal:
+	Stand up a minimal MaterialEdGraph -> MIR -> GLSL flow with a startup test dump.
+- Main changes:
+	Added MIR graph/value/node data structures and literal value support for float/vector constants.
+	Implemented MIRBuilder with caching, binary ops, texture parameter, and texture sampling support.
+	Expanded material node defs (constant2, multiply, texture param/sample) and wired Add/Multiply builds.
+	Extended GLSL compiler with texture uniform tracking and texture() sampling emission.
+	Added MaterialIR test helpers and editor startup logging for IR dump and GLSL output.
+	Fixed editor graph pin ownership to allow graph connections in tests.
+- Risks or caveats:
+	No constant folding, dead code elimination, or stage separation yet; scalar-only type promotion.
+	Texture sampling uses a simple sampler2D uniform and constant UVs in the test graph.
+- Validation done:
+	Not run (log-based test added; no runtime shader compile executed).
+- Next step:
+	Add basic diagnostics surfaced in MaterialCompileResult and extend node set (lerp, params).
+
+### 2026-05-08 - MaterialOutput BaseColor wiring
+- Goal:
+	Force compilation through a MaterialOutput node and map BaseColor to MIR/GLSL output.
+- Main changes:
+	Added MaterialOutput node and wired BaseColor into MIRGraph outputs.
+	Enforced compile entry to be MaterialOutput only and removed arbitrary node compile path.
+	Updated MVP test graph to end in MaterialOutput and compile through that entry.
+	GLSL output now names BaseColor explicitly for the final fragment color.
+- Risks or caveats:
+	Only BaseColor is supported; other material properties are ignored.
+	Missing MaterialOutput now hard-fails compilation.
+- Validation done:
+	Not run (startup log is available when the editor launches).
+- Next step:
+	Add Emissive/Opacity outputs or wire defaults for a fuller unlit MVP.
