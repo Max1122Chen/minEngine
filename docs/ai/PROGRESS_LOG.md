@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-04-16
+Last updated: 2026-05-19
 
 ## Purpose
 
@@ -357,18 +357,103 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Add basic diagnostics surfaced in MaterialCompileResult and extend node set (lerp, params).
 
-### 2026-05-08 - MaterialOutput BaseColor wiring
+### 2026-05-08 - MaterialOutput Albedo wiring
 - Goal:
-	Force compilation through a MaterialOutput node and map BaseColor to MIR/GLSL output.
+	Force compilation through a MaterialOutput node and map Albedo to MIR/GLSL output.
 - Main changes:
-	Added MaterialOutput node and wired BaseColor into MIRGraph outputs.
+	Added MaterialOutput node and wired Albedo into MIRGraph outputs.
 	Enforced compile entry to be MaterialOutput only and removed arbitrary node compile path.
 	Updated MVP test graph to end in MaterialOutput and compile through that entry.
-	GLSL output now names BaseColor explicitly for the final fragment color.
+	GLSL output now names Albedo explicitly for the final fragment color.
 - Risks or caveats:
-	Only BaseColor is supported; other material properties are ignored.
+	Only Albedo is supported; other material properties are ignored.
 	Missing MaterialOutput now hard-fails compilation.
 - Validation done:
 	Not run (startup log is available when the editor launches).
 - Next step:
 	Add Emissive/Opacity outputs or wire defaults for a fuller unlit MVP.
+
+### 2026-05-19 - Material IR P8 texture and scalar parameters
+- Goal:
+	Compile texture sampling and scalar uniforms through MIR to GLSL (minimal P8).
+- Main changes:
+	Added MIR instructions ExternalInput, TextureObject, TextureRead, UniformParameter.
+	MIREmitter: ExternalInput(TexCoord0), TextureObject, TextureSample, UniformScalar; Cast float4->float3 via subscripts.
+	MIRToGLSLTranslator: shader preamble (sampler2D, in vec2 v_TexCoord0, uniform float), texture() lowering.
+	Graph nodes: TextureCoordinate, TextureObject, TextureSample (RGBA+RGB outputs), ScalarParameter.
+	Smoke test uses texture->Albedo, uniform->Metallic, constant Emissive.
+- Validation done:
+	Editor.exe --material-ir-test exit 0.
+- Next step:
+	S2 cross-stage TexCoords (UE-style ExternalInput -> MaterialParameters.TexCoords), then runtime bridge / P9 DefaultLit.
+
+### 2026-05-19 - Material compile S0+S1 (multi-stage contract + FragmentMaterialInputs)
+- Goal:
+	UE-aligned compile contract: per-stage MIR lowering, ShadingModel assembler, FragmentMaterialInputs naming.
+- Main changes:
+	MaterialCompileTypes.h: MaterialCompileEnvironment, MaterialCompiledShader (Stages, FullVertex/FragmentShader).
+	MaterialCompiler::Compile(graph, translator, env); MaterialShaderAssembler + UnlitShadingModel.
+	MIRToGLSLTranslator lowers Vertex+Fragment bodies; FragColor only in Unlit assembler.
+	FragmentMaterialInputs.Albedo etc.; MP_WorldPositionOffset placeholder + MaterialShadingPropertyCount.
+	SetMaterialOutput registers outputs per MaterialPropertyEvaluatesInStage (UE-style).
+	Removed MaterialCompileResult; smoke tests assert stage body + full shaders.
+- Validation done:
+	cmake build minEngine + Editor; Editor.exe --material-ir-test exit 0.
+- Next step:
+	Runtime bridge (compile to Shader + viewport) or DefaultLit shading model.
+
+### 2026-05-19 - Material compile S2 UE-style MaterialParameters.TexCoords
+- Goal:
+	Cross-stage UV like UE: ExternalInput lowers to MaterialParameters.TexCoords[N]; assembler fills/interpolates.
+- Main changes:
+	MaterialShaderParameters.h: TexCoords access + v_MaterialTexCoordN varying names.
+	Unlit assembler: vertex sets MaterialParameters from a_TexCoord, fragment restores from varying.
+	MIRToGLSLTranslator: texture() uses MaterialParameters.TexCoords[0] (not v_TexCoord0 in material body).
+	MaterialIRTest: logs full shaders; writes Saved/Materials/GeneratedVertex.glsl and GeneratedFragment.glsl.
+- Validation done:
+	Editor.exe --material-ir-test exit 0.
+
+### Material MIR – roadmap snapshot (Path A, for planning)
+- **P9 (shading):** Replace unlit `FragColor = vec4(Albedo + Emissive, Opacity)` with minimal lit shading that consumes Metallic/Roughness (minimal metallic-roughness BRDF or interim Blinn-Phong); extend smoke asserts for lighting-related GLSL.
+- **Runtime bridge (often before or overlapping P9):** Vertex stage `v_TexCoord0` from mesh UV; compile `MaterialEdGraph` → `Shader` at load/startup; `Material` asset holds graph + compiled shader; BasePass binds `u_TextureN` / scalar uniforms from asset; assign material on scene mesh — **first viewport-visible custom material without graph UI**.
+- **Editor graph UI (parallel track):** Visual material editor, pin wiring, recompile-on-save, preview mesh — **“真正在编辑器里改图看效果”** depends on this plus runtime bridge.
+- **P10 (polish):** Vertex/custom interpolants beyond UV, `TrySimplifyOperator`, boolN Select, `Step_Finalize`, float2/float4 expansion, etc.
+
+## Deferred Reminders (for future sessions)
+
+### 2026-05-19 - Material runtime bridge checklist
+- Goal:
+	Document GPU/viewport integration path after S0–S2 compile pipeline.
+- Main changes:
+	Added docs/ai/MATERIAL_RUNTIME_BRIDGE_CHECKLIST.md (layer checklist A–E, risks R1–R7, phases R0–R4, PR split).
+- Next step:
+	User confirm C1a (Unlit VS + PerFrameData/u_Model); implement R0 GPU compile test then R1 BasePass branch.
+
+### Material compiler – shader formatting (deferred)
+- **Indentation:** Generated GLSL stage body / main blocks use inconsistent leading whitespace; normalize in Assembler or MIRGLSLPrinter when convenient (not blocking compile or tests).
+
+### Material IR – cross-stage modeling (locked for S2, UE-aligned)
+- **Decision (2026-05-19):** No separate MaterialInterpolator IR. Default UV = `ExternalInput(TexCoordN)` lowered to `MaterialParameters.TexCoords[N]`; vertex pass-through + varying owned by Assembler/模板. User-modified UV later via `MP_CustomizedUVs*` (vertex MaterialProperty), like UE.
+- **S2 scope:** Replace translator `v_TexCoord0` with Parameters naming; vert fills TexCoords from `a_TexCoord`.
+
+### Material IR – texture sampling variants (post-P8)
+- **When to surface:** After runtime can display at least one compiled material with `texture()` in the viewport (see P9 / runtime-bridge milestones below), or when a graph needs non-default mip/grad behavior.
+- **What (incremental, UE-aligned):**
+  - `TextureSampleLevel` → GLSL `textureLod` (+ mip level input on node)
+  - `TextureSampleBias` → `texture(..., bias)`
+  - `TextureSampleGrad` → `textureGrad` (+ ddx/ddy inputs)
+  - `TextureGather`, Cube/Volume/Array object types (later)
+  - Sampler state (wrap/filter) separate from texture asset
+  - UE-style stage switch (hardware vs analytic gradient path) — only if needed
+- **Already supported (do not re-implement):** multiple textures via `TextureSlotIndex` (`u_Texture0`, `u_Texture1`, …); single 2D path `MIRTextureRead` → `texture(sampler2D, vec2)`.
+- **Why deferred (2026-05-19):** P8 goal was one end-to-end 2D sample path + uniforms; more modes add MIR/GLSL/node/test surface before Editor/GPU binding exists.
+- **Suggested order:** multi-slot smoke → Level → Bias/Grad → Gather / exotic types → sampler metadata.
+
+### Material editor – vector node pin expansion (UE-style)
+- **When to surface:** User starts or resumes **material graph editor** work (visual nodes/pins, not MIR-only tests).
+- **What:** On vector constant nodes (e.g. `Constant3`, later `MakeFloat3`), expose multiple outputs like UE `UMaterialExpressionConstant3Vector`:
+  - Output 0: full `vec3`
+  - Output 1..3: `R` / `G` / `B` via `emitter.Subscript(value, i)` (internal `Subscript` for fold; not required to use `SubscriptChannel` on constants).
+- **Why deferred:** Runtime/MIR already supports multi-output + `Subscript` (P7); `ComponentMask` covers non-constant vectors. Editor multi-pin UI was not in scope.
+- **Effort (estimate):** Runtime ~half day; editor pin UI depends on existing material graph UI maturity.
+- **Discussed:** 2026-05-19 – user asked to defer until editor phase; agent should remind when editor work begins.

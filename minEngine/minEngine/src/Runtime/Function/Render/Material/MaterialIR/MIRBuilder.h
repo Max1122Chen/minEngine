@@ -2,67 +2,78 @@
 #include "Core.h"
 #include "MIRGraph.h"
 
-#include <functional>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-
 namespace minEngine
 {
+    class MaterialEdGraph;
     class MaterialGraphNodeDef;
     class MaterialGraphNodeDefInput;
+    struct MaterialGraphNodeDefOutput;
+    class MIREmitter;
+
+    struct BuildContext
+    {
+        std::unordered_set<MaterialGraphNodeDef*> BuiltDefs;
+        std::vector<MaterialGraphNodeDef*> NodeDefStack;
+        std::unordered_map<const MaterialGraphNodeDefInput*, MIRValue*> InputValues;
+        std::unordered_map<const MaterialGraphNodeDefOutput*, MIRValue*> OutputValues;
+
+        MIRValue* GetInputValue(const MaterialGraphNodeDefInput* input) const
+        {
+            auto it = InputValues.find(input);
+            return (it != InputValues.end()) ? it->second : nullptr;
+        }
+
+        void SetInputValue(const MaterialGraphNodeDefInput* input, MIRValue* value)
+        {
+            InputValues[input] = value;
+        }
+
+        MIRValue* GetOutputValue(const MaterialGraphNodeDefOutput* output) const
+        {
+            auto it = OutputValues.find(output);
+            return (it != OutputValues.end()) ? it->second : nullptr;
+        }
+
+        void SetOutputValue(const MaterialGraphNodeDefOutput* output, MIRValue* value)
+        {
+            OutputValues[output] = value;
+        }
+    };
 
     class MIRBuilder
     {
+        friend class MIREmitter;
     public:
-        explicit MIRBuilder(MIRGraph& graph);
+        MIRBuilder();
 
-        MIRValue* BuildNodeOutput(MaterialGraphNodeDef& nodeDef, int32_t outputIndex);
-        MIRValue* BuildInput(const MaterialGraphNodeDefInput& input);
-
-        // Constant builders
-        MIRValue* ConstantFloat(float x);
-        MIRValue* ConstantFloat2(float x, float y);
-        MIRValue* ConstantFloat3(float x, float y, float z);
-        MIRValue* ConstantFloat4(float x, float y, float z, float w);
-
-        // Binary ops builders
-        MIRValue* Add(MIRValue* left, MIRValue* right);
-        MIRValue* Multiply(MIRValue* left, MIRValue* right);
-
-        // Resource builders
-        MIRValue* Texture2DParameter(const std::string& name);
-        MIRValue* TextureSample(MIRValue* texture, MIRValue* uv);
-
-        void SetMaterialOutput(MaterialProperty property, MIRValue* value);
+        void AddRootNodeDef(MaterialGraphNodeDef* nodeDef);
+        void Build(const MaterialEdGraph& graph, MIRGraph& targetGraph);
 
     private:
-        struct OutputKey
-        {
-            const MaterialGraphNodeDef* Node = nullptr;
-            int32_t OutputIndex = -1;
+        // Build steps
+        void Step_Initialize();
+        void Step_GenerateOutputInstructions();
+        void Step_BuildNodeDefsToIRGraph();
+        void Step_FlowValuesIntoMaterialOutputs();
+        void Step_AnalyzeIRGraph();
+        void Step_LinkInstructions();
+        void Step_Finalize();
 
-            bool operator==(const OutputKey& other) const
-            {
-                return Node == other.Node && OutputIndex == other.OutputIndex;
-            }
-        };
+        // Helper functions
+        void PrepareSingleMaterialAttribute(MaterialProperty property);
+        void FlowValueIntoMaterialOutput(MaterialProperty property, MIRValue* value);
+        MIRValue* FetchFlowValueForMaterialProperty(MaterialProperty property);
+        void BuildTopNodeDef();
 
-        struct OutputKeyHash
-        {
-            size_t operator()(const OutputKey& key) const
-            {
-                return std::hash<const MaterialGraphNodeDef*>()(key.Node) ^ (std::hash<int32_t>()(key.OutputIndex) << 1);
-            }
-        };
+        // Value retrieval functions
+        void BindValueToOutput(const MaterialGraphNodeDefOutput* output, MIRValue* value) { m_BuildContext.SetOutputValue(output, value); }
+        MIRValue* FetchValueFromInput(const MaterialGraphNodeDefInput* input) { return m_BuildContext.GetInputValue(input); }
 
-        MIRValue* CreateLiteralValue(const MaterialLiteralValue& value);
-        MIRValue* CreateNodeValue(MaterialOp op, MaterialValueType outputType, const std::vector<MIRValue*>& inputs, const std::string& symbolName = std::string());
-        MIRNode* CreateNode(MaterialOp op, const std::vector<MIRValue*>& inputs, const std::string& symbolName);
-        MaterialValueType ResolveBinaryResultType(MaterialValueType leftType, MaterialValueType rightType) const;
 
-        MIRGraph& m_Graph;
-        std::unordered_map<OutputKey, MIRValue*, OutputKeyHash> m_OutputCache;
-        std::unordered_set<OutputKey, OutputKeyHash> m_ActiveBuilds;
+        const MaterialEdGraph* m_Graph = nullptr;
+        MIREmitter* m_Emitter = nullptr;         // The emitter used to emit IR instructions, we need this to be a member variable because we need to pass it into the BuildIR function of each nodedef 
+        BuildContext m_BuildContext;    // Since we dont have the "Material Function", so we only need a single BuildContext, if we have "Material Function", then we need a stack of BuildContext to support the nested function calls
+        std::vector<MaterialGraphNodeDef*> m_RootNodeDefs;
+        SetMaterialOutput* m_AttributeOutputs[MaterialPropCount] = {};
     };
 }

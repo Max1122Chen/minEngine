@@ -1,193 +1,289 @@
 #include "MIRBuilder.h"
+#include "../MaterialEdGraph.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "../MaterialPropertyUtil.h"
+#include "MaterialIR.h"
+#include "MIREmitter.h"
 
 namespace minEngine
 {
-    MIRBuilder::MIRBuilder(MIRGraph& graph)
-        : m_Graph(graph)
+    MIRBuilder::MIRBuilder() = default;
+
+    void MIRBuilder::AddRootNodeDef(MaterialGraphNodeDef* nodeDef)
     {
+        if (nodeDef != nullptr)
+        {
+            m_RootNodeDefs.push_back(nodeDef);
+        }
     }
 
-    MIRValue* MIRBuilder::BuildNodeOutput(MaterialGraphNodeDef& nodeDef, int32_t outputIndex)
+    void MIRBuilder::Step_Initialize()
     {
-        OutputKey key{ &nodeDef, outputIndex };
-        auto cachedIter = m_OutputCache.find(key);
-        if (cachedIter != m_OutputCache.end())
+        m_BuildContext.BuiltDefs.clear();
+        m_BuildContext.NodeDefStack.clear();
+        m_BuildContext.InputValues.clear();
+        m_BuildContext.OutputValues.clear();
+
+        for (int propertyIndex = 0; propertyIndex < MaterialPropCount; ++propertyIndex)
         {
-            return cachedIter->second;
+            m_AttributeOutputs[propertyIndex] = nullptr;
+        }
+    }
+
+    void MIRBuilder::Step_GenerateOutputInstructions()
+    {
+        for (int propertyIndex = 0; propertyIndex < MaterialShadingPropertyCount; ++propertyIndex)
+        {
+            PrepareSingleMaterialAttribute(static_cast<MaterialProperty>(propertyIndex));
         }
 
-        if (m_ActiveBuilds.find(key) != m_ActiveBuilds.end())
+        for (MaterialGraphNodeDef* rootDef : m_RootNodeDefs)
         {
-            return nullptr;
+            if (rootDef)
+            {
+                m_BuildContext.NodeDefStack.push_back(rootDef);
+            }
         }
-
-        m_ActiveBuilds.insert(key);
-        MIRValue* value = nodeDef.BuildIR(*this, outputIndex);
-        m_ActiveBuilds.erase(key);
-
-        m_OutputCache.emplace(key, value);
-        return value;
     }
 
-    MIRValue* MIRBuilder::BuildInput(const MaterialGraphNodeDefInput& input)
+    void MIRBuilder::PrepareSingleMaterialAttribute(MaterialProperty property)
     {
-        if (input.ConnectedNodeDef == nullptr || input.ConnectedOutputIndex < 0)
-        {
-            return nullptr;
-        }
-
-        return BuildNodeOutput(*input.ConnectedNodeDef, input.ConnectedOutputIndex);
-    }
-
-    MIRValue* MIRBuilder::ConstantFloat(float x)
-    {
-        return CreateLiteralValue(MaterialLiteralValue::MakeFloat(x));
-    }
-
-    MIRValue* MIRBuilder::ConstantFloat2(float x, float y)
-    {
-        return CreateLiteralValue(MaterialLiteralValue::MakeVector2(x, y));
-    }
-
-    MIRValue* MIRBuilder::ConstantFloat3(float x, float y, float z)
-    {
-        return CreateLiteralValue(MaterialLiteralValue::MakeVector3(x, y, z));
-    }
-
-    MIRValue* MIRBuilder::ConstantFloat4(float x, float y, float z, float w)
-    {
-        return CreateLiteralValue(MaterialLiteralValue::MakeVector4(x, y, z, w));
-    }
-
-    MIRValue* MIRBuilder::Add(MIRValue* left, MIRValue* right)
-    {
-        if (left == nullptr || right == nullptr)
-        {
-            return nullptr;
-        }
-
-        MaterialValueType resultType = ResolveBinaryResultType(left->ValueType, right->ValueType);
-        if (resultType == MaterialValueType::Unknown)
-        {
-            return nullptr;
-        }
-
-        std::vector<MIRValue*> inputs{ left, right };
-        return CreateNodeValue(MaterialOp::Add, resultType, inputs);
-    }
-
-    MIRValue* MIRBuilder::Multiply(MIRValue* left, MIRValue* right)
-    {
-        if (left == nullptr || right == nullptr)
-        {
-            return nullptr;
-        }
-
-        MaterialValueType resultType = ResolveBinaryResultType(left->ValueType, right->ValueType);
-        if (resultType == MaterialValueType::Unknown)
-        {
-            return nullptr;
-        }
-
-        std::vector<MIRValue*> inputs{ left, right };
-        return CreateNodeValue(MaterialOp::Multiply, resultType, inputs);
-    }
-
-    MIRValue* MIRBuilder::Texture2DParameter(const std::string& name)
-    {
-        std::vector<MIRValue*> inputs;
-        return CreateNodeValue(MaterialOp::TextureObject, MaterialValueType::Texture2D, inputs, name);
-    }
-
-    MIRValue* MIRBuilder::TextureSample(MIRValue* texture, MIRValue* uv)
-    {
-        if (texture == nullptr || uv == nullptr)
-        {
-            return nullptr;
-        }
-
-        if (texture->ValueType != MaterialValueType::Texture2D)
-        {
-            return nullptr;
-        }
-
-        if (uv->ValueType != MaterialValueType::Vector2)
-        {
-            return nullptr;
-        }
-
-        std::vector<MIRValue*> inputs{ texture, uv };
-        return CreateNodeValue(MaterialOp::TextureSample, MaterialValueType::Vector4, inputs);
-    }
-
-    void MIRBuilder::SetMaterialOutput(MaterialProperty property, MIRValue* value)
-    {
-        if (value == nullptr)
+        if (m_Emitter == nullptr || property < 0 || property >= MaterialPropCount)
         {
             return;
         }
 
-        m_Graph.Outputs[property] = value;
+        SetMaterialOutput* output = m_Emitter->SetMaterialOutput(property, nullptr);
+        m_AttributeOutputs[property] = output;
     }
 
-    MIRValue* MIRBuilder::CreateLiteralValue(const MaterialLiteralValue& value)
+    MIRValue* MIRBuilder::FetchFlowValueForMaterialProperty(MaterialProperty property)
     {
-        std::unique_ptr<MIRValue> newValue = std::make_unique<MIRValue>();
-        newValue->Id = m_Graph.NextValueId++;
-        newValue->ValueType = value.Type;
-        newValue->LiteralValue = value;
-
-        MIRValue* valuePtr = newValue.get();
-        m_Graph.Values.push_back(std::move(newValue));
-        return valuePtr;
-    }
-
-    MIRValue* MIRBuilder::CreateNodeValue(MaterialOp op, MaterialValueType outputType, const std::vector<MIRValue*>& inputs, const std::string& symbolName)
-    {
-        MIRNode* node = CreateNode(op, inputs, symbolName);
-
-        std::unique_ptr<MIRValue> newValue = std::make_unique<MIRValue>();
-        newValue->Id = m_Graph.NextValueId++;
-        newValue->ValueType = outputType;
-        newValue->Producer = node;
-
-        MIRValue* valuePtr = newValue.get();
-        node->Outputs.push_back(valuePtr);
-        m_Graph.Values.push_back(std::move(newValue));
-        return valuePtr;
-    }
-
-    MIRNode* MIRBuilder::CreateNode(MaterialOp op, const std::vector<MIRValue*>& inputs, const std::string& symbolName)
-    {
-        std::unique_ptr<MIRNode> node = std::make_unique<MIRNode>();
-        node->Id = m_Graph.NextNodeId++;
-        node->Op = op;
-        node->Inputs = inputs;
-        node->SymbolName = symbolName;
-
-        MIRNode* nodePtr = node.get();
-        m_Graph.Nodes.push_back(std::move(node));
-        return nodePtr;
-    }
-
-    MaterialValueType MIRBuilder::ResolveBinaryResultType(MaterialValueType leftType, MaterialValueType rightType) const
-    {
-        if (leftType == rightType)
+        if (m_Graph == nullptr)
         {
-            return leftType;
+            return nullptr;
         }
 
-        if (leftType == MaterialValueType::Float)
+        MaterialPropertyInputDescription description;
+        if (!m_Graph->ResolveMaterialPropertyInput(property, description) || description.GraphInput == nullptr)
         {
-            return rightType;
+            return nullptr;
         }
 
-        if (rightType == MaterialValueType::Float)
+        return m_BuildContext.GetInputValue(description.GraphInput);
+    }
+
+    void MIRBuilder::FlowValueIntoMaterialOutput(MaterialProperty property, MIRValue* value)
+    {
+        if (property < 0 || property >= MaterialPropCount || m_Emitter == nullptr)
         {
-            return leftType;
+            return;
         }
 
-        return MaterialValueType::Unknown;
+        SetMaterialOutput* output = m_AttributeOutputs[property];
+        if (output == nullptr)
+        {
+            output = m_Emitter->SetMaterialOutput(property, value);
+            m_AttributeOutputs[property] = output;
+            return;
+        }
+
+        if (output->Arg != nullptr)
+        {
+            return;
+        }
+
+        if (value == nullptr)
+        {
+            value = m_Emitter->ConstantDefaultForProperty(property);
+        }
+
+        output->Arg = value;
+        output->Type = value->Type;
+    }
+
+    void MIRBuilder::Step_FlowValuesIntoMaterialOutputs()
+    {
+        if (m_Emitter == nullptr)
+        {
+            return;
+        }
+
+        for (int propertyIndex = 0; propertyIndex < MaterialShadingPropertyCount; ++propertyIndex)
+        {
+            const MaterialProperty property = static_cast<MaterialProperty>(propertyIndex);
+            FlowValueIntoMaterialOutput(property, FetchFlowValueForMaterialProperty(property));
+        }
+    }
+
+    void MIRBuilder::Step_BuildNodeDefsToIRGraph()
+    {
+        while (!m_BuildContext.NodeDefStack.empty())
+        {
+            BuildTopNodeDef();
+        }
+    }
+
+    void MIRBuilder::BuildTopNodeDef()
+    {
+        m_Emitter->m_CurrentNodeDef = m_BuildContext.NodeDefStack.back();
+
+        if (m_BuildContext.BuiltDefs.count(m_Emitter->m_CurrentNodeDef) > 0)
+        {
+            // This nodedef has already been built, skip it
+            m_BuildContext.NodeDefStack.pop_back();
+            return;
+        }
+
+        // Push the dependencies of this nodedef that have not been built into the stack
+        // TODO: maybe we can use iterators to avoid the copy of the inputs, but currently we just copy them for simplicity
+        for (MaterialGraphNodeDefInput& input : m_Emitter->m_CurrentNodeDef->GetInputs())
+        {
+            if (input.IsConnected() && m_BuildContext.BuiltDefs.count(input.NodeDef) == 0)
+            {
+                m_BuildContext.NodeDefStack.push_back(input.NodeDef);
+            }
+        }
+
+        // If some dependencies have not been built, we will build them first in the next iterations, so we can just return here
+        if (m_BuildContext.NodeDefStack.back() != m_Emitter->m_CurrentNodeDef)
+        {
+            return;
+        }
+
+        // All dependencies have been built, we can build this nodedef now
+        // Take the nodedef out of the stack and mark it as built
+        m_BuildContext.NodeDefStack.pop_back();
+        m_BuildContext.BuiltDefs.insert(m_Emitter->m_CurrentNodeDef);
+
+        // Flow the value into the nodedef's inputs from their connectec outputs.
+        for (MaterialGraphNodeDefInput& input : m_Emitter->m_CurrentNodeDef->GetInputs())
+        {
+            MaterialGraphNodeDefOutput* connectedOutput = input.GetConnectedOutput();
+            if (connectedOutput)
+            {
+                MIRValue* value = m_BuildContext.GetOutputValue(connectedOutput);
+                if (value)
+                {
+                    m_BuildContext.SetInputValue(&input, value);
+                }
+            }
+        }
+
+        m_Emitter->m_CurrentNodeDef->BuildIR(*m_Emitter);
+    }
+
+    void MIRBuilder::Step_AnalyzeIRGraph()
+    {
+        MIRGraph* graph = m_Emitter->m_Graph;
+        if (graph == nullptr)
+        {
+            return;
+        }
+
+        for (int stageIndex = 0; stageIndex < NumStages; ++stageIndex)
+        {
+            for (MIRValue* value : graph->GetValues())
+            {
+                if (!value->IsInstructionValue())
+                {
+                    continue;
+                }
+
+                MIRInstruction* instr = static_cast<MIRInstruction*>(value);
+                for (MIRValue* use : instr->GetUsesForStage(static_cast<ShaderStage>(stageIndex)))
+                {
+                    if (MIRInstruction* useInstr = AsInstruction(use))
+                    {
+                        useInstr->NumUsers[stageIndex] += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    void MIRBuilder::Step_LinkInstructions()
+    {
+        MIRGraph* graph = m_Emitter->m_Graph;
+        if (graph == nullptr)
+        {
+            return;
+        }
+
+        std::vector<MIRInstruction*> instructionStack;
+
+        for (uint32_t stageIndex = 0; stageIndex < NumStages; ++stageIndex)
+        {
+            const ShaderStage stage = static_cast<ShaderStage>(stageIndex);
+            MIRBlock* rootBlock = graph->GetOrCreateRootBlock(stage);
+            instructionStack.clear();
+
+            for (SetMaterialOutput* output : graph->GetOutputs(stage))
+            {
+                output->Block[stageIndex] = rootBlock;
+                instructionStack.push_back(output);
+            }
+
+            while (!instructionStack.empty())
+            {
+                MIRInstruction* instr = instructionStack.back();
+                instructionStack.pop_back();
+
+                instr->Next[stageIndex] = instr->Block[stageIndex]->FirstInstruction;
+                instr->Block[stageIndex]->FirstInstruction = instr;
+
+                const std::vector<MIRValue*> uses = instr->GetUsesForStage(stage);
+                for (int32_t useIndex = 0; useIndex < static_cast<int32_t>(uses.size()); ++useIndex)
+                {
+                    MIRValue* use = uses[useIndex];
+                    MIRInstruction* useInstr = AsInstruction(use);
+                    if (useInstr == nullptr)
+                    {
+                        continue;
+                    }
+
+                    MIRBlock* targetBlock = instr->GetDesiredBlockForUse(stage, useIndex);
+                    if (targetBlock != instr->Block[stageIndex])
+                    {
+                        targetBlock->Parent = instr->Block[stageIndex];
+                        targetBlock->Level = instr->Block[stageIndex]->Level + 1;
+                    }
+
+                    useInstr->Block[stageIndex] = useInstr->Block[stageIndex]
+                        ? useInstr->Block[stageIndex]->FindCommonParentWith(targetBlock)
+                        : targetBlock;
+
+                    ++useInstr->NumProcessedUsers[stageIndex];
+                    if (useInstr->NumProcessedUsers[stageIndex] == useInstr->NumUsers[stageIndex])
+                    {
+                        instructionStack.push_back(useInstr);
+                    }
+                }
+            }
+        }
+    }
+
+    void MIRBuilder::Step_Finalize()
+    {
+        // UE Step_Finalize: module-level compilation metadata (e.g. UV scalar counts).
+        // Attribute value wiring belongs in Step_FlowValuesIntoMaterialOutputs.
+    }
+
+    void MIRBuilder::Build(const MaterialEdGraph& graph, MIRGraph& targetGraph)
+    {
+        MIREmitter emitter;
+        emitter.m_Builder = this;
+        emitter.m_Graph = &targetGraph;
+
+        m_Graph = &graph;
+        m_Emitter = &emitter;
+
+        Step_Initialize();
+        Step_GenerateOutputInstructions();
+        Step_BuildNodeDefsToIRGraph();
+        Step_FlowValuesIntoMaterialOutputs();
+        Step_AnalyzeIRGraph();
+        Step_LinkInstructions();
+        Step_Finalize();
     }
 }

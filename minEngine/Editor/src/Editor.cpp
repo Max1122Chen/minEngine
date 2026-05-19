@@ -24,19 +24,10 @@
 
 #include <algorithm>
 #include <array>
-
 namespace minEngine
 {
     namespace
     {
-        void DumpMaterialMvpStartupSample()
-        {
-            const std::string irDump = BuildMaterialMvpIRDump();
-            const std::string glslSource = BuildMaterialMvpGLSLSource();
-            ME_CORE_INFO("Material IR MVP dump:\n{}", irDump);
-            ME_CORE_INFO("Material GLSL MVP output:\n{}", glslSource);
-        }
-
         void ApplyEditorTheme()
         {
             ImGuiStyle& style = ImGui::GetStyle();
@@ -512,11 +503,12 @@ namespace minEngine
             projectPath = "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject";
         }
 
-        bool projectOpened = OpenProject(projectPath);
-        if (projectOpened)
+        if (!RunMaterialIRSmokeTests())
         {
-            DumpMaterialMvpStartupSample();
+            ME_CORE_ERROR("MaterialIR smoke tests failed during editor startup.");
         }
+
+        OpenProject(projectPath);
     }
 
     void Editor::Shutdown()

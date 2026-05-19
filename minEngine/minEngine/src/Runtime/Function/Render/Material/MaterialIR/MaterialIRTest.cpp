@@ -1,222 +1,346 @@
 #include "MaterialIRTest.h"
 
-#include "MIRBuilder.h"
-#include "../MaterialCompiler/GLSLMaterialCompiler.h"
+#include "Log/LogSystem.h"
+#include "../MaterialCompiler/MaterialCompiler.h"
 #include "../MaterialEdGraph.h"
-#include "../MaterialEdGraphNode.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
-#include "../MaterialGraphNodeDefs/MaterialGraphNodeDef_Add.h"
-#include "../MaterialGraphNodeDefs/MaterialGraphNodeDef_Const.h"
-#include "../MaterialGraphNodeDefs/MaterialGraphNodeDef_Multiply.h"
-#include "../MaterialGraphNodeDefs/MaterialGraphNodeDef_Output.h"
-#include "../MaterialGraphNodeDefs/MaterialGraphNodeDef_Texture.h"
+#include "../MaterialPropertyUtil.h"
+#include "../MaterialCompiler/MIRToGLSLTranslator.h"
 
-#include <memory>
-#include <sstream>
-#include <vector>
+#include <filesystem>
+#include <fstream>
+#include <string_view>
 
 namespace minEngine
 {
-	namespace
-	{
-		struct TestGraphBundle
-		{
-			MaterialEdGraph Graph;
-			std::vector<std::unique_ptr<MaterialGraphNodeDef>> NodeDefs;
-			int32_t RootNodeIndex = -1;
-		};
+    namespace
+    {
+        void Connect(MaterialGraphNodeDef& from, int fromOutputIndex, MaterialGraphNodeDef& to, int toInputIndex)
+        {
+            MaterialGraphNodeDefInput* input = to.GetInput(toInputIndex);
+            if (input == nullptr)
+            {
+                return;
+            }
+            input->NodeDef = &from;
+            input->OutputIndex = fromOutputIndex;
+        }
 
-		const char* ToString(MaterialOp op)
-		{
-			switch (op)
-			{
-			case MaterialOp::Constant: return "Constant";
-			case MaterialOp::Constant2: return "Constant2";
-			case MaterialOp::Constant3: return "Constant3";
-			case MaterialOp::Constant4: return "Constant4";
-			case MaterialOp::Add: return "Add";
-			case MaterialOp::Multiply: return "Multiply";
-			case MaterialOp::TextureObject: return "TextureObject";
-			case MaterialOp::TextureSample: return "TextureSample";
-			default: return "Unknown";
-			}
-		}
+        void ConnectToProperty(
+            MaterialGraphNodeDef& from,
+            int fromOutputIndex,
+            MaterialGraphNodeDef_MaterialOutput& output,
+            MaterialProperty property)
+        {
+            MaterialPropertyInputDescription description;
+            if (!GetMaterialPropertyInputDescription(property, description))
+            {
+                return;
+            }
 
-		const char* ToString(MaterialValueType type)
-		{
-			switch (type)
-			{
-			case MaterialValueType::Float: return "Float";
-			case MaterialValueType::Vector2: return "Vector2";
-			case MaterialValueType::Vector3: return "Vector3";
-			case MaterialValueType::Vector4: return "Vector4";
-			case MaterialValueType::Texture2D: return "Texture2D";
-			case MaterialValueType::TextureCube: return "TextureCube";
-			default: return "Unknown";
-			}
-		}
+            MaterialGraphNodeDefInput* input = output.FindInputByName(description.InputName);
+            if (input == nullptr)
+            {
+                return;
+            }
 
-		std::string DumpLiteral(const MaterialLiteralValue& value)
-		{
-			std::ostringstream stream;
-			switch (value.Type)
-			{
-			case MaterialValueType::Float:
-				stream << value.Data[0];
-				break;
-			case MaterialValueType::Vector2:
-				stream << "(" << value.Data[0] << ", " << value.Data[1] << ")";
-				break;
-			case MaterialValueType::Vector3:
-				stream << "(" << value.Data[0] << ", " << value.Data[1] << ", " << value.Data[2] << ")";
-				break;
-			case MaterialValueType::Vector4:
-				stream << "(" << value.Data[0] << ", " << value.Data[1] << ", " << value.Data[2] << ", " << value.Data[3] << ")";
-				break;
-			default:
-				stream << "n/a";
-				break;
-			}
-			return stream.str();
-		}
+            input->NodeDef = &from;
+            input->OutputIndex = fromOutputIndex;
+        }
 
-		std::string DumpMIRGraph(const MIRGraph& graph, const MIRValue* outputValue)
-		{
-			std::ostringstream stream;
-			stream << "MIR Values:" << "\n";
-			for (const std::unique_ptr<MIRValue>& value : graph.Values)
-			{
-				stream << "  v" << value->Id << " : " << ToString(value->ValueType);
-				if (value->Producer == nullptr)
-				{
-					stream << " = " << DumpLiteral(value->LiteralValue);
-				}
-				stream << "\n";
-			}
+        bool Contains(std::string_view haystack, std::string_view needle)
+        {
+            return haystack.find(needle) != std::string_view::npos;
+        }
 
-			stream << "MIR Nodes:" << "\n";
-			for (const std::unique_ptr<MIRNode>& node : graph.Nodes)
-			{
-				stream << "  n" << node->Id << " " << ToString(node->Op);
-				if (!node->SymbolName.empty())
-				{
-					stream << " [" << node->SymbolName << "]";
-				}
+        int CountOccurrences(std::string_view haystack, std::string_view needle)
+        {
+            int count = 0;
+            size_t position = 0;
+            while ((position = haystack.find(needle, position)) != std::string_view::npos)
+            {
+                ++count;
+                position += needle.size();
+            }
+            return count;
+        }
 
-				stream << " (";
-				for (size_t i = 0; i < node->Inputs.size(); ++i)
-				{
-					if (i > 0)
-					{
-						stream << ", ";
-					}
-					stream << "v" << node->Inputs[i]->Id;
-				}
-				stream << ") -> ";
+        bool AssertContains(const std::string& haystack, std::string_view needle, const char* label)
+        {
+            if (Contains(haystack, needle))
+            {
+                return true;
+            }
 
-				for (size_t i = 0; i < node->Outputs.size(); ++i)
-				{
-					if (i > 0)
-					{
-						stream << ", ";
-					}
-					stream << "v" << node->Outputs[i]->Id;
-				}
-				stream << "\n";
-			}
+            ME_CORE_ERROR("MaterialIR smoke: {} missing substring '{}'", label, needle);
+            return false;
+        }
 
-			stream << "Output Value: ";
-			if (outputValue)
-			{
-				stream << "v" << outputValue->Id;
-			}
-			else
-			{
-				stream << "<null>";
-			}
-			stream << "\n";
-			return stream.str();
-		}
+        bool AssertAllContains(const std::string& haystack, std::initializer_list<std::pair<std::string_view, const char*>> needles)
+        {
+            bool allPassed = true;
+            for (const auto& entry : needles)
+            {
+                if (!AssertContains(haystack, entry.first, entry.second))
+                {
+                    allPassed = false;
+                }
+            }
+            return allPassed;
+        }
 
-		TestGraphBundle BuildMvpGraph()
-		{
-			TestGraphBundle bundle;
+        bool AssertTrue(bool condition, const char* label)
+        {
+            if (condition)
+            {
+                return true;
+            }
 
-			auto addNode = [&](std::unique_ptr<MaterialGraphNodeDef> def) -> int32_t
-			{
-				bundle.NodeDefs.push_back(std::move(def));
-				MaterialEdGraphNode node;
-				node.m_Definition = bundle.NodeDefs.back().get();
-				bundle.Graph.m_Nodes.push_back(node);
-				return static_cast<int32_t>(bundle.Graph.m_Nodes.size() - 1);
-			};
+            ME_CORE_ERROR("MaterialIR binding check failed: {}", label);
+            return false;
+        }
 
-			const int32_t c1 = addNode(std::make_unique<MaterialGraphNodeDef_Constant>(1.0f));
-			const int32_t c2 = addNode(std::make_unique<MaterialGraphNodeDef_Constant>(2.0f));
-			const int32_t add1 = addNode(std::make_unique<MaterialGraphNodeDef_Add>());
-			const int32_t c3 = addNode(std::make_unique<MaterialGraphNodeDef_Constant>(3.0f));
-			const int32_t mul1 = addNode(std::make_unique<MaterialGraphNodeDef_Multiply>());
-			const int32_t c0 = addNode(std::make_unique<MaterialGraphNodeDef_Constant>(0.0f));
-			const int32_t deadMul = addNode(std::make_unique<MaterialGraphNodeDef_Multiply>());
-			const int32_t add2 = addNode(std::make_unique<MaterialGraphNodeDef_Add>());
-			const int32_t uv = addNode(std::make_unique<MaterialGraphNodeDef_Constant2>(0.25f, 0.75f));
-			const int32_t texParam = addNode(std::make_unique<MaterialGraphNodeDef_Texture2DParameter>("u_TestTexture"));
-			const int32_t sample = addNode(std::make_unique<MaterialGraphNodeDef_TextureSample>());
-			const int32_t finalAdd = addNode(std::make_unique<MaterialGraphNodeDef_Add>());
-			const int32_t materialOutput = addNode(std::make_unique<MaterialGraphNodeDef_MaterialOutput>());
+        void WriteTextArtifact(const std::filesystem::path& path, const std::string& contents)
+        {
+            std::error_code errorCode;
+            std::filesystem::create_directories(path.parent_path(), errorCode);
 
-			bundle.Graph.ConnectNodes(c1, 0, add1, 0);
-			bundle.Graph.ConnectNodes(c2, 0, add1, 1);
-			bundle.Graph.ConnectNodes(add1, 0, mul1, 0);
-			bundle.Graph.ConnectNodes(c3, 0, mul1, 1);
+            std::ofstream outputFile(path, std::ios::trunc);
+            if (outputFile.is_open())
+            {
+                outputFile << contents;
+            }
+        }
 
-			bundle.Graph.ConnectNodes(c3, 0, deadMul, 0);
-			bundle.Graph.ConnectNodes(c0, 0, deadMul, 1);
+        void WriteCompileArtifacts(const MaterialCompiledShader& result)
+        {
+            const std::filesystem::path outputDir = "Saved/Materials";
+            WriteTextArtifact(outputDir / "IRDump.txt", result.IRDump);
+            WriteTextArtifact(outputDir / "GeneratedVertex.glsl", result.FullVertexShader);
+            WriteTextArtifact(outputDir / "GeneratedFragment.glsl", result.FullFragmentShader);
+            WriteTextArtifact(outputDir / "FragmentStageBody.glsl", result.Stages[Stage_Fragment].Body);
+            WriteTextArtifact(outputDir / "FragmentStagePreamble.glsl", result.Stages[Stage_Fragment].Preamble);
+            WriteTextArtifact(outputDir / "VertexStageBody.glsl", result.Stages[Stage_Vertex].Body);
+        }
 
-			bundle.Graph.ConnectNodes(mul1, 0, add2, 0);
-			bundle.Graph.ConnectNodes(deadMul, 0, add2, 1);
+        void LogCompiledShaders(const MaterialCompiledShader& result)
+        {
+            ME_CORE_INFO("======== MaterialIR generated vertex shader ========");
+            ME_CORE_INFO("\n{}", result.FullVertexShader);
+            ME_CORE_INFO("======== MaterialIR generated fragment shader ======");
+            ME_CORE_INFO("\n{}", result.FullFragmentShader);
+            ME_CORE_INFO("======== MaterialIR fragment stage body ============");
+            ME_CORE_INFO("\n{}", result.Stages[Stage_Fragment].Body);
+            ME_CORE_INFO("Artifacts: Saved/Materials/GeneratedVertex.glsl, GeneratedFragment.glsl, IRDump.txt");
+        }
 
-			bundle.Graph.ConnectNodes(texParam, 0, sample, 0);
-			bundle.Graph.ConnectNodes(uv, 0, sample, 1);
+        bool VerifyPropertyBindingLayer(const MaterialEdGraph& graph, const MaterialGraphNodeDef_MaterialOutput& output)
+        {
+            bool passed = true;
 
-			bundle.Graph.ConnectNodes(sample, 0, finalAdd, 0);
-			bundle.Graph.ConnectNodes(add2, 0, finalAdd, 1);
-			bundle.Graph.ConnectNodes(finalAdd, 0, materialOutput, 0);
+            for (int propertyIndex = 0; propertyIndex < MaterialShadingPropertyCount; ++propertyIndex)
+            {
+                const MaterialProperty property = static_cast<MaterialProperty>(propertyIndex);
+                MaterialPropertyInputDescription description;
+                passed = AssertTrue(GetMaterialPropertyInputDescription(property, description), "GetMaterialPropertyInputDescription")
+                    && passed;
+                passed = AssertTrue(description.InputName == GetMaterialPropertyName(property), "description InputName")
+                    && passed;
+                passed = AssertTrue(description.ExpectedType == GetMaterialPropertyType(property), "description ExpectedType")
+                    && passed;
 
-			bundle.RootNodeIndex = materialOutput;
-			return bundle;
-		}
-	}
+                const MaterialGraphNodeDefInput* pinByName = output.FindInputByName(description.InputName);
+                passed = AssertTrue(pinByName != nullptr, "MaterialOutput FindInputByName") && passed;
 
-	std::string BuildMaterialMvpIRDump()
-	{
-		TestGraphBundle bundle = BuildMvpGraph();
+                MaterialPropertyInputDescription resolved = description;
+                passed = AssertTrue(graph.ResolveMaterialPropertyInput(property, resolved), "ResolveMaterialPropertyInput")
+                    && passed;
+                passed = AssertTrue(resolved.GraphInput == pinByName, "resolved GraphInput matches pin") && passed;
+            }
 
-		MIRGraph irGraph;
-		MIRBuilder builder(irGraph);
-		MIRValue* outputValue = builder.BuildNodeOutput(*bundle.Graph.m_Nodes[bundle.RootNodeIndex].m_Definition, 0);
+            passed = AssertTrue(output.FindInputByName("NotAPin") == nullptr, "unknown pin returns null") && passed;
 
-		return DumpMIRGraph(irGraph, outputValue);
-	}
+            const std::vector<MaterialGraphNodeDef*> outputNodes = graph.GetMaterialOutputNodeDefs();
+            passed = AssertTrue(outputNodes.size() == 1, "single MaterialOutput in smoke graph") && passed;
+            passed = AssertTrue(outputNodes[0]->IsMaterialOutputNode(), "IsMaterialOutputNode") && passed;
 
-	std::string BuildMaterialMvpGLSLSource()
-	{
-		TestGraphBundle bundle = BuildMvpGraph();
+            MaterialPropertyInputDescription metallicDescription;
+            passed = AssertTrue(graph.ResolveMaterialPropertyInput(MP_Metallic, metallicDescription), "Metallic resolve")
+                && passed;
+            passed = AssertTrue(
+                metallicDescription.GraphInput != nullptr && metallicDescription.GraphInput->IsConnected(),
+                "Metallic pin connected")
+                && passed;
 
-		GLSLMaterialCompiler compiler;
-		MaterialCompileResult result = compiler.Compile(bundle.Graph);
+            MaterialPropertyInputDescription emissiveDescription;
+            passed = AssertTrue(graph.ResolveMaterialPropertyInput(MP_Emissive, emissiveDescription), "Emissive resolve")
+                && passed;
+            passed = AssertTrue(
+                emissiveDescription.GraphInput != nullptr && emissiveDescription.GraphInput->IsConnected(),
+                "Emissive pin connected")
+                && passed;
+            passed = AssertTrue(metallicDescription.GraphInput != emissiveDescription.GraphInput, "distinct Metallic/Emissive pins")
+                && passed;
 
-		if (result.IsSuccess())
-		{
-			return result.ShaderSource;
-		}
+            if (passed)
+            {
+                ME_CORE_INFO("MaterialIR property binding checks PASSED.");
+            }
 
-		std::ostringstream stream;
-		stream << "Material compile failed:" << "\n";
-		for (const MaterialCompileDiagnostic& diagnostic : result.Diagnostics)
-		{
-			stream << "  - " << diagnostic.Message << "\n";
-		}
-		return stream.str();
-	}
+            return passed;
+        }
+
+        // Smoke graph (single integrated material):
+        //   Albedo   <- TextureSample(RGB) <- TextureObject(0) + TextureCoordinate (ExternalInput TexCoord0)
+        //   Metallic <- ScalarParameter(0.3)
+        //   Emissive <- MakeFloat3(0.2, 0.8, 0.2)
+        //   Roughness/Opacity <- defaults
+        //
+        // Expected shading (Unlit): FragColor.rgb = Albedo + Emissive, alpha = Opacity.
+        // With default texture=1 and UV=(0,0): Albedo=(1,1,1) -> FragColor.rgb = (1.2, 0.8, 0.2).
+        bool VerifySmokeCompileResult(const MaterialCompiledShader& result)
+        {
+            if (!result.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : result.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR smoke diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            bool passed = true;
+
+            passed = AssertAllContains(result.IRDump, {
+                { "; minEngine Material IR dump", "IR header" },
+                { "SetMaterialOutput \"Albedo\"", "IR Albedo output" },
+                { "ExternalInput", "IR texcoord input" },
+                { "TextureRead", "IR texture sample" },
+                { "UniformParameter", "IR scalar uniform" },
+            }) && passed;
+
+            passed = AssertAllContains(result.Stages[Stage_Fragment].Body, {
+                { "FragmentMaterialInputs.Albedo =", "fragment body Albedo assign" },
+                { "FragmentMaterialInputs.Metallic = u_ScalarParam0", "fragment body Metallic assign" },
+                { "texture(u_Texture0, MaterialParameters.TexCoords[0])", "UE-style texcoord access" },
+            }) && passed;
+
+            passed = AssertAllContains(result.FullVertexShader, {
+                { "} MaterialParameters;", "vertex MaterialParameters struct global" },
+                { "MaterialParameters.TexCoords[0] = a_TexCoord", "vertex fills MaterialParameters" },
+                { "v_MaterialTexCoord0", "vertex varying out" },
+            }) && passed;
+
+            passed = AssertTrue(
+                result.FullVertexShader.find("} MaterialParameters;") < result.FullVertexShader.find("void main"),
+                "vertex MaterialParameters struct must be outside main")
+                && passed;
+
+            passed = AssertAllContains(result.FullFragmentShader, {
+                { "uniform sampler2D u_Texture0", "global texture uniform" },
+                { "MaterialParameters.TexCoords[0] = v_MaterialTexCoord0", "fragment restores MaterialParameters" },
+                { "FragColor = vec4(FragmentMaterialInputs.Albedo + FragmentMaterialInputs.Emissive, FragmentMaterialInputs.Opacity)", "unlit composite" },
+            }) && passed;
+
+            passed = AssertTrue(
+                result.FullFragmentShader.find("uniform sampler2D") < result.FullFragmentShader.find("void main"),
+                "uniforms must be declared outside main")
+                && passed;
+
+            passed = AssertTrue(
+                result.FullFragmentShader.find("} MaterialParameters;") < result.FullFragmentShader.find("void main"),
+                "fragment MaterialParameters struct must be outside main")
+                && passed;
+
+            passed = AssertTrue(!Contains(result.Stages[Stage_Fragment].Body, "v_TexCoord0"), "body must not use legacy v_TexCoord0")
+                && passed;
+
+            passed = AssertTrue(CountOccurrences(result.Stages[Stage_Fragment].Body, "FragmentMaterialInputs.Albedo =") == 1, "single Albedo assign")
+                && passed;
+            passed = AssertTrue(CountOccurrences(result.Stages[Stage_Fragment].Body, "FragmentMaterialInputs.Metallic =") == 1, "single Metallic assign")
+                && passed;
+            passed = AssertTrue(CountOccurrences(result.Stages[Stage_Fragment].Body, "FragmentMaterialInputs.Roughness =") == 1, "single Roughness assign")
+                && passed;
+
+            if (!passed)
+            {
+                LogCompiledShaders(result);
+                ME_CORE_ERROR("MaterialIR smoke FAILED (see logged shaders above).");
+                return false;
+            }
+
+            WriteCompileArtifacts(result);
+            LogCompiledShaders(result);
+
+            ME_CORE_INFO(
+                "MaterialIR smoke PASSED.\n"
+                "Graph: TextureSample->Albedo, Scalar(0.3)->Metallic, float3(0.2,0.8,0.2)->Emissive.\n"
+                "If texture=1 at UV0: FragColor = vec4(1.2, 0.8, 0.2, 1).");
+            return true;
+        }
+
+    }
+
+    bool ShouldRunMaterialIRTestsOnly(int argc, char** argv)
+    {
+        for (int argIndex = 1; argIndex < argc; ++argIndex)
+        {
+            if (argv[argIndex] != nullptr && std::string_view(argv[argIndex]) == "--material-ir-test")
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool RunMaterialIRSmokeTests()
+    {
+        MaterialGraphNodeDef_TextureCoordinate texCoord;
+        MaterialGraphNodeDef_TextureObject textureObject(0);
+        MaterialGraphNodeDef_TextureSample textureSample;
+        MaterialGraphNodeDef_ScalarParameter metallicScalar(0, 0.3f);
+        MaterialGraphNodeDef_Constant emissiveR(0.2f);
+        MaterialGraphNodeDef_Constant emissiveG(0.8f);
+        MaterialGraphNodeDef_Constant emissiveB(0.2f);
+        MaterialGraphNodeDef_MakeFloat3 emissiveColor;
+        MaterialGraphNodeDef_MaterialOutput output;
+
+        Connect(textureObject, 0, textureSample, 0);
+        Connect(texCoord, 0, textureSample, 1);
+        Connect(emissiveR, 0, emissiveColor, 0);
+        Connect(emissiveG, 0, emissiveColor, 1);
+        Connect(emissiveB, 0, emissiveColor, 2);
+        Connect(textureSample, 1, output, 0);
+        ConnectToProperty(emissiveColor, 0, output, MP_Emissive);
+        ConnectToProperty(metallicScalar, 0, output, MP_Metallic);
+
+        MaterialEdGraph graph;
+        MaterialGraphNodeDef* nodeDefs[] = {
+            &texCoord, &textureObject, &textureSample, &metallicScalar,
+            &emissiveR, &emissiveG, &emissiveB, &emissiveColor, &output,
+        };
+
+        for (MaterialGraphNodeDef* nodeDef : nodeDefs)
+        {
+            MaterialEdGraphNode graphNode;
+            graphNode.m_Definition = nodeDef;
+            graph.m_Nodes.push_back(graphNode);
+        }
+
+        if (!VerifyPropertyBindingLayer(graph, output))
+        {
+            return false;
+        }
+
+        MIRToGLSLTranslator translator;
+        MaterialCompileEnvironment env;
+        env.ShadingMode = MaterialShadingMode::Unlit;
+        if (!VerifySmokeCompileResult(MaterialCompiler::Compile(graph, translator, env)))
+        {
+            return false;
+        }
+
+        ME_CORE_INFO("MaterialIR all tests PASSED (binding + smoke compile).");
+        return true;
+    }
 }
