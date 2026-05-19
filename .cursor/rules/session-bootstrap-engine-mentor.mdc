@@ -1,0 +1,27 @@
+---
+description: Bootstrap each new session by checking recent project progress and prioritizing the engine-learning-mentor skill.
+alwaysApply: true
+---
+
+# Session Bootstrap + Engine Mentor
+
+For the first assistant response in each new session, complete this bootstrap before handling the main request:
+
+1. Read recent project context from:
+- `docs/ai/PROJECT_CONTEXT.md` (if exists)
+- `docs/ai/PROGRESS_LOG.md` (if exists)
+
+2. Check current repository state:
+- run `git status --short --branch`
+- identify major changed areas in 1-3 bullets
+
+3. Output a short project snapshot (4-8 lines max):
+- current branch status
+- key in-progress feature/theme
+- notable risks or blockers (if any)
+
+4. Prioritize the `engine-learning-mentor` skill for technical tasks in this repository:
+- use learning-first, incremental, verifiable guidance
+- prefer concise steps and clear next action
+
+If user explicitly asks for another workflow, follow the user's instruction.
