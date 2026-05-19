@@ -81,7 +81,7 @@ namespace minEngine
             std::shared_ptr<T> newComponentBase = NewObject<T>("",this);
             std::shared_ptr<Component> newComponent = std::static_pointer_cast<Component>(newComponentBase);
             AddComponent_Internal(newComponent);
-            return newComponent;
+            return newComponentBase;
         }
 
         std::shared_ptr<Component> AddComponent(const std::string& componentTypeName);

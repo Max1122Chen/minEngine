@@ -155,9 +155,23 @@ namespace minEngine
         return std::make_shared<OpenGLTexture2DArray>(data, desc);
     }
 
-    std::shared_ptr<RHIShader> OpenGLRHI::CreateRHIShader(const char *vertexSource, const char *fragmentSource)
+    std::shared_ptr<RHIShader> OpenGLRHI::CreateRHIShader(
+        const std::string& vertexSource,
+        const std::string& fragmentSource,
+        std::string* outCompileLog)
     {
-        return std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
+        std::shared_ptr<OpenGLShader> shader = std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
+        if (outCompileLog != nullptr)
+        {
+            *outCompileLog = shader->GetCompileLog();
+        }
+
+        if (!shader->IsValid())
+        {
+            return nullptr;
+        }
+
+        return shader;
     }
 
 }

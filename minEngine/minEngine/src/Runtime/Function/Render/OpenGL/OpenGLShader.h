@@ -5,9 +5,7 @@
 #include "glad/glad.h"
 
 #include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
+#include <string_view>
 #include <unordered_map>
 
 namespace minEngine
@@ -15,19 +13,16 @@ namespace minEngine
     class OpenGLShader : public RHIShader
     {
     public:
-        // program ID
-        unsigned int m_ID;
+        unsigned int m_ID = 0;
 
-        OpenGLShader(const char* vertexShaderPath, const char* fragmentShaderPath);
+        OpenGLShader(std::string_view vertexSource, std::string_view fragmentSource);
         virtual ~OpenGLShader() override;
 
         OpenGLShader(const OpenGLShader&) = delete;
         OpenGLShader& operator=(const OpenGLShader&) = delete;
 
-        // use program
         virtual void Use() override;
 
-        // uniform tool functions
         virtual void UploadUniformInt(const std::string& name, int value) override;
         virtual void UploadUniformFloat(const std::string& name, float value) override;
         virtual void UploadUniformFloat2(const std::string& name, const Vector2& value) override;

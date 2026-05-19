@@ -1,12 +1,17 @@
 #pragma once
 
+#include <string>
+
 namespace minEngine
 {
     // Returns true when argv contains --material-ir-test (headless smoke, no application window).
     bool ShouldRunMaterialIRTestsOnly(int argc, char** argv);
 
-    // Single graph: texture sample -> Albedo, Emissive constants, Metallic scalar uniform.
-    // Expected FragColor: vec4(1.2, 0.8, 0.2, 1).
-    // Returns true when compile succeeds and IR/GLSL golden substrings match.
+    // Single graph smoke: IR + GLSL + optional GPU compile (see MaterialIRTest.cpp).
+    // Returns true when compile succeeds, IR/GLSL golden substrings match, and GPU compile/link succeeds.
     bool RunMaterialIRSmokeTests();
+
+    // Set when RunMaterialIRSmokeTests() successfully loads EngineConfig (same discovery rules as Editor).
+    // Empty if load failed; intended for upcoming shader-template paths without coupling to Editor startup.
+    const std::string& GetMaterialIRTestEngineDefaultAssetsRoot();
 }

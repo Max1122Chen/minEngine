@@ -42,6 +42,11 @@ namespace minEngine
         m_SceneManager->Initialize();
     }
 
+    void RuntimeGlobalContext::SetEngineDefaultAssetsRoot(std::string path)
+    {
+        m_EngineDefaultAssetsRoot = std::move(path);
+    }
+
     void RuntimeGlobalContext::ShutdownSystems()
     {
         if (m_ProjectManager)

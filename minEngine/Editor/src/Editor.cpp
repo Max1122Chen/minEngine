@@ -18,7 +18,7 @@
 #include "Serialization/JsonArchive.h"
 #include "Serialization/Serializer.h"
 #include "Resource/AssetManager.h"
-#include "Runtime/Function/Render/Material/MaterialIR/MaterialIRTest.h"
+#include "Runtime/Function/RuntimeGlobalContext.h"
 
 #include "EditorDefaultScene.h"
 
@@ -484,10 +484,14 @@ namespace minEngine
 
         // Load engine config before opening project, so that any config in the file can take effect before project loading.
         bool engineConfigLoaded = LoadEngineConfig();
-        // Scan engine default assets if engine config is loaded successfully, so that the default assets can be used when opening project and loading scenes.
         if (engineConfigLoaded)
         {
+            RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot(m_EngineConfig.EngineDefaultAssetsRoot);
             AssetManager::Get().ScanAssets(m_EngineConfig.EngineDefaultAssetsRoot);
+        }
+        else
+        {
+            RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot("");
         }
 
         std::string projectPath;
@@ -503,12 +507,12 @@ namespace minEngine
             projectPath = "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject";
         }
 
-        if (!RunMaterialIRSmokeTests())
-        {
-            ME_CORE_ERROR("MaterialIR smoke tests failed during editor startup.");
-        }
-
         OpenProject(projectPath);
+
+        if (!SetEditorMaterialIRSmokeActiveScene())
+        {
+            ME_CORE_ERROR("Failed to set editor material IR smoke active scene.");
+        }
     }
 
     void Editor::Shutdown()

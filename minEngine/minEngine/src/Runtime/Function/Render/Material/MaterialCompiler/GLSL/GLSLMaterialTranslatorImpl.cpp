@@ -1,6 +1,6 @@
-#include "MIRToGLSLTranslator.h"
+#include "GLSLMaterialTranslatorImpl.h"
 
-#include "MaterialShaderParameters.h"
+#include "GLSLShaderBinding.h"
 #include "Assert/Assert.h"
 
 #include <algorithm>
@@ -12,7 +12,7 @@
 
 namespace minEngine
 {
-    MaterialCompiledShader MIRToGLSLTranslator::Translate(const MIRGraph& graph)
+    MaterialCompiledShader GLSLMaterialTranslatorImpl::Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env)
     {
         MaterialCompiledShader result;
 
@@ -60,7 +60,7 @@ namespace minEngine
         return result;
     }
 
-    void MIRToGLSLTranslator::BeginStage(ShaderStage stage)
+    void GLSLMaterialTranslatorImpl::BeginStage(ShaderStage stage)
     {
         m_Stage = stage;
         m_Printer = {};
@@ -70,7 +70,7 @@ namespace minEngine
         m_LocalIdentifier.clear();
     }
 
-    bool MIRToGLSLTranslator::IsFoldable(const MIRInstruction& instr, ShaderStage stage)
+    bool GLSLMaterialTranslatorImpl::IsFoldable(const MIRInstruction& instr, ShaderStage stage)
     {
         if (instr.Kind == VK_Branch)
         {
@@ -87,7 +87,7 @@ namespace minEngine
         return true;
     }
 
-    bool MIRToGLSLTranslator::IsOperatorInfix(MIROperatorCode op)
+    bool GLSLMaterialTranslatorImpl::IsOperatorInfix(MIROperatorCode op)
     {
         switch (op)
         {
@@ -101,12 +101,12 @@ namespace minEngine
         }
     }
 
-    void MIRToGLSLTranslator::AppendFragmentMaterialInputName(MaterialProperty property)
+    void GLSLMaterialTranslatorImpl::AppendFragmentMaterialInputName(MaterialProperty property)
     {
-        m_Printer.Append("FragmentMaterialInputs.").Append(GetMaterialPropertyName(property));
+        m_Printer.Append(GetFragmentMaterialInputsSymbol()).Append(".").Append(GetMaterialPropertyName(property));
     }
 
-    void MIRToGLSLTranslator::LowerBlock(const MIRBlock& block)
+    void GLSLMaterialTranslatorImpl::LowerBlock(const MIRBlock& block)
     {
         const int oldNumLocals = m_NumLocals;
         for (MIRInstruction* instr = block.FirstInstruction; instr != nullptr; instr = instr->Next[m_Stage])
@@ -144,7 +144,7 @@ namespace minEngine
         m_NumLocals = oldNumLocals;
     }
 
-    void MIRToGLSLTranslator::LowerValue(const MIRValue* value)
+    void GLSLMaterialTranslatorImpl::LowerValue(const MIRValue* value)
     {
         if (value == nullptr)
         {
@@ -186,7 +186,7 @@ namespace minEngine
         }
     }
 
-    void MIRToGLSLTranslator::LowerInstruction(const MIRInstruction& instr)
+    void GLSLMaterialTranslatorImpl::LowerInstruction(const MIRInstruction& instr)
     {
         switch (instr.Kind)
         {
@@ -227,7 +227,7 @@ namespace minEngine
         }
     }
 
-    void MIRToGLSLTranslator::LowerType(const MIRValueType* type)
+    void GLSLMaterialTranslatorImpl::LowerType(const MIRValueType* type)
     {
         const MIRPrimitiveType* primitive = type != nullptr ? type->AsPrimitive() : nullptr;
         if (primitive == nullptr)
@@ -259,7 +259,7 @@ namespace minEngine
         }
     }
 
-    int MIRToGLSLTranslator::ExternalInputIdToTexCoordIndex(MIRExternalInputId inputId)
+    int GLSLMaterialTranslatorImpl::ExternalInputIdToTexCoordIndex(MIRExternalInputId inputId)
     {
         switch (inputId)
         {
@@ -270,17 +270,17 @@ namespace minEngine
         }
     }
 
-    std::string MIRToGLSLTranslator::GetTextureSamplerName(int textureSlotIndex) const
+    std::string GLSLMaterialTranslatorImpl::GetTextureSamplerName(int textureSlotIndex) const
     {
         return "u_Texture" + std::to_string(textureSlotIndex);
     }
 
-    std::string MIRToGLSLTranslator::GetScalarUniformName(int uniformSlotIndex) const
+    std::string GLSLMaterialTranslatorImpl::GetScalarUniformName(int uniformSlotIndex) const
     {
         return "u_ScalarParam" + std::to_string(uniformSlotIndex);
     }
 
-    std::string MIRToGLSLTranslator::BuildFragmentShaderPreamble() const
+    std::string GLSLMaterialTranslatorImpl::BuildFragmentShaderPreamble() const
     {
         std::string preamble;
 
@@ -310,7 +310,7 @@ namespace minEngine
         return preamble;
     }
 
-    void MIRToGLSLTranslator::LowerExternalInput(const MIRExternalInput& externalInput)
+    void GLSLMaterialTranslatorImpl::LowerExternalInput(const MIRExternalInput& externalInput)
     {
         const int texCoordIndex = ExternalInputIdToTexCoordIndex(externalInput.InputId);
         if (texCoordIndex >= 0)
@@ -319,20 +319,20 @@ namespace minEngine
             {
                 m_UsesTexCoord0 = true;
             }
-            m_Printer.Append(GetMaterialParametersTexCoordAccess(texCoordIndex));
+            m_Printer.Append(GetGLSLMaterialParametersTexCoordAccess(texCoordIndex));
             return;
         }
 
         m_Printer.Append("vec2(0.0)");
     }
 
-    void MIRToGLSLTranslator::LowerTextureObject(const MIRTextureObject& textureObject)
+    void GLSLMaterialTranslatorImpl::LowerTextureObject(const MIRTextureObject& textureObject)
     {
         m_UsedTextureSlots.insert(textureObject.TextureSlotIndex);
         m_Printer.Append(GetTextureSamplerName(textureObject.TextureSlotIndex));
     }
 
-    void MIRToGLSLTranslator::LowerTextureRead(const MIRTextureRead& textureRead)
+    void GLSLMaterialTranslatorImpl::LowerTextureRead(const MIRTextureRead& textureRead)
     {
         if (const MIRTextureObject* textureObject = dynamic_cast<const MIRTextureObject*>(textureRead.Texture))
         {
@@ -354,13 +354,13 @@ namespace minEngine
         m_Printer.Append(')');
     }
 
-    void MIRToGLSLTranslator::LowerUniformParameter(const MIRUniformParameter& uniformParameter)
+    void GLSLMaterialTranslatorImpl::LowerUniformParameter(const MIRUniformParameter& uniformParameter)
     {
         m_UsedScalarUniformSlots.insert(uniformParameter.UniformSlotIndex);
         m_Printer.Append(GetScalarUniformName(uniformParameter.UniformSlotIndex));
     }
 
-    void MIRToGLSLTranslator::LowerSubscript(const MIRSubscript& subscript)
+    void GLSLMaterialTranslatorImpl::LowerSubscript(const MIRSubscript& subscript)
     {
         LowerValue(subscript.Arg);
         static const char* const kSwizzles[] = { ".x", ".y", ".z", ".w" };
@@ -374,7 +374,7 @@ namespace minEngine
         }
     }
 
-    void MIRToGLSLTranslator::LowerDimensional(const MIRDimensional& dimensional)
+    void GLSLMaterialTranslatorImpl::LowerDimensional(const MIRDimensional& dimensional)
     {
         const MIRPrimitiveType* primitive = dimensional.Type != nullptr ? dimensional.Type->AsPrimitive() : nullptr;
         const int numComponents = dimensional.GetNumComponents();
@@ -396,7 +396,7 @@ namespace minEngine
         m_Printer.Append(')');
     }
 
-    void MIRToGLSLTranslator::LowerConstant(const MIRConstant* constant)
+    void GLSLMaterialTranslatorImpl::LowerConstant(const MIRConstant* constant)
     {
         if (constant == nullptr || constant->Type == nullptr)
         {
@@ -419,7 +419,7 @@ namespace minEngine
         m_Printer.Append(std::to_string(constant->Get<double>()));
     }
 
-    void MIRToGLSLTranslator::LowerOperator(const MIROperator& op)
+    void GLSLMaterialTranslatorImpl::LowerOperator(const MIROperator& op)
     {
         if (IsOperatorInfix(op.Op))
         {
@@ -481,7 +481,7 @@ namespace minEngine
         m_Printer.Append("0.0");
     }
 
-    void MIRToGLSLTranslator::LowerBranch(const MIRBranch& branch)
+    void GLSLMaterialTranslatorImpl::LowerBranch(const MIRBranch& branch)
     {
         if (IsFoldable(branch, m_Stage))
         {
@@ -519,7 +519,7 @@ namespace minEngine
         m_Printer.CloseBrace();
     }
 
-    void MIRToGLSLTranslator::LowerSetMaterialOutput(const SetMaterialOutput& output)
+    void GLSLMaterialTranslatorImpl::LowerSetMaterialOutput(const SetMaterialOutput& output)
     {
         if (output.Property == MP_WorldPositionOffset)
         {

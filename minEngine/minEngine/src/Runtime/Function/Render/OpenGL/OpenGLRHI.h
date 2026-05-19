@@ -50,7 +50,10 @@ namespace minEngine
         virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc) override;
         virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(const std::vector<unsigned char*> faceData, RHITextureDesc desc) override;
         virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc) override;
-        virtual std::shared_ptr<RHIShader> CreateRHIShader(const char* vertexSource, const char* fragmentSource) override;
+        virtual std::shared_ptr<RHIShader> CreateRHIShader(
+            const std::string& vertexSource,
+            const std::string& fragmentSource,
+            std::string* outCompileLog = nullptr) override;
     
 
     private:

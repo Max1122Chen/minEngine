@@ -1,11 +1,20 @@
 #include "MaterialIRTest.h"
 
 #include "Log/LogSystem.h"
+#include "Runtime/EngineConfig.h"
+#include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Serialization/JsonArchive.h"
+#include "Serialization/Serializer.h"
 #include "../MaterialCompiler/MaterialCompiler.h"
 #include "../MaterialEdGraph.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "../MaterialPropertyUtil.h"
-#include "../MaterialCompiler/MIRToGLSLTranslator.h"
+#include "../MaterialSmokeGraph.h"
+#include "Render/Shader.h"
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include <filesystem>
 #include <fstream>
@@ -15,37 +24,73 @@ namespace minEngine
 {
     namespace
     {
-        void Connect(MaterialGraphNodeDef& from, int fromOutputIndex, MaterialGraphNodeDef& to, int toInputIndex)
+        // Duplicated from Editor::LoadEngineConfig for headless --material-ir-test (no Editor instance).
+        // TODO: share with Editor once engine bootstrap owns config loading.
+        static constexpr const char* kEngineConfigExtension = ".meconfig";
+
+        std::string g_MaterialIRTestEngineDefaultAssetsRoot;
+
+        bool EnsureReflectionReadyForMaterialIRTest()
         {
-            MaterialGraphNodeDefInput* input = to.GetInput(toInputIndex);
-            if (input == nullptr)
+            Reflection::ReflectionSystem& reflection = Reflection::ReflectionSystem::Get();
+            if (reflection.IsReady())
             {
-                return;
+                return true;
             }
-            input->NodeDef = &from;
-            input->OutputIndex = fromOutputIndex;
+
+            if (!reflection.FinalizeReflection())
+            {
+                const std::vector<std::string>& reflectionErrors = reflection.GetLastErrors();
+                for (const std::string& error : reflectionErrors)
+                {
+                    ME_CORE_ERROR("{}", error);
+                }
+                return false;
+            }
+
+            reflection.ClearErrors();
+            return true;
         }
 
-        void ConnectToProperty(
-            MaterialGraphNodeDef& from,
-            int fromOutputIndex,
-            MaterialGraphNodeDef_MaterialOutput& output,
-            MaterialProperty property)
+        // Same cwd + dev fallback path as Editor::LoadEngineConfig.
+        bool TryLoadEngineConfigForMaterialIRTest(EngineConfig& outConfig)
         {
-            MaterialPropertyInputDescription description;
-            if (!GetMaterialPropertyInputDescription(property, description))
+            std::filesystem::path cwd = std::filesystem::current_path();
+            std::filesystem::path configPath = cwd / ("EngineConfig" + std::string(kEngineConfigExtension));
+            if (!std::filesystem::exists(configPath))
             {
-                return;
+                ME_CORE_ERROR("Engine config file not found at current working directory: '{}'.", cwd.string());
+                configPath = std::filesystem::path("D:/Dev/GitRepo/minEngine/minEngine/EngineConfig.meconfig");
+                ME_CORE_WARN(
+                    "MaterialIR test: using hardcoded engine config path '{}' instead of '{}'. "
+                    "Temporary; align with Editor::LoadEngineConfig.",
+                    configPath.string(),
+                    cwd.string());
             }
 
-            MaterialGraphNodeDefInput* input = output.FindInputByName(description.InputName);
-            if (input == nullptr)
+            Serialization::JsonReaderArchive reader;
+            Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+                configPath.string(),
+                minEngine::Reflection::GetClassName<EngineConfig>(),
+                &outConfig,
+                reader,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = true,
+                    .skipUnknownField = true,
+                    .writeObjectTypeName = false,
+                    .allowObjectPtrSerialization = true,
+                });
+            if (!result.ok)
             {
-                return;
+                ME_CORE_ERROR(
+                    "MaterialIR test: failed to load engine config from '{}'. Error: {}. Field path: {}",
+                    configPath.string(),
+                    result.message,
+                    result.fieldPath);
+                return false;
             }
-
-            input->NodeDef = &from;
-            input->OutputIndex = fromOutputIndex;
+            return true;
         }
 
         bool Contains(std::string_view haystack, std::string_view needle)
@@ -123,6 +168,83 @@ namespace minEngine
             WriteTextArtifact(outputDir / "VertexStageBody.glsl", result.Stages[Stage_Vertex].Body);
         }
 
+        class ScopedShaderCompileGlContext
+        {
+        public:
+            ScopedShaderCompileGlContext()
+            {
+                if (glfwGetCurrentContext() != nullptr)
+                {
+                    return;
+                }
+
+                if (!glfwInit())
+                {
+                    return;
+                }
+
+                m_OwnsGlfw = true;
+                glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+                m_Window = glfwCreateWindow(1, 1, "MaterialIRGpuCompile", nullptr, nullptr);
+                if (m_Window == nullptr)
+                {
+                    return;
+                }
+
+                glfwMakeContextCurrent(m_Window);
+                if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
+                {
+                    m_Window = nullptr;
+                }
+            }
+
+            ~ScopedShaderCompileGlContext()
+            {
+                if (m_Window != nullptr)
+                {
+                    glfwDestroyWindow(m_Window);
+                    m_Window = nullptr;
+                }
+
+                if (m_OwnsGlfw)
+                {
+                    glfwTerminate();
+                }
+            }
+
+            bool IsReady() const
+            {
+                return glfwGetCurrentContext() != nullptr;
+            }
+
+        private:
+            GLFWwindow* m_Window = nullptr;
+            bool m_OwnsGlfw = false;
+        };
+
+        bool VerifySmokeGpuCompile(const MaterialCompiledShader& result)
+        {
+            ScopedShaderCompileGlContext glContext;
+            if (!glContext.IsReady())
+            {
+                ME_CORE_ERROR("MaterialIR smoke: failed to create OpenGL context for GPU shader compile test.");
+                return false;
+            }
+
+            std::string compileError;
+            if (!Shader::TryCompileSourcesOnGpu(result.FullVertexShader, result.FullFragmentShader, &compileError))
+            {
+                ME_CORE_ERROR("MaterialIR smoke: GPU shader compile failed.\n{}", compileError);
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR smoke: GPU vertex/fragment compile + link PASSED.");
+            return true;
+        }
+
         void LogCompiledShaders(const MaterialCompiledShader& result)
         {
             ME_CORE_INFO("======== MaterialIR generated vertex shader ========");
@@ -172,14 +294,14 @@ namespace minEngine
                 "Metallic pin connected")
                 && passed;
 
-            MaterialPropertyInputDescription emissiveDescription;
-            passed = AssertTrue(graph.ResolveMaterialPropertyInput(MP_Emissive, emissiveDescription), "Emissive resolve")
+            MaterialPropertyInputDescription albedoDescription;
+            passed = AssertTrue(graph.ResolveMaterialPropertyInput(MP_Albedo, albedoDescription), "Albedo resolve")
                 && passed;
             passed = AssertTrue(
-                emissiveDescription.GraphInput != nullptr && emissiveDescription.GraphInput->IsConnected(),
-                "Emissive pin connected")
+                albedoDescription.GraphInput != nullptr && albedoDescription.GraphInput->IsConnected(),
+                "Albedo pin connected")
                 && passed;
-            passed = AssertTrue(metallicDescription.GraphInput != emissiveDescription.GraphInput, "distinct Metallic/Emissive pins")
+            passed = AssertTrue(metallicDescription.GraphInput != albedoDescription.GraphInput, "distinct Metallic/Albedo pins")
                 && passed;
 
             if (passed)
@@ -190,14 +312,12 @@ namespace minEngine
             return passed;
         }
 
-        // Smoke graph (single integrated material):
-        //   Albedo   <- TextureSample(RGB) <- TextureObject(0) + TextureCoordinate (ExternalInput TexCoord0)
+        // Smoke graph:
+        //   Albedo <- Multiply(TextureSample.rgb, tint vec3(0.2, 0.8, 0.2))
         //   Metallic <- ScalarParameter(0.3)
-        //   Emissive <- MakeFloat3(0.2, 0.8, 0.2)
-        //   Roughness/Opacity <- defaults
         //
-        // Expected shading (Unlit): FragColor.rgb = Albedo + Emissive, alpha = Opacity.
-        // With default texture=1 and UV=(0,0): Albedo=(1,1,1) -> FragColor.rgb = (1.2, 0.8, 0.2).
+        // Expected Unlit: FragColor.rgb = Albedo (tint baked in graph).
+        // White texture at UV0: rgb = (0.2, 0.8, 0.2).
         bool VerifySmokeCompileResult(const MaterialCompiledShader& result)
         {
             if (!result.Succeeded)
@@ -217,6 +337,7 @@ namespace minEngine
                 { "ExternalInput", "IR texcoord input" },
                 { "TextureRead", "IR texture sample" },
                 { "UniformParameter", "IR scalar uniform" },
+                { "Multiply", "IR multiply node" },
             }) && passed;
 
             passed = AssertAllContains(result.Stages[Stage_Fragment].Body, {
@@ -226,6 +347,9 @@ namespace minEngine
             }) && passed;
 
             passed = AssertAllContains(result.FullVertexShader, {
+                { "layout (std140) uniform PerFrameData", "vertex PerFrameData UBO" },
+                { "uniform mat4 u_Model", "vertex u_Model uniform" },
+                { "ViewProj * u_Model * vec4(a_Position, 1.0)", "vertex standard transform" },
                 { "} MaterialParameters;", "vertex MaterialParameters struct global" },
                 { "MaterialParameters.TexCoords[0] = a_TexCoord", "vertex fills MaterialParameters" },
                 { "v_MaterialTexCoord0", "vertex varying out" },
@@ -239,7 +363,7 @@ namespace minEngine
             passed = AssertAllContains(result.FullFragmentShader, {
                 { "uniform sampler2D u_Texture0", "global texture uniform" },
                 { "MaterialParameters.TexCoords[0] = v_MaterialTexCoord0", "fragment restores MaterialParameters" },
-                { "FragColor = vec4(FragmentMaterialInputs.Albedo + FragmentMaterialInputs.Emissive, FragmentMaterialInputs.Opacity)", "unlit composite" },
+                { "FragColor = vec4(FragmentMaterialInputs.Albedo, FragmentMaterialInputs.Opacity)", "unlit composite" },
             }) && passed;
 
             passed = AssertTrue(
@@ -269,13 +393,22 @@ namespace minEngine
                 return false;
             }
 
+            passed = VerifySmokeGpuCompile(result) && passed;
+
+            if (!passed)
+            {
+                LogCompiledShaders(result);
+                ME_CORE_ERROR("MaterialIR smoke FAILED during GPU compile.");
+                return false;
+            }
+
             WriteCompileArtifacts(result);
             LogCompiledShaders(result);
 
             ME_CORE_INFO(
                 "MaterialIR smoke PASSED.\n"
-                "Graph: TextureSample->Albedo, Scalar(0.3)->Metallic, float3(0.2,0.8,0.2)->Emissive.\n"
-                "If texture=1 at UV0: FragColor = vec4(1.2, 0.8, 0.2, 1).");
+                "Graph: Albedo = TextureSample * tint(0.2,0.8,0.2), Metallic = 0.3.\n"
+                "If texture=1 at UV0: FragColor = vec4(0.2, 0.8, 0.2, 1).");
             return true;
         }
 
@@ -293,49 +426,47 @@ namespace minEngine
         return false;
     }
 
+    const std::string& GetMaterialIRTestEngineDefaultAssetsRoot()
+    {
+        return g_MaterialIRTestEngineDefaultAssetsRoot;
+    }
+
     bool RunMaterialIRSmokeTests()
     {
-        MaterialGraphNodeDef_TextureCoordinate texCoord;
-        MaterialGraphNodeDef_TextureObject textureObject(0);
-        MaterialGraphNodeDef_TextureSample textureSample;
-        MaterialGraphNodeDef_ScalarParameter metallicScalar(0, 0.3f);
-        MaterialGraphNodeDef_Constant emissiveR(0.2f);
-        MaterialGraphNodeDef_Constant emissiveG(0.8f);
-        MaterialGraphNodeDef_Constant emissiveB(0.2f);
-        MaterialGraphNodeDef_MakeFloat3 emissiveColor;
-        MaterialGraphNodeDef_MaterialOutput output;
+        g_MaterialIRTestEngineDefaultAssetsRoot.clear();
+        RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot("");
 
-        Connect(textureObject, 0, textureSample, 0);
-        Connect(texCoord, 0, textureSample, 1);
-        Connect(emissiveR, 0, emissiveColor, 0);
-        Connect(emissiveG, 0, emissiveColor, 1);
-        Connect(emissiveB, 0, emissiveColor, 2);
-        Connect(textureSample, 1, output, 0);
-        ConnectToProperty(emissiveColor, 0, output, MP_Emissive);
-        ConnectToProperty(metallicScalar, 0, output, MP_Metallic);
-
-        MaterialEdGraph graph;
-        MaterialGraphNodeDef* nodeDefs[] = {
-            &texCoord, &textureObject, &textureSample, &metallicScalar,
-            &emissiveR, &emissiveG, &emissiveB, &emissiveColor, &output,
-        };
-
-        for (MaterialGraphNodeDef* nodeDef : nodeDefs)
+        if (EnsureReflectionReadyForMaterialIRTest())
         {
-            MaterialEdGraphNode graphNode;
-            graphNode.m_Definition = nodeDef;
-            graph.m_Nodes.push_back(graphNode);
+            EngineConfig engineConfig;
+            if (TryLoadEngineConfigForMaterialIRTest(engineConfig))
+            {
+                g_MaterialIRTestEngineDefaultAssetsRoot = engineConfig.EngineDefaultAssetsRoot;
+                RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot(g_MaterialIRTestEngineDefaultAssetsRoot);
+                ME_CORE_INFO(
+                    "MaterialIR test: EngineDefaultAssetsRoot = '{}'",
+                    g_MaterialIRTestEngineDefaultAssetsRoot);
+            }
+            else
+            {
+                ME_CORE_WARN(
+                    "MaterialIR test: EngineConfig load failed; continuing IR tests without EngineDefaultAssetsRoot.");
+            }
+        }
+        else
+        {
+            ME_CORE_WARN(
+                "MaterialIR test: reflection not ready; skipping EngineConfig load (IR smoke tests still run).");
         }
 
-        if (!VerifyPropertyBindingLayer(graph, output))
+        MaterialSmokeGraph smokeGraph;
+
+        if (!VerifyPropertyBindingLayer(smokeGraph.GetGraph(), smokeGraph.GetMaterialOutput()))
         {
             return false;
         }
 
-        MIRToGLSLTranslator translator;
-        MaterialCompileEnvironment env;
-        env.ShadingMode = MaterialShadingMode::Unlit;
-        if (!VerifySmokeCompileResult(MaterialCompiler::Compile(graph, translator, env)))
+        if (!VerifySmokeCompileResult(smokeGraph.CompileUnlit()))
         {
             return false;
         }

@@ -6,8 +6,11 @@
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Resource/Asset.h"
 
+#include <vector>
+
 namespace minEngine
 {
+    class RHIShader;
     class Shader;
 
     ME_STRUCT()
@@ -30,6 +33,9 @@ namespace minEngine
         virtual ~Material() = default;
 
         virtual void BindTextures() const;
+        void BindCompiledGraph(RHIShader& shader) const;
+
+        bool UsesCompiledGraphMaterial() const { return m_bUsesCompiledGraph; }
 
         ME_PROPERTY()
         std::shared_ptr<Shader> m_Shader;
@@ -39,6 +45,10 @@ namespace minEngine
         MaterialParameters m_Specular;
         ME_PROPERTY()
         MaterialParameters m_Normal;
+
+        bool m_bUsesCompiledGraph = false;
+        std::vector<std::shared_ptr<Texture2D>> m_GraphTextureSlots;
+        std::vector<float> m_GraphScalarParams;
         
         bool IsTranslucent() const
         {

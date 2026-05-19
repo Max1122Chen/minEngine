@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MaterialCompiler.h"
+#include "../MaterialCompileTypes.h"
 #include "MIRGLSLPrinter.h"
 #include "Render/Material/MaterialIR/MaterialIR.h"
 
@@ -12,10 +12,10 @@ namespace minEngine
     class MIRGraph;
     class MIRValueType;
 
-    class MIRToGLSLTranslator final : public IMaterialTranslator
+    class GLSLMaterialTranslatorImpl
     {
     public:
-        MaterialCompiledShader Translate(const MIRGraph& graph) override;
+        MaterialCompiledShader Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env);
 
     private:
         static bool IsFoldable(const MIRInstruction& instr, ShaderStage stage);

@@ -10,6 +10,7 @@
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHIBuffers.h"
+#include "Render/Shader.h"
 #include "Render/RenderCamera.h"
 #include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Render/LightSceneProxies/PointLightSceneProxy.h"
@@ -87,20 +88,30 @@ namespace minEngine
         // Set up PostProcessPasses
         
         // Add a FXAA post-process pass first, we can add more post-process passes later if needed.
-        std::shared_ptr<RHIShader> FXAAShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/FXAA.frag");
         m_PostProcessPasses.emplace_back();
         m_PostProcessPasses.back().m_SceneColorTexture = m_SceneColorTexture;
         m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
         m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
-        m_PostProcessPasses.back().m_PostProcessShader = FXAAShader;
+        if (std::shared_ptr<Shader> fxaaShader = Shader::CreateFromFiles(
+                *rhi,
+                Shader::EngineShaderPath("Present.vert"),
+                Shader::EngineShaderPath("FXAA.frag")))
+        {
+            m_PostProcessPasses.back().m_PostProcessShader = fxaaShader->GetRHIShader();
+        }
 
         // Add a sharpen pass after FXAA
-        std::shared_ptr<RHIShader> SharpenShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Sharpen.frag");
         m_PostProcessPasses.emplace_back();
         m_PostProcessPasses.back().m_SceneColorTexture = m_SceneColorTexture;
         m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
         m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
-        m_PostProcessPasses.back().m_PostProcessShader = SharpenShader;
+        if (std::shared_ptr<Shader> sharpenShader = Shader::CreateFromFiles(
+                *rhi,
+                Shader::EngineShaderPath("Present.vert"),
+                Shader::EngineShaderPath("Sharpen.frag")))
+        {
+            m_PostProcessPasses.back().m_PostProcessShader = sharpenShader->GetRHIShader();
+        }
 
         // Set up PresentPass
         m_PresentPass.Initialize();

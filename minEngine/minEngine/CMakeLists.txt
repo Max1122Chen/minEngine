@@ -1,5 +1,5 @@
 # Runtime sources are collected recursively (includes MaterialCompiler: MaterialCompileTypes,
-# MaterialShaderAssembler, MaterialShadingModel, MIRToGLSLTranslator, MaterialCompiler).
+# MaterialCompiler (facades + types); GLSL/ backend impls).
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
 list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Serialization/Legacy/.*")
 list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Reflection/Legacy/.*")

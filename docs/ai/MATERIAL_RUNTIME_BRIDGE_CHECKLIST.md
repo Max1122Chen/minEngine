@@ -2,6 +2,15 @@
 
 Last updated: 2026-05-19
 
+## 0.1) Unlit 着色器外壳（模板文件）
+
+- 路径：`{EngineDefaultAssetsRoot}/Shaders/Template/GLSL/Unlit.vert.template`、`Unlit.frag.template`（仓库内默认根为 `Assets/EngineDefault`，由 `EngineConfig.meconfig` 的 `EngineDefaultAssetsRoot` 指定）。
+- 占位：`@ME_INSERT:ANCHOR_NAME@`，由 `MaterialShaderTemplate::ApplyAnchors` 替换；未替换干净的 `@ME_INSERT:` 会报编译诊断。
+- **装配**由 **`MaterialShellAssembler::Assemble`** 完成（门面按 `ShaderLanguage` 构造局部 `GLSL/GLSLMaterialShellAssemblerImpl`）；`ShadingModel` 只解析模板文件名；固定 GLSL 块在 `Shaders/Include/GLSL/*.glslinc`。
+- **代码布局**：`MaterialCompiler/` 根目录为语言无关门面；`MaterialCompiler/GLSL/` 为 GLSL 后端（Translator/Shell Impl、`MIRGLSLPrinter`、`GLSLShaderBinding`）。
+- **编译入口**：`MaterialCompiler::Compile(graph, env)` → `MaterialTranslator::Translate` → `MaterialShellAssembler::Assemble`（Compiler 对后端无感）。
+- 解析顺序：`MaterialCompileEnvironment::EngineDefaultAssetsRootOverride`（非空优先）→ `RuntimeGlobalContext::GetEngineDefaultAssetsRoot()`。
+
 ## 0) 目标（什么叫「接通了」）
 
 在 **不改材质图编辑器 UI** 的前提下，满足：
@@ -23,8 +32,8 @@ Last updated: 2026-05-19
 | 层 | 已有 | 缺失 |
 |----|------|------|
 | MIR 编译 | `MaterialCompiler`、Unlit Assembler、`MaterialParameters.TexCoords` | — |
-| 测试 | `--material-ir-test` 字符串断言 + 写 `Saved/Materials/*.glsl` | 无 `glCompileShader` |
-| `Shader` / `RHIShader` | 从 **文件路径** 加载 GLSL（`OpenGLShader(path, path)`） | 从 **内存字符串** 创建 |
+| 测试 | `--material-ir-test` 字符串 + **GPU compile/link**（`TryCompileShaderSourcesOnGpu`） | — |
+| `Shader` / `RHIShader` | `Shader::CompileFromFiles` / `CreateFromFiles` / `CreateFromSource`；读盘在 `Shader` 内，RHI 只收源码 | — |
 | `Material` 资产 | `m_Shader` + `m_Diffuse`/`m_Specular`/`m_Normal` + `BindTextures()` | 图编译结果、slot→纹理映射、scalar uniform 表 |
 | 网格布局 | Assimp：`a_Position@0`, `a_TexCoord@1`, `a_Normal@2` | 与生成 shader 的 `layout(location=…)` **一致** |
 | 生成 Vertex | `a_TexCoord` → `MaterialParameters` → varying | **无** `PerFrameData` / `u_Model` / 正确 `gl_Position` |
@@ -38,10 +47,10 @@ Last updated: 2026-05-19
 
 ### A. 编译产物 → GPU Program
 
-- [ ] **A1** `RHIShader` / `OpenGLShader` 增加「源码字符串」构造路径（或 `CreateRHIShaderFromSource(vert, frag)`），保留现有文件路径 API。
-- [ ] **A2** 编译/链接失败时：日志输出 `infoLog`，并写入 `MaterialCompiledShader::Diagnostics`（不要只 `std::cout`）。
-- [ ] **A3** 封装 `MaterialCompiledShader → std::shared_ptr<Shader>`（或 `RHIShader`）工厂，例如 `CreateShaderFromCompiled(const MaterialCompiledShader&)`。
-- [ ] **A4** 在 `MaterialIRTest` 或独立 `--material-gl-compile-test` 中对 `FullVertexShader`/`FullFragmentShader` 调用 GPU 编译（与 A1 同 PR 或紧跟）。
+- [x] **A1** `Shader::CompileFromSource/FromFiles`；`RHI::CreateRHIShader` 仅接受源码字符串。
+- [x] **A2** 失败时 `ME_CORE_ERROR` + `RHIShader::GetCompileLog()`（完整 info log）。
+- [ ] **A3** 封装 `MaterialCompiledShader → Shader` 资产工厂（R2）。
+- [x] **A4** `MaterialIRTest::VerifySmokeGpuCompile`（无 GL 时创建 1×1 隐藏窗口）。
 
 ### B. 材质资产与参数绑定
 
@@ -118,15 +127,15 @@ gl_Position = vec4(a_Position, 1.0);  // 物体空间直接进裁剪，无相机
 
 ## 5) 推进计划（建议顺序）
 
-### Phase R0 — 编译可信（~0.5–1 天）
+### Phase R0 — 编译可信（~0.5–1 天） ✅ 2026-05-19
 
 **目标：** 字符串 shader 能在 GPU 上编译通过。
 
-1. A1 + A2：内存源码 + 诊断回传  
-2. A4：`--material-ir-test` 内或子命令 GPU compile smoke shaders  
-3. （可选）断言 `FragmentMaterialInputs` 在 `void main` 之前  
+1. ~~A1 + A2~~ 完成  
+2. ~~A4~~ 完成  
+3. A3 留 R2  
 
-**完成标准：** CI/本地 test exit 0，失败时能看到 GL info log。
+**完成标准：** `Editor.exe --material-ir-test` exit 0，日志含 `GPU vertex/fragment compile + link PASSED`。
 
 ---
 

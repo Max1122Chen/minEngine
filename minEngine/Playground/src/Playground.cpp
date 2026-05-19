@@ -14,6 +14,7 @@
 
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLShader.h"
 
 using namespace minEngine;
 

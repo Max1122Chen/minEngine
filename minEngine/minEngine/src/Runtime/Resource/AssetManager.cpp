@@ -851,7 +851,21 @@ namespace minEngine
             return nullptr;
         }
         std::shared_ptr<Shader> shader = NewObject<Shader>(meta.AssetName, nullptr, meta.Guid);
-        shader->m_RHIShader = RenderSystem::Get().GetRHI()->CreateRHIShader(resource.m_VertexPath.c_str(), resource.m_FragmentPath.c_str());
+        std::string compileError;
+        if (!shader->CompileFromFiles(
+                *RenderSystem::Get().GetRHI(),
+                resource.m_VertexPath,
+                resource.m_FragmentPath,
+                &compileError))
+        {
+            ME_CORE_ERROR(
+                "Failed to compile shader asset '{}'. Vertex: '{}', Fragment: '{}'. {}",
+                meta.AssetPath,
+                resource.m_VertexPath,
+                resource.m_FragmentPath,
+                compileError);
+            return nullptr;
+        }
         return shader;
     }
 

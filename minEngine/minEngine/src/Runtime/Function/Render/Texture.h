@@ -6,6 +6,7 @@
 namespace minEngine
 {
     class AssetManager;
+    class RHI;
     class RHITexture2D;
     class RHITextureCube;
 
@@ -44,6 +45,8 @@ namespace minEngine
         TextureWrapping GetWrapping() const { return m_Wrapping; }
         TextureFiltering GetFiltering() const { return m_Filtering; }
         uint32_t GetChannels() const { return m_Channels; }
+
+        static std::shared_ptr<Texture2D> CreateSolidRGBA(RHI& rhi, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 
     protected:
         friend class AssetManager;

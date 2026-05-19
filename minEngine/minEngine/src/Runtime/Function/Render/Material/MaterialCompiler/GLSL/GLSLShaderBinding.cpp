@@ -1,4 +1,4 @@
-#include "MaterialShaderParameters.h"
+#include "GLSLShaderBinding.h"
 
 namespace minEngine
 {

@@ -3,6 +3,7 @@
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIShader.h"
+#include "Render/Shader.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 
 #include "Render/OpenGL/OpenGLVertexArrayObject.h"
@@ -14,7 +15,13 @@ namespace minEngine
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
 
-        m_DepthOnlyShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/ShadowPass.frag");
+        if (std::shared_ptr<Shader> depthShader = Shader::CreateFromFiles(
+                *rhi,
+                Shader::EngineShaderPath("ShadowPass.vert"),
+                Shader::EngineShaderPath("ShadowPass.frag")))
+        {
+            m_DepthOnlyShader = depthShader->GetRHIShader();
+        }
     }
 
     void minEngine::ShadowPass::Execute()

@@ -421,6 +421,45 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 
 ## Deferred Reminders (for future sessions)
 
+### 2026-05-19 - Material R1: C1a vertex transform + BasePass graph branch
+- Goal:
+	Viewport-visible compiled graph unlit materials (R1).
+- Main changes:
+	Unlit assembler: PerFrameData + u_Model + ViewProj * u_Model * vec4(a_Position,1).
+	Material: m_bUsesCompiledGraph, m_GraphTextureSlots, m_GraphScalarParams, BindCompiledGraph().
+	BasePass: legacy Phong vs compiled graph binding split.
+	Editor smoke scene: graph binding + SyncSceneToRenderPipeline.
+	MaterialIRTest: vertex transform assertions.
+- Validation done:
+	cmake build Editor; --material-ir-test exit 0.
+- Next step:
+	R2 polish / R3 or visual confirm in editor viewport.
+
+### 2026-05-19 - Shader asset API + editor material smoke scene
+- Goal:
+	Converge file→GPU shader on Shader class; editor startup active scene with MIR smoke material quad.
+- Main changes:
+	Removed ShaderSourceIO; Shader.cpp owns ReadSourceFile, CompileFromFiles, CreateFromSource, TryCompileSourcesOnGpu, EngineShaderPath.
+	MaterialSmokeGraph shared by MaterialIRTest and EditorDefaultScene.
+	SetEditorMaterialIRSmokeActiveScene() after OpenProject; quad + camera + light.
+	Fixed GameObject::AddComponent return type (return newComponentBase).
+	Reverted Playground shader changes (legacy, BUILD_PLAYGROUND OFF).
+- Validation done:
+	cmake build Editor; --material-ir-test exit 0.
+
+### 2026-05-19 - Material R0: RHIShader source compile + GPU test
+- Goal:
+	R0: RHIShader accepts GLSL source strings; file IO at AssetManager; GPU compile smoke test.
+- Main changes:
+	OpenGLShader(vertexSource, fragmentSource) with IsValid/GetCompileLog; CreateRHIShader returns nullptr on failure.
+	ShaderSourceIO: ReadShaderSourceFile, CreateRHIShaderFromFiles, TryCompileShaderSourcesOnGpu, EngineShaderPath.
+	AssetManager/PresentPass/ShadowPass/RenderPipeline/Playground use file read + source API (no paths in RHI).
+	MaterialIRTest: headless GL context when needed; GPU compile/link assert on smoke shaders.
+- Validation done:
+	cmake build Editor; Editor.exe --material-ir-test exit 0 (includes GPU compile PASSED).
+- Next step:
+	R1 C1a Unlit vertex PerFrameData + BasePass graph-unlit branch.
+
 ### 2026-05-19 - Material runtime bridge checklist
 - Goal:
 	Document GPU/viewport integration path after S0–S2 compile pipeline.

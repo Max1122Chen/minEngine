@@ -1,6 +1,7 @@
 #include "MaterialCompiler.h"
 
-#include "MaterialShaderAssembler.h"
+#include "MaterialShellAssembler.h"
+#include "MaterialTranslator.h"
 #include "../MaterialEdGraph.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "../MaterialIR/MIRBuilder.h"
@@ -9,10 +10,7 @@
 
 namespace minEngine
 {
-    MaterialCompiledShader MaterialCompiler::Compile(
-        const MaterialEdGraph& graph,
-        IMaterialTranslator& translator,
-        const MaterialCompileEnvironment& env)
+    MaterialCompiledShader MaterialCompiler::Compile(const MaterialEdGraph& graph, const MaterialCompileEnvironment& env)
     {
         const std::vector<MaterialGraphNodeDef*> materialOutputNodes = graph.GetMaterialOutputNodeDefs();
         if (materialOutputNodes.empty())
@@ -34,7 +32,7 @@ namespace minEngine
         MIRGraph mirGraph;
         builder.Build(graph, mirGraph);
 
-        MaterialCompiledShader compiled = translator.Translate(mirGraph);
+        MaterialCompiledShader compiled = MaterialTranslator::Translate(mirGraph, env);
         compiled.IRDump = DebugDumpMIR(mirGraph, "Material");
 
         for (const std::string& diagnostic : mirGraph.GetDiagnostics())
@@ -45,7 +43,7 @@ namespace minEngine
         compiled.Succeeded = compiled.Succeeded && mirGraph.IsValid();
         if (compiled.Succeeded)
         {
-            compiled.Succeeded = MaterialShaderAssembler::Assemble(compiled, env);
+            compiled.Succeeded = MaterialShellAssembler::Assemble(compiled, env);
         }
 
         return compiled;

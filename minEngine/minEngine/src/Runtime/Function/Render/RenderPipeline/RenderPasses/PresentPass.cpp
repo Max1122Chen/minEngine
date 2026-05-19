@@ -5,6 +5,7 @@
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
+#include "Render/Shader.h"
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -15,7 +16,13 @@ namespace minEngine
     void PresentPass::Initialize()
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
-        m_ScreenQuadShader = rhi->CreateRHIShader("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Present.frag");
+        if (std::shared_ptr<Shader> screenQuadShader = Shader::CreateFromFiles(
+                *rhi,
+                Shader::EngineShaderPath("Present.vert"),
+                Shader::EngineShaderPath("Present.frag")))
+        {
+            m_ScreenQuadShader = screenQuadShader->GetRHIShader();
+        }
     }
 
     void PresentPass::Execute()
