@@ -4,7 +4,7 @@
 
 namespace minEngine
 {
-    bool MaterialShellAssembler::Assemble(MaterialCompiledShader& compiled, const MaterialCompileEnvironment& env)
+    bool MaterialShellAssembler::Assemble(MaterialCompileResult& compiled, const MaterialCompileEnvironment& env)
     {
         switch (env.ShaderLanguage)
         {

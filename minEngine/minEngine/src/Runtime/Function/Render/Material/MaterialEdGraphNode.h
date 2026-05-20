@@ -4,14 +4,20 @@
 #include "MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "MaterialTypes.h"
 
+#include <memory>
+
 namespace minEngine
 {
     class MaterialEdGraphNode : public EditorGraphNode
     {
     public:
-        MaterialGraphNodeDef* m_Definition = nullptr;
+        void SetDefinition(std::unique_ptr<MaterialGraphNodeDef> definition);
+        MaterialGraphNodeDef* GetDefinition() const { return m_Definition.get(); }
 
         void CreateInputPins();
         void CreateOutputPins();
+
+    private:
+        std::unique_ptr<MaterialGraphNodeDef> m_Definition;
     };
 }

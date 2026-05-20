@@ -12,7 +12,7 @@ namespace minEngine
     bool GLSLMaterialShellAssemblerImpl::ResolveTemplateSet(
         MaterialShadingModel shadingModel,
         TemplateSet& outSet,
-        MaterialCompiledShader& compiled)
+        MaterialCompileResult& compiled)
     {
         switch (shadingModel)
         {
@@ -153,7 +153,7 @@ namespace minEngine
         return block;
     }
 
-    bool GLSLMaterialShellAssemblerImpl::Assemble(MaterialCompiledShader& compiled, const MaterialCompileEnvironment& env)
+    bool GLSLMaterialShellAssemblerImpl::Assemble(MaterialCompileResult& compiled, const MaterialCompileEnvironment& env)
     {
         TemplateSet templateSet;
         if (!ResolveTemplateSet(env.ShadingModel, templateSet, compiled))

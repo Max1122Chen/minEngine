@@ -3,6 +3,13 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialResourceParameters)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialResourceParameters, Value)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialResourceParameters, Texture)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialResourceParameters, GReflectionClassRegister_MaterialResourceParameters_eff79908)
+
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialResource)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialResource, m_Name)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialResource, m_ShaderPath)

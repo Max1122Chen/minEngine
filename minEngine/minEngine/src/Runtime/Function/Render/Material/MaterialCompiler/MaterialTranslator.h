@@ -9,6 +9,6 @@ namespace minEngine
     class MaterialTranslator
     {
     public:
-        static MaterialCompiledShader Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env);
+        static MaterialCompileResult Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env);
     };
 }

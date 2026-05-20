@@ -18,6 +18,7 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialTestGraph.h"
 #include "Runtime/Resource/AssetResources/MaterialResource.h"
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Resource/AssetResources/ShaderResource.h"
@@ -821,8 +822,26 @@ namespace minEngine
             return nullptr;
         }
         std::shared_ptr<Material> material = NewObject<Material>(meta.AssetName, nullptr, meta.Guid);
-        material->m_Shader = LoadAsset<Shader>(resource.m_ShaderPath);
-        material->m_Diffuse = resource.m_Diffuse;
+
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (rhi == nullptr)
+        {
+            ME_CORE_ERROR("Failed to create graph material '{}': RHI is not available.", meta.AssetPath);
+            return nullptr;
+        }
+
+        std::string compileError;
+        if (!SetupSmokeMaterial(*material, *rhi, &compileError))
+        {
+            ME_CORE_ERROR("Failed to compile graph material '{}': {}", meta.AssetPath, compileError);
+            return nullptr;
+        }
+
+        if (resource.m_Diffuse.Texture)
+        {
+            material->SetTextureParameter("BaseColor", resource.m_Diffuse.Texture);
+        }
+
         return material;
     }
 

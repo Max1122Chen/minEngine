@@ -202,8 +202,11 @@ namespace minEngine
         emitter.Output(0, emitter.ExternalInput(EI_TexCoord0));
     }
 
-    MaterialGraphNodeDef_TextureObject::MaterialGraphNodeDef_TextureObject(int textureSlotIndex)
-        : TextureSlotIndex(textureSlotIndex)
+    MaterialGraphNodeDef_TextureObject::MaterialGraphNodeDef_TextureObject(
+        std::string parameterName,
+        int textureSlotIndex)
+        : ParameterName(std::move(parameterName))
+        , TextureSlotIndex(textureSlotIndex)
     {
         m_Outputs.push_back({ "Texture" });
     }
@@ -230,8 +233,12 @@ namespace minEngine
         emitter.Output(1, emitter.Cast(sample, MIRPrimitiveType::GetFloat3()));
     }
 
-    MaterialGraphNodeDef_ScalarParameter::MaterialGraphNodeDef_ScalarParameter(int uniformSlotIndex, float defaultValue)
-        : UniformSlotIndex(uniformSlotIndex)
+    MaterialGraphNodeDef_ScalarParameter::MaterialGraphNodeDef_ScalarParameter(
+        std::string parameterName,
+        int uniformSlotIndex,
+        float defaultValue)
+        : ParameterName(std::move(parameterName))
+        , UniformSlotIndex(uniformSlotIndex)
         , DefaultValue(defaultValue)
     {
         m_Outputs.push_back({ "Value" });

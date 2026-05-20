@@ -12,9 +12,9 @@
 
 namespace minEngine
 {
-    MaterialCompiledShader GLSLMaterialTranslatorImpl::Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env)
+    MaterialCompileResult GLSLMaterialTranslatorImpl::Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env)
     {
-        MaterialCompiledShader result;
+        MaterialCompileResult result;
 
         if (graph.GetOutputs(Stage_Fragment).empty())
         {
@@ -56,8 +56,36 @@ namespace minEngine
         result.Stages[Stage_Fragment].Preamble = BuildFragmentShaderPreamble();
         result.Stages[Stage_Fragment].Body = m_Printer.TakeBuffer();
         result.UsesTexCoord0 = m_UsesTexCoord0;
+        FillParameterLayout(result);
         result.Succeeded = true;
         return result;
+    }
+
+    void GLSLMaterialTranslatorImpl::FillParameterLayout(MaterialCompileResult& result) const
+    {
+        result.ParameterLayout.Parameters.clear();
+
+        std::vector<int> textureSlots(m_UsedTextureSlots.begin(), m_UsedTextureSlots.end());
+        std::sort(textureSlots.begin(), textureSlots.end());
+        for (int textureSlotIndex : textureSlots)
+        {
+            MaterialShaderParameterDesc desc;
+            desc.Type = MaterialShaderParameterType::Texture2D;
+            desc.SlotIndex = textureSlotIndex;
+            desc.ShaderSymbolName = GetTextureSamplerName(textureSlotIndex);
+            result.ParameterLayout.Parameters.push_back(desc);
+        }
+
+        std::vector<int> scalarSlots(m_UsedScalarUniformSlots.begin(), m_UsedScalarUniformSlots.end());
+        std::sort(scalarSlots.begin(), scalarSlots.end());
+        for (int scalarSlotIndex : scalarSlots)
+        {
+            MaterialShaderParameterDesc desc;
+            desc.Type = MaterialShaderParameterType::Scalar;
+            desc.SlotIndex = scalarSlotIndex;
+            desc.ShaderSymbolName = GetScalarUniformName(scalarSlotIndex);
+            result.ParameterLayout.Parameters.push_back(desc);
+        }
     }
 
     void GLSLMaterialTranslatorImpl::BeginStage(ShaderStage stage)

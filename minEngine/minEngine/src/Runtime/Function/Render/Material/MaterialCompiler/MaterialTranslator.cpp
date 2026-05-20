@@ -5,7 +5,7 @@
 
 namespace minEngine
 {
-    MaterialCompiledShader MaterialTranslator::Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env)
+    MaterialCompileResult MaterialTranslator::Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env)
     {
         switch (env.ShaderLanguage)
         {
@@ -16,7 +16,7 @@ namespace minEngine
         }
         default:
         {
-            MaterialCompiledShader result;
+            MaterialCompileResult result;
             result.Diagnostics.push_back({
                 MaterialCompileDiagnostic::Error,
                 "Unsupported MaterialShaderLanguage for MIR translation.",

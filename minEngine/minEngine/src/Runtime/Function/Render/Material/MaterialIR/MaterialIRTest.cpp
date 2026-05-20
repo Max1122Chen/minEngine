@@ -10,7 +10,8 @@
 #include "../MaterialEdGraph.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "../MaterialPropertyUtil.h"
-#include "../MaterialSmokeGraph.h"
+#include "../../Material.h"
+#include "../MaterialTestGraph.h"
 #include "Render/Shader.h"
 
 #include <glad/glad.h>
@@ -157,7 +158,7 @@ namespace minEngine
             }
         }
 
-        void WriteCompileArtifacts(const MaterialCompiledShader& result)
+        void WriteCompileArtifacts(const MaterialCompileResult& result)
         {
             const std::filesystem::path outputDir = "Saved/Materials";
             WriteTextArtifact(outputDir / "IRDump.txt", result.IRDump);
@@ -225,7 +226,7 @@ namespace minEngine
             bool m_OwnsGlfw = false;
         };
 
-        bool VerifySmokeGpuCompile(const MaterialCompiledShader& result)
+        bool VerifySmokeGpuCompile(const MaterialCompileResult& result)
         {
             ScopedShaderCompileGlContext glContext;
             if (!glContext.IsReady())
@@ -245,7 +246,7 @@ namespace minEngine
             return true;
         }
 
-        void LogCompiledShaders(const MaterialCompiledShader& result)
+        void LogCompiledShaders(const MaterialCompileResult& result)
         {
             ME_CORE_INFO("======== MaterialIR generated vertex shader ========");
             ME_CORE_INFO("\n{}", result.FullVertexShader);
@@ -318,7 +319,7 @@ namespace minEngine
         //
         // Expected Unlit: FragColor.rgb = Albedo (tint baked in graph).
         // White texture at UV0: rgb = (0.2, 0.8, 0.2).
-        bool VerifySmokeCompileResult(const MaterialCompiledShader& result)
+        bool VerifySmokeCompileResult(const MaterialCompileResult& result)
         {
             if (!result.Succeeded)
             {
@@ -330,6 +331,31 @@ namespace minEngine
             }
 
             bool passed = true;
+
+            passed = AssertTrue(result.ParameterLayout.Parameters.size() == 2, "parameter layout entry count")
+                && passed;
+
+            bool foundTextureLayout = false;
+            bool foundScalarLayout = false;
+            for (const MaterialShaderParameterDesc& parameterDesc : result.ParameterLayout.Parameters)
+            {
+                if (parameterDesc.Type == MaterialShaderParameterType::Texture2D
+                    && parameterDesc.SlotIndex == 0
+                    && parameterDesc.ShaderSymbolName == "u_Texture0")
+                {
+                    foundTextureLayout = true;
+                }
+
+                if (parameterDesc.Type == MaterialShaderParameterType::Scalar
+                    && parameterDesc.SlotIndex == 0
+                    && parameterDesc.ShaderSymbolName == "u_ScalarParam0")
+                {
+                    foundScalarLayout = true;
+                }
+            }
+
+            passed = AssertTrue(foundTextureLayout, "layout u_Texture0") && passed;
+            passed = AssertTrue(foundScalarLayout, "layout u_ScalarParam0") && passed;
 
             passed = AssertAllContains(result.IRDump, {
                 { "; minEngine Material IR dump", "IR header" },
@@ -459,19 +485,61 @@ namespace minEngine
                 "MaterialIR test: reflection not ready; skipping EngineConfig load (IR smoke tests still run).");
         }
 
-        MaterialSmokeGraph smokeGraph;
+        Material smokeMaterial;
+        PopulateSmokeMaterialGraph(smokeMaterial.m_Graph);
+        smokeMaterial.m_ShadingModel = MaterialShadingModel::Unlit;
 
-        if (!VerifyPropertyBindingLayer(smokeGraph.GetGraph(), smokeGraph.GetMaterialOutput()))
+        const MaterialGraphNodeDef_MaterialOutput* outputNode = FindMaterialOutputNode(smokeMaterial.m_Graph);
+        if (outputNode == nullptr)
+        {
+            ME_CORE_ERROR("MaterialIR test: smoke graph has no MaterialOutput node.");
+            return false;
+        }
+
+        if (!VerifyPropertyBindingLayer(smokeMaterial.m_Graph, *outputNode))
         {
             return false;
         }
 
-        if (!VerifySmokeCompileResult(smokeGraph.CompileUnlit()))
+        MaterialCompileContext ctx;
+        if (!g_MaterialIRTestEngineDefaultAssetsRoot.empty())
+        {
+            ctx.EngineDefaultAssetsRootOverride = g_MaterialIRTestEngineDefaultAssetsRoot;
+        }
+
+        const MaterialCompileResult compiled =
+            MaterialCompiler::CompileForDiagnostics(smokeMaterial.m_Graph, smokeMaterial.m_ShadingModel, ctx);
+        if (!VerifySmokeCompileResult(compiled))
         {
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR all tests PASSED (binding + smoke compile).");
+        bool parameterNameChecks = true;
+        for (const MaterialEdGraphNode& graphNode : smokeMaterial.m_Graph.m_Nodes)
+        {
+            if (const MaterialGraphNodeDef_TextureObject* textureNode =
+                    dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(graphNode.GetDefinition()))
+            {
+                parameterNameChecks = AssertTrue(textureNode->ParameterName == "BaseColor", "texture parameter name")
+                    && parameterNameChecks;
+            }
+
+            if (const MaterialGraphNodeDef_ScalarParameter* scalarNode =
+                    dynamic_cast<const MaterialGraphNodeDef_ScalarParameter*>(graphNode.GetDefinition()))
+            {
+                parameterNameChecks = AssertTrue(scalarNode->ParameterName == "Metallic", "scalar parameter name")
+                    && parameterNameChecks;
+                parameterNameChecks = AssertTrue(scalarNode->DefaultValue == 0.3f, "scalar default value")
+                    && parameterNameChecks;
+            }
+        }
+
+        if (!parameterNameChecks)
+        {
+            return false;
+        }
+
+        ME_CORE_INFO("MaterialIR all tests PASSED (binding + smoke compile on Material::m_Graph).");
         return true;
     }
 }

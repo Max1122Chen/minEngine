@@ -15,7 +15,7 @@ namespace minEngine
     class GLSLMaterialTranslatorImpl
     {
     public:
-        MaterialCompiledShader Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env);
+        MaterialCompileResult Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env);
 
     private:
         static bool IsFoldable(const MIRInstruction& instr, ShaderStage stage);
@@ -41,6 +41,7 @@ namespace minEngine
         std::string BuildFragmentShaderPreamble() const;
         std::string GetTextureSamplerName(int textureSlotIndex) const;
         std::string GetScalarUniformName(int uniformSlotIndex) const;
+        void FillParameterLayout(MaterialCompileResult& result) const;
         static int ExternalInputIdToTexCoordIndex(MIRExternalInputId inputId);
 
         const MIRGraph* m_Graph = nullptr;

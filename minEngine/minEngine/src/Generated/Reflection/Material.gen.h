@@ -3,18 +3,8 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
-ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialParameters)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialParameters, Value)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialParameters, Texture)
-ME_REFLECTION_ACCESSOR_END()
-
-ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialParameters, GReflectionClassRegister_MaterialParameters_4b28003d)
-
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Material)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_Shader)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_Diffuse)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_Specular)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_Normal)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::Material, GReflectionClassRegister_Material_a5a5b161)

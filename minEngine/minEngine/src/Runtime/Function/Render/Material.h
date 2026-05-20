@@ -1,60 +1,82 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Core/Math/Math.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Resource/Asset.h"
+#include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
+#include "Runtime/Function/Render/Material/MaterialEdGraph.h"
 
+#include <string>
 #include <vector>
 
 namespace minEngine
 {
     class RHIShader;
     class Shader;
+    class MaterialCompiler;
+    class MaterialGraphNodeDef_TextureObject;
+    class MaterialGraphNodeDef_ScalarParameter;
 
-    ME_STRUCT()
-    struct MaterialParameters
+    struct MaterialTextureParameter
     {
-        ME_GENERATED_BODY(MaterialParameters)
+        std::string ParameterName;
+        int SlotIndex = 0;
+        std::string ShaderSymbolName;
+        std::shared_ptr<Texture2D> Value;
+    };
 
-        ME_PROPERTY()
-        Vector4 Value{ 1.0f, 1.0f, 1.0f, 1.0f };
-        ME_PROPERTY()
-        std::shared_ptr<Texture2D> Texture{ nullptr };
+    struct MaterialScalarParameter
+    {
+        std::string ParameterName;
+        int SlotIndex = 0;
+        std::string ShaderSymbolName;
+        float Value = 0.0f;
     };
 
     ME_CLASS()
     class Material : public Asset
     {
         ME_GENERATED_BODY(Material)
+        friend class MaterialCompiler;
+
     public:
         Material() = default;
         virtual ~Material() = default;
 
-        virtual void BindTextures() const;
-        void BindCompiledGraph(RHIShader& shader) const;
+        bool Compile();
+        void BindForDraw(RHIShader& shader) const;
 
-        bool UsesCompiledGraphMaterial() const { return m_bUsesCompiledGraph; }
+        void SetTextureParameter(const std::string& parameterName, std::shared_ptr<Texture2D> texture);
+        void SetScalarParameter(const std::string& parameterName, float value);
+
+        bool IsCompiledForDraw() const
+        {
+            return m_Shader != nullptr && m_Shader->IsValid() && !m_ParameterLayout.Parameters.empty();
+        }
 
         ME_PROPERTY()
         std::shared_ptr<Shader> m_Shader;
-        ME_PROPERTY()
-        MaterialParameters m_Diffuse;
-        ME_PROPERTY()
-        MaterialParameters m_Specular;
-        ME_PROPERTY()
-        MaterialParameters m_Normal;
 
-        bool m_bUsesCompiledGraph = false;
-        std::vector<std::shared_ptr<Texture2D>> m_GraphTextureSlots;
-        std::vector<float> m_GraphScalarParams;
-        
-        bool IsTranslucent() const
-        {
-            // A material is considered translucent if its diffuse color has an alpha value less than 1, or if it has a diffuse texture with 4 channels (indicating it has an alpha channel)
-            return m_Diffuse.Value.a < 1.0f || (m_Diffuse.Texture && m_Diffuse.Texture->GetChannels() == 4);
-        }
+        MaterialShadingModel m_ShadingModel = MaterialShadingModel::Unlit;
+        MaterialEdGraph m_Graph;
+        std::vector<MaterialCompileDiagnostic> m_LastCompileDiagnostics;
+        MaterialShaderParameterLayout m_ParameterLayout;
+        std::vector<MaterialTextureParameter> m_TextureParameters;
+        std::vector<MaterialScalarParameter> m_ScalarParameters;
+
+        bool IsTranslucent() const { return false; }
+
+    private:
+        bool CommitCompileResult(const MaterialCompileResult& result, const MaterialCompileContext& ctx);
+
+        const MaterialGraphNodeDef_TextureObject* FindTextureNodeBySlot(int slotIndex) const;
+        const MaterialGraphNodeDef_ScalarParameter* FindScalarNodeBySlot(int slotIndex) const;
+
+        MaterialTextureParameter* FindTextureParameter(const std::string& parameterName);
+        MaterialTextureParameter* FindTextureParameterBySlot(int slotIndex);
+        MaterialScalarParameter* FindScalarParameter(const std::string& parameterName);
+        MaterialScalarParameter* FindScalarParameterBySlot(int slotIndex);
     };
 }
 

@@ -1,10 +1,24 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
+#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
+
+#include <vector>
 
 namespace minEngine
 {
     class RenderPipeline;
     class FrameBuffer;
+    class RHIShader;
+
+    struct MeshPassSceneBinding
+    {
+        const MeshDrawCommand& DrawCommand;
+        bool bBindLighting = false;
+        const ShadowResourceHandle* DirectionalShadowHandle = nullptr;
+        const std::vector<ShadowResourceHandle>* SpotShadowHandles = nullptr;
+        const std::vector<ShadowResourceHandle>* PointShadowHandles = nullptr;
+    };
 
     class RenderPassBase
     {
@@ -17,8 +31,11 @@ namespace minEngine
     protected:
         virtual void Render() = 0;
 
+        void DrawMeshCommand(const MeshDrawCommand& drawCommand);
+        void BindSceneDrawResources(RHIShader& shader, const MeshPassSceneBinding& binding);
+
     public:
-        RenderPipeline* pipeline;
+        RenderPipeline* pipeline = nullptr;
         FrameBuffer* m_FrameBuffer = nullptr;
     };
 }

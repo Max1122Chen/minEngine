@@ -22,19 +22,19 @@ namespace minEngine
             const MaterialCompileEnvironment& env,
             const char* fileName,
             std::string& outText,
-            MaterialCompiledShader& compiled);
+            MaterialCompileResult& compiled);
 
         static bool LoadIncludeFile(
             const std::filesystem::path& engineDefaultAssetsRoot,
             const MaterialCompileEnvironment& env,
             const char* relativePath,
             std::string& outText,
-            MaterialCompiledShader& compiled);
+            MaterialCompileResult& compiled);
 
         static bool ApplyAnchors(
             std::string& inOutTemplate,
             const std::vector<std::pair<std::string, std::string>>& anchorsInOrder,
-            MaterialCompiledShader& compiled);
+            MaterialCompileResult& compiled);
 
         static bool AssembleStageFromTemplate(
             const std::filesystem::path& engineDefaultAssetsRoot,
@@ -42,7 +42,7 @@ namespace minEngine
             const char* templateFileName,
             const std::vector<std::pair<std::string, std::string>>& anchors,
             std::string& outFullShader,
-            MaterialCompiledShader& compiled);
+            MaterialCompileResult& compiled);
 
         static std::string EnsureTrailingNewline(std::string text);
     };

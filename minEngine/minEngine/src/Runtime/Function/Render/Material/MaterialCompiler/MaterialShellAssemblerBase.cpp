@@ -14,7 +14,7 @@ namespace minEngine
             return std::string("@ME_INSERT:") + key + "@";
         }
 
-        bool ReadTextFile(const std::filesystem::path& path, std::string& outText, MaterialCompiledShader& compiled)
+        bool ReadTextFile(const std::filesystem::path& path, std::string& outText, MaterialCompileResult& compiled)
         {
             std::ifstream inputFile(path, std::ios::binary);
             if (!inputFile.is_open())
@@ -59,7 +59,7 @@ namespace minEngine
         const MaterialCompileEnvironment& env,
         const char* fileName,
         std::string& outText,
-        MaterialCompiledShader& compiled)
+        MaterialCompileResult& compiled)
     {
         if (engineDefaultAssetsRoot.empty())
         {
@@ -99,7 +99,7 @@ namespace minEngine
         const MaterialCompileEnvironment& env,
         const char* relativePath,
         std::string& outText,
-        MaterialCompiledShader& compiled)
+        MaterialCompileResult& compiled)
     {
         if (engineDefaultAssetsRoot.empty())
         {
@@ -150,7 +150,7 @@ namespace minEngine
     bool MaterialShellAssemblerBase::ApplyAnchors(
         std::string& inOutTemplate,
         const std::vector<std::pair<std::string, std::string>>& anchorsInOrder,
-        MaterialCompiledShader& compiled)
+        MaterialCompileResult& compiled)
     {
         for (const auto& entry : anchorsInOrder)
         {
@@ -198,7 +198,7 @@ namespace minEngine
         const char* templateFileName,
         const std::vector<std::pair<std::string, std::string>>& anchors,
         std::string& outFullShader,
-        MaterialCompiledShader& compiled)
+        MaterialCompileResult& compiled)
     {
         std::string templateText;
         if (!LoadTemplateFile(engineDefaultAssetsRoot, env, templateFileName, templateText, compiled))

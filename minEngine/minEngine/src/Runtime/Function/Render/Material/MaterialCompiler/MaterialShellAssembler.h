@@ -7,6 +7,6 @@ namespace minEngine
     class MaterialShellAssembler
     {
     public:
-        static bool Assemble(MaterialCompiledShader& compiled, const MaterialCompileEnvironment& env);
+        static bool Assemble(MaterialCompileResult& compiled, const MaterialCompileEnvironment& env);
     };
 }

@@ -1,8 +1,13 @@
 #pragma once
 #include "Core.h"
 #include "../MaterialTypes.h"
+
+#include <memory>
+#include <string>
+
 namespace minEngine
 {
+    class Texture2D;
     class MaterialTranslator;
     class MaterialEdGraphNode;
     class MIRBuilder;
@@ -175,10 +180,12 @@ namespace minEngine
     class MaterialGraphNodeDef_TextureObject : public MaterialGraphNodeDef
     {
     public:
-        explicit MaterialGraphNodeDef_TextureObject(int textureSlotIndex = 0);
+        MaterialGraphNodeDef_TextureObject(std::string parameterName, int textureSlotIndex = 0);
         void BuildIR(MIREmitter& emitter) override;
 
+        std::string ParameterName;
         int TextureSlotIndex = 0;
+        std::shared_ptr<Texture2D> DefaultTexture;
     };
 
     class MaterialGraphNodeDef_TextureSample : public MaterialGraphNodeDef
@@ -191,9 +198,13 @@ namespace minEngine
     class MaterialGraphNodeDef_ScalarParameter : public MaterialGraphNodeDef
     {
     public:
-        MaterialGraphNodeDef_ScalarParameter(int uniformSlotIndex = 0, float defaultValue = 0.0f);
+        MaterialGraphNodeDef_ScalarParameter(
+            std::string parameterName,
+            int uniformSlotIndex = 0,
+            float defaultValue = 0.0f);
         void BuildIR(MIREmitter& emitter) override;
 
+        std::string ParameterName;
         int UniformSlotIndex = 0;
         float DefaultValue = 0.0f;
     };

@@ -10,10 +10,9 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
-#include "Runtime/Function/Render/Material/MaterialSmokeGraph.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialTestGraph.h"
 #include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
@@ -86,35 +85,11 @@ namespace minEngine
 
         std::shared_ptr<Material> CreateMaterialIRSmokeMaterial(RHI& rhi, std::string& outError)
         {
-            const MaterialSmokeGraph smokeGraph;
-            const MaterialCompiledShader compiled = smokeGraph.CompileUnlit();
-            if (!compiled.Succeeded)
-            {
-                outError = "Material IR smoke graph compile failed.";
-                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
-                {
-                    outError += "\n";
-                    outError += diagnostic.Message;
-                }
-                return nullptr;
-            }
-
-            std::shared_ptr<Shader> shader = Shader::CreateFromSource(
-                rhi,
-                compiled.FullVertexShader,
-                compiled.FullFragmentShader,
-                &outError);
-            if (!shader)
-            {
-                return nullptr;
-            }
-
             std::shared_ptr<Material> material = std::make_shared<Material>();
-            material->m_Shader = shader;
-            material->m_bUsesCompiledGraph = true;
-            std::shared_ptr<Texture2D> whiteTexture = Texture2D::CreateSolidRGBA(rhi, 255, 255, 255, 255);
-            material->m_GraphTextureSlots.push_back(whiteTexture);
-            material->m_GraphScalarParams.push_back(0.3f);
+            if (!SetupSmokeMaterial(*material, rhi, &outError))
+            {
+                return nullptr;
+            }
             return material;
         }
     }

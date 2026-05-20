@@ -1,9 +1,25 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/Render/Texture.h"
+
+#include <memory>
+#include <string>
 
 namespace minEngine
 {
+    // Legacy on-disk material fields (.memtl); runtime Material uses graph compilation instead.
+    ME_STRUCT()
+    struct MaterialResourceParameters
+    {
+        ME_GENERATED_BODY(MaterialResourceParameters)
+
+        ME_PROPERTY()
+        Vector4 Value{ 1.0f, 1.0f, 1.0f, 1.0f };
+        ME_PROPERTY()
+        std::shared_ptr<Texture2D> Texture{ nullptr };
+    };
+
     ME_CLASS()
     class MaterialResource
     {
@@ -19,10 +35,7 @@ namespace minEngine
         std::string m_ShaderPath;
 
         ME_PROPERTY()
-        MaterialParameters m_Diffuse;
-        
-    private:
-       
+        MaterialResourceParameters m_Diffuse;
     };
 }
 

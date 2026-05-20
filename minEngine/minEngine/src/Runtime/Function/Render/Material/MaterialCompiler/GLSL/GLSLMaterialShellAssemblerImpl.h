@@ -8,7 +8,7 @@ namespace minEngine
     class GLSLMaterialShellAssemblerImpl : public MaterialShellAssemblerBase
     {
     public:
-        bool Assemble(MaterialCompiledShader& compiled, const MaterialCompileEnvironment& env);
+        bool Assemble(MaterialCompileResult& compiled, const MaterialCompileEnvironment& env);
 
     private:
         struct TemplateSet
@@ -20,7 +20,7 @@ namespace minEngine
         static bool ResolveTemplateSet(
             MaterialShadingModel shadingModel,
             TemplateSet& outSet,
-            MaterialCompiledShader& compiled);
+            MaterialCompileResult& compiled);
 
         static std::string BuildMaterialParametersStructGlobal(int numTexCoords);
         static std::string BuildVertexTexCoordSetup(int numTexCoords);
