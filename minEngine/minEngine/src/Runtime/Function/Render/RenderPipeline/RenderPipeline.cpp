@@ -1,5 +1,5 @@
 #include "RenderPipeline.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 #include "Render/WindowSystem.h"
 #include "Render/RenderSystem.h"
 #include "Render/RenderScene.h"
@@ -30,7 +30,7 @@ namespace minEngine
 {
     void RenderPipeline::Initialize()
     {
-        WindowSystem* windowSystem = RuntimeGlobalContext::Get().m_WindowSystem.get();
+        WindowSystem* windowSystem = &WindowSystem::Get();
 
         // TODO: When render in Editor, we will use a resolution that may not same as the window's size
         // When render in the game, we should use window's size as the scene color buffer's resolution.

@@ -12,6 +12,8 @@
 
 namespace minEngine
 {
+    class Engine;
+
     enum class ProjectOpenStatus : uint8_t
     {
         Success = 0,
@@ -70,6 +72,11 @@ namespace minEngine
 
 
     private:
+        friend class Engine;
+
+        static void SetInstance(ProjectManager* instance);
+        static ProjectManager* s_Instance;
+
         static constexpr const char* kMEProjectExtension = ".meproject";
         static constexpr const char* kMEProjectSettingsExtension = ".mesettings";
         ProjectContext m_CurrentProjectCtx;

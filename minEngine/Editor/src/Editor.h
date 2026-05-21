@@ -30,6 +30,9 @@ namespace minEngine
         EditorGUIManager& GetGUIManager() { return m_EditorGUIManager; }
         const EditorGUIManager& GetGUIManager() const { return m_EditorGUIManager; }
 
+        Engine& GetEngine() { return *m_Engine; }
+        const Engine& GetEngine() const { return *m_Engine; }
+
         void RequestExit(){ m_ExitRequested = true; }
 
         // Project management

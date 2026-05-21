@@ -18,7 +18,9 @@
 #include "Serialization/JsonArchive.h"
 #include "Serialization/Serializer.h"
 #include "Resource/AssetManager.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Engine.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 
 
 #include <algorithm>
@@ -468,7 +470,7 @@ namespace minEngine
         m_Engine = new Engine();
         m_Engine->Initialize(argc, argv);
 
-        RuntimeGlobalContext::Get().m_RenderSystem->SetPresentPassEnabled(false);
+        RenderSystem::Get().SetPresentPassEnabled(false);
         
         // Initialize ImGui for the editor window
         ImGui::CreateContext();
@@ -479,11 +481,11 @@ namespace minEngine
         ImGui::StyleColorsDark();
         ApplyEditorTheme();
 
-        GLFWwindow* windowHandle = static_cast<GLFWwindow*>(RuntimeGlobalContext::Get().m_WindowSystem->GetWindowHandle());
+        GLFWwindow* windowHandle = static_cast<GLFWwindow*>(WindowSystem::Get().GetWindowHandle());
         ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
         ImGui_ImplOpenGL3_Init();
 
-        RuntimeGlobalContext::Get().m_WindowSystem->SetCursorVisible(true);
+        WindowSystem::Get().SetCursorVisible(true);
         m_EditorGUIManager.Initialize(*this);
 
         InitializeAllComponentTypeNames();
@@ -492,12 +494,12 @@ namespace minEngine
         bool engineConfigLoaded = LoadEngineConfig();
         if (engineConfigLoaded)
         {
-            RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot(m_EngineConfig.EngineDefaultAssetsRoot);
+            Engine::Get().SetEngineDefaultAssetsRoot(m_EngineConfig.EngineDefaultAssetsRoot);
             AssetManager::Get().ScanAssets(m_EngineConfig.EngineDefaultAssetsRoot);
         }
         else
         {
-            RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot("");
+            Engine::Get().SetEngineDefaultAssetsRoot("");
         }
 
         std::string projectPath;
@@ -532,8 +534,8 @@ namespace minEngine
 
     void Editor::Run()
     {
-        WindowSystem* windowSystem = RuntimeGlobalContext::Get().m_WindowSystem.get();
-        while (!windowSystem->ShouldClose() && !m_ExitRequested)
+        WindowSystem& windowSystem = WindowSystem::Get();
+        while (!windowSystem.ShouldClose() && !m_ExitRequested)
         {
             const float deltaTime = m_Engine->CalculateDeltaTime();
             m_Engine->TickOneFrame(deltaTime);
@@ -555,7 +557,7 @@ namespace minEngine
 
             const char* dirtySuffix = IsSceneDirty() ? " *" : "";
             const std::string windowTitle = "minEngine Editor - " + sceneDisplayName + dirtySuffix;
-            windowSystem->SetTitle(windowTitle.c_str());
+            windowSystem.SetTitle(windowTitle.c_str());
 
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
@@ -565,7 +567,7 @@ namespace minEngine
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-            windowSystem->SwapBuffers();
+            windowSystem.SwapBuffers();
         }
     }
 

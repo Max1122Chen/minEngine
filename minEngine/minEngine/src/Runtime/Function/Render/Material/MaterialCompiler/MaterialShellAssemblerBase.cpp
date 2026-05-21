@@ -1,6 +1,6 @@
 #include "MaterialShellAssemblerBase.h"
 
-#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Engine.h"
 
 #include <fstream>
 #include <sstream>
@@ -40,7 +40,7 @@ namespace minEngine
             return std::filesystem::path(env.EngineDefaultAssetsRootOverride);
         }
 
-        return std::filesystem::path(RuntimeGlobalContext::Get().GetEngineDefaultAssetsRoot());
+        return std::filesystem::path(Engine::Get().GetEngineDefaultAssetsRoot());
     }
 
     const char* MaterialShellAssemblerBase::ShaderLanguageSubdir(const MaterialCompileEnvironment& env)

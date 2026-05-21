@@ -1,52 +1,65 @@
 #include "Engine.h"
 
-#include "Runtime/Function/RuntimeGlobalContext.h"
-#include "Render/RenderSystem.h"
-#include "Runtime/Function/Input/InputSystem.h"
-#include "Runtime/Function/Render/WindowSystem.h"
-#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Resource/AssetManager.h"
-
-#include <array>
-#include <filesystem>
+#include "Runtime/Function/Render/GLFWWindowSystem.h"
+#include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 
 namespace minEngine
 {
+    Engine* Engine::s_Instance = nullptr;
+
+    Engine& Engine::Get()
+    {
+        ME_ASSERT(s_Instance != nullptr, "Engine is not initialized");
+        return *s_Instance;
+    }
+
     void Engine::Initialize(int argc, char** argv)
     {
-        LogSystem::Get().Initialize();
+        (void)argc;
+        (void)argv;
 
+        ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
+        s_Instance = this;
+
+        LogSystem::Get().Initialize();
         FinializeReflection();
-        RuntimeGlobalContext::Get().StartSystems();
+        StartSystems();
     }
 
     void Engine::Shutdown()
     {
-        ME_CORE_INFO("Engine Shutdown Started"); 
-        RuntimeGlobalContext::Get().ShutdownSystems();
+        ME_CORE_INFO("Engine Shutdown Started");
+        ShutdownSystems();
+        s_Instance = nullptr;
     }
 
     void Engine::Run()
     {
-        // TODO: change to proper game loop
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
-        WindowSystem* windowSystem = globalContext.m_WindowSystem.get();
-        while (!windowSystem->ShouldClose())
+        WindowSystem& windowSystem = WindowSystem::Get();
+        while (!windowSystem.ShouldClose())
         {
-            float deltaTime = CalculateDeltaTime();
-            // windowSystem->SetTitle(("minEngine - FPS: " + std::to_string(CalculateFPS(deltaTime))).c_str());
+            const float deltaTime = CalculateDeltaTime();
             TickOneFrame(deltaTime);
-            windowSystem->SwapBuffers();
+            windowSystem.SwapBuffers();
         }
     }
 
-    // Tick one frame
     void Engine::TickOneFrame(float deltaTime)
     {
-        RuntimeGlobalContext::Get().m_WindowSystem->PollEvents();
+        WindowSystem::Get().PollEvents();
         LogicalTick(deltaTime);
-
         RendererTick(deltaTime);
+    }
+
+    void Engine::SetEngineDefaultAssetsRoot(std::string path)
+    {
+        m_EngineDefaultAssetsRoot = std::move(path);
     }
 
     void Engine::FinializeReflection()
@@ -68,37 +81,108 @@ namespace minEngine
         }
     }
 
+    void Engine::StartSystems()
+    {
+        m_ObjectManager = std::make_shared<ObjectManager>();
+        ObjectManager::SetInstance(m_ObjectManager.get());
+        m_ObjectManager->Initialize();
+
+        m_ProjectManager = std::make_shared<ProjectManager>();
+        ProjectManager::SetInstance(m_ProjectManager.get());
+        m_ProjectManager->Initialize();
+
+        m_AssetManager = std::make_shared<AssetManager>();
+        AssetManager::SetInstance(m_AssetManager.get());
+        m_AssetManager->Initialize();
+
+        m_WindowSystem = std::make_shared<GLFWWindowSystem>(1600, 900);
+        WindowSystem::SetInstance(m_WindowSystem.get());
+        m_WindowSystem->Initialize();
+
+        m_InputSystem = std::make_shared<InputSystem>();
+        InputSystem::SetInstance(m_InputSystem.get());
+        m_InputSystem->Initialize();
+
+        m_RenderSystem = std::make_shared<RenderSystem>();
+        RenderSystem::SetInstance(m_RenderSystem.get());
+        m_RenderSystem->Initialize();
+
+        m_SceneManager = std::make_shared<SceneManager>();
+        SceneManager::SetInstance(m_SceneManager.get());
+        m_SceneManager->Initialize();
+    }
+
+    void Engine::ShutdownSystems()
+    {
+        if (m_ProjectManager)
+        {
+            m_ProjectManager->Shutdown();
+            ProjectManager::SetInstance(nullptr);
+            m_ProjectManager.reset();
+        }
+
+        if (m_SceneManager)
+        {
+            m_SceneManager->Shutdown();
+            SceneManager::SetInstance(nullptr);
+            m_SceneManager.reset();
+        }
+
+        if (m_InputSystem)
+        {
+            m_InputSystem->Shutdown();
+            InputSystem::SetInstance(nullptr);
+            m_InputSystem.reset();
+        }
+
+        if (m_RenderSystem)
+        {
+            m_RenderSystem->Shutdown();
+            RenderSystem::SetInstance(nullptr);
+            m_RenderSystem.reset();
+        }
+
+        if (m_WindowSystem)
+        {
+            m_WindowSystem->Shutdown();
+            WindowSystem::SetInstance(nullptr);
+            m_WindowSystem.reset();
+        }
+
+        if (m_AssetManager)
+        {
+            m_AssetManager->Shutdown();
+            AssetManager::SetInstance(nullptr);
+            m_AssetManager.reset();
+        }
+
+        if (m_ObjectManager)
+        {
+            m_ObjectManager->Shutdown();
+            ObjectManager::SetInstance(nullptr);
+            m_ObjectManager.reset();
+        }
+    }
+
     void Engine::LogicalTick(float deltaTime)
     {
-        // TODO: implement logical tick
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
-
-        globalContext.m_InputSystem->Tick(deltaTime);
-        globalContext.m_SceneManager->Tick(deltaTime);
-
-
-        globalContext.m_SceneManager->SendAllEndOfFrameUpdates();
-    
+        m_InputSystem->Tick(deltaTime);
+        m_SceneManager->Tick(deltaTime);
+        m_SceneManager->SendAllEndOfFrameUpdates();
     }
 
     void Engine::RendererTick(float deltaTime)
     {
-        RuntimeGlobalContext::Get().m_RenderSystem->Tick(deltaTime);
+        m_RenderSystem->Tick(deltaTime);
     }
 
     float Engine::CalculateDeltaTime()
     {
-        float deltaTime = 0;
-        {
-            using namespace std::chrono;
-            steady_clock::time_point tickTimePoint = steady_clock::now();
-            duration<float> timeSpan = tickTimePoint - m_LastTickTimePoint;
-            
-            deltaTime = timeSpan.count();
-
-            m_LastTickTimePoint = tickTimePoint;
-        }
-        return deltaTime;
+        using namespace std::chrono;
+        const steady_clock::time_point tickTimePoint = steady_clock::now();
+        const duration<float> timeSpan = tickTimePoint - m_LastTickTimePoint;
+        m_LastTickTimePoint = tickTimePoint;
+        return timeSpan.count();
     }
 
     float Engine::CalculateFPS(float deltaTime)

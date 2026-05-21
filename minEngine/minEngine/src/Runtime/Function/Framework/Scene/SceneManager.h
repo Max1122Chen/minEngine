@@ -1,12 +1,10 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
-#include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
 namespace minEngine
 {
-    class RuntimeGlobalContext;
+    class Engine;
     class Scene;
     class RenderScene;
     class Component;
@@ -20,7 +18,8 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
-        static SceneManager& Get() { return *RuntimeGlobalContext::Get().m_SceneManager; }
+
+        static SceneManager& Get();
         
         void Tick(float deltaTime);
 
@@ -45,6 +44,11 @@ namespace minEngine
         std::vector<Component*> m_ComponentsThatNeedEndOfFrameUpdate;
 
     private:
+        friend class Engine;
+
+        static void SetInstance(SceneManager* instance);
+        static SceneManager* s_Instance;
+
         std::unordered_map<std::string, std::string> m_RegisteredScenes; // scene name -> scene asset path
         RenderScene* m_RenderScene{ nullptr };
 

@@ -1,5 +1,4 @@
 #include "AssetManager.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -33,9 +32,17 @@
 
 namespace minEngine
 {
+    AssetManager* AssetManager::s_Instance = nullptr;
+
+    void AssetManager::SetInstance(AssetManager* instance)
+    {
+        s_Instance = instance;
+    }
+
     AssetManager& AssetManager::Get()
     {
-        return *RuntimeGlobalContext::Get().m_AssetManager;
+        ME_ASSERT(s_Instance != nullptr, "AssetManager is not initialized");
+        return *s_Instance;
     }
 
     void AssetManager::Initialize()

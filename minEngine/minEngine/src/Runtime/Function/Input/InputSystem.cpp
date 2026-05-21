@@ -8,7 +8,7 @@
 #include "InputModifiers.h"
 #include "Framework/Components/InputComponent.h"
 
-#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RenderCamera.h"
@@ -20,9 +20,22 @@
 
 namespace minEngine
 {
+    InputSystem* InputSystem::s_Instance = nullptr;
+
+    void InputSystem::SetInstance(InputSystem* instance)
+    {
+        s_Instance = instance;
+    }
+
+    InputSystem& InputSystem::Get()
+    {
+        ME_ASSERT(s_Instance != nullptr, "InputSystem is not initialized");
+        return *s_Instance;
+    }
+
     void InputSystem::Initialize()
     {
-        WindowSystem* windowSystem = RuntimeGlobalContext::Get().m_WindowSystem.get();
+        WindowSystem* windowSystem = &WindowSystem::Get();
 
         // TODO: maybe we will wrap these logic into a private function later
         windowSystem->RegisterOnKeyCallback([this](InputKey key, int scancode, InputKeyAction action, int mods)

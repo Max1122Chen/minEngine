@@ -4,6 +4,7 @@
 
 namespace minEngine
 {
+    class Engine;
     class RenderScene;
     class RHI;
     class RenderCamera;
@@ -19,6 +20,7 @@ namespace minEngine
         // Initialize
         void Initialize();
         void Shutdown();
+
         static RenderSystem& Get();
 
 
@@ -44,6 +46,11 @@ namespace minEngine
         std::shared_ptr<RenderScene> m_RenderScene;
     
     private:
+        friend class Engine;
+
+        static void SetInstance(RenderSystem* instance);
+        static RenderSystem* s_Instance;
+
         std::shared_ptr<RHI> m_RHI;
         std::shared_ptr<RenderCamera> m_MainCamera;
 

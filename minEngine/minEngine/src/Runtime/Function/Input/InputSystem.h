@@ -1,6 +1,5 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
 #include "InputKeys.h"
 #include "InputKeyTypes.h"
 #include "InputKeyState.h"
@@ -9,8 +8,7 @@
 
 namespace minEngine
 {
-    class RuntimeGlobalContext;
-
+    class Engine;
     class InputComponent;
     class InputMappingContext;
 
@@ -37,7 +35,8 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
-        static InputSystem& Get() { return *RuntimeGlobalContext::Get().m_InputSystem; }
+
+        static InputSystem& Get();
 
         void Tick(float deltaTime);
 
@@ -79,6 +78,11 @@ namespace minEngine
         InputTriggerEvent GetTriggerStateChangeEvent(InputTriggerState lastState, InputTriggerState newState);
 
     private:
+        friend class Engine;
+
+        static void SetInstance(InputSystem* instance);
+        static InputSystem* s_Instance;
+
         InputKeys m_InputKeys;
         std::unordered_map<InputKey, InputKeyState, InputKey::Hash> m_KeyStateMap;
 

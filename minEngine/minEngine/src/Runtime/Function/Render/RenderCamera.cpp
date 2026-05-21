@@ -1,5 +1,5 @@
 #include "RenderCamera.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -42,7 +42,7 @@ namespace minEngine
 
     Geometry::Ray RenderCamera::ScreenPointToRay(const Vector2 &screenPoint) const
     {
-        Vector2 sceneBufferSize = RuntimeGlobalContext::Get().m_RenderSystem->GetSceneBufferSize();
+        Vector2 sceneBufferSize = RenderSystem::Get().GetSceneBufferSize();
         if (sceneBufferSize.x <= 0.0f || sceneBufferSize.y <= 0.0f)
         {
             return Geometry::Ray(m_Position, Vector3(1.0f, 0.0f, 0.0f));

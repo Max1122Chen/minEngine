@@ -1,6 +1,5 @@
 #include "ProjectManager.h"
 
-#include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -10,9 +9,17 @@
 
 namespace minEngine
 {
+    ProjectManager* ProjectManager::s_Instance = nullptr;
+
+    void ProjectManager::SetInstance(ProjectManager* instance)
+    {
+        s_Instance = instance;
+    }
+
     ProjectManager& ProjectManager::Get()
     {
-        return *RuntimeGlobalContext::Get().m_ProjectManager;
+        ME_ASSERT(s_Instance != nullptr, "ProjectManager is not initialized");
+        return *s_Instance;
     }
 
     void ProjectManager::Initialize()

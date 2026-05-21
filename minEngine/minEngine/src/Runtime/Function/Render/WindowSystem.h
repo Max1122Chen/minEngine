@@ -7,6 +7,8 @@
 
 namespace minEngine
 {
+    class Engine;
+
     class WindowSystem
     {
     public:
@@ -32,6 +34,8 @@ namespace minEngine
         virtual uint32_t GetWidth() = 0;
         virtual uint32_t GetHeight() = 0;
 
+        static WindowSystem& Get();
+
         // Window event callback function types
         typedef std::function<void()>                                              OnResetFunc;
         typedef std::function<void(InputKey, int, InputKeyAction, int)>            OnKeyFunc;
@@ -46,6 +50,12 @@ namespace minEngine
         void RegisterOnCursorPosCallback(const OnCursorPosFunc& callback) { m_OnCursorPosCallbacks.push_back(callback); }
         void RegisterOnMouseScrollCallback(const OnMouseScrollFunc& callback) { m_OnMouseScrollCallbacks.push_back(callback); }
         void RegisterOnWindowSizeCallback(const OnWindowSizeFunc& callback) { m_OnWindowSizeCallbacks.push_back(callback); }
+
+    private:
+        friend class Engine;
+
+        static void SetInstance(WindowSystem* instance);
+        static WindowSystem* s_Instance;
 
     protected:
         std::vector<OnResetFunc>            m_OnResetCallbacks;

@@ -57,6 +57,6 @@ namespace minEngine
     
 
     private:
-        std::shared_ptr<WindowSystem> m_WindowSystem;
+        WindowSystem* m_WindowSystem = nullptr;
     };
 }

@@ -4,8 +4,6 @@
 #include "Application.h"
 #include "Runtime/Engine.h"
 
-#include "Runtime/Function/RuntimeGlobalContext.h"
-
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 

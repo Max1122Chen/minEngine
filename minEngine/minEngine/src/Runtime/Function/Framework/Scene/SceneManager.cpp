@@ -1,4 +1,5 @@
 #include "SceneManager.h"
+#include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Resource/AssetManager.h"
@@ -7,9 +8,22 @@
 
 namespace minEngine
 {
+    SceneManager* SceneManager::s_Instance = nullptr;
+
+    void SceneManager::SetInstance(SceneManager* instance)
+    {
+        s_Instance = instance;
+    }
+
+    SceneManager& SceneManager::Get()
+    {
+        ME_ASSERT(s_Instance != nullptr, "SceneManager is not initialized");
+        return *s_Instance;
+    }
+
     void SceneManager::Initialize()
     {
-        m_RenderScene = RuntimeGlobalContext::Get().m_RenderSystem->m_RenderScene.get();
+        m_RenderScene = RenderSystem::Get().m_RenderScene.get();
     }
 
     void SceneManager::Shutdown()

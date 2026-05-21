@@ -1,6 +1,6 @@
 #include "OpenGLRHI.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 
 #include "OpenGLBuffers.h"
 #include "OpenGLVertexArrayObject.h"
@@ -12,7 +12,7 @@ namespace minEngine
     void OpenGLRHI::Initialize()
     {
         // Initialize OpenGL specific resources here
-        m_WindowSystem = RuntimeGlobalContext::Get().m_WindowSystem;
+        m_WindowSystem = &WindowSystem::Get();
         
         ME_CORE_INFO("OpenGLRHI Initialized"); 
 
@@ -20,7 +20,7 @@ namespace minEngine
 
     void OpenGLRHI::Shutdown()
     {
-        m_WindowSystem.reset();
+        m_WindowSystem = nullptr;
         ME_CORE_INFO("OpenGLRHI Shutdown");
     }
 

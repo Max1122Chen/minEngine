@@ -1,6 +1,5 @@
 #include "PrimitiveComponent.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 

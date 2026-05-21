@@ -9,6 +9,7 @@
 
 namespace minEngine
 {
+    class Engine;
     class MEObject;
     class Texture2D;
     class StaticMesh;
@@ -24,7 +25,6 @@ namespace minEngine
         ~AssetManager() = default;
 
         static AssetManager& Get();
-
 
         void Initialize();
         void Shutdown();
@@ -130,6 +130,11 @@ namespace minEngine
         void           FreeImage(unsigned char* data);
 
     private:
+        friend class Engine;
+
+        static void SetInstance(AssetManager* instance);
+        static AssetManager* s_Instance;
+
         std::shared_ptr<Asset> LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage);
         std::string NormalizeAssetPath(const std::string& path) const;
         std::string InferAssetTypeFromExtension(const std::filesystem::path& path) const;

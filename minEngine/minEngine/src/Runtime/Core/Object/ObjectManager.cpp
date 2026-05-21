@@ -1,11 +1,18 @@
 #include "ObjectManager.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
 
 namespace minEngine
 {
-    ObjectManager &ObjectManager::Get()
+    ObjectManager* ObjectManager::s_Instance = nullptr;
+
+    void ObjectManager::SetInstance(ObjectManager* instance)
     {
-        return *RuntimeGlobalContext::Get().m_ObjectManager;
+        s_Instance = instance;
+    }
+
+    ObjectManager& ObjectManager::Get()
+    {
+        ME_ASSERT(s_Instance != nullptr, "ObjectManager is not initialized");
+        return *s_Instance;
     }
 
     void ObjectManager::Initialize()

@@ -1,6 +1,5 @@
 #include "LightComponent.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 
@@ -20,15 +19,11 @@ namespace minEngine
         }
 
         bool removedFromScene = false;
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
-        if (globalContext.m_SceneManager)
+        RenderScene* renderScene = SceneManager::Get().GetRenderScene();
+        if (renderScene)
         {
-            RenderScene* renderScene = globalContext.m_SceneManager->GetRenderScene();
-            if (renderScene)
-            {
-                renderScene->RemoveLight(this);
-                removedFromScene = true;
-            }
+            renderScene->RemoveLight(this);
+            removedFromScene = true;
         }
 
         if (!removedFromScene)

@@ -15,16 +15,8 @@ namespace minEngine
 
         ImVec2 avail = ImGui::GetContentRegionAvail();
 
-        const auto& renderSystem = RuntimeGlobalContext::Get().m_RenderSystem;
-        if (!renderSystem)
-        {
-            ImGui::TextWrapped("RenderSystem is not ready.");
-            ImGui::End();
-            viewportClient.EndFrame();
-            return;
-        }
-
-        const std::shared_ptr<RHITexture2D>& sceneColor = renderSystem->GetSceneColorTexture();
+        RenderSystem& renderSystem = RenderSystem::Get();
+        const std::shared_ptr<RHITexture2D>& sceneColor = renderSystem.GetSceneColorTexture();
         if (!sceneColor)
         {
             ImGui::TextWrapped("Scene color texture is not ready.");
@@ -116,7 +108,7 @@ namespace minEngine
 
         const ViewportFrameState& frameState = client.GetFrameState();
         ImGuizmo::SetRect(frameState.ImageMin.x, frameState.ImageMin.y, frameState.ImageSize.x, frameState.ImageSize.y);
-        RenderCamera* mainCamera = RuntimeGlobalContext::Get().m_RenderSystem->GetMainCamera();
+        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
         Matrix4 view = mainCamera->GetViewMatrix();
         Matrix4 projection = mainCamera->GetProjectionMatrix();
         // ImGuizmo::DrawGrid(value_ptr(view), value_ptr(projection), value_ptr(Matrix4(1.0f)), 100.0f);

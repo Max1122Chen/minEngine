@@ -11,8 +11,6 @@
 
 
 
-#include "RuntimeGlobalContext.h"
-
 #include "RenderScene.h"
 
 #include "glm/gtc/type_ptr.hpp"
@@ -21,6 +19,19 @@
 
 namespace minEngine
 {
+    RenderSystem* RenderSystem::s_Instance = nullptr;
+
+    void RenderSystem::SetInstance(RenderSystem* instance)
+    {
+        s_Instance = instance;
+    }
+
+    RenderSystem& RenderSystem::Get()
+    {
+        ME_ASSERT(s_Instance != nullptr, "RenderSystem is not initialized");
+        return *s_Instance;
+    }
+
     void RenderSystem::Initialize()
     {   
         // TODO : Create RHI based on configuration
@@ -57,11 +68,6 @@ namespace minEngine
         }
 
         ME_CORE_INFO("RenderSystem Shutdown");
-    }
-
-    RenderSystem &RenderSystem::Get()
-    {
-        return *RuntimeGlobalContext::Get().m_RenderSystem;
     }
 
     void RenderSystem::Tick(float deltaTime)

@@ -5,7 +5,6 @@
 #include "ImGuizmo.h"
 
 #include "Runtime/Function/Render/RHI/RHITexture.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Function/Render/RenderCamera.h"
 

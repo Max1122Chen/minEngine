@@ -4,7 +4,6 @@
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Object/ObjectManager.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Serialization/JsonArchive.h"
 #include "Serialization/Serializer.h"
 #include "../MaterialCompiler/MaterialCompiler.h"
@@ -474,15 +473,7 @@ namespace minEngine
 
     bool RunMaterialIRSmokeTests()
     {
-        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
-        if (!globalContext.m_ObjectManager)
-        {
-            globalContext.m_ObjectManager = std::make_shared<ObjectManager>();
-            globalContext.m_ObjectManager->Initialize();
-        }
-
         g_MaterialIRTestEngineDefaultAssetsRoot.clear();
-        globalContext.SetEngineDefaultAssetsRoot("");
 
         if (EnsureReflectionReadyForMaterialIRTest())
         {
@@ -490,7 +481,6 @@ namespace minEngine
             if (TryLoadEngineConfigForMaterialIRTest(engineConfig))
             {
                 g_MaterialIRTestEngineDefaultAssetsRoot = engineConfig.EngineDefaultAssetsRoot;
-                RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot(g_MaterialIRTestEngineDefaultAssetsRoot);
                 ME_CORE_INFO(
                     "MaterialIR test: EngineDefaultAssetsRoot = '{}'",
                     g_MaterialIRTestEngineDefaultAssetsRoot);

@@ -1,4 +1,5 @@
 #include "GLFWWindowSystem.h"
+#include "WindowSystem.h"
 
 #include "Core.h"
 
@@ -11,6 +12,19 @@
 
 namespace minEngine
 {
+    WindowSystem* WindowSystem::s_Instance = nullptr;
+
+    void WindowSystem::SetInstance(WindowSystem* instance)
+    {
+        s_Instance = instance;
+    }
+
+    WindowSystem& WindowSystem::Get()
+    {
+        ME_ASSERT(s_Instance != nullptr, "WindowSystem is not initialized");
+        return *s_Instance;
+    }
+
     GLFWWindowSystem::~GLFWWindowSystem()
     {
         Shutdown();

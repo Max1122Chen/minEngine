@@ -5,6 +5,8 @@
 
 namespace minEngine
 {
+    class Engine;
+
     class ObjectManager
     {
     public:
@@ -59,6 +61,10 @@ namespace minEngine
         size_t GetTrackedObjectCount() const { return m_ObjectsByGuid.size(); }
 
     private:
+        friend class Engine;
+
+        static void SetInstance(ObjectManager* instance);
+        static ObjectManager* s_Instance;
 
         std::unordered_map<GUID, std::shared_ptr<MEObject>, GUID::Hash> m_ObjectsByGuid;
     };

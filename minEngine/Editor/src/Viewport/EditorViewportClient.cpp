@@ -3,7 +3,7 @@
 #include "Math/Math.h"
 #include "Math/Geometry/Ray.h"
 #include "Math/Geometry/AABB.h"
-#include "Runtime/Function/RuntimeGlobalContext.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 #include "Render/RenderSystem.h"
 #include "Render/RenderCamera.h"
 #include "Render/WindowSystem.h"
@@ -159,13 +159,7 @@ namespace minEngine
 
     void EditorViewportClient::ExecuteInputCommands()
     {
-        const auto& renderSystem = RuntimeGlobalContext::Get().m_RenderSystem;
-        if (!renderSystem)
-        {
-            return;
-        }
-
-        RenderCamera* mainCamera = renderSystem->GetMainCamera();
+        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
         if (!mainCamera)
         {
             return;
@@ -297,11 +291,7 @@ namespace minEngine
         m_IsNavigating = navigating;
         m_HasLastMousePositionSample = false;
 
-        const auto& windowSystem = RuntimeGlobalContext::Get().m_WindowSystem;
-        if (windowSystem)
-        {
-            windowSystem->SetCursorVisible(!m_IsNavigating);
-        }
+        WindowSystem::Get().SetCursorVisible(!m_IsNavigating);
     }
 
     void EditorViewportClient::ConsumeGizmoManipulation()
@@ -336,12 +326,6 @@ namespace minEngine
 
     void EditorViewportClient::TrySelectAtMousePosition()
     {
-        RuntimeGlobalContext& context = RuntimeGlobalContext::Get();
-        if (!context.m_RenderSystem)
-        {
-            return;
-        }
-
         Vector2 mousePosition = InputSystem::GetMousePosition();
         mousePosition -= m_FrameState.ImageMin;
 
@@ -351,7 +335,8 @@ namespace minEngine
             return;
         }
 
-        Vector2 sceneBufferSize = context.m_RenderSystem->GetSceneBufferSize();
+        RenderSystem& renderSystem = RenderSystem::Get();
+        Vector2 sceneBufferSize = renderSystem.GetSceneBufferSize();
         if (sceneBufferSize.x <= 0.0f || sceneBufferSize.y <= 0.0f)
         {
             return;
@@ -361,7 +346,7 @@ namespace minEngine
         float yRatio = sceneBufferSize.y / viewportSize.y;
         Vector2 scaledMousePosition = mousePosition * Vector2(xRatio, yRatio);
 
-        RenderCamera* mainCamera = context.m_RenderSystem->GetMainCamera();
+        RenderCamera* mainCamera = renderSystem.GetMainCamera();
         if (!mainCamera)
         {
             return;
@@ -369,7 +354,7 @@ namespace minEngine
 
         Geometry::Ray pickRay = mainCamera->ScreenPointToRay(scaledMousePosition);
 
-        RenderScene* scene = context.m_RenderSystem->m_RenderScene.get();
+        RenderScene* scene = renderSystem.m_RenderScene.get();
         if (!scene)
         {
             return;
@@ -526,11 +511,7 @@ namespace minEngine
 
     void EditorViewportClient::SyncRenderTargetSize()
     {
-        const auto& renderSystem = RuntimeGlobalContext::Get().m_RenderSystem;
-        if (!renderSystem)
-        {
-            return;
-        }
+        RenderSystem& renderSystem = RenderSystem::Get();
 
         // Calculate the delta ratio between the requested size and the last requested size, and request the render system to resize the scene viewport accordingly.
         // Because the actual render target resolution is not necessarily the same as the viewport's content size, we use the delta ratio to ensure the render target size can track the viewport size changes in a more consistent way.
@@ -540,7 +521,7 @@ namespace minEngine
         const float targetWidthRatio = static_cast<float>(requestedWidth) / static_cast<float>(m_LastRequestedWidth);
         const float targetHeightRatio = static_cast<float>(requestedHeight) / static_cast<float>(m_LastRequestedHeight);
 
-        renderSystem->RequestSceneViewportResize(targetWidthRatio, targetHeightRatio);
+        renderSystem.RequestSceneViewportResize(targetWidthRatio, targetHeightRatio);
         m_LastRequestedWidth = requestedWidth;
         m_LastRequestedHeight = requestedHeight;
     }

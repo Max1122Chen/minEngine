@@ -1,5 +1,4 @@
 #include "PresentPass.h"
-#include "Function/RuntimeGlobalContext.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHIBuffers.h"
