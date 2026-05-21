@@ -159,4 +159,6 @@ namespace minEngine
     // Save Asset Impl specializations
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
+    template<>
+    bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const;
 }

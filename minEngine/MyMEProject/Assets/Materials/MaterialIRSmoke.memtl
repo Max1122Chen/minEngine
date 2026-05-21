@@ -1,0 +1,395 @@
+{
+    "m_Graph": {
+        "$ptr_typeName": "minEngine::MaterialEdGraph",
+        "m_Guid": {
+            "High": 536384632186556175,
+            "Low": 11464738809782173488
+        },
+        "m_Name": "",
+        "m_Nodes": [
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 8875502612858684129,
+                    "Low": 13070555123816081583
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_TextureCoordinate",
+                    "m_Guid": {
+                        "High": 14979169095511392955,
+                        "Low": 10389712083247224544
+                    },
+                    "m_Inputs": [],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "UV"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 5554786323787105933,
+                    "Low": 12214703621610557478
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_TextureObject",
+                    "DefaultTexture": {
+                        "$guid": {
+                            "high": 8033953010412506573,
+                            "low": 13401631266206953859
+                        }
+                    },
+                    "ParameterName": "BaseColor",
+                    "TextureSlotIndex": 0,
+                    "m_Guid": {
+                        "High": 10704882114440218000,
+                        "Low": 11875671149573229772
+                    },
+                    "m_Inputs": [],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Texture"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 17179767706404212443,
+                    "Low": 11287879510292534992
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_TextureSample",
+                    "m_Guid": {
+                        "High": 17985561790530994838,
+                        "Low": 11483351364535275456
+                    },
+                    "m_Inputs": [
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 10704882114440218000,
+                                "Low": 11875671149573229772
+                            },
+                            "Name": "Texture",
+                            "OutputIndex": 0
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 14979169095511392955,
+                                "Low": 10389712083247224544
+                            },
+                            "Name": "UV",
+                            "OutputIndex": 0
+                        }
+                    ],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "RGBA"
+                        },
+                        {
+                            "Name": "RGB"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 4313233249449429642,
+                    "Low": 9828213719960633846
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_ScalarParameter",
+                    "DefaultValue": 0.30000001192092896,
+                    "ParameterName": "Metallic",
+                    "UniformSlotIndex": 0,
+                    "m_Guid": {
+                        "High": 977835027102253099,
+                        "Low": 10611440937666794274
+                    },
+                    "m_Inputs": [],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Value"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 13713037329651549822,
+                    "Low": 10513844403032232375
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_Constant",
+                    "Value": 0.20000000298023224,
+                    "m_Guid": {
+                        "High": 16989909328939336223,
+                        "Low": 13723290937160882352
+                    },
+                    "m_Inputs": [],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Value"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 13667440737406174701,
+                    "Low": 11562717907571018399
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_Constant",
+                    "Value": 0.800000011920929,
+                    "m_Guid": {
+                        "High": 13990228515848605129,
+                        "Low": 11085114905424188851
+                    },
+                    "m_Inputs": [],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Value"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 17537479540215924978,
+                    "Low": 9263495489812296048
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_Constant",
+                    "Value": 0.20000000298023224,
+                    "m_Guid": {
+                        "High": 2873892094884267624,
+                        "Low": 13309319303661967959
+                    },
+                    "m_Inputs": [],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Value"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 15042245278257074154,
+                    "Low": 12410242969803381089
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_MakeFloat3",
+                    "m_Guid": {
+                        "High": 5446733549345390921,
+                        "Low": 11423049917598563492
+                    },
+                    "m_Inputs": [
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 16989909328939336223,
+                                "Low": 13723290937160882352
+                            },
+                            "Name": "R",
+                            "OutputIndex": 0
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 13990228515848605129,
+                                "Low": 11085114905424188851
+                            },
+                            "Name": "G",
+                            "OutputIndex": 0
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 2873892094884267624,
+                                "Low": 13309319303661967959
+                            },
+                            "Name": "B",
+                            "OutputIndex": 0
+                        }
+                    ],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Value"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 6197552310716221533,
+                    "Low": 9272228264073865185
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_Multiply",
+                    "m_Guid": {
+                        "High": 4412212108776981643,
+                        "Low": 13358838356183161826
+                    },
+                    "m_Inputs": [
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 17985561790530994838,
+                                "Low": 11483351364535275456
+                            },
+                            "Name": "A",
+                            "OutputIndex": 1
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 5446733549345390921,
+                                "Low": 11423049917598563492
+                            },
+                            "Name": "B",
+                            "OutputIndex": 0
+                        }
+                    ],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Value"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            },
+            {
+                "$ptr_typeName": "minEngine::MaterialEdGraphNode",
+                "m_Comment": "",
+                "m_EditorPosX": 0.0,
+                "m_EditorPosY": 0.0,
+                "m_Guid": {
+                    "High": 15725554320618114011,
+                    "Low": 11680669531312315214
+                },
+                "m_Name": "",
+                "m_NodeDef": {
+                    "$ptr_typeName": "minEngine::MaterialGraphNodeDef_MaterialOutput",
+                    "m_Guid": {
+                        "High": 5686905313786085582,
+                        "Low": 13031672104645500580
+                    },
+                    "m_Inputs": [
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 4412212108776981643,
+                                "Low": 13358838356183161826
+                            },
+                            "Name": "Albedo",
+                            "OutputIndex": 0
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 977835027102253099,
+                                "Low": 10611440937666794274
+                            },
+                            "Name": "Metallic",
+                            "OutputIndex": 0
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 0,
+                                "Low": 0
+                            },
+                            "Name": "Roughness",
+                            "OutputIndex": 0
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 0,
+                                "Low": 0
+                            },
+                            "Name": "Emissive",
+                            "OutputIndex": 0
+                        },
+                        {
+                            "ConnectedNodeDefGuid": {
+                                "High": 0,
+                                "Low": 0
+                            },
+                            "Name": "Opacity",
+                            "OutputIndex": 0
+                        }
+                    ],
+                    "m_Name": "",
+                    "m_Outputs": [
+                        {
+                            "Name": "Result"
+                        }
+                    ]
+                },
+                "m_Title": ""
+            }
+        ]
+    },
+    "m_Guid": {
+        "High": 5561283508911332965,
+        "Low": 5138977438105866241
+    },
+    "m_Name": "MaterialIRSmoke",
+    "m_ShadingModel": 0
+}

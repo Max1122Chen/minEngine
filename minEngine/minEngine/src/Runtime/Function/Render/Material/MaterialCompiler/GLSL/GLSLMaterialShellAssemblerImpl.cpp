@@ -20,12 +20,10 @@ namespace minEngine
             outSet.VertexTemplateFile = "Unlit.vert.template";
             outSet.FragmentTemplateFile = "Unlit.frag.template";
             return true;
-        case MaterialShadingModel::DefaultLit:
-            compiled.Diagnostics.push_back({
-                MaterialCompileDiagnostic::Error,
-                "MaterialShadingModel::DefaultLit is not implemented yet.",
-            });
-            return false;
+        case MaterialShadingModel::BlinnPhong:
+            outSet.VertexTemplateFile = "BlinnPhong.vert.template";
+            outSet.FragmentTemplateFile = "BlinnPhong.frag.template";
+            return true;
         default:
             compiled.Diagnostics.push_back({
                 MaterialCompileDiagnostic::Error,
@@ -120,7 +118,7 @@ namespace minEngine
         return declaration;
     }
 
-    std::string GLSLMaterialShellAssemblerImpl::BuildVertexIoBlock(int numTexCoords)
+    std::string GLSLMaterialShellAssemblerImpl::BuildVertexIoBlock(int numTexCoords, bool includeSceneLightingVaryings)
     {
         std::string ioBlock;
         ioBlock += "layout(location = 0) in vec3 a_Position;\n";
@@ -134,7 +132,59 @@ namespace minEngine
                 ioBlock += ";\n";
             }
         }
+
+        if (includeSceneLightingVaryings)
+        {
+            const int normalLocation = (numTexCoords > 0) ? 2 : 1;
+            ioBlock += "layout(location = " + std::to_string(normalLocation) + ") in vec3 a_Normal;\n";
+            ioBlock += "out vec3 v_WorldFragPos;\n";
+            ioBlock += "out vec3 v_WorldNormal;\n";
+            ioBlock += "out vec4 v_FragPosViewSpace;\n";
+        }
+
         return ioBlock;
+    }
+
+    std::string GLSLMaterialShellAssemblerImpl::BuildFragmentLightingVaryings()
+    {
+        return "in vec3 v_WorldFragPos;\n"
+               "in vec3 v_WorldNormal;\n"
+               "in vec4 v_FragPosViewSpace;\n\n";
+    }
+
+    std::string GLSLMaterialShellAssemblerImpl::BuildFragmentSceneLighting(
+        const std::filesystem::path& assetsRoot,
+        const MaterialCompileEnvironment& env,
+        MaterialShadingModel shadingModel,
+        MaterialCompileResult& compiled)
+    {
+        if (shadingModel != MaterialShadingModel::BlinnPhong)
+        {
+            return {};
+        }
+
+        std::string sceneLighting;
+        std::string shadowsInclude;
+        if (!LoadIncludeFile(assetsRoot, env, "MaterialSceneShadows.glslinc", shadowsInclude, compiled))
+        {
+            return {};
+        }
+
+        sceneLighting += shadowsInclude;
+        if (!sceneLighting.empty() && sceneLighting.back() != '\n')
+        {
+            sceneLighting += '\n';
+        }
+        sceneLighting += '\n';
+
+        std::string phongLightingInclude;
+        if (!LoadIncludeFile(assetsRoot, env, "MaterialPhongLighting.glslinc", phongLightingInclude, compiled))
+        {
+            return {};
+        }
+
+        sceneLighting += phongLightingInclude;
+        return sceneLighting;
     }
 
     std::string GLSLMaterialShellAssemblerImpl::BuildFragmentInTexCoords(int numTexCoords)
@@ -176,14 +226,25 @@ namespace minEngine
             return false;
         }
 
+        std::string meshVertexLightingVaryings;
+        const bool includeSceneLightingVaryings = env.ShadingModel == MaterialShadingModel::BlinnPhong;
+        if (includeSceneLightingVaryings)
+        {
+            if (!LoadIncludeFile(assetsRoot, env, "MeshVertexLightingVaryings.glslinc", meshVertexLightingVaryings, compiled))
+            {
+                return false;
+            }
+        }
+
         const MaterialStageSource& vertexStage = compiled.Stages[Stage_Vertex];
         const std::vector<std::pair<std::string, std::string>> vertexAnchors = {
-            { "VERTEX_IO_BLOCK", BuildVertexIoBlock(numTexCoords) },
+            { "VERTEX_IO_BLOCK", BuildVertexIoBlock(numTexCoords, includeSceneLightingVaryings) },
             { "VERTEX_MATERIAL_PARAMETERS_STRUCT",
                 (numTexCoords > 0) ? BuildMaterialParametersStructGlobal(numTexCoords) : std::string{} },
             { "VERTEX_UNIFORMS", meshVertexUniforms },
             { "VERTEX_TEXCOORD_SETUP",
                 (numTexCoords > 0) ? BuildVertexTexCoordSetup(numTexCoords) : std::string{} },
+            { "VERTEX_LIGHTING_VARYINGS", meshVertexLightingVaryings },
             { "VERTEX_STAGE_BODY", EnsureTrailingNewline(vertexStage.Body) },
             { "VERTEX_POSITION", meshVertexPosition },
         };
@@ -205,9 +266,19 @@ namespace minEngine
             preamble += "\n";
         }
 
+        const std::string fragmentSceneLighting =
+            BuildFragmentSceneLighting(assetsRoot, env, env.ShadingModel, compiled);
+        if (fragmentSceneLighting.empty() && includeSceneLightingVaryings)
+        {
+            return false;
+        }
+
         const std::vector<std::pair<std::string, std::string>> fragmentAnchors = {
             { "FRAGMENT_IN_TEXCOORDS", BuildFragmentInTexCoords(numTexCoords) },
+            { "FRAGMENT_LIGHTING_VARYINGS",
+                includeSceneLightingVaryings ? BuildFragmentLightingVaryings() : std::string{} },
             { "FRAGMENT_PREAMBLE", preamble },
+            { "FRAGMENT_SCENE_LIGHTING", fragmentSceneLighting },
             { "FRAGMENT_MATERIAL_INPUTS_STRUCT", BuildFragmentMaterialInputsStructGlobal() },
             { "FRAGMENT_MATERIAL_PARAMETERS_STRUCT",
                 (numTexCoords > 0) ? BuildMaterialParametersStructGlobal(numTexCoords) : std::string{} },

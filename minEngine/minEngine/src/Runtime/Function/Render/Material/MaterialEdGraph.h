@@ -5,28 +5,26 @@
 #include "MaterialTypes.h"
 
 #include <memory>
-#include <utility>
 #include <vector>
 
 namespace minEngine
 {
     struct MaterialPropertyInputDescription;
+    class Material;
     class MaterialGraphNodeDef;
     class MaterialGraphNodeDefInput;
 
+    ME_CLASS()
     class MaterialEdGraph : public EditorGraph
     {
-    public:
-        std::vector<MaterialEdGraphNode> m_Nodes;
+        ME_GENERATED_BODY(MaterialEdGraph)
 
-        template<typename TNodeDef, typename... Args>
-        MaterialEdGraphNode& AddNode(Args&&... args)
-        {
-            m_Nodes.emplace_back();
-            MaterialEdGraphNode& node = m_Nodes.back();
-            node.SetDefinition(std::make_unique<TNodeDef>(std::forward<Args>(args)...));
-            return node;
-        }
+    public:
+        ME_PROPERTY(Instanced)
+        std::vector<std::shared_ptr<MaterialEdGraphNode>> m_Nodes;
+
+        template<typename TNodeDef>
+        MaterialEdGraphNode& AddNode(Material& material);
 
         bool ConnectPins(
             MaterialEdGraphNode& fromNode,
@@ -45,5 +43,10 @@ namespace minEngine
         MaterialGraphNodeDefInput* FindPropertyGraphInput(MaterialProperty property) const;
         bool ResolveMaterialPropertyInput(MaterialProperty property, MaterialPropertyInputDescription& inOutDescription) const;
         std::vector<MaterialGraphNodeDef*> GetMaterialOutputNodeDefs() const;
+
+        MaterialEdGraphNode* FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef);
+        const MaterialEdGraphNode* FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef) const;
     };
 }
+
+#include "Generated/Reflection/MaterialEdGraph.gen.h"

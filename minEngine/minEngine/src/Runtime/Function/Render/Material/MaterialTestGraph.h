@@ -10,11 +10,9 @@ namespace minEngine
     class Material;
     class RHI;
 
-    // Builds the shared MIR smoke graph into an existing MaterialEdGraph (nodes owned by the graph).
-    void PopulateSmokeMaterialGraph(MaterialEdGraph& graph);
+    void PopulateSmokeMaterialGraph(Material& material);
 
     const MaterialGraphNodeDef_MaterialOutput* FindMaterialOutputNode(const MaterialEdGraph& graph);
 
-    // Fills material.m_Graph, compiles via MaterialCompiler::Compile, and sets smoke draw parameters.
     bool SetupSmokeMaterial(Material& material, RHI& rhi, std::string* outError = nullptr);
 }

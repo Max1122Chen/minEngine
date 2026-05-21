@@ -40,7 +40,7 @@ namespace minEngine
                 continue;
             }
 
-            RHIShader* shader = material->m_Shader->GetRHIShader().get();
+            RHIShader* shader = material->GetShader()->GetRHIShader().get();
             shader->Use();
 
             const MeshPassSceneBinding sceneBinding{ drawCommand, false };

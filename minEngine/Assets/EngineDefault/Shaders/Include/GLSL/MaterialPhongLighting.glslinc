@@ -1,0 +1,144 @@
+// Graph-material Phong lighting — function bodies match legacy Shaders/Phong.frag.
+// Terminology: Albedo = DiffuseMap, Metallic (scalar) = SpecularMap RGB replicated.
+#ifndef MINENGINE_MATERIAL_PHONG_LIGHTING_GLSLINC
+#define MINENGINE_MATERIAL_PHONG_LIGHTING_GLSLINC
+
+// Requires MaterialSceneShadows.glslinc included earlier in the same translation unit.
+
+layout (std140) uniform PerFrameData
+{
+    mat4 View;
+    mat4 Proj;
+    mat4 ViewProj;
+    vec4 CameraPos;
+};
+
+const float kMaterialPhongShininess = 32.0;
+
+vec3 MaterialSpecularFromMetallic(float metallic)
+{
+    return vec3(metallic, metallic, metallic);
+}
+
+vec3 CalcDirLightGraph(
+    DirectionalLightData light,
+    vec3 normal,
+    vec3 fragPos,
+    vec3 viewDir,
+    vec4 fragPosViewSpace,
+    vec3 albedo,
+    float metallic)
+{
+    vec3 lightDir = normalize(-light.Direction.xyz);
+    vec3 lightColor = light.Color.rgb * light.Color.w;
+
+    float ndotl = max(dot(normalize(normal), lightDir), 0.0);
+    float bias = max(0.0005, 0.005 * (1.0 - ndotl));
+
+    float shadow = 0.0;
+    float viewDepth = -fragPosViewSpace.z;
+    int cascadeIndex = 3;
+    for (int i = 0; i < 4; i++)
+    {
+        if (viewDepth < FarPlanes[i])
+        {
+            cascadeIndex = i;
+            break;
+        }
+    }
+    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
+    shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
+
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * lightColor * albedo;
+
+    float diff = max(dot(normal, lightDir), 0.0);
+
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), kMaterialPhongShininess);
+    vec3 specularColor = MaterialSpecularFromMetallic(metallic);
+
+    vec3 diffuse = diff * lightColor * albedo;
+    vec3 specular = spec * lightColor * specularColor;
+
+    return ambient + (diffuse + specular) * (1.0 - shadow);
+}
+
+vec3 CalcPointLightGraph(
+    PointLightData light,
+    vec3 normal,
+    vec3 fragPos,
+    vec3 viewDir,
+    int lightIndex,
+    vec3 albedo,
+    float metallic)
+{
+    vec3 lightDir = normalize(light.Position.xyz - fragPos);
+    vec3 lightColor = light.Color.rgb * light.Color.w;
+
+    float shadow = 0.0;
+    int shadowIndex = int(light.Params.w + 0.5);
+    if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
+    {
+        float ndotl = max(dot(normalize(normal), lightDir), 0.0);
+        float bias = max(0.002, 0.01 * (1.0 - ndotl));
+        shadow = SamplePointShadowPCF(fragPos, light.Position.xyz, light.Params.z, shadowIndex, bias);
+    }
+
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * lightColor * albedo;
+
+    float diff = max(dot(normal, lightDir), 0.0);
+
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), kMaterialPhongShininess);
+    vec3 specularColor = MaterialSpecularFromMetallic(metallic);
+
+    vec3 diffuse = diff * lightColor * albedo;
+    vec3 specular = spec * lightColor * specularColor;
+    return ambient + (diffuse + specular) * (1.0 - shadow);
+}
+
+vec3 CalcSpotLightGraph(
+    SpotLightData light,
+    vec3 normal,
+    vec3 fragPos,
+    vec3 viewDir,
+    int lightIndex,
+    vec3 albedo,
+    float metallic)
+{
+    vec3 lightDir = normalize(light.Position.xyz - fragPos);
+    vec3 lightColor = light.Color.rgb * light.Color.w;
+
+    float theta = dot(lightDir, normalize(-light.Direction.xyz));
+    float innerCos = cos(radians(light.Params.x));
+    float outerCos = cos(radians(light.Params.y));
+    float epsilon = innerCos - outerCos;
+    float intensity = clamp((theta - outerCos) / epsilon, 0.0, 1.0);
+
+    float diff = max(dot(normal, lightDir), 0.0);
+
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), kMaterialPhongShininess);
+    vec3 specularColor = MaterialSpecularFromMetallic(metallic);
+
+    vec3 diffuse = diff * lightColor * albedo;
+    vec3 specular = spec * lightColor * specularColor;
+    diffuse *= intensity;
+    specular *= intensity;
+
+    float shadow = 0.0;
+    int shadowIndex = int(light.Params.w + 0.5);
+    if (shadowIndex >= 0 && shadowIndex < MAX_SPOT_SHADOW_MAPS)
+    {
+        float ndotl = max(dot(normalize(normal), lightDir), 0.0);
+        float bias = max(0.0005, 0.005 * (1.0 - ndotl));
+        vec4 fragPosLightSpace = SpotLightViewProj[shadowIndex] * vec4(fragPos, 1.0);
+        shadow = SampleSpotShadowPCF(fragPosLightSpace, shadowIndex, bias);
+    }
+
+    return (diffuse + specular) * (1.0 - shadow);
+}
+
+#endif // MINENGINE_MATERIAL_PHONG_LIGHTING_GLSLINC

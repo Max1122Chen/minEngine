@@ -6,6 +6,7 @@
 #include "Runtime/Resource/Asset.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Function/Render/Material/MaterialEdGraph.h"
+#include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 
 #include <string>
 #include <vector>
@@ -55,11 +56,22 @@ namespace minEngine
             return m_Shader != nullptr && m_Shader->IsValid() && !m_ParameterLayout.Parameters.empty();
         }
 
-        ME_PROPERTY()
-        std::shared_ptr<Shader> m_Shader;
+        Shader* GetShader() const { return m_Shader.get(); }
 
+        MaterialEdGraph& GetGraph();
+        const MaterialEdGraph& GetGraph() const;
+
+        bool LinkNodeDefGraph();
+        bool RebuildPinLinks();
+        bool ValidateMaterialAsset(std::string* outError = nullptr) const;
+        bool FinalizeGraphAfterLoad(std::string* outError = nullptr);
+
+        ME_PROPERTY()
         MaterialShadingModel m_ShadingModel = MaterialShadingModel::Unlit;
-        MaterialEdGraph m_Graph;
+
+        ME_PROPERTY(Instanced)
+        std::shared_ptr<MaterialEdGraph> m_Graph;
+
         std::vector<MaterialCompileDiagnostic> m_LastCompileDiagnostics;
         MaterialShaderParameterLayout m_ParameterLayout;
         std::vector<MaterialTextureParameter> m_TextureParameters;
@@ -68,6 +80,8 @@ namespace minEngine
         bool IsTranslucent() const { return false; }
 
     private:
+        std::shared_ptr<Shader> m_Shader;
+
         bool CommitCompileResult(const MaterialCompileResult& result, const MaterialCompileContext& ctx);
 
         const MaterialGraphNodeDef_TextureObject* FindTextureNodeBySlot(int slotIndex) const;
@@ -80,4 +94,4 @@ namespace minEngine
     };
 }
 
-#include "Material.gen.h"
+#include "Generated/Reflection/Material.gen.h"

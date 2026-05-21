@@ -11,10 +11,11 @@ namespace minEngine
 {
     class RHI;
 
+    ME_ENUM()
     enum class MaterialShadingModel : uint8_t
     {
         Unlit = 0,
-        DefaultLit,
+        BlinnPhong,
     };
 
     enum class MaterialShaderLanguage : uint8_t
@@ -86,3 +87,5 @@ namespace minEngine
         MaterialShaderParameterLayout ParameterLayout;
     };
 }
+
+#include "Generated/Reflection/MaterialCompileTypes.gen.h"

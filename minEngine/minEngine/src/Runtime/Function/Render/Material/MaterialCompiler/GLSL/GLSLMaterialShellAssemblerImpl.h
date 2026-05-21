@@ -26,7 +26,13 @@ namespace minEngine
         static std::string BuildVertexTexCoordSetup(int numTexCoords);
         static std::string BuildFragmentTexCoordSetup(int numTexCoords);
         static std::string BuildFragmentMaterialInputsStructGlobal();
-        static std::string BuildVertexIoBlock(int numTexCoords);
+        static std::string BuildVertexIoBlock(int numTexCoords, bool includeSceneLightingVaryings);
         static std::string BuildFragmentInTexCoords(int numTexCoords);
+        static std::string BuildFragmentLightingVaryings();
+        static std::string BuildFragmentSceneLighting(
+            const std::filesystem::path& assetsRoot,
+            const MaterialCompileEnvironment& env,
+            MaterialShadingModel shadingModel,
+            MaterialCompileResult& compiled);
     };
 }

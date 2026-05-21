@@ -20,7 +20,6 @@
 #include "Resource/AssetManager.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 
-#include "EditorDefaultScene.h"
 
 #include <algorithm>
 #include <array>
@@ -82,23 +81,30 @@ namespace minEngine
         if (result.IsSuccess())
         {
             ME_CORE_INFO(result.Message);
-            // Try to load the editor default scene after project is opened, if no scene is currently open
+
             const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
-            bool sceneLoaded = SceneManager::Get().LoadScene(projectCtx.Settings.EditorDefaultSceneName);
-            if(!sceneLoaded)
+            if (!projectCtx.Settings.EditorDefaultSceneName.empty())
             {
-                ME_CORE_WARN("Failed to load editor default scene '{}'.", projectCtx.Settings.EditorDefaultSceneName);
+                const bool sceneLoaded =
+                    SceneManager::Get().LoadScene(projectCtx.Settings.EditorDefaultSceneName);
+                if (!sceneLoaded)
+                {
+                    ME_CORE_WARN(
+                        "Failed to load editor default scene '{}'.",
+                        projectCtx.Settings.EditorDefaultSceneName);
+                }
+                else
+                {
+                    ME_CORE_INFO(
+                        "Editor default scene '{}' loaded successfully.",
+                        projectCtx.Settings.EditorDefaultSceneName);
+                }
             }
-            else
-            {
-                ME_CORE_INFO("Editor default scene '{}' loaded successfully.", projectCtx.Settings.EditorDefaultSceneName);
-                return true;
-            }
+
+            return true;
         }
-        else
-        {
-            ME_CORE_ERROR(result.Message);
-        }
+
+        ME_CORE_ERROR(result.Message);
         return false;
     }
 
@@ -508,11 +514,6 @@ namespace minEngine
         }
 
         OpenProject(projectPath);
-
-        if (!SetEditorMaterialIRSmokeActiveScene())
-        {
-            ME_CORE_ERROR("Failed to set editor material IR smoke active scene.");
-        }
     }
 
     void Editor::Shutdown()

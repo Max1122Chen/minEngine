@@ -1,17 +1,21 @@
 #version 330 core
 
 @ME_INSERT:FRAGMENT_IN_TEXCOORDS@
+@ME_INSERT:FRAGMENT_LIGHTING_VARYINGS@
+
 out vec4 FragColor;
 
 @ME_INSERT:FRAGMENT_PREAMBLE@
-
+@ME_INSERT:FRAGMENT_SCENE_LIGHTING@
 @ME_INSERT:FRAGMENT_MATERIAL_INPUTS_STRUCT@
-
 @ME_INSERT:FRAGMENT_MATERIAL_PARAMETERS_STRUCT@
 
 void main()
 {
 @ME_INSERT:FRAGMENT_TEXCOORD_SETUP@
 @ME_INSERT:FRAGMENT_STAGE_BODY@
-    FragColor = vec4(FragmentMaterialInputs.Albedo, FragmentMaterialInputs.Opacity);
+
+    FragColor = vec4(
+        FragmentMaterialInputs.Albedo + FragmentMaterialInputs.Emissive,
+        FragmentMaterialInputs.Opacity);
 }

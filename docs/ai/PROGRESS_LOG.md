@@ -496,3 +496,24 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Why deferred:** Runtime/MIR already supports multi-output + `Subscript` (P7); `ComponentMask` covers non-constant vectors. Editor multi-pin UI was not in scope.
 - **Effort (estimate):** Runtime ~half day; editor pin UI depends on existing material graph UI maturity.
 - **Discussed:** 2026-05-19 – user asked to defer until editor phase; agent should remind when editor work begins.
+
+### Material asset file round-trip (Instanced graph)
+- **2026-05-21:** `EditorGraph` / `EditorGraphNode` → `MEObject`; `MaterialEdGraph` / `MaterialEdGraphNode` inherit; `Material::m_Graph` → `shared_ptr` + `ME_PROPERTY(Instanced)`.
+- **Test:** `RunMaterialAssetSerializationTests()` writes `%TEMP%/minengine_material_asset_roundtrip.memtl`, `ToFile` → `FromFile` → `FinalizeGraphAfterLoad`; checks inline JSON types, editor fields, Metallic link, Outer chain.
+- **CLI:** `Editor.exe --material-serialize-test` (serialize only); `--material-ir-test` includes file round-trip at end.
+
+### Golden MaterialIRSmoke + Editor default scene
+- **2026-05-21:** `MyMEProject/Assets/Materials/MaterialIRSmoke.memtl` (+ `.meta`) committed as golden IR smoke graph asset.
+- **Editor:** `PopulateEditorDefaultScene` loads via `AssetManager::LoadAsset<Material>` then `ApplyMaterialIRSmokeRuntimeDefaults` (white BaseColor texture).
+- **Tests:** serialize round-trip also verifies golden `.memtl` deserializes + `FinalizeGraphAfterLoad`.
+
+### Material asset texture refs + test cleanup
+- **2026-05-21:** `TextureObject.DefaultTexture` serializes as texture asset `$guid` (`BaseColorWhite.png`); removed `ApplyMaterialIRSmokeRuntimeDefaults`.
+- **Deprecated:** `Simple.memtl` (legacy MaterialResource JSON); `test.mescene` / `default.mescene` reference `MaterialIRSmoke` GUID.
+- **Tests:** removed `MaterialAssetSerializationTest` and `--material-serialize-test`; `MaterialIRTest` keeps MIR compile/GPU smoke only (asset tests TBD).
+
+### Next phase design (shading models — approved direction, not started)
+- **Doc:** `docs/ai/MATERIAL_SHADING_MODEL_PLAN.md`
+- **S1:** Unlit template + full light-type shadows (shared `SceneShadows.glslinc` from legacy Phong).
+- **S2:** `MaterialShadingModel::BlinnPhong` templates (replace `DefaultLit` name); map `FragmentMaterialInputs` to Blinn-Phong lighting.
+- **Pending:** material graph editor UI; extended NodeDef library; PBR enum later (not DefaultLit).

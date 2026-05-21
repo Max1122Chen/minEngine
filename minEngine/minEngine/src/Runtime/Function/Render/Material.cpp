@@ -1,5 +1,6 @@
 #include "Material.h"
 
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompiler.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "Runtime/Function/Render/RenderSystem.h"
@@ -7,8 +8,189 @@
 #include "RHI/RHITexture.h"
 #include "Texture.h"
 
+#include <unordered_map>
+
 namespace minEngine
 {
+    MaterialEdGraph& Material::GetGraph()
+    {
+        if (!m_Graph)
+        {
+            m_Graph = NewObject<MaterialEdGraph>("", this);
+        }
+
+        return *m_Graph;
+    }
+
+    const MaterialEdGraph& Material::GetGraph() const
+    {
+        static MaterialEdGraph emptyGraph;
+        return m_Graph ? *m_Graph : emptyGraph;
+    }
+
+    bool Material::LinkNodeDefGraph()
+    {
+        if (!m_Graph)
+        {
+            return false;
+        }
+
+        std::unordered_map<GUID, MaterialGraphNodeDef*, GUID::Hash> nodeDefByGuid;
+        nodeDefByGuid.reserve(m_Graph->m_Nodes.size());
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& edNode : m_Graph->m_Nodes)
+        {
+            if (!edNode)
+            {
+                continue;
+            }
+
+            MaterialGraphNodeDef* nodeDef = edNode->GetNodeDef();
+            if (nodeDef == nullptr || nodeDef->GetGuid().IsZero())
+            {
+                continue;
+            }
+
+            nodeDefByGuid[nodeDef->GetGuid()] = nodeDef;
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& edNode : m_Graph->m_Nodes)
+        {
+            if (!edNode || edNode->GetNodeDef() == nullptr)
+            {
+                continue;
+            }
+
+            for (int32_t inputIndex = 0; MaterialGraphNodeDefInput* input = edNode->GetNodeDef()->GetInput(inputIndex); ++inputIndex)
+            {
+                if (input->ConnectedNodeDefGuid.IsZero())
+                {
+                    input->NodeDef = nullptr;
+                    input->OutputIndex = 0;
+                    continue;
+                }
+
+                const auto linkedNodeDef = nodeDefByGuid.find(input->ConnectedNodeDefGuid);
+                if (linkedNodeDef == nodeDefByGuid.end())
+                {
+                    return false;
+                }
+
+                input->NodeDef = linkedNodeDef->second;
+            }
+        }
+
+        return true;
+    }
+
+    bool Material::RebuildPinLinks()
+    {
+        if (!m_Graph)
+        {
+            return false;
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& edNode : m_Graph->m_Nodes)
+        {
+            if (!edNode)
+            {
+                continue;
+            }
+
+            edNode->RebuildPins();
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& toEdNode : m_Graph->m_Nodes)
+        {
+            if (!toEdNode || toEdNode->GetNodeDef() == nullptr)
+            {
+                continue;
+            }
+
+            for (int32_t inputIndex = 0; MaterialGraphNodeDefInput* input = toEdNode->GetNodeDef()->GetInput(inputIndex); ++inputIndex)
+            {
+                if (input->NodeDef == nullptr)
+                {
+                    continue;
+                }
+
+                MaterialEdGraphNode* fromEdNode = m_Graph->FindEdNodeByNodeDef(input->NodeDef);
+                if (fromEdNode == nullptr)
+                {
+                    return false;
+                }
+
+                if (!m_Graph->ConnectPins(*fromEdNode, input->OutputIndex, *toEdNode, inputIndex))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool Material::ValidateMaterialAsset(std::string* outError) const
+    {
+        if (!m_Graph || m_Graph->m_Nodes.empty())
+        {
+            if (outError != nullptr)
+            {
+                *outError = "Material graph has no nodes.";
+            }
+            return false;
+        }
+
+        bool hasMaterialOutput = false;
+        for (const std::shared_ptr<MaterialEdGraphNode>& edNode : m_Graph->m_Nodes)
+        {
+            if (edNode && edNode->GetNodeDef() && edNode->GetNodeDef()->IsMaterialOutputNode())
+            {
+                hasMaterialOutput = true;
+                break;
+            }
+        }
+
+        if (!hasMaterialOutput)
+        {
+            if (outError != nullptr)
+            {
+                *outError = "Material graph requires at least one MaterialOutput node.";
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    bool Material::FinalizeGraphAfterLoad(std::string* outError)
+    {
+        if (!LinkNodeDefGraph())
+        {
+            if (outError != nullptr)
+            {
+                *outError = "Failed to link material graph node definitions by GUID.";
+            }
+            return false;
+        }
+
+        if (!RebuildPinLinks())
+        {
+            if (outError != nullptr)
+            {
+                *outError = "Failed to rebuild material graph pin links.";
+            }
+            return false;
+        }
+
+        if (!ValidateMaterialAsset(outError))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     bool Material::Compile()
     {
         MaterialCompileContext ctx;
@@ -18,10 +200,20 @@ namespace minEngine
 
     const MaterialGraphNodeDef_TextureObject* Material::FindTextureNodeBySlot(int slotIndex) const
     {
-        for (const MaterialEdGraphNode& graphNode : m_Graph.m_Nodes)
+        if (!m_Graph)
         {
+            return nullptr;
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& graphNode : m_Graph->m_Nodes)
+        {
+            if (!graphNode)
+            {
+                continue;
+            }
+
             if (const MaterialGraphNodeDef_TextureObject* textureNode =
-                    dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(graphNode.GetDefinition()))
+                    dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(graphNode->GetDefinition()))
             {
                 if (textureNode->TextureSlotIndex == slotIndex)
                 {
@@ -35,10 +227,20 @@ namespace minEngine
 
     const MaterialGraphNodeDef_ScalarParameter* Material::FindScalarNodeBySlot(int slotIndex) const
     {
-        for (const MaterialEdGraphNode& graphNode : m_Graph.m_Nodes)
+        if (!m_Graph)
         {
+            return nullptr;
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& graphNode : m_Graph->m_Nodes)
+        {
+            if (!graphNode)
+            {
+                continue;
+            }
+
             if (const MaterialGraphNodeDef_ScalarParameter* scalarNode =
-                    dynamic_cast<const MaterialGraphNodeDef_ScalarParameter*>(graphNode.GetDefinition()))
+                    dynamic_cast<const MaterialGraphNodeDef_ScalarParameter*>(graphNode->GetDefinition()))
             {
                 if (scalarNode->UniformSlotIndex == slotIndex)
                 {

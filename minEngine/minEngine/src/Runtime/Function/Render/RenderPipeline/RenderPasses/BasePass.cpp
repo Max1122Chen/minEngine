@@ -35,12 +35,14 @@ namespace minEngine
                 continue;
             }
 
-            RHIShader* shader = material->m_Shader->GetRHIShader().get();
+            RHIShader* shader = material->GetShader()->GetRHIShader().get();
             shader->Use();
+
+            const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong;
 
             const MeshPassSceneBinding sceneBinding{
                 drawCommand,
-                material->m_ShadingModel == MaterialShadingModel::DefaultLit,
+                bindSceneLighting,
                 &m_DirectionalShadowHandle,
                 &m_SpotShadowHandles,
                 &m_PointShadowHandles,

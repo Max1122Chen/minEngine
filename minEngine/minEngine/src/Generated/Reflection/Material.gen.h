@@ -4,7 +4,8 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Material)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_Shader)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_ShadingModel)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_Graph)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::Material, GReflectionClassRegister_Material_a5a5b161)

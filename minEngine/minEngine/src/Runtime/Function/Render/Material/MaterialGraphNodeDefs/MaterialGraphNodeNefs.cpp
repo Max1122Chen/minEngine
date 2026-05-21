@@ -3,6 +3,11 @@
 
 namespace minEngine
 {
+    MaterialGraphNodeDef_Constant::MaterialGraphNodeDef_Constant()
+        : MaterialGraphNodeDef_Constant(0.0f)
+    {
+    }
+
     MaterialGraphNodeDef_Constant::MaterialGraphNodeDef_Constant(float value)
         : Value(value)
     {
@@ -202,6 +207,11 @@ namespace minEngine
         emitter.Output(0, emitter.ExternalInput(EI_TexCoord0));
     }
 
+    MaterialGraphNodeDef_TextureObject::MaterialGraphNodeDef_TextureObject()
+        : MaterialGraphNodeDef_TextureObject("", 0)
+    {
+    }
+
     MaterialGraphNodeDef_TextureObject::MaterialGraphNodeDef_TextureObject(
         std::string parameterName,
         int textureSlotIndex)
@@ -231,6 +241,11 @@ namespace minEngine
         MIRValue* sample = emitter.TextureSample(texture, texCoord);
         emitter.Output(0, sample);
         emitter.Output(1, emitter.Cast(sample, MIRPrimitiveType::GetFloat3()));
+    }
+
+    MaterialGraphNodeDef_ScalarParameter::MaterialGraphNodeDef_ScalarParameter()
+        : MaterialGraphNodeDef_ScalarParameter("", 0, 0.0f)
+    {
     }
 
     MaterialGraphNodeDef_ScalarParameter::MaterialGraphNodeDef_ScalarParameter(

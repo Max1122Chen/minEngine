@@ -236,12 +236,7 @@ namespace minEngine::Serialization
         {
         case MEPropertyCategory::Primitive:
         {
-            const auto* primitive = dynamic_cast<const MEPrimitiveProperty*>(&property);
-            if (primitive == nullptr)
-            {
-                return SerializeResult::Failure("Serialize primitive failed: invalid property type.", path);
-            }
-
+            const auto* primitive = static_cast<const MEPrimitiveProperty*>(&property);
             const PrimitiveCodec* codec = PrimitiveCodecRegistry::Get().Find(primitive->primitiveTypeName);
             if (codec == nullptr)
             {
@@ -257,12 +252,7 @@ namespace minEngine::Serialization
         }
         case MEPropertyCategory::Object:
         {
-            const auto* objectProperty = dynamic_cast<const MEObjectProperty*>(&property);
-            if (objectProperty == nullptr)
-            {
-                return SerializeResult::Failure("Serialize object failed: invalid property type.", path);
-            }
-
+            const auto* objectProperty = static_cast<const MEObjectProperty*>(&property);
             const MEClass* valueClass = objectProperty->GetValueClass();
             if (valueClass == nullptr)
             {
@@ -274,23 +264,13 @@ namespace minEngine::Serialization
         case MEPropertyCategory::ObjectPtr:
         {
             // TODO: support object pointer later
-            const auto* objectPtrProperty = dynamic_cast<const MEObjectPtrProperty*>(&property);
-            if (objectPtrProperty == nullptr)            
-            {
-                return SerializeResult::Failure("Serialize object pointer failed: invalid property type.", path);
-            }
-
+            const auto* objectPtrProperty = static_cast<const MEObjectPtrProperty*>(&property);
             return SerializeObjectPtr(*objectPtrProperty, objectPtrProperty->GetSpecifierMask() | propertySpecifierMask, valuePtr, ownerObjectPtr, archive, options, path);
 
         }
         case MEPropertyCategory::Array:
         {
-            const auto* arrayProperty = dynamic_cast<const MEArrayProperty*>(&property);
-            if (arrayProperty == nullptr)
-            {
-                return SerializeResult::Failure("Serialize array failed: invalid property type.", path);
-            }
-
+            const auto* arrayProperty = static_cast<const MEArrayProperty*>(&property);
             MEProperty* innerProperty = arrayProperty->GetInnerProperty();
             if (innerProperty == nullptr)
             {
@@ -371,13 +351,9 @@ namespace minEngine::Serialization
 
         (void)ptrCategory;
 
-        const MEClass* meObjectClass = ReflectionSystem::Get().FindClass<MEObject>();
-        if (meObjectClass == nullptr)
-        {
-            return SerializeResult::Failure("Serialize object pointer failed: MEObject reflection class is unresolved.", path);
-        }
-
-        if (!ReflectionSystem::Get().IsClassSameOrDerived(staticValueClass, meObjectClass))
+        const MEClass* meObjectClass = MEObject::StaticClass();
+        // Make sure the value class is derived from MEObject.
+        if (!staticValueClass->IsA(meObjectClass))
         {
             return SerializeResult::Failure("Serialize object pointer failed: only MEObject-derived pointer properties are supported.", path);
         }

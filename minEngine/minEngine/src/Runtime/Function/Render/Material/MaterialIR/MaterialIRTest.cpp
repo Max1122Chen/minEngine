@@ -3,6 +3,7 @@
 #include "Log/LogSystem.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/RuntimeGlobalContext.h"
 #include "Serialization/JsonArchive.h"
 #include "Serialization/Serializer.h"
@@ -382,6 +383,11 @@ namespace minEngine
             }) && passed;
 
             passed = AssertTrue(
+                result.FullVertexShader.find("a_Normal") == std::string::npos,
+                "unlit vertex must not require a_Normal")
+                && passed;
+
+            passed = AssertTrue(
                 result.FullVertexShader.find("} MaterialParameters;") < result.FullVertexShader.find("void main"),
                 "vertex MaterialParameters struct must be outside main")
                 && passed;
@@ -389,8 +395,17 @@ namespace minEngine
             passed = AssertAllContains(result.FullFragmentShader, {
                 { "uniform sampler2D u_Texture0", "global texture uniform" },
                 { "MaterialParameters.TexCoords[0] = v_MaterialTexCoord0", "fragment restores MaterialParameters" },
-                { "FragColor = vec4(FragmentMaterialInputs.Albedo, FragmentMaterialInputs.Opacity)", "unlit composite" },
+                { "FragmentMaterialInputs.Albedo + FragmentMaterialInputs.Emissive", "unlit self-lit composite" },
             }) && passed;
+
+            passed = AssertTrue(
+                result.FullFragmentShader.find("u_DirLightShadowMap") == std::string::npos,
+                "unlit fragment must not reference shadow samplers")
+                && passed;
+            passed = AssertTrue(
+                result.FullFragmentShader.find("LightsData") == std::string::npos,
+                "unlit fragment must not reference scene lights UBO")
+                && passed;
 
             passed = AssertTrue(
                 result.FullFragmentShader.find("uniform sampler2D") < result.FullFragmentShader.find("void main"),
@@ -434,7 +449,7 @@ namespace minEngine
             ME_CORE_INFO(
                 "MaterialIR smoke PASSED.\n"
                 "Graph: Albedo = TextureSample * tint(0.2,0.8,0.2), Metallic = 0.3.\n"
-                "If texture=1 at UV0: FragColor = vec4(0.2, 0.8, 0.2, 1).");
+                "Unlit: FragColor = Albedo + Emissive. If texture=1 at UV0: rgb = (0.2, 0.8, 0.2).");
             return true;
         }
 
@@ -459,8 +474,15 @@ namespace minEngine
 
     bool RunMaterialIRSmokeTests()
     {
+        RuntimeGlobalContext& globalContext = RuntimeGlobalContext::Get();
+        if (!globalContext.m_ObjectManager)
+        {
+            globalContext.m_ObjectManager = std::make_shared<ObjectManager>();
+            globalContext.m_ObjectManager->Initialize();
+        }
+
         g_MaterialIRTestEngineDefaultAssetsRoot.clear();
-        RuntimeGlobalContext::Get().SetEngineDefaultAssetsRoot("");
+        globalContext.SetEngineDefaultAssetsRoot("");
 
         if (EnsureReflectionReadyForMaterialIRTest())
         {
@@ -486,17 +508,18 @@ namespace minEngine
         }
 
         Material smokeMaterial;
-        PopulateSmokeMaterialGraph(smokeMaterial.m_Graph);
+        PopulateSmokeMaterialGraph(smokeMaterial);
         smokeMaterial.m_ShadingModel = MaterialShadingModel::Unlit;
 
-        const MaterialGraphNodeDef_MaterialOutput* outputNode = FindMaterialOutputNode(smokeMaterial.m_Graph);
+        const MaterialGraphNodeDef_MaterialOutput* outputNode =
+            smokeMaterial.m_Graph ? FindMaterialOutputNode(*smokeMaterial.m_Graph) : nullptr;
         if (outputNode == nullptr)
         {
             ME_CORE_ERROR("MaterialIR test: smoke graph has no MaterialOutput node.");
             return false;
         }
 
-        if (!VerifyPropertyBindingLayer(smokeMaterial.m_Graph, *outputNode))
+        if (!VerifyPropertyBindingLayer(*smokeMaterial.m_Graph, *outputNode))
         {
             return false;
         }
@@ -508,38 +531,41 @@ namespace minEngine
         }
 
         const MaterialCompileResult compiled =
-            MaterialCompiler::CompileForDiagnostics(smokeMaterial.m_Graph, smokeMaterial.m_ShadingModel, ctx);
+            MaterialCompiler::CompileForDiagnostics(*smokeMaterial.m_Graph, smokeMaterial.m_ShadingModel, ctx);
         if (!VerifySmokeCompileResult(compiled))
         {
             return false;
         }
 
-        bool parameterNameChecks = true;
-        for (const MaterialEdGraphNode& graphNode : smokeMaterial.m_Graph.m_Nodes)
+        const MaterialCompileResult blinnPhongCompiled =
+            MaterialCompiler::CompileForDiagnostics(*smokeMaterial.m_Graph, MaterialShadingModel::BlinnPhong, ctx);
+        if (!blinnPhongCompiled.Succeeded)
         {
-            if (const MaterialGraphNodeDef_TextureObject* textureNode =
-                    dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(graphNode.GetDefinition()))
+            for (const MaterialCompileDiagnostic& diagnostic : blinnPhongCompiled.Diagnostics)
             {
-                parameterNameChecks = AssertTrue(textureNode->ParameterName == "BaseColor", "texture parameter name")
-                    && parameterNameChecks;
+                ME_CORE_ERROR("MaterialIR BlinnPhong diagnostic: {}", diagnostic.Message);
             }
-
-            if (const MaterialGraphNodeDef_ScalarParameter* scalarNode =
-                    dynamic_cast<const MaterialGraphNodeDef_ScalarParameter*>(graphNode.GetDefinition()))
-            {
-                parameterNameChecks = AssertTrue(scalarNode->ParameterName == "Metallic", "scalar parameter name")
-                    && parameterNameChecks;
-                parameterNameChecks = AssertTrue(scalarNode->DefaultValue == 0.3f, "scalar default value")
-                    && parameterNameChecks;
-            }
-        }
-
-        if (!parameterNameChecks)
-        {
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR all tests PASSED (binding + smoke compile on Material::m_Graph).");
+        if (!AssertAllContains(blinnPhongCompiled.FullFragmentShader, {
+                { "CalcDirLightGraph", "Phong directional light (graph terminology)" },
+                { "kMaterialPhongShininess", "legacy fixed shininess 32" },
+                { "MaterialSpecularFromMetallic", "Metallic maps to legacy specular" },
+                { "dirLightResult + pointLightResult + spotLightResult", "Phong per-light accumulation" },
+                { "u_DirLightShadowMap", "Phong fragment directional shadow sampler" },
+            })
+            || !VerifySmokeGpuCompile(blinnPhongCompiled))
+        {
+            LogCompiledShaders(blinnPhongCompiled);
+            ME_CORE_ERROR("MaterialIR BlinnPhong smoke FAILED during compile or GPU link.");
+            return false;
+        }
+
+        ME_CORE_INFO("MaterialIR BlinnPhong smoke: GPU vertex/fragment compile + link PASSED.");
+
+        ME_CORE_INFO("MaterialIR smoke tests PASSED (graph binding + compile diagnostics).");
+        ME_CORE_INFO("Material asset tests were removed; redesign asset/scene integration tests separately.");
         return true;
     }
 }

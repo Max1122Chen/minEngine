@@ -1,10 +1,34 @@
 #include "MaterialEdGraph.h"
 
+#include "../Material.h"
 #include "MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "MaterialPropertyUtil.h"
 
 namespace minEngine
 {
+    MaterialEdGraphNode* MaterialEdGraph::FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef)
+    {
+        if (nodeDef == nullptr)
+        {
+            return nullptr;
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& node : m_Nodes)
+        {
+            if (node && node->GetNodeDef() == nodeDef)
+            {
+                return node.get();
+            }
+        }
+
+        return nullptr;
+    }
+
+    const MaterialEdGraphNode* MaterialEdGraph::FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef) const
+    {
+        return const_cast<MaterialEdGraph*>(this)->FindEdNodeByNodeDef(nodeDef);
+    }
+
     bool MaterialEdGraph::ConnectPins(
         MaterialEdGraphNode& fromNode,
         int32_t fromOutputIndex,
@@ -35,6 +59,7 @@ namespace minEngine
 
         input->NodeDef = fromDef;
         input->OutputIndex = fromOutputIndex;
+        input->ConnectedNodeDefGuid = fromDef->GetGuid();
         return true;
     }
 
@@ -50,6 +75,7 @@ namespace minEngine
         if (input != nullptr)
         {
             input->NodeDef = nullptr;
+            input->ConnectedNodeDefGuid = GUID::Zero();
             input->OutputIndex = 0;
         }
 
@@ -103,9 +129,14 @@ namespace minEngine
             return nullptr;
         }
 
-        for (const MaterialEdGraphNode& node : m_Nodes)
+        for (const std::shared_ptr<MaterialEdGraphNode>& node : m_Nodes)
         {
-            MaterialGraphNodeDef* definition = node.GetDefinition();
+            if (!node)
+            {
+                continue;
+            }
+
+            MaterialGraphNodeDef* definition = node->GetDefinition();
             if (definition == nullptr || !definition->IsMaterialOutputNode())
             {
                 continue;
@@ -138,9 +169,14 @@ namespace minEngine
         std::vector<MaterialGraphNodeDef*> outputNodes;
         outputNodes.reserve(m_Nodes.size());
 
-        for (const MaterialEdGraphNode& node : m_Nodes)
+        for (const std::shared_ptr<MaterialEdGraphNode>& node : m_Nodes)
         {
-            MaterialGraphNodeDef* definition = node.GetDefinition();
+            if (!node)
+            {
+                continue;
+            }
+
+            MaterialGraphNodeDef* definition = node->GetDefinition();
             if (definition != nullptr && definition->IsMaterialOutputNode())
             {
                 outputNodes.push_back(definition);
@@ -150,3 +186,5 @@ namespace minEngine
         return outputNodes;
     }
 }
+
+#include "MaterialEdGraph.inl"

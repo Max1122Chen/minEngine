@@ -2,22 +2,22 @@
 
 namespace minEngine
 {
-    void MaterialEdGraphNode::SetDefinition(std::unique_ptr<MaterialGraphNodeDef> definition)
+    void MaterialEdGraphNode::SetNodeDef(std::shared_ptr<MaterialGraphNodeDef> nodeDef)
     {
-        m_Definition = std::move(definition);
-        CreateInputPins();
+        m_NodeDef = std::move(nodeDef);
+        RebuildPins();
     }
 
-    void MaterialEdGraphNode::CreateInputPins()
+    void MaterialEdGraphNode::RebuildPins()
     {
         Pins.clear();
-        if (!m_Definition)
+        if (!m_NodeDef)
         {
             return;
         }
 
         int inputIndex = 0;
-        while (MaterialGraphNodeDef::Input* input = m_Definition->GetInput(inputIndex))
+        while (MaterialGraphNodeDef::Input* input = m_NodeDef->GetInput(inputIndex))
         {
             EditorGraphNodePin pin;
             pin.Name = input->Name;
@@ -29,7 +29,7 @@ namespace minEngine
         }
 
         int outputIndex = 0;
-        while (MaterialGraphNodeDef::Output* output = m_Definition->GetOutput(outputIndex))
+        while (MaterialGraphNodeDef::Output* output = m_NodeDef->GetOutput(outputIndex))
         {
             EditorGraphNodePin pin;
             pin.Name = output->Name;
@@ -39,10 +39,5 @@ namespace minEngine
             Pins.push_back(pin);
             ++outputIndex;
         }
-    }
-
-    void MaterialEdGraphNode::CreateOutputPins()
-    {
-        CreateInputPins();
     }
 }

@@ -18,8 +18,7 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/Material/MaterialTestGraph.h"
-#include "Runtime/Resource/AssetResources/MaterialResource.h"
+#include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompiler.h"
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Resource/AssetResources/ShaderResource.h"
 
@@ -800,12 +799,13 @@ namespace minEngine
     template<>
     std::shared_ptr<Material> AssetManager::LoadAsset_Impl<Material>(const AssetMeta& meta)
     {
-        MaterialResource resource;
+        std::shared_ptr<Material> material = NewObject<Material>(meta.AssetName, nullptr, meta.Guid);
+
         Serialization::JsonReaderArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
+        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::FromFile(
             meta.AssetPath,
-            "minEngine::MaterialResource",
-            &resource,
+            "minEngine::Material",
+            material.get(),
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
@@ -813,33 +813,39 @@ namespace minEngine
                 .skipUnknownField = false,
                 .allowObjectPtrSerialization = true
             });
-        if (!result.ok)
+        if (!deserializeResult.ok)
         {
-            ME_CORE_ERROR("Failed to deserialize material resource '{}'. Error: {}. Field path: {}",
+            ME_CORE_ERROR("Failed to deserialize material '{}'. Error: {}. Field path: {}",
                           meta.AssetPath,
-                          result.message,
-                          result.fieldPath);
+                          deserializeResult.message,
+                          deserializeResult.fieldPath);
             return nullptr;
         }
-        std::shared_ptr<Material> material = NewObject<Material>(meta.AssetName, nullptr, meta.Guid);
+
+        std::string graphError;
+        if (!material->FinalizeGraphAfterLoad(&graphError))
+        {
+            ME_CORE_ERROR("Failed to finalize material graph '{}': {}", meta.AssetPath, graphError);
+            return nullptr;
+        }
 
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (rhi == nullptr)
         {
-            ME_CORE_ERROR("Failed to create graph material '{}': RHI is not available.", meta.AssetPath);
+            ME_CORE_ERROR("Failed to compile material '{}': RHI is not available.", meta.AssetPath);
             return nullptr;
         }
 
-        std::string compileError;
-        if (!SetupSmokeMaterial(*material, *rhi, &compileError))
+        MaterialCompileContext ctx;
+        ctx.RHI = rhi;
+        if (!MaterialCompiler::Compile(*material, ctx))
         {
-            ME_CORE_ERROR("Failed to compile graph material '{}': {}", meta.AssetPath, compileError);
+            ME_CORE_ERROR("Failed to compile material '{}'.", meta.AssetPath);
+            for (const MaterialCompileDiagnostic& diagnostic : material->m_LastCompileDiagnostics)
+            {
+                ME_CORE_ERROR("  {}", diagnostic.Message);
+            }
             return nullptr;
-        }
-
-        if (resource.m_Diffuse.Texture)
-        {
-            material->SetTextureParameter("BaseColor", resource.m_Diffuse.Texture);
         }
 
         return material;
@@ -888,6 +894,35 @@ namespace minEngine
         return shader;
     }
 
+
+    template<>
+    bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const
+    {
+        Serialization::JsonWriterArchive archive;
+
+        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+            meta.AssetPath,
+            "minEngine::Material",
+            &asset,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = false,
+                .allowObjectPtrSerialization = true
+            });
+
+        if (!result.ok)
+        {
+            ME_CORE_ERROR("Failed to serialize material '{}'. Error: {}. Field path: {}",
+                          meta.AssetPath,
+                          result.message,
+                          result.fieldPath);
+            return false;
+        }
+
+        return true;
+    }
 
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const
