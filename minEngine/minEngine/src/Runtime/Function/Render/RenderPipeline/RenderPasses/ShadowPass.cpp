@@ -1,6 +1,6 @@
 #include "ShadowPass.h"
-#include "Render/RenderSystem.h"
 #include "Render/RHI/RHI.h"
+#include "Render/RenderSystem.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/Shader.h"
@@ -38,8 +38,6 @@ namespace minEngine
 
         // For simplicity, we will render all opaque objects in the shadow pass.
         // In a real implementation, you would want to cull objects that are outside the light's frustum to improve performance.
-
-        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
 
         m_DepthOnlyShader->Use();
         m_DepthOnlyShader->BindUniformBlock("LightViewProj", 8); // Bind the light view projection uniform buffer to the shader

@@ -55,7 +55,7 @@ namespace minEngine
 
     void TranslucencyPass::SortDrawCommands()
     {
-        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
+        RenderCamera* mainCamera = m_SortCamera;
         if (!mainCamera)
         {
             return;

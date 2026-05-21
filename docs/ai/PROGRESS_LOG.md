@@ -511,9 +511,3 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **2026-05-21:** `TextureObject.DefaultTexture` serializes as texture asset `$guid` (`BaseColorWhite.png`); removed `ApplyMaterialIRSmokeRuntimeDefaults`.
 - **Deprecated:** `Simple.memtl` (legacy MaterialResource JSON); `test.mescene` / `default.mescene` reference `MaterialIRSmoke` GUID.
 - **Tests:** removed `MaterialAssetSerializationTest` and `--material-serialize-test`; `MaterialIRTest` keeps MIR compile/GPU smoke only (asset tests TBD).
-
-### Next phase design (shading models — approved direction, not started)
-- **Doc:** `docs/ai/MATERIAL_SHADING_MODEL_PLAN.md`
-- **S1:** Unlit template + full light-type shadows (shared `SceneShadows.glslinc` from legacy Phong).
-- **S2:** `MaterialShadingModel::BlinnPhong` templates (replace `DefaultLit` name); map `FragmentMaterialInputs` to Blinn-Phong lighting.
-- **Pending:** material graph editor UI; extended NodeDef library; PBR enum later (not DefaultLit).

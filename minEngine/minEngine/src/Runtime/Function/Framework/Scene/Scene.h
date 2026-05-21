@@ -6,6 +6,7 @@
 namespace minEngine
 {
     class GameObject;
+    class RenderScene;
 
     ME_CLASS()
     class Scene : public Asset
@@ -27,6 +28,10 @@ namespace minEngine
         bool RemoveGameObjectById(uint64_t id);
         uint64_t IncrementNextGOId() { return m_NextGOId++; }
 
+        void EnsureRenderScene();
+        RenderScene* GetRenderScene();
+        const std::shared_ptr<RenderScene>& GetRenderSceneShared() const { return m_RenderScene; }
+
     // private: // temporarily public for testing
         ME_PROPERTY()
         std::string m_SceneName;
@@ -38,6 +43,7 @@ namespace minEngine
 
     private:
         uint64_t m_NextGOId{ 0 };
+        std::shared_ptr<RenderScene> m_RenderScene;
     };
 }
 

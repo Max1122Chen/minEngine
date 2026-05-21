@@ -7,6 +7,7 @@ namespace minEngine
     class Engine;
     class Scene;
     class RenderScene;
+    class SceneViewport;
     class Component;
     class PrimitiveComponent;
 
@@ -24,7 +25,7 @@ namespace minEngine
         void Tick(float deltaTime);
 
         std::shared_ptr<Scene> GetCurrentActiveScene() const { return m_CurrentActiveScene; }
-        RenderScene* GetRenderScene() const { return m_RenderScene; }
+        RenderScene* GetRenderScene();
 
         bool RegisterScene(const std::string& sceneName, const std::string& path);
         bool UnregisterScene(const std::string& sceneName);
@@ -32,15 +33,16 @@ namespace minEngine
         bool LoadScene(const std::string& sceneName);
         bool LoadSceneByPath(const std::string& path);
         bool SaveCurrentScene();
-        
 
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
-        void SendAllEndOfFrameUpdates();    // to render thread
+        void SendAllEndOfFrameUpdates();
+
+        /** Non-owning; registered by Editor scene-editing viewport (P3 bridge until P4). */
+        void SetEditorSceneViewport(SceneViewport* viewport) { m_EditorSceneViewport = viewport; }
+        SceneViewport* GetEditorSceneViewport() const { return m_EditorSceneViewport; }
 
     // private: // temporarily public for testing
         std::shared_ptr<Scene> m_CurrentActiveScene{ nullptr };
-
-        // Components that need end of frame render data update
         std::vector<Component*> m_ComponentsThatNeedEndOfFrameUpdate;
 
     private:
@@ -49,8 +51,7 @@ namespace minEngine
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;
 
-        std::unordered_map<std::string, std::string> m_RegisteredScenes; // scene name -> scene asset path
-        RenderScene* m_RenderScene{ nullptr };
-
+        std::unordered_map<std::string, std::string> m_RegisteredScenes;
+        SceneViewport* m_EditorSceneViewport = nullptr;
     };
 }

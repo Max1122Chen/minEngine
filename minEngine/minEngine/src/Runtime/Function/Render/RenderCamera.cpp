@@ -1,6 +1,4 @@
 #include "RenderCamera.h"
-#include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Render/RenderSystem.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace minEngine
@@ -40,17 +38,16 @@ namespace minEngine
         m_ViewProjMatrix = m_ProjectionMatrix * m_ViewMatrix;
     }
 
-    Geometry::Ray RenderCamera::ScreenPointToRay(const Vector2 &screenPoint) const
+    Geometry::Ray RenderCamera::ScreenPointToRay(const Vector2& screenPoint, const Vector2& bufferSize) const
     {
-        Vector2 sceneBufferSize = RenderSystem::Get().GetSceneBufferSize();
-        if (sceneBufferSize.x <= 0.0f || sceneBufferSize.y <= 0.0f)
+        if (bufferSize.x <= 0.0f || bufferSize.y <= 0.0f)
         {
             return Geometry::Ray(m_Position, Vector3(1.0f, 0.0f, 0.0f));
         }
 
         // Input contract: screenPoint is in top-left-origin pixel space.
-        const float ndcX = (screenPoint.x / sceneBufferSize.x) * 2.0f - 1.0f;
-        const float ndcY = 1.0f - (screenPoint.y / sceneBufferSize.y) * 2.0f;
+        const float ndcX = (screenPoint.x / bufferSize.x) * 2.0f - 1.0f;
+        const float ndcY = 1.0f - (screenPoint.y / bufferSize.y) * 2.0f;
 
         const Matrix4 invViewProj = glm::inverse(m_ViewProjMatrix);
         Vector4 nearWorld = invViewProj * Vector4(ndcX, ndcY, -1.0f, 1.0f);

@@ -1,6 +1,7 @@
 #include "Scene.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Function/Render/RenderScene.h"
 
 namespace minEngine
 {
@@ -16,6 +17,21 @@ namespace minEngine
         }
         m_GameObjects.clear();
         m_GameObjectsById.clear();
+        m_RenderScene.reset();
+    }
+
+    void Scene::EnsureRenderScene()
+    {
+        if (!m_RenderScene)
+        {
+            m_RenderScene = std::make_shared<RenderScene>();
+        }
+    }
+
+    RenderScene* Scene::GetRenderScene()
+    {
+        EnsureRenderScene();
+        return m_RenderScene.get();
     }
 
     void Scene::Tick(float deltaTime)

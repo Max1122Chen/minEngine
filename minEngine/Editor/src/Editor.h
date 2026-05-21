@@ -6,6 +6,8 @@
 
 #include "EditorGUIManager.h"
 #include "Viewport/EditorViewportClient.h"
+#include "Viewport/SceneEditingViewportClient.h"
+#include "Viewport/MaterialPreviewViewportClient.h"
 
 #include <filesystem>
 #include <limits>
@@ -67,10 +69,18 @@ namespace minEngine
         void SyncSelectionWithScene();
 
         // ViewportClient management
+        SceneEditingViewportClient& GetOrCreateSceneEditingViewportClient(
+            const std::string& viewportId,
+            const std::string& viewportTitle = "Scene");
         EditorViewportClient& GetOrCreateViewportClient(const std::string& viewportId,
-                                const std::string& viewportTitle = "Viewport");
+                                                        const std::string& viewportTitle = "Scene");
         EditorViewportClient* FindViewportClient(const std::string& viewportId);
         const EditorViewportClient* FindViewportClient(const std::string& viewportId) const;
+        SceneEditingViewportClient* FindSceneEditingViewportClient(const std::string& viewportId);
+        MaterialPreviewViewportClient& GetOrCreateMaterialPreviewViewportClient(
+            const std::string& viewportId,
+            const std::string& viewportTitle = "Material Preview");
+        MaterialPreviewViewportClient* FindMaterialPreviewViewportClient(const std::string& viewportId);
         void RemoveViewportClient(const std::string& viewportId);
         void ClearViewportClients();
 
@@ -84,6 +94,7 @@ namespace minEngine
     private:
         void InitializeAllComponentTypeNames();
         bool LoadEngineConfig();
+        void PostInitialize();
 
     private:
         Engine* m_Engine = nullptr;

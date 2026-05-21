@@ -1,3 +1,8 @@
+# -----------------------------------------------------------------------------
+# DEPRECATED: Playground is not used in active development (Editor is the app).
+# Kept only as a historical sample; do not wire new engine features here first.
+# -----------------------------------------------------------------------------
+
 set(PLAYGROUND_NAME Playground)
 
 aux_source_directory(./src SRC)

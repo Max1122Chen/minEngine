@@ -33,6 +33,9 @@ namespace minEngine
         static Engine& Get();
 
         void TickOneFrame(float deltaTime);
+        void PollEvents();
+        void TickLogicalFrame(float deltaTime);
+        void TickRendererFrame(float deltaTime);
         float CalculateDeltaTime();
         float CalculateFPS(float deltaTime);
 

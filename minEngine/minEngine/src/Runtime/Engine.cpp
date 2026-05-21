@@ -50,11 +50,27 @@ namespace minEngine
         }
     }
 
-    void Engine::TickOneFrame(float deltaTime)
+    void Engine::PollEvents()
     {
         WindowSystem::Get().PollEvents();
+    }
+
+    void Engine::TickLogicalFrame(float deltaTime)
+    {
         LogicalTick(deltaTime);
+    }
+
+    void Engine::TickRendererFrame(float deltaTime)
+    {
+        (void)deltaTime;
         RendererTick(deltaTime);
+    }
+
+    void Engine::TickOneFrame(float deltaTime)
+    {
+        PollEvents();
+        TickLogicalFrame(deltaTime);
+        TickRendererFrame(deltaTime);
     }
 
     void Engine::SetEngineDefaultAssetsRoot(std::string path)
@@ -173,6 +189,7 @@ namespace minEngine
 
     void Engine::RendererTick(float deltaTime)
     {
+        (void)deltaTime;
         m_RenderSystem->Tick(deltaTime);
     }
 

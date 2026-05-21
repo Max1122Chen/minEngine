@@ -1,3 +1,12 @@
+// =============================================================================
+// DEPRECATED / NOT IN ACTIVE USE
+// -----------------------------------------------------------------------------
+// Playground is a legacy WorldManager + Level test harness. The team does not
+// run or maintain it for day-to-day work; Editor is the only supported app path.
+// Rendering no longer submits draws here (see P3/P4 in docs/ai/RENDER_REFACTOR_PLAN.md).
+// Do not extend Playground for new features — use Editor + SceneEditing viewport instead.
+// =============================================================================
+
 #include "minEngine.h"
 
 #include "imgui.h"

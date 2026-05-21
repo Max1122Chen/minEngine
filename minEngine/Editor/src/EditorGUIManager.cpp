@@ -9,7 +9,8 @@
 #include "UI/EditorWindows/InspectorWindow.h"
 #include "UI/EditorWindows/MainMenuWindow.h"
 #include "UI/EditorWindows/ToolbarWindow.h"
-#include "UI/EditorWindows/ViewportWindow.h"
+#include "UI/EditorWindows/SceneEditingViewportWindow.h"
+#include "UI/EditorWindows/MaterialPreviewViewportWindow.h"
 
 namespace minEngine
 {
@@ -18,7 +19,8 @@ namespace minEngine
         m_Editor = &editor;
         RegisterWindow(std::make_unique<MainMenuWindow>(editor));
         // RegisterWindow(std::make_unique<ToolbarWindow>(editor));
-        RegisterWindow(std::make_unique<ViewportWindow>(editor));
+        RegisterWindow(std::make_unique<SceneEditingViewportWindow>(editor));
+        RegisterWindow(std::make_unique<MaterialPreviewViewportWindow>(editor));
         RegisterWindow(std::make_unique<HierarchyWindow>(editor));
         RegisterWindow(std::make_unique<InspectorWindow>(editor));
         RegisterWindow(std::make_unique<ConsoleWindow>(editor));

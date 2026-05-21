@@ -35,7 +35,7 @@ namespace minEngine
         void SetViewProjMatrix(const Matrix4& viewProjMatrix) { m_ViewProjMatrix = viewProjMatrix; }
         void UpdateViewProjMatrix();
 
-        Geometry::Ray ScreenPointToRay(const Vector2& screenPoint) const;
+        Geometry::Ray ScreenPointToRay(const Vector2& screenPoint, const Vector2& bufferSize) const;
     public:
     
     // private:

@@ -1,10 +1,7 @@
 #include "SceneManager.h"
-#include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Resource/AssetManager.h"
-
-#include <filesystem>
 
 namespace minEngine
 {
@@ -23,7 +20,6 @@ namespace minEngine
 
     void SceneManager::Initialize()
     {
-        m_RenderScene = RenderSystem::Get().m_RenderScene.get();
     }
 
     void SceneManager::Shutdown()
@@ -31,11 +27,10 @@ namespace minEngine
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
         if (m_CurrentActiveScene)
         {
-            RemoveObject(m_CurrentActiveScene.get());   // TODO: manually manage the lifecycle of the scene asset instead of relying on the object manager to destroy it, we may change this in the future.
+            RemoveObject(m_CurrentActiveScene.get());
             m_CurrentActiveScene.reset();
         }
         m_RegisteredScenes.clear();
-        m_RenderScene = nullptr;
         ME_CORE_INFO("SceneManager Shutdown.");
     }
 
@@ -47,13 +42,22 @@ namespace minEngine
         }
     }
 
-    bool SceneManager::RegisterScene(const std::string &sceneName, const std::string &path)
+    RenderScene* SceneManager::GetRenderScene()
+    {
+        if (!m_CurrentActiveScene)
+        {
+            return nullptr;
+        }
+        return m_CurrentActiveScene->GetRenderScene();
+    }
+
+    bool SceneManager::RegisterScene(const std::string& sceneName, const std::string& path)
     {
         m_RegisteredScenes[sceneName] = path;
         return true;
     }
 
-    bool SceneManager::UnregisterScene(const std::string &sceneName)
+    bool SceneManager::UnregisterScene(const std::string& sceneName)
     {
         auto it = m_RegisteredScenes.find(sceneName);
         if (it != m_RegisteredScenes.end())
@@ -64,11 +68,11 @@ namespace minEngine
         return false;
     }
 
-    std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string &sceneName)
+    std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string& sceneName)
     {
-        // TODO: change this logic
         m_CurrentActiveScene = NewObject<Scene>();
         m_CurrentActiveScene->m_SceneName = sceneName;
+        m_CurrentActiveScene->EnsureRenderScene();
         return m_CurrentActiveScene;
     }
 
@@ -88,7 +92,8 @@ namespace minEngine
         if (scene)
         {
             m_CurrentActiveScene = scene;
-            // Mark all scene components for end of frame update to make sure the render scene gets updated with the new scene's data
+            m_CurrentActiveScene->EnsureRenderScene();
+
             for (const std::shared_ptr<GameObject>& gameObject : m_CurrentActiveScene->GetAllGameObjects())
             {
                 if (gameObject)
@@ -100,7 +105,7 @@ namespace minEngine
                             MarkComponentForNeededEndOfFrameUpdate(component.get());
                         }
                         SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get());
-                        if(sceneComponent)
+                        if (sceneComponent)
                         {
                             sceneComponent->MarkRenderStateDirty();
                         }
@@ -118,10 +123,6 @@ namespace minEngine
         {
             return false;
         }
-        if ( m_CurrentActiveScene->m_SceneName.empty())
-        {
-            return false;
-        }
         if (m_RegisteredScenes.find(m_CurrentActiveScene->m_SceneName) == m_RegisteredScenes.end())
         {
             return false;
@@ -135,34 +136,32 @@ namespace minEngine
         return AssetManager::Get().SaveAsset<Scene>(path, *m_CurrentActiveScene);
     }
 
-    void SceneManager::MarkComponentForNeededEndOfFrameUpdate(Component *component)
+    void SceneManager::MarkComponentForNeededEndOfFrameUpdate(Component* component)
     {
-        if(component == nullptr) return;
-
-        if(component->GetMarkedForNeededEndOfFrameUpdate() == ComponentMarkedForNeededEndOfFrameUpdate::Marked)
+        if (component == nullptr)
         {
             return;
         }
-        else
+
+        if (component->GetMarkedForNeededEndOfFrameUpdate() == ComponentMarkedForNeededEndOfFrameUpdate::Marked)
         {
-            // Mark the component and add to the list
-            component->SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate::Marked);
-            m_ComponentsThatNeedEndOfFrameUpdate.push_back(component);
+            return;
         }
+
+        component->SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate::Marked);
+        m_ComponentsThatNeedEndOfFrameUpdate.push_back(component);
     }
 
     void SceneManager::SendAllEndOfFrameUpdates()
     {
-        for(Component* component : m_ComponentsThatNeedEndOfFrameUpdate)
+        for (Component* component : m_ComponentsThatNeedEndOfFrameUpdate)
         {
-            if(component)
+            if (component)
             {
                 component->SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate::Unmarked);
-
                 component->DoEndOfFrameUpdate();
             }
         }
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
     }
-
-} // namespace minEngine
+}

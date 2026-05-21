@@ -10,15 +10,21 @@
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 #include "Shadow/ShadowResourceManager.h"
+#include "Runtime/Function/Render/SceneDrawDesc.h"
+#include "Runtime/Function/Render/SceneRenderContext.h"
+#include "Runtime/Function/Render/SceneRenderTarget.h"
 
 #include <unordered_map>
 
 
 namespace minEngine
 {
+    class RenderCamera;
     class UniformBuffer;
     class FrameBuffer;
     class RHITexture2D;
+    class VertexBuffer;
+    class VertexDefinition;
 
     /**
      * UBO binding point layout:
@@ -99,14 +105,9 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
-        void Execute();
-        void ResizeSceneTargets(uint32_t width, uint32_t height);
+        void Execute(const SceneDrawDesc& desc);
 
         void SetPresentPassEnabled(bool enabled) { m_EnablePresentPass = enabled; }
-        const std::shared_ptr<RHITexture2D>& GetSceneColorTexture() const { return m_SceneColorTexture; }
-        Vector2 GetSceneBufferSize() const { return Vector2(static_cast<float>(m_SceneBufferWidth), static_cast<float>(m_SceneBufferHeight)); }
-        uint32_t GetSceneBufferWidth() const { return m_SceneBufferWidth; }
-        uint32_t GetSceneBufferHeight() const { return m_SceneBufferHeight; }
 
     private:
         std::shared_ptr<UniformBuffer> m_LightViewProjUniformBuffer; // Uniform buffer for light view projection matrices used in shadow pass
@@ -118,19 +119,6 @@ namespace minEngine
         std::shared_ptr<UniformBuffer> m_SpotLightViewProjUniformBuffer; // Uniform buffer for spot light view projection matrices used in base pass
 
         std::shared_ptr<FrameBuffer> m_ShadowBuffer;
-        std::shared_ptr<FrameBuffer> m_SceneBuffer;
-        
-        std::shared_ptr<RHITexture2D> m_SceneColorTexture;
-        std::shared_ptr<RHITexture2D> m_SceneDepthTexture;
-
-        std::vector<ShadowRequest> m_ShadowRequests;
-        std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
-
-        ShadowResourceHandle m_DirectionalShadowHandle;
-        std::vector<ShadowResourceHandle> m_SpotShadowHandles;
-        std::vector<ShadowResourceHandle> m_PointShadowHandles;
-        std::unordered_map<const SpotLightSceneProxy*, ShadowResourceHandle> m_SpotShadowHandleMap;
-        std::unordered_map<const PointLightSceneProxy*, ShadowResourceHandle> m_PointShadowHandleMap;
 
         ShadowPass m_ShadowPass;
         BasePass m_BasePass;
@@ -138,30 +126,33 @@ namespace minEngine
         std::vector<PostProcessPass> m_PostProcessPasses;
         PresentPass m_PresentPass;
 
-        std::vector<MeshDrawCommand> m_OpaqueQueue;
-        std::vector<MeshDrawCommand> m_TranslucentQueue;
-
         ShadowResourceManager m_ShadowResourceManager;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
-        uint32_t m_SceneBufferWidth = 0;
-        uint32_t m_SceneBufferHeight = 0;
+
+        std::shared_ptr<VertexBuffer> m_ScreenQuadVertexBuffer;
+        std::shared_ptr<VertexDefinition> m_ScreenQuadVertexDefinition;
 
     private:
-        void UpdatePerFrameUBO();
-        void UpdateLightUBO();
-        void CollectShadowRequests();
-        void BuildShadowDrawCommands();
-        void BuildRenderQueue();
+        void BindSceneRenderTarget(SceneRenderTarget& target);
+        void UpdatePerFrameUBO(const SceneRenderContext& ctx);
+        void UpdateLightUBO(const SceneRenderContext& ctx);
+        void CollectShadowRequests(SceneRenderContext& ctx);
+        void BuildShadowDrawCommands(SceneRenderContext& ctx);
+        void BuildRenderQueue(SceneRenderContext& ctx);
 
         // Directional shadow command building 
         DirShadowCommandBuildResult BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 
                                                             const ShadowResourceHandle& handle, 
                                                             const DirectionalLightSceneProxy* lightProxy,
-                                                            uint32_t cascadeCount);
+                                                            uint32_t cascadeCount,
+                                                            RenderCamera* camera,
+                                                            const std::vector<MeshDrawCommand>& opaqueQueue);
         
         std::vector<CascadeSplit> CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount);
-        void ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB, const Matrix4& lightView);
+        void ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB,
+                                            const Matrix4& lightView,
+                                            const std::vector<MeshDrawCommand>& opaqueQueue);
 
         // Spot shadow command building
         ShadowDrawCommand BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,

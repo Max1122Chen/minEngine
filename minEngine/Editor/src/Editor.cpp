@@ -10,6 +10,7 @@
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Components/Component.h"
@@ -20,6 +21,7 @@
 #include "Resource/AssetManager.h"
 #include "Runtime/Engine.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
 
@@ -369,22 +371,76 @@ namespace minEngine
         }
     }
 
-    EditorViewportClient& Editor::GetOrCreateViewportClient(const std::string& viewportId,
-                                                             const std::string& viewportTitle)
+    SceneEditingViewportClient& Editor::GetOrCreateSceneEditingViewportClient(const std::string& viewportId,
+                                                                              const std::string& viewportTitle)
     {
         const std::string key = viewportId.empty() ? viewportTitle : viewportId;
         auto iter = m_ViewportClients.find(key);
         if (iter != m_ViewportClients.end() && iter->second)
         {
-            return *iter->second;
+            return static_cast<SceneEditingViewportClient&>(*iter->second);
         }
 
-        auto client = std::make_unique<EditorViewportClient>(viewportTitle.empty() ? key : viewportTitle);
+        auto client = std::make_unique<SceneEditingViewportClient>(viewportTitle.empty() ? key : viewportTitle);
 
-        EditorViewportClient* createdClient = client.get();
+        SceneEditingViewportClient* createdClient = client.get();
         createdClient->m_Editor = this;
+        if (RHI* rhi = RenderSystem::Get().GetRHI())
+        {
+            createdClient->InitializeSceneViewport(rhi, 1920, 1080);
+        }
         m_ViewportClients[key] = std::move(client);
         return *createdClient;
+    }
+
+    MaterialPreviewViewportClient& Editor::GetOrCreateMaterialPreviewViewportClient(
+        const std::string& viewportId,
+        const std::string& viewportTitle)
+    {
+        const std::string key = viewportId.empty() ? viewportTitle : viewportId;
+        auto iter = m_ViewportClients.find(key);
+        if (iter != m_ViewportClients.end() && iter->second)
+        {
+            return static_cast<MaterialPreviewViewportClient&>(*iter->second);
+        }
+
+        auto client = std::make_unique<MaterialPreviewViewportClient>(
+            viewportTitle.empty() ? key : viewportTitle);
+
+        MaterialPreviewViewportClient* createdClient = client.get();
+        createdClient->m_Editor = this;
+        if (RHI* rhi = RenderSystem::Get().GetRHI())
+        {
+            createdClient->InitializePreviewViewport(rhi, 512, 512);
+        }
+        m_ViewportClients[key] = std::move(client);
+        return *createdClient;
+    }
+
+    MaterialPreviewViewportClient* Editor::FindMaterialPreviewViewportClient(const std::string& viewportId)
+    {
+        EditorViewportClient* client = FindViewportClient(viewportId);
+        if (!client)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<MaterialPreviewViewportClient*>(client);
+    }
+
+    EditorViewportClient& Editor::GetOrCreateViewportClient(const std::string& viewportId,
+                                                             const std::string& viewportTitle)
+    {
+        return GetOrCreateSceneEditingViewportClient(viewportId, viewportTitle);
+    }
+
+    SceneEditingViewportClient* Editor::FindSceneEditingViewportClient(const std::string& viewportId)
+    {
+        EditorViewportClient* client = FindViewportClient(viewportId);
+        if (!client)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<SceneEditingViewportClient*>(client);
     }
 
     EditorViewportClient* Editor::FindViewportClient(const std::string& viewportId)
@@ -516,6 +572,20 @@ namespace minEngine
         }
 
         OpenProject(projectPath);
+        PostInitialize();
+    }
+
+    void Editor::PostInitialize()
+    {
+        static constexpr const char* kMaterialPreviewViewportId = "material_preview_viewport";
+        MaterialPreviewViewportClient* previewClient = FindMaterialPreviewViewportClient(kMaterialPreviewViewportId);
+        if (!previewClient)
+        {
+            ME_CORE_WARN("Editor::PostInitialize: Material Preview viewport client was not created during GUI init.");
+            return;
+        }
+
+        previewClient->BuildPreviewContent();
     }
 
     void Editor::Shutdown()
@@ -538,7 +608,8 @@ namespace minEngine
         while (!windowSystem.ShouldClose() && !m_ExitRequested)
         {
             const float deltaTime = m_Engine->CalculateDeltaTime();
-            m_Engine->TickOneFrame(deltaTime);
+            m_Engine->PollEvents();
+            m_Engine->TickLogicalFrame(deltaTime);
             SyncSelectionWithScene();
 
             std::string sceneDisplayName = "Untitled";
@@ -564,6 +635,8 @@ namespace minEngine
             ImGui::NewFrame();
 
             m_EditorGUIManager.Tick(deltaTime);
+
+            m_Engine->TickRendererFrame(deltaTime);
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

@@ -1,7 +1,8 @@
 #include "CameraComponent.h"
 
 #include "Runtime/Function/Render/RenderCamera.h"
-#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/SceneViewport.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 namespace minEngine
 {   
@@ -22,9 +23,11 @@ namespace minEngine
             return;
         }
 
-        // Set this camera as the main camera in the RenderSystem
         ME_ASSERT(m_RenderCamera, "RenderCamera is null!");
-        RenderSystem::Get().SetMainCamera(m_RenderCamera);
+        if (SceneViewport* editorViewport = SceneManager::Get().GetEditorSceneViewport())
+        {
+            editorViewport->SetActiveCamera(m_RenderCamera);
+        }
         m_bIsMainCamera = true;
     }
 

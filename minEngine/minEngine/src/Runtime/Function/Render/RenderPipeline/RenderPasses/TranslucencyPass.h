@@ -5,6 +5,8 @@
 
 namespace minEngine
 {
+    class RenderCamera;
+
     class TranslucencyPass : public RenderPassBase
     {
     public:
@@ -15,6 +17,7 @@ namespace minEngine
         
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;
+        RenderCamera* m_SortCamera = nullptr;
 
     private:
         virtual void Render() override;

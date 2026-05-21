@@ -2,6 +2,7 @@
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Render/WindowSystem.h"
 #include "Render/RenderSystem.h"
+#include "Render/SceneRenderTarget.h"
 #include "Render/RenderScene.h"
 #include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
@@ -30,14 +31,6 @@ namespace minEngine
 {
     void RenderPipeline::Initialize()
     {
-        WindowSystem* windowSystem = &WindowSystem::Get();
-
-        // TODO: When render in Editor, we will use a resolution that may not same as the window's size
-        // When render in the game, we should use window's size as the scene color buffer's resolution.
-        // Now we just hardcode it as 1080p for simplicity.
-        uint32_t width = 1920; // windowSystem->GetWidth();
-        uint32_t height = 1080; // windowSystem->GetHeight();
-
         RHI* rhi = RenderSystem::Get().GetRHI();
         m_ShadowResourceManager.Initialize(rhi);
         m_FrameIndex = 0;
@@ -60,9 +53,6 @@ namespace minEngine
 
         // Assign framebuffers to render passes
         m_ShadowPass.m_FrameBuffer = m_ShadowBuffer.get();
-        ResizeSceneTargets(width, height);
-
-        // No set up needed for BasePass and TranslucentPass for now, we will set their resources in Execute() when we have the actual data.
 
         // Set up ShadowPass
         m_ShadowPass.Initialize();
@@ -79,19 +69,17 @@ namespace minEngine
         1,  1,     1, 1,
         -1,  1,     0, 1
         };
-        std::shared_ptr<minEngine::VertexBuffer> screenQuadVertexBuffer = rhi->CreateVertexBuffer(quadVertices, sizeof(quadVertices), 6);
-        std::shared_ptr<minEngine::VertexDefinition> screenQuadVertexDefinition = rhi->CreateVertexDefinition({
+        m_ScreenQuadVertexBuffer = rhi->CreateVertexBuffer(quadVertices, sizeof(quadVertices), 6);
+        m_ScreenQuadVertexDefinition = rhi->CreateVertexDefinition({
             { "a_Position", VertexElementType::Float2, false },
             { "a_TexCoord", VertexElementType::Float2, false }
         });
 
         // Set up PostProcessPasses
         
-        // Add a FXAA post-process pass first, we can add more post-process passes later if needed.
         m_PostProcessPasses.emplace_back();
-        m_PostProcessPasses.back().m_SceneColorTexture = m_SceneColorTexture;
-        m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
-        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
+        m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
+        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
         if (std::shared_ptr<Shader> fxaaShader = Shader::CreateFromFiles(
                 *rhi,
                 Shader::EngineShaderPath("Present.vert"),
@@ -102,9 +90,8 @@ namespace minEngine
 
         // Add a sharpen pass after FXAA
         m_PostProcessPasses.emplace_back();
-        m_PostProcessPasses.back().m_SceneColorTexture = m_SceneColorTexture;
-        m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
-        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
+        m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
+        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
         if (std::shared_ptr<Shader> sharpenShader = Shader::CreateFromFiles(
                 *rhi,
                 Shader::EngineShaderPath("Present.vert"),
@@ -115,80 +102,28 @@ namespace minEngine
 
         // Set up PresentPass
         m_PresentPass.Initialize();
-        m_PresentPass.m_SceneColorTexture = m_SceneColorTexture;
-        m_PresentPass.m_ScreenQuadVertexBuffer = screenQuadVertexBuffer;
-        m_PresentPass.m_ScreenQuadVertexDefinition = screenQuadVertexDefinition;
+        m_PresentPass.m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
+        m_PresentPass.m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
     }
 
-    void RenderPipeline::ResizeSceneTargets(uint32_t width, uint32_t height)
+    void RenderPipeline::BindSceneRenderTarget(SceneRenderTarget& target)
     {
-        if (width == 0 || height == 0)
+        FrameBuffer* frameBuffer = target.GetFrameBuffer();
+        if (!frameBuffer)
         {
             return;
         }
 
-        if (m_SceneColorTexture && m_SceneColorTexture->GetWidth() == width && m_SceneColorTexture->GetHeight() == height)
-        {
-            return;
-        }
-
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        if (!rhi)
-        {
-            return;
-        }
-
-        m_SceneBuffer = rhi->CreateFrameBuffer(width, height);
-        m_SceneBufferWidth = width;
-        m_SceneBufferHeight = height;
-
-        RHITextureDesc colorDesc{
-                .Width = width,
-                .Height = height,
-                .Format = TextureFormat::RGBA8,
-                .Usage = TextureUsage::Color
-        };
-
-        RHITextureDesc depthDesc{
-                .Width = width,
-                .Height = height,
-                .Format = TextureFormat::DEPTH24STENCIL8,
-                .Usage = TextureUsage::DepthStencil
-        };
-
-        m_SceneColorTexture = rhi->CreateRHITexture2D(nullptr, colorDesc);
-        m_SceneDepthTexture = rhi->CreateRHITexture2D(nullptr, depthDesc);
-
-        m_SceneBuffer->AttachColorBuffer(m_SceneColorTexture);
-        m_SceneBuffer->AttachDepthStencilBuffer(m_SceneDepthTexture);
-
-        m_BasePass.m_FrameBuffer = m_SceneBuffer.get();
-        m_TranslucentPass.m_FrameBuffer = m_SceneBuffer.get();
-        for(auto& postProcessPass : m_PostProcessPasses)
-        {
-            postProcessPass.m_SceneColorTexture = m_SceneColorTexture;
-        }
-        m_PresentPass.m_SceneColorTexture = m_SceneColorTexture;
-
-        // ME_CORE_INFO("Resize scene render targets to {}x{}", width, height);
+        m_BasePass.m_FrameBuffer = frameBuffer;
+        m_TranslucentPass.m_FrameBuffer = frameBuffer;
     }
 
     void RenderPipeline::Shutdown()
     {
         m_ShadowResourceManager.Shutdown();
 
-        m_OpaqueQueue.clear();
-        m_TranslucentQueue.clear();
-
-        m_ShadowRequests.clear();
-        m_ShadowDrawCommands.clear();
-
-        m_DirectionalShadowHandle = ShadowResourceHandle{};
-
         m_ShadowPass.m_ShadowDrawCommands.clear();
         m_ShadowPass.m_OpaqueQueue.clear();
-
-        m_BasePass.m_DirectionalShadowHandle = ShadowResourceHandle{};
 
         m_PresentPass.m_SceneColorTexture.reset();
         m_ShadowPass.m_LightViewProjUniformBuffer = nullptr;
@@ -197,9 +132,8 @@ namespace minEngine
         m_BasePass.m_FrameBuffer = nullptr;
         m_TranslucentPass.m_FrameBuffer = nullptr;
 
-        m_SceneDepthTexture.reset();
-        m_SceneColorTexture.reset();
-        m_SceneBuffer.reset();
+        m_ScreenQuadVertexBuffer.reset();
+        m_ScreenQuadVertexDefinition.reset();
         m_ShadowBuffer.reset();
 
         m_LightDataUniformBuffer.reset();
@@ -208,7 +142,7 @@ namespace minEngine
         m_SpotLightViewProjUniformBuffer.reset();
     }
 
-    void RenderPipeline::Execute()
+    void RenderPipeline::Execute(const SceneDrawDesc& desc)
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
@@ -216,50 +150,75 @@ namespace minEngine
             return;
         }
 
-        if (!m_ShadowBuffer || !m_SceneBuffer || !m_SceneColorTexture)
+        if (!m_ShadowBuffer)
         {
             ME_CORE_ERROR("RenderPipeline resources are not ready");
             return;
         }
 
+        if (!desc.Scene || !desc.Camera || !desc.RenderTarget)
+        {
+            return;
+        }
+
+        SceneRenderTarget* sceneTarget = desc.RenderTarget;
+        const std::shared_ptr<RHITexture2D>& sceneColorTexture = sceneTarget->GetColorTexture();
+        FrameBuffer* sceneFrameBuffer = sceneTarget->GetFrameBuffer();
+        if (!sceneColorTexture || !sceneFrameBuffer)
+        {
+            ME_CORE_ERROR("Scene render target is not ready");
+            return;
+        }
+
+        BindSceneRenderTarget(*sceneTarget);
+        for (PostProcessPass& postProcessPass : m_PostProcessPasses)
+        {
+            postProcessPass.m_SceneColorTexture = sceneColorTexture;
+        }
+        m_PresentPass.m_SceneColorTexture = sceneColorTexture;
+
+        SceneRenderContext ctx;
+        ctx.Scene = desc.Scene;
+        ctx.Camera = desc.Camera;
+
         m_ShadowResourceManager.BeginFrame(m_FrameIndex);
 
-        if (RenderSystem::Get().m_RenderScene)
+        desc.Scene->CollectOrphanedSceneProxies();
+
+        // Build render queue before shadow entries (opaque casters for CSM expansion).
+        BuildRenderQueue(ctx);
+
+        const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
+        if (enableShadows)
         {
-            RenderSystem::Get().m_RenderScene->CollectOrphanedSceneProxies();
+            CollectShadowRequests(ctx);
+            BuildShadowDrawCommands(ctx);
         }
-        
-        // Build render queue for this frame
-        // Build RenderQueue before shadow entries because we need to get all opauque objects to generate shadow maps
-        BuildRenderQueue();
 
-        // Build shadow requests and draw commands for this frame.
-        CollectShadowRequests();
-        BuildShadowDrawCommands();
+        m_ShadowPass.m_OpaqueQueue = ctx.OpaqueQueue;
+        m_ShadowPass.m_ShadowDrawCommands = ctx.ShadowDrawCommands;
 
-        // For simplicity, we will render all opaque objects in the shadow pass.
-        m_ShadowPass.m_OpaqueQueue = m_OpaqueQueue; 
-        m_ShadowPass.m_ShadowDrawCommands = m_ShadowDrawCommands;
+        if (enableShadows)
+        {
+            m_ShadowBuffer->Bind();
+            m_ShadowPass.Execute();
+        }
 
-        m_ShadowBuffer->Bind();
-        m_ShadowPass.Execute();
+        UpdatePerFrameUBO(ctx);
+        UpdateLightUBO(ctx);
 
-        UpdatePerFrameUBO();
-        UpdateLightUBO();
-
-
-
-        m_BasePass.m_DrawCommands = m_OpaqueQueue;
-        m_BasePass.m_DirectionalShadowHandle = m_DirectionalShadowHandle;
-        m_BasePass.m_SpotShadowHandles = m_SpotShadowHandles;
-        m_BasePass.m_PointShadowHandles = m_PointShadowHandles;
-        m_TranslucentPass.m_DrawCommands = m_TranslucentQueue;
+        m_BasePass.m_DrawCommands = ctx.OpaqueQueue;
+        m_BasePass.m_DirectionalShadowHandle = ctx.DirectionalShadowHandle;
+        m_BasePass.m_SpotShadowHandles = ctx.SpotShadowHandles;
+        m_BasePass.m_PointShadowHandles = ctx.PointShadowHandles;
+        m_TranslucentPass.m_SortCamera = ctx.Camera;
+        m_TranslucentPass.m_DrawCommands = ctx.TranslucentQueue;
 
         // Shadow pass disables color output; restore state for scene pass.
         rhi->SetDrawBuffer(0);
         rhi->SetReadBuffer(0);
-        rhi->SetViewport(0, 0, m_SceneColorTexture->GetWidth(), m_SceneColorTexture->GetHeight());
-        m_SceneBuffer->Bind();  // Bind the scene framebuffer before executing the render passes
+        rhi->SetViewport(0, 0, sceneColorTexture->GetWidth(), sceneColorTexture->GetHeight());
+        sceneFrameBuffer->Bind();
         
         // Clear the framebuffer at the beginning of the render pipeline execution
         // Dont change the order
@@ -268,14 +227,17 @@ namespace minEngine
         m_BasePass.Execute();
         m_TranslucentPass.Execute();
 
-        for(auto& postProcessPass : m_PostProcessPasses)
+        if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess))
         {
-            postProcessPass.Execute();
+            for (auto& postProcessPass : m_PostProcessPasses)
+            {
+                postProcessPass.Execute();
+            }
         }
 
-        m_SceneBuffer->Unbind();
+        sceneFrameBuffer->Unbind();
 
-        if (m_EnablePresentPass)
+        if (m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer))
         {
             m_PresentPass.Execute();
         }
@@ -285,10 +247,9 @@ namespace minEngine
         
     }
 
-    void RenderPipeline::UpdatePerFrameUBO()
+    void RenderPipeline::UpdatePerFrameUBO(const SceneRenderContext& ctx)
     {
-        // Update per-frame uniform buffer
-        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
+        RenderCamera* mainCamera = ctx.Camera;
         if (!mainCamera || !m_PerFrameUniformBuffer)
         {
             return;
@@ -303,9 +264,9 @@ namespace minEngine
         m_PerFrameUniformBuffer->BindToBindingPoint(0); // Bind the uniform buffer to the binding point for this frame
     }
 
-    void RenderPipeline::UpdateLightUBO()
+    void RenderPipeline::UpdateLightUBO(const SceneRenderContext& ctx)
     {
-        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
+        RenderScene* renderScene = ctx.Scene;
         if (!renderScene || !m_LightDataUniformBuffer)
         {
             return;
@@ -333,9 +294,9 @@ namespace minEngine
             lightsData.DirectionalLight.Direction = Vector4(dirLightProxy->m_Direction, 0.0f);
             lightsData.DirectionalLight.Color = Vector4(dirLightProxy->m_LightColor, dirLightProxy->m_Intensity);
             int shadowMapIndex = -1;
-            if (m_DirectionalShadowHandle.IsValid())
+            if (ctx.DirectionalShadowHandle.IsValid())
             {
-                shadowMapIndex = m_DirectionalShadowHandle.ArrayBaseLayer;
+                shadowMapIndex = ctx.DirectionalShadowHandle.ArrayBaseLayer;
             }
             lightsData.DirectionalLight.Params = Vector4(0.0f, 0.0f, 0.0f, static_cast<float>(shadowMapIndex));
         }
@@ -351,8 +312,8 @@ namespace minEngine
             lightsData.PointLights[pointLightCount].Position = Vector4(pointLightProxy->m_Position, 1.0f);
             lightsData.PointLights[pointLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
             int shadowIndex = -1;
-            auto pointShadowIt = m_PointShadowHandleMap.find(pointLightProxy);
-            if (pointShadowIt != m_PointShadowHandleMap.end() && pointShadowIt->second.IsValid())
+            auto pointShadowIt = ctx.PointShadowHandleMap.find(pointLightProxy);
+            if (pointShadowIt != ctx.PointShadowHandleMap.end() && pointShadowIt->second.IsValid())
             {
                 shadowIndex = pointShadowIt->second.TextureUnit - POINT_SHADOW_MAP_BASE_UNIT;
                 if (shadowIndex < 0 || shadowIndex >= MAX_POINT_SHADOW_MAPS)
@@ -377,8 +338,8 @@ namespace minEngine
             lightsData.SpotLights[spotLightCount].Direction = Vector4(spotLightProxy->m_Direction, 0.0f);
             lightsData.SpotLights[spotLightCount].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
             int shadowIndex = -1;
-            auto spotShadowIt = m_SpotShadowHandleMap.find(spotLightProxy);
-            if (spotShadowIt != m_SpotShadowHandleMap.end() && spotShadowIt->second.IsValid())
+            auto spotShadowIt = ctx.SpotShadowHandleMap.find(spotLightProxy);
+            if (spotShadowIt != ctx.SpotShadowHandleMap.end() && spotShadowIt->second.IsValid())
             {
                 shadowIndex = spotShadowIt->second.TextureUnit - SPOT_SHADOW_MAP_BASE_UNIT;
                 if (shadowIndex < 0 || shadowIndex >= MAX_SPOT_SHADOW_MAPS)
@@ -396,11 +357,11 @@ namespace minEngine
         m_LightDataUniformBuffer->BindToBindingPoint(1); // Bind the uniform buffer to the binding point for light data
     }
 
-    void RenderPipeline::CollectShadowRequests()
+    void RenderPipeline::CollectShadowRequests(SceneRenderContext& ctx)
     {
-        m_ShadowRequests.clear();
+        ctx.ShadowRequests.clear();
 
-        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
+        RenderScene* renderScene = ctx.Scene;
         if (!renderScene)
         {
             return;
@@ -421,7 +382,7 @@ namespace minEngine
                 .Height = m_ShadowBuffer->GetHeight()
             };
             shadowRequest.Priority = 0;
-            m_ShadowRequests.push_back(shadowRequest);
+            ctx.ShadowRequests.push_back(shadowRequest);
         }
 
         uint32_t spotShadowCount = 0;
@@ -445,7 +406,7 @@ namespace minEngine
                 .Height = m_ShadowBuffer->GetHeight()
             };
             shadowRequest.Priority = 0;
-            m_ShadowRequests.push_back(shadowRequest);
+            ctx.ShadowRequests.push_back(shadowRequest);
             spotShadowCount++;
         }
 
@@ -470,24 +431,24 @@ namespace minEngine
                 .Height = m_ShadowBuffer->GetHeight()
             };
             shadowRequest.Priority = 0;
-            m_ShadowRequests.push_back(shadowRequest);
+            ctx.ShadowRequests.push_back(shadowRequest);
             pointShadowCount++;
         }
     }
 
-    void RenderPipeline::BuildShadowDrawCommands()
+    void RenderPipeline::BuildShadowDrawCommands(SceneRenderContext& ctx)
     {
-        m_ShadowDrawCommands.clear();
-        m_DirectionalShadowHandle = ShadowResourceHandle{};
-        m_SpotShadowHandles.clear();
-        m_PointShadowHandles.clear();
-        m_SpotShadowHandleMap.clear();
-        m_PointShadowHandleMap.clear();
+        ctx.ShadowDrawCommands.clear();
+        ctx.DirectionalShadowHandle = ShadowResourceHandle{};
+        ctx.SpotShadowHandles.clear();
+        ctx.PointShadowHandles.clear();
+        ctx.SpotShadowHandleMap.clear();
+        ctx.PointShadowHandleMap.clear();
 
         int directionalLightCount = 0;
         int spotLightCount = 0;
         int pointLightCount = 0;
-        for (const auto& shadowRequest : m_ShadowRequests)
+        for (const auto& shadowRequest : ctx.ShadowRequests)
         {
             if (shadowRequest.Type == LightType::Directional)
             {
@@ -498,9 +459,10 @@ namespace minEngine
                     continue;
                 }
 
-                DirShadowCommandBuildResult result = BuildDirectionalShadowDrawCommands(shadowRequest, handle, dirLightProxy, MAX_CASCADES);
-                m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), result.Commands.begin(), result.Commands.end());
-                m_DirectionalShadowHandle = handle;
+                DirShadowCommandBuildResult result = BuildDirectionalShadowDrawCommands(
+                    shadowRequest, handle, dirLightProxy, MAX_CASCADES, ctx.Camera, ctx.OpaqueQueue);
+                ctx.ShadowDrawCommands.insert(ctx.ShadowDrawCommands.end(), result.Commands.begin(), result.Commands.end());
+                ctx.DirectionalShadowHandle = handle;
                 directionalLightCount++;
                 // Update the directional light view projection matrix for CSM in the base pass uniform buffer
                 for(int i = 0; i < MAX_CASCADES; i++)
@@ -518,13 +480,13 @@ namespace minEngine
                 {
                     continue;
                 }
-                m_SpotShadowHandleMap[spotLightProxy] = handle;
-                if (m_SpotShadowHandles.size() < MAX_SPOT_SHADOW_MAPS)
+                ctx.SpotShadowHandleMap[spotLightProxy] = handle;
+                if (ctx.SpotShadowHandles.size() < MAX_SPOT_SHADOW_MAPS)
                 {
-                    m_SpotShadowHandles.push_back(handle);
+                    ctx.SpotShadowHandles.push_back(handle);
                 }
                 ShadowDrawCommand command = BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy);
-                m_ShadowDrawCommands.push_back(command);
+                ctx.ShadowDrawCommands.push_back(command);
                 m_SpotLightViewProjUniformBuffer->UpdateData(&command.ViewProj, sizeof(Matrix4) * spotLightCount, sizeof(Matrix4)); // Update the spot light view projection matrix in the base pass uniform buffer
                 spotLightCount++;
             }
@@ -536,25 +498,25 @@ namespace minEngine
                 {
                     continue;
                 }
-                m_PointShadowHandleMap[pointLightProxy] = handle;
-                if (m_PointShadowHandles.size() < MAX_POINT_SHADOW_MAPS)
+                ctx.PointShadowHandleMap[pointLightProxy] = handle;
+                if (ctx.PointShadowHandles.size() < MAX_POINT_SHADOW_MAPS)
                 {
-                    m_PointShadowHandles.push_back(handle);
+                    ctx.PointShadowHandles.push_back(handle);
                 }
                 std::vector<ShadowDrawCommand> commands = BuildPointShadowDrawCommands(shadowRequest, handle, pointLightProxy);
-                m_ShadowDrawCommands.insert(m_ShadowDrawCommands.end(), commands.begin(), commands.end());
+                ctx.ShadowDrawCommands.insert(ctx.ShadowDrawCommands.end(), commands.begin(), commands.end());
                 pointLightCount++;
             }
         }
     }
 
-    void RenderPipeline::BuildRenderQueue()
+    void RenderPipeline::BuildRenderQueue(SceneRenderContext& ctx)
     {
-        m_OpaqueQueue.clear();
-        m_TranslucentQueue.clear();
+        ctx.OpaqueQueue.clear();
+        ctx.TranslucentQueue.clear();
 
-        RenderScene* renderScene = RenderSystem::Get().m_RenderScene.get();
-        if(!renderScene)
+        RenderScene* renderScene = ctx.Scene;
+        if (!renderScene)
         {
             return;
         }
@@ -583,28 +545,29 @@ namespace minEngine
                     continue;
                 }
                   
-                if(command.m_Material->IsTranslucent())
+                if (command.m_Material->IsTranslucent())
                 {
-                    m_TranslucentQueue.push_back(command);
+                    ctx.TranslucentQueue.push_back(command);
                 }
                 else
                 {
-                    m_OpaqueQueue.push_back(command);
+                    ctx.OpaqueQueue.push_back(command);
                 }
             }
         }
     }
 
-    DirShadowCommandBuildResult RenderPipeline::BuildDirectionalShadowDrawCommands(const ShadowRequest &shadowRequest, 
-                                                                                     const ShadowResourceHandle &handle, 
-                                                                                     const DirectionalLightSceneProxy* lightProxy, 
-                                                                                     uint32_t cascadeCount)
+    DirShadowCommandBuildResult RenderPipeline::BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest,
+                                                                                     const ShadowResourceHandle& handle,
+                                                                                     const DirectionalLightSceneProxy* lightProxy,
+                                                                                     uint32_t cascadeCount,
+                                                                                     RenderCamera* camera,
+                                                                                     const std::vector<MeshDrawCommand>& opaqueQueue)
     {
         DirShadowCommandBuildResult result;
 
-        // === Prepare camera matrices ===
-        RenderCamera* mainCamera = RenderSystem::Get().GetMainCamera();
-        if(!mainCamera)
+        RenderCamera* mainCamera = camera;
+        if (!mainCamera)
         {
             ME_CORE_ERROR("Main camera is not available when building directional shadow draw commands");
             return result;
@@ -682,7 +645,7 @@ namespace minEngine
                 aabb.Encapsulate(Vector3(cornerLS.x, cornerLS.y, cornerLS.z));
             }
 
-            ExpandCascadeZForShadowCasters(aabb, lightView);
+            ExpandCascadeZForShadowCasters(aabb, lightView, opaqueQueue);
             
             // Texel snapping 
             Vector3 aabbSize = aabb.GetSize();
@@ -837,10 +800,12 @@ namespace minEngine
         return splits;
     }
 
-    void RenderPipeline::ExpandCascadeZForShadowCasters(Math::Geometry::AABB &frustumAABB, const Matrix4& lightView)
+    void RenderPipeline::ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB,
+                                                        const Matrix4& lightView,
+                                                        const std::vector<MeshDrawCommand>& opaqueQueue)
     {
         using Math::Geometry::AABB;
-        for(const auto& command : m_OpaqueQueue)
+        for (const auto& command : opaqueQueue)
         {
             if (command.m_CastShadow)
             {
