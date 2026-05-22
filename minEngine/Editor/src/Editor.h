@@ -5,6 +5,8 @@
 #include "Runtime/EngineConfig.h"
 
 #include "EditorGUIManager.h"
+#include "EditorUIMode.h"
+#include "Material/MaterialEditor.h"
 #include "Viewport/EditorViewportClient.h"
 #include "Viewport/SceneEditingViewportClient.h"
 #include "Viewport/MaterialPreviewViewportClient.h"
@@ -31,6 +33,12 @@ namespace minEngine
 
         EditorGUIManager& GetGUIManager() { return m_EditorGUIManager; }
         const EditorGUIManager& GetGUIManager() const { return m_EditorGUIManager; }
+
+        EditorUIMode GetUIMode() const { return m_EditorGUIManager.GetUIMode(); }
+        void SetUIMode(EditorUIMode mode) { m_EditorGUIManager.SetUIMode(mode); }
+
+        MaterialEditor& GetMaterialEditor() { return *m_MaterialEditor; }
+        const MaterialEditor& GetMaterialEditor() const { return *m_MaterialEditor; }
 
         Engine& GetEngine() { return *m_Engine; }
         const Engine& GetEngine() const { return *m_Engine; }
@@ -101,6 +109,7 @@ namespace minEngine
         static constexpr const char* kEngineConfigExtension = ".meconfig";
         EngineConfig m_EngineConfig;
         EditorGUIManager m_EditorGUIManager;
+        std::unique_ptr<MaterialEditor> m_MaterialEditor;
         std::unordered_map<std::string, std::unique_ptr<EditorViewportClient>> m_ViewportClients;
         bool m_ExitRequested = false;
         bool m_SceneDirty = false;

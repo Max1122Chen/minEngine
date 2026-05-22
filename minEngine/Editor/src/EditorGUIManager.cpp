@@ -1,6 +1,8 @@
 #include "EditorGUIManager.h"
 
 #include "Editor.h"
+#include "EditorUIMode.h"
+#include "Material/MaterialEditor.h"
 
 #include "imgui_internal.h"
 
@@ -8,22 +10,75 @@
 #include "UI/EditorWindows/HierarchyWindow.h"
 #include "UI/EditorWindows/InspectorWindow.h"
 #include "UI/EditorWindows/MainMenuWindow.h"
-#include "UI/EditorWindows/ToolbarWindow.h"
 #include "UI/EditorWindows/SceneEditingViewportWindow.h"
-#include "UI/EditorWindows/MaterialPreviewViewportWindow.h"
+#include "UI/EditorWindows/MaterialGraphWindow.h"
+#include "UI/EditorWindows/MaterialPreviewWindow.h"
+#include "UI/EditorWindows/MaterialDetailsWindow.h"
 
 namespace minEngine
 {
     void EditorGUIManager::Initialize(Editor& editor)
     {
         m_Editor = &editor;
+        m_UIMode = EditorUIMode::SceneEditing;
+
         RegisterWindow(std::make_unique<MainMenuWindow>(editor));
-        // RegisterWindow(std::make_unique<ToolbarWindow>(editor));
         RegisterWindow(std::make_unique<SceneEditingViewportWindow>(editor));
-        RegisterWindow(std::make_unique<MaterialPreviewViewportWindow>(editor));
         RegisterWindow(std::make_unique<HierarchyWindow>(editor));
         RegisterWindow(std::make_unique<InspectorWindow>(editor));
         RegisterWindow(std::make_unique<ConsoleWindow>(editor));
+
+        RegisterWindow(std::make_unique<MaterialGraphWindow>(editor));
+        RegisterWindow(std::make_unique<MaterialPreviewWindow>(editor));
+        RegisterWindow(std::make_unique<MaterialDetailsWindow>(editor));
+
+        ApplyUIModeWindowVisibility();
+    }
+
+    void EditorGUIManager::SetUIMode(EditorUIMode mode)
+    {
+        if (m_UIMode == mode)
+        {
+            return;
+        }
+
+        m_UIMode = mode;
+        ApplyUIModeWindowVisibility();
+
+        if (m_Editor)
+        {
+            m_Editor->requestResetLayout = true;
+            m_Editor->dockLayoutInitialized = false;
+
+            if (mode == EditorUIMode::MaterialEditing)
+            {
+                m_Editor->GetMaterialEditor().OnEnterMode();
+            }
+            else
+            {
+                m_Editor->GetMaterialEditor().OnExitMode();
+            }
+        }
+    }
+
+    void EditorGUIManager::ApplyUIModeWindowVisibility()
+    {
+        for (const auto& window : m_Windows)
+        {
+            if (!window)
+            {
+                continue;
+            }
+
+            const EditorWindowSuite suite = window->GetWindowSuite();
+            if (suite == EditorWindowSuite::Shared)
+            {
+                continue;
+            }
+
+            const bool shouldOpen = IsWindowActiveForUIMode(suite, m_UIMode);
+            window->SetOpen(shouldOpen);
+        }
     }
 
     Editor& EditorGUIManager::GetEditor()
@@ -59,13 +114,21 @@ namespace minEngine
         Editor& editor = GetEditor();
         if (!editor.dockLayoutInitialized || editor.requestResetLayout)
         {
-            BuildDefaultDockLayout(dockspaceId);
+            if (m_UIMode == EditorUIMode::MaterialEditing)
+            {
+                BuildMaterialEditingDockLayout(dockspaceId);
+            }
+            else
+            {
+                BuildSceneEditingDockLayout(dockspaceId);
+            }
+
             editor.dockLayoutInitialized = true;
             editor.requestResetLayout = false;
         }
     }
 
-    void EditorGUIManager::BuildDefaultDockLayout(ImGuiID dockspaceId)
+    void EditorGUIManager::BuildSceneEditingDockLayout(ImGuiID dockspaceId)
     {
         ImGui::DockBuilderRemoveNode(dockspaceId);
         ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
@@ -80,6 +143,25 @@ namespace minEngine
         ImGui::DockBuilderDockWindow("Console", consoleArea);
         ImGui::DockBuilderDockWindow("Hierarchy", hierarchyArea);
         ImGui::DockBuilderDockWindow("Inspector", inspectorArea);
+
+        ImGui::DockBuilderFinish(dockspaceId);
+    }
+
+    void EditorGUIManager::BuildMaterialEditingDockLayout(ImGuiID dockspaceId)
+    {
+        ImGui::DockBuilderRemoveNode(dockspaceId);
+        ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
+
+        ImGuiID centerArea = dockspaceId;
+        ImGuiID consoleArea = ImGui::DockBuilderSplitNode(centerArea, ImGuiDir_Down, 0.28f, nullptr, &centerArea);
+        ImGuiID graphArea = ImGui::DockBuilderSplitNode(centerArea, ImGuiDir_Right, 0.58f, nullptr, &centerArea);
+        ImGuiID detailsArea = ImGui::DockBuilderSplitNode(centerArea, ImGuiDir_Down, 0.42f, nullptr, &centerArea);
+
+        ImGui::DockBuilderDockWindow("Material Graph", graphArea);
+        ImGui::DockBuilderDockWindow("Material Preview", centerArea);
+        ImGui::DockBuilderDockWindow("Material Details", detailsArea);
+        ImGui::DockBuilderDockWindow("Console", consoleArea);
 
         ImGui::DockBuilderFinish(dockspaceId);
     }
@@ -159,6 +241,11 @@ namespace minEngine
                 continue;
             }
 
+            if (!IsWindowActiveForUIMode(window->GetWindowSuite(), m_UIMode))
+            {
+                continue;
+            }
+
             window->OnTick();
         }
     }
@@ -168,6 +255,11 @@ namespace minEngine
         for (const auto& window : m_Windows)
         {
             if (!window->IsOpen())
+            {
+                continue;
+            }
+
+            if (!IsWindowActiveForUIMode(window->GetWindowSuite(), m_UIMode))
             {
                 continue;
             }

@@ -41,8 +41,7 @@
 #include "Function/Framework/GameObject/GameObject.h"
 
 #include "Editor.h"
-
-
+#include "EditorUIMode.h"
 
 #include <algorithm>
 
@@ -141,6 +140,10 @@ namespace minEngine
     void SceneEditingViewportClient::EndFrame()
 
     {
+        if (!m_Editor || m_Editor->GetUIMode() != EditorUIMode::SceneEditing)
+        {
+            return;
+        }
 
         ConsumeGizmoManipulation();
 

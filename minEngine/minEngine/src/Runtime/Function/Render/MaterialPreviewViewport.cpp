@@ -24,8 +24,6 @@ namespace minEngine
         // EngineDefault/Meshes/BasicShapes/sphere.obj.meta
         const GUID kEngineDefaultSphereMesh{ 607701751770204618ULL, 9254168834165808632ULL };
 
-        // MyMEProject/Assets/Materials/MaterialIRSmoke.memtl.meta — same as default.mescene Cube m_Material
-        const GUID kDefaultPreviewMaterial{ 5561283508911332965ULL, 5138977438105866241ULL };
     }
 
     namespace
@@ -89,6 +87,7 @@ namespace minEngine
         m_ContentReady = false;
         m_PreviewLightComponent.reset();
         m_PreviewLightObject.reset();
+        m_PreviewMaterial.reset();
         m_PreviewMeshComponent.reset();
         m_PreviewMeshObject.reset();
 
@@ -118,9 +117,6 @@ namespace minEngine
         std::shared_ptr<StaticMesh> previewMesh = LoadPreviewAssetByGuid<StaticMesh>(
             PreviewAssetGuids::kEngineDefaultSphereMesh,
             "preview mesh (EngineDefault sphere)");
-        std::shared_ptr<Material> previewMaterial = LoadPreviewAssetByGuid<Material>(
-            PreviewAssetGuids::kDefaultPreviewMaterial,
-            "preview material (MaterialIRSmoke)");
 
         if (!previewMesh)
         {
@@ -130,32 +126,10 @@ namespace minEngine
             return;
         }
 
-        if (!previewMaterial)
-        {
-            ME_CORE_ERROR(
-                "MaterialPreviewViewport: preview material GUID not in registry. "
-                "Ensure project Assets were scanned after OpenProject.");
-            return;
-        }
-
-        if (!previewMaterial->IsCompiledForDraw())
-        {
-            if (!previewMaterial->Compile())
-            {
-                ME_CORE_WARN("MaterialPreviewViewport: MaterialIRSmoke compile failed after GUID load.");
-            }
-        }
-
-        if (!previewMaterial->IsCompiledForDraw())
-        {
-            ME_CORE_WARN("MaterialPreviewViewport: preview material is not ready for draw.");
-        }
-
         m_PreviewMeshObject = m_PreviewScene->CreateGameObject();
         m_PreviewMeshComponent = m_PreviewMeshObject->AddComponent<StaticMeshComponent>();
         m_PreviewMeshObject->SetRootComponent(m_PreviewMeshComponent.get());
         m_PreviewMeshComponent->SetMesh(previewMesh);
-        m_PreviewMeshComponent->SetMaterial(previewMaterial);
         m_PreviewMeshObject->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
         m_PreviewMeshObject->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
@@ -176,6 +150,43 @@ namespace minEngine
             "MaterialPreviewViewport: preview scene ready (mesh proxies={}, dir lights={}).",
             renderScene->m_PrimitiveSceneProxies.size(),
             renderScene->m_DirectionalLightSceneProxies.size());
+    }
+
+    void MaterialPreviewViewport::SetPreviewMaterial(const std::shared_ptr<Material>& material)
+    {
+        if (!m_ContentReady || !m_PreviewMeshComponent)
+        {
+            m_PreviewMaterial = material;
+            return;
+        }
+
+        m_PreviewMaterial = material;
+        if (!material)
+        {
+            m_PreviewMeshComponent->SetMaterial(nullptr);
+            RefreshRenderScene();
+            return;
+        }
+
+        if (!material->IsCompiledForDraw())
+        {
+            if (!material->Compile())
+            {
+                ME_CORE_WARN("MaterialPreviewViewport: preview material compile failed.");
+            }
+        }
+
+        if (!material->IsCompiledForDraw())
+        {
+            ME_CORE_WARN("MaterialPreviewViewport: preview material is not ready for draw.");
+        }
+
+        m_PreviewMeshComponent->SetMaterial(material);
+        RefreshRenderScene();
+
+        ME_CORE_INFO(
+            "MaterialPreviewViewport: preview material set (compiled={}).",
+            material->IsCompiledForDraw());
     }
 
     void MaterialPreviewViewport::SetupPreviewCamera()

@@ -1,5 +1,7 @@
 #include "MainMenuWindow.h"
 
+#include "EditorUIMode.h"
+
 namespace minEngine
 {
     void MainMenuWindow::OnDraw()
@@ -7,27 +9,20 @@ namespace minEngine
         const ImVec2 framePadding = ImGui::GetStyle().FramePadding;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(framePadding.x, framePadding.y + 3.0f));
 
-        if (ImGui::BeginMainMenuBar())
+        if (!ImGui::BeginMainMenuBar())
         {
-            ImGui::EndMainMenuBar();const ImVec2 framePadding = ImGui::GetStyle().FramePadding;
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(framePadding.x, framePadding.y + 3.0f));
-
-            if (!ImGui::BeginMainMenuBar())
-            {
-                ImGui::PopStyleVar();
-                return;
-            }
-
-            DrawFileMenu();
-            DrawEditMenu();
-            DrawViewMenu();
-            DrawToolsMenu();
-            DrawHelpMenu();
-
-            ImGui::EndMainMenuBar();
             ImGui::PopStyleVar();
+            return;
         }
 
+        DrawFileMenu();
+        DrawEditMenu();
+        DrawViewMenu();
+        DrawWindowModeMenu();
+        DrawToolsMenu();
+        DrawHelpMenu();
+
+        ImGui::EndMainMenuBar();
         ImGui::PopStyleVar();
     }
 
@@ -44,7 +39,7 @@ namespace minEngine
             }
 
             const bool hasScene = static_cast<bool>(m_Editor.GetActiveScene());
-            const bool canSave = hasScene && m_Editor.IsSceneDirty(); // Allow saving even if there are no changes to avoid accidentally losing work by closing the editor without saving.
+            const bool canSave = hasScene && m_Editor.IsSceneDirty();
             if (ImGui::MenuItem("Save", "Ctrl+S", false, canSave))
             {
                 m_Editor.SaveCurrentScene();
@@ -56,6 +51,7 @@ namespace minEngine
             ImGui::Separator();
             if (ImGui::MenuItem("Exit"))
             {
+                m_Editor.RequestExit();
             }
             ImGui::EndMenu();
         }
@@ -79,7 +75,9 @@ namespace minEngine
     {
         if (ImGui::BeginMenu("View"))
         {
-            if (ImGui::BeginMenu("Windows"))
+            const EditorUIMode uiMode = m_Editor.GetUIMode();
+
+            if (ImGui::BeginMenu("Panels"))
             {
                 for (const auto& window : m_Editor.GetGUIManager().GetWindows())
                 {
@@ -88,17 +86,52 @@ namespace minEngine
                         continue;
                     }
 
+                    if (!IsWindowActiveForUIMode(window->GetWindowSuite(), uiMode))
+                    {
+                        continue;
+                    }
+
                     const bool isOpen = window->IsOpen();
-                    ImGui::MenuItem(window->GetTitle().c_str(), nullptr, isOpen, false);
+                    if (ImGui::MenuItem(window->GetTitle().c_str(), nullptr, isOpen, true))
+                    {
+                        window->SetOpen(!isOpen);
+                    }
                 }
                 ImGui::EndMenu();
             }
 
             if (ImGui::BeginMenu("Layout"))
             {
-                ImGui::MenuItem("Reset To Default", nullptr, false, false);
+                if (ImGui::MenuItem("Reset To Default", nullptr, false, true))
+                {
+                    m_Editor.requestResetLayout = true;
+                    m_Editor.dockLayoutInitialized = false;
+                }
                 ImGui::EndMenu();
             }
+
+            ImGui::EndMenu();
+        }
+    }
+
+    void MainMenuWindow::DrawWindowModeMenu()
+    {
+        if (ImGui::BeginMenu("Window"))
+        {
+            const bool sceneMode = m_Editor.GetUIMode() == EditorUIMode::SceneEditing;
+            const bool materialMode = m_Editor.GetUIMode() == EditorUIMode::MaterialEditing;
+
+            if (ImGui::MenuItem("Scene Editor", nullptr, sceneMode))
+            {
+                m_Editor.SetUIMode(EditorUIMode::SceneEditing);
+            }
+
+            if (ImGui::MenuItem("Material Editor", nullptr, materialMode))
+            {
+                m_Editor.SetUIMode(EditorUIMode::MaterialEditing);
+            }
+
+            ImGui::EndMenu();
         }
     }
 

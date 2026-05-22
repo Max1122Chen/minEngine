@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "EditorUIMode.h"
 
 namespace minEngine
 {
@@ -45,6 +46,11 @@ namespace minEngine
         }
 
         virtual void OnDraw() = 0;
+
+        virtual EditorWindowSuite GetWindowSuite() const
+        {
+            return EditorWindowSuite::SceneEditing;
+        }
 
     private:
     protected:

@@ -31,6 +31,8 @@ namespace minEngine
             return m_Title;
         }
 
+        EditorWindowSuite GetWindowSuite() const override { return EditorWindowSuite::Shared; }
+
         void OnDraw() override
         {
             const bool isPlaying = m_Editor.isPlaying;

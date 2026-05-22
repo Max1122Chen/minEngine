@@ -502,6 +502,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Test:** `RunMaterialAssetSerializationTests()` writes `%TEMP%/minengine_material_asset_roundtrip.memtl`, `ToFile` → `FromFile` → `FinalizeGraphAfterLoad`; checks inline JSON types, editor fields, Metallic link, Outer chain.
 - **CLI:** `Editor.exe --material-serialize-test` (serialize only); `--material-ir-test` includes file round-trip at end.
 
+### Material Editor E0–E2 — UI mode + Preview + node graph (2026-05-19 ~ 2026-05-22)
+- **EditorUIMode:** `SceneEditing` ↔ `MaterialEditing`；`EditorWindowSuite`（Shared / Scene / Material）；切换时重建 Dock。
+- **Material 套件：** `MaterialGraphWindow`（右，Picker/Compile/Save + node-editor 画布）、`MaterialPreviewWindow`、`MaterialDetailsWindow`。
+- **MaterialEditor：** Session/命令中枢（非 Window）；`OpenSession` / `Save` / `Compile` / `NotifyGraphChanged`；`InvalidateGraphCanvas()` 通知图窗刷新。
+- **E1.5：** `MaterialEditorPreview` 拥有预览世界；`MaterialPreviewViewportClient` 仅 resize + Submit；ImGui 在 `*Window` 内（无独立 `*View` 层）。
+- **E2（已验收）：** imgui-node-editor；`MaterialGraphIds`（Node/Pin/Link 分 tag，避免与 NodeId 冲突）；`MaterialGraphNodeRegistry`；连线/断线 → `ConnectPins` / `DisconnectInput`；全零坐标自动网格布局；仅 Invalidate 时 `SetNodePosition`（可拖节点）；`BeginCreate` 失败也须 `EndCreate`。
+- **渲染：** Scene 模式主视口 Submit；Material 模式仅 `material_editor_preview` Submit。
+- **本地增量（未全部入库时以工作区为准）：** `Reflection::GetDerivedClasses` + `MEClass::IsA<T>()`（为 NodeDef 注册表/调色板铺路）；更多 `MaterialGraphNodeDef_*` 反射注册；`Runtime/Core/Hash/Hash.h`。
+- **Next:** E3 — Details 节点参数、Palette 新建节点、删节点。
+
+### Material Editor plan + imgui-node-editor vendoring (2026-05-19)
+- **Plan:** `docs/ai/MATERIAL_EDITOR_PLAN.md` — E0–E4；窗口布局 **左 Preview+Details / 右节点图**。
+- **Third-Party:** `minEngine/Third-Party/imgui-node-editor/`（ImGui 1.92 `imgui_extra_math` patch）。
+
 ### Golden MaterialIRSmoke + Editor default scene
 - **2026-05-21:** `MyMEProject/Assets/Materials/MaterialIRSmoke.memtl` (+ `.meta`) committed as golden IR smoke graph asset.
 - **Editor:** `PopulateEditorDefaultScene` loads via `AssetManager::LoadAsset<Material>` then `ApplyMaterialIRSmokeRuntimeDefaults` (white BaseColor texture).

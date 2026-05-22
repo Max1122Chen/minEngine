@@ -6,17 +6,18 @@
 
 namespace minEngine
 {
-    /** Debug / P5 panel: second RT for material preview (no Gizmo). */
-    class MaterialPreviewViewportWindow final : public EditorViewportWindow
+    class MaterialPreviewWindow final : public EditorViewportWindow
     {
     public:
-        explicit MaterialPreviewViewportWindow(Editor& editor,
-                                               std::string id = "material_preview_viewport",
-                                               std::string title = "Material Preview")
-            : EditorViewportWindow(editor, std::move(id), std::move(title))
+        explicit MaterialPreviewWindow(Editor& editor)
+            : EditorViewportWindow(editor, "material_editor_preview", "Material Preview")
         {
-            SetOpen(true);
+            SetOpen(false);
         }
+
+        EditorWindowSuite GetWindowSuite() const override { return EditorWindowSuite::MaterialEditing; }
+
+        void OnAttach() override;
 
         MaterialPreviewViewportClient& GetMaterialPreviewViewportClient()
         {
@@ -31,6 +32,5 @@ namespace minEngine
     protected:
         EditorViewportClient& GetOrCreateViewportClient() override;
         const std::shared_ptr<RHITexture2D>& GetDisplayColorTexture() const override;
-        void OnDrawViewportOverlay(EditorViewportClient& client, const ViewportFrameState& frameState) override;
     };
 }

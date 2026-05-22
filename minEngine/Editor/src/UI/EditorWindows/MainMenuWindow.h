@@ -31,10 +31,13 @@ namespace minEngine
 
         void OnDraw() override;
 
+        EditorWindowSuite GetWindowSuite() const override { return EditorWindowSuite::Shared; }
+
     private:
         void DrawFileMenu();
         void DrawEditMenu();
         void DrawViewMenu();
+        void DrawWindowModeMenu();
         void DrawToolsMenu();
         void DrawHelpMenu();
 

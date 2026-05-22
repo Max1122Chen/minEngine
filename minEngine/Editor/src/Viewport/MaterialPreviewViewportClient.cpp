@@ -1,5 +1,11 @@
 #include "MaterialPreviewViewportClient.h"
 
+#include "Editor.h"
+#include "EditorUIMode.h"
+#include "Material/MaterialEditor.h"
+#include "Material/MaterialEditorPreview.h"
+
+#include "Runtime/Function/Render/MaterialPreviewViewport.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RenderCamera.h"
@@ -7,51 +13,53 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        MaterialEditorPreview* ResolveMaterialPreview(Editor* editor)
+        {
+            if (!editor)
+            {
+                return nullptr;
+            }
+
+            MaterialEditorPreview& preview = editor->GetMaterialEditor().GetPreview();
+            if (!preview.IsInitialized() || !preview.IsSceneReady())
+            {
+                return nullptr;
+            }
+
+            return &preview;
+        }
+    }
+
     MaterialPreviewViewportClient::MaterialPreviewViewportClient(std::string debugName)
         : EditorViewportClient(std::move(debugName))
     {
     }
 
-    MaterialPreviewViewportClient::~MaterialPreviewViewportClient()
-    {
-        m_Preview.Shutdown();
-    }
-
-    void MaterialPreviewViewportClient::InitializePreviewViewport(RHI* rhi, uint32_t width, uint32_t height)
-    {
-        if (m_PreviewInitialized || !rhi)
-        {
-            return;
-        }
-
-        m_Preview.Initialize(rhi, width, height);
-        m_PreviewInitialized = true;
-    }
-
-    void MaterialPreviewViewportClient::BuildPreviewContent()
-    {
-        if (!m_PreviewInitialized)
-        {
-            ME_CORE_WARN("MaterialPreviewViewportClient: BuildPreviewContent called before viewport init.");
-            return;
-        }
-
-        m_Preview.BuildPreviewScene();
-    }
+    MaterialPreviewViewportClient::~MaterialPreviewViewportClient() = default;
 
     void MaterialPreviewViewportClient::EndFrame()
     {
-        if (!m_PreviewInitialized || !m_Preview.IsContentReady())
+        if (!m_Editor || m_Editor->GetUIMode() != EditorUIMode::MaterialEditing)
         {
             return;
         }
 
+        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Editor);
+        if (!preview)
+        {
+            return;
+        }
+
+        MaterialPreviewViewport& previewViewport = preview->GetPreview();
+
         SyncRenderTargetSize();
         SyncPreviewCameraAspect();
-        m_Preview.RefreshRenderScene();
+        previewViewport.RefreshRenderScene();
 
         RHI* rhi = RenderSystem::Get().GetRHI();
-        SceneViewport& viewport = m_Preview.GetSceneViewport();
+        SceneViewport& viewport = preview->GetSceneViewport();
         viewport.ApplyPendingResize(rhi);
 
         const SceneDrawFlags flags = SceneDrawFlags::EnablePostProcess;
@@ -64,13 +72,19 @@ namespace minEngine
 
     void MaterialPreviewViewportClient::SyncPreviewCameraAspect()
     {
-        RenderCamera* camera = m_Preview.GetSceneViewport().GetCamera();
+        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Editor);
+        if (!preview)
+        {
+            return;
+        }
+
+        RenderCamera* camera = preview->GetSceneViewport().GetCamera();
         if (!camera)
         {
             return;
         }
 
-        const Vector2 bufferSize = m_Preview.GetSceneViewport().GetBufferSize();
+        const Vector2 bufferSize = preview->GetSceneViewport().GetBufferSize();
         if (bufferSize.x > 0.0f && bufferSize.y > 0.0f)
         {
             camera->m_AspectRatio = bufferSize.x / bufferSize.y;
@@ -81,12 +95,13 @@ namespace minEngine
 
     void MaterialPreviewViewportClient::SyncRenderTargetSize()
     {
-        if (!m_PreviewInitialized)
+        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Editor);
+        if (!preview)
         {
             return;
         }
 
-        SceneViewport& viewport = m_Preview.GetSceneViewport();
+        SceneViewport& viewport = preview->GetSceneViewport();
         const Math::Vector2 bufferSize = viewport.GetBufferSize();
 
         const uint32_t requestedWidth = m_FrameState.ImageSize.x > 0.0f

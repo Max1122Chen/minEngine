@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-03-26
+Last updated: 2026-05-22
 
 ## 1) Project Goal
 
@@ -57,7 +57,14 @@ When finishing a task, AI should:
 - Append a short entry to docs/ai/PROGRESS_LOG.md.
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
 
-## 6) Next Suggested Maintenance
+## 6) Material Editor (current)
+
+- **Editor-only** module under `Editor/src/Material/` + `Material*Window`；数据真源 `Material::m_Graph`。
+- **E2 done:** `MaterialGraphWindow` + imgui-node-editor；`MaterialEditor` 命令中枢；Preview 由 `MaterialEditorPreview` + `MaterialPreviewViewportClient` 分工。
+- **Reflection helper added:** `GetDerivedClasses<TBase>()` for future node palette / registry.
+- **Plan / log:** `docs/ai/MATERIAL_EDITOR_PLAN.md`, `docs/ai/PROGRESS_LOG.md` (Material Editor E0–E2 section).
+
+## 7) Next Suggested Maintenance
 
 Keep this file stable and high-level. Put fast-changing details into:
 - docs/ai/PROGRESS_LOG.md (timeline)

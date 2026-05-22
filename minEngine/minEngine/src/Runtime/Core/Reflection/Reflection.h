@@ -291,6 +291,27 @@ namespace minEngine::Reflection
             return classes;
         }
 
+        const std::vector<const MEClass*> GetDerivedClasses(const MEClass* baseClass) const
+        {
+            std::vector<const MEClass*> derivedClasses;
+            for (const auto& pair : m_ClassesByName)
+            {
+                const MEClass* classInfo = pair.second;
+                if (classInfo->IsA(baseClass))
+                {
+                    derivedClasses.push_back(classInfo);
+                }
+            }
+            return derivedClasses;
+        }
+
+        template<typename TBase>
+        const std::vector<const MEClass*> GetDerivedClasses() const
+        {
+            ME_ASSERT(TBase::StaticClass() != nullptr, "GetDerivedClasses<TBase> requires TBase to be a reflected class with StaticClass() method.");
+            return GetDerivedClasses(TBase::StaticClass());
+        }
+
         const std::vector<std::string>& GetLastErrors() const
         {
             return m_LastErrors;

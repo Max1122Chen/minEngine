@@ -1,5 +1,8 @@
 #include "Editor.h"
 
+#include "EditorUIMode.h"
+#include "Material/MaterialEditorSession.h"
+
 #include "main.h"
 
 #include "imgui.h"
@@ -104,6 +107,8 @@ namespace minEngine
                         projectCtx.Settings.EditorDefaultSceneName);
                 }
             }
+
+            m_MaterialEditor->RefreshMaterialList();
 
             return true;
         }
@@ -409,10 +414,7 @@ namespace minEngine
 
         MaterialPreviewViewportClient* createdClient = client.get();
         createdClient->m_Editor = this;
-        if (RHI* rhi = RenderSystem::Get().GetRHI())
-        {
-            createdClient->InitializePreviewViewport(rhi, 512, 512);
-        }
+        createdClient->SetViewportPanelId(key);
         m_ViewportClients[key] = std::move(client);
         return *createdClient;
     }
@@ -542,6 +544,7 @@ namespace minEngine
         ImGui_ImplOpenGL3_Init();
 
         WindowSystem::Get().SetCursorVisible(true);
+        m_MaterialEditor = std::make_unique<MaterialEditor>(*this);
         m_EditorGUIManager.Initialize(*this);
 
         InitializeAllComponentTypeNames();
@@ -577,20 +580,16 @@ namespace minEngine
 
     void Editor::PostInitialize()
     {
-        static constexpr const char* kMaterialPreviewViewportId = "material_preview_viewport";
-        MaterialPreviewViewportClient* previewClient = FindMaterialPreviewViewportClient(kMaterialPreviewViewportId);
-        if (!previewClient)
-        {
-            ME_CORE_WARN("Editor::PostInitialize: Material Preview viewport client was not created during GUI init.");
-            return;
-        }
-
-        previewClient->BuildPreviewContent();
     }
 
     void Editor::Shutdown()
     {
         m_EditorGUIManager.Shutdown();
+        if (m_MaterialEditor)
+        {
+            m_MaterialEditor->Shutdown();
+        }
+        m_MaterialEditor.reset();
         ClearViewportClients();
 
         ImGui_ImplOpenGL3_Shutdown();
@@ -612,22 +611,43 @@ namespace minEngine
             m_Engine->TickLogicalFrame(deltaTime);
             SyncSelectionWithScene();
 
-            std::string sceneDisplayName = "Untitled";
-            if (const Scene* activeScene = GetActiveScene())
+            std::string windowTitle = "minEngine Editor";
+            if (GetUIMode() == EditorUIMode::MaterialEditing)
             {
-                const std::filesystem::path scenePath(activeScene->GetSceneName());
-                if (!scenePath.empty())
+                const MaterialEditorSession& session = m_MaterialEditor->GetSession();
+                std::string materialLabel = "Material Editor";
+                if (session.HasOpenMaterial())
                 {
-                    sceneDisplayName = scenePath.filename().string();
-                    if (sceneDisplayName.empty())
+                    const std::filesystem::path materialPath(session.AssetPath);
+                    materialLabel = materialPath.filename().string();
+                    if (materialLabel.empty())
                     {
-                        sceneDisplayName = activeScene->GetSceneName();
+                        materialLabel = session.AssetPath;
                     }
                 }
+                const char* dirtySuffix = session.Dirty ? " *" : "";
+                windowTitle = "minEngine Editor - " + materialLabel + dirtySuffix;
+            }
+            else
+            {
+                std::string sceneDisplayName = "Untitled";
+                if (const Scene* activeScene = GetActiveScene())
+                {
+                    const std::filesystem::path scenePath(activeScene->GetSceneName());
+                    if (!scenePath.empty())
+                    {
+                        sceneDisplayName = scenePath.filename().string();
+                        if (sceneDisplayName.empty())
+                        {
+                            sceneDisplayName = activeScene->GetSceneName();
+                        }
+                    }
+                }
+
+                const char* dirtySuffix = IsSceneDirty() ? " *" : "";
+                windowTitle = "minEngine Editor - " + sceneDisplayName + dirtySuffix;
             }
 
-            const char* dirtySuffix = IsSceneDirty() ? " *" : "";
-            const std::string windowTitle = "minEngine Editor - " + sceneDisplayName + dirtySuffix;
             windowSystem.SetTitle(windowTitle.c_str());
 
             ImGui_ImplOpenGL3_NewFrame();

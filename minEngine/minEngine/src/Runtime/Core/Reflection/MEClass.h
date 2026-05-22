@@ -95,6 +95,13 @@ namespace minEngine::Reflection
             return false;
         }
 
+        template<typename T>
+        bool IsA() const
+        {
+            ME_ASSERT(T::StaticClass() != nullptr, "IsA<T> requires T to be a reflected class with StaticClass() method.");
+            return IsA(T::StaticClass());
+        }
+
         ClassSpecifierMask GetSpecifierMask() const { return m_SpecifierMask; }
         void SetAnnotations(ClassSpecifierMask inSpecifierMask, ClassMetadata inMetadata)
         {

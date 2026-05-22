@@ -1,13 +1,10 @@
 #pragma once
 
 #include "Viewport/EditorViewportClient.h"
-#include "Runtime/Function/Render/MaterialPreviewViewport.h"
 
 namespace minEngine
 {
-    class RHI;
-
-    /** Material preview panel: owned preview scene + second Submit (no Gizmo / pick / fly). */
+    /** Material preview panel: RT resize + Submit only (preview world owned by MaterialEditor). */
     class MaterialPreviewViewportClient : public EditorViewportClient
     {
     public:
@@ -16,13 +13,8 @@ namespace minEngine
 
         void EndFrame() override;
 
-        void InitializePreviewViewport(RHI* rhi, uint32_t width, uint32_t height);
-        void BuildPreviewContent();
-
-        bool IsPreviewContentReady() const { return m_Preview.IsContentReady(); }
-
-        MaterialPreviewViewport& GetMaterialPreviewViewport() { return m_Preview; }
-        const MaterialPreviewViewport& GetMaterialPreviewViewport() const { return m_Preview; }
+        void SetViewportPanelId(std::string panelId) { m_ViewportPanelId = std::move(panelId); }
+        const std::string& GetViewportPanelId() const { return m_ViewportPanelId; }
 
     protected:
         void SyncRenderTargetSize() override;
@@ -30,7 +22,6 @@ namespace minEngine
     private:
         void SyncPreviewCameraAspect();
 
-        MaterialPreviewViewport m_Preview;
-        bool m_PreviewInitialized = false;
+        std::string m_ViewportPanelId;
     };
 }
