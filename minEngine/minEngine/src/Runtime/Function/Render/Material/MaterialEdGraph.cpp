@@ -5,6 +5,7 @@
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "MaterialPropertyUtil.h"
+#include "MaterialValueType.h"
 
 #include <algorithm>
 
@@ -33,12 +34,62 @@ namespace minEngine
         return const_cast<MaterialEdGraph*>(this)->FindEdNodeByNodeDef(nodeDef);
     }
 
+    bool MaterialEdGraph::CanConnectPins(
+        const MaterialEdGraphNode& fromNode,
+        int32_t fromOutputIndex,
+        const MaterialEdGraphNode& toNode,
+        int32_t toInputIndex,
+        std::string* outReason) const
+    {
+        const MaterialGraphNodeDef* fromDef = fromNode.GetDefinition();
+        const MaterialGraphNodeDef* toDef = toNode.GetDefinition();
+        if (fromDef == nullptr || toDef == nullptr)
+        {
+            if (outReason != nullptr)
+            {
+                *outReason = "Missing node definition for pin connection.";
+            }
+            return false;
+        }
+
+        if (fromOutputIndex < 0 || fromOutputIndex >= fromDef->GetOutputCount() || toInputIndex < 0 ||
+            toInputIndex >= toDef->GetInputCount())
+        {
+            if (outReason != nullptr)
+            {
+                *outReason = "Invalid pin index for connection.";
+            }
+            return false;
+        }
+
+        MaterialValueType fromType =
+            MaterialValueTypeUtil::GetNodeOutputPinType(fromDef, fromOutputIndex);
+        MaterialValueType toType = MaterialValueTypeUtil::GetNodeInputPinType(toDef, toInputIndex);
+        if (!MaterialValueTypeUtil::AreConnectable(fromType, toType))
+        {
+            if (outReason != nullptr)
+            {
+                *outReason = std::string("Incompatible pin types (") +
+                    MaterialValueTypeUtil::GetDisplayName(fromType) + " -> " +
+                    MaterialValueTypeUtil::GetDisplayName(toType) + ").";
+            }
+            return false;
+        }
+
+        return true;
+    }
+
     bool MaterialEdGraph::ConnectPins(
         MaterialEdGraphNode& fromNode,
         int32_t fromOutputIndex,
         MaterialEdGraphNode& toNode,
         int32_t toInputIndex)
     {
+        if (!CanConnectPins(fromNode, fromOutputIndex, toNode, toInputIndex, nullptr))
+        {
+            return false;
+        }
+
         EditorGraphNodePin* fromPin = fromNode.GetOutputPin(fromOutputIndex);
         EditorGraphNodePin* toPin = toNode.GetInputPin(toInputIndex);
         MaterialGraphNodeDef* fromDef = fromNode.GetDefinition();

@@ -72,7 +72,9 @@ namespace minEngine
         int32_t GetOutputCount() const { return static_cast<int32_t>(m_Outputs.size()); }
 
         virtual Input* GetInput(int32_t index) { return (0 <= index && index < static_cast<int32_t>(m_Inputs.size())) ? &m_Inputs[index] : nullptr; }
+        virtual const Input* GetInput(int32_t index) const { return (0 <= index && index < static_cast<int32_t>(m_Inputs.size())) ? &m_Inputs[index] : nullptr; }
         virtual Output* GetOutput(int32_t index) { return (0 <= index && index < static_cast<int32_t>(m_Outputs.size())) ? &m_Outputs[index] : nullptr; }
+        virtual const Output* GetOutput(int32_t index) const { return (0 <= index && index < static_cast<int32_t>(m_Outputs.size())) ? &m_Outputs[index] : nullptr; }
 
         std::vector<Output>& GetOutputs() { return m_Outputs; }
         std::vector<Input>& GetInputs() { return m_Inputs; }

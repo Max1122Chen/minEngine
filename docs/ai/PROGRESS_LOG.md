@@ -497,6 +497,14 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Test:** `RunMaterialAssetSerializationTests()` writes `%TEMP%/minengine_material_asset_roundtrip.memtl`, `ToFile` → `FromFile` → `FinalizeGraphAfterLoad`; checks inline JSON types, editor fields, Metallic link, Outer chain.
 - **CLI:** `Editor.exe --material-serialize-test` (serialize only); `--material-ir-test` includes file round-trip at end.
 
+### Material system Phase 0 implemented (2026-05-22)
+- **P0-A:** Preview camera `eye(1.15, 0.8, 1.15)` in `MaterialPreviewViewport`.
+- **P0-B:** `MaterialValueType` + `MaterialValueTypeUtil`；`MaterialEdGraph::CanConnectPins`；Editor `TryConnectPins` 拒绝非法连线；`ValidateMaterialAsset` 校验；`--material-ir-test` 增加 pin 测试 + `MaterialIRTestObjectManagerScope`（friend `ObjectManager`）。
+- **Next:** Phase 1 详细设计（Normal、Capability、少量节点）；`MaterialIRSmoke.memtl` Editor 目视回归。
+
+### Material system roadmap — Phase 0 spec (2026-05-22)
+- **Plan:** `docs/ai/MATERIAL_SYSTEM_ROADMAP.md`
+
 ### Material Editor E0–E4 plan sign-off (2026-05-22)
 - **Plan:** `MATERIAL_EDITOR_PLAN.md` 验收勾选已全部完成（E0–E4）；用户目视 + `--material-ir-test` 确认。
 - **Deferred（计划外）:** 画布右键 Palette；独立 `Material*View` 分层；Undo/Command 队列；Content Browser 双击打开。

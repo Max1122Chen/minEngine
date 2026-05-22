@@ -13,6 +13,7 @@
 #include "Runtime/Function/Render/Material/MaterialEdGraph.h"
 #include "Runtime/Function/Render/Material/MaterialEdGraphNode.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "Runtime/Core/Log/LogSystem.h"
 
 namespace minEngine
 {
@@ -538,6 +539,16 @@ namespace minEngine
         }
         else
         {
+            return false;
+        }
+
+        std::string rejectReason;
+        if (!graph.CanConnectPins(*fromNode, fromOutputIndex, *toNode, toInputIndex, &rejectReason))
+        {
+            if (!rejectReason.empty())
+            {
+                ME_CORE_WARN("Material graph: rejected pin connection: {}", rejectReason);
+            }
             return false;
         }
 

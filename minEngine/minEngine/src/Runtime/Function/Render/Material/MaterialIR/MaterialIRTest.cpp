@@ -10,6 +10,7 @@
 #include "../MaterialEdGraph.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "../MaterialPropertyUtil.h"
+#include "../MaterialValueType.h"
 #include "../../Material.h"
 #include "../MaterialTestGraph.h"
 #include "Render/Shader.h"
@@ -23,6 +24,25 @@
 
 namespace minEngine
 {
+    class MaterialIRTestObjectManagerScope
+    {
+    public:
+        MaterialIRTestObjectManagerScope()
+        {
+            ObjectManager::SetInstance(&m_Manager);
+            m_Manager.Initialize();
+        }
+
+        ~MaterialIRTestObjectManagerScope()
+        {
+            m_Manager.Shutdown();
+            ObjectManager::SetInstance(nullptr);
+        }
+
+    private:
+        ObjectManager m_Manager;
+    };
+
     namespace
     {
         // Duplicated from Editor::LoadEngineConfig for headless --material-ir-test (no Editor instance).
@@ -497,6 +517,8 @@ namespace minEngine
                 "MaterialIR test: reflection not ready; skipping EngineConfig load (IR smoke tests still run).");
         }
 
+        MaterialIRTestObjectManagerScope objectManagerScope;
+
         Material smokeMaterial;
         PopulateSmokeMaterialGraph(smokeMaterial);
         smokeMaterial.m_ShadingModel = MaterialShadingModel::Unlit;
@@ -513,6 +535,43 @@ namespace minEngine
         {
             return false;
         }
+
+        if (!MaterialValueTypeUtil::ValidateGraphPinConnections(*smokeMaterial.m_Graph, nullptr))
+        {
+            ME_CORE_ERROR("MaterialIR test: smoke graph pin type validation failed.");
+            return false;
+        }
+
+        MaterialEdGraphNode* outputEdNode = smokeMaterial.m_Graph->FindEdNodeByNodeDef(outputNode);
+        MaterialEdGraphNode* floatConstantEdNode = nullptr;
+        for (const std::shared_ptr<MaterialEdGraphNode>& edNode : smokeMaterial.m_Graph->m_Nodes)
+        {
+            if (edNode && dynamic_cast<MaterialGraphNodeDef_Constant*>(edNode->GetNodeDef()) != nullptr)
+            {
+                floatConstantEdNode = edNode.get();
+                break;
+            }
+        }
+
+        if (outputEdNode == nullptr || floatConstantEdNode == nullptr)
+        {
+            ME_CORE_ERROR("MaterialIR test: missing nodes for pin compatibility check.");
+            return false;
+        }
+
+        constexpr int32_t kAlbedoInputIndex = 0;
+        if (smokeMaterial.m_Graph->CanConnectPins(
+                *floatConstantEdNode,
+                0,
+                *outputEdNode,
+                kAlbedoInputIndex,
+                nullptr))
+        {
+            ME_CORE_ERROR("MaterialIR test: float output must not connect to Albedo (float3) input.");
+            return false;
+        }
+
+        ME_CORE_INFO("MaterialIR pin type connection checks PASSED.");
 
         MaterialCompileContext ctx;
         if (!g_MaterialIRTestEngineDefaultAssetsRoot.empty())

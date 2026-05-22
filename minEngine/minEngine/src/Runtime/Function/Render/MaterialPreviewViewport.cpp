@@ -209,7 +209,7 @@ namespace minEngine
             return;
         }
 
-        const Vector3 eye(2.5f, 1.5f, 2.5f);
+        const Vector3 eye(1.15f, 0.8f, 1.15f);
         const Vector3 target(0.0f, 0.0f, 0.0f);
         const Vector3 up(0.0f, 1.0f, 0.0f);
 

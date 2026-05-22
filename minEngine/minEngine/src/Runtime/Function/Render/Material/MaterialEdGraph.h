@@ -5,6 +5,7 @@
 #include "MaterialTypes.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace minEngine::Reflection
@@ -38,6 +39,13 @@ namespace minEngine
         {
             return AddNode(TNodeDef::StaticClass(), editorPosX, editorPosY);
         }
+
+        bool CanConnectPins(
+            const MaterialEdGraphNode& fromNode,
+            int32_t fromOutputIndex,
+            const MaterialEdGraphNode& toNode,
+            int32_t toInputIndex,
+            std::string* outReason = nullptr) const;
 
         bool ConnectPins(
             MaterialEdGraphNode& fromNode,

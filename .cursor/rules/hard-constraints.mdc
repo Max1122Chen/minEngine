@@ -1,0 +1,38 @@
+---
+description: Non-negotiable constraints for commits, C/C++ style, and context recovery. Re-read when context may have been compressed.
+alwaysApply: true
+---
+
+# Hard Constraints (always)
+
+These three rules override convenience habits. If anything else conflicts, follow this file.
+
+## 1) Commit preparation (mandatory gate)
+
+When the user asks to prepare a commit (e.g. 准备commit, 写提交信息, commit message, summarize for commit):
+
+- Inspect staged/unstaged changes first; draft from **actual** diffs only.
+- Use **Conventional Commits** for the subject: `type(scope): summary` (e.g. `feat`, `fix`, `refactor`, `docs`, `chore`).
+- Present the **full draft** to the user and **wait for explicit approval** before `git add` / `git commit`.
+- **NEVER** run `git commit` (or push) unless the user clearly approves that draft in the same task.
+- If the user only wanted a message draft, stop after the draft unless they then ask to commit.
+
+## 2) C/C++ implementation style
+
+When writing or editing `.c`, `.cpp`, `.h`, `.hpp`, `.cc`, `.cxx`:
+
+- Follow the user **cpp-style** skill (and project `.clang-format` / local docs when stricter).
+- **Avoid** anonymous-namespace free functions and file-scope `static` free functions when a **class member** (instance or `static` member) is a natural fit.
+- **Exceptions** (free functions OK): enum/enum-class helpers, factories/casts, algorithms shared across unrelated types, or cases where a wrapper class is more redundant than one helper.
+- If you **must** use anonymous-namespace or file-scope `static` helpers outside those exceptions, **tell the user explicitly** why and what blocked a member function.
+
+## 3) Context recovery (re-apply this rule)
+
+**Re-read and silently re-apply sections 1–2** at the start of your reply when any of these is true:
+
+- New Cursor session or thread, or the conversation was **summarized / compressed** (long history truncated, “continue previous task”, or prior rules seem forgotten).
+- User says **re-bootstrap**, **对齐约束**, or asks to realign with project rules.
+- You are resuming after a **long tool-heavy stretch** (many reads/edits/builds) and about to make a **non-trivial code change** or **commit-related** action.
+- You are unsure whether commit-approval or C++ organization rules still apply.
+
+After recovery: do not repeat the full rule text to the user unless they ask; just behave according to it.

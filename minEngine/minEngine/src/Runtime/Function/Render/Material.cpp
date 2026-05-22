@@ -3,6 +3,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompiler.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "Runtime/Function/Render/Material/MaterialValueType.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "RHI/RHIShader.h"
 #include "RHI/RHITexture.h"
@@ -157,6 +158,11 @@ namespace minEngine
             {
                 *outError = "Material graph requires at least one MaterialOutput node.";
             }
+            return false;
+        }
+
+        if (!MaterialValueTypeUtil::ValidateGraphPinConnections(*m_Graph, outError))
+        {
             return false;
         }
 

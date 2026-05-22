@@ -60,9 +60,9 @@ When finishing a task, AI should:
 ## 6) Material Editor (current)
 
 - **Editor-only** module under `Editor/src/Material/` + `Material*Window`；数据真源 `Material::m_Graph`。
-- **E2 done:** `MaterialGraphWindow` + imgui-node-editor；`MaterialEditor` 命令中枢；Preview 由 `MaterialEditorPreview` + `MaterialPreviewViewportClient` 分工。
-- **Reflection helper added:** `GetDerivedClasses<TBase>()` for future node palette / registry.
-- **Plan / log:** `docs/ai/MATERIAL_EDITOR_PLAN.md`, `docs/ai/PROGRESS_LOG.md` (Material Editor E0–E2 section).
+- **E0–E4 done:** 图编辑、Preview、Details 反射、Compile 诊断；见 `MATERIAL_EDITOR_PLAN.md` 验收勾选。
+- **Next track:** `docs/ai/MATERIAL_SYSTEM_ROADMAP.md`（预览相机、连线类型校验、Normal/AO、Capability 拦截、节点库、PBR）。
+- **Plan / log:** `MATERIAL_EDITOR_PLAN.md`, `MATERIAL_SYSTEM_ROADMAP.md`, `PROGRESS_LOG.md`.
 
 ## 7) Next Suggested Maintenance
 

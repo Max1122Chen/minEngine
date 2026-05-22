@@ -6,6 +6,7 @@
 namespace minEngine
 {
     class Engine;
+    class MaterialIRTestObjectManagerScope;
 
     class ObjectManager
     {
@@ -68,6 +69,7 @@ namespace minEngine
 
     private:
         friend class Engine;
+        friend class MaterialIRTestObjectManagerScope;
 
         static void SetInstance(ObjectManager* instance);
         static ObjectManager* s_Instance;
