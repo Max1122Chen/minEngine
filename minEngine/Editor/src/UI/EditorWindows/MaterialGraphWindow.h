@@ -9,6 +9,8 @@ namespace minEngine
 {
     class Material;
     class MaterialEdGraph;
+    class MaterialEdGraphNode;
+    class MaterialGraphNodeDef;
 
     class MaterialGraphWindow final : public EditorWindow
     {
@@ -30,7 +32,10 @@ namespace minEngine
         void DrawNodeEditor(Material& material, MaterialEdGraph& graph);
         void LayoutNodesIfNeeded(MaterialEdGraph& graph);
         void PushStoredPositionsToEditor(MaterialEdGraph& graph);
+        void DrawPinIcon(const ImColor& color);
+        void DrawNodeBody(MaterialEdGraphNode& node, MaterialGraphNodeDef* nodeDef);
         void DrawNodes(MaterialEdGraph& graph);
+        void SyncSelectionFromEditor();
         void DrawLinks(MaterialEdGraph& graph);
         void HandleCreateLink(MaterialEdGraph& graph);
         void HandleDeleteLink(MaterialEdGraph& graph);
@@ -42,7 +47,6 @@ namespace minEngine
 
         ax::NodeEditor::EditorContext* m_NodeEditorContext = nullptr;
         MaterialEdGraph* m_BoundGraph = nullptr;
-        bool m_NavigateToContentPending = false;
         bool m_PushStoredPositionsToEditor = false;
     };
 }

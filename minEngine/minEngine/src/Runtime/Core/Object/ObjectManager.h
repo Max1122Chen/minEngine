@@ -52,6 +52,12 @@ namespace minEngine
             return newObj;
         }
 
+        std::shared_ptr<MEObject> NewObject(
+            const Reflection::MEClass* classInfo,
+            const std::string& inName = "",
+            MEObject* inOuter = nullptr,
+            const GUID& inGuid = GenerateGUID());
+
         std::shared_ptr<MEObject> NewObject(const std::string& className, const std::string& inName = "", MEObject* inOuter = nullptr, const GUID& inGuid = GenerateGUID());
 
         // Cancel the reference to the object with the given GUID, allowing it to be destroyed if there are no other references. Returns true if the object was found and unregistered, false otherwise.
@@ -101,5 +107,13 @@ namespace minEngine
     {
         return ObjectManager::Get().RemoveObject(object);
     }
-    
+
+    inline std::shared_ptr<MEObject> NewObject(
+        const Reflection::MEClass* classInfo,
+        const std::string& inName = "",
+        MEObject* inOuter = nullptr,
+        const GUID& inGuid = GenerateGUID())
+    {
+        return ObjectManager::Get().NewObject(classInfo, inName, inOuter, inGuid);
+    }
 }

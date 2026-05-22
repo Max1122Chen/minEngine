@@ -7,6 +7,11 @@
 #include <memory>
 #include <vector>
 
+namespace minEngine::Reflection
+{
+    class MEClass;
+}
+
 namespace minEngine
 {
     struct MaterialPropertyInputDescription;
@@ -23,8 +28,16 @@ namespace minEngine
         ME_PROPERTY(Instanced)
         std::vector<std::shared_ptr<MaterialEdGraphNode>> m_Nodes;
 
+        MaterialEdGraphNode& AddNode(
+            const Reflection::MEClass* nodeDefClass,
+            float editorPosX = 0.0f,
+            float editorPosY = 0.0f);
+
         template<typename TNodeDef>
-        MaterialEdGraphNode& AddNode(Material& material);
+        MaterialEdGraphNode& AddNode(float editorPosX = 0.0f, float editorPosY = 0.0f)
+        {
+            return AddNode(TNodeDef::StaticClass(), editorPosX, editorPosY);
+        }
 
         bool ConnectPins(
             MaterialEdGraphNode& fromNode,
@@ -46,6 +59,8 @@ namespace minEngine
 
         MaterialEdGraphNode* FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef);
         const MaterialEdGraphNode* FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef) const;
+
+        bool RemoveNode(MaterialEdGraphNode& node);
     };
 }
 

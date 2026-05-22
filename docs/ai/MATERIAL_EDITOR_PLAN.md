@@ -5,6 +5,8 @@
 > - 阶段 2：多 Scene / `SceneDrawCommand` / `SceneRenderContext`（`518e975`）  
 > - P5：`MaterialPreviewViewport` + `MaterialPreviewViewportWindow`（独立 RT、第二条 Submit）  
 >  
+> **Material Editor 里程碑（2026-05-22）：** E0–E4 验收项已勾选；实现上 **无独立 `Material*View` 层**（ImGui 在 `*Window` + `MaterialEditor` 命令，见 `PROGRESS_LOG` E1.5）。
+>  
 > **第三方：** `minEngine/Third-Party/imgui-node-editor/`（从本机 `D:\Dev\GitRepo\imgui-node-editor` vendoring，仅 **Editor** 链接）  
 >  
 > **UE 参照：** `UMaterialEditor` + `FPreviewScene` + Material Graph（`UMaterialExpression` 连线）
@@ -21,7 +23,7 @@
 |----|------|------|
 | 资产 / 数据 | `Material` + `MaterialEdGraph` + `.memtl` | ✅ |
 | 编译 / 运行时 | MIR → GLSL → `Shader` → BasePass | ✅ |
-| **编辑体验** | 节点图、Preview、Details、保存 | ❌ 本计划 |
+| **编辑体验** | 节点图、Preview、Details、保存 | ✅ E0–E4（2026-05-22 验收） |
 
 **数据原则：** UI **不复制**第二份图；唯一真相 = `Material::m_Graph`（Instanced Outer 链不变）。
 
@@ -236,13 +238,13 @@ cfg.LoadSettings = nullptr;
 // 节点位置 → MaterialEdGraphNode::m_EditorPosX / m_EditorPosY（.memtl 已有字段）
 ```
 
-### 4.4 ID 映射（`MaterialGraphView`）
+### 4.4 ID 映射（`MaterialGraphIds`）
 
 | 库 ID | 映射 |
 |-------|------|
-| `NodeId` | `uintptr_t` ← `MaterialEdGraphNode*`（稳定至节点删除） |
-| `PinId` | 编码 `(nodePtr, PinKind, pinIndex)` |
-| `LinkId` | 编码 `(fromNode, fromOut, toNode, toIn)` 或递增 id |
+| `NodeId` | `MaterialEdGraphNode*`（堆指针；低 2 bit 为 0） |
+| `PinId` / `LinkId` | `PinKey` / `LinkKey` + `HashCombine` + 双向 `unordered_map`；`(hash << 2) \| tag` 与 NodeId 分轨 |
+| `Reset()` | 换 Session / 图拓扑变更（加删节点）时清空映射 |
 
 **同步：**
 
@@ -251,9 +253,16 @@ cfg.LoadSettings = nullptr;
 - 断线：`DeleteLink` 事件 → `DisconnectInput`。
 - 帧末：`GetNodePosition` → 写回 `m_EditorPosX/Y`。
 
-### 4.5 NodeDef → UI 注册表（薄层）
+### 4.5 `MaterialGraphNodeRegistry`（薄层，单点维护）
 
-`MaterialGraphNodeRegistry`（Editor 内）：NodeDef 类型名、显示色、输入/输出引脚列表（读 `MaterialGraphNodeDef` 反射或手写 MVP 表）。
+| 职责 | 说明 |
+|------|------|
+| **Creatable 白名单** | `GetCreatableNodes()`：`MEClass*` 列表（Palette 数据源）；**不含** `MaterialOutput` |
+| **显示** | `GetStyle` / `GetDisplayName`（顶栏色、标题） |
+| **节点内 UI** | `DrawNode(nodeDef)` **门面**：按 `NodeDef->GetClass()` **直接分发**到 `DrawConstant` / `DrawScalarParameter` / …；**不做**函数指针 Register 表 |
+| **返回值** | 各 `Draw*` 返回 `bool`（是否改值）；`GraphWindow` 统一 `NotifyGraphChanged()` |
+
+`MaterialGraphWindow` 只画外框（顶栏、IOPin 分列、圆点针脚）；**禁止**在 Window 内 `dynamic_cast` 枚举 Subtitle。
 
 ---
 
@@ -297,7 +306,7 @@ Save
 
 ## 7. 分阶段计划
 
-### 阶段 E0 — 模式切换 + Material 套件壳
+### 阶段 E0 — 模式切换 + Material 套件壳 ✅
 
 **目的：** `EditorUIMode` 切换；Material 三窗布局；Picker + Details + Save；Graph 占位。
 
@@ -313,14 +322,14 @@ Save
 **验收**
 
 - [x] 菜单 **Window → Material Editor / Scene Editor** 切换套件
-- [ ] 菜单进入 Material 模式后 **看不见** Hierarchy/Inspector/Scene Viewport（需本地目视）
-- [ ] 返回 Scene 模式后 **看不见** Material 三窗（需本地目视）
-- [x] Material 模式：左 Preview/Details + 右 Graph 占位；材质下拉、`ShadingModel`、Save
-- [ ] Scene 模式主视口与 `--material-ir-test` 无回归（需本地跑）
+- [x] 菜单进入 Material 模式后 **看不见** Hierarchy/Inspector/Scene Viewport（2026-05-22 目视 + `ApplyUIModeWindowVisibility`）
+- [x] 返回 Scene 模式后 **看不见** Material 三窗（2026-05-22 目视）
+- [x] Material 模式：左 Preview/Details + 右 Graph；材质下拉、`ShadingModel`、Save
+- [x] Scene 模式主视口与 `--material-ir-test` 无回归（2026-05-22 本地 CLI）
 
 ---
 
-### 阶段 E1 — Preview 闭环
+### 阶段 E1 — Preview 闭环 ✅
 
 **目的：** 左栏 Preview 显示当前编辑材质的球体 RT。
 
@@ -335,13 +344,13 @@ Save
 **验收**
 
 - [x] 下拉换 `.memtl` → Preview 球使用对应材质（非固定 MaterialIRSmoke GUID）
-- [ ] 改 `ShadingModel` 或 Compile 后 Preview 变化（需本地目视）
-- [ ] Preview RT 与主 Viewport RT **纹理 ID 不同**
-- [ ] 主视口仍正常
+- [x] 改 `ShadingModel` 或 Compile 后 Preview 变化（2026-05-22 目视）
+- [x] Preview RT 与主 Viewport RT **纹理 ID 不同**（独立 `material_editor_preview` client）
+- [x] 主视口仍正常（Scene 模式）
 
 ---
 
-### 阶段 E2 — 节点图（imgui-node-editor）
+### 阶段 E2 — 节点图（imgui-node-editor）✅
 
 **目的：** 右栏完整画布；读写 `MaterialEdGraph`。
 
@@ -354,36 +363,114 @@ Save
 
 **验收**
 
-- [ ] 打开 Smoke 图，节点位置与 `.memtl` 中 `m_EditorPosX/Y` 一致
-- [ ] 改一根线（如 Albedo）→ Compile → Preview 颜色变化
-- [ ] 拖节点后 Save，重开位置保留
-- [ ] **不**生成 `NodeEditor.json`（`SettingsFile = nullptr`）
+- [x] 打开 Smoke 图，节点位置与 `.memtl` 中 `m_EditorPosX/Y` 一致（2026-05-22 目视）
+- [x] 改一根线（如 Albedo）→ Compile → Preview 颜色变化（2026-05-22 目视）
+- [x] 拖节点后 Save，重开位置保留（2026-05-22 目视）
+- [x] **不**生成 `NodeEditor.json`（`SettingsFile = nullptr`，代码已设）
 
 ---
 
-### 阶段 E3 — Details 节点参数 + Palette
+### 阶段 E3 — 节点参数、Palette、删节点 ✅
 
-| 功能 | 要点 |
-|------|------|
-| Details | `ScalarParameter`、`TextureObject.DefaultTexture`（纹理 GUID 下拉） |
-| Palette | 右键/面板：添加已有 NodeDef 类型；`AddNode<>` + Outer |
-| 删除 | 删节点 / 断线（仍无 Undo） |
+**状态（2026-05-22）：** E3.0–E3.4 已验收（Details Combo、`DrawNode` 门面、反射 Details、删节点）。**仍无 Undo**。
+
+**Runtime 约定（已拍板）：**
+
+- `MaterialEdGraph::AddNode(const MEClass* nodeDefClass, posX, posY)` — 图自管 Outer，**不传** `Material&`
+- `ObjectManager::NewObject(const MEClass*, …)` — Palette / 运行时建节点唯一路径
+- 模板 `AddNode<T>()` 仅作 Editor 编译期糖
+
+---
+
+#### E3.0 — 基线（✅ 2026-05-22）
+
+| 项 | 要点 |
+|----|------|
+| 选中 | 图窗 → `MaterialEditor::m_SelectedEdNode` |
+| Details | 材质级 ShadingModel；节点字段已由 E3.3 `MaterialNodeDefPropertyDrawer` 反射驱动 |
+| Palette（临时） | 画布右键菜单已弃用；加节点走 E3.1 Details Combo |
+| 节点外观 | 顶栏 + IOPin + 圆点针脚 |
+| 后续子阶段 | E3.1–E3.4 已分别验收（见下） |
+
+---
+
+#### E3.1 — Palette → Details Combo（优先）
+
+| 项 | 要点 |
+|----|------|
+| UI | `MaterialDetailsWindow`：`Add Node` **Combo**，与 Shading Model 同级；数据源 `GetCreatableNodes()` |
+| 行为 | 选择类型 → `graph.AddNode(entry.NodeDefClass, spawnX, spawnY)` → `NotifyGraphChanged` + `MaterialGraphIds::Reset` |
+| 落点 | MVP：选中节点右下偏移 / 画布视口中心 / 上次添加偏移（三选一，实现时取最简单） |
+| 画布右键 | **保留或移除**均可；不作为验收项，直至单独修 imgui-node-editor 菜单时机 |
 
 **验收**
 
-- [ ] 改 Metallic → BlinnPhong 高光变化
-- [ ] 新建 `Multiply` 节点并连到 Output
+- [x] Details 中稳定添加 `Multiply` 等新节点（不依赖右键）（2026-05-22）
+- [x] 新建节点可连线、Compile、Save 重开仍在（2026-05-22）
+
+---
+
+#### E3.2 — `Registry::DrawNode` 门面 + 图上可编辑 Subtitle
+
+| 项 | 要点 |
+|----|------|
+| 门面 | `MaterialGraphNodeRegistry::DrawNode(MaterialEdGraphNode&)` → `switch`/链式按 `MEClass*` 调 `DrawConstant`、`DrawScalarParameter`、`DrawTextureObject`（只读摘要或短标签）等 |
+| 交互 | 如 `DrawConstant`：`ImGui::DragFloat`，返回 `changed`；`MaterialGraphWindow` 在 `BeginNode` 体内调用，**不写死** cast 列表 |
+| 默认 | 未特化类型：空或 `TextDisabled` 一行类名 |
+| 与 Details | 同一字段两处可改；均以 `NotifyGraphChanged()` 为准 |
+
+**验收**
+
+- [x] 在图上拖 Constant / 改 Scalar 默认值，Preview 随之变化（与 Details 改同一字段一致）（2026-05-22）
+- [x] `MaterialGraphWindow.cpp` 无按 NodeDef 类型的 Subtitle 分支（经 `Registry::DrawNode` 门面）
+
+---
+
+#### E3.3 — Details 反射驱动（替代手写枚举）
+
+| 项 | 要点 |
+|----|------|
+| 目标 | 选中 `NodeDef` 后遍历 `ME_PROPERTY` / Reflection accessor 画字段，**避免**每类型改 `MaterialDetailsWindow` |
+| 规则 | 过滤 Invisible / 只读 / 运行时重建字段；`shared_ptr<Texture2D>` 等走资产类型规则（对齐 Inspector `DrawAssetRef`） |
+| 分期 | 可先支持 float/int/string + Texture2D；复杂类型继续跳过并提示 |
+
+**验收**
+
+- [x] 新增 `MaterialGraphNodeDef_*` 仅加 Runtime 与（可选）`DrawNode` 特化，**不必**改 Details 大段手写分支（`MaterialNodeDefPropertyDrawer` 已落地） |
+
+---
+
+#### E3.4 — 删节点
+
+| 项 | 要点 |
+|----|------|
+| Runtime | `MaterialEdGraph::RemoveNode`：断开关联连线、从 `m_Nodes` 移除、对象生命周期与 `AddNode` 对称 |
+| Editor | `QueryDeletedNode` → `AcceptDeletedItem`；禁止删唯一 `MaterialOutput` |
+
+**验收**
+
+- [x] 删中间节点后 Compile 仍成功；Save 重开无悬空连接（2026-05-19 实现）
+
+---
+
+#### E3 总验收（发布「E3 完成」）— ✅ 2026-05-22
+
+- [x] 改 Metallic（图上或 Details）→ BlinnPhong 高光变化
+- [x] Details Combo 新建 `Multiply` 并连到 Output
+- [x] （E3.4）删节点后图仍合法
+
+**Deferred（E3 外 / E4）：** 画布右键 Palette 修稳；`GetDerivedClasses` 仅作 Register 漏项自检，**不作** Palette 数据源。
 
 ---
 
 ### 阶段 E4 — 体验与 deferred 项
 
-| 功能 | 说明 |
-|------|------|
-| Compile 诊断面板 | 展示 `MaterialCompileResult::Diagnostics` |
-| Debounce Compile | 大图卡顿时再加 |
-| 向量 Constant3 R/G/B 多引脚 | 对齐 `PROGRESS_LOG` |
-| 关闭独立 `Material Preview` 调试窗默认打开 | 仅保留 Material Editor 内 Preview |
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| Compile 诊断面板 | `MaterialCompileDiagnosticsDrawer`：Graph 工具栏计数 + Details/Graph 折叠列表（Info/Warn/Error 着色） | ✅ 2026-05-19 |
+| Debounce Compile | `MaterialEditor::Tick` + `kCompileDebounceSeconds`（0.3s）；手动 Compile / Save 立即编译 | ✅ 2026-05-19 |
+| 向量 Constant3 R/G/B 多引脚 | Runtime `m_Outputs` + `BuildIR` `SubscriptChannel` | ✅ 2026-05-19 |
+| 关闭独立 Material Preview 调试链 | `MaterialPreviewWindow` 默认 `SetOpen(false)`；`MaterialPreviewViewportClient::EndFrame` 非 Material 模式不 Submit；`OnExitMode` 移除 viewport client | ✅ 2026-05-19 |
 
 ---
 
@@ -440,9 +527,10 @@ minEngine/Third-Party/imgui-node-editor/*  （14 文件 + LICENSE）
 
 | 风险 | 对策 |
 |------|------|
-| NodeDef 与 UI 双份维护 | `MaterialGraphNodeRegistry` 单表；MVP 只登记已有类型 |
+| NodeDef 与 UI 双份维护 | **单点** `MaterialGraphNodeRegistry`：白名单 + `DrawNode` 门面；Details 逐步改为反射（E3.3） |
 | Compile 失败 | Details 显示 Diagnostics；Preview 保持上一帧合法 shader |
-| Instanced 新节点 Outer 错 | 必须 `AddNode(material)`，禁止裸 `new` EdNode |
+| Instanced 新节点 Outer 错 | `graph.AddNode(MEClass*)` + `NewObject(MEClass*, outer)`；禁止裸 `new` EdNode |
+| 画布 Palette 菜单不稳定 | **E3.1** 改 Details Combo；右键修稳列为 optional |
 | Preview / 主视口 RT 混淆 | 独立 `SceneViewport` + 独立 `SceneDrawDesc`（已 P5） |
 | imgui-node-editor 与 ImGui 版本 | 已 patch `imgui_extra_math.*`（`IMGUI_VERSION_NUM >= 19200` 跳过 `float*ImVec2`）；升级 ImGui 时复测 |
 | 右栏 NodeEditor 抢输入 | 仅右栏 `Begin`；左栏 Preview 用普通 ImGui |
@@ -458,7 +546,9 @@ minEngine/Third-Party/imgui-node-editor/*  （14 文件 + LICENSE）
 | Material 下拉 | ✅ | ✅ | ✅ | ✅ |
 | ShadingModel | ✅ | ✅ | ✅ | ✅ |
 | 连线 / 断线 | — | — | ✅ | ✅ |
-| 节点参数 | — | — | — | ✅ |
+| 节点参数（Details 反射 + 图上 DrawNode） | — | — | — | ✅ |
+| Palette（Details Combo） | — | — | — | ✅ |
+| 删节点 | — | — | — | ✅ |
 | Save / 重载 | ✅ | ✅ | ✅ | ✅ |
 | 主视口无回归 | ✅ | ✅ | ✅ | ✅ |
 | material-ir-test | ✅ | ✅ | ✅ | ✅ |
@@ -471,8 +561,12 @@ minEngine/Third-Party/imgui-node-editor/*  （14 文件 + LICENSE）
 1. E0 壳 + 布局（图右）+ Picker + Details + Save
 2. E1 Preview 绑定 Session 材质
 3. E2 MaterialGraphView + imgui-node-editor 连线
-4. E3 Palette + 节点 Details
-5. E4 诊断 / debounce / 关调试 Preview 窗
+4. E3 分阶段（见上）：
+   4a E3.1  Palette → Details Combo（先解决加节点）
+   4b E3.2  Registry DrawNode 门面 + 图上 DragFloat 等
+   4c E3.3  Details 反射字段（去掉手写枚举）
+   4d E3.4  RemoveNode + 编辑器删节点
+5. E4 诊断 / debounce / 关调试 Preview 窗 / 画布右键 Palette（optional）
 ```
 
 与全局路线图关系：
@@ -493,6 +587,9 @@ minEngine/Third-Party/imgui-node-editor/*  （14 文件 + LICENSE）
 | D | Picker / Compile / Save：放在 **`MaterialGraphWindow` 顶栏**，不新增 Toolbar Window |
 | E | Material 模式下 **SceneManager 继续逻辑 Tick**；**不 Submit** 主 Scene 视口 |
 | F | 入口：**MainMenu → Window → Material Editor**；返回：**Window → Scene Editor**（或同级菜单项） |
+| G | **Palette：** 首版用 **Details `Add Node` Combo**（`GetCreatableNodes` 白名单）；画布右键不作为必达 |
+| H | **节点内 UI：** `MaterialGraphNodeRegistry::DrawNode` **门面 + 按类分发** `Draw*`（无 Register 函数表）；返回 `bool` 驱动 dirty |
+| I | **Details 字段：** E3.3 起以 **反射** 为主；E3.0 手写 Scalar/Texture 为临时方案 |
 
 ---
 

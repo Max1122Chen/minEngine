@@ -32,11 +32,6 @@ namespace minEngine
 
     void MaterialEditorPreview::SetMaterial(const std::shared_ptr<Material>& material)
     {
-        if (!m_Preview.IsContentReady())
-        {
-            return;
-        }
-
         m_Preview.SetPreviewMaterial(material);
     }
 

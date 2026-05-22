@@ -105,8 +105,8 @@ namespace minEngine
         ME_GENERATED_BODY(MaterialGraphNodeDef_Constant3)
 
     public:
-        MaterialGraphNodeDef_Constant3() = default;
-        MaterialGraphNodeDef_Constant3(float r = 0.0f, float g = 0.0f, float b = 0.0f);
+        MaterialGraphNodeDef_Constant3();
+        MaterialGraphNodeDef_Constant3(float r, float g, float b);
         void BuildIR(MIREmitter& emitter) override;
 
         ME_PROPERTY()

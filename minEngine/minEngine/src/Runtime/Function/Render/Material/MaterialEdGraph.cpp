@@ -1,8 +1,12 @@
 #include "MaterialEdGraph.h"
 
 #include "../Material.h"
+#include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/Reflection.h"
 #include "MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "MaterialPropertyUtil.h"
+
+#include <algorithm>
 
 namespace minEngine
 {
@@ -185,6 +189,74 @@ namespace minEngine
 
         return outputNodes;
     }
-}
 
-#include "MaterialEdGraph.inl"
+    MaterialEdGraphNode& MaterialEdGraph::AddNode(
+        const Reflection::MEClass* nodeDefClass,
+        float editorPosX,
+        float editorPosY)
+    {
+        ME_ASSERT(nodeDefClass != nullptr, "AddNode requires a valid NodeDef class.");
+        ME_ASSERT(
+            nodeDefClass->IsA(MaterialGraphNodeDef::StaticClass()),
+            "AddNode class must derive from MaterialGraphNodeDef.");
+
+        std::shared_ptr<MaterialEdGraphNode> edNode = NewObject<MaterialEdGraphNode>("", this);
+        std::shared_ptr<MEObject> nodeDefObject = ObjectManager::Get().NewObject(nodeDefClass, "", edNode.get());
+        ME_ASSERT(nodeDefObject != nullptr, "Failed to create MaterialGraphNodeDef instance.");
+
+        std::shared_ptr<MaterialGraphNodeDef> nodeDef =
+            std::static_pointer_cast<MaterialGraphNodeDef>(nodeDefObject);
+        edNode->SetNodeDef(std::move(nodeDef));
+        edNode->m_EditorPosX = editorPosX;
+        edNode->m_EditorPosY = editorPosY;
+        m_Nodes.push_back(std::move(edNode));
+        return *m_Nodes.back();
+    }
+
+    bool MaterialEdGraph::RemoveNode(MaterialEdGraphNode& node)
+    {
+        MaterialGraphNodeDef* removedDef = node.GetNodeDef();
+        if (removedDef == nullptr)
+        {
+            return false;
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& otherNodePtr : m_Nodes)
+        {
+            if (!otherNodePtr || otherNodePtr.get() == &node)
+            {
+                continue;
+            }
+
+            MaterialGraphNodeDef* otherDef = otherNodePtr->GetDefinition();
+            if (otherDef == nullptr)
+            {
+                continue;
+            }
+
+            for (int32_t inputIndex = 0; MaterialGraphNodeDefInput* input = otherDef->GetInput(inputIndex);
+                 ++inputIndex)
+            {
+                if (input->NodeDef == removedDef)
+                {
+                    DisconnectInput(*otherNodePtr, inputIndex);
+                }
+            }
+        }
+
+        const auto removeIter = std::remove_if(
+            m_Nodes.begin(),
+            m_Nodes.end(),
+            [&node](const std::shared_ptr<MaterialEdGraphNode>& candidate)
+            {
+                return candidate.get() == &node;
+            });
+        if (removeIter == m_Nodes.end())
+        {
+            return false;
+        }
+
+        m_Nodes.erase(removeIter, m_Nodes.end());
+        return true;
+    }
+}

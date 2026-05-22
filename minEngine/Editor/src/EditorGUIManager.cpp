@@ -98,6 +98,11 @@ namespace minEngine
         const ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
         TickLayout(dockspaceId);
 
+        if (m_UIMode == EditorUIMode::MaterialEditing)
+        {
+            editor.GetMaterialEditor().Tick(deltaTime);
+        }
+
         TickWindows();
         DrawWindows();
 

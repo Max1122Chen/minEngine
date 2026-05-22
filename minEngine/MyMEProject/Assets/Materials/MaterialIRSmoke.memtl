@@ -10,8 +10,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": 304.0,
+                "m_EditorPosY": 195.0,
                 "m_Guid": {
                     "High": 8875502612858684129,
                     "Low": 13070555123816081583
@@ -36,8 +36,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": 308.0,
+                "m_EditorPosY": -8.0,
                 "m_Guid": {
                     "High": 5554786323787105933,
                     "Low": 12214703621610557478
@@ -70,7 +70,7 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
+                "m_EditorPosX": 600.0,
                 "m_EditorPosY": 0.0,
                 "m_Guid": {
                     "High": 17179767706404212443,
@@ -116,8 +116,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": 719.0,
+                "m_EditorPosY": 456.0,
                 "m_Guid": {
                     "High": 4313233249449429642,
                     "Low": 9828213719960633846
@@ -145,8 +145,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": -38.0,
+                "m_EditorPosY": 197.0,
                 "m_Guid": {
                     "High": 13713037329651549822,
                     "Low": 10513844403032232375
@@ -172,8 +172,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": -38.0,
+                "m_EditorPosY": 357.0,
                 "m_Guid": {
                     "High": 13667440737406174701,
                     "Low": 11562717907571018399
@@ -199,8 +199,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": -33.0,
+                "m_EditorPosY": 520.0,
                 "m_Guid": {
                     "High": 17537479540215924978,
                     "Low": 9263495489812296048
@@ -226,8 +226,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": 298.0,
+                "m_EditorPosY": 342.0,
                 "m_Guid": {
                     "High": 15042245278257074154,
                     "Low": 12410242969803381089
@@ -277,8 +277,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": 690.0,
+                "m_EditorPosY": 305.0,
                 "m_Guid": {
                     "High": 6197552310716221533,
                     "Low": 9272228264073865185
@@ -320,8 +320,8 @@
             {
                 "$ptr_typeName": "minEngine::MaterialEdGraphNode",
                 "m_Comment": "",
-                "m_EditorPosX": 0.0,
-                "m_EditorPosY": 0.0,
+                "m_EditorPosX": 968.0,
+                "m_EditorPosY": 353.0,
                 "m_Guid": {
                     "High": 15725554320618114011,
                     "Low": 11680669531312315214

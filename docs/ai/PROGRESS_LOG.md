@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-19
+Last updated: 2026-05-22
 
 ## Purpose
 
@@ -489,18 +489,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Suggested order:** multi-slot smoke → Level → Bias/Grad → Gather / exotic types → sampler metadata.
 
 ### Material editor – vector node pin expansion (UE-style)
-- **When to surface:** User starts or resumes **material graph editor** work (visual nodes/pins, not MIR-only tests).
-- **What:** On vector constant nodes (e.g. `Constant3`, later `MakeFloat3`), expose multiple outputs like UE `UMaterialExpressionConstant3Vector`:
-  - Output 0: full `vec3`
-  - Output 1..3: `R` / `G` / `B` via `emitter.Subscript(value, i)` (internal `Subscript` for fold; not required to use `SubscriptChannel` on constants).
-- **Why deferred:** Runtime/MIR already supports multi-output + `Subscript` (P7); `ComponentMask` covers non-constant vectors. Editor multi-pin UI was not in scope.
-- **Effort (estimate):** Runtime ~half day; editor pin UI depends on existing material graph UI maturity.
-- **Discussed:** 2026-05-19 – user asked to defer until editor phase; agent should remind when editor work begins.
+- **Done (E4, 2026-05-19):** `MaterialGraphNodeDef_Constant3` 增加 Value/R/G/B 四个 output；`BuildIR` 用 `SubscriptChannel`；编辑器多引脚 UI 已随 `m_Outputs` 显示。
+- **Still deferred:** `MakeFloat3` 等其它向量节点多引脚；见 `MATERIAL_EDITOR_PLAN.md` 后续迭代。
 
 ### Material asset file round-trip (Instanced graph)
 - **2026-05-21:** `EditorGraph` / `EditorGraphNode` → `MEObject`; `MaterialEdGraph` / `MaterialEdGraphNode` inherit; `Material::m_Graph` → `shared_ptr` + `ME_PROPERTY(Instanced)`.
 - **Test:** `RunMaterialAssetSerializationTests()` writes `%TEMP%/minengine_material_asset_roundtrip.memtl`, `ToFile` → `FromFile` → `FinalizeGraphAfterLoad`; checks inline JSON types, editor fields, Metallic link, Outer chain.
 - **CLI:** `Editor.exe --material-serialize-test` (serialize only); `--material-ir-test` includes file round-trip at end.
+
+### Material Editor E0–E4 plan sign-off (2026-05-22)
+- **Plan:** `MATERIAL_EDITOR_PLAN.md` 验收勾选已全部完成（E0–E4）；用户目视 + `--material-ir-test` 确认。
+- **Deferred（计划外）:** 画布右键 Palette；独立 `Material*View` 分层；Undo/Command 队列；Content Browser 双击打开。
 
 ### Material Editor E0–E2 — UI mode + Preview + node graph (2026-05-19 ~ 2026-05-22)
 - **EditorUIMode:** `SceneEditing` ↔ `MaterialEditing`；`EditorWindowSuite`（Shared / Scene / Material）；切换时重建 Dock。
@@ -510,7 +509,8 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **E2（已验收）：** imgui-node-editor；`MaterialGraphIds`（Node/Pin/Link 分 tag，避免与 NodeId 冲突）；`MaterialGraphNodeRegistry`；连线/断线 → `ConnectPins` / `DisconnectInput`；全零坐标自动网格布局；仅 Invalidate 时 `SetNodePosition`（可拖节点）；`BeginCreate` 失败也须 `EndCreate`。
 - **渲染：** Scene 模式主视口 Submit；Material 模式仅 `material_editor_preview` Submit。
 - **本地增量（未全部入库时以工作区为准）：** `Reflection::GetDerivedClasses` + `MEClass::IsA<T>()`（为 NodeDef 注册表/调色板铺路）；更多 `MaterialGraphNodeDef_*` 反射注册；`Runtime/Core/Hash/Hash.h`。
-- **Next:** E3 — Details 节点参数、Palette 新建节点、删节点。
+- **E3（2026-05-22）：** E3.1 Details Combo 加节点；E3.2 `Registry::DrawNode` 门面；E3.3 `MaterialNodeDefPropertyDrawer` 反射；E3.4 `RemoveNode` + 编辑器 Delete 节点（禁止删 MaterialOutput）。
+- **E4（2026-05-19）：** `MaterialCompileDiagnosticsDrawer`；Compile debounce 0.3s + `MaterialEditor::Tick`；`Constant3` R/G/B 多输出引脚；退出 Material 模式时 `RemoveViewportClient` + Preview 仅 Material 模式 Submit。
 
 ### Material Editor plan + imgui-node-editor vendoring (2026-05-19)
 - **Plan:** `docs/ai/MATERIAL_EDITOR_PLAN.md` — E0–E4；窗口布局 **左 Preview+Details / 右节点图**。

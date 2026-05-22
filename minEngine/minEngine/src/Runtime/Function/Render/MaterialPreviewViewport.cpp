@@ -120,6 +120,13 @@ namespace minEngine
 
         if (!previewMesh)
         {
+            if (m_PreviewScene)
+            {
+                RemoveObject(m_PreviewScene.get());
+                m_PreviewScene.reset();
+            }
+
+            m_Viewport.SetObservedScene(nullptr);
             ME_CORE_ERROR(
                 "MaterialPreviewViewport: preview mesh GUID not in registry. "
                 "Ensure Editor scanned EngineDefault assets (EngineConfig EngineDefaultAssetsRoot, sphere.obj).");
@@ -150,6 +157,11 @@ namespace minEngine
             "MaterialPreviewViewport: preview scene ready (mesh proxies={}, dir lights={}).",
             renderScene->m_PrimitiveSceneProxies.size(),
             renderScene->m_DirectionalLightSceneProxies.size());
+
+        if (m_PreviewMaterial)
+        {
+            SetPreviewMaterial(m_PreviewMaterial);
+        }
     }
 
     void MaterialPreviewViewport::SetPreviewMaterial(const std::shared_ptr<Material>& material)

@@ -1,7 +1,10 @@
 #include "MaterialGraphNodeRegistry.h"
 
 #include "Runtime/Core/Reflection/MEClass.h"
+#include "Runtime/Function/Render/Material/MaterialEdGraphNode.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+
+#include "imgui.h"
 
 #include <cstring>
 
@@ -9,6 +12,23 @@ namespace minEngine
 {
     namespace
     {
+        uint32_t HashString(const char* text)
+        {
+            uint32_t hash = 2166136261u;
+            if (!text)
+            {
+                return hash;
+            }
+
+            for (const char* cursor = text; *cursor != '\0'; ++cursor)
+            {
+                hash ^= static_cast<uint32_t>(*cursor);
+                hash *= 16777619u;
+            }
+
+            return hash;
+        }
+
         ImU32 ColorFromHash(uint32_t hash)
         {
             const float hue = static_cast<float>(hash % 360) / 360.0f;
@@ -41,26 +61,9 @@ namespace minEngine
                 255);
         }
 
-        uint32_t HashString(const char* text)
-        {
-            uint32_t hash = 2166136261u;
-            if (!text)
-            {
-                return hash;
-            }
-
-            for (const char* cursor = text; *cursor != '\0'; ++cursor)
-            {
-                hash ^= static_cast<uint32_t>(*cursor);
-                hash *= 16777619u;
-            }
-
-            return hash;
-        }
-
         const char* StripNodeDefPrefix(const char* className)
         {
-            constexpr const char kPrefix[] = "MaterialGraphNodeDef_";
+            constexpr const char kPrefix[] = "minEngine::MaterialGraphNodeDef_";
             if (className && std::strncmp(className, kPrefix, sizeof(kPrefix) - 1) == 0)
             {
                 return className + sizeof(kPrefix) - 1;
@@ -68,6 +71,71 @@ namespace minEngine
 
             return className ? className : "Unknown";
         }
+
+        MaterialGraphNodeRegistryEntry MakeEntry(const Reflection::MEClass* nodeDefClass)
+        {
+            MaterialGraphNodeRegistryEntry entry;
+            entry.NodeDefClass = nodeDefClass;
+            if (nodeDefClass != nullptr)
+            {
+                entry.DisplayName = StripNodeDefPrefix(nodeDefClass->GetName().c_str());
+                entry.HeaderColor = ColorFromHash(HashString(entry.DisplayName));
+            }
+
+            return entry;
+        }
+
+        std::vector<MaterialGraphNodeRegistryEntry> s_CreatableNodes;
+        bool s_Registered = false;
+
+        void RegisterCreatableNodes()
+        {
+            s_CreatableNodes.clear();
+            s_CreatableNodes.reserve(12);
+
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Constant::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Constant3::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_MakeFloat3::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Multiply::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureCoordinate::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureObject::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureSample::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_ScalarParameter::StaticClass()));
+        }
+    }
+
+    void MaterialGraphNodeRegistry::EnsureRegistered()
+    {
+        if (!s_Registered)
+        {
+            RegisterCreatableNodes();
+            s_Registered = true;
+        }
+    }
+
+    const std::vector<MaterialGraphNodeRegistryEntry>& MaterialGraphNodeRegistry::GetCreatableNodes()
+    {
+        EnsureRegistered();
+        return s_CreatableNodes;
+    }
+
+    const MaterialGraphNodeRegistryEntry* MaterialGraphNodeRegistry::FindEntry(const Reflection::MEClass* nodeDefClass)
+    {
+        if (nodeDefClass == nullptr)
+        {
+            return nullptr;
+        }
+
+        EnsureRegistered();
+        for (const MaterialGraphNodeRegistryEntry& entry : s_CreatableNodes)
+        {
+            if (entry.NodeDefClass == nodeDefClass)
+            {
+                return &entry;
+            }
+        }
+
+        return nullptr;
     }
 
     const char* MaterialGraphNodeRegistry::GetDisplayName(const MaterialGraphNodeDef* nodeDef)
@@ -75,6 +143,11 @@ namespace minEngine
         if (!nodeDef || !nodeDef->GetClass())
         {
             return "Unknown";
+        }
+
+        if (const MaterialGraphNodeRegistryEntry* entry = FindEntry(nodeDef->GetClass()))
+        {
+            return entry->DisplayName;
         }
 
         return StripNodeDefPrefix(nodeDef->GetClass()->GetName().c_str());
@@ -88,8 +161,113 @@ namespace minEngine
             return style;
         }
 
+        if (const MaterialGraphNodeRegistryEntry* entry = FindEntry(nodeDef->GetClass()))
+        {
+            style.DisplayName = entry->DisplayName;
+            style.HeaderColor = entry->HeaderColor;
+            return style;
+        }
+
         style.DisplayName = StripNodeDefPrefix(nodeDef->GetClass()->GetName().c_str());
         style.HeaderColor = ColorFromHash(HashString(style.DisplayName));
         return style;
+    }
+
+    bool MaterialGraphNodeRegistry::DrawConstant(MaterialGraphNodeDef_Constant* constant)
+    {
+        if (!constant)
+        {
+            return false;
+        }
+
+        ImGui::SetNextItemWidth(kNodeContentWidth);
+        return ImGui::DragFloat("##Value", &constant->Value, 0.01f, 0.0f, 0.0f, "%.3f");
+    }
+
+    bool MaterialGraphNodeRegistry::DrawConstant3(MaterialGraphNodeDef_Constant3* constant3)
+    {
+        if (!constant3)
+        {
+            return false;
+        }
+
+        float rgb[3] = {constant3->R, constant3->G, constant3->B};
+        ImGui::SetNextItemWidth(kNodeContentWidth);
+        if (ImGui::DragFloat3("##RGB", rgb, 0.01f, 0.0f, 0.0f, "%.3f"))
+        {
+            constant3->R = rgb[0];
+            constant3->G = rgb[1];
+            constant3->B = rgb[2];
+            return true;
+        }
+
+        return false;
+    }
+
+    bool MaterialGraphNodeRegistry::DrawScalarParameter(MaterialGraphNodeDef_ScalarParameter* scalar)
+    {
+        if (!scalar)
+        {
+            return false;
+        }
+
+        ImGui::SetNextItemWidth(kNodeContentWidth);
+        return ImGui::DragFloat("##Default", &scalar->DefaultValue, 0.01f, 0.0f, 0.0f, "%.3f");
+    }
+
+    bool MaterialGraphNodeRegistry::DrawTextureObject(MaterialGraphNodeDef_TextureObject* textureObject)
+    {
+        if (!textureObject)
+        {
+            return false;
+        }
+
+        const char* name =
+            textureObject->ParameterName.empty() ? "Texture" : textureObject->ParameterName.c_str();
+        ImGui::TextDisabled("%s", name);
+        return false;
+    }
+
+    bool MaterialGraphNodeRegistry::DrawDefault(MaterialGraphNodeDef* nodeDef)
+    {
+        if (!nodeDef || !nodeDef->GetClass())
+        {
+            return false;
+        }
+
+        ImGui::TextDisabled("%s", StripNodeDefPrefix(nodeDef->GetClass()->GetName().c_str()));
+        return false;
+    }
+
+    bool MaterialGraphNodeRegistry::DrawNode(MaterialEdGraphNode& node)
+    {
+        MaterialGraphNodeDef* nodeDef = node.GetNodeDef();
+        if (!nodeDef || !nodeDef->GetClass())
+        {
+            return false;
+        }
+
+        const Reflection::MEClass* nodeClass = nodeDef->GetClass();
+        if (nodeClass->IsA(MaterialGraphNodeDef_Constant::StaticClass()))
+        {
+            return DrawConstant(static_cast<MaterialGraphNodeDef_Constant*>(nodeDef));
+        }
+
+        if (nodeClass->IsA(MaterialGraphNodeDef_Constant3::StaticClass()))
+        {
+            return DrawConstant3(static_cast<MaterialGraphNodeDef_Constant3*>(nodeDef));
+        }
+
+        if (nodeClass->IsA(MaterialGraphNodeDef_ScalarParameter::StaticClass()))
+        {
+            return DrawScalarParameter(static_cast<MaterialGraphNodeDef_ScalarParameter*>(nodeDef));
+        }
+
+        if (nodeClass->IsA(MaterialGraphNodeDef_TextureObject::StaticClass()))
+        {
+            return DrawTextureObject(static_cast<MaterialGraphNodeDef_TextureObject*>(nodeDef));
+        }
+
+        return DrawDefault(nodeDef);
     }
 }

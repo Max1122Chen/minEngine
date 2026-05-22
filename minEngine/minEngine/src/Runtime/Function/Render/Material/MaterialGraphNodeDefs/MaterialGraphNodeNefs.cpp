@@ -19,17 +19,29 @@ namespace minEngine
         emitter.Output(0, emitter.ConstantFloat(Value));
     }
 
+    MaterialGraphNodeDef_Constant3::MaterialGraphNodeDef_Constant3()
+        : MaterialGraphNodeDef_Constant3(0.0f, 0.0f, 0.0f)
+    {
+    }
+
     MaterialGraphNodeDef_Constant3::MaterialGraphNodeDef_Constant3(float r, float g, float b)
         : R(r)
         , G(g)
         , B(b)
     {
         m_Outputs.push_back({ "Value" });
+        m_Outputs.push_back({ "R" });
+        m_Outputs.push_back({ "G" });
+        m_Outputs.push_back({ "B" });
     }
 
     void MaterialGraphNodeDef_Constant3::BuildIR(MIREmitter& emitter)
     {
-        emitter.Output(0, emitter.ConstantFloat3(R, G, B));
+        MIRValue* vector = emitter.ConstantFloat3(R, G, B);
+        emitter.Output(0, vector);
+        emitter.Output(1, emitter.SubscriptChannel(vector, 0));
+        emitter.Output(2, emitter.SubscriptChannel(vector, 1));
+        emitter.Output(3, emitter.SubscriptChannel(vector, 2));
     }
 
     MaterialGraphNodeDef_MakeFloat3::MaterialGraphNodeDef_MakeFloat3()

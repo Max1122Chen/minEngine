@@ -62,6 +62,7 @@ namespace minEngine
 
         bool DrawObjectProperty(const Reflection::MEObjectProperty& objectProperty, void* propertyPtr);
         bool DrawObjectPtrProperty(const Reflection::MEObjectPtrProperty& objectPtrProperty, void* propertyPtr);
+        // TODO: maybe we can have a more generic DrawAssetRef that can handle all Asset Refs in Editor
         bool DrawAssetRef(const Reflection::MEObjectPtrProperty& objectPtrProperty, void* propertyPtr);
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
 

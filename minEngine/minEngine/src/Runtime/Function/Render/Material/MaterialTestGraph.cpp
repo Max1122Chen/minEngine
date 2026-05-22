@@ -15,22 +15,22 @@ namespace minEngine
         graph.m_Nodes.clear();
         graph.m_Nodes.reserve(16);
 
-        graph.AddNode<MaterialGraphNodeDef_TextureCoordinate>(material);
-        MaterialEdGraphNode& texObject = graph.AddNode<MaterialGraphNodeDef_TextureObject>(material);
-        graph.AddNode<MaterialGraphNodeDef_TextureSample>(material);
-        MaterialEdGraphNode& metallicScalar = graph.AddNode<MaterialGraphNodeDef_ScalarParameter>(material);
+        graph.AddNode<MaterialGraphNodeDef_TextureCoordinate>();
+        MaterialEdGraphNode& texObject = graph.AddNode<MaterialGraphNodeDef_TextureObject>();
+        graph.AddNode<MaterialGraphNodeDef_TextureSample>();
+        MaterialEdGraphNode& metallicScalar = graph.AddNode<MaterialGraphNodeDef_ScalarParameter>();
         static_cast<MaterialGraphNodeDef_ScalarParameter*>(metallicScalar.GetNodeDef())->ParameterName = "Metallic";
         static_cast<MaterialGraphNodeDef_ScalarParameter*>(metallicScalar.GetNodeDef())->UniformSlotIndex = 0;
         static_cast<MaterialGraphNodeDef_ScalarParameter*>(metallicScalar.GetNodeDef())->DefaultValue = 0.3f;
-        MaterialEdGraphNode& emissiveR = graph.AddNode<MaterialGraphNodeDef_Constant>(material);
+        MaterialEdGraphNode& emissiveR = graph.AddNode<MaterialGraphNodeDef_Constant>();
         static_cast<MaterialGraphNodeDef_Constant*>(emissiveR.GetNodeDef())->Value = 0.2f;
-        MaterialEdGraphNode& emissiveG = graph.AddNode<MaterialGraphNodeDef_Constant>(material);
+        MaterialEdGraphNode& emissiveG = graph.AddNode<MaterialGraphNodeDef_Constant>();
         static_cast<MaterialGraphNodeDef_Constant*>(emissiveG.GetNodeDef())->Value = 0.8f;
-        MaterialEdGraphNode& emissiveB = graph.AddNode<MaterialGraphNodeDef_Constant>(material);
+        MaterialEdGraphNode& emissiveB = graph.AddNode<MaterialGraphNodeDef_Constant>();
         static_cast<MaterialGraphNodeDef_Constant*>(emissiveB.GetNodeDef())->Value = 0.2f;
-        graph.AddNode<MaterialGraphNodeDef_MakeFloat3>(material);
-        MaterialEdGraphNode& albedoTintMultiply = graph.AddNode<MaterialGraphNodeDef_Multiply>(material);
-        MaterialEdGraphNode& output = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>(material);
+        graph.AddNode<MaterialGraphNodeDef_MakeFloat3>();
+        MaterialEdGraphNode& albedoTintMultiply = graph.AddNode<MaterialGraphNodeDef_Multiply>();
+        MaterialEdGraphNode& output = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
 
         MaterialEdGraphNode& texCoord = *graph.m_Nodes[0];
         MaterialEdGraphNode& texSample = *graph.m_Nodes[2];
@@ -122,4 +122,3 @@ namespace minEngine
     }
 }
 
-#include "MaterialEdGraph.inl"

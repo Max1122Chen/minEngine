@@ -118,19 +118,22 @@ namespace minEngine
         return result;
     }
 
-    std::shared_ptr<MEObject> ObjectManager::NewObject(const std::string &className, const std::string &inName, MEObject *inOuter, const GUID &inGuid)
+    std::shared_ptr<MEObject> ObjectManager::NewObject(
+        const Reflection::MEClass* classInfo,
+        const std::string& inName,
+        MEObject* inOuter,
+        const GUID& inGuid)
     {
-        const Reflection::MEClass* classInfo = Reflection::ReflectionSystem::Get().FindClass(className);
         if (classInfo == nullptr)
         {
-            ME_CORE_ERROR("Failed to find class info for class name '{}'.", className);
+            ME_CORE_ERROR("NewObject: classInfo is null.");
             return nullptr;
         }
 
         std::shared_ptr<MEObject> newObj = std::static_pointer_cast<MEObject>(classInfo->CreateDefaultInstance());
         if (newObj == nullptr)
         {
-            ME_CORE_ERROR("Failed to create instance of class '{}'.", className);
+            ME_CORE_ERROR("Failed to create instance of class '{}'.", classInfo->GetName());
             return nullptr;
         }
 
@@ -140,6 +143,22 @@ namespace minEngine
         newObj->SetOuter(inOuter);
         RegisterObject(newObj);
         return newObj;
+    }
+
+    std::shared_ptr<MEObject> ObjectManager::NewObject(
+        const std::string& className,
+        const std::string& inName,
+        MEObject* inOuter,
+        const GUID& inGuid)
+    {
+        const Reflection::MEClass* classInfo = Reflection::ReflectionSystem::Get().FindClass(className);
+        if (classInfo == nullptr)
+        {
+            ME_CORE_ERROR("Failed to find class info for class name '{}'.", className);
+            return nullptr;
+        }
+
+        return NewObject(classInfo, inName, inOuter, inGuid);
     }
 
     bool ObjectManager::RemoveObject(const GUID &guid)

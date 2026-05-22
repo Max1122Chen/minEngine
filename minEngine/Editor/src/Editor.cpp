@@ -545,7 +545,6 @@ namespace minEngine
 
         WindowSystem::Get().SetCursorVisible(true);
         m_MaterialEditor = std::make_unique<MaterialEditor>(*this);
-        m_EditorGUIManager.Initialize(*this);
 
         InitializeAllComponentTypeNames();
 
@@ -560,6 +559,9 @@ namespace minEngine
         {
             Engine::Get().SetEngineDefaultAssetsRoot("");
         }
+
+        // After EngineDefault ScanAssets: MaterialPreviewWindow::OnAttach may load preview sphere mesh.
+        m_EditorGUIManager.Initialize(*this);
 
         std::string projectPath;
         if (argc > 1)

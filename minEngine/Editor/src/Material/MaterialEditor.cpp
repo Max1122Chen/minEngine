@@ -7,7 +7,6 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Resource/AssetManager.h"
-#include "Viewport/MaterialPreviewViewportClient.h"
 
 #include <algorithm>
 
@@ -21,17 +20,41 @@ namespace minEngine
     void MaterialEditor::OnEnterMode()
     {
         RefreshMaterialList();
+
+        if (RHI* rhi = RenderSystem::Get().GetRHI())
+        {
+            m_Preview.EnsureInitialized(rhi, 512, 512);
+        }
+
+        m_Preview.EnsureSceneBuilt();
         EnsureDefaultSession();
-        OnPreviewViewHostReady();
+        ApplySessionToPreview();
     }
 
     void MaterialEditor::OnExitMode()
     {
+        FlushPendingCompile();
+        ClearSelectedEdNode();
+        m_Editor.RemoveViewportClient(kPreviewViewportPanelId);
     }
 
     void MaterialEditor::Shutdown()
     {
         m_Preview.Shutdown();
+    }
+
+    void MaterialEditor::Tick(float deltaTime)
+    {
+        if (!m_CompilePending || !m_Session.HasOpenMaterial())
+        {
+            return;
+        }
+
+        m_CompileDebounceTimer -= deltaTime;
+        if (m_CompileDebounceTimer <= 0.0f)
+        {
+            FlushPendingCompile();
+        }
     }
 
     void MaterialEditor::OnPreviewViewHostReady()
@@ -43,9 +66,35 @@ namespace minEngine
             m_Preview.EnsureInitialized(rhi, 512, 512);
         }
 
-        m_Preview.EnsureSceneBuilt();
-        ApplySessionToPreview();
+        // Scene content is built in OnEnterMode (after asset registry is ready).
+        if (m_Preview.IsSceneReady())
+        {
+            ApplySessionToPreview();
+        }
+
         InvalidateGraphCanvas();
+    }
+
+    void MaterialEditor::ScheduleDebouncedCompile()
+    {
+        m_CompilePending = true;
+        m_CompileDebounceTimer = kCompileDebounceSeconds;
+    }
+
+    void MaterialEditor::FlushPendingCompile()
+    {
+        m_CompilePending = false;
+        m_CompileDebounceTimer = 0.0f;
+        CompileActiveMaterial();
+    }
+
+    void MaterialEditor::InvalidateGraphCanvas(bool rebindGraph)
+    {
+        m_GraphCanvasInvalidated = true;
+        if (rebindGraph)
+        {
+            m_GraphCanvasRebindPending = true;
+        }
     }
 
     void MaterialEditor::NotifyGraphChanged()
@@ -63,7 +112,7 @@ namespace minEngine
             ME_CORE_WARN("MaterialEditor: graph finalize failed: {}", finalizeError);
         }
 
-        CompileActiveMaterial();
+        ScheduleDebouncedCompile();
     }
 
     void MaterialEditor::RefreshMaterialList()
@@ -95,10 +144,13 @@ namespace minEngine
 
     void MaterialEditor::OpenSession(const AssetMeta* meta)
     {
+        FlushPendingCompile();
+
         if (!meta)
         {
             m_Session.Clear();
             m_SelectedMaterialIndex = -1;
+            ClearSelectedEdNode();
             ApplySessionToPreview();
             InvalidateGraphCanvas();
             return;
@@ -122,6 +174,7 @@ namespace minEngine
         m_Session.MaterialAsset = material;
         m_Session.AssetPath = meta->AssetPath;
         m_Session.Dirty = false;
+        ClearSelectedEdNode();
 
         for (size_t i = 0; i < m_MaterialMetas.size(); ++i)
         {
@@ -175,6 +228,9 @@ namespace minEngine
             return;
         }
 
+        m_CompilePending = false;
+        m_CompileDebounceTimer = 0.0f;
+
         m_Session.MaterialAsset->Compile();
         ApplySessionToPreview();
     }
@@ -185,6 +241,8 @@ namespace minEngine
         {
             return false;
         }
+
+        FlushPendingCompile();
 
         const bool saved = AssetManager::Get().SaveAsset<Material>(
             m_Session.AssetPath,
@@ -210,6 +268,6 @@ namespace minEngine
 
         m_Session.MaterialAsset->m_ShadingModel = model;
         m_Session.Dirty = true;
-        CompileActiveMaterial();
+        FlushPendingCompile();
     }
 }
