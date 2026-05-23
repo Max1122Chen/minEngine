@@ -49,7 +49,7 @@ namespace minEngine
         static std::shared_ptr<Texture2D> CreateSolidRGBA(RHI& rhi, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 
     protected:
-        friend class AssetManager;
+        friend class Texture2DLoader;
 
         std::shared_ptr<RHITexture2D> m_RHITexture;
         uint32_t m_Width {0};

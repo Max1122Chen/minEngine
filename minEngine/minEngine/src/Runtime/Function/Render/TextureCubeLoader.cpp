@@ -5,7 +5,7 @@
 #include "RHI/RHI.h"
 #include "Texture.h"
 
-#include <stb_image.h>
+#include "Runtime/Resource/ImageLoader.h"
 
 #include <array>
 #include <filesystem>
@@ -38,6 +38,7 @@ namespace minEngine
     {
         FreeFaceSet(outFaceSet);
 
+        outFaceSet.OwnedFaceImages.resize(6);
         outFaceSet.FacePixels.resize(6, nullptr);
         outFaceSet.FaceWidths.resize(6, 0);
         outFaceSet.FaceHeights.resize(6, 0);
@@ -57,20 +58,16 @@ namespace minEngine
                 return false;
             }
 
-            int width = 0;
-            int height = 0;
-            int channels = 0;
-            stbi_set_flip_vertically_on_load(false);
-            unsigned char* pixels = stbi_load(path.c_str(), &width, &height, &channels, 0);
-            if (!pixels)
+            ImagePixels& faceImage = outFaceSet.OwnedFaceImages[faceIndex];
+            if (!ImageLoader::LoadLdr(path, faceImage, false, outError))
             {
-                if (outError)
-                {
-                    *outError = "Failed to decode cubemap face: " + path;
-                }
                 FreeFaceSet(outFaceSet);
                 return false;
             }
+
+            const int width = faceImage.Width;
+            const int height = faceImage.Height;
+            const int channels = faceImage.Channels;
 
             if (faceIndex == 0)
             {
@@ -81,7 +78,6 @@ namespace minEngine
                 || height != static_cast<int>(outFaceSet.FaceSize)
                 || channels != outFaceSet.Channels)
             {
-                stbi_image_free(pixels);
                 if (outError)
                 {
                     *outError = "Cubemap faces must share size and channel count: " + path;
@@ -90,7 +86,7 @@ namespace minEngine
                 return false;
             }
 
-            outFaceSet.FacePixels[faceIndex] = pixels;
+            outFaceSet.FacePixels[faceIndex] = faceImage.U8;
             outFaceSet.FaceWidths[faceIndex] = width;
             outFaceSet.FaceHeights[faceIndex] = height;
             outFaceSet.FaceChannels[faceIndex] = channels;
@@ -101,12 +97,9 @@ namespace minEngine
 
     void TextureCubeLoader::FreeFaceSet(TextureCubeFaceSet& faceSet)
     {
-        for (unsigned char* pixels : faceSet.FacePixels)
+        for (ImagePixels& faceImage : faceSet.OwnedFaceImages)
         {
-            if (pixels != nullptr)
-            {
-                stbi_image_free(pixels);
-            }
+            ImageLoader::Free(faceImage);
         }
 
         faceSet = {};

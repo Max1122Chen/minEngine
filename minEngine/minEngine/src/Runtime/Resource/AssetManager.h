@@ -125,10 +125,6 @@ namespace minEngine
             return true;
         }
 
-        // Image loading using stb_image
-        unsigned char* LoadImage(const std::string& path, int& width, int& height, int& channels, bool bFlip = true);
-        void           FreeImage(unsigned char* data);
-
     private:
         friend class Engine;
 

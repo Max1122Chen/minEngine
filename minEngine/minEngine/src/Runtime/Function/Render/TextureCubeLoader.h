@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "RHI/RHITexture.h"
+#include "Runtime/Resource/ImageLoader.h"
 
 #include <array>
 #include <memory>
@@ -16,6 +17,7 @@ namespace minEngine
 
     struct TextureCubeFaceSet
     {
+        std::vector<ImagePixels> OwnedFaceImages;
         std::vector<unsigned char*> FacePixels;
         std::vector<int> FaceWidths;
         std::vector<int> FaceHeights;

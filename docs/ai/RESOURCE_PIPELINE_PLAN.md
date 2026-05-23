@@ -1,7 +1,7 @@
 # Resource Pipeline — 基础设施方案
 
 Last updated: 2026-05-23  
-Status: **设计稿 — 待评审/实现**  
+Status: **R1 + Loader 拆分 ✅（R2 HDR capture 未做）**  
 关联：[MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)（IBL / HDR cubemap）、[MATERIAL_RUNTIME_BRIDGE_CHECKLIST.md](./MATERIAL_RUNTIME_BRIDGE_CHECKLIST.md)
 
 ---
@@ -156,11 +156,12 @@ Runtime/Function/Render/Texture2DLoader.h/.cpp
 
 ### 3.5 R1 验收
 
-- [ ] 全仓库无 `AssetManager::LoadImage` / `FreeImage`。
-- [ ] 仅 **一处** `STB_IMAGE_IMPLEMENTATION`（`ImageLoader.cpp`）。
-- [ ] 项目内贴图加载行为不变（含 1/3/4 channel、flip）。
-- [ ] `Editor.exe --material-ir-test` exit 0。
-- [ ] `TextureCubeLoader` 不直接 `#include stb_image.h`。
+- [x] 全仓库无 `AssetManager::LoadImage` / `FreeImage`。
+- [x] 仅 **一处** `STB_IMAGE_IMPLEMENTATION`（`ImageLoader.cpp`；`stb_image.cpp` 已清空）。
+- [x] `MeshLoader` / `SceneLoader` / `MaterialLoader` + `StaticMeshLoader` / `Texture2DLoader` / `MaterialAssetLoader`。
+- [ ] 项目内贴图加载行为不变（含 1/3/4 channel、flip）— 需编辑器目视 spot-check。
+- [x] `Editor.exe --material-ir-test` exit 0。
+- [x] `TextureCubeLoader` 使用 `ImageLoader`，不直接 `#include stb_image.h`。
 
 ---
 
