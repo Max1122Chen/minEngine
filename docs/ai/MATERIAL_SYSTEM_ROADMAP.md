@@ -1,7 +1,7 @@
 # Material System — 深度拓展与使用优化
 
 Last updated: 2026-05-23  
-Status: **Phase 0–3 ✅ · Phase 4 设计（IBL）** → [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)  
+Status: **Phase 0–4 ✅**（P4 IBL 关门 2026-05-23）→ [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)  
 前置：`MATERIAL_EDITOR_PLAN.md` E0–E4 ✅；`MATERIAL_SHADING_MODEL_PLAN.md`（Unlit + BlinnPhong）✅
 
 ---
@@ -272,7 +272,7 @@ P0-B 验收通过
 | 阶段 | 内容 |
 |------|------|
 | **Phase 3** ✅ | [MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md)：PBR(GGX)、ComponentMask、TextureSample.R、`material-ir-test` |
-| **Phase 4**（**当前 · 设计**） | [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)：**仅 IBL**（irradiance + prefilter + BRDF LUT） |
+| **Phase 4** ✅ | [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)：**IBL**（HDR capture、split-sum、`CalcIndirectPBR`、Pass bind） |
 | **P5 / Backlog** | Parallax、WPO、Tessellation/displacement |
 | **Deferred** | 编辑器 Undo、Shader 预览、Content Browser、Material Function（用户更高优先级非材质项） |
 

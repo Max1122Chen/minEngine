@@ -53,6 +53,11 @@ namespace minEngine
             };
             BindSceneDrawResources(*shader, sceneBinding);
             material->BindForDraw(*shader);
+            // Bind IBL after material textures (units 0–3) so cubemap samplers on 4–6 stay active.
+            if (bindPBRIBL && sceneBinding.IBLEnvironment != nullptr)
+            {
+                sceneBinding.IBLEnvironment->BindForPBRDraw(*shader);
+            }
             DrawMeshCommand(drawCommand);
         }
     }

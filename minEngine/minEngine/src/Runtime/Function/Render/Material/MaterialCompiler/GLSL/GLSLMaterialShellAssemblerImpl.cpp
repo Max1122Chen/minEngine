@@ -244,8 +244,21 @@ namespace minEngine
 
         if (shadingModel == MaterialShadingModel::PBR)
         {
+            std::string iblInclude;
+            if (!LoadIncludeFile(assetsRoot, env, "MaterialIBL.glslinc", iblInclude, compiled))
+            {
+                return {};
+            }
+
+            sceneLighting += iblInclude;
+            if (!sceneLighting.empty() && sceneLighting.back() != '\n')
+            {
+                sceneLighting += '\n';
+            }
+            sceneLighting += '\n';
+
             sceneLighting +=
-                "\n// P4.1 engine IBL samplers (units 4-6, bound in BasePass/TranslucencyPass for PBR).\n"
+                "// Engine IBL cubemap/BRDF samplers (units 4-6, bound in BasePass/TranslucencyPass).\n"
                 "uniform samplerCube u_EnvIrradianceMap;\n"
                 "uniform samplerCube u_EnvPrefilterMap;\n"
                 "uniform sampler2D u_EnvBrdfLUT;\n";

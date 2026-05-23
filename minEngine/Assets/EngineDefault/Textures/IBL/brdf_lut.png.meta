@@ -1,0 +1,9 @@
+{
+    "AssetName": "brdf_lut",
+    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Textures/IBL/brdf_lut.png",
+    "AssetType": "Texture2D",
+    "Guid": {
+        "High": 12543270863020376797,
+        "Low": 10059680508881421449
+    }
+}

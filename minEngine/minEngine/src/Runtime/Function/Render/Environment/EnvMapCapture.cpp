@@ -229,6 +229,17 @@ namespace minEngine
             static_cast<uint32_t>(previousViewport[3]));
 
         equirectTexture.Unbind();
+
+        const uint32_t cubeTextureId = environmentCube->GetID();
+        if (cubeTextureId != 0)
+        {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTextureId);
+            glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        }
+
         environmentCube->Unbind();
 
         return TextureCubeLoader::WrapRHITextureCube(std::move(environmentCube), faceSize, channels);

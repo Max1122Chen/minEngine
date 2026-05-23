@@ -56,9 +56,17 @@ void main()
             FragmentMaterialInputs.Roughness);
     }
 
-    vec3 ambient = vec3(kMaterialPBRAmbientStrength) * FragmentMaterialInputs.Albedo
-        * FragmentMaterialInputs.AO;
+    vec3 indirect = CalcIndirectPBR(
+        norm,
+        viewDir,
+        FragmentMaterialInputs.Albedo,
+        FragmentMaterialInputs.Metallic,
+        FragmentMaterialInputs.Roughness,
+        FragmentMaterialInputs.AO,
+        u_EnvIrradianceMap,
+        u_EnvPrefilterMap,
+        u_EnvBrdfLUT);
     vec3 direct = dirLightResult + pointLightResult + spotLightResult;
-    vec3 result = ambient + direct;
+    vec3 result = indirect + direct;
     FragColor = vec4(result + FragmentMaterialInputs.Emissive, FragmentMaterialInputs.Opacity);
 }

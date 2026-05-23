@@ -1,4 +1,4 @@
-// Graph-material Cook-Torrance GGX (metallic-roughness). Direct lights only; no IBL.
+// Graph-material Cook-Torrance GGX (metallic-roughness). Direct lights; IBL in MaterialIBL.glslinc.
 #ifndef MINENGINE_MATERIAL_PBR_GLSLINC
 #define MINENGINE_MATERIAL_PBR_GLSLINC
 
@@ -13,7 +13,6 @@ layout (std140) uniform PerFrameData
 };
 
 const float kMaterialPBRPi = 3.14159265359;
-const float kMaterialPBRAmbientStrength = 0.03;
 
 float MaterialPBRDistributionGGX(vec3 N, vec3 H, float roughness)
 {

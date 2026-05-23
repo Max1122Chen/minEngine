@@ -14,6 +14,7 @@
 #include "../MaterialValueType.h"
 #include "../../Material.h"
 #include "../MaterialTestGraph.h"
+#include "Render/Environment/EngineIBLEnvironment.h"
 #include "Render/OpenGL/OpenGLRHI.h"
 #include "Render/OpenGL/OpenGLTexture.h"
 #include "Render/Shader.h"
@@ -994,7 +995,9 @@ namespace minEngine
                     { "CalcDirLightPBR", "PBR directional light" },
                     { "BuildWorldNormalFromTangentSpace", "PBR uses TBN" },
                     { "FragmentMaterialInputs.Roughness", "PBR roughness input" },
-                    { "kMaterialPBRAmbientStrength", "PBR ambient scaled by AO" },
+                    { "CalcIndirectPBR", "PBR split-sum IBL" },
+                    { "MaterialPBRIntegrateBrdfApprox", "PBR IBL BRDF fallback" },
+                    { "u_EnvIntensity", "PBR IBL intensity uniform" },
                     { "u_Texture1", "roughness texture slot 1" },
                     { "u_EnvIrradianceMap", "PBR IBL irradiance sampler" },
                     { "u_EnvPrefilterMap", "PBR IBL prefilter sampler" },
@@ -1002,7 +1005,17 @@ namespace minEngine
                 })
                 && AssertTrue(
                     compiled.FullFragmentShader.find("texture(u_Texture1") != std::string::npos,
-                    "PBR samples roughness texture");
+                    "PBR samples roughness texture")
+                && AssertTrue(
+                    compiled.FullFragmentShader.find("texture(irradianceMap") != std::string::npos
+                        || compiled.FullFragmentShader.find("texture( irradianceMap") != std::string::npos,
+                    "PBR IBL samples irradiance cubemap")
+                && AssertTrue(
+                    compiled.FullFragmentShader.find("textureLod(prefilterMap") != std::string::npos,
+                    "PBR IBL samples prefilter cubemap with LOD")
+                && AssertTrue(
+                    compiled.FullFragmentShader.find("texture(brdfLUT") != std::string::npos,
+                    "PBR IBL samples BRDF LUT");
 
             if (!passed)
             {
@@ -1018,7 +1031,73 @@ namespace minEngine
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR PBR workflow: compile + GPU link PASSED.");
+            ME_CORE_INFO("MaterialIR PBR workflow (IBL): compile + GPU link PASSED.");
+            return true;
+        }
+
+        bool VerifyEngineIBLEnvironmentInit()
+        {
+            ScopedShaderCompileGlContext glContext;
+            if (!glContext.IsReady())
+            {
+                ME_CORE_ERROR("MaterialIR IBL environment: failed to create OpenGL context.");
+                return false;
+            }
+
+            const std::string& assetsRoot = GetMaterialIRTestEngineDefaultAssetsRoot();
+            if (assetsRoot.empty())
+            {
+                ME_CORE_WARN("MaterialIR IBL environment: skip (no EngineDefaultAssetsRoot).");
+                return true;
+            }
+
+            OpenGLRHI rhi;
+            EngineIBLEnvironment ibl;
+            ibl.Initialize(&rhi, assetsRoot);
+
+            if (!AssertTrue(ibl.HasIrradiance(), "IBL irradiance cubemap loaded"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(ibl.GetBrdfLUT() != nullptr, "IBL BRDF LUT ready"))
+            {
+                return false;
+            }
+
+            if (std::filesystem::is_regular_file(
+                    std::filesystem::path(assetsRoot) / "Textures/IBL/brdf_lut.png"))
+            {
+                ME_CORE_INFO("MaterialIR IBL environment: brdf_lut.png present on disk.");
+            }
+
+            ME_CORE_INFO("MaterialIR IBL environment: irradiance + BRDF LUT init PASSED.");
+            return true;
+        }
+
+        bool VerifyIBLEnvironmentFallbackChain()
+        {
+            ScopedShaderCompileGlContext glContext;
+            if (!glContext.IsReady())
+            {
+                return false;
+            }
+
+            OpenGLRHI rhi;
+            EngineIBLEnvironment ibl;
+            ibl.Initialize(&rhi, "__minengine_ibl_missing_root__");
+
+            if (!AssertTrue(ibl.HasIrradiance(), "IBL fallback still provides a cubemap"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(ibl.GetBrdfLUT() != nullptr, "IBL fallback still provides BRDF LUT"))
+            {
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR IBL environment: missing-assets fallback chain PASSED.");
             return true;
         }
 
@@ -1272,6 +1351,16 @@ namespace minEngine
         }
 
         if (!VerifyPBRWorkflow(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyEngineIBLEnvironmentInit())
+        {
+            return false;
+        }
+
+        if (!VerifyIBLEnvironmentFallbackChain())
         {
             return false;
         }

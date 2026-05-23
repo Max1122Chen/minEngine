@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-22
+Last updated: 2026-05-23
 
 ## Purpose
 
@@ -516,6 +516,13 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Done:** `MaterialGraphNodeDef_NormalUnpack`（`rgb*2-1`）；调色板；`VerifyNormalMapWorkflow`。
 - **Editor recipe:** TexCoord → TextureSample(Normal) → NormalUnpack → MaterialOutput.Normal（见 PHASE2 §5.1）。
 - **Next:** 目视 + 可选 `MaterialIRSmoke_NormalMap.memtl` 金样例。
+
+### Material system Phase 4 IBL — closed (2026-05-23)
+- **P4.1–P4.4:** `EngineIBLEnvironment` + unit 4–6 bind（`pipeline` 修复）；`MaterialIBL.glslinc` / `CalcIndirectPBR`；移除常数 ambient；`u_EnvIntensity`。
+- **R2:** `EnvMapCapture` HDR → mipmapped cubemap；`brdf_lut.png` 或 `BrdfLutGenerator`。
+- **Test:** `--material-ir-test`（PBR IBL shader、环境 init、missing-assets fallback）。
+- **Doc:** [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) §5 目视指南；IBL README。
+- **Deferred:** irradiance 卷积、专用 prefilter pass、skybox、Translucent IBL。
 
 ### Material system P2.2 Tangent + TBN (2026-05-23)
 - **Done:** `Vertex` + `a_Tangent`（Assimp `CalcTangentSpace` + fallback）；`UsesTangentFrame`；`MaterialTangentFrame.glslinc`；BlinnPhong TBN 路径；默认 Normal TSN `(0,0,1)`。

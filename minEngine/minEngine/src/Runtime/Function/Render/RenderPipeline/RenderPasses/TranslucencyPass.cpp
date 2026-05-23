@@ -59,6 +59,10 @@ namespace minEngine
             };
             BindSceneDrawResources(*shader, sceneBinding);
             material->BindForDraw(*shader);
+            if (bindPBRIBL && sceneBinding.IBLEnvironment != nullptr)
+            {
+                sceneBinding.IBLEnvironment->BindForPBRDraw(*shader);
+            }
             DrawMeshCommand(drawCommand);
         }
 

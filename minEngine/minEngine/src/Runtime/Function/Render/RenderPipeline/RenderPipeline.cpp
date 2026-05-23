@@ -49,7 +49,9 @@ namespace minEngine
         // Create framebuffers
         m_ShadowBuffer = rhi->CreateFrameBuffer(512, 512); // Shadow map framebuffer, we will use a fixed size for now
 
-        // Set up BasePass
+        // Set up BasePass / TranslucencyPass (need pipeline back-pointer for IBL binding).
+        m_BasePass.pipeline = this;
+        m_TranslucentPass.pipeline = this;
 
         // Assign framebuffers to render passes
         m_ShadowPass.m_FrameBuffer = m_ShadowBuffer.get();

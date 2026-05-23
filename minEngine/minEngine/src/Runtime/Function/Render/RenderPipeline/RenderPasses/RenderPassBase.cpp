@@ -100,9 +100,6 @@ namespace minEngine
             }
         }
 
-        if (binding.bBindPBRIBL && binding.IBLEnvironment != nullptr)
-        {
-            binding.IBLEnvironment->BindForPBRDraw(shader);
-        }
+        // IBL cubemap/BRDF samplers are bound after Material::BindForDraw (see BasePass / TranslucencyPass).
     }
 }

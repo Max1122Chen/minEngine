@@ -1,8 +1,18 @@
-# Engine default IBL textures (Phase 4.1)
+# Engine default IBL textures (Phase 4)
 
 Place cubemap face PNGs here. The loader expects **square** faces with **matching** width/height and channel count.
 
-## Irradiance cubemap (loaded at startup)
+## Load order (startup)
+
+```text
+1. irradiance_posx.png … negz.png
+2. else *.hdr → GPU equirect → cubemap (+ mips)
+3. else 6-color validation cubemap (32×32)
+prefilter: prefilter_*.png, else same cubemap as environment (with mips if from HDR)
+brdf_lut: brdf_lut.png, else CPU integrated LUT (slow) — recommend downloading a LUT (see below)
+```
+
+## Irradiance / environment cubemap
 
 File naming: `{prefix}_{face}.png` with OpenGL face order:
 
@@ -25,9 +35,21 @@ Preferred HDR name: `environment.hdr` (otherwise the first `*.hdr` found is used
 
 If no PNG faces and no HDR capture succeed, a **6-color validation cubemap** (32×32) is used so PBR draws still bind units 4–6.
 
-## Future (P4.2+)
+## Optional offline assets (higher quality)
 
-- `prefilter_posx.png` … `prefilter_negz.png` (with mips when supported)
-- `brdf_lut.png` (2D, typically 512×512 RG)
+| Asset | Naming |
+|-------|--------|
+| Prefiltered env | `prefilter_posx.png` … `prefilter_negz.png` (mips if pre-baked) |
+| BRDF LUT | `brdf_lut.png` (512×512, RG in R/G channels) |
 
-Prefilter and BRDF LUT are not loaded in P4.1; prefilter is aliased to irradiance at bind time.
+If missing: HDR capture builds **mipmapped** environment cubemap for `textureLod` prefilter; CPU generates BRDF LUT at startup (place `brdf_lut.png` to skip).
+
+**Recommended BRDF LUT:** [4DA/brdfgen `brdfLUT.png`](https://github.com/4DA/brdfgen/blob/master/brdfLUT.png) → rename to `brdf_lut.png` (512×512, R/G = scale/bias).
+
+Shader: `MaterialIBL.glslinc` → `CalcIndirectPBR` (texture units 4–6, `u_EnvIntensity` default 1.0).
+
+## Deferred (post–Phase 4)
+
+- Irradiance convolution pass (diffuse-only low frequency)
+- Dedicated prefilter filter pass
+- Skybox background draw

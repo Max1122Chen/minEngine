@@ -1,5 +1,6 @@
 #include "EngineIBLEnvironment.h"
 
+#include "BrdfLutGenerator.h"
 #include "EnvMapCapture.h"
 #include "../Texture.h"
 #include "../Texture2DLoader.h"
@@ -35,9 +36,11 @@ namespace minEngine
         return cube;
     }
 
-    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryLoadIrradianceFromDisk(
+    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryLoadCubemapPrefix(
         RHI& rhi,
-        const std::string& iblDirectory)
+        const std::string& iblDirectory,
+        const char* namePrefix,
+        bool generateMipmaps)
     {
         if (!std::filesystem::is_directory(iblDirectory))
         {
@@ -48,17 +51,32 @@ namespace minEngine
         std::shared_ptr<TextureCube> cube = TextureCubeLoader::LoadCubeMapFromDirectory(
             rhi,
             iblDirectory,
-            "irradiance",
-            false,
+            namePrefix,
+            generateMipmaps,
             &error);
         if (!cube)
         {
             ME_CORE_WARN(
-                "EngineIBLEnvironment: could not load irradiance cubemap from {} ({}).",
+                "EngineIBLEnvironment: could not load {} cubemap from {} ({}).",
+                namePrefix,
                 iblDirectory,
                 error);
         }
         return cube;
+    }
+
+    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryLoadIrradianceFromDisk(
+        RHI& rhi,
+        const std::string& iblDirectory)
+    {
+        return TryLoadCubemapPrefix(rhi, iblDirectory, "irradiance", false);
+    }
+
+    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryLoadPrefilterFromDisk(
+        RHI& rhi,
+        const std::string& iblDirectory)
+    {
+        return TryLoadCubemapPrefix(rhi, iblDirectory, "prefilter", true);
     }
 
     std::shared_ptr<TextureCube> EngineIBLEnvironment::TryCaptureEnvironmentFromHdr(
@@ -148,6 +166,51 @@ namespace minEngine
         return cube;
     }
 
+    std::shared_ptr<Texture2D> EngineIBLEnvironment::TryLoadBrdfLutFromDisk(
+        RHI& rhi,
+        const std::string& iblDirectory)
+    {
+        if (!std::filesystem::is_directory(iblDirectory))
+        {
+            return nullptr;
+        }
+
+        const std::filesystem::path lutPath = std::filesystem::path(iblDirectory) / "brdf_lut.png";
+        if (!std::filesystem::is_regular_file(lutPath))
+        {
+            return nullptr;
+        }
+
+        ImagePixels pixels;
+        std::string error;
+        if (!ImageLoader::LoadLdr(lutPath.string(), pixels, false, &error))
+        {
+            ME_CORE_WARN("EngineIBLEnvironment: failed to load BRDF LUT '{}' ({}).", lutPath.string(), error);
+            return nullptr;
+        }
+
+        std::shared_ptr<Texture2D> texture =
+            Texture2DLoader::CreateFromPixels(rhi, pixels, "brdf_lut", GUID{});
+        ImageLoader::Free(pixels);
+        if (texture)
+        {
+            ME_CORE_INFO("EngineIBLEnvironment: loaded BRDF LUT from {}.", lutPath.string());
+        }
+        return texture;
+    }
+
+    std::shared_ptr<Texture2D> EngineIBLEnvironment::CreateIntegratedBrdfLut(RHI& rhi)
+    {
+        std::string error;
+        std::shared_ptr<Texture2D> lut =
+            BrdfLutGenerator::CreateIntegratedBrdfLut(rhi, BrdfLutGenerator::kDefaultLutSize, &error);
+        if (!lut)
+        {
+            ME_CORE_WARN("EngineIBLEnvironment: integrated BRDF LUT failed ({}).", error);
+        }
+        return lut;
+    }
+
     void EngineIBLEnvironment::Initialize(RHI* rhi, const std::string& engineDefaultAssetsRoot)
     {
         Shutdown();
@@ -157,6 +220,7 @@ namespace minEngine
         }
 
         m_RHI = rhi;
+        m_EnvIntensity = 1.0f;
 
         const std::string iblDirectory =
             engineDefaultAssetsRoot + "/Textures/IBL";
@@ -179,25 +243,38 @@ namespace minEngine
         }
         else if (!m_UsingFallbackCube)
         {
-            ME_CORE_INFO("EngineIBLEnvironment: loaded environment cubemap from {}.", iblDirectory);
+            ME_CORE_INFO("EngineIBLEnvironment: loaded irradiance/environment cubemap from {}.", iblDirectory);
         }
 
-        // P4.2 will load prefilter + BRDF LUT; P4.1 keeps nullptr until assets exist.
-        m_Prefilter = nullptr;
-        m_BrdfLUT = nullptr;
+        m_Prefilter = TryLoadPrefilterFromDisk(*rhi, iblDirectory);
+        if (!m_Prefilter && m_Irradiance)
+        {
+            m_Prefilter = m_Irradiance;
+            ME_CORE_INFO(
+                "EngineIBLEnvironment: prefilter aliased to environment cubemap (add prefilter_posx.png or HDR mips).");
+        }
+
+        m_BrdfLUT = TryLoadBrdfLutFromDisk(*rhi, iblDirectory);
+        if (!m_BrdfLUT)
+        {
+            m_BrdfLUT = CreateIntegratedBrdfLut(*rhi);
+        }
     }
 
     void EngineIBLEnvironment::Shutdown()
     {
-        m_Irradiance.reset();
-        m_Prefilter.reset();
         m_BrdfLUT.reset();
+        m_Prefilter.reset();
+        m_Irradiance.reset();
         m_RHI = nullptr;
         m_UsingFallbackCube = false;
+        m_EnvIntensity = 1.0f;
     }
 
     void EngineIBLEnvironment::BindForPBRDraw(RHIShader& shader) const
     {
+        shader.UploadUniformFloat("u_EnvIntensity", m_EnvIntensity);
+
         if (m_Irradiance && m_Irradiance->GetRHITexture())
         {
             m_Irradiance->GetRHITexture()->Bind(kEngineIBLIrradianceTextureUnit);
@@ -211,7 +288,6 @@ namespace minEngine
         }
         else if (m_Irradiance && m_Irradiance->GetRHITexture())
         {
-            // P4.1: alias irradiance so PBR shaders can compile-sample prefilter slot in tests.
             m_Irradiance->GetRHITexture()->Bind(kEngineIBLPrefilterTextureUnit);
             shader.UploadUniformInt("u_EnvPrefilterMap", kEngineIBLPrefilterTextureUnit);
         }
