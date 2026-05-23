@@ -1,7 +1,7 @@
 # Material System — Phase 5 详细设计（IBL 完善）
 
 Last updated: 2026-05-23  
-Status: **已定案 · 待实施**  
+Status: **Phase 5 ✅**（P5.1–P5.3 已实施；P5.3 编辑器目视 ✅；P5.1/P5.2 漫反射/镜面目视可选补验）  
 前置：[MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) ✅ · [RESOURCE_PIPELINE_PLAN.md](./RESOURCE_PIPELINE_PLAN.md) R2 ✅
 
 **范围拍板（2026-05-23）：** Phase 5 **仅 IBL**（irradiance / prefilter / skybox）。**Parallax / POM / WPO** 移出 P5，列入 [§12 Backlog](#12-backlog视差--顶点位移有空再做)。
@@ -40,7 +40,7 @@ Phase 4 已交付 **可用的 split-sum IBL**（HDR → cubemap、BRDF LUT、`Ca
 |------|---------|----------------|
 | Diffuse IBL | 采样 **environment** cubemap | **Irradiance** 卷积 cubemap |
 | Specular IBL | `textureLod` + HDR **mip** 或 alias | **Prefilter** pass cubemap |
-| 背景 | 无 | **Skybox** |
+| 背景 | 无 | **Skybox**（场景 `SkyBoxComponent` + `SkyBoxPass`） |
 | Normal map | ✅（P2） | 本阶段不扩展 |
 
 ---
@@ -96,7 +96,7 @@ flowchart LR
 
 - [x] 日志：`convolved irradiance cubemap 32x32 from environment`
 - [ ] 目视：漫反射环境更 **柔和**（P5.2 后与 specular 分离更明显）
-- [x] `--material-ir-test`：`VerifyIBLIrradianceConvolution`
+- [x] `--material-ir-test`：`VerifyIBLGpuConvolutionAndPrefilter`（含 irradiance）
 
 ---
 
@@ -124,26 +124,149 @@ flowchart LR
 
 ---
 
-## 6) P5.3 — Skybox 背景
+## 6) P5.3 — Skybox 背景（设计定稿）
 
 ### 6.1 目标
 
-场景视口显示 **HDR 天空**，与物体反射同源；深度最远。
+- 场景视口显示 **HDR 天空背景**，与 PBR **环境反射** 同源（`EngineIBLEnvironment::GetEnvironment()`）。
+- **仅当场景中存在唯一 `SkyBoxComponent` 时** 绘制；无组件则保持清屏色。
+- 对齐 LearnOpenGL [IBL](https://learnopengl.com/PBR/IBL/IBL) cubemap background；架构上对齐 UE **SkyAtmosphere：SceneComponent + 专用 Proxy + 专用 Pass**（非 StaticMesh 队列）。
 
-### 6.2 实现要点
+### 6.2 架构选型（为何不用 StaticMesh Proxy）
+
+| 方案 | 说明 | P5.3 选择 |
+|------|------|-----------|
+| A. `StaticMeshComponent` + `BasePass` | 大球进 `OpaqueQueue` | ❌ 易进 Shadow、需材质图 |
+| B. `PrimitiveComponent` + 不进队列 | 有 Proxy 但不走 Mesh 队列 | ⚠️ 基类误导 CastShadow/AABB |
+| **C. `SceneComponent` + `SkyBoxSceneProxy` + `SkyBoxPass`** | 同 **Light** 模式 | ✅ **采用** |
+
+**UE 对照：**
+
+| UE | 基类 | Proxy | 绘制 |
+|----|------|-------|------|
+| `USkyAtmosphereComponent` | `USceneComponent` | `FSkyAtmosphereSceneProxy` | 专用 Sky Pass |
+| `USkyLightComponent` | 灯光 | 无几何 | IBL（≈ `EngineIBLEnvironment`） |
+| Sky Sphere 模板 | `UStaticMeshComponent` | `FStaticMeshSceneProxy` | 普通 Mesh |
+
+**结论：** 要 **SkyBoxSceneProxy**，不要 **StaticMeshSceneProxy**；组件继承 **`SceneComponent`**，不继承 `PrimitiveComponent`。
+
+### 6.3 类与数据流
+
+```mermaid
+flowchart TB
+  subgraph GameThread [Game Thread]
+    SBC[SkyBoxComponent]
+    SBC -->|Dirty| RSU[RenderScene::UpdateSkyBox]
+  end
+  subgraph Render [RenderPipeline::Execute]
+    RSU --> Proxy[SkyBoxSceneProxy 唯一]
+    Proxy --> SBP[SkyBoxPass]
+    IBL[EngineIBLEnvironment] --> SBP
+    SBP --> RT[Scene Color]
+    RT --> BP[BasePass]
+  end
+```
+
+**SkyBoxComponent**（`Framework/Components/`，继承 `SceneComponent`）
+
+| 成员 / 行为 | 说明 |
+|-------------|------|
+| `m_Enabled` | 为 false 时不绘制 |
+| `m_SkyIntensity` | 默认 1.0，Pass 上传 uniform |
+| `m_SkyBoxSceneProxy` | 非 owning 指针 |
+| `DoEndOfFrameUpdate` | `m_bRenderStateDirty` → `RenderScene::UpdateSkyBox` |
+| 析构 | `RemoveSkyBox`（对齐 `LightComponent`） |
+
+**SkyBoxSceneProxy**（`Render/SkyBoxSceneProxies/`）
+
+| 字段 | 说明 |
+|------|------|
+| `m_SkyBoxComponent` | 回指 |
+| `m_Transform` | P5.3 可仅 Yaw；位置在 Pass 内跟相机 |
+| `m_SkyIntensity` / `m_Enabled` | 渲染线程快照 |
+
+**RenderScene**
+
+```cpp
+void UpdateSkyBox(SkyBoxComponent* component);
+void RemoveSkyBox(const SkyBoxComponent* component);
+
+SkyBoxSceneProxy* m_SkyBoxProxy = nullptr;  // 至多一个
+std::unique_ptr<SkyBoxSceneProxy> m_SkyBoxProxyOwner;
+```
+
+**唯一性（拍板）**
+
+| 场景 | 行为 |
+|------|------|
+| 0 个组件 | 不跑 `SkyBoxPass` |
+| 1 个 | 正常绘制 |
+| ≥2 个 | **后注册替换前者** + `ME_CORE_WARN` |
+
+### 6.4 RenderPipeline 集成
+
+**顺序：** `Clear` → **`SkyBoxPass`** → `BasePass` → `TranslucencyPass` → Post → Present
+
+```cpp
+rhi->Clear();
+if (SkyBoxSceneProxy* sky = GetSkyBoxProxy(ctx.Scene))
+{
+    if (m_IBLEnvironment.GetEnvironment())
+        m_SkyBoxPass.Execute(ctx, *sky, m_IBLEnvironment, sceneColorRT);
+}
+m_BasePass.Execute();
+```
+
+**SkyBoxPass**
 
 | 项 | 说明 |
 |----|------|
-| Pass | `SkyboxPass`（或 Present 前单次 draw） |
-| Mesh | 单位立方体 + `background.vert/frag` |
-| 资源 | `EngineIBLEnvironment` 的 environment cubemap |
-| 开关 | 默认 **开**；`RenderPipeline` / 视口可关（调试） |
-| Depth | `GL_LEQUAL`，天空在远平面；不写 depth 或仅读 |
+| Shader | `EnvMap/background.{vert,frag}` |
+| 几何 | 单位立方体；VS 去掉 View 平移（中心=相机） |
+| 采样 | `GetEnvironment()` cubemap |
+| Depth | `GL_LEQUAL`，`glDepthMask(false)` |
+| Cull | 内表面（LearnOpenGL `GL_FRONT` 或等价） |
 
-### 6.3 验收
+**不进：** `BuildRenderQueue`、`ShadowPass`、`Material` 图、BasePass 的 mesh 纹理槽。
 
-- [ ] 旋转相机：天空色调与物体 **环境反射** 一致
-- [ ] 不透明物体 depth / 排序正常
+**可选：** `SceneDrawFlags::EnableSkyBox`（有 Proxy 且 flag 为 true 才画）。
+
+### 6.5 与 IBL 分工
+
+| 系统 | 职责 |
+|------|------|
+| `EngineIBLEnvironment` | 全局 cubemap 链 + BasePass indirect |
+| `SkyBoxComponent` | 关卡是否显示天空 |
+| `SkyBoxPass` | 可见背景，默认 environment cubemap |
+
+P5.3 不做：每关卡 `OverrideCubemap`（Backlog）。
+
+### 6.6 文件清单
+
+| 操作 | 路径 |
+|------|------|
+| 新增 | `SkyBoxComponent.{h,cpp}` |
+| 新增 | `SkyBoxSceneProxy.h` |
+| 新增 | `SkyBoxPass.{h,cpp}` |
+| 新增 | `background.{vert,frag}` |
+| 修改 | `RenderScene.{h,cpp}`、`RenderPipeline.{h,cpp}` |
+| 可选 | `test.mescene` 挂一个 SkyBox |
+
+### 6.7 验收
+
+- [x] 有组件：天空与反射同色；旋转相机一致（编辑器 `test` 场景，2026-05-23）
+- [ ] 无组件 / `Enabled=false`：仅清屏
+- [ ] 双组件：WARN + 唯一生效
+- [x] 物体不被天空遮挡；depth 正常
+- [x] `--material-ir-test` 仍绿
+- [x] `test.mescene` 含 `SkyBox` GameObject + `SkyBoxComponent`
+
+### 6.8 风险
+
+| 风险 | 对策 |
+|------|------|
+| 天空盖住物体 | Pass 在 BasePass 前；不写 depth |
+| 无 environment | 跳过 Pass 或 WARN |
 
 ---
 
@@ -151,7 +274,7 @@ flowchart LR
 
 | 项 | 内容 |
 |----|------|
-| IR test | `VerifyIBLIrradiancePrefilter`（init 后 cubemap 非空 / 非 alias）；现有 IBL 用例仍绿 |
+| IR test | 现有 `VerifyIBLGpuConvolutionAndPrefilter` 仍绿；Skybox 以场景目视为主 |
 | 文档 | 本文件验收勾选；`IBL/README.md`；ROADMAP；PROGRESS_LOG |
 | 目视 | §8 |
 
@@ -161,7 +284,7 @@ flowchart LR
 
 | 区域 | 效果 |
 |------|------|
-| **天空** | 场景背景为 HDR 天空，不再是纯色清屏 |
+| **天空** | `SkyBoxComponent` + `SkyBoxPass` 绘制 HDR 背景 |
 | **漫反射环境** | 更柔和，与镜面反射分离 |
 | **镜面反射** | 粗糙度对反射模糊更贴近教程 |
 | **贴图凹凸** | 仍仅 **法线贴图**（P2）；无视差 / WPO |
@@ -189,8 +312,10 @@ flowchart LR
 | 3 | `EngineIBLEnvironment` 加载链 | 无 png 时 conv，再 bind |
 | 4 | prefilter shader + mip 循环 | `EnvMap/prefilter.*` |
 | 5 | `PrefilterEnvironment` | `EnvMapCapture.cpp` |
-| 6 | Skybox mesh + pass | `RenderPipeline`、视口 |
-| 7 | IR test + README | `MaterialIRTest.cpp`、`IBL/README.md` |
+| 6a ✅ | `SkyBoxComponent` + `SkyBoxSceneProxy` | `Framework/`、`RenderScene` |
+| 6b ✅ | `background.*` + `SkyBoxPass` | `EnvMap/`、`RenderPasses/` |
+| 6c ✅ | `Execute` 插入 + `test.mescene` + `EnableSkyBox` flag | `RenderPipeline.cpp`、`SceneEditingViewportClient` |
+| 7 ✅ | README + Phase 5 关门勾选 | `IBL/README.md`、本文件 §6.7 |
 
 ---
 

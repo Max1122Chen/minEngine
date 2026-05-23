@@ -7,6 +7,9 @@
 #include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 
 #include "Runtime/Function/Framework/Components/LightComponent.h"
+#include "Runtime/Function/Framework/Components/SkyBoxComponent.h"
+#include "Runtime/Function/Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
 #include "Runtime/Function/Framework/Components/SpotLightComponent.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
@@ -195,6 +198,53 @@ namespace minEngine
             m_LightSceneProxyOwners.end());
     }
 
+    void RenderScene::UpdateSkyBox(SkyBoxComponent* skyBoxComponent)
+    {
+        if (!skyBoxComponent)
+        {
+            return;
+        }
+
+        if (skyBoxComponent->GetSceneProxy() == nullptr)
+        {
+            if (m_SkyBoxProxy && m_SkyBoxProxy->m_SkyBoxComponent != skyBoxComponent)
+            {
+                ME_CORE_WARN(
+                    "RenderScene: replacing existing SkyBox (only one allowed per scene).");
+                RemoveSkyBox(m_SkyBoxProxy->m_SkyBoxComponent);
+            }
+
+            SkyBoxSceneProxy* proxy = skyBoxComponent->CreateSceneProxy();
+            m_SkyBoxProxyOwner.reset(proxy);
+            m_SkyBoxProxy = proxy;
+        }
+        else
+        {
+            SkyBoxSceneProxy* proxy = skyBoxComponent->GetSceneProxy();
+            proxy->m_Transform = skyBoxComponent->GetTransform();
+            proxy->m_SkyIntensity = skyBoxComponent->GetSkyIntensity();
+            proxy->m_Enabled = skyBoxComponent->IsEnabled();
+        }
+    }
+
+    void RenderScene::RemoveSkyBox(SkyBoxComponent* skyBoxComponent)
+    {
+        if (!skyBoxComponent || !m_SkyBoxProxy)
+        {
+            return;
+        }
+
+        if (m_SkyBoxProxy->m_SkyBoxComponent != skyBoxComponent)
+        {
+            return;
+        }
+
+        m_SkyBoxProxy->m_SkyBoxComponent = nullptr;
+        skyBoxComponent->m_SkyBoxSceneProxy = nullptr;
+        m_SkyBoxProxy = nullptr;
+        m_SkyBoxProxyOwner.reset();
+    }
+
     void RenderScene::CollectOrphanedSceneProxies()
     {
         m_PrimitiveSceneProxies.erase(
@@ -256,5 +306,11 @@ namespace minEngine
                     return (!proxy) || (proxy->m_LightComponent == nullptr);
                 }),
             m_LightSceneProxyOwners.end());
+
+        if (m_SkyBoxProxy && m_SkyBoxProxy->m_SkyBoxComponent == nullptr)
+        {
+            m_SkyBoxProxy = nullptr;
+            m_SkyBoxProxyOwner.reset();
+        }
     }
 }

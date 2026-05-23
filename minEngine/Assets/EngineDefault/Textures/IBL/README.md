@@ -56,6 +56,9 @@ If `prefilter_*.png` missing and environment is RGB16F:
 
 **Recommended BRDF LUT:** [4DA/brdfgen `brdfLUT.png`](https://github.com/4DA/brdfgen/blob/master/brdfLUT.png) → `brdf_lut.png`.
 
-## Deferred
+## Skybox (visible background)
 
-- P5.3: skybox background draw
+When a scene has a **`SkyBoxComponent`** (at most one per scene), `SkyBoxPass` draws the **environment** cubemap as the viewport background before opaque geometry.
+
+- Shaders: `EnvMap/background.{vert,frag}`
+- Same HDR source as specular IBL (`GetEnvironment()`)

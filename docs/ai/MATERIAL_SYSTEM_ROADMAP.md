@@ -273,7 +273,7 @@ P0-B 验收通过
 |------|------|
 | **Phase 3** ✅ | [MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md)：PBR(GGX)、ComponentMask、TextureSample.R、`material-ir-test` |
 | **Phase 4** ✅ | [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)：**IBL**（HDR capture、split-sum、`CalcIndirectPBR`、Pass bind） |
-| **Phase 5**（**已定案 · IBL only**） | [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md)：irradiance / prefilter / skybox |
+| **Phase 5** ✅ | [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md)：irradiance / prefilter / SkyBoxComponent + SkyBoxPass |
 | **Backlog** | Parallax/POM、WPO（用户排期）；Tessellation、Translucent IBL、Detail Normal |
 | **Deferred** | 编辑器 Undo、Shader 预览、Content Browser、Material Function（用户更高优先级非材质项） |
 

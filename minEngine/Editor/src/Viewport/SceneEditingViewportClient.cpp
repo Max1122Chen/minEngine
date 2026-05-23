@@ -163,9 +163,8 @@ namespace minEngine
 
 
 
-        const SceneDrawFlags flags =
-
-            SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess;
+        const SceneDrawFlags flags = SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
+                                     SceneDrawFlags::EnableSkyBox;
 
         const SceneDrawDesc desc = m_SceneViewport.BuildDrawDesc(flags);
 

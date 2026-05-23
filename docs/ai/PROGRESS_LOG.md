@@ -528,6 +528,12 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Done:** `Vertex` + `a_Tangent`（Assimp `CalcTangentSpace` + fallback）；`UsesTangentFrame`；`MaterialTangentFrame.glslinc`；BlinnPhong TBN 路径；默认 Normal TSN `(0,0,1)`。
 - **Next:** P2.2 目视；P2.3 `NormalUnpack` + 法线贴图节点。
 
+### Material system Phase 5 P5.3 Skybox (2026-05-23)
+- **Done:** `SkyBoxComponent` + `SkyBoxSceneProxy` + `SkyBoxPass`（`background.*`）；`RenderPipeline` Clear → SkyBox → BasePass；`SceneDrawFlags::EnableSkyBox`；编辑器场景视口启用 flag；`test.mescene` SkyBox GO。
+- **Fix:** `SceneEditingViewportClient` 未传 `EnableSkyBox` 导致天空不绘制。
+- **Validation:** Editor `test` 场景目视 OK；`cmake --build Editor`；`--material-ir-test`（与 P5.1–P5.2 同批）。
+- **Docs:** [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md) §6.7 勾选；§10 6a–6c/7 ✅。
+
 ### Material system P2.1 Translucent (2026-05-23)
 - **Done:** `MaterialBlendMode::Translucent`；`Material::IsTranslucent()`；Capability Opacity；Details **Translucent**；`--material-ir-test`。
 - **Fix:** `TranslucencyPass` 与 `BasePass` 一致绑定 `LightsData` + shadow（BlinnPhong Translucent 不再全黑）。

@@ -5,6 +5,7 @@
 #include "RenderPasses/TranslucencyPass.h"
 #include "RenderPasses/PostProcessPass.h"
 #include "RenderPasses/PresentPass.h"
+#include "RenderPasses/SkyBoxPass.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
@@ -125,6 +126,7 @@ namespace minEngine
         std::shared_ptr<FrameBuffer> m_ShadowBuffer;
 
         ShadowPass m_ShadowPass;
+        SkyBoxPass m_SkyBoxPass;
         BasePass m_BasePass;
         TranslucencyPass m_TranslucentPass;
         std::vector<PostProcessPass> m_PostProcessPasses;
@@ -132,6 +134,7 @@ namespace minEngine
 
         ShadowResourceManager m_ShadowResourceManager;
         EngineIBLEnvironment m_IBLEnvironment;
+        std::string m_EngineDefaultAssetsRoot;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
 

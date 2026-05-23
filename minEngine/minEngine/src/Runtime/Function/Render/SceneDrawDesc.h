@@ -14,8 +14,9 @@ namespace minEngine
         EnableShadows = 1u << 0,
         EnablePostProcess = 1u << 1,
         PresentToBackBuffer = 1u << 2,
+        EnableSkyBox = 1u << 3,
 
-        Default = EnableShadows | EnablePostProcess | PresentToBackBuffer,
+        Default = EnableShadows | EnablePostProcess | PresentToBackBuffer | EnableSkyBox,
     };
 
     inline SceneDrawFlags operator|(SceneDrawFlags lhs, SceneDrawFlags rhs)

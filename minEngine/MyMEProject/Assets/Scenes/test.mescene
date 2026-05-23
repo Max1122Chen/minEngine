@@ -292,6 +292,55 @@
                     "low": 10254652125913689710
                 }
             }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::SkyBoxComponent",
+                    "m_Enabled": true,
+                    "m_Guid": {
+                        "High": 8844221100334455667,
+                        "Low": 7766554433221100987
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 1122334455667788990,
+                            "low": 9988776655443322110
+                        }
+                    },
+                    "m_SkyIntensity": 1.0,
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                }
+            ],
+            "m_Guid": {
+                "High": 1122334455667788990,
+                "Low": 9988776655443322110
+            },
+            "m_Name": "SkyBox",
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 8844221100334455667,
+                    "low": 7766554433221100987
+                }
+            }
         }
     ],
     "m_Guid": {

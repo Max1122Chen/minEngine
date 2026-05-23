@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
+#include "Runtime/Function/Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 
 namespace minEngine
 {
@@ -10,6 +11,7 @@ namespace minEngine
     class DirectionalLightSceneProxy;
     class PointLightSceneProxy;
     class SpotLightSceneProxy;
+    class SkyBoxComponent;
 
     class RenderScene
     {
@@ -23,6 +25,10 @@ namespace minEngine
         void UpdateLight(LightComponent* lightComponent);
         void RemoveLight(const LightComponent* lightComponent);
 
+        void UpdateSkyBox(SkyBoxComponent* skyBoxComponent);
+        void RemoveSkyBox(SkyBoxComponent* skyBoxComponent);
+        SkyBoxSceneProxy* GetSkyBoxProxy() const { return m_SkyBoxProxy; }
+
         void CollectOrphanedSceneProxies();
 
         // Light scene proxies
@@ -33,9 +39,12 @@ namespace minEngine
         // Primitive scene proxies
         std::vector<PrimitiveSceneProxy*> m_PrimitiveSceneProxies;
 
+        SkyBoxSceneProxy* m_SkyBoxProxy = nullptr;
+
     private:
         // Single ownership of all scene proxies; raw-pointer vectors above are non-owning views.
         std::vector<std::unique_ptr<PrimitiveSceneProxy>> m_PrimitiveSceneProxyOwners;
         std::vector<std::unique_ptr<LightSceneProxy>> m_LightSceneProxyOwners;
+        std::unique_ptr<SkyBoxSceneProxy> m_SkyBoxProxyOwner;
     };
 }

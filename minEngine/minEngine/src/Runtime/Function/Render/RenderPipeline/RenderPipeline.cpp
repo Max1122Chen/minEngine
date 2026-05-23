@@ -16,7 +16,9 @@
 #include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Render/LightSceneProxies/SpotLightSceneProxy.h"
+#include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Math/Geometry/AABB.h"
+#include <filesystem>
 #include <glad/glad.h>
 
 namespace
@@ -119,7 +121,12 @@ namespace minEngine
             return;
         }
 
+        m_EngineDefaultAssetsRoot = engineDefaultAssetsRoot;
         m_IBLEnvironment.Initialize(rhi, engineDefaultAssetsRoot);
+        if (!engineDefaultAssetsRoot.empty())
+        {
+            m_SkyBoxPass.Initialize(*rhi, std::filesystem::path(engineDefaultAssetsRoot));
+        }
     }
 
     void RenderPipeline::BindSceneRenderTarget(SceneRenderTarget& target)
@@ -136,6 +143,7 @@ namespace minEngine
 
     void RenderPipeline::Shutdown()
     {
+        m_SkyBoxPass.Shutdown();
         m_IBLEnvironment.Shutdown();
         m_ShadowResourceManager.Shutdown();
 
@@ -243,6 +251,17 @@ namespace minEngine
         // Clear the framebuffer at the beginning of the render pipeline execution
         // Dont change the order
         rhi->Clear();
+
+        if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox) && m_SkyBoxPass.IsReady())
+        {
+            if (SkyBoxSceneProxy* skyBoxProxy = desc.Scene->GetSkyBoxProxy())
+            {
+                if (skyBoxProxy->m_Enabled && skyBoxProxy->m_SkyBoxComponent)
+                {
+                    m_SkyBoxPass.Execute(*ctx.Camera, *skyBoxProxy, m_IBLEnvironment);
+                }
+            }
+        }
 
         m_BasePass.Execute();
         m_TranslucentPass.Execute();
