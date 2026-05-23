@@ -1,5 +1,6 @@
 #include "RenderPassBase.h"
 
+#include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLBuffers.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLVertexArrayObject.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
@@ -97,6 +98,11 @@ namespace minEngine
                 texture->Bind(handle.TextureUnit);
                 shader.UploadUniformInt("u_PointShadowMaps[" + std::to_string(slot) + "]", handle.TextureUnit);
             }
+        }
+
+        if (binding.bBindPBRIBL && binding.IBLEnvironment != nullptr)
+        {
+            binding.IBLEnvironment->BindForPBRDraw(shader);
         }
     }
 }

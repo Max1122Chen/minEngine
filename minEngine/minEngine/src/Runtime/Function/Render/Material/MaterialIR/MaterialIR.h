@@ -198,6 +198,7 @@ namespace minEngine
     enum MIRExternalInputId
     {
         EI_TexCoord0 = 0,
+        EI_WorldNormal,
     };
 
     struct MIRExternalInput : public TMIRInstruction<VK_ExternalInput>

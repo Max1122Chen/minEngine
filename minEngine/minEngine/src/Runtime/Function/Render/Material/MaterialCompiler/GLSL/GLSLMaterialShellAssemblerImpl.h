@@ -25,10 +25,17 @@ namespace minEngine
         static std::string BuildMaterialParametersStructGlobal(int numTexCoords);
         static std::string BuildVertexTexCoordSetup(int numTexCoords);
         static std::string BuildFragmentTexCoordSetup(int numTexCoords);
-        static std::string BuildFragmentMaterialInputsStructGlobal();
-        static std::string BuildVertexIoBlock(int numTexCoords, bool includeSceneLightingVaryings);
+        static std::string BuildFragmentMaterialInputsStructGlobal(
+            MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode);
+        static std::string BuildFragmentMaskedClip(const MaterialCompileEnvironment& env);
+        static std::string BuildVertexIoBlock(
+            int numTexCoords,
+            bool includeSceneLightingVaryings,
+            bool usesTangentFrame);
         static std::string BuildFragmentInTexCoords(int numTexCoords);
-        static std::string BuildFragmentLightingVaryings();
+        static std::string BuildFragmentLightingVaryings(bool usesTangentFrame);
+        static std::string BuildFragmentWorldNormal(const MaterialCompileEnvironment& env);
         static std::string BuildFragmentSceneLighting(
             const std::filesystem::path& assetsRoot,
             const MaterialCompileEnvironment& env,

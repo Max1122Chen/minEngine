@@ -484,6 +484,8 @@ namespace minEngine::Reflection
                 // Handle boolean type
                 if constexpr(std::is_same_v<RawFieldType, bool>) { primitiveTypeName = GetPrimitiveName<bool>(); }
                 // Handle integral types (except bool)
+                else if constexpr(std::is_same_v<RawFieldType, int>) { primitiveTypeName = GetPrimitiveName<int32_t>(); }
+                else if constexpr(std::is_same_v<RawFieldType, int16_t>) { primitiveTypeName = GetPrimitiveName<int16_t>(); }
                 else if constexpr(std::is_same_v<RawFieldType, int32_t>) { primitiveTypeName = GetPrimitiveName<int32_t>(); }
                 else if constexpr(std::is_same_v<RawFieldType, long>) { primitiveTypeName = GetPrimitiveName<long>(); }
                 else if constexpr(std::is_same_v<RawFieldType, int64_t>) { primitiveTypeName = GetPrimitiveName<int64_t>(); }

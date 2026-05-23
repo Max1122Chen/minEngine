@@ -39,9 +39,18 @@ namespace minEngine
     {
         MIRValue* vector = emitter.ConstantFloat3(R, G, B);
         emitter.Output(0, vector);
-        emitter.Output(1, emitter.SubscriptChannel(vector, 0));
-        emitter.Output(2, emitter.SubscriptChannel(vector, 1));
-        emitter.Output(3, emitter.SubscriptChannel(vector, 2));
+        if (emitter.IsOutputConnected(1))
+        {
+            emitter.Output(1, emitter.SubscriptChannel(vector, 0));
+        }
+        if (emitter.IsOutputConnected(2))
+        {
+            emitter.Output(2, emitter.SubscriptChannel(vector, 1));
+        }
+        if (emitter.IsOutputConnected(3))
+        {
+            emitter.Output(3, emitter.SubscriptChannel(vector, 2));
+        }
     }
 
     MaterialGraphNodeDef_MakeFloat3::MaterialGraphNodeDef_MakeFloat3()
@@ -244,6 +253,7 @@ namespace minEngine
         m_Inputs.push_back({ "UV" });
         m_Outputs.push_back({ "RGBA" });
         m_Outputs.push_back({ "RGB" });
+        m_Outputs.push_back({ "R" });
     }
 
     void MaterialGraphNodeDef_TextureSample::BuildIR(MIREmitter& emitter)
@@ -252,7 +262,14 @@ namespace minEngine
         MIRValue* texCoord = emitter.Input(GetInput(1));
         MIRValue* sample = emitter.TextureSample(texture, texCoord);
         emitter.Output(0, sample);
-        emitter.Output(1, emitter.Cast(sample, MIRPrimitiveType::GetFloat3()));
+        if (emitter.IsOutputConnected(1))
+        {
+            emitter.Output(1, emitter.Cast(sample, MIRPrimitiveType::GetFloat3()));
+        }
+        if (emitter.IsOutputConnected(2))
+        {
+            emitter.Output(2, emitter.SubscriptChannel(sample, 0));
+        }
     }
 
     MaterialGraphNodeDef_ScalarParameter::MaterialGraphNodeDef_ScalarParameter()
@@ -276,6 +293,11 @@ namespace minEngine
         emitter.Output(0, emitter.UniformScalar(UniformSlotIndex, DefaultValue));
     }
 
+    MaterialGraphNodeDef_ComponentMask::MaterialGraphNodeDef_ComponentMask()
+        : MaterialGraphNodeDef_ComponentMask(0)
+    {
+    }
+
     MaterialGraphNodeDef_ComponentMask::MaterialGraphNodeDef_ComponentMask(int channelIndex)
         : ChannelIndex(channelIndex)
     {
@@ -289,11 +311,56 @@ namespace minEngine
         emitter.Output(0, emitter.SubscriptChannel(vector, ChannelIndex));
     }
 
+    MaterialGraphNodeDef_Lerp::MaterialGraphNodeDef_Lerp()
+    {
+        m_Inputs.push_back({ "A" });
+        m_Inputs.push_back({ "B" });
+        m_Inputs.push_back({ "Alpha" });
+        m_Outputs.push_back({ "Value" });
+    }
+
+    void MaterialGraphNodeDef_Lerp::BuildIR(MIREmitter& emitter)
+    {
+        MIRValue* a = emitter.Input(GetInput(0));
+        MIRValue* b = emitter.Input(GetInput(1));
+        MIRValue* alpha = emitter.Input(GetInput(2));
+        if (a == nullptr || b == nullptr || alpha == nullptr)
+        {
+            emitter.Output(0, emitter.Poison());
+            return;
+        }
+
+        MIRValue* delta = emitter.Subtract(b, a);
+        MIRValue* scaled = emitter.Multiply(alpha, delta);
+        emitter.Output(0, emitter.Add(a, scaled));
+    }
+
+    MaterialGraphNodeDef_NormalUnpack::MaterialGraphNodeDef_NormalUnpack()
+    {
+        m_Inputs.push_back({ "RGB" });
+        m_Outputs.push_back({ "Normal" });
+    }
+
+    void MaterialGraphNodeDef_NormalUnpack::BuildIR(MIREmitter& emitter)
+    {
+        MIRValue* rgb = emitter.Input(GetInput(0));
+        if (rgb == nullptr)
+        {
+            emitter.Output(0, emitter.Poison());
+            return;
+        }
+
+        MIRValue* scaled = emitter.Multiply(rgb, emitter.ConstantFloat3(2.0f, 2.0f, 2.0f));
+        emitter.Output(0, emitter.Subtract(scaled, emitter.ConstantFloat3(1.0f, 1.0f, 1.0f)));
+    }
+
     MaterialGraphNodeDef_MaterialOutput::MaterialGraphNodeDef_MaterialOutput()
     {
         m_Inputs.push_back({ "Albedo" });
+        m_Inputs.push_back({ "Normal" });
         m_Inputs.push_back({ "Metallic" });
         m_Inputs.push_back({ "Roughness" });
+        m_Inputs.push_back({ "AO" });
         m_Inputs.push_back({ "Emissive" });
         m_Inputs.push_back({ "Opacity" });
         m_Outputs.push_back({ "Result" });

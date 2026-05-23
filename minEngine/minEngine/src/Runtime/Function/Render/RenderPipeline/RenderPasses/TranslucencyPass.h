@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "RenderPassBase.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
+#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 
 namespace minEngine
 {
@@ -18,6 +19,9 @@ namespace minEngine
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;
         RenderCamera* m_SortCamera = nullptr;
+        ShadowResourceHandle m_DirectionalShadowHandle;
+        std::vector<ShadowResourceHandle> m_SpotShadowHandles;
+        std::vector<ShadowResourceHandle> m_PointShadowHandles;
 
     private:
         virtual void Render() override;

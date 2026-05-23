@@ -33,14 +33,18 @@ namespace minEngine
         void LayoutNodesIfNeeded(MaterialEdGraph& graph);
         void PushStoredPositionsToEditor(MaterialEdGraph& graph);
         void DrawPinIcon(const ImColor& color);
-        void DrawNodeBody(MaterialEdGraphNode& node, MaterialGraphNodeDef* nodeDef);
-        void DrawNodes(MaterialEdGraph& graph);
+        void DrawNodeBody(Material& material, MaterialEdGraphNode& node, MaterialGraphNodeDef* nodeDef);
+        void DrawNodes(Material& material, MaterialEdGraph& graph);
         void SyncSelectionFromEditor();
         void DrawLinks(MaterialEdGraph& graph);
-        void HandleCreateLink(MaterialEdGraph& graph);
+        void HandleCreateLink(Material& material, MaterialEdGraph& graph);
         void HandleDeleteLink(MaterialEdGraph& graph);
         void SyncNodePositions(MaterialEdGraph& graph);
-        bool TryConnectPins(ax::NodeEditor::PinId startPinId, ax::NodeEditor::PinId endPinId, MaterialEdGraph& graph);
+        bool TryConnectPins(
+            ax::NodeEditor::PinId startPinId,
+            ax::NodeEditor::PinId endPinId,
+            Material& material,
+            MaterialEdGraph& graph);
 
         const std::string m_Id = "material_graph";
         const std::string m_Title = "Material Graph";

@@ -1,0 +1,5 @@
+    v_WorldFragPos = vec3(u_Model * vec4(a_Position, 1.0));
+    v_WorldNormal = mat3(transpose(inverse(u_Model))) * a_Normal;
+    v_WorldTangent = mat3(transpose(inverse(u_Model))) * a_Tangent.xyz;
+    v_TangentSign = a_Tangent.w;
+    v_FragPosViewSpace = View * vec4(v_WorldFragPos, 1.0);

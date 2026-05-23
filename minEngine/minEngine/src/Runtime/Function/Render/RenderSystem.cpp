@@ -78,6 +78,11 @@ namespace minEngine
 
 
 
+    void RenderSystem::ReloadEngineIBLEnvironment(const std::string& engineDefaultAssetsRoot)
+    {
+        m_RenderPipeline.ReloadIBLEnvironment(engineDefaultAssetsRoot);
+    }
+
     void RenderSystem::Shutdown()
 
     {

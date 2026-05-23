@@ -4,6 +4,7 @@
 #include "MaterialEdGraphNode.h"
 #include "MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "MaterialIR/MaterialIRTypes.h"
+#include "MaterialCapability.h"
 #include "MaterialPropertyUtil.h"
 
 #include <string>
@@ -150,10 +151,20 @@ namespace minEngine
             {
                 return MIRPrimitiveType::GetFloat3();
             }
+            if (outputIndex == 2)
+            {
+                return MIRPrimitiveType::GetFloat();
+            }
             return nullptr;
         }
 
-        if (dynamic_cast<const MaterialGraphNodeDef_Multiply*>(nodeDef) != nullptr ||
+        if (dynamic_cast<const MaterialGraphNodeDef_NormalUnpack*>(nodeDef) != nullptr)
+        {
+            return MIRPrimitiveType::GetFloat3();
+        }
+
+        if (dynamic_cast<const MaterialGraphNodeDef_Lerp*>(nodeDef) != nullptr ||
+            dynamic_cast<const MaterialGraphNodeDef_Multiply*>(nodeDef) != nullptr ||
             dynamic_cast<const MaterialGraphNodeDef_Add*>(nodeDef) != nullptr ||
             dynamic_cast<const MaterialGraphNodeDef_Subtract*>(nodeDef) != nullptr ||
             dynamic_cast<const MaterialGraphNodeDef_Divide*>(nodeDef) != nullptr ||
@@ -200,6 +211,11 @@ namespace minEngine
             return MIRPrimitiveType::GetFloat();
         }
 
+        if (dynamic_cast<const MaterialGraphNodeDef_NormalUnpack*>(nodeDef) != nullptr)
+        {
+            return MIRPrimitiveType::GetFloat3();
+        }
+
         if (dynamic_cast<const MaterialGraphNodeDef_TextureSample*>(nodeDef) != nullptr)
         {
             if (input->Name == "Texture")
@@ -235,12 +251,21 @@ namespace minEngine
 
         if (dynamic_cast<const MaterialGraphNodeDef_ComponentMask*>(nodeDef) != nullptr)
         {
-            return MIRPrimitiveType::GetFloat3();
+            return nullptr;
         }
 
         if (dynamic_cast<const MaterialGraphNodeDef_Not*>(nodeDef) != nullptr)
         {
             return MIRPrimitiveType::GetBool();
+        }
+
+        if (const MaterialGraphNodeDef_Lerp* lerp = dynamic_cast<const MaterialGraphNodeDef_Lerp*>(nodeDef))
+        {
+            if (input != nullptr && input->Name == "Alpha")
+            {
+                return MIRPrimitiveType::GetFloat();
+            }
+            return nullptr;
         }
 
         if (dynamic_cast<const MaterialGraphNodeDef_Multiply*>(nodeDef) != nullptr ||
@@ -261,6 +286,8 @@ namespace minEngine
 
     bool MaterialValueTypeUtil::ValidateGraphPinConnections(
         const MaterialEdGraph& graph,
+        MaterialShadingModel shadingModel,
+        MaterialBlendMode blendMode,
         std::string* outError)
     {
         for (const std::shared_ptr<MaterialEdGraphNode>& toNodePtr : graph.m_Nodes)
@@ -282,6 +309,25 @@ namespace minEngine
                 if (!input->IsConnected() || input->NodeDef == nullptr)
                 {
                     continue;
+                }
+
+                if (toDef->IsMaterialOutputNode())
+                {
+                    const MaterialPropertyPinVisibility visibility =
+                        MaterialCapabilityUtil::GetMaterialOutputInputVisibility(
+                            input->Name.c_str(),
+                            shadingModel,
+                            blendMode);
+
+                    if (visibility != MaterialPropertyPinVisibility::Active)
+                    {
+                        if (outError != nullptr)
+                        {
+                            *outError = std::string("Connection to inactive material output pin '") +
+                                input->Name + "' is not allowed.";
+                        }
+                        return false;
+                    }
                 }
 
                 const MaterialEdGraphNode* fromNodePtr = graph.FindEdNodeByNodeDef(input->NodeDef);

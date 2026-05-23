@@ -497,6 +497,47 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Test:** `RunMaterialAssetSerializationTests()` writes `%TEMP%/minengine_material_asset_roundtrip.memtl`, `ToFile` → `FromFile` → `FinalizeGraphAfterLoad`; checks inline JSON types, editor fields, Metallic link, Outer chain.
 - **CLI:** `Editor.exe --material-serialize-test` (serialize only); `--material-ir-test` includes file round-trip at end.
 
+### Material system Phase 1 design (2026-05-22)
+- **Plan:** `docs/ai/MATERIAL_SYSTEM_PHASE1.md` — P1.1 Capability+Blend, P1.2 Normal, P1.3 AO, P1.4 nodes; Translucent deferred to Phase 2.
+- **Next implement:** P1.1 recommended first.
+
+### Bug: MATERIAL-001 Constant3 → Normal GLSL lowering crash (2026-05-23) — **Fixed**
+- **Doc:** `docs/ai/bugs/MATERIAL-001-constant3-normal-glsl-lowering.md`；管线审查 `docs/ai/MATERIAL_PIPELINE_REVIEW.md`
+- **Fix:** live-reachability `NumUsers`；`Constant3`/`TextureSample` 按需子 output；GLSL lowering diagnostic + foldable multi-use inline；`VerifyConstant3ToNormalBlinnPhong` in `--material-ir-test`.
+- **Also:** `ME_ASSERT` 现输出 message 到 stderr。
+
+### Material system Phase 3 accepted + Phase 4 IBL design (2026-05-23)
+- **P3 done:** `MaterialShadingModel::PBR`、GGX、`MaterialPBR.glslinc`、`PBR.*.template`、ComponentMask、TextureSample.R、BlinnPhong Roughness；`VerifyPBRWorkflow`；用户目视 OK。
+- **Docs:** [MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md) checklist ✅；[MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) **IBL only**（split-sum、三贴图 + BRDF LUT）。
+- **Deferred:** Parallax、WPO、编辑器 Undo、可选 `MaterialIRSmoke_PBR.memtl`。
+- **Next:** 用户更高优先级非材质工作；实现 P4 时从 P4.1 环境 cubemap 加载 + Pass 绑定开始。
+
+### Material system P2.3 Normal map workflow (2026-05-23)
+- **Done:** `MaterialGraphNodeDef_NormalUnpack`（`rgb*2-1`）；调色板；`VerifyNormalMapWorkflow`。
+- **Editor recipe:** TexCoord → TextureSample(Normal) → NormalUnpack → MaterialOutput.Normal（见 PHASE2 §5.1）。
+- **Next:** 目视 + 可选 `MaterialIRSmoke_NormalMap.memtl` 金样例。
+
+### Material system P2.2 Tangent + TBN (2026-05-23)
+- **Done:** `Vertex` + `a_Tangent`（Assimp `CalcTangentSpace` + fallback）；`UsesTangentFrame`；`MaterialTangentFrame.glslinc`；BlinnPhong TBN 路径；默认 Normal TSN `(0,0,1)`。
+- **Next:** P2.2 目视；P2.3 `NormalUnpack` + 法线贴图节点。
+
+### Material system P2.1 Translucent (2026-05-23)
+- **Done:** `MaterialBlendMode::Translucent`；`Material::IsTranslucent()`；Capability Opacity；Details **Translucent**；`--material-ir-test`。
+- **Fix:** `TranslucencyPass` 与 `BasePass` 一致绑定 `LightsData` + shadow（BlinnPhong Translucent 不再全黑）。
+- **Next:** P2.1 目视验收；P2.2 切线 + TBN。
+
+### Material system Phase 1 accepted (2026-05-23)
+- **Status:** P1.1–P1.4 目视验收通过；[MATERIAL_SYSTEM_PHASE1.md](./MATERIAL_SYSTEM_PHASE1.md) checklist 已全部勾选。
+- **Automation:** `--material-ir-test`（Unlit/BlinnPhong、Constant3→Normal、IfThenElse、Texture 双属性、divide poison、capability struct）。
+- **Next:** **Phase 2.1** — `MaterialBlendMode::Translucent` + `IsTranslucent()` + `TranslucencyPass`（见 [MATERIAL_SYSTEM_PHASE2.md](./MATERIAL_SYSTEM_PHASE2.md) §3）。
+
+### Material system P1.2–P1.4 implemented (2026-05-22)
+- **Done:** `MP_Normal` + `EI_WorldNormal` 默认、`MP_AO`、BlinnPhong 模板用 `FragmentMaterialInputs.Normal/AO`；`IsPropertyEmittedAtCompile`（Unlit 不生成 Hidden 属性）；节点 Lerp/Subtract/Divide/Min/Max 可创建 + Lerp `Alpha` 类型；`MaterialIRSmoke.memtl` MaterialOutput pin 顺序迁移；`--material-ir-test` Unlit + BlinnPhong GPU 双路径。
+
+### Material system P1.1 + Phase 2 design (2026-05-22)
+- **Done:** P1.1 `MaterialBlendMode` (Opaque/Masked), `MaterialCapabilityUtil`, editor Blend Mode, Masked `discard`, golden `MaterialIRSmoke.memtl` + `m_BlendMode`, on-disk / IR smoke 字段校验。
+- **Plan:** `docs/ai/MATERIAL_SYSTEM_PHASE2.md` — P2.1 Translucent+Pass, P2.2 TBN+tangent, P2.3 normal map; Masked 不再重复。
+
 ### Material system Phase 0 implemented (2026-05-22)
 - **P0-A:** Preview camera `eye(1.15, 0.8, 1.15)` in `MaterialPreviewViewport`.
 - **P0-B:** `MaterialValueType` + `MaterialValueTypeUtil`；`MaterialEdGraph::CanConnectPins`；Editor `TryConnectPins` 拒绝非法连线；`ValidateMaterialAsset` 校验；`--material-ir-test` 增加 pin 测试 + `MaterialIRTestObjectManagerScope`（friend `ObjectManager`）。

@@ -1,9 +1,11 @@
 #include "MaterialEditor.h"
 
 #include "Editor.h"
+#include "Material/MaterialGraphIds.h"
 
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialCapability.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Resource/AssetManager.h"
@@ -266,8 +268,38 @@ namespace minEngine
             return;
         }
 
-        m_Session.MaterialAsset->m_ShadingModel = model;
+        Material& material = *m_Session.MaterialAsset;
+        if (material.m_ShadingModel == model)
+        {
+            return;
+        }
+
+        material.m_ShadingModel = model;
+        MaterialCapabilityUtil::PruneInvalidMaterialOutputLinks(material);
         m_Session.Dirty = true;
-        FlushPendingCompile();
+        MaterialGraphIds::Reset();
+        InvalidateGraphCanvas(false);
+        NotifyGraphChanged();
+    }
+
+    void MaterialEditor::SetBlendMode(MaterialBlendMode blendMode)
+    {
+        if (!m_Session.HasOpenMaterial())
+        {
+            return;
+        }
+
+        Material& material = *m_Session.MaterialAsset;
+        if (material.m_BlendMode == blendMode)
+        {
+            return;
+        }
+
+        material.m_BlendMode = blendMode;
+        MaterialCapabilityUtil::PruneInvalidMaterialOutputLinks(material);
+        m_Session.Dirty = true;
+        MaterialGraphIds::Reset();
+        InvalidateGraphCanvas(false);
+        NotifyGraphChanged();
     }
 }

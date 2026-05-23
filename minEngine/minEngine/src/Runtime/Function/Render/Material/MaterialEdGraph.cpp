@@ -4,6 +4,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "MaterialCapability.h"
 #include "MaterialPropertyUtil.h"
 #include "MaterialValueType.h"
 
@@ -34,11 +35,47 @@ namespace minEngine
         return const_cast<MaterialEdGraph*>(this)->FindEdNodeByNodeDef(nodeDef);
     }
 
+    bool MaterialEdGraph::IsNodeOutputConnected(const MaterialGraphNodeDef& nodeDef, int32_t outputIndex) const
+    {
+        if (outputIndex < 0)
+        {
+            return false;
+        }
+
+        for (const std::shared_ptr<MaterialEdGraphNode>& node : m_Nodes)
+        {
+            if (node == nullptr)
+            {
+                continue;
+            }
+
+            MaterialGraphNodeDef* consumerDef = node->GetNodeDef();
+            if (consumerDef == nullptr)
+            {
+                continue;
+            }
+
+            for (int32_t inputIndex = 0; inputIndex < consumerDef->GetInputCount(); ++inputIndex)
+            {
+                const MaterialGraphNodeDefInput* input = consumerDef->GetInput(inputIndex);
+                if (input != nullptr && input->IsConnected() && input->NodeDef == &nodeDef
+                    && input->OutputIndex == outputIndex)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     bool MaterialEdGraph::CanConnectPins(
         const MaterialEdGraphNode& fromNode,
         int32_t fromOutputIndex,
         const MaterialEdGraphNode& toNode,
         int32_t toInputIndex,
+        MaterialShadingModel shadingModel,
+        MaterialBlendMode blendMode,
         std::string* outReason) const
     {
         const MaterialGraphNodeDef* fromDef = fromNode.GetDefinition();
@@ -76,6 +113,29 @@ namespace minEngine
             return false;
         }
 
+        if (toDef->IsMaterialOutputNode())
+        {
+            const MaterialGraphNodeDefInput* targetInput = toDef->GetInput(toInputIndex);
+            if (targetInput != nullptr)
+            {
+                const MaterialPropertyPinVisibility visibility =
+                    MaterialCapabilityUtil::GetMaterialOutputInputVisibility(
+                        targetInput->Name.c_str(),
+                        shadingModel,
+                        blendMode);
+
+                if (visibility != MaterialPropertyPinVisibility::Active)
+                {
+                    if (outReason != nullptr)
+                    {
+                        *outReason = std::string("Material output pin '") + targetInput->Name +
+                            "' is not connectable for the current shading or blend mode.";
+                    }
+                    return false;
+                }
+            }
+        }
+
         return true;
     }
 
@@ -83,9 +143,18 @@ namespace minEngine
         MaterialEdGraphNode& fromNode,
         int32_t fromOutputIndex,
         MaterialEdGraphNode& toNode,
-        int32_t toInputIndex)
+        int32_t toInputIndex,
+        MaterialShadingModel shadingModel,
+        MaterialBlendMode blendMode)
     {
-        if (!CanConnectPins(fromNode, fromOutputIndex, toNode, toInputIndex, nullptr))
+        if (!CanConnectPins(
+                fromNode,
+                fromOutputIndex,
+                toNode,
+                toInputIndex,
+                shadingModel,
+                blendMode,
+                nullptr))
         {
             return false;
         }
@@ -151,7 +220,9 @@ namespace minEngine
         MaterialEdGraphNode& fromNode,
         int32_t fromOutputIndex,
         MaterialEdGraphNode& outputNode,
-        MaterialProperty property)
+        MaterialProperty property,
+        MaterialShadingModel shadingModel,
+        MaterialBlendMode blendMode)
     {
         MaterialPropertyInputDescription description;
         if (!GetMaterialPropertyInputDescription(property, description))
@@ -169,7 +240,7 @@ namespace minEngine
         {
             if (input->Name == description.InputName)
             {
-                return ConnectPins(fromNode, fromOutputIndex, outputNode, inputIndex);
+                return ConnectPins(fromNode, fromOutputIndex, outputNode, inputIndex, shadingModel, blendMode);
             }
         }
 

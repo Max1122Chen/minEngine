@@ -16,6 +16,15 @@ namespace minEngine
     {
         Unlit = 0,
         BlinnPhong,
+        PBR,
+    };
+
+    ME_ENUM()
+    enum class MaterialBlendMode : uint8_t
+    {
+        Opaque = 0,
+        Masked,
+        Translucent,
     };
 
     enum class MaterialShaderLanguage : uint8_t
@@ -51,9 +60,15 @@ namespace minEngine
     struct MaterialCompileEnvironment
     {
         MaterialShadingModel ShadingModel = MaterialShadingModel::Unlit;
+        MaterialBlendMode BlendMode = MaterialBlendMode::Opaque;
         MaterialShaderLanguage ShaderLanguage = MaterialShaderLanguage::GLSL;
+        /** BlinnPhong: TBN + a_Tangent; MP_Normal is tangent-space (default +Z). */
+        bool UsesTangentFrame = false;
         std::string EngineDefaultAssetsRootOverride;
     };
+
+    /** Alpha clip threshold for Masked materials (Phase 1 constant). */
+    constexpr float kMaskedClipThreshold = 0.5f;
 
     struct MaterialCompileDiagnostic
     {

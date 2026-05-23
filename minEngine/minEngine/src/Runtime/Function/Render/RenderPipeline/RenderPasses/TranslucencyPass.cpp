@@ -1,6 +1,7 @@
 #include "TranslucencyPass.h"
 
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
 #include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/RenderSystem.h"
@@ -43,7 +44,19 @@ namespace minEngine
             RHIShader* shader = material->GetShader()->GetRHIShader().get();
             shader->Use();
 
-            const MeshPassSceneBinding sceneBinding{ drawCommand, false };
+            const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong
+                || material->m_ShadingModel == MaterialShadingModel::PBR;
+            const bool bindPBRIBL = material->m_ShadingModel == MaterialShadingModel::PBR;
+
+            const MeshPassSceneBinding sceneBinding{
+                drawCommand,
+                bindSceneLighting,
+                bindPBRIBL,
+                &m_DirectionalShadowHandle,
+                &m_SpotShadowHandles,
+                &m_PointShadowHandles,
+                (bindPBRIBL && pipeline != nullptr) ? &pipeline->GetIBLEnvironment() : nullptr,
+            };
             BindSceneDrawResources(*shader, sceneBinding);
             material->BindForDraw(*shader);
             DrawMeshCommand(drawCommand);

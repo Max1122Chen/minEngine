@@ -44,6 +44,46 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Multiply, GRefl
     ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Multiply)
 
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Subtract, GReflectionClassRegister_MaterialGraphNodeDef_Subtract_f860bf93)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Subtract)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Divide, GReflectionClassRegister_MaterialGraphNodeDef_Divide_f307c3e4)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Divide)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Max, GReflectionClassRegister_MaterialGraphNodeDef_Max_ae9c2307)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Max)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Min, GReflectionClassRegister_MaterialGraphNodeDef_Min_814b1159)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Min)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Lerp, GReflectionClassRegister_MaterialGraphNodeDef_Lerp_a58f36db)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Lerp)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_NormalUnpack, GReflectionClassRegister_MaterialGraphNodeDef_NormalUnpack_55002639)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_NormalUnpack)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Select, GReflectionClassRegister_MaterialGraphNodeDef_Select_b8a388b9)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Select)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_IfThenElse, GReflectionClassRegister_MaterialGraphNodeDef_IfThenElse_42709d78)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_IfThenElse)
+
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_TextureCoordinate, GReflectionClassRegister_MaterialGraphNodeDef_TextureCoordinate_9126a58b)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
@@ -69,6 +109,12 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_ScalarParameter
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::MaterialGraphNodeDef_ScalarParameter, UniformSlotIndex, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::MaterialGraphNodeDef_ScalarParameter, DefaultValue, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_ScalarParameter)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_ComponentMask, GReflectionClassRegister_MaterialGraphNodeDef_ComponentMask_2c665ffb)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::MaterialGraphNodeDef_ComponentMask, ChannelIndex, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_ComponentMask)
 
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_MaterialOutput, GReflectionClassRegister_MaterialGraphNodeDef_MaterialOutput_c54c3a12)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))

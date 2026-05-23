@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "MIRGraph.h"
+#include "../MaterialCompiler/MaterialCompileTypes.h"
 
 namespace minEngine
 {
@@ -47,7 +48,11 @@ namespace minEngine
         MIRBuilder();
 
         void AddRootNodeDef(MaterialGraphNodeDef* nodeDef);
-        void Build(const MaterialEdGraph& graph, MIRGraph& targetGraph);
+        void Build(
+            const MaterialEdGraph& graph,
+            MIRGraph& targetGraph,
+            MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode);
 
     private:
         // Build steps
@@ -56,10 +61,13 @@ namespace minEngine
         void Step_BuildNodeDefsToIRGraph();
         void Step_FlowValuesIntoMaterialOutputs();
         void Step_AnalyzeIRGraph();
+        void Step_ResetLinkState();
         void Step_LinkInstructions();
+        void Step_VerifyLinkCoverage();
         void Step_Finalize();
 
         // Helper functions
+        bool ShouldEmitMaterialProperty(MaterialProperty property) const;
         void PrepareSingleMaterialAttribute(MaterialProperty property);
         void FlowValueIntoMaterialOutput(MaterialProperty property, MIRValue* value);
         MIRValue* FetchFlowValueForMaterialProperty(MaterialProperty property);
@@ -68,9 +76,12 @@ namespace minEngine
         // Value retrieval functions
         void BindValueToOutput(const MaterialGraphNodeDefOutput* output, MIRValue* value) { m_BuildContext.SetOutputValue(output, value); }
         MIRValue* FetchValueFromInput(const MaterialGraphNodeDefInput* input) { return m_BuildContext.GetInputValue(input); }
+        bool IsOutputConnected(int32_t outputIndex) const;
 
 
         const MaterialEdGraph* m_Graph = nullptr;
+        MaterialShadingModel m_ShadingModel = MaterialShadingModel::Unlit;
+        MaterialBlendMode m_BlendMode = MaterialBlendMode::Opaque;
         MIREmitter* m_Emitter = nullptr;         // The emitter used to emit IR instructions, we need this to be a member variable because we need to pass it into the BuildIR function of each nodedef 
         BuildContext m_BuildContext;    // Since we dont have the "Material Function", so we only need a single BuildContext, if we have "Material Function", then we need a stack of BuildContext to support the nested function calls
         std::vector<MaterialGraphNodeDef*> m_RootNodeDefs;

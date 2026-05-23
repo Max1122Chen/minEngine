@@ -97,9 +97,16 @@ namespace minEngine
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Constant3::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_MakeFloat3::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Multiply::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Lerp::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Subtract::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Divide::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Min::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Max::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureCoordinate::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureObject::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureSample::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_NormalUnpack::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_ComponentMask::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_ScalarParameter::StaticClass()));
         }
     }

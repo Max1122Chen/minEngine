@@ -61,8 +61,8 @@ When finishing a task, AI should:
 
 - **Editor-only** module under `Editor/src/Material/` + `Material*Window`；数据真源 `Material::m_Graph`。
 - **E0–E4 done:** 图编辑、Preview、Details 反射、Compile 诊断；见 `MATERIAL_EDITOR_PLAN.md` 验收勾选。
-- **Next track:** `docs/ai/MATERIAL_SYSTEM_ROADMAP.md`（预览相机、连线类型校验、Normal/AO、Capability 拦截、节点库、PBR）。
-- **Plan / log:** `MATERIAL_EDITOR_PLAN.md`, `MATERIAL_SYSTEM_ROADMAP.md`, `PROGRESS_LOG.md`.
+- **Next track:** `docs/ai/MATERIAL_SYSTEM_PHASE1.md`（P1.1–P1.4）；路线图 `MATERIAL_SYSTEM_ROADMAP.md`。
+- **Plan / log:** `MATERIAL_EDITOR_PLAN.md`, `MATERIAL_SYSTEM_ROADMAP.md`, `MATERIAL_SYSTEM_PHASE1.md`, `PROGRESS_LOG.md`.
 
 ## 7) Next Suggested Maintenance
 

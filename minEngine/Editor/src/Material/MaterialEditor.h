@@ -38,6 +38,7 @@ namespace minEngine
         void CompileActiveMaterial();
         bool SaveActiveMaterial();
         void SetShadingModel(MaterialShadingModel model);
+        void SetBlendMode(MaterialBlendMode blendMode);
 
         /** Graph edit: Finalize + debounced Compile + dirty. Does not reset node-editor pan/zoom. */
         void NotifyGraphChanged();

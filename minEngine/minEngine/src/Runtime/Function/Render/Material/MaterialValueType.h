@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "MaterialCompiler/MaterialCompileTypes.h"
 #include "MaterialTypes.h"
 
 namespace minEngine
@@ -29,6 +30,10 @@ namespace minEngine
             const MaterialGraphNodeDef* nodeDef,
             int32_t inputIndex);
 
-        static bool ValidateGraphPinConnections(const MaterialEdGraph& graph, std::string* outError);
+        static bool ValidateGraphPinConnections(
+            const MaterialEdGraph& graph,
+            MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode,
+            std::string* outError);
     };
 }

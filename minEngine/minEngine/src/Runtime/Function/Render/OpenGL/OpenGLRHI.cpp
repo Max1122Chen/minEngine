@@ -145,9 +145,17 @@ namespace minEngine
         return std::make_shared<OpenGLTexture2D>(data, desc);
     }
 
-    std::shared_ptr<RHITextureCube> OpenGLRHI::CreateRHITextureCube(const std::vector<unsigned char *> faceData, RHITextureDesc desc)
+    std::shared_ptr<RHITextureCube> OpenGLRHI::CreateRHITextureCube(
+        const std::vector<unsigned char*>& faceData,
+        RHITextureDesc desc,
+        bool generateMipmaps)
     {
-        return std::make_shared<OpenGLTextureCube>(faceData, desc);
+        auto texture = std::make_shared<OpenGLTextureCube>(faceData, desc, generateMipmaps);
+        if (texture->GetID() == 0)
+        {
+            return nullptr;
+        }
+        return texture;
     }
 
     std::shared_ptr<RHITexture2DArray> OpenGLRHI::CreateRHITexture2DArray(const unsigned char *data, RHITextureDesc desc)

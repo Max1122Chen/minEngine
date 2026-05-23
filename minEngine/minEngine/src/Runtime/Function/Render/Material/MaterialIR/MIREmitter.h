@@ -33,6 +33,7 @@ namespace minEngine
         MIRValue* Input(const MaterialGraphNodeDefInput* input);
         void Output(int outputIndex, MIRValue* value);
         void Output(const MaterialGraphNodeDefOutput* output, MIRValue* value);
+        bool IsOutputConnected(int outputIndex) const;
 
         MIRValue* Operator(MIROperatorCode op, MIRValue* a, MIRValue* b = nullptr, MIRValue* c = nullptr);
         MIRValue* Negative(MIRValue* value);
@@ -56,6 +57,8 @@ namespace minEngine
         MIRValue* UniformScalar(int uniformSlotIndex, float defaultValue);
 
         struct SetMaterialOutput* SetMaterialOutput(MaterialProperty property, MIRValue* arg);
+
+        void EmitDiagnostic(const std::string& message);
 
     private:
         static MIRValue* CastConstant(MIREmitter& emitter, MIRConstant* constant, MIRScalarKind sourceKind,

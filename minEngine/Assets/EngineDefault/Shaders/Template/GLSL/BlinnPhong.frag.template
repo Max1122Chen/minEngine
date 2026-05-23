@@ -14,8 +14,8 @@ void main()
 {
 @ME_INSERT:FRAGMENT_TEXCOORD_SETUP@
 @ME_INSERT:FRAGMENT_STAGE_BODY@
-
-    vec3 norm = normalize(v_WorldNormal);
+@ME_INSERT:FRAGMENT_MASKED_CLIP@
+@ME_INSERT:FRAGMENT_WORLD_NORMAL@
     vec3 viewDir = normalize(CameraPos.xyz - v_WorldFragPos);
 
     vec3 dirLightResult = CalcDirLightGraph(
@@ -25,7 +25,8 @@ void main()
         viewDir,
         v_FragPosViewSpace,
         FragmentMaterialInputs.Albedo,
-        FragmentMaterialInputs.Metallic);
+        FragmentMaterialInputs.Metallic,
+        FragmentMaterialInputs.Roughness);
 
     vec3 pointLightResult = vec3(0.0);
     for (uint i = 0u; i < PointLightsCount && i < 16u; ++i)
@@ -37,7 +38,8 @@ void main()
             viewDir,
             int(i),
             FragmentMaterialInputs.Albedo,
-            FragmentMaterialInputs.Metallic);
+            FragmentMaterialInputs.Metallic,
+            FragmentMaterialInputs.Roughness);
     }
 
     vec3 spotLightResult = vec3(0.0);
@@ -50,9 +52,10 @@ void main()
             viewDir,
             int(i),
             FragmentMaterialInputs.Albedo,
-            FragmentMaterialInputs.Metallic);
+            FragmentMaterialInputs.Metallic,
+            FragmentMaterialInputs.Roughness);
     }
 
-    vec3 result = dirLightResult + pointLightResult + spotLightResult;
+    vec3 result = (dirLightResult + pointLightResult + spotLightResult) * FragmentMaterialInputs.AO;
     FragColor = vec4(result + FragmentMaterialInputs.Emissive, FragmentMaterialInputs.Opacity);
 }

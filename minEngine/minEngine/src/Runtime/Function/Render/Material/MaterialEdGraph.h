@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Function/EditorGraph/EditorGraph.h"
 #include "MaterialEdGraphNode.h"
+#include "MaterialCompiler/MaterialCompileTypes.h"
 #include "MaterialTypes.h"
 
 #include <memory>
@@ -45,13 +46,17 @@ namespace minEngine
             int32_t fromOutputIndex,
             const MaterialEdGraphNode& toNode,
             int32_t toInputIndex,
+            MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode,
             std::string* outReason = nullptr) const;
 
         bool ConnectPins(
             MaterialEdGraphNode& fromNode,
             int32_t fromOutputIndex,
             MaterialEdGraphNode& toNode,
-            int32_t toInputIndex);
+            int32_t toInputIndex,
+            MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode);
 
         void DisconnectInput(MaterialEdGraphNode& toNode, int32_t toInputIndex);
 
@@ -59,7 +64,9 @@ namespace minEngine
             MaterialEdGraphNode& fromNode,
             int32_t fromOutputIndex,
             MaterialEdGraphNode& outputNode,
-            MaterialProperty property);
+            MaterialProperty property,
+            MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode);
 
         MaterialGraphNodeDefInput* FindPropertyGraphInput(MaterialProperty property) const;
         bool ResolveMaterialPropertyInput(MaterialProperty property, MaterialPropertyInputDescription& inOutDescription) const;
@@ -67,6 +74,9 @@ namespace minEngine
 
         MaterialEdGraphNode* FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef);
         const MaterialEdGraphNode* FindEdNodeByNodeDef(const MaterialGraphNodeDef* nodeDef) const;
+
+        /** True if any graph input pin reads this node output (live downstream use). */
+        bool IsNodeOutputConnected(const MaterialGraphNodeDef& nodeDef, int32_t outputIndex) const;
 
         bool RemoveNode(MaterialEdGraphNode& node);
     };

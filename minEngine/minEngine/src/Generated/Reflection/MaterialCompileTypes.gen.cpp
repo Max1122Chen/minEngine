@@ -4,7 +4,14 @@
 ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::MaterialShadingModel, GReflectionEnumRegister_MaterialShadingModel_a65a5d4f)
     ME_REFLECTION_ENUM_VALUE(Unlit, 0)
     ME_REFLECTION_ENUM_VALUE(BlinnPhong, minEngine::MaterialShadingModel::BlinnPhong)
+    ME_REFLECTION_ENUM_VALUE(PBR, minEngine::MaterialShadingModel::PBR)
 ME_REFLECTION_ENUM_DEFINE_END(minEngine::MaterialShadingModel)
+
+ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::MaterialBlendMode, GReflectionEnumRegister_MaterialBlendMode_129f83b8)
+    ME_REFLECTION_ENUM_VALUE(Opaque, 0)
+    ME_REFLECTION_ENUM_VALUE(Masked, minEngine::MaterialBlendMode::Masked)
+    ME_REFLECTION_ENUM_VALUE(Translucent, minEngine::MaterialBlendMode::Translucent)
+ME_REFLECTION_ENUM_DEFINE_END(minEngine::MaterialBlendMode)
 
 ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::MaterialShaderLanguage, GReflectionEnumRegister_MaterialShaderLanguage_52cf3e4c)
     ME_REFLECTION_ENUM_VALUE(GLSL, 0)

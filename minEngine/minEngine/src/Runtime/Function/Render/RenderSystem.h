@@ -28,6 +28,7 @@ namespace minEngine
         void SubmitSceneDraw(const SceneDrawDesc& desc);
 
         void SetPresentPassEnabled(bool enabled);
+        void ReloadEngineIBLEnvironment(const std::string& engineDefaultAssetsRoot);
         RHI* GetRHI() const { return m_RHI.get(); }
 
     public:

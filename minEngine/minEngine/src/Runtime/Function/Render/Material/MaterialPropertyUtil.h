@@ -21,4 +21,6 @@ namespace minEngine
     bool MaterialPropertyEvaluatesInStage(MaterialProperty property, ShaderStage stage);
 
     bool GetMaterialPropertyInputDescription(MaterialProperty property, MaterialPropertyInputDescription& outDescription);
+
+    bool TryGetMaterialPropertyFromInputName(const char* inputName, MaterialProperty& outProperty);
 }

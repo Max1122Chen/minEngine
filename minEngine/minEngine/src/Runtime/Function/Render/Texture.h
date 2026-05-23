@@ -59,6 +59,8 @@ namespace minEngine
         TextureFiltering m_Filtering {TextureFiltering::Linear};
     };
 
+    class TextureCubeLoader;
+
     class TextureCube
     {
     public:
@@ -72,6 +74,8 @@ namespace minEngine
         TextureFiltering GetFiltering() const { return m_Filtering; }
 
     protected:
+        friend class TextureCubeLoader;
+
         std::shared_ptr<RHITextureCube> m_RHITexture;
         uint32_t m_Size; // Cube maps are square, so we can just store one dimension
         uint32_t m_Channels;

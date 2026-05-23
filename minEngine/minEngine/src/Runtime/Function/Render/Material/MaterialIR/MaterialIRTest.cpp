@@ -9,15 +9,20 @@
 #include "../MaterialCompiler/MaterialCompiler.h"
 #include "../MaterialEdGraph.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "../MaterialCapability.h"
 #include "../MaterialPropertyUtil.h"
 #include "../MaterialValueType.h"
 #include "../../Material.h"
 #include "../MaterialTestGraph.h"
+#include "Render/OpenGL/OpenGLRHI.h"
+#include "Render/OpenGL/OpenGLTexture.h"
 #include "Render/Shader.h"
+#include "Render/TextureCubeLoader.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <string_view>
@@ -352,11 +357,10 @@ namespace minEngine
 
             bool passed = true;
 
-            passed = AssertTrue(result.ParameterLayout.Parameters.size() == 2, "parameter layout entry count")
+            passed = AssertTrue(result.ParameterLayout.Parameters.size() == 1, "unlit parameter layout entry count")
                 && passed;
 
             bool foundTextureLayout = false;
-            bool foundScalarLayout = false;
             for (const MaterialShaderParameterDesc& parameterDesc : result.ParameterLayout.Parameters)
             {
                 if (parameterDesc.Type == MaterialShaderParameterType::Texture2D
@@ -365,32 +369,31 @@ namespace minEngine
                 {
                     foundTextureLayout = true;
                 }
-
-                if (parameterDesc.Type == MaterialShaderParameterType::Scalar
-                    && parameterDesc.SlotIndex == 0
-                    && parameterDesc.ShaderSymbolName == "u_ScalarParam0")
-                {
-                    foundScalarLayout = true;
-                }
             }
 
             passed = AssertTrue(foundTextureLayout, "layout u_Texture0") && passed;
-            passed = AssertTrue(foundScalarLayout, "layout u_ScalarParam0") && passed;
 
             passed = AssertAllContains(result.IRDump, {
                 { "; minEngine Material IR dump", "IR header" },
                 { "SetMaterialOutput \"Albedo\"", "IR Albedo output" },
                 { "ExternalInput", "IR texcoord input" },
                 { "TextureRead", "IR texture sample" },
-                { "UniformParameter", "IR scalar uniform" },
                 { "Multiply", "IR multiply node" },
             }) && passed;
 
             passed = AssertAllContains(result.Stages[Stage_Fragment].Body, {
                 { "FragmentMaterialInputs.Albedo =", "fragment body Albedo assign" },
-                { "FragmentMaterialInputs.Metallic = u_ScalarParam0", "fragment body Metallic assign" },
                 { "texture(u_Texture0, MaterialParameters.TexCoords[0])", "UE-style texcoord access" },
             }) && passed;
+
+            passed = AssertTrue(
+                result.Stages[Stage_Fragment].Body.find("FragmentMaterialInputs.Normal") == std::string::npos,
+                "unlit body must not assign Normal")
+                && passed;
+            passed = AssertTrue(
+                result.Stages[Stage_Fragment].Body.find("FragmentMaterialInputs.Metallic") == std::string::npos,
+                "unlit body must not assign Metallic")
+                && passed;
 
             passed = AssertAllContains(result.FullVertexShader, {
                 { "layout (std140) uniform PerFrameData", "vertex PerFrameData UBO" },
@@ -441,9 +444,9 @@ namespace minEngine
 
             passed = AssertTrue(CountOccurrences(result.Stages[Stage_Fragment].Body, "FragmentMaterialInputs.Albedo =") == 1, "single Albedo assign")
                 && passed;
-            passed = AssertTrue(CountOccurrences(result.Stages[Stage_Fragment].Body, "FragmentMaterialInputs.Metallic =") == 1, "single Metallic assign")
-                && passed;
-            passed = AssertTrue(CountOccurrences(result.Stages[Stage_Fragment].Body, "FragmentMaterialInputs.Roughness =") == 1, "single Roughness assign")
+            passed = AssertTrue(
+                result.FullFragmentShader.find("float Metallic") == std::string::npos,
+                "unlit struct must not declare Metallic")
                 && passed;
 
             if (!passed)
@@ -469,6 +472,644 @@ namespace minEngine
                 "MaterialIR smoke PASSED.\n"
                 "Graph: Albedo = TextureSample * tint(0.2,0.8,0.2), Metallic = 0.3.\n"
                 "Unlit: FragColor = Albedo + Emissive. If texture=1 at UV0: rgb = (0.2, 0.8, 0.2).");
+            return true;
+        }
+
+        bool VerifyConstant3ToNormalBlinnPhong(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& constant3Node = graph.AddNode<MaterialGraphNodeDef_Constant3>();
+            MaterialGraphNodeDef_Constant3* constant3 =
+                static_cast<MaterialGraphNodeDef_Constant3*>(constant3Node.GetNodeDef());
+            constant3->R = 0.0f;
+            constant3->G = 1.0f;
+            constant3->B = 0.0f;
+
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+            const MaterialShadingModel shadingModel = MaterialShadingModel::BlinnPhong;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            if (!graph.ConnectToMaterialProperty(
+                    constant3Node,
+                    0,
+                    outputNode,
+                    MP_Normal,
+                    shadingModel,
+                    blendMode))
+            {
+                ME_CORE_ERROR("MaterialIR Constant3→Normal: failed to connect Normal pin.");
+                return false;
+            }
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR Constant3→Normal diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            bool passed = AssertAllContains(compiled.FullFragmentShader, {
+                { "BuildWorldNormalFromTangentSpace", "Constant3→Normal uses TBN" },
+            });
+            passed = AssertAllContains(compiled.Stages[Stage_Fragment].Body, {
+                { "FragmentMaterialInputs.Normal =", "Constant3→Normal body assign" },
+                { "vec3(", "Constant3 vector literal" },
+            }) && passed;
+            passed = AssertTrue(
+                compiled.Stages[Stage_Fragment].Body.find("1.000000") != std::string::npos
+                    || compiled.Stages[Stage_Fragment].Body.find("1.0") != std::string::npos,
+                "Constant3 green channel in Normal")
+                && passed;
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR Constant3→Normal compile content check FAILED.");
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR Constant3→Normal GPU compile FAILED.");
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR Constant3→Normal BlinnPhong: compile + GPU link PASSED.");
+            return true;
+        }
+
+        bool VerifyIfThenElseAlbedoBlinnPhong(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& conditionNode = graph.AddNode<MaterialGraphNodeDef_ScalarParameter>();
+            MaterialGraphNodeDef_ScalarParameter* conditionScalar =
+                static_cast<MaterialGraphNodeDef_ScalarParameter*>(conditionNode.GetNodeDef());
+            conditionScalar->ParameterName = "BranchCondition";
+            conditionScalar->UniformSlotIndex = 0;
+            conditionScalar->DefaultValue = 1.0f;
+
+            MaterialEdGraphNode& trueColorNode = graph.AddNode<MaterialGraphNodeDef_Constant3>();
+            MaterialGraphNodeDef_Constant3* trueColor =
+                static_cast<MaterialGraphNodeDef_Constant3*>(trueColorNode.GetNodeDef());
+            trueColor->R = 1.0f;
+            trueColor->G = 0.0f;
+            trueColor->B = 0.0f;
+
+            MaterialEdGraphNode& falseColorNode = graph.AddNode<MaterialGraphNodeDef_Constant3>();
+            MaterialGraphNodeDef_Constant3* falseColor =
+                static_cast<MaterialGraphNodeDef_Constant3*>(falseColorNode.GetNodeDef());
+            falseColor->R = 0.0f;
+            falseColor->G = 1.0f;
+            falseColor->B = 0.0f;
+
+            MaterialEdGraphNode& branchNode = graph.AddNode<MaterialGraphNodeDef_IfThenElse>();
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+
+            const MaterialShadingModel shadingModel = MaterialShadingModel::BlinnPhong;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            graph.ConnectPins(conditionNode, 0, branchNode, 0, shadingModel, blendMode);
+            graph.ConnectPins(trueColorNode, 0, branchNode, 1, shadingModel, blendMode);
+            graph.ConnectPins(falseColorNode, 0, branchNode, 2, shadingModel, blendMode);
+            if (!graph.ConnectToMaterialProperty(branchNode, 0, outputNode, MP_Albedo, shadingModel, blendMode))
+            {
+                ME_CORE_ERROR("MaterialIR IfThenElse: failed to connect Albedo.");
+                return false;
+            }
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR IfThenElse diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            bool passed = AssertAllContains(compiled.Stages[Stage_Fragment].Body, {
+                { "if (", "IfThenElse emits dynamic branch in GLSL" },
+                { "FragmentMaterialInputs.Albedo =", "branch drives Albedo" },
+                { "u_ScalarParam0", "branch condition uses scalar uniform" },
+            });
+            passed = AssertAllContains(compiled.IRDump, {
+                { "Branch", "IfThenElse lowers to MIR Branch" },
+            }) && passed;
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR IfThenElse content check FAILED.");
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR IfThenElse GPU compile FAILED.");
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR IfThenElse→Albedo BlinnPhong: compile + GPU link PASSED.");
+            return true;
+        }
+
+        bool VerifyTextureSampleSharedByTwoOutputs(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            graph.AddNode<MaterialGraphNodeDef_TextureCoordinate>();
+            MaterialEdGraphNode& texObject = graph.AddNode<MaterialGraphNodeDef_TextureObject>();
+            MaterialEdGraphNode& texSample = graph.AddNode<MaterialGraphNodeDef_TextureSample>();
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+
+            MaterialEdGraphNode& texCoord = *graph.m_Nodes[0];
+            const MaterialShadingModel shadingModel = MaterialShadingModel::BlinnPhong;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            graph.ConnectPins(texObject, 0, texSample, 0, shadingModel, blendMode);
+            graph.ConnectPins(texCoord, 0, texSample, 1, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(texSample, 1, outputNode, MP_Albedo, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(texSample, 1, outputNode, MP_Emissive, shadingModel, blendMode);
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR texture multi-use diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            const int textureCallCount = CountOccurrences(compiled.Stages[Stage_Fragment].Body, "texture(");
+            bool passed = AssertTrue(textureCallCount == 1, "single texture() for dual property use")
+                && AssertAllContains(compiled.Stages[Stage_Fragment].Body, {
+                    { "FragmentMaterialInputs.Albedo =", "shared sample -> Albedo" },
+                    { "FragmentMaterialInputs.Emissive =", "shared sample -> Emissive" },
+                });
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR texture multi-use content check FAILED.");
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                ME_CORE_ERROR("MaterialIR texture multi-use GPU compile FAILED.");
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR TextureSample dual-output: compile + GPU link PASSED.");
+            return true;
+        }
+
+        bool VerifyDivideByZeroPoisonDiagnostic(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& numerator = graph.AddNode<MaterialGraphNodeDef_Constant>();
+            static_cast<MaterialGraphNodeDef_Constant*>(numerator.GetNodeDef())->Value = 1.0f;
+            MaterialEdGraphNode& denominator = graph.AddNode<MaterialGraphNodeDef_Constant>();
+            static_cast<MaterialGraphNodeDef_Constant*>(denominator.GetNodeDef())->Value = 0.0f;
+            MaterialEdGraphNode& divideNode = graph.AddNode<MaterialGraphNodeDef_Divide>();
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+
+            const MaterialShadingModel shadingModel = MaterialShadingModel::Unlit;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            graph.ConnectPins(numerator, 0, divideNode, 0, shadingModel, blendMode);
+            graph.ConnectPins(denominator, 0, divideNode, 1, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(divideNode, 0, outputNode, MP_Albedo, shadingModel, blendMode);
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (compiled.Succeeded)
+            {
+                ME_CORE_ERROR("MaterialIR divide-by-zero: expected compile failure.");
+                return false;
+            }
+
+            bool foundDiagnostic = false;
+            for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+            {
+                if (diagnostic.Message.find("Divide by zero") != std::string::npos
+                    || diagnostic.Message.find("Invalid value for material property") != std::string::npos)
+                {
+                    foundDiagnostic = true;
+                    break;
+                }
+            }
+
+            if (!AssertTrue(foundDiagnostic, "divide-by-zero or poison property diagnostic"))
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR divide-by-zero diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR divide-by-zero poison diagnostic PASSED.");
+            return true;
+        }
+
+        bool VerifyFragmentStructMatchesCapability(
+            const MaterialCompileResult& compiled,
+            MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode)
+        {
+            const std::vector<MaterialProperty> emitted =
+                MaterialCapabilityUtil::GetFragmentPropertiesEmittedAtCompile(shadingModel, blendMode);
+
+            bool passed = true;
+            for (MaterialProperty property : emitted)
+            {
+                const std::string fieldName = GetMaterialPropertyName(property);
+                const MIRPrimitiveType* propertyType = GetMaterialPropertyType(property);
+                std::string glslType = propertyType != nullptr && propertyType->IsVector()
+                    ? "vec" + std::to_string(propertyType->NumRows) + " "
+                    : "float ";
+                glslType += fieldName;
+
+                passed = AssertTrue(
+                    compiled.FullFragmentShader.find(glslType) != std::string::npos,
+                    ("fragment struct field " + fieldName).c_str())
+                    && passed;
+            }
+
+            if (shadingModel == MaterialShadingModel::Unlit)
+            {
+                passed = AssertTrue(
+                    compiled.FullFragmentShader.find("float Metallic") == std::string::npos,
+                    "unlit struct must not declare Metallic")
+                    && passed;
+                passed = AssertTrue(
+                    compiled.FullFragmentShader.find("vec3 Normal") == std::string::npos,
+                    "unlit struct must not declare Normal")
+                    && passed;
+                passed = AssertTrue(
+                    compiled.FullFragmentShader.find("float AO") == std::string::npos,
+                    "unlit struct must not declare AO")
+                    && passed;
+            }
+            else if (shadingModel == MaterialShadingModel::BlinnPhong)
+            {
+                passed = AssertAllContains(compiled.FullFragmentShader, {
+                    { "vec3 Normal", "BlinnPhong struct Normal" },
+                    { "float AO", "BlinnPhong struct AO" },
+                    { "float Metallic", "BlinnPhong struct Metallic" },
+                    { "float Roughness", "BlinnPhong struct Roughness" },
+                }) && passed;
+            }
+
+            if (passed)
+            {
+                ME_CORE_INFO(
+                    "MaterialIR capability struct check PASSED (shadingModel={}, emitted fields={}).",
+                    static_cast<int>(shadingModel),
+                    emitted.size());
+            }
+
+            return passed;
+        }
+
+        bool VerifyTranslucentUnlitCompile(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& opacityConstant = graph.AddNode<MaterialGraphNodeDef_Constant>();
+            static_cast<MaterialGraphNodeDef_Constant*>(opacityConstant.GetNodeDef())->Value = 0.5f;
+            MaterialEdGraphNode& albedoConstant = graph.AddNode<MaterialGraphNodeDef_Constant3>();
+            MaterialGraphNodeDef_Constant3* albedo =
+                static_cast<MaterialGraphNodeDef_Constant3*>(albedoConstant.GetNodeDef());
+            albedo->R = 1.0f;
+            albedo->G = 0.0f;
+            albedo->B = 0.0f;
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+
+            const MaterialShadingModel shadingModel = MaterialShadingModel::Unlit;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Translucent;
+
+            graph.ConnectToMaterialProperty(
+                albedoConstant, 0, outputNode, MP_Albedo, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(
+                opacityConstant, 0, outputNode, MP_Opacity, shadingModel, blendMode);
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR Translucent diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            bool passed = AssertTrue(
+                compiled.FullFragmentShader.find("discard") == std::string::npos,
+                "Translucent fragment must not contain discard")
+                && AssertAllContains(compiled.FullFragmentShader, {
+                    { "FragmentMaterialInputs.Opacity", "Translucent FragColor alpha" },
+                    { "FragColor = vec4(", "Translucent FragColor assignment" },
+                })
+                && VerifyFragmentStructMatchesCapability(compiled, shadingModel, blendMode);
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR Translucent Unlit compile content check FAILED.");
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR Translucent Unlit GPU compile FAILED.");
+                return false;
+            }
+
+            Material materialNoOpacity;
+            materialNoOpacity.m_Graph = NewObject<MaterialEdGraph>("", &materialNoOpacity);
+            MaterialEdGraph& graphNoOpacity = *materialNoOpacity.m_Graph;
+            MaterialEdGraphNode& outputOnly = graphNoOpacity.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+            const MaterialCompileResult warnCompiled = MaterialCompiler::CompileForDiagnostics(
+                graphNoOpacity,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!warnCompiled.Succeeded)
+            {
+                ME_CORE_ERROR("MaterialIR Translucent empty graph: expected successful compile.");
+                return false;
+            }
+
+            bool foundOpacityWarning = false;
+            for (const MaterialCompileDiagnostic& diagnostic : warnCompiled.Diagnostics)
+            {
+                if (diagnostic.Message.find("Translucent material: Opacity is not connected") != std::string::npos)
+                {
+                    foundOpacityWarning = true;
+                    break;
+                }
+            }
+
+            if (!AssertTrue(foundOpacityWarning, "Translucent unconnected Opacity compile warning"))
+            {
+                (void)outputOnly;
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR Translucent Unlit: compile + GPU link + opacity warning PASSED.");
+            return true;
+        }
+
+        bool VerifyTextureCubeRHICreation()
+        {
+            ScopedShaderCompileGlContext glContext;
+            if (!glContext.IsReady())
+            {
+                ME_CORE_ERROR("MaterialIR TextureCube: failed to create OpenGL context.");
+                return false;
+            }
+
+            const std::array<uint8_t, 4> faceColors[6] = {
+                std::array<uint8_t, 4>{ 255, 32, 32, 255 },
+                std::array<uint8_t, 4>{ 32, 255, 32, 255 },
+                std::array<uint8_t, 4>{ 32, 64, 255, 255 },
+                std::array<uint8_t, 4>{ 255, 220, 32, 255 },
+                std::array<uint8_t, 4>{ 220, 32, 255, 255 },
+                std::array<uint8_t, 4>{ 32, 255, 220, 255 },
+            };
+
+            OpenGLRHI rhi;
+            std::string error;
+            std::shared_ptr<TextureCube> cube =
+                TextureCubeLoader::CreateSolidColorCube(rhi, 4, faceColors, &error);
+            if (!cube || cube->GetRHITexture() == nullptr || cube->GetRHITexture()->GetID() == 0)
+            {
+                ME_CORE_ERROR("MaterialIR TextureCube: CreateSolidColorCube failed ({})", error);
+                return false;
+            }
+
+            const uint32_t textureId = cube->GetRHITexture()->GetID();
+            if (!AssertTrue(textureId != 0, "cubemap GL texture id non-zero"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(cube->GetSize() == 4, "cubemap face size"))
+            {
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR TextureCube: RHI upload PASSED (id={}).", textureId);
+            return true;
+        }
+
+        bool VerifyPBRWorkflow(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& texCoord = graph.AddNode<MaterialGraphNodeDef_TextureCoordinate>();
+            MaterialEdGraphNode& albedoTex = graph.AddNode<MaterialGraphNodeDef_TextureObject>();
+            static_cast<MaterialGraphNodeDef_TextureObject*>(albedoTex.GetNodeDef())->TextureSlotIndex = 0;
+            MaterialEdGraphNode& albedoSample = graph.AddNode<MaterialGraphNodeDef_TextureSample>();
+            MaterialEdGraphNode& roughTex = graph.AddNode<MaterialGraphNodeDef_TextureObject>();
+            static_cast<MaterialGraphNodeDef_TextureObject*>(roughTex.GetNodeDef())->TextureSlotIndex = 1;
+            MaterialEdGraphNode& roughSample = graph.AddNode<MaterialGraphNodeDef_TextureSample>();
+            MaterialEdGraphNode& metallicConst = graph.AddNode<MaterialGraphNodeDef_Constant>();
+            static_cast<MaterialGraphNodeDef_Constant*>(metallicConst.GetNodeDef())->Value = 0.0f;
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+
+            const MaterialShadingModel shadingModel = MaterialShadingModel::PBR;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            graph.ConnectPins(albedoTex, 0, albedoSample, 0, shadingModel, blendMode);
+            graph.ConnectPins(texCoord, 0, albedoSample, 1, shadingModel, blendMode);
+            graph.ConnectPins(roughTex, 0, roughSample, 0, shadingModel, blendMode);
+            graph.ConnectPins(texCoord, 0, roughSample, 1, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(
+                albedoSample, 1, outputNode, MP_Albedo, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(
+                roughSample, 2, outputNode, MP_Roughness, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(
+                metallicConst, 0, outputNode, MP_Metallic, shadingModel, blendMode);
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR PBR workflow diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            bool passed = AssertAllContains(compiled.FullFragmentShader, {
+                    { "MaterialPBRDistributionGGX", "PBR GGX distribution" },
+                    { "CalcDirLightPBR", "PBR directional light" },
+                    { "BuildWorldNormalFromTangentSpace", "PBR uses TBN" },
+                    { "FragmentMaterialInputs.Roughness", "PBR roughness input" },
+                    { "kMaterialPBRAmbientStrength", "PBR ambient scaled by AO" },
+                    { "u_Texture1", "roughness texture slot 1" },
+                    { "u_EnvIrradianceMap", "PBR IBL irradiance sampler" },
+                    { "u_EnvPrefilterMap", "PBR IBL prefilter sampler" },
+                    { "u_EnvBrdfLUT", "PBR IBL BRDF LUT sampler" },
+                })
+                && AssertTrue(
+                    compiled.FullFragmentShader.find("texture(u_Texture1") != std::string::npos,
+                    "PBR samples roughness texture");
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR PBR workflow compile content check FAILED.");
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR PBR workflow GPU compile FAILED.");
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR PBR workflow: compile + GPU link PASSED.");
+            return true;
+        }
+
+        bool VerifyNormalMapWorkflow(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& texCoord = graph.AddNode<MaterialGraphNodeDef_TextureCoordinate>();
+            MaterialEdGraphNode& albedoTex = graph.AddNode<MaterialGraphNodeDef_TextureObject>();
+            static_cast<MaterialGraphNodeDef_TextureObject*>(albedoTex.GetNodeDef())->TextureSlotIndex = 0;
+            MaterialEdGraphNode& albedoSample = graph.AddNode<MaterialGraphNodeDef_TextureSample>();
+            MaterialEdGraphNode& normalTex = graph.AddNode<MaterialGraphNodeDef_TextureObject>();
+            MaterialGraphNodeDef_TextureObject* normalTexDef =
+                static_cast<MaterialGraphNodeDef_TextureObject*>(normalTex.GetNodeDef());
+            normalTexDef->ParameterName = "NormalMap";
+            normalTexDef->TextureSlotIndex = 1;
+            MaterialEdGraphNode& normalSample = graph.AddNode<MaterialGraphNodeDef_TextureSample>();
+            MaterialEdGraphNode& normalUnpack = graph.AddNode<MaterialGraphNodeDef_NormalUnpack>();
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+
+            const MaterialShadingModel shadingModel = MaterialShadingModel::BlinnPhong;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            graph.ConnectPins(albedoTex, 0, albedoSample, 0, shadingModel, blendMode);
+            graph.ConnectPins(texCoord, 0, albedoSample, 1, shadingModel, blendMode);
+            graph.ConnectPins(normalTex, 0, normalSample, 0, shadingModel, blendMode);
+            graph.ConnectPins(texCoord, 0, normalSample, 1, shadingModel, blendMode);
+            graph.ConnectPins(normalSample, 1, normalUnpack, 0, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(
+                albedoSample, 1, outputNode, MP_Albedo, shadingModel, blendMode);
+            graph.ConnectToMaterialProperty(
+                normalUnpack, 0, outputNode, MP_Normal, shadingModel, blendMode);
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_CORE_ERROR("MaterialIR NormalMap workflow diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            const std::string& body = compiled.Stages[Stage_Fragment].Body;
+            bool passed = AssertAllContains(compiled.FullFragmentShader, {
+                    { "BuildWorldNormalFromTangentSpace", "NormalMap uses TBN" },
+                    { "u_Texture1", "NormalMap texture slot 1" },
+                })
+                && AssertAllContains(body, {
+                    { "FragmentMaterialInputs.Normal =", "Normal unpack feeds MP_Normal" },
+                    { "2.000000", "NormalUnpack scale * 2" },
+                    { "1.000000", "NormalUnpack bias - 1" },
+                })
+                && AssertTrue(
+                    body.find("texture(u_Texture1") != std::string::npos,
+                    "NormalMap samples u_Texture1");
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR NormalMap workflow compile content check FAILED.");
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                LogCompiledShaders(compiled);
+                ME_CORE_ERROR("MaterialIR NormalMap workflow GPU compile FAILED.");
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR NormalMap workflow: compile + GPU link PASSED.");
+            return true;
+        }
+
+        bool VerifyGoldenMaterialIRSmokeMemtl()
+        {
+            std::string diskError;
+            if (!VerifyGoldenMaterialIRSmokeMemtlOnDisk(&diskError))
+            {
+                ME_CORE_ERROR("MaterialIR golden asset on-disk check failed: {}", diskError);
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR golden asset on-disk fields PASSED (m_ShadingModel=1, m_BlendMode=0).");
             return true;
         }
 
@@ -519,9 +1160,24 @@ namespace minEngine
 
         MaterialIRTestObjectManagerScope objectManagerScope;
 
+        if (!VerifyGoldenMaterialIRSmokeMemtl())
+        {
+            return false;
+        }
+
         Material smokeMaterial;
         PopulateSmokeMaterialGraph(smokeMaterial);
-        smokeMaterial.m_ShadingModel = MaterialShadingModel::Unlit;
+
+        bool passed = AssertTrue(
+            smokeMaterial.m_ShadingModel == MaterialShadingModel::BlinnPhong,
+            "in-memory smoke m_ShadingModel BlinnPhong")
+            && AssertTrue(
+                smokeMaterial.m_BlendMode == MaterialBlendMode::Opaque,
+                "in-memory smoke m_BlendMode Opaque");
+        if (!passed)
+        {
+            return false;
+        }
 
         const MaterialGraphNodeDef_MaterialOutput* outputNode =
             smokeMaterial.m_Graph ? FindMaterialOutputNode(*smokeMaterial.m_Graph) : nullptr;
@@ -536,7 +1192,103 @@ namespace minEngine
             return false;
         }
 
-        if (!MaterialValueTypeUtil::ValidateGraphPinConnections(*smokeMaterial.m_Graph, nullptr))
+        MaterialCompileContext ctx;
+        if (!g_MaterialIRTestEngineDefaultAssetsRoot.empty())
+        {
+            ctx.EngineDefaultAssetsRootOverride = g_MaterialIRTestEngineDefaultAssetsRoot;
+        }
+
+        const MaterialCompileResult blinnPhongCompiled = MaterialCompiler::CompileForDiagnostics(
+            *smokeMaterial.m_Graph,
+            MaterialShadingModel::BlinnPhong,
+            MaterialBlendMode::Opaque,
+            ctx);
+        if (!blinnPhongCompiled.Succeeded)
+        {
+            for (const MaterialCompileDiagnostic& diagnostic : blinnPhongCompiled.Diagnostics)
+            {
+                ME_CORE_ERROR("MaterialIR BlinnPhong diagnostic: {}", diagnostic.Message);
+            }
+            return false;
+        }
+
+        if (!AssertAllContains(blinnPhongCompiled.FullFragmentShader, {
+                { "CalcDirLightGraph", "Phong directional light (graph terminology)" },
+                { "MaterialPhongShininessFromRoughness", "Phong shininess from roughness" },
+                { "MaterialSpecularFromMetallic", "Metallic maps to legacy specular" },
+                { "BuildWorldNormalFromTangentSpace", "BlinnPhong TBN world normal" },
+                { "FragmentMaterialInputs.Normal", "BlinnPhong uses material Normal input" },
+                { "FragmentMaterialInputs.AO", "BlinnPhong uses material AO input" },
+                { "dirLightResult + pointLightResult + spotLightResult", "Phong per-light accumulation" },
+                { "u_DirLightShadowMap", "Phong fragment directional shadow sampler" },
+            })
+            || !AssertAllContains(blinnPhongCompiled.FullVertexShader, {
+                { "layout(location = 3) in vec4 a_Tangent", "BlinnPhong vertex tangent attribute" },
+                { "v_WorldTangent", "world tangent varying" },
+                { "v_TangentSign", "tangent handedness varying" },
+            })
+            || !AssertAllContains(blinnPhongCompiled.Stages[Stage_Fragment].Body, {
+                { "FragmentMaterialInputs.Normal = vec3(0.000000, 0.000000, 1.000000)", "default TSN +Z" },
+                { "FragmentMaterialInputs.AO = 1.000000", "default AO" },
+                { "FragmentMaterialInputs.Metallic = u_ScalarParam0", "BlinnPhong metallic scalar" },
+            })
+            || !VerifySmokeGpuCompile(blinnPhongCompiled))
+        {
+            LogCompiledShaders(blinnPhongCompiled);
+            ME_CORE_ERROR("MaterialIR BlinnPhong smoke FAILED during compile or GPU link.");
+            return false;
+        }
+
+        ME_CORE_INFO("MaterialIR BlinnPhong smoke: GPU vertex/fragment compile + link PASSED.");
+
+        if (!VerifyConstant3ToNormalBlinnPhong(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyIfThenElseAlbedoBlinnPhong(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyTextureSampleSharedByTwoOutputs(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyDivideByZeroPoisonDiagnostic(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyNormalMapWorkflow(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyTextureCubeRHICreation())
+        {
+            return false;
+        }
+
+        if (!VerifyPBRWorkflow(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyFragmentStructMatchesCapability(blinnPhongCompiled, MaterialShadingModel::BlinnPhong, MaterialBlendMode::Opaque))
+        {
+            return false;
+        }
+
+        smokeMaterial.m_ShadingModel = MaterialShadingModel::Unlit;
+        MaterialCapabilityUtil::PruneInvalidMaterialOutputLinks(smokeMaterial);
+
+        if (!MaterialValueTypeUtil::ValidateGraphPinConnections(
+                *smokeMaterial.m_Graph,
+                smokeMaterial.m_ShadingModel,
+                smokeMaterial.m_BlendMode,
+                nullptr))
         {
             ME_CORE_ERROR("MaterialIR test: smoke graph pin type validation failed.");
             return false;
@@ -565,6 +1317,8 @@ namespace minEngine
                 0,
                 *outputEdNode,
                 kAlbedoInputIndex,
+                smokeMaterial.m_ShadingModel,
+                smokeMaterial.m_BlendMode,
                 nullptr))
         {
             ME_CORE_ERROR("MaterialIR test: float output must not connect to Albedo (float3) input.");
@@ -573,48 +1327,27 @@ namespace minEngine
 
         ME_CORE_INFO("MaterialIR pin type connection checks PASSED.");
 
-        MaterialCompileContext ctx;
-        if (!g_MaterialIRTestEngineDefaultAssetsRoot.empty())
-        {
-            ctx.EngineDefaultAssetsRootOverride = g_MaterialIRTestEngineDefaultAssetsRoot;
-        }
-
-        const MaterialCompileResult compiled =
-            MaterialCompiler::CompileForDiagnostics(*smokeMaterial.m_Graph, smokeMaterial.m_ShadingModel, ctx);
+        const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+            *smokeMaterial.m_Graph,
+            smokeMaterial.m_ShadingModel,
+            smokeMaterial.m_BlendMode,
+            ctx);
         if (!VerifySmokeCompileResult(compiled))
         {
             return false;
         }
 
-        const MaterialCompileResult blinnPhongCompiled =
-            MaterialCompiler::CompileForDiagnostics(*smokeMaterial.m_Graph, MaterialShadingModel::BlinnPhong, ctx);
-        if (!blinnPhongCompiled.Succeeded)
+        if (!VerifyFragmentStructMatchesCapability(compiled, MaterialShadingModel::Unlit, MaterialBlendMode::Opaque))
         {
-            for (const MaterialCompileDiagnostic& diagnostic : blinnPhongCompiled.Diagnostics)
-            {
-                ME_CORE_ERROR("MaterialIR BlinnPhong diagnostic: {}", diagnostic.Message);
-            }
             return false;
         }
 
-        if (!AssertAllContains(blinnPhongCompiled.FullFragmentShader, {
-                { "CalcDirLightGraph", "Phong directional light (graph terminology)" },
-                { "kMaterialPhongShininess", "legacy fixed shininess 32" },
-                { "MaterialSpecularFromMetallic", "Metallic maps to legacy specular" },
-                { "dirLightResult + pointLightResult + spotLightResult", "Phong per-light accumulation" },
-                { "u_DirLightShadowMap", "Phong fragment directional shadow sampler" },
-            })
-            || !VerifySmokeGpuCompile(blinnPhongCompiled))
+        if (!VerifyTranslucentUnlitCompile(ctx))
         {
-            LogCompiledShaders(blinnPhongCompiled);
-            ME_CORE_ERROR("MaterialIR BlinnPhong smoke FAILED during compile or GPU link.");
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR BlinnPhong smoke: GPU vertex/fragment compile + link PASSED.");
-
-        ME_CORE_INFO("MaterialIR smoke tests PASSED (graph binding + compile diagnostics).");
-        ME_CORE_INFO("Material asset tests were removed; redesign asset/scene integration tests separately.");
+        ME_CORE_INFO("MaterialIR smoke tests PASSED (graph binding + compile diagnostics + golden asset).");
         return true;
     }
 }

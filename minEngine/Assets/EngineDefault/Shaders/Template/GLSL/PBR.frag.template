@@ -1,0 +1,64 @@
+#version 330 core
+
+@ME_INSERT:FRAGMENT_IN_TEXCOORDS@
+@ME_INSERT:FRAGMENT_LIGHTING_VARYINGS@
+
+out vec4 FragColor;
+
+@ME_INSERT:FRAGMENT_PREAMBLE@
+@ME_INSERT:FRAGMENT_SCENE_LIGHTING@
+@ME_INSERT:FRAGMENT_MATERIAL_INPUTS_STRUCT@
+@ME_INSERT:FRAGMENT_MATERIAL_PARAMETERS_STRUCT@
+
+void main()
+{
+@ME_INSERT:FRAGMENT_TEXCOORD_SETUP@
+@ME_INSERT:FRAGMENT_STAGE_BODY@
+@ME_INSERT:FRAGMENT_MASKED_CLIP@
+@ME_INSERT:FRAGMENT_WORLD_NORMAL@
+    vec3 viewDir = normalize(CameraPos.xyz - v_WorldFragPos);
+
+    vec3 dirLightResult = CalcDirLightPBR(
+        DirectionalLight,
+        norm,
+        v_WorldFragPos,
+        viewDir,
+        v_FragPosViewSpace,
+        FragmentMaterialInputs.Albedo,
+        FragmentMaterialInputs.Metallic,
+        FragmentMaterialInputs.Roughness);
+
+    vec3 pointLightResult = vec3(0.0);
+    for (uint i = 0u; i < PointLightsCount && i < 16u; ++i)
+    {
+        pointLightResult += CalcPointLightPBR(
+            PointLights[i],
+            norm,
+            v_WorldFragPos,
+            viewDir,
+            int(i),
+            FragmentMaterialInputs.Albedo,
+            FragmentMaterialInputs.Metallic,
+            FragmentMaterialInputs.Roughness);
+    }
+
+    vec3 spotLightResult = vec3(0.0);
+    for (uint i = 0u; i < SpotLightsCount && i < 16u; ++i)
+    {
+        spotLightResult += CalcSpotLightPBR(
+            SpotLights[i],
+            norm,
+            v_WorldFragPos,
+            viewDir,
+            int(i),
+            FragmentMaterialInputs.Albedo,
+            FragmentMaterialInputs.Metallic,
+            FragmentMaterialInputs.Roughness);
+    }
+
+    vec3 ambient = vec3(kMaterialPBRAmbientStrength) * FragmentMaterialInputs.Albedo
+        * FragmentMaterialInputs.AO;
+    vec3 direct = dirLightResult + pointLightResult + spotLightResult;
+    vec3 result = ambient + direct;
+    FragColor = vec4(result + FragmentMaterialInputs.Emissive, FragmentMaterialInputs.Opacity);
+}

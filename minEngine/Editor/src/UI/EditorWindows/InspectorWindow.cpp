@@ -298,9 +298,22 @@ namespace minEngine
     bool InspectorWindow::DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty &primitiveProperty, void *propertyPtr)
     {
         std::string shortTypeName = GetShortTypeName(primitiveProperty.primitiveTypeName);
-        if(shortTypeName == "int")
+        if (shortTypeName == "int"
+            || shortTypeName == "int32"
+            || shortTypeName == "int16"
+            || shortTypeName == "long"
+            || shortTypeName == "int64")
         {
             return DrawIntProperty(primitiveProperty, propertyPtr);
+        }
+        else if (shortTypeName == "uint32")
+        {
+            if (ImGui::DragScalar("##Value", ImGuiDataType_U32, propertyPtr, 1.0f, nullptr, nullptr, "%u"))
+            {
+                m_Editor.MarkSceneDirty();
+                return true;
+            }
+            return false;
         }
         else if(shortTypeName == "float")
         {
@@ -314,7 +327,7 @@ namespace minEngine
         {
             return DrawBoolProperty(primitiveProperty, propertyPtr);
         }
-        else if(shortTypeName == "string")
+        else if (shortTypeName == "string" || shortTypeName == "std::string")
         {
             return DrawStringProperty(primitiveProperty, propertyPtr);
         }

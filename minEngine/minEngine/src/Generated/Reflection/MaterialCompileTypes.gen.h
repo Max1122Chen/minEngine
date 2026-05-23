@@ -5,6 +5,8 @@
 
 ME_REFLECTION_ENUM_DECLARE(minEngine::MaterialShadingModel, GReflectionEnumRegister_MaterialShadingModel_a65a5d4f)
 
+ME_REFLECTION_ENUM_DECLARE(minEngine::MaterialBlendMode, GReflectionEnumRegister_MaterialBlendMode_129f83b8)
+
 ME_REFLECTION_ENUM_DECLARE(minEngine::MaterialShaderLanguage, GReflectionEnumRegister_MaterialShaderLanguage_52cf3e4c)
 
 ME_REFLECTION_ENUM_DECLARE(minEngine::MaterialShaderParameterType, GReflectionEnumRegister_MaterialShaderParameterType_56cf370e)

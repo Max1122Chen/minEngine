@@ -113,14 +113,35 @@ namespace minEngine
             return changed;
         }
 
+        bool IsSignedIntegerTypeName(const std::string& shortTypeName)
+        {
+            return shortTypeName == "int"
+                || shortTypeName == "int32"
+                || shortTypeName == "int16"
+                || shortTypeName == "long"
+                || shortTypeName == "int64";
+        }
+
         bool DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
         {
             const std::string shortTypeName = GetShortTypeName(primitiveProperty.primitiveTypeName);
             ImGui::SetNextItemWidth(kFieldWidth);
 
-            if (shortTypeName == "int")
+            if (IsSignedIntegerTypeName(shortTypeName))
             {
                 return ImGui::DragInt("##Value", static_cast<int*>(propertyPtr), 1);
+            }
+
+            if (shortTypeName == "uint32")
+            {
+                return ImGui::DragScalar(
+                    "##Value",
+                    ImGuiDataType_U32,
+                    propertyPtr,
+                    1.0f,
+                    nullptr,
+                    nullptr,
+                    "%u");
             }
 
             if (shortTypeName == "float")
@@ -138,7 +159,7 @@ namespace minEngine
                 return ImGui::Checkbox("##Value", static_cast<bool*>(propertyPtr));
             }
 
-            if (shortTypeName == "string")
+            if (shortTypeName == "string" || shortTypeName == "std::string")
             {
                 std::string* stringValue = static_cast<std::string*>(propertyPtr);
                 char textBuffer[256] = {};

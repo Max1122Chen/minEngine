@@ -15,11 +15,13 @@ namespace minEngine
         static MaterialCompileResult CompileForDiagnostics(
             const MaterialEdGraph& graph,
             MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode = MaterialBlendMode::Opaque,
             const MaterialCompileContext& ctx = {});
 
     private:
         static MaterialCompileEnvironment MakePipelineSettings(
             MaterialShadingModel shadingModel,
+            MaterialBlendMode blendMode,
             const MaterialCompileContext& ctx);
 
         static MaterialCompileResult CompileGraphToResult(

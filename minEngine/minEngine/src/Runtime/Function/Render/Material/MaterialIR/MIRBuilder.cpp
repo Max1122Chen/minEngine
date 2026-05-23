@@ -1,12 +1,78 @@
 #include "MIRBuilder.h"
+#include "../MaterialCapability.h"
 #include "../MaterialEdGraph.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "../MaterialPropertyUtil.h"
 #include "MaterialIR.h"
 #include "MIREmitter.h"
 
+#include <functional>
+#include <unordered_set>
+
 namespace minEngine
 {
+    namespace
+    {
+        bool IsNonFoldableForGLSL(const MIRInstruction& instr)
+        {
+            if (instr.Kind == VK_TextureRead)
+            {
+                return true;
+            }
+
+            if (instr.Kind == VK_Branch)
+            {
+                const MIRBranch& branch = static_cast<const MIRBranch&>(instr);
+                return branch.TrueBlock[Stage_Fragment].FirstInstruction != nullptr
+                    || branch.FalseBlock[Stage_Fragment].FirstInstruction != nullptr;
+            }
+
+            return false;
+        }
+
+        bool IsInstructionInLinkedChain(
+            const MIRBlock& rootBlock,
+            ShaderStage stage,
+            const MIRInstruction* target,
+            std::unordered_set<const MIRBlock*>& visitedBlocks)
+        {
+            if (target == nullptr)
+            {
+                return false;
+            }
+
+            std::vector<const MIRBlock*> blockStack;
+            blockStack.push_back(&rootBlock);
+
+            while (!blockStack.empty())
+            {
+                const MIRBlock* block = blockStack.back();
+                blockStack.pop_back();
+                if (block == nullptr || !visitedBlocks.insert(block).second)
+                {
+                    continue;
+                }
+
+                for (MIRInstruction* instr = block->FirstInstruction; instr != nullptr; instr = instr->Next[stage])
+                {
+                    if (instr == target)
+                    {
+                        return true;
+                    }
+
+                    if (instr->Kind == VK_Branch)
+                    {
+                        const MIRBranch* branch = static_cast<const MIRBranch*>(instr);
+                        blockStack.push_back(&branch->TrueBlock[stage]);
+                        blockStack.push_back(&branch->FalseBlock[stage]);
+                    }
+                }
+            }
+
+            return false;
+        }
+    }
+
     MIRBuilder::MIRBuilder() = default;
 
     void MIRBuilder::AddRootNodeDef(MaterialGraphNodeDef* nodeDef)
@@ -30,11 +96,22 @@ namespace minEngine
         }
     }
 
+    bool MIRBuilder::ShouldEmitMaterialProperty(MaterialProperty property) const
+    {
+        return MaterialCapabilityUtil::IsPropertyEmittedAtCompile(property, m_ShadingModel, m_BlendMode);
+    }
+
     void MIRBuilder::Step_GenerateOutputInstructions()
     {
         for (int propertyIndex = 0; propertyIndex < MaterialShadingPropertyCount; ++propertyIndex)
         {
-            PrepareSingleMaterialAttribute(static_cast<MaterialProperty>(propertyIndex));
+            const MaterialProperty property = static_cast<MaterialProperty>(propertyIndex);
+            if (!ShouldEmitMaterialProperty(property))
+            {
+                continue;
+            }
+
+            PrepareSingleMaterialAttribute(property);
         }
 
         for (MaterialGraphNodeDef* rootDef : m_RootNodeDefs)
@@ -98,8 +175,17 @@ namespace minEngine
             value = m_Emitter->ConstantDefaultForProperty(property);
         }
 
+        if (value != nullptr && value->IsPoison())
+        {
+            std::string diagnostic = std::string("Invalid value for material property '")
+                + GetMaterialPropertyName(property)
+                + "'; using default.";
+            m_Emitter->m_Graph->AddDiagnostic(diagnostic);
+            value = m_Emitter->ConstantDefaultForProperty(property);
+        }
+
         output->Arg = value;
-        output->Type = value->Type;
+        output->Type = value != nullptr ? value->Type : nullptr;
     }
 
     void MIRBuilder::Step_FlowValuesIntoMaterialOutputs()
@@ -112,14 +198,42 @@ namespace minEngine
         for (int propertyIndex = 0; propertyIndex < MaterialShadingPropertyCount; ++propertyIndex)
         {
             const MaterialProperty property = static_cast<MaterialProperty>(propertyIndex);
-            FlowValueIntoMaterialOutput(property, FetchFlowValueForMaterialProperty(property));
+            if (!ShouldEmitMaterialProperty(property))
+            {
+                continue;
+            }
+
+            MIRValue* value = FetchFlowValueForMaterialProperty(property);
+            if (value == nullptr && property == MP_Normal)
+            {
+                if (m_ShadingModel == MaterialShadingModel::BlinnPhong
+                    || m_ShadingModel == MaterialShadingModel::PBR)
+                {
+                    value = m_Emitter->ConstantFloat3(0.0f, 0.0f, 1.0f);
+                }
+                else
+                {
+                    value = m_Emitter->ExternalInput(EI_WorldNormal);
+                }
+            }
+
+            FlowValueIntoMaterialOutput(property, value);
         }
     }
 
     void MIRBuilder::Step_BuildNodeDefsToIRGraph()
     {
+        int buildIterations = 0;
         while (!m_BuildContext.NodeDefStack.empty())
         {
+            if (++buildIterations > 4096)
+            {
+                if (m_Emitter != nullptr && m_Emitter->m_Graph != nullptr)
+                {
+                    m_Emitter->m_Graph->AddDiagnostic("MIR build exceeded iteration limit (possible cyclic graph).");
+                }
+                break;
+            }
             BuildTopNodeDef();
         }
     }
@@ -173,6 +287,16 @@ namespace minEngine
         m_Emitter->m_CurrentNodeDef->BuildIR(*m_Emitter);
     }
 
+    bool MIRBuilder::IsOutputConnected(int32_t outputIndex) const
+    {
+        if (m_Graph == nullptr || m_Emitter == nullptr || m_Emitter->m_CurrentNodeDef == nullptr || outputIndex < 0)
+        {
+            return false;
+        }
+
+        return m_Graph->IsNodeOutputConnected(*m_Emitter->m_CurrentNodeDef, outputIndex);
+    }
+
     void MIRBuilder::Step_AnalyzeIRGraph()
     {
         MIRGraph* graph = m_Emitter->m_Graph;
@@ -181,23 +305,85 @@ namespace minEngine
             return;
         }
 
+        // Count NumUsers only among instructions reachable from SetMaterialOutput roots
+        // (dead expression outputs must not inflate use counts — aligns with UE live MIR).
         for (int stageIndex = 0; stageIndex < NumStages; ++stageIndex)
         {
-            for (MIRValue* value : graph->GetValues())
+            const ShaderStage stage = static_cast<ShaderStage>(stageIndex);
+            std::unordered_set<const MIRInstruction*> reachable;
+            std::vector<const MIRInstruction*> stack;
+
+            for (SetMaterialOutput* output : graph->GetOutputs(stage))
             {
-                if (!value->IsInstructionValue())
+                if (output != nullptr)
+                {
+                    stack.push_back(output);
+                }
+            }
+
+            while (!stack.empty())
+            {
+                const MIRInstruction* instr = stack.back();
+                stack.pop_back();
+                if (instr == nullptr || !reachable.insert(instr).second)
                 {
                     continue;
                 }
 
-                MIRInstruction* instr = static_cast<MIRInstruction*>(value);
-                for (MIRValue* use : instr->GetUsesForStage(static_cast<ShaderStage>(stageIndex)))
+                for (MIRValue* use : instr->GetUsesForStage(stage))
                 {
-                    if (MIRInstruction* useInstr = AsInstruction(use))
+                    if (const MIRInstruction* useInstr = AsInstruction(use))
                     {
-                        useInstr->NumUsers[stageIndex] += 1;
+                        stack.push_back(useInstr);
                     }
                 }
+            }
+
+            for (const MIRInstruction* userInstr : reachable)
+            {
+                for (MIRValue* use : userInstr->GetUsesForStage(stage))
+                {
+                    if (MIRInstruction* defInstr = AsInstruction(use))
+                    {
+                        if (reachable.count(defInstr) > 0)
+                        {
+                            defInstr->NumUsers[stageIndex] += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void MIRBuilder::Step_ResetLinkState()
+    {
+        MIRGraph* graph = m_Emitter->m_Graph;
+        if (graph == nullptr)
+        {
+            return;
+        }
+
+        for (MIRValue* value : graph->GetValues())
+        {
+            if (!value->IsInstructionValue())
+            {
+                continue;
+            }
+
+            MIRInstruction* instr = static_cast<MIRInstruction*>(value);
+            for (int stageIndex = 0; stageIndex < NumStages; ++stageIndex)
+            {
+                instr->Next[stageIndex] = nullptr;
+                instr->NumProcessedUsers[stageIndex] = 0;
+                instr->Block[stageIndex] = nullptr;
+            }
+        }
+
+        for (int stageIndex = 0; stageIndex < NumStages; ++stageIndex)
+        {
+            if (MIRBlock* rootBlock = graph->GetRootBlock(static_cast<ShaderStage>(stageIndex)))
+            {
+                rootBlock->FirstInstruction = nullptr;
             }
         }
     }
@@ -263,19 +449,88 @@ namespace minEngine
         }
     }
 
+    void MIRBuilder::Step_VerifyLinkCoverage()
+    {
+        MIRGraph* graph = m_Emitter->m_Graph;
+        if (graph == nullptr)
+        {
+            return;
+        }
+
+        for (int stageIndex = 0; stageIndex < NumStages; ++stageIndex)
+        {
+            const ShaderStage stage = static_cast<ShaderStage>(stageIndex);
+            MIRBlock* rootBlock = graph->GetRootBlock(stage);
+            if (rootBlock == nullptr)
+            {
+                continue;
+            }
+
+            std::unordered_set<const MIRInstruction*> reachable;
+            std::vector<const MIRInstruction*> stack;
+
+            for (SetMaterialOutput* output : graph->GetOutputs(stage))
+            {
+                if (output != nullptr)
+                {
+                    stack.push_back(output);
+                }
+            }
+
+            while (!stack.empty())
+            {
+                const MIRInstruction* instr = stack.back();
+                stack.pop_back();
+                if (instr == nullptr || !reachable.insert(instr).second)
+                {
+                    continue;
+                }
+
+                for (MIRValue* use : instr->GetUsesForStage(stage))
+                {
+                    if (const MIRInstruction* useInstr = AsInstruction(use))
+                    {
+                        stack.push_back(useInstr);
+                    }
+                }
+            }
+
+            for (const MIRInstruction* instr : reachable)
+            {
+                if (instr->NumUsers[stageIndex] == 0 || !IsNonFoldableForGLSL(*instr))
+                {
+                    continue;
+                }
+
+                std::unordered_set<const MIRBlock*> visitedBlocks;
+                if (!IsInstructionInLinkedChain(*rootBlock, stage, instr, visitedBlocks))
+                {
+                    graph->AddDiagnostic(
+                        "MIR link coverage: non-foldable instruction is not in the linked block chain for this stage.");
+                }
+            }
+        }
+    }
+
     void MIRBuilder::Step_Finalize()
     {
         // UE Step_Finalize: module-level compilation metadata (e.g. UV scalar counts).
         // Attribute value wiring belongs in Step_FlowValuesIntoMaterialOutputs.
     }
 
-    void MIRBuilder::Build(const MaterialEdGraph& graph, MIRGraph& targetGraph)
+    void MIRBuilder::Build(
+        const MaterialEdGraph& graph,
+        MIRGraph& targetGraph,
+        MaterialShadingModel shadingModel,
+        MaterialBlendMode blendMode)
     {
         MIREmitter emitter;
         emitter.m_Builder = this;
         emitter.m_Graph = &targetGraph;
 
         m_Graph = &graph;
+        m_ShadingModel = shadingModel;
+        m_BlendMode = blendMode;
         m_Emitter = &emitter;
 
         Step_Initialize();
@@ -283,7 +538,9 @@ namespace minEngine
         Step_BuildNodeDefsToIRGraph();
         Step_FlowValuesIntoMaterialOutputs();
         Step_AnalyzeIRGraph();
+        Step_ResetLinkState();
         Step_LinkInstructions();
+        Step_VerifyLinkCoverage();
         Step_Finalize();
     }
 }

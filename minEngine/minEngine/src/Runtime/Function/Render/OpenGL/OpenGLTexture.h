@@ -23,7 +23,10 @@ namespace minEngine
     class OpenGLTextureCube : public RHITextureCube
     {
     public:
-        OpenGLTextureCube(const std::vector<unsigned char*>& faceData, RHITextureDesc desc);
+        OpenGLTextureCube(
+            const std::vector<unsigned char*>& faceData,
+            RHITextureDesc desc,
+            bool generateMipmaps = false);
         OpenGLTextureCube() = default;
         virtual ~OpenGLTextureCube() override;
 

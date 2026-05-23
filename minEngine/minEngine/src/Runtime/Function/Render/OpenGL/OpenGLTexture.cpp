@@ -2,6 +2,7 @@
 
 #include "glad/glad.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -128,8 +129,14 @@ namespace minEngine
 
         if (internalFormat != 0 && desc.Width > 0 && desc.Height > 0)
         {
+            GLint previousUnpackAlignment = 4;
+            glGetIntegerv(GL_UNPACK_ALIGNMENT, &previousUnpackAlignment);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
             glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, desc.Width, desc.Height, 0, dataFormat, dataType, data);
-            
+
+            glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
+
             if (!isDepthStencil)
             {
                glGenerateMipmap(GL_TEXTURE_2D);
@@ -153,36 +160,101 @@ namespace minEngine
         glBindTexture(GL_TEXTURE_2D, 0);    
     }
 
-    OpenGLTextureCube::OpenGLTextureCube(const std::vector<unsigned char *> &faceData, RHITextureDesc desc)
+    OpenGLTextureCube::OpenGLTextureCube(
+        const std::vector<unsigned char*>& faceData,
+        RHITextureDesc desc,
+        bool generateMipmaps)
     {
         m_Desc = desc;
+        if (desc.Width == 0 || desc.Height == 0)
+        {
+            ME_CORE_ERROR("OpenGLTextureCube: Width/Height must be > 0.");
+            return;
+        }
+
+        if (faceData.size() < 6)
+        {
+            ME_CORE_ERROR(
+                "OpenGLTextureCube: expected 6 face pointers, got {}.",
+                faceData.size());
+            return;
+        }
+
         glGenTextures(1, &m_ID);
-        glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_ID);
 
-        // set the texture wrapping/filtering options (on the currently bound texture object). TODO: make these configurable
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         GLint internalFormat = 0;
         GLenum dataFormat = 0;
         GLenum dataType = GL_UNSIGNED_BYTE;
         ResolveOpenGLTextureFormat(desc, internalFormat, dataFormat, dataType);
 
-        if (internalFormat == 0)
+        const bool isDepthLike = IsDepthLikeTexture(desc);
+        if (!isDepthLike && internalFormat == 0)
         {
-            internalFormat = GL_RGBA8;
-            dataFormat = GL_RGBA;
-            dataType = GL_UNSIGNED_BYTE;
+            ME_CORE_ERROR("OpenGLTextureCube: unsupported color format for cubemap.");
+            glDeleteTextures(1, &m_ID);
+            m_ID = 0;
+            return;
         }
 
-        for (unsigned int i = 0; i < 6; i++)
+        if (isDepthLike)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, desc.Width, desc.Height, 0, dataFormat, dataType, faceData[i]);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         }
+        else if (generateMipmaps)
+        {
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        else
+        {
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+
+        GLint previousUnpackAlignment = 4;
+        if (!isDepthLike)
+        {
+            glGetIntegerv(GL_UNPACK_ALIGNMENT, &previousUnpackAlignment);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        }
+
+        for (unsigned int faceIndex = 0; faceIndex < 6; faceIndex++)
+        {
+            const unsigned char* facePixels = faceData[faceIndex];
+            if (!isDepthLike && facePixels == nullptr)
+            {
+                ME_CORE_ERROR("OpenGLTextureCube: color face {} is null.", faceIndex);
+                continue;
+            }
+
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex,
+                0,
+                internalFormat,
+                desc.Width,
+                desc.Height,
+                0,
+                dataFormat,
+                dataType,
+                facePixels);
+        }
+
+        if (!isDepthLike)
+        {
+            glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
+            if (generateMipmaps && m_ID != 0)
+            {
+                glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+            }
+        }
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     }
 
     void OpenGLTextureCube::Bind(int unit)

@@ -32,6 +32,24 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        TextureFormat TextureFormatFromStbiChannels(int channelCount)
+        {
+            switch (channelCount)
+            {
+            case 1:
+                return TextureFormat::RED;
+            case 3:
+                return TextureFormat::RGB8;
+            case 4:
+                return TextureFormat::RGBA8;
+            default:
+                return TextureFormat::None;
+            }
+        }
+    }
+
     AssetManager* AssetManager::s_Instance = nullptr;
 
     void AssetManager::SetInstance(AssetManager* instance)
@@ -520,6 +538,43 @@ namespace minEngine
         return scene;
     }
 
+    namespace
+    {
+        Vector4 ComputeFallbackTangent(const Vector3& normal)
+        {
+            const Vector3 up = (std::abs(normal.y) < 0.999f) ? Vector3(0.0f, 1.0f, 0.0f) : Vector3(1.0f, 0.0f, 0.0f);
+            Vector3 tangent = glm::normalize(glm::cross(up, normal));
+            return Vector4(tangent, 1.0f);
+        }
+
+        Vector4 ComputeTangentWithHandedness(
+            const Vector3& normal,
+            const aiVector3D* assimpTangent,
+            const aiVector3D* assimpBitangent)
+        {
+            if (assimpTangent == nullptr)
+            {
+                return ComputeFallbackTangent(normal);
+            }
+
+            Vector3 tangent(assimpTangent->x, assimpTangent->y, assimpTangent->z);
+            if (glm::dot(tangent, tangent) <= 1e-12f)
+            {
+                return ComputeFallbackTangent(normal);
+            }
+
+            tangent = glm::normalize(tangent - normal * glm::dot(normal, tangent));
+            float handedness = 1.0f;
+            if (assimpBitangent != nullptr)
+            {
+                const Vector3 bitangent(assimpBitangent->x, assimpBitangent->y, assimpBitangent->z);
+                handedness = (glm::dot(glm::cross(normal, tangent), bitangent) < 0.0f) ? -1.0f : 1.0f;
+            }
+
+            return Vector4(tangent, handedness);
+        }
+    }
+
     
     template<>
     std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta)
@@ -531,6 +586,7 @@ namespace minEngine
             Vector3 Position;
             Vector2 TexCoord;
             Vector3 Normal;
+            Vector4 Tangent;
         };
 
         Assimp::Importer importer;
@@ -580,6 +636,7 @@ namespace minEngine
 
                 const bool hasNormals = mesh->HasNormals() && mesh->mNormals != nullptr;
                 const bool hasTexCoords = mesh->HasTextureCoords(0) && mesh->mTextureCoords[0] != nullptr;
+                const bool hasTangents = mesh->HasTangentsAndBitangents() && mesh->mTangents != nullptr;
 
                 float minX = 0.0f;
                 float maxX = 1.0f;
@@ -720,6 +777,29 @@ namespace minEngine
                     ME_CORE_WARN("Mesh '{}' has no normal data. Fallback normals were generated in AssetManager.", meta.AssetPath);
                 }
 
+                for (unsigned int j = 0; j < mesh->mNumVertices; ++j)
+                {
+                    Vertex& vertex = vertices[baseVertex + j];
+                    if (hasTangents)
+                    {
+                        const aiVector3D* assimpTangent = &mesh->mTangents[j];
+                        const aiVector3D* assimpBitangent =
+                            mesh->mBitangents != nullptr ? &mesh->mBitangents[j] : nullptr;
+                        vertex.Tangent = ComputeTangentWithHandedness(vertex.Normal, assimpTangent, assimpBitangent);
+                    }
+                    else
+                    {
+                        vertex.Tangent = ComputeFallbackTangent(vertex.Normal);
+                    }
+                }
+
+                if (!hasTangents)
+                {
+                    ME_CORE_WARN(
+                        "Mesh '{}' has no tangent data. Fallback tangents were generated in AssetManager.",
+                        meta.AssetPath);
+                }
+
                 if (!hasTexCoords)
                 {
                     ME_CORE_WARN("Mesh '{}' has no UV data. Fallback planar UVs were generated in AssetManager.", meta.AssetPath);
@@ -758,7 +838,8 @@ namespace minEngine
             {
                 VertexElement("a_Position", VertexElementType::Float3),
                 VertexElement("a_TexCoord", VertexElementType::Float2),
-                VertexElement("a_Normal", VertexElementType::Float3)
+                VertexElement("a_Normal", VertexElementType::Float3),
+                VertexElement("a_Tangent", VertexElementType::Float4),
             });
         outMesh->m_IndexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size()));
         
@@ -791,10 +872,22 @@ namespace minEngine
         texture->m_Width = static_cast<uint32_t>(width);
         texture->m_Height = static_cast<uint32_t>(height);
         texture->m_Channels = static_cast<uint32_t>(channels);
+
+        const TextureFormat format = TextureFormatFromStbiChannels(channels);
+        if (format == TextureFormat::None)
+        {
+            ME_CORE_ERROR(
+                "Unsupported texture channel count {} for {} (expected 1, 3, or 4)",
+                channels,
+                meta.AssetPath);
+            FreeImage(data);
+            return nullptr;
+        }
+
         texture->m_RHITexture = rhi->CreateRHITexture2D(data, RHITextureDesc{
             .Width = texture->m_Width,
             .Height = texture->m_Height,
-            .Format = (channels == 4) ? TextureFormat::RGBA8 : TextureFormat::RGB8,
+            .Format = format,
             .Usage = TextureUsage::TextureBinding
         });
 

@@ -3,6 +3,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompiler.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "Runtime/Function/Render/Material/MaterialCapability.h"
 #include "Runtime/Function/Render/Material/MaterialValueType.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "RHI/RHIShader.h"
@@ -121,7 +122,13 @@ namespace minEngine
                     return false;
                 }
 
-                if (!m_Graph->ConnectPins(*fromEdNode, input->OutputIndex, *toEdNode, inputIndex))
+                if (!m_Graph->ConnectPins(
+                        *fromEdNode,
+                        input->OutputIndex,
+                        *toEdNode,
+                        inputIndex,
+                        m_ShadingModel,
+                        m_BlendMode))
                 {
                     return false;
                 }
@@ -161,7 +168,11 @@ namespace minEngine
             return false;
         }
 
-        if (!MaterialValueTypeUtil::ValidateGraphPinConnections(*m_Graph, outError))
+        if (!MaterialValueTypeUtil::ValidateGraphPinConnections(
+                *m_Graph,
+                m_ShadingModel,
+                m_BlendMode,
+                outError))
         {
             return false;
         }
@@ -188,6 +199,8 @@ namespace minEngine
             }
             return false;
         }
+
+        MaterialCapabilityUtil::PruneInvalidMaterialOutputLinks(*this);
 
         if (!ValidateMaterialAsset(outError))
         {

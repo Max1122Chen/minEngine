@@ -1,13 +1,43 @@
 #include "MaterialTestGraph.h"
 
 #include "../Material.h"
+#include "MaterialCapability.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "../RHI/RHI.h"
 #include "../Texture.h"
+#include "MaterialCompiler/MaterialCompileTypes.h"
 #include "MaterialCompiler/MaterialCompiler.h"
+
+#include <filesystem>
 
 namespace minEngine
 {
+    void ApplySmokeMaterialAssetDefaults(Material& material)
+    {
+        material.m_ShadingModel = MaterialShadingModel::BlinnPhong;
+        material.m_BlendMode = MaterialBlendMode::Opaque;
+    }
+
+    std::filesystem::path ResolveGoldenMaterialIRSmokeMemtlPath()
+    {
+        static const std::filesystem::path kCandidates[] = {
+            std::filesystem::path("D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Materials/MaterialIRSmoke.memtl"),
+            std::filesystem::path("../MyMEProject/Assets/Materials/MaterialIRSmoke.memtl"),
+            std::filesystem::path("../../MyMEProject/Assets/Materials/MaterialIRSmoke.memtl"),
+        };
+
+        for (const std::filesystem::path& candidate : kCandidates)
+        {
+            std::error_code errorCode;
+            if (std::filesystem::exists(candidate, errorCode))
+            {
+                return candidate;
+            }
+        }
+
+        return {};
+    }
+
     void PopulateSmokeMaterialGraph(Material& material)
     {
         material.m_Graph = NewObject<MaterialEdGraph>("", &material);
@@ -35,15 +65,20 @@ namespace minEngine
         MaterialEdGraphNode& texCoord = *graph.m_Nodes[0];
         MaterialEdGraphNode& texSample = *graph.m_Nodes[2];
 
-        graph.ConnectPins(texObject, 0, texSample, 0);
-        graph.ConnectPins(texCoord, 0, texSample, 1);
-        graph.ConnectPins(emissiveR, 0, *graph.m_Nodes[7], 0);
-        graph.ConnectPins(emissiveG, 0, *graph.m_Nodes[7], 1);
-        graph.ConnectPins(emissiveB, 0, *graph.m_Nodes[7], 2);
-        graph.ConnectPins(texSample, 1, albedoTintMultiply, 0);
-        graph.ConnectPins(*graph.m_Nodes[7], 0, albedoTintMultiply, 1);
-        graph.ConnectToMaterialProperty(albedoTintMultiply, 0, output, MP_Albedo);
-        graph.ConnectToMaterialProperty(metallicScalar, 0, output, MP_Metallic);
+        const MaterialShadingModel wiringShading = MaterialShadingModel::BlinnPhong;
+        const MaterialBlendMode wiringBlend = MaterialBlendMode::Opaque;
+
+        graph.ConnectPins(texObject, 0, texSample, 0, wiringShading, wiringBlend);
+        graph.ConnectPins(texCoord, 0, texSample, 1, wiringShading, wiringBlend);
+        graph.ConnectPins(emissiveR, 0, *graph.m_Nodes[7], 0, wiringShading, wiringBlend);
+        graph.ConnectPins(emissiveG, 0, *graph.m_Nodes[7], 1, wiringShading, wiringBlend);
+        graph.ConnectPins(emissiveB, 0, *graph.m_Nodes[7], 2, wiringShading, wiringBlend);
+        graph.ConnectPins(texSample, 1, albedoTintMultiply, 0, wiringShading, wiringBlend);
+        graph.ConnectPins(*graph.m_Nodes[7], 0, albedoTintMultiply, 1, wiringShading, wiringBlend);
+        graph.ConnectToMaterialProperty(
+            albedoTintMultiply, 0, output, MP_Albedo, wiringShading, wiringBlend);
+        graph.ConnectToMaterialProperty(
+            metallicScalar, 0, output, MP_Metallic, wiringShading, wiringBlend);
 
         MaterialGraphNodeDef_TextureObject* baseColorTextureObject =
             static_cast<MaterialGraphNodeDef_TextureObject*>(texObject.GetNodeDef());
@@ -52,6 +87,8 @@ namespace minEngine
             baseColorTextureObject->ParameterName = "BaseColor";
             baseColorTextureObject->TextureSlotIndex = 0;
         }
+
+        ApplySmokeMaterialAssetDefaults(material);
     }
 
     const MaterialGraphNodeDef_MaterialOutput* FindMaterialOutputNode(const MaterialEdGraph& graph)
@@ -75,8 +112,10 @@ namespace minEngine
 
     bool SetupSmokeMaterial(Material& material, RHI& rhi, std::string* outError)
     {
-        material.m_ShadingModel = MaterialShadingModel::Unlit;
         PopulateSmokeMaterialGraph(material);
+        material.m_ShadingModel = MaterialShadingModel::Unlit;
+        material.m_BlendMode = MaterialBlendMode::Opaque;
+        MaterialCapabilityUtil::PruneInvalidMaterialOutputLinks(material);
 
         MaterialCompileContext ctx;
         ctx.RHI = &rhi;

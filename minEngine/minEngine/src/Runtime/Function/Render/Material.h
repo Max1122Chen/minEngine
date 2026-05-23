@@ -69,6 +69,9 @@ namespace minEngine
         ME_PROPERTY()
         MaterialShadingModel m_ShadingModel = MaterialShadingModel::Unlit;
 
+        ME_PROPERTY()
+        MaterialBlendMode m_BlendMode = MaterialBlendMode::Opaque;
+
         ME_PROPERTY(Instanced)
         std::shared_ptr<MaterialEdGraph> m_Graph;
 
@@ -77,7 +80,8 @@ namespace minEngine
         std::vector<MaterialTextureParameter> m_TextureParameters;
         std::vector<MaterialScalarParameter> m_ScalarParameters;
 
-        bool IsTranslucent() const { return false; }
+        bool IsTranslucent() const { return m_BlendMode == MaterialBlendMode::Translucent; }
+        bool IsMasked() const { return m_BlendMode == MaterialBlendMode::Masked; }
 
     private:
         std::shared_ptr<Shader> m_Shader;

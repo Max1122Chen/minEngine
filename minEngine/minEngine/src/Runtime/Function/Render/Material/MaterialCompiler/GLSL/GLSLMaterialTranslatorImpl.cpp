@@ -1,7 +1,6 @@
 #include "GLSLMaterialTranslatorImpl.h"
 
 #include "GLSLShaderBinding.h"
-#include "Assert/Assert.h"
 
 #include <algorithm>
 #include <vector>
@@ -14,6 +13,7 @@ namespace minEngine
 {
     MaterialCompileResult GLSLMaterialTranslatorImpl::Translate(const MIRGraph& graph, const MaterialCompileEnvironment& env)
     {
+        (void)env;
         MaterialCompileResult result;
 
         if (graph.GetOutputs(Stage_Fragment).empty())
@@ -36,6 +36,7 @@ namespace minEngine
         }
 
         m_Graph = &graph;
+        m_ActiveResult = &result;
         m_UsedTextureSlots.clear();
         m_UsedScalarUniformSlots.clear();
         m_UsesTexCoord0 = false;
@@ -50,15 +51,29 @@ namespace minEngine
         result.Stages[Stage_Vertex].Body = m_Printer.TakeBuffer();
 
         BeginStage(Stage_Fragment);
-        // Property values come only from linked SetMaterialOutput instructions (Flow step wires defaults/graph).
         LowerBlock(*fragmentRootBlock);
         result.Stages[Stage_Fragment].Stage = Stage_Fragment;
         result.Stages[Stage_Fragment].Preamble = BuildFragmentShaderPreamble();
         result.Stages[Stage_Fragment].Body = m_Printer.TakeBuffer();
         result.UsesTexCoord0 = m_UsesTexCoord0;
         FillParameterLayout(result);
-        result.Succeeded = true;
+
+        m_ActiveResult = nullptr;
+        m_Graph = nullptr;
+
+        result.Succeeded = std::none_of(
+            result.Diagnostics.begin(),
+            result.Diagnostics.end(),
+            [](const MaterialCompileDiagnostic& diagnostic)
+            {
+                return diagnostic.Level == MaterialCompileDiagnostic::Error;
+            });
         return result;
+    }
+
+    void GLSLMaterialTranslatorImpl::AddLoweringError(MaterialCompileResult& result, const char* message) const
+    {
+        result.Diagnostics.push_back({ MaterialCompileDiagnostic::Error, message });
     }
 
     void GLSLMaterialTranslatorImpl::FillParameterLayout(MaterialCompileResult& result) const
@@ -194,7 +209,19 @@ namespace minEngine
                 return;
             }
 
-            ME_ASSERT(false, "MIR lowering referenced an instruction without a pre-declared local.");
+            if (IsFoldable(*instr, m_Stage))
+            {
+                // Pure multi-use value not materialized in the current block — duplicate inline (UE-safe for constants).
+                LowerInstruction(*instr);
+                return;
+            }
+
+            if (m_ActiveResult != nullptr)
+            {
+                AddLoweringError(
+                    *m_ActiveResult,
+                    "MIR lowering referenced a non-foldable instruction without a pre-declared local.");
+            }
             m_Printer.Append("0.0");
             return;
         }
@@ -208,7 +235,10 @@ namespace minEngine
             m_Printer.Append("0.0");
             break;
         default:
-            ME_ASSERT(false, "Unsupported MIR value kind in GLSL lowering.");
+            if (m_ActiveResult != nullptr)
+            {
+                AddLoweringError(*m_ActiveResult, "Unsupported MIR value kind in GLSL lowering.");
+            }
             m_Printer.Append("0.0");
             break;
         }
@@ -219,7 +249,7 @@ namespace minEngine
         switch (instr.Kind)
         {
         case VK_Cast:
-            LowerValue(static_cast<const MIRCast&>(instr).Arg);
+            LowerCast(static_cast<const MIRCast&>(instr));
             break;
         case VK_Dimensional:
             LowerDimensional(static_cast<const MIRDimensional&>(instr));
@@ -249,7 +279,10 @@ namespace minEngine
             LowerSetMaterialOutput(static_cast<const SetMaterialOutput&>(instr));
             break;
         default:
-            ME_ASSERT(false, "Unsupported MIR instruction kind in GLSL lowering.");
+            if (m_ActiveResult != nullptr)
+            {
+                AddLoweringError(*m_ActiveResult, "Unsupported MIR instruction kind in GLSL lowering.");
+            }
             m_Printer.Append("0.0");
             break;
         }
@@ -340,6 +373,12 @@ namespace minEngine
 
     void GLSLMaterialTranslatorImpl::LowerExternalInput(const MIRExternalInput& externalInput)
     {
+        if (externalInput.InputId == EI_WorldNormal)
+        {
+            m_Printer.Append("v_WorldNormal");
+            return;
+        }
+
         const int texCoordIndex = ExternalInputIdToTexCoordIndex(externalInput.InputId);
         if (texCoordIndex >= 0)
         {
@@ -424,6 +463,24 @@ namespace minEngine
         m_Printer.Append(')');
     }
 
+    void GLSLMaterialTranslatorImpl::LowerCast(const MIRCast& cast)
+    {
+        const MIRPrimitiveType* targetPrimitive = cast.Type != nullptr ? cast.Type->AsPrimitive() : nullptr;
+        const MIRPrimitiveType* sourcePrimitive =
+            cast.Arg != nullptr && cast.Arg->Type != nullptr ? cast.Arg->Type->AsPrimitive() : nullptr;
+
+        if (targetPrimitive != nullptr && targetPrimitive->ScalarKind == SK_Bool && sourcePrimitive != nullptr
+            && sourcePrimitive->ScalarKind == SK_Float)
+        {
+            m_Printer.Append('(');
+            LowerValue(cast.Arg);
+            m_Printer.Append(" != 0.0)");
+            return;
+        }
+
+        LowerValue(cast.Arg);
+    }
+
     void GLSLMaterialTranslatorImpl::LowerConstant(const MIRConstant* constant)
     {
         if (constant == nullptr || constant->Type == nullptr)
@@ -505,7 +562,10 @@ namespace minEngine
             break;
         }
 
-        ME_ASSERT(false, "Unsupported MIR operator in GLSL lowering.");
+        if (m_ActiveResult != nullptr)
+        {
+            AddLoweringError(*m_ActiveResult, "Unsupported MIR operator in GLSL lowering.");
+        }
         m_Printer.Append("0.0");
     }
 
@@ -522,9 +582,12 @@ namespace minEngine
         }
 
         auto localIt = m_LocalIdentifier.find(&branch);
-        ME_ASSERT(localIt != m_LocalIdentifier.end(), "Branch lowering requires a pre-declared local.");
         if (localIt == m_LocalIdentifier.end())
         {
+            if (m_ActiveResult != nullptr)
+            {
+                AddLoweringError(*m_ActiveResult, "Branch lowering requires a pre-declared local.");
+            }
             return;
         }
 

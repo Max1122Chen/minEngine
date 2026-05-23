@@ -104,6 +104,20 @@ namespace minEngine
         m_PresentPass.Initialize();
         m_PresentPass.m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
         m_PresentPass.m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
+
+        // Editor/Engine call ReloadIBLEnvironment after EngineDefaultAssetsRoot is known.
+        m_IBLEnvironment.Initialize(rhi, std::string{});
+    }
+
+    void RenderPipeline::ReloadIBLEnvironment(const std::string& engineDefaultAssetsRoot)
+    {
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
+
+        m_IBLEnvironment.Initialize(rhi, engineDefaultAssetsRoot);
     }
 
     void RenderPipeline::BindSceneRenderTarget(SceneRenderTarget& target)
@@ -120,6 +134,7 @@ namespace minEngine
 
     void RenderPipeline::Shutdown()
     {
+        m_IBLEnvironment.Shutdown();
         m_ShadowResourceManager.Shutdown();
 
         m_ShadowPass.m_ShadowDrawCommands.clear();
@@ -213,6 +228,9 @@ namespace minEngine
         m_BasePass.m_PointShadowHandles = ctx.PointShadowHandles;
         m_TranslucentPass.m_SortCamera = ctx.Camera;
         m_TranslucentPass.m_DrawCommands = ctx.TranslucentQueue;
+        m_TranslucentPass.m_DirectionalShadowHandle = ctx.DirectionalShadowHandle;
+        m_TranslucentPass.m_SpotShadowHandles = ctx.SpotShadowHandles;
+        m_TranslucentPass.m_PointShadowHandles = ctx.PointShadowHandles;
 
         // Shadow pass disables color output; restore state for scene pass.
         rhi->SetDrawBuffer(0);

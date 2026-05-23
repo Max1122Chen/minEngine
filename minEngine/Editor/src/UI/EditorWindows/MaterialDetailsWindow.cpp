@@ -30,6 +30,18 @@ namespace minEngine
             {
                 case MaterialShadingModel::Unlit: return "Unlit";
                 case MaterialShadingModel::BlinnPhong: return "BlinnPhong";
+                case MaterialShadingModel::PBR: return "PBR";
+                default: return "Unknown";
+            }
+        }
+
+        const char* BlendModeLabel(MaterialBlendMode mode)
+        {
+            switch (mode)
+            {
+                case MaterialBlendMode::Opaque: return "Opaque";
+                case MaterialBlendMode::Masked: return "Masked";
+                case MaterialBlendMode::Translucent: return "Translucent";
                 default: return "Unknown";
             }
         }
@@ -91,12 +103,14 @@ namespace minEngine
 
         Material& material = *session.MaterialAsset;
         const MaterialShadingModel shadingModel = material.m_ShadingModel;
+        const MaterialBlendMode blendMode = material.m_BlendMode;
 
         if (ImGui::BeginCombo("Shading Model", ShadingModelLabel(shadingModel)))
         {
             const MaterialShadingModel options[] = {
                 MaterialShadingModel::Unlit,
                 MaterialShadingModel::BlinnPhong,
+                MaterialShadingModel::PBR,
             };
 
             for (MaterialShadingModel option : options)
@@ -105,6 +119,25 @@ namespace minEngine
                 if (ImGui::Selectable(ShadingModelLabel(option), selected))
                 {
                     materialEditor.SetShadingModel(option);
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::BeginCombo("Blend Mode", BlendModeLabel(blendMode)))
+        {
+            const MaterialBlendMode options[] = {
+                MaterialBlendMode::Opaque,
+                MaterialBlendMode::Masked,
+                MaterialBlendMode::Translucent,
+            };
+
+            for (MaterialBlendMode option : options)
+            {
+                const bool selected = (option == blendMode);
+                if (ImGui::Selectable(BlendModeLabel(option), selected))
+                {
+                    materialEditor.SetBlendMode(option);
                 }
             }
             ImGui::EndCombo();

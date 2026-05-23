@@ -9,6 +9,7 @@
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
+#include "Render/Environment/EngineIBLEnvironment.h"
 #include "Shadow/ShadowResourceManager.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
@@ -109,6 +110,9 @@ namespace minEngine
 
         void SetPresentPassEnabled(bool enabled) { m_EnablePresentPass = enabled; }
 
+        void ReloadIBLEnvironment(const std::string& engineDefaultAssetsRoot);
+        const EngineIBLEnvironment& GetIBLEnvironment() const { return m_IBLEnvironment; }
+
     private:
         std::shared_ptr<UniformBuffer> m_LightViewProjUniformBuffer; // Uniform buffer for light view projection matrices used in shadow pass
         std::shared_ptr<UniformBuffer> m_PerFrameUniformBuffer;
@@ -127,6 +131,7 @@ namespace minEngine
         PresentPass m_PresentPass;
 
         ShadowResourceManager m_ShadowResourceManager;
+        EngineIBLEnvironment m_IBLEnvironment;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
 

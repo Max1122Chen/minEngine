@@ -26,6 +26,7 @@ namespace minEngine
         void LowerValue(const MIRValue* value);
         void LowerInstruction(const MIRInstruction& instr);
         void LowerType(const MIRValueType* type);
+        void LowerCast(const MIRCast& cast);
         void LowerConstant(const MIRConstant* constant);
         void LowerDimensional(const MIRDimensional& dimensional);
         void LowerSubscript(const MIRSubscript& subscript);
@@ -44,7 +45,10 @@ namespace minEngine
         void FillParameterLayout(MaterialCompileResult& result) const;
         static int ExternalInputIdToTexCoordIndex(MIRExternalInputId inputId);
 
+        void AddLoweringError(MaterialCompileResult& result, const char* message) const;
+
         const MIRGraph* m_Graph = nullptr;
+        MaterialCompileResult* m_ActiveResult = nullptr;
         ShaderStage m_Stage = Stage_Fragment;
         MIRGLSLPrinter m_Printer;
         int m_NumLocals = 0;

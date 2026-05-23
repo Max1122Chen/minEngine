@@ -10,10 +10,13 @@
 #include "Material/MaterialGraphNodeRegistry.h"
 
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialCapability.h"
 #include "Runtime/Function/Render/Material/MaterialEdGraph.h"
 #include "Runtime/Function/Render/Material/MaterialEdGraphNode.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "Runtime/Core/Log/LogSystem.h"
+
+#include <vector>
 
 namespace minEngine
 {
@@ -33,12 +36,16 @@ namespace minEngine
         }
     }
 
-    void MaterialGraphWindow::DrawNodeBody(MaterialEdGraphNode& node, MaterialGraphNodeDef* nodeDef)
+    void MaterialGraphWindow::DrawNodeBody(Material& material, MaterialEdGraphNode& node, MaterialGraphNodeDef* nodeDef)
     {
         if (!nodeDef)
         {
             return;
         }
+
+        const bool isMaterialOutput = nodeDef->IsMaterialOutputNode();
+        const MaterialShadingModel shadingModel = material.m_ShadingModel;
+        const MaterialBlendMode blendMode = material.m_BlendMode;
 
         int inputCount = 0;
         while (nodeDef->GetInput(inputCount))
@@ -52,7 +59,35 @@ namespace minEngine
             ++outputCount;
         }
 
-        const int maxPinCount = std::max(inputCount, outputCount);
+        std::vector<int> visibleInputIndices;
+        visibleInputIndices.reserve(static_cast<size_t>(inputCount));
+        for (int inputIndex = 0; inputIndex < inputCount; ++inputIndex)
+        {
+            const MaterialGraphNodeDef::Input* input = nodeDef->GetInput(inputIndex);
+            if (input == nullptr)
+            {
+                continue;
+            }
+
+            if (isMaterialOutput)
+            {
+                const MaterialPropertyPinVisibility visibility =
+                    MaterialCapabilityUtil::GetMaterialOutputInputVisibility(
+                        input->Name.c_str(),
+                        shadingModel,
+                        blendMode);
+
+                if (visibility == MaterialPropertyPinVisibility::Hidden)
+                {
+                    continue;
+                }
+            }
+
+            visibleInputIndices.push_back(inputIndex);
+        }
+
+        const int visibleInputCount = static_cast<int>(visibleInputIndices.size());
+        const int maxPinCount = std::max(visibleInputCount, outputCount);
         const float halfWidth = kNodeWidth * 0.5f;
         constexpr float kPinIconSize = 10.0f;
 
@@ -61,15 +96,39 @@ namespace minEngine
             ImGui::PushID(row);
             const float rowStartX = ImGui::GetCursorPosX();
 
-            if (row < inputCount)
+            if (row < visibleInputCount)
             {
-                MaterialGraphNodeDef::Input* input = nodeDef->GetInput(row);
-                const Ed::PinId pinId = MaterialGraphIds::ToPinId(&node, Ed::PinKind::Input, row);
+                const int inputIndex = visibleInputIndices[static_cast<size_t>(row)];
+                MaterialGraphNodeDef::Input* input = nodeDef->GetInput(inputIndex);
+                MaterialPropertyPinVisibility visibility = MaterialPropertyPinVisibility::Active;
+                if (isMaterialOutput)
+                {
+                    visibility = MaterialCapabilityUtil::GetMaterialOutputInputVisibility(
+                        input->Name.c_str(),
+                        shadingModel,
+                        blendMode);
+                }
+
+                const Ed::PinId pinId = MaterialGraphIds::ToPinId(&node, Ed::PinKind::Input, inputIndex);
+                const bool pinDisabled = visibility == MaterialPropertyPinVisibility::Disabled;
+                const ImColor inputPinColor =
+                    pinDisabled ? ImColor(110, 110, 110) : ImColor(150, 220, 150);
+
+                if (pinDisabled)
+                {
+                    ImGui::BeginDisabled();
+                }
+
                 Ed::BeginPin(pinId, Ed::PinKind::Input);
-                DrawPinIcon(ImColor(150, 220, 150));
+                DrawPinIcon(inputPinColor);
                 ImGui::SameLine(0.0f, kPinTextGap);
                 ImGui::TextUnformatted(input->Name.c_str());
                 Ed::EndPin();
+
+                if (pinDisabled)
+                {
+                    ImGui::EndDisabled();
+                }
             }
             else
             {
@@ -269,7 +328,7 @@ namespace minEngine
         DrawNodeEditor(*session.MaterialAsset, *session.MaterialAsset->m_Graph);
     }
 
-    void MaterialGraphWindow::DrawNodeEditor(Material& /*material*/, MaterialEdGraph& graph)
+    void MaterialGraphWindow::DrawNodeEditor(Material& material, MaterialEdGraph& graph)
     {
         Ed::SetCurrentEditor(m_NodeEditorContext);
 
@@ -289,9 +348,9 @@ namespace minEngine
             m_PushStoredPositionsToEditor = false;
         }
 
-        DrawNodes(graph);
+        DrawNodes(material, graph);
         DrawLinks(graph);
-        HandleCreateLink(graph);
+        HandleCreateLink(material, graph);
         HandleDeleteLink(graph);
         SyncSelectionFromEditor();
         SyncNodePositions(graph);
@@ -363,7 +422,7 @@ namespace minEngine
         }
     }
 
-    void MaterialGraphWindow::DrawNodes(MaterialEdGraph& graph)
+    void MaterialGraphWindow::DrawNodes(Material& material, MaterialEdGraph& graph)
     {
         MaterialGraphNodeRegistry::EnsureRegistered();
 
@@ -407,7 +466,7 @@ namespace minEngine
             }
 
             ImGui::Spacing();
-            DrawNodeBody(node, nodeDef);
+            DrawNodeBody(material, node, nodeDef);
             ImGui::PopItemWidth();
             Ed::EndNode();
             ImGui::PopID();
@@ -503,6 +562,7 @@ namespace minEngine
     bool MaterialGraphWindow::TryConnectPins(
         Ed::PinId startPinId,
         Ed::PinId endPinId,
+        Material& material,
         MaterialEdGraph& graph)
     {
         MaterialEdGraphNode* startNode = nullptr;
@@ -543,7 +603,14 @@ namespace minEngine
         }
 
         std::string rejectReason;
-        if (!graph.CanConnectPins(*fromNode, fromOutputIndex, *toNode, toInputIndex, &rejectReason))
+        if (!graph.CanConnectPins(
+                *fromNode,
+                fromOutputIndex,
+                *toNode,
+                toInputIndex,
+                material.m_ShadingModel,
+                material.m_BlendMode,
+                &rejectReason))
         {
             if (!rejectReason.empty())
             {
@@ -552,10 +619,16 @@ namespace minEngine
             return false;
         }
 
-        return graph.ConnectPins(*fromNode, fromOutputIndex, *toNode, toInputIndex);
+        return graph.ConnectPins(
+            *fromNode,
+            fromOutputIndex,
+            *toNode,
+            toInputIndex,
+            material.m_ShadingModel,
+            material.m_BlendMode);
     }
 
-    void MaterialGraphWindow::HandleCreateLink(MaterialEdGraph& graph)
+    void MaterialGraphWindow::HandleCreateLink(Material& material, MaterialEdGraph& graph)
     {
         // BeginCreate() may return false while still setting CreateItemAction::m_InActive;
         // EndCreate() must always run to pair with the internal Begin().
@@ -570,7 +643,7 @@ namespace minEngine
         if (Ed::QueryNewLink(&startPinId, &endPinId))
         {
             MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
-            if (TryConnectPins(startPinId, endPinId, graph))
+            if (TryConnectPins(startPinId, endPinId, material, graph))
             {
                 if (Ed::AcceptNewItem())
                 {

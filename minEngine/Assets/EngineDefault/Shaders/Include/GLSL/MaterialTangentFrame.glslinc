@@ -1,0 +1,17 @@
+#ifndef MINENGINE_MATERIAL_TANGENT_FRAME_GLSLINC
+#define MINENGINE_MATERIAL_TANGENT_FRAME_GLSLINC
+
+vec3 BuildWorldNormalFromTangentSpace(
+    vec3 worldTangent,
+    vec3 worldNormal,
+    float tangentSign,
+    vec3 tangentSpaceNormal)
+{
+    vec3 N = normalize(worldNormal);
+    vec3 T = normalize(worldTangent);
+    vec3 bitangent = cross(N, T) * tangentSign;
+    mat3 TBN = mat3(T, bitangent, N);
+    return normalize(TBN * tangentSpaceNormal);
+}
+
+#endif // MINENGINE_MATERIAL_TANGENT_FRAME_GLSLINC

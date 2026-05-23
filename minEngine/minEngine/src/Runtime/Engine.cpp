@@ -76,6 +76,10 @@ namespace minEngine
     void Engine::SetEngineDefaultAssetsRoot(std::string path)
     {
         m_EngineDefaultAssetsRoot = std::move(path);
+        if (m_RenderSystem)
+        {
+            m_RenderSystem->ReloadEngineIBLEnvironment(m_EngineDefaultAssetsRoot);
+        }
     }
 
     void Engine::FinializeReflection()

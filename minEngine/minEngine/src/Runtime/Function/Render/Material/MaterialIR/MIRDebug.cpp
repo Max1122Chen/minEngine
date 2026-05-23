@@ -74,6 +74,8 @@ namespace minEngine
             switch (property)
             {
             case MP_Albedo: return "Albedo";
+            case MP_Normal: return "Normal";
+            case MP_AO: return "AO";
             case MP_Metallic: return "Metallic";
             case MP_Roughness: return "Roughness";
             case MP_Emissive: return "Emissive";

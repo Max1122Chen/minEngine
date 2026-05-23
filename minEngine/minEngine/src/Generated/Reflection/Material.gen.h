@@ -5,6 +5,7 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Material)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_ShadingModel)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_BlendMode)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Material, m_Graph)
 ME_REFLECTION_ACCESSOR_END()
 

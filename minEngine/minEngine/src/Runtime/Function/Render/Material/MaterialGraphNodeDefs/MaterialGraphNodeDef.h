@@ -172,43 +172,81 @@ namespace minEngine
         void BuildIR(MIREmitter& emitter) override;
     };
 
+    ME_CLASS()
     class MaterialGraphNodeDef_Subtract : public MaterialGraphNodeDef
     {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_Subtract)
+
     public:
         MaterialGraphNodeDef_Subtract();
         void BuildIR(MIREmitter& emitter) override;
     };
 
+    ME_CLASS()
     class MaterialGraphNodeDef_Divide : public MaterialGraphNodeDef
     {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_Divide)
+
     public:
         MaterialGraphNodeDef_Divide();
         void BuildIR(MIREmitter& emitter) override;
     };
 
+    ME_CLASS()
     class MaterialGraphNodeDef_Max : public MaterialGraphNodeDef
     {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_Max)
+
     public:
         MaterialGraphNodeDef_Max();
         void BuildIR(MIREmitter& emitter) override;
     };
 
+    ME_CLASS()
     class MaterialGraphNodeDef_Min : public MaterialGraphNodeDef
     {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_Min)
+
     public:
         MaterialGraphNodeDef_Min();
         void BuildIR(MIREmitter& emitter) override;
     };
 
+    ME_CLASS()
+    class MaterialGraphNodeDef_Lerp : public MaterialGraphNodeDef
+    {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_Lerp)
+
+    public:
+        MaterialGraphNodeDef_Lerp();
+        void BuildIR(MIREmitter& emitter) override;
+    };
+
+    ME_CLASS()
+    class MaterialGraphNodeDef_NormalUnpack : public MaterialGraphNodeDef
+    {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_NormalUnpack)
+
+    public:
+        MaterialGraphNodeDef_NormalUnpack();
+        void BuildIR(MIREmitter& emitter) override;
+    };
+
+    ME_CLASS()
     class MaterialGraphNodeDef_Select : public MaterialGraphNodeDef
     {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_Select)
+
     public:
         MaterialGraphNodeDef_Select();
         void BuildIR(MIREmitter& emitter) override;
     };
 
+    ME_CLASS()
     class MaterialGraphNodeDef_IfThenElse : public MaterialGraphNodeDef
     {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_IfThenElse)
+
     public:
         MaterialGraphNodeDef_IfThenElse();
         void BuildIR(MIREmitter& emitter) override;
@@ -278,12 +316,17 @@ namespace minEngine
         float DefaultValue = 0.0f;
     };
 
+    ME_CLASS()
     class MaterialGraphNodeDef_ComponentMask : public MaterialGraphNodeDef
     {
+        ME_GENERATED_BODY(MaterialGraphNodeDef_ComponentMask)
+
     public:
-        explicit MaterialGraphNodeDef_ComponentMask(int channelIndex = 0);
+        MaterialGraphNodeDef_ComponentMask();
+        explicit MaterialGraphNodeDef_ComponentMask(int channelIndex);
         void BuildIR(MIREmitter& emitter) override;
 
+        ME_PROPERTY()
         int ChannelIndex = 0;
     };
 

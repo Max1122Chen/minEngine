@@ -8,6 +8,7 @@
 namespace minEngine
 {
     class RenderPipeline;
+    class EngineIBLEnvironment;
     class FrameBuffer;
     class RHIShader;
 
@@ -15,9 +16,11 @@ namespace minEngine
     {
         const MeshDrawCommand& DrawCommand;
         bool bBindLighting = false;
+        bool bBindPBRIBL = false;
         const ShadowResourceHandle* DirectionalShadowHandle = nullptr;
         const std::vector<ShadowResourceHandle>* SpotShadowHandles = nullptr;
         const std::vector<ShadowResourceHandle>* PointShadowHandles = nullptr;
+        const EngineIBLEnvironment* IBLEnvironment = nullptr;
     };
 
     class RenderPassBase

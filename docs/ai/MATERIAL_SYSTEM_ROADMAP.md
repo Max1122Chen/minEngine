@@ -1,7 +1,7 @@
 # Material System — 深度拓展与使用优化
 
-Last updated: 2026-05-22  
-Status: **Phase 0 设计定稿**；Phase 1+ 为概要，待 P0 验收后细化  
+Last updated: 2026-05-23  
+Status: **Phase 0–3 ✅ · Phase 4 设计（IBL）** → [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)  
 前置：`MATERIAL_EDITOR_PLAN.md` E0–E4 ✅；`MATERIAL_SHADING_MODEL_PLAN.md`（Unlit + BlinnPhong）✅
 
 ---
@@ -13,10 +13,11 @@ Status: **Phase 0 设计定稿**；Phase 1+ 为概要，待 P0 验收后细化
 | §1 | **已拍板决策**（你的 6 点 + 补充建议） |
 | §2 | **疑问解答**（Normal vs AO、Translucent 与 TranslucencyPass） |
 | §3 | **Phase 0 详细设计**（即将实现） |
-| §4 | Phase 1 概要（P0 通过后细化） |
-| §5 | Phase 2+ 概要 |
-| §6 | UE / 现代材质对照（保留作参考） |
-| §7 | 参考与变更记录 |
+| §4 | Phase 1 概要（详见 [MATERIAL_SYSTEM_PHASE1.md](./MATERIAL_SYSTEM_PHASE1.md)） |
+| §5 | Phase 2 概要（详见 [MATERIAL_SYSTEM_PHASE2.md](./MATERIAL_SYSTEM_PHASE2.md)） |
+| §6 | Phase 3+ 概要 |
+| §7 | UE / 现代材质对照（保留作参考） |
+| §8 | 参考与变更记录 |
 
 ---
 
@@ -231,45 +232,53 @@ P0-B 验收通过
 
 ---
 
-## 4) Phase 1 概要（P0 验收后细化）
+## 4) Phase 1 概要（✅ 已完成）
 
-**目标：** 属性与规则健全 + 少量节点；**仍不做 PBR**。
+**完整设计：** [MATERIAL_SYSTEM_PHASE1.md](./MATERIAL_SYSTEM_PHASE1.md)（checklist 已全部勾选，2026-05-23）
 
-### P1-A — 属性扩展
+**目标：** 属性与规则健全 + 少量节点；**仍不做 PBR、不做 Translucent**（Translucent 归 Phase 2）。
 
-1. `MP_Normal`（float3），`MaterialOutput` 增 pin；`MaterialPropertyUtil` + MIR 默认。  
-2. `MP_AO`（float），同上（在 Normal 之后）。  
-3. BlinnPhong 模板读 Normal（可先 **世界/切线空间二选一**，文档写死）；AO 乘到环境/间接项。  
-4. **不新增** Specular float3 pin。
-
-### P1-B — Capability + Pin 可见性（按 §1 两层策略）
-
-- 新 `MaterialBlendMode`：`Opaque`、`Masked`（**Translucent 与 TranslucencyPass 同里程碑**，见 §2.3）。  
-- `MaterialCapabilityQuery`：`GetPinVisibility(MP_*, shading, blend)` → Hidden / Disabled / Active。  
-- `MaterialGraphWindow`：画 pin、禁止连 Disabled；`MaterialEditor::SetShadingModel` / `SetBlendMode` → `PruneInvalidMaterialOutputLinks()`。  
-- Compile：`RequiredProperties`（如 Translucent 要 Opacity）。
-
-### P1-C — 节点（少量）
-
-- 新 MIR + 白名单：`Lerp`。  
-- 仅 Registry：`Subtract`、`Divide`（可选 `Min`、`Max`）。  
-- **不做** VectorParameter、NormalUnpack（留 Phase 2 与 Normal 贴图一起）。
-
-**P1 详细设计文档：** 在 Phase 0 完成后新建 `MATERIAL_SYSTEM_PHASE1.md` 或在本文件 §4 下扩写（含验收表）。
+| 子阶段 | 状态 | 内容 |
+|--------|------|------|
+| **P1.1** | ✅ | `MaterialBlendMode`（Opaque/Masked）+ `MaterialCapabilityUtil` + Output pin Hidden/Disabled + `PruneInvalidMaterialOutputLinks` + Masked alpha test |
+| **P1.2** | ✅ | `MP_Normal`（float3，**世界空间**；无 TBN）+ BlinnPhong 使用 |
+| **P1.3** | ✅ | `MP_AO` + BlinnPhong 乘光照 |
+| **P1.4** | ✅ | 新节点 `Lerp`；白名单 `Subtract`/`Divide`/`Min`/`Max` |
 
 ---
 
-## 5) Phase 2+ 概要（仅方向）
+## 5) Phase 2 概要（**已完成**）
+
+**完整设计：** [MATERIAL_SYSTEM_PHASE2.md](./MATERIAL_SYSTEM_PHASE2.md) ✅
+
+**目标：** 半透明走对 Pass；法线贴图 + TBN；**不**做 PBR。
+
+**下一步：** [MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md) — PBR + ComponentMask。
+
+| 子阶段 | 内容 |
+|--------|------|
+| **P2.1** | `MaterialBlendMode::Translucent` + `IsTranslucent()` + Capability/Opacity Required + fragment alpha + `TranslucencyPass` 验收 |
+| **P2.2** | `a_Tangent` 写入网格 + `MaterialTangentFrame.glslinc` + `UsesTangentFrame` 编译开关 |
+| **P2.3** | `MP_Normal` **切线空间** + `NormalUnpack` 节点 + BlinnPhong 扰动法线 |
+
+**推荐顺序：** P2.1 → P2.2 → P2.3（Translucent 与 Normal 正交，先修管线语义）。
+
+**已完成、不再计入 P2：** P1.1 `Masked` + `discard`（alpha test）。
+
+---
+
+## 6) Phase 3+ 概要
 
 | 阶段 | 内容 |
 |------|------|
-| **Phase 2** | Normal 贴图 + TBN；`Masked` alpha test；`Translucent` + `TranslucencyPass` + `IsTranslucent()` 实装 |
-| **Phase 3** | `MaterialShadingModel::PBR` 与 BlinnPhong **并存**；GGX 模板；金样例 `MaterialIRSmoke_PBR.memtl` |
-| **Deferred** | Undo、Content Browser、Pin 颜色、Shader 文本预览、Material Function |
+| **Phase 3** ✅ | [MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md)：PBR(GGX)、ComponentMask、TextureSample.R、`material-ir-test` |
+| **Phase 4**（**当前 · 设计**） | [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)：**仅 IBL**（irradiance + prefilter + BRDF LUT） |
+| **P5 / Backlog** | Parallax、WPO、Tessellation/displacement |
+| **Deferred** | 编辑器 Undo、Shader 预览、Content Browser、Material Function（用户更高优先级非材质项） |
 
 ---
 
-## 6) UE / 现代材质对照（参考，不重复展开）
+## 7) UE / 现代材质对照（参考，不重复展开）
 
 四个正交维度：**Shading Model**、**Blend Mode**、**Domain**、**Material Properties**。  
 当前 minEngine：`Unlit`/`BlinnPhong`；Blend 未接；Properties 见 `MaterialTypes.h`（无 Normal/AO）。
@@ -278,7 +287,7 @@ P0-B 验收通过
 
 ---
 
-## 7) 参考与变更记录
+## 8) 参考与变更记录
 
 | 文档 | 用途 |
 |------|------|
@@ -292,3 +301,7 @@ P0-B 验收通过
 | 2026-05-22 | 初稿 |
 | 2026-05-22 | 拍板 §1、疑问 §2、**Phase 0 详细设计 §3**；P1+ 降为概要 |
 | 2026-05-22 | P0-B：pin 类型 API 定为 **MaterialValueType**（`const MIRValueType*` 薄封装），非 `MIRPrimitiveType` 直出 |
+| 2026-05-22 | Phase 0 实现提交 `9089671`；**MATERIAL_SYSTEM_PHASE1.md** 详细设计 |
+| 2026-05-22 | P1.1 实现（BlendMode/Capability/Masked）；**MATERIAL_SYSTEM_PHASE2.md** 详细设计 |
+| 2026-05-23 | **Phase 1 验收通过**（目视 + `--material-ir-test`）；启动 Phase 2 实现（P2.1） |
+| 2026-05-23 | **Phase 3 验收通过**；[MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) IBL 设计定稿（Parallax/WPO/编辑器延后） |

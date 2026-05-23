@@ -1,5 +1,6 @@
 #include "MIREmitter.h"
 
+#include "Runtime/Core/Reflection/Reflection.h"
 #include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "../MaterialPropertyUtil.h"
 #include "MIRBuilder.h"
@@ -79,7 +80,12 @@ namespace minEngine
                 case BO_Subtract:
                     return emitter.ConstantFloat(a - b);
                 case BO_Divide:
-                    return b == 0.0f ? emitter.Poison() : emitter.ConstantFloat(a / b);
+                    if (b == 0.0f)
+                    {
+                        emitter.EmitDiagnostic("Divide by zero.");
+                        return emitter.Poison();
+                    }
+                    return emitter.ConstantFloat(a / b);
                 case BO_Max:
                     return emitter.ConstantFloat(std::max(a, b));
                 case BO_Min:
@@ -102,7 +108,12 @@ namespace minEngine
                 case BO_Subtract:
                     return emitter.ConstantInt(a - b);
                 case BO_Divide:
-                    return b == 0 ? emitter.Poison() : emitter.ConstantInt(a / b);
+                    if (b == 0)
+                    {
+                        emitter.EmitDiagnostic("Divide by zero.");
+                        return emitter.Poison();
+                    }
+                    return emitter.ConstantInt(a / b);
                 case BO_Max:
                     return emitter.ConstantInt(std::max(a, b));
                 case BO_Min:
@@ -328,7 +339,7 @@ namespace minEngine
         const MIRPrimitiveType* valuePrimitiveType = value->Type->AsPrimitive();
         if (valuePrimitiveType == nullptr || targetPrimitiveType == nullptr)
         {
-            m_Graph->AddDiagnostic("Cast requires primitive types.");
+            EmitDiagnostic("Cast requires primitive types.");
             return Poison();
         }
 
@@ -339,7 +350,7 @@ namespace minEngine
 
         if (targetPrimitiveType->IsMatrix() || valuePrimitiveType->IsMatrix())
         {
-            m_Graph->AddDiagnostic("Matrix casts are not implemented.");
+            EmitDiagnostic("Matrix casts are not implemented.");
             return Poison();
         }
 
@@ -408,7 +419,7 @@ namespace minEngine
             return instruction;
         }
 
-        m_Graph->AddDiagnostic("Unsupported cast target.");
+        EmitDiagnostic("Unsupported cast target.");
         return Poison();
     }
 
@@ -416,13 +427,13 @@ namespace minEngine
     {
         if (type == nullptr || !type->IsVector())
         {
-            m_Graph->AddDiagnostic("MakeDimensional requires a vector type.");
+            EmitDiagnostic("MakeDimensional requires a vector type.");
             return Poison();
         }
 
         if (static_cast<int>(components.size()) != type->NumRows)
         {
-            m_Graph->AddDiagnostic("MakeDimensional component count mismatch.");
+            EmitDiagnostic("MakeDimensional component count mismatch.");
             return Poison();
         }
 
@@ -444,7 +455,7 @@ namespace minEngine
     {
         if (x == nullptr || y == nullptr || z == nullptr)
         {
-            m_Graph->AddDiagnostic("Vector3 input is null.");
+            EmitDiagnostic("Vector3 input is null.");
             return Poison();
         }
 
@@ -509,6 +520,26 @@ namespace minEngine
         return MIRPoison::Get();
     }
 
+    void MIREmitter::EmitDiagnostic(const std::string& message)
+    {
+        if (m_Graph == nullptr)
+        {
+            return;
+        }
+
+        if (m_CurrentNodeDef != nullptr)
+        {
+            const Reflection::MEClass* nodeClass = m_CurrentNodeDef->GetClass();
+            if (nodeClass != nullptr && !nodeClass->GetName().empty())
+            {
+                m_Graph->AddDiagnostic(nodeClass->GetName() + ": " + message);
+                return;
+            }
+        }
+
+        m_Graph->AddDiagnostic(message);
+    }
+
     MIRValue* MIREmitter::ConstantBool(bool value)
     {
         MIRConstant* constant = m_Graph->CreateValue<MIRConstant>();
@@ -569,7 +600,7 @@ namespace minEngine
             return commonType;
         }
 
-        m_Graph->AddDiagnostic("No common type between operands.");
+        EmitDiagnostic("No common type between operands.");
         return nullptr;
     }
 
@@ -582,7 +613,7 @@ namespace minEngine
 
         if (targetType == nullptr || targetType->IsPoison())
         {
-            m_Graph->AddDiagnostic("Cast target type is invalid.");
+            EmitDiagnostic("Cast target type is invalid.");
             return Poison();
         }
 
@@ -596,7 +627,7 @@ namespace minEngine
             return CastValueToPrimitiveType(value, targetPrimitive);
         }
 
-        m_Graph->AddDiagnostic("Cast target must be a primitive type.");
+        EmitDiagnostic("Cast target must be a primitive type.");
         return Poison();
     }
 
@@ -625,6 +656,11 @@ namespace minEngine
             return;
         }
         m_Builder->BindValueToOutput(output, value);
+    }
+
+    bool MIREmitter::IsOutputConnected(int outputIndex) const
+    {
+        return m_Builder != nullptr && m_Builder->IsOutputConnected(outputIndex);
     }
 
     MIRValue* MIREmitter::TryFoldOperator(
@@ -707,32 +743,32 @@ namespace minEngine
     {
         if (a == nullptr)
         {
-            m_Graph->AddDiagnostic("Operator primary input is null.");
+            EmitDiagnostic("Operator primary input is null.");
             return nullptr;
         }
 
         if (IsBinaryOperator(op) && b == nullptr)
         {
-            m_Graph->AddDiagnostic("Binary operator secondary input is null.");
+            EmitDiagnostic("Binary operator secondary input is null.");
             return nullptr;
         }
 
         if (IsTernaryOperator(op) && (b == nullptr || c == nullptr))
         {
-            m_Graph->AddDiagnostic("Ternary operator missing operands.");
+            EmitDiagnostic("Ternary operator missing operands.");
             return nullptr;
         }
 
         if (IsUnaryOperator(op) && (b != nullptr || c != nullptr))
         {
-            m_Graph->AddDiagnostic("Unary operator received extra operands.");
+            EmitDiagnostic("Unary operator received extra operands.");
             return nullptr;
         }
 
         const MIRPrimitiveType* firstPrimitiveType = a->Type->AsPrimitive();
         if (firstPrimitiveType == nullptr)
         {
-            m_Graph->AddDiagnostic("Operator argument must be a primitive type.");
+            EmitDiagnostic("Operator argument must be a primitive type.");
             return nullptr;
         }
 
@@ -773,14 +809,14 @@ namespace minEngine
             const MIRPrimitiveType* argumentPrimitive = arguments[argumentIndex]->Type->AsPrimitive();
             if (argumentPrimitive == nullptr)
             {
-                m_Graph->AddDiagnostic("Operator argument must be a primitive type.");
+                EmitDiagnostic("Operator argument must be a primitive type.");
                 return nullptr;
             }
 
             commonType = TryGetCommonType(commonType, argumentPrimitive);
             if (commonType == nullptr)
             {
-                m_Graph->AddDiagnostic("No common type between operands.");
+                EmitDiagnostic("No common type between operands.");
                 return nullptr;
             }
         }
@@ -827,13 +863,13 @@ namespace minEngine
         const MIRPrimitiveType* primitiveType = value->Type->AsPrimitive();
         if (primitiveType == nullptr || !primitiveType->IsVector())
         {
-            m_Graph->AddDiagnostic("Subscript requires a vector value.");
+            EmitDiagnostic("Subscript requires a vector value.");
             return Poison();
         }
 
         if (index < 0 || index >= primitiveType->GetNumComponents())
         {
-            m_Graph->AddDiagnostic("Subscript index is out of range.");
+            EmitDiagnostic("Subscript index is out of range.");
             return Poison();
         }
 
@@ -860,7 +896,7 @@ namespace minEngine
         const MIRPrimitiveType* primitiveType = value->Type->AsPrimitive();
         if (primitiveType == nullptr)
         {
-            m_Graph->AddDiagnostic("Subscript requires a primitive value.");
+            EmitDiagnostic("Subscript requires a primitive value.");
             return Poison();
         }
 
@@ -871,7 +907,7 @@ namespace minEngine
 
         if (index < 0 || index >= primitiveType->GetNumComponents())
         {
-            m_Graph->AddDiagnostic("Subscript index is out of range.");
+            EmitDiagnostic("Subscript index is out of range.");
             return Poison();
         }
 
@@ -969,13 +1005,14 @@ namespace minEngine
     {
         if (condition == nullptr || trueValue == nullptr || falseValue == nullptr)
         {
-            m_Graph->AddDiagnostic("Branch input is null.");
+            EmitDiagnostic("Branch input is null.");
             return Poison();
         }
 
         condition = Cast(condition, MIRPrimitiveType::GetBool());
         if (condition == nullptr || condition->IsPoison())
         {
+            EmitDiagnostic("Branch condition is invalid.");
             return Poison();
         }
 
@@ -987,6 +1024,7 @@ namespace minEngine
         const MIRValueType* commonType = GetCommonType(trueValue->Type, falseValue->Type);
         if (commonType == nullptr)
         {
+            EmitDiagnostic("Branch true/false values have no common type.");
             return Poison();
         }
 
@@ -994,6 +1032,7 @@ namespace minEngine
         falseValue = Cast(falseValue, commonType);
         if (trueValue == nullptr || trueValue->IsPoison() || falseValue == nullptr || falseValue->IsPoison())
         {
+            EmitDiagnostic("Branch true/false value is invalid.");
             return Poison();
         }
 
@@ -1007,9 +1046,14 @@ namespace minEngine
 
     MIRValue* MIREmitter::ExternalInput(MIRExternalInputId inputId)
     {
-        const MIRPrimitiveType* float2Type = MIRPrimitiveType::GetFloat2();
+        const MIRPrimitiveType* resultType = MIRPrimitiveType::GetFloat2();
+        if (inputId == EI_WorldNormal)
+        {
+            resultType = MIRPrimitiveType::GetFloat3();
+        }
+
         MIRExternalInput* instruction = m_Graph->CreateValue<MIRExternalInput>();
-        InitializeMIRInstruction(instruction, VK_ExternalInput, float2Type);
+        InitializeMIRInstruction(instruction, VK_ExternalInput, resultType);
         instruction->InputId = inputId;
         return instruction;
     }
@@ -1031,7 +1075,7 @@ namespace minEngine
 
         if (texture->Type == nullptr || texture->Type->AsObject() == nullptr)
         {
-            m_Graph->AddDiagnostic("TextureSample requires a Texture2D object.");
+            EmitDiagnostic("TextureSample requires a Texture2D object.");
             return Poison();
         }
 
@@ -1061,7 +1105,7 @@ namespace minEngine
     {
         if (property < 0 || property >= MaterialPropCount)
         {
-            m_Graph->AddDiagnostic("SetMaterialOutput property is out of range.");
+            EmitDiagnostic("SetMaterialOutput property is out of range.");
             return nullptr;
         }
 
