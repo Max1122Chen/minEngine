@@ -10,6 +10,7 @@ namespace minEngine
 
         // TODO: Add other texture creation methods (from memory, from data, etc.)
         OpenGLTexture2D(const unsigned char* data, RHITextureDesc desc);
+        OpenGLTexture2D(const float* data, RHITextureDesc desc);
 
         OpenGLTexture2D() = default;
         virtual ~OpenGLTexture2D() override;

@@ -33,6 +33,10 @@ namespace minEngine
     private:
         std::shared_ptr<TextureCube> CreateValidationCube(RHI& rhi);
         std::shared_ptr<TextureCube> TryLoadIrradianceFromDisk(RHI& rhi, const std::string& iblDirectory);
+        std::shared_ptr<TextureCube> TryCaptureEnvironmentFromHdr(
+            RHI& rhi,
+            const std::string& iblDirectory,
+            const std::string& engineDefaultAssetsRoot);
 
         RHI* m_RHI = nullptr;
         std::shared_ptr<TextureCube> m_Irradiance;

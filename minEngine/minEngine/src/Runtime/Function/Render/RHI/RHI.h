@@ -53,6 +53,7 @@ namespace minEngine
         virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) = 0;
         virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) = 0;
         virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc) = 0;
+        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2DFloat(const float* data, RHITextureDesc desc) = 0;
         virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(
             const std::vector<unsigned char*>& faceData,
             RHITextureDesc desc,

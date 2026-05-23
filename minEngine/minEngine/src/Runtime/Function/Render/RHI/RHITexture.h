@@ -9,6 +9,8 @@ namespace minEngine
         RED,
         RGB8,
         RGBA8,
+        RGB16F,
+        RGBA16F,
         DEPTH16,
         DEPTH24,
         DEPTH32,

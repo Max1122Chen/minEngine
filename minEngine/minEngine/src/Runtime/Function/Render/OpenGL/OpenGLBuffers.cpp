@@ -113,6 +113,16 @@ namespace minEngine
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, faceTarget, glTexture->GetID(), 0);
     }
 
+    void OpenGLFrameBuffer::AttachColorCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face)
+    {
+        FrameBuffer::AttachColorCubeFace(texture, face);
+
+        Bind();
+        OpenGLTextureCube* glTexture = static_cast<OpenGLTextureCube*>(texture.get());
+        GLenum faceTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + (face % 6);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, faceTarget, glTexture->GetID(), 0);
+    }
+
     void OpenGLFrameBuffer::AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture)
     {
         FrameBuffer::AttachStencilBuffer(texture);

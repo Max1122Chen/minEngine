@@ -45,6 +45,7 @@ namespace minEngine
         virtual void AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture) override;
         virtual void AttachDepthBufferLayer(std::shared_ptr<RHITexture2DArray> texture, uint32_t layer) override;
         virtual void AttachDepthCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face) override;
+        virtual void AttachColorCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face) override;
         virtual void AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture) override;
         virtual void AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture) override;  
 

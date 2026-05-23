@@ -3,7 +3,6 @@
 #include "glad/glad.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
-#include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
 {
@@ -29,6 +28,18 @@ namespace minEngine
             {
                 internalFormat = GL_RGBA8;
                 dataFormat = GL_RGBA;
+            }
+            else if (desc.Format == TextureFormat::RGB16F)
+            {
+                internalFormat = GL_RGB16F;
+                dataFormat = GL_RGB;
+                dataType = GL_FLOAT;
+            }
+            else if (desc.Format == TextureFormat::RGBA16F)
+            {
+                internalFormat = GL_RGBA16F;
+                dataFormat = GL_RGBA;
+                dataType = GL_FLOAT;
             }
             else if (desc.Format == TextureFormat::DEPTH16)
             {
@@ -85,6 +96,40 @@ namespace minEngine
                    (desc.Usage == TextureUsage::Depth) ||
                    (desc.Usage == TextureUsage::DepthStencil);
         }
+
+        bool IsFloatColorTexture(const RHITextureDesc& desc)
+        {
+            return desc.Format == TextureFormat::RGB16F || desc.Format == TextureFormat::RGBA16F;
+        }
+
+        void Configure2DTextureSampling(GLenum target, const RHITextureDesc& desc, bool generateMipmaps)
+        {
+            if (IsDepthLikeTexture(desc))
+            {
+                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+                const float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+                glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, borderColor);
+                return;
+            }
+
+            if (IsFloatColorTexture(desc))
+            {
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                return;
+            }
+
+            glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            (void)generateMipmaps;
+        }
     }
 
     OpenGLTexture2D::~OpenGLTexture2D()
@@ -103,29 +148,13 @@ namespace minEngine
         glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D, m_ID);
 
-        // set the texture wrapping/filtering options (on the currently bound texture object). TODO: make these configurable
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
         GLint internalFormat = 0;
         GLenum dataFormat = 0;
         GLenum dataType = GL_UNSIGNED_BYTE;
         ResolveOpenGLTextureFormat(desc, internalFormat, dataFormat, dataType);
 
-        bool isDepthStencil = IsDepthLikeTexture(desc);
-
-        if (isDepthStencil)
-        {
-            // Depth/Stencil textures usually don't support mipmaps or we don't restart them often
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-        }
+        const bool isDepthStencil = IsDepthLikeTexture(desc);
+        Configure2DTextureSampling(GL_TEXTURE_2D, desc, true);
 
         if (internalFormat != 0 && desc.Width > 0 && desc.Height > 0)
         {
@@ -139,8 +168,35 @@ namespace minEngine
 
             if (!isDepthStencil)
             {
-               glGenerateMipmap(GL_TEXTURE_2D);
+                glGenerateMipmap(GL_TEXTURE_2D);
             }
+        }
+    }
+
+    OpenGLTexture2D::OpenGLTexture2D(const float* data, RHITextureDesc desc)
+    {
+        m_Desc = desc;
+        glGenTextures(1, &m_ID);
+        glBindTexture(GL_TEXTURE_2D, m_ID);
+
+        GLint internalFormat = 0;
+        GLenum dataFormat = 0;
+        GLenum dataType = GL_UNSIGNED_BYTE;
+        ResolveOpenGLTextureFormat(desc, internalFormat, dataFormat, dataType);
+
+        if (!IsFloatColorTexture(desc) || internalFormat == 0)
+        {
+            ME_CORE_ERROR("OpenGLTexture2D(float): unsupported format.");
+            glDeleteTextures(1, &m_ID);
+            m_ID = 0;
+            return;
+        }
+
+        Configure2DTextureSampling(GL_TEXTURE_2D, desc, false);
+
+        if (desc.Width > 0 && desc.Height > 0)
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, desc.Width, desc.Height, 0, dataFormat, dataType, data);
         }
     }
 
@@ -227,7 +283,7 @@ namespace minEngine
         for (unsigned int faceIndex = 0; faceIndex < 6; faceIndex++)
         {
             const unsigned char* facePixels = faceData[faceIndex];
-            if (!isDepthLike && facePixels == nullptr)
+            if (!isDepthLike && facePixels == nullptr && !IsFloatColorTexture(desc))
             {
                 ME_CORE_ERROR("OpenGLTextureCube: color face {} is null.", faceIndex);
                 continue;

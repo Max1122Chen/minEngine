@@ -245,4 +245,57 @@ namespace minEngine
         FreeFaceSet(faceSet);
         return cube;
     }
+
+    std::shared_ptr<RHITextureCube> TextureCubeLoader::CreateEmptyRenderTargetCube(
+        RHI& rhi,
+        uint32_t faceSize,
+        TextureFormat format,
+        std::string* outError)
+    {
+        if (faceSize == 0 || format == TextureFormat::None)
+        {
+            if (outError)
+            {
+                *outError = "Invalid empty cubemap parameters.";
+            }
+            return nullptr;
+        }
+
+        std::vector<unsigned char*> facePointers(6, nullptr);
+        std::shared_ptr<RHITextureCube> rhiTexture = rhi.CreateRHITextureCube(
+            facePointers,
+            RHITextureDesc{
+                .Width = faceSize,
+                .Height = faceSize,
+                .Format = format,
+                .Usage = TextureUsage::Color,
+            },
+            false);
+
+        if (!rhiTexture && outError)
+        {
+            *outError = "RHI failed to create empty cubemap render target.";
+        }
+
+        return rhiTexture;
+    }
+
+    std::shared_ptr<TextureCube> TextureCubeLoader::WrapRHITextureCube(
+        std::shared_ptr<RHITextureCube> rhiTexture,
+        uint32_t faceSize,
+        uint32_t channels)
+    {
+        if (!rhiTexture || faceSize == 0)
+        {
+            return nullptr;
+        }
+
+        std::shared_ptr<TextureCube> texture = std::make_shared<TextureCube>();
+        texture->m_RHITexture = std::move(rhiTexture);
+        texture->m_Size = faceSize;
+        texture->m_Channels = channels;
+        texture->m_Wrapping = TextureWrapping::ClampToEdge;
+        texture->m_Filtering = TextureFiltering::Linear;
+        return texture;
+    }
 }

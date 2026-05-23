@@ -27,6 +27,19 @@ namespace minEngine
                 return TextureFormat::None;
             }
         }
+
+        TextureFormat HdrTextureFormatFromChannels(int channelCount)
+        {
+            switch (channelCount)
+            {
+            case 3:
+                return TextureFormat::RGB16F;
+            case 4:
+                return TextureFormat::RGBA16F;
+            default:
+                return TextureFormat::None;
+            }
+        }
     }
 
     std::shared_ptr<Texture2D> Texture2DLoader::CreateFromPixels(
@@ -70,6 +83,51 @@ namespace minEngine
         if (!texture->m_RHITexture)
         {
             ME_CORE_ERROR("Texture2DLoader: RHI failed to create texture for {}.", debugName);
+            return nullptr;
+        }
+
+        return texture;
+    }
+
+    std::shared_ptr<Texture2D> Texture2DLoader::CreateFromHdrPixels(
+        RHI& rhi,
+        const ImagePixels& pixels,
+        const std::string& debugName)
+    {
+        if (pixels.Storage != ImageStorage::Float32 || pixels.F32 == nullptr || !pixels.IsValid())
+        {
+            ME_CORE_ERROR(
+                "Texture2DLoader: '{}' requires float HDR pixels.",
+                debugName);
+            return nullptr;
+        }
+
+        const TextureFormat format = HdrTextureFormatFromChannels(pixels.Channels);
+        if (format == TextureFormat::None)
+        {
+            ME_CORE_ERROR(
+                "Texture2DLoader: unsupported HDR channel count {} for {} (expected 3 or 4).",
+                pixels.Channels,
+                debugName);
+            return nullptr;
+        }
+
+        std::shared_ptr<Texture2D> texture = NewObject<Texture2D>(debugName);
+        texture->m_Width = static_cast<uint32_t>(pixels.Width);
+        texture->m_Height = static_cast<uint32_t>(pixels.Height);
+        texture->m_Channels = static_cast<uint32_t>(pixels.Channels);
+        texture->m_RHITexture = rhi.CreateRHITexture2DFloat(
+            pixels.F32,
+            RHITextureDesc{
+                .Width = texture->m_Width,
+                .Height = texture->m_Height,
+                .Format = format,
+                .Usage = TextureUsage::TextureBinding,
+            });
+
+        if (!texture->m_RHITexture)
+        {
+            ME_CORE_ERROR("Texture2DLoader: RHI failed to create HDR texture for {}.", debugName);
             return nullptr;
         }
 

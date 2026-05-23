@@ -15,7 +15,15 @@ File naming: `{prefix}_{face}.png` with OpenGL face order:
 | +Z | `irradiance_posz.png` |
 | -Z | `irradiance_negz.png` |
 
-If these files are missing, the engine uses a **6-color validation cubemap** (32×32) so PBR draws still bind units 4–6.
+If these files are missing, the engine tries an **HDR equirectangular** capture (LearnOpenGL-style):
+
+1. Place any `*.hdr` in this folder (e.g. `citrus_orchard_puresky_1k.hdr`).
+2. Shaders: `EngineDefault/Shaders/EnvMap/equirect_to_cubemap.{vert,frag}`.
+3. GPU path: `ImageLoader::LoadHdr` → RGB16F 2D → `EnvMapCapture::EquirectToCubemap` (512×512 faces).
+
+Preferred HDR name: `environment.hdr` (otherwise the first `*.hdr` found is used).
+
+If no PNG faces and no HDR capture succeed, a **6-color validation cubemap** (32×32) is used so PBR draws still bind units 4–6.
 
 ## Future (P4.2+)
 

@@ -22,5 +22,11 @@ namespace minEngine
             const ImagePixels& pixels,
             const std::string& debugName,
             const GUID& guid);
+
+        /** HDR equirectangular map (float pixels) → RGB16F / RGBA16F RHI texture. */
+        static std::shared_ptr<Texture2D> CreateFromHdrPixels(
+            RHI& rhi,
+            const ImagePixels& pixels,
+            const std::string& debugName);
     };
 }

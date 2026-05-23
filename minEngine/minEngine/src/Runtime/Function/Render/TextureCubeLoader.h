@@ -62,5 +62,16 @@ namespace minEngine
             const std::string& namePrefix,
             bool generateMipmaps = false,
             std::string* outError = nullptr);
+
+        static std::shared_ptr<RHITextureCube> CreateEmptyRenderTargetCube(
+            RHI& rhi,
+            uint32_t faceSize,
+            TextureFormat format,
+            std::string* outError = nullptr);
+
+        static std::shared_ptr<TextureCube> WrapRHITextureCube(
+            std::shared_ptr<RHITextureCube> rhiTexture,
+            uint32_t faceSize,
+            uint32_t channels);
     };
 }

@@ -1,8 +1,11 @@
 #include "EngineIBLEnvironment.h"
 
+#include "EnvMapCapture.h"
 #include "../Texture.h"
+#include "../Texture2DLoader.h"
 #include "../TextureCubeLoader.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Resource/ImageLoader.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 
@@ -58,6 +61,93 @@ namespace minEngine
         return cube;
     }
 
+    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryCaptureEnvironmentFromHdr(
+        RHI& rhi,
+        const std::string& iblDirectory,
+        const std::string& engineDefaultAssetsRoot)
+    {
+        if (!std::filesystem::is_directory(iblDirectory))
+        {
+            return nullptr;
+        }
+
+        std::filesystem::path hdrPath;
+        for (const std::filesystem::directory_entry& entry :
+             std::filesystem::directory_iterator(iblDirectory))
+        {
+            if (!entry.is_regular_file())
+            {
+                continue;
+            }
+
+            if (!ImageLoader::IsHdrPath(entry.path().string()))
+            {
+                continue;
+            }
+
+            if (entry.path().filename() == "environment.hdr")
+            {
+                hdrPath = entry.path();
+                break;
+            }
+
+            if (hdrPath.empty())
+            {
+                hdrPath = entry.path();
+            }
+        }
+
+        if (hdrPath.empty())
+        {
+            return nullptr;
+        }
+
+        ImagePixels hdrPixels;
+        std::string loadError;
+        if (!ImageLoader::LoadHdr(hdrPath.string(), hdrPixels, false, &loadError))
+        {
+            ME_CORE_WARN(
+                "EngineIBLEnvironment: failed to load HDR '{}' ({}).",
+                hdrPath.string(),
+                loadError);
+            return nullptr;
+        }
+
+        std::shared_ptr<Texture2D> equirect =
+            Texture2DLoader::CreateFromHdrPixels(rhi, hdrPixels, hdrPath.filename().string());
+        ImageLoader::Free(hdrPixels);
+        if (!equirect || !equirect->GetRHITexture())
+        {
+            ME_CORE_WARN(
+                "EngineIBLEnvironment: failed to upload HDR '{}' to GPU.",
+                hdrPath.string());
+            return nullptr;
+        }
+
+        std::string captureError;
+        std::shared_ptr<TextureCube> cube = EnvMapCapture::EquirectToCubemap(
+            rhi,
+            *equirect->GetRHITexture(),
+            std::filesystem::path(engineDefaultAssetsRoot),
+            EnvMapCapture::kDefaultCubeFaceSize,
+            &captureError);
+        if (!cube)
+        {
+            ME_CORE_WARN(
+                "EngineIBLEnvironment: HDR cubemap capture failed for '{}' ({}).",
+                hdrPath.string(),
+                captureError);
+            return nullptr;
+        }
+
+        ME_CORE_INFO(
+            "EngineIBLEnvironment: captured {}x{} cubemap from HDR '{}'.",
+            EnvMapCapture::kDefaultCubeFaceSize,
+            EnvMapCapture::kDefaultCubeFaceSize,
+            hdrPath.string());
+        return cube;
+    }
+
     void EngineIBLEnvironment::Initialize(RHI* rhi, const std::string& engineDefaultAssetsRoot)
     {
         Shutdown();
@@ -74,18 +164,22 @@ namespace minEngine
         m_UsingFallbackCube = false;
         if (!m_Irradiance)
         {
+            m_Irradiance = TryCaptureEnvironmentFromHdr(*rhi, iblDirectory, engineDefaultAssetsRoot);
+        }
+        if (!m_Irradiance)
+        {
             m_Irradiance = CreateValidationCube(*rhi);
             m_UsingFallbackCube = m_Irradiance != nullptr;
             if (m_UsingFallbackCube)
             {
                 ME_CORE_INFO(
-                    "EngineIBLEnvironment: using 6-color validation cubemap (place irradiance_posx.png etc. under {}).",
+                    "EngineIBLEnvironment: using 6-color validation cubemap (place irradiance_*.png or *.hdr under {}).",
                     iblDirectory);
             }
         }
-        else
+        else if (!m_UsingFallbackCube)
         {
-            ME_CORE_INFO("EngineIBLEnvironment: loaded irradiance cubemap from {}.", iblDirectory);
+            ME_CORE_INFO("EngineIBLEnvironment: loaded environment cubemap from {}.", iblDirectory);
         }
 
         // P4.2 will load prefilter + BRDF LUT; P4.1 keeps nullptr until assets exist.
