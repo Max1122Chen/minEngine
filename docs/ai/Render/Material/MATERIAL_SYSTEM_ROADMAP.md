@@ -1,7 +1,7 @@
 # Material System — 深度拓展与使用优化
 
 Last updated: 2026-05-23  
-Status: **Phase 0–4 ✅** · **Phase 5 设计稿** → [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md)  
+Status: **Phase 0–5 ✅**（维护模式）— 详见 [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md)  
 前置：`MATERIAL_EDITOR_PLAN.md` E0–E4 ✅；`MATERIAL_SHADING_MODEL_PLAN.md`（Unlit + BlinnPhong）✅
 
 ---
@@ -295,7 +295,7 @@ P0-B 验收通过
 | [MATERIAL_EDITOR_PLAN.md](./MATERIAL_EDITOR_PLAN.md) | 编辑器 E0–E4 |
 | [MATERIAL_SHADING_MODEL_PLAN.md](./MATERIAL_SHADING_MODEL_PLAN.md) | Unlit/BlinnPhong |
 | [MATERIAL_RUNTIME_BRIDGE_CHECKLIST.md](./MATERIAL_RUNTIME_BRIDGE_CHECKLIST.md) | 进 Viewport |
-| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | 时间线 |
+| [PROGRESS_LOG.md](../../PROGRESS_LOG.md) | 时间线 |
 
 | 日期 | 说明 |
 |------|------|

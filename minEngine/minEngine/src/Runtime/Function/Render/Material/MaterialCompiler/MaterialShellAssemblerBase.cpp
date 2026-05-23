@@ -1,6 +1,6 @@
 #include "MaterialShellAssemblerBase.h"
 
-#include "Runtime/Engine.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 
 #include <fstream>
 #include <sstream>
@@ -40,7 +40,7 @@ namespace minEngine
             return std::filesystem::path(env.EngineDefaultAssetsRootOverride);
         }
 
-        return std::filesystem::path(Engine::Get().GetEngineDefaultAssetsRoot());
+        return PathRegistry::Get().GetEngineDefaultAssetsRoot();
     }
 
     const char* MaterialShellAssemblerBase::ShaderLanguageSubdir(const MaterialCompileEnvironment& env)

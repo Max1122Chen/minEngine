@@ -143,7 +143,7 @@ Preview：`MaterialPreviewViewportWindow` + Preview `RenderScene` + 独立 RT
 
 ### 阶段 P2b — Editor 视口窗口分层（命名已拍板）
 
-> 详细设计见 [EDITOR_VIEWPORT_WINDOWS.md](./EDITOR_VIEWPORT_WINDOWS.md)。
+> 详细设计见 [EDITOR_VIEWPORT_WINDOWS.md](../Editor/EDITOR_VIEWPORT_WINDOWS.md)。
 
 **拍板命名：** UI 基类 **`EditorViewportWindow`**；关卡编辑窗口 **`SceneEditingViewportWindow`**（不用 Level，避免与 Scene 混用）；Client **`SceneEditingViewportClient`**。
 
@@ -233,7 +233,7 @@ Preview：`MaterialPreviewViewportWindow` + Preview `RenderScene` + 独立 RT
 | 区域 | 文件 | 改动要点 |
 |------|------|----------|
 | Preview Runtime | `MaterialPreviewViewport` 或专用 `SceneViewport` 配置 | 独立 `RenderScene`（球+灯）、小 RT |
-| Preview Editor | **`MaterialPreviewViewportWindow` / Client**（见 [EDITOR_VIEWPORT_WINDOWS.md](./EDITOR_VIEWPORT_WINDOWS.md)） | 无 Gizmo；`EndFrame` 第二条 Submit |
+| Preview Editor | **`MaterialPreviewViewportWindow` / Client**（见 [EDITOR_VIEWPORT_WINDOWS.md](../Editor/EDITOR_VIEWPORT_WINDOWS.md)） | 无 Gizmo；`EndFrame` 第二条 Submit |
 | Flags | `SceneDrawFlags` | Preview 关闭 Shadow / Present |
 
 **验收**

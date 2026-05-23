@@ -11,7 +11,7 @@ int main(int argc, char** argv)
     if (minEngine::ShouldRunMaterialIRTestsOnly(argc, argv))
     {
         minEngine::LogSystem::Initialize();
-        const bool passed = minEngine::RunMaterialIRSmokeTests();
+        const bool passed = minEngine::RunMaterialIRSmokeTests(argc, argv);
         minEngine::LogSystem::Shutdown();
         return passed ? 0 : 1;
     }

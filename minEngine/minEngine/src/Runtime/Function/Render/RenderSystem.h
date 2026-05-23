@@ -20,6 +20,7 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
+        static bool HasInstance();
         static RenderSystem& Get();
 
 
@@ -28,7 +29,15 @@ namespace minEngine
         void SubmitSceneDraw(const SceneDrawDesc& desc);
 
         void SetPresentPassEnabled(bool enabled);
-        void ReloadEngineIBLEnvironment(const std::string& engineDefaultAssetsRoot);
+
+        /** Load IBL + SkyBox from PathRegistry (once). Requires Initialize() and valid EngineDefaultAssetsRoot. */
+        void LoadEngineRenderingAssets();
+
+        /** Force reload after path override (editor / hot reload). */
+        void ReloadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot);
+
+        bool AreEngineRenderingAssetsLoaded() const { return m_EngineRenderingAssetsLoaded; }
+
         RHI* GetRHI() const { return m_RHI.get(); }
 
     public:
@@ -47,5 +56,7 @@ namespace minEngine
 
         RenderPipeline m_RenderPipeline;
         std::vector<SceneDrawDesc> m_PendingDraws;
+
+        bool m_EngineRenderingAssetsLoaded = false;
     };
 }

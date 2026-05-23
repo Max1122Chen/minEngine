@@ -7,6 +7,7 @@ For AI collaboration context, see:
 - docs/ai/PROJECT_CONTEXT.md
 - docs/ai/PROGRESS_LOG.md
 - docs/ai/WORKING_WITH_AI.md
+- docs/ai/README.md (Platform / Render / Editor layout)
 
 ## Engine Design
 

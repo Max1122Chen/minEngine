@@ -528,6 +528,21 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Done:** `Vertex` + `a_Tangent`（Assimp `CalcTangentSpace` + fallback）；`UsesTangentFrame`；`MaterialTangentFrame.glslinc`；BlinnPhong TBN 路径；默认 Normal TSN `(0,0,1)`。
 - **Next:** P2.2 目视；P2.3 `NormalUnpack` + 法线贴图节点。
 
+### IBL load timing owned by RenderSystem (2026-05-23)
+- **Change:** Removed `EngineIBLEnvironment::Initialize(rhi, "")` from `RenderPipeline::Initialize`; single load via `RenderSystem::LoadEngineRenderingAssets()` after `PathRegistry` in `Engine::Initialize`.
+- **Removed:** `PathRegistry::ReloadEngineDependentSystems`; Editor duplicate config/IBL bootstrap.
+
+### Platform M0 PathRegistry + engine startup (2026-05-23)
+- **Code:** `Runtime/Core/Paths/PathRegistry` — discover `EngineConfig.meconfig` (cwd, parent walk, CLI, env); relative `EngineDefaultAssetsRoot`; `ProjectManager` sets `ProjectContent`.
+- **Config:** `EngineConfig.meconfig` → `"Assets/EngineDefault"` relative to engine root (config file directory).
+- **CLI:** `--engine-config=`, `--engine-root=`; env `MINENGINE_ENGINE_CONFIG`, `MINENGINE_ENGINE_ROOT`.
+- **Validation:** build Editor; `Editor.exe --material-ir-test` from `minEngine/bin`.
+
+### docs/ai reorg + Platform design drafts (2026-05-23)
+- **Layout:** Material/Render docs → `docs/ai/Render/Material/`；`RENDER_REFACTOR`、`RESOURCE_PIPELINE` → `docs/ai/Render/`；Editor 视口 → `docs/ai/Editor/`；新增 `Platform/`、`README.md`、`.cursor/rules/docs-ai-layout.mdc`。
+- **Design:** [PLATFORM_ROADMAP.md](./Platform/PLATFORM_ROADMAP.md)、[ENGINE_STARTUP_DESIGN.md](./Platform/Startup/ENGINE_STARTUP_DESIGN.md)、[MEMORY_MANAGEMENT_DESIGN.md](./Platform/MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md)（启动 M0 → **原地重构 ObjectManager** M1/M2）。
+- **Direction:** UE-like；反射/Lua/Content Browser/Undo 排在平台线之后。
+
 ### Material system Phase 5 P5.3 Skybox (2026-05-23)
 - **Done:** `SkyBoxComponent` + `SkyBoxSceneProxy` + `SkyBoxPass`（`background.*`）；`RenderPipeline` Clear → SkyBox → BasePass；`SceneDrawFlags::EnableSkyBox`；编辑器场景视口启用 flag；`test.mescene` SkyBox GO。
 - **Fix:** `SceneEditingViewportClient` 未传 `EnableSkyBox` 导致天空不绘制。

@@ -22,6 +22,7 @@
 #include "Runtime/Function/Input/InputModifiers.h"
 
 #include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLShader.h"
 
@@ -267,25 +268,36 @@ public:
             VertexElement("a_Position", VertexElementType::Float3)
         });
 
+        const PathRegistry& paths = PathRegistry::Get();
+        const auto shaderVert = paths.ResolveEngineRelative("Shaders/Phong.vert").string();
+        const auto shaderFrag = paths.ResolveEngineRelative("Shaders/Phong.frag").string();
+        const auto lightVert = paths.ResolveEngineRelative("Shaders/Light.vert").string();
+        const auto lightFrag = paths.ResolveEngineRelative("Shaders/Light.frag").string();
+
         minEngine::Material windowMaterial;
-        windowMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        windowMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/window.png", 0);
+        windowMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>(shaderVert, shaderFrag);
+        windowMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D(
+            paths.ResolveEngineRelative("Assets/Textures/window.png").string(), 0);
 
         minEngine::Material grassMaterial;
-        grassMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        grassMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/grass.png", 0);
+        grassMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>(shaderVert, shaderFrag);
+        grassMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D(
+            paths.ResolveEngineRelative("Assets/Textures/grass.png").string(), 0);
 
         minEngine::Material backpackMaterial;
-        backpackMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        backpackMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/diffuse.jpg", 0);
-        backpackMaterial.m_Specular.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Models/backpack/specular.jpg", 1);
+        backpackMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>(shaderVert, shaderFrag);
+        backpackMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D(
+            paths.ResolveEngineRelative("Assets/Models/backpack/diffuse.jpg").string(), 0);
+        backpackMaterial.m_Specular.Texture = AssetManager::GetAssetManager().LoadTexture2D(
+            paths.ResolveEngineRelative("Assets/Models/backpack/specular.jpg").string(), 1);
 
         minEngine::Material cubeMaterial;
-        cubeMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag");
-        cubeMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D("D:/Dev/GitRepo/minEngine/minEngine/Assets/Textures/container.jpg", 0);
+        cubeMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>(shaderVert, shaderFrag);
+        cubeMaterial.m_Diffuse.Texture = AssetManager::GetAssetManager().LoadTexture2D(
+            paths.ResolveEngineRelative("Assets/Textures/container.jpg").string(), 0);
         // create light material
         minEngine::Material lightMaterial;
-        lightMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>("D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.vert", "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Light.frag");
+        lightMaterial.m_Shader = std::make_shared<minEngine::OpenGLShader>(lightVert, lightFrag);
         lightMaterial.m_Diffuse.Value = minEngine::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
         minEngine::Material spotLightMaterial;

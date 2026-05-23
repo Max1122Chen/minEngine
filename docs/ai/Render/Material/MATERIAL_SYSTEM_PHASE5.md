@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-23  
 Status: **Phase 5 ✅**（P5.1–P5.3 已实施；P5.3 编辑器目视 ✅；P5.1/P5.2 漫反射/镜面目视可选补验）  
-前置：[MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) ✅ · [RESOURCE_PIPELINE_PLAN.md](./RESOURCE_PIPELINE_PLAN.md) R2 ✅
+前置：[MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) ✅ · [RESOURCE_PIPELINE_PLAN.md](../RESOURCE_PIPELINE_PLAN.md) R2 ✅
 
 **范围拍板（2026-05-23）：** Phase 5 **仅 IBL**（irradiance / prefilter / skybox）。**Parallax / POM / WPO** 移出 P5，列入 [§12 Backlog](#12-backlog视差--顶点位移有空再做)。
 

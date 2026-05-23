@@ -20,9 +20,10 @@
 
 
 
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "RenderPipeline/RenderPipeline.h"
 
-
+#include <filesystem>
 
 namespace minEngine
 
@@ -41,6 +42,11 @@ namespace minEngine
     }
 
 
+
+    bool RenderSystem::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
 
     RenderSystem& RenderSystem::Get()
 
@@ -78,14 +84,41 @@ namespace minEngine
 
 
 
-    void RenderSystem::ReloadEngineIBLEnvironment(const std::string& engineDefaultAssetsRoot)
+    void RenderSystem::LoadEngineRenderingAssets()
     {
-        m_RenderPipeline.ReloadIBLEnvironment(engineDefaultAssetsRoot);
+        if (m_EngineRenderingAssetsLoaded)
+        {
+            return;
+        }
+
+        const std::filesystem::path& assetsRoot = PathRegistry::Get().GetEngineDefaultAssetsRoot();
+        if (assetsRoot.empty())
+        {
+            ME_CORE_WARN(
+                "RenderSystem: EngineDefaultAssetsRoot is empty; skipping IBL / SkyBox load (check EngineConfig).");
+            return;
+        }
+
+        m_RenderPipeline.LoadEngineRenderingAssets(assetsRoot.string());
+        m_EngineRenderingAssetsLoaded = true;
+        ME_CORE_INFO("RenderSystem: engine rendering assets loaded.");
+    }
+
+    void RenderSystem::ReloadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot)
+    {
+        if (engineDefaultAssetsRoot.empty())
+        {
+            return;
+        }
+
+        m_RenderPipeline.LoadEngineRenderingAssets(engineDefaultAssetsRoot);
+        m_EngineRenderingAssetsLoaded = true;
     }
 
     void RenderSystem::Shutdown()
 
     {
+        m_EngineRenderingAssetsLoaded = false;
 
         m_RenderPipeline.Shutdown();
 

@@ -1,5 +1,6 @@
 #include "Engine.h"
 
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Resource/AssetManager.h"
@@ -21,15 +22,21 @@ namespace minEngine
 
     void Engine::Initialize(int argc, char** argv)
     {
-        (void)argc;
-        (void)argv;
-
         ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
         s_Instance = this;
 
         LogSystem::Get().Initialize();
         FinializeReflection();
+
+        m_EnginePathConfigLoaded =
+            PathRegistry::Get().LoadEngineConfiguration(argc, argv, m_EngineConfig);
+
         StartSystems();
+
+        if (m_RenderSystem && m_EnginePathConfigLoaded)
+        {
+            m_RenderSystem->LoadEngineRenderingAssets();
+        }
     }
 
     void Engine::Shutdown()
@@ -71,15 +78,6 @@ namespace minEngine
         PollEvents();
         TickLogicalFrame(deltaTime);
         TickRendererFrame(deltaTime);
-    }
-
-    void Engine::SetEngineDefaultAssetsRoot(std::string path)
-    {
-        m_EngineDefaultAssetsRoot = std::move(path);
-        if (m_RenderSystem)
-        {
-            m_RenderSystem->ReloadEngineIBLEnvironment(m_EngineDefaultAssetsRoot);
-        }
     }
 
     void Engine::FinializeReflection()

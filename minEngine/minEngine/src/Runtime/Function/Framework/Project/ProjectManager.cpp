@@ -1,5 +1,6 @@
 #include "ProjectManager.h"
 
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -122,11 +123,11 @@ namespace minEngine
                 }
             }
             
-            // For now, we just try to scan the project's "Assets" directory and then return success
-            const std::filesystem::path assetsPath = std::filesystem::path(descriptor.ProjectRoot) / "Assets";
+            PathRegistry::Get().SetProjectRoots(std::filesystem::path(descriptor.ProjectRoot));
+
+            const std::filesystem::path& assetsPath = PathRegistry::Get().GetProjectContentRoot();
             if (std::filesystem::exists(assetsPath) && std::filesystem::is_directory(assetsPath))
             {
-                // Here we pass a absolute path to ScanAssets
                 AssetManager::Get().ScanAssets(assetsPath);
                 // TODO: maybe we should also load other types of project-specific data here (e.g., editorDefaultScene, editor settings, etc.)
             }
@@ -146,6 +147,7 @@ namespace minEngine
     {
         // TODO: add any necessary cleanup logic here (e.g., unloading assets, closing scenes, etc.)
         m_CurrentProjectCtx.Reset();
+        PathRegistry::Get().ClearProjectRoots();
     }
 
     bool ProjectManager::LoadProjectDesc(const std::filesystem::path &descriptorPath, ProjectDescriptor &outDescriptor)

@@ -222,7 +222,7 @@ P3 **不强制** 引擎侧 sRGB 纹理类型；在 PROGRESS_LOG 注明：
 文档：
 
 - [x] [MATERIAL_SYSTEM_ROADMAP.md](./MATERIAL_SYSTEM_ROADMAP.md) §6 → Phase 3 ✅
-- [x] [PROGRESS_LOG.md](./PROGRESS_LOG.md)
+- [x] [PROGRESS_LOG.md](../../PROGRESS_LOG.md)
 - [x] [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) IBL 设计稿
 
 ---

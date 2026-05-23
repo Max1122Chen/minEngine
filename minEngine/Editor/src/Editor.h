@@ -2,7 +2,6 @@
 
 #include "Core.h"
 #include "minEngine.h"
-#include "Runtime/EngineConfig.h"
 
 #include "EditorGUIManager.h"
 #include "EditorUIMode.h"
@@ -101,13 +100,10 @@ namespace minEngine
 
     private:
         void InitializeAllComponentTypeNames();
-        bool LoadEngineConfig();
         void PostInitialize();
 
     private:
         Engine* m_Engine = nullptr;
-        static constexpr const char* kEngineConfigExtension = ".meconfig";
-        EngineConfig m_EngineConfig;
         EditorGUIManager m_EditorGUIManager;
         std::unique_ptr<MaterialEditor> m_MaterialEditor;
         std::unordered_map<std::string, std::unique_ptr<EditorViewportClient>> m_ViewportClients;

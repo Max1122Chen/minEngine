@@ -1,6 +1,6 @@
 # Editor 视口窗口分层设计
 
-> 状态：已拍板（2026-05）。与 [RENDER_REFACTOR_PLAN.md](./RENDER_REFACTOR_PLAN.md) 中 P2b / P3 / P5 衔接。  
+> 状态：已拍板（2026-05）。与 [RENDER_REFACTOR_PLAN.md](../Render/RENDER_REFACTOR_PLAN.md) 中 P2b / P3 / P5 衔接。  
 > 命名原则：**不混用 Level 与 Scene**；关卡编辑视口统一用 **SceneEditing** 前缀。
 
 ---
@@ -188,4 +188,4 @@ Editor/src/Viewport/
 - [x] `MaterialPreviewViewportWindow` 已注册（P5 调试面板，默认打开）
 - [x] `MaterialPreviewViewportWindow` 未打开时不影响主视口 Submit
 
-**待定（非 Editor）：** GameRuntime / `GameMainViewport` — 见 [RENDER_REFACTOR_PLAN.md §11](./RENDER_REFACTOR_PLAN.md#11-待定事项editor-优先gameruntime-后做)。
+**待定（非 Editor）：** GameRuntime / `GameMainViewport` — 见 [RENDER_REFACTOR_PLAN.md §11](../Render/RENDER_REFACTOR_PLAN.md#11-待定事项editor-优先gameruntime-后做)。

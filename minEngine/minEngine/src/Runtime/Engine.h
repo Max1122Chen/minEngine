@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/EngineConfig.h"
 
 #include <chrono>
 #include <memory>
@@ -39,8 +40,8 @@ namespace minEngine
         float CalculateDeltaTime();
         float CalculateFPS(float deltaTime);
 
-        void SetEngineDefaultAssetsRoot(std::string path);
-        const std::string& GetEngineDefaultAssetsRoot() const { return m_EngineDefaultAssetsRoot; }
+        bool IsEnginePathConfigLoaded() const { return m_EnginePathConfigLoaded; }
+        const EngineConfig& GetEngineConfig() const { return m_EngineConfig; }
 
     private:
         void FinializeReflection();
@@ -59,7 +60,9 @@ namespace minEngine
         std::shared_ptr<RenderSystem> m_RenderSystem;
         std::shared_ptr<SceneManager> m_SceneManager;
 
-        std::string m_EngineDefaultAssetsRoot;
+        EngineConfig m_EngineConfig;
+        bool m_EnginePathConfigLoaded = false;
+
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
     };
 }

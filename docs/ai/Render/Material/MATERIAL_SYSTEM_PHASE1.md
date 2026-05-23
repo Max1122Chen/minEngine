@@ -349,7 +349,7 @@ Unlit：不使用 AO（pin Hidden）；若将来 Unlit 要 AO 只影响自发光
 - [x] P1.2 验收通过
 - [x] P1.3 验收通过
 - [x] P1.4 验收通过
-- [x] 已更新 [MATERIAL_SYSTEM_ROADMAP.md](./MATERIAL_SYSTEM_ROADMAP.md) §4、[PROGRESS_LOG.md](./PROGRESS_LOG.md)
+- [x] 已更新 [MATERIAL_SYSTEM_ROADMAP.md](./MATERIAL_SYSTEM_ROADMAP.md) §4、[PROGRESS_LOG.md](../../PROGRESS_LOG.md)
 - [x] **下一步：** [MATERIAL_SYSTEM_PHASE2.md](./MATERIAL_SYSTEM_PHASE2.md) — 自 **P2.1 Translucent** 起实现
 
 ---

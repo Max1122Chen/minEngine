@@ -14,6 +14,7 @@ To avoid repeating background in every chat, keep concise AI-readable context in
 
 2) During discussion
 - Ask AI to read docs/ai/PROJECT_CONTEXT.md and docs/ai/PROGRESS_LOG.md first.
+- Design docs live under docs/ai/Platform/, Render/, Editor/ — see docs/ai/README.md.
 
 3) At the end of each meaningful session
 - Ask AI: record this session into progress log with next action.

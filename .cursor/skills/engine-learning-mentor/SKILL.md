@@ -66,6 +66,14 @@ Use clear teaching language, explain terms before depth, and avoid unnecessary j
 - current git changed files summary
 - Then provide a short 4-8 line project-state recap before the direct answer.
 
+### docs/ai layout (when writing or moving design docs)
+
+- Follow `.cursor/rules/docs-ai-layout.mdc` and `docs/ai/README.md`.
+- Platform (startup, memory, scripting roadmap): `docs/ai/Platform/`
+- Render / Material: `docs/ai/Render/`, `docs/ai/Render/Material/`
+- Editor UI: `docs/ai/Editor/`
+- Keep `PROJECT_CONTEXT.md` and `PROGRESS_LOG.md` at `docs/ai/` root only.
+
 2. External source bootstrap (Unreal Engine)
 - Known Unreal Engine source repository path:
 - D:/Dev/GitRepo/UnrealEngine

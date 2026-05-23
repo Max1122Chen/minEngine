@@ -109,11 +109,10 @@ namespace minEngine
         m_PresentPass.m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
         m_PresentPass.m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
 
-        // Editor/Engine call ReloadIBLEnvironment after EngineDefaultAssetsRoot is known.
-        m_IBLEnvironment.Initialize(rhi, std::string{});
+        // IBL + SkyBox: RenderSystem::LoadEngineRenderingAssets() after PathRegistry is ready.
     }
 
-    void RenderPipeline::ReloadIBLEnvironment(const std::string& engineDefaultAssetsRoot)
+    void RenderPipeline::LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot)
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)

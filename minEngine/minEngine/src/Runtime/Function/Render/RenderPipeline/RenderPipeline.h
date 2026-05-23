@@ -111,7 +111,7 @@ namespace minEngine
 
         void SetPresentPassEnabled(bool enabled) { m_EnablePresentPass = enabled; }
 
-        void ReloadIBLEnvironment(const std::string& engineDefaultAssetsRoot);
+        void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot);
         const EngineIBLEnvironment& GetIBLEnvironment() const { return m_IBLEnvironment; }
 
     private:

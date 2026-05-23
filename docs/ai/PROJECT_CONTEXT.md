@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-05-22
+Last updated: 2026-05-23
 
 ## 1) Project Goal
 
@@ -45,32 +45,40 @@ Useful history sources are:
 
 This docs/ai folder exists to convert those sources into AI-readable context snapshots.
 
+**文档布局：** 见 `docs/ai/README.md` 与 `.cursor/rules/docs-ai-layout.mdc`（`Platform/`、`Render/Material/`、`Editor/`）。
+
 ## 5) Collaboration Conventions (for AI)
 
 When starting a new coding task in this repo, AI should:
 - Read docs/ai/PROJECT_CONTEXT.md first.
 - Read docs/ai/PROGRESS_LOG.md for recent timeline.
 - If present, read latest session note in docs/ai/sessions/.
+- For platform/render/editor design, use the subdirectory under docs/ai/ (see README).
 - Summarize current understanding in 5-8 lines before major edits.
 
 When finishing a task, AI should:
 - Append a short entry to docs/ai/PROGRESS_LOG.md.
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
+- Place new design docs in the correct docs/ai/ subtree per docs-ai-layout rule.
 
-## 6) Material Editor (current)
+## 6) Current product direction (2026-05-23)
 
-- **Editor-only** module under `Editor/src/Material/` + `Material*Window`；数据真源 `Material::m_Graph`。
-- **E0–E4 done:** 图编辑、Preview、Details 反射、Compile 诊断；见 `MATERIAL_EDITOR_PLAN.md` 验收勾选。
-- **Next track:** `docs/ai/MATERIAL_SYSTEM_PHASE1.md`（P1.1–P1.4）；路线图 `MATERIAL_SYSTEM_ROADMAP.md`。
-- **Plan / log:** `MATERIAL_EDITOR_PLAN.md`, `MATERIAL_SYSTEM_ROADMAP.md`, `MATERIAL_SYSTEM_PHASE1.md`, `PROGRESS_LOG.md`.
+- **Rendering / Material:** Phase 0–5 largely complete (IBL + Skybox); maintain via `docs/ai/Render/Material/`.
+- **Platform (main track):** UE-like foundation — startup/path config → memory management → Content Browser / editor Undo → reflection methods → Lua. See `docs/ai/Platform/PLATFORM_ROADMAP.md`.
 
-## 7) Next Suggested Maintenance
+## 7) Material Editor (stable)
+
+- **Editor-only** under `Editor/src/Material/` + `Material*Window`；数据真源 `Material::m_Graph`。
+- **E0–E4 done:** 见 `docs/ai/Render/Material/MATERIAL_EDITOR_PLAN.md`。
+
+## 8) Next Suggested Maintenance
 
 Keep this file stable and high-level. Put fast-changing details into:
 - docs/ai/PROGRESS_LOG.md (timeline)
 - docs/ai/sessions/*.md (task-level temporary context)
+- docs/ai/Platform/* (platform design drafts)
 
-## 7) Input System and Playground Controls (Today)
+## 9) Input System and Playground Controls
 
 Recent input-related architecture and behavior changes:
 - Added mouse wheel callback flow through WindowSystem -> GLFWWindowSystem -> InputSystem.

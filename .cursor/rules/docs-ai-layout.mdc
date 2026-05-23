@@ -1,0 +1,47 @@
+---
+description: Where to place and how to organize docs under docs/ai/. Apply when creating or moving design docs, roadmaps, or session notes.
+alwaysApply: false
+---
+
+# docs/ai 文档布局
+
+## 何时适用
+
+- 新建设计案、路线图、Phase 文档、缺陷记录
+- 移动或重命名 `docs/ai/` 下已有文档
+- AI 会话结束需要落盘设计讨论时
+
+## 目录职责
+
+| 目录 | 放什么 | 不放什么 |
+|------|--------|----------|
+| `docs/ai/` 根 | `PROJECT_CONTEXT.md`、`PROGRESS_LOG.md`、`WORKING_WITH_AI.md`、`README.md` | 长篇 Phase 设计、渲染细节 |
+| `docs/ai/Platform/` | 启动、内存管理、反射/脚本/Content Browser **路线图**；跨模块约束 | 单 Pass 实现细节 |
+| `docs/ai/Platform/<Topic>/` | 某一平台主题的**详细设计**（如 `Startup/`、`MemoryManagement/`） | — |
+| `docs/ai/Render/` | 渲染管线、RHI、Pass、资源导入（HDR/网格） | 材质图 IR 细节 |
+| `docs/ai/Render/Material/` | 材质系统 Phase、编辑器计划、着色模型、材质相关 bug | 通用 GC、编辑器 Undo |
+| `docs/ai/Editor/` | 编辑器窗口、视口、ImGui、编辑模式 | 运行时 Scene 逻辑 |
+| `docs/ai/bugs/` | 跨领域缺陷 | 已归属单一领域的（优先放子目录 `bugs/`） |
+| `docs/ai/sessions/` | 临时会话笔记 | 长期有效的设计定稿 |
+
+## 命名
+
+- 路线图：`*_ROADMAP.md` 或 `PLATFORM_ROADMAP.md`
+- 详细设计：`*_DESIGN.md` 或 `*_PLAN.md`（与现有 `MATERIAL_SYSTEM_PHASEn.md` 一致）
+- Phase 实施：保持 `MATERIAL_SYSTEM_PHASE{n}.md` 编号
+
+## 链接
+
+- 同目录：相对路径 `./Foo.md`
+- 跨目录：相对路径 `../Render/...`，**避免**写死 `docs/ai/` 绝对路径（除 bootstrap 提到的根文件）
+- 更新 `PROJECT_CONTEXT.md` 中的「下一步」链接时指向新路径
+
+## 新平台能力流程
+
+1. 在 `Platform/PLATFORM_ROADMAP.md` 增加条目与优先级
+2. 在 `Platform/<Topic>/` 写 `*_DESIGN.md` 草稿（选项、拍板、阶段）
+3. 实施后在 `PROGRESS_LOG.md` 记一笔；设计案内勾选验收
+
+## Bootstrap 不变
+
+会话仍先读：`docs/ai/PROJECT_CONTEXT.md`、`docs/ai/PROGRESS_LOG.md`。

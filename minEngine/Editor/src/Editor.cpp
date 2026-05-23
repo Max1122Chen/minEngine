@@ -23,6 +23,7 @@
 #include "Serialization/Serializer.h"
 #include "Resource/AssetManager.h"
 #include "Runtime/Engine.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/WindowSystem.h"
@@ -490,39 +491,6 @@ namespace minEngine
         }
     }
 
-    bool Editor::LoadEngineConfig()
-    {
-        std::filesystem::path cwd = std::filesystem::current_path();
-        std::filesystem::path configPath = cwd / ("EngineConfig" + std::string(kEngineConfigExtension));
-        if (!std::filesystem::exists(configPath))
-        {
-            ME_CORE_ERROR("Engine config file not found at current working directory: '{}'.", cwd.string());
-            configPath = std::filesystem::path("D:/Dev/GitRepo/minEngine/minEngine/EngineConfig.meconfig");
-            ME_CORE_WARN("Using hardcoded engine config path '{}' instead of '{}'. This is just for development convenience and should be removed later.", configPath.string(), cwd.string());
-        }
-            
-        Serialization::JsonReaderArchive reader;
-        Serialization::SerializeResult result = 
-            Serialization::Serializer::FromFile(configPath.string(), 
-                minEngine::Reflection::GetClassName<EngineConfig>(), 
-                &m_EngineConfig,
-                reader,
-                Serialization::SerializerOptions
-                {
-                    .enumAsString = true,
-                    .strictTypeCheck = true,
-                    .skipUnknownField = true,
-                    .writeObjectTypeName = false,
-                    .allowObjectPtrSerialization = true
-                });
-        if (!result.ok)
-        {
-            ME_CORE_ERROR("Failed to load engine config from file '{}'. Error: {}. Field path: {}", configPath.string(), result.message, result.fieldPath);
-            return false;
-        }
-        return true;
-    }
-
     void Editor::Initialize(int argc, char** argv)
     {
         m_Engine = new Engine();
@@ -548,16 +516,9 @@ namespace minEngine
 
         InitializeAllComponentTypeNames();
 
-        // Load engine config before opening project, so that any config in the file can take effect before project loading.
-        bool engineConfigLoaded = LoadEngineConfig();
-        if (engineConfigLoaded)
+        if (m_Engine->IsEnginePathConfigLoaded())
         {
-            Engine::Get().SetEngineDefaultAssetsRoot(m_EngineConfig.EngineDefaultAssetsRoot);
-            AssetManager::Get().ScanAssets(m_EngineConfig.EngineDefaultAssetsRoot);
-        }
-        else
-        {
-            Engine::Get().SetEngineDefaultAssetsRoot("");
+            AssetManager::Get().ScanAssets(PathRegistry::Get().GetEngineDefaultAssetsRoot());
         }
 
         // After EngineDefault ScanAssets: MaterialPreviewWindow::OnAttach may load preview sphere mesh.

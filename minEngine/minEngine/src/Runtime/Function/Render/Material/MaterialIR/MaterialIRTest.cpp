@@ -1,6 +1,7 @@
 #include "MaterialIRTest.h"
 
 #include "Log/LogSystem.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -53,10 +54,6 @@ namespace minEngine
 
     namespace
     {
-        // Duplicated from Editor::LoadEngineConfig for headless --material-ir-test (no Editor instance).
-        // TODO: share with Editor once engine bootstrap owns config loading.
-        static constexpr const char* kEngineConfigExtension = ".meconfig";
-
         std::string g_MaterialIRTestEngineDefaultAssetsRoot;
 
         bool EnsureReflectionReadyForMaterialIRTest()
@@ -78,47 +75,6 @@ namespace minEngine
             }
 
             reflection.ClearErrors();
-            return true;
-        }
-
-        // Same cwd + dev fallback path as Editor::LoadEngineConfig.
-        bool TryLoadEngineConfigForMaterialIRTest(EngineConfig& outConfig)
-        {
-            std::filesystem::path cwd = std::filesystem::current_path();
-            std::filesystem::path configPath = cwd / ("EngineConfig" + std::string(kEngineConfigExtension));
-            if (!std::filesystem::exists(configPath))
-            {
-                ME_CORE_ERROR("Engine config file not found at current working directory: '{}'.", cwd.string());
-                configPath = std::filesystem::path("D:/Dev/GitRepo/minEngine/minEngine/EngineConfig.meconfig");
-                ME_CORE_WARN(
-                    "MaterialIR test: using hardcoded engine config path '{}' instead of '{}'. "
-                    "Temporary; align with Editor::LoadEngineConfig.",
-                    configPath.string(),
-                    cwd.string());
-            }
-
-            Serialization::JsonReaderArchive reader;
-            Serialization::SerializeResult result = Serialization::Serializer::FromFile(
-                configPath.string(),
-                minEngine::Reflection::GetClassName<EngineConfig>(),
-                &outConfig,
-                reader,
-                Serialization::SerializerOptions{
-                    .enumAsString = true,
-                    .strictTypeCheck = true,
-                    .skipUnknownField = true,
-                    .writeObjectTypeName = false,
-                    .allowObjectPtrSerialization = true,
-                });
-            if (!result.ok)
-            {
-                ME_CORE_ERROR(
-                    "MaterialIR test: failed to load engine config from '{}'. Error: {}. Field path: {}",
-                    configPath.string(),
-                    result.message,
-                    result.fieldPath);
-                return false;
-            }
             return true;
         }
 
@@ -1342,16 +1298,17 @@ namespace minEngine
         return g_MaterialIRTestEngineDefaultAssetsRoot;
     }
 
-    bool RunMaterialIRSmokeTests()
+    bool RunMaterialIRSmokeTests(int argc, char** argv)
     {
         g_MaterialIRTestEngineDefaultAssetsRoot.clear();
 
         if (EnsureReflectionReadyForMaterialIRTest())
         {
             EngineConfig engineConfig;
-            if (TryLoadEngineConfigForMaterialIRTest(engineConfig))
+            if (PathRegistry::Get().LoadEngineConfiguration(argc, argv, engineConfig))
             {
-                g_MaterialIRTestEngineDefaultAssetsRoot = engineConfig.EngineDefaultAssetsRoot;
+                g_MaterialIRTestEngineDefaultAssetsRoot =
+                    PathRegistry::Get().GetEngineDefaultAssetsRootString();
                 ME_CORE_INFO(
                     "MaterialIR test: EngineDefaultAssetsRoot = '{}'",
                     g_MaterialIRTestEngineDefaultAssetsRoot);

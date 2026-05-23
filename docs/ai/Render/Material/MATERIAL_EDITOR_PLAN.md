@@ -595,8 +595,8 @@ minEngine/Third-Party/imgui-node-editor/*  （14 文件 + LICENSE）
 
 ## 14. 参考文档
 
-- [RENDER_REFACTOR_PLAN.md](./RENDER_REFACTOR_PLAN.md) — P5 Preview 基建  
-- [EDITOR_VIEWPORT_WINDOWS.md](./EDITOR_VIEWPORT_WINDOWS.md) — Viewport 窗口分层  
+- [RENDER_REFACTOR_PLAN.md](../RENDER_REFACTOR_PLAN.md) — P5 Preview 基建  
+- [EDITOR_VIEWPORT_WINDOWS.md](../../Editor/EDITOR_VIEWPORT_WINDOWS.md) — Viewport 窗口分层  
 - [MATERIAL_RUNTIME_BRIDGE_CHECKLIST.md](./MATERIAL_RUNTIME_BRIDGE_CHECKLIST.md) — 运行时编译/绘制  
 - [MATERIAL_SHADING_MODEL_PLAN.md](./MATERIAL_SHADING_MODEL_PLAN.md) — ShadingModel 与模板  
-- [PROGRESS_LOG.md](./PROGRESS_LOG.md) — 会话记录与 deferred 提醒  
+- [PROGRESS_LOG.md](../../PROGRESS_LOG.md) — 会话记录与 deferred 提醒  

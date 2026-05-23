@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-23  
 Status: **✅ Phase 4 关门**（首版 IBL；irradiance 卷积 / 独立 prefilter pass 延后）  
-前置：[MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md) ✅ · [RESOURCE_PIPELINE_PLAN.md](./RESOURCE_PIPELINE_PLAN.md) R2 ✅
+前置：[MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md) ✅ · [RESOURCE_PIPELINE_PLAN.md](../RESOURCE_PIPELINE_PLAN.md) R2 ✅
 
 ---
 
