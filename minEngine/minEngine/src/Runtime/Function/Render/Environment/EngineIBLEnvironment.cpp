@@ -72,6 +72,13 @@ namespace minEngine
         return TryLoadCubemapPrefix(rhi, iblDirectory, "irradiance", false);
     }
 
+    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryLoadEnvironmentFromDisk(
+        RHI& rhi,
+        const std::string& iblDirectory)
+    {
+        return TryLoadCubemapPrefix(rhi, iblDirectory, "environment", true);
+    }
+
     std::shared_ptr<TextureCube> EngineIBLEnvironment::TryLoadPrefilterFromDisk(
         RHI& rhi,
         const std::string& iblDirectory)
@@ -159,11 +166,69 @@ namespace minEngine
         }
 
         ME_CORE_INFO(
-            "EngineIBLEnvironment: captured {}x{} cubemap from HDR '{}'.",
+            "EngineIBLEnvironment: captured {}x{} environment cubemap from HDR '{}'.",
             EnvMapCapture::kDefaultCubeFaceSize,
             EnvMapCapture::kDefaultCubeFaceSize,
             hdrPath.string());
         return cube;
+    }
+
+    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryConvolveIrradianceFromEnvironment(
+        RHI& rhi,
+        const TextureCube& environmentCube,
+        const std::string& engineDefaultAssetsRoot)
+    {
+        if (!environmentCube.GetRHITexture())
+        {
+            return nullptr;
+        }
+
+        std::string convolveError;
+        std::shared_ptr<TextureCube> irradiance = EnvMapCapture::ConvolveIrradiance(
+            rhi,
+            *environmentCube.GetRHITexture(),
+            std::filesystem::path(engineDefaultAssetsRoot),
+            EnvMapCapture::kDefaultIrradianceFaceSize,
+            &convolveError);
+        if (!irradiance)
+        {
+            ME_CORE_WARN(
+                "EngineIBLEnvironment: irradiance convolution failed ({}).",
+                convolveError);
+        }
+        return irradiance;
+    }
+
+    std::shared_ptr<TextureCube> EngineIBLEnvironment::TryPrefilterEnvironmentFromEnvironment(
+        RHI& rhi,
+        const TextureCube& environmentCube,
+        const std::string& engineDefaultAssetsRoot)
+    {
+        if (!environmentCube.GetRHITexture())
+        {
+            return nullptr;
+        }
+
+        const uint32_t faceSize = environmentCube.GetSize();
+        if (faceSize == 0)
+        {
+            return nullptr;
+        }
+
+        std::string prefilterError;
+        std::shared_ptr<TextureCube> prefilter = EnvMapCapture::PrefilterEnvironment(
+            rhi,
+            *environmentCube.GetRHITexture(),
+            std::filesystem::path(engineDefaultAssetsRoot),
+            faceSize,
+            &prefilterError);
+        if (!prefilter)
+        {
+            ME_CORE_WARN(
+                "EngineIBLEnvironment: environment prefilter failed ({}).",
+                prefilterError);
+        }
+        return prefilter;
     }
 
     std::shared_ptr<Texture2D> EngineIBLEnvironment::TryLoadBrdfLutFromDisk(
@@ -221,37 +286,75 @@ namespace minEngine
 
         m_RHI = rhi;
         m_EnvIntensity = 1.0f;
+        m_IrradianceFromConvolution = false;
+        m_PrefilterFromGpuPass = false;
 
         const std::string iblDirectory =
             engineDefaultAssetsRoot + "/Textures/IBL";
+
         m_Irradiance = TryLoadIrradianceFromDisk(*rhi, iblDirectory);
-        m_UsingFallbackCube = false;
-        if (!m_Irradiance)
+
+        m_Environment = TryLoadEnvironmentFromDisk(*rhi, iblDirectory);
+        if (!m_Environment)
         {
-            m_Irradiance = TryCaptureEnvironmentFromHdr(*rhi, iblDirectory, engineDefaultAssetsRoot);
+            m_Environment = TryCaptureEnvironmentFromHdr(*rhi, iblDirectory, engineDefaultAssetsRoot);
         }
-        if (!m_Irradiance)
+
+        m_UsingFallbackCube = false;
+        if (!m_Environment)
         {
-            m_Irradiance = CreateValidationCube(*rhi);
-            m_UsingFallbackCube = m_Irradiance != nullptr;
+            m_Environment = CreateValidationCube(*rhi);
+            m_UsingFallbackCube = m_Environment != nullptr;
             if (m_UsingFallbackCube)
             {
                 ME_CORE_INFO(
-                    "EngineIBLEnvironment: using 6-color validation cubemap (place irradiance_*.png or *.hdr under {}).",
+                    "EngineIBLEnvironment: using 6-color validation environment cubemap (add *.hdr or environment_*.png under {}).",
                     iblDirectory);
             }
         }
-        else if (!m_UsingFallbackCube)
+
+        if (!m_Irradiance && m_Environment)
         {
-            ME_CORE_INFO("EngineIBLEnvironment: loaded irradiance/environment cubemap from {}.", iblDirectory);
+            m_Irradiance = TryConvolveIrradianceFromEnvironment(
+                *rhi,
+                *m_Environment,
+                engineDefaultAssetsRoot);
+            m_IrradianceFromConvolution = m_Irradiance != nullptr;
+        }
+
+        if (!m_Irradiance && m_Environment)
+        {
+            m_Irradiance = m_Environment;
+            ME_CORE_WARN(
+                "EngineIBLEnvironment: irradiance aliased to environment cubemap (convolution unavailable).");
+        }
+
+        if (m_Irradiance && !m_UsingFallbackCube && !m_IrradianceFromConvolution)
+        {
+            ME_CORE_INFO("EngineIBLEnvironment: loaded irradiance cubemap from {}.", iblDirectory);
         }
 
         m_Prefilter = TryLoadPrefilterFromDisk(*rhi, iblDirectory);
-        if (!m_Prefilter && m_Irradiance)
+        if (!m_Prefilter && m_Environment)
+        {
+            m_Prefilter = TryPrefilterEnvironmentFromEnvironment(
+                *rhi,
+                *m_Environment,
+                engineDefaultAssetsRoot);
+            m_PrefilterFromGpuPass = m_Prefilter != nullptr;
+        }
+
+        if (!m_Prefilter && m_Environment)
+        {
+            m_Prefilter = m_Environment;
+            ME_CORE_INFO(
+                "EngineIBLEnvironment: prefilter aliased to environment cubemap (GPU prefilter unavailable).");
+        }
+        else if (!m_Prefilter && m_Irradiance)
         {
             m_Prefilter = m_Irradiance;
-            ME_CORE_INFO(
-                "EngineIBLEnvironment: prefilter aliased to environment cubemap (add prefilter_posx.png or HDR mips).");
+            ME_CORE_WARN(
+                "EngineIBLEnvironment: prefilter aliased to irradiance cubemap (no environment source).");
         }
 
         m_BrdfLUT = TryLoadBrdfLutFromDisk(*rhi, iblDirectory);
@@ -266,8 +369,11 @@ namespace minEngine
         m_BrdfLUT.reset();
         m_Prefilter.reset();
         m_Irradiance.reset();
+        m_Environment.reset();
         m_RHI = nullptr;
         m_UsingFallbackCube = false;
+        m_IrradianceFromConvolution = false;
+        m_PrefilterFromGpuPass = false;
         m_EnvIntensity = 1.0f;
     }
 

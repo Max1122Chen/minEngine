@@ -119,15 +119,9 @@ BRDF LUT:    brdf_lut.png → else CPU IntegrateBRDF（256²）
 
 ---
 
-## 6) 延后（Phase 5+）
+## 6) 延后 → Phase 5
 
-| 项 | 说明 |
-|----|------|
-| Irradiance convolution | 低分辨率 diffuse cubemap |
-| Prefilter pass | 重要性采样预滤波 |
-| `u_EnvIntensity` 暴露到编辑器/配置 | 已有 uniform，默认 1.0 |
-| Sky 渲染 | 全屏 cubemap 背景 |
-| Parallax / WPO / 编辑器 Undo | 用户排期 |
+详见 [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md)（**仅** irradiance / prefilter / skybox）。Parallax/WPO → Backlog。仍不在 P5：`u_EnvIntensity` 编辑器暴露、编辑器 Undo。
 
 ---
 

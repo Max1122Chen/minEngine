@@ -15,10 +15,12 @@
 #include "../../Material.h"
 #include "../MaterialTestGraph.h"
 #include "Render/Environment/EngineIBLEnvironment.h"
+#include "Render/Environment/EnvMapCapture.h"
 #include "Render/OpenGL/OpenGLRHI.h"
 #include "Render/OpenGL/OpenGLTexture.h"
 #include "Render/Shader.h"
 #include "Render/TextureCubeLoader.h"
+#include "Runtime/Resource/ImageLoader.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -1101,6 +1103,135 @@ namespace minEngine
             return true;
         }
 
+        bool HasIrradianceFacesOnDisk(const std::string& iblDirectory)
+        {
+            return std::filesystem::is_regular_file(
+                std::filesystem::path(iblDirectory) / "irradiance_posx.png");
+        }
+
+        bool HasPrefilterFacesOnDisk(const std::string& iblDirectory)
+        {
+            return std::filesystem::is_regular_file(
+                std::filesystem::path(iblDirectory) / "prefilter_posx.png");
+        }
+
+        bool HasHdrInIblDirectory(const std::string& iblDirectory)
+        {
+            if (!std::filesystem::is_directory(iblDirectory))
+            {
+                return false;
+            }
+
+            for (const std::filesystem::directory_entry& entry :
+                 std::filesystem::directory_iterator(iblDirectory))
+            {
+                if (entry.is_regular_file() && ImageLoader::IsHdrPath(entry.path().string()))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool VerifyIBLGpuConvolutionAndPrefilter()
+        {
+            ScopedShaderCompileGlContext glContext;
+            if (!glContext.IsReady())
+            {
+                return false;
+            }
+
+            const std::string& assetsRoot = GetMaterialIRTestEngineDefaultAssetsRoot();
+            if (assetsRoot.empty())
+            {
+                ME_CORE_WARN("MaterialIR IBL GPU passes: skip (no EngineDefaultAssetsRoot).");
+                return true;
+            }
+
+            const std::filesystem::path iblDirectory =
+                std::filesystem::path(assetsRoot) / "Textures/IBL";
+            if (HasIrradianceFacesOnDisk(iblDirectory.string()) ||
+                HasPrefilterFacesOnDisk(iblDirectory.string()))
+            {
+                ME_CORE_INFO("MaterialIR IBL GPU passes: skip (offline cubemap faces on disk).");
+                return true;
+            }
+
+            if (!HasHdrInIblDirectory(iblDirectory.string()))
+            {
+                ME_CORE_WARN("MaterialIR IBL GPU passes: skip (no HDR in IBL folder).");
+                return true;
+            }
+
+            OpenGLRHI rhi;
+            EngineIBLEnvironment ibl;
+            ibl.Initialize(&rhi, assetsRoot);
+
+            if (!AssertTrue(ibl.HasEnvironment(), "IBL environment cubemap ready"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(ibl.HasIrradiance(), "IBL irradiance cubemap ready"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(ibl.HasPrefilter(), "IBL prefilter cubemap ready"))
+            {
+                return false;
+            }
+
+            const TextureCube* environment = ibl.GetEnvironment();
+            const TextureCube* irradiance = ibl.GetIrradiance();
+            const TextureCube* prefilter = ibl.GetPrefilter();
+            if (!AssertTrue(
+                    environment != nullptr && irradiance != nullptr && prefilter != nullptr,
+                    "IBL cubemap pointers"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(
+                    environment->GetSize() == EnvMapCapture::kDefaultCubeFaceSize,
+                    "environment cubemap face size"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(
+                    irradiance->GetSize() == EnvMapCapture::kDefaultIrradianceFaceSize,
+                    "convolved irradiance face size"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(
+                    prefilter->GetSize() == EnvMapCapture::kDefaultCubeFaceSize,
+                    "prefilter cubemap base face size"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(environment != irradiance, "irradiance distinct from environment"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(prefilter != environment, "prefilter distinct from environment"))
+            {
+                return false;
+            }
+
+            if (!AssertTrue(prefilter != irradiance, "prefilter distinct from irradiance"))
+            {
+                return false;
+            }
+
+            ME_CORE_INFO("MaterialIR IBL GPU convolution + prefilter: PASSED.");
+            return true;
+        }
+
         bool VerifyNormalMapWorkflow(const MaterialCompileContext& ctx)
         {
             Material material;
@@ -1361,6 +1492,11 @@ namespace minEngine
         }
 
         if (!VerifyIBLEnvironmentFallbackChain())
+        {
+            return false;
+        }
+
+        if (!VerifyIBLGpuConvolutionAndPrefilter())
         {
             return false;
         }

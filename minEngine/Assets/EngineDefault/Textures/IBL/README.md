@@ -1,18 +1,27 @@
-# Engine default IBL textures (Phase 4)
+# Engine default IBL textures (Phase 4–5)
 
 Place cubemap face PNGs here. The loader expects **square** faces with **matching** width/height and channel count.
 
 ## Load order (startup)
 
 ```text
-1. irradiance_posx.png … negz.png
-2. else *.hdr → GPU equirect → cubemap (+ mips)
-3. else 6-color validation cubemap (32×32)
-prefilter: prefilter_*.png, else same cubemap as environment (with mips if from HDR)
-brdf_lut: brdf_lut.png, else CPU integrated LUT (slow) — recommend downloading a LUT (see below)
+irradiance: irradiance_posx.png … negz.png
+  else GPU convolution from environment (32×32)
+  else alias environment cubemap
+
+environment: environment_posx.png … negz.png (optional, with mips)
+  else *.hdr → GPU equirect → cubemap 512×512 (+ mips)
+  else 6-color validation cubemap (32×32)
+
+prefilter: prefilter_*.png
+  else GPU prefilter from environment (512, mips 0–7, 32 samples/texel)
+  else alias environment cubemap
+
+brdf_lut: brdf_lut.png
+  else CPU integrated LUT — place brdf_lut.png to skip slow startup
 ```
 
-## Irradiance / environment cubemap
+## Irradiance cubemap (diffuse IBL)
 
 File naming: `{prefix}_{face}.png` with OpenGL face order:
 
@@ -25,31 +34,28 @@ File naming: `{prefix}_{face}.png` with OpenGL face order:
 | +Z | `irradiance_posz.png` |
 | -Z | `irradiance_negz.png` |
 
-If these files are missing, the engine tries an **HDR equirectangular** capture (LearnOpenGL-style):
+If missing and **environment** exists: `EnvMapCapture::ConvolveIrradiance` (shaders `irradiance_convolution.*`).
 
-1. Place any `*.hdr` in this folder (e.g. `citrus_orchard_puresky_1k.hdr`).
-2. Shaders: `EngineDefault/Shaders/EnvMap/equirect_to_cubemap.{vert,frag}`.
-3. GPU path: `ImageLoader::LoadHdr` → RGB16F 2D → `EnvMapCapture::EquirectToCubemap` (512×512 faces).
+## Environment cubemap (specular source / future skybox)
 
-Preferred HDR name: `environment.hdr` (otherwise the first `*.hdr` found is used).
+HDR: `environment.hdr` or any `*.hdr` → `EquirectToCubemap` (512² + mips).
 
-If no PNG faces and no HDR capture succeed, a **6-color validation cubemap** (32×32) is used so PBR draws still bind units 4–6.
+## Prefilter cubemap (specular IBL)
 
-## Optional offline assets (higher quality)
+If `prefilter_*.png` missing and environment is RGB16F:
+
+- Shaders: `prefilter.{vert,frag}`
+- `EnvMapCapture::PrefilterEnvironment` — GGX importance sampling, **32** samples, mips **0–7** (matches `kMaterialPBRMaxReflectionLod` in `MaterialIBL.glslinc`)
+
+## Optional offline assets
 
 | Asset | Naming |
 |-------|--------|
-| Prefiltered env | `prefilter_posx.png` … `prefilter_negz.png` (mips if pre-baked) |
-| BRDF LUT | `brdf_lut.png` (512×512, RG in R/G channels) |
+| Prefiltered env | `prefilter_posx.png` … `prefilter_negz.png` |
+| BRDF LUT | `brdf_lut.png` (512×512) |
 
-If missing: HDR capture builds **mipmapped** environment cubemap for `textureLod` prefilter; CPU generates BRDF LUT at startup (place `brdf_lut.png` to skip).
+**Recommended BRDF LUT:** [4DA/brdfgen `brdfLUT.png`](https://github.com/4DA/brdfgen/blob/master/brdfLUT.png) → `brdf_lut.png`.
 
-**Recommended BRDF LUT:** [4DA/brdfgen `brdfLUT.png`](https://github.com/4DA/brdfgen/blob/master/brdfLUT.png) → rename to `brdf_lut.png` (512×512, R/G = scale/bias).
+## Deferred
 
-Shader: `MaterialIBL.glslinc` → `CalcIndirectPBR` (texture units 4–6, `u_EnvIntensity` default 1.0).
-
-## Deferred (post–Phase 4)
-
-- Irradiance convolution pass (diffuse-only low frequency)
-- Dedicated prefilter filter pass
-- Skybox background draw
+- P5.3: skybox background draw

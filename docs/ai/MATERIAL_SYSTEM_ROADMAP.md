@@ -1,7 +1,7 @@
 # Material System — 深度拓展与使用优化
 
 Last updated: 2026-05-23  
-Status: **Phase 0–4 ✅**（P4 IBL 关门 2026-05-23）→ [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)  
+Status: **Phase 0–4 ✅** · **Phase 5 设计稿** → [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md)  
 前置：`MATERIAL_EDITOR_PLAN.md` E0–E4 ✅；`MATERIAL_SHADING_MODEL_PLAN.md`（Unlit + BlinnPhong）✅
 
 ---
@@ -273,7 +273,8 @@ P0-B 验收通过
 |------|------|
 | **Phase 3** ✅ | [MATERIAL_SYSTEM_PHASE3.md](./MATERIAL_SYSTEM_PHASE3.md)：PBR(GGX)、ComponentMask、TextureSample.R、`material-ir-test` |
 | **Phase 4** ✅ | [MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md)：**IBL**（HDR capture、split-sum、`CalcIndirectPBR`、Pass bind） |
-| **P5 / Backlog** | Parallax、WPO、Tessellation/displacement |
+| **Phase 5**（**已定案 · IBL only**） | [MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md)：irradiance / prefilter / skybox |
+| **Backlog** | Parallax/POM、WPO（用户排期）；Tessellation、Translucent IBL、Detail Normal |
 | **Deferred** | 编辑器 Undo、Shader 预览、Content Browser、Material Function（用户更高优先级非材质项） |
 
 ---
@@ -305,3 +306,4 @@ P0-B 验收通过
 | 2026-05-22 | P1.1 实现（BlendMode/Capability/Masked）；**MATERIAL_SYSTEM_PHASE2.md** 详细设计 |
 | 2026-05-23 | **Phase 1 验收通过**（目视 + `--material-ir-test`）；启动 Phase 2 实现（P2.1） |
 | 2026-05-23 | **Phase 3 验收通过**；[MATERIAL_SYSTEM_PHASE4.md](./MATERIAL_SYSTEM_PHASE4.md) IBL 设计定稿（Parallax/WPO/编辑器延后） |
+| 2026-05-23 | **Phase 4 关门**；[MATERIAL_SYSTEM_PHASE5.md](./MATERIAL_SYSTEM_PHASE5.md) **仅 IBL**（POM/WPO → Backlog） |
