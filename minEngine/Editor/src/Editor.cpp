@@ -19,6 +19,7 @@
 #include "Resource/AssetManager.h"
 
 #include "Scene/SceneEditor.h"
+#include "Shell/EditorSettingsDefaults.h"
 
 #include <filesystem>
 
@@ -155,12 +156,13 @@ namespace minEngine
         {
             ME_CORE_INFO(result.Message);
 
+            ApplyCommandStackSettingsFromProject();
+            ResetCommandStackForNewDocument();
+
             const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
             if (!projectCtx.Settings.EditorDefaultSceneName.empty())
             {
-                const bool sceneLoaded =
-                    SceneManager::Get().LoadScene(projectCtx.Settings.EditorDefaultSceneName);
-                if (!sceneLoaded)
+                if (!m_SceneEditor.LoadScene(*this, projectCtx.Settings.EditorDefaultSceneName))
                 {
                     ME_CORE_WARN(
                         "Failed to load editor default scene '{}'.",
@@ -186,6 +188,18 @@ namespace minEngine
 
     void Editor::CloseProject()
     {
+        ResetCommandStackForNewDocument();
+    }
+
+    void Editor::ApplyCommandStackSettingsFromProject()
+    {
+        const ProjectContext& projectCtx = ProjectManager::Get().GetCurrentProjectCtx();
+        m_CommandStack.SetMaxDepth(ResolveMaxUndoStackDepth(projectCtx.Settings.Editor.MaxUndoStackDepth));
+    }
+
+    void Editor::ResetCommandStackForNewDocument()
+    {
+        m_CommandStack.Clear();
     }
 
     void Editor::Initialize(int argc, char** argv)

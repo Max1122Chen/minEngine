@@ -44,6 +44,8 @@
 #include "Scene/SceneEditor.h"
 #include "Shell/EditorSubModule.h"
 
+#include "Runtime/Function/Framework/Transform/Transform.h"
+
 #include <algorithm>
 
 #include <limits>
@@ -147,7 +149,9 @@ namespace minEngine
             return;
         }
 
+        BeginGizmoCommandSessionIfNeeded();
         ConsumeGizmoManipulation();
+        EndGizmoCommandSessionIfNeeded();
 
         InputKeys();
 
@@ -706,6 +710,48 @@ namespace minEngine
 
         }
 
+    }
+
+    void SceneEditingViewportClient::BeginGizmoCommandSessionIfNeeded()
+    {
+        const bool usingNow = m_GizmoState.Using;
+        if (!usingNow || m_GizmoWasUsing)
+        {
+            return;
+        }
+
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        if (GameObject* selected = sceneEditor ? sceneEditor->GetSelectedGameObject() : nullptr)
+        {
+            m_GizmoSessionGameObjectId = selected->GetID();
+            m_GizmoStartTransform = selected->GetTransform();
+        }
+    }
+
+    void SceneEditingViewportClient::EndGizmoCommandSessionIfNeeded()
+    {
+        const bool usingNow = m_GizmoState.Using;
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+
+        if (!usingNow && m_GizmoWasUsing && sceneEditor && m_Context)
+        {
+            if (m_GizmoSessionGameObjectId != std::numeric_limits<uint64_t>::max())
+            {
+                if (GameObject* selected = sceneEditor->GetSelectedGameObject())
+                {
+                    if (selected->GetID() == m_GizmoSessionGameObjectId)
+                    {
+                        const Transform endTransform = selected->GetTransform();
+                        sceneEditor->SubmitGameObjectTransform(
+                            *m_Context, m_GizmoSessionGameObjectId, m_GizmoStartTransform, endTransform);
+                    }
+                }
+            }
+
+            m_GizmoSessionGameObjectId = std::numeric_limits<uint64_t>::max();
+        }
+
+        m_GizmoWasUsing = usingNow;
     }
 
 

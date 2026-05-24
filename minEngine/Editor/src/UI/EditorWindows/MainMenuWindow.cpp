@@ -1,6 +1,7 @@
 #include "MainMenuWindow.h"
 
 #include "EditorGUIManager.h"
+#include "Shell/EditorCommandStack.h"
 #include "Material/MaterialEditor.h"
 #include "Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
@@ -65,8 +66,16 @@ namespace minEngine
     {
         if (ImGui::BeginMenu("Edit"))
         {
-            ImGui::MenuItem("Undo", "Ctrl+Z", false, false);
-            ImGui::MenuItem("Redo", "Ctrl+Y", false, false);
+            const bool canUndo = m_Context.GetCommandStack().CanUndo();
+            const bool canRedo = m_Context.GetCommandStack().CanRedo();
+            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo) && canUndo)
+            {
+                m_Context.GetCommandStack().Undo();
+            }
+            if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo) && canRedo)
+            {
+                m_Context.GetCommandStack().Redo();
+            }
             ImGui::Separator();
             ImGui::MenuItem("Cut", "Ctrl+X", false, false);
             ImGui::MenuItem("Copy", "Ctrl+C", false, false);

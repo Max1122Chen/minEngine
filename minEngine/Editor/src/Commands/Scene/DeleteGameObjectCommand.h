@@ -1,0 +1,31 @@
+#pragma once
+
+#include "Runtime/Function/Framework/Transform/Transform.h"
+#include "Shell/EditorCommandStack.h"
+
+#include <cstdint>
+#include <string>
+
+namespace minEngine
+{
+    class SceneEditor;
+
+    class DeleteGameObjectCommand final : public IEditorCommand
+    {
+    public:
+        DeleteGameObjectCommand(SceneEditor& sceneEditor, uint64_t gameObjectId);
+
+        void Execute() override;
+        void Undo() override;
+        const char* GetDescription() const override;
+
+    private:
+        SceneEditor& m_SceneEditor;
+        uint64_t m_GameObjectId = 0;
+        bool m_HasSnapshot = false;
+        std::string m_Name;
+        Transform m_Transform;
+        mutable std::string m_Description;
+    };
+}
+

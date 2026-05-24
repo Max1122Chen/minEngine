@@ -11,7 +11,7 @@
 #include "Services/InspectorModule.h"
 #include "Services/MainMenuModule.h"
 #include "Shell/EditorInputHub.h"
-#include "Shell/EditorCommandHistory.h"
+#include "Shell/EditorCommandStack.h"
 #include "Shell/EditorSubModule.h"
 #include "Shell/IEditorContext.h"
 #include "Shell/ViewportClientRegistry.h"
@@ -47,7 +47,7 @@ namespace minEngine
 
         AssetWorkflowModule& GetAssetWorkflow() override { return m_AssetWorkflow; }
         ConsoleModule& GetConsole() override { return m_ConsoleModule; }
-        EditorCommandHistory& GetCommandHistory() override { return m_CommandHistory; }
+        EditorCommandStack& GetCommandStack() override { return m_CommandStack; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
 
         void SetLastDeltaTime(float deltaTime) override { m_LastDeltaTime = deltaTime; }
@@ -68,6 +68,8 @@ namespace minEngine
         void PostInitialize();
         void RegisterModules();
         void UpdateWindowTitle();
+        void ApplyCommandStackSettingsFromProject();
+        void ResetCommandStackForNewDocument();
 
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
@@ -79,7 +81,7 @@ namespace minEngine
         AssetWorkflowModule m_AssetWorkflow;
         EditorInputHub m_InputHub;
         ViewportClientRegistry m_ViewportRegistry;
-        EditorCommandHistory m_CommandHistory;
+        EditorCommandStack m_CommandStack;
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;

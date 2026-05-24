@@ -1,6 +1,8 @@
 #pragma once
 #include "Core.h"
 
+#include "Runtime/Function/Framework/Project/EditorSettings.h"
+
 namespace minEngine
 {
     ME_STRUCT()
@@ -10,6 +12,9 @@ namespace minEngine
 
         ME_PROPERTY()
         std::string EditorDefaultSceneName;
+
+        ME_PROPERTY()
+        EditorSettings Editor;
     };
 }
 

@@ -1,7 +1,14 @@
 #include "Scene/SceneEditor.h"
 
+#include "Commands/Scene/DeleteGameObjectCommand.h"
+#include "Commands/Scene/AddEmptyGameObjectCommand.h"
+#include "Commands/Scene/AddComponentCommand.h"
+#include "Commands/Scene/RemoveComponentCommand.h"
+#include "Commands/Scene/RenameGameObjectCommand.h"
+#include "Commands/Scene/SetGameObjectTransformCommand.h"
 #include "EditorGUIManager.h"
 #include "Scene/SceneEditorInspectorSource.h"
+#include "Shell/EditorCommandStack.h"
 #include "Shell/IEditorContext.h"
 
 #include "UI/EditorWindows/HierarchyWindow.h"
@@ -15,8 +22,10 @@
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Resource/AssetMeta.h"
 
 #include <algorithm>
@@ -30,6 +39,7 @@ namespace minEngine
 
     void SceneEditor::Register(IEditorContext& context)
     {
+        m_Context = &context;
         EditorGUIManager& gui = context.GetGUIManager();
 
         gui.RegisterWindow(std::make_unique<SceneEditingViewportWindow>(context));
@@ -38,6 +48,7 @@ namespace minEngine
 
     void SceneEditor::Shutdown()
     {
+        m_Context = nullptr;
     }
 
     void SceneEditor::OnActivate(IEditorContext& context)
@@ -195,7 +206,20 @@ namespace minEngine
         return gameObject->GetName();
     }
 
-    bool SceneEditor::RenameGameObject(uint64_t gameObjectId, const std::string& newName)
+    bool SceneEditor::LoadScene(IEditorContext& context, const std::string& sceneName)
+    {
+        if (!SceneManager::Get().LoadScene(sceneName))
+        {
+            return false;
+        }
+
+        context.GetCommandStack().Clear();
+        SyncSelectionWithScene();
+        ClearSceneDirty();
+        return true;
+    }
+
+    bool SceneEditor::ApplyRenameGameObject(uint64_t gameObjectId, const std::string& newName)
     {
         Scene* scene = GetActiveScene();
         if (!scene)
@@ -226,9 +250,77 @@ namespace minEngine
         return true;
     }
 
-    void SceneEditor::RenameSelectedGameObject(const std::string& newName)
+    void SceneEditor::SubmitRenameGameObject(IEditorContext& context,
+                                             uint64_t gameObjectId,
+                                             const std::string& newName)
     {
-        RenameGameObject(m_SelectedGameObjectId, newName);
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            return;
+        }
+
+        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
+        const auto iter = gameObjectsById.find(gameObjectId);
+        if (iter == gameObjectsById.end() || iter->second == nullptr)
+        {
+            return;
+        }
+
+        const std::string& oldName = iter->second->GetName();
+        std::string sanitizedName = newName;
+        if (sanitizedName.empty())
+        {
+            sanitizedName = "GameObject_" + std::to_string(gameObjectId);
+        }
+
+        if (oldName == sanitizedName)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<RenameGameObjectCommand>(
+            *this, gameObjectId, oldName, sanitizedName));
+    }
+
+    void SceneEditor::ApplyGameObjectTransform(uint64_t gameObjectId, const Transform& transform)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            return;
+        }
+
+        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
+        const auto iter = gameObjectsById.find(gameObjectId);
+        if (iter == gameObjectsById.end() || iter->second == nullptr)
+        {
+            return;
+        }
+
+        GameObject* gameObject = iter->second;
+        const Transform current = gameObject->GetTransform();
+        if (current == transform)
+        {
+            return;
+        }
+
+        gameObject->SetTransform(transform);
+        MarkSceneDirty();
+    }
+
+    void SceneEditor::SubmitGameObjectTransform(IEditorContext& context,
+                                                uint64_t gameObjectId,
+                                                const Transform& before,
+                                                const Transform& after)
+    {
+        if (before == after)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<SetGameObjectTransformCommand>(
+            *this, gameObjectId, before, after));
     }
 
     const std::vector<std::string>& SceneEditor::GetAllComponentTypeNames() const
@@ -236,14 +328,16 @@ namespace minEngine
         return m_AllComponentTypeNames;
     }
 
-    bool SceneEditor::AddComponentToSelectedGameObject(const std::string& componentTypeName)
+    bool SceneEditor::ApplyAddComponentToSelectedGameObject(const std::string& componentTypeName, Component*& outNewComponent)
     {
+        outNewComponent = nullptr;
         GameObject* gameObject = GetSelectedGameObject();
         if (!gameObject)
         {
             return false;
         }
-        if (!gameObject->AddComponent(componentTypeName))
+        std::shared_ptr<Component> newComponent = gameObject->AddComponent(componentTypeName);
+        if (!newComponent)
         {
             ME_CORE_ERROR(
                 "Failed to add component of type '{}' to GameObject '{}'.",
@@ -251,11 +345,24 @@ namespace minEngine
                 gameObject->GetName());
             return false;
         }
+        outNewComponent = newComponent.get();
         MarkSceneDirty();
         return true;
     }
 
-    bool SceneEditor::RemoveComponentFromGO(GameObject& gameObject, Component& targetComponent)
+    void SceneEditor::SubmitAddComponentToSelectedGameObject(IEditorContext& context, const std::string& componentTypeName)
+    {
+        GameObject* gameObject = GetSelectedGameObject();
+        if (!gameObject)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<AddComponentCommand>(
+            *this, gameObject->GetID(), componentTypeName));
+    }
+
+    bool SceneEditor::ApplyRemoveComponentFromGO(GameObject& gameObject, Component& targetComponent)
     {
         if (targetComponent.GetOwner() != &gameObject)
         {
@@ -265,12 +372,30 @@ namespace minEngine
                 gameObject.GetName());
             return false;
         }
+
         if (gameObject.RemoveComponent(targetComponent))
         {
             MarkSceneDirty();
             return true;
         }
         return false;
+    }
+
+    void SceneEditor::SubmitRemoveComponentFromGO(IEditorContext& context, GameObject& gameObject, Component& targetComponent)
+    {
+        if (targetComponent.GetOwner() != &gameObject)
+        {
+            return;
+        }
+
+        const Reflection::MEClass* classInfo = targetComponent.GetClass();
+        if (!classInfo)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<RemoveComponentCommand>(
+            *this, gameObject.GetID(), classInfo->GetName()));
     }
 
     void SceneEditor::SaveCurrentScene()
@@ -292,13 +417,13 @@ namespace minEngine
         }
     }
 
-    void SceneEditor::AddEmptyGOToScene()
+    uint64_t SceneEditor::ApplyAddEmptyGOToScene()
     {
         Scene* scene = GetActiveScene();
         if (!scene)
         {
             ME_CORE_ERROR("No active scene to add GameObject to.");
-            return;
+            return std::numeric_limits<uint64_t>::max();
         }
         std::shared_ptr<GameObject> newGO = scene->CreateGameObject();
         if (newGO)
@@ -307,14 +432,21 @@ namespace minEngine
             MarkSceneDirty();
             SelectGameObject(newGO->GetID());
             ME_CORE_INFO("Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());
+            return newGO->GetID();
         }
         else
         {
             ME_CORE_ERROR("Failed to create new GameObject in scene '{}'.", scene->GetSceneName());
+            return std::numeric_limits<uint64_t>::max();
         }
     }
 
-    bool SceneEditor::RemoveGameObjectFromScene(uint64_t gameObjectId)
+    void SceneEditor::SubmitAddEmptyGOToScene(IEditorContext& context)
+    {
+        context.GetCommandStack().Execute(std::make_unique<AddEmptyGameObjectCommand>(*this));
+    }
+
+    bool SceneEditor::ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform)
     {
         Scene* scene = GetActiveScene();
         if (!scene)
@@ -322,6 +454,16 @@ namespace minEngine
             ME_CORE_ERROR("No active scene to remove GameObject from.");
             return false;
         }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (!gameObject)
+        {
+            return false;
+        }
+
+        outName = gameObject->GetName();
+        outTransform = gameObject->GetTransform();
+
         if (scene->RemoveGameObjectById(gameObjectId))
         {
             MarkSceneDirty();
@@ -335,6 +477,34 @@ namespace minEngine
 
         ME_CORE_ERROR("Failed to remove GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
         return false;
+    }
+
+    uint64_t SceneEditor::ApplyRestoreRemovedGameObject(const std::string& name, const Transform& transform)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            ME_CORE_ERROR("No active scene to restore GameObject to.");
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        std::shared_ptr<GameObject> newGO = scene->CreateGameObject();
+        if (!newGO)
+        {
+            ME_CORE_ERROR("Failed to restore GameObject in scene '{}'.", scene->GetSceneName());
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        newGO->Rename(name);
+        newGO->SetTransform(transform);
+        MarkSceneDirty();
+        SelectGameObject(newGO->GetID());
+        return newGO->GetID();
+    }
+
+    void SceneEditor::SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId)
+    {
+        context.GetCommandStack().Execute(std::make_unique<DeleteGameObjectCommand>(*this, gameObjectId));
     }
 
     void SceneEditor::SyncSelectionWithScene()

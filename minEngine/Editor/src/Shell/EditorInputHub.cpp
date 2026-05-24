@@ -1,6 +1,6 @@
 #include "Shell/EditorInputHub.h"
 
-#include "Shell/EditorCommandHistory.h"
+#include "Shell/EditorCommandStack.h"
 #include "Shell/EditorSubModule.h"
 #include "Shell/IEditorContext.h"
 #include "Viewport/EditorViewportClient.h"
@@ -22,23 +22,7 @@ namespace minEngine
             RegisterGlobalCommand(std::move(exitCommand));
         }
 
-        {
-            EditorCommandBinding undoCommand;
-            undoCommand.Name = "Undo";
-            undoCommand.Chord = { ImGuiKey_Z, true, false, false };
-            undoCommand.CanExecute = [&context]() { return context.GetCommandHistory().CanUndo(); };
-            undoCommand.Execute = [&context]() { context.GetCommandHistory().Undo(); };
-            RegisterGlobalCommand(std::move(undoCommand));
-        }
-
-        {
-            EditorCommandBinding redoCommand;
-            redoCommand.Name = "Redo";
-            redoCommand.Chord = { ImGuiKey_Y, true, false, false };
-            redoCommand.CanExecute = [&context]() { return context.GetCommandHistory().CanRedo(); };
-            redoCommand.Execute = [&context]() { context.GetCommandHistory().Redo(); };
-            RegisterGlobalCommand(std::move(redoCommand));
-        }
+        // Undo/Redo use ImGui::Shortcut(RouteGlobal) in ProcessGlobalUndoRedoShortcuts.
     }
 
     void EditorInputHub::Shutdown()
@@ -93,18 +77,7 @@ namespace minEngine
     bool EditorInputHub::ShouldProcessGlobalShortcuts(IEditorContext& context) const
     {
         (void)context;
-        const ImGuiIO& io = ImGui::GetIO();
-        if (!io.WantCaptureKeyboard)
-        {
-            return true;
-        }
-
-        if (m_FocusedViewportClient && m_FocusedViewportClient->IsFocused())
-        {
-            return false;
-        }
-
-        return false;
+        return !ImGui::GetIO().WantTextInput;
     }
 
     void EditorInputHub::ProcessCommandList(
@@ -146,6 +119,30 @@ namespace minEngine
         ProcessCommandList(context, m_GlobalCommands);
     }
 
+    void EditorInputHub::ProcessGlobalUndoRedoShortcuts(IEditorContext& context)
+    {
+        if (!ShouldProcessGlobalShortcuts(context))
+        {
+            return;
+        }
+
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
+        {
+            if (context.GetCommandStack().CanUndo())
+            {
+                context.GetCommandStack().Undo();
+            }
+        }
+
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal))
+        {
+            if (context.GetCommandStack().CanRedo())
+            {
+                context.GetCommandStack().Redo();
+            }
+        }
+    }
+
     void EditorInputHub::ProcessViewportRouting(IEditorContext& context)
     {
         if (!m_FocusedViewportClient || !m_FocusedViewportClient->IsFocused())
@@ -167,5 +164,6 @@ namespace minEngine
         ProcessViewportRouting(context);
         ProcessActiveSubModuleCommands(context);
         ProcessGlobalCommands(context);
+        ProcessGlobalUndoRedoShortcuts(context);
     }
 }

@@ -10,7 +10,7 @@ namespace minEngine
 
         if (ImGui::Button("Create Empty"))
         {
-            GetSceneEditor(&m_Context)->AddEmptyGOToScene();
+            GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
         }
         ImGui::Separator();
 
@@ -52,7 +52,8 @@ namespace minEngine
 
                 if (committed || ImGui::IsItemDeactivatedAfterEdit())
                 {
-                    GetSceneEditor(&m_Context)->RenameGameObject(gameObject->GetID(), m_RenameBuffer);
+                    GetSceneEditor(&m_Context)->SubmitRenameGameObject(
+                        m_Context, gameObject->GetID(), m_RenameBuffer);
                     m_RenamingGameObjectId = kInvalidGameObjectId;
                 }
                 else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
@@ -137,7 +138,7 @@ namespace minEngine
         {
             if (ImGui::MenuItem("Create Empty"))
             {
-                GetSceneEditor(&m_Context)->AddEmptyGOToScene();
+                GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
             }
             ImGui::EndPopup();
             return true;
@@ -156,7 +157,7 @@ namespace minEngine
             }
             if (ImGui::MenuItem("Delete"))
             {
-                GetSceneEditor(&m_Context)->RemoveGameObjectFromScene(gameObject.GetID());
+                GetSceneEditor(&m_Context)->SubmitRemoveGameObjectFromScene(m_Context, gameObject.GetID());
             }
             ImGui::EndPopup();
             return true;

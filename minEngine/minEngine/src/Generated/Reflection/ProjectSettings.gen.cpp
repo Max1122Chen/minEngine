@@ -4,4 +4,5 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ProjectSettings, GReflectionClassRegister_ProjectSettings_1698c332)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ProjectSettings, EditorDefaultSceneName, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ProjectSettings, Editor, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::ProjectSettings)

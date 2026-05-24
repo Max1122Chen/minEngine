@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core.h"
 
@@ -53,6 +53,7 @@ namespace minEngine
         bool ShouldProcessGlobalShortcuts(IEditorContext& context) const;
         void ProcessActiveSubModuleCommands(IEditorContext& context);
         void ProcessGlobalCommands(IEditorContext& context);
+        void ProcessGlobalUndoRedoShortcuts(IEditorContext& context);
         void ProcessViewportRouting(IEditorContext& context);
         void ProcessCommandList(IEditorContext& context, const std::vector<EditorCommandBinding>& commands);
 

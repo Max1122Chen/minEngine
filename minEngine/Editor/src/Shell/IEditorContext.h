@@ -13,7 +13,7 @@ namespace minEngine
     class ViewportClientRegistry;
     class AssetWorkflowModule;
     class ConsoleModule;
-    class EditorCommandHistory;
+    class EditorCommandStack;
     class EditorInputHub;
 
     class IEditorContext
@@ -37,7 +37,7 @@ namespace minEngine
 
         virtual AssetWorkflowModule& GetAssetWorkflow() = 0;
         virtual ConsoleModule& GetConsole() = 0;
-        virtual EditorCommandHistory& GetCommandHistory() = 0;
+        virtual EditorCommandStack& GetCommandStack() = 0;
         virtual EditorInputHub& GetInputHub() = 0;
 
         virtual void SetLastDeltaTime(float deltaTime) = 0;

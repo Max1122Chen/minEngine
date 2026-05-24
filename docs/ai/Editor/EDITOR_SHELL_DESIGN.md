@@ -1,9 +1,10 @@
 # Editor Shell — 设计草稿
 
 Last updated: 2026-05-24  
-Status: **草稿 v2（命名与模块划分已按 2026-05-24 讨论修订）**  
+Status: **草稿 v2（E0 已实现；Undo 见子文档）**  
 父文档：[Editor 平台化规划](./EDITOR_PLATFORM_PLAN.md)  
-前置：[架构复盘](./EDITOR_ARCHITECTURE_REVIEW.md)
+前置：[架构复盘](./EDITOR_ARCHITECTURE_REVIEW.md)  
+子文档：[Command History / Undo](./EDITOR_COMMAND_HISTORY.md)
 
 ---
 
@@ -61,7 +62,7 @@ SubModule 语义是「进入一种编辑域、切 layout、抢焦点」；Consol
 | G4 | 输入路由对标 UE：**Command 表 + Focus 链 + Viewport/Mode 优先** |
 | G5 | **`EditorServiceModule`**：Console、OpenAsset 等不挂 Editor 公有 API |
 | G6 | **GUIManager** 仅 Register/Create；Module 管窗口生命周期与 layout |
-| G7 | CommandHistory 挂 Editor 或独立 UndoModule（P3 stub） |
+| G7 | CommandHistory 挂 Editor；Undo 细节见 [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md) |
 
 ### 非目标（E0）
 
@@ -262,6 +263,13 @@ EditorCommandRegistry（或 EditorInputHub）
 
 **与 ImGui：** Viewport 内 3D 操作需在 `WantCaptureKeyboard` 时对 **focused viewport** 例外（与现 SceneEditingViewportClient 行为一致）。
 
+### 7.3 Undo / Redo（与快捷键分离）
+
+- **Command 栈**：`EditorCommandStack` + **`IEditorCommand`**（见 [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md)）。
+- **快捷键**：`EditorInputHub` 调用 `GetCommandStack().Undo/Redo()`，与 `IEditorCommand` 分离。
+- **配置**：`ProjectSettings.Editor.MaxUndoStackDepth`（0 = 引擎默认 100）。
+- **清栈**：`OpenProject` / **`LoadScene`（默认）** / `CloseProject`；`ActivateSubModule` **不清栈**。
+
 ---
 
 ## 8) GUIManager：仅工厂与注册
@@ -308,7 +316,7 @@ public:
     virtual EditorSubModule* GetActiveSubModule() = 0;
     virtual AssetWorkflowModule& GetAssetWorkflow() = 0;
     virtual ConsoleModule& GetConsole() = 0;
-    // P3: virtual EditorCommandHistory& GetCommandHistory() = 0;
+    virtual EditorCommandHistory& GetCommandHistory() = 0;
 };
 ```
 
@@ -341,6 +349,7 @@ Editor::ActivateSubModule("Material")
 | E0.4 | GUIManager 瘦身；layout 迁入各 Module |
 | E0.5 | `EditorInputHub` + Command 注册；Viewport Route |
 | E0.6 | 删 Editor 上已迁 API |
+| E1 | Undo 实装 + `EditorSettings`；见 [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md) |
 
 ---
 
@@ -362,7 +371,7 @@ Editor::ActivateSubModule("Material")
 | ServiceModule 基类命名 | **`EditorServiceModule`**（与 SubModule 并列，不混用） |
 | MainMenu 归谁 | `MainMenuModule` 或 Editor bootstrap 一次性注册 |
 | Inspector 窗口归谁 | **Shared Service** 或独立 `InspectorModule`；Source 仍来自 Focus/ActiveSubModule |
-| Undo 归谁 | `UndoServiceModule` 或 Editor 持有栈；SubModule 提交 Command |
+| Undo 归谁 | **Editor 持有** `EditorCommandHistory`；SubModule 提交 Command；深度见 **项目 `EditorSettings`** |
 | 切 SubModule 是否保留 inactive 模块选择 | **保留**（各 Module 私有） |
 
 ---
@@ -381,3 +390,4 @@ Editor::ActivateSubModule("Material")
 |------|------|
 | 2026-05-24 | v1：EditorShell / ISubEditor / 全局 Selection |
 | 2026-05-24 | v2：保留 Editor；EditorSubModule + XXXEditor；EditorServiceModule；Per-Module 选择；GUIManager 瘦身；UE 输入对照 |
+| 2026-05-24 | 链出 [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md)：Undo 单栈、EditorSettings 可配置栈上限 |

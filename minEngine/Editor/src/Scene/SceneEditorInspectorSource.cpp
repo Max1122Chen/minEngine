@@ -1,6 +1,7 @@
 #include "Scene/SceneEditorInspectorSource.h"
 
 #include "Scene/SceneEditor.h"
+#include "Shell/IEditorContext.h"
 
 #include "imgui.h"
 
@@ -73,7 +74,11 @@ namespace minEngine
 
             if (committed || ImGui::IsItemDeactivatedAfterEdit())
             {
-                m_SceneEditor.RenameGameObject(gameObject->GetID(), m_RenameBuffer);
+                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
+                {
+                    m_SceneEditor.SubmitRenameGameObject(
+                        *context, gameObject->GetID(), m_RenameBuffer);
+                }
                 m_IsRenamingSelectedGameObject = false;
             }
             else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
@@ -136,7 +141,10 @@ namespace minEngine
             ImGui::SameLine();
             if (ImGui::Button("Add Component"))
             {
-                m_SceneEditor.AddComponentToSelectedGameObject(m_SelectedAddComponentTypeName);
+                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
+                {
+                    m_SceneEditor.SubmitAddComponentToSelectedGameObject(*context, m_SelectedAddComponentTypeName);
+                }
             }
         }
         else
@@ -594,9 +602,9 @@ namespace minEngine
         {
             if (ImGui::MenuItem("Remove"))
             {
-                if (m_SceneEditor.RemoveComponentFromGO(*component.GetOwner(), component))
+                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
                 {
-                    ME_CORE_INFO("Component '{}' removed from GameObject '{}'.", component.GetClass()->GetName(), component.GetOwner()->GetName());
+                    m_SceneEditor.SubmitRemoveComponentFromGO(*context, *component.GetOwner(), component);
                 }
             }
             ImGui::EndPopup();

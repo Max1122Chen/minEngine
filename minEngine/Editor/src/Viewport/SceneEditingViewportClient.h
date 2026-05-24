@@ -23,6 +23,7 @@ namespace minEngine
     class RenderScene;
 
     class GameObject;
+    struct Transform;
 
     class RHI;
 
@@ -109,6 +110,8 @@ namespace minEngine
 
 
         void ConsumeGizmoManipulation();
+        void BeginGizmoCommandSessionIfNeeded();
+        void EndGizmoCommandSessionIfNeeded();
 
         void TrySelectAtMousePosition();
 
@@ -137,6 +140,9 @@ namespace minEngine
         bool m_DefaultInputBindingsRegistered = false;
 
         bool m_InputBlockedByGizmo = false;
+        bool m_GizmoWasUsing = false;
+        uint64_t m_GizmoSessionGameObjectId = std::numeric_limits<uint64_t>::max();
+        Transform m_GizmoStartTransform;
 
         bool m_IsNavigating = false;
 
