@@ -23,7 +23,8 @@ P2  Editor 平台化           → EDITOR_PLATFORM_PLAN（E0–E4）
     └─ E0 Editor Shell + Sub-Editor（优先）
     └─ Inspector / Previewer / AssetManager / FileDialog
     └─ Content Browser 为消费方（后置详细设计）
-P3  编辑器 Command/Undo   → 设计待写
+P3  编辑器 Command/Undo   → [EDITOR_COMMAND_HISTORY](../Editor/EDITOR_COMMAND_HISTORY.md)
+    └─ 前置：序列化 Binary + Property API → [Serialization](./Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) S1–S2
 P4  反射 MEFunction       → 设计待写
 P5  Lua 脚本              → 设计待写
 ```
@@ -39,7 +40,8 @@ P5  Lua 脚本              → 设计待写
 | 资产 | `AssetManager` 扫描/meta/加载 | Registry 事件 + 变更 API + Content Browser | [Editor 平台化](../Editor/EDITOR_PLATFORM_PLAN.md) § E3；[ContentBrowser](./ContentBrowser/CONTENT_BROWSER_DESIGN.md) 意图 |
 | 编辑器 Shell | `Editor` God Object；GO-only 选择 | Shell + Sub-Editor；SelectionService | [架构复盘](./EDITOR_ARCHITECTURE_REVIEW.md) |
 | 反射 | Property only | + UFunction 等价物 | （待写，P4） |
-| Undo | 无 | `IEditorCommand` / Transaction | （待写，P3） |
+| Undo | E1.1–E1.2 Scene 命令 | Property blob + Snapshot | [Command History](../Editor/EDITOR_COMMAND_HISTORY.md) |
+| 序列化 | JsonArchive + 私有 `SerializeProperty` | BinaryArchive + 公开 Property API | [Serialization](./Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) |
 | 脚本 | 无 | Lua 薄绑定 | （待写，P5） |
 
 ## 4) 与 UE 对照（学习用）

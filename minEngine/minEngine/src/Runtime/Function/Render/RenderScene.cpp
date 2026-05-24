@@ -38,7 +38,13 @@ namespace minEngine
             // Update existing scene proxy
             // Simply update the transform for now. TODO: update other data if needed // P.S. we should not get transform from owner GameObject here. This is just a temporary design.
             PrimitiveSceneProxy* proxy = primitiveComponent->GetSceneProxy();
-            proxy->m_Transform = primitiveComponent->GetOwner()->GetTransform();
+            GameObject* owner = primitiveComponent->GetOwner();
+            if (owner == nullptr)
+            {
+                return;
+            }
+
+            proxy->m_Transform = owner->GetTransform();
             proxy->m_CastShadow = primitiveComponent->CastShadow();
             StaticMeshComponent* staticMeshComp = dynamic_cast<StaticMeshComponent*>(primitiveComponent);
             if (staticMeshComp)

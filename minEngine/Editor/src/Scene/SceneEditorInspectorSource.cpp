@@ -5,7 +5,12 @@
 
 #include "imgui.h"
 
+#include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -168,16 +173,17 @@ namespace minEngine
                 
                 SceneComponent* rootComponent = gameObject->GetRootComponent();
                 const Reflection::MEClass* classInfo = rootComponent->GetClass();
+                MEObject* rootComponentObject = static_cast<MEObject*>(rootComponent);
                 bool valueChanged = false;
-                if (classInfo)
+                if (classInfo && rootComponentObject)
                 {
                     reflectionSystem.ForEachPropertyInHierarchy(classInfo->GetName(),
                     [&](const Reflection::MEProperty& property) -> bool
                     {
                         if(property.GetName() == "m_Transform")
                         {
-                            void* valuePtr = property.GetMutable(static_cast<void*>(rootComponent));
-                            valueChanged |= DrawProperty(property, valuePtr);
+                            void* valuePtr = property.GetMutable(rootComponentObject);
+                            valueChanged |= DrawProperty(rootComponentObject, classInfo, property, valuePtr);
                         }
                         return true;
                     });
@@ -255,7 +261,7 @@ namespace minEngine
             {
                 hasAnyReflectedField = true;
                 void* valuePtr = property.GetMutable(componentObject);
-                valueChanged |= DrawProperty(property, valuePtr);
+                valueChanged |= DrawProperty(componentObject, compClass, property, valuePtr);
                 return true;
             });
             if(valueChanged)
@@ -285,9 +291,90 @@ namespace minEngine
     }
 
 
-    bool SceneEditorInspectorSource::DrawProperty(const Reflection::MEProperty &property, void *propertyPtr)
+    bool SceneEditorInspectorSource::CanUndoInspectorProperty(const Reflection::MEProperty& property) const
     {
-        // Skip invisible properties
+        return property.GetCategory() == Reflection::MEPropertyCategory::Primitive;
+    }
+
+    void SceneEditorInspectorSource::TryCapturePropertyUndoBefore(uint32_t editId,
+                                                                  const MEObject* owner,
+                                                                  const Reflection::MEClass* ownerClass,
+                                                                  const std::string& propertyName)
+    {
+        if (owner == nullptr || ownerClass == nullptr || !ImGui::IsItemActivated())
+        {
+            return;
+        }
+
+        std::vector<uint8_t> beforeBlob;
+        const Serialization::SerializeResult result = Serialization::Serializer::SerializePropertyToBuffer(
+            const_cast<MEObject*>(owner),
+            ownerClass,
+            propertyName,
+            beforeBlob);
+        if (!result.ok)
+        {
+            return;
+        }
+
+        m_PropertyUndoBeforeByEditId[editId] = std::move(beforeBlob);
+    }
+
+    void SceneEditorInspectorSource::TryCommitPropertyUndoAfter(uint32_t editId,
+                                                                const MEObject* owner,
+                                                                const Reflection::MEClass* ownerClass,
+                                                                const std::string& propertyName)
+    {
+        if (owner == nullptr || ownerClass == nullptr || !ImGui::IsItemDeactivatedAfterEdit())
+        {
+            return;
+        }
+
+        const auto beforeIter = m_PropertyUndoBeforeByEditId.find(editId);
+        if (beforeIter == m_PropertyUndoBeforeByEditId.end())
+        {
+            return;
+        }
+
+        std::vector<uint8_t> beforeBlob = std::move(beforeIter->second);
+        m_PropertyUndoBeforeByEditId.erase(beforeIter);
+
+        std::vector<uint8_t> afterBlob;
+        const Serialization::SerializeResult result = Serialization::Serializer::SerializePropertyToBuffer(
+            const_cast<MEObject*>(owner),
+            ownerClass,
+            propertyName,
+            afterBlob);
+        if (!result.ok)
+        {
+            return;
+        }
+
+        if (afterBlob == beforeBlob)
+        {
+            return;
+        }
+
+        IEditorContext* context = m_SceneEditor.GetEditorContext();
+        if (context == nullptr)
+        {
+            return;
+        }
+
+        m_SceneEditor.SubmitSetObjectProperty(
+            *context,
+            owner->GetGuid(),
+            ownerClass->GetName(),
+            propertyName,
+            std::move(beforeBlob),
+            std::move(afterBlob));
+    }
+
+    bool SceneEditorInspectorSource::DrawProperty(const MEObject* owner,
+                                                  const Reflection::MEClass* ownerClass,
+                                                  const Reflection::MEProperty& property,
+                                                  void* propertyPtr)
+    {
         if(property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
         {
             return false;
@@ -306,15 +393,27 @@ namespace minEngine
                 valueChanged = DrawPrimitiveProperty(static_cast<const Reflection::MEPrimitiveProperty&>(property), propertyPtr);
                 break;
             case Reflection::MEPropertyCategory::Object:
-                valueChanged = DrawObjectProperty(static_cast<const Reflection::MEObjectProperty&>(property), propertyPtr);
+                valueChanged = DrawObjectProperty(owner, ownerClass, static_cast<const Reflection::MEObjectProperty&>(property), propertyPtr);
                 break;
             case Reflection::MEPropertyCategory::ObjectPtr:
-                valueChanged = DrawObjectPtrProperty(static_cast<const Reflection::MEObjectPtrProperty&>(property), propertyPtr);
+                valueChanged = DrawObjectPtrProperty(
+                    owner,
+                    ownerClass,
+                    static_cast<const Reflection::MEObjectPtrProperty&>(property),
+                    propertyPtr);
                 break;
             case Reflection::MEPropertyCategory::Array:
                 valueChanged = DrawArrayProperty(static_cast<const Reflection::MEArrayProperty&>(property), propertyPtr);
                 break;
         }
+
+        if (owner != nullptr && ownerClass != nullptr && CanUndoInspectorProperty(property))
+        {
+            const uint32_t editId = static_cast<uint32_t>(ImGui::GetItemID());
+            TryCapturePropertyUndoBefore(editId, owner, ownerClass, property.GetName());
+            TryCommitPropertyUndoAfter(editId, owner, ownerClass, property.GetName());
+        }
+
         ImGui::PopID();
         return valueChanged;
     }
@@ -488,18 +587,21 @@ namespace minEngine
         return valueChanged;
     }
 
-    bool SceneEditorInspectorSource::DrawObjectProperty(const Reflection::MEObjectProperty& objectProperty, void* propertyPtr)
+    bool SceneEditorInspectorSource::DrawObjectProperty(const MEObject* owner,
+                                                        const Reflection::MEClass* ownerClass,
+                                                        const Reflection::MEObjectProperty& objectProperty,
+                                                        void* propertyPtr)
     {
         Reflection::MEClass* valueClass = objectProperty.GetValueClass();
         if (valueClass)
         {
             bool valueChanged = false;
             Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-            reflectionSystem.ForEachPropertyInHierarchy(valueClass, 
+            reflectionSystem.ForEachPropertyInHierarchy(valueClass->GetName(),
                 [&](const Reflection::MEProperty& property) -> bool
             {
                 void* valuePtr = property.GetMutable(propertyPtr);
-                valueChanged |= DrawProperty(property, valuePtr);
+                valueChanged |= DrawProperty(nullptr, nullptr, property, valuePtr);
                 return true;
             });
             return valueChanged;
@@ -507,86 +609,151 @@ namespace minEngine
         return false;
     }
 
-    bool SceneEditorInspectorSource::DrawObjectPtrProperty(const Reflection::MEObjectPtrProperty& objectPtrProperty, void* propertyPtr)
+    bool SceneEditorInspectorSource::DrawObjectPtrProperty(const MEObject* owner,
+                                                           const Reflection::MEClass* /*ownerClass*/,
+                                                           const Reflection::MEObjectPtrProperty& objectPtrProperty,
+                                                           void* propertyPtr)
     {
         const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
         if (valueClass)
         {
             if (valueClass->IsA(Asset::StaticClass()))
             {
-                return DrawAssetRef(objectPtrProperty, propertyPtr);
+                return DrawAssetRef(owner, objectPtrProperty, propertyPtr);
             }
-            else
-            {
-                // TODO: handle non-asset object references (e.g. reference to another component or game object). This requires a way to select the target object in the editor, which is more complex than selecting an asset. For now we will just display a placeholder text.
-                ImGui::TextUnformatted("Object references are not supported in this version.");
-            }
+
+            ImGui::TextUnformatted("Object references are not supported in this version.");
         }
         return false;
     }
 
-    bool SceneEditorInspectorSource::DrawAssetRef(const Reflection::MEObjectPtrProperty &objectPtrProperty, void *propertyPtr)
+    bool SceneEditorInspectorSource::DrawAssetRef(const MEObject* owner,
+                                                  const Reflection::MEObjectPtrProperty& objectPtrProperty,
+                                                  void* propertyPtr)
     {
-        // TODO: infer the "Asset Type" from the typeName
         const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
+        if (valueClass == nullptr || propertyPtr == nullptr)
+        {
+            ImGui::TextUnformatted("Asset reference type unresolved.");
+            return false;
+        }
+
         const std::string& typeName = valueClass->GetName();
         const Asset* currentAsset = static_cast<const Asset*>(objectPtrProperty.GetConstPointingData(propertyPtr));
         const AssetMeta* currentAssetMeta = currentAsset ? currentAsset->GetMeta() : nullptr;
         std::string selectedAssetName = currentAssetMeta ? currentAssetMeta->AssetName : "None";
-        GUID selectedGuid = currentAssetMeta ? currentAssetMeta->Guid : GUID::Zero();
-        
+        const GUID selectedGuid = currentAssetMeta ? currentAssetMeta->Guid : GUID::Zero();
+
         const std::vector<AssetMeta*> assetMetas = AssetManager::Get().FindAssetMetasByType(typeName);
         bool valueChanged = false;
-        if (!assetMetas.empty())
+        if (assetMetas.empty())
         {
-            // Use guid as the unique identifier for the asset reference, and display the asset name in the combo box. If the current selected guid is not in the list of available assets (e.g. the asset has been deleted), display "None".
-            if(std::find_if(assetMetas.begin(), assetMetas.end(), [&](const AssetMeta* meta) { return meta->Guid == selectedGuid; }) == assetMetas.end())
-            {
-                selectedAssetName = "None";
-            }
+            ImGui::TextUnformatted("No assets of this type in project.");
+            return false;
+        }
 
-            ImGui::PushItemWidth(260.0f);
-            if (ImGui::BeginCombo("##AssetRefCombo", selectedAssetName.c_str()))
+        if (std::find_if(assetMetas.begin(),
+                         assetMetas.end(),
+                         [&](const AssetMeta* meta) { return meta->Guid == selectedGuid; }) == assetMetas.end())
+        {
+            selectedAssetName = "None";
+        }
+
+        ImGui::PushItemWidth(260.0f);
+        if (ImGui::BeginCombo("##AssetRefCombo", selectedAssetName.c_str()))
+        {
+            for (const AssetMeta* meta : assetMetas)
             {
-                for (const AssetMeta* meta : assetMetas)
+                const bool isSelected = (meta->Guid == selectedGuid);
+                ImGui::PushID(static_cast<int>(meta->Guid.High ^ meta->Guid.Low));
+                if (ImGui::Selectable(meta->AssetName.c_str(), isSelected))
                 {
-                    const bool isSelected = (meta->Guid == selectedGuid);
-                    ImGui::PushID(meta->Guid.ToString().c_str());
-                    if (ImGui::Selectable(meta->AssetName.c_str(), isSelected))
+                    std::string errorMessage;
+                    const std::shared_ptr<Asset> asset =
+                        AssetManager::Get().LoadAssetByPath(meta->AssetPath, errorMessage);
+                    if (!asset)
                     {
-                        selectedAssetName = meta->AssetName;
-                        std::string errorMessage;
-                        std::shared_ptr<Asset> asset = AssetManager::Get().LoadAssetByPath(meta->AssetPath, errorMessage);
-                        if(asset)
+                        ME_CORE_ERROR(
+                            "DrawAssetRef: failed to load asset '{}' for property '{}': {}",
+                            meta->AssetPath,
+                            objectPtrProperty.GetName(),
+                            errorMessage);
+                    }
+                    else
+                    {
+                        const Reflection::MEObjectPtrCategory ptrCategory = objectPtrProperty.GetPtrCategory();
+                        if (ptrCategory == Reflection::MEObjectPtrCategory::Shared)
                         {
-                            // TODO: Implement this
-                            if (objectPtrProperty.GetPtrCategory() == Reflection::MEObjectPtrCategory::Raw)
+                            if (owner != nullptr)
                             {
-                                *static_cast<void**>(propertyPtr) = asset.get();
-                                valueChanged = true;
-                            }
-                            else if (objectPtrProperty.GetPtrCategory() == Reflection::MEObjectPtrCategory::Shared)
-                            {
-                                valueChanged = valueClass->SetSharedPtr(asset, propertyPtr);
-                                if (valueChanged != true)
+                                if (StaticMeshComponent* meshComponent =
+                                        dynamic_cast<StaticMeshComponent*>(const_cast<MEObject*>(owner)))
                                 {
-                                    ME_ERROR("Failed to set shared pointer for property '%s'", objectPtrProperty.GetName().c_str());
+                                    if (objectPtrProperty.GetName() == "m_Mesh")
+                                    {
+                                        meshComponent->SetMesh(std::static_pointer_cast<StaticMesh>(asset));
+                                        valueChanged = true;
+                                    }
+                                    else if (objectPtrProperty.GetName() == "m_Material")
+                                    {
+                                        meshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
+                                        valueChanged = true;
+                                    }
+                                }
+                            }
+
+                            if (!valueChanged)
+                            {
+                                const std::shared_ptr<void> assetAsVoid = asset;
+                                valueChanged = valueClass->SetSharedPtr(assetAsVoid, propertyPtr);
+                                if (!valueChanged)
+                                {
+                                    ME_CORE_ERROR(
+                                        "DrawAssetRef: SetSharedPtr failed for property '{}' on class '{}'.",
+                                        objectPtrProperty.GetName(),
+                                        valueClass->GetName());
+                                }
+                            }
+                        }
+                        else if (ptrCategory == Reflection::MEObjectPtrCategory::Raw)
+                        {
+                            // Assigning a bare pointer into shared_ptr storage corrupts the control block.
+                            ME_CORE_ERROR(
+                                "DrawAssetRef: refusing Raw pointer write for asset property '{}' (use shared_ptr field + SetMesh/SetMaterial).",
+                                objectPtrProperty.GetName());
+                        }
+                        else
+                        {
+                            ME_CORE_ERROR(
+                                "DrawAssetRef: unsupported pointer category for property '{}'.",
+                                objectPtrProperty.GetName());
+                        }
+
+                        if (valueChanged)
+                        {
+                            m_SceneEditor.MarkSceneDirty();
+                            if (owner != nullptr)
+                            {
+                                if (SceneComponent* sceneComponent =
+                                        dynamic_cast<SceneComponent*>(const_cast<MEObject*>(owner)))
+                                {
+                                    sceneComponent->MarkRenderStateDirty();
                                 }
                             }
                         }
                     }
-                    ImGui::PopID();
-
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
                 }
+                ImGui::PopID();
 
-                ImGui::EndCombo();
+                if (isSelected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
             }
-            ImGui::PopItemWidth();
-        }   
+
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
         return valueChanged;
     }
 

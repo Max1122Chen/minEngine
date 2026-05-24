@@ -1,5 +1,6 @@
 #include "Serializer.h"
 
+#include "BinaryArchive.h"
 #include "PrimitiveCodecRegistry.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
@@ -984,5 +985,146 @@ namespace minEngine::Serialization
         }
 
         return basePath + "." + nextSegment;
+    }
+
+    const MEProperty* Serializer::FindPropertyInHierarchy(const MEClass* ownerClass, const std::string& propertyName)
+    {
+        if (ownerClass == nullptr || propertyName.empty())
+        {
+            return nullptr;
+        }
+
+        const MEProperty* foundProperty = nullptr;
+        const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
+            ownerClass->GetName(),
+            [&](const MEProperty& property) -> bool
+            {
+                if (property.GetName() == propertyName)
+                {
+                    foundProperty = &property;
+                    return false;
+                }
+                return true;
+            });
+
+        if (!iterationOk && foundProperty == nullptr)
+        {
+            return nullptr;
+        }
+
+        return foundProperty;
+    }
+
+    SerializeResult Serializer::SerializeProperty(void* ownerObject,
+                                                  const MEClass* ownerClass,
+                                                  const std::string& propertyName,
+                                                  WriterArchive& archive,
+                                                  const SerializerOptions& options)
+    {
+        if (ownerObject == nullptr)
+        {
+            return SerializeResult::Failure("Serialize property failed: ownerObject is null.", propertyName);
+        }
+
+        if (ownerClass == nullptr)
+        {
+            return SerializeResult::Failure("Serialize property failed: ownerClass is null.", propertyName);
+        }
+
+        const MEProperty* property = FindPropertyInHierarchy(ownerClass, propertyName);
+        if (property == nullptr)
+        {
+            return SerializeResult::Failure("Serialize property failed: property not found.", propertyName);
+        }
+
+        if (property->GetConstAccessor() == nullptr)
+        {
+            return SerializeResult::Failure("Serialize property failed: const accessor is null.", propertyName);
+        }
+
+        const void* valuePtr = property->GetConst(ownerObject);
+        if (valuePtr == nullptr)
+        {
+            return SerializeResult::Failure("Serialize property failed: value pointer is null.", propertyName);
+        }
+
+        return SerializeProperty(*property,
+                                 property->GetSpecifierMask(),
+                                 valuePtr,
+                                 ownerObject,
+                                 archive,
+                                 options,
+                                 propertyName);
+    }
+
+    SerializeResult Serializer::DeserializeProperty(void* ownerObject,
+                                                    const MEClass* ownerClass,
+                                                    const std::string& propertyName,
+                                                    ReaderArchive& archive,
+                                                    std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                    const SerializerOptions& options)
+    {
+        if (ownerObject == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize property failed: ownerObject is null.", propertyName);
+        }
+
+        if (ownerClass == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize property failed: ownerClass is null.", propertyName);
+        }
+
+        const MEProperty* property = FindPropertyInHierarchy(ownerClass, propertyName);
+        if (property == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize property failed: property not found.", propertyName);
+        }
+
+        if (property->GetMutableAccessor() == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize property failed: mutable accessor is null.", propertyName);
+        }
+
+        void* valuePtr = property->GetMutable(ownerObject);
+        if (valuePtr == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize property failed: value pointer is null.", propertyName);
+        }
+
+        return DeserializeProperty(*property,
+                                   valuePtr,
+                                   ownerObject,
+                                   archive,
+                                   outUnresolvedRefs,
+                                   options,
+                                   propertyName);
+    }
+
+    SerializeResult Serializer::SerializePropertyToBuffer(void* ownerObject,
+                                                          const MEClass* ownerClass,
+                                                          const std::string& propertyName,
+                                                          std::vector<uint8_t>& outBuffer,
+                                                          const SerializerOptions& options)
+    {
+        BinaryWriterArchive writer;
+        SerializeResult result = SerializeProperty(ownerObject, ownerClass, propertyName, writer, options);
+        if (!result.ok)
+        {
+            return result;
+        }
+
+        outBuffer = writer.TakeBuffer();
+        return SerializeResult::Success();
+    }
+
+    SerializeResult Serializer::DeserializePropertyFromBuffer(void* ownerObject,
+                                                              const MEClass* ownerClass,
+                                                              const std::string& propertyName,
+                                                              const std::vector<uint8_t>& buffer,
+                                                              std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                              const SerializerOptions& options)
+    {
+        BinaryReaderArchive reader(buffer);
+        return DeserializeProperty(ownerObject, ownerClass, propertyName, reader, outUnresolvedRefs, options);
     }
 }

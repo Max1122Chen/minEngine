@@ -38,11 +38,19 @@ namespace minEngine
 
     void PrimitiveComponent::DoEndOfFrameUpdate()
     {
-        if(m_bRenderStateDirty)     // why do we need this check again? 
+        if (!m_bRenderStateDirty)
         {
-            SceneManager::Get().GetRenderScene()->UpdatePrimitive(this);
-            m_bRenderStateDirty = false;
+            return;
         }
+
+        RenderScene* renderScene = SceneManager::Get().GetRenderScene();
+        if (renderScene == nullptr)
+        {
+            return;
+        }
+
+        renderScene->UpdatePrimitive(this);
+        m_bRenderStateDirty = false;
     }
 
 }

@@ -26,6 +26,7 @@
 - [引擎启动 / 配置](./Platform/Startup/ENGINE_STARTUP_DESIGN.md)
 - [内存管理](./Platform/MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md)
 - [Content Browser](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)
+- [序列化扩展（Binary Archive / Property API）](./Platform/Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md)
 
 ### 渲染 / 材质（已基本完成）
 
@@ -38,6 +39,7 @@
 - [**Editor Shell 设计**](./Editor/EDITOR_SHELL_DESIGN.md)
 - [**Editor 架构复盘**](./Editor/EDITOR_ARCHITECTURE_REVIEW.md)
 - [**Editor 平台化规划**](./Editor/EDITOR_PLATFORM_PLAN.md) — E0–E4（P2 主线）
+- [Command Stack / Undo](./Editor/EDITOR_COMMAND_HISTORY.md)
 - [视口窗口](./Editor/EDITOR_VIEWPORT_WINDOWS.md)
 - [Content Browser 产品意图](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)
 - [材质编辑器计划](./Render/Material/MATERIAL_EDITOR_PLAN.md)

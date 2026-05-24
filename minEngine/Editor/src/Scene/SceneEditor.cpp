@@ -6,6 +6,7 @@
 #include "Commands/Scene/RemoveComponentCommand.h"
 #include "Commands/Scene/RenameGameObjectCommand.h"
 #include "Commands/Scene/SetGameObjectTransformCommand.h"
+#include "Commands/Scene/SetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
 #include "Scene/SceneEditorInspectorSource.h"
 #include "Shell/EditorCommandStack.h"
@@ -19,8 +20,11 @@
 #include "imgui.h"
 #include "Viewport/SceneEditingViewportClient.h"
 
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -505,6 +509,87 @@ namespace minEngine
     void SceneEditor::SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId)
     {
         context.GetCommandStack().Execute(std::make_unique<DeleteGameObjectCommand>(*this, gameObjectId));
+    }
+
+    bool SceneEditor::ApplySetObjectProperty(const GUID& ownerGuid,
+                                             const std::string& ownerClassName,
+                                             const std::string& propertyName,
+                                             const std::vector<uint8_t>& valueBlob)
+    {
+        std::shared_ptr<MEObject> ownerObject = ObjectManager::Get().FindObject(ownerGuid);
+        if (!ownerObject)
+        {
+            ME_CORE_WARN(
+                "ApplySetObjectProperty: owner not found (guid='{}', property='{}').",
+                ownerGuid.ToString(),
+                propertyName);
+            return false;
+        }
+
+        const Reflection::MEClass* ownerClass = Reflection::ReflectionSystem::Get().FindClass(ownerClassName);
+        if (ownerClass == nullptr)
+        {
+            ME_CORE_WARN(
+                "ApplySetObjectProperty: class '{}' not found (property='{}').",
+                ownerClassName,
+                propertyName);
+            return false;
+        }
+
+        std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+        const Serialization::SerializeResult result = Serialization::Serializer::DeserializePropertyFromBuffer(
+            ownerObject.get(),
+            ownerClass,
+            propertyName,
+            valueBlob,
+            unresolvedRefs);
+        if (!result.ok)
+        {
+            ME_CORE_WARN(
+                "ApplySetObjectProperty failed: {} (path='{}').",
+                result.message,
+                result.fieldPath);
+            return false;
+        }
+
+        if (!unresolvedRefs.empty())
+        {
+            const Serialization::SerializeResult resolveResult =
+                Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
+            if (!resolveResult.ok)
+            {
+                ME_CORE_WARN("ApplySetObjectProperty: unresolved object references remain.");
+            }
+        }
+
+        if (ownerObject->IsA(SceneComponent::StaticClass()))
+        {
+            static_cast<SceneComponent*>(ownerObject.get())->MarkRenderStateDirty();
+        }
+
+        MarkSceneDirty();
+        return true;
+    }
+
+    void SceneEditor::SubmitSetObjectProperty(IEditorContext& context,
+                                              const GUID& ownerGuid,
+                                              const std::string& ownerClassName,
+                                              const std::string& propertyName,
+                                              std::vector<uint8_t> beforeValue,
+                                              std::vector<uint8_t> afterValue)
+    {
+        if (beforeValue == afterValue)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<SetObjectPropertyCommand>(
+            *this,
+            ownerGuid,
+            ownerClassName,
+            propertyName,
+            std::move(beforeValue),
+            std::move(afterValue)));
     }
 
     void SceneEditor::SyncSelectionWithScene()

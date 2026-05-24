@@ -348,6 +348,11 @@ namespace minEngine
             m_EditorGUIManager.Tick(deltaTime);
             m_InputHub.ProcessInput(*this);
 
+            // Inspector / UI can mark components dirty after LogicalTick already ran
+            // SendAllEndOfFrameUpdates. Flush again so mesh/material ref changes update
+            // scene proxies before render (avoids dangling VB/IB pointers when old assets drop).
+            SceneManager::Get().SendAllEndOfFrameUpdates();
+
             m_Engine->TickRendererFrame(deltaTime);
 
             ImGui::Render();

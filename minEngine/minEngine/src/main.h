@@ -4,6 +4,7 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManagerTest.h"
 #include "Runtime/Function/Render/Material/MaterialIR/MaterialIRTest.h"
+#include "Runtime/Core/Serialization/SerializationArchiveTest.h"
 
 extern minEngine::Application* minEngine::CreateApplication();
 
@@ -13,6 +14,14 @@ int main(int argc, char** argv)
     {
         minEngine::LogSystem::Initialize();
         const bool passed = minEngine::RunObjectManagerTests(argc, argv);
+        minEngine::LogSystem::Shutdown();
+        return passed ? 0 : 1;
+    }
+
+    if (minEngine::ShouldRunSerializationArchiveTestsOnly(argc, argv))
+    {
+        minEngine::LogSystem::Initialize();
+        const bool passed = minEngine::RunSerializationArchiveTests(argc, argv);
         minEngine::LogSystem::Shutdown();
         return passed ? 0 : 1;
     }

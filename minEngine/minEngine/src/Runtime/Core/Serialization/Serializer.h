@@ -56,6 +56,32 @@ namespace minEngine::Serialization
                         void* outRootObject,
                         ReaderArchive& archive,
                         const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult SerializeProperty(void* ownerObject,
+                                                 const Reflection::MEClass* ownerClass,
+                                                 const std::string& propertyName,
+                                                 WriterArchive& archive,
+                                                 const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult DeserializeProperty(void* ownerObject,
+                                                   const Reflection::MEClass* ownerClass,
+                                                   const std::string& propertyName,
+                                                   ReaderArchive& archive,
+                                                   std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                   const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult SerializePropertyToBuffer(void* ownerObject,
+                                                         const Reflection::MEClass* ownerClass,
+                                                         const std::string& propertyName,
+                                                         std::vector<uint8_t>& outBuffer,
+                                                         const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult DeserializePropertyFromBuffer(void* ownerObject,
+                                                             const Reflection::MEClass* ownerClass,
+                                                             const std::string& propertyName,
+                                                             const std::vector<uint8_t>& buffer,
+                                                             std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                             const SerializerOptions& options = SerializerOptions{});
     private:
         static SerializeResult SerializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                               const void* objectPtr,
@@ -127,9 +153,9 @@ namespace minEngine::Serialization
 
         static std::string JoinPath(const std::string& basePath, const std::string& nextSegment);
 
-    public:
-        
-    private:
+        static const Reflection::MEProperty* FindPropertyInHierarchy(const Reflection::MEClass* ownerClass,
+                                                                     const std::string& propertyName);
+
         static bool IsHandlingPtr()
         {
             return m_IsHandlingPtr;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/GUID/GUID.h"
 #include "Scene/SceneEditorInspectorSource.h"
 #include "Shell/EditorSubModule.h"
 
@@ -81,6 +82,16 @@ namespace minEngine
         bool ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform);
         uint64_t ApplyRestoreRemovedGameObject(const std::string& name, const Transform& transform);
         void SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId);
+        bool ApplySetObjectProperty(const GUID& ownerGuid,
+                                    const std::string& ownerClassName,
+                                    const std::string& propertyName,
+                                    const std::vector<uint8_t>& valueBlob);
+        void SubmitSetObjectProperty(IEditorContext& context,
+                                     const GUID& ownerGuid,
+                                     const std::string& ownerClassName,
+                                     const std::string& propertyName,
+                                     std::vector<uint8_t> beforeValue,
+                                     std::vector<uint8_t> afterValue);
         void MarkSceneDirty() { m_SceneDirty = true; }
         void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }

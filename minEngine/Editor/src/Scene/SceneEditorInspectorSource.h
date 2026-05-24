@@ -9,9 +9,12 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cstdint>
 #include <cstring>
 #include <limits>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace minEngine
 {
@@ -32,7 +35,22 @@ namespace minEngine
 
         void DrawGameObjectDetails(GameObject* gameObject);
 
-        bool DrawProperty(const Reflection::MEProperty& property, void* propertyPtr);
+        bool DrawProperty(const MEObject* owner,
+                          const Reflection::MEClass* ownerClass,
+                          const Reflection::MEProperty& property,
+                          void* propertyPtr);
+
+        bool CanUndoInspectorProperty(const Reflection::MEProperty& property) const;
+
+        void TryCapturePropertyUndoBefore(uint32_t editId,
+                                          const MEObject* owner,
+                                          const Reflection::MEClass* ownerClass,
+                                          const std::string& propertyName);
+
+        void TryCommitPropertyUndoAfter(uint32_t editId,
+                                        const MEObject* owner,
+                                        const Reflection::MEClass* ownerClass,
+                                        const std::string& propertyName);
 
         bool DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
         bool DrawIntProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
@@ -45,9 +63,17 @@ namespace minEngine
         bool DrawVector4Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
         bool DrawEnumProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
 
-        bool DrawObjectProperty(const Reflection::MEObjectProperty& objectProperty, void* propertyPtr);
-        bool DrawObjectPtrProperty(const Reflection::MEObjectPtrProperty& objectPtrProperty, void* propertyPtr);
-        bool DrawAssetRef(const Reflection::MEObjectPtrProperty& objectPtrProperty, void* propertyPtr);
+        bool DrawObjectProperty(const MEObject* owner,
+                                const Reflection::MEClass* ownerClass,
+                                const Reflection::MEObjectProperty& objectProperty,
+                                void* propertyPtr);
+        bool DrawObjectPtrProperty(const MEObject* owner,
+                                   const Reflection::MEClass* ownerClass,
+                                   const Reflection::MEObjectPtrProperty& objectPtrProperty,
+                                   void* propertyPtr);
+        bool DrawAssetRef(const MEObject* owner,
+                          const Reflection::MEObjectPtrProperty& objectPtrProperty,
+                          void* propertyPtr);
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
 
         void BeginRenameSelectedGameObject(const GameObject& gameObject)
@@ -68,5 +94,6 @@ namespace minEngine
         bool m_RequestRenameFocus = false;
         uint64_t m_RenameTargetGameObjectId = kInvalidGameObjectId;
         char m_RenameBuffer[256] = {};
+        std::unordered_map<uint32_t, std::vector<uint8_t>> m_PropertyUndoBeforeByEditId;
     };
 }
