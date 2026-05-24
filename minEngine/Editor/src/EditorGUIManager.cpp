@@ -1,67 +1,32 @@
 #include "EditorGUIManager.h"
 
-#include "Editor.h"
-#include "EditorUIMode.h"
-#include "Material/MaterialEditor.h"
+#include "Shell/EditorSubModule.h"
+#include "Shell/IEditorContext.h"
 
 #include "imgui_internal.h"
 
-#include "UI/EditorWindows/ConsoleWindow.h"
-#include "UI/EditorWindows/HierarchyWindow.h"
-#include "UI/EditorWindows/InspectorWindow.h"
-#include "UI/EditorWindows/MainMenuWindow.h"
-#include "UI/EditorWindows/SceneEditingViewportWindow.h"
-#include "UI/EditorWindows/MaterialGraphWindow.h"
-#include "UI/EditorWindows/MaterialPreviewWindow.h"
-#include "UI/EditorWindows/MaterialDetailsWindow.h"
-
 namespace minEngine
 {
-    void EditorGUIManager::Initialize(Editor& editor)
+    void EditorGUIManager::Initialize(IEditorContext& context)
     {
-        m_Editor = &editor;
-        m_UIMode = EditorUIMode::SceneEditing;
-
-        RegisterWindow(std::make_unique<MainMenuWindow>(editor));
-        RegisterWindow(std::make_unique<SceneEditingViewportWindow>(editor));
-        RegisterWindow(std::make_unique<HierarchyWindow>(editor));
-        RegisterWindow(std::make_unique<InspectorWindow>(editor));
-        RegisterWindow(std::make_unique<ConsoleWindow>(editor));
-
-        RegisterWindow(std::make_unique<MaterialGraphWindow>(editor));
-        RegisterWindow(std::make_unique<MaterialPreviewWindow>(editor));
-        RegisterWindow(std::make_unique<MaterialDetailsWindow>(editor));
-
-        ApplyUIModeWindowVisibility();
+        m_Context = &context;
+        ApplyActiveSubModuleWindowVisibility();
     }
 
-    void EditorGUIManager::SetUIMode(EditorUIMode mode)
+    void EditorGUIManager::OnActiveSubModuleChanged()
     {
-        if (m_UIMode == mode)
+        ApplyActiveSubModuleWindowVisibility();
+
+        if (!m_Context)
         {
             return;
         }
 
-        m_UIMode = mode;
-        ApplyUIModeWindowVisibility();
-
-        if (m_Editor)
-        {
-            m_Editor->requestResetLayout = true;
-            m_Editor->dockLayoutInitialized = false;
-
-            if (mode == EditorUIMode::MaterialEditing)
-            {
-                m_Editor->GetMaterialEditor().OnEnterMode();
-            }
-            else
-            {
-                m_Editor->GetMaterialEditor().OnExitMode();
-            }
-        }
+        m_Context->RequestResetLayout() = true;
+        m_Context->DockLayoutInitialized() = false;
     }
 
-    void EditorGUIManager::ApplyUIModeWindowVisibility()
+    void EditorGUIManager::ApplyActiveSubModuleWindowVisibility()
     {
         for (const auto& window : m_Windows)
         {
@@ -70,105 +35,49 @@ namespace minEngine
                 continue;
             }
 
-            const EditorWindowSuite suite = window->GetWindowSuite();
-            if (suite == EditorWindowSuite::Shared)
+            if (window->GetOwnerModuleId().empty())
             {
                 continue;
             }
 
-            const bool shouldOpen = IsWindowActiveForUIMode(suite, m_UIMode);
-            window->SetOpen(shouldOpen);
+            window->SetOpen(window->IsVisibleForActiveModule());
         }
-    }
-
-    Editor& EditorGUIManager::GetEditor()
-    {
-        return *m_Editor;
-    }
-
-    const Editor& EditorGUIManager::GetEditor() const
-    {
-        return *m_Editor;
     }
 
     void EditorGUIManager::Tick(float deltaTime)
     {
-        Editor& editor = GetEditor();
-
-        const ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
-        TickLayout(dockspaceId);
-
-        if (m_UIMode == EditorUIMode::MaterialEditing)
-        {
-            editor.GetMaterialEditor().Tick(deltaTime);
-        }
-
-        TickWindows();
-        DrawWindows();
-
-        editor.lastDeltaTime = deltaTime;
-    }
-
-    void EditorGUIManager::TickLayout(ImGuiID dockspaceId)
-    {
-        if (dockspaceId == 0)
+        if (!m_Context)
         {
             return;
         }
 
-        Editor& editor = GetEditor();
-        if (!editor.dockLayoutInitialized || editor.requestResetLayout)
+        const ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(
+            0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+        TickLayout(dockspaceId);
+
+        TickWindows();
+        DrawWindows();
+
+        m_Context->SetLastDeltaTime(deltaTime);
+    }
+
+    void EditorGUIManager::TickLayout(ImGuiID dockspaceId)
+    {
+        if (!m_Context || dockspaceId == 0)
         {
-            if (m_UIMode == EditorUIMode::MaterialEditing)
-            {
-                BuildMaterialEditingDockLayout(dockspaceId);
-            }
-            else
-            {
-                BuildSceneEditingDockLayout(dockspaceId);
-            }
-
-            editor.dockLayoutInitialized = true;
-            editor.requestResetLayout = false;
+            return;
         }
-    }
 
-    void EditorGUIManager::BuildSceneEditingDockLayout(ImGuiID dockspaceId)
-    {
-        ImGui::DockBuilderRemoveNode(dockspaceId);
-        ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
-        ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
+        if (!m_Context->DockLayoutInitialized() || m_Context->RequestResetLayout())
+        {
+            if (EditorSubModule* active = m_Context->GetActiveSubModule())
+            {
+                active->ApplyDefaultLayout(*m_Context, dockspaceId);
+            }
 
-        ImGuiID mainArea = dockspaceId;
-        ImGuiID inspectorArea = ImGui::DockBuilderSplitNode(mainArea, ImGuiDir_Right, kDefaultInspectorSplitRatio, nullptr, &mainArea);
-        ImGuiID hierarchyArea = ImGui::DockBuilderSplitNode(mainArea, ImGuiDir_Right, kDefaultHierarchySplitRatio, nullptr, &mainArea);
-        ImGuiID consoleArea = ImGui::DockBuilderSplitNode(mainArea, ImGuiDir_Down, kDefaultConsoleSplitRatio, nullptr, &mainArea);
-
-        ImGui::DockBuilderDockWindow("Viewport", mainArea);
-        ImGui::DockBuilderDockWindow("Console", consoleArea);
-        ImGui::DockBuilderDockWindow("Hierarchy", hierarchyArea);
-        ImGui::DockBuilderDockWindow("Inspector", inspectorArea);
-
-        ImGui::DockBuilderFinish(dockspaceId);
-    }
-
-    void EditorGUIManager::BuildMaterialEditingDockLayout(ImGuiID dockspaceId)
-    {
-        ImGui::DockBuilderRemoveNode(dockspaceId);
-        ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
-        ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
-
-        ImGuiID centerArea = dockspaceId;
-        ImGuiID consoleArea = ImGui::DockBuilderSplitNode(centerArea, ImGuiDir_Down, 0.28f, nullptr, &centerArea);
-        ImGuiID graphArea = ImGui::DockBuilderSplitNode(centerArea, ImGuiDir_Right, 0.58f, nullptr, &centerArea);
-        ImGuiID detailsArea = ImGui::DockBuilderSplitNode(centerArea, ImGuiDir_Down, 0.42f, nullptr, &centerArea);
-
-        ImGui::DockBuilderDockWindow("Material Graph", graphArea);
-        ImGui::DockBuilderDockWindow("Material Preview", centerArea);
-        ImGui::DockBuilderDockWindow("Material Details", detailsArea);
-        ImGui::DockBuilderDockWindow("Console", consoleArea);
-
-        ImGui::DockBuilderFinish(dockspaceId);
+            m_Context->DockLayoutInitialized() = true;
+            m_Context->RequestResetLayout() = false;
+        }
     }
 
     void EditorGUIManager::Shutdown()
@@ -179,7 +88,7 @@ namespace minEngine
         }
         m_Windows.clear();
         m_IndexById.clear();
-        m_Editor = nullptr;
+        m_Context = nullptr;
     }
 
     EditorWindow* EditorGUIManager::RegisterWindow(std::unique_ptr<EditorWindow> window)
@@ -241,12 +150,7 @@ namespace minEngine
     {
         for (const auto& window : m_Windows)
         {
-            if (!window->IsOpen())
-            {
-                continue;
-            }
-
-            if (!IsWindowActiveForUIMode(window->GetWindowSuite(), m_UIMode))
+            if (!window->IsOpen() || !window->IsVisibleForActiveModule())
             {
                 continue;
             }
@@ -259,12 +163,7 @@ namespace minEngine
     {
         for (const auto& window : m_Windows)
         {
-            if (!window->IsOpen())
-            {
-                continue;
-            }
-
-            if (!IsWindowActiveForUIMode(window->GetWindowSuite(), m_UIMode))
+            if (!window->IsOpen() || !window->IsVisibleForActiveModule())
             {
                 continue;
             }

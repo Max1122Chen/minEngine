@@ -1,9 +1,9 @@
-#include "MaterialDetailsWindow.h"
+#include "Material/MaterialEditorInspectorSource.h"
+
+#include "Material/MaterialEditor.h"
 
 #include "imgui.h"
 
-#include "Editor.h"
-#include "Material/MaterialEditor.h"
 #include "Material/MaterialEditorSession.h"
 #include "Material/MaterialGraphIds.h"
 #include "Material/MaterialGraphNodeRegistry.h"
@@ -77,9 +77,20 @@ namespace minEngine
         }
     }
 
-    void MaterialDetailsWindow::OnDraw()
+    MaterialEditorInspectorSource::MaterialEditorInspectorSource(MaterialEditor& materialEditor)
+        : m_MaterialEditor(materialEditor)
     {
-        ImGui::Begin(m_Title.c_str());
+    }
+
+    bool MaterialEditorInspectorSource::HasInspectableSelection() const
+    {
+        return m_MaterialEditor.GetSession().HasOpenMaterial()
+            || m_MaterialEditor.GetSelectedEdNode() != nullptr;
+    }
+
+    void MaterialEditorInspectorSource::DrawInspector()
+    {
+        ImGui::Begin(kWindowTitle);
 
         const ImVec2 scrollAvail = ImGui::GetContentRegionAvail();
         ImGui::BeginChild(
@@ -90,8 +101,7 @@ namespace minEngine
 
         ImGui::PushItemWidth(kDetailsFieldWidth);
 
-        MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
-        const MaterialEditorSession& session = materialEditor.GetSession();
+        const MaterialEditorSession& session = m_MaterialEditor.GetSession();
         if (!session.HasOpenMaterial())
         {
             ImGui::TextUnformatted("No material open.");
@@ -118,7 +128,7 @@ namespace minEngine
                 const bool selected = (option == shadingModel);
                 if (ImGui::Selectable(ShadingModelLabel(option), selected))
                 {
-                    materialEditor.SetShadingModel(option);
+                    m_MaterialEditor.SetShadingModel(option);
                 }
             }
             ImGui::EndCombo();
@@ -137,7 +147,7 @@ namespace minEngine
                 const bool selected = (option == blendMode);
                 if (ImGui::Selectable(BlendModeLabel(option), selected))
                 {
-                    materialEditor.SetBlendMode(option);
+                    m_MaterialEditor.SetBlendMode(option);
                 }
             }
             ImGui::EndCombo();
@@ -168,16 +178,16 @@ namespace minEngine
                         float spawnY = 0.0f;
                         ComputeSpawnPosition(
                             *graph,
-                            materialEditor.GetSelectedEdNode(),
+                            m_MaterialEditor.GetSelectedEdNode(),
                             spawnX,
                             spawnY);
 
                         MaterialEdGraphNode& newNode =
                             graph->AddNode(entry.NodeDefClass, spawnX, spawnY);
-                        materialEditor.SetSelectedEdNode(&newNode);
+                        m_MaterialEditor.SetSelectedEdNode(&newNode);
                         MaterialGraphIds::Reset();
-                        materialEditor.NotifyGraphChanged();
-                        materialEditor.InvalidateGraphCanvas(false);
+                        m_MaterialEditor.NotifyGraphChanged();
+                        m_MaterialEditor.InvalidateGraphCanvas(false);
                     }
                     ImGui::PopID();
                 }
@@ -190,7 +200,7 @@ namespace minEngine
         ImGui::TextUnformatted("Asset");
         ImGui::TextWrapped("%s", session.AssetPath.c_str());
 
-        MaterialEdGraphNode* selectedNode = materialEditor.GetSelectedEdNode();
+        MaterialEdGraphNode* selectedNode = m_MaterialEditor.GetSelectedEdNode();
         if (selectedNode && selectedNode->GetNodeDef())
         {
             MaterialGraphNodeDef* nodeDef = selectedNode->GetNodeDef();
@@ -200,7 +210,7 @@ namespace minEngine
             ImGui::TextUnformatted("Selected Node");
             ImGui::TextColored(ImColor(style.HeaderColor), "%s", style.DisplayName);
 
-            MaterialNodeDefPropertyDrawer::DrawProperties(nodeDef, materialEditor);
+            MaterialNodeDefPropertyDrawer::DrawProperties(nodeDef, m_MaterialEditor);
         }
         else
         {

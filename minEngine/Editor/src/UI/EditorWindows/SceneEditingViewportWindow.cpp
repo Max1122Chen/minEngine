@@ -1,6 +1,7 @@
 #include "SceneEditingViewportWindow.h"
 
-#include "Editor.h"
+#include "Shell/EditorContextHelpers.h"
+#include "Shell/ViewportClientRegistry.h"
 #include "Render/RenderCamera.h"
 #include "Function/Framework/GameObject/GameObject.h"
 
@@ -8,7 +9,7 @@ namespace minEngine
 {
     EditorViewportClient& SceneEditingViewportWindow::GetOrCreateViewportClient()
     {
-        return m_Editor.GetOrCreateSceneEditingViewportClient(m_Id, m_Title);
+        return m_Context.GetViewportRegistry().GetOrCreateSceneEditingViewportClient(m_Id, m_Title);
     }
 
     const std::shared_ptr<RHITexture2D>& SceneEditingViewportWindow::GetDisplayColorTexture() const
@@ -102,7 +103,8 @@ namespace minEngine
         Matrix4 projection = viewportCamera->GetProjectionMatrix();
 
         GizmoState& gizmoState = client.GetGizmoState();
-        if (GameObject* selected = m_Editor.GetSelectedGameObject())
+        SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
+        if (GameObject* selected = sceneEditor ? sceneEditor->GetSelectedGameObject() : nullptr)
         {
             Matrix4 model = selected->GetTransform().ToMatrix();
             Matrix4 deltaMatrix;

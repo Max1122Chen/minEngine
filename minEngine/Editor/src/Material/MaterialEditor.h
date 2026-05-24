@@ -1,9 +1,10 @@
 #pragma once
 
 #include "Core.h"
-
 #include "MaterialEditorPreview.h"
 #include "MaterialEditorSession.h"
+#include "MaterialEditorInspectorSource.h"
+#include "Shell/EditorSubModule.h"
 
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Resource/AssetMeta.h"
@@ -13,24 +14,39 @@
 namespace minEngine
 {
     class MaterialEdGraphNode;
-    class Editor;
+    class IEditorContext;
 
-    /** Session + commands for material editing (no ImGui). */
-    class MaterialEditor
+    /** Material editing SubModule: session, graph, preview, compile. */
+    class MaterialEditor : public EditorSubModule
     {
     public:
+        static constexpr const char* kModuleId = "Material";
         static constexpr const char* kPreviewViewportPanelId = "material_editor_preview";
         static constexpr float kCompileDebounceSeconds = 0.3f;
 
-        explicit MaterialEditor(Editor& editor);
+        MaterialEditor();
 
-        void OnEnterMode();
-        void OnExitMode();
-        void Shutdown();
+        std::string_view GetModuleId() const override { return kModuleId; }
+        std::string_view GetDisplayName() const override { return "Material"; }
 
-        void Tick(float deltaTime);
+        void Register(IEditorContext& context) override;
+        void Shutdown() override;
 
-        /** Called when MaterialPreviewWindow attaches its viewport client. */
+        void OnActivate(IEditorContext& context) override;
+        void OnDeactivate(IEditorContext& context) override;
+        void RegisterCommands(IEditorContext& context) override;
+        void UnregisterCommands(IEditorContext& context) override;
+        void Tick(float deltaTime) override;
+
+        void ApplyDefaultLayout(IEditorContext& context, ImGuiID dockspaceId) override;
+
+        IEditorInspectorSource* GetInspectorSource() override { return &m_InspectorSource; }
+        const IEditorInspectorSource* GetInspectorSource() const override { return &m_InspectorSource; }
+
+        bool CanOpenAsset(const AssetMeta& meta) const override;
+        bool OpenAsset(const AssetMeta& meta) override;
+        bool RouteViewportInput(EditorViewportClient& client) override;
+
         void OnPreviewViewHostReady();
 
         void RefreshMaterialList();
@@ -40,13 +56,7 @@ namespace minEngine
         void SetShadingModel(MaterialShadingModel model);
         void SetBlendMode(MaterialBlendMode blendMode);
 
-        /** Graph edit: Finalize + debounced Compile + dirty. Does not reset node-editor pan/zoom. */
         void NotifyGraphChanged();
-
-        /**
-         * Refresh node-editor state. rebindGraph=true when switching .memtl (clears bound graph);
-         * false after add/remove nodes (keeps pan/zoom and selection).
-         */
         void InvalidateGraphCanvas(bool rebindGraph = true);
 
         void SetSelectedEdNode(MaterialEdGraphNode* node) { m_SelectedEdNode = node; }
@@ -72,12 +82,15 @@ namespace minEngine
         const MaterialEditorPreview& GetPreview() const { return m_Preview; }
 
     private:
+        void OnEnterMode();
+        void OnExitMode();
         void EnsureDefaultSession();
         void ApplySessionToPreview();
         void ScheduleDebouncedCompile();
         void FlushPendingCompile();
 
-        Editor& m_Editor;
+        IEditorContext* m_Context = nullptr;
+        MaterialEditorInspectorSource m_InspectorSource;
         MaterialEditorSession m_Session;
         MaterialEditorPreview m_Preview;
         std::vector<const AssetMeta*> m_MaterialMetas;

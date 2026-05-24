@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Core.h"
-#include "EditorViewportWindow.h"
+
+#include "Material/MaterialEditor.h"
+#include "UI/EditorWindows/EditorViewportWindow.h"
 #include "Viewport/MaterialPreviewViewportClient.h"
 
 namespace minEngine
@@ -9,13 +11,13 @@ namespace minEngine
     class MaterialPreviewWindow final : public EditorViewportWindow
     {
     public:
-        explicit MaterialPreviewWindow(Editor& editor)
-            : EditorViewportWindow(editor, "material_editor_preview", "Material Preview")
+        explicit MaterialPreviewWindow(IEditorContext& context)
+            : EditorViewportWindow(context, "material_editor_preview", "Material Preview")
         {
             SetOpen(false);
         }
 
-        EditorWindowSuite GetWindowSuite() const override { return EditorWindowSuite::MaterialEditing; }
+        std::string_view GetOwnerModuleId() const override { return MaterialEditor::kModuleId; }
 
         void OnAttach() override;
 

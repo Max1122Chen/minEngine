@@ -5,19 +5,17 @@
 #include "imgui.h"
 
 #include "Runtime/Function/Render/RHI/RHITexture.h"
+#include "UI/EditorWindows/EditorWindow.h"
 #include "Viewport/EditorViewportClient.h"
-#include "EditorWindow.h"
 
 namespace minEngine
 {
-    class Editor;
-
     /** Base dock panel that displays a scene render target and forwards frame rects to a viewport client. */
     class EditorViewportWindow : public EditorWindow
     {
     public:
-        explicit EditorViewportWindow(Editor& editor, std::string id, std::string title)
-            : EditorWindow(editor)
+        explicit EditorViewportWindow(IEditorContext& context, std::string id, std::string title)
+            : EditorWindow(context)
             , m_Id(std::move(id))
             , m_Title(std::move(title))
         {

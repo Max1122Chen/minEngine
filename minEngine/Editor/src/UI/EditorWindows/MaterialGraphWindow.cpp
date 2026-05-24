@@ -1,8 +1,9 @@
 #include "MaterialGraphWindow.h"
 
+#include "Shell/EditorContextHelpers.h"
+
 #include "imgui.h"
 
-#include "Editor.h"
 #include "Material/MaterialEditor.h"
 #include "Material/MaterialEditorSession.h"
 #include "Material/MaterialGraphIds.h"
@@ -166,8 +167,8 @@ namespace minEngine
         }
     }
 
-    MaterialGraphWindow::MaterialGraphWindow(Editor& editor)
-        : EditorWindow(editor)
+    MaterialGraphWindow::MaterialGraphWindow(IEditorContext& context)
+        : EditorWindow(context)
     {
         SetOpen(false);
     }
@@ -209,14 +210,18 @@ namespace minEngine
     {
         ImGui::Begin(m_Title.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-        MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (!materialEditor)
+        {
+            return;
+        }
         bool rebindGraph = false;
-        if (materialEditor.ConsumeGraphCanvasInvalidation(rebindGraph))
+        if (materialEditor->ConsumeGraphCanvasInvalidation(rebindGraph))
         {
             if (rebindGraph)
             {
                 MaterialGraphIds::Reset();
-                materialEditor.ClearSelectedEdNode();
+                materialEditor->ClearSelectedEdNode();
                 m_BoundGraph = nullptr;
             }
 
@@ -236,10 +241,14 @@ namespace minEngine
 
     void MaterialGraphWindow::DrawToolbar()
     {
-        MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
-        const MaterialEditorSession& session = materialEditor.GetSession();
-        const auto& materialMetas = materialEditor.GetMaterialMetas();
-        const int selectedIndex = materialEditor.GetSelectedMaterialIndex();
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (!materialEditor)
+        {
+            return;
+        }
+        const MaterialEditorSession& session = materialEditor->GetSession();
+        const auto& materialMetas = materialEditor->GetMaterialMetas();
+        const int selectedIndex = materialEditor->GetSelectedMaterialIndex();
 
         const char* previewLabel = "No material";
         if (selectedIndex >= 0 && selectedIndex < static_cast<int>(materialMetas.size()))
@@ -265,7 +274,7 @@ namespace minEngine
                 const bool selected = (i == selectedIndex);
                 if (ImGui::Selectable(meta->AssetName.c_str(), selected))
                 {
-                    materialEditor.OpenSession(meta);
+                    materialEditor->OpenSession(meta);
                 }
                 if (selected)
                 {
@@ -279,7 +288,7 @@ namespace minEngine
         ImGui::SameLine();
         if (ImGui::Button("Compile"))
         {
-            materialEditor.CompileActiveMaterial();
+            materialEditor->CompileActiveMaterial();
         }
 
         if (session.HasOpenMaterial() && session.MaterialAsset)
@@ -300,7 +309,7 @@ namespace minEngine
 
         if (ImGui::Button(session.Dirty ? "Save *" : "Save"))
         {
-            materialEditor.SaveActiveMaterial();
+            materialEditor->SaveActiveMaterial();
         }
 
         if (!session.HasOpenMaterial())
@@ -316,8 +325,12 @@ namespace minEngine
 
     void MaterialGraphWindow::DrawCanvas()
     {
-        MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
-        const MaterialEditorSession& session = materialEditor.GetSession();
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (!materialEditor)
+        {
+            return;
+        }
+        const MaterialEditorSession& session = materialEditor->GetSession();
         if (!session.HasOpenMaterial() || !session.MaterialAsset || !session.MaterialAsset->m_Graph)
         {
             ImGui::TextUnformatted("Open a material asset to edit its graph.");
@@ -335,7 +348,10 @@ namespace minEngine
         if (m_BoundGraph != &graph)
         {
             MaterialGraphIds::Reset();
-            m_Editor.GetMaterialEditor().ClearSelectedEdNode();
+            if (MaterialEditor* editor = GetMaterialEditor(&m_Context))
+            {
+                editor->ClearSelectedEdNode();
+            }
             m_BoundGraph = &graph;
             m_PushStoredPositionsToEditor = true;
         }
@@ -402,7 +418,10 @@ namespace minEngine
 
         if (layoutIndex > 0)
         {
-            m_Editor.GetMaterialEditor().GetSession().Dirty = true;
+            if (MaterialEditor* editor = GetMaterialEditor(&m_Context))
+            {
+                editor->GetSession().Dirty = true;
+            }
         }
     }
 
@@ -459,10 +478,14 @@ namespace minEngine
             ImGui::PopStyleColor();
             // ImGui::SetCursorScreenPos(ImVec2(headerStart.x, headerStart.y + kHeaderHeight + 4.0f));
 
-            MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
+            MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (!materialEditor)
+        {
+            return;
+        }
             if (MaterialGraphNodeRegistry::DrawNode(node))
             {
-                materialEditor.NotifyGraphChanged();
+                materialEditor->NotifyGraphChanged();
             }
 
             ImGui::Spacing();
@@ -491,11 +514,15 @@ namespace minEngine
 
     void MaterialGraphWindow::SyncSelectionFromEditor()
     {
-        MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (!materialEditor)
+        {
+            return;
+        }
         const int selectedCount = Ed::GetSelectedObjectCount();
         if (selectedCount != 1)
         {
-            materialEditor.ClearSelectedEdNode();
+            materialEditor->ClearSelectedEdNode();
             return;
         }
 
@@ -503,11 +530,11 @@ namespace minEngine
         const int nodeCount = Ed::GetSelectedNodes(&selectedNodeId, 1);
         if (nodeCount != 1)
         {
-            materialEditor.ClearSelectedEdNode();
+            materialEditor->ClearSelectedEdNode();
             return;
         }
 
-        materialEditor.SetSelectedEdNode(MaterialGraphIds::FromNodeId(selectedNodeId));
+        materialEditor->SetSelectedEdNode(MaterialGraphIds::FromNodeId(selectedNodeId));
     }
 
     void MaterialGraphWindow::DrawLinks(MaterialEdGraph& graph)
@@ -642,12 +669,16 @@ namespace minEngine
         Ed::PinId endPinId;
         if (Ed::QueryNewLink(&startPinId, &endPinId))
         {
-            MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
+            MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (!materialEditor)
+        {
+            return;
+        }
             if (TryConnectPins(startPinId, endPinId, material, graph))
             {
                 if (Ed::AcceptNewItem())
                 {
-                    materialEditor.NotifyGraphChanged();
+                    materialEditor->NotifyGraphChanged();
                 }
             }
             else
@@ -666,7 +697,11 @@ namespace minEngine
             return;
         }
 
-        MaterialEditor& materialEditor = m_Editor.GetMaterialEditor();
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (!materialEditor)
+        {
+            return;
+        }
 
         Ed::LinkId linkId;
         Ed::PinId startPinId;
@@ -721,7 +756,7 @@ namespace minEngine
                 graph.DisconnectInput(*toNode, toInputIndex);
                 if (Ed::AcceptDeletedItem())
                 {
-                    materialEditor.NotifyGraphChanged();
+                    materialEditor->NotifyGraphChanged();
                 }
             }
             else
@@ -747,15 +782,15 @@ namespace minEngine
                 continue;
             }
 
-            if (materialEditor.GetSelectedEdNode() == nodeToDelete)
+            if (materialEditor->GetSelectedEdNode() == nodeToDelete)
             {
-                materialEditor.ClearSelectedEdNode();
+                materialEditor->ClearSelectedEdNode();
             }
 
             if (graph.RemoveNode(*nodeToDelete) && Ed::AcceptDeletedItem())
             {
                 MaterialGraphIds::Reset();
-                materialEditor.NotifyGraphChanged();
+                materialEditor->NotifyGraphChanged();
                 m_PushStoredPositionsToEditor = true;
             }
             else
@@ -780,5 +815,10 @@ namespace minEngine
             node->m_EditorPosX = position.x;
             node->m_EditorPosY = position.y;
         }
+    }
+
+    std::string_view MaterialGraphWindow::GetOwnerModuleId() const
+    {
+        return MaterialEditor::kModuleId;
     }
 }

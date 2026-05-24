@@ -1,20 +1,18 @@
 #pragma once
 
 #include "Core.h"
-#include "EditorUIMode.h"
+#include "Shell/EditorSubModule.h"
+#include "Shell/IEditorContext.h"
 
-namespace minEngine
-{
-    class Editor;
-}
+#include <string_view>
 
 namespace minEngine
 {
     class EditorWindow
     {
     public:
-        explicit EditorWindow(Editor& editor)
-            : m_Editor(editor)
+        explicit EditorWindow(IEditorContext& context)
+            : m_Context(context)
         {
         }
 
@@ -23,38 +21,22 @@ namespace minEngine
         virtual const std::string& GetId() const = 0;
         virtual const std::string& GetTitle() const = 0;
 
-        bool IsOpen() const
-        {
-            return m_IsOpen;
-        }
+        /** Empty = shared (always visible). Otherwise must match active SubModule id. */
+        virtual std::string_view GetOwnerModuleId() const { return std::string_view(); }
 
-        void SetOpen(bool isOpen)
-        {
-            m_IsOpen = isOpen;
-        }
+        bool IsOpen() const { return m_IsOpen; }
+        void SetOpen(bool isOpen) { m_IsOpen = isOpen; }
 
-        virtual void OnAttach()
-        {
-        }
+        bool IsVisibleForActiveModule() const;
 
-        virtual void OnDetach()
-        {
-        }
+        virtual void OnAttach() {}
+        virtual void OnDetach() {}
 
-        virtual void OnTick()
-        {
-        }
-
+        virtual void OnTick() {}
         virtual void OnDraw() = 0;
 
-        virtual EditorWindowSuite GetWindowSuite() const
-        {
-            return EditorWindowSuite::SceneEditing;
-        }
-
-    private:
     protected:
-        Editor& m_Editor;
+        IEditorContext& m_Context;
 
     private:
         bool m_IsOpen = true;

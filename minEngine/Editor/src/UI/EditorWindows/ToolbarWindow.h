@@ -4,16 +4,15 @@
 
 #include "imgui.h"
 
-#include "Editor.h"
-#include "EditorWindow.h"
+#include "UI/EditorWindows/EditorWindow.h"
 
 namespace minEngine
 {
     class ToolbarWindow final : public EditorWindow
     {
     public:
-        explicit ToolbarWindow(Editor& editor)
-            : EditorWindow(editor)
+        explicit ToolbarWindow(IEditorContext& context)
+            : EditorWindow(context)
         {
         }
 
@@ -40,7 +39,7 @@ namespace minEngine
                                             ImGuiWindowFlags_NoSavedSettings;
 
             ImGui::Begin(m_Title.c_str(), nullptr, toolbarFlags);
-            ImGui::Button(m_Editor.isPlaying ? "Stop" : "Play");
+            ImGui::Button(m_Context.IsPlaying() ? "Stop" : "Play");
 
             ImGui::SameLine();
             if (ImGui::Button("Pause"))
@@ -53,7 +52,7 @@ namespace minEngine
             }
 
             ImGui::SameLine();
-            const float deltaTime = m_Editor.lastDeltaTime;
+            const float deltaTime = m_Context.GetLastDeltaTime();
             ImGui::Text("FPS: %.1f", (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f);
             ImGui::End();
         }

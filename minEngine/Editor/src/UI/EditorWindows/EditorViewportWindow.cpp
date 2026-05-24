@@ -1,6 +1,7 @@
 #include "EditorViewportWindow.h"
 
-#include "Editor.h"
+#include "Shell/EditorInputHub.h"
+#include "Shell/ViewportClientRegistry.h"
 
 namespace minEngine
 {
@@ -11,7 +12,7 @@ namespace minEngine
 
     void EditorViewportWindow::OnDetach()
     {
-        m_Editor.RemoveViewportClient(m_Id);
+        m_Context.GetViewportRegistry().RemoveViewportClient(m_Id);
     }
 
     EditorViewportClient& EditorViewportWindow::GetViewportClient()
@@ -67,13 +68,24 @@ bool EditorViewportWindow::DrawSceneColorImage(ViewportFrameState& outFrameState
     void EditorViewportWindow::OnDraw()
     {
         EditorViewportClient& viewportClient = GetViewportClient();
-        viewportClient.BeginFrame(m_Editor.lastDeltaTime);
+        viewportClient.BeginFrame(m_Context.GetLastDeltaTime());
 
         ImGui::Begin(m_Title.c_str(), nullptr, GetViewportWindowFlags());
 
     ViewportFrameState frameState{};
     const bool drewSceneImage = DrawSceneColorImage(frameState);
     viewportClient.UpdateFrameState(frameState);
+
+    EditorInputHub& inputHub = m_Context.GetInputHub();
+    if (frameState.Focused)
+    {
+        inputHub.SetFocusedViewportClient(&viewportClient);
+    }
+    else if (inputHub.GetFocusedViewportClient() == &viewportClient)
+    {
+        inputHub.SetFocusedViewportClient(nullptr);
+    }
+
     if (drewSceneImage)
     {
         OnDrawViewportOverlay(viewportClient, frameState);

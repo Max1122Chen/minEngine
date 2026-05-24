@@ -1,6 +1,9 @@
 #include "MainMenuWindow.h"
 
-#include "EditorUIMode.h"
+#include "EditorGUIManager.h"
+#include "Material/MaterialEditor.h"
+#include "Scene/SceneEditor.h"
+#include "Shell/EditorContextHelpers.h"
 
 namespace minEngine
 {
@@ -38,11 +41,12 @@ namespace minEngine
             {
             }
 
-            const bool hasScene = static_cast<bool>(m_Editor.GetActiveScene());
-            const bool canSave = hasScene && m_Editor.IsSceneDirty();
+            SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
+            const bool hasScene = sceneEditor && sceneEditor->GetActiveScene();
+            const bool canSave = hasScene && sceneEditor->IsSceneDirty();
             if (ImGui::MenuItem("Save", "Ctrl+S", false, canSave))
             {
-                m_Editor.SaveCurrentScene();
+                sceneEditor->SaveCurrentScene();
             }
 
             if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, false))
@@ -51,7 +55,7 @@ namespace minEngine
             ImGui::Separator();
             if (ImGui::MenuItem("Exit"))
             {
-                m_Editor.RequestExit();
+                m_Context.RequestExit();
             }
             ImGui::EndMenu();
         }
@@ -75,18 +79,16 @@ namespace minEngine
     {
         if (ImGui::BeginMenu("View"))
         {
-            const EditorUIMode uiMode = m_Editor.GetUIMode();
-
             if (ImGui::BeginMenu("Panels"))
             {
-                for (const auto& window : m_Editor.GetGUIManager().GetWindows())
+                for (const auto& window : m_Context.GetGUIManager().GetWindows())
                 {
                     if (window->GetId() == m_Id)
                     {
                         continue;
                     }
 
-                    if (!IsWindowActiveForUIMode(window->GetWindowSuite(), uiMode))
+                    if (!window->IsVisibleForActiveModule())
                     {
                         continue;
                     }
@@ -104,8 +106,8 @@ namespace minEngine
             {
                 if (ImGui::MenuItem("Reset To Default", nullptr, false, true))
                 {
-                    m_Editor.requestResetLayout = true;
-                    m_Editor.dockLayoutInitialized = false;
+                    m_Context.RequestResetLayout() = true;
+                    m_Context.DockLayoutInitialized() = false;
                 }
                 ImGui::EndMenu();
             }
@@ -118,17 +120,18 @@ namespace minEngine
     {
         if (ImGui::BeginMenu("Window"))
         {
-            const bool sceneMode = m_Editor.GetUIMode() == EditorUIMode::SceneEditing;
-            const bool materialMode = m_Editor.GetUIMode() == EditorUIMode::MaterialEditing;
+            const EditorSubModule* active = m_Context.GetActiveSubModule();
+            const bool sceneMode = active && active->GetModuleId() == SceneEditor::kModuleId;
+            const bool materialMode = active && active->GetModuleId() == MaterialEditor::kModuleId;
 
             if (ImGui::MenuItem("Scene Editor", nullptr, sceneMode))
             {
-                m_Editor.SetUIMode(EditorUIMode::SceneEditing);
+                m_Context.ActivateSubModule(SceneEditor::kModuleId);
             }
 
             if (ImGui::MenuItem("Material Editor", nullptr, materialMode))
             {
-                m_Editor.SetUIMode(EditorUIMode::MaterialEditing);
+                m_Context.ActivateSubModule(MaterialEditor::kModuleId);
             }
 
             ImGui::EndMenu();

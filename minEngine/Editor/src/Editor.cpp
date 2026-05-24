@@ -1,6 +1,6 @@
 #include "Editor.h"
 
-#include "EditorUIMode.h"
+#include "Material/MaterialEditor.h"
 #include "Material/MaterialEditorSession.h"
 
 #include "main.h"
@@ -9,28 +9,19 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
-#include "Runtime/Core/Reflection/Reflection.h"
-#include "Runtime/Function/Framework/Project/ProjectManager.h"
-#include "Runtime/Function/Framework/Transform/Transform.h"
-#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Engine.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "Runtime/Function/Framework/Components/Component.h"
-#include "Runtime/Function/Framework/Components/SceneComponent.h"
-#include "Runtime/Core/Reflection/ReflectionSample.h"
-#include "Serialization/JsonArchive.h"
-#include "Serialization/Serializer.h"
-#include "Resource/AssetManager.h"
-#include "Runtime/Engine.h"
-#include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/RenderSystem.h"
-#include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/WindowSystem.h"
+#include "Resource/AssetManager.h"
 
+#include "Scene/SceneEditor.h"
 
-#include <algorithm>
-#include <array>
+#include <filesystem>
+
 namespace minEngine
 {
     namespace
@@ -82,7 +73,81 @@ namespace minEngine
         }
     }
 
-    bool Editor::OpenProject(const std::string &projectPath)
+    Editor::Editor() = default;
+
+    Editor::~Editor() = default;
+
+    void Editor::RegisterModules()
+    {
+        m_SubModules.clear();
+        m_SubModules.push_back(&m_SceneEditor);
+        m_SubModules.push_back(m_MaterialEditor.get());
+
+        m_SceneEditor.InitializeComponentTypeNames();
+
+        m_MainMenuModule.Register(*this);
+        m_InspectorModule.Register(*this);
+        m_ConsoleModule.Register(*this);
+        m_AssetWorkflow.Register(*this);
+
+        m_SceneEditor.Register(*this);
+        m_MaterialEditor->Register(*this);
+
+        ActivateSubModule(SceneEditor::kModuleId);
+    }
+
+    EditorSubModule* Editor::FindSubModule(std::string_view moduleId)
+    {
+        for (EditorSubModule* subModule : m_SubModules)
+        {
+            if (subModule && subModule->GetModuleId() == moduleId)
+            {
+                return subModule;
+            }
+        }
+        return nullptr;
+    }
+
+    const EditorSubModule* Editor::FindSubModule(std::string_view moduleId) const
+    {
+        for (EditorSubModule* subModule : m_SubModules)
+        {
+            if (subModule && subModule->GetModuleId() == moduleId)
+            {
+                return subModule;
+            }
+        }
+        return nullptr;
+    }
+
+    bool Editor::ActivateSubModule(std::string_view moduleId)
+    {
+        EditorSubModule* target = FindSubModule(moduleId);
+        if (!target || !target->CanActivate())
+        {
+            return false;
+        }
+
+        if (m_ActiveSubModule == target)
+        {
+            return true;
+        }
+
+        if (m_ActiveSubModule)
+        {
+            m_ActiveSubModule->UnregisterCommands(*this);
+            m_ActiveSubModule->OnDeactivate(*this);
+        }
+
+        m_InputHub.ClearActiveSubModuleCommands();
+        m_ActiveSubModule = target;
+        m_ActiveSubModule->OnActivate(*this);
+        m_ActiveSubModule->RegisterCommands(*this);
+        m_EditorGUIManager.OnActiveSubModuleChanged();
+        return true;
+    }
+
+    bool Editor::OpenProject(const std::string& projectPath)
     {
         ProjectManager& projectManager = ProjectManager::Get();
         ProjectOpenResult result = projectManager.OpenProject(projectPath);
@@ -110,6 +175,7 @@ namespace minEngine
             }
 
             m_MaterialEditor->RefreshMaterialList();
+            m_SceneEditor.OnProjectOpened();
 
             return true;
         }
@@ -120,375 +186,6 @@ namespace minEngine
 
     void Editor::CloseProject()
     {
-        // TODO: implement this
-    }
-
-    Scene *Editor::GetActiveScene() const
-    {
-        return SceneManager::Get().GetCurrentActiveScene().get();
-    }
-
-    std::vector<GameObject*> Editor::GetHierarchyGameObjects() const
-    {
-        std::vector<GameObject*> result;
-        Scene* scene = GetActiveScene();
-        if (!scene)
-        {
-            return result;
-        }
-
-        const std::vector<std::shared_ptr<GameObject>>& gameObjects = scene->GetAllGameObjects();
-        result.reserve(gameObjects.size());
-        for (const std::shared_ptr<GameObject>& gameObject : gameObjects)
-        {
-            if (gameObject)
-            {
-                result.push_back(gameObject.get());
-            }
-        }
-
-        std::sort(result.begin(), result.end(), [](const GameObject* lhs, const GameObject* rhs)
-        {
-            return lhs->GetID() < rhs->GetID();
-        });
-
-        return result;
-    }
-
-    GameObject* Editor::GetSelectedGameObject() const
-    {
-        return m_SelectedGameObject;
-    }
-
-    bool Editor::HasSelectedGameObject() const
-    {
-        return GetSelectedGameObject() != nullptr;
-    }
-
-    void Editor::SelectGameObject(uint64_t gameObjectId)
-    {
-        m_SelectedGameObjectId = gameObjectId;
-        Scene* scene = GetActiveScene();
-        if (!scene)
-        {
-            m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
-            m_SelectedGameObject = nullptr;
-            return;
-        }
-
-        m_SelectedGameObject = scene->FindGameObjectById(gameObjectId);
-        if (!m_SelectedGameObject)
-        {
-            m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
-        }
-    }
-
-    void Editor::ClearSelectedGameObject()
-    {
-        m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
-        m_SelectedGameObject = nullptr;
-    }
-
-    bool Editor::IsGameObjectSelected(uint64_t gameObjectId) const
-    {
-        return m_SelectedGameObjectId == gameObjectId;
-    }
-
-    std::string Editor::GetGameObjectDisplayName(const GameObject& gameObject) const
-    {
-        return gameObject.GetName();
-    }
-
-    std::string Editor::GetSelectedGameObjectName() const
-    {
-        GameObject* gameObject = GetSelectedGameObject();
-        if (!gameObject)
-        {
-            return std::string();
-        }
-
-        return gameObject->GetName();
-    }
-
-    bool Editor::RenameGameObject(uint64_t gameObjectId, const std::string& newName)
-    {
-        Scene* scene = GetActiveScene();
-        if (!scene)
-        {
-            return false;
-        }
-
-        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
-        const auto iter = gameObjectsById.find(gameObjectId);
-        if (iter == gameObjectsById.end() || iter->second == nullptr)
-        {
-            return false;
-        }
-
-        GameObject* gameObject = iter->second;
-        std::string sanitizedName = newName;
-        if (sanitizedName.empty())
-        {
-            sanitizedName = "GameObject_" + std::to_string(gameObject->GetID());
-        }
-
-        if (gameObject->GetName() != sanitizedName)
-        {
-            gameObject->SetName(sanitizedName);
-            MarkSceneDirty();
-        }
-
-        return true;
-    }
-
-    void Editor::RenameSelectedGameObject(const std::string& newName)
-    {
-        RenameGameObject(m_SelectedGameObjectId, newName);
-    }
-
-    const std::vector<std::string>& Editor::GetAllComponentTypeNames() const
-    {
-        return m_AllComponentTypeNames;
-    }
-
-    bool Editor::AddComponentToSelectedGameObject(const std::string& componentTypeName)
-    {
-        GameObject* gameObject = GetSelectedGameObject();
-        if (!gameObject)        
-        {
-            return false;
-        }
-        if(!gameObject->AddComponent(componentTypeName))
-        {
-            ME_CORE_ERROR("Failed to add component of type '{}' to GameObject '{}'.", componentTypeName, gameObject->GetName());
-            return false;
-        }
-        MarkSceneDirty();
-        return true;
-    }
-
-    bool Editor::RemoveComponentFromGO(GameObject &gameObject, Component &targetComponent)
-    {
-        // Make sure the component belongs to the game object before trying to remove it.
-        if (targetComponent.GetOwner() != &gameObject)
-        {
-            ME_CORE_ERROR("Failed to remove component '{}' from GameObject '{}': component does not belong to the specified GameObject.", targetComponent.GetClass()->GetName(), gameObject.GetName());
-            return false;
-        }
-        if(gameObject.RemoveComponent(targetComponent))
-        {
-            MarkSceneDirty();
-            return true;
-        }
-        return false;
-    }
-
-    void Editor::SaveCurrentScene()
-    {
-        Scene* scene = GetActiveScene();
-        if (!scene)        
-        {
-            ME_CORE_ERROR("No active scene to save.");
-            return;
-        }
-        if (SceneManager::Get().SaveCurrentScene())
-        {
-            ClearSceneDirty();
-            ME_CORE_INFO("Scene '{}' saved successfully.", scene->GetSceneName());
-        }
-        else
-        {
-            ME_CORE_ERROR("Failed to save scene '{}'.", scene->GetSceneName());
-        }
-    }
-
-    void Editor::AddEmptyGOToScene()
-    {
-        Scene* scene = GetActiveScene();
-        if (!scene)        
-        {
-            ME_CORE_ERROR("No active scene to add GameObject to.");
-            return;
-        }
-        std::shared_ptr<GameObject> newGO = scene->CreateGameObject();
-        if (newGO)
-        {
-            newGO->SetName("GameObject");
-            MarkSceneDirty();
-            SelectGameObject(newGO->GetID());
-            ME_CORE_INFO("Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());
-        }
-        else
-        {
-            ME_CORE_ERROR("Failed to create new GameObject in scene '{}'.", scene->GetSceneName());
-        }
-    }
-
-    bool Editor::RemoveGameObjectFromScene(uint64_t gameObjectId)
-    {
-        Scene* scene = GetActiveScene();
-        if (!scene)        
-        {
-            ME_CORE_ERROR("No active scene to remove GameObject from.");
-            return false;
-        }
-        if (scene->RemoveGameObjectById(gameObjectId))
-        {
-            MarkSceneDirty();
-            if (IsGameObjectSelected(gameObjectId))
-            {
-                ClearSelectedGameObject();
-            }
-            ME_CORE_INFO("Removed GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
-            return true;
-        }
-        else
-        {
-            ME_CORE_ERROR("Failed to remove GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
-            return false;
-        }
-    }
-
-    void Editor::SyncSelectionWithScene()
-    {
-        Scene* scene = GetActiveScene();
-        if (!scene)
-        {
-            m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
-            return;
-        }
-
-        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
-        if (gameObjectsById.empty())
-        {
-            m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
-            return;
-        }
-
-        if (gameObjectsById.find(m_SelectedGameObjectId) != gameObjectsById.end())
-        {
-            return;
-        }
-
-        const std::vector<GameObject*> hierarchyGameObjects = GetHierarchyGameObjects();
-        if (!hierarchyGameObjects.empty())
-        {
-            m_SelectedGameObjectId = hierarchyGameObjects.front()->GetID();
-        }
-    }
-
-    SceneEditingViewportClient& Editor::GetOrCreateSceneEditingViewportClient(const std::string& viewportId,
-                                                                              const std::string& viewportTitle)
-    {
-        const std::string key = viewportId.empty() ? viewportTitle : viewportId;
-        auto iter = m_ViewportClients.find(key);
-        if (iter != m_ViewportClients.end() && iter->second)
-        {
-            return static_cast<SceneEditingViewportClient&>(*iter->second);
-        }
-
-        auto client = std::make_unique<SceneEditingViewportClient>(viewportTitle.empty() ? key : viewportTitle);
-
-        SceneEditingViewportClient* createdClient = client.get();
-        createdClient->m_Editor = this;
-        if (RHI* rhi = RenderSystem::Get().GetRHI())
-        {
-            createdClient->InitializeSceneViewport(rhi, 1920, 1080);
-        }
-        m_ViewportClients[key] = std::move(client);
-        return *createdClient;
-    }
-
-    MaterialPreviewViewportClient& Editor::GetOrCreateMaterialPreviewViewportClient(
-        const std::string& viewportId,
-        const std::string& viewportTitle)
-    {
-        const std::string key = viewportId.empty() ? viewportTitle : viewportId;
-        auto iter = m_ViewportClients.find(key);
-        if (iter != m_ViewportClients.end() && iter->second)
-        {
-            return static_cast<MaterialPreviewViewportClient&>(*iter->second);
-        }
-
-        auto client = std::make_unique<MaterialPreviewViewportClient>(
-            viewportTitle.empty() ? key : viewportTitle);
-
-        MaterialPreviewViewportClient* createdClient = client.get();
-        createdClient->m_Editor = this;
-        createdClient->SetViewportPanelId(key);
-        m_ViewportClients[key] = std::move(client);
-        return *createdClient;
-    }
-
-    MaterialPreviewViewportClient* Editor::FindMaterialPreviewViewportClient(const std::string& viewportId)
-    {
-        EditorViewportClient* client = FindViewportClient(viewportId);
-        if (!client)
-        {
-            return nullptr;
-        }
-        return dynamic_cast<MaterialPreviewViewportClient*>(client);
-    }
-
-    EditorViewportClient& Editor::GetOrCreateViewportClient(const std::string& viewportId,
-                                                             const std::string& viewportTitle)
-    {
-        return GetOrCreateSceneEditingViewportClient(viewportId, viewportTitle);
-    }
-
-    SceneEditingViewportClient* Editor::FindSceneEditingViewportClient(const std::string& viewportId)
-    {
-        EditorViewportClient* client = FindViewportClient(viewportId);
-        if (!client)
-        {
-            return nullptr;
-        }
-        return dynamic_cast<SceneEditingViewportClient*>(client);
-    }
-
-    EditorViewportClient* Editor::FindViewportClient(const std::string& viewportId)
-    {
-        const auto iter = m_ViewportClients.find(viewportId);
-        if (iter == m_ViewportClients.end() || !iter->second)
-        {
-            return nullptr;
-        }
-
-        return iter->second.get();
-    }
-
-    const EditorViewportClient* Editor::FindViewportClient(const std::string& viewportId) const
-    {
-        const auto iter = m_ViewportClients.find(viewportId);
-        if (iter == m_ViewportClients.end() || !iter->second)
-        {
-            return nullptr;
-        }
-
-        return iter->second.get();
-    }
-
-    void Editor::RemoveViewportClient(const std::string& viewportId)
-    {
-        m_ViewportClients.erase(viewportId);
-    }
-
-    void Editor::ClearViewportClients()
-    {
-        m_ViewportClients.clear();
-    }
-
-    void Editor::InitializeAllComponentTypeNames()
-    {
-        Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-        const std::vector<const Reflection::MEClass*>& allClasses = reflectionSystem.GetAllClasses();
-        for (const Reflection::MEClass* classInfo : allClasses)
-        {
-            if (classInfo->IsA(reflectionSystem.FindClass<Component>()))
-            {
-                m_AllComponentTypeNames.push_back(classInfo->GetName());
-            }
-        }
     }
 
     void Editor::Initialize(int argc, char** argv)
@@ -497,8 +194,7 @@ namespace minEngine
         m_Engine->Initialize(argc, argv);
 
         RenderSystem::Get().SetPresentPassEnabled(false);
-        
-        // Initialize ImGui for the editor window
+
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -512,28 +208,25 @@ namespace minEngine
         ImGui_ImplOpenGL3_Init();
 
         WindowSystem::Get().SetCursorVisible(true);
-        m_MaterialEditor = std::make_unique<MaterialEditor>(*this);
 
-        InitializeAllComponentTypeNames();
+        m_ViewportRegistry.SetContext(this);
+        m_MaterialEditor = std::make_unique<MaterialEditor>();
 
         if (m_Engine->IsEnginePathConfigLoaded())
         {
             AssetManager::Get().ScanAssets(PathRegistry::Get().GetEngineDefaultAssetsRoot());
         }
 
-        // After EngineDefault ScanAssets: MaterialPreviewWindow::OnAttach may load preview sphere mesh.
         m_EditorGUIManager.Initialize(*this);
+        RegisterModules();
 
         std::string projectPath;
         if (argc > 1)
         {
             projectPath = argv[1];
-            
         }
         else
         {
-            // Open a default project for easier development and testing if no project path is provided via command line arguments.
-            // This is just a convenience for development and can be removed later.
             projectPath = "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject";
         }
 
@@ -545,15 +238,68 @@ namespace minEngine
     {
     }
 
+    void Editor::UpdateWindowTitle()
+    {
+        std::string windowTitle = "minEngine Editor";
+        if (m_ActiveSubModule && m_ActiveSubModule->GetModuleId() == MaterialEditor::kModuleId)
+        {
+            if (MaterialEditor* materialEditor = dynamic_cast<MaterialEditor*>(m_ActiveSubModule))
+            {
+                const MaterialEditorSession& session = materialEditor->GetSession();
+                std::string materialLabel = "Material Editor";
+                if (session.HasOpenMaterial())
+                {
+                    const std::filesystem::path materialPath(session.AssetPath);
+                    materialLabel = materialPath.filename().string();
+                    if (materialLabel.empty())
+                    {
+                        materialLabel = session.AssetPath;
+                    }
+                }
+                const char* dirtySuffix = session.Dirty ? " *" : "";
+                windowTitle = "minEngine Editor - " + materialLabel + dirtySuffix;
+            }
+        }
+        else if (SceneEditor* sceneEditor = dynamic_cast<SceneEditor*>(m_ActiveSubModule))
+        {
+            std::string sceneDisplayName = "Untitled";
+            if (const Scene* activeScene = sceneEditor->GetActiveScene())
+            {
+                const std::filesystem::path scenePath(activeScene->GetSceneName());
+                if (!scenePath.empty())
+                {
+                    sceneDisplayName = scenePath.filename().string();
+                    if (sceneDisplayName.empty())
+                    {
+                        sceneDisplayName = activeScene->GetSceneName();
+                    }
+                }
+            }
+
+            const char* dirtySuffix = sceneEditor->IsSceneDirty() ? " *" : "";
+            windowTitle = "minEngine Editor - " + sceneDisplayName + dirtySuffix;
+        }
+
+        WindowSystem::Get().SetTitle(windowTitle.c_str());
+    }
+
     void Editor::Shutdown()
     {
         m_EditorGUIManager.Shutdown();
+
         if (m_MaterialEditor)
         {
             m_MaterialEditor->Shutdown();
         }
         m_MaterialEditor.reset();
-        ClearViewportClients();
+
+        m_InputHub.Shutdown();
+        m_SceneEditor.Shutdown();
+        m_MainMenuModule.Shutdown();
+        m_InspectorModule.Shutdown();
+        m_ConsoleModule.Shutdown();
+        m_AssetWorkflow.Shutdown();
+        m_ViewportRegistry.Clear();
 
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
@@ -572,52 +318,21 @@ namespace minEngine
             const float deltaTime = m_Engine->CalculateDeltaTime();
             m_Engine->PollEvents();
             m_Engine->TickLogicalFrame(deltaTime);
-            SyncSelectionWithScene();
+            m_SceneEditor.SyncSelectionWithScene();
 
-            std::string windowTitle = "minEngine Editor";
-            if (GetUIMode() == EditorUIMode::MaterialEditing)
+            if (m_ActiveSubModule)
             {
-                const MaterialEditorSession& session = m_MaterialEditor->GetSession();
-                std::string materialLabel = "Material Editor";
-                if (session.HasOpenMaterial())
-                {
-                    const std::filesystem::path materialPath(session.AssetPath);
-                    materialLabel = materialPath.filename().string();
-                    if (materialLabel.empty())
-                    {
-                        materialLabel = session.AssetPath;
-                    }
-                }
-                const char* dirtySuffix = session.Dirty ? " *" : "";
-                windowTitle = "minEngine Editor - " + materialLabel + dirtySuffix;
-            }
-            else
-            {
-                std::string sceneDisplayName = "Untitled";
-                if (const Scene* activeScene = GetActiveScene())
-                {
-                    const std::filesystem::path scenePath(activeScene->GetSceneName());
-                    if (!scenePath.empty())
-                    {
-                        sceneDisplayName = scenePath.filename().string();
-                        if (sceneDisplayName.empty())
-                        {
-                            sceneDisplayName = activeScene->GetSceneName();
-                        }
-                    }
-                }
-
-                const char* dirtySuffix = IsSceneDirty() ? " *" : "";
-                windowTitle = "minEngine Editor - " + sceneDisplayName + dirtySuffix;
+                m_ActiveSubModule->Tick(deltaTime);
             }
 
-            windowSystem.SetTitle(windowTitle.c_str());
+            UpdateWindowTitle();
 
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
 
             m_EditorGUIManager.Tick(deltaTime);
+            m_InputHub.ProcessInput(*this);
 
             m_Engine->TickRendererFrame(deltaTime);
 
@@ -632,5 +347,3 @@ namespace minEngine
         return new Editor();
     }
 }
-
-

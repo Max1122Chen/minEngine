@@ -40,8 +40,9 @@
 
 #include "Function/Framework/GameObject/GameObject.h"
 
-#include "Editor.h"
-#include "EditorUIMode.h"
+#include "Shell/EditorContextHelpers.h"
+#include "Scene/SceneEditor.h"
+#include "Shell/EditorSubModule.h"
 
 #include <algorithm>
 
@@ -140,7 +141,8 @@ namespace minEngine
     void SceneEditingViewportClient::EndFrame()
 
     {
-        if (!m_Editor || m_Editor->GetUIMode() != EditorUIMode::SceneEditing)
+        const EditorSubModule* active = m_Context ? m_Context->GetActiveSubModule() : nullptr;
+        if (!active || active->GetModuleId() != SceneEditor::kModuleId)
         {
             return;
         }
@@ -184,7 +186,8 @@ namespace minEngine
 
     {
 
-        Scene* scene = m_Editor ? m_Editor->GetActiveScene() : nullptr;
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        Scene* scene = sceneEditor ? sceneEditor->GetActiveScene() : nullptr;
 
         if (!scene)
 
@@ -668,7 +671,8 @@ namespace minEngine
 
 
 
-        if (GameObject* selected = m_Editor->GetSelectedGameObject())
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        if (GameObject* selected = sceneEditor ? sceneEditor->GetSelectedGameObject() : nullptr)
 
         {
 
@@ -856,7 +860,10 @@ namespace minEngine
 
         {
 
-            m_Editor->SelectGameObject(closestHitObject->GetID());
+            if (SceneEditor* sceneEditor = GetSceneEditor(m_Context))
+            {
+                sceneEditor->SelectGameObject(closestHitObject->GetID());
+            }
 
         }
 

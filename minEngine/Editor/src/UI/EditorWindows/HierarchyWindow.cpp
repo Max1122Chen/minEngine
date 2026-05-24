@@ -1,5 +1,7 @@
 #include "HierarchyWindow.h"
 
+#include "Shell/EditorContextHelpers.h"
+
 namespace minEngine
 {
     void HierarchyWindow::OnDraw()
@@ -8,11 +10,11 @@ namespace minEngine
 
         if (ImGui::Button("Create Empty"))
         {
-            m_Editor.AddEmptyGOToScene();
+            GetSceneEditor(&m_Context)->AddEmptyGOToScene();
         }
         ImGui::Separator();
 
-        const std::vector<GameObject*> gameObjects = m_Editor.GetHierarchyGameObjects();
+        const std::vector<GameObject*> gameObjects = GetSceneEditor(&m_Context)->GetHierarchyGameObjects();
         if (gameObjects.empty())
         {
             ImGui::TextUnformatted("No GameObject in current scene.");
@@ -50,7 +52,7 @@ namespace minEngine
 
                 if (committed || ImGui::IsItemDeactivatedAfterEdit())
                 {
-                    m_Editor.RenameGameObject(gameObject->GetID(), m_RenameBuffer);
+                    GetSceneEditor(&m_Context)->RenameGameObject(gameObject->GetID(), m_RenameBuffer);
                     m_RenamingGameObjectId = kInvalidGameObjectId;
                 }
                 else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
@@ -62,8 +64,8 @@ namespace minEngine
                 continue;
             }
 
-            const bool selected = m_Editor.IsGameObjectSelected(gameObject->GetID());
-            const std::string displayName = m_Editor.GetGameObjectDisplayName(*gameObject);
+            const bool selected = GetSceneEditor(&m_Context)->IsGameObjectSelected(gameObject->GetID());
+            const std::string displayName = GetSceneEditor(&m_Context)->GetGameObjectDisplayName(*gameObject);
             const std::string label = std::string("  ") + displayName;
 
             if (selected)
@@ -75,7 +77,7 @@ namespace minEngine
 
             if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns))
             {
-                m_Editor.SelectGameObject(gameObject->GetID());
+                GetSceneEditor(&m_Context)->SelectGameObject(gameObject->GetID());
             }
 
             // Custom selection highlight
@@ -90,7 +92,7 @@ namespace minEngine
 
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                m_Editor.SelectGameObject(gameObject->GetID());
+                GetSceneEditor(&m_Context)->SelectGameObject(gameObject->GetID());
                 BeginRename(*gameObject);
             }
             
@@ -114,7 +116,7 @@ namespace minEngine
         // Rename on F2 key pressed while the window is focused
         if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_F2, false))
         {
-            if (GameObject* selected = m_Editor.GetSelectedGameObject())
+            if (GameObject* selected = GetSceneEditor(&m_Context)->GetSelectedGameObject())
             {
                 BeginRename(*selected);
             }
@@ -135,7 +137,7 @@ namespace minEngine
         {
             if (ImGui::MenuItem("Create Empty"))
             {
-                m_Editor.AddEmptyGOToScene();
+                GetSceneEditor(&m_Context)->AddEmptyGOToScene();
             }
             ImGui::EndPopup();
             return true;
@@ -147,14 +149,14 @@ namespace minEngine
     {
         if (ImGui::BeginPopupContextItem())
         {
-            m_Editor.SelectGameObject(gameObject.GetID());
+            GetSceneEditor(&m_Context)->SelectGameObject(gameObject.GetID());
             if (ImGui::MenuItem("Rename"))
             {
                 BeginRename(gameObject);
             }
             if (ImGui::MenuItem("Delete"))
             {
-                m_Editor.RemoveGameObjectFromScene(gameObject.GetID());
+                GetSceneEditor(&m_Context)->RemoveGameObjectFromScene(gameObject.GetID());
             }
             ImGui::EndPopup();
             return true;

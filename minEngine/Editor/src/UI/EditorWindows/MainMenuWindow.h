@@ -4,34 +4,22 @@
 
 #include "imgui.h"
 
-#include "Editor.h"
-#include "EditorWindow.h"
-
-#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "UI/EditorWindows/EditorWindow.h"
 
 namespace minEngine
 {
     class MainMenuWindow final : public EditorWindow
     {
     public:
-        explicit MainMenuWindow(Editor& editor)
-            : EditorWindow(editor)
+        explicit MainMenuWindow(IEditorContext& context)
+            : EditorWindow(context)
         {
         }
 
-        const std::string& GetId() const override
-        {
-            return m_Id;
-        }
-
-        const std::string& GetTitle() const override
-        {
-            return m_Title;
-        }
+        const std::string& GetId() const override { return m_Id; }
+        const std::string& GetTitle() const override { return m_Title; }
 
         void OnDraw() override;
-
-        EditorWindowSuite GetWindowSuite() const override { return EditorWindowSuite::Shared; }
 
     private:
         void DrawFileMenu();

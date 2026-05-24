@@ -41,6 +41,8 @@ namespace minEngine
         uint64_t GetID() const { return m_ID; }
         void SetID(uint64_t id) { m_ID = id; }
 
+        void Rename(const std::string& newName) { SetName(newName); }
+
         Transform GetTransform();
         void SetTransform(const Transform& inTransform);
 

@@ -4,8 +4,8 @@
 
 #include "imgui.h"
 
-#include "Editor.h"
-#include "EditorWindow.h"
+#include "Scene/SceneEditor.h"
+#include "UI/EditorWindows/EditorWindow.h"
 
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 
@@ -17,20 +17,14 @@ namespace minEngine
     class HierarchyWindow final : public EditorWindow
     {
     public:
-        explicit HierarchyWindow(Editor& editor)
-            : EditorWindow(editor)
+        explicit HierarchyWindow(IEditorContext& context)
+            : EditorWindow(context)
         {
         }
 
-        const std::string& GetId() const override
-        {
-            return m_Id;
-        }
-
-        const std::string& GetTitle() const override
-        {
-            return m_Title;
-        }
+        const std::string& GetId() const override { return m_Id; }
+        const std::string& GetTitle() const override { return m_Title; }
+        std::string_view GetOwnerModuleId() const override { return SceneEditor::kModuleId; }
 
         void OnDraw() override;
 

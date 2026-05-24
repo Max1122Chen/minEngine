@@ -15,12 +15,12 @@ namespace minEngine
     class MaterialGraphWindow final : public EditorWindow
     {
     public:
-        explicit MaterialGraphWindow(Editor& editor);
+        explicit MaterialGraphWindow(IEditorContext& context);
         ~MaterialGraphWindow() override;
 
         const std::string& GetId() const override { return m_Id; }
         const std::string& GetTitle() const override { return m_Title; }
-        EditorWindowSuite GetWindowSuite() const override { return EditorWindowSuite::MaterialEditing; }
+        std::string_view GetOwnerModuleId() const override;
 
         void OnDraw() override;
 

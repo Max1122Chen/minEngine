@@ -5,9 +5,10 @@
 #include "imgui.h"
 #include "ImGuizmo.h"
 
+#include "Scene/SceneEditor.h"
+#include "UI/EditorWindows/EditorViewportWindow.h"
 #include "UI/Widgets/DraggableOverlay.h"
 #include "Viewport/SceneEditingViewportClient.h"
-#include "EditorViewportWindow.h"
 
 #include <algorithm>
 #include <utility>
@@ -17,12 +18,14 @@ namespace minEngine
     class SceneEditingViewportWindow final : public EditorViewportWindow
     {
     public:
-        explicit SceneEditingViewportWindow(Editor& editor,
+        explicit SceneEditingViewportWindow(IEditorContext& context,
                                             std::string id = "scene_editing_viewport",
                                             std::string title = "Viewport")
-            : EditorViewportWindow(editor, std::move(id), std::move(title))
+            : EditorViewportWindow(context, std::move(id), std::move(title))
         {
         }
+
+        std::string_view GetOwnerModuleId() const override { return SceneEditor::kModuleId; }
 
         SceneEditingViewportClient& GetSceneEditingViewportClient()
         {

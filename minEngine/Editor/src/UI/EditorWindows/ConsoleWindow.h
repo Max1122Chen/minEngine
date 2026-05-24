@@ -8,16 +8,15 @@
 
 #include "UI/Widgets/MultiSelectFilterDropdown.h"
 
-#include "Editor.h"
-#include "EditorWindow.h"
+#include "UI/EditorWindows/EditorWindow.h"
 
 namespace minEngine
 {
     class ConsoleWindow final : public EditorWindow
     {
     public:
-        explicit ConsoleWindow(Editor& editor)
-            : EditorWindow(editor)
+        explicit ConsoleWindow(IEditorContext& context)
+            : EditorWindow(context)
         {
         }
 
@@ -31,11 +30,9 @@ namespace minEngine
             return m_Title;
         }
 
-        EditorWindowSuite GetWindowSuite() const override { return EditorWindowSuite::Shared; }
-
         void OnDraw() override
         {
-            const bool isPlaying = m_Editor.isPlaying;
+            const bool isPlaying = m_Context.IsPlaying();
             m_LastIsPlaying = isPlaying;
 
             ImGui::Begin(m_Title.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);

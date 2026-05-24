@@ -1,9 +1,8 @@
 #include "MaterialPreviewViewportClient.h"
 
-#include "Editor.h"
-#include "EditorUIMode.h"
 #include "Material/MaterialEditor.h"
 #include "Material/MaterialEditorPreview.h"
+#include "Shell/EditorContextHelpers.h"
 
 #include "Runtime/Function/Render/MaterialPreviewViewport.h"
 #include "Runtime/Function/Render/RenderSystem.h"
@@ -15,20 +14,27 @@ namespace minEngine
 {
     namespace
     {
-        MaterialEditorPreview* ResolveMaterialPreview(Editor* editor)
+        MaterialEditorPreview* ResolveMaterialPreview(IEditorContext* context)
         {
-            if (!editor)
+            MaterialEditor* materialEditor = GetMaterialEditorFromContext(context);
+            if (!materialEditor)
             {
                 return nullptr;
             }
 
-            MaterialEditorPreview& preview = editor->GetMaterialEditor().GetPreview();
+            MaterialEditorPreview& preview = materialEditor->GetPreview();
             if (!preview.IsInitialized() || !preview.IsSceneReady())
             {
                 return nullptr;
             }
 
             return &preview;
+        }
+
+        bool IsMaterialEditingMode(IEditorContext* context)
+        {
+            const EditorSubModule* active = context ? context->GetActiveSubModule() : nullptr;
+            return active && active->GetModuleId() == MaterialEditor::kModuleId;
         }
     }
 
@@ -41,12 +47,12 @@ namespace minEngine
 
     void MaterialPreviewViewportClient::EndFrame()
     {
-        if (!m_Editor || m_Editor->GetUIMode() != EditorUIMode::MaterialEditing)
+        if (!IsMaterialEditingMode(m_Context))
         {
             return;
         }
 
-        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Editor);
+        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Context);
         if (!preview)
         {
             return;
@@ -72,7 +78,7 @@ namespace minEngine
 
     void MaterialPreviewViewportClient::SyncPreviewCameraAspect()
     {
-        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Editor);
+        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Context);
         if (!preview)
         {
             return;
@@ -95,7 +101,7 @@ namespace minEngine
 
     void MaterialPreviewViewportClient::SyncRenderTargetSize()
     {
-        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Editor);
+        MaterialEditorPreview* preview = ResolveMaterialPreview(m_Context);
         if (!preview)
         {
             return;

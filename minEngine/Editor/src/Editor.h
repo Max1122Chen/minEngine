@@ -4,115 +4,89 @@
 #include "minEngine.h"
 
 #include "EditorGUIManager.h"
-#include "EditorUIMode.h"
 #include "Material/MaterialEditor.h"
-#include "Viewport/EditorViewportClient.h"
-#include "Viewport/SceneEditingViewportClient.h"
-#include "Viewport/MaterialPreviewViewportClient.h"
+#include "Scene/SceneEditor.h"
+#include "Services/AssetWorkflowModule.h"
+#include "Services/ConsoleModule.h"
+#include "Services/InspectorModule.h"
+#include "Services/MainMenuModule.h"
+#include "Shell/EditorInputHub.h"
+#include "Shell/EditorCommandHistory.h"
+#include "Shell/EditorSubModule.h"
+#include "Shell/IEditorContext.h"
+#include "Shell/ViewportClientRegistry.h"
 
-#include <filesystem>
-#include <limits>
 #include <memory>
-#include <unordered_map>
+#include <vector>
 
 namespace minEngine
 {
-    class Scene;
-    class GameObject;
-
-    class Editor : public Application
+    class Editor : public Application, public IEditorContext
     {
     public:
-        Editor() = default;
-        ~Editor() override = default;
+        Editor();
+        ~Editor() override;
 
         void Initialize(int argc, char** argv) override;
         void Shutdown() override;
         void Run() override;
 
-        EditorGUIManager& GetGUIManager() { return m_EditorGUIManager; }
-        const EditorGUIManager& GetGUIManager() const { return m_EditorGUIManager; }
+        EditorGUIManager& GetGUIManager() override { return m_EditorGUIManager; }
+        const EditorGUIManager& GetGUIManager() const override { return m_EditorGUIManager; }
 
-        EditorUIMode GetUIMode() const { return m_EditorGUIManager.GetUIMode(); }
-        void SetUIMode(EditorUIMode mode) { m_EditorGUIManager.SetUIMode(mode); }
+        Engine& GetEngine() override { return *m_Engine; }
+        const Engine& GetEngine() const override { return *m_Engine; }
 
-        MaterialEditor& GetMaterialEditor() { return *m_MaterialEditor; }
-        const MaterialEditor& GetMaterialEditor() const { return *m_MaterialEditor; }
+        ViewportClientRegistry& GetViewportRegistry() override { return m_ViewportRegistry; }
+        const ViewportClientRegistry& GetViewportRegistry() const override { return m_ViewportRegistry; }
 
-        Engine& GetEngine() { return *m_Engine; }
-        const Engine& GetEngine() const { return *m_Engine; }
+        EditorSubModule* GetActiveSubModule() override { return m_ActiveSubModule; }
+        const EditorSubModule* GetActiveSubModule() const override { return m_ActiveSubModule; }
+        EditorSubModule* FindSubModule(std::string_view moduleId) override;
+        const EditorSubModule* FindSubModule(std::string_view moduleId) const override;
 
-        void RequestExit(){ m_ExitRequested = true; }
+        AssetWorkflowModule& GetAssetWorkflow() override { return m_AssetWorkflow; }
+        ConsoleModule& GetConsole() override { return m_ConsoleModule; }
+        EditorCommandHistory& GetCommandHistory() override { return m_CommandHistory; }
+        EditorInputHub& GetInputHub() override { return m_InputHub; }
 
-        // Project management
+        void SetLastDeltaTime(float deltaTime) override { m_LastDeltaTime = deltaTime; }
+        float GetLastDeltaTime() const override { return m_LastDeltaTime; }
+        bool IsPlaying() const override { return m_IsPlaying; }
+
+        bool ActivateSubModule(std::string_view moduleId) override;
+
+        void RequestExit() override { m_ExitRequested = true; }
+
+        bool& DockLayoutInitialized() override { return m_DockLayoutInitialized; }
+        bool& RequestResetLayout() override { return m_RequestResetLayout; }
+
         bool OpenProject(const std::string& projectPath);
         void CloseProject();
 
-        Scene* GetActiveScene() const;
-
-        // GameObject modification related
-        std::vector<GameObject*> GetHierarchyGameObjects() const;
-        GameObject* GetSelectedGameObject() const;
-        bool HasSelectedGameObject() const;
-        void SelectGameObject(uint64_t gameObjectId);
-        void ClearSelectedGameObject();
-        bool IsGameObjectSelected(uint64_t gameObjectId) const;
-        std::string GetGameObjectDisplayName(const GameObject& gameObject) const;
-        std::string GetSelectedGameObjectName() const;
-        bool RenameGameObject(uint64_t gameObjectId, const std::string& newName);
-        void RenameSelectedGameObject(const std::string& newName);
-        const std::vector<std::string>& GetAllComponentTypeNames() const;
-        bool AddComponentToSelectedGameObject(const std::string& componentTypeName);
-        bool RemoveComponentFromGO(GameObject& gameObject, Component& targetComponent);
-
-        // Scene management
-        void SaveCurrentScene();
-        void AddEmptyGOToScene();
-        bool RemoveGameObjectFromScene(uint64_t gameObjectId);
-        void MarkSceneDirty() { m_SceneDirty = true; }
-        void ClearSceneDirty() { m_SceneDirty = false; }
-        bool IsSceneDirty() const { return m_SceneDirty; }
-
-        void SyncSelectionWithScene();
-
-        // ViewportClient management
-        SceneEditingViewportClient& GetOrCreateSceneEditingViewportClient(
-            const std::string& viewportId,
-            const std::string& viewportTitle = "Scene");
-        EditorViewportClient& GetOrCreateViewportClient(const std::string& viewportId,
-                                                        const std::string& viewportTitle = "Scene");
-        EditorViewportClient* FindViewportClient(const std::string& viewportId);
-        const EditorViewportClient* FindViewportClient(const std::string& viewportId) const;
-        SceneEditingViewportClient* FindSceneEditingViewportClient(const std::string& viewportId);
-        MaterialPreviewViewportClient& GetOrCreateMaterialPreviewViewportClient(
-            const std::string& viewportId,
-            const std::string& viewportTitle = "Material Preview");
-        MaterialPreviewViewportClient* FindMaterialPreviewViewportClient(const std::string& viewportId);
-        void RemoveViewportClient(const std::string& viewportId);
-        void ClearViewportClients();
-
-    public:
-        bool isPlaying = false;
-        float lastDeltaTime = 0.0f;
-
-        bool dockLayoutInitialized = false;
-        bool requestResetLayout = false;
-
     private:
-        void InitializeAllComponentTypeNames();
         void PostInitialize();
+        void RegisterModules();
+        void UpdateWindowTitle();
 
-    private:
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
+        SceneEditor m_SceneEditor;
         std::unique_ptr<MaterialEditor> m_MaterialEditor;
-        std::unordered_map<std::string, std::unique_ptr<EditorViewportClient>> m_ViewportClients;
+        MainMenuModule m_MainMenuModule;
+        InspectorModule m_InspectorModule;
+        ConsoleModule m_ConsoleModule;
+        AssetWorkflowModule m_AssetWorkflow;
+        EditorInputHub m_InputHub;
+        ViewportClientRegistry m_ViewportRegistry;
+        EditorCommandHistory m_CommandHistory;
+        std::vector<EditorSubModule*> m_SubModules;
+        EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;
-        bool m_SceneDirty = false;
-        uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
-        GameObject* m_SelectedGameObject = nullptr;
-
-        std::vector<std::string> m_AllComponentTypeNames;
+        bool m_IsPlaying = false;
+        float m_LastDeltaTime = 0.0f;
+        bool m_DockLayoutInitialized = false;
+        bool m_RequestResetLayout = false;
     };
 
     Application* CreateApplication();

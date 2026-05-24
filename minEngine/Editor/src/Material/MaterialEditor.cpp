@@ -1,7 +1,19 @@
 #include "MaterialEditor.h"
 
-#include "Editor.h"
+#include "EditorGUIManager.h"
 #include "Material/MaterialGraphIds.h"
+#include "Shell/EditorDockLayout.h"
+#include "Shell/EditorInputHub.h"
+#include "Shell/IEditorContext.h"
+#include "Shell/ViewportClientRegistry.h"
+
+#include "imgui.h"
+
+#include "UI/EditorWindows/MaterialGraphWindow.h"
+#include "UI/EditorWindows/MaterialPreviewWindow.h"
+#include "Viewport/MaterialPreviewViewportClient.h"
+
+#include "Runtime/Resource/AssetMeta.h"
 
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Render/Material.h"
@@ -14,9 +26,67 @@
 
 namespace minEngine
 {
-    MaterialEditor::MaterialEditor(Editor& editor)
-        : m_Editor(editor)
+    MaterialEditor::MaterialEditor()
+        : m_InspectorSource(*this)
     {
+    }
+
+    void MaterialEditor::Register(IEditorContext& context)
+    {
+        m_Context = &context;
+        EditorGUIManager& gui = context.GetGUIManager();
+        gui.RegisterWindow(std::make_unique<MaterialGraphWindow>(context));
+        gui.RegisterWindow(std::make_unique<MaterialPreviewWindow>(context));
+    }
+
+    void MaterialEditor::OnActivate(IEditorContext& context)
+    {
+        (void)context;
+        OnEnterMode();
+    }
+
+    void MaterialEditor::OnDeactivate(IEditorContext& context)
+    {
+        (void)context;
+        OnExitMode();
+    }
+
+    void MaterialEditor::RegisterCommands(IEditorContext& context)
+    {
+        EditorCommandBinding saveMaterialCommand;
+        saveMaterialCommand.Name = "Save Material";
+        saveMaterialCommand.Chord = { ImGuiKey_S, true, false, false };
+        saveMaterialCommand.CanExecute = [this]() { return m_Session.HasOpenMaterial(); };
+        saveMaterialCommand.Execute = [this]() { SaveActiveMaterial(); };
+        context.GetInputHub().RegisterActiveSubModuleCommand(std::move(saveMaterialCommand));
+    }
+
+    void MaterialEditor::UnregisterCommands(IEditorContext& context)
+    {
+        context.GetInputHub().ClearActiveSubModuleCommands();
+    }
+
+    void MaterialEditor::ApplyDefaultLayout(IEditorContext& context, ImGuiID dockspaceId)
+    {
+        (void)context;
+        EditorDockLayout::BuildMaterialEditingLayout(dockspaceId);
+    }
+
+    bool MaterialEditor::CanOpenAsset(const AssetMeta& meta) const
+    {
+        return meta.AssetType == "Material";
+    }
+
+    bool MaterialEditor::OpenAsset(const AssetMeta& meta)
+    {
+        OpenSession(&meta);
+        return true;
+    }
+
+    bool MaterialEditor::RouteViewportInput(EditorViewportClient& client)
+    {
+        (void)client;
+        return dynamic_cast<MaterialPreviewViewportClient*>(&client) != nullptr;
     }
 
     void MaterialEditor::OnEnterMode()
@@ -37,12 +107,16 @@ namespace minEngine
     {
         FlushPendingCompile();
         ClearSelectedEdNode();
-        m_Editor.RemoveViewportClient(kPreviewViewportPanelId);
+        if (m_Context)
+        {
+            m_Context->GetViewportRegistry().RemoveViewportClient(kPreviewViewportPanelId);
+        }
     }
 
     void MaterialEditor::Shutdown()
     {
         m_Preview.Shutdown();
+        m_Context = nullptr;
     }
 
     void MaterialEditor::Tick(float deltaTime)
@@ -61,7 +135,13 @@ namespace minEngine
 
     void MaterialEditor::OnPreviewViewHostReady()
     {
-        m_Editor.GetOrCreateMaterialPreviewViewportClient(kPreviewViewportPanelId, "Material Preview");
+        if (!m_Context)
+        {
+            return;
+        }
+
+        m_Context->GetViewportRegistry().GetOrCreateMaterialPreviewViewportClient(
+            kPreviewViewportPanelId, "Material Preview");
 
         if (RHI* rhi = RenderSystem::Get().GetRHI())
         {
