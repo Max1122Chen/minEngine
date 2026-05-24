@@ -61,10 +61,10 @@ When finishing a task, AI should:
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
 - Place new design docs in the correct docs/ai/ subtree per docs-ai-layout rule.
 
-## 6) Current product direction (2026-05-23)
+## 6) Current product direction (2026-05-24)
 
 - **Rendering / Material:** Phase 0–5 largely complete (IBL + Skybox); maintain via `docs/ai/Render/Material/`.
-- **Platform (main track):** UE-like foundation — startup/path config → memory management → Content Browser / editor Undo → reflection methods → Lua. See `docs/ai/Platform/PLATFORM_ROADMAP.md`.
+- **Platform (main track):** UE-like foundation — startup/path (M0) → memory management (P1) → **Editor 平台化** (P2: Inspector / Previewer / Asset infra / FileDialog; Content Browser 后置) → Undo → MEFunction → Lua. See `docs/ai/Platform/PLATFORM_ROADMAP.md` and `docs/ai/Editor/EDITOR_PLATFORM_PLAN.md`.
 
 ## 7) Material Editor (stable)
 

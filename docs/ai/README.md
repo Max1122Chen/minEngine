@@ -25,6 +25,7 @@
 - [Platform 路线图](./Platform/PLATFORM_ROADMAP.md) — UE 化大方向与优先级
 - [引擎启动 / 配置](./Platform/Startup/ENGINE_STARTUP_DESIGN.md)
 - [内存管理](./Platform/MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md)
+- [Content Browser](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)
 
 ### 渲染 / 材质（已基本完成）
 
@@ -34,7 +35,11 @@
 
 ### 编辑器
 
+- [**Editor Shell 设计**](./Editor/EDITOR_SHELL_DESIGN.md)
+- [**Editor 架构复盘**](./Editor/EDITOR_ARCHITECTURE_REVIEW.md)
+- [**Editor 平台化规划**](./Editor/EDITOR_PLATFORM_PLAN.md) — E0–E4（P2 主线）
 - [视口窗口](./Editor/EDITOR_VIEWPORT_WINDOWS.md)
+- [Content Browser 产品意图](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)
 - [材质编辑器计划](./Render/Material/MATERIAL_EDITOR_PLAN.md)
 
 ## 路径迁移（2026-05-23）

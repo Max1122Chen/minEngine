@@ -1,14 +1,14 @@
 # Platform 路线图（UE 化大方向）
 
-Last updated: 2026-05-23  
-Status: **拍板** — 渲染/材质阶段性完成；平台线为主战场
+Last updated: 2026-05-24  
+Status: **拍板** — 渲染/材质阶段性完成；平台线为主战场；**P2 升格为 Editor 平台化**
 
 ## 1) 产品方向
 
 minEngine 目标从「渲染学习 demo」升级为 **更像 Unreal 的编辑器驱动引擎**：
 
 - **Runtime**：可配置启动、清晰所有权与内存管理、反射驱动序列化（已有基础）
-- **Editor**：Content Browser、事务化 Undo、模式化解耦（Material 模式已验证）
+- **Editor**：Editor 平台化（Inspector / Previewer / Asset 基础设施）、Content Browser、Undo、模式化解耦
 - **后续**：`MEFunction` + Lua；不阻塞当前平台线
 
 渲染/材质（[Render/Material](../Render/Material/MATERIAL_SYSTEM_ROADMAP.md)）维持维护，新功能以平台能力为主。
@@ -19,7 +19,10 @@ minEngine 目标从「渲染学习 demo」升级为 **更像 Unreal 的编辑器
 P0  启动 / 路径配置化     → ENGINE_STARTUP_DESIGN
 P1  内存管理（非重型 GC） → MEMORY_MANAGEMENT_DESIGN
     └─ 清除旧 bad 模式（ObjectManager 强引用等）
-P2  Content Browser       → 设计待写（依赖 AssetManager + 资产事件）
+P2  Editor 平台化           → EDITOR_PLATFORM_PLAN（E0–E4）
+    └─ E0 Editor Shell + Sub-Editor（优先）
+    └─ Inspector / Previewer / AssetManager / FileDialog
+    └─ Content Browser 为消费方（后置详细设计）
 P3  编辑器 Command/Undo   → 设计待写
 P4  反射 MEFunction       → 设计待写
 P5  Lua 脚本              → 设计待写
@@ -33,10 +36,11 @@ P5  Lua 脚本              → 设计待写
 |------|------|------|----------|
 | 启动配置 | `EngineConfig.meconfig` 绝对路径；Playground 硬编码 | 三层路径 + 相对解析 | [Startup](./Startup/ENGINE_STARTUP_DESIGN.md) |
 | 对象生命周期 | `ObjectManager` 强 `shared_ptr` 注册表；手动 `RemoveObject` | **原地重构** `ObjectManager`：`weak_ptr` 索引 + 根 + Outer | [MemoryManagement](./MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md) |
-| 资产 | `AssetManager` 扫描/meta/加载 | Registry 事件 + Content Browser UI | （待写） |
-| 反射 | Property only | + UFunction 等价物 | （待写） |
-| 编辑器 | `EditorUIMode`；无 Undo | Subsystem + `IEditorCommand` | （待写） |
-| 脚本 | 无 | Lua 薄绑定 | （待写） |
+| 资产 | `AssetManager` 扫描/meta/加载 | Registry 事件 + 变更 API + Content Browser | [Editor 平台化](../Editor/EDITOR_PLATFORM_PLAN.md) § E3；[ContentBrowser](./ContentBrowser/CONTENT_BROWSER_DESIGN.md) 意图 |
+| 编辑器 Shell | `Editor` God Object；GO-only 选择 | Shell + Sub-Editor；SelectionService | [架构复盘](./EDITOR_ARCHITECTURE_REVIEW.md) |
+| 反射 | Property only | + UFunction 等价物 | （待写，P4） |
+| Undo | 无 | `IEditorCommand` / Transaction | （待写，P3） |
+| 脚本 | 无 | Lua 薄绑定 | （待写，P5） |
 
 ## 4) 与 UE 对照（学习用）
 
@@ -45,7 +49,8 @@ P5  Lua 脚本              → 设计待写
 | `FPaths` / `FConfigCache` | `PathRegistry` + Engine/Project config |
 | `GUObjectArray` + GC | **`ObjectManager`** 弱引用索引 + `CollectGarbage(Domain)` |
 | `UObject::Outer` | `MEObject::m_Outer` 系统化 |
-| Asset Registry + Content Browser | `AssetManager` + UI |
+| Asset Registry + Content Browser | `AssetManager` 变更 API + Browser UI |
+| Details + Preview | Inspector Drawer + PreviewScene |
 | `UFunction` + Blueprint | `MEFunction` + Lua（后期） |
 | `FTransaction` / Undo | `EditorCommandHistory`（后期） |
 
@@ -56,7 +61,7 @@ P5  Lua 脚本              → 设计待写
 | **M0** | 相对路径配置；启动日志打印 resolve 结果；去掉 Playground 绝对路径 | 3–5 天 |
 | **M1** | 重构 `ObjectManager`（`weak_ptr` 图）；`NewObject` 不延长寿命 | 1–2 周 |
 | **M2** | `ObjectManager::CollectGarbage`；Outer 规则；删除多余 `RemoveObject` | 1 周 |
-| **M3** | Content Browser v0（浏览+打开） | 1–2 周 |
+| **M3** | **Editor 平台化** E1–E4 分项设计 + 首轮实现；Content Browser 随基础层推进 | 按需 |
 | **M4+** | Undo、MEFunction、Lua | 按需 |
 
 ## 6) 参考
