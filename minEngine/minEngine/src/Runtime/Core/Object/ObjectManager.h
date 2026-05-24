@@ -3,10 +3,19 @@
 #include "Core.h"
 #include "MEObject.h"
 
+#include <functional>
+#include <unordered_map>
+#include <unordered_set>
+
 namespace minEngine
 {
     class Engine;
     class MaterialIRTestObjectManagerScope;
+    class ObjectManagerTestScope;
+
+    using ObjectReachabilityMarker = std::function<void(MEObject*)>;
+    using ObjectReachabilityRootVisitor = std::function<void(const ObjectReachabilityMarker& markReachable)>;
+    using ObjectGarbageRootSourceId = void*;
 
     class ObjectManager
     {
@@ -15,6 +24,7 @@ namespace minEngine
         ~ObjectManager() = default;
 
         static ObjectManager& Get();
+        static bool HasInstance();
 
         void Initialize();
         void Shutdown();
@@ -65,16 +75,40 @@ namespace minEngine
         bool RemoveObject(const GUID& guid);
         bool RemoveObject(const MEObject* object);
 
-        size_t GetTrackedObjectCount() const { return m_ObjectsByGuid.size(); }
+        // Prunes expired weak entries. When visitRoots is set, warns about live objects not marked reachable.
+        void CollectGarbage(const ObjectReachabilityRootVisitor& visitRoots = nullptr);
+
+        /** Marks documented engine roots (AssetManager cache, active scene, registered sources) then audits orphans. */
+        void CollectGarbageWithEngineRoots();
+
+        void RegisterGarbageRootSource(ObjectGarbageRootSourceId sourceId, ObjectReachabilityRootVisitor visitRoots);
+        void UnregisterGarbageRootSource(ObjectGarbageRootSourceId sourceId);
+        void VisitEngineGarbageRoots(const ObjectReachabilityMarker& markReachable) const;
+
+        size_t GetTrackedObjectCount() const
+        {
+            size_t count = 0;
+            for (const auto& [guid, weakObj] : m_ObjectsByGuid)
+            {
+                if (!weakObj.expired())
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
 
     private:
         friend class Engine;
         friend class MaterialIRTestObjectManagerScope;
+        friend class ObjectManagerTestScope;
 
         static void SetInstance(ObjectManager* instance);
+        void PruneExpiredEntries();
         static ObjectManager* s_Instance;
 
-        std::unordered_map<GUID, std::shared_ptr<MEObject>, GUID::Hash> m_ObjectsByGuid;
+        std::unordered_map<GUID, std::weak_ptr<MEObject>, GUID::Hash> m_ObjectsByGuid;
+        std::unordered_map<ObjectGarbageRootSourceId, ObjectReachabilityRootVisitor> m_GarbageRootSources;
     };
 
     // Convenience methods for global access
@@ -117,5 +151,10 @@ namespace minEngine
         const GUID& inGuid = GenerateGUID())
     {
         return ObjectManager::Get().NewObject(classInfo, inName, inOuter, inGuid);
+    }
+
+    inline void CollectGarbageWithEngineRoots()
+    {
+        ObjectManager::Get().CollectGarbageWithEngineRoots();
     }
 }

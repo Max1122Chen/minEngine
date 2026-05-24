@@ -34,6 +34,11 @@ namespace minEngine
         return *s_Instance;
     }
 
+    bool AssetManager::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     void AssetManager::Initialize()
     {}
 
@@ -42,6 +47,27 @@ namespace minEngine
         m_AssetPathByGuid.clear();
         m_AssetRegistry.clear();
         m_LoadedAssetCache.clear();
+    }
+
+    void AssetManager::MarkReachableLoadedAssets(const std::function<void(MEObject*)>& markReachable) const
+    {
+        for (const auto& [path, weakAsset] : m_LoadedAssetCache)
+        {
+            (void)path;
+            const std::shared_ptr<MEObject> loadedObject = weakAsset.lock();
+            if (!loadedObject)
+            {
+                continue;
+            }
+
+            markReachable(loadedObject.get());
+
+            Scene* sceneAsset = dynamic_cast<Scene*>(loadedObject.get());
+            if (sceneAsset != nullptr)
+            {
+                sceneAsset->MarkReachableObjects(markReachable);
+            }
+        }
     }
 
     // TODO: currently "directory" should be an absolute path, but maybe we should also support relative path and resolve it to absolute path internally 

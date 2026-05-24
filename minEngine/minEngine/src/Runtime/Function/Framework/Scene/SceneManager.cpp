@@ -1,4 +1,5 @@
 #include "SceneManager.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Resource/AssetManager.h"
@@ -18,6 +19,11 @@ namespace minEngine
         return *s_Instance;
     }
 
+    bool SceneManager::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     void SceneManager::Initialize()
     {
     }
@@ -25,13 +31,19 @@ namespace minEngine
     void SceneManager::Shutdown()
     {
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
-        if (m_CurrentActiveScene)
-        {
-            RemoveObject(m_CurrentActiveScene.get());
-            m_CurrentActiveScene.reset();
-        }
+        UnloadActiveScene();
         m_RegisteredScenes.clear();
         ME_CORE_INFO("SceneManager Shutdown.");
+    }
+
+    void SceneManager::UnloadActiveScene()
+    {
+        m_CurrentActiveScene.reset();
+
+        if (ObjectManager::HasInstance())
+        {
+            ObjectManager::Get().CollectGarbage();
+        }
     }
 
     void SceneManager::Tick(float deltaTime)
@@ -70,6 +82,7 @@ namespace minEngine
 
     std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string& sceneName)
     {
+        UnloadActiveScene();
         m_CurrentActiveScene = NewObject<Scene>();
         m_CurrentActiveScene->m_SceneName = sceneName;
         m_CurrentActiveScene->EnsureRenderScene();
@@ -91,6 +104,7 @@ namespace minEngine
         std::shared_ptr<Scene> scene = AssetManager::Get().LoadAsset<Scene>(path);
         if (scene)
         {
+            UnloadActiveScene();
             m_CurrentActiveScene = scene;
             m_CurrentActiveScene->EnsureRenderScene();
 
@@ -111,6 +125,11 @@ namespace minEngine
                         }
                     }
                 }
+            }
+
+            if (ObjectManager::HasInstance())
+            {
+                ObjectManager::Get().CollectGarbage();
             }
             return true;
         }

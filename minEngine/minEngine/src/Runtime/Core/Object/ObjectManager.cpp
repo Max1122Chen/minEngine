@@ -1,5 +1,10 @@
 #include "ObjectManager.h"
 
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Resource/AssetManager.h"
+
+#include <unordered_set>
+
 namespace minEngine
 {
     ObjectManager* ObjectManager::s_Instance = nullptr;
@@ -15,6 +20,11 @@ namespace minEngine
         return *s_Instance;
     }
 
+    bool ObjectManager::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     void ObjectManager::Initialize()
     {
         m_ObjectsByGuid.clear();
@@ -22,6 +32,7 @@ namespace minEngine
 
     void ObjectManager::Shutdown()
     {
+        m_GarbageRootSources.clear();
         m_ObjectsByGuid.clear();
         ME_CORE_INFO("ObjectManager Shutdown.");
     }
@@ -56,14 +67,7 @@ namespace minEngine
             return false;
         }
 
-        // Copy the shared_ptr out before erasing the map entry. This prevents
-        // the object's destructor running inside unordered_map::erase(), which
-        // could re-enter ObjectManager and mutate the hashtable while it's in
-        // an inconsistent state (leading to crashes). Holding a local copy
-        // ensures destruction happens after erase completes.
-        std::shared_ptr<MEObject> obj = iter->second;
         m_ObjectsByGuid.erase(iter);
-        (void)obj; // keep obj alive until end of scope
         return true;
     }
 
@@ -90,13 +94,14 @@ namespace minEngine
             return nullptr;
         }
 
-        return iter->second;
+        return iter->second.lock();
     }
 
-    std::shared_ptr<MEObject> ObjectManager::FindObject(const std::string &name) const
+    std::shared_ptr<MEObject> ObjectManager::FindObject(const std::string& name) const
     {
-        for (const auto& [guid, obj] : m_ObjectsByGuid)
-        {;
+        for (const auto& [guid, weakObj] : m_ObjectsByGuid)
+        {
+            std::shared_ptr<MEObject> obj = weakObj.lock();
             if (obj && obj->GetName() == name)
             {
                 return obj;
@@ -105,11 +110,12 @@ namespace minEngine
         return nullptr;
     }
 
-    std::vector<std::shared_ptr<MEObject>> ObjectManager::FindObjectsByClass(const Reflection::MEClass *classInfo) const
+    std::vector<std::shared_ptr<MEObject>> ObjectManager::FindObjectsByClass(const Reflection::MEClass* classInfo) const
     {
         std::vector<std::shared_ptr<MEObject>> result;
-        for(auto& [guid, obj] : m_ObjectsByGuid)
+        for (const auto& [guid, weakObj] : m_ObjectsByGuid)
         {
+            std::shared_ptr<MEObject> obj = weakObj.lock();
             if (obj && obj->GetClass() == classInfo)
             {
                 result.push_back(obj);
@@ -161,13 +167,122 @@ namespace minEngine
         return NewObject(classInfo, inName, inOuter, inGuid);
     }
 
-    bool ObjectManager::RemoveObject(const GUID &guid)
+    bool ObjectManager::RemoveObject(const GUID& guid)
     {
         return UnregisterObject(guid);
     }
 
-    bool ObjectManager::RemoveObject(const MEObject *object)
+    bool ObjectManager::RemoveObject(const MEObject* object)
     {
         return UnregisterObject(object);
+    }
+
+    void ObjectManager::PruneExpiredEntries()
+    {
+        for (auto iter = m_ObjectsByGuid.begin(); iter != m_ObjectsByGuid.end();)
+        {
+            if (iter->second.expired())
+            {
+                iter = m_ObjectsByGuid.erase(iter);
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+    }
+
+    void ObjectManager::RegisterGarbageRootSource(
+        ObjectGarbageRootSourceId sourceId,
+        ObjectReachabilityRootVisitor visitRoots)
+    {
+        if (sourceId == nullptr || !visitRoots)
+        {
+            return;
+        }
+
+        m_GarbageRootSources[sourceId] = std::move(visitRoots);
+    }
+
+    void ObjectManager::UnregisterGarbageRootSource(ObjectGarbageRootSourceId sourceId)
+    {
+        if (sourceId == nullptr)
+        {
+            return;
+        }
+
+        m_GarbageRootSources.erase(sourceId);
+    }
+
+    void ObjectManager::VisitEngineGarbageRoots(const ObjectReachabilityMarker& markReachable) const
+    {
+        if (AssetManager::HasInstance())
+        {
+            AssetManager::Get().MarkReachableLoadedAssets(markReachable);
+        }
+
+        if (SceneManager::HasInstance())
+        {
+            const std::shared_ptr<Scene> activeScene = SceneManager::Get().GetCurrentActiveScene();
+            if (activeScene)
+            {
+                activeScene->MarkReachableObjects(markReachable);
+            }
+        }
+
+        for (const auto& [sourceId, visitRoots] : m_GarbageRootSources)
+        {
+            (void)sourceId;
+            if (visitRoots)
+            {
+                visitRoots(markReachable);
+            }
+        }
+    }
+
+    void ObjectManager::CollectGarbageWithEngineRoots()
+    {
+        CollectGarbage([this](const ObjectReachabilityMarker& markReachable) {
+            VisitEngineGarbageRoots(markReachable);
+        });
+    }
+
+    void ObjectManager::CollectGarbage(const ObjectReachabilityRootVisitor& visitRoots)
+    {
+        std::unordered_set<GUID, GUID::Hash> reachableGuids;
+        if (visitRoots)
+        {
+            visitRoots([&reachableGuids](MEObject* object) {
+                if (object == nullptr || object->GetGuid().IsZero())
+                {
+                    return;
+                }
+                reachableGuids.insert(object->GetGuid());
+            });
+        }
+
+        PruneExpiredEntries();
+
+        if (!visitRoots)
+        {
+            return;
+        }
+
+        for (const auto& [guid, weakObj] : m_ObjectsByGuid)
+        {
+            const std::shared_ptr<MEObject> liveObject = weakObj.lock();
+            if (!liveObject)
+            {
+                continue;
+            }
+
+            if (reachableGuids.find(guid) == reachableGuids.end())
+            {
+                ME_CORE_WARN(
+                    "ObjectManager::CollectGarbage: live object '{}' ({}) is not reachable from supplied roots.",
+                    liveObject->GetName(),
+                    guid.ToString());
+            }
+        }
     }
 }

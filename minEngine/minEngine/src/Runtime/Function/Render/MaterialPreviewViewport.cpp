@@ -74,6 +74,17 @@ namespace minEngine
         m_Viewport.Initialize(rhi, width, height);
         SetupPreviewCamera();
         SyncPreviewCameraAspect();
+
+        if (ObjectManager::HasInstance())
+        {
+            ObjectManager::Get().RegisterGarbageRootSource(this, [this](const ObjectReachabilityMarker& markReachable) {
+                if (m_PreviewScene)
+                {
+                    m_PreviewScene->MarkReachableObjects(markReachable);
+                }
+            });
+        }
+
         m_Initialized = true;
     }
 
@@ -93,8 +104,16 @@ namespace minEngine
 
         if (m_PreviewScene)
         {
-            RemoveObject(m_PreviewScene.get());
             m_PreviewScene.reset();
+            if (ObjectManager::HasInstance())
+            {
+                ObjectManager::Get().CollectGarbage();
+            }
+        }
+
+        if (ObjectManager::HasInstance())
+        {
+            ObjectManager::Get().UnregisterGarbageRootSource(this);
         }
 
         m_Viewport.Shutdown();
@@ -122,8 +141,11 @@ namespace minEngine
         {
             if (m_PreviewScene)
             {
-                RemoveObject(m_PreviewScene.get());
                 m_PreviewScene.reset();
+                if (ObjectManager::HasInstance())
+                {
+                    ObjectManager::Get().CollectGarbage();
+                }
             }
 
             m_Viewport.SetObservedScene(nullptr);

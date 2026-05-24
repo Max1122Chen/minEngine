@@ -2,12 +2,21 @@
 #include "Application.h"
 #include "Runtime/Engine.h"
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/Object/ObjectManagerTest.h"
 #include "Runtime/Function/Render/Material/MaterialIR/MaterialIRTest.h"
 
 extern minEngine::Application* minEngine::CreateApplication();
 
 int main(int argc, char** argv)
 {
+    if (minEngine::ShouldRunObjectManagerTestsOnly(argc, argv))
+    {
+        minEngine::LogSystem::Initialize();
+        const bool passed = minEngine::RunObjectManagerTests(argc, argv);
+        minEngine::LogSystem::Shutdown();
+        return passed ? 0 : 1;
+    }
+
     if (minEngine::ShouldRunMaterialIRTestsOnly(argc, argv))
     {
         minEngine::LogSystem::Initialize();

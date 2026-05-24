@@ -1,6 +1,6 @@
 #include "Scene.h"
+#include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Render/RenderScene.h"
 
 namespace minEngine
@@ -8,16 +8,30 @@ namespace minEngine
     Scene::~Scene()
     {
         ME_CORE_INFO("Scene '{}' is being destroyed. Cleaning up {} game objects.", m_SceneName, m_GameObjects.size());
-        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
-        {
-            if (gameObject)
-            {
-                RemoveObject(gameObject.get());
-            }
-        }
         m_GameObjects.clear();
         m_GameObjectsById.clear();
         m_RenderScene.reset();
+    }
+
+    void Scene::MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const
+    {
+        markReachable(const_cast<Scene*>(this));
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        {
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            markReachable(gameObject.get());
+            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            {
+                if (component)
+                {
+                    markReachable(component.get());
+                }
+            }
+        }
     }
 
     void Scene::EnsureRenderScene()
@@ -112,7 +126,6 @@ namespace minEngine
             return go->GetID() == gameObject->GetID();
         }), m_GameObjects.end());
         m_GameObjectsById.erase(id);
-        RemoveObject(gameObject);
         return true;
     }
 }

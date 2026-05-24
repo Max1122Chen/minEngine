@@ -6,6 +6,7 @@
 #include "Asset.h"
 
 #include <filesystem>
+#include <functional>
 
 namespace minEngine
 {
@@ -40,6 +41,11 @@ namespace minEngine
         const AssetMeta* FindAssetMetaByPath(const std::string& path) const;
         const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
         std::vector<AssetMeta*> FindAssetMetasByType(const std::string& type) const;
+
+        static bool HasInstance();
+
+        /** Marks every live entry in the loaded-asset cache (and Scene sub-hierarchies). */
+        void MarkReachableLoadedAssets(const std::function<void(MEObject*)>& markReachable) const;
     
         template<typename T>
         std::shared_ptr<T> LoadAsset(const std::string& path)

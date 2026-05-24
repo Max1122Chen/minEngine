@@ -24,12 +24,11 @@ namespace minEngine
         {
             // A simple implementation for demo purposes. We will handle component ownership and lifecycle more robustly in the future.
             // TODO: handle lifecycle of components more robustly, we may want to implement a component system that can manage the lifecycle of components instead of relying on the game object to destroy them, we may also want to implement a reference counting system for components to avoid dangling pointers.
-            for(auto& component : m_Components)
+            for (auto& component : m_Components)
             {
                 if (component)
                 {
                     component->SetOwner(nullptr);
-                    RemoveObject(component.get());
                     component.reset();
                 }
             }

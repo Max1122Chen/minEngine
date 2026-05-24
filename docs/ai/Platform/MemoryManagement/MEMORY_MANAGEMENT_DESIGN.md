@@ -1,7 +1,7 @@
 # 内存管理 — 设计草稿
 
-Last updated: 2026-05-23  
-Status: **草稿（待 M1/M2 实施）**  
+Last updated: 2026-05-24  
+Status: **M1 完成；M2 主干已实施（C3 域分离仍为轻量版）**  
 父文档：[Platform 路线图](../PLATFORM_ROADMAP.md)  
 前置建议：[启动 / 路径配置](../Startup/ENGINE_STARTUP_DESIGN.md) M0
 
@@ -235,15 +235,18 @@ UnloadScene / CloseProject / SwitchPreview:
 
 ### M1 完成
 
-- [ ] `ObjectManager::GetTrackedObjectCount()` 在场景卸载后下降  
-- [ ] `m_ObjectsByGuid` 无 `shared_ptr` 强引用（仅 `weak_ptr`）  
-- [ ] Editor 多次打开/关闭 `test` 场景，`FindObject` 不返回已销毁 GUID  
-- [ ] `--material-ir-test` 仍 exit 0  
+- [x] `ObjectManager::GetTrackedObjectCount()` 在场景卸载后下降  
+- [x] `m_ObjectsByGuid` 无 `shared_ptr` 强引用（仅 `weak_ptr`）  
+- [ ] Editor 多次打开/关闭 `test` 场景，`FindObject` 不返回已销毁 GUID（手动验收）  
+- [ ] `--material-ir-test` 仍 exit 0（golden 资产待修）  
+- [x] `--object-manager-test` exit 0（`ObjectManagerTest.cpp`）
 
 ### M2 完成
 
-- [ ] 删除 ≥90% 业务侧显式 `RemoveObject`  
-- [ ] `CollectGarbage` 对「无根但仍 lock 成功」对象打 WARN（Debug）
+- [x] 删除业务侧显式 `RemoveObject`（Scene/GO/SceneManager/Preview）  
+- [x] `SceneManager::UnloadActiveScene` + `CollectGarbage`  
+- [x] `CollectGarbage(visitRoots)` 对不可达但仍 live 的对象 `ME_CORE_WARN`  
+- [ ] Preview / Active 完整分域标记（C3 后续）
 
 ---
 

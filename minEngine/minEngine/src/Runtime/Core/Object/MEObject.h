@@ -29,7 +29,7 @@ namespace minEngine
         // Friend declaration for editor classes
         friend class Editor;
     public:
-        virtual ~MEObject() = default;
+        virtual ~MEObject();
 
         const Reflection::MEClass* GetClass() const { return m_Class; }
         const std::string& GetName() const { return m_Name; }

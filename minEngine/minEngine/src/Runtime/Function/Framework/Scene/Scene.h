@@ -3,6 +3,8 @@
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Resource/Asset.h"
 
+#include <functional>
+
 namespace minEngine
 {
     class GameObject;
@@ -31,6 +33,8 @@ namespace minEngine
         void EnsureRenderScene();
         RenderScene* GetRenderScene();
         const std::shared_ptr<RenderScene>& GetRenderSceneShared() const { return m_RenderScene; }
+
+        void MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const;
 
     // private: // temporarily public for testing
         ME_PROPERTY()

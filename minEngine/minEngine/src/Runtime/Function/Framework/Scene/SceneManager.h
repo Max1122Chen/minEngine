@@ -21,6 +21,7 @@ namespace minEngine
         void Shutdown();
 
         static SceneManager& Get();
+        static bool HasInstance();
         
         void Tick(float deltaTime);
 
@@ -33,6 +34,8 @@ namespace minEngine
         bool LoadScene(const std::string& sceneName);
         bool LoadSceneByPath(const std::string& path);
         bool SaveCurrentScene();
+
+        void UnloadActiveScene();
 
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
         void SendAllEndOfFrameUpdates();
