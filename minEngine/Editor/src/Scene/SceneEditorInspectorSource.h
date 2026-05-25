@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/GUID/GUID.h"
 #include "Shell/IEditorInspectorSource.h"
 
 #include "Runtime/Core/Reflection/Reflection.h"
@@ -20,6 +21,18 @@ namespace minEngine
 {
     class SceneEditor;
 
+    struct PropertyUndoCaptureContext
+    {
+        GUID ownerGuid{};
+        std::string ownerClassName;
+        std::string capturePropertyName;
+
+        bool IsValid() const
+        {
+            return !ownerGuid.IsZero() && !ownerClassName.empty() && !capturePropertyName.empty();
+        }
+    };
+
     class SceneEditorInspectorSource : public IEditorInspectorSource
     {
     public:
@@ -35,22 +48,29 @@ namespace minEngine
 
         void DrawGameObjectDetails(GameObject* gameObject);
 
+        PropertyUndoCaptureContext MakePropertyUndoCaptureContext(const MEObject* owner,
+                                                                  const Reflection::MEClass* ownerClass,
+                                                                  const std::string& capturePropertyName) const;
+
         bool DrawProperty(const MEObject* owner,
                           const Reflection::MEClass* ownerClass,
                           const Reflection::MEProperty& property,
-                          void* propertyPtr);
+                          void* propertyPtr,
+                          const PropertyUndoCaptureContext* parentUndoContext = nullptr);
 
         bool CanUndoInspectorProperty(const Reflection::MEProperty& property) const;
 
-        void TryCapturePropertyUndoBefore(uint32_t editId,
-                                          const MEObject* owner,
-                                          const Reflection::MEClass* ownerClass,
-                                          const std::string& propertyName);
+        bool SerializePropertyUndoBlob(const PropertyUndoCaptureContext& context, std::vector<uint8_t>& outBlob) const;
 
-        void TryCommitPropertyUndoAfter(uint32_t editId,
-                                        const MEObject* owner,
-                                        const Reflection::MEClass* ownerClass,
-                                        const std::string& propertyName);
+        void TryPropertyUndoActivated(const PropertyUndoCaptureContext& context, uint32_t editId);
+
+        void TryPropertyUndoCommitAfterEdit(const PropertyUndoCaptureContext& context, uint32_t editId);
+
+        void TryPropertyUndoCommitImmediate(const PropertyUndoCaptureContext& context,
+                                            const std::vector<uint8_t>& beforeBlob,
+                                            const std::vector<uint8_t>& afterBlob);
+
+        void ApplyPropertyUndoCaptureHooks(const PropertyUndoCaptureContext& context, bool allowRowCapture);
 
         bool DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
         bool DrawIntProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
@@ -72,6 +92,7 @@ namespace minEngine
                                    const Reflection::MEObjectPtrProperty& objectPtrProperty,
                                    void* propertyPtr);
         bool DrawAssetRef(const MEObject* owner,
+                          const Reflection::MEClass* ownerClass,
                           const Reflection::MEObjectPtrProperty& objectPtrProperty,
                           void* propertyPtr);
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
@@ -87,6 +108,8 @@ namespace minEngine
 
         bool TryDrawComponentContextMenu(Component& component);
 
+        static std::string MakeAssetPropertyUndoKey(const GUID& ownerGuid, const std::string& propertyName);
+
         SceneEditor& m_SceneEditor;
         static constexpr const char* kWindowTitle = "Inspector";
         std::string m_SelectedAddComponentTypeName;
@@ -95,5 +118,6 @@ namespace minEngine
         uint64_t m_RenameTargetGameObjectId = kInvalidGameObjectId;
         char m_RenameBuffer[256] = {};
         std::unordered_map<uint32_t, std::vector<uint8_t>> m_PropertyUndoBeforeByEditId;
+        std::unordered_map<std::string, std::vector<uint8_t>> m_AssetPropertyUndoBeforeByKey;
     };
 }

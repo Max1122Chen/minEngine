@@ -1,7 +1,7 @@
 # Editor Command Stack（Undo / Redo）— 设计
 
-Last updated: 2026-05-24  
-Status: **v4.0（E1.4 Snapshot 设计已定稿，待实现）**  
+Last updated: 2026-05-25  
+Status: **v4.2（E1.4 Snapshot + E1.3+ Inspector Transform/AssetRef property Undo 已验收）**  
 父文档：[Editor Shell 设计](./EDITOR_SHELL_DESIGN.md)  
 相关：`EditorCommandStack.h`、`IEditorCommand`、`EditorInputHub`、`ProjectSettings.Editor`
 
@@ -272,10 +272,65 @@ void SubmitSetObjectProperty(IEditorContext& context,
 
 ### 9.8 验收（E1.3）
 
-- [ ] 修改选中 Component 的 float/int/bool/Vector 字段 → Undo 恢复旧值 → Redo 恢复新值
-- [ ] 连续改两个不同属性 → 栈上两条，各 Undo 一次
-- [ ] 视口聚焦时 Ctrl+Z 仍有效（沿用现有 Global Undo）
-- [ ] 不支持类型仍只 dirty、不入栈（行为与现在一致，无静默失败）
+- [x] 修改选中 Component 的 float/int/bool/Vector 字段 → Undo 恢复旧值 → Redo 恢复新值
+- [x] 连续改两个不同属性 → 栈上两条，各 Undo 一次
+- [x] 视口聚焦时 Ctrl+Z 仍有效（沿用现有 Global Undo）
+- [x] 不支持类型仍只 dirty、不入栈（Array UI 未实现；见 §9.10）
+
+### 9.10 Inspector Property Undo — 捕获策略（E1.3+ 设计，2026-05-25）
+
+**问题（v4.1 前）：** `SetObjectPropertyCommand` 与 `SerializePropertyToBuffer` 已支持 Object / ObjectPtr blob；Primitive 可 Undo。Transform / AssetRef 失败是因为 **未触发 Submit**（ImGui session 与序列化属性名脱节），不是 Command 能力不足。
+
+**目标：** 任意内嵌 **Object（struct）** 与 **ObjectPtr / AssetRef** 的有效编辑均能 **Commit** 一条 Command。
+
+#### 9.10.1 `PropertyUndoCaptureContext`
+
+```cpp
+struct PropertyUndoCaptureContext {
+    GUID ownerGuid;
+    std::string ownerClassName;
+    std::string capturePropertyName;  // Serializer 一级属性名，如 "m_Transform" / "m_Mesh"
+};
+```
+
+- **Primitive / Vector：** `capturePropertyName = property.GetName()`。
+- **内嵌 Object 子字段：** 仍序列化 **父 Object 整段**（如 `"m_Transform"`），与 Scene 存盘一致；不向 Serializer 传 `"m_Transform.x"` 路径。
+- **ObjectPtr / Asset：** `capturePropertyName = "m_Mesh"` 等顶层指针字段名。
+
+#### 9.10.2 统一 Capture API（`SceneEditorInspectorSource`）
+
+| 函数 | 时机 |
+|------|------|
+| `TryPropertyUndoActivated(context, editId)` | `ImGui::IsItemActivated()` → `SerializePropertyToBuffer` → `m_PropertyUndoBeforeByEditId[editId]` |
+| `TryPropertyUndoCommitAfterEdit(context, editId)` | `IsItemDeactivatedAfterEdit()` → after blob → `SubmitSetObjectProperty` |
+| `TryPropertyUndoCommitImmediate(context, beforeBlob, afterBlob)` | Asset 选中时显式提交 |
+
+`editId = ImGui::GetItemID()` **绑定真实控件**（每个 DragFloat、每个 Combo），不再用 Object 行「最后一个子控件」代表整行。
+
+#### 9.10.3 分类型 UI
+
+| 类型 | 绘制 | Commit 触发 |
+|------|------|-------------|
+| **Primitive / Vector** | `DrawProperty` + context | Activated / DeactivatedAfterEdit（同 E1.3） |
+| **Object** | `DrawObjectProperty` 向子字段传 `owner` + `parentContext`（`capturePropertyName` = 父字段名） | 每个子控件 DeactivatedAfterEdit；**Object 行本身不 Capture** |
+| **AssetRef** | `DrawAssetRef` | Combo `Activated` → before；`Selectable` 选中且 GUID 变化 → after + **立即 Submit** |
+| **Array** | `CanUndo` → **false**（UI 未实现） | — |
+
+#### 9.10.4 SerializerOptions（与 Restore 对齐）
+
+`ApplySetObjectProperty` 与 Inspector Capture 共用：
+
+- `skipUnknownField = false`
+- `allowObjectPtrSerialization = true`
+
+#### 9.10.5 验收
+
+- [x] `m_Transform` 任意分量编辑 → Undo 整颗 Transform 回退
+- [x] `m_Mesh` / `m_Material` 换资产 → Undo 恢复旧 GuidRef
+- [x] Primitive 回归无退化
+- [x] 连续改 Transform 与 Mesh → 栈上两条
+
+**实现状态：** 已实现并手测通过（2026-05-25）。
 
 ### 9.9 建议文件
 
@@ -284,14 +339,14 @@ void SubmitSetObjectProperty(IEditorContext& context,
 | `Commands/Scene/SetObjectPropertyCommand.{h,cpp}` | Command |
 | （无单独 JSON 层） | 直接用 `Serialization::SerializeProperty` + Binary buffer |
 | `SceneEditor.{h,cpp}` | `Apply*` / `Submit*` |
-| `SceneEditorInspectorSource.cpp` | Activated / DeactivatedAfterEdit 接线 |
+| `SceneEditorInspectorSource.cpp` | `PropertyUndoCaptureContext` + §9.10 分类型 Capture |
 
 ---
 
 ## 10) E1.4 — Object Snapshot（详细设计）
 
-**状态：** 设计定稿（2026-05-24），待编码。  
-**前置：** S1–S2 `BinaryArchive` + `SerializeProperty*`（已完成）；E1.3 Primitive 属性 Undo（已完成）。  
+**状态：** Delete GO 快照与 Inspector Transform/AssetRef property Undo **已实现并验收**（2026-05-25）；Remove Component 快照代码已接（待单独手测）。  
+**前置：** S1–S4 `BinaryArchive` + `SerializeProperty*` / `SerializeObjectToBuffer`（已完成）；E1.3 Primitive Undo（已完成）。  
 **关联：** [SERIALIZATION_BINARY_AND_PROPERTY_API.md](../Platform/Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) §9（S3 Snapshot API）。
 
 ### 10.1 一句话
@@ -304,7 +359,7 @@ void SubmitSetObjectProperty(IEditorContext& context,
 |------|------|-----------|
 | Delete GameObject → Undo | 仅 `name` + `Transform`，新建空 GO | 恢复 **组件列表 + 各组件反射字段 + GO 名/Guid + Root 链接** |
 | Remove Component → Undo | 同类型 **空壳** 组件 | 恢复 **删除前整颗 Component**（含 Mesh/Material 等 GuidRef） |
-| Inspector ObjectPtr / Array | 仅 dirty，无 Undo | `SerializePropertyToBuffer` ×2（与 Primitive 同交互边界） |
+| Inspector ObjectPtr / struct | Primitive + Transform + AssetRef 可 Undo | §9.10 `PropertyUndoCaptureContext`；Array UI 未实现 |
 | Material 大图 Undo | — | **E1.5**；E1.4 只提供可复用 **`EditorObjectSnapshot`** 容器 |
 
 ### 10.3 非目标（本阶段不做）
@@ -318,7 +373,7 @@ void SubmitSetObjectProperty(IEditorContext& context,
 ### 10.4 「全反射字段」范围（与 Scene 存盘对齐）
 
 **编码路径：** `Serializer::SerializeObject_IterateProps` → 对 class hierarchy 上 **每个有 accessor 的 `MEProperty`** 调用 `SerializeProperty`（Primitive / Object / ObjectPtr / Array）。  
-**与 Inspector 不同：** `Invisible` / `Transient` **不** 在 Serializer 中跳过（仅影响 Inspector 绘制）。
+**与 Inspector 不同：** Serializer 仅跳过 **Transient**；**Invisible** 仍序列化（如 `m_Owner` → GuidRef），Inspector 不绘制 Invisible。
 
 | 对象 | 会进快照的字段（示例） | 不进快照 |
 |------|------------------------|----------|
@@ -612,11 +667,11 @@ void SceneEditor::PostRestoreSceneObject(GameObject& go)
 
 **E1.4 完成勾选：**
 
-- [ ] `SerializeObjectToBuffer` / `DeserializeObjectFromBuffer`
-- [ ] `EditorObjectSnapshot` Capture/Restore
-- [ ] `DeleteGameObjectCommand` / `RemoveComponentCommand` 升级
-- [ ] Inspector ObjectPtr + Array Undo
-- [ ] 文档 §12 验收表 E1.4 项
+- [x] `SerializeObjectToBuffer` / `DeserializeObjectFromBuffer`
+- [x] `EditorObjectSnapshot` Capture/Restore（GO：CreateDefaultInstance + InsertRestoredGameObject）
+- [x] `DeleteGameObjectCommand` 升级（Remove Component 代码已接，**待手测**）
+- [x] Inspector ObjectPtr + struct Undo（§9.10 Transform / AssetRef 手测通过）
+- [x] 文档 §12 验收表 E1.4 核心项（本文件 + 序列化 doc）
 
 ### 10.15 建议文件清单
 
@@ -627,7 +682,7 @@ void SceneEditor::PostRestoreSceneObject(GameObject& go)
 | `Editor/.../SceneEditor.{h,cpp}` | `PostRestore*`、Restore 入口 |
 | `Commands/Scene/DeleteGameObjectCommand.*` | 存 envelope |
 | `Commands/Scene/RemoveComponentCommand.*` | 存 envelope |
-| `SceneEditorInspectorSource.cpp` | `CanUndoInspectorProperty` 扩展 |
+| `SceneEditorInspectorSource.cpp` | §9.10 `PropertyUndoCaptureContext` + Capture/Commit |
 | `SerializationArchiveTest.cpp` | GO round-trip |
 | `SERIALIZATION_BINARY_AND_PROPERTY_API.md` | S3 勾选 |
 
@@ -664,13 +719,14 @@ void SceneEditor::PostRestoreSceneObject(GameObject& go)
 - [x] `IEditorCommand` + `EditorCommandStack`
 - [x] `MaxUndoStackDepth` ← `ProjectSettings.Editor`
 - [x] `OpenProject` / `LoadScene` 清栈；`ActivateSubModule` 不清
-- [x] Scene：Rename、Gizmo Transform、GO/Component 增删（部分弱 Undo）
+- [x] Scene：Rename、Gizmo Transform、GO/Component 增删（Delete GO 真快照 Undo）
 - [x] Global Ctrl+Z/Y（视口聚焦可用）
 
 ### 待做
 
 - [x] **E1.3** Inspector 属性 Undo（Primitive）
-- [x] **E1.4** Snapshot + 加强 Delete/Remove + Inspector ObjectPtr/Array（§10）
+- [x] **E1.3+** Inspector Transform / AssetRef property Undo（§9.10）
+- [x] **E1.4** Snapshot + Delete GO Undo（§10）
 - [ ] **E1.5** Material 命令
 - [ ] **E2** Merge、菜单描述、Composite
 
@@ -686,3 +742,5 @@ void SceneEditor::PostRestoreSceneObject(GameObject& go)
 | 2026-05-24 | v3.1：E1.3 前置序列化 S1–S2；属性 blob 改为 Binary + `SerializeProperty` |
 | 2026-05-24 | v3.2：`SetObjectPropertyCommand` + Inspector Primitive 接线 |
 | 2026-05-24 | v4.0：E1.4 Snapshot 详细设计（Binary、`EditorObjectSnapshot`、Command 升级、§10.11 拍板项） |
+| 2026-05-25 | v4.1：E1.4 实现勾选；§9.10 Inspector Capture 现状（Transform/AssetRef 漏洞） |
+| 2026-05-25 | v4.2：§9.10 PropertyUndoCaptureContext 实现；Transform/AssetRef/Primitive Inspector Undo 验收 |

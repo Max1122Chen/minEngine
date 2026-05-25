@@ -116,6 +116,8 @@ namespace minEngine
 
         IEditorContext* GetEditorContext() const { return m_Context; }
 
+        Serialization::SerializerOptions GetPropertyCommandSerializerOptions() const;
+
     private:
         static Serialization::SerializerOptions GetRestoreSerializerOptions();
 

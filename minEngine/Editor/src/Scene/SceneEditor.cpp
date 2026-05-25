@@ -519,7 +519,8 @@ namespace minEngine
             ownerClass,
             propertyName,
             valueBlob,
-            unresolvedRefs);
+            unresolvedRefs,
+            GetPropertyCommandSerializerOptions());
         if (!result.ok)
         {
             ME_CORE_WARN(
@@ -732,6 +733,11 @@ namespace minEngine
         options.skipUnknownField = false;
         options.allowObjectPtrSerialization = true;
         return options;
+    }
+
+    Serialization::SerializerOptions SceneEditor::GetPropertyCommandSerializerOptions() const
+    {
+        return GetRestoreSerializerOptions();
     }
 
     void SceneEditor::PostRestoreSceneObject(GameObject& gameObject)

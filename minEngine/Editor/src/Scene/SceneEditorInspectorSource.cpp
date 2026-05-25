@@ -6,6 +6,7 @@
 #include "imgui.h"
 
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
@@ -303,30 +304,93 @@ namespace minEngine
         case Reflection::MEPropertyCategory::Primitive:
         case Reflection::MEPropertyCategory::Object:
         case Reflection::MEPropertyCategory::ObjectPtr:
-        case Reflection::MEPropertyCategory::Array:
             return true;
+        case Reflection::MEPropertyCategory::Array:
         default:
             return false;
         }
     }
 
-    void SceneEditorInspectorSource::TryCapturePropertyUndoBefore(uint32_t editId,
-                                                                  const MEObject* owner,
-                                                                  const Reflection::MEClass* ownerClass,
-                                                                  const std::string& propertyName)
+    PropertyUndoCaptureContext SceneEditorInspectorSource::MakePropertyUndoCaptureContext(
+        const MEObject* owner,
+        const Reflection::MEClass* ownerClass,
+        const std::string& capturePropertyName) const
     {
-        if (owner == nullptr || ownerClass == nullptr || !ImGui::IsItemActivated())
+        PropertyUndoCaptureContext context;
+        if (owner == nullptr || ownerClass == nullptr || capturePropertyName.empty())
+        {
+            return context;
+        }
+
+        context.ownerGuid = owner->GetGuid();
+        context.ownerClassName = ownerClass->GetName();
+        context.capturePropertyName = capturePropertyName;
+        return context;
+    }
+
+    bool SceneEditorInspectorSource::SerializePropertyUndoBlob(const PropertyUndoCaptureContext& context,
+                                                                 std::vector<uint8_t>& outBlob) const
+    {
+        outBlob.clear();
+        if (!context.IsValid())
+        {
+            return false;
+        }
+
+        std::shared_ptr<MEObject> ownerObject = ObjectManager::Get().FindObject(context.ownerGuid);
+        if (!ownerObject)
+        {
+            return false;
+        }
+
+        const Reflection::MEClass* ownerClass = Reflection::ReflectionSystem::Get().FindClass(context.ownerClassName);
+        if (ownerClass == nullptr)
+        {
+            return false;
+        }
+
+        const Serialization::SerializeResult result = Serialization::Serializer::SerializePropertyToBuffer(
+            ownerObject.get(),
+            ownerClass,
+            context.capturePropertyName,
+            outBlob,
+            m_SceneEditor.GetPropertyCommandSerializerOptions());
+        return result.ok;
+    }
+
+    void SceneEditorInspectorSource::TryPropertyUndoCommitImmediate(const PropertyUndoCaptureContext& context,
+                                                                    const std::vector<uint8_t>& beforeBlob,
+                                                                    const std::vector<uint8_t>& afterBlob)
+    {
+        if (!context.IsValid() || beforeBlob.empty() || afterBlob == beforeBlob)
+        {
+            return;
+        }
+
+        IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+        if (editorContext == nullptr)
+        {
+            return;
+        }
+
+        m_SceneEditor.SubmitSetObjectProperty(
+            *editorContext,
+            context.ownerGuid,
+            context.ownerClassName,
+            context.capturePropertyName,
+            beforeBlob,
+            afterBlob);
+    }
+
+    void SceneEditorInspectorSource::TryPropertyUndoActivated(const PropertyUndoCaptureContext& context, uint32_t editId)
+    {
+        if (!context.IsValid() || !ImGui::IsItemActivated())
         {
             return;
         }
 
         std::vector<uint8_t> beforeBlob;
-        const Serialization::SerializeResult result = Serialization::Serializer::SerializePropertyToBuffer(
-            const_cast<MEObject*>(owner),
-            ownerClass,
-            propertyName,
-            beforeBlob);
-        if (!result.ok)
+        if (!SerializePropertyUndoBlob(context, beforeBlob))
         {
             return;
         }
@@ -334,12 +398,10 @@ namespace minEngine
         m_PropertyUndoBeforeByEditId[editId] = std::move(beforeBlob);
     }
 
-    void SceneEditorInspectorSource::TryCommitPropertyUndoAfter(uint32_t editId,
-                                                                const MEObject* owner,
-                                                                const Reflection::MEClass* ownerClass,
-                                                                const std::string& propertyName)
+    void SceneEditorInspectorSource::TryPropertyUndoCommitAfterEdit(const PropertyUndoCaptureContext& context,
+                                                                    uint32_t editId)
     {
-        if (owner == nullptr || ownerClass == nullptr || !ImGui::IsItemDeactivatedAfterEdit())
+        if (!context.IsValid() || !ImGui::IsItemDeactivatedAfterEdit())
         {
             return;
         }
@@ -354,40 +416,38 @@ namespace minEngine
         m_PropertyUndoBeforeByEditId.erase(beforeIter);
 
         std::vector<uint8_t> afterBlob;
-        const Serialization::SerializeResult result = Serialization::Serializer::SerializePropertyToBuffer(
-            const_cast<MEObject*>(owner),
-            ownerClass,
-            propertyName,
-            afterBlob);
-        if (!result.ok)
+        if (!SerializePropertyUndoBlob(context, afterBlob))
         {
             return;
         }
 
-        if (afterBlob == beforeBlob)
+        TryPropertyUndoCommitImmediate(context, beforeBlob, afterBlob);
+    }
+
+    void SceneEditorInspectorSource::ApplyPropertyUndoCaptureHooks(const PropertyUndoCaptureContext& context,
+                                                                   bool allowRowCapture)
+    {
+        if (!allowRowCapture || !context.IsValid() || !ImGui::GetItemID())
         {
             return;
         }
 
-        IEditorContext* context = m_SceneEditor.GetEditorContext();
-        if (context == nullptr)
-        {
-            return;
-        }
+        const uint32_t editId = static_cast<uint32_t>(ImGui::GetItemID());
+        TryPropertyUndoActivated(context, editId);
+        TryPropertyUndoCommitAfterEdit(context, editId);
+    }
 
-        m_SceneEditor.SubmitSetObjectProperty(
-            *context,
-            owner->GetGuid(),
-            ownerClass->GetName(),
-            propertyName,
-            std::move(beforeBlob),
-            std::move(afterBlob));
+    std::string SceneEditorInspectorSource::MakeAssetPropertyUndoKey(const GUID& ownerGuid,
+                                                                     const std::string& propertyName)
+    {
+        return ownerGuid.ToString() + "|" + propertyName;
     }
 
     bool SceneEditorInspectorSource::DrawProperty(const MEObject* owner,
                                                   const Reflection::MEClass* ownerClass,
                                                   const Reflection::MEProperty& property,
-                                                  void* propertyPtr)
+                                                  void* propertyPtr,
+                                                  const PropertyUndoCaptureContext* parentUndoContext)
     {
         if(property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
         {
@@ -400,7 +460,19 @@ namespace minEngine
         ImGui::TextUnformatted(property.GetName().c_str());
         ImGui::TableSetColumnIndex(1);
 
+        PropertyUndoCaptureContext localUndoContext;
+        const PropertyUndoCaptureContext* activeUndoContext = parentUndoContext;
+        if (activeUndoContext == nullptr && owner != nullptr && ownerClass != nullptr
+            && CanUndoInspectorProperty(property))
+        {
+            localUndoContext = MakePropertyUndoCaptureContext(owner, ownerClass, property.GetName());
+            activeUndoContext = &localUndoContext;
+        }
+
         bool valueChanged = false;
+        const bool allowRowCapture = (property.GetCategory() != Reflection::MEPropertyCategory::Object
+            && property.GetCategory() != Reflection::MEPropertyCategory::ObjectPtr);
+
         switch(property.GetCategory())
         {
             case Reflection::MEPropertyCategory::Primitive:
@@ -419,13 +491,13 @@ namespace minEngine
             case Reflection::MEPropertyCategory::Array:
                 valueChanged = DrawArrayProperty(static_cast<const Reflection::MEArrayProperty&>(property), propertyPtr);
                 break;
+            default:
+                break;
         }
 
-        if (owner != nullptr && ownerClass != nullptr && CanUndoInspectorProperty(property))
+        if (activeUndoContext != nullptr)
         {
-            const uint32_t editId = static_cast<uint32_t>(ImGui::GetItemID());
-            TryCapturePropertyUndoBefore(editId, owner, ownerClass, property.GetName());
-            TryCommitPropertyUndoAfter(editId, owner, ownerClass, property.GetName());
+            ApplyPropertyUndoCaptureHooks(*activeUndoContext, allowRowCapture);
         }
 
         ImGui::PopID();
@@ -607,24 +679,31 @@ namespace minEngine
                                                         void* propertyPtr)
     {
         Reflection::MEClass* valueClass = objectProperty.GetValueClass();
-        if (valueClass)
+        if (!valueClass)
         {
-            bool valueChanged = false;
-            Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-            reflectionSystem.ForEachPropertyInHierarchy(valueClass->GetName(),
-                [&](const Reflection::MEProperty& property) -> bool
+            return false;
+        }
+
+        const PropertyUndoCaptureContext objectUndoContext =
+            MakePropertyUndoCaptureContext(owner, ownerClass, objectProperty.GetName());
+
+        bool valueChanged = false;
+        Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+        reflectionSystem.ForEachPropertyInHierarchy(
+            valueClass->GetName(),
+            [&](const Reflection::MEProperty& property) -> bool
             {
                 void* valuePtr = property.GetMutable(propertyPtr);
-                valueChanged |= DrawProperty(nullptr, nullptr, property, valuePtr);
+                const PropertyUndoCaptureContext* nestedContext =
+                    objectUndoContext.IsValid() ? &objectUndoContext : nullptr;
+                valueChanged |= DrawProperty(owner, ownerClass, property, valuePtr, nestedContext);
                 return true;
             });
-            return valueChanged;
-        }
-        return false;
+        return valueChanged;
     }
 
     bool SceneEditorInspectorSource::DrawObjectPtrProperty(const MEObject* owner,
-                                                           const Reflection::MEClass* /*ownerClass*/,
+                                                           const Reflection::MEClass* ownerClass,
                                                            const Reflection::MEObjectPtrProperty& objectPtrProperty,
                                                            void* propertyPtr)
     {
@@ -633,7 +712,7 @@ namespace minEngine
         {
             if (valueClass->IsA(Asset::StaticClass()))
             {
-                return DrawAssetRef(owner, objectPtrProperty, propertyPtr);
+                return DrawAssetRef(owner, ownerClass, objectPtrProperty, propertyPtr);
             }
 
             ImGui::TextUnformatted("Object references are not supported in this version.");
@@ -642,6 +721,7 @@ namespace minEngine
     }
 
     bool SceneEditorInspectorSource::DrawAssetRef(const MEObject* owner,
+                                                  const Reflection::MEClass* ownerClass,
                                                   const Reflection::MEObjectPtrProperty& objectPtrProperty,
                                                   void* propertyPtr)
     {
@@ -673,8 +753,24 @@ namespace minEngine
             selectedAssetName = "None";
         }
 
+        const PropertyUndoCaptureContext undoContext =
+            MakePropertyUndoCaptureContext(owner, ownerClass, objectPtrProperty.GetName());
+        const std::string assetUndoKey = MakeAssetPropertyUndoKey(
+            undoContext.IsValid() ? undoContext.ownerGuid : GUID::Zero(),
+            objectPtrProperty.GetName());
+
         ImGui::PushItemWidth(260.0f);
-        if (ImGui::BeginCombo("##AssetRefCombo", selectedAssetName.c_str()))
+        const bool comboOpened = ImGui::BeginCombo("##AssetRefCombo", selectedAssetName.c_str());
+        if (undoContext.IsValid() && ImGui::IsItemActivated())
+        {
+            std::vector<uint8_t> beforeBlob;
+            if (SerializePropertyUndoBlob(undoContext, beforeBlob))
+            {
+                m_AssetPropertyUndoBeforeByKey[assetUndoKey] = std::move(beforeBlob);
+            }
+        }
+
+        if (comboOpened)
         {
             for (const AssetMeta* meta : assetMetas)
             {
@@ -682,6 +778,7 @@ namespace minEngine
                 ImGui::PushID(static_cast<int>(meta->Guid.High ^ meta->Guid.Low));
                 if (ImGui::Selectable(meta->AssetName.c_str(), isSelected))
                 {
+                    const bool selectionChanged = (meta->Guid != selectedGuid);
                     std::string errorMessage;
                     const std::shared_ptr<Asset> asset =
                         AssetManager::Get().LoadAssetByPath(meta->AssetPath, errorMessage);
@@ -754,6 +851,28 @@ namespace minEngine
                                     sceneComponent->MarkRenderStateDirty();
                                 }
                             }
+
+                            if (selectionChanged && undoContext.IsValid())
+                            {
+                                std::vector<uint8_t> beforeBlob;
+                                const auto beforeIter = m_AssetPropertyUndoBeforeByKey.find(assetUndoKey);
+                                if (beforeIter != m_AssetPropertyUndoBeforeByKey.end())
+                                {
+                                    beforeBlob = beforeIter->second;
+                                }
+                                else if (!SerializePropertyUndoBlob(undoContext, beforeBlob))
+                                {
+                                    beforeBlob.clear();
+                                }
+
+                                std::vector<uint8_t> afterBlob;
+                                if (!beforeBlob.empty() && SerializePropertyUndoBlob(undoContext, afterBlob))
+                                {
+                                    TryPropertyUndoCommitImmediate(undoContext, beforeBlob, afterBlob);
+                                }
+
+                                m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
+                            }
                         }
                     }
                 }
@@ -767,6 +886,11 @@ namespace minEngine
 
             ImGui::EndCombo();
         }
+        else if (undoContext.IsValid() && ImGui::IsItemDeactivatedAfterEdit())
+        {
+            m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
+        }
+
         ImGui::PopItemWidth();
         return valueChanged;
     }
