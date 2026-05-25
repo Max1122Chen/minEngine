@@ -74,15 +74,6 @@ namespace minEngine
         void ApplyPropertyUndoCaptureHooks(const PropertyUndoCaptureContext& context, bool allowRowCapture);
 
         bool DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawIntProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawFloatProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawDoubleProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawBoolProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawStringProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawVector2Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawVector3Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawVector4Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawEnumProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
 
         bool DrawObjectProperty(const MEObject* owner,
                                 const Reflection::MEClass* ownerClass,

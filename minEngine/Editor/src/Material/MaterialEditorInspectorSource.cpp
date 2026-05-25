@@ -9,6 +9,7 @@
 #include "Material/MaterialGraphNodeRegistry.h"
 #include "Material/MaterialCompileDiagnosticsDrawer.h"
 #include "Material/MaterialNodeDefPropertyDrawer.h"
+#include "UI/Property/PropertyEditSession.h"
 
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
@@ -210,7 +211,9 @@ namespace minEngine
             ImGui::TextUnformatted("Selected Node");
             ImGui::TextColored(ImColor(style.HeaderColor), "%s", style.DisplayName);
 
-            MaterialNodeDefPropertyDrawer::DrawProperties(nodeDef, m_MaterialEditor);
+            PropertyEditSession nodeDefEditSession = PropertyEditSession::ForAssetDefaults();
+            nodeDefEditSession.OnMarkDirty = [this]() { m_MaterialEditor.NotifyGraphChanged(); };
+            MaterialNodeDefPropertyDrawer::DrawProperties(nodeDef, m_MaterialEditor, nodeDefEditSession);
         }
         else
         {
