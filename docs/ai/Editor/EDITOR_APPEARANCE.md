@@ -1,7 +1,7 @@
 # Editor Appearance — 设计案
 
 Last updated: 2026-05-25  
-Status: **拍板 v1 — M0 Color 实施中 / 其余里程碑未开工**  
+Status: **拍板 v1 — M0/M1/M2 已合入；M3 核心 Widgets 已实施（待 commit）；Enum / M3.1 后置**  
 分支：`feat/editor-appearance`  
 父文档：[Editor 平台化规划](./EDITOR_PLATFORM_PLAN.md)、[Editor Shell](./EDITOR_SHELL_DESIGN.md)  
 关联：[GUI 开发 FAQ](./GUI_DEV_FAQ.md)、[Command History / Undo](./EDITOR_COMMAND_HISTORY.md)、[资源管线 R2](../Render/RESOURCE_PIPELINE_PLAN.md)
@@ -72,7 +72,7 @@ Status: **拍板 v1 — M0 Color 实施中 / 其余里程碑未开工**
 
 ```text
 Inspector / Drawer
-       → PropertyEditPolicy (Specifier, Meta, Context)
+       → PropertyEditPolicy (Specifier, Meta, Context: SceneInstance | AssetDefaults)
        → PropertyWidgets
               ├─ TransformWidget
               ├─ ColorWidget / LinearColorWidget
@@ -167,9 +167,34 @@ struct Color
 - `Transform` → **`TransformWidget`**（子树 + 缩进）
 - 其它 `MEObjectProperty`（含 `Color`）→ 可折叠子树；**禁止**与父级字段同一缩进展平（修复 SceneComponent / Transform 观感）
 
-### 6.2 Session / Policy
+### 6.2 Session / Policy（M2）
 
-（保持 v0 设计：`PropertyEditSession` 承载 `OnMarkDirty`、`TryBeginEdit`；`PropertyEditPolicy` 读 Specifier/Meta。）
+`PropertyEditSession` 承载 **`ContextKind`**、`OnMarkDirty`（Scene 已接 `MarkSceneDirty`；Material/资产默认面板后续补脏标记）。
+
+`PropertyEditPolicy` 统一 **可见性 / 可编辑 / 只读** 与 **Meta 展示**（`DisplayName`、`Tooltip`；`ReadOnly=true` 等同不可编辑）。
+
+#### 编辑语境（`EditorPropertyEditContextKind`）
+
+| 语境 | 用途 | 典型调用方 |
+|------|------|------------|
+| **`SceneInstance`** | 关卡内实例属性（Hierarchy / Scene Inspector） | `PropertyEditSession::ForSceneEditor` |
+| **`AssetDefaults`** | 非场景实例的「默认/创作」侧 | Material 节点 Details、`MaterialNodeDefPropertyDrawer`；将来资产默认 Inspector、工程设置 |
+
+**拍板（2026-05-25）：** 不设单独的 `MaterialGraph` 枚举。Material 图节点参数属于 **默认侧创作**，与资产默认共用 **`AssetDefaults`**，以便 `EditDefaultsOnly` / `VisibleDefaultsOnly` 等与 UE 心智一致。
+
+Specifier 映射（`PropertyEditPolicy`）：
+
+| Specifier | `SceneInstance` | `AssetDefaults` |
+|-----------|-----------------|-----------------|
+| `Invisible` | 隐藏 | 隐藏 |
+| `VisibleInstanceOnly` | 显示 | 隐藏 |
+| `VisibleDefaultsOnly` | 隐藏 | 显示 |
+| `EditInstanceOnly` | 可编辑 | 只读/禁用 |
+| `EditDefaultsOnly` | 只读/禁用 | 可编辑 |
+| `EditAnywhere` | 可编辑 | 可编辑 |
+| `Transient` | 不可编辑 | 不可编辑 |
+
+`CanEdit` 为 false 时，Scene Inspector 对行使用 `ImGui::BeginDisabled`；`IsReadOnly` = 显示但不可改。
 
 ### 6.3 Widget 清单（第一版）
 
@@ -177,7 +202,7 @@ struct Color
 |--------|------|
 | Bool / Int / Float / String | primitives |
 | Vector2/3/4 | 分量色 + Reset |
-| Enum | `MEEnum` |
+| Enum | `MEEnum`（**M3‑Enum 后置**，反射缺 underlying type） |
 | **Color / LinearColor** | **ColorWidget** |
 | **Transform** | TransformWidget |
 | **ObjectPtr** | **ObjectPtrWidget**（见 §7） |
@@ -324,11 +349,12 @@ class Font : public Asset
 | 阶段 | 内容 | 开工依赖 | 验收 |
 |------|------|----------|------|
 | **—** | **设计审批** | 用户确认本文 | **已完成（2026-05-25）** |
-| **M0** | `Color` / `LinearColor` struct + 反射 + JSON + Runtime sRGB 转换 | **代码已合入分支** | `Color.h/.cpp`、`Color.gen.*`、`uint8` codec；Editor 仅 `EditorColorConversion`；本地需 clean rebuild 验证链接 |
-| **M1** | `EditorThemePalette`、Dark+Light、`EditorAppearance`、`ProjectSettings.Appearance` | M0 | 切换主题；Custom merge |
-| **M2** | `PropertyEditPolicy`、`PropertyEditSession` | M1 可并行 | Specifier 用例通过 |
-| **M3** | PropertyWidgets（primitive、enum、**ColorWidget**） | M2 | Material Drawer 接入 |
-| **M3.1** | `AssetManager::m_AssetMetasByType` + `PropertyReferencePicker`（Asset 路径） | M3 | Combo 不扫全表；ObjectPtr 替换 `DrawAssetRef` |
+| **M0** | `Color` / `LinearColor` struct + 反射 + JSON + Runtime sRGB 转换 | **已合入（`07c9734`）** | `Color.h/.cpp`、`Color.gen.*`、`uint8` codec；Editor 仅 `EditorColorConversion` |
+| **M1** | `EditorThemePalette`、Dark+Light、`EditorAppearance`、`ProjectSettings.Appearance` | **已合入（`e71f622`）** | View→Theme Dark/Light；写入 `.mesettings` |
+| **M2** | `PropertyEditPolicy`、`PropertyEditSession` | **已合入（`6648a0e`）** | 语境仅 `SceneInstance` \| `AssetDefaults`；Scene/Material Details 走 Policy；Meta DisplayName/Tooltip/ReadOnly |
+| **M3** | PropertyWidgets（primitive、**ColorWidget**） | **已实施（待 commit）** | `PropertyPrimitiveWidgets` / `ColorWidget` / `PropertyValueWidget`；`LinearColor` 用 `StaticClass`；Material `ForAssetDefaults` + `MarkDirty`；**Enum 未接入**（见下） |
+| **M3‑Enum** | `PropertyEnumWidget` 接入 | **后置** | 反射补全 enum **underlying type / size** 后再从 `PropertyValueWidget` 启用；仓库保留 scaffold，**未接线** |
+| **M3.1** | `AssetManager::m_AssetMetasByType` + `PropertyReferencePicker`（Asset 路径） | **后置（`AssetWorkflow` 分支）** | 类型桶在并行分支开发；本分支不重复实现；合并后再接 `ObjectPtrWidget` |
 | **M4** | Inspector 嵌套 + `TransformWidget` + Scene Undo 接线 | M3.1 | Transform 缩进；属性 Undo |
 | **M5** | **`Font` 资产** + `LoadAsset_Impl` + scan + `EditorAppearance` 从 Font 加载 | M1（可与 M3 并行） | 工程可指定 Font GUID；英文清晰 |
 | **M5.1** | 工程 `UiFontSize`、CJK 开关接线（无 glyph 也不崩） | M5 | 配置项生效 |
@@ -337,7 +363,7 @@ class Font : public Asset
 
 **Font 开工时间点：** **M5**（在 M1 主题可用之后、M6 清扫之前）；Runtime Font 类与 AssetManager 扩展可与 M3.1 并行，但 **Editor 换字体** 不早于 M5。
 
-**PR 建议：** M0–M1 | M2–M3.1–M4 | M5–M5.1 | M6 。
+**PR 建议：** M0–M1 | M2–M3 | M3.1（合并 AssetWorkflow 后）–M4 | M5–M5.1 | M6 。
 
 ---
 
@@ -348,7 +374,13 @@ class Font : public Asset
 | `Runtime/Core/Math/Color.h` | `Color`, `LinearColor` |
 | `Runtime/Resource/Font.h`（或 `AssetResources/FontResource.h`） | Font 资产 |
 | `Runtime/Resource/AssetManager.*` | 类型桶索引 + Font LoadImpl |
-| `Editor/src/UI/Property/ColorWidget.h` | ImGui ColorEdit |
+| `Editor/src/UI/Property/PropertyEditTypes.h` | `EditorPropertyEditContextKind` |
+| `Editor/src/UI/Property/PropertyEditPolicy.*` | Specifier + Meta |
+| `Editor/src/UI/Property/PropertyEditSession.*` | Context + `OnMarkDirty` |
+| `Editor/src/UI/Property/PropertyPrimitiveWidgets.*` | Primitive + Vector2/3/4 |
+| `Editor/src/UI/Property/PropertyEnumWidget.*` | **Scaffold only**（未接入 `PropertyValueWidget`） |
+| `Editor/src/UI/Property/PropertyValueWidget.*` | Dispatches primitive / `LinearColor` (`IsA(StaticClass)`) |
+| `Editor/src/UI/Property/ColorWidget.*` | ImGui ColorEdit → `LinearColor` |
 | `Editor/src/UI/Property/ObjectPtrWidget.h` | → PropertyReferencePicker |
 | `Editor/src/UI/Property/PropertyReferencePicker.h` | Asset / Object 分流 |
 | `Editor/src/UI/Appearance/EditorAppearance.*` | 主题 + Font atlas |
@@ -366,6 +398,7 @@ class Font : public Asset
 | Open O1–O3,O5,O6 | 采纳建议默认 |
 | Font | **本计划 M5 资产化**，非「将来再说」 |
 | ObjectPtr | Asset → **类型桶索引**；Object → 后续 + Class 过滤 |
+| 属性编辑语境 | **二分**：`SceneInstance` + `AssetDefaults`（含 Material 节点）；**无** `MaterialGraph` |
 | 审批门 | **已批准；M0 已开工** |
 | 其余 v0 设计 | 用户基本同意 |
 
@@ -389,3 +422,6 @@ class Font : public Asset
 | 2026-05-25 | v0 初稿 |
 | 2026-05-25 | **v1 迭代**：Color 对齐 Transform + ColorWidget；Font 纳入 M5；ObjectPtr / AssetManager 类型桶 + PropertyReferencePicker；审批门；Open 项更新 |
 | 2026-05-25 | **拍板**：sRGB 编辑 / Linear 存储；ImGui 转换仅 Editor；M0 开工 |
+| 2026-05-25 | **M2 设计**：移除 `MaterialGraph` 语境；Material 节点 Details 使用 `AssetDefaults`；补充 §6.2 语境表 |
+| 2026-05-25 | **M3**：PropertyWidgets 分层；`LinearColor` 用 `MEClass::IsA(StaticClass)`；Material Details `PropertyEditSession::MarkDirty` |
+| 2026-05-25 | **M3 诚实范围**：`PropertyEnumWidget` 仅 scaffold、未接线；**M3.1** 类型桶后置至 `AssetWorkflow` 分支合并后 |

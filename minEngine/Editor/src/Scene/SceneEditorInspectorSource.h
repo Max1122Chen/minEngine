@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Runtime/Core/GUID/GUID.h"
 #include "Shell/IEditorInspectorSource.h"
+#include "UI/Property/PropertyEditSession.h"
 
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/Components/Component.h"
@@ -73,15 +74,6 @@ namespace minEngine
         void ApplyPropertyUndoCaptureHooks(const PropertyUndoCaptureContext& context, bool allowRowCapture);
 
         bool DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawIntProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawFloatProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawDoubleProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawBoolProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawStringProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawVector2Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawVector3Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawVector4Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
-        bool DrawEnumProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr);
 
         bool DrawObjectProperty(const MEObject* owner,
                                 const Reflection::MEClass* ownerClass,
@@ -111,6 +103,7 @@ namespace minEngine
         static std::string MakeAssetPropertyUndoKey(const GUID& ownerGuid, const std::string& propertyName);
 
         SceneEditor& m_SceneEditor;
+        PropertyEditSession m_PropertyEditSession;
         static constexpr const char* kWindowTitle = "Inspector";
         std::string m_SelectedAddComponentTypeName;
         bool m_IsRenamingSelectedGameObject = false;

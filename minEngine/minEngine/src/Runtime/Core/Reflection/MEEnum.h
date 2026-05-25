@@ -59,8 +59,19 @@ namespace minEngine::Reflection
             return m_Entries;
         }
 
+        void SetSize(size_t size)
+        {
+            m_Size = size;
+        }
+
+        size_t GetSize() const
+        {
+            return m_Size;
+        }
+
     private:
         std::string m_Name;
         std::vector<MEEnumEntry> m_Entries;
+        size_t m_Size = 0;
     };
 }
