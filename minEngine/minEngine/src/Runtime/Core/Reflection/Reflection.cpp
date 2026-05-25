@@ -254,7 +254,17 @@ namespace minEngine::Reflection
                 continue;
             }
 
+            if (resolvedEnum->GetSize() == 0)
+            {
+                AppendError(
+                    "[Reflection] Enum '" + resolvedEnum->GetName() + "' has zero Size for property '"
+                    + ref.property->GetName() + "'.");
+                succeeded = false;
+                continue;
+            }
+
             ref.property->primitiveTypeName = resolvedEnum->GetName();
+            ref.property->boundEnum = resolvedEnum;
         }
 
         return succeeded;
