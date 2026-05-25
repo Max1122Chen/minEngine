@@ -1,6 +1,6 @@
 {
     "AssetName": "Simple",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Shaders/Simple.meshader",
+    "AssetPath": "Shaders/Simple.meshader",
     "AssetType": "Shader",
     "Guid": {
         "High": 17116851838331670448,

@@ -80,6 +80,11 @@ namespace minEngine
         return false;
     }
 
+    bool SceneManager::IsSceneRegistered(const std::string& sceneName) const
+    {
+        return m_RegisteredScenes.find(sceneName) != m_RegisteredScenes.end();
+    }
+
     std::shared_ptr<Scene> SceneManager::CreateNewScene(const std::string& sceneName)
     {
         UnloadActiveScene();

@@ -32,4 +32,5 @@ Status: **产品意图已记录；详细架构与实现见 [Editor 平台化规�
 
 ## 下一步
 
-- 不在此文件写实现；待 E1–E4 分项 `*_DESIGN.md` 完成后再恢复「Content Browser v0 验收标准」一节。
+- **分项设计：** [ASSET_PIPELINE_DESIGN.md](./ASSET_PIPELINE_DESIGN.md)（E3 + FileDialog + Watcher + Browser 框架 + 实施顺序 + 待拍板表 §10）。
+- 拍板后在本文件恢复「Content Browser v0 验收标准」一节。

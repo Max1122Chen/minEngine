@@ -1,6 +1,6 @@
 {
     "AssetName": "test",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Scenes/test.mescene",
+    "AssetPath": "Scenes/test.mescene",
     "AssetType": "Scene",
     "Guid": {
         "High": 5632001753596053347,

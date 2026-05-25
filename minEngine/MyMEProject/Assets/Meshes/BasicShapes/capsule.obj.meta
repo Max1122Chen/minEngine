@@ -1,0 +1,9 @@
+{
+    "AssetName": "capsule",
+    "AssetPath": "Meshes/BasicShapes/capsule.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 14176593906355949541,
+        "Low": 13720197669952164352
+    }
+}

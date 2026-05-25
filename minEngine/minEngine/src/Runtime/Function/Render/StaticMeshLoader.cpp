@@ -54,7 +54,9 @@ namespace minEngine
     {
         MeshImportData importData;
         std::string error;
-        if (!MeshLoader::ImportFromFile(meta.AssetPath, importData, &error))
+        const std::string absoluteAssetPath =
+            AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
+        if (!MeshLoader::ImportFromFile(absoluteAssetPath, importData, &error))
         {
             return nullptr;
         }

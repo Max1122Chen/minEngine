@@ -145,7 +145,11 @@ namespace minEngine
 
     void ProjectManager::CloseCurrentProject()
     {
-        // TODO: add any necessary cleanup logic here (e.g., unloading assets, closing scenes, etc.)
+        if (AssetManager::HasInstance())
+        {
+            AssetManager::Get().ClearProjectRegistry();
+        }
+
         m_CurrentProjectCtx.Reset();
         PathRegistry::Get().ClearProjectRoots();
     }

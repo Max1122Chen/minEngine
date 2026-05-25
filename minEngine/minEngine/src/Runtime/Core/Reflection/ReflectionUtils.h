@@ -60,6 +60,8 @@ namespace minEngine::Reflection
     template<>
     inline std::string GetPrimitiveName<int64_t>() { return "int64"; }    // aka long long
     template<>
+    inline std::string GetPrimitiveName<uint8_t>() { return "uint8"; }
+    template<>
     inline std::string GetPrimitiveName<uint32_t>() { return "uint32"; }  // aka unsigned int
     template<>
     inline std::string GetPrimitiveName<unsigned long>() { return "unsigned long"; }

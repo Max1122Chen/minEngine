@@ -4,9 +4,13 @@
 #include "Runtime/Core/Math/Math.h"
 #include "AssetMeta.h"
 #include "Asset.h"
+#include "AssetRegistryTypes.h"
 
 #include <filesystem>
 #include <functional>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 
 namespace minEngine
 {
@@ -18,6 +22,13 @@ namespace minEngine
     class Shader;
     class Scene;
     class Asset;
+
+    struct ImportAssetResult
+    {
+        bool bSuccess = false;
+        std::string ErrorMessage;
+        AssetMeta Meta;
+    };
 
     class AssetManager
     {
@@ -31,22 +42,36 @@ namespace minEngine
         void Shutdown();
 
         void ScanAssets(const std::filesystem::path& directory);
-        AssetMeta RegisterAsset(const std::string& path, const std::string& type);
+        AssetMeta RegisterAsset(const std::string& path, const std::string& assetTypeId);
+
+        ImportAssetResult ImportAsset(const std::filesystem::path& sourcePath,
+                                      const std::filesystem::path& destDirectory);
+
+        bool DeleteAsset(const std::string& assetPath, std::string& outError);
+        bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
+        bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
+        bool UnregisterAsset(const std::string& assetPath, std::string& outError);
+
+        void ClearProjectRegistry();
 
         std::shared_ptr<Asset> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByPath(const std::string& path, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByMeta(const AssetMeta& meta, std::string& outErrorMessage);
 
-
         const AssetMeta* FindAssetMetaByPath(const std::string& path) const;
         const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
-        std::vector<AssetMeta*> FindAssetMetasByType(const std::string& type) const;
+        std::vector<const AssetMeta*> FindAssetMetasByType(const std::string& assetTypeId) const;
+        std::vector<const AssetMeta*> FindAssetMetasByRuntimeClass(const std::string& runtimeClassName) const;
+
+        uint32_t Subscribe(AssetRegistryChangedCallback callback);
+        void Unsubscribe(uint32_t subscriptionId);
+
+        std::filesystem::path ResolveAssetAbsolutePath(std::string_view projectRelativeOrLegacyPath) const;
 
         static bool HasInstance();
 
-        /** Marks every live entry in the loaded-asset cache (and Scene sub-hierarchies). */
         void MarkReachableLoadedAssets(const std::function<void(MEObject*)>& markReachable) const;
-    
+
         template<typename T>
         std::shared_ptr<T> LoadAsset(const std::string& path)
         {
@@ -56,18 +81,22 @@ namespace minEngine
                 return nullptr;
             }
 
-            // TODO: check the cache first before loading from disk, and populate the cache after loading
-            if (m_LoadedAssetCache.find(path) != m_LoadedAssetCache.end())
+            const std::string registryKey = NormalizeProjectRelativeAssetPath(path);
+            if (registryKey.empty())
             {
-                std::shared_ptr<MEObject> cachedAsset = std::static_pointer_cast<MEObject>(m_LoadedAssetCache[path].lock());
+                return nullptr;
+            }
+
+            if (m_LoadedAssetCache.find(registryKey) != m_LoadedAssetCache.end())
+            {
+                std::shared_ptr<MEObject> cachedAsset = std::static_pointer_cast<MEObject>(m_LoadedAssetCache[registryKey].lock());
                 if (cachedAsset)
                 {
                     return std::dynamic_pointer_cast<T>(cachedAsset);
                 }
             }
 
-            // Then check if the assetmeta exists and matches the expected type, to fail faster if the caller is trying to load an asset with the wrong type
-            const AssetMeta* meta = FindAssetMetaByPath(path);
+            const AssetMeta* meta = FindAssetMetaByPath(registryKey);
             if (meta == nullptr)
             {
                 return nullptr;
@@ -76,9 +105,9 @@ namespace minEngine
             std::shared_ptr<T> asset = LoadAsset_Impl<T>(*meta);
             if (asset)
             {
-                m_LoadedAssetCache[path] = asset;
+                m_LoadedAssetCache[registryKey] = asset;
                 std::shared_ptr<Asset> genericAsset = std::static_pointer_cast<Asset>(asset);
-                genericAsset->SetMeta(const_cast<AssetMeta*>(meta)); // We need to set the meta for the asset after loading it, so that the asset can access its own meta data if needed
+                genericAsset->SetMeta(const_cast<AssetMeta*>(meta));
             }
 
             return asset;
@@ -95,7 +124,7 @@ namespace minEngine
 
             return SaveAsset_Impl<T>(*meta, asset);
         }
-        
+
     private:
         template<typename T>
         std::shared_ptr<T> CreateAsset(const std::string& name, const std::string& directory)
@@ -133,24 +162,43 @@ namespace minEngine
 
     private:
         friend class Engine;
+        friend class AssetManagerTestScope;
 
         static void SetInstance(AssetManager* instance);
         static AssetManager* s_Instance;
 
         std::shared_ptr<Asset> LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage);
-        std::string NormalizeAssetPath(const std::string& path) const;
-        std::string InferAssetTypeFromExtension(const std::filesystem::path& path) const;
-        std::string InferAssetTypeFromClassName(const std::string& className) const;
-        std::filesystem::path BuildMetaPath(const std::filesystem::path& assetPath) const;
-        void CacheMeta(const AssetMeta& meta);
 
-        std::unordered_map<std::string, AssetMeta> m_AssetRegistry; // Maps asset paths to their metadata
+        std::string NormalizeProjectRelativeAssetPath(const std::string& path) const;
+        std::filesystem::path BuildMetaAbsolutePath(std::string_view projectRelativeAssetPath) const;
+        bool IsUnderProjectContentRoot(const std::filesystem::path& absolutePath) const;
+        bool IsUnderEngineDefaultAssetsRoot(const std::filesystem::path& absolutePath) const;
+
+        void CacheMeta(const AssetMeta& meta, bool alreadyRegistered);
+        void UncacheMeta(std::string_view projectRelativePath);
+        void RemoveFromTypeBucket(const AssetMeta& meta);
+        void AddToTypeBucket(const AssetMeta& meta);
+        void BroadcastChange(const AssetRegistryChange& change);
+
+        void EvictLoadedAssetCache(std::string_view projectRelativePath);
+        void MoveLoadedAssetCacheKey(std::string_view oldRel, std::string_view newRel);
+        bool LogReferenceWarningsForDelete(const AssetMeta& meta) const;
+        bool MoveRegistryEntry(std::string_view oldRel, std::string_view newRel, AssetMeta& inOutMeta);
+        bool WriteMetaFile(const AssetMeta& meta) const;
+        std::string ResolveAssetAbsolutePathString(std::string_view projectRelativeOrLegacyPath) const;
+        static bool IsPathInsideDirectory(
+            const std::filesystem::path& absolutePath,
+            const std::filesystem::path& rootDirectory);
+
+        std::unordered_map<std::string, AssetMeta> m_AssetRegistry;
         std::unordered_map<GUID, std::string, GUID::Hash> m_AssetPathByGuid;
+        std::unordered_map<std::string, std::vector<AssetMeta*>> m_AssetMetasByType;
+        std::unordered_map<std::string, std::weak_ptr<MEObject>> m_LoadedAssetCache;
 
-        std::unordered_map<std::string, std::weak_ptr<MEObject>> m_LoadedAssetCache; // Generic cache for loaded assets by path
+        std::unordered_map<uint32_t, AssetRegistryChangedCallback> m_Subscribers;
+        uint32_t m_NextSubscriptionId = 1u;
     };
-    
-    // Load Asset Impl specializations
+
     template<>
     std::shared_ptr<Scene> AssetManager::LoadAsset_Impl<Scene>(const AssetMeta& meta);
     template<>
@@ -162,8 +210,6 @@ namespace minEngine
     template<>
     std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta);
 
-
-    // Save Asset Impl specializations
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
     template<>

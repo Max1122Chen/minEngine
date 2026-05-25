@@ -1,6 +1,6 @@
 {
     "AssetName": "albedo",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Textures/albedo.jpg",
+    "AssetPath": "Textures/albedo.jpg",
     "AssetType": "Texture2D",
     "Guid": {
         "High": 8033953010412506573,

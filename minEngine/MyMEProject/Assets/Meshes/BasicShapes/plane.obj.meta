@@ -1,0 +1,9 @@
+{
+    "AssetName": "plane",
+    "AssetPath": "Meshes/BasicShapes/plane.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 11528704252926838358,
+        "Low": 12342300230576269782
+    }
+}

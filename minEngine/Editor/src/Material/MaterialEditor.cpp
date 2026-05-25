@@ -199,8 +199,8 @@ namespace minEngine
 
     void MaterialEditor::RefreshMaterialList()
     {
-        const std::string materialClassName = Reflection::GetClassName<Material>();
-        const std::vector<AssetMeta*> materials = AssetManager::Get().FindAssetMetasByType(materialClassName);
+        const std::vector<const AssetMeta*> materials =
+            AssetManager::Get().FindAssetMetasByType("Material");
         m_MaterialMetas.assign(materials.begin(), materials.end());
         std::sort(
             m_MaterialMetas.begin(),

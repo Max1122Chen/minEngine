@@ -1,6 +1,6 @@
 {
     "AssetName": "xyzrgb_dragon",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Meshes/xyzrgb_dragon.obj",
+    "AssetPath": "Meshes/xyzrgb_dragon.obj",
     "AssetType": "StaticMesh",
     "Guid": {
         "High": 17095877878277229582,

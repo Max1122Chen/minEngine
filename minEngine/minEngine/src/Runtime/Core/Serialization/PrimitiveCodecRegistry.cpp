@@ -118,6 +118,39 @@ namespace minEngine::Serialization
                     {
                         return false;
                     }
+                    return archive.WriteUInt64(static_cast<uint64_t>(*static_cast<const uint8_t*>(valuePtr)));
+                },
+                [](ReaderArchive& archive, void* outValuePtr) -> bool
+                {
+                    if (outValuePtr == nullptr)
+                    {
+                        return false;
+                    }
+
+                    uint64_t value = 0;
+                    if (!archive.ReadUInt64(value))
+                    {
+                        return false;
+                    }
+
+                    if (value > static_cast<uint64_t>(std::numeric_limits<uint8_t>::max()))
+                    {
+                        return false;
+                    }
+
+                    *static_cast<uint8_t*>(outValuePtr) = static_cast<uint8_t>(value);
+                    return true;
+                }},
+            { GetPrimitiveName<uint8_t>(), typeid(uint8_t).name()});
+
+        RegisterCodecWithAliases(
+            PrimitiveCodec{
+                [](WriterArchive& archive, const void* valuePtr) -> bool
+                {
+                    if (valuePtr == nullptr)
+                    {
+                        return false;
+                    }
                     return archive.WriteUInt64(static_cast<uint64_t>(*static_cast<const uint32_t*>(valuePtr)));
                 },
                 [](ReaderArchive& archive, void* outValuePtr) -> bool

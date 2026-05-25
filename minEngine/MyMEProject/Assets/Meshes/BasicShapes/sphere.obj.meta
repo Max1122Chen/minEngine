@@ -1,0 +1,9 @@
+{
+    "AssetName": "sphere",
+    "AssetPath": "Meshes/BasicShapes/sphere.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 607701751770204618,
+        "Low": 9254168834165808632
+    }
+}
