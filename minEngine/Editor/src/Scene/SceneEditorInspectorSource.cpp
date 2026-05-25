@@ -2,6 +2,8 @@
 
 #include "Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
+#include "UI/Property/PropertyEditPolicy.h"
+#include "UI/Property/PropertyValueWidget.h"
 
 #include "imgui.h"
 
@@ -18,6 +20,7 @@ namespace minEngine
 {
     SceneEditorInspectorSource::SceneEditorInspectorSource(SceneEditor& sceneEditor)
         : m_SceneEditor(sceneEditor)
+        , m_PropertyEditSession(PropertyEditSession::ForSceneEditor(sceneEditor))
     {
     }
 
@@ -294,7 +297,7 @@ namespace minEngine
 
     bool SceneEditorInspectorSource::CanUndoInspectorProperty(const Reflection::MEProperty& property) const
     {
-        if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+        if (!PropertyEditPolicy::CanEdit(property, m_PropertyEditSession.ContextKind))
         {
             return false;
         }
@@ -449,7 +452,7 @@ namespace minEngine
                                                   void* propertyPtr,
                                                   const PropertyUndoCaptureContext* parentUndoContext)
     {
-        if(property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+        if (!PropertyEditPolicy::ShouldShow(property, m_PropertyEditSession.ContextKind))
         {
             return false;
         }
@@ -457,8 +460,14 @@ namespace minEngine
         ImGui::PushID(property.GetName().c_str());
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::TextUnformatted(property.GetName().c_str());
+        ImGui::TextUnformatted(PropertyEditPolicy::GetDisplayName(property));
         ImGui::TableSetColumnIndex(1);
+
+        const bool canEdit = PropertyEditPolicy::CanEdit(property, m_PropertyEditSession.ContextKind);
+        if (!canEdit)
+        {
+            ImGui::BeginDisabled();
+        }
 
         PropertyUndoCaptureContext localUndoContext;
         const PropertyUndoCaptureContext* activeUndoContext = parentUndoContext;
@@ -479,8 +488,21 @@ namespace minEngine
                 valueChanged = DrawPrimitiveProperty(static_cast<const Reflection::MEPrimitiveProperty&>(property), propertyPtr);
                 break;
             case Reflection::MEPropertyCategory::Object:
-                valueChanged = DrawObjectProperty(owner, ownerClass, static_cast<const Reflection::MEObjectProperty&>(property), propertyPtr);
+            {
+                const Reflection::MEObjectProperty& objectProperty =
+                    static_cast<const Reflection::MEObjectProperty&>(property);
+                if (PropertyValueWidget::Draw(property, propertyPtr, -FLT_MIN))
+                {
+                    m_SceneEditor.MarkSceneDirty();
+                    valueChanged = true;
+                }
+                else
+                {
+                    valueChanged = DrawObjectProperty(owner, ownerClass, objectProperty, propertyPtr);
+                }
+
                 break;
+            }
             case Reflection::MEPropertyCategory::ObjectPtr:
                 valueChanged = DrawObjectPtrProperty(
                     owner,
@@ -500,177 +522,33 @@ namespace minEngine
             ApplyPropertyUndoCaptureHooks(*activeUndoContext, allowRowCapture);
         }
 
+        if (!canEdit)
+        {
+            ImGui::EndDisabled();
+        }
+
+        if (const char* tooltip = PropertyEditPolicy::GetTooltip(property))
+        {
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            {
+                ImGui::SetTooltip("%s", tooltip);
+            }
+        }
+
         ImGui::PopID();
         return valueChanged;
     }
 
-    bool SceneEditorInspectorSource::DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty &primitiveProperty, void *propertyPtr)
+    bool SceneEditorInspectorSource::DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty,
+                                                           void* propertyPtr)
     {
-        std::string shortTypeName = GetShortTypeName(primitiveProperty.primitiveTypeName);
-        if (shortTypeName == "int"
-            || shortTypeName == "int32"
-            || shortTypeName == "int16"
-            || shortTypeName == "long"
-            || shortTypeName == "int64")
-        {
-            return DrawIntProperty(primitiveProperty, propertyPtr);
-        }
-        else if (shortTypeName == "uint32")
-        {
-            if (ImGui::DragScalar("##Value", ImGuiDataType_U32, propertyPtr, 1.0f, nullptr, nullptr, "%u"))
-            {
-                m_SceneEditor.MarkSceneDirty();
-                return true;
-            }
-            return false;
-        }
-        else if(shortTypeName == "float")
-        {
-            return DrawFloatProperty(primitiveProperty, propertyPtr);
-        }
-        else if(shortTypeName == "double")
-        {
-            return DrawDoubleProperty(primitiveProperty, propertyPtr);
-        }
-        else if(shortTypeName == "bool")
-        {
-            return DrawBoolProperty(primitiveProperty, propertyPtr);
-        }
-        else if (shortTypeName == "string" || shortTypeName == "std::string")
-        {
-            return DrawStringProperty(primitiveProperty, propertyPtr);
-        }
-        else if(shortTypeName == "Vector2")
-        {
-            return DrawVector2Property(primitiveProperty, propertyPtr);
-        }
-        else if(shortTypeName == "Vector3")
-        {
-            return DrawVector3Property(primitiveProperty, propertyPtr);
-        }
-        else if(shortTypeName == "Vector4")
-        {
-            return DrawVector4Property(primitiveProperty, propertyPtr);
-        }
-        else
-        {
-            ImGui::TextUnformatted(("Unsupported primitive type: " + shortTypeName).c_str());
-        }
-        return false;
-    }
-
-    bool SceneEditorInspectorSource::DrawIntProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        if (ImGui::DragInt("##Value", static_cast<int*>(propertyPtr), 1))
+        if (PropertyValueWidget::Draw(primitiveProperty, propertyPtr, -FLT_MIN))
         {
             m_SceneEditor.MarkSceneDirty();
             return true;
         }
+
         return false;
-    }
-
-    bool SceneEditorInspectorSource::DrawFloatProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        if (ImGui::DragFloat("##Value", static_cast<float*>(propertyPtr), 0.1f))
-        {
-            m_SceneEditor.MarkSceneDirty();
-            return true;
-        }
-        return false;
-    }
-
-    bool SceneEditorInspectorSource::DrawDoubleProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        if (ImGui::DragScalar("##Value", ImGuiDataType_Double, propertyPtr, 0.1f))
-        {
-            m_SceneEditor.MarkSceneDirty();
-            return true;
-        }
-        return false;
-    }
-
-    bool SceneEditorInspectorSource::DrawBoolProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        if (ImGui::Checkbox("##Value", static_cast<bool*>(propertyPtr)))
-        {
-            m_SceneEditor.MarkSceneDirty();
-            return true;
-        }
-        return false;
-    }
-
-    bool SceneEditorInspectorSource::DrawStringProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        std::string* stringValue = static_cast<std::string*>(propertyPtr);
-        char textBuffer[256] = {};
-        std::strncpy(textBuffer, stringValue->c_str(), sizeof(textBuffer) - 1);
-        if (ImGui::InputText("##Value", textBuffer, sizeof(textBuffer)))
-        {
-            *stringValue = textBuffer;
-            m_SceneEditor.MarkSceneDirty();
-            return true;
-        }
-        return false;
-    }
-
-    bool SceneEditorInspectorSource::DrawVector2Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        Vector2* value = static_cast<Vector2*>(propertyPtr);
-        float data[2] = {value->x, value->y};
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        bool valueChanged = false;
-        if (ImGui::DragFloat2("##Value", data, 0.1f))
-        {
-            value->x = data[0];
-            value->y = data[1];
-            m_SceneEditor.MarkSceneDirty();
-            valueChanged = true;
-        }
-        ImGui::PopStyleVar(2);
-        return valueChanged;
-    }
-
-    bool SceneEditorInspectorSource::DrawVector3Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        Vector3* value = static_cast<Vector3*>(propertyPtr);
-        float data[3] = {value->x, value->y, value->z};
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        bool valueChanged = false;
-        if (ImGui::DragFloat3("##Value", data, 0.1f))
-        {
-            value->x = data[0];
-            value->y = data[1];
-            value->z = data[2];
-            m_SceneEditor.MarkSceneDirty();
-            valueChanged = true;
-        }
-        ImGui::PopStyleVar(2);
-        return valueChanged;
-    }
-
-    bool SceneEditorInspectorSource::DrawVector4Property(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-    {
-        Vector4* value = static_cast<Vector4*>(propertyPtr);
-        float data[4] = {value->x, value->y, value->z, value->w};
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        bool valueChanged = false;
-        if (ImGui::DragFloat4("##Value", data, 0.1f))
-        {
-            value->x = data[0];
-            value->y = data[1];
-            value->z = data[2];
-            value->w = data[3];
-            m_SceneEditor.MarkSceneDirty();
-            valueChanged = true;
-        }
-        ImGui::PopStyleVar(2);
-        return valueChanged;
     }
 
     bool SceneEditorInspectorSource::DrawObjectProperty(const MEObject* owner,

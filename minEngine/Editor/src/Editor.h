@@ -15,6 +15,7 @@
 #include "Shell/EditorSubModule.h"
 #include "Shell/IEditorContext.h"
 #include "Shell/ViewportClientRegistry.h"
+#include "UI/Appearance/EditorAppearance.h"
 
 #include <memory>
 #include <vector>
@@ -49,6 +50,8 @@ namespace minEngine
         ConsoleModule& GetConsole() override { return m_ConsoleModule; }
         EditorCommandStack& GetCommandStack() override { return m_CommandStack; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
+        EditorAppearance& GetEditorAppearance() override { return m_Appearance; }
+        const EditorAppearance& GetEditorAppearance() const override { return m_Appearance; }
 
         void SetLastDeltaTime(float deltaTime) override { m_LastDeltaTime = deltaTime; }
         float GetLastDeltaTime() const override { return m_LastDeltaTime; }
@@ -69,6 +72,7 @@ namespace minEngine
         void RegisterModules();
         void UpdateWindowTitle();
         void ApplyCommandStackSettingsFromProject();
+        void ApplyAppearanceSettingsFromProject();
         void ResetCommandStackForNewDocument();
 
         Engine* m_Engine = nullptr;
@@ -82,6 +86,7 @@ namespace minEngine
         EditorInputHub m_InputHub;
         ViewportClientRegistry m_ViewportRegistry;
         EditorCommandStack m_CommandStack;
+        EditorAppearance m_Appearance;
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;

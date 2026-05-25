@@ -15,6 +15,7 @@ namespace minEngine
     class ConsoleModule;
     class EditorCommandStack;
     class EditorInputHub;
+    class EditorAppearance;
 
     class IEditorContext
     {
@@ -39,6 +40,8 @@ namespace minEngine
         virtual ConsoleModule& GetConsole() = 0;
         virtual EditorCommandStack& GetCommandStack() = 0;
         virtual EditorInputHub& GetInputHub() = 0;
+        virtual EditorAppearance& GetEditorAppearance() = 0;
+        virtual const EditorAppearance& GetEditorAppearance() const = 0;
 
         virtual void SetLastDeltaTime(float deltaTime) = 0;
         virtual float GetLastDeltaTime() const = 0;

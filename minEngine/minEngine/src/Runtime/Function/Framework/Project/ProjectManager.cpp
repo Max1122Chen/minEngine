@@ -112,6 +112,8 @@ namespace minEngine
             // If everything is good, we can set the current project context (e.g., store the descriptor, load project-specific settings, etc.)
             m_CurrentProjectCtx.Descriptor = descriptor;
 
+            m_CurrentSettingsPath = settingsFound ? settingsPath : ResolveDefaultSettingsPath(descriptorPath);
+
             // Try to load project-specific settings (e.g., MyProject.mesettings), but we won't fail opening the project if the settings file is missing or failed to parse, since the settings are optional and we can just use default settings in that case
             if (settingsFound)
             {
@@ -151,7 +153,58 @@ namespace minEngine
         }
 
         m_CurrentProjectCtx.Reset();
+        m_CurrentSettingsPath.clear();
         PathRegistry::Get().ClearProjectRoots();
+    }
+
+    std::filesystem::path ProjectManager::ResolveDefaultSettingsPath(
+        const std::filesystem::path& descriptorPath) const
+    {
+        const std::filesystem::path descriptorDir = descriptorPath.parent_path();
+        if (descriptorDir.empty())
+        {
+            return {};
+        }
+
+        const std::string stem = descriptorPath.stem().string();
+        if (stem.empty())
+        {
+            return descriptorDir / ("Project" + std::string(kMEProjectSettingsExtension));
+        }
+
+        return descriptorDir / (stem + "Settings" + std::string(kMEProjectSettingsExtension));
+    }
+
+    bool ProjectManager::SaveCurrentProjectSettings()
+    {
+        if (m_CurrentSettingsPath.empty())
+        {
+            ME_CORE_WARN("SaveCurrentProjectSettings: no settings path (project not open).");
+            return false;
+        }
+
+        Serialization::JsonWriterArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+            m_CurrentSettingsPath.string(),
+            minEngine::Reflection::GetClassName<ProjectSettings>(),
+            &m_CurrentProjectCtx.Settings,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = true,
+                .allowObjectPtrSerialization = false});
+
+        if (!result.ok)
+        {
+            ME_CORE_ERROR(
+                "Failed to save project settings. Error: {}. Field path: {}. Settings file: {}",
+                result.message,
+                result.fieldPath,
+                m_CurrentSettingsPath.string());
+        }
+
+        return result.ok;
     }
 
     bool ProjectManager::LoadProjectDesc(const std::filesystem::path &descriptorPath, ProjectDescriptor &outDescriptor)

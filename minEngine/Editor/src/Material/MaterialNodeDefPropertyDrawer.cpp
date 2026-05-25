@@ -1,6 +1,10 @@
 #include "MaterialNodeDefPropertyDrawer.h"
 
 #include "MaterialEditor.h"
+#include "UI/Property/PropertyEditPolicy.h"
+#include "UI/Property/PropertyEditSession.h"
+#include "UI/Property/PropertyEditTypes.h"
+#include "UI/Property/PropertyValueWidget.h"
 
 #include "imgui.h"
 
@@ -11,7 +15,6 @@
 #include "Runtime/Resource/AssetManager.h"
 
 #include <algorithm>
-#include <cstring>
 #include <string>
 
 namespace minEngine
@@ -20,20 +23,9 @@ namespace minEngine
     {
         constexpr float kFieldWidth = MaterialNodeDefPropertyDrawer::kFieldWidth;
 
-        std::string GetShortTypeName(const std::string& fullTypeName)
-        {
-            const size_t colon = fullTypeName.rfind(':');
-            if (colon != std::string::npos && colon + 1 < fullTypeName.size())
-            {
-                return fullTypeName.substr(colon + 1);
-            }
-
-            return fullTypeName;
-        }
-
         bool ShouldSkipNodeDefProperty(const Reflection::MEProperty& property)
         {
-            if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+            if (!PropertyEditPolicy::ShouldShow(property, EditorPropertyEditContextKind::AssetDefaults))
             {
                 return true;
             }
@@ -51,6 +43,14 @@ namespace minEngine
 
             if (property.GetCategory() == Reflection::MEPropertyCategory::Object)
             {
+                const Reflection::MEObjectProperty& objectProperty =
+                    static_cast<const Reflection::MEObjectProperty&>(property);
+                Reflection::MEClass* valueClass = objectProperty.GetValueClass();
+                if (PropertyValueWidget::IsLinearColorStruct(valueClass))
+                {
+                    return false;
+                }
+
                 return true;
             }
 
@@ -114,70 +114,6 @@ namespace minEngine
             return changed;
         }
 
-        bool IsSignedIntegerTypeName(const std::string& shortTypeName)
-        {
-            return shortTypeName == "int"
-                || shortTypeName == "int32"
-                || shortTypeName == "int16"
-                || shortTypeName == "long"
-                || shortTypeName == "int64";
-        }
-
-        bool DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty, void* propertyPtr)
-        {
-            const std::string shortTypeName = GetShortTypeName(primitiveProperty.primitiveTypeName);
-            ImGui::SetNextItemWidth(kFieldWidth);
-
-            if (IsSignedIntegerTypeName(shortTypeName))
-            {
-                return ImGui::DragInt("##Value", static_cast<int*>(propertyPtr), 1);
-            }
-
-            if (shortTypeName == "uint32")
-            {
-                return ImGui::DragScalar(
-                    "##Value",
-                    ImGuiDataType_U32,
-                    propertyPtr,
-                    1.0f,
-                    nullptr,
-                    nullptr,
-                    "%u");
-            }
-
-            if (shortTypeName == "float")
-            {
-                return ImGui::DragFloat("##Value", static_cast<float*>(propertyPtr), 0.01f, 0.0f, 0.0f, "%.3f");
-            }
-
-            if (shortTypeName == "double")
-            {
-                return ImGui::DragScalar("##Value", ImGuiDataType_Double, propertyPtr, 0.01);
-            }
-
-            if (shortTypeName == "bool")
-            {
-                return ImGui::Checkbox("##Value", static_cast<bool*>(propertyPtr));
-            }
-
-            if (shortTypeName == "string" || shortTypeName == "std::string")
-            {
-                std::string* stringValue = static_cast<std::string*>(propertyPtr);
-                char textBuffer[256] = {};
-                std::strncpy(textBuffer, stringValue->c_str(), sizeof(textBuffer) - 1);
-                if (ImGui::InputText("##Value", textBuffer, sizeof(textBuffer)))
-                {
-                    *stringValue = textBuffer;
-                    return true;
-                }
-
-                return false;
-            }
-
-            ImGui::TextDisabled("Unsupported: %s", shortTypeName.c_str());
-            return false;
-        }
-
         bool DrawProperty(const Reflection::MEProperty& property, void* propertyPtr, MaterialEditor& materialEditor)
         {
             if (ShouldSkipNodeDefProperty(property))
@@ -195,16 +131,15 @@ namespace minEngine
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::AlignTextToFramePadding();
-                ImGui::TextUnformatted(property.GetName().c_str());
+                ImGui::TextUnformatted(PropertyEditPolicy::GetDisplayName(property));
                 ImGui::TableSetColumnIndex(1);
 
                 bool changed = false;
                 switch (property.GetCategory())
                 {
                     case Reflection::MEPropertyCategory::Primitive:
-                        changed = DrawPrimitiveProperty(
-                            static_cast<const Reflection::MEPrimitiveProperty&>(property),
-                            propertyPtr);
+                    case Reflection::MEPropertyCategory::Object:
+                        changed = PropertyValueWidget::Draw(property, propertyPtr, kFieldWidth);
                         break;
                     case Reflection::MEPropertyCategory::ObjectPtr:
                         changed = DrawAssetRef(
@@ -229,7 +164,8 @@ namespace minEngine
 
     bool MaterialNodeDefPropertyDrawer::DrawProperties(
         MaterialGraphNodeDef* nodeDef,
-        MaterialEditor& materialEditor)
+        MaterialEditor& materialEditor,
+        const PropertyEditSession& editSession)
     {
         if (!nodeDef || !nodeDef->GetClass())
         {
@@ -253,7 +189,7 @@ namespace minEngine
 
         if (changed)
         {
-            materialEditor.NotifyGraphChanged();
+            editSession.MarkDirty();
         }
 
         return changed;

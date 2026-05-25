@@ -1,5 +1,7 @@
 #include "UI/Property/EditorColorConversion.h"
 
+#include "imgui.h"
+
 #include <cmath>
 
 namespace minEngine
@@ -33,5 +35,11 @@ namespace minEngine
             NormalizedFloatToByte(srgbEdit.A),
         };
         return srgb.ToLinearColor();
+    }
+
+    ImVec4 EditorColorConversion::ToImGuiDisplayColor(const LinearColor& linear)
+    {
+        const EditorSrgbEditColor srgb = ToSrgbEditColor(linear);
+        return ImVec4(srgb.R, srgb.G, srgb.B, srgb.A);
     }
 }
