@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-23
+Last updated: 2026-05-25
 
 ## Purpose
 
@@ -80,6 +80,66 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-05-25 - Asset Pipeline 业务线设计草案
+- Goal:
+	End-to-end design for AssetManager CRUD/events, cross-platform import dialog, project file watcher, Content Browser framework (asset-workflow worktree).
+- Main changes:
+	Added `docs/ai/Platform/ContentBrowser/ASSET_PIPELINE_DESIGN.md` (data flow, R0–R2, E4, AssetWorkflow, Browser v0, implementation order P1–P7, decision table §10).
+	Linked from `CONTENT_BROWSER_DESIGN.md`.
+- Risks or caveats:
+	Awaiting user sign-off on §10 (NFD vs Win32, watcher polling vs native, Import rename policy, Browser list scope).
+- Validation done:
+	Reviewed `AssetManager` / `AssetWorkflowModule` / `ProjectManager::OpenProject` scan path against design.
+- Next step:
+	§10 已拍板（NFD、efsw、D12、相对 AssetPath §14）→ P1 + P1b 实现。
+
+### 2026-05-25 - P1 API 定稿（待审批）
+- Goal:
+	Freeze header-level P1/P1b interface before coding.
+- Main changes:
+	`docs/ai/Platform/ContentBrowser/ASSET_PIPELINE_P1_API.md` — AssetRegistryTypes, AssetTypeRegistry, AssetManager deltas, contracts, migration table, acceptance §9, approval checklist §10.
+- Risks or caveats:
+	Breaking `FindAssetMetasByType` return type; Editor Material/Scene call sites updated in same PR.
+- Validation done:
+	Grep call sites; path rules aligned with §14.
+- Next step:
+	User approves §10 checklist → implement P1.
+
+### 2026-05-25 - Asset Pipeline P1/P1b implemented
+- Goal:
+	AssetTypeRegistry, type buckets, registry events, ImportAsset, project-relative AssetPath, Editor EngineDefault scan removed.
+- Main changes:
+	New `AssetRegistryTypes.h`, `AssetTypeRegistry.{h,cpp}`; `AssetManager` extended (Subscribe, ImportAsset, FindAssetMetasByType/ByRuntimeClass, ResolveAssetAbsolutePath).
+	Loaders use absolute resolve for disk IO; Editor Material/Scene call sites updated; `MyMEProject` metas → relative `AssetPath`.
+- Risks or caveats:
+	RegisterAsset requires `PathRegistry` project root; legacy absolute registry keys only via FindAssetMetaByPath fallback until rescan.
+- Validation done:
+	`cmake --build minEngine/build --target Editor` succeeded.
+- Next step:
+	P2 DeleteAsset/MoveAsset; then P3 NFD, P5 efsw, P6 Content Browser.
+
+### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
+- Goal:
+	Restore scene mesh GUID refs after stopping EngineDefault Registry scan.
+- Main changes:
+	Copied 7 meshes to `MyMEProject/Assets/Meshes/BasicShapes/` with relative `.meta` (GUID preserved); script `scripts/seed_basic_shapes_to_project.py`.
+- Validation done:
+	`cube`/`plane` GUIDs match `default.mescene` and `test.mescene` mesh references.
+- Next step:
+	Re-open project in Editor to `ScanAssets` register new paths (or rely on existing meta on disk).
+
+### 2026-05-25 - Asset Pipeline 设计拍板 + 相对路径策略
+- Goal:
+	Freeze §10 decisions; resolve Engine vs Project asset roots and meta relative paths.
+- Main changes:
+	`ASSET_PIPELINE_DESIGN.md` → Status 已拍板; D8=NFD, D9=efsw, D12=registered-only; new §14 dual-root + relative `AssetPath`.
+- Risks or caveats:
+	P1b migration of existing absolute metas; remove Editor scan of EngineDefault from Registry.
+- Validation done:
+	User confirmed defaults + path strategy discussion.
+- Next step:
+	P1 code slice (type bucket + events + ImportAsset); P1b relative path + stop EngineDefault Registry scan.
 
 ### 2026-03-26 - Playground player control enhancement
 - Goal:

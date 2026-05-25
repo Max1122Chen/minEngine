@@ -16,8 +16,11 @@ namespace minEngine
         scene->m_SceneName = meta.AssetName;
 
         Serialization::JsonReaderArchive archive;
+        const std::string absoluteAssetPath =
+            AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
+
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
-            meta.AssetPath,
+            absoluteAssetPath,
             minEngine::Reflection::GetClassName<Scene>(),
             scene.get(),
             archive,

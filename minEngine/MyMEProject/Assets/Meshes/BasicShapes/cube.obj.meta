@@ -1,0 +1,9 @@
+{
+    "AssetName": "cube",
+    "AssetPath": "Meshes/BasicShapes/cube.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 142407137877117945,
+        "Low": 13645875646637003514
+    }
+}

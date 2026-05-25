@@ -1,6 +1,6 @@
 {
     "AssetName": "container",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Textures/container.jpg",
+    "AssetPath": "Textures/container.jpg",
     "AssetType": "Texture2D",
     "Guid": {
         "High": 1547033894405426113,

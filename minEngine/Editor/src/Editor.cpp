@@ -226,11 +226,6 @@ namespace minEngine
         m_ViewportRegistry.SetContext(this);
         m_MaterialEditor = std::make_unique<MaterialEditor>();
 
-        if (m_Engine->IsEnginePathConfigLoaded())
-        {
-            AssetManager::Get().ScanAssets(PathRegistry::Get().GetEngineDefaultAssetsRoot());
-        }
-
         m_EditorGUIManager.Initialize(*this);
         RegisterModules();
 
@@ -241,7 +236,8 @@ namespace minEngine
         }
         else
         {
-            projectPath = "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject";
+            // feat/editor-asset-workflow worktree: scan/register Assets under this project (not main minEngine repo).
+            projectPath = "D:/Dev/GitRepo/minEngine-asset-workflow/minEngine/MyMEProject";
         }
 
         OpenProject(projectPath);

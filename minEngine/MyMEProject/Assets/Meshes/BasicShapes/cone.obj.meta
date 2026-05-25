@@ -1,0 +1,9 @@
+{
+    "AssetName": "cone",
+    "AssetPath": "Meshes/BasicShapes/cone.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 6769410380452610624,
+        "Low": 10329082740608049178
+    }
+}

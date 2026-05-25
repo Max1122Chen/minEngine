@@ -1,4 +1,7 @@
 #include "AssetManager.h"
+
+#include "AssetTypeRegistry.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -16,12 +19,27 @@
 #include "AssetMeta.h"
 
 #include <algorithm>
-#include <cctype>
-
 
 namespace minEngine
 {
     AssetManager* AssetManager::s_Instance = nullptr;
+
+    bool AssetManager::IsPathInsideDirectory(
+        const std::filesystem::path& absolutePath,
+        const std::filesystem::path& rootDirectory)
+    {
+        if (rootDirectory.empty() || absolutePath.empty())
+        {
+            return false;
+        }
+
+        const std::filesystem::path canonicalRoot = std::filesystem::weakly_canonical(rootDirectory);
+        const std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(absolutePath);
+
+        auto mismatchPair =
+            std::mismatch(canonicalRoot.begin(), canonicalRoot.end(), canonicalPath.begin());
+        return mismatchPair.first == canonicalRoot.end();
+    }
 
     void AssetManager::SetInstance(AssetManager* instance)
     {
@@ -40,10 +58,14 @@ namespace minEngine
     }
 
     void AssetManager::Initialize()
-    {}
+    {
+        AssetTypeRegistry::Get().RegisterBuiltinTypes();
+    }
 
     void AssetManager::Shutdown()
     {
+        m_Subscribers.clear();
+        m_AssetMetasByType.clear();
         m_AssetPathByGuid.clear();
         m_AssetRegistry.clear();
         m_LoadedAssetCache.clear();
@@ -70,8 +92,221 @@ namespace minEngine
         }
     }
 
-    // TODO: currently "directory" should be an absolute path, but maybe we should also support relative path and resolve it to absolute path internally 
-    void AssetManager::ScanAssets(const std::filesystem::path &directory)
+    bool AssetManager::IsUnderProjectContentRoot(const std::filesystem::path& absolutePath) const
+    {
+        return IsPathInsideDirectory(absolutePath, PathRegistry::Get().GetProjectContentRoot());
+    }
+
+    bool AssetManager::IsUnderEngineDefaultAssetsRoot(const std::filesystem::path& absolutePath) const
+    {
+        return IsPathInsideDirectory(absolutePath, PathRegistry::Get().GetEngineDefaultAssetsRoot());
+    }
+
+    std::string AssetManager::NormalizeProjectRelativeAssetPath(const std::string& path) const
+    {
+        if (path.empty())
+        {
+            return std::string();
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        const std::filesystem::path input(path);
+
+        std::filesystem::path absolutePath;
+        if (input.is_absolute())
+        {
+            absolutePath = std::filesystem::weakly_canonical(input);
+        }
+        else if (!contentRoot.empty())
+        {
+            absolutePath = std::filesystem::weakly_canonical(contentRoot / input);
+        }
+        else
+        {
+            absolutePath = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
+        }
+
+        if (IsUnderEngineDefaultAssetsRoot(absolutePath))
+        {
+            ME_CORE_WARN(
+                "Asset path is under EngineDefaultAssetsRoot and will not be registered: {}",
+                absolutePath.string());
+            return std::string();
+        }
+
+        if (!contentRoot.empty() && IsUnderProjectContentRoot(absolutePath))
+        {
+            std::error_code errorCode;
+            const std::filesystem::path relativePath =
+                std::filesystem::relative(absolutePath, std::filesystem::weakly_canonical(contentRoot), errorCode);
+            if (!errorCode)
+            {
+                std::string result = relativePath.lexically_normal().generic_string();
+                if (result.size() >= 2 && result[0] == '.' && result[1] == '.')
+                {
+                    return std::string();
+                }
+
+                return result;
+            }
+        }
+
+        ME_CORE_WARN("Asset path is not under ProjectContentRoot: {}", absolutePath.string());
+        return std::string();
+    }
+
+    std::filesystem::path AssetManager::ResolveAssetAbsolutePath(std::string_view projectRelativeOrLegacyPath) const
+    {
+        return std::filesystem::path(ResolveAssetAbsolutePathString(projectRelativeOrLegacyPath));
+    }
+
+    std::string AssetManager::ResolveAssetAbsolutePathString(std::string_view projectRelativeOrLegacyPath) const
+    {
+        if (projectRelativeOrLegacyPath.empty())
+        {
+            return std::string();
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        const std::filesystem::path input(projectRelativeOrLegacyPath);
+
+        if (input.is_absolute())
+        {
+            return std::filesystem::weakly_canonical(input).generic_string();
+        }
+
+        if (!contentRoot.empty())
+        {
+            return std::filesystem::weakly_canonical(contentRoot / input).generic_string();
+        }
+
+        return std::filesystem::weakly_canonical(std::filesystem::absolute(input)).generic_string();
+    }
+
+    std::filesystem::path AssetManager::BuildMetaAbsolutePath(std::string_view projectRelativeAssetPath) const
+    {
+        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(projectRelativeAssetPath);
+        return std::filesystem::path(absoluteAssetPath + ".meta");
+    }
+
+    void AssetManager::RemoveFromTypeBucket(const AssetMeta& meta)
+    {
+        auto bucketIter = m_AssetMetasByType.find(meta.AssetType);
+        if (bucketIter == m_AssetMetasByType.end())
+        {
+            return;
+        }
+
+        std::vector<AssetMeta*>& bucket = bucketIter->second;
+        auto registryIter = m_AssetRegistry.find(meta.AssetPath);
+        if (registryIter == m_AssetRegistry.end())
+        {
+            return;
+        }
+
+        AssetMeta* target = &registryIter->second;
+        bucket.erase(
+            std::remove(bucket.begin(), bucket.end(), target),
+            bucket.end());
+
+        if (bucket.empty())
+        {
+            m_AssetMetasByType.erase(bucketIter);
+        }
+    }
+
+    void AssetManager::AddToTypeBucket(const AssetMeta& meta)
+    {
+        auto registryIter = m_AssetRegistry.find(meta.AssetPath);
+        if (registryIter == m_AssetRegistry.end())
+        {
+            return;
+        }
+
+        m_AssetMetasByType[meta.AssetType].push_back(&registryIter->second);
+    }
+
+    void AssetManager::CacheMeta(const AssetMeta& meta, bool alreadyRegistered)
+    {
+        auto existingIter = m_AssetRegistry.find(meta.AssetPath);
+        if (existingIter != m_AssetRegistry.end())
+        {
+            RemoveFromTypeBucket(existingIter->second);
+        }
+
+        m_AssetRegistry[meta.AssetPath] = meta;
+        m_AssetPathByGuid[meta.Guid] = meta.AssetPath;
+        AddToTypeBucket(meta);
+
+        AssetRegistryChange change;
+        change.Kind = alreadyRegistered ? AssetRegistryChangeKind::MetaUpdated
+                                        : AssetRegistryChangeKind::Registered;
+        change.Guid = meta.Guid;
+        change.NewPath = meta.AssetPath;
+        change.AssetTypeId = meta.AssetType;
+        BroadcastChange(change);
+    }
+
+    void AssetManager::UncacheMeta(std::string_view projectRelativePath)
+    {
+        const std::string key(projectRelativePath);
+        auto registryIter = m_AssetRegistry.find(key);
+        if (registryIter == m_AssetRegistry.end())
+        {
+            return;
+        }
+
+        const AssetMeta meta = registryIter->second;
+        RemoveFromTypeBucket(meta);
+        m_AssetPathByGuid.erase(meta.Guid);
+        m_AssetRegistry.erase(registryIter);
+        m_LoadedAssetCache.erase(key);
+
+        AssetRegistryChange change;
+        change.Kind = AssetRegistryChangeKind::Unregistered;
+        change.Guid = meta.Guid;
+        change.OldPath = meta.AssetPath;
+        change.AssetTypeId = meta.AssetType;
+        BroadcastChange(change);
+    }
+
+    void AssetManager::BroadcastChange(const AssetRegistryChange& change)
+    {
+        for (const auto& [subscriptionId, callback] : m_Subscribers)
+        {
+            (void)subscriptionId;
+            if (callback)
+            {
+                callback(change);
+            }
+        }
+    }
+
+    uint32_t AssetManager::Subscribe(AssetRegistryChangedCallback callback)
+    {
+        if (!callback)
+        {
+            return kInvalidAssetRegistrySubscriptionId;
+        }
+
+        const uint32_t subscriptionId = m_NextSubscriptionId++;
+        m_Subscribers[subscriptionId] = std::move(callback);
+        return subscriptionId;
+    }
+
+    void AssetManager::Unsubscribe(uint32_t subscriptionId)
+    {
+        if (subscriptionId == kInvalidAssetRegistrySubscriptionId)
+        {
+            return;
+        }
+
+        m_Subscribers.erase(subscriptionId);
+    }
+
+    void AssetManager::ScanAssets(const std::filesystem::path& directory)
     {
         if (!std::filesystem::exists(directory))
         {
@@ -85,6 +320,8 @@ namespace minEngine
             return;
         }
 
+        const AssetTypeRegistry& typeRegistry = AssetTypeRegistry::Get();
+
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
         {
             if (!entry.is_regular_file())
@@ -93,43 +330,39 @@ namespace minEngine
             }
 
             const std::filesystem::path assetPath = entry.path().lexically_normal();
-            const std::string assetType = InferAssetTypeFromExtension(assetPath);
-            if (assetType.empty())
+            const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(assetPath);
+            if (assetTypeId.empty())
             {
                 continue;
             }
 
-            AssetMeta meta = RegisterAsset(assetPath.string(), assetType);
+            AssetMeta meta = RegisterAsset(assetPath.string(), assetTypeId);
 
-            // TODO: maybe later we should register different types of assets to different subsystems (e.g., register scene assets to scene manager
-            // If the asset is a scene, also register it to the scene manager
-            if (assetType == "Scene")
-            { 
+            if (assetTypeId == "Scene")
+            {
                 SceneManager::Get().RegisterScene(meta.AssetName, meta.AssetPath);
             }
         }
     }
 
-    AssetMeta AssetManager::RegisterAsset(const std::string &path, const std::string &type)
+    AssetMeta AssetManager::RegisterAsset(const std::string& path, const std::string& assetTypeId)
     {
-        const std::string normalizedPath = NormalizeAssetPath(path);
-        if (normalizedPath.empty())
+        const std::string projectRelativePath = NormalizeProjectRelativeAssetPath(path);
+        if (projectRelativePath.empty())
         {
             return AssetMeta();
         }
 
-        const bool alreadyRegistered = (m_AssetRegistry.find(normalizedPath) != m_AssetRegistry.end());
+        const bool alreadyRegistered = (m_AssetRegistry.find(projectRelativePath) != m_AssetRegistry.end());
 
-        std::filesystem::path assetPath(normalizedPath);
-        const std::filesystem::path metaPath = BuildMetaPath(assetPath);
-        const std::string inferredAssetName = assetPath.stem().string();
+        const std::filesystem::path metaPath = BuildMetaAbsolutePath(projectRelativePath);
+        const std::string inferredAssetName = std::filesystem::path(projectRelativePath).stem().string();
 
         const Serialization::SerializerOptions metaSerializerOptions{
             .enumAsString = true,
             .strictTypeCheck = true,
             .skipUnknownField = true,
-            .allowObjectPtrSerialization = false
-        };
+            .allowObjectPtrSerialization = false};
 
         auto loadMetaFromFile = [&](AssetMeta& outMeta) -> bool
         {
@@ -189,8 +422,8 @@ namespace minEngine
         if (!loadedExistingMeta)
         {
             meta.AssetName = inferredAssetName;
-            meta.AssetPath = normalizedPath;
-            meta.AssetType = type;
+            meta.AssetPath = projectRelativePath;
+            meta.AssetType = assetTypeId;
             meta.Guid = GenerateGUID();
 
             if (!saveMetaToFile(meta))
@@ -207,15 +440,21 @@ namespace minEngine
                 needsRewrite = true;
             }
 
-            if (meta.AssetPath != normalizedPath)
+            const std::string normalizedStoredPath = NormalizeProjectRelativeAssetPath(meta.AssetPath);
+            if (!normalizedStoredPath.empty() && meta.AssetPath != normalizedStoredPath)
             {
-                meta.AssetPath = normalizedPath;
+                meta.AssetPath = normalizedStoredPath;
+                needsRewrite = true;
+            }
+            else if (meta.AssetPath != projectRelativePath)
+            {
+                meta.AssetPath = projectRelativePath;
                 needsRewrite = true;
             }
 
-            if (meta.AssetType.empty() || meta.AssetType != type)
+            if (meta.AssetType.empty() || meta.AssetType != assetTypeId)
             {
-                meta.AssetType = type;
+                meta.AssetType = assetTypeId;
                 needsRewrite = true;
             }
 
@@ -232,9 +471,12 @@ namespace minEngine
         }
 
         auto guidIt = m_AssetPathByGuid.find(meta.Guid);
-        if (guidIt != m_AssetPathByGuid.end() && guidIt->second != normalizedPath)
+        if (guidIt != m_AssetPathByGuid.end() && guidIt->second != projectRelativePath)
         {
-            ME_CORE_WARN("GUID collision detected between '{}' and '{}'. Regenerating GUID for current asset.", guidIt->second, normalizedPath);
+            ME_CORE_WARN(
+                "GUID collision detected between '{}' and '{}'. Regenerating GUID for current asset.",
+                guidIt->second,
+                projectRelativePath);
             meta.Guid = GenerateGUID();
             if (!saveMetaToFile(meta))
             {
@@ -242,7 +484,7 @@ namespace minEngine
             }
         }
 
-        CacheMeta(meta);
+        CacheMeta(meta, alreadyRegistered);
 
         ME_CORE_INFO("Asset {}: type='{}', path='{}', guid='{}'",
                      alreadyRegistered ? "updated" : "registered",
@@ -253,12 +495,75 @@ namespace minEngine
         return meta;
     }
 
-    std::shared_ptr<Asset> AssetManager::LoadAssetByPath(const std::string &path, std::string &outErrorMessage)
+    ImportAssetResult AssetManager::ImportAsset(const std::filesystem::path& sourcePath,
+                                                const std::filesystem::path& destDirectory)
+    {
+        ImportAssetResult result;
+
+        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
+        {
+            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
+            return result;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        if (contentRoot.empty())
+        {
+            result.ErrorMessage = "project content root is not set";
+            return result;
+        }
+
+        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
+            ? std::filesystem::weakly_canonical(destDirectory)
+            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
+
+        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
+        {
+            result.ErrorMessage = "destination directory is outside project Assets: " + absoluteDestDirectory.string();
+            return result;
+        }
+
+        const AssetTypeRegistry& typeRegistry = AssetTypeRegistry::Get();
+        const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(sourcePath);
+        if (assetTypeId.empty())
+        {
+            result.ErrorMessage = "unsupported file extension: " + sourcePath.extension().string();
+            return result;
+        }
+
+        const std::filesystem::path destFilePath = absoluteDestDirectory / sourcePath.filename();
+        if (std::filesystem::exists(destFilePath))
+        {
+            result.ErrorMessage = "destination file already exists: " + destFilePath.string();
+            return result;
+        }
+
+        std::error_code copyError;
+        std::filesystem::copy_file(sourcePath, destFilePath, std::filesystem::copy_options::none, copyError);
+        if (copyError)
+        {
+            result.ErrorMessage = "copy failed: " + copyError.message();
+            return result;
+        }
+
+        result.Meta = RegisterAsset(destFilePath.string(), assetTypeId);
+        if (result.Meta.AssetPath.empty())
+        {
+            result.ErrorMessage = "failed to register imported asset";
+            return result;
+        }
+
+        result.bSuccess = true;
+        return result;
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadAssetByPath(const std::string& path, std::string& outErrorMessage)
     {
         outErrorMessage.clear();
 
         const AssetMeta* meta = FindAssetMetaByPath(path);
-        if (meta == nullptr)        
+        if (meta == nullptr)
         {
             outErrorMessage = "asset meta not found for path: " + path;
             return nullptr;
@@ -266,7 +571,7 @@ namespace minEngine
         return LoadAssetByMeta_Internal(*meta, outErrorMessage);
     }
 
-    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta(const AssetMeta &meta, std::string &outErrorMessage)
+    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta(const AssetMeta& meta, std::string& outErrorMessage)
     {
         outErrorMessage.clear();
         return LoadAssetByMeta_Internal(meta, outErrorMessage);
@@ -288,14 +593,23 @@ namespace minEngine
 
     const AssetMeta* AssetManager::FindAssetMetaByPath(const std::string& path) const
     {
-        const std::string normalizedPath = NormalizeAssetPath(path);
-        auto iter = m_AssetRegistry.find(normalizedPath);
-        if (iter == m_AssetRegistry.end())
+        const std::string registryKey = NormalizeProjectRelativeAssetPath(path);
+        if (!registryKey.empty())
         {
-            return nullptr;
+            auto iter = m_AssetRegistry.find(registryKey);
+            if (iter != m_AssetRegistry.end())
+            {
+                return &iter->second;
+            }
         }
 
-        return &iter->second;
+        auto legacyIter = m_AssetRegistry.find(path);
+        if (legacyIter != m_AssetRegistry.end())
+        {
+            return &legacyIter->second;
+        }
+
+        return nullptr;
     }
 
     const AssetMeta* AssetManager::FindAssetMetaByGuid(const GUID& guid) const
@@ -315,22 +629,40 @@ namespace minEngine
         return &pathIter->second;
     }
 
-    std::vector<AssetMeta *> AssetManager::FindAssetMetasByType(const std::string &type) const
+    std::vector<const AssetMeta*> AssetManager::FindAssetMetasByType(const std::string& assetTypeId) const
     {
-        std::vector<AssetMeta*> result;
-        for (const auto& pair : m_AssetRegistry)
+        std::vector<const AssetMeta*> result;
+        auto bucketIter = m_AssetMetasByType.find(assetTypeId);
+        if (bucketIter == m_AssetMetasByType.end())
         {
-            if (pair.second.AssetType == InferAssetTypeFromClassName(type))
-            {
-                result.push_back(const_cast<AssetMeta*>(&pair.second));
-            }
+            return result;
         }
+
+        result.reserve(bucketIter->second.size());
+        for (AssetMeta* meta : bucketIter->second)
+        {
+            result.push_back(meta);
+        }
+
         return result;
     }
 
-    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta &meta, std::string &outErrorMessage)
+    std::vector<const AssetMeta*> AssetManager::FindAssetMetasByRuntimeClass(
+        const std::string& runtimeClassName) const
     {
-        if(meta.AssetType == "StaticMesh")
+        const std::string assetTypeId =
+            AssetTypeRegistry::Get().InferAssetTypeFromRuntimeClassName(runtimeClassName);
+        if (assetTypeId.empty())
+        {
+            return {};
+        }
+
+        return FindAssetMetasByType(assetTypeId);
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        if (meta.AssetType == "StaticMesh")
         {
             std::shared_ptr<StaticMesh> asset = LoadAsset<StaticMesh>(meta.AssetPath);
             if (asset == nullptr)
@@ -342,7 +674,7 @@ namespace minEngine
             return std::static_pointer_cast<Asset>(asset);
         }
 
-        if(meta.AssetType == "Texture2D")
+        if (meta.AssetType == "Texture2D")
         {
             std::shared_ptr<Texture2D> asset = LoadAsset<Texture2D>(meta.AssetPath);
             if (asset == nullptr)
@@ -392,101 +724,15 @@ namespace minEngine
         return nullptr;
     }
 
-    std::string AssetManager::NormalizeAssetPath(const std::string &path) const
-    {
-        if (path.empty())
-        {
-            return std::string();
-        }
-
-        const std::filesystem::path input(path);
-        const std::filesystem::path absolutePath = input.is_absolute()
-            ? input
-            : std::filesystem::absolute(input);
-
-        return absolutePath.lexically_normal().generic_string();
-    }
-
-    std::string AssetManager::InferAssetTypeFromExtension(const std::filesystem::path& path) const
-    {
-        const std::string extension = path.extension().string();
-        if (extension == ".png" || extension == ".jpg" || extension == ".jpeg")
-        {
-            return "Texture2D";
-        }
-
-        if (extension == ".obj" || extension == ".fbx" || extension == ".gltf")
-        {
-            return "StaticMesh";
-        }
-
-        if (extension == ".memtl")
-        {
-            return "Material";
-        }
-
-        if(extension == ".meshader")
-        {
-            return "Shader";
-        }
-
-        if (extension == ".mescene")
-        {
-            return "Scene";
-        }
-
-        return std::string();
-    }
-
-    std::string AssetManager::InferAssetTypeFromClassName(const std::string &className) const
-    {
-        using namespace minEngine::Reflection;
-        if (className == GetClassName<Scene>())
-        {
-            return "Scene";
-        }
-
-        if (className == GetClassName<StaticMesh>())
-        {
-            return "StaticMesh";
-        }
-
-        if (className == GetClassName<Texture2D>())
-        {
-            return "Texture2D";
-        }
-
-        if (className == GetClassName<Material>())
-        {
-            return "Material";
-        }
-
-        if (className == GetClassName<Shader>())
-        {
-            return "Shader";
-        }
-
-        return std::string();
-    }
-
-    std::filesystem::path AssetManager::BuildMetaPath(const std::filesystem::path& assetPath) const
-    {
-        return std::filesystem::path(assetPath.string() + ".meta");
-    }
-
-    void AssetManager::CacheMeta(const AssetMeta& meta)
-    {
-        m_AssetRegistry[meta.AssetPath] = meta;
-        m_AssetPathByGuid[meta.Guid] = meta.AssetPath;
-    }
-
     template<>
     std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta)
     {
+        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
+
         ShaderResource resource;
         Serialization::JsonReaderArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
-            meta.AssetPath,
+            absoluteAssetPath,
             "minEngine::ShaderResource",
             &resource,
             archive,
@@ -494,12 +740,11 @@ namespace minEngine
                 .enumAsString = true,
                 .strictTypeCheck = true,
                 .skipUnknownField = false,
-                .allowObjectPtrSerialization = true
-            });
+                .allowObjectPtrSerialization = true});
         if (!result.ok)
         {
             ME_CORE_ERROR("Failed to deserialize shader resource '{}'. Error: {}. Field path: {}",
-                          meta.AssetPath,
+                          absoluteAssetPath,
                           result.message,
                           result.fieldPath);
             return nullptr;
@@ -514,7 +759,7 @@ namespace minEngine
         {
             ME_CORE_ERROR(
                 "Failed to compile shader asset '{}'. Vertex: '{}', Fragment: '{}'. {}",
-                meta.AssetPath,
+                absoluteAssetPath,
                 resource.m_VertexPath,
                 resource.m_FragmentPath,
                 compileError);
@@ -523,14 +768,14 @@ namespace minEngine
         return shader;
     }
 
-
     template<>
     bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const
     {
-        Serialization::JsonWriterArchive archive;
+        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
 
+        Serialization::JsonWriterArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            meta.AssetPath,
+            absoluteAssetPath,
             "minEngine::Material",
             &asset,
             archive,
@@ -538,13 +783,12 @@ namespace minEngine
                 .enumAsString = true,
                 .strictTypeCheck = true,
                 .skipUnknownField = false,
-                .allowObjectPtrSerialization = true
-            });
+                .allowObjectPtrSerialization = true});
 
         if (!result.ok)
         {
             ME_CORE_ERROR("Failed to serialize material '{}'. Error: {}. Field path: {}",
-                          meta.AssetPath,
+                          absoluteAssetPath,
                           result.message,
                           result.fieldPath);
             return false;
@@ -556,12 +800,11 @@ namespace minEngine
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const
     {
-        const std::filesystem::path scenePath(meta.AssetPath);
+        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
 
         Serialization::JsonWriterArchive archive;
-        
         const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            meta.AssetPath,
+            absoluteAssetPath,
             "minEngine::Scene",
             &asset,
             archive,
@@ -569,13 +812,12 @@ namespace minEngine
                 .enumAsString = true,
                 .strictTypeCheck = true,
                 .skipUnknownField = false,
-                .allowObjectPtrSerialization = true
-            });
+                .allowObjectPtrSerialization = true});
 
         if (!result.ok)
         {
             ME_CORE_ERROR("Failed to serialize scene '{}'. Error: {}. Field path: {}",
-                          meta.AssetPath,
+                          absoluteAssetPath,
                           result.message,
                           result.fieldPath);
             return false;
@@ -583,6 +825,4 @@ namespace minEngine
 
         return true;
     }
-
-    
 }

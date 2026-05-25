@@ -1,6 +1,6 @@
 {
     "AssetName": "MaterialIRSmoke",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Materials/MaterialIRSmoke.memtl",
+    "AssetPath": "Materials/MaterialIRSmoke.memtl",
     "AssetType": "Material",
     "Guid": {
         "High": 5561283508911332965,

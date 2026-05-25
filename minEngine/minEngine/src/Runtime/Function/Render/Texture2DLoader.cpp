@@ -138,7 +138,9 @@ namespace minEngine
     {
         ImagePixels pixels;
         std::string error;
-        if (!ImageLoader::Load(meta.AssetPath, pixels, true, &error))
+        const std::string absoluteAssetPath =
+            AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
+        if (!ImageLoader::Load(absoluteAssetPath, pixels, true, &error))
         {
             return nullptr;
         }

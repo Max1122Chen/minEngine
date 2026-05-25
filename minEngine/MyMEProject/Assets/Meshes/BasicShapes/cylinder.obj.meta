@@ -1,0 +1,9 @@
+{
+    "AssetName": "cylinder",
+    "AssetPath": "Meshes/BasicShapes/cylinder.obj",
+    "AssetType": "StaticMesh",
+    "Guid": {
+        "High": 14261873421292814763,
+        "Low": 13295530809966308099
+    }
+}
