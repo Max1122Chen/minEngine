@@ -1,6 +1,10 @@
 #include "Commands/Scene/DeleteGameObjectCommand.h"
 
+#include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Scene/SceneEditor.h"
+
+#include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Framework/Transform/Transform.h"
 
 #include <limits>
 
@@ -15,23 +19,60 @@ namespace minEngine
 
     void DeleteGameObjectCommand::Execute()
     {
-        m_Name.clear();
-        m_Transform = Transform{};
-        m_HasSnapshot = m_SceneEditor.ApplyRemoveGameObjectFromScene(m_GameObjectId, m_Name, m_Transform);
-    }
+        m_Removed = false;
+        m_SnapshotEnvelope.clear();
 
-    void DeleteGameObjectCommand::Undo()
-    {
-        if (!m_HasSnapshot)
+        EditorObjectSnapshot snapshot;
+        std::string description;
+        if (!m_SceneEditor.TryCaptureGameObjectSnapshotForDelete(m_GameObjectId, snapshot, description))
         {
             return;
         }
 
-        const uint64_t restoredId = m_SceneEditor.ApplyRestoreRemovedGameObject(m_Name, m_Transform);
-        if (restoredId != std::numeric_limits<uint64_t>::max())
+        if (!description.empty())
         {
-            m_GameObjectId = restoredId;
+            m_Description = std::move(description);
         }
+
+        if (!EditorObjectSnapshotUtil::WriteEnvelope(snapshot, m_SnapshotEnvelope))
+        {
+            ME_CORE_ERROR("DeleteGameObjectCommand: failed to write snapshot envelope.");
+            return;
+        }
+
+        std::string discardedName;
+        Transform discardedTransform;
+        if (!m_SceneEditor.ApplyRemoveGameObjectFromScene(m_GameObjectId, discardedName, discardedTransform))
+        {
+            m_SnapshotEnvelope.clear();
+            return;
+        }
+
+        m_Removed = true;
+    }
+
+    void DeleteGameObjectCommand::Undo()
+    {
+        if (!m_Removed || m_SnapshotEnvelope.empty())
+        {
+            return;
+        }
+
+        EditorObjectSnapshot snapshot;
+        if (!EditorObjectSnapshotUtil::ReadEnvelope(m_SnapshotEnvelope, snapshot))
+        {
+            ME_CORE_ERROR("DeleteGameObjectCommand: failed to read snapshot envelope.");
+            return;
+        }
+
+        const uint64_t restoredId = m_SceneEditor.ApplyRestoreGameObjectFromSnapshot(snapshot);
+        if (restoredId == std::numeric_limits<uint64_t>::max())
+        {
+            return;
+        }
+
+        m_GameObjectId = restoredId;
+        m_SceneEditor.SelectGameObject(m_GameObjectId);
     }
 
     const char* DeleteGameObjectCommand::GetDescription() const
@@ -39,4 +80,3 @@ namespace minEngine
         return m_Description.c_str();
     }
 }
-

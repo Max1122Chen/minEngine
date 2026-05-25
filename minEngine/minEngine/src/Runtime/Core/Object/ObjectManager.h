@@ -12,6 +12,7 @@ namespace minEngine
     class Engine;
     class MaterialIRTestObjectManagerScope;
     class ObjectManagerTestScope;
+    class SerializationArchiveTestScope;
 
     using ObjectReachabilityMarker = std::function<void(MEObject*)>;
     using ObjectReachabilityRootVisitor = std::function<void(const ObjectReachabilityMarker& markReachable)>;
@@ -102,6 +103,7 @@ namespace minEngine
         friend class Engine;
         friend class MaterialIRTestObjectManagerScope;
         friend class ObjectManagerTestScope;
+        friend class SerializationArchiveTestScope;
 
         static void SetInstance(ObjectManager* instance);
         void PruneExpiredEntries();

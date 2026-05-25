@@ -1,7 +1,7 @@
 # Editor Command Stack（Undo / Redo）— 设计
 
 Last updated: 2026-05-24  
-Status: **v3.2（E1.3 Inspector 属性 Command 已落地）**  
+Status: **v4.0（E1.4 Snapshot 设计已定稿，待实现）**  
 父文档：[Editor Shell 设计](./EDITOR_SHELL_DESIGN.md)  
 相关：`EditorCommandStack.h`、`IEditorCommand`、`EditorInputHub`、`ProjectSettings.Editor`
 
@@ -163,7 +163,7 @@ struct ProjectSettings {
 | **E1.2** | Scene 结构编辑（Rename、Transform、GO/Component 增删） | **完成**（Delete/Remove 为占位，见 §4.1） |
 | **S1–S2** | 序列化：BinaryArchive + 公开 Property API | **完成** |
 | **E1.3** | Inspector 属性 Command（Binary property blob） | **完成** |
-| **E1.4** | **Object / Component Snapshot**（E1.3 完成后再定稿设计并实现） | 待设计 |
+| **E1.4** | **Object / Component Snapshot**（Binary + 全反射字段） | **完成** |
 | **E1.5** | Material 图/属性 Command | 待做 |
 | **E2** | Preferences UI、`TryMerge`、Composite、菜单 `PeekUndoDescription` | 待做 |
 
@@ -288,37 +288,343 @@ void SubmitSetObjectProperty(IEditorContext& context,
 
 ---
 
-## 10) E1.4 — Object Snapshot（设计占位）
+## 10) E1.4 — Object Snapshot（详细设计）
 
-> **状态：** E1.3 完成并跑通 Inspector 属性 Undo 后，再写本节细案并开始编码。  
-> 本节仅列方向，避免与 E1.3 的单属性 JSON 重复造轮子。
+**状态：** 设计定稿（2026-05-24），待编码。  
+**前置：** S1–S2 `BinaryArchive` + `SerializeProperty*`（已完成）；E1.3 Primitive 属性 Undo（已完成）。  
+**关联：** [SERIALIZATION_BINARY_AND_PROPERTY_API.md](../Platform/Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) §9（S3 Snapshot API）。
 
-### 10.1 要解决的问题
+### 10.1 一句话
 
-| 场景 | E1.3 不足 | E1.4 目标 |
-|------|-----------|-----------|
-| Delete GameObject Undo | 只有 name + Transform | 恢复 GO + 组件列表 + 属性 +（若已有）父子关系 |
-| Remove Component Undo | 空壳同类型组件 | 恢复删除前整组件状态 |
-| Inspector ObjectPtr / Array | 未支持 | 统一走快照或专用子命令 |
-| Material 大图 | — | E1.5 可复用同一 `EditorSnapshot` 容器 |
+用 **`Serializer::Serialize` / `Deserialize` + `BinaryWriterArchive`** 对 **整棵 `MEObject` 反射子树**（与 `.mescene` 同规则）做 **Capture / Restore**；Command 只存 **二进制快照 + 少量元数据**；升级 **Delete GO / Remove Component** 为真恢复，并扩展 Inspector **ObjectPtr / Array** 走同一 Property blob 路径。
 
-### 10.2 方向（待 E1.3 后定稿）
+### 10.2 要解决的问题（E1.3 之后）
 
-```text
-EditorSnapshot（或 SceneEditSnapshot）
-  CaptureGameObject(gameObjectId)   // Serializer + 子组件 GUID 列表
-  CaptureComponent(ownerGuid)
-  Restore(snapshot)                 // 反序列化 + Scene 索引更新
+| 场景 | 现状 | E1.4 目标 |
+|------|------|-----------|
+| Delete GameObject → Undo | 仅 `name` + `Transform`，新建空 GO | 恢复 **组件列表 + 各组件反射字段 + GO 名/Guid + Root 链接** |
+| Remove Component → Undo | 同类型 **空壳** 组件 | 恢复 **删除前整颗 Component**（含 Mesh/Material 等 GuidRef） |
+| Inspector ObjectPtr / Array | 仅 dirty，无 Undo | `SerializePropertyToBuffer` ×2（与 Primitive 同交互边界） |
+| Material 大图 Undo | — | **E1.5**；E1.4 只提供可复用 **`EditorObjectSnapshot`** 容器 |
+
+### 10.3 非目标（本阶段不做）
+
+- `.mescene` / `.memtl` 默认格式改 Binary。
+- 快照 **增量 diff**、压缩、按字节折算栈深度（E2 / 后续）。
+- **未反射** 的运行时字段：`GameObject::m_ID`、`PrimitiveComponent::m_SceneProxy`、`SceneComponent::m_AttachParent` / `m_AttachChildren`、各类 dirty 标志。
+- **场景级** 父子 GO 层级（当前 `Scene` 为 **扁平** `m_GameObjects`，无 parent GO 字段；快照不虚构层级）。
+- Material 图节点/连线 Command（**E1.5**）。
+
+### 10.4 「全反射字段」范围（与 Scene 存盘对齐）
+
+**编码路径：** `Serializer::SerializeObject_IterateProps` → 对 class hierarchy 上 **每个有 accessor 的 `MEProperty`** 调用 `SerializeProperty`（Primitive / Object / ObjectPtr / Array）。  
+**与 Inspector 不同：** `Invisible` / `Transient` **不** 在 Serializer 中跳过（仅影响 Inspector 绘制）。
+
+| 对象 | 会进快照的字段（示例） | 不进快照 |
+|------|------------------------|----------|
+| `MEObject` | `m_Name`, `m_Guid`（gen 反射） | `m_Outer`（无反射 accessor）、`m_Class` |
+| `GameObject` | `m_RootComponent`, `m_Components`（`Instanced`） | `m_ID`（非反射，见 §10.6） |
+| `Component` | `m_Owner`（Raw → 序列化为 **GuidRef**） | `m_bCanEverTick`, EoF 标记 |
+| `SceneComponent` | `m_Transform` | `m_AttachParent`, `m_AttachChildren`, `m_bRenderStateDirty` |
+| `StaticMeshComponent` | `m_Mesh`, `m_Material`, `m_CastShadow`, … | `m_SceneProxy` |
+| 资产引用 | **GuidRef**（与 `test.mescene` 一致） | 不内嵌资产文件内容 |
+
+**Instanced 语义（与 Scene 一致）：**
+
+- `m_Components`：每个元素 **内联** 完整组件子树（`BeginObjectPtr` + 字段）。
+- `m_RootComponent`：指向某组件的 **GuidRef**（与内联组件 `m_Guid` 一致）。
+- `m_Mesh` / `m_Material`：指向已加载资产的 **GuidRef**；Restore 后 `ResolvePendingObjectRefs` → `ObjectManager` / `AssetManager`。
+
+**验证基准：** 对场景中某 GO 做 Capture → 新 GO 上 Restore → Binary payload 与「`Serializer::Serialize(GameObject)` 再 Deserialize 到空 GO」结果一致（属性 + GuidRef 解析后 Mesh/Material 指针有效）。
+
+### 10.5 数据模型：`EditorObjectSnapshot`
+
+**文件：** `Editor/src/Commands/Scene/EditorObjectSnapshot.h`（或 `Editor/src/Serialization/EditorObjectSnapshot.h`）
+
+```cpp
+namespace minEngine::Editor
+{
+    // 魔数 'MESN' (minEngine SnapShot)
+    constexpr uint32_t kEditorObjectSnapshotMagic = 0x4E53454Du;
+    constexpr uint16_t kEditorObjectSnapshotVersion = 1;
+
+    enum class EditorSnapshotKind : uint16_t
+    {
+        GameObject = 0,
+        Component = 1,
+    };
+
+    struct EditorObjectSnapshot
+    {
+        uint32_t magic = kEditorObjectSnapshotMagic;
+        uint16_t version = kEditorObjectSnapshotVersion;
+        EditorSnapshotKind kind = EditorSnapshotKind::GameObject;
+
+        // 捕获时写入，Restore 后由调用方更新（见 §10.6）
+        uint64_t sourceRuntimeId = 0;
+        GUID sourceRootGuid{};
+
+        // 反序列化根类型，如 "minEngine::GameObject" / "minEngine::StaticMeshComponent"
+        std::string rootClassName;
+
+        // Serializer::Serialize(rootClassName, object, BinaryWriterArchive) 的完整输出
+        std::vector<uint8_t> payload;
+
+        // Component 快照专用（kind == Component）
+        uint64_t ownerGameObjectId = 0;
+        GUID ownerGameObjectGuid{};
+        int32_t componentIndexInOwner = -1; // 可选，用于尽量插回原槽位；-1 表示 append
+    };
+}
 ```
 
-- 复用 **`Serialization::Serializer`** + 反射；与 `.mescene` 字段子集对齐，避免第二套格式。
-- Command 内只存 **`std::string` 或 `Json` blob** + 元数据（描述用）。
-- 升级 **`DeleteGameObjectCommand`** / **`RemoveComponentCommand`** 使用快照，而非扩写更多 ad-hoc 字段。
+**Envelope 布局（little-endian）：**
 
-### 10.3 与栈策略（E1.4 设计时拍板）
+```text
+[ magic u32 ][ version u16 ][ kind u16 ]
+[ sourceRuntimeId u64 ][ sourceRootGuid 16 bytes ]
+[ rootClassName: u16 len + utf8 ]
+[ ownerGameObjectId u64 ][ ownerGameObjectGuid 16 ][ componentIndex i32 ]  // kind==Component 时有效；GO 快照填 0 / zero / -1
+[ payloadSize u32 ][ payload bytes... ]
+```
 
-- 单条快照是否计 1 条深度，或按大小折算（可选）。
-- 超大 Material 图是否截断/拒绝入栈（与 E1.5 一起验收）。
+**Command 存储：** `std::vector<uint8_t> m_SnapshotEnvelope`（序列化整个 `EditorObjectSnapshot` 结构，或 struct 分字段存；实现选 **扁平 envelope** 便于单测 hex dump）。
+
+### 10.6 平台 API（S3）：Object 级 Binary 缓冲
+
+在 `Serializer` 上增加（与 `SerializePropertyToBuffer` 对称）：
+
+```cpp
+// Serializer.h — 公开 API
+static SerializeResult SerializeObjectToBuffer(
+    const std::string& rootClassName,
+    const void* rootObject,
+    std::vector<uint8_t>& outBuffer,
+    const SerializerOptions& options = SerializerOptions{});
+
+static SerializeResult DeserializeObjectFromBuffer(
+    const std::string& rootClassName,
+    void* outRootObject,
+    const std::vector<uint8_t>& buffer,
+    std::vector<PendingObjectRef>& outUnresolvedRefs,
+    const SerializerOptions& options = SerializerOptions{});
+```
+
+**实现：** `BinaryWriterArchive` → `Serialize` → `TakeBuffer()`；读路径 `BinaryReaderArchive(buffer)` → `Deserialize` → `ResolvePendingObjectRefs`。
+
+**`EditorObjectSnapshot` Capture / Restore 薄封装：**
+
+```cpp
+// EditorObjectSnapshotUtil.h（Editor 模块）
+SerializeResult CaptureGameObject(const GameObject& go, EditorObjectSnapshot& out);
+SerializeResult CaptureComponent(const Component& component, const GameObject& owner, int32_t index, EditorObjectSnapshot& out);
+
+struct GameObjectRestoreResult {
+    uint64_t restoredRuntimeId = UINT64_MAX;
+    GameObject* restoredObject = nullptr;
+};
+GameObjectRestoreResult RestoreGameObjectToScene(Scene& scene, const EditorObjectSnapshot& snapshot);
+
+struct ComponentRestoreResult {
+    Component* restoredComponent = nullptr;
+};
+ComponentRestoreResult RestoreComponentToGameObject(GameObject& owner, const EditorObjectSnapshot& snapshot);
+```
+
+### 10.7 Capture 流程
+
+#### 10.7.1 `CaptureGameObject`
+
+```text
+1. kind = GameObject, sourceRuntimeId = go.GetID(), sourceRootGuid = go.GetGuid()
+2. rootClassName = go.GetClass()->GetName()
+3. payload = SerializeObjectToBuffer(rootClassName, &go, default SerializerOptions)
+4. 写入 envelope
+```
+
+**时机：** `DeleteGameObjectCommand::Execute` **之前**（对象仍存活、组件仍挂在 GO 上）。
+
+**不在此阶段** 调用 `UnregisterObject`；删除仍由 `shared_ptr` 释放 + 现有 GC 路径处理。
+
+#### 10.7.2 `CaptureComponent`
+
+```text
+1. kind = Component, ownerGameObjectId/Guid, componentIndexInOwner
+2. rootClassName = component.GetClass()->GetName()
+3. payload = SerializeObjectToBuffer(rootClassName, &component, ...)
+   // 注意：owner 为 GO 时，m_Owner 序列化为 GuidRef；与 Scene 一致
+```
+
+**时机：** `RemoveComponentCommand::Execute` **之前**。
+
+### 10.8 Restore 流程
+
+#### 10.8.1 `RestoreGameObjectToScene`（Delete Undo）
+
+```text
+1. scene.CreateGameObject() → shared_ptr<GameObject> go   // 新 runtime ID，已 RegisterObject(GO)
+2. DeserializeObjectFromBuffer("minEngine::GameObject", go.get(), snapshot.payload, pendingRefs)
+   // 内联恢复 m_Components[]，每项 RegisterObject；m_RootComponent 先 pending GuidRef
+3. ResolvePendingObjectRefs(pendingRefs)
+4. PostRestoreGameObject(*go):
+   a. 对每个 component：component->SetOwner(go.get())   // 覆盖/确认 owner 指针
+   b. 若 m_RootComponent 仍空：按「首个 SceneComponent」或按 Guid 匹配组件列表兜底
+   c. go->SetOuter(scene)  // Scene 为 MEObject outer
+   d. 对每个 SceneComponent：MarkRenderStateDirty()
+   e. SceneManager::MarkComponentForNeededEndOfFrameUpdate（与 LoadScene 一致）
+5. 返回新 restoredRuntimeId = go->GetID()
+```
+
+**GUID 策略（默认，见 §10.11 拍板项 A）：** **保留快照内 GUID**（`m_Guid` 随 payload 写回）。`ObjectManager::RegisterObject` 在 Deserialize 内联路径已注册；若旧条目为 **expired weak_ptr**，`m_ObjectsByGuid[guid] = newShared` **覆盖** 即可。
+
+**Runtime ID 策略（默认，见 §10.11 拍板项 B）：** **不保留** `sourceRuntimeId`；Undo 后使用 `CreateGameObject` 分配的新 ID；`DeleteGameObjectCommand` 在 Undo 成功后更新 `m_GameObjectId` 与 Selection（与现逻辑一致）。
+
+#### 10.8.2 `RestoreComponentToGameObject`（Remove Undo）
+
+```text
+1. 校验 owner 仍存在（ownerGameObjectId 或 ownerGameObjectGuid）
+2. factory = component.GetClass()->CreateDefaultInstance() → shared_ptr<Component>
+3. DeserializeObjectFromBuffer(rootClassName, ptr, payload, pendingRefs)
+4. ResolvePendingObjectRefs
+5. PostRestoreComponent(*comp, *owner):
+   - SetOwner(owner)
+   - 插入 m_Components：若 componentIndexInOwner 合法且 ≤ size 则 insert；否则 push_back
+   - RegisterObject（若 Deserialize 未注册则补注册）
+   - MarkRenderStateDirty / EoF update
+6. 返回 restoredComponent*
+```
+
+**禁止** 再走 `ApplyAddComponentToSelectedGameObject(类型名)` 空壳路径。
+
+### 10.9 Command 升级
+
+#### 10.9.1 `DeleteGameObjectCommand`
+
+| 字段（新） | 说明 |
+|------------|------|
+| `m_SnapshotEnvelope` | `CaptureGameObject` 结果 |
+| `m_GameObjectId` | 执行时 ID；Undo 后更新为 restored ID |
+
+```text
+Execute:
+  CaptureGameObject → envelope
+  ApplyRemoveGameObjectFromScene(id, ...)   // 可弃用 outName/outTransform，或仅用于描述
+Undo:
+  RestoreGameObjectToScene → 更新 m_GameObjectId、SelectGameObject(restoredId)
+```
+
+**描述：** `Delete GameObject '{name}'`（从快照 metadata 或捕获前读取）。
+
+#### 10.9.2 `RemoveComponentCommand`
+
+| 字段（新） | 说明 |
+|------------|------|
+| `m_SnapshotEnvelope` | `CaptureComponent` |
+| `m_OwnerGameObjectId` | 保留 |
+| `m_ComponentTypeName` | 保留（描述 / 校验） |
+
+```text
+Execute:
+  CaptureComponent → ApplyRemoveComponentFromGO
+Undo:
+  RestoreComponentToGameObject（禁止空壳 AddComponent）
+```
+
+#### 10.9.3 其它 Scene Command
+
+| Command | E1.4 是否改动 |
+|---------|----------------|
+| Rename / Transform / Add GO / Add Component | **不改**（已满足或 Add 侧完整） |
+| `SetObjectPropertyCommand` | **不改**；Inspector 扩展见 §10.10 |
+
+### 10.10 Inspector：ObjectPtr / Array Undo（E1.4 同批）
+
+**原则：** 仍用 **`SetObjectPropertyCommand`** + **单 property Binary blob**；**不** 为每个 ObjectPtr 单独做整对象 Snapshot（除非未来 E1.4+ 优化）。
+
+| 步骤 | 改动 |
+|------|------|
+| `CanUndoInspectorProperty` | 返回 true：`Primitive` \| `Object` \| `ObjectPtr` \| `Array` |
+| Capture / Commit | 已用 `SerializePropertyToBuffer` — 扩展后即可支持 GuidRef / 整数组 |
+| `SerializerOptions` | Inspector Capture 使用默认 options；GuidRef 路径 **已** 在 `SerializeObjectPtr` 实现 |
+
+**明确不做：** 嵌套 `Object` **内部**子字段逐字段 Undo（例如直接改 `Transform.Position` 字段行）——整块 `m_Transform` 作为 `Object` 属性可一条 blob Undo；细粒度位移仍优先 Gizmo `SetGameObjectTransformCommand`。
+
+**验收：**
+
+- StaticMesh 上换 Mesh/Material 资产 → Undo 恢复引用。
+- 若存在可编辑 `Array` 字段 → 改长度/元素 → Undo 恢复整数组。
+
+### 10.11 拍板结果（2026-05-24，用户确认）
+
+| ID | 决策 | 结果 |
+|----|------|------|
+| **A** | 快照内 **GUID** | **保留原 GUID**（与 `.mescene`、组件互引一致） |
+| **B** | **Runtime `m_ID`** | **新 ID** + Undo 后更新 `DeleteGameObjectCommand::m_GameObjectId` 与 Selection |
+| **C** | **Component 插回** | **按 `componentIndexInOwner` 插回** |
+| **D** | Inspector Undo 范围 | **Primitive + ObjectPtr + Array + Object 值类型**（嵌套 Object 子字段仍不做 per-field） |
+| **E** | 栈深度 | **一条快照 = 一条 Undo**（未单独问询，沿用 E1.1；超大 blob 仅 Warn） |
+| **F** | `m_AttachParent` 附件层级 | **E1.4 接受 Undo 后丢失**（不扩反射） |
+
+### 10.12 栈体积与失败策略
+
+- 单条 `DeleteGameObjectCommand` 体积 ≈ 该 GO 全子树 Binary 大小；**仍占 1 条** `MaxUndoStackDepth`。
+- Capture / Restore 失败：`ME_CORE_ERROR` + **不** 执行删除（Execute  aborted）或 Undo no-op（与现 Command 一致）。
+- Restore 后 `ResolvePendingObjectRefs` 若 **unresolved > 0**：打 **Warn**，Mesh 可能为空；不阻塞 Undo（与 Scene Load 一致）。
+
+**软上限（可选，实现阶段）：** 若 `payload.size() > 4 MiB`，打 Warn；**不** 拒绝入栈（E1.5 Material 再评）。
+
+### 10.13 PostRestore 与渲染
+
+与 `SceneManager::LoadSceneByPath` 对齐：
+
+```cpp
+void SceneEditor::PostRestoreSceneObject(GameObject& go)
+{
+    for (Component* c : /* each component on go */) {
+        if (auto* sc = dynamic_cast<SceneComponent*>(c)) {
+            sc->MarkRenderStateDirty();
+        }
+        SceneManager::Get().MarkComponentForNeededEndOfFrameUpdate(c);
+    }
+    MarkSceneDirty();
+}
+```
+
+**Editor 帧顺序** 保持 E1.3 修复：`SendAllEndOfFrameUpdates` 在 ImGui 之后，避免 proxy UAF。
+
+### 10.14 测试与验收
+
+| 层级 | 内容 |
+|------|------|
+| **Runtime** | `SerializationArchiveTest` 增加 `GameObject` round-trip（空 GO、带 StaticMeshComponent + GuidRef，需测试资产或 mock GUID） |
+| **Editor CLI** | 可选 `--editor-snapshot-test`：Capture/Restore 不经过 CommandStack |
+| **手动** | 删带 Mesh 的 GO → Undo → 视口仍显示；Remove StaticMeshComponent → Undo → Mesh 回来；改 Material 引用 → Undo |
+
+**E1.4 完成勾选：**
+
+- [ ] `SerializeObjectToBuffer` / `DeserializeObjectFromBuffer`
+- [ ] `EditorObjectSnapshot` Capture/Restore
+- [ ] `DeleteGameObjectCommand` / `RemoveComponentCommand` 升级
+- [ ] Inspector ObjectPtr + Array Undo
+- [ ] 文档 §12 验收表 E1.4 项
+
+### 10.15 建议文件清单
+
+| 文件 | 职责 |
+|------|------|
+| `Runtime/.../Serializer.{h,cpp}` | `SerializeObjectToBuffer` / `DeserializeObjectFromBuffer` |
+| `Editor/.../EditorObjectSnapshot.{h,cpp}` | 结构体 + envelope 读写 + Capture/Restore |
+| `Editor/.../SceneEditor.{h,cpp}` | `PostRestore*`、Restore 入口 |
+| `Commands/Scene/DeleteGameObjectCommand.*` | 存 envelope |
+| `Commands/Scene/RemoveComponentCommand.*` | 存 envelope |
+| `SceneEditorInspectorSource.cpp` | `CanUndoInspectorProperty` 扩展 |
+| `SerializationArchiveTest.cpp` | GO round-trip |
+| `SERIALIZATION_BINARY_AND_PROPERTY_API.md` | S3 勾选 |
+
+### 10.16 与 E1.5 的衔接
+
+- `MaterialEdGraph` Undo：Command 存 **`EditorObjectSnapshot`**（`rootClassName = MaterialEdGraph`，payload 为整图）。
+- 栈体积与「是否拒绝超大图入栈」在 **E1.5 设计时** 复用 §10.12 经验。
 
 ---
 
@@ -354,7 +660,7 @@ EditorSnapshot（或 SceneEditSnapshot）
 ### 待做
 
 - [x] **E1.3** Inspector 属性 Undo（Primitive）
-- [ ] **E1.4** Snapshot + 加强 Delete/Remove
+- [x] **E1.4** Snapshot + 加强 Delete/Remove + Inspector ObjectPtr/Array（§10）
 - [ ] **E1.5** Material 命令
 - [ ] **E2** Merge、菜单描述、Composite
 
@@ -369,3 +675,4 @@ EditorSnapshot（或 SceneEditSnapshot）
 | 2026-05-24 | v3：同步 E1.2 全量 Scene 命令与弱 Undo；分期改为 E1.3 属性 → E1.4 Snapshot → E1.5 Material；补 E1.3 详细设计与 E1.4 占位 |
 | 2026-05-24 | v3.1：E1.3 前置序列化 S1–S2；属性 blob 改为 Binary + `SerializeProperty` |
 | 2026-05-24 | v3.2：`SetObjectPropertyCommand` + Inspector Primitive 接线 |
+| 2026-05-24 | v4.0：E1.4 Snapshot 详细设计（Binary、`EditorObjectSnapshot`、Command 升级、§10.11 拍板项） |

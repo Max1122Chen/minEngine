@@ -70,10 +70,28 @@ namespace minEngine::Serialization
         {
             WriteFrameKind kind = WriteFrameKind::Object;
             std::string pendingFieldName;
+            std::string committingFieldName;
+            bool isFieldValueObject = false;
+            std::vector<uint8_t> fieldValueBody;
             size_t arrayExpectedCount = 0;
             size_t arrayWrittenCount = 0;
         };
 
+        bool ShouldWriteNextObjectAsFieldValue() const;
+        bool ShouldWriteTaggedValueInSubBuffer() const;
+        std::vector<uint8_t>& GetActiveWriteBuffer();
+        std::vector<uint8_t>& GetPayloadWriteBuffer();
+        bool AppendToActiveBuffer(const void* data, size_t size);
+        bool AppendU8ToActive(uint8_t value);
+        bool AppendU16ToActive(uint16_t value);
+        bool AppendU32ToActive(uint32_t value);
+        bool AppendU64ToActive(uint64_t value);
+        bool AppendStringBytesToActive(const std::string& value);
+        bool CommitFieldValue(std::vector<uint8_t> fieldValueBytes);
+        bool CommitArrayElement(std::vector<uint8_t> elementBytes);
+        bool CommitTaggedValueToParent(std::vector<uint8_t> valueBytes);
+        bool BeginObjectBody(BinaryWireTag objectTag, const std::string& typeName);
+        bool EndObjectBody(BinaryWireTag objectTag);
         bool CommitTaggedPayload(BinaryWireTag tag, const void* payload, size_t payloadSize);
         bool CommitTaggedString(const std::string& value);
         bool CommitTaggedNull();
@@ -165,6 +183,7 @@ namespace minEngine::Serialization
         bool ConsumeFromActiveSlice(void* outData, size_t size);
         bool PeekActiveSliceTag(BinaryWireTag& outTag) const;
         bool ReadTaggedValueFromSlice(std::vector<uint8_t>& buffer, size_t& readPos, std::vector<uint8_t>& outSlice);
+        static bool IsObjectFieldStreamEnd(const std::vector<uint8_t>& buffer, size_t readPos);
 
         std::vector<uint8_t> m_Buffer;
         size_t m_ReadPos = 0;

@@ -1,80 +1,91 @@
 #include "Commands/Scene/RemoveComponentCommand.h"
 
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "Runtime/Function/Framework/Components/Component.h"
+#include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Scene/SceneEditor.h"
+
+#include "Runtime/Core/GUID/GUID.h"
+#include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Framework/Components/Component.h"
 
 namespace minEngine
 {
     RemoveComponentCommand::RemoveComponentCommand(SceneEditor& sceneEditor,
                                                    uint64_t ownerGameObjectId,
-                                                   std::string componentTypeName)
+                                                   const Component& targetComponent)
         : m_SceneEditor(sceneEditor)
         , m_OwnerGameObjectId(ownerGameObjectId)
-        , m_ComponentTypeName(std::move(componentTypeName))
+        , m_ComponentGuidHigh(targetComponent.GetGuid().High)
+        , m_ComponentGuidLow(targetComponent.GetGuid().Low)
+        , m_ComponentIndex(-1)
     {
-        m_Description = "Remove Component";
-    }
-
-    bool RemoveComponentCommand::TryFindFirstComponentByType(GameObject& owner, Component*& outComponent) const
-    {
-        outComponent = nullptr;
-        for (const std::shared_ptr<Component>& componentPtr : owner.GetAllComponents())
+        if (const Reflection::MEClass* classInfo = targetComponent.GetClass())
         {
-            if (!componentPtr)
-            {
-                continue;
-            }
-
-            const Reflection::MEClass* classInfo = componentPtr->GetClass();
-            if (!classInfo)
-            {
-                continue;
-            }
-
-            if (classInfo->GetName() == m_ComponentTypeName)
-            {
-                outComponent = componentPtr.get();
-                return true;
-            }
+            m_ComponentTypeName = classInfo->GetName();
         }
-        return false;
+
+        m_Description = "Remove Component";
     }
 
     void RemoveComponentCommand::Execute()
     {
         m_Removed = false;
+        m_SnapshotEnvelope.clear();
 
-        m_SceneEditor.SelectGameObject(m_OwnerGameObjectId);
-        GameObject* owner = m_SceneEditor.GetSelectedGameObject();
-        if (!owner)
+        EditorObjectSnapshot snapshot;
+        std::string description;
+        const GUID componentGuid(m_ComponentGuidHigh, m_ComponentGuidLow);
+        if (!m_SceneEditor.TryCaptureComponentSnapshotForRemove(
+                m_OwnerGameObjectId,
+                componentGuid,
+                snapshot,
+                m_ComponentIndex,
+                description))
         {
             return;
         }
 
-        Component* component = nullptr;
-        if (!TryFindFirstComponentByType(*owner, component) || !component)
+        if (!description.empty())
         {
+            m_Description = std::move(description);
+        }
+
+        if (!EditorObjectSnapshotUtil::WriteEnvelope(snapshot, m_SnapshotEnvelope))
+        {
+            ME_CORE_ERROR("RemoveComponentCommand: failed to write snapshot envelope.");
             return;
         }
 
-        m_Removed = m_SceneEditor.ApplyRemoveComponentFromGO(*owner, *component);
+        if (!m_SceneEditor.ApplyRemoveComponentByGuid(m_OwnerGameObjectId, componentGuid))
+        {
+            m_SnapshotEnvelope.clear();
+            return;
+        }
+
+        m_Removed = true;
     }
 
     void RemoveComponentCommand::Undo()
     {
-        if (!m_Removed)
+        if (!m_Removed || m_SnapshotEnvelope.empty())
         {
             return;
         }
 
-        // Best-effort restore: re-adds a fresh component of the same type (state is not preserved yet).
-        m_SceneEditor.SelectGameObject(m_OwnerGameObjectId);
-        Component* newComponent = nullptr;
-        if (m_SceneEditor.ApplyAddComponentToSelectedGameObject(m_ComponentTypeName, newComponent))
+        EditorObjectSnapshot snapshot;
+        if (!EditorObjectSnapshotUtil::ReadEnvelope(m_SnapshotEnvelope, snapshot))
         {
-            m_Removed = false;
+            ME_CORE_ERROR("RemoveComponentCommand: failed to read snapshot envelope.");
+            return;
         }
+
+        snapshot.componentIndexInOwner = m_ComponentIndex;
+
+        if (m_SceneEditor.ApplyRestoreComponentFromSnapshot(m_OwnerGameObjectId, snapshot) == nullptr)
+        {
+            return;
+        }
+
+        m_Removed = false;
     }
 
     const char* RemoveComponentCommand::GetDescription() const
@@ -82,4 +93,3 @@ namespace minEngine
         return m_Description.c_str();
     }
 }
-

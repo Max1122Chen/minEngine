@@ -293,7 +293,21 @@ namespace minEngine
 
     bool SceneEditorInspectorSource::CanUndoInspectorProperty(const Reflection::MEProperty& property) const
     {
-        return property.GetCategory() == Reflection::MEPropertyCategory::Primitive;
+        if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+        {
+            return false;
+        }
+
+        switch (property.GetCategory())
+        {
+        case Reflection::MEPropertyCategory::Primitive:
+        case Reflection::MEPropertyCategory::Object:
+        case Reflection::MEPropertyCategory::ObjectPtr:
+        case Reflection::MEPropertyCategory::Array:
+            return true;
+        default:
+            return false;
+        }
     }
 
     void SceneEditorInspectorSource::TryCapturePropertyUndoBefore(uint32_t editId,

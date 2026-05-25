@@ -1,7 +1,7 @@
 # 序列化扩展 — Binary Archive 与 Property 粒度 API
 
 Last updated: 2026-05-24  
-Status: **S1–S2 已实现（`--serialization-archive-test`）**  
+Status: **S1–S2 已实现；S3 设计已定（E1.4 Snapshot）**  
 父文档：[Platform 路线图](../PLATFORM_ROADMAP.md)  
 关联：[Editor Command / Undo](../../Editor/EDITOR_COMMAND_HISTORY.md)（E1.3+ 依赖本能力）、`Runtime/Core/Serialization/`
 
@@ -235,10 +235,87 @@ Archive 接口表达 **逻辑类型**；Binary 后端负责 **物理编码**：
 
 ### 6.4 嵌套 `Object`（非指针，值对象）
 
-- 递归 `SerializeObjectInstance`（无 field 名外壳时由 Property API 直接进入子对象 payload）。
-- Binary 子对象：`Tag::Object` + typeName + 子字段序列（与 ObjectPtr 内联相同编码，区分 Tag 便于 Reader）。
+**问题（S3 修复前）：** Writer 在 `BeginField` 之后对 nested `MEPropertyCategory::Object` 调用 `BeginObject` 时，子对象字节直接写入根 `m_Buffer`，**未作为父字段的 tagged value 提交**，导致 `EndField` 报 `field value was not written`。`GuidRef`、内联 `ObjectPtr`、`Array` 字段存在同类问题。
 
-### 6.5 Primitive / `Vector2–4`
+**Wire 格式（与 Reader 已有 `ParseObjectFields` / `ValueSlice` 对齐）：**
+
+```
+objectField := u16 fieldNameLen + fieldName + taggedFieldValue
+
+taggedFieldValue 之一：
+  primitive   → Tag + payload
+  GuidRef     → Tag::GuidRef + u64 High + u64 Low
+  Array       → Tag::Array + u32 count + elements*
+  Object      → Tag::Object + u16 typeNameLen + typeName + nestedFields* + Tag::EndObject
+  ObjectPtr   → Tag::ObjectPtr + u16 typeNameLen + typeName + nestedFields* + Tag::EndObject
+```
+
+**Writer 算法（`BinaryWriterArchive`，通用，不限 GUID）：**
+
+1. **Object / ObjectPtr 作为字段值：** 若当前 Object frame 有 `pendingFieldName`，`BeginObject(Body)` 在子 buffer（`fieldValueBody`）内构建完整 `Tag + typeName + fields + EndObject`，`EndObject` 时 `CommitFieldValue` 写入 `u16 name + name + body`，并清除 `pendingFieldName`。
+2. **Array 作为字段值：** 同上，在 `fieldValueBody` 内构建 `Tag::Array + count + elements`，`EndArray` 时一次性 `CommitFieldValue`。
+3. **GuidRef / Primitive / String / Null：** `CommitTaggedPayload` / `CommitTaggedString` 在 Object 字段上下文写入 `u16 name + name + tagged payload`；嵌套 Object 子 buffer 内字段写入该子 buffer。
+4. **递归深度：** 任意层 nested Object（如 `GameObject.m_Guid`、`Transform` 内 `Vector3`）复用同一机制；Reader 侧无需改动。
+
+**Wire typeName 省略（`writeObjectTypeName == false`，默认）：** Writer 写 `u16(0)` 空 typeName；Reader `BeginObject(MEClass*)` / 字符串期望名在 **wire typeName 为空时跳过校验**，由调用方 `classInfo` / envelope `rootClassName` 提供类型。`DeserializeObjectInstance` 使用 `BeginObject(classInfo)` 而非 `GetName()` 字符串严格匹配。
+
+**Property API 调用链（不变）：**
+
+```
+BeginField("m_Guid")
+  → SerializeObjectInstance(GUID)
+    → BeginObject("GUID") … WriteUInt64(High/Low) … EndObject   // Writer 内部提交字段
+EndField
+```
+
+**验收：** `Editor.exe --serialization-archive-test` 含 nested Object / GuidRef 字段 / `SerializeObjectToBuffer(GameObject)` round-trip；Delete GO capture 不再在 `m_Guid` 失败。
+
+### 6.5 Array 元素 tagged value（S4）
+
+**问题（S3 后）：** Object **字段**上的 `Array` 已能 `CommitFieldValue`，但 **Array 元素**为复杂 tag（`ObjectPtr` / `Object` / 嵌套 `Array` / `GuidRef`）时，`BeginObjectPtr` 等仍写入根 `m_Buffer`，破坏 array 布局。`m_Components`（`vector<shared_ptr<Component>>` + `Instanced`）因此失败。
+
+**与 Json 对齐：** Json `AttachValue` 在 Array 上下文直接 `push_back`；Binary 每个 array 元素 = **一个完整 tagged slice**（无 fieldName 前缀），与 Reader `ReadTaggedValueFromSlice` 一致。
+
+```
+arrayElement := taggedValue   // 无 u16 fieldName
+
+taggedValue 与 §6.4 objectField 的 payload 相同：
+  Null | Bool | … | GuidRef | Array | Object | ObjectPtr
+```
+
+**Writer 容器 commit 模型（泛化 §6.4）：**
+
+| 父容器 | commit 方式 |
+|--------|-------------|
+| 根 / 无 stack | 直接写 `m_Buffer` |
+| Object + `pendingFieldName` | `u16 name + name + taggedValue` → 父 Object 流 |
+| Array | `taggedValue` → 父 Array 流；`arrayWrittenCount++` |
+
+**子 buffer 构建（`isFieldValueObject` / sub-buffer 帧）：** 当栈顶为 **Object 待写字段** 或 **Array 待写元素** 时，`BeginObject` / `BeginObjectPtr` / `BeginArray` 在 `fieldValueBody` 内构建完整 tagged blob，`End*` 时 `CommitFieldValue` 或 `CommitArrayElement`。
+
+**ObjectPtr × Array × Instanced（`m_Components` 路径）：**
+
+```text
+BeginField("m_Components")
+  BeginArray(n)                    // fieldValueBody: Tag::Array + count
+    BeginObjectPtr(ComponentType)  // sub-buffer → End 时 CommitArrayElement
+      … component fields …
+    EndObjectPtr
+  EndArray                         // CommitFieldValue(整个 array blob)
+EndField
+```
+
+**Ref vs Nested / Shared vs Raw：** 语义仍在 **Serializer**（§6.3）；Binary 只编码 `Null` / `GuidRef` / `ObjectPtr` 三种 ptr payload。Array 元素上的 shared_ptr Instanced 组件走 **ObjectPtr 内联**；raw `m_RootComponent` 走 **GuidRef**（Resolve 阶段绑定）。
+
+**Invisible（如 `Component.m_Owner`）：** Inspector 不展示，但 **Serializer 仍序列化**；`SerializeObjectPtr` 对非 `Instanced` 或 outer 不匹配走 **GuidRef**，不会内联递归父 GO。
+
+**Reader 补充：** `BeginObjectPtr(MEClass*)` 在 wire `typeName` 为空时跳过校验（与 §6.4 Object 一致）。
+
+**EndObject 与 field-name length 歧义：** `BinaryWireTag::EndObject` 值为 `0x0a`，与 u16 小端 field-name 长度的低字节相同（例如 `m_Material` 长度 10 → `0a 00`）。`ParseObjectFields` / 内联 Object 扫描在循环头 **不能** 单字节判 `EndObject`；须先 peek u16，若 `readPos + 2 + length` 仍在 buffer 内则按字段解析，否则 consume `EndObject`。
+
+**验收：** `--serialization-archive-test` 含 Array×ObjectPtr 内联、Array×GuidRef、GameObject+m_Components round-trip；Delete GO 带 Component Undo capture 成功。
+
+### 6.6 Primitive / `Vector2–4`
 
 - 继续走 **`PrimitiveCodecRegistry`**，不在 Binary 重复实现 float 逻辑。
 - Vector 在 JSON 为 **length-2/3/4 数组**；Binary 可用 **`Tag::Array` + fixed count** 或专用 `Tag::Vector3`（实现简单选 Array + count 校验）。
@@ -263,7 +340,8 @@ Archive 接口表达 **逻辑类型**；Binary 后端负责 **物理编码**：
 |------|------|------|
 | **S1** | `BinaryWriterArchive` / `BinaryReaderArchive`；Primitive + String + Array + GuidRef + Object 字段 | **完成** — `Editor.exe --serialization-archive-test` |
 | **S2** | 公开 `SerializeProperty` / `DeserializeProperty` + `*ToBuffer` / `*FromBuffer` | **完成**（Vector3 反射类未注册时测试跳过） |
-| **S3** | `SerializerOptions` 扩展；Editor E1.3 接线 | 待做 |
+| **S3** | `SerializeObjectToBuffer` / `DeserializeObjectFromBuffer`；Editor `EditorObjectSnapshot`；**nested Object 字段 Writer 修复** | **完成** — `--serialization-archive-test`（含 nested GUID / GuidRef 字段 / GameObject round-trip） |
+| **S4** | **Array 元素 tagged value**；ObjectPtr/Array 在 Binary 容器 commit；GameObject `m_Components` | **完成** — Array×ObjectPtr / GameObject+Components round-trip |
 
 **建议顺序：** S1 → S2 → S3（Editor 不阻塞 S1 单测）。
 
@@ -274,8 +352,27 @@ Archive 接口表达 **逻辑类型**；Binary 后端负责 **物理编码**：
 | Editor 阶段 | 依赖本设计 |
 |-------------|------------|
 | E1.3 Inspector 属性 | `SerializePropertyToBuffer` × 2（before/after） |
-| E1.4 Snapshot | 全 Component / GameObject = 根对象 `Serialize` + BinaryArchive |
-| E1.5 Material | 图对象同样 Archive；可先 Json 调试再 Binary |
+| E1.4 Snapshot | `SerializeObjectToBuffer` + `EditorObjectSnapshot` envelope（全反射子树，与 `.mescene` 同规则） |
+| E1.5 Material | 复用 `EditorObjectSnapshot` 存整 `MaterialEdGraph` |
+
+### 9.1 S3 公开 API（E1.4 实现）
+
+```cpp
+static SerializeResult SerializeObjectToBuffer(
+    const std::string& rootClassName,
+    const void* rootObject,
+    std::vector<uint8_t>& outBuffer,
+    const SerializerOptions& options = SerializerOptions{});
+
+static SerializeResult DeserializeObjectFromBuffer(
+    const std::string& rootClassName,
+    void* outRootObject,
+    const std::vector<uint8_t>& buffer,
+    std::vector<PendingObjectRef>& outUnresolvedRefs,
+    const SerializerOptions& options = SerializerOptions{});
+```
+
+**语义：** 对 `rootObject` 调用现有 `Serialize` / `Deserialize`（`BeginObject` + hierarchy 全字段），缓冲区为 **纯 Serializer payload**；Editor 再在之外包一层 `EditorObjectSnapshot` 头（magic、kind、runtimeId、owner 元数据）。详见 [EDITOR_COMMAND_HISTORY.md §10](../../Editor/EDITOR_COMMAND_HISTORY.md)。
 
 更新 [EDITOR_COMMAND_HISTORY.md](../../Editor/EDITOR_COMMAND_HISTORY.md)：**E1.3 实现前完成 S1+S2**（或 S1+property API 最小子集）。
 
@@ -287,7 +384,7 @@ Archive 接口表达 **逻辑类型**；Binary 后端负责 **物理编码**：
 |---|------|------|
 | 1 | Undo 反序列化 Guid 找不到 | 保留旧值 + `ME_CORE_WARN`；不静默写 null |
 | 2 | Instanced 子对象 Undo | E1.3 仅 primitive；ObjectPtr/内联 Object **E1.4** |
-| 3 | `Transient` / `Invisible` 过滤 | S2 在 `IterateProps` 统一跳过；与 Inspector 一致 |
+| 3 | `Transient` / `Invisible` 过滤 | `IterateProps` 仅跳过 **Transient**；**Invisible** 仅 Inspector 隐藏，Serializer 仍写（如 `m_Owner` → GuidRef） |
 | 4 | Binary 是否进磁盘 | 本阶段 **否** |
 | 5 | Legacy Serializer | 新代码禁止依赖；逐步迁移 |
 
@@ -297,7 +394,7 @@ Archive 接口表达 **逻辑类型**；Binary 后端负责 **物理编码**：
 
 - **Round-trip：** 每种 `MEPropertyCategory` × 代表类型，Json 与 Binary 各测 Write→Read→memcmp 逻辑值。
 - **GuidRef：** 注册对象 → 序列化 → 清空指针 → 反序列化 → `ResolvePendingObjectRefs` → 指针恢复。
-- **Array：** 空数组、含 null 元素、嵌套 vector。
+- **Array：** 空数组、含 null 元素、嵌套 vector、**元素为 ObjectPtr/GuidRef/Object**。
 - **回归：** 现有 `SceneLoader` / `MaterialLoader` Json 路径 CI 不变。
 
 ---

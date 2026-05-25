@@ -6,6 +6,7 @@
 #include "Commands/Scene/RemoveComponentCommand.h"
 #include "Commands/Scene/RenameGameObjectCommand.h"
 #include "Commands/Scene/SetGameObjectTransformCommand.h"
+#include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Commands/Scene/SetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
 #include "Scene/SceneEditorInspectorSource.h"
@@ -398,8 +399,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<RemoveComponentCommand>(
-            *this, gameObject.GetID(), classInfo->GetName()));
+        context.GetCommandStack().Execute(std::make_unique<RemoveComponentCommand>(*this, gameObject.GetID(), targetComponent));
     }
 
     void SceneEditor::SaveCurrentScene()
@@ -481,29 +481,6 @@ namespace minEngine
 
         ME_CORE_ERROR("Failed to remove GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
         return false;
-    }
-
-    uint64_t SceneEditor::ApplyRestoreRemovedGameObject(const std::string& name, const Transform& transform)
-    {
-        Scene* scene = GetActiveScene();
-        if (!scene)
-        {
-            ME_CORE_ERROR("No active scene to restore GameObject to.");
-            return std::numeric_limits<uint64_t>::max();
-        }
-
-        std::shared_ptr<GameObject> newGO = scene->CreateGameObject();
-        if (!newGO)
-        {
-            ME_CORE_ERROR("Failed to restore GameObject in scene '{}'.", scene->GetSceneName());
-            return std::numeric_limits<uint64_t>::max();
-        }
-
-        newGO->Rename(name);
-        newGO->SetTransform(transform);
-        MarkSceneDirty();
-        SelectGameObject(newGO->GetID());
-        return newGO->GetID();
     }
 
     void SceneEditor::SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId)
@@ -590,6 +567,320 @@ namespace minEngine
             propertyName,
             std::move(beforeValue),
             std::move(afterValue)));
+    }
+
+    bool SceneEditor::TryCaptureGameObjectSnapshotForDelete(uint64_t gameObjectId,
+                                                            EditorObjectSnapshot& outSnapshot,
+                                                            std::string& outDescription)
+    {
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr)
+        {
+            return false;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (gameObject == nullptr)
+        {
+            return false;
+        }
+
+        outDescription = std::string("Delete GameObject '") + gameObject->GetName() + "'";
+
+        const Serialization::SerializeResult captureResult = CaptureGameObjectSnapshot(*gameObject, outSnapshot);
+        if (!captureResult.ok)
+        {
+            ME_CORE_ERROR(
+                "TryCaptureGameObjectSnapshotForDelete: capture failed: {} (path='{}').",
+                captureResult.message,
+                captureResult.fieldPath);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool SceneEditor::TryCaptureComponentSnapshotForRemove(uint64_t ownerGameObjectId,
+                                                           const GUID& componentGuid,
+                                                           EditorObjectSnapshot& outSnapshot,
+                                                           int32_t& outComponentIndex,
+                                                           std::string& outDescription)
+    {
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr)
+        {
+            return false;
+        }
+
+        GameObject* owner = scene->FindGameObjectById(ownerGameObjectId);
+        if (owner == nullptr)
+        {
+            return false;
+        }
+
+        Component* component = nullptr;
+        outComponentIndex = -1;
+        const std::vector<std::shared_ptr<Component>>& components = owner->GetAllComponents();
+        for (size_t index = 0; index < components.size(); ++index)
+        {
+            if (components[index] && components[index]->GetGuid() == componentGuid)
+            {
+                component = components[index].get();
+                outComponentIndex = static_cast<int32_t>(index);
+                break;
+            }
+        }
+
+        if (component == nullptr || outComponentIndex < 0)
+        {
+            return false;
+        }
+
+        if (const Reflection::MEClass* classInfo = component->GetClass())
+        {
+            outDescription = std::string("Remove Component '") + classInfo->GetName() + "'";
+        }
+
+        const Serialization::SerializeResult captureResult =
+            CaptureComponentSnapshot(*component, *owner, outComponentIndex, outSnapshot);
+        if (!captureResult.ok)
+        {
+            ME_CORE_ERROR(
+                "TryCaptureComponentSnapshotForRemove: capture failed: {} (path='{}').",
+                captureResult.message,
+                captureResult.fieldPath);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool SceneEditor::ApplyRemoveComponentByGuid(uint64_t ownerGameObjectId, const GUID& componentGuid)
+    {
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr)
+        {
+            return false;
+        }
+
+        GameObject* owner = scene->FindGameObjectById(ownerGameObjectId);
+        if (owner == nullptr)
+        {
+            return false;
+        }
+
+        for (const std::shared_ptr<Component>& componentPtr : owner->GetAllComponents())
+        {
+            if (componentPtr && componentPtr->GetGuid() == componentGuid)
+            {
+                return ApplyRemoveComponentFromGO(*owner, *componentPtr);
+            }
+        }
+
+        return false;
+    }
+
+    Serialization::SerializeResult SceneEditor::CaptureGameObjectSnapshot(const GameObject& gameObject,
+                                                                          EditorObjectSnapshot& outSnapshot) const
+    {
+        const Reflection::MEClass* rootClass = gameObject.GetClass();
+        if (rootClass == nullptr)
+        {
+            return Serialization::SerializeResult::Failure("CaptureGameObjectSnapshot: GameObject class is null.");
+        }
+
+        outSnapshot = EditorObjectSnapshot{};
+        outSnapshot.kind = EditorSnapshotKind::GameObject;
+        outSnapshot.sourceRuntimeId = gameObject.GetID();
+        outSnapshot.sourceRootGuid = gameObject.GetGuid();
+        outSnapshot.rootClassName = rootClass->GetName();
+
+        return Serialization::Serializer::SerializeObjectToBuffer(
+            outSnapshot.rootClassName,
+            &gameObject,
+            outSnapshot.payload);
+    }
+
+    Serialization::SerializeResult SceneEditor::CaptureComponentSnapshot(const Component& component,
+                                                                           GameObject& owner,
+                                                                           int32_t componentIndex,
+                                                                           EditorObjectSnapshot& outSnapshot) const
+    {
+        const Reflection::MEClass* rootClass = component.GetClass();
+        if (rootClass == nullptr)
+        {
+            return Serialization::SerializeResult::Failure("CaptureComponentSnapshot: component class is null.");
+        }
+
+        outSnapshot = EditorObjectSnapshot{};
+        outSnapshot.kind = EditorSnapshotKind::Component;
+        outSnapshot.sourceRootGuid = component.GetGuid();
+        outSnapshot.rootClassName = rootClass->GetName();
+        outSnapshot.ownerGameObjectId = owner.GetID();
+        outSnapshot.ownerGameObjectGuid = owner.GetGuid();
+        outSnapshot.componentIndexInOwner = componentIndex;
+
+        return Serialization::Serializer::SerializeObjectToBuffer(
+            outSnapshot.rootClassName,
+            &component,
+            outSnapshot.payload);
+    }
+
+    void SceneEditor::PostRestoreSceneObject(GameObject& gameObject)
+    {
+        for (const std::shared_ptr<Component>& componentPtr : gameObject.GetAllComponents())
+        {
+            if (!componentPtr)
+            {
+                continue;
+            }
+
+            componentPtr->SetOwner(&gameObject);
+            if (SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(componentPtr.get()))
+            {
+                sceneComponent->MarkRenderStateDirty();
+            }
+
+            SceneManager::Get().MarkComponentForNeededEndOfFrameUpdate(componentPtr.get());
+        }
+
+        MarkSceneDirty();
+    }
+
+    uint64_t SceneEditor::ApplyRestoreGameObjectFromSnapshot(const EditorObjectSnapshot& snapshot)
+    {
+        if (snapshot.kind != EditorSnapshotKind::GameObject || snapshot.rootClassName.empty() || snapshot.payload.empty())
+        {
+            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: invalid snapshot.");
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr)
+        {
+            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: no active scene.");
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        std::shared_ptr<GameObject> gameObject = scene->CreateGameObject();
+        if (!gameObject)
+        {
+            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: CreateGameObject failed.");
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        gameObject->SetOuter(scene);
+
+        std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
+            snapshot.rootClassName,
+            gameObject.get(),
+            snapshot.payload,
+            unresolvedRefs);
+        if (!deserializeResult.ok)
+        {
+            ME_CORE_ERROR(
+                "ApplyRestoreGameObjectFromSnapshot: deserialize failed: {} (path='{}').",
+                deserializeResult.message,
+                deserializeResult.fieldPath);
+            scene->RemoveGameObjectById(gameObject->GetID());
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        if (!unresolvedRefs.empty())
+        {
+            const Serialization::SerializeResult resolveResult =
+                Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
+            if (!resolveResult.ok)
+            {
+                ME_CORE_WARN("ApplyRestoreGameObjectFromSnapshot: some pending references remain unresolved.");
+            }
+        }
+
+        PostRestoreSceneObject(*gameObject);
+        return gameObject->GetID();
+    }
+
+    Component* SceneEditor::ApplyRestoreComponentFromSnapshot(uint64_t ownerGameObjectId,
+                                                              const EditorObjectSnapshot& snapshot)
+    {
+        if (snapshot.kind != EditorSnapshotKind::Component || snapshot.rootClassName.empty() || snapshot.payload.empty())
+        {
+            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: invalid snapshot.");
+            return nullptr;
+        }
+
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr)
+        {
+            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: no active scene.");
+            return nullptr;
+        }
+
+        GameObject* owner = scene->FindGameObjectById(ownerGameObjectId);
+        if (owner == nullptr)
+        {
+            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: owner GameObject not found.");
+            return nullptr;
+        }
+
+        const Reflection::MEClass* rootClass = Reflection::ReflectionSystem::Get().FindClass(snapshot.rootClassName);
+        if (rootClass == nullptr)
+        {
+            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: class '{}' not found.", snapshot.rootClassName);
+            return nullptr;
+        }
+
+        std::shared_ptr<void> instanceVoid = rootClass->CreateDefaultInstance();
+        if (!instanceVoid)
+        {
+            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: CreateDefaultInstance failed.");
+            return nullptr;
+        }
+
+        std::shared_ptr<Component> component = std::static_pointer_cast<Component>(instanceVoid);
+        component->SetOuter(owner);
+
+        std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
+            snapshot.rootClassName,
+            component.get(),
+            snapshot.payload,
+            unresolvedRefs);
+        if (!deserializeResult.ok)
+        {
+            ME_CORE_ERROR(
+                "ApplyRestoreComponentFromSnapshot: deserialize failed: {} (path='{}').",
+                deserializeResult.message,
+                deserializeResult.fieldPath);
+            return nullptr;
+        }
+
+        if (!unresolvedRefs.empty())
+        {
+            const Serialization::SerializeResult resolveResult =
+                Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
+            if (!resolveResult.ok)
+            {
+                ME_CORE_WARN("ApplyRestoreComponentFromSnapshot: some pending references remain unresolved.");
+            }
+        }
+
+        ObjectManager::Get().RegisterObject(std::static_pointer_cast<MEObject>(component));
+
+        const size_t insertIndex = snapshot.componentIndexInOwner >= 0
+            ? static_cast<size_t>(snapshot.componentIndexInOwner)
+            : owner->GetAllComponents().size();
+        owner->InsertRestoredComponent(component, insertIndex);
+
+        if (SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get()))
+        {
+            sceneComponent->MarkRenderStateDirty();
+        }
+        SceneManager::Get().MarkComponentForNeededEndOfFrameUpdate(component.get());
+        MarkSceneDirty();
+
+        return component.get();
     }
 
     void SceneEditor::SyncSelectionWithScene()

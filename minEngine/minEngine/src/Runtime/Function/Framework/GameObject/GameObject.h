@@ -89,6 +89,8 @@ namespace minEngine
 
         bool RemoveComponent(Component& target);
 
+        void InsertRestoredComponent(std::shared_ptr<Component> component, size_t index);
+
     private:
         void AddComponent_Internal(std::shared_ptr<Component> newComponent);
 

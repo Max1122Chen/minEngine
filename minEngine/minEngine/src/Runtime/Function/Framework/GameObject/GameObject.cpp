@@ -160,6 +160,35 @@ namespace minEngine
         return false;
     }
 
+    void GameObject::InsertRestoredComponent(std::shared_ptr<Component> component, size_t index)
+    {
+        if (!component)
+        {
+            return;
+        }
+
+        component->SetOwner(this);
+        if (index >= m_Components.size())
+        {
+            m_Components.push_back(component);
+        }
+        else
+        {
+            m_Components.insert(m_Components.begin() + static_cast<std::ptrdiff_t>(index), component);
+        }
+
+        if (!component->GetClass() || !component->IsA(SceneComponent::StaticClass()))
+        {
+            return;
+        }
+
+        SceneComponent* sceneComponent = static_cast<SceneComponent*>(component.get());
+        if (m_RootComponent == nullptr)
+        {
+            m_RootComponent = sceneComponent;
+        }
+    }
+
     void GameObject::AddComponent_Internal(std::shared_ptr<Component> newComponent)
     {
         if(!newComponent)

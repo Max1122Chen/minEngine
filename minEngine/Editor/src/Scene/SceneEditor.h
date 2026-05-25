@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/Reflection/Reflection.h"
+#include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Runtime/Core/GUID/GUID.h"
 #include "Scene/SceneEditorInspectorSource.h"
 #include "Shell/EditorSubModule.h"
@@ -80,7 +82,6 @@ namespace minEngine
         uint64_t ApplyAddEmptyGOToScene();
         void SubmitAddEmptyGOToScene(IEditorContext& context);
         bool ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform);
-        uint64_t ApplyRestoreRemovedGameObject(const std::string& name, const Transform& transform);
         void SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId);
         bool ApplySetObjectProperty(const GUID& ownerGuid,
                                     const std::string& ownerClassName,
@@ -92,6 +93,21 @@ namespace minEngine
                                      const std::string& propertyName,
                                      std::vector<uint8_t> beforeValue,
                                      std::vector<uint8_t> afterValue);
+
+        bool TryCaptureGameObjectSnapshotForDelete(uint64_t gameObjectId,
+                                                   EditorObjectSnapshot& outSnapshot,
+                                                   std::string& outDescription);
+        bool TryCaptureComponentSnapshotForRemove(uint64_t ownerGameObjectId,
+                                                  const GUID& componentGuid,
+                                                  EditorObjectSnapshot& outSnapshot,
+                                                  int32_t& outComponentIndex,
+                                                  std::string& outDescription);
+        bool ApplyRemoveComponentByGuid(uint64_t ownerGameObjectId, const GUID& componentGuid);
+
+        uint64_t ApplyRestoreGameObjectFromSnapshot(const EditorObjectSnapshot& snapshot);
+        Component* ApplyRestoreComponentFromSnapshot(uint64_t ownerGameObjectId, const EditorObjectSnapshot& snapshot);
+        void PostRestoreSceneObject(GameObject& gameObject);
+
         void MarkSceneDirty() { m_SceneDirty = true; }
         void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }
@@ -101,6 +117,13 @@ namespace minEngine
         IEditorContext* GetEditorContext() const { return m_Context; }
 
     private:
+        Serialization::SerializeResult CaptureGameObjectSnapshot(const GameObject& gameObject,
+                                                                 EditorObjectSnapshot& outSnapshot) const;
+        Serialization::SerializeResult CaptureComponentSnapshot(const Component& component,
+                                                                GameObject& owner,
+                                                                int32_t componentIndex,
+                                                                EditorObjectSnapshot& outSnapshot) const;
+
         IEditorContext* m_Context = nullptr;
         SceneEditorInspectorSource m_InspectorSource;
         bool m_SceneDirty = false;

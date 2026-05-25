@@ -82,6 +82,17 @@ namespace minEngine::Serialization
                                                              const std::vector<uint8_t>& buffer,
                                                              std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                              const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult SerializeObjectToBuffer(const std::string& rootClassName,
+                                                       const void* rootObject,
+                                                       std::vector<uint8_t>& outBuffer,
+                                                       const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult DeserializeObjectFromBuffer(const std::string& rootClassName,
+                                                           void* outRootObject,
+                                                           const std::vector<uint8_t>& buffer,
+                                                           std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                           const SerializerOptions& options = SerializerOptions{});
     private:
         static SerializeResult SerializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                               const void* objectPtr,

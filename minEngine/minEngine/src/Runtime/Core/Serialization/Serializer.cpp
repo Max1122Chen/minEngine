@@ -17,9 +17,9 @@ namespace minEngine::Serialization
     using minEngine::Reflection::MEPrimitiveProperty;
     using minEngine::Reflection::MEProperty;
     using minEngine::Reflection::MEPropertyCategory;
-    using minEngine::Reflection::ReflectionSystem;
     using minEngine::Reflection::PropertySpecifier;
     using minEngine::Reflection::PropertySpecifierMask;
+    using minEngine::Reflection::ReflectionSystem;
 
     bool Serializer::m_IsHandlingPtr = false;
 
@@ -436,6 +436,11 @@ namespace minEngine::Serialization
         classInfo->GetName(),
         [&](const MEProperty& property) -> bool
         {
+            if (property.HasSpecifier(PropertySpecifier::Transient))
+            {
+                return true;
+            }
+
             if (property.GetConstAccessor() == nullptr)
             {
                 result = SerializeResult::Failure("Serialize property failed: const accessor is null.", JoinPath(path, property.GetName()));
@@ -497,9 +502,16 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Deserialize class failed: object pointer is null.", path);
         }
         
-        if (!archive.BeginObject(classInfo->GetName()))
+        if (!archive.BeginObject(classInfo))
         {
-            return SerializeResult::Failure("Deserialize class failed: BeginObject returned false.", path);
+            std::string message = "Deserialize class failed: BeginObject returned false.";
+            const std::string& archiveError = archive.GetLastArchiveError();
+            if (!archiveError.empty())
+            {
+                message += " reason: " + archiveError;
+            }
+
+            return SerializeResult::Failure(message, path);
         }
 
         // Iterate the properties in hierarchy and deserialize each property.
@@ -738,11 +750,7 @@ namespace minEngine::Serialization
             SerializeResult iterationResult = DeserializeObject_IterateProps(dynamicClassInfo, objectPtr, archive, outUnresolvedRefs, options, path);
             if (!iterationResult.ok)
             {
-                const bool closed = archive.EndObjectPtr();
-                if (!closed)
-                {
-                    return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after property iteration failure.", path);
-                }
+                (void)archive.EndObjectPtr();
                 return iterationResult;
             }
 
@@ -856,6 +864,11 @@ namespace minEngine::Serialization
         classInfo->GetName(),
         [&](const MEProperty& property) -> bool
         {
+            if (property.HasSpecifier(PropertySpecifier::Transient))
+            {
+                return true;
+            }
+
             const std::string propertyPath = JoinPath(path, property.GetName());
             const bool hasField = archive.EnterField(property.GetName());
             if (!hasField)
@@ -1126,5 +1139,31 @@ namespace minEngine::Serialization
     {
         BinaryReaderArchive reader(buffer);
         return DeserializeProperty(ownerObject, ownerClass, propertyName, reader, outUnresolvedRefs, options);
+    }
+
+    SerializeResult Serializer::SerializeObjectToBuffer(const std::string& rootClassName,
+                                                        const void* rootObject,
+                                                        std::vector<uint8_t>& outBuffer,
+                                                        const SerializerOptions& options)
+    {
+        BinaryWriterArchive writer;
+        SerializeResult result = Serialize(rootClassName, rootObject, writer, options);
+        if (!result.ok)
+        {
+            return result;
+        }
+
+        outBuffer = writer.TakeBuffer();
+        return SerializeResult::Success();
+    }
+
+    SerializeResult Serializer::DeserializeObjectFromBuffer(const std::string& rootClassName,
+                                                            void* outRootObject,
+                                                            const std::vector<uint8_t>& buffer,
+                                                            std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                            const SerializerOptions& options)
+    {
+        BinaryReaderArchive reader(buffer);
+        return Deserialize(rootClassName, outRootObject, reader, outUnresolvedRefs, options);
     }
 }
