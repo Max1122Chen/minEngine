@@ -489,6 +489,7 @@ namespace minEngine::Reflection
                 else if constexpr(std::is_same_v<RawFieldType, int32_t>) { primitiveTypeName = GetPrimitiveName<int32_t>(); }
                 else if constexpr(std::is_same_v<RawFieldType, long>) { primitiveTypeName = GetPrimitiveName<long>(); }
                 else if constexpr(std::is_same_v<RawFieldType, int64_t>) { primitiveTypeName = GetPrimitiveName<int64_t>(); }
+                else if constexpr(std::is_same_v<RawFieldType, uint8_t>) { primitiveTypeName = GetPrimitiveName<uint8_t>(); }
                 else if constexpr(std::is_same_v<RawFieldType, uint32_t>) { primitiveTypeName = GetPrimitiveName<uint32_t>(); }
                 else if constexpr(std::is_same_v<RawFieldType, unsigned long>) { primitiveTypeName = GetPrimitiveName<unsigned long>(); }
                 else if constexpr(std::is_same_v<RawFieldType, uint64_t>) { primitiveTypeName = GetPrimitiveName<uint64_t>(); }
