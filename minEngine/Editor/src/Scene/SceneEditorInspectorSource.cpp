@@ -2,6 +2,7 @@
 
 #include "Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
+#include "UI/Property/PropertyEditPolicy.h"
 
 #include "imgui.h"
 
@@ -18,6 +19,7 @@ namespace minEngine
 {
     SceneEditorInspectorSource::SceneEditorInspectorSource(SceneEditor& sceneEditor)
         : m_SceneEditor(sceneEditor)
+        , m_PropertyEditSession(PropertyEditSession::ForSceneEditor(sceneEditor))
     {
     }
 
@@ -294,7 +296,7 @@ namespace minEngine
 
     bool SceneEditorInspectorSource::CanUndoInspectorProperty(const Reflection::MEProperty& property) const
     {
-        if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+        if (!PropertyEditPolicy::CanEdit(property, m_PropertyEditSession.ContextKind))
         {
             return false;
         }
@@ -449,7 +451,7 @@ namespace minEngine
                                                   void* propertyPtr,
                                                   const PropertyUndoCaptureContext* parentUndoContext)
     {
-        if(property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+        if (!PropertyEditPolicy::ShouldShow(property, m_PropertyEditSession.ContextKind))
         {
             return false;
         }
@@ -457,8 +459,14 @@ namespace minEngine
         ImGui::PushID(property.GetName().c_str());
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::TextUnformatted(property.GetName().c_str());
+        ImGui::TextUnformatted(PropertyEditPolicy::GetDisplayName(property));
         ImGui::TableSetColumnIndex(1);
+
+        const bool canEdit = PropertyEditPolicy::CanEdit(property, m_PropertyEditSession.ContextKind);
+        if (!canEdit)
+        {
+            ImGui::BeginDisabled();
+        }
 
         PropertyUndoCaptureContext localUndoContext;
         const PropertyUndoCaptureContext* activeUndoContext = parentUndoContext;
@@ -498,6 +506,19 @@ namespace minEngine
         if (activeUndoContext != nullptr)
         {
             ApplyPropertyUndoCaptureHooks(*activeUndoContext, allowRowCapture);
+        }
+
+        if (!canEdit)
+        {
+            ImGui::EndDisabled();
+        }
+
+        if (const char* tooltip = PropertyEditPolicy::GetTooltip(property))
+        {
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            {
+                ImGui::SetTooltip("%s", tooltip);
+            }
         }
 
         ImGui::PopID();

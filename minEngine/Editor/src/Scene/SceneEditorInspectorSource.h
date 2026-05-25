@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Runtime/Core/GUID/GUID.h"
 #include "Shell/IEditorInspectorSource.h"
+#include "UI/Property/PropertyEditSession.h"
 
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/Components/Component.h"
@@ -111,6 +112,7 @@ namespace minEngine
         static std::string MakeAssetPropertyUndoKey(const GUID& ownerGuid, const std::string& propertyName);
 
         SceneEditor& m_SceneEditor;
+        PropertyEditSession m_PropertyEditSession;
         static constexpr const char* kWindowTitle = "Inspector";
         std::string m_SelectedAddComponentTypeName;
         bool m_IsRenamingSelectedGameObject = false;

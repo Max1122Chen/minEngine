@@ -1,6 +1,8 @@
 #include "MaterialNodeDefPropertyDrawer.h"
 
 #include "MaterialEditor.h"
+#include "UI/Property/PropertyEditPolicy.h"
+#include "UI/Property/PropertyEditTypes.h"
 
 #include "imgui.h"
 
@@ -33,7 +35,7 @@ namespace minEngine
 
         bool ShouldSkipNodeDefProperty(const Reflection::MEProperty& property)
         {
-            if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+            if (!PropertyEditPolicy::ShouldShow(property, EditorPropertyEditContextKind::AssetDefaults))
             {
                 return true;
             }
