@@ -47,6 +47,13 @@ namespace minEngine
         ImportAssetResult ImportAsset(const std::filesystem::path& sourcePath,
                                       const std::filesystem::path& destDirectory);
 
+        bool DeleteAsset(const std::string& assetPath, std::string& outError);
+        bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
+        bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
+        bool UnregisterAsset(const std::string& assetPath, std::string& outError);
+
+        void ClearProjectRegistry();
+
         std::shared_ptr<Asset> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByPath(const std::string& path, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByMeta(const AssetMeta& meta, std::string& outErrorMessage);
@@ -155,6 +162,7 @@ namespace minEngine
 
     private:
         friend class Engine;
+        friend class AssetManagerTestScope;
 
         static void SetInstance(AssetManager* instance);
         static AssetManager* s_Instance;
@@ -171,6 +179,12 @@ namespace minEngine
         void RemoveFromTypeBucket(const AssetMeta& meta);
         void AddToTypeBucket(const AssetMeta& meta);
         void BroadcastChange(const AssetRegistryChange& change);
+
+        void EvictLoadedAssetCache(std::string_view projectRelativePath);
+        void MoveLoadedAssetCacheKey(std::string_view oldRel, std::string_view newRel);
+        bool LogReferenceWarningsForDelete(const AssetMeta& meta) const;
+        bool MoveRegistryEntry(std::string_view oldRel, std::string_view newRel, AssetMeta& inOutMeta);
+        bool WriteMetaFile(const AssetMeta& meta) const;
         std::string ResolveAssetAbsolutePathString(std::string_view projectRelativeOrLegacyPath) const;
         static bool IsPathInsideDirectory(
             const std::filesystem::path& absolutePath,

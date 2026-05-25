@@ -402,4 +402,4 @@ AssetTypeRegistry.h
 1. 按本文实现 `AssetTypeRegistry` + `AssetManager` P1/P1b  
 2. 更新 golden `.meta` 相对路径  
 3. `PROGRESS_LOG.md` 记录 P1 完成  
-4. P2 接口附录（`DeleteAsset` / `MoveAsset`）在 P1 合并后再起草
+4. P2 接口定稿见 [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（待审批）

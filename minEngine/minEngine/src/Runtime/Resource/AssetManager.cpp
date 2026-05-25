@@ -558,6 +558,338 @@ namespace minEngine
         return result;
     }
 
+    void AssetManager::ClearProjectRegistry()
+    {
+        m_AssetRegistry.clear();
+        m_AssetPathByGuid.clear();
+        m_AssetMetasByType.clear();
+        m_LoadedAssetCache.clear();
+    }
+
+    void AssetManager::EvictLoadedAssetCache(std::string_view projectRelativePath)
+    {
+        m_LoadedAssetCache.erase(std::string(projectRelativePath));
+    }
+
+    void AssetManager::MoveLoadedAssetCacheKey(std::string_view oldRel, std::string_view newRel)
+    {
+        const std::string oldKey(oldRel);
+        const std::string newKey(newRel);
+        if (oldKey == newKey)
+        {
+            return;
+        }
+
+        auto cacheIter = m_LoadedAssetCache.find(oldKey);
+        if (cacheIter == m_LoadedAssetCache.end())
+        {
+            return;
+        }
+
+        std::weak_ptr<MEObject> weakAsset = cacheIter->second;
+        m_LoadedAssetCache.erase(cacheIter);
+        m_LoadedAssetCache.emplace(newKey, std::move(weakAsset));
+    }
+
+    bool AssetManager::LogReferenceWarningsForDelete(const AssetMeta& meta) const
+    {
+        ME_CORE_WARN(
+            "DeleteAsset: reference scan is not implemented (v0); proceeding with '{}'.",
+            meta.AssetPath);
+        return true;
+    }
+
+    bool AssetManager::WriteMetaFile(const AssetMeta& meta) const
+    {
+        const std::filesystem::path metaPath = BuildMetaAbsolutePath(meta.AssetPath);
+
+        Serialization::JsonWriterArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+            metaPath.string(),
+            minEngine::Reflection::GetClassName<AssetMeta>(),
+            &meta,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = true,
+                .allowObjectPtrSerialization = false});
+
+        if (!result.ok)
+        {
+            ME_CORE_WARN(
+                "Failed to serialize asset meta. Error: {}. Field path: {}. Meta file: {}",
+                result.message,
+                result.fieldPath,
+                metaPath.string());
+            return false;
+        }
+
+        return true;
+    }
+
+    bool AssetManager::MoveRegistryEntry(
+        std::string_view oldRel,
+        std::string_view newRel,
+        AssetMeta& inOutMeta)
+    {
+        const std::string oldKey(oldRel);
+        const std::string newKey(newRel);
+
+        auto oldIter = m_AssetRegistry.find(oldKey);
+        if (oldIter == m_AssetRegistry.end())
+        {
+            return false;
+        }
+
+        AssetMeta meta = oldIter->second;
+        RemoveFromTypeBucket(meta);
+        m_AssetRegistry.erase(oldIter);
+
+        inOutMeta.AssetPath = newKey;
+        inOutMeta.AssetName = std::filesystem::path(newKey).stem().string();
+        meta = inOutMeta;
+
+        m_AssetRegistry.emplace(newKey, meta);
+        m_AssetPathByGuid[meta.Guid] = newKey;
+        AddToTypeBucket(meta);
+        return true;
+    }
+
+    bool AssetManager::DeleteAsset(const std::string& assetPath, std::string& outError)
+    {
+        outError.clear();
+
+        const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
+        if (projectRelative.empty())
+        {
+            outError = "invalid or out-of-project path";
+            return false;
+        }
+
+        const AssetMeta* metaPtr = FindAssetMetaByPath(projectRelative);
+        if (metaPtr == nullptr)
+        {
+            outError = "asset not registered";
+            return false;
+        }
+
+        const AssetMeta meta = *metaPtr;
+        LogReferenceWarningsForDelete(meta);
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(projectRelative);
+        const std::filesystem::path metaAbsolutePath = BuildMetaAbsolutePath(projectRelative);
+
+        std::error_code removeError;
+        if (std::filesystem::exists(absolutePath))
+        {
+            removeError.clear();
+            if (!std::filesystem::remove(absolutePath, removeError) || removeError)
+            {
+                outError = "failed to remove asset file: " + removeError.message();
+                return false;
+            }
+        }
+
+        if (std::filesystem::exists(metaAbsolutePath))
+        {
+            removeError.clear();
+            if (!std::filesystem::remove(metaAbsolutePath, removeError) || removeError)
+            {
+                outError = "failed to remove meta file: " + removeError.message();
+                return false;
+            }
+        }
+
+        EvictLoadedAssetCache(projectRelative);
+        UncacheMeta(projectRelative);
+
+        if (meta.AssetType == "Scene" && SceneManager::HasInstance())
+        {
+            SceneManager::Get().UnregisterScene(meta.AssetName);
+        }
+
+        return true;
+    }
+
+    bool AssetManager::UnregisterAsset(const std::string& assetPath, std::string& outError)
+    {
+        outError.clear();
+
+        const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
+        if (projectRelative.empty())
+        {
+            outError = "invalid or out-of-project path";
+            return false;
+        }
+
+        const AssetMeta* metaPtr = FindAssetMetaByPath(projectRelative);
+        if (metaPtr == nullptr)
+        {
+            outError = "asset not registered";
+            return false;
+        }
+
+        const AssetMeta meta = *metaPtr;
+
+        EvictLoadedAssetCache(projectRelative);
+        UncacheMeta(projectRelative);
+
+        if (meta.AssetType == "Scene" && SceneManager::HasInstance())
+        {
+            SceneManager::Get().UnregisterScene(meta.AssetName);
+        }
+
+        return true;
+    }
+
+    bool AssetManager::MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError)
+    {
+        outError.clear();
+
+        const std::string oldRel = NormalizeProjectRelativeAssetPath(oldPath);
+        const std::string newRel = NormalizeProjectRelativeAssetPath(newPath);
+        if (oldRel.empty() || newRel.empty())
+        {
+            outError = "invalid or out-of-project path";
+            return false;
+        }
+
+        if (oldRel == newRel)
+        {
+            return true;
+        }
+
+        const AssetMeta* oldMetaPtr = FindAssetMetaByPath(oldRel);
+        if (oldMetaPtr == nullptr)
+        {
+            outError = "asset not registered";
+            return false;
+        }
+
+        if (FindAssetMetaByPath(newRel) != nullptr)
+        {
+            outError = "destination path is already registered";
+            return false;
+        }
+
+        const std::filesystem::path oldExtension = std::filesystem::path(oldRel).extension();
+        const std::filesystem::path newExtension = std::filesystem::path(newRel).extension();
+        if (oldExtension != newExtension)
+        {
+            outError = "asset extension must not change when moving";
+            return false;
+        }
+
+        const std::filesystem::path absoluteOld = ResolveAssetAbsolutePath(oldRel);
+        const std::filesystem::path absoluteNew = ResolveAssetAbsolutePath(newRel);
+        const std::filesystem::path metaAbsoluteOld = BuildMetaAbsolutePath(oldRel);
+        const std::filesystem::path metaAbsoluteNew = BuildMetaAbsolutePath(newRel);
+
+        const std::filesystem::path newParent = absoluteNew.parent_path();
+        if (!std::filesystem::exists(newParent) || !std::filesystem::is_directory(newParent))
+        {
+            outError = "destination parent directory does not exist";
+            return false;
+        }
+
+        if (std::filesystem::exists(absoluteNew))
+        {
+            outError = "destination file already exists";
+            return false;
+        }
+
+        if (!std::filesystem::exists(absoluteOld))
+        {
+            outError = "source asset file does not exist";
+            return false;
+        }
+
+        std::error_code renameError;
+        std::filesystem::rename(absoluteOld, absoluteNew, renameError);
+        if (renameError)
+        {
+            outError = "failed to rename asset file: " + renameError.message();
+            return false;
+        }
+
+        bool metaRenamed = false;
+        if (std::filesystem::exists(metaAbsoluteOld))
+        {
+            renameError.clear();
+            std::filesystem::rename(metaAbsoluteOld, metaAbsoluteNew, renameError);
+            if (renameError)
+            {
+                renameError.clear();
+                std::filesystem::rename(absoluteNew, absoluteOld, renameError);
+                outError = "failed to rename meta file: " + renameError.message();
+                return false;
+            }
+
+            metaRenamed = true;
+        }
+
+        AssetMeta updatedMeta = *oldMetaPtr;
+        if (!MoveRegistryEntry(oldRel, newRel, updatedMeta))
+        {
+            renameError.clear();
+            std::filesystem::rename(absoluteNew, absoluteOld, renameError);
+            if (metaRenamed)
+            {
+                renameError.clear();
+                std::filesystem::rename(metaAbsoluteNew, metaAbsoluteOld, renameError);
+            }
+
+            outError = "failed to update asset registry";
+            return false;
+        }
+
+        MoveLoadedAssetCacheKey(oldRel, newRel);
+
+        if (!WriteMetaFile(updatedMeta))
+        {
+            ME_CORE_WARN("MoveAsset: meta file write failed after move to '{}'", newRel);
+        }
+
+        AssetRegistryChange change;
+        change.Kind = AssetRegistryChangeKind::Moved;
+        change.Guid = updatedMeta.Guid;
+        change.OldPath = oldRel;
+        change.NewPath = newRel;
+        change.AssetTypeId = updatedMeta.AssetType;
+        BroadcastChange(change);
+
+        return true;
+    }
+
+    bool AssetManager::RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError)
+    {
+        outError.clear();
+
+        if (newFileName.empty())
+        {
+            outError = "new file name must not be empty";
+            return false;
+        }
+
+        if (newFileName.find('/') != std::string::npos || newFileName.find('\\') != std::string::npos)
+        {
+            outError = "new file name must not contain path separators";
+            return false;
+        }
+
+        const std::string oldRel = NormalizeProjectRelativeAssetPath(oldPath);
+        if (oldRel.empty())
+        {
+            outError = "invalid or out-of-project path";
+            return false;
+        }
+
+        const std::filesystem::path newRelPath =
+            std::filesystem::path(oldRel).parent_path() / newFileName;
+        return MoveAsset(oldRel, newRelPath.lexically_normal().generic_string(), outError);
+    }
+
     std::shared_ptr<Asset> AssetManager::LoadAssetByPath(const std::string& path, std::string& outErrorMessage)
     {
         outErrorMessage.clear();

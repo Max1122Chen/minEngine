@@ -119,6 +119,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	P2 DeleteAsset/MoveAsset; then P3 NFD, P5 efsw, P6 Content Browser.
 
+### 2026-05-25 - Asset Pipeline P2 implemented
+- Goal:
+	Delete/Move/Rename/Unregister registry CRUD, Moved events, ClearProjectRegistry on CloseProject, headless tests.
+- Main changes:
+	`AssetManager` — `DeleteAsset`, `MoveAsset`, `RenameAsset`, `UnregisterAsset`, `ClearProjectRegistry`; `ProjectManager::CloseCurrentProject` clears registry; `SceneManager::IsSceneRegistered`.
+	`AssetManagerTest` + `--asset-manager-test` (temp project `Assets/_P2UnitTest/`, copies EngineDefault cube; never deletes MyMEProject assets).
+- Validation done:
+	`Editor.exe --asset-manager-test` exit 0 (delete, move, rename, extension guard, unregister, clear, scene unregister).
+- Next step:
+	P3 NFD / P4 AssetWorkflow / P5 efsw.
+
 ### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
 - Goal:
 	Restore scene mesh GUID refs after stopping EngineDefault Registry scan.

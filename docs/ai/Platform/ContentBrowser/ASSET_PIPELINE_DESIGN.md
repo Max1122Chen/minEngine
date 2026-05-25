@@ -436,7 +436,8 @@ Editor/src/Services/ContentBrowser/
 - 仅改 [转交 §3.1](../../sessions/EDITOR_ASSET_WORKFLOW_AGENT_HANDOFF.md) 允许路径；**禁止**改 `Color` / `Property` / `EDITOR_APPEARANCE.md`。
 - C++：cpp-style；**成员函数** 优先；`AssetTypeRegistry` 单例与 `AssetManager` 协作。
 - 第一个代码切片仍为：**类型桶 + Registry 事件 + `ImportAsset`（单文件）**（P1）。
-- **P1 头文件级定稿：** [ASSET_PIPELINE_P1_API.md](./ASSET_PIPELINE_P1_API.md)（**待审批**）。
+- **P1 定稿：** [ASSET_PIPELINE_P1_API.md](./ASSET_PIPELINE_P1_API.md)（已实现 `8c5958d`）。
+- **P2 定稿：** [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（**待审批**）。
 
 ---
 
