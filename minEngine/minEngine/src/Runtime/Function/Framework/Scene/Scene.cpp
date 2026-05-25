@@ -69,6 +69,21 @@ namespace minEngine
         return gameObject;
     }
 
+    std::shared_ptr<GameObject> Scene::InsertRestoredGameObject(std::shared_ptr<GameObject> gameObject)
+    {
+        if (!gameObject)
+        {
+            return nullptr;
+        }
+
+        const uint64_t id = m_NextGOId++;
+        gameObject->SetID(id);
+        gameObject->SetOuter(this);
+        m_GameObjects.push_back(gameObject);
+        m_GameObjectsById[id] = gameObject.get();
+        return gameObject;
+    }
+
     void Scene::Reset()
     {
         m_GameObjects.clear();

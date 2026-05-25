@@ -501,7 +501,17 @@ namespace minEngine::Serialization
         {
             return SerializeResult::Failure("Deserialize class failed: object pointer is null.", path);
         }
-        
+
+        const MEClass* meObjectClass = MEObject::StaticClass();
+        if (meObjectClass != nullptr && ReflectionSystem::Get().IsClassSameOrDerived(classInfo, meObjectClass))
+        {
+            MEObject* meObject = static_cast<MEObject*>(objectPtr);
+            if (meObject->GetClass() == nullptr)
+            {
+                meObject->SetClass(classInfo);
+            }
+        }
+
         if (!archive.BeginObject(classInfo))
         {
             std::string message = "Deserialize class failed: BeginObject returned false.";

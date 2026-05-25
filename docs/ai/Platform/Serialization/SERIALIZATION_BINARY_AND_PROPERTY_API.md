@@ -374,6 +374,8 @@ static SerializeResult DeserializeObjectFromBuffer(
 
 **语义：** 对 `rootObject` 调用现有 `Serialize` / `Deserialize`（`BeginObject` + hierarchy 全字段），缓冲区为 **纯 Serializer payload**；Editor 再在之外包一层 `EditorObjectSnapshot` 头（magic、kind、runtimeId、owner 元数据）。详见 [EDITOR_COMMAND_HISTORY.md §10](../../Editor/EDITOR_COMMAND_HISTORY.md)。
 
+**Editor Undo Restore 壳对象（E1.4）：** 根 GO/Component 用 `CreateDefaultInstance()` + `DeserializeObjectFromBuffer`，**禁止** `NewObject`/`CreateGameObject` 在 Deserialize 前注册新 GUID。顺序：`Deserialize` → `RegisterObject`（快照 GUID）→ Scene 插入（新 runtime ID）→ `ResolvePendingObjectRefs`。与 Scene 内联 Instanced 子对象一致；`m_Owner` 依赖 GuidRef，不靠 Restore 后批量 `SetOwner` 作为主路径。
+
 更新 [EDITOR_COMMAND_HISTORY.md](../../Editor/EDITOR_COMMAND_HISTORY.md)：**E1.3 实现前完成 S1+S2**（或 S1+property API 最小子集）。
 
 ---

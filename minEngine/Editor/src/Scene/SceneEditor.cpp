@@ -726,8 +726,31 @@ namespace minEngine
             outSnapshot.payload);
     }
 
+    Serialization::SerializerOptions SceneEditor::GetRestoreSerializerOptions()
+    {
+        Serialization::SerializerOptions options;
+        options.skipUnknownField = false;
+        options.allowObjectPtrSerialization = true;
+        return options;
+    }
+
     void SceneEditor::PostRestoreSceneObject(GameObject& gameObject)
     {
+        if (gameObject.GetRootComponent() == nullptr)
+        {
+            for (const std::shared_ptr<Component>& componentPtr : gameObject.GetAllComponents())
+            {
+                if (!componentPtr || !componentPtr->GetClass()
+                    || !componentPtr->IsA(SceneComponent::StaticClass()))
+                {
+                    continue;
+                }
+
+                gameObject.SetRootComponent(static_cast<SceneComponent*>(componentPtr.get()));
+                break;
+            }
+        }
+
         for (const std::shared_ptr<Component>& componentPtr : gameObject.GetAllComponents())
         {
             if (!componentPtr)
@@ -735,7 +758,11 @@ namespace minEngine
                 continue;
             }
 
-            componentPtr->SetOwner(&gameObject);
+            if (componentPtr->GetOwner() == nullptr)
+            {
+                componentPtr->SetOwner(&gameObject);
+            }
+
             if (SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(componentPtr.get()))
             {
                 sceneComponent->MarkRenderStateDirty();
@@ -762,28 +789,46 @@ namespace minEngine
             return std::numeric_limits<uint64_t>::max();
         }
 
-        std::shared_ptr<GameObject> gameObject = scene->CreateGameObject();
-        if (!gameObject)
+        const Reflection::MEClass* rootClass = Reflection::ReflectionSystem::Get().FindClass(snapshot.rootClassName);
+        if (rootClass == nullptr)
         {
-            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: CreateGameObject failed.");
+            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: class '{}' not found.", snapshot.rootClassName);
             return std::numeric_limits<uint64_t>::max();
         }
 
+        std::shared_ptr<void> instanceVoid = rootClass->CreateDefaultInstance();
+        if (!instanceVoid)
+        {
+            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: CreateDefaultInstance failed.");
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        std::shared_ptr<GameObject> gameObject = std::static_pointer_cast<GameObject>(instanceVoid);
         gameObject->SetOuter(scene);
 
+        const Serialization::SerializerOptions restoreOptions = GetRestoreSerializerOptions();
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
             snapshot.rootClassName,
             gameObject.get(),
             snapshot.payload,
-            unresolvedRefs);
+            unresolvedRefs,
+            restoreOptions);
         if (!deserializeResult.ok)
         {
             ME_CORE_ERROR(
                 "ApplyRestoreGameObjectFromSnapshot: deserialize failed: {} (path='{}').",
                 deserializeResult.message,
                 deserializeResult.fieldPath);
-            scene->RemoveGameObjectById(gameObject->GetID());
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        ObjectManager::Get().RegisterObject(std::static_pointer_cast<MEObject>(gameObject));
+
+        if (!scene->InsertRestoredGameObject(gameObject))
+        {
+            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: InsertRestoredGameObject failed.");
+            ObjectManager::Get().UnregisterObject(gameObject.get());
             return std::numeric_limits<uint64_t>::max();
         }
 
@@ -818,6 +863,12 @@ namespace minEngine
         }
 
         GameObject* owner = scene->FindGameObjectById(ownerGameObjectId);
+        if (owner == nullptr && !snapshot.ownerGameObjectGuid.IsZero())
+        {
+            const std::shared_ptr<MEObject> ownerObject = FindObject(snapshot.ownerGameObjectGuid);
+            owner = dynamic_cast<GameObject*>(ownerObject.get());
+        }
+
         if (owner == nullptr)
         {
             ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: owner GameObject not found.");
@@ -841,12 +892,14 @@ namespace minEngine
         std::shared_ptr<Component> component = std::static_pointer_cast<Component>(instanceVoid);
         component->SetOuter(owner);
 
+        const Serialization::SerializerOptions restoreOptions = GetRestoreSerializerOptions();
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
             snapshot.rootClassName,
             component.get(),
             snapshot.payload,
-            unresolvedRefs);
+            unresolvedRefs,
+            restoreOptions);
         if (!deserializeResult.ok)
         {
             ME_CORE_ERROR(
@@ -855,6 +908,8 @@ namespace minEngine
                 deserializeResult.fieldPath);
             return nullptr;
         }
+
+        ObjectManager::Get().RegisterObject(std::static_pointer_cast<MEObject>(component));
 
         if (!unresolvedRefs.empty())
         {
@@ -865,8 +920,6 @@ namespace minEngine
                 ME_CORE_WARN("ApplyRestoreComponentFromSnapshot: some pending references remain unresolved.");
             }
         }
-
-        ObjectManager::Get().RegisterObject(std::static_pointer_cast<MEObject>(component));
 
         const size_t insertIndex = snapshot.componentIndexInOwner >= 0
             ? static_cast<size_t>(snapshot.componentIndexInOwner)

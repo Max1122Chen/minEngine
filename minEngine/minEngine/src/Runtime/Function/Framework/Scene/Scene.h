@@ -21,6 +21,7 @@ namespace minEngine
         void Tick(float deltaTime);
 
         std::shared_ptr<GameObject> CreateGameObject();
+        std::shared_ptr<GameObject> InsertRestoredGameObject(std::shared_ptr<GameObject> gameObject);
         void Reset();
         void RebuildRuntimeGameObjectIndex();
         const std::string& GetSceneName() const { return m_SceneName; }

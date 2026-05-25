@@ -117,6 +117,8 @@ namespace minEngine
         IEditorContext* GetEditorContext() const { return m_Context; }
 
     private:
+        static Serialization::SerializerOptions GetRestoreSerializerOptions();
+
         Serialization::SerializeResult CaptureGameObjectSnapshot(const GameObject& gameObject,
                                                                  EditorObjectSnapshot& outSnapshot) const;
         Serialization::SerializeResult CaptureComponentSnapshot(const Component& component,

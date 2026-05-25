@@ -461,40 +461,50 @@ ComponentRestoreResult RestoreComponentToGameObject(GameObject& owner, const Edi
 
 #### 10.8.1 `RestoreGameObjectToScene`（Delete Undo）
 
+**原则（与 Scene 内联 Instanced 一致）：** 不用 `CreateGameObject()`/`NewObject` 预分配 GUID；先 **空壳 + Deserialize**，再 **按 payload 内 `m_Guid` 注册**，最后 **Scene 分配新 runtime ID**。`m_Owner` 等字段走 **GuidRef + Resolve**，`PostRestore` 只做兜底与渲染刷新，不是主恢复路径。
+
 ```text
-1. scene.CreateGameObject() → shared_ptr<GameObject> go   // 新 runtime ID，已 RegisterObject(GO)
-2. DeserializeObjectFromBuffer("minEngine::GameObject", go.get(), snapshot.payload, pendingRefs)
-   // 内联恢复 m_Components[]，每项 RegisterObject；m_RootComponent 先 pending GuidRef
-3. ResolvePendingObjectRefs(pendingRefs)
-4. PostRestoreGameObject(*go):
-   a. 对每个 component：component->SetOwner(go.get())   // 覆盖/确认 owner 指针
-   b. 若 m_RootComponent 仍空：按「首个 SceneComponent」或按 Guid 匹配组件列表兜底
-   c. go->SetOuter(scene)  // Scene 为 MEObject outer
-   d. 对每个 SceneComponent：MarkRenderStateDirty()
-   e. SceneManager::MarkComponentForNeededEndOfFrameUpdate（与 LoadScene 一致）
-5. 返回新 restoredRuntimeId = go->GetID()
+1. rootClass->CreateDefaultInstance() → shared_ptr<GameObject> go
+2. go->SetOuter(scene)
+3. DeserializeObjectFromBuffer(..., go.get(), payload, pendingRefs)
+   // DeserializeObjectInstance 对 MEObject 派生类补 SetClass（CreateDefaultInstance  unlike NewObject）
+   // SerializerOptions: skipUnknownField=false, allowObjectPtrSerialization=true
+   // 内联 m_Components[]：每项 CreateDefaultInstance + 字段 + RegisterObject(component)
+   // m_Owner → GuidRef(父 GO 快照 GUID)，此时尚未 Resolve
+4. ObjectManager::RegisterObject(go)   // 使用 Deserialize 写回的 m_Guid
+5. scene.InsertRestoredGameObject(go)  // 新 runtime ID，入 m_GameObjects / index
+6. ResolvePendingObjectRefs(pendingRefs)   // 此时 FindObject(父 GO guid) 可命中
+7. PostRestoreGameObject(*go):
+   a. 仅当 component->GetOwner()==nullptr：SetOwner(go) 兜底
+   b. 若 m_RootComponent 仍空：首个 SceneComponent 兜底
+   c. SceneComponent：MarkRenderStateDirty；EoF update
+8. 返回 restoredRuntimeId = go->GetID()
 ```
 
-**GUID 策略（默认，见 §10.11 拍板项 A）：** **保留快照内 GUID**（`m_Guid` 随 payload 写回）。`ObjectManager::RegisterObject` 在 Deserialize 内联路径已注册；若旧条目为 **expired weak_ptr**，`m_ObjectsByGuid[guid] = newShared` **覆盖** 即可。
+**禁止：** `CreateGameObject()` 在 Deserialize 前调用（会生成无关 GUID 并污染 `m_ObjectsByGuid`）。
 
-**Runtime ID 策略（默认，见 §10.11 拍板项 B）：** **不保留** `sourceRuntimeId`；Undo 后使用 `CreateGameObject` 分配的新 ID；`DeleteGameObjectCommand` 在 Undo 成功后更新 `m_GameObjectId` 与 Selection（与现逻辑一致）。
+**GUID 策略（§10.11 A）：** **保留快照 GUID**（payload 内 `m_Guid`）；根 GO 在步骤 4 注册；内联 Component 在 Deserialize 内联路径已注册。
+
+**Runtime ID 策略（§10.11 B）：** **不保留** `sourceRuntimeId`；步骤 5 分配新 ID；`DeleteGameObjectCommand` Undo 后更新 `m_GameObjectId`。
 
 #### 10.8.2 `RestoreComponentToGameObject`（Remove Undo）
 
+与 GO 同构：**CreateDefaultInstance → Deserialize → RegisterObject → 插入场景图**。
+
 ```text
-1. 校验 owner 仍存在（ownerGameObjectId 或 ownerGameObjectGuid）
-2. factory = component.GetClass()->CreateDefaultInstance() → shared_ptr<Component>
-3. DeserializeObjectFromBuffer(rootClassName, ptr, payload, pendingRefs)
-4. ResolvePendingObjectRefs
-5. PostRestoreComponent(*comp, *owner):
-   - SetOwner(owner)
-   - 插入 m_Components：若 componentIndexInOwner 合法且 ≤ size 则 insert；否则 push_back
-   - RegisterObject（若 Deserialize 未注册则补注册）
-   - MarkRenderStateDirty / EoF update
-6. 返回 restoredComponent*
+1. 定位 owner：优先 ownerGameObjectGuid → ObjectManager::FindObject；其次 ownerGameObjectId → scene.FindGameObjectById
+2. componentClass->CreateDefaultInstance() → shared_ptr<Component>
+3. comp->SetOuter(owner)
+4. DeserializeObjectFromBuffer(..., skipUnknownField=false, allowObjectPtrSerialization=true)
+   // m_Owner → GuidRef(owner)；Resolve 前 owner 须已按快照 GUID 注册
+5. ResolvePendingObjectRefs
+6. RegisterObject(component)   // 快照 component GUID
+7. owner->InsertRestoredComponent(comp, componentIndexInOwner)  // 内含 SetOwner；索引与 Capture 一致
+8. MarkRenderStateDirty / EoF update
+9. 返回 restoredComponent*
 ```
 
-**禁止** 再走 `ApplyAddComponentToSelectedGameObject(类型名)` 空壳路径。
+**禁止** `ApplyAddComponentToSelectedGameObject(类型名)` 空壳路径。
 
 ### 10.9 Command 升级
 
