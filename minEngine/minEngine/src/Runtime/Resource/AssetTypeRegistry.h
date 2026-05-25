@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Platform/FileDialog/FileDialogTypes.h"
 
 #include <filesystem>
 #include <string>
@@ -32,12 +33,14 @@ namespace minEngine
         std::string InferAssetTypeFromRuntimeClassName(std::string_view runtimeClassName) const;
 
         std::vector<std::string> BuildFileDialogFilterSpec() const;
+        std::vector<FileDialogFilter> BuildFileDialogFilters() const;
         const std::vector<AssetTypeDescriptor>& GetDescriptors() const { return m_Descriptors; }
 
     private:
         AssetTypeRegistry() = default;
 
         static std::string NormalizeExtension(std::string_view extension);
+        std::string BuildExtensionSpec(const std::vector<std::string>& extensions) const;
 
         std::vector<AssetTypeDescriptor> m_Descriptors;
     };

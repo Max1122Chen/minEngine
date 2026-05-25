@@ -16,6 +16,7 @@ namespace minEngine
     class EditorCommandStack;
     class EditorInputHub;
     class EditorAppearance;
+    class IFileDialogService;
 
     class IEditorContext
     {
@@ -42,6 +43,9 @@ namespace minEngine
         virtual EditorInputHub& GetInputHub() = 0;
         virtual EditorAppearance& GetEditorAppearance() = 0;
         virtual const EditorAppearance& GetEditorAppearance() const = 0;
+
+        virtual IFileDialogService& GetFileDialogService() = 0;
+        virtual const IFileDialogService& GetFileDialogService() const = 0;
 
         virtual void SetLastDeltaTime(float deltaTime) = 0;
         virtual float GetLastDeltaTime() const = 0;

@@ -47,6 +47,12 @@ add_library(${ENGINE_NAME} SHARED ${SRC}
 
 add_dependencies(${ENGINE_NAME} reflection_codegen)
 
+set(NFD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/nativefiledialog-extended)
+if(EXISTS ${NFD_DIR}/CMakeLists.txt)
+    add_subdirectory(${NFD_DIR} ${CMAKE_BINARY_DIR}/third-party/nfd EXCLUDE_FROM_ALL)
+    target_link_libraries(${ENGINE_NAME} PRIVATE nfd)
+endif()
+
 set_target_properties(${ENGINE_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
     LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
@@ -59,6 +65,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ./src/Runtime
                                           PUBLIC ./src/Runtime/Core
                                           PUBLIC ./src/Runtime/Function
+                                          PUBLIC ./src/Runtime/Platform/FileDialog
                                           PUBLIC ${REFLECTION_GENERATED_DIR}
                                           PUBLIC ${THIRD_PARTY_PATH}
                                           PUBLIC ${THIRD_PARTY_PATH}/spdlog/include

@@ -16,6 +16,8 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
+#include "Runtime/Platform/FileDialog/FileDialogService.h"
+#include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Resource/AssetManager.h"
 
 #include "Scene/SceneEditor.h"
@@ -249,6 +251,16 @@ namespace minEngine
         }
 
         WindowSystem::Get().SetTitle(windowTitle.c_str());
+    }
+
+    IFileDialogService& Editor::GetFileDialogService()
+    {
+        return FileDialogService::Get().GetImplementation();
+    }
+
+    const IFileDialogService& Editor::GetFileDialogService() const
+    {
+        return FileDialogService::Get().GetImplementation();
     }
 
     void Editor::Shutdown()

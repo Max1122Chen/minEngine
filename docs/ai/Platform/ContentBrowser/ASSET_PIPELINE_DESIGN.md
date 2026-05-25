@@ -446,7 +446,7 @@ Editor/src/Services/ContentBrowser/
 - 第一个代码切片仍为：**类型桶 + Registry 事件 + `ImportAsset`（单文件）**（P1）。
 - **P1 定稿：** [ASSET_PIPELINE_P1_API.md](./ASSET_PIPELINE_P1_API.md)（已实现 `8c5958d`）。
 - **P2 定稿：** [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（已实现 `7758c60`）。
-- **P3 定稿：** [ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)（**已批准**；submodule `nativefiledialog-extended` @ v1.3.0）。
+- **P3 定稿：** [ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)（**已实现**；submodule `nativefiledialog-extended` @ v1.3.0）。
 
 ---
 

@@ -64,6 +64,9 @@ namespace minEngine
         bool& DockLayoutInitialized() override { return m_DockLayoutInitialized; }
         bool& RequestResetLayout() override { return m_RequestResetLayout; }
 
+        IFileDialogService& GetFileDialogService() override;
+        const IFileDialogService& GetFileDialogService() const override;
+
         bool OpenProject(const std::string& projectPath);
         void CloseProject();
 

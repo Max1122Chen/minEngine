@@ -1,7 +1,7 @@
 # Asset Pipeline — P3 接口定稿（审批用）
 
 Last updated: 2026-05-25  
-Status: **已批准**（分层：Runtime `Platform` + Editor 消费；submodule 已添加，实现待 P3a–P3d）  
+Status: **已实现**（Runtime `Platform` + Editor 消费；P3a–P3d）  
 前置：**P1/P1b** `8c5958d`、**P2** `7758c60`（`feat/editor-asset-workflow`，已合并 appearance M1–M3）  
 父文档：[ASSET_PIPELINE_DESIGN.md](./ASSET_PIPELINE_DESIGN.md) §6（E4）、§9 P3、§10 D8  
 P2 定稿：[ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)

@@ -130,6 +130,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	P3 NFD / P4 AssetWorkflow / P5 efsw.
 
+### 2026-05-25 - Asset Pipeline P3 FileDialog (Runtime Platform)
+- Goal:
+	Runtime IFileDialogService + NFD; Editor consumes via Engine; asset filters from Registry.
+- Main changes:
+	`Runtime/Platform/FileDialog/*`, `FileDialogService` in `Engine`; `AssetTypeRegistry::BuildFileDialogFilters`;
+	Editor `GetFileDialogService()`; Tools menu **File Dialog (P3)** for Open/Save/Folder smoke.
+- Validation done:
+	`cmake --build minEngine/build --target Editor` succeeded (single-threaded link after parallel truncate).
+- Next step:
+	P4 `AssetWorkflowModule::ImportAssetDialog`.
+
 ### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
 - Goal:
 	Restore scene mesh GUID refs after stopping EngineDefault Registry scan.
