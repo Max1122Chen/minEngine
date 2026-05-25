@@ -4,3 +4,6 @@
 [submodule "minEngine/minEngine/Third-Party/assimp"]
 	path = minEngine/minEngine/Third-Party/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "minEngine/minEngine/Third-Party/nativefiledialog-extended"]
+	path = minEngine/minEngine/Third-Party/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended.git

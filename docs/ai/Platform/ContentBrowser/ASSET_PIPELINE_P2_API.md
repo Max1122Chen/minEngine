@@ -275,4 +275,5 @@ bool AssetManager::MoveRegistryEntry(std::string_view oldRel, std::string_view n
 ## 10) 审批后文档
 
 - 更新 `ASSET_PIPELINE_DESIGN.md` §9 勾选 P2 定稿链接  
-- `ASSET_PIPELINE_P1_API.md` §11 指向本文
+- `ASSET_PIPELINE_P1_API.md` §11 指向本文  
+- P3：[ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)
