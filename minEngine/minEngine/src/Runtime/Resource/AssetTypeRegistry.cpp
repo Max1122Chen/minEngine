@@ -53,30 +53,35 @@ namespace minEngine
             .RuntimeClassName = GetClassName<Texture2D>(),
             .Extensions = {".png", ".jpg", ".jpeg"},
             .FileDialogFilterLabel = "Texture2D (*.png;*.jpg;*.jpeg)"});
+        m_AssetTypeIdByClass[Texture2D::StaticClass()] = "Texture2D";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "StaticMesh",
             .RuntimeClassName = GetClassName<StaticMesh>(),
             .Extensions = {".obj", ".fbx", ".gltf"},
             .FileDialogFilterLabel = "Static Mesh (*.obj;*.fbx;*.gltf)"});
+        m_AssetTypeIdByClass[StaticMesh::StaticClass()] = "StaticMesh";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Material",
             .RuntimeClassName = GetClassName<Material>(),
             .Extensions = {".memtl"},
             .FileDialogFilterLabel = "Material (*.memtl)"});
+        m_AssetTypeIdByClass[Material::StaticClass()] = "Material";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Shader",
             .RuntimeClassName = GetClassName<Shader>(),
             .Extensions = {".meshader"},
             .FileDialogFilterLabel = "Shader (*.meshader)"});
+        m_AssetTypeIdByClass[Shader::StaticClass()] = "Shader";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Scene",
             .RuntimeClassName = GetClassName<Scene>(),
             .Extensions = {".mescene"},
             .FileDialogFilterLabel = "Scene (*.mescene)"});
+        m_AssetTypeIdByClass[Scene::StaticClass()] = "Scene";
     }
 
     void AssetTypeRegistry::RegisterType(const AssetTypeDescriptor& descriptor)
@@ -95,6 +100,13 @@ namespace minEngine
         }
 
         m_Descriptors.push_back(descriptor);
+
+        const Reflection::MEClass* runtimeClass =
+            Reflection::ReflectionSystem::Get().FindClass(descriptor.RuntimeClassName);
+        if (runtimeClass != nullptr)
+        {
+            m_AssetTypeIdByClass[runtimeClass] = descriptor.AssetTypeId;
+        }
     }
 
     const AssetTypeDescriptor* AssetTypeRegistry::FindByExtension(std::string_view extension) const
@@ -144,6 +156,22 @@ namespace minEngine
         }
 
         return std::string();
+    }
+
+    std::string_view AssetTypeRegistry::GetAssetTypeIdForClass(const Reflection::MEClass* assetClass) const
+    {
+        if (assetClass == nullptr)
+        {
+            return {};
+        }
+
+        const auto iter = m_AssetTypeIdByClass.find(assetClass);
+        if (iter == m_AssetTypeIdByClass.end())
+        {
+            return {};
+        }
+
+        return iter->second;
     }
 
     std::vector<std::string> AssetTypeRegistry::BuildFileDialogFilterSpec() const

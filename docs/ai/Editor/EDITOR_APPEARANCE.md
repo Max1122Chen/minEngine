@@ -215,87 +215,28 @@ Specifier 映射（`PropertyEditPolicy`）：
 
 ---
 
-## 7) 引用选择：`ObjectPtrWidget` 与数据源
+## 7) 引用选择：`ObjectPtrWidget`
 
-### 7.1 问题
+**详细设计（评审中）：** [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md)
 
-`MEObjectPtrProperty` 统一指向 `MEObject*`，但来源两类：
+### 7.1 摘要（v3，2026-05-25）
 
-| 种类 | 示例 | 数据源 | 规模 |
-|------|------|--------|------|
-| **Asset 引用** | `StaticMesh`、`Material`、`Texture2D`、`Font` | **AssetManager**（磁盘注册 + Meta） | 工程内资产，可索引 |
-| **Engine Object 引用** | 场景内对象、子系统单例、非资产 `MEObject` | **ObjectManager** 等 | 可能很大，需 Class 过滤 |
+| 项 | 决定 |
+|----|------|
+| 入口 | **`ObjectPtrWidget`**；与 `PropertyValueWidget` 并列 |
+| Allowed | **`const MEClass*`** 列表；Meta 将来只负责解析成指针 |
+| 分流 | **`allowed->IsA(Asset::StaticClass())`** → `CollectAssetCandidates`；否则 → `CollectObjectCandidates`（**不用** `HasAssetTypeForClass`） |
+| Asset 优先 | Asset 子类 **只**列 Meta 桶；已加载实例不走 Object 分支（`LoadAssetByPath` 更快） |
+| Runtime | `AssetTypeRegistry` 增加 **`MEClass*` → AssetTypeId**；`FindAssetMetasByClass` |
+| 结构 | `Collect*` 在 **`ObjectPtrWidget` 内** + `PropertyRefPicker`；无独立 Resolve 模块 |
+| Registry 登记 | Builtin 用 **`T::StaticClass()`** 写入 `m_AssetTypeIdByClass` |
+| Meta 第一版 | 预留、不解析 |
+| **None** | **所有** `MEObjectPtr` 编辑 Combo **固定**首项 None（清空 `shared_ptr`）；无 `allowNone` 开关 |
 
-当前 `DrawAssetRef` 已用 `FindAssetMetasByType`，但实现为 **全表扫描** `m_AssetRegistry`（O(N)）。
+### 7.2 与旧 §7 的差异
 
-### 7.2 推荐方案（采纳 + 略优于「仅缓存」）
-
-**A. Asset 路径 — `AssetManager` 分类型索引（本计划实现）**
-
-在 `RegisterAsset` / `CacheMeta` / 移除资产时维护：
-
-```text
-m_AssetMetasByType: unordered_map<string, vector<AssetMeta*>>  // key = AssetType 字符串
-```
-
-对外 API：
-
-```cpp
-void ForEachAssetMetaOfType(const std::string& assetType,
-                            const std::function<void(const AssetMeta&)>& visitor) const;
-// 或返回 span / const vector&
-```
-
-- `ObjectPtrWidget` 对 `valueClass->IsA(Asset::StaticClass())`：用 `InferAssetTypeFromClassName(valueClass->GetName())` 查桶
-- **不再**每次 Combo 打开时扫全 `m_AssetRegistry`
-- 与「分 AssetType 缓存」诉求一致，且 **单一数据源**（Meta 为真源，加载用 `LoadAssetByPath`）
-
-**B. Object 路径 — `PropertyReferencePicker` + Class 过滤（后续里程碑）**
-
-- `ObjectManager::ForEachObject` + `MEClass::IsA(AllowedClass)` **仅**在 Meta 声明非 Asset 引用时使用
-- 可选优化：按 `MEClass*` 维护 **Editor 侧弱引用注册表**（仅注册「可被引用」对象），避免扫全引擎对象——**标为 M4+ / Open**，第一版可限制「非 Asset 引用暂不支持 UI」
-
-**C. 统一入口 — `PropertyReferencePicker`（Editor）**
-
-```cpp
-struct PropertyReferenceQuery
-{
-    const Reflection::MEObjectPtrProperty& Property;
-    const Reflection::MEClass* ValueClass;
-    PropertyMetadata Meta;  // AllowedClasses, ReferenceKind
-};
-
-class PropertyReferencePicker
-{
-public:
-    bool DrawCombo(PropertyWidgetContext& ctx, PropertyReferenceQuery query);
-};
-```
-
-`ObjectPtrWidget` 只调 Picker；Picker 内部分流 Asset / Object。
-
-### 7.3 Meta / ClassInfo 扩展（为后续过滤预留）
-
-| Meta 键 | 含义 |
-|---------|------|
-| `ReferenceKind` | `"Asset"` \| `"Object"`（默认可由 `ValueClass->IsA(Asset)` 推断） |
-| `AllowedClasses` | 逗号分隔类名；Asset 时映射到多个 `AssetType` 桶 union |
-| `AllowedAssetTypes` | 直接列 `StaticMesh,Material`（与 `AllowedClasses` 二选一） |
-
-**第一版：** 仅 **单值类**（与现 `DrawAssetRef` 一致）；Meta 解析框架先落地，多类 union 作 **M3.1**。
-
-### 7.4 第一版交互（不变）
-
-- Combo 下拉；显示名；`None`；选中后 `LoadAssetByPath` + 写回 property
-- 无 Browse / 拖拽
-
-### 7.5 与 `ObjectManager` 的关系
-
-| 场景 | 建议 |
-|------|------|
-| Inspector 里 `shared_ptr<StaticMesh>` | **只用 AssetManager 索引** |
-| `shared_ptr<Scene>` / 场景内 GO | 将来 Object 路径 + 注册表；**不**用 ObjectManager 枚举全部 Object 代替 Asset 索引 |
-| 性能 | Asset 桶 O(类型内数量)；Object 过滤 O(注册表大小) 而非 O(全部 Object) |
+- 不再把「纯 Object 引用 UI」推到 M7；与 Asset 引用同一 Widget、同一 Allowed 模型。
+- `DrawAssetRef` 重复实现待 M3.1 删除，由上述分层替代。
 
 ---
 
@@ -354,7 +295,8 @@ class Font : public Asset
 | **M2** | `PropertyEditPolicy`、`PropertyEditSession` | **已合入（`6648a0e`）** | 语境仅 `SceneInstance` \| `AssetDefaults`；Scene/Material Details 走 Policy；Meta DisplayName/Tooltip/ReadOnly |
 | **M3** | PropertyWidgets（primitive、**ColorWidget**） | **已实施（待 commit）** | `PropertyPrimitiveWidgets` / `ColorWidget` / `PropertyValueWidget`；`LinearColor` 用 `StaticClass`；Material `ForAssetDefaults` + `MarkDirty`；**Enum 未接入**（见下） |
 | **M3‑Enum** | `PropertyEnumWidget` 接入 | **后置** | 反射补全 enum **underlying type / size** 后再从 `PropertyValueWidget` 启用；仓库保留 scaffold，**未接线** |
-| **M3.1** | `AssetManager::m_AssetMetasByType` + `PropertyReferencePicker`（Asset 路径） | **后置（`AssetWorkflow` 分支）** | 类型桶在并行分支开发；本分支不重复实现；合并后再接 `ObjectPtrWidget` |
+| **M3.1** | `ObjectPtrWidget` + `PropertyRefPicker`（**Asset + Object**） | **已实施（待 commit）** | 见 [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md) |
+| **M3-Enum** | `PropertyEnumWidget` 接线 | **已实施（待 commit）** | `MEPrimitiveProperty::GetEnum()` / `GetSize()` |
 | **M4** | Inspector 嵌套 + `TransformWidget` + Scene Undo 接线 | M3.1 | Transform 缩进；属性 Undo |
 | **M5** | **`Font` 资产** + `LoadAsset_Impl` + scan + `EditorAppearance` 从 Font 加载 | M1（可与 M3 并行） | 工程可指定 Font GUID；英文清晰 |
 | **M5.1** | 工程 `UiFontSize`、CJK 开关接线（无 glyph 也不崩） | M5 | 配置项生效 |
@@ -381,8 +323,9 @@ class Font : public Asset
 | `Editor/src/UI/Property/PropertyEnumWidget.*` | **Scaffold only**（未接入 `PropertyValueWidget`） |
 | `Editor/src/UI/Property/PropertyValueWidget.*` | Dispatches primitive / `LinearColor` (`IsA(StaticClass)`) |
 | `Editor/src/UI/Property/ColorWidget.*` | ImGui ColorEdit → `LinearColor` |
-| `Editor/src/UI/Property/ObjectPtrWidget.h` | → PropertyReferencePicker |
-| `Editor/src/UI/Property/PropertyReferencePicker.h` | Asset / Object 分流 |
+| `Editor/src/UI/Property/ObjectPtrWidget.*` | `MEObjectPtrProperty` 入口 |
+| `Editor/src/UI/Property/PropertyRefPicker.*` | Combo UI |
+| `Runtime/.../AssetTypeRegistry.*` | `GetAssetTypeIdForClass`（M3.1 小扩展） |
 | `Editor/src/UI/Appearance/EditorAppearance.*` | 主题 + Font atlas |
 
 ---
@@ -425,3 +368,5 @@ class Font : public Asset
 | 2026-05-25 | **M2 设计**：移除 `MaterialGraph` 语境；Material 节点 Details 使用 `AssetDefaults`；补充 §6.2 语境表 |
 | 2026-05-25 | **M3**：PropertyWidgets 分层；`LinearColor` 用 `MEClass::IsA(StaticClass)`；Material Details `PropertyEditSession::MarkDirty` |
 | 2026-05-25 | **M3 诚实范围**：`PropertyEnumWidget` 仅 scaffold、未接线；**M3.1** 类型桶后置至 `AssetWorkflow` 分支合并后 |
+| 2026-05-25 | **ObjectPtrWidget v2 设计**：Asset+Object、`AllowedClasses` 一统 |
+| 2026-05-25 | **ObjectPtrWidget v3**：`MEClass*`、`IsA(Asset)` 分流、双 `Collect*` 扁平化；见 `OBJECT_PTR_WIDGET_DESIGN.md` |

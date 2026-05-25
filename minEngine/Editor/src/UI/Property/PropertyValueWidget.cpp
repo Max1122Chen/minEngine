@@ -1,6 +1,7 @@
 #include "UI/Property/PropertyValueWidget.h"
 
 #include "UI/Property/ColorWidget.h"
+#include "UI/Property/PropertyEnumWidget.h"
 #include "UI/Property/PropertyPrimitiveWidgets.h"
 
 #include "Runtime/Core/Math/Color.h"
@@ -20,10 +21,16 @@ namespace minEngine
         switch (property.GetCategory())
         {
             case Reflection::MEPropertyCategory::Primitive:
-                return PropertyPrimitiveWidgets::Draw(
-                    static_cast<const Reflection::MEPrimitiveProperty&>(property),
-                    propertyPtr,
-                    itemWidth);
+            {
+                const Reflection::MEPrimitiveProperty& primitiveProperty =
+                    static_cast<const Reflection::MEPrimitiveProperty&>(property);
+                if (primitiveProperty.IsEnum())
+                {
+                    return PropertyEnumWidget::Draw(primitiveProperty, propertyPtr, itemWidth);
+                }
+
+                return PropertyPrimitiveWidgets::Draw(primitiveProperty, propertyPtr, itemWidth);
+            }
 
             case Reflection::MEPropertyCategory::Object:
             {

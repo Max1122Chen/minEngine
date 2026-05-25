@@ -2,7 +2,8 @@
 
 | 文档 | 说明 |
 |------|------|
-| [EDITOR_APPEARANCE.md](./EDITOR_APPEARANCE.md) | 编辑器视觉：Color/主题、PropertyWidgets、Font 资产（**拍板 v1；M0 已实施**，`feat/editor-appearance`） |
+| [EDITOR_APPEARANCE.md](./EDITOR_APPEARANCE.md) | 编辑器视觉：Color/主题、PropertyWidgets、Font 资产（**拍板 v1**） |
+| [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md) | **ObjectPtrWidget**（M3.1）：Asset + Object 引用、AllowedClasses（评审中） |
 | [EDITOR_SHELL_DESIGN.md](./EDITOR_SHELL_DESIGN.md) | Editor Shell（E0）：SubModule / Service / IEditorContext |
 | [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md) | Undo / Redo、`EditorSettings` 栈上限 |
 | [EDITOR_VIEWPORT_WINDOWS.md](./EDITOR_VIEWPORT_WINDOWS.md) | 视口窗口与 Client 分层 |

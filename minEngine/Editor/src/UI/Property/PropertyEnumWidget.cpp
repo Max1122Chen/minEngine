@@ -1,28 +1,13 @@
-// Not linked from PropertyValueWidget until reflection exposes enum storage layout.
-
 #include "UI/Property/PropertyEnumWidget.h"
 
 #include "imgui.h"
 
 #include "Runtime/Core/Reflection/MEEnum.h"
-#include "Runtime/Core/Reflection/Reflection.h"
 
 #include <cstring>
-#include <string>
 
 namespace minEngine
 {
-    size_t PropertyEnumWidget::GetEnumStorageSize(const Reflection::MEEnum& enumInfo)
-    {
-        const std::string& enumName = enumInfo.GetName();
-        if (enumName.find("InputKeyAction") != std::string::npos)
-        {
-            return sizeof(int);
-        }
-
-        return sizeof(uint8_t);
-    }
-
     int64_t PropertyEnumWidget::ReadEnumValue(void* propertyPtr, size_t storageSize)
     {
         int64_t value = 0;
@@ -40,9 +25,14 @@ namespace minEngine
                                   void* propertyPtr,
                                   float itemWidth)
     {
-        const Reflection::MEEnum* enumInfo =
-            Reflection::ReflectionSystem::Get().FindEnum(primitiveProperty.primitiveTypeName);
+        const Reflection::MEEnum* enumInfo = primitiveProperty.GetEnum();
         if (enumInfo == nullptr || propertyPtr == nullptr)
+        {
+            return false;
+        }
+
+        const size_t storageSize = primitiveProperty.GetSize();
+        if (storageSize == 0)
         {
             return false;
         }
@@ -52,7 +42,6 @@ namespace minEngine
             ImGui::SetNextItemWidth(itemWidth);
         }
 
-        const size_t storageSize = GetEnumStorageSize(*enumInfo);
         const int64_t currentValue = ReadEnumValue(propertyPtr, storageSize);
         const Reflection::MEEnumEntry* currentEntry = enumInfo->FindByValue(currentValue);
         const char* previewLabel = currentEntry != nullptr ? currentEntry->name.c_str() : "Invalid";

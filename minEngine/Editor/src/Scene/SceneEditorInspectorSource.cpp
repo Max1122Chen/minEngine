@@ -2,6 +2,7 @@
 
 #include "Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
+#include "UI/Property/ObjectPtrWidget.h"
 #include "UI/Property/PropertyEditPolicy.h"
 #include "UI/Property/PropertyValueWidget.h"
 
@@ -585,193 +586,127 @@ namespace minEngine
                                                            const Reflection::MEObjectPtrProperty& objectPtrProperty,
                                                            void* propertyPtr)
     {
-        const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
-        if (valueClass)
-        {
-            if (valueClass->IsA(Asset::StaticClass()))
-            {
-                return DrawAssetRef(owner, ownerClass, objectPtrProperty, propertyPtr);
-            }
-
-            ImGui::TextUnformatted("Object references are not supported in this version.");
-        }
-        return false;
-    }
-
-    bool SceneEditorInspectorSource::DrawAssetRef(const MEObject* owner,
-                                                  const Reflection::MEClass* ownerClass,
-                                                  const Reflection::MEObjectPtrProperty& objectPtrProperty,
-                                                  void* propertyPtr)
-    {
-        const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
-        if (valueClass == nullptr || propertyPtr == nullptr)
-        {
-            ImGui::TextUnformatted("Asset reference type unresolved.");
-            return false;
-        }
-
-        const std::string& typeName = valueClass->GetName();
-        const Asset* currentAsset = static_cast<const Asset*>(objectPtrProperty.GetConstPointingData(propertyPtr));
-        const AssetMeta* currentAssetMeta = currentAsset ? currentAsset->GetMeta() : nullptr;
-        std::string selectedAssetName = currentAssetMeta ? currentAssetMeta->AssetName : "None";
-        const GUID selectedGuid = currentAssetMeta ? currentAssetMeta->Guid : GUID::Zero();
-
-        const std::vector<const AssetMeta*> assetMetas =
-            AssetManager::Get().FindAssetMetasByRuntimeClass(typeName);
-        bool valueChanged = false;
-        if (assetMetas.empty())
-        {
-            ImGui::TextUnformatted("No assets of this type in project.");
-            return false;
-        }
-
-        if (std::find_if(assetMetas.begin(),
-                         assetMetas.end(),
-                         [&](const AssetMeta* meta) { return meta->Guid == selectedGuid; }) == assetMetas.end())
-        {
-            selectedAssetName = "None";
-        }
-
         const PropertyUndoCaptureContext undoContext =
             MakePropertyUndoCaptureContext(owner, ownerClass, objectPtrProperty.GetName());
         const std::string assetUndoKey = MakeAssetPropertyUndoKey(
             undoContext.IsValid() ? undoContext.ownerGuid : GUID::Zero(),
             objectPtrProperty.GetName());
 
-        ImGui::PushItemWidth(260.0f);
-        const bool comboOpened = ImGui::BeginCombo("##AssetRefCombo", selectedAssetName.c_str());
-        if (undoContext.IsValid() && ImGui::IsItemActivated())
+        ObjectPtrWidgetHooks hooks;
+        hooks.OnComboActivated = [this, undoContext, assetUndoKey]()
         {
+            if (!undoContext.IsValid())
+            {
+                return;
+            }
+
             std::vector<uint8_t> beforeBlob;
             if (SerializePropertyUndoBlob(undoContext, beforeBlob))
             {
                 m_AssetPropertyUndoBeforeByKey[assetUndoKey] = std::move(beforeBlob);
             }
-        }
-
-        if (comboOpened)
+        };
+        hooks.OnComboDeactivatedAfterEdit = [this, undoContext, assetUndoKey]()
         {
-            for (const AssetMeta* meta : assetMetas)
+            if (undoContext.IsValid())
             {
-                const bool isSelected = (meta->Guid == selectedGuid);
-                ImGui::PushID(static_cast<int>(meta->Guid.High ^ meta->Guid.Low));
-                if (ImGui::Selectable(meta->AssetName.c_str(), isSelected))
+                m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
+            }
+        };
+        hooks.TryApplySelection = [owner, ownerClass, &objectPtrProperty, propertyPtr](
+                                      const PropertyRefCandidate& selected) -> bool
+        {
+            if (selected.Kind != PropertyRefCandidateKind::AssetMeta || selected.Meta == nullptr)
+            {
+                return false;
+            }
+
+            std::string errorMessage;
+            const std::shared_ptr<Asset> asset =
+                AssetManager::Get().LoadAssetByPath(selected.Meta->AssetPath, errorMessage);
+            if (!asset)
+            {
+                ME_CORE_ERROR(
+                    "ObjectPtrWidget: failed to load asset '{}' for property '{}': {}",
+                    selected.Meta->AssetPath,
+                    objectPtrProperty.GetName(),
+                    errorMessage);
+                return false;
+            }
+
+            if (objectPtrProperty.GetPtrCategory() != Reflection::MEObjectPtrCategory::Shared)
+            {
+                return false;
+            }
+
+            const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
+            if (owner != nullptr && valueClass != nullptr)
+            {
+                if (StaticMeshComponent* meshComponent =
+                        dynamic_cast<StaticMeshComponent*>(const_cast<MEObject*>(owner)))
                 {
-                    const bool selectionChanged = (meta->Guid != selectedGuid);
-                    std::string errorMessage;
-                    const std::shared_ptr<Asset> asset =
-                        AssetManager::Get().LoadAssetByPath(meta->AssetPath, errorMessage);
-                    if (!asset)
+                    if (objectPtrProperty.GetName() == "m_Mesh")
                     {
-                        ME_CORE_ERROR(
-                            "DrawAssetRef: failed to load asset '{}' for property '{}': {}",
-                            meta->AssetPath,
-                            objectPtrProperty.GetName(),
-                            errorMessage);
+                        meshComponent->SetMesh(std::static_pointer_cast<StaticMesh>(asset));
+                        return true;
                     }
-                    else
+
+                    if (objectPtrProperty.GetName() == "m_Material")
                     {
-                        const Reflection::MEObjectPtrCategory ptrCategory = objectPtrProperty.GetPtrCategory();
-                        if (ptrCategory == Reflection::MEObjectPtrCategory::Shared)
-                        {
-                            if (owner != nullptr)
-                            {
-                                if (StaticMeshComponent* meshComponent =
-                                        dynamic_cast<StaticMeshComponent*>(const_cast<MEObject*>(owner)))
-                                {
-                                    if (objectPtrProperty.GetName() == "m_Mesh")
-                                    {
-                                        meshComponent->SetMesh(std::static_pointer_cast<StaticMesh>(asset));
-                                        valueChanged = true;
-                                    }
-                                    else if (objectPtrProperty.GetName() == "m_Material")
-                                    {
-                                        meshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
-                                        valueChanged = true;
-                                    }
-                                }
-                            }
-
-                            if (!valueChanged)
-                            {
-                                const std::shared_ptr<void> assetAsVoid = asset;
-                                valueChanged = valueClass->SetSharedPtr(assetAsVoid, propertyPtr);
-                                if (!valueChanged)
-                                {
-                                    ME_CORE_ERROR(
-                                        "DrawAssetRef: SetSharedPtr failed for property '{}' on class '{}'.",
-                                        objectPtrProperty.GetName(),
-                                        valueClass->GetName());
-                                }
-                            }
-                        }
-                        else if (ptrCategory == Reflection::MEObjectPtrCategory::Raw)
-                        {
-                            // Assigning a bare pointer into shared_ptr storage corrupts the control block.
-                            ME_CORE_ERROR(
-                                "DrawAssetRef: refusing Raw pointer write for asset property '{}' (use shared_ptr field + SetMesh/SetMaterial).",
-                                objectPtrProperty.GetName());
-                        }
-                        else
-                        {
-                            ME_CORE_ERROR(
-                                "DrawAssetRef: unsupported pointer category for property '{}'.",
-                                objectPtrProperty.GetName());
-                        }
-
-                        if (valueChanged)
-                        {
-                            m_SceneEditor.MarkSceneDirty();
-                            if (owner != nullptr)
-                            {
-                                if (SceneComponent* sceneComponent =
-                                        dynamic_cast<SceneComponent*>(const_cast<MEObject*>(owner)))
-                                {
-                                    sceneComponent->MarkRenderStateDirty();
-                                }
-                            }
-
-                            if (selectionChanged && undoContext.IsValid())
-                            {
-                                std::vector<uint8_t> beforeBlob;
-                                const auto beforeIter = m_AssetPropertyUndoBeforeByKey.find(assetUndoKey);
-                                if (beforeIter != m_AssetPropertyUndoBeforeByKey.end())
-                                {
-                                    beforeBlob = beforeIter->second;
-                                }
-                                else if (!SerializePropertyUndoBlob(undoContext, beforeBlob))
-                                {
-                                    beforeBlob.clear();
-                                }
-
-                                std::vector<uint8_t> afterBlob;
-                                if (!beforeBlob.empty() && SerializePropertyUndoBlob(undoContext, afterBlob))
-                                {
-                                    TryPropertyUndoCommitImmediate(undoContext, beforeBlob, afterBlob);
-                                }
-
-                                m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
-                            }
-                        }
+                        meshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
+                        return true;
                     }
-                }
-                ImGui::PopID();
-
-                if (isSelected)
-                {
-                    ImGui::SetItemDefaultFocus();
                 }
             }
 
-            ImGui::EndCombo();
-        }
-        else if (undoContext.IsValid() && ImGui::IsItemDeactivatedAfterEdit())
+            return false;
+        };
+        hooks.OnSelectionCommitted = [this, undoContext, assetUndoKey](bool selectionChanged)
         {
-            m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
-        }
+            if (!selectionChanged || !undoContext.IsValid())
+            {
+                return;
+            }
 
-        ImGui::PopItemWidth();
-        return valueChanged;
+            std::vector<uint8_t> beforeBlob;
+            const auto beforeIter = m_AssetPropertyUndoBeforeByKey.find(assetUndoKey);
+            if (beforeIter != m_AssetPropertyUndoBeforeByKey.end())
+            {
+                beforeBlob = beforeIter->second;
+            }
+            else if (!SerializePropertyUndoBlob(undoContext, beforeBlob))
+            {
+                beforeBlob.clear();
+            }
+
+            std::vector<uint8_t> afterBlob;
+            if (!beforeBlob.empty() && SerializePropertyUndoBlob(undoContext, afterBlob))
+            {
+                TryPropertyUndoCommitImmediate(undoContext, beforeBlob, afterBlob);
+            }
+
+            m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
+        };
+        hooks.OnMarkDirty = [this]() { m_SceneEditor.MarkSceneDirty(); };
+        hooks.OnRenderStateDirty = [owner]()
+        {
+            if (owner == nullptr)
+            {
+                return;
+            }
+
+            if (SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(const_cast<MEObject*>(owner)))
+            {
+                sceneComponent->MarkRenderStateDirty();
+            }
+        };
+
+        return ObjectPtrWidget::Draw(
+            objectPtrProperty,
+            propertyPtr,
+            m_PropertyEditSession,
+            hooks,
+            260.0f);
     }
 
     bool SceneEditorInspectorSource::DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr)

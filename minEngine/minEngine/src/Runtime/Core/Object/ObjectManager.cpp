@@ -124,6 +124,24 @@ namespace minEngine
         return result;
     }
 
+    void ObjectManager::ForEachLiveObject(
+        const std::function<void(const std::shared_ptr<MEObject>&)>& visitor) const
+    {
+        if (!visitor)
+        {
+            return;
+        }
+
+        for (const auto& [guid, weakObj] : m_ObjectsByGuid)
+        {
+            (void)guid;
+            if (std::shared_ptr<MEObject> object = weakObj.lock())
+            {
+                visitor(object);
+            }
+        }
+    }
+
     std::shared_ptr<MEObject> ObjectManager::NewObject(
         const Reflection::MEClass* classInfo,
         const std::string& inName,

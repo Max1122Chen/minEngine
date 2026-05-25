@@ -979,6 +979,17 @@ namespace minEngine
         return result;
     }
 
+    std::vector<const AssetMeta*> AssetManager::FindAssetMetasByClass(const Reflection::MEClass* assetClass) const
+    {
+        const std::string_view assetTypeId = AssetTypeRegistry::Get().GetAssetTypeIdForClass(assetClass);
+        if (assetTypeId.empty())
+        {
+            return {};
+        }
+
+        return FindAssetMetasByType(std::string(assetTypeId));
+    }
+
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasByRuntimeClass(
         const std::string& runtimeClassName) const
     {

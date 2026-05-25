@@ -12,6 +12,11 @@
 #include <unordered_map>
 #include <vector>
 
+namespace minEngine::Reflection
+{
+    class MEClass;
+}
+
 namespace minEngine
 {
     class Engine;
@@ -61,6 +66,7 @@ namespace minEngine
         const AssetMeta* FindAssetMetaByPath(const std::string& path) const;
         const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
         std::vector<const AssetMeta*> FindAssetMetasByType(const std::string& assetTypeId) const;
+        std::vector<const AssetMeta*> FindAssetMetasByClass(const Reflection::MEClass* assetClass) const;
         std::vector<const AssetMeta*> FindAssetMetasByRuntimeClass(const std::string& runtimeClassName) const;
 
         uint32_t Subscribe(AssetRegistryChangedCallback callback);

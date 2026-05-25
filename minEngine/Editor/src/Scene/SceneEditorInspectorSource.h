@@ -83,10 +83,6 @@ namespace minEngine
                                    const Reflection::MEClass* ownerClass,
                                    const Reflection::MEObjectPtrProperty& objectPtrProperty,
                                    void* propertyPtr);
-        bool DrawAssetRef(const MEObject* owner,
-                          const Reflection::MEClass* ownerClass,
-                          const Reflection::MEObjectPtrProperty& objectPtrProperty,
-                          void* propertyPtr);
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
 
         void BeginRenameSelectedGameObject(const GameObject& gameObject)

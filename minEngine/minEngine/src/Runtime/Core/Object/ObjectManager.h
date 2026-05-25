@@ -99,6 +99,8 @@ namespace minEngine
             return count;
         }
 
+        void ForEachLiveObject(const std::function<void(const std::shared_ptr<MEObject>&)>& visitor) const;
+
     private:
         friend class Engine;
         friend class MaterialIRTestObjectManagerScope;
