@@ -2,6 +2,8 @@
 
 #include "Runtime/Core/Math/Color.h"
 
+struct ImVec4;
+
 namespace minEngine
 {
     /**
@@ -21,5 +23,6 @@ namespace minEngine
     public:
         static EditorSrgbEditColor ToSrgbEditColor(const LinearColor& linear);
         static LinearColor FromSrgbEditColor(const EditorSrgbEditColor& srgbEdit);
+        static ImVec4 ToImGuiDisplayColor(const LinearColor& linear);
     };
 }

@@ -5,6 +5,8 @@
 #include "Material/MaterialEditor.h"
 #include "Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorThemePresets.h"
 
 namespace minEngine
 {
@@ -118,6 +120,25 @@ namespace minEngine
                     m_Context.RequestResetLayout() = true;
                     m_Context.DockLayoutInitialized() = false;
                 }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Theme"))
+            {
+                const std::string& activePreset = m_Context.GetEditorAppearance().GetAppearanceSettings().ThemePresetId;
+                const bool darkSelected = activePreset == std::string(EditorThemePresetIds::DarkEngine);
+                const bool lightSelected = activePreset == std::string(EditorThemePresetIds::LightEngine);
+
+                if (ImGui::MenuItem("Dark", nullptr, darkSelected))
+                {
+                    m_Context.GetEditorAppearance().SetThemePreset(EditorThemePresetIds::DarkEngine, true);
+                }
+
+                if (ImGui::MenuItem("Light", nullptr, lightSelected))
+                {
+                    m_Context.GetEditorAppearance().SetThemePreset(EditorThemePresetIds::LightEngine, true);
+                }
+
                 ImGui::EndMenu();
             }
 

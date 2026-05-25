@@ -62,13 +62,19 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
-        const ProjectContext& GetCurrentProjectCtx() { return m_CurrentProjectCtx; }
+        const ProjectContext& GetCurrentProjectCtx() const { return m_CurrentProjectCtx; }
+        ProjectContext& GetCurrentProjectCtx() { return m_CurrentProjectCtx; }
         ProjectOpenResult OpenProject(const std::filesystem::path& projectRoot);    // TODO: currently we only accept absolute path, e.g. C:/Projects/MyProject, but maybe we should also support relative path like ./MyProject or MyProject, and we can resolve them to absolute path internally
         void CloseCurrentProject();
+
+        bool HasOpenProject() const { return !m_CurrentProjectCtx.Descriptor.ProjectRoot.empty(); }
+        const std::filesystem::path& GetCurrentProjectSettingsPath() const { return m_CurrentSettingsPath; }
+        bool SaveCurrentProjectSettings();
 
     private:
         bool LoadProjectDesc(const std::filesystem::path& descriptorPath, ProjectDescriptor& outDescriptor);
         bool LoadProjectSettings(const std::filesystem::path& settingsPath, ProjectSettings& outSettings);
+        std::filesystem::path ResolveDefaultSettingsPath(const std::filesystem::path& descriptorPath) const;
 
 
     private:
@@ -80,5 +86,6 @@ namespace minEngine
         static constexpr const char* kMEProjectExtension = ".meproject";
         static constexpr const char* kMEProjectSettingsExtension = ".mesettings";
         ProjectContext m_CurrentProjectCtx;
+        std::filesystem::path m_CurrentSettingsPath;
     };
 }

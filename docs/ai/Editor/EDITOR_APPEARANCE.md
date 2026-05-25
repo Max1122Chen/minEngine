@@ -325,7 +325,7 @@ class Font : public Asset
 |------|------|----------|------|
 | **—** | **设计审批** | 用户确认本文 | **已完成（2026-05-25）** |
 | **M0** | `Color` / `LinearColor` struct + 反射 + JSON + Runtime sRGB 转换 | **代码已合入分支** | `Color.h/.cpp`、`Color.gen.*`、`uint8` codec；Editor 仅 `EditorColorConversion`；本地需 clean rebuild 验证链接 |
-| **M1** | `EditorThemePalette`、Dark+Light、`EditorAppearance`、`ProjectSettings.Appearance` | M0 | 切换主题；Custom merge |
+| **M1** | `EditorThemePalette`、Dark+Light、`EditorAppearance`、`ProjectSettings.Appearance` | **已实施（待 commit）** | View→Theme Dark/Light；写入 `.mesettings` |
 | **M2** | `PropertyEditPolicy`、`PropertyEditSession` | M1 可并行 | Specifier 用例通过 |
 | **M3** | PropertyWidgets（primitive、enum、**ColorWidget**） | M2 | Material Drawer 接入 |
 | **M3.1** | `AssetManager::m_AssetMetasByType` + `PropertyReferencePicker`（Asset 路径） | M3 | Combo 不扫全表；ObjectPtr 替换 `DrawAssetRef` |

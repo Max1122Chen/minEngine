@@ -6,6 +6,7 @@
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ProjectSettings)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, EditorDefaultSceneName)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, Editor)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, Appearance)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::ProjectSettings, GReflectionClassRegister_ProjectSettings_1698c332)
