@@ -133,6 +133,8 @@ namespace minEngine::Reflection
                 return false;
             }
 
+            enumInfo->SetSize(sizeof(TEnum));
+
             m_DeclaredEnumNameByTypeIndex[std::type_index(typeid(TEnum))] = enumInfo->GetName();
             m_DeclaredEnumNameByTypeIdName[typeid(TEnum).name()] = enumInfo->GetName();
             return true;

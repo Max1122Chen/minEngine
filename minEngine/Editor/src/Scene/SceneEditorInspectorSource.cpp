@@ -616,7 +616,8 @@ namespace minEngine
         std::string selectedAssetName = currentAssetMeta ? currentAssetMeta->AssetName : "None";
         const GUID selectedGuid = currentAssetMeta ? currentAssetMeta->Guid : GUID::Zero();
 
-        const std::vector<AssetMeta*> assetMetas = AssetManager::Get().FindAssetMetasByType(typeName);
+        const std::vector<const AssetMeta*> assetMetas =
+            AssetManager::Get().FindAssetMetasByRuntimeClass(typeName);
         bool valueChanged = false;
         if (assetMetas.empty())
         {

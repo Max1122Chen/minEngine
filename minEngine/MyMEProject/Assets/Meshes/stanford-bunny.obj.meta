@@ -1,6 +1,6 @@
 {
     "AssetName": "stanford-bunny",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Meshes/stanford-bunny.obj",
+    "AssetPath": "Meshes/stanford-bunny.obj",
     "AssetType": "StaticMesh",
     "Guid": {
         "High": 12342586155336551981,

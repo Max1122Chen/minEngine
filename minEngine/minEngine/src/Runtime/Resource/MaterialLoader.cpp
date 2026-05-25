@@ -5,6 +5,7 @@
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
 {
@@ -13,8 +14,11 @@ namespace minEngine
         std::shared_ptr<Material> material = NewObject<Material>(meta.AssetName, nullptr, meta.Guid);
 
         Serialization::JsonReaderArchive archive;
+        const std::string absoluteAssetPath =
+            AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
+
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::FromFile(
-            meta.AssetPath,
+            absoluteAssetPath,
             "minEngine::Material",
             material.get(),
             archive,

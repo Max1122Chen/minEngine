@@ -70,7 +70,8 @@ namespace minEngine
             }
 
             const std::string& typeName = valueClass->GetName();
-            const std::vector<AssetMeta*> assetMetas = AssetManager::Get().FindAssetMetasByType(typeName);
+            const std::vector<const AssetMeta*> assetMetas =
+                AssetManager::Get().FindAssetMetasByRuntimeClass(typeName);
 
             const Asset* currentAsset =
                 static_cast<const Asset*>(objectPtrProperty.GetConstPointingData(propertyPtr));

@@ -1,6 +1,6 @@
 {
     "AssetName": "armadillo",
-    "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject/Assets/Meshes/armadillo.obj",
+    "AssetPath": "Meshes/armadillo.obj",
     "AssetType": "StaticMesh",
     "Guid": {
         "High": 4072227309906316303,

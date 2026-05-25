@@ -30,6 +30,7 @@ namespace minEngine
 
         bool RegisterScene(const std::string& sceneName, const std::string& path);
         bool UnregisterScene(const std::string& sceneName);
+        bool IsSceneRegistered(const std::string& sceneName) const;
         std::shared_ptr<Scene> CreateNewScene(const std::string& sceneName);
         bool LoadScene(const std::string& sceneName);
         bool LoadSceneByPath(const std::string& path);
@@ -50,6 +51,7 @@ namespace minEngine
 
     private:
         friend class Engine;
+        friend class AssetManagerTestScope;
 
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;

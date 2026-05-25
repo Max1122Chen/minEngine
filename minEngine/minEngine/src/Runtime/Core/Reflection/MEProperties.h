@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "EngineAPI.h"
+#include "MEEnum.h"
 #include "TypeTraits.h"
 
 namespace minEngine::Reflection
@@ -134,8 +135,24 @@ namespace minEngine::Reflection
             return MEPropertyCategory::Primitive;
         }
 
+        bool IsEnum() const
+        {
+            return boundEnum != nullptr;
+        }
+
+        const MEEnum* GetEnum() const
+        {
+            return boundEnum;
+        }
+
+        size_t GetSize() const
+        {
+            return boundEnum != nullptr ? boundEnum->GetSize() : 0;
+        }
+
     public:
         std::string primitiveTypeName;
+        const MEEnum* boundEnum = nullptr;
     };
 
     class MINENGINE_API MEObjectProperty : public MEProperty
