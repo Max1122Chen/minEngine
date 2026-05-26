@@ -1,6 +1,6 @@
 #include "Commands/Scene/SetGameObjectTransformCommand.h"
 
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 namespace minEngine
 {

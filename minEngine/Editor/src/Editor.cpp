@@ -1,7 +1,7 @@
 #include "Editor.h"
 
-#include "Material/MaterialEditor.h"
-#include "Material/MaterialEditorSession.h"
+#include "SubEditor/Material/MaterialEditor.h"
+#include "SubEditor/Material/MaterialEditorSession.h"
 
 #include "main.h"
 
@@ -20,7 +20,7 @@
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Resource/AssetManager.h"
 
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
 #include "Shell/EditorSettingsDefaults.h"
 #include "UI/Appearance/EditorAppearance.h"

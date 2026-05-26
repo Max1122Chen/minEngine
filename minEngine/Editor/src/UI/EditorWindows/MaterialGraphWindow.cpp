@@ -11,11 +11,11 @@
 
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
-#include "Material/MaterialEditor.h"
-#include "Material/MaterialEditorSession.h"
-#include "Material/MaterialGraphIds.h"
-#include "Material/MaterialCompileDiagnosticsDrawer.h"
-#include "Material/MaterialGraphNodeRegistry.h"
+#include "SubEditor/Material/MaterialEditor.h"
+#include "SubEditor/Material/MaterialEditorSession.h"
+#include "SubEditor/Material/MaterialGraphIds.h"
+#include "SubEditor/Material/MaterialCompileDiagnosticsDrawer.h"
+#include "SubEditor/Material/MaterialGraphNodeRegistry.h"
 
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Material/MaterialCapability.h"

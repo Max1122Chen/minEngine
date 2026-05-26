@@ -41,7 +41,7 @@
 #include "Function/Framework/GameObject/GameObject.h"
 
 #include "Shell/EditorContextHelpers.h"
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorSubModule.h"
 
 #include "Runtime/Function/Framework/Transform/Transform.h"

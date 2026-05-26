@@ -1,4 +1,4 @@
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 #include "Commands/Scene/DeleteGameObjectCommand.h"
 #include "Commands/Scene/AddEmptyGameObjectCommand.h"
@@ -9,7 +9,7 @@
 #include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Commands/Scene/SetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
-#include "Scene/SceneEditorInspectorSource.h"
+#include "SubEditor/Scene/SceneEditorInspectorSource.h"
 #include "Shell/EditorCommandStack.h"
 #include "Shell/IEditorContext.h"
 
@@ -19,7 +19,7 @@
 #include "Shell/EditorInputHub.h"
 
 #include "imgui.h"
-#include "Viewport/SceneEditingViewportClient.h"
+#include "SubEditor/Scene/SceneEditingViewportClient.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"

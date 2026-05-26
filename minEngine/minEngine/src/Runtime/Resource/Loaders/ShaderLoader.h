@@ -7,11 +7,11 @@
 
 namespace minEngine
 {
-    class Material;
+    class Shader;
 
-    class MaterialAssetLoader
+    class ShaderLoader
     {
     public:
-        static std::shared_ptr<Material> LoadFromAssetMeta(const AssetMeta& meta);
+        static std::shared_ptr<Shader> LoadFromAssetMeta(const AssetMeta& meta);
     };
 }

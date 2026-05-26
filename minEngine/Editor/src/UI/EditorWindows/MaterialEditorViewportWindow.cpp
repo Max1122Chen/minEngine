@@ -1,6 +1,6 @@
 #include "UI/EditorWindows/MaterialEditorViewportWindow.h"
 
-#include "Material/MaterialEditor.h"
+#include "SubEditor/Material/MaterialEditor.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Shell/ViewportClientRegistry.h"
 

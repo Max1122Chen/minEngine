@@ -11,6 +11,7 @@
 | [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md) | Undo / Redo、`EditorSettings` 栈上限 |
 | [EDITOR_VIEWPORT_WINDOWS.md](./EDITOR_VIEWPORT_WINDOWS.md) | 视口窗口与 Client 分层 |
 | [GUI_DEV_FAQ.md](./GUI_DEV_FAQ.md) | ImGui / 开发 FAQ |
+| [**文件分层迁移计划**](./EDITOR_FILE_LAYOUT_MIGRATION.md) | Editor SubEditor / Services/Inspector / Runtime Loaders（**待审批**） |
 
 Content Browser UI（P6.1）见 [Platform/ContentBrowser/CONTENT_BROWSER_UI_DESIGN.md](../Platform/ContentBrowser/CONTENT_BROWSER_UI_DESIGN.md)。
 

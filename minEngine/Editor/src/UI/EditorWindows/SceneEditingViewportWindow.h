@@ -5,10 +5,10 @@
 #include "imgui.h"
 #include "ImGuizmo.h"
 
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "UI/EditorWindows/EditorViewportWindow.h"
 #include "UI/Widgets/DraggableOverlay.h"
-#include "Viewport/SceneEditingViewportClient.h"
+#include "SubEditor/Scene/SceneEditingViewportClient.h"
 
 #include <algorithm>
 #include <utility>

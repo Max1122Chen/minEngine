@@ -1,7 +1,7 @@
 #include "MaterialEditor.h"
 
 #include "EditorGUIManager.h"
-#include "Material/MaterialGraphIds.h"
+#include "SubEditor/Material/MaterialGraphIds.h"
 #include "Shell/EditorDockLayout.h"
 #include "Shell/EditorInputHub.h"
 #include "Shell/IEditorContext.h"
@@ -11,7 +11,7 @@
 
 #include "UI/EditorWindows/MaterialGraphWindow.h"
 #include "UI/EditorWindows/MaterialEditorViewportWindow.h"
-#include "Viewport/MaterialEditorViewportClient.h"
+#include "SubEditor/Material/MaterialEditorViewportClient.h"
 
 #include "Runtime/Resource/AssetMeta.h"
 

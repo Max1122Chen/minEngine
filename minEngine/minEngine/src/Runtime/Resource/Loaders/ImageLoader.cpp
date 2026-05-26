@@ -1,4 +1,4 @@
-#include "ImageLoader.h"
+#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 

@@ -2,9 +2,9 @@
 
 #include "Core.h"
 
-#include "Material/MaterialEditor.h"
+#include "SubEditor/Material/MaterialEditor.h"
 #include "UI/EditorWindows/EditorViewportWindow.h"
-#include "Viewport/MaterialEditorViewportClient.h"
+#include "SubEditor/Material/MaterialEditorViewportClient.h"
 
 namespace minEngine
 {

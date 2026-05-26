@@ -1,8 +1,8 @@
-#include "FontLoader.h"
+#include "Runtime/Resource/Loaders/FontLoader.h"
 
-#include "AssetManager.h"
-#include "Font.h"
-#include "Log/LogSystem.h"
+#include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Resource/Font.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 
 #include <algorithm>

@@ -4,7 +4,7 @@
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Runtime/Core/GUID/GUID.h"
-#include "Scene/SceneEditorInspectorSource.h"
+#include "SubEditor/Scene/SceneEditorInspectorSource.h"
 #include "Shell/EditorSubModule.h"
 
 #include <limits>

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Core.h"
-#include "Viewport/MaterialEditorViewportClient.h"
-#include "Viewport/SceneEditingViewportClient.h"
+#include "SubEditor/Material/MaterialEditorViewportClient.h"
+#include "SubEditor/Scene/SceneEditingViewportClient.h"
 
 #include <memory>
 #include <string>

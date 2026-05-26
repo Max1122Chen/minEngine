@@ -2,7 +2,6 @@
 
 #include "AssetTypeRegistry.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
-#include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
 
@@ -11,9 +10,7 @@
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Shader.h"
-#include "Runtime/Resource/AssetResources/ShaderResource.h"
 #include "Runtime/Resource/Font.h"
-#include "Runtime/Resource/FontLoader.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -1256,50 +1253,6 @@ namespace minEngine
 
         outErrorMessage = "unsupported asset type '" + meta.AssetType + "'";
         return nullptr;
-    }
-
-    template<>
-    std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta)
-    {
-        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
-
-        ShaderResource resource;
-        Serialization::JsonReaderArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
-            absoluteAssetPath,
-            "minEngine::ShaderResource",
-            &resource,
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = true,
-                .skipUnknownField = false,
-                .allowObjectPtrSerialization = true});
-        if (!result.ok)
-        {
-            ME_CORE_ERROR("Failed to deserialize shader resource '{}'. Error: {}. Field path: {}",
-                          absoluteAssetPath,
-                          result.message,
-                          result.fieldPath);
-            return nullptr;
-        }
-        std::shared_ptr<Shader> shader = NewObject<Shader>(meta.AssetName, nullptr, meta.Guid);
-        std::string compileError;
-        if (!shader->CompileFromFiles(
-                *RenderSystem::Get().GetRHI(),
-                resource.m_VertexPath,
-                resource.m_FragmentPath,
-                &compileError))
-        {
-            ME_CORE_ERROR(
-                "Failed to compile shader asset '{}'. Vertex: '{}', Fragment: '{}'. {}",
-                absoluteAssetPath,
-                resource.m_VertexPath,
-                resource.m_FragmentPath,
-                compileError);
-            return nullptr;
-        }
-        return shader;
     }
 
     template<>

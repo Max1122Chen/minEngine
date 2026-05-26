@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "AssetMeta.h"
+#include "Runtime/Resource/AssetMeta.h"
 
 #include <memory>
 #include <string>

@@ -1,7 +1,7 @@
 #include "Commands/Scene/RemoveComponentCommand.h"
 
 #include "Commands/Scene/EditorObjectSnapshot.h"
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 #include "Runtime/Core/GUID/GUID.h"
 #include "Runtime/Core/Log/LogSystem.h"

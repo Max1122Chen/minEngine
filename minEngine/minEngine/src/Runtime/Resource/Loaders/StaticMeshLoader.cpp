@@ -1,12 +1,12 @@
-#include "StaticMeshLoader.h"
+#include "Runtime/Resource/Loaders/StaticMeshLoader.h"
 
-#include "RHI/RHIBuffers.h"
-#include "StaticMesh.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/StaticMesh.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Resource/AssetManager.h"
-#include "Runtime/Resource/MeshLoader.h"
+#include "Runtime/Resource/Loaders/MeshLoader.h"
 
 namespace minEngine
 {

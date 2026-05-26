@@ -1,6 +1,6 @@
-#include "Scene/SceneEditorInspectorSource.h"
+#include "SubEditor/Scene/SceneEditorInspectorSource.h"
 
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemeScope.h"

@@ -166,6 +166,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	P7 default Dock + menu integration; P6.1 Browser visual design after Appearance merge; P5.1 Reimported optional.
 
+### 2026-05-26 - Editor / Runtime 文件分层迁移
+- Goal:
+	Align Editor SubEditor/Inspector layout and consolidate Runtime asset loaders under `Resource/Loaders/`.
+- Main changes:
+	Editor: `Services/Inspector/InspectorModule`; `SubEditor/Material|Scene` + viewport clients; plan `docs/ai/Editor/EDITOR_FILE_LAYOUT_MIGRATION.md`.
+	Runtime: all `*Loader` → `Runtime/Resource/Loaders/`; merge `MaterialAssetLoader` into `MaterialLoader::Load`; new `ShaderLoader`; `TextureCubeLoader` unchanged in `Render/`.
+- Risks or caveats:
+	`MaterialEditor::OpenSession` may still double-compile after `LoadAsset<Material>` (pre-existing).
+- Validation done:
+	`cmake --build minEngine/build --target minEngine Editor`; `--asset-manager-test` / `--material-ir-test` exit 0.
+- Next step:
+	Editor 目视 spot-check; optional `MaterialEditor` dedupe compile.
+
 ### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
 - Goal:
 	Restore scene mesh GUID refs after stopping EngineDefault Registry scan.

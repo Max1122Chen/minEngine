@@ -1,6 +1,6 @@
-#include "Material/MaterialEditorInspectorSource.h"
+#include "SubEditor/Material/MaterialEditorInspectorSource.h"
 
-#include "Material/MaterialEditor.h"
+#include "SubEditor/Material/MaterialEditor.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Appearance/EditorTypographyScope.h"
 #include "UI/Appearance/EditorWindowTypography.h"
@@ -9,11 +9,11 @@
 
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
-#include "Material/MaterialEditorSession.h"
-#include "Material/MaterialGraphIds.h"
-#include "Material/MaterialGraphNodeRegistry.h"
-#include "Material/MaterialCompileDiagnosticsDrawer.h"
-#include "Material/MaterialNodeDefPropertyDrawer.h"
+#include "SubEditor/Material/MaterialEditorSession.h"
+#include "SubEditor/Material/MaterialGraphIds.h"
+#include "SubEditor/Material/MaterialGraphNodeRegistry.h"
+#include "SubEditor/Material/MaterialCompileDiagnosticsDrawer.h"
+#include "SubEditor/Material/MaterialNodeDefPropertyDrawer.h"
 #include "UI/Property/PropertyEditSession.h"
 
 #include "Runtime/Function/Render/Material.h"

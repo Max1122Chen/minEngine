@@ -2,7 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Resource/AssetMeta.h"
-#include "Runtime/Resource/ImageLoader.h"
+#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include <memory>
 #include <string>

@@ -1,9 +1,10 @@
-#include "Texture2DLoader.h"
+#include "Runtime/Resource/Loaders/Texture2DLoader.h"
 
-#include "RenderSystem.h"
-#include "RHI/RHI.h"
-#include "RHI/RHITexture.h"
-#include "Texture.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHITexture.h"
+#include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"

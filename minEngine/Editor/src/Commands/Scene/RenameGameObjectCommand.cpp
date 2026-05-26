@@ -1,6 +1,6 @@
 #include "Commands/Scene/RenameGameObjectCommand.h"
 
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 namespace minEngine
 {

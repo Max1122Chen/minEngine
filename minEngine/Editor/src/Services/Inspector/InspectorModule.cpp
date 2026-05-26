@@ -1,4 +1,4 @@
-#include "Services/InspectorModule.h"
+#include "Services/Inspector/InspectorModule.h"
 
 #include "EditorGUIManager.h"
 #include "Shell/IEditorContext.h"

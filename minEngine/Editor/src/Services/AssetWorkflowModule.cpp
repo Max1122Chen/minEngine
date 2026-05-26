@@ -1,8 +1,8 @@
 #include "Services/AssetWorkflowModule.h"
 
-#include "Material/MaterialEditor.h"
-#include "Scene/SceneEditor.h"
-#include "Services/InspectorModule.h"
+#include "SubEditor/Material/MaterialEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
+#include "Services/Inspector/InspectorModule.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Inspector/InspectorPreviewPresenter.h"
 #include "UI/Appearance/EditorTypographyScope.h"

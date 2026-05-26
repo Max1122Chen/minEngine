@@ -2,7 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Resource/AssetMeta.h"
-#include "Runtime/Resource/MeshLoader.h"
+#include "Runtime/Resource/Loaders/MeshLoader.h"
 
 #include <memory>
 

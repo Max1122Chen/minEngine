@@ -2,8 +2,8 @@
 
 #include "EditorGUIManager.h"
 #include "Shell/EditorCommandStack.h"
-#include "Material/MaterialEditor.h"
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Material/MaterialEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Services/AssetWorkflowModule.h"
 #include "UI/Appearance/EditorAppearance.h"

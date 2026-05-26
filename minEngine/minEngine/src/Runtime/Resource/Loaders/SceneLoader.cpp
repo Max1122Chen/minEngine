@@ -1,6 +1,6 @@
-#include "SceneLoader.h"
+#include "Runtime/Resource/Loaders/SceneLoader.h"
 
-#include "AssetManager.h"
+#include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
