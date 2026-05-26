@@ -72,16 +72,10 @@ namespace minEngine
 
     {
 
-        if (SceneManager::Get().GetEditorSceneViewport() == &m_SceneViewport)
-
+        if (SceneManager::Get().GetEditorSceneViewport() == &GetSceneViewport())
         {
-
             SceneManager::Get().SetEditorSceneViewport(nullptr);
-
         }
-
-        m_SceneViewport.Shutdown();
-
     }
 
 
@@ -90,21 +84,13 @@ namespace minEngine
 
     {
 
-        if (m_SceneViewportInitialized || !rhi)
-
+        if (IsSceneViewportInitialized() || !rhi)
         {
-
             return;
-
         }
 
-
-
-        m_SceneViewport.Initialize(rhi, width, height);
-
-        m_SceneViewportInitialized = true;
-
-        SceneManager::Get().SetEditorSceneViewport(&m_SceneViewport);
+        InitializeEditorSceneViewport(rhi, width, height);
+        SceneManager::Get().SetEditorSceneViewport(&GetSceneViewport());
 
     }
 
@@ -165,14 +151,14 @@ namespace minEngine
 
         RHI* rhi = RenderSystem::Get().GetRHI();
 
-        m_SceneViewport.ApplyPendingResize(rhi);
+        GetSceneViewport().ApplyPendingResize(rhi);
 
 
 
         const SceneDrawFlags flags = SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
                                      SceneDrawFlags::EnableSkyBox;
 
-        const SceneDrawDesc desc = m_SceneViewport.BuildDrawDesc(flags);
+        const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
 
         if (desc.Scene && desc.Camera && desc.RenderTarget)
 
@@ -197,7 +183,7 @@ namespace minEngine
 
         {
 
-            m_SceneViewport.SetObservedScene(nullptr);
+            GetSceneViewport().SetObservedScene(nullptr);
 
             return;
 
@@ -207,7 +193,7 @@ namespace minEngine
 
         scene->EnsureRenderScene();
 
-        m_SceneViewport.SetObservedScene(scene->GetRenderScene());
+        GetSceneViewport().SetObservedScene(scene->GetRenderScene());
 
     }
 
@@ -399,7 +385,7 @@ namespace minEngine
 
     {
 
-        RenderCamera* viewportCamera = m_SceneViewport.GetCamera();
+        RenderCamera* viewportCamera = GetSceneViewport().GetCamera();
 
         if (!viewportCamera)
 
@@ -778,7 +764,7 @@ namespace minEngine
 
 
 
-        const Vector2 sceneBufferSize = m_SceneViewport.GetBufferSize();
+        const Vector2 sceneBufferSize = GetSceneViewport().GetBufferSize();
 
         if (sceneBufferSize.x <= 0.0f || sceneBufferSize.y <= 0.0f)
 
@@ -798,7 +784,7 @@ namespace minEngine
 
 
 
-        RenderCamera* viewportCamera = m_SceneViewport.GetCamera();
+        RenderCamera* viewportCamera = GetSceneViewport().GetCamera();
 
         if (!viewportCamera)
 
@@ -814,7 +800,7 @@ namespace minEngine
 
 
 
-        RenderScene* scene = m_SceneViewport.GetObservedScene();
+        RenderScene* scene = GetSceneViewport().GetObservedScene();
 
         if (!scene)
 
@@ -1126,79 +1112,8 @@ namespace minEngine
 
 
     void SceneEditingViewportClient::SyncRenderTargetSize()
-
     {
-
-        const Math::Vector2 bufferSize = m_SceneViewport.GetBufferSize();
-
-
-
-        const uint32_t requestedWidth = m_FrameState.ImageSize.x > 0.0f
-
-            ? static_cast<uint32_t>(m_FrameState.ImageSize.x)
-
-            : (bufferSize.x > 0.0f ? static_cast<uint32_t>(bufferSize.x) : 1u);
-
-        const uint32_t requestedHeight = m_FrameState.ImageSize.y > 0.0f
-
-            ? static_cast<uint32_t>(m_FrameState.ImageSize.y)
-
-            : (bufferSize.y > 0.0f ? static_cast<uint32_t>(bufferSize.y) : 1u);
-
-
-
-        if (m_LastRequestedWidth == 0 || m_LastRequestedHeight == 0)
-
-        {
-
-            if (bufferSize.x > 0.0f && bufferSize.y > 0.0f)
-
-            {
-
-                m_LastRequestedWidth = static_cast<uint32_t>(bufferSize.x);
-
-                m_LastRequestedHeight = static_cast<uint32_t>(bufferSize.y);
-
-            }
-
-            else
-
-            {
-
-                m_LastRequestedWidth = requestedWidth;
-
-                m_LastRequestedHeight = requestedHeight;
-
-            }
-
-            return;
-
-        }
-
-
-
-        if (requestedWidth == m_LastRequestedWidth && requestedHeight == m_LastRequestedHeight)
-
-        {
-
-            return;
-
-        }
-
-
-
-        const float targetWidthRatio = static_cast<float>(requestedWidth) / static_cast<float>(m_LastRequestedWidth);
-
-        const float targetHeightRatio = static_cast<float>(requestedHeight) / static_cast<float>(m_LastRequestedHeight);
-
-
-
-        m_SceneViewport.RequestResizeByRatio(targetWidthRatio, targetHeightRatio);
-
-        m_LastRequestedWidth = requestedWidth;
-
-        m_LastRequestedHeight = requestedHeight;
-
+        EditorViewportClient::SyncRenderTargetSize();
     }
 
 }

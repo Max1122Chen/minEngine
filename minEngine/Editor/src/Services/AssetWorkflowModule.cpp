@@ -2,7 +2,9 @@
 
 #include "Material/MaterialEditor.h"
 #include "Scene/SceneEditor.h"
+#include "Services/InspectorModule.h"
 #include "Shell/IEditorContext.h"
+#include "UI/Inspector/InspectorPreviewPresenter.h"
 #include "UI/Appearance/EditorTypographyScope.h"
 #include "UI/Appearance/EditorWindowTypography.h"
 
@@ -58,6 +60,10 @@ namespace minEngine
             ImGui::End();
             return;
         }
+
+        InspectorPreviewPresenter::DrawSquarePreviewSlot(
+            *context,
+            context->GetInspectorModule().GetAssetInspection());
 
         ImGui::Text("Name: %s", selected->AssetName.c_str());
         ImGui::Text("Path: %s", selected->AssetPath.c_str());
@@ -179,10 +185,19 @@ namespace minEngine
         if (meta == nullptr)
         {
             m_SelectedAssetPath.clear();
+            if (m_Context)
+            {
+                m_Context->GetInspectorModule().ClearInspectionTarget();
+            }
             return;
         }
 
         m_SelectedAssetPath = meta->AssetPath;
+
+        if (m_Context)
+        {
+            m_Context->GetInspectorModule().SetInspectionTarget(meta);
+        }
     }
 
     const AssetMeta* AssetWorkflowModule::GetSelectedAsset() const

@@ -55,6 +55,8 @@ namespace minEngine
         ProjectAssetWatcher& GetProjectAssetWatcher() { return m_ProjectAssetWatcher; }
         const ProjectAssetWatcher& GetProjectAssetWatcher() const { return m_ProjectAssetWatcher; }
         ConsoleModule& GetConsole() override { return m_ConsoleModule; }
+        InspectorModule& GetInspectorModule() override { return m_InspectorModule; }
+        const InspectorModule& GetInspectorModule() const override { return m_InspectorModule; }
         EditorCommandStack& GetCommandStack() override { return m_CommandStack; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
         EditorAppearance& GetEditorAppearance() override { return m_Appearance; }

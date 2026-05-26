@@ -11,7 +11,7 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 - **现有 Editor** 已具备 Shell（E0）、资产管线（E3/E4/P5–P6 数据层）、Appearance（M0–M6b）；**不再是**纯过渡 `EditorUIMode` 心智。
 - **不以「修补 Content Browser」为唯一目标**，但 Browser **窗口 UI** 刻意延后到 Appearance 合入后再抛光（见 §3、§7）。
 - **Content Browser** 基础设施（`AssetTreeModel`、Registry 订阅、Open/Delete/Import）**已完成**；列表/树/工具栏的 **工具风 UI** 为当前最近交付。
-- 分项 `INSPECTOR_DESIGN.md` / `PREVIEWER_DESIGN.md` 仍待写；路线见 §7。
+- 分项 `INSPECTOR_DESIGN.md` 仍待写；**E2** 见 [PREVIEWER_DESIGN.md](./PREVIEWER_DESIGN.md)（**v0.4 拍板，待实现**）；路线见 §7。
 
 ---
 

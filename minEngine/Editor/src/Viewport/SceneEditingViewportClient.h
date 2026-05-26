@@ -4,8 +4,6 @@
 
 #include "Viewport/EditorViewportClient.h"
 
-#include "Runtime/Function/Render/SceneViewport.h"
-
 
 
 #include <limits>
@@ -50,12 +48,6 @@ namespace minEngine
 
 
         void InitializeSceneViewport(RHI* rhi, uint32_t width, uint32_t height);
-
-        SceneViewport& GetSceneViewport() { return m_SceneViewport; }
-
-        const SceneViewport& GetSceneViewport() const { return m_SceneViewport; }
-
-
 
         GizmoState& GetGizmoState() { return m_GizmoState; }
 
@@ -122,14 +114,6 @@ namespace minEngine
         bool ApplyMovementFromCommands(const std::vector<ViewportInputCommand>& commands, bool speedBoostEnabled);
 
         void ApplyMoveSpeedFromScroll();
-
-
-
-        SceneViewport m_SceneViewport;
-
-        bool m_SceneViewportInitialized = false;
-
-
 
         GizmoState m_GizmoState;
 

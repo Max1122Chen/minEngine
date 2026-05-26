@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "MaterialEditorPreview.h"
+#include "Preview/PreviewScene.h"
 #include "MaterialEditorSession.h"
 #include "MaterialEditorInspectorSource.h"
 #include "Shell/EditorSubModule.h"
@@ -78,8 +78,8 @@ namespace minEngine
         const std::vector<const AssetMeta*>& GetMaterialMetas() const { return m_MaterialMetas; }
         int GetSelectedMaterialIndex() const { return m_SelectedMaterialIndex; }
 
-        MaterialEditorPreview& GetPreview() { return m_Preview; }
-        const MaterialEditorPreview& GetPreview() const { return m_Preview; }
+        PreviewScene& GetPreviewScene() { return m_PreviewScene; }
+        const PreviewScene& GetPreviewScene() const { return m_PreviewScene; }
 
         IEditorContext* GetEditorContext() const { return m_Context; }
 
@@ -94,7 +94,7 @@ namespace minEngine
         IEditorContext* m_Context = nullptr;
         MaterialEditorInspectorSource m_InspectorSource;
         MaterialEditorSession m_Session;
-        MaterialEditorPreview m_Preview;
+        PreviewScene m_PreviewScene;
         std::vector<const AssetMeta*> m_MaterialMetas;
         int m_SelectedMaterialIndex = -1;
         bool m_GraphCanvasInvalidated = false;

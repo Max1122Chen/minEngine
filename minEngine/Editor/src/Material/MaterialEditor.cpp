@@ -10,8 +10,8 @@
 #include "imgui.h"
 
 #include "UI/EditorWindows/MaterialGraphWindow.h"
-#include "UI/EditorWindows/MaterialPreviewWindow.h"
-#include "Viewport/MaterialPreviewViewportClient.h"
+#include "UI/EditorWindows/MaterialEditorViewportWindow.h"
+#include "Viewport/MaterialEditorViewportClient.h"
 
 #include "Runtime/Resource/AssetMeta.h"
 
@@ -36,7 +36,7 @@ namespace minEngine
         m_Context = &context;
         EditorGUIManager& gui = context.GetGUIManager();
         gui.RegisterWindow(std::make_unique<MaterialGraphWindow>(context));
-        gui.RegisterWindow(std::make_unique<MaterialPreviewWindow>(context));
+        gui.RegisterWindow(std::make_unique<MaterialEditorViewportWindow>(context));
     }
 
     void MaterialEditor::OnActivate(IEditorContext& context)
@@ -86,19 +86,14 @@ namespace minEngine
     bool MaterialEditor::RouteViewportInput(EditorViewportClient& client)
     {
         (void)client;
-        return dynamic_cast<MaterialPreviewViewportClient*>(&client) != nullptr;
+        return dynamic_cast<MaterialEditorViewportClient*>(&client) != nullptr;
     }
 
     void MaterialEditor::OnEnterMode()
     {
         RefreshMaterialList();
 
-        if (RHI* rhi = RenderSystem::Get().GetRHI())
-        {
-            m_Preview.EnsureInitialized(rhi, 512, 512);
-        }
-
-        m_Preview.EnsureSceneBuilt();
+        m_PreviewScene.BuildDefaultSphereScene();
         EnsureDefaultSession();
         ApplySessionToPreview();
     }
@@ -115,7 +110,7 @@ namespace minEngine
 
     void MaterialEditor::Shutdown()
     {
-        m_Preview.Shutdown();
+        m_PreviewScene.Shutdown();
         m_Context = nullptr;
     }
 
@@ -140,16 +135,10 @@ namespace minEngine
             return;
         }
 
-        m_Context->GetViewportRegistry().GetOrCreateMaterialPreviewViewportClient(
-            kPreviewViewportPanelId, "Material Preview");
+        m_Context->GetViewportRegistry().GetOrCreateMaterialEditorViewportClient(
+            kPreviewViewportPanelId, "Material Editor Viewport");
 
-        if (RHI* rhi = RenderSystem::Get().GetRHI())
-        {
-            m_Preview.EnsureInitialized(rhi, 512, 512);
-        }
-
-        // Scene content is built in OnEnterMode (after asset registry is ready).
-        if (m_Preview.IsSceneReady())
+        if (m_PreviewScene.IsContentReady())
         {
             ApplySessionToPreview();
         }
@@ -273,18 +262,18 @@ namespace minEngine
 
     void MaterialEditor::ApplySessionToPreview()
     {
-        if (!m_Preview.IsSceneReady())
+        if (!m_PreviewScene.IsContentReady())
         {
             return;
         }
 
         if (m_Session.HasOpenMaterial())
         {
-            m_Preview.SetMaterial(m_Session.MaterialAsset);
+            m_PreviewScene.SetPreviewMaterial(m_Session.MaterialAsset);
         }
         else
         {
-            m_Preview.SetMaterial(nullptr);
+            m_PreviewScene.SetPreviewMaterial(nullptr);
         }
     }
 

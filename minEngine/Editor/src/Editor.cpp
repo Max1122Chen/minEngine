@@ -156,6 +156,7 @@ namespace minEngine
         m_ContentBrowser.GetModel().Clear();
         m_AssetWorkflow.SetSelectedAsset(nullptr);
         m_AssetWorkflow.SetContentBrowserInspectorActive(false);
+        m_InspectorModule.ClearInspectionTarget();
         ProjectManager::Get().CloseCurrentProject();
         ResetCommandStackForNewDocument();
     }

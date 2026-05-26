@@ -14,6 +14,7 @@ namespace minEngine
     class AssetWorkflowModule;
     class ContentBrowserModule;
     class ConsoleModule;
+    class InspectorModule;
     class EditorCommandStack;
     class EditorInputHub;
     class EditorAppearance;
@@ -43,6 +44,8 @@ namespace minEngine
         virtual ContentBrowserModule& GetContentBrowser() = 0;
         virtual const ContentBrowserModule& GetContentBrowser() const = 0;
         virtual ConsoleModule& GetConsole() = 0;
+        virtual InspectorModule& GetInspectorModule() = 0;
+        virtual const InspectorModule& GetInspectorModule() const = 0;
         virtual EditorCommandStack& GetCommandStack() = 0;
         virtual EditorInputHub& GetInputHub() = 0;
         virtual EditorAppearance& GetEditorAppearance() = 0;

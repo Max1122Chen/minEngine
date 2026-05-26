@@ -62,7 +62,7 @@ namespace minEngine
             ImGuiID graphArea = ImGui::DockBuilderSplitNode(
                 mainArea, ImGuiDir_Right, 0.58f, nullptr, &mainArea);
 
-            ImGui::DockBuilderDockWindow("Material Preview", mainArea);
+            ImGui::DockBuilderDockWindow("Material Editor Viewport", mainArea);
             ImGui::DockBuilderDockWindow("Material Graph", graphArea);
             ImGui::DockBuilderDockWindow("Inspector", inspectorArea);
             ImGui::DockBuilderDockWindow("Console", consoleArea);
