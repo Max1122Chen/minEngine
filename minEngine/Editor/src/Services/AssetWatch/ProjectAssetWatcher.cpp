@@ -397,18 +397,9 @@ namespace minEngine
         if (!assetManager.UnregisterAsset(absolutePath.string(), errorMessage))
         {
             ME_CORE_DEBUG(
-                "ProjectAssetWatcher: UnregisterAsset ignored for '{}': {}",
+                "ProjectAssetWatcher: UnregisterAsset for '{}': {}",
                 absolutePath.string(),
                 errorMessage);
-        }
-
-        std::string metaError;
-        if (!assetManager.RemoveMetaFileOnDisk(absolutePath.string(), metaError))
-        {
-            ME_CORE_WARN(
-                "ProjectAssetWatcher: RemoveMetaFileOnDisk failed for '{}': {}",
-                absolutePath.string(),
-                metaError);
         }
     }
 

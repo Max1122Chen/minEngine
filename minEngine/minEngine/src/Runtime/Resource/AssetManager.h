@@ -209,6 +209,8 @@ namespace minEngine
         void BeginSuppressExternalSync();
         void EndSuppressExternalSync();
 
+        void RemoveOrphanMetaFilesInDirectory(const std::filesystem::path& directory);
+
         std::unordered_map<std::string, AssetMeta> m_AssetRegistry;
         std::unordered_map<GUID, std::string, GUID::Hash> m_AssetPathByGuid;
         std::unordered_map<std::string, std::vector<AssetMeta*>> m_AssetMetasByType;

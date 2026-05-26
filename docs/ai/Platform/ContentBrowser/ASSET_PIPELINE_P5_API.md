@@ -136,7 +136,7 @@ private:
 | **Add** | 可识别扩展名（非 `.meta`） | `RegisterAsset(absolutePath, inferredTypeId)` |
 | **Modified** | 可识别扩展名 | 同 **Add**（v0 当 re-register；发 `MetaUpdated` 若已存在） |
 | **Modified** | 仅 `.meta` | **忽略**（v0；资产文件未变） |
-| **Delete** | 可识别扩展名 | `UnregisterAsset` + `RemoveMetaFileOnDisk`（**不** `DeleteAsset`，资产文件已由外部删除；见 §5.4） |
+| **Delete** | 可识别扩展名 | `UnregisterAsset`（内建删 `.meta`；**不** `DeleteAsset`；见 §5.4–5.5） |
 | **Delete** | 仅 `.meta` | **忽略** |
 | **Moved** | old/new 均在工程内、扩展名不变 | `MoveAsset(oldRel, newRel, err)`；失败则 `Unregister(old)` + `RegisterAsset(new)` |
 | **Moved** | 扩展名变化 | `Unregister(old)` + `RegisterAsset(new)`（等价删+增） |
@@ -165,24 +165,26 @@ private:
 | `DeleteAsset`（本进程） | 删除 | 删除 | `UncacheMeta` |
 | 外部 Delete → Watcher | 已由用户删除 | **应删除**（P5.0） | `UnregisterAsset` |
 
-**P5.0 修复（已实现，不扩大 `UnregisterAsset` 默认语义）：**
+**P5.0 修复（`10a2f2a`）：**
 
 1. `AssetManager::RemoveMetaFileOnDisk(assetPath, err)` — 用既有 `Normalize` + `BuildMetaAbsolutePath`；若 meta 存在则 `remove`；不存在视为成功。
-2. `ProjectAssetWatcher::ProcessUnregister`：在 `UnregisterAsset` 之后 **始终** 调用 `RemoveMetaFileOnDisk`（即使未注册，也清理孤儿 meta）。
+2. `ProjectAssetWatcher::ProcessUnregister`：调用 `UnregisterAsset`（P5.5 起 meta 删除已内建）。
+
+**P5.5 补强（已实现）：**
+
+| 行为 | 说明 |
+|------|------|
+| **`UnregisterAsset` 默认删 meta** | 清 Registry 后 **始终** `RemoveMetaFileOnDisk`；**不删**资产文件（与 `DeleteAsset` 区分） |
+| **`RegisterAsset` 资产缺失** | 对应资产文件不存在 → 删 stale `.meta`，返回空 `AssetMeta` |
+| **`ScanAssets` 前清扫** | `RemoveOrphanMetaFilesInDirectory`：递归删「有 `.meta` 无资产文件」的孤儿 meta |
 
 **不改为：** Watcher 对外部删除调用 `DeleteAsset`（源文件已不存在，语义与失败路径均不合适）。
 
-### 5.5 `AssetManager` 补强（待审批，未实现）
+### 5.5 ~~`AssetManager` 补强（待审批，未实现）~~ → 已实现（见上表）
 
-以下用于 git checkout / Watcher 漏事件等导致的 **历史孤儿 `.meta`**，与 P5.0 正交：
+~~以下用于 git checkout / Watcher 漏事件等导致的 **历史孤儿 `.meta`**，与 P5.0 正交：~~
 
-| # | 方案 | 说明 |
-|---|------|------|
-| **A** | `ScanAssets` / `OpenProject` 前 **孤儿 meta 清扫** | 递归 `ProjectContentRoot`：对每个 `*.meta`，若对应资产文件不存在则删除 meta（或打日志后删） |
-| **B** | `RegisterAsset` 防御 | 注册时发现资产文件不存在但 meta 存在 → 视为陈旧，跳过加载旧 meta、按新资产生成 meta |
-| **C** | 可选 API | `UnregisterAsset(..., UnregisterOptions{ .bRemoveMetaFromDisk })` 统一路径；Watcher 传 `true`（P5.0 已用独立 `RemoveMetaFileOnDisk`，是否合并待议） |
-
-**建议顺序：** 先验收 P5.0；审批通过后实现 **A**（工程级卫生）+ 视需要 **B**（双保险）。
+~~**建议顺序：** 先验收 P5.0；审批通过后实现 **A**（工程级卫生）+ 视需要 **B**（双保险）。~~
 
 ---
 

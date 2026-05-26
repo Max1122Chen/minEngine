@@ -354,6 +354,8 @@ namespace minEngine
             return;
         }
 
+        RemoveOrphanMetaFilesInDirectory(directory);
+
         const AssetTypeRegistry& typeRegistry = AssetTypeRegistry::Get();
 
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
@@ -384,6 +386,24 @@ namespace minEngine
         const std::string projectRelativePath = NormalizeProjectRelativeAssetPath(path);
         if (projectRelativePath.empty())
         {
+            return AssetMeta();
+        }
+
+        const std::filesystem::path absoluteAssetPath = ResolveAssetAbsolutePath(projectRelativePath);
+        std::error_code fileError;
+        if (!std::filesystem::exists(absoluteAssetPath, fileError)
+            || !std::filesystem::is_regular_file(absoluteAssetPath, fileError))
+        {
+            std::string metaError;
+            RemoveMetaFileOnDisk(projectRelativePath, metaError);
+            if (!metaError.empty())
+            {
+                ME_CORE_WARN(
+                    "RegisterAsset: asset file missing for '{}'; failed to remove stale meta: {}",
+                    projectRelativePath,
+                    metaError);
+            }
+
             return AssetMeta();
         }
 
@@ -760,20 +780,32 @@ namespace minEngine
         }
 
         const AssetMeta* metaPtr = FindAssetMetaByPath(projectRelative);
-        if (metaPtr == nullptr)
+        const bool wasRegistered = (metaPtr != nullptr);
+
+        if (wasRegistered)
         {
-            outError = "asset not registered";
+            const AssetMeta meta = *metaPtr;
+
+            EvictLoadedAssetCache(projectRelative);
+            UncacheMeta(projectRelative);
+
+            if (meta.AssetType == "Scene" && SceneManager::HasInstance())
+            {
+                SceneManager::Get().UnregisterScene(meta.AssetName);
+            }
+        }
+
+        std::string metaError;
+        if (!RemoveMetaFileOnDisk(projectRelative, metaError))
+        {
+            outError = metaError;
             return false;
         }
 
-        const AssetMeta meta = *metaPtr;
-
-        EvictLoadedAssetCache(projectRelative);
-        UncacheMeta(projectRelative);
-
-        if (meta.AssetType == "Scene" && SceneManager::HasInstance())
+        if (!wasRegistered)
         {
-            SceneManager::Get().UnregisterScene(meta.AssetName);
+            outError = "asset not registered";
+            return false;
         }
 
         return true;
@@ -804,6 +836,45 @@ namespace minEngine
         }
 
         return true;
+    }
+
+    void AssetManager::RemoveOrphanMetaFilesInDirectory(const std::filesystem::path& directory)
+    {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
+        {
+            if (!entry.is_regular_file())
+            {
+                continue;
+            }
+
+            const std::filesystem::path metaPath = entry.path().lexically_normal();
+            if (metaPath.extension() != ".meta")
+            {
+                continue;
+            }
+
+            const std::filesystem::path assetPath =
+                metaPath.parent_path() / metaPath.stem();
+            std::error_code errorCode;
+            if (std::filesystem::exists(assetPath, errorCode)
+                && std::filesystem::is_regular_file(assetPath, errorCode))
+            {
+                continue;
+            }
+
+            if (!std::filesystem::remove(metaPath, errorCode) || errorCode)
+            {
+                ME_CORE_WARN(
+                    "RemoveOrphanMetaFilesInDirectory: failed to remove orphan meta '{}': {}",
+                    metaPath.string(),
+                    errorCode.message());
+                continue;
+            }
+
+            ME_CORE_INFO(
+                "RemoveOrphanMetaFilesInDirectory: removed orphan meta '{}'",
+                metaPath.string());
+        }
     }
 
     bool AssetManager::MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError)

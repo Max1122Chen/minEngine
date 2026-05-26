@@ -329,7 +329,7 @@ namespace minEngine
             return true;
         }
 
-        bool TestUnregisterAssetWithoutDeletingFiles()
+        bool TestUnregisterAssetWithoutDeletingAssetFile()
         {
             AssetManagerTestProject project;
             AssetManager& assetManager = AssetManager::Get();
@@ -358,15 +358,20 @@ namespace minEngine
                 return false;
             }
 
-            if (!std::filesystem::exists(absolutePath) || !std::filesystem::exists(metaPath))
+            if (!std::filesystem::exists(absolutePath))
             {
-                ME_CORE_ERROR("AssetManagerTest: UnregisterAsset should not delete disk files.");
+                ME_CORE_ERROR("AssetManagerTest: UnregisterAsset should not delete the asset file.");
+                return false;
+            }
+
+            if (std::filesystem::exists(metaPath))
+            {
+                ME_CORE_ERROR("AssetManagerTest: UnregisterAsset should remove the meta file.");
                 return false;
             }
 
             std::error_code removeError;
             std::filesystem::remove(absolutePath, removeError);
-            std::filesystem::remove(metaPath, removeError);
             return true;
         }
 
@@ -529,7 +534,7 @@ namespace minEngine
             return false;
         }
 
-        if (!TestUnregisterAssetWithoutDeletingFiles())
+        if (!TestUnregisterAssetWithoutDeletingAssetFile())
         {
             return false;
         }
