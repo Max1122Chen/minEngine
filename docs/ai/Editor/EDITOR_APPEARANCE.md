@@ -1,8 +1,8 @@
 # Editor Appearance — 设计案
 
 Last updated: 2026-05-26  
-Status: **M0–M6b 已合入（M6c 未做）；CJK 可读显示后置 i18n**（见 [EDITOR_THEME_M6_DESIGN.md](./EDITOR_THEME_M6_DESIGN.md)）  
-分支：`feat/editor-appearance`  
+Status: **M0–M6b 已合入 master；M6c / i18n / Content Browser UI 抛光未做**  
+分支：已合并（原 `feat/editor-appearance`）  
 父文档：[Editor 平台化规划](./EDITOR_PLATFORM_PLAN.md)、[Editor Shell](./EDITOR_SHELL_DESIGN.md)  
 关联：[GUI 开发 FAQ](./GUI_DEV_FAQ.md)、[Command History / Undo](./EDITOR_COMMAND_HISTORY.md)、[资源管线 R2](../Render/RESOURCE_PIPELINE_PLAN.md)
 
@@ -371,6 +371,9 @@ M4 的 Undo 桥实现完全复用你当前 Inspector 的 before/after + Command 
 | **M5.1** | CJK glyph 开关、全窗口排版、设置变更重建 atlas | M5b | **已合入**；CJK **可读显示** → **i18n** |
 | **M6** | 收拢窗口散落 `PushStyleColor` | M1 | **已合入（M6c 图域后置）**；见 [EDITOR_THEME_M6_DESIGN.md](./EDITOR_THEME_M6_DESIGN.md) |
 | **M7** | Object 引用 Picker（非 Asset，`AllowedClasses` + 注册表或受控枚举） | M4 + 需求 | 可选；不阻塞 Appearance 主线 |
+| **CB-UI** | Content Browser：左树(目录+资产)、右 Tile 网格、面包屑、无底栏；修 Asset Inspector→Debug 窗 | M6 | [CONTENT_BROWSER_UI_DESIGN.md](../Platform/ContentBrowser/CONTENT_BROWSER_UI_DESIGN.md) |
+| **M6c** | 材质图节点/Pin 主题色 | M6 | 后置 |
+| **i18n** | CJK Font 资产 + locale | M5.1 glyph 已做 | 后置 |
 
 **Font 开工时间点：** **M5**（在 M1 主题可用之后、M6 清扫之前）；Runtime Font 类与 AssetManager 扩展可与 M3.1 并行，但 **Editor 换字体** 不早于 M5。
 

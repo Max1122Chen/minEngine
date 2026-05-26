@@ -1,6 +1,5 @@
 #include "Services/ContentBrowser/AssetTreeModel.h"
 
-#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Resource/AssetManager.h"
 
 #include <algorithm>
@@ -102,7 +101,11 @@ namespace minEngine
             return;
         }
 
-        if (change.Kind == AssetRegistryChangeKind::Moved)
+        if (change.Kind == AssetRegistryChangeKind::Moved
+            || change.Kind == AssetRegistryChangeKind::Registered
+            || change.Kind == AssetRegistryChangeKind::Unregistered
+            || change.Kind == AssetRegistryChangeKind::MetaUpdated
+            || change.Kind == AssetRegistryChangeKind::Reimported)
         {
             RebuildDirectoryTree();
         }
@@ -176,6 +179,12 @@ namespace minEngine
         DirectoryNode& outNode,
         const std::filesystem::path& absoluteDirectory)
     {
+        outNode.Assets.clear();
+        if (AssetManager::HasInstance())
+        {
+            outNode.Assets = AssetManager::Get().FindAssetMetasUnderDirectory(outNode.RelativePath);
+        }
+
         std::error_code errorCode;
         if (!std::filesystem::is_directory(absoluteDirectory, errorCode))
         {

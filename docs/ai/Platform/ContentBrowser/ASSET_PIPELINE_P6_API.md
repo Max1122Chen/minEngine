@@ -1,7 +1,7 @@
 # Asset Pipeline — P6 接口定稿（审批用）
 
 Last updated: 2026-05-26  
-Status: **已实现**（功能验收 ✅；**Browser UI 展示需后期再设计**，见 §5.3 / §0.1）  
+Status: **已实现并合入 master**（`25552f9` merge）；**Browser UI 抛光 → [CONTENT_BROWSER_UI_DESIGN.md](./CONTENT_BROWSER_UI_DESIGN.md)（P6.1）**  
 前置：**P5** `ProjectAssetWatcher` + Registry 同步（`aab00b6`…`1158b02`）  
 父文档：[ASSET_PIPELINE_DESIGN.md](./ASSET_PIPELINE_DESIGN.md) §8（Content Browser）、§9 P6  
 P5 定稿：[ASSET_PIPELINE_P5_API.md](./ASSET_PIPELINE_P5_API.md)
@@ -16,19 +16,19 @@ P5 定稿：[ASSET_PIPELINE_P5_API.md](./ASSET_PIPELINE_P5_API.md)
 | 2 | **D12**：列表仅显示 Registry 中、有 sidecar `.meta` 的已注册资产 |
 | 3 | 磁盘目录树 + Registry 列表 **解耦**：树来自 `ProjectContentRoot` 文件系统；列表来自 `AssetManager` 查询 |
 | 4 | **UI 视觉**：v0 仅用 **裸 ImGui**（`TreeNode` / `Selectable` / `Table` / `Text`）；**不**接 `EditorAppearance` 主题 token、**不**用 `UI/Property/**` 画 Meta |
-| 5 | **master `Editor Appearance` 未 merge 前**：不依赖 Appearance 新 API；merge 后可做 **P6.1 视觉抛光**（非阻塞 P6） |
+| 5 | **Appearance 已合入 master（2026-05-26）**：**P6.1** 接主题/排版（见 [CONTENT_BROWSER_UI_DESIGN.md](./CONTENT_BROWSER_UI_DESIGN.md)） |
 | 6 | **纪律**：不改 `UI/Property/**`、`Color.*`、`EDITOR_APPEARANCE.md`；C++ 成员函数优先 |
 
-### 0.1) 与 master Appearance 线的关系
+### 0.1) 与 Appearance 线的关系（2026-05-26 更新）
 
-| 能力 | master / Appearance 线 | P6 v0（本分支） |
-|------|------------------------|-----------------|
-| 主题色、圆角、字体 | `EditorAppearance`、`EditorThemePalette` | **不使用**；ImGui 默认 Style |
-| Property 控件画 Meta | `PropertyWidgets` / `PropertyEditPolicy` | **不使用**；Inspector 用 `ImGui::Text` / `TextUnformatted` |
-| Inspector `IInspectorUI` 抽象 | 设计中有，可能随 Appearance 演进 | **不等待**；继续 `IEditorInspectorSource::DrawInspector()` 无参 |
-| Focus / CommandList 完整栈 | `EDITOR_SHELL_DESIGN` §7 | **最小补丁**：Browser 聚焦时切到 `AssetWorkflow` InspectorSource（§6.4） |
+| 能力 | P6 v0（已合入） | P6.1（当前） |
+|------|-----------------|--------------|
+| 主题色、圆角、字体 | **未接**；裸 ImGui Style | 接 `EditorAppearance`、`EditorWindowTypography`、`EditorThemeScope` |
+| Property 画 Meta | 裸 `Text` | 仍归 **E1**；P6.1 只抛光 Browser 窗口本体 |
+| Inspector 路由 | Browser 聚焦 → `AssetWorkflowInspectorSource` | 保持；E1 再统一 Target |
+| Focus | `SetContentBrowserInspectorActive` | 保持 |
 
-**合并后可选（P6.1+）：** 列表行高、选中色、字体与 `EditorAppearance::ApplyStyleConstants` 对齐；Meta 字段改用 Property 只读 Drawer（需单独审批）。
+**P6.1 设计案（已拍板 UX）：** [CONTENT_BROWSER_UI_DESIGN.md](./CONTENT_BROWSER_UI_DESIGN.md) — 左树含资产、右图标网格、面包屑；双击仅 Log；Inspector Debug 窗缺陷见该文档 §4。
 
 ---
 

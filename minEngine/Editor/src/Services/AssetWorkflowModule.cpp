@@ -3,9 +3,12 @@
 #include "Material/MaterialEditor.h"
 #include "Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTypography.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
@@ -30,10 +33,29 @@ namespace minEngine
 
     void AssetWorkflowInspectorSource::DrawInspector()
     {
+        IEditorContext* context = m_Owner.GetEditorContext();
+        if (context == nullptr)
+        {
+            ImGui::Begin("Inspector");
+            ImGui::TextUnformatted("No editor context.");
+            ImGui::End();
+            return;
+        }
+
+        if (!EditorWindowTypography::BeginPanel(*context, "Inspector"))
+        {
+            return;
+        }
+
+        EditorTypographyScope bodyTypography(
+            context->GetEditorAppearance(),
+            EditorTypographyRole::Body);
+
         const AssetMeta* selected = m_Owner.GetSelectedAsset();
         if (selected == nullptr)
         {
             ImGui::TextUnformatted("No asset selected.");
+            ImGui::End();
             return;
         }
 
@@ -41,6 +63,7 @@ namespace minEngine
         ImGui::Text("Path: %s", selected->AssetPath.c_str());
         ImGui::Text("Type: %s", selected->AssetType.c_str());
         ImGui::Text("Guid: %s", selected->Guid.ToString().c_str());
+        ImGui::End();
     }
 
     void AssetWorkflowModule::Register(IEditorContext& context)

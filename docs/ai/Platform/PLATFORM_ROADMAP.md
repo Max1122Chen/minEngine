@@ -1,7 +1,7 @@
 # Platform 路线图（UE 化大方向）
 
-Last updated: 2026-05-24  
-Status: **拍板** — 渲染/材质阶段性完成；平台线为主战场；**P2 升格为 Editor 平台化**
+Last updated: 2026-05-26  
+Status: **拍板** — 渲染/材质阶段性完成；平台线为主战场；**P2 Editor 平台化进行中（P6.1 → E1 → E2）**
 
 ## 1) 产品方向
 
@@ -20,9 +20,10 @@ P0  启动 / 路径配置化     → ENGINE_STARTUP_DESIGN
 P1  内存管理（非重型 GC） → MEMORY_MANAGEMENT_DESIGN
     └─ 清除旧 bad 模式（ObjectManager 强引用等）
 P2  Editor 平台化           → EDITOR_PLATFORM_PLAN（E0–E4）
-    └─ E0 Editor Shell + Sub-Editor（优先）
-    └─ Inspector / Previewer / AssetManager / FileDialog
-    └─ Content Browser 为消费方（后置详细设计）
+    └─ E0 / E3 / E4 / P6 基础设施 [Done]
+    └─ P6.1 Content Browser UI（Appearance）[当前]
+    └─ E1 Inspector 统一化 → E2 Preview
+    └─ Appearance M0–M6b [Done，见 EDITOR_APPEARANCE]
 P3  编辑器 Command/Undo   → [EDITOR_COMMAND_HISTORY](../Editor/EDITOR_COMMAND_HISTORY.md)
     └─ 前置：序列化 Binary + Property API → [Serialization](./Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) S1–S2
 P4  反射 MEFunction       → 设计待写
@@ -37,8 +38,10 @@ P5  Lua 脚本              → 设计待写
 |------|------|------|----------|
 | 启动配置 | `EngineConfig.meconfig` 绝对路径；Playground 硬编码 | 三层路径 + 相对解析 | [Startup](./Startup/ENGINE_STARTUP_DESIGN.md) |
 | 对象生命周期 | `ObjectManager` 强 `shared_ptr` 注册表；手动 `RemoveObject` | **原地重构** `ObjectManager`：`weak_ptr` 索引 + 根 + Outer | [MemoryManagement](./MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md) |
-| 资产 | `AssetManager` 扫描/meta/加载 | Registry 事件 + 变更 API + Content Browser | [Editor 平台化](../Editor/EDITOR_PLATFORM_PLAN.md) § E3；[ContentBrowser](./ContentBrowser/CONTENT_BROWSER_DESIGN.md) 意图 |
-| 编辑器 Shell | `Editor` God Object；GO-only 选择 | Shell + Sub-Editor；SelectionService | [架构复盘](./EDITOR_ARCHITECTURE_REVIEW.md) |
+| 资产 | Registry + Watcher + CB 数据层 | P6.1 UI + Move/过滤；E1 Meta Inspector | [E3](../Editor/EDITOR_PLATFORM_PLAN.md)；[P6](../Platform/ContentBrowser/ASSET_PIPELINE_P6_API.md) |
+| Content Browser | P6 框架（裸 ImGui） | Appearance 抛光 + Preview | [CONTENT_BROWSER_UI_DESIGN](./ContentBrowser/CONTENT_BROWSER_UI_DESIGN.md) |
+| 编辑器 Shell | E0 模块体系 | P7 默认 Dock | [EDITOR_SHELL_DESIGN](../Editor/EDITOR_SHELL_DESIGN.md) |
+| Editor 外观 | M0–M6b 主题/字体/Property | M6c / i18n / CB-UI | [EDITOR_APPEARANCE](../Editor/EDITOR_APPEARANCE.md) |
 | 反射 | Property only | + UFunction 等价物 | （待写，P4） |
 | Undo | E1.1–E1.2 Scene 命令 | Property blob + Snapshot | [Command History](../Editor/EDITOR_COMMAND_HISTORY.md) |
 | 序列化 | JsonArchive + 私有 `SerializeProperty` | BinaryArchive + 公开 Property API | [Serialization](./Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) |

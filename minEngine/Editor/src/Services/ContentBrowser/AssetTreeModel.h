@@ -17,6 +17,7 @@ namespace minEngine
         {
             std::string RelativePath;
             std::string DisplayName;
+            std::vector<const AssetMeta*> Assets;
             std::vector<DirectoryNode> Children;
         };
 

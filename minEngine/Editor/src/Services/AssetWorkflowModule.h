@@ -46,6 +46,7 @@ namespace minEngine
         const IEditorInspectorSource* GetInspectorSource() const;
 
         void DeleteSelectedAsset();
+        IEditorContext* GetEditorContext() const { return m_Context; }
 
     private:
         IEditorContext* m_Context = nullptr;
