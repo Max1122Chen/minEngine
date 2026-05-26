@@ -5,6 +5,7 @@
 #include "Material/MaterialEditor.h"
 #include "Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
+#include "Services/AssetWorkflowModule.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemePresets.h"
 
@@ -63,6 +64,10 @@ namespace minEngine
             {
             }
             ImGui::Separator();
+            if (ImGui::MenuItem("Import Asset...", nullptr, false, true))
+            {
+                m_Context.GetAssetWorkflow().ImportAssetDialog();
+            }
             if (ImGui::MenuItem("Exit"))
             {
                 m_Context.RequestExit();

@@ -447,6 +447,7 @@ Editor/src/Services/ContentBrowser/
 - **P1 定稿：** [ASSET_PIPELINE_P1_API.md](./ASSET_PIPELINE_P1_API.md)（已实现 `8c5958d`）。
 - **P2 定稿：** [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（已实现 `7758c60`）。
 - **P3 定稿：** [ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)（**已实现**；submodule `nativefiledialog-extended` @ v1.3.0）。
+- **P4 定稿：** [ASSET_PIPELINE_P4_API.md](./ASSET_PIPELINE_P4_API.md)（**待审批**）。
 
 ---
 

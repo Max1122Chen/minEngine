@@ -18,6 +18,7 @@ namespace minEngine
         void Shutdown() override;
 
         bool OpenAsset(const AssetMeta& meta);
+        void ImportAssetDialog();
 
     private:
         IEditorContext* m_Context = nullptr;
