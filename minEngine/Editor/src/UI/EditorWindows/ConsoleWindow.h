@@ -9,7 +9,10 @@
 #include "UI/Widgets/MultiSelectFilterDropdown.h"
 
 #include "UI/EditorWindows/EditorWindow.h"
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorThemeScope.h"
 #include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTheme.h"
 #include "UI/Appearance/EditorWindowTypography.h"
 
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
@@ -148,15 +151,20 @@ namespace minEngine
 
                 const char* level = LogLevel::ToString(entry.level);
 
-                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.24f, 0.33f, 0.35f));
-                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.24f, 0.33f, 0.45f, 0.50f));
-                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.24f, 0.33f, 0.45f, 0.50f));
-                ImGui::PushID(rowIndex++);
-                ImGui::Selectable("##ConsoleRow", false, ImGuiSelectableFlags_SpanAllColumns);
-                ImGui::SameLine(0.0f, 6.0f);
-                ImGui::TextColored(GetLevelColor(entry.level), "[%s] [%s] [%s] %s", entry.timestamp.c_str(), source, level, entry.message.c_str());
-                ImGui::PopID();
-                ImGui::PopStyleColor(3);
+                {
+                    EditorThemeScope rowTheme =
+                        EditorWindowTheme::SubduedSectionHeader(m_Context.GetEditorAppearance());
+                    ImGui::PushID(rowIndex++);
+                    ImGui::Selectable("##ConsoleRow", false, ImGuiSelectableFlags_SpanAllColumns);
+                    ImGui::SameLine(0.0f, 6.0f);
+                    ImGui::TextColored(GetLevelColor(entry.level),
+                                       "[%s] [%s] [%s] %s",
+                                       entry.timestamp.c_str(),
+                                       source,
+                                       level,
+                                       entry.message.c_str());
+                    ImGui::PopID();
+                }
 
                 if (requestCopyVisible)
                 {
@@ -244,17 +252,26 @@ namespace minEngine
             return it != text.end();
         }
 
-        static ImVec4 GetLevelColor(LogLevel::Level level)
+        ImVec4 GetLevelColor(LogLevel::Level level) const
         {
+            const EditorAppearance& appearance = m_Context.GetEditorAppearance();
+            const EditorSemanticColors& colors = appearance.GetSemanticColors();
             switch (level)
             {
-                case LogLevel::Level::Trace: return ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
-                case LogLevel::Level::Debug: return ImVec4(0.20f, 0.85f, 1.00f, 1.0f);
-                case LogLevel::Level::Info: return ImVec4(0.35f, 0.90f, 0.35f, 1.0f);
-                case LogLevel::Level::Warn: return ImVec4(1.00f, 0.90f, 0.20f, 1.0f);
-                case LogLevel::Level::Error: return ImVec4(1.00f, 0.35f, 0.35f, 1.0f);
-                case LogLevel::Level::Critical: return ImVec4(1.00f, 0.10f, 0.10f, 1.0f);
-                default: return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                case LogLevel::Level::Trace:
+                    return appearance.GetDisplayColor(colors.LogTrace);
+                case LogLevel::Level::Debug:
+                    return appearance.GetDisplayColor(colors.LogDebug);
+                case LogLevel::Level::Info:
+                    return appearance.GetDisplayColor(colors.LogInfo);
+                case LogLevel::Level::Warn:
+                    return appearance.GetDisplayColor(colors.LogWarn);
+                case LogLevel::Level::Error:
+                    return appearance.GetDisplayColor(colors.LogError);
+                case LogLevel::Level::Critical:
+                    return appearance.GetDisplayColor(colors.LogCritical);
+                default:
+                    return appearance.GetDisplayColor(appearance.GetActivePalette().TextPrimary);
             }
         }
 

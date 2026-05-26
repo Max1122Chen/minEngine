@@ -142,4 +142,59 @@ namespace minEngine
 
         return GetPreset(presetId);
     }
+
+    namespace
+    {
+        EditorSemanticColors BuildDarkSemanticColors()
+        {
+            EditorSemanticColors colors{};
+            colors.LogTrace = FromDisplayRgb(0.85f, 0.85f, 0.85f);
+            colors.LogDebug = FromDisplayRgb(0.20f, 0.85f, 1.00f);
+            colors.LogInfo = FromDisplayRgb(0.35f, 0.90f, 0.35f);
+            colors.LogWarn = FromDisplayRgb(1.00f, 0.90f, 0.20f);
+            colors.LogError = FromDisplayRgb(1.00f, 0.35f, 0.35f);
+            colors.LogCritical = FromDisplayRgb(1.00f, 0.10f, 0.10f);
+
+            colors.DiagnosticInfo = FromDisplayRgb(0.55f, 0.75f, 0.95f);
+            colors.DiagnosticWarning = FromDisplayRgb(0.95f, 0.78f, 0.35f);
+            colors.DiagnosticError = FromDisplayRgb(0.95f, 0.40f, 0.40f);
+
+            colors.HierarchySelectionHeader = FromDisplayRgb(0.23f, 0.36f, 0.54f, 0.75f);
+            colors.HierarchySelectionHeaderHovered = FromDisplayRgb(0.27f, 0.42f, 0.61f, 0.85f);
+            colors.HierarchySelectionHeaderActive = FromDisplayRgb(0.21f, 0.33f, 0.49f, 0.95f);
+            colors.HierarchySelectionBar = FromDisplayRgb(0.40f, 0.698f, 1.0f);
+            return colors;
+        }
+
+        EditorSemanticColors BuildLightSemanticColors()
+        {
+            EditorSemanticColors colors{};
+            colors.LogTrace = FromDisplayRgb(0.45f, 0.47f, 0.50f);
+            colors.LogDebug = FromDisplayRgb(0.05f, 0.45f, 0.72f);
+            colors.LogInfo = FromDisplayRgb(0.12f, 0.55f, 0.22f);
+            colors.LogWarn = FromDisplayRgb(0.72f, 0.52f, 0.05f);
+            colors.LogError = FromDisplayRgb(0.78f, 0.18f, 0.18f);
+            colors.LogCritical = FromDisplayRgb(0.62f, 0.05f, 0.05f);
+
+            colors.DiagnosticInfo = FromDisplayRgb(0.20f, 0.45f, 0.72f);
+            colors.DiagnosticWarning = FromDisplayRgb(0.72f, 0.52f, 0.05f);
+            colors.DiagnosticError = FromDisplayRgb(0.78f, 0.18f, 0.18f);
+
+            colors.HierarchySelectionHeader = FromDisplayRgb(0.23f, 0.36f, 0.54f, 0.75f);
+            colors.HierarchySelectionHeaderHovered = FromDisplayRgb(0.27f, 0.42f, 0.61f, 0.85f);
+            colors.HierarchySelectionHeaderActive = FromDisplayRgb(0.21f, 0.33f, 0.49f, 0.95f);
+            colors.HierarchySelectionBar = FromDisplayRgb(0.40f, 0.698f, 1.0f);
+            return colors;
+        }
+    }
+
+    EditorSemanticColors EditorThemePresets::GetSemanticColors(std::string_view presetId)
+    {
+        if (presetId == EditorThemePresetIds::LightEngine)
+        {
+            return BuildLightSemanticColors();
+        }
+
+        return BuildDarkSemanticColors();
+    }
 }

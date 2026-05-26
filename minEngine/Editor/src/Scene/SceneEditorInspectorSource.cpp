@@ -3,7 +3,9 @@
 #include "Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorThemeScope.h"
 #include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTheme.h"
 #include "UI/Appearance/EditorWindowTypography.h"
 #include "UI/Property/ObjectPtrWidget.h"
 #include "UI/Property/PropertyEditPolicy.h"
@@ -80,17 +82,13 @@ namespace minEngine
             m_IsRenamingSelectedGameObject = false;
         }
 
+        EditorAppearance& appearance = editorContext->GetEditorAppearance();
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 7.0f));
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.21f, 0.31f, 0.45f, 0.95f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.25f, 0.37f, 0.53f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.23f, 0.34f, 0.49f, 1.0f));
 
         const std::string selectedName = m_SceneEditor.GetSelectedGameObjectName();
         if (m_IsRenamingSelectedGameObject && m_RenameTargetGameObjectId == gameObject->GetID())
         {
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.18f, 0.27f, 0.40f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.23f, 0.34f, 0.49f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.21f, 0.31f, 0.45f, 1.0f));
+            EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(appearance);
 
             ImGui::SetNextItemWidth(-FLT_MIN);
             if (m_RequestRenameFocus)
@@ -118,10 +116,10 @@ namespace minEngine
                 m_IsRenamingSelectedGameObject = false;
             }
 
-            ImGui::PopStyleColor(3);
         }
         else
         {
+            EditorThemeScope selectedHeaderTheme = EditorWindowTheme::SectionHeader(appearance);
             const std::string headerLabel = "  " + selectedName + "##SelectedGameObjectHeader";
             ImGui::Selectable(headerLabel.c_str(), true, ImGuiSelectableFlags_SpanAllColumns);
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -130,7 +128,6 @@ namespace minEngine
             }
         }
 
-        ImGui::PopStyleColor(3);
         ImGui::PopStyleVar();
 
         ImGui::Text("Selected ID: %llu", static_cast<unsigned long long>(gameObject->GetID()));
@@ -273,26 +270,30 @@ namespace minEngine
                 continue;
             }
 
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.26f, 0.36f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.23f, 0.33f, 0.46f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.30f, 0.42f, 1.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
-            const std::string headerLabel = GetShortTypeName(classInfo->GetName()) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
-
-            IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+            IEditorContext* componentEditorContext = m_SceneEditor.GetEditorContext();
             EditorAppearance* appearance =
-                editorContext != nullptr ? &editorContext->GetEditorAppearance() : nullptr;
-            std::unique_ptr<EditorTypographyScope> componentHeaderTypography;
-            if (appearance != nullptr)
+                componentEditorContext != nullptr ? &componentEditorContext->GetEditorAppearance() : nullptr;
+
+            const std::string headerLabel = GetShortTypeName(classInfo->GetName()) + "##component_" +
+                                            std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+            bool componentOpen = false;
             {
-                componentHeaderTypography = std::make_unique<EditorTypographyScope>(
-                    *appearance,
-                    EditorTypographyRole::Subheading);
+                std::unique_ptr<EditorThemeScope> componentSectionTheme;
+                std::unique_ptr<EditorTypographyScope> componentHeaderTypography;
+                if (appearance != nullptr)
+                {
+                    componentSectionTheme = std::make_unique<EditorThemeScope>(
+                        EditorWindowTheme::SectionHeader(*appearance));
+                    componentHeaderTypography = std::make_unique<EditorTypographyScope>(
+                        *appearance,
+                        EditorTypographyRole::Subheading);
+                }
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
+                componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                ImGui::PopStyleVar();
             }
 
-            const bool componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-            ImGui::PopStyleVar();
-            ImGui::PopStyleColor(3);
             if (!componentOpen)
             {
                 continue;

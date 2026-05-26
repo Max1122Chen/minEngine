@@ -89,9 +89,109 @@ namespace minEngine
         colors[ImGuiCol_TextDisabled] = ToImGuiColor(palette.TextMuted);
     }
 
+    ImVec4 EditorAppearance::GetDisplayColor(const LinearColor& token, float alphaScale) const
+    {
+        ImVec4 color = EditorColorConversion::ToImGuiDisplayColor(token);
+        if (alphaScale != 1.0f)
+        {
+            color.w *= alphaScale;
+        }
+
+        return color;
+    }
+
+    ImU32 EditorAppearance::GetDisplayColorU32(const LinearColor& token, float alphaScale) const
+    {
+        return ImGui::ColorConvertFloat4ToU32(GetDisplayColor(token, alphaScale));
+    }
+
+    ImVec4 EditorAppearance::GetThemeColor(EditorThemeColorRole role, float alphaScale) const
+    {
+        const EditorThemePalette& palette = m_ActivePalette;
+        const EditorSemanticColors& semantic = m_SemanticColors;
+
+        switch (role)
+        {
+            case EditorThemeColorRole::Field:
+                return GetDisplayColor(palette.FieldBackground, alphaScale);
+            case EditorThemeColorRole::SectionHeader:
+                return GetDisplayColor(palette.Accent, alphaScale);
+            case EditorThemeColorRole::SubduedSectionHeader:
+                return GetDisplayColor(palette.Accent, alphaScale);
+            case EditorThemeColorRole::PanelOverlay:
+                return GetDisplayColor(palette.PanelBackground, alphaScale);
+            case EditorThemeColorRole::PrimaryText:
+                return GetDisplayColor(palette.TextPrimary, alphaScale);
+            case EditorThemeColorRole::HierarchySelection:
+                return GetDisplayColor(semantic.HierarchySelectionHeader, alphaScale);
+            default:
+                return GetDisplayColor(palette.TextPrimary, alphaScale);
+        }
+    }
+
+    int EditorAppearance::PushThemeColors(EditorThemeColorRole role, float alphaScale) const
+    {
+        const EditorThemePalette& palette = m_ActivePalette;
+        const EditorSemanticColors& semantic = m_SemanticColors;
+
+        switch (role)
+        {
+            case EditorThemeColorRole::Field:
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, GetDisplayColor(palette.FieldBackground, alphaScale));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, GetDisplayColor(palette.FieldBackgroundHovered, alphaScale));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, GetDisplayColor(palette.FieldBackgroundActive, alphaScale));
+                return 3;
+
+            case EditorThemeColorRole::SectionHeader:
+                ImGui::PushStyleColor(ImGuiCol_Header, GetDisplayColor(palette.Accent, alphaScale));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, GetDisplayColor(palette.AccentHovered, alphaScale));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, GetDisplayColor(palette.AccentActive, alphaScale));
+                return 3;
+
+            case EditorThemeColorRole::SubduedSectionHeader:
+            {
+                const float subduedAlpha = alphaScale * 0.35f;
+                const float subduedHoverAlpha = alphaScale * 0.50f;
+                ImGui::PushStyleColor(ImGuiCol_Header, GetDisplayColor(palette.Accent, subduedAlpha));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, GetDisplayColor(palette.AccentHovered, subduedHoverAlpha));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, GetDisplayColor(palette.AccentActive, subduedHoverAlpha));
+                return 3;
+            }
+
+            case EditorThemeColorRole::PanelOverlay:
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, GetDisplayColor(palette.PanelBackground, alphaScale));
+                ImGui::PushStyleColor(ImGuiCol_Border, GetDisplayColor(palette.Border, 0.95f));
+                return 2;
+
+            case EditorThemeColorRole::PrimaryText:
+                ImGui::PushStyleColor(ImGuiCol_Text, GetDisplayColor(palette.TextPrimary, alphaScale));
+                return 1;
+
+            case EditorThemeColorRole::HierarchySelection:
+                ImGui::PushStyleColor(ImGuiCol_Header, GetDisplayColor(semantic.HierarchySelectionHeader, alphaScale));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered,
+                                      GetDisplayColor(semantic.HierarchySelectionHeaderHovered, alphaScale));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive,
+                                      GetDisplayColor(semantic.HierarchySelectionHeaderActive, alphaScale));
+                return 3;
+
+            default:
+                return 0;
+        }
+    }
+
+    void EditorAppearance::PopThemeColors(int count) const
+    {
+        if (count > 0)
+        {
+            ImGui::PopStyleColor(count);
+        }
+    }
+
     void EditorAppearance::ApplyResolvedPalette(const EditorThemePalette& palette)
     {
         m_ActivePalette = palette;
+        m_SemanticColors = EditorThemePresets::GetSemanticColors(m_Settings.ThemePresetId);
         if (m_Settings.ThemePresetId == std::string(EditorThemePresetIds::LightEngine))
         {
             ImGui::StyleColorsLight();

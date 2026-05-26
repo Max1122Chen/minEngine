@@ -1,7 +1,10 @@
 #include "MaterialGraphWindow.h"
 
 #include "Shell/EditorContextHelpers.h"
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorThemeScope.h"
 #include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTheme.h"
 #include "UI/Appearance/EditorWindowTypography.h"
 
 #include "imgui.h"
@@ -311,7 +314,11 @@ namespace minEngine
             if (diagnosticCount > 0)
             {
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.35f, 1.0f), "(%zu)", diagnosticCount);
+                const EditorAppearance& appearance = m_Context.GetEditorAppearance();
+                const EditorSemanticColors& semanticColors = appearance.GetSemanticColors();
+                ImGui::TextColored(appearance.GetDisplayColor(semanticColors.DiagnosticWarning),
+                                   "(%zu)",
+                                   diagnosticCount);
             }
         }
 
@@ -333,7 +340,10 @@ namespace minEngine
 
         if (session.HasOpenMaterial() && session.MaterialAsset)
         {
-            MaterialCompileDiagnosticsDrawer::Draw(*session.MaterialAsset, false);
+            MaterialCompileDiagnosticsDrawer::Draw(
+                *session.MaterialAsset,
+                m_Context.GetEditorAppearance(),
+                false);
         }
     }
 
@@ -477,26 +487,20 @@ namespace minEngine
             ImGui::PushItemWidth(kNodeWidth);
 
             const char* title = node.m_Title.empty() ? style.DisplayName : node.m_Title.c_str();
-            // TODO: the header's size is a little bit weird ,fix it later
-            // const ImVec2 headerStart = ImGui::GetCursorScreenPos();
-            // ImDrawList* drawList = ImGui::GetWindowDrawList();
-            // drawList->AddRectFilled(
-            //     headerStart,
-            //     ImVec2(headerStart.x + kNodeWidth, headerStart.y + kHeaderHeight),
-            //     style.HeaderColor,
-            //     4.0f,
-            //     ImDrawFlags_RoundCornersTop);
-            // ImGui::SetCursorScreenPos(ImVec2(headerStart.x + 8.0f, headerStart.y + 4.0f));
-            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
-            ImGui::TextUnformatted(title);
-            ImGui::PopStyleColor();
-            // ImGui::SetCursorScreenPos(ImVec2(headerStart.x, headerStart.y + kHeaderHeight + 4.0f));
+            {
+                EditorThemeScope nodeTitleTheme = EditorWindowTheme::PrimaryText(m_Context.GetEditorAppearance());
+                ImGui::TextUnformatted(title);
+            }
 
             MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
-        if (!materialEditor)
-        {
-            return;
-        }
+            if (!materialEditor)
+            {
+                ImGui::PopItemWidth();
+                Ed::EndNode();
+                ImGui::PopID();
+                continue;
+            }
+
             if (MaterialGraphNodeRegistry::DrawNode(node))
             {
                 materialEditor->NotifyGraphChanged();

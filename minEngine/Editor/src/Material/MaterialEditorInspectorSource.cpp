@@ -241,7 +241,10 @@ namespace minEngine
         }
 
         ImGui::Separator();
-        MaterialCompileDiagnosticsDrawer::Draw(material, true);
+        if (IEditorContext* editorContext = m_MaterialEditor.GetEditorContext())
+        {
+            MaterialCompileDiagnosticsDrawer::Draw(material, editorContext->GetEditorAppearance(), true);
+        }
 
         ImGui::PopItemWidth();
         ImGui::EndChild();

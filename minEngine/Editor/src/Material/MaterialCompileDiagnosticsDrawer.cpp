@@ -1,5 +1,7 @@
 #include "MaterialCompileDiagnosticsDrawer.h"
 
+#include "UI/Appearance/EditorAppearance.h"
+
 #include "imgui.h"
 
 #include "Runtime/Function/Render/Material.h"
@@ -9,17 +11,18 @@ namespace minEngine
 {
     namespace
     {
-        ImVec4 SeverityColor(MaterialCompileDiagnostic::Severity level)
+        ImVec4 SeverityColor(const EditorAppearance& appearance, MaterialCompileDiagnostic::Severity level)
         {
+            const EditorSemanticColors& colors = appearance.GetSemanticColors();
             switch (level)
             {
                 case MaterialCompileDiagnostic::Info:
-                    return ImVec4(0.55f, 0.75f, 0.95f, 1.0f);
+                    return appearance.GetDisplayColor(colors.DiagnosticInfo);
                 case MaterialCompileDiagnostic::Warning:
-                    return ImVec4(0.95f, 0.78f, 0.35f, 1.0f);
+                    return appearance.GetDisplayColor(colors.DiagnosticWarning);
                 case MaterialCompileDiagnostic::Error:
                 default:
-                    return ImVec4(0.95f, 0.40f, 0.40f, 1.0f);
+                    return appearance.GetDisplayColor(colors.DiagnosticError);
             }
         }
 
@@ -35,7 +38,9 @@ namespace minEngine
         }
     }
 
-    void MaterialCompileDiagnosticsDrawer::Draw(const Material& material, bool defaultOpen)
+    void MaterialCompileDiagnosticsDrawer::Draw(const Material& material,
+                                                const EditorAppearance& appearance,
+                                                bool defaultOpen)
     {
         const ImGuiTreeNodeFlags headerFlags =
             defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
@@ -56,7 +61,7 @@ namespace minEngine
         {
             const MaterialCompileDiagnostic& diag = diagnostics[static_cast<size_t>(i)];
             ImGui::PushID(static_cast<int>(i));
-            ImGui::TextColored(SeverityColor(diag.Level), "[%s]", SeverityLabel(diag.Level));
+            ImGui::TextColored(SeverityColor(appearance, diag.Level), "[%s]", SeverityLabel(diag.Level));
             ImGui::SameLine();
             ImGui::TextWrapped("%s", diag.Message.c_str());
             ImGui::PopID();
