@@ -54,6 +54,21 @@ namespace minEngine
 
         void ClearProjectRegistry();
 
+        class SuppressExternalSyncScope
+        {
+        public:
+            SuppressExternalSyncScope();
+            ~SuppressExternalSyncScope();
+
+            SuppressExternalSyncScope(const SuppressExternalSyncScope&) = delete;
+            SuppressExternalSyncScope& operator=(const SuppressExternalSyncScope&) = delete;
+
+        private:
+            bool m_Active = false;
+        };
+
+        bool IsExternalSyncSuppressed() const;
+
         std::shared_ptr<Asset> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByPath(const std::string& path, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByMeta(const AssetMeta& meta, std::string& outErrorMessage);
@@ -190,6 +205,9 @@ namespace minEngine
             const std::filesystem::path& absolutePath,
             const std::filesystem::path& rootDirectory);
 
+        void BeginSuppressExternalSync();
+        void EndSuppressExternalSync();
+
         std::unordered_map<std::string, AssetMeta> m_AssetRegistry;
         std::unordered_map<GUID, std::string, GUID::Hash> m_AssetPathByGuid;
         std::unordered_map<std::string, std::vector<AssetMeta*>> m_AssetMetasByType;
@@ -197,6 +215,7 @@ namespace minEngine
 
         std::unordered_map<uint32_t, AssetRegistryChangedCallback> m_Subscribers;
         uint32_t m_NextSubscriptionId = 1u;
+        int m_SuppressExternalSyncCount = 0;
     };
 
     template<>

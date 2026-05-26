@@ -419,7 +419,7 @@ Editor/src/Services/ContentBrowser/
 | **P2 E3 CRUD** | `DeleteAsset` + `MoveAsset` + `RegisterAsset` 发事件 | 磁盘与 Registry 一致；Move 保 GUID |
 | **P3 E4** | `Runtime/Platform/FileDialog` + **NFD**（Engine 生命周期） | Editor 菜单/Debug 调 `GetFileDialogService()` |
 | **P4 编排** | `AssetWorkflowModule::ImportAssetDialog` + 选中 Delete | 对话框导入到 Assets |
-| **P5 Watcher** | `ProjectAssetWatcher` + **efsw** | 外部复制文件进 Assets 后 Browser 刷新 |
+| **P5 Watcher** | `ProjectAssetWatcher` + **efsw**（Editor-only） | 外部增删改 Assets → Registry 同步；Browser 刷新在 P6 |
 | **P1b** | `AssetPath` 相对化 + 停止 Registry 扫描 EngineDefault | 见 §14；可与 P1 同 PR 或紧跟 |
 | **P6 Browser** | `ContentBrowserModule` + Window + Model | 树+列表+选中+双击 Open |
 | **P7 集成** | `Editor` 注册模块、默认 Dock、MainMenu Import | 端到端目视 |
@@ -447,7 +447,8 @@ Editor/src/Services/ContentBrowser/
 - **P1 定稿：** [ASSET_PIPELINE_P1_API.md](./ASSET_PIPELINE_P1_API.md)（已实现 `8c5958d`）。
 - **P2 定稿：** [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（已实现 `7758c60`）。
 - **P3 定稿：** [ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)（**已实现**；submodule `nativefiledialog-extended` @ v1.3.0）。
-- **P4 定稿：** [ASSET_PIPELINE_P4_API.md](./ASSET_PIPELINE_P4_API.md)（**待审批**）。
+- **P4 定稿：** [ASSET_PIPELINE_P4_API.md](./ASSET_PIPELINE_P4_API.md)（已实现 `0f96c45`）。
+- **P5 定稿：** [ASSET_PIPELINE_P5_API.md](./ASSET_PIPELINE_P5_API.md)（**待审批**）。
 
 ---
 

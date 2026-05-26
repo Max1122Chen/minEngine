@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 
 ## Purpose
 
@@ -140,6 +140,18 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`cmake --build minEngine/build --target Editor` succeeded (single-threaded link after parallel truncate).
 - Next step:
 	P4 `AssetWorkflowModule::ImportAssetDialog`.
+
+### 2026-05-26 - Asset Pipeline P5 ProjectAssetWatcher (efsw)
+- Goal:
+	Editor-only filesystem watcher syncing external disk changes to `AssetManager` registry.
+- Main changes:
+	`Third-Party/efsw` @ 1.4.0; `ProjectAssetWatcher` (queue + 400 ms debounce + main-thread `Tick`);
+	`AssetManager::SuppressExternalSyncScope`; Editor `OpenProject`/`CloseProject`/`Run` lifecycle;
+	bulk fallback `ScanAssets`; P5 API doc status → 已实现.
+- Validation done:
+	`cmake --build minEngine/build --target Editor -j 1` succeeded.
+- Next step:
+	Manual P5 acceptance (copy/delete in Explorer, Import no storm); P5.1 `Reimported`; P6 Content Browser.
 
 ### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
 - Goal:

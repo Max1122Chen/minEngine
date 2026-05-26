@@ -96,6 +96,8 @@ namespace minEngine
         int successCount = 0;
         int failCount = 0;
 
+        AssetManager::SuppressExternalSyncScope suppressScope;
+
         for (const std::filesystem::path& sourcePath : dialogResult.Paths)
         {
             const ImportAssetResult importResult =

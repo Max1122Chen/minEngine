@@ -62,8 +62,42 @@ namespace minEngine
         AssetTypeRegistry::Get().RegisterBuiltinTypes();
     }
 
+    AssetManager::SuppressExternalSyncScope::SuppressExternalSyncScope()
+    {
+        if (HasInstance())
+        {
+            AssetManager::Get().BeginSuppressExternalSync();
+            m_Active = true;
+        }
+    }
+
+    AssetManager::SuppressExternalSyncScope::~SuppressExternalSyncScope()
+    {
+        if (m_Active && HasInstance())
+        {
+            AssetManager::Get().EndSuppressExternalSync();
+        }
+    }
+
+    void AssetManager::BeginSuppressExternalSync()
+    {
+        ++m_SuppressExternalSyncCount;
+    }
+
+    void AssetManager::EndSuppressExternalSync()
+    {
+        ME_ASSERT(m_SuppressExternalSyncCount > 0, "EndSuppressExternalSync without matching begin");
+        --m_SuppressExternalSyncCount;
+    }
+
+    bool AssetManager::IsExternalSyncSuppressed() const
+    {
+        return m_SuppressExternalSyncCount > 0;
+    }
+
     void AssetManager::Shutdown()
     {
+        m_SuppressExternalSyncCount = 0;
         m_Subscribers.clear();
         m_AssetMetasByType.clear();
         m_AssetPathByGuid.clear();
@@ -498,6 +532,7 @@ namespace minEngine
     ImportAssetResult AssetManager::ImportAsset(const std::filesystem::path& sourcePath,
                                                 const std::filesystem::path& destDirectory)
     {
+        SuppressExternalSyncScope suppressScope;
         ImportAssetResult result;
 
         if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
@@ -658,6 +693,7 @@ namespace minEngine
 
     bool AssetManager::DeleteAsset(const std::string& assetPath, std::string& outError)
     {
+        SuppressExternalSyncScope suppressScope;
         outError.clear();
 
         const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
@@ -745,6 +781,7 @@ namespace minEngine
 
     bool AssetManager::MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError)
     {
+        SuppressExternalSyncScope suppressScope;
         outError.clear();
 
         const std::string oldRel = NormalizeProjectRelativeAssetPath(oldPath);
@@ -864,6 +901,7 @@ namespace minEngine
 
     bool AssetManager::RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError)
     {
+        SuppressExternalSyncScope suppressScope;
         outError.clear();
 
         if (newFileName.empty())

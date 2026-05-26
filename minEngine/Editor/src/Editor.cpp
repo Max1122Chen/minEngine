@@ -44,6 +44,7 @@ namespace minEngine
         m_InspectorModule.Register(*this);
         m_ConsoleModule.Register(*this);
         m_AssetWorkflow.Register(*this);
+        m_ProjectAssetWatcher.Register(*this);
 
         m_SceneEditor.Register(*this);
         m_MaterialEditor->Register(*this);
@@ -104,6 +105,8 @@ namespace minEngine
 
     bool Editor::OpenProject(const std::string& projectPath)
     {
+        m_ProjectAssetWatcher.StopWatching();
+
         ProjectManager& projectManager = ProjectManager::Get();
         ProjectOpenResult result = projectManager.OpenProject(projectPath);
         if (result.IsSuccess())
@@ -134,6 +137,9 @@ namespace minEngine
             m_MaterialEditor->RefreshMaterialList();
             m_SceneEditor.OnProjectOpened();
 
+            const std::filesystem::path projectContentRoot = PathRegistry::Get().GetProjectContentRoot();
+            m_ProjectAssetWatcher.StartWatching(projectContentRoot);
+
             return true;
         }
 
@@ -143,6 +149,8 @@ namespace minEngine
 
     void Editor::CloseProject()
     {
+        m_ProjectAssetWatcher.StopWatching();
+        ProjectManager::Get().CloseCurrentProject();
         ResetCommandStackForNewDocument();
     }
 
@@ -279,6 +287,7 @@ namespace minEngine
         m_InspectorModule.Shutdown();
         m_ConsoleModule.Shutdown();
         m_AssetWorkflow.Shutdown();
+        m_ProjectAssetWatcher.Shutdown();
         m_ViewportRegistry.Clear();
 
         ImGui_ImplOpenGL3_Shutdown();
@@ -312,6 +321,7 @@ namespace minEngine
             ImGui::NewFrame();
 
             m_EditorGUIManager.Tick(deltaTime);
+            m_ProjectAssetWatcher.Tick(deltaTime);
             m_InputHub.ProcessInput(*this);
 
             // Inspector / UI can mark components dirty after LogicalTick already ran

@@ -6,6 +6,7 @@
 #include "EditorGUIManager.h"
 #include "Material/MaterialEditor.h"
 #include "Scene/SceneEditor.h"
+#include "Services/AssetWatch/ProjectAssetWatcher.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ConsoleModule.h"
 #include "Services/InspectorModule.h"
@@ -47,6 +48,8 @@ namespace minEngine
         const EditorSubModule* FindSubModule(std::string_view moduleId) const override;
 
         AssetWorkflowModule& GetAssetWorkflow() override { return m_AssetWorkflow; }
+        ProjectAssetWatcher& GetProjectAssetWatcher() { return m_ProjectAssetWatcher; }
+        const ProjectAssetWatcher& GetProjectAssetWatcher() const { return m_ProjectAssetWatcher; }
         ConsoleModule& GetConsole() override { return m_ConsoleModule; }
         EditorCommandStack& GetCommandStack() override { return m_CommandStack; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
@@ -86,6 +89,7 @@ namespace minEngine
         InspectorModule m_InspectorModule;
         ConsoleModule m_ConsoleModule;
         AssetWorkflowModule m_AssetWorkflow;
+        ProjectAssetWatcher m_ProjectAssetWatcher;
         EditorInputHub m_InputHub;
         ViewportClientRegistry m_ViewportRegistry;
         EditorCommandStack m_CommandStack;

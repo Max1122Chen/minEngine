@@ -1,7 +1,7 @@
 # Asset Pipeline — P4 接口定稿（审批用）
 
 Last updated: 2026-05-26  
-Status: **待审批**  
+Status: **已实现**（`0f96c45`）  
 前置：**P2** `AssetManager` CRUD/events（`7758c60`）、**P3** Runtime Platform `FileDialogService`（`da69b7b`）  
 父文档：[ASSET_PIPELINE_DESIGN.md](./ASSET_PIPELINE_DESIGN.md) §7、§9 P4  
 P3 定稿：[ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)
@@ -105,5 +105,5 @@ public:
 - [ ] **B.** 同意 v0 导入目录固定为 `Assets/Imported/`（P6 再接入“当前目录”）
 - [ ] **C.** 同意 v0 不自动 Open 导入资产
 
-批准后回复 **「P4 API 批准」**，再开始实现 P4 代码。
+已实现；P5 见 [ASSET_PIPELINE_P5_API.md](./ASSET_PIPELINE_P5_API.md)。
 
