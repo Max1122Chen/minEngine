@@ -26,11 +26,11 @@ namespace minEngine
     {
         GUID ownerGuid{};
         std::string ownerClassName;
-        std::string capturePropertyName;
+        std::string capturePropertyPath;
 
         bool IsValid() const
         {
-            return !ownerGuid.IsZero() && !ownerClassName.empty() && !capturePropertyName.empty();
+            return !ownerGuid.IsZero() && !ownerClassName.empty() && !capturePropertyPath.empty();
         }
     };
 
@@ -51,7 +51,7 @@ namespace minEngine
 
         PropertyUndoCaptureContext MakePropertyUndoCaptureContext(const MEObject* owner,
                                                                   const Reflection::MEClass* ownerClass,
-                                                                  const std::string& capturePropertyName) const;
+                                                                  const std::string& capturePropertyPath) const;
 
         bool DrawProperty(const MEObject* owner,
                           const Reflection::MEClass* ownerClass,
@@ -78,11 +78,13 @@ namespace minEngine
         bool DrawObjectProperty(const MEObject* owner,
                                 const Reflection::MEClass* ownerClass,
                                 const Reflection::MEObjectProperty& objectProperty,
-                                void* propertyPtr);
+                                void* propertyPtr,
+                                const PropertyUndoCaptureContext* objectUndoContext);
         bool DrawObjectPtrProperty(const MEObject* owner,
                                    const Reflection::MEClass* ownerClass,
                                    const Reflection::MEObjectPtrProperty& objectPtrProperty,
-                                   void* propertyPtr);
+                                   void* propertyPtr,
+                                   const PropertyUndoCaptureContext* undoContext);
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
 
         void BeginRenameSelectedGameObject(const GameObject& gameObject)

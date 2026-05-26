@@ -5,6 +5,7 @@
 #include "UI/Property/ObjectPtrWidget.h"
 #include "UI/Property/PropertyEditPolicy.h"
 #include "UI/Property/PropertyValueWidget.h"
+#include "UI/Property/TransformWidget.h"
 
 #include "imgui.h"
 
@@ -165,51 +166,53 @@ namespace minEngine
         Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
 
         // GameObject's RootComponent Section
-        
-        if (gameObject->GetRootComponent())
+        if (SceneComponent* rootComponent = gameObject->GetRootComponent())
         {
             ImGui::Spacing();
             ImGui::SeparatorText("Root Transform");
-            std::string tableId = "RootComponentTable##" + std::to_string(gameObject->GetID());
-            if (ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
+
+            const Reflection::MEClass* classInfo = rootComponent->GetClass();
+            MEObject* rootComponentObject = static_cast<MEObject*>(rootComponent);
+            if (classInfo && rootComponentObject)
             {
-                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
-                
-                SceneComponent* rootComponent = gameObject->GetRootComponent();
-                const Reflection::MEClass* classInfo = rootComponent->GetClass();
-                MEObject* rootComponentObject = static_cast<MEObject*>(rootComponent);
-                bool valueChanged = false;
-                if (classInfo && rootComponentObject)
-                {
-                    reflectionSystem.ForEachPropertyInHierarchy(classInfo->GetName(),
-                    [&](const Reflection::MEProperty& property) -> bool
+                Transform* transform = const_cast<Transform*>(&rootComponent->GetTransform());
+                const PropertyUndoCaptureContext baseContext =
+                    MakePropertyUndoCaptureContext(rootComponentObject, classInfo, "m_Transform");
+
+                const ImGuiTreeNodeFlags treeFlags =
+                    ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
+
+                const auto applyUndoForField =
+                    [this, baseContext](std::string_view fieldName)
                     {
-                        if(property.GetName() == "m_Transform")
+                        if (!baseContext.IsValid())
                         {
-                            void* valuePtr = property.GetMutable(rootComponentObject);
-                            valueChanged |= DrawProperty(rootComponentObject, classInfo, property, valuePtr);
+                            return;
                         }
-                        return true;
-                    });
-                    if(valueChanged)
-                    {
-                        rootComponent->MarkRenderStateDirty(); // Mark render state dirty to ensure changes are reflected in the editor viewport
-                    }
-                }
-                else
+
+                        PropertyUndoCaptureContext fieldContext = baseContext;
+                        fieldContext.capturePropertyPath += ".";
+                        fieldContext.capturePropertyPath += std::string(fieldName);
+                        ApplyPropertyUndoCaptureHooks(fieldContext, true);
+                    };
+
+                const bool valueChanged = TransformWidget::Draw(transform, treeFlags, applyUndoForField);
+                if (valueChanged)
                 {
-                    ImGui::TextUnformatted("Root component type info missing.");
+                    rootComponent->MarkRenderStateDirty();
                 }
-                ImGui::EndTable();
             }
-            
+            else
+            {
+                ImGui::TextUnformatted("Root component type info missing.");
+            }
         }
 
         // Components Section
         ImGui::Spacing();
         ImGui::SeparatorText("Components");
 
+        SceneComponent* rootComponent = gameObject->GetRootComponent();
         for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
         {
             if (!component)
@@ -261,10 +264,15 @@ namespace minEngine
             }
             const std::string& compClassName = compClass->GetName();
             bool valueChanged = false;
+            const bool isRootComponent = (rootComponent != nullptr && component.get() == rootComponent);
             reflectionSystem.ForEachPropertyInHierarchy(compClassName,
             [&](const Reflection::MEProperty& property) -> bool
             {
                 hasAnyReflectedField = true;
+                if (isRootComponent && property.GetName() == "m_Transform")
+                {
+                    return true;
+                }
                 void* valuePtr = property.GetMutable(componentObject);
                 valueChanged |= DrawProperty(componentObject, compClass, property, valuePtr);
                 return true;
@@ -318,17 +326,17 @@ namespace minEngine
     PropertyUndoCaptureContext SceneEditorInspectorSource::MakePropertyUndoCaptureContext(
         const MEObject* owner,
         const Reflection::MEClass* ownerClass,
-        const std::string& capturePropertyName) const
+        const std::string& capturePropertyPath) const
     {
         PropertyUndoCaptureContext context;
-        if (owner == nullptr || ownerClass == nullptr || capturePropertyName.empty())
+        if (owner == nullptr || ownerClass == nullptr || capturePropertyPath.empty())
         {
             return context;
         }
 
         context.ownerGuid = owner->GetGuid();
         context.ownerClassName = ownerClass->GetName();
-        context.capturePropertyName = capturePropertyName;
+        context.capturePropertyPath = capturePropertyPath;
         return context;
     }
 
@@ -353,10 +361,10 @@ namespace minEngine
             return false;
         }
 
-        const Serialization::SerializeResult result = Serialization::Serializer::SerializePropertyToBuffer(
+        const Serialization::SerializeResult result = Serialization::Serializer::SerializePropertyByPathToBuffer(
             ownerObject.get(),
             ownerClass,
-            context.capturePropertyName,
+            context.capturePropertyPath,
             outBlob,
             m_SceneEditor.GetPropertyCommandSerializerOptions());
         return result.ok;
@@ -381,7 +389,7 @@ namespace minEngine
             *editorContext,
             context.ownerGuid,
             context.ownerClassName,
-            context.capturePropertyName,
+            context.capturePropertyPath,
             beforeBlob,
             afterBlob);
     }
@@ -471,7 +479,17 @@ namespace minEngine
         }
 
         PropertyUndoCaptureContext localUndoContext;
+        PropertyUndoCaptureContext nestedUndoContext;
         const PropertyUndoCaptureContext* activeUndoContext = parentUndoContext;
+
+        if (activeUndoContext != nullptr && activeUndoContext->IsValid() && CanUndoInspectorProperty(property))
+        {
+            nestedUndoContext = *activeUndoContext;
+            nestedUndoContext.capturePropertyPath += ".";
+            nestedUndoContext.capturePropertyPath += property.GetName();
+            activeUndoContext = &nestedUndoContext;
+        }
+
         if (activeUndoContext == nullptr && owner != nullptr && ownerClass != nullptr
             && CanUndoInspectorProperty(property))
         {
@@ -499,7 +517,7 @@ namespace minEngine
                 }
                 else
                 {
-                    valueChanged = DrawObjectProperty(owner, ownerClass, objectProperty, propertyPtr);
+                    valueChanged = DrawObjectProperty(owner, ownerClass, objectProperty, propertyPtr, activeUndoContext);
                 }
 
                 break;
@@ -509,7 +527,8 @@ namespace minEngine
                     owner,
                     ownerClass,
                     static_cast<const Reflection::MEObjectPtrProperty&>(property),
-                    propertyPtr);
+                    propertyPtr,
+                    activeUndoContext);
                 break;
             case Reflection::MEPropertyCategory::Array:
                 valueChanged = DrawArrayProperty(static_cast<const Reflection::MEArrayProperty&>(property), propertyPtr);
@@ -555,7 +574,8 @@ namespace minEngine
     bool SceneEditorInspectorSource::DrawObjectProperty(const MEObject* owner,
                                                         const Reflection::MEClass* ownerClass,
                                                         const Reflection::MEObjectProperty& objectProperty,
-                                                        void* propertyPtr)
+                                                        void* propertyPtr,
+                                                        const PropertyUndoCaptureContext* objectUndoContext)
     {
         Reflection::MEClass* valueClass = objectProperty.GetValueClass();
         if (!valueClass)
@@ -563,52 +583,94 @@ namespace minEngine
             return false;
         }
 
-        const PropertyUndoCaptureContext objectUndoContext =
-            MakePropertyUndoCaptureContext(owner, ownerClass, objectProperty.GetName());
+        if (objectUndoContext == nullptr || !objectUndoContext->IsValid())
+        {
+            // Without a valid path context, we can't provide nested per-field undo.
+            // Still draw the nested object fields.
+        }
+
+        const Reflection::MEClass* transformClass = Reflection::ReflectionSystem::Get().FindClass<Transform>();
 
         bool valueChanged = false;
-        Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-        reflectionSystem.ForEachPropertyInHierarchy(
-            valueClass->GetName(),
-            [&](const Reflection::MEProperty& property) -> bool
+
+        const ImGuiTreeNodeFlags treeFlags =
+            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
+
+        if (transformClass != nullptr && valueClass->IsA(transformClass))
+        {
+            Transform* transform = static_cast<Transform*>(propertyPtr);
+            const std::function<void(std::string_view)> applyUndoForField = [this, objectUndoContext](std::string_view fieldName)
             {
-                void* valuePtr = property.GetMutable(propertyPtr);
-                const PropertyUndoCaptureContext* nestedContext =
-                    objectUndoContext.IsValid() ? &objectUndoContext : nullptr;
-                valueChanged |= DrawProperty(owner, ownerClass, property, valuePtr, nestedContext);
-                return true;
-            });
+                if (objectUndoContext == nullptr || !objectUndoContext->IsValid())
+                {
+                    return;
+                }
+
+                PropertyUndoCaptureContext fieldContext = *objectUndoContext;
+                fieldContext.capturePropertyPath += ".";
+                fieldContext.capturePropertyPath += std::string(fieldName);
+                ApplyPropertyUndoCaptureHooks(fieldContext, true);
+            };
+
+            valueChanged |= TransformWidget::Draw(transform, treeFlags, applyUndoForField);
+            return valueChanged;
+        }
+
+        const bool open = ImGui::TreeNodeEx("##StructTree", treeFlags, "%s", valueClass->GetName().c_str());
+        if (open)
+        {
+            const std::string tableId = std::string("##NestedTable_") + valueClass->GetName();
+            if (ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg))
+            {
+                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 0.35f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.65f);
+
+                Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
+                reflectionSystem.ForEachPropertyInHierarchy(
+                    valueClass->GetName(),
+                    [&](const Reflection::MEProperty& nestedProperty) -> bool
+                    {
+                        void* valuePtr = nestedProperty.GetMutable(propertyPtr);
+                        valueChanged |= DrawProperty(owner, ownerClass, nestedProperty, valuePtr, objectUndoContext);
+                        return true;
+                    });
+
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+
         return valueChanged;
     }
 
     bool SceneEditorInspectorSource::DrawObjectPtrProperty(const MEObject* owner,
                                                            const Reflection::MEClass* ownerClass,
                                                            const Reflection::MEObjectPtrProperty& objectPtrProperty,
-                                                           void* propertyPtr)
+                                                           void* propertyPtr,
+                                                           const PropertyUndoCaptureContext* undoContext)
     {
-        const PropertyUndoCaptureContext undoContext =
-            MakePropertyUndoCaptureContext(owner, ownerClass, objectPtrProperty.GetName());
         const std::string assetUndoKey = MakeAssetPropertyUndoKey(
-            undoContext.IsValid() ? undoContext.ownerGuid : GUID::Zero(),
+            (undoContext && undoContext->IsValid()) ? undoContext->ownerGuid : GUID::Zero(),
             objectPtrProperty.GetName());
 
         ObjectPtrWidgetHooks hooks;
         hooks.OnComboActivated = [this, undoContext, assetUndoKey]()
         {
-            if (!undoContext.IsValid())
+            if (undoContext == nullptr || !undoContext->IsValid())
             {
                 return;
             }
 
             std::vector<uint8_t> beforeBlob;
-            if (SerializePropertyUndoBlob(undoContext, beforeBlob))
+            if (SerializePropertyUndoBlob(*undoContext, beforeBlob))
             {
                 m_AssetPropertyUndoBeforeByKey[assetUndoKey] = std::move(beforeBlob);
             }
         };
         hooks.OnComboDeactivatedAfterEdit = [this, undoContext, assetUndoKey]()
         {
-            if (undoContext.IsValid())
+            if (undoContext != nullptr && undoContext->IsValid())
             {
                 m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
             }
@@ -663,7 +725,7 @@ namespace minEngine
         };
         hooks.OnSelectionCommitted = [this, undoContext, assetUndoKey](bool selectionChanged)
         {
-            if (!selectionChanged || !undoContext.IsValid())
+            if (!selectionChanged || undoContext == nullptr || !undoContext->IsValid())
             {
                 return;
             }
@@ -674,15 +736,15 @@ namespace minEngine
             {
                 beforeBlob = beforeIter->second;
             }
-            else if (!SerializePropertyUndoBlob(undoContext, beforeBlob))
+                else if (!SerializePropertyUndoBlob(*undoContext, beforeBlob))
             {
                 beforeBlob.clear();
             }
 
             std::vector<uint8_t> afterBlob;
-            if (!beforeBlob.empty() && SerializePropertyUndoBlob(undoContext, afterBlob))
+                if (!beforeBlob.empty() && SerializePropertyUndoBlob(*undoContext, afterBlob))
             {
-                TryPropertyUndoCommitImmediate(undoContext, beforeBlob, afterBlob);
+                    TryPropertyUndoCommitImmediate(*undoContext, beforeBlob, afterBlob);
             }
 
             m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);

@@ -166,6 +166,11 @@ struct Color
 
 - `Transform` → **`TransformWidget`**（子树 + 缩进）
 - 其它 `MEObjectProperty`（含 `Color`）→ 可折叠子树；**禁止**与父级字段同一缩进展平（修复 SceneComponent / Transform 观感）
+- `TransformWidget`（M4 规则）
+  - 默认展开：`TreeNode` 使用 `ImGuiTreeNodeFlags_DefaultOpen`
+  - Root/非 Root：一个 `GameObject` 可能挂多个 `SceneComponent`，其中只有一个是 `RootComponent`
+    - RootComponent：在 “Root Transform” 区绘制（避免组件表重复编辑）
+    - 非 Root SceneComponent：在各自组件行绘制 `m_Transform`（允许单独编辑它们的 Transform）
 
 ### 6.2 Session / Policy（M2）
 
@@ -212,6 +217,81 @@ Specifier 映射（`PropertyEditPolicy`）：
 - Specifier：已有 `EditAnywhere`、`EditDefaultsOnly`、`Invisible` 等
 - Meta 第一版键：`DisplayName`、`Tooltip`、`ClampMin/Max`、`UIMin/Max`
 - 引用类扩展 Meta（§7.3）：`AllowedClasses`、`ReferenceKind`
+
+## 6.5 M4：Inspector 嵌套 + TransformWidget + Scene Undo（按 propertyPath 粒度）
+
+你这轮的诉求拆成 Q1/Q2/Q3/Q4，我把它们都落在这节里，确保实现时不会走偏。
+
+### 6.5.1 Q3：默认展开
+
+- `TransformWidget` 的 `TreeNode` 默认 **展开**：`ImGuiTreeNodeFlags_DefaultOpen`
+- 其它嵌套 struct 子树默认也用 **DefaultOpen**（不做默认折叠）
+
+### 6.5.2 Q2：一个 GO 多 SceneComponent，只有一个 Root，但其它 Transform 也要可编辑
+
+- 一个 `GameObject` 可以挂多个 `SceneComponent`
+- 其中只有一个 `RootComponent`
+- M4 的显示与交互规则：
+  - `RootComponent` 的 Transform：显示在 Inspector 顶部 “Root Transform” 区（使用 `TransformWidget`）
+  - 非 Root `SceneComponent` 的 Transform：显示在各自组件行里（使用 `TransformWidget`）
+  - 去重规则：**仅跳过 RootComponent 在组件表里的 `m_Transform` 绘制**，其它 SceneComponent 的 `m_Transform` 允许单独编辑
+
+### 6.5.3 Q1：能不能“嵌套对象一个 property 一个 command”，而不是整包 struct？
+
+可以，并且推荐按 **propertyPath 粒度**实现：
+- 不满足的原因（当前系统的现状）：
+  - Inspector Undo 当前以 `capturePropertyName` 为定位信息
+  - 嵌套字段控件（如 `m_Transform.Position`）如果仍复用父级 `objectUndoContext`，就会退化成“整段 struct 被一个命令覆盖”
+- 推荐实现策略：
+  - 扩展 Undo 定位从单段 `propertyName` → **`propertyPath`**
+  - 例如：
+    - 顶层 Transform：`m_Transform`
+    - 子字段：`m_Transform.Position` / `m_Transform.Rotation` / `m_Transform.Scale`
+  - 当某个子控件完成编辑并结束交互时，只提交对应 `propertyPath` 的 before/after blob → 从而做到真正的“一个 property 一个 command”
+
+> 备选（不改 propertyPath）：可以做到“每次子控件结束交互都提交一条 Command”，但 blob 可能仍是整 struct（不符合你提出的“不是整个 struct”）。
+
+### 6.5.4 Q4：Undo 桥（按你现有代码链路逐步讲清楚）
+
+M4 的 Undo 桥实现完全复用你当前 Inspector 的 before/after + Command 提交框架，只把“定位字段”从 `propertyName` 升级为 `propertyPath`。
+
+#### A) 当前已存在的桥（现状链路）
+
+1. `SceneEditorInspectorSource::DrawProperty(...)`
+   - 控件绘制过程中，决定是否启用 undo capture
+2. `SceneEditorInspectorSource::ApplyPropertyUndoCaptureHooks(...)`
+   - 依赖 ImGui：
+     - `Activated`：序列化 beforeBlob 并缓存到 `m_PropertyUndoBeforeByEditId[editId]`
+     - `DeactivatedAfterEdit`：序列化 afterBlob 并调用 `TryPropertyUndoCommitImmediate(...)`
+3. `SceneEditorInspectorSource::TryPropertyUndoCommitImmediate(...)`
+   - 调用 `m_SceneEditor.SubmitSetObjectProperty(...)`
+4. `SetObjectPropertyCommand` / `SceneEditor::ApplySetObjectProperty(...)`
+   - Execute：写入 after
+   - Undo：写入 before
+
+#### B) M4 需要你补的“最小桥接点”
+
+只要做下面三件事，propertyPath 粒度就能贯通：
+
+1. 扩展 `PropertyUndoCaptureContext`
+   - 新增 `propertyPath`（字符串）
+   - 让 `SerializePropertyUndoBlob` / Apply 写回时使用 `propertyPath`
+
+2. 修改递归绘制时的 context 生成（让嵌套字段每次都拿到“子字段自己的 propertyPath”）
+   - 在 `DrawObjectProperty` 递归时维护 `currentPath`
+   - 子字段生成：`childPath = currentPath + "." + childProperty.GetName()`
+   - 每个子控件的 before/after 都用各自 `childPath`
+
+3. 增加 Serializer/Apply 的“按路径写回”能力
+   - 新增（或扩展）：
+     - `Serializer::SerializePropertyByPath(...)`
+     - `Serializer::DeserializePropertyByPath(...)`
+   - 规则：用 `.` 分段遍历 owner 对象的属性树，直到最后一段才对该字段调用现有 Serialize/Deserialize
+
+这样 Undo 桥最终满足：
+- 一个 GO 多 SceneComponent：每个 Transform 都有自己的命令粒度
+- 嵌套字段：每个控件结束编辑都提交“对应 propertyPath”的命令
+- 默认展开：TransformWidget/嵌套 struct 默认展开，用户体验符合预期
 
 ---
 
@@ -297,7 +377,7 @@ class Font : public Asset
 | **M3‑Enum** | `PropertyEnumWidget` 接入 | **后置** | 反射补全 enum **underlying type / size** 后再从 `PropertyValueWidget` 启用；仓库保留 scaffold，**未接线** |
 | **M3.1** | `ObjectPtrWidget` + `PropertyRefPicker`（**Asset + Object**） | **已实施（待 commit）** | 见 [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md) |
 | **M3-Enum** | `PropertyEnumWidget` 接线 | **已实施（待 commit）** | `MEPrimitiveProperty::GetEnum()` / `GetSize()` |
-| **M4** | Inspector 嵌套 + `TransformWidget` + Scene Undo 接线 | M3.1 | Transform 缩进；属性 Undo |
+| **M4** | Inspector 嵌套 + `TransformWidget` + Scene Undo 接线 | M3.1 | TransformWidget 默认展开；Root/非 Root Transform 均可编辑；嵌套字段按 `propertyPath` 粒度 Undo（一个字段一个 Command） |
 | **M5** | **`Font` 资产** + `LoadAsset_Impl` + scan + `EditorAppearance` 从 Font 加载 | M1（可与 M3 并行） | 工程可指定 Font GUID；英文清晰 |
 | **M5.1** | 工程 `UiFontSize`、CJK 开关接线（无 glyph 也不崩） | M5 | 配置项生效 |
 | **M6** | 收拢窗口散落 `PushStyleColor` | M1 | grep 硬编码减少 |

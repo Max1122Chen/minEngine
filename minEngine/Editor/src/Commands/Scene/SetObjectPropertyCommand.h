@@ -17,7 +17,7 @@ namespace minEngine
         SetObjectPropertyCommand(SceneEditor& sceneEditor,
                                  const GUID& ownerGuid,
                                  std::string ownerClassName,
-                                 std::string propertyName,
+                                 std::string propertyPath,
                                  std::vector<uint8_t> beforeValue,
                                  std::vector<uint8_t> afterValue);
 
@@ -30,7 +30,7 @@ namespace minEngine
         uint64_t m_OwnerGuidHigh = 0;
         uint64_t m_OwnerGuidLow = 0;
         std::string m_OwnerClassName;
-        std::string m_PropertyName;
+        std::string m_PropertyPath;
         std::vector<uint8_t> m_BeforeValue;
         std::vector<uint8_t> m_AfterValue;
         mutable std::string m_Description;

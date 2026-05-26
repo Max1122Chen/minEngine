@@ -490,7 +490,7 @@ namespace minEngine
 
     bool SceneEditor::ApplySetObjectProperty(const GUID& ownerGuid,
                                              const std::string& ownerClassName,
-                                             const std::string& propertyName,
+                                             const std::string& propertyPath,
                                              const std::vector<uint8_t>& valueBlob)
     {
         std::shared_ptr<MEObject> ownerObject = ObjectManager::Get().FindObject(ownerGuid);
@@ -499,7 +499,7 @@ namespace minEngine
             ME_CORE_WARN(
                 "ApplySetObjectProperty: owner not found (guid='{}', property='{}').",
                 ownerGuid.ToString(),
-                propertyName);
+                propertyPath);
             return false;
         }
 
@@ -509,15 +509,15 @@ namespace minEngine
             ME_CORE_WARN(
                 "ApplySetObjectProperty: class '{}' not found (property='{}').",
                 ownerClassName,
-                propertyName);
+                propertyPath);
             return false;
         }
 
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
-        const Serialization::SerializeResult result = Serialization::Serializer::DeserializePropertyFromBuffer(
+        const Serialization::SerializeResult result = Serialization::Serializer::DeserializePropertyByPathFromBuffer(
             ownerObject.get(),
             ownerClass,
-            propertyName,
+            propertyPath,
             valueBlob,
             unresolvedRefs,
             GetPropertyCommandSerializerOptions());
@@ -552,7 +552,7 @@ namespace minEngine
     void SceneEditor::SubmitSetObjectProperty(IEditorContext& context,
                                               const GUID& ownerGuid,
                                               const std::string& ownerClassName,
-                                              const std::string& propertyName,
+                                              const std::string& propertyPath,
                                               std::vector<uint8_t> beforeValue,
                                               std::vector<uint8_t> afterValue)
     {
@@ -565,7 +565,7 @@ namespace minEngine
             *this,
             ownerGuid,
             ownerClassName,
-            propertyName,
+            propertyPath,
             std::move(beforeValue),
             std::move(afterValue)));
     }

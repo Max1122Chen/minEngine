@@ -85,12 +85,12 @@ namespace minEngine
         void SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId);
         bool ApplySetObjectProperty(const GUID& ownerGuid,
                                     const std::string& ownerClassName,
-                                    const std::string& propertyName,
+                                    const std::string& propertyPath,
                                     const std::vector<uint8_t>& valueBlob);
         void SubmitSetObjectProperty(IEditorContext& context,
                                      const GUID& ownerGuid,
                                      const std::string& ownerClassName,
-                                     const std::string& propertyName,
+                                     const std::string& propertyPath,
                                      std::vector<uint8_t> beforeValue,
                                      std::vector<uint8_t> afterValue);
 
