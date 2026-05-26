@@ -21,6 +21,7 @@
 #include "Resource/AssetManager.h"
 
 #include "Scene/SceneEditor.h"
+#include "Services/ContentBrowser/AssetTreeModel.h"
 #include "Shell/EditorSettingsDefaults.h"
 #include "UI/Appearance/EditorAppearance.h"
 
@@ -44,6 +45,7 @@ namespace minEngine
         m_InspectorModule.Register(*this);
         m_ConsoleModule.Register(*this);
         m_AssetWorkflow.Register(*this);
+        m_ContentBrowser.Register(*this);
         m_ProjectAssetWatcher.Register(*this);
 
         m_SceneEditor.Register(*this);
@@ -139,6 +141,7 @@ namespace minEngine
 
             const std::filesystem::path projectContentRoot = PathRegistry::Get().GetProjectContentRoot();
             m_ProjectAssetWatcher.StartWatching(projectContentRoot);
+            m_ContentBrowser.GetModel().ResetForProject(projectContentRoot);
 
             return true;
         }
@@ -150,6 +153,9 @@ namespace minEngine
     void Editor::CloseProject()
     {
         m_ProjectAssetWatcher.StopWatching();
+        m_ContentBrowser.GetModel().Clear();
+        m_AssetWorkflow.SetSelectedAsset(nullptr);
+        m_AssetWorkflow.SetContentBrowserInspectorActive(false);
         ProjectManager::Get().CloseCurrentProject();
         ResetCommandStackForNewDocument();
     }
@@ -287,6 +293,7 @@ namespace minEngine
         m_InspectorModule.Shutdown();
         m_ConsoleModule.Shutdown();
         m_AssetWorkflow.Shutdown();
+        m_ContentBrowser.Shutdown();
         m_ProjectAssetWatcher.Shutdown();
         m_ViewportRegistry.Clear();
 

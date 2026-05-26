@@ -12,6 +12,7 @@ namespace minEngine
     class EditorServiceModule;
     class ViewportClientRegistry;
     class AssetWorkflowModule;
+    class ContentBrowserModule;
     class ConsoleModule;
     class EditorCommandStack;
     class EditorInputHub;
@@ -38,6 +39,9 @@ namespace minEngine
         virtual const EditorSubModule* FindSubModule(std::string_view moduleId) const = 0;
 
         virtual AssetWorkflowModule& GetAssetWorkflow() = 0;
+        virtual const AssetWorkflowModule& GetAssetWorkflow() const = 0;
+        virtual ContentBrowserModule& GetContentBrowser() = 0;
+        virtual const ContentBrowserModule& GetContentBrowser() const = 0;
         virtual ConsoleModule& GetConsole() = 0;
         virtual EditorCommandStack& GetCommandStack() = 0;
         virtual EditorInputHub& GetInputHub() = 0;

@@ -25,7 +25,7 @@ P4 定稿：[ASSET_PIPELINE_P4_API.md](./ASSET_PIPELINE_P4_API.md)
 |----|------|
 | `ImportAssetDialog` + 菜单 | ✅ `0f96c45` |
 | `ProjectAssetWatcher` / efsw | ❌ → **P5** |
-| Content Browser UI | ❌ → **P6** |
+| Content Browser UI | ✅ **P6**（见 [ASSET_PIPELINE_P6_API.md](./ASSET_PIPELINE_P6_API.md)） |
 | `Reimported` 事件 + 自动 reload 缓存 | ❌ → **P5.1 或 P6 前** |
 
 ---

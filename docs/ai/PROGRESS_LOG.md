@@ -153,6 +153,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Manual P5 acceptance (copy/delete in Explorer, Import no storm); P5.1 `Reimported`; P6 Content Browser.
 
+### 2026-05-26 - Asset Pipeline P6 Content Browser
+- Goal:
+	Content Browser module: directory tree, registered asset list, selection, Inspector bridge, Open/Delete/Import.
+- Main changes:
+	`ContentBrowserModule`, `AssetTreeModel`, `ContentBrowserWindow`; `FindAssetMetasUnderDirectory`;
+	`AssetWorkflowModule` selection/Delete/InspectorSource; `InspectorWindow` focus patch.
+- Risks or caveats:
+	**Browser UI 展示需后期再设计**（当前裸 ImGui 线框；主题/图标/缩略图待 Appearance merge 后 P6.1）。
+- Validation done:
+	`cmake --build` OK; user confirmed Content Browser visible and core flows work.
+- Next step:
+	P7 default Dock + menu integration; P6.1 Browser visual design after Appearance merge; P5.1 Reimported optional.
+
 ### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
 - Goal:
 	Restore scene mesh GUID refs after stopping EngineDefault Registry scan.

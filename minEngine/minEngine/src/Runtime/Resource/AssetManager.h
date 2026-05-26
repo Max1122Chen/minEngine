@@ -78,6 +78,8 @@ namespace minEngine
         const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
         std::vector<const AssetMeta*> FindAssetMetasByType(const std::string& assetTypeId) const;
         std::vector<const AssetMeta*> FindAssetMetasByRuntimeClass(const std::string& runtimeClassName) const;
+        std::vector<const AssetMeta*> FindAssetMetasUnderDirectory(
+            std::string_view projectRelativeDirectory) const;
 
         uint32_t Subscribe(AssetRegistryChangedCallback callback);
         void Unsubscribe(uint32_t subscriptionId);

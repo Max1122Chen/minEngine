@@ -1128,6 +1128,48 @@ namespace minEngine
         return FindAssetMetasByType(assetTypeId);
     }
 
+    std::vector<const AssetMeta*> AssetManager::FindAssetMetasUnderDirectory(
+        std::string_view projectRelativeDirectory) const
+    {
+        std::string directoryRel(projectRelativeDirectory);
+        if (!directoryRel.empty())
+        {
+            directoryRel = std::filesystem::path(directoryRel).lexically_normal().generic_string();
+        }
+
+        std::vector<const AssetMeta*> result;
+        for (const auto& [assetPath, meta] : m_AssetRegistry)
+        {
+            (void)assetPath;
+
+            const std::filesystem::path parentPath =
+                std::filesystem::path(meta.AssetPath).parent_path().lexically_normal();
+            const std::string parentRel = parentPath.generic_string();
+
+            if (directoryRel.empty())
+            {
+                if (parentRel.empty() || parentRel == ".")
+                {
+                    result.push_back(&meta);
+                }
+            }
+            else if (parentRel == directoryRel)
+            {
+                result.push_back(&meta);
+            }
+        }
+
+        std::sort(
+            result.begin(),
+            result.end(),
+            [](const AssetMeta* left, const AssetMeta* right)
+            {
+                return left->AssetName < right->AssetName;
+            });
+
+        return result;
+    }
+
     std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)
     {
         if (meta.AssetType == "StaticMesh")
