@@ -1,7 +1,7 @@
 # Editor Appearance — 设计案
 
 Last updated: 2026-05-26  
-Status: **M0–M4 已合入；M5 Font 详细设计待审批**（见 [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md)）  
+Status: **M0–M5.1 已合入；CJK 可读显示后置 i18n；M6 未做**（见 [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md)）  
 分支：`feat/editor-appearance`  
 父文档：[Editor 平台化规划](./EDITOR_PLATFORM_PLAN.md)、[Editor Shell](./EDITOR_SHELL_DESIGN.md)  
 关联：[GUI 开发 FAQ](./GUI_DEV_FAQ.md)、[Command History / Undo](./EDITOR_COMMAND_HISTORY.md)、[资源管线 R2](../Render/RESOURCE_PIPELINE_PLAN.md)
@@ -322,13 +322,14 @@ M4 的 Undo 桥实现完全复用你当前 Inspector 的 before/after + Command 
 
 ## 8) 字体：`Font` 资产化（纳入本计划）
 
-**详细设计（M5a 已实施，M5b 排版角色修订待审批）：** [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md)
+**详细设计：** [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md)（M5a/M5b 已合入）
 
 ### 8.1 定位
 
 - `Font` 是 **引擎可发现、有 Meta、可加载** 的资产（与 `Texture2D` 同级抽象）
 - Editor UI 字体 = **消费 Font 资产**；游戏 UI 将来复用同一类型
-- 英文为主；资产 / 设置上预留 **`bEnableCjkGlyphs`**（默认 false）
+- 英文为主；资产 / 设置上预留 **`bEnableCjkGlyphs`**（默认 false，仅合并 glyph range）
+- **CJK 可读显示后置 i18n**：需含 CJK 字形的 Font 资产（Inter 无中文）；M5.1 不交付中文 UI 显示
 
 ### 8.2 摘要（与详细设计对齐）
 
@@ -360,14 +361,14 @@ M4 的 Undo 桥实现完全复用你当前 Inspector 的 before/after + Command 
 | **M0** | `Color` / `LinearColor` struct + 反射 + JSON + Runtime sRGB 转换 | **已合入（`07c9734`）** | `Color.h/.cpp`、`Color.gen.*`、`uint8` codec；Editor 仅 `EditorColorConversion` |
 | **M1** | `EditorThemePalette`、Dark+Light、`EditorAppearance`、`ProjectSettings.Appearance` | **已合入（`e71f622`）** | View→Theme Dark/Light；写入 `.mesettings` |
 | **M2** | `PropertyEditPolicy`、`PropertyEditSession` | **已合入（`6648a0e`）** | 语境仅 `SceneInstance` \| `AssetDefaults`；Scene/Material Details 走 Policy；Meta DisplayName/Tooltip/ReadOnly |
-| **M3** | PropertyWidgets（primitive、**ColorWidget**） | **已实施（待 commit）** | `PropertyPrimitiveWidgets` / `ColorWidget` / `PropertyValueWidget`；`LinearColor` 用 `StaticClass`；Material `ForAssetDefaults` + `MarkDirty`；**Enum 未接入**（见下） |
-| **M3‑Enum** | `PropertyEnumWidget` 接入 | **后置** | 反射补全 enum **underlying type / size** 后再从 `PropertyValueWidget` 启用；仓库保留 scaffold，**未接线** |
+| **M3** | PropertyWidgets（primitive、**ColorWidget**） | **已合入** | `PropertyPrimitiveWidgets` / `ColorWidget` / `PropertyValueWidget`；`LinearColor` 用 `StaticClass`；Material `ForAssetDefaults` + `MarkDirty` |
+| **M3‑Enum** | `PropertyEnumWidget` 接入 | **已合入** | `PropertyEnumWidget` 已从 `PropertyValueWidget` 接线 |
 | **M3.1** | `ObjectPtrWidget` + `PropertyRefPicker`（**Asset + Object**） | **已合入** | 见 [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md) |
 | **M3-Enum** | `PropertyEnumWidget` 接线 | **已合入** | `MEPrimitiveProperty::GetEnum()` / `GetSize()` |
 | **M4** | Inspector 嵌套 + `TransformWidget` + Scene Undo 接线 | M3.1 | **已合入**；TransformWidget；`propertyPath` 粒度 Undo |
-| **M5a** | **`Font` 资产** + `LoadAsset_Impl` + scan | M1、M4 | **已实施**；Project 下 `.ttf`/`.otf` 可加载 |
-| **M5b** | 排版角色 + 多字体 atlas + `EditorTypographyScope` + 代表性窗口接线 | M5a | Body/Heading 字重与字号可区分；无 `FontGlobalScale` |
-| **M5.1** | 各角色字号/CJK 重建、更多窗口清扫 | M5b | `bEnableCjkGlyphs`；改设置后 atlas 刷新 |
+| **M5a** | **`Font` 资产** + `LoadAsset_Impl` + scan | M1、M4 | **已合入**；Project 下 `.ttf`/`.otf` 可加载 |
+| **M5b** | 排版角色 + 多字体 atlas + `EditorTypographyScope` + 代表性窗口接线 | M5a | **已合入**；Body/Heading 字重与字号可区分；无 `FontGlobalScale` |
+| **M5.1** | CJK glyph 开关、全窗口排版、设置变更重建 atlas | M5b | **已合入**；CJK **可读显示** → **i18n** |
 | **M6** | 收拢窗口散落 `PushStyleColor` | M1 | grep 硬编码减少 |
 | **M7** | Object 引用 Picker（非 Asset，`AllowedClasses` + 注册表或受控枚举） | M4 + 需求 | 可选；不阻塞 Appearance 主线 |
 
@@ -388,7 +389,9 @@ M4 的 Undo 桥实现完全复用你当前 Inspector 的 before/after + Command 
 | `Editor/src/UI/Property/PropertyEditPolicy.*` | Specifier + Meta |
 | `Editor/src/UI/Property/PropertyEditSession.*` | Context + `OnMarkDirty` |
 | `Editor/src/UI/Property/PropertyPrimitiveWidgets.*` | Primitive + Vector2/3/4 |
-| `Editor/src/UI/Property/PropertyEnumWidget.*` | **Scaffold only**（未接入 `PropertyValueWidget`） |
+| `Editor/src/UI/Property/PropertyEnumWidget.*` | Enum 下拉 |
+| `Editor/src/UI/Appearance/EditorTypographyScope.*` | 排版 RAII `PushFont` |
+| `Editor/src/UI/Appearance/EditorWindowTypography.*` | 面板标题 Heading 字体 |
 | `Editor/src/UI/Property/PropertyValueWidget.*` | Dispatches primitive / `LinearColor` (`IsA(StaticClass)`) |
 | `Editor/src/UI/Property/ColorWidget.*` | ImGui ColorEdit → `LinearColor` |
 | `Editor/src/UI/Property/ObjectPtrWidget.*` | `MEObjectPtrProperty` 入口 |

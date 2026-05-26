@@ -2,23 +2,16 @@
 
 #include "Shell/EditorContextHelpers.h"
 #include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTypography.h"
+
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 namespace minEngine
 {
     void HierarchyWindow::OnDraw()
     {
-        bool windowOpen = false;
+        if (!EditorWindowTypography::BeginPanel(m_Context, m_Title.c_str()))
         {
-            EditorTypographyScope windowTitleTypography(
-                m_Context.GetEditorAppearance(),
-                EditorTypographyRole::Heading);
-            windowOpen = ImGui::Begin(m_Title.c_str());
-        }
-
-        if (!windowOpen)
-        {
-            ImGui::End();
             return;
         }
 

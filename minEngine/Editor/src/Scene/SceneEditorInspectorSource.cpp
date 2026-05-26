@@ -4,6 +4,7 @@
 #include "Shell/IEditorContext.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTypography.h"
 #include "UI/Property/ObjectPtrWidget.h"
 #include "UI/Property/PropertyEditPolicy.h"
 #include "UI/Property/PropertyValueWidget.h"
@@ -44,7 +45,21 @@ namespace minEngine
 
     void SceneEditorInspectorSource::DrawGameObjectDetails(GameObject* gameObject)
     {
-        ImGui::Begin(kWindowTitle);
+        IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+        if (editorContext == nullptr)
+        {
+            ImGui::Begin(kWindowTitle);
+            ImGui::TextUnformatted("No selected GameObject.");
+            ImGui::End();
+            return;
+        }
+
+        if (!EditorWindowTypography::BeginPanel(*editorContext, kWindowTitle))
+        {
+            return;
+        }
+
+        EditorTypographyScope bodyTypography(editorContext->GetEditorAppearance(), EditorTypographyRole::Body);
 
         if (!gameObject)
         {

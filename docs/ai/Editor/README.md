@@ -3,7 +3,7 @@
 | 文档 | 说明 |
 |------|------|
 | [EDITOR_APPEARANCE.md](./EDITOR_APPEARANCE.md) | 编辑器视觉：Color/主题、PropertyWidgets、Font 资产（**拍板 v1**） |
-| [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md) | **Font 资产**（M5/M5.1）：数据结构、AssetManager、EditorAppearance（**待审批**） |
+| [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md) | **Font 资产**（M5/M5.1）：数据结构、AssetManager、排版角色字体 |
 | [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md) | **ObjectPtrWidget**（M3.1）：Asset + Object 引用、AllowedClasses |
 | [EDITOR_SHELL_DESIGN.md](./EDITOR_SHELL_DESIGN.md) | Editor Shell（E0）：SubModule / Service / IEditorContext |
 | [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md) | Undo / Redo、`EditorSettings` 栈上限 |

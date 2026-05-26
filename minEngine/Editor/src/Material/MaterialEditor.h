@@ -81,6 +81,8 @@ namespace minEngine
         MaterialEditorPreview& GetPreview() { return m_Preview; }
         const MaterialEditorPreview& GetPreview() const { return m_Preview; }
 
+        IEditorContext* GetEditorContext() const { return m_Context; }
+
     private:
         void OnEnterMode();
         void OnExitMode();

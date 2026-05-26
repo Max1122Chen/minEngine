@@ -1,8 +1,12 @@
 #include "MaterialGraphWindow.h"
 
 #include "Shell/EditorContextHelpers.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTypography.h"
 
 #include "imgui.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 #include "Material/MaterialEditor.h"
 #include "Material/MaterialEditorSession.h"
@@ -208,11 +212,21 @@ namespace minEngine
 
     void MaterialGraphWindow::OnDraw()
     {
-        ImGui::Begin(m_Title.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        if (!EditorWindowTypography::BeginPanel(
+                m_Context,
+                m_Title.c_str(),
+                nullptr,
+                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+        {
+            return;
+        }
+
+        EditorTypographyScope bodyTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::Body);
 
         MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
         if (!materialEditor)
         {
+            ImGui::End();
             return;
         }
         bool rebindGraph = false;

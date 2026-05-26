@@ -149,6 +149,18 @@ namespace minEngine
                 ImGui::EndMenu();
             }
 
+            if (ImGui::BeginMenu("Typography"))
+            {
+                EditorAppearance& appearance = m_Context.GetEditorAppearance();
+                const bool cjkEnabled = appearance.GetAppearanceSettings().Typography.bEnableCjkGlyphs;
+                if (ImGui::MenuItem("Enable CJK Glyphs", nullptr, cjkEnabled))
+                {
+                    appearance.SetCjkGlyphsEnabled(!cjkEnabled, true);
+                }
+
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenu();
         }
     }

@@ -9,6 +9,10 @@
 #include "UI/Widgets/MultiSelectFilterDropdown.h"
 
 #include "UI/EditorWindows/EditorWindow.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTypography.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 namespace minEngine
 {
@@ -35,7 +39,16 @@ namespace minEngine
             const bool isPlaying = m_Context.IsPlaying();
             m_LastIsPlaying = isPlaying;
 
-            ImGui::Begin(m_Title.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+            if (!EditorWindowTypography::BeginPanel(
+                    m_Context,
+                    m_Title.c_str(),
+                    nullptr,
+                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+            {
+                return;
+            }
+
+            EditorTypographyScope bodyTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::Body);
             bool requestCopyVisible = false;
 
             {

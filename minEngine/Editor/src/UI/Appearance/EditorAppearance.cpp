@@ -24,6 +24,8 @@ namespace minEngine
         {
             return static_cast<size_t>(role);
         }
+
+        ImVector<ImWchar> s_BuiltUiGlyphRanges;
     }
 
     void EditorAppearance::ApplyStyleConstants()
@@ -132,6 +134,18 @@ namespace minEngine
         }
     }
 
+    bool EditorAppearance::PersistAppearanceSettingsToProject()
+    {
+        ProjectManager& projectManager = ProjectManager::Get();
+        if (!projectManager.HasOpenProject())
+        {
+            return false;
+        }
+
+        projectManager.GetCurrentProjectCtx().Settings.Appearance = m_Settings;
+        return projectManager.SaveCurrentProjectSettings();
+    }
+
     bool EditorAppearance::SetThemePreset(std::string_view presetId, bool persistToProjectSettings)
     {
         m_Settings.ThemePresetId = std::string(presetId);
@@ -142,14 +156,43 @@ namespace minEngine
             return true;
         }
 
-        ProjectManager& projectManager = ProjectManager::Get();
-        if (!projectManager.HasOpenProject())
+        return PersistAppearanceSettingsToProject();
+    }
+
+    bool EditorAppearance::SetCjkGlyphsEnabled(bool enabled, bool persistToProjectSettings)
+    {
+        if (m_Settings.Typography.bEnableCjkGlyphs == enabled)
         {
-            return false;
+            return true;
         }
 
-        projectManager.GetCurrentProjectCtx().Settings.Appearance = m_Settings;
-        return projectManager.SaveCurrentProjectSettings();
+        m_Settings.Typography.bEnableCjkGlyphs = enabled;
+        if (m_UiFontBackendReady)
+        {
+            RebuildUiFontAtlas();
+        }
+
+        if (!persistToProjectSettings)
+        {
+            return true;
+        }
+
+        return PersistAppearanceSettingsToProject();
+    }
+
+    const ImWchar* EditorAppearance::BuildUiGlyphRanges(ImFontAtlas& fontAtlas)
+    {
+        if (!m_Settings.Typography.bEnableCjkGlyphs)
+        {
+            return fontAtlas.GetGlyphRangesDefault();
+        }
+
+        ImFontGlyphRangesBuilder builder;
+        builder.AddRanges(fontAtlas.GetGlyphRangesDefault());
+        builder.AddRanges(fontAtlas.GetGlyphRangesChineseFull());
+        s_BuiltUiGlyphRanges.clear();
+        builder.BuildRanges(&s_BuiltUiGlyphRanges);
+        return s_BuiltUiGlyphRanges.Data;
     }
 
     float EditorAppearance::ResolveSizePixelsForRole(EditorTypographyRole role) const
@@ -241,7 +284,7 @@ namespace minEngine
             return;
         }
 
-        const ImWchar* glyphRanges = io.Fonts->GetGlyphRangesDefault();
+        const ImWchar* glyphRanges = BuildUiGlyphRanges(*io.Fonts);
 
         for (size_t roleIndex = 0; roleIndex < m_RoleFonts.size(); ++roleIndex)
         {

@@ -1,8 +1,13 @@
 #include "Material/MaterialEditorInspectorSource.h"
 
 #include "Material/MaterialEditor.h"
+#include "Shell/IEditorContext.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTypography.h"
 
 #include "imgui.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 #include "Material/MaterialEditorSession.h"
 #include "Material/MaterialGraphIds.h"
@@ -91,7 +96,21 @@ namespace minEngine
 
     void MaterialEditorInspectorSource::DrawInspector()
     {
-        ImGui::Begin(kWindowTitle);
+        IEditorContext* editorContext = m_MaterialEditor.GetEditorContext();
+        if (editorContext == nullptr)
+        {
+            ImGui::Begin(kWindowTitle);
+            ImGui::TextUnformatted("No material editor context.");
+            ImGui::End();
+            return;
+        }
+
+        if (!EditorWindowTypography::BeginPanel(*editorContext, kWindowTitle))
+        {
+            return;
+        }
+
+        EditorTypographyScope bodyTypography(editorContext->GetEditorAppearance(), EditorTypographyRole::Body);
 
         const ImVec2 scrollAvail = ImGui::GetContentRegionAvail();
         ImGui::BeginChild(

@@ -1,7 +1,7 @@
 # Font 资产 — 设计案（M5 / M5b 排版角色）
 
 Last updated: 2026-05-26  
-Status: **M5a 已实施** | **M5b 修订待审批**（多字体排版角色）  
+Status: **M5a/M5b/M5.1 已合入** | **CJK 可读显示（字体资产）后置 i18n**  
 父文档：[EDITOR_APPEARANCE.md](./EDITOR_APPEARANCE.md) §8、§9  
 关联：[EDITOR_SHELL_DESIGN.md](./EDITOR_SHELL_DESIGN.md)、[ASSET_PIPELINE_P1_API.md](../Platform/ContentBrowser/ASSET_PIPELINE_P1_API.md)
 
@@ -42,6 +42,7 @@ Status: **M5a 已实施** | **M5b 修订待审批**（多字体排版角色）
 | NG5 | FreeType、子集化、SDF、可变字体轴 |
 | NG6 | **任意控件** 在 `.mesettings` 里逐条配字体（过细）；M5b 只认 **固定角色枚举** |
 | NG7 | M5b **不要求** 一次 grep 改完所有窗口；允许分波次接线，但 **基础设施一次到位** |
+| NG8 | **CJK 可读 UI 显示**（含 Noto 等含字形 TTF、locale 选字体）：**后置 i18n**；M5.1 仅提供 `bEnableCjkGlyphs` + atlas 合并字集，**不保证** Inter 等西文字体下中文正常显示（缺字仍为 `?`） |
 
 ---
 
@@ -315,17 +316,20 @@ ImFont* m_BodyFont = nullptr;  // 冗余缓存 = m_RoleFonts[Body]
 
 ### M5b
 
-- [ ] atlas 含至少 **Body + Heading** 两种 `ImFont*`（Inter Regular / SemiBold）
-- [ ] 未 Push 时 UI 为 **Body**；标题处 Push **Heading** 后字重明显变粗
-- [ ] 无 `io.FontGlobalScale = 1.5f`
-- [ ] `.mesettings` 可保存/加载 `Typography.Slots`
-- [ ] Heading 的 GUID 无效时不崩溃（回退 warn）
+- [x] atlas 含至少 **Body + Heading** 两种 `ImFont*`（Inter Regular / SemiBold）
+- [x] 未 Push 时 UI 为 **Body**；标题处 Push **Heading** 后字重明显变粗
+- [x] 无 `io.FontGlobalScale = 1.5f`
+- [x] `.mesettings` 可保存/加载 `Typography`（切主题 / CJK 开关时写入）
+- [x] Heading 的 GUID 无效时不崩溃（回退 warn）
 
 ### M5.1
 
-- [ ] 修改某角色 `SizePixels` 后重建 atlas 生效
-- [ ] `bEnableCjkGlyphs` 对所有角色生效；中文不崩
-- [ ] （可选）Appearance 设置 UI 或手改 mesettings 验收
+- [x] `bEnableCjkGlyphs` 对所有角色生效（`GetGlyphRangesChineseFull` 合并）
+- [x] View→Typography→Enable CJK Glyphs 切换后重建 atlas
+- [x] 主要 Editor 窗口排版清扫（MainMenu、Hierarchy、Inspector、Console、Toolbar、Viewport、Material）
+- [ ] 手改 `.mesettings` 各角色 `SizePixels` 后自动重建（需重开工程或后续 Appearance UI）
+
+**CJK 显示（后置）：** M5.1 的 `bEnableCjkGlyphs` 只扩展 **glyph range**；当前默认 Inter **无 CJK 字形**，开启开关仍无法正确显示中文。含 CJK 的 **Font 资产 + 工程/locale 策略** 在 **i18n 里程碑** 再做（见 NG8）。
 
 ---
 
@@ -349,7 +353,7 @@ ImFont* m_BodyFont = nullptr;  // 冗余缓存 = m_RoleFonts[Body]
 | **F3** | 默认字号 | Body **14**，Heading **16**（可微调） |
 | **F4** | 同 TTF 不同字号 | **两次 AddFont**（不同 `SizePixels`），不靠 `FontGlobalScale` |
 | **F5** | 标题 SemiBold | **独立 Font 资产**（`Inter-SemiBold.ttf`），不用假粗体 |
-| **F6** | CJK | **M5.1**；M5b 仅 `GetGlyphRangesDefault()` |
+| **F6** | CJK | **M5.1** glyph range + 开关；**可读显示** → **i18n**（CJK Font 资产） |
 | **F7** | 引擎默认 Inter | 用户 Project 优先；引擎 `EngineDefault/.../Fonts/` 作 Zero-GUID 回退 |
 | **F8** | 全窗口一次性改完 | **否**；M5b-wire 分波次，避免巨型 PR |
 
@@ -361,3 +365,5 @@ ImFont* m_BodyFont = nullptr;  // 冗余缓存 = m_RoleFonts[Body]
 |------|------|
 | 2026-05-26 | M5 详细设计初稿 |
 | 2026-05-26 | **v2**：M5a 标记完成；M5b 改为 **排版角色** 多字体/多字号；废弃单一 `UiFontAssetGuid`；Inter Regular/SemiBold 默认策略 |
+| 2026-05-26 | **M5.1**：CJK glyph 合并、`SetCjkGlyphsEnabled`、全窗口 `EditorWindowTypography` / `EditorTypographyScope` |
+| 2026-05-26 | **备注**：CJK **可读显示**（字体资产）后置 **i18n**；M5.1 不解决 Inter 缺字 |

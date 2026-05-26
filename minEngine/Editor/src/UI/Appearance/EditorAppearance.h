@@ -9,6 +9,8 @@
 #include <vector>
 
 struct ImFont;
+struct ImFontAtlas;
+typedef unsigned short ImWchar;
 
 namespace minEngine
 {
@@ -22,6 +24,7 @@ namespace minEngine
         void ApplyResolvedPalette(const EditorThemePalette& palette);
 
         bool SetThemePreset(std::string_view presetId, bool persistToProjectSettings);
+        bool SetCjkGlyphsEnabled(bool enabled, bool persistToProjectSettings);
         const EditorThemePalette& GetActivePalette() const { return m_ActivePalette; }
         const EditorAppearanceSettings& GetAppearanceSettings() const { return m_Settings; }
 
@@ -34,6 +37,8 @@ namespace minEngine
         static void ApplyPaletteToImGui(const EditorThemePalette& palette);
 
         void EnsureTypographySettings();
+        bool PersistAppearanceSettingsToProject();
+        const ImWchar* BuildUiGlyphRanges(ImFontAtlas& fontAtlas);
         std::shared_ptr<Font> ResolveFontForRole(EditorTypographyRole role) const;
         float ResolveSizePixelsForRole(EditorTypographyRole role) const;
 

@@ -1,6 +1,9 @@
 #include "SceneEditingViewportWindow.h"
 
 #include "Shell/EditorContextHelpers.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 #include "Shell/ViewportClientRegistry.h"
 #include "Render/RenderCamera.h"
 #include "Function/Framework/GameObject/GameObject.h"
@@ -39,6 +42,9 @@ namespace minEngine
         if (ImGui::BeginChild(overlayId.c_str(), UI::GetOverlaySize(m_OverlayState, m_OverlayConfig), true,
                               ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav))
         {
+            EditorTypographyScope captionTypography(
+                m_Context.GetEditorAppearance(),
+                EditorTypographyRole::Caption);
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
             if (m_OverlayState.collapsed)
             {

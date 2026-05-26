@@ -2,6 +2,7 @@
 
 #include "Shell/EditorInputHub.h"
 #include "Shell/ViewportClientRegistry.h"
+#include "UI/Appearance/EditorWindowTypography.h"
 
 namespace minEngine
 {
@@ -70,7 +71,10 @@ bool EditorViewportWindow::DrawSceneColorImage(ViewportFrameState& outFrameState
         EditorViewportClient& viewportClient = GetViewportClient();
         viewportClient.BeginFrame(m_Context.GetLastDeltaTime());
 
-        ImGui::Begin(m_Title.c_str(), nullptr, GetViewportWindowFlags());
+        if (!EditorWindowTypography::BeginPanel(m_Context, m_Title.c_str(), nullptr, GetViewportWindowFlags()))
+        {
+            return;
+        }
 
     ViewportFrameState frameState{};
     const bool drewSceneImage = DrawSceneColorImage(frameState);
