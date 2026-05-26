@@ -7,3 +7,6 @@
 [submodule "minEngine/minEngine/Third-Party/nativefiledialog-extended"]
 	path = minEngine/minEngine/Third-Party/nativefiledialog-extended
 	url = https://github.com/btzy/nativefiledialog-extended.git
+[submodule "minEngine/minEngine/Third-Party/efsw"]
+	path = minEngine/minEngine/Third-Party/efsw
+	url = https://github.com/SpartanJ/efsw.git
