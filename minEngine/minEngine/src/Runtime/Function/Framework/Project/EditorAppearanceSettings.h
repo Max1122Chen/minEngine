@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Function/Framework/Project/EditorThemePalette.h"
+#include "Runtime/Function/Framework/Project/EditorTypographySettings.h"
 
 namespace minEngine
 {
@@ -17,6 +18,10 @@ namespace minEngine
         /** When ThemePresetId is "Custom", non-zero tokens override the DarkEngine base. */
         ME_PROPERTY()
         EditorThemePalette CustomPalette{};
+
+        /** Per-role UI fonts and sizes (Body, Heading, ...). */
+        ME_PROPERTY()
+        EditorTypographySettings Typography{};
     };
 }
 

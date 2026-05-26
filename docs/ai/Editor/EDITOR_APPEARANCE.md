@@ -1,7 +1,7 @@
 # Editor Appearance — 设计案
 
-Last updated: 2026-05-25  
-Status: **拍板 v1 — M0/M1/M2 已合入；M3 核心 Widgets 已实施（待 commit）；Enum / M3.1 后置**  
+Last updated: 2026-05-26  
+Status: **M0–M4 已合入；M5 Font 详细设计待审批**（见 [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md)）  
 分支：`feat/editor-appearance`  
 父文档：[Editor 平台化规划](./EDITOR_PLATFORM_PLAN.md)、[Editor Shell](./EDITOR_SHELL_DESIGN.md)  
 关联：[GUI 开发 FAQ](./GUI_DEV_FAQ.md)、[Command History / Undo](./EDITOR_COMMAND_HISTORY.md)、[资源管线 R2](../Render/RESOURCE_PIPELINE_PLAN.md)
@@ -322,38 +322,25 @@ M4 的 Undo 桥实现完全复用你当前 Inspector 的 before/after + Command 
 
 ## 8) 字体：`Font` 资产化（纳入本计划）
 
+**详细设计（M5a 已实施，M5b 排版角色修订待审批）：** [FONT_ASSET_DESIGN.md](./FONT_ASSET_DESIGN.md)
+
 ### 8.1 定位
 
 - `Font` 是 **引擎可发现、有 Meta、可加载** 的资产（与 `Texture2D` 同级抽象）
 - Editor UI 字体 = **消费 Font 资产**；游戏 UI 将来复用同一类型
 - 英文为主；资产 / 设置上预留 **`bEnableCjkGlyphs`**（默认 false）
 
-### 8.2 Runtime 形状（示意）
+### 8.2 摘要（与详细设计对齐）
 
-```cpp
-ME_CLASS()
-class Font : public Asset
-{
-    ME_GENERATED_BODY(Font)
-    // 内存：TTF/OTF 字节或 stb 解码结果；ImGui 不负责持有文件路径
-};
-
-// AssetType: "Font"
-// 扩展名: .ttf, .otf
-// Meta: 可选 DefaultSizePixels, bEnableCjkGlyphs
-```
-
-- `AssetManager::LoadAsset_Impl<Font>`：读文件 → 缓存字节 → `EditorAppearance` 用 `AddFontFromMemoryTTF`
-- `InferAssetTypeFromExtension` / `LoadAssetByMeta_Internal` 增加 Font 分支
-
-### 8.3 Editor 消费
-
-- `EditorAppearanceSettings`（或 `EditorFontSettings`）字段改为：
-  - `GUID UiFontAssetGuid`（工程覆盖）
-  - `float UiFontSizePixels`（全局字号配置项）
-  - 引擎默认：`EngineDefaultAssets/Editor/Fonts/DefaultUI.ttf` 对应 **内置 Font 资产** 或启动时注册默认 Meta
-- 移除长期依赖 `io.FontGlobalScale = 1.5f`
-- CJK：若 `bEnableCjkGlyphs`，`AddFontFromMemoryTTF` 传 `GetGlyphRangesChineseFull()`（**接口预留**）
+| 项 | 决定 |
+|----|------|
+| Runtime | `Font : Asset`，**仅**缓存 `std::vector<uint8_t>` + 源扩展名；**无 ImGui**（**M5a ✓**） |
+| 磁盘 | 源文件即 `.ttf` / `.otf`；**无** `.mefont` sidecar |
+| AssetType | `"Font"`；Registry + `LoadAsset_Impl<Font>` + Scan/Import（**M5a ✓**） |
+| Editor 排版 | **`EditorTypographyRole`**：Body=Inter Regular、Heading=Inter SemiBold 等；**每角色** `FontAssetGuid` + `SizePixels` |
+| 工程设置 | `EditorAppearanceSettings.Typography`（角色表）；`bEnableCjkGlyphs` 作用于全部角色（**M5.1**） |
+| Editor | 单 atlas 多 `ImFont*` + `EditorTypographyScope`；`Fonts[0]`=Body；移除 `FontGlobalScale` |
+| per-asset Meta | **不做**；字号归属角色，非 Font 资产（见 FONT_ASSET_DESIGN §6） |
 
 ### 8.4 与 RESOURCE_PIPELINE 关系
 
@@ -375,11 +362,12 @@ class Font : public Asset
 | **M2** | `PropertyEditPolicy`、`PropertyEditSession` | **已合入（`6648a0e`）** | 语境仅 `SceneInstance` \| `AssetDefaults`；Scene/Material Details 走 Policy；Meta DisplayName/Tooltip/ReadOnly |
 | **M3** | PropertyWidgets（primitive、**ColorWidget**） | **已实施（待 commit）** | `PropertyPrimitiveWidgets` / `ColorWidget` / `PropertyValueWidget`；`LinearColor` 用 `StaticClass`；Material `ForAssetDefaults` + `MarkDirty`；**Enum 未接入**（见下） |
 | **M3‑Enum** | `PropertyEnumWidget` 接入 | **后置** | 反射补全 enum **underlying type / size** 后再从 `PropertyValueWidget` 启用；仓库保留 scaffold，**未接线** |
-| **M3.1** | `ObjectPtrWidget` + `PropertyRefPicker`（**Asset + Object**） | **已实施（待 commit）** | 见 [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md) |
-| **M3-Enum** | `PropertyEnumWidget` 接线 | **已实施（待 commit）** | `MEPrimitiveProperty::GetEnum()` / `GetSize()` |
-| **M4** | Inspector 嵌套 + `TransformWidget` + Scene Undo 接线 | M3.1 | TransformWidget 默认展开；Root/非 Root Transform 均可编辑；嵌套字段按 `propertyPath` 粒度 Undo（一个字段一个 Command） |
-| **M5** | **`Font` 资产** + `LoadAsset_Impl` + scan + `EditorAppearance` 从 Font 加载 | M1（可与 M3 并行） | 工程可指定 Font GUID；英文清晰 |
-| **M5.1** | 工程 `UiFontSize`、CJK 开关接线（无 glyph 也不崩） | M5 | 配置项生效 |
+| **M3.1** | `ObjectPtrWidget` + `PropertyRefPicker`（**Asset + Object**） | **已合入** | 见 [OBJECT_PTR_WIDGET_DESIGN.md](./OBJECT_PTR_WIDGET_DESIGN.md) |
+| **M3-Enum** | `PropertyEnumWidget` 接线 | **已合入** | `MEPrimitiveProperty::GetEnum()` / `GetSize()` |
+| **M4** | Inspector 嵌套 + `TransformWidget` + Scene Undo 接线 | M3.1 | **已合入**；TransformWidget；`propertyPath` 粒度 Undo |
+| **M5a** | **`Font` 资产** + `LoadAsset_Impl` + scan | M1、M4 | **已实施**；Project 下 `.ttf`/`.otf` 可加载 |
+| **M5b** | 排版角色 + 多字体 atlas + `EditorTypographyScope` + 代表性窗口接线 | M5a | Body/Heading 字重与字号可区分；无 `FontGlobalScale` |
+| **M5.1** | 各角色字号/CJK 重建、更多窗口清扫 | M5b | `bEnableCjkGlyphs`；改设置后 atlas 刷新 |
 | **M6** | 收拢窗口散落 `PushStyleColor` | M1 | grep 硬编码减少 |
 | **M7** | Object 引用 Picker（非 Asset，`AllowedClasses` + 注册表或受控枚举） | M4 + 需求 | 可选；不阻塞 Appearance 主线 |
 
@@ -450,3 +438,4 @@ class Font : public Asset
 | 2026-05-25 | **M3 诚实范围**：`PropertyEnumWidget` 仅 scaffold、未接线；**M3.1** 类型桶后置至 `AssetWorkflow` 分支合并后 |
 | 2026-05-25 | **ObjectPtrWidget v2 设计**：Asset+Object、`AllowedClasses` 一统 |
 | 2026-05-25 | **ObjectPtrWidget v3**：`MEClass*`、`IsA(Asset)` 分流、双 `Collect*` 扁平化；见 `OBJECT_PTR_WIDGET_DESIGN.md` |
+| 2026-05-26 | **M5**：`FONT_ASSET_DESIGN.md` 详细设计（Font 数据结构、EditorAppearance、设置字段） |

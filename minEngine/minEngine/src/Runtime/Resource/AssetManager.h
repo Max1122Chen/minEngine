@@ -26,6 +26,7 @@ namespace minEngine
     class Material;
     class Shader;
     class Scene;
+    class Font;
     class Asset;
 
     struct ImportAssetResult
@@ -215,6 +216,8 @@ namespace minEngine
     std::shared_ptr<Material> AssetManager::LoadAsset_Impl<Material>(const AssetMeta& meta);
     template<>
     std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta);
 
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;

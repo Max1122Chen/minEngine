@@ -12,6 +12,8 @@
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Resource/AssetResources/ShaderResource.h"
+#include "Runtime/Resource/Font.h"
+#include "Runtime/Resource/FontLoader.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -1058,6 +1060,17 @@ namespace minEngine
             if (asset == nullptr)
             {
                 outErrorMessage = "failed to load shader by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "Font")
+        {
+            std::shared_ptr<Font> asset = LoadAsset<Font>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load font by guid";
                 return nullptr;
             }
             return std::static_pointer_cast<Asset>(asset);

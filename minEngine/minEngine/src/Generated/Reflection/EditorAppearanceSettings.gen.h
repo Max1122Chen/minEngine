@@ -6,6 +6,7 @@
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::EditorAppearanceSettings)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::EditorAppearanceSettings, ThemePresetId)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::EditorAppearanceSettings, CustomPalette)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::EditorAppearanceSettings, Typography)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::EditorAppearanceSettings, GReflectionClassRegister_EditorAppearanceSettings_4460ecf8)

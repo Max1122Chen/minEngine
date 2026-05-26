@@ -172,7 +172,7 @@ namespace minEngine
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.FontGlobalScale = 1.50f;
+        io.FontGlobalScale = 1.0f;
         m_Appearance.ApplyDefaultTheme();
 
         GLFWwindow* windowHandle = static_cast<GLFWwindow*>(WindowSystem::Get().GetWindowHandle());
@@ -195,10 +195,11 @@ namespace minEngine
         else
         {
             // feat/editor-asset-workflow worktree: scan/register Assets under this project (not main minEngine repo).
-            projectPath = "D:/Dev/GitRepo/minEngine-asset-workflow/minEngine/MyMEProject";
+            projectPath = "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject";
         }
 
         OpenProject(projectPath);
+        m_Appearance.RebuildUiFontAtlas();
         PostInitialize();
     }
 

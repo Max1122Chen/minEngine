@@ -1,39 +1,56 @@
 #include "HierarchyWindow.h"
 
 #include "Shell/EditorContextHelpers.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 namespace minEngine
 {
     void HierarchyWindow::OnDraw()
     {
-        ImGui::Begin(m_Title.c_str());
-
-        if (ImGui::Button("Create Empty"))
+        bool windowOpen = false;
         {
-            GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
+            EditorTypographyScope windowTitleTypography(
+                m_Context.GetEditorAppearance(),
+                EditorTypographyRole::Heading);
+            windowOpen = ImGui::Begin(m_Title.c_str());
         }
-        ImGui::Separator();
 
-        const std::vector<GameObject*> gameObjects = GetSceneEditor(&m_Context)->GetHierarchyGameObjects();
-        if (gameObjects.empty())
+        if (!windowOpen)
         {
-            ImGui::TextUnformatted("No GameObject in current scene.");
             ImGui::End();
             return;
         }
 
-        TryCaptureF2RenameRequest();
-
-        // For each GO in hierarchy, we draw a selectable item. Clicking on it will select the GO, and right-clicking will open a context menu for that GO.
-        bool anyGoMenuOpened = false;
-        for (GameObject* gameObject : gameObjects)
         {
-            if (!gameObject)
+            EditorTypographyScope bodyTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::Body);
+
+            if (ImGui::Button("Create Empty"))
             {
-                continue;
+                GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
+            }
+            ImGui::Separator();
+
+            const std::vector<GameObject*> gameObjects = GetSceneEditor(&m_Context)->GetHierarchyGameObjects();
+            if (gameObjects.empty())
+            {
+                ImGui::TextUnformatted("No GameObject in current scene.");
+                ImGui::End();
+                return;
             }
 
-            ImGui::PushID(static_cast<int>(gameObject->GetID()));
+            TryCaptureF2RenameRequest();
+
+            // For each GO in hierarchy, we draw a selectable item. Clicking on it will select the GO, and right-clicking will open a context menu for that GO.
+            bool anyGoMenuOpened = false;
+            for (GameObject* gameObject : gameObjects)
+            {
+                if (!gameObject)
+                {
+                    continue;
+                }
+
+                ImGui::PushID(static_cast<int>(gameObject->GetID()));
 
             if (m_RenamingGameObjectId == gameObject->GetID())
             {
@@ -99,14 +116,15 @@ namespace minEngine
             
             // TODO: there are some issues with the current implementation of right-click context menu, 
             // For example, only the last GO's menu can be correctly opened. Right-clicking on the other GOs will open the blank space menu instead.
-            anyGoMenuOpened = TryDrawRightClickGOMenu(*gameObject);
-            ImGui::PopID();
-        }
+                anyGoMenuOpened = TryDrawRightClickGOMenu(*gameObject);
+                ImGui::PopID();
+            }
 
-        // only show blank space menu if no GO menu is opened, otherwise the blank space menu will interfere with GO menu
-        if (!anyGoMenuOpened)
-        {
-            TryDrawRightClickBlankSpaceMenu();
+            // only show blank space menu if no GO menu is opened, otherwise the blank space menu will interfere with GO menu
+            if (!anyGoMenuOpened)
+            {
+                TryDrawRightClickBlankSpaceMenu();
+            }
         }
 
         ImGui::End();

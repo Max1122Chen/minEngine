@@ -2,12 +2,18 @@
 
 #include "Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorTypographyScope.h"
 #include "UI/Property/ObjectPtrWidget.h"
 #include "UI/Property/PropertyEditPolicy.h"
 #include "UI/Property/PropertyValueWidget.h"
 #include "UI/Property/TransformWidget.h"
 
 #include "imgui.h"
+
+#include <memory>
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -169,7 +175,17 @@ namespace minEngine
         if (SceneComponent* rootComponent = gameObject->GetRootComponent())
         {
             ImGui::Spacing();
-            ImGui::SeparatorText("Root Transform");
+            if (IEditorContext* editorContext = m_SceneEditor.GetEditorContext())
+            {
+                EditorTypographyScope sectionTypography(
+                    editorContext->GetEditorAppearance(),
+                    EditorTypographyRole::Subheading);
+                ImGui::SeparatorText("Root Transform");
+            }
+            else
+            {
+                ImGui::SeparatorText("Root Transform");
+            }
 
             const Reflection::MEClass* classInfo = rootComponent->GetClass();
             MEObject* rootComponentObject = static_cast<MEObject*>(rootComponent);
@@ -196,7 +212,12 @@ namespace minEngine
                         ApplyPropertyUndoCaptureHooks(fieldContext, true);
                     };
 
-                const bool valueChanged = TransformWidget::Draw(transform, treeFlags, applyUndoForField);
+                EditorAppearance* appearance =
+                    m_SceneEditor.GetEditorContext() != nullptr
+                        ? &m_SceneEditor.GetEditorContext()->GetEditorAppearance()
+                        : nullptr;
+                const bool valueChanged =
+                    TransformWidget::Draw(transform, treeFlags, applyUndoForField, appearance);
                 if (valueChanged)
                 {
                     rootComponent->MarkRenderStateDirty();
@@ -210,7 +231,17 @@ namespace minEngine
 
         // Components Section
         ImGui::Spacing();
-        ImGui::SeparatorText("Components");
+        if (IEditorContext* editorContext = m_SceneEditor.GetEditorContext())
+        {
+            EditorTypographyScope sectionTypography(
+                editorContext->GetEditorAppearance(),
+                EditorTypographyRole::Subheading);
+            ImGui::SeparatorText("Components");
+        }
+        else
+        {
+            ImGui::SeparatorText("Components");
+        }
 
         SceneComponent* rootComponent = gameObject->GetRootComponent();
         for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
@@ -232,6 +263,18 @@ namespace minEngine
             ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.30f, 0.42f, 1.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
             const std::string headerLabel = GetShortTypeName(classInfo->GetName()) + "##component_" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+
+            IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+            EditorAppearance* appearance =
+                editorContext != nullptr ? &editorContext->GetEditorAppearance() : nullptr;
+            std::unique_ptr<EditorTypographyScope> componentHeaderTypography;
+            if (appearance != nullptr)
+            {
+                componentHeaderTypography = std::make_unique<EditorTypographyScope>(
+                    *appearance,
+                    EditorTypographyRole::Subheading);
+            }
+
             const bool componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
             ImGui::PopStyleVar();
             ImGui::PopStyleColor(3);
@@ -612,7 +655,11 @@ namespace minEngine
                 ApplyPropertyUndoCaptureHooks(fieldContext, true);
             };
 
-            valueChanged |= TransformWidget::Draw(transform, treeFlags, applyUndoForField);
+            EditorAppearance* appearance =
+                m_SceneEditor.GetEditorContext() != nullptr
+                    ? &m_SceneEditor.GetEditorContext()->GetEditorAppearance()
+                    : nullptr;
+            valueChanged |= TransformWidget::Draw(transform, treeFlags, applyUndoForField, appearance);
             return valueChanged;
         }
 

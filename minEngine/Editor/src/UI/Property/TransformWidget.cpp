@@ -1,6 +1,11 @@
 #include "UI/Property/TransformWidget.h"
 
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+
 #include "imgui.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 #include "Runtime/Function/Framework/Transform/Transform.h"
 
@@ -42,7 +47,8 @@ namespace minEngine
 
     bool TransformWidget::Draw(Transform* transform,
                                int treeFlags,
-                               const std::function<void(std::string_view fieldName)>& applyUndoForField)
+                               const std::function<void(std::string_view fieldName)>& applyUndoForField,
+                               EditorAppearance* appearance)
     {
         if (transform == nullptr)
         {
@@ -51,7 +57,16 @@ namespace minEngine
         }
 
         bool valueChanged = false;
-        const bool open = ImGui::TreeNodeEx("##TransformTree", treeFlags, "Transform");
+        bool open = false;
+        if (appearance != nullptr)
+        {
+            EditorTypographyScope subheadingScope(*appearance, EditorTypographyRole::Subheading);
+            open = ImGui::TreeNodeEx("##TransformTree", treeFlags, "Transform");
+        }
+        else
+        {
+            open = ImGui::TreeNodeEx("##TransformTree", treeFlags, "Transform");
+        }
         if (open)
         {
             const char* tableId = "##TransformNestedTable";

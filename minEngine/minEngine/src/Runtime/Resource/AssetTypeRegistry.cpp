@@ -5,6 +5,7 @@
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Resource/Font.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 
 #include <algorithm>
@@ -82,6 +83,13 @@ namespace minEngine
             .Extensions = {".mescene"},
             .FileDialogFilterLabel = "Scene (*.mescene)"});
         m_AssetTypeIdByClass[Scene::StaticClass()] = "Scene";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "Font",
+            .RuntimeClassName = GetClassName<Font>(),
+            .Extensions = {".ttf", ".otf"},
+            .FileDialogFilterLabel = "Font (*.ttf;*.otf)"});
+        m_AssetTypeIdByClass[Font::StaticClass()] = "Font";
     }
 
     void AssetTypeRegistry::RegisterType(const AssetTypeDescriptor& descriptor)

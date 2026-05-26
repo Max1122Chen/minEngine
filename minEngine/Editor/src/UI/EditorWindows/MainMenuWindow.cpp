@@ -7,6 +7,8 @@
 #include "Shell/EditorContextHelpers.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemePresets.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 namespace minEngine
 {
@@ -21,13 +23,18 @@ namespace minEngine
             return;
         }
 
-        DrawFileMenu();
-        DrawEditMenu();
-        DrawViewMenu();
-        DrawWindowModeMenu();
-        DrawToolsMenu();
-        DrawHelpMenu();
+        {
+            EditorTypographyScope menuTypography(
+                m_Context.GetEditorAppearance(),
+                EditorTypographyRole::MenuBar);
 
+            DrawFileMenu();
+            DrawEditMenu();
+            DrawViewMenu();
+            DrawWindowModeMenu();
+            DrawToolsMenu();
+            DrawHelpMenu();
+        }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleVar();
     }

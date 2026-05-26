@@ -1,11 +1,15 @@
 #include "UI/Appearance/EditorAppearance.h"
 
 #include "UI/Appearance/EditorThemePresets.h"
+#include "UI/Appearance/EditorTypographyDefaults.h"
 #include "UI/Property/EditorColorConversion.h"
 
 #include "imgui.h"
 
+#include "Log/LogSystem.h"
+#include "Resource/AssetManager.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
+#include "Runtime/Resource/Font.h"
 
 namespace minEngine
 {
@@ -14,6 +18,11 @@ namespace minEngine
         ImVec4 ToImGuiColor(const LinearColor& linear)
         {
             return EditorColorConversion::ToImGuiDisplayColor(linear);
+        }
+
+        size_t RoleIndex(EditorTypographyRole role)
+        {
+            return static_cast<size_t>(role);
         }
     }
 
@@ -94,9 +103,15 @@ namespace minEngine
         ApplyPaletteToImGui(palette);
     }
 
+    void EditorAppearance::EnsureTypographySettings()
+    {
+        EditorTypographyDefaults::ApplyBuiltinDefaults(m_Settings.Typography);
+    }
+
     void EditorAppearance::ApplyDefaultTheme()
     {
         m_Settings.ThemePresetId = std::string(EditorThemePresetIds::DarkEngine);
+        EnsureTypographySettings();
         ApplyResolvedPalette(EditorThemePresets::GetDarkEnginePreset());
     }
 
@@ -108,7 +123,13 @@ namespace minEngine
             m_Settings.ThemePresetId = std::string(EditorThemePresetIds::DarkEngine);
         }
 
+        EnsureTypographySettings();
         ApplyResolvedPalette(EditorThemePresets::ResolvePalette(m_Settings));
+
+        if (m_UiFontBackendReady)
+        {
+            RebuildUiFontAtlas();
+        }
     }
 
     bool EditorAppearance::SetThemePreset(std::string_view presetId, bool persistToProjectSettings)
@@ -129,5 +150,172 @@ namespace minEngine
 
         projectManager.GetCurrentProjectCtx().Settings.Appearance = m_Settings;
         return projectManager.SaveCurrentProjectSettings();
+    }
+
+    float EditorAppearance::ResolveSizePixelsForRole(EditorTypographyRole role) const
+    {
+        const size_t index = RoleIndex(role);
+        if (index < m_Settings.Typography.Slots.size() && m_Settings.Typography.Slots[index].SizePixels > 0.0f)
+        {
+            return m_Settings.Typography.Slots[index].SizePixels;
+        }
+
+        return EditorTypographyDefaults::GetDefaultSizePixels(role);
+    }
+
+    std::shared_ptr<Font> EditorAppearance::ResolveFontForRole(EditorTypographyRole role) const
+    {
+        AssetManager& assetManager = AssetManager::Get();
+        const size_t index = RoleIndex(role);
+
+        GUID fontGuid = GUID::Zero();
+        if (index < m_Settings.Typography.Slots.size())
+        {
+            fontGuid = m_Settings.Typography.Slots[index].FontAssetGuid;
+        }
+
+        if (fontGuid.IsZero())
+        {
+            fontGuid = EditorTypographyDefaults::GetDefaultFontAssetGuid(role);
+        }
+
+        if (fontGuid.IsValid())
+        {
+            std::string errorMessage;
+            std::shared_ptr<Asset> asset = assetManager.LoadAssetByGUID(fontGuid, errorMessage);
+            if (std::shared_ptr<Font> font = std::dynamic_pointer_cast<Font>(asset))
+            {
+                return font;
+            }
+
+            ME_CORE_WARN(
+                "EditorAppearance: failed to load font GUID {} for role {} ({}).",
+                fontGuid.ToString(),
+                static_cast<int>(role),
+                errorMessage);
+        }
+
+        const char* projectRelativePath = EditorTypographyDefaults::GetDefaultFontProjectPath(role);
+        const AssetMeta* meta = assetManager.FindAssetMetaByPath(projectRelativePath);
+        if (meta != nullptr)
+        {
+            return assetManager.LoadAsset<Font>(meta->AssetPath);
+        }
+
+        if (role != EditorTypographyRole::Body)
+        {
+            return ResolveFontForRole(EditorTypographyRole::Body);
+        }
+
+        return nullptr;
+    }
+
+    void EditorAppearance::RebuildUiFontAtlas()
+    {
+        if (!ImGui::GetCurrentContext())
+        {
+            return;
+        }
+
+        m_UiFontBackendReady = true;
+        m_RoleFonts.fill(nullptr);
+        m_PinnedFontsForAtlas.clear();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.Fonts->Clear();
+        io.FontGlobalScale = 1.0f;
+
+        std::shared_ptr<Font> bodyFont = ResolveFontForRole(EditorTypographyRole::Body);
+        if (bodyFont == nullptr || !bodyFont->IsValid())
+        {
+            ME_CORE_WARN("EditorAppearance: no valid Body font; falling back to ImGui default font.");
+            ImFontConfig defaultConfig;
+            defaultConfig.FontDataOwnedByAtlas = true;
+            m_RoleFonts[RoleIndex(EditorTypographyRole::Body)] =
+                io.Fonts->AddFontDefault(&defaultConfig);
+            for (size_t roleIndex = 1; roleIndex < m_RoleFonts.size(); ++roleIndex)
+            {
+                m_RoleFonts[roleIndex] = m_RoleFonts[RoleIndex(EditorTypographyRole::Body)];
+            }
+            io.Fonts->Build();
+            return;
+        }
+
+        const ImWchar* glyphRanges = io.Fonts->GetGlyphRangesDefault();
+
+        for (size_t roleIndex = 0; roleIndex < m_RoleFonts.size(); ++roleIndex)
+        {
+            const auto role = static_cast<EditorTypographyRole>(roleIndex);
+            std::shared_ptr<Font> font = ResolveFontForRole(role);
+            if (font == nullptr || !font->IsValid())
+            {
+                font = bodyFont;
+                ME_CORE_WARN(
+                    "EditorAppearance: role {} uses Body font fallback.",
+                    static_cast<int>(role));
+            }
+
+            const float sizePixels = ResolveSizePixelsForRole(role);
+            const std::vector<uint8_t>& fontBytes = font->GetFontFileBytes();
+
+            m_PinnedFontsForAtlas.push_back(font);
+
+            ImFontConfig fontConfig;
+            fontConfig.FontDataOwnedByAtlas = false;
+
+            ImFont* bakedFont = io.Fonts->AddFontFromMemoryTTF(
+                const_cast<uint8_t*>(fontBytes.data()),
+                static_cast<int>(fontBytes.size()),
+                sizePixels,
+                &fontConfig,
+                glyphRanges);
+
+            if (bakedFont == nullptr)
+            {
+                ME_CORE_ERROR(
+                    "EditorAppearance: AddFontFromMemoryTTF failed for role {} (size {}).",
+                    static_cast<int>(role),
+                    sizePixels);
+                continue;
+            }
+
+            m_RoleFonts[roleIndex] = bakedFont;
+        }
+
+        if (m_RoleFonts[RoleIndex(EditorTypographyRole::Body)] == nullptr)
+        {
+            ME_CORE_WARN("EditorAppearance: Body font bake failed; using ImGui default.");
+            m_RoleFonts[RoleIndex(EditorTypographyRole::Body)] = io.Fonts->AddFontDefault();
+        }
+
+        ImFont* bodyImFont = m_RoleFonts[RoleIndex(EditorTypographyRole::Body)];
+        for (ImFont*& roleFont : m_RoleFonts)
+        {
+            if (roleFont == nullptr)
+            {
+                roleFont = bodyImFont;
+            }
+        }
+
+        io.Fonts->Build();
+
+        // ImGui 1.92 + OpenGL3 backend recreates the GPU font texture on the next frame.
+        ME_CORE_INFO("EditorAppearance: UI font atlas rebuilt ({} roles).", m_RoleFonts.size());
+    }
+
+    ImFont* EditorAppearance::GetImFont(EditorTypographyRole role) const
+    {
+        const size_t index = RoleIndex(role);
+        if (index >= m_RoleFonts.size())
+        {
+            return nullptr;
+        }
+
+        return m_RoleFonts[index];
+    }
+
+    ImFont* EditorAppearance::GetBodyImFont() const
+    {
+        return GetImFont(EditorTypographyRole::Body);
     }
 }
