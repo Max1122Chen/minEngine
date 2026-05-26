@@ -9,6 +9,7 @@
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/WindowSystem.h"
+#include "Runtime/Platform/FileDialog/FileDialogService.h"
 
 namespace minEngine
 {
@@ -117,6 +118,10 @@ namespace minEngine
         WindowSystem::SetInstance(m_WindowSystem.get());
         m_WindowSystem->Initialize();
 
+        m_FileDialogService = std::make_shared<FileDialogService>();
+        FileDialogService::SetInstance(m_FileDialogService.get());
+        m_FileDialogService->Initialize();
+
         m_InputSystem = std::make_shared<InputSystem>();
         InputSystem::SetInstance(m_InputSystem.get());
         m_InputSystem->Initialize();
@@ -132,6 +137,13 @@ namespace minEngine
 
     void Engine::ShutdownSystems()
     {
+        if (m_FileDialogService)
+        {
+            m_FileDialogService->Shutdown();
+            FileDialogService::SetInstance(nullptr);
+            m_FileDialogService.reset();
+        }
+
         if (m_ProjectManager)
         {
             m_ProjectManager->Shutdown();

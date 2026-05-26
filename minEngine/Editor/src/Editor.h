@@ -6,7 +6,9 @@
 #include "EditorGUIManager.h"
 #include "Material/MaterialEditor.h"
 #include "Scene/SceneEditor.h"
+#include "Services/AssetWatch/ProjectAssetWatcher.h"
 #include "Services/AssetWorkflowModule.h"
+#include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "Services/ConsoleModule.h"
 #include "Services/InspectorModule.h"
 #include "Services/MainMenuModule.h"
@@ -47,6 +49,11 @@ namespace minEngine
         const EditorSubModule* FindSubModule(std::string_view moduleId) const override;
 
         AssetWorkflowModule& GetAssetWorkflow() override { return m_AssetWorkflow; }
+        const AssetWorkflowModule& GetAssetWorkflow() const override { return m_AssetWorkflow; }
+        ContentBrowserModule& GetContentBrowser() override { return m_ContentBrowser; }
+        const ContentBrowserModule& GetContentBrowser() const override { return m_ContentBrowser; }
+        ProjectAssetWatcher& GetProjectAssetWatcher() { return m_ProjectAssetWatcher; }
+        const ProjectAssetWatcher& GetProjectAssetWatcher() const { return m_ProjectAssetWatcher; }
         ConsoleModule& GetConsole() override { return m_ConsoleModule; }
         EditorCommandStack& GetCommandStack() override { return m_CommandStack; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
@@ -63,6 +70,9 @@ namespace minEngine
 
         bool& DockLayoutInitialized() override { return m_DockLayoutInitialized; }
         bool& RequestResetLayout() override { return m_RequestResetLayout; }
+
+        IFileDialogService& GetFileDialogService() override;
+        const IFileDialogService& GetFileDialogService() const override;
 
         bool OpenProject(const std::string& projectPath);
         void CloseProject();
@@ -83,6 +93,8 @@ namespace minEngine
         InspectorModule m_InspectorModule;
         ConsoleModule m_ConsoleModule;
         AssetWorkflowModule m_AssetWorkflow;
+        ContentBrowserModule m_ContentBrowser;
+        ProjectAssetWatcher m_ProjectAssetWatcher;
         EditorInputHub m_InputHub;
         ViewportClientRegistry m_ViewportRegistry;
         EditorCommandStack m_CommandStack;

@@ -57,8 +57,24 @@ namespace minEngine
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
         bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
         bool UnregisterAsset(const std::string& assetPath, std::string& outError);
+        bool RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError);
 
         void ClearProjectRegistry();
+
+        class SuppressExternalSyncScope
+        {
+        public:
+            SuppressExternalSyncScope();
+            ~SuppressExternalSyncScope();
+
+            SuppressExternalSyncScope(const SuppressExternalSyncScope&) = delete;
+            SuppressExternalSyncScope& operator=(const SuppressExternalSyncScope&) = delete;
+
+        private:
+            bool m_Active = false;
+        };
+
+        bool IsExternalSyncSuppressed() const;
 
         std::shared_ptr<Asset> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByPath(const std::string& path, std::string& outErrorMessage);
@@ -69,6 +85,8 @@ namespace minEngine
         std::vector<const AssetMeta*> FindAssetMetasByType(const std::string& assetTypeId) const;
         std::vector<const AssetMeta*> FindAssetMetasByClass(const Reflection::MEClass* assetClass) const;
         std::vector<const AssetMeta*> FindAssetMetasByRuntimeClass(const std::string& runtimeClassName) const;
+        std::vector<const AssetMeta*> FindAssetMetasUnderDirectory(
+            std::string_view projectRelativeDirectory) const;
 
         uint32_t Subscribe(AssetRegistryChangedCallback callback);
         void Unsubscribe(uint32_t subscriptionId);
@@ -197,6 +215,11 @@ namespace minEngine
             const std::filesystem::path& absolutePath,
             const std::filesystem::path& rootDirectory);
 
+        void BeginSuppressExternalSync();
+        void EndSuppressExternalSync();
+
+        void RemoveOrphanMetaFilesInDirectory(const std::filesystem::path& directory);
+
         std::unordered_map<std::string, AssetMeta> m_AssetRegistry;
         std::unordered_map<GUID, std::string, GUID::Hash> m_AssetPathByGuid;
         std::unordered_map<std::string, std::vector<AssetMeta*>> m_AssetMetasByType;
@@ -204,6 +227,7 @@ namespace minEngine
 
         std::unordered_map<uint32_t, AssetRegistryChangedCallback> m_Subscribers;
         uint32_t m_NextSubscriptionId = 1u;
+        int m_SuppressExternalSyncCount = 0;
     };
 
     template<>

@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <set>
 
 namespace minEngine
 {
@@ -190,6 +191,89 @@ namespace minEngine
         {
             filters.push_back(descriptor.FileDialogFilterLabel);
         }
+
+        return filters;
+    }
+
+    std::string AssetTypeRegistry::BuildExtensionSpec(const std::vector<std::string>& extensions) const
+    {
+        std::string extensionSpec;
+        bool firstToken = true;
+        for (const std::string& extension : extensions)
+        {
+            std::string token = NormalizeExtension(extension);
+            if (token.empty())
+            {
+                continue;
+            }
+
+            if (!token.empty() && token.front() == '.')
+            {
+                token.erase(token.begin());
+            }
+
+            if (token.empty())
+            {
+                continue;
+            }
+
+            if (!firstToken)
+            {
+                extensionSpec.push_back(',');
+            }
+
+            extensionSpec += token;
+            firstToken = false;
+        }
+
+        return extensionSpec;
+    }
+
+    std::vector<FileDialogFilter> AssetTypeRegistry::BuildFileDialogFilters() const
+    {
+        std::vector<FileDialogFilter> filters;
+        filters.reserve(m_Descriptors.size() + 1);
+
+        std::set<std::string> allExtensionTokens;
+
+        for (const AssetTypeDescriptor& descriptor : m_Descriptors)
+        {
+            FileDialogFilter filter;
+            filter.Label = descriptor.FileDialogFilterLabel;
+            filter.ExtensionSpec = BuildExtensionSpec(descriptor.Extensions);
+            filters.push_back(std::move(filter));
+
+            for (const std::string& extension : descriptor.Extensions)
+            {
+                std::string token = NormalizeExtension(extension);
+                if (!token.empty() && token.front() == '.')
+                {
+                    token.erase(token.begin());
+                }
+
+                if (!token.empty())
+                {
+                    allExtensionTokens.insert(std::move(token));
+                }
+            }
+        }
+
+        std::string allExtensionsSpec;
+        bool firstToken = true;
+        for (const std::string& token : allExtensionTokens)
+        {
+            if (!firstToken)
+            {
+                allExtensionsSpec.push_back(',');
+            }
+
+            allExtensionsSpec += token;
+            firstToken = false;
+        }
+
+        filters.push_back(FileDialogFilter{
+            .Label = "All recognized assets",
+            .ExtensionSpec = std::move(allExtensionsSpec)});
 
         return filters;
     }

@@ -24,3 +24,13 @@ target_include_directories(${EDITOR_NAME} PUBLIC ./src
 )
 
 target_link_libraries(${EDITOR_NAME} PRIVATE ${ENGINE_NAME})
+
+set(EFSW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/Third-Party/efsw)
+if(EXISTS ${EFSW_DIR}/CMakeLists.txt)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(BUILD_TEST_APP OFF CACHE BOOL "" FORCE)
+    set(EFSW_INSTALL OFF CACHE BOOL "" FORCE)
+    add_subdirectory(${EFSW_DIR} ${CMAKE_BINARY_DIR}/third-party/efsw EXCLUDE_FROM_ALL)
+    target_link_libraries(${EDITOR_NAME} PRIVATE efsw-static)
+    target_include_directories(${EDITOR_NAME} PRIVATE ${EFSW_DIR}/include)
+endif()

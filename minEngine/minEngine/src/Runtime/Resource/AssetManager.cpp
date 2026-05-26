@@ -64,8 +64,42 @@ namespace minEngine
         AssetTypeRegistry::Get().RegisterBuiltinTypes();
     }
 
+    AssetManager::SuppressExternalSyncScope::SuppressExternalSyncScope()
+    {
+        if (HasInstance())
+        {
+            AssetManager::Get().BeginSuppressExternalSync();
+            m_Active = true;
+        }
+    }
+
+    AssetManager::SuppressExternalSyncScope::~SuppressExternalSyncScope()
+    {
+        if (m_Active && HasInstance())
+        {
+            AssetManager::Get().EndSuppressExternalSync();
+        }
+    }
+
+    void AssetManager::BeginSuppressExternalSync()
+    {
+        ++m_SuppressExternalSyncCount;
+    }
+
+    void AssetManager::EndSuppressExternalSync()
+    {
+        ME_ASSERT(m_SuppressExternalSyncCount > 0, "EndSuppressExternalSync without matching begin");
+        --m_SuppressExternalSyncCount;
+    }
+
+    bool AssetManager::IsExternalSyncSuppressed() const
+    {
+        return m_SuppressExternalSyncCount > 0;
+    }
+
     void AssetManager::Shutdown()
     {
+        m_SuppressExternalSyncCount = 0;
         m_Subscribers.clear();
         m_AssetMetasByType.clear();
         m_AssetPathByGuid.clear();
@@ -322,6 +356,8 @@ namespace minEngine
             return;
         }
 
+        RemoveOrphanMetaFilesInDirectory(directory);
+
         const AssetTypeRegistry& typeRegistry = AssetTypeRegistry::Get();
 
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
@@ -352,6 +388,24 @@ namespace minEngine
         const std::string projectRelativePath = NormalizeProjectRelativeAssetPath(path);
         if (projectRelativePath.empty())
         {
+            return AssetMeta();
+        }
+
+        const std::filesystem::path absoluteAssetPath = ResolveAssetAbsolutePath(projectRelativePath);
+        std::error_code fileError;
+        if (!std::filesystem::exists(absoluteAssetPath, fileError)
+            || !std::filesystem::is_regular_file(absoluteAssetPath, fileError))
+        {
+            std::string metaError;
+            RemoveMetaFileOnDisk(projectRelativePath, metaError);
+            if (!metaError.empty())
+            {
+                ME_CORE_WARN(
+                    "RegisterAsset: asset file missing for '{}'; failed to remove stale meta: {}",
+                    projectRelativePath,
+                    metaError);
+            }
+
             return AssetMeta();
         }
 
@@ -500,6 +554,7 @@ namespace minEngine
     ImportAssetResult AssetManager::ImportAsset(const std::filesystem::path& sourcePath,
                                                 const std::filesystem::path& destDirectory)
     {
+        SuppressExternalSyncScope suppressScope;
         ImportAssetResult result;
 
         if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
@@ -660,6 +715,7 @@ namespace minEngine
 
     bool AssetManager::DeleteAsset(const std::string& assetPath, std::string& outError)
     {
+        SuppressExternalSyncScope suppressScope;
         outError.clear();
 
         const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
@@ -726,27 +782,106 @@ namespace minEngine
         }
 
         const AssetMeta* metaPtr = FindAssetMetaByPath(projectRelative);
-        if (metaPtr == nullptr)
+        const bool wasRegistered = (metaPtr != nullptr);
+
+        if (wasRegistered)
+        {
+            const AssetMeta meta = *metaPtr;
+
+            EvictLoadedAssetCache(projectRelative);
+            UncacheMeta(projectRelative);
+
+            if (meta.AssetType == "Scene" && SceneManager::HasInstance())
+            {
+                SceneManager::Get().UnregisterScene(meta.AssetName);
+            }
+        }
+
+        std::string metaError;
+        if (!RemoveMetaFileOnDisk(projectRelative, metaError))
+        {
+            outError = metaError;
+            return false;
+        }
+
+        if (!wasRegistered)
         {
             outError = "asset not registered";
             return false;
         }
 
-        const AssetMeta meta = *metaPtr;
+        return true;
+    }
 
-        EvictLoadedAssetCache(projectRelative);
-        UncacheMeta(projectRelative);
+    bool AssetManager::RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError)
+    {
+        outError.clear();
 
-        if (meta.AssetType == "Scene" && SceneManager::HasInstance())
+        const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
+        if (projectRelative.empty())
         {
-            SceneManager::Get().UnregisterScene(meta.AssetName);
+            outError = "invalid or out-of-project path";
+            return false;
+        }
+
+        const std::filesystem::path metaAbsolutePath = BuildMetaAbsolutePath(projectRelative);
+        std::error_code errorCode;
+        if (!std::filesystem::exists(metaAbsolutePath, errorCode))
+        {
+            return true;
+        }
+
+        if (!std::filesystem::remove(metaAbsolutePath, errorCode) || errorCode)
+        {
+            outError = "failed to remove meta file: " + errorCode.message();
+            return false;
         }
 
         return true;
     }
 
+    void AssetManager::RemoveOrphanMetaFilesInDirectory(const std::filesystem::path& directory)
+    {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
+        {
+            if (!entry.is_regular_file())
+            {
+                continue;
+            }
+
+            const std::filesystem::path metaPath = entry.path().lexically_normal();
+            if (metaPath.extension() != ".meta")
+            {
+                continue;
+            }
+
+            const std::filesystem::path assetPath =
+                metaPath.parent_path() / metaPath.stem();
+            std::error_code errorCode;
+            if (std::filesystem::exists(assetPath, errorCode)
+                && std::filesystem::is_regular_file(assetPath, errorCode))
+            {
+                continue;
+            }
+
+            if (!std::filesystem::remove(metaPath, errorCode) || errorCode)
+            {
+                ME_CORE_WARN(
+                    "RemoveOrphanMetaFilesInDirectory: failed to remove orphan meta '{}': {}",
+                    metaPath.string(),
+                    errorCode.message());
+                continue;
+            }
+
+            ME_CORE_INFO(
+                "RemoveOrphanMetaFilesInDirectory: removed orphan meta '{}'",
+                metaPath.string());
+        }
+    }
+
     bool AssetManager::MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError)
     {
+        SuppressExternalSyncScope suppressScope;
         outError.clear();
 
         const std::string oldRel = NormalizeProjectRelativeAssetPath(oldPath);
@@ -866,6 +1001,7 @@ namespace minEngine
 
     bool AssetManager::RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError)
     {
+        SuppressExternalSyncScope suppressScope;
         outError.clear();
 
         if (newFileName.empty())
@@ -1003,6 +1139,48 @@ namespace minEngine
         }
 
         return FindAssetMetasByType(assetTypeId);
+    }
+
+    std::vector<const AssetMeta*> AssetManager::FindAssetMetasUnderDirectory(
+        std::string_view projectRelativeDirectory) const
+    {
+        std::string directoryRel(projectRelativeDirectory);
+        if (!directoryRel.empty())
+        {
+            directoryRel = std::filesystem::path(directoryRel).lexically_normal().generic_string();
+        }
+
+        std::vector<const AssetMeta*> result;
+        for (const auto& [assetPath, meta] : m_AssetRegistry)
+        {
+            (void)assetPath;
+
+            const std::filesystem::path parentPath =
+                std::filesystem::path(meta.AssetPath).parent_path().lexically_normal();
+            const std::string parentRel = parentPath.generic_string();
+
+            if (directoryRel.empty())
+            {
+                if (parentRel.empty() || parentRel == ".")
+                {
+                    result.push_back(&meta);
+                }
+            }
+            else if (parentRel == directoryRel)
+            {
+                result.push_back(&meta);
+            }
+        }
+
+        std::sort(
+            result.begin(),
+            result.end(),
+            [](const AssetMeta* left, const AssetMeta* right)
+            {
+                return left->AssetName < right->AssetName;
+            });
+
+        return result;
     }
 
     std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)

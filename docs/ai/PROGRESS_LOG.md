@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 
 ## Purpose
 
@@ -129,6 +129,42 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`Editor.exe --asset-manager-test` exit 0 (delete, move, rename, extension guard, unregister, clear, scene unregister).
 - Next step:
 	P3 NFD / P4 AssetWorkflow / P5 efsw.
+
+### 2026-05-25 - Asset Pipeline P3 FileDialog (Runtime Platform)
+- Goal:
+	Runtime IFileDialogService + NFD; Editor consumes via Engine; asset filters from Registry.
+- Main changes:
+	`Runtime/Platform/FileDialog/*`, `FileDialogService` in `Engine`; `AssetTypeRegistry::BuildFileDialogFilters`;
+	Editor `GetFileDialogService()`; Tools menu **File Dialog (P3)** for Open/Save/Folder smoke.
+- Validation done:
+	`cmake --build minEngine/build --target Editor` succeeded (single-threaded link after parallel truncate).
+- Next step:
+	P4 `AssetWorkflowModule::ImportAssetDialog`.
+
+### 2026-05-26 - Asset Pipeline P5 ProjectAssetWatcher (efsw)
+- Goal:
+	Editor-only filesystem watcher syncing external disk changes to `AssetManager` registry.
+- Main changes:
+	`Third-Party/efsw` @ 1.4.0; `ProjectAssetWatcher` (queue + 400 ms debounce + main-thread `Tick`);
+	`AssetManager::SuppressExternalSyncScope`; Editor `OpenProject`/`CloseProject`/`Run` lifecycle;
+	bulk fallback `ScanAssets`; P5 API doc status → 已实现.
+- Validation done:
+	`cmake --build minEngine/build --target Editor -j 1` succeeded.
+- Next step:
+	Manual P5 acceptance (copy/delete in Explorer, Import no storm); P5.1 `Reimported`; P6 Content Browser.
+
+### 2026-05-26 - Asset Pipeline P6 Content Browser
+- Goal:
+	Content Browser module: directory tree, registered asset list, selection, Inspector bridge, Open/Delete/Import.
+- Main changes:
+	`ContentBrowserModule`, `AssetTreeModel`, `ContentBrowserWindow`; `FindAssetMetasUnderDirectory`;
+	`AssetWorkflowModule` selection/Delete/InspectorSource; `InspectorWindow` focus patch.
+- Risks or caveats:
+	**Browser UI 展示需后期再设计**（当前裸 ImGui 线框；主题/图标/缩略图待 Appearance merge 后 P6.1）。
+- Validation done:
+	`cmake --build` OK; user confirmed Content Browser visible and core flows work.
+- Next step:
+	P7 default Dock + menu integration; P6.1 Browser visual design after Appearance merge; P5.1 Reimported optional.
 
 ### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
 - Goal:

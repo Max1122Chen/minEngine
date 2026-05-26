@@ -36,9 +36,15 @@ Worktree / 分支：`minEngine-asset-workflow` / `feat/editor-asset-workflow`
 │   IEditorInspectorSource  │       │   DeleteSelected …        │
 └───────────────┬───────────┘       └───────────┬──────────────┘
                 │                               │
-                │                               │ IFileDialogService
+                │                               │ FileDialogService (Runtime Platform)
                 ▼                               ▼
-         Inspector / 双击 Open          NFD (nativefiledialog-extended)
+         Inspector / 双击 Open          IFileDialogService → NFD
+```
+
+```text
+Runtime/Platform/FileDialog/FileDialogService  ←  Engine 生命周期
+        ↑ 调用方：Editor（P3 验收 / P4 Import）、Playground、未来游戏逻辑
+        ↑ filter 数据：AssetTypeRegistry::BuildFileDialogFilters()（Resource，无对话框）
 ```
 
 **不变量（v0 已拍板）：**
@@ -61,7 +67,7 @@ Worktree / 分支：`minEngine-asset-workflow` / `feat/editor-asset-workflow`
 | **R0 类型表** | `AssetTypeRegistry` | `Runtime/Resource/` | 扩展名 ↔ AssetType ↔ 可选 MEClass；FileDialog filter、Scan、Loader 分流 **单一来源** |
 | **R1 注册表** | `AssetManager` | `Runtime/Resource/` | Meta 索引、按类型桶、Load/Save、**Import/Delete/Move/Rename**、变更事件 |
 | **R2 磁盘同步** | `ProjectAssetWatcher` | `Editor/src/Services/AssetWatch/`（建议） | 监听 **仅** `ProjectContentRoot`；**efsw**（§5.4）；debounce 后驱动 Registry |
-| **E4 对话框** | `IFileDialogService` + 实现 | `Editor/src/Services/FileDialog/` | OpenFiles / SaveFile / SelectFolder；filter 来自 R0 |
+| **P0 平台对话框** | `FileDialogService` + `IFileDialogService` | `Runtime/Platform/FileDialog/` | OpenFiles / SaveFile / SelectFolder；NFD 实现；**Editor/游戏** 调用 |
 | **编排** | `AssetWorkflowModule` | `Editor/src/Services/` | Dialog → Import；选中 → Delete；`OpenAsset` 路由保持 |
 | **UI 框架** | `ContentBrowserModule` + Window | `Editor/src/Services/ContentBrowser/` | 目录树 + 资产列表 + 选中；订阅 R1 事件刷新 |
 
@@ -266,7 +272,8 @@ bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::stri
 | 场景 | 动作 |
 |------|------|
 | 可识别 **单文件** 创建/修改 | `RegisterAsset(path, inferredType)` |
-| 单文件删除 | `DeleteAsset` 或仅 `UncacheMeta` + 事件（若文件已不存在则 **Unregister** 路径，不删盘） |
+| 单文件删除（本进程） | `DeleteAsset`（删资产 + `.meta` + Registry） |
+| 单文件删除（外部） | Watcher：`UnregisterAsset`（内建删 `.meta`；见 P5 API §5.4–5.5） |
 | 目录结构变更 / 批量未知 | `ScanAssets(contentRoot)` 全量（简单正确） |
 | 本进程 CRUD 引起 | **抑制 Watcher 回环**：`AssetManager` 维护 `m_SuppressExternalSyncCount` 或 Watcher 忽略短时间内的自身路径 |
 
@@ -277,44 +284,46 @@ bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::stri
 
 ---
 
-## 6) E4 — 跨平台 `IFileDialogService`
+## 6) E4 — 跨平台 `IFileDialogService`（Runtime Platform）
 
-### 6.1 接口
+> **P3 定稿：** [ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md) — 实现落 `Runtime/Platform/FileDialog/`；**`minEngine` 链 NFD**；Editor 经 `Engine` / `FileDialogService::Get()` 调用。
+
+### 6.1 分层
+
+| 层 | 职责 |
+|----|------|
+| **Platform** | `FileDialogTypes`、`IFileDialogService`、`NativeFileDialogService`、`FileDialogService`（`NFD_Init`/`Quit`） |
+| **Resource** | `AssetTypeRegistry::BuildFileDialogFilters()` — 资产扩展名 → `FileDialogFilter` |
+| **Editor** | `IEditorContext::GetFileDialogService()` 转发；P4 `AssetWorkflowModule` 编排 Import |
+
+**依赖：** `Platform → Core`；`Resource → Platform/FileDialogTypes`；`Editor → Runtime`。**禁止** Platform 依赖 Resource/Editor。
+
+### 6.2 接口（摘要）
 
 ```cpp
 struct FileDialogFilter
 {
-    std::string Label;       // "Material"
-    std::vector<std::string> Extensions; // {".memtl"}
+    std::string Label;
+    std::string ExtensionSpec;  // NFD: "png,jpg" without dots
 };
 
-struct FileDialogRequest
-{
-    std::string Title;
-    std::filesystem::path InitialDirectory;
-    std::vector<FileDialogFilter> Filters; // 空 = 全部文件
-    bool bAllowMultiple = false;
-};
+struct FileDialogRequest { /* Title, InitialDirectory, Filters, bAllowMultiple */ };
+struct FileDialogResult   { bool bCancelled; std::vector<std::filesystem::path> Paths; };
 
-struct FileDialogResult
-{
-    bool bCancelled = true;
-    std::vector<std::filesystem::path> Paths;
-};
+class IFileDialogService { OpenFiles / SaveFile / SelectFolder; };
 
-class IFileDialogService
+class FileDialogService
 {
 public:
-    virtual ~IFileDialogService() = default;
-    virtual FileDialogResult OpenFiles(const FileDialogRequest& request) = 0;
-    virtual FileDialogResult SaveFile(const FileDialogRequest& request,
-                                      std::string_view defaultFileName = {}) = 0;
-    virtual FileDialogResult SelectFolder(const FileDialogRequest& request) = 0;
+    static FileDialogService& Get();
+    void Initialize();  // NFD_Init
+    void Shutdown();    // NFD_Quit
+    IFileDialogService& GetImplementation();
 };
 ```
 
-- `Register` 时注入 `IEditorContext` 或 `Editor` 持有 `std::unique_ptr<IFileDialogService>`。
-- Filters 默认由 `AssetTypeRegistry::BuildFileDialogFilterSpec()` 填充。
+- **Engine** `StartSystems` / `ShutdownSystems` 创建并初始化 `FileDialogService`（与 `AssetManager` 同级）。
+- Editor **不**持有 `unique_ptr<IFileDialogService>` 实现。
 
 ### 6.2 实现选型
 
@@ -324,7 +333,7 @@ public:
 | **Win32 薄封装 + NFD 非 Windows** | 当前主开发 Windows 时可先 Win32，但与你「跨平台导入」目标略背离 |
 | **ImGui 内置 FileBrowser** | 非原生 OS 体验；不推荐作为主路径 |
 
-**已拍板：** **引入 NFD**（`minEngine/Third-Party/nativefiledialog-extended/` + CMake `Editor` 链接），全平台一条实现路径。
+**已拍板：** **引入 NFD**（`minEngine/Third-Party/nativefiledialog-extended/` + CMake **`minEngine` Runtime** 链接 `nfd`），全平台一条实现路径；游戏与 Editor 共用。
 
 ---
 
@@ -409,11 +418,11 @@ Editor/src/Services/ContentBrowser/
 | **P0 设计** | 本文档拍板 | ✅ 2026-05-25 |
 | **P1 E3 核心** | `AssetTypeRegistry` + 类型桶 + 事件 + `ImportAsset`（单文件） | Import 后事件、按类型查询不扫全表 |
 | **P2 E3 CRUD** | `DeleteAsset` + `MoveAsset` + `RegisterAsset` 发事件 | 磁盘与 Registry 一致；Move 保 GUID |
-| **P3 E4** | `IFileDialogService` + **NFD** | 菜单/Debug 可选文件/目录 |
+| **P3 E4** | `Runtime/Platform/FileDialog` + **NFD**（Engine 生命周期） | Editor 菜单/Debug 调 `GetFileDialogService()` |
 | **P4 编排** | `AssetWorkflowModule::ImportAssetDialog` + 选中 Delete | 对话框导入到 Assets |
-| **P5 Watcher** | `ProjectAssetWatcher` + **efsw** | 外部复制文件进 Assets 后 Browser 刷新 |
+| **P5 Watcher** | `ProjectAssetWatcher` + **efsw**（Editor-only） | ✅ 外部增删改 → Registry；meta 补强 `1158b02` |
 | **P1b** | `AssetPath` 相对化 + 停止 Registry 扫描 EngineDefault | 见 §14；可与 P1 同 PR 或紧跟 |
-| **P6 Browser** | `ContentBrowserModule` + Window + Model | 树+列表+选中+双击 Open |
+| **P6 Browser** | `ContentBrowserModule` + Window + Model | ✅ 功能验收；**Browser UI 展示需后期再设计**（[P6 API](./ASSET_PIPELINE_P6_API.md) §5.3） |
 | **P7 集成** | `Editor` 注册模块、默认 Dock、MainMenu Import | 端到端目视 |
 
 **明确后置：** 缩略图、拖拽、Undo、引用检查阻塞删除、macOS/Linux Watcher 原生 API。
@@ -437,7 +446,11 @@ Editor/src/Services/ContentBrowser/
 - C++：cpp-style；**成员函数** 优先；`AssetTypeRegistry` 单例与 `AssetManager` 协作。
 - 第一个代码切片仍为：**类型桶 + Registry 事件 + `ImportAsset`（单文件）**（P1）。
 - **P1 定稿：** [ASSET_PIPELINE_P1_API.md](./ASSET_PIPELINE_P1_API.md)（已实现 `8c5958d`）。
-- **P2 定稿：** [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（**待审批**）。
+- **P2 定稿：** [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（已实现 `7758c60`）。
+- **P3 定稿：** [ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)（**已实现**；submodule `nativefiledialog-extended` @ v1.3.0）。
+- **P4 定稿：** [ASSET_PIPELINE_P4_API.md](./ASSET_PIPELINE_P4_API.md)（已实现 `0f96c45`）。
+- **P5 定稿：** [ASSET_PIPELINE_P5_API.md](./ASSET_PIPELINE_P5_API.md)（已实现；§5.4 P5.0 + §5.5 meta 补强）。
+- **P6 定稿：** [ASSET_PIPELINE_P6_API.md](./ASSET_PIPELINE_P6_API.md)（✅ 已实现；ImGui 线框可用；**Browser UI 展示需后期再设计**）。
 
 ---
 

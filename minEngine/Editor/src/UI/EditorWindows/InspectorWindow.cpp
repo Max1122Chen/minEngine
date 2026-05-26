@@ -1,5 +1,7 @@
 #include "UI/EditorWindows/InspectorWindow.h"
 
+#include "Services/AssetWorkflowModule.h"
+#include "Shell/EditorSubModule.h"
 #include "Shell/IEditorInspectorSource.h"
 #include "UI/Appearance/EditorTypographyScope.h"
 #include "UI/Appearance/EditorWindowTypography.h"
@@ -12,21 +14,19 @@ namespace minEngine
 {
     void InspectorWindow::OnDraw()
     {
-        EditorSubModule* active = m_Context.GetActiveSubModule();
-        if (!active)
-        {
-            if (!EditorWindowTypography::BeginPanel(m_Context, m_Title.c_str()))
-            {
-                return;
-            }
+        IEditorInspectorSource* source = nullptr;
 
-            EditorTypographyScope bodyTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::Body);
-            ImGui::TextUnformatted("No active editor module.");
-            ImGui::End();
-            return;
+        AssetWorkflowModule& assetWorkflow = m_Context.GetAssetWorkflow();
+        if (assetWorkflow.IsContentBrowserInspectorActive()
+            && assetWorkflow.GetInspectorSource()->HasInspectableSelection())
+        {
+            source = assetWorkflow.GetInspectorSource();
+        }
+        else if (EditorSubModule* active = m_Context.GetActiveSubModule())
+        {
+            source = active->GetInspectorSource();
         }
 
-        IEditorInspectorSource* source = active->GetInspectorSource();
         if (!source)
         {
             if (!EditorWindowTypography::BeginPanel(m_Context, m_Title.c_str()))
@@ -35,7 +35,20 @@ namespace minEngine
             }
 
             EditorTypographyScope bodyTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::Body);
-            ImGui::TextUnformatted("No inspector for the active module.");
+            ImGui::TextUnformatted("No inspector for the active context.");
+            ImGui::End();
+            return;
+        }
+
+        if (!source->HasInspectableSelection())
+        {
+            if (!EditorWindowTypography::BeginPanel(m_Context, m_Title.c_str()))
+            {
+                return;
+            }
+
+            EditorTypographyScope bodyTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::Body);
+            ImGui::TextUnformatted("Nothing selected.");
             ImGui::End();
             return;
         }
