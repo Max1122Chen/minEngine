@@ -51,6 +51,7 @@ namespace minEngine
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
         bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
         bool UnregisterAsset(const std::string& assetPath, std::string& outError);
+        bool RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError);
 
         void ClearProjectRegistry();
 

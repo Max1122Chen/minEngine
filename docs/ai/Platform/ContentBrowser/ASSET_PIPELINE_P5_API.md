@@ -87,8 +87,8 @@ AssetWorkflowModule / Import 等（不直接依赖 Watcher）
 | `Editor/src/Services/AssetWatch/ProjectAssetWatcher.h` | **新建** |
 | `Editor/src/Services/AssetWatch/ProjectAssetWatcher.cpp` | **新建** |
 | `Editor/src/Editor.{h,cpp}` | 注册模块；`OpenProject`/`CloseProject` 启停；`Run` 中 `Tick` |
-| `Runtime/Resource/AssetManager.h` | **可选** `SuppressExternalSyncScope` RAII 或 `Begin/EndSuppressExternalSync`（回环抑制） |
-| `Runtime/Resource/AssetManager.cpp` | 实现抑制计数；Import/Delete/Move/Register 路径包裹 |
+| `Runtime/Resource/AssetManager.h` | `SuppressExternalSyncScope`；`RemoveMetaFileOnDisk`（P5.0） |
+| `Runtime/Resource/AssetManager.cpp` | 抑制计数；`RemoveMetaFileOnDisk`；Import/Delete/Move 包裹 |
 | `docs/ai/Platform/ContentBrowser/ASSET_PIPELINE_DESIGN.md` | P5 链接与 §5 对齐 |
 
 **不修改：** `UI/Property/**`、`Color.*`、`FileDialog` Platform 层
@@ -136,7 +136,7 @@ private:
 | **Add** | 可识别扩展名（非 `.meta`） | `RegisterAsset(absolutePath, inferredTypeId)` |
 | **Modified** | 可识别扩展名 | 同 **Add**（v0 当 re-register；发 `MetaUpdated` 若已存在） |
 | **Modified** | 仅 `.meta` | **忽略**（v0；资产文件未变） |
-| **Delete** | 可识别扩展名 | `UnregisterAsset(relativePath, err)`（**不** `DeleteAsset`，盘已删） |
+| **Delete** | 可识别扩展名 | `UnregisterAsset` + `RemoveMetaFileOnDisk`（**不** `DeleteAsset`，资产文件已由外部删除；见 §5.4） |
 | **Delete** | 仅 `.meta` | **忽略** |
 | **Moved** | old/new 均在工程内、扩展名不变 | `MoveAsset(oldRel, newRel, err)`；失败则 `Unregister(old)` + `RegisterAsset(new)` |
 | **Moved** | 扩展名变化 | `Unregister(old)` + `RegisterAsset(new)`（等价删+增） |
@@ -149,6 +149,40 @@ private:
 **批量 / 目录变更兜底：**
 
 - 队列内在 debounce 窗口内若 ≥ `kDirectoryEventThreshold`（建议 1）次「需全量」标记，或单次 checkout 产生 > `kFullRescanFileThreshold`（建议 32）条文件事件 → 清空队列，改为一次 `ScanAssets(ProjectContentRoot)` + `ME_CORE_INFO`。
+
+### 5.4 外部删除与 `.meta` 残留（P5.0 fix）
+
+**问题（P5 初版瑕疵）：**
+
+- 外部删除（资源管理器 / git）走 `UnregisterAsset`：只清 Registry，**不删盘**。
+- 资产文件已不存在，但 `Assets/.../file.png.meta` 仍留在工程内。
+- 下次同名文件再导入或 `RegisterAsset` 会 **优先反序列化旧 `.meta`**，可能沿用错误 GUID / 路径，与「新资产」语义不符。
+
+**与 `DeleteAsset` 的边界：**
+
+| API | 资产文件 | `.meta` | Registry |
+|-----|----------|---------|----------|
+| `DeleteAsset`（本进程） | 删除 | 删除 | `UncacheMeta` |
+| 外部 Delete → Watcher | 已由用户删除 | **应删除**（P5.0） | `UnregisterAsset` |
+
+**P5.0 修复（已实现，不扩大 `UnregisterAsset` 默认语义）：**
+
+1. `AssetManager::RemoveMetaFileOnDisk(assetPath, err)` — 用既有 `Normalize` + `BuildMetaAbsolutePath`；若 meta 存在则 `remove`；不存在视为成功。
+2. `ProjectAssetWatcher::ProcessUnregister`：在 `UnregisterAsset` 之后 **始终** 调用 `RemoveMetaFileOnDisk`（即使未注册，也清理孤儿 meta）。
+
+**不改为：** Watcher 对外部删除调用 `DeleteAsset`（源文件已不存在，语义与失败路径均不合适）。
+
+### 5.5 `AssetManager` 补强（待审批，未实现）
+
+以下用于 git checkout / Watcher 漏事件等导致的 **历史孤儿 `.meta`**，与 P5.0 正交：
+
+| # | 方案 | 说明 |
+|---|------|------|
+| **A** | `ScanAssets` / `OpenProject` 前 **孤儿 meta 清扫** | 递归 `ProjectContentRoot`：对每个 `*.meta`，若对应资产文件不存在则删除 meta（或打日志后删） |
+| **B** | `RegisterAsset` 防御 | 注册时发现资产文件不存在但 meta 存在 → 视为陈旧，跳过加载旧 meta、按新资产生成 meta |
+| **C** | 可选 API | `UnregisterAsset(..., UnregisterOptions{ .bRemoveMetaFromDisk })` 统一路径；Watcher 传 `true`（P5.0 已用独立 `RemoveMetaFileOnDisk`，是否合并待议） |
+
+**建议顺序：** 先验收 P5.0；审批通过后实现 **A**（工程级卫生）+ 视需要 **B**（双保险）。
 
 ---
 
@@ -269,7 +303,7 @@ endif()
 |---|------|
 | 1 | 打开工程后 Watcher 启动；关闭工程后停止，无崩溃 |
 | 2 | 资源管理器复制 `*.png` 进 `Assets/` → Registry 出现新项，`Registered`（日志或后续 Browser） |
-| 3 | 资源管理器删除已注册资产 → `UnregisterAsset`，Registry 无该 path |
+| 3 | 资源管理器删除已注册资产 → `UnregisterAsset`，Registry 无该 path；对应 `.meta` 从磁盘删除（P5.0） |
 | 4 | 本进程 **Import Asset** 不产生重复 Register 风暴（抑制生效） |
 | 5 | git checkout 大批量变更 → 最终 Registry 与磁盘一致（允许走一次 `ScanAssets` 兜底） |
 | 6 | `Editor.exe` 链 efsw；`libminEngine.dll` **不**依赖 efsw |

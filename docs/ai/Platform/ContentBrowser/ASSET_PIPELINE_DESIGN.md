@@ -272,7 +272,8 @@ bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::stri
 | 场景 | 动作 |
 |------|------|
 | 可识别 **单文件** 创建/修改 | `RegisterAsset(path, inferredType)` |
-| 单文件删除 | `DeleteAsset` 或仅 `UncacheMeta` + 事件（若文件已不存在则 **Unregister** 路径，不删盘） |
+| 单文件删除（本进程） | `DeleteAsset`（删资产 + `.meta` + Registry） |
+| 单文件删除（外部） | Watcher：`UnregisterAsset` + `RemoveMetaFileOnDisk`（资产已由用户删除；见 P5 API §5.4） |
 | 目录结构变更 / 批量未知 | `ScanAssets(contentRoot)` 全量（简单正确） |
 | 本进程 CRUD 引起 | **抑制 Watcher 回环**：`AssetManager` 维护 `m_SuppressExternalSyncCount` 或 Watcher 忽略短时间内的自身路径 |
 
@@ -448,7 +449,7 @@ Editor/src/Services/ContentBrowser/
 - **P2 定稿：** [ASSET_PIPELINE_P2_API.md](./ASSET_PIPELINE_P2_API.md)（已实现 `7758c60`）。
 - **P3 定稿：** [ASSET_PIPELINE_P3_API.md](./ASSET_PIPELINE_P3_API.md)（**已实现**；submodule `nativefiledialog-extended` @ v1.3.0）。
 - **P4 定稿：** [ASSET_PIPELINE_P4_API.md](./ASSET_PIPELINE_P4_API.md)（已实现 `0f96c45`）。
-- **P5 定稿：** [ASSET_PIPELINE_P5_API.md](./ASSET_PIPELINE_P5_API.md)（**待审批**）。
+- **P5 定稿：** [ASSET_PIPELINE_P5_API.md](./ASSET_PIPELINE_P5_API.md)（已实现；§5.4 P5.0 meta 删除；§5.5 补强待审批）。
 
 ---
 

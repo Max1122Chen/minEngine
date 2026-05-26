@@ -391,13 +391,24 @@ namespace minEngine
             return;
         }
 
+        AssetManager& assetManager = AssetManager::Get();
+
         std::string errorMessage;
-        if (!AssetManager::Get().UnregisterAsset(absolutePath.string(), errorMessage))
+        if (!assetManager.UnregisterAsset(absolutePath.string(), errorMessage))
         {
             ME_CORE_DEBUG(
                 "ProjectAssetWatcher: UnregisterAsset ignored for '{}': {}",
                 absolutePath.string(),
                 errorMessage);
+        }
+
+        std::string metaError;
+        if (!assetManager.RemoveMetaFileOnDisk(absolutePath.string(), metaError))
+        {
+            ME_CORE_WARN(
+                "ProjectAssetWatcher: RemoveMetaFileOnDisk failed for '{}': {}",
+                absolutePath.string(),
+                metaError);
         }
     }
 

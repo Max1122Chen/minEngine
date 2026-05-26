@@ -779,6 +779,33 @@ namespace minEngine
         return true;
     }
 
+    bool AssetManager::RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError)
+    {
+        outError.clear();
+
+        const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
+        if (projectRelative.empty())
+        {
+            outError = "invalid or out-of-project path";
+            return false;
+        }
+
+        const std::filesystem::path metaAbsolutePath = BuildMetaAbsolutePath(projectRelative);
+        std::error_code errorCode;
+        if (!std::filesystem::exists(metaAbsolutePath, errorCode))
+        {
+            return true;
+        }
+
+        if (!std::filesystem::remove(metaAbsolutePath, errorCode) || errorCode)
+        {
+            outError = "failed to remove meta file: " + errorCode.message();
+            return false;
+        }
+
+        return true;
+    }
+
     bool AssetManager::MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError)
     {
         SuppressExternalSyncScope suppressScope;
