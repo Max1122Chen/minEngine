@@ -2,6 +2,7 @@
 
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
+#include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "Services/Inspector/InspectorModule.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Inspector/InspectorPreviewPresenter.h"
@@ -112,7 +113,7 @@ namespace minEngine
         return false;
     }
 
-    void AssetWorkflowModule::ImportAssetDialog()
+    void AssetWorkflowModule::ImportAssetDialog(std::string_view destDirectoryRel)
     {
         if (!m_Context)
         {
@@ -139,7 +140,15 @@ namespace minEngine
             return;
         }
 
-        const std::filesystem::path destDirectory = projectContentRoot / "Imported";
+        std::filesystem::path destDirectory = projectContentRoot;
+        if (!destDirectoryRel.empty())
+        {
+            destDirectory /= std::filesystem::path(destDirectoryRel);
+        }
+        else
+        {
+            destDirectory /= "Imported";
+        }
         std::error_code createError;
         std::filesystem::create_directories(destDirectory, createError);
         if (createError)
@@ -178,6 +187,9 @@ namespace minEngine
         }
 
         ME_CORE_INFO("ImportAssetDialog: {} succeeded, {} failed.", successCount, failCount);
+
+        m_Context->GetContentBrowser().GetModel().RebuildDirectoryTree();
+        m_Context->GetContentBrowser().GetModel().RebuildCurrentDirectoryAssetList();
     }
 
     void AssetWorkflowModule::SetSelectedAsset(const AssetMeta* meta)

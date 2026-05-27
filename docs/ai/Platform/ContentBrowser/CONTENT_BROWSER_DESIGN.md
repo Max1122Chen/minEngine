@@ -39,6 +39,14 @@ Status: **P6 基础设施已合入；P6.1 窗口 UI 为当前重点**
 | E1 资产 Inspector | [EDITOR_PLATFORM_PLAN.md § E1](../../Editor/EDITOR_PLATFORM_PLAN.md) | 下一 |
 | E2 Preview | [EDITOR_PLATFORM_PLAN.md § E2](../../Editor/EDITOR_PLATFORM_PLAN.md) | E1 后 |
 
+## 已知问题（待优化）
+
+| 问题 | 文档 |
+|------|------|
+| Import/Delete 导致 Content Browser **整树重建**（注册表增量但 UI 全量 + 重复 Refresh） | [CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md](./CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md) |
+
+---
+
 ## 下一步
 
 - **P6.1：** Content Browser 接 `EditorAppearance` / 排版 / 主题 scope（见 UI 设计案验收表）。

@@ -15,6 +15,7 @@
 | **`Editor/`** | 编辑器 UI、视口、ImGui 等 |
 | **`bugs/`** | 跨领域缺陷记录（领域专项 bug 可放在对应子目录，如 `Render/Material/bugs/`） |
 | **`sessions/`** | 单次会话笔记（临时，可归档） |
+| **`../external/`** | 外部 AI / UE 参考讨论存档 | 定稿以 `docs/ai/` 为准 |
 
 **规则（仓库约束）：** 见 `.cursor/rules/docs-ai-layout.mdc`。
 
@@ -40,6 +41,7 @@
 - [**Editor 架构复盘**](./Editor/EDITOR_ARCHITECTURE_REVIEW.md)
 - [**Editor 平台化规划**](./Editor/EDITOR_PLATFORM_PLAN.md) — E0–E4（P2 主线）
 - [**E2 Previewer / Editor 视口**](./Editor/PREVIEWER_DESIGN.md)
+- [**Editor 上下文菜单系统**](./Editor/EDITOR_CONTEXT_MENU_DESIGN.md)（Context + Registry + Command）
 - [Command Stack / Undo](./Editor/EDITOR_COMMAND_HISTORY.md)
 - [视口窗口](./Editor/EDITOR_VIEWPORT_WINDOWS.md)
 - [Content Browser 产品意图](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)

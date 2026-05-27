@@ -13,6 +13,7 @@
 #include "Services/Inspector/InspectorModule.h"
 #include "Services/MainMenuModule.h"
 #include "Shell/EditorInputHub.h"
+#include "ContextMenu/EditorContextMenuSystem.h"
 #include "Shell/EditorCommandStack.h"
 #include "Shell/EditorSubModule.h"
 #include "Shell/IEditorContext.h"
@@ -58,6 +59,8 @@ namespace minEngine
         InspectorModule& GetInspectorModule() override { return m_InspectorModule; }
         const InspectorModule& GetInspectorModule() const override { return m_InspectorModule; }
         EditorCommandStack& GetCommandStack() override { return m_CommandStack; }
+        EditorContextMenuSystem& GetContextMenu() override { return m_ContextMenu; }
+        const EditorContextMenuSystem& GetContextMenu() const override { return m_ContextMenu; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
         EditorAppearance& GetEditorAppearance() override { return m_Appearance; }
         const EditorAppearance& GetEditorAppearance() const override { return m_Appearance; }
@@ -100,6 +103,7 @@ namespace minEngine
         EditorInputHub m_InputHub;
         ViewportClientRegistry m_ViewportRegistry;
         EditorCommandStack m_CommandStack;
+        EditorContextMenuSystem m_ContextMenu;
         EditorAppearance m_Appearance;
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;

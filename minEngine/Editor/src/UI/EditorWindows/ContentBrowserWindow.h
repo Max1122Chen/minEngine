@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ContextMenu/Contexts/ContentBrowserMenuContext.h"
 #include "Core.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
 #include "UI/EditorWindows/EditorWindow.h"
@@ -45,6 +46,9 @@ namespace minEngine
         void ActivateAssetFromBrowser(const AssetMeta& assetMeta);
         void SelectAsset(const AssetMeta* meta);
         void SyncSelectionFromWorkflow();
+        void DrawContentBrowserContextMenu(ContentBrowserHitKind hitKind,
+                                           std::string_view directoryRel,
+                                           const AssetMeta* assetForContext);
 
         float ResolveTileOuterHeight() const;
         std::string BuildEllipsizedLabel(const char* text, float maxWidth) const;

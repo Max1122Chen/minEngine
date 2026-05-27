@@ -1,8 +1,11 @@
 #include "UI/EditorWindows/ContentBrowserWindow.h"
 
+#include "ContextMenu/EditorContextMenuSystem.h"
+#include "ContextMenu/EditorMenuContext.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
 #include "Shell/IEditorContext.h"
+
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorTypographyDefaults.h"
 #include "UI/Appearance/EditorTypographyScope.h"
@@ -14,9 +17,9 @@
 #include "imgui.h"
 
 #include <algorithm>
-#include <cstring>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 namespace minEngine
 {
@@ -98,7 +101,7 @@ namespace minEngine
     {
         if (ImGui::Button("Import"))
         {
-            m_Context.GetAssetWorkflow().ImportAssetDialog();
+            m_Context.GetAssetWorkflow().ImportAssetDialog(m_Model.GetCurrentDirectory());
         }
 
         ImGui::SameLine();
@@ -222,15 +225,31 @@ namespace minEngine
             flags |= ImGuiTreeNodeFlags_Selected;
         }
 
-        if (node.Children.empty() && node.Assets.empty())
+        const bool isLeaf = node.Children.empty() && node.Assets.empty();
+        if (isLeaf)
         {
+            // NoTreePushOnOpen: TreePop must not run when TreeNodeEx reports open (see imgui_demo.cpp ~9798).
             flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         }
 
-        const bool opened = ImGui::TreeNodeEx(node.DisplayName.c_str(), flags);
+        bool opened = ImGui::TreeNodeEx(node.DisplayName.c_str(), flags);
+        if (isLeaf)
+        {
+            opened = false;
+        }
+
         if (ImGui::IsItemClicked())
         {
             m_Model.SetCurrentDirectory(node.RelativePath);
+        }
+
+        if (ImGui::BeginPopupContextItem())
+        {
+            DrawContentBrowserContextMenu(
+                ContentBrowserHitKind::TreeDirectory,
+                node.RelativePath,
+                nullptr);
+            ImGui::EndPopup();
         }
 
         if (opened)
@@ -272,6 +291,15 @@ namespace minEngine
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
             ActivateAssetFromBrowser(assetMeta);
+        }
+
+        if (ImGui::BeginPopupContextItem())
+        {
+            DrawContentBrowserContextMenu(
+                ContentBrowserHitKind::TreeAsset,
+                m_Model.GetCurrentDirectory(),
+                &assetMeta);
+            ImGui::EndPopup();
         }
 
         ImGui::PopID();
@@ -361,11 +389,31 @@ namespace minEngine
 
         drawList->PopClipRect();
 
+        if (ImGui::BeginPopupContextItem())
+        {
+            DrawContentBrowserContextMenu(
+                ContentBrowserHitKind::TileAsset,
+                m_Model.GetCurrentDirectory(),
+                &meta);
+            ImGui::EndPopup();
+        }
+
         ImGui::PopID();
     }
 
     void ContentBrowserWindow::DrawAssetTileGrid()
     {
+        if (ImGui::BeginPopupContextWindow(
+                "ContentBrowserListBackground",
+                ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+        {
+            DrawContentBrowserContextMenu(
+                ContentBrowserHitKind::ListBackground,
+                m_Model.GetCurrentDirectory(),
+                nullptr);
+            ImGui::EndPopup();
+        }
+
         const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
         if (assets.empty())
         {
@@ -422,6 +470,38 @@ namespace minEngine
     {
         m_Context.GetAssetWorkflow().SetSelectedAsset(meta);
         SyncSelectionFromWorkflow();
+    }
+
+    void ContentBrowserWindow::DrawContentBrowserContextMenu(
+        const ContentBrowserHitKind hitKind,
+        const std::string_view directoryRel,
+        const AssetMeta* assetForContext)
+    {
+        if (assetForContext != nullptr)
+        {
+            SelectAsset(assetForContext);
+        }
+
+        auto cbContext = std::make_shared<ContentBrowserMenuContext>();
+        cbContext->HitKind = hitKind;
+        cbContext->CurrentDirectoryRel = std::string(directoryRel);
+
+        if (assetForContext != nullptr)
+        {
+            cbContext->SelectedAssets.push_back(assetForContext);
+        }
+        else
+        {
+            const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
+            if (selected != nullptr)
+            {
+                cbContext->SelectedAssets.push_back(selected);
+            }
+        }
+
+        EditorMenuContext menuContext;
+        menuContext.Add(cbContext);
+        m_Context.GetContextMenu().BuildAndDraw(m_Context, menuContext);
     }
 
     void ContentBrowserWindow::SyncSelectionFromWorkflow()
