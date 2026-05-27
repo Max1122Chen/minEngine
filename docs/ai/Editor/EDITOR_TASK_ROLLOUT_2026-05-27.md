@@ -14,11 +14,16 @@ Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**�
 
 ## 1) 今日主线（可增量）
 
-### A. P7 / E1 右键菜单系统（优先）
+> 今日 Editor 侧主要目标：**Inspector 场景右键 / Texture2D 预览 / CB Asset Icon**
 
-- 交付切片：**M0 ✅ → M1 ✅ → M2 ✅ → M3 ✅ → M4 ✅ → M4.1 稳定性修订 → M5 快捷键**
-- **M1 CB 菜单项（收口）：** Delete、Import…、Refresh  
-- **暂缓（不注册 / 代码待删）：** RevealInExplorer、Rename — 见设计 §15.4
+### A. Inspector 右键菜单（SceneEditing）
+
+- 目标：在 **SceneEditing** 语境下补齐 Inspector 右键菜单  
+  - 命中 **Component 行** 时：弹出菜单，提供 **Remove Component**（通过右键菜单 Action，而非本地按钮）  
+  - 命中 **GO Inspector 区域空白处** 时：弹出菜单，提供 **Add Component**，并通过 **ActionProvider** 构建组件列表
+- 路线图对应：P2/E1（Inspector 统一化）+ P7（菜单/产品集成）
+
+#### A 子任务勾选
 
 #### A 子任务勾选
 
@@ -33,9 +38,19 @@ Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**�
 | M4 Provider + Section 子菜单 | [x] |
 | M4.1 稳定性修订（崩溃/范围收口） | [ ] |
 
-### B. CB Tile Icon | ### C. Material Editor
+### B. Texture2D 预览图
 
-（未变，见原 rollout §1）
+- 目标：为 **Texture2D 资产** 提供可视预览  
+  - 在 Inspector / Previewer 中选中 Texture2D 时，展示贴图内容（E2.2b）  
+  - 优先实现单张 2D 纹理的基础预览，不引入复杂缩略图缓存策略
+- 路线图对应：P2/E2（Previewer）中的 **Texture2D Inspector 预览（E2.2b）**
+
+### C. Content Browser Asset Icon
+
+- 目标：为 Content Browser Tile 引入 **静态 Asset Icon**，替换当前统一的占位方框  
+  - 按 `AssetType`（Scene / Material / Texture / Mesh / Font …）绘制不同 Icon  
+  - 暂不实现缩略图；缩略图仍归 E2.3b（后续）
+- 路线图对应：P2/P6.1（CB UI 抛光）+ `EDITOR_CONTEXT_MENU_DESIGN` §11.7 关于 Icon/缩略图预留接口
 
 ---
 

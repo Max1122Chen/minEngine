@@ -219,12 +219,6 @@ namespace minEngine
 
         OpenProject(projectPath);
         m_Appearance.RebuildUiFontAtlas();
-        PostInitialize();
-    }
-
-    void Editor::PostInitialize()
-    {
-        m_ContextMenu.RegisterBuiltInActions();
     }
 
     void Editor::UpdateWindowTitle()

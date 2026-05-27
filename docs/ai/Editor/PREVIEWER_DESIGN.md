@@ -1,7 +1,7 @@
 # E2 — Previewer 与 Editor 视口设计
 
-Last updated: 2026-05-26  
-Status: **v0.6 — E2.1 + E2.2 + E2.3a 已实现；Texture2D 检视延后；E2.3b / E2.4 未做**  
+Last updated: 2026-05-27  
+Status: **v0.7 — E2.1 + E2.2 + E2.3a 已实现；Texture2D 检视（E2.2b）方案已拍板待实现；E2.3b / E2.4 未做**  
 父文档：[EDITOR_PLATFORM_PLAN.md](./EDITOR_PLATFORM_PLAN.md) §E2、[EDITOR_VIEWPORT_WINDOWS.md](./EDITOR_VIEWPORT_WINDOWS.md)  
 相关：[EDITOR_ARCHITECTURE_REVIEW.md](./EDITOR_ARCHITECTURE_REVIEW.md)、[CONTENT_BROWSER_UI_DESIGN.md](../Platform/ContentBrowser/CONTENT_BROWSER_UI_DESIGN.md)
 
@@ -389,6 +389,7 @@ Editor/src/UI/Inspector/             // 或 EditorWindows/
 | 2026-05-26 | **v0.5** Texture2D blit 路径、方槽 224+居中；**E2.3a** StaticMesh 检视 + `DefaultMaterial.memtl`；§5.4 记录 Texture 技术债 |
 | 2026-05-26 | Texture 切换前释放 3D 检视 `SceneViewport`；`DefaultMaterial` 自 Smoke 图克隆 |
 | 2026-05-26 | **v0.6** 移除 Texture2D Present blit 实现；Texture 检视标 **E2.2b 延后** |
+| 2026-05-27 | **v0.7** Texture2D 检视拍板为 OpenGL MVP：直接复用 `Texture2D::GetRHITexture()->GetID()` → `ImGui::Image`，不走 Scene3D |
 
 ---
 
@@ -403,17 +404,46 @@ Editor/src/UI/Inspector/             // 或 EditorWindows/
 
 ---
 
-## 8.2) Texture2D 检视（延后 — E2.2b）
+## 8.2) Texture2D 检视（E2.2b — 2026-05-27 拍板，待实现）
 
-**现状（v0.6）：** CB 选中 `Texture2D` 时 `ResolveDisplayKind` 返回 `None`，不显示预览方槽；已删除临时 **Present blit + 直接 GL** 路径（与 Scene3D 的 `SubmitSceneDraw` 帧序冲突，且暴露 RHI 细节）。
+**现状：**
 
-**目标实现（后续拍板后做）：**
+- CB 选中 `Texture2D` 时 `ResolveDisplayKind` 返回 `None`，Inspector 方槽不显示。
+- 项目现有视口路径（`EditorViewportWindow`、`InspectorPreviewPresenter`）已经使用 `ImGui::Image((ImTextureID)(uintptr_t)RHITexture2D::GetID())` 显示离屏纹理。
 
-- 与 Material / StaticMesh 一致走 **Scene3D 管线**：薄 `PreviewScene` + 检视 `SceneViewport` + `SubmitSceneDraw`。
-- 预览内容：**正交相机** + 全屏 quad（或默认平面 mesh）+ **MaterialInstance**（Unlit/简单材质）采样目标 `Texture2D` 参数。
-- **不** 在 `InspectorAssetInspection` 内直接 `glDrawArrays` / 绑定资源纹理给 ImGui。
+**本次拍板（MVP）：**
 
-**曾尝试、弃用的方案：** 资源 `RHITexture2D` → Present blit 到检视 RT → `ImGui::Image`；存在格式兼容、与延迟 Submit 同 RT 竞态等问题。
+- Texture2D 预览 **不走 Scene3D**，直接使用资产 `Texture2D` 内部 `RHITexture2D` 的 `GetID()` 传给 `ImGui::Image`。
+- 预览入口仍在 Inspector 固定方槽（沿用 `InspectorPreviewPresenter`）；只新增一种 DisplayKind（如 `Texture2DImage`）。
+- 仅支持当前主后端 OpenGL；保持与现有 Editor 视口显示路径一致。
+
+**实现边界（MVP）：**
+
+- 做：
+  - `ResolveDisplayKind` 识别 `AssetType == "Texture2D"`。
+  - `InspectorAssetInspection` 缓存 `std::shared_ptr<Texture2D>`（或等价持有）以保证预览期间资源存活。
+  - Presenter 在 Texture2D 分支直接绘制 `ImGui::Image`，并复用现有方槽尺寸/居中规则。
+  - 增加空资源兜底文案（加载失败、`GetRHITexture()==nullptr`、`GetID()==0`）。
+- 不做：
+  - 不引入 `PreviewScene` / `SceneViewport` / `SubmitSceneDraw`。
+  - 不实现 CB Tile 缩略图（仍归 E2.3b）。
+  - 不做跨后端抽象改造（Vulkan/D3D 的 ImGui 句柄策略后置）。
+
+**UV 与朝向约定：**
+
+- 默认沿用现有 `ImGui::Image` 习惯，必要时通过 `uv0/uv1` 反转 Y。
+- 若出现上下颠倒，以“与纹理文件在内容浏览器中预期一致”为准进行一次性修正，不扩展额外开关。
+
+**风险与后续（已知）：**
+
+- 该方案依赖 `ImTextureID` 与 OpenGL texture id 对齐；未来切换图形后端时需要通过 RHI/UI 层做句柄桥接。
+- HDR/非常规格式纹理在 UI 可读性可能较弱（gamma/tonemap），MVP 不处理高级采样与色调映射。
+
+**验收标准（E2.2b MVP）：**
+
+- 选中任意有效 `Texture2D` 资产时，Inspector 顶部方槽稳定显示纹理图像。
+- 快速切换 `Texture2D` / `Material` / `StaticMesh` 时无崩溃、无明显闪烁、无错误日志刷屏。
+- 加载失败或空纹理时显示可读提示，不触发断言或崩溃。
 
 ---
 

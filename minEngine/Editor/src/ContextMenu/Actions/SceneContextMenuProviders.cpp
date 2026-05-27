@@ -23,8 +23,7 @@ namespace minEngine
         {
             if (const SceneInspectorMenuContext* inspectorCtx = ctx.Find<SceneInspectorMenuContext>())
             {
-                if (inspectorCtx->SelectionKind == SceneInspectorSelectionKind::GameObjectHeader
-                    && inspectorCtx->GameObjectId != 0)
+                if (inspectorCtx->SelectionKind == SceneInspectorSelectionKind::GameObjectHeader)
                 {
                     return inspectorCtx->GameObjectId;
                 }
@@ -72,18 +71,20 @@ namespace minEngine
                 return;
             }
 
-            if (!ImGui::BeginMenu("Add Component"))
+            if (!ImGui::BeginMenu("Add Component##ContextMenu"))
             {
                 return;
             }
 
             for (const std::string& typeName : componentTypeNames)
             {
+                ImGui::PushID(typeName.c_str());
                 const std::string displayName = GetShortComponentTypeName(typeName);
+                const std::string menuItemLabel = displayName + "##" + typeName;
                 builder.DrawProviderMenuItem(
                     editor,
                     ctx,
-                    displayName.c_str(),
+                    menuItemLabel.c_str(),
                     true,
                     "",
                     [sceneEditor, gameObjectId, typeName](IEditorContext& ed, const EditorMenuContext& menuCtx)
@@ -92,6 +93,7 @@ namespace minEngine
                         sceneEditor->SelectGameObject(gameObjectId);
                         sceneEditor->SubmitAddComponentToSelectedGameObject(ed, typeName);
                     });
+                ImGui::PopID();
             }
 
             ImGui::EndMenu();

@@ -83,7 +83,6 @@ namespace minEngine
         void CloseProject();
 
     private:
-        void PostInitialize();
         void RegisterModules();
         void UpdateWindowTitle();
         void ApplyCommandStackSettingsFromProject();
