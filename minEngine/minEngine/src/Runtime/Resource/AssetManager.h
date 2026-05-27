@@ -5,11 +5,11 @@
 #include "AssetMeta.h"
 #include "Asset.h"
 #include "AssetRegistryTypes.h"
+#include "AssetRegistry.h"
 
 #include <filesystem>
 #include <functional>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace minEngine::Reflection
@@ -61,20 +61,18 @@ namespace minEngine
 
         void ClearProjectRegistry();
 
-        class SuppressExternalSyncScope
+        class AssetRegistryBroadcastBatchScope
         {
         public:
-            SuppressExternalSyncScope();
-            ~SuppressExternalSyncScope();
+            AssetRegistryBroadcastBatchScope();
+            ~AssetRegistryBroadcastBatchScope();
 
-            SuppressExternalSyncScope(const SuppressExternalSyncScope&) = delete;
-            SuppressExternalSyncScope& operator=(const SuppressExternalSyncScope&) = delete;
+            AssetRegistryBroadcastBatchScope(const AssetRegistryBroadcastBatchScope&) = delete;
+            AssetRegistryBroadcastBatchScope& operator=(const AssetRegistryBroadcastBatchScope&) = delete;
 
         private:
             bool m_Active = false;
         };
-
-        bool IsExternalSyncSuppressed() const;
 
         std::shared_ptr<Asset> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByPath(const std::string& path, std::string& outErrorMessage);
@@ -201,9 +199,6 @@ namespace minEngine
 
         void CacheMeta(const AssetMeta& meta, bool alreadyRegistered);
         void UncacheMeta(std::string_view projectRelativePath);
-        void RemoveFromTypeBucket(const AssetMeta& meta);
-        void AddToTypeBucket(const AssetMeta& meta);
-        void BroadcastChange(const AssetRegistryChange& change);
 
         void EvictLoadedAssetCache(std::string_view projectRelativePath);
         void MoveLoadedAssetCacheKey(std::string_view oldRel, std::string_view newRel);
@@ -215,19 +210,15 @@ namespace minEngine
             const std::filesystem::path& absolutePath,
             const std::filesystem::path& rootDirectory);
 
-        void BeginSuppressExternalSync();
-        void EndSuppressExternalSync();
+        void BeginRegistryBroadcastBatch();
+        void EndRegistryBroadcastBatch();
+        void NoteEditorFilesystemMutation(const std::filesystem::path& absolutePath) const;
 
         void RemoveOrphanMetaFilesInDirectory(const std::filesystem::path& directory);
 
-        std::unordered_map<std::string, AssetMeta> m_AssetRegistry;
-        std::unordered_map<GUID, std::string, GUID::Hash> m_AssetPathByGuid;
-        std::unordered_map<std::string, std::vector<AssetMeta*>> m_AssetMetasByType;
+        AssetRegistry m_Registry;
         std::unordered_map<std::string, std::weak_ptr<MEObject>> m_LoadedAssetCache;
-
-        std::unordered_map<uint32_t, AssetRegistryChangedCallback> m_Subscribers;
-        uint32_t m_NextSubscriptionId = 1u;
-        int m_SuppressExternalSyncCount = 0;
+        int m_RegistryBroadcastBatchDepth = 0;
     };
 
     template<>

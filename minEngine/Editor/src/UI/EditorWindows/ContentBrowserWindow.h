@@ -41,6 +41,9 @@ namespace minEngine
         void DrawDirectoryTree();
         void DrawDirectoryNode(const AssetTreeModel::DirectoryNode& node);
         void DrawAssetTileGrid();
+        void AdvanceTileLayout(int tileIndex, int columnCount);
+        void DrawTileVisual(const char* label, bool selected);
+        void DrawDirectoryTile(const AssetTreeModel::DirectoryNode& directoryNode);
         void DrawAssetTile(const AssetMeta& meta, int tileIndex, bool selected);
         void DrawAssetTreeLeaf(const AssetMeta& assetMeta);
         void ActivateAssetFromBrowser(const AssetMeta& assetMeta);

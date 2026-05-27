@@ -15,6 +15,7 @@
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
+#include "Runtime/Resource/EditorFilesystemMutationPass.h"
 
 #include "Runtime/Resource/AssetMeta.h"
 
@@ -145,10 +146,6 @@ namespace minEngine
         {
             destDirectory /= std::filesystem::path(destDirectoryRel);
         }
-        else
-        {
-            destDirectory /= "Imported";
-        }
         std::error_code createError;
         std::filesystem::create_directories(destDirectory, createError);
         if (createError)
@@ -160,10 +157,12 @@ namespace minEngine
             return;
         }
 
+        EditorFilesystemMutationPass::NoteMutatedAbsolutePath(destDirectory);
+
         int successCount = 0;
         int failCount = 0;
 
-        AssetManager::SuppressExternalSyncScope suppressScope;
+        AssetManager::AssetRegistryBroadcastBatchScope batchScope;
 
         for (const std::filesystem::path& sourcePath : dialogResult.Paths)
         {
@@ -187,9 +186,6 @@ namespace minEngine
         }
 
         ME_CORE_INFO("ImportAssetDialog: {} succeeded, {} failed.", successCount, failCount);
-
-        m_Context->GetContentBrowser().GetModel().RebuildDirectoryTree();
-        m_Context->GetContentBrowser().GetModel().RebuildCurrentDirectoryAssetList();
     }
 
     void AssetWorkflowModule::SetSelectedAsset(const AssetMeta* meta)

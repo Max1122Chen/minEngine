@@ -37,7 +37,6 @@ namespace minEngine
                 return FindContentBrowserContext(ctx);
             }
         };
-
         class ContentBrowserImportAction final : public ContentBrowserScopedAction
         {
         public:
@@ -78,7 +77,6 @@ namespace minEngine
                 const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
                 const std::string_view destDir = cbCtx != nullptr ? cbCtx->CurrentDirectoryRel : std::string_view{};
                 editor.GetAssetWorkflow().ImportAssetDialog(destDir);
-                RefreshContentBrowser(editor);
             }
         };
 

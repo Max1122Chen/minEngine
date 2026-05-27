@@ -6,6 +6,7 @@
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Services/AssetWorkflowModule.h"
+#include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemePresets.h"
 #include "UI/Appearance/EditorTypographyScope.h"
@@ -67,7 +68,8 @@ namespace minEngine
             ImGui::Separator();
             if (ImGui::MenuItem("Import Asset...", nullptr, false, true))
             {
-                m_Context.GetAssetWorkflow().ImportAssetDialog();
+                m_Context.GetAssetWorkflow().ImportAssetDialog(
+                    m_Context.GetContentBrowser().GetModel().GetCurrentDirectory());
             }
             if (ImGui::MenuItem("Exit"))
             {

@@ -56,6 +56,32 @@ namespace minEngine
         return m_TreeRoot;
     }
 
+    std::vector<const AssetTreeModel::DirectoryNode*> AssetTreeModel::GetSubdirectoriesInCurrentDirectory() const
+    {
+        std::vector<const DirectoryNode*> subdirectories;
+        const DirectoryNode* currentNode = FindDirectoryNode(m_CurrentDirectoryRel);
+        if (currentNode == nullptr)
+        {
+            return subdirectories;
+        }
+
+        subdirectories.reserve(currentNode->Children.size());
+        for (const DirectoryNode& child : currentNode->Children)
+        {
+            subdirectories.push_back(&child);
+        }
+
+        std::sort(
+            subdirectories.begin(),
+            subdirectories.end(),
+            [](const DirectoryNode* left, const DirectoryNode* right)
+            {
+                return left->DisplayName < right->DisplayName;
+            });
+
+        return subdirectories;
+    }
+
     const std::vector<const AssetMeta*>& AssetTreeModel::GetAssetsInCurrentDirectory() const
     {
         return m_CurrentAssets;
@@ -94,6 +120,272 @@ namespace minEngine
         m_RegistrySubscriptionId = kInvalidAssetRegistrySubscriptionId;
     }
 
+    std::string AssetTreeModel::NormalizeParentDirectoryRel(std::string_view assetRelativePath)
+    {
+        const std::string parentRel =
+            std::filesystem::path(assetRelativePath).parent_path().lexically_normal().generic_string();
+        if (parentRel == ".")
+        {
+            return std::string();
+        }
+        return parentRel;
+    }
+
+    std::string AssetTreeModel::NormalizeDirectoryRel(std::string_view projectRelativeDirectory)
+    {
+        if (projectRelativeDirectory.empty())
+        {
+            return std::string();
+        }
+
+        return std::filesystem::path(projectRelativeDirectory).lexically_normal().generic_string();
+    }
+
+    AssetTreeModel::DirectoryNode* AssetTreeModel::FindDirectoryNode(std::string_view directoryRel)
+    {
+        const std::string normalizedDir = NormalizeDirectoryRel(directoryRel);
+        if (normalizedDir.empty())
+        {
+            return &m_TreeRoot;
+        }
+
+        std::vector<std::string> segments;
+        for (std::filesystem::path segment : std::filesystem::path(normalizedDir))
+        {
+            if (!segment.empty() && segment != ".")
+            {
+                segments.push_back(segment.generic_string());
+            }
+        }
+
+        DirectoryNode* current = &m_TreeRoot;
+        std::string accumulatedRel;
+
+        for (const std::string& segment : segments)
+        {
+            if (!accumulatedRel.empty())
+            {
+                accumulatedRel += '/';
+            }
+            accumulatedRel += segment;
+
+            DirectoryNode* childMatch = nullptr;
+            for (DirectoryNode& child : current->Children)
+            {
+                if (child.RelativePath == accumulatedRel)
+                {
+                    childMatch = &child;
+                    break;
+                }
+            }
+
+            if (childMatch == nullptr)
+            {
+                return nullptr;
+            }
+
+            current = childMatch;
+        }
+
+        return current;
+    }
+
+    const AssetTreeModel::DirectoryNode* AssetTreeModel::FindDirectoryNode(
+        std::string_view directoryRel) const
+    {
+        return const_cast<AssetTreeModel*>(this)->FindDirectoryNode(directoryRel);
+    }
+
+    AssetTreeModel::DirectoryNode* AssetTreeModel::GetOrInsertDirectoryNode(std::string_view directoryRel)
+    {
+        const std::string normalizedDir = NormalizeDirectoryRel(directoryRel);
+        if (normalizedDir.empty())
+        {
+            return &m_TreeRoot;
+        }
+
+        std::vector<std::string> segments;
+        for (std::filesystem::path segment : std::filesystem::path(normalizedDir))
+        {
+            if (!segment.empty() && segment != ".")
+            {
+                segments.push_back(segment.generic_string());
+            }
+        }
+
+        DirectoryNode* current = &m_TreeRoot;
+        std::string accumulatedRel;
+
+        for (const std::string& segment : segments)
+        {
+            if (!accumulatedRel.empty())
+            {
+                accumulatedRel += '/';
+            }
+            accumulatedRel += segment;
+
+            DirectoryNode* childMatch = nullptr;
+            for (DirectoryNode& child : current->Children)
+            {
+                if (child.RelativePath == accumulatedRel)
+                {
+                    childMatch = &child;
+                    break;
+                }
+            }
+
+            if (childMatch == nullptr)
+            {
+                DirectoryNode newChild;
+                newChild.RelativePath = accumulatedRel;
+                newChild.DisplayName = segment;
+                current->Children.push_back(std::move(newChild));
+                childMatch = &current->Children.back();
+            }
+
+            current = childMatch;
+        }
+
+        return current;
+    }
+
+    void AssetTreeModel::InsertAssetSorted(std::vector<const AssetMeta*>& assets, const AssetMeta* meta)
+    {
+        if (meta == nullptr)
+        {
+            return;
+        }
+
+        for (const AssetMeta* existing : assets)
+        {
+            if (existing != nullptr && existing->AssetPath == meta->AssetPath)
+            {
+                return;
+            }
+        }
+
+        auto insertPos = std::lower_bound(
+            assets.begin(),
+            assets.end(),
+            meta,
+            [](const AssetMeta* left, const AssetMeta* right)
+            {
+                return left->AssetName < right->AssetName;
+            });
+        assets.insert(insertPos, meta);
+    }
+
+    bool AssetTreeModel::RemoveAssetByPath(
+        std::vector<const AssetMeta*>& assets,
+        std::string_view assetPath)
+    {
+        const auto removeIter = std::find_if(
+            assets.begin(),
+            assets.end(),
+            [assetPath](const AssetMeta* meta)
+            {
+                return meta != nullptr && meta->AssetPath == assetPath;
+            });
+
+        if (removeIter == assets.end())
+        {
+            return false;
+        }
+
+        assets.erase(removeIter);
+        return true;
+    }
+
+    void AssetTreeModel::InsertIntoCurrentDirectoryList(const AssetMeta* meta)
+    {
+        if (meta == nullptr || !IsAssetInCurrentDirectory(meta->AssetPath))
+        {
+            return;
+        }
+
+        InsertAssetSorted(m_CurrentAssets, meta);
+    }
+
+    void AssetTreeModel::RemoveFromCurrentDirectoryList(std::string_view assetPath)
+    {
+        if (!IsAssetInCurrentDirectory(assetPath))
+        {
+            return;
+        }
+
+        RemoveAssetByPath(m_CurrentAssets, assetPath);
+    }
+
+    void AssetTreeModel::ApplyRegisteredChange(const AssetRegistryChange& change)
+    {
+        if (!AssetManager::HasInstance())
+        {
+            return;
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(change.NewPath);
+        if (meta == nullptr)
+        {
+            return;
+        }
+
+        const std::string parentRel = NormalizeParentDirectoryRel(change.NewPath);
+        if (DirectoryNode* dirNode = GetOrInsertDirectoryNode(parentRel))
+        {
+            InsertAssetSorted(dirNode->Assets, meta);
+        }
+
+        InsertIntoCurrentDirectoryList(meta);
+    }
+
+    void AssetTreeModel::ApplyUnregisteredChange(const AssetRegistryChange& change)
+    {
+        const std::string parentRel = NormalizeParentDirectoryRel(change.OldPath);
+        if (DirectoryNode* dirNode = FindDirectoryNode(parentRel))
+        {
+            RemoveAssetByPath(dirNode->Assets, change.OldPath);
+        }
+
+        RemoveFromCurrentDirectoryList(change.OldPath);
+    }
+
+    void AssetTreeModel::ApplyMovedChange(const AssetRegistryChange& change)
+    {
+        const std::string oldParentRel = NormalizeParentDirectoryRel(change.OldPath);
+        if (DirectoryNode* oldDirNode = FindDirectoryNode(oldParentRel))
+        {
+            RemoveAssetByPath(oldDirNode->Assets, change.OldPath);
+        }
+
+        RemoveFromCurrentDirectoryList(change.OldPath);
+
+        AssetRegistryChange registeredChange = change;
+        registeredChange.Kind = AssetRegistryChangeKind::Registered;
+        ApplyRegisteredChange(registeredChange);
+    }
+
+    void AssetTreeModel::ApplyMetaUpdatedChange(const AssetRegistryChange& change)
+    {
+        if (!IsAssetInCurrentDirectory(change.NewPath))
+        {
+            return;
+        }
+
+        if (!AssetManager::HasInstance())
+        {
+            return;
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(change.NewPath);
+        if (meta == nullptr)
+        {
+            return;
+        }
+
+        RemoveAssetByPath(m_CurrentAssets, change.NewPath);
+        InsertAssetSorted(m_CurrentAssets, meta);
+    }
+
     void AssetTreeModel::OnRegistryChange(const AssetRegistryChange& change)
     {
         if (m_ContentRoot.empty())
@@ -101,18 +393,28 @@ namespace minEngine
             return;
         }
 
-        if (change.Kind == AssetRegistryChangeKind::Moved
-            || change.Kind == AssetRegistryChangeKind::Registered
-            || change.Kind == AssetRegistryChangeKind::Unregistered
-            || change.Kind == AssetRegistryChangeKind::MetaUpdated
-            || change.Kind == AssetRegistryChangeKind::Reimported)
+        switch (change.Kind)
         {
+        case AssetRegistryChangeKind::Registered:
+            ApplyRegisteredChange(change);
+            break;
+        case AssetRegistryChangeKind::Unregistered:
+            ApplyUnregisteredChange(change);
+            break;
+        case AssetRegistryChangeKind::Moved:
+            ApplyMovedChange(change);
+            break;
+        case AssetRegistryChangeKind::MetaUpdated:
+        case AssetRegistryChangeKind::Reimported:
+            ApplyMetaUpdatedChange(change);
+            break;
+        default:
             RebuildDirectoryTree();
-        }
-
-        if (IsChangeRelevantToCurrentDirectory(change))
-        {
-            RebuildCurrentDirectoryAssetList();
+            if (IsChangeRelevantToCurrentDirectory(change))
+            {
+                RebuildCurrentDirectoryAssetList();
+            }
+            break;
         }
     }
 
