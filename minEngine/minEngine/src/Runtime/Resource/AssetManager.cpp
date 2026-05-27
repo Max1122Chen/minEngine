@@ -1,6 +1,7 @@
 #include "AssetManager.h"
 
 #include "AssetTypeRegistry.h"
+#include "Runtime/Resource/EditorFilesystemMutationPass.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -61,47 +62,53 @@ namespace minEngine
         AssetTypeRegistry::Get().RegisterBuiltinTypes();
     }
 
-    AssetManager::SuppressExternalSyncScope::SuppressExternalSyncScope()
+    AssetManager::AssetRegistryBroadcastBatchScope::AssetRegistryBroadcastBatchScope()
     {
         if (HasInstance())
         {
-            AssetManager::Get().BeginSuppressExternalSync();
+            AssetManager::Get().BeginRegistryBroadcastBatch();
             m_Active = true;
         }
     }
 
-    AssetManager::SuppressExternalSyncScope::~SuppressExternalSyncScope()
+    AssetManager::AssetRegistryBroadcastBatchScope::~AssetRegistryBroadcastBatchScope()
     {
         if (m_Active && HasInstance())
         {
-            AssetManager::Get().EndSuppressExternalSync();
+            AssetManager::Get().EndRegistryBroadcastBatch();
         }
     }
 
-    void AssetManager::BeginSuppressExternalSync()
+    void AssetManager::BeginRegistryBroadcastBatch()
     {
-        ++m_SuppressExternalSyncCount;
+        ++m_RegistryBroadcastBatchDepth;
+        if (m_RegistryBroadcastBatchDepth == 1)
+        {
+            m_Registry.BeginBatch();
+        }
     }
 
-    void AssetManager::EndSuppressExternalSync()
+    void AssetManager::EndRegistryBroadcastBatch()
     {
-        ME_ASSERT(m_SuppressExternalSyncCount > 0, "EndSuppressExternalSync without matching begin");
-        --m_SuppressExternalSyncCount;
+        ME_ASSERT(m_RegistryBroadcastBatchDepth > 0, "EndRegistryBroadcastBatch without matching begin");
+        --m_RegistryBroadcastBatchDepth;
+        if (m_RegistryBroadcastBatchDepth == 0)
+        {
+            m_Registry.EndBatch();
+        }
     }
 
-    bool AssetManager::IsExternalSyncSuppressed() const
+    void AssetManager::NoteEditorFilesystemMutation(const std::filesystem::path& absolutePath) const
     {
-        return m_SuppressExternalSyncCount > 0;
+        EditorFilesystemMutationPass::NoteMutatedAbsolutePath(absolutePath);
     }
 
     void AssetManager::Shutdown()
     {
-        m_SuppressExternalSyncCount = 0;
-        m_Subscribers.clear();
-        m_AssetMetasByType.clear();
-        m_AssetPathByGuid.clear();
-        m_AssetRegistry.clear();
+        m_RegistryBroadcastBatchDepth = 0;
+        m_Registry.Shutdown();
         m_LoadedAssetCache.clear();
+        EditorFilesystemMutationPass::Clear();
     }
 
     void AssetManager::MarkReachableLoadedAssets(const std::function<void(MEObject*)>& markReachable) const
@@ -224,119 +231,25 @@ namespace minEngine
         return std::filesystem::path(absoluteAssetPath + ".meta");
     }
 
-    void AssetManager::RemoveFromTypeBucket(const AssetMeta& meta)
-    {
-        auto bucketIter = m_AssetMetasByType.find(meta.AssetType);
-        if (bucketIter == m_AssetMetasByType.end())
-        {
-            return;
-        }
-
-        std::vector<AssetMeta*>& bucket = bucketIter->second;
-        auto registryIter = m_AssetRegistry.find(meta.AssetPath);
-        if (registryIter == m_AssetRegistry.end())
-        {
-            return;
-        }
-
-        AssetMeta* target = &registryIter->second;
-        bucket.erase(
-            std::remove(bucket.begin(), bucket.end(), target),
-            bucket.end());
-
-        if (bucket.empty())
-        {
-            m_AssetMetasByType.erase(bucketIter);
-        }
-    }
-
-    void AssetManager::AddToTypeBucket(const AssetMeta& meta)
-    {
-        auto registryIter = m_AssetRegistry.find(meta.AssetPath);
-        if (registryIter == m_AssetRegistry.end())
-        {
-            return;
-        }
-
-        m_AssetMetasByType[meta.AssetType].push_back(&registryIter->second);
-    }
-
     void AssetManager::CacheMeta(const AssetMeta& meta, bool alreadyRegistered)
     {
-        auto existingIter = m_AssetRegistry.find(meta.AssetPath);
-        if (existingIter != m_AssetRegistry.end())
-        {
-            RemoveFromTypeBucket(existingIter->second);
-        }
-
-        m_AssetRegistry[meta.AssetPath] = meta;
-        m_AssetPathByGuid[meta.Guid] = meta.AssetPath;
-        AddToTypeBucket(meta);
-
-        AssetRegistryChange change;
-        change.Kind = alreadyRegistered ? AssetRegistryChangeKind::MetaUpdated
-                                        : AssetRegistryChangeKind::Registered;
-        change.Guid = meta.Guid;
-        change.NewPath = meta.AssetPath;
-        change.AssetTypeId = meta.AssetType;
-        BroadcastChange(change);
+        m_Registry.CacheMeta(meta, alreadyRegistered);
     }
 
     void AssetManager::UncacheMeta(std::string_view projectRelativePath)
     {
-        const std::string key(projectRelativePath);
-        auto registryIter = m_AssetRegistry.find(key);
-        if (registryIter == m_AssetRegistry.end())
-        {
-            return;
-        }
-
-        const AssetMeta meta = registryIter->second;
-        RemoveFromTypeBucket(meta);
-        m_AssetPathByGuid.erase(meta.Guid);
-        m_AssetRegistry.erase(registryIter);
-        m_LoadedAssetCache.erase(key);
-
-        AssetRegistryChange change;
-        change.Kind = AssetRegistryChangeKind::Unregistered;
-        change.Guid = meta.Guid;
-        change.OldPath = meta.AssetPath;
-        change.AssetTypeId = meta.AssetType;
-        BroadcastChange(change);
-    }
-
-    void AssetManager::BroadcastChange(const AssetRegistryChange& change)
-    {
-        for (const auto& [subscriptionId, callback] : m_Subscribers)
-        {
-            (void)subscriptionId;
-            if (callback)
-            {
-                callback(change);
-            }
-        }
+        m_LoadedAssetCache.erase(std::string(projectRelativePath));
+        m_Registry.UncacheMeta(projectRelativePath);
     }
 
     uint32_t AssetManager::Subscribe(AssetRegistryChangedCallback callback)
     {
-        if (!callback)
-        {
-            return kInvalidAssetRegistrySubscriptionId;
-        }
-
-        const uint32_t subscriptionId = m_NextSubscriptionId++;
-        m_Subscribers[subscriptionId] = std::move(callback);
-        return subscriptionId;
+        return m_Registry.Subscribe(std::move(callback));
     }
 
     void AssetManager::Unsubscribe(uint32_t subscriptionId)
     {
-        if (subscriptionId == kInvalidAssetRegistrySubscriptionId)
-        {
-            return;
-        }
-
-        m_Subscribers.erase(subscriptionId);
+        m_Registry.Unsubscribe(subscriptionId);
     }
 
     void AssetManager::ScanAssets(const std::filesystem::path& directory)
@@ -406,7 +319,7 @@ namespace minEngine
             return AssetMeta();
         }
 
-        const bool alreadyRegistered = (m_AssetRegistry.find(projectRelativePath) != m_AssetRegistry.end());
+        const bool alreadyRegistered = m_Registry.ContainsPath(projectRelativePath);
 
         const std::filesystem::path metaPath = BuildMetaAbsolutePath(projectRelativePath);
         const std::string inferredAssetName = std::filesystem::path(projectRelativePath).stem().string();
@@ -523,12 +436,12 @@ namespace minEngine
             }
         }
 
-        auto guidIt = m_AssetPathByGuid.find(meta.Guid);
-        if (guidIt != m_AssetPathByGuid.end() && guidIt->second != projectRelativePath)
+        const AssetMeta* existingGuidMeta = m_Registry.FindMetaByGuid(meta.Guid);
+        if (existingGuidMeta != nullptr && existingGuidMeta->AssetPath != projectRelativePath)
         {
             ME_CORE_WARN(
                 "GUID collision detected between '{}' and '{}'. Regenerating GUID for current asset.",
-                guidIt->second,
+                existingGuidMeta->AssetPath,
                 projectRelativePath);
             meta.Guid = GenerateGUID();
             if (!saveMetaToFile(meta))
@@ -551,7 +464,7 @@ namespace minEngine
     ImportAssetResult AssetManager::ImportAsset(const std::filesystem::path& sourcePath,
                                                 const std::filesystem::path& destDirectory)
     {
-        SuppressExternalSyncScope suppressScope;
+        AssetRegistryBroadcastBatchScope batchScope;
         ImportAssetResult result;
 
         if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
@@ -593,6 +506,9 @@ namespace minEngine
             return result;
         }
 
+        NoteEditorFilesystemMutation(absoluteDestDirectory);
+        NoteEditorFilesystemMutation(destFilePath);
+
         std::error_code copyError;
         std::filesystem::copy_file(sourcePath, destFilePath, std::filesystem::copy_options::none, copyError);
         if (copyError)
@@ -608,15 +524,15 @@ namespace minEngine
             return result;
         }
 
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
+
         result.bSuccess = true;
         return result;
     }
 
     void AssetManager::ClearProjectRegistry()
     {
-        m_AssetRegistry.clear();
-        m_AssetPathByGuid.clear();
-        m_AssetMetasByType.clear();
+        m_Registry.ClearRegistryData();
         m_LoadedAssetCache.clear();
     }
 
@@ -687,32 +603,15 @@ namespace minEngine
         std::string_view newRel,
         AssetMeta& inOutMeta)
     {
-        const std::string oldKey(oldRel);
         const std::string newKey(newRel);
-
-        auto oldIter = m_AssetRegistry.find(oldKey);
-        if (oldIter == m_AssetRegistry.end())
-        {
-            return false;
-        }
-
-        AssetMeta meta = oldIter->second;
-        RemoveFromTypeBucket(meta);
-        m_AssetRegistry.erase(oldIter);
-
         inOutMeta.AssetPath = newKey;
         inOutMeta.AssetName = std::filesystem::path(newKey).stem().string();
-        meta = inOutMeta;
-
-        m_AssetRegistry.emplace(newKey, meta);
-        m_AssetPathByGuid[meta.Guid] = newKey;
-        AddToTypeBucket(meta);
-        return true;
+        return m_Registry.MoveMeta(oldRel, newRel);
     }
 
     bool AssetManager::DeleteAsset(const std::string& assetPath, std::string& outError)
     {
-        SuppressExternalSyncScope suppressScope;
+        AssetRegistryBroadcastBatchScope batchScope;
         outError.clear();
 
         const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
@@ -734,6 +633,9 @@ namespace minEngine
 
         const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(projectRelative);
         const std::filesystem::path metaAbsolutePath = BuildMetaAbsolutePath(projectRelative);
+
+        NoteEditorFilesystemMutation(absolutePath);
+        NoteEditorFilesystemMutation(metaAbsolutePath);
 
         std::error_code removeError;
         if (std::filesystem::exists(absolutePath))
@@ -878,7 +780,7 @@ namespace minEngine
 
     bool AssetManager::MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError)
     {
-        SuppressExternalSyncScope suppressScope;
+        AssetRegistryBroadcastBatchScope batchScope;
         outError.clear();
 
         const std::string oldRel = NormalizeProjectRelativeAssetPath(oldPath);
@@ -939,6 +841,12 @@ namespace minEngine
             return false;
         }
 
+        NoteEditorFilesystemMutation(absoluteOld);
+        NoteEditorFilesystemMutation(absoluteNew);
+        NoteEditorFilesystemMutation(metaAbsoluteOld);
+        NoteEditorFilesystemMutation(metaAbsoluteNew);
+        NoteEditorFilesystemMutation(newParent);
+
         std::error_code renameError;
         std::filesystem::rename(absoluteOld, absoluteNew, renameError);
         if (renameError)
@@ -985,20 +893,11 @@ namespace minEngine
             ME_CORE_WARN("MoveAsset: meta file write failed after move to '{}'", newRel);
         }
 
-        AssetRegistryChange change;
-        change.Kind = AssetRegistryChangeKind::Moved;
-        change.Guid = updatedMeta.Guid;
-        change.OldPath = oldRel;
-        change.NewPath = newRel;
-        change.AssetTypeId = updatedMeta.AssetType;
-        BroadcastChange(change);
-
         return true;
     }
 
     bool AssetManager::RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError)
     {
-        SuppressExternalSyncScope suppressScope;
         outError.clear();
 
         if (newFileName.empty())
@@ -1063,55 +962,20 @@ namespace minEngine
         const std::string registryKey = NormalizeProjectRelativeAssetPath(path);
         if (!registryKey.empty())
         {
-            auto iter = m_AssetRegistry.find(registryKey);
-            if (iter != m_AssetRegistry.end())
-            {
-                return &iter->second;
-            }
+            return m_Registry.FindMetaByPath(registryKey);
         }
 
-        auto legacyIter = m_AssetRegistry.find(path);
-        if (legacyIter != m_AssetRegistry.end())
-        {
-            return &legacyIter->second;
-        }
-
-        return nullptr;
+        return m_Registry.FindMetaByPath(path);
     }
 
     const AssetMeta* AssetManager::FindAssetMetaByGuid(const GUID& guid) const
     {
-        auto guidIter = m_AssetPathByGuid.find(guid);
-        if (guidIter == m_AssetPathByGuid.end())
-        {
-            return nullptr;
-        }
-
-        auto pathIter = m_AssetRegistry.find(guidIter->second);
-        if (pathIter == m_AssetRegistry.end())
-        {
-            return nullptr;
-        }
-
-        return &pathIter->second;
+        return m_Registry.FindMetaByGuid(guid);
     }
 
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasByType(const std::string& assetTypeId) const
     {
-        std::vector<const AssetMeta*> result;
-        auto bucketIter = m_AssetMetasByType.find(assetTypeId);
-        if (bucketIter == m_AssetMetasByType.end())
-        {
-            return result;
-        }
-
-        result.reserve(bucketIter->second.size());
-        for (AssetMeta* meta : bucketIter->second)
-        {
-            result.push_back(meta);
-        }
-
-        return result;
+        return m_Registry.FindMetasByType(assetTypeId);
     }
 
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasByClass(const Reflection::MEClass* assetClass) const
@@ -1141,43 +1005,7 @@ namespace minEngine
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasUnderDirectory(
         std::string_view projectRelativeDirectory) const
     {
-        std::string directoryRel(projectRelativeDirectory);
-        if (!directoryRel.empty())
-        {
-            directoryRel = std::filesystem::path(directoryRel).lexically_normal().generic_string();
-        }
-
-        std::vector<const AssetMeta*> result;
-        for (const auto& [assetPath, meta] : m_AssetRegistry)
-        {
-            (void)assetPath;
-
-            const std::filesystem::path parentPath =
-                std::filesystem::path(meta.AssetPath).parent_path().lexically_normal();
-            const std::string parentRel = parentPath.generic_string();
-
-            if (directoryRel.empty())
-            {
-                if (parentRel.empty() || parentRel == ".")
-                {
-                    result.push_back(&meta);
-                }
-            }
-            else if (parentRel == directoryRel)
-            {
-                result.push_back(&meta);
-            }
-        }
-
-        std::sort(
-            result.begin(),
-            result.end(),
-            [](const AssetMeta* left, const AssetMeta* right)
-            {
-                return left->AssetName < right->AssetName;
-            });
-
-        return result;
+        return m_Registry.FindMetasUnderDirectory(projectRelativeDirectory);
     }
 
     std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)

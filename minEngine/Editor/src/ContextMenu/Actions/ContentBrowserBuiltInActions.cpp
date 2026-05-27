@@ -71,7 +71,6 @@ namespace minEngine
             {
                 (void)ctx;
                 editor.GetAssetWorkflow().DeleteSelectedAsset();
-                RefreshContentBrowser(editor);
             }
         };
 
@@ -115,7 +114,6 @@ namespace minEngine
                 const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
                 const std::string_view destDir = cbCtx != nullptr ? cbCtx->CurrentDirectoryRel : std::string_view{};
                 editor.GetAssetWorkflow().ImportAssetDialog(destDir);
-                RefreshContentBrowser(editor);
             }
         };
 

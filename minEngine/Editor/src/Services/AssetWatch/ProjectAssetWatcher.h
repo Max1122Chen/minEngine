@@ -77,6 +77,5 @@ namespace minEngine
         std::vector<PendingFileEvent> m_PendingEvents;
         float m_DebounceElapsedSeconds = 0.0f;
         bool m_HasPendingDebounce = false;
-        size_t m_SuppressedBatchCount = 0;
     };
 }

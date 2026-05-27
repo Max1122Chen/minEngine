@@ -38,8 +38,27 @@ namespace minEngine
         void UnsubscribeFromAssetManager();
 
     private:
+        static std::string NormalizeParentDirectoryRel(std::string_view assetRelativePath);
+        static std::string NormalizeDirectoryRel(std::string_view projectRelativeDirectory);
+
         bool IsAssetInCurrentDirectory(std::string_view assetRelativePath) const;
         bool IsChangeRelevantToCurrentDirectory(const AssetRegistryChange& change) const;
+
+        DirectoryNode* FindDirectoryNode(std::string_view directoryRel);
+        const DirectoryNode* FindDirectoryNode(std::string_view directoryRel) const;
+        DirectoryNode* GetOrInsertDirectoryNode(std::string_view directoryRel);
+
+        void InsertAssetSorted(std::vector<const AssetMeta*>& assets, const AssetMeta* meta);
+        bool RemoveAssetByPath(std::vector<const AssetMeta*>& assets, std::string_view assetPath);
+
+        void ApplyRegisteredChange(const AssetRegistryChange& change);
+        void ApplyUnregisteredChange(const AssetRegistryChange& change);
+        void ApplyMovedChange(const AssetRegistryChange& change);
+        void ApplyMetaUpdatedChange(const AssetRegistryChange& change);
+
+        void InsertIntoCurrentDirectoryList(const AssetMeta* meta);
+        void RemoveFromCurrentDirectoryList(std::string_view assetPath);
+
         void BuildDirectoryNodeRecursive(
             DirectoryNode& outNode,
             const std::filesystem::path& absoluteDirectory);

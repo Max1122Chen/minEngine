@@ -4,6 +4,7 @@
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
+#include "Runtime/Resource/EditorFilesystemMutationPass.h"
 
 #include <algorithm>
 
@@ -93,13 +94,6 @@ namespace minEngine
             m_DebounceElapsedSeconds = 0.0f;
         }
 
-        if (m_SuppressedBatchCount > 0)
-        {
-            ME_CORE_DEBUG(
-                "ProjectAssetWatcher: discarded {} debounced batches while external sync was suppressed.",
-                m_SuppressedBatchCount);
-            m_SuppressedBatchCount = 0;
-        }
     }
 
     void ProjectAssetWatcher::Tick(float deltaTime)
@@ -154,6 +148,11 @@ namespace minEngine
 
         const std::filesystem::path absolutePath = CombineWatchPath(dir, filename);
 
+        if (EditorFilesystemMutationPass::ShouldIgnoreWatcherEvent(absolutePath))
+        {
+            return;
+        }
+
         std::error_code errorCode;
         if (std::filesystem::is_directory(absolutePath, errorCode))
         {
@@ -193,10 +192,16 @@ namespace minEngine
                 return;
             }
 
+            const std::filesystem::path oldAbsolutePath = CombineWatchPath(dir, oldFilename);
+            if (EditorFilesystemMutationPass::ShouldIgnoreWatcherEvent(oldAbsolutePath))
+            {
+                return;
+            }
+
             PendingFileEvent event;
             event.Kind = PendingActionKind::Move;
             event.AbsolutePath = absolutePath;
-            event.OldAbsolutePath = CombineWatchPath(dir, oldFilename);
+            event.OldAbsolutePath = oldAbsolutePath;
             EnqueueFileAction(std::move(event));
             return;
         }
@@ -232,14 +237,6 @@ namespace minEngine
 
     void ProjectAssetWatcher::ProcessPendingActions()
     {
-        if (AssetManager::HasInstance() && AssetManager::Get().IsExternalSyncSuppressed())
-        {
-            std::lock_guard<std::mutex> lock(m_QueueMutex);
-            m_PendingEvents.clear();
-            ++m_SuppressedBatchCount;
-            return;
-        }
-
         std::vector<PendingFileEvent> events;
         {
             std::lock_guard<std::mutex> lock(m_QueueMutex);
