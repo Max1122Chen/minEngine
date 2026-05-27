@@ -146,10 +146,6 @@ namespace minEngine
         {
             destDirectory /= std::filesystem::path(destDirectoryRel);
         }
-        else
-        {
-            destDirectory /= "Imported";
-        }
         std::error_code createError;
         std::filesystem::create_directories(destDirectory, createError);
         if (createError)

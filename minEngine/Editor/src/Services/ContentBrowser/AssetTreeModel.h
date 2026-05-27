@@ -28,6 +28,7 @@ namespace minEngine
         std::string_view GetCurrentDirectory() const;
 
         const DirectoryNode& GetDirectoryTreeRoot() const;
+        std::vector<const DirectoryNode*> GetSubdirectoriesInCurrentDirectory() const;
         const std::vector<const AssetMeta*>& GetAssetsInCurrentDirectory() const;
 
         void OnRegistryChange(const AssetRegistryChange& change);

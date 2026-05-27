@@ -56,6 +56,32 @@ namespace minEngine
         return m_TreeRoot;
     }
 
+    std::vector<const AssetTreeModel::DirectoryNode*> AssetTreeModel::GetSubdirectoriesInCurrentDirectory() const
+    {
+        std::vector<const DirectoryNode*> subdirectories;
+        const DirectoryNode* currentNode = FindDirectoryNode(m_CurrentDirectoryRel);
+        if (currentNode == nullptr)
+        {
+            return subdirectories;
+        }
+
+        subdirectories.reserve(currentNode->Children.size());
+        for (const DirectoryNode& child : currentNode->Children)
+        {
+            subdirectories.push_back(&child);
+        }
+
+        std::sort(
+            subdirectories.begin(),
+            subdirectories.end(),
+            [](const DirectoryNode* left, const DirectoryNode* right)
+            {
+                return left->DisplayName < right->DisplayName;
+            });
+
+        return subdirectories;
+    }
+
     const std::vector<const AssetMeta*>& AssetTreeModel::GetAssetsInCurrentDirectory() const
     {
         return m_CurrentAssets;

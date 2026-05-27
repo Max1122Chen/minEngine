@@ -305,24 +305,28 @@ namespace minEngine
         ImGui::PopID();
     }
 
-    void ContentBrowserWindow::DrawAssetTile(const AssetMeta& meta, const int tileIndex, const bool selected)
+    void ContentBrowserWindow::AdvanceTileLayout(const int tileIndex, const int columnCount)
     {
-        ImGui::PushID(tileIndex);
+        if (tileIndex <= 0)
+        {
+            return;
+        }
 
+        if ((tileIndex % columnCount) == 0)
+        {
+            ImGui::Dummy(ImVec2(0.0f, ViewMetrics::TileSpacing));
+        }
+        else
+        {
+            ImGui::SameLine(0.0f, ViewMetrics::TileSpacing);
+        }
+    }
+
+    void ContentBrowserWindow::DrawTileVisual(const char* label, const bool selected)
+    {
         const EditorAppearance& appearance = m_Context.GetEditorAppearance();
         const EditorThemePalette& palette = appearance.GetActivePalette();
         ImFont* captionFont = appearance.GetImFont(EditorTypographyRole::Caption);
-
-        const ImVec2 outerSize(ViewMetrics::TileOuterWidth, ResolveTileOuterHeight());
-        if (ImGui::InvisibleButton("##tile", outerSize))
-        {
-            SelectAsset(&meta);
-        }
-
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-        {
-            ActivateAssetFromBrowser(meta);
-        }
 
         const ImVec2 outerMin = ImGui::GetItemRectMin();
         const ImVec2 outerMax = ImGui::GetItemRectMax();
@@ -370,14 +374,13 @@ namespace minEngine
         const float labelWidth = labelMax.x - labelMin.x;
 
         const ImU32 labelColor = appearance.GetDisplayColorU32(palette.TextPrimary);
-        const char* assetName = meta.AssetName.c_str();
 
         if (captionFont != nullptr)
         {
             ImGui::PushFont(captionFont, 0.0f);
         }
 
-        const std::string displayName = BuildEllipsizedLabel(assetName, labelWidth);
+        const std::string displayName = BuildEllipsizedLabel(label, labelWidth);
         const ImVec2 displaySize = ImGui::CalcTextSize(displayName.c_str());
         const float textX = labelMin.x + (labelWidth - displaySize.x) * 0.5f;
         drawList->AddText(ImVec2(textX, labelMin.y), labelColor, displayName.c_str());
@@ -388,6 +391,52 @@ namespace minEngine
         }
 
         drawList->PopClipRect();
+    }
+
+    void ContentBrowserWindow::DrawDirectoryTile(const AssetTreeModel::DirectoryNode& directoryNode)
+    {
+        ImGui::PushID(directoryNode.RelativePath.c_str());
+
+        const ImVec2 outerSize(ViewMetrics::TileOuterWidth, ResolveTileOuterHeight());
+        ImGui::InvisibleButton("##dirTile", outerSize);
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+            m_Model.SetCurrentDirectory(directoryNode.RelativePath);
+            m_SelectedAssetIndex = -1;
+            m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
+        }
+
+        DrawTileVisual(directoryNode.DisplayName.c_str(), false);
+
+        if (ImGui::BeginPopupContextItem())
+        {
+            DrawContentBrowserContextMenu(
+                ContentBrowserHitKind::TreeDirectory,
+                directoryNode.RelativePath,
+                nullptr);
+            ImGui::EndPopup();
+        }
+
+        ImGui::PopID();
+    }
+
+    void ContentBrowserWindow::DrawAssetTile(const AssetMeta& meta, const int tileIndex, const bool selected)
+    {
+        ImGui::PushID(tileIndex);
+
+        const ImVec2 outerSize(ViewMetrics::TileOuterWidth, ResolveTileOuterHeight());
+        if (ImGui::InvisibleButton("##tile", outerSize))
+        {
+            SelectAsset(&meta);
+        }
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+            ActivateAssetFromBrowser(meta);
+        }
+
+        DrawTileVisual(meta.AssetName.c_str(), selected);
 
         if (ImGui::BeginPopupContextItem())
         {
@@ -414,10 +463,12 @@ namespace minEngine
             ImGui::EndPopup();
         }
 
+        const std::vector<const AssetTreeModel::DirectoryNode*>& subdirectories =
+            m_Model.GetSubdirectoriesInCurrentDirectory();
         const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
-        if (assets.empty())
+        if (subdirectories.empty() && assets.empty())
         {
-            ImGui::TextUnformatted("No registered assets in this folder.");
+            ImGui::TextUnformatted("No folders or registered assets in this folder.");
             return;
         }
 
@@ -433,6 +484,19 @@ namespace minEngine
             static_cast<int>((availableWidth + ViewMetrics::TileSpacing) /
                              (ViewMetrics::TileOuterWidth + ViewMetrics::TileSpacing)));
 
+        int tileIndex = 0;
+        for (const AssetTreeModel::DirectoryNode* directoryNode : subdirectories)
+        {
+            if (directoryNode == nullptr)
+            {
+                continue;
+            }
+
+            AdvanceTileLayout(tileIndex, columnCount);
+            DrawDirectoryTile(*directoryNode);
+            ++tileIndex;
+        }
+
         for (int index = 0; index < static_cast<int>(assets.size()); ++index)
         {
             const AssetMeta* meta = assets[static_cast<size_t>(index)];
@@ -441,20 +505,10 @@ namespace minEngine
                 continue;
             }
 
-            if (index > 0)
-            {
-                if ((index % columnCount) == 0)
-                {
-                    ImGui::Dummy(ImVec2(0.0f, ViewMetrics::TileSpacing));
-                }
-                else
-                {
-                    ImGui::SameLine(0.0f, ViewMetrics::TileSpacing);
-                }
-            }
-
+            AdvanceTileLayout(tileIndex, columnCount);
             const bool selectedTile = (m_SelectedAssetIndex == index);
-            DrawAssetTile(*meta, index, selectedTile);
+            DrawAssetTile(*meta, tileIndex, selectedTile);
+            ++tileIndex;
         }
     }
 

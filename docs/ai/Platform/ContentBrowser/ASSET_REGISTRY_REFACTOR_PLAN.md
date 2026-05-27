@@ -58,6 +58,7 @@ flowchart LR
 | **R1** | `AssetTreeModel` 增量 patch + 去掉重复 Refresh | **已实现** |
 | **R2** | Batch 从 suppress 拆出；Watcher 用通关文牒 (#4) | **待做** |
 | **R3** | Watcher 策略收尾（directory threshold、ScanAssets Batch 等） | **待做（可选保险）** |
+| **R4** | Import 目标目录语义统一 + View 侧目录项可见/可进入 | **待排期** |
 
 关联 issue 记录：[CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md](./CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md)
 
@@ -286,6 +287,80 @@ public:
 | `kFullRescanFileThreshold` | 保持 32 或按项目规模调参 |
 
 **不在 R2 必须做：** 通关文牒 + 事务级登记到位后，多数 Import/Delete 应已不触发 Full Scan。
+
+---
+
+## 阶段 R4：CB 导入目标语义 + View 侧目录项（需求新增，待实现）
+
+### 需求 A：Import 路径跟随当前 CB 目录（空目录=Assets 根）
+
+**拍板语义：**
+
+- 当 Content Browser 有当前目录时：Import 到该目录。
+- 当 CB 当前目录为空（根）时：Import 到 `ProjectContentRoot`（`Assets/` 根），**不再** fallback 到 `Assets/Imported/`。
+- 主菜单 Import 与 CB 工具栏/右键 Import 保持同一语义，避免入口行为不一致。
+
+**最小改动点：**
+
+| 文件 | 改动 |
+|------|------|
+| `Editor/UI/EditorWindows/MainMenuWindow.cpp` | Import 菜单改为传入 `GetContentBrowser().GetModel().GetCurrentDirectory()` |
+| `Editor/Services/AssetWorkflowModule.cpp` | `destDirectoryRel.empty()` 分支改为落到 `projectContentRoot`，移除默认 `Imported/` fallback |
+| `docs/ai/Platform/ContentBrowser/ASSET_PIPELINE_P6_API.md` 等 | 同步文档，删除“固定 Imported”旧描述 |
+
+**验收标准：**
+
+- [ ] 在 `Assets/Foo/Bar` 下点击 Import，文件导入 `Assets/Foo/Bar`
+- [ ] 当前目录在根（空目录）时 Import，文件导入 `Assets/` 根
+- [ ] 主菜单 Import 与 CB 工具栏 Import 行为一致
+- [ ] Import 后目录树/当前列表仍由 Registry 增量更新，不引入全量重建
+
+### 需求 B：View 侧显示目录 item 并支持点击打开
+
+**目标：**
+
+- 在 CB 右侧 View（Tile/List 区）中除资产外显示“子目录项”。
+- 双击目录项进入该目录（等价于左侧 Tree 点击目录）。
+
+**建议交互（v1）：**
+
+- 目录项显示在资产项之前（先目录后资产）。
+- 单击目录项：`SetCurrentDirectory(childRel)`。
+- 双击目录项：同单击（可不额外定义打开动作）。
+- 右键目录项沿用现有目录上下文菜单（Import/Refresh 等）。
+
+**最小改动点：**
+
+| 文件 | 改动 |
+|------|------|
+| `Editor/Services/ContentBrowser/AssetTreeModel.h/.cpp` | 新增“当前目录子目录列表”查询（可基于 `DirectoryNode.Children`） |
+| `Editor/UI/EditorWindows/ContentBrowserWindow.cpp` | 在 `DrawAssetTileGrid` 渲染目录项 + 双击切目录 + 目录右键 |
+| `Editor/ContextMenu/Contexts/ContentBrowserMenuContext.h`（可选） | 若需区分 ViewDirectory 命中类型，可扩展 `ContentBrowserHitKind` |
+
+**验收标准：**
+
+- [ ] 当前目录下存在子目录时，View 侧可见目录项
+- [ ] 双击目录项可进入并刷新为该目录内容
+- [ ] 返回上级（面包屑）后状态一致，不丢选中/不崩溃
+- [ ] 目录项右键菜单行为与 Tree 目录右键一致
+
+**交互最终约束（以你的最新要求为准）：**
+
+- 单击目录 Tile：无任何行为（不切换目录、不改变选中资产）。
+- 双击目录 Tile：进入该目录并刷新为目录内容。
+
+**推进清单（v1：双击进入 / 单击无行为）**
+
+1. `AssetTreeModel` 提供当前目录的子目录列表（`RelativePath/DisplayName`）。
+2. `ContentBrowserWindow` 在 `DrawAssetTileGrid` 渲染目录 Tile（放在资产 Tile 前）。
+3. `DrawDirectoryTile` 中：单击不处理；双击调用 `SetCurrentDirectory`。
+4. 双击后清理 `AssetWorkflow` 的选择并重置当前资产索引，避免选中状态污染。
+5. 目录 Tile 支持右键菜单，并与 Tree 目录菜单行为一致。
+
+**实施复杂度评估：**
+
+- 需求 A：**低**（约 0.5 人日，含自测）
+- 需求 B：**中**（约 1~2 人日，取决于 View 复用和交互细节）
 
 ---
 
