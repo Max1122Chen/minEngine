@@ -7,6 +7,8 @@
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Resource/AssetManager.h"
 
+#include <string_view>
+
 namespace minEngine::Serialization
 {
     using minEngine::Reflection::MEArrayProperty;
@@ -20,6 +22,130 @@ namespace minEngine::Serialization
     using minEngine::Reflection::PropertySpecifier;
     using minEngine::Reflection::PropertySpecifierMask;
     using minEngine::Reflection::ReflectionSystem;
+
+    static bool SplitPropertyPath(std::string_view propertyPath, std::vector<std::string_view>& outSegments)
+    {
+        outSegments.clear();
+        if (propertyPath.empty())
+        {
+            return false;
+        }
+
+        size_t start = 0;
+        while (start < propertyPath.size())
+        {
+            const size_t dot = propertyPath.find('.', start);
+            const size_t end = dot == std::string_view::npos ? propertyPath.size() : dot;
+            const std::string_view segment = propertyPath.substr(start, end - start);
+            if (segment.empty())
+            {
+                return false;
+            }
+
+            outSegments.push_back(segment);
+
+            if (dot == std::string_view::npos)
+            {
+                break;
+            }
+
+            start = dot + 1;
+        }
+
+        return !outSegments.empty();
+    }
+
+    static SerializeResult WalkToOwningObjectByPath(void*& inOutOwnerObject,
+                                                   const MEClass*& inOutOwnerClass,
+                                                   const std::vector<std::string_view>& segments,
+                                                   const std::string& fullPathForErrors,
+                                                   bool isMutable)
+    {
+        auto FindPropertyInHierarchyLocal = [](const MEClass* ownerClass, std::string_view propertyName) -> const MEProperty*
+        {
+            if (ownerClass == nullptr || propertyName.empty())
+            {
+                return nullptr;
+            }
+
+            const MEProperty* foundProperty = nullptr;
+            ReflectionSystem::Get().ForEachPropertyInHierarchy(
+                ownerClass->GetName(),
+                [&](const MEProperty& property) -> bool
+                {
+                    if (property.GetName() == propertyName)
+                    {
+                        foundProperty = &property;
+                        return false;
+                    }
+                    return true;
+                });
+
+            return foundProperty;
+        };
+
+        if (inOutOwnerObject == nullptr || inOutOwnerClass == nullptr)
+        {
+            return SerializeResult::Failure("PropertyByPath failed: owner is null.", fullPathForErrors);
+        }
+
+        if (segments.size() < 2)
+        {
+            return SerializeResult::Success();
+        }
+
+        for (size_t i = 0; i + 1 < segments.size(); ++i)
+        {
+            const std::string_view segment = segments[i];
+            const MEProperty* property = FindPropertyInHierarchyLocal(inOutOwnerClass, segment);
+            if (property == nullptr)
+            {
+                return SerializeResult::Failure("PropertyByPath failed: segment not found.", fullPathForErrors);
+            }
+
+            if (property->GetCategory() != MEPropertyCategory::Object)
+            {
+                return SerializeResult::Failure("PropertyByPath failed: non-object segment in path.", fullPathForErrors);
+            }
+
+            const MEObjectProperty& objectProperty = static_cast<const MEObjectProperty&>(*property);
+            const MEClass* valueClass = objectProperty.GetValueClass();
+            if (valueClass == nullptr)
+            {
+                return SerializeResult::Failure("PropertyByPath failed: value class unresolved.", fullPathForErrors);
+            }
+
+            void* nextObjectPtr = nullptr;
+            if (isMutable)
+            {
+                if (property->GetMutableAccessor() == nullptr)
+                {
+                    return SerializeResult::Failure("PropertyByPath failed: mutable accessor is null.", fullPathForErrors);
+                }
+
+                nextObjectPtr = property->GetMutable(inOutOwnerObject);
+            }
+            else
+            {
+                if (property->GetConstAccessor() == nullptr)
+                {
+                    return SerializeResult::Failure("PropertyByPath failed: const accessor is null.", fullPathForErrors);
+                }
+
+                nextObjectPtr = const_cast<void*>(property->GetConst(inOutOwnerObject));
+            }
+
+            if (nextObjectPtr == nullptr)
+            {
+                return SerializeResult::Failure("PropertyByPath failed: intermediate object pointer is null.", fullPathForErrors);
+            }
+
+            inOutOwnerObject = nextObjectPtr;
+            inOutOwnerClass = valueClass;
+        }
+
+        return SerializeResult::Success();
+    }
 
     bool Serializer::m_IsHandlingPtr = false;
 
@@ -1149,6 +1275,63 @@ namespace minEngine::Serialization
     {
         BinaryReaderArchive reader(buffer);
         return DeserializeProperty(ownerObject, ownerClass, propertyName, reader, outUnresolvedRefs, options);
+    }
+
+    SerializeResult Serializer::SerializePropertyByPathToBuffer(void* ownerObject,
+                                                               const MEClass* ownerClass,
+                                                               const std::string& propertyPath,
+                                                               std::vector<uint8_t>& outBuffer,
+                                                               const SerializerOptions& options)
+    {
+        std::vector<std::string_view> segments;
+        if (!SplitPropertyPath(propertyPath, segments))
+        {
+            return SerializeResult::Failure("SerializePropertyByPathToBuffer failed: invalid propertyPath.", propertyPath);
+        }
+
+        void* currentOwnerObject = ownerObject;
+        const MEClass* currentOwnerClass = ownerClass;
+        SerializeResult walkResult =
+            WalkToOwningObjectByPath(currentOwnerObject, currentOwnerClass, segments, propertyPath, false);
+        if (!walkResult.ok)
+        {
+            return walkResult;
+        }
+
+        const std::string leafName(segments.back());
+        return SerializePropertyToBuffer(currentOwnerObject, currentOwnerClass, leafName, outBuffer, options);
+    }
+
+    SerializeResult Serializer::DeserializePropertyByPathFromBuffer(void* ownerObject,
+                                                                   const MEClass* ownerClass,
+                                                                   const std::string& propertyPath,
+                                                                   const std::vector<uint8_t>& buffer,
+                                                                   std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                                   const SerializerOptions& options)
+    {
+        std::vector<std::string_view> segments;
+        if (!SplitPropertyPath(propertyPath, segments))
+        {
+            return SerializeResult::Failure("DeserializePropertyByPathFromBuffer failed: invalid propertyPath.", propertyPath);
+        }
+
+        void* currentOwnerObject = ownerObject;
+        const MEClass* currentOwnerClass = ownerClass;
+        SerializeResult walkResult =
+            WalkToOwningObjectByPath(currentOwnerObject, currentOwnerClass, segments, propertyPath, true);
+        if (!walkResult.ok)
+        {
+            return walkResult;
+        }
+
+        const std::string leafName(segments.back());
+        return DeserializePropertyFromBuffer(
+            currentOwnerObject,
+            currentOwnerClass,
+            leafName,
+            buffer,
+            outUnresolvedRefs,
+            options);
     }
 
     SerializeResult Serializer::SerializeObjectToBuffer(const std::string& rootClassName,

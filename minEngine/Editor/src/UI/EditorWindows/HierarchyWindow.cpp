@@ -1,39 +1,53 @@
 #include "HierarchyWindow.h"
 
 #include "Shell/EditorContextHelpers.h"
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorThemeScope.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTheme.h"
+#include "UI/Appearance/EditorWindowTypography.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 namespace minEngine
 {
     void HierarchyWindow::OnDraw()
     {
-        ImGui::Begin(m_Title.c_str());
-
-        if (ImGui::Button("Create Empty"))
+        if (!EditorWindowTypography::BeginPanel(m_Context, m_Title.c_str()))
         {
-            GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
-        }
-        ImGui::Separator();
-
-        const std::vector<GameObject*> gameObjects = GetSceneEditor(&m_Context)->GetHierarchyGameObjects();
-        if (gameObjects.empty())
-        {
-            ImGui::TextUnformatted("No GameObject in current scene.");
-            ImGui::End();
             return;
         }
 
-        TryCaptureF2RenameRequest();
-
-        // For each GO in hierarchy, we draw a selectable item. Clicking on it will select the GO, and right-clicking will open a context menu for that GO.
-        bool anyGoMenuOpened = false;
-        for (GameObject* gameObject : gameObjects)
         {
-            if (!gameObject)
+            EditorAppearance& appearance = m_Context.GetEditorAppearance();
+            EditorTypographyScope bodyTypography(appearance, EditorTypographyRole::Body);
+
+            if (ImGui::Button("Create Empty"))
             {
-                continue;
+                GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
+            }
+            ImGui::Separator();
+
+            const std::vector<GameObject*> gameObjects = GetSceneEditor(&m_Context)->GetHierarchyGameObjects();
+            if (gameObjects.empty())
+            {
+                ImGui::TextUnformatted("No GameObject in current scene.");
+                ImGui::End();
+                return;
             }
 
-            ImGui::PushID(static_cast<int>(gameObject->GetID()));
+            TryCaptureF2RenameRequest();
+
+            // For each GO in hierarchy, we draw a selectable item. Clicking on it will select the GO, and right-clicking will open a context menu for that GO.
+            bool anyGoMenuOpened = false;
+            for (GameObject* gameObject : gameObjects)
+            {
+                if (!gameObject)
+                {
+                    continue;
+                }
+
+                ImGui::PushID(static_cast<int>(gameObject->GetID()));
 
             if (m_RenamingGameObjectId == gameObject->GetID())
             {
@@ -43,22 +57,24 @@ namespace minEngine
                     m_RequestRenameFocus = false;
                 }
 
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.19f, 0.28f, 0.40f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.35f, 0.50f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.22f, 0.32f, 0.46f, 1.0f));
-                const bool committed = ImGui::InputText("##Rename", m_RenameBuffer, sizeof(m_RenameBuffer),
-                                                        ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue);
-                ImGui::PopStyleColor(3);
+                {
+                    EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(appearance);
+                    const bool committed = ImGui::InputText("##Rename",
+                                                            m_RenameBuffer,
+                                                            sizeof(m_RenameBuffer),
+                                                            ImGuiInputTextFlags_AutoSelectAll |
+                                                                ImGuiInputTextFlags_EnterReturnsTrue);
 
-                if (committed || ImGui::IsItemDeactivatedAfterEdit())
-                {
-                    GetSceneEditor(&m_Context)->SubmitRenameGameObject(
-                        m_Context, gameObject->GetID(), m_RenameBuffer);
-                    m_RenamingGameObjectId = kInvalidGameObjectId;
-                }
-                else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
-                {
-                    m_RenamingGameObjectId = kInvalidGameObjectId;
+                    if (committed || ImGui::IsItemDeactivatedAfterEdit())
+                    {
+                        GetSceneEditor(&m_Context)->SubmitRenameGameObject(
+                            m_Context, gameObject->GetID(), m_RenameBuffer);
+                        m_RenamingGameObjectId = kInvalidGameObjectId;
+                    }
+                    else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+                    {
+                        m_RenamingGameObjectId = kInvalidGameObjectId;
+                    }
                 }
 
                 ImGui::PopID();
@@ -71,24 +87,30 @@ namespace minEngine
 
             if (selected)
             {
-                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.23f, 0.36f, 0.54f, 0.75f));
-                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.27f, 0.42f, 0.61f, 0.85f));
-                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.21f, 0.33f, 0.49f, 0.95f));
-            }
+                {
+                    EditorThemeScope selectionTheme = EditorWindowTheme::HierarchySelection(appearance);
+                    if (ImGui::Selectable(label.c_str(), true, ImGuiSelectableFlags_SpanAllColumns))
+                    {
+                        GetSceneEditor(&m_Context)->SelectGameObject(gameObject->GetID());
+                    }
 
-            if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns))
-            {
-                GetSceneEditor(&m_Context)->SelectGameObject(gameObject->GetID());
+                    const ImVec2 minPos = ImGui::GetItemRectMin();
+                    const ImVec2 maxPos = ImGui::GetItemRectMax();
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    const ImU32 barColor =
+                        appearance.GetDisplayColorU32(appearance.GetSemanticColors().HierarchySelectionBar);
+                    drawList->AddRectFilled(ImVec2(minPos.x + 3.0f, minPos.y + 4.0f),
+                                            ImVec2(minPos.x + 7.0f, maxPos.y - 4.0f),
+                                            barColor,
+                                            2.0f);
+                }
             }
-
-            // Custom selection highlight
-            if (selected)
+            else
             {
-                ImGui::PopStyleColor(3);
-                ImVec2 minPos = ImGui::GetItemRectMin();
-                ImVec2 maxPos = ImGui::GetItemRectMax();
-                ImDrawList* drawList = ImGui::GetWindowDrawList();
-                drawList->AddRectFilled(ImVec2(minPos.x + 3.0f, minPos.y + 4.0f), ImVec2(minPos.x + 7.0f, maxPos.y - 4.0f), IM_COL32(102, 178, 255, 255), 2.0f);
+                if (ImGui::Selectable(label.c_str(), false, ImGuiSelectableFlags_SpanAllColumns))
+                {
+                    GetSceneEditor(&m_Context)->SelectGameObject(gameObject->GetID());
+                }
             }
 
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -96,17 +118,18 @@ namespace minEngine
                 GetSceneEditor(&m_Context)->SelectGameObject(gameObject->GetID());
                 BeginRename(*gameObject);
             }
-            
-            // TODO: there are some issues with the current implementation of right-click context menu, 
+
+            // TODO: there are some issues with the current implementation of right-click context menu,
             // For example, only the last GO's menu can be correctly opened. Right-clicking on the other GOs will open the blank space menu instead.
             anyGoMenuOpened = TryDrawRightClickGOMenu(*gameObject);
             ImGui::PopID();
-        }
+            }
 
-        // only show blank space menu if no GO menu is opened, otherwise the blank space menu will interfere with GO menu
-        if (!anyGoMenuOpened)
-        {
-            TryDrawRightClickBlankSpaceMenu();
+            // only show blank space menu if no GO menu is opened, otherwise the blank space menu will interfere with GO menu
+            if (!anyGoMenuOpened)
+            {
+                TryDrawRightClickBlankSpaceMenu();
+            }
         }
 
         ImGui::End();

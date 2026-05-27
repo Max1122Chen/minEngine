@@ -1,6 +1,11 @@
 #include "SceneEditingViewportWindow.h"
 
 #include "Shell/EditorContextHelpers.h"
+#include "UI/Appearance/EditorThemeScope.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTheme.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 #include "Shell/ViewportClientRegistry.h"
 #include "Render/RenderCamera.h"
 #include "Function/Framework/GameObject/GameObject.h"
@@ -34,11 +39,13 @@ namespace minEngine
 
         const std::string overlayId = m_Id + "_overlay";
         ImGui::SetCursorScreenPos(UI::GetOverlayScreenPos(m_OverlayState, imageMin));
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.10f, 0.13f, 0.82f));
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.27f, 0.37f, 0.50f, 0.95f));
         if (ImGui::BeginChild(overlayId.c_str(), UI::GetOverlaySize(m_OverlayState, m_OverlayConfig), true,
                               ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav))
         {
+            EditorThemeScope overlayTheme = EditorWindowTheme::PanelOverlay(m_Context.GetEditorAppearance());
+            EditorTypographyScope captionTypography(
+                m_Context.GetEditorAppearance(),
+                EditorTypographyRole::Caption);
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
             if (m_OverlayState.collapsed)
             {
@@ -73,7 +80,6 @@ namespace minEngine
             ImGui::PopStyleVar();
         }
         ImGui::EndChild();
-        ImGui::PopStyleColor(2);
 
         DrawGizmo(sceneClient);
     }

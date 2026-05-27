@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26 (roadmap sync)
 
 ## Purpose
 
@@ -129,6 +129,55 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`Editor.exe --asset-manager-test` exit 0 (delete, move, rename, extension guard, unregister, clear, scene unregister).
 - Next step:
 	P3 NFD / P4 AssetWorkflow / P5 efsw.
+
+### 2026-05-25 - Asset Pipeline P3 FileDialog (Runtime Platform)
+- Goal:
+	Runtime IFileDialogService + NFD; Editor consumes via Engine; asset filters from Registry.
+- Main changes:
+	`Runtime/Platform/FileDialog/*`, `FileDialogService` in `Engine`; `AssetTypeRegistry::BuildFileDialogFilters`;
+	Editor `GetFileDialogService()`; Tools menu **File Dialog (P3)** for Open/Save/Folder smoke.
+- Validation done:
+	`cmake --build minEngine/build --target Editor` succeeded (single-threaded link after parallel truncate).
+- Next step:
+	P4 `AssetWorkflowModule::ImportAssetDialog`.
+
+### 2026-05-26 - Asset Pipeline P5 ProjectAssetWatcher (efsw)
+- Goal:
+	Editor-only filesystem watcher syncing external disk changes to `AssetManager` registry.
+- Main changes:
+	`Third-Party/efsw` @ 1.4.0; `ProjectAssetWatcher` (queue + 400 ms debounce + main-thread `Tick`);
+	`AssetManager::SuppressExternalSyncScope`; Editor `OpenProject`/`CloseProject`/`Run` lifecycle;
+	bulk fallback `ScanAssets`; P5 API doc status → 已实现.
+- Validation done:
+	`cmake --build minEngine/build --target Editor -j 1` succeeded.
+- Next step:
+	Manual P5 acceptance (copy/delete in Explorer, Import no storm); P5.1 `Reimported`; P6 Content Browser.
+
+### 2026-05-26 - Asset Pipeline P6 Content Browser
+- Goal:
+	Content Browser module: directory tree, registered asset list, selection, Inspector bridge, Open/Delete/Import.
+- Main changes:
+	`ContentBrowserModule`, `AssetTreeModel`, `ContentBrowserWindow`; `FindAssetMetasUnderDirectory`;
+	`AssetWorkflowModule` selection/Delete/InspectorSource; `InspectorWindow` focus patch.
+- Risks or caveats:
+	**Browser UI 展示需后期再设计**（当前裸 ImGui 线框；主题/图标/缩略图待 Appearance merge 后 P6.1）。
+- Validation done:
+	`cmake --build` OK; user confirmed Content Browser visible and core flows work.
+- Next step:
+	P7 default Dock + menu integration; P6.1 Browser visual design after Appearance merge; P5.1 Reimported optional.
+
+### 2026-05-26 - Editor / Runtime 文件分层迁移
+- Goal:
+	Align Editor SubEditor/Inspector layout and consolidate Runtime asset loaders under `Resource/Loaders/`.
+- Main changes:
+	Editor: `Services/Inspector/InspectorModule`; `SubEditor/Material|Scene` + viewport clients; plan `docs/ai/Editor/EDITOR_FILE_LAYOUT_MIGRATION.md`.
+	Runtime: all `*Loader` → `Runtime/Resource/Loaders/`; merge `MaterialAssetLoader` into `MaterialLoader::Load`; new `ShaderLoader`; `TextureCubeLoader` unchanged in `Render/`.
+- Risks or caveats:
+	`MaterialEditor::OpenSession` may still double-compile after `LoadAsset<Material>` (pre-existing).
+- Validation done:
+	`cmake --build minEngine/build --target minEngine Editor`; `--asset-manager-test` / `--material-ir-test` exit 0.
+- Next step:
+	Editor 目视 spot-check; optional `MaterialEditor` dedupe compile.
 
 ### 2026-05-25 - Seed EngineDefault BasicShapes into MyMEProject
 - Goal:
@@ -673,3 +722,26 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **2026-05-21:** `TextureObject.DefaultTexture` serializes as texture asset `$guid` (`BaseColorWhite.png`); removed `ApplyMaterialIRSmokeRuntimeDefaults`.
 - **Deprecated:** `Simple.memtl` (legacy MaterialResource JSON); `test.mescene` / `default.mescene` reference `MaterialIRSmoke` GUID.
 - **Tests:** removed `MaterialAssetSerializationTest` and `--material-serialize-test`; `MaterialIRTest` keeps MIR compile/GPU smoke only (asset tests TBD).
+
+### 2026-05-26 - Platform ROADMAP §8 完成情况总览
+- Goal:
+	Sync PLATFORM_ROADMAP with design docs and repo state (P0–P5, P2 submodules, Material maintenance).
+- Main changes:
+	`PLATFORM_ROADMAP.md` §8 per-module done/deferred tables + summary; §2/§3/§5 updated (P0/P1 no longer “全后置”).
+- Next step:
+	E1 → P7 per §8 总结顺序.
+
+### 2026-05-26 - Content Browser P6.1-polish implemented
+- Goal:
+	Flat Caption breadcrumb + square icon tile grid per §2.6.
+- Main changes:
+	`ContentBrowserWindow` — `ViewMetrics`, `DrawBreadcrumbLink`, `DrawAssetTile`; Appearance Caption/Selection/Field tokens.
+- Validation done:
+	`cmake --build minEngine/build --target Editor` succeeded.
+- Next step:
+	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
+
+### 2026-05-26 - Roadmap sync (P3 Undo + E2 + P6.1)
+- **Docs:** `PLATFORM_ROADMAP.md`、`EDITOR_PLATFORM_PLAN.md`、`PROJECT_CONTEXT.md` aligned with repo state.
+- **Done (marked):** P6.1 CB UI; P3 Undo E1.1–E1.4 + S1–S2; E2.1–E2.3a Inspector/Material viewport preview (`6ccd9bf`).
+- **Deferred (consolidated):** E1 Inspector unification; E2.2b Texture preview; E2.3b CB thumbnails; E2.4; E1.5 Material Undo; Command E2 TryMerge; P7; P0/P1; P4/P5.

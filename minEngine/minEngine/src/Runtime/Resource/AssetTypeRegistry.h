@@ -1,11 +1,18 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Platform/FileDialog/FileDialogTypes.h"
 
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
+
+namespace minEngine::Reflection
+{
+    class MEClass;
+}
 
 namespace minEngine
 {
@@ -30,15 +37,19 @@ namespace minEngine
 
         std::string InferAssetTypeFromExtension(const std::filesystem::path& path) const;
         std::string InferAssetTypeFromRuntimeClassName(std::string_view runtimeClassName) const;
+        std::string_view GetAssetTypeIdForClass(const Reflection::MEClass* assetClass) const;
 
         std::vector<std::string> BuildFileDialogFilterSpec() const;
+        std::vector<FileDialogFilter> BuildFileDialogFilters() const;
         const std::vector<AssetTypeDescriptor>& GetDescriptors() const { return m_Descriptors; }
 
     private:
         AssetTypeRegistry() = default;
 
         static std::string NormalizeExtension(std::string_view extension);
+        std::string BuildExtensionSpec(const std::vector<std::string>& extensions) const;
 
         std::vector<AssetTypeDescriptor> m_Descriptors;
+        std::unordered_map<const Reflection::MEClass*, std::string> m_AssetTypeIdByClass;
     };
 }

@@ -3,10 +3,10 @@
 #include "BrdfLutGenerator.h"
 #include "EnvMapCapture.h"
 #include "../Texture.h"
-#include "../Texture2DLoader.h"
+#include "Runtime/Resource/Loaders/Texture2DLoader.h"
 #include "../TextureCubeLoader.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
-#include "Runtime/Resource/ImageLoader.h"
+#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 

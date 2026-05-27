@@ -2,11 +2,21 @@
 
 #include "EditorGUIManager.h"
 #include "Shell/EditorCommandStack.h"
-#include "Material/MaterialEditor.h"
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Material/MaterialEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
+#include "Services/AssetWorkflowModule.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemePresets.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
+
+#include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Platform/FileDialog/IFileDialogService.h"
+#include "Runtime/Resource/AssetTypeRegistry.h"
+
+#include <filesystem>
 
 namespace minEngine
 {
@@ -21,13 +31,18 @@ namespace minEngine
             return;
         }
 
-        DrawFileMenu();
-        DrawEditMenu();
-        DrawViewMenu();
-        DrawWindowModeMenu();
-        DrawToolsMenu();
-        DrawHelpMenu();
+        {
+            EditorTypographyScope menuTypography(
+                m_Context.GetEditorAppearance(),
+                EditorTypographyRole::MenuBar);
 
+            DrawFileMenu();
+            DrawEditMenu();
+            DrawViewMenu();
+            DrawWindowModeMenu();
+            DrawToolsMenu();
+            DrawHelpMenu();
+        }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleVar();
     }
@@ -56,6 +71,10 @@ namespace minEngine
             {
             }
             ImGui::Separator();
+            if (ImGui::MenuItem("Import Asset...", nullptr, false, true))
+            {
+                m_Context.GetAssetWorkflow().ImportAssetDialog();
+            }
             if (ImGui::MenuItem("Exit"))
             {
                 m_Context.RequestExit();
@@ -142,6 +161,18 @@ namespace minEngine
                 ImGui::EndMenu();
             }
 
+            if (ImGui::BeginMenu("Typography"))
+            {
+                EditorAppearance& appearance = m_Context.GetEditorAppearance();
+                const bool cjkEnabled = appearance.GetAppearanceSettings().Typography.bEnableCjkGlyphs;
+                if (ImGui::MenuItem("Enable CJK Glyphs", nullptr, cjkEnabled))
+                {
+                    appearance.SetCjkGlyphsEnabled(!cjkEnabled, true);
+                }
+
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenu();
         }
     }
@@ -172,11 +203,92 @@ namespace minEngine
     {
         if (ImGui::BeginMenu("Tools"))
         {
+            DrawFileDialogTestMenu();
+            ImGui::Separator();
             ImGui::MenuItem("Build Settings", nullptr, false, false);
             ImGui::MenuItem("Project Settings", nullptr, false, false);
             ImGui::MenuItem("Profiler", nullptr, false, false);
             ImGui::EndMenu();
         }
+    }
+
+    void MainMenuWindow::DrawFileDialogTestMenu()
+    {
+        if (!ImGui::BeginMenu("File Dialog (P3)"))
+        {
+            return;
+        }
+
+        IFileDialogService& fileDialogService = m_Context.GetFileDialogService();
+        const PathRegistry& paths = PathRegistry::Get();
+
+        auto makeAssetRequest = [&](const char* title, bool allowMultiple) -> FileDialogRequest
+        {
+            FileDialogRequest request;
+            request.Title = title;
+            request.Filters = AssetTypeRegistry::Get().BuildFileDialogFilters();
+            request.bAllowMultiple = allowMultiple;
+            if (!paths.GetProjectContentRoot().empty())
+            {
+                request.InitialDirectory = paths.GetProjectContentRoot();
+            }
+
+            return request;
+        };
+
+        if (ImGui::MenuItem("Open Asset Files..."))
+        {
+            const FileDialogResult dialogResult =
+                fileDialogService.OpenFiles(makeAssetRequest("Open Asset Files", true));
+            if (dialogResult.bCancelled)
+            {
+                ME_CORE_INFO("FileDialog P3: Open cancelled.");
+            }
+            else
+            {
+                for (const std::filesystem::path& selectedPath : dialogResult.Paths)
+                {
+                    ME_CORE_INFO("FileDialog P3: Open selected '{}'", selectedPath.string());
+                }
+            }
+        }
+
+        if (ImGui::MenuItem("Save Asset File..."))
+        {
+            FileDialogRequest request = makeAssetRequest("Save Asset File", false);
+            const FileDialogResult dialogResult =
+                fileDialogService.SaveFile(request, "Untitled.memtl");
+            if (dialogResult.bCancelled)
+            {
+                ME_CORE_INFO("FileDialog P3: Save cancelled.");
+            }
+            else if (!dialogResult.Paths.empty())
+            {
+                ME_CORE_INFO("FileDialog P3: Save path '{}'", dialogResult.Paths.front().string());
+            }
+        }
+
+        if (ImGui::MenuItem("Select Folder..."))
+        {
+            FileDialogRequest request;
+            request.Title = "Select Folder";
+            if (!paths.GetProjectContentRoot().empty())
+            {
+                request.InitialDirectory = paths.GetProjectContentRoot();
+            }
+
+            const FileDialogResult dialogResult = fileDialogService.SelectFolder(request);
+            if (dialogResult.bCancelled)
+            {
+                ME_CORE_INFO("FileDialog P3: Folder cancelled.");
+            }
+            else if (!dialogResult.Paths.empty())
+            {
+                ME_CORE_INFO("FileDialog P3: Folder '{}'", dialogResult.Paths.front().string());
+            }
+        }
+
+        ImGui::EndMenu();
     }
 
     void MainMenuWindow::DrawHelpMenu()

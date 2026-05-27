@@ -15,6 +15,7 @@ namespace minEngine
     class InputSystem;
     class RenderSystem;
     class SceneManager;
+    class FileDialogService;
 
     class Engine
     {
@@ -59,6 +60,7 @@ namespace minEngine
         std::shared_ptr<InputSystem> m_InputSystem;
         std::shared_ptr<RenderSystem> m_RenderSystem;
         std::shared_ptr<SceneManager> m_SceneManager;
+        std::shared_ptr<FileDialogService> m_FileDialogService;
 
         EngineConfig m_EngineConfig;
         bool m_EnginePathConfigLoaded = false;

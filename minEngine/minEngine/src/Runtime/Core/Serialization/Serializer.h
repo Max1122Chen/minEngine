@@ -83,6 +83,21 @@ namespace minEngine::Serialization
                                                              std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                              const SerializerOptions& options = SerializerOptions{});
 
+        // Serialize/deserialize a nested property path like "Transform.Position".
+        // This is used by editor undo/redo to provide per-field commands for nested structs.
+        static SerializeResult SerializePropertyByPathToBuffer(void* ownerObject,
+                                                              const Reflection::MEClass* ownerClass,
+                                                              const std::string& propertyPath,
+                                                              std::vector<uint8_t>& outBuffer,
+                                                              const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult DeserializePropertyByPathFromBuffer(void* ownerObject,
+                                                                  const Reflection::MEClass* ownerClass,
+                                                                  const std::string& propertyPath,
+                                                                  const std::vector<uint8_t>& buffer,
+                                                                  std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                                  const SerializerOptions& options = SerializerOptions{});
+
         static SerializeResult SerializeObjectToBuffer(const std::string& rootClassName,
                                                        const void* rootObject,
                                                        std::vector<uint8_t>& outBuffer,

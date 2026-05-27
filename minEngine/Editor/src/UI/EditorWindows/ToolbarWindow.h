@@ -5,6 +5,9 @@
 #include "imgui.h"
 
 #include "UI/EditorWindows/EditorWindow.h"
+#include "UI/Appearance/EditorTypographyScope.h"
+
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 namespace minEngine
 {
@@ -39,6 +42,7 @@ namespace minEngine
                                             ImGuiWindowFlags_NoSavedSettings;
 
             ImGui::Begin(m_Title.c_str(), nullptr, toolbarFlags);
+            EditorTypographyScope toolbarTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::MenuBar);
             ImGui::Button(m_Context.IsPlaying() ? "Stop" : "Play");
 
             ImGui::SameLine();

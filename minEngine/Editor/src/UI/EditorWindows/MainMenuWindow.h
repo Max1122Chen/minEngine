@@ -27,6 +27,7 @@ namespace minEngine
         void DrawViewMenu();
         void DrawWindowModeMenu();
         void DrawToolsMenu();
+        void DrawFileDialogTestMenu();
         void DrawHelpMenu();
 
         const std::string m_Id = "main_menu";

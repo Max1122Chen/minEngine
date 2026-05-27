@@ -1,7 +1,7 @@
 #include "Commands/Scene/DeleteGameObjectCommand.h"
 
 #include "Commands/Scene/EditorObjectSnapshot.h"
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"

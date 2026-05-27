@@ -2,6 +2,7 @@
 
 #include "Runtime/Function/Framework/Project/EditorAppearanceSettings.h"
 #include "Runtime/Function/Framework/Project/EditorThemePalette.h"
+#include "UI/Appearance/EditorSemanticColors.h"
 
 #include <string_view>
 
@@ -23,5 +24,6 @@ namespace minEngine
         static EditorThemePalette ResolvePalette(const EditorAppearanceSettings& settings);
         static bool IsTokenExplicitlySet(const LinearColor& token);
         static EditorThemePalette MergePalettes(const EditorThemePalette& base, const EditorThemePalette& overrides);
+        static EditorSemanticColors GetSemanticColors(std::string_view presetId);
     };
 }

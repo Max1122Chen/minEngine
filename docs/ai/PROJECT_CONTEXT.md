@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-05-23
+Last updated: 2026-05-26
 
 ## 1) Project Goal
 
@@ -61,10 +61,11 @@ When finishing a task, AI should:
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
 - Place new design docs in the correct docs/ai/ subtree per docs-ai-layout rule.
 
-## 6) Current product direction (2026-05-24)
+## 6) Current product direction (2026-05-26)
 
 - **Rendering / Material:** Phase 0–5 largely complete (IBL + Skybox); maintain via `docs/ai/Render/Material/`.
-- **Platform (main track):** UE-like foundation — startup/path (M0) → memory management (P1) → **Editor 平台化** (P2: Inspector / Previewer / Asset infra / FileDialog; Content Browser 后置) → Undo → MEFunction → Lua. See `docs/ai/Platform/PLATFORM_ROADMAP.md` and `docs/ai/Editor/EDITOR_PLATFORM_PLAN.md`.
+- **Platform (main track):** **P2 Editor** — E0/E3/E4/P6/P6.1、**E2 Preview 核心**、**P3 Undo 首轮（E1.1–E1.4）** 已落地；当前 **E1 Inspector 统一** / **P7**；P0/P1 底座与 P4/P5 仍后置。
+- **Roadmaps:** `docs/ai/Platform/PLATFORM_ROADMAP.md`、`docs/ai/Editor/EDITOR_PLATFORM_PLAN.md`、`docs/ai/Editor/PREVIEWER_DESIGN.md`、`docs/ai/Editor/EDITOR_COMMAND_HISTORY.md`.
 
 ## 7) Material Editor (stable)
 

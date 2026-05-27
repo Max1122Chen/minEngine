@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Material/MaterialEditor.h"
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Material/MaterialEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
 
 namespace minEngine

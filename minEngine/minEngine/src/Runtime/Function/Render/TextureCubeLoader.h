@@ -2,7 +2,7 @@
 
 #include "Core.h"
 #include "RHI/RHITexture.h"
-#include "Runtime/Resource/ImageLoader.h"
+#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include <array>
 #include <memory>

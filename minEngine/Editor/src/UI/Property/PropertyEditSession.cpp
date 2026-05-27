@@ -1,6 +1,6 @@
 #include "UI/Property/PropertyEditSession.h"
 
-#include "Scene/SceneEditor.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 namespace minEngine
 {

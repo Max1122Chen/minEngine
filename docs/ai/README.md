@@ -39,6 +39,7 @@
 - [**Editor Shell 设计**](./Editor/EDITOR_SHELL_DESIGN.md)
 - [**Editor 架构复盘**](./Editor/EDITOR_ARCHITECTURE_REVIEW.md)
 - [**Editor 平台化规划**](./Editor/EDITOR_PLATFORM_PLAN.md) — E0–E4（P2 主线）
+- [**E2 Previewer / Editor 视口**](./Editor/PREVIEWER_DESIGN.md)
 - [Command Stack / Undo](./Editor/EDITOR_COMMAND_HISTORY.md)
 - [视口窗口](./Editor/EDITOR_VIEWPORT_WINDOWS.md)
 - [Content Browser 产品意图](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)

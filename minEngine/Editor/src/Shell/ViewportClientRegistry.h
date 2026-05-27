@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Core.h"
-#include "Viewport/EditorViewportClient.h"
-#include "Viewport/MaterialPreviewViewportClient.h"
-#include "Viewport/SceneEditingViewportClient.h"
+#include "SubEditor/Material/MaterialEditorViewportClient.h"
+#include "SubEditor/Scene/SceneEditingViewportClient.h"
 
 #include <memory>
 #include <string>
@@ -11,6 +10,7 @@
 
 namespace minEngine
 {
+    class EditorViewportClient;
     class IEditorContext;
 
     class ViewportClientRegistry
@@ -20,15 +20,15 @@ namespace minEngine
 
         SceneEditingViewportClient& GetOrCreateSceneEditingViewportClient(
             const std::string& viewportId,
-            const std::string& viewportTitle = "Scene");
-        MaterialPreviewViewportClient& GetOrCreateMaterialPreviewViewportClient(
+            const std::string& viewportTitle = "Viewport");
+        MaterialEditorViewportClient& GetOrCreateMaterialEditorViewportClient(
             const std::string& viewportId,
-            const std::string& viewportTitle = "Material Preview");
+            const std::string& viewportTitle = "Material Editor Viewport");
 
         EditorViewportClient* FindViewportClient(const std::string& viewportId);
         const EditorViewportClient* FindViewportClient(const std::string& viewportId) const;
         SceneEditingViewportClient* FindSceneEditingViewportClient(const std::string& viewportId);
-        MaterialPreviewViewportClient* FindMaterialPreviewViewportClient(const std::string& viewportId);
+        MaterialEditorViewportClient* FindMaterialEditorViewportClient(const std::string& viewportId);
 
         void RemoveViewportClient(const std::string& viewportId);
         void Clear();

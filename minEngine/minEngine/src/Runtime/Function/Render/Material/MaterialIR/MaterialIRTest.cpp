@@ -21,7 +21,7 @@
 #include "Render/OpenGL/OpenGLTexture.h"
 #include "Render/Shader.h"
 #include "Render/TextureCubeLoader.h"
-#include "Runtime/Resource/ImageLoader.h"
+#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>

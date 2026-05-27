@@ -1,10 +1,10 @@
 #include "BrdfLutGenerator.h"
 
 #include "../Texture.h"
-#include "../Texture2DLoader.h"
+#include "Runtime/Resource/Loaders/Texture2DLoader.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Math/Math.h"
-#include "Runtime/Resource/ImageLoader.h"
+#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include <cmath>
 #include <vector>

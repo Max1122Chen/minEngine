@@ -5,10 +5,12 @@
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Resource/Font.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 
 #include <algorithm>
 #include <cctype>
+#include <set>
 
 namespace minEngine
 {
@@ -53,30 +55,42 @@ namespace minEngine
             .RuntimeClassName = GetClassName<Texture2D>(),
             .Extensions = {".png", ".jpg", ".jpeg"},
             .FileDialogFilterLabel = "Texture2D (*.png;*.jpg;*.jpeg)"});
+        m_AssetTypeIdByClass[Texture2D::StaticClass()] = "Texture2D";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "StaticMesh",
             .RuntimeClassName = GetClassName<StaticMesh>(),
             .Extensions = {".obj", ".fbx", ".gltf"},
             .FileDialogFilterLabel = "Static Mesh (*.obj;*.fbx;*.gltf)"});
+        m_AssetTypeIdByClass[StaticMesh::StaticClass()] = "StaticMesh";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Material",
             .RuntimeClassName = GetClassName<Material>(),
             .Extensions = {".memtl"},
             .FileDialogFilterLabel = "Material (*.memtl)"});
+        m_AssetTypeIdByClass[Material::StaticClass()] = "Material";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Shader",
             .RuntimeClassName = GetClassName<Shader>(),
             .Extensions = {".meshader"},
             .FileDialogFilterLabel = "Shader (*.meshader)"});
+        m_AssetTypeIdByClass[Shader::StaticClass()] = "Shader";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Scene",
             .RuntimeClassName = GetClassName<Scene>(),
             .Extensions = {".mescene"},
             .FileDialogFilterLabel = "Scene (*.mescene)"});
+        m_AssetTypeIdByClass[Scene::StaticClass()] = "Scene";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "Font",
+            .RuntimeClassName = GetClassName<Font>(),
+            .Extensions = {".ttf", ".otf"},
+            .FileDialogFilterLabel = "Font (*.ttf;*.otf)"});
+        m_AssetTypeIdByClass[Font::StaticClass()] = "Font";
     }
 
     void AssetTypeRegistry::RegisterType(const AssetTypeDescriptor& descriptor)
@@ -95,6 +109,13 @@ namespace minEngine
         }
 
         m_Descriptors.push_back(descriptor);
+
+        const Reflection::MEClass* runtimeClass =
+            Reflection::ReflectionSystem::Get().FindClass(descriptor.RuntimeClassName);
+        if (runtimeClass != nullptr)
+        {
+            m_AssetTypeIdByClass[runtimeClass] = descriptor.AssetTypeId;
+        }
     }
 
     const AssetTypeDescriptor* AssetTypeRegistry::FindByExtension(std::string_view extension) const
@@ -146,6 +167,22 @@ namespace minEngine
         return std::string();
     }
 
+    std::string_view AssetTypeRegistry::GetAssetTypeIdForClass(const Reflection::MEClass* assetClass) const
+    {
+        if (assetClass == nullptr)
+        {
+            return {};
+        }
+
+        const auto iter = m_AssetTypeIdByClass.find(assetClass);
+        if (iter == m_AssetTypeIdByClass.end())
+        {
+            return {};
+        }
+
+        return iter->second;
+    }
+
     std::vector<std::string> AssetTypeRegistry::BuildFileDialogFilterSpec() const
     {
         std::vector<std::string> filters;
@@ -154,6 +191,89 @@ namespace minEngine
         {
             filters.push_back(descriptor.FileDialogFilterLabel);
         }
+
+        return filters;
+    }
+
+    std::string AssetTypeRegistry::BuildExtensionSpec(const std::vector<std::string>& extensions) const
+    {
+        std::string extensionSpec;
+        bool firstToken = true;
+        for (const std::string& extension : extensions)
+        {
+            std::string token = NormalizeExtension(extension);
+            if (token.empty())
+            {
+                continue;
+            }
+
+            if (!token.empty() && token.front() == '.')
+            {
+                token.erase(token.begin());
+            }
+
+            if (token.empty())
+            {
+                continue;
+            }
+
+            if (!firstToken)
+            {
+                extensionSpec.push_back(',');
+            }
+
+            extensionSpec += token;
+            firstToken = false;
+        }
+
+        return extensionSpec;
+    }
+
+    std::vector<FileDialogFilter> AssetTypeRegistry::BuildFileDialogFilters() const
+    {
+        std::vector<FileDialogFilter> filters;
+        filters.reserve(m_Descriptors.size() + 1);
+
+        std::set<std::string> allExtensionTokens;
+
+        for (const AssetTypeDescriptor& descriptor : m_Descriptors)
+        {
+            FileDialogFilter filter;
+            filter.Label = descriptor.FileDialogFilterLabel;
+            filter.ExtensionSpec = BuildExtensionSpec(descriptor.Extensions);
+            filters.push_back(std::move(filter));
+
+            for (const std::string& extension : descriptor.Extensions)
+            {
+                std::string token = NormalizeExtension(extension);
+                if (!token.empty() && token.front() == '.')
+                {
+                    token.erase(token.begin());
+                }
+
+                if (!token.empty())
+                {
+                    allExtensionTokens.insert(std::move(token));
+                }
+            }
+        }
+
+        std::string allExtensionsSpec;
+        bool firstToken = true;
+        for (const std::string& token : allExtensionTokens)
+        {
+            if (!firstToken)
+            {
+                allExtensionsSpec.push_back(',');
+            }
+
+            allExtensionsSpec += token;
+            firstToken = false;
+        }
+
+        filters.push_back(FileDialogFilter{
+            .Label = "All recognized assets",
+            .ExtensionSpec = std::move(allExtensionsSpec)});
 
         return filters;
     }
