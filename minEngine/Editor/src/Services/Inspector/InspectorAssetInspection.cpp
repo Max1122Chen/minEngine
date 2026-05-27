@@ -26,11 +26,17 @@ namespace minEngine
 
     void InspectorAssetInspection::SetInspectionTarget(const AssetMeta* meta)
     {
-        m_MaterialAsset.reset();
-        m_DisplayKind = PreviewDisplayKind::None;
-
         if (meta == nullptr)
         {
+            if (m_InspectionTargetPath.empty())
+            {
+                return;
+            }
+
+            m_InspectionTargetPath.clear();
+            m_MaterialAsset.reset();
+            m_DisplayKind = PreviewDisplayKind::None;
+
             if (m_ViewportInitialized)
             {
                 m_Viewport.SetObservedScene(nullptr);
@@ -40,6 +46,15 @@ namespace minEngine
             ShutdownSceneViewport();
             return;
         }
+
+        if (meta->AssetPath == m_InspectionTargetPath)
+        {
+            return;
+        }
+
+        m_InspectionTargetPath = meta->AssetPath;
+        m_MaterialAsset.reset();
+        m_DisplayKind = PreviewDisplayKind::None;
 
         m_DisplayKind = ResolveDisplayKind(*meta);
 
@@ -251,6 +266,7 @@ namespace minEngine
 
     void InspectorAssetInspection::Shutdown()
     {
+        m_InspectionTargetPath.clear();
         m_MaterialAsset.reset();
         m_DisplayKind = PreviewDisplayKind::None;
         m_World.Shutdown();

@@ -488,6 +488,29 @@ namespace minEngine
         context.GetCommandStack().Execute(std::make_unique<DeleteGameObjectCommand>(*this, gameObjectId));
     }
 
+    void SceneEditor::RequestBeginRenameGameObject(uint64_t gameObjectId)
+    {
+        m_PendingRenameGameObjectId = gameObjectId;
+    }
+
+    uint64_t SceneEditor::ConsumePendingRenameGameObjectId()
+    {
+        const uint64_t pendingId = m_PendingRenameGameObjectId;
+        m_PendingRenameGameObjectId = std::numeric_limits<uint64_t>::max();
+        return pendingId;
+    }
+
+    void SceneEditor::BeginRenameGameObjectInInspector(uint64_t gameObjectId)
+    {
+        GameObject* gameObject = GetSelectedGameObject();
+        if (!gameObject || gameObject->GetID() != gameObjectId)
+        {
+            return;
+        }
+
+        m_InspectorSource.StartInlineRename(*gameObject);
+    }
+
     bool SceneEditor::ApplySetObjectProperty(const GUID& ownerGuid,
                                              const std::string& ownerClassName,
                                              const std::string& propertyPath,

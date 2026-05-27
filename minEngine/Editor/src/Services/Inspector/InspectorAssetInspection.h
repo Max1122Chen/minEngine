@@ -5,6 +5,7 @@
 #include "Runtime/Function/Render/SceneViewport.h"
 
 #include <memory>
+#include <string>
 
 namespace minEngine
 {
@@ -50,6 +51,7 @@ namespace minEngine
         uint32_t m_ViewportHeight = 0;
 
         std::shared_ptr<Material> m_MaterialAsset;
+        std::string m_InspectionTargetPath;
     };
 }
 

@@ -16,6 +16,7 @@ namespace minEngine
     class ConsoleModule;
     class InspectorModule;
     class EditorCommandStack;
+    class EditorContextMenuSystem;
     class EditorInputHub;
     class EditorAppearance;
     class IFileDialogService;
@@ -47,6 +48,8 @@ namespace minEngine
         virtual InspectorModule& GetInspectorModule() = 0;
         virtual const InspectorModule& GetInspectorModule() const = 0;
         virtual EditorCommandStack& GetCommandStack() = 0;
+        virtual EditorContextMenuSystem& GetContextMenu() = 0;
+        virtual const EditorContextMenuSystem& GetContextMenu() const = 0;
         virtual EditorInputHub& GetInputHub() = 0;
         virtual EditorAppearance& GetEditorAppearance() = 0;
         virtual const EditorAppearance& GetEditorAppearance() const = 0;

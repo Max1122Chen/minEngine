@@ -42,6 +42,8 @@ namespace minEngine
         bool HasInspectableSelection() const override;
         void DrawInspector() override;
 
+        void StartInlineRename(const GameObject& gameObject);
+
     private:
         std::string GetShortTypeName(const std::string& fullTypeName);
 
@@ -87,14 +89,8 @@ namespace minEngine
                                    const PropertyUndoCaptureContext* undoContext);
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
 
-        void BeginRenameSelectedGameObject(const GameObject& gameObject)
-        {
-            m_IsRenamingSelectedGameObject = true;
-            m_RenameTargetGameObjectId = gameObject.GetID();
-            std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
-            std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
-            m_RequestRenameFocus = true;
-        }
+        void DrawGameObjectHeaderContextMenu(GameObject& gameObject);
+        void DrawComponentContextMenu(Component& component);
 
         bool TryDrawComponentContextMenu(Component& component);
 

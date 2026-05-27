@@ -731,6 +731,77 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	E1 → P7 per §8 总结顺序.
 
+### 2026-05-27 - ROADMAP 新任务安排（滚动）落盘
+- Goal:
+	Record today’s incremental task order aligned with ROADMAP, while leaving room for additional tasks.
+- Main changes:
+	`PLATFORM_ROADMAP.md` 新增 §10（A/B/C 三条主线）；新增 `docs/ai/Editor/EDITOR_TASK_ROLLOUT_2026-05-27.md`（推进切片 S1–S6）。
+- Next step:
+	按 S1 开始：右键 action 统一抽象 + Content Browser 先接入。
+
+### 2026-05-27 - M1 收口：Reveal/Rename 暂缓（设计）
+- Goal:
+	Align design after trial: drop non-cross-platform Reveal and modal CB Rename.
+- Main changes:
+	`EDITOR_CONTEXT_MENU_DESIGN.md` §6.1、§12、§13、§15.4；rollout S1b 代码清理项。
+- Next step:
+	M2 Hierarchy + Inspector.
+
+### 2026-05-27 - CB Import/Delete 全量刷新问题记录
+- Doc:
+	`docs/ai/Platform/ContentBrowser/CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md`；`CONTENT_BROWSER_DESIGN.md` 链接。
+- Next:
+	后续优化 AssetTreeModel 增量刷新 / 通知合并。
+
+### 2026-05-27 - M1 代码清理（Reveal/Rename 移除）
+- Main changes:
+	删 `EditorPlatformShell`；CB Action 仅 Delete/Import/Refresh；移除 AssetWorkflow/ContentBrowser Rename 模态链。
+- Next step:
+	M2.
+
+### 2026-05-27 - 右键菜单 M1（Content Browser）
+- Goal:
+	Scheme A visibility + CB context menu actions.
+- Main changes:
+	`IsVisibleInMenu`；`ContentBrowserMenuContext`；五 CB Action；CB 树/Tile/空白右键；`ImportAssetDialog(rel)`；`EditorPlatformShell` Reveal。
+- Next step:
+	M2 Hierarchy + Inspector.
+
+### 2026-05-27 - 计划对齐（M0 Done / M1 待批）
+- Goal:
+	勾选 S0；设计 §15 实现对照；M1 审批项（菜单灰显 A/B）。
+- Main changes:
+	`EDITOR_CONTEXT_MENU_DESIGN.md` §13–§15；`EDITOR_TASK_ROLLOUT` 子任务表；`PLATFORM_ROADMAP` §10 备注。
+- Next step:
+	用户审批 §15.3 → M1 ContentBrowser。
+
+### 2026-05-27 - 右键菜单 M0 骨架落地
+- Goal:
+	EditorContextMenuSystem + Context/Registry/Builder shells; wire IEditorContext.
+- Main changes:
+	`minEngine/Editor/src/ContextMenu/`（EditorMenuContext、IEditorAction、EditorActionRegistry、EditorMenuBuilder、EditorContextMenuSystem）。
+	`IEditorContext::GetContextMenu()`；`Editor` PostInitialize/OpenProject RegisterBuiltInActions、CloseProject/Shutdown Shutdown。
+- Next step:
+	M1 ContentBrowser 接入 + 首批 Action 注册。
+
+### 2026-05-27 - 右键菜单设计 v2（归属 + 门面）
+- Goal:
+	Clarify Editor infrastructure ownership; single GetContextMenu() facade.
+- Main changes:
+	`EDITOR_CONTEXT_MENU_DESIGN.md` §1 归属与生命周期；`EditorContextMenuSystem` 组合 Registry/Builder；明确不继承 EditorServiceModule。
+- Next step:
+	User review v2 → M0 implementation.
+
+### 2026-05-27 - 右键菜单设计重置（可扩展架构）
+- Goal:
+	Replace interim enum/service draft with UE-aligned extensible context-menu system.
+- Main changes:
+	重写 `EDITOR_CONTEXT_MENU_DESIGN.md`（EditorMenuContext 袋、IEditorAction、Registry、MenuBuilder、Command、M0–M5）。
+	`docs/external/README.md`；rollout 更新 S0–S3。
+
+### 2026-05-27 - 右键菜单统一设计草案（已废弃）
+- 轻量 `EditorContextMenuService` + enum 方案已由上条重置版替代。
+
 ### 2026-05-26 - Content Browser P6.1-polish implemented
 - Goal:
 	Flat Caption breadcrumb + square icon tile grid per §2.6.

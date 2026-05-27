@@ -83,6 +83,10 @@ namespace minEngine
         void SubmitAddEmptyGOToScene(IEditorContext& context);
         bool ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform);
         void SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId);
+
+        void RequestBeginRenameGameObject(uint64_t gameObjectId);
+        uint64_t ConsumePendingRenameGameObjectId();
+        void BeginRenameGameObjectInInspector(uint64_t gameObjectId);
         bool ApplySetObjectProperty(const GUID& ownerGuid,
                                     const std::string& ownerClassName,
                                     const std::string& propertyPath,
@@ -133,6 +137,7 @@ namespace minEngine
         bool m_SceneDirty = false;
         uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
         GameObject* m_SelectedGameObject = nullptr;
+        uint64_t m_PendingRenameGameObjectId = std::numeric_limits<uint64_t>::max();
         std::vector<std::string> m_AllComponentTypeNames;
     };
 }

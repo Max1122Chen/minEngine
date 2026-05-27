@@ -1,5 +1,8 @@
 #include "HierarchyWindow.h"
 
+#include "ContextMenu/Contexts/HierarchyMenuContext.h"
+#include "ContextMenu/EditorContextMenuSystem.h"
+#include "ContextMenu/EditorMenuContext.h"
 #include "Shell/EditorContextHelpers.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemeScope.h"
@@ -8,6 +11,7 @@
 #include "UI/Appearance/EditorWindowTypography.h"
 
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
 
 namespace minEngine
 {
@@ -37,9 +41,10 @@ namespace minEngine
             }
 
             TryCaptureF2RenameRequest();
+            TryConsumePendingRenameRequest();
 
-            // For each GO in hierarchy, we draw a selectable item. Clicking on it will select the GO, and right-clicking will open a context menu for that GO.
             bool anyGoMenuOpened = false;
+
             for (GameObject* gameObject : gameObjects)
             {
                 if (!gameObject)
@@ -119,13 +124,16 @@ namespace minEngine
                 BeginRename(*gameObject);
             }
 
-            // TODO: there are some issues with the current implementation of right-click context menu,
-            // For example, only the last GO's menu can be correctly opened. Right-clicking on the other GOs will open the blank space menu instead.
-            anyGoMenuOpened = TryDrawRightClickGOMenu(*gameObject);
+            if (ImGui::BeginPopupContextItem())
+            {
+                DrawHierarchyGameObjectContextMenu(*gameObject);
+                ImGui::EndPopup();
+                anyGoMenuOpened = true;
+            }
+
             ImGui::PopID();
             }
 
-            // only show blank space menu if no GO menu is opened, otherwise the blank space menu will interfere with GO menu
             if (!anyGoMenuOpened)
             {
                 TryDrawRightClickBlankSpaceMenu();
@@ -137,7 +145,6 @@ namespace minEngine
 
     void HierarchyWindow::TryCaptureF2RenameRequest()
     {
-        // Rename on F2 key pressed while the window is focused
         if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_F2, false))
         {
             if (GameObject* selected = GetSceneEditor(&m_Context)->GetSelectedGameObject())
@@ -145,6 +152,35 @@ namespace minEngine
                 BeginRename(*selected);
             }
         }
+    }
+
+    void HierarchyWindow::TryConsumePendingRenameRequest()
+    {
+        SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
+        if (!sceneEditor)
+        {
+            return;
+        }
+
+        const uint64_t pendingId = sceneEditor->ConsumePendingRenameGameObjectId();
+        if (pendingId == kInvalidGameObjectId)
+        {
+            return;
+        }
+
+        Scene* scene = sceneEditor->GetActiveScene();
+        if (!scene)
+        {
+            return;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(pendingId);
+        if (!gameObject)
+        {
+            return;
+        }
+
+        BeginRename(*gameObject);
     }
 
     void HierarchyWindow::BeginRename(const GameObject &gameObject)
@@ -159,32 +195,30 @@ namespace minEngine
     {
         if (ImGui::BeginPopupContextWindow())
         {
-            if (ImGui::MenuItem("Create Empty"))
-            {
-                GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
-            }
+            auto hierarchyContext = std::make_shared<HierarchyMenuContext>();
+            hierarchyContext->HitKind = HierarchyHitKind::Blank;
+            hierarchyContext->bClickedEmpty = true;
+
+            EditorMenuContext menuContext;
+            menuContext.Add(hierarchyContext);
+            m_Context.GetContextMenu().BuildAndDraw(m_Context, menuContext);
             ImGui::EndPopup();
             return true;
         }
         return false;
     }
 
-    bool HierarchyWindow::TryDrawRightClickGOMenu(GameObject &gameObject)
+    void HierarchyWindow::DrawHierarchyGameObjectContextMenu(GameObject& gameObject)
     {
-        if (ImGui::BeginPopupContextItem())
-        {
-            GetSceneEditor(&m_Context)->SelectGameObject(gameObject.GetID());
-            if (ImGui::MenuItem("Rename"))
-            {
-                BeginRename(gameObject);
-            }
-            if (ImGui::MenuItem("Delete"))
-            {
-                GetSceneEditor(&m_Context)->SubmitRemoveGameObjectFromScene(m_Context, gameObject.GetID());
-            }
-            ImGui::EndPopup();
-            return true;
-        }
-        return false;
+        GetSceneEditor(&m_Context)->SelectGameObject(gameObject.GetID());
+
+        auto hierarchyContext = std::make_shared<HierarchyMenuContext>();
+        hierarchyContext->HitKind = HierarchyHitKind::GameObjectItem;
+        hierarchyContext->bClickedEmpty = false;
+        hierarchyContext->SelectedGameObjectIds.push_back(gameObject.GetID());
+
+        EditorMenuContext menuContext;
+        menuContext.Add(hierarchyContext);
+        m_Context.GetContextMenu().BuildAndDraw(m_Context, menuContext);
     }
 }

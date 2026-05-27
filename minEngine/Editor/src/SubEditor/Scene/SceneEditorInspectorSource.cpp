@@ -1,5 +1,8 @@
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
 
+#include "ContextMenu/Contexts/SceneInspectorMenuContext.h"
+#include "ContextMenu/EditorContextMenuSystem.h"
+#include "ContextMenu/EditorMenuContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Appearance/EditorAppearance.h"
@@ -74,7 +77,7 @@ namespace minEngine
             && ImGui::IsKeyPressed(ImGuiKey_F2, false);
         if (requestRenameByHotkey)
         {
-            BeginRenameSelectedGameObject(*gameObject);
+            StartInlineRename(*gameObject);
         }
 
         if (m_RenameTargetGameObjectId != gameObject->GetID())
@@ -124,8 +127,10 @@ namespace minEngine
             ImGui::Selectable(headerLabel.c_str(), true, ImGuiSelectableFlags_SpanAllColumns);
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                BeginRenameSelectedGameObject(*gameObject);
+                StartInlineRename(*gameObject);
             }
+
+            // M4.1: Inspector context menus are temporarily disabled.
         }
 
         ImGui::PopStyleVar();
@@ -345,7 +350,7 @@ namespace minEngine
                 }
             }
 
-            TryDrawComponentContextMenu(*component);
+            // M4.1: Inspector context menus are temporarily disabled.
             
             if (!hasAnyReflectedField)
             {
@@ -840,21 +845,60 @@ namespace minEngine
         return false;
     }
 
-    bool SceneEditorInspectorSource::TryDrawComponentContextMenu(Component &component)
+    void SceneEditorInspectorSource::StartInlineRename(const GameObject& gameObject)
+    {
+        m_IsRenamingSelectedGameObject = true;
+        m_RenameTargetGameObjectId = gameObject.GetID();
+        std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+        std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
+        m_RequestRenameFocus = true;
+    }
+
+    void SceneEditorInspectorSource::DrawGameObjectHeaderContextMenu(GameObject& gameObject)
+    {
+        IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+        if (!editorContext)
+        {
+            return;
+        }
+
+        auto inspectorContext = std::make_shared<SceneInspectorMenuContext>();
+        inspectorContext->SelectionKind = SceneInspectorSelectionKind::GameObjectHeader;
+        inspectorContext->GameObjectId = gameObject.GetID();
+
+        EditorMenuContext menuContext;
+        menuContext.Add(inspectorContext);
+        editorContext->GetContextMenu().BuildAndDraw(*editorContext, menuContext);
+    }
+
+    void SceneEditorInspectorSource::DrawComponentContextMenu(Component& component)
+    {
+        IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+        GameObject* owner = component.GetOwner();
+        if (!editorContext || !owner)
+        {
+            return;
+        }
+
+        auto inspectorContext = std::make_shared<SceneInspectorMenuContext>();
+        inspectorContext->SelectionKind = SceneInspectorSelectionKind::Component;
+        inspectorContext->GameObjectId = owner->GetID();
+        inspectorContext->HoveredComponent = &component;
+
+        EditorMenuContext menuContext;
+        menuContext.Add(inspectorContext);
+        editorContext->GetContextMenu().BuildAndDraw(*editorContext, menuContext);
+    }
+
+    bool SceneEditorInspectorSource::TryDrawComponentContextMenu(Component& component)
     {
         if (ImGui::BeginPopupContextItem(("ComponentContextMenu##" + std::to_string(reinterpret_cast<uintptr_t>(&component))).c_str()))
         {
-            if (ImGui::MenuItem("Remove"))
-            {
-                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
-                {
-                    m_SceneEditor.SubmitRemoveComponentFromGO(*context, *component.GetOwner(), component);
-                }
-            }
+            DrawComponentContextMenu(component);
             ImGui::EndPopup();
             return true;
-         }
-         return false;
+        }
+        return false;
     }
 
     std::string SceneEditorInspectorSource::GetShortTypeName(const std::string& fullTypeName)

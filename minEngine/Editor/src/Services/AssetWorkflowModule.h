@@ -34,7 +34,7 @@ namespace minEngine
         void Shutdown() override;
 
         bool OpenAsset(const AssetMeta& meta);
-        void ImportAssetDialog();
+        void ImportAssetDialog(std::string_view destDirectoryRel = {});
 
         void SetSelectedAsset(const AssetMeta* meta);
         const AssetMeta* GetSelectedAsset() const;
@@ -46,6 +46,7 @@ namespace minEngine
         const IEditorInspectorSource* GetInspectorSource() const;
 
         void DeleteSelectedAsset();
+
         IEditorContext* GetEditorContext() const { return m_Context; }
 
     private:

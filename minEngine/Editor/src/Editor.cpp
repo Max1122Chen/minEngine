@@ -118,6 +118,7 @@ namespace minEngine
             ApplyCommandStackSettingsFromProject();
             ApplyAppearanceSettingsFromProject();
             ResetCommandStackForNewDocument();
+            m_ContextMenu.RegisterBuiltInActions();
 
             const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
             if (!projectCtx.Settings.EditorDefaultSceneName.empty())
@@ -152,6 +153,7 @@ namespace minEngine
 
     void Editor::CloseProject()
     {
+        m_ContextMenu.Shutdown();
         m_ProjectAssetWatcher.StopWatching();
         m_ContentBrowser.GetModel().Clear();
         m_AssetWorkflow.SetSelectedAsset(nullptr);
@@ -222,6 +224,7 @@ namespace minEngine
 
     void Editor::PostInitialize()
     {
+        m_ContextMenu.RegisterBuiltInActions();
     }
 
     void Editor::UpdateWindowTitle()
@@ -298,6 +301,7 @@ namespace minEngine
         m_ContentBrowser.Shutdown();
         m_ProjectAssetWatcher.Shutdown();
         m_ViewportRegistry.Clear();
+        m_ContextMenu.Shutdown();
 
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
