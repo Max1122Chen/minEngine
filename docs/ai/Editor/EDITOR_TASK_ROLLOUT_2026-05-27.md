@@ -1,7 +1,7 @@
 # Editor 任务推进安排（2026-05-27）
 
 Last updated: 2026-05-27  
-Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**）  
+Status: **rolling**（S4.1 Done；**B E2.2b Done**；下一项 **C CB Asset Icon**）  
 父文档：[`PLATFORM_ROADMAP.md`](../Platform/PLATFORM_ROADMAP.md) §10
 
 ---
@@ -25,8 +25,6 @@ Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**�
 
 #### A 子任务勾选
 
-#### A 子任务勾选
-
 | 子项 | 状态 |
 |------|------|
 | M0 骨架 + `GetContextMenu()` | [x] |
@@ -36,7 +34,10 @@ Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**�
 | M2 Hierarchy + Inspector | [x] |
 | M3 移除 Tools FileDialog | [x] |
 | M4 Provider + Section 子菜单 | [x] |
-| M4.1 稳定性修订（崩溃/范围收口） | [ ] |
+| M4.1 稳定性修订（崩溃/范围收口） | [x] |
+| Inspector GO Header 右键（Delete/Rename/Add Component 等） | [x] |
+| Inspector Components 空白处右键（Add Component） | [x] |
+| Inspector Component 行右键（Remove Component） | [x] |
 
 ### B. Texture2D 预览图
 
@@ -44,6 +45,12 @@ Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**�
   - 在 Inspector / Previewer 中选中 Texture2D 时，展示贴图内容（E2.2b）  
   - 优先实现单张 2D 纹理的基础预览，不引入复杂缩略图缓存策略
 - 路线图对应：P2/E2（Previewer）中的 **Texture2D Inspector 预览（E2.2b）**
+
+#### B 子任务勾选
+
+| 子项 | 状态 |
+|------|------|
+| E2.2b Inspector 预览（OpenGL MVP：`RHITexture2D` → `ImGui::Image`） | [x] |
 
 ### C. Content Browser Asset Icon
 
@@ -64,7 +71,7 @@ Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**�
 | S2 | M2 Hierarchy / Inspector | **Done** |
 | S3 | M3 Tools FileDialog | **Done** |
 | S4 | M4 Provider + Section 子菜单 | **Done** |
-| S4.1 | M4 稳定性修订（Section 策略 + 作用域收口） | **Planned** |
+| S4.1 | M4 稳定性修订 + Inspector 右键返工 | **Done** |
 
 ---
 
@@ -77,3 +84,5 @@ Status: **rolling**（S3 M3 Done；S4 M4 Done；新增 **S4.1 稳定性修订**�
 | 2026-05-27 | **M2**：Hierarchy/Inspector 右键；`EditorEditActions` 统一 Delete；Duplicate/Focus 占位 |
 | 2026-05-27 | **M4**：`SceneAddComponentMenuProvider`；Section `BeginMenu`；Create Empty / Remove Component |
 | 2026-05-27 | **S4.1 计划**：修复 Edit 悬停崩溃；仅 Create 使用折叠子菜单；Hierarchy GO 菜单移除 Add Component；Inspector 右键临时下线 |
+| 2026-05-27 | **S4.1 落地**：恢复 Inspector 右键；修 GO id=0 空菜单、重复 `RegisterBuiltInActions`、Add Component ImGui ID 冲突 |
+| 2026-05-27 | **E2.2b**：Texture2D Inspector 预览（OpenGL MVP） |

@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
@@ -35,6 +36,7 @@ namespace minEngine
 
             m_InspectionTargetPath.clear();
             m_MaterialAsset.reset();
+            m_TextureAsset.reset();
             m_DisplayKind = PreviewDisplayKind::None;
 
             if (m_ViewportInitialized)
@@ -54,6 +56,7 @@ namespace minEngine
 
         m_InspectionTargetPath = meta->AssetPath;
         m_MaterialAsset.reset();
+        m_TextureAsset.reset();
         m_DisplayKind = PreviewDisplayKind::None;
 
         m_DisplayKind = ResolveDisplayKind(*meta);
@@ -64,12 +67,19 @@ namespace minEngine
             return;
         }
 
+        if (m_DisplayKind == PreviewDisplayKind::Texture2DImage)
+        {
+            RebuildTexture2DPreview(*meta);
+            return;
+        }
+
         if (m_ViewportInitialized)
         {
             m_Viewport.SetObservedScene(nullptr);
         }
 
         m_World.Shutdown();
+        ShutdownSceneViewport();
     }
 
     PreviewDisplayKind InspectorAssetInspection::ResolveDisplayKind(const AssetMeta& meta) const
@@ -79,12 +89,39 @@ namespace minEngine
             return PreviewDisplayKind::Scene3D;
         }
 
+        if (meta.AssetType == "Texture2D")
+        {
+            return PreviewDisplayKind::Texture2DImage;
+        }
+
         return PreviewDisplayKind::None;
     }
 
     bool InspectorAssetInspection::HasPreviewContent() const
     {
+        if (m_DisplayKind == PreviewDisplayKind::Texture2DImage)
+        {
+            return true;
+        }
+
         return m_DisplayKind == PreviewDisplayKind::Scene3D && m_World.IsContentReady();
+    }
+
+    void InspectorAssetInspection::RebuildTexture2DPreview(const AssetMeta& meta)
+    {
+        if (m_ViewportInitialized)
+        {
+            m_Viewport.SetObservedScene(nullptr);
+        }
+
+        m_World.Shutdown();
+        ShutdownSceneViewport();
+
+        m_TextureAsset = AssetManager::Get().LoadAsset<Texture2D>(meta.AssetPath);
+        if (!m_TextureAsset)
+        {
+            ME_CORE_WARN("InspectorAssetInspection: failed to load texture '{}'.", meta.AssetPath);
+        }
     }
 
     void InspectorAssetInspection::RebuildScene3DPreview(const AssetMeta& meta)
@@ -268,6 +305,7 @@ namespace minEngine
     {
         m_InspectionTargetPath.clear();
         m_MaterialAsset.reset();
+        m_TextureAsset.reset();
         m_DisplayKind = PreviewDisplayKind::None;
         m_World.Shutdown();
         ShutdownSceneViewport();

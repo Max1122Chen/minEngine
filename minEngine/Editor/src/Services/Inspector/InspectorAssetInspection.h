@@ -11,6 +11,7 @@ namespace minEngine
 {
     class AssetMeta;
     class Material;
+    class Texture2D;
     class RHITexture2D;
     class RHI;
 
@@ -18,6 +19,7 @@ namespace minEngine
     {
         None,
         Scene3D,
+        Texture2DImage,
     };
 
     /** Read-only asset preview for Inspector: PreviewScene + SceneViewport bridge (no ViewportClient). */
@@ -29,6 +31,7 @@ namespace minEngine
 
         PreviewDisplayKind GetDisplayKind() const { return m_DisplayKind; }
         bool HasPreviewContent() const;
+        const Texture2D* GetTexture2DPreviewAsset() const { return m_TextureAsset.get(); }
 
         void RenderInspection(uint32_t squareSize);
         const std::shared_ptr<RHITexture2D>& GetSceneColorTexture() const;
@@ -40,6 +43,7 @@ namespace minEngine
         void EnsureSceneViewport(uint32_t squareSize);
         void ShutdownSceneViewport();
         void RebuildScene3DPreview(const AssetMeta& meta);
+        void RebuildTexture2DPreview(const AssetMeta& meta);
         void SetupDefaultPreviewCamera();
         void SyncPreviewCameraAspect();
 
@@ -51,6 +55,7 @@ namespace minEngine
         uint32_t m_ViewportHeight = 0;
 
         std::shared_ptr<Material> m_MaterialAsset;
+        std::shared_ptr<Texture2D> m_TextureAsset;
         std::string m_InspectionTargetPath;
     };
 }
