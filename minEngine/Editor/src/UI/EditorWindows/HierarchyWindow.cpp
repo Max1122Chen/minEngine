@@ -195,10 +195,13 @@ namespace minEngine
     {
         if (ImGui::BeginPopupContextWindow())
         {
-            if (ImGui::MenuItem("Create Empty"))
-            {
-                GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);
-            }
+            auto hierarchyContext = std::make_shared<HierarchyMenuContext>();
+            hierarchyContext->HitKind = HierarchyHitKind::Blank;
+            hierarchyContext->bClickedEmpty = true;
+
+            EditorMenuContext menuContext;
+            menuContext.Add(hierarchyContext);
+            m_Context.GetContextMenu().BuildAndDraw(m_Context, menuContext);
             ImGui::EndPopup();
             return true;
         }

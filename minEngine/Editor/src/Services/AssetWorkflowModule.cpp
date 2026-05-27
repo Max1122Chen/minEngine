@@ -196,11 +196,21 @@ namespace minEngine
     {
         if (meta == nullptr)
         {
+            if (m_SelectedAssetPath.empty())
+            {
+                return;
+            }
+
             m_SelectedAssetPath.clear();
             if (m_Context)
             {
                 m_Context->GetInspectorModule().ClearInspectionTarget();
             }
+            return;
+        }
+
+        if (meta->AssetPath == m_SelectedAssetPath)
+        {
             return;
         }
 

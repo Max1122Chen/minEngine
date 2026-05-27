@@ -1,7 +1,7 @@
 # Editor 上下文菜单系统 — 可扩展设计（重置版）
 
 Last updated: 2026-05-27  
-Status: **v2 已拍板**；**M0 Done**；**M1 CB 收口**（Delete / Import / Refresh；Reveal、Rename **暂缓**，见 §6.1、§15.4）  
+Status: **v2 已拍板**；**M0 Done**；**M1 CB 收口**（Delete / Import / Refresh；Reveal、Rename **暂缓**，见 §6.1、§15.4）；**M4 进入稳定性修订（M4.1）**  
 关联推进：[`EDITOR_TASK_ROLLOUT_2026-05-27.md`](./EDITOR_TASK_ROLLOUT_2026-05-27.md)  
 外部参考：[`docs/external/editor_context_menu_system_design.md`](../../external/editor_context_menu_system_design.md)、[`docs/external/ue_editor_context_menu_design.md`](../../external/ue_editor_context_menu_design.md)  
 父路线：[`PLATFORM_ROADMAP.md`](../Platform/PLATFORM_ROADMAP.md) §10
@@ -15,7 +15,7 @@ Status: **v2 已拍板**；**M0 Done**；**M1 CB 收口**（Delete / Import / Re
 | 3 | 不做什么 | **不**继承 `EditorServiceModule`；**不**进 `RegisterModules()` |
 | 4 | 窗口调用 | 仅 `Populate*Context` + `GetContextMenu().BuildAndDraw` |
 | 5 | 扩展注册 | `GetContextMenu().GetRegistry().Register(...)`（测试 / 插件） |
-| 6 | MVP 范围 | M0–M3：骨架 → CB → Hierarchy/Inspector → 清理 Tools FileDialog |
+| 6 | MVP 范围 | M0–M3：骨架 → CB → Hierarchy/Inspector → 清理 Tools FileDialog；**M4** Provider + Section 子菜单（后进入 M4.1 稳定性修订） |
 | 7 | M0 状态 | **Done**（2026-05-27） |
 | 8 | M1 CB 范围 | **Delete + Import + Refresh**；Reveal / Rename **不交付**（代码待删，见 §15.4） |
 
@@ -381,7 +381,7 @@ if (ImGui::BeginPopupContextItem())
 
 Hierarchy **不知道** 有哪些菜单项；只 `PopulateHierarchyContext`。
 
-### 7.1 Section 排版（M0：扁平菜单，非子菜单）
+### 7.1 Section 排版（M4.1 修订）
 
 | `EditorMenuSectionId` | 显示名（`GetEditorMenuSectionDisplayName`） |
 |-----------------------|---------------------------------------------|
@@ -390,9 +390,21 @@ Hierarchy **不知道** 有哪些菜单项；只 `PopulateHierarchyContext`。
 | `Create` | Create |
 | `View` | View |
 
-**M0 实现：** 同一右键菜单内**扁平** `MenuItem`；`Section` 变化时插入 `ImGui::Separator()`（**不**使用 `BeginMenu` 嵌套 Section 子菜单）。同一 Section 内按 `SortOrder` 排列。
+**M4.1 决策：**
 
-未来 `Create` 下可由 **Provider** 生成子项或子菜单（M4）。
+- 默认保持 **扁平 Section**（`MenuItem` + `Separator`），避免所有 Section 都变成二级折叠。
+- 仅允许显式声明为 `SectionPresentation::SubMenu` 的 Section 使用 `ImGui::BeginMenu`；当前仅 `Create` 允许折叠。
+- Provider 不直接控制 Section 的 Begin/End，而是通过 Builder 的统一阶段渲染，避免窗口栈错配。
+
+**问题复盘（触发 M4.1）：**
+
+- 当前实现把静态 Action 与 Provider 都接入 `BeginMenu/EndMenu` 生命周期，存在重复开关风险，已出现 `EndMenu() in wrong window` 断言。
+- 用户反馈中，Edit 悬停即可触发崩溃，说明 Section 栈管理必须回归单一责任。
+
+**历史：**
+
+- M0–M3：扁平 `MenuItem` + `Separator` 分 Section（稳定）。
+- M4：全 Section 子菜单（触发稳定性问题，转入 M4.1 修订）。
 
 ---
 
@@ -445,7 +457,8 @@ MVP 可只定 `EditorActionId` 枚举/constexpr，**UICommandList 壳子后接**
 | **M1 CB** | ✅ Context + 右键 + **Delete / Import / Refresh**；Reveal、Rename **撤出** | 2026-05-27 收口 |
 | **M2 Hierarchy + Inspector** | 对应 Typed Context + Delete/Rename/Duplicate/Focus | 与 Scene Command 对齐 |
 | **M3 清理** | 移除 Tools FileDialog 入口；文档验收 | |
-| **M4** | `ActionProvider`（如 Add Component 列表）、Section 子菜单 | |
+| **M4** | `ActionProvider`（Add Component 列表）、Section 子菜单、Create Empty / Remove Component | **Done**（2026-05-27，后进入 M4.1 修订） |
+| **M4.1** | 稳定性修订：Section 仅 Create 折叠；Hierarchy 禁止 Add Component；Inspector 右键暂时移出 | **Planned** |
 | **M5** | `EditorUICommandList` + 快捷键 | 与 `EditorInputHub` 统一 |
 | **远期** | Capability / `EditorElementHandle` | 对标 TypedElement |
 
@@ -530,6 +543,21 @@ MVP 可只定 `EditorActionId` 枚举/constexpr，**UICommandList 壳子后接**
 - [ ] **Duplicate** Command + Undo
 - [ ] **Frame in Viewport** 接 `SceneEditingViewportClient::FocusSelection`
 
+### M4（Provider + Section 子菜单，2026-05-27）
+
+- [x] `EditorMenuBuilder`：按 Section `BeginMenu`；`EnsureSectionOpen` + `DrawProviderMenuItem`
+- [x] `RegisterSceneContextMenuProviders`：`Create` → `Add Component` → 反射 Component 类型列表
+- [x] Hierarchy 空白处 `Create Empty` 经 Registry（`CreateEmptyGameObject` Action）
+- [x] Inspector 组件 `Remove` 经 Registry（`RemoveComponent` Action）
+- [ ] Material Graph / CB 按类型动态 Provider（后续）
+
+### M4.1（稳定性修订，待实施）
+
+- [ ] 修复 `ImGui::EndMenu()` 窗口栈错配（Edit 悬停崩溃）
+- [ ] Section 展示策略改为默认扁平，仅 `Create` 折叠
+- [ ] `Add Component` Provider 限制到 Inspector GO Header（Hierarchy GO 右键不显示）
+- [ ] Inspector 右键（GO Header + Component）从当前交付范围暂时移除，后续单独返工
+
 ### MVP 全量（M0–M3 完成后勾选）
 
 - [x] Content Browser 经 `GetContextMenu().BuildAndDraw` 弹出菜单
@@ -609,3 +637,4 @@ MVP 可只定 `EditorActionId` 枚举/constexpr，**UICommandList 壳子后接**
 | 2026-05-27 | **M0 落地** + §15 实现对照；§13 拆 M0/MVP 验收；§4/§5/§6/§7 与代码对齐 |
 | 2026-05-27 | **M1 CB**：ContentBrowserMenuContext、方案 A；首版含 Reveal/Rename（后撤回） |
 | 2026-05-27 | **M1 收口**：Reveal/Rename 暂缓；§6.1 分表；§12、§15.4；CB 仅 Delete/Import/Refresh |
+| 2026-05-27 | **M4.1 立项**：处理 Edit 悬停崩溃；Section 恢复默认扁平；Hierarchy 排除 Add Component；Inspector 右键暂时下线 |

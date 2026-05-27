@@ -17,6 +17,8 @@ namespace minEngine
         Refresh,
         FocusInViewport,
         OpenAsset,
+        CreateEmptyGameObject,
+        RemoveComponent,
     };
 
     enum class EditorMenuSectionId : uint32_t

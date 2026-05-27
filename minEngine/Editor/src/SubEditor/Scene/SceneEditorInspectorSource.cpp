@@ -130,11 +130,7 @@ namespace minEngine
                 StartInlineRename(*gameObject);
             }
 
-            if (ImGui::BeginPopupContextItem("InspectorGameObjectHeaderContext"))
-            {
-                DrawGameObjectHeaderContextMenu(*gameObject);
-                ImGui::EndPopup();
-            }
+            // M4.1: Inspector context menus are temporarily disabled.
         }
 
         ImGui::PopStyleVar();
@@ -354,7 +350,7 @@ namespace minEngine
                 }
             }
 
-            TryDrawComponentContextMenu(*component);
+            // M4.1: Inspector context menus are temporarily disabled.
             
             if (!hasAnyReflectedField)
             {
@@ -875,21 +871,34 @@ namespace minEngine
         editorContext->GetContextMenu().BuildAndDraw(*editorContext, menuContext);
     }
 
-    bool SceneEditorInspectorSource::TryDrawComponentContextMenu(Component &component)
+    void SceneEditorInspectorSource::DrawComponentContextMenu(Component& component)
+    {
+        IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+        GameObject* owner = component.GetOwner();
+        if (!editorContext || !owner)
+        {
+            return;
+        }
+
+        auto inspectorContext = std::make_shared<SceneInspectorMenuContext>();
+        inspectorContext->SelectionKind = SceneInspectorSelectionKind::Component;
+        inspectorContext->GameObjectId = owner->GetID();
+        inspectorContext->HoveredComponent = &component;
+
+        EditorMenuContext menuContext;
+        menuContext.Add(inspectorContext);
+        editorContext->GetContextMenu().BuildAndDraw(*editorContext, menuContext);
+    }
+
+    bool SceneEditorInspectorSource::TryDrawComponentContextMenu(Component& component)
     {
         if (ImGui::BeginPopupContextItem(("ComponentContextMenu##" + std::to_string(reinterpret_cast<uintptr_t>(&component))).c_str()))
         {
-            if (ImGui::MenuItem("Remove"))
-            {
-                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
-                {
-                    m_SceneEditor.SubmitRemoveComponentFromGO(*context, *component.GetOwner(), component);
-                }
-            }
+            DrawComponentContextMenu(component);
             ImGui::EndPopup();
             return true;
-         }
-         return false;
+        }
+        return false;
     }
 
     std::string SceneEditorInspectorSource::GetShortTypeName(const std::string& fullTypeName)

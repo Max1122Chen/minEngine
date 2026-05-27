@@ -2,7 +2,7 @@
 
 #include "ContextMenu/EditorActionIds.h"
 
-#include <vector>
+#include <functional>
 
 namespace minEngine
 {
@@ -18,7 +18,20 @@ namespace minEngine
 
         void Draw(IEditorContext& editor, const EditorMenuContext& ctx);
 
+        /** Opens a section submenu if not already open (for Provider use). */
+        bool EnsureSectionOpen(EditorMenuSectionId section);
+
+        void DrawProviderMenuItem(
+            IEditorContext& editor,
+            const EditorMenuContext& ctx,
+            const char* label,
+            bool enabled,
+            const char* disabledReason,
+            const std::function<void(IEditorContext& editor, const EditorMenuContext& menuCtx)>& onExecute);
+
     private:
+        void DrawStaticActions(IEditorContext& editor, const EditorMenuContext& ctx);
+
         void DrawAction(
             IEditorContext& editor,
             const IEditorAction& action,
@@ -26,6 +39,7 @@ namespace minEngine
             bool enabled);
 
         EditorActionRegistry& m_Registry;
+        bool m_IsProviderCreateMenuOpen = false;
     };
 
 } // namespace minEngine

@@ -3,21 +3,26 @@
 #include "ContextMenu/Actions/ContentBrowserBuiltInActions.h"
 #include "ContextMenu/Actions/EditorEditActions.h"
 #include "ContextMenu/Actions/SceneBuiltInActions.h"
+#include "ContextMenu/Actions/SceneContextMenuProviders.h"
 #include "ContextMenu/EditorActionRegistry.h"
 #include "ContextMenu/EditorMenuBuilder.h"
+#include "ContextMenu/EditorMenuContext.h"
 #include "Shell/IEditorContext.h"
 
 namespace minEngine
 {
     EditorContextMenuSystem::EditorContextMenuSystem()
-        : m_Builder(m_Registry)
+        : m_Builder(std::make_unique<EditorMenuBuilder>(m_Registry))
     {
     }
+
+    EditorContextMenuSystem::~EditorContextMenuSystem() = default;
 
     void EditorContextMenuSystem::RegisterBuiltInActions()
     {
         RegisterEditorEditActions(m_Registry);
         RegisterSceneBuiltInActions(m_Registry);
+        RegisterSceneContextMenuProviders(m_Registry);
         RegisterContentBrowserBuiltInActions(m_Registry);
     }
 
@@ -28,7 +33,7 @@ namespace minEngine
 
     void EditorContextMenuSystem::BuildAndDraw(IEditorContext& editor, const EditorMenuContext& ctx)
     {
-        m_Builder.Draw(editor, ctx);
+        m_Builder->Draw(editor, ctx);
     }
 
     EditorActionRegistry& EditorContextMenuSystem::GetRegistry()

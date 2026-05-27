@@ -90,6 +90,7 @@ namespace minEngine
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
 
         void DrawGameObjectHeaderContextMenu(GameObject& gameObject);
+        void DrawComponentContextMenu(Component& component);
 
         bool TryDrawComponentContextMenu(Component& component);
 

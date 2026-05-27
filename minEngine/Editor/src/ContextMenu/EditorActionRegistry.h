@@ -2,9 +2,9 @@
 
 #include "Core.h"
 
+#include "ContextMenu/EditorActionProviderTypes.h"
 #include "ContextMenu/IEditorAction.h"
 
-#include <functional>
 #include <memory>
 #include <vector>
 
@@ -13,11 +13,6 @@ namespace minEngine
     class EditorMenuBuilder;
     class EditorMenuContext;
     class IEditorContext;
-
-    using EditorActionProvider = std::function<void(
-        IEditorContext& editor,
-        const EditorMenuContext& ctx,
-        EditorMenuBuilder& builder)>;
 
     class EditorActionRegistry
     {

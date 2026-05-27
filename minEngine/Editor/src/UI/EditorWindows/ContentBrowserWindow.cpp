@@ -479,7 +479,11 @@ namespace minEngine
     {
         if (assetForContext != nullptr)
         {
-            SelectAsset(assetForContext);
+            const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
+            if (selected == nullptr || selected->AssetPath != assetForContext->AssetPath)
+            {
+                SelectAsset(assetForContext);
+            }
         }
 
         auto cbContext = std::make_shared<ContentBrowserMenuContext>();

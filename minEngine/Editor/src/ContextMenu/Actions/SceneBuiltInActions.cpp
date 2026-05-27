@@ -5,6 +5,11 @@
 #include "ContextMenu/EditorActionIds.h"
 #include "ContextMenu/EditorMenuContext.h"
 #include "ContextMenu/IEditorAction.h"
+#include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Shell/EditorContextHelpers.h"
+#include "Shell/IEditorContext.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 #include <limits>
 #include <memory>
@@ -82,6 +87,95 @@ namespace minEngine
             }
         };
 
+        class CreateEmptyGameObjectAction final : public IEditorAction
+        {
+        public:
+            EditorActionId GetId() const override { return EditorActionId::CreateEmptyGameObject; }
+            const char* GetLabel(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "Create Empty";
+            }
+            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Create; }
+            int GetSortOrder() const override { return 0; }
+
+            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
+            {
+                const HierarchyMenuContext* hierarchyCtx = ctx.Find<HierarchyMenuContext>();
+                return hierarchyCtx != nullptr && hierarchyCtx->HitKind == HierarchyHitKind::Blank;
+            }
+
+            bool CanExecute(const EditorMenuContext& ctx) const override { return IsVisibleInMenu(ctx); }
+
+            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "";
+            }
+
+            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                if (SceneEditor* sceneEditor = GetSceneEditor(&editor))
+                {
+                    sceneEditor->SubmitAddEmptyGOToScene(editor);
+                }
+            }
+        };
+
+        class RemoveComponentAction final : public IEditorAction
+        {
+        public:
+            EditorActionId GetId() const override { return EditorActionId::RemoveComponent; }
+            const char* GetLabel(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "Remove";
+            }
+            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Edit; }
+            int GetSortOrder() const override { return 30; }
+
+            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
+            {
+                const SceneInspectorMenuContext* inspectorCtx = ctx.Find<SceneInspectorMenuContext>();
+                return inspectorCtx != nullptr
+                    && inspectorCtx->SelectionKind == SceneInspectorSelectionKind::Component
+                    && inspectorCtx->HoveredComponent != nullptr;
+            }
+
+            bool CanExecute(const EditorMenuContext& ctx) const override { return IsVisibleInMenu(ctx); }
+
+            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "No component selected.";
+            }
+
+            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
+            {
+                const SceneInspectorMenuContext* inspectorCtx = ctx.Find<SceneInspectorMenuContext>();
+                if (!inspectorCtx || !inspectorCtx->HoveredComponent)
+                {
+                    return;
+                }
+
+                Component& component = *inspectorCtx->HoveredComponent;
+                GameObject* owner = component.GetOwner();
+                if (!owner)
+                {
+                    return;
+                }
+
+                SceneEditor* sceneEditor = GetSceneEditor(&editor);
+                if (!sceneEditor)
+                {
+                    return;
+                }
+
+                sceneEditor->SubmitRemoveComponentFromGO(editor, *owner, component);
+            }
+        };
+
         class FocusInViewportEditorAction final : public SceneDeferredAction
         {
         public:
@@ -118,7 +212,9 @@ namespace minEngine
 
     void RegisterSceneBuiltInActions(EditorActionRegistry& registry)
     {
+        registry.Register(std::make_unique<CreateEmptyGameObjectAction>());
         registry.Register(std::make_unique<DuplicateEditorAction>());
+        registry.Register(std::make_unique<RemoveComponentAction>());
         registry.Register(std::make_unique<FocusInViewportEditorAction>());
     }
 

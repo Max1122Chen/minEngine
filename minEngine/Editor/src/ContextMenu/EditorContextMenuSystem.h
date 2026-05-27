@@ -3,10 +3,12 @@
 #include "Core.h"
 
 #include "ContextMenu/EditorActionRegistry.h"
-#include "ContextMenu/EditorMenuBuilder.h"
+
+#include <memory>
 
 namespace minEngine
 {
+    class EditorMenuBuilder;
     class EditorMenuContext;
     class IEditorContext;
 
@@ -14,6 +16,7 @@ namespace minEngine
     {
     public:
         EditorContextMenuSystem();
+        ~EditorContextMenuSystem();
 
         void RegisterBuiltInActions();
         void Shutdown();
@@ -25,7 +28,7 @@ namespace minEngine
 
     private:
         EditorActionRegistry m_Registry;
-        EditorMenuBuilder m_Builder;
+        std::unique_ptr<EditorMenuBuilder> m_Builder;
     };
 
 } // namespace minEngine
