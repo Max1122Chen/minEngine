@@ -17,6 +17,7 @@ namespace minEngine
 {
     namespace PreviewAssetGuids
     {
+        // TODO: Try to find the sphere mesh in the Assets directory instead of using hardcoded GUID
         const GUID kEngineDefaultSphereMesh{ 607701751770204618ULL, 9254168834165808632ULL };
     }
 

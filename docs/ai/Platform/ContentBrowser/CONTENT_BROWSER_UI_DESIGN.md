@@ -1,7 +1,7 @@
 # Content Browser — UI 体验设计（P6.1）
 
 Last updated: 2026-05-26  
-Status: **拍板待实施**（用户 UX 定稿 2026-05-26）  
+Status: **P6.1 主体已合入**；**§2.6 P6.1-polish 已实现**（`ContentBrowserWindow` 面包屑 + Tile 网格）  
 前置：[ASSET_PIPELINE_P6_API.md](./ASSET_PIPELINE_P6_API.md)（数据与窗口框架）  
 依赖：[EDITOR_APPEARANCE.md](../../Editor/EDITOR_APPEARANCE.md)、[EDITOR_THEME_M6_DESIGN.md](../../Editor/EDITOR_THEME_M6_DESIGN.md)  
 父路线：[EDITOR_PLATFORM_PLAN.md](../../Editor/EDITOR_PLATFORM_PLAN.md) §7
@@ -33,6 +33,8 @@ Status: **拍板待实施**（用户 UX 定稿 2026-05-26）
 | **U7** | **双击资产**：**不**打开 SubModule Editor；仅调用 **预留接口 + `Log`**；真实 **Editor 路由** 另立设计（P7 / E1 后） |
 | **U9** | **Dock：** Scene 编辑布局将 Content Browser 放在 **Hierarchy/Inspector 下方，且在 Console 右侧**（贴合 Unity 习惯）；**Material Editor 默认不显示**（可通过 Window 菜单再打开 — 若后续支持） |
 | **U10** | 单击目录仅做导航，**不清空当前 Asset 选中**；AssetMetaInspector 保留上一资产内容 |
+| **U11** | **P6.1-polish — 面包屑**：扁平路径条；背景贴近 CB 面板；**无圆角**；**Caption** 字号；段可点（不用默认 `ImGui::Button` 样式） |
+| **U12** | **P6.1-polish — Tile**：外框 **更宽**（见 §2.6 尺寸）；结构为 **竖矩形外框 → 正方形 Icon 占位 → 单行 AssetName**；名称 **单行 + 省略号**，限宽不超出 tile |
 
 ---
 
@@ -69,7 +71,7 @@ Status: **拍板待实施**（用户 UX 定稿 2026-05-26）
 | 项 | 说明 |
 |----|------|
 | 范围 | **当前面包屑目录**下的资产（与 Registry 一致，D12：仅已注册资产） |
-| 单元格 | 固定 tile 尺寸；上方 **Icon 占位区**（灰色框或首字母，预留后续 Icon / 缩略图 E2） |
+| 单元格 | 固定 tile 尺寸；上方 **Icon 占位区**（灰色框或首字母，预留后续 Icon / 缩略图 E2）；**详细布局见 §2.6** |
 | 选中 | 单选；palette `Selection` 描边/底色；与树选中同步 |
 | 双击 | `OnAssetTileActivated(meta)` → **仅 Log** + 空实现 hook（§3.2） |
 | 移除 | P6 的 `Table`（Name/Type/Guid 列） |
@@ -80,7 +82,93 @@ Status: **拍板待实施**（用户 UX 定稿 2026-05-26）
 |------|------|
 | **Import** | 保持 `ImportAssetDialog()`（Import 目标目录 **P7** 再改当前路径） |
 | **Refresh** | `RebuildDirectoryTree` + 重建当前目录网格；清空选中 |
-| **面包屑** |  segments 来自 `m_CurrentDirectoryRel`；点击 segment → `SetCurrentDirectory`；`Assets` 根可点击 |
+| **面包屑** |  segments 来自 `m_CurrentDirectoryRel`；点击 segment → `SetCurrentDirectory`；`Assets` 根可点击；**视觉见 §2.6.1** |
+
+### 2.6) P6.1-polish — 面包屑与 Tile 视觉规格（2026-05-26 拍板）
+
+> **实现状态：** 已合入 `ContentBrowserWindow.cpp`（`DrawBreadcrumbLink` / `DrawAssetTile`）。  
+> **动机：** 当前面包屑用默认 `Button`（高对比 + 圆角）；Tile 的 Icon 区非正方形、名称换行与外框未对齐。
+
+#### 2.6.0 拍板参数（用户确认）
+
+| 参数 | 决策 | 备注 |
+|------|------|------|
+| Tile 外框宽度 | **128 px**（偏宽，优于 96 px 密排方案） | 与当前实现 `tileWidth` 一致，便于迁移 |
+| Asset 名称 | **单行 + 省略号** | 不用多行 `TextWrap`；超长用 `RenderTextEllipsis` 或等效 |
+| 面包屑 | U11 | 见 §2.6.1 |
+| Tile 结构 | U12 | 见 §2.6.2 |
+
+#### 2.6.1 面包屑（`DrawBreadcrumb`）
+
+| 项 | 规格 |
+|----|------|
+| 控件形态 | **扁平可点击段**，不用全局 `ImGui::Button` 默认样式 |
+| 推荐实现 | `InvisibleButton` + `DrawList` 绘制 hover 底；或段级 `PushStyleVar(FrameRounding,0)` + Button 色设为 `ChildBg` / `PanelBackground` 同级 |
+| 背景色 | 默认与 CB **Child 背景**一致；hover：`Selection` 或 `FieldBackgroundHovered`（低 alpha） |
+| 圆角 | **0**（`FrameRounding = 0`） |
+| 字号 | `EditorTypographyScope` → **`EditorTypographyRole::Caption`** |
+| 分隔符 `>` | `TextMuted`，非按钮；`SameLine` 小间距 |
+| 交互 | 与 §2.3 相同：`Assets` → 根；segment → `SetCurrentDirectory(prefix)` |
+| 后置 | 路径过长时的中间省略（`A/.../C`）— **不在本 polish** |
+
+#### 2.6.2 Tile 网格（`DrawAssetTileGrid`）
+
+**单元结构（自上而下，均在固定外框内）：**
+
+```text
+┌─ tile outer: 128 × H ──────────┐
+│ pad (4)                          │
+│   ┌─ icon: 120 × 120 ─┐        │  S = outerWidth - 2×pad
+│   │  占位（方框，无圆角） │        │
+│   └────────────────────┘        │
+│   gap (4)                        │
+│   AssetName（单行，居中，省略）   │  可用宽 = 128 - 2×pad = 120
+│ pad (4)                          │
+└──────────────────────────────────┘
+```
+
+| 常量 | 值 | 说明 |
+|------|-----|------|
+| `kTileOuterWidth` | **128** | 列宽基准 |
+| `kTilePadding` | **4** | 外框内边距 |
+| `kIconSize` | **120** | `outerWidth - 2×padding`，**正方形** |
+| `kIconLabelGap` | **4** | Icon 与名称间距 |
+| `kTileOuterHeight` | **152**（建议） | `2×pad + icon + gap + captionLine + pad`；实现时按 Caption 行高微调 |
+| `kTileSpacing` | **8** | 列/行间距（可从现 12 略收紧，实现时定） |
+
+| 项 | 规格 |
+|----|------|
+| 命中区域 | 整个 **outer 矩形**（`InvisibleButton` 或覆盖大小的 `Selectable`） |
+| Icon 绘制 | `AddRectFilled` + `AddRect` 边框；**rounding = 0**；水平居中于 outer |
+| 名称 | **单行**；`labelMaxWidth = kTileOuterWidth - 2×kTilePadding`；**水平居中**；超出 **`…` 省略** |
+| 裁剪 | `PushClipRect(outerMin, outerMax)`，文字与 Icon 不得画出 outer |
+| 选中 | `palette.Selection` 外框描边和/或 outer 内低 alpha 铺底；与树选中同步不变 |
+| 双击 | 保持 `ActivateAssetFromBrowser` + Log only |
+
+**与当前代码差异（实施时对照）：**
+
+| 现状 | 目标 |
+|------|------|
+| Icon 为宽条（约 112×48）+ `rounding=4` | 120×120 方框，`rounding=0` |
+| `PushTextWrapPos` 多行换行 | 单行 `RenderTextEllipsis` |
+| `Selectable` 110px 高与内容叠绘 | 固定 outer 高 + 分层绘制 |
+
+#### 2.6.3 实现范围与文件
+
+| 文件 | 变更 |
+|------|------|
+| `ContentBrowserWindow.cpp` | `DrawBreadcrumb`、`DrawAssetTileGrid`；可抽 `DrawBreadcrumbSegment` / `DrawAssetTile` |
+| `ContentBrowserWindow.h` | 可选：`ContentBrowserViewMetrics` 常量 struct |
+| Appearance | 面包屑 Caption；tile 选中/边框用现有 palette（§6 A4）；**不新增 TypographyRole** |
+
+**本 polish 不做：** 缩略图（E2.3b）、Icon font、面包屑路径省略、CB 窗口级 `BeginPanel`（可同 PR 顺手，非必须）。
+
+#### 2.6.4 Polish 验收（目视）
+
+- [x] 面包屑段与 CB 右栏背景融合；无默认灰按钮感；无圆角；Caption 字号
+- [x] 每 tile：128px 宽外框；Icon **正方形**；名称 **单行省略** 且不溢出
+- [x] 单击选中 / 双击 Log 行为不变（代码路径保持）
+- [ ] Dark / Light 主题下可读（需 Editor 目视）
 
 ### 2.4 明确不做（P6.1）
 
@@ -226,6 +314,7 @@ void OnContentBrowserAssetActivated(const AssetMeta& meta, ActivateAssetIntent i
 - Import 到当前面包屑目录
 - Tile 缩略图（E2）、Icon font
 - `OpenAsset` 路由与双击打开 Editor
+- 面包屑中间路径省略（§2.6.1 后置）
 
 ---
 
@@ -237,3 +326,5 @@ void OnContentBrowserAssetActivated(const AssetMeta& meta, ActivateAssetIntent i
 | 2026-05-26 | **用户拍板**：左树含资产、右网格、面包屑、工具栏、无底栏、双击仅 Log；§4 Inspector 缺陷 |
 | 2026-05-26 | **Dock U9**：Scene 中位于 Hierarchy/Inspector 下方、Console 右侧；Material 默认隐藏 |
 | 2026-05-26 | **补充拍板**：Dock 具体为 Hierarchy/Inspector 下方且在 Console 右侧；单击目录不清空 Inspector 资产 |
+| 2026-05-26 | **§2.6 P6.1-polish**：面包屑扁平 Caption / 无圆角；Tile 128×方 Icon + 单行省略号；**U11/U12**；实现待审批 |
+| 2026-05-26 | **§2.6 实现**：`ContentBrowserWindow` — `DrawBreadcrumbLink`、`DrawAssetTile`、ViewMetrics |

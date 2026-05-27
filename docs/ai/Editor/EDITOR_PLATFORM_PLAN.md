@@ -1,7 +1,7 @@
 # Editor 平台化 — 总体规划
 
 Last updated: 2026-05-26  
-Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content Browser UI → E1 Inspector → E2 Preview**  
+Status: **E0/E3/E4/P6/P6.1、Undo（E1.1–E1.4）、E2 Preview 核心已合入；当前重点 E1 Inspector 统一 / P7**  
 父文档：[Platform 路线图](../Platform/PLATFORM_ROADMAP.md)
 
 ---
@@ -11,7 +11,7 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 - **现有 Editor** 已具备 Shell（E0）、资产管线（E3/E4/P5–P6 数据层）、Appearance（M0–M6b）；**不再是**纯过渡 `EditorUIMode` 心智。
 - **不以「修补 Content Browser」为唯一目标**，但 Browser **窗口 UI** 刻意延后到 Appearance 合入后再抛光（见 §3、§7）。
 - **Content Browser** 基础设施（`AssetTreeModel`、Registry 订阅、Open/Delete/Import）**已完成**；列表/树/工具栏的 **工具风 UI** 为当前最近交付。
-- 分项 `INSPECTOR_DESIGN.md` 仍待写；**E2** 见 [PREVIEWER_DESIGN.md](./PREVIEWER_DESIGN.md)（**v0.4 拍板，待实现**）；路线见 §7。
+- 分项 `INSPECTOR_DESIGN.md` 仍待写；**E2** 见 [PREVIEWER_DESIGN.md](./PREVIEWER_DESIGN.md)（**v0.6，核心已实现**）；**Undo** 见 [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md)（**E1.1–E1.4 已验收**）。
 
 ---
 
@@ -46,13 +46,34 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 
 ---
 
-### E2 — Previewer 统一化 — **未做**
+### E2 — Previewer 统一化 — **核心已合入**（子项延后）
 
 | 目标项 | 状态 |
 |--------|------|
-| Preview taxonomy / `PreviewScene` | 未做 |
-| 统一 `PreviewViewport` | 未做；Material 仍用专用 Preview 样本 |
-| CB 选中资产 Preview | 未做（产品意图保留） |
+| 薄 `PreviewScene` + Material 视口迁移 | ✓ E2.1 |
+| Inspector 方槽 + `InspectorAssetInspection` | ✓ E2.2（Material Scene3D） |
+| StaticMesh 检视 + `DefaultMaterial.memtl` | ✓ E2.3a |
+| Texture2D Inspector 预览 | ⏳ **E2.2b 延后**（正交相机 + MaterialInstance） |
+| CB Tile 缩略图 | ⏳ E2.3b |
+| Material 视口飞行/轨道 | ⏳ E2.4 |
+
+详见 [PREVIEWER_DESIGN.md](./PREVIEWER_DESIGN.md) §8。
+
+---
+
+### P3 — Editor Undo（Command Stack）— **首轮已合入**
+
+| 目标项 | 状态 |
+|--------|------|
+| `EditorCommandStack` + 项目 `MaxUndoStackDepth` | ✓ E1.1 |
+| Scene 结构编辑 Command（Rename/Transform/GO/Component） | ✓ E1.2 |
+| BinaryArchive + 公开 Property 序列化 API | ✓ S1–S2 |
+| Inspector 属性 Undo（`SetObjectPropertyCommand`） | ✓ E1.3 |
+| GO/Component Snapshot Undo | ✓ E1.4 |
+| Material 图/属性 Undo | ⏳ E1.5 |
+| `TryMerge` / Composite / 偏好 UI | ⏳ Command E2 |
+
+详见 [EDITOR_COMMAND_HISTORY.md](./EDITOR_COMMAND_HISTORY.md)。
 
 ---
 
@@ -90,14 +111,15 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
               ↓
     P6  Content Browser 数据 + 窗口框架    [Done]
               ↓
-    P6.1 Content Browser UI（Appearance）  [当前]
+    P6.1 Content Browser UI（Appearance）  [Done]
               ↓
-    E1 Inspector 统一化增强                [下一]
-              ↕
-    E2 Previewer 统一化                    [E1 边界拍板后]
+    P3  Undo（E1.1–E1.4 + S1–S2）           [Done]
+              ↓
+    E2 Previewer 核心（E2.1–E2.3a）        [Done]
+              ↓
+    E1 Inspector 统一化增强                [当前]
               ↓
     P7  Dock / 菜单 / Import 路径等产品集成
-    P3  Undo（后置）
 ```
 
 **并行已完成：** [EDITOR_APPEARANCE.md](./EDITOR_APPEARANCE.md) **M0–M6b**（Color、主题、PropertyWidgets、Font、排版、主题色清扫）。
@@ -111,9 +133,9 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 | 层 | 状态 |
 |----|------|
 | **P6 基础设施** | ✓ `ContentBrowserModule`、`AssetTreeModel`、`Registry` 订阅、Open/Delete/Import、Inspector 最小路由 |
-| **P6.1 窗口 UI** | **拍板待实施** — 左树含资产、右图标网格、面包屑；[CONTENT_BROWSER_UI_DESIGN.md](../Platform/ContentBrowser/CONTENT_BROWSER_UI_DESIGN.md) |
-| **E1 资产 Inspector** | Meta 改 Property/Drawer；与 Scene Inspector 统一门面 |
-| **E2 Preview** | 选中 Texture/Material/Mesh 等预览 |
+| **P6.1 窗口 UI** | ✓ 左树含资产、Tile 网格、面包屑、Appearance |
+| **E1 资产 Inspector** | Meta 改 Property/Drawer；与 Scene Inspector 统一门面（**待做**） |
+| **E2 Preview** | ✓ Material/StaticMesh Scene3D；Texture2D **延后**（E2.2b） |
 
 **刻意分工（2026-05-26）：** asset-workflow 分支 **不** 接 Appearance API，避免与 `feat/editor-appearance` 冲突；合并 master 后由 **P6.1** 统一接 `EditorWindowTypography` / `EditorThemeScope`。
 
@@ -137,18 +159,17 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 
 ---
 
-## 5) 当前阶段工作流（2026-05-26 起）
+## 5) 当前阶段工作流（2026-05-26 修订）
 
-| 顺序 | 工作 | 产出 |
+| 顺序 | 工作 | 状态 |
 |------|------|------|
-| **1** | **P6.1 Content Browser UI** | 内容树+资产、Tile 网格、面包屑、Inspector 修复；见 UI 设计案 §用户拍板 |
-| **2** | **E1 拍板 + 设计** | `INSPECTOR_DESIGN.md`：`InspectorTarget`、Drawer、Asset Meta 用 Property |
-| **3** | **E1 实现** | 统一 `InspectorWindow`；CB/Scene/Material/Graph 只写 Target |
-| **4** | **E1↔E2 拍板** | Inspector 是否内嵌 Preview；`PreviewSession` 归属 |
-| **5** | **E2 实现** | `PreviewScene` + 统一 Viewport；Material 迁移 |
-| **6** | **P7** | 默认 Dock、Import 到当前目录、菜单 |
-
-对标阅读（§ 原 §4）仍可穿插，但 **不阻塞 P6.1**。
+| **1** | **P6.1 Content Browser UI** | ✓ |
+| **2** | **P3 Undo**（`EditorCommandStack`、E1.1–E1.4、S1–S2） | ✓ |
+| **3** | **E2 Preview 核心**（`PreviewScene`、Inspector 检视、Material 视口） | ✓ |
+| **4** | **E1 拍板 + 实现** | **当前** — `INSPECTOR_DESIGN.md`、`InspectorTarget`、Asset Meta Property |
+| **5** | **P7** | 待做 — 默认 Dock、Import 到当前 Browser 路径、菜单 |
+| **6** | **E2 延后子项** | E2.2b Texture / E2.3b CB 缩略图 / E2.4 Material 视口相机 |
+| **7** | **Undo 延后** | E1.5 Material Command；Command E2 TryMerge/Composite |
 
 ---
 
@@ -156,8 +177,8 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 
 | 条目 | 状态 |
 |------|------|
-| P2 Editor 平台化 | **进行中**：E0/E3/E4/P6 Done → P6.1 → E1 → E2 |
-| P3 Undo | 后置 |
+| P2 Editor 平台化 | **进行中**：E0/E3/E4/P6/P6.1/E2 核心 Done → **E1** → P7 |
+| P3 Undo | **首轮 Done**（E1.5 / Command E2 延后） |
 | P4 / P5 | 不变 |
 
 ---
@@ -172,7 +193,8 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 | Appearance | `EditorAppearance.*`、`EditorTypographyScope`、`EditorThemeScope` |
 | Asset 核心 | `AssetManager.*`、`AssetTypeRegistry.*`、`ProjectAssetWatcher.*` |
 | FileDialog | `FileDialogService`、`NativeFileDialogService` |
-| Preview 样本 | `MaterialPreviewViewport`（E2 参考，待统一） |
+| Preview | `PreviewScene`、`InspectorAssetInspection`、`MaterialEditorViewportClient` |
+| Undo | `EditorCommandStack`、`Editor/src/Commands/Scene/`、`SetObjectPropertyCommand` |
 
 ---
 
@@ -182,3 +204,4 @@ Status: **E0/E3/E4/P6 基础设施已合入 master；当前重点 P6.1 Content B
 |------|------|
 | 2026-05-24 | 初稿：E0–E4 + CB 后置 |
 | 2026-05-26 | 对齐 master：E0/E3/E4/P6 Done；Appearance M0–M6b；路线 P6.1→E1→E2；§4 Appearance 表 |
+| 2026-05-26 | **P6.1 / P3 Undo / E2 核心** 标 Done；当前重点 E1 + P7；E2.2b/E1.5 等延后见 Platform §6 |

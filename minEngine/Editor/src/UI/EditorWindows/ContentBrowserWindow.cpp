@@ -3,13 +3,18 @@
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
 #include "Shell/IEditorContext.h"
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorTypographyDefaults.h"
+#include "UI/Appearance/EditorTypographyScope.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 #include "Runtime/Resource/AssetMeta.h"
 
 #include "imgui.h"
 
 #include <algorithm>
+#include <cstring>
 #include <filesystem>
 #include <string>
 
@@ -19,6 +24,48 @@ namespace minEngine
         : EditorWindow(context)
         , m_Model(model)
     {
+    }
+
+    float ContentBrowserWindow::ResolveTileOuterHeight() const
+    {
+        const float labelLineHeight =
+            EditorTypographyDefaults::GetDefaultSizePixels(EditorTypographyRole::Caption);
+        return ViewMetrics::TilePadding + ViewMetrics::IconSize + ViewMetrics::IconLabelGap + labelLineHeight +
+               ViewMetrics::TilePadding;
+    }
+
+    std::string ContentBrowserWindow::BuildEllipsizedLabel(const char* text, const float maxWidth) const
+    {
+        if (text == nullptr || text[0] == '\0')
+        {
+            return {};
+        }
+
+        const ImVec2 fullSize = ImGui::CalcTextSize(text);
+        if (fullSize.x <= maxWidth)
+        {
+            return text;
+        }
+
+        constexpr const char* kEllipsis = "...";
+        const float ellipsisWidth = ImGui::CalcTextSize(kEllipsis).x;
+        const float textBudget = maxWidth - ellipsisWidth;
+        if (textBudget <= 0.0f)
+        {
+            return kEllipsis;
+        }
+
+        const size_t textLength = std::strlen(text);
+        for (size_t fitLength = textLength; fitLength > 0; --fitLength)
+        {
+            const std::string trial(text, fitLength);
+            if (ImGui::CalcTextSize(trial.c_str()).x <= textBudget)
+            {
+                return trial + kEllipsis;
+            }
+        }
+
+        return kEllipsis;
     }
 
     void ContentBrowserWindow::OnDraw()
@@ -64,9 +111,51 @@ namespace minEngine
         }
     }
 
+    bool ContentBrowserWindow::DrawBreadcrumbLink(const char* label)
+    {
+        const EditorAppearance& appearance = m_Context.GetEditorAppearance();
+        const EditorThemePalette& palette = appearance.GetActivePalette();
+
+        const ImVec2 textSize = ImGui::CalcTextSize(label);
+        const ImVec2 buttonSize(textSize.x + ViewMetrics::BreadcrumbPadX * 2.0f,
+                                textSize.y + ViewMetrics::BreadcrumbPadY * 2.0f);
+
+        const bool pressed = ImGui::InvisibleButton(label, buttonSize);
+        const bool hovered = ImGui::IsItemHovered();
+        const ImVec2 itemMin = ImGui::GetItemRectMin();
+        const ImVec2 itemMax = ImGui::GetItemRectMax();
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (hovered)
+        {
+            drawList->AddRectFilled(
+                itemMin,
+                itemMax,
+                appearance.GetDisplayColorU32(palette.Selection, 0.35f),
+                0.0f);
+        }
+
+        const ImU32 textColor = appearance.GetDisplayColorU32(palette.TextPrimary);
+        const ImVec2 textPos(itemMin.x + ViewMetrics::BreadcrumbPadX, itemMin.y + ViewMetrics::BreadcrumbPadY);
+        drawList->AddText(textPos, textColor, label);
+
+        return pressed;
+    }
+
+    void ContentBrowserWindow::DrawBreadcrumbSeparator()
+    {
+        ImGui::SameLine(0.0f, ViewMetrics::BreadcrumbSeparatorSpacing);
+        const EditorAppearance& appearance = m_Context.GetEditorAppearance();
+        ImGui::PushStyleColor(ImGuiCol_Text, appearance.GetDisplayColor(appearance.GetActivePalette().TextMuted));
+        ImGui::TextUnformatted(">");
+        ImGui::PopStyleColor();
+    }
+
     void ContentBrowserWindow::DrawBreadcrumb()
     {
-        if (ImGui::Button("Assets"))
+        EditorTypographyScope captionTypography(m_Context.GetEditorAppearance(), EditorTypographyRole::Caption);
+
+        if (DrawBreadcrumbLink("Assets"))
         {
             m_Model.SetCurrentDirectory({});
         }
@@ -86,12 +175,11 @@ namespace minEngine
             const std::string segment = currentDirectory.substr(segmentStart, segmentEnd - segmentStart);
             const std::string prefix = currentDirectory.substr(0, segmentEnd);
 
-            ImGui::SameLine();
-            ImGui::TextUnformatted(">");
-            ImGui::SameLine();
+            DrawBreadcrumbSeparator();
+            ImGui::SameLine(0.0f, 0.0f);
 
             ImGui::PushID(segmentIndex++);
-            if (ImGui::Button(segment.c_str()))
+            if (DrawBreadcrumbLink(segment.c_str()))
             {
                 m_Model.SetCurrentDirectory(prefix);
             }
@@ -189,6 +277,93 @@ namespace minEngine
         ImGui::PopID();
     }
 
+    void ContentBrowserWindow::DrawAssetTile(const AssetMeta& meta, const int tileIndex, const bool selected)
+    {
+        ImGui::PushID(tileIndex);
+
+        const EditorAppearance& appearance = m_Context.GetEditorAppearance();
+        const EditorThemePalette& palette = appearance.GetActivePalette();
+        ImFont* captionFont = appearance.GetImFont(EditorTypographyRole::Caption);
+
+        const ImVec2 outerSize(ViewMetrics::TileOuterWidth, ResolveTileOuterHeight());
+        if (ImGui::InvisibleButton("##tile", outerSize))
+        {
+            SelectAsset(&meta);
+        }
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+            ActivateAssetFromBrowser(meta);
+        }
+
+        const ImVec2 outerMin = ImGui::GetItemRectMin();
+        const ImVec2 outerMax = ImGui::GetItemRectMax();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->PushClipRect(outerMin, outerMax, true);
+
+        if (selected)
+        {
+            drawList->AddRectFilled(
+                outerMin,
+                outerMax,
+                appearance.GetDisplayColorU32(palette.Selection, 0.22f),
+                0.0f);
+            drawList->AddRect(
+                outerMin,
+                outerMax,
+                appearance.GetDisplayColorU32(palette.Selection),
+                0.0f,
+                0,
+                2.0f);
+        }
+
+        const float iconLeft = outerMin.x + (ViewMetrics::TileOuterWidth - ViewMetrics::IconSize) * 0.5f;
+        const float iconTop = outerMin.y + ViewMetrics::TilePadding;
+        const ImVec2 iconMin(iconLeft, iconTop);
+        const ImVec2 iconMax(iconLeft + ViewMetrics::IconSize, iconTop + ViewMetrics::IconSize);
+
+        drawList->AddRectFilled(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.FieldBackground),
+            0.0f);
+        drawList->AddRect(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.Border),
+            0.0f,
+            0,
+            1.0f);
+
+        const float labelTop = iconMax.y + ViewMetrics::IconLabelGap;
+        const ImVec2 labelMin(outerMin.x + ViewMetrics::TilePadding, labelTop);
+        const ImVec2 labelMax(outerMax.x - ViewMetrics::TilePadding, outerMax.y - ViewMetrics::TilePadding);
+        const float labelWidth = labelMax.x - labelMin.x;
+
+        const ImU32 labelColor = appearance.GetDisplayColorU32(palette.TextPrimary);
+        const char* assetName = meta.AssetName.c_str();
+
+        if (captionFont != nullptr)
+        {
+            ImGui::PushFont(captionFont, 0.0f);
+        }
+
+        const std::string displayName = BuildEllipsizedLabel(assetName, labelWidth);
+        const ImVec2 displaySize = ImGui::CalcTextSize(displayName.c_str());
+        const float textX = labelMin.x + (labelWidth - displaySize.x) * 0.5f;
+        drawList->AddText(ImVec2(textX, labelMin.y), labelColor, displayName.c_str());
+
+        if (captionFont != nullptr)
+        {
+            ImGui::PopFont();
+        }
+
+        drawList->PopClipRect();
+
+        ImGui::PopID();
+    }
+
     void ContentBrowserWindow::DrawAssetTileGrid()
     {
         const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
@@ -204,11 +379,11 @@ namespace minEngine
             m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
         }
 
-        const float tileWidth = 128.0f;
-        const float tileHeight = 110.0f;
-        const float spacing = 12.0f;
         const float availableWidth = ImGui::GetContentRegionAvail().x;
-        const int columnCount = std::max(1, static_cast<int>((availableWidth + spacing) / (tileWidth + spacing)));
+        const int columnCount = std::max(
+            1,
+            static_cast<int>((availableWidth + ViewMetrics::TileSpacing) /
+                             (ViewMetrics::TileOuterWidth + ViewMetrics::TileSpacing)));
 
         for (int index = 0; index < static_cast<int>(assets.size()); ++index)
         {
@@ -218,42 +393,20 @@ namespace minEngine
                 continue;
             }
 
-            ImGui::PushID(index);
-            ImGui::BeginGroup();
+            if (index > 0)
+            {
+                if ((index % columnCount) == 0)
+                {
+                    ImGui::Dummy(ImVec2(0.0f, ViewMetrics::TileSpacing));
+                }
+                else
+                {
+                    ImGui::SameLine(0.0f, ViewMetrics::TileSpacing);
+                }
+            }
 
             const bool selectedTile = (m_SelectedAssetIndex == index);
-            if (ImGui::Selectable("##tile", selectedTile, 0, ImVec2(tileWidth, tileHeight)))
-            {
-                SelectAsset(meta);
-            }
-
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-            {
-                ActivateAssetFromBrowser(*meta);
-            }
-
-            const ImVec2 tileMin = ImGui::GetItemRectMin();
-            const ImVec2 tileMax = ImGui::GetItemRectMax();
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
-            drawList->AddRect(
-                ImVec2(tileMin.x + 8.0f, tileMin.y + 8.0f),
-                ImVec2(tileMax.x - 8.0f, tileMin.y + 56.0f),
-                IM_COL32(170, 170, 170, 255),
-                4.0f);
-
-            ImGui::SetCursorScreenPos(ImVec2(tileMin.x + 10.0f, tileMin.y + 64.0f));
-            ImGui::PushTextWrapPos(tileMin.x + tileWidth - 10.0f);
-            ImGui::TextUnformatted(meta->AssetName.c_str());
-            ImGui::PopTextWrapPos();
-
-            ImGui::EndGroup();
-            ImGui::PopID();
-
-            const bool endOfRow = ((index + 1) % columnCount) == 0;
-            if (!endOfRow && index + 1 < static_cast<int>(assets.size()))
-            {
-                ImGui::SameLine(0.0f, spacing);
-            }
+            DrawAssetTile(*meta, index, selectedTile);
         }
     }
 

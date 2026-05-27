@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-26
+Last updated: 2026-05-26 (roadmap sync)
 
 ## Purpose
 
@@ -722,3 +722,26 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **2026-05-21:** `TextureObject.DefaultTexture` serializes as texture asset `$guid` (`BaseColorWhite.png`); removed `ApplyMaterialIRSmokeRuntimeDefaults`.
 - **Deprecated:** `Simple.memtl` (legacy MaterialResource JSON); `test.mescene` / `default.mescene` reference `MaterialIRSmoke` GUID.
 - **Tests:** removed `MaterialAssetSerializationTest` and `--material-serialize-test`; `MaterialIRTest` keeps MIR compile/GPU smoke only (asset tests TBD).
+
+### 2026-05-26 - Platform ROADMAP §8 完成情况总览
+- Goal:
+	Sync PLATFORM_ROADMAP with design docs and repo state (P0–P5, P2 submodules, Material maintenance).
+- Main changes:
+	`PLATFORM_ROADMAP.md` §8 per-module done/deferred tables + summary; §2/§3/§5 updated (P0/P1 no longer “全后置”).
+- Next step:
+	E1 → P7 per §8 总结顺序.
+
+### 2026-05-26 - Content Browser P6.1-polish implemented
+- Goal:
+	Flat Caption breadcrumb + square icon tile grid per §2.6.
+- Main changes:
+	`ContentBrowserWindow` — `ViewMetrics`, `DrawBreadcrumbLink`, `DrawAssetTile`; Appearance Caption/Selection/Field tokens.
+- Validation done:
+	`cmake --build minEngine/build --target Editor` succeeded.
+- Next step:
+	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
+
+### 2026-05-26 - Roadmap sync (P3 Undo + E2 + P6.1)
+- **Docs:** `PLATFORM_ROADMAP.md`、`EDITOR_PLATFORM_PLAN.md`、`PROJECT_CONTEXT.md` aligned with repo state.
+- **Done (marked):** P6.1 CB UI; P3 Undo E1.1–E1.4 + S1–S2; E2.1–E2.3a Inspector/Material viewport preview (`6ccd9bf`).
+- **Deferred (consolidated):** E1 Inspector unification; E2.2b Texture preview; E2.3b CB thumbnails; E2.4; E1.5 Material Undo; Command E2 TryMerge; P7; P0/P1; P4/P5.
