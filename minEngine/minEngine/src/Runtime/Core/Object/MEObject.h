@@ -7,6 +7,7 @@ namespace minEngine::Reflection
 {
     class ReflectionSystem;
     class MEClass;
+    class MEFunction;
 }
 
 namespace minEngine::Serialization
@@ -23,6 +24,7 @@ namespace minEngine
         ME_GENERATED_BODY(MEObject)
         // Friend declaration for engine core classes 
         friend class Reflection::ReflectionSystem;
+        friend class Reflection::MEClass;
         friend class ObjectManager;
         friend class Serialization::Serializer;
         friend class AssetManager;
@@ -43,7 +45,10 @@ namespace minEngine
         {
             return (m_Class != nullptr) && m_Class->IsA(classInfo);
         }
-        
+
+        bool InvokeFunction(Reflection::MEFunction* function, void* parmsBuffer);
+        bool InvokeFunctionByName(const std::string& functionName, void* parmsBuffer);
+
     protected:
         void SetClass(const Reflection::MEClass* inClass) { m_Class = inClass; }
         void SetName(const std::string& inName) { m_Name = inName; }

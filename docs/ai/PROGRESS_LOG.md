@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-26 (roadmap sync)
+Last updated: 2026-05-27 (P4/P5 roadmap)
 
 ## Purpose
 
@@ -774,6 +774,14 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`EDITOR_CONTEXT_MENU_DESIGN.md` §13–§15；`EDITOR_TASK_ROLLOUT` 子任务表；`PLATFORM_ROADMAP` §10 备注。
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
+
+### 2026-05-27 - P4/P5 Core 路线对齐（函数反射 + 委托 + Lua）
+- Goal:
+	Align platform roadmap with next master work: MEFunction, delegates, Lua scripting.
+- Main changes:
+	`PLATFORM_ROADMAP.md` §11 Core 主线；P4/P5 设计草稿 `Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md`、`Scripting/LUA_SCRIPTING_DESIGN.md`；`PROJECT_CONTEXT` / `README` 链接更新。
+- Next step:
+	P4.1 `MEFunction` 描述符 + 手写注册一个测试函数。
 
 ### 2026-05-27 - 右键菜单 M0 骨架落地
 - Goal:

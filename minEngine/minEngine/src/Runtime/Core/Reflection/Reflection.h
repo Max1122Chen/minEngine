@@ -15,6 +15,7 @@
 #include "ReflectionUtils.h"
 #include "MEClass.h"
 #include "MEEnum.h"
+#include "MEFunction.h"
 #include "Math/Math.h"
 #include "Core/TypeTraits.h"
 
@@ -90,6 +91,22 @@ namespace minEngine::Reflection
             m_OwnedEnums.push_back(enumInfo);
             return enumInfo;
         }
+
+        MEFunction* CreateFunction(const std::string& functionName)
+        {
+            MEFunction* function = new MEFunction(functionName);
+            m_OwnedFunctions.push_back(function);
+            return function;
+        }
+
+        template<typename TParam>
+        MEProperty* CreateFunctionParamProperty(const std::string& paramName)
+        {
+            using RawParamType = RemoveCvRefT<TParam>;
+            return CreatePropertyByType<RawParamType>(nullptr, paramName);
+        }
+
+        bool RegisterFunction(MEClass* ownerClass, MEFunction* function);
 
         // Reflection type registration methods
         template<typename T>
@@ -372,6 +389,8 @@ namespace minEngine::Reflection
 
                 MEProperty* innerProperty = CreatePropertyByType<ElementType>(ownerClass, propertyName + "_Inner");
                 MEArrayProperty* arrayProperty = CreateProperty<MEArrayProperty>(propertyName, innerProperty);
+                arrayProperty->SetStorageSize(sizeof(RawFieldType));
+                arrayProperty->SetStorageAlignment(alignof(RawFieldType));
                 arrayProperty->SetArrayAccessors(
                     [](const void* arrayObject) -> size_t
                     {
@@ -470,6 +489,8 @@ namespace minEngine::Reflection
                         }
                     }
                     AddPendingPropertyClass<PointeeType>(ownerClass, property);
+                    property->SetStorageSize(sizeof(RawFieldType));
+                    property->SetStorageAlignment(alignof(RawFieldType));
                     return property;
                 }
                 else
@@ -512,6 +533,8 @@ namespace minEngine::Reflection
                 else { static_assert(minEngine::AlwaysFalse<RawFieldType>::value, "GetPrimitiveName<T> is not specialized for this type T. Please provide a specialization that returns the primitive type name for this type."); }
 
                 MEPrimitiveProperty* property = CreateProperty<MEPrimitiveProperty>(propertyName, primitiveTypeName);
+                property->SetStorageSize(sizeof(RawFieldType));
+                property->SetStorageAlignment(alignof(RawFieldType));
                 if constexpr (std::is_enum_v<RawFieldType>)
                 {
                     AddPendingEnumProperty<RawFieldType>(property);
@@ -523,6 +546,8 @@ namespace minEngine::Reflection
             {
                 MEObjectProperty* property = CreateProperty<MEObjectProperty>(propertyName);
                 AddPendingPropertyClass<RawFieldType>(ownerClass, property);
+                property->SetStorageSize(sizeof(RawFieldType));
+                property->SetStorageAlignment(alignof(RawFieldType));
                 return property;
             }
             else
@@ -556,6 +581,7 @@ namespace minEngine::Reflection
                                 std::unordered_map<const MEClass*, VisitColor>& visitMap,
                                 std::vector<const MEClass*>& stack);
         void BuildDerivedClassLinks();
+        bool ValidateFunctions();
 
         // Property hierarchy iteration helper
         bool ForEachPropertyInHierarchy_Recursive(const MEClass& classInfo,
@@ -567,6 +593,7 @@ namespace minEngine::Reflection
         std::vector<MEClass*> m_OwnedClasses;
         std::vector<MEProperty*> m_OwnedProperties;
         std::vector<MEEnum*> m_OwnedEnums;
+        std::vector<MEFunction*> m_OwnedFunctions;
 
         std::unordered_map<std::string, MEClass*> m_ClassesByName;
         std::unordered_map<std::type_index, std::string> m_DeclaredNameByTypeIndex;    // Use type_index(typeid(T*)) as key to avoid including the header of T when registering class info for T

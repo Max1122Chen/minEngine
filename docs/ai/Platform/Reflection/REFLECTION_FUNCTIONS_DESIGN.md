@@ -1,0 +1,664 @@
+# 函数反射 — 设计稿（P4）
+
+Last updated: 2026-05-28  
+Status: **设计中（可按阶段实现）**  
+父文档：[Platform 路线图](../PLATFORM_ROADMAP.md) §2 P4、§11  
+前置阅读：[函数反射现状](./REFLECTION_FUNCTIONS_CURRENT_STATE.md)、[UE 方法反射学习笔记](./UE_FUNCTION_REFLECTION_NOTES.md)
+
+---
+
+## 0) 目标与边界
+
+### 0.1 最终目标（你定义的终态）
+
+在 `MEClass` 可反射体系内，方法反射最终支持：
+
+- 有返回值 / 无返回值
+- 参数与返回值类型覆盖所有可反射字段类型
+- 支持：`primitive`、`string`、`Vector2/3/4`、`array`、对象指针（及可支持的智能指针）
+- 参数修饰：值传递 / `const` 值参数 / 引用参数（含 `const&` / `&`）
+- 支持成员函数与静态函数
+- 统一供 C++ 调用与脚本调用（后续 Lua）复用
+
+### 0.2 本设计目标
+
+把上述终态拆成 **可逐步落地且不返工** 的切片，避免先做“临时接口”导致后续重构成本过高。
+
+### 0.3 非目标（P4 之外）
+
+- 不在本阶段实现委托完整系统（独立到 P5）
+- 不在本阶段实现 Lua 绑定细节（独立到 P6）
+- 不引入 Blueprint/字节码 VM 级执行模型
+
+---
+
+## 1) UE 对齐原则（用于约束切片）
+
+参考 UE 的 `UFunction + FProperty + ProcessEvent` 思路，本设计遵循：
+
+1. **函数元数据是反射对象**：`MEFunction` 与 `MEProperty` 同级，不做“仅字符串注册”。
+2. **参数类型系统复用 `MEProperty`**：不单独再造 `ParamType` 枚举；**参数角色（In/Return/Out）仅存 `MEParamDescriptor`**，不写入 `MEProperty`。
+3. **统一调用入口**：`MEObject::InvokeFunction(MEFunction*, void*)`（见 §1.1；UE 对应 `ProcessEvent`，命名刻意区分）。
+4. **脚本调用复用同一调用管线**：脚本层只负责封送，不绕过 `InvokeFunction`。
+5. **先打通稳定主干，再逐步扩展类型语义**（ref/const/static/out 等）。
+
+### 1.1 为何不用 `ProcessEvent`（命名说明）
+
+UE 的 `ProcessEvent` 历史语义偏「事件/脚本调度」，且与 Blueprint Event、Delegate 广播等概念绑在一起。  
+在 minEngine 中，该 API 的本意是：
+
+> **在已有 `MEFunction` 元数据与参数缓冲的前提下，对目标对象（或静态上下文）执行一次反射式函数调用。**
+
+因此采用 **`InvokeFunction`**：
+
+- 表达「按反射描述调用函数」，不暗示一定是 Gameplay Event；
+- 与直接 C++ 成员调用（`obj->Foo()`）在命名上可区分；
+- 学习笔记中仍可写「UE: ProcessEvent ↔ minEngine: InvokeFunction」便于对照。
+
+---
+
+## 2) 数据结构设计与增补
+
+## 2.1 新增枚举与结构
+
+```cpp
+enum class MEFunctionFlags : uint32_t
+{
+    None         = 0u,
+    Native       = 1u << 0,
+    Static       = 1u << 1,
+    ConstMethod  = 1u << 2, // 成员函数自身 const（类似 void Foo() const）
+    HasReturn    = 1u << 3,
+    HasOutParams = 1u << 4, // 预留：阶段后续开启
+    Callable     = 1u << 5, // 可被外部/脚本调用
+};
+```
+
+```cpp
+enum class MEParamPassKind : uint8_t
+{
+    Value,       // T
+    ConstValue,  // const T
+    Ref,         // T&
+    ConstRef,    // const T&
+};
+
+enum class MEParamRole : uint8_t
+{
+    In     = 0,
+    Return = 1,
+    Out    = 2, // 阶段 C 起用
+};
+```
+
+```cpp
+struct MEParamDescriptor
+{
+    MEProperty* Property = nullptr; // 类型与读写：仅描述「是什么类型」
+    MEParamPassKind PassKind = MEParamPassKind::Value;
+    MEParamRole Role = MEParamRole::In; // 在本次调用中的角色（不进 MEProperty）
+    uint32 Offset = 0;                  // 在 ParmsBuffer 中的偏移
+
+    bool IsReturn() const { return Role == MEParamRole::Return; }
+    bool IsOut() const { return Role == MEParamRole::Out; }
+};
+```
+
+> **拍板（D1/D2）：** 不在 `MEProperty` 上增加 `bParm` / `bReturnParm` / `bOutParm`；`PassKind` 与 `Role` 用 `uint8_t` 枚举紧凑存储，避免 Desc 内多个 `bool` 造成对齐浪费。
+
+## 2.2 新增 `MEFunction`
+
+```cpp
+class MEFunction
+{
+public:
+    using NativeMemberInvoker = void(*)(MEObject* context, void* parmsBuffer);
+    using NativeStaticInvoker = void(*)(void* parmsBuffer);
+
+    const std::string& GetName() const;
+    const MEClass* GetOwnerClass() const;
+    MEFunctionFlags GetFlags() const;
+
+    uint16 GetParmsSize() const;
+    uint8 GetNumParms() const;
+    int32 GetReturnValueOffset() const; // -1 表示无返回值
+
+    const std::vector<MEParamDescriptor>& GetParams() const;
+    const MEParamDescriptor* GetReturnParam() const;
+
+    bool IsStatic() const;
+    bool IsConstMethod() const;
+    bool HasReturn() const;
+};
+```
+
+> 说明：第一版不引入脚本专用 invoker，脚本通过 `InvokeFunction` 复用 native 调用链。
+
+## 2.3 `MEClass` 增补
+
+- 新增：
+  - `std::vector<MEFunction*> m_Functions;`
+  - `std::unordered_map<std::string, MEFunction*> m_FunctionsByName;`
+- 新接口：
+  - `void AddFunction(MEFunction* fn);`
+  - `MEFunction* FindFunction(const std::string& name) const;`
+  - `const std::vector<MEFunction*>& GetFunctions() const;`
+
+## 2.4 `ReflectionSystem` 增补
+
+- 内存所有权：`m_OwnedFunctions`
+- 创建与注册：
+  - `CreateFunction(...)`
+  - `RegisterFunction(OwnerClass, Function)`
+- Finalize 增加校验：
+  - 同类重名函数策略（阶段内先不支持重载，直接禁止同名多签名）
+  - 参数 offset 连续性与 `ParmsSize` 合法性
+  - 返回值定义唯一性
+
+## 2.5 `MEProperty` 与函数参数的分工（拍板）
+
+| 职责 | 归属 |
+|------|------|
+| 类型类别（Primitive/Object/Array…）、读写 accessor | `MEProperty` |
+| In/Return/Out、Value/Ref/ConstRef、ParmsBuffer 内 Offset | **`MEParamDescriptor` only** |
+
+`MEProperty` **不** 为函数参数增加额外 flag，避免 Inspector/序列化与「仅存在于函数签名」的 property 混淆。  
+若某参数需要独立 `MEProperty` 实例（无对应类字段），由注册阶段为 `MEFunction` 专门创建，仍只通过 Desc 表达调用角色。
+
+---
+
+## 3) 接口设计（调用链）
+
+## 3.1 `MEObject` 入口
+
+```cpp
+class MEObject
+{
+public:
+    bool InvokeFunction(MEFunction* function, void* parmsBuffer);
+    bool InvokeFunctionByName(const std::string& functionName, void* parmsBuffer);
+};
+```
+
+可选：静态函数也可提供自由函数入口，避免伪造 `MEObject` 实例：
+
+```cpp
+bool InvokeStaticFunction(MEFunction* function, void* parmsBuffer);
+```
+
+行为约束：
+
+- 非 static 函数：`context` 必须非空且 `IsA(function->OwnerClass)`。
+- static 函数：允许 `context == nullptr` 或忽略对象实例。
+- 失败返回 `false` 并写日志（与当前反射错误体系一致）。
+
+## 3.2 参数缓冲（`MEFunctionFrame`）
+
+```cpp
+class MEFunctionFrame
+{
+public:
+    explicit MEFunctionFrame(const MEFunction& function);
+    ~MEFunctionFrame();
+
+    void* GetBuffer();
+    const void* GetBuffer() const;
+
+    template<typename T> bool SetParam(const std::string& name, const T& value);
+    template<typename T> bool GetParam(const std::string& name, T& outValue) const;
+};
+```
+
+职责：
+
+- 按 `ParmsSize` 分配连续内存
+- 按参数 `MEProperty` 初始化/销毁（字符串、数组等非 POD 类型）
+- 提供 name-based 填参便于脚本/测试
+
+## 3.3 Native thunk 与 UE 对照
+
+### 3.3.1 UE（观察结论，便于对照）
+
+| 层 | UE |
+|----|-----|
+| 元数据 | `UFunction`（`UStruct`），参数为带 `CPF_Parm` 等的 `FProperty` 链表；`ParmsSize` / `ReturnValueOffset` / `NumParms` |
+| 原生入口 | `FNativeFuncPtr Func` 或 UHT 生成的 `execFoo(FFrame&, RESULT_DECL)` |
+| 统一调度 | `UObject::ProcessEvent(UFunction*, void* Parms)` → 构造 `FFrame`、拷贝 Parms、最终 `UFunction::Invoke` |
+| Thunk 职责 | 从 `FFrame` / Parms 按 `FProperty` 取参，调用真实 C++，写回 Return/Out |
+
+UE 的 `ProcessEvent` 还承担脚本/网络/蓝图等分流；**native thunk 只是其中一条路径**。
+
+### 3.3.2 minEngine（Phase B 采用形态）
+
+**一句话：** 每个 `MEFunction` 绑定一个 C 函数指针 `MENativeThunkFn`；`MEObject::InvokeFunction` 只做校验并调用该指针；参数与返回值只通过 `ParmsBuffer`（由 `MEFunctionFrame` 按 `MEParamDescriptor.Offset` 管理）。
+
+```cpp
+using MENativeThunkFn = void (*)(minEngine::MEObject* context, void* parms);
+```
+
+| 项 | 约定 |
+|----|------|
+| 成员函数 | `void Invoke_MyClass_Foo(MEObject* context, void* parms)` — `context` 即 `this`（`MEObject*`），**不进** buffer |
+| 静态函数 | 同一签名，`context` 可为 `nullptr`（Phase E）；Phase B 仅成员函数 |
+| `MEFunction` | `SetNativeThunk` / `GetNativeThunk`；无 thunk 则 `InvokeFunction` 失败 |
+| Thunk 实现 | 按 `Offset` 从 `parms` 读写（手写或 header tool）；可用 `MEFunction::CopyParamFromBuffer` / `CopyParamToBuffer` 辅助 |
+| 调用方 | 脚本/编辑器/测试 **不得** 直接拿 C++ 成员函数指针，只走 `InvokeFunction` |
+
+`InvokeFunction` 校验（失败返回 `false` + 日志）：
+
+1. `function != nullptr`、`parms != nullptr`
+2. 非 static：`this != nullptr` 且 `IsA(function->OwnerClass)`
+3. `function->GetNativeThunk() != nullptr`
+4. 调用 `nativeThunk(this, parms)`
+
+**Thunk 伪码（`Add` 示意）：**
+
+```cpp
+void Invoke_ReflectionSampleComponent_Add(MEObject* context, void* parms)
+{
+    auto* self = static_cast<ReflectionSampleComponent*>(context);
+    const MEFunction* fn = self->GetClass()->FindFunction("Add");
+    int32_t a = 0;
+    int32_t b = 0;
+    fn->CopyParamFromBuffer(parms, "FirstOperand", &a, sizeof(a));
+    fn->CopyParamFromBuffer(parms, "SecondOperand", &b, sizeof(b));
+    const int32_t result = self->Add(a, b);
+    fn->CopyParamToBuffer(parms, "ReturnValue", &result, sizeof(result));
+}
+```
+
+Phase B 手写 thunk 放在 `ReflectionFunctionNativeThunks.cpp`（或测试夹具旁）；header tool 后续生成同名胶水。
+
+### 3.4 运行时调用序列图（复习）
+
+下图概括 **Phase B 及之后** 从「准备 buffer」到「native 执行」的整条路径，便于和 UE 的 `ProcessEvent(UFunction*, Parms)` 对照记忆。
+
+要点：
+
+- **成员函数**：`this` 由 `MEObject* context` 单独传入，**不**占用 `ParmsBuffer`；buffer 里只排 **In / Out / Return** 等签名字段（与 `MEFunction` 元数据中的 `Offset` / `ParmsSize` 一致）。
+- **静态函数**：无 `this`，仅 `parms`（或 `context == nullptr`，由实现约定）。
+
+```mermaid
+sequenceDiagram
+    participant Caller as 调用方（测试/Lua/编辑器）
+    participant Frame as MEFunctionFrame
+    participant Obj as MEObject
+    participant Fn as MEFunction
+    participant Thunk as Native thunk
+    participant Native as 真实 C++ 成员函数
+
+    Caller->>Frame: 按 ParmsSize 分配 buffer
+    Caller->>Frame: SetParam 写入各 offset（In）
+    Caller->>Obj: InvokeFunction(fn, buffer)
+    Obj->>Obj: 校验（非空、IsA、static 等）
+    Obj->>Thunk: Invoke_xxx(context, buffer)
+    Thunk->>Thunk: 按 Offset 从 buffer 取值
+    Thunk->>Native: 发起正常 C++ 调用
+    Native-->>Thunk: 返回值 / 副作用
+    Thunk->>Thunk: 写回 buffer（Return / Out）
+    Thunk-->>Obj: 完成
+    Obj-->>Caller: true / false
+    Caller->>Frame: GetParam 读 Return / Out
+```
+
+---
+
+## 4) 类型支持策略（按阶段开启）
+
+## 4.1 最终支持矩阵（终态）
+
+| 维度 | 终态支持 |
+|------|----------|
+| 返回值 | void + 非 void |
+| 参数基础类型 | bool/int/float/double/string/Vector2/3/4 |
+| 复合类型 | array、对象指针、可反射 struct/object |
+| 参数修饰 | value / const value / ref / const ref |
+| 函数形态 | 成员函数 + 静态函数 |
+
+## 4.2 阶段内约束
+
+为保证主干稳定，按“从窄到宽”开启：
+
+1. 先值参数 + 返回值
+2. 再 `const` 与 static
+3. 再 ref/out
+4. 再复杂容器与指针语义细化
+
+---
+
+## 5) 阶段切片与验收目标
+
+## Phase A（P4.1）— 元数据主干
+
+### 功能集
+
+- `MEFunction` / `MEParamDescriptor` / `MEFunctionFlags`
+- `MEClass` 可注册与查询函数
+- `ReflectionSystem` 可持有并注册函数
+- 暂不执行调用（可只做元数据）
+
+### 类型与语义
+
+- 参数仅支持：`primitive`、`string`、`Vector2/3/4`（值传递）
+- 返回值：`void` 与单返回值
+- 不支持：ref/out、array、指针、static
+
+### 验收
+
+- 可通过 API 列出类上函数与参数签名
+- 反射 finalize 后可稳定查找函数
+- 重名冲突能报错
+
+---
+
+## Phase B（P4.2）— Invoke MVP
+
+### 功能集
+
+- `MEObject::InvokeFunction`
+- `MEFunctionFrame` 参数缓冲
+- Native thunk 调用打通
+
+### 类型与语义
+
+- 继续仅值参数
+- 返回值可读回
+- 仅成员函数
+
+### 验收
+
+- 至少 3 个样例函数（void、有返回值、多参数）可被 `InvokeFunction` 成功调用
+- 参数填充错误能被检测并失败返回
+
+---
+
+## Phase C（P4.3）— 参数/修饰扩展
+
+### 功能集
+
+- `MEParamPassKind` 生效
+- 支持 `const value`、`const&`、`&`
+- out 参数基础链路（不含脚本层）
+
+### 类型与语义
+
+- 基础类型 + string + Vector ref/const ref
+- 仍暂不开放 array ref/out 与复杂对象引用
+
+### 验收
+
+- `const&` 不可写、`&` 可写且可回写
+- out 参数可从被调函数回传给调用侧缓冲
+
+---
+
+## Phase D（P4.4）— 类型覆盖扩展
+
+### 功能集
+
+- array 参数/返回值
+- 对象指针参数（raw/shared，以当前反射可识别集合为准）
+- 可反射 struct/object 参数（按值或 const 引用）
+
+### 验收
+
+- 终态目标中的“字段可反射类型”在函数参数/返回值维度完成覆盖
+- 至少 1 个 array、1 个 object pointer、1 个 struct 参数案例通过
+
+---
+
+## Phase E（P4.5）— 静态函数与脚本桥接前置
+
+### 功能集
+
+- static 函数反射与调用
+- `InvokeFunctionByName` / name-based 调用入口稳定
+- 为脚本层提供统一填参/读返回接口
+
+### 验收
+
+- 成员函数与静态函数都可反射可调用
+- 提供脚本桥接 smoke test（可先 mock，不接 Lua VM）
+
+---
+
+## 6) 技术债控制（阶段间约束）
+
+为避免后续返工，阶段实现时必须遵守：
+
+1. **参数统一走 `MEProperty` 描述**，禁止另起临时 `switch(type)` 框架。
+2. **调用统一走 `InvokeFunction`**，禁止脚本/工具层直接绑原生函数指针。
+3. **`ParmsSize + Offset` 必须从第一阶段就保留**，即使初期类型少也不要省略。
+4. **函数查找策略先禁止重载**，但数据结构预留后续签名重载能力（例如 name + signature hash）。
+5. **错误路径显式返回**（bool + error log），不要 silent fail。
+
+---
+
+## 7) 对 header tool 的最小要求（简述）
+
+本阶段只需保证：
+
+- 能扫描 `ME_FUNCTION(...)`
+- 生成函数注册代码
+- 生成 native thunk 绑定
+- 生成参数 `MEParamDescriptor`（含 offset/pass kind）
+
+复杂语义（重载解析、模板函数、默认参数）不放在首批。
+
+---
+
+## 8) 风险与应对
+
+| 风险 | 影响 | 应对 |
+|------|------|------|
+| ref/out 语义过早引入 | 调用栈复杂、bug 高 | 按 Phase C 再开启 |
+| array/object 参数销毁时机错误 | 内存泄漏/悬挂 | `MEFunctionFrame` 统一 init/destroy |
+| 静态函数与成员函数调用约定混淆 | 调用崩溃 | 分离 invoker 类型 + flags 校验 |
+| 后续 Lua 走旁路 | 双调用体系 | 强制脚本层只调 `InvokeFunction` |
+
+---
+
+## 9) 里程碑验收总表
+
+| 阶段 | 可交付结果 | CLI 子项 |
+|------|------------|----------|
+| A | 仅元数据可查 | `meta` |
+| B | 成员函数可 invoke | `invoke` |
+| C | ref/const/out 生效 | `ref` |
+| D | array/ptr/struct 覆盖 | `types` |
+| E | static + script bridge pre | `static` |
+
+统一入口：`--reflection-function-test`（无参数 = 跑已实现的全子项）；`--reflection-function-test=meta,invoke`（只跑指定子项）。
+
+---
+
+## 10) 当前决策（本稿默认）
+
+- 函数参数类型系统：**复用 `MEProperty`**（对齐 UE 思路）
+- 参数角色 / 传递方式：**仅存 `MEParamDescriptor`**（`MEParamRole` + `MEParamPassKind`），**不** 扩展 `MEProperty` flag
+- 调用入口：**`MEObject::InvokeFunction`**（UE 对照：`ProcessEvent`）
+- 切片策略：**先元数据/调用主干，再语义扩展**
+- 测试策略：**先在 `ReflectionSample` 夹具上跑通，再推广到业务类**（控制编译与回归范围）
+- 委托与 Lua：仍在后续模块，不并入本设计实现范围
+
+---
+
+## 11) 测试设计
+
+### 11.1 原则
+
+1. **样例先行**：所有阶段先在 `ReflectionSampleComponent` / `ReflectionSampleClass` 上验证，通过后再给 `Component`、Gameplay 等广泛加 `ME_FUNCTION`。
+2. **自动化 headless**：与 `SerializationArchiveTest`、`ObjectManagerTest` 同模式，CLI 触发、失败非零退出。
+3. **Phase A 可手写注册**：元数据 API 稳定前，在 `ReflectionFunctionTest.cpp` 内手写 `RegisterFunction`，不依赖 header tool；tool 就绪后补「codegen 与手写一致」小测。
+4. **不测未实现阶段**：子开关未实现的 case 打印 `SKIP` 并跳过，不 fail 整个套件（除非显式跑 `all` 且该阶段已声明必须存在）。
+
+### 11.2 夹具（`ReflectionSample.h`）
+
+| 类型 | 用途 |
+|------|------|
+| `ReflectionSampleComponent` | **主测类**（`MEObject`）：成员函数 `InvokeFunction`、可观测状态字段 |
+| `ReflectionSampleClass` | **参数样本**（非 `MEObject`）：struct 按值 / enum / 基础字段；不作为 `this` |
+| `ReflectionSampleEnum` | enum 参数（Phase D） |
+
+**可观测状态（随 Phase B 起加入组件，Phase A 可不依赖）：**
+
+```cpp
+int m_FunctionTestCounter = 0;
+std::string m_LastInvokeTag;
+```
+
+native 实现修改上述字段，测试用 **property 反射读回**，避免只能断言返回值。
+
+### 11.3 CLI 与代码布局
+
+```text
+Runtime/Core/Reflection/
+  ReflectionSample.h                 # 夹具；ME_FUNCTION 按阶段逐步添加
+  ReflectionFunctionTest.h
+  ReflectionFunctionTest.cpp         # EnsureReflectionReady + TestPhaseMeta/...
+```
+
+启动参数（挂到 `Editor` 或 `minEngine` 主程序，与现有 test 一致）：
+
+- `--reflection-function-test` → 运行所有**已实现**子项
+- `--reflection-function-test=meta` → 仅 Phase A
+- `--reflection-function-test=meta,invoke` → 组合
+
+### 11.4 各阶段测试用例
+
+#### Phase A — `meta`（不调用，只验元数据）
+
+| # | 用例 | 断言 |
+|---|------|------|
+| A1 | `FindFunction("Add")` on `ReflectionSampleComponent` | 非空，`GetOwnerClass()` 正确 |
+| A2 | 错误类上查找 | `Component::StaticClass()->FindFunction("Add")` 为空 |
+| A3 | 参数列表 | `NumParms`、`ParmsSize`、`ReturnValueOffset`（无返回 = -1） |
+| A4 | `MEParamDescriptor` | 每个 param：`Property` 非空、`Role`（In/Return）、`PassKind==Value`、`Offset` 合法且单调 |
+| A5 | 返回值唯一 | 至多一个 `MEParamRole::Return` |
+| A6 | Finalize 重名冲突 | 故意注册重名 → `FinalizeReflection()` 失败且有 `GetLastErrors()` |
+
+**Phase A 样例函数（手写注册，签名示意）：**
+
+- `void ResetCounter()` — 无参无返回（仅元数据）
+- `int Add(int, int)` — 两入参 + 返回 `int`
+
+不在此阶段要求 C++ 函数体或 thunk 可被调用。
+
+#### Phase B — `invoke`
+
+| # | 用例 | 断言 |
+|---|------|------|
+| B1 | `ResetCounter` | void；counter → 0 |
+| B2 | `GetCounter` | 返回值 == counter |
+| B3 | `Add(2,3)` | 返回 5 |
+| B4 | `MEFunctionFrame` | name 填参与 raw buffer `InvokeFunction` 一致 |
+| B5 | 失败路径 | 空 function/buffer、`IsA` 不匹配 → `false` |
+
+#### Phase C — `ref`
+
+| # | 用例 | 断言 |
+|---|------|------|
+| C1 | `AddInPlace(int&)` | 调用侧变量被回写 |
+| C2 | `PeekString(const string&)` | 入参不变 |
+| C3 | `FillOut` | `Role==Out`，out 值回传 |
+
+#### Phase D — `types`
+
+覆盖 `primitive` / `string` / `Vector2|3|4` / `ReflectionSampleEnum` / `vector<int>` / `ReflectionSampleClass` 按值 / `MEObject*`（或组件指针）。
+
+#### Phase E — `static`
+
+| # | 用例 | 断言 |
+|---|------|------|
+| E1 | `StaticAdd` | `InvokeStaticFunction` 成功 |
+| E2 | `InvokeFunctionByName` | 与 `FindFunction` + `InvokeFunction` 一致 |
+| E3 | Script bridge mock | 仅封送 + `InvokeFunction`，不直接绑 native 指针 |
+
+### 11.5 夹具函数演进表（推广前锁定在 Sample）
+
+| 阶段 | 新增 `ME_FUNCTION`（示意） | 备注 |
+|------|---------------------------|------|
+| A | （测试 cpp 手写注册即可） | 可不改 `ReflectionSample.h` |
+| B | `ResetCounter`, `GetCounter`, `Add` | 首次在 Sample 上加真实声明 |
+| C | `AddInPlace`, `PeekString`, `FillOut` | |
+| D | enum/string/vector/struct/ptr 各 1 | 复用现有字段类型 |
+| E | `StaticAdd` | static + ByName |
+
+**推广门槛：** 当前阶段对应子开关全绿 + 你确认后，才在 `Component` 等业务类批量加 `ME_FUNCTION`。
+
+---
+
+## 12) Phase A 实施提案（待审批）
+
+> 审批前**不写业务推广**；仅 Runtime 反射核心 + Sample 夹具测试。
+
+### 12.1 交付范围（In）
+
+| 项 | 内容 |
+|----|------|
+| 类型 | `MEFunctionFlags`、`MEParamPassKind`、`MEParamRole`、`MEParamDescriptor`、`MEFunction` |
+| `MEClass` | `AddFunction` / `FindFunction` / `GetFunctions` |
+| `ReflectionSystem` | `m_OwnedFunctions`、`CreateFunction`、Finalize 校验（重名、offset、return 唯一） |
+| 测试 | `ReflectionFunctionTest.cpp` + `--reflection-function-test=meta` |
+| 夹具 | 测试内手写注册 `ReflectionSampleComponent` 上 2 个样例函数签名 |
+
+### 12.2 明确不做（Out）
+
+- `MEObject::InvokeFunction` / `MEFunctionFrame`（Phase B）
+- `ME_FUNCTION` 宏与 header tool 生成（Phase B 之后）
+- 修改 `Component`、`GameObject` 等业务头文件
+- Lua / 委托
+
+### 12.3 计划新增/修改文件
+
+| 文件 | 操作 |
+|------|------|
+| `Runtime/Core/Reflection/MEFunction.h` | 新增 |
+| `Runtime/Core/Reflection/MEFunction.cpp` | 新增（若需） |
+| `Runtime/Core/Reflection/MEClass.h` | 增补函数列表 API |
+| `Runtime/Core/Reflection/Reflection.h` / `Reflection.cpp` | 注册、Finalize、所有权 |
+| `Runtime/Core/Reflection/ReflectionFunctionTest.h` | 新增 |
+| `Runtime/Core/Reflection/ReflectionFunctionTest.cpp` | 新增（含手写注册 + A1–A6） |
+| `CMakeLists.txt`（minEngine） | 加入新 cpp |
+| `Engine.cpp` 或 `Editor` 启动 | 解析 `--reflection-function-test` |
+
+`ReflectionSample.h`：**Phase A 可不改**（注册完全在 test cpp）；若你希望样例函数声明也进头文件，可审批后加空声明 + 注释「Phase B 实现体」。
+
+### 12.4 审批后验收命令
+
+```bash
+cmake --build minEngine/build --target minEngine
+minEngine/bin/minEngine.exe --reflection-function-test=meta
+# 或 Editor.exe，取决于 test 挂载点
+```
+
+期望：退出码 `0`，日志含 `ReflectionFunctionTest: PASSED (meta)`。
+
+### 12.5 风险与回滚
+
+- 风险：`MEClass` / `ReflectionSystem` 接口变动影响面小，但需重编 minEngine。
+- 回滚：删除新文件、还原 `MEClass`/`ReflectionSystem` 即可；业务无依赖。
+
+### 12.6 Phase A 实现修正（size/alignment 来源）
+
+为避免“按 `primitiveTypeName` 字符串猜参数 size”的维护风险，Phase A 落地时做了以下修正：
+
+1. `MEProperty` 增加通用存储元数据：
+   - `StorageSize`
+   - `StorageAlignment`
+2. `CreatePropertyByType<T>()` 在创建 property 时统一写入：
+   - `SetStorageSize(sizeof(T))`
+   - `SetStorageAlignment(alignof(T))`
+3. 函数参数改为复用类型创建路径：
+   - `ReflectionSystem::CreateFunctionParamProperty<T>()`
+4. `MEFunction::FinalizeLayout()` 不再依赖类型名字符串，改为读取 property 元数据并执行对齐布局：
+   - 参数 offset 按 alignment 对齐
+   - `ParmsSize` 按本函数最大 alignment 对齐收尾
+5. `FinalizeReflection` 的函数元数据校验同步改为基于 `StorageSize/StorageAlignment`。
+
+这保证了参数布局来源统一、可扩展到更多类型，并为 Phase B/C 的调用与 ref/out 语义打下基础。
+
+---
+
+**请审批 §12 后回复「可以开 Phase A」或标注要收窄/扩大的范围。**
+

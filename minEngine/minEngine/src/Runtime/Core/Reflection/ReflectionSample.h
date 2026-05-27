@@ -36,11 +36,19 @@ namespace minEngine
     {
         ME_GENERATED_BODY(ReflectionSampleComponent)
     public:
+        void ResetCounter();
+        int32_t GetCounter() const;
+        int32_t Add(int32_t firstOperand, int32_t secondOperand);
+        void SetFunctionTestCounter(int32_t value) { m_FunctionTestCounter = value; }
+
         ME_PROPERTY(EditAnywhere)
         ReflectionSampleClass SampleData;
 
         ME_PROPERTY(EditAnywhere)
         std::vector<int> IntArray{ 1, 2, 3, 4, 5 };
+
+    private:
+        int32_t m_FunctionTestCounter = 0;
     };
 }
 

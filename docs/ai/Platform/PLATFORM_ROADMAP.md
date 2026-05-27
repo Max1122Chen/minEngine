@@ -1,7 +1,7 @@
 # Platform 路线图（UE 化大方向）
 
-Last updated: 2026-05-26  
-Status: **拍板** — 平台线 **P0/M1 底座、资产管线 P1–P6.1、P3 Undo 首轮、P2 主体（E0/E3/E4/E2/P6）已落地**；当前主攻 **E1 Inspector 统一** + **P7 产品集成**；详见 **§8 完成情况总览**
+Last updated: 2026-05-27  
+Status: **拍板** — **P0/P1 与资产 Runtime（P1–P6.1）主干已完成**；**P2 Editor 产品化（E1/P7）可并行维护**；**Core 下一主线：先完成 P4 函数反射设计与实现，委托与 Lua 仅保留占位**（见 **§11**）；详见 **§8**
 
 ## 1) 产品方向
 
@@ -9,7 +9,7 @@ minEngine 目标从「渲染学习 demo」升级为 **更像 Unreal 的编辑器
 
 - **Runtime**：可配置启动、清晰所有权与内存管理、反射驱动序列化（已有基础）
 - **Editor**：Editor 平台化（Inspector / Previewer / Asset 基础设施）、Content Browser、Undo、模式化解耦
-- **后续**：`MEFunction` + Lua；不阻塞当前平台线
+- **Core 脚本线（规划中）**：先完成 **P4 函数反射**，再在此基础上讨论委托与 Lua（见 [Functions](./Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md)、[Delegates](./Reflection/REFLECTION_DELEGATES_DESIGN.md)、[Scripting](./Scripting/LUA_SCRIPTING_DESIGN.md)）
 
 渲染/材质（[Render/Material](../Render/Material/MATERIAL_SYSTEM_ROADMAP.md)）维持维护，新功能以平台能力为主。
 
@@ -27,11 +27,12 @@ P3  编辑器 Command/Undo   → EDITOR_COMMAND_HISTORY       [首轮 Done]
     └─ S1–S2 BinaryArchive + Property API [Done]
     └─ E1.1–E1.4 栈 + Scene + Inspector property + Snapshot [Done]
     └─ 延后：E1.5 Material Undo；Command E2（TryMerge/Composite）
-P4  反射 MEFunction       → 设计待写
-P5  Lua 脚本              → 设计待写
+P4  函数反射               → REFLECTION_FUNCTIONS_DESIGN         [设计中，可按阶段实现]
+P5  委托（Delegate）       → REFLECTION_DELEGATES_DESIGN        [占位，依赖 P4 设计]
+P6  Lua 脚本              → LUA_SCRIPTING_DESIGN               [占位，依赖 P4 设计]
 ```
 
-**原则：** 先让「路径 + 对象活着」可靠，再堆编辑器与脚本。
+**原则：** P0/P1 与资产 Runtime 已收口；**函数反射是脚本与事件的前置**；Editor E1/P7 可与 P4 并行但不应抢占 P4 首 PR。
 
 ## 3) 能力矩阵
 
@@ -44,10 +45,12 @@ P5  Lua 脚本              → 设计待写
 | Editor 预览 | `PreviewScene`；Inspector Material/StaticMesh Scene3D | Texture2D 检视；CB Tile 缩略图 | [PREVIEWER_DESIGN](../Editor/PREVIEWER_DESIGN.md) |
 | 编辑器 Shell | E0 模块/子模块/服务模块 | **P7** 默认 Dock、菜单与 Focus 链 | [EDITOR_SHELL_DESIGN](../Editor/EDITOR_SHELL_DESIGN.md) |
 | Editor 外观 | M0–M6b 主题/字体/Property；排版默认 **3/4 字号** | M6c 材质图节点色；i18n；Appearance 设置 UI | [EDITOR_APPEARANCE](../Editor/EDITOR_APPEARANCE.md) |
-| 反射 | Property + MEReflection 序列化 | **P4** `MEFunction` 等价物 | （待写） |
+| 反射（数据） | `MEClass`/`MEProperty`、代码生成、序列化/Inspector | 维护 | `Runtime/Core/Reflection/` |
+| 反射（函数） | 无 | **P4** 函数反射（`MEFunction` 等） | [Functions Design](./Reflection/REFLECTION_FUNCTIONS_DESIGN.md) |
 | Undo | E1.1–E1.4 + BinaryArchive Property 路径 | E1.5 Material；TryMerge/Composite | [Command History](../Editor/EDITOR_COMMAND_HISTORY.md) |
 | 序列化 | JSON 场景/资产 + **S1–S2** BinaryArchive / Property API | 更多磁盘格式与类型 | [Serialization](./Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) |
-| 脚本 | 无 | **P5** Lua 薄绑定 | （待写） |
+| 委托 | 无 | **P5** Delegate 系统 | [Delegates](./Reflection/REFLECTION_DELEGATES_DESIGN.md) |
+| 脚本 | 无 | **P6** Lua | [Lua](./Scripting/LUA_SCRIPTING_DESIGN.md) |
 
 ## 4) 与 UE 对照（学习用）
 
@@ -58,7 +61,9 @@ P5  Lua 脚本              → 设计待写
 | `UObject::Outer` | `MEObject::m_Outer` 系统化 |
 | Asset Registry + Content Browser | `AssetManager` 变更 API + Browser UI |
 | Details + Preview | Inspector Drawer + PreviewScene |
-| `UFunction` + Blueprint | `MEFunction` + Lua（后期） |
+| `UFunction` + `ProcessEvent` | （规划中）`MEFunction` + `MEObject::ProcessEvent`（P4） |
+| `DECLARE_DELEGATE` / 动态多播 | （规划中）`MEDelegate` 单播 / 多播（P5） |
+| UnLua / LuaMachine | （规划中）`ScriptSubsystem` + Lua（P6） |
 | `FTransaction` / Undo | **`EditorCommandStack`**（E1.1–E1.4 已落地） |
 
 ## 5) 里程碑
@@ -68,8 +73,8 @@ P5  Lua 脚本              → 设计待写
 | **M0** | `PathRegistry`、相对 Engine 配置、启动 resolve 日志 | **Done**（Playground 清理等见 §8 P0 延后） |
 | **M1–M2** | `ObjectManager` weak 索引 + `CollectGarbage` + 削减 `RemoveObject` | **主干 Done**（C3 分域、目视验收见 §8 P1 延后） |
 | **M3** | E0/E3/E4/P6/P6.1、P3 Undo 首轮、E2 Preview 核心、Appearance M0–M6b | **Done** |
-| **M4** | E1 Inspector 统一、P7 Dock/Import/打开路由 | **进行中** |
-| **M5+** | P4 `MEFunction`、P5 Lua | **未启动** |
+| **M4** | E1 Inspector 统一、P7 Dock/Import/打开路由 | **并行维护**（非 Core 主线） |
+| **M5** | P4：函数反射方案设计 + 最小实现 | **未启动 — Core 主线（设计期）** |
 
 ## 6) 延后功能索引（简表）
 
@@ -85,7 +90,9 @@ P5  Lua 脚本              → 设计待写
 | **P0 尾项** | Playground 路径清理、Saved 目录类型化 |
 | **P1 尾项** | GC 分域（C3）、Editor 场景反复开关目视验收 |
 | **Appearance 后置** | M6c、i18n、Appearance 设置 UI |
-| **P4 / P5** | MEFunction、Lua（设计未写） |
+| **P4** | 函数反射设计与切片：见 [REFLECTION_FUNCTIONS_DESIGN](./Reflection/REFLECTION_FUNCTIONS_DESIGN.md) |
+| **P5** | 委托：见 [REFLECTION_DELEGATES_DESIGN](./Reflection/REFLECTION_DELEGATES_DESIGN.md) |
+| **P6** | Lua：见 [LUA_SCRIPTING_DESIGN](./Scripting/LUA_SCRIPTING_DESIGN.md) |
 
 ---
 
@@ -189,11 +196,24 @@ P5  Lua 脚本              → 设计待写
 | **E1.2** Scene 结构 Command（GO/Component/Rename/Transform） | 大快照 **字节预算**（设计评估项） |
 | **E1.3–E1.4** Inspector 属性 Undo、GO/Component Snapshot | **E1.5** Material 图/节点/连线 Undo |
 
-### P4 / P5 — 反射函数与脚本
+### P4 — 反射函数与委托
+
+| 已完成 | 下一里程碑 |
+|--------|------------|
+| **Property 线**：`MEClass`/`MEProperty`、header tool、`FinalizeReflection`、序列化/Inspector/Undo 消费 | **P4.1** `MEFunction` 类型 + `MEClass::AddFunction` |
+| [Enum Property](./Reflection/REFLECTION_ENUM_PROPERTY_PLAN.md) Size/绑定 | **P4.2** `ProcessEvent` + 参数缓冲 + `--reflection-function-test` |
+| | **P4.3** `ME_FUNCTION` + tool 生成 |
+| | **P4.4–P4.5** `MEDelegate` |
+
+设计：[REFLECTION_FUNCTIONS_DESIGN.md](./Reflection/REFLECTION_FUNCTIONS_DESIGN.md)
+
+### P5 — Lua 脚本
 
 | 状态 | 说明 |
 |------|------|
-| **未启动** | P4 `MEFunction`、P5 Lua：**设计案待写**；不阻塞当前 Editor 线 |
+| **未启动** | 依赖 **P4.1–P4.3**；默认 **sol2**；`ScriptSubsystem` 生命周期 |
+
+设计：[LUA_SCRIPTING_DESIGN.md](./Scripting/LUA_SCRIPTING_DESIGN.md)
 
 ### 渲染 / 材质（维护轨，非 Platform 优先级）
 
@@ -204,7 +224,7 @@ P5  Lua 脚本              → 设计待写
 
 ### 总结
 
-平台线已从「渲染 demo」进入 **编辑器驱动**：**路径与对象底座（P0/P1）和资产闭环（P1–P6.1）已基本可用**，Editor 具备 Shell、Content Browser、主题排版、Scene/Material 双模式、**Undo 首轮** 与 **Inspector 3D 预览核心**。当前瓶颈在 **产品化收口**——**E1** 统一 Inspector 门面、**P7** Dock/Import/打开路由，以及预览与 Browser 的 **Texture/缩略图** 子项；**P4/P5** 仍为零。建议接下来保持 **E1 → P7 → E2 延后子项 → E1.5/Command E2** 顺序，避免并行铺开 CB 右键与 Material Undo。
+平台线已从「渲染 demo」进入 **编辑器驱动**：**P0/P1 与资产 Runtime 已基本收口**。Editor 侧 **E1/P7** 等产品化可 **并行维护**。**Core 下一主线** 为 **P4（函数反射 + 委托）→ P5（Lua）**，顺序 **不可颠倒**（Lua 绑定 `MEFunction`，委托事件与 `ProcessEvent` 共用参数路径）。建议实施：**P4.1 → P4.2 → P4.3 → P5.0–P5.2 → P5.3 → P4.4 委托 → P5.4 ScriptComponent**。
 
 ---
 
@@ -215,8 +235,11 @@ P5  Lua 脚本              → 设计待写
 | 2026-05-23 | 初稿：UE 化方向、P0–P5 优先级、能力矩阵 |
 | 2026-05-26 | 同步 P3 Undo、P6.1、E2 核心 Done；§6 延后表 |
 | 2026-05-26 | **§8 完成情况总览**（对照各设计案 + 代码）；更新 §2/§3/§5；修正 P0/P1 已为 Done 主干 |
+| 2026-05-27 | **§11 Core 主线**：P4/P5 设计案落盘；§2/§3/§5/§8 对齐函数反射+委托+Lua |
 
-## 10) 2026-05-27 新任务安排（滚动）
+## 10) 2026-05-27 Editor 任务安排（滚动，可并行）
+
+> Editor 产品化；**不替代** §11 Core 主线。
 
 > 目的：按 ROADMAP 顺序推进产品化收口；今天任务为滚动队列，可继续追加，不在此处锁死全部范围。
 
@@ -227,3 +250,23 @@ P5  Lua 脚本              → 设计待写
 | 3 | **P3 E1.5 + E2.4** | Material Editor 编辑体验补强：Undo 主链路 + Preview 视口飞行 | 建议先 Undo，再飞行相机 |
 
 关联推进案：[`docs/ai/Editor/EDITOR_TASK_ROLLOUT_2026-05-27.md`](../Editor/EDITOR_TASK_ROLLOUT_2026-05-27.md)
+
+---
+
+## 11) 2026-05-27 Core 主线 — 函数反射 · 委托 · Lua
+
+> **用户拍板：** P0/P1/资产 Runtime 已做完；`master` 上推进 **引擎 Core 脚本栈**。
+
+| 顺位 | 模块 | 阶段 | 设计文档 |
+|------|------|------|----------|
+| 1 | **P4.1–P4.2** | `MEFunction` + `ProcessEvent` + 测试 | [REFLECTION_FUNCTIONS_DESIGN](./Reflection/REFLECTION_FUNCTIONS_DESIGN.md) |
+| 2 | **P4.3** | `ME_FUNCTION` + header tool | 同上 |
+| 3 | **P5.0–P5.2** | Lua VM + `MEObject`/Property 绑定 | [LUA_SCRIPTING_DESIGN](./Scripting/LUA_SCRIPTING_DESIGN.md) |
+| 4 | **P5.3** | Lua 调 `MEFunction` | 同上 |
+| 5 | **P4.4** | 单播 `MEDelegate` | 函数设计 §4–§6 |
+| 6 | **P5.4** | `ScriptComponent` / `.melua` | Lua 设计 §1.1 |
+| 7 | **P4.5 / P5.5** | 多播委托、Lua 事件（可选） | — |
+
+**硬依赖：** P5.\* 依赖 P4.1–P4.3；委托 Broadcast 依赖 `ProcessEvent` 参数封送。
+
+**与 Editor 并行：** E1/P7/CB 不阻塞 P4；Inspector 对 Callable 的调试按钮可放在 P4.3 之后小切片。

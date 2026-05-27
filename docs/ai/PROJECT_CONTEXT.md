@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-05-26
+Last updated: 2026-05-27
 
 ## 1) Project Goal
 
@@ -61,11 +61,12 @@ When finishing a task, AI should:
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
 - Place new design docs in the correct docs/ai/ subtree per docs-ai-layout rule.
 
-## 6) Current product direction (2026-05-26)
+## 6) Current product direction (2026-05-27)
 
 - **Rendering / Material:** Phase 0–5 largely complete (IBL + Skybox); maintain via `docs/ai/Render/Material/`.
-- **Platform (main track):** **P2 Editor** — E0/E3/E4/P6/P6.1、**E2 Preview 核心**、**P3 Undo 首轮（E1.1–E1.4）** 已落地；当前 **E1 Inspector 统一** / **P7**；P0/P1 底座与 P4/P5 仍后置。
-- **Roadmaps:** `docs/ai/Platform/PLATFORM_ROADMAP.md`、`docs/ai/Editor/EDITOR_PLATFORM_PLAN.md`、`docs/ai/Editor/PREVIEWER_DESIGN.md`、`docs/ai/Editor/EDITOR_COMMAND_HISTORY.md`.
+- **Platform Core (main track on master):** **P4** 函数反射 + 委托 → **P5** Lua；P0/P1/资产 Runtime 已收口。设计：`docs/ai/Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md`、`docs/ai/Platform/Scripting/LUA_SCRIPTING_DESIGN.md`。
+- **Platform Editor (parallel):** E1 Inspector / P7 等产品化可并行；见 `PLATFORM_ROADMAP.md` §10。
+- **Roadmaps:** `docs/ai/Platform/PLATFORM_ROADMAP.md`（§11 Core 切片）、`docs/ai/Editor/EDITOR_PLATFORM_PLAN.md`。
 
 ## 7) Material Editor (stable)
 

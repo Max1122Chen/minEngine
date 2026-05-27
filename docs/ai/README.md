@@ -23,7 +23,11 @@
 
 ### 平台（当前主线）
 
-- [Platform 路线图](./Platform/PLATFORM_ROADMAP.md) — UE 化大方向与优先级
+- [Platform 路线图](./Platform/PLATFORM_ROADMAP.md) — UE 化大方向；**§11 Core：先做 P4 函数反射，委托与 Lua 暂为占位**
+- [函数反射设计](./Platform/Reflection/REFLECTION_FUNCTIONS_DESIGN.md) — P4 数据结构、Invoke、阶段切片与验收
+- [函数反射现状](./Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) — 当前实现基线
+- [委托系统（占位）](./Platform/Reflection/REFLECTION_DELEGATES_DESIGN.md)
+- [Lua 脚本（占位）](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)
 - [引擎启动 / 配置](./Platform/Startup/ENGINE_STARTUP_DESIGN.md)
 - [内存管理](./Platform/MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md)
 - [Content Browser](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)

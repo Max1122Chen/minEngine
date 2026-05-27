@@ -100,6 +100,10 @@ namespace minEngine::Reflection
         }
 
         const PropertyMetadata& GetMetadata() const { return metadata; }
+        size_t GetStorageSize() const { return storageSize; }
+        void SetStorageSize(size_t inStorageSize) { storageSize = inStorageSize; }
+        size_t GetStorageAlignment() const { return storageAlignment; }
+        void SetStorageAlignment(size_t inStorageAlignment) { storageAlignment = inStorageAlignment; }
 
         const std::string* FindMetadata(const std::string& key) const
         {
@@ -119,6 +123,8 @@ namespace minEngine::Reflection
         FieldMutableAccessorFn mutableAccessor = nullptr;
         PropertySpecifierMask specifierMask = static_cast<PropertySpecifierMask>(PropertySpecifier::None);
         PropertyMetadata metadata;
+        size_t storageSize = 0;
+        size_t storageAlignment = 1;
     };
 
     class MINENGINE_API MEPrimitiveProperty : public MEProperty

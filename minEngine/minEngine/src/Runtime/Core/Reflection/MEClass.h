@@ -18,6 +18,8 @@ namespace minEngine
 
 namespace minEngine::Reflection
 {
+    class MEFunction;
+
     using MEClassFactoryFn = std::shared_ptr<void> (*)();
     using MEClassCasterFn = void* (*)(void* objectPtr);
 
@@ -126,7 +128,9 @@ namespace minEngine::Reflection
 
         const std::vector<MEProperty*>& GetProperties() const { return m_Properties; }
         const std::vector<MEClass*>& GetDirectDerivedClasses() const { return m_DirectDerivedClasses; }
-        
+
+        const std::vector<MEFunction*>& GetFunctions() const { return m_Functions; }
+        MEFunction* FindFunction(const std::string& functionName) const;
 
     private:
         MEClass(const MEClass&) = delete;
@@ -143,6 +147,8 @@ namespace minEngine::Reflection
                 m_Properties.push_back(property);
             }
         }
+
+        bool AddFunction(MEFunction* function);
         void SetResolvedSuperClass(MEClass* inSuperClass) { m_SuperClass = inSuperClass; }
         void ClearDirectDerivedClasses() { m_DirectDerivedClasses.clear(); }
         void AddDirectDerivedClass(MEClass* derivedClass)
@@ -169,7 +175,12 @@ namespace minEngine::Reflection
         {
             if constexpr (std::is_default_constructible_v<T> && !std::is_abstract_v<T>)
             {
-                return std::make_shared<T>();
+                std::shared_ptr<T> instance = std::make_shared<T>();
+                if constexpr (std::is_base_of_v<minEngine::MEObject, T>)
+                {
+                    instance->SetClass(T::StaticClass());
+                }
+                return instance;
             }
             else
             {
@@ -216,6 +227,8 @@ namespace minEngine::Reflection
         ClassMetadata m_Metadata;
         MEClass* m_SuperClass = nullptr;
         std::vector<MEProperty*> m_Properties;
+        std::vector<MEFunction*> m_Functions;
+        std::unordered_map<std::string, MEFunction*> m_FunctionsByName;
         std::vector<MEClass*> m_DirectDerivedClasses;
     };
 

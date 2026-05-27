@@ -8,8 +8,12 @@
 | [Startup/ENGINE_STARTUP_DESIGN.md](./Startup/ENGINE_STARTUP_DESIGN.md) | 草稿 — 配置化启动 |
 | [MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md](./MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md) | 草稿 — 内存管理 |
 
-后续（占位，尚未写详细设计）：
+| [Reflection/REFLECTION_FUNCTIONS_DESIGN.md](./Reflection/REFLECTION_FUNCTIONS_DESIGN.md) | 设计 — P4 函数反射（阶段切片） |
+| [Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md](./Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) | 现状 — 当前反射系统基线 |
+| [Reflection/UE_FUNCTION_REFLECTION_NOTES.md](./Reflection/UE_FUNCTION_REFLECTION_NOTES.md) | 学习笔记 — UE 方法反射做法（阶段 1） |
+| [Scripting/LUA_SCRIPTING_DESIGN.md](./Scripting/LUA_SCRIPTING_DESIGN.md) | 草稿 — P5 Lua |
+| [Reflection/REFLECTION_ENUM_PROPERTY_PLAN.md](./Reflection/REFLECTION_ENUM_PROPERTY_PLAN.md) | Done — Enum Size/绑定 |
 
-- `Reflection/` — `MEFunction`、脚本绑定
-- `Scripting/` — Lua
-- `EditorCore/` — Command/Undo、子系统解耦
+其他：
+
+- `EditorCore/` — Command/Undo（见 `docs/ai/Editor/EDITOR_COMMAND_HISTORY.md`）
