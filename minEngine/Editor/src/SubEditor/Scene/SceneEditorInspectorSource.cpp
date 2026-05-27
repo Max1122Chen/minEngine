@@ -1,5 +1,8 @@
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
 
+#include "ContextMenu/Contexts/SceneInspectorMenuContext.h"
+#include "ContextMenu/EditorContextMenuSystem.h"
+#include "ContextMenu/EditorMenuContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Appearance/EditorAppearance.h"
@@ -74,7 +77,7 @@ namespace minEngine
             && ImGui::IsKeyPressed(ImGuiKey_F2, false);
         if (requestRenameByHotkey)
         {
-            BeginRenameSelectedGameObject(*gameObject);
+            StartInlineRename(*gameObject);
         }
 
         if (m_RenameTargetGameObjectId != gameObject->GetID())
@@ -124,7 +127,13 @@ namespace minEngine
             ImGui::Selectable(headerLabel.c_str(), true, ImGuiSelectableFlags_SpanAllColumns);
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                BeginRenameSelectedGameObject(*gameObject);
+                StartInlineRename(*gameObject);
+            }
+
+            if (ImGui::BeginPopupContextItem("InspectorGameObjectHeaderContext"))
+            {
+                DrawGameObjectHeaderContextMenu(*gameObject);
+                ImGui::EndPopup();
             }
         }
 
@@ -838,6 +847,32 @@ namespace minEngine
     {
         ImGui::TextUnformatted("Array properties are not supported in this version.");
         return false;
+    }
+
+    void SceneEditorInspectorSource::StartInlineRename(const GameObject& gameObject)
+    {
+        m_IsRenamingSelectedGameObject = true;
+        m_RenameTargetGameObjectId = gameObject.GetID();
+        std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+        std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
+        m_RequestRenameFocus = true;
+    }
+
+    void SceneEditorInspectorSource::DrawGameObjectHeaderContextMenu(GameObject& gameObject)
+    {
+        IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+        if (!editorContext)
+        {
+            return;
+        }
+
+        auto inspectorContext = std::make_shared<SceneInspectorMenuContext>();
+        inspectorContext->SelectionKind = SceneInspectorSelectionKind::GameObjectHeader;
+        inspectorContext->GameObjectId = gameObject.GetID();
+
+        EditorMenuContext menuContext;
+        menuContext.Add(inspectorContext);
+        editorContext->GetContextMenu().BuildAndDraw(*editorContext, menuContext);
     }
 
     bool SceneEditorInspectorSource::TryDrawComponentContextMenu(Component &component)

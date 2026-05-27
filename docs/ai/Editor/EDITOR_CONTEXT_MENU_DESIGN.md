@@ -328,14 +328,14 @@ public:
 | `RevealInExplorer` | Asset | **暂缓** | 需**跨平台** Shell API；不采用 Win32-only 临时实现（见 §15.4） |
 | `Rename` | Edit | **暂缓** | CB 资产重命名需与 Hierarchy 体验 + `IEditorCommand`/Undo 统一设计后再做（见 §15.4） |
 
-#### Hierarchy / Inspector（M2 计划）
+#### Hierarchy / Inspector（M2 已交付）
 
-| EditorActionId | Section | 说明 |
-|----------------|---------|------|
-| `Delete` | Edit | `DeleteGameObjectCommand` 等 |
-| `Rename` | Edit | 已有 Hierarchy F2 / `RenameGameObjectCommand`；Inspector 对齐 |
-| `Duplicate` | Edit | 专用 Command 或扩展现有 Submit |
-| `FocusInViewport` | View | SceneEditor API |
+| EditorActionId | Section | 状态 | 说明 |
+|----------------|---------|------|------|
+| `Delete` | Edit | **M2 交付** | `DeleteGameObjectCommand`；与 CB 共用 `EditorEditActions::DeleteEditorAction` |
+| `Rename` | Edit | **M2 交付** | Hierarchy：`RequestBeginRenameGameObject` + 内联；Inspector：`BeginRenameGameObjectInInspector` |
+| `Duplicate` | Edit | **M2 占位** | 菜单可见，`CanExecute=false`（Command 未实现） |
+| `FocusInViewport` | View | **M2 占位** | 菜单项「Frame in Viewport」；Viewport `FocusSelection` 未接线 |
 
 #### 其它
 
@@ -520,14 +520,24 @@ MVP 可只定 `EditorActionId` 枚举/constexpr，**UICommandList 壳子后接**
 - [ ] **Reveal**（跨平台 Shell）— 后续专章设计后再注册
 - [ ] **CB Rename** — 与 Command/Undo + 统一 UX 后再注册
 
+### M2（Hierarchy + Inspector，2026-05-27）
+
+- [x] `Contexts/HierarchyMenuContext.h`、`Contexts/SceneInspectorMenuContext.h`
+- [x] `Actions/EditorEditActions.*`（`Delete`/`Rename` 跨 CB + Scene）；`Actions/SceneBuiltInActions.*`（Duplicate/Focus 占位）
+- [x] Hierarchy GO 项右键 → `BuildAndDraw`；空白处仍本地「Create Empty」
+- [x] Inspector GO 标题右键 → `BuildAndDraw`；组件 Remove 仍本地（M2+ 可迁 Registry）
+- [x] Delete/Rename 走现有 `SubmitRemoveGameObjectFromScene` / `RenameGameObjectCommand` 路径
+- [ ] **Duplicate** Command + Undo
+- [ ] **Frame in Viewport** 接 `SceneEditingViewportClient::FocusSelection`
+
 ### MVP 全量（M0–M3 完成后勾选）
 
 - [x] Content Browser 经 `GetContextMenu().BuildAndDraw` 弹出菜单
-- [ ] 三窗口均接入（Hierarchy / Inspector **M2**）
+- [x] Hierarchy / Inspector GO 右键经 Registry（组件 Remove 除外）
 - [ ] 三窗口右键均由 `EditorMenuContext` + `Registry.Query` 驱动，无硬编码 `MenuItem("Delete")` 业务分支
 - [ ] 新增实验性 Action 仅需 `Register`，无需改 CB/Hierarchy 源文件
 - [ ] Delete/Rename 等走 `IEditorCommand` / 现有 Submit 路径
-- [ ] Tools 临时 FileDialog 入口已移除，Import 仍可用
+- [x] Tools 临时 FileDialog 入口已移除，Import 仍可用（File 菜单 Import Asset…）
 - [x] 设计案链接 `docs/external/` 两份参考（文首已链）
 
 ---

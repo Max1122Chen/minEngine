@@ -38,43 +38,6 @@ namespace minEngine
             }
         };
 
-        class ContentBrowserDeleteAction final : public ContentBrowserScopedAction
-        {
-        public:
-            EditorActionId GetId() const override { return EditorActionId::Delete; }
-            const char* GetLabel(const EditorMenuContext& ctx) const override
-            {
-                (void)ctx;
-                return "Delete";
-            }
-            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Edit; }
-            int GetSortOrder() const override { return 0; }
-
-            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
-            {
-                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
-                return cbCtx != nullptr && !cbCtx->SelectedAssets.empty();
-            }
-
-            bool CanExecute(const EditorMenuContext& ctx) const override
-            {
-                return IsVisibleInMenu(ctx);
-            }
-
-            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
-            {
-                (void)ctx;
-                return "No asset selected.";
-            }
-
-            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
-            {
-                (void)ctx;
-                editor.GetAssetWorkflow().DeleteSelectedAsset();
-                RefreshContentBrowser(editor);
-            }
-        };
-
         class ContentBrowserImportAction final : public ContentBrowserScopedAction
         {
         public:
@@ -157,7 +120,6 @@ namespace minEngine
 
     void RegisterContentBrowserBuiltInActions(EditorActionRegistry& registry)
     {
-        registry.Register(std::make_unique<ContentBrowserDeleteAction>());
         registry.Register(std::make_unique<ContentBrowserImportAction>());
         registry.Register(std::make_unique<ContentBrowserRefreshAction>());
     }

@@ -32,9 +32,10 @@ namespace minEngine
         static constexpr uint64_t kInvalidGameObjectId = std::numeric_limits<uint64_t>::max();
 
         void TryCaptureF2RenameRequest();
+        void TryConsumePendingRenameRequest();
         void BeginRename(const GameObject& gameObject);
         bool TryDrawRightClickBlankSpaceMenu();
-        bool TryDrawRightClickGOMenu(GameObject& gameObject);
+        void DrawHierarchyGameObjectContextMenu(GameObject& gameObject);
 
         const std::string m_Id = "hierarchy";
         const std::string m_Title = "Hierarchy";

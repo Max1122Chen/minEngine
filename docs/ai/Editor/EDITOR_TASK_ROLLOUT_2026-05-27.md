@@ -1,7 +1,7 @@
 # Editor 任务推进安排（2026-05-27）
 
 Last updated: 2026-05-27  
-Status: **rolling**（S1 收口；Reveal/Rename 待代码清理；**S2 待开工**）  
+Status: **rolling**（S2 M2 已落地；**S3 M3 待开工**）  
 父文档：[`PLATFORM_ROADMAP.md`](../Platform/PLATFORM_ROADMAP.md) §10
 
 ---
@@ -16,7 +16,7 @@ Status: **rolling**（S1 收口；Reveal/Rename 待代码清理；**S2 待开工
 
 ### A. P7 / E1 右键菜单系统（优先）
 
-- 交付切片：**M0 ✅ → M1 CB 收口 ✅ → M2 Hierarchy/Inspector → M3 Tools FileDialog**
+- 交付切片：**M0 ✅ → M1 CB 收口 ✅ → M2 Hierarchy/Inspector ✅ → M3 Tools FileDialog ✅**
 - **M1 CB 菜单项（收口）：** Delete、Import…、Refresh  
 - **暂缓（不注册 / 代码待删）：** RevealInExplorer、Rename — 见设计 §15.4
 
@@ -28,8 +28,8 @@ Status: **rolling**（S1 收口；Reveal/Rename 待代码清理；**S2 待开工
 | M1 Context + CB 右键接入 | [x] |
 | M1 Delete / Import / Refresh | [x] |
 | M1 代码清理：移除 Reveal + Rename 临时实现 | [x] |
-| M2 Hierarchy + Inspector | [ ] |
-| M3 移除 Tools FileDialog | [ ] |
+| M2 Hierarchy + Inspector | [x] |
+| M3 移除 Tools FileDialog | [x] |
 
 ### B. CB Tile Icon | ### C. Material Editor
 
@@ -44,8 +44,8 @@ Status: **rolling**（S1 收口；Reveal/Rename 待代码清理；**S2 待开工
 | S0 | M0 骨架 | **Done** |
 | S1 | M1 CB（Delete/Import/Refresh） | **Done**（收口） |
 | S1b | 删除 Reveal/Rename 临时代码 | **Done** |
-| S2 | M2 Hierarchy / Inspector | Pending |
-| S3 | M3 Tools FileDialog | Pending |
+| S2 | M2 Hierarchy / Inspector | **Done** |
+| S3 | M3 Tools FileDialog | **Done** |
 
 ---
 
@@ -55,3 +55,4 @@ Status: **rolling**（S1 收口；Reveal/Rename 待代码清理；**S2 待开工
 |------|------|
 | 2026-05-27 | 初版；S0；方案 A；S1 |
 | 2026-05-27 | **M1 收口**：Reveal/Rename 暂缓；S1b 代码清理；对齐设计 §15.4 |
+| 2026-05-27 | **M2**：Hierarchy/Inspector 右键；`EditorEditActions` 统一 Delete；Duplicate/Focus 占位 |
