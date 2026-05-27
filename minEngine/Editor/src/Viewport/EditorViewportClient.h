@@ -23,6 +23,7 @@ namespace minEngine
         virtual void BeginFrame(float deltaTime);
         void UpdateFrameState(const ViewportFrameState& frameState);
         virtual void EndFrame();
+        ViewportImageLayout ComputeViewportImageLayout(const Vector2& contentSize) const;
 
         const ViewportFrameState& GetFrameState() const { return m_FrameState; }
         bool IsHovered() const { return m_FrameState.Hovered; }
@@ -42,6 +43,8 @@ namespace minEngine
         void SyncSceneViewportRenderTargetSize();
         void SyncSceneViewportCameraAspect();
         bool SubmitObservedScene(SceneDrawFlags flags);
+        void SetAspectPolicy(const ViewportAspectPolicy& policy) { m_AspectPolicy = policy; }
+        const ViewportAspectPolicy& GetAspectPolicy() const { return m_AspectPolicy; }
 
         virtual void SyncRenderTargetSize();
 
@@ -55,5 +58,6 @@ namespace minEngine
 
         uint32_t m_LastRequestedWidth = 0;
         uint32_t m_LastRequestedHeight = 0;
+        ViewportAspectPolicy m_AspectPolicy{};
     };
 }

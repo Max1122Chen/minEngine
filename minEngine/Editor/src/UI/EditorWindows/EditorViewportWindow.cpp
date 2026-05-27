@@ -38,26 +38,38 @@ namespace minEngine
     {
     }
 
-bool EditorViewportWindow::DrawSceneColorImage(ViewportFrameState& outFrameState)
+bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportClient, ViewportFrameState& outFrameState)
 {
+    m_PinnedFrameTexture.reset();
+
     const ImVec2 avail = ImGui::GetContentRegionAvail();
     const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+    const ViewportImageLayout layout =
+        viewportClient.ComputeViewportImageLayout(Vector2(avail.x, avail.y));
 
     outFrameState.Hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
     outFrameState.Focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     outFrameState.ContentSize = { avail.x, avail.y };
-    outFrameState.ImageMin = { cursorPos.x, cursorPos.y };
-    outFrameState.ImageSize = { avail.x, avail.y };
+    outFrameState.ImageMin = { cursorPos.x + layout.Offset.x, cursorPos.y + layout.Offset.y };
+    outFrameState.ImageSize = layout.Size;
 
-    const std::shared_ptr<RHITexture2D>& sceneColor = GetDisplayColorTexture();
-    if (!sceneColor || sceneColor->GetWidth() == 0 || sceneColor->GetHeight() == 0)
+    m_PinnedFrameTexture = GetDisplayColorTexture();
+    if (!m_PinnedFrameTexture
+        || m_PinnedFrameTexture->GetWidth() == 0
+        || m_PinnedFrameTexture->GetHeight() == 0)
     {
         ImGui::TextWrapped("Scene color texture is not ready.");
         return false;
     }
 
-    const ImTextureID textureID = reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(sceneColor->GetID()));
-    ImGui::Image(textureID, avail, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+    const ImTextureID textureID =
+        reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(m_PinnedFrameTexture->GetID()));
+    ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + layout.Offset.x, cursorPos.y + layout.Offset.y));
+    ImGui::Image(
+        textureID,
+        ImVec2(layout.Size.x, layout.Size.y),
+        ImVec2(0.0f, 1.0f),
+        ImVec2(1.0f, 0.0f));
 
     const ImVec2 imageMin = ImGui::GetItemRectMin();
     const ImVec2 imageSize = ImGui::GetItemRectSize();
@@ -77,7 +89,7 @@ bool EditorViewportWindow::DrawSceneColorImage(ViewportFrameState& outFrameState
         }
 
     ViewportFrameState frameState{};
-    const bool drewSceneImage = DrawSceneColorImage(frameState);
+    const bool drewSceneImage = DrawSceneColorImage(viewportClient, frameState);
     viewportClient.UpdateFrameState(frameState);
 
     EditorInputHub& inputHub = m_Context.GetInputHub();

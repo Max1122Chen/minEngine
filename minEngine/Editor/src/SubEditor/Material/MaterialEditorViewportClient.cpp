@@ -30,6 +30,11 @@ namespace minEngine
     MaterialEditorViewportClient::MaterialEditorViewportClient(std::string debugName)
         : EditorViewportClient(std::move(debugName))
     {
+        ViewportAspectPolicy aspectPolicy;
+        aspectPolicy.bKeepAspect = true;
+        aspectPolicy.TargetAspect = 1.0f;
+        aspectPolicy.FitMode = ViewportImageFitMode::Contain;
+        SetAspectPolicy(aspectPolicy);
     }
 
     MaterialEditorViewportClient::~MaterialEditorViewportClient() = default;

@@ -63,6 +63,11 @@ namespace minEngine
     {
 
         m_GizmoState.mode = GizmoState::Mode::Translate;
+        ViewportAspectPolicy aspectPolicy;
+        aspectPolicy.bKeepAspect = true;
+        aspectPolicy.TargetAspect = 16.0f / 9.0f;
+        aspectPolicy.FitMode = ViewportImageFitMode::Contain;
+        SetAspectPolicy(aspectPolicy);
 
     }
 

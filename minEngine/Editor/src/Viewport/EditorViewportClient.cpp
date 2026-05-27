@@ -4,6 +4,8 @@
 #include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 
+#include <algorithm>
+
 namespace minEngine
 {
     EditorViewportClient::EditorViewportClient(std::string debugName)
@@ -29,6 +31,54 @@ namespace minEngine
     void EditorViewportClient::EndFrame()
     {
         SyncRenderTargetSize();
+    }
+
+    ViewportImageLayout EditorViewportClient::ComputeViewportImageLayout(const Vector2& contentSize) const
+    {
+        ViewportImageLayout layout;
+
+        const float contentWidth = std::max(contentSize.x, 1.0f);
+        const float contentHeight = std::max(contentSize.y, 1.0f);
+
+        if (!m_AspectPolicy.bKeepAspect)
+        {
+            layout.Size = Vector2(contentWidth, contentHeight);
+            return layout;
+        }
+
+        const float targetAspect = std::max(m_AspectPolicy.TargetAspect, 0.0001f);
+        const float contentAspect = contentWidth / contentHeight;
+
+        if (m_AspectPolicy.FitMode == ViewportImageFitMode::Cover)
+        {
+            if (contentAspect > targetAspect)
+            {
+                layout.Size.x = contentWidth;
+                layout.Size.y = contentWidth / targetAspect;
+            }
+            else
+            {
+                layout.Size.y = contentHeight;
+                layout.Size.x = contentHeight * targetAspect;
+            }
+        }
+        else
+        {
+            if (contentAspect > targetAspect)
+            {
+                layout.Size.y = contentHeight;
+                layout.Size.x = contentHeight * targetAspect;
+            }
+            else
+            {
+                layout.Size.x = contentWidth;
+                layout.Size.y = contentWidth / targetAspect;
+            }
+        }
+
+        layout.Offset.x = std::max(0.0f, (contentWidth - layout.Size.x) * 0.5f);
+        layout.Offset.y = std::max(0.0f, (contentHeight - layout.Size.y) * 0.5f);
+        return layout;
     }
 
     void EditorViewportClient::InitializeEditorSceneViewport(RHI* rhi, uint32_t width, uint32_t height)

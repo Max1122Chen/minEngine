@@ -26,9 +26,73 @@
 #include "UI/Appearance/EditorAppearance.h"
 
 #include <filesystem>
+#include <optional>
 
 namespace minEngine
 {
+    namespace
+    {
+        std::optional<std::string> ParseProjectDescriptorPathFromArgs(int argc, char** argv)
+        {
+            std::optional<std::string> projectPath;
+
+            for (int index = 1; index < argc; ++index)
+            {
+                const std::string argument = argv[index] ? argv[index] : "";
+                if (argument.empty())
+                {
+                    continue;
+                }
+
+                if (argument == "--project" || argument == "-p")
+                {
+                    if (index + 1 >= argc || argv[index + 1] == nullptr || std::string(argv[index + 1]).empty())
+                    {
+                        ME_CORE_ERROR("Missing project descriptor path after '{}'.", argument);
+                        return std::nullopt;
+                    }
+
+                    projectPath = argv[++index];
+                    continue;
+                }
+
+                if (argument[0] == '-')
+                {
+                    continue;
+                }
+
+                if (!projectPath.has_value())
+                {
+                    projectPath = argument;
+                }
+            }
+
+            if (!projectPath.has_value())
+            {
+                ME_CORE_ERROR("Editor requires a project descriptor path.");
+                ME_CORE_ERROR("Usage: Editor.exe --project <path-to-project.meproject> (or positional path).");
+                return std::nullopt;
+            }
+
+            const std::filesystem::path descriptorPath(*projectPath);
+            if (descriptorPath.extension() != ".meproject")
+            {
+                ME_CORE_ERROR(
+                    "Project path '{}' is not a .meproject descriptor.",
+                    descriptorPath.string());
+                return std::nullopt;
+            }
+
+            if (!std::filesystem::exists(descriptorPath))
+            {
+                ME_CORE_ERROR("Project descriptor '{}' does not exist.", descriptorPath.string());
+                return std::nullopt;
+            }
+
+            return descriptorPath.string();
+        }
+    }
+
     Editor::Editor() = default;
 
     Editor::~Editor() = default;
@@ -206,18 +270,18 @@ namespace minEngine
         m_EditorGUIManager.Initialize(*this);
         RegisterModules();
 
-        std::string projectPath;
-        if (argc > 1)
+        const std::optional<std::string> projectDescriptorPath = ParseProjectDescriptorPathFromArgs(argc, argv);
+        if (!projectDescriptorPath.has_value())
         {
-            projectPath = argv[1];
-        }
-        else
-        {
-            // feat/editor-asset-workflow worktree: scan/register Assets under this project (not main minEngine repo).
-            projectPath = "D:/Dev/GitRepo/minEngine/minEngine/MyMEProject";
+            m_ExitRequested = true;
+            return;
         }
 
-        OpenProject(projectPath);
+        if (!OpenProject(*projectDescriptorPath))
+        {
+            m_ExitRequested = true;
+            return;
+        }
         m_Appearance.RebuildUiFontAtlas();
         PostInitialize();
     }

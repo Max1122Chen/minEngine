@@ -10,6 +10,25 @@
 
 namespace minEngine
 {
+    enum class ViewportImageFitMode : uint8_t
+    {
+        Contain,
+        Cover
+    };
+
+    struct ViewportAspectPolicy
+    {
+        bool bKeepAspect = false;
+        float TargetAspect = 16.0f / 9.0f;
+        ViewportImageFitMode FitMode = ViewportImageFitMode::Contain;
+    };
+
+    struct ViewportImageLayout
+    {
+        Vector2 Offset = Vector2(0.0f, 0.0f);
+        Vector2 Size = Vector2(0.0f, 0.0f);
+    };
+
     struct ViewportFrameState
     {
         bool Hovered = false;

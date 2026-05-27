@@ -44,6 +44,7 @@ namespace minEngine
         std::string m_Title;
 
     private:
-        bool DrawSceneColorImage(ViewportFrameState& outFrameState);
+        bool DrawSceneColorImage(EditorViewportClient& viewportClient, ViewportFrameState& outFrameState);
+        std::shared_ptr<RHITexture2D> m_PinnedFrameTexture;
     };
 }
