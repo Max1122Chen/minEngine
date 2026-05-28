@@ -35,6 +35,8 @@ add_custom_target(reflection_codegen DEPENDS ${REFLECTION_GENERATED_MANIFEST})
 file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
                 ${THIRD_PARTY_PATH}/imgui/backends/*.cpp
 )
+set(IMGUI_UPSTREAM_DIR ${THIRD_PARTY_PATH}/imgui-upstream)
+set(IMGUI_FREETYPE_SRC ${IMGUI_UPSTREAM_DIR}/misc/freetype/imgui_freetype.cpp)
 
 file(GLOB IMGUIZMO ${THIRD_PARTY_PATH}/ImGuizmo/*.cpp)
 
@@ -42,6 +44,7 @@ add_library(${ENGINE_NAME} SHARED ${SRC}
                                   ${THIRD_PARTY_PATH}/glad/src/glad.c
                                   ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
                                   ${IMGUI}
+                                  ${IMGUI_FREETYPE_SRC}
                                   ${IMGUIZMO}
                                   )
 
@@ -53,13 +56,19 @@ if(EXISTS ${NFD_DIR}/CMakeLists.txt)
     target_link_libraries(${ENGINE_NAME} PRIVATE nfd)
 endif()
 
+set(FREETYPE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/freetype)
+if(EXISTS ${FREETYPE_DIR}/CMakeLists.txt)
+    add_subdirectory(${FREETYPE_DIR} ${CMAKE_BINARY_DIR}/third-party/freetype EXCLUDE_FROM_ALL)
+    target_link_libraries(${ENGINE_NAME} PRIVATE freetype)
+endif()
+
 set_target_properties(${ENGINE_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
     LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
     ARCHIVE_OUTPUT_DIRECTORY ${EXECUTABLE_PATH} 
 )
 
-target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD)
+target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD IMGUI_ENABLE_FREETYPE)
 
 target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ./src/Runtime
@@ -74,6 +83,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/stb_image
                                           PUBLIC ${THIRD_PARTY_PATH}/assimp/include
                                           PUBLIC ${THIRD_PARTY_PATH}/imgui
+                                          PUBLIC ${IMGUI_UPSTREAM_DIR}/misc/freetype
                                           PUBLIC ${THIRD_PARTY_PATH}/json
                                           PUBLIC ${THIRD_PARTY_PATH}/ImGuizmo
                                           )

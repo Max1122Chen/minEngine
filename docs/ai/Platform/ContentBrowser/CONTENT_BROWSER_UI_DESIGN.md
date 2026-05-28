@@ -178,7 +178,7 @@ Status: **P6.1 主体已合入**；**§2.6 P6.1-polish 已实现**（`ContentBro
 | 工具栏 Delete | **右键菜单** 阶段 |
 | 底栏 `DrawSelectionSummary` | **删除** |
 | 双击打开 Material/Scene Editor | **P7 / Editor 路由设计** |
-| Icon font / 真实缩略图 | Icon：**后续**；缩略图：**E2** |
+| Icon font / 真实缩略图 | Icon + 缩略图策略见 **[CB_TILE_DISPLAY_DESIGN.md](../../Editor/CB_TILE_DISPLAY_DESIGN.md)**（C1 Icon Font → C2/C3 缩略图） |
 | PropertyWidgets 画 Meta | **E1** |
 | Preview 嵌入 | **E2** |
 

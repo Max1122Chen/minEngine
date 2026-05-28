@@ -15,6 +15,7 @@
 #include "Runtime/Resource/AssetMeta.h"
 
 #include "imgui.h"
+#include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -23,6 +24,109 @@
 
 namespace minEngine
 {
+    const char* ContentBrowserWindow::ResolveAssetTypeIconGlyph(const std::string_view assetType) const
+    {
+        if (assetType == "Texture2D")
+        {
+            return ICON_FA_IMAGE;
+        }
+
+        if (assetType == "StaticMesh")
+        {
+            return ICON_FA_CUBE;
+        }
+
+        if (assetType == "Material")
+        {
+            return ICON_FA_PALETTE;
+        }
+
+        if (assetType == "Shader")
+        {
+            return ICON_FA_CODE;
+        }
+
+        if (assetType == "Scene")
+        {
+            return ICON_FA_MAP;
+        }
+
+        if (assetType == "Font")
+        {
+            return ICON_FA_FONT;
+        }
+
+        return ICON_FA_FILE;
+    }
+
+    AssetIconFontStyle ContentBrowserWindow::ResolveAssetTypeIconFontStyle(const std::string_view assetType) const
+    {
+        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Shader" || assetType == "Font")
+        {
+            return AssetIconFontStyle::Solid;
+        }
+
+        return AssetIconFontStyle::Regular;
+    }
+
+    void ContentBrowserWindow::DrawTileAssetIcon(
+        const AssetMeta& meta,
+        const ImVec2& iconMin,
+        const ImVec2& iconMax,
+        const EditorAppearance& appearance,
+        const EditorThemePalette& palette,
+        ImDrawList& drawList) const
+    {
+        drawList.AddRectFilled(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.FieldBackground),
+            0.0f);
+        drawList.AddRect(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.Border),
+            0.0f,
+            0,
+            1.0f);
+
+        ImFont* iconFont = nullptr;
+        const AssetIconFontStyle iconFontStyle = ResolveAssetTypeIconFontStyle(meta.AssetType);
+        if (iconFontStyle == AssetIconFontStyle::Solid)
+        {
+            iconFont = appearance.GetAssetIconSolidImFont();
+            if (iconFont == nullptr)
+            {
+                iconFont = appearance.GetAssetIconRegularImFont();
+            }
+        }
+        else
+        {
+            iconFont = appearance.GetAssetIconRegularImFont();
+            if (iconFont == nullptr)
+            {
+                iconFont = appearance.GetAssetIconSolidImFont();
+            }
+        }
+        if (iconFont == nullptr)
+        {
+            return;
+        }
+
+        const char* glyph = ResolveAssetTypeIconGlyph(meta.AssetType);
+        if (glyph == nullptr || glyph[0] == '\0')
+        {
+            return;
+        }
+
+        ImGui::PushFont(iconFont, 0.0f);
+        const ImVec2 glyphSize = ImGui::CalcTextSize(glyph);
+        const float glyphX = iconMin.x + (ViewMetrics::IconSize - glyphSize.x) * 0.5f;
+        const float glyphY = iconMin.y + (ViewMetrics::IconSize - glyphSize.y) * 0.5f;
+        drawList.AddText(ImVec2(glyphX, glyphY), appearance.GetDisplayColorU32(palette.TextPrimary), glyph);
+        ImGui::PopFont();
+    }
+
     ContentBrowserWindow::ContentBrowserWindow(IEditorContext& context, AssetTreeModel& model)
         : EditorWindow(context)
         , m_Model(model)
@@ -351,18 +455,7 @@ namespace minEngine
         const ImVec2 iconMin(iconLeft, iconTop);
         const ImVec2 iconMax(iconLeft + ViewMetrics::IconSize, iconTop + ViewMetrics::IconSize);
 
-        drawList->AddRectFilled(
-            iconMin,
-            iconMax,
-            appearance.GetDisplayColorU32(palette.FieldBackground),
-            0.0f);
-        drawList->AddRect(
-            iconMin,
-            iconMax,
-            appearance.GetDisplayColorU32(palette.Border),
-            0.0f,
-            0,
-            1.0f);
+        DrawTileAssetIcon(meta, iconMin, iconMax, appearance, palette, *drawList);
 
         const float labelTop = iconMax.y + ViewMetrics::IconLabelGap;
         const ImVec2 labelMin(outerMin.x + ViewMetrics::TilePadding, labelTop);

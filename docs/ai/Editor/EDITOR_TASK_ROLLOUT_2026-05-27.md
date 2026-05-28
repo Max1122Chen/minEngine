@@ -1,8 +1,9 @@
 # Editor 任务推进安排（2026-05-27）
 
-Last updated: 2026-05-27  
-Status: **rolling**（S4.1 Done；**B E2.2b Done**；下一项 **C CB Asset Icon**）  
-父文档：[`PLATFORM_ROADMAP.md`](../Platform/PLATFORM_ROADMAP.md) §10
+Last updated: 2026-05-28  
+Status: **rolling**（S4.1 Done；**B E2.2b Done**；**C 设计 v0.1** → C1 Icon Font 待实施）  
+父文档：[`PLATFORM_ROADMAP.md`](../Platform/PLATFORM_ROADMAP.md) §10  
+CB Tile 设计：[`CB_TILE_DISPLAY_DESIGN.md`](./CB_TILE_DISPLAY_DESIGN.md)
 
 ---
 
@@ -52,12 +53,23 @@ Status: **rolling**（S4.1 Done；**B E2.2b Done**；下一项 **C CB Asset Icon
 |------|------|
 | E2.2b Inspector 预览（OpenGL MVP：`RHITexture2D` → `ImGui::Image`） | [x] |
 
-### C. Content Browser Asset Icon
+### C. Content Browser Tile 展示（Icon Font + 缩略图）
 
-- 目标：为 Content Browser Tile 引入 **静态 Asset Icon**，替换当前统一的占位方框  
-  - 按 `AssetType`（Scene / Material / Texture / Mesh / Font …）绘制不同 Icon  
-  - 暂不实现缩略图；缩略图仍归 E2.3b（后续）
-- 路线图对应：P2/P6.1（CB UI 抛光）+ `EDITOR_CONTEXT_MENU_DESIGN` §11.7 关于 Icon/缩略图预留接口
+- 目标：CB Tile **120×120 Icon 槽** 支持两种展示模式，由 **`AssetType` 策略** 分流  
+  - **Icon Font**：类型级 glyph（Font / Shader / Scene 等）  
+  - **Thumbnail**：实例级图像（Texture2D / Material / StaticMesh，分批接入）
+- **实施顺序：** **先 C1 通 Icon Font**，再 C2/C3 逐步通缩略图；Icon Font 套件 **TBD**
+- 设计详情：**[CB_TILE_DISPLAY_DESIGN.md](./CB_TILE_DISPLAY_DESIGN.md)**（v0.1）
+- 路线图：P2/P6.1（CB UI 抛光）+ E2.3b（缩略图完整版后置）
+
+#### C 子任务勾选
+
+| 子项 | 状态 |
+|------|------|
+| C1 Icon Font 通道（策略表 + atlas + Tile 绘制） | [ ] |
+| C2 Texture2D Tile 缩略图 | [ ] |
+| C3 Material / StaticMesh Tile 缩略图 | [ ] |
+| C4 E2.3b 异步缓存 / 持久化（可选） | [ ] |
 
 ---
 
@@ -86,3 +98,4 @@ Status: **rolling**（S4.1 Done；**B E2.2b Done**；下一项 **C CB Asset Icon
 | 2026-05-27 | **S4.1 计划**：修复 Edit 悬停崩溃；仅 Create 使用折叠子菜单；Hierarchy GO 菜单移除 Add Component；Inspector 右键临时下线 |
 | 2026-05-27 | **S4.1 落地**：恢复 Inspector 右键；修 GO id=0 空菜单、重复 `RegisterBuiltInActions`、Add Component ImGui ID 冲突 |
 | 2026-05-27 | **E2.2b**：Texture2D Inspector 预览（OpenGL MVP） |
+| 2026-05-28 | **C 设计 v0.1**：CB Tile 双通道（IconFont + Thumbnail）；[CB_TILE_DISPLAY_DESIGN.md](./CB_TILE_DISPLAY_DESIGN.md) |
