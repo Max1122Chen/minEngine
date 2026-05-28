@@ -16,7 +16,8 @@ namespace minEngine::Reflection
 {
     class MEClass;
 
-    using MENativeThunkFn = void (*)(minEngine::MEObject* context, void* parms);
+    class MEFunction;
+    using MENativeThunkFn = void (*)(minEngine::MEObject* context, MEFunction* function, void* parms);
 
     enum class MEFunctionFlags : uint32_t
     {
@@ -95,6 +96,9 @@ namespace minEngine::Reflection
         static uint32_t AlignUp(uint32_t value, uint32_t alignment);
         static uint32_t GetPropertyStorageSize(const MEProperty* property);
         static uint32_t GetPropertyStorageAlignment(const MEProperty* property);
+        static bool IsPointerSlot(MEParamRole role, MEParamPassKind passKind);
+        static uint32_t GetParamStorageSize(MEProperty* property, MEParamRole role, MEParamPassKind passKind);
+        static uint32_t GetParamStorageAlignment(MEProperty* property, MEParamRole role, MEParamPassKind passKind);
 
         std::string m_Name;
         MEClass* m_OwnerClass = nullptr;

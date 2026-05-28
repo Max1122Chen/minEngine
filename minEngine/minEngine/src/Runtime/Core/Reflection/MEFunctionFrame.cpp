@@ -32,4 +32,36 @@ namespace minEngine::Reflection
         return m_Function.CopyParamFromBuffer(GetBuffer(), name, outValue, outValueSize);
     }
 
+    bool MEFunctionFrame::SetParamPtr(const std::string& name, void* ptr)
+    {
+        return SetParam(name, &ptr, sizeof(ptr));
+    }
+
+    bool MEFunctionFrame::SetParamConstPtr(const std::string& name, const void* ptr)
+    {
+        return SetParam(name, &ptr, sizeof(ptr));
+    }
+
+    bool MEFunctionFrame::GetParamPtr(const std::string& name, void*& outPtr) const
+    {
+        void* ptr = nullptr;
+        if (!GetParam(name, &ptr, sizeof(ptr)))
+        {
+            return false;
+        }
+        outPtr = ptr;
+        return true;
+    }
+
+    bool MEFunctionFrame::GetParamConstPtr(const std::string& name, const void*& outPtr) const
+    {
+        const void* ptr = nullptr;
+        if (!GetParam(name, &ptr, sizeof(ptr)))
+        {
+            return false;
+        }
+        outPtr = ptr;
+        return true;
+    }
+
 } // namespace minEngine::Reflection

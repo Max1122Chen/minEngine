@@ -48,7 +48,7 @@ namespace minEngine::Reflection
             return false;
         }
 
-        const uint32_t storageSize = GetPropertyStorageSize(param->Property);
+        const uint32_t storageSize = GetParamStorageSize(param->Property, param->Role, param->PassKind);
         if (storageSize == 0 || storageSize != destSize)
         {
             return false;
@@ -72,7 +72,7 @@ namespace minEngine::Reflection
             return false;
         }
 
-        const uint32_t storageSize = GetPropertyStorageSize(param->Property);
+        const uint32_t storageSize = GetParamStorageSize(param->Property, param->Role, param->PassKind);
         if (storageSize == 0 || storageSize != srcSize)
         {
             return false;
@@ -148,6 +148,34 @@ namespace minEngine::Reflection
         return static_cast<uint32_t>(storageAlignment);
     }
 
+    bool MEFunction::IsPointerSlot(MEParamRole role, MEParamPassKind passKind)
+    {
+        if (role == MEParamRole::Out)
+        {
+            return true;
+        }
+
+        return passKind == MEParamPassKind::Ref || passKind == MEParamPassKind::ConstRef;
+    }
+
+    uint32_t MEFunction::GetParamStorageSize(MEProperty* property, MEParamRole role, MEParamPassKind passKind)
+    {
+        if (IsPointerSlot(role, passKind))
+        {
+            return static_cast<uint32_t>(sizeof(void*));
+        }
+        return GetPropertyStorageSize(property);
+    }
+
+    uint32_t MEFunction::GetParamStorageAlignment(MEProperty* property, MEParamRole role, MEParamPassKind passKind)
+    {
+        if (IsPointerSlot(role, passKind))
+        {
+            return static_cast<uint32_t>(alignof(void*));
+        }
+        return GetPropertyStorageAlignment(property);
+    }
+
     bool MEFunction::FinalizeLayout(std::string& outError)
     {
         if (m_LayoutFinalized)
@@ -177,8 +205,16 @@ namespace minEngine::Reflection
 
         for (MEParamDescriptor& param : m_Params)
         {
-            const uint32_t storageSize = GetPropertyStorageSize(param.Property);
-            const uint32_t storageAlignment = GetPropertyStorageAlignment(param.Property);
+            if (param.Role == MEParamRole::Return
+                && (param.PassKind == MEParamPassKind::Ref || param.PassKind == MEParamPassKind::ConstRef))
+            {
+                outError = "MEFunction '" + m_Name + "' return parameter '" + param.Property->GetName()
+                           + "' cannot be Ref/ConstRef in current implementation.";
+                return false;
+            }
+
+            const uint32_t storageSize = GetParamStorageSize(param.Property, param.Role, param.PassKind);
+            const uint32_t storageAlignment = GetParamStorageAlignment(param.Property, param.Role, param.PassKind);
             if (storageSize == 0)
             {
                 outError = "MEFunction '" + m_Name + "' parameter '" + param.Property->GetName()

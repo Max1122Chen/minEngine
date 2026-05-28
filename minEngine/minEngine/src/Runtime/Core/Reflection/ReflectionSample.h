@@ -39,6 +39,12 @@ namespace minEngine
         void ResetCounter();
         int32_t GetCounter() const;
         int32_t Add(int32_t firstOperand, int32_t secondOperand);
+        void AddInPlace(int32_t& value, int32_t delta);
+        void PeekString(const std::string& input, int32_t& outLength) const;
+        void FillOut(int32_t value, int32_t& outValue);
+        ReflectionSampleEnum EchoEnum(ReflectionSampleEnum value) const;
+        int32_t SumIntArray(const std::vector<int>& values) const;
+        bool IsSameObject(MEObject* a, MEObject* b) const;
         void SetFunctionTestCounter(int32_t value) { m_FunctionTestCounter = value; }
 
         ME_PROPERTY(EditAnywhere)

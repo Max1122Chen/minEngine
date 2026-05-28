@@ -136,6 +136,187 @@ namespace minEngine
             return true;
         }
 
+        bool RegisterAddInPlaceFunction(ReflectionSystem& reflection, MEClass* sampleComponentClass)
+        {
+            if (sampleComponentClass->FindFunction("AddInPlace") != nullptr)
+            {
+                return true;
+            }
+
+            MEFunction* function = reflection.CreateFunction("AddInPlace");
+            function->SetFlags(MEFunctionFlags::Native);
+
+            MEProperty* value = reflection.CreateFunctionParamProperty<int32_t>("Value");
+            MEProperty* delta = reflection.CreateFunctionParamProperty<int32_t>("Delta");
+
+            if (!function->AddParameter(value, MEParamRole::In, MEParamPassKind::Ref)
+                || !function->AddParameter(delta, MEParamRole::In, MEParamPassKind::Value))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to add AddInPlace() parameters.");
+                return false;
+            }
+
+            if (!reflection.RegisterFunction(sampleComponentClass, function))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to register AddInPlace.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RegisterPeekStringFunction(ReflectionSystem& reflection, MEClass* sampleComponentClass)
+        {
+            if (sampleComponentClass->FindFunction("PeekString") != nullptr)
+            {
+                return true;
+            }
+
+            MEFunction* function = reflection.CreateFunction("PeekString");
+            function->SetFlags(static_cast<MEFunctionFlags>(
+                static_cast<uint32_t>(MEFunctionFlags::Native) | static_cast<uint32_t>(MEFunctionFlags::HasOutParams)));
+
+            MEProperty* input = reflection.CreateFunctionParamProperty<std::string>("Input");
+            MEProperty* outLength = reflection.CreateFunctionParamProperty<int32_t>("OutLength");
+
+            if (!function->AddParameter(input, MEParamRole::In, MEParamPassKind::ConstRef)
+                || !function->AddParameter(outLength, MEParamRole::Out, MEParamPassKind::Value))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to add PeekString() parameters.");
+                return false;
+            }
+
+            if (!reflection.RegisterFunction(sampleComponentClass, function))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to register PeekString.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RegisterFillOutFunction(ReflectionSystem& reflection, MEClass* sampleComponentClass)
+        {
+            if (sampleComponentClass->FindFunction("FillOut") != nullptr)
+            {
+                return true;
+            }
+
+            MEFunction* function = reflection.CreateFunction("FillOut");
+            function->SetFlags(static_cast<MEFunctionFlags>(
+                static_cast<uint32_t>(MEFunctionFlags::Native) | static_cast<uint32_t>(MEFunctionFlags::HasOutParams)));
+
+            MEProperty* value = reflection.CreateFunctionParamProperty<int32_t>("Value");
+            MEProperty* outValue = reflection.CreateFunctionParamProperty<int32_t>("OutValue");
+
+            if (!function->AddParameter(value, MEParamRole::In, MEParamPassKind::Value)
+                || !function->AddParameter(outValue, MEParamRole::Out, MEParamPassKind::Value))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to add FillOut() parameters.");
+                return false;
+            }
+
+            if (!reflection.RegisterFunction(sampleComponentClass, function))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to register FillOut.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RegisterEchoEnumFunction(ReflectionSystem& reflection, MEClass* sampleComponentClass)
+        {
+            if (sampleComponentClass->FindFunction("EchoEnum") != nullptr)
+            {
+                return true;
+            }
+
+            MEFunction* function = reflection.CreateFunction("EchoEnum");
+            function->SetFlags(static_cast<MEFunctionFlags>(
+                static_cast<uint32_t>(MEFunctionFlags::Native) | static_cast<uint32_t>(MEFunctionFlags::HasReturn)));
+
+            MEProperty* value = reflection.CreateFunctionParamProperty<ReflectionSampleEnum>("Value");
+            MEProperty* returnValue = reflection.CreateFunctionParamProperty<ReflectionSampleEnum>("ReturnValue");
+
+            if (!function->AddParameter(value, MEParamRole::In, MEParamPassKind::Value)
+                || !function->AddParameter(returnValue, MEParamRole::Return, MEParamPassKind::Value))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to add EchoEnum() parameters.");
+                return false;
+            }
+
+            if (!reflection.RegisterFunction(sampleComponentClass, function))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to register EchoEnum.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RegisterSumIntArrayFunction(ReflectionSystem& reflection, MEClass* sampleComponentClass)
+        {
+            if (sampleComponentClass->FindFunction("SumIntArray") != nullptr)
+            {
+                return true;
+            }
+
+            MEFunction* function = reflection.CreateFunction("SumIntArray");
+            function->SetFlags(static_cast<MEFunctionFlags>(
+                static_cast<uint32_t>(MEFunctionFlags::Native) | static_cast<uint32_t>(MEFunctionFlags::HasReturn)));
+
+            MEProperty* values = reflection.CreateFunctionParamProperty<std::vector<int>>("Values");
+            MEProperty* returnValue = reflection.CreateFunctionParamProperty<int32_t>("ReturnValue");
+
+            if (!function->AddParameter(values, MEParamRole::In, MEParamPassKind::ConstRef)
+                || !function->AddParameter(returnValue, MEParamRole::Return, MEParamPassKind::Value))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to add SumIntArray() parameters.");
+                return false;
+            }
+
+            if (!reflection.RegisterFunction(sampleComponentClass, function))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to register SumIntArray.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RegisterIsSameObjectFunction(ReflectionSystem& reflection, MEClass* sampleComponentClass)
+        {
+            if (sampleComponentClass->FindFunction("IsSameObject") != nullptr)
+            {
+                return true;
+            }
+
+            MEFunction* function = reflection.CreateFunction("IsSameObject");
+            function->SetFlags(static_cast<MEFunctionFlags>(
+                static_cast<uint32_t>(MEFunctionFlags::Native) | static_cast<uint32_t>(MEFunctionFlags::HasReturn)));
+
+            MEProperty* a = reflection.CreateFunctionParamProperty<MEObject*>("A");
+            MEProperty* b = reflection.CreateFunctionParamProperty<MEObject*>("B");
+            MEProperty* returnValue = reflection.CreateFunctionParamProperty<bool>("ReturnValue");
+
+            if (!function->AddParameter(a, MEParamRole::In, MEParamPassKind::Value)
+                || !function->AddParameter(b, MEParamRole::In, MEParamPassKind::Value)
+                || !function->AddParameter(returnValue, MEParamRole::Return, MEParamPassKind::Value))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to add IsSameObject() parameters.");
+                return false;
+            }
+
+            if (!reflection.RegisterFunction(sampleComponentClass, function))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: failed to register IsSameObject.");
+                return false;
+            }
+
+            return true;
+        }
+
         bool EnsureReflectionReadyWithFunctionFixtures()
         {
             ReflectionSystem& reflection = ReflectionSystem::Get();
@@ -149,7 +330,13 @@ namespace minEngine
             if (!RegisterResetCounterFunction(reflection, sampleComponentClass)
                 || !RegisterGetCounterFunction(reflection, sampleComponentClass)
                 || !RegisterAddFunction(reflection, sampleComponentClass)
-                || !RegisterMixAlignFunction(reflection, sampleComponentClass))
+                || !RegisterMixAlignFunction(reflection, sampleComponentClass)
+                || !RegisterAddInPlaceFunction(reflection, sampleComponentClass)
+                || !RegisterPeekStringFunction(reflection, sampleComponentClass)
+                || !RegisterFillOutFunction(reflection, sampleComponentClass)
+                || !RegisterEchoEnumFunction(reflection, sampleComponentClass)
+                || !RegisterSumIntArrayFunction(reflection, sampleComponentClass)
+                || !RegisterIsSameObjectFunction(reflection, sampleComponentClass))
             {
                 return false;
             }
@@ -667,6 +854,271 @@ namespace minEngine
 
             return true;
         }
+
+        bool TestC1_AddInPlace()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("AddInPlace");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C1: AddInPlace not found.");
+                return false;
+            }
+
+            int32_t value = 10;
+            MEFunctionFrame frame(*function);
+            frame.SetParamRef("Value", value);
+            frame.SetParam("Delta", static_cast<int32_t>(5));
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C1: InvokeFunction AddInPlace failed.");
+                return false;
+            }
+
+            if (value != 15)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C1: expected value 15, got {}.", value);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestC2_PeekString()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("PeekString");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C2: PeekString not found.");
+                return false;
+            }
+
+            const std::string input = "hello";
+            int32_t outLength = -1;
+            MEFunctionFrame frame(*function);
+            frame.SetParamConstRef("Input", input);
+            frame.SetOutParam("OutLength", outLength);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C2: InvokeFunction PeekString failed.");
+                return false;
+            }
+
+            if (outLength != 5)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C2: expected outLength 5, got {}.", outLength);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestC3_FillOut()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("FillOut");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C3: FillOut not found.");
+                return false;
+            }
+
+            int32_t outValue = -1;
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Value", static_cast<int32_t>(123));
+            frame.SetOutParam("OutValue", outValue);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C3: InvokeFunction FillOut failed.");
+                return false;
+            }
+
+            if (outValue != 123)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest C3: expected outValue 123, got {}.", outValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RunRefPhaseTests()
+        {
+            if (!EnsureReflectionReadyWithFunctionFixtures())
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: reflection init failed for ref.");
+                return false;
+            }
+
+            if (!TestC1_AddInPlace())
+            {
+                return false;
+            }
+
+            if (!TestC2_PeekString())
+            {
+                return false;
+            }
+
+            if (!TestC3_FillOut())
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD1_EchoEnum()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("EchoEnum");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D1: EchoEnum not found.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            const ReflectionSampleEnum input = ReflectionSampleEnum::ValueC;
+            frame.SetParam("Value", input);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D1: InvokeFunction EchoEnum failed.");
+                return false;
+            }
+
+            ReflectionSampleEnum outValue = ReflectionSampleEnum::ValueA;
+            if (!frame.GetParam("ReturnValue", outValue) || outValue != ReflectionSampleEnum::ValueC)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D1: enum return mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD2_SumIntArray()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("SumIntArray");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D2: SumIntArray not found.");
+                return false;
+            }
+
+            const std::vector<int> values{ 1, 2, 3, 4 };
+            MEFunctionFrame frame(*function);
+            frame.SetParamConstRef("Values", values);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D2: InvokeFunction SumIntArray failed.");
+                return false;
+            }
+
+            int32_t returnValue = 0;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 4)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D2: expected return 4, got {}.", returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD3_IsSameObject()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("IsSameObject");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D3: IsSameObject not found.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            MEObject* a = component;
+            MEObject* b = component;
+            frame.SetParam("A", a);
+            frame.SetParam("B", b);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D3: InvokeFunction IsSameObject failed.");
+                return false;
+            }
+
+            bool returnValue = false;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue != true)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D3: expected true, got {}.", returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RunTypesPhaseTests()
+        {
+            if (!EnsureReflectionReadyWithFunctionFixtures())
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest: reflection init failed for types.");
+                return false;
+            }
+
+            if (!TestD1_EchoEnum())
+            {
+                return false;
+            }
+
+            if (!TestD2_SumIntArray())
+            {
+                return false;
+            }
+
+            if (!TestD3_IsSameObject())
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 
     bool ShouldRunReflectionFunctionTestsOnly(int argc, char** argv)
@@ -690,12 +1142,29 @@ namespace minEngine
 
     namespace
     {
-        bool ParseTestSuiteArgument(std::string_view argument, bool& runMeta, bool& runInvoke)
+        std::string_view TrimToken(std::string_view token)
+        {
+            while (!token.empty() && (token.front() == ' ' || token.front() == '\t' || token.front() == '\r'
+                                      || token.front() == '\n'))
+            {
+                token.remove_prefix(1);
+            }
+            while (!token.empty() && (token.back() == ' ' || token.back() == '\t' || token.back() == '\r'
+                                      || token.back() == '\n'))
+            {
+                token.remove_suffix(1);
+            }
+            return token;
+        }
+
+        bool ParseTestSuiteArgument(std::string_view argument, bool& runMeta, bool& runInvoke, bool& runRef, bool& runTypes)
         {
             if (argument == "--reflection-function-test")
             {
                 runMeta = true;
                 runInvoke = true;
+                runRef = true;
+                runTypes = true;
                 return true;
             }
 
@@ -711,7 +1180,7 @@ namespace minEngine
             {
                 const size_t comma = suiteList.find(',', start);
                 const size_t end = comma == std::string_view::npos ? suiteList.size() : comma;
-                const std::string_view token = suiteList.substr(start, end - start);
+                const std::string_view token = TrimToken(suiteList.substr(start, end - start));
                 if (token == "meta")
                 {
                     runMeta = true;
@@ -720,9 +1189,17 @@ namespace minEngine
                 {
                     runInvoke = true;
                 }
+                else if (token == "ref")
+                {
+                    runRef = true;
+                }
+                else if (token == "types")
+                {
+                    runTypes = true;
+                }
                 start = (comma == std::string_view::npos) ? suiteList.size() : comma + 1;
             }
-            return runMeta || runInvoke;
+            return runMeta || runInvoke || runRef || runTypes;
         }
     }
 
@@ -730,6 +1207,8 @@ namespace minEngine
     {
         bool runMeta = false;
         bool runInvoke = false;
+        bool runRef = false;
+        bool runTypes = false;
         for (int argIndex = 1; argIndex < argc; ++argIndex)
         {
             if (argv[argIndex] == nullptr)
@@ -737,13 +1216,15 @@ namespace minEngine
                 continue;
             }
 
-            ParseTestSuiteArgument(std::string_view(argv[argIndex]), runMeta, runInvoke);
+            ParseTestSuiteArgument(std::string_view(argv[argIndex]), runMeta, runInvoke, runRef, runTypes);
         }
 
-        if (!runMeta && !runInvoke)
+        if (!runMeta && !runInvoke && !runRef && !runTypes)
         {
             runMeta = true;
             runInvoke = true;
+            runRef = true;
+            runTypes = true;
         }
 
         bool passed = true;
@@ -757,9 +1238,27 @@ namespace minEngine
             passed = RunInvokePhaseTests();
         }
 
+        if (passed && runRef)
+        {
+            passed = RunRefPhaseTests();
+        }
+
+        if (passed && runTypes)
+        {
+            passed = RunTypesPhaseTests();
+        }
+
         if (passed)
         {
-            if (runMeta && runInvoke)
+            if (runMeta && runInvoke && runRef && runTypes)
+            {
+                ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta, invoke, ref, types)");
+            }
+            else if (runMeta && runInvoke && runRef)
+            {
+                ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta, invoke, ref)");
+            }
+            else if (runMeta && runInvoke)
             {
                 ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta, invoke)");
             }
@@ -767,9 +1266,17 @@ namespace minEngine
             {
                 ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta)");
             }
-            else
+            else if (runInvoke)
             {
                 ME_CORE_INFO("ReflectionFunctionTest: PASSED (invoke)");
+            }
+            else if (runRef)
+            {
+                ME_CORE_INFO("ReflectionFunctionTest: PASSED (ref)");
+            }
+            else
+            {
+                ME_CORE_INFO("ReflectionFunctionTest: PASSED (types)");
             }
         }
         else

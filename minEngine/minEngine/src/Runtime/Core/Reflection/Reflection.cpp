@@ -144,53 +144,67 @@ namespace minEngine::Reflection
                     }
 
                     const MEProperty* property = param.Property;
-                    if (property->GetCategory() != MEPropertyCategory::Primitive)
+                    const size_t rawStorageSize = property->GetStorageSize();
+                    const size_t rawStorageAlignment = property->GetStorageAlignment();
+                    const uint32_t propertyStorageSize = (rawStorageSize > 0
+                                                          && rawStorageSize <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+                                                             ? static_cast<uint32_t>(rawStorageSize)
+                                                             : 0;
+                    const uint32_t propertyStorageAlignment = (rawStorageAlignment > 0
+                                                               && rawStorageAlignment <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+                                                                  ? static_cast<uint32_t>(rawStorageAlignment)
+                                                                  : 0;
+
+                    const bool isPointerSlot = param.Role == MEParamRole::Out
+                                               || param.PassKind == MEParamPassKind::Ref
+                                               || param.PassKind == MEParamPassKind::ConstRef;
+                    const uint32_t storageSize = isPointerSlot ? static_cast<uint32_t>(sizeof(void*)) : propertyStorageSize;
+                    const uint32_t storageAlignment =
+                        isPointerSlot ? static_cast<uint32_t>(alignof(void*)) : propertyStorageAlignment;
+
+                    if (param.Role == MEParamRole::Return && isPointerSlot)
                     {
                         AppendError("[Reflection] Function '" + classInfo->GetName() + "::" + function->GetName()
-                                    + "' parameter '" + property->GetName() + "' must be primitive in Phase A.");
+                                    + "' return parameter '" + property->GetName() + "' cannot be Ref/ConstRef/Out.");
                         succeeded = false;
                     }
-                    else
+
+                    if (!isPointerSlot)
                     {
-                        const size_t rawStorageSize = property->GetStorageSize();
-                        const size_t rawStorageAlignment = property->GetStorageAlignment();
-                        const uint32_t storageSize = (rawStorageSize > 0
-                                                      && rawStorageSize <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
-                                                         ? static_cast<uint32_t>(rawStorageSize)
-                                                         : 0;
-                        const uint32_t storageAlignment = (rawStorageAlignment > 0
-                                                           && rawStorageAlignment <= static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
-                                                              ? static_cast<uint32_t>(rawStorageAlignment)
-                                                              : 0;
-                        if (storageSize == 0)
+                        if (propertyStorageSize == 0)
                         {
                             AppendError("[Reflection] Function '" + classInfo->GetName() + "::" + function->GetName()
                                         + "' parameter '" + property->GetName() + "' has unsupported storage size.");
                             succeeded = false;
                         }
-                        else if (storageAlignment == 0)
+                        else if (propertyStorageAlignment == 0)
                         {
                             AppendError("[Reflection] Function '" + classInfo->GetName() + "::" + function->GetName()
                                         + "' parameter '" + property->GetName() + "' has unsupported storage alignment.");
                             succeeded = false;
                         }
-                        else
+                    }
+
+                    if (storageSize == 0 || storageAlignment == 0)
+                    {
+                        succeeded = false;
+                    }
+                    else
+                    {
+                        const uint32_t alignedExpectedOffset = AlignUpU32(expectedOffset, storageAlignment);
+                        if (param.Offset != alignedExpectedOffset)
                         {
-                            const uint32_t alignedExpectedOffset = AlignUpU32(expectedOffset, storageAlignment);
-                            if (param.Offset != alignedExpectedOffset)
-                            {
-                                AppendError("[Reflection] Function '" + classInfo->GetName() + "::" + function->GetName()
-                                            + "' parameter '" + param.Property->GetName()
-                                            + "' has invalid offset (expected " + std::to_string(alignedExpectedOffset)
-                                            + ", got " + std::to_string(param.Offset) + ").");
-                                succeeded = false;
-                            }
-                            expectedOffset = alignedExpectedOffset;
-                            expectedOffset += storageSize;
-                            if (storageAlignment > maxAlignment)
-                            {
-                                maxAlignment = storageAlignment;
-                            }
+                            AppendError("[Reflection] Function '" + classInfo->GetName() + "::" + function->GetName()
+                                        + "' parameter '" + param.Property->GetName()
+                                        + "' has invalid offset (expected " + std::to_string(alignedExpectedOffset)
+                                        + ", got " + std::to_string(param.Offset) + ").");
+                            succeeded = false;
+                        }
+                        expectedOffset = alignedExpectedOffset;
+                        expectedOffset += storageSize;
+                        if (storageAlignment > maxAlignment)
+                        {
+                            maxAlignment = storageAlignment;
                         }
                     }
 
@@ -199,19 +213,22 @@ namespace minEngine::Reflection
                         ++returnCount;
                     }
 
-                    if (param.Role != MEParamRole::In && param.Role != MEParamRole::Return)
+                    if (param.Role != MEParamRole::In && param.Role != MEParamRole::Return && param.Role != MEParamRole::Out)
                     {
                         AppendError("[Reflection] Function '" + classInfo->GetName() + "::" + function->GetName()
                                     + "' parameter '" + param.Property->GetName()
-                                    + "' uses unsupported param role for Phase A.");
+                                    + "' uses unsupported param role.");
                         succeeded = false;
                     }
 
-                    if (param.PassKind != MEParamPassKind::Value)
+                    if (param.PassKind != MEParamPassKind::Value
+                        && param.PassKind != MEParamPassKind::ConstValue
+                        && param.PassKind != MEParamPassKind::Ref
+                        && param.PassKind != MEParamPassKind::ConstRef)
                     {
                         AppendError("[Reflection] Function '" + classInfo->GetName() + "::" + function->GetName()
                                     + "' parameter '" + param.Property->GetName()
-                                    + "' uses unsupported pass kind for Phase A.");
+                                    + "' uses unsupported pass kind.");
                         succeeded = false;
                     }
                 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -28,6 +27,11 @@ namespace minEngine::Reflection
         bool SetParam(const std::string& name, const void* value, size_t valueSize);
         bool GetParam(const std::string& name, void* outValue, size_t outValueSize) const;
 
+        bool SetParamPtr(const std::string& name, void* ptr);
+        bool SetParamConstPtr(const std::string& name, const void* ptr);
+        bool GetParamPtr(const std::string& name, void*& outPtr) const;
+        bool GetParamConstPtr(const std::string& name, const void*& outPtr) const;
+
         template<typename T>
         bool SetParam(const std::string& name, const T& value)
         {
@@ -38,6 +42,24 @@ namespace minEngine::Reflection
         bool GetParam(const std::string& name, T& outValue) const
         {
             return GetParam(name, &outValue, sizeof(T));
+        }
+
+        template<typename T>
+        bool SetParamRef(const std::string& name, T& value)
+        {
+            return SetParamPtr(name, static_cast<void*>(&value));
+        }
+
+        template<typename T>
+        bool SetParamConstRef(const std::string& name, const T& value)
+        {
+            return SetParamConstPtr(name, static_cast<const void*>(&value));
+        }
+
+        template<typename T>
+        bool SetOutParam(const std::string& name, T& outValue)
+        {
+            return SetParamPtr(name, static_cast<void*>(&outValue));
         }
 
     private:

@@ -46,7 +46,7 @@ namespace minEngine
             return false;
         }
 
-        nativeThunk(this, parmsBuffer);
+        nativeThunk(this, function, parmsBuffer);
         return true;
     }
 

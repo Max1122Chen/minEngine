@@ -660,5 +660,209 @@ minEngine/bin/minEngine.exe --reflection-function-test=meta
 
 ---
 
-**请审批 §12 后回复「可以开 Phase A」或标注要收窄/扩大的范围。**
+## 13) Phase C 最小切片提案（待审批）
+
+> 目标：在不扩大类型面的前提下，先稳定 `ref/const ref/out` 的调用语义。
+
+### 13.1 本轮范围（In）
+
+1. 仅新增三类参数语义能力：
+   - `int32_t&`（Ref，可回写）
+   - `const std::string&`（ConstRef，只读）
+   - `int32_t& out`（Out，函数回填）
+2. 保持统一调用路径：
+   - `MEFunctionFrame` 填参
+   - `MEObject::InvokeFunction`
+   - Native thunk 解包 + 写回
+3. 扩展测试子项：`--reflection-function-test=ref`
+   - C1 `AddInPlace(int32_t&)`
+   - C2 `PeekString(const std::string&)`
+   - C3 `FillOut(int32_t&)`
+
+### 13.2 明确不做（Out）
+
+- 不开放 array/object ref/out（仍放到 Phase D）
+- 不引入脚本层封送细节（Lua 仍后置）
+- 不做 header tool 自动生成语义扩展（先手写验证）
+
+### 13.3 参数缓冲语义（拍板候选）
+
+本提案采用：**Ref / ConstRef / Out 在 `ParmsBuffer` 中存“指针槽位”**。
+
+| 语义 | Buffer 中内容 |
+|------|---------------|
+| `Value` / `ConstValue` | `T` 本体 |
+| `Ref` | `T*` |
+| `ConstRef` | `const T*` |
+| `Out` | `T*` |
+
+对应约束：
+
+1. `MEProperty` 继续描述“目标类型 T”；
+2. `MEParamDescriptor` 的 `PassKind/Role` 决定 buffer 存值还是存指针；
+3. 对 `Ref/ConstRef/Out` 参数，布局按 `sizeof(void*)` + `alignof(void*)` 计算；
+4. thunk 读取参数时先取指针，再解引用读写真实值。
+
+### 13.4 `MEFunctionFrame` API 增补（最小）
+
+新增三组 helper（保留现有 value API）：
+
+- `SetParamRef<T>(name, T& value)`
+- `SetParamConstRef<T>(name, const T& value)`
+- `SetOutParam<T>(name, T& outValue)`
+
+`GetParam` 保持用于 Return（及 value 参数读取）；Out 值优先通过调用方变量直接观察。
+
+### 13.5 期望验收
+
+命令：
+
+```bash
+Editor.exe --reflection-function-test=meta,invoke,ref
+```
+
+期望：
+
+- `meta` / `invoke` 回归不退化；
+- `ref` 三项全绿；
+- 无未定义行为（空指针 / 类型不匹配路径显式失败）。
+
+### 13.6 风险与保护
+
+| 风险 | 影响 | 保护策略 |
+|------|------|----------|
+| 把 ref 当值拷贝 | 回写失效/语义错误 | PassKind 分支统一走指针槽 |
+| out 指针悬挂 | 崩溃/脏写 | `SetOutParam` 强制引用活体变量；空指针 fail-fast |
+| 旧布局校验不兼容 | false negative | `ValidateFunctions` 增加 value vs pointer 槽规则 |
+
+---
+
+## 14) 模板化 Native Thunk 统一设计（待审批）
+
+> 目标：减少手写 thunk 重复代码，统一参数解包/回写规则，同时保留运行时反射元数据驱动。
+
+### 14.1 设计边界（先拍板）
+
+1. **模板负责“执行桥接”**：把 `ParmsBuffer` 解包成 C++ 调用，再写回 Return/Out。
+2. **反射系统负责“运行时描述”**：参数名、`Offset`、`Role`、`PassKind`、`ParmsSize` 仍由 `MEFunction` 元数据提供。
+3. **不尝试用模板替代反射**：模板不承担参数名发现与运行时脚本查询职责。
+
+### 14.2 核心类型草案
+
+```cpp
+using MENativeThunkFn = void (*)(minEngine::MEObject* context, void* parms);
+```
+
+通用模板入口（示意）：
+
+```cpp
+template<typename TOwner, auto TMethod>
+void InvokeNativeThunk(minEngine::MEObject* context, void* parms);
+```
+
+`TMethod` 可覆盖：
+
+- 成员函数：`R (TOwner::*)(Args...)`
+- const 成员函数：`R (TOwner::*)(Args...) const`
+- 静态函数：`R (*)(Args...)`（Phase E 启用）
+
+### 14.3 解包/回写策略（Marshaller）
+
+新增 `ParamMarshaller<T, Role, PassKind>`（或等价 traits）：
+
+1. `Load(...)`：按 `MEFunction` + `paramName` 从 buffer 取值/取指针
+2. `StoreReturn(...)`：写回 Return
+3. `StoreOut(...)`：写回 Out
+
+约束：
+
+- `Value` 走值槽位；
+- `Ref/ConstRef/Out` 走指针槽位；
+- marshaller 内统一做 size/alignment/pointer-null 检查并 fail-fast。
+
+### 14.4 统一化后的 thunk 形态
+
+从当前手写：
+
+```cpp
+void Invoke_ReflectionSampleComponent_Add(MEObject* context, void* parms) { ... }
+```
+
+收敛为：
+
+```cpp
+addFn->SetNativeThunk(&InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::Add>);
+```
+
+好处：
+
+1. 减少重复 `CopyParamFromBuffer/ToBuffer` 模板样板代码；
+2. 新增函数时只需要“注册绑定”，不重复手写解包逻辑；
+3. 后续 header tool 可直接生成模板实例化绑定语句。
+
+### 14.5 风险与控制
+
+| 风险 | 影响 | 控制 |
+|------|------|------|
+| 模板错误信息过长 | 开发体验差 | 分层 traits + static_assert 友好报错 |
+| 签名支持不完整 | 需回退手写 thunk | 先覆盖 Value/Ref/ConstRef/Out；复杂类型逐步接入 |
+| 运行时开销疑虑 | 调用性能不稳定 | 保持 thunk 为编译期实例化，避免动态反射分派 |
+
+---
+
+## 15) Phase D（与 C 联动）切片提案（待审批）
+
+> 目标：你提出 C 与 D 一起做。这里给出“同一波实现、双闸验收”的分片，降低一次性放量风险。
+
+### 15.1 总策略
+
+1. **实现层面：C+D 一次开发**
+   - 先完成 ref/out 语义基础（C）
+   - 同步接入 D 的基础类型覆盖（string/vector/enum/object ptr/struct）
+2. **验收层面：双闸**
+   - Gate-1：`meta,invoke,ref` 先绿
+   - Gate-2：`types` 追加全绿
+
+### 15.2 切片内容（建议）
+
+#### Slice CD-1：语义底座（C 核心）
+- `PassKind`/`Role` 的 buffer 槽位规则全接入（value vs pointer）
+- `MEFunctionFrame` 引用/输出 API
+- `ref` 子套件通过
+
+#### Slice CD-2：基础类型覆盖（D 基础）
+- `std::string`（value/const ref）
+- `Vector2/3/4`（value/ref）
+- enum（value）
+- `types` 子套件先覆盖 primitive + string + vector
+
+#### Slice CD-3：复合类型与指针（D 扩展）
+- `vector<int>`（value/const ref）
+- `MEObject*` / `shared_ptr<MEObject>` 参数
+- 可反射 struct/object（按值或 const ref）
+
+### 15.3 测试组织（新增建议）
+
+统一入口不变：
+
+- `--reflection-function-test=meta,invoke,ref,types`
+
+建议新增断言组：
+
+1. `types-string`: 构造/析构安全 + 不泄漏
+2. `types-vector`: 大小与元素一致
+3. `types-objectptr`: IsA 校验 + 空指针路径
+4. `types-struct`: 按值复制与 const 引用只读
+
+### 15.4 风险与回滚
+
+| 风险 | 影响 | 回滚策略 |
+|------|------|----------|
+| C+D 同时放量导致定位困难 | 调试成本升高 | 按 Slice CD-1/CD-2/CD-3 分提交，逐步开测试 |
+| string/vector 生命周期处理不当 | 崩溃/泄漏 | 优先由 `MEFunctionFrame` 托管，禁止 thunk 手写 new/delete |
+| object ptr 语义混乱 | 悬挂引用 | 显式区分 owned vs non-owned；本阶段只允许 non-owning 参数 |
+
+---
+
+**请审批 §13（C 最小切片）、§14（模板 thunk 统一设计）、§15（C+D 联动切片）。**
 
