@@ -2,7 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <new>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -66,6 +68,11 @@ namespace minEngine::Reflection
     class MINENGINE_API MEProperty
     {
     public:
+        using ValueConstructFn = void (*)(void* dst);
+        using ValueDestructFn = void (*)(void* dst);
+        using ValueCopyAssignFn = void (*)(void* dst, const void* src);
+        using ValueMoveAssignFn = void (*)(void* dst, void* src);
+
         explicit MEProperty(std::string inName)
             : name(std::move(inName))
         {
@@ -105,6 +112,70 @@ namespace minEngine::Reflection
         size_t GetStorageAlignment() const { return storageAlignment; }
         void SetStorageAlignment(size_t inStorageAlignment) { storageAlignment = inStorageAlignment; }
 
+        ValueConstructFn GetValueConstructFn() const { return valueConstruct; }
+        ValueDestructFn GetValueDestructFn() const { return valueDestruct; }
+        ValueCopyAssignFn GetValueCopyAssignFn() const { return valueCopyAssign; }
+        ValueMoveAssignFn GetValueMoveAssignFn() const { return valueMoveAssign; }
+
+        void ConstructValue(void* dst) const
+        {
+            if (valueConstruct != nullptr)
+            {
+                valueConstruct(dst);
+            }
+        }
+
+        void DestructValue(void* dst) const
+        {
+            if (valueDestruct != nullptr)
+            {
+                valueDestruct(dst);
+            }
+        }
+
+        void CopyAssignValue(void* dst, const void* src) const
+        {
+            if (valueCopyAssign != nullptr)
+            {
+                valueCopyAssign(dst, src);
+            }
+        }
+
+        void MoveAssignValue(void* dst, void* src) const
+        {
+            if (valueMoveAssign != nullptr)
+            {
+                valueMoveAssign(dst, src);
+            }
+        }
+
+        template<typename TValue>
+        void SetValueOps()
+        {
+            using RawValue = std::remove_cv_t<std::remove_reference_t<TValue>>;
+
+            if constexpr (std::is_trivially_copyable_v<RawValue> && std::is_trivially_destructible_v<RawValue>)
+            {
+                valueConstruct = nullptr;
+                valueDestruct = nullptr;
+                valueCopyAssign = nullptr;
+                valueMoveAssign = nullptr;
+            }
+            else
+            {
+                valueConstruct = [](void* dst) { ::new (dst) RawValue(); };
+                valueDestruct = [](void* dst) { static_cast<RawValue*>(dst)->~RawValue(); };
+                valueCopyAssign = [](void* dst, const void* src)
+                {
+                    *static_cast<RawValue*>(dst) = *static_cast<const RawValue*>(src);
+                };
+                valueMoveAssign = [](void* dst, void* src)
+                {
+                    *static_cast<RawValue*>(dst) = std::move(*static_cast<RawValue*>(src));
+                };
+            }
+        }
+
         const std::string* FindMetadata(const std::string& key) const
         {
             auto iter = metadata.find(key);
@@ -125,6 +196,11 @@ namespace minEngine::Reflection
         PropertyMetadata metadata;
         size_t storageSize = 0;
         size_t storageAlignment = 1;
+
+        ValueConstructFn valueConstruct = nullptr;
+        ValueDestructFn valueDestruct = nullptr;
+        ValueCopyAssignFn valueCopyAssign = nullptr;
+        ValueMoveAssignFn valueMoveAssign = nullptr;
     };
 
     class MINENGINE_API MEPrimitiveProperty : public MEProperty

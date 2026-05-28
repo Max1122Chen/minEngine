@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Math.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include <memory>
 
 namespace minEngine
 {
@@ -72,6 +73,40 @@ namespace minEngine
         void PrefixString(const std::string& prefix, std::string& inOutValue) const;
         ME_FUNCTION()
         bool IsValidComponentPtr(Component* candidate) const;
+        ME_FUNCTION()
+        void AppendInt(std::vector<int>& values, int32_t value) const;
+        ME_FUNCTION()
+        void MakeGreeting(const std::string& name, std::string& outGreeting) const;
+        ME_FUNCTION()
+        std::string GetGreeting(const std::string& name) const;
+        ME_FUNCTION()
+        int32_t SumVectorValue(std::vector<int> values) const;
+        ME_FUNCTION()
+        int32_t CountGreetingChars(std::string greeting) const;
+        ME_FUNCTION()
+        int32_t SumSampleData(ReflectionSampleClass value) const;
+        ME_FUNCTION()
+        ReflectionSampleClass BuildSampleData(ReflectionSampleClass value) const;
+        ME_FUNCTION()
+        bool IsValidSharedComponent(std::shared_ptr<Component> candidate) const;
+        ME_FUNCTION()
+        std::shared_ptr<Component> MakeSharedComponent(bool returnNull) const;
+        ME_FUNCTION()
+        bool IsValidSharedComponentConstRef(const std::shared_ptr<Component>& candidate) const;
+        ME_FUNCTION()
+        bool RewriteSharedComponentRef(std::shared_ptr<Component>& inOutCandidate, bool assignNull) const;
+        ME_FUNCTION()
+        int32_t CountNames(std::vector<std::string> names) const;
+        ME_FUNCTION()
+        std::vector<std::string> BuildNames(std::vector<std::string> input) const;
+        ME_FUNCTION()
+        int32_t SumNested(std::vector<std::vector<int>> values) const;
+        ME_FUNCTION()
+        std::vector<std::vector<int>> NormalizeNested(std::vector<std::vector<int>> values) const;
+        ME_FUNCTION()
+        void AppendName(std::vector<std::string>& names, const std::string& name) const;
+        ME_FUNCTION()
+        void BuildNestedOut(int32_t n, std::vector<std::vector<int>>& outValues) const;
         ME_FUNCTION()
         static void StaticResetCounter();
         ME_FUNCTION()

@@ -979,6 +979,340 @@ Editor.exe --reflection-function-test=meta,invoke,ref,types,static,script
 
 ---
 
+## 16.8 Phase D Hardest Parts（机制设计落盘）
+
+> 目的：把 Phase D 里**真正困难**的部分（非 trivial 值语义、生命周期、ABI 对齐）讲清楚，并把后续切片拆到“每片只引入一种新机制”，降低一次性放量风险。
+
+### 16.8.1 为什么难：从“memcpy 值槽位”走向“对象生命周期”
+
+当前 thunk 的核心约束（见 `ReflectionFunctionNativeThunkTemplates.h`）：
+
+- `Value` 参数/返回值：**按字节拷贝**（`memcpy`），并 `static_assert(trivially_copyable)`。
+- `Ref/ConstRef/Out`：走**指针槽位**（buffer 里放 `void*`），不负责生命周期。
+
+这意味着：
+
+1. `Vector2/3/4`、POD 等 trivially-copyable 类型，**Value** 路径天然安全；
+2. `std::string/std::vector<T>` 这类非 trivial 类型，**Value** 路径天然不安全（缺少 ctor/dtor/copy/move）；
+3. 要支持 “非 trivial 的 Value 参数/返回值”，必须在运行时引入**显式生命周期机制**，而不是继续 memcpy。
+
+### 16.8.2 目标：引入“参数槽位的生命周期 hooks”
+
+为了让 thunk 不再假设 `Value == trivially_copyable`，需要为每个 `MEProperty`（或“函数参数实例”）提供一组可选的操作：
+
+- `Construct(void* dst)`：在槽位上构造默认对象（placement new）
+- `Destruct(void* dst)`：析构槽位对象
+- `Copy(void* dst, const void* src)`：拷贝构造/拷贝赋值（建议用“构造”语义）
+- `Move(void* dst, void* src)`：移动构造
+
+**设计关键点：**
+
+- hooks 应该挂在 `MEProperty` 的类型信息上（类型级），而不是 thunk 手写 new/delete；
+- `MEFunctionFrame`（或函数调用链路）应负责“buffer 内对象的构造/析构时机”，保持调用方不泄漏；
+- 在没有 hooks 时，继续沿用现有 `memcpy` + `trivially_copyable` 的 fast path。
+
+### 16.8.3 推荐切片（机制驱动）
+
+下面切片是按“每片只引入一种新机制”拆分的，建议作为后续 D 的推进顺序。
+
+#### Slice D-next-1：Non-trivial 仅走指针槽位（扩覆盖，不引入生命周期）
+
+**目标**
+
+- 扩大 `std::string/std::vector<T>` 的 `const& / & / Out` 覆盖；
+- 明确 “Value 语义仍禁止”，避免误用 memcpy。
+
+**实现机制（无需改运行时）**
+
+- 继续用 `MEFunctionFrame::SetParamConstRef/SetParamRef/SetOutParam`；
+- thunk 侧仍通过指针槽位读取，生命周期由调用者（stack 变量）管理。
+
+**建议用例**
+
+- `vector<int>&`：函数内 push/resize，回写长度与内容；
+- `Out std::string`：函数把结果写回 out（注意：Out 在实现中是指针槽位）。
+
+**验收**
+
+```bash
+Editor.exe --reflection-function-test=types
+```
+
+#### Slice D-next-2：引入 hooks（先做 ReturnValue 的 non-trivial Value）
+
+**目标**
+
+- 最小化引入生命周期：先只让 **non-trivial ReturnValue** 按值工作；
+- 参数仍要求走 `const&/&/Out`，避免同时引入“参数构造”和“返回值构造”。
+
+**实现机制（核心）**
+
+1. 在 `MEProperty` 或其派生类上增加可选 hooks（Construct/Destruct/Copy/Move）；
+2. `MEFunctionFrame` 在构造时：
+   - 对所有 “non-trivial Value 槽位”（先仅 ReturnValue）执行 `Construct`；
+   - 在析构时执行 `Destruct`；
+3. thunk 写 ReturnValue：
+   - 不再 `memcpy`，改为调用 `Copy/Move` 写入目标槽位（或直接赋值，但最好通过 hook 统一）。
+
+**为什么先 ReturnValue**
+
+- ReturnValue 槽位唯一且可定位（`GetReturnParam()`），切面小；
+- 更容易验证析构时机正确（frame 生命周期清晰）。
+
+#### Slice D-next-3：扩展到 non-trivial Value 参数（string/vector by value）
+
+**目标**
+
+- 支持 `std::string`/`std::vector<int>` 的 Value 参数封送（调用方按值传入）。
+
+**实现机制（在 D-next-2 之上）**
+
+- `MEFunctionFrame::SetParam(name, T value)` 需要：
+  - 确保目标槽位已 Construct；
+  - 用 `Copy/Move` 写入（避免 memcpy）；
+- thunk 的 `ReadValueFromSlot` 对 non-trivial 类型走 “按值读取”：
+  - 直接读取槽位对象引用，或拷贝出一个局部临时（取决于签名是否按值接收）。
+
+**注意**
+
+- 这里会涉及 “按值参数是否允许 move” 的策略：建议先统一走 Copy（简单且可预期），后续再优化 move。
+
+#### Slice D-next-4：可反射 struct/class 的 Value 语义（先约束 trivially copyable）
+
+**目标**
+
+- 对可反射 struct/class 的 Value 传递建立安全边界；
+- 先只允许 trivially copyable struct 按值（与 Vector 一样），再逐步打开非 trivial。
+
+**实现机制**
+
+- 为反射 struct/class 增加 `IsTriviallyCopyable` 判断（可在注册时静态推导并存储到类型信息）；
+- 对非 trivially copyable：强制只允许 `const&/&/Out`，Value 生成期报错或运行时报错。
+
+### 16.8.4 落地状态（2026-05-28）
+
+当前状态：`D-next-1` ~ `D-next-4`、`SP-1`、`SP-2`、`SP-3`、`CT-1`、`CT-2`、`CT-3` 已按顺序完成，并通过以下回归门槛：
+
+- `Editor.exe --reflection-function-test=types`
+- `Editor.exe --reflection-function-test=meta,invoke,ref,types,static`
+
+已落地能力（增量）：
+
+1. `std::string/std::vector<int>` 的 `const& / & / Out` 覆盖（D-next-1）
+2. non-trivial `ReturnValue` 的生命周期 hooks（Construct/Destruct/CopyAssign）与返回按值写回（D-next-2）
+3. non-trivial `Value` 参数封送（`std::string`、`std::vector<int>` 按值入参）（D-next-3）
+4. 可反射 class 按值入参 + 按值返回验证（`ReflectionSampleClass`）（D-next-4）
+5. `std::shared_ptr<Component>` 按值入参验证（非空/空）（SP-1）
+6. `std::shared_ptr<Component>` 按值返回验证（非空/空）（SP-2）
+7. `std::shared_ptr<Component>` `const& / &` 语义验证（只读 + 回写置值/置空）（SP-3）
+8. `std::vector<std::string>` 按值参数/按值返回验证（CT-1）
+9. `std::vector<std::vector<int>>` 按值参数/按值返回验证 + ref/out 回写验证（CT-2/CT-3）
+
+### 16.8.5 当前仍不支持的参数/返回情形（收口清单）
+
+以下属于“当前实现明确未覆盖或仅部分覆盖”的情形，后续扩展时应逐项补齐：
+
+1. **同名重载函数（name 相同、签名不同）**
+   - 现状：`MEClass::FindFunction(name)` 仍按 name 唯一键；未引入 signature 维度查找。
+2. **rvalue 引用参数（`T&&`）与 move-only 类型（如 `std::unique_ptr<T>`）**
+   - 现状：参数模型仅覆盖 `Value/ConstValue/Ref/ConstRef`；无 `RValueRef` pass kind。
+3. **C-style array / 指针到非反射 class 的参数**
+   - 现状：`CreatePropertyByType` 对 pointer-like 有约束；非 class 指针、裸数组未作为函数参数白名单能力。
+4. **非 trivial 类型在“原始 buffer + memcpy API”路径下的通用读写**
+   - 现状：`MEFunction::CopyParamToBuffer/CopyParamFromBuffer` 仍为字节拷贝语义；
+   - 安全路径是 `MEFunctionFrame`（其已引入 lifecycle hooks），但 raw-buffer 直写不保证 non-trivial 安全。
+5. **返回值读取的统一高层 API 仍偏向 trivial**
+   - 现状：`MEFunctionFrame::GetParam<T>` 走拷贝尺寸匹配；non-trivial Return 推荐用 `GetParamValuePtr<T>()`。
+   - 后续可考虑统一为 “typed accessor + policy” 以减少误用。
+6. **复杂模板容器与嵌套容器的值语义**
+   - 现状：已验证 `std::vector<int>`；`std::vector<std::string>`、嵌套容器、自定义 allocator 未系统覆盖。
+7. **函数参数语义与脚本桥接对齐**
+   - 现状：C++ 侧 invoke 能力已扩展，但脚本桥接（Lua）尚未接入 D 的新 value/lifecycle 语义。
+
+### 16.8.6 D-backlog（按优先级）
+
+#### P0（优先解决，影响能力边界最明显）
+
+1. **同名重载函数分派**
+   - 典型签名：
+     - `int Foo(int x);`
+     - `float Foo(float x);`
+   - 当前问题：`FindFunction(name)` 仅按 name，缺少 signature 维度。
+2. **`shared_ptr` 参数/返回（本轮核心能力已覆盖）**
+   - 典型签名：
+     - `std::shared_ptr<Component> FindTarget();`
+     - `void SetTarget(std::shared_ptr<Component> target);`
+     - `bool IsSame(std::shared_ptr<Component> a, std::shared_ptr<Component> b);`
+  - 当前状态：`SP-1`、`SP-2`、`SP-3` 已完成（value 参数/value 返回/const-ref + ref）。
+
+#### P1（中期扩展，技术风险较高）
+
+1. **rvalue 引用 / move-only 语义**
+   - 典型签名：
+     - `void SetName(std::string&& name);`
+     - `std::unique_ptr<Mesh> TakeMesh();`
+2. **复杂容器值语义覆盖**
+   - 典型签名：
+     - `int Count(std::vector<std::string> values);`
+     - `void Normalize(std::vector<std::vector<int>>& values);`
+
+#### P2（后续可做，通常与脚本桥接联动）
+
+1. **C 风格数组/指针参数模型**
+   - 典型签名：
+     - `void Fill(float outValues[4]);`
+     - `void Process(int* values, int count);`
+2. **脚本桥接对齐（Lua）**
+   - 目标：让 C++ 侧 D 阶段语义（non-trivial value、object/shared ptr）在脚本侧保持一致。
+
+### 16.8.7 `shared_ptr` 参数/返回的设计约束（新增）
+
+你接下来要支持 `shared_ptr`，建议先明确语义边界，避免“能调用但 ownership 语义不清”：
+
+1. **默认语义：共享所有权（retain/release）**
+   - `std::shared_ptr<T>` 参数按值传入时，调用链会增加引用计数；
+   - 返回值为 `std::shared_ptr<T>` 时，调用方获取共享所有权。
+2. **类型安全**
+   - 仅允许 `T` 为已反射 class（可映射到 `MEClass`）；
+   - 非反射 class 的 `shared_ptr<T>` 直接拒绝（生成期或 Finalize 报错）。
+3. **空值策略**
+   - `nullptr` 作为合法值（参数与返回都允许）；
+   - 测试必须覆盖 null path。
+4. **与 raw pointer 语义区分**
+   - `T*` 仍是 non-owning；
+   - `std::shared_ptr<T>` 明确是 owning/shared-owning，日志与文档需区分。
+
+### 16.8.8 `shared_ptr` 推荐切片（先小后大）
+
+#### Slice SP-1：参数 by value（同类对象）
+- 目标：支持 `void SetTarget(std::shared_ptr<Component> target)`。
+- 机制：复用 D-next-2/3 的 non-trivial value hooks（Construct/Destruct/CopyAssign）。
+- 验收：
+  - 传有效 `shared_ptr` 成功；
+  - 传空 `shared_ptr` 成功（函数内可判断为空）。
+
+#### Slice SP-2：返回值 by value
+- 目标：支持 `std::shared_ptr<Component> FindTarget()`。
+- 机制：复用 ReturnValue hooks 路径；重点验证返回后引用计数语义正确。
+- 验收：
+  - 返回非空时可调用对象方法；
+  - 返回空时调用侧可正确判空。
+ - 状态：已完成（`MakeSharedComponent(bool returnNull)` + `TestD21/TestD22`）。
+
+#### Slice SP-3：const-ref/ref 语义与回写
+- 目标：支持 `const std::shared_ptr<T>&` / `std::shared_ptr<T>&`。
+- 风险：引用语义可能造成“别名写入”行为不直观。
+- 验收：
+  - `const&` 不可写；
+  - `&` 可回写且引用计数变化符合预期。
+- 状态：已完成（`IsValidSharedComponentConstRef` + `RewriteSharedComponentRef`，覆盖 non-null/null 与 ref 回写）。
+
+### 16.8.9 复杂容器（Complex Container）推荐切片
+
+#### Slice CT-1：一层 non-trivial 容器 by value
+- 目标：先支持 `std::vector<std::string>` 的 value 参数/返回。
+- 机制：
+  - 复用 D-next-2/3 引入的 lifecycle hooks（Construct/Destruct/CopyAssign）；
+  - 明确 raw-buffer `memcpy` 路径不作为 non-trivial 容器官方用法。
+- 典型签名：
+  - `int32_t CountNames(std::vector<std::string> names);`
+  - `std::vector<std::string> BuildNames(std::vector<std::string> input);`
+- 验收：
+  - 入参内容完整；
+  - 返回内容与顺序一致；
+  - `types` + 全回归通过。
+- 状态：已完成（`CountNames` + `BuildNames`，`TestD26/D27`）。
+
+#### Slice CT-2：嵌套容器 by value
+- 目标：支持 `std::vector<std::vector<int>>` 的 value 参数/返回。
+- 机制：
+  - 继续复用 hooks，不新增额外容器专用框架；
+  - 重点验证嵌套对象的拷贝与析构链路。
+- 典型签名：
+  - `int32_t SumNested(std::vector<std::vector<int>> values);`
+  - `std::vector<std::vector<int>> NormalizeNested(std::vector<std::vector<int>> values);`
+- 验收：
+  - shape（外层/内层 size）一致；
+  - 元素值一致；
+  - `types` + 全回归通过。
+- 状态：已完成（`SumNested` + `NormalizeNested`，`TestD28/D29`）。
+
+#### Slice CT-3：复杂容器的 ref/out 语义
+- 目标：支持复杂容器 `& / Out` 回写语义。
+- 机制：
+  - 走现有 pointer-slot（Ref/Out）；
+  - 文档明确 alias 行为与调用侧可见性。
+- 典型签名：
+  - `void AppendName(std::vector<std::string>& names, const std::string& name);`
+  - `void BuildNestedOut(int32_t n, std::vector<std::vector<int>>& outValues);`
+- 验收：
+  - 回写后调用侧可见；
+  - `ref,types` + 全回归通过。
+- 状态：已完成（`AppendName` + `BuildNestedOut`，`TestD30/D31`）。
+
+### 16.8.10 继承同签名函数区分（Inheritance Same-Signature）切片
+
+> 范围约束：先只处理“父类/子类同名且同参数同返回”的覆盖关系；暂不处理参数/返回值不同的重载。
+
+#### Slice IH-1：函数唯一键与元数据建模
+- 目标：允许 Base/Derived 在反射数据中同时存在同名同签名函数，不被视为重复冲突。
+- 你提出的键方案（采纳）：
+  - `functionKey = ownerClassFullName + "::" + functionName`
+  - 其中 `ownerClassFullName` 使用带命名空间的全名，避免跨命名空间同名类冲突。
+- 机制：
+  - `MEClass` 内部函数索引不再仅按裸 `name` 唯一；
+  - Finalize 重名校验改为“同 ownerClass + 同 functionName 才冲突”。
+- 验收：
+  - `Base::Tick` 与 `Derived::Tick` 可同时注册；
+  - 非继承场景下的同 class 重名仍报错。
+
+#### Slice IH-2：查找与分派规则
+- 目标：`FindFunction("Tick")` 在 Derived 实例上优先命中 Derived；在 Base 上命中 Base。
+- 机制：
+  - 保持 `InvokeFunctionByName` API 不变；
+  - 在类层级查找时按“最近派生优先”；
+  - 可补 `FindFunctionOwned(name)`（仅当前 class）用于调试与工具链。
+- 验收：
+  - base/derived 实例同名调用结果不同且符合覆盖语义；
+  - invoke 回归不退化。
+
+#### Slice IH-3：限制声明与负例保护
+- 目标：明确“只支持继承同签名区分，不支持一般重载”。
+- 机制：
+  - 对“同 class 内同名不同签名”继续拒绝；
+  - 对“同继承层级同名不同签名”继续拒绝（当前阶段）。
+- 验收：
+  - 负例测试可稳定触发预期错误；
+  - 文档与错误信息一致。
+
+### 16.8.11 关于 `ownerClassName + functionName` 方案的补充建议
+
+你这个思路是对的，而且在当前阶段非常实用：
+
+1. **优点**
+   - 实现简单，改动面小；
+   - 直接解决“命名空间同名类方法冲突”；
+   - 与“先不做参数/返回值不同重载”的阶段目标一致。
+2. **建议保留的扩展位**
+   - 在函数元数据里预留 `signatureHash` 字段（当前可为空/固定值）；
+   - 这样以后若开放一般重载，可平滑升级为：
+     - `ownerClassFullName + "::" + functionName + "#" + signatureHash`
+   - 避免未来二次迁移索引结构。
+
+### 16.8.12 本轮决策记录（2026-05-28）
+
+1. **函数唯一键策略（已决策）**
+   - 当前阶段采用：`ownerClassFullName + "::" + functionName`；
+   - 先解决“父类/子类同签名同名函数”的区分；
+   - 暂不处理“参数/返回值不同重载”的分派。
+2. **`signatureHash` 策略（已决策）**
+   - 当前仅**预留字段**，不作为查找主键；
+   - 后续若开放一般重载，再升级到 `ownerClassFullName + "::" + functionName + "#" + signatureHash`。
+3. **复杂容器后续目标（已决策）**
+   - 在 `shared_ptr` 切片后，优先推进 `vector<struct>`（含 `vector<trivial struct>` 与 `vector<non-trivial struct>` 分层验证）；
+   - 仍保持“一片一验收”节奏，先低风险再高风险。
+
+
 ## 17) Phase F 切片方案（沿用 Header Tool，改为“宏装配”函数反射生成）
 
 > 目标：**不重构 header tool 架构**，但将函数生成策略对齐为：Python 仅输出 `ME_REFLECTION_*` 宏调用序列，不直接拼装细粒度 C++ 语句；具体注册逻辑集中在宏定义中，便于后续只改宏。

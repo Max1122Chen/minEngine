@@ -103,7 +103,12 @@ namespace minEngine::Reflection
         MEProperty* CreateFunctionParamProperty(const std::string& paramName)
         {
             using RawParamType = RemoveCvRefT<TParam>;
-            return CreatePropertyByType<RawParamType>(nullptr, paramName);
+            MEProperty* property = CreatePropertyByType<RawParamType>(nullptr, paramName);
+            if (property != nullptr)
+            {
+                property->SetValueOps<RawParamType>();
+            }
+            return property;
         }
 
         bool RegisterFunction(MEClass* ownerClass, MEFunction* function);
@@ -381,11 +386,7 @@ namespace minEngine::Reflection
             if constexpr (minEngine::is_vector<RawFieldType>::value)
             {
                 using ElementType = RemoveCvRefT<typename minEngine::is_vector<RawFieldType>::ElementType>;
-                if constexpr(minEngine::is_vector<ElementType>::value)
-                {
-                    static_assert(false, "Nested vectors are not supported for reflection properties.");
-                }
-                // TODO: prevent array of struct/class instance in the same struct/class.
+                // Nested vector layers are now handled recursively via CreatePropertyByType<ElementType>().
 
                 MEProperty* innerProperty = CreatePropertyByType<ElementType>(ownerClass, propertyName + "_Inner");
                 MEArrayProperty* arrayProperty = CreateProperty<MEArrayProperty>(propertyName, innerProperty);

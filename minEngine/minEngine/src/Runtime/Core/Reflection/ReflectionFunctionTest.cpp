@@ -1117,6 +1117,796 @@ namespace minEngine
             return true;
         }
 
+        bool TestD12_AppendInt()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("AppendInt");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D12: AppendInt not found.");
+                return false;
+            }
+
+            std::vector<int> values{ 1, 2, 3 };
+            MEFunctionFrame frame(*function);
+            frame.SetParamRef("Values", values);
+            frame.SetParam("Value", static_cast<int32_t>(99));
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D12: InvokeFunction AppendInt failed.");
+                return false;
+            }
+
+            if (values.size() != 4 || values.back() != 99)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D12: expected push_back 99, got size={} back={}.",
+                              values.size(), values.empty() ? -1 : values.back());
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD13_MakeGreeting()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("MakeGreeting");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D13: MakeGreeting not found.");
+                return false;
+            }
+
+            const std::string name = "minEngine";
+            std::string outGreeting;
+            MEFunctionFrame frame(*function);
+            frame.SetParamConstRef("Name", name);
+            frame.SetOutParam("OutGreeting", outGreeting);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D13: InvokeFunction MakeGreeting failed.");
+                return false;
+            }
+
+            if (outGreeting != "Hello, minEngine")
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D13: expected 'Hello, minEngine', got '{}'.", outGreeting);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD14_GetGreetingReturnValue()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("GetGreeting");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D14: GetGreeting not found.");
+                return false;
+            }
+
+            const std::string name = "minEngine";
+            MEFunctionFrame frame(*function);
+            frame.SetParamConstRef("Name", name);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D14: InvokeFunction GetGreeting failed.");
+                return false;
+            }
+
+            const std::string* returnValue = nullptr;
+            if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D14: failed to read string return value.");
+                return false;
+            }
+
+            if (*returnValue != "Hello, minEngine")
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D14: expected 'Hello, minEngine', got '{}'.", *returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD15_SumVectorValueByValue()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("SumVectorValue");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D15: SumVectorValue not found.");
+                return false;
+            }
+
+            std::vector<int> values{ 2, 4, 6, 8 };
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Values", values);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D15: InvokeFunction SumVectorValue failed.");
+                return false;
+            }
+
+            int32_t returnValue = 0;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 20)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D15: expected return 20, got {}.", returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD16_CountGreetingCharsByValue()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("CountGreetingChars");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D16: CountGreetingChars not found.");
+                return false;
+            }
+
+            const std::string greeting = "Hello, minEngine";
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Greeting", greeting);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D16: InvokeFunction CountGreetingChars failed.");
+                return false;
+            }
+
+            int32_t returnValue = 0;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 16)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D16: expected return 16, got {}.", returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD17_SumSampleDataByValue()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("SumSampleData");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D17: SumSampleData not found.");
+                return false;
+            }
+
+            ReflectionSampleClass sampleData;
+            sampleData.IntField = 12;
+            sampleData.FloatField = 3.5f;
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Value", sampleData);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D17: InvokeFunction SumSampleData failed.");
+                return false;
+            }
+
+            int32_t returnValue = 0;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 15)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D17: expected return 15, got {}.", returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD18_BuildSampleDataByValue()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("BuildSampleData");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D18: BuildSampleData not found.");
+                return false;
+            }
+
+            ReflectionSampleClass sampleData;
+            sampleData.IntField = 7;
+            sampleData.FloatField = 1.25f;
+            sampleData.StringField = "Data";
+            sampleData.EnumField = ReflectionSampleEnum::ValueA;
+
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Value", sampleData);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D18: InvokeFunction BuildSampleData failed.");
+                return false;
+            }
+
+            const ReflectionSampleClass* returnValue = nullptr;
+            if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D18: failed to read ReflectionSampleClass return value.");
+                return false;
+            }
+
+            if (returnValue->IntField != 8 || !IsNearFloat(returnValue->FloatField, 3.25f)
+                || returnValue->StringField != "Built:Data"
+                || returnValue->EnumField != ReflectionSampleEnum::ValueC)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D18: return value mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD19_IsValidSharedComponent_NonNull()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("IsValidSharedComponent");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D19: IsValidSharedComponent not found.");
+                return false;
+            }
+
+            const ReflectionSystem& reflection = ReflectionSystem::Get();
+            const MEClass* componentClass = reflection.FindClass("minEngine::Component");
+            if (componentClass == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D19: Component class not found.");
+                return false;
+            }
+
+            std::shared_ptr<Component> sharedComponent =
+                std::static_pointer_cast<Component>(componentClass->CreateDefaultInstance());
+            if (!sharedComponent)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D19: failed to create shared component.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Candidate", sharedComponent);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D19: InvokeFunction IsValidSharedComponent failed.");
+                return false;
+            }
+
+            bool returnValue = false;
+            if (!frame.GetParam("ReturnValue", returnValue) || !returnValue)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D19: expected true for non-null shared_ptr.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD20_IsValidSharedComponent_Null()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("IsValidSharedComponent");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D20: IsValidSharedComponent not found.");
+                return false;
+            }
+
+            std::shared_ptr<Component> nullShared;
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Candidate", nullShared);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D20: InvokeFunction IsValidSharedComponent failed.");
+                return false;
+            }
+
+            bool returnValue = true;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D20: expected false for null shared_ptr.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD21_MakeSharedComponent_NonNullReturn()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("MakeSharedComponent");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D21: MakeSharedComponent not found.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            frame.SetParam("ReturnNull", false);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D21: InvokeFunction MakeSharedComponent failed.");
+                return false;
+            }
+
+            const std::shared_ptr<Component>* returnValue = nullptr;
+            if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr || !(*returnValue))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D21: expected non-null shared_ptr return.");
+                return false;
+            }
+
+            if (!(*returnValue)->IsA(Component::StaticClass()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D21: returned shared_ptr type mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD22_MakeSharedComponent_NullReturn()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("MakeSharedComponent");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D22: MakeSharedComponent not found.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            frame.SetParam("ReturnNull", true);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D22: InvokeFunction MakeSharedComponent failed.");
+                return false;
+            }
+
+            const std::shared_ptr<Component>* returnValue = nullptr;
+            if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D22: failed to read shared_ptr return value.");
+                return false;
+            }
+
+            if (returnValue->get() != nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D22: expected null shared_ptr return.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD23_IsValidSharedComponentConstRef_NonNull()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("IsValidSharedComponentConstRef");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D23: IsValidSharedComponentConstRef not found.");
+                return false;
+            }
+
+            const ReflectionSystem& reflection = ReflectionSystem::Get();
+            const MEClass* componentClass = reflection.FindClass("minEngine::Component");
+            if (componentClass == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D23: Component class not found.");
+                return false;
+            }
+
+            std::shared_ptr<Component> sharedComponent =
+                std::static_pointer_cast<Component>(componentClass->CreateDefaultInstance());
+            if (!sharedComponent)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D23: failed to create shared component.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            frame.SetParamConstRef("Candidate", sharedComponent);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR(
+                    "ReflectionFunctionTest D23: InvokeFunction IsValidSharedComponentConstRef failed.");
+                return false;
+            }
+
+            bool returnValue = false;
+            if (!frame.GetParam("ReturnValue", returnValue) || !returnValue)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D23: expected true for const-ref non-null shared_ptr.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD24_IsValidSharedComponentConstRef_Null()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("IsValidSharedComponentConstRef");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D24: IsValidSharedComponentConstRef not found.");
+                return false;
+            }
+
+            std::shared_ptr<Component> nullShared;
+            MEFunctionFrame frame(*function);
+            frame.SetParamConstRef("Candidate", nullShared);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR(
+                    "ReflectionFunctionTest D24: InvokeFunction IsValidSharedComponentConstRef failed.");
+                return false;
+            }
+
+            bool returnValue = true;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D24: expected false for const-ref null shared_ptr.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD25_RewriteSharedComponentRef_AssignAndClear()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("RewriteSharedComponentRef");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D25: RewriteSharedComponentRef not found.");
+                return false;
+            }
+
+            std::shared_ptr<Component> target;
+            MEFunctionFrame assignFrame(*function);
+            assignFrame.SetParamRef("InOutCandidate", target);
+            assignFrame.SetParam("AssignNull", false);
+            if (!component->InvokeFunction(function, assignFrame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D25: assign path invoke failed.");
+                return false;
+            }
+
+            bool assignResult = false;
+            if (!assignFrame.GetParam("ReturnValue", assignResult) || !assignResult || !target
+                || !target->IsA(Component::StaticClass()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D25: assign path expected non-null component shared_ptr.");
+                return false;
+            }
+
+            MEFunctionFrame clearFrame(*function);
+            clearFrame.SetParamRef("InOutCandidate", target);
+            clearFrame.SetParam("AssignNull", true);
+            if (!component->InvokeFunction(function, clearFrame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D25: clear path invoke failed.");
+                return false;
+            }
+
+            bool clearResult = false;
+            if (!clearFrame.GetParam("ReturnValue", clearResult) || !clearResult || target)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D25: clear path expected null shared_ptr.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD26_CountNamesByValue()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("CountNames");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D26: CountNames not found.");
+                return false;
+            }
+
+            std::vector<std::string> names{ "Alice", "Bob", "Carol" };
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Names", names);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D26: InvokeFunction CountNames failed.");
+                return false;
+            }
+
+            int32_t returnValue = 0;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 3)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D26: expected return 3, got {}.", returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD27_BuildNamesByValueReturn()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("BuildNames");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D27: BuildNames not found.");
+                return false;
+            }
+
+            std::vector<std::string> names{ "A", "B" };
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Input", names);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D27: InvokeFunction BuildNames failed.");
+                return false;
+            }
+
+            const std::vector<std::string>* returnValue = nullptr;
+            if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D27: failed to read vector<string> return value.");
+                return false;
+            }
+
+            if (returnValue->size() != 3 || (*returnValue)[0] != "A" || (*returnValue)[1] != "B"
+                || (*returnValue)[2] != "Tail")
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D27: vector<string> return content mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD28_SumNestedByValue()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("SumNested");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D28: SumNested not found.");
+                return false;
+            }
+
+            std::vector<std::vector<int>> nested{ { 1, 2 }, { 3 }, { 4, 5 } };
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Values", nested);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D28: InvokeFunction SumNested failed.");
+                return false;
+            }
+
+            int32_t returnValue = 0;
+            if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 15)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D28: expected return 15, got {}.", returnValue);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD29_NormalizeNestedByValueReturn()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("NormalizeNested");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D29: NormalizeNested not found.");
+                return false;
+            }
+
+            std::vector<std::vector<int>> nested{ { 1, 2 }, { 3 } };
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Values", nested);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D29: InvokeFunction NormalizeNested failed.");
+                return false;
+            }
+
+            const std::vector<std::vector<int>>* returnValue = nullptr;
+            if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D29: failed to read nested return value.");
+                return false;
+            }
+
+            if (returnValue->size() != 2 || (*returnValue)[0].size() != 2 || (*returnValue)[1].size() != 1
+                || (*returnValue)[0][0] != 2 || (*returnValue)[0][1] != 4 || (*returnValue)[1][0] != 6)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D29: nested return shape/value mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD30_AppendNameRef()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("AppendName");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D30: AppendName not found.");
+                return false;
+            }
+
+            std::vector<std::string> names{ "Start" };
+            const std::string nameToAppend = "Next";
+            MEFunctionFrame frame(*function);
+            frame.SetParamRef("Names", names);
+            frame.SetParamConstRef("Name", nameToAppend);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D30: InvokeFunction AppendName failed.");
+                return false;
+            }
+
+            if (names.size() != 2 || names[0] != "Start" || names[1] != "Next")
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D30: ref vector<string> write-back mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD31_BuildNestedOut()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("BuildNestedOut");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D31: BuildNestedOut not found.");
+                return false;
+            }
+
+            std::vector<std::vector<int>> outValues;
+            MEFunctionFrame frame(*function);
+            frame.SetParam("N", static_cast<int32_t>(3));
+            frame.SetOutParam("OutValues", outValues);
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D31: InvokeFunction BuildNestedOut failed.");
+                return false;
+            }
+
+            if (outValues.size() != 3 || outValues[0].size() != 1 || outValues[1].size() != 2
+                || outValues[2].size() != 3 || outValues[0][0] != 0 || outValues[1][0] != 10
+                || outValues[1][1] != 11 || outValues[2][0] != 20 || outValues[2][1] != 21
+                || outValues[2][2] != 22)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D31: out nested vector shape/value mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
         bool TestE1_StaticResetCounter()
         {
             const MEClass* sampleComponentClass =
@@ -1376,6 +2166,108 @@ namespace minEngine
 
             // D-objectptr: non-owning pointer null/valid paths.
             if (!TestD11_IsValidComponentPtr())
+            {
+                return false;
+            }
+
+            // D-nontrivial (continued): vector/string by ref/out.
+            if (!TestD12_AppendInt())
+            {
+                return false;
+            }
+
+            if (!TestD13_MakeGreeting())
+            {
+                return false;
+            }
+
+            if (!TestD14_GetGreetingReturnValue())
+            {
+                return false;
+            }
+
+            if (!TestD15_SumVectorValueByValue())
+            {
+                return false;
+            }
+
+            if (!TestD16_CountGreetingCharsByValue())
+            {
+                return false;
+            }
+
+            if (!TestD17_SumSampleDataByValue())
+            {
+                return false;
+            }
+
+            if (!TestD18_BuildSampleDataByValue())
+            {
+                return false;
+            }
+
+            if (!TestD19_IsValidSharedComponent_NonNull())
+            {
+                return false;
+            }
+
+            if (!TestD20_IsValidSharedComponent_Null())
+            {
+                return false;
+            }
+
+            if (!TestD21_MakeSharedComponent_NonNullReturn())
+            {
+                return false;
+            }
+
+            if (!TestD22_MakeSharedComponent_NullReturn())
+            {
+                return false;
+            }
+
+            if (!TestD23_IsValidSharedComponentConstRef_NonNull())
+            {
+                return false;
+            }
+
+            if (!TestD24_IsValidSharedComponentConstRef_Null())
+            {
+                return false;
+            }
+
+            if (!TestD25_RewriteSharedComponentRef_AssignAndClear())
+            {
+                return false;
+            }
+
+            // CT: complex containers (vector<string>, vector<vector<int>>) value/ref/out.
+            if (!TestD26_CountNamesByValue())
+            {
+                return false;
+            }
+
+            if (!TestD27_BuildNamesByValueReturn())
+            {
+                return false;
+            }
+
+            if (!TestD28_SumNestedByValue())
+            {
+                return false;
+            }
+
+            if (!TestD29_NormalizeNestedByValueReturn())
+            {
+                return false;
+            }
+
+            if (!TestD30_AppendNameRef())
+            {
+                return false;
+            }
+
+            if (!TestD31_BuildNestedOut())
             {
                 return false;
             }

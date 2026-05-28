@@ -5,10 +5,11 @@
 #include <vector>
 
 #include "EngineAPI.h"
+#include "MEFunction.h"
 
 namespace minEngine::Reflection
 {
-    class MEFunction;
+    class MEProperty;
 
     class MINENGINE_API MEFunctionFrame
     {
@@ -31,6 +32,36 @@ namespace minEngine::Reflection
         bool SetParamConstPtr(const std::string& name, const void* ptr);
         bool GetParamPtr(const std::string& name, void*& outPtr) const;
         bool GetParamConstPtr(const std::string& name, const void*& outPtr) const;
+
+        template<typename TValue>
+        bool GetParamValuePtr(const std::string& name, const TValue*& outPtr) const
+        {
+            const MEParamDescriptor* param = m_Function.FindParam(name);
+            if (param == nullptr || param->Property == nullptr)
+            {
+                return false;
+            }
+
+            if (param->Role == MEParamRole::Out || param->PassKind == MEParamPassKind::Ref
+                || param->PassKind == MEParamPassKind::ConstRef)
+            {
+                return false;
+            }
+
+            if (param->Property->GetStorageSize() != sizeof(TValue))
+            {
+                return false;
+            }
+
+            const uint8_t* base = m_Buffer.empty() ? nullptr : m_Buffer.data();
+            if (base == nullptr)
+            {
+                return false;
+            }
+
+            outPtr = reinterpret_cast<const TValue*>(base + param->Offset);
+            return true;
+        }
 
         template<typename T>
         bool SetParam(const std::string& name, const T& value)
@@ -63,8 +94,15 @@ namespace minEngine::Reflection
         }
 
     private:
+        struct LifetimeSlot
+        {
+            const MEProperty* Property = nullptr;
+            uint32_t Offset = 0;
+        };
+
         const MEFunction& m_Function;
         std::vector<uint8_t> m_Buffer;
+        std::vector<LifetimeSlot> m_LifetimeSlots;
     };
 
 } // namespace minEngine::Reflection

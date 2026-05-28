@@ -87,6 +87,7 @@ namespace minEngine::Reflection
         {
             using TRaw = RemoveCVRef<TArg>;
             TRaw Value{};
+            const TRaw* ValuePtr = nullptr;
             TRaw* Ptr = nullptr;
             const TRaw* ConstPtr = nullptr;
             bool Ok = true;
@@ -112,7 +113,15 @@ namespace minEngine::Reflection
                 }
                 else
                 {
-                    ReadValueFromSlot<TArg>(param, parms, holder.Value);
+                    if constexpr (std::is_trivially_copyable_v<TRaw>)
+                    {
+                        ReadValueFromSlot<TArg>(param, parms, holder.Value);
+                    }
+                    else
+                    {
+                        holder.ValuePtr = reinterpret_cast<const TRaw*>(BytePtr(parms) + param.Offset);
+                        holder.Ok = holder.ValuePtr != nullptr;
+                    }
                 }
 
                 return holder;
@@ -133,7 +142,14 @@ namespace minEngine::Reflection
                 }
                 else
                 {
-                    return static_cast<TArg>(Value);
+                    if constexpr (std::is_trivially_copyable_v<TRaw>)
+                    {
+                        return static_cast<TArg>(Value);
+                    }
+                    else
+                    {
+                        return static_cast<TArg>(*ValuePtr);
+                    }
                 }
             }
         };
@@ -153,6 +169,15 @@ namespace minEngine::Reflection
             {
                 return;
             }
+
+            MEProperty* returnProperty = ret->Property;
+            if (returnProperty != nullptr && returnProperty->GetValueCopyAssignFn() != nullptr)
+            {
+                void* dst = BytePtr(parms) + ret->Offset;
+                returnProperty->CopyAssignValue(dst, &value);
+                return;
+            }
+
             WriteValueToSlot<TReturn>(*ret, parms, value);
         }
     } // namespace Detail
