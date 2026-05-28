@@ -2,12 +2,15 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "EngineAPI.h"
 #include "MEProperties.h"
+#include "ReflectionUtils.h"
 
 namespace minEngine
 {
@@ -107,6 +110,32 @@ namespace minEngine::Reflection
 
         void SetNativeThunk(MENativeThunkFn nativeThunk) { m_NativeThunk = nativeThunk; }
         MENativeThunkFn GetNativeThunk() const { return m_NativeThunk; }
+        uint64_t GetSignatureHash() const { return m_SignatureHash; }
+        const std::string& GetSignatureText() const { return m_SignatureText; }
+        static uint64_t ComputeSignatureHash(std::string_view signatureText);
+
+        template<typename TReturn, typename... TArgs>
+        static std::string BuildSignatureTextForTypes()
+        {
+            std::string signature = "R(";
+            if constexpr (!std::is_void_v<minEngine::RemoveCvRefT<TReturn>>)
+            {
+                signature += BuildTypeSignatureToken<TReturn>();
+            }
+            signature += ")-P(";
+
+            bool firstArg = true;
+            uint32_t argIndex = 0;
+            ((AppendArgSignatureToken<TArgs>(signature, firstArg, argIndex++)), ...);
+            signature += ")";
+            return signature;
+        }
+
+        template<typename TReturn, typename... TArgs>
+        static uint64_t BuildSignatureHashForTypes()
+        {
+            return ComputeSignatureHash(BuildSignatureTextForTypes<TReturn, TArgs...>());
+        }
 
     private:
         explicit MEFunction(std::string inName);
@@ -119,6 +148,89 @@ namespace minEngine::Reflection
         static bool IsPointerSlot(MEParamRole role, MEParamPassKind passKind);
         static uint32_t GetParamStorageSize(MEProperty* property, MEParamRole role, MEParamPassKind passKind);
         static uint32_t GetParamStorageAlignment(MEProperty* property, MEParamRole role, MEParamPassKind passKind);
+        static uint64_t HashSignatureText(std::string_view text);
+        std::string BuildSignatureText() const;
+        template<typename TArg>
+        static void AppendArgSignatureToken(std::string& signature, bool& firstArg, uint32_t argIndex)
+        {
+            if (!firstArg)
+            {
+                signature += ",";
+            }
+            firstArg = false;
+            signature += std::to_string(static_cast<uint32_t>(MEParamRole::In));
+            signature += ":";
+            signature += std::to_string(static_cast<uint32_t>(PassKindForType<TArg>()));
+            signature += ":";
+            signature += BuildTypeSignatureToken<TArg>();
+            (void)argIndex;
+        }
+
+        template<typename T>
+        static constexpr MEParamPassKind PassKindForType()
+        {
+            if constexpr (std::is_lvalue_reference_v<T>)
+            {
+                if constexpr (std::is_const_v<std::remove_reference_t<T>>)
+                {
+                    return MEParamPassKind::ConstRef;
+                }
+                return MEParamPassKind::Ref;
+            }
+
+            if constexpr (std::is_const_v<std::remove_reference_t<T>>)
+            {
+                return MEParamPassKind::ConstValue;
+            }
+            return MEParamPassKind::Value;
+        }
+
+        template<typename T>
+        static std::string BuildTypeSignatureToken()
+        {
+            using RawType = minEngine::RemoveCvRefT<T>;
+            if constexpr (std::is_void_v<RawType>)
+            {
+                static_assert(minEngine::AlwaysFalse<T>::value, "void is only allowed as function return type.");
+                return {};
+            }
+            if constexpr (minEngine::is_vector<RawType>::value)
+            {
+                using ElementType = typename minEngine::is_vector<RawType>::ElementType;
+                return "A<" + BuildTypeSignatureToken<ElementType>() + ">";
+            }
+            else if constexpr (minEngine::kIsPointerLike<RawType>)
+            {
+                using PointeeType = minEngine::RemoveCvRefT<minEngine::PointeeT<RawType>>;
+                std::string ptrCategory = "Raw";
+                if constexpr (minEngine::is_shared_ptr<RawType>::value)
+                {
+                    ptrCategory = "Shared";
+                }
+                else if constexpr (minEngine::is_weak_ptr<RawType>::value)
+                {
+                    ptrCategory = "Weak";
+                }
+                return "OP:" + ptrCategory + ":" + GetClassName<PointeeType>();
+            }
+            else if constexpr (std::is_enum_v<RawType>)
+            {
+                // Keep enum encoding aligned with registration-time unresolved state.
+                return "P:UnresolvedEnum";
+            }
+            else if constexpr (minEngine::kIsPrimitiveLike<RawType>)
+            {
+                if constexpr (std::is_same_v<RawType, int>)
+                {
+                    return "P:" + GetPrimitiveName<int32_t>();
+                }
+                return "P:" + GetPrimitiveName<RawType>();
+            }
+            else
+            {
+                return "O:" + GetClassName<RawType>();
+            }
+        }
 
         std::string m_Name;
         MEClass* m_OwnerClass = nullptr;
@@ -131,6 +243,8 @@ namespace minEngine::Reflection
         FunctionSpecifierMask m_FunctionSpecifierMask = static_cast<FunctionSpecifierMask>(FunctionSpecifier::None);
         FunctionMetadata m_FunctionMetadata;
         bool m_LayoutFinalized = false;
+        uint64_t m_SignatureHash = 0;
+        std::string m_SignatureText;
     };
 
     inline bool MEFunction::IsStatic() const

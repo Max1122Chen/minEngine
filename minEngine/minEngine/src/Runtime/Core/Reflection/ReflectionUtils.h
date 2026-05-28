@@ -3,6 +3,10 @@
 #include "Core/TypeTraits.h"
 #include "Math/Math.h"
 
+#ifdef GetClassName
+#undef GetClassName
+#endif
+
 namespace minEngine::Reflection
 {
     template<typename T>

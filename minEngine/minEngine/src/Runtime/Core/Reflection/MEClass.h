@@ -131,6 +131,7 @@ namespace minEngine::Reflection
 
         const std::vector<MEFunction*>& GetFunctions() const { return m_Functions; }
         MEFunction* FindFunction(const std::string& functionName) const;
+        MEFunction* FindFunctionBySignature(const std::string& functionName, uint64_t signatureHash) const;
         bool InvokeStaticFunction(MEFunction* function, void* parmsBuffer) const;
 
     private:
@@ -229,7 +230,8 @@ namespace minEngine::Reflection
         MEClass* m_SuperClass = nullptr;
         std::vector<MEProperty*> m_Properties;
         std::vector<MEFunction*> m_Functions;
-        std::unordered_map<std::string, MEFunction*> m_FunctionsByName;
+        std::unordered_map<std::string, std::vector<MEFunction*>> m_FunctionsByName;
+        std::unordered_map<std::string, MEFunction*> m_FunctionsBySignatureKey;
         std::vector<MEClass*> m_DirectDerivedClasses;
     };
 

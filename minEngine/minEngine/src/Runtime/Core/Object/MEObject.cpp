@@ -68,4 +68,25 @@ namespace minEngine
 
         return InvokeFunction(function, parmsBuffer);
     }
+
+    bool MEObject::InvokeFunction(const std::string& functionName, uint64_t signatureHash, void* parmsBuffer)
+    {
+        if (m_Class == nullptr)
+        {
+            ME_CORE_ERROR("MEObject::InvokeFunction(name, signature): object has no class.");
+            return false;
+        }
+
+        Reflection::MEFunction* function = m_Class->FindFunctionBySignature(functionName, signatureHash);
+        if (function == nullptr)
+        {
+            ME_CORE_ERROR(
+                "MEObject::InvokeFunction(name, signature): function '{}#{}' not found.",
+                functionName,
+                signatureHash);
+            return false;
+        }
+
+        return InvokeFunction(function, parmsBuffer);
+    }
 }

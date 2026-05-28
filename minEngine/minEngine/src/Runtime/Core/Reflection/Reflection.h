@@ -19,6 +19,10 @@
 #include "Math/Math.h"
 #include "Core/TypeTraits.h"
 
+#ifdef GetClassName
+#undef GetClassName
+#endif
+
 namespace minEngine::Reflection
 {
     

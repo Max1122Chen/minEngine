@@ -94,7 +94,7 @@ namespace minEngine::Reflection
         if (!ownerClass->AddFunction(function))
         {
             AppendError("[Reflection] Duplicate function registration: '" + ownerClass->GetName() + "::"
-                        + function->GetName() + "'.");
+                        + function->GetName() + "' with signature '" + function->GetSignatureText() + "'.");
             return false;
         }
 
@@ -113,7 +113,7 @@ namespace minEngine::Reflection
                 continue;
             }
 
-            std::unordered_set<std::string> functionNames;
+            std::unordered_set<std::string> functionSignatureKeys;
             for (const MEFunction* function : classInfo->GetFunctions())
             {
                 if (function == nullptr)
@@ -123,10 +123,13 @@ namespace minEngine::Reflection
                     continue;
                 }
 
-                if (!functionNames.insert(function->GetName()).second)
+                const std::string signatureKey =
+                    function->GetName() + "#" + std::to_string(function->GetSignatureHash());
+                if (!functionSignatureKeys.insert(signatureKey).second)
                 {
-                    AppendError("[Reflection] Duplicate function name on class '" + classInfo->GetName() + "': '"
-                                + function->GetName() + "'.");
+                    AppendError("[Reflection] Duplicate function signature on class '" + classInfo->GetName()
+                                + "': '" + function->GetName() + "' (signature='"
+                                + function->GetSignatureText() + "').");
                     succeeded = false;
                 }
 

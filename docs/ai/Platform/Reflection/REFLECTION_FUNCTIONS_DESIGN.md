@@ -1260,8 +1260,8 @@ Editor.exe --reflection-function-test=types
   - `functionKey = ownerClassFullName + "::" + functionName`
   - 其中 `ownerClassFullName` 使用带命名空间的全名，避免跨命名空间同名类冲突。
 - 机制：
-  - `MEClass` 内部函数索引不再仅按裸 `name` 唯一；
-  - Finalize 重名校验改为“同 ownerClass + 同 functionName 才冲突”。
+  - `MEClass` 内部函数索引不再仅按裸 `name` 唯一，新增 `name + signatureHash` 唯一键；
+  - Finalize 重名校验改为“同 ownerClass + 同 functionName + 同 signature 才冲突”。
 - 验收：
   - `Base::Tick` 与 `Derived::Tick` 可同时注册；
   - 非继承场景下的同 class 重名仍报错。
@@ -1269,7 +1269,10 @@ Editor.exe --reflection-function-test=types
 #### Slice IH-2：查找与分派规则
 - 目标：`FindFunction("Tick")` 在 Derived 实例上优先命中 Derived；在 Base 上命中 Base。
 - 机制：
-  - 保持 `InvokeFunctionByName` API 不变；
+  - 保持 `InvokeFunctionByName` API（name-only）兼容；
+  - 新增 `FindFunctionBySignature` / `InvokeFunction(name, signatureHash, parms)`（name+signature）用于 overload 精确分派；
+  - 新增 typed helper：`MEFunction::BuildSignatureHashForTypes<TReturn, TArgs...>()`；
+  - 新增 `MEObject` typed invoke 包装：`FindFunctionTyped<TReturn, TArgs...>()` / `InvokeFunctionTyped(...)`，业务侧无需手写签名文本与 hash。
   - 在类层级查找时按“最近派生优先”；
   - 可补 `FindFunctionOwned(name)`（仅当前 class）用于调试与工具链。
 - 验收：
@@ -1279,8 +1282,8 @@ Editor.exe --reflection-function-test=types
 #### Slice IH-3：限制声明与负例保护
 - 目标：明确“只支持继承同签名区分，不支持一般重载”。
 - 机制：
-  - 对“同 class 内同名不同签名”继续拒绝；
-  - 对“同继承层级同名不同签名”继续拒绝（当前阶段）。
+  - 对“同 class 内同名同签名”继续拒绝；
+  - 对 name-only 调用路径明确“overload 场景不保证唯一”，推荐 name+signature。
 - 验收：
   - 负例测试可稳定触发预期错误；
   - 文档与错误信息一致。

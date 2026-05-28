@@ -26,6 +26,24 @@ namespace minEngine
         using Reflection::MEFunctionFrame;
         using Reflection::ReflectionSystem;
 
+        void OverloadProbeIntThunk(MEObject* context, MEFunction* function, void* parms)
+        {
+            (void)context;
+            int32_t input = 0;
+            function->CopyParamFromBuffer(parms, "Value", &input, sizeof(input));
+            const int32_t result = input + 1;
+            function->CopyParamToBuffer(parms, "ReturnValue", &result, sizeof(result));
+        }
+
+        void OverloadProbeFloatThunk(MEObject* context, MEFunction* function, void* parms)
+        {
+            (void)context;
+            float input = 0.0f;
+            function->CopyParamFromBuffer(parms, "Value", &input, sizeof(input));
+            const float result = input + 0.5f;
+            function->CopyParamToBuffer(parms, "ReturnValue", &result, sizeof(result));
+        }
+
         bool EnsureReflectionReadyWithFunctionFixtures()
         {
             ReflectionSystem& reflection = ReflectionSystem::Get();
@@ -301,9 +319,78 @@ namespace minEngine
             return true;
         }
 
+        bool TestA7_SameNameDifferentSignatureAllowed()
+        {
+            ReflectionSystem& reflection = ReflectionSystem::Get();
+            if (reflection.IsReady())
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest A7: expected Collecting state before finalize.");
+                return false;
+            }
+
+            MEClass* sampleComponentClass =
+                const_cast<MEClass*>(reflection.FindClass("minEngine::ReflectionSampleComponent"));
+            if (sampleComponentClass == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest A7: ReflectionSampleComponent not found.");
+                return false;
+            }
+
+            MEFunction* overloadInt = reflection.CreateFunction("OverloadProbe");
+            MEProperty* intValue = reflection.CreateFunctionParamProperty<int32_t>("Value");
+            MEProperty* intReturn = reflection.CreateFunctionParamProperty<int32_t>("ReturnValue");
+            overloadInt->AddParameter(intValue, MEParamRole::In, MEParamPassKind::Value);
+            overloadInt->AddParameter(intReturn, MEParamRole::Return, MEParamPassKind::Value);
+            overloadInt->SetNativeThunk(&OverloadProbeIntThunk);
+
+            reflection.ClearErrors();
+            if (!reflection.RegisterFunction(sampleComponentClass, overloadInt))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest A7: failed to register int overload.");
+                return false;
+            }
+
+            MEFunction* overloadFloat = reflection.CreateFunction("OverloadProbe");
+            MEProperty* floatValue = reflection.CreateFunctionParamProperty<float>("Value");
+            MEProperty* floatReturn = reflection.CreateFunctionParamProperty<float>("ReturnValue");
+            overloadFloat->AddParameter(floatValue, MEParamRole::In, MEParamPassKind::Value);
+            overloadFloat->AddParameter(floatReturn, MEParamRole::Return, MEParamPassKind::Value);
+            overloadFloat->SetNativeThunk(&OverloadProbeFloatThunk);
+
+            if (!reflection.RegisterFunction(sampleComponentClass, overloadFloat))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest A7: failed to register float overload.");
+                return false;
+            }
+
+            MEFunction* foundInt = sampleComponentClass->FindFunctionBySignature(
+                "OverloadProbe", overloadInt->GetSignatureHash());
+            MEFunction* foundFloat = sampleComponentClass->FindFunctionBySignature(
+                "OverloadProbe", overloadFloat->GetSignatureHash());
+            if (foundInt == nullptr || foundFloat == nullptr || foundInt == foundFloat)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest A7: overload lookup by signature failed.");
+                return false;
+            }
+
+            if (overloadInt->GetSignatureHash() != MEFunction::BuildSignatureHashForTypes<int32_t, int32_t>()
+                || overloadFloat->GetSignatureHash() != MEFunction::BuildSignatureHashForTypes<float, float>())
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest A7: typed signature helper hash mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
         bool RunMetaPhaseTests()
         {
             if (!TestA6_DuplicateFunctionRegistrationRejected())
+            {
+                return false;
+            }
+
+            if (!TestA7_SameNameDifferentSignatureAllowed())
             {
                 return false;
             }
@@ -518,6 +605,114 @@ namespace minEngine
             return true;
         }
 
+        bool TestB6_InvokeByNameAndSignature()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* overloadInt = component->GetClass()->FindFunction("OverloadProbe");
+            if (overloadInt == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B6: OverloadProbe baseline function not found.");
+                return false;
+            }
+
+            MEFunction* overloadFloat =
+                component->GetClass()->FindFunctionBySignature("OverloadProbe",
+                                                               MEFunction::BuildSignatureHashForTypes<float, float>());
+            if (overloadFloat == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B6: float OverloadProbe signature not found.");
+                return false;
+            }
+
+            MEFunctionFrame intFrame(*overloadInt);
+            intFrame.SetParam("Value", static_cast<int32_t>(9));
+            if (!component->InvokeFunction(
+                    "OverloadProbe", overloadInt->GetSignatureHash(), intFrame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B6: invoke int overload by signature failed.");
+                return false;
+            }
+
+            int32_t intResult = 0;
+            if (!intFrame.GetParam("ReturnValue", intResult) || intResult != 10)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B6: int overload result mismatch.");
+                return false;
+            }
+
+            MEFunctionFrame floatFrame(*overloadFloat);
+            floatFrame.SetParam("Value", 2.0f);
+            if (!component->InvokeFunction(
+                    "OverloadProbe", overloadFloat->GetSignatureHash(), floatFrame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B6: invoke float overload by signature failed.");
+                return false;
+            }
+
+            float floatResult = 0.0f;
+            if (!floatFrame.GetParam("ReturnValue", floatResult) || std::fabs(floatResult - 2.5f) > 0.0001f)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B6: float overload result mismatch.");
+                return false;
+            }
+
+            if (component->InvokeFunction("OverloadProbe", 0ull, floatFrame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B6: invalid signature hash should fail.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestB7_TypedInvokeHelpers()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            const Reflection::MEFunction* typedFind = component->FindFunctionTyped<int32_t, int32_t, int32_t>("Add");
+            if (typedFind == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B7: FindFunctionTyped failed for Add.");
+                return false;
+            }
+
+            int32_t addReturn = 0;
+            if (!component->InvokeFunctionTyped("Add", addReturn, static_cast<int32_t>(2), static_cast<int32_t>(5)))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B7: InvokeFunctionTyped failed for Add.");
+                return false;
+            }
+
+            if (addReturn != 7)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B7: typed Add return mismatch.");
+                return false;
+            }
+
+            if (!component->InvokeFunctionTyped("ResetCounter"))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B7: InvokeFunctionTyped failed for ResetCounter.");
+                return false;
+            }
+
+            if (component->GetCounter() != 0)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest B7: ResetCounter typed invoke did not reset counter.");
+                return false;
+            }
+
+            return true;
+        }
+
         bool RunInvokePhaseTests()
         {
             if (!EnsureReflectionReadyWithFunctionFixtures())
@@ -547,6 +742,16 @@ namespace minEngine
             }
 
             if (!TestB5_InvokeFailurePaths())
+            {
+                return false;
+            }
+
+            if (!TestB6_InvokeByNameAndSignature())
+            {
+                return false;
+            }
+
+            if (!TestB7_TypedInvokeHelpers())
             {
                 return false;
             }

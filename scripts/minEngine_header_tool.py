@@ -1045,7 +1045,9 @@ def render_function_metadata_expr(metadata: dict[str, str]) -> str:
 def render_function_registration_definition(owner: ClassMeta, function: FunctionMeta) -> list[str]:
     lines: list[str] = []
     owner_type = full_type_name(owner)
-    function_var = f"functionInfo_{sha256_text(owner_type + function.name)[:8]}"
+    param_signature = ",".join(f"{param.type_name}:{param.pass_kind}:{param.role}" for param in function.params)
+    function_key = f"{owner_type}::{function.name}({param_signature})->{function.return_type}"
+    function_var = f"functionInfo_{sha256_text(function_key)[:8]}"
     lines.append("    {")
     lines.append(
         f'        ME_REFLECTION_FUNCTION_BEGIN({function_var}, "{function.name}", {render_function_flags_expr(function)}, '

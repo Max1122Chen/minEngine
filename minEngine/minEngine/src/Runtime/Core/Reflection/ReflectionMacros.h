@@ -7,6 +7,10 @@
 #include "Reflection.h"
 #include "ReflectionUtils.h"
 
+#ifdef GetClassName
+#undef GetClassName
+#endif
+
 #define ME_REFLECTION_CONCAT_INNER(a, b) a##b
 #define ME_REFLECTION_CONCAT(a, b) ME_REFLECTION_CONCAT_INNER(a, b)
 

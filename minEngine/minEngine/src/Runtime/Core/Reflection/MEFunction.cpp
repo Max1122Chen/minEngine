@@ -3,11 +3,60 @@
 #include "MEClass.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
+#include <array>
 #include <cstring>
 #include <limits>
+#include <sstream>
 
 namespace minEngine::Reflection
 {
+    namespace
+    {
+        std::string BuildPropertyTypeSignature(const MEProperty* property)
+        {
+            if (property == nullptr)
+            {
+                return "null";
+            }
+
+            switch (property->GetCategory())
+            {
+                case MEPropertyCategory::Primitive:
+                {
+                    const MEPrimitiveProperty* primitive = static_cast<const MEPrimitiveProperty*>(property);
+                    return "P:" + primitive->primitiveTypeName;
+                }
+                case MEPropertyCategory::Object:
+                {
+                    const MEObjectProperty* objectProperty = static_cast<const MEObjectProperty*>(property);
+                    const MEClass* valueClass = objectProperty->GetValueClass();
+                    return "O:" + std::string(valueClass != nullptr ? valueClass->GetName() : "UnresolvedObject");
+                }
+                case MEPropertyCategory::ObjectPtr:
+                {
+                    const MEObjectPtrProperty* ptrProperty = static_cast<const MEObjectPtrProperty*>(property);
+                    const MEClass* valueClass = ptrProperty->GetValueClass();
+                    const std::array<const char*, 4> ptrCategoryNames = {
+                        "Invalid", "Raw", "Shared", "Weak"
+                    };
+                    const uint32_t ptrCategoryIndex = static_cast<uint32_t>(ptrProperty->GetPtrCategory());
+                    const char* ptrCategoryName = ptrCategoryIndex < ptrCategoryNames.size()
+                                                      ? ptrCategoryNames[ptrCategoryIndex]
+                                                      : "UnknownPtr";
+                    return "OP:" + std::string(ptrCategoryName) + ":"
+                           + std::string(valueClass != nullptr ? valueClass->GetName() : "UnresolvedObject");
+                }
+                case MEPropertyCategory::Array:
+                {
+                    const MEArrayProperty* arrayProperty = static_cast<const MEArrayProperty*>(property);
+                    return "A<" + BuildPropertyTypeSignature(arrayProperty->GetInnerProperty()) + ">";
+                }
+                default:
+                    return "Unknown";
+            }
+        }
+    } // namespace
+
     uint32_t MEFunction::AlignUp(uint32_t value, uint32_t alignment)
     {
         if (alignment <= 1)
@@ -254,7 +303,60 @@ namespace minEngine::Reflection
                 static_cast<uint32_t>(m_FunctionFlags) | static_cast<uint32_t>(MEFunctionFlags::HasReturn));
         }
 
+        m_SignatureText = BuildSignatureText();
+        m_SignatureHash = HashSignatureText(m_SignatureText);
+
         return true;
+    }
+
+    uint64_t MEFunction::HashSignatureText(std::string_view text)
+    {
+        constexpr uint64_t kFnvOffsetBasis = 1469598103934665603ull;
+        constexpr uint64_t kFnvPrime = 1099511628211ull;
+        uint64_t hash = kFnvOffsetBasis;
+        for (char ch : text)
+        {
+            hash ^= static_cast<uint8_t>(ch);
+            hash *= kFnvPrime;
+        }
+        return hash;
+    }
+
+    uint64_t MEFunction::ComputeSignatureHash(std::string_view signatureText)
+    {
+        return HashSignatureText(signatureText);
+    }
+
+    std::string MEFunction::BuildSignatureText() const
+    {
+        std::ostringstream signature;
+        signature << "R(";
+        const MEParamDescriptor* returnParam = GetReturnParam();
+        if (returnParam != nullptr)
+        {
+            signature << BuildPropertyTypeSignature(returnParam->Property);
+        }
+        signature << ")-P(";
+
+        bool firstParam = true;
+        for (const MEParamDescriptor& param : m_Params)
+        {
+            if (param.IsReturn())
+            {
+                continue;
+            }
+
+            if (!firstParam)
+            {
+                signature << ",";
+            }
+            firstParam = false;
+            signature << static_cast<uint32_t>(param.Role) << ":"
+                      << static_cast<uint32_t>(param.PassKind) << ":"
+                      << BuildPropertyTypeSignature(param.Property);
+        }
+        signature << ")";
+        return signature.str();
     }
 
     bool MEClass::AddFunction(MEFunction* function)
@@ -269,20 +371,33 @@ namespace minEngine::Reflection
             return false;
         }
 
-        if (m_FunctionsByName.find(function->GetName()) != m_FunctionsByName.end())
+        const std::string signatureKey = function->GetName() + "#" + std::to_string(function->GetSignatureHash());
+        if (m_FunctionsBySignatureKey.find(signatureKey) != m_FunctionsBySignatureKey.end())
         {
             return false;
         }
 
         m_Functions.push_back(function);
-        m_FunctionsByName[function->GetName()] = function;
+        m_FunctionsByName[function->GetName()].push_back(function);
+        m_FunctionsBySignatureKey[signatureKey] = function;
         return true;
     }
 
     MEFunction* MEClass::FindFunction(const std::string& functionName) const
     {
         auto iter = m_FunctionsByName.find(functionName);
-        if (iter == m_FunctionsByName.end())
+        if (iter == m_FunctionsByName.end() || iter->second.empty())
+        {
+            return nullptr;
+        }
+        return iter->second.front();
+    }
+
+    MEFunction* MEClass::FindFunctionBySignature(const std::string& functionName, uint64_t signatureHash) const
+    {
+        const std::string signatureKey = functionName + "#" + std::to_string(signatureHash);
+        auto iter = m_FunctionsBySignatureKey.find(signatureKey);
+        if (iter == m_FunctionsBySignatureKey.end())
         {
             return nullptr;
         }
