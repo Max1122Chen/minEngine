@@ -130,7 +130,11 @@ namespace minEngine
                 StartInlineRename(*gameObject);
             }
 
-            // M4.1: Inspector context menus are temporarily disabled.
+            if (ImGui::BeginPopupContextItem())
+            {
+                DrawGameObjectHeaderContextMenu(*gameObject);
+                ImGui::EndPopup();
+            }
         }
 
         ImGui::PopStyleVar();
@@ -141,6 +145,7 @@ namespace minEngine
 
         // Add Component Section
         const std::vector<std::string> componentTypeNames = m_SceneEditor.GetAllComponentTypeNames();
+        ImGui::PushID("InspectorAddComponent");
         ImGui::SeparatorText("Add Component");
         if (!componentTypeNames.empty())
         {
@@ -155,6 +160,7 @@ namespace minEngine
             {
                 for (const std::string& typeName : componentTypeNames)
                 {
+                    ImGui::PushID(typeName.c_str());
                     const bool isSelected = (typeName == m_SelectedAddComponentTypeName);
                     const std::string displayName = GetShortTypeName(typeName);
                     if (ImGui::Selectable(displayName.c_str(), isSelected))
@@ -166,6 +172,7 @@ namespace minEngine
                     {
                         ImGui::SetItemDefaultFocus();
                     }
+                    ImGui::PopID();
                 }
 
                 ImGui::EndCombo();
@@ -173,7 +180,7 @@ namespace minEngine
             ImGui::PopItemWidth();
 
             ImGui::SameLine();
-            if (ImGui::Button("Add Component"))
+            if (ImGui::Button("Add Component##Button"))
             {
                 if (IEditorContext* context = m_SceneEditor.GetEditorContext())
                 {
@@ -185,6 +192,7 @@ namespace minEngine
         {
             ImGui::TextUnformatted("No reflected Component derived types found.");
         }
+        ImGui::PopID();
 
         Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
 
@@ -260,6 +268,16 @@ namespace minEngine
             ImGui::SeparatorText("Components");
         }
 
+        // Right-click empty area in GO Inspector (Components section) to add components
+        // via the shared context menu ActionProvider system.
+        if (ImGui::BeginPopupContextWindow(
+                "SceneInspectorComponentsBlankContextMenu",
+                ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+        {
+            DrawGameObjectHeaderContextMenu(*gameObject);
+            ImGui::EndPopup();
+        }
+
         SceneComponent* rootComponent = gameObject->GetRootComponent();
         for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
         {
@@ -298,6 +316,8 @@ namespace minEngine
                 componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
                 ImGui::PopStyleVar();
             }
+
+            (void)TryDrawComponentContextMenu(*component);
 
             if (!componentOpen)
             {
@@ -350,8 +370,6 @@ namespace minEngine
                 }
             }
 
-            // M4.1: Inspector context menus are temporarily disabled.
-            
             if (!hasAnyReflectedField)
             {
                 ImGui::TableNextRow();

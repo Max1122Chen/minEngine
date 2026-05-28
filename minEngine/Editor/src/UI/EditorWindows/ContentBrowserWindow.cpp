@@ -4,8 +4,10 @@
 #include "ContextMenu/EditorMenuContext.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
+#include "Services/Inspector/InspectorModule.h"
 #include "Shell/IEditorContext.h"
 
+#include "Services/Thumbnail/AssetThumbnailService.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorTypographyDefaults.h"
 #include "UI/Appearance/EditorTypographyScope.h"
@@ -15,6 +17,7 @@
 #include "Runtime/Resource/AssetMeta.h"
 
 #include "imgui.h"
+#include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -23,6 +26,140 @@
 
 namespace minEngine
 {
+    const char* ContentBrowserWindow::ResolveAssetTypeIconGlyph(const std::string_view assetType) const
+    {
+        if (assetType == "Texture2D")
+        {
+            return ICON_FA_IMAGE;
+        }
+
+        if (assetType == "StaticMesh")
+        {
+            return ICON_FA_CUBE;
+        }
+
+        if (assetType == "Material")
+        {
+            return ICON_FA_PALETTE;
+        }
+
+        if (assetType == "Shader")
+        {
+            return ICON_FA_CODE;
+        }
+
+        if (assetType == "Scene")
+        {
+            return ICON_FA_MAP;
+        }
+
+        if (assetType == "Font")
+        {
+            return ICON_FA_FONT;
+        }
+
+        return ICON_FA_FILE;
+    }
+
+    AssetIconFontStyle ContentBrowserWindow::ResolveAssetTypeIconFontStyle(const std::string_view assetType) const
+    {
+        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Shader" || assetType == "Font")
+        {
+            return AssetIconFontStyle::Solid;
+        }
+
+        return AssetIconFontStyle::Regular;
+    }
+
+    void ContentBrowserWindow::DrawTileAssetIcon(
+        const AssetMeta& meta,
+        const ImVec2& iconMin,
+        const ImVec2& iconMax,
+        const EditorAppearance& appearance,
+        const EditorThemePalette& palette,
+        ImDrawList& drawList) const
+    {
+        drawList.AddRectFilled(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.FieldBackground),
+            0.0f);
+        drawList.AddRect(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.Border),
+            0.0f,
+            0,
+            1.0f);
+
+        if (meta.AssetType == "Texture2D" || meta.AssetType == "Material" || meta.AssetType == "StaticMesh")
+        {
+            AssetThumbnailService& thumbnails = m_Context.GetInspectorModule().GetThumbnailService();
+            const ThumbnailView view = thumbnails.RequestThumbnailForAsset(meta);
+            if (view.State == ThumbnailState::Ready && view.TextureId != 0 && view.Width > 0 && view.Height > 0)
+            {
+                const float slotWidth = iconMax.x - iconMin.x;
+                const float slotHeight = iconMax.y - iconMin.y;
+
+                const float textureAspect = static_cast<float>(view.Width) / static_cast<float>(view.Height);
+                ImVec2 imageSize(slotWidth, slotHeight);
+                if (textureAspect >= 1.0f)
+                {
+                    imageSize.y = slotHeight / textureAspect;
+                }
+                else
+                {
+                    imageSize.x = slotWidth * textureAspect;
+                }
+
+                const float imageX = iconMin.x + (slotWidth - imageSize.x) * 0.5f;
+                const float imageY = iconMin.y + (slotHeight - imageSize.y) * 0.5f;
+                const ImVec2 imageMin(imageX, imageY);
+                const ImVec2 imageMax(imageX + imageSize.x, imageY + imageSize.y);
+
+                // Flip V to match Inspector preview convention.
+                drawList.AddImage(view.TextureId, imageMin, imageMax, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+                return;
+            }
+        }
+
+        ImFont* iconFont = nullptr;
+        const AssetIconFontStyle iconFontStyle = ResolveAssetTypeIconFontStyle(meta.AssetType);
+        if (iconFontStyle == AssetIconFontStyle::Solid)
+        {
+            iconFont = appearance.GetAssetIconSolidImFont();
+            if (iconFont == nullptr)
+            {
+                iconFont = appearance.GetAssetIconRegularImFont();
+            }
+        }
+        else
+        {
+            iconFont = appearance.GetAssetIconRegularImFont();
+            if (iconFont == nullptr)
+            {
+                iconFont = appearance.GetAssetIconSolidImFont();
+            }
+        }
+        if (iconFont == nullptr)
+        {
+            return;
+        }
+
+        const char* glyph = ResolveAssetTypeIconGlyph(meta.AssetType);
+        if (glyph == nullptr || glyph[0] == '\0')
+        {
+            return;
+        }
+
+        ImGui::PushFont(iconFont, 0.0f);
+        const ImVec2 glyphSize = ImGui::CalcTextSize(glyph);
+        const float glyphX = iconMin.x + (ViewMetrics::IconSize - glyphSize.x) * 0.5f;
+        const float glyphY = iconMin.y + (ViewMetrics::IconSize - glyphSize.y) * 0.5f;
+        drawList.AddText(ImVec2(glyphX, glyphY), appearance.GetDisplayColorU32(palette.TextPrimary), glyph);
+        ImGui::PopFont();
+    }
+
     ContentBrowserWindow::ContentBrowserWindow(IEditorContext& context, AssetTreeModel& model)
         : EditorWindow(context)
         , m_Model(model)
@@ -322,7 +459,7 @@ namespace minEngine
         }
     }
 
-    void ContentBrowserWindow::DrawTileVisual(const char* label, const bool selected)
+    void ContentBrowserWindow::DrawTileVisual(const char* label, const bool selected, const AssetMeta* iconAssetMeta)
     {
         const EditorAppearance& appearance = m_Context.GetEditorAppearance();
         const EditorThemePalette& palette = appearance.GetActivePalette();
@@ -355,18 +492,25 @@ namespace minEngine
         const ImVec2 iconMin(iconLeft, iconTop);
         const ImVec2 iconMax(iconLeft + ViewMetrics::IconSize, iconTop + ViewMetrics::IconSize);
 
-        drawList->AddRectFilled(
-            iconMin,
-            iconMax,
-            appearance.GetDisplayColorU32(palette.FieldBackground),
-            0.0f);
-        drawList->AddRect(
-            iconMin,
-            iconMax,
-            appearance.GetDisplayColorU32(palette.Border),
-            0.0f,
-            0,
-            1.0f);
+        if (iconAssetMeta != nullptr)
+        {
+            DrawTileAssetIcon(*iconAssetMeta, iconMin, iconMax, appearance, palette, *drawList);
+        }
+        else
+        {
+            drawList->AddRectFilled(
+                iconMin,
+                iconMax,
+                appearance.GetDisplayColorU32(palette.FieldBackground),
+                0.0f);
+            drawList->AddRect(
+                iconMin,
+                iconMax,
+                appearance.GetDisplayColorU32(palette.Border),
+                0.0f,
+                0,
+                1.0f);
+        }
 
         const float labelTop = iconMax.y + ViewMetrics::IconLabelGap;
         const ImVec2 labelMin(outerMin.x + ViewMetrics::TilePadding, labelTop);
@@ -436,7 +580,7 @@ namespace minEngine
             ActivateAssetFromBrowser(meta);
         }
 
-        DrawTileVisual(meta.AssetName.c_str(), selected);
+        DrawTileVisual(meta.AssetName.c_str(), selected, &meta);
 
         if (ImGui::BeginPopupContextItem())
         {

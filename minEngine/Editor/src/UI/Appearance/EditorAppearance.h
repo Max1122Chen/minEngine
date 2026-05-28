@@ -7,6 +7,7 @@
 #include "UI/Appearance/EditorThemeColorRole.h"
 
 #include <array>
+#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -42,6 +43,8 @@ namespace minEngine
         void RebuildUiFontAtlas();
         ImFont* GetImFont(EditorTypographyRole role) const;
         ImFont* GetBodyImFont() const;
+        ImFont* GetAssetIconRegularImFont() const { return m_AssetIconRegularFont; }
+        ImFont* GetAssetIconSolidImFont() const { return m_AssetIconSolidFont; }
 
     private:
         static void ApplyStyleConstants();
@@ -51,12 +54,15 @@ namespace minEngine
         bool PersistAppearanceSettingsToProject();
         const ImWchar* BuildUiGlyphRanges(ImFontAtlas& fontAtlas);
         std::shared_ptr<Font> ResolveFontForRole(EditorTypographyRole role) const;
+        std::filesystem::path ResolveAssetIconFontPath() const;
         float ResolveSizePixelsForRole(EditorTypographyRole role) const;
 
         EditorAppearanceSettings m_Settings{};
         EditorThemePalette m_ActivePalette{};
         EditorSemanticColors m_SemanticColors{};
         std::array<ImFont*, static_cast<size_t>(EditorTypographyRole::Count)> m_RoleFonts{};
+        ImFont* m_AssetIconRegularFont = nullptr;
+        ImFont* m_AssetIconSolidFont = nullptr;
         std::vector<std::shared_ptr<Font>> m_PinnedFontsForAtlas;
         bool m_UiFontBackendReady = false;
     };

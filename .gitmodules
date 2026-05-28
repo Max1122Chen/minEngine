@@ -10,3 +10,12 @@
 [submodule "minEngine/minEngine/Third-Party/efsw"]
 	path = minEngine/minEngine/Third-Party/efsw
 	url = https://github.com/SpartanJ/efsw.git
+[submodule "minEngine/minEngine/Third-Party/IconFontCppHeaders"]
+	path = minEngine/minEngine/Third-Party/IconFontCppHeaders
+	url = https://github.com/juliettef/IconFontCppHeaders.git
+[submodule "minEngine/minEngine/Third-Party/freetype"]
+	path = minEngine/minEngine/Third-Party/freetype
+	url = https://github.com/freetype/freetype.git
+[submodule "minEngine/minEngine/Third-Party/imgui-upstream"]
+	path = minEngine/minEngine/Third-Party/imgui-upstream
+	url = https://github.com/ocornut/imgui.git

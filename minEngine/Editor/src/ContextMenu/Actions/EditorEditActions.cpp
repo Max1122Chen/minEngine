@@ -58,8 +58,7 @@ namespace minEngine
 
             if (const SceneInspectorMenuContext* inspectorCtx = FindSceneInspectorContext(ctx))
             {
-                if (inspectorCtx->SelectionKind == SceneInspectorSelectionKind::GameObjectHeader
-                    && inspectorCtx->GameObjectId != 0)
+                if (inspectorCtx->SelectionKind == SceneInspectorSelectionKind::GameObjectHeader)
                 {
                     return inspectorCtx->GameObjectId;
                 }

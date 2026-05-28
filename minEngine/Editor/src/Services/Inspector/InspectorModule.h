@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "Services/Inspector/InspectorAssetInspection.h"
+#include "Services/Thumbnail/AssetThumbnailService.h"
 #include "Shell/EditorServiceModule.h"
 
 namespace minEngine
@@ -19,14 +19,14 @@ namespace minEngine
         void Register(IEditorContext& context) override;
         void Shutdown() override;
 
-        InspectorAssetInspection& GetAssetInspection() { return m_AssetInspection; }
-        const InspectorAssetInspection& GetAssetInspection() const { return m_AssetInspection; }
+        AssetThumbnailService& GetThumbnailService() { return m_ThumbnailService; }
+        const AssetThumbnailService& GetThumbnailService() const { return m_ThumbnailService; }
 
         void SetInspectionTarget(const AssetMeta* meta);
         void ClearInspectionTarget();
 
     private:
         IEditorContext* m_Context = nullptr;
-        InspectorAssetInspection m_AssetInspection;
+        AssetThumbnailService m_ThumbnailService;
     };
 }

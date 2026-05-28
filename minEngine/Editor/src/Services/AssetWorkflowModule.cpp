@@ -65,7 +65,7 @@ namespace minEngine
 
         InspectorPreviewPresenter::DrawSquarePreviewSlot(
             *context,
-            context->GetInspectorModule().GetAssetInspection());
+            context->GetInspectorModule().GetThumbnailService());
 
         ImGui::Text("Name: %s", selected->AssetName.c_str());
         ImGui::Text("Path: %s", selected->AssetPath.c_str());

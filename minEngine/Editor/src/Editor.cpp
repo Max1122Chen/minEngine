@@ -283,12 +283,6 @@ namespace minEngine
             return;
         }
         m_Appearance.RebuildUiFontAtlas();
-        PostInitialize();
-    }
-
-    void Editor::PostInitialize()
-    {
-        m_ContextMenu.RegisterBuiltInActions();
     }
 
     void Editor::UpdateWindowTitle()

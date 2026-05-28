@@ -1,6 +1,6 @@
 #include "UI/Inspector/InspectorPreviewPresenter.h"
 
-#include "Services/Inspector/InspectorAssetInspection.h"
+#include "Services/Thumbnail/AssetThumbnailService.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
 #include "imgui.h"
@@ -11,11 +11,11 @@ namespace minEngine
 {
     void InspectorPreviewPresenter::DrawSquarePreviewSlot(
         IEditorContext& context,
-        InspectorAssetInspection& inspection)
+        AssetThumbnailService& thumbnailService)
     {
         (void)context;
 
-        if (!inspection.HasPreviewContent())
+        if (!thumbnailService.HasPreviewContent())
         {
             return;
         }
@@ -27,30 +27,40 @@ namespace minEngine
             return;
         }
 
-        if (inspection.GetDisplayKind() != PreviewDisplayKind::Scene3D)
+        auto drawCenteredImage =
+            [&](const ImVec2& imageSize, const ImTextureID textureId)
         {
-            return;
-        }
+            const float centerOffsetX = std::max(0.0f, (contentWidth - imageSize.x) * 0.5f);
+            if (centerOffsetX > 0.0f)
+            {
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + centerOffsetX);
+            }
 
-        const uint32_t renderSize = static_cast<uint32_t>(squareSize);
-        inspection.RenderInspection(renderSize);
+            ImGui::Image(textureId, imageSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        };
 
-        const std::shared_ptr<RHITexture2D>& displayTexture = inspection.GetSceneColorTexture();
-        if (!displayTexture || displayTexture->GetWidth() == 0 || displayTexture->GetHeight() == 0)
+        const ThumbnailView view = thumbnailService.RequestThumbnail();
+        if (view.State != ThumbnailState::Ready || view.TextureId == 0
+            || view.Width == 0 || view.Height == 0)
         {
             ImGui::TextWrapped("Preview is not ready.");
             return;
         }
 
-        const float centerOffsetX = std::max(0.0f, (contentWidth - squareSize) * 0.5f);
-        if (centerOffsetX > 0.0f)
+        const uint32_t textureWidth = view.Width;
+        const uint32_t textureHeight = view.Height;
+        const float textureAspect =
+            static_cast<float>(textureWidth) / static_cast<float>(textureHeight);
+        ImVec2 imageSize(squareSize, squareSize);
+        if (textureAspect >= 1.0f)
         {
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + centerOffsetX);
+            imageSize.y = squareSize / textureAspect;
+        }
+        else
+        {
+            imageSize.x = squareSize * textureAspect;
         }
 
-        const ImVec2 imageSize(squareSize, squareSize);
-        const ImTextureID textureId =
-            reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(displayTexture->GetID()));
-        ImGui::Image(textureId, imageSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        drawCenteredImage(imageSize, view.TextureId);
     }
 }

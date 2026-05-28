@@ -5,9 +5,11 @@
 #include "UI/Property/EditorColorConversion.h"
 
 #include "imgui.h"
+#include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include "Log/LogSystem.h"
 #include "Resource/AssetManager.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Resource/Font.h"
 
@@ -15,6 +17,10 @@ namespace minEngine
 {
     namespace
     {
+        constexpr const char* kAssetIconRegularFontRelativePath = "Fonts/Font Awesome 7 Free-Regular-400.otf";
+        constexpr const char* kAssetIconSolidFontRelativePath = "Fonts/Font Awesome 7 Free-Solid-900.otf";
+        constexpr float kAssetIconFontSizePixels = 40.0f;
+
         ImVec4 ToImGuiColor(const LinearColor& linear)
         {
             return EditorColorConversion::ToImGuiDisplayColor(linear);
@@ -353,6 +359,17 @@ namespace minEngine
         return nullptr;
     }
 
+    std::filesystem::path EditorAppearance::ResolveAssetIconFontPath() const
+    {
+        const std::filesystem::path& engineDefaultAssetsRoot = PathRegistry::Get().GetEngineDefaultAssetsRoot();
+        if (engineDefaultAssetsRoot.empty())
+        {
+            return {};
+        }
+
+        return std::filesystem::weakly_canonical(engineDefaultAssetsRoot / kAssetIconRegularFontRelativePath);
+    }
+
     void EditorAppearance::RebuildUiFontAtlas()
     {
         if (!ImGui::GetCurrentContext())
@@ -362,6 +379,8 @@ namespace minEngine
 
         m_UiFontBackendReady = true;
         m_RoleFonts.fill(nullptr);
+        m_AssetIconRegularFont = nullptr;
+        m_AssetIconSolidFont = nullptr;
         m_PinnedFontsForAtlas.clear();
 
         ImGuiIO& io = ImGui::GetIO();
@@ -431,6 +450,62 @@ namespace minEngine
             m_RoleFonts[RoleIndex(EditorTypographyRole::Body)] = io.Fonts->AddFontDefault();
         }
 
+        {
+            const std::filesystem::path iconFontPath = ResolveAssetIconFontPath();
+            if (iconFontPath.empty())
+            {
+                ME_CORE_WARN("EditorAppearance: EngineDefaultAssetsRoot is empty, icon font will be unavailable.");
+            }
+            else
+            {
+                static const ImWchar iconGlyphRanges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+                ImFontConfig iconFontConfig;
+                iconFontConfig.MergeMode = false;
+                iconFontConfig.PixelSnapH = true;
+                iconFontConfig.GlyphMinAdvanceX = 22.0f;
+                m_AssetIconRegularFont = io.Fonts->AddFontFromFileTTF(
+                    iconFontPath.string().c_str(),
+                    kAssetIconFontSizePixels,
+                    &iconFontConfig,
+                    iconGlyphRanges);
+                if (m_AssetIconRegularFont == nullptr)
+                {
+                    ME_CORE_WARN(
+                        "EditorAppearance: failed to load regular icon font '{}'.",
+                        iconFontPath.string());
+                }
+            }
+        }
+
+        {
+            const std::filesystem::path& engineDefaultAssetsRoot = PathRegistry::Get().GetEngineDefaultAssetsRoot();
+            if (engineDefaultAssetsRoot.empty())
+            {
+                ME_CORE_WARN("EditorAppearance: EngineDefaultAssetsRoot is empty, solid icon font will be unavailable.");
+            }
+            else
+            {
+                const std::filesystem::path solidIconFontPath =
+                    std::filesystem::weakly_canonical(engineDefaultAssetsRoot / kAssetIconSolidFontRelativePath);
+                static const ImWchar iconGlyphRanges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+                ImFontConfig iconFontConfig;
+                iconFontConfig.MergeMode = false;
+                iconFontConfig.PixelSnapH = true;
+                iconFontConfig.GlyphMinAdvanceX = 22.0f;
+                m_AssetIconSolidFont = io.Fonts->AddFontFromFileTTF(
+                    solidIconFontPath.string().c_str(),
+                    kAssetIconFontSizePixels,
+                    &iconFontConfig,
+                    iconGlyphRanges);
+                if (m_AssetIconSolidFont == nullptr)
+                {
+                    ME_CORE_WARN(
+                        "EditorAppearance: failed to load solid icon font '{}'.",
+                        solidIconFontPath.string());
+                }
+            }
+        }
+
         ImFont* bodyImFont = m_RoleFonts[RoleIndex(EditorTypographyRole::Body)];
         for (ImFont*& roleFont : m_RoleFonts)
         {
@@ -443,7 +518,10 @@ namespace minEngine
         io.Fonts->Build();
 
         // ImGui 1.92 + OpenGL3 backend recreates the GPU font texture on the next frame.
-        ME_CORE_INFO("EditorAppearance: UI font atlas rebuilt ({} roles).", m_RoleFonts.size());
+        ME_CORE_INFO("EditorAppearance: UI font atlas rebuilt ({} roles, regularIconReady={}, solidIconReady={}).",
+                     m_RoleFonts.size(),
+                     m_AssetIconRegularFont != nullptr,
+                     m_AssetIconSolidFont != nullptr);
     }
 
     ImFont* EditorAppearance::GetImFont(EditorTypographyRole role) const
