@@ -36,16 +36,36 @@ namespace minEngine
     {
         ME_GENERATED_BODY(ReflectionSampleComponent)
     public:
+        ME_FUNCTION()
         void ResetCounter();
+        ME_FUNCTION()
         int32_t GetCounter() const;
+        ME_FUNCTION()
         int32_t Add(int32_t firstOperand, int32_t secondOperand);
+        ME_FUNCTION()
+        bool MixAlign(bool inputFlag, double threshold) const;
+        ME_FUNCTION()
         void AddInPlace(int32_t& value, int32_t delta);
+        ME_FUNCTION()
         void PeekString(const std::string& input, int32_t& outLength) const;
+        ME_FUNCTION()
         void FillOut(int32_t value, int32_t& outValue);
+        ME_FUNCTION()
         ReflectionSampleEnum EchoEnum(ReflectionSampleEnum value) const;
+        ME_FUNCTION()
         int32_t SumIntArray(const std::vector<int>& values) const;
+        ME_FUNCTION()
         bool IsSameObject(MEObject* a, MEObject* b) const;
+        ME_FUNCTION()
+        static void StaticResetCounter();
+        ME_FUNCTION()
+        static int32_t StaticGetCounter();
+        ME_FUNCTION()
+        static int32_t StaticAdd(int32_t firstOperand, int32_t secondOperand);
+        ME_FUNCTION()
+        static void StaticAddInPlace(int32_t& value, int32_t delta);
         void SetFunctionTestCounter(int32_t value) { m_FunctionTestCounter = value; }
+        static void SetStaticTestCounter(int32_t value) { s_StaticTestCounter = value; }
 
         ME_PROPERTY(EditAnywhere)
         ReflectionSampleClass SampleData;
@@ -55,6 +75,7 @@ namespace minEngine
 
     private:
         int32_t m_FunctionTestCounter = 0;
+        static inline int32_t s_StaticTestCounter = 0;
     };
 }
 

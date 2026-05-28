@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "EngineAPI.h"
@@ -29,6 +31,17 @@ namespace minEngine::Reflection
         HasOutParams = 1u << 4,
         Callable = 1u << 5,
     };
+
+    enum class FunctionSpecifier : uint32_t
+    {
+        None = 0u,
+        BlueprintCallable = 1u << 0,
+        BlueprintPure = 1u << 1,
+        Exec = 1u << 2,
+        Deprecated = 1u << 3,
+    };
+    using FunctionSpecifierMask = uint32_t;
+    using FunctionMetadata = std::unordered_map<std::string, std::string>;
 
     enum class MEParamPassKind : uint8_t
     {
@@ -77,6 +90,13 @@ namespace minEngine::Reflection
         bool HasReturn() const;
 
         void SetFlags(MEFunctionFlags flags) { m_FunctionFlags = flags; }
+        void SetAnnotations(FunctionSpecifierMask inSpecifierMask, FunctionMetadata inMetadata)
+        {
+            m_FunctionSpecifierMask = inSpecifierMask;
+            m_FunctionMetadata = std::move(inMetadata);
+        }
+        FunctionSpecifierMask GetSpecifierMask() const { return m_FunctionSpecifierMask; }
+        const FunctionMetadata& GetMetadata() const { return m_FunctionMetadata; }
 
         bool AddParameter(MEProperty* property, MEParamRole role, MEParamPassKind passKind);
         bool FinalizeLayout(std::string& outError);
@@ -108,6 +128,8 @@ namespace minEngine::Reflection
         int32_t m_ReturnValueOffset = -1;
         std::vector<MEParamDescriptor> m_Params;
         MENativeThunkFn m_NativeThunk = nullptr;
+        FunctionSpecifierMask m_FunctionSpecifierMask = static_cast<FunctionSpecifierMask>(FunctionSpecifier::None);
+        FunctionMetadata m_FunctionMetadata;
         bool m_LayoutFinalized = false;
     };
 

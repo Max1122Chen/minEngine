@@ -15,6 +15,7 @@ namespace minEngine::Reflection
 #define ME_STRUCT(...)
 #define ME_ENUM(...)
 #define ME_PROPERTY(...)
+#define ME_FUNCTION(...)
 #define ME_GENERATED_BODY(TYPE) \
 	template<typename T> friend struct ::minEngine::Reflection::FieldAccessor; \
 public: \

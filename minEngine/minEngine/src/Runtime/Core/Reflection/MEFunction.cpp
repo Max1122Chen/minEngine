@@ -1,6 +1,7 @@
 #include "MEFunction.h"
 
 #include "MEClass.h"
+#include "Runtime/Core/Log/LogSystem.h"
 
 #include <cstring>
 #include <limits>
@@ -286,6 +287,43 @@ namespace minEngine::Reflection
             return nullptr;
         }
         return iter->second;
+    }
+
+    bool MEClass::InvokeStaticFunction(MEFunction* function, void* parmsBuffer) const
+    {
+        if (function == nullptr)
+        {
+            ME_CORE_ERROR("MEClass::InvokeStaticFunction: null function.");
+            return false;
+        }
+
+        if (!function->IsStatic())
+        {
+            ME_CORE_ERROR("MEClass::InvokeStaticFunction: '{}' is not static.", function->GetName());
+            return false;
+        }
+
+        if (function->GetOwnerClass() != this)
+        {
+            ME_CORE_ERROR("MEClass::InvokeStaticFunction: owner class mismatch for '{}'.", function->GetName());
+            return false;
+        }
+
+        if (parmsBuffer == nullptr && function->GetParmsSize() > 0)
+        {
+            ME_CORE_ERROR("MEClass::InvokeStaticFunction: null parms buffer for '{}'.", function->GetName());
+            return false;
+        }
+
+        const MENativeThunkFn nativeThunk = function->GetNativeThunk();
+        if (nativeThunk == nullptr)
+        {
+            ME_CORE_ERROR("MEClass::InvokeStaticFunction: no native thunk for '{}'.", function->GetName());
+            return false;
+        }
+
+        nativeThunk(nullptr, function, parmsBuffer);
+        return true;
     }
 
 } // namespace minEngine::Reflection

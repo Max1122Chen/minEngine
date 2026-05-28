@@ -209,6 +209,53 @@ namespace minEngine::Reflection
         }
     };
 
+    template<typename TOwner, typename R, typename... TArgs, R (*TMethod)(TArgs...)>
+    struct NativeThunkInvoker<TOwner, R (*)(TArgs...), TMethod>
+    {
+        static void Invoke(minEngine::MEObject* /*context*/, MEFunction* function, void* parms)
+        {
+            if (function == nullptr)
+            {
+                return;
+            }
+
+            const std::vector<const MEParamDescriptor*> args = Detail::CollectArgParams(*function);
+            if (args.size() != sizeof...(TArgs))
+            {
+                return;
+            }
+
+            auto holders =
+                Detail::LoadArgHoldersTuple<TArgs...>(args, parms, std::make_index_sequence<sizeof...(TArgs)>{});
+
+            const bool ok = std::apply([](auto&... h) { return (h.Ok && ...); }, holders);
+            if (!ok)
+            {
+                return;
+            }
+
+            if constexpr (std::is_void_v<R>)
+            {
+                std::apply(
+                    [&](auto&... h)
+                    {
+                        (*TMethod)(h.Get()...);
+                    },
+                    holders);
+            }
+            else
+            {
+                R ret = std::apply(
+                    [&](auto&... h)
+                    {
+                        return (*TMethod)(h.Get()...);
+                    },
+                    holders);
+                Detail::StoreReturnValue(*function, parms, ret);
+            }
+        }
+    };
+
     template<typename TOwner, typename R, typename... TArgs, R (TOwner::*TMethod)(TArgs...) const>
     struct NativeThunkInvoker<TOwner, R (TOwner::*)(TArgs...) const, TMethod>
     {

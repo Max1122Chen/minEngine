@@ -46,7 +46,8 @@ namespace minEngine
             return false;
         }
 
-        nativeThunk(this, function, parmsBuffer);
+        minEngine::MEObject* invokeContext = function->IsStatic() ? nullptr : this;
+        nativeThunk(invokeContext, function, parmsBuffer);
         return true;
     }
 

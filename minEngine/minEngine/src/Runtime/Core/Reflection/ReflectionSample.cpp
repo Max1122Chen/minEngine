@@ -17,6 +17,11 @@ namespace minEngine
         return firstOperand + secondOperand;
     }
 
+    bool ReflectionSampleComponent::MixAlign(bool inputFlag, double threshold) const
+    {
+        return inputFlag && threshold > 0.0;
+    }
+
     void ReflectionSampleComponent::AddInPlace(int32_t& value, int32_t delta)
     {
         value += delta;
@@ -45,5 +50,25 @@ namespace minEngine
     bool ReflectionSampleComponent::IsSameObject(MEObject* a, MEObject* b) const
     {
         return a == b;
+    }
+
+    void ReflectionSampleComponent::StaticResetCounter()
+    {
+        s_StaticTestCounter = 0;
+    }
+
+    int32_t ReflectionSampleComponent::StaticGetCounter()
+    {
+        return s_StaticTestCounter;
+    }
+
+    int32_t ReflectionSampleComponent::StaticAdd(int32_t firstOperand, int32_t secondOperand)
+    {
+        return firstOperand + secondOperand;
+    }
+
+    void ReflectionSampleComponent::StaticAddInPlace(int32_t& value, int32_t delta)
+    {
+        value += delta;
     }
 }

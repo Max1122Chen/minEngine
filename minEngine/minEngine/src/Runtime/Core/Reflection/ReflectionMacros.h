@@ -79,6 +79,30 @@ const bool minEngine::Reflection::REGISTER_SYMBOL = []() \
                 __VA_ARGS__); \
         }
 
+#define ME_REFLECTION_FUNCTION_BEGIN(FUNC_VAR, FUNC_NAME, FLAGS, SPECIFIER_MASK, METADATA) \
+    minEngine::Reflection::MEFunction* FUNC_VAR = meSystem.CreateFunction(FUNC_NAME); \
+    FUNC_VAR->SetFlags(FLAGS); \
+    FUNC_VAR->SetAnnotations(SPECIFIER_MASK, METADATA);
+
+#define ME_REFLECTION_FUNCTION_PARAM(FUNC_VAR, NAME, ROLE, PASS_KIND, ...) \
+    { \
+        minEngine::Reflection::MEProperty* paramProperty = meSystem.CreateFunctionParamProperty<__VA_ARGS__>(NAME); \
+        FUNC_VAR->AddParameter(paramProperty, minEngine::Reflection::MEParamRole::ROLE, \
+                               minEngine::Reflection::MEParamPassKind::PASS_KIND); \
+    }
+
+#define ME_REFLECTION_FUNCTION_RETURN(FUNC_VAR, ...) \
+    { \
+        minEngine::Reflection::MEProperty* returnValue = meSystem.CreateFunctionParamProperty<__VA_ARGS__>("ReturnValue"); \
+        FUNC_VAR->AddParameter(returnValue, minEngine::Reflection::MEParamRole::Return, minEngine::Reflection::MEParamPassKind::Value); \
+    }
+
+#define ME_REFLECTION_FUNCTION_BIND_NATIVE(FUNC_VAR, OWNER_TYPE, METHOD) \
+    FUNC_VAR->SetNativeThunk(&minEngine::Reflection::InvokeNativeThunk<OWNER_TYPE, &OWNER_TYPE::METHOD>);
+
+#define ME_REFLECTION_FUNCTION_END(FUNC_VAR) \
+    meSystem.RegisterFunction(meClass, FUNC_VAR);
+
 #define ME_REFLECTION_CLASS_DEFINE_END(TYPE) \
     return meSystem.RegisterClass<TYPE>(meClass); \
 }(); \

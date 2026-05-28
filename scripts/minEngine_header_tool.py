@@ -26,10 +26,14 @@ CLASS_DECL_RE = re.compile(
 )
 ENUM_DECL_RE = re.compile(r"^\s*enum(\s+class)?\s+(\w+)\s*(?:\:\s*[\w:<>]+)?\s*\{", re.MULTILINE)
 PROPERTY_MARK_PREFIX_RE = re.compile(r"^\s*ME_PROPERTY\s*\(")
+FUNCTION_MARK_PREFIX_RE = re.compile(r"^\s*ME_FUNCTION\s*\(")
 MEMBER_DECL_RE = re.compile(r"^\s*([\w:\<\>,\s\*&]+?)\s+(\w+)\s*(?:\{[^;]*\}|=[^;]*)?\s*;\s*(?://.*)?$")
+FUNCTION_DECL_RE = re.compile(
+    r"^\s*(?:(static)\s+)?([\w:\<\>,\s\*&~]+?)\s+(\w+)\s*\((.*)\)\s*(const)?\s*;\s*(?://.*)?$"
+)
 CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\(", re.DOTALL)
 
-TOOL_CACHE_VERSION = 11
+TOOL_CACHE_VERSION = 14
 
 PROPERTY_SPECIFIER_MAP = {
     "transient": "Transient",
@@ -49,6 +53,13 @@ CLASS_SPECIFIER_MAP = {
     "editoronly": "EditorOnly",
 }
 
+FUNCTION_SPECIFIER_MAP = {
+    "blueprintcallable": "BlueprintCallable",
+    "blueprintpure": "BlueprintPure",
+    "exec": "Exec",
+    "deprecated": "Deprecated",
+}
+
 CLASS_DECL_SKIP_TOKENS = {
     "MINENGINE_API",
 }
@@ -60,6 +71,27 @@ class PropertyMeta:
     type_name: str
     specifiers: list[str]
     metadata: dict[str, str]
+
+
+@dataclass
+class FunctionParamMeta:
+    name: str
+    type_name: str
+    role: str
+    pass_kind: str
+
+
+@dataclass
+class FunctionMeta:
+    name: str
+    return_type: str
+    is_static: bool
+    is_const: bool
+    has_return: bool
+    has_out_params: bool
+    specifiers: list[str]
+    metadata: dict[str, str]
+    params: list[FunctionParamMeta]
 
 
 @dataclass
@@ -76,6 +108,7 @@ class ClassMeta:
     base_types: list[str]
     has_virtual_inheritance: bool
     properties: list[PropertyMeta]
+    functions: list[FunctionMeta]
 
 
 @dataclass
@@ -327,6 +360,50 @@ def parse_class_annotations(arg_text: str) -> tuple[list[str], dict[str, str]]:
     return dedup_specifiers, metadata
 
 
+def parse_function_annotations(arg_text: str) -> tuple[list[str], dict[str, str]]:
+    specifiers: list[str] = []
+    metadata: dict[str, str] = {}
+
+    for part in split_top_level_args(arg_text):
+        token = part.strip()
+        if not token:
+            continue
+
+        if "=" in token:
+            key, value = token.split("=", 1)
+            key = key.strip()
+            if key.lower() != "meta":
+                raise ValueError(f"Unsupported assignment token '{token}'. Use meta = (key = value, ...).")
+
+            value = value.strip()
+            if len(value) < 2 or not value.startswith("(") or not value.endswith(")"):
+                raise ValueError(f"Invalid meta format '{token}'. Expected meta = (key = value, ...).")
+
+            inner_text = value[1:-1].strip()
+            if not inner_text:
+                continue
+
+            for entry in split_top_level_args(inner_text):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                if "=" not in entry:
+                    raise ValueError(f"Invalid meta entry '{entry}'. Expected key = value.")
+                meta_key, meta_value = entry.split("=", 1)
+                meta_key = meta_key.strip()
+                if not meta_key:
+                    raise ValueError(f"Invalid meta entry '{entry}'. Key cannot be empty.")
+                metadata[meta_key] = trim_quotes(meta_value.strip())
+            continue
+
+        normalized = FUNCTION_SPECIFIER_MAP.get("".join(token.split()).lower())
+        if normalized is None:
+            raise ValueError(f"Unknown function specifier '{token}'.")
+        specifiers.append(normalized)
+
+    return list(dict.fromkeys(specifiers)), metadata
+
+
 def parse_property_marker_line(line: str) -> tuple[str, str] | None:
     if PROPERTY_MARK_PREFIX_RE.match(line) is None:
         return None
@@ -348,6 +425,107 @@ def parse_property_marker_line(line: str) -> tuple[str, str] | None:
                 return arg_text, trailing_text
 
     return None
+
+
+def parse_function_marker_line(line: str) -> tuple[str, str] | None:
+    if FUNCTION_MARK_PREFIX_RE.match(line) is None:
+        return None
+
+    open_paren_index = line.find("(")
+    if open_paren_index < 0:
+        return None
+
+    depth = 0
+    for idx in range(open_paren_index, len(line)):
+        ch = line[idx]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                arg_text = line[open_paren_index + 1:idx]
+                trailing_text = line[idx + 1:].strip()
+                return arg_text, trailing_text
+
+    return None
+
+
+def to_param_display_name(param_name: str) -> str:
+    if not param_name:
+        return param_name
+    return param_name[0].upper() + param_name[1:]
+
+
+def parse_function_param(param_text: str, namespace_name: str) -> FunctionParamMeta | None:
+    token = param_text.strip()
+    if not token or token == "void":
+        return None
+
+    if "=" in token:
+        token = token.split("=", 1)[0].strip()
+
+    name_match = re.match(r"^(.*\S)\s+([A-Za-z_]\w*)$", token)
+    if not name_match:
+        return None
+
+    type_part = name_match.group(1).strip()
+    name_part = name_match.group(2).strip()
+
+    is_const = type_part.startswith("const ")
+    is_ref = "&" in type_part
+    role = "Out" if is_ref and name_part.lower().startswith("out") else "In"
+    if is_ref:
+        pass_kind = "ConstRef" if is_const else ("Value" if role == "Out" else "Ref")
+    else:
+        pass_kind = "ConstValue" if is_const else "Value"
+
+    clean_type = type_part.replace("&", " ").replace("*", " * ").strip()
+    if clean_type.startswith("const "):
+        clean_type = clean_type[len("const "):].strip()
+    clean_type = " ".join(clean_type.split())
+    qualified_type = qualify_field_type_name(clean_type, namespace_name)
+    return FunctionParamMeta(
+        name=to_param_display_name(name_part),
+        type_name=qualified_type,
+        role=role,
+        pass_kind=pass_kind,
+    )
+
+
+def parse_reflected_function(line: str, namespace_name: str, specifiers: list[str], metadata: dict[str, str]) -> FunctionMeta | None:
+    match = FUNCTION_DECL_RE.match(line)
+    if match is None:
+        return None
+
+    is_static = match.group(1) is not None
+    raw_return_type = " ".join(match.group(2).split())
+    normalized_return = raw_return_type.replace("const", "").replace(" ", "")
+    is_void_return = normalized_return == "void"
+    return_type = "void" if is_void_return else qualify_field_type_name(raw_return_type, namespace_name)
+    function_name = match.group(3).strip()
+    param_list_text = match.group(4).strip()
+    is_const = match.group(5) is not None
+
+    params: list[FunctionParamMeta] = []
+    if param_list_text:
+        for raw_param in split_top_level_args(param_list_text):
+            param = parse_function_param(raw_param, namespace_name)
+            if param is not None:
+                params.append(param)
+
+    has_return = not is_void_return
+    has_out_params = any(param.role == "Out" for param in params)
+    return FunctionMeta(
+        name=function_name,
+        return_type=return_type,
+        is_static=is_static,
+        is_const=is_const,
+        has_return=has_return,
+        has_out_params=has_out_params,
+        specifiers=specifiers,
+        metadata=metadata,
+        params=params,
+    )
 
 
 def parse_namespace_prefix(source: str, class_pos: int) -> str:
@@ -373,6 +551,7 @@ def qualify_type_name(type_name: str, namespace_name: str) -> str:
 
 def qualify_field_type_name(field_type: str, namespace_name: str) -> str:
     primitive_types = {
+        "void",
         "bool", "char", "signed char", "unsigned char",
         "short", "unsigned short", "int", "unsigned int",
         "long", "unsigned long", "long long", "unsigned long long",
@@ -512,27 +691,65 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
         body_lines = body.splitlines()
         body_start_line = source[:open_brace + 1].count("\n") + 1
         props: list[PropertyMeta] = []
+        funcs: list[FunctionMeta] = []
 
         i = 0
         while i < len(body_lines):
-            marker_info = parse_property_marker_line(body_lines[i])
-            if marker_info is None:
+            prop_marker_info = parse_property_marker_line(body_lines[i])
+            func_marker_info = parse_function_marker_line(body_lines[i])
+
+            if prop_marker_info is None and func_marker_info is None:
                 i += 1
                 continue
 
-            marker_arg_text, inline_decl_text = marker_info
+            if prop_marker_info is not None:
+                marker_arg_text, inline_decl_text = prop_marker_info
 
+                try:
+                    specifiers, metadata = parse_property_annotations(marker_arg_text)
+                except ValueError as exc:
+                    marker_line = body_start_line + i
+                    raise ValueError(f"{normalize_path(file_path)}:{marker_line}: {exc}") from exc
+
+                member_line_index = i
+                member_candidate = inline_decl_text
+                member_match = MEMBER_DECL_RE.match(member_candidate)
+
+                if member_match is None:
+                    j = i + 1
+                    while j < len(body_lines) and not body_lines[j].strip():
+                        j += 1
+
+                    if j >= len(body_lines):
+                        break
+
+                    member_line_index = j
+                    member_candidate = body_lines[j]
+                    member_match = MEMBER_DECL_RE.match(member_candidate)
+
+                if member_match:
+                    field_type = qualify_field_type_name(member_match.group(1), namespace_name)
+                    field_name = member_match.group(2)
+                    props.append(PropertyMeta(name=field_name,
+                                              type_name=field_type,
+                                              specifiers=specifiers,
+                                              metadata=metadata))
+                    i = member_line_index + 1
+                else:
+                    i = member_line_index + 1
+                continue
+
+            marker_arg_text, inline_decl_text = func_marker_info
             try:
-                specifiers, metadata = parse_property_annotations(marker_arg_text)
+                func_specifiers, func_metadata = parse_function_annotations(marker_arg_text)
             except ValueError as exc:
                 marker_line = body_start_line + i
                 raise ValueError(f"{normalize_path(file_path)}:{marker_line}: {exc}") from exc
+            function_line_index = i
+            function_candidate = inline_decl_text
+            function_meta = parse_reflected_function(function_candidate, namespace_name, func_specifiers, func_metadata)
 
-            member_line_index = i
-            member_candidate = inline_decl_text
-            member_match = MEMBER_DECL_RE.match(member_candidate)
-
-            if member_match is None:
+            if function_meta is None:
                 j = i + 1
                 while j < len(body_lines) and not body_lines[j].strip():
                     j += 1
@@ -540,20 +757,13 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 if j >= len(body_lines):
                     break
 
-                member_line_index = j
-                member_candidate = body_lines[j]
-                member_match = MEMBER_DECL_RE.match(member_candidate)
+                function_line_index = j
+                function_candidate = body_lines[j]
+                function_meta = parse_reflected_function(function_candidate, namespace_name, func_specifiers, func_metadata)
 
-            if member_match:
-                field_type = qualify_field_type_name(member_match.group(1), namespace_name)
-                field_name = member_match.group(2)
-                props.append(PropertyMeta(name=field_name,
-                                          type_name=field_type,
-                                          specifiers=specifiers,
-                                          metadata=metadata))
-                i = member_line_index + 1
-            else:
-                i = member_line_index + 1
+            if function_meta is not None:
+                funcs.append(function_meta)
+            i = function_line_index + 1
 
         class_text = source[class_start:close_brace + 1]
         class_hash = sha256_text(class_text)
@@ -576,6 +786,7 @@ def parse_reflected_classes(file_path: Path, src_root: Path, source: str) -> lis
                 base_types=base_types,
                 has_virtual_inheritance=has_virtual_inheritance,
                 properties=props,
+                functions=funcs,
             )
         )
 
@@ -790,7 +1001,69 @@ def render_class_registration_definition(meta: ClassMeta) -> list[str]:
         lines.append(
             f"    ME_REFLECTION_CLASS_ADD_FIELD({type_name}, {prop.name}, {specifier_expr}, {metadata_expr})"
         )
+    for function in meta.functions:
+        lines.extend(render_function_registration_definition(meta, function))
     lines.append(f"ME_REFLECTION_CLASS_DEFINE_END({type_name})")
+    return lines
+
+
+def render_function_flags_expr(function: FunctionMeta) -> str:
+    flags = ["Native"]
+    if function.is_static:
+        flags.append("Static")
+    if function.is_const:
+        flags.append("ConstMethod")
+    if function.has_return:
+        flags.append("HasReturn")
+    if function.has_out_params:
+        flags.append("HasOutParams")
+    joined = " | ".join(
+        f"static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::{flag})" for flag in flags
+    )
+    return f"static_cast<minEngine::Reflection::MEFunctionFlags>({joined})"
+
+
+def render_function_specifier_mask_expr(specifiers: list[str]) -> str:
+    if not specifiers:
+        return "static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None)"
+    specifier_expr = " | ".join(
+        f"static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::{name})"
+        for name in specifiers
+    )
+    return f"({specifier_expr})"
+
+
+def render_function_metadata_expr(metadata: dict[str, str]) -> str:
+    if not metadata:
+        return "(minEngine::Reflection::FunctionMetadata{})"
+    entries = []
+    for key in sorted(metadata.keys()):
+        entries.append(f'{{"{escape_cpp_string(key)}", "{escape_cpp_string(metadata[key])}"}}')
+    return f"(minEngine::Reflection::FunctionMetadata{{{', '.join(entries)}}})"
+
+
+def render_function_registration_definition(owner: ClassMeta, function: FunctionMeta) -> list[str]:
+    lines: list[str] = []
+    owner_type = full_type_name(owner)
+    function_var = f"functionInfo_{sha256_text(owner_type + function.name)[:8]}"
+    lines.append("    {")
+    lines.append(
+        f'        ME_REFLECTION_FUNCTION_BEGIN({function_var}, "{function.name}", {render_function_flags_expr(function)}, '
+        f'{render_function_specifier_mask_expr(function.specifiers)}, {render_function_metadata_expr(function.metadata)})'
+    )
+    for param in function.params:
+        lines.append(
+            f'        ME_REFLECTION_FUNCTION_PARAM({function_var}, "{param.name}", {param.role}, {param.pass_kind}, {param.type_name})'
+        )
+    if function.has_return:
+        lines.append(
+            f"        ME_REFLECTION_FUNCTION_RETURN({function_var}, {function.return_type})"
+        )
+    lines.append(
+        f"        ME_REFLECTION_FUNCTION_BIND_NATIVE({function_var}, {owner_type}, {function.name})"
+    )
+    lines.append(f"        ME_REFLECTION_FUNCTION_END({function_var})")
+    lines.append("    }")
     return lines
 
 
@@ -855,6 +1128,8 @@ def render_source_gen_cpp(source_include: str, classes: list[ClassMeta], enums: 
     lines: list[str] = []
     lines.append("// Auto-generated by minEngine_header_tool_new.py. Do not edit manually.")
     lines.append(f'#include "{source_include}"')
+    if any(meta.functions for meta in classes):
+        lines.append('#include "Runtime/Core/Reflection/ReflectionFunctionNativeThunkTemplates.h"')
     lines.append("")
 
     ordered_items: list[tuple[int, str, Any]] = []
@@ -909,6 +1184,28 @@ def class_meta_from_manifest_entry(key: str, entry: dict[str, Any]) -> ClassMeta
         base_types=entry.get("base_types", []),
         has_virtual_inheritance=entry.get("has_virtual_inheritance", False),
         properties=properties,
+        functions=[
+            FunctionMeta(
+                name=f.get("name", ""),
+                return_type=f.get("return_type", "void"),
+                is_static=f.get("is_static", False),
+                is_const=f.get("is_const", False),
+                has_return=f.get("has_return", False),
+                has_out_params=f.get("has_out_params", False),
+                specifiers=f.get("specifiers", []),
+                metadata=f.get("metadata", {}),
+                params=[
+                    FunctionParamMeta(
+                        name=p.get("name", ""),
+                        type_name=p.get("type_name", ""),
+                        role=p.get("role", "In"),
+                        pass_kind=p.get("pass_kind", "Value"),
+                    )
+                    for p in f.get("params", [])
+                ],
+            )
+            for f in entry.get("functions", [])
+        ],
     )
 
 
@@ -1235,6 +1532,28 @@ def main() -> int:
                     "metadata": p.metadata,
                 }
                 for p in cls.properties
+            ],
+            "functions": [
+                {
+                    "name": fn.name,
+                    "return_type": fn.return_type,
+                    "is_static": fn.is_static,
+                    "is_const": fn.is_const,
+                    "has_return": fn.has_return,
+                    "has_out_params": fn.has_out_params,
+                    "specifiers": fn.specifiers,
+                    "metadata": fn.metadata,
+                    "params": [
+                        {
+                            "name": param.name,
+                            "type_name": param.type_name,
+                            "role": param.role,
+                            "pass_kind": param.pass_kind,
+                        }
+                        for param in fn.params
+                    ],
+                }
+                for fn in cls.functions
             ],
         }
 

@@ -131,6 +131,7 @@ namespace minEngine::Reflection
 
         const std::vector<MEFunction*>& GetFunctions() const { return m_Functions; }
         MEFunction* FindFunction(const std::string& functionName) const;
+        bool InvokeStaticFunction(MEFunction* function, void* parmsBuffer) const;
 
     private:
         MEClass(const MEClass&) = delete;
