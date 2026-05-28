@@ -9,6 +9,7 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 
 #include <memory>
+#include <cmath>
 #include <string_view>
 #include <vector>
 
@@ -18,7 +19,6 @@ namespace minEngine
     {
         using Reflection::MEClass;
         using Reflection::MEFunction;
-        using Reflection::MEFunctionFlags;
         using Reflection::MEParamPassKind;
         using Reflection::MEParamRole;
         using Reflection::MEParamDescriptor;
@@ -793,6 +793,330 @@ namespace minEngine
             return true;
         }
 
+        bool IsNearFloat(float lhs, float rhs, float epsilon = 0.0001f)
+        {
+            return std::abs(lhs - rhs) <= epsilon;
+        }
+
+        bool IsNearVector2(const Vector2& lhs, const Vector2& rhs, float epsilon = 0.0001f)
+        {
+            return IsNearFloat(lhs.x, rhs.x, epsilon) && IsNearFloat(lhs.y, rhs.y, epsilon);
+        }
+
+        bool IsNearVector3(const Vector3& lhs, const Vector3& rhs, float epsilon = 0.0001f)
+        {
+            return IsNearFloat(lhs.x, rhs.x, epsilon) && IsNearFloat(lhs.y, rhs.y, epsilon)
+                   && IsNearFloat(lhs.z, rhs.z, epsilon);
+        }
+
+        bool IsNearVector4(const Vector4& lhs, const Vector4& rhs, float epsilon = 0.0001f)
+        {
+            return IsNearFloat(lhs.x, rhs.x, epsilon) && IsNearFloat(lhs.y, rhs.y, epsilon)
+                   && IsNearFloat(lhs.z, rhs.z, epsilon) && IsNearFloat(lhs.w, rhs.w, epsilon);
+        }
+
+        bool TestD4_AddVector2()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("AddVector2");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D4: AddVector2 not found.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Lhs", Vector2(1.0f, -2.0f));
+            frame.SetParam("Rhs", Vector2(0.25f, 3.0f));
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D4: InvokeFunction AddVector2 failed.");
+                return false;
+            }
+
+            Vector2 returnValue{};
+            const Vector2 expected(1.25f, 1.0f);
+            if (!frame.GetParam("ReturnValue", returnValue) || !IsNearVector2(returnValue, expected))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D4: vector2 return mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD5_ScaleVector2InPlace()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("ScaleVector2InPlace");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D5: ScaleVector2InPlace not found.");
+                return false;
+            }
+
+            Vector2 value(2.0f, -4.0f);
+            MEFunctionFrame frame(*function);
+            frame.SetParamRef("Value", value);
+            frame.SetParam("Scale", 0.5f);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D5: InvokeFunction ScaleVector2InPlace failed.");
+                return false;
+            }
+
+            const Vector2 expected(1.0f, -2.0f);
+            if (!IsNearVector2(value, expected))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D5: vector2 ref mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD6_AddVector3()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("AddVector3");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D6: AddVector3 not found.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Lhs", Vector3(1.0f, 2.0f, 3.0f));
+            frame.SetParam("Rhs", Vector3(0.5f, -1.0f, 4.0f));
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D6: InvokeFunction AddVector3 failed.");
+                return false;
+            }
+
+            Vector3 returnValue{};
+            const Vector3 expected(1.5f, 1.0f, 7.0f);
+            if (!frame.GetParam("ReturnValue", returnValue) || !IsNearVector3(returnValue, expected))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D6: vector3 return mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD7_ScaleVector3InPlace()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("ScaleVector3InPlace");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D7: ScaleVector3InPlace not found.");
+                return false;
+            }
+
+            Vector3 value(2.0f, -3.0f, 0.5f);
+            MEFunctionFrame frame(*function);
+            frame.SetParamRef("Value", value);
+            frame.SetParam("Scale", 2.5f);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D7: InvokeFunction ScaleVector3InPlace failed.");
+                return false;
+            }
+
+            const Vector3 expected(5.0f, -7.5f, 1.25f);
+            if (!IsNearVector3(value, expected))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D7: vector3 ref mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD8_AddVector4()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("AddVector4");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D8: AddVector4 not found.");
+                return false;
+            }
+
+            MEFunctionFrame frame(*function);
+            frame.SetParam("Lhs", Vector4(1.0f, 2.0f, 3.0f, 4.0f));
+            frame.SetParam("Rhs", Vector4(0.5f, -1.0f, 2.0f, -3.0f));
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D8: InvokeFunction AddVector4 failed.");
+                return false;
+            }
+
+            Vector4 returnValue{};
+            const Vector4 expected(1.5f, 1.0f, 5.0f, 1.0f);
+            if (!frame.GetParam("ReturnValue", returnValue) || !IsNearVector4(returnValue, expected))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D8: vector4 return mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD9_ScaleVector4InPlace()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("ScaleVector4InPlace");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D9: ScaleVector4InPlace not found.");
+                return false;
+            }
+
+            Vector4 value(2.0f, -1.0f, 0.5f, 4.0f);
+            MEFunctionFrame frame(*function);
+            frame.SetParamRef("Value", value);
+            frame.SetParam("Scale", 2.0f);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D9: InvokeFunction ScaleVector4InPlace failed.");
+                return false;
+            }
+
+            const Vector4 expected(4.0f, -2.0f, 1.0f, 8.0f);
+            if (!IsNearVector4(value, expected))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D9: vector4 ref mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD10_PrefixString()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("PrefixString");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D10: PrefixString not found.");
+                return false;
+            }
+
+            const std::string prefix = "me:";
+            std::string value = "hello";
+            MEFunctionFrame frame(*function);
+            frame.SetParamConstRef("Prefix", prefix);
+            frame.SetParamRef("InOutValue", value);
+
+            if (!component->InvokeFunction(function, frame.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D10: InvokeFunction PrefixString failed.");
+                return false;
+            }
+
+            if (value != "me:hello")
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D10: expected 'me:hello', got '{}'.", value);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestD11_IsValidComponentPtr()
+        {
+            ReflectionSampleComponent* component = CreateInvokeTestComponent();
+            if (component == nullptr)
+            {
+                return false;
+            }
+
+            MEFunction* function = component->GetClass()->FindFunction("IsValidComponentPtr");
+            if (function == nullptr)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D11: IsValidComponentPtr not found.");
+                return false;
+            }
+
+            MEFunctionFrame frameValid(*function);
+            Component* validPtr = component;
+            frameValid.SetParam("Candidate", validPtr);
+            if (!component->InvokeFunction(function, frameValid.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D11: InvokeFunction IsValidComponentPtr(valid) failed.");
+                return false;
+            }
+
+            bool validResult = false;
+            if (!frameValid.GetParam("ReturnValue", validResult) || !validResult)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D11: expected true for valid pointer.");
+                return false;
+            }
+
+            MEFunctionFrame frameNull(*function);
+            Component* nullPtr = nullptr;
+            frameNull.SetParam("Candidate", nullPtr);
+            if (!component->InvokeFunction(function, frameNull.GetBuffer()))
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D11: InvokeFunction IsValidComponentPtr(null) failed.");
+                return false;
+            }
+
+            bool nullResult = true;
+            if (!frameNull.GetParam("ReturnValue", nullResult) || nullResult)
+            {
+                ME_CORE_ERROR("ReflectionFunctionTest D11: expected false for null pointer.");
+                return false;
+            }
+
+            return true;
+        }
+
         bool TestE1_StaticResetCounter()
         {
             const MEClass* sampleComponentClass =
@@ -997,6 +1321,7 @@ namespace minEngine
                 return false;
             }
 
+            // D-base: enum, container, object pointer smoke.
             if (!TestD1_EchoEnum())
             {
                 return false;
@@ -1008,6 +1333,49 @@ namespace minEngine
             }
 
             if (!TestD3_IsSameObject())
+            {
+                return false;
+            }
+
+            // D-trivial: Math vectors (trivially copyable value/ref).
+            if (!TestD4_AddVector2())
+            {
+                return false;
+            }
+
+            if (!TestD5_ScaleVector2InPlace())
+            {
+                return false;
+            }
+
+            if (!TestD6_AddVector3())
+            {
+                return false;
+            }
+
+            if (!TestD7_ScaleVector3InPlace())
+            {
+                return false;
+            }
+
+            if (!TestD8_AddVector4())
+            {
+                return false;
+            }
+
+            if (!TestD9_ScaleVector4InPlace())
+            {
+                return false;
+            }
+
+            // D-nontrivial: std::string via const-ref + ref (no value semantics).
+            if (!TestD10_PrefixString())
+            {
+                return false;
+            }
+
+            // D-objectptr: non-owning pointer null/valid paths.
+            if (!TestD11_IsValidComponentPtr())
             {
                 return false;
             }

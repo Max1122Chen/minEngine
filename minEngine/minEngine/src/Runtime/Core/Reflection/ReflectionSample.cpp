@@ -52,6 +52,46 @@ namespace minEngine
         return a == b;
     }
 
+    Math::Vector2 ReflectionSampleComponent::AddVector2(Math::Vector2 lhs, Math::Vector2 rhs) const
+    {
+        return lhs + rhs;
+    }
+
+    Math::Vector3 ReflectionSampleComponent::AddVector3(Math::Vector3 lhs, Math::Vector3 rhs) const
+    {
+        return lhs + rhs;
+    }
+
+    Math::Vector4 ReflectionSampleComponent::AddVector4(Math::Vector4 lhs, Math::Vector4 rhs) const
+    {
+        return lhs + rhs;
+    }
+
+    void ReflectionSampleComponent::ScaleVector2InPlace(Math::Vector2& value, float scale) const
+    {
+        value *= scale;
+    }
+
+    void ReflectionSampleComponent::ScaleVector3InPlace(Math::Vector3& value, float scale) const
+    {
+        value *= scale;
+    }
+
+    void ReflectionSampleComponent::ScaleVector4InPlace(Math::Vector4& value, float scale) const
+    {
+        value *= scale;
+    }
+
+    void ReflectionSampleComponent::PrefixString(const std::string& prefix, std::string& inOutValue) const
+    {
+        inOutValue = prefix + inOutValue;
+    }
+
+    bool ReflectionSampleComponent::IsValidComponentPtr(Component* candidate) const
+    {
+        return candidate != nullptr && candidate->IsA(Component::StaticClass());
+    }
+
     void ReflectionSampleComponent::StaticResetCounter()
     {
         s_StaticTestCounter = 0;

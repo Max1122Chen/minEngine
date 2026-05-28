@@ -57,6 +57,22 @@ namespace minEngine
         ME_FUNCTION()
         bool IsSameObject(MEObject* a, MEObject* b) const;
         ME_FUNCTION()
+        Math::Vector2 AddVector2(Math::Vector2 lhs, Math::Vector2 rhs) const;
+        ME_FUNCTION()
+        Math::Vector3 AddVector3(Math::Vector3 lhs, Math::Vector3 rhs) const;
+        ME_FUNCTION()
+        Math::Vector4 AddVector4(Math::Vector4 lhs, Math::Vector4 rhs) const;
+        ME_FUNCTION()
+        void ScaleVector2InPlace(Math::Vector2& value, float scale) const;
+        ME_FUNCTION()
+        void ScaleVector3InPlace(Math::Vector3& value, float scale) const;
+        ME_FUNCTION()
+        void ScaleVector4InPlace(Math::Vector4& value, float scale) const;
+        ME_FUNCTION()
+        void PrefixString(const std::string& prefix, std::string& inOutValue) const;
+        ME_FUNCTION()
+        bool IsValidComponentPtr(Component* candidate) const;
+        ME_FUNCTION()
         static void StaticResetCounter();
         ME_FUNCTION()
         static int32_t StaticGetCounter();

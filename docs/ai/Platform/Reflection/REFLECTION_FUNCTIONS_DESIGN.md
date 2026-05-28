@@ -564,7 +564,20 @@ Runtime/Core/Reflection/
 
 #### Phase D — `types`
 
-覆盖 `primitive` / `string` / `Vector2|3|4` / `ReflectionSampleEnum` / `vector<int>` / `ReflectionSampleClass` 按值 / `MEObject*`（或组件指针）。
+覆盖（以当前已落地的 `ReflectionFunctionTest.cpp` 为准）：
+
+- `ReflectionSampleEnum`（value + return）
+- `std::vector<int>`（`const&` 入参 + return）
+- `MEObject*`（value + return）
+- `Math::Vector2/3/4`（value 入参 + value return、以及 `&` ref 回写）
+- `std::string`（`const&` + `&` in-out；**不做 string value 语义**）
+- `Component*`（non-owning 指针：valid/null 路径）
+
+验收命令：
+
+```bash
+Editor.exe --reflection-function-test=types
+```
 
 #### Phase E — `static`
 
@@ -864,5 +877,227 @@ addFn->SetNativeThunk(&InvokeNativeThunk<ReflectionSampleComponent, &ReflectionS
 
 ---
 
-**请审批 §13（C 最小切片）、§14（模板 thunk 统一设计）、§15（C+D 联动切片）。**
+## 16) Phase E 切片方案（Static 调用 + Script Bridge）
+
+> 目标：在保持当前 Native 调用稳定的前提下，补齐静态函数反射调用路径，并给 Lua 脚本桥接建立最小闭环。
+
+### 16.1 本轮范围（In）
+
+1. **Static Native Function 调用**
+   - 支持 `MEFunctionFlags::Static` 的 invoke 路径；
+   - `InvokeNativeThunk` 模板补齐静态函数签名：`R (*)(Args...)`。
+2. **Script Bridge MVP（Lua）**
+   - 新增 `CallFunctionByName(object, functionName, args...)` 到反射层桥接；
+   - 先支持已稳定类型：primitive/string/enum/object ptr（non-owning）。
+3. **返回值策略保持收敛**
+   - 继续只允许按值 Return；
+   - 多返回通过 `Out` 参数表达；
+   - 明确禁止 Return 的 Ref/ConstRef（维持当前约束）。
+
+### 16.2 明确不做（Out）
+
+- 不做异步脚本调用（不处理 coroutine yield/resume）；
+- 不做脚本侧泛型容器自动映射（如任意 table->vector/struct 深转换）；
+- 不放开 Return 引用语义（生命周期管理仍未收敛）。
+
+### 16.3 切片内容（建议）
+
+#### Slice E-1：Static Invoke 基础
+- `MEObject::InvokeFunction` 对 `Static` 分支允许 `context==nullptr` 或忽略实例校验；
+- `MENativeThunkFn` + `InvokeNativeThunk` 支持 free/static function 签名；
+- 回归 `meta/invoke/ref/types` 必须不退化。
+
+#### Slice E-2：Script Bridge 最小闭环
+- Lua -> reflection 参数编组（只做支持类型白名单）；
+- reflection -> Lua 返回值/Out 回写；
+- 错误路径统一：参数数目、类型不匹配、空对象、函数不存在。
+
+#### Slice E-3：桥接可观测性
+- 增加桥接层日志标签（functionName + fail reason）；
+- 增加脚本桥接用例（成功/失败各最少 3 组）。
+
+### 16.4 验收门槛
+
+命令建议：
+
+```bash
+Editor.exe --reflection-function-test=meta,invoke,ref,types,static,script
+```
+
+期望：
+
+1. `static` 子套件全绿（含 return/out）；
+2. `script` 子套件全绿（含错误路径）；
+3. 现有 `meta/invoke/ref/types` 全量回归无退化。
+
+### 16.5 风险与保护
+
+| 风险 | 影响 | 保护策略 |
+|------|------|----------|
+| static 调用混入实例校验 | 误报失败 | static 分支独立校验路径 |
+| 脚本类型转换过宽 | 隐式截断/脏数据 | 白名单 + 明确拒绝策略 |
+| 错误可观测性不足 | 调试成本高 | 桥接层统一 error code + 日志 |
+
+### 16.6 推进顺序调整（最新，先 E1 再 D）
+
+> 决策：先完成 **E-1 Static Invoke**，Lua Bridge 与 meta 消费后置；随后优先推进 Phase D 的类型扩展。
+
+推荐顺序：
+
+1. **E-1 Static Invoke**：补齐 static/free function 的 thunk 与 dispatch（先让调用模型闭环）
+2. **D Type Coverage 扩展**：按风险分层逐步扩类型（见下节风险分析）
+3. **Lua Bridge**：等 Lua 真正接入时再做脚本桥接与类型映射
+4. **meta 消费**：后期再做编辑器/脚本侧消费与验证
+
+验收策略：
+
+- Gate-1：`meta,invoke,ref,types` 必须持续全绿（防退化）
+- Gate-2：`static` 子套件在 E1 完成后全绿
+
+### 16.7 Phase D 类型扩展风险分析（供后续规划）
+
+核心结论：类型扩展的主要风险不在“多支持几个类型名”，而在 **对象语义/生命周期/ABI 对齐** 是否能正确封送。
+
+风险分级（从低到高）：
+
+1. **低风险：trivially copyable value 类型**
+   - 例：`Vector2/3/4`（glm vec2/vec3）、简单 POD struct
+   - 主要风险：size/alignment（已通过 `MEProperty.storageSize/storageAlignment` 变为显性问题）
+2. **中风险：非 trivial 类型（建议先走 const ref / ref / out）**
+   - 例：`std::string`、`std::vector<T>`
+   - 风险：按值需要正确构造/析构/拷贝，不能 memcpy；否则 UB/泄漏/双析构
+   - 建议：优先支持 `const ref`（指针槽位），value 语义后置
+3. **中高风险：对象指针语义**
+   - 例：`MEObject*`
+   - 风险：悬挂指针、类型安全（IsA 校验）、owned vs non-owned 语义混乱
+   - 建议：本阶段只允许 non-owning，并做 fail-fast 校验策略
+4. **高风险：可反射 struct/class 按值传递**
+   - 风险：需要引入 Construct/Destruct/Copy/Move（或限制仅 trivially copyable）
+   - 建议：先约束为 trivially copyable，否则只允许 const ref/ref/out
+
+> 规划落点：等 E1 验收完再细化 D 的切片（D1~D4），避免同时动“调用模型”与“类型语义”导致排查困难。
+
+---
+
+## 17) Phase F 切片方案（沿用 Header Tool，改为“宏装配”函数反射生成）
+
+> 目标：**不重构 header tool 架构**，但将函数生成策略对齐为：Python 仅输出 `ME_REFLECTION_*` 宏调用序列，不直接拼装细粒度 C++ 语句；具体注册逻辑集中在宏定义中，便于后续只改宏。
+
+### 17.1 现状对齐（基于当前脚本）
+
+当前 header tool 特征（保持不变）：
+
+1. 单脚本串行职责：解析 + 语义整理 + 字符串渲染（无模板引擎）；
+2. 生成模式：每个源文件输出一对 `.gen.h/.gen.cpp`；
+3. 代码风格：依赖 `ME_REFLECTION_*` 宏组装注册代码；
+4. 增量机制：manifest + mtime/hash 缓存，支持并行扫描与增量再生。
+
+**Phase F 本轮要求：保持以上模式不变，并把函数反射也并入同一“宏装配”风格。**
+
+### 17.2 本轮范围（In）
+
+1. 在现有解析流程中新增 `ME_FUNCTION(...)`（或最终确定的函数标记）提取；
+2. 在 `render_source_gen_cpp` 输出**函数反射宏调用块**（而不是直接展开 `CreateFunction/AddParameter/...`）；
+3. 在 `ReflectionMacros.h`（或同级宏头）新增函数反射宏，承载：
+   - 创建函数对象；
+   - 参数/返回值注册；
+   - thunk 绑定（`InvokeNativeThunk<TOwner, &TOwner::Method>`）；
+4. 与现有 class/enum 一样进入同一 manifest 与增量更新流程。
+
+### 17.3 明确不做（Out）
+
+- 不拆分成 IR 层/模板层；
+- 不引入 jinja 等模板引擎；
+- 不做 header tool 大重构（留到后续独立任务）；
+- 不在本阶段追求“可配置生成样式（模板引擎级）”。
+
+### 17.4 切片内容（建议）
+
+#### Slice F-1：函数元数据宏装配（无绑定）
+- 解析函数签名并生成 `ME_REFLECTION_FUNCTION_*` 宏调用序列；
+- 宏内部先覆盖 `CreateFunction + AddParameter + Flags`；
+- 暂不自动生成 thunk 绑定，允许手写绑定过渡。
+
+#### Slice F-2：自动 thunk 绑定
+- 对可支持签名自动输出 `ME_REFLECTION_FUNCTION_BIND_NATIVE(...)`（宏内完成 `SetNativeThunk(...)`）；
+- 不可支持签名输出 warning，并保持可手写覆盖。
+
+#### Slice F-3：样板类去手写化
+- 在 `ReflectionSampleComponent` 先落地全自动函数注册/绑定；
+- 删除对应手写注册代码并保持测试绿灯。
+
+### 17.5 语义映射规则（与运行时一致）
+
+1. 参数映射：
+   - `T` -> `In + Value`
+   - `const T` -> `In + ConstValue`
+   - `T&` -> `In + Ref`（显式 Out 标记时映射 `Out + Value`）
+   - `const T&` -> `In + ConstRef`
+2. 返回值：
+   - 仅允许 `Return + Value`；
+   - `T&` / `const T&` Return 生成期报错（与当前运行时限制一致）。
+3. 类型范围：
+   - 先限定为 D/E 已支持类型白名单，超出范围仅告警并回退手写。
+
+### 17.6 宏形态建议（示意）
+
+建议新增（命名可微调）：
+
+- `ME_REFLECTION_FUNCTION_BEGIN(OWNER_TYPE, FUNC_NAME, FLAGS)`
+- `ME_REFLECTION_FUNCTION_PARAM(TYPE, NAME, ROLE, PASS_KIND)`
+- `ME_REFLECTION_FUNCTION_RETURN(TYPE)`
+- `ME_REFLECTION_FUNCTION_BIND_NATIVE(OWNER_TYPE, METHOD)`
+- `ME_REFLECTION_FUNCTION_END()`
+
+> 约束：语义判定（Role/PassKind/合法性）仍在 Python；宏负责执行与样板封装，不承担复杂决策。
+
+### 17.6.1 函数注解（meta）预留（新增）
+
+目标：虽然本阶段函数 `meta` 尚未在运行时消费，但 **header tool 与函数反射宏层要先对齐 Class/Property 的注解形态**，保证后续无缝接入。
+
+建议语法（对齐 UE 风格与现有注解习惯）：
+
+```cpp
+ME_FUNCTION(BlueprintCallable, meta = (Category = "Math", DisplayName = "Add In Place"))
+void AddInPlace(int32_t& value, int32_t delta);
+```
+
+本阶段要求：
+
+1. **解析层预留**
+   - header tool 解析 `ME_FUNCTION(...)` 的 specifier + `meta=(...)`；
+   - 语法错误（未知 token、meta 格式错误）在生成期报错，行为与 `ME_CLASS/ME_PROPERTY` 保持一致。
+2. **生成层透传**
+   - 生成函数宏调用时附带 `FunctionSpecifierMask` 与 `FunctionMetadata` 参数；
+   - 即使运行时暂未消费，也要完整落盘到 generated 代码与 manifest。
+3. **运行时可渐进接入**
+   - 当前可先不影响 invoke 路径；
+   - 后续只需在 `MEFunction` 增加注解存储/访问，即可启用脚本、编辑器、蓝图式查询能力。
+
+建议新增宏形态（在现有建议基础上扩展）：
+
+- `ME_REFLECTION_FUNCTION_BEGIN(OWNER_TYPE, FUNC_NAME, FLAGS, SPECIFIER_MASK, METADATA)`
+- `ME_REFLECTION_FUNCTION_SET_ANNOTATIONS(SPECIFIER_MASK, METADATA)`（可选二段式）
+
+> 约束：本阶段“预留并透传”优先，避免为了立刻消费 meta 而扩大 runtime 改动面。
+
+### 17.7 验收门槛
+
+1. 至少 1 个样板类实现“函数反射零手写注册”，且生成文件只包含函数宏调用块；
+2. 仅修改函数反射宏定义即可改变生成行为（Python 无需改动）；
+3. `meta,invoke,ref,types,static` 全绿；
+4. clean/incremental 构建下生成结果稳定，不出现重复/漂移注册。
+
+### 17.8 风险与回滚
+
+| 风险 | 影响 | 回滚策略 |
+|------|------|----------|
+| 宏定义不完整或副作用问题 | 编译报错/行为偏差 | 先在样板类灰度接入，逐步替换 |
+| 函数签名解析边界不全 | 生成缺失或误判 | 先支持白名单签名，复杂签名回退手写 |
+| 自动绑定覆盖不足 | 编译失败或运行时无 thunk | 生成 warning + 保留手写绑定入口 |
+| 改动影响现有 class/enum 生成 | 反射回归退化 | 分阶段开关 + 样板类先行验证 |
+
+---
+
+**请审批 §16（Phase E：Static + Script Bridge）与 §17（Phase F：Header Tool 自动生成函数反射绑定）。**
 
