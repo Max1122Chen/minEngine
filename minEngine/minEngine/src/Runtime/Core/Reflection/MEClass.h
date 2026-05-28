@@ -130,6 +130,11 @@ namespace minEngine::Reflection
         const std::vector<MEClass*>& GetDirectDerivedClasses() const { return m_DirectDerivedClasses; }
 
         const std::vector<MEFunction*>& GetFunctions() const { return m_Functions; }
+        // Find on current class only (no superclass fallback).
+        MEFunction* FindFunctionOwned(const std::string& functionName) const;
+        MEFunction* FindFunctionBySignatureOwned(const std::string& functionName, uint64_t signatureHash) const;
+
+        // Find with superclass fallback (derived-first).
         MEFunction* FindFunction(const std::string& functionName) const;
         MEFunction* FindFunctionBySignature(const std::string& functionName, uint64_t signatureHash) const;
         bool InvokeStaticFunction(MEFunction* function, void* parmsBuffer) const;

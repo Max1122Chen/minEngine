@@ -53,6 +53,24 @@ if(EXISTS ${NFD_DIR}/CMakeLists.txt)
     target_link_libraries(${ENGINE_NAME} PRIVATE nfd)
 endif()
 
+# Assimp (mesh importer): prefer prebuilt DLL from bin, fallback to subproject.
+set(ASSIMP_PREBUILT_DLL "${EXECUTABLE_PATH}/libassimp-6.dll")
+set(ASSIMP_LINK_TARGET "")
+if(EXISTS ${ASSIMP_PREBUILT_DLL})
+    # MinGW can link against DLL directly with full path.
+    set(ASSIMP_LINK_TARGET "${ASSIMP_PREBUILT_DLL}")
+else()
+    set(ASSIMP_DIR ${THIRD_PARTY_PATH}/assimp)
+    if(EXISTS ${ASSIMP_DIR}/CMakeLists.txt)
+        set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+        set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+        set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+        add_subdirectory(${ASSIMP_DIR} ${CMAKE_BINARY_DIR}/third-party/assimp EXCLUDE_FROM_ALL)
+        set(ASSIMP_LINK_TARGET assimp)
+    endif()
+endif()
+
 set_target_properties(${ENGINE_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
     LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
@@ -78,8 +96,10 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/ImGuizmo
                                           )
 
-target_link_libraries(${ENGINE_NAME} PRIVATE glfw3 opengl32 assimp-6)
+if(ASSIMP_LINK_TARGET STREQUAL "")
+    message(FATAL_ERROR "Assimp library not found. Put libassimp-6.dll in ${EXECUTABLE_PATH} or provide Third-Party/assimp source.")
+endif()
 
-target_link_directories(${ENGINE_NAME} PUBLIC ${THIRD_PARTY_PATH}/glfw/lib-mingw-w64 
-                                       PUBLIC ${THIRD_PARTY_PATH}/assimp/libs
-                                       )
+target_link_libraries(${ENGINE_NAME} PRIVATE glfw3 opengl32 ${ASSIMP_LINK_TARGET})
+
+target_link_directories(${ENGINE_NAME} PUBLIC ${THIRD_PARTY_PATH}/glfw/lib-mingw-w64)

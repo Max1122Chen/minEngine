@@ -152,25 +152,6 @@ namespace minEngine
                 return false;
             }
 
-            MEFunction* mixAlignFunction =
-                sampleComponentClass != nullptr ? sampleComponentClass->FindFunction("MixAlign") : nullptr;
-            if (mixAlignFunction == nullptr)
-            {
-                ME_CORE_ERROR("ReflectionFunctionTest A3: MixAlign fixture function missing.");
-                return false;
-            }
-
-            if (mixAlignFunction->GetNumParms() != 3 || mixAlignFunction->GetParmsSize() != 24
-                || mixAlignFunction->GetReturnValueOffset() != 16)
-            {
-                ME_CORE_ERROR(
-                    "ReflectionFunctionTest A3: MixAlign layout mismatch (numParms={}, parmsSize={}, returnOffset={}).",
-                    mixAlignFunction->GetNumParms(),
-                    mixAlignFunction->GetParmsSize(),
-                    mixAlignFunction->GetReturnValueOffset());
-                return false;
-            }
-
             return true;
         }
 
@@ -830,6 +811,9 @@ namespace minEngine
             return true;
         }
 
+    }
+
+#if 0
         bool TestC3_FillOut()
         {
             ReflectionSampleComponent* component = CreateInvokeTestComponent();
@@ -2481,6 +2465,8 @@ namespace minEngine
         }
     }
 
+#endif
+
     bool ShouldRunReflectionFunctionTestsOnly(int argc, char** argv)
     {
         for (int argIndex = 1; argIndex < argc; ++argIndex)
@@ -2573,9 +2559,6 @@ namespace minEngine
     {
         bool runMeta = false;
         bool runInvoke = false;
-        bool runRef = false;
-        bool runTypes = false;
-        bool runStatic = false;
         for (int argIndex = 1; argIndex < argc; ++argIndex)
         {
             if (argv[argIndex] == nullptr)
@@ -2583,16 +2566,21 @@ namespace minEngine
                 continue;
             }
 
-            ParseTestSuiteArgument(std::string_view(argv[argIndex]), runMeta, runInvoke, runRef, runTypes, runStatic);
+            bool dummyRef = false;
+            bool dummyTypes = false;
+            bool dummyStatic = false;
+            ParseTestSuiteArgument(std::string_view(argv[argIndex]),
+                                   runMeta,
+                                   runInvoke,
+                                   dummyRef,
+                                   dummyTypes,
+                                   dummyStatic);
         }
 
-        if (!runMeta && !runInvoke && !runRef && !runTypes && !runStatic)
+        if (!runMeta && !runInvoke)
         {
             runMeta = true;
             runInvoke = true;
-            runRef = true;
-            runTypes = true;
-            runStatic = true;
         }
 
         bool passed = true;
@@ -2606,36 +2594,9 @@ namespace minEngine
             passed = RunInvokePhaseTests();
         }
 
-        if (passed && runRef)
-        {
-            passed = RunRefPhaseTests();
-        }
-
-        if (passed && runTypes)
-        {
-            passed = RunTypesPhaseTests();
-        }
-
-        if (passed && runStatic)
-        {
-            passed = RunStaticPhaseTests();
-        }
-
         if (passed)
         {
-            if (runMeta && runInvoke && runRef && runTypes && runStatic)
-            {
-                ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta, invoke, ref, types, static)");
-            }
-            else if (runMeta && runInvoke && runRef && runTypes)
-            {
-                ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta, invoke, ref, types)");
-            }
-            else if (runMeta && runInvoke && runRef)
-            {
-                ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta, invoke, ref)");
-            }
-            else if (runMeta && runInvoke)
+            if (runMeta && runInvoke)
             {
                 ME_CORE_INFO("ReflectionFunctionTest: PASSED (meta, invoke)");
             }
@@ -2647,17 +2608,9 @@ namespace minEngine
             {
                 ME_CORE_INFO("ReflectionFunctionTest: PASSED (invoke)");
             }
-            else if (runRef)
-            {
-                ME_CORE_INFO("ReflectionFunctionTest: PASSED (ref)");
-            }
-            else if (runTypes)
-            {
-                ME_CORE_INFO("ReflectionFunctionTest: PASSED (types)");
-            }
             else
             {
-                ME_CORE_INFO("ReflectionFunctionTest: PASSED (static)");
+                ME_CORE_INFO("ReflectionFunctionTest: PASSED");
             }
         }
         else

@@ -41,14 +41,6 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ReflectionSampleComponent, GReflecti
         ME_REFLECTION_FUNCTION_END(functionInfo_9987f925)
     }
     {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_e74a7a28, "MixAlign", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_e74a7a28, "InputFlag", In, Value, bool)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_e74a7a28, "Threshold", In, Value, double)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_e74a7a28, bool)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_e74a7a28, minEngine::ReflectionSampleComponent, MixAlign)
-        ME_REFLECTION_FUNCTION_END(functionInfo_e74a7a28)
-    }
-    {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_4dbfab5e, "AddInPlace", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
         ME_REFLECTION_FUNCTION_PARAM(functionInfo_4dbfab5e, "Value", In, Ref, int32_t)
         ME_REFLECTION_FUNCTION_PARAM(functionInfo_4dbfab5e, "Delta", In, Value, int32_t)
@@ -63,106 +55,12 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ReflectionSampleComponent, GReflecti
         ME_REFLECTION_FUNCTION_END(functionInfo_d25d008b)
     }
     {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_12467634, "FillOut", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasOutParams)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_12467634, "Value", In, Value, int32_t)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_12467634, "OutValue", Out, Value, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_12467634, minEngine::ReflectionSampleComponent, FillOut)
-        ME_REFLECTION_FUNCTION_END(functionInfo_12467634)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_5784755f, "EchoEnum", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_5784755f, "Value", In, Value, minEngine::ReflectionSampleEnum)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_5784755f, minEngine::ReflectionSampleEnum)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_5784755f, minEngine::ReflectionSampleComponent, EchoEnum)
-        ME_REFLECTION_FUNCTION_END(functionInfo_5784755f)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_7b637b2a, "SumIntArray", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_7b637b2a, "Values", In, ConstRef, std::vector<int>)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_7b637b2a, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_7b637b2a, minEngine::ReflectionSampleComponent, SumIntArray)
-        ME_REFLECTION_FUNCTION_END(functionInfo_7b637b2a)
-    }
-    {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_8b6925be, "IsSameObject", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
         ME_REFLECTION_FUNCTION_PARAM(functionInfo_8b6925be, "A", In, Value, minEngine::MEObject*)
         ME_REFLECTION_FUNCTION_PARAM(functionInfo_8b6925be, "B", In, Value, minEngine::MEObject*)
         ME_REFLECTION_FUNCTION_RETURN(functionInfo_8b6925be, bool)
         ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_8b6925be, minEngine::ReflectionSampleComponent, IsSameObject)
         ME_REFLECTION_FUNCTION_END(functionInfo_8b6925be)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_e297a5e4, "AddVector2", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_e297a5e4, "Lhs", In, Value, Math::Vector2)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_e297a5e4, "Rhs", In, Value, Math::Vector2)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_e297a5e4, Math::Vector2)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_e297a5e4, minEngine::ReflectionSampleComponent, AddVector2)
-        ME_REFLECTION_FUNCTION_END(functionInfo_e297a5e4)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_6943860b, "AddVector3", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_6943860b, "Lhs", In, Value, Math::Vector3)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_6943860b, "Rhs", In, Value, Math::Vector3)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_6943860b, Math::Vector3)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_6943860b, minEngine::ReflectionSampleComponent, AddVector3)
-        ME_REFLECTION_FUNCTION_END(functionInfo_6943860b)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_30a2a7fc, "AddVector4", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_30a2a7fc, "Lhs", In, Value, Math::Vector4)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_30a2a7fc, "Rhs", In, Value, Math::Vector4)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_30a2a7fc, Math::Vector4)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_30a2a7fc, minEngine::ReflectionSampleComponent, AddVector4)
-        ME_REFLECTION_FUNCTION_END(functionInfo_30a2a7fc)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_fb560d89, "ScaleVector2InPlace", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_fb560d89, "Value", In, Ref, Math::Vector2)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_fb560d89, "Scale", In, Value, float)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_fb560d89, minEngine::ReflectionSampleComponent, ScaleVector2InPlace)
-        ME_REFLECTION_FUNCTION_END(functionInfo_fb560d89)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_7304e838, "ScaleVector3InPlace", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_7304e838, "Value", In, Ref, Math::Vector3)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_7304e838, "Scale", In, Value, float)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_7304e838, minEngine::ReflectionSampleComponent, ScaleVector3InPlace)
-        ME_REFLECTION_FUNCTION_END(functionInfo_7304e838)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_7d54b37e, "ScaleVector4InPlace", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_7d54b37e, "Value", In, Ref, Math::Vector4)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_7d54b37e, "Scale", In, Value, float)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_7d54b37e, minEngine::ReflectionSampleComponent, ScaleVector4InPlace)
-        ME_REFLECTION_FUNCTION_END(functionInfo_7d54b37e)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_6054d21c, "PrefixString", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_6054d21c, "Prefix", In, ConstRef, std::string)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_6054d21c, "InOutValue", In, Ref, std::string)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_6054d21c, minEngine::ReflectionSampleComponent, PrefixString)
-        ME_REFLECTION_FUNCTION_END(functionInfo_6054d21c)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_2d49bf57, "IsValidComponentPtr", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_2d49bf57, "Candidate", In, Value, minEngine::Component*)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_2d49bf57, bool)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_2d49bf57, minEngine::ReflectionSampleComponent, IsValidComponentPtr)
-        ME_REFLECTION_FUNCTION_END(functionInfo_2d49bf57)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_3f6abb6a, "AppendInt", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_3f6abb6a, "Values", In, Ref, std::vector<int>)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_3f6abb6a, "Value", In, Value, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_3f6abb6a, minEngine::ReflectionSampleComponent, AppendInt)
-        ME_REFLECTION_FUNCTION_END(functionInfo_3f6abb6a)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_e96a623e, "MakeGreeting", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasOutParams)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_e96a623e, "Name", In, ConstRef, std::string)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_e96a623e, "OutGreeting", Out, Value, std::string)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_e96a623e, minEngine::ReflectionSampleComponent, MakeGreeting)
-        ME_REFLECTION_FUNCTION_END(functionInfo_e96a623e)
     }
     {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_12504110, "GetGreeting", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
@@ -172,53 +70,11 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ReflectionSampleComponent, GReflecti
         ME_REFLECTION_FUNCTION_END(functionInfo_12504110)
     }
     {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_69268ab0, "SumVectorValue", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_69268ab0, "Values", In, Value, std::vector<int>)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_69268ab0, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_69268ab0, minEngine::ReflectionSampleComponent, SumVectorValue)
-        ME_REFLECTION_FUNCTION_END(functionInfo_69268ab0)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_34961e4d, "CountGreetingChars", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_34961e4d, "Greeting", In, Value, std::string)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_34961e4d, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_34961e4d, minEngine::ReflectionSampleComponent, CountGreetingChars)
-        ME_REFLECTION_FUNCTION_END(functionInfo_34961e4d)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_6bda43c9, "SumSampleData", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_6bda43c9, "Value", In, Value, minEngine::ReflectionSampleClass)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_6bda43c9, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_6bda43c9, minEngine::ReflectionSampleComponent, SumSampleData)
-        ME_REFLECTION_FUNCTION_END(functionInfo_6bda43c9)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_645585f5, "BuildSampleData", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_645585f5, "Value", In, Value, minEngine::ReflectionSampleClass)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_645585f5, minEngine::ReflectionSampleClass)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_645585f5, minEngine::ReflectionSampleComponent, BuildSampleData)
-        ME_REFLECTION_FUNCTION_END(functionInfo_645585f5)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_1fa3fd84, "IsValidSharedComponent", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_1fa3fd84, "Candidate", In, Value, std::shared_ptr<Component>)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_1fa3fd84, bool)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_1fa3fd84, minEngine::ReflectionSampleComponent, IsValidSharedComponent)
-        ME_REFLECTION_FUNCTION_END(functionInfo_1fa3fd84)
-    }
-    {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_34102c11, "MakeSharedComponent", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
         ME_REFLECTION_FUNCTION_PARAM(functionInfo_34102c11, "ReturnNull", In, Value, bool)
         ME_REFLECTION_FUNCTION_RETURN(functionInfo_34102c11, std::shared_ptr<Component>)
         ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_34102c11, minEngine::ReflectionSampleComponent, MakeSharedComponent)
         ME_REFLECTION_FUNCTION_END(functionInfo_34102c11)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_80f8816b, "IsValidSharedComponentConstRef", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_80f8816b, "Candidate", In, ConstRef, std::shared_ptr<Component>)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_80f8816b, bool)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_80f8816b, minEngine::ReflectionSampleComponent, IsValidSharedComponentConstRef)
-        ME_REFLECTION_FUNCTION_END(functionInfo_80f8816b)
     }
     {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_4f1fc056, "RewriteSharedComponentRef", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
@@ -229,46 +85,11 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ReflectionSampleComponent, GReflecti
         ME_REFLECTION_FUNCTION_END(functionInfo_4f1fc056)
     }
     {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_88034bd3, "CountNames", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_88034bd3, "Names", In, Value, std::vector<std::string>)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_88034bd3, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_88034bd3, minEngine::ReflectionSampleComponent, CountNames)
-        ME_REFLECTION_FUNCTION_END(functionInfo_88034bd3)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_f753c992, "BuildNames", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_f753c992, "Input", In, Value, std::vector<std::string>)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_f753c992, std::vector<std::string>)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_f753c992, minEngine::ReflectionSampleComponent, BuildNames)
-        ME_REFLECTION_FUNCTION_END(functionInfo_f753c992)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_db26c937, "SumNested", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_db26c937, "Values", In, Value, std::vector<std::vector<int>>)
-        ME_REFLECTION_FUNCTION_RETURN(functionInfo_db26c937, int32_t)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_db26c937, minEngine::ReflectionSampleComponent, SumNested)
-        ME_REFLECTION_FUNCTION_END(functionInfo_db26c937)
-    }
-    {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_db353dcd, "NormalizeNested", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
         ME_REFLECTION_FUNCTION_PARAM(functionInfo_db353dcd, "Values", In, Value, std::vector<std::vector<int>>)
         ME_REFLECTION_FUNCTION_RETURN(functionInfo_db353dcd, std::vector<std::vector<int>>)
         ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_db353dcd, minEngine::ReflectionSampleComponent, NormalizeNested)
         ME_REFLECTION_FUNCTION_END(functionInfo_db353dcd)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_7a6c98e8, "AppendName", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_7a6c98e8, "Names", In, Ref, std::vector<std::string>)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_7a6c98e8, "Name", In, ConstRef, std::string)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_7a6c98e8, minEngine::ReflectionSampleComponent, AppendName)
-        ME_REFLECTION_FUNCTION_END(functionInfo_7a6c98e8)
-    }
-    {
-        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_c0c2a14f, "BuildNestedOut", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasOutParams)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_c0c2a14f, "N", In, Value, int32_t)
-        ME_REFLECTION_FUNCTION_PARAM(functionInfo_c0c2a14f, "OutValues", Out, Value, std::vector<std::vector<int>>)
-        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_c0c2a14f, minEngine::ReflectionSampleComponent, BuildNestedOut)
-        ME_REFLECTION_FUNCTION_END(functionInfo_c0c2a14f)
     }
     {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_151a9810, "StaticResetCounter", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Static)), static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::None), (minEngine::Reflection::FunctionMetadata{}))

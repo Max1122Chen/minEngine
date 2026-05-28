@@ -41,28 +41,34 @@ namespace minEngine::Reflection
                 &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::PeekString>);
         }
 
-        if (MEFunction* fillOut = sampleComponentClass->FindFunction("FillOut"))
-        {
-            fillOut->SetNativeThunk(
-                &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::FillOut>);
-        }
-
-        if (MEFunction* echoEnum = sampleComponentClass->FindFunction("EchoEnum"))
-        {
-            echoEnum->SetNativeThunk(
-                &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::EchoEnum>);
-        }
-
-        if (MEFunction* sumIntArray = sampleComponentClass->FindFunction("SumIntArray"))
-        {
-            sumIntArray->SetNativeThunk(
-                &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::SumIntArray>);
-        }
-
         if (MEFunction* isSameObject = sampleComponentClass->FindFunction("IsSameObject"))
         {
             isSameObject->SetNativeThunk(
                 &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::IsSameObject>);
+        }
+
+        if (MEFunction* getGreeting = sampleComponentClass->FindFunction("GetGreeting"))
+        {
+            getGreeting->SetNativeThunk(
+                &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::GetGreeting>);
+        }
+
+        if (MEFunction* makeShared = sampleComponentClass->FindFunction("MakeSharedComponent"))
+        {
+            makeShared->SetNativeThunk(
+                &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::MakeSharedComponent>);
+        }
+
+        if (MEFunction* rewriteShared = sampleComponentClass->FindFunction("RewriteSharedComponentRef"))
+        {
+            rewriteShared->SetNativeThunk(
+                &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::RewriteSharedComponentRef>);
+        }
+
+        if (MEFunction* normalizeNested = sampleComponentClass->FindFunction("NormalizeNested"))
+        {
+            normalizeNested->SetNativeThunk(
+                &InvokeNativeThunk<ReflectionSampleComponent, &ReflectionSampleComponent::NormalizeNested>);
         }
     }
 }

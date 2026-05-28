@@ -44,69 +44,20 @@ namespace minEngine
         ME_FUNCTION()
         int32_t Add(int32_t firstOperand, int32_t secondOperand);
         ME_FUNCTION()
-        bool MixAlign(bool inputFlag, double threshold) const;
-        ME_FUNCTION()
         void AddInPlace(int32_t& value, int32_t delta);
         ME_FUNCTION()
         void PeekString(const std::string& input, int32_t& outLength) const;
         ME_FUNCTION()
-        void FillOut(int32_t value, int32_t& outValue);
-        ME_FUNCTION()
-        ReflectionSampleEnum EchoEnum(ReflectionSampleEnum value) const;
-        ME_FUNCTION()
-        int32_t SumIntArray(const std::vector<int>& values) const;
-        ME_FUNCTION()
         bool IsSameObject(MEObject* a, MEObject* b) const;
-        ME_FUNCTION()
-        Math::Vector2 AddVector2(Math::Vector2 lhs, Math::Vector2 rhs) const;
-        ME_FUNCTION()
-        Math::Vector3 AddVector3(Math::Vector3 lhs, Math::Vector3 rhs) const;
-        ME_FUNCTION()
-        Math::Vector4 AddVector4(Math::Vector4 lhs, Math::Vector4 rhs) const;
-        ME_FUNCTION()
-        void ScaleVector2InPlace(Math::Vector2& value, float scale) const;
-        ME_FUNCTION()
-        void ScaleVector3InPlace(Math::Vector3& value, float scale) const;
-        ME_FUNCTION()
-        void ScaleVector4InPlace(Math::Vector4& value, float scale) const;
-        ME_FUNCTION()
-        void PrefixString(const std::string& prefix, std::string& inOutValue) const;
-        ME_FUNCTION()
-        bool IsValidComponentPtr(Component* candidate) const;
-        ME_FUNCTION()
-        void AppendInt(std::vector<int>& values, int32_t value) const;
-        ME_FUNCTION()
-        void MakeGreeting(const std::string& name, std::string& outGreeting) const;
         ME_FUNCTION()
         std::string GetGreeting(const std::string& name) const;
         ME_FUNCTION()
-        int32_t SumVectorValue(std::vector<int> values) const;
-        ME_FUNCTION()
-        int32_t CountGreetingChars(std::string greeting) const;
-        ME_FUNCTION()
-        int32_t SumSampleData(ReflectionSampleClass value) const;
-        ME_FUNCTION()
-        ReflectionSampleClass BuildSampleData(ReflectionSampleClass value) const;
-        ME_FUNCTION()
-        bool IsValidSharedComponent(std::shared_ptr<Component> candidate) const;
-        ME_FUNCTION()
         std::shared_ptr<Component> MakeSharedComponent(bool returnNull) const;
-        ME_FUNCTION()
-        bool IsValidSharedComponentConstRef(const std::shared_ptr<Component>& candidate) const;
         ME_FUNCTION()
         bool RewriteSharedComponentRef(std::shared_ptr<Component>& inOutCandidate, bool assignNull) const;
         ME_FUNCTION()
-        int32_t CountNames(std::vector<std::string> names) const;
-        ME_FUNCTION()
-        std::vector<std::string> BuildNames(std::vector<std::string> input) const;
-        ME_FUNCTION()
-        int32_t SumNested(std::vector<std::vector<int>> values) const;
-        ME_FUNCTION()
         std::vector<std::vector<int>> NormalizeNested(std::vector<std::vector<int>> values) const;
-        ME_FUNCTION()
-        void AppendName(std::vector<std::string>& names, const std::string& name) const;
-        ME_FUNCTION()
-        void BuildNestedOut(int32_t n, std::vector<std::vector<int>>& outValues) const;
+
         ME_FUNCTION()
         static void StaticResetCounter();
         ME_FUNCTION()

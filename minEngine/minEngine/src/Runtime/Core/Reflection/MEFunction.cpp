@@ -385,6 +385,34 @@ namespace minEngine::Reflection
 
     MEFunction* MEClass::FindFunction(const std::string& functionName) const
     {
+        const MEClass* current = this;
+        while (current != nullptr)
+        {
+            if (MEFunction* owned = current->FindFunctionOwned(functionName))
+            {
+                return owned;
+            }
+            current = current->GetSuperClass();
+        }
+        return nullptr;
+    }
+
+    MEFunction* MEClass::FindFunctionBySignature(const std::string& functionName, uint64_t signatureHash) const
+    {
+        const MEClass* current = this;
+        while (current != nullptr)
+        {
+            if (MEFunction* owned = current->FindFunctionBySignatureOwned(functionName, signatureHash))
+            {
+                return owned;
+            }
+            current = current->GetSuperClass();
+        }
+        return nullptr;
+    }
+
+    MEFunction* MEClass::FindFunctionOwned(const std::string& functionName) const
+    {
         auto iter = m_FunctionsByName.find(functionName);
         if (iter == m_FunctionsByName.end() || iter->second.empty())
         {
@@ -393,7 +421,7 @@ namespace minEngine::Reflection
         return iter->second.front();
     }
 
-    MEFunction* MEClass::FindFunctionBySignature(const std::string& functionName, uint64_t signatureHash) const
+    MEFunction* MEClass::FindFunctionBySignatureOwned(const std::string& functionName, uint64_t signatureHash) const
     {
         const std::string signatureKey = functionName + "#" + std::to_string(signatureHash);
         auto iter = m_FunctionsBySignatureKey.find(signatureKey);

@@ -1278,6 +1278,7 @@ Editor.exe --reflection-function-test=types
 - 验收：
   - base/derived 实例同名调用结果不同且符合覆盖语义；
   - invoke 回归不退化。
+- 状态：已完成（`MEClass::FindFunction/FindFunctionBySignature` 已支持沿继承链上溯查找，保持“最近派生优先”；新增 `FindFunctionOwned/FindFunctionBySignatureOwned` 仅查当前类）。
 
 #### Slice IH-3：限制声明与负例保护
 - 目标：明确“只支持继承同签名区分，不支持一般重载”。
