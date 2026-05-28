@@ -4,8 +4,10 @@
 #include "ContextMenu/EditorMenuContext.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
+#include "Services/Inspector/InspectorModule.h"
 #include "Shell/IEditorContext.h"
 
+#include "Services/Thumbnail/AssetThumbnailService.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorTypographyDefaults.h"
 #include "UI/Appearance/EditorTypographyScope.h"
@@ -89,6 +91,37 @@ namespace minEngine
             0.0f,
             0,
             1.0f);
+
+        if (meta.AssetType == "Texture2D" || meta.AssetType == "Material" || meta.AssetType == "StaticMesh")
+        {
+            AssetThumbnailService& thumbnails = m_Context.GetInspectorModule().GetThumbnailService();
+            const ThumbnailView view = thumbnails.RequestThumbnailForAsset(meta);
+            if (view.State == ThumbnailState::Ready && view.TextureId != 0 && view.Width > 0 && view.Height > 0)
+            {
+                const float slotWidth = iconMax.x - iconMin.x;
+                const float slotHeight = iconMax.y - iconMin.y;
+
+                const float textureAspect = static_cast<float>(view.Width) / static_cast<float>(view.Height);
+                ImVec2 imageSize(slotWidth, slotHeight);
+                if (textureAspect >= 1.0f)
+                {
+                    imageSize.y = slotHeight / textureAspect;
+                }
+                else
+                {
+                    imageSize.x = slotWidth * textureAspect;
+                }
+
+                const float imageX = iconMin.x + (slotWidth - imageSize.x) * 0.5f;
+                const float imageY = iconMin.y + (slotHeight - imageSize.y) * 0.5f;
+                const ImVec2 imageMin(imageX, imageY);
+                const ImVec2 imageMax(imageX + imageSize.x, imageY + imageSize.y);
+
+                // Flip V to match Inspector preview convention.
+                drawList.AddImage(view.TextureId, imageMin, imageMax, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+                return;
+            }
+        }
 
         ImFont* iconFont = nullptr;
         const AssetIconFontStyle iconFontStyle = ResolveAssetTypeIconFontStyle(meta.AssetType);

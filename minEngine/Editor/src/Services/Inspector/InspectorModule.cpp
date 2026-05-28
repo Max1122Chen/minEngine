@@ -14,17 +14,17 @@ namespace minEngine
 
     void InspectorModule::Shutdown()
     {
-        m_AssetInspection.Shutdown();
+        m_ThumbnailService.Shutdown();
         m_Context = nullptr;
     }
 
     void InspectorModule::SetInspectionTarget(const AssetMeta* meta)
     {
-        m_AssetInspection.SetInspectionTarget(meta);
+        m_ThumbnailService.SetInspectionTarget(meta);
     }
 
     void InspectorModule::ClearInspectionTarget()
     {
-        m_AssetInspection.ClearInspectionTarget();
+        m_ThumbnailService.ClearInspectionTarget();
     }
 }

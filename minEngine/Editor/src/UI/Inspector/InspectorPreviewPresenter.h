@@ -5,13 +5,13 @@
 namespace minEngine
 {
     class IEditorContext;
-    class InspectorAssetInspection;
+    class AssetThumbnailService;
 
     class InspectorPreviewPresenter
     {
     public:
         static constexpr float kMaxSquareSize = 224.0f;
 
-        static void DrawSquarePreviewSlot(IEditorContext& context, InspectorAssetInspection& inspection);
+        static void DrawSquarePreviewSlot(IEditorContext& context, AssetThumbnailService& thumbnailService);
     };
 }

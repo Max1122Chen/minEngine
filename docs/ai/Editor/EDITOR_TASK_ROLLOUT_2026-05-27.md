@@ -99,3 +99,5 @@ CB Tile 设计：[`CB_TILE_DISPLAY_DESIGN.md`](./CB_TILE_DISPLAY_DESIGN.md)
 | 2026-05-27 | **S4.1 落地**：恢复 Inspector 右键；修 GO id=0 空菜单、重复 `RegisterBuiltInActions`、Add Component ImGui ID 冲突 |
 | 2026-05-27 | **E2.2b**：Texture2D Inspector 预览（OpenGL MVP） |
 | 2026-05-28 | **C 设计 v0.1**：CB Tile 双通道（IconFont + Thumbnail）；[CB_TILE_DISPLAY_DESIGN.md](./CB_TILE_DISPLAY_DESIGN.md) |
+| 2026-05-28 | **今日任务 1（方案对齐）**：拍板 `AssetThumbnailService` 统一模型（Inspector/CB 共用 request + cache；Texture2D 走 direct texture；Material/StaticMesh 走 Scene3D RT，一次渲染后复用）。 |
+| 2026-05-28 | **今日任务 1（设计落盘）**：新增 [`ASSET_THUMBNAIL_SERVICE_DESIGN.md`](./ASSET_THUMBNAIL_SERVICE_DESIGN.md)，包含现状、服务模型、类型结构、流程图与审批清单。 |
