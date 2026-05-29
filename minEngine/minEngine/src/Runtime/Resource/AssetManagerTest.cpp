@@ -493,18 +493,6 @@ namespace minEngine
         }
     }
 
-    bool ShouldRunAssetManagerTestsOnly(int argc, char** argv)
-    {
-        for (int argIndex = 1; argIndex < argc; ++argIndex)
-        {
-            if (argv[argIndex] != nullptr && std::string_view(argv[argIndex]) == "--asset-manager-test")
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     bool RunAssetManagerTests(int argc, char** argv)
     {
         if (!EnsureReflectionReady())

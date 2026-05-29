@@ -63,6 +63,7 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 | What | Typical command |
 |------|-----------------|
 | Build Editor | `cmake --build minEngine/build --target Editor` |
+| **Verify (smoke)** | `.\scripts\verify.ps1` from repo root |
 | Run Editor | from `minEngine/bin` (EngineConfig / project paths apply) |
 | Engine config | `--engine-config=`, `--engine-root=` (or space form); env `MINENGINE_ENGINE_*` |
 
@@ -87,13 +88,13 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 
 Entry: `minEngine/minEngine/src/main.h` — `ApplicationCommandLine::TryParse` then dispatch (Editor links same runtime).
 
-**Planned:** `TEST-F01` — `test smoke`/`full`, remove legacy flags, `scripts/verify`. See [TECH_DEBT.md](./TECH_DEBT.md) TD-001, TD-002.
+**Verify:** `.\scripts\verify.ps1` from repo root. **Next:** `TEST-F02` (doctest + `minEngine/Tests/`). See [TECH_DEBT.md](./TECH_DEBT.md) TD-001, TD-002.
 
 ---
 
 ## Current infra focus
 
-- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` **done**; **`TEST-F01`** next (runner + verify); **`TEST-F02`** (doctest + `Tests/`).  
+- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` / `TEST-F01` **done**; **`TEST-F02`** (doctest + `Tests/`) next.  
 - **Defer for now:** large Editor features, new P4/P5 slices, Lua — see [TECH_DEBT.md](./TECH_DEBT.md).
 
 ---

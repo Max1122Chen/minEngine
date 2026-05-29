@@ -2,7 +2,7 @@
 
 ## Meta
 - **ID:** `TEST-F01`
-- **Status:** Planned
+- **Status:** Done (S01–S05)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [TEST_UNIFIED_DESIGN.md](./TEST_UNIFIED_DESIGN.md)
@@ -26,11 +26,11 @@ Five slices: runner skeleton + empty smoke; `TestContext` + first adapter; migra
 
 | Slice ID | 内容 | 状态 | 验证 |
 |----------|------|------|------|
-| `TEST-F01-S01` | `Runtime/Test/` core: `ITestSuite`, `TestSuiteRegistry`, `TestRunner`; wire `main.h` for `test smoke` with **zero** real suites (or one no-op) | Planned | Build Editor; `test smoke` exit 0 |
-| `TEST-F01-S02` | `TestContext` (log + PathRegistry from `CommandLineResult`); register `material-ir` adapter; remove special-case in `main.h` | Planned | `Editor.exe test material-ir` exit 0 |
-| `TEST-F01-S03` | Register remaining four suites; legacy flag warnings; **delete** all `ShouldRun*` + legacy chain in `main.h` | Planned | Each `test <id>` + legacy alias; `main.h` clean |
-| `TEST-F01-S04` | Smoke/full tables + reflection `--suite=` via `TestContext`; document run order and time budget | Planned | `test smoke` all pass; `test full` all pass |
-| `TEST-F01-S05` | `scripts/verify.ps1`; update DOC_GOVERNANCE §7.2 + BOOTSTRAP_DIGEST | Planned | `.\scripts\verify.ps1` exit 0 |
+| `TEST-F01-S01` | `Runtime/Test/` core: `ITestSuite`, `TestSuiteRegistry`, `TestRunner`; wire `main.h` for `test smoke` with **zero** real suites (or one no-op) | Done | Build Editor; `test smoke` exit 0 |
+| `TEST-F01-S02` | `TestContext` (log + PathRegistry from `CommandLineResult`); register `material-ir` adapter; remove special-case in `main.h` | Done | `Editor.exe test material-ir` exit 0 |
+| `TEST-F01-S03` | Register remaining four suites; legacy flag warnings; **delete** all `ShouldRun*` + legacy chain in `main.h` | Done | Each `test <id>` + legacy alias; `main.h` clean |
+| `TEST-F01-S04` | Smoke/full tables + reflection `--suite=` via `TestContext`; document run order and time budget | Done | `test smoke` all pass; `test full` all pass |
+| `TEST-F01-S05` | `scripts/verify.ps1`; update DOC_GOVERNANCE §7.2 + BOOTSTRAP_DIGEST | Done | `.\scripts\verify.ps1` exit 0 |
 
 ---
 

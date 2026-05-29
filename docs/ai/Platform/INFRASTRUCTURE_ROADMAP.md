@@ -66,8 +66,8 @@ scripts/verify.ps1             # F01-S05: build + smoke
 |-----------|----------|--------|------------|
 | **M1** | CLI core + dispatch hook | Done | `help` works; `test material-ir` |
 | **M2** | First real test on new CLI | Done | `--material-ir-test` migrated |
-| **M3** | All tests + smoke/full | Planned | All five suites via `test`; legacy flags removed |
-| **M4** | Verify + DoD | Planned | `scripts/verify.ps1`; governance §7.2 cites smoke |
+| **M3** | All tests + smoke/full | Done | All five suites via `test`; legacy flags warn |
+| **M4** | Verify + DoD | Done | `scripts/verify.ps1`; governance §7.2 cites smoke |
 
 ### CLI-F01 slices
 

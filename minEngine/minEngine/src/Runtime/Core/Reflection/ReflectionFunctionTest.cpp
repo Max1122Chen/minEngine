@@ -2467,25 +2467,6 @@ namespace minEngine
 
 #endif
 
-    bool ShouldRunReflectionFunctionTestsOnly(int argc, char** argv)
-    {
-        for (int argIndex = 1; argIndex < argc; ++argIndex)
-        {
-            if (argv[argIndex] == nullptr)
-            {
-                continue;
-            }
-
-            const std::string_view argument(argv[argIndex]);
-            if (argument == "--reflection-function-test"
-                || argument.rfind("--reflection-function-test=", 0) == 0)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     namespace
     {
         std::string_view TrimToken(std::string_view token)

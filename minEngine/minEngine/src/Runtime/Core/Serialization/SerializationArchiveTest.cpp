@@ -794,18 +794,6 @@ namespace minEngine
         }
     }
 
-    bool ShouldRunSerializationArchiveTestsOnly(int argc, char** argv)
-    {
-        for (int argIndex = 1; argIndex < argc; ++argIndex)
-        {
-            if (argv[argIndex] != nullptr && std::string_view(argv[argIndex]) == "--serialization-archive-test")
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     bool RunSerializationArchiveTests(int /*argc*/, char** /*argv*/)
     {
         if (!EnsureReflectionReady())

@@ -175,7 +175,7 @@ Draft → Planned → In Progress → Review → Done
 
 | 检查 | 要求 |
 |------|------|
-| **验证** | 至少一种：构建通过、或写明测试/CLI 命令且已执行、或记录手动验收步骤 |
+| **验证** | 至少一种：构建通过、或写明测试/CLI 命令且已执行、或记录手动验收步骤。基础设施切片默认：`.\scripts\verify.ps1`（build + `Editor.exe test smoke`） |
 | **缺陷** | 无未记录的 S0/S1 问题；已知问题写入 Bug 或 Design 风险 |
 | **公共 API** | 若改 Runtime/Editor 契约：调用方已更新，或 ADR/Design 标明 intentional breaking |
 | **产品快照** | 仅当方向/架构级变化时更新 `PROJECT_CONTEXT.md` |

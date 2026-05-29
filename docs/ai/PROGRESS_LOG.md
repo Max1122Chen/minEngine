@@ -775,6 +775,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
 
+### 2026-05-28 - TEST-F01 unified test runner (S01–S05)
+- Goal:
+	TestRunner + registry + TestContext; all five suites via `Editor.exe test`; verify.ps1.
+- Main changes:
+	`Runtime/Test/*`; `main.h` legacy pre-parse + TestRunner dispatch; removed `ShouldRun*` from `*Test.cpp`.
+	`scripts/verify.ps1`; smoke order puts reflection-function first (in-process isolation).
+- Validation done:
+	`cmake --build minEngine/build --target Editor`; `test smoke`/`test material-ir`/legacy flags; `.\scripts\verify.ps1`.
+- Next step:
+	TEST-F02 — doctest + `minEngine/Tests/` + `minEngineTests.exe`.
+
 ### 2026-05-28 - TEST-F01/F02 unified test runner design
 - Goal:
 	Design engine TestRunner (self-built) + doctest in F02; smoke/full tables; verify.ps1 path.

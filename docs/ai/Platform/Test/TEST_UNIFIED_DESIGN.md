@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `TEST-F01` (+ follow-on `TEST-F02`)
 - **Type:** Feature
-- **Status:** Planned
+- **Status:** Done (S01–S05; F02 doctest/layout deferred)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [TEST_F01_IMPLEMENTATION.md](./TEST_F01_IMPLEMENTATION.md), [TEST_F02_LAYOUT_MIGRATION.md](./TEST_F02_LAYOUT_MIGRATION.md), [CLI_UNIFIED_DESIGN.md](../CLI/CLI_UNIFIED_DESIGN.md), [INFRASTRUCTURE_ROADMAP.md](../INFRASTRUCTURE_ROADMAP.md), [TECH_DEBT.md](../../TECH_DEBT.md) TD-001–002
@@ -167,7 +167,7 @@ Stable IDs must match [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2.
 | `reflection-function` | `--reflection-function-test` | yes (default phases) | yes (all phases) | no | `RunReflectionFunctionTests` |
 | `material-ir` | `--material-ir-test` | yes | yes | yes | `RunMaterialIRSmokeTests` |
 
-**Smoke run order (deterministic):** object-manager → serialization-archive → asset-manager → reflection-function (smoke subset) → material-ir.
+**Smoke run order (deterministic):** reflection-function → object-manager → serialization-archive → asset-manager → material-ir (reflection first — in-process global state; reset planned in TEST-F02).
 
 **Reflection smoke vs full:** Adapter maps `TestContext`:
 
@@ -252,13 +252,13 @@ See [TEST_F02_LAYOUT_MIGRATION.md](./TEST_F02_LAYOUT_MIGRATION.md).
 
 ## 7) 验收标准 (TEST-F01)
 
-- [ ] `Editor.exe test smoke` runs all InSmoke suites; exit 0 on clean tree from `minEngine/bin`.
-- [ ] `Editor.exe test full` runs all InFull suites; exit 0.
-- [ ] Each suite ID works: `Editor.exe test material-ir`, etc.
-- [ ] Legacy flags warn and pass/fail same as new commands; **no** `ShouldRun*` in `main.h`.
-- [ ] `TestContext` loads engine config from `CommandLineResult` (no duplicate global argv scan in suites for `--engine-config`).
-- [ ] `scripts/verify.ps1` exists; documented in BOOTSTRAP + DOC_GOVERNANCE §7.2.
-- [ ] `reflection-function` + `--suite=` behavior preserved.
+- [x] `Editor.exe test smoke` runs all InSmoke suites; exit 0 on clean tree from `minEngine/bin`.
+- [x] `Editor.exe test full` runs all InFull suites; exit 0.
+- [x] Each suite ID works: `Editor.exe test material-ir`, etc.
+- [x] Legacy flags warn and pass/fail same as new commands; **no** `ShouldRun*` in `main.h`.
+- [x] `TestContext` loads engine config from `CommandLineResult` (warn-and-continue if load fails).
+- [x] `scripts/verify.ps1` exists; documented in BOOTSTRAP + DOC_GOVERNANCE §7.2.
+- [x] `reflection-function` + `--suite=` behavior preserved.
 
 ---
 

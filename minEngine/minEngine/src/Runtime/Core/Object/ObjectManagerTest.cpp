@@ -149,18 +149,6 @@ namespace minEngine
         }
     }
 
-    bool ShouldRunObjectManagerTestsOnly(int argc, char** argv)
-    {
-        for (int argIndex = 1; argIndex < argc; ++argIndex)
-        {
-            if (argv[argIndex] != nullptr && std::string_view(argv[argIndex]) == "--object-manager-test")
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     bool RunObjectManagerTests(int argc, char** argv)
     {
         (void)argc;
