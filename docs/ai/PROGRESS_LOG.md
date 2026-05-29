@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-28 (bootstrap digest + tech debt)
+Last updated: 2026-05-28 (infrastructure roadmap)
 
 ## Purpose
 
@@ -774,6 +774,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`EDITOR_CONTEXT_MENU_DESIGN.md` §13–§15；`EDITOR_TASK_ROLLOUT` 子任务表；`PLATFORM_ROADMAP` §10 备注。
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
+
+### 2026-05-28 - Infrastructure roadmap (CLI · Test · Verify)
+- Goal:
+	Near-term plan: CLI unification, test centralization, verify + DoD; defer product features.
+- Main changes:
+	`Platform/INFRASTRUCTURE_ROADMAP.md`; Registry `CLI-F01`/`TEST-F01`; `PLATFORM_ROADMAP` §12; README/BOOTSTRAP/TECH_DEBT links.
+- Validation done:
+	Docs-only.
+- Next step:
+	`CLI-F01` Design Spec + S01 when implementation starts; commit batch B.
 
 ### 2026-05-28 - Bootstrap digest and tech debt register
 - Goal:

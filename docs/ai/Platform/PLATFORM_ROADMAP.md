@@ -1,7 +1,7 @@
 # Platform 路线图（UE 化大方向）
 
-Last updated: 2026-05-27  
-Status: **拍板** — **P0/P1 与资产 Runtime（P1–P6.1）主干已完成**；**P2 Editor 产品化（E1/P7）可并行维护**；**Core 下一主线：先完成 P4 函数反射设计与实现，委托与 Lua 仅保留占位**（见 **§11**）；详见 **§8**
+Last updated: 2026-05-28  
+Status: **拍板** — **P0/P1 与资产 Runtime（P1–P6.1）主干已完成**；**近期优先 §12 基建（CLI·Test·Verify）**；**P2 Editor / §11 Core 新切片延后至基建 M4**；详见 **§8**
 
 ## 1) 产品方向
 
@@ -270,3 +270,20 @@ P6  Lua 脚本              → LUA_SCRIPTING_DESIGN               [占位，依
 **硬依赖：** P5.\* 依赖 P4.1–P4.3；委托 Broadcast 依赖 `ProcessEvent` 参数封送。
 
 **与 Editor 并行：** E1/P7/CB 不阻塞 P4；Inspector 对 Callable 的调试按钮可放在 P4.3 之后小切片。
+
+---
+
+## 12) 2026-05-28 基建主线（CLI · Test · Verify）— 当前优先
+
+> **拍板：** 近期不堆 Editor/产品功能；先完成 [INFRASTRUCTURE_ROADMAP](./INFRASTRUCTURE_ROADMAP.md) 至 **M4**（`CLI-F01` → `TEST-F01` → `scripts/verify` + DoD）。
+>
+> - 已完成：`BOOTSTRAP_DIGEST`、`TECH_DEBT`（不进该路线图正文）。
+> - **§11 新切片暂停：** 反射已有 MVP 可维护；P4.3+ / P5 / Lua 等 **M4 之后**再开（见 [TECH_DEBT](../TECH_DEBT.md) TD-005、TD-006）。
+> - **§10 Editor 滚动任务：** 维护级修 bug 可做；新 E1/P7 大项排队。
+
+| 顺位 | Feature | 里程碑 |
+|------|---------|--------|
+| 1 | `CLI-F01` | M1–M2：解析/注册 + 首个 test 迁移 |
+| 2 | `TEST-F01` | M3–M4：全量迁移 + smoke/full + verify |
+
+变更记录：2026-05-28 新增 §12。

@@ -29,7 +29,8 @@
 
 ### 平台（当前主线）
 
-- [Platform 路线图](./Platform/PLATFORM_ROADMAP.md) — UE 化大方向；**§11 Core：先做 P4 函数反射，委托与 Lua 暂为占位**
+- [**基建路线图（当前优先）**](./Platform/INFRASTRUCTURE_ROADMAP.md) — CLI 统一化 · Test 框架 · verify · DoD
+- [Platform 路线图](./Platform/PLATFORM_ROADMAP.md) — UE 化大方向；**§12 基建优先**；§11 Core（P4/P5/Lua）M4 后再开新切片
 - [函数反射设计](./Platform/Reflection/REFLECTION_FUNCTIONS_DESIGN.md) — P4 数据结构、Invoke、阶段切片与验收
 - [函数反射现状](./Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) — 当前实现基线
 - [委托系统（占位）](./Platform/Reflection/REFLECTION_DELEGATES_DESIGN.md)

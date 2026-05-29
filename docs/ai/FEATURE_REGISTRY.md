@@ -17,11 +17,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 | Feature ID | Title | Status | Owner | Design / plan |
 |------------|-------|--------|-------|----------------|
+| `CLI-F01` | Unified command-line interface | Planned | — | [INFRASTRUCTURE_ROADMAP](./Platform/INFRASTRUCTURE_ROADMAP.md) |
+| `TEST-F01` | Test runner, suite migration, verify integration | Planned | — | [INFRASTRUCTURE_ROADMAP](./Platform/INFRASTRUCTURE_ROADMAP.md) |
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
-
-<!-- Add new rows above this comment. Example:
-| `TEST-F01` | Unified CLI for headless tests | Planned | — | Platform/.../CLI_DESIGN.md |
--->
 
 ---
 
@@ -29,12 +27,13 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 | DOMAIN | Next Feature # | Notes |
 |--------|----------------|-------|
-| `WF` | F02 | Workflow / docs / CI |
+| `CLI` | F02 | Command-line / tools entry |
+| `TEST` | F02 | Automated tests (after TEST-F01) |
+| `WF` | F02 | Workflow / docs |
 | `CORE` | F01 | Reflection, object, startup |
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F01 | Editor productization (new IDs only) |
 | `RND` | F01 | Render (new IDs only) |
 | `MAT` | F01 | Material (new IDs only; legacy Phase docs keep old names) |
-| `TEST` | F01 | Test runner / fixtures |
 
 Update **Next Feature #** when you register a new row.

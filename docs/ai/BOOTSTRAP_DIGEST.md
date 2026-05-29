@@ -82,10 +82,10 @@ Entry: `minEngine/minEngine/src/main.h` dispatches before normal app startup (Ed
 
 ---
 
-## Current infra focus (not in this file’s scope)
+## Current infra focus
 
-- **Next roadmap (planned):** CLI unification → test framework → migrate flags → verify binds to Slice DoD.  
-- **Defer for now:** large Editor features, Lua, drive-by platform refactors — see TECH_DEBT.
+- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` → `TEST-F01` → `scripts/verify` + DoD (M4).  
+- **Defer for now:** large Editor features, new P4/P5 slices, Lua — see [TECH_DEBT.md](./TECH_DEBT.md).
 
 ---
 
