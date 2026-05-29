@@ -39,26 +39,6 @@ namespace minEngine
 
     namespace
     {
-        bool EnsureReflectionReady()
-        {
-            Reflection::ReflectionSystem& reflection = Reflection::ReflectionSystem::Get();
-            if (reflection.IsReady())
-            {
-                return true;
-            }
-
-            if (!reflection.FinalizeReflection())
-            {
-                for (const std::string& error : reflection.GetLastErrors())
-                {
-                    ME_CORE_ERROR("{}", error);
-                }
-                return false;
-            }
-
-            reflection.ClearErrors();
-            return true;
-        }
 
         bool TestBoolRoundTrip()
         {
@@ -792,28 +772,27 @@ namespace minEngine
 
             return true;
         }
+
+        bool RunSerializationArchiveSmokeTestsImpl()
+        {
+            return TestStaticMeshComponentSerializeRoundTrip();
+        }
+
+        bool RunSerializationArchivePrimitiveTestsImpl()
+        {
+            return TestBoolRoundTrip() && TestStringRoundTrip() && TestGuidRefRoundTrip()
+                   && TestArrayRoundTrip() && TestObjectFieldsRoundTrip();
+        }
     }
 
-    bool RunSerializationArchiveTests(int /*argc*/, char** /*argv*/)
+    bool RunSerializationArchiveSmokeTests()
     {
-        if (!EnsureReflectionReady())
-        {
-            ME_CORE_ERROR("SerializationArchiveTest: reflection init failed.");
-            return false;
-        }
+        return RunSerializationArchiveSmokeTestsImpl();
+    }
 
-        const bool passed = TestStaticMeshComponentSerializeRoundTrip();
-
-        if (passed)
-        {
-            ME_CORE_INFO("SerializationArchiveTest: all tests passed.");
-        }
-        else
-        {
-            ME_CORE_ERROR("SerializationArchiveTest: one or more tests failed.");
-        }
-
-        return passed;
+    bool RunSerializationArchivePrimitiveTests()
+    {
+        return RunSerializationArchivePrimitiveTestsImpl();
     }
 }
 
@@ -821,8 +800,16 @@ namespace minEngine
 
 #include "EngineTestFixture.h"
 
-TEST_CASE("serialization-archive suite [smoke][full]")
+TEST_CASE("serialization-archive: static mesh round-trip [smoke][full]")
 {
-    minEngine::EngineTestFixture fixture;
-    CHECK(minEngine::RunSerializationArchiveTests(fixture.GetArgc(), fixture.GetArgv()));
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunSerializationArchiveSmokeTests());
+}
+
+TEST_CASE("serialization-archive: primitive archives [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunSerializationArchivePrimitiveTests());
 }

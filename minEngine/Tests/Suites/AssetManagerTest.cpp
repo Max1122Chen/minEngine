@@ -43,26 +43,6 @@ namespace minEngine
 
     namespace
     {
-        bool EnsureReflectionReady()
-        {
-            Reflection::ReflectionSystem& reflection = Reflection::ReflectionSystem::Get();
-            if (reflection.IsReady())
-            {
-                return true;
-            }
-
-            if (!reflection.FinalizeReflection())
-            {
-                for (const std::string& error : reflection.GetLastErrors())
-                {
-                    ME_CORE_ERROR("{}", error);
-                }
-                return false;
-            }
-
-            reflection.ClearErrors();
-            return true;
-        }
 
         bool EnsureEnginePathsReady(int argc, char** argv)
         {
@@ -491,54 +471,62 @@ namespace minEngine
 
             return true;
         }
+
+        bool RunAssetManagerSmokeTestsImpl(int argc, char** argv)
+        {
+            if (!EnsureEnginePathsReady(argc, argv))
+            {
+                return false;
+            }
+
+            AssetManagerTestScope scope;
+
+            if (!TestDeleteAssetRemovesDiskAndRegistry())
+            {
+                return false;
+            }
+
+            if (!TestUnregisterAssetWithoutDeletingAssetFile())
+            {
+                return false;
+            }
+
+            ME_CORE_INFO("AssetManagerTest: smoke tests passed.");
+            return true;
+        }
+
+        bool RunAssetManagerFullTestsImpl(int argc, char** argv)
+        {
+            if (!EnsureEnginePathsReady(argc, argv))
+            {
+                return false;
+            }
+
+            AssetManagerTestScope scope;
+
+            if (!TestMoveAndRenamePreserveGuid())
+            {
+                return false;
+            }
+
+            if (!TestDeleteSceneAssetUnregistersScene())
+            {
+                return false;
+            }
+
+            ME_CORE_INFO("AssetManagerTest: full tests passed.");
+            return true;
+        }
     }
 
-    bool RunAssetManagerTests(int argc, char** argv)
+    bool RunAssetManagerSmokeTests(int argc, char** argv)
     {
-        if (!EnsureReflectionReady())
-        {
-            return false;
-        }
+        return RunAssetManagerSmokeTestsImpl(argc, argv);
+    }
 
-        if (!EnsureEnginePathsReady(argc, argv))
-        {
-            return false;
-        }
-
-        AssetManagerTestScope scope;
-
-        if (!TestDeleteAssetRemovesDiskAndRegistry())
-        {
-            return false;
-        }
-
-        if (!TestMoveAndRenamePreserveGuid())
-        {
-            return false;
-        }
-
-        if (!TestMoveRejectsExtensionChange())
-        {
-            return false;
-        }
-
-        if (!TestUnregisterAssetWithoutDeletingAssetFile())
-        {
-            return false;
-        }
-
-        if (!TestClearProjectRegistry())
-        {
-            return false;
-        }
-
-        if (!TestDeleteSceneAssetUnregistersScene())
-        {
-            return false;
-        }
-
-        ME_CORE_INFO("AssetManagerTest: all tests passed.");
-        return true;
+    bool RunAssetManagerFullTests(int argc, char** argv)
+    {
+        return RunAssetManagerFullTestsImpl(argc, argv);
     }
 }
 
@@ -546,8 +534,16 @@ namespace minEngine
 
 #include "EngineTestFixture.h"
 
-TEST_CASE("asset-manager suite [smoke][full]")
+TEST_CASE("asset-manager: register delete unregister [smoke]")
 {
-    minEngine::EngineTestFixture fixture;
-    CHECK(minEngine::RunAssetManagerTests(fixture.GetArgc(), fixture.GetArgv()));
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunAssetManagerSmokeTests(fixture.GetArgc(), fixture.GetArgv()));
+}
+
+TEST_CASE("asset-manager: move and scene delete [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunAssetManagerFullTests(fixture.GetArgc(), fixture.GetArgv()));
 }

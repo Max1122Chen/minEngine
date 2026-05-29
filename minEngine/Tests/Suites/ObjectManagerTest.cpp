@@ -1,11 +1,12 @@
-#include "ObjectManagerTest.h"
-
 #include "ObjectManager.h"
-#include "Runtime/Core/Log/LogSystem.h"
-#include "Runtime/Core/Reflection/Reflection.h"
+
 #include "Runtime/Function/Framework/Components/MovementComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+
+#include "doctest.h"
+
+#include "EngineTestFixture.h"
 
 namespace minEngine
 {
@@ -27,166 +28,77 @@ namespace minEngine
     private:
         ObjectManager m_Manager;
     };
-
-    namespace
-    {
-        bool EnsureReflectionReady()
-        {
-            Reflection::ReflectionSystem& reflection = Reflection::ReflectionSystem::Get();
-            if (reflection.IsReady())
-            {
-                return true;
-            }
-
-            if (!reflection.FinalizeReflection())
-            {
-                for (const std::string& error : reflection.GetLastErrors())
-                {
-                    ME_CORE_ERROR("{}", error);
-                }
-                return false;
-            }
-
-            reflection.ClearErrors();
-            return true;
-        }
-
-        bool TestLocalSharedPtrUnregistersOnDestroy()
-        {
-            GUID guid;
-            {
-                std::shared_ptr<Scene> scene = NewObject<Scene>("TransientScene");
-                guid = scene->GetGuid();
-                if (FindObject(guid) != scene)
-                {
-                    ME_CORE_ERROR("ObjectManagerTest: FindObject should resolve live Scene.");
-                    return false;
-                }
-                if (ObjectManager::Get().GetTrackedObjectCount() != 1)
-                {
-                    ME_CORE_ERROR(
-                        "ObjectManagerTest: expected 1 tracked object, got {}.",
-                        ObjectManager::Get().GetTrackedObjectCount());
-                    return false;
-                }
-            }
-
-            if (FindObject(guid) != nullptr)
-            {
-                ME_CORE_ERROR("ObjectManagerTest: FindObject should be null after shared_ptr release.");
-                return false;
-            }
-
-            ObjectManager::Get().CollectGarbage();
-            if (ObjectManager::Get().GetTrackedObjectCount() != 0)
-            {
-                ME_CORE_ERROR(
-                    "ObjectManagerTest: expected 0 tracked objects after CollectGarbage, got {}.",
-                    ObjectManager::Get().GetTrackedObjectCount());
-                return false;
-            }
-
-            return true;
-        }
-
-        bool TestSceneHierarchyUnregistersWithoutRemoveObject()
-        {
-            GUID sceneGuid;
-            GUID gameObjectGuid;
-            GUID componentGuid;
-
-            {
-                std::shared_ptr<Scene> scene = NewObject<Scene>("HierarchyScene");
-                sceneGuid = scene->GetGuid();
-
-                std::shared_ptr<GameObject> gameObject = scene->CreateGameObject();
-                gameObjectGuid = gameObject->GetGuid();
-
-                std::shared_ptr<MovementComponent> movement = gameObject->AddComponent<MovementComponent>();
-                componentGuid = movement->GetGuid();
-
-                const size_t trackedWhileAlive = ObjectManager::Get().GetTrackedObjectCount();
-                if (trackedWhileAlive < 3)
-                {
-                    ME_CORE_ERROR(
-                        "ObjectManagerTest: expected at least 3 tracked objects (scene/go/component), got {}.",
-                        trackedWhileAlive);
-                    return false;
-                }
-            }
-
-            if (FindObject(sceneGuid) != nullptr || FindObject(gameObjectGuid) != nullptr
-                || FindObject(componentGuid) != nullptr)
-            {
-                ME_CORE_ERROR("ObjectManagerTest: scene hierarchy GUIDs should not resolve after release.");
-                return false;
-            }
-
-            ObjectManager::Get().CollectGarbage();
-            if (ObjectManager::Get().GetTrackedObjectCount() != 0)
-            {
-                ME_CORE_ERROR(
-                    "ObjectManagerTest: registry should be empty after hierarchy teardown, count={}.",
-                    ObjectManager::Get().GetTrackedObjectCount());
-                return false;
-            }
-
-            return true;
-        }
-
-        bool TestCollectGarbageWithEngineRootsHonorsRegisteredRootSources()
-        {
-            std::shared_ptr<Scene> scene = NewObject<Scene>("EngineRootScene");
-            scene->CreateGameObject();
-
-            ObjectManager::Get().RegisterGarbageRootSource(scene.get(), [&scene](const ObjectReachabilityMarker& markReachable) {
-                scene->MarkReachableObjects(markReachable);
-            });
-
-            ObjectManager::Get().CollectGarbageWithEngineRoots();
-            ObjectManager::Get().UnregisterGarbageRootSource(scene.get());
-            return ObjectManager::Get().GetTrackedObjectCount() >= 1;
-        }
-    }
-
-    bool RunObjectManagerTests(int argc, char** argv)
-    {
-        (void)argc;
-        (void)argv;
-
-        if (!EnsureReflectionReady())
-        {
-            return false;
-        }
-
-        ObjectManagerTestScope scope;
-
-        if (!TestLocalSharedPtrUnregistersOnDestroy())
-        {
-            return false;
-        }
-
-        if (!TestSceneHierarchyUnregistersWithoutRemoveObject())
-        {
-            return false;
-        }
-
-        if (!TestCollectGarbageWithEngineRootsHonorsRegisteredRootSources())
-        {
-            return false;
-        }
-
-        ME_CORE_INFO("ObjectManagerTest: all tests passed.");
-        return true;
-    }
 }
 
-#include "doctest.h"
-
-#include "EngineTestFixture.h"
-
-TEST_CASE("object-manager suite [smoke][full]")
+TEST_CASE("object-manager: shared_ptr unregister [smoke]")
 {
-    minEngine::EngineTestFixture fixture;
-    CHECK(minEngine::RunObjectManagerTests(fixture.GetArgc(), fixture.GetArgv()));
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::ObjectManagerTestScope scope;
+
+    minEngine::GUID guid;
+    {
+        std::shared_ptr<minEngine::Scene> scene = minEngine::NewObject<minEngine::Scene>("TransientScene");
+        guid = scene->GetGuid();
+        CHECK(minEngine::FindObject(guid) == scene);
+        CHECK(minEngine::ObjectManager::Get().GetTrackedObjectCount() == 1);
+    }
+
+    CHECK(minEngine::FindObject(guid) == nullptr);
+    minEngine::ObjectManager::Get().CollectGarbage();
+    CHECK(minEngine::ObjectManager::Get().GetTrackedObjectCount() == 0);
+}
+
+TEST_CASE("object-manager: hierarchy teardown [smoke]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::ObjectManagerTestScope scope;
+
+    minEngine::GUID sceneGuid;
+    minEngine::GUID gameObjectGuid;
+    minEngine::GUID componentGuid;
+
+    {
+        std::shared_ptr<minEngine::Scene> scene = minEngine::NewObject<minEngine::Scene>("HierarchyScene");
+        sceneGuid = scene->GetGuid();
+
+        std::shared_ptr<minEngine::GameObject> gameObject = scene->CreateGameObject();
+        gameObjectGuid = gameObject->GetGuid();
+
+        std::shared_ptr<minEngine::MovementComponent> movement = gameObject->AddComponent<minEngine::MovementComponent>();
+        componentGuid = movement->GetGuid();
+
+        CHECK(minEngine::ObjectManager::Get().GetTrackedObjectCount() >= 3);
+    }
+
+    CHECK(minEngine::FindObject(sceneGuid) == nullptr);
+    CHECK(minEngine::FindObject(gameObjectGuid) == nullptr);
+    CHECK(minEngine::FindObject(componentGuid) == nullptr);
+
+    minEngine::ObjectManager::Get().CollectGarbage();
+    CHECK(minEngine::ObjectManager::Get().GetTrackedObjectCount() == 0);
+}
+
+TEST_CASE("object-manager: engine roots GC [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::ObjectManagerTestScope scope;
+
+    std::shared_ptr<minEngine::Scene> scene = minEngine::NewObject<minEngine::Scene>("EngineRootScene");
+    scene->CreateGameObject();
+
+    minEngine::ObjectManager::Get().RegisterGarbageRootSource(
+        scene.get(),
+        [&scene](const minEngine::ObjectReachabilityMarker& markReachable) {
+            scene->MarkReachableObjects(markReachable);
+        });
+
+    minEngine::ObjectManager::Get().CollectGarbageWithEngineRoots();
+    minEngine::ObjectManager::Get().UnregisterGarbageRootSource(scene.get());
+    CHECK(minEngine::ObjectManager::Get().GetTrackedObjectCount() >= 1);
 }

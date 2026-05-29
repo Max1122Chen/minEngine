@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `TEST-F03`
 - **Type:** Feature (follow-on)
-- **Status:** Planned
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [TEST_UNIFIED_DESIGN.md](./TEST_UNIFIED_DESIGN.md), [TEST_F02_LAYOUT_MIGRATION.md](./TEST_F02_LAYOUT_MIGRATION.md), [INFRASTRUCTURE_ROADMAP.md](../INFRASTRUCTURE_ROADMAP.md)
@@ -38,13 +38,16 @@ Replace monolithic `Run*Tests()` wrappers with **small doctest `TEST_CASE`s** th
 - Smoke table runs **`reflection-function` first** so global reflection state exists before other suites.
 - `ObjectManagerTest`, `SerializationArchiveTest`, etc. each call **`EnsureReflectionReady()`** (duplicate `FinalizeReflection`).
 
-### Target
+### Target (implemented S00)
 | Layer | Responsibility |
 |-------|----------------|
 | `TestContext` | Paths, log guard, `CommandLineResult` (unchanged) |
 | `EngineTestContextScope` | Active context thread-local (unchanged) |
-| **`EngineTestFixture`** | On construction: ensure reflection **ready once** (idempotent `FinalizeReflection` if `!IsReady()`); expose `GetArgc`/`GetArgv` |
-| Each `TEST_CASE` | Own `EngineTestFixture`; suite-local scopes (`ObjectManagerTestScope`, temp project dirs) |
+| **`EngineReflectionFixture`** | `FinalizeReflection()` when not ready (engine suites) |
+| **`EngineTestFixture`** | argv/context only; **no** finalize (`reflection-function` suite) |
+| Each `TEST_CASE` | Appropriate fixture; suite-local scopes |
+
+When reflection runs after other suites, **A6/A7/B6** skip (Collecting-only registration); logged as fixture B.
 
 ### Idempotency rule
 ```text
@@ -137,7 +140,7 @@ Remove “reflection must be first” language from [TEST_UNIFIED_DESIGN.md](./T
 | RF-1 | Meta: class/property lookup for known test type | `[smoke]` |
 | RF-2 | Invoke: `Add` success + expected failure paths (null fn, bad parms, IsA) — **one** negative case | `[smoke]` |
 | RF-3 | Ref / UProperty-style binding (if still in smoke profile) | `[smoke]` |
-| RF-4 | `types`, `static` phases | `[full]` only |
+| RF-4 | `types`, `static` phases | **Deferred** (ReflectionSample functions not in codegen; was `#if 0`) |
 
 **CLI:** keep `test reflection-function --suite=meta,invoke` mapping via `TestContext` / `ConfigureReflectionProfile`.
 
@@ -169,13 +172,13 @@ Remove “reflection must be first” language from [TEST_UNIFIED_DESIGN.md](./T
 
 | Slice | Deliverable | Verify |
 |-------|-------------|--------|
-| **F03-S00** | Fixture B + smoke order change; remove per-suite `EnsureReflectionReady` where redundant | §1 validation gate |
-| **F03-S01** | object-manager split | `test object-manager`, smoke |
-| **F03-S02** | serialization-archive split | `test serialization-archive`, smoke |
-| **F03-S03** | asset-manager split | `test asset-manager`, smoke |
-| **F03-S04** | reflection-function split + smoke/full tags | `test reflection-function`, `test full` |
-| **F03-S05** | material-ir smoke vs full split | `test material-ir`, smoke timing check |
-| **F03-S06** | Active doc string pass (`--material-ir-test` → CLI) | grep active docs only |
+| **F03-S00** | Fixture B + smoke order change; remove per-suite `EnsureReflectionReady` where redundant | §1 validation gate — **Done** |
+| **F03-S01** | object-manager split | `test object-manager`, smoke — **Done** |
+| **F03-S02** | serialization-archive split | Done |
+| **F03-S03** | asset-manager split | Done |
+| **F03-S04** | reflection-function split + smoke/full tags | Done (smoke = meta+invoke; ref `[full]`; types/static deferred) |
+| **F03-S05** | material-ir smoke vs full split | Done |
+| **F03-S06** | Active doc string pass (`--material-ir-test` → CLI) | Done |
 
 **Rule:** one slice per PR/commit batch; user review between slices if desired.
 

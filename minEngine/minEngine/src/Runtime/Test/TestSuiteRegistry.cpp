@@ -40,10 +40,10 @@ namespace minEngine
     {
         // Deterministic smoke order (TEST_UNIFIED_DESIGN §3.5).
         static constexpr std::string_view kSmokeOrder[] = {
-            "reflection-function",
             "object-manager",
             "serialization-archive",
             "asset-manager",
+            "reflection-function",
             "material-ir",
         };
 

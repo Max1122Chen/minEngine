@@ -2,5 +2,6 @@
 
 namespace minEngine
 {
-    bool RunAssetManagerTests(int argc, char** argv);
+    bool RunAssetManagerSmokeTests(int argc, char** argv);
+    bool RunAssetManagerFullTests(int argc, char** argv);
 }

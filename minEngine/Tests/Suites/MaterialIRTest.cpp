@@ -56,26 +56,34 @@ namespace minEngine
     {
         std::string g_MaterialIRTestEngineDefaultAssetsRoot;
 
-        bool EnsureReflectionReadyForMaterialIRTest()
+        void InitializeMaterialIRTestEnvironment(int argc, char** argv)
         {
-            Reflection::ReflectionSystem& reflection = Reflection::ReflectionSystem::Get();
-            if (reflection.IsReady())
-            {
-                return true;
-            }
+            g_MaterialIRTestEngineDefaultAssetsRoot.clear();
 
-            if (!reflection.FinalizeReflection())
+            EngineConfig engineConfig;
+            if (PathRegistry::Get().LoadEngineConfiguration(argc, argv, engineConfig))
             {
-                const std::vector<std::string>& reflectionErrors = reflection.GetLastErrors();
-                for (const std::string& error : reflectionErrors)
-                {
-                    ME_CORE_ERROR("{}", error);
-                }
-                return false;
+                g_MaterialIRTestEngineDefaultAssetsRoot =
+                    PathRegistry::Get().GetEngineDefaultAssetsRootString();
+                ME_CORE_INFO(
+                    "MaterialIR test: EngineDefaultAssetsRoot = '{}'",
+                    g_MaterialIRTestEngineDefaultAssetsRoot);
             }
+            else
+            {
+                ME_CORE_WARN(
+                    "MaterialIR test: EngineConfig load failed; continuing without EngineDefaultAssetsRoot.");
+            }
+        }
 
-            reflection.ClearErrors();
-            return true;
+        MaterialCompileContext MakeMaterialIRCompileContext()
+        {
+            MaterialCompileContext ctx;
+            if (!g_MaterialIRTestEngineDefaultAssetsRoot.empty())
+            {
+                ctx.EngineDefaultAssetsRootOverride = g_MaterialIRTestEngineDefaultAssetsRoot;
+            }
+            return ctx;
         }
 
         bool Contains(std::string_view haystack, std::string_view needle)
@@ -1279,40 +1287,9 @@ namespace minEngine
             return true;
         }
 
-    }
-
-    const std::string& GetMaterialIRTestEngineDefaultAssetsRoot()
+        bool RunMaterialIRSmokeTestsImpl(int argc, char** argv)
     {
-        return g_MaterialIRTestEngineDefaultAssetsRoot;
-    }
-
-    bool RunMaterialIRSmokeTests(int argc, char** argv)
-    {
-        g_MaterialIRTestEngineDefaultAssetsRoot.clear();
-
-        if (EnsureReflectionReadyForMaterialIRTest())
-        {
-            EngineConfig engineConfig;
-            if (PathRegistry::Get().LoadEngineConfiguration(argc, argv, engineConfig))
-            {
-                g_MaterialIRTestEngineDefaultAssetsRoot =
-                    PathRegistry::Get().GetEngineDefaultAssetsRootString();
-                ME_CORE_INFO(
-                    "MaterialIR test: EngineDefaultAssetsRoot = '{}'",
-                    g_MaterialIRTestEngineDefaultAssetsRoot);
-            }
-            else
-            {
-                ME_CORE_WARN(
-                    "MaterialIR test: EngineConfig load failed; continuing IR tests without EngineDefaultAssetsRoot.");
-            }
-        }
-        else
-        {
-            ME_CORE_WARN(
-                "MaterialIR test: reflection not ready; skipping EngineConfig load (IR smoke tests still run).");
-        }
-
+        InitializeMaterialIRTestEnvironment(argc, argv);
         MaterialIRTestObjectManagerScope objectManagerScope;
 
         if (!VerifyGoldenMaterialIRSmokeMemtl())
@@ -1323,17 +1300,6 @@ namespace minEngine
         Material smokeMaterial;
         PopulateSmokeMaterialGraph(smokeMaterial);
 
-        bool passed = AssertTrue(
-            smokeMaterial.m_ShadingModel == MaterialShadingModel::BlinnPhong,
-            "in-memory smoke m_ShadingModel BlinnPhong")
-            && AssertTrue(
-                smokeMaterial.m_BlendMode == MaterialBlendMode::Opaque,
-                "in-memory smoke m_BlendMode Opaque");
-        if (!passed)
-        {
-            return false;
-        }
-
         const MaterialGraphNodeDef_MaterialOutput* outputNode =
             smokeMaterial.m_Graph ? FindMaterialOutputNode(*smokeMaterial.m_Graph) : nullptr;
         if (outputNode == nullptr)
@@ -1343,110 +1309,6 @@ namespace minEngine
         }
 
         if (!VerifyPropertyBindingLayer(*smokeMaterial.m_Graph, *outputNode))
-        {
-            return false;
-        }
-
-        MaterialCompileContext ctx;
-        if (!g_MaterialIRTestEngineDefaultAssetsRoot.empty())
-        {
-            ctx.EngineDefaultAssetsRootOverride = g_MaterialIRTestEngineDefaultAssetsRoot;
-        }
-
-        const MaterialCompileResult blinnPhongCompiled = MaterialCompiler::CompileForDiagnostics(
-            *smokeMaterial.m_Graph,
-            MaterialShadingModel::BlinnPhong,
-            MaterialBlendMode::Opaque,
-            ctx);
-        if (!blinnPhongCompiled.Succeeded)
-        {
-            for (const MaterialCompileDiagnostic& diagnostic : blinnPhongCompiled.Diagnostics)
-            {
-                ME_CORE_ERROR("MaterialIR BlinnPhong diagnostic: {}", diagnostic.Message);
-            }
-            return false;
-        }
-
-        if (!AssertAllContains(blinnPhongCompiled.FullFragmentShader, {
-                { "CalcDirLightGraph", "Phong directional light (graph terminology)" },
-                { "MaterialPhongShininessFromRoughness", "Phong shininess from roughness" },
-                { "MaterialSpecularFromMetallic", "Metallic maps to legacy specular" },
-                { "BuildWorldNormalFromTangentSpace", "BlinnPhong TBN world normal" },
-                { "FragmentMaterialInputs.Normal", "BlinnPhong uses material Normal input" },
-                { "FragmentMaterialInputs.AO", "BlinnPhong uses material AO input" },
-                { "dirLightResult + pointLightResult + spotLightResult", "Phong per-light accumulation" },
-                { "u_DirLightShadowMap", "Phong fragment directional shadow sampler" },
-            })
-            || !AssertAllContains(blinnPhongCompiled.FullVertexShader, {
-                { "layout(location = 3) in vec4 a_Tangent", "BlinnPhong vertex tangent attribute" },
-                { "v_WorldTangent", "world tangent varying" },
-                { "v_TangentSign", "tangent handedness varying" },
-            })
-            || !AssertAllContains(blinnPhongCompiled.Stages[Stage_Fragment].Body, {
-                { "FragmentMaterialInputs.Normal = vec3(0.000000, 0.000000, 1.000000)", "default TSN +Z" },
-                { "FragmentMaterialInputs.AO = 1.000000", "default AO" },
-                { "FragmentMaterialInputs.Metallic = u_ScalarParam0", "BlinnPhong metallic scalar" },
-            })
-            || !VerifySmokeGpuCompile(blinnPhongCompiled))
-        {
-            LogCompiledShaders(blinnPhongCompiled);
-            ME_CORE_ERROR("MaterialIR BlinnPhong smoke FAILED during compile or GPU link.");
-            return false;
-        }
-
-        ME_CORE_INFO("MaterialIR BlinnPhong smoke: GPU vertex/fragment compile + link PASSED.");
-
-        if (!VerifyConstant3ToNormalBlinnPhong(ctx))
-        {
-            return false;
-        }
-
-        if (!VerifyIfThenElseAlbedoBlinnPhong(ctx))
-        {
-            return false;
-        }
-
-        if (!VerifyTextureSampleSharedByTwoOutputs(ctx))
-        {
-            return false;
-        }
-
-        if (!VerifyDivideByZeroPoisonDiagnostic(ctx))
-        {
-            return false;
-        }
-
-        if (!VerifyNormalMapWorkflow(ctx))
-        {
-            return false;
-        }
-
-        if (!VerifyTextureCubeRHICreation())
-        {
-            return false;
-        }
-
-        if (!VerifyPBRWorkflow(ctx))
-        {
-            return false;
-        }
-
-        if (!VerifyEngineIBLEnvironmentInit())
-        {
-            return false;
-        }
-
-        if (!VerifyIBLEnvironmentFallbackChain())
-        {
-            return false;
-        }
-
-        if (!VerifyIBLGpuConvolutionAndPrefilter())
-        {
-            return false;
-        }
-
-        if (!VerifyFragmentStructMatchesCapability(blinnPhongCompiled, MaterialShadingModel::BlinnPhong, MaterialBlendMode::Opaque))
         {
             return false;
         }
@@ -1497,17 +1359,129 @@ namespace minEngine
 
         ME_CORE_INFO("MaterialIR pin type connection checks PASSED.");
 
-        const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
-            *smokeMaterial.m_Graph,
-            smokeMaterial.m_ShadingModel,
-            smokeMaterial.m_BlendMode,
-            ctx);
-        if (!VerifySmokeCompileResult(compiled))
+        const MaterialCompileContext ctx = MakeMaterialIRCompileContext();
+
+        if (!VerifyConstant3ToNormalBlinnPhong(ctx))
         {
             return false;
         }
 
-        if (!VerifyFragmentStructMatchesCapability(compiled, MaterialShadingModel::Unlit, MaterialBlendMode::Opaque))
+        const MaterialCompileResult unlitCompiled = MaterialCompiler::CompileForDiagnostics(
+            *smokeMaterial.m_Graph,
+            smokeMaterial.m_ShadingModel,
+            smokeMaterial.m_BlendMode,
+            ctx);
+        if (!VerifySmokeCompileResult(unlitCompiled))
+        {
+            return false;
+        }
+
+        ME_CORE_INFO("MaterialIR smoke subset PASSED (golden, pins, Constant3 BlinnPhong, Unlit GPU).");
+        return true;
+        }
+
+        bool RunMaterialIRFullTestsImpl(int argc, char** argv)
+    {
+        InitializeMaterialIRTestEnvironment(argc, argv);
+        MaterialIRTestObjectManagerScope objectManagerScope;
+
+        Material smokeMaterial;
+        PopulateSmokeMaterialGraph(smokeMaterial);
+
+        const MaterialCompileContext ctx = MakeMaterialIRCompileContext();
+
+        const MaterialCompileResult blinnPhongCompiled = MaterialCompiler::CompileForDiagnostics(
+            *smokeMaterial.m_Graph,
+            MaterialShadingModel::BlinnPhong,
+            MaterialBlendMode::Opaque,
+            ctx);
+        if (!blinnPhongCompiled.Succeeded)
+        {
+            for (const MaterialCompileDiagnostic& diagnostic : blinnPhongCompiled.Diagnostics)
+            {
+                ME_CORE_ERROR("MaterialIR BlinnPhong diagnostic: {}", diagnostic.Message);
+            }
+            return false;
+        }
+
+        if (!AssertAllContains(blinnPhongCompiled.FullFragmentShader, {
+                { "CalcDirLightGraph", "Phong directional light (graph terminology)" },
+                { "MaterialPhongShininessFromRoughness", "Phong shininess from roughness" },
+                { "MaterialSpecularFromMetallic", "Metallic maps to legacy specular" },
+                { "BuildWorldNormalFromTangentSpace", "BlinnPhong TBN world normal" },
+                { "FragmentMaterialInputs.Normal", "BlinnPhong uses material Normal input" },
+                { "FragmentMaterialInputs.AO", "BlinnPhong uses material AO input" },
+                { "dirLightResult + pointLightResult + spotLightResult", "Phong per-light accumulation" },
+                { "u_DirLightShadowMap", "Phong fragment directional shadow sampler" },
+            })
+            || !AssertAllContains(blinnPhongCompiled.FullVertexShader, {
+                { "layout(location = 3) in vec4 a_Tangent", "BlinnPhong vertex tangent attribute" },
+                { "v_WorldTangent", "world tangent varying" },
+                { "v_TangentSign", "tangent handedness varying" },
+            })
+            || !AssertAllContains(blinnPhongCompiled.Stages[Stage_Fragment].Body, {
+                { "FragmentMaterialInputs.Normal = vec3(0.000000, 0.000000, 1.000000)", "default TSN +Z" },
+                { "FragmentMaterialInputs.AO = 1.000000", "default AO" },
+                { "FragmentMaterialInputs.Metallic = u_ScalarParam0", "BlinnPhong metallic scalar" },
+            })
+            || !VerifySmokeGpuCompile(blinnPhongCompiled))
+        {
+            LogCompiledShaders(blinnPhongCompiled);
+            ME_CORE_ERROR("MaterialIR BlinnPhong extended FAILED during compile or GPU link.");
+            return false;
+        }
+
+        ME_CORE_INFO("MaterialIR BlinnPhong extended: GPU vertex/fragment compile + link PASSED.");
+
+        if (!VerifyIfThenElseAlbedoBlinnPhong(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyTextureSampleSharedByTwoOutputs(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyDivideByZeroPoisonDiagnostic(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyNormalMapWorkflow(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyTextureCubeRHICreation())
+        {
+            return false;
+        }
+
+        if (!VerifyPBRWorkflow(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyEngineIBLEnvironmentInit())
+        {
+            return false;
+        }
+
+        if (!VerifyIBLEnvironmentFallbackChain())
+        {
+            return false;
+        }
+
+        if (!VerifyIBLGpuConvolutionAndPrefilter())
+        {
+            return false;
+        }
+
+        if (!VerifyFragmentStructMatchesCapability(
+                blinnPhongCompiled,
+                MaterialShadingModel::BlinnPhong,
+                MaterialBlendMode::Opaque))
         {
             return false;
         }
@@ -1517,8 +1491,24 @@ namespace minEngine
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR smoke tests PASSED (graph binding + compile diagnostics + golden asset).");
+        ME_CORE_INFO("MaterialIR full subset PASSED.");
         return true;
+        }
+    }
+
+    const std::string& GetMaterialIRTestEngineDefaultAssetsRoot()
+    {
+        return g_MaterialIRTestEngineDefaultAssetsRoot;
+    }
+
+    bool RunMaterialIRSmokeTests(int argc, char** argv)
+    {
+        return RunMaterialIRSmokeTestsImpl(argc, argv);
+    }
+
+    bool RunMaterialIRFullTests(int argc, char** argv)
+    {
+        return RunMaterialIRFullTestsImpl(argc, argv);
     }
 }
 
@@ -1526,8 +1516,16 @@ namespace minEngine
 
 #include "EngineTestFixture.h"
 
-TEST_CASE("material-ir suite [smoke][full]")
+TEST_CASE("material-ir: golden pins unlit blinn smoke [smoke]")
 {
-    minEngine::EngineTestFixture fixture;
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
     CHECK(minEngine::RunMaterialIRSmokeTests(fixture.GetArgc(), fixture.GetArgv()));
+}
+
+TEST_CASE("material-ir: extended workflows [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunMaterialIRFullTests(fixture.GetArgc(), fixture.GetArgv()));
 }

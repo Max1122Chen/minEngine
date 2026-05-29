@@ -32,7 +32,7 @@ Last updated: 2026-05-19
 | 层 | 已有 | 缺失 |
 |----|------|------|
 | MIR 编译 | `MaterialCompiler`、Unlit Assembler、`MaterialParameters.TexCoords` | — |
-| 测试 | `--material-ir-test` 字符串 + **GPU compile/link**（`TryCompileShaderSourcesOnGpu`） | — |
+| 测试 | `minEngineTests test material-ir` 字符串 + **GPU compile/link**（`TryCompileShaderSourcesOnGpu`） | — |
 | `Shader` / `RHIShader` | `Shader::CompileFromFiles` / `CreateFromFiles` / `CreateFromSource`；读盘在 `Shader` 内，RHI 只收源码 | — |
 | `Material` 资产 | `m_Shader` + `m_Diffuse`/`m_Specular`/`m_Normal` + `BindTextures()` | 图编译结果、slot→纹理映射、scalar uniform 表 |
 | 网格布局 | Assimp：`a_Position@0`, `a_TexCoord@1`, `a_Normal@2` | 与生成 shader 的 `layout(location=…)` **一致** |
@@ -135,7 +135,7 @@ gl_Position = vec4(a_Position, 1.0);  // 物体空间直接进裁剪，无相机
 2. ~~A4~~ 完成  
 3. A3 留 R2  
 
-**完成标准：** `Editor.exe --material-ir-test` exit 0，日志含 `GPU vertex/fragment compile + link PASSED`。
+**完成标准：** `minEngineTests test material-ir`（或 `test smoke`）exit 0，日志含 `GPU vertex/fragment compile + link PASSED`。
 
 ---
 

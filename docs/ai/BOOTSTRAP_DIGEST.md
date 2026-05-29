@@ -85,7 +85,7 @@ Entry: `minEngineTests.exe` (`Tests/TestMain.cpp`) or `Editor.exe test …` (for
 
 ## Current infra focus
 
-- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` / `TEST-F01` / `TEST-F02` **done**; **TEST-F03** [planned](./Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md) (fixture B + per-suite `TEST_CASE`).  
+- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` / `TEST-F01` / `TEST-F02` / **TEST-F03** **done** (doctest cases + fixture B).  
 - **Defer for now:** large Editor features, new P4/P5 slices, Lua — see [TECH_DEBT.md](./TECH_DEBT.md).
 
 ---

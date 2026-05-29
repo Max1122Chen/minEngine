@@ -797,6 +797,28 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	TEST-F02 — doctest + `minEngine/Tests/` + `minEngineTests.exe`.
 
+### 2026-05-28 - TEST-F03 suite slim-down complete (S00–S06)
+- Goal:
+	Doctest cases per suite; fixture B; smoke/full tags; faster verify smoke.
+- Main changes:
+	All five suites split; `EngineReflectionFixture` / `EngineTestFixture`; Material IR smoke vs full;
+	reflection meta/invoke smoke, types/static/ref full; active docs CLI strings updated.
+- Validation done:
+	`minEngineTests test smoke` exit 0.
+- Next step:
+	Optional: further split reflection/material cases; enable C3 FillOut when registered.
+
+### 2026-05-28 - TEST-F03 S00–S01 fixture B + object-manager split
+- Goal:
+	Implement fixture B smoke order; split object-manager into doctest cases.
+- Main changes:
+	`EngineReflectionFixture` / `EngineTestFixture`; `DoctestSuiteRunner::RunSuiteForContext`;
+	smoke order in `TestSuiteRegistry`; `ObjectManagerTest` → 3 `TEST_CASE`s; reflection A6/A7/B6 skip when already Ready.
+- Validation done:
+	`minEngineTests test object-manager`, `test reflection-function`, `test smoke` exit 0.
+- Next step:
+	F03-S02 serialization-archive split.
+
 ### 2026-05-28 - TEST-F03 suite slim-down plan (fixture B)
 - Goal:
 	Per-suite doctest cases; central reflection init; faster smoke; dependency-ordered registry.

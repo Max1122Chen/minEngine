@@ -2,5 +2,6 @@
 
 namespace minEngine
 {
-    bool RunSerializationArchiveTests(int argc, char** argv);
+    bool RunSerializationArchiveSmokeTests();
+    bool RunSerializationArchivePrimitiveTests();
 }

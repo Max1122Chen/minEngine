@@ -238,8 +238,8 @@ UnloadScene / CloseProject / SwitchPreview:
 - [x] `ObjectManager::GetTrackedObjectCount()` 在场景卸载后下降  
 - [x] `m_ObjectsByGuid` 无 `shared_ptr` 强引用（仅 `weak_ptr`）  
 - [ ] Editor 多次打开/关闭 `test` 场景，`FindObject` 不返回已销毁 GUID（手动验收）  
-- [ ] `--material-ir-test` 仍 exit 0（golden 资产待修）  
-- [x] `--object-manager-test` exit 0（`ObjectManagerTest.cpp`）
+- [ ] `minEngineTests test material-ir` 仍 exit 0（golden 资产待修）  
+- [x] `minEngineTests test object-manager` exit 0（`ObjectManagerTest.cpp`）
 
 ### M2 完成
 

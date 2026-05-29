@@ -77,7 +77,7 @@ namespace minEngine
             }
             break;
         case ReflectionTestProfile::SmokeSubset:
-            outStorage.emplace_back("--reflection-function-test=meta,invoke,ref");
+            outStorage.emplace_back("--reflection-function-test=meta,invoke");
             break;
         case ReflectionTestProfile::FullAllPhases:
             outStorage.emplace_back("--reflection-function-test");

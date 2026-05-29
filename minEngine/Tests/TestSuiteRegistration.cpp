@@ -8,7 +8,6 @@
 #include "Runtime/Test/TestContext.h"
 #include "Runtime/Test/TestSuiteRegistry.h"
 
-#include "Suites/ObjectManagerTest.h"
 #include "Suites/SerializationArchiveTest.h"
 #include "Suites/AssetManagerTest.h"
 #include "Suites/ReflectionFunctionTest.h"
@@ -49,7 +48,9 @@ namespace minEngine
             {
                 ME_CORE_INFO("TestRunner: starting suite 'object-manager'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunTestCaseSubstring("object-manager suite");
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "object-manager",
+                    context.GetCommandLine().TestKind);
             }
         };
 
@@ -70,7 +71,9 @@ namespace minEngine
             {
                 ME_CORE_INFO("TestRunner: starting suite 'serialization-archive'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunTestCaseSubstring("serialization-archive suite");
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "serialization-archive",
+                    context.GetCommandLine().TestKind);
             }
         };
 
@@ -91,7 +94,9 @@ namespace minEngine
             {
                 ME_CORE_INFO("TestRunner: starting suite 'asset-manager'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunTestCaseSubstring("asset-manager suite");
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "asset-manager",
+                    context.GetCommandLine().TestKind);
             }
         };
 
@@ -112,7 +117,9 @@ namespace minEngine
             {
                 ME_CORE_INFO("TestRunner: starting suite 'reflection-function'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunTestCaseSubstring("reflection-function suite");
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "reflection-function",
+                    context.GetCommandLine().TestKind);
             }
         };
 
@@ -133,7 +140,9 @@ namespace minEngine
             {
                 ME_CORE_INFO("TestRunner: starting suite 'material-ir'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunTestCaseSubstring("material-ir suite");
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "material-ir",
+                    context.GetCommandLine().TestKind);
             }
         };
 

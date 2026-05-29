@@ -123,7 +123,7 @@ P6  Lua 脚本              → LUA_SCRIPTING_DESIGN               [占位，依
 | `ObjectManager` 注册表改为 **`weak_ptr`**；`FindObject` lock 语义 | **Preview / Active 分域** 根标记（设计 C3） |
 | `CollectGarbage` / `CollectGarbageWithEngineRoots`；Scene 卸载走 GC | Editor **多次开关场景** 泄漏目视验收（设计 §7 未勾） |
 | 业务侧削减显式 `RemoveObject`（Scene/GO/Preview 等） | `MaterialIRTest` golden 与 GC 交互（设计待修项） |
-| `--object-manager-test` 头less 验收 | 与 **P4 脚本** 共拟的 `ObjectHandle` 等 M3 句柄 API |
+| `minEngineTests test object-manager` 头less 验收 | 与 **P4 脚本** 共拟的 `ObjectHandle` 等 M3 句柄 API |
 
 ### P2 — Editor 平台化
 
@@ -220,7 +220,7 @@ P6  Lua 脚本              → LUA_SCRIPTING_DESIGN               [占位，依
 | 已完成 | 延后 |
 |--------|------|
 | Phase **0–5**（IR/编译器、Material Editor E0–E4、PBR+IBL+Skybox） | Parallax、WPO、Translucent IBL、编辑器 Material **Undo**（归 P3 E1.5） |
-| `--material-ir-test`、golden `MaterialIRSmoke.memtl` | 更多 `TextureSample` 变体、运行时材质批量工具 |
+| `minEngineTests test material-ir`、golden `MaterialIRSmoke.memtl` | 更多 `TextureSample` 变体、运行时材质批量工具 |
 
 ### 总结
 
