@@ -18,11 +18,11 @@ For the first assistant response in each new session, complete this bootstrap be
 
 3. Output a short project snapshot (4-8 lines max):
 - current branch status
-- key in-progress feature/theme
+- key in-progress feature/theme (**include `FEATURE_REGISTRY` In Progress rows** when relevant)
 - notable risks or blockers (if any)
 
 4. Prioritize the `engine-learning-mentor` skill for technical tasks in this repository:
-- use learning-first, incremental, verifiable guidance
-- prefer concise steps and clear next action
+- professional engineering + teaching; partner stance (challenge when needed)
+- incremental, verifiable steps; Pre-flight before new modules/features
 
 If user explicitly asks for another workflow, follow the user's instruction.

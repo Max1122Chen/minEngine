@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-27 (P4/P5 roadmap)
+Last updated: 2026-05-28 (WF collaboration v2)
 
 ## Purpose
 
@@ -774,6 +774,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`EDITOR_CONTEXT_MENU_DESIGN.md` §13–§15；`EDITOR_TASK_ROLLOUT` 子任务表；`PLATFORM_ROADMAP` §10 备注。
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
+
+### 2026-05-28 - WF collaboration v2 (registry, Slice DoD, handoff)
+- Goal:
+	Team workflow: Feature registry, engineering+doc Slice DoD, session handoff; rules/skills wired.
+- Main changes:
+	`FEATURE_REGISTRY.md`; `DOC_GOVERNANCE` §7 Slice DoD, §9.1 Handoff, registry rule; `docs-workflow-triggers` handoff row; mentor + git-commit-mentor DoD; `WORKING_WITH_AI` handoff prompt.
+- Validation done:
+	Docs-only; no build required.
+- Next step:
+	Use registry for next Feature (e.g. TEST-F01 CLI); optional post-commit hook later.
 
 ### 2026-05-27 - P4/P5 Core 路线对齐（函数反射 + 委托 + Lua）
 - Goal:

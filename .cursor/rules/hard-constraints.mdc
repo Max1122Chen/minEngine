@@ -9,12 +9,14 @@ These three rules override convenience habits. If anything else conflicts, follo
 
 ## 1) Commit preparation (mandatory gate)
 
-When the user asks to prepare a commit (e.g. 准备commit, 写提交信息, commit message, summarize for commit):
+When the user asks to prepare a commit (e.g. 准备commit, 准备提交, 帮我准备commit, **我要commit**, 写提交信息, commit message, summarize for commit):
 
+- **Prepare ≠ execute:** phrases like 准备/我要 commit mean **draft message + wait for approval**, not immediate `git commit`. See `git-commit-mentor` skill (intent recognition).
 - Inspect staged/unstaged changes first; draft from **actual** diffs only.
-- Use **Conventional Commits** for the subject: `type(scope): summary` (e.g. `feat`, `fix`, `refactor`, `docs`, `chore`).
+- Use **Conventional Commits** for the subject: `type(scope): summary` (e.g. `feat`, `fix`, `refactor`, `docs`, `chore`). **Summary = concrete work**, not Feature/Slice/Bug IDs (`TEST-F01-S02`); link IDs in docs/PR, optional `Refs:` footnote only (`git-commit-mentor`).
+- Run **Doc DoD** checks per `git-commit-mentor` when the change is feature/design/bug-driven; surface gaps with the draft.
 - Present the **full draft** to the user and **wait for explicit approval** before `git add` / `git commit`.
-- **NEVER** run `git commit` (or push) unless the user clearly approves that draft in the same task.
+- **NEVER** run `git commit` (or push) unless the user clearly approves that draft **and** asks to execute (e.g. 用这个提交、执行 commit) in the same task.
 - If the user only wanted a message draft, stop after the draft unless they then ask to commit.
 
 ## 2) C/C++ implementation style

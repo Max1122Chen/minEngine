@@ -8,7 +8,9 @@
 |------|------|
 | **`PROJECT_CONTEXT.md`** | 稳定、高层项目快照（bootstrap 必读） |
 | **`PROGRESS_LOG.md`** | 按时间线的变更记录（bootstrap 必读） |
+| **`FEATURE_REGISTRY.md`** | Feature ID 登记册（新功能先登记再写 Design） |
 | **`WORKING_WITH_AI.md`** | 与 AI 协作约定 |
+| **`templates/`** | 文档模板 + [协作规范](./templates/DOC_GOVERNANCE.md)（新文档从此复制） |
 | **`Platform/`** | 跨模块平台能力：启动、内存管理、反射/脚本路线图等 |
 | **`Render/`** | 渲染管线、资源导入、非材质专项 |
 | **`Render/Material/`** | 材质 IR、编译器、编辑器、Phase 1–5 |
@@ -18,6 +20,8 @@
 | **`../external/`** | 外部 AI / UE 参考讨论存档 | 定稿以 `docs/ai/` 为准 |
 
 **规则（仓库约束）：** 见 `.cursor/rules/docs-ai-layout.mdc`。
+
+**新功能：** 先在 [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) 登记 ID，再读 [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) 并选 [templates/](./templates/)。切片 `<FeatureID>-S<nn>`。
 
 ## 快速入口
 

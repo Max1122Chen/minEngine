@@ -23,6 +23,7 @@ alwaysApply: false
 | `docs/ai/Editor/` | 编辑器窗口、视口、ImGui、编辑模式 | 运行时 Scene 逻辑 |
 | `docs/ai/bugs/` | 跨领域缺陷 | 已归属单一领域的（优先放子目录 `bugs/`） |
 | `docs/ai/sessions/` | 临时会话笔记 | 长期有效的设计定稿 |
+| `docs/ai/templates/` | 文档模板与 `DOC_GOVERNANCE.md`（规范源） | 业务设计定稿、Progress 条目 |
 
 ## 命名
 
@@ -38,10 +39,16 @@ alwaysApply: false
 
 ## 新平台能力流程
 
-1. 在 `Platform/PLATFORM_ROADMAP.md` 增加条目与优先级
-2. 在 `Platform/<Topic>/` 写 `*_DESIGN.md` 草稿（选项、拍板、阶段）
-3. 实施后在 `PROGRESS_LOG.md` 记一笔；设计案内勾选验收
+1. 在 `docs/ai/FEATURE_REGISTRY.md` 登记 Feature ID
+2. 从 `docs/ai/templates/` 复制 `design-spec` / `implementation-plan`；ID 与状态见 `DOC_GOVERNANCE.md`
+3. 在 `Platform/PLATFORM_ROADMAP.md` 增加条目与优先级（若属平台线）
+4. 在 `Platform/<Topic>/`（或对应域目录）写 `*_DESIGN.md`
+5. 实施后在 `PROGRESS_LOG.md` 记一笔；设计案内勾选验收；Slice DoD 见 `DOC_GOVERNANCE.md` §7
 
 ## Bootstrap 不变
 
 会话仍先读：`docs/ai/PROJECT_CONTEXT.md`、`docs/ai/PROGRESS_LOG.md`。
+
+## 文档协同触发
+
+计划 / 设计 / Bug / 收尾 / 准备提交 → 见 `.cursor/rules/docs-workflow-triggers.mdc`；执行步骤见 `engine-learning-mentor` skill § Documentation collaboration；提交前 Doc DoD 见 `git-commit-mentor` skill。

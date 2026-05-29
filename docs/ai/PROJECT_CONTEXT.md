@@ -4,10 +4,10 @@ Last updated: 2026-05-27
 
 ## 1) Project Goal
 
-minEngine is a personal C++ game engine learning project.
+minEngine is a personal C++ game engine project; the author learns **through** building it—learning is a motivation, not a license for unprofessional core engineering.
 
 Primary objective:
-- Build a clear and extensible engine architecture.
+- Build a clear and extensible engine architecture (professional bar on platform/render/asset foundations).
 - Practice rendering pipeline design and graphics feature implementation.
 - Keep the codebase understandable and incrementally improvable.
 
