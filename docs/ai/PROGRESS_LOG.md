@@ -797,16 +797,25 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	TEST-F02 — doctest + `minEngine/Tests/` + `minEngineTests.exe`.
 
-### 2026-05-28 - Docs sync + legacy `--*-test` flags removed
+### 2026-05-28 - TEST-F03 suite slim-down plan (fixture B)
 - Goal:
-	Align active docs with CLI-F01 / TEST-F01 / TEST-F02 completion; drop deprecated headless argv flags.
+	Per-suite doctest cases; central reflection init; faster smoke; dependency-ordered registry.
 - Main changes:
-	`TECH_DEBT` TD-001–003 → Done; `INFRASTRUCTURE_ROADMAP` / `BOOTSTRAP_DIGEST` current UX;
-	`TestRunner` / `ApplicationCommandLine` / `main.h` — no legacy flag detection or aliases.
+	`Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md`; Registry `TEST-F03` Planned; INFRASTRUCTURE/TEST_UNIFIED/BOOTSTRAP links.
 - Validation done:
-	(Build + `verify.ps1` after code change.)
+	Docs-only; implementation starts at F03-S00 (fixture + smoke order).
 - Next step:
-	TEST-F03 (planned): per-suite doctest slim-down — one invariant per module, slice-by-slice.
+	F03-S00 validation gate, then F03-S01 object-manager split.
+
+### 2026-05-28 - Legacy headless test flags removed (commit)
+- Goal:
+	Drop deprecated `--*-test` argv; align infra docs with minEngineTests primary UX.
+- Main changes:
+	`TestRunner`, `ApplicationCommandLine`, `main.h`, `TestMain`; TECH_DEBT TD-001–003 Done.
+- Validation done:
+	`minEngineTests.exe test smoke` exit 0.
+- Next step:
+	TEST-F03 planning (see entry above).
 
 ### 2026-05-28 - TEST-F01/F02 unified test runner design
 - Goal:

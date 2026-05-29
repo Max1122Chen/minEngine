@@ -2,7 +2,7 @@
 
 ## Meta
 - **ID:** N/A（协调 `CLI-F01` + `TEST-F01`）
-- **Status:** **Maintenance** (M1–M4 + TEST-F02 done; follow-on = suite slim-down / TEST-F03)
+- **Status:** **Maintenance** (M1–M4 + TEST-F02 done; follow-on = [TEST-F03](./Test/TEST_F03_SUITE_SLIM_PLAN.md) suite slim-down)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [TECH_DEBT.md](../TECH_DEBT.md), [BOOTSTRAP_DIGEST.md](../BOOTSTRAP_DIGEST.md), [PLATFORM_ROADMAP.md](./PLATFORM_ROADMAP.md) §12

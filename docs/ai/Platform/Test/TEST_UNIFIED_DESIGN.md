@@ -37,10 +37,9 @@
 - ~~Per-suite LogSystem / PathRegistry duplication~~ → `TestContext` once per run.
 - ~~No smoke table / verify script~~ → `test smoke` + `scripts/verify.ps1`.
 
-### Remaining (TEST-F03 — optional)
-- Suites still wrap monolithic `Run*Tests()` behind one doctest `TEST_CASE` each.
-- Reflection smoke order dependency (reflection first in smoke table).
-- Historical docs may still mention `--material-ir-test`; use `minEngineTests test material-ir`.
+### Remaining (TEST-F03 — planned)
+- See [TEST_F03_SUITE_SLIM_PLAN.md](./TEST_F03_SUITE_SLIM_PLAN.md): split `TEST_CASE`s, **fixture B** (reflection in `EngineTestFixture`), reorder smoke table, slim Material IR smoke.
+- Historical docs may still mention `--material-ir-test`; F03-S06 updates active docs only.
 
 ### Non-goals (F01)
 - Replace `bool Run*()` with doctest macros (→ F02).
@@ -165,7 +164,9 @@ Stable IDs must match [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2.
 | `reflection-function` | yes (meta+invoke+ref) | yes (all phases) | no | `RunReflectionFunctionTests` |
 | `material-ir` | yes | yes | yes | `RunMaterialIRSmokeTests` |
 
-**Smoke run order (deterministic):** reflection-function → object-manager → serialization-archive → asset-manager → material-ir (reflection first — in-process global state; reset planned in TEST-F02).
+**Smoke run order (current):** reflection-function → object-manager → serialization-archive → asset-manager → material-ir (reflection first — legacy ordering).
+
+**Smoke run order (TEST-F03 / fixture B):** object-manager → serialization-archive → asset-manager → reflection-function → material-ir. See [TEST_F03_SUITE_SLIM_PLAN.md](./TEST_F03_SUITE_SLIM_PLAN.md).
 
 **Reflection smoke vs full:** Adapter maps `TestContext`:
 
