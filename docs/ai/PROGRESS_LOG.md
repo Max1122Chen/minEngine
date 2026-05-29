@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-28 (infrastructure roadmap)
+Last updated: 2026-05-28 (CLI-F01 design approved)
 
 ## Purpose
 
@@ -774,6 +774,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`EDITOR_CONTEXT_MENU_DESIGN.md` §13–§15；`EDITOR_TASK_ROLLOUT` 子任务表；`PLATFORM_ROADMAP` §10 备注。
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
+
+### 2026-05-28 - CLI-F01 unified command-line design (approved)
+- Goal:
+	Design CLI: subcommand = mode, -- = params; CLI11 + ApplicationCommandLine.
+- Main changes:
+	`Platform/CLI/CLI_UNIFIED_DESIGN.md`, `CLI_F01_IMPLEMENTATION.md`; Registry/roadmap/README links; Status Planned.
+- Validation done:
+	User approved convention and command tree.
+- Next step:
+	CLI-F01-S01 implementation (vendor CLI11 + parse core).
 
 ### 2026-05-28 - Infrastructure roadmap (CLI · Test · Verify)
 - Goal:

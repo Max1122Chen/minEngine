@@ -35,7 +35,7 @@ Near-term work is **engineering infrastructure only**: unify **CLI** (command-li
 
 | Order | Feature ID | Title | Status | Design (next) |
 |-------|------------|-------|--------|----------------|
-| 1 | `CLI-F01` | Unified command-line interface | Planned | Design Spec → Implementation Plan |
+| 1 | `CLI-F01` | Unified command-line interface | Planned | [CLI_UNIFIED_DESIGN](./CLI/CLI_UNIFIED_DESIGN.md) |
 | 2 | `TEST-F01` | Test runner, suite registry, verify integration | Planned | After CLI-F01-S02 minimum |
 
 **Existing headless flags to migrate** (today in `minEngine/minEngine/src/main.h`):

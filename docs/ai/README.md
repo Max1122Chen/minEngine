@@ -30,6 +30,7 @@
 ### 平台（当前主线）
 
 - [**基建路线图（当前优先）**](./Platform/INFRASTRUCTURE_ROADMAP.md) — CLI 统一化 · Test 框架 · verify · DoD
+- [**CLI 统一化设计（CLI-F01）**](./Platform/CLI/CLI_UNIFIED_DESIGN.md) — 子命令=模式，`--`=参数
 - [Platform 路线图](./Platform/PLATFORM_ROADMAP.md) — UE 化大方向；**§12 基建优先**；§11 Core（P4/P5/Lua）M4 后再开新切片
 - [函数反射设计](./Platform/Reflection/REFLECTION_FUNCTIONS_DESIGN.md) — P4 数据结构、Invoke、阶段切片与验收
 - [函数反射现状](./Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) — 当前实现基线
