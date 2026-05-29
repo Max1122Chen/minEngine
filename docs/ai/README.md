@@ -9,6 +9,8 @@
 | **`PROJECT_CONTEXT.md`** | 稳定、高层项目快照（bootstrap 必读） |
 | **`PROGRESS_LOG.md`** | 按时间线的变更记录（bootstrap 必读） |
 | **`FEATURE_REGISTRY.md`** | Feature ID 登记册（新功能先登记再写 Design） |
+| **`BOOTSTRAP_DIGEST.md`** | 一页会话恢复：规则摘要、命令、DoD（bootstrap 第三读） |
+| **`TECH_DEBT.md`** | 技术债登记册（Pre-flight / 路线图引用） |
 | **`WORKING_WITH_AI.md`** | 与 AI 协作约定 |
 | **`templates/`** | 文档模板 + [协作规范](./templates/DOC_GOVERNANCE.md)（新文档从此复制） |
 | **`Platform/`** | 跨模块平台能力：启动、内存管理、反射/脚本路线图等 |

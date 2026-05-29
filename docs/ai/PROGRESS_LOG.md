@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-28 (WF collaboration v2)
+Last updated: 2026-05-28 (bootstrap digest + tech debt)
 
 ## Purpose
 
@@ -774,6 +774,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`EDITOR_CONTEXT_MENU_DESIGN.md` §13–§15；`EDITOR_TASK_ROLLOUT` 子任务表；`PLATFORM_ROADMAP` §10 备注。
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
+
+### 2026-05-28 - Bootstrap digest and tech debt register
+- Goal:
+	One-page session recovery + explicit debt queue before infra roadmap.
+- Main changes:
+	`BOOTSTRAP_DIGEST.md`; `TECH_DEBT.md` (TD-001..012); `README` links; session-bootstrap reads digest.
+- Validation done:
+	Docs-only.
+- Next step:
+	Commit batch A; then infra roadmap (CLI + Test + verify) — not in digest/debt files.
 
 ### 2026-05-28 - WF collaboration v2 (registry, Slice DoD, handoff)
 - Goal:
