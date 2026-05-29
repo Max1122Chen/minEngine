@@ -3,14 +3,14 @@
 ## Meta
 - **ID:** `TEST-F01` (+ follow-on `TEST-F02`)
 - **Type:** Feature
-- **Status:** Done (S01–S05; F02 doctest/layout deferred)
+- **Status:** Done (F01 S01–S05; F02 doctest + `minEngineTests.exe`)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [TEST_F01_IMPLEMENTATION.md](./TEST_F01_IMPLEMENTATION.md), [TEST_F02_LAYOUT_MIGRATION.md](./TEST_F02_LAYOUT_MIGRATION.md), [CLI_UNIFIED_DESIGN.md](../CLI/CLI_UNIFIED_DESIGN.md), [INFRASTRUCTURE_ROADMAP.md](../INFRASTRUCTURE_ROADMAP.md), [TECH_DEBT.md](../../TECH_DEBT.md) TD-001–002
 
 ## TL;DR
 
-Add a **self-built TestRunner** (registry + shared fixture + smoke/full tables) wired to existing CLI (`Editor.exe test …`). **Phase 1 (`TEST-F01`)** wraps today’s `Run*Tests()` inside `Editor.exe` and deletes legacy argv chains. **Phase 2 (`TEST-F02`)** vendors **doctest**, moves tests to `minEngine/Tests/`, adds **`minEngineTests.exe`**, and rewrites suites as typical `TEST_CASE` code. **doctest owns assertions; we own orchestration.**
+**Self-built TestRunner** (registry + `TestContext` + smoke/full tables) + **doctest** for assertions. **`minEngineTests.exe`** is the primary entry; `Editor.exe test …` forwards. Legacy `--*-test` argv flags removed (2026-05-28). Follow-on **TEST-F03**: slim per-suite `TEST_CASE` bodies.
 
 ## Scope
 
@@ -32,18 +32,15 @@ Add a **self-built TestRunner** (registry + shared fixture + smoke/full tables) 
 
 ## 1) 背景与目标
 
-### Pain (after CLI-F01)
-- `main.h` still has a **legacy chain** of four `ShouldRun*TestsOnly` + special-case `material-ir` dispatch.
-- Each `*Test.cpp` duplicates **LogSystem init**, **PathRegistry** / argv rules, and pass/fail reporting.
-- `test smoke` / `test full` return usage error; no single **smoke table**.
-- No **`scripts/verify.ps1`** bound to Slice DoD.
+### Pain (resolved by F01/F02)
+- ~~Scattered `ShouldRun*` / `--*-test` in `main.h`~~ → unified `test` subcommand + registry.
+- ~~Per-suite LogSystem / PathRegistry duplication~~ → `TestContext` once per run.
+- ~~No smoke table / verify script~~ → `test smoke` + `scripts/verify.ps1`.
 
-### Goals
-- **One runner** per process: `TestRunner::Run(CommandLineResult)` → exit code.
-- **One registry** for suite IDs (aligned with [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2).
-- **Shared TestContext** — engine paths, log, optional filters; suites stop scanning argv for globals.
-- **True migration:** delete `ShouldRun*` and legacy `main.h` chain when a suite is registered (F01-S03).
-- **Professional bar:** `scripts/verify.ps1` = build + `test smoke` exit 0.
+### Remaining (TEST-F03 — optional)
+- Suites still wrap monolithic `Run*Tests()` behind one doctest `TEST_CASE` each.
+- Reflection smoke order dependency (reflection first in smoke table).
+- Historical docs may still mention `--material-ir-test`; use `minEngineTests test material-ir`.
 
 ### Non-goals (F01)
 - Replace `bool Run*()` with doctest macros (→ F02).
@@ -55,11 +52,12 @@ Add a **self-built TestRunner** (registry + shared fixture + smoke/full tables) 
 
 | Location | Behavior |
 |----------|----------|
-| `main.h` | CLI parse → `material-ir` only on unified path; four legacy flags; then Editor |
-| `*Test.cpp` under `Runtime/` | `ShouldRun*` + `Run*Tests(argc,argv)`; reflection has internal phase flags |
-| CLI | `test <target>`, `--suite=` on `test` subcommand; globals `--engine-config` / `--engine-root` |
-| Assertion style | Manual `if (!ok) { ME_CORE_ERROR; return false; }` |
-| Third-party test lib | None |
+| `main.h` | Parse → Editor or forward `test` to `minEngineTests.exe` |
+| `minEngine/Tests/Suites/*.cpp` | doctest `TEST_CASE` + `Run*Tests()` wrapper |
+| `Runtime/Test/` | `TestRunner`, registry, adapters |
+| CLI | `minEngineTests test smoke\|full\|<suite-id>`; `--suite=` for reflection |
+| Assertion style | doctest `CHECK` in suite TU; legacy `bool` inside `Run*Tests` until F03 |
+| Third-party test lib | doctest 2.4.11 (implement only in `TestMain.cpp`) |
 
 ---
 
@@ -159,13 +157,13 @@ CommandLineExitCode TestRunner::Run(const CommandLineResult& cli, int argc, char
 
 Stable IDs must match [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2.
 
-| Suite ID | Legacy flag | InSmoke | InFull | RequiresGpu | Wrapper (F01) |
-|----------|-------------|---------|--------|-------------|---------------|
-| `object-manager` | `--object-manager-test` | yes | yes | no | `RunObjectManagerTests` |
-| `serialization-archive` | `--serialization-archive-test` | yes | yes | no | `RunSerializationArchiveTests` |
-| `asset-manager` | `--asset-manager-test` | yes | yes | no | `RunAssetManagerTests` |
-| `reflection-function` | `--reflection-function-test` | yes (default phases) | yes (all phases) | no | `RunReflectionFunctionTests` |
-| `material-ir` | `--material-ir-test` | yes | yes | yes | `RunMaterialIRSmokeTests` |
+| Suite ID | InSmoke | InFull | RequiresGpu | Entry |
+|----------|---------|--------|-------------|-------|
+| `object-manager` | yes | yes | no | `RunObjectManagerTests` |
+| `serialization-archive` | yes | yes | no | `RunSerializationArchiveTests` |
+| `asset-manager` | yes | yes | no | `RunAssetManagerTests` |
+| `reflection-function` | yes (meta+invoke+ref) | yes (all phases) | no | `RunReflectionFunctionTests` |
+| `material-ir` | yes | yes | yes | `RunMaterialIRSmokeTests` |
 
 **Smoke run order (deterministic):** reflection-function → object-manager → serialization-archive → asset-manager → material-ir (reflection first — in-process global state; reset planned in TEST-F02).
 
@@ -175,23 +173,14 @@ Stable IDs must match [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2.
 - full: all phases (meta, invoke, ref, types, static)
 - `--suite=` on CLI: pass through to existing reflection parser logic
 
-### 3.6 Legacy flag migration (F01-S03)
+### 3.6 Entry points (current)
 
-| Phase | Behavior |
-|-------|----------|
-| F01-S03 | If argv contains legacy `--*-test`, **stderr warning** + normalize to equivalent `test <suite-id>` before or inside runner; then **delete** `ShouldRun*` and legacy block in `main.h` |
-| F02 | Remove legacy aliases one release after F01 stable (or keep warnings only through F02-S01) |
+| Executable | Role |
+|------------|------|
+| `minEngineTests.exe` | **Primary** — `TestMain.cpp` + doctest + `TestRunner::Run` |
+| `Editor.exe test …` | Forwards to `minEngineTests.exe` (`TestExecutableForward`) |
 
-No permanent dual API.
-
-### 3.7 Entry points
-
-| Executable | F01 | F02 |
-|------------|-----|-----|
-| `Editor.exe test …` | **Primary** — `main.h` calls `TestRunner::Run` | Still supported; may print hint to prefer `minEngineTests.exe` |
-| `minEngineTests.exe` | — | **Primary for dev/verify** — links `Runtime/Test/` + doctest suites |
-
-F01 **does not** add `minEngineTests.exe`.
+Legacy `--*-test` flags removed 2026-05-28 (no stderr alias).
 
 ### 3.8 verify integration (F01-S05)
 

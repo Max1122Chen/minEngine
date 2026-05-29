@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-28 (CLI-F01 S01–S03 implemented)
+Last updated: 2026-05-28 (infra complete; legacy test flags removed)
 
 ## Purpose
 
@@ -796,6 +796,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`cmake --build minEngine/build --target Editor`; `test smoke`/`test material-ir`/legacy flags; `.\scripts\verify.ps1`.
 - Next step:
 	TEST-F02 — doctest + `minEngine/Tests/` + `minEngineTests.exe`.
+
+### 2026-05-28 - Docs sync + legacy `--*-test` flags removed
+- Goal:
+	Align active docs with CLI-F01 / TEST-F01 / TEST-F02 completion; drop deprecated headless argv flags.
+- Main changes:
+	`TECH_DEBT` TD-001–003 → Done; `INFRASTRUCTURE_ROADMAP` / `BOOTSTRAP_DIGEST` current UX;
+	`TestRunner` / `ApplicationCommandLine` / `main.h` — no legacy flag detection or aliases.
+- Validation done:
+	(Build + `verify.ps1` after code change.)
+- Next step:
+	TEST-F03 (planned): per-suite doctest slim-down — one invariant per module, slice-by-slice.
 
 ### 2026-05-28 - TEST-F01/F02 unified test runner design
 - Goal:

@@ -12,66 +12,6 @@ namespace minEngine
 
     namespace
     {
-        constexpr const char* kLegacyMaterialIRTestFlag = "--material-ir-test";
-
-        bool ArgEquals(char* arg, const char* literal)
-        {
-            return arg != nullptr && std::string_view(arg) == literal;
-        }
-
-        bool ContainsLegacyMaterialIRFlag(int argc, char** argv)
-        {
-            for (int argIndex = 1; argIndex < argc; ++argIndex)
-            {
-                if (ArgEquals(argv[argIndex], kLegacyMaterialIRTestFlag))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        CommandLineResult BuildLegacyMaterialIRResult(int argc, char** argv)
-        {
-            std::fprintf(
-                stderr,
-                "Warning: '%s' is deprecated; use 'test material-ir' instead.\n",
-                kLegacyMaterialIRTestFlag);
-
-            CommandLineResult result;
-            result.Mode = ApplicationMode::Test;
-            result.TestKind = TestRunKind::SingleSuite;
-            result.SuiteId = "material-ir";
-            result.UsedLegacyMaterialIRFlag = true;
-
-            for (int argIndex = 1; argIndex < argc; ++argIndex)
-            {
-                if (argv[argIndex] == nullptr)
-                {
-                    continue;
-                }
-
-                const std::string_view arg(argv[argIndex]);
-                constexpr std::string_view kEngineConfigPrefix = "--engine-config=";
-                if (arg.size() > kEngineConfigPrefix.size() &&
-                    arg.substr(0, kEngineConfigPrefix.size()) == kEngineConfigPrefix)
-                {
-                    result.EngineConfigPath = std::filesystem::path(
-                        std::string(arg.substr(kEngineConfigPrefix.size())));
-                }
-
-                constexpr std::string_view kEngineRootPrefix = "--engine-root=";
-                if (arg.size() > kEngineRootPrefix.size() &&
-                    arg.substr(0, kEngineRootPrefix.size()) == kEngineRootPrefix)
-                {
-                    result.EngineRootOverride =
-                        std::filesystem::path(std::string(arg.substr(kEngineRootPrefix.size())));
-                }
-            }
-
-            return result;
-        }
-
         std::optional<TestRunKind> ParseTestTargetKind(const std::string& target)
         {
             if (target == "smoke")
@@ -94,11 +34,6 @@ namespace minEngine
     std::optional<CommandLineResult> ApplicationCommandLine::TryParse(int argc, char** argv)
     {
         s_LastExitCode = CommandLineExitCode::Success;
-
-        if (ContainsLegacyMaterialIRFlag(argc, argv))
-        {
-            return BuildLegacyMaterialIRResult(argc, argv);
-        }
 
         CLI::App app("minEngine Editor");
         app.set_version_flag("--version", "minEngine (CLI-F01)");

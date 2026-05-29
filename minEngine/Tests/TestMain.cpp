@@ -67,13 +67,6 @@ int main(int argc, char** argv)
     std::vector<char*> syntheticArgv = BuildArgvPointerTable(syntheticArguments);
     const int syntheticArgc = static_cast<int>(syntheticArgv.size());
 
-    if (minEngine::TestRunner::ContainsLegacyTestFlag(syntheticArgc, syntheticArgv.data()))
-    {
-        minEngine::CommandLineResult legacyPlaceholder;
-        return ExitCodeFrom(
-            minEngine::TestRunner::Run(legacyPlaceholder, syntheticArgc, syntheticArgv.data()));
-    }
-
     const std::optional<minEngine::CommandLineResult> commandLine =
         minEngine::ApplicationCommandLine::TryParse(syntheticArgc, syntheticArgv.data());
     if (!commandLine.has_value())

@@ -97,13 +97,13 @@ Commands:
 
 **Suite IDs (v1, stable strings):**
 
-| Suite ID | Replaces legacy flag |
-|----------|----------------------|
-| `material-ir` | `--material-ir-test` |
-| `asset-manager` | `--asset-manager-test` |
-| `object-manager` | `--object-manager-test` |
-| `serialization-archive` | `--serialization-archive-test` |
-| `reflection-function` | `--reflection-function-test` / `=suite` (see below) |
+| Suite ID | Notes |
+|----------|-------|
+| `material-ir` | GPU smoke; `minEngineTests test material-ir` |
+| `asset-manager` | CRUD / registry |
+| `object-manager` | handles / GC |
+| `serialization-archive` | binary archive |
+| `reflection-function` | `--suite=meta,invoke,ref` on `test` subcommand |
 
 **Reflection-function:**  
 `test reflection-function` runs default suite set; optional **`--suite=<name>`** on `test` subcommand (or `test reflection-function --suite=name`) — exact spelling in Implementation; must support at least today’s `=suite` behavior.
@@ -179,14 +179,9 @@ public:
 - **Delete** `ParseProjectDescriptorPathFromArgs` loop; read `projectDescriptorPath` from `CommandLineResult`.
 - Editor still **requires** a `.meproject` in default mode; error message points to `Editor.exe --help`.
 
-### 3.6 Legacy flag migration
+### 3.6 Legacy flags (removed)
 
-| Phase | Behavior |
-|-------|----------|
-| **S03** | If argv contains legacy `--material-ir-test`, print **stderr warning** and treat as `test material-ir` |
-| **TEST-F01-S03** | Remove legacy parsers from each `*Test.cpp`; remove aliases |
-
-No permanent dual API.
+`--material-ir-test` and other `--*-test` argv flags were removed 2026-05-28. Use `minEngineTests test <suite-id>` or `Editor.exe test <suite-id>` (forwards to minEngineTests).
 
 ### 3.7 CMake / linkage
 

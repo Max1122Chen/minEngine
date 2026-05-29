@@ -2,7 +2,7 @@
 
 ## Meta
 - **ID:** N/A（协调 `CLI-F01` + `TEST-F01`）
-- **Status:** **Active**
+- **Status:** **Maintenance** (M1–M4 + TEST-F02 done; follow-on = suite slim-down / TEST-F03)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [TECH_DEBT.md](../TECH_DEBT.md), [BOOTSTRAP_DIGEST.md](../BOOTSTRAP_DIGEST.md), [PLATFORM_ROADMAP.md](./PLATFORM_ROADMAP.md) §12
@@ -36,27 +36,19 @@ Near-term work is **engineering infrastructure only**: unify **CLI** (command-li
 | Order | Feature ID | Title | Status | Design (next) |
 |-------|------------|-------|--------|----------------|
 | 1 | `CLI-F01` | Unified command-line interface | Done | [CLI_UNIFIED_DESIGN](./CLI/CLI_UNIFIED_DESIGN.md) |
-| 2 | `TEST-F01` | Test runner, suite registry, verify integration | Planned | [TEST_UNIFIED_DESIGN](./Test/TEST_UNIFIED_DESIGN.md) |
-| 3 | `TEST-F02` | doctest, `minEngine/Tests/`, `minEngineTests.exe` | Planned | [TEST_F02_LAYOUT_MIGRATION](./Test/TEST_F02_LAYOUT_MIGRATION.md) |
+| 2 | `TEST-F01` | Test runner, suite registry, verify integration | Done | [TEST_UNIFIED_DESIGN](./Test/TEST_UNIFIED_DESIGN.md) |
+| 3 | `TEST-F02` | doctest, `minEngine/Tests/`, `minEngineTests.exe` | Done | [TEST_F02_LAYOUT_MIGRATION](./Test/TEST_F02_LAYOUT_MIGRATION.md) |
 
-**Existing headless flags to migrate** (today in `minEngine/minEngine/src/main.h`):
-
-| Current flag | Module |
-|--------------|--------|
-| `--material-ir-test` | Material IR |
-| `--asset-manager-test` | AssetManager |
-| `--object-manager-test` | ObjectManager |
-| `--serialization-archive-test` | Serialization archive |
-| `--reflection-function-test` | Reflection functions |
-
-**Target UX (end state after TEST-F01 / F02):**
+**Headless test UX (current):**
 
 ```text
-Editor.exe test smoke          # F01: primary until F02
-Editor.exe test material-ir
-minEngineTests.exe             # F02: primary for verify
-scripts/verify.ps1             # F01-S05: build + smoke
+minEngineTests.exe test smoke              # primary (verify.ps1)
+minEngineTests.exe test <suite-id>
+Editor.exe test smoke                      # forwards to minEngineTests.exe
+scripts/verify.ps1                         # build + minEngineTests test smoke
 ```
+
+Legacy `--*-test` argv flags were removed 2026-05-28; use `test <suite-id>` only.
 
 ---
 
@@ -65,8 +57,8 @@ scripts/verify.ps1             # F01-S05: build + smoke
 | Milestone | Delivers | Status | Acceptance |
 |-----------|----------|--------|------------|
 | **M1** | CLI core + dispatch hook | Done | `help` works; `test material-ir` |
-| **M2** | First real test on new CLI | Done | `--material-ir-test` migrated |
-| **M3** | All tests + smoke/full | Done | All five suites via `test`; legacy flags warn |
+| **M2** | First real test on new CLI | Done | `test material-ir` |
+| **M3** | All tests + smoke/full | Done | All five suites via `test`; legacy flags removed |
 | **M4** | Verify + DoD | Done | `scripts/verify.ps1`; governance §7.2 cites smoke |
 
 ### CLI-F01 slices
@@ -85,7 +77,7 @@ See [Test/TEST_F01_IMPLEMENTATION.md](./Test/TEST_F01_IMPLEMENTATION.md).
 |----------|------|--------|
 | `TEST-F01-S01` | `TestRunner` + registry skeleton | `Editor.exe test smoke` |
 | `TEST-F01-S02` | `TestContext` + material-ir adapter | `Editor.exe test material-ir` |
-| `TEST-F01-S03` | All suites; delete legacy `main.h` chain | `test <id>` + legacy warn |
+| `TEST-F01-S03` | All suites; delete legacy `main.h` chain | `test <id>`; legacy flags removed post-F02 |
 | `TEST-F01-S04` | smoke/full tables + reflection `--suite=` | `test smoke` / `test full` |
 | `TEST-F01-S05` | `scripts/verify.ps1` + DoD docs | verify exit 0 |
 
@@ -122,3 +114,4 @@ See [Test/TEST_F02_LAYOUT_MIGRATION.md](./Test/TEST_F02_LAYOUT_MIGRATION.md) (do
 | Date | Note |
 |------|------|
 | 2026-05-28 | TEST-F01/F02 design; M1–M2 Done; CLI test subcommand UX |
+| 2026-05-28 | M3–M4 + TEST-F02 implemented; legacy `--*-test` removed; TD-001–003 Done |

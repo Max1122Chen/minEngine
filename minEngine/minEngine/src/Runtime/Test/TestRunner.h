@@ -8,8 +8,6 @@ namespace minEngine
     class TestRunner
     {
     public:
-        static bool ContainsLegacyTestFlag(int argc, char** argv);
-
         static CommandLineExitCode Run(const CommandLineResult& commandLine, int argc, char** argv);
     };
 }

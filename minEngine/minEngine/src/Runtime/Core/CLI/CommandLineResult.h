@@ -36,6 +36,5 @@ namespace minEngine
 
         bool RequestedHelp = false;
         bool RequestedVersion = false;
-        bool UsedLegacyMaterialIRFlag = false;
     };
 }

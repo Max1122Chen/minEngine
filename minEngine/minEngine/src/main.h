@@ -3,7 +3,6 @@
 #include "Runtime/Core/CLI/ApplicationCommandLine.h"
 #include "Runtime/Core/CLI/CommandLineExitCode.h"
 #include "Runtime/Test/TestExecutableForward.h"
-#include "Runtime/Test/TestRunner.h"
 
 extern minEngine::Application* minEngine::CreateApplication();
 
@@ -17,11 +16,6 @@ namespace minEngine
 
 int main(int argc, char** argv)
 {
-    if (minEngine::TestRunner::ContainsLegacyTestFlag(argc, argv))
-    {
-        return minEngine::ForwardToMinEngineTestsExecutable(argc, argv);
-    }
-
     const std::optional<minEngine::CommandLineResult> commandLine =
         minEngine::ApplicationCommandLine::TryParse(argc, argv);
     if (!commandLine.has_value())

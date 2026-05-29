@@ -77,25 +77,15 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 | `Editor.exe test material-ir` | Material IR headless smoke (preferred) |
 | `Editor.exe --project <path.meproject>` | Open project (default editor mode) |
 
-**Legacy headless flags (until `TEST-F01` migrates all suites):**
+Entry: `minEngineTests.exe` (`Tests/TestMain.cpp`) or `Editor.exe test …` (forwards to minEngineTests). No `--*-test` legacy flags.
 
-| Flag | Area |
-|------|------|
-| `--material-ir-test` | Deprecated alias → `test material-ir` (stderr warning) |
-| `--asset-manager-test` | AssetManager CRUD |
-| `--object-manager-test` | ObjectManager / GC |
-| `--serialization-archive-test` | Binary archive |
-| `--reflection-function-test` | Reflection functions (optional `=suite`) |
-
-Entry: `minEngine/minEngine/src/main.h` — `ApplicationCommandLine::TryParse` then dispatch (Editor links same runtime).
-
-**Verify:** `.\scripts\verify.ps1` → `minEngineTests.exe test smoke`. **Legacy:** `Editor.exe test …` forwards to minEngineTests.
+**Verify:** `.\scripts\verify.ps1` → `minEngineTests.exe test smoke`.
 
 ---
 
 ## Current infra focus
 
-- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` / `TEST-F01` **done**; **`TEST-F02`** (doctest + `Tests/`) next.  
+- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` / `TEST-F01` / `TEST-F02` **done**; optional **TEST-F03** = slim doctest suites.  
 - **Defer for now:** large Editor features, new P4/P5 slices, Lua — see [TECH_DEBT.md](./TECH_DEBT.md).
 
 ---

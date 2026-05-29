@@ -7,9 +7,9 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 
 | ID | Title | Module | Severity | Status | Feature / doc | Notes |
 |----|-------|--------|----------|--------|---------------|-------|
-| TD-001 | Scattered argv test flags, no unified CLI | TEST / Runtime | **High** | Open | `CLI-F01` | [INFRASTRUCTURE_ROADMAP](./Platform/INFRASTRUCTURE_ROADMAP.md) M1–M2 |
-| TD-002 | No shared test runner / fixtures | TEST | **High** | Open | `TEST-F01` | Same roadmap M3 |
-| TD-003 | No `verify` script (build + smoke one command) | WF | **Medium** | Open | `TEST-F01` | Same roadmap M4 / TEST-F01-S05 |
+| TD-001 | Scattered argv test flags, no unified CLI | TEST / Runtime | **High** | Done | `CLI-F01` | 2026-05-28: `ApplicationCommandLine` + `test` subcommand; legacy `--*-test` removed |
+| TD-002 | No shared test runner / fixtures | TEST | **High** | Done | `TEST-F01` / `TEST-F02` | 2026-05-28: `TestRunner`, registry, `TestContext`; `minEngineTests.exe` |
+| TD-003 | No `verify` script (build + smoke one command) | WF | **Medium** | Done | `TEST-F01` | 2026-05-28: `scripts/verify.ps1` → `minEngineTests test smoke` |
 | TD-004 | Content Browser full tree rebuild on registry change | ED / ASSET | **Medium** | Open | [CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md](./Platform/ContentBrowser/CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md) | Incremental registry OK; UI model rebuilds whole tree |
 | TD-005 | P4 reflection docs lag implementation | CORE | **Medium** | Open | [REFLECTION_FUNCTIONS_CURRENT_STATE.md](./Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) | Code has invoke MVP; state doc still “no UFunction” — reconcile |
 | TD-006 | Delegates + Lua not designed for implementation | CORE | **Low** | Deferred | P5/P6 placeholders | After CLI/Test stable |
