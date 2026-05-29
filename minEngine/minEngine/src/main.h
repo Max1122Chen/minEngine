@@ -2,7 +2,7 @@
 #include "Application.h"
 #include "Runtime/Core/CLI/ApplicationCommandLine.h"
 #include "Runtime/Core/CLI/CommandLineExitCode.h"
-#include "Runtime/Core/CLI/CommandLineResult.h"
+#include "Runtime/Test/TestExecutableForward.h"
 #include "Runtime/Test/TestRunner.h"
 
 extern minEngine::Application* minEngine::CreateApplication();
@@ -19,9 +19,7 @@ int main(int argc, char** argv)
 {
     if (minEngine::TestRunner::ContainsLegacyTestFlag(argc, argv))
     {
-        minEngine::CommandLineResult legacyPlaceholder;
-        return minEngine::ExitCodeFrom(
-            minEngine::TestRunner::Run(legacyPlaceholder, argc, argv));
+        return minEngine::ForwardToMinEngineTestsExecutable(argc, argv);
     }
 
     const std::optional<minEngine::CommandLineResult> commandLine =
@@ -41,10 +39,9 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    if (commandLine->Mode == minEngine::ApplicationMode::Test
-        || minEngine::TestRunner::ContainsLegacyTestFlag(argc, argv))
+    if (commandLine->Mode == minEngine::ApplicationMode::Test)
     {
-        return minEngine::ExitCodeFrom(minEngine::TestRunner::Run(*commandLine, argc, argv));
+        return minEngine::ForwardToMinEngineTestsExecutable(argc, argv);
     }
 
     minEngine::Application* app = minEngine::CreateApplication();

@@ -541,3 +541,13 @@ namespace minEngine
         return true;
     }
 }
+
+#include "doctest.h"
+
+#include "EngineTestFixture.h"
+
+TEST_CASE("asset-manager suite [smoke][full]")
+{
+    minEngine::EngineTestFixture fixture;
+    CHECK(minEngine::RunAssetManagerTests(fixture.GetArgc(), fixture.GetArgv()));
+}

@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `TEST-F02`
 - **Type:** Feature (follow-on)
-- **Status:** Planned
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [TEST_UNIFIED_DESIGN.md](./TEST_UNIFIED_DESIGN.md), [TEST_F01_IMPLEMENTATION.md](./TEST_F01_IMPLEMENTATION.md)
@@ -112,10 +112,10 @@ Full Implementation plan to be written when F01 completes.
 
 ## 6) 验收标准 (outline)
 
-- [ ] `cmake --build … --target minEngineTests` succeeds.
-- [ ] `minEngineTests` smoke equivalent exit 0 from `minEngine/bin`.
-- [ ] No `*Test.cpp` under `Runtime/` in engine library sources.
-- [ ] `verify.ps1` uses `minEngineTests`.
+- [x] `cmake --build … --target minEngineTests` succeeds.
+- [x] `minEngineTests` smoke equivalent exit 0 from `minEngine/bin`.
+- [x] No `*Test.cpp` under `Runtime/` in engine library sources.
+- [x] `verify.ps1` uses `minEngineTests`.
 
 ---
 

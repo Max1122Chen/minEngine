@@ -1,13 +1,18 @@
-#include "ITestSuite.h"
-#include "TestContext.h"
-#include "TestSuiteRegistry.h"
+#include "TestSuites.h"
+
+#include "DoctestSuiteRunner.h"
+#include "EngineTestFixture.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
-#include "Runtime/Core/Object/ObjectManagerTest.h"
-#include "Runtime/Core/Reflection/ReflectionFunctionTest.h"
-#include "Runtime/Core/Serialization/SerializationArchiveTest.h"
-#include "Runtime/Function/Render/Material/MaterialIR/MaterialIRTest.h"
-#include "Runtime/Resource/AssetManagerTest.h"
+#include "Runtime/Test/ITestSuite.h"
+#include "Runtime/Test/TestContext.h"
+#include "Runtime/Test/TestSuiteRegistry.h"
+
+#include "Suites/ObjectManagerTest.h"
+#include "Suites/SerializationArchiveTest.h"
+#include "Suites/AssetManagerTest.h"
+#include "Suites/ReflectionFunctionTest.h"
+#include "Suites/MaterialIRTest.h"
 
 namespace minEngine
 {
@@ -43,11 +48,12 @@ namespace minEngine
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'object-manager'.");
-                return RunObjectManagerTests(context.GetArgc(), context.GetArgv());
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunTestCaseSubstring("object-manager suite");
             }
         };
 
-        struct SerializationArchiveTestSuite
+        struct SerializationArchiveTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
             {
@@ -63,11 +69,12 @@ namespace minEngine
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'serialization-archive'.");
-                return RunSerializationArchiveTests(context.GetArgc(), context.GetArgv());
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunTestCaseSubstring("serialization-archive suite");
             }
         };
 
-        struct AssetManagerTestSuite
+        struct AssetManagerTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
             {
@@ -83,11 +90,12 @@ namespace minEngine
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'asset-manager'.");
-                return RunAssetManagerTests(context.GetArgc(), context.GetArgv());
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunTestCaseSubstring("asset-manager suite");
             }
         };
 
-        struct ReflectionFunctionTestSuite
+        struct ReflectionFunctionTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
             {
@@ -103,21 +111,12 @@ namespace minEngine
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'reflection-function'.");
-
-                std::vector<std::string> argumentStorage;
-                std::vector<char*> argumentPointers;
-                if (!context.BuildReflectionArgv(argumentStorage, argumentPointers))
-                {
-                    ME_CORE_ERROR("TestRunner: failed to build reflection-function argv.");
-                    return false;
-                }
-
-                const int reflectionArgc = static_cast<int>(argumentPointers.size());
-                return RunReflectionFunctionTests(reflectionArgc, argumentPointers.data());
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunTestCaseSubstring("reflection-function suite");
             }
         };
 
-        struct MaterialIRTestSuite
+        struct MaterialIRTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
             {
@@ -133,15 +132,17 @@ namespace minEngine
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'material-ir'.");
-                return RunMaterialIRSmokeTests(context.GetArgc(), context.GetArgv());
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunTestCaseSubstring("material-ir suite");
             }
         };
 
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
-        using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuite>;
-        using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuite>;
-        using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuite>;
-        using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuite>;
+        using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
+        using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
+        using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
+        using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
+
         void RegisterAllTestSuites()
         {
             static bool s_Registered = false;

@@ -2,7 +2,6 @@
 
 #include "TestContext.h"
 #include "TestSuiteRegistry.h"
-#include "TestSuites.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 
@@ -177,7 +176,6 @@ namespace minEngine
 
     CommandLineExitCode TestRunner::Run(const CommandLineResult& commandLine, int argc, char** argv)
     {
-        EnsureTestSuitesRegistered();
 
         const CommandLineResult effective = ResolveEffectiveCommandLine(commandLine, argc, argv);
         if (effective.Mode != ApplicationMode::Test)

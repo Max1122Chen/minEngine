@@ -63,8 +63,9 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 | What | Typical command |
 |------|-----------------|
 | Build Editor | `cmake --build minEngine/build --target Editor` |
+| Build tests | `cmake --build minEngine/build --target minEngineTests` |
 | **Verify (smoke)** | `.\scripts\verify.ps1` from repo root |
-| Run Editor | from `minEngine/bin` (EngineConfig / project paths apply) |
+| Run tests | `minEngineTests.exe test smoke` from `minEngine/bin` |
 | Engine config | `--engine-config=`, `--engine-root=` (or space form); env `MINENGINE_ENGINE_*` |
 
 **Unified CLI (`CLI-F01`, from `minEngine/bin`):**
@@ -88,7 +89,7 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 
 Entry: `minEngine/minEngine/src/main.h` — `ApplicationCommandLine::TryParse` then dispatch (Editor links same runtime).
 
-**Verify:** `.\scripts\verify.ps1` from repo root. **Next:** `TEST-F02` (doctest + `minEngine/Tests/`). See [TECH_DEBT.md](./TECH_DEBT.md) TD-001, TD-002.
+**Verify:** `.\scripts\verify.ps1` → `minEngineTests.exe test smoke`. **Legacy:** `Editor.exe test …` forwards to minEngineTests.
 
 ---
 

@@ -775,6 +775,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
 
+### 2026-05-28 - TEST-F02 doctest, minEngineTests, Tests/ layout
+- Goal:
+	Move headless suites out of Runtime; vendored doctest; primary entry minEngineTests.exe.
+- Main changes:
+	`minEngine/Tests/` + `Third-Party/doctest/`; `Editor.exe test` forwards to minEngineTests;
+	`scripts/verify.ps1` uses minEngineTests; one `TEST_CASE` per suite with CHECK.
+- Validation done:
+	`minEngineTests.exe test smoke` exit 0; `verify.ps1` exit 0.
+- Next step:
+	Optional: split large suites into finer doctest cases; per-suite runtime reset (reflection ordering).
+
 ### 2026-05-28 - TEST-F01 unified test runner (S01–S05)
 - Goal:
 	TestRunner + registry + TestContext; all five suites via `Editor.exe test`; verify.ps1.

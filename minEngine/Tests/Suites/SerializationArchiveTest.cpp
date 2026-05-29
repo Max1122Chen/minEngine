@@ -816,3 +816,13 @@ namespace minEngine
         return passed;
     }
 }
+
+#include "doctest.h"
+
+#include "EngineTestFixture.h"
+
+TEST_CASE("serialization-archive suite [smoke][full]")
+{
+    minEngine::EngineTestFixture fixture;
+    CHECK(minEngine::RunSerializationArchiveTests(fixture.GetArgc(), fixture.GetArgv()));
+}

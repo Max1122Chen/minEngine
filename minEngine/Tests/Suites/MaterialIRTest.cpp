@@ -7,20 +7,20 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Serialization/JsonArchive.h"
 #include "Serialization/Serializer.h"
-#include "../MaterialCompiler/MaterialCompiler.h"
-#include "../MaterialEdGraph.h"
-#include "../MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
-#include "../MaterialCapability.h"
-#include "../MaterialPropertyUtil.h"
-#include "../MaterialValueType.h"
-#include "../../Material.h"
-#include "../MaterialTestGraph.h"
-#include "Render/Environment/EngineIBLEnvironment.h"
-#include "Render/Environment/EnvMapCapture.h"
-#include "Render/OpenGL/OpenGLRHI.h"
-#include "Render/OpenGL/OpenGLTexture.h"
-#include "Render/Shader.h"
-#include "Render/TextureCubeLoader.h"
+#include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompiler.h"
+#include "Runtime/Function/Render/Material/MaterialEdGraph.h"
+#include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "Runtime/Function/Render/Material/MaterialCapability.h"
+#include "Runtime/Function/Render/Material/MaterialPropertyUtil.h"
+#include "Runtime/Function/Render/Material/MaterialValueType.h"
+#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialTestGraph.h"
+#include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
+#include "Runtime/Function/Render/Environment/EnvMapCapture.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLTexture.h"
+#include "Runtime/Function/Render/Shader.h"
+#include "Runtime/Function/Render/TextureCubeLoader.h"
 #include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include <glad/glad.h>
@@ -1520,4 +1520,14 @@ namespace minEngine
         ME_CORE_INFO("MaterialIR smoke tests PASSED (graph binding + compile diagnostics + golden asset).");
         return true;
     }
+}
+
+#include "doctest.h"
+
+#include "EngineTestFixture.h"
+
+TEST_CASE("material-ir suite [smoke][full]")
+{
+    minEngine::EngineTestFixture fixture;
+    CHECK(minEngine::RunMaterialIRSmokeTests(fixture.GetArgc(), fixture.GetArgv()));
 }

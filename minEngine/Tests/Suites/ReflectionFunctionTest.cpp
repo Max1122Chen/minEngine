@@ -2602,3 +2602,24 @@ namespace minEngine
         return passed;
     }
 }
+
+#include "doctest.h"
+
+#include "EngineTestFixture.h"
+#include "Runtime/Test/TestContext.h"
+
+#include <vector>
+
+TEST_CASE("reflection-function suite [smoke][full]")
+{
+    minEngine::EngineTestFixture fixture;
+    minEngine::TestContext* context = minEngine::EngineTestContextScope::GetActiveContext();
+    REQUIRE(context != nullptr);
+
+    std::vector<std::string> argumentStorage;
+    std::vector<char*> argumentPointers;
+    REQUIRE(context->BuildReflectionArgv(argumentStorage, argumentPointers));
+
+    const int reflectionArgc = static_cast<int>(argumentPointers.size());
+    CHECK(minEngine::RunReflectionFunctionTests(reflectionArgc, argumentPointers.data()));
+}

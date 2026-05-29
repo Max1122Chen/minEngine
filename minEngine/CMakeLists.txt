@@ -21,4 +21,9 @@ if(BUILD_EDITOR)
 	add_subdirectory(Editor)
 endif()
 
+option(BUILD_TESTS "Build minEngineTests headless test executable" ON)
+if(BUILD_TESTS)
+    add_subdirectory(Tests)
+endif()
+
 

@@ -8,7 +8,7 @@
 | [INFRASTRUCTURE_ROADMAP.md](./INFRASTRUCTURE_ROADMAP.md) | CLI · Test · Verify 近程路线 |
 | [CLI/CLI_UNIFIED_DESIGN.md](./CLI/CLI_UNIFIED_DESIGN.md) | Done — 统一 CLI |
 | [Test/TEST_UNIFIED_DESIGN.md](./Test/TEST_UNIFIED_DESIGN.md) | Done — TestRunner + registry |
-| [Test/TEST_F02_LAYOUT_MIGRATION.md](./Test/TEST_F02_LAYOUT_MIGRATION.md) | Planned — doctest + Tests/ 目录 |
+| [Test/TEST_F02_LAYOUT_MIGRATION.md](./Test/TEST_F02_LAYOUT_MIGRATION.md) | Done — doctest + Tests/ + minEngineTests |
 | [Startup/ENGINE_STARTUP_DESIGN.md](./Startup/ENGINE_STARTUP_DESIGN.md) | 草稿 — 配置化启动 |
 | [MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md](./MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md) | 草稿 — 内存管理 |
 

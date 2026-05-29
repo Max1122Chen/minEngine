@@ -180,3 +180,13 @@ namespace minEngine
         return true;
     }
 }
+
+#include "doctest.h"
+
+#include "EngineTestFixture.h"
+
+TEST_CASE("object-manager suite [smoke][full]")
+{
+    minEngine::EngineTestFixture fixture;
+    CHECK(minEngine::RunObjectManagerTests(fixture.GetArgc(), fixture.GetArgv()));
+}
