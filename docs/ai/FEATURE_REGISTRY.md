@@ -18,7 +18,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | Feature ID | Title | Status | Owner | Design / plan |
 |------------|-------|--------|-------|----------------|
 | `CLI-F01` | Unified command-line interface | Done | — | [CLI_UNIFIED_DESIGN](./Platform/CLI/CLI_UNIFIED_DESIGN.md) |
-| `TEST-F01` | Test runner, suite migration, verify integration | Planned | — | [INFRASTRUCTURE_ROADMAP](./Platform/INFRASTRUCTURE_ROADMAP.md) |
+| `TEST-F01` | Test runner, suite registry, verify integration | Planned | — | [TEST_UNIFIED_DESIGN](./Platform/Test/TEST_UNIFIED_DESIGN.md) |
+| `TEST-F02` | Test layout migration, doctest, minEngineTests exe | Planned | — | [TEST_F02_LAYOUT_MIGRATION](./Platform/Test/TEST_F02_LAYOUT_MIGRATION.md) |
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
 
 ---
@@ -28,7 +29,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | DOMAIN | Next Feature # | Notes |
 |--------|----------------|-------|
 | `CLI` | F02 | Command-line / tools entry |
-| `TEST` | F02 | Automated tests (after TEST-F01) |
+| `TEST` | F03 | Automated tests (after TEST-F02) |
 | `WF` | F02 | Workflow / docs |
 | `CORE` | F01 | Reflection, object, startup |
 | `ASSET` | F01 | Asset pipeline extensions |

@@ -35,8 +35,9 @@ Near-term work is **engineering infrastructure only**: unify **CLI** (command-li
 
 | Order | Feature ID | Title | Status | Design (next) |
 |-------|------------|-------|--------|----------------|
-| 1 | `CLI-F01` | Unified command-line interface | Planned | [CLI_UNIFIED_DESIGN](./CLI/CLI_UNIFIED_DESIGN.md) |
-| 2 | `TEST-F01` | Test runner, suite registry, verify integration | Planned | After CLI-F01-S02 minimum |
+| 1 | `CLI-F01` | Unified command-line interface | Done | [CLI_UNIFIED_DESIGN](./CLI/CLI_UNIFIED_DESIGN.md) |
+| 2 | `TEST-F01` | Test runner, suite registry, verify integration | Planned | [TEST_UNIFIED_DESIGN](./Test/TEST_UNIFIED_DESIGN.md) |
+| 3 | `TEST-F02` | doctest, `minEngine/Tests/`, `minEngineTests.exe` | Planned | [TEST_F02_LAYOUT_MIGRATION](./Test/TEST_F02_LAYOUT_MIGRATION.md) |
 
 **Existing headless flags to migrate** (today in `minEngine/minEngine/src/main.h`):
 
@@ -48,19 +49,13 @@ Near-term work is **engineering infrastructure only**: unify **CLI** (command-li
 | `--serialization-archive-test` | Serialization archive |
 | `--reflection-function-test` | Reflection functions |
 
-**Target UX (end state):**
+**Target UX (end state after TEST-F01 / F02):**
 
 ```text
-Editor.exe --help
-Editor.exe --run-tests smoke
-Editor.exe --run-tests full
-# optional: Editor.exe test material-ir   (if subcommand style chosen in CLI-F01 design)
-```
-
-Local verify (end state):
-
-```text
-scripts/verify.ps1          # cmake build Editor + --run-tests smoke
+Editor.exe test smoke          # F01: primary until F02
+Editor.exe test material-ir
+minEngineTests.exe             # F02: primary for verify
+scripts/verify.ps1             # F01-S05: build + smoke
 ```
 
 ---
@@ -69,10 +64,10 @@ scripts/verify.ps1          # cmake build Editor + --run-tests smoke
 
 | Milestone | Delivers | Status | Acceptance |
 |-----------|----------|--------|------------|
-| **M1** | CLI core + dispatch hook | Planned | `help` works; one no-op subcommand registered |
-| **M2** | First real test on new CLI | Planned | `--material-ir-test` migrated; smoke green |
-| **M3** | All tests + smoke/full | Planned | All five suites via `--run-tests`; legacy flags removed or alias one release |
-| **M4** | Verify + DoD | Planned | `scripts/verify.ps1`; governance §7.2 cites smoke for slices |
+| **M1** | CLI core + dispatch hook | Done | `help` works; `test material-ir` |
+| **M2** | First real test on new CLI | Done | `--material-ir-test` migrated |
+| **M3** | All tests + smoke/full | Planned | All five suites via `test`; legacy flags removed |
+| **M4** | Verify + DoD | Planned | `scripts/verify.ps1`; governance §7.2 cites smoke |
 
 ### CLI-F01 slices
 
@@ -84,13 +79,19 @@ scripts/verify.ps1          # cmake build Editor + --run-tests smoke
 
 ### TEST-F01 slices
 
+See [Test/TEST_F01_IMPLEMENTATION.md](./Test/TEST_F01_IMPLEMENTATION.md).
+
 | Slice ID | Goal | Verify |
 |----------|------|--------|
-| `TEST-F01-S01` | `tests/` or `Runtime/Test/` layout + `TestRunner` + suite interface | Empty suite exits 0 |
-| `TEST-F01-S02` | Shared fixtures (PathRegistry / engine config, headless GL policy) | One suite uses fixture |
-| `TEST-F01-S03` | Migrate remaining four `*Test` modules; drop duplicate argv loops | `--run-tests smoke` all pass |
-| `TEST-F01-S04` | `smoke` vs `full` suite tables documented | smoke runs in under 2 min locally |
-| `TEST-F01-S05` | `scripts/verify.ps1` + update [DOC_GOVERNANCE](../templates/DOC_GOVERNANCE.md) §7.2 default | verify from clean build |
+| `TEST-F01-S01` | `TestRunner` + registry skeleton | `Editor.exe test smoke` |
+| `TEST-F01-S02` | `TestContext` + material-ir adapter | `Editor.exe test material-ir` |
+| `TEST-F01-S03` | All suites; delete legacy `main.h` chain | `test <id>` + legacy warn |
+| `TEST-F01-S04` | smoke/full tables + reflection `--suite=` | `test smoke` / `test full` |
+| `TEST-F01-S05` | `scripts/verify.ps1` + DoD docs | verify exit 0 |
+
+### TEST-F02 slices
+
+See [Test/TEST_F02_LAYOUT_MIGRATION.md](./Test/TEST_F02_LAYOUT_MIGRATION.md) (doctest + `minEngine/Tests/` + `minEngineTests.exe`).
 
 ---
 
@@ -120,4 +121,4 @@ scripts/verify.ps1          # cmake build Editor + --run-tests smoke
 
 | Date | Note |
 |------|------|
-| 2026-05-28 | Initial roadmap; CLI-F01 + TEST-F01 registered |
+| 2026-05-28 | TEST-F01/F02 design; M1–M2 Done; CLI test subcommand UX |

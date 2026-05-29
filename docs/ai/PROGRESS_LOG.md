@@ -775,6 +775,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
 
+### 2026-05-28 - TEST-F01/F02 unified test runner design
+- Goal:
+	Design engine TestRunner (self-built) + doctest in F02; smoke/full tables; verify.ps1 path.
+- Main changes:
+	`Platform/Test/TEST_UNIFIED_DESIGN.md`, `TEST_F01_IMPLEMENTATION.md`, `TEST_F02_LAYOUT_MIGRATION.md`;
+	Registry `TEST-F01`/`TEST-F02`; INFRASTRUCTURE_ROADMAP M1–M2 Done, M3–M4 planned.
+- Validation done:
+	Docs-only; user approved doctest + Editor-then-minEngineTests exe strategy.
+- Next step:
+	TEST-F01-S01 implementation.
+
 ### 2026-05-28 - CLI-F01 S01–S03 unified command-line parse + dispatch
 - Goal:
 	Introduce CLI11-backed `ApplicationCommandLine`; single `main.h` dispatch; migrate Material IR test to `test material-ir`.

@@ -93,7 +93,7 @@ Entry: `minEngine/minEngine/src/main.h` — `ApplicationCommandLine::TryParse` t
 
 ## Current infra focus
 
-- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` **done** (S01–S03); **`TEST-F01`** next → `scripts/verify` + DoD (M4).  
+- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` **done**; **`TEST-F01`** next (runner + verify); **`TEST-F02`** (doctest + `Tests/`).  
 - **Defer for now:** large Editor features, new P4/P5 slices, Lua — see [TECH_DEBT.md](./TECH_DEBT.md).
 
 ---
