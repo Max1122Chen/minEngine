@@ -1,8 +1,18 @@
 # Editor 平台化 — 总体规划
 
-Last updated: 2026-05-26  
-Status: **E0/E3/E4/P6/P6.1、Undo（E1.1–E1.4）、E2 Preview 核心已合入；当前重点 E1 Inspector 统一 / P7**  
-父文档：[Platform 路线图](../Platform/PLATFORM_ROADMAP.md)
+## Meta
+
+- **ID:** N/A
+- **Status:** **Reference**
+- **Owner:** project maintainer
+- **Last updated:** 2026-05-26（正文）；Meta 2026-05-28
+- **Related:** [EDITOR_SHELL_DESIGN.md](./EDITOR_SHELL_DESIGN.md), [ACTIVE_WORK.md](../ACTIVE_WORK.md)
+
+> **Agent:** **Reference** — captures 2026-05-26 Editor platform intent and section checklist. **Not** an automatic backlog: items marked 未做 / 待做 / 当前 are optional future feats unless listed in ACTIVE_WORK or requested by the user. Verify “done” claims in code (e.g. Import to current Browser path, default Dock) before citing this plan.
+
+## TL;DR
+
+Editor shell, assets, Content Browser UI, Appearance, Scene Undo, and preview core are largely in place. Unified Inspector facade and several polish items remain **ideas**, not scheduled debt.
 
 ---
 

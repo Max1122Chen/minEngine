@@ -1,12 +1,24 @@
 # Content Browser — Import/Delete 触发「全量刷新」问题记录
 
-Last updated: 2026-05-27  
-Status: **open**（后续优化，非阻塞 M1 右键菜单）  
-关联：`AssetManager`、`AssetTreeModel`、`ProjectAssetWatcher`、右键菜单 M1（[EDITOR_CONTEXT_MENU_DESIGN.md](../../Editor/EDITOR_CONTEXT_MENU_DESIGN.md)）
+## Meta
+
+- **ID:** N/A
+- **Status:** **Archived**（Resolved in code — R1）
+- **Owner:** project maintainer
+- **Last updated:** 2026-05-28
+- **Related:** [ASSET_REGISTRY_REFACTOR_PLAN.md](./ASSET_REGISTRY_REFACTOR_PLAN.md) § R1, `Editor/.../AssetTreeModel.cpp`
+
+> **Agent:** **Archived** — do not treat §2–§3 as current behavior. Import/Delete on the main path use **incremental** `AssetTreeModel` patch (`ApplyRegisteredChange` / `ApplyUnregisteredChange` / …). Full `RebuildDirectoryTree` remains for explicit Refresh and unknown change kinds.
+
+## Resolution (2026-05-28)
+
+- **R1 done:** `OnRegistryChange` patches the tree per `AssetRegistryChangeKind`; Import dialog no longer forces a duplicate full rebuild.
+- **Verify:** `AssetTreeModel::OnRegistryChange` in `minEngine/Editor/src/Services/ContentBrowser/AssetTreeModel.cpp`.
+- **Remaining (optional, not this issue):** bulk watcher rescan, manual Refresh button — see [ACTIVE_WORK.md](../../ACTIVE_WORK.md) if promoted later.
 
 ---
 
-## 1) 现象
+## 1) 现象（历史记录）
 
 - Content Browser 执行 **Import**、**Delete**（及工具栏 Refresh）后，目录树与 Tile 列表明显「整库刷新」，资产多时卡顿。
 - 体感像 `ScanAssets` 全量扫描；实际 **Editor 主动 Import/Delete 并不调用 `ScanAssets`**，但 UI 重建成本接近全量。

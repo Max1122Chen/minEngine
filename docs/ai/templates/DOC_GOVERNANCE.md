@@ -85,7 +85,7 @@ Design / Roadmap / Implementation / ADR 顶部必须包含：
 ```markdown
 ## Meta
 - **ID:** ED-F03（或 Roadmap 无单 ID 时写 N/A）
-- **Status:** Draft | In Progress | Review | Done | Deferred | Cancelled
+- **Status:** Draft | In Progress | Review | Done | Deferred | Cancelled | Snapshot | Archived | Reference
 - **Owner:** <name>
 - **Last updated:** YYYY-MM-DD
 - **Related:** [链接 1](./foo.md), [链接 2](../Platform/bar.md)
@@ -128,6 +128,21 @@ Draft → Planned → In Progress → Review → Done
 | Blocked | 被外部依赖卡住 |
 | Deferred | 主动推迟 |
 | Cancelled | 不再做 |
+| **Snapshot** | 某一时间点的现状记录；**非**当前仓库真相；agents 勿据此排期 |
+| **Archived** | 问题已解决或计划废止；仅历史查阅 |
+| **Reference** | 架构/排期参考；未勾选项**不是**自动 backlog |
+
+**Agent banner（建议放在 Meta 下）：**
+
+```markdown
+> **Agent:** If Status is Snapshot, Archived, or Reference, do not infer backlog from this file. Use [ACTIVE_WORK.md](../ACTIVE_WORK.md), Open [TECH_DEBT](../TECH_DEBT.md), and code/tests. See `.cursor/rules/docs-trust-tiers.mdc`.
+```
+
+### 5.3 Agent doc trust (summary)
+
+- **Planning:** [ACTIVE_WORK.md](../ACTIVE_WORK.md), FEATURE_REGISTRY (In Progress / Planned), TECH_DEBT (Open), user-named In Progress design, code + `verify.ps1`.
+- **Not planning:** old roadmaps, Snapshot/Archived/Reference docs, unchecked design checklists, sessions/.
+- **Conflict:** code and tests override stale prose.
 
 ### 5.2 Blocked / Deferred / Cancelled 必填
 

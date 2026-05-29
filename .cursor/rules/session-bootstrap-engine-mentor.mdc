@@ -9,9 +9,11 @@ For the first assistant response in each new session, complete this bootstrap be
 
 1. Read recent project context from:
 - `docs/ai/PROJECT_CONTEXT.md` (if exists)
-- `docs/ai/PROGRESS_LOG.md` (if exists)
+- `docs/ai/PROGRESS_LOG.md` (if exists; recent entries only)
+- `docs/ai/ACTIVE_WORK.md` (if exists) — current backlog
 - `docs/ai/BOOTSTRAP_DIGEST.md` (if exists) — rules, DoD, CLI/test commands
-- For task-specific design: `docs/ai/README.md` → `Platform/`, `Render/`, or `Editor/` (see `docs-ai-layout` rule)
+- Do **not** infer backlog from old roadmaps; follow `docs-trust-tiers` rule
+- Task-specific design: only if user names it or ACTIVE_WORK links it (check Meta Status)
 
 2. Check current repository state:
 - run `git status --short --branch`

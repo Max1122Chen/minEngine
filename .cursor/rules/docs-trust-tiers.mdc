@@ -1,0 +1,58 @@
+---
+description: Which docs/ai files agents may use for planning vs background only; code wins over stale docs.
+alwaysApply: true
+---
+
+# docs/ai trust tiers (agents)
+
+When inferring **what to build next**, **what is unfinished**, or **current behavior**, follow this rule. Full policy: `docs/ai/templates/DOC_GOVERNANCE.md` §5.3; human-edited backlog: `docs/ai/ACTIVE_WORK.md`.
+
+## Tier A — planning sources (may drive work)
+
+Read these for session bootstrap and scheduling:
+
+- `docs/ai/PROJECT_CONTEXT.md`
+- `docs/ai/PROGRESS_LOG.md` (recent entries only; older entries are history)
+- `docs/ai/BOOTSTRAP_DIGEST.md`
+- `docs/ai/ACTIVE_WORK.md` (authoritative short backlog when present)
+- `docs/ai/FEATURE_REGISTRY.md` — only rows with **In Progress** or **Planned** (and only if user or ACTIVE_WORK points there)
+- `docs/ai/TECH_DEBT.md` — only **Open** rows
+- A **single** design doc the user names for the current task, if its Meta **Status** is `In Progress` or `Review`
+
+## Tier B — reference only (do not build backlog from)
+
+- Roadmaps / plans with Meta **Done**, **Deferred**, **Cancelled**, **Archived**, **Snapshot**, or **Reference**
+- `*_CURRENT_STATE.md` files (historical snapshots unless Meta says otherwise)
+- Issue write-ups marked **Archived** or **Resolved**
+- Unchecked checkboxes, “当前/待做/未启动” prose, or old phase tables in Tier B docs
+- `docs/ai/sessions/` (session notes)
+- `docs/ai/_archive/` if present (default: do not read for planning)
+
+Allowed use: naming, architecture context, links to code areas — **not** “must implement because doc says so”.
+
+## Tier C — code is truth
+
+If Tier A/B disagrees with **source code** or **`minEngineTests` / `verify.ps1` behavior**:
+
+1. Trust **code + tests** for “what exists today”.
+2. State that the doc may be stale; do not treat gaps in old docs as mandatory work unless the user or ACTIVE_WORK asks.
+3. Do not quote obsolete CLI flags or test entry points from old docs without verifying in repo.
+
+## Before reading a long design under `docs/ai/`
+
+1. Find `## Meta` and **Status** + **Last updated**.
+2. If Status is Tier B, read only what the user asked for — do not summarize the whole doc as “remaining work”.
+3. Prefer `ACTIVE_WORK.md` over sprawling roadmaps when both exist.
+
+## Conflicts
+
+| Situation | Resolution |
+|-----------|--------------|
+| Doc vs code | Code (+ tests) |
+| Doc vs user this session | User |
+| ACTIVE_WORK vs old roadmap | ACTIVE_WORK |
+| FEATURE_REGISTRY Planned vs no ACTIVE_WORK entry | Ask user or treat as optional future feat |
+
+## New work
+
+New features: register in `FEATURE_REGISTRY.md`, add or update `ACTIVE_WORK.md` when the user wants agent-visible priority — do not revive old roadmap checklists silently.

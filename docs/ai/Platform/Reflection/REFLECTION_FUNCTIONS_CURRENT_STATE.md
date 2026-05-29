@@ -1,17 +1,26 @@
 # 函数反射 — 现状说明（P4）
 
-Last updated: 2026-05-27  
-Status: **仅记录当前实现现状，详细设计待讨论**  
-父文档：[Platform 路线图](../PLATFORM_ROADMAP.md) §2 P4、§11  
-关联：[内存管理](../MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md)、[序列化扩展](../Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md)
+## Meta
+
+- **ID:** N/A（历史快照）
+- **Status:** **Snapshot**
+- **Owner:** project maintainer
+- **Last updated:** 2026-05-27（内容）；Meta 2026-05-28
+- **Related:** [REFLECTION_FUNCTIONS_DESIGN.md](./REFLECTION_FUNCTIONS_DESIGN.md), [PLATFORM_ROADMAP.md](../PLATFORM_ROADMAP.md)
+
+> **Agent:** **Snapshot** — written **before** method reflection (`MEFunction`, `ME_FUNCTION`, `InvokeFunction`) landed. Do **not** use for “what exists today”; read `Runtime/Core/Reflection/` and [REFLECTION_FUNCTIONS_DESIGN.md](./REFLECTION_FUNCTIONS_DESIGN.md). No backlog from this file.
+
+## TL;DR
+
+2026-05-27 baseline: property/enum reflection only, no callable methods in the doc’s model. Superseded for live behavior by code + the design doc above.
 
 ---
 
 ## 0) 范围说明
 
-- 本文 **只描述当前反射系统的结构与能力**，尤其是与「未来函数反射」相关的部分。  
-- **不** 给出 `MEFunction` / 委托 / Lua 的详细设计，也 **不** 规定阶段切分；这些内容将在与你讨论之后另外补充。  
-- 委托与 Lua 会放在各自文档中占位，仅在路线图中作为后续阶段出现。
+- 本文 **只描述撰写当时**反射系统的结构与能力（属性/枚举为主）。  
+- **不** 反映后续已落地的 `MEFunction`、header tool 函数生成、或 `MEObject::InvokeFunction`。  
+- 委托与 Lua 仍见各自占位文档；是否做、何时做见 [ACTIVE_WORK.md](../../ACTIVE_WORK.md)。
 
 ---
 

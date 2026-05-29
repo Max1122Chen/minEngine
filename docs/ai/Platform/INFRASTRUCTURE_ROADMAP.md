@@ -2,14 +2,16 @@
 
 ## Meta
 - **ID:** N/A（协调 `CLI-F01` + `TEST-F01`）
-- **Status:** **Maintenance** (M1–M4 + TEST-F02 done; follow-on = [TEST-F03](./Test/TEST_F03_SUITE_SLIM_PLAN.md) suite slim-down)
+- **Status:** **Done** (M1–M4 + TEST-F02 + TEST-F03 complete; file kept for history and command reference)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
-- **Related:** [TECH_DEBT.md](../TECH_DEBT.md), [BOOTSTRAP_DIGEST.md](../BOOTSTRAP_DIGEST.md), [PLATFORM_ROADMAP.md](./PLATFORM_ROADMAP.md) §12
+- **Related:** [TECH_DEBT.md](../TECH_DEBT.md), [BOOTSTRAP_DIGEST.md](../BOOTSTRAP_DIGEST.md), [ACTIVE_WORK.md](../ACTIVE_WORK.md)
+
+> **Agent:** **Done** — do not infer “infra blocks all product work” or “M4 not reached” from TL;DR below. New priorities: [ACTIVE_WORK.md](../ACTIVE_WORK.md).
 
 ## TL;DR
 
-Near-term work is **engineering infrastructure only**: unify **CLI** (command-line), centralize **tests** behind one runner, add local **`verify`** (build + smoke), and bind **Slice DoD** to that command. **No new Editor/product features** until milestone M4. Digest and tech-debt register are already done (not repeated here).
+**Delivered:** unified **CLI** (`test` subcommand), centralized **tests** (`minEngineTests`, doctest layout), local **`verify.ps1`** (build + smoke), TEST-F03 suite slim-down. This roadmap is **historical**; use BOOTSTRAP_DIGEST for commands and ACTIVE_WORK for what to do next.
 
 ## Scope
 - **In:** CLI parsing/registry; test runner + fixtures; migrate existing `--*-test` flags; `smoke` vs `full` suites; `scripts/verify`; governance DoD tweak.

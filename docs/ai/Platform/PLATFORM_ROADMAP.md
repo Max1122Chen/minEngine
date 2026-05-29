@@ -1,7 +1,9 @@
 # Platform 路线图（UE 化大方向）
 
 Last updated: 2026-05-28  
-Status: **拍板** — **P0/P1 与资产 Runtime（P1–P6.1）主干已完成**；**近期优先 §12 基建（CLI·Test·Verify）**；**P2 Editor / §11 Core 新切片延后至基建 M4**；详见 **§8**
+Status: **Reference** — historical UE-style direction and phase tables; **§12 infra complete**; do not use unchecked § items as mandatory backlog.
+
+> **Agent:** **Reference** only. Scheduling: [ACTIVE_WORK.md](../ACTIVE_WORK.md). Infra (CLI/Test/verify) is **done** ([INFRASTRUCTURE_ROADMAP.md](./INFRASTRUCTURE_ROADMAP.md)). Method reflection exists in code — do not rely on [REFLECTION_FUNCTIONS_CURRENT_STATE.md](./Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) (Snapshot).
 
 ## 1) 产品方向
 

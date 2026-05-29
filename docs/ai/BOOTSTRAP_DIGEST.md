@@ -1,7 +1,8 @@
 # Bootstrap Digest (read in under 2 min)
 
 Last updated: 2026-05-28  
-Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.
+Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
+**Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` — do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
 ---
 
@@ -14,10 +15,13 @@ Purpose: **one-page** context for humans and AI when starting or recovering a se
 ## Read order (new session)
 
 1. [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) — architecture snapshot  
-2. [PROGRESS_LOG.md](./PROGRESS_LOG.md) — what changed recently  
-3. **This file** — rules + commands + habits  
-4. Task-specific: [README.md](./README.md) → `Platform/` / `Editor/` / `Render/`  
-5. [TECH_DEBT.md](./TECH_DEBT.md) — what not to rush  
+2. [PROGRESS_LOG.md](./PROGRESS_LOG.md) — what changed recently (recent entries only)  
+3. [ACTIVE_WORK.md](./ACTIVE_WORK.md) — **current backlog** (human-edited; agents prefer this over old roadmaps)  
+4. **This file** — rules + commands + habits  
+5. [TECH_DEBT.md](./TECH_DEBT.md) — Open rows only (what not to rush)  
+6. Task-specific design — **only** if the user names it or ACTIVE_WORK links it; check Meta **Status** first ([doc trust tiers](../.cursor/rules/docs-trust-tiers.mdc))  
+
+Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
 
 ---
 
@@ -83,10 +87,15 @@ Entry: `minEngineTests.exe` (`Tests/TestMain.cpp`) or `Editor.exe test …` (for
 
 ---
 
-## Current infra focus
+## Planning vs reference docs
 
-- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` / `TEST-F01` / `TEST-F02` / **TEST-F03** **done** (doctest cases + fixture B).  
-- **Defer for now:** large Editor features, new P4/P5 slices, Lua — see [TECH_DEBT.md](./TECH_DEBT.md).
+| Use for **what to do next** | Reference only (no automatic backlog) |
+|-----------------------------|----------------------------------------|
+| [ACTIVE_WORK.md](./ACTIVE_WORK.md) | `Platform/*_ROADMAP.md`, `Editor/*_PLAN.md`, `*_CURRENT_STATE.md`, Archived issue docs |
+| [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) (In Progress / Planned) | Done / Snapshot / Archived / Reference Meta |
+| Code + `verify.ps1` / `minEngineTests` | Unchecked boxes in old designs |
+
+Infra slice **CLI + unified tests + TEST-F03** is **done**; [INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) is maintenance/history (Meta: Done).
 
 ---
 

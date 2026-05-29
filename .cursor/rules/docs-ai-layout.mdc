@@ -47,7 +47,8 @@ alwaysApply: false
 
 ## Bootstrap 不变
 
-会话仍先读：`docs/ai/PROJECT_CONTEXT.md`、`docs/ai/PROGRESS_LOG.md`。
+会话仍先读：`docs/ai/PROJECT_CONTEXT.md`、`docs/ai/PROGRESS_LOG.md`、`docs/ai/ACTIVE_WORK.md`。  
+Agent 文档信任分层：`.cursor/rules/docs-trust-tiers.mdc`（always apply）。
 
 ## 文档协同触发
 
