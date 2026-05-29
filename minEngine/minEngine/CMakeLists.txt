@@ -104,6 +104,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${IMGUI_UPSTREAM_DIR}/misc/freetype
                                           PUBLIC ${THIRD_PARTY_PATH}/json
                                           PUBLIC ${THIRD_PARTY_PATH}/ImGuizmo
+                                          PUBLIC ${THIRD_PARTY_PATH}/CLI11
                                           )
 
 if(ASSIMP_LINK_TARGET STREQUAL "")

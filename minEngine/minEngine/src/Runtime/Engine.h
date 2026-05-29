@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Core/CLI/CommandLineResult.h"
 #include "Runtime/EngineConfig.h"
 
 #include <chrono>
@@ -29,6 +30,7 @@ namespace minEngine
         Engine& operator=(Engine&&) = delete;
 
         void Initialize(int argc = 0, char** argv = nullptr);
+        void Initialize(const CommandLineResult& commandLine);
         void Shutdown();
         void Run();
 

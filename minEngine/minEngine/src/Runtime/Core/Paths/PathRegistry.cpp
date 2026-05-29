@@ -1,5 +1,6 @@
 #include "PathRegistry.h"
 
+#include "Runtime/Core/CLI/CommandLineResult.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
@@ -59,6 +60,49 @@ namespace minEngine
             return !candidate.empty() && std::filesystem::exists(candidate) &&
                    std::filesystem::is_regular_file(candidate);
         }
+
+        std::optional<std::filesystem::path> DiscoverEngineConfigByWalkAndEnvironment()
+        {
+            const std::filesystem::path cwd = std::filesystem::current_path();
+            const std::filesystem::path cwdConfig =
+                cwd / (std::string(kEngineConfigBaseName) + kEngineConfigExtension);
+            if (IsExistingConfigFile(cwdConfig))
+            {
+                return cwdConfig;
+            }
+
+            std::filesystem::path walk = cwd;
+            for (int depth = 0; depth < kMaxParentWalkDepth; ++depth)
+            {
+                const std::filesystem::path candidate =
+                    walk / (std::string(kEngineConfigBaseName) + kEngineConfigExtension);
+                if (IsExistingConfigFile(candidate))
+                {
+                    return candidate;
+                }
+
+                if (!walk.has_parent_path() || walk.parent_path() == walk)
+                {
+                    break;
+                }
+                walk = walk.parent_path();
+            }
+
+            if (const std::optional<std::filesystem::path> envConfig =
+                    PathFromEnvironment("MINENGINE_ENGINE_CONFIG"))
+            {
+                if (IsExistingConfigFile(*envConfig))
+                {
+                    return envConfig;
+                }
+            }
+
+            ME_CORE_ERROR(
+                "PathRegistry: EngineConfig.meconfig not found (cwd='{}'). "
+                "Set cwd to engine dist root, pass --engine-config=, or set MINENGINE_ENGINE_CONFIG.",
+                cwd.string());
+            return std::nullopt;
+        }
     }
 
     PathRegistry* PathRegistry::s_Instance = nullptr;
@@ -105,45 +149,7 @@ namespace minEngine
             return std::nullopt;
         }
 
-        const std::filesystem::path cwd = std::filesystem::current_path();
-        const std::filesystem::path cwdConfig =
-            cwd / (std::string(kEngineConfigBaseName) + kEngineConfigExtension);
-        if (IsExistingConfigFile(cwdConfig))
-        {
-            return cwdConfig;
-        }
-
-        std::filesystem::path walk = cwd;
-        for (int depth = 0; depth < kMaxParentWalkDepth; ++depth)
-        {
-            const std::filesystem::path candidate =
-                walk / (std::string(kEngineConfigBaseName) + kEngineConfigExtension);
-            if (IsExistingConfigFile(candidate))
-            {
-                return candidate;
-            }
-
-            if (!walk.has_parent_path() || walk.parent_path() == walk)
-            {
-                break;
-            }
-            walk = walk.parent_path();
-        }
-
-        if (const std::optional<std::filesystem::path> envConfig =
-                PathFromEnvironment("MINENGINE_ENGINE_CONFIG"))
-        {
-            if (IsExistingConfigFile(*envConfig))
-            {
-                return envConfig;
-            }
-        }
-
-        ME_CORE_ERROR(
-            "PathRegistry: EngineConfig.meconfig not found (cwd='{}'). "
-            "Set cwd to engine dist root, pass --engine-config=, or set MINENGINE_ENGINE_CONFIG.",
-            cwd.string());
-        return std::nullopt;
+        return DiscoverEngineConfigByWalkAndEnvironment();
     }
 
     bool PathRegistry::ApplyEngineConfig(
@@ -175,9 +181,28 @@ namespace minEngine
         return true;
     }
 
-    bool PathRegistry::LoadEngineConfiguration(int argc, char** argv, EngineConfig& outConfig)
+    bool PathRegistry::LoadEngineConfiguration(const CommandLineResult& commandLine, EngineConfig& outConfig)
     {
-        const std::optional<std::filesystem::path> configPath = DiscoverEngineConfigFile(argc, argv);
+        std::optional<std::filesystem::path> configPath;
+        if (commandLine.EngineConfigPath.has_value())
+        {
+            if (IsExistingConfigFile(*commandLine.EngineConfigPath))
+            {
+                configPath = commandLine.EngineConfigPath;
+            }
+            else
+            {
+                ME_CORE_ERROR(
+                    "PathRegistry: --engine-config points to missing file '{}'.",
+                    commandLine.EngineConfigPath->string());
+                return false;
+            }
+        }
+        else
+        {
+            configPath = DiscoverEngineConfigByWalkAndEnvironment();
+        }
+
         if (!configPath.has_value())
         {
             return false;
@@ -206,8 +231,7 @@ namespace minEngine
             return false;
         }
 
-        std::optional<std::filesystem::path> engineRootOverride =
-            ParsePrefixedArg(argc, argv, kArgEngineRootPrefix);
+        std::optional<std::filesystem::path> engineRootOverride = commandLine.EngineRootOverride;
         if (!engineRootOverride.has_value())
         {
             engineRootOverride = PathFromEnvironment("MINENGINE_ENGINE_ROOT");
@@ -228,6 +252,24 @@ namespace minEngine
 
         LogResolvedPaths();
         return true;
+    }
+
+    bool PathRegistry::LoadEngineConfiguration(int argc, char** argv, EngineConfig& outConfig)
+    {
+        CommandLineResult commandLine;
+        if (const std::optional<std::filesystem::path> explicitConfig =
+                ParsePrefixedArg(argc, argv, kArgEngineConfigPrefix))
+        {
+            commandLine.EngineConfigPath = explicitConfig;
+        }
+
+        if (const std::optional<std::filesystem::path> engineRoot =
+                ParsePrefixedArg(argc, argv, kArgEngineRootPrefix))
+        {
+            commandLine.EngineRootOverride = engineRoot;
+        }
+
+        return LoadEngineConfiguration(commandLine, outConfig);
     }
 
     void PathRegistry::SetEngineDefaultAssetsRootOverride(std::filesystem::path absolutePath)

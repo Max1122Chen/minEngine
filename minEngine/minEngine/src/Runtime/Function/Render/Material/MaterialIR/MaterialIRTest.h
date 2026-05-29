@@ -5,7 +5,6 @@
 namespace minEngine
 {
     // Returns true when argv contains --material-ir-test (headless smoke, no application window).
-    bool ShouldRunMaterialIRTestsOnly(int argc, char** argv);
 
     // Single graph smoke: IR + GLSL + optional GPU compile (see MaterialIRTest.cpp).
     // Returns true when compile succeeds, IR/GLSL golden substrings match, and GPU compile/link succeeds.

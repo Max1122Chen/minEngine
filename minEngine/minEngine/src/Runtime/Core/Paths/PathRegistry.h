@@ -8,6 +8,7 @@
 
 namespace minEngine
 {
+    struct CommandLineResult;
     struct EngineConfig;
 
     /** Resolved engine/project paths (M0). Single source of truth after bootstrap. */
@@ -18,6 +19,8 @@ namespace minEngine
 
         /** Discover EngineConfig.meconfig, load JSON, resolve EngineRoot + EngineDefaultAssets. */
         bool LoadEngineConfiguration(int argc, char** argv, EngineConfig& outConfig);
+
+        bool LoadEngineConfiguration(const CommandLineResult& commandLine, EngineConfig& outConfig);
 
         void SetEngineDefaultAssetsRootOverride(std::filesystem::path absolutePath);
         void ClearEngineDefaultAssetsRootOverride();

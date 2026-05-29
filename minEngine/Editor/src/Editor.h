@@ -20,7 +20,11 @@
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Appearance/EditorAppearance.h"
 
+#include "Runtime/Core/CLI/CommandLineResult.h"
+
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace minEngine
@@ -32,6 +36,7 @@ namespace minEngine
         ~Editor() override;
 
         void Initialize(int argc, char** argv) override;
+        void Initialize(int argc, char** argv, const CommandLineResult& commandLine) override;
         void Shutdown() override;
         void Run() override;
 
@@ -111,6 +116,9 @@ namespace minEngine
         float m_LastDeltaTime = 0.0f;
         bool m_DockLayoutInitialized = false;
         bool m_RequestResetLayout = false;
+
+        static std::optional<std::filesystem::path> ResolveProjectDescriptorPath(
+            const CommandLineResult& commandLine);
     };
 
     Application* CreateApplication();

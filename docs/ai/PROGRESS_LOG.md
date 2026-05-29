@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-28 (CLI-F01 design approved)
+Last updated: 2026-05-28 (CLI-F01 S01–S03 implemented)
 
 ## Purpose
 
@@ -774,6 +774,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`EDITOR_CONTEXT_MENU_DESIGN.md` §13–§15；`EDITOR_TASK_ROLLOUT` 子任务表；`PLATFORM_ROADMAP` §10 备注。
 - Next step:
 	用户审批 §15.3 → M1 ContentBrowser。
+
+### 2026-05-28 - CLI-F01 S01–S03 unified command-line parse + dispatch
+- Goal:
+	Introduce CLI11-backed `ApplicationCommandLine`; single `main.h` dispatch; migrate Material IR test to `test material-ir`.
+- Main changes:
+	`Third-Party/CLI11/CLI11.hpp` (v2.4.2); `Runtime/Core/CLI/*` (`CommandLineResult`, `ApplicationCommandLine`).
+	`main.h` — parse first; `test material-ir` + legacy `--material-ir-test` alias (warn); other `--*-test` flags unchanged until TEST-F01.
+	`PathRegistry::LoadEngineConfiguration(CommandLineResult)`; `Editor` project path from parsed result (removed argv scan loop).
+- Validation done:
+	`cmake --build minEngine/build --target minEngine Editor`.
+	`Editor.exe --help`, `Editor.exe test --help`, `Editor.exe test material-ir` exit 0; `--material-ir-test` warns + exit 0.
+- Next step:
+	TEST-F01 — suite registry, migrate remaining four `--*-test` flags, `test smoke`/`full`.
 
 ### 2026-05-28 - CLI-F01 unified command-line design (approved)
 - Goal:

@@ -64,27 +64,36 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 |------|-----------------|
 | Build Editor | `cmake --build minEngine/build --target Editor` |
 | Run Editor | from `minEngine/bin` (EngineConfig / project paths apply) |
-| Engine config | `--engine-config=`, `--engine-root=`; env `MINENGINE_ENGINE_*` |
+| Engine config | `--engine-config=`, `--engine-root=` (or space form); env `MINENGINE_ENGINE_*` |
 
-**Headless tests today (scattered CLI — to be unified under `CLI-F01` / `TEST-F01`):**
+**Unified CLI (`CLI-F01`, from `minEngine/bin`):**
+
+| Command | Purpose |
+|---------|---------|
+| `Editor.exe --help` | Global options + `test` subcommand |
+| `Editor.exe test --help` | smoke / full / suite-id |
+| `Editor.exe test material-ir` | Material IR headless smoke (preferred) |
+| `Editor.exe --project <path.meproject>` | Open project (default editor mode) |
+
+**Legacy headless flags (until `TEST-F01` migrates all suites):**
 
 | Flag | Area |
 |------|------|
-| `--material-ir-test` | Material IR / GPU smoke |
+| `--material-ir-test` | Deprecated alias → `test material-ir` (stderr warning) |
 | `--asset-manager-test` | AssetManager CRUD |
 | `--object-manager-test` | ObjectManager / GC |
 | `--serialization-archive-test` | Binary archive |
 | `--reflection-function-test` | Reflection functions (optional `=suite`) |
 
-Entry: `minEngine/minEngine/src/main.h` dispatches before normal app startup (Editor links same runtime).
+Entry: `minEngine/minEngine/src/main.h` — `ApplicationCommandLine::TryParse` then dispatch (Editor links same runtime).
 
-**Planned:** unified CLI + `--run-tests smoke|full` + `scripts/verify` (build + smoke). See [TECH_DEBT.md](./TECH_DEBT.md) TD-001, TD-002.
+**Planned:** `TEST-F01` — `test smoke`/`full`, remove legacy flags, `scripts/verify`. See [TECH_DEBT.md](./TECH_DEBT.md) TD-001, TD-002.
 
 ---
 
 ## Current infra focus
 
-- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` → `TEST-F01` → `scripts/verify` + DoD (M4).  
+- **Roadmap:** [Platform/INFRASTRUCTURE_ROADMAP.md](./Platform/INFRASTRUCTURE_ROADMAP.md) — `CLI-F01` **done** (S01–S03); **`TEST-F01`** next → `scripts/verify` + DoD (M4).  
 - **Defer for now:** large Editor features, new P4/P5 slices, Lua — see [TECH_DEBT.md](./TECH_DEBT.md).
 
 ---

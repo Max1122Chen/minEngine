@@ -9,6 +9,7 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
+#include "Runtime/Core/CLI/ApplicationCommandLine.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Engine.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
@@ -30,67 +31,32 @@
 
 namespace minEngine
 {
-    namespace
+    std::optional<std::filesystem::path> Editor::ResolveProjectDescriptorPath(
+        const CommandLineResult& commandLine)
     {
-        std::optional<std::string> ParseProjectDescriptorPathFromArgs(int argc, char** argv)
+        if (!commandLine.ProjectDescriptorPath.has_value())
         {
-            std::optional<std::string> projectPath;
-
-            for (int index = 1; index < argc; ++index)
-            {
-                const std::string argument = argv[index] ? argv[index] : "";
-                if (argument.empty())
-                {
-                    continue;
-                }
-
-                if (argument == "--project" || argument == "-p")
-                {
-                    if (index + 1 >= argc || argv[index + 1] == nullptr || std::string(argv[index + 1]).empty())
-                    {
-                        ME_CORE_ERROR("Missing project descriptor path after '{}'.", argument);
-                        return std::nullopt;
-                    }
-
-                    projectPath = argv[++index];
-                    continue;
-                }
-
-                if (argument[0] == '-')
-                {
-                    continue;
-                }
-
-                if (!projectPath.has_value())
-                {
-                    projectPath = argument;
-                }
-            }
-
-            if (!projectPath.has_value())
-            {
-                ME_CORE_ERROR("Editor requires a project descriptor path.");
-                ME_CORE_ERROR("Usage: Editor.exe --project <path-to-project.meproject> (or positional path).");
-                return std::nullopt;
-            }
-
-            const std::filesystem::path descriptorPath(*projectPath);
-            if (descriptorPath.extension() != ".meproject")
-            {
-                ME_CORE_ERROR(
-                    "Project path '{}' is not a .meproject descriptor.",
-                    descriptorPath.string());
-                return std::nullopt;
-            }
-
-            if (!std::filesystem::exists(descriptorPath))
-            {
-                ME_CORE_ERROR("Project descriptor '{}' does not exist.", descriptorPath.string());
-                return std::nullopt;
-            }
-
-            return descriptorPath.string();
+            ME_CORE_ERROR("Editor requires a project descriptor path.");
+            ME_CORE_ERROR("Usage: Editor.exe --project <path-to-project.meproject> (see --help).");
+            return std::nullopt;
         }
+
+        const std::filesystem::path descriptorPath = *commandLine.ProjectDescriptorPath;
+        if (descriptorPath.extension() != ".meproject")
+        {
+            ME_CORE_ERROR(
+                "Project path '{}' is not a .meproject descriptor.",
+                descriptorPath.string());
+            return std::nullopt;
+        }
+
+        if (!std::filesystem::exists(descriptorPath))
+        {
+            ME_CORE_ERROR("Project descriptor '{}' does not exist.", descriptorPath.string());
+            return std::nullopt;
+        }
+
+        return descriptorPath;
     }
 
     Editor::Editor() = default;
@@ -246,8 +212,24 @@ namespace minEngine
 
     void Editor::Initialize(int argc, char** argv)
     {
+        const std::optional<CommandLineResult> commandLine =
+            ApplicationCommandLine::TryParse(argc, argv);
+        if (!commandLine.has_value())
+        {
+            m_ExitRequested = true;
+            return;
+        }
+
+        Initialize(argc, argv, *commandLine);
+    }
+
+    void Editor::Initialize(int argc, char** argv, const CommandLineResult& commandLine)
+    {
+        (void)argc;
+        (void)argv;
+
         m_Engine = new Engine();
-        m_Engine->Initialize(argc, argv);
+        m_Engine->Initialize(commandLine);
 
         RenderSystem::Get().SetPresentPassEnabled(false);
 
@@ -270,14 +252,15 @@ namespace minEngine
         m_EditorGUIManager.Initialize(*this);
         RegisterModules();
 
-        const std::optional<std::string> projectDescriptorPath = ParseProjectDescriptorPathFromArgs(argc, argv);
+        const std::optional<std::filesystem::path> projectDescriptorPath =
+            ResolveProjectDescriptorPath(commandLine);
         if (!projectDescriptorPath.has_value())
         {
             m_ExitRequested = true;
             return;
         }
 
-        if (!OpenProject(*projectDescriptorPath))
+        if (!OpenProject(projectDescriptorPath->string()))
         {
             m_ExitRequested = true;
             return;

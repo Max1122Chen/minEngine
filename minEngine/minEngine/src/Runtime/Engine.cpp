@@ -21,6 +21,25 @@ namespace minEngine
         return *s_Instance;
     }
 
+    void Engine::Initialize(const CommandLineResult& commandLine)
+    {
+        ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
+        s_Instance = this;
+
+        LogSystem::Get().Initialize();
+        FinializeReflection();
+
+        m_EnginePathConfigLoaded =
+            PathRegistry::Get().LoadEngineConfiguration(commandLine, m_EngineConfig);
+
+        StartSystems();
+
+        if (m_RenderSystem && m_EnginePathConfigLoaded)
+        {
+            m_RenderSystem->LoadEngineRenderingAssets();
+        }
+    }
+
     void Engine::Initialize(int argc, char** argv)
     {
         ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");

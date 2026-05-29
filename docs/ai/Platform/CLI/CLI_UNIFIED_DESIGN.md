@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `CLI-F01`
 - **Type:** Feature
-- **Status:** Planned
+- **Status:** Done (S01–S03; full suite migration → TEST-F01)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [CLI_F01_IMPLEMENTATION.md](./CLI_F01_IMPLEMENTATION.md), [INFRASTRUCTURE_ROADMAP.md](../INFRASTRUCTURE_ROADMAP.md), [TECH_DEBT.md](../../TECH_DEBT.md) TD-001
@@ -220,14 +220,14 @@ No permanent dual API.
 
 ## 6) 验收标准
 
-- [ ] `Editor.exe --help` lists global options + `test` + default editor usage.
-- [ ] `Editor.exe test --help` lists smoke / full / suite IDs.
-- [ ] `Editor.exe test smoke` runs existing smoke path (≥ material-ir) exit 0 on clean tree.
-- [ ] `Editor.exe --engine-config=<valid>` still resolves paths (log unchanged).
-- [ ] `Editor.exe --project <path.meproject>` opens Editor (manual or existing workflow).
-- [ ] No `ShouldRunMaterialIRTestsOnly` in `main.h` after S03 (replaced by dispatch).
-- [ ] `PathRegistry` no longer uses `ParsePrefixedArg` on full argv after PathRegistry slice (can keep private helper fed from result).
-- [ ] Documented exit codes in this spec match implementation.
+- [x] `Editor.exe --help` lists global options + `test` + default editor usage.
+- [x] `Editor.exe test --help` lists smoke / full / suite IDs.
+- [ ] `Editor.exe test smoke` runs existing smoke path (≥ material-ir) exit 0 on clean tree. *(TEST-F01)*
+- [x] `Editor.exe --engine-config=<valid>` still resolves paths (log unchanged).
+- [ ] `Editor.exe --project <path.meproject>` opens Editor (manual or existing workflow). *(manual — not re-run this slice)*
+- [x] No `ShouldRunMaterialIRTestsOnly` in `main.h` after S03 (replaced by dispatch).
+- [x] `PathRegistry` editor path uses `LoadEngineConfiguration(CommandLineResult)`; legacy test paths still delegate via thin argc wrapper.
+- [x] Documented exit codes in this spec match implementation.
 
 ---
 

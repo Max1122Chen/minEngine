@@ -2,7 +2,7 @@
 
 ## Meta
 - **ID:** `CLI-F01`
-- **Status:** Planned
+- **Status:** Done (S01–S03)
 - **Owner:** project maintainer
 - **Last updated:** 2026-05-28
 - **Related:** [CLI_UNIFIED_DESIGN.md](./CLI_UNIFIED_DESIGN.md)
@@ -26,9 +26,9 @@ Three slices: vendor CLI11 + parse skeleton; wire `main.h` + help; migrate first
 
 | Slice ID | 内容 | 状态 | 验证 |
 |----------|------|------|------|
-| `CLI-F01-S01` | Vendor CLI11; `ApplicationCommandLine` + `CommandLineResult`; parse globals + `test`/`editor` tree; unit smoke | Planned | Build minEngine; optional parse-only test |
-| `CLI-F01-S02` | `main.h` dispatch; PathRegistry from result; Editor project from result; `--help` | Planned | `Editor.exe --help`; `--project` opens project |
-| `CLI-F01-S03` | `test material-ir` + legacy `--material-ir-test` alias; remove `ShouldRunMaterialIR*` from main | Planned | `Editor.exe test material-ir` exit 0 |
+| `CLI-F01-S01` | Vendor CLI11; `ApplicationCommandLine` + `CommandLineResult`; parse globals + `test`/`editor` tree; unit smoke | Done | Build minEngine; optional parse-only test |
+| `CLI-F01-S02` | `main.h` dispatch; PathRegistry from result; Editor project from result; `--help` | Done | `Editor.exe --help`; `--project` opens project |
+| `CLI-F01-S03` | `test material-ir` + legacy `--material-ir-test` alias; remove `ShouldRunMaterialIR*` from main | Done | `Editor.exe test material-ir` exit 0 |
 
 ---
 
@@ -68,4 +68,4 @@ S01 → S02 → S03
 
 | 日期 | 说明 |
 |------|------|
-| 2026-05-28 | Initial plan |
+| 2026-05-28 | S01–S03 implemented; build + `test material-ir` / legacy alias verified |

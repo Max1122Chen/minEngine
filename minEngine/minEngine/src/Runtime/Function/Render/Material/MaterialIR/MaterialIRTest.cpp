@@ -1281,18 +1281,6 @@ namespace minEngine
 
     }
 
-    bool ShouldRunMaterialIRTestsOnly(int argc, char** argv)
-    {
-        for (int argIndex = 1; argIndex < argc; ++argIndex)
-        {
-            if (argv[argIndex] != nullptr && std::string_view(argv[argIndex]) == "--material-ir-test")
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     const std::string& GetMaterialIRTestEngineDefaultAssetsRoot()
     {
         return g_MaterialIRTestEngineDefaultAssetsRoot;
