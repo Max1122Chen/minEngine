@@ -219,7 +219,7 @@ docs/handbook/                         src/Runtime/
 # 结构说明（非最终文件）— 实施时写入 .github/workflows/docs.yml
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths: [docs/handbook/**, mkdocs.yml, requirements-docs.txt, .github/workflows/docs.yml]
 
 permissions:
