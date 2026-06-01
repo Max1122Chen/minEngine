@@ -9,6 +9,8 @@
 | [CLI/CLI_UNIFIED_DESIGN.md](./CLI/CLI_UNIFIED_DESIGN.md) | Done — 统一 CLI |
 | [Test/TEST_UNIFIED_DESIGN.md](./Test/TEST_UNIFIED_DESIGN.md) | Done — TestRunner + registry |
 | [Test/TEST_F02_LAYOUT_MIGRATION.md](./Test/TEST_F02_LAYOUT_MIGRATION.md) | Done — doctest + Tests/ + minEngineTests |
+| [Docs/HANDBOOK_SITE_DESIGN.md](./Docs/HANDBOOK_SITE_DESIGN.md) | Planned — `WF-F02` 设计 |
+| [Docs/HANDBOOK_SITE_IMPLEMENTATION.md](./Docs/HANDBOOK_SITE_IMPLEMENTATION.md) | Planned — `WF-F02` 实施（首期骨架） |
 | [Startup/ENGINE_STARTUP_DESIGN.md](./Startup/ENGINE_STARTUP_DESIGN.md) | 草稿 — 配置化启动 |
 | [MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md](./MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md) | 草稿 — 内存管理 |
 

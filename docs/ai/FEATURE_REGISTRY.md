@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-05-28  
+Last updated: 2026-06-01  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -22,6 +22,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `TEST-F02` | Test layout migration, doctest, minEngineTests exe | Done | — | [TEST_F02_LAYOUT_MIGRATION](./Platform/Test/TEST_F02_LAYOUT_MIGRATION.md) |
 | `TEST-F03` | Suite slim-down, doctest cases, fixture B reflection | Done | — | [TEST_F03_SUITE_SLIM_PLAN](./Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md) |
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
+| `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | In Progress | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
 
 ---
 
@@ -31,7 +32,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 |--------|----------------|-------|
 | `CLI` | F02 | Command-line / tools entry |
 | `TEST` | F04 | Automated tests (follow-on) |
-| `WF` | F02 | Workflow / docs |
+| `WF` | F03 | Workflow / docs |
 | `CORE` | F01 | Reflection, object, startup |
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F01 | Editor productization (new IDs only) |

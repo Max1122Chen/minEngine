@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-05-28  
+Last updated: 2026-06-01  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,7 +9,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-_None listed — add the next 1–3 items you care about when you resume feature work._
+- **WF-F02** 骨架已上线（本地 `mkdocs serve`）；合并 `main` 后确认 [Pages](https://max1122chen.github.io/minEngine/) 与 Settings→GitHub Actions。子系统 handbook 正文由维护者按需补充。
 
 Example entries (delete or replace):
 

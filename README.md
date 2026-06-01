@@ -9,7 +9,7 @@
 ![OpenGL](https://img.shields.io/badge/OpenGL-4.3%2B-orange)
 ![License](https://img.shields.io/badge/License-Personal%20Learning%20Project-brightgreen)
 
-[🏗️ 架构](#核心架构) • [⭐ 特色](#核心特色) • [🚀 快速开始](#快速开始)
+[📖 文档](https://max1122chen.github.io/minEngine/) • [🏗️ 架构](#核心架构) • [⭐ 特色](#核心特色) • [🚀 快速开始](#快速开始)
 
 https://github.com/Max1122Chen/minEngine.git
 

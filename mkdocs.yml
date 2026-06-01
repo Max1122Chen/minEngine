@@ -1,0 +1,48 @@
+site_name: minEngine
+site_description: 个人学习型 C++ 游戏引擎 — 公开技术手册
+site_url: https://max1122chen.github.io/minEngine/
+repo_url: https://github.com/Max1122Chen/minEngine
+edit_uri: edit/master/docs/handbook/
+
+docs_dir: docs/handbook
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - 首页: index.md
+  - 快速开始: getting-started/index.md
+  - 运行时: 
+    - 总览: runtime/overview.md
+    - 核心:
+        - 总览: runtime/core/overview.md
+    - 功能层:
+        - 框架: runtime/function/framework/overview.md
+        - 输入: runtime/function/input/overview.md
+        - 渲染: runtime/function/render/overview.md
+    - 平台层:
+        - 文件对话框: runtime/platform/file-dialog/overview.md
+    - 资源层:
+        - 资产管理: runtime/resource/asset-manager/overview.md

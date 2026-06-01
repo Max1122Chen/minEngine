@@ -10,6 +10,9 @@ minEngine/imgui.ini
 minEngine/minEngine/src/Generated/Reflection/index.reflection.json
 minEngine/minEngine/src/Generated/Reflection/manifest.json
 
+# MkDocs build output
+site/
+
 # Python cache
 scripts/__pycache__/
 **/__pycache__/

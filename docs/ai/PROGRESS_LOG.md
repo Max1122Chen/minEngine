@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-05-28 (infra complete; legacy test flags removed)
+Last updated: 2026-06-01
 
 ## Purpose
 
@@ -947,6 +947,26 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`cmake --build minEngine/build --target Editor` succeeded.
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
+
+### 2026-06-01 - WF-F02 handbook nav under `runtime/` tree
+- Goal:
+  Align handbook paths and stubs with revised `mkdocs.yml` (Runtime tab + Function/Platform/Resource children).
+- Main changes:
+  `docs/handbook/runtime/**` placeholders; removed flat `runtime/{function,platform,resource}/overview.md`; design/impl docs updated.
+- Validation done:
+  `mkdocs build --strict`.
+
+### 2026-06-01 - WF-F02 handbook site skeleton (MkDocs + GitHub Pages CI)
+- Goal:
+  Public docs site aligned with `src/Runtime` top-level layers; placeholders only.
+- Main changes:
+  `docs/handbook/` (index, getting-started, core/function/platform/resource overview stubs).
+  Root `mkdocs.yml`, `requirements-docs.txt`, `.github/workflows/docs.yml`.
+  README link to https://max1122chen.github.io/minEngine/
+- Validation done:
+  `mkdocs build --strict` from repo root succeeded.
+- Next step:
+  Merge to `main`; enable Pages source GitHub Actions; fill handbook content per layer.
 
 ### 2026-05-26 - Roadmap sync (P3 Undo + E2 + P6.1)
 - **Docs:** `PLATFORM_ROADMAP.md`、`EDITOR_PLATFORM_PLAN.md`、`PROJECT_CONTEXT.md` aligned with repo state.
