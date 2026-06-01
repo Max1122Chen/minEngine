@@ -1,2 +1,11 @@
 nav:
   - overview.md
+  - Object: object.md
+  - Reflection: reflection.md
+  - Serialization: serialization.md
+  - Math: math.md
+  - Log: log.md
+  - Paths: paths.md
+  - CLI: cli.md
+  - GUID: guid.md
+  - Assert: assert.md
