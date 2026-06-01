@@ -6,43 +6,43 @@ edit_uri: edit/master/docs/handbook/
 
 docs_dir: docs/handbook
 
+exclude_docs: |
+  _authoring.md
+
 theme:
   name: material
   language: zh
   features:
     - navigation.tabs
     - navigation.sections
+    - navigation.prune
+    - navigation.path
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
     - content.code.copy
     - search.suggest
     - search.highlight
 
 plugins:
   - search
+  - awesome-pages
+  - git-revision-date-localized:
+      enable_creation_date: false
+      type: date
+      timezone: Asia/Shanghai
+      locale: zh
+      fallback_to_build_date: true
 
 markdown_extensions:
   - admonition
   - tables
   - toc:
       permalink: true
+      toc_depth: 2-3
   - pymdownx.highlight
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-
-nav:
-  - 首页: index.md
-  - 快速开始: getting-started/index.md
-  - 运行时: 
-    - 总览: runtime/overview.md
-    - 核心:
-        - 总览: runtime/core/overview.md
-    - 功能层:
-        - 框架: runtime/function/framework/overview.md
-        - 输入: runtime/function/input/overview.md
-        - 渲染: runtime/function/render/overview.md
-    - 平台层:
-        - 文件对话框: runtime/platform/file-dialog/overview.md
-    - 资源层:
-        - 资产管理: runtime/resource/asset-manager/overview.md

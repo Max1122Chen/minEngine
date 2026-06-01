@@ -9,7 +9,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **WF-F02** 骨架已上线（本地 `mkdocs serve`）；合并 `main` 后确认 [Pages](https://max1122chen.github.io/minEngine/) 与 Settings→GitHub Actions。子系统 handbook 正文由维护者按需补充。
+- **WF-F02** 二期 S04–S07 已实施；push `main` 验 Pages。handbook 正文由维护者按需补充。
 
 Example entries (delete or replace):
 

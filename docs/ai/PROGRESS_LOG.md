@@ -948,6 +948,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-06-02 - WF-F02 handbook UX phase 2 (S04–S07)
+- Goal:
+  Auto nav, TOC, sidebar, and git last-updated footer for public handbook.
+- Main changes:
+  `mkdocs-awesome-pages-plugin` + `docs/handbook/**/.pages` (no root `nav` in mkdocs.yml).
+  Material: `toc.follow`, `toc_depth 2-3`, `navigation.prune/path/top/indexes`.
+  `mkdocs-git-revision-date-localized-plugin`; docs workflow `fetch-depth: 0`.
+  `_authoring.md` + `exclude_docs`; expanded `render/overview.md` for TOC sample.
+- Validation done:
+  `mkdocs build --strict`.
+
 ### 2026-06-01 - WF-F02 handbook nav under `runtime/` tree
 - Goal:
   Align handbook paths and stubs with revised `mkdocs.yml` (Runtime tab + Function/Platform/Resource children).

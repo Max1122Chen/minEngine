@@ -11,7 +11,7 @@
 
 首期 **3 个切片**：handbook 骨架（`index` + `getting-started` 占位 + Runtime 四层 `overview` 占位 + `Editor`/`参考` 暂不展开或仅 Editor 单层占位）→ MkDocs 本地可构建 → GitHub Actions 部署 Pages。  
 **不写** Runtime 子系统正文（Reflection / Render / …）；由维护者后续按目录自行增补。  
-当前切片：**S03**（S01–S02 已落地，待合并 `main` 后验 Pages）。
+当前切片：**S04–S07 Done**；子系统正文仍由维护者补充。
 
 ## Scope
 - **In:** `docs/handbook/` 首期占位页；根目录 `mkdocs.yml`、`requirements-docs.txt`；`.github/workflows/docs.yml`；Design/Registry/ACTIVE_WORK 状态同步；`PROGRESS_LOG` 在 S03 后一条
@@ -31,6 +31,10 @@
 | `WF-F02-S01` | handbook 目录 + 占位 md + `mkdocs.yml` + `requirements-docs.txt` | Done | `mkdocs build --strict` 本地通过 |
 | `WF-F02-S02` | GitHub Actions：PR/build + `main` deploy Pages | Done | `main` push 后 Pages URL 可开 |
 | `WF-F02-S03` | 验收收尾：PROGRESS_LOG、Registry 备注、README 文档链接 | Done | 对照 Design §9 勾选 |
+| `WF-F02-S04` | 自动 nav：`awesome-pages` + `runtime/**/.pages`，根 nav 精简 | Done | 增页改 `.pages` 即可 |
+| `WF-F02-S05` | 右侧 TOC：`toc_depth`、`toc.follow`、写作约定 | Done | `render/overview` 样例 |
+| `WF-F02-S06` | 侧栏：`navigation.prune/path/top/indexes` + 联调 | Done | Material features |
+| `WF-F02-S07` | 页脚最后编辑：`git-revision-date-localized` + CI `fetch-depth: 0` | Done | `exclude_docs` 隐藏 `_authoring` |
 
 状态：`Planned | In Progress | Done | Blocked | Deferred | Cancelled`
 
@@ -147,23 +151,65 @@ jobs:
 ## 3) 依赖顺序
 
 ```text
-S01 → S02 → S03
+S01 → S02 → S03 → S04 → S05 → S06 → S07
 ```
 
-无其他 Feature 硬依赖。可与代码开发并行。
+S04–S07 可同 PR；S07 修改 `docs.yml` 与 S04 一并合并。
 
 ---
 
-## 4) 延后切片（不由首期实施；维护者或后续 WF 切片）
+## 2b) 切片详情 — 二期（Design §11）
+
+### WF-F02-S04 — 自动 nav
+
+- **Goal:** Runtime 子树由目录 + `.pages` 驱动；根 `mkdocs.yml` 仅保留首页、快速开始、`运行时: runtime/`。
+- **Touch:** `requirements-docs.txt`（`mkdocs-awesome-pages-plugin`）；`mkdocs.yml`；`docs/handbook/runtime/.pages` 及 `core/`、`function/`、`platform/`、`resource/` 下 `.pages`。
+- **DoD:**
+  - [ ] 删除根 nav 中 Runtime 下逐条 md 枚举
+  - [ ] 在 `runtime/function/render/` 新增测试页（可 `_tmp` 后删）证明仅改 `.pages` 或目录即可出现侧栏
+  - [ ] `mkdocs build --strict` 通过
+- **Verify:** 本地 `mkdocs serve`，侧栏结构与现网一致或更清晰
+
+### WF-F02-S05 — 右侧 TOC
+
+- **Goal:** 长文右侧章节目录 + 滚动跟随。
+- **Touch:** `mkdocs.yml` — `toc.follow`、`toc_depth: 2-3`；可选 `docs/handbook/_authoring.md`（##/### 约定）。
+- **DoD:**
+  - [ ] 至少一页（如扩写 `runtime/function/render/overview.md`）含多个 `##`/`###`，右侧 TOC 正常
+- **Verify:** 桌面宽度浏览器目视 + build strict
+
+### WF-F02-S06 — 侧栏导航
+
+- **Goal:** prune/path/top/indexes。
+- **Touch:** `mkdocs.yml` `theme.features`。
+- **DoD:**
+  - [ ] `navigation.prune`、`navigation.path`、`navigation.top`、`navigation.indexes` 已启用
+  - [ ] 从首页点入 Runtime 深页，面包屑与展开行为符合预期
+- **Verify:** 浏览器目视
+
+### WF-F02-S07 — 最后编辑时间 + 二期验收
+
+- **Goal:** 页脚显示每页最后 Git 提交日期（中文）；二期总验收。
+- **Touch:** `requirements-docs.txt`；`mkdocs.yml` 插件；`.github/workflows/docs.yml`（`fetch-depth: 0`）；`PROGRESS_LOG`。
+- **DoD:**
+  - [ ] `git-revision-date-localized` 已配置（`locale: zh`，仅最后更新，无创建日）
+  - [ ] docs workflow checkout 使用 `fetch-depth: 0`
+  - [ ] 至少一页已知较早 commit 的文件，页脚日期早于「今天」（证明非纯 build date）
+  - [ ] Design §9.2 全部勾选；PROGRESS_LOG 记录 S04–S07
+- **Verify:** `mkdocs build --strict`；`mkdocs serve` 抽查页脚；CI 绿
+
+---
+
+## 4) 延后（非 S04–S06）
 
 | 工作项 | 说明 | 建议归属 |
 |--------|------|----------|
-| `editor/overview.md` + nav | Editor 模块文档 | 你撰写时加页 |
-| `function/render/…` 深度 nav | Render / Material / Pipeline 分册 | 按 `src` 子目录逐步 mirror |
-| `reference/cli.md` 等 | CLI、术语、FAQ | `WF-F02` 续切片或维护者 |
+| `editor/overview.md` + nav | Editor 模块文档 | 维护者加页 + `.pages` |
+| `function/render/…` 深度正文 | Pipeline / Material 分册 | 维护者 |
+| `reference/cli.md` 等 | CLI、术语、FAQ | 新 Tab 或 runtime 外 `.pages` |
 | README 全面整理 | 与 `index.md` 去重 | 维护者 |
-| `git-revision-date-localized` | 页脚日期 | 第二期插件 |
-| PR 预览环境 | 在线 preview | 不做（设计已定） |
+| `git-revision-date-localized` | 页脚日期 | 可选插件 |
+| PR 预览环境 | 在线 preview | 不做 |
 
 ---
 
@@ -173,3 +219,5 @@ S01 → S02 → S03
 |------|------|
 | 2026-06-01 | 初稿：S01 骨架 + S02 CI + S03 验收；Runtime 子系统正文 Out |
 | 2026-06-01 | 实施：快速开始合并单页；S01–S03 落地 |
+| 2026-06-02 | 追加 S04–S06（Design §11 自动 nav / TOC / 侧栏） |
+| 2026-06-02 | 追加 S07（最后编辑时间 + §9.2 总验收） |
