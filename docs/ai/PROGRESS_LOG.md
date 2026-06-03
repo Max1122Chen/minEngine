@@ -967,6 +967,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Validation done:
   `mkdocs build --strict`.
 
+### 2026-06-01 - RND-F02 planning + Modern RHI design draft (`render`)
+- Goal:
+  Start GPU-model Modern RHI track; separate from RenderGraph (RND-F01 deferred).
+- Main changes:
+  `FEATURE_REGISTRY` + `ACTIVE_WORK` render focus; `docs/ai/Render/RND-F02_MODERN_RHI_DESIGN.md` (Part A 教案 + Part B 设计 + R0–R3 slices).
+  Branch `render` for subsequent implementation.
+- Validation done:
+  Docs only; `mkdocs build` N/A for ai/Render path.
+- Next step:
+  F02-R0: CommandList draw + remove `gl*` from RenderPasses.
+
 ### 2026-06-01 - WF-F02 handbook site skeleton (MkDocs + GitHub Pages CI)
 - Goal:
   Public docs site aligned with `src/Runtime` top-level layers; placeholders only.
