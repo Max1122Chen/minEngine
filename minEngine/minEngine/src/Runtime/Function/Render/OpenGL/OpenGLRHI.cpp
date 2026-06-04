@@ -125,7 +125,7 @@ namespace minEngine
         return std::make_shared<OpenGLIndexBuffer>(indices, numIndices);
     }
 
-    std::shared_ptr<VertexDefinition> OpenGLRHI::CreateVertexDefinition(std::initializer_list<VertexElement> elements)
+    std::shared_ptr<VertexDefinition> OpenGLRHI::CreateVertexDefinition(std::initializer_list<RHIVertexElement> elements)
     {
         return std::make_shared<OpenGLVertexArrayObject>(elements);
     }
@@ -173,7 +173,7 @@ namespace minEngine
         return std::make_shared<OpenGLTexture2DArray>(data, desc);
     }
 
-    std::shared_ptr<RHIShader> OpenGLRHI::CreateRHIShader(
+    std::shared_ptr<RHIShaderLegacy> OpenGLRHI::CreateRHIShader(
         const std::string& vertexSource,
         const std::string& fragmentSource,
         std::string* outCompileLog)

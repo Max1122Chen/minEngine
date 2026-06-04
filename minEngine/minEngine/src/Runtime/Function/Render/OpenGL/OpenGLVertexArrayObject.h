@@ -5,12 +5,12 @@
 namespace minEngine
 {
     class VertexDefinition;
-    struct VertexElement;
+    struct RHIVertexElement;
 
     class OpenGLVertexArrayObject final : public VertexDefinition
     {
     public:
-        OpenGLVertexArrayObject(std::initializer_list<VertexElement> elements);
+        OpenGLVertexArrayObject(std::initializer_list<RHIVertexElement> elements);
         virtual ~OpenGLVertexArrayObject() override;
 
         OpenGLVertexArrayObject(const OpenGLVertexArrayObject&) = delete;

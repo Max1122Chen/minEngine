@@ -377,7 +377,7 @@ namespace minEngine
         m_EnvIntensity = 1.0f;
     }
 
-    void EngineIBLEnvironment::BindForPBRDraw(RHIShader& shader) const
+    void EngineIBLEnvironment::BindForPBRDraw(RHIShaderLegacy& shader) const
     {
         shader.UploadUniformFloat("u_EnvIntensity", m_EnvIntensity);
 

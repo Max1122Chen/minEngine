@@ -166,7 +166,7 @@ namespace minEngine
             return reportError("failed to compile equirect_to_cubemap shader.");
         }
 
-        std::shared_ptr<RHIShader> shader = captureShader->GetRHIShader();
+        std::shared_ptr<RHIShaderLegacy> shader = captureShader->GetRHIShader();
 
         std::string cubeError;
         std::shared_ptr<RHITextureCube> environmentCube = TextureCubeLoader::CreateEmptyRenderTargetCube(
@@ -319,7 +319,7 @@ namespace minEngine
             return reportError("failed to compile irradiance_convolution shader.");
         }
 
-        std::shared_ptr<RHIShader> shader = convolutionShader->GetRHIShader();
+        std::shared_ptr<RHIShaderLegacy> shader = convolutionShader->GetRHIShader();
 
         std::string cubeError;
         std::shared_ptr<RHITextureCube> irradianceCube = TextureCubeLoader::CreateEmptyRenderTargetCube(
@@ -483,7 +483,7 @@ namespace minEngine
             return reportError("failed to compile prefilter shader.");
         }
 
-        std::shared_ptr<RHIShader> shader = prefilterShader->GetRHIShader();
+        std::shared_ptr<RHIShaderLegacy> shader = prefilterShader->GetRHIShader();
 
         std::string cubeError;
         std::shared_ptr<RHITextureCube> prefilterCube = TextureCubeLoader::CreateEmptyRenderTargetCube(

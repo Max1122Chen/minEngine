@@ -11,7 +11,7 @@ namespace minEngine
     class UniformBuffer;
     class FrameBuffer;
     class RHITexture2DArray;
-    class RHIShader;
+    class RHIShaderLegacy;
 
 
 
@@ -35,7 +35,7 @@ namespace minEngine
         std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
 
     private:
-        std::shared_ptr<RHIShader> m_DepthOnlyShader; // A simple shader that only outputs depth, used for shadow pass
+        std::shared_ptr<RHIShaderLegacy> m_DepthOnlyShader; // A simple shader that only outputs depth, used for shadow pass
 
         void UpdateLightViewProjBuffer(Matrix4 inMatrix);
         void RenderDirectionalShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);

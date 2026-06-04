@@ -9,7 +9,7 @@
 namespace minEngine
 {
     class RHIShader;
-    class VertexDefinition;
+    class RHIVertexInputLayout;
 
     enum class RHIPrimitiveType : uint8_t
     {
@@ -35,18 +35,16 @@ namespace minEngine
         bool bDepthClipEnabled = true;
     };
 
-    // UE: FRHIGraphicsPipelineState — opaque handle; backends may subclass.
     class RHIGraphicsPipelineState
     {
     };
 
-    // UE: FGraphicsPipelineStateInitializer — immutable PSO description.
-    class RHIGraphicsPSOCreateInfo
+    class RHIGraphicsPSODesc
     {
     public:
         RHIShader* VertexShader = nullptr;
         RHIShader* PixelShader = nullptr;
-        VertexDefinition* VertexDeclaration = nullptr;
+        RHIVertexInputLayout* VertexInputLayout = nullptr;
 
         RHIBlendStateDesc BlendState;
         RHIDepthStencilStateDesc DepthStencilState;
@@ -65,19 +63,18 @@ namespace minEngine
         uint32_t NumSamples = 1;
     };
 
-    // UE: FRHIGraphicsPipelineStateFallBack — OpenGL-style state on the handle.
     class RHIGraphicsPSOStateFallback : public RHIGraphicsPipelineState
     {
     public:
         RHIGraphicsPSOStateFallback() = default;
-        explicit RHIGraphicsPSOStateFallback(const RHIGraphicsPSOCreateInfo& createInfo)
-            : m_CreateInfo(createInfo)
+        explicit RHIGraphicsPSOStateFallback(const RHIGraphicsPSODesc& createDesc)
+            : m_Desc(createDesc)
         {
         }
 
-        const RHIGraphicsPSOCreateInfo& GetCreateInfo() const { return m_CreateInfo; }
+        const RHIGraphicsPSODesc& GetDesc() const { return m_Desc; }
 
     private:
-        RHIGraphicsPSOCreateInfo m_CreateInfo;
+        RHIGraphicsPSODesc m_Desc;
     };
 }

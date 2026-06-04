@@ -416,7 +416,7 @@ namespace minEngine
         }
     }
 
-    void Material::BindForDraw(RHIShader& shader) const
+    void Material::BindForDraw(RHIShaderLegacy& shader) const
     {
         for (const MaterialTextureParameter& textureParameter : m_TextureParameters)
         {

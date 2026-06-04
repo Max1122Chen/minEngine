@@ -10,7 +10,7 @@ namespace minEngine
     class RenderPipeline;
     class EngineIBLEnvironment;
     class FrameBuffer;
-    class RHIShader;
+    class RHIShaderLegacy;
 
     struct MeshPassSceneBinding
     {
@@ -35,7 +35,7 @@ namespace minEngine
         virtual void Render() = 0;
 
         void DrawMeshCommand(const MeshDrawCommand& drawCommand);
-        void BindSceneDrawResources(RHIShader& shader, const MeshPassSceneBinding& binding);
+        void BindSceneDrawResources(RHIShaderLegacy& shader, const MeshPassSceneBinding& binding);
 
     public:
         RenderPipeline* pipeline = nullptr;

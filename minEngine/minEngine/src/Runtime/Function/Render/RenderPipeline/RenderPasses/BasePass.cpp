@@ -35,7 +35,7 @@ namespace minEngine
                 continue;
             }
 
-            RHIShader* shader = material->GetShader()->GetRHIShader().get();
+            RHIShaderLegacy* shader = material->GetShader()->GetRHIShader().get();
             shader->Use();
 
             const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong
@@ -53,7 +53,7 @@ namespace minEngine
             };
             BindSceneDrawResources(*shader, sceneBinding);
             material->BindForDraw(*shader);
-            // Bind IBL after material textures (units 0â€“3) so cubemap samplers on 4â€“6 stay active.
+            // Bind IBL after material textures (units 0â€?) so cubemap samplers on 4â€? stay active.
             if (bindPBRIBL && sceneBinding.IBLEnvironment != nullptr)
             {
                 sceneBinding.IBLEnvironment->BindForPBRDraw(*shader);

@@ -7,7 +7,7 @@ namespace minEngine
 {
     class VertexDefinition;
     class VertexBuffer;
-    class RHIShader;
+    class RHIShaderLegacy;
     class RHITexture2D;
 
     class PresentPass : public RenderPassBase
@@ -27,7 +27,7 @@ namespace minEngine
     private:
         std::shared_ptr<VertexBuffer> m_ScreenQuadVertexBuffer;
         std::shared_ptr<VertexDefinition> m_ScreenQuadVertexDefinition;
-        std::shared_ptr<RHIShader> m_ScreenQuadShader;
+        std::shared_ptr<RHIShaderLegacy> m_ScreenQuadShader;
 
         virtual void Render() override;
     };

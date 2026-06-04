@@ -4,7 +4,7 @@
 
 namespace minEngine
 {
-    struct VertexElement;
+    struct RHIVertexElement;
     class VertexDefinition;
     class VertexBuffer;
     class IndexBuffer;
@@ -14,7 +14,7 @@ namespace minEngine
     class RHITextureCube;
     class RHITexture2DArray;
     class RHITextureDesc;
-    class RHIShader;
+    class RHIShaderLegacy;
 
     class RHI
     {
@@ -51,7 +51,7 @@ namespace minEngine
         // TODO: we need new resource creation functions here to replace this OpenGL style resource creation functions.
         virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size, uint32_t numVertices) = 0;
         virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) = 0;
-        virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<VertexElement> elements) = 0;
+        virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<RHIVertexElement> elements) = 0;
         virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) = 0;
         virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) = 0;
         virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc) = 0;
@@ -61,7 +61,7 @@ namespace minEngine
             RHITextureDesc desc,
             bool generateMipmaps = false) = 0;
         virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc) = 0;
-        virtual std::shared_ptr<RHIShader> CreateRHIShader(
+        virtual std::shared_ptr<RHIShaderLegacy> CreateRHIShader(
             const std::string& vertexSource,
             const std::string& fragmentSource,
             std::string* outCompileLog = nullptr) = 0;

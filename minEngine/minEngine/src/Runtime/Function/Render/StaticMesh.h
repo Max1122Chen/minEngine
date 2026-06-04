@@ -11,7 +11,7 @@ namespace minEngine
 {
     class VertexBuffer;
     class IndexBuffer;
-    class VertexElement;
+    class RHIVertexElement;
     class VertexDefinition;
     class Material;
 
@@ -35,11 +35,11 @@ namespace minEngine
         StaticMesh(float* vertices, 
                    uint32_t verticesSize,
                    uint32_t numVertices,
-                   std::initializer_list<VertexElement> elements);    // create from vertex data only
+                   std::initializer_list<RHIVertexElement> elements);    // create from vertex data only
         StaticMesh(float* vertices,
                    uint32_t verticesSize,
                    uint32_t numVertices,
-                   std::initializer_list<VertexElement> elements,
+                   std::initializer_list<RHIVertexElement> elements,
                    uint32_t* indices, uint32_t numIndices);
         ~StaticMesh() = default;
         

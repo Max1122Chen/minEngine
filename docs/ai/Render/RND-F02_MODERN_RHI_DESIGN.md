@@ -559,7 +559,7 @@ GetRHI()->GetCapabilities()
 |------|------|---------|------|
 | **S0** | 壳（**Done**） | — | 编译通过 |
 | **S1** | Pass/PSO 描述字段（**Done**） | `FRHIRenderPassInfo`、`FGraphicsPipelineStateInitializer` | 编译；无运行时行为 |
-| **S2** | **现代词汇层**（§B.8）：`RHITexture`/Desc、`RHIBuffer`/Desc、`RHIVertexElement`+`RHIVertexInputLayout`、`RHIShader`（Modern）、`RHIBinding*`、`RHIShaderResourceView`；**`RHIShader`→`RHIShaderLegacy` 重命名**；`RHIGraphicsPSOCreateInfo`→`RHIGraphicsPSODesc`；新建 `RHIBinding.h` | `FRHITexture`、`FRHIShaderResourceView` | `verify.ps1`；无 GL 行为变更 |
+| **S2** | **现代词汇层**（§B.8）（**Done**） | `FRHITexture`、`FRHIShaderResourceView` | `verify.ps1`；无 GL 行为变更 |
 | **S3** | **现代契约层**：`RHI` 声明 `RHICreate*` / `RHICmd*`（**仅 Modern 类型**）；`RHICommandList` 内联转发声明。Legacy `RHI` API **不删**。OpenGL **仅链接桩**（若已并入虚表） | `DynamicRHI.h`、`FRHICommandList` | 编译；桩不得调用 Legacy |
 | **S4** | **迁移波 1**：`OpenGLRHI` 实现 S3；`RHICommandList` 接线；**PresentPass → ShadowPass** + `SceneRenderTarget` 产出 `RHIRenderPassInfo`；去 Pass 内 `gl*` | `FRHIGraphicsPipelineStateFallBack`、GL | `verify.ps1`；Editor 主视口 + 阴影无回归 |
 | **S5** | **迁移波 2**：其余 Pass、`GetNativeHandle`（ImGui）；引擎固定 shader 走 BindingSet | Shader Parameters | Inspector 可用 |
@@ -590,7 +590,7 @@ GetRHI()->GetCapabilities()
 
 ## B.8 S2 现代词汇层规格（2026-06-04 审阅定稿）
 
-> **状态：** 维护者已拍板命名与 Desc 约定；**代码待 S2 实现**（设计先落盘，审批后提交 docs，再开代码 PR）。
+> **状态：** 维护者已拍板；**S2 代码已落地**（`render` 分支）。反射类 `RHIShaderLegacy` 仍生成 **`RHIShader.gen.h`**（按头文件名，非类名）。
 
 ### B.8.1 命名约定 — 统一 `CreateDesc`
 
@@ -696,6 +696,7 @@ using RHIVertexInputLayoutRef = std::shared_ptr<RHIVertexInputLayout>;
 
 | 日期 | 说明 |
 |------|------|
+| 2026-06-04 | S2 代码：Modern 词汇 + `RHIShaderLegacy` 重命名 + `RHIGraphicsPSODesc` + `RHIBinding.h` |
 | 2026-06-04 | §B.8 S2 词汇定稿：CreateDesc 统一、`RHIShaderLegacy`、RHIVertexElement、Binding/SRV 清单；拍板记录 |
 | 2026-06-04 | §6 重排：S2 词汇 → S3 契约 → S4 OpenGL+Pass 迁移；§B.2.3.1 UE Texture/View；Legacy 并行不搬迁 |
 | 2026-06-01 | 对齐代码壳（RHIRenderPassInfo、RHIGraphicsPSOCreateInfo、Fallback）；§6 改为 S0–S5（PSO/Pass 优先）；增 §B.7、§C.3 UE 导读 |

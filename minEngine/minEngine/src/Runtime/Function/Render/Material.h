@@ -13,7 +13,7 @@
 
 namespace minEngine
 {
-    class RHIShader;
+    class RHIShaderLegacy;
     class Shader;
     class MaterialCompiler;
     class MaterialGraphNodeDef_TextureObject;
@@ -46,7 +46,7 @@ namespace minEngine
         virtual ~Material() = default;
 
         bool Compile();
-        void BindForDraw(RHIShader& shader) const;
+        void BindForDraw(RHIShaderLegacy& shader) const;
 
         void SetTextureParameter(const std::string& parameterName, std::shared_ptr<Texture2D> texture);
         void SetScalarParameter(const std::string& parameterName, float value);

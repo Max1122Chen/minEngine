@@ -7,14 +7,26 @@
 
 namespace minEngine
 {
-    // TODO: we should refactor this to be a more modern shader system.
-    ME_CLASS()
-    class RHIShader : public MEObject
+    // Modern RHI shader handle (no immediate-mode binding).
+    class RHIShader
     {
-        ME_GENERATED_BODY(RHIShader)
     public:
-        RHIShader() = default;
         virtual ~RHIShader() = default;
+
+        virtual bool IsValid() const = 0;
+        virtual const std::string& GetCompileLog() const = 0;
+    };
+
+    using RHIShaderRef = std::shared_ptr<RHIShader>;
+
+    // Legacy: GL program + Use/UploadUniform* (reflection). Renamed from RHIShader (S2).
+    ME_CLASS()
+    class RHIShaderLegacy : public MEObject
+    {
+        ME_GENERATED_BODY(RHIShaderLegacy)
+    public:
+        RHIShaderLegacy() = default;
+        virtual ~RHIShaderLegacy() = default;
 
         bool IsValid() const { return m_IsValid; }
         const std::string& GetCompileLog() const { return m_CompileLog; }
@@ -34,7 +46,8 @@ namespace minEngine
         bool m_IsValid = false;
         std::string m_CompileLog;
     };
-} 
+
+    using RHIShaderLegacyRef = std::shared_ptr<RHIShaderLegacy>;
+}
 
 #include "RHIShader.gen.h"
-

@@ -21,7 +21,7 @@ namespace minEngine
         Shader() = default;
         ~Shader() = default;
 
-        std::shared_ptr<RHIShader> GetRHIShader() const { return m_RHIShader; }
+        std::shared_ptr<RHIShaderLegacy> GetRHIShader() const { return m_RHIShader; }
         bool IsValid() const { return m_RHIShader != nullptr && m_RHIShader->IsValid(); }
         const std::string& GetCompileLog() const { return m_CompileLog; }
 
@@ -65,7 +65,7 @@ namespace minEngine
             std::string* outError = nullptr);
 
         ME_PROPERTY()
-        std::shared_ptr<RHIShader> m_RHIShader;
+        std::shared_ptr<RHIShaderLegacy> m_RHIShader;
 
         std::string m_CompileLog;
     };

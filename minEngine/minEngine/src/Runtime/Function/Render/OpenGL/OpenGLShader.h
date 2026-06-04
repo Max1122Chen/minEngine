@@ -10,7 +10,7 @@
 
 namespace minEngine
 {
-    class OpenGLShader : public RHIShader
+    class OpenGLShader : public RHIShaderLegacy
     {
     public:
         unsigned int m_ID = 0;

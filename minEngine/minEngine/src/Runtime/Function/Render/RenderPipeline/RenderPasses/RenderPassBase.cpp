@@ -27,7 +27,7 @@ namespace minEngine
         }
     }
 
-    void RenderPassBase::BindSceneDrawResources(RHIShader& shader, const MeshPassSceneBinding& binding)
+    void RenderPassBase::BindSceneDrawResources(RHIShaderLegacy& shader, const MeshPassSceneBinding& binding)
     {
         shader.BindUniformBlock("PerFrameData", 0);
         shader.UploadUniformMat4("u_Model", binding.DrawCommand.m_ModelMatrix);

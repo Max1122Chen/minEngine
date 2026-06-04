@@ -16,7 +16,7 @@ namespace minEngine
         return RenderSystem::Get().GetRHI()->CreateIndexBuffer(indices, numIndices);
     }
 
-    std::shared_ptr<VertexDefinition> VertexDefinition::Create(std::initializer_list<VertexElement> elements)
+    std::shared_ptr<VertexDefinition> VertexDefinition::Create(std::initializer_list<RHIVertexElement> elements)
     {
         return RenderSystem::Get().GetRHI()->CreateVertexDefinition(elements);
     }

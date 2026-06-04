@@ -3,7 +3,7 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
-ME_REFLECTION_ACCESSOR_BEGIN(minEngine::RHIShader)
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::RHIShaderLegacy)
 ME_REFLECTION_ACCESSOR_END()
 
-ME_REFLECTION_CLASS_DECLARE(minEngine::RHIShader, GReflectionClassRegister_RHIShader_5856bb5c)
+ME_REFLECTION_CLASS_DECLARE(minEngine::RHIShaderLegacy, GReflectionClassRegister_RHIShaderLegacy_a6e35b2c)

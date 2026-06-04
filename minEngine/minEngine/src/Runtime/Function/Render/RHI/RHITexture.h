@@ -1,9 +1,11 @@
 #pragma once
 #include "Core.h"
 
+#include <cstdint>
+#include <memory>
+
 namespace minEngine
 {
-    // TODO: we should refactor this to be a more modern texture system.
     enum class TextureFormat
     {
         None = 0,
@@ -28,22 +30,62 @@ namespace minEngine
         DepthStencil,
     };
 
-    struct RHITextureDesc
+    // --- Modern RHI (S2) ---
+
+    enum class RHITextureDimension : uint8_t
     {
-        uint32_t        Width       = 0;
-        uint32_t        Height      = 0;
-        uint32_t        Layers      = 1;
-        TextureFormat   Format      = TextureFormat::None;
-        TextureUsage    Usage       = TextureUsage::None;
+        Texture2D,
+        TextureCube,
+        Texture2DArray,
     };
 
-    // New class representing all textures.
+    enum class RHITextureCreateFlags : uint32_t
+    {
+        None = 0,
+        RenderTarget = 1u << 0,
+        ShaderResource = 1u << 1,
+        GenerateMips = 1u << 2,
+    };
+
+    inline RHITextureCreateFlags operator|(RHITextureCreateFlags a, RHITextureCreateFlags b)
+    {
+        return static_cast<RHITextureCreateFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+    }
+
+    struct RHITextureCreateDesc
+    {
+        RHITextureDimension Dimension = RHITextureDimension::Texture2D;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint32_t DepthOrArrayLayers = 1;
+        TextureFormat Format = TextureFormat::None;
+        RHITextureCreateFlags Flags = RHITextureCreateFlags::None;
+        uint32_t NumMips = 1;
+    };
+
     class RHITexture
     {
+    public:
+        virtual ~RHITexture() = default;
 
+        virtual const RHITextureCreateDesc& GetDesc() const = 0;
+
+        virtual void* GetNativeResource() const { return nullptr; }
     };
 
-    // TODO: no more specific texture classes later, we will use RHITexture + RHITextureDesc instead.
+    using RHITextureRef = std::shared_ptr<RHITexture>;
+
+    // --- Legacy (unchanged behavior) ---
+
+    struct RHITextureDesc
+    {
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint32_t Layers = 1;
+        TextureFormat Format = TextureFormat::None;
+        TextureUsage Usage = TextureUsage::None;
+    };
+
     class RHITexture2D
     {
     public:
@@ -62,10 +104,9 @@ namespace minEngine
         virtual void Unbind() = 0;
 
     protected:
-        uint32_t m_ID { 0 };
-        int m_Unit { 0 };
+        uint32_t m_ID{0};
+        int m_Unit{0};
         RHITextureDesc m_Desc;
-
     };
 
     class RHITextureCube
@@ -86,8 +127,8 @@ namespace minEngine
         virtual void Unbind() = 0;
 
     protected:
-        uint32_t m_ID { 0 };
-        int m_Unit { 0 };
+        uint32_t m_ID{0};
+        int m_Unit{0};
         RHITextureDesc m_Desc;
     };
 
@@ -110,9 +151,8 @@ namespace minEngine
         virtual void Unbind() = 0;
 
     protected:
-        uint32_t m_ID { 0 };
-        int m_Unit { 0 };
+        uint32_t m_ID{0};
+        int m_Unit{0};
         RHITextureDesc m_Desc;
     };
-
 }

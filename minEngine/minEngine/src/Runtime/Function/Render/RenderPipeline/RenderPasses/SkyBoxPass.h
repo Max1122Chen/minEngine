@@ -8,7 +8,7 @@
 namespace minEngine
 {
     class RHI;
-    class RHIShader;
+    class RHIShaderLegacy;
     class RenderCamera;
     class EngineIBLEnvironment;
     class SkyBoxSceneProxy;
@@ -30,7 +30,7 @@ namespace minEngine
         bool IsReady() const { return m_SkyShader != nullptr && m_CubeVertexBuffer != nullptr; }
 
     private:
-        std::shared_ptr<RHIShader> m_SkyShader;
+        std::shared_ptr<RHIShaderLegacy> m_SkyShader;
         std::shared_ptr<VertexBuffer> m_CubeVertexBuffer;
         std::shared_ptr<VertexDefinition> m_CubeVertexDefinition;
     };

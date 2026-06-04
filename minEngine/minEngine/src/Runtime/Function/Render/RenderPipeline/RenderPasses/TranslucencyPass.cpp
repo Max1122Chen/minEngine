@@ -41,7 +41,7 @@ namespace minEngine
                 continue;
             }
 
-            RHIShader* shader = material->GetShader()->GetRHIShader().get();
+            RHIShaderLegacy* shader = material->GetShader()->GetRHIShader().get();
             shader->Use();
 
             const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong

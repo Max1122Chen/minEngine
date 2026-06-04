@@ -26,7 +26,7 @@ namespace minEngine
         return 0;
     }
 
-    OpenGLVertexArrayObject::OpenGLVertexArrayObject(std::initializer_list<VertexElement> elements)
+    OpenGLVertexArrayObject::OpenGLVertexArrayObject(std::initializer_list<RHIVertexElement> elements)
         : VertexDefinition(elements)
     {
         glGenVertexArrays(1, &m_VAO);
