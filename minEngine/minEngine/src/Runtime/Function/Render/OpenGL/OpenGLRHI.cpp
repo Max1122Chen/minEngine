@@ -7,6 +7,10 @@
 #include "OpenGLTexture.h"
 #include "OpenGLShader.h"
 
+#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIGraphicsPipelineState.h"
+#include "Render/RHI/RHIRenderPass.h"
+
 namespace minEngine
 {
     void OpenGLRHI::Initialize()
@@ -190,6 +194,127 @@ namespace minEngine
         }
 
         return shader;
+    }
+
+    namespace
+    {
+        void ModernRHIStubNotImplemented(const char* apiName)
+        {
+            ME_ASSERT(false, apiName);
+        }
+    }
+
+    std::shared_ptr<RHITexture> OpenGLRHI::RHICreateTexture2D(const RHITextureCreateDesc& desc, const void* initialData)
+    {
+        (void)desc;
+        (void)initialData;
+        ModernRHIStubNotImplemented("RHICreateTexture2D");
+        return nullptr;
+    }
+
+    std::shared_ptr<RHIBuffer> OpenGLRHI::RHICreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
+    {
+        (void)desc;
+        (void)initialData;
+        ModernRHIStubNotImplemented("RHICreateBuffer");
+        return nullptr;
+    }
+
+    std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
+        const std::string& vertexSource,
+        const std::string& fragmentSource,
+        std::string* outCompileLog)
+    {
+        (void)vertexSource;
+        (void)fragmentSource;
+        (void)outCompileLog;
+        ModernRHIStubNotImplemented("RHICreateShader");
+        return nullptr;
+    }
+
+    std::shared_ptr<RHIGraphicsPipelineState> OpenGLRHI::RHICreateGraphicsPipelineState(const RHIGraphicsPSODesc& desc)
+    {
+        (void)desc;
+        ModernRHIStubNotImplemented("RHICreateGraphicsPipelineState");
+        return nullptr;
+    }
+
+    std::shared_ptr<RHIBindingLayout> OpenGLRHI::RHICreateBindingLayout(const std::vector<RHIBindingLayoutEntry>& entries)
+    {
+        (void)entries;
+        ModernRHIStubNotImplemented("RHICreateBindingLayout");
+        return nullptr;
+    }
+
+    std::shared_ptr<RHIBindingSet> OpenGLRHI::RHICreateBindingSet(
+        RHIBindingLayout* layout,
+        const std::vector<RHIBindingResource>& resources)
+    {
+        (void)layout;
+        (void)resources;
+        ModernRHIStubNotImplemented("RHICreateBindingSet");
+        return nullptr;
+    }
+
+    void OpenGLRHI::RHICmdBeginRenderPass(const RHIRenderPassInfo& info)
+    {
+        (void)info;
+        ModernRHIStubNotImplemented("RHICmdBeginRenderPass");
+    }
+
+    void OpenGLRHI::RHICmdEndRenderPass()
+    {
+        ModernRHIStubNotImplemented("RHICmdEndRenderPass");
+    }
+
+    void OpenGLRHI::RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
+    {
+        (void)pipelineState;
+        ModernRHIStubNotImplemented("RHICmdSetGraphicsPipelineState");
+    }
+
+    void OpenGLRHI::RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet)
+    {
+        (void)setIndex;
+        (void)bindingSet;
+        ModernRHIStubNotImplemented("RHICmdSetBindingSet");
+    }
+
+    void OpenGLRHI::RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    {
+        (void)x;
+        (void)y;
+        (void)width;
+        (void)height;
+        ModernRHIStubNotImplemented("RHICmdSetViewport");
+    }
+
+    void OpenGLRHI::RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot)
+    {
+        (void)vertexBuffer;
+        (void)slot;
+        ModernRHIStubNotImplemented("RHICmdSetVertexBuffer");
+    }
+
+    void OpenGLRHI::RHICmdSetIndexBuffer(RHIBuffer* indexBuffer)
+    {
+        (void)indexBuffer;
+        ModernRHIStubNotImplemented("RHICmdSetIndexBuffer");
+    }
+
+    void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)
+    {
+        (void)indexCount;
+        (void)firstIndex;
+        (void)vertexOffset;
+        ModernRHIStubNotImplemented("RHICmdDrawIndexed");
+    }
+
+    void OpenGLRHI::RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex)
+    {
+        (void)vertexCount;
+        (void)firstVertex;
+        ModernRHIStubNotImplemented("RHICmdDraw");
     }
 
 }

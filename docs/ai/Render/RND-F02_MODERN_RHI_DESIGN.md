@@ -450,8 +450,8 @@ GetRHI()->GetCapabilities()
 
 | 文件 | 已有 | 待填 / 待接 |
 |------|------|-------------|
-| `RHI.h` | Legacy `Enable*`、`CreateVertexBuffer`… + TODO | **S4** 再追加 `RHICreate*` / `RHICmd*`（仅用 Modern 类型） |
-| `RHICommandList.h` | 空类（非 virtual，符合 UE 转发） | **S4** `m_RHI`、转发 Modern API |
+| `RHI.h` | Legacy + **S3 Done** `RHICreate*` / `RHICmd*`（Modern 类型） | **S4** OpenGL 实现 |
+| `RHICommandList.h` | **S3 Done** `m_RHI`、Create/Cmd 内联转发 | **S4** Pass 注入 CmdList |
 | `RHIRenderPass.h` | **S1 Done**：`RHIRenderPassInfo`、Load/Store | 词汇稳定后小改附件字段即可 |
 | `RHIGraphicsPipelineState.h` | **S1 Done**（将重命名为 `RHIGraphicsPSODesc`） | **S2** 字段改用 `RHIVertexInputLayout*`、`RHIShader*` |
 | `RHITexture.h` | 空 `RHITexture`；Legacy `RHITexture2D/Cube/Array` + `Bind` | **S2** Modern `RHITexture` + `RHITextureCreateDesc`；Legacy **并存** |
@@ -560,7 +560,7 @@ GetRHI()->GetCapabilities()
 | **S0** | 壳（**Done**） | — | 编译通过 |
 | **S1** | Pass/PSO 描述字段（**Done**） | `FRHIRenderPassInfo`、`FGraphicsPipelineStateInitializer` | 编译；无运行时行为 |
 | **S2** | **现代词汇层**（§B.8）（**Done**） | `FRHITexture`、`FRHIShaderResourceView` | `verify.ps1`；无 GL 行为变更 |
-| **S3** | **现代契约层**：`RHI` 声明 `RHICreate*` / `RHICmd*`（**仅 Modern 类型**）；`RHICommandList` 内联转发声明。Legacy `RHI` API **不删**。OpenGL **仅链接桩**（若已并入虚表） | `DynamicRHI.h`、`FRHICommandList` | 编译；桩不得调用 Legacy |
+| **S3** | **现代契约层**（**Done**）：`RHI` `RHICreate*` / `RHICmd*`；`RHICommandList` 转发；`OpenGLRHI` 桩（`ME_ASSERT`，不转调 Legacy） | `DynamicRHI.h`、`FRHICommandList` | 编译 |
 | **S4** | **迁移波 1**：`OpenGLRHI` 实现 S3；`RHICommandList` 接线；**PresentPass → ShadowPass** + `SceneRenderTarget` 产出 `RHIRenderPassInfo`；去 Pass 内 `gl*` | `FRHIGraphicsPipelineStateFallBack`、GL | `verify.ps1`；Editor 主视口 + 阴影无回归 |
 | **S5** | **迁移波 2**：其余 Pass、`GetNativeHandle`（ImGui）；引擎固定 shader 走 BindingSet | Shader Parameters | Inspector 可用 |
 | **S5+** | 材质 `BindForDraw`；删 Legacy `Enable*` / `Bind(unit)` 等公共 API | — | material-ir-test |
@@ -696,6 +696,7 @@ using RHIVertexInputLayoutRef = std::shared_ptr<RHIVertexInputLayout>;
 
 | 日期 | 说明 |
 |------|------|
+| 2026-06-04 | S3：`RHICreate*`/`RHICmd*` on `RHI`，`RHICommandList` 转发，`OpenGLRHI` 桩 |
 | 2026-06-04 | S2 代码：Modern 词汇 + `RHIShaderLegacy` 重命名 + `RHIGraphicsPSODesc` + `RHIBinding.h` |
 | 2026-06-04 | §B.8 S2 词汇定稿：CreateDesc 统一、`RHIShaderLegacy`、RHIVertexElement、Binding/SRV 清单；拍板记录 |
 | 2026-06-04 | §6 重排：S2 词汇 → S3 契约 → S4 OpenGL+Pass 迁移；§B.2.3.1 UE Texture/View；Legacy 并行不搬迁 |
