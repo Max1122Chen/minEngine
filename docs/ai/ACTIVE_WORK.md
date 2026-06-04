@@ -9,7 +9,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **RND-F02** Modern RHI — GPU 工作模型；**S0 代码壳 Done** → 当前 **S1**（填 `RHIRenderPassInfo` / `RHIGraphicsPSOCreateInfo`）。设计：[RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md) §6。UE 参考：`D:\Dev\GitRepo\UnrealEngine\Engine\Source\Runtime\RHI\`。
+- **RND-F02** Modern RHI — GPU 工作模型；**S1 类型字段 Done**（Pass/PSO CreateInfo、Load/Store 枚举；无运行时行为）→ 当前 **S2**（在 `RHI` 上声明 `RHICreate*` / `RHICmd*`）。设计：[RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md) §6。UE 参考：`D:\Dev\GitRepo\UnrealEngine\Engine\Source\Runtime\RHI\`。
 - **RND-F03** Vulkan backend — **Planned**；依赖 F02 契约稳定；与 GL 分里程碑行为对齐（Present → Shadow → 简化 Base → …）。
 - **分支约定：** `master` 上仅 planning/registry 分隔；实现与 [RND-F02 设计](./Render/RND-F02_MODERN_RHI_DESIGN.md) 在 **`render`** 分支。
 

@@ -315,7 +315,7 @@ RHIBuffer / RHITexture          — 统一资源（壳已声明；旧 RHITexture
 RHIBufferView / RHITextureView  — SRV / RTV / DSV（待增）
 RHIGraphicsPipelineState        — PSO handle（后端可继承）
 RHIGraphicsPSOCreateInfo        — PSO 配置（≈ UE FGraphicsPipelineStateInitializer）
-RHIGraphicsPSODescFallback      — 无原生 PSO 的后端 handle（≈ UE FRHIGraphicsPipelineStateFallBack）
+RHIGraphicsPSOStateFallback      — 无原生 PSO 的后端 handle（≈ UE FRHIGraphicsPipelineStateFallBack）
 RHIBindingLayout · RHIBindingSet · RHIShader
 RHIVertexInputLayout            — 顶点布局（由 VertexDefinition 演进）
 ```
@@ -356,7 +356,7 @@ class RHIGraphicsPSOCreateInfo {
 
 class RHIGraphicsPipelineState { /* handle；后端子类承载 native PSO */ };
 
-class RHIGraphicsPSODescFallback : public RHIGraphicsPipelineState {
+class RHIGraphicsPSOStateFallback : public RHIGraphicsPipelineState {
   // OpenGL 路径：存 RHIGraphicsPSOCreateInfo，绑定时拆 program + 固定功能状态
   // ≈ UE FRHIGraphicsPipelineStateFallBack
 };
@@ -428,7 +428,7 @@ GetRHI()->GetCapabilities()
 | `RHI.h` | Legacy `Enable*`、`CreateVertexBuffer`… + TODO | `RHICreate*`、`RHICmd*`；Legacy 标记删除 |
 | `RHICommandList.h` | 空类（非 virtual，符合 UE 转发） | `m_RHI`、Begin/EndRenderPass、SetGraphicsPipelineState、Draw* |
 | `RHIRenderPass.h` | 空 `RHIRenderPassInfo` | Color/Depth 附件、Load/Store、Clear |
-| `RHIGraphicsPipelineState.h` | `RHIGraphicsPipelineState`、`RHIGraphicsPSOCreateInfo`、`RHIGraphicsPSODescFallback` | CreateInfo 字段；Fallback 存 CreateInfo；GL 原生 PSO 子类 |
+| `RHIGraphicsPipelineState.h` | `RHIGraphicsPipelineState`、`RHIGraphicsPSOCreateInfo`、`RHIGraphicsPSOStateFallback` | CreateInfo 字段；Fallback 存 CreateInfo；GL 原生 PSO 子类 |
 | `RHITexture.h` | 空 `RHITexture`；Legacy `RHITexture2D/Cube/Array` + `Bind` | `RHITextureCreateDesc` 扩展；View 工厂；逐步迁调用方 |
 | `RHIBuffers.h` | 空 `RHIBuffer`；Legacy `VertexBuffer`/`FrameBuffer`/… | 统一 buffer；FrameBuffer → RenderPass |
 | `RHIShader.h` | Legacy `Use`/`UploadUniform*` + TODO | 长期进 PSO + Binding；短期保留 |
@@ -493,7 +493,7 @@ GetRHI()->GetCapabilities()
 | `FRHITexture` / `FRHI*View` | 资源 + 视图 | `RHITexture` + View factory |
 | `FRHIGraphicsPipelineState` | PSO handle | **`RHIGraphicsPipelineState`** |
 | `FGraphicsPipelineStateInitializer` | PSO 配置 | **`RHIGraphicsPSOCreateInfo`** |
-| `FRHIGraphicsPipelineStateFallBack` | 无原生 PSO | **`RHIGraphicsPSODescFallback`** |
+| `FRHIGraphicsPipelineStateFallBack` | 无原生 PSO | **`RHIGraphicsPSOStateFallback`** |
 | `FRHIRenderPassInfo` | Pass 附件描述 | **`RHIRenderPassInfo`** |
 | `FRHIShader` + Shader Parameters | Binding | `RHIBindingLayout` / `Set`（S5） |
 
@@ -528,7 +528,7 @@ GetRHI()->GetCapabilities()
 | **S0** | 壳（**Done**）：`RHIRenderPassInfo`、`RHIGraphicsPSOCreateInfo`、`RHIGraphicsPipelineState`、`RHITexture`/`RHIBuffer` 空类 | — | 编译通过 |
 | **S1** | 填 **`RHIRenderPassInfo`**（附件 + Load/Store + clear）；填 **`RHIGraphicsPSOCreateInfo`**（shader + depth/blend + RT formats）；`ERenderTargetLoadAction` 等枚举 | `FRHIRenderPassInfo`、`FGraphicsPipelineStateInitializer` | 编译；单元/静态断言可选 |
 | **S2** | **`RHI` 追加** `RHICreateGraphicsPipelineState`、`RHICreateTexture`…与 `RHICmdBeginRenderPass`、`RHICmdSetGraphicsPipelineState`、`RHICmdDrawIndexed`（Legacy API **保留**） | `DynamicRHI.h` | 编译 |
-| **S3** | **`OpenGLRHI`** 实现 S2：`RHIGraphicsPSODescFallback` + 可选 `OpenGLGraphicsPipelineState`；RenderPass → FBO/Clear；Present/Shadow 专用 PSO | `FRHIGraphicsPipelineStateFallBack`、GL 路径 | `verify.ps1`；可用 **临时** 测试入口 draw 一次 |
+| **S3** | **`OpenGLRHI`** 实现 S2：`RHIGraphicsPSOStateFallback` + 可选 `OpenGLGraphicsPipelineState`；RenderPass → FBO/Clear；Present/Shadow 专用 PSO | `FRHIGraphicsPipelineStateFallBack`、GL 路径 | `verify.ps1`；可用 **临时** 测试入口 draw 一次 |
 | **S4** | **`RHICommandList`** 转发 S2；`RenderPipeline` 注入 CmdList；迁 **PresentPass → ShadowPass**；去 Pass 内 `gl*` | `RHICommandList.h` | Editor 主视口 + 阴影目视无回归 |
 | **S5** | **`RHIBindingLayout`/`Set`**（引擎固定 shader）；`GetNativeHandle`（ImGui）；`SceneRenderTarget` 产出 `RHIRenderPassInfo` | Shader Parameters | Inspector 纹理仍可用 |
 | **S5+** | 材质 `BindForDraw` 迁 Binding；删 Legacy `Enable*`/`Bind(unit)` 公共 API | — | material-ir-test |
