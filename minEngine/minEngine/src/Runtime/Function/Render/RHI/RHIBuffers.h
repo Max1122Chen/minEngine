@@ -107,6 +107,11 @@ namespace minEngine
         uint32_t m_Stride = 0;
     };
     
+    // TODO: new class representing all buffers.
+    class RHIBuffer
+    {
+
+    };
 
     class VertexBuffer
     {

@@ -3,6 +3,7 @@
 
 namespace minEngine
 {
+    // TODO: we should refactor this to be a more modern texture system.
     enum class TextureFormat
     {
         None = 0,
@@ -36,6 +37,13 @@ namespace minEngine
         TextureUsage    Usage       = TextureUsage::None;
     };
 
+    // New class representing all textures.
+    class RHITexture
+    {
+
+    };
+
+    // TODO: no more specific texture classes later, we will use RHITexture + RHITextureDesc instead.
     class RHITexture2D
     {
     public:

@@ -25,6 +25,7 @@ namespace minEngine
         virtual void Initialize() = 0;
         virtual void Shutdown() = 0;
 
+        // TODO: No more immediate mode commands, we will use command lists and pipeline states instead.
         virtual void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
 
         virtual void SetClearColor(Vector4 clearColor) = 0;
@@ -47,6 +48,7 @@ namespace minEngine
         virtual void EnableCullFace() = 0;
         virtual void DisableCullFace() = 0;
 
+        // TODO: we need new resource creation functions here to replace this OpenGL style resource creation functions.
         virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size, uint32_t numVertices) = 0;
         virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) = 0;
         virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<VertexElement> elements) = 0;

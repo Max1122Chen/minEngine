@@ -7,6 +7,7 @@
 
 namespace minEngine
 {
+    // TODO: we should refactor this to be a more modern shader system.
     ME_CLASS()
     class RHIShader : public MEObject
     {
