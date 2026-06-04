@@ -6,7 +6,7 @@
 - **Type:** Refactor
 - **Status:** Draft
 - **Owner:** (maintainer)
-- **Last updated:** 2026-06-01
+- **Last updated:** 2026-06-04
 - **Branch:** `render`
 - **Code skeleton:** `minEngine/.../Render/RHI/`（见 **§B.7**）
 - **Related:** [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) · `RND-F03`（Planned，另文档） · [RENDER_REFACTOR_PLAN](./RENDER_REFACTOR_PLAN.md)（Viewport/SceneDraw，正交）
@@ -125,7 +125,7 @@
 - **Blend**（attachments 的混合方程）
 - **Pipeline layout**（与 Binding 关联）
 
-**对 RHI：** `RHIGraphicsPipelineState`（handle）+ `RHIGraphicsPSOCreateInfo`（配置）+ `SetGraphicsPipeline`。替代：`EnableDepthTest` / `EnableBlend` / `glUseProgram` 分散调用。
+**对 RHI：** `RHIGraphicsPipelineState`（handle）+ `RHIGraphicsPSODesc`（配置）+ `SetGraphicsPipeline`。替代：`EnableDepthTest` / `EnableBlend` / `glUseProgram` 分散调用。
 
 ## A.6 绑定（Binding / Descriptor）
 
@@ -237,7 +237,7 @@ class RHI {
   // 资源创建（RHICreate* 命名对齐 UE 习惯，与 RHICmd* 区分）
   virtual RHITextureRef RHICreateTexture2D(RHITextureDesc, …)
   virtual RHIBufferRef  RHICreateBuffer(RHIBufferDesc, …)
-  virtual RHIGraphicsPipelineStateRef RHICreateGraphicsPipelineState(const RHIGraphicsPSOCreateInfo&)
+  virtual RHIGraphicsPipelineStateRef RHICreateGraphicsPipelineState(const RHIGraphicsPSODesc&)
   virtual RHIShaderRef RHICreateShader(…)
   virtual RHIBindingLayoutRef RHICreateBindingLayout(…)
   virtual RHIBindingSetRef RHICreateBindingSet(…)
@@ -311,19 +311,45 @@ void ShadowPass::Execute(RHICommandList& cmdList);
 ### B.2.3 Resources & Views（公共类型，非 backend 子类）
 
 ```text
-RHIBuffer / RHITexture          — 统一资源（壳已声明；旧 RHITexture2D/Cube/Array 过渡）
-RHIBufferView / RHITextureView  — SRV / RTV / DSV（待增）
-RHIGraphicsPipelineState        — PSO handle（后端可继承）
-RHIGraphicsPSOCreateInfo        — PSO 配置（≈ UE FGraphicsPipelineStateInitializer）
-RHIGraphicsPSOStateFallback      — 无原生 PSO 的后端 handle（≈ UE FRHIGraphicsPipelineStateFallBack）
+RHIBuffer / RHITexture              — 统一 GPU 资源（Modern 区；Legacy RHITexture2D 等并行保留）
+RHIShaderResourceView               — 采样用视图（≈ UE FRHIShaderResourceView；Binding 用）
+RHIVertexInputLayout                — 顶点布局（≈ UE InputLayout；由 Legacy VertexDefinition 演进）
+RHIGraphicsPipelineState            — PSO handle（后端可继承）
+RHIGraphicsPSODesc                  — PSO 配置（≈ UE FGraphicsPipelineStateInitializer）
+RHIGraphicsPSOStateFallback         — 无原生 PSO 的后端 handle（≈ UE FRHIGraphicsPipelineStateFallBack）
 RHIBindingLayout · RHIBindingSet · RHIShader
-RHIVertexInputLayout            — 顶点布局（由 VertexDefinition 演进）
 ```
 
-**删除/替换（公共 API）：**
+**RenderPass 附件：** 使用 **`RHITexture*` + `MipIndex` + `ArraySlice`**（与 UE `FRHIRenderPassInfo::FColorEntry` 一致），**不**要求单独的 `RHITextureView` 类型名。见 **§B.2.3.1**。
 
-- `RHITexture2D::GetID()` + `Bind(int unit)` → View + BindingSet
-- `FrameBuffer` 作为 Renderer 中心概念 → **RenderPass + 附件纹理 View**
+**删除/替换（迁移波完成后，Legacy 公共 API）：**
+
+- `RHITexture2D::GetID()` + `Bind(int unit)` → BindingSet + SRV（及 UI 专用 `GetNativeHandle`）
+- `FrameBuffer` 作为 Renderer 中心概念 → **RenderPass + 附件 `RHITexture*`**
+
+#### B.2.3.1 UE 如何理解 Texture 与 View（读码锚点）
+
+UE 里 **`FRHITexture` 是资源本体**（`RHIResources.h`，继承 `FRHIViewableResource`），带 `FRHITextureDesc`、尺寸、格式、创建标志。
+
+**RenderPass / SetRenderTargets：**
+
+- 新式 **`FRHIRenderPassInfo`**：`FColorEntry::RenderTarget` / `DepthStencilTarget` 类型是 **`FRHITexture*`**，子资源用 **`MipIndex`**、**`ArraySlice`** 字段表达（不是 `FRHITextureView*`）。
+- 旧式 **`FRHISetRenderTargetsInfo`** 使用 **`FRHIRenderTargetView`** / **`FRHIDepthRenderTargetView`**：仍是 **「纹理指针 + mip + slice + Load/Store」** 的小结构，**不是** 与 `FRHITexture` 平级的 GPU 对象；可视为 RTV 的 **描述符/子资源视图**。
+
+**Shader 采样 / Binding：**
+
+- **`FRHIShaderResourceView`**（`FRHIView` 子类）用于把纹理（或 buffer）的某一子资源绑定到 shader；常通过 **`FRHITextureViewCache::GetOrCreateSRV(FRHITexture*, FRHITextureSRVCreateInfo)`** 从 `FRHITexture` 派生，带缓存。
+
+**对 minEngine 的推论（F02 词汇层）：**
+
+| 场景 | 建议类型 | UE 对照 |
+|------|----------|---------|
+| Pass 颜色/深度附件 | `RHITexture*` + mip/slice（S1 已有） | `FRHIRenderPassInfo` |
+| PSO 兼容的 RT 格式 | `TextureFormat` on `RHIGraphicsPSODesc` | `FGraphicsPipelineStateInitializer` |
+| Draw 时纹理/UBO 绑定 | `RHIBindingSet`（槽位内可持 SRV 或过渡期 texture+unit） | `FRHIShaderResourceView` + 参数结构 |
+| ImGui / 插件 | `GetNativeResource()` on texture（UI 层） | `FRHITexture::GetNativeResource` |
+
+**不必**为 Pass 单独引入名为 `RHITextureView` 的类；若需要 RTV 语义，可用 **`RHIRenderTargetAttachmentDesc`**（texture + mip + slice + action）或与 UE 一样在 Pass 条目内嵌字段。SRV 类型在 **Binding 切片**再落地即可。
 
 ### B.2.4 Render Pass — `RHIRenderPassInfo`
 
@@ -342,31 +368,29 @@ cmdList.EndRenderPass();
 
 `SceneRenderTarget` 保留为 **Renderer 辅助类**，内部创建 `RHITexture` + View，组装 `RHIRenderPassInfo` 供 Pass 使用。
 
-### B.2.5 Pipeline State — CreateInfo + Handle
+### B.2.5 Pipeline State — CreateDesc + Handle
 
 （代码：`RHI/RHIGraphicsPipelineState.h`）
 
 ```text
-class RHIGraphicsPSOCreateInfo {
-  // BoundShaderState / RHIShader refs
-  // Blend / Rasterizer / DepthStencil（可先 void* 或独立 RHIBlendState 壳，对齐 UE 分对象）
+class RHIGraphicsPSODesc {
+  RHIShader* VertexShader / PixelShader;   // Modern 句柄（见 §B.8）
+  RHIVertexInputLayout* VertexInputLayout;
+  // Blend / Rasterizer / DepthStencil desc 子结构
   // Render target formats + load/store（与 RenderPass / PSO 兼容）
-  // Vertex input（VertexDefinition → RHIVertexInputLayout）
 };
 
 class RHIGraphicsPipelineState { /* handle；后端子类承载 native PSO */ };
 
 class RHIGraphicsPSOStateFallback : public RHIGraphicsPipelineState {
-  // OpenGL 路径：存 RHIGraphicsPSOCreateInfo，绑定时拆 program + 固定功能状态
-  // ≈ UE FRHIGraphicsPipelineStateFallBack
+  RHIGraphicsPSODesc m_Desc;   // OpenGL Fallback：绑定时拆 program + 固定功能
 };
 
-// 创建
-RHIGraphicsPipelineState* pso = GetRHI()->RHICreateGraphicsPipelineState(createInfo);
+RHIGraphicsPipelineState* pso = GetRHI()->RHICreateGraphicsPipelineState(desc);
 cmdList.SetGraphicsPipelineState(pso);
 ```
 
-**UE 对照：** `FGraphicsPipelineStateInitializer` → `RHIGraphicsPSOCreateInfo`；`FRHIGraphicsPipelineState` → `RHIGraphicsPipelineState`；`FD3D12GraphicsPipelineState` / `OpenGLGraphicsPipelineState` → 后端 private 子类（F03 前仅 OpenGL）。
+**UE 对照：** `FGraphicsPipelineStateInitializer` → **`RHIGraphicsPSODesc`**；`FRHIGraphicsPipelineState` → `RHIGraphicsPipelineState`。
 
 ### B.2.6 Binding
 
@@ -401,8 +425,9 @@ GetRHI()->GetCapabilities()
 | `RHI::EnableDepthTest` 等 | GL 全局状态 | PSO + RenderPass |
 | `RHITexture2D::Bind(unit)` | GL texture unit | BindingSet + SRV |
 | `FrameBuffer::Bind` | 与 Pass 语义混在一起 | `BeginRenderPass` |
-| `RHIShader::Use` + `UploadUniform*` | 按名 + 即时 | PSO + BindingSet；材质后迁 |
+| `RHIShaderLegacy::Use` + `UploadUniform*` | 按名 + 即时 | Modern `RHIShader` + PSO + BindingSet；材质后迁 |
 | `VertexDefinition` = VAO | API 对象泄漏 | `RHIVertexInputLayout`（GL 内用 VAO 实现） |
+| `VertexElement` | 无 RHI 前缀 | **`RHIVertexElement`**（布局描述，Legacy `VertexDefinition` 仍可用） |
 | `CreateVertexBuffer(float*...)` | 隐含 upload | `CreateBuffer` + `Upload` |
 | `RenderPassBase::DrawMeshCommand` 内 `glDraw*` | 击穿 RHI | `CommandList::DrawIndexed` |
 | `ShadowPass` 内 `glDrawElements` | 同上 | 同上 |
@@ -419,21 +444,28 @@ GetRHI()->GetCapabilities()
 - `SceneRenderTarget.cpp` — 产出 `RHIRenderPassInfo`
 - `Material.cpp` — **晚于** S4（Binding 迁移）
 
-## B.7 代码壳现状（2026-06-01，与仓库对齐）
+## B.7 代码壳现状（2026-06-04，与仓库对齐）
 
-维护者已在 `render` 分支添加空类型；设计案 **以本节 + UE 源码** 为演进真源。
+维护者已在 `render` 分支添加类型；设计案 **以本节 + UE 源码** 为演进真源。
 
 | 文件 | 已有 | 待填 / 待接 |
 |------|------|-------------|
-| `RHI.h` | Legacy `Enable*`、`CreateVertexBuffer`… + TODO | `RHICreate*`、`RHICmd*`；Legacy 标记删除 |
-| `RHICommandList.h` | 空类（非 virtual，符合 UE 转发） | `m_RHI`、Begin/EndRenderPass、SetGraphicsPipelineState、Draw* |
-| `RHIRenderPass.h` | 空 `RHIRenderPassInfo` | Color/Depth 附件、Load/Store、Clear |
-| `RHIGraphicsPipelineState.h` | `RHIGraphicsPipelineState`、`RHIGraphicsPSOCreateInfo`、`RHIGraphicsPSOStateFallback` | CreateInfo 字段；Fallback 存 CreateInfo；GL 原生 PSO 子类 |
-| `RHITexture.h` | 空 `RHITexture`；Legacy `RHITexture2D/Cube/Array` + `Bind` | `RHITextureCreateDesc` 扩展；View 工厂；逐步迁调用方 |
-| `RHIBuffers.h` | 空 `RHIBuffer`；Legacy `VertexBuffer`/`FrameBuffer`/… | 统一 buffer；FrameBuffer → RenderPass |
-| `RHIShader.h` | Legacy `Use`/`UploadUniform*` + TODO | 长期进 PSO + Binding；短期保留 |
+| `RHI.h` | Legacy `Enable*`、`CreateVertexBuffer`… + TODO | **S4** 再追加 `RHICreate*` / `RHICmd*`（仅用 Modern 类型） |
+| `RHICommandList.h` | 空类（非 virtual，符合 UE 转发） | **S4** `m_RHI`、转发 Modern API |
+| `RHIRenderPass.h` | **S1 Done**：`RHIRenderPassInfo`、Load/Store | 词汇稳定后小改附件字段即可 |
+| `RHIGraphicsPipelineState.h` | **S1 Done**（将重命名为 `RHIGraphicsPSODesc`） | **S2** 字段改用 `RHIVertexInputLayout*`、`RHIShader*` |
+| `RHITexture.h` | 空 `RHITexture`；Legacy `RHITexture2D/Cube/Array` + `Bind` | **S2** Modern `RHITexture` + `RHITextureCreateDesc`；Legacy **并存** |
+| `RHIBuffers.h` | 空 `RHIBuffer`；`VertexElement`/`VertexDefinition`/… | **S2** `RHIVertexElement`、`RHIBuffer`；Legacy 类名保留 |
+| `RHIShader.h` | 现 `RHIShader`（`Use`/反射） | **S2** 改名为 **`RHIShaderLegacy`**；Modern **`RHIShader`** 占位 |
+| `RHIBinding.h` | — | **S2** 新建 Layout / Set / `RHIShaderResourceView` |
 
-**演进策略：** Legacy 与 Modern **并行**直到 Present/Shadow 走通；不在壳阶段删旧 API。
+**演进策略（2026-06 共识）：**
+
+1. **Modern 与 Legacy 同目录并行**——不搬迁 Legacy 子目录；**S2 允许** 为 Modern 让路而 **重命名** 旧 `RHIShader` → `RHIShaderLegacy`（全库替换 + 反射重生成），其余 Legacy **签名与行为不变**。
+2. **先词汇（S2）→ 再契约（S3）→ 再 OpenGL + Pass 一次性迁移（S4）**；契约签名 **禁止** `VertexBuffer*`、`RHITexture2D::Bind` 等。
+3. **描述结构统一后缀 `CreateDesc`**（§B.8.1）；S1 的 `RHIGraphicsPSOCreateInfo` 在 S2 **改名为** `RHIGraphicsPSODesc`。
+4. S3：OpenGL 仅 **链接桩**，桩内不得转调 Legacy 冒充 Modern。
+5. 删 Legacy 公共 API → **S5+**。
 
 ## B.4 OpenGL 适配策略（backend 内部）
 
@@ -477,7 +509,7 @@ GetRHI()->GetCapabilities()
 | Resource | `VkImage` / `VkBuffer` | `ID3D12Resource` | `RHITexture` / `RHIBuffer` |
 | View | `VkImageView` | descriptor view | `RHITextureView` 等 |
 | Render Pass | `VkRenderPass` / dynamic | RTV/DSV + clear | **`RHIRenderPassInfo`** |
-| PSO | `VkPipeline` | `ID3D12PipelineState` | **`RHIGraphicsPipelineState`** + **`RHIGraphicsPSOCreateInfo`** |
+| PSO | `VkPipeline` | `ID3D12PipelineState` | **`RHIGraphicsPipelineState`** + **`RHIGraphicsPSODesc`** |
 | Binding | `VkDescriptorSet` | root signature | `RHIBindingSet` |
 | Barrier | `vkCmdPipelineBarrier` | `ResourceBarrier` | `RHICmdTransition` |
 
@@ -492,7 +524,7 @@ GetRHI()->GetCapabilities()
 | `RHICreateTexture2D` 自由函数 | 无 CmdList 上下文时创建 | 可选同名 free function → `GetRHI()` |
 | `FRHITexture` / `FRHI*View` | 资源 + 视图 | `RHITexture` + View factory |
 | `FRHIGraphicsPipelineState` | PSO handle | **`RHIGraphicsPipelineState`** |
-| `FGraphicsPipelineStateInitializer` | PSO 配置 | **`RHIGraphicsPSOCreateInfo`** |
+| `FGraphicsPipelineStateInitializer` | PSO 配置 | **`RHIGraphicsPSODesc`** |
 | `FRHIGraphicsPipelineStateFallBack` | 无原生 PSO | **`RHIGraphicsPSOStateFallback`** |
 | `FRHIRenderPassInfo` | Pass 附件描述 | **`RHIRenderPassInfo`** |
 | `FRHIShader` + Shader Parameters | Binding | `RHIBindingLayout` / `Set`（S5） |
@@ -521,28 +553,28 @@ GetRHI()->GetCapabilities()
 
 # §6 实现切片（F02）
 
-> **顺序原则：** 先 **类型 + CreateInfo 字段 + RHICreate/RHICmd 声明**，再 **OpenGL 实现 Present/Shadow 路径**，最后 **CommandList 转发 + Pass 迁移**。避免「空壳 Draw 抽离」后再改 Pass/PSO。
+> **顺序原则（2026-06 修订）：** **现代词汇 → 现代契约（签名不含 Legacy）→ OpenGL + Pass 一次性迁移**。Legacy 文件与 API **保持不动**直至 S5+，避免半套 `RHICmd(VertexBuffer*)` 污染契约。
 
 | 切片 | 内容 | UE 锚点 | 验收 |
 |------|------|---------|------|
-| **S0** | 壳（**Done**）：`RHIRenderPassInfo`、`RHIGraphicsPSOCreateInfo`、`RHIGraphicsPipelineState`、`RHITexture`/`RHIBuffer` 空类 | — | 编译通过 |
-| **S1** | 填 **`RHIRenderPassInfo`**（附件 + Load/Store + clear）；填 **`RHIGraphicsPSOCreateInfo`**（shader + depth/blend + RT formats）；`ERenderTargetLoadAction` 等枚举 | `FRHIRenderPassInfo`、`FGraphicsPipelineStateInitializer` | 编译；单元/静态断言可选 |
-| **S2** | **`RHI` 追加** `RHICreateGraphicsPipelineState`、`RHICreateTexture`…与 `RHICmdBeginRenderPass`、`RHICmdSetGraphicsPipelineState`、`RHICmdDrawIndexed`（Legacy API **保留**） | `DynamicRHI.h` | 编译 |
-| **S3** | **`OpenGLRHI`** 实现 S2：`RHIGraphicsPSOStateFallback` + 可选 `OpenGLGraphicsPipelineState`；RenderPass → FBO/Clear；Present/Shadow 专用 PSO | `FRHIGraphicsPipelineStateFallBack`、GL 路径 | `verify.ps1`；可用 **临时** 测试入口 draw 一次 |
-| **S4** | **`RHICommandList`** 转发 S2；`RenderPipeline` 注入 CmdList；迁 **PresentPass → ShadowPass**；去 Pass 内 `gl*` | `RHICommandList.h` | Editor 主视口 + 阴影目视无回归 |
-| **S5** | **`RHIBindingLayout`/`Set`**（引擎固定 shader）；`GetNativeHandle`（ImGui）；`SceneRenderTarget` 产出 `RHIRenderPassInfo` | Shader Parameters | Inspector 纹理仍可用 |
-| **S5+** | 材质 `BindForDraw` 迁 Binding；删 Legacy `Enable*`/`Bind(unit)` 公共 API | — | material-ir-test |
+| **S0** | 壳（**Done**） | — | 编译通过 |
+| **S1** | Pass/PSO 描述字段（**Done**） | `FRHIRenderPassInfo`、`FGraphicsPipelineStateInitializer` | 编译；无运行时行为 |
+| **S2** | **现代词汇层**（§B.8）：`RHITexture`/Desc、`RHIBuffer`/Desc、`RHIVertexElement`+`RHIVertexInputLayout`、`RHIShader`（Modern）、`RHIBinding*`、`RHIShaderResourceView`；**`RHIShader`→`RHIShaderLegacy` 重命名**；`RHIGraphicsPSOCreateInfo`→`RHIGraphicsPSODesc`；新建 `RHIBinding.h` | `FRHITexture`、`FRHIShaderResourceView` | `verify.ps1`；无 GL 行为变更 |
+| **S3** | **现代契约层**：`RHI` 声明 `RHICreate*` / `RHICmd*`（**仅 Modern 类型**）；`RHICommandList` 内联转发声明。Legacy `RHI` API **不删**。OpenGL **仅链接桩**（若已并入虚表） | `DynamicRHI.h`、`FRHICommandList` | 编译；桩不得调用 Legacy |
+| **S4** | **迁移波 1**：`OpenGLRHI` 实现 S3；`RHICommandList` 接线；**PresentPass → ShadowPass** + `SceneRenderTarget` 产出 `RHIRenderPassInfo`；去 Pass 内 `gl*` | `FRHIGraphicsPipelineStateFallBack`、GL | `verify.ps1`；Editor 主视口 + 阴影无回归 |
+| **S5** | **迁移波 2**：其余 Pass、`GetNativeHandle`（ImGui）；引擎固定 shader 走 BindingSet | Shader Parameters | Inspector 可用 |
+| **S5+** | 材质 `BindForDraw`；删 Legacy `Enable*` / `Bind(unit)` 等公共 API | — | material-ir-test |
 
-**F03（Vulkan）** 不在此表；契约稳定后以 S3 同级方式实现 `VulkanRHI::RHICreate*` / `RHICmd*`。
+**F03（Vulkan）** 不在此表；契约稳定后以 **与 S4 同级** 方式实现 `VulkanRHI::RHICreate*` / `RHICmd*`。
 
 ### §6.1 推荐推进节奏（你 + Agent）
 
-| 周/阶段 | 你 | Agent / 协作 |
-|---------|-----|----------------|
-| 当前 | 继续填 S1 字段、命名微调 | 对齐设计、Review 与 UE diff |
-| S2–S3 | 实现 OpenGL Create/Cmd（参考 UE + 现有 Shadow/Present） | 接线 review、`verify` |
-| S4 | Pass 签名改为 `Execute(RHICommandList&)` | 协助去 `gl*`、SceneRenderTarget |
-| S5+ | Binding / 材质 | 分切片，不一次迁完 |
+| 阶段 | 你 | Agent / 协作 |
+|------|-----|----------------|
+| **当前 → S2** | 审 Modern 类型字段、命名 | 对齐 UE §B.2.3.1；Review diff |
+| **S3** | 审 `RHI` 契约表是否覆盖 Present/Shadow | 禁止 Legacy 形参 |
+| **S4** | 实现 OpenGL + 改 Pass（可分子 PR） | `verify`、目视 |
+| **S5+** | Binding / 材质 | 分切片 |
 
 ---
 
@@ -552,7 +584,93 @@ GetRHI()->GetCapabilities()
 - [ ] `RenderPasses/` 无 `gl*`、无 `#include glad`
 - [ ] OpenGL 单后端：Editor 主场景、阴影、Present 与迁移前一致（维护者目视 + `verify.ps1`）
 - [ ] `ACTIVE_WORK` 边界内无 RenderGraph、无 Vulkan 强依赖
-- [ ] Design §6 切片 S0–S5 勾选完成（S5+ 材质可选单列 Done）
+- [ ] Design §6 切片 S0–S5 勾选完成（S5+ 材质与 Legacy 删除可选单列 Done）
+
+---
+
+## B.8 S2 现代词汇层规格（2026-06-04 审阅定稿）
+
+> **状态：** 维护者已拍板命名与 Desc 约定；**代码待 S2 实现**（设计先落盘，审批后提交 docs，再开代码 PR）。
+
+### B.8.1 命名约定 — 统一 `CreateDesc`
+
+| 规则 | 说明 |
+|------|------|
+| **后缀** | 所有「创建/初始化用的不可变描述」统一 **`…CreateDesc`**，不用 `CreateInfo` / `Desc` 混用 |
+| **Pass 运行时** | `RHIRenderPassInfo` 保持 **Info**（运行时附件表，非 Create 工厂参数） |
+| **子结构** | PSO 内 blend/depth 等保持 **`RHIBlendStateDesc`** 等（已是 Desc） |
+| **S1 迁移** | `RHIGraphicsPSOCreateInfo` → **`RHIGraphicsPSODesc`**；`RHIGraphicsPSOStateFallback` 成员同步 |
+
+**示例对照：**
+
+| 现代 minEngine | UE（保留 UE 原名，仅对照） |
+|----------------|----------------------------|
+| `RHITextureCreateDesc` | `FRHITextureCreateDesc` |
+| `RHIBufferCreateDesc` | `FRHIBufferCreateDesc` |
+| `RHITextureSRVDesc` | `FRHITextureSRVCreateInfo` |
+| `RHIGraphicsPSODesc` | `FGraphicsPipelineStateInitializer` |
+
+### B.8.2 拍板决策（维护者 2026-06-04）
+
+| 项 | 决策 |
+|----|------|
+| **Shader 命名** | 现有反射 + `Use()`/`UploadUniform*` 的类 **重命名为 `RHIShaderLegacy`**；**`RHIShader`** 留给 Modern 抽象句柄（无 `Use`/按名 uniform） |
+| **纹理 Desc** | **`RHITextureDesc`**（Legacy）与 **`RHITextureCreateDesc`**（Modern）**并存**；迁移完成后弃 Legacy Desc |
+| **顶点元素** | **`VertexElement` → `RHIVertexElement`**（全库）；Legacy **`VertexDefinition`** 类名保留，内部改用 `RHIVertexElement` |
+| **SRV** | S2 包含 **`RHIShaderResourceView`** 薄壳 + **`RHITextureSRVDesc`**（按推荐） |
+| **Pass 附件** | 继续 **`RHITexture*` + MipIndex + ArraySlice**（§B.2.3.1），不引入 `RHITextureView` 类名 |
+
+### B.8.3 文件与类型清单
+
+| 文件 | S2 内容 |
+|------|---------|
+| `RHITexture.h` | Modern：`RHITexture`、`RHITextureDimension`、`RHITextureCreateFlags`、`RHITextureCreateDesc`（`GetDesc()`/`GetNativeResource()`，无 `Bind`）。Legacy：`RHITextureDesc`、`RHITexture2D`… **不动行为** |
+| `RHIBuffers.h` | Modern：`RHIBuffer`、`RHIBufferUsage`、`RHIBufferCreateDesc`；`RHIVertexElement`（自 `VertexElement` 改名）；`RHIVertexInputLayout`（无 `Bind`）。Legacy：`VertexDefinition`、`VertexBuffer`… |
+| `RHIShader.h` | **`RHIShaderLegacy`**（`ME_CLASS`，原 `RHIShader`）；**`RHIShader`** Modern 虚基类。`Shader::GetRHIShader()` 返回类型改为 `shared_ptr<RHIShaderLegacy>`（方法名可暂保留，减少调用方改名） |
+| `RHIBinding.h` | **新建**：`RHIBindingType`、`RHIBindingLayoutEntry`、`RHIBindingLayout`、`RHIBindingResource`、`RHIBindingSet`；`RHIShaderResourceView` + `RHITextureSRVDesc` |
+| `RHIGraphicsPipelineState.h` | `RHIGraphicsPSODesc`；指针：`RHIShader*`×2、`RHIVertexInputLayout*`；Fallback 持 `RHIGraphicsPSODesc` |
+| `RHIRenderPass.h` | **S2 不改**（已对齐 UE） |
+
+**类型别名（建议放 `RHITexture.h` 或 `RHIResourceRefs.h`）：**
+
+```cpp
+using RHITextureRef = std::shared_ptr<RHITexture>;
+using RHIBufferRef = std::shared_ptr<RHIBuffer>;
+using RHIShaderRef = std::shared_ptr<RHIShader>;
+using RHIVertexInputLayoutRef = std::shared_ptr<RHIVertexInputLayout>;
+```
+
+### B.8.4 字段草案（实现真源）
+
+**`RHITextureCreateDesc`：** `Dimension`，`Width`/`Height`，`DepthOrArrayLayers`，`Format`（复用 `TextureFormat`），`Flags`（`RenderTarget`/`ShaderResource`/`GenerateMips`），`NumMips`。
+
+**`RHIBufferCreateDesc`：** `Usage`（Vertex/Index/Uniform/Staging），`ByteSize`，`Stride`，`ElementCount`。
+
+**`RHIVertexInputLayout`：** `GetElements()` → `const std::vector<RHIVertexElement>&`，`GetStride()`；**无** `Bind()`。
+
+**`RHIShader`（Modern）：** `IsValid()`，`GetCompileLog()`；**无** `Use`/`UploadUniform*`。
+
+**`RHIGraphicsPSODesc`：** `VertexShader`/`PixelShader`（GL 单 program 时 S4 可同指针）；`VertexInputLayout`；`RHIBlendStateDesc` 等；RT formats + depth load/store（S1 已有字段）。
+
+**`RHITextureSRVDesc`：** `RHITexture*`，`MipIndex`，`ArraySlice`（-1 = 默认）。
+
+**预置 Binding layout（实现 S4，S2 仅类型）：** `PresentPostProcess` — slot0 `TextureSRV` @ unit 0。
+
+### B.8.5 S2 明确不做
+
+- `RHI::RHICreate*` / `RHICmd*`（S3）
+- `OpenGLRHI` 实现 Modern 类型（S4）
+- Pass / `SceneRenderTarget` 改调用
+- 删 `RHITexture2D::Bind`、`FrameBuffer`、`Enable*`
+- Modern 类型加 `ME_CLASS` 反射
+
+### B.8.6 `RHIShaderLegacy` 重命名影响面（实现时注意）
+
+- `RHIShader.h` / `OpenGLShader` / `Shader` Asset / `Material` / 各 Pass / `OpenGLRHI::CreateRHIShader`
+- `Generated/Reflection/RHIShader.*` → 重生成为 **`RHIShaderLegacy`**
+- `minEngine.h` 导出宏若有则同步
+
+行为 **不变**，仅类型名与 include 符号替换。
 
 ---
 
@@ -561,6 +679,7 @@ GetRHI()->GetCapabilities()
 | 风险 | 影响 | 缓解 |
 |------|------|------|
 | 材质 binding 迁期过长 | dual-path 混乱 | S0–S4 不动 Material IR；S5 只迁引擎 shader |
+| `RHIShader` 重命名漏改 | 编译/反射断裂 | 全库 grep + `reflection_codegen` + `verify.ps1` |
 | PSO 组合爆炸 | GL 状态缓存复杂 | 先少量固定 PSO；按 pass 缓存 |
 | ImGui 断图 | `GetID` 移除 | 尽早提供 `GetNativeHandle` + UI 桥 |
 | 范围蔓延 | 推迟 F03 | ACTIVE_WORK 边界表；切片 DoD |
@@ -577,6 +696,8 @@ GetRHI()->GetCapabilities()
 
 | 日期 | 说明 |
 |------|------|
+| 2026-06-04 | §B.8 S2 词汇定稿：CreateDesc 统一、`RHIShaderLegacy`、RHIVertexElement、Binding/SRV 清单；拍板记录 |
+| 2026-06-04 | §6 重排：S2 词汇 → S3 契约 → S4 OpenGL+Pass 迁移；§B.2.3.1 UE Texture/View；Legacy 并行不搬迁 |
 | 2026-06-01 | 对齐代码壳（RHIRenderPassInfo、RHIGraphicsPSOCreateInfo、Fallback）；§6 改为 S0–S5（PSO/Pass 优先）；增 §B.7、§C.3 UE 导读 |
 | 2026-06-02 | 细化：UE 式 `RHI` + `RHICommandList` 转发；去掉 `IRHI*`/`RHIDevice`；增 C.2 UE 对照 |
 | 2026-06-01 | 初稿：Part A 教案 + Part B 契约/迁移/切片；`render` 分支 |

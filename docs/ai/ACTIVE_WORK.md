@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-06-01  
+Last updated: 2026-06-04  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,7 +9,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **RND-F02** Modern RHI — GPU 工作模型；**S1 类型字段 Done**（Pass/PSO CreateInfo、Load/Store 枚举；无运行时行为）→ 当前 **S2**（在 `RHI` 上声明 `RHICreate*` / `RHICmd*`）。设计：[RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md) §6。UE 参考：`D:\Dev\GitRepo\UnrealEngine\Engine\Source\Runtime\RHI\`。
+- **RND-F02** Modern RHI — **S1 Done**；设计 **§B.8 S2 规格已落盘（待你审批 docs commit）** → 代码 S2：`RHIShaderLegacy` 重命名、Modern 词汇、`RHIGraphicsPSODesc`、统一 `CreateDesc`。**S3** 契约 → **S4** GL+Pass。见 [RND-F02](./Render/RND-F02_MODERN_RHI_DESIGN.md) §B.8。
 - **RND-F03** Vulkan backend — **Planned**；依赖 F02 契约稳定；与 GL 分里程碑行为对齐（Present → Shadow → 简化 Base → …）。
 - **分支约定：** `master` 上仅 planning/registry 分隔；实现与 [RND-F02 设计](./Render/RND-F02_MODERN_RHI_DESIGN.md) 在 **`render`** 分支。
 
