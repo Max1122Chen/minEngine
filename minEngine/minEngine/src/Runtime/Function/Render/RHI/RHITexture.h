@@ -52,6 +52,11 @@ namespace minEngine
         return static_cast<RHITextureCreateFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
     }
 
+    inline RHITextureCreateFlags operator&(RHITextureCreateFlags a, RHITextureCreateFlags b)
+    {
+        return static_cast<RHITextureCreateFlags>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+    }
+
     struct RHITextureCreateDesc
     {
         RHITextureDimension Dimension = RHITextureDimension::Texture2D;

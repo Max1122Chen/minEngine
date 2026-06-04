@@ -11,6 +11,8 @@
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIRenderPass.h"
 
+#include "glad/glad.h"
+
 namespace minEngine
 {
     void OpenGLRHI::Initialize()
@@ -198,26 +200,36 @@ namespace minEngine
 
     namespace
     {
-        void ModernRHIStubNotImplemented(const char* apiName)
+        bool ShouldClearColor(RHIRenderTargetActions action)
         {
-            ME_ASSERT(false, apiName);
+            return GetLoadAction(action) == RHIRenderTargetLoadAction::Clear;
         }
+
+        bool ShouldClearDepth(RHIDepthStencilTargetActions action)
+        {
+            return action == RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil ||
+                   action == RHIDepthStencilTargetActions::ClearDepthStencilDontStore;
+        }
+    }
+
+    void OpenGLRHI::DestroyTransientFramebuffer()
+    {
+        if (m_OwnsTransientFramebuffer && m_TransientFramebuffer != 0)
+        {
+            glDeleteFramebuffers(1, &m_TransientFramebuffer);
+        }
+        m_TransientFramebuffer = 0;
+        m_OwnsTransientFramebuffer = false;
     }
 
     std::shared_ptr<RHITexture> OpenGLRHI::RHICreateTexture2D(const RHITextureCreateDesc& desc, const void* initialData)
     {
-        (void)desc;
-        (void)initialData;
-        ModernRHIStubNotImplemented("RHICreateTexture2D");
-        return nullptr;
+        return std::make_shared<OpenGLRHITexture>(desc, initialData);
     }
 
     std::shared_ptr<RHIBuffer> OpenGLRHI::RHICreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
     {
-        (void)desc;
-        (void)initialData;
-        ModernRHIStubNotImplemented("RHICreateBuffer");
-        return nullptr;
+        return std::make_shared<OpenGLRHIBuffer>(desc, initialData);
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
@@ -225,96 +237,266 @@ namespace minEngine
         const std::string& fragmentSource,
         std::string* outCompileLog)
     {
-        (void)vertexSource;
-        (void)fragmentSource;
-        (void)outCompileLog;
-        ModernRHIStubNotImplemented("RHICreateShader");
-        return nullptr;
+        auto shader = std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
+        if (outCompileLog)
+        {
+            *outCompileLog = shader->GetCompileLog();
+        }
+        if (!shader->IsValid())
+        {
+            return nullptr;
+        }
+        return std::make_shared<OpenGLRHIShader>(shader);
     }
 
     std::shared_ptr<RHIGraphicsPipelineState> OpenGLRHI::RHICreateGraphicsPipelineState(const RHIGraphicsPSODesc& desc)
     {
-        (void)desc;
-        ModernRHIStubNotImplemented("RHICreateGraphicsPipelineState");
-        return nullptr;
+        return std::make_shared<RHIGraphicsPSOStateFallback>(desc);
     }
 
     std::shared_ptr<RHIBindingLayout> OpenGLRHI::RHICreateBindingLayout(const std::vector<RHIBindingLayoutEntry>& entries)
     {
-        (void)entries;
-        ModernRHIStubNotImplemented("RHICreateBindingLayout");
-        return nullptr;
+        return std::make_shared<OpenGLRHIBindingLayout>(entries);
     }
 
     std::shared_ptr<RHIBindingSet> OpenGLRHI::RHICreateBindingSet(
         RHIBindingLayout* layout,
         const std::vector<RHIBindingResource>& resources)
     {
-        (void)layout;
-        (void)resources;
-        ModernRHIStubNotImplemented("RHICreateBindingSet");
-        return nullptr;
+        return std::make_shared<OpenGLRHIBindingSet>(layout, resources);
+    }
+
+    std::shared_ptr<RHIVertexInputLayout> OpenGLRHI::RHICreateVertexInputLayout(
+        std::initializer_list<RHIVertexElement> elements)
+    {
+        return std::make_shared<OpenGLRHIVertexInputLayout>(elements);
+    }
+
+    void OpenGLRHI::ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
+    {
+        m_BoundPipeline = pipelineState;
+        auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(pipelineState);
+        if (!fallback)
+        {
+            return;
+        }
+
+        const RHIGraphicsPSODesc& desc = fallback->GetDesc();
+        if (auto* vs = dynamic_cast<OpenGLRHIShader*>(desc.VertexShader))
+        {
+            glUseProgram(vs->GetProgramId());
+        }
+
+        if (desc.DepthStencilState.bDepthTestEnabled)
+        {
+            glEnable(GL_DEPTH_TEST);
+        }
+        else
+        {
+            glDisable(GL_DEPTH_TEST);
+        }
+        glDepthMask(desc.DepthStencilState.bDepthWriteEnabled ? GL_TRUE : GL_FALSE);
+
+        if (desc.BlendState.bBlendEnabled)
+        {
+            glEnable(GL_BLEND);
+        }
+        else
+        {
+            glDisable(GL_BLEND);
+        }
+
+        // Depth clip is not mapped to GL cull; face culling is opt-in via bCullEnabled.
+        if (desc.RasterizerState.bCullEnabled)
+        {
+            glEnable(GL_CULL_FACE);
+        }
+        else
+        {
+            glDisable(GL_CULL_FACE);
+        }
+
+        if (desc.VertexInputLayout)
+        {
+            RHICmdSetVertexInputLayout(desc.VertexInputLayout);
+        }
     }
 
     void OpenGLRHI::RHICmdBeginRenderPass(const RHIRenderPassInfo& info)
     {
-        (void)info;
-        ModernRHIStubNotImplemented("RHICmdBeginRenderPass");
+        DestroyTransientFramebuffer();
+
+        const RHIRenderPassInfo::ColorAttachment& color0 = info.ColorAttachments[0];
+        const bool hasColor = color0.RenderTarget != nullptr;
+        const bool hasDepth = info.DepthStencil.DepthStencilTarget != nullptr;
+
+        GLuint fbo = 0;
+        if (hasColor || hasDepth)
+        {
+            glGenFramebuffers(1, &fbo);
+            m_TransientFramebuffer = fbo;
+            m_OwnsTransientFramebuffer = true;
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+            if (hasColor)
+            {
+                auto* colorTex = static_cast<OpenGLRHITexture*>(color0.RenderTarget);
+                glFramebufferTexture2D(
+                    GL_FRAMEBUFFER,
+                    GL_COLOR_ATTACHMENT0,
+                    colorTex->GetTextureTarget(),
+                    colorTex->GetTextureId(),
+                    color0.MipIndex);
+                GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
+                glDrawBuffers(1, drawBuffers);
+            }
+            else
+            {
+                glDrawBuffer(GL_NONE);
+                glReadBuffer(GL_NONE);
+            }
+
+            if (hasDepth)
+            {
+                auto* depthTex = static_cast<OpenGLRHITexture*>(info.DepthStencil.DepthStencilTarget);
+                if (depthTex->GetTextureTarget() == GL_TEXTURE_2D_ARRAY &&
+                    info.DepthStencil.ArraySlice >= 0)
+                {
+                    glFramebufferTextureLayer(
+                        GL_FRAMEBUFFER,
+                        GL_DEPTH_ATTACHMENT,
+                        depthTex->GetTextureId(),
+                        info.DepthStencil.MipIndex,
+                        info.DepthStencil.ArraySlice);
+                }
+                else
+                {
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_DEPTH_ATTACHMENT,
+                        depthTex->GetTextureTarget(),
+                        depthTex->GetTextureId(),
+                        info.DepthStencil.MipIndex);
+                }
+            }
+        }
+        else
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glDrawBuffer(GL_BACK);
+            glReadBuffer(GL_BACK);
+        }
+
+        GLbitfield clearMask = 0;
+        if (hasColor && ShouldClearColor(color0.Action))
+        {
+            glClearColor(
+                info.ClearValue.Color[0],
+                info.ClearValue.Color[1],
+                info.ClearValue.Color[2],
+                info.ClearValue.Color[3]);
+            clearMask |= GL_COLOR_BUFFER_BIT;
+        }
+        if (hasDepth && ShouldClearDepth(info.DepthStencil.Action))
+        {
+            glClearDepth(info.ClearValue.Depth);
+            clearMask |= GL_DEPTH_BUFFER_BIT;
+        }
+        if (clearMask != 0)
+        {
+            glClear(clearMask);
+        }
     }
 
     void OpenGLRHI::RHICmdEndRenderPass()
     {
-        ModernRHIStubNotImplemented("RHICmdEndRenderPass");
+        DestroyTransientFramebuffer();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     void OpenGLRHI::RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
     {
-        (void)pipelineState;
-        ModernRHIStubNotImplemented("RHICmdSetGraphicsPipelineState");
+        ApplyGraphicsPipelineState(pipelineState);
     }
 
     void OpenGLRHI::RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet)
     {
         (void)setIndex;
-        (void)bindingSet;
-        ModernRHIStubNotImplemented("RHICmdSetBindingSet");
+        auto* glSet = dynamic_cast<OpenGLRHIBindingSet*>(bindingSet);
+        if (!glSet)
+        {
+            return;
+        }
+
+        for (const RHIBindingResource& resource : glSet->GetResources())
+        {
+            if (resource.Type == RHIBindingType::TextureSRV && resource.TextureSRV)
+            {
+                const RHITextureSRVDesc& srvDesc = resource.TextureSRV->GetCreateDesc();
+                GLuint texId = GetOpenGLTextureId(srvDesc.Texture);
+                const RHIBindingLayout* layout = glSet->GetLayout();
+                uint32_t unit = 0;
+                if (layout && !layout->GetEntries().empty())
+                {
+                    unit = layout->GetEntries()[0].ShaderBinding;
+                }
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glBindTexture(GL_TEXTURE_2D, texId);
+            }
+            else if (resource.Type == RHIBindingType::UniformBuffer && resource.Buffer)
+            {
+                auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
+                if (ubo)
+                {
+                    glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo->GetBufferId());
+                }
+            }
+        }
     }
 
     void OpenGLRHI::RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
     {
-        (void)x;
-        (void)y;
-        (void)width;
-        (void)height;
-        ModernRHIStubNotImplemented("RHICmdSetViewport");
+        glViewport(static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+    }
+
+    void OpenGLRHI::RHICmdSetVertexInputLayout(RHIVertexInputLayout* layout)
+    {
+        m_BoundVertexLayout = static_cast<OpenGLRHIVertexInputLayout*>(layout);
+        if (m_BoundVertexLayout)
+        {
+            glBindVertexArray(m_BoundVertexLayout->GetVertexArrayId());
+        }
     }
 
     void OpenGLRHI::RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot)
     {
-        (void)vertexBuffer;
         (void)slot;
-        ModernRHIStubNotImplemented("RHICmdSetVertexBuffer");
+        m_BoundVertexBuffer = static_cast<OpenGLRHIBuffer*>(vertexBuffer);
+        if (m_BoundVertexBuffer)
+        {
+            glBindBuffer(m_BoundVertexBuffer->GetBindingTarget(), m_BoundVertexBuffer->GetBufferId());
+        }
     }
 
     void OpenGLRHI::RHICmdSetIndexBuffer(RHIBuffer* indexBuffer)
     {
-        (void)indexBuffer;
-        ModernRHIStubNotImplemented("RHICmdSetIndexBuffer");
+        m_BoundIndexBuffer = static_cast<OpenGLRHIBuffer*>(indexBuffer);
+        if (m_BoundIndexBuffer)
+        {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_BoundIndexBuffer->GetBufferId());
+        }
     }
 
     void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)
     {
-        (void)indexCount;
-        (void)firstIndex;
+        const void* indices = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex * sizeof(uint32_t)));
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
         (void)vertexOffset;
-        ModernRHIStubNotImplemented("RHICmdDrawIndexed");
     }
 
     void OpenGLRHI::RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex)
     {
-        (void)vertexCount;
-        (void)firstVertex;
-        ModernRHIStubNotImplemented("RHICmdDraw");
+        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
     }
 
 }

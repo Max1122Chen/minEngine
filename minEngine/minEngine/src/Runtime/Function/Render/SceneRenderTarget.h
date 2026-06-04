@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Core.h"
+#include "Render/RHI/RHIRenderPass.h"
 
 #include <memory>
 
 namespace minEngine
 {
     class FrameBuffer;
+    class RHITexture;
     class RHITexture2D;
     class RHI;
 
@@ -21,13 +23,21 @@ namespace minEngine
         uint32_t GetWidth() const { return m_Width; }
         uint32_t GetHeight() const { return m_Height; }
         const std::shared_ptr<RHITexture2D>& GetColorTexture() const { return m_ColorTexture; }
+        const std::shared_ptr<RHITexture>& GetColorTextureRHI() const { return m_ColorTextureRHI; }
+        const std::shared_ptr<RHITexture>& GetDepthTextureRHI() const { return m_DepthTextureRHI; }
         FrameBuffer* GetFrameBuffer() const { return m_FrameBuffer.get(); }
 
+        RHIRenderPassInfo BuildRenderPassInfo() const;
+
     private:
+        void RefreshModernTextureWrappers();
+
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
         std::shared_ptr<FrameBuffer> m_FrameBuffer;
         std::shared_ptr<RHITexture2D> m_ColorTexture;
         std::shared_ptr<RHITexture2D> m_DepthTexture;
+        std::shared_ptr<RHITexture> m_ColorTextureRHI;
+        std::shared_ptr<RHITexture> m_DepthTextureRHI;
     };
 }

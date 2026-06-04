@@ -118,6 +118,9 @@ namespace minEngine
             RHIBindingLayout* layout,
             const std::vector<RHIBindingResource>& resources) = 0;
 
+        virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
+            std::initializer_list<RHIVertexElement> elements) = 0;
+
         virtual void RHICmdBeginRenderPass(const RHIRenderPassInfo& info) = 0;
         virtual void RHICmdEndRenderPass() = 0;
 
@@ -125,6 +128,7 @@ namespace minEngine
         virtual void RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet) = 0;
 
         virtual void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
+        virtual void RHICmdSetVertexInputLayout(RHIVertexInputLayout* layout) = 0;
         virtual void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot = 0) = 0;
         virtual void RHICmdSetIndexBuffer(RHIBuffer* indexBuffer) = 0;
 

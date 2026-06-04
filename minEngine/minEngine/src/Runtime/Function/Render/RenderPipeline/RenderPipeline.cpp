@@ -11,6 +11,7 @@
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHIBuffers.h"
+#include "Render/RHI/RHICommandList.h"
 #include "Render/Shader.h"
 #include "Render/RenderCamera.h"
 #include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
@@ -222,10 +223,10 @@ namespace minEngine
         m_ShadowPass.m_OpaqueQueue = ctx.OpaqueQueue;
         m_ShadowPass.m_ShadowDrawCommands = ctx.ShadowDrawCommands;
 
+        RHICommandList cmdList(rhi);
         if (enableShadows)
         {
-            m_ShadowBuffer->Bind();
-            m_ShadowPass.Execute();
+            m_ShadowPass.Execute(cmdList);
         }
 
         UpdatePerFrameUBO(ctx);
@@ -277,7 +278,7 @@ namespace minEngine
 
         if (m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer))
         {
-            m_PresentPass.Execute();
+            m_PresentPass.Execute(cmdList);
         }
 
         m_ShadowResourceManager.EndFrame();

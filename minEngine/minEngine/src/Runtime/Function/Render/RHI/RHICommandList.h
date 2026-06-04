@@ -5,6 +5,7 @@
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIRenderPass.h"
+#include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 
 #include <string>
@@ -44,6 +45,7 @@ namespace minEngine
         {
             m_RHI->RHICmdSetViewport(x, y, width, height);
         }
+        void SetVertexInputLayout(RHIVertexInputLayout* layout) { m_RHI->RHICmdSetVertexInputLayout(layout); }
         void SetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot = 0)
         {
             m_RHI->RHICmdSetVertexBuffer(vertexBuffer, slot);
@@ -87,6 +89,10 @@ namespace minEngine
             const std::vector<RHIBindingResource>& resources)
         {
             return m_RHI->RHICreateBindingSet(layout, resources);
+        }
+        std::shared_ptr<RHIVertexInputLayout> CreateVertexInputLayout(std::initializer_list<RHIVertexElement> elements)
+        {
+            return m_RHI->RHICreateVertexInputLayout(elements);
         }
 
     private:

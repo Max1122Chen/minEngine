@@ -38,10 +38,10 @@ namespace minEngine
             static_cast<uint32_t>(importData.Vertices.size() * sizeof(MeshImportVertex)),
             static_cast<uint32_t>(importData.Vertices.size()));
         mesh->m_VertexDefinition = VertexDefinition::Create({
-            VertexElement("a_Position", VertexElementType::Float3),
-            VertexElement("a_TexCoord", VertexElementType::Float2),
-            VertexElement("a_Normal", VertexElementType::Float3),
-            VertexElement("a_Tangent", VertexElementType::Float4),
+            RHIVertexElement("a_Position", VertexElementType::Float3),
+            RHIVertexElement("a_TexCoord", VertexElementType::Float2),
+            RHIVertexElement("a_Normal", VertexElementType::Float3),
+            RHIVertexElement("a_Tangent", VertexElementType::Float4),
         });
         mesh->m_IndexBuffer = IndexBuffer::Create(
             importData.Indices.data(),

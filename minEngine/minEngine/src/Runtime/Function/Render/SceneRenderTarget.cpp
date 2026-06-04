@@ -1,11 +1,18 @@
 #include "SceneRenderTarget.h"
 
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHIBuffers.h"
 
 namespace minEngine
 {
+    void SceneRenderTarget::RefreshModernTextureWrappers()
+    {
+        m_ColorTextureRHI = OpenGLRHITexture::WrapLegacy2D(m_ColorTexture);
+        m_DepthTextureRHI = OpenGLRHITexture::WrapLegacy2D(m_DepthTexture);
+    }
+
     void SceneRenderTarget::Initialize(RHI* rhi, uint32_t width, uint32_t height)
     {
         if (!rhi)
@@ -50,10 +57,29 @@ namespace minEngine
 
         m_FrameBuffer->AttachColorBuffer(m_ColorTexture);
         m_FrameBuffer->AttachDepthStencilBuffer(m_DepthTexture);
+
+        RefreshModernTextureWrappers();
+    }
+
+    RHIRenderPassInfo SceneRenderTarget::BuildRenderPassInfo() const
+    {
+        RHIRenderPassInfo info(
+            m_ColorTextureRHI.get(),
+            RHIRenderTargetActions::ClearStore,
+            m_DepthTextureRHI.get(),
+            RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil);
+        info.ClearValue.Color[0] = 0.1f;
+        info.ClearValue.Color[1] = 0.1f;
+        info.ClearValue.Color[2] = 0.1f;
+        info.ClearValue.Color[3] = 1.0f;
+        info.ClearValue.Depth = 1.0f;
+        return info;
     }
 
     void SceneRenderTarget::Shutdown()
     {
+        m_ColorTextureRHI.reset();
+        m_DepthTextureRHI.reset();
         m_ColorTexture.reset();
         m_DepthTexture.reset();
         m_FrameBuffer.reset();

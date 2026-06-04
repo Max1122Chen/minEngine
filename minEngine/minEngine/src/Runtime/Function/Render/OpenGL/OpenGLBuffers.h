@@ -14,6 +14,8 @@ namespace minEngine
         virtual void Bind() const override;
         virtual void Unbind() const override;
 
+        uint32_t GetVBO() const { return m_VBO; }
+
     private:
         uint32_t m_VBO;
     };
@@ -27,6 +29,8 @@ namespace minEngine
 
         virtual void Bind() const override;
         virtual void Unbind() const override;
+
+        uint32_t GetEBO() const { return m_EBO; }
 
     private:
         uint32_t m_EBO;
@@ -47,7 +51,9 @@ namespace minEngine
         virtual void AttachDepthCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face) override;
         virtual void AttachColorCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face) override;
         virtual void AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture) override;
-        virtual void AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture) override;  
+        virtual void AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture) override;
+
+        uint32_t GetFBO() const { return m_FBO; }
 
     private:
         uint32_t m_FBO;

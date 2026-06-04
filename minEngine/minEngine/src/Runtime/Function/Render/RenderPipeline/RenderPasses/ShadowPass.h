@@ -12,6 +12,9 @@ namespace minEngine
     class FrameBuffer;
     class RHITexture2DArray;
     class RHIShaderLegacy;
+    class RHICommandList;
+    class RHIGraphicsPipelineState;
+    class RHIShader;
 
 
 
@@ -24,9 +27,12 @@ namespace minEngine
         void Initialize();
 
         virtual void Execute() override;
-    
+        void Execute(RHICommandList& cmdList);
+
     private:
+        void Render(RHICommandList& cmdList);
         virtual void Render() override;
+        void DrawOpaqueMeshes(RHICommandList& cmdList);
 
     public:
         UniformBuffer* m_LightViewProjUniformBuffer;
@@ -35,11 +41,13 @@ namespace minEngine
         std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
 
     private:
-        std::shared_ptr<RHIShaderLegacy> m_DepthOnlyShader; // A simple shader that only outputs depth, used for shadow pass
+        std::shared_ptr<RHIShaderLegacy> m_DepthOnlyShader;
+        std::shared_ptr<RHIShader> m_DepthShader;
+        std::shared_ptr<RHIGraphicsPipelineState> m_ShadowPipelineState;
 
         void UpdateLightViewProjBuffer(Matrix4 inMatrix);
-        void RenderDirectionalShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);
-        void RenderSpotShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);
-        void RenderPointShadow(RHI& rhi, const ShadowDrawCommand& shadowCommand);
+        void RenderDirectionalShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand);
+        void RenderSpotShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand);
+        void RenderPointShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand);
     };
 }

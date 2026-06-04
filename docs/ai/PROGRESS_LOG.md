@@ -948,6 +948,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-06-01 - RND-F02 S4 OpenGL modern path + Present/Shadow migration
+- Goal:
+  Implement S3 contract on OpenGL; migrate Present and Directional/Spot shadow passes to `RHICommandList`.
+- Main changes:
+  `OpenGLRHIModern.{h,cpp}` (texture/buffer/shader/layout/SRV/binding wrappers); `OpenGLRHI` `RHICreate*`/`RHICmd*` (transient FBO, PSO fallback, draw/bind).
+  `PresentPass` / `ShadowPass` use modern render pass + pipeline; `SceneRenderTarget::BuildRenderPassInfo`; `RenderPipeline` passes `RHICommandList`.
+  Point shadow still Legacy `FrameBuffer` + `rhi->Clear()`. `RHIGraphicsPipelineStateRef`; raw-pointer legacy wrap overloads.
+- Risks or caveats:
+  Editor visual regression not automated; Point shadow hybrid until S5.
+- Validation done:
+  `.\scripts\verify.ps1` (build + smoke).
+- Next step:
+  S5: remaining passes, ImGui native handle, engine shaders via BindingSet.
+
 ### 2026-06-02 - WF-F02 handbook UX phase 2 (S04–S07)
 - Goal:
   Auto nav, TOC, sidebar, and git last-updated footer for public handbook.

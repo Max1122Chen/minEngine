@@ -561,7 +561,7 @@ GetRHI()->GetCapabilities()
 | **S1** | Pass/PSO 描述字段（**Done**） | `FRHIRenderPassInfo`、`FGraphicsPipelineStateInitializer` | 编译；无运行时行为 |
 | **S2** | **现代词汇层**（§B.8）（**Done**） | `FRHITexture`、`FRHIShaderResourceView` | `verify.ps1`；无 GL 行为变更 |
 | **S3** | **现代契约层**（**Done**）：`RHI` `RHICreate*` / `RHICmd*`；`RHICommandList` 转发；`OpenGLRHI` 桩（`ME_ASSERT`，不转调 Legacy） | `DynamicRHI.h`、`FRHICommandList` | 编译 |
-| **S4** | **迁移波 1**：`OpenGLRHI` 实现 S3；`RHICommandList` 接线；**PresentPass → ShadowPass** + `SceneRenderTarget` 产出 `RHIRenderPassInfo`；去 Pass 内 `gl*` | `FRHIGraphicsPipelineStateFallBack`、GL | `verify.ps1`；Editor 主视口 + 阴影无回归 |
+| **S4** | **迁移波 1**（**Done**）：`OpenGLRHIModern` + `OpenGLRHI` 实现 S3；**PresentPass → ShadowPass**（Directional/Spot 现代 Pass；Point 仍 Legacy FBO）；`SceneRenderTarget` 产出 `RHIRenderPassInfo`；Present/Shadow 无 `glad` | `FRHIGraphicsPipelineStateFallBack`、GL | `verify.ps1`；Editor 主视口 + 阴影目视 |
 | **S5** | **迁移波 2**：其余 Pass、`GetNativeHandle`（ImGui）；引擎固定 shader 走 BindingSet | Shader Parameters | Inspector 可用 |
 | **S5+** | 材质 `BindForDraw`；删 Legacy `Enable*` / `Bind(unit)` 等公共 API | — | material-ir-test |
 
@@ -696,6 +696,7 @@ using RHIVertexInputLayoutRef = std::shared_ptr<RHIVertexInputLayout>;
 
 | 日期 | 说明 |
 |------|------|
+| 2026-06-01 | S4：`OpenGLRHIModern`；`OpenGLRHI` 实现 `RHICreate*`/`RHICmd*`；Present/Shadow 经 `RHICommandList`；`verify.ps1` |
 | 2026-06-04 | S3：`RHICreate*`/`RHICmd*` on `RHI`，`RHICommandList` 转发，`OpenGLRHI` 桩 |
 | 2026-06-04 | S2 代码：Modern 词汇 + `RHIShaderLegacy` 重命名 + `RHIGraphicsPSODesc` + `RHIBinding.h` |
 | 2026-06-04 | §B.8 S2 词汇定稿：CreateDesc 统一、`RHIShaderLegacy`、RHIVertexElement、Binding/SRV 清单；拍板记录 |

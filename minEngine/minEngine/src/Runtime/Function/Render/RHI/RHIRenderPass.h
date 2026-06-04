@@ -122,6 +122,8 @@ namespace minEngine
         {
             RHITexture* DepthStencilTarget = nullptr;
             RHIDepthStencilTargetActions Action = RHIDepthStencilTargetActions::DontLoadDontStore;
+            uint8_t MipIndex = 0;
+            int32_t ArraySlice = -1;
         };
 
         RHIRenderPassInfo() = default;

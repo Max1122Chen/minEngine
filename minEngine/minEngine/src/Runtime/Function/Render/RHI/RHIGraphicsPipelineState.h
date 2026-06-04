@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 
 namespace minEngine
 {
@@ -33,11 +34,16 @@ namespace minEngine
     struct RHIRasterizerStateDesc
     {
         bool bDepthClipEnabled = true;
+        bool bCullEnabled = false;
     };
 
     class RHIGraphicsPipelineState
     {
+    public:
+        virtual ~RHIGraphicsPipelineState() = default;
     };
+
+    using RHIGraphicsPipelineStateRef = std::shared_ptr<RHIGraphicsPipelineState>;
 
     class RHIGraphicsPSODesc
     {
