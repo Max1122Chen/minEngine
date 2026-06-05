@@ -62,8 +62,8 @@ bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportCli
         return false;
     }
 
-    const ImTextureID textureID =
-        reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(m_PinnedFrameTexture->GetID()));
+    const ImTextureID textureID = reinterpret_cast<ImTextureID>(
+        static_cast<uintptr_t>(GetRHINativeTextureHandle(m_PinnedFrameTexture.get())));
     ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + layout.Offset.x, cursorPos.y + layout.Offset.y));
     ImGui::Image(
         textureID,

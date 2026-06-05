@@ -42,6 +42,6 @@ namespace minEngine
         std::shared_ptr<RHIShaderResourceView> m_SceneColorSRV;
 
         void Render(RHICommandList& cmdList);
-        virtual void Render() override;
+        void Render();
     };
 }

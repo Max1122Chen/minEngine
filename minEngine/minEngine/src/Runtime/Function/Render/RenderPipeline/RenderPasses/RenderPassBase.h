@@ -10,6 +10,7 @@ namespace minEngine
     class RenderPipeline;
     class EngineIBLEnvironment;
     class FrameBuffer;
+    class RHICommandList;
     class RHIShaderLegacy;
 
     struct MeshPassSceneBinding
@@ -32,9 +33,7 @@ namespace minEngine
         virtual void Execute() = 0;
 
     protected:
-        virtual void Render() = 0;
-
-        void DrawMeshCommand(const MeshDrawCommand& drawCommand);
+        void DrawMeshCommand(RHICommandList& cmdList, const MeshDrawCommand& drawCommand);
         void BindSceneDrawResources(RHIShaderLegacy& shader, const MeshPassSceneBinding& binding);
 
     public:

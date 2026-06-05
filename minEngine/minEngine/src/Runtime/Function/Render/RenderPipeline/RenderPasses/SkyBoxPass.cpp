@@ -7,11 +7,14 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Texture.h"
 
-#include <glad/glad.h>
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLShader.h"
 
 namespace minEngine
 {
@@ -81,6 +84,10 @@ namespace minEngine
         }
 
         m_SkyShader = skyShader->GetRHIShader();
+        if (auto glLegacy = std::dynamic_pointer_cast<OpenGLShader>(m_SkyShader))
+        {
+            m_SkyShaderRHI = std::make_shared<OpenGLRHIShader>(glLegacy);
+        }
 
         const uint32_t vertexByteSize = static_cast<uint32_t>(sizeof(kCubeVertices));
         const uint32_t vertexCount = vertexByteSize / (3 * sizeof(float));
@@ -89,21 +96,36 @@ namespace minEngine
         m_CubeVertexDefinition = rhi.CreateVertexDefinition({
             {"a_Position", VertexElementType::Float3, false},
         });
+        m_CubeVertexLayout = OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(m_CubeVertexDefinition);
+
+        RHICommandList cmdList(&rhi);
+        RHIGraphicsPSODesc psoDesc;
+        psoDesc.VertexShader = m_SkyShaderRHI.get();
+        psoDesc.PixelShader = m_SkyShaderRHI.get();
+        psoDesc.VertexInputLayout = m_CubeVertexLayout.get();
+        psoDesc.DepthStencilState.bDepthTestEnabled = true;
+        psoDesc.DepthStencilState.bDepthWriteEnabled = false;
+        psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::LessEqual;
+        m_SkyPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
     }
 
     void SkyBoxPass::Shutdown()
     {
         m_SkyShader.reset();
+        m_SkyShaderRHI.reset();
         m_CubeVertexBuffer.reset();
         m_CubeVertexDefinition.reset();
+        m_CubeVertexLayout.reset();
+        m_SkyPipelineState.reset();
     }
 
     void SkyBoxPass::Execute(
+        RHICommandList& cmdList,
         const RenderCamera& camera,
         const SkyBoxSceneProxy& skyBox,
         const EngineIBLEnvironment& iblEnvironment) const
     {
-        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexDefinition)
+        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState)
         {
             return;
         }
@@ -119,12 +141,7 @@ namespace minEngine
             return;
         }
 
-        GLint previousDepthFunc = GL_LESS;
-        GLboolean previousDepthMask = GL_TRUE;
-        GLint previousCullFace = GL_BACK;
-        glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunc);
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthMask);
-        glGetIntegerv(GL_CULL_FACE_MODE, &previousCullFace);
+        cmdList.SetGraphicsPipelineState(m_SkyPipelineState.get());
 
         m_SkyShader->Use();
         m_SkyShader->UploadUniformMat4("u_Projection", camera.GetProjectionMatrix());
@@ -134,21 +151,14 @@ namespace minEngine
         environment->GetRHITexture()->Bind(kSkyboxTextureUnit);
         m_SkyShader->UploadUniformInt("u_Skybox", kSkyboxTextureUnit);
 
-        glDepthFunc(GL_LEQUAL);
-        glDepthMask(GL_FALSE);
-        glCullFace(GL_FRONT);
-
-        m_CubeVertexDefinition->Bind();
-        m_CubeVertexBuffer->Bind();
-        glDrawArrays(
-            GL_TRIANGLES,
-            0,
-            static_cast<GLsizei>(m_CubeVertexBuffer->GetNumVertices()));
+        cmdList.SetVertexInputLayout(m_CubeVertexLayout.get());
+        if (auto vertexBuffer = OpenGLRHIBuffer::WrapLegacyVertexBuffer(m_CubeVertexBuffer))
+        {
+            cmdList.SetVertexBuffer(vertexBuffer.get());
+        }
+        cmdList.Draw(m_CubeVertexBuffer->GetNumVertices(), 0);
 
         environment->GetRHITexture()->Unbind();
-
-        glDepthFunc(previousDepthFunc);
-        glDepthMask(previousDepthMask);
-        glCullFace(previousCullFace);
     }
 }
+

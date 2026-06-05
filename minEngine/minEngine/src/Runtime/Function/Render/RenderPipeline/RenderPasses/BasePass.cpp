@@ -1,8 +1,8 @@
 #include "BasePass.h"
 
 #include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Render/Shader.h"
 
@@ -10,10 +10,21 @@ namespace minEngine
 {
     void BasePass::Execute()
     {
-        Render();
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
+        RHICommandList cmdList(rhi);
+        Execute(cmdList);
     }
 
-    void BasePass::Render()
+    void BasePass::Execute(RHICommandList& cmdList)
+    {
+        Render(cmdList);
+    }
+
+    void BasePass::Render(RHICommandList& cmdList)
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
@@ -53,12 +64,11 @@ namespace minEngine
             };
             BindSceneDrawResources(*shader, sceneBinding);
             material->BindForDraw(*shader);
-            // Bind IBL after material textures (units 0â€?) so cubemap samplers on 4â€? stay active.
             if (bindPBRIBL && sceneBinding.IBLEnvironment != nullptr)
             {
                 sceneBinding.IBLEnvironment->BindForPBRDraw(*shader);
             }
-            DrawMeshCommand(drawCommand);
+            DrawMeshCommand(cmdList, drawCommand);
         }
     }
 }

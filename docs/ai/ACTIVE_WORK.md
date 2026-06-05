@@ -9,7 +9,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **RND-F02** Modern RHI — **S4 迁移波 1 Done**（`OpenGLRHIModern` + `OpenGLRHI` 实现 S3；Present/Shadow 经 `RHICommandList`；`SceneRenderTarget::BuildRenderPassInfo`）→ **S5**（其余 Pass、ImGui native、引擎 shader BindingSet）。见 [RND-F02](./Render/RND-F02_MODERN_RHI_DESIGN.md) §6。
+- **RND-F02** Modern RHI — **S5 迁移波 2 Done**（场景 Pass 经 `RHICmdBeginRenderPass`；Base/Translucency/SkyBox/PostProcess 现代 draw；`GetRHINativeTextureHandle`；PSO depth/cull）→ **S5+**（材质 Binding、删 Legacy 公共 API — 「大迁徙」）。见 [RND-F02](./Render/RND-F02_MODERN_RHI_DESIGN.md) §6。
 - **RND-F03** Vulkan backend — **Planned**；依赖 F02 契约稳定；与 GL 分里程碑行为对齐（Present → Shadow → 简化 Base → …）。
 - **分支约定：** `master` 上仅 planning/registry 分隔；实现与 [RND-F02 设计](./Render/RND-F02_MODERN_RHI_DESIGN.md) 在 **`render`** 分支。
 

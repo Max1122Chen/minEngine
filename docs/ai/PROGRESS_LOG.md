@@ -948,6 +948,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-06-01 - RND-F02 S5 remaining passes + native texture handle
+- Goal:
+  Complete migration wave 2: scene render pass via modern RHI; remove glad from RenderPasses.
+- Main changes:
+  `RenderPipeline` scene path `RHICmdBeginRenderPass`; Base/Translucency draw via `RHICommandList`; PostProcess/SkyBox modern PSO.
+  `GetRHINativeTextureHandle` + Editor viewport/thumbnails; PSO `RHIDepthCompareFunc`/`RHICullMode`; fix cull vs depth-clip mapping.
+- Risks or caveats:
+  Materials still `RHIShaderLegacy` + `BindForDraw`; Point shadow still legacy FBO.
+- Validation done:
+  `.\scripts\verify.ps1`.
+- Next step:
+  S5+: material binding migration; delete Legacy `RHI` public API.
+
 ### 2026-06-01 - RND-F02 S4 OpenGL modern path + Present/Shadow migration
 - Goal:
   Implement S3 contract on OpenGL; migrate Present and Directional/Spot shadow passes to `RHICommandList`.

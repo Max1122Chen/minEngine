@@ -303,7 +303,7 @@ namespace minEngine
         m_CachedView.BackendKind = ThumbnailBackendKind::Scene3D;
         m_CachedView.Width = displayTexture->GetWidth();
         m_CachedView.Height = displayTexture->GetHeight();
-        m_CachedView.TextureId = static_cast<ImTextureID>(displayTexture->GetID());
+        m_CachedView.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(displayTexture.get()));
 
         m_bDirty = false;
         return m_CachedView;
@@ -321,7 +321,7 @@ namespace minEngine
         }
 
         const RHITexture2D* rhiTexture = textureAsset->GetRHITexture();
-        if (!rhiTexture || rhiTexture->GetID() == 0)
+        if (!rhiTexture || GetRHINativeTextureHandle(rhiTexture) == 0)
         {
             return view;
         }
@@ -342,7 +342,7 @@ namespace minEngine
         view.State = ThumbnailState::Ready;
         view.Width = textureWidth;
         view.Height = textureHeight;
-        view.TextureId = static_cast<ImTextureID>(rhiTexture->GetID());
+        view.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(rhiTexture));
         return view;
     }
 
@@ -374,7 +374,7 @@ namespace minEngine
         }
 
         const RHITexture2D* rhiTexture = textureAsset->GetRHITexture();
-        if (!rhiTexture || rhiTexture->GetID() == 0)
+        if (!rhiTexture || GetRHINativeTextureHandle(rhiTexture) == 0)
         {
             return view;
         }
@@ -395,7 +395,7 @@ namespace minEngine
         view.State = ThumbnailState::Ready;
         view.Width = textureWidth;
         view.Height = textureHeight;
-        view.TextureId = static_cast<ImTextureID>(rhiTexture->GetID());
+        view.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(rhiTexture));
         return view;
     }
 
@@ -561,7 +561,7 @@ namespace minEngine
         entry.CachedView.BackendKind = ThumbnailBackendKind::Scene3D;
         entry.CachedView.Width = displayTexture->GetWidth();
         entry.CachedView.Height = displayTexture->GetHeight();
-        entry.CachedView.TextureId = static_cast<ImTextureID>(displayTexture->GetID());
+        entry.CachedView.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(displayTexture.get()));
 
         entry.bDirty = false;
         return entry.CachedView;

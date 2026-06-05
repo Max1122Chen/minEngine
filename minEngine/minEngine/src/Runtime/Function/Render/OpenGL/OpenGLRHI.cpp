@@ -15,6 +15,44 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        GLenum ToGLDepthFunc(RHIDepthCompareFunc compare)
+        {
+            switch (compare)
+            {
+            case RHIDepthCompareFunc::LessEqual:
+                return GL_LEQUAL;
+            case RHIDepthCompareFunc::Always:
+                return GL_ALWAYS;
+            case RHIDepthCompareFunc::Less:
+            default:
+                return GL_LESS;
+            }
+        }
+
+        void ApplyCullMode(const RHIRasterizerStateDesc& rasterizer)
+        {
+            if (!rasterizer.bCullEnabled || rasterizer.CullMode == RHICullMode::None)
+            {
+                glDisable(GL_CULL_FACE);
+                return;
+            }
+
+            glEnable(GL_CULL_FACE);
+            switch (rasterizer.CullMode)
+            {
+            case RHICullMode::Front:
+                glCullFace(GL_FRONT);
+                break;
+            case RHICullMode::Back:
+            default:
+                glCullFace(GL_BACK);
+                break;
+            }
+        }
+    }
+
     void OpenGLRHI::Initialize()
     {
         // Initialize OpenGL specific resources here
@@ -296,6 +334,7 @@ namespace minEngine
             glDisable(GL_DEPTH_TEST);
         }
         glDepthMask(desc.DepthStencilState.bDepthWriteEnabled ? GL_TRUE : GL_FALSE);
+        glDepthFunc(ToGLDepthFunc(desc.DepthStencilState.DepthCompare));
 
         if (desc.BlendState.bBlendEnabled)
         {
@@ -306,15 +345,8 @@ namespace minEngine
             glDisable(GL_BLEND);
         }
 
-        // Depth clip is not mapped to GL cull; face culling is opt-in via bCullEnabled.
-        if (desc.RasterizerState.bCullEnabled)
-        {
-            glEnable(GL_CULL_FACE);
-        }
-        else
-        {
-            glDisable(GL_CULL_FACE);
-        }
+        // Culling deferred: winding/mode not validated yet; keep off for all modern passes.
+        glDisable(GL_CULL_FACE);
 
         if (desc.VertexInputLayout)
         {

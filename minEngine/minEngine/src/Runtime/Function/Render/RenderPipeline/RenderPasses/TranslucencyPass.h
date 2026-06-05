@@ -7,6 +7,7 @@
 namespace minEngine
 {
     class RenderCamera;
+    class RHICommandList;
 
     class TranslucencyPass : public RenderPassBase
     {
@@ -15,7 +16,8 @@ namespace minEngine
         virtual ~TranslucencyPass() = default;
 
         virtual void Execute() override;
-        
+        void Execute(RHICommandList& cmdList);
+
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;
         RenderCamera* m_SortCamera = nullptr;
@@ -24,7 +26,7 @@ namespace minEngine
         std::vector<ShadowResourceHandle> m_PointShadowHandles;
 
     private:
-        virtual void Render() override;
+        void Render(RHICommandList& cmdList);
         void SortDrawCommands();
     };
 }

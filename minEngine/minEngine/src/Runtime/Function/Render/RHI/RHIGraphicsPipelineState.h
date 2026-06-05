@@ -24,17 +24,33 @@ namespace minEngine
         bool bBlendEnabled = false;
     };
 
+    enum class RHIDepthCompareFunc : uint8_t
+    {
+        Less,
+        LessEqual,
+        Always,
+    };
+
+    enum class RHICullMode : uint8_t
+    {
+        None,
+        Back,
+        Front,
+    };
+
     struct RHIDepthStencilStateDesc
     {
         bool bDepthTestEnabled = true;
         bool bDepthWriteEnabled = true;
         bool bStencilTestEnabled = false;
+        RHIDepthCompareFunc DepthCompare = RHIDepthCompareFunc::Less;
     };
 
     struct RHIRasterizerStateDesc
     {
         bool bDepthClipEnabled = true;
         bool bCullEnabled = false;
+        RHICullMode CullMode = RHICullMode::Back;
     };
 
     class RHIGraphicsPipelineState

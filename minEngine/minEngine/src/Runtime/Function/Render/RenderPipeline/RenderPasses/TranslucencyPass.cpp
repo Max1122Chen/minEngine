@@ -2,9 +2,9 @@
 
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
 #include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Render/Shader.h"
 
@@ -13,10 +13,21 @@ namespace minEngine
     void TranslucencyPass::Execute()
     {
         SortDrawCommands();
-        Render();
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (!rhi)
+        {
+            return;
+        }
+        RHICommandList cmdList(rhi);
+        Execute(cmdList);
     }
 
-    void TranslucencyPass::Render()
+    void TranslucencyPass::Execute(RHICommandList& cmdList)
+    {
+        Render(cmdList);
+    }
+
+    void TranslucencyPass::Render(RHICommandList& cmdList)
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
@@ -63,7 +74,7 @@ namespace minEngine
             {
                 sceneBinding.IBLEnvironment->BindForPBRDraw(*shader);
             }
-            DrawMeshCommand(drawCommand);
+            DrawMeshCommand(cmdList, drawCommand);
         }
 
         rhi->SetDepthMask(true);
@@ -80,13 +91,14 @@ namespace minEngine
 
         const Vector3 cameraPos = mainCamera->m_Position;
 
-        std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [cameraPos](const MeshDrawCommand& a, const MeshDrawCommand& b) {
-            const Vector3 deltaA = cameraPos - glm::vec3(a.m_ModelMatrix[3]);
-            const Vector3 deltaB = cameraPos - glm::vec3(b.m_ModelMatrix[3]);
+        std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [cameraPos](const MeshDrawCommand& a, const MeshDrawCommand& b)
+            {
+                const Vector3 deltaA = cameraPos - glm::vec3(a.m_ModelMatrix[3]);
+                const Vector3 deltaB = cameraPos - glm::vec3(b.m_ModelMatrix[3]);
 
-            const float distanceA = glm::dot(deltaA, deltaA);
-            const float distanceB = glm::dot(deltaB, deltaB);
-            return distanceA > distanceB;
-        });
+                const float distanceA = glm::dot(deltaA, deltaA);
+                const float distanceB = glm::dot(deltaB, deltaB);
+                return distanceA > distanceB;
+            });
     }
 }

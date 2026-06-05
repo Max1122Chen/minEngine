@@ -27,6 +27,7 @@ namespace minEngine
 
         virtual const RHITextureCreateDesc& GetDesc() const override { return m_Desc; }
         virtual void* GetNativeResource() const override;
+        virtual uint32_t GetNativeHandle() const override { return m_TextureId; }
 
         GLuint GetTextureId() const { return m_TextureId; }
         GLenum GetTextureTarget() const { return m_Target; }

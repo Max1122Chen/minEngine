@@ -20,7 +20,6 @@
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Math/Geometry/AABB.h"
 #include <filesystem>
-#include <glad/glad.h>
 
 namespace
 {
@@ -103,6 +102,11 @@ namespace minEngine
                 Shader::EngineShaderPath("Sharpen.frag")))
         {
             m_PostProcessPasses.back().m_PostProcessShader = sharpenShader->GetRHIShader();
+        }
+
+        for (PostProcessPass& postProcessPass : m_PostProcessPasses)
+        {
+            postProcessPass.Initialize();
         }
 
         // Set up PresentPass
@@ -245,12 +249,10 @@ namespace minEngine
         // Shadow pass disables color output; restore state for scene pass.
         rhi->SetDrawBuffer(0);
         rhi->SetReadBuffer(0);
-        rhi->SetViewport(0, 0, sceneColorTexture->GetWidth(), sceneColorTexture->GetHeight());
-        sceneFrameBuffer->Bind();
-        
-        // Clear the framebuffer at the beginning of the render pipeline execution
-        // Dont change the order
-        rhi->Clear();
+
+        RHIRenderPassInfo scenePassInfo = sceneTarget->BuildRenderPassInfo();
+        cmdList.BeginRenderPass(scenePassInfo);
+        cmdList.SetViewport(0, 0, sceneColorTexture->GetWidth(), sceneColorTexture->GetHeight());
 
         if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox) && m_SkyBoxPass.IsReady())
         {
@@ -258,23 +260,23 @@ namespace minEngine
             {
                 if (skyBoxProxy->m_Enabled && skyBoxProxy->m_SkyBoxComponent)
                 {
-                    m_SkyBoxPass.Execute(*ctx.Camera, *skyBoxProxy, m_IBLEnvironment);
+                    m_SkyBoxPass.Execute(cmdList, *ctx.Camera, *skyBoxProxy, m_IBLEnvironment);
                 }
             }
         }
 
-        m_BasePass.Execute();
-        m_TranslucentPass.Execute();
+        m_BasePass.Execute(cmdList);
+        m_TranslucentPass.Execute(cmdList);
 
         if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess))
         {
-            for (auto& postProcessPass : m_PostProcessPasses)
+            for (PostProcessPass& postProcessPass : m_PostProcessPasses)
             {
-                postProcessPass.Execute();
+                postProcessPass.Execute(cmdList);
             }
         }
 
-        sceneFrameBuffer->Unbind();
+        cmdList.EndRenderPass();
 
         if (m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer))
         {

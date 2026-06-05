@@ -31,7 +31,7 @@ namespace minEngine
 
     private:
         void Render(RHICommandList& cmdList);
-        virtual void Render() override;
+        void Render();
         void DrawOpaqueMeshes(RHICommandList& cmdList);
 
     public:

@@ -6,6 +6,7 @@
 
 namespace minEngine
 {
+    class RHICommandList;
     class RHITexture2DArray;
 
     class BasePass : public RenderPassBase
@@ -15,9 +16,10 @@ namespace minEngine
         virtual ~BasePass() = default;
 
         virtual void Execute() override;
+        void Execute(RHICommandList& cmdList);
 
     private:
-        virtual void Render() override;
+        void Render(RHICommandList& cmdList);
 
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;

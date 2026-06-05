@@ -57,7 +57,6 @@ namespace minEngine
         psoDesc.DepthStencilState.bDepthTestEnabled = false;
         psoDesc.DepthStencilState.bDepthWriteEnabled = false;
         psoDesc.BlendState.bBlendEnabled = false;
-        psoDesc.RasterizerState.bDepthClipEnabled = false;
         m_PresentPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
 
         m_PresentBindingLayout = cmdList.CreateBindingLayout({

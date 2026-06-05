@@ -1,29 +1,41 @@
 #include "RenderPassBase.h"
 
 #include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLBuffers.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLVertexArrayObject.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
-#include <glad/glad.h>
 #include <string>
 
 namespace minEngine
 {
-    void RenderPassBase::DrawMeshCommand(const MeshDrawCommand& drawCommand)
+    void RenderPassBase::DrawMeshCommand(RHICommandList& cmdList, const MeshDrawCommand& drawCommand)
     {
-        static_cast<OpenGLVertexArrayObject*>(drawCommand.m_VertexDefinition)->Bind();
+        auto layout = OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(drawCommand.m_VertexDefinition);
+        auto vertexBuffer = OpenGLRHIBuffer::WrapLegacyVertexBuffer(drawCommand.m_VertexBuffer);
+
+        if (layout)
+        {
+            cmdList.SetVertexInputLayout(layout.get());
+        }
+        if (vertexBuffer)
+        {
+            cmdList.SetVertexBuffer(vertexBuffer.get());
+        }
 
         if (drawCommand.m_IndexBuffer)
         {
-            static_cast<OpenGLIndexBuffer*>(drawCommand.m_IndexBuffer)->Bind();
-            glDrawElements(GL_TRIANGLES, drawCommand.m_IndexBuffer->GetNumIndices(), GL_UNSIGNED_INT, nullptr);
-            static_cast<OpenGLIndexBuffer*>(drawCommand.m_IndexBuffer)->Unbind();
+            auto indexBuffer = OpenGLRHIBuffer::WrapLegacyIndexBuffer(drawCommand.m_IndexBuffer);
+            if (indexBuffer)
+            {
+                cmdList.SetIndexBuffer(indexBuffer.get());
+                cmdList.DrawIndexed(drawCommand.m_IndexBuffer->GetNumIndices(), 0, 0);
+            }
         }
-        else
+        else if (drawCommand.m_VertexBuffer)
         {
-            glDrawArrays(GL_TRIANGLES, 0, drawCommand.m_VertexBuffer->GetNumVertices());
+            cmdList.Draw(drawCommand.m_VertexBuffer->GetNumVertices(), 0);
         }
     }
 

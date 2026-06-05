@@ -76,7 +76,18 @@ namespace minEngine
         virtual const RHITextureCreateDesc& GetDesc() const = 0;
 
         virtual void* GetNativeResource() const { return nullptr; }
+
+        // OpenGL: GLuint texture name. Legacy RHITexture2D uses GetID() until S5+ removal.
+        virtual uint32_t GetNativeHandle() const
+        {
+            return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(GetNativeResource()));
+        }
     };
+
+    inline uint32_t GetRHINativeTextureHandle(const RHITexture* texture)
+    {
+        return texture ? texture->GetNativeHandle() : 0;
+    }
 
     using RHITextureRef = std::shared_ptr<RHITexture>;
 
@@ -113,6 +124,11 @@ namespace minEngine
         int m_Unit{0};
         RHITextureDesc m_Desc;
     };
+
+    inline uint32_t GetRHINativeTextureHandle(const RHITexture2D* texture)
+    {
+        return texture ? texture->GetID() : 0;
+    }
 
     class RHITextureCube
     {
