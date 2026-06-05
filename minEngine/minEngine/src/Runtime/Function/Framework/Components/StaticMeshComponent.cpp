@@ -52,7 +52,7 @@ namespace minEngine
         if (m_Mesh)
         {
             SceneProxy->m_VertexBuffer = m_Mesh->m_VertexBuffer.get();
-            SceneProxy->m_VertexDefinition = m_Mesh->m_VertexDefinition.get();
+            SceneProxy->m_VertexInputLayout = m_Mesh->m_VertexInputLayout.get();
             SceneProxy->m_IndexBuffer = m_Mesh->m_IndexBuffer.get();
         }
 

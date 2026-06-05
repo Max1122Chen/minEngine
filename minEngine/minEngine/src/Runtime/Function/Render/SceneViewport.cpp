@@ -31,9 +31,9 @@ namespace minEngine
         m_HasPendingResize = false;
     }
 
-    const std::shared_ptr<RHITexture2D>& SceneViewport::GetColorTexture() const
+    const RHITextureRef& SceneViewport::GetColorTexture() const
     {
-        static const std::shared_ptr<RHITexture2D> s_Empty;
+        static const RHITextureRef s_Empty;
         if (!m_RenderTarget)
         {
             return s_Empty;

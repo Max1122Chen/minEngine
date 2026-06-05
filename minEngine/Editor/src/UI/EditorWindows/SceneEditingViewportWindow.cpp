@@ -17,7 +17,7 @@ namespace minEngine
         return m_Context.GetViewportRegistry().GetOrCreateSceneEditingViewportClient(m_Id, m_Title);
     }
 
-    const std::shared_ptr<RHITexture2D>& SceneEditingViewportWindow::GetDisplayColorTexture() const
+    const RHITextureRef& SceneEditingViewportWindow::GetDisplayColorTexture() const
     {
         return GetSceneEditingViewportClient().GetSceneViewport().GetColorTexture();
     }

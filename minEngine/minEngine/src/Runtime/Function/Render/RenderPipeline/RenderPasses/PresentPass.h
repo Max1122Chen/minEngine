@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Render/RHI/RHITexture.h"
 #include "RenderPassBase.h"
 
 namespace minEngine
@@ -11,9 +12,9 @@ namespace minEngine
     class RHIShader;
     class RHIShaderResourceView;
     class RHITexture;
-    class RHITexture2D;
     class RHIBuffer;
     class RHIVertexInputLayout;
+    class VertexBuffer;
     class VertexDefinition;
 
     class PresentPass : public RenderPassBase
@@ -30,7 +31,7 @@ namespace minEngine
         void Execute(RHICommandList& cmdList);
 
     public:
-        std::shared_ptr<RHITexture2D> m_SceneColorTexture;
+        RHITextureRef m_SceneColorTexture;
 
     private:
         std::shared_ptr<VertexBuffer> m_ScreenQuadVertexBuffer;

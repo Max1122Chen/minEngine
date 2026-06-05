@@ -99,14 +99,13 @@ namespace minEngine
             return;
         }
 
-        std::shared_ptr<RHITexture> sceneColorRHI = OpenGLRHITexture::WrapLegacy2D(m_SceneColorTexture);
-        if (!sceneColorRHI)
+        if (!m_SceneColorTexture)
         {
             return;
         }
 
         RHITextureSRVDesc srvDesc;
-        srvDesc.Texture = sceneColorRHI.get();
+        srvDesc.Texture = m_SceneColorTexture.get();
         m_SceneColorSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
 
         RHIBindingResource bindingResource;
@@ -119,8 +118,8 @@ namespace minEngine
         RHIRenderPassInfo presentPassInfo;
         cmdList.BeginRenderPass(presentPassInfo);
 
-        const uint32_t width = m_SceneColorTexture->GetWidth();
-        const uint32_t height = m_SceneColorTexture->GetHeight();
+        const uint32_t width = m_SceneColorTexture->GetDesc().Width;
+        const uint32_t height = m_SceneColorTexture->GetDesc().Height;
         cmdList.SetViewport(0, 0, width, height);
         cmdList.SetGraphicsPipelineState(m_PresentPipelineState.get());
         cmdList.SetBindingSet(0, bindingSet.get());

@@ -19,6 +19,8 @@ namespace minEngine
     class OpenGLRHITexture final : public RHITexture
     {
     public:
+        ~OpenGLRHITexture() override;
+
         explicit OpenGLRHITexture(const RHITextureCreateDesc& desc, const void* initialData);
         static std::shared_ptr<OpenGLRHITexture> WrapLegacy2D(const std::shared_ptr<RHITexture2D>& legacy);
         static std::shared_ptr<OpenGLRHITexture> WrapLegacy2DArray(
@@ -38,6 +40,8 @@ namespace minEngine
         GLuint m_TextureId = 0;
         GLenum m_Target = GL_TEXTURE_2D;
         int32_t m_ArrayLayer = -1;
+        bool m_OwnsGlTexture = false;
+        std::shared_ptr<RHITexture2D> m_OwningLegacyTexture;
     };
 
     class OpenGLRHIBuffer final : public RHIBuffer
@@ -93,6 +97,9 @@ namespace minEngine
         virtual uint32_t GetStride() const override { return m_Stride; }
 
         GLuint GetVertexArrayId() const { return m_VAO; }
+
+        // Binds bufferId into this VAO (must be called with VBO bound for attrib setup).
+        void BindVertexBuffer(GLuint bufferId);
 
     private:
         std::vector<RHIVertexElement> m_Elements;

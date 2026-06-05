@@ -104,6 +104,7 @@ namespace minEngine
                 break;
             }
         }
+
     }
 
     void ShadowPass::UpdateLightViewProjBuffer(Matrix4 inMatrix)
@@ -122,30 +123,23 @@ namespace minEngine
 
             m_DepthOnlyShader->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
 
-            auto layout = OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(drawCommand.m_VertexDefinition);
-            auto vertexBuffer = OpenGLRHIBuffer::WrapLegacyVertexBuffer(drawCommand.m_VertexBuffer);
-
-            if (layout)
+            if (drawCommand.m_VertexInputLayout)
             {
-                cmdList.SetVertexInputLayout(layout.get());
+                cmdList.SetVertexInputLayout(drawCommand.m_VertexInputLayout);
             }
-            if (vertexBuffer)
+            if (drawCommand.m_VertexBuffer)
             {
-                cmdList.SetVertexBuffer(vertexBuffer.get());
+                cmdList.SetVertexBuffer(drawCommand.m_VertexBuffer);
             }
 
             if (drawCommand.m_IndexBuffer)
             {
-                auto indexBuffer = OpenGLRHIBuffer::WrapLegacyIndexBuffer(drawCommand.m_IndexBuffer);
-                if (indexBuffer)
-                {
-                    cmdList.SetIndexBuffer(indexBuffer.get());
-                    cmdList.DrawIndexed(drawCommand.m_IndexBuffer->GetNumIndices(), 0, 0);
-                }
+                cmdList.SetIndexBuffer(drawCommand.m_IndexBuffer);
+                cmdList.DrawIndexed(drawCommand.m_IndexBuffer->GetDesc().ElementCount, 0, 0);
             }
             else if (drawCommand.m_VertexBuffer)
             {
-                cmdList.Draw(drawCommand.m_VertexBuffer->GetNumVertices(), 0);
+                cmdList.Draw(drawCommand.m_VertexBuffer->GetDesc().ElementCount, 0);
             }
         }
     }
@@ -250,6 +244,7 @@ namespace minEngine
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (rhi)
         {
+            rhi->SetDepthMask(true);
             rhi->Clear();
         }
 

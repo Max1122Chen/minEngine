@@ -1,16 +1,33 @@
 #include "SceneRenderTarget.h"
 
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
 #include "Render/RHI/RHI.h"
-#include "Render/RHI/RHITexture.h"
-#include "Render/RHI/RHIBuffers.h"
 
 namespace minEngine
 {
-    void SceneRenderTarget::RefreshModernTextureWrappers()
+    RHITextureCreateDesc SceneRenderTarget::MakeColorDesc(uint32_t width, uint32_t height)
     {
-        m_ColorTextureRHI = OpenGLRHITexture::WrapLegacy2D(m_ColorTexture);
-        m_DepthTextureRHI = OpenGLRHITexture::WrapLegacy2D(m_DepthTexture);
+        RHITextureCreateDesc desc;
+        desc.Dimension = RHITextureDimension::Texture2D;
+        desc.Width = width;
+        desc.Height = height;
+        desc.DepthOrArrayLayers = 1;
+        desc.Format = TextureFormat::RGBA8;
+        desc.Flags = RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource;
+        desc.NumMips = 1;
+        return desc;
+    }
+
+    RHITextureCreateDesc SceneRenderTarget::MakeDepthDesc(uint32_t width, uint32_t height)
+    {
+        RHITextureCreateDesc desc;
+        desc.Dimension = RHITextureDimension::Texture2D;
+        desc.Width = width;
+        desc.Height = height;
+        desc.DepthOrArrayLayers = 1;
+        desc.Format = TextureFormat::DEPTH24STENCIL8;
+        desc.Flags = RHITextureCreateFlags::RenderTarget;
+        desc.NumMips = 1;
+        return desc;
     }
 
     void SceneRenderTarget::Initialize(RHI* rhi, uint32_t width, uint32_t height)
@@ -29,44 +46,25 @@ namespace minEngine
             return;
         }
 
-        if (m_ColorTexture && m_ColorTexture->GetWidth() == width && m_ColorTexture->GetHeight() == height)
+        if (m_ColorTexture && m_ColorTexture->GetDesc().Width == width &&
+            m_ColorTexture->GetDesc().Height == height)
         {
             return;
         }
 
-        m_FrameBuffer = rhi->CreateFrameBuffer(width, height);
         m_Width = width;
         m_Height = height;
 
-        RHITextureDesc colorDesc{
-            .Width = width,
-            .Height = height,
-            .Format = TextureFormat::RGBA8,
-            .Usage = TextureUsage::Color
-        };
-
-        RHITextureDesc depthDesc{
-            .Width = width,
-            .Height = height,
-            .Format = TextureFormat::DEPTH24STENCIL8,
-            .Usage = TextureUsage::DepthStencil
-        };
-
-        m_ColorTexture = rhi->CreateRHITexture2D(nullptr, colorDesc);
-        m_DepthTexture = rhi->CreateRHITexture2D(nullptr, depthDesc);
-
-        m_FrameBuffer->AttachColorBuffer(m_ColorTexture);
-        m_FrameBuffer->AttachDepthStencilBuffer(m_DepthTexture);
-
-        RefreshModernTextureWrappers();
+        m_ColorTexture = rhi->RHICreateTexture2D(MakeColorDesc(width, height), nullptr);
+        m_DepthTexture = rhi->RHICreateTexture2D(MakeDepthDesc(width, height), nullptr);
     }
 
     RHIRenderPassInfo SceneRenderTarget::BuildRenderPassInfo() const
     {
         RHIRenderPassInfo info(
-            m_ColorTextureRHI.get(),
+            m_ColorTexture.get(),
             RHIRenderTargetActions::ClearStore,
-            m_DepthTextureRHI.get(),
+            m_DepthTexture.get(),
             RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil);
         info.ClearValue.Color[0] = 0.1f;
         info.ClearValue.Color[1] = 0.1f;
@@ -78,11 +76,8 @@ namespace minEngine
 
     void SceneRenderTarget::Shutdown()
     {
-        m_ColorTextureRHI.reset();
-        m_DepthTextureRHI.reset();
         m_ColorTexture.reset();
         m_DepthTexture.reset();
-        m_FrameBuffer.reset();
         m_Width = 0;
         m_Height = 0;
     }

@@ -39,7 +39,7 @@ namespace minEngine
 
     protected:
         EditorViewportClient& GetOrCreateViewportClient() override;
-        const std::shared_ptr<RHITexture2D>& GetDisplayColorTexture() const override;
+        const RHITextureRef& GetDisplayColorTexture() const override;
         void OnDrawViewportOverlay(EditorViewportClient& client, const ViewportFrameState& frameState) override;
 
     private:

@@ -9,20 +9,20 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **RND-F02** Modern RHI — **S5 迁移波 2 Done**（场景 Pass 经 `RHICmdBeginRenderPass`；Base/Translucency/SkyBox/PostProcess 现代 draw；`GetRHINativeTextureHandle`；PSO depth/cull）→ **S5+**（材质 Binding、删 Legacy 公共 API — 「大迁徙」）。见 [RND-F02](./Render/RND-F02_MODERN_RHI_DESIGN.md) §6。
-- **RND-F03** Vulkan backend — **Planned**；依赖 F02 契约稳定；与 GL 分里程碑行为对齐（Present → Shadow → 简化 Base → …）。
-- **分支约定：** `master` 上仅 planning/registry 分隔；实现与 [RND-F02 设计](./Render/RND-F02_MODERN_RHI_DESIGN.md) 在 **`render`** 分支。
+- **RND-F02** Modern RHI — **Done**（S0–S5：`RHICreate*`/`RHICmd*`、GL 实现、Pass CommandList）。设计案保留作教案与契约真源。
+- **RND-F03** Legacy RHI removal — **In Progress**（S1 场景 RT、S2 网格缓冲已完成；见设计案 §8）。下一实现：**F03-S3** 引擎 BindingSet（Set0/1/2）。
+- **RND-F04** Vulkan + modern RHI completion — **Planned**（第二后端 + F02 契约中「GL 可简化」项补全）。见 [RND-F04](./Render/RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)。依赖 F03。
+- **分支约定：** `render` 分支继续承载 F03/F04 实现；planning/registry 可合 `master`。
 
-### RND-F02 边界（本阶段）
+### RND-F03 边界（草案）
 
 | In | Out |
 |----|-----|
-| GPU 模型驱动的 RHI 契约（Device、Resource/View、PSO、Binding、RenderPass、CommandList、Transition、Upload） | RenderGraph / FrameGraph |
-| OpenGL backend **实现** 新契约（非 RHI 迁就 GL） | 第一版 Vulkan 全管线（CSM/PBR/Material IR 等为 F03 后续里程碑） |
-| Pass 经 CommandList 提交；去掉 Pass 内 `gl*` / GL 强转 | 以某一 API（含 Vulkan）**定义** RHI 形状 |
-| 设计案 = **现代 RHI 理解教案 + 设计**（normative 是 GPU 语义） | 业务层 `#if VULKAN` 分叉 |
+| 删 Legacy `RHI` API；资源/网格/场景 RT 现代所有权 | Vulkan 代码 |
+| Pass/Env/Shadow 边角迁完；引擎固定 shader 走 Binding | 多队列、真 barrier 语义完善（F04） |
+| Material 绘制迁 BindingSet（含模板/slot 契约） | Material 图编辑器大改（除非绑定迁移必需） |
 
-**验证：** `.\scripts\verify.ps1`；F02 各切片后 Editor 主视口与改前一致（GL 单后端）。
+**验证：** `.\scripts\verify.ps1`；`material-ir` suite；Editor 主视口 + 材质预览。
 
 ---
 
@@ -38,6 +38,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
 | Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
+| Material | `minEngineTests.exe test material-ir` |
 
 Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 
@@ -45,13 +46,9 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 
 ## Explicitly not backlog (unless you promote them)
 
-These are **optional future feats**, not debt owed by old docs:
-
-- **RND-F01** RenderGraph（已登记 **Deferred**；F02/F03 完成后再议）。
+- **RND-F01** RenderGraph（Deferred）。
 - Editor: unified Inspector target model, Material graph Undo, texture preview in Inspector.
 - Core: delegates, Lua scripting bindings.
-- Content Browser: further registry/watcher optimizations beyond R1 incremental `AssetTreeModel` patch.
-- Infra: GitHub Actions (see `TECH_DEBT.md` TD-010 when you want it).
 
 ---
 
@@ -59,10 +56,7 @@ These are **optional future feats**, not debt owed by old docs:
 
 | File | Role |
 |------|------|
-| [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status when starting a **new** registered feature |
-| [RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md) | Modern RHI 教案 + 设计（`render` 分支） |
-| [TECH_DEBT.md](./TECH_DEBT.md) | Deferred problems worth tracking |
-| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |
-| [BOOTSTRAP_DIGEST.md](./BOOTSTRAP_DIGEST.md) | Commands, DoD, agent habits |
-| [RENDER_REFACTOR_PLAN.md](./Render/RENDER_REFACTOR_PLAN.md) | Viewport/SceneDraw（与 F02 正交；Tier B 参考） |
-| Old roadmaps under `Platform/`, `Editor/` | Architecture reference only — see `.cursor/rules/docs-trust-tiers.mdc` |
+| [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status |
+| [RND-F02](./Render/RND-F02_MODERN_RHI_DESIGN.md) | Modern RHI 教案 + 契约（Done） |
+| [RND-F03](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) | Legacy 清零 |
+| [RND-F04](./Render/RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) | Vulkan + 补全 |

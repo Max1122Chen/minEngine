@@ -42,7 +42,7 @@ namespace minEngine
         for (MeshDrawCommand& drawCommand : m_DrawCommands)
         {
             Material* material = drawCommand.m_Material;
-            if (!material || !drawCommand.m_VertexDefinition || !drawCommand.m_VertexBuffer)
+            if (!material || !drawCommand.m_VertexInputLayout || !drawCommand.m_VertexBuffer)
             {
                 continue;
             }

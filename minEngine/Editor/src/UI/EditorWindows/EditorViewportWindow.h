@@ -34,7 +34,7 @@ namespace minEngine
 
     protected:
         virtual EditorViewportClient& GetOrCreateViewportClient() = 0;
-        virtual const std::shared_ptr<RHITexture2D>& GetDisplayColorTexture() const = 0;
+        virtual const RHITextureRef& GetDisplayColorTexture() const = 0;
         virtual ImGuiWindowFlags GetViewportWindowFlags() const;
         virtual void OnDrawViewportOverlay(EditorViewportClient& client, const ViewportFrameState& frameState);
 
@@ -45,6 +45,6 @@ namespace minEngine
 
     private:
         bool DrawSceneColorImage(EditorViewportClient& viewportClient, ViewportFrameState& outFrameState);
-        std::shared_ptr<RHITexture2D> m_PinnedFrameTexture;
+        RHITextureRef m_PinnedFrameTexture;
     };
 }

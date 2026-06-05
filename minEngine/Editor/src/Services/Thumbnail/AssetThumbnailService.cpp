@@ -293,16 +293,17 @@ namespace minEngine
 
         RenderSystem::Get().SubmitSceneDraw(desc);
 
-        const std::shared_ptr<RHITexture2D>& displayTexture = m_InspectorViewport.GetColorTexture();
-        if (!displayTexture || displayTexture->GetWidth() == 0 || displayTexture->GetHeight() == 0)
+        const RHITextureRef& displayTexture = m_InspectorViewport.GetColorTexture();
+        const RHITextureCreateDesc& displayDesc = displayTexture ? displayTexture->GetDesc() : RHITextureCreateDesc{};
+        if (!displayTexture || displayDesc.Width == 0 || displayDesc.Height == 0)
         {
             return ThumbnailView{};
         }
 
         m_CachedView.State = ThumbnailState::Ready;
         m_CachedView.BackendKind = ThumbnailBackendKind::Scene3D;
-        m_CachedView.Width = displayTexture->GetWidth();
-        m_CachedView.Height = displayTexture->GetHeight();
+        m_CachedView.Width = displayDesc.Width;
+        m_CachedView.Height = displayDesc.Height;
         m_CachedView.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(displayTexture.get()));
 
         m_bDirty = false;
@@ -551,16 +552,17 @@ namespace minEngine
 
         RenderSystem::Get().SubmitSceneDraw(desc);
 
-        const std::shared_ptr<RHITexture2D>& displayTexture = entry.Viewport.GetColorTexture();
-        if (!displayTexture || displayTexture->GetWidth() == 0 || displayTexture->GetHeight() == 0)
+        const RHITextureRef& displayTexture = entry.Viewport.GetColorTexture();
+        const RHITextureCreateDesc& displayDesc = displayTexture ? displayTexture->GetDesc() : RHITextureCreateDesc{};
+        if (!displayTexture || displayDesc.Width == 0 || displayDesc.Height == 0)
         {
             return ThumbnailView{};
         }
 
         entry.CachedView.State = ThumbnailState::Ready;
         entry.CachedView.BackendKind = ThumbnailBackendKind::Scene3D;
-        entry.CachedView.Width = displayTexture->GetWidth();
-        entry.CachedView.Height = displayTexture->GetHeight();
+        entry.CachedView.Width = displayDesc.Width;
+        entry.CachedView.Height = displayDesc.Height;
         entry.CachedView.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(displayTexture.get()));
 
         entry.bDirty = false;

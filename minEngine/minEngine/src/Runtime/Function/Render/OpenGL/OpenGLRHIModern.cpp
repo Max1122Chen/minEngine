@@ -72,21 +72,25 @@ namespace minEngine
         return static_cast<OpenGLRHITexture*>(texture)->GetTextureId();
     }
 
+    OpenGLRHITexture::~OpenGLRHITexture() = default;
+
     OpenGLRHITexture::OpenGLRHITexture(const RHITextureCreateDesc& desc, const void* initialData)
         : m_Desc(desc)
         , m_Target(GL_TEXTURE_2D)
     {
         RHITextureDesc legacy = ToLegacyTextureDesc(desc);
-        std::shared_ptr<RHITexture2D> created;
         if (desc.Format == TextureFormat::RGB16F || desc.Format == TextureFormat::RGBA16F)
         {
-            created = std::make_shared<OpenGLTexture2D>(static_cast<const float*>(initialData), legacy);
+            m_OwningLegacyTexture =
+                std::make_shared<OpenGLTexture2D>(static_cast<const float*>(initialData), legacy);
         }
         else
         {
-            created = std::make_shared<OpenGLTexture2D>(static_cast<const unsigned char*>(initialData), legacy);
+            m_OwningLegacyTexture =
+                std::make_shared<OpenGLTexture2D>(static_cast<const unsigned char*>(initialData), legacy);
         }
-        m_TextureId = created ? created->GetID() : 0;
+        m_TextureId = m_OwningLegacyTexture ? m_OwningLegacyTexture->GetID() : 0;
+        m_OwnsGlTexture = m_TextureId != 0;
     }
 
     std::shared_ptr<OpenGLRHITexture> OpenGLRHITexture::WrapLegacy2D(const std::shared_ptr<RHITexture2D>& legacy)
@@ -104,6 +108,8 @@ namespace minEngine
         desc.Flags = RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource;
 
         auto wrapped = std::shared_ptr<OpenGLRHITexture>(new OpenGLRHITexture(desc, nullptr));
+        wrapped->m_OwningLegacyTexture.reset();
+        wrapped->m_OwnsGlTexture = false;
         wrapped->m_TextureId = legacy->GetID();
         return wrapped;
     }
@@ -130,6 +136,8 @@ namespace minEngine
         desc.Flags = RHITextureCreateFlags::RenderTarget;
 
         auto wrapped = std::shared_ptr<OpenGLRHITexture>(new OpenGLRHITexture(desc, nullptr));
+        wrapped->m_OwningLegacyTexture.reset();
+        wrapped->m_OwnsGlTexture = false;
         wrapped->m_TextureId = legacy->GetID();
         wrapped->m_Target = GL_TEXTURE_2D_ARRAY;
         wrapped->m_ArrayLayer = static_cast<int32_t>(arrayLayer);
@@ -245,7 +253,18 @@ namespace minEngine
         m_Stride = offset;
 
         glGenVertexArrays(1, &m_VAO);
+    }
+
+    void OpenGLRHIVertexInputLayout::BindVertexBuffer(GLuint bufferId)
+    {
+        if (m_VAO == 0)
+        {
+            return;
+        }
+
         glBindVertexArray(m_VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, bufferId);
+
         uint32_t index = 0;
         for (const auto& element : m_Elements)
         {
@@ -259,7 +278,6 @@ namespace minEngine
                 reinterpret_cast<const void*>(static_cast<uintptr_t>(element.Offset)));
             ++index;
         }
-        glBindVertexArray(0);
     }
 
     std::shared_ptr<OpenGLRHIVertexInputLayout> OpenGLRHIVertexInputLayout::FromLegacyVAO(

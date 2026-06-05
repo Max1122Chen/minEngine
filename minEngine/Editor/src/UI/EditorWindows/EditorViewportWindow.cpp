@@ -55,8 +55,8 @@ bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportCli
 
     m_PinnedFrameTexture = GetDisplayColorTexture();
     if (!m_PinnedFrameTexture
-        || m_PinnedFrameTexture->GetWidth() == 0
-        || m_PinnedFrameTexture->GetHeight() == 0)
+        || m_PinnedFrameTexture->GetDesc().Width == 0
+        || m_PinnedFrameTexture->GetDesc().Height == 0)
     {
         ImGui::TextWrapped("Scene color texture is not ready.");
         return false;

@@ -9,13 +9,13 @@
 - **Last updated:** 2026-06-04
 - **Branch:** `render`
 - **Code skeleton:** `minEngine/.../Render/RHI/`（见 **§B.7**）
-- **Related:** [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) · `RND-F03`（Planned，另文档） · [RENDER_REFACTOR_PLAN](./RENDER_REFACTOR_PLAN.md)（Viewport/SceneDraw，正交）
+- **Related:** [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md)（Legacy 清零）· [RND-F04](./RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)（Vulkan + 补全）· [RENDER_REFACTOR_PLAN](./RENDER_REFACTOR_PLAN.md)
 
 ## TL;DR
 
 **问题：** 当前 `RHI` 是 OpenGL 全局状态 + 资源工厂的薄封装；Pass 内仍有 `glDraw*` / GL 强转，无法干净映射 Vulkan 等 API。
 
-**方案：** 以 **GPU 如何工作** 为 normative 定义 Modern RHI；OpenGL 作为 **首个适配后端** 实现该语义；Vulkan 在 `RND-F03` 复用同一契约。
+**方案：** 以 **GPU 如何工作** 为 normative 定义 Modern RHI；OpenGL 作为 **首个适配后端** 实现该语义；Legacy 清零见 `RND-F03`；Vulkan + 契约补全见 `RND-F04`。
 
 **状态：** 设计 Draft；**代码壳已落地**（空类型 + TODO）；实现按 **§6** 切片（PSO/RenderPass 优先，非空壳 Draw）。
 
@@ -47,7 +47,7 @@
 ### Out
 
 - **RenderGraph**（`RND-F01`，Deferred）
-- **Vulkan 实现**（`RND-F03`）
+- **Legacy 删除**（`RND-F03`）· **Vulkan + RHI 补全**（`RND-F04`）
 - 本阶段不要求 CSM/PBR/Material IR 的 binding 一次性迁完
 - 不以「兼容 OpenGL 习惯」削弱 GPU 模型（例如 texture unit 写入核心 `RHITexture`）
 
@@ -563,9 +563,9 @@ GetRHI()->GetCapabilities()
 | **S3** | **现代契约层**（**Done**）：`RHI` `RHICreate*` / `RHICmd*`；`RHICommandList` 转发；`OpenGLRHI` 桩（`ME_ASSERT`，不转调 Legacy） | `DynamicRHI.h`、`FRHICommandList` | 编译 |
 | **S4** | **迁移波 1**（**Done**）：`OpenGLRHIModern` + `OpenGLRHI` 实现 S3；**PresentPass → ShadowPass**（Directional/Spot 现代 Pass；Point 仍 Legacy FBO）；`SceneRenderTarget` 产出 `RHIRenderPassInfo`；Present/Shadow 无 `glad` | `FRHIGraphicsPipelineStateFallBack`、GL | `verify.ps1`；Editor 主视口 + 阴影目视 |
 | **S5** | **迁移波 2**（**Done**）：场景 `BeginRenderPass`；Base/Translucency `DrawMeshCommand(cmdList)`；SkyBox/PostProcess/Present 现代 PSO+draw；`GetRHINativeTextureHandle`（Editor/缩略图）；`RenderPasses/` 无 `glad` | Shader Parameters | `verify.ps1`；Inspector/主视口目视 |
-| **S5+** | 材质 `BindForDraw`；删 Legacy `Enable*` / `Bind(unit)` 等公共 API | — | material-ir-test |
+| **S5+** | — | — | **已移至 [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md)**（Legacy 清零 + Material） |
 
-**F03（Vulkan）** 不在此表；契约稳定后以 **与 S4 同级** 方式实现 `VulkanRHI::RHICreate*` / `RHICmd*`。
+**RND-F03 / F04** 不在 F02 表内：见各自设计案。
 
 ### §6.1 推荐推进节奏（你 + Agent）
 

@@ -2,17 +2,15 @@
 
 #include "Core.h"
 #include "Render/RHI/RHIRenderPass.h"
+#include "Render/RHI/RHITexture.h"
 
 #include <memory>
 
 namespace minEngine
 {
-    class FrameBuffer;
-    class RHITexture;
-    class RHITexture2D;
     class RHI;
 
-    /** Owned by SceneViewport (P2+). P0/P1: resources still live on RenderPipeline. */
+    /** Owned by SceneViewport (P2+). GPU color/depth via modern RHI only (RND-F03-S1). */
     class SceneRenderTarget
     {
     public:
@@ -22,22 +20,18 @@ namespace minEngine
 
         uint32_t GetWidth() const { return m_Width; }
         uint32_t GetHeight() const { return m_Height; }
-        const std::shared_ptr<RHITexture2D>& GetColorTexture() const { return m_ColorTexture; }
-        const std::shared_ptr<RHITexture>& GetColorTextureRHI() const { return m_ColorTextureRHI; }
-        const std::shared_ptr<RHITexture>& GetDepthTextureRHI() const { return m_DepthTextureRHI; }
-        FrameBuffer* GetFrameBuffer() const { return m_FrameBuffer.get(); }
+        const RHITextureRef& GetColorTexture() const { return m_ColorTexture; }
+        const RHITextureRef& GetDepthTexture() const { return m_DepthTexture; }
 
         RHIRenderPassInfo BuildRenderPassInfo() const;
 
     private:
-        void RefreshModernTextureWrappers();
+        static RHITextureCreateDesc MakeColorDesc(uint32_t width, uint32_t height);
+        static RHITextureCreateDesc MakeDepthDesc(uint32_t width, uint32_t height);
 
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
-        std::shared_ptr<FrameBuffer> m_FrameBuffer;
-        std::shared_ptr<RHITexture2D> m_ColorTexture;
-        std::shared_ptr<RHITexture2D> m_DepthTexture;
-        std::shared_ptr<RHITexture> m_ColorTextureRHI;
-        std::shared_ptr<RHITexture> m_DepthTextureRHI;
+        RHITextureRef m_ColorTexture;
+        RHITextureRef m_DepthTexture;
     };
 }

@@ -110,6 +110,7 @@ namespace minEngine
     void OpenGLRHI::EnableDepthTest()
     {
         glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
     }
 
     void OpenGLRHI::DisableDepthTest()
@@ -431,6 +432,8 @@ namespace minEngine
         }
         if (hasDepth && ShouldClearDepth(info.DepthStencil.Action))
         {
+            // glClear depth is skipped when GL_DEPTH_WRITEMASK is false (e.g. after SkyBox / translucency).
+            glDepthMask(GL_TRUE);
             glClearDepth(info.ClearValue.Depth);
             clearMask |= GL_DEPTH_BUFFER_BIT;
         }
@@ -444,6 +447,7 @@ namespace minEngine
     {
         DestroyTransientFramebuffer();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDepthMask(GL_FALSE);
     }
 
     void OpenGLRHI::RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
@@ -504,19 +508,34 @@ namespace minEngine
     {
         (void)slot;
         m_BoundVertexBuffer = static_cast<OpenGLRHIBuffer*>(vertexBuffer);
-        if (m_BoundVertexBuffer)
+        if (!m_BoundVertexBuffer)
         {
-            glBindBuffer(m_BoundVertexBuffer->GetBindingTarget(), m_BoundVertexBuffer->GetBufferId());
+            return;
         }
+
+        if (m_BoundVertexLayout)
+        {
+            m_BoundVertexLayout->BindVertexBuffer(m_BoundVertexBuffer->GetBufferId());
+            return;
+        }
+
+        glBindBuffer(m_BoundVertexBuffer->GetBindingTarget(), m_BoundVertexBuffer->GetBufferId());
     }
 
     void OpenGLRHI::RHICmdSetIndexBuffer(RHIBuffer* indexBuffer)
     {
         m_BoundIndexBuffer = static_cast<OpenGLRHIBuffer*>(indexBuffer);
-        if (m_BoundIndexBuffer)
+        if (!m_BoundIndexBuffer)
         {
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_BoundIndexBuffer->GetBufferId());
+            return;
         }
+
+        if (m_BoundVertexLayout)
+        {
+            glBindVertexArray(m_BoundVertexLayout->GetVertexArrayId());
+        }
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_BoundIndexBuffer->GetBufferId());
     }
 
     void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)

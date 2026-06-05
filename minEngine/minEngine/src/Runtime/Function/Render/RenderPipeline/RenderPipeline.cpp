@@ -135,14 +135,7 @@ namespace minEngine
 
     void RenderPipeline::BindSceneRenderTarget(SceneRenderTarget& target)
     {
-        FrameBuffer* frameBuffer = target.GetFrameBuffer();
-        if (!frameBuffer)
-        {
-            return;
-        }
-
-        m_BasePass.m_FrameBuffer = frameBuffer;
-        m_TranslucentPass.m_FrameBuffer = frameBuffer;
+        (void)target;
     }
 
     void RenderPipeline::Shutdown()
@@ -191,9 +184,8 @@ namespace minEngine
         }
 
         SceneRenderTarget* sceneTarget = desc.RenderTarget;
-        const std::shared_ptr<RHITexture2D>& sceneColorTexture = sceneTarget->GetColorTexture();
-        FrameBuffer* sceneFrameBuffer = sceneTarget->GetFrameBuffer();
-        if (!sceneColorTexture || !sceneFrameBuffer)
+        const RHITextureRef& sceneColorTexture = sceneTarget->GetColorTexture();
+        if (!sceneColorTexture)
         {
             ME_CORE_ERROR("Scene render target is not ready");
             return;
@@ -252,7 +244,11 @@ namespace minEngine
 
         RHIRenderPassInfo scenePassInfo = sceneTarget->BuildRenderPassInfo();
         cmdList.BeginRenderPass(scenePassInfo);
-        cmdList.SetViewport(0, 0, sceneColorTexture->GetWidth(), sceneColorTexture->GetHeight());
+        cmdList.SetViewport(
+            0,
+            0,
+            sceneColorTexture->GetDesc().Width,
+            sceneColorTexture->GetDesc().Height);
 
         if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox) && m_SkyBoxPass.IsReady())
         {
@@ -574,14 +570,14 @@ namespace minEngine
             {
                 MeshDrawCommand command;
                 command.m_VertexBuffer = staticMeshProxy->m_VertexBuffer;
-                command.m_VertexDefinition = staticMeshProxy->m_VertexDefinition;
+                command.m_VertexInputLayout = staticMeshProxy->m_VertexInputLayout;
                 command.m_IndexBuffer = staticMeshProxy->m_IndexBuffer;
                 command.m_Material = staticMeshProxy->m_Material;
                 command.m_ModelMatrix = staticMeshProxy->m_Transform.ToMatrix(); 
                 command.m_CastShadow = staticMeshProxy->m_CastShadow;
                 command.m_BoundingBox = staticMeshProxy->m_PrimitiveComponent->GetBoundingBox();
 
-                if (!command.m_Material || !command.m_VertexDefinition || !command.m_VertexBuffer)
+                if (!command.m_Material || !command.m_VertexInputLayout || !command.m_VertexBuffer)
                 {
                     continue;
                 }
