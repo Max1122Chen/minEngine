@@ -1,7 +1,6 @@
 #include "EngineShaderUtils.h"
 
 #include "OpenGL/OpenGLRHIResources.h"
-#include "OpenGL/OpenGLShader.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 
@@ -61,31 +60,20 @@ namespace minEngine
             return rhi.RHICreateShader(vertexSource, fragmentSource, outError);
         }
 
-        OpenGLShader* GetOpenGLShader(RHIShader* shader)
-        {
-            if (!shader)
-            {
-                return nullptr;
-            }
-
-            auto* glShader = dynamic_cast<OpenGLRHIShader*>(shader);
-            return glShader ? glShader->GetGLShader() : nullptr;
-        }
-
         bool TryCompileSourcesOnGpu(
             const std::string& vertexSource,
             const std::string& fragmentSource,
             std::string* outError)
         {
-            const std::shared_ptr<OpenGLShader> shader = std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
-            if (shader->IsValid())
+            const OpenGLRHIShader shader(vertexSource, fragmentSource);
+            if (shader.IsValid())
             {
                 return true;
             }
 
             if (outError != nullptr)
             {
-                *outError = shader->GetCompileLog();
+                *outError = shader.GetCompileLog();
             }
             return false;
         }

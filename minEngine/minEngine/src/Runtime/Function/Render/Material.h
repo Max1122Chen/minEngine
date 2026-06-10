@@ -9,7 +9,6 @@
 
 #include "Runtime/Function/Render/RHI/RHIBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
-#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 
 #include <string>
@@ -60,7 +59,6 @@ namespace minEngine
         }
 
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
-        RHIGraphicsPipelineState* GetPipelineState() const { return m_PipelineState.get(); }
         const std::string& GetShaderCompileLog() const { return m_ShaderCompileLog; }
 
         MaterialEdGraph& GetGraph();
@@ -90,7 +88,6 @@ namespace minEngine
 
     private:
         RHIShaderRef m_GPUShader;
-        RHIGraphicsPipelineStateRef m_PipelineState;
         RHIBindingLayoutRef m_MaterialBindingLayout;
         RHIBufferRef m_ScalarParamsUBO;
         uint32_t m_ScalarParamsUBOSize = 0;

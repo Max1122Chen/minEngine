@@ -10,7 +10,6 @@
 namespace minEngine
 {
     class RHI;
-    class OpenGLShader;
 
     namespace EngineShaderUtils
     {
@@ -31,7 +30,5 @@ namespace minEngine
             const std::string& vertexSource,
             const std::string& fragmentSource,
             std::string* outError = nullptr);
-
-        OpenGLShader* GetOpenGLShader(RHIShader* shader);
     }
 }

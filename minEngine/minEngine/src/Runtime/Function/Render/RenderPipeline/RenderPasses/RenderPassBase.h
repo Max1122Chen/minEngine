@@ -9,7 +9,14 @@ namespace minEngine
 {
     class RenderPipeline;
     class EngineSceneBindingSets;
+    class RHIGraphicsPipelineState;
     class RHICommandList;
+
+    enum class MeshPassKind : uint8_t
+    {
+        Opaque,
+        Translucent,
+    };
 
     struct MeshPassSceneBinding
     {
@@ -30,6 +37,10 @@ namespace minEngine
         virtual void Execute() = 0;
 
     protected:
+        void PrepareMeshDrawCommands(
+            RHICommandList& cmdList,
+            std::vector<MeshDrawCommand>& drawCommands,
+            MeshPassKind passKind);
         void DrawMeshCommand(RHICommandList& cmdList, const MeshDrawCommand& drawCommand);
         void BindSceneDrawResources(
             RHICommandList& cmdList,

@@ -98,14 +98,14 @@ namespace minEngine
                 {RHIBindingType::UniformBuffer, m_PostParamsUniformBuffer.get(), nullptr},
             });
 
-        cmdList.SetGraphicsPipelineState(m_PostProcessPipelineState.get());
-        cmdList.SetBindingSet(EngineShaderBindings::kSetEnginePost, bindingSet.get());
-
-        cmdList.SetVertexInputLayout(m_ScreenQuadVertexLayout.get());
-        if (m_ScreenQuadVertexBuffer)
-        {
-            cmdList.SetVertexBuffer(m_ScreenQuadVertexBuffer.get());
-        }
-        cmdList.Draw(6, 0);
+        const SubmitDrawBinding postBindings[] = {
+            {EngineShaderBindings::kSetEnginePost, bindingSet.get()},
+        };
+        cmdList.SubmitDraw(
+            m_PostProcessPipelineState.get(),
+            postBindings,
+            static_cast<uint32_t>(sizeof(postBindings) / sizeof(postBindings[0])),
+            m_ScreenQuadVertexBuffer.get(),
+            nullptr);
     }
 }

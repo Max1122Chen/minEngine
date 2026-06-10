@@ -3,10 +3,13 @@
 #include "Runtime/Core/Math/Math.h"
 #include "Math/Geometry/AABB.h"
 
+#include <memory>
+
 namespace minEngine
 {
     class Material;
     class RHIBuffer;
+    class RHIGraphicsPipelineState;
     class RHIVertexInputLayout;
 
     class MeshDrawCommandSortKey
@@ -36,6 +39,7 @@ namespace minEngine
         RHIBuffer* m_IndexBuffer = nullptr;
 
         Material* m_Material = nullptr;
+        std::shared_ptr<RHIGraphicsPipelineState> m_PipelineState;
 
         Matrix4 m_ModelMatrix;
         Math::Geometry::AABB m_BoundingBox;

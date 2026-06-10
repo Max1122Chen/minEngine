@@ -8,11 +8,20 @@
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace minEngine
 {
+    class MeshDrawCommand;
+
+    struct SubmitDrawBinding
+    {
+        uint32_t SetIndex = 0;
+        RHIBindingSet* BindingSet = nullptr;
+    };
+
     // Concrete forwarding layer (UE FRHICommandList pattern). No per-backend subclass.
     class RHICommandList
     {
@@ -45,7 +54,6 @@ namespace minEngine
         {
             m_RHI->RHICmdSetViewport(x, y, width, height);
         }
-        void SetVertexInputLayout(RHIVertexInputLayout* layout) { m_RHI->RHICmdSetVertexInputLayout(layout); }
         void SetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot = 0)
         {
             m_RHI->RHICmdSetVertexBuffer(vertexBuffer, slot);
@@ -59,6 +67,20 @@ namespace minEngine
         {
             m_RHI->RHICmdDraw(vertexCount, firstVertex);
         }
+
+        /** Fixed four-step draw path: PSO → binding sets → vertex/index buffers → Draw. */
+        void SubmitDraw(
+            RHIGraphicsPipelineState* pipelineState,
+            const SubmitDrawBinding* bindingSets,
+            uint32_t bindingSetCount,
+            RHIBuffer* vertexBuffer,
+            RHIBuffer* indexBuffer);
+
+        void SubmitDrawMesh(
+            RHIGraphicsPipelineState* pipelineState,
+            const SubmitDrawBinding* bindingSets,
+            uint32_t bindingSetCount,
+            const MeshDrawCommand& drawCommand);
 
         // Resource creation
         RHITextureRef CreateTexture2D(const RHITextureCreateDesc& desc, const void* initialData = nullptr)

@@ -3,6 +3,10 @@
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
 list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Serialization/Legacy/.*")
 list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Reflection/Legacy/.*")
+# F03-M4 P0: EnvMap / IBL offline path removed from engine link (tests keep sources under Tests/).
+list(FILTER SRC EXCLUDE REGEX ".*/Environment/EnvMapCapture\\.cpp$")
+list(FILTER SRC EXCLUDE REGEX ".*/Environment/EngineIBLEnvironment\\.cpp$")
+list(FILTER SRC EXCLUDE REGEX ".*/Environment/BrdfLutGenerator\\.cpp$")
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 

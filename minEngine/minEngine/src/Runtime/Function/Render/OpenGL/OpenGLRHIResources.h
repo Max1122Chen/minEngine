@@ -7,17 +7,15 @@
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 
-#include "OpenGLTexture.h"
-
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace minEngine
 {
-    class OpenGLShader;
-
     class OpenGLRHITexture final : public RHITexture
     {
     public:
@@ -39,9 +37,6 @@ namespace minEngine
         GLenum m_Target = GL_TEXTURE_2D;
         int32_t m_ArrayLayer = -1;
         bool m_OwnsGlTexture = false;
-        std::shared_ptr<OpenGLTexture2D> m_OwningUploadTexture2D;
-        std::shared_ptr<OpenGLTexture2DArray> m_OwningUploadTexture2DArray;
-        std::shared_ptr<OpenGLTextureCube> m_OwningUploadTextureCube;
     };
 
     class OpenGLRHIBuffer final : public RHIBuffer
@@ -64,16 +59,21 @@ namespace minEngine
     class OpenGLRHIShader final : public RHIShader
     {
     public:
-        explicit OpenGLRHIShader(std::shared_ptr<OpenGLShader> shader);
+        OpenGLRHIShader(std::string_view vertexSource, std::string_view fragmentSource);
+        ~OpenGLRHIShader() override;
 
-        virtual bool IsValid() const override;
-        virtual const std::string& GetCompileLog() const override;
+        OpenGLRHIShader(const OpenGLRHIShader&) = delete;
+        OpenGLRHIShader& operator=(const OpenGLRHIShader&) = delete;
 
-        OpenGLShader* GetGLShader() const { return m_Shader.get(); }
-        GLuint GetProgramId() const;
+        virtual bool IsValid() const override { return m_IsValid; }
+        virtual const std::string& GetCompileLog() const override { return m_CompileLog; }
+
+        GLuint GetProgramId() const { return m_ProgramId; }
 
     private:
-        std::shared_ptr<OpenGLShader> m_Shader;
+        GLuint m_ProgramId = 0;
+        bool m_IsValid = false;
+        std::string m_CompileLog;
     };
 
     class OpenGLRHIVertexInputLayout final : public RHIVertexInputLayout
@@ -81,11 +81,6 @@ namespace minEngine
     public:
         OpenGLRHIVertexInputLayout() = default;
         explicit OpenGLRHIVertexInputLayout(std::initializer_list<RHIVertexElement> elements);
-
-        static std::shared_ptr<OpenGLRHIVertexInputLayout> FromLegacyVAO(
-            GLuint vao,
-            const std::vector<RHIVertexElement>& elements,
-            uint32_t stride);
 
         virtual const std::vector<RHIVertexElement>& GetElements() const override { return m_Elements; }
         virtual uint32_t GetStride() const override { return m_Stride; }

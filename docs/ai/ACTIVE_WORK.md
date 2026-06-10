@@ -10,8 +10,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 ## In focus (edit as you go)
 
 - **RND-F02** Modern RHI — **Done**（S0–S5：`RHICreate*`/`RHICmd*`、GL 实现、Pass CommandList）。设计案保留作教案与契约真源。
-- **RND-F03** Legacy RHI removal — **Done**（M1 迁移 + M2 收尾 @ 2026-06-01）。Material `RHIShader`/Set2 UBO/PSO；引擎 Pass BindingSet+UBO；删 `Shader` Asset、`RHIShaderLegacy`、`OpenGLBuffers`/`OpenGLVertexArrayObject`；grep 门禁全绿；`verify.ps1` + 黄金场景目视 OK。Blueprint：[RND-F03_MIGRATION_BLUEPRINT.md](./Render/RND-F03_MIGRATION_BLUEPRINT.md)。
-- **RND-F04** Vulkan + modern RHI completion — **Planned**（下一渲染主线：第二后端 + F02 契约补全）。见 [RND-F04](./Render/RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)。
+- **RND-F03** Legacy RHI removal — **In Progress（M3/M4）**。M1–M2 Done。**主线 M4**：按 [F03 §16](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) **重构管线编排**（权威 PSO、Pass 内 RHICmd、统一节拍）— **非** 用现代 API 套旧 GL 状态机。**M3** 后端类型绞杀配套。**本阶段停用 EnvMap/IBL 捕获**，验收不要求 IBL。
+- **RND-F04** Vulkan + modern RHI completion — **Planned**（依赖 F03 **含 M3** Done）。见 [RND-F04](./Render/RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)。
 - **分支约定：** `render` 分支继续承载 F03/F04 实现；planning/registry 可合 `master`。
 
 ### RND-F03 边界（草案）

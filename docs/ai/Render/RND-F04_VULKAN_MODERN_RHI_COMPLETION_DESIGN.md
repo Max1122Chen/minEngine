@@ -7,7 +7,7 @@
 | **Feature ID** | `RND-F04` |
 | **Status** | Planned |
 | **Last updated** | 2026-06-01 |
-| **Depends on** | `RND-F03` (no Legacy public API; single modern call surface) |
+| **Depends on** | `RND-F03` **Done**（含 M3 后端内绞杀，见 F03 §12.2） |
 | **Related** | [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
 
 ## 1) Goal

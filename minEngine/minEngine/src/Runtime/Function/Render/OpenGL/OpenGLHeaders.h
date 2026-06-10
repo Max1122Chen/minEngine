@@ -1,3 +1,2 @@
 #pragma once
-#include "OpenGLShader.h"
-#include "OpenGLTexture.h"
+#include "OpenGLRHIResources.h"

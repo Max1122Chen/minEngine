@@ -2,7 +2,6 @@
 
 #include "Core.h"
 #include "Render/RHI/RHIBinding.h"
-#include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 
 namespace minEngine
@@ -22,8 +21,7 @@ namespace minEngine
             const SceneRenderContext& ctx,
             RHIBuffer* dirLightViewProjs,
             RHIBuffer* cascadeFarPlanes,
-            RHIBuffer* spotLightViewProjs,
-            const EngineIBLEnvironment* iblEnvironment);
+            RHIBuffer* spotLightViewProjs);
 
         void UpdatePerObjectModel(RHIBuffer* perObjectBuffer, const Matrix4& model) const;
 

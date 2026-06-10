@@ -22,6 +22,8 @@
 
 #include <algorithm>
 
+// TODO: we have to refactor this file to use the new RHI system.
+
 namespace minEngine
 {
     namespace
@@ -157,7 +159,6 @@ namespace minEngine
 
         void DrawEnvMapMesh(RHICommandList& cmdList, const EnvMapMeshResources& mesh)
         {
-            cmdList.SetVertexInputLayout(mesh.VertexLayout.get());
             cmdList.SetVertexBuffer(mesh.VertexBuffer.get());
             cmdList.Draw(mesh.VertexCount, 0);
         }
@@ -198,6 +199,7 @@ namespace minEngine
             RHIGraphicsPSODesc psoDesc;
             psoDesc.VertexShader = shader;
             psoDesc.PixelShader = shader;
+            psoDesc.VertexInputLayout = resources.
             psoDesc.DepthStencilState.bDepthTestEnabled = true;
             psoDesc.DepthStencilState.bDepthWriteEnabled = true;
             psoDesc.BlendState.bBlendEnabled = false;

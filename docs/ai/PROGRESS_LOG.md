@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-01 (RND-F03 Done)
+Last updated: 2026-06-02 (RND-F03 M4 P0–P2)
 
 ## Purpose
 
@@ -1073,3 +1073,21 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Golden scene visual OK (prior session user sign-off).
 - Next step:
   User commit on `render`; promote F04 when ready.
+
+### 2026-06-02 - RND-F03 M4 P0–P2 pipeline refactor (`render`)
+- Goal:
+  Execute M4 adopted plan §9: detach runtime IBL/EnvMap, unify draw submission, move mesh PSO authority from Material to Pass + MeshDrawCommand; M3 backend type inline alongside.
+- Main changes:
+  **P0:** CMake excludes `EnvMapCapture` / `EngineIBLEnvironment` / `BrdfLutGenerator` from engine link; `RenderPipeline` drops IBL init; `SkyBoxPass` self-loads `environment_*` cubemap; `BuildSceneSet1` leaves IBL slots null; PBR template + assembler use direct light + simple ambient (`AO * 0.03`); MaterialIR IBL GPU tests skipped.
+  **P1:** `RHICommandList::SubmitDraw` / `SubmitDrawMesh` — sole four-step draw path (PSO → bindings → VB/IB → Draw); all passes migrated (Shadow/Present/Post/Sky/mesh).
+  **P2:** `RenderPassBase::PrepareMeshDrawCommands` builds per-draw PSO with `material shader + cmd.m_VertexInputLayout + pass fixed depth/blend`; `MeshDrawCommand::m_PipelineState`; `Material` no longer owns `m_PipelineState`.
+  **M3 (partial):** Delete `OpenGLShader.*` / `OpenGLTexture.*`; logic inlined into `OpenGLRHIResources`; trim legacy `RHI.h` surface.
+  **Docs:** `RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md` (§9 adopted plan); `FEATURE_REGISTRY` / `ACTIVE_WORK` / F03 §16 pointers updated.
+- Risks or caveats:
+  Per-frame PSO `Create` per mesh draw (no cache yet); `Material::BindForDraw` still creates BindingSet each draw (P3); `RHICreateSRV` direct `new` unchanged (P0′).
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests Editor` PASS.
+  `.\scripts\verify.ps1` (smoke + material-ir) PASS.
+  Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
+- Next step:
+  P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.

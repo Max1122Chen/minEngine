@@ -40,8 +40,6 @@ namespace minEngine
         m_ShadowResourceManager.Initialize(rhi);
         m_FrameIndex = 0;
 
-        rhi->SetClearColor(Vector4(0.1f, 0.1f, 0.1f, 1.0f));
-
         RHICommandList cmdList(rhi);
         m_LightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4)));
         m_PerFrameUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(PerFrameData)));
@@ -112,7 +110,7 @@ namespace minEngine
         m_PresentPass.m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
         m_PresentPass.m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
 
-        // IBL + SkyBox: RenderSystem::LoadEngineRenderingAssets() after PathRegistry is ready.
+        // SkyBox cubemap: LoadEngineRenderingAssets() after PathRegistry is ready (F03-M4 P0: no runtime IBL).
     }
 
     void RenderPipeline::LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot)
@@ -124,7 +122,6 @@ namespace minEngine
         }
 
         m_EngineDefaultAssetsRoot = engineDefaultAssetsRoot;
-        m_IBLEnvironment.Initialize(rhi, engineDefaultAssetsRoot);
         if (!engineDefaultAssetsRoot.empty())
         {
             m_SkyBoxPass.Initialize(*rhi, std::filesystem::path(engineDefaultAssetsRoot));
@@ -140,7 +137,6 @@ namespace minEngine
     {
         m_SceneBindings.Shutdown();
         m_SkyBoxPass.Shutdown();
-        m_IBLEnvironment.Shutdown();
         m_ShadowResourceManager.Shutdown();
 
         m_ShadowPass.m_ShadowDrawCommands.clear();
@@ -230,8 +226,7 @@ namespace minEngine
             ctx,
             m_DirLightViewProjUniformBuffer.get(),
             m_CascadeFarPlaneUniformBuffer.get(),
-            m_SpotLightViewProjUniformBuffer.get(),
-            &m_IBLEnvironment);
+            m_SpotLightViewProjUniformBuffer.get());
 
         m_BasePass.m_DrawCommands = ctx.OpaqueQueue;
         m_BasePass.m_DirectionalShadowHandle = ctx.DirectionalShadowHandle;
@@ -243,9 +238,6 @@ namespace minEngine
         m_TranslucentPass.m_SpotShadowHandles = ctx.SpotShadowHandles;
         m_TranslucentPass.m_PointShadowHandles = ctx.PointShadowHandles;
 
-        // Shadow pass disables color output; restore state for scene pass.
-        rhi->SetDrawBuffer(0);
-        rhi->SetReadBuffer(0);
 
         RHIRenderPassInfo scenePassInfo = sceneTarget->BuildRenderPassInfo();
         cmdList.BeginRenderPass(scenePassInfo);
@@ -261,7 +253,7 @@ namespace minEngine
             {
                 if (skyBoxProxy->m_Enabled && skyBoxProxy->m_SkyBoxComponent)
                 {
-                    m_SkyBoxPass.Execute(cmdList, *ctx.Camera, *skyBoxProxy, m_IBLEnvironment);
+                    m_SkyBoxPass.Execute(cmdList, *ctx.Camera, *skyBoxProxy);
                 }
             }
         }

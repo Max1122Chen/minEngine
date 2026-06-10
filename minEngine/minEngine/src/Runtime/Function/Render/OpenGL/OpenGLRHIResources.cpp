@@ -1,39 +1,424 @@
 #include "OpenGLRHIResources.h"
 
-#include "OpenGLShader.h"
-#include "OpenGLTexture.h"
+#include "Log/LogSystem.h"
 #include "glad/glad.h"
+
+#include <vector>
 
 namespace minEngine
 {
     namespace
     {
-        OpenGLTextureUploadDesc ToLegacyTextureDesc(const RHITextureCreateDesc& desc)
+        TextureUsage GetTextureUsage(const RHITextureCreateDesc& desc)
         {
-            OpenGLTextureUploadDesc legacy;
-            legacy.Width = desc.Width;
-            legacy.Height = desc.Height;
-            legacy.Layers = desc.DepthOrArrayLayers;
-            legacy.Format = desc.Format;
             if ((desc.Flags & RHITextureCreateFlags::RenderTarget) != RHITextureCreateFlags::None)
             {
-                if (desc.Format == TextureFormat::DEPTH24STENCIL8 ||
-                    desc.Format == TextureFormat::DEPTH16 ||
-                    desc.Format == TextureFormat::DEPTH24 ||
-                    desc.Format == TextureFormat::DEPTH32)
+                if (desc.Format == TextureFormat::DEPTH16 || desc.Format == TextureFormat::DEPTH24 ||
+                    desc.Format == TextureFormat::DEPTH32 || desc.Format == TextureFormat::DEPTH24STENCIL8)
                 {
-                    legacy.Usage = TextureUsage::DepthStencil;
+                    return TextureUsage::DepthStencil;
+                }
+                return TextureUsage::Color;
+            }
+            return TextureUsage::TextureBinding;
+        }
+
+        void ResolveOpenGLTextureFormat(
+            TextureFormat format,
+            TextureUsage usage,
+            GLint& internalFormat,
+            GLenum& dataFormat,
+            GLenum& dataType)
+        {
+            internalFormat = 0;
+            dataFormat = 0;
+            dataType = GL_UNSIGNED_BYTE;
+
+            if (format == TextureFormat::RED)
+            {
+                internalFormat = GL_R8;
+                dataFormat = GL_RED;
+            }
+            else if (format == TextureFormat::RGB8)
+            {
+                internalFormat = GL_RGB8;
+                dataFormat = GL_RGB;
+            }
+            else if (format == TextureFormat::RGBA8)
+            {
+                internalFormat = GL_RGBA8;
+                dataFormat = GL_RGBA;
+            }
+            else if (format == TextureFormat::RGB16F)
+            {
+                internalFormat = GL_RGB16F;
+                dataFormat = GL_RGB;
+                dataType = GL_FLOAT;
+            }
+            else if (format == TextureFormat::RGBA16F)
+            {
+                internalFormat = GL_RGBA16F;
+                dataFormat = GL_RGBA;
+                dataType = GL_FLOAT;
+            }
+            else if (format == TextureFormat::DEPTH16)
+            {
+                internalFormat = GL_DEPTH_COMPONENT16;
+                dataFormat = GL_DEPTH_COMPONENT;
+                dataType = GL_UNSIGNED_SHORT;
+            }
+            else if (format == TextureFormat::DEPTH24)
+            {
+                internalFormat = GL_DEPTH_COMPONENT24;
+                dataFormat = GL_DEPTH_COMPONENT;
+                dataType = GL_UNSIGNED_INT;
+            }
+            else if (format == TextureFormat::DEPTH32)
+            {
+                internalFormat = GL_DEPTH_COMPONENT32;
+                dataFormat = GL_DEPTH_COMPONENT;
+                dataType = GL_UNSIGNED_INT;
+            }
+            else if (format == TextureFormat::DEPTH24STENCIL8)
+            {
+                internalFormat = GL_DEPTH24_STENCIL8;
+                dataFormat = GL_DEPTH_STENCIL;
+                dataType = GL_UNSIGNED_INT_24_8;
+            }
+
+            if (internalFormat == 0)
+            {
+                if (usage == TextureUsage::Depth)
+                {
+                    internalFormat = GL_DEPTH_COMPONENT;
+                    dataFormat = GL_DEPTH_COMPONENT;
+                }
+                else if (usage == TextureUsage::Stencil)
+                {
+                    internalFormat = GL_STENCIL_INDEX;
+                    dataFormat = GL_STENCIL_INDEX;
+                }
+                else if (usage == TextureUsage::DepthStencil)
+                {
+                    internalFormat = GL_DEPTH_STENCIL;
+                    dataFormat = GL_DEPTH_STENCIL;
+                    dataType = GL_UNSIGNED_INT_24_8;
+                }
+            }
+        }
+
+        bool IsDepthLikeTexture(TextureFormat format, TextureUsage usage)
+        {
+            return format == TextureFormat::DEPTH16 || format == TextureFormat::DEPTH24 ||
+                   format == TextureFormat::DEPTH32 || format == TextureFormat::DEPTH24STENCIL8 ||
+                   usage == TextureUsage::Depth || usage == TextureUsage::DepthStencil;
+        }
+
+        bool IsFloatColorTexture(TextureFormat format)
+        {
+            return format == TextureFormat::RGB16F || format == TextureFormat::RGBA16F;
+        }
+
+        void Configure2DTextureSampling(GLenum target, TextureFormat format, TextureUsage usage, bool generateMipmaps)
+        {
+            if (IsDepthLikeTexture(format, usage))
+            {
+                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+                const float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+                glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, borderColor);
+                return;
+            }
+
+            if (IsFloatColorTexture(format))
+            {
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                return;
+            }
+
+            glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            (void)generateMipmaps;
+        }
+
+        GLuint UploadTexture2D(const RHITextureCreateDesc& desc, const void* initialData)
+        {
+            const TextureUsage usage = GetTextureUsage(desc);
+            GLuint textureId = 0;
+            glGenTextures(1, &textureId);
+            glBindTexture(GL_TEXTURE_2D, textureId);
+
+            GLint internalFormat = 0;
+            GLenum dataFormat = 0;
+            GLenum dataType = GL_UNSIGNED_BYTE;
+            ResolveOpenGLTextureFormat(desc.Format, usage, internalFormat, dataFormat, dataType);
+
+            const bool isDepthStencil = IsDepthLikeTexture(desc.Format, usage);
+            Configure2DTextureSampling(GL_TEXTURE_2D, desc.Format, usage, true);
+
+            if (internalFormat != 0 && desc.Width > 0 && desc.Height > 0)
+            {
+                GLint previousUnpackAlignment = 4;
+                glGetIntegerv(GL_UNPACK_ALIGNMENT, &previousUnpackAlignment);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+                if (IsFloatColorTexture(desc.Format))
+                {
+                    glTexImage2D(
+                        GL_TEXTURE_2D,
+                        0,
+                        internalFormat,
+                        static_cast<GLsizei>(desc.Width),
+                        static_cast<GLsizei>(desc.Height),
+                        0,
+                        dataFormat,
+                        dataType,
+                        initialData);
                 }
                 else
                 {
-                    legacy.Usage = TextureUsage::Color;
+                    glTexImage2D(
+                        GL_TEXTURE_2D,
+                        0,
+                        internalFormat,
+                        static_cast<GLsizei>(desc.Width),
+                        static_cast<GLsizei>(desc.Height),
+                        0,
+                        dataFormat,
+                        dataType,
+                        initialData);
+                }
+
+                glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
+
+                if (!isDepthStencil)
+                {
+                    glGenerateMipmap(GL_TEXTURE_2D);
+                }
+            }
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+            return textureId;
+        }
+
+        GLuint UploadTextureCube(const RHITextureCreateDesc& desc, const void* initialData, bool generateMipmaps)
+        {
+            if (desc.Width == 0 || desc.Height == 0)
+            {
+                ME_CORE_ERROR("OpenGLRHITexture cube: Width/Height must be > 0.");
+                return 0;
+            }
+
+            const TextureUsage usage = GetTextureUsage(desc);
+            std::vector<unsigned char*> faceData;
+            if (initialData != nullptr)
+            {
+                auto* faces = static_cast<const unsigned char* const*>(initialData);
+                for (uint32_t i = 0; i < desc.DepthOrArrayLayers; ++i)
+                {
+                    faceData.push_back(const_cast<unsigned char*>(faces[i]));
                 }
             }
             else
             {
-                legacy.Usage = TextureUsage::TextureBinding;
+                faceData.assign(desc.DepthOrArrayLayers, nullptr);
             }
-            return legacy;
+
+            if (faceData.size() < 6)
+            {
+                ME_CORE_ERROR("OpenGLRHITexture cube: expected 6 face pointers, got {}.", faceData.size());
+                return 0;
+            }
+
+            GLuint textureId = 0;
+            glGenTextures(1, &textureId);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, textureId);
+
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+            GLint internalFormat = 0;
+            GLenum dataFormat = 0;
+            GLenum dataType = GL_UNSIGNED_BYTE;
+            ResolveOpenGLTextureFormat(desc.Format, usage, internalFormat, dataFormat, dataType);
+
+            const bool isDepthLike = IsDepthLikeTexture(desc.Format, usage);
+            if (!isDepthLike && internalFormat == 0)
+            {
+                ME_CORE_ERROR("OpenGLRHITexture cube: unsupported color format.");
+                glDeleteTextures(1, &textureId);
+                return 0;
+            }
+
+            if (isDepthLike)
+            {
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            }
+            else if (generateMipmaps)
+            {
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            }
+            else
+            {
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            }
+
+            GLint previousUnpackAlignment = 4;
+            if (!isDepthLike)
+            {
+                glGetIntegerv(GL_UNPACK_ALIGNMENT, &previousUnpackAlignment);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            }
+
+            for (unsigned int faceIndex = 0; faceIndex < 6; faceIndex++)
+            {
+                const unsigned char* facePixels = faceData[faceIndex];
+                if (!isDepthLike && facePixels == nullptr && !IsFloatColorTexture(desc.Format))
+                {
+                    ME_CORE_ERROR("OpenGLRHITexture cube: color face {} is null.", faceIndex);
+                    continue;
+                }
+
+                glTexImage2D(
+                    GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex,
+                    0,
+                    internalFormat,
+                    static_cast<GLsizei>(desc.Width),
+                    static_cast<GLsizei>(desc.Height),
+                    0,
+                    dataFormat,
+                    dataType,
+                    facePixels);
+            }
+
+            if (!isDepthLike)
+            {
+                glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
+                if (generateMipmaps && textureId != 0)
+                {
+                    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+                }
+            }
+
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            return textureId;
+        }
+
+        GLuint UploadTexture2DArray(const RHITextureCreateDesc& desc, const void* initialData)
+        {
+            const uint32_t layerCount = (desc.DepthOrArrayLayers == 0) ? 1u : desc.DepthOrArrayLayers;
+            const TextureUsage usage = GetTextureUsage(desc);
+
+            GLuint textureId = 0;
+            glGenTextures(1, &textureId);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, textureId);
+
+            GLint internalFormat = 0;
+            GLenum dataFormat = 0;
+            GLenum dataType = GL_UNSIGNED_BYTE;
+            ResolveOpenGLTextureFormat(desc.Format, usage, internalFormat, dataFormat, dataType);
+            const bool isDepthLike = IsDepthLikeTexture(desc.Format, usage);
+
+            if (isDepthLike)
+            {
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+                float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+                glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);
+            }
+            else
+            {
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            }
+
+            if (internalFormat != 0 && desc.Width > 0 && desc.Height > 0)
+            {
+                glTexImage3D(
+                    GL_TEXTURE_2D_ARRAY,
+                    0,
+                    internalFormat,
+                    static_cast<GLsizei>(desc.Width),
+                    static_cast<GLsizei>(desc.Height),
+                    static_cast<GLsizei>(layerCount),
+                    0,
+                    dataFormat,
+                    dataType,
+                    initialData);
+
+                if (!isDepthLike)
+                {
+                    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+                }
+            }
+
+            glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+            return textureId;
+        }
+
+        std::string ReadShaderInfoLog(unsigned int shaderObject)
+        {
+            int logLength = 0;
+            glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &logLength);
+            if (logLength <= 1)
+            {
+                return {};
+            }
+
+            std::vector<char> logBuffer(static_cast<size_t>(logLength));
+            glGetShaderInfoLog(shaderObject, logLength, nullptr, logBuffer.data());
+            return std::string(logBuffer.data());
+        }
+
+        std::string ReadProgramInfoLog(unsigned int programObject)
+        {
+            int logLength = 0;
+            glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &logLength);
+            if (logLength <= 1)
+            {
+                return {};
+            }
+
+            std::vector<char> logBuffer(static_cast<size_t>(logLength));
+            glGetProgramInfoLog(programObject, logLength, nullptr, logBuffer.data());
+            return std::string(logBuffer.data());
+        }
+
+        bool CompileShaderStage(unsigned int shaderObject, GLenum stage, std::string_view source, std::string& outLog)
+        {
+            const char* sourcePtr = source.data();
+            const int sourceLength = static_cast<int>(source.size());
+            glShaderSource(shaderObject, 1, &sourcePtr, &sourceLength);
+            glCompileShader(shaderObject);
+
+            int compileStatus = GL_FALSE;
+            glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &compileStatus);
+            if (compileStatus == GL_TRUE)
+            {
+                return true;
+            }
+
+            outLog = ReadShaderInfoLog(shaderObject);
+            if (outLog.empty())
+            {
+                outLog = stage == GL_VERTEX_SHADER ? "Vertex shader compilation failed." : "Fragment shader compilation failed.";
+            }
+            return false;
         }
 
         GLenum VertexElementTypeToGL(VertexElementType type)
@@ -70,55 +455,32 @@ namespace minEngine
         return static_cast<OpenGLRHITexture*>(texture)->GetTextureId();
     }
 
-    OpenGLRHITexture::~OpenGLRHITexture() = default;
+    OpenGLRHITexture::~OpenGLRHITexture()
+    {
+        if (m_OwnsGlTexture && m_TextureId != 0)
+        {
+            glDeleteTextures(1, &m_TextureId);
+            m_TextureId = 0;
+        }
+    }
 
     OpenGLRHITexture::OpenGLRHITexture(const RHITextureCreateDesc& desc, const void* initialData)
         : m_Desc(desc)
     {
-        OpenGLTextureUploadDesc legacy = ToLegacyTextureDesc(desc);
         switch (desc.Dimension)
         {
         case RHITextureDimension::Texture2DArray:
             m_Target = GL_TEXTURE_2D_ARRAY;
-            m_OwningUploadTexture2DArray =
-                std::make_shared<OpenGLTexture2DArray>(static_cast<const unsigned char*>(initialData), legacy);
-            m_TextureId = m_OwningUploadTexture2DArray ? m_OwningUploadTexture2DArray->GetID() : 0;
+            m_TextureId = UploadTexture2DArray(desc, initialData);
             break;
         case RHITextureDimension::TextureCube:
-        {
             m_Target = GL_TEXTURE_CUBE_MAP;
-            std::vector<unsigned char*> faceData;
-            if (initialData != nullptr)
-            {
-                auto* faces = static_cast<const unsigned char* const*>(initialData);
-                for (uint32_t i = 0; i < desc.DepthOrArrayLayers; ++i)
-                {
-                    faceData.push_back(const_cast<unsigned char*>(faces[i]));
-                }
-            }
-            else
-            {
-                faceData.assign(desc.DepthOrArrayLayers, nullptr);
-            }
-            m_OwningUploadTextureCube =
-                std::make_shared<OpenGLTextureCube>(faceData, legacy, false);
-            m_TextureId = m_OwningUploadTextureCube ? m_OwningUploadTextureCube->GetID() : 0;
+            m_TextureId = UploadTextureCube(desc, initialData, false);
             break;
-        }
         case RHITextureDimension::Texture2D:
         default:
             m_Target = GL_TEXTURE_2D;
-            if (desc.Format == TextureFormat::RGB16F || desc.Format == TextureFormat::RGBA16F)
-            {
-                m_OwningUploadTexture2D =
-                    std::make_shared<OpenGLTexture2D>(static_cast<const float*>(initialData), legacy);
-            }
-            else
-            {
-                m_OwningUploadTexture2D =
-                    std::make_shared<OpenGLTexture2D>(static_cast<const unsigned char*>(initialData), legacy);
-            }
-            m_TextureId = m_OwningUploadTexture2D ? m_OwningUploadTexture2D->GetID() : 0;
+            m_TextureId = UploadTexture2D(desc, initialData);
             break;
         }
         m_OwnsGlTexture = m_TextureId != 0;
@@ -165,25 +527,59 @@ namespace minEngine
         glBindBuffer(m_Target, 0);
     }
 
-    OpenGLRHIShader::OpenGLRHIShader(std::shared_ptr<OpenGLShader> shader)
-        : m_Shader(std::move(shader))
+    OpenGLRHIShader::~OpenGLRHIShader()
     {
+        if (m_ProgramId != 0)
+        {
+            glDeleteProgram(m_ProgramId);
+            m_ProgramId = 0;
+        }
     }
 
-    bool OpenGLRHIShader::IsValid() const
+    OpenGLRHIShader::OpenGLRHIShader(std::string_view vertexSource, std::string_view fragmentSource)
     {
-        return m_Shader && m_Shader->IsValid();
-    }
+        const unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        const unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
-    const std::string& OpenGLRHIShader::GetCompileLog() const
-    {
-        static const std::string kEmpty;
-        return m_Shader ? m_Shader->GetCompileLog() : kEmpty;
-    }
+        std::string stageLog;
+        if (!CompileShaderStage(vertexShader, GL_VERTEX_SHADER, vertexSource, stageLog))
+        {
+            m_CompileLog = "Vertex shader compile error:\n" + stageLog;
+            ME_CORE_ERROR("{}", m_CompileLog);
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return;
+        }
 
-    GLuint OpenGLRHIShader::GetProgramId() const
-    {
-        return m_Shader ? m_Shader->m_ID : 0;
+        if (!CompileShaderStage(fragmentShader, GL_FRAGMENT_SHADER, fragmentSource, stageLog))
+        {
+            m_CompileLog = "Fragment shader compile error:\n" + stageLog;
+            ME_CORE_ERROR("{}", m_CompileLog);
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return;
+        }
+
+        m_ProgramId = glCreateProgram();
+        glAttachShader(m_ProgramId, vertexShader);
+        glAttachShader(m_ProgramId, fragmentShader);
+        glLinkProgram(m_ProgramId);
+
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        int linkStatus = GL_FALSE;
+        glGetProgramiv(m_ProgramId, GL_LINK_STATUS, &linkStatus);
+        if (linkStatus != GL_TRUE)
+        {
+            m_CompileLog = "Shader program link error:\n" + ReadProgramInfoLog(m_ProgramId);
+            ME_CORE_ERROR("{}", m_CompileLog);
+            glDeleteProgram(m_ProgramId);
+            m_ProgramId = 0;
+            return;
+        }
+
+        m_IsValid = true;
     }
 
     OpenGLRHIVertexInputLayout::OpenGLRHIVertexInputLayout(std::initializer_list<RHIVertexElement> elements)
@@ -224,18 +620,6 @@ namespace minEngine
                 reinterpret_cast<const void*>(static_cast<uintptr_t>(element.Offset)));
             ++index;
         }
-    }
-
-    std::shared_ptr<OpenGLRHIVertexInputLayout> OpenGLRHIVertexInputLayout::FromLegacyVAO(
-        GLuint vao,
-        const std::vector<RHIVertexElement>& elements,
-        uint32_t stride)
-    {
-        auto wrapped = std::make_shared<OpenGLRHIVertexInputLayout>();
-        wrapped->m_Elements = elements;
-        wrapped->m_Stride = stride;
-        wrapped->m_VAO = vao;
-        return wrapped;
     }
 
     OpenGLRHIShaderResourceView::OpenGLRHIShaderResourceView(const RHITextureSRVDesc& desc)

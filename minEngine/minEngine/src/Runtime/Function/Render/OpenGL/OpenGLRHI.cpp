@@ -2,7 +2,7 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
-#include "OpenGLShader.h"
+#include "OpenGLRHIResources.h"
 
 #include "Render/RHI/RHIBinding.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
@@ -30,26 +30,6 @@ namespace minEngine
             }
         }
 
-        void ApplyCullMode(const RHIRasterizerStateDesc& rasterizer)
-        {
-            if (!rasterizer.bCullEnabled || rasterizer.CullMode == RHICullMode::None)
-            {
-                glDisable(GL_CULL_FACE);
-                return;
-            }
-
-            glEnable(GL_CULL_FACE);
-            switch (rasterizer.CullMode)
-            {
-            case RHICullMode::Front:
-                glCullFace(GL_FRONT);
-                break;
-            case RHICullMode::Back:
-            default:
-                glCullFace(GL_BACK);
-                break;
-            }
-        }
     }
 
     void OpenGLRHI::Initialize()
@@ -67,97 +47,7 @@ namespace minEngine
         ME_CORE_INFO("OpenGLRHI Shutdown");
     }
 
-    void OpenGLRHI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
-    {
-        glViewport(x, y, width, height);
-    }
-
-    void OpenGLRHI::SetClearColor(Vector4 clearColor)
-    {
-        glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-    }
-
-    void OpenGLRHI::Clear()
-    {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    }
-
-    void OpenGLRHI::SetDrawBuffer(uint32_t index)
-    {
-        if(index == -1) // GL_NONE
-        {
-            glDrawBuffer(GL_NONE);
-        }
-        else
-        {
-            glDrawBuffer(GL_COLOR_ATTACHMENT0 + index);
-        }
-    }
-
-    void OpenGLRHI::SetReadBuffer(uint32_t index)
-    {
-        if(index == -1) // GL_NONE
-        {
-            glReadBuffer(GL_NONE);
-        }
-        else
-        {
-            glReadBuffer(GL_COLOR_ATTACHMENT0 + index);
-        }
-    }
-
-    void OpenGLRHI::EnableDepthTest()
-    {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-    }
-
-    void OpenGLRHI::DisableDepthTest()
-    {
-        glDisable(GL_DEPTH_TEST);
-    }
-
-    void OpenGLRHI::SetDepthMask(bool bEnable)
-    {
-        glDepthMask(bEnable ? GL_TRUE : GL_FALSE);
-    }
-
-    void OpenGLRHI::EnableStencilTest()
-    {
-        glEnable(GL_STENCIL_TEST);
-    }
-
-    void OpenGLRHI::DisableStencilTest()
-    {
-        glDisable(GL_STENCIL_TEST);
-    }
-
-    void OpenGLRHI::SetStencilMask(uint32_t mask)
-    {
-        glStencilMask(mask);
-    }
-
-    void OpenGLRHI::EnableBlend()
-    {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // Set default blend function for alpha blending
-    }
-
-    void OpenGLRHI::DisableBlend()
-    {
-        glDisable(GL_BLEND);
-
-    }
-
-    void OpenGLRHI::EnableCullFace()
-    {
-        glEnable(GL_CULL_FACE);
-    }
-
-    void OpenGLRHI::DisableCullFace()
-    {
-        glDisable(GL_CULL_FACE);
-    }
+    
 
     namespace
     {
@@ -198,7 +88,7 @@ namespace minEngine
         const std::string& fragmentSource,
         std::string* outCompileLog)
     {
-        auto shader = std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
+        auto shader = std::make_shared<OpenGLRHIShader>(vertexSource, fragmentSource);
         if (outCompileLog)
         {
             *outCompileLog = shader->GetCompileLog();
@@ -207,7 +97,7 @@ namespace minEngine
         {
             return nullptr;
         }
-        return std::make_shared<OpenGLRHIShader>(shader);
+        return shader;
     }
 
     std::shared_ptr<RHIGraphicsPipelineState> OpenGLRHI::RHICreateGraphicsPipelineState(const RHIGraphicsPSODesc& desc)
@@ -243,11 +133,34 @@ namespace minEngine
         }
 
         const RHIGraphicsPSODesc& desc = fallback->GetDesc();
+
+        // Set shader program
         if (auto* vs = dynamic_cast<OpenGLRHIShader*>(desc.VertexShader))
         {
             glUseProgram(vs->GetProgramId());
         }
 
+        // Set vertex input layout
+        if (desc.VertexInputLayout)
+        {
+            m_BoundVertexLayout = static_cast<OpenGLRHIVertexInputLayout*>(desc.VertexInputLayout);
+            if (m_BoundVertexLayout)
+            {
+                glBindVertexArray(m_BoundVertexLayout->GetVertexArrayId());
+            }
+        }
+
+        // Set blend state
+        if (desc.BlendState.bBlendEnabled)
+        {
+            glEnable(GL_BLEND);
+        }
+        else
+        {
+            glDisable(GL_BLEND);
+        }
+
+        // Set depth test
         if (desc.DepthStencilState.bDepthTestEnabled)
         {
             glEnable(GL_DEPTH_TEST);
@@ -259,21 +172,38 @@ namespace minEngine
         glDepthMask(desc.DepthStencilState.bDepthWriteEnabled ? GL_TRUE : GL_FALSE);
         glDepthFunc(ToGLDepthFunc(desc.DepthStencilState.DepthCompare));
 
-        if (desc.BlendState.bBlendEnabled)
+        // Set rasterizer state
+        if (!desc.RasterizerState.bCullEnabled || desc.RasterizerState.CullMode == RHICullMode::None)
         {
-            glEnable(GL_BLEND);
+            glDisable(GL_CULL_FACE);
         }
         else
         {
-            glDisable(GL_BLEND);
+            glEnable(GL_CULL_FACE);
+            switch (desc.RasterizerState.CullMode)
+            {
+            case RHICullMode::Front:
+                glCullFace(GL_FRONT);
+                break;
+            case RHICullMode::Back:
+            default:
+                glCullFace(GL_BACK);
+                break;
+            }
         }
-
-        // Culling deferred: winding/mode not validated yet; keep off for all modern passes.
-        glDisable(GL_CULL_FACE);
-
-        if (desc.VertexInputLayout)
+    
+        // Set primitive type
+        switch (desc.PrimitiveType)
         {
-            RHICmdSetVertexInputLayout(desc.VertexInputLayout);
+        case RHIPrimitiveType::TriangleList:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
+        case RHIPrimitiveType::TriangleStrip:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
+        case RHIPrimitiveType::LineList:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
         }
     }
 
@@ -417,7 +347,7 @@ namespace minEngine
     void OpenGLRHI::RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet)
     {
         (void)setIndex;
-        auto* glSet = dynamic_cast<OpenGLRHIBindingSet*>(bindingSet);
+        auto* glSet = static_cast<OpenGLRHIBindingSet*>(bindingSet);
         if (!glSet)
         {
             return;
@@ -479,14 +409,6 @@ namespace minEngine
         glViewport(static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height));
     }
 
-    void OpenGLRHI::RHICmdSetVertexInputLayout(RHIVertexInputLayout* layout)
-    {
-        m_BoundVertexLayout = static_cast<OpenGLRHIVertexInputLayout*>(layout);
-        if (m_BoundVertexLayout)
-        {
-            glBindVertexArray(m_BoundVertexLayout->GetVertexArrayId());
-        }
-    }
 
     void OpenGLRHI::RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot)
     {

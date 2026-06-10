@@ -6,6 +6,9 @@
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 #include "Runtime/Function/Render/RHI/RHIBinding.h"
+#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
+
+#include <unordered_map>
 
 namespace minEngine
 {
@@ -17,6 +20,7 @@ namespace minEngine
     class RHIGraphicsPipelineState;
     class RHIBindingLayout;
     class RHIBindingSet;
+    class RHIVertexInputLayout;
 
     class ShadowPass : public RenderPassBase
     {
@@ -35,6 +39,9 @@ namespace minEngine
         void DrawOpaqueMeshes(RHICommandList& cmdList);
         void EnsureShadowBindingSet(RHICommandList& cmdList);
         void UpdateShadowParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params);
+        RHIGraphicsPipelineState* GetOrCreateShadowPipelineForLayout(
+            RHIVertexInputLayout* vertexInputLayout,
+            RHICommandList& cmdList);
 
     public:
         RHIBuffer* m_LightViewProjUniformBuffer = nullptr;
@@ -45,7 +52,8 @@ namespace minEngine
 
     private:
         std::shared_ptr<RHIShader> m_DepthShader;
-        std::shared_ptr<RHIGraphicsPipelineState> m_ShadowPipelineState;
+        RHIGraphicsPSODesc m_ShadowPSODescTemplate{};
+        std::unordered_map<RHIVertexInputLayout*, std::shared_ptr<RHIGraphicsPipelineState>> m_ShadowPipelineByLayout;
         std::shared_ptr<RHIBindingLayout> m_ShadowBindingLayout;
         std::shared_ptr<RHIBindingSet> m_ShadowBindingSet;
         RHIBufferRef m_ShadowParamsUniformBuffer;

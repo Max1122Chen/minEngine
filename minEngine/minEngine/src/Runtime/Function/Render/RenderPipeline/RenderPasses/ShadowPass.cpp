@@ -25,13 +25,11 @@ namespace minEngine
         if (m_DepthShader)
         {
             RHICommandList cmdList(rhi);
-            RHIGraphicsPSODesc psoDesc;
-            psoDesc.VertexShader = m_DepthShader.get();
-            psoDesc.PixelShader = m_DepthShader.get();
-            psoDesc.DepthStencilState.bDepthTestEnabled = true;
-            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
-            psoDesc.BlendState.bBlendEnabled = false;
-            m_ShadowPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
+            m_ShadowPSODescTemplate.VertexShader = m_DepthShader.get();
+            m_ShadowPSODescTemplate.PixelShader = m_DepthShader.get();
+            m_ShadowPSODescTemplate.DepthStencilState.bDepthTestEnabled = true;
+            m_ShadowPSODescTemplate.DepthStencilState.bDepthWriteEnabled = true;
+            m_ShadowPSODescTemplate.BlendState.bBlendEnabled = false;
 
             RHIBufferCreateDesc paramsDesc;
             paramsDesc.Usage = RHIBufferUsage::Uniform;
@@ -107,9 +105,37 @@ namespace minEngine
         Render(cmdList);
     }
 
+    RHIGraphicsPipelineState* ShadowPass::GetOrCreateShadowPipelineForLayout(
+        RHIVertexInputLayout* vertexInputLayout,
+        RHICommandList& cmdList)
+    {
+        if (!vertexInputLayout || !m_DepthShader)
+        {
+            return nullptr;
+        }
+
+        const auto existing = m_ShadowPipelineByLayout.find(vertexInputLayout);
+        if (existing != m_ShadowPipelineByLayout.end())
+        {
+            return existing->second.get();
+        }
+
+        RHIGraphicsPSODesc psoDesc = m_ShadowPSODescTemplate;
+        psoDesc.VertexInputLayout = vertexInputLayout;
+        std::shared_ptr<RHIGraphicsPipelineState> pipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
+        if (!pipelineState)
+        {
+            return nullptr;
+        }
+
+        RHIGraphicsPipelineState* pipelineStatePtr = pipelineState.get();
+        m_ShadowPipelineByLayout.emplace(vertexInputLayout, std::move(pipelineState));
+        return pipelineStatePtr;
+    }
+
     void ShadowPass::Render(RHICommandList& cmdList)
     {
-        if (!m_DepthShader || !m_ShadowPipelineState)
+        if (!m_DepthShader)
         {
             return;
         }
@@ -163,27 +189,22 @@ namespace minEngine
                 continue;
             }
 
+            RHIGraphicsPipelineState* pipelineState =
+                GetOrCreateShadowPipelineForLayout(drawCommand.m_VertexInputLayout, cmdList);
+            if (!pipelineState || !drawCommand.m_VertexBuffer)
+            {
+                continue;
+            }
+
             m_PerObjectUniformBuffer->UpdateSubresource(&drawCommand.m_ModelMatrix, 0, sizeof(Matrix4));
-            cmdList.SetBindingSet(EngineShaderBindings::kSetShadowPass, m_ShadowBindingSet.get());
-
-            if (drawCommand.m_VertexInputLayout)
-            {
-                cmdList.SetVertexInputLayout(drawCommand.m_VertexInputLayout);
-            }
-            if (drawCommand.m_VertexBuffer)
-            {
-                cmdList.SetVertexBuffer(drawCommand.m_VertexBuffer);
-            }
-
-            if (drawCommand.m_IndexBuffer)
-            {
-                cmdList.SetIndexBuffer(drawCommand.m_IndexBuffer);
-                cmdList.DrawIndexed(drawCommand.m_IndexBuffer->GetDesc().ElementCount, 0, 0);
-            }
-            else if (drawCommand.m_VertexBuffer)
-            {
-                cmdList.Draw(drawCommand.m_VertexBuffer->GetDesc().ElementCount, 0);
-            }
+            const SubmitDrawBinding shadowBindings[] = {
+                {EngineShaderBindings::kSetShadowPass, m_ShadowBindingSet.get()},
+            };
+            cmdList.SubmitDrawMesh(
+                pipelineState,
+                shadowBindings,
+                static_cast<uint32_t>(sizeof(shadowBindings) / sizeof(shadowBindings[0])),
+                drawCommand);
         }
     }
 
@@ -203,8 +224,6 @@ namespace minEngine
         const ShadowResolution& resolution = command.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
-        cmdList.SetGraphicsPipelineState(m_ShadowPipelineState.get());
-
         UpdateLightViewProjBuffer(command.ViewProj);
         ShadowPassParamsUBO params{};
         params.UseLinearDepth = 0;
@@ -229,7 +248,6 @@ namespace minEngine
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
-        cmdList.SetGraphicsPipelineState(m_ShadowPipelineState.get());
 
         UpdateLightViewProjBuffer(shadowCommand.ViewProj);
         ShadowPassParamsUBO params{};
@@ -262,7 +280,6 @@ namespace minEngine
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
-        cmdList.SetGraphicsPipelineState(m_ShadowPipelineState.get());
 
         UpdateLightViewProjBuffer(shadowCommand.ViewProj);
         ShadowPassParamsUBO params{};

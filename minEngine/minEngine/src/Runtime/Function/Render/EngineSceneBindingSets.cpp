@@ -1,11 +1,9 @@
 #include "EngineSceneBindingSets.h"
 
 #include "EngineShaderBindings.h"
-#include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
-#include "Runtime/Function/Render/Texture.h"
 
 namespace minEngine
 {
@@ -26,23 +24,6 @@ namespace minEngine
             return std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
         }
 
-        RHITexture* GetTexture2DModern(const Texture2D* texture)
-        {
-            if (!texture)
-            {
-                return nullptr;
-            }
-            return texture->GetRHITexture();
-        }
-
-        RHITexture* GetTextureCubeModern(const TextureCube* texture)
-        {
-            if (!texture)
-            {
-                return nullptr;
-            }
-            return texture->GetRHITexture();
-        }
     }
 
     void EngineSceneBindingSets::Initialize(RHICommandList& cmdList)
@@ -103,8 +84,7 @@ namespace minEngine
         const SceneRenderContext& ctx,
         RHIBuffer* dirLightViewProjs,
         RHIBuffer* cascadeFarPlanes,
-        RHIBuffer* spotLightViewProjs,
-        const EngineIBLEnvironment* iblEnvironment)
+        RHIBuffer* spotLightViewProjs)
     {
         if (!m_SceneSet1Layout)
         {
@@ -140,13 +120,8 @@ namespace minEngine
             }
         }
 
+        // F03-M4 P0: IBL textures disabled; layout slots stay null until EnvMap returns.
         m_IblSRVs = {};
-        if (iblEnvironment != nullptr && iblEnvironment->IsReadyForPBR())
-        {
-            m_IblSRVs[0] = MakeTextureSRV(GetTextureCubeModern(iblEnvironment->GetIrradiance()));
-            m_IblSRVs[1] = MakeTextureSRV(GetTextureCubeModern(iblEnvironment->GetPrefilter()));
-            m_IblSRVs[2] = MakeTextureSRV(GetTexture2DModern(iblEnvironment->GetBrdfLUT()));
-        }
 
         std::vector<RHIBindingResource> resources(11);
         resources[kSet1_DirShadowSRV] = {RHIBindingType::TextureSRV, nullptr, m_DirShadowSRV.get()};

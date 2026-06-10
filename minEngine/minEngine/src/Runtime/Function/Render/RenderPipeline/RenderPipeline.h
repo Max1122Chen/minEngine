@@ -11,7 +11,6 @@
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
-#include "Render/Environment/EngineIBLEnvironment.h"
 #include "Shadow/ShadowResourceManager.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
@@ -110,7 +109,6 @@ namespace minEngine
         void SetPresentPassEnabled(bool enabled) { m_EnablePresentPass = enabled; }
 
         void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot);
-        const EngineIBLEnvironment& GetIBLEnvironment() const { return m_IBLEnvironment; }
 
         RHIBuffer* GetPerObjectUniformBuffer() const { return m_PerObjectUniformBuffer.get(); }
         const EngineSceneBindingSets& GetSceneBindings() const { return m_SceneBindings; }
@@ -133,7 +131,6 @@ namespace minEngine
         PresentPass m_PresentPass;
 
         ShadowResourceManager m_ShadowResourceManager;
-        EngineIBLEnvironment m_IBLEnvironment;
         EngineSceneBindingSets m_SceneBindings;
         std::string m_EngineDefaultAssetsRoot;
         uint64_t m_FrameIndex = 0;

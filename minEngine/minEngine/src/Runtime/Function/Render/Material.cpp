@@ -9,7 +9,6 @@
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
-#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "RHI/RHIShader.h"
 #include "RHI/RHITexture.h"
@@ -21,31 +20,6 @@
 
 namespace minEngine
 {
-    namespace
-    {
-        RHIGraphicsPSODesc BuildMaterialPSODesc(RHIShader* shader, MaterialBlendMode blendMode)
-        {
-            RHIGraphicsPSODesc psoDesc;
-            psoDesc.VertexShader = shader;
-            psoDesc.PixelShader = shader;
-            psoDesc.DepthStencilState.bDepthTestEnabled = true;
-            psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::Less;
-
-            if (blendMode == MaterialBlendMode::Translucent)
-            {
-                psoDesc.BlendState.bBlendEnabled = true;
-                psoDesc.DepthStencilState.bDepthWriteEnabled = false;
-            }
-            else
-            {
-                psoDesc.BlendState.bBlendEnabled = false;
-                psoDesc.DepthStencilState.bDepthWriteEnabled = true;
-            }
-
-            return psoDesc;
-        }
-    }
-
     MaterialEdGraph& Material::GetGraph()
     {
         if (!m_Graph)
@@ -331,9 +305,6 @@ namespace minEngine
             }
             return false;
         }
-
-        m_PipelineState = RHICommandList(ctx.RHI).CreateGraphicsPipelineState(
-            BuildMaterialPSODesc(m_GPUShader.get(), m_BlendMode));
 
         m_ParameterLayout = result.ParameterLayout;
         m_TextureParameters.clear();

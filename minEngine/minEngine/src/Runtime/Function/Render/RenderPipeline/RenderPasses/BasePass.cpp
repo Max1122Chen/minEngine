@@ -31,20 +31,15 @@ namespace minEngine
             return;
         }
 
+        PrepareMeshDrawCommands(cmdList, m_DrawCommands, MeshPassKind::Opaque);
+
         for (MeshDrawCommand& drawCommand : m_DrawCommands)
         {
             Material* material = drawCommand.m_Material;
-            if (!material || !drawCommand.m_VertexInputLayout || !drawCommand.m_VertexBuffer)
+            if (!material || !drawCommand.m_VertexInputLayout || !drawCommand.m_VertexBuffer || !drawCommand.m_PipelineState)
             {
                 continue;
             }
-
-            if (!material->IsCompiledForDraw() || !material->GetPipelineState())
-            {
-                continue;
-            }
-
-            cmdList.SetGraphicsPipelineState(material->GetPipelineState());
 
             const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong
                 || material->m_ShadingModel == MaterialShadingModel::PBR;
@@ -52,7 +47,7 @@ namespace minEngine
             const MeshPassSceneBinding sceneBinding{
                 drawCommand,
                 bindSceneLighting,
-                material->m_ShadingModel == MaterialShadingModel::PBR,
+                false,
                 &m_DirectionalShadowHandle,
                 &m_SpotShadowHandles,
                 &m_PointShadowHandles,

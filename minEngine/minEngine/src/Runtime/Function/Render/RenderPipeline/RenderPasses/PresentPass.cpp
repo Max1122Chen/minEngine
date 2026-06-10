@@ -113,14 +113,15 @@ namespace minEngine
         const uint32_t width = m_SceneColorTexture->GetDesc().Width;
         const uint32_t height = m_SceneColorTexture->GetDesc().Height;
         cmdList.SetViewport(0, 0, width, height);
-        cmdList.SetGraphicsPipelineState(m_PresentPipelineState.get());
-        cmdList.SetBindingSet(EngineShaderBindings::kSetEnginePost, bindingSet.get());
-        cmdList.SetVertexInputLayout(m_ScreenQuadVertexLayout.get());
-        if (m_ScreenQuadVertexBuffer)
-        {
-            cmdList.SetVertexBuffer(m_ScreenQuadVertexBuffer.get());
-        }
-        cmdList.Draw(6, 0);
+        const SubmitDrawBinding presentBindings[] = {
+            {EngineShaderBindings::kSetEnginePost, bindingSet.get()},
+        };
+        cmdList.SubmitDraw(
+            m_PresentPipelineState.get(),
+            presentBindings,
+            static_cast<uint32_t>(sizeof(presentBindings) / sizeof(presentBindings[0])),
+            m_ScreenQuadVertexBuffer.get(),
+            nullptr);
 
         cmdList.EndRenderPass();
     }

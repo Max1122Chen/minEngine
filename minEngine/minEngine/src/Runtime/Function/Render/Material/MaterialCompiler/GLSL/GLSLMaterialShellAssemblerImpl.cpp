@@ -242,28 +242,6 @@ namespace minEngine
 
         sceneLighting += lightingInclude;
 
-        if (shadingModel == MaterialShadingModel::PBR)
-        {
-            std::string iblInclude;
-            if (!LoadIncludeFile(assetsRoot, env, "MaterialIBL.glslinc", iblInclude, compiled))
-            {
-                return {};
-            }
-
-            sceneLighting += iblInclude;
-            if (!sceneLighting.empty() && sceneLighting.back() != '\n')
-            {
-                sceneLighting += '\n';
-            }
-            sceneLighting += '\n';
-
-            sceneLighting +=
-                "// Engine IBL (Set1 bindings; see EngineShaderBindings.h).\n"
-                "layout (binding = 4) uniform samplerCube u_EnvIrradianceMap;\n"
-                "layout (binding = 5) uniform samplerCube u_EnvPrefilterMap;\n"
-                "layout (binding = 6) uniform sampler2D u_EnvBrdfLUT;\n";
-        }
-
         if (env.UsesTangentFrame)
         {
             std::string tangentFrameInclude;

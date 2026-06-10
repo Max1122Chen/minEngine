@@ -6,7 +6,7 @@
 |-------|--------|
 | **Feature ID** | `RND-F03` |
 | **Type** | Refactor |
-| **Status** | Done |
+| **Status** | In Progress（M4 管线重构 + M3 后端绞杀） |
 | **Owner** | (maintainer) |
 | **Last updated** | 2026-06-01（M1+M2 完成；grep + verify 通过） |
 | **Branch** | `render`（实现）；registry/planning 可合 `master` |
@@ -381,11 +381,13 @@ MaterialEdGraph → MIR → GLSL 片段
 | **F03-S2** | **Done** | 网格 `RHIBuffer` / `RHIVertexInputLayout`；Loader 现代创建 | `f17cee1`；网格显示 |
 | **F03-P0** | **Done** | **迁移蓝图**：[RND-F03_MIGRATION_BLUEPRINT](./RND-F03_MIGRATION_BLUEPRINT.md)；`EngineShaderBindings.h` 定稿 | Review 通过 |
 | **F03-M1** | **Done** | **终局迁移（单逻辑链）**：按蓝图 §1–§4；§10 删除列表 + §6 绑定 + §7 Material + 合并 `OpenGLRHIModern` → `OpenGLRHI` | §12 全部勾选；grep 门禁；黄金场景目视 |
-| **F03-M2** | **Done** | **收尾**：FEATURE_REGISTRY Done、PROGRESS_LOG、文档 Tier B 标注旧 S3–S7 表已废止 | 维护者 sign-off @ 2026-06-01 |
+| **F03-M2** | **Done** | **文档 sign-off**：M1 调用面验收、PROGRESS_LOG、§12 勾选（调用面） | @ 2026-06-01 |
+| **F03-M3** | **In Progress** | **后端内绞杀（§15.1–15.3）**：删 `OpenGLShader` / `OpenGLTexture*` 维度类包装 | §15.1 grep；可与 M4 并行 |
+| **F03-M4** | **Next** | **管线现代 RHI 重构（§16）**：旧 Pass 编排 → 统一 Pass 节拍 + 权威 PSO；**停用 EnvMap** | §16.6 验收；黄金场景（无 IBL） |
 
 **废止：** 原 **S3–S7** 及 **§9 S6a–S6e** 子切片表 — 仅作历史参考，**不得** 再作 backlog 来源。
 
-**依赖：** S1–S2（Done）→ **P0** → **M1** → **M2**。M1 内部实现顺序见 8.4，但 **不拆成可合并的「半绑定」对外里程碑**。
+**依赖：** S1–S2 → P0 → M1 → M2 → **M4（主）** + M3（配套）。**M4 优先于继续横向 Pass 修补**；不划入 F04。
 
 ---
 
@@ -428,11 +430,13 @@ MaterialEdGraph → MIR → GLSL 片段
 | Point shadow / EnvMap 遗漏 | M1 删 API 后编译失败 | 8.4 资源创建点清单；grep 门禁 |
 | BasePass 仍 `EnableBlend` 散落 | 与 PSO 不一致 | M1 内 PSO 统一；禁止半迁 Pass |
 | **混合绑定路径**（S3 教训） | 光强/阴影静默错误 | **硬门禁** §8.2；禁止 `BindingSet` + `BindUniformBlock` 并存 |
-| F03 范围膨胀到「完善 RHI」 | 延期 | 严格 §13 defer 到 F04 |
+| F03 范围膨胀到 Vulkan | 延期 | Vulkan 见 F04；**OpenGL 后端内绞杀** 留在 F03-M3（§15） |
 
 ---
 
-## §12 F03 验收标准（Done）
+## §12 F03 验收标准
+
+### §12.1 调用面（M1–M2 Done @ 2026-06-01）
 
 - [x] §10 删除列表已执行；`rg RHIShaderLegacy`、`rg WrapLegacy`、`rg CreateVertexBuffer` 在生产路径为 0（允许 Tests 夹具临时例外，须注明）
 - [x] `RenderPasses/`、`SceneRenderTarget`、主 `RenderPipeline` 路径无 Legacy bind/draw
@@ -441,7 +445,21 @@ MaterialEdGraph → MIR → GLSL 片段
 - [x] `.\scripts\verify.ps1` 通过
 - [x] `minEngineTests.exe test material-ir` 通过
 - [x] Editor：主视口、阴影、透明、后处理、材质编辑器预览目视通过（维护者记录 @ 2026-06-01）
-- [x] [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) 中 F03 → **Done**；ACTIVE_WORK 指向 F04
+
+### §12.2 后端实现面（M3）
+
+- [ ] 无 `OpenGLShader` 类型；`OpenGLRHIShader` 直接持有 program
+- [ ] 无 `OpenGLTexture2D` / `Cube` / `2DArray`；`OpenGLRHITexture` 直接 upload/持有 `GLuint`
+- [ ] grep：`OpenGLShader`、`OpenGLTexture2D`、`OpenGLTextureCube`、`OpenGLTexture2DArray` 在生产路径为 0
+
+### §12.3 管线心智模型（M4 — F03 真正 Done 前须完成 §16）
+
+- [ ] **权威 PSO**：固定功能状态 + shader + **vertex layout** 仅经 `SetGraphicsPipelineState` 生效；无旁路 `RHICmd*` 改同类状态（如已删 `SetVertexInputLayout`）
+- [ ] **Pass 节拍统一**：所有 draw 类 `RHICmd*` 仅在 `BeginRenderPass`/`EndRenderPass` 之间（含合法嵌套）；`RHICreate*` 资源创建可在 Pass 外
+- [ ] **单一 draw 契约**：`SetPSO` → `SetBindingSet(s)` → `SetVertexBuffer`/`SetIndexBuffer` → `Draw*`；Pass 类不各自发明流程
+- [ ] **EnvMap / IBL 离线捕获停用**（运行时与加载路径）；PBR 可先无 IBL 或占位
+- [ ] `verify.ps1` + 黄金场景回归（阴影 + 主视口；**不要求** EnvMap）
+- [ ] [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) F03 → **Done**；ACTIVE_WORK 指向 F04
 
 ---
 
@@ -453,6 +471,189 @@ MaterialEdGraph → MIR → GLSL 片段
 - Descriptor 池化、PSO 缓存策略对齐 UE
 - 格式 capability 查询、`RHITexture` 多平面等高级特性
 - **Face culling** 与正面绕序全局策略（可在 F04 用 VK 验证）
+---
+
+## §15 F03-M3：后端内绞杀（Post-M2 续作，仍属 F03）
+
+> **读者定位：** F03 §12 验收的是「引擎调用面零 Legacy」；本节记录 **OpenGL 后端内部** 与 **契约完备性** 上仍未达「现代 RHI 终局形态」的项。  
+> **维护者立场（2026-06-01）：** 不接受长期保留「`OpenGLRHI*` 包装旧类型」——应 **一口气越过包装层**，让后端实现类 **就是** 资源本体，而非 Legacy 类型的 `shared_ptr` 外壳。
+
+### 15.1 原则：禁止「新类型套旧类型」
+
+| 反模式（F03 末仍可见） | 期望终局 |
+|------------------------|----------|
+| `OpenGLRHIShader` 持有 `shared_ptr<OpenGLShader>` | `OpenGLRHIShader`（或内嵌匿名实现）**直接** compile/link/`glDeleteProgram`；删除独立 `OpenGLShader` 公共类 |
+| `OpenGLRHITexture` 持有 `OpenGLTexture2D` / `Cube` / `2DArray` | **单一** `OpenGLRHITexture`：根据 `RHITextureCreateDesc::Dimension` 分支 `glTexImage*` / upload；无按维度拆的平行 C++ 类型 |
+| 引擎 Pass `std::make_shared<OpenGLRHIShaderResourceView>` | `RHI::RHICreateShaderResourceView(desc)`；引擎只持 `RHIShaderResourceViewRef` |
+| `RHIBindingLayoutEntry::ShaderBinding` = GL texture unit / UBO binding point | 逻辑 `(set, binding)`；GL/VK 映射留在后端 |
+| `RHICmdSetBindingSet(setIndex, …)` 忽略 `setIndex` | 真多 Set 绑定；与 pipeline layout / descriptor set 对齐（VK 必需） |
+
+**与 F03 已删 `WrapLegacy*` 的区别：** 公共 API 层已无 Wrap；但 **后端实现层** 仍用「旧维度分类类 + 新 RHI 壳」达成同样效果——属于 **F03-M3 未完成项**，在 F03 内清掉后再标 Feature Done。
+
+### 15.2 纹理：`OpenGLTexture2D` / `Cube` / `2DArray`（`OpenGLTexture.h`）
+
+**现状：**
+
+- `OpenGLRHITexture` 构造时 `switch (desc.Dimension)`，分别 `make_shared<OpenGLTexture2D|Cube|2DArray>`，再 `GetID()` 抄到 `m_TextureId`。
+- `OpenGLTextureUploadDesc` + `TextureUsage` 与 `RHITextureCreateDesc` **双描述**；`ToLegacyTextureDesc()` 命名即承认过渡。
+
+**为何不符合现代 RHI：**
+
+- 现代契约里 **只有** `RHITexture` + `RHITextureCreateDesc`（含 `Dimension`、`Format`、`Flags`）；维度是 desc 字段，不是类型系统里的三个平行类。
+- 与已删的 `RHITexture2D`/`Cube`/`2DArray` **公共** Legacy 类同构——只是改成了 `OpenGL*` 前缀并标为 internal，心智负担仍在。
+
+**目标形态（F03-M3）：**
+
+1. 删除 `OpenGLTexture.h` 中三个维度类；upload / mipmap / wrap 逻辑迁入 `OpenGLRHITexture.cpp`（可按 dimension 分 **成员函数**，非类型）。
+2. `OpenGLRHITexture` 唯一持有 `GLuint m_TextureId`、`GLenum m_Target`、可选 staging。
+3. grep 门禁扩展：`OpenGLTexture2D`、`OpenGLTextureCube`、`OpenGLTexture2DArray` 在生产路径为 0。
+
+### 15.3 Shader：`OpenGLRHIShader` 包装 `OpenGLShader`
+
+**现状：**
+
+- `RHICreateShader` → `make_shared<OpenGLShader>` → `make_shared<OpenGLRHIShader>(shader)`。
+- `OpenGLShader` 仍保留 `Use()`、`m_UniformLocationCache`（upload 已删，成为死代码）。
+- `EngineShaderUtils::GetOpenGLShader` / `TryCompileSourcesOnGpu` 直接依赖 `OpenGLShader`。
+
+**为何不符合现代 RHI：**
+
+- `RHIShader` 抽象应映射到 **GPU program 句柄**；中间多一层旧编译器类 = 当年 `RHIShaderLegacy` 的 **后端版同构**。
+- PSO 的 `ApplyGraphicsPipelineState` 经 `OpenGLRHIShader::GetProgramId()` 再摸到 `OpenGLShader::m_ID`——多一跳且无增益。
+
+**目标形态：**
+
+1. 将 `OpenGLShader.cpp` 的 compile/link/log 逻辑 **内联进** `OpenGLRHIShader`（或 `OpenGLRHIResources` 内单一实现类）。
+2. 删除 `OpenGLShader.h/.cpp`；`OpenGLHeaders.h` 不再暴露。
+3. `EngineShaderUtils::TryCompileSourcesOnGpu` 改为对 `RHI::RHICreateShader` 或 package-private 编译入口，不暴露 GL 类型。
+
+### 15.4 其它过渡态（按优先级）
+
+| 优先级 | 项 | 说明 |
+|--------|-----|------|
+| P0 | 引擎层 `OpenGLRHIShaderResourceView` 直 new | 缺 `RHICreateShaderResourceView`；`RHIShaderResourceView` 近乎空壳 |
+| P0 | `setIndex` 未参与绑定 | 多 Set 靠多次 `SetBindingSet` 覆盖 GL 状态，非 descriptor set 语义 |
+| P1 | `RHIGraphicsPSOStateFallback` | PSO 为 desc 袋子；GL 只应用 program + 粗粒度 depth/blend；`PixelShader` 槽未用；cull 硬关 |
+| P1 | `RHI.h` 即时 `Enable*` / `SetClearColor` | Pass 已少用；`RenderSystem` 仍 `static_cast<OpenGLRHI*>` + `WindowSystem::Clear` |
+| P1 | `Material::BindForDraw` 每 draw `CreateBindingSet` | 应 compile 时缓存 set，draw 只 update UBO / 换 SRV |
+| P1 | `ShadowTypes::TextureUnit` | 与 `RHITextureRef` 并存的 GL unit 思维 |
+| P2 | `FromLegacyVAO` | 无调用方 |
+| P2 | `ShaderResource` 反射 + ContentBrowser `"Shader"` | 资产生态残留 |
+| P2 | `EngineShaderPath("../Shaders")` | 未走路径注册 |
+
+### 15.5 与 F03 Done 的关系
+
+- **M1–M2 Done** = §12.1 调用契约纯净。
+- **F03 Feature Done** = §12.1 + §12.2（M3）+ **§12.3（M4）**。
+- **M3** 与 **M4** 可并行 commit，但 **M4 决定管线是否「现代」**；仅 M3 不足以标 Done。
+- **F04** 仅 Vulkan 与跨后端契约补全。
+
+---
+
+## §16 复盘再复盘：管线重构（F03-M4）— 现代 RHI 心智，非 GL 状态机套壳
+
+> **维护者立场（管线暂停后共识）：** F03-M1/M2 清掉了 **公共 Legacy API**，但未清掉 **旧管线编排与 OpenGL 式散弹状态思维**。继续用「看似现代的 RHICmd*」承载旧 Pass 习惯，会得到 **四不像**。  
+> **目标：** **完全重构** 渲染管线编排，使其贴合现代 RHI 模式（参考 UE `FRHICommandList` / `FGraphicsPipelineStateInitializer` / RenderPass 边界），而不是用新接口名套旧流程。
+
+### 16.1 病根摘要（为何「越迁越乱」）
+
+| 现象 | 根因 |
+|------|------|
+| PSO 存在但 Pass 仍可旁路改 layout / 状态 | PSO **非权威**；`RHIGraphicsPSOStateFallback` 只是 desc 袋子 |
+| Material PSO 无 layout，Mesh 靠 draw command 带 layout | **同一引擎两种 draw 哲学** |
+| Shadow / Scene / Post / Present 各写各的 | **无统一 Pass 模板**（Begin → Setup → Draw* → End） |
+| `SetBindingSet` 多次覆盖、`setIndex` 无效 | Binding 仍是 GL 立即绑定，非 pipeline layout |
+| `Material::BindForDraw` 每 draw `CreateBindingSet` | 旧「每 draw 绑纹理」思维换皮 |
+| EnvMapCapture 自成体系 | **集中呈现** §15 全部反模式（旁路、嵌套 FBO、引擎层 `OpenGL*`、与主 Pass 不一致） |
+
+**结论：** 问题不只是类型包装（§15），而是 **从未冻结「唯一 draw 状态机」** 就横向迁 Pass。
+
+### 16.2 我们要做的 vs 不要做的
+
+| 要做 | 不要做 |
+|------|--------|
+| 用 **现代 RHI 编排** 重写主帧管线（Shadow → Scene → Post → Present） | 继续逐个 Pass 打补丁、加旁路 `RHICmd*` |
+| **权威 PSO**（含 vertex layout）；draw 只补动态 VB/IB | 保留「有时信 PSO、有时信 Pass 成员、有时信旁路 API」 |
+| 参考 **UE** 分层：`RHICreate*` 建资源；`RHICmd*` 在 Pass 内录制 draw | 把 `glEnable`/`glBind*` 思维映射成更多零散命令 |
+| 接受当前 **CommandList 立即执行**（单线程） | 为了「像 GL」而破坏 Command 顺序语义 |
+
+### 16.3 CommandList 的正确理解（维护者确认）
+
+**你的理解是对的**，文档冻结如下：
+
+1. **`RHICommandList`（现实现：立即转发）**  
+   - **现阶段**：单线程，Command **顺序执行** 即可；实现可以是 `m_RHI->RHICmd*()` 直调。  
+   - **概念模型**（面向未来多线程 / Vulkan）：CommandList = **线程安全的 Command 队列 + CommandBuffer**；录制与提交可分离，**语义** 仍按录制顺序生效。  
+   - **命名保留 `CommandList`** 合理：实现从 immediate → 录制+submit 演进时，**Pass 代码不应大改**。
+
+2. **`RHICreate*`（资源工厂）**  
+   - **允许在 Pass 外**调用（初始化、加载、编译、缓存 PSO/BindingLayout/Buffer）。  
+   - 与 draw 命令分离 — 对齐 UE 的 `RHICreate*` / `CreateGraphicsPipelineState` 在 init 或 render thread 资源准备阶段。
+
+3. **`RHICmd*`（draw 与 pass 作用域命令）**  
+   - **必须在 `BeginRenderPass` / `EndRenderPass` 之间**（含 **合法嵌套** 的子 pass，如 CSM 每层 shadow map）。  
+   - 包括：`SetGraphicsPipelineState`、`SetBindingSet`、`SetViewport`、`SetVertexBuffer`、`SetIndexBuffer`、`Draw*`。  
+   - **禁止** 在 Pass 外出现会改变「当前 pass 内 GPU 配置」的 `RHICmd*`（窗口 clear 等应收敛为显式 pass 或 backend 初始化，而非散落 `RHI::Enable*`）。
+
+4. **约束的是「作用域」与「权威性」，不是「是否立即执行」**。
+
+```text
+[Pass 外]  RHICreateTexture / RHICreateBuffer / RHICreatePSO / RHICreateBindingLayout …
+
+[Pass 内]  BeginRenderPass
+             SetViewport (optional)
+             SetGraphicsPipelineState   ← 权威固定状态 + layout + shader
+             SetBindingSet (per layout)
+             SetVertexBuffer / SetIndexBuffer
+             Draw / DrawIndexed
+           EndRenderPass
+```
+
+### 16.4 参考 UE 的阅读锚点（教案，非照抄）
+
+| UE 概念 | minEngine 目标对应 |
+|---------|-------------------|
+| `FRHICommandList` + `FRHICommandListImmediate` | `RHICommandList`（现 immediate；语义按 §16.3） |
+| `FGraphicsPipelineStateInitializer` → `RHICreateGraphicsPipelineState` | **完整** PSO desc（shader、layout、blend、depth、RT formats） |
+| Render pass / subpass 边界 | `RHIRenderPassInfo` + `Begin/EndRenderPass` |
+| `SetGraphicsPipelineState` 后 draw | 禁止旁路改同类状态 |
+| Mesh draw：`SetStreamSource` + PSO 已含 layout | `SetVertexBuffer` + PSO 含 `VertexInputLayout` |
+| Uniform/SRV 经 descriptor / RHI resources | `BindingSet` + 帧/材质缓存，非 per-draw 重建 |
+
+实现细节可简化为 GL backend；**编排契约** 先与 UE/Vulkan 对齐，避免「GL 状态机 API 换名」。
+
+### 16.5 EnvMap / IBL：本阶段 **停用**
+
+**决策：** M4 期间 **停用一切 EnvMap 相关运行时路径**（`EnvMapCapture`、`EngineIBLEnvironment` 加载与绑定、SkyBox 对 cubemap 的依赖链若仅服务 IBL 可一并简化），**不** 在本轮修补 EnvMap。
+
+**理由：**
+
+- EnvMap 代码 **同时承载** 旁路 binding、嵌套 pass、引擎层 `OpenGLRHIShaderResourceView`、与主 `RenderPipeline` 不一致的 cmd 流程 — 最适合作为 **反例**，不适合作为并行迁移目标。
+- 先让 **Shadow + Scene（Base/Translucent）+ Post + Present** 跑在 **统一 Pass 契约** 上；PBR 可暂时无 IBL 或常量占位。
+- EnvMap **整体重构** 排在 M4 主路径验收之后（仍属 F03 或单独 Slice，**不** 阻塞 M4 管线骨架）。
+
+**验收调整：** 黄金场景 M4 不要求 IBL/EnvMap 目视；§8.4 中 IBL 项 M4 阶段标 **N/A**。
+
+### 16.6 M4 建议执行顺序
+
+1. **冻结 §16.3 契约** + 单一 `MeshDraw`/`FullscreenDraw` 辅助（或 ADR 一页）。  
+2. **停用 EnvMap**（feature flag 或编译/加载路径短路 + 文档）。  
+3. **重整 `RenderPipeline::Execute` 节拍** — 一个主 cmdList、清晰 pass 树。  
+4. **ShadowPass** 对齐嵌套 pass 模板（已有多层 Begin/End，收敛为统一 helper）。  
+5. **BasePass / TranslucencyPass** — Material PSO **含 mesh layout**（或与 mesh 级 PSO 变体缓存）。  
+6. **Post / Present** — 去掉 PSO 与 layout 双通道；Fullscreen PSO 一次到位。  
+7. **BindingSet** 缓存 + `setIndex` 语义（可与 §15.4 P0 合并）。  
+8. EnvMap 重写（**M4 之后**）。
+
+### 16.7 管线复盘专文
+
+M4 相关 **现状盘点、问题归纳、UE 阅读锚点、松散建议**（非可执行设计）见：
+
+**[RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md](./RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md)**
+
+其中 **§4** 记录：PSO 不应归属 `Material`；**§9** 为已拍板的 **简化实施方向**（EnvMap 先行、`Pass::PrepareDrawCommands`、统一 `SubmitDraw`；D8-2/3 优先，D8-1/4 本阶段不做）。
+
+§16 为共识摘要；执行以 §9 为准。
 
 ---
 
@@ -473,3 +674,7 @@ MaterialEdGraph → MIR → GLSL 片段
 | 2026-06-01 | §6 改为三 Set（0 场景/物体/灯，1 阴影+IBL，2 材质）；§6.3 OpenGL 仅保留 `OpenGLRHI` |
 | 2026-06-01 | 完整设计：建模修正（Shader≠Asset）、迁移矩阵、S1–S7 + S6 子切片、删除列表、F04 边界 |
 | 2026-06-01 | 初稿登记 |
+| 2026-06-01 | **§15 + F03-M3**：Post-M2 复盘；后端内绞杀留在 F03（非 F04）；§12 拆调用面/实现面 |
+| 2026-06-01 | **§16 + F03-M4**：复盘再复盘 — 管线现代 RHI 重构（非套壳）；CommandList/Pass 作用域；**停用 EnvMap**；§12.3 |
+| 2026-06-01 | M4 专文（后改为 **复盘**）：[RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md](./RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md)；§16.7 |
+| 2026-06-02 | M4 专文 **§9** 拍板：简单管线 + EnvMap 先行；§16.7 指向 §9 |
