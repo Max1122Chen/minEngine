@@ -1,18 +1,16 @@
-#include "OpenGLRHIModern.h"
+#include "OpenGLRHIResources.h"
 
-#include "OpenGLBuffers.h"
 #include "OpenGLShader.h"
 #include "OpenGLTexture.h"
-#include "OpenGLVertexArrayObject.h"
 #include "glad/glad.h"
 
 namespace minEngine
 {
     namespace
     {
-        RHITextureDesc ToLegacyTextureDesc(const RHITextureCreateDesc& desc)
+        OpenGLTextureUploadDesc ToLegacyTextureDesc(const RHITextureCreateDesc& desc)
         {
-            RHITextureDesc legacy;
+            OpenGLTextureUploadDesc legacy;
             legacy.Width = desc.Width;
             legacy.Height = desc.Height;
             legacy.Layers = desc.DepthOrArrayLayers;
@@ -76,72 +74,59 @@ namespace minEngine
 
     OpenGLRHITexture::OpenGLRHITexture(const RHITextureCreateDesc& desc, const void* initialData)
         : m_Desc(desc)
-        , m_Target(GL_TEXTURE_2D)
     {
-        RHITextureDesc legacy = ToLegacyTextureDesc(desc);
-        if (desc.Format == TextureFormat::RGB16F || desc.Format == TextureFormat::RGBA16F)
+        OpenGLTextureUploadDesc legacy = ToLegacyTextureDesc(desc);
+        switch (desc.Dimension)
         {
-            m_OwningLegacyTexture =
-                std::make_shared<OpenGLTexture2D>(static_cast<const float*>(initialData), legacy);
-        }
-        else
+        case RHITextureDimension::Texture2DArray:
+            m_Target = GL_TEXTURE_2D_ARRAY;
+            m_OwningUploadTexture2DArray =
+                std::make_shared<OpenGLTexture2DArray>(static_cast<const unsigned char*>(initialData), legacy);
+            m_TextureId = m_OwningUploadTexture2DArray ? m_OwningUploadTexture2DArray->GetID() : 0;
+            break;
+        case RHITextureDimension::TextureCube:
         {
-            m_OwningLegacyTexture =
-                std::make_shared<OpenGLTexture2D>(static_cast<const unsigned char*>(initialData), legacy);
+            m_Target = GL_TEXTURE_CUBE_MAP;
+            std::vector<unsigned char*> faceData;
+            if (initialData != nullptr)
+            {
+                auto* faces = static_cast<const unsigned char* const*>(initialData);
+                for (uint32_t i = 0; i < desc.DepthOrArrayLayers; ++i)
+                {
+                    faceData.push_back(const_cast<unsigned char*>(faces[i]));
+                }
+            }
+            else
+            {
+                faceData.assign(desc.DepthOrArrayLayers, nullptr);
+            }
+            m_OwningUploadTextureCube =
+                std::make_shared<OpenGLTextureCube>(faceData, legacy, false);
+            m_TextureId = m_OwningUploadTextureCube ? m_OwningUploadTextureCube->GetID() : 0;
+            break;
         }
-        m_TextureId = m_OwningLegacyTexture ? m_OwningLegacyTexture->GetID() : 0;
+        case RHITextureDimension::Texture2D:
+        default:
+            m_Target = GL_TEXTURE_2D;
+            if (desc.Format == TextureFormat::RGB16F || desc.Format == TextureFormat::RGBA16F)
+            {
+                m_OwningUploadTexture2D =
+                    std::make_shared<OpenGLTexture2D>(static_cast<const float*>(initialData), legacy);
+            }
+            else
+            {
+                m_OwningUploadTexture2D =
+                    std::make_shared<OpenGLTexture2D>(static_cast<const unsigned char*>(initialData), legacy);
+            }
+            m_TextureId = m_OwningUploadTexture2D ? m_OwningUploadTexture2D->GetID() : 0;
+            break;
+        }
         m_OwnsGlTexture = m_TextureId != 0;
-    }
-
-    std::shared_ptr<OpenGLRHITexture> OpenGLRHITexture::WrapLegacy2D(const std::shared_ptr<RHITexture2D>& legacy)
-    {
-        if (!legacy || legacy->GetID() == 0)
-        {
-            return nullptr;
-        }
-        RHITextureCreateDesc desc;
-        desc.Dimension = RHITextureDimension::Texture2D;
-        desc.Width = legacy->GetWidth();
-        desc.Height = legacy->GetHeight();
-        desc.DepthOrArrayLayers = 1;
-        desc.Format = legacy->GetFormat();
-        desc.Flags = RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource;
-
-        auto wrapped = std::shared_ptr<OpenGLRHITexture>(new OpenGLRHITexture(desc, nullptr));
-        wrapped->m_OwningLegacyTexture.reset();
-        wrapped->m_OwnsGlTexture = false;
-        wrapped->m_TextureId = legacy->GetID();
-        return wrapped;
     }
 
     void* OpenGLRHITexture::GetNativeResource() const
     {
         return reinterpret_cast<void*>(static_cast<uintptr_t>(m_TextureId));
-    }
-
-    std::shared_ptr<OpenGLRHITexture> OpenGLRHITexture::WrapLegacy2DArray(
-        const std::shared_ptr<RHITexture2DArray>& legacy,
-        uint32_t arrayLayer)
-    {
-        if (!legacy || legacy->GetID() == 0)
-        {
-            return nullptr;
-        }
-        RHITextureCreateDesc desc;
-        desc.Dimension = RHITextureDimension::Texture2DArray;
-        desc.Width = legacy->GetWidth();
-        desc.Height = legacy->GetHeight();
-        desc.DepthOrArrayLayers = legacy->GetLayers();
-        desc.Format = legacy->GetFormat();
-        desc.Flags = RHITextureCreateFlags::RenderTarget;
-
-        auto wrapped = std::shared_ptr<OpenGLRHITexture>(new OpenGLRHITexture(desc, nullptr));
-        wrapped->m_OwningLegacyTexture.reset();
-        wrapped->m_OwnsGlTexture = false;
-        wrapped->m_TextureId = legacy->GetID();
-        wrapped->m_Target = GL_TEXTURE_2D_ARRAY;
-        wrapped->m_ArrayLayer = static_cast<int32_t>(arrayLayer);
-        return wrapped;
     }
 
     OpenGLRHIBuffer::OpenGLRHIBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
@@ -169,54 +154,15 @@ namespace minEngine
         glBindBuffer(m_Target, 0);
     }
 
-    std::shared_ptr<OpenGLRHIBuffer> OpenGLRHIBuffer::WrapLegacyVertexBuffer(VertexBuffer* legacy)
+    void OpenGLRHIBuffer::UpdateSubresource(const void* data, uint32_t offset, uint32_t size)
     {
-        if (!legacy)
+        if (!data || size == 0)
         {
-            return nullptr;
+            return;
         }
-        return WrapLegacyVertexBuffer(std::shared_ptr<VertexBuffer>(legacy, [](VertexBuffer*) {}));
-    }
-
-    std::shared_ptr<OpenGLRHIBuffer> OpenGLRHIBuffer::WrapLegacyVertexBuffer(const std::shared_ptr<VertexBuffer>& legacy)
-    {
-        auto* glBuffer = dynamic_cast<OpenGLVertexBuffer*>(legacy.get());
-        if (!glBuffer)
-        {
-            return nullptr;
-        }
-        RHIBufferCreateDesc desc;
-        desc.Usage = RHIBufferUsage::Vertex;
-        desc.ElementCount = glBuffer->GetNumVertices();
-        auto wrapped = std::shared_ptr<OpenGLRHIBuffer>(new OpenGLRHIBuffer(desc, nullptr));
-        wrapped->m_BufferId = glBuffer->GetVBO();
-        wrapped->m_Target = GL_ARRAY_BUFFER;
-        return wrapped;
-    }
-
-    std::shared_ptr<OpenGLRHIBuffer> OpenGLRHIBuffer::WrapLegacyIndexBuffer(IndexBuffer* legacy)
-    {
-        if (!legacy)
-        {
-            return nullptr;
-        }
-        return WrapLegacyIndexBuffer(std::shared_ptr<IndexBuffer>(legacy, [](IndexBuffer*) {}));
-    }
-
-    std::shared_ptr<OpenGLRHIBuffer> OpenGLRHIBuffer::WrapLegacyIndexBuffer(const std::shared_ptr<IndexBuffer>& legacy)
-    {
-        auto* glBuffer = dynamic_cast<OpenGLIndexBuffer*>(legacy.get());
-        if (!glBuffer)
-        {
-            return nullptr;
-        }
-        RHIBufferCreateDesc desc;
-        desc.Usage = RHIBufferUsage::Index;
-        desc.ElementCount = glBuffer->GetNumIndices();
-        auto wrapped = std::shared_ptr<OpenGLRHIBuffer>(new OpenGLRHIBuffer(desc, nullptr));
-        wrapped->m_BufferId = glBuffer->GetEBO();
-        wrapped->m_Target = GL_ELEMENT_ARRAY_BUFFER;
-        return wrapped;
+        glBindBuffer(m_Target, m_BufferId);
+        glBufferSubData(m_Target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size), data);
+        glBindBuffer(m_Target, 0);
     }
 
     OpenGLRHIShader::OpenGLRHIShader(std::shared_ptr<OpenGLShader> shader)
@@ -290,27 +236,6 @@ namespace minEngine
         wrapped->m_Stride = stride;
         wrapped->m_VAO = vao;
         return wrapped;
-    }
-
-    std::shared_ptr<OpenGLRHIVertexInputLayout> OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(
-        VertexDefinition* legacy)
-    {
-        if (!legacy)
-        {
-            return nullptr;
-        }
-        return WrapLegacyVertexDefinition(std::shared_ptr<VertexDefinition>(legacy, [](VertexDefinition*) {}));
-    }
-
-    std::shared_ptr<OpenGLRHIVertexInputLayout> OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(
-        const std::shared_ptr<VertexDefinition>& legacy)
-    {
-        auto* vao = dynamic_cast<OpenGLVertexArrayObject*>(legacy.get());
-        if (!vao)
-        {
-            return nullptr;
-        }
-        return FromLegacyVAO(vao->GetVAO(), legacy->GetElements(), legacy->GetStride());
     }
 
     OpenGLRHIShaderResourceView::OpenGLRHIShaderResourceView(const RHITextureSRVDesc& desc)

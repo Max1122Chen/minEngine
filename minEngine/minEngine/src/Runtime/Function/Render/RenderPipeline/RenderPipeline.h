@@ -6,6 +6,7 @@
 #include "RenderPasses/PostProcessPass.h"
 #include "RenderPasses/PresentPass.h"
 #include "RenderPasses/SkyBoxPass.h"
+#include "Runtime/Function/Render/EngineSceneBindingSets.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
@@ -15,6 +16,7 @@
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 #include "Runtime/Function/Render/SceneRenderTarget.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 
 #include <unordered_map>
 
@@ -22,11 +24,6 @@
 namespace minEngine
 {
     class RenderCamera;
-    class UniformBuffer;
-    class FrameBuffer;
-    class RHITexture2D;
-    class VertexBuffer;
-    class VertexDefinition;
 
     /**
      * UBO binding point layout:
@@ -37,6 +34,7 @@ namespace minEngine
     constexpr uint32_t MAX_POINT_LIGHTS = 16;
     constexpr uint32_t MAX_SPOT_LIGHTS = 16;
     constexpr uint32_t MAX_CASCADES = 4;
+    constexpr uint32_t kShadowMapResolution = 512;
 
     // Data structure for per-frame uniform buffer
     struct PerFrameData
@@ -114,16 +112,18 @@ namespace minEngine
         void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot);
         const EngineIBLEnvironment& GetIBLEnvironment() const { return m_IBLEnvironment; }
 
+        RHIBuffer* GetPerObjectUniformBuffer() const { return m_PerObjectUniformBuffer.get(); }
+        const EngineSceneBindingSets& GetSceneBindings() const { return m_SceneBindings; }
+
     private:
-        std::shared_ptr<UniformBuffer> m_LightViewProjUniformBuffer; // Uniform buffer for light view projection matrices used in shadow pass
-        std::shared_ptr<UniformBuffer> m_PerFrameUniformBuffer;
-        std::shared_ptr<UniformBuffer> m_LightDataUniformBuffer;
+        RHIBufferRef m_LightViewProjUniformBuffer;
+        RHIBufferRef m_PerFrameUniformBuffer;
+        RHIBufferRef m_LightDataUniformBuffer;
+        RHIBufferRef m_PerObjectUniformBuffer;
 
-        std::shared_ptr<UniformBuffer> m_DirLightViewProjUniformBuffer; // Uniform buffer for directional light view projection matrix used in base pass for CSM
-        std::shared_ptr<UniformBuffer> m_CascadeFarPlaneUniformBuffer; // Uniform buffer for CSM cascade far plane distances used in base pass for CSM
-        std::shared_ptr<UniformBuffer> m_SpotLightViewProjUniformBuffer; // Uniform buffer for spot light view projection matrices used in base pass
-
-        std::shared_ptr<FrameBuffer> m_ShadowBuffer;
+        RHIBufferRef m_DirLightViewProjUniformBuffer;
+        RHIBufferRef m_CascadeFarPlaneUniformBuffer;
+        RHIBufferRef m_SpotLightViewProjUniformBuffer;
 
         ShadowPass m_ShadowPass;
         SkyBoxPass m_SkyBoxPass;
@@ -134,12 +134,13 @@ namespace minEngine
 
         ShadowResourceManager m_ShadowResourceManager;
         EngineIBLEnvironment m_IBLEnvironment;
+        EngineSceneBindingSets m_SceneBindings;
         std::string m_EngineDefaultAssetsRoot;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
 
-        std::shared_ptr<VertexBuffer> m_ScreenQuadVertexBuffer;
-        std::shared_ptr<VertexDefinition> m_ScreenQuadVertexDefinition;
+        RHIBufferRef m_ScreenQuadVertexBuffer;
+        RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
 
     private:
         void BindSceneRenderTarget(SceneRenderTarget& target);
@@ -149,7 +150,6 @@ namespace minEngine
         void BuildShadowDrawCommands(SceneRenderContext& ctx);
         void BuildRenderQueue(SceneRenderContext& ctx);
 
-        // Directional shadow command building 
         DirShadowCommandBuildResult BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 
                                                             const ShadowResourceHandle& handle, 
                                                             const DirectionalLightSceneProxy* lightProxy,
@@ -162,12 +162,10 @@ namespace minEngine
                                             const Matrix4& lightView,
                                             const std::vector<MeshDrawCommand>& opaqueQueue);
 
-        // Spot shadow command building
         ShadowDrawCommand BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,
                                                       const ShadowResourceHandle& handle,
                                                       const SpotLightSceneProxy* lightProxy);
 
-        // Point shadow command building
         std::vector<ShadowDrawCommand> BuildPointShadowDrawCommands(const ShadowRequest& shadowRequest,
                                                                      const ShadowResourceHandle& handle,
                                                                      const PointLightSceneProxy* lightProxy);

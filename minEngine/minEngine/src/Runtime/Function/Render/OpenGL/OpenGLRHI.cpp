@@ -2,9 +2,6 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
-#include "OpenGLBuffers.h"
-#include "OpenGLVertexArrayObject.h"
-#include "OpenGLTexture.h"
 #include "OpenGLShader.h"
 
 #include "Render/RHI/RHIBinding.h"
@@ -12,6 +9,8 @@
 #include "Render/RHI/RHIRenderPass.h"
 
 #include "glad/glad.h"
+
+#include <algorithm>
 
 namespace minEngine
 {
@@ -160,83 +159,6 @@ namespace minEngine
         glDisable(GL_CULL_FACE);
     }
 
-    std::shared_ptr<VertexBuffer> OpenGLRHI::CreateVertexBuffer(float *vertices, uint32_t size, uint32_t numVertices)
-    {
-        return std::make_shared<OpenGLVertexBuffer>(vertices, size, numVertices);
-    }
-
-    std::shared_ptr<IndexBuffer> OpenGLRHI::CreateIndexBuffer(uint32_t *indices, uint32_t numIndices)
-    {
-        return std::make_shared<OpenGLIndexBuffer>(indices, numIndices);
-    }
-
-    std::shared_ptr<VertexDefinition> OpenGLRHI::CreateVertexDefinition(std::initializer_list<RHIVertexElement> elements)
-    {
-        return std::make_shared<OpenGLVertexArrayObject>(elements);
-    }
-
-    std::shared_ptr<FrameBuffer> OpenGLRHI::CreateFrameBuffer(uint32_t width, uint32_t height)
-    {
-        return std::make_shared<OpenGLFrameBuffer>(width, height);
-    }
-
-    std::shared_ptr<UniformBuffer> OpenGLRHI::CreateUniformBuffer(uint32_t size, uint32_t bindingPoint)
-    {
-        return std::make_shared<OpenGLUniformBuffer>(size, bindingPoint);
-    }
-
-    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2D(const unsigned char *data, RHITextureDesc desc)
-    {
-        return std::make_shared<OpenGLTexture2D>(data, desc);
-    }
-
-    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2DFloat(const float* data, RHITextureDesc desc)
-    {
-        auto texture = std::make_shared<OpenGLTexture2D>(data, desc);
-        if (texture->GetID() == 0)
-        {
-            return nullptr;
-        }
-        return texture;
-    }
-
-    std::shared_ptr<RHITextureCube> OpenGLRHI::CreateRHITextureCube(
-        const std::vector<unsigned char*>& faceData,
-        RHITextureDesc desc,
-        bool generateMipmaps)
-    {
-        auto texture = std::make_shared<OpenGLTextureCube>(faceData, desc, generateMipmaps);
-        if (texture->GetID() == 0)
-        {
-            return nullptr;
-        }
-        return texture;
-    }
-
-    std::shared_ptr<RHITexture2DArray> OpenGLRHI::CreateRHITexture2DArray(const unsigned char *data, RHITextureDesc desc)
-    {
-        return std::make_shared<OpenGLTexture2DArray>(data, desc);
-    }
-
-    std::shared_ptr<RHIShaderLegacy> OpenGLRHI::CreateRHIShader(
-        const std::string& vertexSource,
-        const std::string& fragmentSource,
-        std::string* outCompileLog)
-    {
-        std::shared_ptr<OpenGLShader> shader = std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
-        if (outCompileLog != nullptr)
-        {
-            *outCompileLog = shader->GetCompileLog();
-        }
-
-        if (!shader->IsValid())
-        {
-            return nullptr;
-        }
-
-        return shader;
-    }
-
     namespace
     {
         bool ShouldClearColor(RHIRenderTargetActions action)
@@ -374,12 +296,37 @@ namespace minEngine
             if (hasColor)
             {
                 auto* colorTex = static_cast<OpenGLRHITexture*>(color0.RenderTarget);
-                glFramebufferTexture2D(
-                    GL_FRAMEBUFFER,
-                    GL_COLOR_ATTACHMENT0,
-                    colorTex->GetTextureTarget(),
-                    colorTex->GetTextureId(),
-                    color0.MipIndex);
+                if (colorTex->GetTextureTarget() == GL_TEXTURE_2D_ARRAY &&
+                    color0.ArraySlice >= 0)
+                {
+                    glFramebufferTextureLayer(
+                        GL_FRAMEBUFFER,
+                        GL_COLOR_ATTACHMENT0,
+                        colorTex->GetTextureId(),
+                        color0.MipIndex,
+                        color0.ArraySlice);
+                }
+                else if (colorTex->GetTextureTarget() == GL_TEXTURE_CUBE_MAP &&
+                         color0.ArraySlice >= 0)
+                {
+                    const GLenum cubeFace =
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(color0.ArraySlice);
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_COLOR_ATTACHMENT0,
+                        cubeFace,
+                        colorTex->GetTextureId(),
+                        color0.MipIndex);
+                }
+                else
+                {
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_COLOR_ATTACHMENT0,
+                        colorTex->GetTextureTarget(),
+                        colorTex->GetTextureId(),
+                        color0.MipIndex);
+                }
                 GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
                 glDrawBuffers(1, drawBuffers);
             }
@@ -401,6 +348,18 @@ namespace minEngine
                         depthTex->GetTextureId(),
                         info.DepthStencil.MipIndex,
                         info.DepthStencil.ArraySlice);
+                }
+                else if (depthTex->GetTextureTarget() == GL_TEXTURE_CUBE_MAP &&
+                         info.DepthStencil.ArraySlice >= 0)
+                {
+                    const GLenum cubeFace =
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(info.DepthStencil.ArraySlice);
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_DEPTH_ATTACHMENT,
+                        cubeFace,
+                        depthTex->GetTextureId(),
+                        info.DepthStencil.MipIndex);
                 }
                 else
                 {
@@ -464,27 +423,52 @@ namespace minEngine
             return;
         }
 
-        for (const RHIBindingResource& resource : glSet->GetResources())
+        const RHIBindingLayout* layout = glSet->GetLayout();
+        const std::vector<RHIBindingResource>& resources = glSet->GetResources();
+        if (!layout)
         {
+            return;
+        }
+
+        const std::vector<RHIBindingLayoutEntry>& entries = layout->GetEntries();
+        const size_t bindCount = std::min(resources.size(), entries.size());
+        for (size_t i = 0; i < bindCount; ++i)
+        {
+            const RHIBindingResource& resource = resources[i];
+            const RHIBindingLayoutEntry& entry = entries[i];
+
             if (resource.Type == RHIBindingType::TextureSRV && resource.TextureSRV)
             {
                 const RHITextureSRVDesc& srvDesc = resource.TextureSRV->GetCreateDesc();
-                GLuint texId = GetOpenGLTextureId(srvDesc.Texture);
-                const RHIBindingLayout* layout = glSet->GetLayout();
-                uint32_t unit = 0;
-                if (layout && !layout->GetEntries().empty())
+                if (!srvDesc.Texture)
                 {
-                    unit = layout->GetEntries()[0].ShaderBinding;
+                    continue;
                 }
-                glActiveTexture(GL_TEXTURE0 + unit);
-                glBindTexture(GL_TEXTURE_2D, texId);
+
+                GLuint texId = GetOpenGLTextureId(srvDesc.Texture);
+                if (texId == 0)
+                {
+                    continue;
+                }
+
+                GLenum target = GL_TEXTURE_2D;
+                if (auto* glTexture = dynamic_cast<OpenGLRHITexture*>(srvDesc.Texture))
+                {
+                    target = glTexture->GetTextureTarget();
+                }
+
+                glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(entry.ShaderBinding));
+                glBindTexture(target, texId);
             }
             else if (resource.Type == RHIBindingType::UniformBuffer && resource.Buffer)
             {
                 auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
                 if (ubo)
                 {
-                    glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo->GetBufferId());
+                    glBindBufferBase(
+                        GL_UNIFORM_BUFFER,
+                        entry.ShaderBinding,
+                        ubo->GetBufferId());
                 }
             }
         }

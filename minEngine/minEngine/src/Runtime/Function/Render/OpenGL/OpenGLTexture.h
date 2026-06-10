@@ -2,47 +2,58 @@
 #include "Core.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
+#include <cstdint>
+#include <vector>
+
 namespace minEngine
 {
-    class OpenGLTexture2D : public RHITexture2D
+    // Internal upload helpers used by OpenGLRHITexture (not public engine API).
+    struct OpenGLTextureUploadDesc
     {
-    public:
-
-        // TODO: Add other texture creation methods (from memory, from data, etc.)
-        OpenGLTexture2D(const unsigned char* data, RHITextureDesc desc);
-        OpenGLTexture2D(const float* data, RHITextureDesc desc);
-
-        OpenGLTexture2D() = default;
-        virtual ~OpenGLTexture2D() override;
-
-        virtual void Bind(int unit) override;
-        virtual void Unbind() override;
-
-    private:
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint32_t Layers = 1;
+        TextureFormat Format = TextureFormat::None;
+        TextureUsage Usage = TextureUsage::None;
     };
 
-    class OpenGLTextureCube : public RHITextureCube
+    class OpenGLTexture2D
+    {
+    public:
+        OpenGLTexture2D(const unsigned char* data, OpenGLTextureUploadDesc desc);
+        OpenGLTexture2D(const float* data, OpenGLTextureUploadDesc desc);
+        ~OpenGLTexture2D();
+
+        uint32_t GetID() const { return m_ID; }
+
+    private:
+        uint32_t m_ID = 0;
+    };
+
+    class OpenGLTextureCube
     {
     public:
         OpenGLTextureCube(
             const std::vector<unsigned char*>& faceData,
-            RHITextureDesc desc,
+            OpenGLTextureUploadDesc desc,
             bool generateMipmaps = false);
-        OpenGLTextureCube() = default;
-        virtual ~OpenGLTextureCube() override;
+        ~OpenGLTextureCube();
 
-        virtual void Bind(int unit) override;
-        virtual void Unbind() override;
+        uint32_t GetID() const { return m_ID; }
+
+    private:
+        uint32_t m_ID = 0;
     };
 
-    class OpenGLTexture2DArray : public RHITexture2DArray
+    class OpenGLTexture2DArray
     {
     public:
-        OpenGLTexture2DArray(const unsigned char* data, RHITextureDesc desc);
-        OpenGLTexture2DArray() = default;
-        virtual ~OpenGLTexture2DArray() override;
+        OpenGLTexture2DArray(const unsigned char* data, OpenGLTextureUploadDesc desc);
+        ~OpenGLTexture2DArray();
 
-        virtual void Bind(int unit) override;
-        virtual void Unbind() override;
+        uint32_t GetID() const { return m_ID; }
+
+    private:
+        uint32_t m_ID = 0;
     };
 }

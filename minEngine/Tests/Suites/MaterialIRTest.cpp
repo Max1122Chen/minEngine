@@ -19,7 +19,7 @@
 #include "Runtime/Function/Render/Environment/EnvMapCapture.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLTexture.h"
-#include "Runtime/Function/Render/Shader.h"
+#include "Runtime/Function/Render/EngineShaderUtils.h"
 #include "Runtime/Function/Render/TextureCubeLoader.h"
 #include "Runtime/Resource/Loaders/ImageLoader.h"
 
@@ -228,7 +228,7 @@ namespace minEngine
             }
 
             std::string compileError;
-            if (!Shader::TryCompileSourcesOnGpu(result.FullVertexShader, result.FullFragmentShader, &compileError))
+            if (!EngineShaderUtils::TryCompileSourcesOnGpu(result.FullVertexShader, result.FullFragmentShader, &compileError))
             {
                 ME_CORE_ERROR("MaterialIR smoke: GPU shader compile failed.\n{}", compileError);
                 return false;
@@ -363,8 +363,9 @@ namespace minEngine
                 && passed;
 
             passed = AssertAllContains(result.FullVertexShader, {
-                { "layout (std140) uniform PerFrameData", "vertex PerFrameData UBO" },
-                { "uniform mat4 u_Model", "vertex u_Model uniform" },
+                { "layout (std140, binding = 0) uniform PerFrameData", "vertex PerFrameData UBO" },
+                { "layout (std140, binding = 2) uniform PerObject", "vertex PerObject UBO" },
+                { "mat4 u_Model", "vertex u_Model in PerObject UBO" },
                 { "ViewProj * u_Model * vec4(a_Position, 1.0)", "vertex standard transform" },
                 { "} MaterialParameters;", "vertex MaterialParameters struct global" },
                 { "MaterialParameters.TexCoords[0] = a_TexCoord", "vertex fills MaterialParameters" },
@@ -382,7 +383,7 @@ namespace minEngine
                 && passed;
 
             passed = AssertAllContains(result.FullFragmentShader, {
-                { "uniform sampler2D u_Texture0", "global texture uniform" },
+                { "layout (binding = 0) uniform sampler2D u_Texture0", "global texture uniform" },
                 { "MaterialParameters.TexCoords[0] = v_MaterialTexCoord0", "fragment restores MaterialParameters" },
                 { "FragmentMaterialInputs.Albedo + FragmentMaterialInputs.Emissive", "unlit self-lit composite" },
             }) && passed;
@@ -397,7 +398,7 @@ namespace minEngine
                 && passed;
 
             passed = AssertTrue(
-                result.FullFragmentShader.find("uniform sampler2D") < result.FullFragmentShader.find("void main"),
+                result.FullFragmentShader.find("layout (binding = 0) uniform sampler2D") < result.FullFragmentShader.find("void main"),
                 "uniforms must be declared outside main")
                 && passed;
 
@@ -890,13 +891,13 @@ namespace minEngine
             std::string error;
             std::shared_ptr<TextureCube> cube =
                 TextureCubeLoader::CreateSolidColorCube(rhi, 4, faceColors, &error);
-            if (!cube || cube->GetRHITexture() == nullptr || cube->GetRHITexture()->GetID() == 0)
+            if (!cube || cube->GetRHITexture() == nullptr || cube->GetRHITexture()->GetNativeHandle() == 0)
             {
                 ME_CORE_ERROR("MaterialIR TextureCube: CreateSolidColorCube failed ({})", error);
                 return false;
             }
 
-            const uint32_t textureId = cube->GetRHITexture()->GetID();
+            const uint32_t textureId = cube->GetRHITexture()->GetNativeHandle();
             if (!AssertTrue(textureId != 0, "cubemap GL texture id non-zero"))
             {
                 return false;

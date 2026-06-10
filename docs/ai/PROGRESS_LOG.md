@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-01
+Last updated: 2026-06-01 (RND-F03 Done)
 
 ## Purpose
 
@@ -1021,3 +1021,55 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Docs:** `PLATFORM_ROADMAP.md`、`EDITOR_PLATFORM_PLAN.md`、`PROJECT_CONTEXT.md` aligned with repo state.
 - **Done (marked):** P6.1 CB UI; P3 Undo E1.1–E1.4 + S1–S2; E2.1–E2.3a Inspector/Material viewport preview (`6ccd9bf`).
 - **Deferred (consolidated):** E1 Inspector unification; E2.2b Texture preview; E2.3b CB thumbnails; E2.4; E1.5 Material Undo; Command E2 TryMerge; P7; P0/P1; P4/P5.
+
+### 2026-06-05 - RND-F03 M1 tail (`render`, WIP)
+- Goal:
+  Complete M1 D/E/F tail after golden-scene visual sign-off (dir/point/spot + shadows OK).
+- Main changes:
+  SkyBoxPass + EnvMapCapture → `RHICreate*` + `SetBindingSet` + `BeginRenderPass` (no `FrameBuffer`/`WrapLegacy`).
+  Material `BindForDraw` → Set2 `RHIBindingSet` (textures via `GetRHITexture()`); scalars still legacy uniform upload.
+  EnvMap shaders → `#version 420` + `layout(binding=0)`.
+  Deleted all `WrapLegacy*` (zero production callers).
+  `TextureCubeLoader::CreateRenderTargetCube` / `WrapTextureCube`.
+- Validation done:
+  `cmake --build` minEngine + Editor; `.\scripts\verify.ps1` smoke + material-ir PASS.
+  grep: Pass path `WrapLegacy` / `CreateUniformBuffer` / `CreateFrameBuffer` / `CreateVertexBuffer` = 0.
+- Remaining (M2):
+  Delete `RHI.h` Legacy API block; remove `Shader` Asset path; drop `m_RHITexture` dual-track on Texture2D/Cube; merge `OpenGLRHIModern` into `OpenGLRHI`.
+- Next step:
+  User final acceptance → commit; then M2 or RND-F04 prep.
+
+### 2026-06-08 - RND-F03 M2 partial (`render`, WIP)
+- Goal:
+  Continue M2 after M1 user sign-off: engine passes off Shader Asset, texture single-track, merge OpenGLRHIModern, delete Legacy RHI resource API.
+- Main changes:
+  `EngineShaderUtils` — engine fixed shaders via `RHICreateShader` (Present/Shadow/Sky/Post/EnvMap/FXAA/Sharpen).
+  `Texture2D`/`TextureCube` — single `RHITextureRef`; loaders use `RHICreateTexture2D` only.
+  Deleted `OpenGLRHIModern.*`; added `OpenGLRHIResources.*`.
+  `RHI.h` — removed `CreateVertexBuffer`/`CreateRHITexture*`/`CreateRHIShader` (Legacy); kept GL state toggles.
+  Removed `EngineIBLEnvironment::BindForPBRDraw`; Editor thumbnail + MaterialIRTest use `RHITexture::GetNativeHandle()`.
+  `TextureCubeLoader` — `CreateRenderTargetCube` / `WrapTextureCube`; dropped legacy cube factories.
+- Validation done:
+  grep (Render/): `OpenGLRHIModern`/`CreateRHITexture`/`GetRHITextureModern`/`Shader::CreateFromFiles` in Pass path = 0.
+  Full build not re-run this session (long compile); prior blocker was EnvMapCapture missing `OpenGLShader.h` (fixed).
+- Remaining (M2 tail):
+  Material compile still uses `Shader` Asset + `RHIShaderLegacy`; scalar uniforms still `UploadUniformFloat`.
+  Dead legacy impl files (`OpenGLBuffers`, legacy `RHITexture2D` types) still in tree.
+- Next step:
+  User local `cmake --build` + golden scene → commit; optional Material GPU program migration.
+
+### 2026-06-01 - RND-F03 M1 complete + M2 sign-off (`render`)
+- Goal:
+  Finish F03 steps 2–5: Material GPU path, engine Pass UBO/BindingSet, legacy file deletion, grep gate, maintainer docs.
+- Main changes:
+  Material: `RHIShader` + Set2 scalar UBO (`binding=8`) + per-material PSO; removed `Shader` Asset (`Shader.*`, `ShaderLoader.*`, asset registration).
+  Engine passes: Shadow/Post/Sky/EnvMap/Present → `EnginePassUniforms` UBO + `SetBindingSet`; shaders `#version 420` + fixed bindings.
+  Legacy cleanup: deleted `RHIShaderLegacy`, `OpenGLBuffers.*`, `OpenGLVertexArrayObject.*`; trimmed `OpenGLHeaders.h`; `OpenGLRHIResources` upload texture ownership fix.
+  Docs: `ACTIVE_WORK` / `FEATURE_REGISTRY` F03 → Done; `AssetManager.h` drops stale `LoadAsset_Impl<Shader>`.
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests Editor` PASS.
+  `.\scripts\verify.ps1` (smoke + material-ir) PASS.
+  grep `Render/`: `WrapLegacy`, `RHIShaderLegacy`, `UploadUniform*`, `CreateVertexBuffer`, `OpenGLRHIModern` = 0.
+  Golden scene visual OK (prior session user sign-off).
+- Next step:
+  User commit on `render`; promote F04 when ready.

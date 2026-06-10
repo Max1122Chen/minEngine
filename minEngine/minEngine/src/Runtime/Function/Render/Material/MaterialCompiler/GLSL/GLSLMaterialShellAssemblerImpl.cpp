@@ -258,10 +258,10 @@ namespace minEngine
             sceneLighting += '\n';
 
             sceneLighting +=
-                "// Engine IBL cubemap/BRDF samplers (units 4-6, bound in BasePass/TranslucencyPass).\n"
-                "uniform samplerCube u_EnvIrradianceMap;\n"
-                "uniform samplerCube u_EnvPrefilterMap;\n"
-                "uniform sampler2D u_EnvBrdfLUT;\n";
+                "// Engine IBL (Set1 bindings; see EngineShaderBindings.h).\n"
+                "layout (binding = 4) uniform samplerCube u_EnvIrradianceMap;\n"
+                "layout (binding = 5) uniform samplerCube u_EnvPrefilterMap;\n"
+                "layout (binding = 6) uniform sampler2D u_EnvBrdfLUT;\n";
         }
 
         if (env.UsesTangentFrame)

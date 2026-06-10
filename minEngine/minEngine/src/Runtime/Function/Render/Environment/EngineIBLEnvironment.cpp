@@ -376,32 +376,4 @@ namespace minEngine
         m_PrefilterFromGpuPass = false;
         m_EnvIntensity = 1.0f;
     }
-
-    void EngineIBLEnvironment::BindForPBRDraw(RHIShaderLegacy& shader) const
-    {
-        shader.UploadUniformFloat("u_EnvIntensity", m_EnvIntensity);
-
-        if (m_Irradiance && m_Irradiance->GetRHITexture())
-        {
-            m_Irradiance->GetRHITexture()->Bind(kEngineIBLIrradianceTextureUnit);
-            shader.UploadUniformInt("u_EnvIrradianceMap", kEngineIBLIrradianceTextureUnit);
-        }
-
-        if (m_Prefilter && m_Prefilter->GetRHITexture())
-        {
-            m_Prefilter->GetRHITexture()->Bind(kEngineIBLPrefilterTextureUnit);
-            shader.UploadUniformInt("u_EnvPrefilterMap", kEngineIBLPrefilterTextureUnit);
-        }
-        else if (m_Irradiance && m_Irradiance->GetRHITexture())
-        {
-            m_Irradiance->GetRHITexture()->Bind(kEngineIBLPrefilterTextureUnit);
-            shader.UploadUniformInt("u_EnvPrefilterMap", kEngineIBLPrefilterTextureUnit);
-        }
-
-        if (m_BrdfLUT && m_BrdfLUT->GetRHITexture())
-        {
-            m_BrdfLUT->GetRHITexture()->Bind(kEngineIBLBrdfLutTextureUnit);
-            shader.UploadUniformInt("u_EnvBrdfLUT", kEngineIBLBrdfLutTextureUnit);
-        }
-    }
 }

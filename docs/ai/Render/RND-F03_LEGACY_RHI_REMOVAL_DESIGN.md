@@ -6,9 +6,9 @@
 |-------|--------|
 | **Feature ID** | `RND-F03` |
 | **Type** | Refactor |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Owner** | (maintainer) |
-| **Last updated** | 2026-06-01 |
+| **Last updated** | 2026-06-01（M1+M2 完成；grep + verify 通过） |
 | **Branch** | `render`（实现）；registry/planning 可合 `master` |
 | **Depends on** | `RND-F02` **Done**（现代契约 + GL `RHICreate*`/`RHICmd*` + Pass CommandList） |
 | **Blocks** | `RND-F04`（Vulkan + modern RHI completion） |
@@ -20,7 +20,7 @@
 
 **问题：** F02 在 **现代契约** 下仍保留完整 Legacy 并行层：`RHITexture2D::Bind`、`VertexBuffer`、`RHIShaderLegacy::Use`/`UploadUniform*`、`OpenGLRHIModern::WrapLegacy*`、以及错误的 **Shader-as-Asset** 建模（`RHIShaderLegacy` 继承 `MEObject`）。
 
-**方案：** 在 **仅 OpenGL** 后端上，按依赖顺序把运行时与公共 API **全部** 切到现代 RHI；**删** Legacy 公共面与 `WrapLegacy` 生产路径。**Material 编译 + 模板 + 绑定** 放在靠后切片（S6）。
+**方案：** 在 **仅 OpenGL** 后端上，把运行时与公共 API **一次性** 切到现代 RHI 终局形态；**删** Legacy 公共面、`WrapLegacy*`、`OpenGLRHIModern` 第二模块。**禁止**长期保留「BindingSet + BindUniformBlock」混合路径（见 **§8 道中复盘**）。
 
 **不做什么：** Vulkan（F04）；RenderGraph（F01）；F02 设计里「GL 可简化」的 barrier/queue/descriptor 完整语义（F04）。
 
@@ -31,9 +31,10 @@
 ## Reader quick start
 
 1. 读 **§2 建模修正**（Shader vs Material）— 避免按旧模型迁。
-2. 读 **§5 迁移面矩阵** + **§8 切片** — 知道顺序与每片 DoD。
-3. 实现前对照 **§6 引擎 Binding 表**（S3 冻结）与 **§10 删除列表**。
-4. Material 工作者只读 **§7** + **§9**；其它切片勿动模板。
+2. 读 **§8 道中复盘** — 为何放弃 S3–S7 横向薄片、新策略与终局 DoD。
+3. 读 **[RND-F03_MIGRATION_BLUEPRINT](./RND-F03_MIGRATION_BLUEPRINT.md)** — M1 依赖图、Legacy grep 清单、黄金场景。
+4. 读 **§5 迁移面矩阵** + **§6 引擎 Binding 表** + **§10 删除列表** — 实现前对照终局契约。
+5. Material 工作者读 **§7**；绑定表与 assembler 须与 **§6** 同批落地，不可再拆「半绑定」切片。
 
 **代码入口（Legacy 仍活跃处）：**
 
@@ -258,7 +259,7 @@ flowchart TB
 | 阶段 | 结构 |
 |------|------|
 | F02–S5（现状） | `OpenGLRHI`（Legacy + 现代虚表）+ `OpenGLRHIModern`（现代类型 + `WrapLegacy*`） |
-| **F03-S7** | 删除 `OpenGLRHIModern.*`；类型并入 `OpenGLRHI` 实现文件或 `OpenGLRHITexture.cpp` 等；**对外仅 `OpenGLRHI`**，无 Modern 后缀模块 |
+| **F03-M1** | 删除 `OpenGLRHIModern.*`；类型并入 `OpenGLRHI` 实现文件或 `OpenGLRHITexture.cpp` 等；**对外仅 `OpenGLRHI`**，无 Modern 后缀模块 |
 
 `OpenGLRHIModern` 是 **迁移期文件划分**，不是第二套 RHI。
 
@@ -312,37 +313,83 @@ MaterialEdGraph → MIR → GLSL 片段
 
 ---
 
-## §8 实现切片（F03）
+## §8 道中复盘与策略修订
 
-> **顺序：** 先 **资源与引擎 binding**，再 **Pass**，再 **Environment**，最后 **Material + 拆 Shader Asset**，最后 **删 API**。
+> **状态：** 原 **S3 引擎 BindingSet 切片已尝试并回滚**（`render` @ `f17cee1` 为当前基线：S1–S2 保留）。下文记录挫折、决定与替代方案。
 
-| 切片 | 迁移面 | 内容 | 验收 |
-|------|--------|------|------|
-| **F03-S1** | M2, M4 部分 | `SceneRenderTarget`：仅 `RHITextureRef` + `RHICreateTexture2D`；去掉 `FrameBuffer`/Legacy `RHITexture2D`；`OpenGLRHITexture` 正确持有 GL 对象；Present/Post 持 `RHITextureRef` | `verify.ps1`；Editor 主视口 |
-| **F03-S2** | M3 | `StaticMesh`/`MeshDrawCommand` 持 `RHIBufferRef`、`RHIVertexInputLayoutRef`；Loader 用 `RHICreateBuffer`/`RHICreateVertexInputLayout` | `verify.ps1`；网格显示 |
-| **F03-S3** | M5 | 冻结 §6 binding 表；PerFrame/Lights/Shadow UBO 与 shadow SRV 迁 `RHIBindingSet`；Present/Post/Shadow/Sky 去 `UploadUniform*`（可保留临时 `glProgramUniform` 封装在 OpenGL 层，但不暴露 Legacy API） | `verify.ps1`；阴影/后处理目视 |
-| **F03-S4** | M6 | Base/Translucency：PSO 管 blend/depth；`DrawMeshCommand` 仅 cmdList；`BindSceneDrawResources` 改为 `BindEngineSets(cmdList)` | 主场景光照/透明 |
-| **F03-S5** | M4, M7 | Point shadow 现代 depth pass；`EnvMapCapture`/`IBLEnvironment` 现代纹理与 pass | IBL/点阴影目视 |
-| **F03-S6** | M8, M9 | **§7 + §9** Material 全链路；废弃 `Shader` Asset；`RHIShaderLegacy` 退出生产 | `material-ir` + Editor 材质预览 |
-| **F03-S7** | M1, M10, M11 | 删 `RHI.h` Legacy；删 Legacy 类型与 `WrapLegacy*`；**合并 `OpenGLRHIModern` → `OpenGLRHI`**；grep 门禁 | 全量 `verify` + 目视回归 |
+### 8.1 我们遇到了什么
 
-**依赖：** S1→S2→S3；S4 依赖 S2+S3；S5 可与 S4 部分并行；**S6 依赖 S3**；S7 必须最后。
+**原策略（S1→S7 横向薄片）** 按资源类型分层：RT → Mesh → Binding → Pass PSO → Env → Material → 删 Legacy。每层单独验收、单独 commit。
+
+**S3 实践中的问题：**
+
+| 现象 | 根因（归纳） |
+|------|----------------|
+| 方向光/点光强度异常（intensity=1 目视约 0.2） | `LightsData` UBO 与 `RHIBindingSet` / `BindUniformBlock` **双轨并存**；Set0 绑了 buffer，但 GLSL 330 材质无法 `layout(binding=…)`，仍依赖 per-draw block 链接，易与 `glBindBufferBase` 顺序/状态冲突 |
+| 点光像方向光、照亮全场 | 同上 — 光照 UBO 未在 shader 侧稳定生效时的典型症状 |
+| 方向光/点光阴影消失，spot 仍有 | **部分** 资源类型（2D array、cube）走新 SRV wrap/bind 路径，2D spot 仍接近旧路径；混合态下只修好一条光型 |
+| 每个切片都要长 debug，修的是脚手架 | S3 验收通过 `verify.ps1`，但 **无黄金场景光照/阴影目视**；自动化测不到「强度 1 看起来像 0.2」 |
+| 中间产物价值低 | `EngineSceneBindingSets` + `WrapLegacyUniformBuffer` + 保留 `UploadUniformInt` — **终局仍要删**；推到 S7 合并 `OpenGLRHIModern` 时，前面 Wrap 层全部作废 |
+
+**结论：** 横向薄片在「绑定 / Shader / Material」交界处必然产生 **长期混合运行时**。混合态不是可维护的里程碑，却是 debug 成本最高的阶段。
+
+### 8.2 决定
+
+1. **保留已完成且相对独立的 S1–S2**（场景 RT、网格 `RHIBuffer`/`RHIVertexInputLayout`）。二者仍可能内部使用 `WrapLegacy*`，但 **不扩大** Wrap 面。
+2. **放弃原 S3–S7 顺序**，**回滚失败的 S3**（代码回到 `f17cee1`）。
+3. **余下 F03 改为「终局迁移」**：在 **一条连贯逻辑链** 内，从当前基线一次性推到 §12 验收标准，而不是再切「半现代」薄片。
+4. **硬门禁：** 迁移合并后，生产路径 **不得** 同时存在 `RHIBindingSet` 与 `BindUniformBlock`/`UploadUniformInt` 绑场景资源；**不得** 存在 `OpenGLRHIModern::WrapLegacy*`；**不得** 保留 `OpenGLRHIModern` 为第二模块。
+
+> 若逻辑链设计正确、依赖顺序在实现前写清，「一步登天」的难度主要来自 **纪律**（禁止妥协），而非技术不可行。
+
+### 8.3 终局产物应长什么样
+
+实现完成时，渲染栈应满足：
+
+| 维度 | 终局形态 |
+|------|----------|
+| **公共 RHI API** | `RHI.h` **仅** `RHICreate*` / `RHICmd*`；§10 Legacy 列表 **零** 生产引用 |
+| **OpenGL 后端** | **单一** `OpenGLRHI`（+ 按类型拆 `.cpp` 可选）；**无** `OpenGLRHIModern.*`；**无** `WrapLegacy*` |
+| **GPU 资源** | 纹理/缓冲/布局 **创建时即** `RHICreateTexture` / `RHICreateBuffer` / `RHICreateVertexInputLayout`；Loader、Shadow、IBL、Screen quad **不** 经 Legacy 类型中转 |
+| **绑定** | `EngineShaderBindings.h` 为 **唯一** slot 真源；引擎 Pass + 材质 GLSL **`layout(binding=…)`**（统一 **GLSL 420+**）；draw 路径 **仅** `SetBindingSet` |
+| **Shader / Material** | **无** `Shader` Asset；`MaterialGPUProgram`（名可调整）持 `RHIShader`+PSO+layout+per-instance set；`RHIShaderLegacy` 退出生产 |
+| **Pass** | Shadow / Base / Translucency / Post / Present / Sky / Env **仅** `RHICommandList`；PSO 管 depth/blend；无 Pass 内 `glad` |
+| **验证** | `verify.ps1` + `material-ir` + **黄金场景目视**（见 8.4） |
+
+### 8.4 一步迁移必须注意的要点
+
+实现前 **必须先写清依赖图**（可附在本节或 Implementation Plan），至少覆盖：
+
+1. **绑定链三件套同批落地** — `EngineShaderBindings.h`、C++ `RHIBindingLayout`/`RHIBindingSet`、`GLSLMaterialShellAssembler` emit `layout(binding=…)`。**禁止** 先迁 C++ BindingSet 而材质仍 330 + `BindUniformBlock`。
+2. **资源创建点清单** — 列出仍调用 `CreateUniformBuffer` / `CreateRHITexture2D` / `WrapLegacy*` 的文件；迁移时 **改创建点**，而非在 draw 时 Wrap。
+3. **`OpenGLRHIModern` 合并顺序** — 类型并入 `OpenGLRHI` **之后** 生产路径已无 Wrap 调用；避免「合并文件」与「删 Wrap」两个 PR 互相纠缠。
+4. **Shadow 全光型一致** — Directional（2D array）、Spot（2D）、Point（cube + legacy FBO）须在 **同一绑定模型** 下重做；S1–S2 已暴露的 depth mask / clear 陷阱写入黄金场景回归项。
+5. **Material 与引擎 Pass 耦合** — BasePass 的 Set0/1/2 与 `Material::BindForDraw` 合并为 BindingSet；删除 `BindForDraw` 中的 texture unit 硬编码。
+6. **黄金场景（目视门禁）** — 固定场景：BlinnPhong 网格 + **方向光 intensity=1** + **点光** + **spot** + 阴影开；对比迁移前截图或 maintainer sign-off。`verify.ps1` **不能** 作为唯一光照验收。
+7. **`material-ir` golden** — GLSL 版本升至 420、binding 行变更时 **同 PR** 更新 golden / 快照。
+8. **grep 门禁（合并前）** — `WrapLegacy`、`RHIShaderLegacy`、`BindUniformBlock`、`CreateVertexBuffer`、`OpenGLRHIModern` 在生产 `src/` 为 0（Tests 夹具例外须注明）。
+9. **ImGui / Editor 桥** — `GetNativeHandle` 保留；确认 RT 所有权变更后 Editor 视口仍正确。
+10. **范围纪律** — barrier/多队列/Vulkan 仍属 F04；F03 不借迁移之名扩 RHI 语义。
+
+### 8.5 新实现切片（替代原 S3–S7）
+
+> **原则：** 仅保留 **可独立验收且不产生混合运行时** 的里程碑；其余合并为 **一次终局迁移**。
+
+| 切片 | 状态 | 内容 | 验收 |
+|------|------|------|------|
+| **F03-S1** | **Done** | 场景 RT 现代所有权；Present/Post 持 `RHITextureRef` | `f17cee1`；主视口 |
+| **F03-S2** | **Done** | 网格 `RHIBuffer` / `RHIVertexInputLayout`；Loader 现代创建 | `f17cee1`；网格显示 |
+| **F03-P0** | **Done** | **迁移蓝图**：[RND-F03_MIGRATION_BLUEPRINT](./RND-F03_MIGRATION_BLUEPRINT.md)；`EngineShaderBindings.h` 定稿 | Review 通过 |
+| **F03-M1** | **Done** | **终局迁移（单逻辑链）**：按蓝图 §1–§4；§10 删除列表 + §6 绑定 + §7 Material + 合并 `OpenGLRHIModern` → `OpenGLRHI` | §12 全部勾选；grep 门禁；黄金场景目视 |
+| **F03-M2** | **Done** | **收尾**：FEATURE_REGISTRY Done、PROGRESS_LOG、文档 Tier B 标注旧 S3–S7 表已废止 | 维护者 sign-off @ 2026-06-01 |
+
+**废止：** 原 **S3–S7** 及 **§9 S6a–S6e** 子切片表 — 仅作历史参考，**不得** 再作 backlog 来源。
+
+**依赖：** S1–S2（Done）→ **P0** → **M1** → **M2**。M1 内部实现顺序见 8.4，但 **不拆成可合并的「半绑定」对外里程碑**。
 
 ---
 
-## §9 F03-S6 子切片（Material）
-
-| 子切片 | 内容 | 验收 |
-|--------|------|------|
-| **S6a** | 定稿 `EngineShaderBindings.h` + 文档表；Material 专用 set 范围 | Review 通过；无代码行为变更 |
-| **S6b** | 模板 + `GLSLMaterialShellAssemblerImpl` emit binding；`material-ir` GLSL golden 更新 | `test material-ir` |
-| **S6c** | `MaterialGPUProgram`（名可调整）：`RHIShader`+PSO+layout；编译走 `RHICreateShader`；Unlit 先通 | Unlit 材质绘制 |
-| **S6d** | BlinnPhong/PBR + scene sets 联调；`BindForDraw` 删除 | 场景 PBR/Phong 目视 |
-| **S6e** | 移除 `Shader` Asset/Loader/反射；Editor 预览；旧 meta 策略 | 无 Shader 资产注册；Editor 编译 OK |
-
----
-
-## §10 删除列表（F03-S7 执行）
+## §10 删除列表（F03-M1 执行）
 
 ### 10.1 公共 API（`RHI.h`）
 
@@ -375,25 +422,26 @@ MaterialEdGraph → MIR → GLSL 片段
 
 | 风险 | 影响 | 缓解 |
 |------|------|------|
-| Material 模板与 §6 slot 不一致 | 运行时花屏/黑屏 | S6a 冻结表；assembler 单点生成 binding |
-| 去 Shader Asset 破坏旧项目 | 加载失败 | S6e 迁移说明；Loader 友好错误 |
+| Material 模板与 §6 slot 不一致 | 运行时花屏/黑屏 | P0 定稿 `EngineShaderBindings.h`；assembler 与 C++ layout **同 PR** |
+| 去 Shader Asset 破坏旧项目 | 加载失败 | M1 含迁移说明；Loader 友好错误 |
 | `RHIShaderLegacy` 反射移除 | 旧序列化字段 | Material 资产版本 bump；缺字段则触发重编译 |
-| Point shadow / EnvMap 遗漏 | S7 删 API 后编译失败 | S5 明确 DoD；grep 门禁 |
-| BasePass 仍 `EnableBlend` 散落 | 与 PSO 不一致 | S4 统一进 PSO |
-| F03 范围膨胀到「完善 RHI」 | 延期 | 严格 §14 defer 到 F04 |
+| Point shadow / EnvMap 遗漏 | M1 删 API 后编译失败 | 8.4 资源创建点清单；grep 门禁 |
+| BasePass 仍 `EnableBlend` 散落 | 与 PSO 不一致 | M1 内 PSO 统一；禁止半迁 Pass |
+| **混合绑定路径**（S3 教训） | 光强/阴影静默错误 | **硬门禁** §8.2；禁止 `BindingSet` + `BindUniformBlock` 并存 |
+| F03 范围膨胀到「完善 RHI」 | 延期 | 严格 §13 defer 到 F04 |
 
 ---
 
 ## §12 F03 验收标准（Done）
 
-- [ ] §10 删除列表已执行；`rg RHIShaderLegacy`、`rg WrapLegacy`、`rg CreateVertexBuffer` 在生产路径为 0（允许 Tests 夹具临时例外，须注明）
-- [ ] `RenderPasses/`、`SceneRenderTarget`、主 `RenderPipeline` 路径无 Legacy bind/draw
-- [ ] **Material** 为唯一材质 Asset；无 `Shader` Asset 注册
-- [ ] `RHIShader` 非 `MEObject`；无 `RHIShader.gen.h` 于生产构建
-- [ ] `.\scripts\verify.ps1` 通过
-- [ ] `minEngineTests.exe test material-ir` 通过
-- [ ] Editor：主视口、阴影、透明、后处理、材质编辑器预览目视通过（维护者记录）
-- [ ] [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) 中 F03 → **Done**；ACTIVE_WORK 指向 F04
+- [x] §10 删除列表已执行；`rg RHIShaderLegacy`、`rg WrapLegacy`、`rg CreateVertexBuffer` 在生产路径为 0（允许 Tests 夹具临时例外，须注明）
+- [x] `RenderPasses/`、`SceneRenderTarget`、主 `RenderPipeline` 路径无 Legacy bind/draw
+- [x] **Material** 为唯一材质 Asset；无 `Shader` Asset 注册
+- [x] `RHIShader` 非 `MEObject`；无 `RHIShader.gen.h` 于生产构建
+- [x] `.\scripts\verify.ps1` 通过
+- [x] `minEngineTests.exe test material-ir` 通过
+- [x] Editor：主视口、阴影、透明、后处理、材质编辑器预览目视通过（维护者记录 @ 2026-06-01）
+- [x] [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) 中 F03 → **Done**；ACTIVE_WORK 指向 F04
 
 ---
 
@@ -420,6 +468,8 @@ MaterialEdGraph → MIR → GLSL 片段
 
 | 日期 | 说明 |
 |------|------|
+| 2026-06-01 | **P0 Done**：[RND-F03_MIGRATION_BLUEPRINT](./RND-F03_MIGRATION_BLUEPRINT.md) + `EngineShaderBindings.h` |
+| 2026-06-01 | **§8 道中复盘**：S3 BindingSet 尝试失败并回滚；废止 S3–S7 横向薄片；新切片 P0/M1/M2；终局门禁（无 WrapLegacy、无 OpenGLRHIModern） |
 | 2026-06-01 | §6 改为三 Set（0 场景/物体/灯，1 阴影+IBL，2 材质）；§6.3 OpenGL 仅保留 `OpenGLRHI` |
 | 2026-06-01 | 完整设计：建模修正（Shader≠Asset）、迁移矩阵、S1–S7 + S6 子切片、删除列表、F04 边界 |
 | 2026-06-01 | 初稿登记 |

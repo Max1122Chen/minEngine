@@ -7,7 +7,6 @@
 namespace minEngine
 {
     class RHICommandList;
-    class RHITexture2DArray;
 
     class BasePass : public RenderPassBase
     {

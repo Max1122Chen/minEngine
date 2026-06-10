@@ -1,10 +1,17 @@
-#version 330 core
+#version 420 core
 layout (location = 0) in vec3 a_Position;
 
 out vec3 v_WorldPos;
 
-uniform mat4 u_Projection;
-uniform mat4 u_View;
+layout (std140, binding = 1) uniform EnvCaptureFrame
+{
+    mat4 u_Projection;
+    mat4 u_View;
+    float u_Roughness;
+    float u_EnvironmentResolution;
+    float _pad0;
+    float _pad1;
+};
 
 void main()
 {

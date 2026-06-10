@@ -54,7 +54,7 @@ struct SpotLightData
     vec4 Color;      // w for intensity
     vec4 Params;     // x=inner, y=outer, w=shadow map index
 };
-layout (std140) uniform LightsData
+layout (std140, binding = 1) uniform LightsData
 {
     DirectionalLightData DirectionalLight;
     PointLightData PointLights[16];
@@ -63,17 +63,17 @@ layout (std140) uniform LightsData
     uint SpotLightsCount;
 };
 
-layout (std140) uniform DirLightViewProjs
+layout (std140, binding = 9) uniform DirLightViewProjs
 {
     mat4 DirLightViewProj[4];
 };
 
-layout (std140) uniform SpotLightViewProjs
+layout (std140, binding = 11) uniform SpotLightViewProjs
 {
     mat4 SpotLightViewProj[16];
 };
 
-layout (std140) uniform CascadeFarPlanes
+layout (std140, binding = 10) uniform CascadeFarPlanes
 {
     float FarPlanes[4];
 };
@@ -82,9 +82,9 @@ layout (std140) uniform CascadeFarPlanes
 uniform Material u_Material;
 
 // Shadow maps
-uniform sampler2DArray u_DirLightShadowMap;
-uniform sampler2D u_SpotShadowMaps[MAX_SPOT_SHADOW_MAPS];
-uniform samplerCube u_PointShadowMaps[MAX_POINT_SHADOW_MAPS];
+layout (binding = 8) uniform sampler2DArray u_DirLightShadowMap;
+layout (binding = 9) uniform sampler2D u_SpotShadowMaps[MAX_SPOT_SHADOW_MAPS];
+layout (binding = 11) uniform samplerCube u_PointShadowMaps[MAX_POINT_SHADOW_MAPS];
 const int kMaxPoissonSamples = 16;
 const int kPoissonSampleCount = (POISSON_SAMPLE_COUNT <= kMaxPoissonSamples) ? POISSON_SAMPLE_COUNT : kMaxPoissonSamples;
 const float kDirBoxRadius = 1.0;

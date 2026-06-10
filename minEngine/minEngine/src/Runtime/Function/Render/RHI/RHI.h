@@ -11,16 +11,6 @@
 namespace minEngine
 {
     struct RHIVertexElement;
-    class VertexDefinition;
-    class VertexBuffer;
-    class IndexBuffer;
-    class FrameBuffer;
-    class UniformBuffer;
-    class RHITexture2D;
-    class RHITextureCube;
-    class RHITexture2DArray;
-    struct RHITextureDesc;
-    class RHIShaderLegacy;
 
     class RHITexture;
     struct RHITextureCreateDesc;
@@ -52,7 +42,7 @@ namespace minEngine
         virtual void Initialize() = 0;
         virtual void Shutdown() = 0;
 
-        // --- Legacy (OpenGL immediate-style; removed in S5+) ---
+        // --- OpenGL immediate state (window / legacy passes; not resource factories) ---
 
         virtual void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
 
@@ -76,24 +66,7 @@ namespace minEngine
         virtual void EnableCullFace() = 0;
         virtual void DisableCullFace() = 0;
 
-        virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size, uint32_t numVertices) = 0;
-        virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) = 0;
-        virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<RHIVertexElement> elements) = 0;
-        virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) = 0;
-        virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) = 0;
-        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc) = 0;
-        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2DFloat(const float* data, RHITextureDesc desc) = 0;
-        virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(
-            const std::vector<unsigned char*>& faceData,
-            RHITextureDesc desc,
-            bool generateMipmaps = false) = 0;
-        virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc) = 0;
-        virtual std::shared_ptr<RHIShaderLegacy> CreateRHIShader(
-            const std::string& vertexSource,
-            const std::string& fragmentSource,
-            std::string* outCompileLog = nullptr) = 0;
-
-        // --- Modern Dynamic RHI (RND-F02 S3; implemented in S4) ---
+        // --- Modern Dynamic RHI ---
 
         virtual std::shared_ptr<RHITexture> RHICreateTexture2D(
             const RHITextureCreateDesc& desc,

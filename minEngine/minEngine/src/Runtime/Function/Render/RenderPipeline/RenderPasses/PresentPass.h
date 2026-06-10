@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHITexture.h"
 #include "RenderPassBase.h"
 
@@ -14,8 +15,6 @@ namespace minEngine
     class RHITexture;
     class RHIBuffer;
     class RHIVertexInputLayout;
-    class VertexBuffer;
-    class VertexDefinition;
 
     class PresentPass : public RenderPassBase
     {
@@ -34,9 +33,8 @@ namespace minEngine
         RHITextureRef m_SceneColorTexture;
 
     private:
-        std::shared_ptr<VertexBuffer> m_ScreenQuadVertexBuffer;
-        std::shared_ptr<VertexDefinition> m_ScreenQuadVertexDefinition;
-        std::shared_ptr<RHIVertexInputLayout> m_ScreenQuadVertexLayout;
+        RHIBufferRef m_ScreenQuadVertexBuffer;
+        RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
         std::shared_ptr<RHIShader> m_ScreenQuadShader;
         std::shared_ptr<RHIGraphicsPipelineState> m_PresentPipelineState;
         std::shared_ptr<RHIBindingLayout> m_PresentBindingLayout;

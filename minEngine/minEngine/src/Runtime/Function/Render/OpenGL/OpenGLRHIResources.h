@@ -7,6 +7,8 @@
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 
+#include "OpenGLTexture.h"
+
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
@@ -22,10 +24,6 @@ namespace minEngine
         ~OpenGLRHITexture() override;
 
         explicit OpenGLRHITexture(const RHITextureCreateDesc& desc, const void* initialData);
-        static std::shared_ptr<OpenGLRHITexture> WrapLegacy2D(const std::shared_ptr<RHITexture2D>& legacy);
-        static std::shared_ptr<OpenGLRHITexture> WrapLegacy2DArray(
-            const std::shared_ptr<RHITexture2DArray>& legacy,
-            uint32_t arrayLayer);
 
         virtual const RHITextureCreateDesc& GetDesc() const override { return m_Desc; }
         virtual void* GetNativeResource() const override;
@@ -41,19 +39,18 @@ namespace minEngine
         GLenum m_Target = GL_TEXTURE_2D;
         int32_t m_ArrayLayer = -1;
         bool m_OwnsGlTexture = false;
-        std::shared_ptr<RHITexture2D> m_OwningLegacyTexture;
+        std::shared_ptr<OpenGLTexture2D> m_OwningUploadTexture2D;
+        std::shared_ptr<OpenGLTexture2DArray> m_OwningUploadTexture2DArray;
+        std::shared_ptr<OpenGLTextureCube> m_OwningUploadTextureCube;
     };
 
     class OpenGLRHIBuffer final : public RHIBuffer
     {
     public:
         OpenGLRHIBuffer(const RHIBufferCreateDesc& desc, const void* initialData);
-        static std::shared_ptr<OpenGLRHIBuffer> WrapLegacyVertexBuffer(const std::shared_ptr<VertexBuffer>& legacy);
-        static std::shared_ptr<OpenGLRHIBuffer> WrapLegacyVertexBuffer(VertexBuffer* legacy);
-        static std::shared_ptr<OpenGLRHIBuffer> WrapLegacyIndexBuffer(const std::shared_ptr<IndexBuffer>& legacy);
-        static std::shared_ptr<OpenGLRHIBuffer> WrapLegacyIndexBuffer(IndexBuffer* legacy);
 
         virtual const RHIBufferCreateDesc& GetDesc() const override { return m_Desc; }
+        virtual void UpdateSubresource(const void* data, uint32_t offset, uint32_t size) override;
 
         GLuint GetBufferId() const { return m_BufferId; }
         GLenum GetBindingTarget() const { return m_Target; }
@@ -84,9 +81,6 @@ namespace minEngine
     public:
         OpenGLRHIVertexInputLayout() = default;
         explicit OpenGLRHIVertexInputLayout(std::initializer_list<RHIVertexElement> elements);
-        static std::shared_ptr<OpenGLRHIVertexInputLayout> WrapLegacyVertexDefinition(
-            const std::shared_ptr<VertexDefinition>& legacy);
-        static std::shared_ptr<OpenGLRHIVertexInputLayout> WrapLegacyVertexDefinition(VertexDefinition* legacy);
 
         static std::shared_ptr<OpenGLRHIVertexInputLayout> FromLegacyVAO(
             GLuint vao,
@@ -98,7 +92,6 @@ namespace minEngine
 
         GLuint GetVertexArrayId() const { return m_VAO; }
 
-        // Binds bufferId into this VAO (must be called with VBO bound for attrib setup).
         void BindVertexBuffer(GLuint bufferId);
 
     private:

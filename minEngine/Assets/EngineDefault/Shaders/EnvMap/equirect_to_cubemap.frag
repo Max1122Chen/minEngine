@@ -1,9 +1,9 @@
-#version 330 core
+#version 420 core
 out vec4 FragColor;
 
 in vec3 v_WorldPos;
 
-uniform sampler2D u_EquirectangularMap;
+layout (binding = 0) uniform sampler2D u_EquirectangularMap;
 
 const vec2 kInvAtan = vec2(0.1591, 0.3183);
 

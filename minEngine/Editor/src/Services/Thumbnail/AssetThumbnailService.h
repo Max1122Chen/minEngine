@@ -15,7 +15,7 @@ namespace minEngine
     class AssetMeta;
     class Material;
     class Texture2D;
-    class RHITexture2D;
+    class RHITexture;
 
     enum class ThumbnailBackendKind : uint8_t
     {

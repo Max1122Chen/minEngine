@@ -10,9 +10,12 @@
 #include "Render/Material.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHITexture.h"
+#include "Render/EngineRHITextureUtils.h"
+#include "Render/EngineSceneBindingSets.h"
+#include "Render/EngineShaderBindings.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHICommandList.h"
-#include "Render/Shader.h"
+#include "Render/EngineShaderUtils.h"
 #include "Render/RenderCamera.h"
 #include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Render/LightSceneProxies/PointLightSceneProxy.h"
@@ -39,69 +42,64 @@ namespace minEngine
 
         rhi->SetClearColor(Vector4(0.1f, 0.1f, 0.1f, 1.0f));
 
-        // Create uniform buffers
-        m_LightViewProjUniformBuffer = rhi->CreateUniformBuffer(sizeof(Matrix4), 8); // Binding point 8 for light view projection matrix in shadow pass
-        m_PerFrameUniformBuffer = rhi->CreateUniformBuffer(sizeof(PerFrameData), 0);
-        m_LightDataUniformBuffer = rhi->CreateUniformBuffer(sizeof(LightsData), 1); // Binding point 1 for light data
+        RHICommandList cmdList(rhi);
+        m_LightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4)));
+        m_PerFrameUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(PerFrameData)));
+        m_LightDataUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(LightsData)));
+        m_PerObjectUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4)));
+        m_DirLightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4) * MAX_CASCADES));
+        m_CascadeFarPlaneUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(float) * 4 * MAX_CASCADES));
+        m_SpotLightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4) * MAX_SPOT_LIGHTS));
 
-        m_DirLightViewProjUniformBuffer = rhi->CreateUniformBuffer(sizeof(Matrix4) * MAX_CASCADES, 9); // Binding point 9 for directional light view projection matrix in base pass for CSM
-        m_CascadeFarPlaneUniformBuffer = rhi->CreateUniformBuffer(sizeof(float) * 4 * MAX_CASCADES, 10); // Binding point 10 for CSM cascade far plane distances in base pass for CSM
-        m_SpotLightViewProjUniformBuffer = rhi->CreateUniformBuffer(sizeof(Matrix4) * MAX_SPOT_LIGHTS, 11); // Binding point 11 for spot light view projection matrices in base pass
+        m_SceneBindings.Initialize(cmdList);
 
-        // Create framebuffers
-        m_ShadowBuffer = rhi->CreateFrameBuffer(512, 512); // Shadow map framebuffer, we will use a fixed size for now
-
-        // Set up BasePass / TranslucencyPass (need pipeline back-pointer for IBL binding).
         m_BasePass.pipeline = this;
         m_TranslucentPass.pipeline = this;
 
-        // Assign framebuffers to render passes
-        m_ShadowPass.m_FrameBuffer = m_ShadowBuffer.get();
-
-        // Set up ShadowPass
         m_ShadowPass.Initialize();
         m_ShadowPass.m_LightViewProjUniformBuffer = m_LightViewProjUniformBuffer.get();
+        m_ShadowPass.m_PerObjectUniformBuffer = m_PerObjectUniformBuffer.get();
 
-        // Prepare a screen quad for post-processing and presenting
         float quadVertices[] = {
-        // pos      // uv
-        -1, -1,     0, 0,
-        1, -1,     1, 0,
-        1,  1,     1, 1,
-
-        -1, -1,     0, 0,
-        1,  1,     1, 1,
-        -1,  1,     0, 1
+            -1, -1, 0, 0,
+            1, -1, 1, 0,
+            1, 1, 1, 1,
+            -1, -1, 0, 0,
+            1, 1, 1, 1,
+            -1, 1, 0, 1
         };
-        m_ScreenQuadVertexBuffer = rhi->CreateVertexBuffer(quadVertices, sizeof(quadVertices), 6);
-        m_ScreenQuadVertexDefinition = rhi->CreateVertexDefinition({
-            { "a_Position", VertexElementType::Float2, false },
-            { "a_TexCoord", VertexElementType::Float2, false }
+        RHIBufferCreateDesc quadDesc;
+        quadDesc.Usage = RHIBufferUsage::Vertex;
+        quadDesc.ByteSize = sizeof(quadVertices);
+        quadDesc.Stride = 4 * sizeof(float);
+        quadDesc.ElementCount = 6;
+        m_ScreenQuadVertexBuffer = cmdList.CreateBuffer(quadDesc, quadVertices);
+        m_ScreenQuadVertexLayout = cmdList.CreateVertexInputLayout({
+            {"a_Position", VertexElementType::Float2, false},
+            {"a_TexCoord", VertexElementType::Float2, false}
         });
 
-        // Set up PostProcessPasses
-        
         m_PostProcessPasses.emplace_back();
         m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
-        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
-        if (std::shared_ptr<Shader> fxaaShader = Shader::CreateFromFiles(
+        m_PostProcessPasses.back().m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
+        if (RHIShaderRef fxaaShader = EngineShaderUtils::CreateShaderFromFiles(
                 *rhi,
-                Shader::EngineShaderPath("Present.vert"),
-                Shader::EngineShaderPath("FXAA.frag")))
+                EngineShaderUtils::EngineShaderPath("Present.vert"),
+                EngineShaderUtils::EngineShaderPath("FXAA.frag")))
         {
-            m_PostProcessPasses.back().m_PostProcessShader = fxaaShader->GetRHIShader();
+            m_PostProcessPasses.back().m_PostProcessShader = std::move(fxaaShader);
         }
 
         // Add a sharpen pass after FXAA
         m_PostProcessPasses.emplace_back();
         m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
-        m_PostProcessPasses.back().m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
-        if (std::shared_ptr<Shader> sharpenShader = Shader::CreateFromFiles(
+        m_PostProcessPasses.back().m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
+        if (RHIShaderRef sharpenShader = EngineShaderUtils::CreateShaderFromFiles(
                 *rhi,
-                Shader::EngineShaderPath("Present.vert"),
-                Shader::EngineShaderPath("Sharpen.frag")))
+                EngineShaderUtils::EngineShaderPath("Present.vert"),
+                EngineShaderUtils::EngineShaderPath("Sharpen.frag")))
         {
-            m_PostProcessPasses.back().m_PostProcessShader = sharpenShader->GetRHIShader();
+            m_PostProcessPasses.back().m_PostProcessShader = std::move(sharpenShader);
         }
 
         for (PostProcessPass& postProcessPass : m_PostProcessPasses)
@@ -112,7 +110,7 @@ namespace minEngine
         // Set up PresentPass
         m_PresentPass.Initialize();
         m_PresentPass.m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
-        m_PresentPass.m_ScreenQuadVertexDefinition = m_ScreenQuadVertexDefinition;
+        m_PresentPass.m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
 
         // IBL + SkyBox: RenderSystem::LoadEngineRenderingAssets() after PathRegistry is ready.
     }
@@ -140,6 +138,7 @@ namespace minEngine
 
     void RenderPipeline::Shutdown()
     {
+        m_SceneBindings.Shutdown();
         m_SkyBoxPass.Shutdown();
         m_IBLEnvironment.Shutdown();
         m_ShadowResourceManager.Shutdown();
@@ -149,18 +148,17 @@ namespace minEngine
 
         m_PresentPass.m_SceneColorTexture.reset();
         m_ShadowPass.m_LightViewProjUniformBuffer = nullptr;
-
-        m_ShadowPass.m_FrameBuffer = nullptr;
-        m_BasePass.m_FrameBuffer = nullptr;
-        m_TranslucentPass.m_FrameBuffer = nullptr;
+        m_ShadowPass.m_PerObjectUniformBuffer = nullptr;
 
         m_ScreenQuadVertexBuffer.reset();
-        m_ScreenQuadVertexDefinition.reset();
-        m_ShadowBuffer.reset();
+        m_ScreenQuadVertexLayout.reset();
 
         m_LightDataUniformBuffer.reset();
         m_PerFrameUniformBuffer.reset();
+        m_PerObjectUniformBuffer.reset();
         m_LightViewProjUniformBuffer.reset();
+        m_DirLightViewProjUniformBuffer.reset();
+        m_CascadeFarPlaneUniformBuffer.reset();
         m_SpotLightViewProjUniformBuffer.reset();
     }
 
@@ -169,12 +167,6 @@ namespace minEngine
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
-            return;
-        }
-
-        if (!m_ShadowBuffer)
-        {
-            ME_CORE_ERROR("RenderPipeline resources are not ready");
             return;
         }
 
@@ -227,6 +219,19 @@ namespace minEngine
 
         UpdatePerFrameUBO(ctx);
         UpdateLightUBO(ctx);
+
+        m_SceneBindings.BuildSceneSet0(
+            cmdList,
+            m_PerFrameUniformBuffer.get(),
+            m_LightDataUniformBuffer.get(),
+            m_PerObjectUniformBuffer.get());
+        m_SceneBindings.BuildSceneSet1(
+            cmdList,
+            ctx,
+            m_DirLightViewProjUniformBuffer.get(),
+            m_CascadeFarPlaneUniformBuffer.get(),
+            m_SpotLightViewProjUniformBuffer.get(),
+            &m_IBLEnvironment);
 
         m_BasePass.m_DrawCommands = ctx.OpaqueQueue;
         m_BasePass.m_DirectionalShadowHandle = ctx.DirectionalShadowHandle;
@@ -297,8 +302,7 @@ namespace minEngine
         perFrameData.Proj = mainCamera->GetProjectionMatrix();
         perFrameData.ViewProj = mainCamera->GetViewProjMatrix();
         perFrameData.CameraPos = Vector4(mainCamera->m_Position, 1.0f);
-        m_PerFrameUniformBuffer->UpdateData(&perFrameData, 0, sizeof(PerFrameData));
-        m_PerFrameUniformBuffer->BindToBindingPoint(0); // Bind the uniform buffer to the binding point for this frame
+        m_PerFrameUniformBuffer->UpdateSubresource(&perFrameData, 0, sizeof(PerFrameData));
     }
 
     void RenderPipeline::UpdateLightUBO(const SceneRenderContext& ctx)
@@ -390,8 +394,7 @@ namespace minEngine
         lightsData.SpotLightsCount = spotLightCount;
 
 
-        m_LightDataUniformBuffer->UpdateData(&lightsData, 0, sizeof(LightsData));
-        m_LightDataUniformBuffer->BindToBindingPoint(1); // Bind the uniform buffer to the binding point for light data
+        m_LightDataUniformBuffer->UpdateSubresource(&lightsData, 0, sizeof(LightsData));
     }
 
     void RenderPipeline::CollectShadowRequests(SceneRenderContext& ctx)
@@ -414,9 +417,9 @@ namespace minEngine
             ShadowRequest shadowRequest{};
             shadowRequest.Type = LightType::Directional;
             shadowRequest.LightProxy = dirLightProxy;
-            shadowRequest.Resolution = ShadowResolution{    // Currently we use a fixed shadow map resolution for simplicity, we can make this configurable later.
-                .Width = m_ShadowBuffer->GetWidth(),
-                .Height = m_ShadowBuffer->GetHeight()
+            shadowRequest.Resolution = ShadowResolution{
+                .Width = kShadowMapResolution,
+                .Height = kShadowMapResolution
             };
             shadowRequest.Priority = 0;
             ctx.ShadowRequests.push_back(shadowRequest);
@@ -439,8 +442,8 @@ namespace minEngine
             shadowRequest.Type = LightType::Spot;
             shadowRequest.LightProxy = spotLightProxy;
             shadowRequest.Resolution = ShadowResolution{
-                .Width = m_ShadowBuffer->GetWidth(),
-                .Height = m_ShadowBuffer->GetHeight()
+                .Width = kShadowMapResolution,
+                .Height = kShadowMapResolution
             };
             shadowRequest.Priority = 0;
             ctx.ShadowRequests.push_back(shadowRequest);
@@ -464,8 +467,8 @@ namespace minEngine
             shadowRequest.Type = LightType::Point;
             shadowRequest.LightProxy = pointLightProxy;
             shadowRequest.Resolution = ShadowResolution{
-                .Width = m_ShadowBuffer->GetWidth(),
-                .Height = m_ShadowBuffer->GetHeight()
+                .Width = kShadowMapResolution,
+                .Height = kShadowMapResolution
             };
             shadowRequest.Priority = 0;
             ctx.ShadowRequests.push_back(shadowRequest);
@@ -505,8 +508,14 @@ namespace minEngine
                 for(int i = 0; i < MAX_CASCADES; i++)
                 {
                     auto& command = result.Commands[i];
-                    m_CascadeFarPlaneUniformBuffer->UpdateData(&result.CascadeFarPlaneVS[i], sizeof(float) * 4 * i, sizeof(float));
-                    m_DirLightViewProjUniformBuffer->UpdateData(&command.ViewProj, sizeof(Matrix4) * i, sizeof(Matrix4));
+                    m_CascadeFarPlaneUniformBuffer->UpdateSubresource(
+                        &result.CascadeFarPlaneVS[i],
+                        sizeof(float) * 4 * static_cast<uint32_t>(i),
+                        sizeof(float));
+                    m_DirLightViewProjUniformBuffer->UpdateSubresource(
+                        &command.ViewProj,
+                        sizeof(Matrix4) * static_cast<uint32_t>(i),
+                        sizeof(Matrix4));
                 }
             }
             else if (shadowRequest.Type == LightType::Spot)
@@ -524,7 +533,10 @@ namespace minEngine
                 }
                 ShadowDrawCommand command = BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy);
                 ctx.ShadowDrawCommands.push_back(command);
-                m_SpotLightViewProjUniformBuffer->UpdateData(&command.ViewProj, sizeof(Matrix4) * spotLightCount, sizeof(Matrix4)); // Update the spot light view projection matrix in the base pass uniform buffer
+                m_SpotLightViewProjUniformBuffer->UpdateSubresource(
+                    &command.ViewProj,
+                    sizeof(Matrix4) * static_cast<uint32_t>(spotLightCount),
+                    sizeof(Matrix4));
                 spotLightCount++;
             }
             else if(shadowRequest.Type == LightType::Point)

@@ -321,14 +321,14 @@ namespace minEngine
             return view;
         }
 
-        const RHITexture2D* rhiTexture = textureAsset->GetRHITexture();
+        const RHITexture* rhiTexture = textureAsset->GetRHITexture();
         if (!rhiTexture || GetRHINativeTextureHandle(rhiTexture) == 0)
         {
             return view;
         }
 
-        uint32_t textureWidth = rhiTexture->GetWidth();
-        uint32_t textureHeight = rhiTexture->GetHeight();
+        uint32_t textureWidth = rhiTexture->GetDesc().Width;
+        uint32_t textureHeight = rhiTexture->GetDesc().Height;
         if (textureWidth == 0 || textureHeight == 0)
         {
             textureWidth = textureAsset->GetWidth();
@@ -374,14 +374,14 @@ namespace minEngine
             return view;
         }
 
-        const RHITexture2D* rhiTexture = textureAsset->GetRHITexture();
+        const RHITexture* rhiTexture = textureAsset->GetRHITexture();
         if (!rhiTexture || GetRHINativeTextureHandle(rhiTexture) == 0)
         {
             return view;
         }
 
-        uint32_t textureWidth = rhiTexture->GetWidth();
-        uint32_t textureHeight = rhiTexture->GetHeight();
+        uint32_t textureWidth = rhiTexture->GetDesc().Width;
+        uint32_t textureHeight = rhiTexture->GetDesc().Height;
         if (textureWidth == 0 || textureHeight == 0)
         {
             textureWidth = textureAsset->GetWidth();

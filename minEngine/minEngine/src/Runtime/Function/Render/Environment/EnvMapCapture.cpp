@@ -1,12 +1,20 @@
 #include "EnvMapCapture.h"
 
-#include "../Shader.h"
-#include "../Texture.h"
+#include "../EngineShaderUtils.h"
+#include "../EnginePassUniforms.h"
 #include "../TextureCubeLoader.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/Render/EngineRHITextureUtils.h"
+#include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
+#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
+#include "Runtime/Function/Render/RHI/RHIRenderPass.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -120,11 +128,132 @@ namespace minEngine
             glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(maxMipLevel));
             glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         }
+
+        struct EnvMapMeshResources
+        {
+            RHIBufferRef VertexBuffer;
+            RHIVertexInputLayoutRef VertexLayout;
+            uint32_t VertexCount = 0;
+        };
+
+        EnvMapMeshResources CreateEnvMapMesh(RHI& rhi)
+        {
+            RHICommandList cmdList(&rhi);
+            EnvMapMeshResources resources;
+            const uint32_t vertexByteSize = static_cast<uint32_t>(sizeof(kCubeVertices));
+            resources.VertexCount = vertexByteSize / (3 * sizeof(float));
+
+            RHIBufferCreateDesc vbDesc;
+            vbDesc.Usage = RHIBufferUsage::Vertex;
+            vbDesc.ByteSize = vertexByteSize;
+            vbDesc.Stride = 3 * sizeof(float);
+            vbDesc.ElementCount = resources.VertexCount;
+            resources.VertexBuffer = cmdList.CreateBuffer(vbDesc, kCubeVertices);
+            resources.VertexLayout = cmdList.CreateVertexInputLayout({
+                {"a_Position", VertexElementType::Float3, false},
+            });
+            return resources;
+        }
+
+        void DrawEnvMapMesh(RHICommandList& cmdList, const EnvMapMeshResources& mesh)
+        {
+            cmdList.SetVertexInputLayout(mesh.VertexLayout.get());
+            cmdList.SetVertexBuffer(mesh.VertexBuffer.get());
+            cmdList.Draw(mesh.VertexCount, 0);
+        }
+
+        void BeginCubeFaceRenderPass(
+            RHICommandList& cmdList,
+            RHITexture* colorCube,
+            uint32_t faceIndex,
+            uint8_t mipIndex,
+            RHITexture* depthTexture,
+            uint32_t viewportSize)
+        {
+            RHIRenderPassInfo passInfo;
+            passInfo.ColorAttachments[0].RenderTarget = colorCube;
+            passInfo.ColorAttachments[0].ArraySlice = static_cast<int32_t>(faceIndex);
+            passInfo.ColorAttachments[0].MipIndex = mipIndex;
+            passInfo.ColorAttachments[0].Action = RHIRenderTargetActions::ClearStore;
+            passInfo.DepthStencil.DepthStencilTarget = depthTexture;
+            passInfo.DepthStencil.Action = RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil;
+            passInfo.ClearValue.Depth = 1.0f;
+            cmdList.BeginRenderPass(passInfo);
+            cmdList.SetViewport(0, 0, viewportSize, viewportSize);
+        }
+
+        struct EnvCaptureDrawResources
+        {
+            RHIGraphicsPipelineStateRef PipelineState;
+            RHIBindingLayoutRef BindingLayout;
+            RHIBufferRef FrameUniformBuffer;
+        };
+
+        EnvCaptureDrawResources CreateEnvCaptureDrawResources(
+            RHICommandList& cmdList,
+            RHIShader* shader,
+            uint32_t sourceTextureUnit)
+        {
+            EnvCaptureDrawResources resources;
+            RHIGraphicsPSODesc psoDesc;
+            psoDesc.VertexShader = shader;
+            psoDesc.PixelShader = shader;
+            psoDesc.DepthStencilState.bDepthTestEnabled = true;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
+            psoDesc.BlendState.bBlendEnabled = false;
+            resources.PipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
+
+            RHIBufferCreateDesc frameDesc;
+            frameDesc.Usage = RHIBufferUsage::Uniform;
+            frameDesc.ByteSize = sizeof(EnvCaptureFrameUBO);
+            resources.FrameUniformBuffer = cmdList.CreateBuffer(frameDesc, nullptr);
+
+            resources.BindingLayout = cmdList.CreateBindingLayout({
+                {EngineShaderBindings::kEnvCapture_SourceSRV,
+                 RHIBindingType::TextureSRV,
+                 sourceTextureUnit,
+                 RHIGraphicsShaderStage::Pixel},
+                {EngineShaderBindings::kEnvCapture_FrameData,
+                 RHIBindingType::UniformBuffer,
+                 EngineShaderBindings::kGL_EnvCaptureFrameDataUBO,
+                 RHIGraphicsShaderStage::Vertex},
+            });
+            return resources;
+        }
+
+        RHIBindingSetRef CreateEnvCaptureBindingSet(
+            RHICommandList& cmdList,
+            EnvCaptureDrawResources& drawResources,
+            RHIShaderResourceView* sourceSrv,
+            const EnvCaptureFrameUBO& frameData)
+        {
+            drawResources.FrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(EnvCaptureFrameUBO));
+            return cmdList.CreateBindingSet(
+                drawResources.BindingLayout.get(),
+                {
+                    {RHIBindingType::TextureSRV, nullptr, sourceSrv},
+                    {RHIBindingType::UniformBuffer, drawResources.FrameUniformBuffer.get(), nullptr},
+                });
+        }
+
+        struct EnvMapSourceBinding
+        {
+            RHIShaderResourceViewRef SourceSRV;
+        };
+
+        EnvMapSourceBinding CreateSourceBinding(RHITexture* sourceTexture)
+        {
+            EnvMapSourceBinding binding;
+            RHITextureSRVDesc srvDesc;
+            srvDesc.Texture = sourceTexture;
+            binding.SourceSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
+            return binding;
+        }
     }
 
     std::shared_ptr<TextureCube> EnvMapCapture::EquirectToCubemap(
         RHI& rhi,
-        RHITexture2D& equirectTexture,
+        RHITexture& equirectTexture,
         const std::filesystem::path& engineDefaultAssetsRoot,
         uint32_t faceSize,
         std::string* outError)
@@ -144,7 +273,7 @@ namespace minEngine
             return reportError("faceSize must be > 0.");
         }
 
-        const TextureFormat cubeFormat = equirectTexture.GetFormat();
+        const TextureFormat cubeFormat = equirectTexture.GetDesc().Format;
         const uint32_t channels = ChannelsFromFormat(cubeFormat);
         if (channels == 0)
         {
@@ -153,73 +282,42 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        const std::filesystem::path vertexPath = shaderDirectory / "equirect_to_cubemap.vert";
-        const std::filesystem::path fragmentPath = shaderDirectory / "equirect_to_cubemap.frag";
-
-        std::shared_ptr<Shader> captureShader = Shader::CreateFromFiles(
+        std::shared_ptr<RHIShader> captureShader = EngineShaderUtils::CreateShaderFromFiles(
             rhi,
-            vertexPath,
-            fragmentPath,
+            shaderDirectory / "equirect_to_cubemap.vert",
+            shaderDirectory / "equirect_to_cubemap.frag",
             outError);
         if (!captureShader || !captureShader->IsValid())
         {
             return reportError("failed to compile equirect_to_cubemap shader.");
         }
 
-        std::shared_ptr<RHIShaderLegacy> shader = captureShader->GetRHIShader();
-
-        std::string cubeError;
-        std::shared_ptr<RHITextureCube> environmentCube = TextureCubeLoader::CreateEmptyRenderTargetCube(
-            rhi,
-            faceSize,
-            cubeFormat,
-            &cubeError);
+        RHITextureRef environmentCube =
+            TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat);
         if (!environmentCube)
         {
-            return reportError(cubeError.empty() ? "failed to allocate cubemap." : cubeError);
+            return reportError("failed to allocate cubemap.");
         }
 
-        std::shared_ptr<FrameBuffer> captureFramebuffer = rhi.CreateFrameBuffer(faceSize, faceSize);
-        if (!captureFramebuffer)
+        RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
+        if (!depthTarget)
         {
-            return reportError("failed to create capture framebuffer.");
+            return reportError("failed to allocate capture depth texture.");
         }
 
-        const uint32_t vertexByteSize = static_cast<uint32_t>(sizeof(kCubeVertices));
-        const uint32_t vertexCount = vertexByteSize / (3 * sizeof(float));
-        std::shared_ptr<VertexBuffer> cubeVertexBuffer =
-            rhi.CreateVertexBuffer(const_cast<float*>(kCubeVertices), vertexByteSize, vertexCount);
-        std::shared_ptr<VertexDefinition> cubeVertexDefinition = rhi.CreateVertexDefinition({
-            {"a_Position", VertexElementType::Float3, false},
-        });
-
-        GLuint depthRenderbuffer = 0;
-        glGenRenderbuffers(1, &depthRenderbuffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, faceSize, faceSize);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
+        RHICommandList cmdList(&rhi);
+        const EnvMapSourceBinding sourceBinding = CreateSourceBinding(&equirectTexture);
+        EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
+            cmdList,
+            captureShader.get(),
+            EngineShaderBindings::kGL_EnvCaptureSourceUnit);
 
         GLint previousViewport[4] = {0, 0, 0, 0};
         glGetIntegerv(GL_VIEWPORT, previousViewport);
 
         const Matrix4 captureProjection =
             glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-
-        captureFramebuffer->Bind();
-        glFramebufferRenderbuffer(
-            GL_FRAMEBUFFER,
-            GL_DEPTH_ATTACHMENT,
-            GL_RENDERBUFFER,
-            depthRenderbuffer);
-
-        rhi.EnableDepthTest();
-        rhi.SetDepthMask(true);
-        rhi.DisableCullFace();
-
-        shader->Use();
-        shader->UploadUniformMat4("u_Projection", captureProjection);
-        equirectTexture.Bind(0);
-        shader->UploadUniformInt("u_EquirectangularMap", 0);
 
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
@@ -228,29 +326,26 @@ namespace minEngine
                 kCaptureTargets[faceIndex],
                 kCaptureUps[faceIndex]);
 
-            captureFramebuffer->AttachColorCubeFace(environmentCube, faceIndex);
-            captureFramebuffer->Bind();
+            BeginCubeFaceRenderPass(
+                cmdList,
+                environmentCube.get(),
+                faceIndex,
+                0,
+                depthTarget.get(),
+                faceSize);
 
-            const GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-            if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
+            EnvCaptureFrameUBO frameData{};
+            frameData.Projection = captureProjection;
+            frameData.View = captureView;
+            cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
+            if (RHIBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
+                    cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
             {
-                glDeleteRenderbuffers(1, &depthRenderbuffer);
-                return reportError(
-                    "capture framebuffer incomplete for face " + std::to_string(faceIndex) + ".");
+                cmdList.SetBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
             }
-
-            rhi.SetViewport(0, 0, faceSize, faceSize);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            shader->UploadUniformMat4("u_View", captureView);
-            cubeVertexDefinition->Bind();
-            cubeVertexBuffer->Bind();
-            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
+            DrawEnvMapMesh(cmdList, mesh);
+            cmdList.EndRenderPass();
         }
-
-        captureFramebuffer->Unbind();
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-        glDeleteRenderbuffers(1, &depthRenderbuffer);
 
         rhi.SetViewport(
             static_cast<uint32_t>(previousViewport[0]),
@@ -258,9 +353,7 @@ namespace minEngine
             static_cast<uint32_t>(previousViewport[2]),
             static_cast<uint32_t>(previousViewport[3]));
 
-        equirectTexture.Unbind();
-
-        const uint32_t cubeTextureId = environmentCube->GetID();
+        const GLuint cubeTextureId = GetOpenGLTextureId(environmentCube.get());
         if (cubeTextureId != 0)
         {
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTextureId);
@@ -270,14 +363,12 @@ namespace minEngine
             glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         }
 
-        environmentCube->Unbind();
-
-        return TextureCubeLoader::WrapRHITextureCube(std::move(environmentCube), faceSize, channels);
+        return TextureCubeLoader::WrapTextureCube(std::move(environmentCube), faceSize, channels);
     }
 
     std::shared_ptr<TextureCube> EnvMapCapture::ConvolveIrradiance(
         RHI& rhi,
-        RHITextureCube& environmentCube,
+        RHITexture& environmentCube,
         const std::filesystem::path& engineDefaultAssetsRoot,
         uint32_t faceSize,
         std::string* outError)
@@ -297,7 +388,7 @@ namespace minEngine
             return reportError("irradiance faceSize must be > 0.");
         }
 
-        const TextureFormat cubeFormat = environmentCube.GetFormat();
+        const TextureFormat cubeFormat = environmentCube.GetDesc().Format;
         const uint32_t channels = ChannelsFromFormat(cubeFormat);
         if (channels == 0)
         {
@@ -306,73 +397,42 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        const std::filesystem::path vertexPath = shaderDirectory / "irradiance_convolution.vert";
-        const std::filesystem::path fragmentPath = shaderDirectory / "irradiance_convolution.frag";
-
-        std::shared_ptr<Shader> convolutionShader = Shader::CreateFromFiles(
+        std::shared_ptr<RHIShader> convolutionShader = EngineShaderUtils::CreateShaderFromFiles(
             rhi,
-            vertexPath,
-            fragmentPath,
+            shaderDirectory / "irradiance_convolution.vert",
+            shaderDirectory / "irradiance_convolution.frag",
             outError);
         if (!convolutionShader || !convolutionShader->IsValid())
         {
             return reportError("failed to compile irradiance_convolution shader.");
         }
 
-        std::shared_ptr<RHIShaderLegacy> shader = convolutionShader->GetRHIShader();
-
-        std::string cubeError;
-        std::shared_ptr<RHITextureCube> irradianceCube = TextureCubeLoader::CreateEmptyRenderTargetCube(
-            rhi,
-            faceSize,
-            cubeFormat,
-            &cubeError);
+        RHITextureRef irradianceCube =
+            TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat);
         if (!irradianceCube)
         {
-            return reportError(cubeError.empty() ? "failed to allocate irradiance cubemap." : cubeError);
+            return reportError("failed to allocate irradiance cubemap.");
         }
 
-        std::shared_ptr<FrameBuffer> captureFramebuffer = rhi.CreateFrameBuffer(faceSize, faceSize);
-        if (!captureFramebuffer)
+        RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
+        if (!depthTarget)
         {
-            return reportError("failed to create irradiance capture framebuffer.");
+            return reportError("failed to allocate capture depth texture.");
         }
 
-        const uint32_t vertexByteSize = static_cast<uint32_t>(sizeof(kCubeVertices));
-        const uint32_t vertexCount = vertexByteSize / (3 * sizeof(float));
-        std::shared_ptr<VertexBuffer> cubeVertexBuffer =
-            rhi.CreateVertexBuffer(const_cast<float*>(kCubeVertices), vertexByteSize, vertexCount);
-        std::shared_ptr<VertexDefinition> cubeVertexDefinition = rhi.CreateVertexDefinition({
-            {"a_Position", VertexElementType::Float3, false},
-        });
-
-        GLuint depthRenderbuffer = 0;
-        glGenRenderbuffers(1, &depthRenderbuffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, faceSize, faceSize);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
+        RHICommandList cmdList(&rhi);
+        const EnvMapSourceBinding sourceBinding = CreateSourceBinding(&environmentCube);
+        EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
+            cmdList,
+            convolutionShader.get(),
+            EngineShaderBindings::kGL_EnvCaptureSourceUnit);
 
         GLint previousViewport[4] = {0, 0, 0, 0};
         glGetIntegerv(GL_VIEWPORT, previousViewport);
 
         const Matrix4 captureProjection =
             glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-
-        captureFramebuffer->Bind();
-        glFramebufferRenderbuffer(
-            GL_FRAMEBUFFER,
-            GL_DEPTH_ATTACHMENT,
-            GL_RENDERBUFFER,
-            depthRenderbuffer);
-
-        rhi.EnableDepthTest();
-        rhi.SetDepthMask(true);
-        rhi.DisableCullFace();
-
-        shader->Use();
-        shader->UploadUniformMat4("u_Projection", captureProjection);
-        environmentCube.Bind(0);
-        shader->UploadUniformInt("u_EnvironmentMap", 0);
 
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
@@ -381,30 +441,26 @@ namespace minEngine
                 kCaptureTargets[faceIndex],
                 kCaptureUps[faceIndex]);
 
-            captureFramebuffer->AttachColorCubeFace(irradianceCube, faceIndex);
-            captureFramebuffer->Bind();
+            BeginCubeFaceRenderPass(
+                cmdList,
+                irradianceCube.get(),
+                faceIndex,
+                0,
+                depthTarget.get(),
+                faceSize);
 
-            const GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-            if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
+            EnvCaptureFrameUBO frameData{};
+            frameData.Projection = captureProjection;
+            frameData.View = captureView;
+            cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
+            if (RHIBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
+                    cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
             {
-                glDeleteRenderbuffers(1, &depthRenderbuffer);
-                environmentCube.Unbind();
-                return reportError(
-                    "irradiance framebuffer incomplete for face " + std::to_string(faceIndex) + ".");
+                cmdList.SetBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
             }
-
-            rhi.SetViewport(0, 0, faceSize, faceSize);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            shader->UploadUniformMat4("u_View", captureView);
-            cubeVertexDefinition->Bind();
-            cubeVertexBuffer->Bind();
-            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
+            DrawEnvMapMesh(cmdList, mesh);
+            cmdList.EndRenderPass();
         }
-
-        captureFramebuffer->Unbind();
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-        glDeleteRenderbuffers(1, &depthRenderbuffer);
 
         rhi.SetViewport(
             static_cast<uint32_t>(previousViewport[0]),
@@ -412,9 +468,7 @@ namespace minEngine
             static_cast<uint32_t>(previousViewport[2]),
             static_cast<uint32_t>(previousViewport[3]));
 
-        environmentCube.Unbind();
-
-        const uint32_t cubeTextureId = irradianceCube->GetID();
+        const GLuint cubeTextureId = GetOpenGLTextureId(irradianceCube.get());
         if (cubeTextureId != 0)
         {
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTextureId);
@@ -423,19 +477,17 @@ namespace minEngine
             glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         }
 
-        irradianceCube->Unbind();
-
         ME_CORE_INFO(
             "EnvMapCapture: convolved irradiance cubemap {}x{} from environment.",
             faceSize,
             faceSize);
 
-        return TextureCubeLoader::WrapRHITextureCube(std::move(irradianceCube), faceSize, channels);
+        return TextureCubeLoader::WrapTextureCube(std::move(irradianceCube), faceSize, channels);
     }
 
     std::shared_ptr<TextureCube> EnvMapCapture::PrefilterEnvironment(
         RHI& rhi,
-        RHITextureCube& environmentCube,
+        RHITexture& environmentCube,
         const std::filesystem::path& engineDefaultAssetsRoot,
         uint32_t faceSize,
         std::string* outError)
@@ -455,14 +507,14 @@ namespace minEngine
             return reportError("prefilter faceSize must be > 0.");
         }
 
-        const TextureFormat cubeFormat = environmentCube.GetFormat();
+        const TextureFormat cubeFormat = environmentCube.GetDesc().Format;
         const uint32_t channels = ChannelsFromFormat(cubeFormat);
         if (channels == 0)
         {
             return reportError("environment cubemap must be RGB16F or RGBA16F.");
         }
 
-        const uint32_t environmentResolution = environmentCube.GetWidth();
+        const uint32_t environmentResolution = environmentCube.GetDesc().Width;
         if (environmentResolution == 0)
         {
             return reportError("environment cubemap has zero width.");
@@ -470,34 +522,25 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        const std::filesystem::path vertexPath = shaderDirectory / "prefilter.vert";
-        const std::filesystem::path fragmentPath = shaderDirectory / "prefilter.frag";
-
-        std::shared_ptr<Shader> prefilterShader = Shader::CreateFromFiles(
+        std::shared_ptr<RHIShader> prefilterShader = EngineShaderUtils::CreateShaderFromFiles(
             rhi,
-            vertexPath,
-            fragmentPath,
+            shaderDirectory / "prefilter.vert",
+            shaderDirectory / "prefilter.frag",
             outError);
         if (!prefilterShader || !prefilterShader->IsValid())
         {
             return reportError("failed to compile prefilter shader.");
         }
 
-        std::shared_ptr<RHIShaderLegacy> shader = prefilterShader->GetRHIShader();
-
-        std::string cubeError;
-        std::shared_ptr<RHITextureCube> prefilterCube = TextureCubeLoader::CreateEmptyRenderTargetCube(
-            rhi,
-            faceSize,
-            cubeFormat,
-            &cubeError);
+        const uint32_t maxMipLevel = kMaterialPBRMaxReflectionLod;
+        RHITextureRef prefilterCube =
+            TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat, maxMipLevel + 1);
         if (!prefilterCube)
         {
-            return reportError(cubeError.empty() ? "failed to allocate prefilter cubemap." : cubeError);
+            return reportError("failed to allocate prefilter cubemap.");
         }
 
-        const uint32_t maxMipLevel = kMaterialPBRMaxReflectionLod;
-        const uint32_t prefilterTextureId = prefilterCube->GetID();
+        const GLuint prefilterTextureId = GetOpenGLTextureId(prefilterCube.get());
         if (prefilterTextureId == 0)
         {
             return reportError("prefilter cubemap has no GL texture id.");
@@ -505,13 +548,19 @@ namespace minEngine
 
         AllocateRgb16fCubemapMipChain(prefilterTextureId, faceSize, maxMipLevel);
 
-        const uint32_t vertexByteSize = static_cast<uint32_t>(sizeof(kCubeVertices));
-        const uint32_t vertexCount = vertexByteSize / (3 * sizeof(float));
-        std::shared_ptr<VertexBuffer> cubeVertexBuffer =
-            rhi.CreateVertexBuffer(const_cast<float*>(kCubeVertices), vertexByteSize, vertexCount);
-        std::shared_ptr<VertexDefinition> cubeVertexDefinition = rhi.CreateVertexDefinition({
-            {"a_Position", VertexElementType::Float3, false},
-        });
+        RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
+        if (!depthTarget)
+        {
+            return reportError("failed to allocate capture depth texture.");
+        }
+
+        const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
+        RHICommandList cmdList(&rhi);
+        const EnvMapSourceBinding sourceBinding = CreateSourceBinding(&environmentCube);
+        EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
+            cmdList,
+            prefilterShader.get(),
+            EngineShaderBindings::kGL_EnvCaptureSourceUnit);
 
         GLint previousViewport[4] = {0, 0, 0, 0};
         glGetIntegerv(GL_VIEWPORT, previousViewport);
@@ -519,80 +568,42 @@ namespace minEngine
         const Matrix4 captureProjection =
             glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
 
-        GLuint captureFramebuffer = 0;
-        GLuint depthRenderbuffer = 0;
-        glGenFramebuffers(1, &captureFramebuffer);
-
-        rhi.EnableDepthTest();
-        rhi.SetDepthMask(true);
-        rhi.DisableCullFace();
-
-        shader->Use();
-        shader->UploadUniformMat4("u_Projection", captureProjection);
-        environmentCube.Bind(0);
-        shader->UploadUniformInt("u_EnvironmentMap", 0);
-        shader->UploadUniformFloat(
-            "u_EnvironmentResolution",
-            static_cast<float>(environmentResolution));
-
         for (uint32_t mip = 0; mip <= maxMipLevel; ++mip)
         {
             const uint32_t mipWidth = std::max(1u, faceSize >> mip);
             const float roughness =
                 maxMipLevel > 0 ? static_cast<float>(mip) / static_cast<float>(maxMipLevel) : 0.0f;
 
-            glBindFramebuffer(GL_FRAMEBUFFER, captureFramebuffer);
-            glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth, mipWidth);
-            glFramebufferRenderbuffer(
-                GL_FRAMEBUFFER,
-                GL_DEPTH_ATTACHMENT,
-                GL_RENDERBUFFER,
-                depthRenderbuffer);
-
-            shader->UploadUniformFloat("u_Roughness", roughness);
-
             for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
             {
-                const GLenum faceTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex;
-                glFramebufferTexture2D(
-                    GL_FRAMEBUFFER,
-                    GL_COLOR_ATTACHMENT0,
-                    faceTarget,
-                    prefilterTextureId,
-                    static_cast<GLint>(mip));
-
-                const GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-                if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
-                {
-                    glDeleteRenderbuffers(1, &depthRenderbuffer);
-                    glDeleteFramebuffers(1, &captureFramebuffer);
-                    environmentCube.Unbind();
-                    return reportError(
-                        "prefilter framebuffer incomplete mip " + std::to_string(mip) + " face " +
-                        std::to_string(faceIndex) + " (status=0x" +
-                        std::to_string(static_cast<unsigned int>(framebufferStatus)) + ").");
-                }
-
                 const Matrix4 captureView = glm::lookAt(
                     Vector3(0.0f),
                     kCaptureTargets[faceIndex],
                     kCaptureUps[faceIndex]);
 
-                rhi.SetViewport(0, 0, mipWidth, mipWidth);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                BeginCubeFaceRenderPass(
+                    cmdList,
+                    prefilterCube.get(),
+                    faceIndex,
+                    static_cast<uint8_t>(mip),
+                    depthTarget.get(),
+                    mipWidth);
 
-                shader->UploadUniformMat4("u_View", captureView);
-                cubeVertexDefinition->Bind();
-                cubeVertexBuffer->Bind();
-                glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
+                EnvCaptureFrameUBO frameData{};
+                frameData.Projection = captureProjection;
+                frameData.View = captureView;
+                frameData.Roughness = roughness;
+                frameData.EnvironmentResolution = static_cast<float>(environmentResolution);
+                cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
+                if (RHIBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
+                        cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
+                {
+                    cmdList.SetBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
+                }
+                DrawEnvMapMesh(cmdList, mesh);
+                cmdList.EndRenderPass();
             }
         }
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-        glDeleteRenderbuffers(1, &depthRenderbuffer);
-        glDeleteFramebuffers(1, &captureFramebuffer);
 
         rhi.SetViewport(
             static_cast<uint32_t>(previousViewport[0]),
@@ -600,14 +611,10 @@ namespace minEngine
             static_cast<uint32_t>(previousViewport[2]),
             static_cast<uint32_t>(previousViewport[3]));
 
-        environmentCube.Unbind();
-
         glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterTextureId);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-
-        prefilterCube->Unbind();
 
         ME_CORE_INFO(
             "EnvMapCapture: prefiltered environment cubemap {}x{} ({} mips) from environment.",
@@ -615,6 +622,6 @@ namespace minEngine
             faceSize,
             PrefilterMipLevelCount());
 
-        return TextureCubeLoader::WrapRHITextureCube(std::move(prefilterCube), faceSize, channels);
+        return TextureCubeLoader::WrapTextureCube(std::move(prefilterCube), faceSize, channels);
     }
 }

@@ -9,8 +9,7 @@
 namespace minEngine
 {
     class RHI;
-    class RHITexture2D;
-    class RHITextureCube;
+    class RHITexture;
     class TextureCube;
 
     class EnvMapCapture
@@ -25,7 +24,7 @@ namespace minEngine
 
         static std::shared_ptr<TextureCube> EquirectToCubemap(
             RHI& rhi,
-            RHITexture2D& equirectTexture,
+            RHITexture& equirectTexture,
             const std::filesystem::path& engineDefaultAssetsRoot,
             uint32_t faceSize = kDefaultCubeFaceSize,
             std::string* outError = nullptr);
@@ -33,7 +32,7 @@ namespace minEngine
         /** Diffuse IBL cubemap from an existing environment cubemap (LearnOpenGL irradiance pass). */
         static std::shared_ptr<TextureCube> ConvolveIrradiance(
             RHI& rhi,
-            RHITextureCube& environmentCube,
+            RHITexture& environmentCube,
             const std::filesystem::path& engineDefaultAssetsRoot,
             uint32_t faceSize = kDefaultIrradianceFaceSize,
             std::string* outError = nullptr);
@@ -41,7 +40,7 @@ namespace minEngine
         /** Specular IBL cubemap with mips 0..kMaterialPBRMaxReflectionLod (importance sampling). */
         static std::shared_ptr<TextureCube> PrefilterEnvironment(
             RHI& rhi,
-            RHITextureCube& environmentCube,
+            RHITexture& environmentCube,
             const std::filesystem::path& engineDefaultAssetsRoot,
             uint32_t faceSize = kDefaultCubeFaceSize,
             std::string* outError = nullptr);

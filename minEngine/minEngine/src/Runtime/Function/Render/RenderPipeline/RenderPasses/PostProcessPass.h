@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHITexture.h"
 #include "RenderPassBase.h"
 
@@ -8,12 +9,10 @@ namespace minEngine
     class RHIBindingLayout;
     class RHIGraphicsPipelineState;
     class RHIShader;
-    class RHIShaderLegacy;
     class RHIShaderResourceView;
     class RHIVertexInputLayout;
     class RHICommandList;
-    class VertexBuffer;
-    class VertexDefinition;
+    class RHIBuffer;
 
     class PostProcessPass : public RenderPassBase
     {
@@ -32,14 +31,13 @@ namespace minEngine
         RHITextureRef m_SceneColorTexture;
 
     private:
-        std::shared_ptr<VertexBuffer> m_ScreenQuadVertexBuffer;
-        std::shared_ptr<VertexDefinition> m_ScreenQuadVertexDefinition;
-        std::shared_ptr<RHIVertexInputLayout> m_ScreenQuadVertexLayout;
-        std::shared_ptr<RHIShaderLegacy> m_PostProcessShader;
-        std::shared_ptr<RHIShader> m_PostProcessShaderRHI;
+        RHIBufferRef m_ScreenQuadVertexBuffer;
+        RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
+        std::shared_ptr<RHIShader> m_PostProcessShader;
         std::shared_ptr<RHIGraphicsPipelineState> m_PostProcessPipelineState;
-        std::shared_ptr<RHIBindingLayout> m_SceneColorBindingLayout;
+        std::shared_ptr<RHIBindingLayout> m_PostBindingLayout;
         std::shared_ptr<RHIShaderResourceView> m_SceneColorSRV;
+        RHIBufferRef m_PostParamsUniformBuffer;
 
         void Render(RHICommandList& cmdList);
     };

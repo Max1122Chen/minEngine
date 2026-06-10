@@ -1,5 +1,6 @@
 #include "ShadowResourceManager.h"
 
+#include "Runtime/Function/Render/EngineRHITextureUtils.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Render/LightSceneProxies/LightSceneProxy.h"
@@ -47,7 +48,7 @@ namespace minEngine
 
         ShadowResourceHandle handle{};
         handle.ResourceType = ShadowResourceType::Depth2DArray;
-        handle.ResourcePtr = m_DirectionalShadowArray;
+        handle.Texture = m_DirectionalShadowArray;
         handle.TextureUnit = m_DirectionalConfig.TextureUnit;
         handle.ArrayBaseLayer = 0;
         handle.LayerCount = static_cast<int>(m_DirectionalConfig.Layers);
@@ -83,7 +84,7 @@ namespace minEngine
 
         ShadowResourceHandle handle{};
         handle.ResourceType = ShadowResourceType::Depth2D;
-        handle.ResourcePtr = it->second.Texture;
+        handle.Texture = it->second.Texture;
         handle.TextureUnit = it->second.TextureUnit;
         handle.Resolution = it->second.Resolution;
         return handle;
@@ -117,7 +118,7 @@ namespace minEngine
 
         ShadowResourceHandle handle{};
         handle.ResourceType = ShadowResourceType::DepthCube;
-        handle.ResourcePtr = it->second.Texture;
+        handle.Texture = it->second.Texture;
         handle.TextureUnit = it->second.TextureUnit;
         handle.Resolution = it->second.Resolution;
         return handle;
@@ -140,15 +141,13 @@ namespace minEngine
             return true;
         }
 
-        RHITextureDesc desc{};
-        desc.Width = req.Resolution.Width;
-        desc.Height = req.Resolution.Height;
-        desc.Layers = cascadeCount;
-        desc.Format = TextureFormat::DEPTH32;
-        desc.Usage = TextureUsage::Depth;
+        RHITextureCreateDesc desc = MakeDepthTextureDesc(
+            req.Resolution.Width,
+            req.Resolution.Height,
+            RHITextureDimension::Texture2DArray,
+            cascadeCount);
 
-        // TODO: asign texture unit based on some allocation strategy if we support more shadow resources in the future.
-        auto newArray = m_RHI->CreateRHITexture2DArray(nullptr, desc);
+        auto newArray = m_RHI->RHICreateTexture2D(desc, nullptr);
         if (!newArray)
         {
             return false;
@@ -157,6 +156,7 @@ namespace minEngine
         m_DirectionalShadowArray = newArray;
         m_DirectionalConfig.Resolution = req.Resolution;
         m_DirectionalConfig.Layers = cascadeCount;
+        m_DirectionalConfig.TextureUnit = 8;
         return true;
     }
 
@@ -176,13 +176,8 @@ namespace minEngine
             return true;
         }
 
-        RHITextureDesc desc{};
-        desc.Width = req.Resolution.Width;
-        desc.Height = req.Resolution.Height;
-        desc.Format = TextureFormat::DEPTH32;
-        desc.Usage = TextureUsage::Depth;
-
-        auto newTexture = m_RHI->CreateRHITexture2D(nullptr, desc);
+        RHITextureCreateDesc desc = MakeDepthTextureDesc(req.Resolution.Width, req.Resolution.Height);
+        auto newTexture = m_RHI->RHICreateTexture2D(desc, nullptr);
         if (!newTexture)
         {
             return false;
@@ -209,14 +204,13 @@ namespace minEngine
             return true;
         }
 
-        RHITextureDesc desc{};
-        desc.Width = req.Resolution.Width;
-        desc.Height = req.Resolution.Height;
-        desc.Format = TextureFormat::DEPTH32;
-        desc.Usage = TextureUsage::Depth;
+        RHITextureCreateDesc desc = MakeDepthTextureDesc(
+            req.Resolution.Width,
+            req.Resolution.Height,
+            RHITextureDimension::TextureCube,
+            6);
 
-        std::vector<unsigned char*> emptyFaces(6, nullptr);
-        auto newCube = m_RHI->CreateRHITextureCube(emptyFaces, desc);
+        auto newCube = m_RHI->RHICreateTexture2D(desc, nullptr);
         if (!newCube)
         {
             return false;

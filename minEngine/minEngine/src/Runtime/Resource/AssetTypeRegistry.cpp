@@ -2,7 +2,6 @@
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/Font.h"
@@ -70,13 +69,6 @@ namespace minEngine
             .Extensions = {".memtl"},
             .FileDialogFilterLabel = "Material (*.memtl)"});
         m_AssetTypeIdByClass[Material::StaticClass()] = "Material";
-
-        RegisterType(AssetTypeDescriptor{
-            .AssetTypeId = "Shader",
-            .RuntimeClassName = GetClassName<Shader>(),
-            .Extensions = {".meshader"},
-            .FileDialogFilterLabel = "Shader (*.meshader)"});
-        m_AssetTypeIdByClass[Shader::StaticClass()] = "Shader";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Scene",

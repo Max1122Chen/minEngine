@@ -24,7 +24,6 @@ namespace minEngine
     class Texture2D;
     class StaticMesh;
     class Material;
-    class Shader;
     class Scene;
     class Font;
     class Asset;
@@ -229,8 +228,6 @@ namespace minEngine
     std::shared_ptr<Texture2D> AssetManager::LoadAsset_Impl<Texture2D>(const AssetMeta& meta);
     template<>
     std::shared_ptr<Material> AssetManager::LoadAsset_Impl<Material>(const AssetMeta& meta);
-    template<>
-    std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta);
     template<>
     std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta);
 

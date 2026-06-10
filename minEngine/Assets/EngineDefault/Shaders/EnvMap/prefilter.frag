@@ -1,11 +1,19 @@
-#version 330 core
+#version 420 core
 out vec4 FragColor;
 
 in vec3 v_WorldPos;
 
-uniform samplerCube u_EnvironmentMap;
-uniform float u_Roughness;
-uniform float u_EnvironmentResolution;
+layout (binding = 0) uniform samplerCube u_EnvironmentMap;
+
+layout (std140, binding = 1) uniform EnvCaptureFrame
+{
+    mat4 u_Projection;
+    mat4 u_View;
+    float u_Roughness;
+    float u_EnvironmentResolution;
+    float _pad0;
+    float _pad1;
+};
 
 const float kPi = 3.14159265359;
 const int kSampleCount = 32;

@@ -51,9 +51,12 @@ namespace minEngine
         int ArrayBaseLayer = -1;
         int LayerCount = 0;
 
+        RHITextureRef Texture;
+
         bool IsValid() const
         {
-            bool valid = ResourceType != ShadowResourceType::Invalid && Resolution.IsValid() && TextureUnit >= 0 && ResourcePtr != nullptr;
+            const bool valid =
+                ResourceType != ShadowResourceType::Invalid && Resolution.IsValid() && TextureUnit >= 0 && Texture != nullptr;
             switch (ResourceType)
             {
             case ShadowResourceType::Depth2D:
@@ -67,37 +70,6 @@ namespace minEngine
         }
 
         static ShadowResourceHandle InvalidHandle() { return ShadowResourceHandle{}; }
-
-        std::shared_ptr<RHITexture2D> GetAs2D() const
-        {
-            if (ResourceType != ShadowResourceType::Depth2D)
-            {
-                return nullptr;
-            }
-            return std::static_pointer_cast<RHITexture2D>(ResourcePtr);
-        }
-
-        std::shared_ptr<RHITexture2DArray> GetAs2DArray() const
-        {
-            if (ResourceType != ShadowResourceType::Depth2DArray)
-            {
-                return nullptr;
-            }
-            return std::static_pointer_cast<RHITexture2DArray>(ResourcePtr);
-        }
-
-        std::shared_ptr<RHITextureCube> GetAsCube() const
-        {
-            if (ResourceType != ShadowResourceType::DepthCube)
-            {
-                return nullptr;
-            }
-            return std::static_pointer_cast<RHITextureCube>(ResourcePtr);
-        }
-
-    private:
-        friend class ShadowResourceManager;
-        std::shared_ptr<void> ResourcePtr; // This is a type-erased pointer to the actual resource, it can be a shared_ptr<RHITexture2DArray> or shared_ptr<RHITextureCube> depending on the ResourceType. We use this to manage the lifetime of the resource.
     };
 
     struct ShadowRequest

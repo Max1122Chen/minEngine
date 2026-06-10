@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-06-01 (RND-F03/F04 renumbered)  
+Last updated: 2026-06-01 (RND-F03 Done)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -25,7 +25,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | In Progress | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
 | `RND-F01` | RenderGraph / frame scheduling | Deferred | — | 待 Design；**不在** F02/F03 范围 |
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配 + Pass CommandList） | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · S0–S5 on `render` |
-| `RND-F03` | Legacy RHI removal（GL-only；全现代路径、删 Legacy 公共 API） | In Progress | S1–S2 done | [RND-F03_LEGACY_RHI_REMOVAL_DESIGN](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · 依赖 F02 |
+| `RND-F03` | Legacy RHI removal（GL-only；终局一次迁移、删 Legacy） | Done | — | [RND-F03_LEGACY_RHI_REMOVAL_DESIGN](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · [Blueprint](./Render/RND-F03_MIGRATION_BLUEPRINT.md) |
 | `RND-F04` | Vulkan backend + modern RHI completion（第二后端 + 契约补全） | Planned | — | [RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN](./Render/RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · 依赖 F03 |
 
 ---

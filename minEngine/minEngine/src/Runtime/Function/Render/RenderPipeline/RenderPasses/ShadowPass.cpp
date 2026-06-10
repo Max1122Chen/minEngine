@@ -1,17 +1,15 @@
 #include "ShadowPass.h"
+#include "Render/EngineShaderUtils.h"
+#include "Render/EngineShaderBindings.h"
+#include "Render/EnginePassUniforms.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RenderSystem.h"
-#include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIRenderPass.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
-#include "Render/Shader.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
-
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLShader.h"
 
 namespace minEngine
 {
@@ -19,18 +17,10 @@ namespace minEngine
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
 
-        if (std::shared_ptr<Shader> depthShader = Shader::CreateFromFiles(
-                *rhi,
-                Shader::EngineShaderPath("ShadowPass.vert"),
-                Shader::EngineShaderPath("ShadowPass.frag")))
-        {
-            m_DepthOnlyShader = depthShader->GetRHIShader();
-            auto glShader = std::dynamic_pointer_cast<OpenGLShader>(m_DepthOnlyShader);
-            if (glShader)
-            {
-                m_DepthShader = std::make_shared<OpenGLRHIShader>(glShader);
-            }
-        }
+        m_DepthShader = EngineShaderUtils::CreateShaderFromFiles(
+            *rhi,
+            EngineShaderUtils::EngineShaderPath("ShadowPass.vert"),
+            EngineShaderUtils::EngineShaderPath("ShadowPass.frag"));
 
         if (m_DepthShader)
         {
@@ -42,6 +32,51 @@ namespace minEngine
             psoDesc.DepthStencilState.bDepthWriteEnabled = true;
             psoDesc.BlendState.bBlendEnabled = false;
             m_ShadowPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
+
+            RHIBufferCreateDesc paramsDesc;
+            paramsDesc.Usage = RHIBufferUsage::Uniform;
+            paramsDesc.ByteSize = sizeof(ShadowPassParamsUBO);
+            m_ShadowParamsUniformBuffer = cmdList.CreateBuffer(paramsDesc, nullptr);
+        }
+    }
+
+    void ShadowPass::EnsureShadowBindingSet(RHICommandList& cmdList)
+    {
+        if (m_ShadowBindingSet || !m_LightViewProjUniformBuffer || !m_PerObjectUniformBuffer || !m_ShadowParamsUniformBuffer)
+        {
+            return;
+        }
+
+        m_ShadowBindingLayout = cmdList.CreateBindingLayout({
+            {EngineShaderBindings::kShadowPass_LightViewProj,
+             RHIBindingType::UniformBuffer,
+             EngineShaderBindings::kGL_ShadowPassLightViewProjUBO,
+             RHIGraphicsShaderStage::Vertex},
+            {EngineShaderBindings::kShadowPass_PerObject,
+             RHIBindingType::UniformBuffer,
+             EngineShaderBindings::kGL_PerObjectUBO,
+             RHIGraphicsShaderStage::Vertex},
+            {EngineShaderBindings::kShadowPass_Params,
+             RHIBindingType::UniformBuffer,
+             EngineShaderBindings::kGL_ShadowPassParamsUBO,
+             RHIGraphicsShaderStage::Pixel},
+        });
+
+        m_ShadowBindingSet = cmdList.CreateBindingSet(
+            m_ShadowBindingLayout.get(),
+            {
+                {RHIBindingType::UniformBuffer, m_LightViewProjUniformBuffer, nullptr},
+                {RHIBindingType::UniformBuffer, m_PerObjectUniformBuffer, nullptr},
+                {RHIBindingType::UniformBuffer, m_ShadowParamsUniformBuffer.get(), nullptr},
+            });
+    }
+
+    void ShadowPass::UpdateShadowParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params)
+    {
+        EnsureShadowBindingSet(cmdList);
+        if (m_ShadowParamsUniformBuffer)
+        {
+            m_ShadowParamsUniformBuffer->UpdateSubresource(&params, 0, sizeof(ShadowPassParamsUBO));
         }
     }
 
@@ -74,12 +109,12 @@ namespace minEngine
 
     void ShadowPass::Render(RHICommandList& cmdList)
     {
-        if (!m_DepthOnlyShader || !m_ShadowPipelineState)
+        if (!m_DepthShader || !m_ShadowPipelineState)
         {
             return;
         }
 
-        m_DepthOnlyShader->BindUniformBlock("LightViewProj", 8);
+        EnsureShadowBindingSet(cmdList);
 
         for (const auto& command : m_ShadowDrawCommands)
         {
@@ -104,16 +139,23 @@ namespace minEngine
                 break;
             }
         }
-
     }
 
     void ShadowPass::UpdateLightViewProjBuffer(Matrix4 inMatrix)
     {
-        m_LightViewProjUniformBuffer->UpdateData(&inMatrix, 0, sizeof(Matrix4));
+        if (m_LightViewProjUniformBuffer)
+        {
+            m_LightViewProjUniformBuffer->UpdateSubresource(&inMatrix, 0, sizeof(Matrix4));
+        }
     }
 
     void ShadowPass::DrawOpaqueMeshes(RHICommandList& cmdList)
     {
+        if (!m_ShadowBindingSet || !m_PerObjectUniformBuffer)
+        {
+            return;
+        }
+
         for (auto& drawCommand : m_OpaqueQueue)
         {
             if (!drawCommand.m_CastShadow)
@@ -121,7 +163,8 @@ namespace minEngine
                 continue;
             }
 
-            m_DepthOnlyShader->UploadUniformMat4("u_Model", drawCommand.m_ModelMatrix);
+            m_PerObjectUniformBuffer->UpdateSubresource(&drawCommand.m_ModelMatrix, 0, sizeof(Matrix4));
+            cmdList.SetBindingSet(EngineShaderBindings::kSetShadowPass, m_ShadowBindingSet.get());
 
             if (drawCommand.m_VertexInputLayout)
             {
@@ -146,23 +189,13 @@ namespace minEngine
 
     void ShadowPass::RenderDirectionalShadow(RHICommandList& cmdList, const ShadowDrawCommand& command)
     {
-        if (!command.Handle.IsValid())
+        if (!command.Handle.IsValid() || !command.Handle.Texture)
         {
             return;
         }
-
-        auto depthArray = command.Handle.GetAs2DArray();
-        if (!depthArray)
-        {
-            return;
-        }
-
-        std::shared_ptr<RHITexture> depthRHI = OpenGLRHITexture::WrapLegacy2DArray(
-            depthArray,
-            static_cast<uint32_t>(command.Target.TargetLayer));
 
         RHIRenderPassInfo passInfo;
-        passInfo.DepthStencil.DepthStencilTarget = depthRHI.get();
+        passInfo.DepthStencil.DepthStencilTarget = command.Handle.Texture.get();
         passInfo.DepthStencil.ArraySlice = command.Target.TargetLayer;
         passInfo.DepthStencil.Action = RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil;
         passInfo.ClearValue.Depth = 1.0f;
@@ -173,8 +206,9 @@ namespace minEngine
         cmdList.SetGraphicsPipelineState(m_ShadowPipelineState.get());
 
         UpdateLightViewProjBuffer(command.ViewProj);
-        m_LightViewProjUniformBuffer->BindToBindingPoint(8);
-        m_DepthOnlyShader->UploadUniformInt("u_UseLinearDepth", 0);
+        ShadowPassParamsUBO params{};
+        params.UseLinearDepth = 0;
+        UpdateShadowParams(cmdList, params);
 
         DrawOpaqueMeshes(cmdList);
         cmdList.EndRenderPass();
@@ -182,21 +216,13 @@ namespace minEngine
 
     void ShadowPass::RenderSpotShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand)
     {
-        if (!shadowCommand.Handle.IsValid())
+        if (!shadowCommand.Handle.IsValid() || !shadowCommand.Handle.Texture)
         {
             return;
         }
-
-        auto depthTexture = shadowCommand.Handle.GetAs2D();
-        if (!depthTexture)
-        {
-            return;
-        }
-
-        std::shared_ptr<RHITexture> depthRHI = OpenGLRHITexture::WrapLegacy2D(depthTexture);
 
         RHIRenderPassInfo passInfo;
-        passInfo.DepthStencil.DepthStencilTarget = depthRHI.get();
+        passInfo.DepthStencil.DepthStencilTarget = shadowCommand.Handle.Texture.get();
         passInfo.DepthStencil.Action = RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil;
         passInfo.ClearValue.Depth = 1.0f;
 
@@ -206,8 +232,9 @@ namespace minEngine
         cmdList.SetGraphicsPipelineState(m_ShadowPipelineState.get());
 
         UpdateLightViewProjBuffer(shadowCommand.ViewProj);
-        m_LightViewProjUniformBuffer->BindToBindingPoint(8);
-        m_DepthOnlyShader->UploadUniformInt("u_UseLinearDepth", 0);
+        ShadowPassParamsUBO params{};
+        params.UseLinearDepth = 0;
+        UpdateShadowParams(cmdList, params);
 
         DrawOpaqueMeshes(cmdList);
         cmdList.EndRenderPass();
@@ -215,13 +242,7 @@ namespace minEngine
 
     void ShadowPass::RenderPointShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand)
     {
-        if (!shadowCommand.Handle.IsValid())
-        {
-            return;
-        }
-
-        auto depthCube = shadowCommand.Handle.GetAsCube();
-        if (!depthCube)
+        if (!shadowCommand.Handle.IsValid() || !shadowCommand.Handle.Texture)
         {
             return;
         }
@@ -233,30 +254,26 @@ namespace minEngine
         }
 
         RHIRenderPassInfo passInfo;
-        passInfo.ClearValue.Depth = 1.0f;
+        passInfo.DepthStencil.DepthStencilTarget = shadowCommand.Handle.Texture.get();
+        passInfo.DepthStencil.ArraySlice = face;
         passInfo.DepthStencil.Action = RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil;
+        passInfo.ClearValue.Depth = 1.0f;
 
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
+        cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
-
-        m_FrameBuffer->AttachDepthCubeFace(depthCube, static_cast<uint32_t>(face));
-        m_FrameBuffer->Bind();
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        if (rhi)
-        {
-            rhi->SetDepthMask(true);
-            rhi->Clear();
-        }
-
         cmdList.SetGraphicsPipelineState(m_ShadowPipelineState.get());
 
         UpdateLightViewProjBuffer(shadowCommand.ViewProj);
-        m_LightViewProjUniformBuffer->BindToBindingPoint(8);
-        m_DepthOnlyShader->UploadUniformInt("u_UseLinearDepth", 1);
-        m_DepthOnlyShader->UploadUniformFloat3("u_LightPos", shadowCommand.LightPosition);
-        m_DepthOnlyShader->UploadUniformFloat("u_FarPlane", shadowCommand.FarPlane);
+        ShadowPassParamsUBO params{};
+        params.UseLinearDepth = 1;
+        params.LightPos[0] = shadowCommand.LightPosition.x;
+        params.LightPos[1] = shadowCommand.LightPosition.y;
+        params.LightPos[2] = shadowCommand.LightPosition.z;
+        params.FarPlane = shadowCommand.FarPlane;
+        UpdateShadowParams(cmdList, params);
 
         DrawOpaqueMeshes(cmdList);
-        m_FrameBuffer->Unbind();
+        cmdList.EndRenderPass();
     }
 }

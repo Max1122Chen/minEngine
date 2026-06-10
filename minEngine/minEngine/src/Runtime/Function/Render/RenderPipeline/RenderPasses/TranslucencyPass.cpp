@@ -3,10 +3,12 @@
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Function/Render/RenderCamera.h"
+#include "Runtime/Function/Render/RenderPipeline/RenderPipeline.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
-#include "Render/Shader.h"
+
+#include <algorithm>
 
 namespace minEngine
 {
@@ -29,15 +31,10 @@ namespace minEngine
 
     void TranslucencyPass::Render(RHICommandList& cmdList)
     {
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        if (!rhi)
+        if (!pipeline)
         {
             return;
         }
-
-        rhi->EnableBlend();
-        rhi->EnableDepthTest();
-        rhi->SetDepthMask(false);
 
         for (MeshDrawCommand& drawCommand : m_DrawCommands)
         {
@@ -47,38 +44,28 @@ namespace minEngine
                 continue;
             }
 
-            if (!material->IsCompiledForDraw())
+            if (!material->IsCompiledForDraw() || !material->GetPipelineState())
             {
                 continue;
             }
 
-            RHIShaderLegacy* shader = material->GetShader()->GetRHIShader().get();
-            shader->Use();
+            cmdList.SetGraphicsPipelineState(material->GetPipelineState());
 
             const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong
                 || material->m_ShadingModel == MaterialShadingModel::PBR;
-            const bool bindPBRIBL = material->m_ShadingModel == MaterialShadingModel::PBR;
 
             const MeshPassSceneBinding sceneBinding{
                 drawCommand,
                 bindSceneLighting,
-                bindPBRIBL,
+                material->m_ShadingModel == MaterialShadingModel::PBR,
                 &m_DirectionalShadowHandle,
                 &m_SpotShadowHandles,
                 &m_PointShadowHandles,
-                (bindPBRIBL && pipeline != nullptr) ? &pipeline->GetIBLEnvironment() : nullptr,
             };
-            BindSceneDrawResources(*shader, sceneBinding);
-            material->BindForDraw(*shader);
-            if (bindPBRIBL && sceneBinding.IBLEnvironment != nullptr)
-            {
-                sceneBinding.IBLEnvironment->BindForPBRDraw(*shader);
-            }
+            BindSceneDrawResources(cmdList, *pipeline, sceneBinding);
+            material->BindForDraw(cmdList);
             DrawMeshCommand(cmdList, drawCommand);
         }
-
-        rhi->SetDepthMask(true);
-        rhi->DisableBlend();
     }
 
     void TranslucencyPass::SortDrawCommands()

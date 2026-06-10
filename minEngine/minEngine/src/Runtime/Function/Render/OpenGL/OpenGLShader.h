@@ -1,6 +1,5 @@
 #pragma once
 #include "Core.h"
-#include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Core/Math/Math.h"
 #include "glad/glad.h"
 
@@ -10,30 +9,25 @@
 
 namespace minEngine
 {
-    class OpenGLShader : public RHIShaderLegacy
+    class OpenGLShader
     {
     public:
         unsigned int m_ID = 0;
 
         OpenGLShader(std::string_view vertexSource, std::string_view fragmentSource);
-        virtual ~OpenGLShader() override;
+        ~OpenGLShader();
 
         OpenGLShader(const OpenGLShader&) = delete;
         OpenGLShader& operator=(const OpenGLShader&) = delete;
 
-        virtual void Use() override;
+        bool IsValid() const { return m_IsValid; }
+        const std::string& GetCompileLog() const { return m_CompileLog; }
 
-        virtual void UploadUniformInt(const std::string& name, int value) override;
-        virtual void UploadUniformFloat(const std::string& name, float value) override;
-        virtual void UploadUniformFloat2(const std::string& name, const Vector2& value) override;
-        virtual void UploadUniformFloat3(const std::string& name, const Vector3& value) override;
-        virtual void UploadUniformFloat4(const std::string& name, const Vector4& value) override;
-        virtual void UploadUniformMat4(const std::string& name, const float* matrix) override;
-        virtual void UploadUniformMat4(const std::string& name, const Matrix4& matrix) override;
-
-        virtual void BindUniformBlock(const std::string& blockName, uint32_t bindingPoint) override;
+        void Use();
 
     private:
+        bool m_IsValid = false;
+        std::string m_CompileLog;
         std::unordered_map<std::string, int> m_UniformLocationCache;
         std::unordered_map<std::string, int> m_UniformBlockIndexCache;
 

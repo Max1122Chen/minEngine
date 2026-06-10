@@ -1,6 +1,7 @@
 #include "PresentPass.h"
 
 #include "Render/RenderSystem.h"
+#include "Render/EngineShaderUtils.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHIBinding.h"
 #include "Render/RHI/RHIBuffers.h"
@@ -9,10 +10,9 @@
 #include "Render/RHI/RHIRenderPass.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
-#include "Render/Shader.h"
 
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLShader.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
+#include "Runtime/Function/Render/EngineShaderBindings.h"
 
 namespace minEngine
 {
@@ -26,10 +26,6 @@ namespace minEngine
 
         RHICommandList cmdList(rhi);
 
-        if (m_ScreenQuadVertexDefinition)
-        {
-            m_ScreenQuadVertexLayout = OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(m_ScreenQuadVertexDefinition);
-        }
         if (!m_ScreenQuadVertexLayout)
         {
             m_ScreenQuadVertexLayout = cmdList.CreateVertexInputLayout({
@@ -38,16 +34,12 @@ namespace minEngine
             });
         }
 
-        if (std::shared_ptr<Shader> screenQuadShader = Shader::CreateFromFiles(
+        if (RHIShaderRef screenQuadShader = EngineShaderUtils::CreateShaderFromFiles(
                 *rhi,
-                Shader::EngineShaderPath("Present.vert"),
-                Shader::EngineShaderPath("Present.frag")))
+                EngineShaderUtils::EngineShaderPath("Present.vert"),
+                EngineShaderUtils::EngineShaderPath("Present.frag")))
         {
-            auto legacy = std::dynamic_pointer_cast<OpenGLShader>(screenQuadShader->GetRHIShader());
-            if (legacy)
-            {
-                m_ScreenQuadShader = std::make_shared<OpenGLRHIShader>(legacy);
-            }
+            m_ScreenQuadShader = std::move(screenQuadShader);
         }
 
         RHIGraphicsPSODesc psoDesc;
@@ -122,18 +114,11 @@ namespace minEngine
         const uint32_t height = m_SceneColorTexture->GetDesc().Height;
         cmdList.SetViewport(0, 0, width, height);
         cmdList.SetGraphicsPipelineState(m_PresentPipelineState.get());
-        cmdList.SetBindingSet(0, bindingSet.get());
-        if (auto* glShader = dynamic_cast<OpenGLRHIShader*>(m_ScreenQuadShader.get()))
-        {
-            if (OpenGLShader* legacyShader = glShader->GetGLShader())
-            {
-                legacyShader->UploadUniformInt("u_SceneColor", 0);
-            }
-        }
+        cmdList.SetBindingSet(EngineShaderBindings::kSetEnginePost, bindingSet.get());
         cmdList.SetVertexInputLayout(m_ScreenQuadVertexLayout.get());
-        if (auto modernVB = OpenGLRHIBuffer::WrapLegacyVertexBuffer(m_ScreenQuadVertexBuffer))
+        if (m_ScreenQuadVertexBuffer)
         {
-            cmdList.SetVertexBuffer(modernVB.get());
+            cmdList.SetVertexBuffer(m_ScreenQuadVertexBuffer.get());
         }
         cmdList.Draw(6, 0);
 

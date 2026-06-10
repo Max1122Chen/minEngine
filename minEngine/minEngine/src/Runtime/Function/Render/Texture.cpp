@@ -1,8 +1,7 @@
 #include "Texture.h"
-#include "RenderSystem.h"
+#include "EngineRHITextureUtils.h"
 #include "RHI/RHI.h"
 #include "RHI/RHITexture.h"
-#include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
 {
@@ -13,12 +12,9 @@ namespace minEngine
         texture->m_Width = 1;
         texture->m_Height = 1;
         texture->m_Channels = 4;
-        texture->m_RHITexture = rhi.CreateRHITexture2D(pixel, RHITextureDesc{
-            .Width = 1,
-            .Height = 1,
-            .Format = TextureFormat::RGBA8,
-            .Usage = TextureUsage::TextureBinding,
-        });
+        texture->m_RHITexture = rhi.RHICreateTexture2D(
+            MakeTexture2DBindingDesc(1, 1, TextureFormat::RGBA8),
+            pixel);
         return texture;
     }
 }

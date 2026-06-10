@@ -8,10 +8,8 @@
 namespace minEngine
 {
     class RenderPipeline;
-    class EngineIBLEnvironment;
-    class FrameBuffer;
+    class EngineSceneBindingSets;
     class RHICommandList;
-    class RHIShaderLegacy;
 
     struct MeshPassSceneBinding
     {
@@ -21,7 +19,6 @@ namespace minEngine
         const ShadowResourceHandle* DirectionalShadowHandle = nullptr;
         const std::vector<ShadowResourceHandle>* SpotShadowHandles = nullptr;
         const std::vector<ShadowResourceHandle>* PointShadowHandles = nullptr;
-        const EngineIBLEnvironment* IBLEnvironment = nullptr;
     };
 
     class RenderPassBase
@@ -34,10 +31,12 @@ namespace minEngine
 
     protected:
         void DrawMeshCommand(RHICommandList& cmdList, const MeshDrawCommand& drawCommand);
-        void BindSceneDrawResources(RHIShaderLegacy& shader, const MeshPassSceneBinding& binding);
+        void BindSceneDrawResources(
+            RHICommandList& cmdList,
+            const RenderPipeline& pipeline,
+            const MeshPassSceneBinding& binding);
 
     public:
         RenderPipeline* pipeline = nullptr;
-        FrameBuffer* m_FrameBuffer = nullptr;
     };
 }

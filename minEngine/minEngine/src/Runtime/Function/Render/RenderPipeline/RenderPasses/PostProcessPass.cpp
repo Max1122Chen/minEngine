@@ -1,5 +1,8 @@
 #include "PostProcessPass.h"
 
+#include "Render/EngineShaderBindings.h"
+#include "Render/EnginePassUniforms.h"
+#include "Render/EngineShaderUtils.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHIBinding.h"
@@ -8,10 +11,8 @@
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
-#include "Render/Shader.h"
 
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLShader.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 
 namespace minEngine
 {
@@ -25,27 +26,29 @@ namespace minEngine
 
         RHICommandList cmdList(rhi);
 
-        if (m_ScreenQuadVertexDefinition)
-        {
-            m_ScreenQuadVertexLayout = OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(m_ScreenQuadVertexDefinition);
-        }
-
-        if (auto glLegacy = std::dynamic_pointer_cast<OpenGLShader>(m_PostProcessShader))
-        {
-            m_PostProcessShaderRHI = std::make_shared<OpenGLRHIShader>(glLegacy);
-        }
-
         RHIGraphicsPSODesc psoDesc;
-        psoDesc.VertexShader = m_PostProcessShaderRHI.get();
-        psoDesc.PixelShader = m_PostProcessShaderRHI.get();
+        psoDesc.VertexShader = m_PostProcessShader.get();
+        psoDesc.PixelShader = m_PostProcessShader.get();
         psoDesc.VertexInputLayout = m_ScreenQuadVertexLayout.get();
         psoDesc.DepthStencilState.bDepthTestEnabled = false;
         psoDesc.DepthStencilState.bDepthWriteEnabled = false;
         psoDesc.BlendState.bBlendEnabled = false;
         m_PostProcessPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
 
-        m_SceneColorBindingLayout = cmdList.CreateBindingLayout({
-            {0, RHIBindingType::TextureSRV, 0, RHIGraphicsShaderStage::Pixel}
+        RHIBufferCreateDesc paramsDesc;
+        paramsDesc.Usage = RHIBufferUsage::Uniform;
+        paramsDesc.ByteSize = sizeof(EnginePostParamsUBO);
+        m_PostParamsUniformBuffer = cmdList.CreateBuffer(paramsDesc, nullptr);
+
+        m_PostBindingLayout = cmdList.CreateBindingLayout({
+            {EngineShaderBindings::kEnginePost_SceneColorSRV,
+             RHIBindingType::TextureSRV,
+             EngineShaderBindings::kGL_EnginePostSceneColorUnit,
+             RHIGraphicsShaderStage::Pixel},
+            {EngineShaderBindings::kEnginePost_Params,
+             RHIBindingType::UniformBuffer,
+             EngineShaderBindings::kGL_EnginePostParamsUBO,
+             RHIGraphicsShaderStage::Pixel},
         });
     }
 
@@ -67,14 +70,10 @@ namespace minEngine
 
     void PostProcessPass::Render(RHICommandList& cmdList)
     {
-        if (!m_ScreenQuadVertexLayout || !m_PostProcessShader || !m_SceneColorTexture || !m_PostProcessPipelineState)
+        if (!m_ScreenQuadVertexLayout || !m_PostProcessShader || !m_SceneColorTexture || !m_PostProcessPipelineState ||
+            !m_PostBindingLayout || !m_PostParamsUniformBuffer)
         {
             ME_CORE_ERROR("PostProcessPass resources are not ready");
-            return;
-        }
-
-        if (!m_SceneColorTexture)
-        {
             return;
         }
 
@@ -82,35 +81,31 @@ namespace minEngine
         srvDesc.Texture = m_SceneColorTexture.get();
         m_SceneColorSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
 
-        RHIBindingResource bindingResource;
-        bindingResource.Type = RHIBindingType::TextureSRV;
-        bindingResource.TextureSRV = m_SceneColorSRV.get();
+        EnginePostParamsUBO params{};
+        params.InvResolution[0] = 1.0f / static_cast<float>(m_SceneColorTexture->GetDesc().Width);
+        params.InvResolution[1] = 1.0f / static_cast<float>(m_SceneColorTexture->GetDesc().Height);
+        params.ReduceMin = 1.0f / 128.0f;
+        params.ReduceMul = 1.0f / 8.0f;
+        params.SpanMax = 8.0f;
+        params.Strength = 0.3f;
+        params.EdgeThreshold = 0.1f;
+        m_PostParamsUniformBuffer->UpdateSubresource(&params, 0, sizeof(EnginePostParamsUBO));
+
         auto bindingSet = cmdList.CreateBindingSet(
-            m_SceneColorBindingLayout.get(),
-            {bindingResource});
+            m_PostBindingLayout.get(),
+            {
+                {RHIBindingType::TextureSRV, nullptr, m_SceneColorSRV.get()},
+                {RHIBindingType::UniformBuffer, m_PostParamsUniformBuffer.get(), nullptr},
+            });
 
         cmdList.SetGraphicsPipelineState(m_PostProcessPipelineState.get());
-        cmdList.SetBindingSet(0, bindingSet.get());
-
-        m_PostProcessShader->Use();
-        m_PostProcessShader->UploadUniformInt("u_SceneColor", 0);
-        m_PostProcessShader->UploadUniformFloat2(
-            "u_InvResolution",
-            Vector2(
-                1.0f / static_cast<float>(m_SceneColorTexture->GetDesc().Width),
-                1.0f / static_cast<float>(m_SceneColorTexture->GetDesc().Height)));
-        m_PostProcessShader->UploadUniformFloat("u_ReduceMin", 1.0f / 128.0f);
-        m_PostProcessShader->UploadUniformFloat("u_ReduceMul", 1.0f / 8.0f);
-        m_PostProcessShader->UploadUniformFloat("u_SpanMax", 8.0f);
-        m_PostProcessShader->UploadUniformFloat("u_Strength", 0.3f);
-        m_PostProcessShader->UploadUniformFloat("u_EdgeThreshold", 0.1f);
+        cmdList.SetBindingSet(EngineShaderBindings::kSetEnginePost, bindingSet.get());
 
         cmdList.SetVertexInputLayout(m_ScreenQuadVertexLayout.get());
-        if (auto modernVB = OpenGLRHIBuffer::WrapLegacyVertexBuffer(m_ScreenQuadVertexBuffer))
+        if (m_ScreenQuadVertexBuffer)
         {
-            cmdList.SetVertexBuffer(modernVB.get());
+            cmdList.SetVertexBuffer(m_ScreenQuadVertexBuffer.get());
         }
         cmdList.Draw(6, 0);
     }
 }
-

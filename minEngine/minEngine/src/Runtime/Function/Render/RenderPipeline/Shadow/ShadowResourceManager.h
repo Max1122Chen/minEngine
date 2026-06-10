@@ -8,9 +8,6 @@
 namespace minEngine
 {
     class RHI;
-    class RHITexture2D;
-    class RHITexture2DArray;
-    class RHITextureCube;
     class SpotLightSceneProxy;
     class PointLightSceneProxy;
 
@@ -30,7 +27,7 @@ namespace minEngine
         ShadowResourceHandle AcquireSpot(const ShadowRequest& req);
         ShadowResourceHandle AcquirePoint(const ShadowRequest& req);
 
-        std::shared_ptr<RHITexture2DArray> GetDirectionalShadowArray() const { return m_DirectionalShadowArray; }
+        RHITextureRef GetDirectionalShadowArray() const { return m_DirectionalShadowArray; }
 
     private:
         struct DirectionalArrayResource
@@ -43,14 +40,14 @@ namespace minEngine
         struct SpotShadowResource
         {
             ShadowResolution Resolution{};
-            std::shared_ptr<RHITexture2D> Texture;
+            RHITextureRef Texture;
             int TextureUnit = -1;
         };
 
         struct PointShadowResource
         {
             ShadowResolution Resolution{};
-            std::shared_ptr<RHITextureCube> Texture;
+            RHITextureRef Texture;
             int TextureUnit = -1;
         };
 
@@ -64,7 +61,7 @@ namespace minEngine
         uint64_t m_FrameIndex = 0;
 
         DirectionalArrayResource m_DirectionalConfig{};
-        std::shared_ptr<RHITexture2DArray> m_DirectionalShadowArray;
+        RHITextureRef m_DirectionalShadowArray;
 
         std::unordered_map<SpotLightSceneProxy*, SpotShadowResource> m_SpotShadowResources;
         std::unordered_map<PointLightSceneProxy*, PointShadowResource> m_PointShadowResources;

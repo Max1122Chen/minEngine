@@ -1,14 +1,13 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
-#include "OpenGLRHIModern.h"
+#include "OpenGLRHIResources.h"
 
 
 namespace minEngine
 {
 
     class WindowSystem;
-    class FrameBuffer;
 
     class OpenGLRHI : public RHI
     {
@@ -43,24 +42,6 @@ namespace minEngine
         virtual void EnableCullFace() override;
         virtual void DisableCullFace() override;
 
-        virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size, uint32_t numVertices) override;
-        virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) override;
-        virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<RHIVertexElement> elements) override;
-        virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) override;
-        virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) override;
-        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc) override;
-        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2DFloat(const float* data, RHITextureDesc desc) override;
-        virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(
-            const std::vector<unsigned char*>& faceData,
-            RHITextureDesc desc,
-            bool generateMipmaps = false) override;
-        virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc) override;
-        virtual std::shared_ptr<RHIShaderLegacy> CreateRHIShader(
-            const std::string& vertexSource,
-            const std::string& fragmentSource,
-            std::string* outCompileLog = nullptr) override;
-
-        // Modern RHI (S3 stubs — S4 implements)
         virtual std::shared_ptr<RHITexture> RHICreateTexture2D(
             const RHITextureCreateDesc& desc,
             const void* initialData) override;

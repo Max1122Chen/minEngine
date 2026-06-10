@@ -8,7 +8,7 @@ namespace minEngine
 {
     namespace
     {
-        void ResolveOpenGLTextureFormat(const RHITextureDesc& desc, GLint& internalFormat, GLenum& dataFormat, GLenum& dataType)
+        void ResolveOpenGLTextureFormat(const OpenGLTextureUploadDesc& desc, GLint& internalFormat, GLenum& dataFormat, GLenum& dataType)
         {
             internalFormat = 0;
             dataFormat = 0;
@@ -87,7 +87,7 @@ namespace minEngine
             }
         }
 
-        bool IsDepthLikeTexture(const RHITextureDesc& desc)
+        bool IsDepthLikeTexture(const OpenGLTextureUploadDesc& desc)
         {
             return (desc.Format == TextureFormat::DEPTH16) ||
                    (desc.Format == TextureFormat::DEPTH24) ||
@@ -97,12 +97,12 @@ namespace minEngine
                    (desc.Usage == TextureUsage::DepthStencil);
         }
 
-        bool IsFloatColorTexture(const RHITextureDesc& desc)
+        bool IsFloatColorTexture(const OpenGLTextureUploadDesc& desc)
         {
             return desc.Format == TextureFormat::RGB16F || desc.Format == TextureFormat::RGBA16F;
         }
 
-        void Configure2DTextureSampling(GLenum target, const RHITextureDesc& desc, bool generateMipmaps)
+        void Configure2DTextureSampling(GLenum target, const OpenGLTextureUploadDesc& desc, bool generateMipmaps)
         {
             if (IsDepthLikeTexture(desc))
             {
@@ -141,11 +141,9 @@ namespace minEngine
         }
     }
 
-    OpenGLTexture2D::OpenGLTexture2D(const unsigned char *data, RHITextureDesc desc)
+    OpenGLTexture2D::OpenGLTexture2D(const unsigned char *data, OpenGLTextureUploadDesc desc)
     {
-        m_Desc = desc;
         glGenTextures(1, &m_ID);
-        glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D, m_ID);
 
         GLint internalFormat = 0;
@@ -173,9 +171,8 @@ namespace minEngine
         }
     }
 
-    OpenGLTexture2D::OpenGLTexture2D(const float* data, RHITextureDesc desc)
+    OpenGLTexture2D::OpenGLTexture2D(const float* data, OpenGLTextureUploadDesc desc)
     {
-        m_Desc = desc;
         glGenTextures(1, &m_ID);
         glBindTexture(GL_TEXTURE_2D, m_ID);
 
@@ -200,28 +197,11 @@ namespace minEngine
         }
     }
 
-    // TODO: move these logic to material
-    void OpenGLTexture2D::Bind(int unit)
-    {
-        if(unit != m_Unit)
-        {
-            m_Unit = unit;
-        }
-        glActiveTexture(GL_TEXTURE0 + m_Unit);
-        glBindTexture(GL_TEXTURE_2D, m_ID);
-    }
-
-    void OpenGLTexture2D::Unbind()
-    {
-        glBindTexture(GL_TEXTURE_2D, 0);    
-    }
-
     OpenGLTextureCube::OpenGLTextureCube(
         const std::vector<unsigned char*>& faceData,
-        RHITextureDesc desc,
+        OpenGLTextureUploadDesc desc,
         bool generateMipmaps)
     {
-        m_Desc = desc;
         if (desc.Width == 0 || desc.Height == 0)
         {
             ME_CORE_ERROR("OpenGLTextureCube: Width/Height must be > 0.");
@@ -313,16 +293,6 @@ namespace minEngine
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     }
 
-    void OpenGLTextureCube::Bind(int unit)
-    {
-        if(unit != m_Unit)
-        {
-            m_Unit = unit;
-        }
-        glActiveTexture(GL_TEXTURE0 + m_Unit);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, m_ID);
-    }
-
     OpenGLTextureCube::~OpenGLTextureCube()
     {
         if (m_ID != 0)
@@ -332,20 +302,11 @@ namespace minEngine
         }
     }
 
-    void OpenGLTextureCube::Unbind()
+    OpenGLTexture2DArray::OpenGLTexture2DArray(const unsigned char *data, OpenGLTextureUploadDesc desc)
     {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    }
-
-    OpenGLTexture2DArray::OpenGLTexture2DArray(const unsigned char *data, RHITextureDesc desc)
-    {
-        m_Desc = desc;
-
-        uint32_t layerCount = (m_Desc.Layers == 0) ? 1 : m_Desc.Layers;
-        m_Desc.Layers = layerCount;
+        const uint32_t layerCount = (desc.Layers == 0) ? 1u : desc.Layers;
 
         glGenTextures(1, &m_ID);
-        glActiveTexture(GL_TEXTURE0 + m_Unit);
         glBindTexture(GL_TEXTURE_2D_ARRAY, m_ID);
 
         GLint internalFormat = 0;
@@ -371,14 +332,14 @@ namespace minEngine
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         }
 
-        if (internalFormat != 0 && m_Desc.Width > 0 && m_Desc.Height > 0)
+        if (internalFormat != 0 && desc.Width > 0 && desc.Height > 0)
         {
             glTexImage3D(
                 GL_TEXTURE_2D_ARRAY,
                 0,
                 internalFormat,
-                static_cast<GLsizei>(m_Desc.Width),
-                static_cast<GLsizei>(m_Desc.Height),
+                static_cast<GLsizei>(desc.Width),
+                static_cast<GLsizei>(desc.Height),
                 static_cast<GLsizei>(layerCount),
                 0,
                 dataFormat,
@@ -399,20 +360,5 @@ namespace minEngine
             glDeleteTextures(1, &m_ID);
             m_ID = 0;
         }
-    }
-
-    void OpenGLTexture2DArray::Bind(int unit)
-    {
-        if(unit != m_Unit)
-        {
-            m_Unit = unit;
-        }
-        glActiveTexture(GL_TEXTURE0 + m_Unit);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, m_ID);
-    }
-
-    void OpenGLTexture2DArray::Unbind()
-    {
-        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
     }
 }

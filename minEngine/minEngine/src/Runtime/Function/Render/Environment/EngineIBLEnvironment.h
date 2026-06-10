@@ -8,7 +8,6 @@
 namespace minEngine
 {
     class RHI;
-    class RHIShaderLegacy;
     class Texture2D;
     class TextureCube;
 
@@ -27,8 +26,6 @@ namespace minEngine
         bool HasEnvironment() const { return m_Environment != nullptr; }
         bool HasPrefilter() const { return m_Prefilter != nullptr; }
         bool IsReadyForPBR() const { return m_Irradiance != nullptr; }
-
-        void BindForPBRDraw(RHIShaderLegacy& shader) const;
 
         const TextureCube* GetIrradiance() const { return m_Irradiance.get(); }
         const TextureCube* GetEnvironment() const { return m_Environment.get(); }

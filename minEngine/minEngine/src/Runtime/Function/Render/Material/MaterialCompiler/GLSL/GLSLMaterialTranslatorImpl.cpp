@@ -338,7 +338,7 @@ namespace minEngine
 
     std::string GLSLMaterialTranslatorImpl::GetScalarUniformName(int uniformSlotIndex) const
     {
-        return "u_ScalarParam" + std::to_string(uniformSlotIndex);
+        return "u_ScalarParams[" + std::to_string(uniformSlotIndex) + "]";
     }
 
     std::string GLSLMaterialTranslatorImpl::BuildFragmentShaderPreamble() const
@@ -349,18 +349,21 @@ namespace minEngine
         std::sort(textureSlots.begin(), textureSlots.end());
         for (int textureSlotIndex : textureSlots)
         {
-            preamble += "uniform sampler2D ";
+            preamble += "layout (binding = ";
+            preamble += std::to_string(textureSlotIndex);
+            preamble += ") uniform sampler2D ";
             preamble += GetTextureSamplerName(textureSlotIndex);
             preamble += ";\n";
         }
 
         std::vector<int> scalarUniformSlots(m_UsedScalarUniformSlots.begin(), m_UsedScalarUniformSlots.end());
         std::sort(scalarUniformSlots.begin(), scalarUniformSlots.end());
-        for (int uniformSlotIndex : scalarUniformSlots)
+        if (!scalarUniformSlots.empty())
         {
-            preamble += "uniform float ";
-            preamble += GetScalarUniformName(uniformSlotIndex);
-            preamble += ";\n";
+            const int maxSlot = scalarUniformSlots.back();
+            preamble += "layout (std140, binding = 8) uniform MaterialScalarParams\n{\n";
+            preamble += "    float u_ScalarParams[" + std::to_string(maxSlot + 1) + "];\n";
+            preamble += "};\n";
         }
 
         if (!preamble.empty())

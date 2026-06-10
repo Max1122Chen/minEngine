@@ -10,7 +10,6 @@
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Resource/Font.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -1059,13 +1058,8 @@ namespace minEngine
 
         if (meta.AssetType == "Shader")
         {
-            std::shared_ptr<Shader> asset = LoadAsset<Shader>(meta.AssetPath);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load shader by guid";
-                return nullptr;
-            }
-            return std::static_pointer_cast<Asset>(asset);
+            outErrorMessage = "Shader assets are removed; use Material compile instead.";
+            return nullptr;
         }
 
         if (meta.AssetType == "Font")

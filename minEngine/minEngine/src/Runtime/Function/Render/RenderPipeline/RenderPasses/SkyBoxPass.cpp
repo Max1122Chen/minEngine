@@ -2,10 +2,13 @@
 
 #include "../../Environment/EngineIBLEnvironment.h"
 #include "../../RenderCamera.h"
-#include "../../Shader.h"
+#include "../../EngineShaderUtils.h"
+#include "../../EnginePassUniforms.h"
 #include "../../SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
@@ -13,8 +16,7 @@
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Texture.h"
 
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIModern.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLShader.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 
 namespace minEngine
 {
@@ -63,8 +65,6 @@ namespace minEngine
              1.0f,  1.0f, -1.0f,
             -1.0f,  1.0f, -1.0f,
         };
-
-        constexpr int kSkyboxTextureUnit = 0;
     }
 
     void SkyBoxPass::Initialize(RHI& rhi, const std::filesystem::path& engineDefaultAssetsRoot)
@@ -73,35 +73,49 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        std::shared_ptr<Shader> skyShader = Shader::CreateFromFiles(
+        m_SkyShader = EngineShaderUtils::CreateShaderFromFiles(
             rhi,
             shaderDirectory / "background.vert",
             shaderDirectory / "background.frag");
-        if (!skyShader || !skyShader->IsValid())
+        if (!m_SkyShader || !m_SkyShader->IsValid())
         {
             ME_CORE_ERROR("SkyBoxPass: failed to compile background shader.");
             return;
         }
 
-        m_SkyShader = skyShader->GetRHIShader();
-        if (auto glLegacy = std::dynamic_pointer_cast<OpenGLShader>(m_SkyShader))
-        {
-            m_SkyShaderRHI = std::make_shared<OpenGLRHIShader>(glLegacy);
-        }
+        RHICommandList cmdList(&rhi);
 
         const uint32_t vertexByteSize = static_cast<uint32_t>(sizeof(kCubeVertices));
         const uint32_t vertexCount = vertexByteSize / (3 * sizeof(float));
-        m_CubeVertexBuffer =
-            rhi.CreateVertexBuffer(const_cast<float*>(kCubeVertices), vertexByteSize, vertexCount);
-        m_CubeVertexDefinition = rhi.CreateVertexDefinition({
+        RHIBufferCreateDesc vbDesc;
+        vbDesc.Usage = RHIBufferUsage::Vertex;
+        vbDesc.ByteSize = vertexByteSize;
+        vbDesc.Stride = 3 * sizeof(float);
+        vbDesc.ElementCount = vertexCount;
+        m_CubeVertexBuffer = cmdList.CreateBuffer(vbDesc, kCubeVertices);
+        m_CubeVertexLayout = cmdList.CreateVertexInputLayout({
             {"a_Position", VertexElementType::Float3, false},
         });
-        m_CubeVertexLayout = OpenGLRHIVertexInputLayout::WrapLegacyVertexDefinition(m_CubeVertexDefinition);
 
-        RHICommandList cmdList(&rhi);
+        m_SkyBindingLayout = cmdList.CreateBindingLayout({
+            {EngineShaderBindings::kSkyPass_EnvironmentSRV,
+             RHIBindingType::TextureSRV,
+             EngineShaderBindings::kGL_SkyEnvironmentUnit,
+             RHIGraphicsShaderStage::Pixel},
+            {EngineShaderBindings::kSkyPass_FrameData,
+             RHIBindingType::UniformBuffer,
+             EngineShaderBindings::kGL_SkyFrameDataUBO,
+             RHIGraphicsShaderStage::Vertex},
+        });
+
+        RHIBufferCreateDesc frameDesc;
+        frameDesc.Usage = RHIBufferUsage::Uniform;
+        frameDesc.ByteSize = sizeof(SkyPassFrameUBO);
+        m_SkyFrameUniformBuffer = cmdList.CreateBuffer(frameDesc, nullptr);
+
         RHIGraphicsPSODesc psoDesc;
-        psoDesc.VertexShader = m_SkyShaderRHI.get();
-        psoDesc.PixelShader = m_SkyShaderRHI.get();
+        psoDesc.VertexShader = m_SkyShader.get();
+        psoDesc.PixelShader = m_SkyShader.get();
         psoDesc.VertexInputLayout = m_CubeVertexLayout.get();
         psoDesc.DepthStencilState.bDepthTestEnabled = true;
         psoDesc.DepthStencilState.bDepthWriteEnabled = false;
@@ -112,11 +126,13 @@ namespace minEngine
     void SkyBoxPass::Shutdown()
     {
         m_SkyShader.reset();
-        m_SkyShaderRHI.reset();
         m_CubeVertexBuffer.reset();
-        m_CubeVertexDefinition.reset();
         m_CubeVertexLayout.reset();
         m_SkyPipelineState.reset();
+        m_SkyBindingLayout.reset();
+        m_EnvironmentSRV.reset();
+        m_SkyBindingSet.reset();
+        m_SkyFrameUniformBuffer.reset();
     }
 
     void SkyBoxPass::Execute(
@@ -125,7 +141,8 @@ namespace minEngine
         const SkyBoxSceneProxy& skyBox,
         const EngineIBLEnvironment& iblEnvironment) const
     {
-        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState)
+        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState || !m_SkyBindingLayout ||
+            !m_SkyFrameUniformBuffer)
         {
             return;
         }
@@ -136,29 +153,33 @@ namespace minEngine
         }
 
         const TextureCube* environment = iblEnvironment.GetEnvironment();
-        if (!environment || !environment->GetRHITexture())
+        RHITexture* environmentTexture = environment ? environment->GetRHITexture() : nullptr;
+        if (!environmentTexture)
         {
             return;
         }
 
+        RHITextureSRVDesc srvDesc;
+        srvDesc.Texture = environmentTexture;
+        m_EnvironmentSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
+        SkyPassFrameUBO frameData{};
+        frameData.Projection = camera.GetProjectionMatrix();
+        frameData.View = camera.GetViewMatrix();
+        frameData.SkyIntensity = skyBox.m_SkyIntensity;
+        m_SkyFrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(SkyPassFrameUBO));
+
+        m_SkyBindingSet = cmdList.CreateBindingSet(
+            m_SkyBindingLayout.get(),
+            {
+                {RHIBindingType::TextureSRV, nullptr, m_EnvironmentSRV.get()},
+                {RHIBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
+            });
+
         cmdList.SetGraphicsPipelineState(m_SkyPipelineState.get());
-
-        m_SkyShader->Use();
-        m_SkyShader->UploadUniformMat4("u_Projection", camera.GetProjectionMatrix());
-        m_SkyShader->UploadUniformMat4("u_View", camera.GetViewMatrix());
-        m_SkyShader->UploadUniformFloat("u_SkyIntensity", skyBox.m_SkyIntensity);
-
-        environment->GetRHITexture()->Bind(kSkyboxTextureUnit);
-        m_SkyShader->UploadUniformInt("u_Skybox", kSkyboxTextureUnit);
+        cmdList.SetBindingSet(EngineShaderBindings::kSetSkyPass, m_SkyBindingSet.get());
 
         cmdList.SetVertexInputLayout(m_CubeVertexLayout.get());
-        if (auto vertexBuffer = OpenGLRHIBuffer::WrapLegacyVertexBuffer(m_CubeVertexBuffer))
-        {
-            cmdList.SetVertexBuffer(vertexBuffer.get());
-        }
-        cmdList.Draw(m_CubeVertexBuffer->GetNumVertices(), 0);
-
-        environment->GetRHITexture()->Unbind();
+        cmdList.SetVertexBuffer(m_CubeVertexBuffer.get());
+        cmdList.Draw(m_CubeVertexBuffer->GetDesc().ElementCount, 0);
     }
 }
-

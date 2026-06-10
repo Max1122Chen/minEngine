@@ -6,14 +6,46 @@
 #include "Runtime/Function/Render/Material/MaterialCapability.h"
 #include "Runtime/Function/Render/Material/MaterialValueType.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 #include "RHI/RHIShader.h"
 #include "RHI/RHITexture.h"
 #include "Texture.h"
 
+#include <algorithm>
 #include <unordered_map>
+#include <vector>
 
 namespace minEngine
 {
+    namespace
+    {
+        RHIGraphicsPSODesc BuildMaterialPSODesc(RHIShader* shader, MaterialBlendMode blendMode)
+        {
+            RHIGraphicsPSODesc psoDesc;
+            psoDesc.VertexShader = shader;
+            psoDesc.PixelShader = shader;
+            psoDesc.DepthStencilState.bDepthTestEnabled = true;
+            psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::Less;
+
+            if (blendMode == MaterialBlendMode::Translucent)
+            {
+                psoDesc.BlendState.bBlendEnabled = true;
+                psoDesc.DepthStencilState.bDepthWriteEnabled = false;
+            }
+            else
+            {
+                psoDesc.BlendState.bBlendEnabled = false;
+                psoDesc.DepthStencilState.bDepthWriteEnabled = true;
+            }
+
+            return psoDesc;
+        }
+    }
+
     MaterialEdGraph& Material::GetGraph()
     {
         if (!m_Graph)
@@ -282,17 +314,13 @@ namespace minEngine
             return false;
         }
 
-        if (!m_Shader)
-        {
-            m_Shader = std::make_shared<Shader>();
-        }
-
         std::string compileError;
-        if (!m_Shader->CompileFromSource(
-                *ctx.RHI,
-                result.FullVertexShader,
-                result.FullFragmentShader,
-                &compileError))
+        m_GPUShader = ctx.RHI->RHICreateShader(
+            result.FullVertexShader,
+            result.FullFragmentShader,
+            &compileError);
+        m_ShaderCompileLog = compileError;
+        if (!m_GPUShader)
         {
             if (!compileError.empty())
             {
@@ -303,6 +331,9 @@ namespace minEngine
             }
             return false;
         }
+
+        m_PipelineState = RHICommandList(ctx.RHI).CreateGraphicsPipelineState(
+            BuildMaterialPSODesc(m_GPUShader.get(), m_BlendMode));
 
         m_ParameterLayout = result.ParameterLayout;
         m_TextureParameters.clear();
@@ -344,6 +375,50 @@ namespace minEngine
                 m_ScalarParameters.push_back(scalarParameter);
             }
         }
+
+        RHICommandList cmdList(ctx.RHI);
+        std::vector<RHIBindingLayoutEntry> layoutEntries;
+        layoutEntries.reserve(m_TextureParameters.size() + (m_ScalarParameters.empty() ? 0u : 1u));
+        for (const MaterialTextureParameter& textureParameter : m_TextureParameters)
+        {
+            layoutEntries.push_back({
+                static_cast<uint32_t>(textureParameter.SlotIndex),
+                RHIBindingType::TextureSRV,
+                static_cast<uint32_t>(textureParameter.SlotIndex),
+                RHIGraphicsShaderStage::Pixel,
+            });
+        }
+
+        if (!m_ScalarParameters.empty())
+        {
+            int maxSlot = 0;
+            for (const MaterialScalarParameter& scalarParameter : m_ScalarParameters)
+            {
+                maxSlot = std::max(maxSlot, scalarParameter.SlotIndex);
+            }
+            m_ScalarParamsUBOSize = static_cast<uint32_t>((maxSlot + 1) * 16u);
+
+            RHIBufferCreateDesc uboDesc;
+            uboDesc.Usage = RHIBufferUsage::Uniform;
+            uboDesc.ByteSize = m_ScalarParamsUBOSize;
+            m_ScalarParamsUBO = cmdList.CreateBuffer(uboDesc, nullptr);
+
+            layoutEntries.push_back({
+                EngineShaderBindings::kSet2_MaterialParamsUBO,
+                RHIBindingType::UniformBuffer,
+                EngineShaderBindings::kSet2_MaterialParamsUBO,
+                RHIGraphicsShaderStage::Pixel,
+            });
+        }
+        else
+        {
+            m_ScalarParamsUBO.reset();
+            m_ScalarParamsUBOSize = 0;
+        }
+
+        m_MaterialBindingLayout = layoutEntries.empty()
+            ? nullptr
+            : cmdList.CreateBindingLayout(layoutEntries);
 
         return true;
     }
@@ -416,24 +491,73 @@ namespace minEngine
         }
     }
 
-    void Material::BindForDraw(RHIShaderLegacy& shader) const
+    void Material::BindForDraw(RHICommandList& cmdList) const
     {
-        for (const MaterialTextureParameter& textureParameter : m_TextureParameters)
+        if (m_ScalarParamsUBO && m_ScalarParamsUBOSize > 0)
         {
-            const std::shared_ptr<Texture2D>& texture = textureParameter.Value;
-            if (!texture || texture->GetRHITexture() == nullptr)
+            const uint32_t floatCount = m_ScalarParamsUBOSize / 16u;
+            std::vector<float> scalarData(floatCount * 4u, 0.0f);
+            for (const MaterialScalarParameter& scalarParameter : m_ScalarParameters)
+            {
+                if (scalarParameter.SlotIndex >= 0 &&
+                    static_cast<uint32_t>(scalarParameter.SlotIndex) < floatCount)
+                {
+                    scalarData[static_cast<size_t>(scalarParameter.SlotIndex) * 4u] = scalarParameter.Value;
+                }
+            }
+            m_ScalarParamsUBO->UpdateSubresource(scalarData.data(), 0, m_ScalarParamsUBOSize);
+        }
+
+        if (!m_MaterialBindingLayout)
+        {
+            return;
+        }
+
+        const std::vector<RHIBindingLayoutEntry>& entries = m_MaterialBindingLayout->GetEntries();
+        std::vector<RHIBindingResource> resources(entries.size());
+        std::vector<std::shared_ptr<RHIShaderResourceView>> textureSrvs;
+        textureSrvs.reserve(m_TextureParameters.size());
+
+        for (size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex)
+        {
+            const RHIBindingLayoutEntry& entry = entries[entryIndex];
+            if (entry.Type == RHIBindingType::UniformBuffer)
+            {
+                resources[entryIndex].Type = RHIBindingType::UniformBuffer;
+                resources[entryIndex].Buffer = m_ScalarParamsUBO.get();
+                continue;
+            }
+
+            MaterialTextureParameter const* textureParameter = nullptr;
+            for (const MaterialTextureParameter& candidate : m_TextureParameters)
+            {
+                if (candidate.SlotIndex == static_cast<int>(entry.ShaderBinding))
+                {
+                    textureParameter = &candidate;
+                    break;
+                }
+            }
+            if (!textureParameter || !textureParameter->Value)
             {
                 continue;
             }
 
-            const int textureUnit = textureParameter.SlotIndex;
-            texture->GetRHITexture()->Bind(textureUnit);
-            shader.UploadUniformInt(textureParameter.ShaderSymbolName, textureUnit);
+            RHITexture* modernTexture = textureParameter->Value->GetRHITexture();
+            if (!modernTexture)
+            {
+                continue;
+            }
+
+            RHITextureSRVDesc srvDesc;
+            srvDesc.Texture = modernTexture;
+            textureSrvs.push_back(std::make_shared<OpenGLRHIShaderResourceView>(srvDesc));
+            resources[entryIndex].Type = RHIBindingType::TextureSRV;
+            resources[entryIndex].TextureSRV = textureSrvs.back().get();
         }
 
-        for (const MaterialScalarParameter& scalarParameter : m_ScalarParameters)
+        if (RHIBindingSetRef materialSet = cmdList.CreateBindingSet(m_MaterialBindingLayout.get(), resources))
         {
-            shader.UploadUniformFloat(scalarParameter.ShaderSymbolName, scalarParameter.Value);
+            cmdList.SetBindingSet(EngineShaderBindings::kSetMaterial, materialSet.get());
         }
     }
 }
