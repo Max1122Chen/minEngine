@@ -11,8 +11,8 @@
 | **Last updated** | 2026-06-01（M1+M2 完成；grep + verify 通过） |
 | **Branch** | `render`（实现）；registry/planning 可合 `master` |
 | **Depends on** | `RND-F02` **Done**（现代契约 + GL `RHICreate*`/`RHICmd*` + Pass CommandList） |
-| **Blocks** | `RND-F04`（Vulkan + modern RHI completion） |
-| **Related** | [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F04](./RND-F04_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) |
+| **Blocks** | `RND-F04`（现代 RHI 语义演进）；间接阻塞 `RND-F05`（Vulkan） |
+| **Related** | [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [RND-F05](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) |
 
 ---
 
@@ -661,7 +661,7 @@ M4 相关 **现状盘点、问题归纳、UE 阅读锚点、松散建议**（非
 
 - F02 §6 中 **S5+**（材质 Binding、删 Legacy API）整体 **移至本 Feature**。
 - F02 §B.6 删除列表 = 本 Feature §10 的子集；以 **§10 为准**。
-- F02 Meta 中「Vulkan 在 RND-F03」已过时 → Vulkan 见 **RND-F04**。
+- F02 Meta 中「Vulkan 在 RND-F03」已过时 → 语义演进见 **RND-F04**；Vulkan 见 **RND-F05**。
 
 ---
 

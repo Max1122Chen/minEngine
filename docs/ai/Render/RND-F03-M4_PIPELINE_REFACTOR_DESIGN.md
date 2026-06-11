@@ -272,6 +272,8 @@ Draw 提交（Pass 内 RHICmd*）
 
 ## 9. 已采纳：简单正确的管线方案（维护者 2026-06-02）
 
+> **2026-06-11 后续：** binding 双路径（§9.6）的 **现代语义终态** 见 [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md)（已拍板）。§9.1–§9.5、§9.7 仍有效；§9.6 由 F04 取代。
+
 > **原则：** 逻辑通顺、一层薄封装；**不**引入 UE 式 MeshPassProcessor / draw state cache / RDG。  
 > **优先级：** 先 **摘掉 EnvMap**（否则持续阻塞主路径），再统一 draw、再挪 PSO、再收 Material binding。
 
