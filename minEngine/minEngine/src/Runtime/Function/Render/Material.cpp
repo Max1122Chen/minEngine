@@ -391,7 +391,62 @@ namespace minEngine
             ? nullptr
             : cmdList.CreateBindingLayout(layoutEntries);
 
+        RebuildMaterialBindingSet(cmdList);
         return true;
+    }
+
+    void Material::RebuildMaterialBindingSet(RHICommandList& cmdList)
+    {
+        m_MaterialBindingSet.reset();
+        m_TextureSRVs.clear();
+
+        if (!m_MaterialBindingLayout)
+        {
+            return;
+        }
+
+        const std::vector<RHIBindingLayoutEntry>& entries = m_MaterialBindingLayout->GetEntries();
+        std::vector<RHIBindingResource> resources(entries.size());
+        m_TextureSRVs.reserve(m_TextureParameters.size());
+
+        for (size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex)
+        {
+            const RHIBindingLayoutEntry& entry = entries[entryIndex];
+            if (entry.Type == RHIBindingType::UniformBuffer)
+            {
+                resources[entryIndex].Type = RHIBindingType::UniformBuffer;
+                resources[entryIndex].Buffer = m_ScalarParamsUBO.get();
+                continue;
+            }
+
+            const MaterialTextureParameter* textureParameter = nullptr;
+            for (const MaterialTextureParameter& candidate : m_TextureParameters)
+            {
+                if (candidate.SlotIndex == static_cast<int>(entry.ShaderBinding))
+                {
+                    textureParameter = &candidate;
+                    break;
+                }
+            }
+            if (!textureParameter || !textureParameter->Value)
+            {
+                continue;
+            }
+
+            RHITexture* modernTexture = textureParameter->Value->GetRHITexture();
+            if (!modernTexture)
+            {
+                continue;
+            }
+
+            RHITextureSRVDesc srvDesc;
+            srvDesc.Texture = modernTexture;
+            m_TextureSRVs.push_back(std::make_shared<OpenGLRHIShaderResourceView>(srvDesc));
+            resources[entryIndex].Type = RHIBindingType::TextureSRV;
+            resources[entryIndex].TextureSRV = m_TextureSRVs.back().get();
+        }
+
+        m_MaterialBindingSet = cmdList.CreateBindingSet(m_MaterialBindingLayout.get(), resources);
     }
 
     MaterialTextureParameter* Material::FindTextureParameter(const std::string& parameterName)
@@ -451,6 +506,11 @@ namespace minEngine
         if (MaterialTextureParameter* parameter = FindTextureParameter(parameterName))
         {
             parameter->Value = std::move(texture);
+            if (RHI* rhi = RenderSystem::Get().GetRHI())
+            {
+                RHICommandList cmdList(rhi);
+                RebuildMaterialBindingSet(cmdList);
+            }
         }
     }
 
@@ -464,71 +524,22 @@ namespace minEngine
 
     void Material::BindForDraw(RHICommandList& cmdList) const
     {
-        if (m_ScalarParamsUBO && m_ScalarParamsUBOSize > 0)
-        {
-            const uint32_t floatCount = m_ScalarParamsUBOSize / 16u;
-            std::vector<float> scalarData(floatCount * 4u, 0.0f);
-            for (const MaterialScalarParameter& scalarParameter : m_ScalarParameters)
-            {
-                if (scalarParameter.SlotIndex >= 0 &&
-                    static_cast<uint32_t>(scalarParameter.SlotIndex) < floatCount)
-                {
-                    scalarData[static_cast<size_t>(scalarParameter.SlotIndex) * 4u] = scalarParameter.Value;
-                }
-            }
-            m_ScalarParamsUBO->UpdateSubresource(scalarData.data(), 0, m_ScalarParamsUBOSize);
-        }
-
-        if (!m_MaterialBindingLayout)
+        (void)cmdList;
+        if (!m_ScalarParamsUBO || m_ScalarParamsUBOSize == 0)
         {
             return;
         }
 
-        const std::vector<RHIBindingLayoutEntry>& entries = m_MaterialBindingLayout->GetEntries();
-        std::vector<RHIBindingResource> resources(entries.size());
-        std::vector<std::shared_ptr<RHIShaderResourceView>> textureSrvs;
-        textureSrvs.reserve(m_TextureParameters.size());
-
-        for (size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex)
+        const uint32_t floatCount = m_ScalarParamsUBOSize / 16u;
+        std::vector<float> scalarData(floatCount * 4u, 0.0f);
+        for (const MaterialScalarParameter& scalarParameter : m_ScalarParameters)
         {
-            const RHIBindingLayoutEntry& entry = entries[entryIndex];
-            if (entry.Type == RHIBindingType::UniformBuffer)
+            if (scalarParameter.SlotIndex >= 0 &&
+                static_cast<uint32_t>(scalarParameter.SlotIndex) < floatCount)
             {
-                resources[entryIndex].Type = RHIBindingType::UniformBuffer;
-                resources[entryIndex].Buffer = m_ScalarParamsUBO.get();
-                continue;
+                scalarData[static_cast<size_t>(scalarParameter.SlotIndex) * 4u] = scalarParameter.Value;
             }
-
-            MaterialTextureParameter const* textureParameter = nullptr;
-            for (const MaterialTextureParameter& candidate : m_TextureParameters)
-            {
-                if (candidate.SlotIndex == static_cast<int>(entry.ShaderBinding))
-                {
-                    textureParameter = &candidate;
-                    break;
-                }
-            }
-            if (!textureParameter || !textureParameter->Value)
-            {
-                continue;
-            }
-
-            RHITexture* modernTexture = textureParameter->Value->GetRHITexture();
-            if (!modernTexture)
-            {
-                continue;
-            }
-
-            RHITextureSRVDesc srvDesc;
-            srvDesc.Texture = modernTexture;
-            textureSrvs.push_back(std::make_shared<OpenGLRHIShaderResourceView>(srvDesc));
-            resources[entryIndex].Type = RHIBindingType::TextureSRV;
-            resources[entryIndex].TextureSRV = textureSrvs.back().get();
         }
-
-        if (RHIBindingSetRef materialSet = cmdList.CreateBindingSet(m_MaterialBindingLayout.get(), resources))
-        {
-            cmdList.SetBindingSet(EngineShaderBindings::kSetMaterial, materialSet.get());
-        }
+        m_ScalarParamsUBO->UpdateSubresource(scalarData.data(), 0, m_ScalarParamsUBOSize);
     }
 }

@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-02 (RND-F03 M4 P0–P2)
+Last updated: 2026-06-02 (RND-F03 M4 P3)
 
 ## Purpose
 
@@ -1091,3 +1091,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-02 - RND-F03 M4 P3 material BindingSet cache (`render`)
+- Goal:
+  Stop per-draw `CreateBindingSet` in `Material::BindForDraw`; cache Set2 at compile / texture parameter change.
+- Main changes:
+  `Material::m_MaterialBindingSet` + `RebuildMaterialBindingSet` (compile + `SetTextureParameter`).
+  `BindForDraw` only uploads scalar UBO; material Set2 bound via `SubmitDrawMesh` in `DrawMeshCommand`.
+  `PrepareMeshDrawCommands` fills `MeshDrawCommand::m_MaterialBindingSet` from `Material::GetMaterialBindingSet`.
+- Risks or caveats:
+  Texture SRVs still `make_shared<OpenGLRHIShaderResourceView>` (P0′); per-frame PSO create unchanged; fullscreen passes still create binding sets per frame.
+- Validation done:
+  User local cmake build + Editor visual OK.
+- Next step:
+  P0′ `RHICreateShaderResourceView`; optional Pass PSO cache; PROGRESS_LOG commit on `render`.

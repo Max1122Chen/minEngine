@@ -20,6 +20,7 @@ namespace minEngine
         for (MeshDrawCommand& drawCommand : drawCommands)
         {
             Material* material = drawCommand.m_Material;
+            drawCommand.m_MaterialBindingSet = nullptr;
             if (!material || !material->IsCompiledForDraw() || !drawCommand.m_VertexInputLayout)
             {
                 drawCommand.m_PipelineState.reset();
@@ -32,6 +33,8 @@ namespace minEngine
                 drawCommand.m_PipelineState.reset();
                 continue;
             }
+
+            drawCommand.m_MaterialBindingSet = material->GetMaterialBindingSet();
 
             RHIGraphicsPSODesc psoDesc;
             psoDesc.VertexShader = shader;
@@ -62,7 +65,17 @@ namespace minEngine
             return;
         }
 
-        cmdList.SubmitDrawMesh(drawCommand.m_PipelineState.get(), nullptr, 0, drawCommand);
+        const SubmitDrawBinding materialBinding{
+            EngineShaderBindings::kSetMaterial,
+            drawCommand.m_MaterialBindingSet,
+        };
+        const SubmitDrawBinding* materialBindings = drawCommand.m_MaterialBindingSet ? &materialBinding : nullptr;
+        const uint32_t materialBindingCount = drawCommand.m_MaterialBindingSet ? 1u : 0u;
+        cmdList.SubmitDrawMesh(
+            drawCommand.m_PipelineState.get(),
+            materialBindings,
+            materialBindingCount,
+            drawCommand);
     }
 
     void RenderPassBase::BindSceneDrawResources(

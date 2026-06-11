@@ -8,6 +8,7 @@
 namespace minEngine
 {
     class Material;
+    class RHIBindingSet;
     class RHIBuffer;
     class RHIGraphicsPipelineState;
     class RHIVertexInputLayout;
@@ -40,6 +41,7 @@ namespace minEngine
 
         Material* m_Material = nullptr;
         std::shared_ptr<RHIGraphicsPipelineState> m_PipelineState;
+        RHIBindingSet* m_MaterialBindingSet = nullptr;
 
         Matrix4 m_ModelMatrix;
         Math::Geometry::AABB m_BoundingBox;

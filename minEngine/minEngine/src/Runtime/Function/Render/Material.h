@@ -16,6 +16,7 @@
 
 namespace minEngine
 {
+    class RHIShaderResourceView;
     class RHICommandList;
     class MaterialCompiler;
     class MaterialGraphNodeDef_TextureObject;
@@ -59,6 +60,7 @@ namespace minEngine
         }
 
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
+        RHIBindingSet* GetMaterialBindingSet() const { return m_MaterialBindingSet.get(); }
         const std::string& GetShaderCompileLog() const { return m_ShaderCompileLog; }
 
         MaterialEdGraph& GetGraph();
@@ -89,11 +91,14 @@ namespace minEngine
     private:
         RHIShaderRef m_GPUShader;
         RHIBindingLayoutRef m_MaterialBindingLayout;
+        RHIBindingSetRef m_MaterialBindingSet;
+        std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
         RHIBufferRef m_ScalarParamsUBO;
         uint32_t m_ScalarParamsUBOSize = 0;
         std::string m_ShaderCompileLog;
 
         bool CommitCompileResult(const MaterialCompileResult& result, const MaterialCompileContext& ctx);
+        void RebuildMaterialBindingSet(RHICommandList& cmdList);
 
         const MaterialGraphNodeDef_TextureObject* FindTextureNodeBySlot(int slotIndex) const;
         const MaterialGraphNodeDef_ScalarParameter* FindScalarNodeBySlot(int slotIndex) const;
