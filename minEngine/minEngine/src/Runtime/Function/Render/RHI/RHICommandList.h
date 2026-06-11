@@ -4,9 +4,11 @@
 #include "Render/RHI/RHIBinding.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
+#include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIRenderPass.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
+#include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 
 #include <cstdint>
 #include <string>
@@ -82,6 +84,9 @@ namespace minEngine
             uint32_t bindingSetCount,
             const MeshDrawCommand& drawCommand);
 
+        /** Sole modern draw submit path: PSO → all binding sets → VB/IB → Draw. */
+        void SubmitMeshDrawPacket(const MeshDrawPacket& packet);
+
         // Resource creation
         RHITextureRef CreateTexture2D(const RHITextureCreateDesc& desc, const void* initialData = nullptr)
         {
@@ -109,6 +114,10 @@ namespace minEngine
         RHIBindingLayoutRef CreateBindingLayout(const std::vector<RHIBindingLayoutEntry>& entries)
         {
             return m_RHI->RHICreateBindingLayout(entries);
+        }
+        RHIPipelineLayoutRef CreatePipelineLayout(const std::vector<RHIBindingLayout*>& setLayouts)
+        {
+            return m_RHI->RHICreatePipelineLayout(setLayouts);
         }
         RHIBindingSetRef CreateBindingSet(
             RHIBindingLayout* layout,

@@ -36,6 +36,8 @@ namespace minEngine
             const RHIGraphicsPSODesc& desc) override;
         virtual std::shared_ptr<RHIBindingLayout> RHICreateBindingLayout(
             const std::vector<RHIBindingLayoutEntry>& entries) override;
+        virtual std::shared_ptr<RHIPipelineLayout> RHICreatePipelineLayout(
+            const std::vector<RHIBindingLayout*>& setLayouts) override;
         virtual std::shared_ptr<RHIBindingSet> RHICreateBindingSet(
             RHIBindingLayout* layout,
             const std::vector<RHIBindingResource>& resources) override;

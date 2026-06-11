@@ -60,6 +60,7 @@ namespace minEngine
         }
 
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
+        RHIBindingLayout* GetMaterialBindingLayout() const { return m_MaterialBindingLayout.get(); }
         RHIBindingSet* GetMaterialBindingSet() const { return m_MaterialBindingSet.get(); }
         const std::string& GetShaderCompileLog() const { return m_ShaderCompileLog; }
 

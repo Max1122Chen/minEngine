@@ -11,6 +11,7 @@ namespace minEngine
     class RHI;
     class RHICommandList;
     class RHIBindingLayout;
+    class RHIPipelineLayout;
     class RHIBindingSet;
     class RHIGraphicsPipelineState;
     class RHIShader;
@@ -43,6 +44,7 @@ namespace minEngine
         RHIVertexInputLayoutRef m_CubeVertexLayout;
         std::shared_ptr<RHIGraphicsPipelineState> m_SkyPipelineState;
         std::shared_ptr<RHIBindingLayout> m_SkyBindingLayout;
+        std::shared_ptr<RHIPipelineLayout> m_SkyPipelineLayout;
         std::shared_ptr<TextureCube> m_EnvironmentCube;
         mutable std::shared_ptr<RHIShaderResourceView> m_EnvironmentSRV;
         mutable std::shared_ptr<RHIBindingSet> m_SkyBindingSet;

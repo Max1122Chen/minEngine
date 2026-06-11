@@ -27,6 +27,8 @@ namespace minEngine
 
         RHIBindingSet* GetSceneSet0() const { return m_SceneSet0.get(); }
         RHIBindingSet* GetSceneSet1() const { return m_SceneSet1.get(); }
+        RHIBindingLayout* GetSceneSet0Layout() const { return m_SceneSet0Layout.get(); }
+        RHIBindingLayout* GetSceneSet1Layout() const { return m_SceneSet1Layout.get(); }
 
     private:
         RHIBindingLayoutRef m_SceneSet0Layout;

@@ -5,7 +5,9 @@
 #include "OpenGLRHIResources.h"
 
 #include "Render/RHI/RHIBinding.h"
+#include "Log/LogSystem.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
+#include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIRenderPass.h"
 
 #include "glad/glad.h"
@@ -111,12 +113,22 @@ namespace minEngine
 
     std::shared_ptr<RHIGraphicsPipelineState> OpenGLRHI::RHICreateGraphicsPipelineState(const RHIGraphicsPSODesc& desc)
     {
+        if (!desc.PipelineLayout)
+        {
+            ME_CORE_WARN("RHICreateGraphicsPipelineState: PipelineLayout is null");
+        }
         return std::make_shared<RHIGraphicsPSOStateFallback>(desc);
     }
 
     std::shared_ptr<RHIBindingLayout> OpenGLRHI::RHICreateBindingLayout(const std::vector<RHIBindingLayoutEntry>& entries)
     {
         return std::make_shared<OpenGLRHIBindingLayout>(entries);
+    }
+
+    std::shared_ptr<RHIPipelineLayout> OpenGLRHI::RHICreatePipelineLayout(
+        const std::vector<RHIBindingLayout*>& setLayouts)
+    {
+        return std::make_shared<OpenGLRHIPipelineLayout>(setLayouts);
     }
 
     std::shared_ptr<RHIBindingSet> OpenGLRHI::RHICreateBindingSet(

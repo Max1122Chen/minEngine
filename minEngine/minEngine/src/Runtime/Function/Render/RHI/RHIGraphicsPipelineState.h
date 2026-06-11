@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIRenderPass.h"
 #include "Render/RHI/RHITexture.h"
 
@@ -64,6 +65,7 @@ namespace minEngine
     class RHIGraphicsPSODesc
     {
     public:
+        RHIPipelineLayout* PipelineLayout = nullptr;
         RHIShader* VertexShader = nullptr;
         RHIShader* PixelShader = nullptr;
         RHIVertexInputLayout* VertexInputLayout = nullptr;

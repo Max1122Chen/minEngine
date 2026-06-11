@@ -1,7 +1,9 @@
 #include "ShadowPass.h"
+#include "Render/EnginePipelineLayouts.h"
 #include "Render/EngineShaderUtils.h"
 #include "Render/EngineShaderBindings.h"
 #include "Render/EnginePassUniforms.h"
+#include "Render/RenderPipeline/RenderPipeline.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHICommandList.h"
@@ -10,6 +12,7 @@
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
+#include "Render/DrawCommands/MeshDrawPacket.h"
 
 namespace minEngine
 {
@@ -31,6 +34,11 @@ namespace minEngine
             m_ShadowPSODescTemplate.DepthStencilState.bDepthWriteEnabled = true;
             m_ShadowPSODescTemplate.BlendState.bBlendEnabled = false;
 
+            if (pipeline)
+            {
+                m_ShadowPSODescTemplate.PipelineLayout = pipeline->GetPipelineLayouts().GetShadowDepthPipelineLayout();
+            }
+
             RHIBufferCreateDesc paramsDesc;
             paramsDesc.Usage = RHIBufferUsage::Uniform;
             paramsDesc.ByteSize = sizeof(ShadowPassParamsUBO);
@@ -40,28 +48,20 @@ namespace minEngine
 
     void ShadowPass::EnsureShadowBindingSet(RHICommandList& cmdList)
     {
-        if (m_ShadowBindingSet || !m_LightViewProjUniformBuffer || !m_PerObjectUniformBuffer || !m_ShadowParamsUniformBuffer)
+        if (m_ShadowBindingSet || !pipeline || !m_LightViewProjUniformBuffer || !m_PerObjectUniformBuffer ||
+            !m_ShadowParamsUniformBuffer)
         {
             return;
         }
 
-        m_ShadowBindingLayout = cmdList.CreateBindingLayout({
-            {EngineShaderBindings::kShadowPass_LightViewProj,
-             RHIBindingType::UniformBuffer,
-             EngineShaderBindings::kGL_ShadowPassLightViewProjUBO,
-             RHIGraphicsShaderStage::Vertex},
-            {EngineShaderBindings::kShadowPass_PerObject,
-             RHIBindingType::UniformBuffer,
-             EngineShaderBindings::kGL_PerObjectUBO,
-             RHIGraphicsShaderStage::Vertex},
-            {EngineShaderBindings::kShadowPass_Params,
-             RHIBindingType::UniformBuffer,
-             EngineShaderBindings::kGL_ShadowPassParamsUBO,
-             RHIGraphicsShaderStage::Pixel},
-        });
+        RHIBindingLayout* shadowBindingLayout = pipeline->GetPipelineLayouts().GetShadowBindingLayout();
+        if (!shadowBindingLayout)
+        {
+            return;
+        }
 
         m_ShadowBindingSet = cmdList.CreateBindingSet(
-            m_ShadowBindingLayout.get(),
+            shadowBindingLayout,
             {
                 {RHIBindingType::UniformBuffer, m_LightViewProjUniformBuffer, nullptr},
                 {RHIBindingType::UniformBuffer, m_PerObjectUniformBuffer, nullptr},
@@ -105,7 +105,7 @@ namespace minEngine
         Render(cmdList);
     }
 
-    RHIGraphicsPipelineState* ShadowPass::GetOrCreateShadowPipelineForLayout(
+    RHIGraphicsPipelineStateRef ShadowPass::GetOrCreateShadowPipelineForLayout(
         RHIVertexInputLayout* vertexInputLayout,
         RHICommandList& cmdList)
     {
@@ -117,20 +117,19 @@ namespace minEngine
         const auto existing = m_ShadowPipelineByLayout.find(vertexInputLayout);
         if (existing != m_ShadowPipelineByLayout.end())
         {
-            return existing->second.get();
+            return existing->second;
         }
 
         RHIGraphicsPSODesc psoDesc = m_ShadowPSODescTemplate;
         psoDesc.VertexInputLayout = vertexInputLayout;
-        std::shared_ptr<RHIGraphicsPipelineState> pipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
+        RHIGraphicsPipelineStateRef pipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
         if (!pipelineState)
         {
             return nullptr;
         }
 
-        RHIGraphicsPipelineState* pipelineStatePtr = pipelineState.get();
-        m_ShadowPipelineByLayout.emplace(vertexInputLayout, std::move(pipelineState));
-        return pipelineStatePtr;
+        m_ShadowPipelineByLayout.emplace(vertexInputLayout, pipelineState);
+        return pipelineState;
     }
 
     void ShadowPass::Render(RHICommandList& cmdList)
@@ -189,7 +188,7 @@ namespace minEngine
                 continue;
             }
 
-            RHIGraphicsPipelineState* pipelineState =
+            RHIGraphicsPipelineStateRef pipelineState =
                 GetOrCreateShadowPipelineForLayout(drawCommand.m_VertexInputLayout, cmdList);
             if (!pipelineState || !drawCommand.m_VertexBuffer)
             {
@@ -197,14 +196,13 @@ namespace minEngine
             }
 
             m_PerObjectUniformBuffer->UpdateSubresource(&drawCommand.m_ModelMatrix, 0, sizeof(Matrix4));
-            const SubmitDrawBinding shadowBindings[] = {
-                {EngineShaderBindings::kSetShadowPass, m_ShadowBindingSet.get()},
-            };
-            cmdList.SubmitDrawMesh(
-                pipelineState,
-                shadowBindings,
-                static_cast<uint32_t>(sizeof(shadowBindings) / sizeof(shadowBindings[0])),
-                drawCommand);
+
+            MeshDrawPacket packet;
+            packet.PipelineState = pipelineState;
+            packet.BindingSets[EngineShaderBindings::kSetShadowPass] = m_ShadowBindingSet.get();
+            packet.VertexBuffer = drawCommand.m_VertexBuffer;
+            packet.IndexBuffer = drawCommand.m_IndexBuffer;
+            cmdList.SubmitMeshDrawPacket(packet);
         }
     }
 

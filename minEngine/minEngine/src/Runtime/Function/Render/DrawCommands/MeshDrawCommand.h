@@ -3,14 +3,10 @@
 #include "Runtime/Core/Math/Math.h"
 #include "Math/Geometry/AABB.h"
 
-#include <memory>
-
 namespace minEngine
 {
     class Material;
-    class RHIBindingSet;
     class RHIBuffer;
-    class RHIGraphicsPipelineState;
     class RHIVertexInputLayout;
 
     class MeshDrawCommandSortKey
@@ -29,6 +25,7 @@ namespace minEngine
         bool operator!=(const MeshDrawCommandSortKey& other) const { return m_Key != other.m_Key; }
     };
 
+    /** Pass-agnostic logical draw item built by RenderPipeline::BuildRenderQueue. */
     class MeshDrawCommand
     {
     public:
@@ -40,8 +37,6 @@ namespace minEngine
         RHIBuffer* m_IndexBuffer = nullptr;
 
         Material* m_Material = nullptr;
-        std::shared_ptr<RHIGraphicsPipelineState> m_PipelineState;
-        RHIBindingSet* m_MaterialBindingSet = nullptr;
 
         Matrix4 m_ModelMatrix;
         Math::Geometry::AABB m_BoundingBox;
@@ -50,3 +45,4 @@ namespace minEngine
         MeshDrawCommandSortKey m_SortKey;
     };
 }
+

@@ -2,6 +2,7 @@
 
 #include "glad/glad.h"
 #include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIShader.h"
@@ -115,6 +116,18 @@ namespace minEngine
 
     private:
         std::vector<RHIBindingLayoutEntry> m_Entries;
+    };
+
+    class OpenGLRHIPipelineLayout final : public RHIPipelineLayout
+    {
+    public:
+        explicit OpenGLRHIPipelineLayout(std::vector<RHIBindingLayout*> setLayouts);
+
+        virtual uint32_t GetSetLayoutCount() const override { return static_cast<uint32_t>(m_SetLayouts.size()); }
+        virtual RHIBindingLayout* GetSetLayout(uint32_t setIndex) const override;
+
+    private:
+        std::vector<RHIBindingLayout*> m_SetLayouts;
     };
 
     class OpenGLRHIBindingSet final : public RHIBindingSet

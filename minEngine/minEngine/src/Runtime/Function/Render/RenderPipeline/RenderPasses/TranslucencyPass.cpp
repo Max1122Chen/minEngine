@@ -1,12 +1,10 @@
 #include "TranslucencyPass.h"
 
-#include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
+#include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/RenderPipeline/RenderPipeline.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
-#include "Runtime/Function/Render/RHI/RHIShader.h"
 
 #include <algorithm>
 
@@ -36,31 +34,9 @@ namespace minEngine
             return;
         }
 
-        PrepareMeshDrawCommands(cmdList, m_DrawCommands, MeshPassKind::Translucent);
-
-        for (MeshDrawCommand& drawCommand : m_DrawCommands)
-        {
-            Material* material = drawCommand.m_Material;
-            if (!material || !drawCommand.m_VertexInputLayout || !drawCommand.m_VertexBuffer || !drawCommand.m_PipelineState)
-            {
-                continue;
-            }
-
-            const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong
-                || material->m_ShadingModel == MaterialShadingModel::PBR;
-
-            const MeshPassSceneBinding sceneBinding{
-                drawCommand,
-                bindSceneLighting,
-                false,
-                &m_DirectionalShadowHandle,
-                &m_SpotShadowHandles,
-                &m_PointShadowHandles,
-            };
-            BindSceneDrawResources(cmdList, *pipeline, sceneBinding);
-            material->BindForDraw(cmdList);
-            DrawMeshCommand(cmdList, drawCommand);
-        }
+        std::vector<MeshDrawPacket> drawPackets;
+        PrepareMeshDrawPackets(cmdList, m_DrawCommands, MeshPassKind::Translucent, drawPackets);
+        SubmitSceneMeshDrawPackets(cmdList, m_DrawCommands, drawPackets);
     }
 
     void TranslucencyPass::SortDrawCommands()
@@ -84,3 +60,4 @@ namespace minEngine
             });
     }
 }
+

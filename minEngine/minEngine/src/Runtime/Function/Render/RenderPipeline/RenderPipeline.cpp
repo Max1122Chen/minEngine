@@ -50,7 +50,9 @@ namespace minEngine
         m_SpotLightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4) * MAX_SPOT_LIGHTS));
 
         m_SceneBindings.Initialize(cmdList);
+        m_PipelineLayouts.Initialize(cmdList, m_SceneBindings);
 
+        m_ShadowPass.pipeline = this;
         m_BasePass.pipeline = this;
         m_TranslucentPass.pipeline = this;
 
@@ -135,6 +137,7 @@ namespace minEngine
 
     void RenderPipeline::Shutdown()
     {
+        m_PipelineLayouts.Shutdown();
         m_SceneBindings.Shutdown();
         m_SkyBoxPass.Shutdown();
         m_ShadowResourceManager.Shutdown();

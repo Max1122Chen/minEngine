@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-02 (RND-F03 M4 P3)
+Last updated: 2026-06-11 (RND-F04 S01–S03)
 
 ## Purpose
 
@@ -1091,6 +1091,21 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-11 - RND-F04 S01–S03 PipelineLayout + MeshDrawPacket (`render`)
+- Goal:
+  Modern RHI semantic evolution: glue PSO to binding via PipelineLayout; complete draw packet; unify all Pass submit paths.
+- Main changes:
+  **S01:** `RHIPipelineLayout`, `RHICreatePipelineLayout`, GL `OpenGLRHIPipelineLayout`; `RHIGraphicsPSODesc::PipelineLayout`; `EnginePipelineLayouts` (shadow / scene mesh / pass-local).
+  **S02:** `MeshDrawPacket`, `RHICommandList::SubmitMeshDrawPacket`; Present / Post / Sky migrated.
+  **S03:** `PrepareMeshDrawPackets` + `SubmitSceneMeshDrawPackets`; Base / Translucent / Shadow on full packet (Set0/1/2); `MeshDrawCommand` pass-agnostic; removed `BindSceneDrawResources`.
+  Docs: F04 design §12–§13 slice status; `ACTIVE_WORK` / `FEATURE_REGISTRY`.
+- Risks or caveats:
+  Per-draw PSO create still uncached; SRV per-frame create unchanged; `setIndex` still ignored; `SubmitDraw*` legacy API retained on CommandList.
+- Validation done:
+  User local cmake build PASS; golden scene visual OK.
+- Next step:
+  S04: PSO cache, SRV flyweight, `setIndex`, `RHICmdTransition` no-op; remove legacy SubmitDraw API.
 
 ### 2026-06-02 - RND-F03 M4 P3 material BindingSet cache (`render`)
 - Goal:

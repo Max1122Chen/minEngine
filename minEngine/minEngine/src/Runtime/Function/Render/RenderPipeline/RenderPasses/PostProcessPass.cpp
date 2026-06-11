@@ -1,5 +1,6 @@
 #include "PostProcessPass.h"
 
+#include "Render/DrawCommands/MeshDrawPacket.h"
 #include "Render/EngineShaderBindings.h"
 #include "Render/EnginePassUniforms.h"
 #include "Render/EngineShaderUtils.h"
@@ -24,15 +25,6 @@ namespace minEngine
 
         RHICommandList cmdList(rhi);
 
-        RHIGraphicsPSODesc psoDesc;
-        psoDesc.VertexShader = m_PostProcessShader.get();
-        psoDesc.PixelShader = m_PostProcessShader.get();
-        psoDesc.VertexInputLayout = m_ScreenQuadVertexLayout.get();
-        psoDesc.DepthStencilState.bDepthTestEnabled = false;
-        psoDesc.DepthStencilState.bDepthWriteEnabled = false;
-        psoDesc.BlendState.bBlendEnabled = false;
-        m_PostProcessPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
-
         RHIBufferCreateDesc paramsDesc;
         paramsDesc.Usage = RHIBufferUsage::Uniform;
         paramsDesc.ByteSize = sizeof(EnginePostParamsUBO);
@@ -48,6 +40,17 @@ namespace minEngine
              EngineShaderBindings::kGL_EnginePostParamsUBO,
              RHIGraphicsShaderStage::Pixel},
         });
+        m_PostPipelineLayout = cmdList.CreatePipelineLayout({m_PostBindingLayout.get()});
+
+        RHIGraphicsPSODesc psoDesc;
+        psoDesc.PipelineLayout = m_PostPipelineLayout.get();
+        psoDesc.VertexShader = m_PostProcessShader.get();
+        psoDesc.PixelShader = m_PostProcessShader.get();
+        psoDesc.VertexInputLayout = m_ScreenQuadVertexLayout.get();
+        psoDesc.DepthStencilState.bDepthTestEnabled = false;
+        psoDesc.DepthStencilState.bDepthWriteEnabled = false;
+        psoDesc.BlendState.bBlendEnabled = false;
+        m_PostProcessPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
     }
 
     void PostProcessPass::Execute()
@@ -96,14 +99,10 @@ namespace minEngine
                 {RHIBindingType::UniformBuffer, m_PostParamsUniformBuffer.get(), nullptr},
             });
 
-        const SubmitDrawBinding postBindings[] = {
-            {EngineShaderBindings::kSetEnginePost, bindingSet.get()},
-        };
-        cmdList.SubmitDraw(
-            m_PostProcessPipelineState.get(),
-            postBindings,
-            static_cast<uint32_t>(sizeof(postBindings) / sizeof(postBindings[0])),
-            m_ScreenQuadVertexBuffer.get(),
-            nullptr);
+        MeshDrawPacket packet;
+        packet.PipelineState = m_PostProcessPipelineState;
+        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = bindingSet.get();
+        packet.VertexBuffer = m_ScreenQuadVertexBuffer.get();
+        cmdList.SubmitMeshDrawPacket(packet);
     }
 }

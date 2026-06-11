@@ -6,6 +6,7 @@
 #include "RenderPasses/PostProcessPass.h"
 #include "RenderPasses/PresentPass.h"
 #include "RenderPasses/SkyBoxPass.h"
+#include "Runtime/Function/Render/EnginePipelineLayouts.h"
 #include "Runtime/Function/Render/EngineSceneBindingSets.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
@@ -112,6 +113,7 @@ namespace minEngine
 
         RHIBuffer* GetPerObjectUniformBuffer() const { return m_PerObjectUniformBuffer.get(); }
         const EngineSceneBindingSets& GetSceneBindings() const { return m_SceneBindings; }
+        const EnginePipelineLayouts& GetPipelineLayouts() const { return m_PipelineLayouts; }
 
     private:
         RHIBufferRef m_LightViewProjUniformBuffer;
@@ -132,6 +134,7 @@ namespace minEngine
 
         ShadowResourceManager m_ShadowResourceManager;
         EngineSceneBindingSets m_SceneBindings;
+        EnginePipelineLayouts m_PipelineLayouts;
         std::string m_EngineDefaultAssetsRoot;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;

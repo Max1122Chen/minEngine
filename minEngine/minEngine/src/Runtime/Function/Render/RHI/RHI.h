@@ -28,6 +28,8 @@ namespace minEngine
     class RHIBindingLayout;
     struct RHIBindingLayoutEntry;
 
+    class RHIPipelineLayout;
+
     class RHIBindingSet;
     struct RHIBindingResource;
 
@@ -66,6 +68,9 @@ namespace minEngine
 
         virtual std::shared_ptr<RHIBindingLayout> RHICreateBindingLayout(
             const std::vector<RHIBindingLayoutEntry>& entries) = 0;
+
+        virtual std::shared_ptr<RHIPipelineLayout> RHICreatePipelineLayout(
+            const std::vector<RHIBindingLayout*>& setLayouts) = 0;
 
         virtual std::shared_ptr<RHIBindingSet> RHICreateBindingSet(
             RHIBindingLayout* layout,

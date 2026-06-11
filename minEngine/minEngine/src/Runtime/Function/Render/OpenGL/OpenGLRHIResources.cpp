@@ -632,6 +632,20 @@ namespace minEngine
     {
     }
 
+    OpenGLRHIPipelineLayout::OpenGLRHIPipelineLayout(std::vector<RHIBindingLayout*> setLayouts)
+        : m_SetLayouts(std::move(setLayouts))
+    {
+    }
+
+    RHIBindingLayout* OpenGLRHIPipelineLayout::GetSetLayout(uint32_t setIndex) const
+    {
+        if (setIndex >= m_SetLayouts.size())
+        {
+            return nullptr;
+        }
+        return m_SetLayouts[setIndex];
+    }
+
     OpenGLRHIBindingSet::OpenGLRHIBindingSet(RHIBindingLayout* layout, std::vector<RHIBindingResource> resources)
         : m_Layout(layout)
         , m_Resources(std::move(resources))

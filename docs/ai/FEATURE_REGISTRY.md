@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-06-11 (RND-F04 Planned)  
+Last updated: 2026-06-11 (RND-F04 S01–S03)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -26,7 +26,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F01` | RenderGraph / frame scheduling | Deferred | — | 待 Design；**不在** F02/F03 范围 |
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配 + Pass CommandList） | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · S0–S5 on `render` |
 | `RND-F03` | Legacy RHI removal（调用面 + 管线重构 M4 + 后端绞杀 M3） | In Progress | **M1–M2 Done**；**M4** 管线 §16；M3 §15；EnvMap 停用 | [RND-F03_LEGACY_RHI_REMOVAL_DESIGN](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · §16 |
-| `RND-F04` | Modern RHI further evolution（语义终态：PipelineLayout、Packet、Setup/Execute、缓存） | **Planned** | — | [RND-F04_MODERN_RHI_EVOLUTION_DESIGN](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · 维护者 2026-06-11 拍板 |
+| `RND-F04` | Modern RHI further evolution（语义终态：PipelineLayout、Packet、Setup/Execute、缓存） | **In Progress** | — | [RND-F04_MODERN_RHI_EVOLUTION_DESIGN](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · **S01–S03 Done**；S04 待做 |
 | `RND-F05` | Vulkan backend + modern RHI completion（第二后端 + 契约在 VK 补全） | Planned | — | [RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · 依赖 F03 + F04 |
 
 ---

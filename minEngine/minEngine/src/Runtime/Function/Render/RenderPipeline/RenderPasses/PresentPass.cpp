@@ -11,6 +11,7 @@
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 
+#include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 
 namespace minEngine
@@ -41,7 +42,13 @@ namespace minEngine
             m_ScreenQuadShader = std::move(screenQuadShader);
         }
 
+        m_PresentBindingLayout = cmdList.CreateBindingLayout({
+            {0, RHIBindingType::TextureSRV, 0, RHIGraphicsShaderStage::Pixel}
+        });
+        m_PresentPipelineLayout = cmdList.CreatePipelineLayout({m_PresentBindingLayout.get()});
+
         RHIGraphicsPSODesc psoDesc;
+        psoDesc.PipelineLayout = m_PresentPipelineLayout.get();
         psoDesc.VertexShader = m_ScreenQuadShader.get();
         psoDesc.PixelShader = m_ScreenQuadShader.get();
         psoDesc.VertexInputLayout = m_ScreenQuadVertexLayout.get();
@@ -49,10 +56,6 @@ namespace minEngine
         psoDesc.DepthStencilState.bDepthWriteEnabled = false;
         psoDesc.BlendState.bBlendEnabled = false;
         m_PresentPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
-
-        m_PresentBindingLayout = cmdList.CreateBindingLayout({
-            {0, RHIBindingType::TextureSRV, 0, RHIGraphicsShaderStage::Pixel}
-        });
     }
 
     void PresentPass::Execute()
@@ -112,15 +115,11 @@ namespace minEngine
         const uint32_t width = m_SceneColorTexture->GetDesc().Width;
         const uint32_t height = m_SceneColorTexture->GetDesc().Height;
         cmdList.SetViewport(0, 0, width, height);
-        const SubmitDrawBinding presentBindings[] = {
-            {EngineShaderBindings::kSetEnginePost, bindingSet.get()},
-        };
-        cmdList.SubmitDraw(
-            m_PresentPipelineState.get(),
-            presentBindings,
-            static_cast<uint32_t>(sizeof(presentBindings) / sizeof(presentBindings[0])),
-            m_ScreenQuadVertexBuffer.get(),
-            nullptr);
+        MeshDrawPacket packet;
+        packet.PipelineState = m_PresentPipelineState;
+        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = bindingSet.get();
+        packet.VertexBuffer = m_ScreenQuadVertexBuffer.get();
+        cmdList.SubmitMeshDrawPacket(packet);
 
         cmdList.EndRenderPass();
     }

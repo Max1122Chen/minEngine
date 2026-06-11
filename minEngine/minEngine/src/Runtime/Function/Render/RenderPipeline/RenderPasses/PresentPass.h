@@ -8,6 +8,7 @@ namespace minEngine
 {
     class RHICommandList;
     class RHIBindingLayout;
+    class RHIPipelineLayout;
     class RHIBindingSet;
     class RHIGraphicsPipelineState;
     class RHIShader;
@@ -38,6 +39,7 @@ namespace minEngine
         std::shared_ptr<RHIShader> m_ScreenQuadShader;
         std::shared_ptr<RHIGraphicsPipelineState> m_PresentPipelineState;
         std::shared_ptr<RHIBindingLayout> m_PresentBindingLayout;
+        std::shared_ptr<RHIPipelineLayout> m_PresentPipelineLayout;
         std::shared_ptr<RHIShaderResourceView> m_SceneColorSRV;
 
         void Render(RHICommandList& cmdList);

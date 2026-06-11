@@ -1,5 +1,7 @@
 #include "SkyBoxPass.h"
 
+#include "Render/DrawCommands/MeshDrawPacket.h"
+
 #include "../../RenderCamera.h"
 #include "../../EngineShaderUtils.h"
 #include "../../EnginePassUniforms.h"
@@ -138,12 +140,15 @@ namespace minEngine
              RHIGraphicsShaderStage::Vertex},
         });
 
+        m_SkyPipelineLayout = cmdList.CreatePipelineLayout({m_SkyBindingLayout.get()});
+
         RHIBufferCreateDesc frameDesc;
         frameDesc.Usage = RHIBufferUsage::Uniform;
         frameDesc.ByteSize = sizeof(SkyPassFrameUBO);
         m_SkyFrameUniformBuffer = cmdList.CreateBuffer(frameDesc, nullptr);
 
         RHIGraphicsPSODesc psoDesc;
+        psoDesc.PipelineLayout = m_SkyPipelineLayout.get();
         psoDesc.VertexShader = m_SkyShader.get();
         psoDesc.PixelShader = m_SkyShader.get();
         psoDesc.VertexInputLayout = m_CubeVertexLayout.get();
@@ -165,6 +170,7 @@ namespace minEngine
         m_CubeVertexBuffer.reset();
         m_CubeVertexLayout.reset();
         m_SkyPipelineState.reset();
+        m_SkyPipelineLayout.reset();
         m_SkyBindingLayout.reset();
         m_EnvironmentCube.reset();
         m_EnvironmentSRV.reset();
@@ -210,14 +216,10 @@ namespace minEngine
                 {RHIBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
             });
 
-        const SubmitDrawBinding skyBindings[] = {
-            {EngineShaderBindings::kSetSkyPass, m_SkyBindingSet.get()},
-        };
-        cmdList.SubmitDraw(
-            m_SkyPipelineState.get(),
-            skyBindings,
-            static_cast<uint32_t>(sizeof(skyBindings) / sizeof(skyBindings[0])),
-            m_CubeVertexBuffer.get(),
-            nullptr);
+        MeshDrawPacket packet;
+        packet.PipelineState = m_SkyPipelineState;
+        packet.BindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyBindingSet.get();
+        packet.VertexBuffer = m_CubeVertexBuffer.get();
+        cmdList.SubmitMeshDrawPacket(packet);
     }
 }

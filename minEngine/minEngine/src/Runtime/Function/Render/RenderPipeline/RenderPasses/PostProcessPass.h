@@ -7,6 +7,7 @@
 namespace minEngine
 {
     class RHIBindingLayout;
+    class RHIPipelineLayout;
     class RHIGraphicsPipelineState;
     class RHIShader;
     class RHIShaderResourceView;
@@ -36,6 +37,7 @@ namespace minEngine
         std::shared_ptr<RHIShader> m_PostProcessShader;
         std::shared_ptr<RHIGraphicsPipelineState> m_PostProcessPipelineState;
         std::shared_ptr<RHIBindingLayout> m_PostBindingLayout;
+        std::shared_ptr<RHIPipelineLayout> m_PostPipelineLayout;
         std::shared_ptr<RHIShaderResourceView> m_SceneColorSRV;
         RHIBufferRef m_PostParamsUniformBuffer;
 
