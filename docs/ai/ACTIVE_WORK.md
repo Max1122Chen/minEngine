@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-06-01  
+Last updated: 2026-06-11  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,26 +9,37 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **RND-F02** Modern RHI — GPU 工作模型抽象；OpenGL 作为首个适配后端（**在 `render` 分支开发**，见分隔 commit 后建分支）。
-- **RND-F03** Vulkan backend — **Planned**；依赖 F02 契约稳定；与 GL 分里程碑行为对齐（Present → Shadow → 简化 Base → …）。
-- **分支约定：** `master` 上仅 planning/registry 分隔；实现与 [RND-F02 设计](./Render/RND-F02_MODERN_RHI_DESIGN.md) 在 **`render`** 分支。
+### Physics track（`physics` 分支 · worktree `D:/Dev/GitRepo/minEngine-physics`）
 
-### RND-F02 边界（本阶段）
+**当前优先：`CORE-F01`（Transform 四元数）→ 完成后 `PHYS-F01`（Jolt）**
 
-| In | Out |
-|----|-----|
-| GPU 模型驱动的 RHI 契约（Device、Resource/View、PSO、Binding、RenderPass、CommandList、Transition、Upload） | RenderGraph / FrameGraph |
-| OpenGL backend **实现** 新契约（非 RHI 迁就 GL） | 第一版 Vulkan 全管线（CSM/PBR/Material IR 等为 F03 后续里程碑） |
-| Pass 经 CommandList 提交；去掉 Pass 内 `gl*` / GL 强转 | 以某一 API（含 Vulkan）**定义** RHI 形状 |
-| 设计案 = **现代 RHI 理解教案 + 设计**（normative 是 GPU 语义） | 业务层 `#if VULKAN` 分叉 |
+#### CORE-F01 — Transform quaternion storage（**Planned**，可开 S01）
 
-**验证：** `.\scripts\verify.ps1`；F02 各切片后 Editor 主视口与改前一致（GL 单后端）。
+- **设计：** [CORE-F01_TRANSFORM_QUATERNION_DESIGN.md](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md)
+- **实施：** [CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md)
+- **分支：** `physics`（完成后 PR → `master`）
+- **拍板摘要：** D1 XYZ 保持；D2 `q≡-q`；D3 struct 四字段；D4 **不**自动读旧 Euler；D5 纳入 `RenderCamera`；D6 标签 `Rotation`；D7 rebase 自行安排
+- **切片（逻辑 6 片，建议 3 PR）：** S01+S02 内核、Scene API、RenderCamera → S03+S04 序列化与 Inspector → S05+S06 清扫与合入
+- **Inspector 约定：** `Rotation` 反射为 `Quaternion`，`TransformWidget` 仍显示 vec3 欧拉（度），写入映射四元数
+
+#### PHYS-F01 — Jolt physics integration（**Blocked by CORE-F01**）
+
+- **S01 目标：** Jolt CMake → `PhysicsSystem` → `RigidBodyComponent` + `BoxColliderComponent` → 落体 + `verify.ps1` / headless 测试
+- **S02：** 碰撞通道（Default/World/Trigger）+ Contact 双缓冲 Begin/End
+- **S03：** `LineTrace` 查询 API
+- **分支基线：** `master`；**不**基于 `render`；与 RND-F02/F03 并行，定期 merge `master`
+- **刻意不碰（本 track）：** RHI、RenderPipeline、SceneProxy、Material
+
+### Render track（`render` 分支 · 主 worktree `minEngine`）
+
+- 见 `render` 分支上最新的 `ACTIVE_WORK.md`（本 worktree 的 render 条目可能滞后于 `render` 分支）
+- **`CORE-F01` 合入 `master` 后：** render worktree 与 master 对齐由维护者安排（D7）
 
 ---
 
-## Maintenance (not blocking render track)
+## Maintenance (not blocking physics track)
 
-- **WF-F02** handbook / Pages：骨架已上；正文按需补，不与 RND 抢 `render` 分支。
+- **WF-F02** handbook / Pages：骨架已上；正文按需补
 
 ---
 
@@ -43,26 +54,10 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 
 ---
 
-## Explicitly not backlog (unless you promote them)
-
-These are **optional future feats**, not debt owed by old docs:
-
-- **RND-F01** RenderGraph（已登记 **Deferred**；F02/F03 完成后再议）。
-- Editor: unified Inspector target model, Material graph Undo, texture preview in Inspector.
-- Core: delegates, Lua scripting bindings.
-- Content Browser: further registry/watcher optimizations beyond R1 incremental `AssetTreeModel` patch.
-- Infra: GitHub Actions (see `TECH_DEBT.md` TD-010 when you want it).
-
----
-
 ## How this relates to other docs
 
 | File | Role |
 |------|------|
-| [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status when starting a **new** registered feature |
-| [RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md) | Modern RHI 教案 + 设计（`render` 分支） |
-| [TECH_DEBT.md](./TECH_DEBT.md) | Deferred problems worth tracking |
-| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |
+| [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status |
 | [BOOTSTRAP_DIGEST.md](./BOOTSTRAP_DIGEST.md) | Commands, DoD, agent habits |
-| [RENDER_REFACTOR_PLAN.md](./Render/RENDER_REFACTOR_PLAN.md) | Viewport/SceneDraw（与 F02 正交；Tier B 参考） |
-| Old roadmaps under `Platform/`, `Editor/` | Architecture reference only — see `.cursor/rules/docs-trust-tiers.mdc` |
+| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |

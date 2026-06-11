@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-01
+Last updated: 2026-06-11
 
 ## Purpose
 
@@ -958,6 +958,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `_authoring.md` + `exclude_docs`; expanded `render/overview.md` for TOC sample.
 - Validation done:
   `mkdocs build --strict`.
+
+### 2026-06-11 - CORE-F01 Transform quaternion design (physics branch)
+- Goal:
+  Register Transform storage migration as `CORE-F01` before `PHYS-F01` (Jolt); document scope, Inspector Euler widget mapping, and slice plan.
+- Main changes:
+  `docs/ai/Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md`,
+  `CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md`;
+  `FEATURE_REGISTRY.md` (`CORE-F01` Planned, `PHYS-F01` blocked);
+  `ACTIVE_WORK.md` priority order updated.
+- Validation done:
+  Docs only; no build.
+- Next step:
+  Design §6 decisions recorded (D4 no auto read; D5 RenderCamera in scope) → `CORE-F01-S01`+`S02` first landable PR.
 
 ### 2026-06-01 - WF-F02 handbook nav under `runtime/` tree
 - Goal:
