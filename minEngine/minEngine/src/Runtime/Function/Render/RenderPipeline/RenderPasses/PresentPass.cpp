@@ -11,7 +11,6 @@
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 
 namespace minEngine
@@ -98,7 +97,7 @@ namespace minEngine
 
         RHITextureSRVDesc srvDesc;
         srvDesc.Texture = m_SceneColorTexture.get();
-        m_SceneColorSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
+        m_SceneColorSRV = cmdList.CreateShaderResourceView(srvDesc);
 
         RHIBindingResource bindingResource;
         bindingResource.Type = RHIBindingType::TextureSRV;

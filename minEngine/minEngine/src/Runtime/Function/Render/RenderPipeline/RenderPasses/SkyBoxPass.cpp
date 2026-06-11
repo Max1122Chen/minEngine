@@ -16,8 +16,6 @@
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Texture.h"
 
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
-
 #include <array>
 
 namespace minEngine
@@ -198,7 +196,7 @@ namespace minEngine
 
         RHITextureSRVDesc srvDesc;
         srvDesc.Texture = environmentTexture;
-        m_EnvironmentSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
+        m_EnvironmentSRV = cmdList.CreateShaderResourceView(srvDesc);
         SkyPassFrameUBO frameData{};
         frameData.Projection = camera.GetProjectionMatrix();
         frameData.View = camera.GetViewMatrix();

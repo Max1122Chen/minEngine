@@ -12,8 +12,6 @@
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
-
 namespace minEngine
 {
     void PostProcessPass::Initialize()
@@ -79,7 +77,7 @@ namespace minEngine
 
         RHITextureSRVDesc srvDesc;
         srvDesc.Texture = m_SceneColorTexture.get();
-        m_SceneColorSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
+        m_SceneColorSRV = cmdList.CreateShaderResourceView(srvDesc);
 
         EnginePostParamsUBO params{};
         params.InvResolution[0] = 1.0f / static_cast<float>(m_SceneColorTexture->GetDesc().Width);

@@ -78,6 +78,15 @@ namespace minEngine
         return std::make_shared<OpenGLRHITexture>(desc, initialData);
     }
 
+    std::shared_ptr<RHIShaderResourceView> OpenGLRHI::RHICreateShaderResourceView(const RHITextureSRVDesc& desc)
+    {
+        if (!desc.Texture)
+        {
+            return nullptr;
+        }
+        return std::make_shared<OpenGLRHIShaderResourceView>(desc);
+    }
+
     std::shared_ptr<RHIBuffer> OpenGLRHI::RHICreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
     {
         return std::make_shared<OpenGLRHIBuffer>(desc, initialData);

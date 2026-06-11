@@ -1,7 +1,6 @@
 #include "EngineSceneBindingSets.h"
 
 #include "EngineShaderBindings.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -11,7 +10,10 @@ namespace minEngine
     {
         using namespace EngineShaderBindings;
 
-        std::shared_ptr<RHIShaderResourceView> MakeTextureSRV(RHITexture* texture, int32_t arraySlice = -1)
+        std::shared_ptr<RHIShaderResourceView> MakeTextureSRV(
+            RHICommandList& cmdList,
+            RHITexture* texture,
+            int32_t arraySlice = -1)
         {
             if (!texture)
             {
@@ -21,7 +23,7 @@ namespace minEngine
             RHITextureSRVDesc srvDesc;
             srvDesc.Texture = texture;
             srvDesc.ArraySlice = arraySlice;
-            return std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
+            return cmdList.CreateShaderResourceView(srvDesc);
         }
 
     }
@@ -93,7 +95,7 @@ namespace minEngine
 
         if (ctx.DirectionalShadowHandle.IsValid())
         {
-            m_DirShadowSRV = MakeTextureSRV(ctx.DirectionalShadowHandle.Texture.get());
+            m_DirShadowSRV = MakeTextureSRV(cmdList, ctx.DirectionalShadowHandle.Texture.get());
         }
         else
         {
@@ -106,7 +108,7 @@ namespace minEngine
             const ShadowResourceHandle& handle = ctx.SpotShadowHandles[i];
             if (handle.IsValid())
             {
-                m_SpotShadowSRVs[i] = MakeTextureSRV(handle.Texture.get());
+                m_SpotShadowSRVs[i] = MakeTextureSRV(cmdList, handle.Texture.get());
             }
         }
 
@@ -116,7 +118,7 @@ namespace minEngine
             const ShadowResourceHandle& handle = ctx.PointShadowHandles[i];
             if (handle.IsValid())
             {
-                m_PointShadowSRVs[i] = MakeTextureSRV(handle.Texture.get());
+                m_PointShadowSRVs[i] = MakeTextureSRV(cmdList, handle.Texture.get());
             }
         }
 

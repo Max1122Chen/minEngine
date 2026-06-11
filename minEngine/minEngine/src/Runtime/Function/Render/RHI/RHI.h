@@ -31,6 +31,9 @@ namespace minEngine
     class RHIBindingSet;
     struct RHIBindingResource;
 
+    class RHIShaderResourceView;
+    struct RHITextureSRVDesc;
+
     class RHIRenderPassInfo;
 
     class RHI
@@ -45,6 +48,9 @@ namespace minEngine
         virtual std::shared_ptr<RHITexture> RHICreateTexture2D(
             const RHITextureCreateDesc& desc,
             const void* initialData = nullptr) = 0;
+
+        virtual std::shared_ptr<RHIShaderResourceView> RHICreateShaderResourceView(
+            const RHITextureSRVDesc& desc) = 0;
 
         virtual std::shared_ptr<RHIBuffer> RHICreateBuffer(
             const RHIBufferCreateDesc& desc,

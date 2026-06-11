@@ -23,6 +23,8 @@ namespace minEngine
         virtual std::shared_ptr<RHITexture> RHICreateTexture2D(
             const RHITextureCreateDesc& desc,
             const void* initialData) override;
+        virtual std::shared_ptr<RHIShaderResourceView> RHICreateShaderResourceView(
+            const RHITextureSRVDesc& desc) override;
         virtual std::shared_ptr<RHIBuffer> RHICreateBuffer(
             const RHIBufferCreateDesc& desc,
             const void* initialData) override;

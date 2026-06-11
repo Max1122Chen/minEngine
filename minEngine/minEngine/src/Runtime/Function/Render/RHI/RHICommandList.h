@@ -87,6 +87,10 @@ namespace minEngine
         {
             return m_RHI->RHICreateTexture2D(desc, initialData);
         }
+        RHIShaderResourceViewRef CreateShaderResourceView(const RHITextureSRVDesc& desc)
+        {
+            return m_RHI->RHICreateShaderResourceView(desc);
+        }
         RHIBufferRef CreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData = nullptr)
         {
             return m_RHI->RHICreateBuffer(desc, initialData);

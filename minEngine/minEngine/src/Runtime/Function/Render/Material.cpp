@@ -7,7 +7,6 @@
 #include "Runtime/Function/Render/Material/MaterialValueType.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "RHI/RHIShader.h"
@@ -441,7 +440,7 @@ namespace minEngine
 
             RHITextureSRVDesc srvDesc;
             srvDesc.Texture = modernTexture;
-            m_TextureSRVs.push_back(std::make_shared<OpenGLRHIShaderResourceView>(srvDesc));
+            m_TextureSRVs.push_back(cmdList.CreateShaderResourceView(srvDesc));
             resources[entryIndex].Type = RHIBindingType::TextureSRV;
             resources[entryIndex].TextureSRV = m_TextureSRVs.back().get();
         }
