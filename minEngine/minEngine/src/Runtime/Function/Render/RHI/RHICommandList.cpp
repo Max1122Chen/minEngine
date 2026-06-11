@@ -1,7 +1,5 @@
 #include "RHICommandList.h"
 
-#include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
-
 namespace minEngine
 {
     namespace
@@ -69,61 +67,6 @@ namespace minEngine
             cmdList.Draw(vertexCount, packet.FirstVertex);
         }
 
-        void BindLegacyDescriptorSets(
-            RHICommandList& cmdList,
-            const SubmitDrawBinding* bindingSets,
-            uint32_t bindingSetCount)
-        {
-            if (!bindingSets)
-            {
-                return;
-            }
-
-            for (uint32_t bindingIndex = 0; bindingIndex < bindingSetCount; ++bindingIndex)
-            {
-                const SubmitDrawBinding& binding = bindingSets[bindingIndex];
-                if (binding.BindingSet)
-                {
-                    cmdList.SetBindingSet(binding.SetIndex, binding.BindingSet);
-                }
-            }
-        }
-
-    }
-
-    void RHICommandList::SubmitDraw(
-        RHIGraphicsPipelineState* pipelineState,
-        const SubmitDrawBinding* bindingSets,
-        uint32_t bindingSetCount,
-        RHIBuffer* vertexBuffer,
-        RHIBuffer* indexBuffer)
-    {
-        if (!pipelineState)
-        {
-            return;
-        }
-
-        SetGraphicsPipelineState(pipelineState);
-        BindLegacyDescriptorSets(*this, bindingSets, bindingSetCount);
-
-        MeshDrawPacket bufferPacket;
-        bufferPacket.VertexBuffer = vertexBuffer;
-        bufferPacket.IndexBuffer = indexBuffer;
-        SubmitDrawBuffers(*this, bufferPacket);
-    }
-
-    void RHICommandList::SubmitDrawMesh(
-        RHIGraphicsPipelineState* pipelineState,
-        const SubmitDrawBinding* bindingSets,
-        uint32_t bindingSetCount,
-        const MeshDrawCommand& drawCommand)
-    {
-        SubmitDraw(
-            pipelineState,
-            bindingSets,
-            bindingSetCount,
-            drawCommand.m_VertexBuffer,
-            drawCommand.m_IndexBuffer);
     }
 
     void RHICommandList::SubmitMeshDrawPacket(const MeshDrawPacket& packet)

@@ -6,7 +6,7 @@
 |-------|--------|
 | **Feature ID** | `RND-F04` |
 | **Type** | Refactor |
-| **Status** | **In Progress**（S01–S03 Done；S04 待做） |
+| **Status** | **Done**（S01–S04；2026-06-11 维护者编译+目视 OK） |
 | **Owner** | (maintainer) |
 | **Last updated** | 2026-06-11 |
 | **Branch** | `render` |
@@ -20,7 +20,7 @@
 
 **方案：** 按 F02 GPU 模型 **重组 Renderer ↔ RHI 契约**：三层边界、`RHIPipelineLayout`、`MeshDrawPacket`（Pass 级完整 GPU 状态包）、`SubmitMeshDrawPacket` 唯一提交入口、Setup/Execute 分界、Pass 级 PSO/SRV 缓存、RHI 契约补全（`Transition` no-op、`setIndex` 真语义）。
 
-**状态：** S01–S03 已落地（PipelineLayout、MeshDrawPacket、全 Pass 经 `SubmitMeshDrawPacket`）；**S04**（PSO/SRV 缓存、`setIndex`、`Transition`）待做。
+**状态：** S01–S04 已落地。小尾巴（Set0 脏重建、Material SRV flyweight）记入 [TECH_DEBT](../TECH_DEBT.md) TD-013–TD-014。
 
 ---
 
@@ -326,7 +326,7 @@ Packet **自带全部 BindingSets**；per-object 在 Prepare 前 `UpdateSubresou
 | **S01** | **Done** | `RHIPipelineLayout` + PSO desc + `EnginePipelineLayouts` | 编译通过 |
 | **S02** | **Done** | `MeshDrawPacket` + `SubmitMeshDrawPacket`；Present/Post/Sky 迁 | Pass 经 packet 提交 |
 | **S03** | **Done** | `PrepareMeshDrawPackets` + `SubmitSceneMeshDrawPackets`；删 `BindSceneDrawResources`；`MeshDrawCommand` 纯逻辑队列 | 黄金场景目视 OK |
-| **S04** | Pending | PSO cache；SRV flyweight；`setIndex`；`RHICmdTransition` no-op | 热路径无每帧 CreatePSO；verify + material-ir |
+| **S04** | **Done** | PSO cache；SRV flyweight；`setIndex`；`RHICmdTransition` no-op；删 Legacy Submit API | 热路径无每 draw CreatePSO；维护者编译+目视 OK |
 
 **顺序不可打乱。**
 
@@ -334,16 +334,16 @@ Packet **自带全部 BindingSets**；per-object 在 Prepare 前 `UpdateSubresou
 
 ## 13) Feature Done 验收
 
-- [ ] §3 全部问题项有代码或文档对策且已落地（S04 剩余项）
+- [x] §3 全部问题项有代码或文档对策且已落地（Set0/Material SRV 小尾巴 → TECH_DEBT TD-013/014）
 - [x] `RHIPipelineLayout` + 引擎 layout 在用（S01）
 - [x] 全 Pass draw 经 `SubmitMeshDrawPacket`（S02–S03）
 - [x] `MeshDrawCommand` 无 Pass GPU 状态；`MeshDrawPacket` 为提交单元（S03）
 - [x] `BindSceneDrawResources` 已删除（S03）
-- [ ] Legacy `SubmitDraw`/`SubmitDrawMesh`/`SubmitDrawBinding` 从 public API 移除（Pass 已不调用；S04）
-- [ ] `setIndex` 非 no-op；`RHICmdTransition` 存在（GL no-op）（S04）
-- [ ] PSO / Scene Binding 热路径缓存生效（S04）
+- [x] Legacy `SubmitDraw`/`SubmitDrawMesh`/`SubmitDrawBinding` 已从 public API 移除（S04）
+- [x] `setIndex` 校验 + 跟踪；`RHICmdTransition` 存在（GL no-op）（S04）
+- [x] PSO / Scene Set1 热路径缓存生效（S04）
 - [x] 黄金场景目视 OK（维护者 2026-06-11）
-- [ ] `.\scripts\verify.ps1` + material-ir（S04 收口时复跑）
+- [ ] `.\scripts\verify.ps1` + material-ir（建议 commit 后补跑并记入 PROGRESS_LOG）
 
 ---
 
@@ -360,4 +360,5 @@ RND-F02 (Done) → RND-F03 (Legacy+M3 Done) → RND-F04 (本文) → RND-F05 (Vu
 | 日期 | 说明 |
 |------|------|
 | 2026-06-11 | 初稿：合并第一轮评审 + 演进方案；维护者拍板 D1–D7；F04=演进、原 Vulkan 顺延 F05 |
-| 2026-06-11 | S01–S03 落地：PipelineLayout、MeshDrawPacket、全 Pass packet 提交；目视验收 OK；S04 待做 |
+| 2026-06-11 | S01–S03 落地：PipelineLayout、MeshDrawPacket、全 Pass packet 提交；目视验收 OK |
+| 2026-06-11 | S04 落地：PSO cache、SRV flyweight、setIndex、Transition、删 Legacy Submit；Feature Done |

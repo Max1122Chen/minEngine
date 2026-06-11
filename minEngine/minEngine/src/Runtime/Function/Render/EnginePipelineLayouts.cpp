@@ -30,6 +30,7 @@ namespace minEngine
 
     void EnginePipelineLayouts::Shutdown()
     {
+        m_SceneMeshPsoCache.clear();
         m_SceneMeshPipelineByMaterialLayout.clear();
         m_PassLocalPipelineBySetLayout.clear();
         m_ShadowDepthPipelineLayout.reset();
@@ -83,5 +84,67 @@ namespace minEngine
         RHIPipelineLayoutRef pipelineLayout = cmdList.CreatePipelineLayout({passSetLayout});
         m_PassLocalPipelineBySetLayout.emplace(passSetLayout, pipelineLayout);
         return pipelineLayout;
+    }
+
+    RHIGraphicsPipelineStateRef EnginePipelineLayouts::GetOrCreateSceneMeshGraphicsPipelineState(
+        RHICommandList& cmdList,
+        const EngineSceneBindingSets& sceneBindings,
+        RHIBindingLayout* materialSetLayout,
+        RHIShader* shader,
+        RHIVertexInputLayout* vertexInputLayout,
+        bool translucentPass) const
+    {
+        if (!materialSetLayout || !shader || !vertexInputLayout)
+        {
+            return nullptr;
+        }
+
+        RHIPipelineLayoutRef pipelineLayout = GetOrCreateSceneMeshPipelineLayout(
+            cmdList,
+            sceneBindings,
+            materialSetLayout);
+        if (!pipelineLayout)
+        {
+            return nullptr;
+        }
+
+        const SceneMeshPSOKey key{
+            pipelineLayout.get(),
+            vertexInputLayout,
+            shader,
+            translucentPass};
+        const auto existing = m_SceneMeshPsoCache.find(key);
+        if (existing != m_SceneMeshPsoCache.end())
+        {
+            return existing->second;
+        }
+
+        RHIGraphicsPSODesc psoDesc;
+        psoDesc.PipelineLayout = pipelineLayout.get();
+        psoDesc.VertexShader = shader;
+        psoDesc.PixelShader = shader;
+        psoDesc.VertexInputLayout = vertexInputLayout;
+        psoDesc.DepthStencilState.bDepthTestEnabled = true;
+        psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::Less;
+
+        if (translucentPass)
+        {
+            psoDesc.BlendState.bBlendEnabled = true;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = false;
+        }
+        else
+        {
+            psoDesc.BlendState.bBlendEnabled = false;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
+        }
+
+        RHIGraphicsPipelineStateRef pipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
+        if (!pipelineState)
+        {
+            return nullptr;
+        }
+
+        m_SceneMeshPsoCache.emplace(key, pipelineState);
+        return pipelineState;
     }
 }

@@ -10,22 +10,6 @@ namespace minEngine
     {
         using namespace EngineShaderBindings;
 
-        std::shared_ptr<RHIShaderResourceView> MakeTextureSRV(
-            RHICommandList& cmdList,
-            RHITexture* texture,
-            int32_t arraySlice = -1)
-        {
-            if (!texture)
-            {
-                return nullptr;
-            }
-
-            RHITextureSRVDesc srvDesc;
-            srvDesc.Texture = texture;
-            srvDesc.ArraySlice = arraySlice;
-            return cmdList.CreateShaderResourceView(srvDesc);
-        }
-
     }
 
     void EngineSceneBindingSets::Initialize(RHICommandList& cmdList)
@@ -61,6 +45,21 @@ namespace minEngine
         m_SpotShadowSRVs = {};
         m_PointShadowSRVs = {};
         m_IblSRVs = {};
+        m_TextureViewCache.Clear();
+        m_CachedDirShadowTexture = nullptr;
+        m_CachedSpotShadowTextures = {};
+        m_CachedPointShadowTextures = {};
+        m_CachedDirLightViewProjs = nullptr;
+        m_CachedCascadeFarPlanes = nullptr;
+        m_CachedSpotLightViewProjs = nullptr;
+    }
+
+    RHIShaderResourceViewRef EngineSceneBindingSets::GetOrCreateTextureSRV(
+        RHICommandList& cmdList,
+        RHITexture* texture,
+        int32_t arraySlice)
+    {
+        return m_TextureViewCache.GetOrCreate(cmdList, texture, arraySlice);
     }
 
     void EngineSceneBindingSets::BuildSceneSet0(
@@ -93,33 +92,73 @@ namespace minEngine
             return;
         }
 
+        bool sceneSet1Dirty = !m_SceneSet1;
+
+        RHITexture* dirShadowTexture = nullptr;
         if (ctx.DirectionalShadowHandle.IsValid())
         {
-            m_DirShadowSRV = MakeTextureSRV(cmdList, ctx.DirectionalShadowHandle.Texture.get());
+            dirShadowTexture = ctx.DirectionalShadowHandle.Texture.get();
         }
-        else
+        if (dirShadowTexture != m_CachedDirShadowTexture)
         {
-            m_DirShadowSRV.reset();
+            m_CachedDirShadowTexture = dirShadowTexture;
+            m_DirShadowSRV = dirShadowTexture ? GetOrCreateTextureSRV(cmdList, dirShadowTexture) : nullptr;
+            sceneSet1Dirty = true;
         }
 
-        m_SpotShadowSRVs = {};
         for (size_t i = 0; i < ctx.SpotShadowHandles.size() && i < m_SpotShadowSRVs.size(); ++i)
         {
+            RHITexture* spotTexture = nullptr;
             const ShadowResourceHandle& handle = ctx.SpotShadowHandles[i];
             if (handle.IsValid())
             {
-                m_SpotShadowSRVs[i] = MakeTextureSRV(cmdList, handle.Texture.get());
+                spotTexture = handle.Texture.get();
+            }
+
+            if (spotTexture != m_CachedSpotShadowTextures[i])
+            {
+                m_CachedSpotShadowTextures[i] = spotTexture;
+                m_SpotShadowSRVs[i] = spotTexture ? GetOrCreateTextureSRV(cmdList, spotTexture) : nullptr;
+                sceneSet1Dirty = true;
             }
         }
 
-        m_PointShadowSRVs = {};
         for (size_t i = 0; i < ctx.PointShadowHandles.size() && i < m_PointShadowSRVs.size(); ++i)
         {
+            RHITexture* pointTexture = nullptr;
             const ShadowResourceHandle& handle = ctx.PointShadowHandles[i];
             if (handle.IsValid())
             {
-                m_PointShadowSRVs[i] = MakeTextureSRV(cmdList, handle.Texture.get());
+                pointTexture = handle.Texture.get();
             }
+
+            if (pointTexture != m_CachedPointShadowTextures[i])
+            {
+                m_CachedPointShadowTextures[i] = pointTexture;
+                m_PointShadowSRVs[i] = pointTexture ? GetOrCreateTextureSRV(cmdList, pointTexture) : nullptr;
+                sceneSet1Dirty = true;
+            }
+        }
+
+        if (dirLightViewProjs != m_CachedDirLightViewProjs)
+        {
+            m_CachedDirLightViewProjs = dirLightViewProjs;
+            sceneSet1Dirty = true;
+        }
+        if (cascadeFarPlanes != m_CachedCascadeFarPlanes)
+        {
+            m_CachedCascadeFarPlanes = cascadeFarPlanes;
+            sceneSet1Dirty = true;
+        }
+        if (spotLightViewProjs != m_CachedSpotLightViewProjs)
+        {
+            m_CachedSpotLightViewProjs = spotLightViewProjs;
+            sceneSet1Dirty = true;
+        }
+
+        if (!sceneSet1Dirty)
+        {
+            return;
         }
 
         // F03-M4 P0: IBL textures disabled; layout slots stay null until EnvMap returns.

@@ -1,7 +1,10 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIPipelineLayout.h"
 #include "OpenGLRHIResources.h"
+
+#include <array>
 
 
 namespace minEngine
@@ -47,6 +50,7 @@ namespace minEngine
 
         virtual void RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState) override;
         virtual void RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet) override;
+        virtual void RHICmdTransition(const RHITextureTransitionInfo& transition) override;
         virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
             std::initializer_list<RHIVertexElement> elements) override;
 
@@ -59,6 +63,8 @@ namespace minEngine
 
     private:
         void ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState);
+        void ApplyBindingSetResources(RHIBindingSet* bindingSet);
+        void ReapplyBoundDescriptorSets();
         void DestroyTransientFramebuffer();
 
         WindowSystem* m_WindowSystem = nullptr;
@@ -66,6 +72,7 @@ namespace minEngine
         GLuint m_TransientFramebuffer = 0;
         bool m_OwnsTransientFramebuffer = false;
         RHIGraphicsPipelineState* m_BoundPipeline = nullptr;
+        std::array<RHIBindingSet*, kMaxPipelineDescriptorSets> m_BoundDescriptorSets{};
         OpenGLRHIVertexInputLayout* m_BoundVertexLayout = nullptr;
         OpenGLRHIBuffer* m_BoundVertexBuffer = nullptr;
         OpenGLRHIBuffer* m_BoundIndexBuffer = nullptr;

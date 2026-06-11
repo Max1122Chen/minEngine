@@ -38,6 +38,8 @@ namespace minEngine
 
     class RHIRenderPassInfo;
 
+    struct RHITextureTransitionInfo;
+
     class RHI
     {
     public:
@@ -84,6 +86,7 @@ namespace minEngine
 
         virtual void RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState) = 0;
         virtual void RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet) = 0;
+        virtual void RHICmdTransition(const RHITextureTransitionInfo& transition) = 0;
 
         virtual void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
         virtual void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot = 0) = 0;

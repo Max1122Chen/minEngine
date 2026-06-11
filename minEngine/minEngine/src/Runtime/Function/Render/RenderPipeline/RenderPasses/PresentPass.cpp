@@ -98,16 +98,21 @@ namespace minEngine
             return;
         }
 
-        RHITextureSRVDesc srvDesc;
-        srvDesc.Texture = m_SceneColorTexture.get();
-        m_SceneColorSRV = cmdList.CreateShaderResourceView(srvDesc);
+        RHITexture* sceneColorTexture = m_SceneColorTexture.get();
+        if (sceneColorTexture != m_CachedSceneColorTexture)
+        {
+            m_CachedSceneColorTexture = sceneColorTexture;
+            m_SceneColorSRV = m_TextureViewCache.GetOrCreate(cmdList, sceneColorTexture);
+            m_PresentBindingSet.reset();
+        }
 
-        RHIBindingResource bindingResource;
-        bindingResource.Type = RHIBindingType::TextureSRV;
-        bindingResource.TextureSRV = m_SceneColorSRV.get();
-        auto bindingSet = cmdList.CreateBindingSet(
-            m_PresentBindingLayout.get(),
-            {bindingResource});
+        if (!m_PresentBindingSet && m_SceneColorSRV)
+        {
+            RHIBindingResource bindingResource;
+            bindingResource.Type = RHIBindingType::TextureSRV;
+            bindingResource.TextureSRV = m_SceneColorSRV.get();
+            m_PresentBindingSet = cmdList.CreateBindingSet(m_PresentBindingLayout.get(), {bindingResource});
+        }
 
         RHIRenderPassInfo presentPassInfo;
         cmdList.BeginRenderPass(presentPassInfo);
@@ -117,7 +122,7 @@ namespace minEngine
         cmdList.SetViewport(0, 0, width, height);
         MeshDrawPacket packet;
         packet.PipelineState = m_PresentPipelineState;
-        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = bindingSet.get();
+        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = m_PresentBindingSet.get();
         packet.VertexBuffer = m_ScreenQuadVertexBuffer.get();
         cmdList.SubmitMeshDrawPacket(packet);
 

@@ -448,9 +448,11 @@ MaterialEdGraph → MIR → GLSL 片段
 
 ### §12.2 后端实现面（M3）
 
-- [ ] 无 `OpenGLShader` 类型；`OpenGLRHIShader` 直接持有 program
-- [ ] 无 `OpenGLTexture2D` / `Cube` / `2DArray`；`OpenGLRHITexture` 直接 upload/持有 `GLuint`
-- [ ] grep：`OpenGLShader`、`OpenGLTexture2D`、`OpenGLTextureCube`、`OpenGLTexture2DArray` 在生产路径为 0
+- [x] 无 `OpenGLShader` 类型；`OpenGLRHIShader` 直接持有 program（2026-06 已内联）
+- [x] 无 `OpenGLTexture2D` / `Cube` / `2DArray`；`OpenGLRHITexture` 直接 upload/持有 `GLuint`（2026-06 已内联）
+- [x] grep：`OpenGLShader`、`OpenGLTexture2D`、`OpenGLTextureCube`、`OpenGLTexture2DArray` 在生产路径为 0
+- [ ] `EnvMapCapture` 仍 `make_shared<OpenGLRHIShaderResourceView>` + `GetOpenGLTextureId` 旁路（IBL 停用；见 TD-015）
+- [ ] `RenderSystem` → `OpenGLRHI` 窗口 clear 硬转（TD-017）
 
 ### §12.3 管线心智模型（M4 — F03 真正 Done 前须完成 §16）
 
@@ -531,8 +533,8 @@ MaterialEdGraph → MIR → GLSL 片段
 
 | 优先级 | 项 | 说明 |
 |--------|-----|------|
-| P0 | 引擎层 `OpenGLRHIShaderResourceView` 直 new | 缺 `RHICreateShaderResourceView`；`RHIShaderResourceView` 近乎空壳 |
-| P0 | `setIndex` 未参与绑定 | 多 Set 靠多次 `SetBindingSet` 覆盖 GL 状态，非 descriptor set 语义 |
+| P0 | 引擎层 `OpenGLRHIShaderResourceView` 直 new | **部分 Done**：主路径经 `RHICreateShaderResourceView`；**残留** `EnvMapCapture.cpp`（TD-015） |
+| P0 | `setIndex` 未参与绑定 | **F04 Done**：setIndex 校验 + bound-set 跟踪；GL 仍按 layout slot 绑 GL 状态（VK 在 F05 真 descriptor set） |
 | P1 | `RHIGraphicsPSOStateFallback` | PSO 为 desc 袋子；GL 只应用 program + 粗粒度 depth/blend；`PixelShader` 槽未用；cull 硬关 |
 | P1 | `RHI.h` 即时 `Enable*` / `SetClearColor` | Pass 已少用；`RenderSystem` 仍 `static_cast<OpenGLRHI*>` + `WindowSystem::Clear` |
 | P1 | `Material::BindForDraw` 每 draw `CreateBindingSet` | 应 compile 时缓存 set，draw 只 update UBO / 换 SRV |

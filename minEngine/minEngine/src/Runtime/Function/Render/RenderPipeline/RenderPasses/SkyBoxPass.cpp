@@ -161,7 +161,25 @@ namespace minEngine
         if (!m_EnvironmentCube)
         {
             ME_CORE_ERROR("SkyBoxPass: failed to create sky environment cubemap.");
+            return;
         }
+
+        RHITexture* environmentTexture = m_EnvironmentCube->GetRHITexture();
+        if (!environmentTexture)
+        {
+            ME_CORE_ERROR("SkyBoxPass: environment cubemap has no RHI texture.");
+            return;
+        }
+
+        RHITextureSRVDesc srvDesc;
+        srvDesc.Texture = environmentTexture;
+        m_EnvironmentSRV = cmdList.CreateShaderResourceView(srvDesc);
+        m_SkyBindingSet = cmdList.CreateBindingSet(
+            m_SkyBindingLayout.get(),
+            {
+                {RHIBindingType::TextureSRV, nullptr, m_EnvironmentSRV.get()},
+                {RHIBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
+            });
     }
 
     void SkyBoxPass::Shutdown()
@@ -184,7 +202,7 @@ namespace minEngine
         const SkyBoxSceneProxy& skyBox) const
     {
         if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState || !m_SkyBindingLayout ||
-            !m_SkyFrameUniformBuffer || !m_EnvironmentCube)
+            !m_SkyFrameUniformBuffer || !m_EnvironmentCube || !m_EnvironmentSRV || !m_SkyBindingSet)
         {
             return;
         }
@@ -194,27 +212,11 @@ namespace minEngine
             return;
         }
 
-        RHITexture* environmentTexture = m_EnvironmentCube->GetRHITexture();
-        if (!environmentTexture)
-        {
-            return;
-        }
-
-        RHITextureSRVDesc srvDesc;
-        srvDesc.Texture = environmentTexture;
-        m_EnvironmentSRV = cmdList.CreateShaderResourceView(srvDesc);
         SkyPassFrameUBO frameData{};
         frameData.Projection = camera.GetProjectionMatrix();
         frameData.View = camera.GetViewMatrix();
         frameData.SkyIntensity = skyBox.m_SkyIntensity;
         m_SkyFrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(SkyPassFrameUBO));
-
-        m_SkyBindingSet = cmdList.CreateBindingSet(
-            m_SkyBindingLayout.get(),
-            {
-                {RHIBindingType::TextureSRV, nullptr, m_EnvironmentSRV.get()},
-                {RHIBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
-            });
 
         MeshDrawPacket packet;
         packet.PipelineState = m_SkyPipelineState;

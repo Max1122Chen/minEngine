@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-05-28  
+Last updated: 2026-06-11  
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
 **Rules:** add a row when deferring non-trivial work; link Feature ID when known; do not delete rows — set Status `Done` or `Cancelled`.
@@ -19,6 +19,13 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-010 | GitHub Actions / remote CI | WF | **Low** | Deferred | After CLI+verify local | **CI = Continuous Integration**; separate from CLI |
 | TD-011 | Post-commit context hook | WF | **Low** | Deferred | — | Optional; digest reduces need |
 | TD-012 | Legacy doc IDs (Phase/M/E/P) vs F/S | WF | **Low** | Open | DOC_GOVERNANCE §10 | Migrate gradually; new docs use F/S only |
+| TD-013 | `BuildSceneSet0` 每帧 `CreateBindingSet` | RND | **Medium** | Open | `RND-F04` · `EngineSceneBindingSets.cpp` | S04 已为 Set1 加脏标记 + SRV flyweight；Set0 仍每帧重建 |
+| TD-014 | Material 纹理 SRV 未走 `RHITextureViewCache` | RND | **Medium** | Open | `RND-F04` · `Material.cpp` | compile/改纹理时 `CreateShaderResourceView`；可复用 flyweight |
+| TD-015 | `EnvMapCapture` 旁路 draw + 引擎层 `OpenGLRHIShaderResourceView` | RND | **Medium** | Open | `RND-F03` §16.5 · `EnvMapCapture.cpp` | IBL 停用中；恢复时须迁 packet + 仅 `RHICreateShaderResourceView` |
+| TD-016 | `RHIGraphicsPSOStateFallback` / GL Apply 子集 | RND | **Low** | Open | `RND-F03` §15.4 P1 | cull/raster/RT format 未全进 Apply；F05 VK 前对齐 |
+| TD-017 | `RenderSystem` `static_cast<OpenGLRHI*>` 窗口 clear | RND | **Low** | Open | `RenderSystem.cpp` | 应收敛为 Pass 或 RHI 中性入口 |
+| TD-018 | `ShaderResource` 反射 / ContentBrowser 残留 | ASSET / RND | **Low** | Open | `RND-F03` §15.4 P2 | `Shader` Asset 已删；反射类型仍注册 |
+| TD-019 | `ShadowTypes` GL texture unit 常量与 layout 双轨 | RND | **Low** | Open | `ShadowTypes.h` · `EngineShaderBindings` | 逻辑 set 已有；unit 常量仍散落 |
 
 ---
 

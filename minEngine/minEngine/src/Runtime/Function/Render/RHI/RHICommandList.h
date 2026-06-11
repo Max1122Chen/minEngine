@@ -5,6 +5,7 @@
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIPipelineLayout.h"
+#include "Render/RHI/RHIResourceTransition.h"
 #include "Render/RHI/RHIRenderPass.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
@@ -17,12 +18,6 @@
 namespace minEngine
 {
     class MeshDrawCommand;
-
-    struct SubmitDrawBinding
-    {
-        uint32_t SetIndex = 0;
-        RHIBindingSet* BindingSet = nullptr;
-    };
 
     // Concrete forwarding layer (UE FRHICommandList pattern). No per-backend subclass.
     class RHICommandList
@@ -52,6 +47,10 @@ namespace minEngine
         {
             m_RHI->RHICmdSetBindingSet(setIndex, bindingSet);
         }
+        void Transition(const RHITextureTransitionInfo& transition)
+        {
+            m_RHI->RHICmdTransition(transition);
+        }
         void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
         {
             m_RHI->RHICmdSetViewport(x, y, width, height);
@@ -70,21 +69,7 @@ namespace minEngine
             m_RHI->RHICmdDraw(vertexCount, firstVertex);
         }
 
-        /** Fixed four-step draw path: PSO → binding sets → vertex/index buffers → Draw. */
-        void SubmitDraw(
-            RHIGraphicsPipelineState* pipelineState,
-            const SubmitDrawBinding* bindingSets,
-            uint32_t bindingSetCount,
-            RHIBuffer* vertexBuffer,
-            RHIBuffer* indexBuffer);
-
-        void SubmitDrawMesh(
-            RHIGraphicsPipelineState* pipelineState,
-            const SubmitDrawBinding* bindingSets,
-            uint32_t bindingSetCount,
-            const MeshDrawCommand& drawCommand);
-
-        /** Sole modern draw submit path: PSO → all binding sets → VB/IB → Draw. */
+        /** Sole draw submit path: PSO → all binding sets → VB/IB → Draw. */
         void SubmitMeshDrawPacket(const MeshDrawPacket& packet);
 
         // Resource creation

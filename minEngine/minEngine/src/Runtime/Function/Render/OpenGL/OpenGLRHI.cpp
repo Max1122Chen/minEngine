@@ -7,6 +7,7 @@
 #include "Render/RHI/RHIBinding.h"
 #include "Log/LogSystem.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
+#include "Render/RHI/RHIResourceTransition.h"
 #include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIRenderPass.h"
 
@@ -226,10 +227,83 @@ namespace minEngine
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             break;
         }
+
+        ReapplyBoundDescriptorSets();
+    }
+
+    void OpenGLRHI::ApplyBindingSetResources(RHIBindingSet* bindingSet)
+    {
+        auto* glSet = static_cast<OpenGLRHIBindingSet*>(bindingSet);
+        if (!glSet)
+        {
+            return;
+        }
+
+        const RHIBindingLayout* layout = glSet->GetLayout();
+        const std::vector<RHIBindingResource>& resources = glSet->GetResources();
+        if (!layout)
+        {
+            return;
+        }
+
+        const std::vector<RHIBindingLayoutEntry>& entries = layout->GetEntries();
+        const size_t bindCount = std::min(resources.size(), entries.size());
+        for (size_t i = 0; i < bindCount; ++i)
+        {
+            const RHIBindingResource& resource = resources[i];
+            const RHIBindingLayoutEntry& entry = entries[i];
+
+            if (resource.Type == RHIBindingType::TextureSRV && resource.TextureSRV)
+            {
+                const RHITextureSRVDesc& srvDesc = resource.TextureSRV->GetCreateDesc();
+                if (!srvDesc.Texture)
+                {
+                    continue;
+                }
+
+                GLuint texId = GetOpenGLTextureId(srvDesc.Texture);
+                if (texId == 0)
+                {
+                    continue;
+                }
+
+                GLenum target = GL_TEXTURE_2D;
+                if (auto* glTexture = dynamic_cast<OpenGLRHITexture*>(srvDesc.Texture))
+                {
+                    target = glTexture->GetTextureTarget();
+                }
+
+                glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(entry.ShaderBinding));
+                glBindTexture(target, texId);
+            }
+            else if (resource.Type == RHIBindingType::UniformBuffer && resource.Buffer)
+            {
+                auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
+                if (ubo)
+                {
+                    glBindBufferBase(
+                        GL_UNIFORM_BUFFER,
+                        entry.ShaderBinding,
+                        ubo->GetBufferId());
+                }
+            }
+        }
+    }
+
+    void OpenGLRHI::ReapplyBoundDescriptorSets()
+    {
+        for (uint32_t setIndex = 0; setIndex < kMaxPipelineDescriptorSets; ++setIndex)
+        {
+            if (m_BoundDescriptorSets[setIndex])
+            {
+                ApplyBindingSetResources(m_BoundDescriptorSets[setIndex]);
+            }
+        }
     }
 
     void OpenGLRHI::RHICmdBeginRenderPass(const RHIRenderPassInfo& info)
     {
+        m_BoundDescriptorSets = {};
         DestroyTransientFramebuffer();
 
         const RHIRenderPassInfo::ColorAttachment& color0 = info.ColorAttachments[0];
@@ -367,62 +441,44 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet)
     {
-        (void)setIndex;
-        auto* glSet = static_cast<OpenGLRHIBindingSet*>(bindingSet);
-        if (!glSet)
+        if (setIndex >= kMaxPipelineDescriptorSets)
         {
+            ME_CORE_WARN("RHICmdSetBindingSet: setIndex {} out of range", setIndex);
             return;
         }
 
-        const RHIBindingLayout* layout = glSet->GetLayout();
-        const std::vector<RHIBindingResource>& resources = glSet->GetResources();
-        if (!layout)
+        if (bindingSet && m_BoundPipeline)
         {
-            return;
-        }
-
-        const std::vector<RHIBindingLayoutEntry>& entries = layout->GetEntries();
-        const size_t bindCount = std::min(resources.size(), entries.size());
-        for (size_t i = 0; i < bindCount; ++i)
-        {
-            const RHIBindingResource& resource = resources[i];
-            const RHIBindingLayoutEntry& entry = entries[i];
-
-            if (resource.Type == RHIBindingType::TextureSRV && resource.TextureSRV)
+            if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(m_BoundPipeline))
             {
-                const RHITextureSRVDesc& srvDesc = resource.TextureSRV->GetCreateDesc();
-                if (!srvDesc.Texture)
+                RHIPipelineLayout* pipelineLayout = fallback->GetDesc().PipelineLayout;
+                if (pipelineLayout && setIndex >= pipelineLayout->GetSetLayoutCount())
                 {
-                    continue;
+                    ME_CORE_WARN(
+                        "RHICmdSetBindingSet: setIndex {} exceeds pipeline layout set count {}",
+                        setIndex,
+                        pipelineLayout->GetSetLayoutCount());
+                    return;
                 }
 
-                GLuint texId = GetOpenGLTextureId(srvDesc.Texture);
-                if (texId == 0)
+                if (pipelineLayout)
                 {
-                    continue;
-                }
-
-                GLenum target = GL_TEXTURE_2D;
-                if (auto* glTexture = dynamic_cast<OpenGLRHITexture*>(srvDesc.Texture))
-                {
-                    target = glTexture->GetTextureTarget();
-                }
-
-                glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(entry.ShaderBinding));
-                glBindTexture(target, texId);
-            }
-            else if (resource.Type == RHIBindingType::UniformBuffer && resource.Buffer)
-            {
-                auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
-                if (ubo)
-                {
-                    glBindBufferBase(
-                        GL_UNIFORM_BUFFER,
-                        entry.ShaderBinding,
-                        ubo->GetBufferId());
+                    RHIBindingLayout* expectedLayout = pipelineLayout->GetSetLayout(setIndex);
+                    if (expectedLayout && bindingSet->GetLayout() != expectedLayout)
+                    {
+                        ME_CORE_WARN("RHICmdSetBindingSet: binding layout mismatch at set {}", setIndex);
+                    }
                 }
             }
         }
+
+        m_BoundDescriptorSets[setIndex] = bindingSet;
+        ApplyBindingSetResources(bindingSet);
+    }
+
+    void OpenGLRHI::RHICmdTransition(const RHITextureTransitionInfo& transition)
+    {
+        (void)transition;
     }
 
     void OpenGLRHI::RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)

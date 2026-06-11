@@ -11,8 +11,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 - **RND-F02** Modern RHI — **Done**（S0–S5：`RHICreate*`/`RHICmd*`、GL 实现、Pass CommandList）。设计案保留作教案与契约真源。
 - **RND-F03** Legacy RHI removal — **In Progress（M3/M4 尾）**。M1–M2 Done。M4 P0–P3 Done。**F03 Done** = Legacy 清零 + M3；**现代语义终态** 见 F04。
-- **RND-F04** Modern RHI further evolution — **In Progress（S04 待做）**。S01–S03 Done：PipelineLayout、MeshDrawPacket、全 Pass `SubmitMeshDrawPacket`、逻辑队列与 packet 分离。下一步：PSO/SRV 缓存、`setIndex`、`Transition`。见 [F04](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md)。
-- **RND-F05** Vulkan + modern RHI completion — **Planned**（**退后**；依赖 F03 + **F04** Done）。见 [RND-F05](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)。
+- **RND-F04** Modern RHI further evolution — **Done**（S01–S04）。PipelineLayout、MeshDrawPacket、PSO/SRV 缓存、`setIndex`、`RHICmdTransition`（GL no-op）、删 Legacy Submit API。小尾巴见 [TECH_DEBT](./TECH_DEBT.md) TD-013–TD-014。见 [F04](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md)。
+- **RND-F05** Vulkan + modern RHI completion — **Planned**（依赖 **F03 Done** + F04 Done）。见 [RND-F05](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)。
+- **下一步主线：** **RND-F03-M3/M4 尾** → F03 Done → 再开 F05。
 - **分支约定：** `render` 分支继续承载 F03/F04/F05 实现；planning/registry 可合 `master`。
 
 ### RND-F03 边界（草案）

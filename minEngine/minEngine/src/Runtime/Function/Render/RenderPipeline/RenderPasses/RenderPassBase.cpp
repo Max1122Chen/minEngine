@@ -8,7 +8,6 @@
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Function/Render/RenderPipeline/RenderPipeline.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
-#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 
 namespace minEngine
@@ -40,33 +39,16 @@ namespace minEngine
                 continue;
             }
 
-            RHIGraphicsPSODesc psoDesc;
             if (pipeline)
             {
-                RHIPipelineLayoutRef pipelineLayout = pipeline->GetPipelineLayouts().GetOrCreateSceneMeshPipelineLayout(
+                packet.PipelineState = pipeline->GetPipelineLayouts().GetOrCreateSceneMeshGraphicsPipelineState(
                     cmdList,
                     pipeline->GetSceneBindings(),
-                    material->GetMaterialBindingLayout());
-                psoDesc.PipelineLayout = pipelineLayout.get();
+                    material->GetMaterialBindingLayout(),
+                    shader,
+                    drawCommand.m_VertexInputLayout,
+                    translucentPass);
             }
-            psoDesc.VertexShader = shader;
-            psoDesc.PixelShader = shader;
-            psoDesc.VertexInputLayout = drawCommand.m_VertexInputLayout;
-            psoDesc.DepthStencilState.bDepthTestEnabled = true;
-            psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::Less;
-
-            if (translucentPass)
-            {
-                psoDesc.BlendState.bBlendEnabled = true;
-                psoDesc.DepthStencilState.bDepthWriteEnabled = false;
-            }
-            else
-            {
-                psoDesc.BlendState.bBlendEnabled = false;
-                psoDesc.DepthStencilState.bDepthWriteEnabled = true;
-            }
-
-            packet.PipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
             packet.VertexBuffer = drawCommand.m_VertexBuffer;
             packet.IndexBuffer = drawCommand.m_IndexBuffer;
             packet.BindingSets[EngineShaderBindings::kSetMaterial] = material->GetMaterialBindingSet();

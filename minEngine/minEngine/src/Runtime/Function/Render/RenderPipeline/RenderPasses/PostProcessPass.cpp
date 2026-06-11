@@ -78,9 +78,23 @@ namespace minEngine
             return;
         }
 
-        RHITextureSRVDesc srvDesc;
-        srvDesc.Texture = m_SceneColorTexture.get();
-        m_SceneColorSRV = cmdList.CreateShaderResourceView(srvDesc);
+        RHITexture* sceneColorTexture = m_SceneColorTexture.get();
+        if (sceneColorTexture != m_CachedSceneColorTexture)
+        {
+            m_CachedSceneColorTexture = sceneColorTexture;
+            m_SceneColorSRV = m_TextureViewCache.GetOrCreate(cmdList, sceneColorTexture);
+            m_PostBindingSet.reset();
+        }
+
+        if (!m_PostBindingSet && m_SceneColorSRV)
+        {
+            m_PostBindingSet = cmdList.CreateBindingSet(
+                m_PostBindingLayout.get(),
+                {
+                    {RHIBindingType::TextureSRV, nullptr, m_SceneColorSRV.get()},
+                    {RHIBindingType::UniformBuffer, m_PostParamsUniformBuffer.get(), nullptr},
+                });
+        }
 
         EnginePostParamsUBO params{};
         params.InvResolution[0] = 1.0f / static_cast<float>(m_SceneColorTexture->GetDesc().Width);
@@ -92,16 +106,9 @@ namespace minEngine
         params.EdgeThreshold = 0.1f;
         m_PostParamsUniformBuffer->UpdateSubresource(&params, 0, sizeof(EnginePostParamsUBO));
 
-        auto bindingSet = cmdList.CreateBindingSet(
-            m_PostBindingLayout.get(),
-            {
-                {RHIBindingType::TextureSRV, nullptr, m_SceneColorSRV.get()},
-                {RHIBindingType::UniformBuffer, m_PostParamsUniformBuffer.get(), nullptr},
-            });
-
         MeshDrawPacket packet;
         packet.PipelineState = m_PostProcessPipelineState;
-        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = bindingSet.get();
+        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = m_PostBindingSet.get();
         packet.VertexBuffer = m_ScreenQuadVertexBuffer.get();
         cmdList.SubmitMeshDrawPacket(packet);
     }

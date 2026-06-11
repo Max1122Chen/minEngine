@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-11 (RND-F04 S01–S03)
+Last updated: 2026-06-11 (RND-F04 S04 Done)
 
 ## Purpose
 
@@ -1091,6 +1091,21 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-11 - RND-F04 S04 PSO/SRV cache + RHI contract cleanup (`render`)
+- Goal:
+  Close F04 hot-path caching and RHI contract gaps; remove legacy draw submit API.
+- Main changes:
+  **PSO cache:** `EnginePipelineLayouts::GetOrCreateSceneMeshGraphicsPipelineState` keyed by layout + VIL + shader + pass kind.
+  **SRV flyweight:** `RHITextureViewCache`; Scene Set1 dirty rebuild; Present/Post texture-keyed BindingSet cache; Sky SRV/set at init.
+  **RHI:** `RHICmdTransition` (GL no-op); `OpenGLRHI` tracks bound descriptor sets with setIndex validation; removed `SubmitDraw*` from `RHICommandList`.
+  Docs: F04 Done; TECH_DEBT TD-013–TD-019.
+- Risks or caveats:
+  `BuildSceneSet0` still rebuilds each frame; Material SRV not flyweighted; `verify.ps1` not recorded this session.
+- Validation done:
+  Maintainer local cmake build PASS; golden scene visual OK.
+- Next step:
+  Commit S04; run `verify.ps1`; start F03-M3 tail inventory (EnvMap bypass, asset ShaderResource).
 
 ### 2026-06-11 - RND-F04 S01–S03 PipelineLayout + MeshDrawPacket (`render`)
 - Goal:

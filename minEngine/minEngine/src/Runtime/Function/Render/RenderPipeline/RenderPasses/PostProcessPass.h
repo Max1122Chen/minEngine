@@ -1,7 +1,9 @@
 #pragma once
 #include "Core.h"
 #include "Render/RHI/RHIBuffers.h"
+#include "Render/RHI/RHIBinding.h"
 #include "Render/RHI/RHITexture.h"
+#include "Render/RHI/RHITextureViewCache.h"
 #include "RenderPassBase.h"
 
 namespace minEngine
@@ -39,7 +41,10 @@ namespace minEngine
         std::shared_ptr<RHIBindingLayout> m_PostBindingLayout;
         std::shared_ptr<RHIPipelineLayout> m_PostPipelineLayout;
         std::shared_ptr<RHIShaderResourceView> m_SceneColorSRV;
+        RHIBindingSetRef m_PostBindingSet;
         RHIBufferRef m_PostParamsUniformBuffer;
+        RHITextureViewCache m_TextureViewCache;
+        RHITexture* m_CachedSceneColorTexture = nullptr;
 
         void Render(RHICommandList& cmdList);
     };
