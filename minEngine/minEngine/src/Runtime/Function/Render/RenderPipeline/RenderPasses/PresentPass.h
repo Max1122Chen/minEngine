@@ -1,5 +1,8 @@
 #pragma once
 #include "Core.h"
+#include "Render/DrawCommands/MeshDrawPacket.h"
+#include "Render/RenderGraph/IRenderPass.h"
+#include "Render/RenderGraph/RDGTexture.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHITexture.h"
@@ -15,11 +18,12 @@ namespace minEngine
     class RHIGraphicsPipelineState;
     class RHIShader;
     class RHIShaderResourceView;
-    class RHITexture;
     class RHIBuffer;
     class RHIVertexInputLayout;
+    class RenderGraphFrameResources;
+    class RenderPassBuilder;
 
-    class PresentPass : public RenderPassBase
+    class PresentPass : public RenderPassBase, public IRenderPass
     {
         friend class RenderPipeline;
 
@@ -32,8 +36,11 @@ namespace minEngine
         virtual void Execute() override;
         void Execute(RHICommandList& cmdList);
 
-    public:
-        RHITextureRef m_SceneColorTexture;
+        void SetInputTextureName(const char* inputName);
+
+        void Setup(RenderPassBuilder& builder) override;
+        void PreparePass(RenderGraphFrameResources& frameResources) override;
+        void BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) override;
 
     private:
         RHIBufferRef m_ScreenQuadVertexBuffer;
@@ -42,12 +49,18 @@ namespace minEngine
         std::shared_ptr<RHIGraphicsPipelineState> m_PresentPipelineState;
         std::shared_ptr<RHIShaderBindingSetLayout> m_PresentShaderBindingSetLayout;
         std::shared_ptr<RHIPipelineLayout> m_PresentPipelineLayout;
-        std::shared_ptr<RHIShaderResourceView> m_SceneColorSRV;
+        RHIShaderResourceViewRef m_InputSRV;
         RHIShaderBindingSetRef m_PresentShaderBindingSet;
         RHITextureViewCache m_TextureViewCache;
-        RHITexture* m_CachedSceneColorTexture = nullptr;
+
+        const char* m_InputTextureName = kRDGSceneColor;
+        RHITexture* m_CachedInputTexture = nullptr;
+        RHITexture* m_InputTexture = nullptr;
+        RenderGraphFrameResources* m_ActiveFrameResources = nullptr;
+        MeshDrawPacket m_DrawPacket;
 
         void Render(RHICommandList& cmdList);
         void Render();
+        void PrepareDrawPacket(RHICommandList& cmdList, RHITexture* inputTexture);
     };
 }

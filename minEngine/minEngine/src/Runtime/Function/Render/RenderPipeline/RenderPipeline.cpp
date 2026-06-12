@@ -16,6 +16,8 @@
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/EngineShaderUtils.h"
+#include "Render/RenderGraph/RenderGraph.h"
+#include "Render/RenderGraph/RDGTexture.h"
 #include "Render/RenderCamera.h"
 #include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Render/LightSceneProxies/PointLightSceneProxy.h"
@@ -102,12 +104,21 @@ namespace minEngine
             m_PostProcessPasses.back().m_PostProcessShader = std::move(sharpenShader);
         }
 
+        if (!m_PostProcessPasses.empty())
+        {
+            m_PostProcessPasses[0].SetGraphTextureNames(kRDGSceneColor, kRDGPostBufferA);
+        }
+        if (m_PostProcessPasses.size() > 1)
+        {
+            m_PostProcessPasses[1].SetGraphTextureNames(kRDGPostBufferA, kRDGSceneColor);
+        }
+        m_PresentPass.SetInputTextureName(kRDGSceneColor);
+
         for (PostProcessPass& postProcessPass : m_PostProcessPasses)
         {
             postProcessPass.Initialize();
         }
 
-        // Set up PresentPass
         m_PresentPass.Initialize();
         m_PresentPass.m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
         m_PresentPass.m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
@@ -135,6 +146,148 @@ namespace minEngine
         (void)target;
     }
 
+    void RenderPipeline::EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height)
+    {
+        if (!rhi || width == 0 || height == 0)
+        {
+            return;
+        }
+
+        if (m_PostBufferTexture && m_PostBufferWidth == width && m_PostBufferHeight == height)
+        {
+            return;
+        }
+
+        RHITextureCreateDesc desc;
+        desc.Dimension = RHITextureDimension::Texture2D;
+        desc.Width = width;
+        desc.Height = height;
+        desc.DepthOrArrayLayers = 1;
+        desc.Format = TextureFormat::RGBA8;
+        desc.Flags = RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource;
+        desc.NumMips = 1;
+
+        m_PostBufferTexture = rhi->RHICreateTexture2D(desc, nullptr);
+        m_PostBufferWidth = width;
+        m_PostBufferHeight = height;
+        m_PostRenderGraphBuilt = false;
+    }
+
+    void RenderPipeline::BuildPostRenderGraph()
+    {
+        m_PostRenderGraph.Reset();
+        m_PostFxaaGraphPass = nullptr;
+        m_PostSharpenGraphPass = nullptr;
+        m_PresentGraphPass = nullptr;
+
+        if (!m_PostProcessPasses.empty())
+        {
+            RenderPass& fxaaPass = m_PostRenderGraph.AddPass("Post.FXAA");
+            fxaaPass.SetImplementation(&m_PostProcessPasses[0]);
+            m_PostFxaaGraphPass = &fxaaPass;
+        }
+
+        if (m_PostProcessPasses.size() > 1)
+        {
+            RenderPass& sharpenPass = m_PostRenderGraph.AddPass("Post.Sharpen");
+            sharpenPass.SetImplementation(&m_PostProcessPasses[1]);
+            m_PostSharpenGraphPass = &sharpenPass;
+        }
+
+        RenderPass& presentPass = m_PostRenderGraph.AddPass("Present");
+        presentPass.SetImplementation(&m_PresentPass);
+        m_PresentGraphPass = &presentPass;
+
+        m_PostRenderGraph.RegisterExternalTexture(kRDGSceneColor, nullptr);
+
+        std::vector<const RenderPass*> defaultOrder;
+        if (m_PostFxaaGraphPass != nullptr)
+        {
+            defaultOrder.push_back(m_PostFxaaGraphPass);
+        }
+        if (m_PostSharpenGraphPass != nullptr)
+        {
+            defaultOrder.push_back(m_PostSharpenGraphPass);
+        }
+        if (m_PresentGraphPass != nullptr)
+        {
+            defaultOrder.push_back(m_PresentGraphPass);
+        }
+        m_PostRenderGraph.SetPassExecutionOrder(defaultOrder.data(), defaultOrder.size());
+
+        m_PostRenderGraph.SetupAttachments(m_RenderGraphFrameResources);
+        m_PostRenderGraphBuilt = true;
+    }
+
+    void RenderPipeline::BuildRenderGraphFrameResources(SceneRenderTarget& sceneTarget)
+    {
+        m_RenderGraphFrameResources.RegisterExternal(kRDGSceneColor, sceneTarget.GetColorTexture().get());
+        m_RenderGraphFrameResources.RegisterExternal(kRDGPostBufferA, m_PostBufferTexture.get());
+        m_RenderGraphFrameResources.SetLastKnownUsage(kRDGSceneColor, RDGTextureUsage::RenderTarget);
+        m_RenderGraphFrameResources.SetLastKnownUsage(kRDGPostBufferA, RDGTextureUsage::Unknown);
+    }
+
+    void RenderPipeline::ExecutePostRenderGraph(RHICommandList& cmdList, const SceneDrawDesc& desc)
+    {
+        SceneRenderTarget* sceneTarget = desc.RenderTarget;
+        if (!sceneTarget)
+        {
+            return;
+        }
+
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        const uint32_t width = sceneTarget->GetWidth();
+        const uint32_t height = sceneTarget->GetHeight();
+        EnsurePostBufferTexture(rhi, width, height);
+
+        if (!m_PostBufferTexture)
+        {
+            return;
+        }
+
+        if (!m_PostProcessPasses.empty())
+        {
+            m_PostProcessPasses[0].SetOutputDesc(width, height);
+        }
+
+        if (!m_PostRenderGraphBuilt)
+        {
+            BuildPostRenderGraph();
+        }
+
+        m_PostRenderGraph.RegisterExternalTexture(kRDGSceneColor, sceneTarget->GetColorTexture().get());
+        BuildRenderGraphFrameResources(*sceneTarget);
+
+        const bool enablePostProcess = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess);
+        const bool presentToBackBuffer =
+            m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer);
+
+        std::vector<const RenderPass*> executionOrder;
+        if (enablePostProcess)
+        {
+            if (m_PostFxaaGraphPass != nullptr)
+            {
+                executionOrder.push_back(m_PostFxaaGraphPass);
+            }
+            if (m_PostSharpenGraphPass != nullptr)
+            {
+                executionOrder.push_back(m_PostSharpenGraphPass);
+            }
+        }
+        if (presentToBackBuffer && m_PresentGraphPass != nullptr)
+        {
+            executionOrder.push_back(m_PresentGraphPass);
+        }
+
+        if (executionOrder.empty())
+        {
+            return;
+        }
+
+        m_PostRenderGraph.SetPassExecutionOrder(executionOrder.data(), executionOrder.size());
+        m_PostRenderGraph.ExecuteGraph(cmdList, m_RenderGraphFrameResources);
+    }
+
     void RenderPipeline::Shutdown()
     {
         m_PipelineLayouts.Shutdown();
@@ -145,7 +298,16 @@ namespace minEngine
         m_ShadowPass.m_ShadowDrawCommands.clear();
         m_ShadowPass.m_OpaqueQueue.clear();
 
-        m_PresentPass.m_SceneColorTexture.reset();
+        m_PostRenderGraph.Reset();
+        m_RenderGraphFrameResources.Clear();
+        m_PostBufferTexture.reset();
+        m_PostFxaaGraphPass = nullptr;
+        m_PostSharpenGraphPass = nullptr;
+        m_PresentGraphPass = nullptr;
+        m_PostRenderGraphBuilt = false;
+        m_PostBufferWidth = 0;
+        m_PostBufferHeight = 0;
+
         m_ShadowPass.m_LightViewProjUniformBuffer = nullptr;
         m_ShadowPass.m_PerObjectUniformBuffer = nullptr;
 
@@ -183,11 +345,6 @@ namespace minEngine
         }
 
         BindSceneRenderTarget(*sceneTarget);
-        for (PostProcessPass& postProcessPass : m_PostProcessPasses)
-        {
-            postProcessPass.m_SceneColorTexture = sceneColorTexture;
-        }
-        m_PresentPass.m_SceneColorTexture = sceneColorTexture;
 
         SceneRenderContext ctx;
         ctx.Scene = desc.Scene;
@@ -264,19 +421,14 @@ namespace minEngine
         m_BasePass.Execute(cmdList);
         m_TranslucentPass.Execute(cmdList);
 
-        if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess))
-        {
-            for (PostProcessPass& postProcessPass : m_PostProcessPasses)
-            {
-                postProcessPass.Execute(cmdList);
-            }
-        }
-
         cmdList.EndRenderPass();
 
-        if (m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer))
+        const bool enablePostProcess = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess);
+        const bool presentToBackBuffer =
+            m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer);
+        if (enablePostProcess || presentToBackBuffer)
         {
-            m_PresentPass.Execute(cmdList);
+            ExecutePostRenderGraph(cmdList, desc);
         }
 
         m_ShadowResourceManager.EndFrame();

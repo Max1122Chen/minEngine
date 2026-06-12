@@ -47,6 +47,22 @@ namespace minEngine
             desc.Height = createDesc.Height;
         }
 
+        const std::string textureName(name);
+        auto existing = m_TextureIndexByName.find(textureName);
+        if (existing != m_TextureIndexByName.end())
+        {
+            RDGTextureRegistryEntry& entry = m_TextureRegistry[existing->second];
+            entry.IsExternal = true;
+            entry.ExternalTexture = texture;
+            if (texture != nullptr)
+            {
+                const RHITextureCreateDesc& createDesc = texture->GetDesc();
+                entry.Desc.Width = createDesc.Width;
+                entry.Desc.Height = createDesc.Height;
+            }
+            return;
+        }
+
         RDGTextureRef textureRef = FindOrRegisterTexture(name, desc, true);
         RDGTextureRegistryEntry& entry = m_TextureRegistry[textureRef.GetIndex()];
         entry.IsExternal = true;
@@ -147,6 +163,8 @@ namespace minEngine
 
     void RenderGraph::ExecuteGraph(RHICommandList& cmdList, RenderGraphFrameResources& frameResources)
     {
+        frameResources.BeginFrame(cmdList);
+
         for (const RenderPass* pass : m_ExecutionOrder)
         {
             if (pass == nullptr)

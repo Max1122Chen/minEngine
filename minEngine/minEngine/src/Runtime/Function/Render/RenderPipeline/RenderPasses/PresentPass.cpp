@@ -1,5 +1,8 @@
 #include "PresentPass.h"
 
+#include "Render/RenderGraph/RenderGraphFrameResources.h"
+#include "Render/RenderGraph/RenderGraphTransition.h"
+#include "Render/RenderGraph/RenderPassBuilder.h"
 #include "Render/RenderSystem.h"
 #include "Render/EngineShaderUtils.h"
 #include "Render/RHI/RHI.h"
@@ -16,6 +19,56 @@
 
 namespace minEngine
 {
+    void PresentPass::SetInputTextureName(const char* inputName)
+    {
+        m_InputTextureName = inputName != nullptr ? inputName : kRDGSceneColor;
+    }
+
+    void PresentPass::Setup(RenderPassBuilder& builder)
+    {
+        builder.AddTextureInput(m_InputTextureName);
+    }
+
+    void PresentPass::PreparePass(RenderGraphFrameResources& frameResources)
+    {
+        m_ActiveFrameResources = &frameResources;
+        m_InputTexture = frameResources.GetRHI(m_InputTextureName);
+        PrepareDrawPacket(frameResources.GetCommandList(), m_InputTexture);
+    }
+
+    void PresentPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters)
+    {
+        (void)parameters;
+
+        if (!m_DrawPacket.PipelineState || !m_PresentShaderBindingSet || !m_InputTexture)
+        {
+            return;
+        }
+
+        RenderGraphFrameResources* frameResources = m_ActiveFrameResources;
+        if (frameResources == nullptr)
+        {
+            return;
+        }
+
+        AddTransition(
+            cmdList,
+            m_InputTextureName,
+            *frameResources,
+            frameResources->GetLastKnownUsage(m_InputTextureName),
+            RDGTextureUsage::ShaderResource);
+
+        RHIRenderPassInfo presentPassInfo;
+        cmdList.BeginRenderPass(presentPassInfo);
+
+        const uint32_t width = m_InputTexture->GetDesc().Width;
+        const uint32_t height = m_InputTexture->GetDesc().Height;
+        cmdList.SetViewport(0, 0, width, height);
+        cmdList.SubmitMeshDrawPacket(m_DrawPacket);
+
+        cmdList.EndRenderPass();
+    }
+
     void PresentPass::Initialize()
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
@@ -87,45 +140,51 @@ namespace minEngine
 
     void PresentPass::Render(RHICommandList& cmdList)
     {
-        if (!m_ScreenQuadVertexLayout || !m_ScreenQuadShader || !m_SceneColorTexture || !m_PresentPipelineState)
+        if (!m_DrawPacket.PipelineState || !m_PresentShaderBindingSet || !m_InputTexture)
         {
             ME_CORE_ERROR("PresentPass resources are not ready");
             return;
         }
 
-        if (!m_SceneColorTexture)
-        {
-            return;
-        }
-
-        RHITexture* sceneColorTexture = m_SceneColorTexture.get();
-        if (sceneColorTexture != m_CachedSceneColorTexture)
-        {
-            m_CachedSceneColorTexture = sceneColorTexture;
-            m_SceneColorSRV = m_TextureViewCache.GetOrCreate(cmdList, sceneColorTexture);
-            m_PresentShaderBindingSet.reset();
-        }
-
-        if (!m_PresentShaderBindingSet && m_SceneColorSRV)
-        {
-            RHIShaderBinding shaderBinding;
-            shaderBinding.Type = RHIShaderBindingType::TextureSRV;
-            shaderBinding.TextureSRV = m_SceneColorSRV.get();
-            m_PresentShaderBindingSet = cmdList.CreateShaderBindingSet(m_PresentShaderBindingSetLayout.get(), {shaderBinding});
-        }
-
         RHIRenderPassInfo presentPassInfo;
         cmdList.BeginRenderPass(presentPassInfo);
 
-        const uint32_t width = m_SceneColorTexture->GetDesc().Width;
-        const uint32_t height = m_SceneColorTexture->GetDesc().Height;
+        const uint32_t width = m_InputTexture->GetDesc().Width;
+        const uint32_t height = m_InputTexture->GetDesc().Height;
         cmdList.SetViewport(0, 0, width, height);
-        MeshDrawPacket packet;
-        packet.PipelineState = m_PresentPipelineState;
-        packet.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PresentShaderBindingSet.get();
-        packet.VertexBuffer = m_ScreenQuadVertexBuffer.get();
-        cmdList.SubmitMeshDrawPacket(packet);
+        cmdList.SubmitMeshDrawPacket(m_DrawPacket);
 
         cmdList.EndRenderPass();
+    }
+
+    void PresentPass::PrepareDrawPacket(RHICommandList& cmdList, RHITexture* inputTexture)
+    {
+        if (!m_ScreenQuadVertexLayout || !m_ScreenQuadShader || !inputTexture || !m_PresentPipelineState ||
+            !m_PresentShaderBindingSetLayout)
+        {
+            m_DrawPacket = {};
+            m_PresentShaderBindingSet.reset();
+            return;
+        }
+
+        if (inputTexture != m_CachedInputTexture)
+        {
+            m_CachedInputTexture = inputTexture;
+            m_InputSRV = m_TextureViewCache.GetOrCreate(cmdList, inputTexture);
+            m_PresentShaderBindingSet.reset();
+        }
+
+        if (!m_PresentShaderBindingSet && m_InputSRV)
+        {
+            RHIShaderBinding shaderBinding;
+            shaderBinding.Type = RHIShaderBindingType::TextureSRV;
+            shaderBinding.TextureSRV = m_InputSRV.get();
+            m_PresentShaderBindingSet =
+                cmdList.CreateShaderBindingSet(m_PresentShaderBindingSetLayout.get(), {shaderBinding});
+        }
+
+        m_DrawPacket.PipelineState = m_PresentPipelineState;
+        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PresentShaderBindingSet.get();
+        m_DrawPacket.VertexBuffer = m_ScreenQuadVertexBuffer.get();
     }
 }

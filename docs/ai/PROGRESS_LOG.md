@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-12 (RND-F01 S01 Done)
+Last updated: 2026-06-12 (RND-F01 S02 Done)
 
 ## Purpose
 
@@ -1091,6 +1091,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-12 - RND-F01 S02 Post chain RenderGraph migration (`render`)
+- Goal:
+  Migrate FXAA → Sharpen → Present to Manual RenderGraph; remove scene-pass post loop and `m_SceneColorTexture` injection.
+- Main changes:
+  `PostProcessPass` / `PresentPass` implement `IRenderPass` (Setup / PreparePass / BuildRenderPass); `RenderPipeline` owns `m_PostRenderGraph`, `m_PostBufferTexture`, `ExecutePostRenderGraph` after scene `EndRenderPass`.
+  `RenderGraphFrameResources::BeginFrame`; `RegisterExternalTexture` re-register; `kRDGPostBufferA`.
+  Binding sets created in `PreparePass`, not `BuildRenderPass`.
+- Risks or caveats:
+  Visual golden-scene sign-off pending user; transient PostBufferA owned by pipeline (not graph pool).
+- Validation done:
+  `cmake --build` + `minEngineTests.exe test render-graph` PASS.
+- Next step:
+  F01-S03 Scene passes (Sky / Opaque / Translucent) graph migration.
 
 ### 2026-06-12 - RND-F01 S01 Manual RenderGraph skeleton (`render`)
 - Goal:

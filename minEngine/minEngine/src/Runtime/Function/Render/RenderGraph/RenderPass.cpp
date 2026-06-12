@@ -13,6 +13,13 @@ namespace minEngine
     void RenderPass::SetImplementation(std::unique_ptr<IRenderPass> implementation)
     {
         m_Implementation = std::move(implementation);
+        m_ImplementationPtr = nullptr;
+    }
+
+    void RenderPass::SetImplementation(IRenderPass* implementation)
+    {
+        m_Implementation.reset();
+        m_ImplementationPtr = implementation;
     }
 
     void RenderPass::SetSetup(std::function<void(RenderPassBuilder&)> callback)
@@ -38,7 +45,11 @@ namespace minEngine
         }
 
         RenderPassBuilder builder(graph, *this);
-        if (m_Implementation)
+        if (m_ImplementationPtr != nullptr)
+        {
+            m_ImplementationPtr->Setup(builder);
+        }
+        else if (m_Implementation)
         {
             m_Implementation->Setup(builder);
         }
@@ -52,6 +63,12 @@ namespace minEngine
 
     void RenderPass::PreparePass(RenderGraphFrameResources& frameResources) const
     {
+        if (m_ImplementationPtr != nullptr)
+        {
+            m_ImplementationPtr->PreparePass(frameResources);
+            return;
+        }
+
         if (m_Implementation)
         {
             m_Implementation->PreparePass(frameResources);
@@ -66,6 +83,12 @@ namespace minEngine
 
     void RenderPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) const
     {
+        if (m_ImplementationPtr != nullptr)
+        {
+            m_ImplementationPtr->BuildRenderPass(cmdList, parameters);
+            return;
+        }
+
         if (m_Implementation)
         {
             m_Implementation->BuildRenderPass(cmdList, parameters);

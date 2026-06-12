@@ -12,10 +12,16 @@ namespace minEngine
 {
     class RenderPass;
 
+    class RHICommandList;
+
     class RenderGraphFrameResources
     {
     public:
         void Clear();
+
+        void BeginFrame(RHICommandList& cmdList) { m_ActiveCommandList = &cmdList; }
+
+        RHICommandList& GetCommandList() const { return *m_ActiveCommandList; }
 
         void RegisterExternal(const char* name, RHITexture* texture);
         void EnsureSlot(const char* name);
@@ -39,5 +45,7 @@ namespace minEngine
 
         std::unordered_map<std::string, RDGTextureSlot> m_TextureSlots;
         mutable std::unordered_map<const RenderPass*, std::unique_ptr<PassParameters>> m_PassParameters;
+
+        RHICommandList* m_ActiveCommandList = nullptr;
     };
 }

@@ -27,6 +27,9 @@ namespace minEngine
         bool IsSetupDone() const { return m_SetupDone; }
 
         void SetImplementation(std::unique_ptr<IRenderPass> implementation);
+        void SetImplementation(IRenderPass* implementation);
+
+        void ResetSetup() { m_SetupDone = false; }
 
         void SetSetup(std::function<void(RenderPassBuilder&)> callback);
         void SetPreparePass(std::function<void(RenderGraphFrameResources&)> callback);
@@ -42,6 +45,7 @@ namespace minEngine
         std::string m_Name;
         bool m_SetupDone = false;
 
+        IRenderPass* m_ImplementationPtr = nullptr;
         std::unique_ptr<IRenderPass> m_Implementation;
         std::function<void(RenderPassBuilder&)> m_SetupCallback;
         std::function<void(RenderGraphFrameResources&)> m_PrepareCallback;

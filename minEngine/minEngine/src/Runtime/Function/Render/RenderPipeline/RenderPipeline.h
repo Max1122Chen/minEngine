@@ -17,6 +17,9 @@
 #include "Runtime/Function/Render/SceneRenderContext.h"
 #include "Runtime/Function/Render/SceneRenderTarget.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RenderGraph/RenderGraph.h"
+#include "Runtime/Function/Render/RenderGraph/RenderGraphFrameResources.h"
+#include "Runtime/Function/Render/RenderGraph/RDGTexture.h"
 
 #include <unordered_map>
 
@@ -142,8 +145,22 @@ namespace minEngine
         RHIBufferRef m_ScreenQuadVertexBuffer;
         RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
 
+        RenderGraph m_PostRenderGraph;
+        RenderGraphFrameResources m_RenderGraphFrameResources;
+        RHITextureRef m_PostBufferTexture;
+        RenderPass* m_PostFxaaGraphPass = nullptr;
+        RenderPass* m_PostSharpenGraphPass = nullptr;
+        RenderPass* m_PresentGraphPass = nullptr;
+        bool m_PostRenderGraphBuilt = false;
+        uint32_t m_PostBufferWidth = 0;
+        uint32_t m_PostBufferHeight = 0;
+
     private:
         void BindSceneRenderTarget(SceneRenderTarget& target);
+        void BuildPostRenderGraph();
+        void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
+        void BuildRenderGraphFrameResources(SceneRenderTarget& sceneTarget);
+        void ExecutePostRenderGraph(RHICommandList& cmdList, const SceneDrawDesc& desc);
         void UpdatePerFrameUBO(const SceneRenderContext& ctx);
         void UpdateLightUBO(const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);
