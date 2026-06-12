@@ -19,3 +19,6 @@
 [submodule "minEngine/minEngine/Third-Party/imgui-upstream"]
 	path = minEngine/minEngine/Third-Party/imgui-upstream
 	url = https://github.com/ocornut/imgui.git
+[submodule "minEngine/minEngine/Third-Party/Jolt"]
+	path = minEngine/minEngine/Third-Party/Jolt
+	url = https://github.com/jrouwe/JoltPhysics.git

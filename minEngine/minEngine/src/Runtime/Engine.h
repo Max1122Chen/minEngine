@@ -16,6 +16,7 @@ namespace minEngine
     class InputSystem;
     class RenderSystem;
     class SceneManager;
+    class PhysicsSystem;
     class FileDialogService;
 
     class Engine
@@ -62,6 +63,7 @@ namespace minEngine
         std::shared_ptr<InputSystem> m_InputSystem;
         std::shared_ptr<RenderSystem> m_RenderSystem;
         std::shared_ptr<SceneManager> m_SceneManager;
+        std::shared_ptr<PhysicsSystem> m_PhysicsSystem;
         std::shared_ptr<FileDialogService> m_FileDialogService;
 
         EngineConfig m_EngineConfig;

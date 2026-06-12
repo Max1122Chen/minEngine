@@ -10,7 +10,7 @@
 
 ## TL;DR
 
-在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；S01 再拆 **4 个 landable 子步（S01-a–d）** 便于 review。当前切片：**S01-a**（Jolt vendor + CMake）。`RigidBodyComponent` 为 **Component 物理代理**（P10），读写 GO RootComponent Transform，非 SceneComponent。每步可独立 `cmake --build`；S01-d 起挂接 `LogicalTick` 与 headless 落体测试。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
+在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；S01 再拆 **4 个 landable 子步（S01-a–d）**。**S01 bootstrap Done**（2026-06-12）；下一切片：**S02**（碰撞层 + Contact）。`RigidBodyComponent` 为 **Component 物理代理**（P10），读写 GO RootComponent Transform，非 SceneComponent。每步可独立 `cmake --build`；S01-d 起挂接 `LogicalTick` 与 headless 落体测试。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
 
 ## Scope
 - **In:** `Runtime/Function/Physics/`、`Engine` 生命周期与 `LogicalTick`、`minEngineTests` physics suite、Jolt submodule、CMake
@@ -27,10 +27,10 @@
 
 | Slice ID | 标题 | 状态 | 验证 |
 |----------|------|------|------|
-| PHYS-F01-S01-a | Jolt submodule + CMake | Planned | `cmake --build minEngine/build --target minEngine` |
-| PHYS-F01-S01-b | `PhysicsSystem` / `PhysicsWorld` 空壳 + 生命周期 | Planned | 编译；headless 启停不崩 |
-| PHYS-F01-S01-c | `RigidBodyComponent` + `BoxColliderComponent` | Planned | codegen + 编译 |
-| PHYS-F01-S01-d | `LogicalTick` 挂接 + 落体 smoke | Planned | `minEngineTests.exe test physics-smoke` |
+| PHYS-F01-S01-a | Jolt submodule + CMake | **Done** | `cmake --build minEngine/build --target minEngine` |
+| PHYS-F01-S01-b | `PhysicsSystem` / `PhysicsWorld` 空壳 + 生命周期 | **Done** | 编译；headless 启停不崩 |
+| PHYS-F01-S01-c | `RigidBodyComponent` + `BoxColliderComponent` | **Done** | codegen + 编译 |
+| PHYS-F01-S01-d | `LogicalTick` 挂接 + 落体 smoke | **Done** | `minEngineTests.exe test physics-smoke` |
 | PHYS-F01-S02 | 碰撞层 + Contact Begin/End | Planned | headless contact 测试 |
 | PHYS-F01-S03 | `LineTrace` | Planned | headless ray hit 测试 |
 
@@ -64,10 +64,11 @@ S01-d → S02 → S03
 将 Jolt 以 git submodule 引入，CMake `add_subdirectory` 链接进 `minEngine` 共享库；**尚无** Runtime 物理代码。
 
 #### 任务
-- [ ] 添加 `minEngine/minEngine/Third-Party/Jolt` submodule（上游 [jrouwe/JoltPhysics](https://github.com/jrouwe/JoltPhysics)）
-- [ ] `minEngine/minEngine/CMakeLists.txt`：`add_subdirectory(Jolt)`，`target_link_libraries(minEngine PRIVATE Jolt)`
-- [ ] Jolt 编译选项：关闭 demos/unit tests；MinGW 下按 Jolt CMake 文档处理（必要时 `USE_SSE4_1` 等）
-- [ ] worktree 若 submodule gitdir 异常：运行 `scripts/fix-worktree-submodule-gitdirs.ps1`
+- [x] 添加 `minEngine/minEngine/Third-Party/Jolt` submodule（上游 [jrouwe/JoltPhysics](https://github.com/jrouwe/JoltPhysics)）
+- [x] `minEngine/minEngine/CMakeLists.txt`：`add_subdirectory(Jolt/Build)`，`target_link_libraries(minEngine PRIVATE Jolt)`
+- [x] Jolt 编译选项：`INTERPROCEDURAL_OPTIMIZATION OFF`；`ENABLE_OBJECT_STREAM` / debug renderer / profiler off；嵌套 `add_subdirectory` 不构建 Samples/UnitTests
+- [x] 根 `minEngine/CMakeLists.txt`：`cmake_minimum_required` 升至 **3.20**（Jolt 要求）
+- [ ] worktree 若 submodule gitdir 异常：运行 `scripts/fix-worktree-submodule-gitdirs.ps1`（本 worktree 未遇到）
 
 #### 触及文件
 - `.gitmodules`
@@ -94,13 +95,13 @@ MinGW + Jolt 首次配置失败 → 本切片单独 land，不叠加业务代码
 引擎单例 `PhysicsSystem` 与 per-Scene `PhysicsWorld`；Jolt `RegisterTypes`、临时分配器、空 `Step`；`Scene` 切换时 create/destroy world。
 
 #### 任务
-- [ ] 新建目录 `Runtime/Function/Physics/`
-- [ ] `PhysicsTypes.h` — `PhysicsBodyId`、`EBodyType`（Static/Dynamic/Kinematic 预留）等，**无 Jolt include**
-- [ ] `PhysicsConversion.h/.cpp` — 轴映射函数声明；S01-b 可先 stub 或仅 position 单测
-- [ ] `PhysicsWorld.h/.cpp` — 持 `JPH::PhysicsSystem`、固定步长 accumulator、`Step` / `SyncBodiesFromScene` / `SyncBodiesToScene` 空实现（同步目标为各 `RigidBodyComponent` 的 RootComponent）
-- [ ] `PhysicsSystem.h/.cpp` — `Initialize`/`Shutdown`、`GetOrCreateWorld`、`DestroyWorld`、`SimulateActiveScene`
-- [ ] `Engine::StartSystems` / `ShutdownSystems` 注册 `PhysicsSystem`
-- [ ] `SceneManager::LoadScene` / `Unload` 或 `Scene` 析构路径：通知 `DestroyWorld`（具体挂点实现时选最小侵入点）
+- [x] 新建目录 `Runtime/Function/Physics/`
+- [x] `PhysicsTypes.h` — `PhysicsBodyId`、`EBodyType`（Static/Dynamic/Kinematic 预留）等，**无 Jolt include**
+- [x] `PhysicsConversion.h/.cpp` — 轴映射 position/quaternion（basis matrix）
+- [x] `PhysicsWorld.h/.cpp` — `JPH::PhysicsSystem`、固定步长 accumulator、`Step`；`Sync*` 空实现
+- [x] `PhysicsSystem.h/.cpp` — `Initialize`/`Shutdown`、`GetOrCreateWorld`、`DestroyWorld`、`SimulateActiveScene`
+- [x] `Engine::StartSystems` / `ShutdownSystems` 注册 `PhysicsSystem`（Scene 之后 init，Scene 之后 shutdown）
+- [x] `SceneManager`：`CreateNewScene` / `LoadSceneByPath` → `GetOrCreateWorld`；`UnloadActiveScene` → `DestroyWorld`
 
 #### 触及文件
 - `Runtime/Function/Physics/*`
@@ -124,12 +125,13 @@ minEngine\bin\minEngineTests.exe test smoke
 反射组件类型；`RigidBodyComponent` 作物理代理（P10）；与 `PhysicsWorld` 创建/销毁 body + box shape；**尚未**要求落体正确。
 
 #### 任务
-- [ ] `RigidBodyComponent` — 继承 **`Component`**（非 SceneComponent）；字段 `BodyType`、`Mass`、`bSimulatePhysics`；`PhysicsBodyId`；辅助 `GetTargetSceneComponent()` → `GetOwner()->GetRootComponent()`
-- [ ] `BoxColliderComponent` — 继承 `Component`；`Vector3 HalfExtent`
-- [ ] 组件启用/销毁：有有效 Root 时在 `PhysicsWorld` 注册 body；配对同 GO 的 RigidBody + BoxCollider
-- [ ] Body 初始 pose 从 **RootComponent** Transform 读取（经 `PhysicsConversion`）
-- [ ] 运行 reflection codegen；注册到 `Component` 体系
-- [ ] `PhysicsConversion` 完整实现 + 小单测（position round-trip、gravity 方向）
+- [x] `RigidBodyComponent` — 继承 **`Component`**（P10）；`RefreshPhysicsBody(boxColliderOverride)` 处理组件添加顺序
+- [x] `BoxColliderComponent` — 继承 `Component`；`Vector3 HalfExtent`
+- [x] 组件生命周期：`PhysicsWorld::RegisterRigidBody` / `UnregisterRigidBody`
+- [x] Body 初始 pose 从 **RootComponent** Transform 读取（经 `PhysicsConversion`）
+- [x] reflection codegen（`RigidBodyComponent` / `BoxColliderComponent` / `EBodyType`）
+- [x] `PhysicsConversion` position/quaternion（落体测试间接验证）
+- [x] **修复** `GameObject::AddComponent_Internal`：仅 `SceneComponent` 参与 Root/Attach（非 Scene 组件如刚体不再误 cast）
 
 #### 组件装配约定（S01，见 Design §3.2）
 - GO **RootComponent** = `SceneComponent`（或 `StaticMeshComponent` 等）— Transform 真源
@@ -158,16 +160,16 @@ minEngine\bin\minEngineTests.exe test smoke
 完整 bootstrap 垂直切片：固定步长仿真、动态体 pull 写回、headless 测试。
 
 #### 任务
-- [ ] `Engine::LogicalTick`：在 `SceneManager::Tick` 之后、`SendAllEndOfFrameUpdates` 之前调用 `PhysicsSystem::SimulateActiveScene(deltaTime)`
-- [ ] `PhysicsWorld::Step` — `1/60 s` accumulator，max 4 substeps
-- [ ] `PhysicsWorld::SyncBodiesToScene` — 对 `Dynamic` + `bSimulatePhysics`：Body pose → **RootComponent** `SetPosition` / `SetRotation(quat)`（经 `RigidBodyComponent`）
-- [ ] 默认重力 `(0, -9.81, 0)` 引擎空间
-- [ ] 新测试 suite `physics-smoke`：
+- [x] `Engine::LogicalTick`：`SimulateActiveScene` 插在 Tick 与 `SendAllEndOfFrameUpdates` 之间
+- [x] `PhysicsWorld::Step` — `1/60 s` accumulator，max 4 substeps
+- [x] `PhysicsWorld::SyncBodiesToScene` — Dynamic pull → RootComponent
+- [x] 默认重力 `(0, -9.81, 0)` 引擎空间
+- [x] 新测试 suite `physics-smoke`：
   - 创建 Scene；每个 GO：`SceneComponent` Root + `RigidBodyComponent` + `BoxColliderComponent`
   - Static 地面 + Dynamic box 初始高度 `h0 = 10`（高度设在 **RootComponent**）
   - 仿真 `N * (1/60)` 秒（如 N=60）
   - 断言 Root `Y < h0` 且 `Y > 0`（未穿透地板）
-- [ ] 注册 suite：`TestSuiteRegistration.cpp`；`bSmoke = true` 是否加入 smoke 由维护者决定（建议 **先不加入全局 smoke**，用 `test physics-smoke` 显式跑；Design 验收写 `physics-smoke`）
+- [x] 注册 suite：`TestSuiteRegistration.cpp`（`InFull` only；`test physics-smoke` 显式跑）
 
 #### 触及文件
 - `Engine.cpp`
@@ -186,9 +188,9 @@ minEngine\bin\minEngineTests.exe test physics-smoke
 ```
 
 #### S01 Done 检查（Doc DoD）
-- [ ] Design §7 S01 勾选项
-- [ ] Registry / ACTIVE_WORK / PROGRESS_LOG 更新
-- [ ] 非 `Physics/` 无 Jolt include（`rg '#include <Jolt' minEngine/minEngine/src` 仅 Physics 目录）
+- [x] Design §7 S01 勾选项
+- [x] Registry / ACTIVE_WORK / PROGRESS_LOG 更新
+- [x] 非 `Physics/` 无 Jolt include（仅 `PhysicsWorld.cpp` / `PhysicsSystem.cpp`）
 
 ---
 
@@ -252,3 +254,6 @@ Runtime/Function/Physics/
 |------|------|
 | 2026-06-11 | 初稿：S01-a–d + S02/S03 切片与 PR 边界 |
 | 2026-06-12 | P10：`RigidBodyComponent` 改为 Component 代理 Root Transform |
+| 2026-06-12 | S01-a Done：Jolt submodule + CMake link（cmake 3.20；`INTERPROCEDURAL_OPTIMIZATION OFF`） |
+| 2026-06-12 | S01-b Done：`PhysicsSystem` / `PhysicsWorld` 空壳 + Scene 生命周期 |
+| 2026-06-12 | **S01 Done**：组件 + LogicalTick + `physics-smoke`；`GameObject` attach 修复 |

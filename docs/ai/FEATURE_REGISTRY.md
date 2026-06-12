@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-06-11 (PHYS-F01 design)  
+Last updated: 2026-06-12 (PHYS-F01 S01 bootstrap)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**

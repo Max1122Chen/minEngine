@@ -1011,6 +1011,36 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
   PHYS-F01-S01-a (Jolt submodule + CMake).
 
+### 2026-06-12 - PHYS-F01-S01 bootstrap complete (Jolt + physics vertical slice)
+- Goal:
+  Land S01-a–d: Jolt submodule/CMake, PhysicsSystem/World, RigidBody+BoxCollider (P10 proxy), LogicalTick simulate, physics-smoke falling box.
+- Main changes:
+  `Runtime/Function/Physics/*`; Jolt submodule; Engine/SceneManager lifecycle; `RigidBodyComponent`/`BoxColliderComponent` + reflection; `PhysicsSmokeTest`; fix `GameObject::AddComponent_Internal` SceneComponent-only attach.
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests`; `minEngineTests.exe test physics-smoke` + `test smoke` from `minEngine/bin`.
+- Next step:
+  Commit S01 batch; then PHYS-F01-S02 (collision layers + contact events).
+
+### 2026-06-12 - PHYS-F01-S01-b PhysicsSystem and PhysicsWorld shell
+- Goal:
+  Engine singleton + per-Scene Jolt world with fixed-step accumulator; Scene load/unload lifecycle; PhysicsConversion axis helpers.
+- Main changes:
+  `Runtime/Function/Physics/*`; `Engine` Start/Shutdown; `SceneManager` create/load/unload hooks.
+- Validation done:
+  `cmake --build minEngine/build --target minEngine minEngineTests`; `minEngineTests.exe test smoke` from `minEngine/bin`.
+- Next step:
+  PHYS-F01-S01-c (RigidBodyComponent + BoxColliderComponent).
+
+### 2026-06-12 - PHYS-F01-S01-a Jolt submodule and CMake link
+- Goal:
+  Vendor Jolt via git submodule; link `Jolt` static target into `minEngine` with nested `add_subdirectory(Jolt/Build)`.
+- Main changes:
+  `.gitmodules` + `Third-Party/Jolt`; `minEngine/CMakeLists.txt` cmake 3.20; `minEngine/minEngine/CMakeLists.txt` Jolt options and `target_link_libraries`.
+- Validation done:
+  `cmake --build minEngine/build --target minEngine minEngineTests`; `minEngineTests.exe test smoke`.
+- Next step:
+  PHYS-F01-S01-b (`PhysicsSystem` / `PhysicsWorld` shell).
+
 ### 2026-06-12 - PHYS-F01 design: RigidBodyComponent as physics proxy (P10)
 - Goal:
   Align rigid body model with user intent: `RigidBodyComponent` is a `Component` agent, not `SceneComponent`; no own Transform; reads/writes GO RootComponent for physics sync.

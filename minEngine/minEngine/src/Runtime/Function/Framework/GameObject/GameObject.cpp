@@ -210,16 +210,15 @@ namespace minEngine
         }
         newComponent->SetOwner(this);
         m_Components.push_back(newComponent);
-        if (newComponent->GetClass() && newComponent->IsA(Component::StaticClass()))
+        if (newComponent->GetClass() && newComponent->IsA(SceneComponent::StaticClass()))
         {
-            // Set the first added SceneComponent as the RootComponent by default
+            SceneComponent* sceneComponent = static_cast<SceneComponent*>(newComponent.get());
             if (!m_RootComponent)
             {
-                m_RootComponent = std::static_pointer_cast<SceneComponent>(newComponent).get();
+                m_RootComponent = sceneComponent;
             }
             else
             {
-                SceneComponent* sceneComponent = static_cast<SceneComponent*>(newComponent.get());
                 sceneComponent->AttachToComponent(m_RootComponent, AttachmentTransformRules::KeepRelativeTransform);
             }
         }

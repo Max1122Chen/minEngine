@@ -12,6 +12,7 @@
 #include "Suites/AssetManagerTest.h"
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
+#include "Suites/PhysicsSmokeTest.h"
 
 namespace minEngine
 {
@@ -146,11 +147,35 @@ namespace minEngine
             }
         };
 
+        struct PhysicsSmokeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-smoke",
+                    "Physics Smoke",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-smoke'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-smoke",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
+        using PhysicsSmokeSuite = TypedTestSuite<PhysicsSmokeTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -166,6 +191,7 @@ namespace minEngine
             registry.Register(AssetManagerSuite::Get());
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
+            registry.Register(PhysicsSmokeSuite::Get());
             s_Registered = true;
         }
     }

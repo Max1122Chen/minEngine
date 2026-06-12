@@ -350,18 +350,18 @@ P1–P9 用户确认全部默认（2026-06-11）。
 
 ### PHYS-F01（整体 Feature，含 S01–S03）
 
-- [ ] S01：Jolt 链接、落体 headless 测试通过
+- [x] S01：Jolt 链接、落体 headless 测试通过
 - [ ] S02：两层碰撞 + Trigger contact 事件测试通过
 - [ ] S03：`LineTrace` hit 测试通过
-- [ ] 非 `Physics/` 模块无 Jolt include
-- [ ] `verify.ps1` / smoke 无回归
+- [x] 非 `Physics/` 模块无 Jolt include（S01 范围）
+- [x] `test smoke` 无回归（`verify.ps1` 全量未在本 slice 重跑）
 
 ### S01 bootstrap（首批 land）
 
-- [ ] `cmake --build minEngine/build --target minEngineTests` 通过
-- [ ] 新 suite：`physics-smoke` — 动态 box 初始高度 `h0`，仿真 `N` 步后 `Y < h0` 且下降合理
-- [ ] `Engine::LogicalTick` 已挂接 `PhysicsSystem::SimulateActiveScene`
-- [ ] 动态体写回后 **RootComponent** `Rotation` 为 quat（非 Euler 回环）；`RigidBodyComponent` 无 Transform 字段
+- [x] `cmake --build minEngine/build --target minEngineTests` 通过
+- [x] 新 suite：`physics-smoke` — 动态 box `h0=10`，90 步后 `Y < h0` 且 `Y > 0.5`
+- [x] `Engine::LogicalTick` 已挂接 `PhysicsSystem::SimulateActiveScene`
+- [x] 动态体写回 **RootComponent**（quat）；`RigidBodyComponent` 无 Transform 字段
 
 ---
 
