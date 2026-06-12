@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Render/RHI/RHI.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIPipelineLayout.h"
@@ -43,9 +43,9 @@ namespace minEngine
         {
             m_RHI->RHICmdSetGraphicsPipelineState(pipelineState);
         }
-        void SetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet)
+        void SetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet)
         {
-            m_RHI->RHICmdSetBindingSet(setIndex, bindingSet);
+            m_RHI->RHICmdSetShaderBindingSet(setIndex, bindingSet);
         }
         void Transition(const RHITextureTransitionInfo& transition)
         {
@@ -69,7 +69,7 @@ namespace minEngine
             m_RHI->RHICmdDraw(vertexCount, firstVertex);
         }
 
-        /** Sole draw submit path: PSO â†’ all binding sets â†’ VB/IB â†’ Draw. */
+        /** Sole draw submit path: PSO â†?all binding sets â†?VB/IB â†?Draw. */
         void SubmitMeshDrawPacket(const MeshDrawPacket& packet);
 
         // Resource creation
@@ -96,19 +96,19 @@ namespace minEngine
         {
             return m_RHI->RHICreateGraphicsPipelineState(desc);
         }
-        RHIBindingLayoutRef CreateBindingLayout(const std::vector<RHIBindingLayoutEntry>& entries)
+        RHIShaderBindingSetLayoutRef CreateShaderBindingSetLayout(const std::vector<RHIShaderBindingSetLayoutEntry>& entries)
         {
-            return m_RHI->RHICreateBindingLayout(entries);
+            return m_RHI->RHICreateShaderBindingSetLayout(entries);
         }
-        RHIPipelineLayoutRef CreatePipelineLayout(const std::vector<RHIBindingLayout*>& setLayouts)
+        RHIPipelineLayoutRef CreatePipelineLayout(const std::vector<RHIShaderBindingSetLayout*>& setLayouts)
         {
             return m_RHI->RHICreatePipelineLayout(setLayouts);
         }
-        RHIBindingSetRef CreateBindingSet(
-            RHIBindingLayout* layout,
-            const std::vector<RHIBindingResource>& resources)
+        RHIShaderBindingSetRef CreateShaderBindingSet(
+            RHIShaderBindingSetLayout* layout,
+            const std::vector<RHIShaderBinding>& resources)
         {
-            return m_RHI->RHICreateBindingSet(layout, resources);
+            return m_RHI->RHICreateShaderBindingSet(layout, resources);
         }
         std::shared_ptr<RHIVertexInputLayout> CreateVertexInputLayout(std::initializer_list<RHIVertexElement> elements)
         {

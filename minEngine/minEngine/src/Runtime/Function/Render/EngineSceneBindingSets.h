@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHITextureViewCache.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 
@@ -27,16 +27,16 @@ namespace minEngine
 
         void UpdatePerObjectModel(RHIBuffer* perObjectBuffer, const Matrix4& model) const;
 
-        RHIBindingSet* GetSceneSet0() const { return m_SceneSet0.get(); }
-        RHIBindingSet* GetSceneSet1() const { return m_SceneSet1.get(); }
-        RHIBindingLayout* GetSceneSet0Layout() const { return m_SceneSet0Layout.get(); }
-        RHIBindingLayout* GetSceneSet1Layout() const { return m_SceneSet1Layout.get(); }
+        RHIShaderBindingSet* GetSceneSet0() const { return m_SceneSet0.get(); }
+        RHIShaderBindingSet* GetSceneSet1() const { return m_SceneSet1.get(); }
+        RHIShaderBindingSetLayout* GetSceneSet0Layout() const { return m_SceneSet0Layout.get(); }
+        RHIShaderBindingSetLayout* GetSceneSet1Layout() const { return m_SceneSet1Layout.get(); }
 
     private:
-        RHIBindingLayoutRef m_SceneSet0Layout;
-        RHIBindingLayoutRef m_SceneSet1Layout;
-        RHIBindingSetRef m_SceneSet0;
-        RHIBindingSetRef m_SceneSet1;
+        RHIShaderBindingSetLayoutRef m_SceneSet0Layout;
+        RHIShaderBindingSetLayoutRef m_SceneSet1Layout;
+        RHIShaderBindingSetRef m_SceneSet0;
+        RHIShaderBindingSetRef m_SceneSet1;
 
         RHIShaderResourceViewRef GetOrCreateTextureSRV(RHICommandList& cmdList, RHITexture* texture, int32_t arraySlice = -1);
 

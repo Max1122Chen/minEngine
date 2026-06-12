@@ -35,45 +35,45 @@ namespace minEngine
 
     using RHIShaderResourceViewRef = std::shared_ptr<RHIShaderResourceView>;
 
-    enum class RHIBindingType : uint8_t
+    enum class RHIShaderBindingType : uint8_t
     {
         UniformBuffer,
         TextureSRV,
     };
 
-    struct RHIBindingLayoutEntry
+    struct RHIShaderBindingSetLayoutEntry
     {
         uint32_t Slot = 0;
-        RHIBindingType Type = RHIBindingType::TextureSRV;
+        RHIShaderBindingType Type = RHIShaderBindingType::TextureSRV;
         uint32_t ShaderBinding = 0;
         RHIGraphicsShaderStage Visibility = RHIGraphicsShaderStage::Pixel;
     };
 
-    class RHIBindingLayout
+    class RHIShaderBindingSetLayout
     {
     public:
-        virtual ~RHIBindingLayout() = default;
+        virtual ~RHIShaderBindingSetLayout() = default;
 
-        virtual const std::vector<RHIBindingLayoutEntry>& GetEntries() const = 0;
+        virtual const std::vector<RHIShaderBindingSetLayoutEntry>& GetEntries() const = 0;
     };
 
-    using RHIBindingLayoutRef = std::shared_ptr<RHIBindingLayout>;
+    using RHIShaderBindingSetLayoutRef = std::shared_ptr<RHIShaderBindingSetLayout>;
 
-    struct RHIBindingResource
+    struct RHIShaderBinding
     {
-        RHIBindingType Type = RHIBindingType::TextureSRV;
+        RHIShaderBindingType Type = RHIShaderBindingType::TextureSRV;
         RHIBuffer* Buffer = nullptr;
         RHIShaderResourceView* TextureSRV = nullptr;
     };
 
-    class RHIBindingSet
+    class RHIShaderBindingSet
     {
     public:
-        virtual ~RHIBindingSet() = default;
+        virtual ~RHIShaderBindingSet() = default;
 
-        virtual const RHIBindingLayout* GetLayout() const = 0;
-        virtual const std::vector<RHIBindingResource>& GetResources() const = 0;
+        virtual const RHIShaderBindingSetLayout* GetLayout() const = 0;
+        virtual const std::vector<RHIShaderBinding>& GetBindings() const = 0;
     };
 
-    using RHIBindingSetRef = std::shared_ptr<RHIBindingSet>;
+    using RHIShaderBindingSetRef = std::shared_ptr<RHIShaderBindingSet>;
 }

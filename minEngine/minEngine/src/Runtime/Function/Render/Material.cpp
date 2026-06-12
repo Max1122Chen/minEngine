@@ -347,13 +347,13 @@ namespace minEngine
         }
 
         RHICommandList cmdList(ctx.RHI);
-        std::vector<RHIBindingLayoutEntry> layoutEntries;
+        std::vector<RHIShaderBindingSetLayoutEntry> layoutEntries;
         layoutEntries.reserve(m_TextureParameters.size() + (m_ScalarParameters.empty() ? 0u : 1u));
         for (const MaterialTextureParameter& textureParameter : m_TextureParameters)
         {
             layoutEntries.push_back({
                 static_cast<uint32_t>(textureParameter.SlotIndex),
-                RHIBindingType::TextureSRV,
+                RHIShaderBindingType::TextureSRV,
                 static_cast<uint32_t>(textureParameter.SlotIndex),
                 RHIGraphicsShaderStage::Pixel,
             });
@@ -375,7 +375,7 @@ namespace minEngine
 
             layoutEntries.push_back({
                 EngineShaderBindings::kSet2_MaterialParamsUBO,
-                RHIBindingType::UniformBuffer,
+                RHIShaderBindingType::UniformBuffer,
                 EngineShaderBindings::kSet2_MaterialParamsUBO,
                 RHIGraphicsShaderStage::Pixel,
             });
@@ -386,34 +386,34 @@ namespace minEngine
             m_ScalarParamsUBOSize = 0;
         }
 
-        m_MaterialBindingLayout = layoutEntries.empty()
+        m_MaterialShaderBindingSetLayout = layoutEntries.empty()
             ? nullptr
-            : cmdList.CreateBindingLayout(layoutEntries);
+            : cmdList.CreateShaderBindingSetLayout(layoutEntries);
 
-        RebuildMaterialBindingSet(cmdList);
+        RebuildMaterialShaderBindingSet(cmdList);
         return true;
     }
 
-    void Material::RebuildMaterialBindingSet(RHICommandList& cmdList)
+    void Material::RebuildMaterialShaderBindingSet(RHICommandList& cmdList)
     {
-        m_MaterialBindingSet.reset();
+        m_MaterialShaderBindingSet.reset();
         m_TextureSRVs.clear();
 
-        if (!m_MaterialBindingLayout)
+        if (!m_MaterialShaderBindingSetLayout)
         {
             return;
         }
 
-        const std::vector<RHIBindingLayoutEntry>& entries = m_MaterialBindingLayout->GetEntries();
-        std::vector<RHIBindingResource> resources(entries.size());
+        const std::vector<RHIShaderBindingSetLayoutEntry>& entries = m_MaterialShaderBindingSetLayout->GetEntries();
+        std::vector<RHIShaderBinding> resources(entries.size());
         m_TextureSRVs.reserve(m_TextureParameters.size());
 
         for (size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex)
         {
-            const RHIBindingLayoutEntry& entry = entries[entryIndex];
-            if (entry.Type == RHIBindingType::UniformBuffer)
+            const RHIShaderBindingSetLayoutEntry& entry = entries[entryIndex];
+            if (entry.Type == RHIShaderBindingType::UniformBuffer)
             {
-                resources[entryIndex].Type = RHIBindingType::UniformBuffer;
+                resources[entryIndex].Type = RHIShaderBindingType::UniformBuffer;
                 resources[entryIndex].Buffer = m_ScalarParamsUBO.get();
                 continue;
             }
@@ -441,11 +441,11 @@ namespace minEngine
             RHITextureSRVDesc srvDesc;
             srvDesc.Texture = modernTexture;
             m_TextureSRVs.push_back(cmdList.CreateShaderResourceView(srvDesc));
-            resources[entryIndex].Type = RHIBindingType::TextureSRV;
+            resources[entryIndex].Type = RHIShaderBindingType::TextureSRV;
             resources[entryIndex].TextureSRV = m_TextureSRVs.back().get();
         }
 
-        m_MaterialBindingSet = cmdList.CreateBindingSet(m_MaterialBindingLayout.get(), resources);
+        m_MaterialShaderBindingSet = cmdList.CreateShaderBindingSet(m_MaterialShaderBindingSetLayout.get(), resources);
     }
 
     MaterialTextureParameter* Material::FindTextureParameter(const std::string& parameterName)
@@ -508,7 +508,7 @@ namespace minEngine
             if (RHI* rhi = RenderSystem::Get().GetRHI())
             {
                 RHICommandList cmdList(rhi);
-                RebuildMaterialBindingSet(cmdList);
+                RebuildMaterialShaderBindingSet(cmdList);
             }
         }
     }

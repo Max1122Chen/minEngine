@@ -1,14 +1,14 @@
 #pragma once
 #include "Core.h"
 #include "Render/RHI/RHIBuffers.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHITextureViewCache.h"
 #include "RenderPassBase.h"
 
 namespace minEngine
 {
-    class RHIBindingLayout;
+    class RHIShaderBindingSetLayout;
     class RHIPipelineLayout;
     class RHIGraphicsPipelineState;
     class RHIShader;
@@ -38,10 +38,10 @@ namespace minEngine
         RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
         std::shared_ptr<RHIShader> m_PostProcessShader;
         std::shared_ptr<RHIGraphicsPipelineState> m_PostProcessPipelineState;
-        std::shared_ptr<RHIBindingLayout> m_PostBindingLayout;
+        std::shared_ptr<RHIShaderBindingSetLayout> m_PostShaderBindingSetLayout;
         std::shared_ptr<RHIPipelineLayout> m_PostPipelineLayout;
         std::shared_ptr<RHIShaderResourceView> m_SceneColorSRV;
-        RHIBindingSetRef m_PostBindingSet;
+        RHIShaderBindingSetRef m_PostShaderBindingSet;
         RHIBufferRef m_PostParamsUniformBuffer;
         RHITextureViewCache m_TextureViewCache;
         RHITexture* m_CachedSceneColorTexture = nullptr;

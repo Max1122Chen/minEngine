@@ -7,7 +7,7 @@
 #include "Runtime/Function/Render/Material/MaterialEdGraph.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 
-#include "Runtime/Function/Render/RHI/RHIBinding.h"
+#include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 
@@ -60,8 +60,8 @@ namespace minEngine
         }
 
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
-        RHIBindingLayout* GetMaterialBindingLayout() const { return m_MaterialBindingLayout.get(); }
-        RHIBindingSet* GetMaterialBindingSet() const { return m_MaterialBindingSet.get(); }
+        RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const { return m_MaterialShaderBindingSetLayout.get(); }
+        RHIShaderBindingSet* GetMaterialShaderBindingSet() const { return m_MaterialShaderBindingSet.get(); }
         const std::string& GetShaderCompileLog() const { return m_ShaderCompileLog; }
 
         MaterialEdGraph& GetGraph();
@@ -91,15 +91,15 @@ namespace minEngine
 
     private:
         RHIShaderRef m_GPUShader;
-        RHIBindingLayoutRef m_MaterialBindingLayout;
-        RHIBindingSetRef m_MaterialBindingSet;
+        RHIShaderBindingSetLayoutRef m_MaterialShaderBindingSetLayout;
+        RHIShaderBindingSetRef m_MaterialShaderBindingSet;
         std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
         RHIBufferRef m_ScalarParamsUBO;
         uint32_t m_ScalarParamsUBOSize = 0;
         std::string m_ShaderCompileLog;
 
         bool CommitCompileResult(const MaterialCompileResult& result, const MaterialCompileContext& ctx);
-        void RebuildMaterialBindingSet(RHICommandList& cmdList);
+        void RebuildMaterialShaderBindingSet(RHICommandList& cmdList);
 
         const MaterialGraphNodeDef_TextureObject* FindTextureNodeBySlot(int slotIndex) const;
         const MaterialGraphNodeDef_ScalarParameter* FindScalarNodeBySlot(int slotIndex) const;

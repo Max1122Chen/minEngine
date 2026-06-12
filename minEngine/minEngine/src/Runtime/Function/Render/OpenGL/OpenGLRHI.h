@@ -37,19 +37,19 @@ namespace minEngine
             std::string* outCompileLog) override;
         virtual std::shared_ptr<RHIGraphicsPipelineState> RHICreateGraphicsPipelineState(
             const RHIGraphicsPSODesc& desc) override;
-        virtual std::shared_ptr<RHIBindingLayout> RHICreateBindingLayout(
-            const std::vector<RHIBindingLayoutEntry>& entries) override;
+        virtual std::shared_ptr<RHIShaderBindingSetLayout> RHICreateShaderBindingSetLayout(
+            const std::vector<RHIShaderBindingSetLayoutEntry>& entries) override;
         virtual std::shared_ptr<RHIPipelineLayout> RHICreatePipelineLayout(
-            const std::vector<RHIBindingLayout*>& setLayouts) override;
-        virtual std::shared_ptr<RHIBindingSet> RHICreateBindingSet(
-            RHIBindingLayout* layout,
-            const std::vector<RHIBindingResource>& resources) override;
+            const std::vector<RHIShaderBindingSetLayout*>& setLayouts) override;
+        virtual std::shared_ptr<RHIShaderBindingSet> RHICreateShaderBindingSet(
+            RHIShaderBindingSetLayout* layout,
+            const std::vector<RHIShaderBinding>& resources) override;
 
         virtual void RHICmdBeginRenderPass(const RHIRenderPassInfo& info) override;
         virtual void RHICmdEndRenderPass() override;
 
         virtual void RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState) override;
-        virtual void RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet) override;
+        virtual void RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet) override;
         virtual void RHICmdTransition(const RHITextureTransitionInfo& transition) override;
         virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
             std::initializer_list<RHIVertexElement> elements) override;
@@ -63,8 +63,8 @@ namespace minEngine
 
     private:
         void ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState);
-        void ApplyBindingSetResources(RHIBindingSet* bindingSet);
-        void ReapplyBoundDescriptorSets();
+        void ApplyShaderBindingSetResources(RHIShaderBindingSet* bindingSet);
+        void ReapplyBoundShaderBindingSets();
         void DestroyTransientFramebuffer();
 
         WindowSystem* m_WindowSystem = nullptr;
@@ -72,7 +72,7 @@ namespace minEngine
         GLuint m_TransientFramebuffer = 0;
         bool m_OwnsTransientFramebuffer = false;
         RHIGraphicsPipelineState* m_BoundPipeline = nullptr;
-        std::array<RHIBindingSet*, kMaxPipelineDescriptorSets> m_BoundDescriptorSets{};
+        std::array<RHIShaderBindingSet*, kMaxShaderBindingSets> m_BoundShaderBindingSets{};
         OpenGLRHIVertexInputLayout* m_BoundVertexLayout = nullptr;
         OpenGLRHIBuffer* m_BoundVertexBuffer = nullptr;
         OpenGLRHIBuffer* m_BoundIndexBuffer = nullptr;

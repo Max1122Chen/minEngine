@@ -6,7 +6,7 @@
 #include "Render/EngineShaderUtils.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHI.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
@@ -30,17 +30,17 @@ namespace minEngine
         paramsDesc.ByteSize = sizeof(EnginePostParamsUBO);
         m_PostParamsUniformBuffer = cmdList.CreateBuffer(paramsDesc, nullptr);
 
-        m_PostBindingLayout = cmdList.CreateBindingLayout({
+        m_PostShaderBindingSetLayout = cmdList.CreateShaderBindingSetLayout({
             {EngineShaderBindings::kEnginePost_SceneColorSRV,
-             RHIBindingType::TextureSRV,
+             RHIShaderBindingType::TextureSRV,
              EngineShaderBindings::kGL_EnginePostSceneColorUnit,
              RHIGraphicsShaderStage::Pixel},
             {EngineShaderBindings::kEnginePost_Params,
-             RHIBindingType::UniformBuffer,
+             RHIShaderBindingType::UniformBuffer,
              EngineShaderBindings::kGL_EnginePostParamsUBO,
              RHIGraphicsShaderStage::Pixel},
         });
-        m_PostPipelineLayout = cmdList.CreatePipelineLayout({m_PostBindingLayout.get()});
+        m_PostPipelineLayout = cmdList.CreatePipelineLayout({m_PostShaderBindingSetLayout.get()});
 
         RHIGraphicsPSODesc psoDesc;
         psoDesc.PipelineLayout = m_PostPipelineLayout.get();
@@ -72,7 +72,7 @@ namespace minEngine
     void PostProcessPass::Render(RHICommandList& cmdList)
     {
         if (!m_ScreenQuadVertexLayout || !m_PostProcessShader || !m_SceneColorTexture || !m_PostProcessPipelineState ||
-            !m_PostBindingLayout || !m_PostParamsUniformBuffer)
+            !m_PostShaderBindingSetLayout || !m_PostParamsUniformBuffer)
         {
             ME_CORE_ERROR("PostProcessPass resources are not ready");
             return;
@@ -83,16 +83,16 @@ namespace minEngine
         {
             m_CachedSceneColorTexture = sceneColorTexture;
             m_SceneColorSRV = m_TextureViewCache.GetOrCreate(cmdList, sceneColorTexture);
-            m_PostBindingSet.reset();
+            m_PostShaderBindingSet.reset();
         }
 
-        if (!m_PostBindingSet && m_SceneColorSRV)
+        if (!m_PostShaderBindingSet && m_SceneColorSRV)
         {
-            m_PostBindingSet = cmdList.CreateBindingSet(
-                m_PostBindingLayout.get(),
+            m_PostShaderBindingSet = cmdList.CreateShaderBindingSet(
+                m_PostShaderBindingSetLayout.get(),
                 {
-                    {RHIBindingType::TextureSRV, nullptr, m_SceneColorSRV.get()},
-                    {RHIBindingType::UniformBuffer, m_PostParamsUniformBuffer.get(), nullptr},
+                    {RHIShaderBindingType::TextureSRV, nullptr, m_SceneColorSRV.get()},
+                    {RHIShaderBindingType::UniformBuffer, m_PostParamsUniformBuffer.get(), nullptr},
                 });
         }
 
@@ -108,7 +108,7 @@ namespace minEngine
 
         MeshDrawPacket packet;
         packet.PipelineState = m_PostProcessPipelineState;
-        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = m_PostBindingSet.get();
+        packet.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PostShaderBindingSet.get();
         packet.VertexBuffer = m_ScreenQuadVertexBuffer.get();
         cmdList.SubmitMeshDrawPacket(packet);
     }

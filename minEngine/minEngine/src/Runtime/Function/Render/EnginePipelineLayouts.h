@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIPipelineLayout.h"
 
@@ -22,21 +22,21 @@ namespace minEngine
         void Shutdown();
 
         RHIPipelineLayout* GetShadowDepthPipelineLayout() const { return m_ShadowDepthPipelineLayout.get(); }
-        RHIBindingLayout* GetShadowBindingLayout() const { return m_ShadowBindingLayout.get(); }
+        RHIShaderBindingSetLayout* GetShadowShaderBindingSetLayout() const { return m_ShadowShaderBindingSetLayout.get(); }
 
         RHIPipelineLayoutRef GetOrCreateSceneMeshPipelineLayout(
             RHICommandList& cmdList,
             const EngineSceneBindingSets& sceneBindings,
-            RHIBindingLayout* materialSetLayout) const;
+            RHIShaderBindingSetLayout* materialSetLayout) const;
 
         RHIPipelineLayoutRef GetOrCreatePassLocalPipelineLayout(
             RHICommandList& cmdList,
-            RHIBindingLayout* passSetLayout) const;
+            RHIShaderBindingSetLayout* passSetLayout) const;
 
         RHIGraphicsPipelineStateRef GetOrCreateSceneMeshGraphicsPipelineState(
             RHICommandList& cmdList,
             const EngineSceneBindingSets& sceneBindings,
-            RHIBindingLayout* materialSetLayout,
+            RHIShaderBindingSetLayout* materialSetLayout,
             RHIShader* shader,
             RHIVertexInputLayout* vertexInputLayout,
             bool translucentPass) const;
@@ -68,11 +68,11 @@ namespace minEngine
             }
         };
 
-        RHIBindingLayoutRef m_ShadowBindingLayout;
+        RHIShaderBindingSetLayoutRef m_ShadowShaderBindingSetLayout;
         RHIPipelineLayoutRef m_ShadowDepthPipelineLayout;
 
-        mutable std::unordered_map<RHIBindingLayout*, RHIPipelineLayoutRef> m_SceneMeshPipelineByMaterialLayout;
-        mutable std::unordered_map<RHIBindingLayout*, RHIPipelineLayoutRef> m_PassLocalPipelineBySetLayout;
+        mutable std::unordered_map<RHIShaderBindingSetLayout*, RHIPipelineLayoutRef> m_SceneMeshPipelineByMaterialLayout;
+        mutable std::unordered_map<RHIShaderBindingSetLayout*, RHIPipelineLayoutRef> m_PassLocalPipelineByShaderBindingSetLayout;
         mutable std::unordered_map<SceneMeshPSOKey, RHIGraphicsPipelineStateRef, SceneMeshPSOKeyHash> m_SceneMeshPsoCache;
     };
 }

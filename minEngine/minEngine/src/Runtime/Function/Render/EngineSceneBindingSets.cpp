@@ -14,24 +14,24 @@ namespace minEngine
 
     void EngineSceneBindingSets::Initialize(RHICommandList& cmdList)
     {
-        m_SceneSet0Layout = cmdList.CreateBindingLayout({
-            {kSet0_PerFrame, RHIBindingType::UniformBuffer, kGL_PerFrameUBO, RHIGraphicsShaderStage::Vertex},
-            {kSet0_Lights, RHIBindingType::UniformBuffer, kGL_LightsUBO, RHIGraphicsShaderStage::Pixel},
-            {kSet0_PerObject, RHIBindingType::UniformBuffer, kGL_PerObjectUBO, RHIGraphicsShaderStage::Vertex},
+        m_SceneSet0Layout = cmdList.CreateShaderBindingSetLayout({
+            {kSet0_PerFrame, RHIShaderBindingType::UniformBuffer, kGL_PerFrameUBO, RHIGraphicsShaderStage::Vertex},
+            {kSet0_Lights, RHIShaderBindingType::UniformBuffer, kGL_LightsUBO, RHIGraphicsShaderStage::Pixel},
+            {kSet0_PerObject, RHIShaderBindingType::UniformBuffer, kGL_PerObjectUBO, RHIGraphicsShaderStage::Vertex},
         });
 
-        m_SceneSet1Layout = cmdList.CreateBindingLayout({
-            {kSet1_DirShadowSRV, RHIBindingType::TextureSRV, kGL_DirShadowTextureUnit, RHIGraphicsShaderStage::Pixel},
-            {kSet1_DirLightViewProjs, RHIBindingType::UniformBuffer, kGL_DirLightViewProjsUBO, RHIGraphicsShaderStage::Pixel},
-            {kSet1_CascadeFarPlanes, RHIBindingType::UniformBuffer, kGL_CascadeFarPlanesUBO, RHIGraphicsShaderStage::Pixel},
-            {kSet1_SpotLightViewProjs, RHIBindingType::UniformBuffer, kGL_SpotLightViewProjsUBO, RHIGraphicsShaderStage::Pixel},
-            {kSet1_SpotShadow0, RHIBindingType::TextureSRV, SPOT_SHADOW_MAP_BASE_UNIT, RHIGraphicsShaderStage::Pixel},
-            {kSet1_SpotShadow1, RHIBindingType::TextureSRV, SPOT_SHADOW_MAP_BASE_UNIT + 1, RHIGraphicsShaderStage::Pixel},
-            {kSet1_PointShadow0, RHIBindingType::TextureSRV, POINT_SHADOW_MAP_BASE_UNIT, RHIGraphicsShaderStage::Pixel},
-            {kSet1_PointShadow1, RHIBindingType::TextureSRV, POINT_SHADOW_MAP_BASE_UNIT + 1, RHIGraphicsShaderStage::Pixel},
-            {kSet1_IBLIrradiance, RHIBindingType::TextureSRV, kGL_IBLIrradianceUnit, RHIGraphicsShaderStage::Pixel},
-            {kSet1_IBLPrefilter, RHIBindingType::TextureSRV, kGL_IBLPrefilterUnit, RHIGraphicsShaderStage::Pixel},
-            {kSet1_IBLBrdfLut, RHIBindingType::TextureSRV, kGL_IBLBrdfLutUnit, RHIGraphicsShaderStage::Pixel},
+        m_SceneSet1Layout = cmdList.CreateShaderBindingSetLayout({
+            {kSet1_DirShadowSRV, RHIShaderBindingType::TextureSRV, kGL_DirShadowTextureUnit, RHIGraphicsShaderStage::Pixel},
+            {kSet1_DirLightViewProjs, RHIShaderBindingType::UniformBuffer, kGL_DirLightViewProjsUBO, RHIGraphicsShaderStage::Pixel},
+            {kSet1_CascadeFarPlanes, RHIShaderBindingType::UniformBuffer, kGL_CascadeFarPlanesUBO, RHIGraphicsShaderStage::Pixel},
+            {kSet1_SpotLightViewProjs, RHIShaderBindingType::UniformBuffer, kGL_SpotLightViewProjsUBO, RHIGraphicsShaderStage::Pixel},
+            {kSet1_SpotShadow0, RHIShaderBindingType::TextureSRV, SPOT_SHADOW_MAP_BASE_UNIT, RHIGraphicsShaderStage::Pixel},
+            {kSet1_SpotShadow1, RHIShaderBindingType::TextureSRV, SPOT_SHADOW_MAP_BASE_UNIT + 1, RHIGraphicsShaderStage::Pixel},
+            {kSet1_PointShadow0, RHIShaderBindingType::TextureSRV, POINT_SHADOW_MAP_BASE_UNIT, RHIGraphicsShaderStage::Pixel},
+            {kSet1_PointShadow1, RHIShaderBindingType::TextureSRV, POINT_SHADOW_MAP_BASE_UNIT + 1, RHIGraphicsShaderStage::Pixel},
+            {kSet1_IBLIrradiance, RHIShaderBindingType::TextureSRV, kGL_IBLIrradianceUnit, RHIGraphicsShaderStage::Pixel},
+            {kSet1_IBLPrefilter, RHIShaderBindingType::TextureSRV, kGL_IBLPrefilterUnit, RHIGraphicsShaderStage::Pixel},
+            {kSet1_IBLBrdfLut, RHIShaderBindingType::TextureSRV, kGL_IBLBrdfLutUnit, RHIGraphicsShaderStage::Pixel},
         });
     }
 
@@ -73,11 +73,11 @@ namespace minEngine
             return;
         }
 
-        std::vector<RHIBindingResource> resources(3);
-        resources[kSet0_PerFrame] = {RHIBindingType::UniformBuffer, perFrame, nullptr};
-        resources[kSet0_Lights] = {RHIBindingType::UniformBuffer, lights, nullptr};
-        resources[kSet0_PerObject] = {RHIBindingType::UniformBuffer, perObject, nullptr};
-        m_SceneSet0 = cmdList.CreateBindingSet(m_SceneSet0Layout.get(), resources);
+        std::vector<RHIShaderBinding> resources(3);
+        resources[kSet0_PerFrame] = {RHIShaderBindingType::UniformBuffer, perFrame, nullptr};
+        resources[kSet0_Lights] = {RHIShaderBindingType::UniformBuffer, lights, nullptr};
+        resources[kSet0_PerObject] = {RHIShaderBindingType::UniformBuffer, perObject, nullptr};
+        m_SceneSet0 = cmdList.CreateShaderBindingSet(m_SceneSet0Layout.get(), resources);
     }
 
     void EngineSceneBindingSets::BuildSceneSet1(
@@ -164,20 +164,20 @@ namespace minEngine
         // F03-M4 P0: IBL textures disabled; layout slots stay null until EnvMap returns.
         m_IblSRVs = {};
 
-        std::vector<RHIBindingResource> resources(11);
-        resources[kSet1_DirShadowSRV] = {RHIBindingType::TextureSRV, nullptr, m_DirShadowSRV.get()};
-        resources[kSet1_DirLightViewProjs] = {RHIBindingType::UniformBuffer, dirLightViewProjs, nullptr};
-        resources[kSet1_CascadeFarPlanes] = {RHIBindingType::UniformBuffer, cascadeFarPlanes, nullptr};
-        resources[kSet1_SpotLightViewProjs] = {RHIBindingType::UniformBuffer, spotLightViewProjs, nullptr};
-        resources[kSet1_SpotShadow0] = {RHIBindingType::TextureSRV, nullptr, m_SpotShadowSRVs[0].get()};
-        resources[kSet1_SpotShadow1] = {RHIBindingType::TextureSRV, nullptr, m_SpotShadowSRVs[1].get()};
-        resources[kSet1_PointShadow0] = {RHIBindingType::TextureSRV, nullptr, m_PointShadowSRVs[0].get()};
-        resources[kSet1_PointShadow1] = {RHIBindingType::TextureSRV, nullptr, m_PointShadowSRVs[1].get()};
-        resources[kSet1_IBLIrradiance] = {RHIBindingType::TextureSRV, nullptr, m_IblSRVs[0].get()};
-        resources[kSet1_IBLPrefilter] = {RHIBindingType::TextureSRV, nullptr, m_IblSRVs[1].get()};
-        resources[kSet1_IBLBrdfLut] = {RHIBindingType::TextureSRV, nullptr, m_IblSRVs[2].get()};
+        std::vector<RHIShaderBinding> resources(11);
+        resources[kSet1_DirShadowSRV] = {RHIShaderBindingType::TextureSRV, nullptr, m_DirShadowSRV.get()};
+        resources[kSet1_DirLightViewProjs] = {RHIShaderBindingType::UniformBuffer, dirLightViewProjs, nullptr};
+        resources[kSet1_CascadeFarPlanes] = {RHIShaderBindingType::UniformBuffer, cascadeFarPlanes, nullptr};
+        resources[kSet1_SpotLightViewProjs] = {RHIShaderBindingType::UniformBuffer, spotLightViewProjs, nullptr};
+        resources[kSet1_SpotShadow0] = {RHIShaderBindingType::TextureSRV, nullptr, m_SpotShadowSRVs[0].get()};
+        resources[kSet1_SpotShadow1] = {RHIShaderBindingType::TextureSRV, nullptr, m_SpotShadowSRVs[1].get()};
+        resources[kSet1_PointShadow0] = {RHIShaderBindingType::TextureSRV, nullptr, m_PointShadowSRVs[0].get()};
+        resources[kSet1_PointShadow1] = {RHIShaderBindingType::TextureSRV, nullptr, m_PointShadowSRVs[1].get()};
+        resources[kSet1_IBLIrradiance] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[0].get()};
+        resources[kSet1_IBLPrefilter] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[1].get()};
+        resources[kSet1_IBLBrdfLut] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[2].get()};
 
-        m_SceneSet1 = cmdList.CreateBindingSet(m_SceneSet1Layout.get(), resources);
+        m_SceneSet1 = cmdList.CreateShaderBindingSet(m_SceneSet1Layout.get(), resources);
     }
 
     void EngineSceneBindingSets::UpdatePerObjectModel(RHIBuffer* perObjectBuffer, const Matrix4& model) const

@@ -4,7 +4,7 @@
 
 #include "OpenGLRHIResources.h"
 
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Log/LogSystem.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIResourceTransition.h"
@@ -121,22 +121,22 @@ namespace minEngine
         return std::make_shared<RHIGraphicsPSOStateFallback>(desc);
     }
 
-    std::shared_ptr<RHIBindingLayout> OpenGLRHI::RHICreateBindingLayout(const std::vector<RHIBindingLayoutEntry>& entries)
+    std::shared_ptr<RHIShaderBindingSetLayout> OpenGLRHI::RHICreateShaderBindingSetLayout(const std::vector<RHIShaderBindingSetLayoutEntry>& entries)
     {
-        return std::make_shared<OpenGLRHIBindingLayout>(entries);
+        return std::make_shared<OpenGLRHIShaderBindingSetLayout>(entries);
     }
 
     std::shared_ptr<RHIPipelineLayout> OpenGLRHI::RHICreatePipelineLayout(
-        const std::vector<RHIBindingLayout*>& setLayouts)
+        const std::vector<RHIShaderBindingSetLayout*>& setLayouts)
     {
         return std::make_shared<OpenGLRHIPipelineLayout>(setLayouts);
     }
 
-    std::shared_ptr<RHIBindingSet> OpenGLRHI::RHICreateBindingSet(
-        RHIBindingLayout* layout,
-        const std::vector<RHIBindingResource>& resources)
+    std::shared_ptr<RHIShaderBindingSet> OpenGLRHI::RHICreateShaderBindingSet(
+        RHIShaderBindingSetLayout* layout,
+        const std::vector<RHIShaderBinding>& resources)
     {
-        return std::make_shared<OpenGLRHIBindingSet>(layout, resources);
+        return std::make_shared<OpenGLRHIShaderBindingSet>(layout, resources);
     }
 
     std::shared_ptr<RHIVertexInputLayout> OpenGLRHI::RHICreateVertexInputLayout(
@@ -228,32 +228,32 @@ namespace minEngine
             break;
         }
 
-        ReapplyBoundDescriptorSets();
+        ReapplyBoundShaderBindingSets();
     }
 
-    void OpenGLRHI::ApplyBindingSetResources(RHIBindingSet* bindingSet)
+    void OpenGLRHI::ApplyShaderBindingSetResources(RHIShaderBindingSet* bindingSet)
     {
-        auto* glSet = static_cast<OpenGLRHIBindingSet*>(bindingSet);
+        auto* glSet = static_cast<OpenGLRHIShaderBindingSet*>(bindingSet);
         if (!glSet)
         {
             return;
         }
 
-        const RHIBindingLayout* layout = glSet->GetLayout();
-        const std::vector<RHIBindingResource>& resources = glSet->GetResources();
+        const RHIShaderBindingSetLayout* layout = glSet->GetLayout();
+        const std::vector<RHIShaderBinding>& resources = glSet->GetBindings();
         if (!layout)
         {
             return;
         }
 
-        const std::vector<RHIBindingLayoutEntry>& entries = layout->GetEntries();
+        const std::vector<RHIShaderBindingSetLayoutEntry>& entries = layout->GetEntries();
         const size_t bindCount = std::min(resources.size(), entries.size());
         for (size_t i = 0; i < bindCount; ++i)
         {
-            const RHIBindingResource& resource = resources[i];
-            const RHIBindingLayoutEntry& entry = entries[i];
+            const RHIShaderBinding& resource = resources[i];
+            const RHIShaderBindingSetLayoutEntry& entry = entries[i];
 
-            if (resource.Type == RHIBindingType::TextureSRV && resource.TextureSRV)
+            if (resource.Type == RHIShaderBindingType::TextureSRV && resource.TextureSRV)
             {
                 const RHITextureSRVDesc& srvDesc = resource.TextureSRV->GetCreateDesc();
                 if (!srvDesc.Texture)
@@ -276,7 +276,7 @@ namespace minEngine
                 glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(entry.ShaderBinding));
                 glBindTexture(target, texId);
             }
-            else if (resource.Type == RHIBindingType::UniformBuffer && resource.Buffer)
+            else if (resource.Type == RHIShaderBindingType::UniformBuffer && resource.Buffer)
             {
                 auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
                 if (ubo)
@@ -290,20 +290,20 @@ namespace minEngine
         }
     }
 
-    void OpenGLRHI::ReapplyBoundDescriptorSets()
+    void OpenGLRHI::ReapplyBoundShaderBindingSets()
     {
-        for (uint32_t setIndex = 0; setIndex < kMaxPipelineDescriptorSets; ++setIndex)
+        for (uint32_t setIndex = 0; setIndex < kMaxShaderBindingSets; ++setIndex)
         {
-            if (m_BoundDescriptorSets[setIndex])
+            if (m_BoundShaderBindingSets[setIndex])
             {
-                ApplyBindingSetResources(m_BoundDescriptorSets[setIndex]);
+                ApplyShaderBindingSetResources(m_BoundShaderBindingSets[setIndex]);
             }
         }
     }
 
     void OpenGLRHI::RHICmdBeginRenderPass(const RHIRenderPassInfo& info)
     {
-        m_BoundDescriptorSets = {};
+        m_BoundShaderBindingSets = {};
         DestroyTransientFramebuffer();
 
         const RHIRenderPassInfo::ColorAttachment& color0 = info.ColorAttachments[0];
@@ -439,11 +439,11 @@ namespace minEngine
         ApplyGraphicsPipelineState(pipelineState);
     }
 
-    void OpenGLRHI::RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet)
+    void OpenGLRHI::RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet)
     {
-        if (setIndex >= kMaxPipelineDescriptorSets)
+        if (setIndex >= kMaxShaderBindingSets)
         {
-            ME_CORE_WARN("RHICmdSetBindingSet: setIndex {} out of range", setIndex);
+            ME_CORE_WARN("RHICmdSetShaderBindingSet: setIndex {} out of range", setIndex);
             return;
         }
 
@@ -452,28 +452,28 @@ namespace minEngine
             if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(m_BoundPipeline))
             {
                 RHIPipelineLayout* pipelineLayout = fallback->GetDesc().PipelineLayout;
-                if (pipelineLayout && setIndex >= pipelineLayout->GetSetLayoutCount())
+                if (pipelineLayout && setIndex >= pipelineLayout->GetShaderBindingSetLayoutCount())
                 {
                     ME_CORE_WARN(
-                        "RHICmdSetBindingSet: setIndex {} exceeds pipeline layout set count {}",
+                        "RHICmdSetShaderBindingSet: setIndex {} exceeds pipeline layout set count {}",
                         setIndex,
-                        pipelineLayout->GetSetLayoutCount());
+                        pipelineLayout->GetShaderBindingSetLayoutCount());
                     return;
                 }
 
                 if (pipelineLayout)
                 {
-                    RHIBindingLayout* expectedLayout = pipelineLayout->GetSetLayout(setIndex);
+                    RHIShaderBindingSetLayout* expectedLayout = pipelineLayout->GetShaderBindingSetLayout(setIndex);
                     if (expectedLayout && bindingSet->GetLayout() != expectedLayout)
                     {
-                        ME_CORE_WARN("RHICmdSetBindingSet: binding layout mismatch at set {}", setIndex);
+                        ME_CORE_WARN("RHICmdSetShaderBindingSet: binding layout mismatch at set {}", setIndex);
                     }
                 }
             }
         }
 
-        m_BoundDescriptorSets[setIndex] = bindingSet;
-        ApplyBindingSetResources(bindingSet);
+        m_BoundShaderBindingSets[setIndex] = bindingSet;
+        ApplyShaderBindingSetResources(bindingSet);
     }
 
     void OpenGLRHI::RHICmdTransition(const RHITextureTransitionInfo& transition)

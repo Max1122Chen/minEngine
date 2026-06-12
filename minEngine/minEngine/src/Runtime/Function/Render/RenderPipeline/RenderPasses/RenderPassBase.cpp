@@ -44,14 +44,14 @@ namespace minEngine
                 packet.PipelineState = pipeline->GetPipelineLayouts().GetOrCreateSceneMeshGraphicsPipelineState(
                     cmdList,
                     pipeline->GetSceneBindings(),
-                    material->GetMaterialBindingLayout(),
+                    material->GetMaterialShaderBindingSetLayout(),
                     shader,
                     drawCommand.m_VertexInputLayout,
                     translucentPass);
             }
             packet.VertexBuffer = drawCommand.m_VertexBuffer;
             packet.IndexBuffer = drawCommand.m_IndexBuffer;
-            packet.BindingSets[EngineShaderBindings::kSetMaterial] = material->GetMaterialBindingSet();
+            packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = material->GetMaterialShaderBindingSet();
         }
     }
 
@@ -83,13 +83,13 @@ namespace minEngine
             }
 
             sceneBindings.UpdatePerObjectModel(pipeline->GetPerObjectUniformBuffer(), drawCommand.m_ModelMatrix);
-            packet.BindingSets[EngineShaderBindings::kSetSceneObject] = sceneBindings.GetSceneSet0();
+            packet.ShaderBindingSets[EngineShaderBindings::kSetSceneObject] = sceneBindings.GetSceneSet0();
 
             const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong
                 || material->m_ShadingModel == MaterialShadingModel::PBR;
             if (bindSceneLighting)
             {
-                packet.BindingSets[EngineShaderBindings::kSetShadowIBL] = sceneBindings.GetSceneSet1();
+                packet.ShaderBindingSets[EngineShaderBindings::kSetShadowIBL] = sceneBindings.GetSceneSet1();
             }
 
             material->BindForDraw(cmdList);

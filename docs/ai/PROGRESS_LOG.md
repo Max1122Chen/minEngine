@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-11 (RND-F04 S04 Done)
+Last updated: 2026-06-12 (RND-F01 S0 Done)
 
 ## Purpose
 
@@ -1091,6 +1091,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-12 - RND-F01 S0 Binding vocabulary unification (`render`)
+- Goal:
+  Align RHI binding types/APIs with Vulkan descriptor mental model before RenderGraph S01.
+- Main changes:
+  `RHIBinding.h` → `RHIShaderBinding.h`; `RHIShaderBindingSetLayout` / `RHIShaderBindingSetLayoutEntry` / `RHIShaderBindingSet` / `RHIShaderBinding` / `RHIShaderBindingType`; `CreateShaderBindingSetLayout` / `CreateShaderBindingSet` / `SetShaderBindingSet`; `GetShaderBindingSetLayout` / `kMaxShaderBindingSets`; `MeshDrawPacket::ShaderBindingSets`; OpenGL impl classes renamed; all Pass/Material/Engine call sites updated.
+- Risks or caveats:
+  `EngineSceneBindingSets` class name unchanged (engine layer); Tier-B design docs still cite old `RHIBinding*` in places.
+- Validation done:
+  `cmake --build minEngine/build --target minEngine` PASS.
+  `minEngineTests.exe test smoke` + `material-ir` PASS (existing binary; test exe relink blocked by file lock).
+- Next step:
+  F01-S01 Manual RenderGraph skeleton; optional commit S0.
 
 ### 2026-06-11 - RND-F04 S04 PSO/SRV cache + RHI contract cleanup (`render`)
 - Goal:

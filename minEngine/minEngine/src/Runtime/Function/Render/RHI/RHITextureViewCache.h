@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 
 #include <cstdint>
 #include <unordered_map>

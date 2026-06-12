@@ -9,7 +9,7 @@
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
-#include "Runtime/Function/Render/RHI/RHIBinding.h"
+#include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
@@ -186,7 +186,7 @@ namespace minEngine
         struct EnvCaptureDrawResources
         {
             RHIGraphicsPipelineStateRef PipelineState;
-            RHIBindingLayoutRef BindingLayout;
+            RHIShaderBindingSetLayoutRef BindingLayout;
             RHIBufferRef FrameUniformBuffer;
         };
 
@@ -210,31 +210,31 @@ namespace minEngine
             frameDesc.ByteSize = sizeof(EnvCaptureFrameUBO);
             resources.FrameUniformBuffer = cmdList.CreateBuffer(frameDesc, nullptr);
 
-            resources.BindingLayout = cmdList.CreateBindingLayout({
+            resources.BindingLayout = cmdList.CreateShaderBindingSetLayout({
                 {EngineShaderBindings::kEnvCapture_SourceSRV,
-                 RHIBindingType::TextureSRV,
+                 RHIShaderBindingType::TextureSRV,
                  sourceTextureUnit,
                  RHIGraphicsShaderStage::Pixel},
                 {EngineShaderBindings::kEnvCapture_FrameData,
-                 RHIBindingType::UniformBuffer,
+                 RHIShaderBindingType::UniformBuffer,
                  EngineShaderBindings::kGL_EnvCaptureFrameDataUBO,
                  RHIGraphicsShaderStage::Vertex},
             });
             return resources;
         }
 
-        RHIBindingSetRef CreateEnvCaptureBindingSet(
+        RHIShaderBindingSetRef CreateEnvCaptureBindingSet(
             RHICommandList& cmdList,
             EnvCaptureDrawResources& drawResources,
             RHIShaderResourceView* sourceSrv,
             const EnvCaptureFrameUBO& frameData)
         {
             drawResources.FrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(EnvCaptureFrameUBO));
-            return cmdList.CreateBindingSet(
+            return cmdList.CreateShaderBindingSet(
                 drawResources.BindingLayout.get(),
                 {
-                    {RHIBindingType::TextureSRV, nullptr, sourceSrv},
-                    {RHIBindingType::UniformBuffer, drawResources.FrameUniformBuffer.get(), nullptr},
+                    {RHIShaderBindingType::TextureSRV, nullptr, sourceSrv},
+                    {RHIShaderBindingType::UniformBuffer, drawResources.FrameUniformBuffer.get(), nullptr},
                 });
         }
 
@@ -340,10 +340,10 @@ namespace minEngine
             frameData.Projection = captureProjection;
             frameData.View = captureView;
             cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-            if (RHIBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
+            if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
                     cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
             {
-                cmdList.SetBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
+                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
             }
             DrawEnvMapMesh(cmdList, mesh);
             cmdList.EndRenderPass();
@@ -455,10 +455,10 @@ namespace minEngine
             frameData.Projection = captureProjection;
             frameData.View = captureView;
             cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-            if (RHIBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
+            if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
                     cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
             {
-                cmdList.SetBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
+                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
             }
             DrawEnvMapMesh(cmdList, mesh);
             cmdList.EndRenderPass();
@@ -597,10 +597,10 @@ namespace minEngine
                 frameData.Roughness = roughness;
                 frameData.EnvironmentResolution = static_cast<float>(environmentResolution);
                 cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-                if (RHIBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
+                if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
                         cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
                 {
-                    cmdList.SetBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
+                    cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
                 }
                 DrawEnvMapMesh(cmdList, mesh);
                 cmdList.EndRenderPass();

@@ -10,37 +10,37 @@ namespace minEngine
     {
         (void)sceneBindings;
 
-        m_ShadowBindingLayout = cmdList.CreateBindingLayout({
+        m_ShadowShaderBindingSetLayout = cmdList.CreateShaderBindingSetLayout({
             {EngineShaderBindings::kShadowPass_LightViewProj,
-             RHIBindingType::UniformBuffer,
+             RHIShaderBindingType::UniformBuffer,
              EngineShaderBindings::kGL_ShadowPassLightViewProjUBO,
              RHIGraphicsShaderStage::Vertex},
             {EngineShaderBindings::kShadowPass_PerObject,
-             RHIBindingType::UniformBuffer,
+             RHIShaderBindingType::UniformBuffer,
              EngineShaderBindings::kGL_PerObjectUBO,
              RHIGraphicsShaderStage::Vertex},
             {EngineShaderBindings::kShadowPass_Params,
-             RHIBindingType::UniformBuffer,
+             RHIShaderBindingType::UniformBuffer,
              EngineShaderBindings::kGL_ShadowPassParamsUBO,
              RHIGraphicsShaderStage::Pixel},
         });
 
-        m_ShadowDepthPipelineLayout = cmdList.CreatePipelineLayout({m_ShadowBindingLayout.get()});
+        m_ShadowDepthPipelineLayout = cmdList.CreatePipelineLayout({m_ShadowShaderBindingSetLayout.get()});
     }
 
     void EnginePipelineLayouts::Shutdown()
     {
         m_SceneMeshPsoCache.clear();
         m_SceneMeshPipelineByMaterialLayout.clear();
-        m_PassLocalPipelineBySetLayout.clear();
+        m_PassLocalPipelineByShaderBindingSetLayout.clear();
         m_ShadowDepthPipelineLayout.reset();
-        m_ShadowBindingLayout.reset();
+        m_ShadowShaderBindingSetLayout.reset();
     }
 
     RHIPipelineLayoutRef EnginePipelineLayouts::GetOrCreateSceneMeshPipelineLayout(
         RHICommandList& cmdList,
         const EngineSceneBindingSets& sceneBindings,
-        RHIBindingLayout* materialSetLayout) const
+        RHIShaderBindingSetLayout* materialSetLayout) const
     {
         if (!materialSetLayout)
         {
@@ -53,8 +53,8 @@ namespace minEngine
             return existing->second;
         }
 
-        RHIBindingLayout* sceneSet0Layout = sceneBindings.GetSceneSet0Layout();
-        RHIBindingLayout* sceneSet1Layout = sceneBindings.GetSceneSet1Layout();
+        RHIShaderBindingSetLayout* sceneSet0Layout = sceneBindings.GetSceneSet0Layout();
+        RHIShaderBindingSetLayout* sceneSet1Layout = sceneBindings.GetSceneSet1Layout();
         if (!sceneSet0Layout || !sceneSet1Layout)
         {
             return nullptr;
@@ -68,28 +68,28 @@ namespace minEngine
 
     RHIPipelineLayoutRef EnginePipelineLayouts::GetOrCreatePassLocalPipelineLayout(
         RHICommandList& cmdList,
-        RHIBindingLayout* passSetLayout) const
+        RHIShaderBindingSetLayout* passSetLayout) const
     {
         if (!passSetLayout)
         {
             return nullptr;
         }
 
-        const auto existing = m_PassLocalPipelineBySetLayout.find(passSetLayout);
-        if (existing != m_PassLocalPipelineBySetLayout.end())
+        const auto existing = m_PassLocalPipelineByShaderBindingSetLayout.find(passSetLayout);
+        if (existing != m_PassLocalPipelineByShaderBindingSetLayout.end())
         {
             return existing->second;
         }
 
         RHIPipelineLayoutRef pipelineLayout = cmdList.CreatePipelineLayout({passSetLayout});
-        m_PassLocalPipelineBySetLayout.emplace(passSetLayout, pipelineLayout);
+        m_PassLocalPipelineByShaderBindingSetLayout.emplace(passSetLayout, pipelineLayout);
         return pipelineLayout;
     }
 
     RHIGraphicsPipelineStateRef EnginePipelineLayouts::GetOrCreateSceneMeshGraphicsPipelineState(
         RHICommandList& cmdList,
         const EngineSceneBindingSets& sceneBindings,
-        RHIBindingLayout* materialSetLayout,
+        RHIShaderBindingSetLayout* materialSetLayout,
         RHIShader* shader,
         RHIVertexInputLayout* vertexInputLayout,
         bool translucentPass) const

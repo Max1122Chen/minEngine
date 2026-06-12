@@ -3,7 +3,7 @@
 #include "Render/RenderSystem.h"
 #include "Render/EngineShaderUtils.h"
 #include "Render/RHI/RHI.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
@@ -42,10 +42,10 @@ namespace minEngine
             m_ScreenQuadShader = std::move(screenQuadShader);
         }
 
-        m_PresentBindingLayout = cmdList.CreateBindingLayout({
-            {0, RHIBindingType::TextureSRV, 0, RHIGraphicsShaderStage::Pixel}
+        m_PresentShaderBindingSetLayout = cmdList.CreateShaderBindingSetLayout({
+            {0, RHIShaderBindingType::TextureSRV, 0, RHIGraphicsShaderStage::Pixel}
         });
-        m_PresentPipelineLayout = cmdList.CreatePipelineLayout({m_PresentBindingLayout.get()});
+        m_PresentPipelineLayout = cmdList.CreatePipelineLayout({m_PresentShaderBindingSetLayout.get()});
 
         RHIGraphicsPSODesc psoDesc;
         psoDesc.PipelineLayout = m_PresentPipelineLayout.get();
@@ -103,15 +103,15 @@ namespace minEngine
         {
             m_CachedSceneColorTexture = sceneColorTexture;
             m_SceneColorSRV = m_TextureViewCache.GetOrCreate(cmdList, sceneColorTexture);
-            m_PresentBindingSet.reset();
+            m_PresentShaderBindingSet.reset();
         }
 
-        if (!m_PresentBindingSet && m_SceneColorSRV)
+        if (!m_PresentShaderBindingSet && m_SceneColorSRV)
         {
-            RHIBindingResource bindingResource;
-            bindingResource.Type = RHIBindingType::TextureSRV;
-            bindingResource.TextureSRV = m_SceneColorSRV.get();
-            m_PresentBindingSet = cmdList.CreateBindingSet(m_PresentBindingLayout.get(), {bindingResource});
+            RHIShaderBinding shaderBinding;
+            shaderBinding.Type = RHIShaderBindingType::TextureSRV;
+            shaderBinding.TextureSRV = m_SceneColorSRV.get();
+            m_PresentShaderBindingSet = cmdList.CreateShaderBindingSet(m_PresentShaderBindingSetLayout.get(), {shaderBinding});
         }
 
         RHIRenderPassInfo presentPassInfo;
@@ -122,7 +122,7 @@ namespace minEngine
         cmdList.SetViewport(0, 0, width, height);
         MeshDrawPacket packet;
         packet.PipelineState = m_PresentPipelineState;
-        packet.BindingSets[EngineShaderBindings::kSetEnginePost] = m_PresentBindingSet.get();
+        packet.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PresentShaderBindingSet.get();
         packet.VertexBuffer = m_ScreenQuadVertexBuffer.get();
         cmdList.SubmitMeshDrawPacket(packet);
 

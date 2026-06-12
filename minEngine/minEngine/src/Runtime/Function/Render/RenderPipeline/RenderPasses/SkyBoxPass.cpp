@@ -10,7 +10,7 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
-#include "Runtime/Function/Render/RHI/RHIBinding.h"
+#include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
@@ -129,18 +129,18 @@ namespace minEngine
             {"a_Position", VertexElementType::Float3, false},
         });
 
-        m_SkyBindingLayout = cmdList.CreateBindingLayout({
+        m_SkyShaderBindingSetLayout = cmdList.CreateShaderBindingSetLayout({
             {EngineShaderBindings::kSkyPass_EnvironmentSRV,
-             RHIBindingType::TextureSRV,
+             RHIShaderBindingType::TextureSRV,
              EngineShaderBindings::kGL_SkyEnvironmentUnit,
              RHIGraphicsShaderStage::Pixel},
             {EngineShaderBindings::kSkyPass_FrameData,
-             RHIBindingType::UniformBuffer,
+             RHIShaderBindingType::UniformBuffer,
              EngineShaderBindings::kGL_SkyFrameDataUBO,
              RHIGraphicsShaderStage::Vertex},
         });
 
-        m_SkyPipelineLayout = cmdList.CreatePipelineLayout({m_SkyBindingLayout.get()});
+        m_SkyPipelineLayout = cmdList.CreatePipelineLayout({m_SkyShaderBindingSetLayout.get()});
 
         RHIBufferCreateDesc frameDesc;
         frameDesc.Usage = RHIBufferUsage::Uniform;
@@ -174,11 +174,11 @@ namespace minEngine
         RHITextureSRVDesc srvDesc;
         srvDesc.Texture = environmentTexture;
         m_EnvironmentSRV = cmdList.CreateShaderResourceView(srvDesc);
-        m_SkyBindingSet = cmdList.CreateBindingSet(
-            m_SkyBindingLayout.get(),
+        m_SkyShaderBindingSet = cmdList.CreateShaderBindingSet(
+            m_SkyShaderBindingSetLayout.get(),
             {
-                {RHIBindingType::TextureSRV, nullptr, m_EnvironmentSRV.get()},
-                {RHIBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
+                {RHIShaderBindingType::TextureSRV, nullptr, m_EnvironmentSRV.get()},
+                {RHIShaderBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
             });
     }
 
@@ -189,10 +189,10 @@ namespace minEngine
         m_CubeVertexLayout.reset();
         m_SkyPipelineState.reset();
         m_SkyPipelineLayout.reset();
-        m_SkyBindingLayout.reset();
+        m_SkyShaderBindingSetLayout.reset();
         m_EnvironmentCube.reset();
         m_EnvironmentSRV.reset();
-        m_SkyBindingSet.reset();
+        m_SkyShaderBindingSet.reset();
         m_SkyFrameUniformBuffer.reset();
     }
 
@@ -201,8 +201,8 @@ namespace minEngine
         const RenderCamera& camera,
         const SkyBoxSceneProxy& skyBox) const
     {
-        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState || !m_SkyBindingLayout ||
-            !m_SkyFrameUniformBuffer || !m_EnvironmentCube || !m_EnvironmentSRV || !m_SkyBindingSet)
+        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState || !m_SkyShaderBindingSetLayout ||
+            !m_SkyFrameUniformBuffer || !m_EnvironmentCube || !m_EnvironmentSRV || !m_SkyShaderBindingSet)
         {
             return;
         }
@@ -220,7 +220,7 @@ namespace minEngine
 
         MeshDrawPacket packet;
         packet.PipelineState = m_SkyPipelineState;
-        packet.BindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyBindingSet.get();
+        packet.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet.get();
         packet.VertexBuffer = m_CubeVertexBuffer.get();
         cmdList.SubmitMeshDrawPacket(packet);
     }

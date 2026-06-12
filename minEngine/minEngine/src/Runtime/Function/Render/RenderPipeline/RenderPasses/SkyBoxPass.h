@@ -10,9 +10,9 @@ namespace minEngine
 {
     class RHI;
     class RHICommandList;
-    class RHIBindingLayout;
+    class RHIShaderBindingSetLayout;
     class RHIPipelineLayout;
-    class RHIBindingSet;
+    class RHIShaderBindingSet;
     class RHIGraphicsPipelineState;
     class RHIShader;
     class RHIShaderResourceView;
@@ -43,11 +43,11 @@ namespace minEngine
         RHIBufferRef m_CubeVertexBuffer;
         RHIVertexInputLayoutRef m_CubeVertexLayout;
         std::shared_ptr<RHIGraphicsPipelineState> m_SkyPipelineState;
-        std::shared_ptr<RHIBindingLayout> m_SkyBindingLayout;
+        std::shared_ptr<RHIShaderBindingSetLayout> m_SkyShaderBindingSetLayout;
         std::shared_ptr<RHIPipelineLayout> m_SkyPipelineLayout;
         std::shared_ptr<TextureCube> m_EnvironmentCube;
         mutable std::shared_ptr<RHIShaderResourceView> m_EnvironmentSRV;
-        mutable std::shared_ptr<RHIBindingSet> m_SkyBindingSet;
+        mutable std::shared_ptr<RHIShaderBindingSet> m_SkyShaderBindingSet;
         mutable RHIBufferRef m_SkyFrameUniformBuffer;
     };
 }

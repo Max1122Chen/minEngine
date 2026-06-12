@@ -1,7 +1,7 @@
 #pragma once
 
 #include "glad/glad.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
@@ -107,40 +107,40 @@ namespace minEngine
         RHITextureSRVDesc m_Desc;
     };
 
-    class OpenGLRHIBindingLayout final : public RHIBindingLayout
+    class OpenGLRHIShaderBindingSetLayout final : public RHIShaderBindingSetLayout
     {
     public:
-        explicit OpenGLRHIBindingLayout(std::vector<RHIBindingLayoutEntry> entries);
+        explicit OpenGLRHIShaderBindingSetLayout(std::vector<RHIShaderBindingSetLayoutEntry> entries);
 
-        virtual const std::vector<RHIBindingLayoutEntry>& GetEntries() const override { return m_Entries; }
+        virtual const std::vector<RHIShaderBindingSetLayoutEntry>& GetEntries() const override { return m_Entries; }
 
     private:
-        std::vector<RHIBindingLayoutEntry> m_Entries;
+        std::vector<RHIShaderBindingSetLayoutEntry> m_Entries;
     };
 
     class OpenGLRHIPipelineLayout final : public RHIPipelineLayout
     {
     public:
-        explicit OpenGLRHIPipelineLayout(std::vector<RHIBindingLayout*> setLayouts);
+        explicit OpenGLRHIPipelineLayout(std::vector<RHIShaderBindingSetLayout*> setLayouts);
 
-        virtual uint32_t GetSetLayoutCount() const override { return static_cast<uint32_t>(m_SetLayouts.size()); }
-        virtual RHIBindingLayout* GetSetLayout(uint32_t setIndex) const override;
+        virtual uint32_t GetShaderBindingSetLayoutCount() const override { return static_cast<uint32_t>(m_SetLayouts.size()); }
+        virtual RHIShaderBindingSetLayout* GetShaderBindingSetLayout(uint32_t setIndex) const override;
 
     private:
-        std::vector<RHIBindingLayout*> m_SetLayouts;
+        std::vector<RHIShaderBindingSetLayout*> m_SetLayouts;
     };
 
-    class OpenGLRHIBindingSet final : public RHIBindingSet
+    class OpenGLRHIShaderBindingSet final : public RHIShaderBindingSet
     {
     public:
-        OpenGLRHIBindingSet(RHIBindingLayout* layout, std::vector<RHIBindingResource> resources);
+        OpenGLRHIShaderBindingSet(RHIShaderBindingSetLayout* layout, std::vector<RHIShaderBinding> resources);
 
-        virtual const RHIBindingLayout* GetLayout() const override { return m_Layout; }
-        virtual const std::vector<RHIBindingResource>& GetResources() const override { return m_Resources; }
+        virtual const RHIShaderBindingSetLayout* GetLayout() const override { return m_Layout; }
+        virtual const std::vector<RHIShaderBinding>& GetBindings() const override { return m_Resources; }
 
     private:
-        RHIBindingLayout* m_Layout = nullptr;
-        std::vector<RHIBindingResource> m_Resources;
+        RHIShaderBindingSetLayout* m_Layout = nullptr;
+        std::vector<RHIShaderBinding> m_Resources;
     };
 
     GLuint GetOpenGLTextureId(RHITexture* texture);

@@ -18,22 +18,22 @@ namespace minEngine
 
             if (pipelineLayout)
             {
-                const uint32_t setCount = pipelineLayout->GetSetLayoutCount();
+                const uint32_t setCount = pipelineLayout->GetShaderBindingSetLayoutCount();
                 for (uint32_t setIndex = 0; setIndex < setCount; ++setIndex)
                 {
-                    if (packet.BindingSets[setIndex])
+                    if (packet.ShaderBindingSets[setIndex])
                     {
-                        cmdList.SetBindingSet(setIndex, packet.BindingSets[setIndex]);
+                        cmdList.SetShaderBindingSet(setIndex, packet.ShaderBindingSets[setIndex]);
                     }
                 }
                 return;
             }
 
-            for (uint32_t setIndex = 0; setIndex < kMaxPipelineDescriptorSets; ++setIndex)
+            for (uint32_t setIndex = 0; setIndex < kMaxShaderBindingSets; ++setIndex)
             {
-                if (packet.BindingSets[setIndex])
+                if (packet.ShaderBindingSets[setIndex])
                 {
-                    cmdList.SetBindingSet(setIndex, packet.BindingSets[setIndex]);
+                    cmdList.SetShaderBindingSet(setIndex, packet.ShaderBindingSets[setIndex]);
                 }
             }
         }

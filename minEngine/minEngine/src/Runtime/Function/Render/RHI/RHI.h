@@ -25,13 +25,13 @@ namespace minEngine
     class RHIGraphicsPipelineState;
     struct RHIGraphicsPSODesc;
 
-    class RHIBindingLayout;
-    struct RHIBindingLayoutEntry;
+    class RHIShaderBindingSetLayout;
+    struct RHIShaderBindingSetLayoutEntry;
 
     class RHIPipelineLayout;
 
-    class RHIBindingSet;
-    struct RHIBindingResource;
+    class RHIShaderBindingSet;
+    struct RHIShaderBinding;
 
     class RHIShaderResourceView;
     struct RHITextureSRVDesc;
@@ -68,15 +68,15 @@ namespace minEngine
         virtual std::shared_ptr<RHIGraphicsPipelineState> RHICreateGraphicsPipelineState(
             const RHIGraphicsPSODesc& desc) = 0;
 
-        virtual std::shared_ptr<RHIBindingLayout> RHICreateBindingLayout(
-            const std::vector<RHIBindingLayoutEntry>& entries) = 0;
+        virtual std::shared_ptr<RHIShaderBindingSetLayout> RHICreateShaderBindingSetLayout(
+            const std::vector<RHIShaderBindingSetLayoutEntry>& entries) = 0;
 
         virtual std::shared_ptr<RHIPipelineLayout> RHICreatePipelineLayout(
-            const std::vector<RHIBindingLayout*>& setLayouts) = 0;
+            const std::vector<RHIShaderBindingSetLayout*>& setLayouts) = 0;
 
-        virtual std::shared_ptr<RHIBindingSet> RHICreateBindingSet(
-            RHIBindingLayout* layout,
-            const std::vector<RHIBindingResource>& resources) = 0;
+        virtual std::shared_ptr<RHIShaderBindingSet> RHICreateShaderBindingSet(
+            RHIShaderBindingSetLayout* layout,
+            const std::vector<RHIShaderBinding>& resources) = 0;
 
         virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
             std::initializer_list<RHIVertexElement> elements) = 0;
@@ -85,7 +85,7 @@ namespace minEngine
         virtual void RHICmdEndRenderPass() = 0;
 
         virtual void RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState) = 0;
-        virtual void RHICmdSetBindingSet(uint32_t setIndex, RHIBindingSet* bindingSet) = 0;
+        virtual void RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet) = 0;
         virtual void RHICmdTransition(const RHITextureTransitionInfo& transition) = 0;
 
         virtual void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;

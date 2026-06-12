@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "Render/RHI/RHIBinding.h"
+#include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIPipelineLayout.h"
@@ -15,7 +15,7 @@ namespace minEngine
     {
         RHIGraphicsPipelineStateRef PipelineState;
 
-        std::array<RHIBindingSet*, kMaxPipelineDescriptorSets> BindingSets{};
+        std::array<RHIShaderBindingSet*, kMaxShaderBindingSets> ShaderBindingSets{};
 
         RHIBuffer* VertexBuffer = nullptr;
         RHIBuffer* IndexBuffer = nullptr;

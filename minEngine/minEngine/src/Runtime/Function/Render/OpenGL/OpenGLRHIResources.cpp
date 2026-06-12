@@ -627,17 +627,17 @@ namespace minEngine
     {
     }
 
-    OpenGLRHIBindingLayout::OpenGLRHIBindingLayout(std::vector<RHIBindingLayoutEntry> entries)
+    OpenGLRHIShaderBindingSetLayout::OpenGLRHIShaderBindingSetLayout(std::vector<RHIShaderBindingSetLayoutEntry> entries)
         : m_Entries(std::move(entries))
     {
     }
 
-    OpenGLRHIPipelineLayout::OpenGLRHIPipelineLayout(std::vector<RHIBindingLayout*> setLayouts)
+    OpenGLRHIPipelineLayout::OpenGLRHIPipelineLayout(std::vector<RHIShaderBindingSetLayout*> setLayouts)
         : m_SetLayouts(std::move(setLayouts))
     {
     }
 
-    RHIBindingLayout* OpenGLRHIPipelineLayout::GetSetLayout(uint32_t setIndex) const
+    RHIShaderBindingSetLayout* OpenGLRHIPipelineLayout::GetShaderBindingSetLayout(uint32_t setIndex) const
     {
         if (setIndex >= m_SetLayouts.size())
         {
@@ -646,7 +646,7 @@ namespace minEngine
         return m_SetLayouts[setIndex];
     }
 
-    OpenGLRHIBindingSet::OpenGLRHIBindingSet(RHIBindingLayout* layout, std::vector<RHIBindingResource> resources)
+    OpenGLRHIShaderBindingSet::OpenGLRHIShaderBindingSet(RHIShaderBindingSetLayout* layout, std::vector<RHIShaderBinding> resources)
         : m_Layout(layout)
         , m_Resources(std::move(resources))
     {
