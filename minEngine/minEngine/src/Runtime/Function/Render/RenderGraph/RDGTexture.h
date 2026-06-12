@@ -15,6 +15,7 @@ namespace minEngine
     inline constexpr const char* kRDGSceneDepth = "SceneDepth";
     inline constexpr const char* kRDGBackbuffer = "Backbuffer";
     inline constexpr const char* kRDGPostBufferA = "PostBufferA";
+    inline constexpr const char* kRDGDirShadowAtlas = "DirShadowAtlas";
 
     enum class RDGTextureUsage : uint8_t
     {

@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "RenderPasses/ShadowPass.h"
+#include "RenderPasses/ShadowGraphPass.h"
 #include "RenderPasses/BasePass.h"
 #include "RenderPasses/TranslucencyPass.h"
 #include "RenderPasses/PostProcessPass.h"
@@ -148,6 +149,9 @@ namespace minEngine
         RenderGraph m_FrameRenderGraph;
         RenderGraphFrameResources m_RenderGraphFrameResources;
         RHITextureRef m_PostBufferTexture;
+        std::vector<std::unique_ptr<ShadowGraphPass>> m_ShadowGraphPasses;
+        std::vector<RenderPass*> m_ShadowGraphPassPtrs;
+        size_t m_ConfiguredShadowGraphPassCount = 0;
         RenderPass* m_SceneSkyGraphPass = nullptr;
         RenderPass* m_SceneOpaqueGraphPass = nullptr;
         RenderPass* m_SceneTranslucentGraphPass = nullptr;
@@ -160,9 +164,12 @@ namespace minEngine
 
     private:
         void BindSceneRenderTarget(SceneRenderTarget& target);
-        void BuildFrameRenderGraph();
+        void BuildFrameRenderGraph(size_t shadowPassCount);
         void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
-        void BuildRenderGraphFrameResources(SceneRenderTarget& sceneTarget, bool registerPostBuffer);
+        void BuildRenderGraphFrameResources(
+            SceneRenderTarget& sceneTarget,
+            const SceneRenderContext& ctx,
+            bool registerPostBuffer);
         void ExecuteFrameRenderGraph(
             RHICommandList& cmdList,
             const SceneDrawDesc& desc,

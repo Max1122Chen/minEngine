@@ -33,6 +33,9 @@ namespace minEngine
         virtual void Execute() override;
         void Execute(RHICommandList& cmdList);
 
+        void PrepareShadowPass(RHICommandList& cmdList);
+        void RenderSingleDrawCommand(RHICommandList& cmdList, const ShadowDrawCommand& command);
+
     private:
         void Render(RHICommandList& cmdList);
         void Render();

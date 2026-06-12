@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-12 (RND-F01 S03 Done)
+Last updated: 2026-06-12 (RND-F01 S04 Done)
 
 ## Purpose
 
@@ -1091,6 +1091,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-12 - RND-F01 S04 Shadow passes RenderGraph migration (`render`)
+- Goal:
+  Split monolithic ShadowPass into per-command graph passes; declare DirShadowAtlas scene input edge.
+- Main changes:
+  `ShadowGraphPass` (IRenderPass per `ShadowDrawCommand`); `ShadowPass::RenderSingleDrawCommand` + `PrepareShadowPass`.
+  Dynamic shadow pass pool in `m_FrameRenderGraph` (rebuild when command count changes); execution order Shadow.* → Scene → Post.
+  `kRDGDirShadowAtlas`; Base/Translucent `AddTextureInput(DirShadowAtlas)`; removed legacy `m_ShadowPass.Execute` from main path.
+- Risks or caveats:
+  Shadow pass names use index slots (`Shadow.N` / `ShadowDepth.N`); spot/point logical names deferred; visual shadow sign-off pending.
+- Validation done:
+  `cmake --build` + `minEngineTests.exe test render-graph` PASS.
+- Next step:
+  F01-S05 Bake / topology validation.
 
 ### 2026-06-12 - RND-F01 S03 Scene passes RenderGraph migration (`render`)
 - Goal:

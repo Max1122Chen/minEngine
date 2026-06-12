@@ -17,6 +17,7 @@ namespace minEngine
     void TranslucencyPass::Setup(RenderPassBuilder& builder)
     {
         RDGTextureDesc desc{};
+        builder.AddTextureInput(kRDGDirShadowAtlas);
         builder.AddColorOutput(kRDGSceneColor, desc);
         builder.SetDepthStencilOutput(kRDGSceneDepth, desc);
     }

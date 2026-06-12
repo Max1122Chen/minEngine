@@ -132,7 +132,7 @@ namespace minEngine
         return pipelineState;
     }
 
-    void ShadowPass::Render(RHICommandList& cmdList)
+    void ShadowPass::PrepareShadowPass(RHICommandList& cmdList)
     {
         if (!m_DepthShader)
         {
@@ -140,29 +140,39 @@ namespace minEngine
         }
 
         EnsureShadowShaderBindingSet(cmdList);
+    }
 
-        for (const auto& command : m_ShadowDrawCommands)
+    void ShadowPass::RenderSingleDrawCommand(RHICommandList& cmdList, const ShadowDrawCommand& command)
+    {
+        if (!m_DepthShader || !command.Handle.IsValid())
         {
-            if (!command.Handle.IsValid())
-            {
-                continue;
-            }
+            return;
+        }
 
-            switch (command.Type)
-            {
-            case LightType::Directional:
-                RenderDirectionalShadow(cmdList, command);
-                break;
-            case LightType::Spot:
-                RenderSpotShadow(cmdList, command);
-                break;
-            case LightType::Point:
-                RenderPointShadow(cmdList, command);
-                break;
-            default:
-                ME_CORE_ERROR("Unsupported light type in ShadowPass::Render");
-                break;
-            }
+        switch (command.Type)
+        {
+        case LightType::Directional:
+            RenderDirectionalShadow(cmdList, command);
+            break;
+        case LightType::Spot:
+            RenderSpotShadow(cmdList, command);
+            break;
+        case LightType::Point:
+            RenderPointShadow(cmdList, command);
+            break;
+        default:
+            ME_CORE_ERROR("Unsupported light type in ShadowPass::RenderSingleDrawCommand");
+            break;
+        }
+    }
+
+    void ShadowPass::Render(RHICommandList& cmdList)
+    {
+        PrepareShadowPass(cmdList);
+
+        for (const ShadowDrawCommand& command : m_ShadowDrawCommands)
+        {
+            RenderSingleDrawCommand(cmdList, command);
         }
     }
 

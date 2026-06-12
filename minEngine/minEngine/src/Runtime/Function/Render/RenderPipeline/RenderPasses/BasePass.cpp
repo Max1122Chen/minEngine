@@ -14,6 +14,7 @@ namespace minEngine
     void BasePass::Setup(RenderPassBuilder& builder)
     {
         RDGTextureDesc desc{};
+        builder.AddTextureInput(kRDGDirShadowAtlas);
         builder.AddColorOutput(kRDGSceneColor, desc);
         builder.SetDepthStencilOutput(kRDGSceneDepth, desc);
     }
