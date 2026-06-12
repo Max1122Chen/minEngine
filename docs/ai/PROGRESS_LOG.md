@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-12
+Last updated: 2026-06-11
 
 ## Purpose
 
@@ -1002,6 +1002,22 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `docs/handbook/runtime/**` placeholders; removed flat `runtime/{function,platform,resource}/overview.md`; design/impl docs updated.
 - Validation done:
   `mkdocs build --strict`.
+
+### 2026-06-11 - PHYS-F01 Jolt bootstrap design + implementation plan
+- Goal:
+  Physics subsystem bootstrap scope: Jolt vendor, thin `Physics/` facade, `RigidBodyComponent` + `BoxColliderComponent`, fixed-step simulate + pose pull before `SendAllEndOfFrameUpdates` (UE-aligned tick order).
+- Main changes:
+  `docs/ai/Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md`, `PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md`; P1–P9 defaults recorded; `FEATURE_REGISTRY` / `ACTIVE_WORK` → PHYS-F01 In Progress.
+- Next step:
+  PHYS-F01-S01-a (Jolt submodule + CMake).
+
+### 2026-06-12 - PHYS-F01 design: RigidBodyComponent as physics proxy (P10)
+- Goal:
+  Align rigid body model with user intent: `RigidBodyComponent` is a `Component` agent, not `SceneComponent`; no own Transform; reads/writes GO RootComponent for physics sync.
+- Main changes:
+  Design §3.2, §4 P10, §5 options E/F; Implementation S01-c/d assembly and sync wording.
+- Next step:
+  User approval → commit docs; then S01-a.
 
 ### 2026-06-01 - WF-F02 handbook site skeleton (MkDocs + GitHub Pages CI)
 - Goal:
