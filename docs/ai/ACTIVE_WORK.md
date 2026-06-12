@@ -13,14 +13,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 **当前优先：`CORE-F01`（Transform 四元数）→ 完成后 `PHYS-F01`（Jolt）**
 
-#### CORE-F01 — Transform quaternion storage（**Planned**，可开 S01）
+#### CORE-F01 — Transform quaternion storage（**In Progress**，S01–S04 已 land 代码，待 commit）
 
 - **设计：** [CORE-F01_TRANSFORM_QUATERNION_DESIGN.md](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md)
 - **实施：** [CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md)
-- **分支：** `physics`（完成后 PR → `master`）
-- **拍板摘要：** D1 XYZ 保持；D2 `q≡-q`；D3 struct 四字段；D4 **不**自动读旧 Euler；D5 纳入 `RenderCamera`；D6 标签 `Rotation`；D7 rebase 自行安排
-- **切片（逻辑 6 片，建议 3 PR）：** S01+S02 内核、Scene API、RenderCamera → S03+S04 序列化与 Inspector → S05+S06 清扫与合入
-- **Inspector 约定：** `Rotation` 反射为 `Quaternion`，`TransformWidget` 仍显示 vec3 欧拉（度），写入映射四元数
+- **已完成（代码）：** `Quaternion` + `Transform` quat 存储；Scene/GameObject/RenderCamera API；`TransformWidget` 欧拉行；序列化 `Rotation` round-trip 测试
+- **验证：** `cmake --build minEngine/build --target minEngineTests Editor` + `minEngineTests.exe test smoke` ✅
+- **剩余：** S05 扫尾 grep、S06 合入文档/registry、准备 commit → 再开 PHYS-F01
 
 #### PHYS-F01 — Jolt physics integration（**Blocked by CORE-F01**）
 

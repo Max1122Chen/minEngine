@@ -81,12 +81,17 @@ namespace minEngine
                     "Location",
                     applyUndoForField,
                     "Position");
-                valueChanged |= DrawVector3Row(
-                    "Rotation",
-                    transform->Rotation,
-                    "Rotation",
-                    applyUndoForField,
-                    "Rotation");
+                Vector3 rotationEuler = transform->GetRotationEulerDegrees();
+                if (DrawVector3Row(
+                        "Rotation",
+                        rotationEuler,
+                        "Rotation",
+                        applyUndoForField,
+                        "Rotation"))
+                {
+                    transform->SetRotationEulerDegrees(rotationEuler);
+                    valueChanged = true;
+                }
                 valueChanged |= DrawVector3Row(
                     "Scale",
                     transform->Scale,

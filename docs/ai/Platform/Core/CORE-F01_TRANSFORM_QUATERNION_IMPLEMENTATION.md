@@ -30,10 +30,10 @@ S03 + S04 + S05 → S06（收尾合入）
 
 | Slice | 标题 | 主要交付 | 验证 |
 |-------|------|----------|------|
-| S01 | 类型与 Transform 内核 | `Quaternion`、`Transform` 存储与 `ToMatrix` | 编译 + 可选矩阵等价测试 |
-| S02 | Scene 图 API + RenderCamera | `SceneComponent`、`GameObject`、`CameraComponent`、`RenderCamera` | 编译；Playground 暂可仍用 Euler 便捷 API |
-| S03 | 序列化 | 新 struct 四字段写入/读回（**无**旧 Euler 自动兼容） | `SerializationArchiveTest` |
-| S04 | Editor Inspector | `TransformWidget` 欧拉行 + Inspector 跳过逻辑 | 手动：拖 Rotation、Undo |
+| S01 | 类型与 Transform 内核 | `Quaternion`、`Transform` 存储与 `ToMatrix` | 编译 + 可选矩阵等价测试 | **Done** |
+| S02 | Scene 图 API + RenderCamera | `SceneComponent`、`GameObject`、`CameraComponent`、`RenderCamera` | 编译 | **Done** |
+| S03 | 序列化 | 新 struct 四字段写入/读回（**无**旧 Euler 自动兼容） | `SerializationArchiveTest` | **Done** |
+| S04 | Editor Inspector | `TransformWidget` 欧拉行 + Inspector 跳过逻辑 | 手动：拖 Rotation、Undo | **Done**（Inspector 走 `TransformWidget`；待手动验 Gizmo/Undo） |
 | S05 | 调用点与样本 | Playground、PreviewScene | Editor / Playground 目视 |
 | S06 | 回归与合入 | Registry、ACTIVE_WORK、Progress | `verify.ps1` smoke |
 

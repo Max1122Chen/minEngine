@@ -32,8 +32,10 @@ namespace minEngine
         void SetPosition(const Vector3& position);
         void Translate(const Vector3& delta);
 
-        const Vector3& GetRotation() const { return m_Transform.Rotation; }
-        void SetRotation(const Vector3& rotation);
+        const Quaternion& GetRotation() const { return m_Transform.Rotation; }
+        void SetRotation(const Quaternion& rotation);
+        Vector3 GetRotationEulerDegrees() const { return m_Transform.GetRotationEulerDegrees(); }
+        void SetRotationEulerDegrees(const Vector3& rotationEulerDegrees);
         void Rotate(const glm::quat& delta, Space relativeTo = Space::Local);
 
         const Vector3& GetScale() const { return m_Transform.Scale; }

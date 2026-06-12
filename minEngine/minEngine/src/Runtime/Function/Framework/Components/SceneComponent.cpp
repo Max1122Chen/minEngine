@@ -56,27 +56,32 @@ namespace minEngine
         // Same for Rotate and ScaleBy below.
     }
 
-    void SceneComponent::SetRotation(const Vector3 &rotation)
+    void SceneComponent::SetRotation(const Quaternion& rotation)
     {
-        if(!(m_Transform.Rotation == rotation))
+        if (!(m_Transform.Rotation == rotation))
         {
-            m_Transform.Rotation = rotation;
-            for(auto& child : m_AttachChildren)
+            m_Transform.SetRotation(rotation);
+            for (auto& child : m_AttachChildren)
             {
                 if (child)
                 {
-                    child->SetRotation(rotation);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
+                    child->SetRotation(rotation);
                 }
             }
             MarkRenderStateDirty();
         }
     }
 
+    void SceneComponent::SetRotationEulerDegrees(const Vector3& rotationEulerDegrees)
+    {
+        SetRotation(Quaternion::FromEulerDegreesXYZ(rotationEulerDegrees));
+    }
+
     void SceneComponent::Rotate(const glm::quat &delta, Space relativeTo)
     {
         Transform tempTransform = m_Transform;
         tempTransform.Rotate(delta, relativeTo);
-        SetRotation(tempTransform.Rotation);
+        SetRotation(tempTransform.GetRotation());
     }
 
     void SceneComponent::SetScale(const Vector3 &scale)
@@ -104,20 +109,20 @@ namespace minEngine
 
     Vector3 SceneComponent::GetForwardVector() const
     {
-        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
-        return glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));   // forward vector is along x axis in our coordinate system
+        const glm::quat rotationQuat = m_Transform.Rotation.ToGlm();
+        return glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));
     }
 
     Vector3 SceneComponent::GetRightVector() const
     {
-        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
-        return glm::normalize(rotationQuat * Vector3(0.0f, 0.0f, 1.0f));   // right vector is along z axis in our coordinate system
+        const glm::quat rotationQuat = m_Transform.Rotation.ToGlm();
+        return glm::normalize(rotationQuat * Vector3(0.0f, 0.0f, 1.0f));
     }
 
     Vector3 SceneComponent::GetUpVector() const
     {
-        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
-        return glm::normalize(rotationQuat * Vector3(0.0f, 1.0f, 0.0f));   // up vector is along y axis in our coordinate system
+        const glm::quat rotationQuat = m_Transform.Rotation.ToGlm();
+        return glm::normalize(rotationQuat * Vector3(0.0f, 1.0f, 0.0f));
     }
 
     void SceneComponent::SetOwner(GameObject *inOwner)

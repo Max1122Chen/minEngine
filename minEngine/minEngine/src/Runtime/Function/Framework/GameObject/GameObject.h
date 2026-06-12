@@ -50,8 +50,10 @@ namespace minEngine
         void SetPosition(const Vector3& position);
         void Translate(const Vector3& delta);
 
-        Vector3 GetRotation();
-        void SetRotation(const Vector3& rotation);
+        Quaternion GetRotation();
+        void SetRotation(const Quaternion& rotation);
+        Vector3 GetRotationEulerDegrees();
+        void SetRotationEulerDegrees(const Vector3& rotationEulerDegrees);
         void Rotate(const glm::quat& delta, Space relativeTo = Space::Local);
 
         Vector3 GetScale();

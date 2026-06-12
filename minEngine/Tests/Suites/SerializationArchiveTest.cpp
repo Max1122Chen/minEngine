@@ -12,6 +12,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Components/MovementComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Framework/Transform/Transform.h"
 
 namespace minEngine
 {
@@ -773,9 +774,59 @@ namespace minEngine
             return true;
         }
 
+        bool TestTransformSerializeRoundTrip()
+        {
+            const Reflection::MEClass* transformClass = Reflection::ReflectionSystem::Get().FindClass<Transform>();
+            if (transformClass == nullptr)
+            {
+                ME_CORE_WARN("SerializationArchiveTest: Transform class not found; skipping transform test.");
+                return true;
+            }
+
+            Transform source(Vector3(1.0f, 2.0f, 3.0f), Vector3(15.0f, 30.0f, 45.0f), Vector3(2.0f, 1.0f, 0.5f));
+            Transform restored;
+
+            std::vector<uint8_t> buffer;
+            const Serialization::SerializeResult writeResult = Serialization::Serializer::SerializePropertyToBuffer(
+                &source,
+                transformClass,
+                "Rotation",
+                buffer);
+            if (!writeResult.ok)
+            {
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: Transform Rotation serialize failed: {}",
+                    writeResult.message);
+                return false;
+            }
+
+            std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+            const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializePropertyFromBuffer(
+                &restored,
+                transformClass,
+                "Rotation",
+                buffer,
+                unresolvedRefs);
+            if (!readResult.ok)
+            {
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: Transform Rotation deserialize failed: {}",
+                    readResult.message);
+                return false;
+            }
+
+            if (!(source.Rotation == restored.Rotation))
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: Transform Rotation mismatch after round-trip.");
+                return false;
+            }
+
+            return true;
+        }
+
         bool RunSerializationArchiveSmokeTestsImpl()
         {
-            return TestStaticMeshComponentSerializeRoundTrip();
+            return TestStaticMeshComponentSerializeRoundTrip() && TestTransformSerializeRoundTrip();
         }
 
         bool RunSerializationArchivePrimitiveTestsImpl()

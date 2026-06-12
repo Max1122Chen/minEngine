@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 ## Purpose
 
@@ -958,6 +958,29 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `_authoring.md` + `exclude_docs`; expanded `render/overview.md` for TOC sample.
 - Validation done:
   `mkdocs build --strict`.
+
+### 2026-06-12 - Worktree bootstrap: submodules, scene asset migration, Editor run
+- Goal:
+  Fix physics worktree third-party gitdir paths; migrate scene Rotation to quaternion; ensure Editor launches.
+- Main changes:
+  `scripts/fix-worktree-submodule-gitdirs.ps1`, `scripts/migrate_transform_rotation_to_quat.py`;
+  `default.mescene` / `test.mescene` Rotation → `{W,X,Y,Z}`; `MyMEProject.meproject` ProjectRoot → physics worktree.
+- Validation done:
+  `git status` OK after submodule gitdir fix; Editor loads `test` scene successfully with explicit `--engine-config`.
+- Next step:
+  Commit CORE-F01 code + asset migration batch.
+
+### 2026-06-12 - CORE-F01 S01+S02+S04 partial: Quaternion storage and Scene API
+- Goal:
+  Land Transform quaternion storage (GLM-backed), Scene/RenderCamera API, Inspector Euler widget mapping.
+- Main changes:
+  `Quaternion.h/.cpp`, `Transform.h`, `SceneComponent`, `GameObject`, `RenderCamera`,
+  `TransformWidget`, Editor viewport camera + PreviewScene + Playground call sites;
+  reflection codegen for `Quaternion`; serialization round-trip test for `Transform.Rotation`.
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests Editor`; `minEngineTests.exe test smoke` PASSED.
+- Next step:
+  CORE-F01-S05 call-site grep sweep; S06 verify + commit; then PHYS-F01.
 
 ### 2026-06-11 - CORE-F01 Transform quaternion design (physics branch)
 - Goal:

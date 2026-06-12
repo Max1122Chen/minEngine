@@ -2,9 +2,10 @@
 #include "Core.h"
 #include "Core/Reflection/ReflectionAnnotations.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Core/Math/Quaternion.h"
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/matrix_decompose.hpp"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace minEngine
 {
@@ -23,44 +24,45 @@ namespace minEngine
         Vector3 Position{ 0.0f, 0.0f, 0.0f };
 
         ME_PROPERTY(EditAnywhere)
-        Vector3 Rotation{ 0.0f, 0.0f, 0.0f };   // TODO: use quaternion later
+        Quaternion Rotation{};
 
         ME_PROPERTY(EditAnywhere)
         Vector3 Scale{ 1.0f, 1.0f, 1.0f };
 
         Transform() = default;
-        Transform(const Vector3& position, const Vector3& rotation, const Vector3& scale)
-            : Position(position), Rotation(rotation), Scale(scale)
+        Transform(const Vector3& position, const Vector3& rotationEulerDegrees, const Vector3& scale)
+            : Position(position)
+            , Rotation(Quaternion::FromEulerDegreesXYZ(rotationEulerDegrees))
+            , Scale(scale)
         {}
 
         Transform(const Transform& other)
-        {
-            Position = other.Position;
-            Rotation = other.Rotation;
-            Scale = other.Scale;
-        };
+            : Position(other.Position)
+            , Rotation(other.Rotation)
+            , Scale(other.Scale)
+        {}
         
         void SetPosition(const Vector3& position) { Position = position; }
-        void SetRotation(const Vector3& rotation) { Rotation = rotation; }
+        const Quaternion& GetRotation() const { return Rotation; }
+        void SetRotation(const Quaternion& rotation) { Rotation = Quaternion::FromGlm(glm::normalize(rotation.ToGlm())); }
+        Vector3 GetRotationEulerDegrees() const { return Rotation.ToEulerDegreesXYZ(); }
+        void SetRotationEulerDegrees(const Vector3& rotationEulerDegrees)
+        {
+            Rotation = Quaternion::FromEulerDegreesXYZ(rotationEulerDegrees);
+        }
         void SetScale(const Vector3& scale) { Scale = scale; }
 
         void Translate(const Vector3& delta) { Position += delta; }
         void Rotate(const glm::quat& delta, Space relativeTo = Space::Local)
         {
-            glm::quat quatCurrent = glm::quat(glm::radians(Rotation));
+            glm::quat quatCurrent = Rotation.ToGlm();
             if (relativeTo == Space::Local)
             {
-                // For local rotation, we can simply concatenate the delta rotation with the current rotation.
-                glm::quat quatNew = delta * quatCurrent;
-                Vector3 euler = glm::degrees(glm::eulerAngles(quatNew));
-                Rotation = Vector3(euler.x, euler.y, euler.z);
+                Rotation = Quaternion::FromGlm(delta * quatCurrent);
             }
             else
             {
-                // For world rotation, we need to convert the delta rotation from world space to local space before concatenating it with the current rotation.
-                glm::quat quatNew = quatCurrent * delta;
-                Vector3 euler = glm::degrees(glm::eulerAngles(quatNew));
-                Rotation = Vector3(euler.x, euler.y, euler.z);
+                Rotation = Quaternion::FromGlm(quatCurrent * delta);
             }
         }
         void ScaleBy(const Vector3& scaleFactor) { Scale *= scaleFactor; }
@@ -68,12 +70,9 @@ namespace minEngine
         // Return the transformation matrix in the game coordinate system (x for forward, y for up, z for right)
         Matrix4 ToMatrix() const
         {
-            Matrix4 model = glm::mat4(1.0f);
-            model = glm::translate(model, Position);                                   // translation
-            model = glm::rotate(model, glm::radians(Rotation.x), Vector3(1.0f, 0.0f, 0.0f));    // rotation x
-            model = glm::rotate(model, glm::radians(Rotation.y), Vector3(0.0f, 1.0f, 0.0f));    // rotation y
-            model = glm::rotate(model, glm::radians(Rotation.z), Vector3(0.0f, 0.0f, 1.0f));    // rotation z
-            model = glm::scale(model, Scale);                                                   // scale
+            Matrix4 model = glm::translate(glm::mat4(1.0f), Position);
+            model *= glm::mat4_cast(Rotation.ToGlm());
+            model = glm::scale(model, Scale);
             return model;
         }
 
@@ -85,4 +84,3 @@ namespace minEngine
 }
 
 #include "Generated/Reflection/Transform.gen.h"
-

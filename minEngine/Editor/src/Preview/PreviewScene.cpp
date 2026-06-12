@@ -118,7 +118,7 @@ namespace minEngine
         m_PreviewLightComponent->SetLightColor(Vector4(1.0f, 0.98f, 0.95f, 1.0f));
         m_PreviewLightComponent->SetIntensity(1.2f);
         m_PreviewLightComponent->SetDiffuseFactor(12.0f);
-        m_PreviewLightObject->SetRotation(Vector3(-52.0f, 132.0f, 0.0f));
+        m_PreviewLightObject->SetRotationEulerDegrees(Vector3(-52.0f, 132.0f, 0.0f));
 
         RefreshRenderScene();
 
