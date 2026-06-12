@@ -1,6 +1,13 @@
 #include "SkyBoxPass.h"
 
 #include "Render/DrawCommands/MeshDrawPacket.h"
+#include "Render/RenderGraph/RenderGraphFrameContext.h"
+#include "Render/RenderGraph/RenderGraphFrameResources.h"
+#include "Render/RenderGraph/RenderGraphScenePass.h"
+#include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Runtime/Function/Render/RenderScene.h"
+#include "Runtime/Function/Render/SceneDrawDesc.h"
+#include "Runtime/Function/Render/SceneRenderContext.h"
 
 #include "../../RenderCamera.h"
 #include "../../EngineShaderUtils.h"
@@ -196,10 +203,85 @@ namespace minEngine
         m_SkyFrameUniformBuffer.reset();
     }
 
+    void SkyBoxPass::Setup(RenderPassBuilder& builder)
+    {
+        RDGTextureDesc desc{};
+        builder.AddColorOutput(kRDGSceneColor, desc);
+        builder.SetDepthStencilOutput(kRDGSceneDepth, desc);
+    }
+
+    void SkyBoxPass::PreparePass(RenderGraphFrameResources& frameResources)
+    {
+        m_ActiveFrameResources = &frameResources;
+        m_ShouldRender = false;
+        m_DrawPacket = {};
+
+        const FrameRenderGraphContext& context = frameResources.GetFrameContext();
+        if (!IsReady() || context.SceneContext == nullptr || context.SceneContext->Camera == nullptr
+            || context.SceneContext->Scene == nullptr)
+        {
+            return;
+        }
+
+        if (context.DrawDesc != nullptr
+            && !HasSceneDrawFlag(context.DrawDesc->Flags, SceneDrawFlags::EnableSkyBox))
+        {
+            return;
+        }
+
+        SkyBoxSceneProxy* skyBoxProxy = context.SceneContext->Scene->GetSkyBoxProxy();
+        if (skyBoxProxy == nullptr || !skyBoxProxy->m_Enabled || skyBoxProxy->m_SkyBoxComponent == nullptr)
+        {
+            return;
+        }
+
+        if (!m_SkyShader || !m_CubeVertexBuffer || !m_SkyPipelineState || !m_SkyShaderBindingSet || !m_SkyFrameUniformBuffer)
+        {
+            return;
+        }
+
+        SkyPassFrameUBO frameData{};
+        frameData.Projection = context.SceneContext->Camera->GetProjectionMatrix();
+        frameData.View = context.SceneContext->Camera->GetViewMatrix();
+        frameData.SkyIntensity = skyBoxProxy->m_SkyIntensity;
+        m_SkyFrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(SkyPassFrameUBO));
+
+        m_DrawPacket.PipelineState = m_SkyPipelineState;
+        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet.get();
+        m_DrawPacket.VertexBuffer = m_CubeVertexBuffer.get();
+        m_ShouldRender = true;
+    }
+
+    void SkyBoxPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters)
+    {
+        (void)parameters;
+
+        if (!m_ShouldRender || !m_ActiveFrameResources || !m_DrawPacket.PipelineState)
+        {
+            return;
+        }
+
+        RHITexture* colorTexture = m_ActiveFrameResources->GetRHI(kRDGSceneColor);
+        RHITexture* depthTexture = m_ActiveFrameResources->GetRHI(kRDGSceneDepth);
+        if (!colorTexture || !depthTexture)
+        {
+            return;
+        }
+
+        RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, true);
+        cmdList.BeginRenderPass(passInfo);
+        cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
+        cmdList.SubmitMeshDrawPacket(m_DrawPacket);
+        cmdList.EndRenderPass();
+
+        m_ActiveFrameResources->SetLastKnownUsage(kRDGSceneColor, RDGTextureUsage::RenderTarget);
+        m_ActiveFrameResources->SetLastKnownUsage(kRDGSceneDepth, RDGTextureUsage::DepthWrite);
+    }
+
     void SkyBoxPass::Execute(
         RHICommandList& cmdList,
         const RenderCamera& camera,
-        const SkyBoxSceneProxy& skyBox) const
+        const SkyBoxSceneProxy& skyBox)
     {
         if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState || !m_SkyShaderBindingSetLayout ||
             !m_SkyFrameUniformBuffer || !m_EnvironmentCube || !m_EnvironmentSRV || !m_SkyShaderBindingSet)

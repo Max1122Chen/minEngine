@@ -196,7 +196,7 @@ Scene Pass：`AddTextureInput(DirShadowAtlas)`。Legacy `ShadowPass::Render` swi
 | **S0** | **Binding 词汇统一** | §13；**Done**（`RHIShaderBinding*` / `RHIShaderBindingSetLayoutEntry`） |
 | **S01** | **Manual RG 骨架** | §10；**Done** |
 | **S02** | **Post 链样板** | §11；**Done** |
-| S03 | 全主帧 Pass 化 | verify + 黄金场景 |
+| **S03** | **全主帧 Pass 化** | verify + 黄金场景；**Done** |
 | S04 | Shadow Pass 化 | 阴影 + 图边 |
 | S05 | Bake | 非法图失败 |
 | S06 | Transient（可选） | Deferred |

@@ -9,6 +9,7 @@ namespace minEngine
         m_TextureSlots.clear();
         m_PassParameters.clear();
         m_ActiveCommandList = nullptr;
+        m_FrameContext = {};
     }
 
     void RenderGraphFrameResources::RegisterExternal(const char* name, RHITexture* texture)

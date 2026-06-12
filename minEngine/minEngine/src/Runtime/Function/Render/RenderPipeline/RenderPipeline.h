@@ -145,22 +145,29 @@ namespace minEngine
         RHIBufferRef m_ScreenQuadVertexBuffer;
         RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
 
-        RenderGraph m_PostRenderGraph;
+        RenderGraph m_FrameRenderGraph;
         RenderGraphFrameResources m_RenderGraphFrameResources;
         RHITextureRef m_PostBufferTexture;
+        RenderPass* m_SceneSkyGraphPass = nullptr;
+        RenderPass* m_SceneOpaqueGraphPass = nullptr;
+        RenderPass* m_SceneTranslucentGraphPass = nullptr;
         RenderPass* m_PostFxaaGraphPass = nullptr;
         RenderPass* m_PostSharpenGraphPass = nullptr;
         RenderPass* m_PresentGraphPass = nullptr;
-        bool m_PostRenderGraphBuilt = false;
+        bool m_FrameRenderGraphBuilt = false;
         uint32_t m_PostBufferWidth = 0;
         uint32_t m_PostBufferHeight = 0;
 
     private:
         void BindSceneRenderTarget(SceneRenderTarget& target);
-        void BuildPostRenderGraph();
+        void BuildFrameRenderGraph();
         void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
-        void BuildRenderGraphFrameResources(SceneRenderTarget& sceneTarget);
-        void ExecutePostRenderGraph(RHICommandList& cmdList, const SceneDrawDesc& desc);
+        void BuildRenderGraphFrameResources(SceneRenderTarget& sceneTarget, bool registerPostBuffer);
+        void ExecuteFrameRenderGraph(
+            RHICommandList& cmdList,
+            const SceneDrawDesc& desc,
+            SceneRenderContext& ctx);
+        bool ShouldIncludeSkyGraphPass(const SceneDrawDesc& desc, const SceneRenderContext& ctx) const;
         void UpdatePerFrameUBO(const SceneRenderContext& ctx);
         void UpdateLightUBO(const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);

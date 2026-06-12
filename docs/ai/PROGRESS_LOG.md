@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-12 (RND-F01 S02 Done)
+Last updated: 2026-06-12 (RND-F01 S03 Done)
 
 ## Purpose
 
@@ -1091,6 +1091,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-12 - RND-F01 S03 Scene passes RenderGraph migration (`render`)
+- Goal:
+  Migrate Sky / Opaque / Translucent into unified frame RenderGraph; extract mesh draw helpers from RenderPassBase.
+- Main changes:
+  `SkyBoxPass`, `BasePass`, `TranslucencyPass` implement `IRenderPass`; `SceneMeshDrawUtils` + `FrameRenderGraphContext`.
+  `m_FrameRenderGraph` merges scene + post + present; per-pass `BeginRenderPass` on SceneColor/SceneDepth (Sky/Opaque clear, Translucent load).
+  Removed monolithic scene `RHICmdBeginRenderPass` block from `RenderPipeline::Execute`.
+- Risks or caveats:
+  Visual golden-scene sign-off pending user; Shadow still Legacy outside graph (S04).
+- Validation done:
+  `cmake --build` + `minEngineTests.exe test render-graph` PASS.
+- Next step:
+  F01-S04 Shadow pass graph migration.
 
 ### 2026-06-12 - RND-F01 S02 Post chain RenderGraph migration (`render`)
 - Goal:
