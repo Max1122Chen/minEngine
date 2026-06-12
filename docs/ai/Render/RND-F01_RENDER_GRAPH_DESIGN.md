@@ -194,7 +194,7 @@ Scene Pass：`AddTextureInput(DirShadowAtlas)`。Legacy `ShadowPass::Render` swi
 |-------|------|------|
 | S00 | Design | 本文 §1–§9、§12–§13 |
 | **S0** | **Binding 词汇统一** | §13；**Done**（`RHIShaderBinding*` / `RHIShaderBindingSetLayoutEntry`） |
-| **S01** | **Manual RG 骨架** | §10 |
+| **S01** | **Manual RG 骨架** | §10；**Done** |
 | S02 | Post 链样板 | §11 |
 | S03 | 全主帧 Pass 化 | verify + 黄金场景 |
 | S04 | Shadow Pass 化 | 阴影 + 图边 |
@@ -571,3 +571,4 @@ F04 已打通 **PipelineLayout → ShaderBindingSet → MeshDrawPacket → `RHIC
 | 2026-06-11 | 命名契约：图 `RenderPass`；Granite/UE 对照；§10 S01 详细设计；§11 S02 概要 |
 | 2026-06-11 | P1 字符串逻辑纹理；P2 Pass 实现 ≈ RenderPassInterface；P3 `IRenderPass`；§13 S0 Binding 词汇统一 |
 | 2026-06-11 | **S0 Done**：`RHIBinding.h` → `RHIShaderBinding.h`；`RHIShaderBindingSetLayoutEntry` 等全量改名 |
+| 2026-06-12 | **S01 Done**：`Render/RenderGraph/` 骨架 + `render-graph` smoke 测试 |

@@ -146,11 +146,35 @@ namespace minEngine
             }
         };
 
+        struct RenderGraphTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "render-graph",
+                    "Render Graph",
+                    true,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'render-graph'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "render-graph",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
+        using RenderGraphSuite = TypedTestSuite<RenderGraphTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -166,6 +190,7 @@ namespace minEngine
             registry.Register(AssetManagerSuite::Get());
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
+            registry.Register(RenderGraphSuite::Get());
             s_Registered = true;
         }
     }

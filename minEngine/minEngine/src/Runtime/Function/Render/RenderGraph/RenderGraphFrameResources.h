@@ -1,0 +1,43 @@
+#pragma once
+
+#include "Core.h"
+#include "Render/RenderGraph/PassParameters.h"
+#include "Render/RenderGraph/RDGTexture.h"
+
+#include <memory>
+#include <string>
+#include <unordered_map>
+
+namespace minEngine
+{
+    class RenderPass;
+
+    class RenderGraphFrameResources
+    {
+    public:
+        void Clear();
+
+        void RegisterExternal(const char* name, RHITexture* texture);
+        void EnsureSlot(const char* name);
+
+        RHITexture* GetRHI(const char* name) const;
+        RDGTextureUsage GetLastKnownUsage(const char* name) const;
+        void SetLastKnownUsage(const char* name, RDGTextureUsage usage);
+        void SetSRV(const char* name, RHIShaderResourceViewRef srv);
+
+        PassParameters& GetOrCreatePassParameters(const RenderPass& pass) const;
+
+        template <typename T>
+        T& GetPassParameters(RenderPass& pass)
+        {
+            return static_cast<T&>(GetOrCreatePassParameters(pass));
+        }
+
+    private:
+        RDGTextureSlot* FindMutableSlot(const char* name);
+        const RDGTextureSlot* FindSlot(const char* name) const;
+
+        std::unordered_map<std::string, RDGTextureSlot> m_TextureSlots;
+        mutable std::unordered_map<const RenderPass*, std::unique_ptr<PassParameters>> m_PassParameters;
+    };
+}

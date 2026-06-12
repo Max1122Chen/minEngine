@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-12 (RND-F01 S0 Done)
+Last updated: 2026-06-12 (RND-F01 S01 Done)
 
 ## Purpose
 
@@ -1091,6 +1091,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-06-12 - RND-F01 S01 Manual RenderGraph skeleton (`render`)
+- Goal:
+  Deliver compile-ready RenderGraph types + two-phase executor without touching main pipeline path.
+- Main changes:
+  New `Render/RenderGraph/`: `RenderGraph`, `RenderPass`, `RenderPassBuilder`, `RenderGraphFrameResources`, `IRenderPass`, `RDGTexture` (string names), `AddTransition`; deleted empty `RenderPipeline/RenderGraph.h` stub.
+  `ExecuteGraph`: all `PreparePass` then all `BuildRenderPass`; `render-graph` smoke tests (setup IO + execution order).
+- Risks or caveats:
+  No `Bake()` / no main-path wiring; internal RT creation deferred to S02.
+- Validation done:
+  `cmake --build` clean + `minEngineTests.exe test render-graph` PASS (2 cases, 7 asserts).
+- Next step:
+  F01-S02 Post/Present graph migration.
 
 ### 2026-06-12 - RND-F01 S0 Binding vocabulary unification (`render`)
 - Goal:
