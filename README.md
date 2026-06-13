@@ -30,7 +30,13 @@ https://github.com/Max1122Chen/minEngine.git
 
 ## 编辑器快照
 
-![image-20260430202404872](README.assets/image-20260430202404872.png)
+引擎主编辑器快照
+
+![image-20260613165206673](README.assets/image-20260613165206673.png)
+
+材质编辑器快照：
+
+![image-20260613165308250](README.assets/image-20260613165308250.png)
 
 ## 核心架构
 
