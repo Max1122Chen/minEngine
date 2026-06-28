@@ -46,6 +46,29 @@ namespace minEngine
         {
             return bodyType == EBodyType::Static ? 0u : 1u;
         }
+
+        void PushBodyPoseFromScene(
+            JPH::BodyInterface& bodyInterface,
+            const JPH::BodyID& bodyId,
+            const SceneComponent& rootComponent,
+            ETeleportType teleportType)
+        {
+            const Vector3 enginePosition = rootComponent.GetPosition();
+            const Vector3 joltPosition = PhysicsConversion::ToJoltPosition(enginePosition);
+            const Quaternion joltRotation = PhysicsConversion::ToJoltQuaternion(rootComponent.GetRotation());
+
+            bodyInterface.SetPositionAndRotation(
+                bodyId,
+                JPH::RVec3(joltPosition.x, joltPosition.y, joltPosition.z),
+                JPH::Quat(joltRotation.X, joltRotation.Y, joltRotation.Z, joltRotation.W),
+                JPH::EActivation::Activate);
+
+            if (teleportType == ETeleportType::ResetPhysics)
+            {
+                bodyInterface.SetLinearVelocity(bodyId, JPH::Vec3::sZero());
+                bodyInterface.SetAngularVelocity(bodyId, JPH::Vec3::sZero());
+            }
+        }
     }
 
     struct PhysicsWorld::Impl
@@ -248,6 +271,12 @@ namespace minEngine
                                                                     : JPH::EActivation::DontActivate;
         bodyInterface.AddBody(bodyId, activation);
 
+        if (rigidBodyComponent->GetBodyType() == EBodyType::Dynamic
+            && !rigidBodyComponent->GetSimulatePhysics())
+        {
+            bodyInterface.DeactivateBody(bodyId);
+        }
+
         Impl::RigidBodyEntry entry;
         entry.Component = rigidBodyComponent;
         entry.BodyId = bodyId;
@@ -301,6 +330,38 @@ namespace minEngine
         m_Impl->m_RigidBodies.clear();
     }
 
+    void PhysicsWorld::OnRigidBodySimulatePhysicsChanged(RigidBodyComponent* rigidBodyComponent)
+    {
+        if (rigidBodyComponent == nullptr)
+        {
+            return;
+        }
+
+        Impl::RigidBodyEntry* entry = m_Impl->FindEntry(rigidBodyComponent);
+        SceneComponent* rootComponent = rigidBodyComponent->GetTargetSceneComponent();
+        if (entry == nullptr || rootComponent == nullptr || entry->BodyId.IsInvalid())
+        {
+            return;
+        }
+
+        JPH::BodyInterface& bodyInterface = m_Impl->m_PhysicsSystem.GetBodyInterface();
+        PushBodyPoseFromScene(
+            bodyInterface,
+            entry->BodyId,
+            *rootComponent,
+            ETeleportType::ResetPhysics);
+        rootComponent->ClearTransformDirty();
+
+        if (rigidBodyComponent->GetSimulatePhysics())
+        {
+            bodyInterface.ActivateBody(entry->BodyId);
+        }
+        else
+        {
+            bodyInterface.DeactivateBody(entry->BodyId);
+        }
+    }
+
     void PhysicsWorld::Step(float deltaTime)
     {
         if (deltaTime <= 0.0f)
@@ -324,7 +385,67 @@ namespace minEngine
 
     void PhysicsWorld::SyncBodiesFromScene()
     {
-        // Kinematic push deferred beyond S01 bootstrap.
+        JPH::BodyInterface& bodyInterface = m_Impl->m_PhysicsSystem.GetBodyInterface();
+
+        for (const Impl::RigidBodyEntry& entry : m_Impl->m_RigidBodies)
+        {
+            RigidBodyComponent* rigidBodyComponent = entry.Component;
+            if (rigidBodyComponent == nullptr || entry.BodyId.IsInvalid())
+            {
+                continue;
+            }
+
+            SceneComponent* rootComponent = rigidBodyComponent->GetTargetSceneComponent();
+            if (rootComponent == nullptr)
+            {
+                continue;
+            }
+
+            const EBodyType bodyType = rigidBodyComponent->GetBodyType();
+            const bool simulatePhysics = rigidBodyComponent->GetSimulatePhysics();
+
+            bool shouldPush = false;
+            ETeleportType teleportType = ETeleportType::ResetPhysics;
+
+            if (bodyType == EBodyType::Static)
+            {
+                if (rootComponent->IsTransformDirty())
+                {
+                    shouldPush = true;
+                    teleportType = rootComponent->GetPendingTeleportType();
+                }
+            }
+            else if (bodyType == EBodyType::Dynamic)
+            {
+                if (!simulatePhysics)
+                {
+                    shouldPush = true;
+                    teleportType = ETeleportType::ResetPhysics;
+                }
+                else if (rootComponent->IsTransformDirty())
+                {
+                    shouldPush = true;
+                    teleportType = rootComponent->GetPendingTeleportType();
+                }
+            }
+
+            if (shouldPush)
+            {
+                PushBodyPoseFromScene(bodyInterface, entry.BodyId, *rootComponent, teleportType);
+                if (rootComponent->IsTransformDirty())
+                {
+                    rootComponent->ClearTransformDirty();
+                }
+            }
+
+            if (bodyType == EBodyType::Dynamic && !simulatePhysics)
+            {
+                if (bodyInterface.IsActive(entry.BodyId))
+                {
+                    bodyInterface.DeactivateBody(entry.BodyId);
+                }
+            }
+        }
     }
 
     void PhysicsWorld::SyncBodiesToScene()
@@ -350,6 +471,11 @@ namespace minEngine
                 continue;
             }
 
+            if (!bodyInterface.IsActive(entry.BodyId))
+            {
+                continue;
+            }
+
             const JPH::RVec3 joltPosition = bodyInterface.GetPosition(entry.BodyId);
             const JPH::Quat joltRotation = bodyInterface.GetRotation(entry.BodyId);
 
@@ -364,8 +490,10 @@ namespace minEngine
                 joltRotation.GetZ());
             const Quaternion engineRotation = PhysicsConversion::FromJoltQuaternion(joltRotationQuat);
 
-            rootComponent->SetPosition(enginePosition);
-            rootComponent->SetRotation(engineRotation);
+            Transform simulationTransform = rootComponent->GetTransform();
+            simulationTransform.Position = enginePosition;
+            simulationTransform.SetRotation(engineRotation);
+            rootComponent->SetTransformFromSimulation(simulationTransform);
         }
     }
 }

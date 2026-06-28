@@ -101,6 +101,7 @@ namespace minEngine
         if (PhysicsSystem::HasInstance())
         {
             PhysicsSystem::Get().GetOrCreateWorld(m_CurrentActiveScene.get());
+            PhysicsSystem::Get().RebuildWorldBodies(m_CurrentActiveScene.get());
         }
         return m_CurrentActiveScene;
     }
@@ -146,6 +147,7 @@ namespace minEngine
             if (PhysicsSystem::HasInstance())
             {
                 PhysicsSystem::Get().GetOrCreateWorld(m_CurrentActiveScene.get());
+                PhysicsSystem::Get().RebuildWorldBodies(m_CurrentActiveScene.get());
             }
 
             if (ObjectManager::HasInstance())

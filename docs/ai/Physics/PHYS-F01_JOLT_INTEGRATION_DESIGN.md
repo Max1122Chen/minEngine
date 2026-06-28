@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-06-12
+- **Last updated:** 2026-06-12 (S01-e sync scope)
 - **Related:** [Implementation](./PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md), [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md), [CORE-F01 Transform quaternion](../Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md)
 
 ## TL;DR
@@ -22,13 +22,15 @@
   - `RigidBodyComponent`（`Component` 子类，物理代理）+ `BoxColliderComponent`（反射、序列化字段最小集）
   - Transform 真源：**GO `RootComponent`**（`SceneComponent`）；刚体组件无自有 Transform
   - 动态刚体 simulate 后 **pull** 写回 RootComponent 的 `Position` + `Rotation(quat)`
-  - headless 落体 smoke 测试（主验收）；可选 Playground 目视
+  - **S01-e：** `ETeleportType`（对齐 UE）+ `MarkTransformDirty` / `MarkRenderStateDirty` 分离；场景 ↔ 物理同步闭环（§3.2.1）
+  - headless 落体 smoke 测试（主验收）；**S01-e** 增 `physics-sync`（或扩展现有 suite）；可选 Playground 目视
   - S02：碰撞层 + Contact Begin/End；S03：`LineTrace`（本设计定边界，实施见 Implementation Plan）
 - **Out（刻意不做）：**
   - Character / Vehicle / Cloth / Ragdoll
   - 复杂形状生态（Mesh、Convex hull、Compound 等）— S01 仅 Box
   - 非均匀 Scale 参与碰撞（S01 仅 uniform scale；非均匀只影响视觉）
-  - Kinematic 双向同步的完整语义（S01 可 stub；动态 pull 为主）
+  - 传送门 **速度换参考系**（Δ 旋转 \(v,\omega\)）— 以后 `PortalTeleport` gameplay API；非 `ETeleportType` 能表达的全部语义
+  - `ETeleportType::None` 的 **Sweep 位移推速度** 语义（S01-e 枚举预留，行为后续 slice）
   - Editor 物理可视化、碰撞体 Gizmo、Simulate 按钮
   - RHI、RenderPipeline、SceneProxy、Material、ImGuizmo
   - 完整 Tick Group 枚举（Pre/Post Physics 组件组）— 用固定插入点代替
@@ -158,8 +160,8 @@ flowchart TB
 |------|------|
 | `Step(float deltaTime)` | 固定 `1/60 s` + accumulator；调用 Jolt `Update` |
 | `CreateBody` / `DestroyBody` | 由组件生命周期驱动 |
-| `SyncBodiesFromScene()` | （S01 可选 stub）从各 `RigidBodyComponent` 读取 **RootComponent** Transform → Body |
-| `SyncBodiesToScene()` | 动态体：Body pose → **RootComponent**（经 `RigidBodyComponent` 解析 GO） |
+| `SyncBodiesFromScene()` | **S01-d：** stub。**S01-e：** 从 **RootComponent** Transform → Jolt Body（见 §3.2.1） |
+| `SyncBodiesToScene()` | 动态体且 `bSimulatePhysics`：Body pose → **RootComponent**（经 `RigidBodyComponent`） |
 | `SetGravity` | 默认 `(0, -9.81, 0)` 引擎空间，经 conversion 传入 Jolt |
 
 **Body 句柄：** 对外使用 `PhysicsBodyId`（`uint32_t` 或薄包装），不暴露 `JPH::BodyID` 给 `Physics/` 以外代码。`RigidBodyComponent` 内存可持 `PhysicsBodyId`；内部映射在 `PhysicsWorld`。
@@ -178,7 +180,7 @@ flowchart TB
 字段（S01 最小集）：
 - `BodyType`：`Static` | `Dynamic`（`Kinematic` 枚举预留，S01 可不实现行为）
 - `Mass`（dynamic 时用）
-- `bSimulatePhysics`（是否参与步进与 pull）
+- `bSimulatePhysics`（是否参与 Jolt 步进 **与** pull；见 §3.2.1）
 
 生命周期：
 - 启用时：若 GO 有有效 `RootComponent`，在 `PhysicsWorld` 创建 body（若同 GO 已有 `BoxColliderComponent` 则附加形状）
@@ -186,8 +188,60 @@ flowchart TB
 - 销毁时：从 world 移除 body
 
 同步（由 `PhysicsWorld` 统一调用，不在 `DoEndOfFrameUpdate`）：
-- **Push**（`SyncBodiesFromScene`，S01 可 stub）：`RootComponent` Transform → Jolt Body
-- **Pull**（`SyncBodiesToScene`）：Jolt Body → `RootComponent::SetPosition` / `SetRotation`
+- **Push**（`SyncBodiesFromScene`）：消费 Root 的 **Transform 脏** + 挂起的 `ETeleportType` → Jolt Body
+- **Pull**（`SyncBodiesToScene`）：Jolt Body → Root **Simulation 写入**（不标 Transform 脏；见 §3.2.1）
+
+#### 3.2.1 场景 ↔ 物理同步（S01-e）
+
+**背景：** S01-d 的 Push stub 与 `bSimulatePhysics` 仅 gate Pull，导致 Editor 手改不同步、关模拟仍积分。S01-e 在进 S02 前补齐。
+
+**`ETeleportType`（对齐 [UE `ETeleportType`](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/ETeleportType)）**
+
+定义于 **无 Jolt** 的公共头（建议 `PhysicsTypes.h` 或 `Runtime/Core` 公共 types；`SceneComponent` 与 `PhysicsWorld` 共用）：
+
+| 值 | 含义（权威 Transform 变更 → 物理） |
+|----|-----------------------------------|
+| **`None`** | 不按 teleport 处理；位移可参与 sweep/推速度（**S01-e 预留**，公开 setter 默认不用） |
+| **`TeleportPhysics`** | Teleport body；**保持**世界空间线/角速度；路径无碰撞积分 |
+| **`ResetPhysics`** | Teleport body；**清零**线/角速度（Editor 拖拽 / Inspector 改 Transform **默认**） |
+
+**与 `MarkRenderStateDirty` 分离（`SceneComponent`）**
+
+| 路径 | API | `MarkTransformDirty` | 记录 `m_PendingTeleportType` | `MarkRenderStateDirty` |
+|------|-----|----------------------|------------------------------|------------------------|
+| 权威（脚本 / Inspector / 未来 Gizmo） | `SetTransform(t, teleport)` 等，`teleport` 默认 **`ResetPhysics`** | ✅ | ✅（最后一次权威 teleport） | ✅ |
+| 模拟写回（Pull） | 内部 `SetTransformFromSimulation(t)`（**不走** `ETeleportType`） | ❌ | — | ✅ |
+
+Pull **不得**调用带 `ETeleportType` 的公开 `SetTransform` 默认值，否则每帧标脏会在下帧误触发 Push。
+
+**每步 `SimulateActiveScene` 顺序：**
+
+```text
+SyncBodiesFromScene()   // 消费 Transform 脏 + PendingTeleport
+Step(dt)
+SyncBodiesToScene()     // Simulation 写回
+```
+
+| 对象 | `bSimulatePhysics` | Pre-Physics Push | Step | Post-Physics Pull |
+|------|-------------------|------------------|------|-------------------|
+| Static | 任意 | Root **脏**时：pose → Body，按 `PendingTeleport`（通常 `ResetPhysics`） | 否 | 否 |
+| Dynamic | **true** | Root **脏**时：teleport + `ResetPhysics` 清速度 **或** `TeleportPhysics` 保速度 | 是 | 是（Simulation 写回） |
+| Dynamic | **false** | **每步** Root→Body + `ResetPhysics`；deactivate | 否 | 否 |
+
+**`bSimulatePhysics` 关 → 开：** 当前 Root pose + `ResetPhysics` push → activate。
+
+**S01-e 实现范围：**
+
+- ✅ `ResetPhysics`（主路径：Editor、headless teleport 测试）
+- ✅ `TeleportPhysics`（枚举 + `SyncBodiesFromScene` 分支；`physics-sync` 至少 1 条保速断言，可选）
+- ⏸ `None`：仅文档/枚举占位，无 sweep API
+
+**刻意不做（S01-e）：**
+
+- 传送门 Δ 变换速度、Gameplay `PortalTeleport`
+- Kinematic 完整语义
+- Editor Play/Simulate 模式开关
+- `ETeleportType::None` 的 sweep/CCD 管线
 
 #### BoxColliderComponent
 
@@ -217,8 +271,8 @@ UE（Chaos）简化对照：
 
 | UE 相位 | 行为 | minEngine PHYS-F01 |
 |---------|------|---------------------|
-| PrePhysics | 游戏逻辑、输入、向物理推 kinematic 目标 | `SceneManager::Tick`（S01 不单独拆组） |
-| Simulate | 求解器步进 | `PhysicsWorld::Step` |
+| PrePhysics | 权威 Transform → Body；消费 Transform 脏 | `SyncBodiesFromScene`（`ETeleportType`） |
+| Simulate | 求解器步进 | `PhysicsWorld::Step`（仅 `bSimulatePhysics` 的 Dynamic） |
 | PostPhysics | 动态体 pose 写回场景组件 | `PhysicsWorld::SyncBodiesToScene` → GO **RootComponent** |
 | 渲染准备 | SceneProxy / 相机更新 | `SendAllEndOfFrameUpdates` |
 | Render | 绘制 | `RendererTick` |
@@ -228,7 +282,7 @@ UE（Chaos）简化对照：
 ```text
 InputSystem::Tick(dt)
 SceneManager::Tick(dt)                    // 游戏逻辑
-PhysicsSystem::SimulateActiveScene(dt)    // Step + SyncBodiesToScene
+PhysicsSystem::SimulateActiveScene(dt)    // SyncFrom + Step + SyncTo（S01-e 完整顺序）
 SceneManager::SendAllEndOfFrameUpdates()  // Camera / Primitive proxy
 ```
 
@@ -356,12 +410,20 @@ P1–P9 用户确认全部默认（2026-06-11）。
 - [x] 非 `Physics/` 模块无 Jolt include（S01 范围）
 - [x] `test smoke` 无回归（`verify.ps1` 全量未在本 slice 重跑）
 
-### S01 bootstrap（首批 land）
+### S01 bootstrap（S01-a–d，已 land）
 
 - [x] `cmake --build minEngine/build --target minEngineTests` 通过
 - [x] 新 suite：`physics-smoke` — 动态 box `h0=10`，90 步后 `Y < h0` 且 `Y > 0.5`
 - [x] `Engine::LogicalTick` 已挂接 `PhysicsSystem::SimulateActiveScene`
 - [x] 动态体写回 **RootComponent**（quat）；`RigidBodyComponent` 无 Transform 字段
+
+### S01-e — 场景 ↔ 物理同步（**Done**）
+
+- [x] `ETeleportType`（`None` / `TeleportPhysics` / `ResetPhysics`）公共枚举
+- [x] `SceneComponent`：`SetTransform(..., ETeleportType)` 默认 `ResetPhysics`；`SetTransformFromSimulation`（Pull）
+- [x] `SyncBodiesFromScene` / `Step` / `SyncBodiesToScene` 按 §3.2.1
+- [x] `bSimulatePhysics` gate 步进 + pull；关→开从 Root 种子
+- [x] `physics-sync` 通过；`physics-smoke` + `test smoke` 无回归
 
 ---
 
@@ -377,3 +439,4 @@ P1–P9 用户确认全部默认（2026-06-11）。
 |------|------|
 | 2026-06-11 | 初稿：bootstrap 定位、P1–P9 拍板、UE 对齐 Tick 时序 |
 | 2026-06-12 | **P10**：`RigidBodyComponent` 改为 `Component` 物理代理，Transform 真源在 RootComponent |
+| 2026-06-12 | **S01-e**：`ETeleportType` + Transform 脏 / Simulation 写回分离（对齐 UE teleport 模型） |

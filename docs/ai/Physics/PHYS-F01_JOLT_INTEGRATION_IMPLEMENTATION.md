@@ -5,12 +5,12 @@
 - **Type:** Implementation Plan
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-06-12
+- **Last updated:** 2026-06-12 (S01-e: ETeleportType)
 - **Related:** [Design](./PHYS-F01_JOLT_INTEGRATION_DESIGN.md), [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md)
 
 ## TL;DR
 
-在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；S01 再拆 **4 个 landable 子步（S01-a–d）**。**S01 bootstrap Done**（2026-06-12）；下一切片：**S02**（碰撞层 + Contact）。`RigidBodyComponent` 为 **Component 物理代理**（P10），读写 GO RootComponent Transform，非 SceneComponent。每步可独立 `cmake --build`；S01-d 起挂接 `LogicalTick` 与 headless 落体测试。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
+在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；S01 拆 **5 个子步（S01-a–e）**，**S01-e Done**；**下一切片：S02**（碰撞层 + Contact）。`RigidBodyComponent` 为 **Component 物理代理**（P10）。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
 
 ## Scope
 - **In:** `Runtime/Function/Physics/`、`Engine` 生命周期与 `LogicalTick`、`minEngineTests` physics suite、Jolt submodule、CMake
@@ -31,6 +31,7 @@
 | PHYS-F01-S01-b | `PhysicsSystem` / `PhysicsWorld` 空壳 + 生命周期 | **Done** | 编译；headless 启停不崩 |
 | PHYS-F01-S01-c | `RigidBodyComponent` + `BoxColliderComponent` | **Done** | codegen + 编译 |
 | PHYS-F01-S01-d | `LogicalTick` 挂接 + 落体 smoke | **Done** | `minEngineTests.exe test physics-smoke` |
+| PHYS-F01-S01-e | `ETeleportType` + 场景↔物理同步 | **Done** | `minEngineTests.exe test physics-sync` |
 | PHYS-F01-S02 | 碰撞层 + Contact Begin/End | Planned | headless contact 测试 |
 | PHYS-F01-S03 | `LineTrace` | Planned | headless ray hit 测试 |
 
@@ -39,6 +40,7 @@
 **建议 PR 边界：**
 - PR1：S01-a + S01-b
 - PR2：S01-c + S01-d
+- PR2b：S01-e（同步闭环；可与 S02 分开 review）
 - PR3：S02
 - PR4：S03
 
@@ -47,9 +49,9 @@
 ## 2) 依赖关系
 
 ```text
-S01-a → S01-b → S01-c → S01-d
-                              ↘
-S01-d → S02 → S03
+S01-a → S01-b → S01-c → S01-d → S01-e
+                                    ↘
+                              S01-e → S02 → S03
 ```
 
 `CORE-F01` 代码已 land（`physics` 分支）；S01 可与 CORE-F01-S06（registry/文档收尾）并行。
@@ -187,10 +189,53 @@ minEngine\bin\minEngineTests.exe test physics-smoke
 .\scripts\verify.ps1
 ```
 
-#### S01 Done 检查（Doc DoD）
-- [x] Design §7 S01 勾选项
+#### S01-a–d Done 检查（Doc DoD）
+- [x] Design §7 S01 bootstrap（a–d）勾选项
 - [x] Registry / ACTIVE_WORK / PROGRESS_LOG 更新
 - [x] 非 `Physics/` 无 Jolt include（仅 `PhysicsWorld.cpp` / `PhysicsSystem.cpp`）
+
+**S01-d 已知缺口（由 S01-e 关闭）：** `SyncBodiesFromScene` stub；`bSimulatePhysics` 仅 gate Pull。
+
+---
+
+### PHYS-F01-S01-e — `ETeleportType` + 场景 ↔ 物理同步
+
+#### 目标
+引入与 UE 对齐的 `ETeleportType`；`MarkTransformDirty` 与 `MarkRenderStateDirty` 分离；权威 Transform 变更经 teleport 推入 Jolt；Pull 走 Simulation 写回；`bSimulatePhysics` 正确 gate 步进。
+
+#### 任务
+- [x] `PhysicsTypes.h` — `enum class ETeleportType { None, TeleportPhysics, ResetPhysics }`（无 Jolt include）
+- [x] `SceneComponent`：权威 / Simulation 写回路径（见 Design §3.2.1）
+- [x] `PhysicsWorld::SyncBodiesFromScene` / `Step` / `SyncBodiesToScene`
+- [x] `RigidBodyComponent::SetSimulatePhysics`
+- [x] `physics-sync`（含 `TeleportPhysics` 保速 case）
+- [x] `physics-smoke` + `test smoke` 仍通过
+
+#### 触及文件
+- `PhysicsTypes.h`
+- `SceneComponent.h` / `SceneComponent.cpp`
+- `PhysicsWorld.cpp` / `PhysicsWorld.h`
+- `RigidBodyComponent.cpp`
+- `Tests/Suites/PhysicsSyncTest.cpp`（新）
+- `Tests/TestSuiteRegistration.cpp`
+
+#### 刻意不碰
+- `ETeleportType::None` sweep 管线
+- 传送门 Δ 速度、`PortalTeleport` API
+- 碰撞通道 / Contact（S02）
+- Editor Gizmo 专用代码（走默认 `SetPosition` 即可）
+
+#### 验收
+```powershell
+cmake --build minEngine/build --target minEngineTests
+minEngine\bin\minEngineTests.exe test physics-sync
+minEngine\bin\minEngineTests.exe test physics-smoke
+minEngine\bin\minEngineTests.exe test smoke
+```
+
+#### 风险
+- Reflection/Inspector 改 Transform 须走带 `ETeleportType` 的 setter（codegen 属性路径验证）
+- `TeleportPhysics` 与 Jolt `SetPositionAndRotation` 是否自动保速 — 实现时查 Jolt API，必要时显式读/写速度
 
 ---
 
@@ -239,7 +284,7 @@ minEngine\bin\minEngineTests.exe test physics-smoke
 Runtime/Function/Physics/
   PhysicsSystem.h/.cpp      # 单例 facade
   PhysicsWorld.h/.cpp       # per-Scene，唯一 include Jolt 的业务类
-  PhysicsTypes.h            # 对外类型，无 Jolt
+  PhysicsTypes.h            # EBodyType, ETeleportType, PhysicsBodyId；无 Jolt
   PhysicsConversion.h/.cpp  # 坐标转换
   RigidBodyComponent.h/.cpp
   BoxColliderComponent.h/.cpp
@@ -256,4 +301,5 @@ Runtime/Function/Physics/
 | 2026-06-12 | P10：`RigidBodyComponent` 改为 Component 代理 Root Transform |
 | 2026-06-12 | S01-a Done：Jolt submodule + CMake link（cmake 3.20；`INTERPROCEDURAL_OPTIMIZATION OFF`） |
 | 2026-06-12 | S01-b Done：`PhysicsSystem` / `PhysicsWorld` 空壳 + Scene 生命周期 |
-| 2026-06-12 | **S01 Done**：组件 + LogicalTick + `physics-smoke`；`GameObject` attach 修复 |
+| 2026-06-12 | **S01-a–d Done**：组件 + LogicalTick + `physics-smoke`；`GameObject` attach 修复 |
+| 2026-06-12 | **S01-e Planned**：`ETeleportType` + Transform 脏 / Simulation 写回 |

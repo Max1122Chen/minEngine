@@ -9,6 +9,8 @@
 namespace minEngine
 {
     class Scene;
+    class PhysicsSyncTestScope;
+    class PhysicsLoadTestScope;
 
     class PhysicsSystem
     {
@@ -26,10 +28,13 @@ namespace minEngine
 
         PhysicsWorld& GetOrCreateWorld(Scene* scene);
         void DestroyWorld(Scene* scene);
+        void RebuildWorldBodies(Scene* scene);
 
     private:
         friend class Engine;
         friend class PhysicsSmokeTestScope;
+        friend class PhysicsSyncTestScope;
+        friend class PhysicsLoadTestScope;
 
         static void SetInstance(PhysicsSystem* instance);
 

@@ -13,6 +13,8 @@
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
 #include "Suites/PhysicsSmokeTest.h"
+#include "Suites/PhysicsSyncTest.h"
+#include "Suites/PhysicsLoadTest.h"
 
 namespace minEngine
 {
@@ -170,12 +172,60 @@ namespace minEngine
             }
         };
 
+        struct PhysicsSyncTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-sync",
+                    "Physics Sync",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-sync'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-sync",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct PhysicsLoadTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-load",
+                    "Physics Load",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-load'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-load",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
         using PhysicsSmokeSuite = TypedTestSuite<PhysicsSmokeTestSuiteTraits>;
+        using PhysicsSyncSuite = TypedTestSuite<PhysicsSyncTestSuiteTraits>;
+        using PhysicsLoadSuite = TypedTestSuite<PhysicsLoadTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -192,6 +242,8 @@ namespace minEngine
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
             registry.Register(PhysicsSmokeSuite::Get());
+            registry.Register(PhysicsSyncSuite::Get());
+            registry.Register(PhysicsLoadSuite::Get());
             s_Registered = true;
         }
     }

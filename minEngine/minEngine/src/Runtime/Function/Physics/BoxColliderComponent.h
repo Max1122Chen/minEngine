@@ -18,7 +18,7 @@ namespace minEngine
         ~BoxColliderComponent() override = default;
 
         const Vector3& GetHalfExtent() const { return m_HalfExtent; }
-        void SetHalfExtent(const Vector3& halfExtent) { m_HalfExtent = halfExtent; }
+        void SetHalfExtent(const Vector3& halfExtent);
 
         void SetOwner(GameObject* inOwner) override;
 

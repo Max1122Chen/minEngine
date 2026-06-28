@@ -25,6 +25,7 @@ namespace minEngine
 
         void RegisterRigidBody(RigidBodyComponent* rigidBodyComponent, BoxColliderComponent* boxColliderComponent);
         void UnregisterRigidBody(RigidBodyComponent* rigidBodyComponent);
+        void OnRigidBodySimulatePhysicsChanged(RigidBodyComponent* rigidBodyComponent);
 
     private:
         void UnregisterAllRigidBodies();

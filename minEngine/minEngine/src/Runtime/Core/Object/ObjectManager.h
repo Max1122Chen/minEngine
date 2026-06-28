@@ -14,6 +14,8 @@ namespace minEngine
     class ObjectManagerTestScope;
     class SerializationArchiveTestScope;
     class PhysicsSmokeTestScope;
+    class PhysicsSyncTestScope;
+    class PhysicsLoadTestScope;
 
     using ObjectReachabilityMarker = std::function<void(MEObject*)>;
     using ObjectReachabilityRootVisitor = std::function<void(const ObjectReachabilityMarker& markReachable)>;
@@ -108,6 +110,8 @@ namespace minEngine
         friend class ObjectManagerTestScope;
         friend class SerializationArchiveTestScope;
         friend class PhysicsSmokeTestScope;
+        friend class PhysicsSyncTestScope;
+        friend class PhysicsLoadTestScope;
 
         static void SetInstance(ObjectManager* instance);
         void PruneExpiredEntries();

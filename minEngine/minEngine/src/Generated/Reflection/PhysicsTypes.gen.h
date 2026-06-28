@@ -4,3 +4,5 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ENUM_DECLARE(minEngine::EBodyType, GReflectionEnumRegister_EBodyType_2756299d)
+
+ME_REFLECTION_ENUM_DECLARE(minEngine::ETeleportType, GReflectionEnumRegister_ETeleportType_0ef8368b)

@@ -11,14 +11,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### Physics track（`physics` 分支 · worktree `D:/Dev/GitRepo/minEngine-physics`）
 
-**当前主线：`PHYS-F01-S02`（碰撞层 + Contact）— S01 bootstrap 已完成，待 commit**
+**当前主线：`PHYS-F01-S02`（碰撞层 + Contact）— S01（含 S01-e）Done**
 
 #### PHYS-F01 — Jolt physics bootstrap（**In Progress**，S01 Done）
 
 - **定位：** 物理子系统**启动计划** — Jolt + 最薄抽象 + `RigidBodyComponent` + `BoxColliderComponent`
 - **设计：** [PHYS-F01_JOLT_INTEGRATION_DESIGN.md](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md)
 - **实施：** [PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md)
-- **S01 Done（2026-06-12）：** Jolt vendor、PhysicsSystem/World、P10 代理组件、LogicalTick、`physics-smoke` ✅
+- **S01 Done（2026-06-12）：** S01-a–e；含 `ETeleportType`、`physics-sync`
 - **下一 slice：** **S02** — 碰撞通道 + Contact Begin/End
 - **S03：** `LineTrace`
 - **刻意不碰：** RHI、RenderPipeline、SceneProxy、Material、Editor 物理 Gizmo
@@ -45,7 +45,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
 | Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
-| Physics | `minEngine\bin\minEngineTests.exe test physics-smoke`（从 `minEngine/bin`） |
+| Physics | `test physics-smoke`；S01-e+：`test physics-sync`（从 `minEngine/bin`） |
 
 Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 

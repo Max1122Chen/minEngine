@@ -11,6 +11,8 @@ namespace minEngine
     class Component;
     class PrimitiveComponent;
     class PhysicsSmokeTestScope;
+    class PhysicsSyncTestScope;
+    class PhysicsLoadTestScope;
 
     class SceneManager
     {
@@ -54,6 +56,8 @@ namespace minEngine
         friend class Engine;
         friend class AssetManagerTestScope;
         friend class PhysicsSmokeTestScope;
+        friend class PhysicsSyncTestScope;
+        friend class PhysicsLoadTestScope;
 
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;

@@ -1,5 +1,9 @@
 #include "PhysicsSystem.h"
 
+#include "BoxColliderComponent.h"
+#include "RigidBodyComponent.h"
+#include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 
@@ -122,6 +126,49 @@ namespace minEngine
         }
 
         m_Worlds.erase(scene);
+    }
+
+    void PhysicsSystem::RebuildWorldBodies(Scene* scene)
+    {
+        if (!m_Initialized || scene == nullptr)
+        {
+            return;
+        }
+
+        GetOrCreateWorld(scene);
+
+        for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+        {
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            RigidBodyComponent* rigidBodyComponent = nullptr;
+            BoxColliderComponent* boxColliderComponent = nullptr;
+
+            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            {
+                if (!component || !component->GetClass())
+                {
+                    continue;
+                }
+
+                if (component->IsA(RigidBodyComponent::StaticClass()))
+                {
+                    rigidBodyComponent = static_cast<RigidBodyComponent*>(component.get());
+                }
+                else if (component->IsA(BoxColliderComponent::StaticClass()))
+                {
+                    boxColliderComponent = static_cast<BoxColliderComponent*>(component.get());
+                }
+            }
+
+            if (rigidBodyComponent != nullptr)
+            {
+                rigidBodyComponent->RefreshPhysicsBody(boxColliderComponent);
+            }
+        }
     }
 
     void PhysicsSystem::SimulateActiveScene(float deltaTime)

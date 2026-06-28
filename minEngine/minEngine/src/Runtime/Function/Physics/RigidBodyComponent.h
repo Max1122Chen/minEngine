@@ -26,7 +26,8 @@ namespace minEngine
         void SetMass(float mass) { m_Mass = mass; }
 
         bool GetSimulatePhysics() const { return m_bSimulatePhysics; }
-        void SetSimulatePhysics(bool simulatePhysics) { m_bSimulatePhysics = simulatePhysics; }
+        void SetSimulatePhysics(bool simulatePhysics);
+        void ApplySimulatePhysicsToWorld();
 
         PhysicsBodyId GetPhysicsBodyId() const { return m_PhysicsBodyId; }
         bool HasValidPhysicsBody() const { return m_PhysicsBodyId != InvalidPhysicsBodyId; }

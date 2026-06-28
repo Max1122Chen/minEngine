@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 ## Purpose
 
@@ -1010,6 +1010,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `docs/ai/Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md`, `PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md`; P1–P9 defaults recorded; `FEATURE_REGISTRY` / `ACTIVE_WORK` → PHYS-F01 In Progress.
 - Next step:
   PHYS-F01-S01-a (Jolt submodule + CMake).
+
+### 2026-06-12 - PHYS-F01-S01-e scene↔physics sync (ETeleportType)
+- Goal:
+  Close S01 sync gaps before S02: `ETeleportType`, Transform dirty vs render dirty, Push/Pull, `bSimulatePhysics` gate Step + deactivate.
+- Main changes:
+  `PhysicsTypes.h` (`ETeleportType`); `SceneComponent` authority vs simulation writeback; `PhysicsWorld::SyncBodiesFromScene` / `SyncBodiesToScene`; `RigidBodyComponent::SetSimulatePhysics` hook; `physics-sync` test suite.
+- Validation done:
+  `minEngineTests.exe test physics-sync` + `physics-smoke` + `smoke`; Editor build.
+- Next step:
+  Commit S01-e; PHYS-F01-S02 (collision channels + Contact Begin/End).
 
 ### 2026-06-12 - PHYS-F01-S01 bootstrap complete (Jolt + physics vertical slice)
 - Goal:

@@ -6,3 +6,9 @@ ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::EBodyType, GReflectionEnumRegister_EB
     ME_REFLECTION_ENUM_VALUE(Dynamic, minEngine::EBodyType::Dynamic)
     ME_REFLECTION_ENUM_VALUE(Kinematic, minEngine::EBodyType::Kinematic)
 ME_REFLECTION_ENUM_DEFINE_END(minEngine::EBodyType)
+
+ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::ETeleportType, GReflectionEnumRegister_ETeleportType_0ef8368b)
+    ME_REFLECTION_ENUM_VALUE(None, 0)
+    ME_REFLECTION_ENUM_VALUE(TeleportPhysics, minEngine::ETeleportType::TeleportPhysics)
+    ME_REFLECTION_ENUM_VALUE(ResetPhysics, minEngine::ETeleportType::ResetPhysics)
+ME_REFLECTION_ENUM_DEFINE_END(minEngine::ETeleportType)

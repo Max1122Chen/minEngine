@@ -18,6 +18,15 @@ namespace minEngine
         Dynamic,
         Kinematic,
     };
+
+    /** Aligns with UE ETeleportType — authority Transform changes only (not simulation writeback). */
+    ME_ENUM()
+    enum class ETeleportType : uint8_t
+    {
+        None = 0,
+        TeleportPhysics,
+        ResetPhysics,
+    };
 }
 
 #include "Generated/Reflection/PhysicsTypes.gen.h"

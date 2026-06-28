@@ -1,4 +1,5 @@
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
+#include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 
 #include "ContextMenu/Contexts/SceneInspectorMenuContext.h"
 #include "ContextMenu/EditorContextMenuSystem.h"
@@ -25,6 +26,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
@@ -635,6 +637,11 @@ namespace minEngine
             {
                 ImGui::SetTooltip("%s", tooltip);
             }
+        }
+
+        if (valueChanged && owner != nullptr)
+        {
+            ApplyPhysicsEditorSideEffects(const_cast<MEObject*>(owner), property.GetName());
         }
 
         ImGui::PopID();
