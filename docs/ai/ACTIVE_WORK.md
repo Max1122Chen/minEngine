@@ -9,10 +9,10 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **RND-F06** ForwardRenderer — **In Progress（当前主线）**。`SceneRenderer` + `ForwardRenderer`；删除 `RenderPipeline`。见 [F06](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md)。
-- **RND-F01** RenderGraph — **Draft**；**S0–S04 Done**。**暂停实现 S05+**，直至 **F06 Done**。之后顺序：**S05 卫生 → S06 Bake → … → S08 调图形态**。见 [F01](./Render/RND-F01_RENDER_GRAPH_DESIGN.md)。
+- **RND-F01** RenderGraph — **Draft**；**S0–S05 Done**。**下一步：S06 Bake** → S08 调图形态。见 [F01](./Render/RND-F01_RENDER_GRAPH_DESIGN.md)。
+- **RND-F06** ForwardRenderer — **S01–S02 Done**（闸门已过；S03 目录改名可选）。见 [F06](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md)。
 - **RND-F02** Modern RHI — **Done**。
-- **RND-F03** Legacy RHI removal — **In Progress（M3/M4 尾）**；不抢 F06 主线。
+- **RND-F03** Legacy RHI removal — **In Progress（M3/M4 尾）**；不抢 F01 主线。
 - **RND-F04** Modern RHI further evolution — **Done**。
 - **RND-F05** Vulkan — **Planned**（依赖 F03 Done + F04 Done）。
 - **分支约定：** `render` 分支继续承载渲染实现；planning/registry 可合 `master`。
@@ -20,9 +20,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 ### 渲染主线接力（2026-07-24 拍板）
 
 ```text
-1. F06  ForwardRenderer + 删除 RenderPipeline
-2. F01 S05  RDG 实现卫生（收敛文件 / 名实相符；不扩功能）
-3. F01 S06+ Bake 等，补全 Graph 机制
+1. F06  ForwardRenderer + 删除 RenderPipeline     ← S01–S02 Done
+2. F01 S05  RDG 实现卫生                          ← Done
+3. F01 S06+ Bake 等，补全 Graph 机制              ← 下一步
 4. F01 S08  Renderer 侧调图形态整理
 ```
 

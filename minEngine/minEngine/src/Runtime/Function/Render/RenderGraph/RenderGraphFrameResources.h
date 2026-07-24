@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Core.h"
-#include "Render/RenderGraph/PassParameters.h"
+#include "Render/RenderGraph/IRenderPass.h"
 #include "Render/RenderGraph/RDGTexture.h"
-#include "Render/RenderGraph/RenderGraphFrameContext.h"
 
 #include <memory>
 #include <string>
@@ -11,9 +10,19 @@
 
 namespace minEngine
 {
+    class ForwardRenderer;
     class RenderPass;
-
     class RHICommandList;
+    class SceneDrawDesc;
+    struct SceneRenderContext;
+
+    /** Per-frame CPU context for graph pass PreparePass. */
+    struct FrameRenderGraphContext
+    {
+        const SceneDrawDesc* DrawDesc = nullptr;
+        SceneRenderContext* SceneContext = nullptr;
+        ForwardRenderer* Renderer = nullptr;
+    };
 
     class RenderGraphFrameResources
     {
@@ -54,4 +63,12 @@ namespace minEngine
         RHICommandList* m_ActiveCommandList = nullptr;
         FrameRenderGraphContext m_FrameContext{};
     };
+
+    /** Manual-stage texture usage hint + RHICmdTransition (GL may no-op). */
+    void AddTransition(
+        RHICommandList& cmdList,
+        const char* textureName,
+        RenderGraphFrameResources& frameResources,
+        RDGTextureUsage before,
+        RDGTextureUsage after);
 }

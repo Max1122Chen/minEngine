@@ -1,13 +1,18 @@
 #pragma once
 
 #include "Core.h"
-#include "Render/RenderGraph/PassParameters.h"
 
 namespace minEngine
 {
     class RHICommandList;
     class RenderGraphFrameResources;
     class RenderPassBuilder;
+
+    /** Per-pass CPU state container base (typed subclasses deferred to later slices). */
+    struct PassParameters
+    {
+        virtual ~PassParameters() = default;
+    };
 
     /** Complex pass implementation hook (Granite RenderPassInterface, RND-F01 P3). */
     class IRenderPass

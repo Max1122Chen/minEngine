@@ -2,7 +2,6 @@
 
 #include "Core.h"
 #include "Render/RenderGraph/IRenderPass.h"
-#include "Render/RenderGraph/PassParameters.h"
 #include "Render/RenderGraph/RenderPassBuilder.h"
 
 #include <functional>

@@ -4,6 +4,7 @@
 
 namespace minEngine
 {
+    /** Shared BeginRenderPass info for scene color+depth passes (Sky / Opaque / Translucent). */
     inline RHIRenderPassInfo MakeSceneRenderPassInfo(RHITexture* color, RHITexture* depth, bool clearTargets)
     {
         RHIRenderPassInfo info(

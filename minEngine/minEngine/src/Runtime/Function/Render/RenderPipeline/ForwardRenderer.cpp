@@ -17,7 +17,7 @@
 #include "Render/RHI/RHICommandList.h"
 #include "Render/EngineShaderUtils.h"
 #include "Render/RenderGraph/RenderGraph.h"
-#include "Render/RenderGraph/RenderGraphFrameContext.h"
+#include "Render/RenderGraph/RenderGraphFrameResources.h"
 #include "Render/RenderGraph/RDGTexture.h"
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Render/RenderCamera.h"

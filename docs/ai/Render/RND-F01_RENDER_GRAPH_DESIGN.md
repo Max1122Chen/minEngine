@@ -201,7 +201,7 @@ Scene Pass：`AddTextureInput(DirShadowAtlas)`。Legacy `ShadowPass::Render` swi
 | **S03** | **全主帧 Pass 化** | verify + 黄金场景；**Done** |
 | **S04** | **Shadow Pass 化** | 阴影 + 图边；**Done** |
 | — | **（闸门）RND-F06 Done** | `ForwardRenderer` 取代 `RenderPipeline`；见 [F06](./RND-F06_FORWARD_RENDERER_DESIGN.md) |
-| **S05** | **RDG 实现卫生** | 删空壳 TU、改名实不符、收敛过碎文件；**不**扩 Bake/transient；向 Granite 式紧凑靠拢 |
+| **S05** | **RDG 实现卫生** | 删空壳 TU、改名实不符、收敛过碎文件；**不**扩 Bake/transient；向 Granite 式紧凑靠拢 — **Done**（2026-07-24） |
 | **S06** | **Bake** | 依赖边 → 执行序；非法图失败（原「S05 Bake」口径迁此） |
 | S07 | Transient（可选） | Deferred |
 | **S08** | **Renderer 调图形态** | F06 之后、机制可用后：整理 `ForwardRenderer` 对 Graph 的装配 API（非再塞策略进 Graph） |
@@ -232,7 +232,7 @@ Scene Pass：`AddTextureInput(DirShadowAtlas)`。Legacy `ShadowPass::Render` swi
 
 **仍待（F06 之后）：**
 
-- [ ] RDG 实现卫生（S05）：无空壳 TU；helper 名实相符；未用占位不占目录噪音
+- [x] RDG 实现卫生（S05）：无空壳 TU；helper 名实相符；未用占位不占目录噪音
 - [ ] Bake（S06）+ 非法图失败
 - [ ] 每图 Pass 可列出 Setup 声明的 IO（可审计）
 - [ ] `RenderPassBase` 不再作为统一基类（可与 F06/S08 一并收）
@@ -590,3 +590,4 @@ F04 已打通 **PipelineLayout → ShaderBindingSet → MeshDrawPacket → `RHIC
 | 2026-06-11 | **S0 Done**：`RHIBinding.h` → `RHIShaderBinding.h`；`RHIShaderBindingSetLayoutEntry` 等全量改名 |
 | 2026-06-12 | **S01 Done**：`Render/RenderGraph/` 骨架 + `render-graph` smoke 测试 |
 | 2026-07-24 | **口径**：S05+ 依赖 [F06](./RND-F06_FORWARD_RENDERER_DESIGN.md)；原「S05 Bake」→ **S06**；新增 **S05 卫生**、**S08 调图形态**；闸门写进 §6–§8 |
+| 2026-07-24 | **S05 Done**：删空壳/`RDGBuffer` 占位；`PassParameters`/`FrameContext`/`AddTransition` 并入既有头；`SceneRenderPassUtils.h` 取代名实不符的 ScenePass 头 |

@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-07-24 (RND-F06 S01–S02 ForwardRenderer)
+Last updated: 2026-07-24 (RND-F01 S05 RDG hygiene Done)
 
 ## Purpose
 
@@ -1091,6 +1091,18 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-07-24 - RND-F01 S05 RDG implementation hygiene (`render`)
+- Goal:
+  收敛 Manual RDG 过碎/空壳实现，名实相符；不扩 Bake/transient。
+- Main changes:
+  删除 `RenderGraphExecute.cpp`、`RDGBuffer.h` 占位、`PassParameters.h` / `RenderGraphFrameContext.h` / `RenderGraphTransition.*`（并入 `IRenderPass` / `RenderGraphFrameResources`）；`RenderGraphScenePass.h` → `SceneRenderPassUtils.h`。
+- Risks or caveats:
+  `RDGBuffer` 待真有 buffer 资源时再引入；目录仍含 `RenderPipeline/`（F06-S03 可选）。
+- Validation done:
+  `cmake --build` minEngine + minEngineTests PASS；`minEngineTests.exe test render-graph` PASS。
+- Next step:
+  F01-S06 Bake。
 
 ### 2026-07-24 - RND-F06 S01–S02：ForwardRenderer 替换 RenderPipeline（`render`）
 - Goal:

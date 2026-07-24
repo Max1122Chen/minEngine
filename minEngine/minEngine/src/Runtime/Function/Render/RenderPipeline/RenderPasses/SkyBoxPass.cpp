@@ -1,10 +1,9 @@
 #include "SkyBoxPass.h"
 
 #include "Render/DrawCommands/MeshDrawPacket.h"
-#include "Render/RenderGraph/RenderGraphFrameContext.h"
 #include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RenderGraphScenePass.h"
 #include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Render/RenderGraph/SceneRenderPassUtils.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"

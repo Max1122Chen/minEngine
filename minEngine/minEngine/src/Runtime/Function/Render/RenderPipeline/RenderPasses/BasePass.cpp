@@ -1,8 +1,8 @@
 #include "BasePass.h"
 
 #include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RenderGraphScenePass.h"
 #include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Render/RenderGraph/SceneRenderPassUtils.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RenderPipeline/SceneMeshDrawUtils.h"
