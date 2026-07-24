@@ -6,20 +6,22 @@
 |-------|--------|
 | **Feature ID** | `RND-F01` |
 | **Type** | Refactor + Architecture |
-| **Status** | **Draft** |
+| **Status** | **Draft**（S0–S04 Done；**S05+ 暂停至 F06 Done**） |
 | **Owner** | (maintainer) |
-| **Last updated** | 2026-06-11 |
-| **Depends on** | `RND-F02` **Done**；`RND-F04` **Done** |
-| **Blocks** | 渲染管线语义终态；减轻 F05 Vulkan 迁移成本 |
-| **Related** | [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · Granite `renderer/render_graph.hpp` · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) |
+| **Last updated** | 2026-07-24 |
+| **Depends on** | `RND-F02` **Done**；`RND-F04` **Done**；**S05+ 另依赖 `RND-F06` Done**（Renderer / Graph 职责分离） |
+| **Blocks** | 图机制终态（Bake 等）；减轻 F05 Vulkan 迁移成本 |
+| **Related** | [RND-F06](./RND-F06_FORWARD_RENDERER_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · Granite `renderer/render_graph.hpp` · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) |
 
 ## TL;DR
 
-**问题：** F04 统一了 draw（`MeshDrawPacket`），但帧级编排仍是 OpenGL 式：`RenderPipeline::Execute` 手写顺序、资源读写隐式、无 Transition 叙事；现有 `RenderPasses/*` 与 RDG 的 **Pass** 不是同一概念。
+**问题：** F04 统一了 draw（`MeshDrawPacket`），但帧级编排仍是 OpenGL 式：手写顺序、资源读写隐式、无 Transition 叙事；现有 `RenderPasses/*` 与 RDG 的 **Pass** 不是同一概念。
 
 **方案：** 引入 **RenderGraph**；图上的步骤叫 **`RenderPass`**（对齐 UE / Granite，**不必** `RGPass`）。**S01 Manual RenderGraph** = 手写 `PassExecutionOrder` + 统一 **Setup / PreparePass / BuildRenderPass** 纪律。
 
 **命名：** 图步骤 = **`RenderPass`**；`RenderPasses/*` 实现类 ≈ Granite **`RenderPassInterface`**（P2）；逻辑纹理用 **字符串名**（P1，对齐 Granite `RenderTextureResource::name`）。Binding 词汇统一见 **§13 S0**。
+
+**进度口径（2026-07-24）：** S0–S04 **Done**。复盘后发现图已挂主路径，但构图宿主仍是混杂的 `RenderPipeline`。**先完成 [RND-F06](./RND-F06_FORWARD_RENDERER_DESIGN.md)**（`ForwardRenderer` + 删除 Pipeline），再继续本 Feature：**S05 卫生 → S06 Bake → … → S08 调图形态**（接力真源见 F06 §1.3）。**不要在 F06 完成前实现 Bake。**
 
 ---
 
@@ -118,7 +120,7 @@ RenderPipeline::Execute
 | `RenderPass::BuildRenderPass` | `set_build_render_pass` / `build_render_pass` | Execute lambda | 每帧 GPU 录制 |
 | `RenderGraph::SetupAttachments` | `setup_attachments` | — | 每帧物理资源绑定 |
 | `RenderGraph::ExecuteGraph` | `enqueue_render_passes` | `Execute()` | 跑完整图 |
-| `RenderGraph::Bake` | `bake` | 编译阶段 | S05；S01 无 |
+| `RenderGraph::Bake` | `bake` | 编译阶段 | **S06**（F06 后）；S01–S04 无 |
 | `RDGTexture` / `RDGTextureRef` | `RenderTextureResource` | `FRDGTexture` | **逻辑**纹理 |
 | `RDGBuffer` / `RDGBufferRef` | `RenderBufferResource` | `FRDGBuffer` | **逻辑**缓冲 |
 | 逻辑资源名 `const char*` / `string_view` | `RenderTextureResource::name` | `FRDGTexture` 注册名 | **P1：字符串 id**，非 enum；便于演化真 RDG |
@@ -141,7 +143,7 @@ RenderPipeline::Execute
 RenderGraph
   AddPass(name) → RenderPass&
   RegisterExternalTexture("SceneColor", RHITexture*)   // 字符串逻辑名
-  Bake()                    // S05
+  Bake()                    // S06（F06 闸门之后）
   SetupAttachments()        // 每帧
   ExecuteGraph(cmdList, RenderGraphFrameResources&)
 
@@ -166,8 +168,8 @@ BuildRenderPass — 每帧 GPU：AddTransition → RHICmdBeginRenderPass → Sub
 
 ### 4.3 Manual vs Baked RenderGraph
 
-| | Manual（S01–S04） | Baked（S05+） |
-|--|-------------------|---------------|
+| | Manual（S01–S04） | Baked（**S06+**，F06 后） |
+|--|-------------------|---------------------------|
 | 顺序 | `PassExecutionOrder[]` | `Bake()` 拓扑序 |
 | Transition | Pass 内显式 `AddTransition` | 可自动插入 |
 | 别名 | 物理纹理常驻 / 显式 ping-pong | transient 池 |
@@ -198,8 +200,13 @@ Scene Pass：`AddTextureInput(DirShadowAtlas)`。Legacy `ShadowPass::Render` swi
 | **S02** | **Post 链样板** | §11；**Done** |
 | **S03** | **全主帧 Pass 化** | verify + 黄金场景；**Done** |
 | **S04** | **Shadow Pass 化** | 阴影 + 图边；**Done** |
-| S05 | Bake | 非法图失败 |
-| S06 | Transient（可选） | Deferred |
+| — | **（闸门）RND-F06 Done** | `ForwardRenderer` 取代 `RenderPipeline`；见 [F06](./RND-F06_FORWARD_RENDERER_DESIGN.md) |
+| **S05** | **RDG 实现卫生** | 删空壳 TU、改名实不符、收敛过碎文件；**不**扩 Bake/transient；向 Granite 式紧凑靠拢 |
+| **S06** | **Bake** | 依赖边 → 执行序；非法图失败（原「S05 Bake」口径迁此） |
+| S07 | Transient（可选） | Deferred |
+| **S08** | **Renderer 调图形态** | F06 之后、机制可用后：整理 `ForwardRenderer` 对 Graph 的装配 API（非再塞策略进 Graph） |
+
+> **历史备注：** 2026-06 文档曾写「下一步 S05 Bake」。2026-07-24 起 Bake 改为 **S06**，并插入 **S05 卫生** 与 **F06 闸门**，避免在上帝对象上堆机制。
 
 ---
 
@@ -210,17 +217,27 @@ Scene Pass：`AddTextureInput(DirShadowAtlas)`。Legacy `ShadowPass::Render` swi
 | `RenderPass` 与 Legacy 类名混淆 | §3.1 强制区分；新代码在 `RenderGraph/` |
 | S01 范围膨胀 | S01 **不接** Legacy 主路径，只骨架 + 可选 stub |
 | 与 F03 并行 | Shadow 放 S04 |
+| 未拆 Renderer 就 Bake | **F06 闸门**；ACTIVE_WORK 主线先 F06 |
+| Manual 骨架过碎 / 空文件 | **S05 卫生** 专责收敛；不与 Bake 混做 |
 
 ---
 
 ## 8) Feature Done（草案）
 
-- [ ] 主帧经 `RenderGraph::ExecuteGraph`；Legacy `Execute` 瘦身
-- [ ] 每图 Pass 可列出 Setup 声明的 IO
-- [ ] Post ping-pong + `AddTransition`
-- [ ] Shadow 为多 `RenderPass` 实例
-- [ ] `RenderPassBase` 不再作为统一基类
-- [ ] `verify.ps1` + 黄金场景
+**S0–S04 已满足（部分）：**
+
+- [x] 主帧经 `RenderGraph::ExecuteGraph`（宿主曾为 `RenderPipeline`；F06 后改为 `ForwardRenderer`）
+- [x] Post ping-pong + `AddTransition`（Manual）
+- [x] Shadow 为多 `RenderPass` 实例
+
+**仍待（F06 之后）：**
+
+- [ ] RDG 实现卫生（S05）：无空壳 TU；helper 名实相符；未用占位不占目录噪音
+- [ ] Bake（S06）+ 非法图失败
+- [ ] 每图 Pass 可列出 Setup 声明的 IO（可审计）
+- [ ] `RenderPassBase` 不再作为统一基类（可与 F06/S08 一并收）
+- [ ] Renderer 调图形态稳定（S08）
+- [ ] `verify.ps1` + 黄金场景（各切片回归）
 
 ---
 
@@ -572,3 +589,4 @@ F04 已打通 **PipelineLayout → ShaderBindingSet → MeshDrawPacket → `RHIC
 | 2026-06-11 | P1 字符串逻辑纹理；P2 Pass 实现 ≈ RenderPassInterface；P3 `IRenderPass`；§13 S0 Binding 词汇统一 |
 | 2026-06-11 | **S0 Done**：`RHIBinding.h` → `RHIShaderBinding.h`；`RHIShaderBindingSetLayoutEntry` 等全量改名 |
 | 2026-06-12 | **S01 Done**：`Render/RenderGraph/` 骨架 + `render-graph` smoke 测试 |
+| 2026-07-24 | **口径**：S05+ 依赖 [F06](./RND-F06_FORWARD_RENDERER_DESIGN.md)；原「S05 Bake」→ **S06**；新增 **S05 卫生**、**S08 调图形态**；闸门写进 §6–§8 |

@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-05-27
+Last updated: 2026-07-24
 
 ## 1) Project Goal
 
@@ -16,23 +16,21 @@ Primary objective:
 Main structure observed in repository:
 - Engine core under minEngine/minEngine/src/Runtime.
 - Playground app under minEngine/Playground/src as testbed.
-- Rendering built around RenderPipeline with multiple passes.
+- Rendering: Manual **RenderGraph** on the main frame path; frame strategy still lives in **`RenderPipeline`** (to become **`ForwardRenderer`** under **RND-F06**). Passes under `RenderPipeline/RenderPasses/`.
 - Third-party dependencies include glfw, glad, glm, imgui, assimp, spdlog.
 
 ## 3) Rendering Status (Current Understanding)
 
 Implemented or in-progress capabilities:
-- Base pass rendering.
-- Translucency pass.
-- Present pass (offscreen result to final output).
-- Uniform buffer usage for per-frame camera data.
-- Light UBO and per-frame light upload optimization.
-- Directional light shadow casting integrated into pipeline.
+- Modern RHI + MeshDrawPacket (RND-F02/F04 Done).
+- Manual RenderGraph: Shadow → Scene → Post → Present (RND-F01 S0–S04 Done).
+- Base / translucency / present / directional (and related) shadows.
+- Next render track: **RND-F06** (split Renderer vs Graph), then F01 S05+ (hygiene → Bake → …).
 
 Known risk themes from recent work:
 - Per-frame container cleanup must be explicit.
 - GPU resources must be properly released to avoid leaks.
-- Per-frame proxy/entry generation should avoid repeated allocation without reuse.
+- `RenderPipeline` still mixes strategy and graph hosting (addressed by F06).
 - Pass order and viewport restore are easy to break when adding new passes.
 
 ## 4) Development Facts from User

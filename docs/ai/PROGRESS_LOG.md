@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-12 (RND-F01 S04 Done)
+Last updated: 2026-07-24 (RND-F06 design Planned)
 
 ## Purpose
 
@@ -1092,6 +1092,18 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
 
+### 2026-07-24 - RND-F06 Design：ForwardRenderer / Graph 职责分离（文档）
+- Goal:
+  钉死 Renderer vs RenderGraph 心智模型；登记 Feature；调整 F01「下一步 Bake」口径，避免在 `RenderPipeline` 上帝对象上继续堆机制。
+- Main changes:
+  新增 `docs/ai/Render/RND-F06_FORWARD_RENDERER_DESIGN.md`；Registry / ACTIVE_WORK / PROJECT_CONTEXT 更新；F01 §6 切片改为 **F06 闸门 → S05 卫生 → S06 Bake → S08 调图形态**。
+- Risks or caveats:
+  尚未写 C++；须按 ACTIVE_WORK 接力，勿跳过 F06 直接 Bake。
+- Validation done:
+  Registry 已登记 `RND-F06`；RND next free → F07。
+- Next step:
+  F06-S01 抽出 `ForwardRenderer`；或先准备 commit 本批文档。
+
 ### 2026-06-12 - RND-F01 S04 Shadow passes RenderGraph migration (`render`)
 - Goal:
   Split monolithic ShadowPass into per-command graph passes; declare DirShadowAtlas scene input edge.
@@ -1104,7 +1116,7 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Validation done:
   `cmake --build` + `minEngineTests.exe test render-graph` PASS.
 - Next step:
-  F01-S05 Bake / topology validation.
+  ~~F01-S05 Bake~~ → **已改口径（2026-07-24）：先 RND-F06，再 F01 S05 卫生 → S06 Bake。**
 
 ### 2026-06-12 - RND-F01 S03 Scene passes RenderGraph migration (`render`)
 - Goal:
