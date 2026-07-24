@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-07-24 (RND-F06 design Planned)
+Last updated: 2026-07-24 (RND-F06 S01–S02 ForwardRenderer)
 
 ## Purpose
 
@@ -1091,6 +1091,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-07-24 - RND-F06 S01–S02：ForwardRenderer 替换 RenderPipeline（`render`）
+- Goal:
+  删除 `RenderPipeline`；`SceneRenderer` 薄基类 + `ForwardRenderer` 实现；`RenderSystem` 只依赖基类。
+- Main changes:
+  `SceneRenderer.h`、`EngineRenderLimits.h`；`RenderPipeline.h/.cpp` → `ForwardRenderer.h/.cpp`；Pass/utils/Context 指针改名；`FrameRenderGraphContext::Renderer`；目录名暂留 `RenderPipeline/`。
+- Risks or caveats:
+  目录与类名短期不一致（S03）；黄金场景目视待维护者确认。
+- Validation done:
+  `cmake --build` minEngine + minEngineTests + Editor PASS。
+  `minEngineTests.exe test render-graph` + `test smoke`（from `bin/`）PASS。
+- Next step:
+  维护者 Editor 黄金场景目视；F06-S03 目录/注释收尾；然后 F01 S05 RDG 卫生。
 
 ### 2026-07-24 - RND-F06 Design：ForwardRenderer / Graph 职责分离（文档）
 - Goal:

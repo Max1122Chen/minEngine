@@ -24,7 +24,7 @@ namespace minEngine
 
     class PostProcessPass : public RenderPassBase, public IRenderPass
     {
-        friend class RenderPipeline;
+        friend class ForwardRenderer;
 
     public:
         PostProcessPass() = default;

@@ -8,7 +8,7 @@
 
 namespace minEngine
 {
-    class RenderPipeline;
+    class ForwardRenderer;
     class RHICommandList;
 
     enum class MeshPassKind : uint8_t
@@ -18,14 +18,14 @@ namespace minEngine
     };
 
     void PrepareSceneMeshDrawPackets(
-        RenderPipeline& pipeline,
+        ForwardRenderer& pipeline,
         RHICommandList& cmdList,
         const std::vector<MeshDrawCommand>& drawCommands,
         MeshPassKind passKind,
         std::vector<MeshDrawPacket>& outPackets);
 
     void SubmitSceneMeshDrawPackets(
-        RenderPipeline& pipeline,
+        ForwardRenderer& pipeline,
         RHICommandList& cmdList,
         const std::vector<MeshDrawCommand>& drawCommands,
         std::vector<MeshDrawPacket>& drawPackets);

@@ -4,7 +4,7 @@
 
 namespace minEngine
 {
-    class RenderPipeline;
+    class ForwardRenderer;
 
     class RenderPassBase
     {
@@ -14,6 +14,6 @@ namespace minEngine
 
         virtual void Execute() = 0;
 
-        RenderPipeline* pipeline = nullptr;
+        ForwardRenderer* pipeline = nullptr;
     };
 }

@@ -3,7 +3,7 @@
 #include "Render/EngineShaderUtils.h"
 #include "Render/EngineShaderBindings.h"
 #include "Render/EnginePassUniforms.h"
-#include "Render/RenderPipeline/RenderPipeline.h"
+#include "Render/RenderPipeline/ForwardRenderer.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHICommandList.h"

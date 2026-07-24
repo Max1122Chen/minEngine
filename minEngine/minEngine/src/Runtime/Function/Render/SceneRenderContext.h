@@ -14,7 +14,7 @@ namespace minEngine
     class SpotLightSceneProxy;
     class PointLightSceneProxy;
 
-    /** Per-Execute transient state (queues, shadow build results). Not stored on RenderPipeline. */
+    /** Per-Execute transient state (queues, shadow build results). Not stored on ForwardRenderer. */
     struct SceneRenderContext
     {
         RenderScene* Scene = nullptr;

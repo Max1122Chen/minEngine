@@ -5,7 +5,7 @@
 #include "Render/RenderGraph/RenderPassBuilder.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/RenderCamera.h"
-#include "Runtime/Function/Render/RenderPipeline/RenderPipeline.h"
+#include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RenderPipeline/SceneMeshDrawUtils.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"

@@ -3,7 +3,7 @@
 #include "Render/RenderGraph/RenderGraphFrameResources.h"
 #include "Render/RenderGraph/RenderPassBuilder.h"
 #include "Runtime/Function/Render/RenderPipeline/RenderPasses/ShadowPass.h"
-#include "Runtime/Function/Render/RenderPipeline/RenderPipeline.h"
+#include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 
 namespace minEngine

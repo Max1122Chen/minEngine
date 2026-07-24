@@ -5,14 +5,14 @@
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
-#include "Runtime/Function/Render/RenderPipeline/RenderPipeline.h"
+#include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 
 namespace minEngine
 {
     void PrepareSceneMeshDrawPackets(
-        RenderPipeline& pipeline,
+        ForwardRenderer& pipeline,
         RHICommandList& cmdList,
         const std::vector<MeshDrawCommand>& drawCommands,
         MeshPassKind passKind,
@@ -53,7 +53,7 @@ namespace minEngine
     }
 
     void SubmitSceneMeshDrawPackets(
-        RenderPipeline& pipeline,
+        ForwardRenderer& pipeline,
         RHICommandList& cmdList,
         const std::vector<MeshDrawCommand>& drawCommands,
         std::vector<MeshDrawPacket>& drawPackets)

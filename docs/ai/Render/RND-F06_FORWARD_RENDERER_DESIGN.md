@@ -6,7 +6,7 @@
 |-------|--------|
 | **Feature ID** | `RND-F06` |
 | **Type** | Refactor + Architecture |
-| **Status** | **In Progress**（S00 Design Done → 实现中） |
+| **Status** | **In Progress**（S01–S02 实现落地；待目视黄金场景 + S03 契约收尾） |
 | **Owner** | (maintainer) |
 | **Last updated** | 2026-07-24 |
 | **Branch** | `render` |
@@ -258,18 +258,20 @@ class ForwardRenderer : public SceneRenderer {
 | Slice | 名称 | 验收 |
 |-------|------|------|
 | **S00** | Design | 本文；Registry + ACTIVE_WORK + F01 口径同步 |
-| **S01** | 抽出 `ForwardRenderer` | 实现迁入；可暂留 Pipeline 薄壳转发 **仅本切片内**；编译通过 |
-| **S02** | 切换 `RenderSystem` + 删 Pipeline | 无 `class RenderPipeline`；Context/Pass 指针已换；`verify` + 黄金场景 |
-| **S03** | 契约收尾 | 所有权与注释/目录与 §3 一致；grep 清洁；PROGRESS 记一笔 |
+| **S01** | 抽出 `ForwardRenderer` | 实现迁入；可暂留 Pipeline 薄壳转发 **仅本切片内**；编译通过 | **Done** |
+| **S02** | 切换 `RenderSystem` + 删 Pipeline | 无 `class RenderPipeline`；Context/Pass 指针已换；`verify` + 黄金场景 | **代码 Done**（compile + smoke/render-graph）；**待维护者目视** |
+| **S03** | 契约收尾 | 所有权与注释/目录与 §3 一致；grep 清洁；PROGRESS 记一笔 | 进行中 |
 
 ---
 
 ## 7) 验收标准（Feature Done）
 
-- [ ] `SceneRenderer` 薄基类存在；`ForwardRenderer` 为唯一实现；`RenderSystem` 经基类调用
-- [ ] 全库无 `class RenderPipeline`（及 `.h` 被编译进目标）
-- [ ] CSM / 队列 / UBO / 构图调用均在 ForwardRenderer 侧；`RenderGraph` 无策略 API；UBO 留在 Renderer 为有意设计（§3.3）
-- [ ] `FrameRenderGraphContext`（或后继）不再依赖 `RenderPipeline`
+- [x] `SceneRenderer` 薄基类存在；`ForwardRenderer` 为唯一实现；`RenderSystem` 经基类调用
+- [x] 全库无 `class RenderPipeline`（及 `.h` 被编译进目标）
+- [x] CSM / 队列 / UBO / 构图调用均在 ForwardRenderer 侧；`RenderGraph` 无策略 API；UBO 留在 Renderer 为有意设计（§3.3）
+- [x] `FrameRenderGraphContext`（或后继）不再依赖 `RenderPipeline`（字段改为 `ForwardRenderer* Renderer`）
+- [ ] `.\scripts\verify.ps1` PASS；黄金场景目视（dir/point/spot + 阴影）与迁前一致
+- [ ] ACTIVE_WORK 主线切回 **F01 S05（RDG 卫生）**
 - [ ] `.\scripts\verify.ps1` PASS；黄金场景目视（dir/point/spot + 阴影）与迁前一致
 - [ ] ACTIVE_WORK 主线切回 **F01 S05（RDG 卫生）**
 
@@ -301,3 +303,4 @@ class ForwardRenderer : public SceneRenderer {
 |------|------|
 | 2026-07-24 | 初稿：心智模型、所有权、删除清单、与 F01 接力；S00–S03 |
 | 2026-07-24 | 补 D1/D4/D7：`SceneRenderer` 薄基类；UBO 留 Renderer 有意澄清；System vs Pass 依赖分层 |
+| 2026-07-24 | S01–S02 落地：`ForwardRenderer` + 删 `RenderPipeline`；`RenderSystem` 持 `unique_ptr<SceneRenderer>` |

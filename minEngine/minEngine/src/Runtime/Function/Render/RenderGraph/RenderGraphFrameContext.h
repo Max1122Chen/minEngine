@@ -4,7 +4,7 @@
 
 namespace minEngine
 {
-    class RenderPipeline;
+    class ForwardRenderer;
     class SceneDrawDesc;
     struct SceneRenderContext;
 
@@ -13,6 +13,6 @@ namespace minEngine
     {
         const SceneDrawDesc* DrawDesc = nullptr;
         SceneRenderContext* SceneContext = nullptr;
-        RenderPipeline* Pipeline = nullptr;
+        ForwardRenderer* Renderer = nullptr;
     };
 }

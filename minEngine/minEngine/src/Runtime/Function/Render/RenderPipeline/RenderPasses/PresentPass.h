@@ -25,7 +25,7 @@ namespace minEngine
 
     class PresentPass : public RenderPassBase, public IRenderPass
     {
-        friend class RenderPipeline;
+        friend class ForwardRenderer;
 
     public:
         PresentPass() = default;

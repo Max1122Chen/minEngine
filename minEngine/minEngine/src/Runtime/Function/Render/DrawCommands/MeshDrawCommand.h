@@ -25,7 +25,7 @@ namespace minEngine
         bool operator!=(const MeshDrawCommandSortKey& other) const { return m_Key != other.m_Key; }
     };
 
-    /** Pass-agnostic logical draw item built by RenderPipeline::BuildRenderQueue. */
+    /** Pass-agnostic logical draw item built by ForwardRenderer::BuildRenderQueue. */
     class MeshDrawCommand
     {
     public:

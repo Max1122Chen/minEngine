@@ -1,5 +1,7 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Render/SceneRenderer.h"
+#include "Runtime/Function/Render/EngineRenderLimits.h"
 #include "RenderPasses/ShadowPass.h"
 #include "RenderPasses/ShadowGraphPass.h"
 #include "RenderPasses/BasePass.h"
@@ -34,11 +36,6 @@ namespace minEngine
      * - 0: Per-frame data (view/proj matrices, camera position, etc.)
      * - 1: Light data (directional light, point lights, spot lights, etc.)
      */
-
-    constexpr uint32_t MAX_POINT_LIGHTS = 16;
-    constexpr uint32_t MAX_SPOT_LIGHTS = 16;
-    constexpr uint32_t MAX_CASCADES = 4;
-    constexpr uint32_t kShadowMapResolution = 512;
 
     // Data structure for per-frame uniform buffer
     struct PerFrameData
@@ -101,19 +98,19 @@ namespace minEngine
         std::vector<float> CascadeFarPlaneVS;
     };
 
-    class RenderPipeline
+    class ForwardRenderer : public SceneRenderer
     {
     public:
-        RenderPipeline() = default;
-        virtual ~RenderPipeline() = default;
+        ForwardRenderer() = default;
+        ~ForwardRenderer() override = default;
 
-        void Initialize();
-        void Shutdown();
-        void Execute(const SceneDrawDesc& desc);
+        void Initialize() override;
+        void Shutdown() override;
+        void Execute(const SceneDrawDesc& desc) override;
 
-        void SetPresentPassEnabled(bool enabled) { m_EnablePresentPass = enabled; }
+        void SetPresentPassEnabled(bool enabled) override { m_EnablePresentPass = enabled; }
 
-        void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot);
+        void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot) override;
 
         RHIBuffer* GetPerObjectUniformBuffer() const { return m_PerObjectUniformBuffer.get(); }
         const EngineSceneBindingSets& GetSceneBindings() const { return m_SceneBindings; }

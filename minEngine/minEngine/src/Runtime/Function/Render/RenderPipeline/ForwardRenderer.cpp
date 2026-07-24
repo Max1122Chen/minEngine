@@ -1,4 +1,4 @@
-#include "RenderPipeline.h"
+#include "ForwardRenderer.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Render/WindowSystem.h"
 #include "Render/RenderSystem.h"
@@ -48,7 +48,7 @@ namespace
 
 namespace minEngine
 {
-    void RenderPipeline::Initialize()
+    void ForwardRenderer::Initialize()
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
         m_ShadowResourceManager.Initialize(rhi);
@@ -138,7 +138,7 @@ namespace minEngine
         // SkyBox cubemap: LoadEngineRenderingAssets() after PathRegistry is ready (F03-M4 P0: no runtime IBL).
     }
 
-    void RenderPipeline::LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot)
+    void ForwardRenderer::LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot)
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
@@ -153,12 +153,12 @@ namespace minEngine
         }
     }
 
-    void RenderPipeline::BindSceneRenderTarget(SceneRenderTarget& target)
+    void ForwardRenderer::BindSceneRenderTarget(SceneRenderTarget& target)
     {
         (void)target;
     }
 
-    void RenderPipeline::EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height)
+    void ForwardRenderer::EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height)
     {
         if (!rhi || width == 0 || height == 0)
         {
@@ -185,7 +185,7 @@ namespace minEngine
         m_FrameRenderGraphBuilt = false;
     }
 
-    void RenderPipeline::BuildFrameRenderGraph(size_t shadowPassCount)
+    void ForwardRenderer::BuildFrameRenderGraph(size_t shadowPassCount)
     {
         m_FrameRenderGraph.Reset();
         m_ShadowGraphPasses.clear();
@@ -250,7 +250,7 @@ namespace minEngine
         m_FrameRenderGraphBuilt = true;
     }
 
-    void RenderPipeline::BuildRenderGraphFrameResources(
+    void ForwardRenderer::BuildRenderGraphFrameResources(
         SceneRenderTarget& sceneTarget,
         const SceneRenderContext& ctx,
         bool registerPostBuffer)
@@ -287,7 +287,7 @@ namespace minEngine
         }
     }
 
-    bool RenderPipeline::ShouldIncludeSkyGraphPass(const SceneDrawDesc& desc, const SceneRenderContext& ctx) const
+    bool ForwardRenderer::ShouldIncludeSkyGraphPass(const SceneDrawDesc& desc, const SceneRenderContext& ctx) const
     {
         if (!HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox) || !m_SkyBoxPass.IsReady() || !ctx.Scene)
         {
@@ -298,7 +298,7 @@ namespace minEngine
         return skyBoxProxy != nullptr && skyBoxProxy->m_Enabled && skyBoxProxy->m_SkyBoxComponent != nullptr;
     }
 
-    void RenderPipeline::ExecuteFrameRenderGraph(
+    void ForwardRenderer::ExecuteFrameRenderGraph(
         RHICommandList& cmdList,
         const SceneDrawDesc& desc,
         SceneRenderContext& ctx)
@@ -368,7 +368,7 @@ namespace minEngine
         FrameRenderGraphContext frameContext;
         frameContext.DrawDesc = &desc;
         frameContext.SceneContext = &ctx;
-        frameContext.Pipeline = this;
+        frameContext.Renderer = this;
         m_RenderGraphFrameResources.SetFrameContext(frameContext);
         BuildRenderGraphFrameResources(*sceneTarget, ctx, enablePostProcess);
 
@@ -423,7 +423,7 @@ namespace minEngine
         m_FrameRenderGraph.ExecuteGraph(cmdList, m_RenderGraphFrameResources);
     }
 
-    void RenderPipeline::Shutdown()
+    void ForwardRenderer::Shutdown()
     {
         m_PipelineLayouts.Shutdown();
         m_SceneBindings.Shutdown();
@@ -463,7 +463,7 @@ namespace minEngine
         m_SpotLightViewProjUniformBuffer.reset();
     }
 
-    void RenderPipeline::Execute(const SceneDrawDesc& desc)
+    void ForwardRenderer::Execute(const SceneDrawDesc& desc)
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
@@ -541,7 +541,7 @@ namespace minEngine
         
     }
 
-    void RenderPipeline::UpdatePerFrameUBO(const SceneRenderContext& ctx)
+    void ForwardRenderer::UpdatePerFrameUBO(const SceneRenderContext& ctx)
     {
         RenderCamera* mainCamera = ctx.Camera;
         if (!mainCamera || !m_PerFrameUniformBuffer)
@@ -557,7 +557,7 @@ namespace minEngine
         m_PerFrameUniformBuffer->UpdateSubresource(&perFrameData, 0, sizeof(PerFrameData));
     }
 
-    void RenderPipeline::UpdateLightUBO(const SceneRenderContext& ctx)
+    void ForwardRenderer::UpdateLightUBO(const SceneRenderContext& ctx)
     {
         RenderScene* renderScene = ctx.Scene;
         if (!renderScene || !m_LightDataUniformBuffer)
@@ -649,7 +649,7 @@ namespace minEngine
         m_LightDataUniformBuffer->UpdateSubresource(&lightsData, 0, sizeof(LightsData));
     }
 
-    void RenderPipeline::CollectShadowRequests(SceneRenderContext& ctx)
+    void ForwardRenderer::CollectShadowRequests(SceneRenderContext& ctx)
     {
         ctx.ShadowRequests.clear();
 
@@ -728,7 +728,7 @@ namespace minEngine
         }
     }
 
-    void RenderPipeline::BuildShadowDrawCommands(SceneRenderContext& ctx)
+    void ForwardRenderer::BuildShadowDrawCommands(SceneRenderContext& ctx)
     {
         ctx.ShadowDrawCommands.clear();
         ctx.DirectionalShadowHandle = ShadowResourceHandle{};
@@ -811,7 +811,7 @@ namespace minEngine
         }
     }
 
-    void RenderPipeline::BuildRenderQueue(SceneRenderContext& ctx)
+    void ForwardRenderer::BuildRenderQueue(SceneRenderContext& ctx)
     {
         ctx.OpaqueQueue.clear();
         ctx.TranslucentQueue.clear();
@@ -858,7 +858,7 @@ namespace minEngine
         }
     }
 
-    DirShadowCommandBuildResult RenderPipeline::BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest,
+    DirShadowCommandBuildResult ForwardRenderer::BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest,
                                                                                      const ShadowResourceHandle& handle,
                                                                                      const DirectionalLightSceneProxy* lightProxy,
                                                                                      uint32_t cascadeCount,
@@ -987,7 +987,7 @@ namespace minEngine
         return result;
     }
 
-    ShadowDrawCommand RenderPipeline::BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,
+    ShadowDrawCommand ForwardRenderer::BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,
                                                                   const ShadowResourceHandle& handle,
                                                                   const SpotLightSceneProxy* lightProxy)
     {
@@ -1018,7 +1018,7 @@ namespace minEngine
         return command;
     }
 
-    std::vector<ShadowDrawCommand> RenderPipeline::BuildPointShadowDrawCommands(const ShadowRequest& shadowRequest,
+    std::vector<ShadowDrawCommand> ForwardRenderer::BuildPointShadowDrawCommands(const ShadowRequest& shadowRequest,
                                                                                  const ShadowResourceHandle& handle,
                                                                                  const PointLightSceneProxy* lightProxy)
     {
@@ -1069,7 +1069,7 @@ namespace minEngine
         return commands;
     }
 
-    std::vector<CascadeSplit> RenderPipeline::CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount)
+    std::vector<CascadeSplit> ForwardRenderer::CalculateCascadeSplits(float nearPlane, float farPlane, uint32_t cascadeCount)
     {
         std::vector<CascadeSplit> splits(cascadeCount);
 
@@ -1101,7 +1101,7 @@ namespace minEngine
         return splits;
     }
 
-    void RenderPipeline::ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB,
+    void ForwardRenderer::ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB,
                                                         const Matrix4& lightView,
                                                         const std::vector<MeshDrawCommand>& opaqueQueue)
     {

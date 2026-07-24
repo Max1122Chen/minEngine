@@ -1,15 +1,17 @@
 #pragma once
-#include "Core.h"
-#include "RenderPipeline/RenderPipeline.h"
-#include "SceneDrawDesc.h"
 
+#include "Core.h"
+#include "Runtime/Function/Render/EngineRenderLimits.h"
+#include "Runtime/Function/Render/SceneDrawDesc.h"
+#include "Runtime/Function/Render/SceneRenderer.h"
+
+#include <memory>
 #include <vector>
 
 namespace minEngine
 {
     class Engine;
     class RHI;
-
 
     class RenderSystem
     {
@@ -22,7 +24,6 @@ namespace minEngine
 
         static bool HasInstance();
         static RenderSystem& Get();
-
 
         void Tick(float deltaTime);
 
@@ -44,8 +45,6 @@ namespace minEngine
         static constexpr uint32_t MAX_POINT_LIGHTS = ::minEngine::MAX_POINT_LIGHTS;
         static constexpr uint32_t MAX_SPOT_LIGHTS = ::minEngine::MAX_SPOT_LIGHTS;
 
-
-
     private:
         friend class Engine;
 
@@ -54,7 +53,7 @@ namespace minEngine
 
         std::shared_ptr<RHI> m_RHI;
 
-        RenderPipeline m_RenderPipeline;
+        std::unique_ptr<SceneRenderer> m_SceneRenderer;
         std::vector<SceneDrawDesc> m_PendingDraws;
 
         bool m_EngineRenderingAssetsLoaded = false;
