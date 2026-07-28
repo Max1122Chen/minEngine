@@ -32,6 +32,7 @@ namespace minEngine
         RenderGraph() = default;
 
         void Reset();
+        void Bake();
 
         RenderPass& AddPass(const char* name);
         RenderPass& AddPass(const char* name, std::unique_ptr<IRenderPass> implementation);
@@ -51,10 +52,13 @@ namespace minEngine
     private:
         RenderPass* FindPass(const char* name) const;
         void RunPassSetup(RenderPass& pass);
+        std::vector<const RenderPass*> CollectActivePasses() const;
 
         std::vector<std::unique_ptr<RenderPass>> m_Passes;
         std::unordered_map<std::string, RenderPass*> m_PassByName;
+        std::vector<const RenderPass*> m_SelectedPasses;
         std::vector<const RenderPass*> m_ExecutionOrder;
+        bool m_IsBaked = false;
 
         std::vector<RDGTextureRegistryEntry> m_TextureRegistry;
         std::unordered_map<std::string, uint32_t> m_TextureIndexByName;

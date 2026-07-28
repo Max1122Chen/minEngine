@@ -5,13 +5,18 @@
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHITexture.h"
 
+#include <stdexcept>
+#include <unordered_set>
+
 namespace minEngine
 {
     void RenderGraph::Reset()
     {
         m_Passes.clear();
         m_PassByName.clear();
+        m_SelectedPasses.clear();
         m_ExecutionOrder.clear();
+        m_IsBaked = false;
         m_TextureRegistry.clear();
         m_TextureIndexByName.clear();
     }
@@ -71,18 +76,20 @@ namespace minEngine
 
     void RenderGraph::SetPassExecutionOrder(const RenderPass* const* passes, size_t passCount)
     {
+        m_SelectedPasses.clear();
         m_ExecutionOrder.clear();
+        m_IsBaked = false;
         if (passes == nullptr)
         {
             return;
         }
 
-        m_ExecutionOrder.reserve(passCount);
+        m_SelectedPasses.reserve(passCount);
         for (size_t i = 0; i < passCount; ++i)
         {
             if (passes[i] != nullptr)
             {
-                m_ExecutionOrder.push_back(passes[i]);
+                m_SelectedPasses.push_back(passes[i]);
             }
         }
     }
@@ -161,8 +168,172 @@ namespace minEngine
         pass.RunSetup(*this);
     }
 
+    std::vector<const RenderPass*> RenderGraph::CollectActivePasses() const
+    {
+        std::vector<const RenderPass*> activePasses;
+        activePasses.reserve(m_Passes.size());
+
+        if (m_SelectedPasses.empty())
+        {
+            for (const std::unique_ptr<RenderPass>& pass : m_Passes)
+            {
+                activePasses.push_back(pass.get());
+            }
+            return activePasses;
+        }
+
+        std::unordered_set<const RenderPass*> selectedSet;
+        selectedSet.reserve(m_SelectedPasses.size());
+        for (const RenderPass* pass : m_SelectedPasses)
+        {
+            if (pass == nullptr)
+            {
+                continue;
+            }
+
+            if (!selectedSet.insert(pass).second)
+            {
+                continue;
+            }
+
+            if (m_PassByName.find(pass->GetName()) == m_PassByName.end())
+            {
+                throw std::logic_error("RenderGraph::Bake: selected pass does not belong to this graph.");
+            }
+        }
+
+        for (const std::unique_ptr<RenderPass>& pass : m_Passes)
+        {
+            if (selectedSet.find(pass.get()) != selectedSet.end())
+            {
+                activePasses.push_back(pass.get());
+            }
+        }
+
+        return activePasses;
+    }
+
+    void RenderGraph::Bake()
+    {
+        for (const std::unique_ptr<RenderPass>& pass : m_Passes)
+        {
+            RunPassSetup(*pass);
+        }
+
+        std::vector<const RenderPass*> activePasses = CollectActivePasses();
+        m_ExecutionOrder.clear();
+        if (activePasses.empty())
+        {
+            m_IsBaked = true;
+            return;
+        }
+
+        struct ResourceState
+        {
+            bool HasProducer = false;
+            const RenderPass* LastWriter = nullptr;
+            const RenderPass* LastAccessor = nullptr;
+        };
+
+        std::unordered_map<const RenderPass*, size_t> passIndex;
+        passIndex.reserve(activePasses.size());
+        for (size_t index = 0; index < activePasses.size(); ++index)
+        {
+            passIndex.emplace(activePasses[index], index);
+        }
+
+        std::vector<std::unordered_set<size_t>> adjacency(activePasses.size());
+        std::vector<size_t> indegree(activePasses.size(), 0);
+        std::unordered_map<std::string, ResourceState> resourceStates;
+        resourceStates.reserve(m_TextureRegistry.size());
+        for (const RDGTextureRegistryEntry& entry : m_TextureRegistry)
+        {
+            ResourceState& state = resourceStates[entry.Name];
+            state.HasProducer = entry.IsExternal;
+        }
+
+        for (const RenderPass* pass : activePasses)
+        {
+            const size_t currentIndex = passIndex.at(pass);
+            for (const PassResourceAccess& access : pass->GetDeclaredAccesses())
+            {
+                ResourceState& state = resourceStates[access.TextureName];
+                const bool isWrite = access.AccessType == RDGPassResourceAccessType::ColorOutput
+                    || access.AccessType == RDGPassResourceAccessType::DepthStencilOutput;
+                const bool isRead = access.AccessType == RDGPassResourceAccessType::TextureInput
+                    || access.AccessType == RDGPassResourceAccessType::DepthStencilInput;
+
+                if (isRead && !state.HasProducer)
+                {
+                    throw std::logic_error(
+                        "RenderGraph::Bake: texture input '" + access.TextureName + "' has no producer or external registration.");
+                }
+
+                const RenderPass* predecessor = nullptr;
+                if (isRead)
+                {
+                    predecessor = state.LastWriter;
+                }
+                else if (isWrite)
+                {
+                    predecessor = state.LastAccessor;
+                }
+
+                if (predecessor != nullptr)
+                {
+                    const size_t predecessorIndex = passIndex.at(predecessor);
+                    if (predecessorIndex != currentIndex && adjacency[predecessorIndex].insert(currentIndex).second)
+                    {
+                        ++indegree[currentIndex];
+                    }
+                }
+
+                if (isWrite)
+                {
+                    state.HasProducer = true;
+                    state.LastWriter = pass;
+                }
+                state.LastAccessor = pass;
+            }
+        }
+
+        std::vector<bool> emitted(activePasses.size(), false);
+        m_ExecutionOrder.reserve(activePasses.size());
+        for (size_t emittedCount = 0; emittedCount < activePasses.size(); ++emittedCount)
+        {
+            size_t nextIndex = activePasses.size();
+            for (size_t candidateIndex = 0; candidateIndex < activePasses.size(); ++candidateIndex)
+            {
+                if (!emitted[candidateIndex] && indegree[candidateIndex] == 0)
+                {
+                    nextIndex = candidateIndex;
+                    break;
+                }
+            }
+
+            if (nextIndex == activePasses.size())
+            {
+                throw std::logic_error("RenderGraph::Bake: cyclic or unsatisfied dependency graph.");
+            }
+
+            emitted[nextIndex] = true;
+            m_ExecutionOrder.push_back(activePasses[nextIndex]);
+            for (size_t dependencyIndex : adjacency[nextIndex])
+            {
+                --indegree[dependencyIndex];
+            }
+        }
+
+        m_IsBaked = true;
+    }
+
     void RenderGraph::ExecuteGraph(RHICommandList& cmdList, RenderGraphFrameResources& frameResources)
     {
+        if (!m_IsBaked)
+        {
+            Bake();
+        }
+
         frameResources.BeginFrame(cmdList);
 
         for (const RenderPass* pass : m_ExecutionOrder)

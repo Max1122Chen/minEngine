@@ -420,6 +420,7 @@ namespace minEngine
         }
 
         m_FrameRenderGraph.SetPassExecutionOrder(executionOrder.data(), executionOrder.size());
+        m_FrameRenderGraph.Bake();
         m_FrameRenderGraph.ExecuteGraph(cmdList, m_RenderGraphFrameResources);
     }
 
