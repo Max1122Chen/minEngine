@@ -1,7 +1,7 @@
 # 函数反射 — 设计稿（P4）
 
-Last updated: 2026-05-28  
-Status: **设计中（可按阶段实现）**  
+Last updated: 2026-07-28  
+Status: **Review** — Phase A–E runtime + slim conformance tests wired; pending approval to mark Done  
 父文档：[Platform 路线图](../PLATFORM_ROADMAP.md) §2 P4、§11  
 前置阅读：[函数反射现状](./REFLECTION_FUNCTIONS_CURRENT_STATE.md)、[UE 方法反射学习笔记](./UE_FUNCTION_REFLECTION_NOTES.md)
 
@@ -460,15 +460,22 @@ sequenceDiagram
 
 ## 9) 里程碑验收总表
 
-| 阶段 | 可交付结果 | CLI 子项 |
-|------|------------|----------|
-| A | 仅元数据可查 | `meta` |
-| B | 成员函数可 invoke | `invoke` |
-| C | ref/const/out 生效 | `ref` |
-| D | array/ptr/struct 覆盖 | `types` |
-| E | static + script bridge pre | `static` |
+| 阶段 | 可交付结果 | CLI / doctest |
+|------|------------|---------------|
+| A | 仅元数据可查 | `meta` — `[smoke][full]` |
+| B | 成员函数可 invoke | `invoke` — `[smoke][full]` |
+| C | ref/const/out 生效 | `ref` — `[full]` |
+| D | array/ptr/string/enum/shared_ptr（精简集） | `types` — `[full]` |
+| E | static 调用 | `static` — `[full]` |
 
-统一入口：`--reflection-function-test`（无参数 = 跑已实现的全子项）；`--reflection-function-test=meta,invoke`（只跑指定子项）。
+**门禁（P4 Done 建议）：**
+
+```bash
+minEngineTests test reflection-function   # meta + invoke + ref + types + static
+minEngineTests test smoke                 # meta + invoke only
+```
+
+旧 argv `--reflection-function-test=*` 仍可由 `TestContext` 构建，但 **TestRunner 以 doctest 子 case 为准**（见 `ReflectionFunctionTest.cpp`）。
 
 ---
 
@@ -562,30 +569,37 @@ Runtime/Core/Reflection/
 | C2 | `PeekString(const string&)` | 入参不变 |
 | C3 | `FillOut` | `Role==Out`，out 值回传 |
 
-#### Phase D — `types`
+#### Phase D — `types`（精简验收集，2026-07-28）
 
-覆盖（以当前已落地的 `ReflectionFunctionTest.cpp` 为准）：
+与 `ReflectionSampleComponent` codegen 对齐的 **8 项**（`RunTypesPhaseTests` / doctest `types [full]`）：
 
-- `ReflectionSampleEnum`（value + return）
-- `std::vector<int>`（`const&` 入参 + return）
-- `MEObject*`（value + return）
-- `Math::Vector2/3/4`（value 入参 + value return、以及 `&` ref 回写）
-- `std::string`（`const&` + `&` in-out；**不做 string value 语义**）
-- `Component*`（non-owning 指针：valid/null 路径）
+| # | 函数 / 主题 | 断言要点 |
+|---|-------------|----------|
+| D1 | `EchoEnum` | enum 值入参 + 按值返回 |
+| D2 | `SumIntArray` | `vector<int>` const-ref 入参；返回元素和 |
+| D3 | `IsSameObject` | `MEObject*` 非 owning 指针 |
+| D4 | `GetGreeting` | `string` const-ref 入参 + non-trivial 按值返回 |
+| D5–D6 | `MakeSharedComponent` | `shared_ptr` 按值返回（非空 / null） |
+| D7 | `RewriteSharedComponentRef` | `shared_ptr` ref 回写 |
+| D8 | `NormalizeNested` | 嵌套 `vector<vector<int>>` 按值入参与返回 |
 
-验收命令：
+**刻意不在 P4 Done 门禁内（后续 slice 或 Lua 前再扩）：** `Vector2/3/4`、struct 按值矩阵、`vector<string>` 专测、C 数组、rvalue/`unique_ptr`、31 项历史 conformance 中的冗余变体。
+
+验收：
 
 ```bash
-Editor.exe --reflection-function-test=types
+minEngineTests test reflection-function   # 含 types [full]
 ```
 
 #### Phase E — `static`
 
 | # | 用例 | 断言 |
 |---|------|------|
-| E1 | `StaticAdd` | `InvokeStaticFunction` 成功 |
-| E2 | `InvokeFunctionByName` | 与 `FindFunction` + `InvokeFunction` 一致 |
-| E3 | Script bridge mock | 仅封送 + `InvokeFunction`，不直接绑 native 指针 |
+| E1 | `StaticResetCounter` | `InvokeStaticFunction` 成功 |
+| E2 | `StaticAdd` | `InvokeStaticFunction` + 返回值 |
+| E3 | `StaticAddInPlace` | static ref 参数回写 |
+| E4 | `StaticGetCounter` | `MEObject::InvokeFunction` on static（`context=nullptr` + 静态 thunk） |
+| E5 | `InvokeFunctionByName` | 与 `FindFunction` + `InvokeFunction` 一致 |
 
 ### 11.5 夹具函数演进表（推广前锁定在 Sample）
 
@@ -593,9 +607,9 @@ Editor.exe --reflection-function-test=types
 |------|---------------------------|------|
 | A | （测试 cpp 手写注册即可） | 可不改 `ReflectionSample.h` |
 | B | `ResetCounter`, `GetCounter`, `Add` | 首次在 Sample 上加真实声明 |
-| C | `AddInPlace`, `PeekString`, `FillOut` | |
-| D | enum/string/vector/struct/ptr 各 1 | 复用现有字段类型 |
-| E | `StaticAdd` | static + ByName |
+| C | `AddInPlace`, `PeekString`, `FillOut` | `FillOut` 闭合 pure-out |
+| D | `EchoEnum`, `SumIntArray`, `IsSameObject`, `GetGreeting`, `shared_ptr`, `NormalizeNested` | 精简 types 门禁（§11.4） |
+| E | `StaticResetCounter`, `StaticGetCounter`, `StaticAdd`, `StaticAddInPlace` | static + ByName |
 
 **推广门槛：** 当前阶段对应子开关全绿 + 你确认后，才在 `Component` 等业务类批量加 `ME_FUNCTION`。
 
@@ -1089,24 +1103,16 @@ Editor.exe --reflection-function-test=types
 - 为反射 struct/class 增加 `IsTriviallyCopyable` 判断（可在注册时静态推导并存储到类型信息）；
 - 对非 trivially copyable：强制只允许 `const&/&/Out`，Value 生成期报错或运行时报错。
 
-### 16.8.4 落地状态（2026-05-28）
+### 16.8.4 落地状态（2026-07-28）
 
-当前状态：`D-next-1` ~ `D-next-4`、`SP-1`、`SP-2`、`SP-3`、`CT-1`、`CT-2`、`CT-3` 已按顺序完成，并通过以下回归门槛：
+**P4 Done 测试门禁（精简版）：** `ReflectionFunctionTest.cpp` 五段 doctest — `meta` / `invoke`（smoke）、`ref` / `types` / `static`（full）。`types` 8 项与 `ReflectionSampleComponent` codegen 对齐；历史 D1–D31 冗余 case 已移除。
 
-- `Editor.exe --reflection-function-test=types`
-- `Editor.exe --reflection-function-test=meta,invoke,ref,types,static`
+验证：
 
-已落地能力（增量）：
-
-1. `std::string/std::vector<int>` 的 `const& / & / Out` 覆盖（D-next-1）
-2. non-trivial `ReturnValue` 的生命周期 hooks（Construct/Destruct/CopyAssign）与返回按值写回（D-next-2）
-3. non-trivial `Value` 参数封送（`std::string`、`std::vector<int>` 按值入参）（D-next-3）
-4. 可反射 class 按值入参 + 按值返回验证（`ReflectionSampleClass`）（D-next-4）
-5. `std::shared_ptr<Component>` 按值入参验证（非空/空）（SP-1）
-6. `std::shared_ptr<Component>` 按值返回验证（非空/空）（SP-2）
-7. `std::shared_ptr<Component>` `const& / &` 语义验证（只读 + 回写置值/置空）（SP-3）
-8. `std::vector<std::string>` 按值参数/按值返回验证（CT-1）
-9. `std::vector<std::vector<int>>` 按值参数/按值返回验证 + ref/out 回写验证（CT-2/CT-3）
+```bash
+minEngineTests test reflection-function
+minEngineTests test smoke
+```
 
 ### 16.8.5 当前仍不支持的参数/返回情形（收口清单）
 

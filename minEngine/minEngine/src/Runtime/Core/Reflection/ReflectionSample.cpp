@@ -28,6 +28,26 @@ namespace minEngine
         outLength = static_cast<int32_t>(input.size());
     }
 
+    void ReflectionSampleComponent::FillOut(int32_t value, int32_t& outValue)
+    {
+        outValue = value;
+    }
+
+    ReflectionSampleEnum ReflectionSampleComponent::EchoEnum(ReflectionSampleEnum value) const
+    {
+        return value;
+    }
+
+    int32_t ReflectionSampleComponent::SumIntArray(const std::vector<int>& values) const
+    {
+        int32_t sum = 0;
+        for (int element : values)
+        {
+            sum += static_cast<int32_t>(element);
+        }
+        return sum;
+    }
+
     bool ReflectionSampleComponent::IsSameObject(MEObject* a, MEObject* b) const
     {
         return a == b;
@@ -87,6 +107,13 @@ namespace minEngine
             }
         }
         return output;
+    }
+
+    int32_t ReflectionSampleComponent::s_StaticTestCounter = 0;
+
+    void ReflectionSampleComponent::SetStaticTestCounter(int32_t value)
+    {
+        s_StaticTestCounter = value;
     }
 
     void ReflectionSampleComponent::StaticResetCounter()

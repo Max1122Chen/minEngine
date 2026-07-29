@@ -234,6 +234,34 @@ namespace minEngine::Reflection
         }
     };
 
+    template<typename TOwner, typename R, R (*TMethod)()>
+    struct NativeThunkInvoker<TOwner, R (*)(), TMethod>
+    {
+        static void Invoke(minEngine::MEObject* /*context*/, MEFunction* function, void* parms)
+        {
+            if (function == nullptr)
+            {
+                return;
+            }
+
+            const std::vector<const MEParamDescriptor*> args = Detail::CollectArgParams(*function);
+            if (!args.empty())
+            {
+                return;
+            }
+
+            if constexpr (std::is_void_v<R>)
+            {
+                (*TMethod)();
+            }
+            else
+            {
+                const R ret = (*TMethod)();
+                Detail::StoreReturnValue(*function, parms, ret);
+            }
+        }
+    };
+
     template<typename TOwner, typename R, typename... TArgs, R (*TMethod)(TArgs...)>
     struct NativeThunkInvoker<TOwner, R (*)(TArgs...), TMethod>
     {
@@ -241,6 +269,19 @@ namespace minEngine::Reflection
         {
             if (function == nullptr)
             {
+                return;
+            }
+
+            if constexpr (sizeof...(TArgs) == 0)
+            {
+                if constexpr (std::is_void_v<R>)
+                {
+                    (*TMethod)();
+                }
+                else
+                {
+                    Detail::StoreReturnValue(*function, parms, (*TMethod)());
+                }
                 return;
             }
 
@@ -270,7 +311,7 @@ namespace minEngine::Reflection
             }
             else
             {
-                R ret = std::apply(
+                const R ret = std::apply(
                     [&](auto&... h)
                     {
                         return (*TMethod)(h.Get()...);
@@ -335,6 +376,18 @@ namespace minEngine::Reflection
     {
         NativeThunkInvoker<TOwner, decltype(TMethod), TMethod>::Invoke(context, function, parms);
     }
+
+    template<typename Owner, typename Signature, Signature Fn>
+    struct StaticFunctionNativeThunk;
+
+    template<typename Owner, typename R, typename... Args, R (*Fn)(Args...)>
+    struct StaticFunctionNativeThunk<Owner, R (*)(Args...), Fn>
+    {
+        static void Invoke(MEObject* /*context*/, MEFunction* function, void* parms)
+        {
+            NativeThunkInvoker<Owner, R (*)(Args...), Fn>::Invoke(nullptr, function, parms);
+        }
+    };
 
 } // namespace minEngine::Reflection
 

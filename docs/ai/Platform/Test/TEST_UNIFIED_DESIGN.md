@@ -161,7 +161,7 @@ Stable IDs must match [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2.
 | `object-manager` | yes | yes | no | `RunObjectManagerTests` |
 | `serialization-archive` | yes | yes | no | `RunSerializationArchiveTests` |
 | `asset-manager` | yes | yes | no | `RunAssetManagerTests` |
-| `reflection-function` | yes (meta+invoke+ref) | yes (all phases) | no | `RunReflectionFunctionTests` |
+| `reflection-function` | yes (meta+invoke) | yes (meta, invoke, ref, types, static) | no | `RunReflection*PhaseTests` per doctest case |
 | `material-ir` | yes | yes | yes | `RunMaterialIRSmokeTests` |
 
 **Smoke run order (fixture B, TEST-F03-S00):** object-manager → serialization-archive → asset-manager → reflection-function → material-ir.

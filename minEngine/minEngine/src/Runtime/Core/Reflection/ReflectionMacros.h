@@ -104,6 +104,11 @@ const bool minEngine::Reflection::REGISTER_SYMBOL = []() \
 #define ME_REFLECTION_FUNCTION_BIND_NATIVE(FUNC_VAR, OWNER_TYPE, METHOD) \
     FUNC_VAR->SetNativeThunk(&minEngine::Reflection::InvokeNativeThunk<OWNER_TYPE, &OWNER_TYPE::METHOD>);
 
+#define ME_REFLECTION_FUNCTION_BIND_NATIVE_STATIC(FUNC_VAR, OWNER_TYPE, METHOD) \
+    FUNC_VAR->SetNativeThunk( \
+        &minEngine::Reflection::StaticFunctionNativeThunk<OWNER_TYPE, decltype(+OWNER_TYPE::METHOD), \
+                                                            +OWNER_TYPE::METHOD>::Invoke);
+
 #define ME_REFLECTION_FUNCTION_END(FUNC_VAR) \
     meSystem.RegisterFunction(meClass, FUNC_VAR);
 

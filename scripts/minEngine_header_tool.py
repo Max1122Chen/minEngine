@@ -1061,8 +1061,13 @@ def render_function_registration_definition(owner: ClassMeta, function: Function
         lines.append(
             f"        ME_REFLECTION_FUNCTION_RETURN({function_var}, {function.return_type})"
         )
+    bind_macro = (
+        "ME_REFLECTION_FUNCTION_BIND_NATIVE_STATIC"
+        if function.is_static
+        else "ME_REFLECTION_FUNCTION_BIND_NATIVE"
+    )
     lines.append(
-        f"        ME_REFLECTION_FUNCTION_BIND_NATIVE({function_var}, {owner_type}, {function.name})"
+        f"        {bind_macro}({function_var}, {owner_type}, {function.name})"
     )
     lines.append(f"        ME_REFLECTION_FUNCTION_END({function_var})")
     lines.append("    }")

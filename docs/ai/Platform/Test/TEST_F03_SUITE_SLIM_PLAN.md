@@ -140,7 +140,7 @@ Remove “reflection must be first” language from [TEST_UNIFIED_DESIGN.md](./T
 | RF-1 | Meta: class/property lookup for known test type | `[smoke]` |
 | RF-2 | Invoke: `Add` success + expected failure paths (null fn, bad parms, IsA) — **one** negative case | `[smoke]` |
 | RF-3 | Ref / UProperty-style binding (if still in smoke profile) | `[smoke]` |
-| RF-4 | `types`, `static` phases | **Deferred** (ReflectionSample functions not in codegen; was `#if 0`) |
+| RF-4 | `types`, `static` phases | `[full]` — slim suite aligned with `ReflectionSample` codegen (2026-07-28) |
 
 **CLI:** keep `test reflection-function --suite=meta,invoke` mapping via `TestContext` / `ConfigureReflectionProfile`.
 
