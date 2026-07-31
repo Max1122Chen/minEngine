@@ -52,6 +52,7 @@ namespace minEngine
     private:
         friend class Engine;
         friend class AssetManagerTestScope;
+        friend class LuaScriptMvpTestScope;
 
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;

@@ -948,6 +948,31 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-07-31 - CORE-F01 Done；CORE-F02 Script Binding Draft
+- Goal:
+	Close Lua runtime Feature; open binding-codegen Feature with Script* specifiers.
+- Main changes:
+	`LUA_SCRIPTING_DESIGN` Status Done；原 S06 移交。
+	Registry: CORE-F01 Done；CORE-F02 Draft → [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md).
+	Generated path plan: `Generated/ScriptBinding/`（与 Reflection 分离）；self=C++ 指针。
+- Validation done:
+	Docs + prior editor HelloTick acceptance (F01).
+- Next step:
+	Review F02 Draft（首类型 Transform 子集）；确认后 Planned → S01 header tool.
+
+### 2026-07-31 - CORE-F01 S05：LuaScript 资产竖切
+- Goal:
+	Treat `.lua` as a first-class asset (Font-style); drive LuaComponent from asset source.
+- Main changes:
+	`LuaScript` Asset + `LuaScriptLoader`; register `.lua` in `AssetTypeRegistry` / `AssetManager`.
+	`LuaComponent` holds `shared_ptr<LuaScript>` (hardcoded chunk removed).
+	Suite covers in-memory SetSource + RegisterAsset/LoadAsset disk fixture.
+- Validation done:
+	`cmake --build minEngine/build --target minEngineTests`
+	`minEngine\bin\minEngineTests.exe test lua-script-mvp` → PASSED
+- Next step:
+	准备 commit；S06 codegen 或 Component 场景序列化按需排期。
+
 ### 2026-07-31 - CORE-F01 MVP（S01–S04）落地
 - Goal:
 	Feasibility vertical slice: sol2 state → probe bindings → hardcoded LuaComponent tick → destroy clears env.

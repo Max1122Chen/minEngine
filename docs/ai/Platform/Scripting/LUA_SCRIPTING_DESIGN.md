@@ -4,16 +4,16 @@
 
 - **ID:** `CORE-F01`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** —
-- **Last updated:** 2026-07-31（MVP S01–S04 已落地）
+- **Last updated:** 2026-07-31（MVP + S05 收口；绑定 codegen 转 **CORE-F02**）
 - **Branch:** `luaScript`
-- **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [函数反射设计](../Reflection/REFLECTION_FUNCTIONS_DESIGN.md) · [委托占位](../Reflection/REFLECTION_DELEGATES_DESIGN.md)
-- **Implementation Plan:** 待补 `LUA_SCRIPTING_IMPLEMENTATION.md`（切片表）
+- **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [CORE-F02 Script Binding](./LUA_SCRIPT_BINDING_DESIGN.md) · [函数反射设计](../Reflection/REFLECTION_FUNCTIONS_DESIGN.md)
+- **Implementation Plan:** 切片见本文件 §8；正式 Impl Plan 可选补
 
 ## TL;DR
 
-需要一条轻量脚本通路。**MVP**（S01–S04）已落地：唯一 `LuaScriptSystem`（sol2）→ 手写 `LuaBindProbe` + `me.log` → `LuaComponent` 写死 chunk + Tick → 销毁清 env。不做读文件 / `package.path` / 可配置脚本；验证 suite `lua-script-mvp`（非 smoke）。下一步：S05+ 文件/资产/codegen。分支 `luaScript`。
+需要一条轻量脚本通路。**本 Feature（CORE-F01）已 Done：** sol2 + `LuaScriptSystem` → 手写白名单 → `LuaScript` 资产（`.lua`）→ `LuaComponent`（编辑器可挂、可赋脚本、Tick 打 log）。`package.path` / 热重载不做。**Script specifier → sol2 生成绑定** 单独立项 **[CORE-F02](./LUA_SCRIPT_BINDING_DESIGN.md)**。分支 `luaScript`。
 
 ## Scope
 
@@ -30,19 +30,18 @@
 
 **后续切片（非本 MVP Done 条件；另排期）：**
 
-- `package.path` / `require`、读 `.lua` 文件、可配置 ScriptPath/Source
-- 脚本资产（如 `.melua`）、Content Browser / Inspector
-- header tool 按标记生成 sol2 绑定
+- `package.path` / `require`
+- 热重载、Inspector 内嵌编辑脚本正文
+- **Script 绑定 codegen** → 移交 **CORE-F02**（不再作为 F01-S06）
 
-### Out（MVP 明确不做）
+### Out（本 Feature 明确不做 / 已移交）
 
-- 读 `.lua` 文件执行；`RunFile`；`ConfigurePackagePath`
-- `LuaComponent` 可变脚本路径/源码字段（无 `m_ScriptPath` / 可编辑 Source）
-- 运行时 `InvokeFunction` 通用桥
+- 读 `.lua` 作为非资产路径的专用 `RunFile` API（资产 Loader 已覆盖主路径）
+- 运行时 `InvokeFunction` 通用桥作为主绑定路径
 - 委托 / Lua 事件、热重载、调试器、多 state
-- 全引擎 API、coroutine、任意 table↔struct
+- header tool 生成 sol2 绑定（**CORE-F02**）
 - 与 RND-F02 混在同一分支交付
-- 把本 MVP 的瞬时用例永久钉进 `test smoke`（除非日后另开「产品化脚本」门禁）
+- 把瞬时 `lua-script-mvp` 永久钉进 `test smoke`（除非另开门禁）
 
 ## Reader quick start
 
@@ -109,12 +108,12 @@ S01  LuaScriptSystem：唯一 state + Init/Shutdown + 错误日志（无 package
 S02  手写 sol2：`LuaBindProbe` + `me.log`
 S03  LuaComponent：写死内嵌 chunk + env + Tick（无可配置脚本）
 S04  销毁：清 env + 停 Tick
-—— MVP 收口；下面为后续 Feature/切片 ——
-S05  可配置脚本 / 读文件 / package.path / 资产化
+—— MVP 收口 ——
+S05  `LuaScript` 资产（`.lua`）+ Loader + Component 引用（无 package.path / 无热重载）
 S06  Header tool codegen
 ```
 
-手写绑定是 **S02 显式切片**。类型与接口细节见 **§9**（§9 以 MVP 为准；文件/路径 API 标为后期）。
+手写绑定是 **S02 显式切片**。类型与接口细节见 **§9**。
 
 ### 3.2 模块边界
 
@@ -123,9 +122,10 @@ Engine
   └── LuaScriptSystem              // 拥有 sol::state；Init 时 RegisterManualBindings
         ▲
         │ GetState() / ReportLuaError() / RunString（测用）
-LuaComponent                       // 写死 chunk → env；Tick → tick(dt)
+LuaComponent                       // shared_ptr<LuaScript> → env；Tick → tick(dt)
         │
         ▼
+LuaScript : Asset                   // .lua 源文件；Loader 读入 m_Source
 LuaManualBindings：me.log + LuaBindProbe
 ```
 
@@ -170,12 +170,22 @@ LuaManualBindings：me.log + LuaBindProbe
 - [x] 存在瞬时验证（专用 suite）；**不要求**进 `test smoke`
 - [x] Design / Progress / Registry 状态已更新
 
-### 后续切片（不阻塞 MVP Done）
+### 后续切片
 
-- [ ] 可配置脚本 / 读 `.lua` / `package.path`
-- [ ] 脚本资产类型
-- [ ] Header tool 生成绑定
+#### S05 — `LuaScript` 资产竖切 Done
+
+- [x] `LuaScript : Asset`（内存 `m_Source`；磁盘真相为 `.lua`）
+- [x] `AssetTypeRegistry` 登记 `.lua`；`LuaScriptLoader`；`AssetManager` 分发
+- [x] `LuaComponent` 持有 `shared_ptr<LuaScript>`，用资产源码加载 env（去掉写死 chunk）
+- [x] 测试：Loader 读临时 `.lua` + Component Tick 副作用
+- [x] 编辑器验收：`LuaComponent` 已 `ME_CLASS` + `m_Script` 属性；样例 `MyMEProject/Assets/Scripts/HelloTick.lua`
+- [ ] **Out（仍后置）：** `package.path` / `require`、热重载、Inspector 内嵌编辑脚本正文
+
+#### 更后 / 移交
+
+- [ ] Header tool 生成绑定 → **[CORE-F02](./LUA_SCRIPT_BINDING_DESIGN.md)**
 - [ ] 产品化后的长期脚本门禁（若需要）
+- [ ] `package.path` / 模块化（若需要）
 
 ### 建议验证命令（落地后填实）
 
@@ -188,7 +198,24 @@ minEngineTests.exe test lua-script-mvp
 
 ## 7) Status note
 
-（Draft — 无 Blocked 字段）
+**Status: Done（2026-07-31）。**  
+编辑器验收通过：`HelloTick.lua` + `LuaComponent` 赋脚本后周期性 `me.log`。  
+空 Script 曾永久禁用 Tick 的曲折见 §7.1（已修）。  
+绑定 codegen / Script* specifier → **CORE-F02**。
+
+### 7.1 实现曲折（编辑器赋 Script 无 log）
+
+**现象：** Add `LuaComponent` 后立刻 `LoadScript` 失败；Inspector 赋上 `HelloTick` 后仍无 `me.log`；部分情况下 Transform 异常跳动（与脚本逻辑无关，另查 ObjectPtr/反射）。
+
+**根因（已修）：** 空 `m_Script` 时 `LoadScript` 失败路径把 **`m_ScriptEnabled = false`**。`Tick` 先判断该标志再 `EnsureLoaded`，而 Inspector 改 `shared_ptr` **不走** `SetScript`，于是赋资产后永远进不了重载。
+
+**修复约定：**
+
+| 情况 | 行为 |
+|------|------|
+| `m_Script == nullptr` | Idle，不报 ERROR，不禁用 |
+| Inspector / 反射改引用 | `Tick` 比较 `m_Script.get()` vs `m_SyncedScript`，变化则清 env 并重新允许执行 |
+| 源码空 / Lua load 失败 / `tick` 抛错 | 仍可禁用；换引用后再次允许重试 |
 
 ---
 
@@ -200,7 +227,8 @@ minEngineTests.exe test lua-script-mvp
 | S02 | `LuaBindProbe` + `me.log` | Lua 调 Add/GetValue |
 | S03 | `LuaComponent` 写死 chunk + Tick | 多帧副作用可断言 |
 | S04 | 销毁清 env | 毁组件后不崩 |
-| S05+ | 文件/资产/codegen | 另排期 |
+| S05 | `LuaScript` 资产 + Component 引用 | Load `.lua`；Tick 用资产源码；编辑器可验 |
+| ~~S06~~ | ~~Header tool codegen~~ | **取消**；改 **CORE-F02** |
 
 ---
 
@@ -212,11 +240,13 @@ minEngineTests.exe test lua-script-mvp
 
 | 路径（建议） | 职责 |
 |--------------|------|
-| `Runtime/Function/Scripting/LuaScriptSystem.h/.cpp` | 唯一 state；Init/Shutdown；错误报告（MVP **无** package.path） |
-| `Runtime/Function/Scripting/LuaManualBindings.h/.cpp` | S02 手写 `RegisterManualBindings(sol::state&)` |
-| `Runtime/Function/Scripting/LuaBindProbe.h/.cpp` | 专用绑定/测试夹具（无 Component / 无反射） |
-| `Runtime/Function/Framework/Components/LuaComponent.h/.cpp` | 挂 GO；MVP 内嵌写死 chunk |
-| 测试 | `Tests/Suites/LuaScriptMvpTest.cpp`（**瞬时** suite，如 `lua-script-mvp`；收口可删） |
+| `Runtime/Resource/LuaScript.h` | `Asset` 子类；持有源码字符串 |
+| `Runtime/Resource/Loaders/LuaScriptLoader.h/.cpp` | 读 `.lua` 文本 → `LuaScript` |
+| `Runtime/Function/Scripting/LuaScriptSystem.h/.cpp` | 唯一 state；Init/Shutdown；错误报告 |
+| `Runtime/Function/Scripting/LuaManualBindings.h/.cpp` | 手写 `RegisterManualBindings(sol::state&)` |
+| `Runtime/Function/Scripting/LuaBindProbe.h/.cpp` | 专用绑定/测试夹具 |
+| `Runtime/Function/Framework/Components/LuaComponent.h/.cpp` | 挂 GO；引用 `LuaScript` |
+| 测试 | `Tests/Suites/LuaScriptMvpTest.cpp`（瞬时 suite） |
 
 第三方：**Lua 5.4.5**（`Third-Party/lua`，`minengine_lua`）+ **sol2**（`Third-Party/sol2/include`，commit 见 `VENDOR.md`）。
 
@@ -369,64 +399,68 @@ me.set_function("log", &MeLog);
 - 只 `#include` 日志头于 **Scripting 的薄 .cpp**；不修改 `LogSystem.h`，不 `usertype<LogSystem>`
 - 后续可加 `me.warn` / `me.error`，仍保持自由函数
 
-### 9.6 `LuaComponent`（MVP：写死脚本）
+### 9.6 `LuaComponent`（S05：引用 `LuaScript` 资产）
 
-继承 `Component`。MVP **不要** `m_ScriptPath` / 可配置 Source / 读文件。  
-反射：`ME_CLASS` 可选（想少碰 gen 可不加）。
+继承 `Component`。持有 `std::shared_ptr<LuaScript>`；`LoadScript` 用资产 `GetSource()` 填 env。  
+本切片已为编辑器验收加上 `ME_CLASS` + `ME_PROPERTY shared_ptr<LuaScript>`；热重载 / Inspector 内嵌编辑仍后置。
 
 ```cpp
 namespace minEngine
 {
+    class LuaScript;
+
     class LuaComponent : public Component
     {
     public:
+        void SetScript(const std::shared_ptr<LuaScript>& script);
+        LuaScript* GetScript() const;
+
         void Tick(float deltaTime) override;
-
-        bool IsScriptLoaded() const { return m_Loaded; }
-        bool IsScriptEnabled() const { return m_ScriptEnabled; }
-
-        bool LoadScript();   // loads the hardcoded chunk once
+        bool LoadScript();
         void UnloadScript();
-
-    private:
-        // Hardcoded feasibility script lives in .cpp (not a public editable API).
-        static const char* GetHardcodedScript();
-
-        bool EnsureLoaded();
-        bool CallTick(float deltaTime);
-        void ClearLuaEnvironment();
-
-        sol::environment m_Environment;
-        sol::protected_function m_TickFn;
-        bool m_Loaded = false;
-        bool m_ScriptEnabled = true;
-        bool m_HasLoggedTickError = false;
+        // ...
     };
 }
 ```
 
-**写死 chunk 示例（.cpp 内常量）：**
-
-```lua
-function tick(dt)
-  LuaBindProbe.IncrementStaticCounter()
-end
-```
-
-MVP **只认全局 `function tick(dt)`**（实现简单）。`return { tick = ... }` 留到可配置脚本阶段再考虑。
-
-**加载时机：** 首次 `Tick` 懒加载 `GetHardcodedScript()`。  
+MVP/S05 **只认全局 `function tick(dt)`**。  
+**加载时机：** 首次 `Tick` 懒加载（需已 `SetScript` 且源码非空）。  
 **Unload：** 析构 / 显式 `UnloadScript`。
 
-**后期（S05，非 MVP）：** `ScriptPath` / Source / 资产引用 —— 届时再扩接口。
+**后期：** `ME_PROPERTY shared_ptr<LuaScript>` 进场景；热重载；Inspector。
+
+### 9.6.1 `LuaScript` 资产（S05）
+
+对齐 `Font`：「磁盘后缀 = 资产源」；**不**另造 `.melua`。
+
+```cpp
+ME_CLASS()
+class LuaScript : public Asset
+{
+    ME_GENERATED_BODY(LuaScript)
+public:
+    const std::string& GetSource() const { return m_Source; }
+    void SetSource(std::string source); // 测试 / 工具；Loader 也写此字段
+    bool IsValid() const { return !m_Source.empty(); }
+protected:
+    friend class LuaScriptLoader;
+    std::string m_Source; // 不 ME_PROPERTY；正文以 .lua 文件为准
+};
+```
+
+- **AssetTypeId:** `LuaScript`；**Extensions:** `.lua`
+- **Loader:** 读文本文件 → `NewObject<LuaScript>` → `m_Source`
+- **Out：** `package.path`、把整份源码再序列进 meta
 
 ### 9.7 错误与 Tick 策略
 
 | 事件 | 行为 |
 |------|------|
-| 写死 chunk `load` 失败 | `ReportLuaError`；`m_Loaded=false`；`m_ScriptEnabled=false` |
-| `tick` 抛错 | `ReportLuaError`；**本帧跳过**；可选：连续失败 N 次后 `m_ScriptEnabled=false`（首版：首次错误后禁用 Tick 即可） |
-| System 未 Init | `LuaComponent::Tick` no-op |
+| `m_Script == nullptr` | Idle（不 ERROR、不禁用）；等 Inspector 赋值 |
+| 源码空 / `load` 失败 | `ReportLuaError`；`m_Loaded=false`；`m_ScriptEnabled=false`；换引用后可重试 |
+| `tick` 抛错 | `ReportLuaError`；首次错误后禁用 Tick；换引用后可重试 |
+| System 未 Init | 禁用并报错 |
+| 反射改 `m_Script`（无 `SetScript`） | `Tick` 用 `m_SyncedScript` 检测变化后清 env 再 Load |
 
 ### 9.8 寿命与销毁（S04 竖切最小策略 · 已收敛）
 
@@ -438,17 +472,9 @@ S04 **先做策略 1**（简单、够用）：
 
 策略 2（GUID / ObjectManager 弱语义）列为 **S04 后半或独立小切片**，不阻塞竖切 Done。
 
-### 9.9 S06 Codegen 接口预告（不实现，只定方向）
+### 9.9 绑定 codegen（已移交 CORE-F02）
 
-| 项 | 倾向（待最终拍板） |
-|----|-------------------|
-| 导出默认 | **opt-in**（避免全引擎进 Lua） |
-| 标记候选 | 函数：`ME_FUNCTION(ScriptCallable)`；类：`ME_CLASS(ScriptExport)` |
-| 生成物 | `TypeName.lua_bind.gen.cpp`，提供 `RegisterGeneratedLuaBindings(sol::state&)` |
-| 调用点 | `LuaScriptSystem::Initialize`：`RegisterManualBindings` 之后调用 generated register |
-| 首样例 | 仍可用 `LuaBindProbe` 加标记做第一个生成目标，再删对应手写注册 |
-
-`MEObject*` 句柄模型：**竖切不定**；S06 前另开短讨论 / ADR。
+原 S06 预告作废。规范见 **[LUA_SCRIPT_BINDING_DESIGN.md](./LUA_SCRIPT_BINDING_DESIGN.md)**（`CORE-F02`）：Script* **specifier**、生成物目录 `Generated/ScriptBinding/`、首真类型、self=C++ 指针策略等。
 
 ### 9.10 测试面（瞬时 / disposable）
 
@@ -472,3 +498,5 @@ S04 **先做策略 1**（简单、够用）：
 | 2026-05-27 | 占位说明（P5） |
 | 2026-07-30 | 升格为 `CORE-F01` Design Spec 初稿；分支 `luaScript`；明确 System → 手写绑定 → Component → 寿命 → 资产 → codegen |
 | 2026-07-31 | §9 细化类型/接口：System、ManualBindings、LuaBindProbe、me.log、LuaComponent、寿命与 codegen 预告 |
+| 2026-07-31 | §7.1：编辑器空 Script 永久禁用 Tick 的曲折与修复；§9.7 同步 |
+| 2026-07-31 | **Done**：S05 + 编辑器验收；S06 取消并移交 CORE-F02 |

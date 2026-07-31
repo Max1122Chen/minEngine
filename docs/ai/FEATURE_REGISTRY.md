@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-07-31 (CORE-F01 MVP S01–S04 coded; Feature still In Progress)  
+Last updated: 2026-07-31 (CORE-F01 Done; CORE-F02 Script Binding Draft)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -23,7 +23,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `TEST-F03` | Suite slim-down, doctest cases, fixture B reflection | Done | — | [TEST_F03_SUITE_SLIM_PLAN](./Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md) |
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | In Progress | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
-| `CORE-F01` | Lua scripting（sol2 + LuaScriptSystem + LuaComponent） | In Progress | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) · 开发分支 `luaScript` |
+| `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) · 分支 `luaScript` |
+| `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Planned | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md)（Design Draft）· 分支 `luaScript` |
 | `RND-F01` | RenderGraph / frame scheduling | Deferred | — | 待 Design；**不在** F02/F03 范围 |
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配） | In Progress | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · 开发分支 `render` |
 | `RND-F03` | Vulkan RHI backend（与 GL 契约一致、分里程碑对齐） | Planned | — | 依赖 F02；Design 随 F02 稳定后补 `RND-F03_*` |
@@ -37,7 +38,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | Command-line / tools entry |
 | `TEST` | F04 | Automated tests (follow-on) |
 | `WF` | F03 | Workflow / docs |
-| `CORE` | F02 | F01 = Lua scripting（`luaScript` 分支） |
+| `CORE` | F03 | F01 Lua runtime Done；F02 Script binding Draft |
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F01 | Editor productization (new IDs only) |
 | `RND` | F04 | F01 RenderGraph (Deferred); F02–F03 active render track |

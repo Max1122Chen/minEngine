@@ -103,9 +103,11 @@ namespace minEngine
 
     private:
         friend class Engine;
-        friend class MaterialIRTestObjectManagerScope;
+        friend class AssetManagerTestScope;
         friend class ObjectManagerTestScope;
         friend class SerializationArchiveTestScope;
+        friend class MaterialIRTestObjectManagerScope;
+        friend class LuaScriptMvpTestScope;
 
         static void SetInstance(ObjectManager* instance);
         void PruneExpiredEntries();

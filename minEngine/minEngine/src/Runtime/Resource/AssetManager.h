@@ -27,6 +27,7 @@ namespace minEngine
     class Shader;
     class Scene;
     class Font;
+    class LuaScript;
     class Asset;
 
     struct ImportAssetResult
@@ -186,6 +187,7 @@ namespace minEngine
     private:
         friend class Engine;
         friend class AssetManagerTestScope;
+        friend class LuaScriptMvpTestScope;
 
         static void SetInstance(AssetManager* instance);
         static AssetManager* s_Instance;
@@ -233,6 +235,8 @@ namespace minEngine
     std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta);
     template<>
     std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<LuaScript> AssetManager::LoadAsset_Impl<LuaScript>(const AssetMeta& meta);
 
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;

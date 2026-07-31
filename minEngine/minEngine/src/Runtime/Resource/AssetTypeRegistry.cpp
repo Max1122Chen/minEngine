@@ -6,6 +6,7 @@
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/Font.h"
+#include "Runtime/Resource/LuaScript.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 
 #include <algorithm>
@@ -91,6 +92,13 @@ namespace minEngine
             .Extensions = {".ttf", ".otf"},
             .FileDialogFilterLabel = "Font (*.ttf;*.otf)"});
         m_AssetTypeIdByClass[Font::StaticClass()] = "Font";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "LuaScript",
+            .RuntimeClassName = GetClassName<LuaScript>(),
+            .Extensions = {".lua"},
+            .FileDialogFilterLabel = "Lua Script (*.lua)"});
+        m_AssetTypeIdByClass[LuaScript::StaticClass()] = "LuaScript";
     }
 
     void AssetTypeRegistry::RegisterType(const AssetTypeDescriptor& descriptor)

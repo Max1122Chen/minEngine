@@ -1,0 +1,9 @@
+{
+    "AssetName": "HelloTick",
+    "AssetPath": "Scripts/HelloTick.lua",
+    "AssetType": "LuaScript",
+    "Guid": {
+        "High": 15194495162532439718,
+        "Low": 5728945931830335518
+    }
+}

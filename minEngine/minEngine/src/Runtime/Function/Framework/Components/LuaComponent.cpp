@@ -1,8 +1,7 @@
 #include "LuaComponent.h"
 
-#include "Runtime/Function/Scripting/LuaScriptSystem.h"
-
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Scripting/LuaScriptSystem.h"
 
 namespace minEngine
 {
@@ -11,18 +10,38 @@ namespace minEngine
         UnloadScript();
     }
 
-    const char* LuaComponent::GetHardcodedScript()
+    void LuaComponent::SetScript(const std::shared_ptr<LuaScript>& script)
     {
-        return R"LUA(
-function tick(dt)
-  LuaBindProbe.IncrementStaticCounter()
-end
-)LUA";
+        if (m_Script == script)
+        {
+            return;
+        }
+
+        UnloadScript();
+        m_Script = script;
+        m_SyncedScript = script.get();
+        m_ScriptEnabled = true;
+        m_HasLoggedTickError = false;
     }
 
     void LuaComponent::Tick(float deltaTime)
     {
+        // Inspector may assign m_Script via reflection without calling SetScript.
+        if (m_Script.get() != m_SyncedScript)
+        {
+            ClearLuaEnvironment();
+            m_SyncedScript = m_Script.get();
+            m_ScriptEnabled = true;
+            m_HasLoggedTickError = false;
+        }
+
         if (!m_ScriptEnabled)
+        {
+            return;
+        }
+
+        // No asset yet: idle (do not disable — editor often adds component before assigning script).
+        if (m_Script == nullptr)
         {
             return;
         }
@@ -44,17 +63,30 @@ end
             return false;
         }
 
+        if (m_Script == nullptr)
+        {
+            ClearLuaEnvironment();
+            return false;
+        }
+
+        if (!m_Script->IsValid())
+        {
+            ME_CORE_ERROR("LuaComponent::LoadScript: LuaScript asset source is empty.");
+            ClearLuaEnvironment();
+            m_ScriptEnabled = false;
+            return false;
+        }
+
         ClearLuaEnvironment();
 
         sol::state& state = LuaScriptSystem::Get().GetState();
         m_Environment = sol::environment(state, sol::create, state.globals());
 
-        // Order: code, env, on_error, chunkname (sol2 state_view::safe_script).
         const sol::protected_function_result loadResult = state.safe_script(
-            GetHardcodedScript(),
+            m_Script->GetSource(),
             m_Environment,
             sol::script_pass_on_error,
-            "LuaComponentHardcoded");
+            "LuaComponent");
         if (!loadResult.valid())
         {
             const sol::error error = loadResult;
@@ -83,6 +115,7 @@ end
     void LuaComponent::UnloadScript()
     {
         ClearLuaEnvironment();
+        m_SyncedScript = m_Script.get();
         m_Loaded = false;
     }
 

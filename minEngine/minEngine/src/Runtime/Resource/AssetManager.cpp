@@ -12,6 +12,7 @@
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Resource/Font.h"
+#include "Runtime/Resource/LuaScript.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -1074,6 +1075,17 @@ namespace minEngine
             if (asset == nullptr)
             {
                 outErrorMessage = "failed to load font by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "LuaScript")
+        {
+            std::shared_ptr<LuaScript> asset = LoadAsset<LuaScript>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load lua script by guid";
                 return nullptr;
             }
             return std::static_pointer_cast<Asset>(asset);

@@ -9,12 +9,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-### CORE-F01 Lua scripting（当前会话 / `luaScript` 分支）
+### CORE-F02 Lua Script binding（当前会话 / `luaScript` 分支）
 
-- **Design:** [LUA_SCRIPTING_DESIGN.md](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)（In Progress；**MVP S01–S04 Done**）
-- **已验证：** `minEngineTests.exe test lua-script-mvp`
-- **下一刀（未启动）：** S05 可读脚本/资产 → S06 header tool codegen（需你点头再开）
-- **分支约定：** 实现与设计迭代在 **`luaScript`**；勿与 `render` 混交。
+- **Design:** [LUA_SCRIPT_BINDING_DESIGN.md](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md)（**Draft**）
+- **前置：** CORE-F01 Done（runtime / 资产 / 编辑器 HelloTick 已验）
+- **方向：** Script\* specifier → `Generated/ScriptBinding/` sol2 生成；首真类型（建议 Transform 子集）
+- **分支约定：** 继续 **`luaScript`**；勿与 `render` 混交。
+
+### CORE-F01 Lua runtime（已收口）
+
+- **Design:** [LUA_SCRIPTING_DESIGN.md](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)（**Done**）
+- 绑定 codegen 已移交 F02（原 S06 取消）。
 
 ### RND-F02 Modern RHI（并行轨 / `render` 分支）
 
