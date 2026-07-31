@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-01
+Last updated: 2026-07-31
 
 ## Purpose
 
@@ -947,6 +947,34 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`cmake --build minEngine/build --target Editor` succeeded.
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
+
+### 2026-07-31 - CORE-F01 MVP（S01–S04）落地
+- Goal:
+	Feasibility vertical slice: sol2 state → probe bindings → hardcoded LuaComponent tick → destroy clears env.
+- Main changes:
+	CMake: Lua 5.4.5 (`minengine_lua`) + sol2 pin `d805d027`（GCC 15 `optional::emplace` fix）.
+	`LuaScriptSystem` / `LuaManualBindings` / `LuaBindProbe`；Engine Init/Shutdown 挂接。
+	`LuaComponent` 内嵌 chunk + per-instance env；析构 `UnloadScript`。
+	Suite `lua-script-mvp`（非 smoke/full）。
+- Validation done:
+	`cmake --build minEngine/build --target minEngineTests`
+	`minEngine\bin\minEngineTests.exe test lua-script-mvp` → PASSED
+	Follow-up: Lua/sol2 moved from FetchContent into `Third-Party/` (offline/reviewable).
+- Next step:
+	准备 commit；S05+（文件/资产/codegen）待用户排期。
+
+### 2026-07-30 - CORE-F01 Lua scripting：分支 + 登记 + 设计初稿
+- Goal:
+	Start Lua track on a dedicated branch; register Feature; replace placeholder design with Draft Spec.
+- Main changes:
+	Branch `luaScript` from `master`.
+	`FEATURE_REGISTRY`: `CORE-F01` In Progress → [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md).
+	`ACTIVE_WORK`: CORE-F01 focus alongside RND-F02（分轨）.
+	Design: System → 手写 sol2 白名单 → LuaComponent → 寿命失效 → 资产 → header tool codegen.
+- Validation done:
+	Docs-only; no build.
+- Next step:
+	User review Design Draft；可选补 Implementation Plan；然后 S01 引入 sol2 + `LuaScriptSystem`.
 
 ### 2026-06-02 - WF-F02 handbook UX phase 2 (S04–S07)
 - Goal:

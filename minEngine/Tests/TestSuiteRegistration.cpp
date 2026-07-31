@@ -12,6 +12,7 @@
 #include "Suites/AssetManagerTest.h"
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
+#include "Suites/LuaScriptMvpTest.h"
 
 namespace minEngine
 {
@@ -146,11 +147,36 @@ namespace minEngine
             }
         };
 
+        struct LuaScriptMvpTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                // Disposable feasibility suite — not part of smoke/full gates.
+                return TestSuiteMetadata{
+                    "lua-script-mvp",
+                    "Lua Script MVP",
+                    false,
+                    false,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'lua-script-mvp'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "lua-script-mvp",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
+        using LuaScriptMvpSuite = TypedTestSuite<LuaScriptMvpTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -166,6 +192,7 @@ namespace minEngine
             registry.Register(AssetManagerSuite::Get());
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
+            registry.Register(LuaScriptMvpSuite::Get());
             s_Registered = true;
         }
     }

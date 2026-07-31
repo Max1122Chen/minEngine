@@ -9,6 +9,7 @@
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/WindowSystem.h"
+#include "Runtime/Function/Scripting/LuaScriptSystem.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 
 namespace minEngine
@@ -149,6 +150,10 @@ namespace minEngine
         RenderSystem::SetInstance(m_RenderSystem.get());
         m_RenderSystem->Initialize();
 
+        m_LuaScriptSystem = std::make_shared<LuaScriptSystem>();
+        LuaScriptSystem::SetInstance(m_LuaScriptSystem.get());
+        m_LuaScriptSystem->Initialize();
+
         m_SceneManager = std::make_shared<SceneManager>();
         SceneManager::SetInstance(m_SceneManager.get());
         m_SceneManager->Initialize();
@@ -175,6 +180,13 @@ namespace minEngine
             m_SceneManager->Shutdown();
             SceneManager::SetInstance(nullptr);
             m_SceneManager.reset();
+        }
+
+        if (m_LuaScriptSystem)
+        {
+            m_LuaScriptSystem->Shutdown();
+            LuaScriptSystem::SetInstance(nullptr);
+            m_LuaScriptSystem.reset();
         }
 
         if (m_InputSystem)

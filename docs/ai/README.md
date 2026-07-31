@@ -68,7 +68,7 @@
 - [函数反射设计](./Platform/Reflection/REFLECTION_FUNCTIONS_DESIGN.md) — Invoke、阶段切片（实施时以代码为准）
 - [函数反射现状](./Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) — **Snapshot**（方法反射之前）；勿当现状
 - [委托系统（占位）](./Platform/Reflection/REFLECTION_DELEGATES_DESIGN.md)
-- [Lua 脚本（占位）](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)
+- [Lua 脚本（CORE-F01 Draft）](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)
 - [引擎启动 / 配置](./Platform/Startup/ENGINE_STARTUP_DESIGN.md)
 - [内存管理](./Platform/MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md)
 - [Content Browser](./Platform/ContentBrowser/CONTENT_BROWSER_DESIGN.md)

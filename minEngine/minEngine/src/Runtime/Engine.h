@@ -17,6 +17,7 @@ namespace minEngine
     class RenderSystem;
     class SceneManager;
     class FileDialogService;
+    class LuaScriptSystem;
 
     class Engine
     {
@@ -63,6 +64,7 @@ namespace minEngine
         std::shared_ptr<RenderSystem> m_RenderSystem;
         std::shared_ptr<SceneManager> m_SceneManager;
         std::shared_ptr<FileDialogService> m_FileDialogService;
+        std::shared_ptr<LuaScriptSystem> m_LuaScriptSystem;
 
         EngineConfig m_EngineConfig;
         bool m_EnginePathConfigLoaded = false;

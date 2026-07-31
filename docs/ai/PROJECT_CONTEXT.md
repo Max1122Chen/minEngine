@@ -64,7 +64,7 @@ When finishing a task, AI should:
 ## 6) Current product direction (2026-05-27)
 
 - **Rendering / Material:** Phase 0–5 largely complete (IBL + Skybox); maintain via `docs/ai/Render/Material/`.
-- **Platform Core (main track on master):** **P4** 函数反射 + 委托 → **P5** Lua；P0/P1/资产 Runtime 已收口。设计：`docs/ai/Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md`、`docs/ai/Platform/Scripting/LUA_SCRIPTING_DESIGN.md`。
+- **Platform Core:** **P4** 函数反射已可用；**`CORE-F01` Lua** 在分支 `luaScript`（[设计](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)）；委托仍占位。P0/P1/资产 Runtime 已收口。渲染轨 **`RND-F02`** 在 `render`。
 - **Platform Editor (parallel):** E1 Inspector / P7 等产品化可并行；见 `PLATFORM_ROADMAP.md` §10。
 - **Roadmaps:** `docs/ai/Platform/PLATFORM_ROADMAP.md`（§11 Core 切片）、`docs/ai/Editor/EDITOR_PLATFORM_PLAN.md`。
 

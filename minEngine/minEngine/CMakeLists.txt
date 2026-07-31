@@ -80,6 +80,35 @@ if(EXISTS ${FREETYPE_DIR}/CMakeLists.txt)
     target_link_libraries(${ENGINE_NAME} PRIVATE freetype)
 endif()
 
+# Lua + sol2 (CORE-F01) — vendored under Third-Party (see lua/VENDOR.md, sol2/VENDOR.md).
+# Custom static target: do not use upstream Lua CMake (too old for CMake 4).
+set(LUA_DIR ${THIRD_PARTY_PATH}/lua)
+set(LUA_SRC_DIR ${LUA_DIR}/src)
+set(LUA_INCLUDE_DIR ${LUA_DIR}/include)
+if(NOT EXISTS ${LUA_INCLUDE_DIR}/lua.h)
+    message(FATAL_ERROR "Vendored Lua not found at ${LUA_DIR}. See Third-Party/lua/VENDOR.md.")
+endif()
+file(GLOB LUA_LIB_SOURCES CONFIGURE_DEPENDS ${LUA_SRC_DIR}/*.c)
+list(FILTER LUA_LIB_SOURCES EXCLUDE REGEX ".*/lua\\.c$")
+list(FILTER LUA_LIB_SOURCES EXCLUDE REGEX ".*/luac\\.c$")
+add_library(minengine_lua STATIC ${LUA_LIB_SOURCES})
+target_include_directories(minengine_lua
+    PUBLIC ${LUA_INCLUDE_DIR}
+    PRIVATE ${LUA_SRC_DIR}
+)
+set_target_properties(minengine_lua PROPERTIES
+    C_STANDARD 99
+    POSITION_INDEPENDENT_CODE ON
+)
+
+set(SOL2_INCLUDE_DIR ${THIRD_PARTY_PATH}/sol2/include)
+if(NOT EXISTS ${SOL2_INCLUDE_DIR}/sol/sol.hpp)
+    message(FATAL_ERROR "Vendored sol2 not found at ${THIRD_PARTY_PATH}/sol2. See Third-Party/sol2/VENDOR.md.")
+endif()
+
+target_link_libraries(${ENGINE_NAME} PUBLIC minengine_lua)
+target_include_directories(${ENGINE_NAME} PUBLIC ${SOL2_INCLUDE_DIR})
+
 set_target_properties(${ENGINE_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
     LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}

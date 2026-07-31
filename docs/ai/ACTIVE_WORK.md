@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-06-01  
+Last updated: 2026-07-31  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,9 +9,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-- **RND-F02** Modern RHI — GPU 工作模型抽象；OpenGL 作为首个适配后端（**在 `render` 分支开发**，见分隔 commit 后建分支）。
-- **RND-F03** Vulkan backend — **Planned**；依赖 F02 契约稳定；与 GL 分里程碑行为对齐（Present → Shadow → 简化 Base → …）。
-- **分支约定：** `master` 上仅 planning/registry 分隔；实现与 [RND-F02 设计](./Render/RND-F02_MODERN_RHI_DESIGN.md) 在 **`render`** 分支。
+### CORE-F01 Lua scripting（当前会话 / `luaScript` 分支）
+
+- **Design:** [LUA_SCRIPTING_DESIGN.md](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)（In Progress；**MVP S01–S04 Done**）
+- **已验证：** `minEngineTests.exe test lua-script-mvp`
+- **下一刀（未启动）：** S05 可读脚本/资产 → S06 header tool codegen（需你点头再开）
+- **分支约定：** 实现与设计迭代在 **`luaScript`**；勿与 `render` 混交。
+
+### RND-F02 Modern RHI（并行轨 / `render` 分支）
+
+- GPU 工作模型抽象；OpenGL 首个适配后端。
+- **RND-F03** Vulkan — **Planned**；依赖 F02。
+- 设计：[RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md)
 
 ### RND-F02 边界（本阶段）
 
@@ -26,9 +35,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ---
 
-## Maintenance (not blocking render track)
+## Maintenance (not blocking CORE / render tracks)
 
-- **WF-F02** handbook / Pages：骨架已上；正文按需补，不与 RND 抢 `render` 分支。
+- **WF-F02** handbook / Pages：骨架已上；正文按需补。
 
 ---
 
@@ -49,7 +58,7 @@ These are **optional future feats**, not debt owed by old docs:
 
 - **RND-F01** RenderGraph（已登记 **Deferred**；F02/F03 完成后再议）。
 - Editor: unified Inspector target model, Material graph Undo, texture preview in Inspector.
-- Core: delegates, Lua scripting bindings.
+- Core: **delegates**（Lua 事件可后置；不挡 Tick 驱动竖切）。
 - Content Browser: further registry/watcher optimizations beyond R1 incremental `AssetTreeModel` patch.
 - Infra: GitHub Actions (see `TECH_DEBT.md` TD-010 when you want it).
 
@@ -60,7 +69,8 @@ These are **optional future feats**, not debt owed by old docs:
 | File | Role |
 |------|------|
 | [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status when starting a **new** registered feature |
-| [RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md) | Modern RHI 教案 + 设计（`render` 分支） |
+| [LUA_SCRIPTING_DESIGN.md](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) | `CORE-F01`（`luaScript` 分支） |
+| [RND-F02_MODERN_RHI_DESIGN.md](./Render/RND-F02_MODERN_RHI_DESIGN.md) | Modern RHI（`render` 分支） |
 | [TECH_DEBT.md](./TECH_DEBT.md) | Deferred problems worth tracking |
 | [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |
 | [BOOTSTRAP_DIGEST.md](./BOOTSTRAP_DIGEST.md) | Commands, DoD, agent habits |
