@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-01 (PHYS-F02 Done)
+Last updated: 2026-08-01 (PHYS-F03 Deferred → TD-006)
 
 ## Purpose
 
@@ -1010,6 +1010,14 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `docs/ai/Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md`, `PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md`; P1–P9 defaults recorded; `FEATURE_REGISTRY` / `ACTIVE_WORK` → PHYS-F01 In Progress.
 - Next step:
   PHYS-F01-S01-a (Jolt submodule + CMake).
+
+### 2026-08-01 - PHYS-F03 deferred pending Delegates (TD-006)
+- Goal:
+  Avoid shipping Collider virtual contact notify as a permanent API before multicast Delegates exist.
+- Main changes:
+  PHYS-F03 → Deferred placeholder; deleted Implementation plan draft; TD-006 notes block PHYS-F03 (severity Medium).
+- Next step:
+  User picks next physics or CORE Delegate work; gameplay can poll GetContactEvents() meanwhile.
 
 ### 2026-08-01 - PHYS-F02 Sphere/Capsule colliders + shape traces
 - Goal:

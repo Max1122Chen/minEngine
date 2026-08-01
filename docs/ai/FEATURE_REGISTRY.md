@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-01 (PHYS-F02 Done; next PHYS-F03; TD-013 enum codec)  
+Last updated: 2026-08-01 (PHYS-F03 Deferred → TD-006)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -29,7 +29,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F01` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | In Progress | — | [Design](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md) · S01–S04 land；S06 收尾 · 分支 **`physics`** |
 | `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) · 分支 **`physics`**，worktree `minEngine-physics` |
 | `PHYS-F02` | Collision + query shapes（Sphere/Capsule collider；Scene SphereTrace/CapsuleTrace） | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md) |
-| `PHYS-F03` | Contact gameplay dispatch（Overlap/Hit → component or delegate） | Planned | — | Design TBD · after PHYS-F02 · Uses existing contact double-buffer |
+| `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · blocked on **TD-006** Delegates；正式 Design 延后 |
 
 ---
 

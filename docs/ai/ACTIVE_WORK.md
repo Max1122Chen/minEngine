@@ -11,24 +11,25 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### Physics track（`physics` 分支 · worktree `D:/Dev/GitRepo/minEngine-physics`）
 
-**当前主线：`PHYS-F03` Contact gameplay dispatch（下一）· `PHYS-F02` 已完成待 commit**
+**当前主线：physics 垂直切片暂告一段（F01/F02 Done）；`PHYS-F03` 已 Deferred**
 
-#### PHYS-F02 — Collision + query shapes（**Done**，待 commit）
+#### PHYS-F03 — Contact gameplay dispatch（**Deferred**）
+
+- [占位](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · 依赖 **TD-006** Delegates
+- 正式 Design / 实现搁置；临时可用 `GetContactEvents()` 轮询
+- **下一（physics）：** 由你指定（例如调试绘制、其它查询、或切 CORE Delegate）
+
+#### PHYS-F02 — Collision + query shapes（**Done**）
 
 - [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md)
-- Sphere/Capsule collider；`Scene::SphereTrace` / `CapsuleTrace`；suite `physics-shapes`
 
 #### PHYS-F01 — Jolt physics bootstrap（**Done**）
 
 - [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md)
 
-#### PHYS-F03 — Contact gameplay dispatch（**Planned** · 下一）
+#### Tech debt
 
-- Step 后 Overlap/Hit → 组件或委托
-
-#### Tech debt（非 physics 分支）
-
-- **TD-013** enum codec → [TECH_DEBT.md](./TECH_DEBT.md)
+- **TD-006** Delegates（挡 PHYS-F03）· **TD-013** enum codec → [TECH_DEBT.md](./TECH_DEBT.md)
 
 #### CORE-F01 — Transform quaternion（**In Progress**，代码已 land，文档收尾）
 
