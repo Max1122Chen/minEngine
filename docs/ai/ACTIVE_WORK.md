@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-07-31  
+Last updated: 2026-08-01  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,12 +9,12 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-### CORE-F02 Lua Script binding（当前会话 / `luaScript` 分支）
+### CORE-F02 Lua Script binding（已收口 / `luaScript` 分支）
 
-- **Design:** [LUA_SCRIPT_BINDING_DESIGN.md](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md)（**In Progress**）
-- **已完成：** S01–S04、**S06**
-- **下一刀：** S05 值类型策略，或 S07 `sol::bases` / ScriptPure
-- **分支约定：** 继续 **`luaScript`**；勿与 `render` 混交。
+- **Design:** [LUA_SCRIPT_BINDING_DESIGN.md](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md)（**Done**）
+- **交付：** Script\* → `Generated/ScriptBinding/`；Transform / Component / GameObject / LuaComponent；手写 Vector2/3/4；HelloTick + `lua-script-mvp`
+- **后续（非本 Feature 阻塞）：** 扩 GO/组件白名单、Matrix/quat、弱引用句柄
+- **分支约定：** 仍可在 **`luaScript`** 做脚本跟进；勿与 `render` 混交。
 
 ### CORE-F01 Lua runtime（已收口）
 

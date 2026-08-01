@@ -9,6 +9,7 @@ namespace minEngine
 {
     void RegisterLuaBind_GameObject(sol::state& state);
     void RegisterLuaBind_Component(sol::state& state);
+    void RegisterLuaBind_LuaComponent(sol::state& state);
     void RegisterLuaBind_Transform(sol::state& state);
 
     void RegisterGeneratedLuaBindings(sol::state& state)
@@ -16,6 +17,7 @@ namespace minEngine
         RegisterLuaScriptBindingPrimitives(state);
         RegisterLuaBind_GameObject(state);
         RegisterLuaBind_Component(state);
+        RegisterLuaBind_LuaComponent(state);
         RegisterLuaBind_Transform(state);
     }
 }

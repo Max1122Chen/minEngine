@@ -11,7 +11,7 @@
 namespace minEngine
 {
     // Runs a LuaScript asset's source in a per-component environment; calls tick(dt).
-    ME_CLASS()
+    ME_CLASS(ScriptType)
     class LuaComponent : public Component
     {
         ME_GENERATED_BODY(LuaComponent)
@@ -25,6 +25,7 @@ namespace minEngine
 
         void Tick(float deltaTime) override;
 
+        ME_FUNCTION(ScriptPure)
         bool IsScriptLoaded() const { return m_Loaded; }
         bool IsScriptEnabled() const { return m_ScriptEnabled; }
 

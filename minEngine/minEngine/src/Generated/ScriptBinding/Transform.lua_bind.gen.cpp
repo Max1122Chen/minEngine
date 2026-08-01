@@ -13,6 +13,7 @@ namespace minEngine
             "Transform",
             sol::constructors<minEngine::Transform()>(),
             "Position", &minEngine::Transform::Position,
+            "MakeIdentity", &minEngine::Transform::MakeIdentity,
             "SetPosition", &minEngine::Transform::SetPosition,
             "Translate", &minEngine::Transform::Translate
         );

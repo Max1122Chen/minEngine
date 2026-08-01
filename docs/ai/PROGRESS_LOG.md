@@ -948,6 +948,29 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-08-01 - CORE-F02 Done：Script binding codegen 收口
+- Goal:
+	Close Feature after S01–S07 vertical delivery.
+- Main changes:
+	Registry / Design / ACTIVE_WORK / Platform README / PROJECT_CONTEXT → Done.
+	Out of Feature: broader GO API surface, Matrix/quat ME_STRUCT, weak handles.
+- Validation done:
+	Prior `lua-script-mvp` PASSED; docs-only closeout amend.
+- Next step:
+	Optional follow-ups on `luaScript`, or switch tracks.
+
+### 2026-08-01 - CORE-F02 S05+S07：数学原语手写 + 生成规则加厚
+- Goal:
+	Keep VectorN hand-bound; harden ScriptBinding codegen (bases, Pure/static, topo order).
+- Main changes:
+	`LuaScriptBindingPrimitives`: Vector2/Vector3/Vector4.
+	header tool: dependency topo-sort; `sol::base_classes` + `sol::bases<>`; ScriptPure≡Callable.
+	`LuaComponent` ScriptType + `IsScriptLoaded`; inject `self` as LuaComponent*; `Transform::MakeIdentity` ScriptPure.
+- Validation done:
+	`minEngine\bin\minEngineTests.exe test lua-script-mvp` → PASSED
+- Next step:
+	准备 commit；可选 Editor 再验 HelloTick。
+
 ### 2026-08-01 - CORE-F02 S06：场景入口 self / Owner / Translate
 - Goal:
 	Let LuaComponent scripts reach Owner and write back Root transform via generated bindings.

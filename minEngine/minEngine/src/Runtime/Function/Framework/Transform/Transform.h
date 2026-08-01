@@ -39,6 +39,9 @@ namespace minEngine
             Rotation = other.Rotation;
             Scale = other.Scale;
         };
+
+        ME_FUNCTION(ScriptPure)
+        static Transform MakeIdentity() { return Transform{}; }
         
         ME_FUNCTION(ScriptCallable)
         void SetPosition(const Vector3& position) { Position = position; }

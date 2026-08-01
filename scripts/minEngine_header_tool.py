@@ -1197,18 +1197,94 @@ def script_bind_symbol(meta: ClassMeta) -> str:
     return f"RegisterLuaBind_{meta.class_name}"
 
 
-def script_bind_registration_priority(meta: ClassMeta) -> tuple[int, str]:
-    """Lower runs first. Dependents that return other ScriptTypes must register later."""
-    key = full_type_name(meta)
-    priority_by_key = {
-        "minEngine::GameObject": 10,
-        "minEngine::Component": 20,
-        "minEngine::Transform": 30,
-    }
-    return (priority_by_key.get(key, 100), key)
+def normalize_script_type_key(type_name: str, fallback_namespace: str, script_keys: set[str]) -> str | None:
+    cleaned = type_name.replace("const", " ").replace("&", " ").replace("*", " ")
+    cleaned = " ".join(cleaned.split())
+    if not cleaned or cleaned == "void":
+        return None
+    if cleaned in script_keys:
+        return cleaned
+    if "::" not in cleaned and fallback_namespace:
+        candidate = f"{fallback_namespace}::{cleaned}"
+        if candidate in script_keys:
+            return candidate
+    leaf = cleaned.split("::")[-1]
+    matches = [key for key in script_keys if key.split("::")[-1] == leaf]
+    if len(matches) == 1:
+        return matches[0]
+    return None
 
 
-def render_script_binding_cpp(meta: ClassMeta) -> str:
+def script_binding_dependencies(meta: ClassMeta, script_by_key: dict[str, ClassMeta]) -> set[str]:
+    script_keys = set(script_by_key.keys())
+    self_key = full_type_name(meta)
+    deps: set[str] = set()
+
+    for base in meta.base_types:
+        dep = normalize_script_type_key(base, meta.namespace, script_keys)
+        if dep is not None and dep != self_key:
+            deps.add(dep)
+
+    for fn in meta.functions:
+        if not (
+            has_specifier(fn.specifiers, "ScriptCallable")
+            or has_specifier(fn.specifiers, "ScriptPure")
+        ):
+            continue
+        type_names = [fn.return_type] + [param.type_name for param in fn.params]
+        for type_name in type_names:
+            dep = normalize_script_type_key(type_name, meta.namespace, script_keys)
+            if dep is not None and dep != self_key:
+                deps.add(dep)
+
+    return deps
+
+
+def order_script_binding_classes(script_classes: list[ClassMeta]) -> list[ClassMeta]:
+    """Topological order: register dependency ScriptTypes before dependents."""
+    by_key = {full_type_name(meta): meta for meta in script_classes}
+    deps_by_key = {key: script_binding_dependencies(meta, by_key) for key, meta in by_key.items()}
+
+    incoming: dict[str, int] = {key: 0 for key in by_key}
+    for key, deps in deps_by_key.items():
+        for dep in deps:
+            if dep in incoming:
+                incoming[key] += 1
+
+    ready = sorted([key for key, count in incoming.items() if count == 0])
+    ordered_keys: list[str] = []
+    while ready:
+        key = ready.pop(0)
+        ordered_keys.append(key)
+        for other, deps in deps_by_key.items():
+            if key not in deps or other in ordered_keys:
+                continue
+            incoming[other] -= 1
+            if incoming[other] == 0:
+                ready.append(other)
+                ready.sort()
+
+    if len(ordered_keys) != len(by_key):
+        remaining = sorted(key for key in by_key if key not in ordered_keys)
+        print(
+            "[minEngine_header_tool][WARN] ScriptBinding dependency cycle or unresolved deps; "
+            f"appending: {', '.join(remaining)}"
+        )
+        ordered_keys.extend(remaining)
+
+    return [by_key[key] for key in ordered_keys]
+
+
+def script_base_type_names(meta: ClassMeta, script_keys: set[str]) -> list[str]:
+    bases: list[str] = []
+    for base in meta.base_types:
+        key = normalize_script_type_key(base, meta.namespace, script_keys)
+        if key is not None:
+            bases.append(key)
+    return bases
+
+
+def render_script_binding_cpp(meta: ClassMeta, script_keys: set[str]) -> str:
     """Emit sol2 usertype registration for one ScriptType class."""
     type_name = full_type_name(meta)
     lines: list[str] = [
@@ -1233,23 +1309,34 @@ def render_script_binding_cpp(meta: ClassMeta) -> str:
             member_lines.append(f'            "{prop.name}", sol::readonly(&{type_name}::{prop.name})')
 
     for fn in meta.functions:
+        # ScriptPure is intentionally equivalent to ScriptCallable in F02-S07.
         if has_specifier(fn.specifiers, "ScriptCallable") or has_specifier(fn.specifiers, "ScriptPure"):
             member_lines.append(f'            "{fn.name}", &{type_name}::{fn.name}')
 
-    lines.append(f"        state.new_usertype<{type_name}>(")
-    lines.append(f'            "{meta.class_name}",')
+    base_types = script_base_type_names(meta, script_keys)
+    preamble_lines: list[str] = []
     ctor_expr = (
         "sol::no_constructor"
         if supports_native_instance_thunks(meta)
         else f"sol::constructors<{type_name}()>()"
     )
-    if member_lines:
-        lines.append(f"            {ctor_expr},")
-        for idx, member in enumerate(member_lines):
-            suffix = "," if idx != len(member_lines) - 1 else ""
-            lines.append(f"{member}{suffix}")
-    else:
-        lines.append(f"            {ctor_expr}")
+    preamble_lines.append(ctor_expr)
+    if base_types:
+        # sol2 requires an even arg pack after the constructor: key/value pairs.
+        preamble_lines.append("sol::base_classes")
+        preamble_lines.append(f"sol::bases<{', '.join(base_types)}>()")
+
+    lines.append(f"        state.new_usertype<{type_name}>(")
+    lines.append(f'            "{meta.class_name}",')
+    trailing_items = preamble_lines + member_lines
+    if trailing_items:
+        for idx, item in enumerate(trailing_items):
+            suffix = "," if idx != len(trailing_items) - 1 else ""
+            if item.startswith("sol::") or item.startswith("\""):
+                lines.append(f"            {item}{suffix}")
+            else:
+                # Member lines already include indentation for "name", &Type::name
+                lines.append(f"{item}{suffix}")
     lines.append("        );")
     lines.append("    }")
     lines.append("}")
@@ -1304,10 +1391,10 @@ def emit_script_bindings(
     parsed_classes_by_key: dict[str, ClassMeta],
 ) -> int:
     script_binding_out_dir.mkdir(parents=True, exist_ok=True)
-    script_classes = sorted(
-        [meta for meta in parsed_classes_by_key.values() if is_script_type_class(meta)],
-        key=script_bind_registration_priority,
+    script_classes = order_script_binding_classes(
+        [meta for meta in parsed_classes_by_key.values() if is_script_type_class(meta)]
     )
+    script_keys = {full_type_name(meta) for meta in script_classes}
 
     generated = 0
     referenced: set[str] = set()
@@ -1315,7 +1402,7 @@ def emit_script_bindings(
     for meta in script_classes:
         cpp_name = f"{meta.class_name}.lua_bind.gen.cpp"
         cpp_path = script_binding_out_dir / cpp_name
-        if write_if_changed(cpp_path, render_script_binding_cpp(meta)):
+        if write_if_changed(cpp_path, render_script_binding_cpp(meta, script_keys)):
             generated += 1
         referenced.add(normalize_path(cpp_path))
 

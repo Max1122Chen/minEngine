@@ -4,9 +4,9 @@
 
 - **ID:** `CORE-F02`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** —
-- **Last updated:** 2026-07-31
+- **Last updated:** 2026-08-01
 - **Branch:** `luaScript`（与 CORE-F01 同轨；勿与 `render` 混交）
 - **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [CORE-F01 Lua runtime](./LUA_SCRIPTING_DESIGN.md) · [函数反射](../Reflection/REFLECTION_FUNCTIONS_DESIGN.md)
 - **Depends on:** `CORE-F01` Done（`LuaScriptSystem` / sol2 / header tool 反射扫描已存在）
@@ -149,15 +149,28 @@ namespace minEngine
 
 ## 7) Status note
 
-In Progress — S01–S04、S06 Done。下一优先：S05 值类型策略或 S07 `sol::bases`/ScriptPure。
+**Done** — S01–S07 收口。后续扩 API / Matrix / 弱引用句柄另开 Feat 或新切片，不阻塞本 Feature Done。
+
+**已拍板（S05）：**
+
+- `Vector2` / `Vector3` / `Vector4` 继续 **手写** `LuaScriptBindingPrimitives`（glm typedef，改 ME_STRUCT 属 Math/反射域，本期不做）
+- `Matrix3` / `Matrix4` / quat：**后置**（Lua 侧不友好，非当前脚本竖切刚需）
+- Transform 扩 `Rotation`/`Scale`：不绑死在 S05；需要时单独加 ScriptRead\*
 
 **已拍板（S06）：**
 
-- `self` = 本 `LuaComponent*`，以 **`Component*`** 注入 env（`ScriptType` 挂在 `Component`；不强制先做 `sol::bases`）
-- 位移：`GameObject` 导出 `SetPosition` / `Translate`（及只读 `GetPosition` 便于验）
+- `self` = 本 `LuaComponent*`（ScriptType + `sol::base_classes`/`sol::bases<Component>`）
+- 位移：`GameObject` 导出 `SetPosition` / `Translate` / `GetPosition`
 - **不**导出按值 `GetTransform` 作可写属性
-- MEObject 体系 usertype 使用 `sol::no_constructor`（禁止 `GameObject.new()` 绕过 `NewObject`）
-- 注册顺序：`GameObject` 先于 `Component`；`sol::is_container` 特化见 `LuaScriptBindingSolTraits.h`
+- MEObject 体系 usertype 使用 `sol::no_constructor`
+- `sol::is_container` 特化见 `LuaScriptBindingSolTraits.h`
+
+**已拍板（S07）：**
+
+- `sol::base_classes, sol::bases<...>()`（基类亦为 ScriptType）
+- `ScriptPure` 第一期等同 Callable（例：`Transform::MakeIdentity`、`LuaComponent::IsScriptLoaded`）
+- 静态 Script\* 方法按成员指针导出（`Transform.MakeIdentity()`）
+- 注册序：按 ScriptType 基类/参数/返回类型 **拓扑排序**（取代硬编码优先级）
 
 ---
 
@@ -169,9 +182,9 @@ In Progress — S01–S04、S06 Done。下一优先：S05 值类型策略或 S07
 | S02 | `Transform` 极小导出 | Lua 断言 | Done |
 | S03 | `RegisterGeneratedLuaBindings` 挂 Init | 测试 | Done |
 | S04 | `HelloTick` 生成绑定自检 | Editor `ScriptBinding OK` | Done |
-| S05 | 值类型策略（`Vector3` 手写 vs ScriptType）；Transform 扩字段 | 按需 | Planned |
-| S06 | 场景入口：`self` 注入；`Component::GetOwner`；`GameObject` SetPosition/Translate/GetPosition；样例/测试可见位移 | Editor 或测试 Root 位置变化 | Done |
-| S07+ | ScriptPure / `sol::bases` / 扩类型 | 按需 | — |
+| S05 | 手写 `Vector2`/`Vector3`/`Vector4`；明确不升 ME_STRUCT；Matrix/quat 后置 | 测试构造/分量读写 | Done |
+| S06 | 场景入口：`self` / Owner / GO 位移 | 测试 + Editor | Done |
+| S07 | `sol::bases` / ScriptPure / 静态方法 / 拓扑注册序 | MakeIdentity + LuaComponent bases + 测试 | Done |
 
 首类型若改为纯值类型（如包装 `Vector3`）须在 Status note 记录。
 
@@ -181,6 +194,9 @@ In Progress — S01–S04、S06 Done。下一优先：S05 值类型策略或 S07
 
 | 日期 | 说明 |
 |------|------|
+| 2026-08-01 | **Done**：S01–S07 收口；Registry/ACTIVE_WORK/Progress 同步 |
+| 2026-08-01 | S05+S07 Done：手写 Vector2/3/4；拓扑注册；`sol::base_classes`/`bases`；ScriptPure/静态；LuaComponent ScriptType |
+| 2026-08-01 | S05 拍板：数学类型手写原语（Vector2/3/4）；不升 ME_STRUCT；Matrix/quat 后置；接着 S07 |
 | 2026-08-01 | S06 Done：self 注入、Component/GameObject Script\*、no_constructor、注册序/SolTraits；顺手修 AddComponent 误用 Component::IsA |
 | 2026-08-01 | S06 拍板写入：self=`Component*` 注入、GO 位移 API、no_constructor；切片表拆出 S05/S06 |
 | 2026-08-01 | S04：`HelloTick.lua` 生成绑定自检（construct / Position / SetPosition / Translate） |

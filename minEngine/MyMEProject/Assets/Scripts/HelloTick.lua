@@ -17,9 +17,9 @@ end
 
 -- Value-type binding self-check (isolated Transform; does not touch the scene).
 local function verify_value_bindings()
-  local t = Transform.new()
+  local t = Transform.MakeIdentity()
   expect(nearly_equal(t.Position.x, 0) and nearly_equal(t.Position.y, 0) and nearly_equal(t.Position.z, 0),
-    "Transform.new() should start at origin")
+    "Transform.MakeIdentity() should start at origin")
 
   t.Position = Vector3.new(1.5, -2.0, 3.25)
   expect(nearly_equal(t.Position.x, 1.5) and nearly_equal(t.Position.y, -2.0) and nearly_equal(t.Position.z, 3.25),

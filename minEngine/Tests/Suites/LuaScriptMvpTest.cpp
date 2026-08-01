@@ -265,7 +265,7 @@ me.log("probe ok")
             system.Initialize();
 
             const bool ok = system.RunString(R"LUA(
-local t = Transform.new()
+local t = Transform.MakeIdentity()
 assert(t.Position.x == 0 and t.Position.y == 0 and t.Position.z == 0)
 t.Position = Vector3.new(1, 2, 3)
 assert(t.Position.x == 1 and t.Position.y == 2 and t.Position.z == 3)
@@ -275,6 +275,30 @@ t:Translate(Vector3.new(1, 1, 1))
 assert(t.Position.x == 5 and t.Position.y == 6 and t.Position.z == 7)
 )LUA",
                                              "script_binding_transform");
+
+            system.Shutdown();
+            LuaScriptSystem::SetInstance(nullptr);
+            return ok;
+        }
+
+        bool TestMathPrimitiveBindings()
+        {
+            LuaScriptSystem system;
+            LuaScriptSystem::SetInstance(&system);
+            system.Initialize();
+
+            const bool ok = system.RunString(R"LUA(
+local v2 = Vector2.new(1.5, -2.5)
+assert(v2.x == 1.5 and v2.y == -2.5)
+v2.x = 3
+assert(v2.x == 3)
+
+local v4 = Vector4.new(1, 2, 3, 4)
+assert(v4.x == 1 and v4.y == 2 and v4.z == 3 and v4.w == 4)
+v4.w = 9
+assert(v4.w == 9)
+)LUA",
+                                             "script_binding_math_primitives");
 
             system.Shutdown();
             LuaScriptSystem::SetInstance(nullptr);
@@ -349,6 +373,10 @@ end
             return false;
         }
         if (!TestGeneratedTransformBinding())
+        {
+            return false;
+        }
+        if (!TestMathPrimitiveBindings())
         {
             return false;
         }

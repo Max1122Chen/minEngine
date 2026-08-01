@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-07-31 (CORE-F02 Script Binding In Progress)  
+Last updated: 2026-08-01 (CORE-F02 Script Binding Done)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -24,7 +24,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | In Progress | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) · 分支 `luaScript` |
-| `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | In Progress | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) · 分支 `luaScript` |
+| `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) · 分支 `luaScript` |
 | `RND-F01` | RenderGraph / frame scheduling | Deferred | — | 待 Design；**不在** F02/F03 范围 |
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配） | In Progress | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · 开发分支 `render` |
 | `RND-F03` | Vulkan RHI backend（与 GL 契约一致、分里程碑对齐） | Planned | — | 依赖 F02；Design 随 F02 稳定后补 `RND-F03_*` |
