@@ -1,9 +1,13 @@
 {
   "tool_cache_version": 15,
   "script_types": [
+    "minEngine::GameObject",
+    "minEngine::Component",
     "minEngine::Transform"
   ],
   "generated_sources": [
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/Component.lua_bind.gen.cpp",
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/GameObject.lua_bind.gen.cpp",
     "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/ScriptBindingRegister.gen.cpp",
     "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/Transform.lua_bind.gen.cpp"
   ]

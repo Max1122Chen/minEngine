@@ -81,6 +81,8 @@ namespace minEngine
 
         sol::state& state = LuaScriptSystem::Get().GetState();
         m_Environment = sol::environment(state, sol::create, state.globals());
+        // Inject host as Component* (ScriptType on Component). Lifetime: cleared in UnloadScript.
+        m_Environment["self"] = static_cast<Component*>(this);
 
         const sol::protected_function_result loadResult = state.safe_script(
             m_Script->GetSource(),

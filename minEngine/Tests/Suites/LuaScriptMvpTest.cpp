@@ -4,6 +4,8 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Function/Framework/Components/LuaComponent.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Scripting/LuaBindProbe.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
@@ -278,6 +280,50 @@ assert(t.Position.x == 5 and t.Position.y == 6 and t.Position.z == 7)
             LuaScriptSystem::SetInstance(nullptr);
             return ok;
         }
+
+        bool TestSceneEntrySelfOwnerTranslate()
+        {
+            // SceneComponent::SetPosition marks EOF updates via SceneManager.
+            LuaScriptMvpTestScope scope(true);
+            LuaScriptSystem system;
+            LuaScriptSystem::SetInstance(&system);
+            system.Initialize();
+
+            std::shared_ptr<GameObject> gameObject = NewObject<GameObject>("LuaSceneEntryGO");
+            gameObject->AddComponent<SceneComponent>();
+            std::shared_ptr<LuaComponent> luaComponent = gameObject->AddComponent<LuaComponent>();
+
+            std::shared_ptr<LuaScript> script = NewObject<LuaScript>("SceneEntryScript");
+            script->SetSource(R"LUA(
+function tick(dt)
+  local owner = self:GetOwner()
+  assert(owner ~= nil)
+  owner:SetPosition(Vector3.new(0, 0, 0))
+  owner:Translate(Vector3.new(2, 3, 4))
+end
+)LUA");
+            luaComponent->SetScript(script);
+            luaComponent->Tick(0.016f);
+
+            const Vector3 position = gameObject->GetPosition();
+            const bool ok =
+                std::abs(position.x - 2.0f) < 1e-4f &&
+                std::abs(position.y - 3.0f) < 1e-4f &&
+                std::abs(position.z - 4.0f) < 1e-4f;
+            if (!ok)
+            {
+                ME_CORE_ERROR(
+                    "LuaScriptMvpTest: scene entry expected (2,3,4), got ({},{},{}).",
+                    position.x,
+                    position.y,
+                    position.z);
+            }
+
+            luaComponent->UnloadScript();
+            system.Shutdown();
+            LuaScriptSystem::SetInstance(nullptr);
+            return ok;
+        }
     } // namespace
 
     bool RunLuaScriptMvpTests()
@@ -303,6 +349,10 @@ assert(t.Position.x == 5 and t.Position.y == 6 and t.Position.z == 7)
             return false;
         }
         if (!TestGeneratedTransformBinding())
+        {
+            return false;
+        }
+        if (!TestSceneEntrySelfOwnerTranslate())
         {
             return false;
         }

@@ -948,6 +948,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-08-01 - CORE-F02 S06：场景入口 self / Owner / Translate
+- Goal:
+	Let LuaComponent scripts reach Owner and write back Root transform via generated bindings.
+- Main changes:
+	Inject `self` as `Component*` in Lua env; ScriptType+GetOwner on Component; ScriptType+Get/SetPosition/Translate on GameObject.
+	`sol::no_constructor` for MEObject types; register GameObject before Component; `LuaScriptBindingSolTraits`.
+	HelloTick scene-entry check + slow Z drift; unit test `TestSceneEntrySelfOwnerTranslate`.
+	Fix: `GameObject::AddComponent_Internal` used `IsA(Component)` (all comps) instead of `SceneComponent` — broke adding LuaComponent after root.
+- Validation done:
+	`minEngine\bin\minEngineTests.exe test lua-script-mvp` → PASSED
+- Next step:
+	Editor smoke (`SceneEntry OK` + visible drift); 准备 commit.
+
 ### 2026-08-01 - CORE-F02 S04：HelloTick 生成绑定自检
 - Goal:
 	Exercise auto-generated Transform/Vector3 bindings from an editor sample script (compact, not a full matrix).

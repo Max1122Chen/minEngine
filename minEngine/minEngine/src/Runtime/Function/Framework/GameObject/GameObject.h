@@ -14,7 +14,7 @@ namespace minEngine
     class Component;
     class SceneComponent;
 
-    ME_CLASS()
+    ME_CLASS(ScriptType)
     class GameObject : public MEObject
     {
         ME_GENERATED_BODY(GameObject)
@@ -46,8 +46,11 @@ namespace minEngine
         Transform GetTransform();
         void SetTransform(const Transform& inTransform);
 
+        ME_FUNCTION(ScriptCallable)
         Vector3 GetPosition();
+        ME_FUNCTION(ScriptCallable)
         void SetPosition(const Vector3& position);
+        ME_FUNCTION(ScriptCallable)
         void Translate(const Vector3& delta);
 
         Vector3 GetRotation();

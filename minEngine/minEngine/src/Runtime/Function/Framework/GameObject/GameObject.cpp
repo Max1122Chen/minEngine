@@ -197,7 +197,7 @@ namespace minEngine
         }
         newComponent->SetOwner(this);
         m_Components.push_back(newComponent);
-        if (newComponent->GetClass() && newComponent->IsA(Component::StaticClass()))
+        if (newComponent->GetClass() && newComponent->IsA(SceneComponent::StaticClass()))
         {
             // Set the first added SceneComponent as the RootComponent by default
             if (!m_RootComponent)

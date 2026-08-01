@@ -149,19 +149,29 @@ namespace minEngine
 
 ## 7) Status note
 
-In Progress — 首真类型定为 `Transform` 极小子集。注意：`Transform` 非 `MEObject`，`ME_FUNCTION` 进 ScriptBinding，但 **不** 进反射 native thunk 注册（header tool 仅对 MEObject/Component 体系生成 thunk）。
+In Progress — S01–S04、S06 Done。下一优先：S05 值类型策略或 S07 `sol::bases`/ScriptPure。
+
+**已拍板（S06）：**
+
+- `self` = 本 `LuaComponent*`，以 **`Component*`** 注入 env（`ScriptType` 挂在 `Component`；不强制先做 `sol::bases`）
+- 位移：`GameObject` 导出 `SetPosition` / `Translate`（及只读 `GetPosition` 便于验）
+- **不**导出按值 `GetTransform` 作可写属性
+- MEObject 体系 usertype 使用 `sol::no_constructor`（禁止 `GameObject.new()` 绕过 `NewObject`）
+- 注册顺序：`GameObject` 先于 `Component`；`sol::is_container` 特化见 `LuaScriptBindingSolTraits.h`
 
 ---
 
 ## 8) 切片预览
 
-| Slice | 内容 | 验证 |
-|-------|------|------|
-| S01 | header tool 识别 Script\*；空/探测生成管线 + CMake `ScriptBinding` | 配置通过；空注册可链接 | Done |
-| S02 | 首真类型极小导出（`Transform`：`ScriptType` + Position + SetPosition/Translate） | Lua 断言 | Done |
-| S03 | `RegisterGeneratedLuaBindings` 挂 `LuaScriptSystem`；文档 | Init + 测试 | Done |
-| S04 | `HelloTick.lua`：生成绑定自检（construct / property / Callable） | Editor 日志见 `ScriptBinding OK` | Done |
-| S05+ | 扩类型 / ScriptPure / MEObject 场景入口 | 按需 | — |
+| Slice | 内容 | 验证 | Status |
+|-------|------|------|--------|
+| S01 | header tool 识别 Script\*；生成管线 + CMake `ScriptBinding` | 配置通过 | Done |
+| S02 | `Transform` 极小导出 | Lua 断言 | Done |
+| S03 | `RegisterGeneratedLuaBindings` 挂 Init | 测试 | Done |
+| S04 | `HelloTick` 生成绑定自检 | Editor `ScriptBinding OK` | Done |
+| S05 | 值类型策略（`Vector3` 手写 vs ScriptType）；Transform 扩字段 | 按需 | Planned |
+| S06 | 场景入口：`self` 注入；`Component::GetOwner`；`GameObject` SetPosition/Translate/GetPosition；样例/测试可见位移 | Editor 或测试 Root 位置变化 | Done |
+| S07+ | ScriptPure / `sol::bases` / 扩类型 | 按需 | — |
 
 首类型若改为纯值类型（如包装 `Vector3`）须在 Status note 记录。
 
@@ -171,6 +181,8 @@ In Progress — 首真类型定为 `Transform` 极小子集。注意：`Transfor
 
 | 日期 | 说明 |
 |------|------|
+| 2026-08-01 | S06 Done：self 注入、Component/GameObject Script\*、no_constructor、注册序/SolTraits；顺手修 AddComponent 误用 Component::IsA |
+| 2026-08-01 | S06 拍板写入：self=`Component*` 注入、GO 位移 API、no_constructor；切片表拆出 S05/S06 |
 | 2026-08-01 | S04：`HelloTick.lua` 生成绑定自检（construct / Position / SetPosition / Translate） |
 | 2026-07-31 | In Progress：S01–S03 落地（ScriptBinding 生成、`Transform` 子集、Init 挂钩、测试） |
 | 2026-07-31 | Draft：从 CORE-F01-S06 升格；specifier 集、ScriptBinding 目录、self=指针、首真类型方向 |
