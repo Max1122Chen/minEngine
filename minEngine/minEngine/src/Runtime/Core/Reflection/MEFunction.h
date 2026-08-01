@@ -42,6 +42,8 @@ namespace minEngine::Reflection
         BlueprintPure = 1u << 1,
         Exec = 1u << 2,
         Deprecated = 1u << 3,
+        ScriptCallable = 1u << 4,
+        ScriptPure = 1u << 5,
     };
     using FunctionSpecifierMask = uint32_t;
     using FunctionMetadata = std::unordered_map<std::string, std::string>;

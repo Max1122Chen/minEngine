@@ -11,9 +11,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### CORE-F02 Lua Script binding（当前会话 / `luaScript` 分支）
 
-- **Design:** [LUA_SCRIPT_BINDING_DESIGN.md](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md)（**Draft**）
-- **前置：** CORE-F01 Done（runtime / 资产 / 编辑器 HelloTick 已验）
-- **方向：** Script\* specifier → `Generated/ScriptBinding/` sol2 生成；首真类型（建议 Transform 子集）
+- **Design:** [LUA_SCRIPT_BINDING_DESIGN.md](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md)（**In Progress**）
+- **本轮：** S01–S03 — header tool Script\* → `Generated/ScriptBinding/`；`Transform` 子集；`RegisterGeneratedLuaBindings` 挂 Init
 - **分支约定：** 继续 **`luaScript`**；勿与 `render` 混交。
 
 ### CORE-F01 Lua runtime（已收口）

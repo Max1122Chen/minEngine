@@ -255,6 +255,29 @@ me.log("probe ok")
             LuaScriptSystem::SetInstance(nullptr);
             return ok;
         }
+
+        bool TestGeneratedTransformBinding()
+        {
+            LuaScriptSystem system;
+            LuaScriptSystem::SetInstance(&system);
+            system.Initialize();
+
+            const bool ok = system.RunString(R"LUA(
+local t = Transform.new()
+assert(t.Position.x == 0 and t.Position.y == 0 and t.Position.z == 0)
+t.Position = Vector3.new(1, 2, 3)
+assert(t.Position.x == 1 and t.Position.y == 2 and t.Position.z == 3)
+t:SetPosition(Vector3.new(4, 5, 6))
+assert(t.Position.x == 4 and t.Position.y == 5 and t.Position.z == 6)
+t:Translate(Vector3.new(1, 1, 1))
+assert(t.Position.x == 5 and t.Position.y == 6 and t.Position.z == 7)
+)LUA",
+                                             "script_binding_transform");
+
+            system.Shutdown();
+            LuaScriptSystem::SetInstance(nullptr);
+            return ok;
+        }
     } // namespace
 
     bool RunLuaScriptMvpTests()
@@ -276,6 +299,10 @@ me.log("probe ok")
             return false;
         }
         if (!TestLuaScriptLoaderFromDisk())
+        {
+            return false;
+        }
+        if (!TestGeneratedTransformBinding())
         {
             return false;
         }

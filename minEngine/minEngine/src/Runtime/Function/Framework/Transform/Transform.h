@@ -14,12 +14,12 @@ namespace minEngine
         World
     };
 
-    ME_STRUCT()
+    ME_STRUCT(ScriptType)
     struct Transform
     {
         ME_GENERATED_BODY(Transform)
         
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, ScriptReadWrite)
         Vector3 Position{ 0.0f, 0.0f, 0.0f };
 
         ME_PROPERTY(EditAnywhere)
@@ -40,10 +40,12 @@ namespace minEngine
             Scale = other.Scale;
         };
         
+        ME_FUNCTION(ScriptCallable)
         void SetPosition(const Vector3& position) { Position = position; }
         void SetRotation(const Vector3& rotation) { Rotation = rotation; }
         void SetScale(const Vector3& scale) { Scale = scale; }
 
+        ME_FUNCTION(ScriptCallable)
         void Translate(const Vector3& delta) { Position += delta; }
         void Rotate(const glm::quat& delta, Space relativeTo = Space::Local)
         {

@@ -29,6 +29,7 @@ namespace minEngine::Reflection
         Abstract = 1u << 0,
         Transient = 1u << 1,
         EditorOnly = 1u << 2,
+        ScriptType = 1u << 3,
     };
 
     using ClassSpecifierMask = uint32_t;

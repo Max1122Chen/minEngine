@@ -4,7 +4,7 @@
 
 - **ID:** `CORE-F02`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** In Progress
 - **Owner:** —
 - **Last updated:** 2026-07-31
 - **Branch:** `luaScript`（与 CORE-F01 同轨；勿与 `render` 混交）
@@ -141,15 +141,15 @@ namespace minEngine
 
 ## 6) 验收标准
 
-- [ ] Specifier 被 header tool 识别；无标记则不生成/不注册
-- [ ] `Generated/ScriptBinding/` 产出可编译；引擎 Init 注册成功
-- [ ] 至少一个 **真类型** 在 Lua 中可调 Callable + 读写约定属性
-- [ ] 测试覆盖生成路径（suite 可非 smoke）
-- [ ] Design / Registry / Progress 更新；CORE-F01 不再承担 codegen
+- [x] Specifier 被 header tool 识别；无标记则不生成/不注册
+- [x] `Generated/ScriptBinding/` 产出可编译；引擎 Init 注册成功
+- [x] 至少一个 **真类型** 在 Lua 中可调 Callable + 读写约定属性（`Transform`：`Position` + `SetPosition`/`Translate`）
+- [x] 测试覆盖生成路径（`lua-script-mvp` 增补 Transform 用例；非 smoke）
+- [x] Design / Registry / Progress 更新；CORE-F01 不再承担 codegen
 
 ## 7) Status note
 
-Draft — 待用户确认首类型与切片后改 Planned / In Progress。
+In Progress — 首真类型定为 `Transform` 极小子集。注意：`Transform` 非 `MEObject`，`ME_FUNCTION` 进 ScriptBinding，但 **不** 进反射 native thunk 注册（header tool 仅对 MEObject/Component 体系生成 thunk）。
 
 ---
 
@@ -170,4 +170,5 @@ Draft — 待用户确认首类型与切片后改 Planned / In Progress。
 
 | 日期 | 说明 |
 |------|------|
+| 2026-07-31 | In Progress：S01–S03 落地（ScriptBinding 生成、`Transform` 子集、Init 挂钩、测试） |
 | 2026-07-31 | Draft：从 CORE-F01-S06 升格；specifier 集、ScriptBinding 目录、self=指针、首真类型方向 |

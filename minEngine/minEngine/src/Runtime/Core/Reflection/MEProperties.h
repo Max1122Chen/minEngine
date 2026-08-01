@@ -60,6 +60,8 @@ namespace minEngine::Reflection
         VisibleInstanceOnly = 1u << 6,
         Invisible = 1u << 7,
         Instanced = 1u << 8,
+        ScriptReadOnly = 1u << 9,
+        ScriptReadWrite = 1u << 10,
     };
 
     using PropertySpecifierMask = uint32_t;

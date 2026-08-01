@@ -948,6 +948,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-07-31 - CORE-F02 S01–S03：ScriptBinding codegen + Transform
+- Goal:
+	Opt-in Script* → `Generated/ScriptBinding/` sol2 usertypes; first real type `Transform`.
+- Main changes:
+	header tool: `--script-binding-*`, `ScriptType`/`ScriptCallable`/`ScriptRead*`; skip reflection thunks for non-MEObject.
+	`LuaScriptBindingPrimitives` (`Vector3`); `RegisterGeneratedLuaBindings` after Manual.
+	`Transform`: ScriptType + Position ScriptReadWrite + SetPosition/Translate ScriptCallable.
+	Test: `lua-script-mvp` Transform case.
+- Validation done:
+	`cmake --build minEngine/build --target minEngineTests`
+	`minEngine\bin\minEngineTests.exe test lua-script-mvp` → PASSED
+- Next step:
+	准备 commit；S04+ 扩类型按需。
+
 ### 2026-07-31 - CORE-F01 Done；CORE-F02 Script Binding Draft
 - Goal:
 	Close Lua runtime Feature; open binding-codegen Feature with Script* specifiers.

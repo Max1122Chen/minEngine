@@ -2,6 +2,7 @@
 
 #include "LuaManualBindings.h"
 
+#include "Generated/ScriptBinding/ScriptBindingRegister.gen.h"
 #include "Runtime/Core/Assert/Assert.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
@@ -45,6 +46,7 @@ namespace minEngine
         m_State = std::make_unique<sol::state>();
         OpenStandardLibraries();
         LuaManualBindings::Register(*m_State);
+        RegisterGeneratedLuaBindings(*m_State);
         m_Initialized = true;
         ME_CORE_INFO("LuaScriptSystem initialized.");
     }
