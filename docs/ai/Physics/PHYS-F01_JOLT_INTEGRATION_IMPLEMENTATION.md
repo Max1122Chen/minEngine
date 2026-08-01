@@ -5,12 +5,12 @@
 - **Type:** Implementation Plan
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-06-12 (S01-e: ETeleportType)
+- **Last updated:** 2026-08-01 (**S02 Done**)
 - **Related:** [Design](./PHYS-F01_JOLT_INTEGRATION_DESIGN.md), [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md)
 
 ## TL;DR
 
-在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；S01 拆 **5 个子步（S01-a–e）**，**S01-e Done**；**下一切片：S02**（碰撞层 + Contact）。`RigidBodyComponent` 为 **Component 物理代理**（P10）。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
+在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；S01 拆 **5 个子步（S01-a–e）**，**S01–S02 Done**；**下一切片：S03**（`LineTrace`）。`RigidBodyComponent` 为 **Component 物理代理**（P10）。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
 
 ## Scope
 - **In:** `Runtime/Function/Physics/`、`Engine` 生命周期与 `LogicalTick`、`minEngineTests` physics suite、Jolt submodule、CMake
@@ -32,7 +32,7 @@
 | PHYS-F01-S01-c | `RigidBodyComponent` + `BoxColliderComponent` | **Done** | codegen + 编译 |
 | PHYS-F01-S01-d | `LogicalTick` 挂接 + 落体 smoke | **Done** | `minEngineTests.exe test physics-smoke` |
 | PHYS-F01-S01-e | `ETeleportType` + 场景↔物理同步 | **Done** | `minEngineTests.exe test physics-sync` |
-| PHYS-F01-S02 | 碰撞层 + Contact Begin/End | Planned | headless contact 测试 |
+| PHYS-F01-S02 | 碰撞通道 + Contact Begin/End | **Done** | `minEngineTests.exe test physics-contact` |
 | PHYS-F01-S03 | `LineTrace` | Planned | headless ray hit 测试 |
 
 状态：`Planned | In Progress | Done | Blocked | Deferred | Cancelled`
@@ -239,31 +239,43 @@ minEngine\bin\minEngineTests.exe test smoke
 
 ---
 
-### PHYS-F01-S02 — 碰撞层 + Contact 事件
+### PHYS-F01-S02 — 碰撞通道 + Contact 事件
 
 #### 目标
-`ECollisionChannel`（Default / WorldStatic / Trigger）；Contact Begin/End 双缓冲事件；Trigger 不产生物理响应。
+落地 Design §3.6：单一 `ECollisionChannel` + `Ignore/Overlap/Block` 默认矩阵；Collider `ObjectChannel`；Trigger=Sensor；Contact 双缓冲；`physics-contact`。
 
 #### 任务
-- [ ] `PhysicsTypes.h` — channel / response 枚举
-- [ ] Jolt `ObjectLayer` / `BroadPhaseLayer` 映射
-- [ ] `PhysicsWorld` contact listener → 帧末双缓冲 `TArray` 式事件列表（或 `std::vector` + swap）
-- [ ] headless：两 dynamic 或 dynamic+static 碰撞；trigger overlap Begin/End 断言
+- [x] `PhysicsTypes.h` — `ECollisionChannel`（含 Visibility + GameChannel1–8 + MAX）、`ECollisionResponse`、`EContactPhase`
+- [x] `CollisionChannelRegistry` — 内置 Name↔enum；默认矩阵（Design §3.6.3）
+- [x] `ColliderComponent::ObjectChannel`；Register 时 ObjectLayer + Trigger→`mIsSensor`
+- [x] PairFilter → Response≠Ignore；WorldStatic → NonMoving BP
+- [x] `ContactListener` → write buffer；`Step` 后 swap；`GetContactEvents`
+- [x] **`physics-contact`**：Block Begin + Overlap Begin/End + registry 名
+- [x] `physics-smoke` / `physics-sync` / `physics-load` 无回归
 
 #### 验收
-`minEngineTests.exe test physics-contact`（或扩展现有 physics suite）
+`minEngineTests.exe test physics-contact`
+
+#### 触及文件（预计）
+- `PhysicsTypes.h`、`CollisionChannelRegistry`（新）、`PhysicsWorld`、`BoxColliderComponent`、`PhysicsSystem`
+- `Tests/Suites/PhysicsContactTest.*`、`TestSuiteRegistration.cpp`
+- Design / ACTIVE_WORK / PROGRESS_LOG
+
+#### 刻意不做（S02）
+LineTrace；每物体矩阵覆盖；Editor 通道 UI；ini 加载自定义通道名
 
 ---
 
 ### PHYS-F01-S03 — LineTrace
 
 #### 目标
-`PhysicsWorld::LineTrace(Start, End, QueryParams, HitResult&)` 引擎空间 API。
+`PhysicsWorld::LineTrace`；`traceChannel` 为同一 `ECollisionChannel` 的 Trace 用法；查矩阵 `Trace × Object`（Design §3.7）。
 
 #### 任务
-- [ ] Jolt `NarrowPhaseQuery::CastRay`
-- [ ] `FHitResult` 最小字段：`bBlockingHit`、`Location`、`Normal`、`Component`（或 GO 指针）
-- [ ] headless：已知几何下 hit/miss 断言
+- [ ] Jolt `NarrowPhaseQuery::CastRay` + ObjectLayerFilter（按 Response）
+- [ ] `FHitResult`：`bBlockingHit`、`Location`、`Normal`、Body/Component/GO
+- [ ] `FCollisionQueryParams` 最小（ignore 自身）
+- [ ] headless：`physics-linetrace` hit/miss；Visibility vs Trigger 行为
 
 #### 验收
 `minEngineTests.exe test physics-linetrace`
@@ -274,7 +286,9 @@ minEngine\bin\minEngineTests.exe test smoke
 
 | Slice ID | Reason | Unblock | Next check |
 |----------|--------|---------|------------|
-| — | — | — | — |
+| 每物体 Response 覆盖 | 配置爆炸；非 bootstrap | S02 全局矩阵稳定后 | 以后 Feature |
+| Collision Preset Editor UI | 产品化 | 通道模型验证后 | Editor track |
+| QueryOnly / PhysicsOnly | UE CollisionEnabled | S03 后按需 | — |
 
 ---
 
@@ -282,13 +296,15 @@ minEngine\bin\minEngineTests.exe test smoke
 
 ```text
 Runtime/Function/Physics/
-  PhysicsSystem.h/.cpp      # 单例 facade
-  PhysicsWorld.h/.cpp       # per-Scene，唯一 include Jolt 的业务类
-  PhysicsTypes.h            # EBodyType, ETeleportType, PhysicsBodyId；无 Jolt
-  PhysicsConversion.h/.cpp  # 坐标转换
+  PhysicsSystem.h/.cpp
+  PhysicsWorld.h/.cpp
+  PhysicsTypes.h            # BodyType, Teleport, Channel, Response, ContactEvent；无 Jolt
+  CollisionChannelRegistry.cpp  # Name↔enum + 默认矩阵（类在 PhysicsTypes.h）
+  PhysicsConversion.h/.cpp
   RigidBodyComponent.h/.cpp
+  ColliderComponent.h/.cpp      # ObjectChannel
   BoxColliderComponent.h/.cpp
-  # S02+: PhysicsContactEvent.h, CollisionChannels.h
+  PhysicsEditorSideEffects.*
 ```
 
 ---
@@ -303,3 +319,5 @@ Runtime/Function/Physics/
 | 2026-06-12 | S01-b Done：`PhysicsSystem` / `PhysicsWorld` 空壳 + Scene 生命周期 |
 | 2026-06-12 | **S01-a–d Done**：组件 + LogicalTick + `physics-smoke`；`GameObject` attach 修复 |
 | 2026-06-12 | **S01-e Planned**：`ETeleportType` + Transform 脏 / Simulation 写回 |
+| 2026-08-01 | **S02 Done**：Channel/矩阵/Sensor/Contact + `physics-contact`；下一 S03 |
+| 2026-08-01 | **S02 设计对齐**：单 Channel、矩阵、Sensor Trigger、Registry；任务表按 Design §3.6 重写（待审批） |

@@ -1,6 +1,7 @@
 #include "PhysicsEditorSideEffects.h"
 
 #include "BoxColliderComponent.h"
+#include "ColliderComponent.h"
 #include "RigidBodyComponent.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
@@ -76,6 +77,15 @@ namespace minEngine
             {
                 rigidBody->RefreshPhysicsBody();
             }
+            return;
+        }
+
+        if (component->IsA(ColliderComponent::StaticClass()) && propertyPath == "m_ObjectChannel")
+        {
+            BoxColliderComponent* boxCollider = component->IsA(BoxColliderComponent::StaticClass())
+                ? static_cast<BoxColliderComponent*>(component)
+                : nullptr;
+            RefreshRigidBodyOnOwner(component->GetOwner(), boxCollider);
             return;
         }
 

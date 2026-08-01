@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-06-12
+Last updated: 2026-08-01
 
 ## Purpose
 
@@ -1010,6 +1010,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `docs/ai/Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md`, `PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md`; P1–P9 defaults recorded; `FEATURE_REGISTRY` / `ACTIVE_WORK` → PHYS-F01 In Progress.
 - Next step:
   PHYS-F01-S01-a (Jolt submodule + CMake).
+
+### 2026-08-01 - PHYS-F01-S02 collision channels + Contact events
+- Goal:
+  Land UE-style single `ECollisionChannel` + Ignore/Overlap/Block matrix, Trigger sensors, Contact Begin/End double-buffer.
+- Main changes:
+  `PhysicsTypes` (Channel/Response/ContactEvent + `CollisionChannelRegistry`); `ColliderComponent` + `BoxCollider` inherit;
+  `PhysicsWorld` ObjectLayer/Sensor/`ContactListener` + `GetContactEvents`; `physics-contact` suite.
+- Validation done:
+  `minEngineTests.exe test physics-contact` + `physics-smoke` + `physics-sync` + `physics-load` (all PASS).
+- Next step:
+  Prepare commit for S02; then PHYS-F01-S03 (`LineTrace`).
 
 ### 2026-06-12 - PHYS-F01-S01-e scene↔physics sync (ETeleportType)
 - Goal:

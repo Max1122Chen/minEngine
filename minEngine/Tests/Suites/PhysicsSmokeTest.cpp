@@ -63,6 +63,7 @@ namespace minEngine
             const std::shared_ptr<RigidBodyComponent> floorRigidBody = floorObject->AddComponent<RigidBodyComponent>();
             floorRigidBody->SetBodyType(EBodyType::Static);
             const std::shared_ptr<BoxColliderComponent> floorCollider = floorObject->AddComponent<BoxColliderComponent>();
+            floorCollider->SetObjectChannel(ECollisionChannel::WorldStatic);
             floorCollider->SetHalfExtent(Vector3(5.0f, 0.5f, 5.0f));
 
             const std::shared_ptr<GameObject> dynamicObject = scene->CreateGameObject();

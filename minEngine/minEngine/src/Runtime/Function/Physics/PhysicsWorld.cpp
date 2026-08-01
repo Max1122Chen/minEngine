@@ -8,13 +8,16 @@
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Core/JobSystemSingleThreaded.h>
 
 #include <algorithm>
+#include <unordered_map>
 #include <vector>
 
 JPH_SUPPRESS_WARNINGS
@@ -42,9 +45,18 @@ namespace minEngine
             }
         }
 
-        JPH::ObjectLayer ToJoltObjectLayer(EBodyType bodyType)
+        JPH::ObjectLayer ToJoltObjectLayer(ECollisionChannel channel)
         {
-            return bodyType == EBodyType::Static ? 0u : 1u;
+            return static_cast<JPH::ObjectLayer>(channel);
+        }
+
+        uint64_t MakeContactKey(const JPH::BodyID& bodyA, const JPH::BodyID& bodyB)
+        {
+            const uint32_t indexA = bodyA.GetIndex();
+            const uint32_t indexB = bodyB.GetIndex();
+            const uint32_t low = indexA < indexB ? indexA : indexB;
+            const uint32_t high = indexA < indexB ? indexB : indexA;
+            return (static_cast<uint64_t>(low) << 32) | static_cast<uint64_t>(high);
         }
 
         void PushBodyPoseFromScene(
@@ -73,36 +85,30 @@ namespace minEngine
 
     struct PhysicsWorld::Impl
     {
-        static constexpr JPH::ObjectLayer NonMovingObjectLayer = 0;
-        static constexpr JPH::ObjectLayer MovingObjectLayer = 1;
         static constexpr JPH::BroadPhaseLayer NonMovingBroadPhaseLayer{0};
         static constexpr JPH::BroadPhaseLayer MovingBroadPhaseLayer{1};
         static constexpr JPH::uint BroadPhaseLayerCount = 2;
+        static constexpr JPH::ObjectLayer ChannelCount =
+            static_cast<JPH::ObjectLayer>(ECollisionChannel::MAX);
 
         struct ObjectLayerPairFilter final : public JPH::ObjectLayerPairFilter
         {
             bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override
             {
-                switch (inObject1)
+                if (inObject1 >= ChannelCount || inObject2 >= ChannelCount)
                 {
-                case Impl::NonMovingObjectLayer:
-                    return inObject2 == Impl::MovingObjectLayer;
-                case Impl::MovingObjectLayer:
-                    return true;
-                default:
                     return false;
                 }
+
+                const ECollisionResponse response = CollisionChannelRegistry::Get().GetResponse(
+                    static_cast<ECollisionChannel>(inObject1),
+                    static_cast<ECollisionChannel>(inObject2));
+                return response != ECollisionResponse::Ignore;
             }
         };
 
         struct BroadPhaseLayerInterface final : public JPH::BroadPhaseLayerInterface
         {
-            BroadPhaseLayerInterface()
-            {
-                m_ObjectToBroadPhase[Impl::NonMovingObjectLayer] = Impl::NonMovingBroadPhaseLayer;
-                m_ObjectToBroadPhase[Impl::MovingObjectLayer] = Impl::MovingBroadPhaseLayer;
-            }
-
             JPH::uint GetNumBroadPhaseLayers() const override
             {
                 return Impl::BroadPhaseLayerCount;
@@ -110,25 +116,90 @@ namespace minEngine
 
             JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override
             {
-                return m_ObjectToBroadPhase[inLayer];
-            }
+                if (inLayer == static_cast<JPH::ObjectLayer>(ECollisionChannel::WorldStatic))
+                {
+                    return Impl::NonMovingBroadPhaseLayer;
+                }
 
-            JPH::BroadPhaseLayer m_ObjectToBroadPhase[2]{};
+                return Impl::MovingBroadPhaseLayer;
+            }
         };
 
         struct ObjectVsBroadPhaseLayerFilter final : public JPH::ObjectVsBroadPhaseLayerFilter
         {
             bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override
             {
-                switch (inLayer1)
+                if (inLayer1 == static_cast<JPH::ObjectLayer>(ECollisionChannel::WorldStatic))
                 {
-                case Impl::NonMovingObjectLayer:
                     return inLayer2 == Impl::MovingBroadPhaseLayer;
-                case Impl::MovingObjectLayer:
-                    return true;
-                default:
-                    return false;
                 }
+
+                return true;
+            }
+        };
+
+        struct ContactListenerImpl final : public JPH::ContactListener
+        {
+            Impl* Owner = nullptr;
+
+            void OnContactAdded(
+                const JPH::Body& inBody1,
+                const JPH::Body& inBody2,
+                const JPH::ContactManifold& inManifold,
+                JPH::ContactSettings& ioSettings) override
+            {
+                (void)inManifold;
+                (void)ioSettings;
+                if (Owner == nullptr)
+                {
+                    return;
+                }
+
+                const ECollisionChannel channelA =
+                    static_cast<ECollisionChannel>(inBody1.GetObjectLayer());
+                const ECollisionChannel channelB =
+                    static_cast<ECollisionChannel>(inBody2.GetObjectLayer());
+                const ECollisionResponse response =
+                    CollisionChannelRegistry::Get().GetResponse(channelA, channelB);
+
+                const JPH::BodyID bodyIdA = inBody1.GetID();
+                const JPH::BodyID bodyIdB = inBody2.GetID();
+                const uint64_t contactKey = MakeContactKey(bodyIdA, bodyIdB);
+                Owner->m_ActiveContactResponses[contactKey] = response;
+
+                FPhysicsContactEvent contactEvent;
+                contactEvent.BodyA = bodyIdA.GetIndex();
+                contactEvent.BodyB = bodyIdB.GetIndex();
+                contactEvent.Response = response;
+                contactEvent.Phase = EContactPhase::Begin;
+                Owner->m_WriteContacts.push_back(contactEvent);
+            }
+
+            void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override
+            {
+                if (Owner == nullptr)
+                {
+                    return;
+                }
+
+                const JPH::BodyID bodyIdA = inSubShapePair.GetBody1ID();
+                const JPH::BodyID bodyIdB = inSubShapePair.GetBody2ID();
+                const uint64_t contactKey = MakeContactKey(bodyIdA, bodyIdB);
+
+                ECollisionResponse response = ECollisionResponse::Block;
+                const auto activeIt = Owner->m_ActiveContactResponses.find(contactKey);
+                if (activeIt != Owner->m_ActiveContactResponses.end())
+                {
+                    response = activeIt->second;
+                    Owner->m_ActiveContactResponses.erase(activeIt);
+                }
+
+                FPhysicsContactEvent contactEvent;
+                contactEvent.BodyA = bodyIdA.GetIndex();
+                contactEvent.BodyB = bodyIdB.GetIndex();
+                contactEvent.Response = response;
+                contactEvent.Phase = EContactPhase::End;
+                Owner->m_WriteContacts.push_back(contactEvent);
             }
         };
 
@@ -147,6 +218,7 @@ namespace minEngine
         BroadPhaseLayerInterface m_BroadPhaseLayerInterface;
         ObjectVsBroadPhaseLayerFilter m_ObjectVsBroadPhaseLayerFilter;
         ObjectLayerPairFilter m_ObjectLayerPairFilter;
+        ContactListenerImpl m_ContactListener;
         // Job/temp allocators must outlive m_PhysicsSystem (destroyed first in ~Impl).
         // Single-threaded job system avoids worker-thread issues with OpenGL on the main thread in Editor.
         JPH::JobSystemSingleThreaded m_JobSystem{JPH::cMaxPhysicsJobs};
@@ -156,6 +228,9 @@ namespace minEngine
         float m_Accumulator = 0.0f;
         bool m_BroadPhaseOptimized = false;
         std::vector<RigidBodyEntry> m_RigidBodies;
+        std::vector<FPhysicsContactEvent> m_WriteContacts;
+        std::vector<FPhysicsContactEvent> m_ReadContacts;
+        std::unordered_map<uint64_t, ECollisionResponse> m_ActiveContactResponses;
 
         Impl()
         {
@@ -168,9 +243,18 @@ namespace minEngine
                 m_ObjectVsBroadPhaseLayerFilter,
                 m_ObjectLayerPairFilter);
 
+            m_ContactListener.Owner = this;
+            m_PhysicsSystem.SetContactListener(&m_ContactListener);
+
             const Vector3 engineGravity(0.0f, -9.81f, 0.0f);
             const Vector3 joltGravity = PhysicsConversion::ToJoltPosition(engineGravity);
             m_PhysicsSystem.SetGravity(JPH::Vec3(joltGravity.x, joltGravity.y, joltGravity.z));
+        }
+
+        ~Impl()
+        {
+            m_PhysicsSystem.SetContactListener(nullptr);
+            m_ContactListener.Owner = nullptr;
         }
 
         RigidBodyEntry* FindEntry(RigidBodyComponent* component)
@@ -199,6 +283,12 @@ namespace minEngine
             }
             bodyInterface.DestroyBody(bodyId);
         }
+
+        void SwapContactBuffers()
+        {
+            m_ReadContacts.swap(m_WriteContacts);
+            m_WriteContacts.clear();
+        }
     };
 
     PhysicsWorld::PhysicsWorld()
@@ -209,6 +299,11 @@ namespace minEngine
     PhysicsWorld::~PhysicsWorld()
     {
         UnregisterAllRigidBodies();
+    }
+
+    const std::vector<FPhysicsContactEvent>& PhysicsWorld::GetContactEvents() const
+    {
+        return m_Impl->m_ReadContacts;
     }
 
     void PhysicsWorld::RegisterRigidBody(
@@ -243,13 +338,16 @@ namespace minEngine
         const Vector3 enginePosition = rootComponent->GetPosition();
         const Vector3 joltPosition = PhysicsConversion::ToJoltPosition(enginePosition);
         const Quaternion joltRotation = PhysicsConversion::ToJoltQuaternion(rootComponent->GetRotation());
+        const ECollisionChannel objectChannel = boxColliderComponent->GetObjectChannel();
 
         JPH::BodyCreationSettings bodySettings(
             shapeResult.Get(),
             JPH::RVec3(joltPosition.x, joltPosition.y, joltPosition.z),
             JPH::Quat(joltRotation.X, joltRotation.Y, joltRotation.Z, joltRotation.W),
             ToJoltMotionType(rigidBodyComponent->GetBodyType()),
-            ToJoltObjectLayer(rigidBodyComponent->GetBodyType()));
+            ToJoltObjectLayer(objectChannel));
+
+        bodySettings.mIsSensor = objectChannel == ECollisionChannel::Trigger;
 
         if (rigidBodyComponent->GetBodyType() == EBodyType::Dynamic)
         {
@@ -369,6 +467,7 @@ namespace minEngine
             return;
         }
 
+        m_Impl->m_WriteContacts.clear();
         m_Impl->m_Accumulator += deltaTime;
         int subStepCount = 0;
         while (m_Impl->m_Accumulator >= Impl::FixedTimeStep && subStepCount < Impl::MaxSubSteps)
@@ -381,6 +480,8 @@ namespace minEngine
             m_Impl->m_Accumulator -= Impl::FixedTimeStep;
             ++subStepCount;
         }
+
+        m_Impl->SwapContactBuffers();
     }
 
     void PhysicsWorld::SyncBodiesFromScene()

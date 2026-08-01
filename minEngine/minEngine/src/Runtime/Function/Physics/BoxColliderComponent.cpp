@@ -13,20 +13,12 @@ namespace minEngine
         }
 
         m_HalfExtent = halfExtent;
+        RefreshOwningRigidBody();
+    }
 
-        if (m_Owner == nullptr)
-        {
-            return;
-        }
-
-        for (const std::shared_ptr<Component>& component : m_Owner->GetAllComponents())
-        {
-            if (component && component->GetClass() && component->IsA(RigidBodyComponent::StaticClass()))
-            {
-                static_cast<RigidBodyComponent*>(component.get())->RefreshPhysicsBody(this);
-                break;
-            }
-        }
+    void BoxColliderComponent::SetFullExtent(const Vector3& fullExtent)
+    {
+        SetHalfExtent(fullExtent * 0.5f);
     }
 
     void BoxColliderComponent::SetOwner(GameObject* inOwner)

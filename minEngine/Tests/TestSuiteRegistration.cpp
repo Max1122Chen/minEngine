@@ -15,6 +15,7 @@
 #include "Suites/PhysicsSmokeTest.h"
 #include "Suites/PhysicsSyncTest.h"
 #include "Suites/PhysicsLoadTest.h"
+#include "Suites/PhysicsContactTest.h"
 
 namespace minEngine
 {
@@ -218,6 +219,29 @@ namespace minEngine
             }
         };
 
+        struct PhysicsContactTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-contact",
+                    "Physics Contact",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-contact'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-contact",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -226,6 +250,7 @@ namespace minEngine
         using PhysicsSmokeSuite = TypedTestSuite<PhysicsSmokeTestSuiteTraits>;
         using PhysicsSyncSuite = TypedTestSuite<PhysicsSyncTestSuiteTraits>;
         using PhysicsLoadSuite = TypedTestSuite<PhysicsLoadTestSuiteTraits>;
+        using PhysicsContactSuite = TypedTestSuite<PhysicsContactTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -244,6 +269,7 @@ namespace minEngine
             registry.Register(PhysicsSmokeSuite::Get());
             registry.Register(PhysicsSyncSuite::Get());
             registry.Register(PhysicsLoadSuite::Get());
+            registry.Register(PhysicsContactSuite::Get());
             s_Registered = true;
         }
     }
