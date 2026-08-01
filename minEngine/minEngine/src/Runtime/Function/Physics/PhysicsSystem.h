@@ -13,6 +13,7 @@ namespace minEngine
     class PhysicsLoadTestScope;
     class PhysicsContactTestScope;
     class PhysicsLineTraceTestScope;
+    class PhysicsShapesTestScope;
 
     class PhysicsSystem
     {
@@ -39,6 +40,7 @@ namespace minEngine
         friend class PhysicsLoadTestScope;
         friend class PhysicsContactTestScope;
         friend class PhysicsLineTraceTestScope;
+        friend class PhysicsShapesTestScope;
 
         static void SetInstance(PhysicsSystem* instance);
 

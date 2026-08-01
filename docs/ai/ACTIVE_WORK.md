@@ -11,16 +11,24 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### Physics track（`physics` 分支 · worktree `D:/Dev/GitRepo/minEngine-physics`）
 
-**当前主线：PHYS-F01 bootstrap 切片已齐（S01–S03 Done）— 可准备 commit / 后续产品化**
+**当前主线：`PHYS-F03` Contact gameplay dispatch（下一）· `PHYS-F02` 已完成待 commit**
 
-#### PHYS-F01 — Jolt physics bootstrap（**In Progress→切片 Done**，S01–S03）
+#### PHYS-F02 — Collision + query shapes（**Done**，待 commit）
 
-- **定位：** 物理子系统**启动计划** — Jolt + 最薄抽象 + RigidBody/BoxCollider + Channel/Contact + `Scene::LineTrace`
-- **设计：** [PHYS-F01_JOLT_INTEGRATION_DESIGN.md](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md)
-- **实施：** [PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md)
-- **Done：** S01 同步；S02 Channel/Contact；S03 `Scene::LineTrace` + `physics-linetrace`
-- **下一（可选）：** Registry 标 Feature Done / PR；或产品化（Preset UI、Sweep、多形状）— **新 Feature ID**
-- **刻意不碰（仍延后）：** RHI、RenderPipeline、Editor 物理 Gizmo；System LineTrace 转发
+- [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md)
+- Sphere/Capsule collider；`Scene::SphereTrace` / `CapsuleTrace`；suite `physics-shapes`
+
+#### PHYS-F01 — Jolt physics bootstrap（**Done**）
+
+- [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md)
+
+#### PHYS-F03 — Contact gameplay dispatch（**Planned** · 下一）
+
+- Step 后 Overlap/Hit → 组件或委托
+
+#### Tech debt（非 physics 分支）
+
+- **TD-013** enum codec → [TECH_DEBT.md](./TECH_DEBT.md)
 
 #### CORE-F01 — Transform quaternion（**In Progress**，代码已 land，文档收尾）
 
@@ -44,7 +52,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
 | Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
-| Physics | `test physics-smoke` / `physics-sync` / `physics-load` / `physics-contact` / `physics-linetrace` |
+| Physics | `test physics-smoke` / `physics-sync` / `physics-load` / `physics-contact` / `physics-linetrace` / `physics-shapes` |
 
 Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 

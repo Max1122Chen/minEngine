@@ -1,6 +1,6 @@
 #include "PhysicsSystem.h"
 
-#include "BoxColliderComponent.h"
+#include "ColliderComponent.h"
 #include "RigidBodyComponent.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
@@ -145,7 +145,7 @@ namespace minEngine
             }
 
             RigidBodyComponent* rigidBodyComponent = nullptr;
-            BoxColliderComponent* boxColliderComponent = nullptr;
+            ColliderComponent* colliderComponent = nullptr;
 
             for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
             {
@@ -158,15 +158,15 @@ namespace minEngine
                 {
                     rigidBodyComponent = static_cast<RigidBodyComponent*>(component.get());
                 }
-                else if (component->IsA(BoxColliderComponent::StaticClass()))
+                else if (component->IsA(ColliderComponent::StaticClass()) && colliderComponent == nullptr)
                 {
-                    boxColliderComponent = static_cast<BoxColliderComponent*>(component.get());
+                    colliderComponent = static_cast<ColliderComponent*>(component.get());
                 }
             }
 
             if (rigidBodyComponent != nullptr)
             {
-                rigidBodyComponent->RefreshPhysicsBody(boxColliderComponent);
+                rigidBodyComponent->RefreshPhysicsBody(colliderComponent);
             }
         }
     }

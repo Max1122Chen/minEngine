@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-05-28  
+Last updated: 2026-08-01  
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
 **Rules:** add a row when deferring non-trivial work; link Feature ID when known; do not delete rows — set Status `Done` or `Cancelled`.
@@ -19,6 +19,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-010 | GitHub Actions / remote CI | WF | **Low** | Deferred | After CLI+verify local | **CI = Continuous Integration**; separate from CLI |
 | TD-011 | Post-commit context hook | WF | **Low** | Deferred | — | Optional; digest reduces need |
 | TD-012 | Legacy doc IDs (Phase/M/E/P) vs F/S | WF | **Low** | Open | DOC_GOVERNANCE §10 | Migrate gradually; new docs use F/S only |
+| TD-013 | Enum property codec reads/writes as int64 | CORE / Serialization | **High** | Open | Pay down on **master/core** (or serialization) branch — not physics | `SetCodecForEnums` casts to `int64_t*`; `uint8` enums (e.g. `EBodyType`, `ECollisionChannel`) overrun neighbors; scene JSON shows huge ints. Fix: size-aware read/write via `MEEnum::GetSize()`. Migrate scenes after fix. |
 
 ---
 

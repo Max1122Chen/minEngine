@@ -1,6 +1,6 @@
 #include "RigidBodyComponent.h"
 
-#include "BoxColliderComponent.h"
+#include "ColliderComponent.h"
 #include "PhysicsSystem.h"
 #include "PhysicsWorld.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
@@ -24,7 +24,7 @@ namespace minEngine
         return m_Owner->GetRootComponent();
     }
 
-    BoxColliderComponent* RigidBodyComponent::FindBoxColliderComponent() const
+    ColliderComponent* RigidBodyComponent::FindColliderComponent() const
     {
         if (m_Owner == nullptr)
         {
@@ -33,9 +33,9 @@ namespace minEngine
 
         for (const std::shared_ptr<Component>& component : m_Owner->GetAllComponents())
         {
-            if (component && component->GetClass() && component->IsA(BoxColliderComponent::StaticClass()))
+            if (component && component->GetClass() && component->IsA(ColliderComponent::StaticClass()))
             {
-                return static_cast<BoxColliderComponent*>(component.get());
+                return static_cast<ColliderComponent*>(component.get());
             }
         }
 
@@ -76,7 +76,7 @@ namespace minEngine
         RefreshPhysicsBody();
     }
 
-    void RigidBodyComponent::RefreshPhysicsBody(BoxColliderComponent* boxColliderOverride)
+    void RigidBodyComponent::RefreshPhysicsBody(ColliderComponent* colliderOverride)
     {
         DestroyPhysicsBody();
 
@@ -91,14 +91,14 @@ namespace minEngine
             return;
         }
 
-        BoxColliderComponent* boxCollider = boxColliderOverride != nullptr ? boxColliderOverride : FindBoxColliderComponent();
-        if (boxCollider == nullptr || GetTargetSceneComponent() == nullptr)
+        ColliderComponent* collider = colliderOverride != nullptr ? colliderOverride : FindColliderComponent();
+        if (collider == nullptr || GetTargetSceneComponent() == nullptr)
         {
             return;
         }
 
         Scene* scene = const_cast<Scene*>(static_cast<const Scene*>(outer));
-        PhysicsSystem::Get().GetOrCreateWorld(scene).RegisterRigidBody(this, boxCollider);
+        PhysicsSystem::Get().GetOrCreateWorld(scene).RegisterRigidBody(this, collider);
     }
 
     void RigidBodyComponent::DestroyPhysicsBody()

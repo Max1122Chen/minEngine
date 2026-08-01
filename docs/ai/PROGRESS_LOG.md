@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-01 (PHYS-F01 S03 Done)
+Last updated: 2026-08-01 (PHYS-F02 Done)
 
 ## Purpose
 
@@ -1010,6 +1010,21 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `docs/ai/Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md`, `PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md`; P1–P9 defaults recorded; `FEATURE_REGISTRY` / `ACTIVE_WORK` → PHYS-F01 In Progress.
 - Next step:
   PHYS-F01-S01-a (Jolt submodule + CMake).
+
+### 2026-08-01 - PHYS-F02 Sphere/Capsule colliders + shape traces
+- Goal:
+  Add Sphere/Capsule colliders and Scene SphereTrace/CapsuleTrace on the F01 channel/filter path.
+- Main changes:
+  `SphereColliderComponent` / `CapsuleColliderComponent`; `RigidBodyComponent::FindColliderComponent`;
+  `PhysicsWorld` polymorphic shape create + `CastShapeTrace`; `Scene::{Sphere,Capsule}Trace`;
+  suite `physics-shapes`; editor side effects for `m_Radius` / `m_HalfHeight`.
+- Risks or caveats:
+  Capsule axis = engine Y (Jolt default); HalfHeight = cylinder half-height only.
+  New reflected types need cmake reconfigure after first codegen so `.gen.cpp` enters the GLOB.
+- Validation done:
+  `minEngineTests.exe test physics-shapes` PASS; regression `physics-linetrace` / `physics-contact` / `physics-smoke` PASS.
+- Next step:
+  Prepare commit for PHYS-F02; then PHYS-F03 contact gameplay dispatch.
 
 ### 2026-08-01 - PHYS-F01-S03 Scene LineTrace
 - Goal:

@@ -17,6 +17,7 @@
 #include "Suites/PhysicsLoadTest.h"
 #include "Suites/PhysicsContactTest.h"
 #include "Suites/PhysicsLineTraceTest.h"
+#include "Suites/PhysicsShapesTest.h"
 
 namespace minEngine
 {
@@ -266,6 +267,29 @@ namespace minEngine
             }
         };
 
+        struct PhysicsShapesTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-shapes",
+                    "Physics Shapes",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-shapes'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-shapes",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -276,6 +300,7 @@ namespace minEngine
         using PhysicsLoadSuite = TypedTestSuite<PhysicsLoadTestSuiteTraits>;
         using PhysicsContactSuite = TypedTestSuite<PhysicsContactTestSuiteTraits>;
         using PhysicsLineTraceSuite = TypedTestSuite<PhysicsLineTraceTestSuiteTraits>;
+        using PhysicsShapesSuite = TypedTestSuite<PhysicsShapesTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -296,6 +321,7 @@ namespace minEngine
             registry.Register(PhysicsLoadSuite::Get());
             registry.Register(PhysicsContactSuite::Get());
             registry.Register(PhysicsLineTraceSuite::Get());
+            registry.Register(PhysicsShapesSuite::Get());
             s_Registered = true;
         }
     }

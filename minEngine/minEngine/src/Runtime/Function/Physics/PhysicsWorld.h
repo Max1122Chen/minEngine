@@ -9,7 +9,7 @@
 namespace minEngine
 {
     class RigidBodyComponent;
-    class BoxColliderComponent;
+    class ColliderComponent;
     class GameObject;
 
     class PhysicsWorld
@@ -25,7 +25,6 @@ namespace minEngine
         void SyncBodiesFromScene();
         void SyncBodiesToScene();
 
-        /** Contact/overlap events from the last completed Step (read buffer). */
         const std::vector<PhysicsContactEvent>& GetContactEvents() const;
 
         bool LineTrace(
@@ -35,7 +34,24 @@ namespace minEngine
             const CollisionQueryParams& params,
             HitResult& outHit);
 
-        void RegisterRigidBody(RigidBodyComponent* rigidBodyComponent, BoxColliderComponent* boxColliderComponent);
+        bool SphereTrace(
+            const Vector3& start,
+            const Vector3& end,
+            float radius,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
+
+        bool CapsuleTrace(
+            const Vector3& start,
+            const Vector3& end,
+            float radius,
+            float halfHeight,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
+
+        void RegisterRigidBody(RigidBodyComponent* rigidBodyComponent, ColliderComponent* colliderComponent);
         void UnregisterRigidBody(RigidBodyComponent* rigidBodyComponent);
         void OnRigidBodySimulatePhysicsChanged(RigidBodyComponent* rigidBodyComponent);
 

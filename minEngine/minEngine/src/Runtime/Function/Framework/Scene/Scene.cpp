@@ -35,6 +35,54 @@ namespace minEngine
             outHit);
     }
 
+    bool Scene::SphereTrace(
+        const Vector3& start,
+        const Vector3& end,
+        float radius,
+        ECollisionChannel traceChannel,
+        const CollisionQueryParams& params,
+        HitResult& outHit)
+    {
+        outHit = HitResult{};
+        if (!PhysicsSystem::HasInstance())
+        {
+            return false;
+        }
+
+        return PhysicsSystem::Get().GetOrCreateWorld(this).SphereTrace(
+            start,
+            end,
+            radius,
+            traceChannel,
+            params,
+            outHit);
+    }
+
+    bool Scene::CapsuleTrace(
+        const Vector3& start,
+        const Vector3& end,
+        float radius,
+        float halfHeight,
+        ECollisionChannel traceChannel,
+        const CollisionQueryParams& params,
+        HitResult& outHit)
+    {
+        outHit = HitResult{};
+        if (!PhysicsSystem::HasInstance())
+        {
+            return false;
+        }
+
+        return PhysicsSystem::Get().GetOrCreateWorld(this).CapsuleTrace(
+            start,
+            end,
+            radius,
+            halfHeight,
+            traceChannel,
+            params,
+            outHit);
+    }
+
     void Scene::MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const
     {
         markReachable(const_cast<Scene*>(this));

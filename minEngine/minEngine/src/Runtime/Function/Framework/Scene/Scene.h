@@ -43,6 +43,23 @@ namespace minEngine
             const CollisionQueryParams& params,
             HitResult& outHit);
 
+        bool SphereTrace(
+            const Vector3& start,
+            const Vector3& end,
+            float radius,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
+
+        bool CapsuleTrace(
+            const Vector3& start,
+            const Vector3& end,
+            float radius,
+            float halfHeight,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
+
         void EnsureRenderScene();
         RenderScene* GetRenderScene();
         const std::shared_ptr<RenderScene>& GetRenderSceneShared() const { return m_RenderScene; }

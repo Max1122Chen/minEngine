@@ -1,8 +1,10 @@
 #include "PhysicsEditorSideEffects.h"
 
 #include "BoxColliderComponent.h"
+#include "CapsuleColliderComponent.h"
 #include "ColliderComponent.h"
 #include "RigidBodyComponent.h"
+#include "SphereColliderComponent.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
@@ -27,7 +29,7 @@ namespace minEngine
                 || propertyPath[prefix.size()] == '.';
         }
 
-        void RefreshRigidBodyOnOwner(GameObject* owner, BoxColliderComponent* boxColliderOverride)
+        void RefreshRigidBodyOnOwner(GameObject* owner, ColliderComponent* colliderOverride)
         {
             if (owner == nullptr)
             {
@@ -38,7 +40,7 @@ namespace minEngine
             {
                 if (component && component->GetClass() && component->IsA(RigidBodyComponent::StaticClass()))
                 {
-                    static_cast<RigidBodyComponent*>(component.get())->RefreshPhysicsBody(boxColliderOverride);
+                    static_cast<RigidBodyComponent*>(component.get())->RefreshPhysicsBody(colliderOverride);
                     return;
                 }
             }
@@ -80,18 +82,18 @@ namespace minEngine
             return;
         }
 
-        if (component->IsA(ColliderComponent::StaticClass()) && propertyPath == "m_ObjectChannel")
+        if (!component->IsA(ColliderComponent::StaticClass()))
         {
-            BoxColliderComponent* boxCollider = component->IsA(BoxColliderComponent::StaticClass())
-                ? static_cast<BoxColliderComponent*>(component)
-                : nullptr;
-            RefreshRigidBodyOnOwner(component->GetOwner(), boxCollider);
             return;
         }
 
-        if (component->IsA(BoxColliderComponent::StaticClass()) && propertyPath == "m_HalfExtent")
+        ColliderComponent* collider = static_cast<ColliderComponent*>(component);
+        if (propertyPath == "m_ObjectChannel"
+            || propertyPath == "m_HalfExtent"
+            || propertyPath == "m_Radius"
+            || propertyPath == "m_HalfHeight")
         {
-            RefreshRigidBodyOnOwner(component->GetOwner(), static_cast<BoxColliderComponent*>(component));
+            RefreshRigidBodyOnOwner(component->GetOwner(), collider);
         }
     }
 }

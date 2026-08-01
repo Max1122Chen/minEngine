@@ -6,7 +6,7 @@
 
 namespace minEngine
 {
-    class BoxColliderComponent;
+    class ColliderComponent;
     class PhysicsWorld;
     class SceneComponent;
 
@@ -33,10 +33,10 @@ namespace minEngine
         bool HasValidPhysicsBody() const { return m_PhysicsBodyId != InvalidPhysicsBodyId; }
 
         SceneComponent* GetTargetSceneComponent() const;
-        BoxColliderComponent* FindBoxColliderComponent() const;
+        ColliderComponent* FindColliderComponent() const;
 
         void SetOwner(GameObject* inOwner) override;
-        void RefreshPhysicsBody(BoxColliderComponent* boxColliderOverride = nullptr);
+        void RefreshPhysicsBody(ColliderComponent* colliderOverride = nullptr);
 
     private:
         friend class PhysicsWorld;
