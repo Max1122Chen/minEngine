@@ -157,10 +157,11 @@ In Progress — 首真类型定为 `Transform` 极小子集。注意：`Transfor
 
 | Slice | 内容 | 验证 |
 |-------|------|------|
-| S01 | header tool 识别 Script\*；空/探测生成管线 + CMake `ScriptBinding` | 配置通过；空注册可链接 |
-| S02 | 首真类型极小导出（建议 `Transform`：`ScriptType` + 1–2 property + 1–2 Callable） | Lua 断言 |
-| S03 | `RegisterGeneratedLuaBindings` 挂 `LuaScriptSystem`；文档/样例脚本 | Editor 或测试可见 |
-| S04+ | 扩类型 / ScriptPure / 更多属性规则 | 按需 |
+| S01 | header tool 识别 Script\*；空/探测生成管线 + CMake `ScriptBinding` | 配置通过；空注册可链接 | Done |
+| S02 | 首真类型极小导出（`Transform`：`ScriptType` + Position + SetPosition/Translate） | Lua 断言 | Done |
+| S03 | `RegisterGeneratedLuaBindings` 挂 `LuaScriptSystem`；文档 | Init + 测试 | Done |
+| S04 | `HelloTick.lua`：生成绑定自检（construct / property / Callable） | Editor 日志见 `ScriptBinding OK` | Done |
+| S05+ | 扩类型 / ScriptPure / MEObject 场景入口 | 按需 | — |
 
 首类型若改为纯值类型（如包装 `Vector3`）须在 Status note 记录。
 
@@ -170,5 +171,6 @@ In Progress — 首真类型定为 `Transform` 极小子集。注意：`Transfor
 
 | 日期 | 说明 |
 |------|------|
+| 2026-08-01 | S04：`HelloTick.lua` 生成绑定自检（construct / Position / SetPosition / Translate） |
 | 2026-07-31 | In Progress：S01–S03 落地（ScriptBinding 生成、`Transform` 子集、Init 挂钩、测试） |
 | 2026-07-31 | Draft：从 CORE-F01-S06 升格；specifier 集、ScriptBinding 目录、self=指针、首真类型方向 |

@@ -948,6 +948,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-08-01 - CORE-F02 S04：HelloTick 生成绑定自检
+- Goal:
+	Exercise auto-generated Transform/Vector3 bindings from an editor sample script (compact, not a full matrix).
+- Main changes:
+	`HelloTick.lua` one-shot verify: new / Position R/W / SetPosition / Translate; then heartbeat log.
+- Validation done:
+	Editor：HelloTick 挂 LuaComponent → 日志 `HelloTick: ScriptBinding OK`（用户确认 2026-08-01）
+- Next step:
+	S06 场景对象入口讨论 / 实现。
+
 ### 2026-07-31 - CORE-F02 S01–S03：ScriptBinding codegen + Transform
 - Goal:
 	Opt-in Script* → `Generated/ScriptBinding/` sol2 usertypes; first real type `Transform`.
