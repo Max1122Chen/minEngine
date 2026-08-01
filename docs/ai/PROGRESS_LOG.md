@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-01
+Last updated: 2026-08-01 (PHYS-F01 S03 Done)
 
 ## Purpose
 
@@ -1010,6 +1010,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `docs/ai/Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md`, `PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md`; P1–P9 defaults recorded; `FEATURE_REGISTRY` / `ACTIVE_WORK` → PHYS-F01 In Progress.
 - Next step:
   PHYS-F01-S01-a (Jolt submodule + CMake).
+
+### 2026-08-01 - PHYS-F01-S03 Scene LineTrace
+- Goal:
+  Public `Scene::LineTrace` (UE UWorld-style); internal Jolt CastRay with Trace×Object matrix filtering.
+- Main changes:
+  `HitResult` / `CollisionQueryParams` (no F prefix); `PhysicsWorld::LineTrace`; `Scene` forward;
+  rename `PhysicsContactEvent`; `physics-linetrace` suite (hit/miss/ignore-self/trigger/visibility).
+- Validation done:
+  `minEngineTests.exe test physics-linetrace` + `physics-contact` + `physics-smoke` PASS.
+- Next step:
+  Prepare commit; PHYS-F01 bootstrap slices complete.
 
 ### 2026-08-01 - PHYS-F01-S02 collision channels + Contact events
 - Goal:

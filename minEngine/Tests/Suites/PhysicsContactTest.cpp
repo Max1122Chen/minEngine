@@ -50,7 +50,7 @@ namespace minEngine
     namespace
     {
         bool ContactMatches(
-            const FPhysicsContactEvent& contactEvent,
+            const PhysicsContactEvent& contactEvent,
             PhysicsBodyId bodyA,
             PhysicsBodyId bodyB,
             ECollisionResponse response,
@@ -66,13 +66,13 @@ namespace minEngine
         }
 
         bool HasContactEvent(
-            const std::vector<FPhysicsContactEvent>& events,
+            const std::vector<PhysicsContactEvent>& events,
             PhysicsBodyId bodyA,
             PhysicsBodyId bodyB,
             ECollisionResponse response,
             EContactPhase phase)
         {
-            for (const FPhysicsContactEvent& contactEvent : events)
+            for (const PhysicsContactEvent& contactEvent : events)
             {
                 if (ContactMatches(contactEvent, bodyA, bodyB, response, phase))
                 {
@@ -193,7 +193,7 @@ namespace minEngine
             {
                 (void)stepIndex;
                 PhysicsSystem::Get().SimulateActiveScene(fixedDeltaTime);
-                const std::vector<FPhysicsContactEvent>& events = world.GetContactEvents();
+                const std::vector<PhysicsContactEvent>& events = world.GetContactEvents();
 
                 if (!sawOverlapBegin
                     && HasContactEvent(

@@ -14,6 +14,7 @@ namespace minEngine
     class PhysicsSyncTestScope;
     class PhysicsLoadTestScope;
     class PhysicsContactTestScope;
+    class PhysicsLineTraceTestScope;
 
     class SceneManager
     {
@@ -60,6 +61,7 @@ namespace minEngine
         friend class PhysicsSyncTestScope;
         friend class PhysicsLoadTestScope;
         friend class PhysicsContactTestScope;
+        friend class PhysicsLineTraceTestScope;
 
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;

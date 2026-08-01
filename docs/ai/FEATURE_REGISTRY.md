@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-01 (PHYS-F01 S02 Done)  
+Last updated: 2026-08-01 (PHYS-F01 S01–S03 Done)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -27,7 +27,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配） | In Progress | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · 开发分支 `render` |
 | `RND-F03` | Vulkan RHI backend（与 GL 契约一致、分里程碑对齐） | Planned | — | 依赖 F02；Design 随 F02 稳定后补 `RND-F03_*` |
 | `CORE-F01` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | In Progress | — | [Design](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md) · S01–S04 land；S06 收尾 · 分支 **`physics`** |
-| `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回） | In Progress | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) · 分支 **`physics`**，worktree `minEngine-physics` |
+| `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) · 分支 **`physics`**，worktree `minEngine-physics` |
 
 ---
 

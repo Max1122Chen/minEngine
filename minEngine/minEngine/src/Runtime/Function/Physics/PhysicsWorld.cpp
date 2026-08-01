@@ -4,6 +4,7 @@
 #include "RigidBodyComponent.h"
 #include "BoxColliderComponent.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -13,13 +14,18 @@
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
+#include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
+#include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Body/BodyFilter.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Core/JobSystemSingleThreaded.h>
 
 #include <algorithm>
+#include <cmath>
 #include <unordered_map>
 #include <vector>
-
 JPH_SUPPRESS_WARNINGS
 
 namespace minEngine
@@ -167,7 +173,7 @@ namespace minEngine
                 const uint64_t contactKey = MakeContactKey(bodyIdA, bodyIdB);
                 Owner->m_ActiveContactResponses[contactKey] = response;
 
-                FPhysicsContactEvent contactEvent;
+                PhysicsContactEvent contactEvent;
                 contactEvent.BodyA = bodyIdA.GetIndex();
                 contactEvent.BodyB = bodyIdB.GetIndex();
                 contactEvent.Response = response;
@@ -194,7 +200,7 @@ namespace minEngine
                     Owner->m_ActiveContactResponses.erase(activeIt);
                 }
 
-                FPhysicsContactEvent contactEvent;
+                PhysicsContactEvent contactEvent;
                 contactEvent.BodyA = bodyIdA.GetIndex();
                 contactEvent.BodyB = bodyIdB.GetIndex();
                 contactEvent.Response = response;
@@ -228,8 +234,8 @@ namespace minEngine
         float m_Accumulator = 0.0f;
         bool m_BroadPhaseOptimized = false;
         std::vector<RigidBodyEntry> m_RigidBodies;
-        std::vector<FPhysicsContactEvent> m_WriteContacts;
-        std::vector<FPhysicsContactEvent> m_ReadContacts;
+        std::vector<PhysicsContactEvent> m_WriteContacts;
+        std::vector<PhysicsContactEvent> m_ReadContacts;
         std::unordered_map<uint64_t, ECollisionResponse> m_ActiveContactResponses;
 
         Impl()
@@ -269,6 +275,18 @@ namespace minEngine
             return nullptr;
         }
 
+        RigidBodyEntry* FindEntryByBodyId(const JPH::BodyID& bodyId)
+        {
+            for (RigidBodyEntry& entry : m_RigidBodies)
+            {
+                if (entry.BodyId == bodyId)
+                {
+                    return &entry;
+                }
+            }
+            return nullptr;
+        }
+
         void DestroyJoltBody(const JPH::BodyID& bodyId)
         {
             if (bodyId.IsInvalid())
@@ -301,9 +319,160 @@ namespace minEngine
         UnregisterAllRigidBodies();
     }
 
-    const std::vector<FPhysicsContactEvent>& PhysicsWorld::GetContactEvents() const
+    const std::vector<PhysicsContactEvent>& PhysicsWorld::GetContactEvents() const
     {
         return m_Impl->m_ReadContacts;
+    }
+
+    bool PhysicsWorld::LineTrace(
+        const Vector3& start,
+        const Vector3& end,
+        ECollisionChannel traceChannel,
+        const CollisionQueryParams& params,
+        HitResult& outHit)
+    {
+        outHit = HitResult{};
+
+        if (traceChannel >= ECollisionChannel::MAX)
+        {
+            return false;
+        }
+
+        const Vector3 joltStart = PhysicsConversion::ToJoltPosition(start);
+        const Vector3 joltEnd = PhysicsConversion::ToJoltPosition(end);
+        const Vector3 joltDelta = joltEnd - joltStart;
+        const float joltLengthSq =
+            joltDelta.x * joltDelta.x + joltDelta.y * joltDelta.y + joltDelta.z * joltDelta.z;
+        if (joltLengthSq <= 0.0f)
+        {
+            return false;
+        }
+
+        struct TraceObjectLayerFilter final : public JPH::ObjectLayerFilter
+        {
+            ECollisionChannel TraceChannel = ECollisionChannel::Default;
+
+            bool ShouldCollide(JPH::ObjectLayer inLayer) const override
+            {
+                if (inLayer >= static_cast<JPH::ObjectLayer>(ECollisionChannel::MAX))
+                {
+                    return false;
+                }
+
+                const ECollisionResponse response = CollisionChannelRegistry::Get().GetResponse(
+                    TraceChannel,
+                    static_cast<ECollisionChannel>(inLayer));
+                return response != ECollisionResponse::Ignore;
+            }
+        };
+
+        struct IgnoreGameObjectBodyFilter final : public JPH::BodyFilter
+        {
+            Impl* Owner = nullptr;
+            GameObject* IgnoreGameObject = nullptr;
+
+            bool ShouldCollide(const JPH::BodyID& inBodyID) const override
+            {
+                if (IgnoreGameObject == nullptr || Owner == nullptr)
+                {
+                    return true;
+                }
+
+                const Impl::RigidBodyEntry* entry = Owner->FindEntryByBodyId(inBodyID);
+                if (entry == nullptr || entry->Component == nullptr)
+                {
+                    return true;
+                }
+
+                return entry->Component->GetOwner() != IgnoreGameObject;
+            }
+        };
+
+        TraceObjectLayerFilter objectLayerFilter;
+        objectLayerFilter.TraceChannel = traceChannel;
+
+        IgnoreGameObjectBodyFilter bodyFilter;
+        bodyFilter.Owner = m_Impl.get();
+        bodyFilter.IgnoreGameObject = params.IgnoreGameObject;
+
+        const JPH::RRayCast ray(
+            JPH::RVec3(joltStart.x, joltStart.y, joltStart.z),
+            JPH::Vec3(joltDelta.x, joltDelta.y, joltDelta.z));
+
+        JPH::RayCastResult castResult;
+        const bool hasHit = m_Impl->m_PhysicsSystem.GetNarrowPhaseQuery().CastRay(
+            ray,
+            castResult,
+            {},
+            objectLayerFilter,
+            bodyFilter);
+        if (!hasHit)
+        {
+            return false;
+        }
+
+        const JPH::RVec3 joltHitPoint = ray.GetPointOnRay(castResult.mFraction);
+        const Vector3 engineHitPoint = PhysicsConversion::FromJoltPosition(
+            Vector3(
+                static_cast<float>(joltHitPoint.GetX()),
+                static_cast<float>(joltHitPoint.GetY()),
+                static_cast<float>(joltHitPoint.GetZ())));
+
+        Vector3 engineNormal(0.0f, 1.0f, 0.0f);
+        ECollisionChannel objectChannel = ECollisionChannel::Default;
+        {
+            JPH::BodyLockRead bodyLock(
+                m_Impl->m_PhysicsSystem.GetBodyLockInterface(),
+                castResult.mBodyID);
+            if (bodyLock.Succeeded())
+            {
+                const JPH::Body& body = bodyLock.GetBody();
+                objectChannel = static_cast<ECollisionChannel>(body.GetObjectLayer());
+                const JPH::Vec3 joltNormal = body.GetWorldSpaceSurfaceNormal(
+                    castResult.mSubShapeID2,
+                    JPH::RVec3(joltHitPoint));
+                engineNormal = PhysicsConversion::FromJoltPosition(
+                    Vector3(joltNormal.GetX(), joltNormal.GetY(), joltNormal.GetZ()));
+                const float normalLengthSq =
+                    engineNormal.x * engineNormal.x
+                    + engineNormal.y * engineNormal.y
+                    + engineNormal.z * engineNormal.z;
+                if (normalLengthSq > 0.0f)
+                {
+                    const float invLength = 1.0f / std::sqrt(normalLengthSq);
+                    engineNormal = engineNormal * invLength;
+                }
+            }
+        }
+
+        const ECollisionResponse response =
+            CollisionChannelRegistry::Get().GetResponse(traceChannel, objectChannel);
+
+        const Vector3 engineDelta = end - start;
+        const float engineDistance = std::sqrt(
+            engineDelta.x * engineDelta.x
+            + engineDelta.y * engineDelta.y
+            + engineDelta.z * engineDelta.z);
+
+        outHit.bHit = true;
+        outHit.bBlockingHit = response == ECollisionResponse::Block;
+        outHit.Location = engineHitPoint;
+        outHit.Normal = engineNormal;
+        outHit.Time = castResult.mFraction;
+        outHit.Distance = engineDistance * castResult.mFraction;
+        outHit.BodyId = castResult.mBodyID.GetIndex();
+
+        if (const Impl::RigidBodyEntry* entry = m_Impl->FindEntryByBodyId(castResult.mBodyID))
+        {
+            outHit.RigidBody = entry->Component;
+            if (entry->Component != nullptr)
+            {
+                outHit.HitObject = entry->Component->GetOwner();
+                outHit.Collider = entry->Component->FindBoxColliderComponent();
+            }
+        }
+
+        return true;
     }
 
     void PhysicsWorld::RegisterRigidBody(

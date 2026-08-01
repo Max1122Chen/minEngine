@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/Math/Math.h"
 #include "Runtime/Core/Reflection/ReflectionAnnotations.h"
 
 #include <cstdint>
@@ -9,6 +10,10 @@
 
 namespace minEngine
 {
+    class GameObject;
+    class RigidBodyComponent;
+    class ColliderComponent;
+
     using PhysicsBodyId = uint32_t;
 
     inline constexpr PhysicsBodyId InvalidPhysicsBodyId = UINT32_MAX;
@@ -67,12 +72,32 @@ namespace minEngine
         End,
     };
 
-    struct FPhysicsContactEvent
+    struct PhysicsContactEvent
     {
         PhysicsBodyId BodyA{InvalidPhysicsBodyId};
         PhysicsBodyId BodyB{InvalidPhysicsBodyId};
         ECollisionResponse Response{ECollisionResponse::Block};
         EContactPhase Phase{EContactPhase::Begin};
+    };
+
+    /** Closest hit from Scene::LineTrace / PhysicsWorld::LineTrace. */
+    struct HitResult
+    {
+        bool bHit{false};
+        bool bBlockingHit{false};
+        Vector3 Location{};
+        Vector3 Normal{};
+        float Distance{0.0f};
+        float Time{0.0f};
+        PhysicsBodyId BodyId{InvalidPhysicsBodyId};
+        GameObject* HitObject{nullptr};
+        RigidBodyComponent* RigidBody{nullptr};
+        ColliderComponent* Collider{nullptr};
+    };
+
+    struct CollisionQueryParams
+    {
+        GameObject* IgnoreGameObject{nullptr};
     };
 
     class CollisionChannelRegistry

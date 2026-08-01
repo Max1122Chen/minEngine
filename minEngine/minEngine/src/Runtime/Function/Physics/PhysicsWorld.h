@@ -10,6 +10,7 @@ namespace minEngine
 {
     class RigidBodyComponent;
     class BoxColliderComponent;
+    class GameObject;
 
     class PhysicsWorld
     {
@@ -25,7 +26,14 @@ namespace minEngine
         void SyncBodiesToScene();
 
         /** Contact/overlap events from the last completed Step (read buffer). */
-        const std::vector<FPhysicsContactEvent>& GetContactEvents() const;
+        const std::vector<PhysicsContactEvent>& GetContactEvents() const;
+
+        bool LineTrace(
+            const Vector3& start,
+            const Vector3& end,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
 
         void RegisterRigidBody(RigidBodyComponent* rigidBodyComponent, BoxColliderComponent* boxColliderComponent);
         void UnregisterRigidBody(RigidBodyComponent* rigidBodyComponent);

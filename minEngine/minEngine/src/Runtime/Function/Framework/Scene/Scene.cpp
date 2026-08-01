@@ -1,6 +1,7 @@
 #include "Scene.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
 
 namespace minEngine
@@ -11,6 +12,27 @@ namespace minEngine
         m_GameObjects.clear();
         m_GameObjectsById.clear();
         m_RenderScene.reset();
+    }
+
+    bool Scene::LineTrace(
+        const Vector3& start,
+        const Vector3& end,
+        ECollisionChannel traceChannel,
+        const CollisionQueryParams& params,
+        HitResult& outHit)
+    {
+        outHit = HitResult{};
+        if (!PhysicsSystem::HasInstance())
+        {
+            return false;
+        }
+
+        return PhysicsSystem::Get().GetOrCreateWorld(this).LineTrace(
+            start,
+            end,
+            traceChannel,
+            params,
+            outHit);
     }
 
     void Scene::MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const

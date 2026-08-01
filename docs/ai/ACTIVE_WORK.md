@@ -11,16 +11,16 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### Physics track（`physics` 分支 · worktree `D:/Dev/GitRepo/minEngine-physics`）
 
-**当前主线：`PHYS-F01-S03`（LineTrace）— 下一切片**
+**当前主线：PHYS-F01 bootstrap 切片已齐（S01–S03 Done）— 可准备 commit / 后续产品化**
 
-#### PHYS-F01 — Jolt physics bootstrap（**In Progress**，S01–S02 Done）
+#### PHYS-F01 — Jolt physics bootstrap（**In Progress→切片 Done**，S01–S03）
 
-- **定位：** 物理子系统**启动计划** — Jolt + 最薄抽象 + `RigidBodyComponent` + `BoxColliderComponent`
+- **定位：** 物理子系统**启动计划** — Jolt + 最薄抽象 + RigidBody/BoxCollider + Channel/Contact + `Scene::LineTrace`
 - **设计：** [PHYS-F01_JOLT_INTEGRATION_DESIGN.md](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md)
 - **实施：** [PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md)
-- **S01–S02 Done：** 同步闭环；Channel + 矩阵 + Sensor Trigger + Contact 双缓冲 + `physics-contact`
-- **当前 / 下一：** **S03 `LineTrace`**
-- **刻意不碰：** RHI、RenderPipeline、Editor 物理 Gizmo；一 Collider 多 Channel mask（扩展保留）
+- **Done：** S01 同步；S02 Channel/Contact；S03 `Scene::LineTrace` + `physics-linetrace`
+- **下一（可选）：** Registry 标 Feature Done / PR；或产品化（Preset UI、Sweep、多形状）— **新 Feature ID**
+- **刻意不碰（仍延后）：** RHI、RenderPipeline、Editor 物理 Gizmo；System LineTrace 转发
 
 #### CORE-F01 — Transform quaternion（**In Progress**，代码已 land，文档收尾）
 
@@ -44,7 +44,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
 | Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
-| Physics | `test physics-smoke` / `physics-sync` / `physics-load` / `physics-contact`（从 `minEngine/bin`） |
+| Physics | `test physics-smoke` / `physics-sync` / `physics-load` / `physics-contact` / `physics-linetrace` |
 
 Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 

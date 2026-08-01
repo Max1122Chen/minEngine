@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `PHYS-F01`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-01 (**S02 Done** — collision channels + Contact)
+- **Last updated:** 2026-08-01 (**S03 Done** — Scene::LineTrace)
 - **Related:** [Implementation](./PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md), [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md), [CORE-F01 Transform quaternion](../Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md)
 
 ## TL;DR
@@ -481,7 +481,7 @@ S01 的 Moving/NonMoving 两层 **升级/替换** 为 Channel↔ObjectLayer；St
 #### 3.6.7 Contact / Overlap 事件（双缓冲）
 
 ```text
-struct FPhysicsContactEvent {
+struct PhysicsContactEvent {
   PhysicsBodyId BodyA;
   PhysicsBodyId BodyB;
   // 解析用：RigidBodyComponent* / GameObject*（由 PhysicsWorld 查表）
@@ -507,21 +507,31 @@ SyncBodiesToScene
 | 切片 | 交付 | 不做 |
 |------|------|------|
 | **S02** | Channel + Response + 默认矩阵；Collider.`ObjectChannel`；Layer/Sensor；Contact 双缓冲；`physics-contact`；Name↔enum 内置映射 | LineTrace；每物体矩阵覆盖；Editor 通道 UI；ini 自定义名加载 |
-| **S03** | `LineTrace(Start, End, TraceChannel, QueryParams, HitResult&)`；Query 用同一矩阵 `TraceChannel × ObjectChannel`；ignore 自身等最小 QueryParams | 完整 QueryOnly 组件模式 |
+| **S03** | `Scene::LineTrace`（公开）；内部 `PhysicsWorld::LineTrace`；同一矩阵 `TraceChannel × ObjectChannel`；最小 `CollisionQueryParams` | 完整 QueryOnly 组件模式；`PhysicsSystem` 再挂一份转发 |
 
-### 3.7 S03 查询 API（边界预告，非 S02 实现）
+### 3.7 S03 查询 API（**Done**；拍板 2026-08-01）
+
+**挂点（对齐 UE `UWorld`）：** 玩法 / 测试只调 **`Scene::LineTrace`**。一个 Scene ↔ 一个 `PhysicsWorld`；World 为实现细节，避免用户多了解一层。
 
 ```cpp
-bool LineTrace(
+// 公开：Scene
+bool Scene::LineTrace(
   const Vector3& start,
   const Vector3& end,
   ECollisionChannel traceChannel,  // 同一 enum 的 Trace 用法
-  const FCollisionQueryParams& params,
-  FHitResult& outHit);
+  const CollisionQueryParams& params,
+  HitResult& outHit);
+
+// 内部：PhysicsWorld（由 Scene 转发）
+bool PhysicsWorld::LineTrace(...);
 ```
 
+**命名：** 不用 UE 式 `F` 前缀（`HitResult` / `CollisionQueryParams`）。
+
+**过滤：**
 - `Block` / `Overlap` 均可产生 hit（`bBlockingHit` 区分）；`Ignore` 跳过。
-- `QueryParams` 最小：忽略发起 GO；是否命中 Trigger 可用「矩阵已决定」或显式 flag（S03 再定）。
+- Trigger 命中由矩阵决定（**不加** `bIgnoreTriggers`）。
+- `CollisionQueryParams` 最小：`IgnoreGameObject`（忽略发起者）。
 
 ---
 
@@ -543,8 +553,10 @@ bool LineTrace(
 | **P12** | Response | `Ignore` / `Overlap` / `Block`；全局默认矩阵；Trigger↔Trigger = Ignore |
 | **P13** | Channel 字段位置 | `ColliderComponent::ObjectChannel`（`BoxCollider` 继承）；S02 每 Collider 一个 Channel，多身份扩展不禁止 |
 | **P14** | Trigger | Sensor + Overlap；扩展靠 `GameChannel1–8` + **string↔enum 映射**（非改引擎 enum） |
+| **P15** | LineTrace 挂点 | **`Scene::LineTrace` 公开**；`PhysicsWorld` 实现；不加 `PhysicsSystem` 转发（2026-08-01） |
+| **P16** | 查询类型命名 | `HitResult` / `CollisionQueryParams`（无 `F` 前缀） |
 
-P1–P9 用户确认全部默认（2026-06-11）。P11–P14 已确认（2026-08-01）。
+P1–P9 用户确认全部默认（2026-06-11）。P11–P14 已确认（2026-08-01）。P15–P16 已确认（2026-08-01）。
 
 ---
 
@@ -587,7 +599,7 @@ P1–P9 用户确认全部默认（2026-06-11）。P11–P14 已确认（2026-08
 
 - [x] S01：Jolt 链接、落体 headless 测试通过
 - [x] S02：默认矩阵 + Trigger Overlap 事件 + `physics-contact` 通过（§3.6）
-- [ ] S03：`LineTrace` hit 测试通过
+- [x] S03：`LineTrace` hit 测试通过
 - [x] 非 `Physics/` 模块无 Jolt include（S01 范围）
 - [x] `test smoke` 无回归（`verify.ps1` 全量未在本 slice 重跑）
 
@@ -614,11 +626,17 @@ P1–P9 用户确认全部默认（2026-06-11）。P11–P14 已确认（2026-08
 - [x] `CollisionChannelRegistry` 内置名映射
 - [x] `minEngineTests.exe test physics-contact` 通过；既有 physics suites 无回归
 
+### S03 — LineTrace（**Done**）
+
+- [x] `HitResult` / `CollisionQueryParams`（无 F 前缀）
+- [x] `PhysicsWorld::LineTrace` + `Scene::LineTrace`（P15）
+- [x] 矩阵 Trace×Object；Ignore self；`physics-linetrace`
+
 ---
 
 ## 8) Status note
 
-（无 Blocked 项。）**S02 Done 2026-08-01**；下一切片 **S03 LineTrace**。
+（无 Blocked 项。）**PHYS-F01 S01–S03 Done 2026-08-01**（bootstrap 垂直切片完成）。
 
 ---
 
@@ -629,5 +647,7 @@ P1–P9 用户确认全部默认（2026-06-11）。P11–P14 已确认（2026-08
 | 2026-06-11 | 初稿：bootstrap 定位、P1–P9 拍板、UE 对齐 Tick 时序 |
 | 2026-06-12 | **P10**：`RigidBodyComponent` 改为 `Component` 物理代理，Transform 真源在 RootComponent |
 | 2026-06-12 | **S01-e**：`ETeleportType` + Transform 脏 / Simulation 写回分离（对齐 UE teleport 模型） |
+| 2026-08-01 | **S03 Done**：`Scene::LineTrace` + `physics-linetrace`；PHYS-F01 bootstrap 切片收齐 |
+| 2026-08-01 | **S03 开写**：公开入口 `Scene::LineTrace`；P15–P16；无 F 前缀 |
 | 2026-08-01 | **S02 Done**：Channel/矩阵/Sensor/Contact 双缓冲 + `physics-contact`；下一 S03 |
 | 2026-08-01 | **S02 设计草案**：单 `ECollisionChannel`、Response 矩阵、Collider 通道、Sensor Trigger、string↔enum、P11–P14；待审批 |

@@ -3,14 +3,14 @@
 ## Meta
 - **ID:** `PHYS-F01`
 - **Type:** Implementation Plan
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-01 (**S02 Done**)
+- **Last updated:** 2026-08-01 (**S03 Done**)
 - **Related:** [Design](./PHYS-F01_JOLT_INTEGRATION_DESIGN.md), [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md)
 
 ## TL;DR
 
-在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；S01 拆 **5 个子步（S01-a–e）**，**S01–S02 Done**；**下一切片：S03**（`LineTrace`）。`RigidBodyComponent` 为 **Component 物理代理**（P10）。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
+在 `physics` 分支分 **3 个逻辑切片（S01–S03）** 落地；**S01–S03 Done**（Jolt bootstrap 垂直切片完成）。`RigidBodyComponent` 为 **Component 物理代理**（P10）。**刻意不碰** RHI、RenderPipeline、Editor 物理 UI。
 
 ## Scope
 - **In:** `Runtime/Function/Physics/`、`Engine` 生命周期与 `LogicalTick`、`minEngineTests` physics suite、Jolt submodule、CMake
@@ -33,7 +33,7 @@
 | PHYS-F01-S01-d | `LogicalTick` 挂接 + 落体 smoke | **Done** | `minEngineTests.exe test physics-smoke` |
 | PHYS-F01-S01-e | `ETeleportType` + 场景↔物理同步 | **Done** | `minEngineTests.exe test physics-sync` |
 | PHYS-F01-S02 | 碰撞通道 + Contact Begin/End | **Done** | `minEngineTests.exe test physics-contact` |
-| PHYS-F01-S03 | `LineTrace` | Planned | headless ray hit 测试 |
+| PHYS-F01-S03 | `Scene::LineTrace` | **Done** | `minEngineTests.exe test physics-linetrace` |
 
 状态：`Planned | In Progress | Done | Blocked | Deferred | Cancelled`
 
@@ -266,19 +266,23 @@ LineTrace；每物体矩阵覆盖；Editor 通道 UI；ini 加载自定义通道
 
 ---
 
-### PHYS-F01-S03 — LineTrace
+### PHYS-F01-S03 — LineTrace（`Scene` 公开入口）
 
 #### 目标
-`PhysicsWorld::LineTrace`；`traceChannel` 为同一 `ECollisionChannel` 的 Trace 用法；查矩阵 `Trace × Object`（Design §3.7）。
+落地 Design §3.7 / P15–P16：公开 **`Scene::LineTrace`**；内部 `PhysicsWorld::LineTrace` + Jolt `CastRay`；矩阵 `Trace × Object`；`HitResult` / `CollisionQueryParams`（无 `F` 前缀）。
 
 #### 任务
-- [ ] Jolt `NarrowPhaseQuery::CastRay` + ObjectLayerFilter（按 Response）
-- [ ] `FHitResult`：`bBlockingHit`、`Location`、`Normal`、Body/Component/GO
-- [ ] `FCollisionQueryParams` 最小（ignore 自身）
-- [ ] headless：`physics-linetrace` hit/miss；Visibility vs Trigger 行为
+- [x] `PhysicsTypes` — `HitResult`、`CollisionQueryParams`（`IgnoreGameObject`）
+- [x] `PhysicsWorld::LineTrace` — CastRay + ObjectLayerFilter（Response≠Ignore）+ BodyFilter 忽略 GO
+- [x] `Scene::LineTrace` — `GetOrCreateWorld(this)` 转发
+- [x] `bBlockingHit` = Response==Block；Overlap 仍算 hit
+- [x] **`physics-linetrace`**：hit / miss / ignore-self / Visibility×Default / Trace×Trigger
 
 #### 验收
 `minEngineTests.exe test physics-linetrace`
+
+#### 刻意不做（S03）
+`PhysicsSystem::LineTrace` 转发；Sweep；Multi-hit 数组；`bIgnoreTriggers`；QueryOnly 组件
 
 ---
 
@@ -319,5 +323,5 @@ Runtime/Function/Physics/
 | 2026-06-12 | S01-b Done：`PhysicsSystem` / `PhysicsWorld` 空壳 + Scene 生命周期 |
 | 2026-06-12 | **S01-a–d Done**：组件 + LogicalTick + `physics-smoke`；`GameObject` attach 修复 |
 | 2026-06-12 | **S01-e Planned**：`ETeleportType` + Transform 脏 / Simulation 写回 |
-| 2026-08-01 | **S02 Done**：Channel/矩阵/Sensor/Contact + `physics-contact`；下一 S03 |
+| 2026-08-01 | **S03 Done**：`Scene::LineTrace` + World CastRay + `physics-linetrace`；PHYS-F01 切片收齐 |
 | 2026-08-01 | **S02 设计对齐**：单 Channel、矩阵、Sensor Trigger、Registry；任务表按 Design §3.6 重写（待审批） |

@@ -16,6 +16,7 @@
 #include "Suites/PhysicsSyncTest.h"
 #include "Suites/PhysicsLoadTest.h"
 #include "Suites/PhysicsContactTest.h"
+#include "Suites/PhysicsLineTraceTest.h"
 
 namespace minEngine
 {
@@ -242,6 +243,29 @@ namespace minEngine
             }
         };
 
+        struct PhysicsLineTraceTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-linetrace",
+                    "Physics LineTrace",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-linetrace'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-linetrace",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -251,6 +275,7 @@ namespace minEngine
         using PhysicsSyncSuite = TypedTestSuite<PhysicsSyncTestSuiteTraits>;
         using PhysicsLoadSuite = TypedTestSuite<PhysicsLoadTestSuiteTraits>;
         using PhysicsContactSuite = TypedTestSuite<PhysicsContactTestSuiteTraits>;
+        using PhysicsLineTraceSuite = TypedTestSuite<PhysicsLineTraceTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -270,6 +295,7 @@ namespace minEngine
             registry.Register(PhysicsSyncSuite::Get());
             registry.Register(PhysicsLoadSuite::Get());
             registry.Register(PhysicsContactSuite::Get());
+            registry.Register(PhysicsLineTraceSuite::Get());
             s_Registered = true;
         }
     }
