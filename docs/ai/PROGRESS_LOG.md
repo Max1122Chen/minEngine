@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-07-31
+Last updated: 2026-08-02 (master: merge luaScript + physics; CORE-F03 Transform quat)
 
 ## Purpose
 
@@ -948,6 +948,20 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
 	Editor 目视 Dark/Light；§2.6.4 主题项勾选。
 
+### 2026-08-02 - master：合并 luaScript + physics；Transform quat → CORE-F03
+- Goal:
+	Integrate Lua scripting and Jolt physics on `master`; resolve Transform storage + Feature ID collision.
+- Main changes:
+	`luaScript` fast-forward → `master`；再 merge `physics`。
+	`Transform::Rotation` = physics `Quaternion`；保留 Script\*（Position / MakeIdentity / SetPosition / Translate）。
+	Physics 原 `CORE-F01` Transform Feature 改号为 **`CORE-F03`**（文档路径同步重命名）；Lua 保留 F01/F02。
+	Engine/CMake/friends/test suites 合并两侧系统。
+- Validation done:
+	`cmake --build minEngine/build --target minEngineTests`
+	`lua-script-mvp` + all physics suites + `smoke` → PASSED
+- Next step:
+	Delegate 系统设计（TD-006 / PHYS-F03）；需要时可准备正式 commit 说明。
+
 ### 2026-08-01 - CORE-F02 Done：Script binding codegen 收口
 - Goal:
 	Close Feature after S01–S07 vertical delivery.
@@ -1072,6 +1086,42 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Validation done:
   `mkdocs build --strict`.
 
+### 2026-06-12 - Worktree bootstrap: submodules, scene asset migration, Editor run
+- Goal:
+  Fix physics worktree third-party gitdir paths; migrate scene Rotation to quaternion; ensure Editor launches.
+- Main changes:
+  `scripts/fix-worktree-submodule-gitdirs.ps1`, `scripts/migrate_transform_rotation_to_quat.py`;
+  `default.mescene` / `test.mescene` Rotation → `{W,X,Y,Z}`; `MyMEProject.meproject` ProjectRoot → physics worktree.
+- Validation done:
+  `git status` OK after submodule gitdir fix; Editor loads `test` scene successfully with explicit `--engine-config`.
+- Next step:
+  Commit CORE-F01 code + asset migration batch.
+
+### 2026-06-12 - CORE-F01 S01+S02+S04 partial: Quaternion storage and Scene API
+- Goal:
+  Land Transform quaternion storage (GLM-backed), Scene/RenderCamera API, Inspector Euler widget mapping.
+- Main changes:
+  `Quaternion.h/.cpp`, `Transform.h`, `SceneComponent`, `GameObject`, `RenderCamera`,
+  `TransformWidget`, Editor viewport camera + PreviewScene + Playground call sites;
+  reflection codegen for `Quaternion`; serialization round-trip test for `Transform.Rotation`.
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests Editor`; `minEngineTests.exe test smoke` PASSED.
+- Next step:
+  CORE-F01-S05 call-site grep sweep; S06 verify + commit; then PHYS-F01.
+
+### 2026-06-11 - CORE-F01 Transform quaternion design (physics branch)
+- Goal:
+  Register Transform storage migration as `CORE-F01` before `PHYS-F01` (Jolt); document scope, Inspector Euler widget mapping, and slice plan.
+- Main changes:
+  `docs/ai/Platform/Core/CORE-F01_TRANSFORM_QUATERNION_DESIGN.md`,
+  `CORE-F01_TRANSFORM_QUATERNION_IMPLEMENTATION.md`;
+  `FEATURE_REGISTRY.md` (`CORE-F01` Planned, `PHYS-F01` blocked);
+  `ACTIVE_WORK.md` priority order updated.
+- Validation done:
+  Docs only; no build.
+- Next step:
+  Design §6 decisions recorded (D4 no auto read; D5 RenderCamera in scope) → `CORE-F01-S01`+`S02` first landable PR.
+
 ### 2026-06-01 - WF-F02 handbook nav under `runtime/` tree
 - Goal:
   Align handbook paths and stubs with revised `mkdocs.yml` (Runtime tab + Function/Platform/Resource children).
@@ -1079,6 +1129,107 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   `docs/handbook/runtime/**` placeholders; removed flat `runtime/{function,platform,resource}/overview.md`; design/impl docs updated.
 - Validation done:
   `mkdocs build --strict`.
+
+### 2026-06-11 - PHYS-F01 Jolt bootstrap design + implementation plan
+- Goal:
+  Physics subsystem bootstrap scope: Jolt vendor, thin `Physics/` facade, `RigidBodyComponent` + `BoxColliderComponent`, fixed-step simulate + pose pull before `SendAllEndOfFrameUpdates` (UE-aligned tick order).
+- Main changes:
+  `docs/ai/Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md`, `PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md`; P1–P9 defaults recorded; `FEATURE_REGISTRY` / `ACTIVE_WORK` → PHYS-F01 In Progress.
+- Next step:
+  PHYS-F01-S01-a (Jolt submodule + CMake).
+
+### 2026-08-01 - PHYS-F03 deferred pending Delegates (TD-006)
+- Goal:
+  Avoid shipping Collider virtual contact notify as a permanent API before multicast Delegates exist.
+- Main changes:
+  PHYS-F03 → Deferred placeholder; deleted Implementation plan draft; TD-006 notes block PHYS-F03 (severity Medium).
+- Next step:
+  User picks next physics or CORE Delegate work; gameplay can poll GetContactEvents() meanwhile.
+
+### 2026-08-01 - PHYS-F02 Sphere/Capsule colliders + shape traces
+- Goal:
+  Add Sphere/Capsule colliders and Scene SphereTrace/CapsuleTrace on the F01 channel/filter path.
+- Main changes:
+  `SphereColliderComponent` / `CapsuleColliderComponent`; `RigidBodyComponent::FindColliderComponent`;
+  `PhysicsWorld` polymorphic shape create + `CastShapeTrace`; `Scene::{Sphere,Capsule}Trace`;
+  suite `physics-shapes`; editor side effects for `m_Radius` / `m_HalfHeight`.
+- Risks or caveats:
+  Capsule axis = engine Y (Jolt default); HalfHeight = cylinder half-height only.
+  New reflected types need cmake reconfigure after first codegen so `.gen.cpp` enters the GLOB.
+- Validation done:
+  `minEngineTests.exe test physics-shapes` PASS; regression `physics-linetrace` / `physics-contact` / `physics-smoke` PASS.
+- Next step:
+  Prepare commit for PHYS-F02; then PHYS-F03 contact gameplay dispatch.
+
+### 2026-08-01 - PHYS-F01-S03 Scene LineTrace
+- Goal:
+  Public `Scene::LineTrace` (UE UWorld-style); internal Jolt CastRay with Trace×Object matrix filtering.
+- Main changes:
+  `HitResult` / `CollisionQueryParams` (no F prefix); `PhysicsWorld::LineTrace`; `Scene` forward;
+  rename `PhysicsContactEvent`; `physics-linetrace` suite (hit/miss/ignore-self/trigger/visibility).
+- Validation done:
+  `minEngineTests.exe test physics-linetrace` + `physics-contact` + `physics-smoke` PASS.
+- Next step:
+  Prepare commit; PHYS-F01 bootstrap slices complete.
+
+### 2026-08-01 - PHYS-F01-S02 collision channels + Contact events
+- Goal:
+  Land UE-style single `ECollisionChannel` + Ignore/Overlap/Block matrix, Trigger sensors, Contact Begin/End double-buffer.
+- Main changes:
+  `PhysicsTypes` (Channel/Response/ContactEvent + `CollisionChannelRegistry`); `ColliderComponent` + `BoxCollider` inherit;
+  `PhysicsWorld` ObjectLayer/Sensor/`ContactListener` + `GetContactEvents`; `physics-contact` suite.
+- Validation done:
+  `minEngineTests.exe test physics-contact` + `physics-smoke` + `physics-sync` + `physics-load` (all PASS).
+- Next step:
+  Prepare commit for S02; then PHYS-F01-S03 (`LineTrace`).
+
+### 2026-06-12 - PHYS-F01-S01-e scene↔physics sync (ETeleportType)
+- Goal:
+  Close S01 sync gaps before S02: `ETeleportType`, Transform dirty vs render dirty, Push/Pull, `bSimulatePhysics` gate Step + deactivate.
+- Main changes:
+  `PhysicsTypes.h` (`ETeleportType`); `SceneComponent` authority vs simulation writeback; `PhysicsWorld::SyncBodiesFromScene` / `SyncBodiesToScene`; `RigidBodyComponent::SetSimulatePhysics` hook; `physics-sync` test suite.
+- Validation done:
+  `minEngineTests.exe test physics-sync` + `physics-smoke` + `smoke`; Editor build.
+- Next step:
+  Commit S01-e; PHYS-F01-S02 (collision channels + Contact Begin/End).
+
+### 2026-06-12 - PHYS-F01-S01 bootstrap complete (Jolt + physics vertical slice)
+- Goal:
+  Land S01-a–d: Jolt submodule/CMake, PhysicsSystem/World, RigidBody+BoxCollider (P10 proxy), LogicalTick simulate, physics-smoke falling box.
+- Main changes:
+  `Runtime/Function/Physics/*`; Jolt submodule; Engine/SceneManager lifecycle; `RigidBodyComponent`/`BoxColliderComponent` + reflection; `PhysicsSmokeTest`; fix `GameObject::AddComponent_Internal` SceneComponent-only attach.
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests`; `minEngineTests.exe test physics-smoke` + `test smoke` from `minEngine/bin`.
+- Next step:
+  Commit S01 batch; then PHYS-F01-S02 (collision layers + contact events).
+
+### 2026-06-12 - PHYS-F01-S01-b PhysicsSystem and PhysicsWorld shell
+- Goal:
+  Engine singleton + per-Scene Jolt world with fixed-step accumulator; Scene load/unload lifecycle; PhysicsConversion axis helpers.
+- Main changes:
+  `Runtime/Function/Physics/*`; `Engine` Start/Shutdown; `SceneManager` create/load/unload hooks.
+- Validation done:
+  `cmake --build minEngine/build --target minEngine minEngineTests`; `minEngineTests.exe test smoke` from `minEngine/bin`.
+- Next step:
+  PHYS-F01-S01-c (RigidBodyComponent + BoxColliderComponent).
+
+### 2026-06-12 - PHYS-F01-S01-a Jolt submodule and CMake link
+- Goal:
+  Vendor Jolt via git submodule; link `Jolt` static target into `minEngine` with nested `add_subdirectory(Jolt/Build)`.
+- Main changes:
+  `.gitmodules` + `Third-Party/Jolt`; `minEngine/CMakeLists.txt` cmake 3.20; `minEngine/minEngine/CMakeLists.txt` Jolt options and `target_link_libraries`.
+- Validation done:
+  `cmake --build minEngine/build --target minEngine minEngineTests`; `minEngineTests.exe test smoke`.
+- Next step:
+  PHYS-F01-S01-b (`PhysicsSystem` / `PhysicsWorld` shell).
+
+### 2026-06-12 - PHYS-F01 design: RigidBodyComponent as physics proxy (P10)
+- Goal:
+  Align rigid body model with user intent: `RigidBodyComponent` is a `Component` agent, not `SceneComponent`; no own Transform; reads/writes GO RootComponent for physics sync.
+- Main changes:
+  Design §3.2, §4 P10, §5 options E/F; Implementation S01-c/d assembly and sync wording.
+- Next step:
+  User approval → commit docs; then S01-a.
 
 ### 2026-06-01 - WF-F02 handbook site skeleton (MkDocs + GitHub Pages CI)
 - Goal:

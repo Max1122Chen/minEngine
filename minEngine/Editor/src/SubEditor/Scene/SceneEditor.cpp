@@ -30,6 +30,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Resource/AssetMeta.h"
 
@@ -567,6 +568,8 @@ namespace minEngine
         {
             static_cast<SceneComponent*>(ownerObject.get())->MarkRenderStateDirty();
         }
+
+        ApplyPhysicsEditorSideEffects(ownerObject.get(), propertyPath);
 
         MarkSceneDirty();
         return true;

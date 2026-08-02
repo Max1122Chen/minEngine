@@ -10,6 +10,12 @@ namespace minEngine
     class SceneViewport;
     class Component;
     class PrimitiveComponent;
+    class PhysicsSmokeTestScope;
+    class PhysicsSyncTestScope;
+    class PhysicsLoadTestScope;
+    class PhysicsContactTestScope;
+    class PhysicsLineTraceTestScope;
+    class PhysicsShapesTestScope;
 
     class SceneManager
     {
@@ -53,6 +59,12 @@ namespace minEngine
         friend class Engine;
         friend class AssetManagerTestScope;
         friend class LuaScriptMvpTestScope;
+        friend class PhysicsSmokeTestScope;
+        friend class PhysicsSyncTestScope;
+        friend class PhysicsLoadTestScope;
+        friend class PhysicsContactTestScope;
+        friend class PhysicsLineTraceTestScope;
+        friend class PhysicsShapesTestScope;
 
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;

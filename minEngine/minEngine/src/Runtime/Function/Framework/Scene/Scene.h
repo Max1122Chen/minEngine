@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Function/Physics/PhysicsTypes.h"
 #include "Runtime/Resource/Asset.h"
 
 #include <functional>
@@ -30,6 +31,34 @@ namespace minEngine
         GameObject* FindGameObjectById(uint64_t id) const;
         bool RemoveGameObjectById(uint64_t id);
         uint64_t IncrementNextGOId() { return m_NextGOId++; }
+
+        /**
+         * Closest ray query against this scene's physics world (UE UWorld-style entry point).
+         * TraceChannel uses the same ECollisionChannel enum as ObjectChannel (Trace usage).
+         */
+        bool LineTrace(
+            const Vector3& start,
+            const Vector3& end,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
+
+        bool SphereTrace(
+            const Vector3& start,
+            const Vector3& end,
+            float radius,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
+
+        bool CapsuleTrace(
+            const Vector3& start,
+            const Vector3& end,
+            float radius,
+            float halfHeight,
+            ECollisionChannel traceChannel,
+            const CollisionQueryParams& params,
+            HitResult& outHit);
 
         void EnsureRenderScene();
         RenderScene* GetRenderScene();

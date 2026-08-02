@@ -113,6 +113,20 @@ endif()
 target_link_libraries(${ENGINE_NAME} PUBLIC minengine_lua)
 target_include_directories(${ENGINE_NAME} PUBLIC ${SOL2_INCLUDE_DIR})
 
+# Jolt Physics (rigid body simulation). Headers stay in Physics/; link only here for S01-a.
+set(JOLT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/Jolt)
+if(EXISTS ${JOLT_DIR}/Build/CMakeLists.txt)
+    set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+    set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+    set(ENABLE_OBJECT_STREAM OFF CACHE BOOL "" FORCE)
+    set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+    set(PROFILER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+    add_subdirectory(${JOLT_DIR}/Build ${CMAKE_BINARY_DIR}/third-party/jolt EXCLUDE_FROM_ALL)
+    target_link_libraries(${ENGINE_NAME} PRIVATE Jolt)
+else()
+    message(FATAL_ERROR "Jolt Physics not found. Initialize submodule: git submodule update --init minEngine/minEngine/Third-Party/Jolt")
+endif()
+
 set_target_properties(${ENGINE_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
     LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}

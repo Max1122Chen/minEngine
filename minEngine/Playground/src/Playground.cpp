@@ -116,7 +116,7 @@ public:
                 constexpr float kPitchMax = 89.0f;
 
                 auto root = inputComponent->GetOwner()->GetRootComponent();
-                Vector3 rotation = root->GetRotation();
+                Vector3 rotation = root->GetRotationEulerDegrees();
                 float deltaX = value.Value.x - lastMouseX;
                 float deltaY = lastMouseY - value.Value.y; // Invert Y axis
                 lastMouseX = value.Value.x;
@@ -133,7 +133,7 @@ public:
                     rotation.z = kPitchMax;
                 }
 
-                root->SetRotation(rotation);
+                root->SetRotationEulerDegrees(rotation);
             });
 
 

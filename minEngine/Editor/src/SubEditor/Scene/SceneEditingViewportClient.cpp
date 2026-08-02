@@ -604,7 +604,7 @@ namespace minEngine
 
         m_CameraPosition = camera.GetPosition();
 
-        m_CameraRotation = camera.GetRotation();
+        m_CameraRotation = camera.GetRotationEulerDegrees();
 
     }
 
@@ -616,7 +616,7 @@ namespace minEngine
 
         camera.SetPosition(m_CameraPosition);
 
-        camera.SetRotation(m_CameraRotation);
+        camera.SetRotationEulerDegrees(m_CameraRotation);
 
         camera.UpdateViewMatrix();
 

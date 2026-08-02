@@ -13,89 +13,154 @@ namespace minEngine
         MarkForNeededEndOfFrameUpdate();
     }
 
-    void SceneComponent::SetTransform(const Transform &inTransform)
+    void SceneComponent::ApplyEditorTransformEdit(ETeleportType teleport)
     {
-        if(!(m_Transform == inTransform))
-        {
-            m_Transform = inTransform;
-            for(auto& child : m_AttachChildren)
-            {
-                if (child)
-                {
-                    // TODO: handle relative transform?
-                    child->SetTransform(inTransform);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
-                }
-            }
-
-            MarkRenderStateDirty();
-        }
+        m_bTransformDirty = true;
+        m_PendingTeleportType = teleport;
+        MarkRenderStateDirty();
     }
 
-    void SceneComponent::SetPosition(const Vector3 &position)
+    void SceneComponent::ClearTransformDirty()
     {
-        if(!(m_Transform.Position == position))
-        {
-            m_Transform.Position = position;
-            for(auto& child : m_AttachChildren)
-            {
-                if (child)
-                {
-                    child->SetPosition(position);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
-                }
-            }
-            MarkRenderStateDirty();
-        }
+        m_bTransformDirty = false;
+        m_PendingTeleportType = ETeleportType::ResetPhysics;
     }
 
-    void SceneComponent::Translate(const Vector3 &delta)
+    void SceneComponent::SetTransformFromSimulation(const Transform& inTransform)
+    {
+        if (m_Transform == inTransform)
+        {
+            return;
+        }
+
+        m_Transform = inTransform;
+        MarkRenderStateDirty();
+    }
+
+    void SceneComponent::SetTransform(const Transform& inTransform)
+    {
+        SetTransform(inTransform, ETeleportType::ResetPhysics);
+    }
+
+    void SceneComponent::SetTransform(const Transform& inTransform, ETeleportType teleport)
+    {
+        if (m_Transform == inTransform)
+        {
+            return;
+        }
+
+        m_Transform = inTransform;
+        for (SceneComponent* child : m_AttachChildren)
+        {
+            if (child != nullptr)
+            {
+                child->SetTransform(inTransform, teleport);
+            }
+        }
+
+        m_bTransformDirty = true;
+        m_PendingTeleportType = teleport;
+        MarkRenderStateDirty();
+    }
+
+    void SceneComponent::SetPosition(const Vector3& position)
+    {
+        SetPosition(position, ETeleportType::ResetPhysics);
+    }
+
+    void SceneComponent::SetPosition(const Vector3& position, ETeleportType teleport)
+    {
+        if (m_Transform.Position == position)
+        {
+            return;
+        }
+
+        m_Transform.Position = position;
+        for (SceneComponent* child : m_AttachChildren)
+        {
+            if (child != nullptr)
+            {
+                child->SetPosition(position, teleport);
+            }
+        }
+
+        m_bTransformDirty = true;
+        m_PendingTeleportType = teleport;
+        MarkRenderStateDirty();
+    }
+
+    void SceneComponent::Translate(const Vector3& delta)
     {
         Transform tempTransform = m_Transform;
         tempTransform.Translate(delta);
         SetPosition(tempTransform.Position);
-        // Use SetPosition(GetPosition() + delta) may be correct, but here we'd like to reuse the code in Transform to make sure the logic is consistent.
-        // Same for Rotate and ScaleBy below.
     }
 
-    void SceneComponent::SetRotation(const Vector3 &rotation)
+    void SceneComponent::SetRotation(const Quaternion& rotation)
     {
-        if(!(m_Transform.Rotation == rotation))
-        {
-            m_Transform.Rotation = rotation;
-            for(auto& child : m_AttachChildren)
-            {
-                if (child)
-                {
-                    child->SetRotation(rotation);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
-                }
-            }
-            MarkRenderStateDirty();
-        }
+        SetRotation(rotation, ETeleportType::ResetPhysics);
     }
 
-    void SceneComponent::Rotate(const glm::quat &delta, Space relativeTo)
+    void SceneComponent::SetRotation(const Quaternion& rotation, ETeleportType teleport)
+    {
+        if (m_Transform.Rotation == rotation)
+        {
+            return;
+        }
+
+        m_Transform.SetRotation(rotation);
+        for (SceneComponent* child : m_AttachChildren)
+        {
+            if (child != nullptr)
+            {
+                child->SetRotation(rotation, teleport);
+            }
+        }
+
+        m_bTransformDirty = true;
+        m_PendingTeleportType = teleport;
+        MarkRenderStateDirty();
+    }
+
+    void SceneComponent::SetRotationEulerDegrees(const Vector3& rotationEulerDegrees)
+    {
+        SetRotation(Quaternion::FromEulerDegreesXYZ(rotationEulerDegrees));
+    }
+
+    void SceneComponent::Rotate(const glm::quat& delta, Space relativeTo)
     {
         Transform tempTransform = m_Transform;
         tempTransform.Rotate(delta, relativeTo);
-        SetRotation(tempTransform.Rotation);
+        SetRotation(tempTransform.GetRotation());
     }
 
-    void SceneComponent::SetScale(const Vector3 &scale)
+    void SceneComponent::SetScale(const Vector3& scale)
     {
-        if(!(m_Transform.Scale == scale))
-        {
-            m_Transform.Scale = scale;
-            for(auto& child : m_AttachChildren)
-            {
-                if (child)
-                {
-                    child->SetScale(scale);   // simply propagate to children for now. TODO: Should we use dirty flag instead?
-                }
-            }
-            MarkRenderStateDirty();
-        }
+        SetScale(scale, ETeleportType::ResetPhysics);
     }
 
-    void SceneComponent::ScaleBy(const Vector3 &scaleFactor)
+    void SceneComponent::SetScale(const Vector3& scale, ETeleportType teleport)
+    {
+        if (m_Transform.Scale == scale)
+        {
+            return;
+        }
+
+        m_Transform.Scale = scale;
+        for (SceneComponent* child : m_AttachChildren)
+        {
+            if (child != nullptr)
+            {
+                child->SetScale(scale, teleport);
+            }
+        }
+
+        m_bTransformDirty = true;
+        m_PendingTeleportType = teleport;
+        MarkRenderStateDirty();
+    }
+
+    void SceneComponent::ScaleBy(const Vector3& scaleFactor)
     {
         Transform tempTransform = m_Transform;
         tempTransform.ScaleBy(scaleFactor);
@@ -104,51 +169,56 @@ namespace minEngine
 
     Vector3 SceneComponent::GetForwardVector() const
     {
-        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
-        return glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));   // forward vector is along x axis in our coordinate system
+        const glm::quat rotationQuat = m_Transform.Rotation.ToGlm();
+        return glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));
     }
 
     Vector3 SceneComponent::GetRightVector() const
     {
-        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
-        return glm::normalize(rotationQuat * Vector3(0.0f, 0.0f, 1.0f));   // right vector is along z axis in our coordinate system
+        const glm::quat rotationQuat = m_Transform.Rotation.ToGlm();
+        return glm::normalize(rotationQuat * Vector3(0.0f, 0.0f, 1.0f));
     }
 
     Vector3 SceneComponent::GetUpVector() const
     {
-        glm::quat rotationQuat = glm::quat(glm::radians(m_Transform.Rotation));
-        return glm::normalize(rotationQuat * Vector3(0.0f, 1.0f, 0.0f));   // up vector is along y axis in our coordinate system
+        const glm::quat rotationQuat = m_Transform.Rotation.ToGlm();
+        return glm::normalize(rotationQuat * Vector3(0.0f, 1.0f, 0.0f));
     }
 
-    void SceneComponent::SetOwner(GameObject *inOwner)
+    void SceneComponent::SetOwner(GameObject* inOwner)
     {
         Component::SetOwner(inOwner);
     }
 
-    bool SceneComponent::AttachToComponent(SceneComponent *inParent, AttachmentTransformRules attachRules)
+    bool SceneComponent::AttachToComponent(SceneComponent* inParent, AttachmentTransformRules attachRules)
     {
+        (void)attachRules;
+
         if (inParent == nullptr)
         {
             return false;
         }
 
-        // Detach from current parent
         if (GetAttachParent() != nullptr)
         {
             auto& siblings = m_AttachParent->m_AttachChildren;
             siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
         }
 
-        // Attach to new parent
         SetAttachParent(inParent);
-        inParent->m_AttachChildren.push_back(this);    // add self to parent's children list
+        inParent->m_AttachChildren.push_back(this);
 
         MarkRenderStateDirty();
         return true;
     }
 
-    void SceneComponent::SetAttachParent(SceneComponent *inParent)
+    void SceneComponent::SetAttachParent(SceneComponent* inParent)
     {
         m_AttachParent = inParent;
+    }
+
+    void SceneComponent::DetachFromParent(AttachmentTransformRules detachRules)
+    {
+        (void)detachRules;
     }
 }

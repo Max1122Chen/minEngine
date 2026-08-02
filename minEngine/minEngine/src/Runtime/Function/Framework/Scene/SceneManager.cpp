@@ -1,7 +1,9 @@
 #include "SceneManager.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -38,6 +40,11 @@ namespace minEngine
 
     void SceneManager::UnloadActiveScene()
     {
+        if (m_CurrentActiveScene && PhysicsSystem::HasInstance())
+        {
+            PhysicsSystem::Get().DestroyWorld(m_CurrentActiveScene.get());
+        }
+
         m_CurrentActiveScene.reset();
 
         if (ObjectManager::HasInstance())
@@ -91,6 +98,11 @@ namespace minEngine
         m_CurrentActiveScene = NewObject<Scene>();
         m_CurrentActiveScene->m_SceneName = sceneName;
         m_CurrentActiveScene->EnsureRenderScene();
+        if (PhysicsSystem::HasInstance())
+        {
+            PhysicsSystem::Get().GetOrCreateWorld(m_CurrentActiveScene.get());
+            PhysicsSystem::Get().RebuildWorldBodies(m_CurrentActiveScene.get());
+        }
         return m_CurrentActiveScene;
     }
 
@@ -130,6 +142,12 @@ namespace minEngine
                         }
                     }
                 }
+            }
+
+            if (PhysicsSystem::HasInstance())
+            {
+                PhysicsSystem::Get().GetOrCreateWorld(m_CurrentActiveScene.get());
+                PhysicsSystem::Get().RebuildWorldBodies(m_CurrentActiveScene.get());
             }
 
             if (ObjectManager::HasInstance())

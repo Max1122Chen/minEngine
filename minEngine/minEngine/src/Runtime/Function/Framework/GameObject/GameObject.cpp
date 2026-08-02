@@ -39,16 +39,29 @@ namespace minEngine
         }
     }
 
-    Vector3 GameObject::GetRotation()
+    Quaternion GameObject::GetRotation()
     {
-        return m_RootComponent ? m_RootComponent->GetRotation() : Vector3();
+        return m_RootComponent ? m_RootComponent->GetRotation() : Quaternion::Identity();
     }
 
-    void GameObject::SetRotation(const Vector3 &rotation)
+    void GameObject::SetRotation(const Quaternion& rotation)
     {
         if (m_RootComponent)
         {
             m_RootComponent->SetRotation(rotation);
+        }
+    }
+
+    Vector3 GameObject::GetRotationEulerDegrees()
+    {
+        return m_RootComponent ? m_RootComponent->GetRotationEulerDegrees() : Vector3();
+    }
+
+    void GameObject::SetRotationEulerDegrees(const Vector3& rotationEulerDegrees)
+    {
+        if (m_RootComponent)
+        {
+            m_RootComponent->SetRotationEulerDegrees(rotationEulerDegrees);
         }
     }
 
@@ -199,14 +212,13 @@ namespace minEngine
         m_Components.push_back(newComponent);
         if (newComponent->GetClass() && newComponent->IsA(SceneComponent::StaticClass()))
         {
-            // Set the first added SceneComponent as the RootComponent by default
+            SceneComponent* sceneComponent = static_cast<SceneComponent*>(newComponent.get());
             if (!m_RootComponent)
             {
-                m_RootComponent = std::static_pointer_cast<SceneComponent>(newComponent).get();
+                m_RootComponent = sceneComponent;
             }
             else
             {
-                SceneComponent* sceneComponent = static_cast<SceneComponent*>(newComponent.get());
                 sceneComponent->AttachToComponent(m_RootComponent, AttachmentTransformRules::KeepRelativeTransform);
             }
         }

@@ -13,6 +13,12 @@
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
 #include "Suites/LuaScriptMvpTest.h"
+#include "Suites/PhysicsSmokeTest.h"
+#include "Suites/PhysicsSyncTest.h"
+#include "Suites/PhysicsLoadTest.h"
+#include "Suites/PhysicsContactTest.h"
+#include "Suites/PhysicsLineTraceTest.h"
+#include "Suites/PhysicsShapesTest.h"
 
 namespace minEngine
 {
@@ -151,7 +157,7 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                // Disposable feasibility suite — not part of smoke/full gates.
+                // Disposable feasibility suite ? not part of smoke/full gates.
                 return TestSuiteMetadata{
                     "lua-script-mvp",
                     "Lua Script MVP",
@@ -171,12 +177,156 @@ namespace minEngine
             }
         };
 
+        struct PhysicsSmokeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-smoke",
+                    "Physics Smoke",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-smoke'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-smoke",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct PhysicsSyncTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-sync",
+                    "Physics Sync",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-sync'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-sync",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct PhysicsLoadTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-load",
+                    "Physics Load",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-load'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-load",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct PhysicsContactTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-contact",
+                    "Physics Contact",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-contact'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-contact",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct PhysicsLineTraceTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-linetrace",
+                    "Physics LineTrace",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-linetrace'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-linetrace",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct PhysicsShapesTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "physics-shapes",
+                    "Physics Shapes",
+                    false,
+                    true,
+                    false,
+                };
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'physics-shapes'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "physics-shapes",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
         using LuaScriptMvpSuite = TypedTestSuite<LuaScriptMvpTestSuiteTraits>;
+        using PhysicsSmokeSuite = TypedTestSuite<PhysicsSmokeTestSuiteTraits>;
+        using PhysicsSyncSuite = TypedTestSuite<PhysicsSyncTestSuiteTraits>;
+        using PhysicsLoadSuite = TypedTestSuite<PhysicsLoadTestSuiteTraits>;
+        using PhysicsContactSuite = TypedTestSuite<PhysicsContactTestSuiteTraits>;
+        using PhysicsLineTraceSuite = TypedTestSuite<PhysicsLineTraceTestSuiteTraits>;
+        using PhysicsShapesSuite = TypedTestSuite<PhysicsShapesTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -193,6 +343,12 @@ namespace minEngine
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
             registry.Register(LuaScriptMvpSuite::Get());
+            registry.Register(PhysicsSmokeSuite::Get());
+            registry.Register(PhysicsSyncSuite::Get());
+            registry.Register(PhysicsLoadSuite::Get());
+            registry.Register(PhysicsContactSuite::Get());
+            registry.Register(PhysicsLineTraceSuite::Get());
+            registry.Register(PhysicsShapesSuite::Get());
             s_Registered = true;
         }
     }
