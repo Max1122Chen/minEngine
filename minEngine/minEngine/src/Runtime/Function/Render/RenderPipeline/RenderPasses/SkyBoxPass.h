@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Render/DrawCommands/MeshDrawPacket.h"
 #include "Render/RenderGraph/IRenderPass.h"
-#include "Render/RenderGraph/RDGTexture.h"
+#include "Render/RenderGraph/RDGTypes.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 
 #include <filesystem>
@@ -24,8 +24,8 @@ namespace minEngine
     class RHIBuffer;
     class RHIVertexInputLayout;
     class TextureCube;
-    class RenderGraphFrameResources;
-    class RenderPassBuilder;
+    class RenderGraph;
+    class RenderPass;
 
     class SkyBoxPass : public IRenderPass
     {
@@ -40,9 +40,11 @@ namespace minEngine
             return m_SkyShader != nullptr && m_CubeVertexBuffer != nullptr && m_EnvironmentCube != nullptr;
         }
 
-        void Setup(RenderPassBuilder& builder) override;
-        void PreparePass(RenderGraphFrameResources& frameResources) override;
-        void BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) override;
+        void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
+        void Prepare(RenderGraph& graph) override;
+        void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
+        // Always run when in the pass stack: clear SceneColor/Depth even if sky geometry is skipped.
+        bool NeedRenderPass() const override { return true; }
 
     private:
         std::shared_ptr<RHIShader> m_SkyShader;
@@ -58,6 +60,5 @@ namespace minEngine
 
         bool m_ShouldRender = false;
         MeshDrawPacket m_DrawPacket;
-        RenderGraphFrameResources* m_ActiveFrameResources = nullptr;
     };
 }

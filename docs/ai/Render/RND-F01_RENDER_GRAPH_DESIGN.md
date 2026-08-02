@@ -6,12 +6,12 @@
 |-------|--------|
 | **Feature ID** | `RND-F01` |
 | **Type** | Refactor + Architecture |
-| **Status** | **Draft**（S0–S04 Done；**S05+ 暂停至 F06 Done**） |
+| **Status** | **Draft**（S0–S04 Done；**S05 Done**；**S06+ 产品方向由 [RND-F07](./RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) 取代** — 实验 Bake 非终态） |
 | **Owner** | (maintainer) |
-| **Last updated** | 2026-07-24 |
-| **Depends on** | `RND-F02` **Done**；`RND-F04` **Done**；**S05+ 另依赖 `RND-F06` Done**（Renderer / Graph 职责分离） |
-| **Blocks** | 图机制终态（Bake 等）；减轻 F05 Vulkan 迁移成本 |
-| **Related** | [RND-F06](./RND-F06_FORWARD_RENDERER_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · Granite `renderer/render_graph.hpp` · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) |
+| **Last updated** | 2026-08-02 |
+| **Depends on** | `RND-F02` **Done**；`RND-F04` **Done**；历史 S05+ 曾依赖 `RND-F06` |
+| **Blocks** | （产品图机制终态改由 **`RND-F07`** 承担） |
+| **Related** | [RND-F07](./RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) · [RND-F06](./RND-F06_FORWARD_RENDERER_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · Granite `renderer/render_graph.hpp` · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) |
 
 ## TL;DR
 
@@ -21,7 +21,9 @@
 
 **命名：** 图步骤 = **`RenderPass`**；`RenderPasses/*` 实现类 ≈ Granite **`RenderPassInterface`**（P2）；逻辑纹理用 **字符串名**（P1，对齐 Granite `RenderTextureResource::name`）。Binding 词汇统一见 **§13 S0**。
 
-**进度口径（2026-07-24）：** S0–S04 **Done**。复盘后发现图已挂主路径，但构图宿主仍是混杂的 `RenderPipeline`。**先完成 [RND-F06](./RND-F06_FORWARD_RENDERER_DESIGN.md)**（`ForwardRenderer` + 删除 Pipeline），再继续本 Feature：**S05 卫生 → S06 Bake → … → S08 调图形态**（接力真源见 F06 §1.3）。**不要在 F06 完成前实现 Bake。**
+**进度口径（2026-08-02）：** S0–S05 **Done**（历史 Manual 图）。**不再**以本 Feature 的 S06 实验 Bake 为产品终态；帧资源所有权 + Granite 式 RDG 大重构见 **[RND-F07](./RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md)**。
+
+**进度口径（2026-07-24，归档）：** 曾计划 F06 闸门后 S05 卫生 → S06 Bake → S08；该产品接力由 F07 取代。
 
 ---
 

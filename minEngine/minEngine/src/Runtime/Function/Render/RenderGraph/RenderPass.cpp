@@ -3,106 +3,130 @@
 #include "Render/RenderGraph/RenderGraph.h"
 #include "Render/RHI/RHICommandList.h"
 
+#include <stdexcept>
+#include <utility>
+
 namespace minEngine
 {
-    RenderPass::RenderPass(std::string name)
-        : m_Name(std::move(name))
+    RenderPass::RenderPass(RenderGraph& graph, uint32_t index, std::string name, RDGQueue queue)
+        : m_Graph(graph)
+        , m_Index(index)
+        , m_Name(std::move(name))
+        , m_Queue(queue)
     {
     }
 
-    void RenderPass::SetImplementation(std::unique_ptr<IRenderPass> implementation)
+    RDGTextureResource& RenderPass::SetDepthStencilOutput(const std::string& name, const RDGAttachmentInfo& info)
     {
-        m_Implementation = std::move(implementation);
-        m_ImplementationPtr = nullptr;
+        RDGTextureResource& resource = m_Graph.GetOrCreateTextureResource(name);
+        resource.SetAttachmentInfo(info);
+        resource.AddUsage(RHITextureCreateFlags::RenderTarget);
+        resource.MarkWrittenInPass(m_Index);
+        m_DepthStencilOutput = &resource;
+        return resource;
+    }
+
+    RDGTextureResource& RenderPass::SetDepthStencilInput(const std::string& name)
+    {
+        RDGTextureResource& resource = m_Graph.GetOrCreateTextureResource(name);
+        resource.AddUsage(RHITextureCreateFlags::ShaderResource);
+        resource.MarkReadInPass(m_Index);
+        m_DepthStencilInput = &resource;
+        return resource;
+    }
+
+    RDGTextureResource& RenderPass::AddColorOutput(
+        const std::string& name,
+        const RDGAttachmentInfo& info,
+        const std::string& colorInput)
+    {
+        RDGTextureResource& resource = m_Graph.GetOrCreateTextureResource(name);
+        resource.SetAttachmentInfo(info);
+        // Color outputs are sampled by later passes / Editor ImGui viewport.
+        resource.AddUsage(RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource);
+        resource.MarkWrittenInPass(m_Index);
+        if (!colorInput.empty())
+        {
+            resource.SetColorInputAlias(colorInput);
+            RDGTextureResource& inputResource = m_Graph.GetOrCreateTextureResource(colorInput);
+            inputResource.MarkReadInPass(m_Index);
+        }
+        m_ColorOutputs.push_back(&resource);
+        return resource;
+    }
+
+    RDGTextureResource& RenderPass::AddTextureInput(const std::string& name)
+    {
+        RDGTextureResource& resource = m_Graph.GetOrCreateTextureResource(name);
+        resource.AddUsage(RHITextureCreateFlags::ShaderResource);
+        resource.MarkReadInPass(m_Index);
+        m_TextureInputs.push_back(&resource);
+        return resource;
     }
 
     void RenderPass::SetImplementation(IRenderPass* implementation)
     {
-        m_Implementation.reset();
+        m_OwnedImplementation.reset();
         m_ImplementationPtr = implementation;
     }
 
-    void RenderPass::SetSetup(std::function<void(RenderPassBuilder&)> callback)
+    void RenderPass::SetImplementation(std::unique_ptr<IRenderPass> implementation)
     {
-        m_SetupCallback = std::move(callback);
+        m_OwnedImplementation = std::move(implementation);
+        m_ImplementationPtr = m_OwnedImplementation.get();
     }
 
-    void RenderPass::SetPreparePass(std::function<void(RenderGraphFrameResources&)> callback)
+    IRenderPass* RenderPass::GetImplementation() const
     {
-        m_PrepareCallback = std::move(callback);
+        return m_ImplementationPtr;
     }
 
-    void RenderPass::SetBuildRenderPass(std::function<void(RHICommandList&, const PassParameters&)> callback)
+    void RenderPass::ClearDeclaredDependencies()
     {
-        m_BuildCallback = std::move(callback);
+        m_ColorOutputs.clear();
+        m_TextureInputs.clear();
+        m_DepthStencilOutput = nullptr;
+        m_DepthStencilInput = nullptr;
     }
 
-    void RenderPass::RunSetup(RenderGraph& graph)
+    void RenderPass::RunSetupDependencies()
     {
-        if (m_SetupDone)
+        ClearDeclaredDependencies();
+        if (m_ImplementationPtr == nullptr)
         {
             return;
         }
-
-        RenderPassBuilder builder(graph, *this);
-        if (m_ImplementationPtr != nullptr)
-        {
-            m_ImplementationPtr->Setup(builder);
-        }
-        else if (m_Implementation)
-        {
-            m_Implementation->Setup(builder);
-        }
-        else if (m_SetupCallback)
-        {
-            m_SetupCallback(builder);
-        }
-
-        m_SetupDone = true;
+        m_ImplementationPtr->SetupDependencies(*this, m_Graph);
     }
 
-    void RenderPass::PreparePass(RenderGraphFrameResources& frameResources) const
+    void RenderPass::RunSetup(RHI& rhi)
     {
-        if (m_ImplementationPtr != nullptr)
+        if (m_ImplementationPtr == nullptr)
         {
-            m_ImplementationPtr->PreparePass(frameResources);
             return;
         }
-
-        if (m_Implementation)
-        {
-            m_Implementation->PreparePass(frameResources);
-            return;
-        }
-
-        if (m_PrepareCallback)
-        {
-            m_PrepareCallback(frameResources);
-        }
+        m_ImplementationPtr->Setup(rhi);
     }
 
-    void RenderPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) const
+    void RenderPass::RunPrepare()
     {
-        if (m_ImplementationPtr != nullptr)
+        if (m_ImplementationPtr == nullptr)
         {
-            m_ImplementationPtr->BuildRenderPass(cmdList, parameters);
             return;
         }
-
-        if (m_Implementation)
-        {
-            m_Implementation->BuildRenderPass(cmdList, parameters);
-            return;
-        }
-
-        if (m_BuildCallback)
-        {
-            m_BuildCallback(cmdList, parameters);
-        }
+        m_ImplementationPtr->Prepare(m_Graph);
     }
 
-    void RenderPass::AddDeclaredAccess(PassResourceAccess access)
+    void RenderPass::RunBuildRenderPass(RHICommandList& cmdList)
     {
-        m_DeclaredAccesses.push_back(std::move(access));
+        if (m_ImplementationPtr == nullptr)
+        {
+            return;
+        }
+        if (!m_ImplementationPtr->NeedRenderPass())
+        {
+            return;
+        }
+        m_ImplementationPtr->BuildRenderPass(cmdList, m_Graph);
     }
 }

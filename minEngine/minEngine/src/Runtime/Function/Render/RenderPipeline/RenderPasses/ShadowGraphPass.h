@@ -10,11 +10,11 @@ namespace minEngine
 {
     class RHITexture;
     class ShadowPass;
-    class RenderGraphFrameResources;
-    class RenderPassBuilder;
     class RHICommandList;
+    class RenderGraph;
+    class RenderPass;
 
-    /** One graph pass instance for a single ShadowDrawCommand (RND-F01 S04). */
+    /** One graph pass instance for a single ShadowDrawCommand (RND-F01 S04 / F07 stub). */
     class ShadowGraphPass : public IRenderPass
     {
     public:
@@ -24,9 +24,10 @@ namespace minEngine
         void Configure(const ShadowDrawCommand& command);
         void ClearCommand();
 
-        void Setup(RenderPassBuilder& builder) override;
-        void PreparePass(RenderGraphFrameResources& frameResources) override;
-        void BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) override;
+        void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
+        void Prepare(RenderGraph& graph) override;
+        void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
+        bool NeedRenderPass() const override;
 
         const std::string& GetDepthSlotName() const { return m_DepthSlotName; }
         RHITexture* GetShadowTexture() const;

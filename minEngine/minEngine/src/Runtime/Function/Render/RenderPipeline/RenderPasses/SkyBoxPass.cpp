@@ -1,8 +1,8 @@
 #include "SkyBoxPass.h"
 
 #include "Render/DrawCommands/MeshDrawPacket.h"
-#include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Render/RenderGraph/RenderGraph.h"
+#include "Render/RenderGraph/RenderPass.h"
 #include "Render/RenderGraph/SceneRenderPassUtils.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
@@ -202,20 +202,29 @@ namespace minEngine
         m_SkyFrameUniformBuffer.reset();
     }
 
-    void SkyBoxPass::Setup(RenderPassBuilder& builder)
+    void SkyBoxPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
-        RDGTextureDesc desc{};
-        builder.AddColorOutput(kRDGSceneColor, desc);
-        builder.SetDepthStencilOutput(kRDGSceneDepth, desc);
+        (void)graph;
+        RDGAttachmentInfo color{};
+        color.SizeClass = RDGSizeClass::SwapchainRelative;
+        color.SizeX = 1.0f;
+        color.SizeY = 1.0f;
+        color.Format = TextureFormat::RGBA8;
+        RDGAttachmentInfo depth{};
+        depth.SizeClass = RDGSizeClass::SwapchainRelative;
+        depth.SizeX = 1.0f;
+        depth.SizeY = 1.0f;
+        depth.Format = TextureFormat::DEPTH24STENCIL8;
+        self.AddColorOutput(kRDGSceneColor, color);
+        self.SetDepthStencilOutput(kRDGSceneDepth, depth);
     }
 
-    void SkyBoxPass::PreparePass(RenderGraphFrameResources& frameResources)
+    void SkyBoxPass::Prepare(RenderGraph& graph)
     {
-        m_ActiveFrameResources = &frameResources;
         m_ShouldRender = false;
         m_DrawPacket = {};
 
-        const FrameRenderGraphContext& context = frameResources.GetFrameContext();
+        const RenderGraphFrameContext& context = graph.GetFrameContext();
         if (!IsReady() || context.SceneContext == nullptr || context.SceneContext->Camera == nullptr
             || context.SceneContext->Scene == nullptr)
         {
@@ -251,30 +260,24 @@ namespace minEngine
         m_ShouldRender = true;
     }
 
-    void SkyBoxPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters)
+    void SkyBoxPass::BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph)
     {
-        (void)parameters;
-
-        if (!m_ShouldRender || !m_ActiveFrameResources || !m_DrawPacket.PipelineState)
+        RHITexture* colorTexture = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneColor));
+        RHITexture* depthTexture = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneDepth));
+        if (colorTexture == nullptr || depthTexture == nullptr)
         {
             return;
         }
 
-        RHITexture* colorTexture = m_ActiveFrameResources->GetRHI(kRDGSceneColor);
-        RHITexture* depthTexture = m_ActiveFrameResources->GetRHI(kRDGSceneDepth);
-        if (!colorTexture || !depthTexture)
-        {
-            return;
-        }
-
+        // First scene color writer: always clear so Opaque can LoadStore safely.
         RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, true);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
-        cmdList.SubmitMeshDrawPacket(m_DrawPacket);
+        if (m_ShouldRender && m_DrawPacket.PipelineState)
+        {
+            cmdList.SubmitMeshDrawPacket(m_DrawPacket);
+        }
         cmdList.EndRenderPass();
-
-        m_ActiveFrameResources->SetLastKnownUsage(kRDGSceneColor, RDGTextureUsage::RenderTarget);
-        m_ActiveFrameResources->SetLastKnownUsage(kRDGSceneDepth, RDGTextureUsage::DepthWrite);
     }
 
     void SkyBoxPass::Execute(

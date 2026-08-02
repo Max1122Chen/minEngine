@@ -2,7 +2,7 @@
 #include "Core.h"
 #include "Render/DrawCommands/MeshDrawPacket.h"
 #include "Render/RenderGraph/IRenderPass.h"
-#include "Render/RenderGraph/RDGTexture.h"
+#include "Render/RenderGraph/RDGTypes.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHITexture.h"
@@ -20,8 +20,8 @@ namespace minEngine
     class RHIShaderResourceView;
     class RHIBuffer;
     class RHIVertexInputLayout;
-    class RenderGraphFrameResources;
-    class RenderPassBuilder;
+    class RenderGraph;
+    class RenderPass;
 
     class PresentPass : public RenderPassBase, public IRenderPass
     {
@@ -38,9 +38,9 @@ namespace minEngine
 
         void SetInputTextureName(const char* inputName);
 
-        void Setup(RenderPassBuilder& builder) override;
-        void PreparePass(RenderGraphFrameResources& frameResources) override;
-        void BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) override;
+        void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
+        void Prepare(RenderGraph& graph) override;
+        void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
 
     private:
         RHIBufferRef m_ScreenQuadVertexBuffer;
@@ -56,7 +56,6 @@ namespace minEngine
         const char* m_InputTextureName = kRDGSceneColor;
         RHITexture* m_CachedInputTexture = nullptr;
         RHITexture* m_InputTexture = nullptr;
-        RenderGraphFrameResources* m_ActiveFrameResources = nullptr;
         MeshDrawPacket m_DrawPacket;
 
         void Render(RHICommandList& cmdList);

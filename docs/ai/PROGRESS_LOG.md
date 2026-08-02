@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-07-24 (RND-F01 S05 RDG hygiene Done)
+Last updated: 2026-08-02 (RND-F07 viewport display fix)
 
 ## Purpose
 
@@ -1091,6 +1091,93 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-08-02 - RND-F07：Editor 视口只显示 ImGui Image 占位（`render`）
+- Goal:
+	接回后视口无正常场景，只见 ImGui Image 占位；修帧纹理寿命与采样/清屏链路。
+- Main changes:
+	`Bake` 不再 `assign(nullptr)` 清空物理纹理；rebake 前清 pass IO / resource usage。
+	Color RT 强制 `ShaderResource`；`SetupAttachments` 按 flags 不匹配则重建。
+	`SceneRenderTarget::Resize` 同尺寸不 `reset` publish。
+	`SkyBoxPass` 恒跑并 clear；Opaque LoadStore；Post 链 `NeedRenderPass` + predecessor，FXAA 失败时 Sharpen 不覆盖 SceneColor。
+- Risks or caveats:
+	阴影仍 TD-020。
+- Validation done:
+	`cmake --build … --target Editor minEngineTests`；`test render-graph` 4 PASSED；`test smoke` PASSED；用户目视黄金场景 OK。
+- Next step:
+	准备 commit；可选付清 TD-020。
+
+### 2026-08-02 - RND-F07 Phase1 S01–S03：真渲染停工 + 帧 RT 不分配（`render`）
+- Goal:
+	Phase1 中间态：无人分配 SceneColor/Depth/shadow/post；`ForwardRenderer` 不跑真图。
+- Main changes:
+	`ForwardRenderer::Execute` / `EnsurePostBufferTexture` 早退；`SceneRenderTarget::Resize` 只记尺寸不建纹理；`ShadowResourceManager::Ensure*` 恒 false。
+	`render-graph` 移出 smoke；Design 定名图节点 `RenderPass` / 钩子 `IRenderPass`；Status In Progress。
+- Risks or caveats:
+	Editor 视口黑屏（已有 null texture 提示）；旧 Manual 图代码暂留待 S04 替换。
+- Validation done:
+	`cmake --build minEngine/build --target minEngineTests`
+	`minEngine\bin\minEngineTests.exe test smoke` → PASSED（`render-graph` 已不在 smoke）
+- Next step:
+	S04 Granite 式图核心（§3.6）。
+
+### 2026-08-02 - RND-F07-S06–S09：接回场景/Post + 收口（`render`）
+- Goal:
+	完成 F07：主路径走 Granite 式图；Scene/Post 图拥有；删 Manual external。
+- Main changes:
+	`RenderGraphFrameContext` / `ForceIncludePass` / `Prepare(graph)`。
+	Sky/Opaque/Translucent/Post/Present 新生命周期；`ForwardRenderer::Execute` 全路径恢复。
+	SceneRT Publish color+depth；Shadow ForceInclude + Manager Ensure 恢复（**TD-020**）。
+	Registry F07 Done；无 `RegisterExternal`。
+- Risks or caveats:
+	阴影 atlas 尚未迁入图；Bake 每尺寸变化重建。
+- Validation done:
+	`test render-graph` 4 PASSED；`test smoke` PASSED。
+- Next step:
+	用户 Editor 黄金场景目视；可选付清 TD-020；准备 commit。
+
+### 2026-08-02 - RND-F07-S05：图拥有资源 GPU 竖切（`render`）
+- Goal:
+	证明 Bake/SetupAttachments 产生的物理纹理可上 GPU，并有可观察输出。
+- Main changes:
+	`GraphClearPass`：声明 `SceneColor` + ClearStore。
+	`ForwardRenderer::Execute` 跑竖切图；`PublishGraphColorTexture` 把图 `shared_ptr` 交给 SceneRT 显示。
+	`GetPhysicalTextureShared`；单测 `glGetTexImage` 校验 clear 色。
+- Risks or caveats:
+	仅 clear，无场景几何；S07 前视口固定 slate-blue。
+- Validation done:
+	`minEngineTests.exe test render-graph` → 4 PASSED（含 clear 读回）
+	`minEngineTests.exe test smoke` → PASSED
+- Next step:
+	S06 Pass 生命周期收紧，或直接进 S07 接回场景。
+
+### 2026-08-02 - RND-F07-S04：Granite 式 RenderGraph Bake 核心（`render`）
+- Goal:
+	落地 Design §3.6：声明 → Bake → SetupAttachments → GetPhysicalTexture；替换 Manual builder。
+- Main changes:
+	新增/重写 `RDGTypes` / `RDGResource` / `IRenderPass` / `RenderPass` / `RenderGraph`（Bake 依赖回溯 + 物理表；transient/merge Deferred）。
+	删除 `RenderPassBuilder` / `RenderGraphFrameResources` / `RDGTexture`；场景 Pass 改为新 `IRenderPass` stub；`ForwardRenderer` 旧构图路径 idle。
+	`RenderGraphTest`：headless GL + Bake/物理纹理/依赖序/缺 writer。
+- Risks or caveats:
+	主路径仍黑屏；InputRelative / swapchain 非拥有视图 / barrier 未做；S05 才上 GPU 竖切。
+- Validation done:
+	`cmake --build minEngine/build --target minEngine minEngineTests`
+	`minEngineTests.exe test render-graph` → 3 PASSED
+	`minEngineTests.exe test smoke` → PASSED
+- Next step:
+	S05 最小 GPU 竖切（图拥有 color → clear/present）。
+
+### 2026-08-02 - RND-F07 Draft：Granite-style RDG + 帧资源所有权大重构（`render`）
+- Goal:
+	拍板破坏性两阶段：Phase1 无人分配帧 RT、真渲染停工；Phase2 化用本机 Granite `render_graph` 再接回。取代 F01 S06+ 实验 Bake 产品方向。
+- Main changes:
+	新增 `RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md` / `_IMPLEMENTATION.md`；Registry / ACTIVE_WORK；F01 Meta 标注 Superseded by F07。
+- Risks or caveats:
+	中间态黑屏；Phase2 须对照 Granite `bake()` 防再发明。
+- Validation done:
+	Phase1 code landed；见同日 Phase1 条目。
+- Next step:
+	S04 Granite 式图核心（§3.6）。
 
 ### 2026-07-24 - RND-F01 S05 RDG implementation hygiene (`render`)
 - Goal:

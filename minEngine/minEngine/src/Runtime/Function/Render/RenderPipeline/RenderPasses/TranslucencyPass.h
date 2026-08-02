@@ -1,7 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Render/RenderGraph/IRenderPass.h"
-#include "Render/RenderGraph/RDGTexture.h"
+#include "Render/RenderGraph/RDGTypes.h"
 #include "RenderPassBase.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
@@ -11,8 +11,8 @@ namespace minEngine
 {
     class RenderCamera;
     class RHICommandList;
-    class RenderGraphFrameResources;
-    class RenderPassBuilder;
+    class RenderGraph;
+    class RenderPass;
 
     class TranslucencyPass : public RenderPassBase, public IRenderPass
     {
@@ -23,9 +23,9 @@ namespace minEngine
         virtual void Execute() override;
         void Execute(RHICommandList& cmdList);
 
-        void Setup(RenderPassBuilder& builder) override;
-        void PreparePass(RenderGraphFrameResources& frameResources) override;
-        void BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) override;
+        void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
+        void Prepare(RenderGraph& graph) override;
+        void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
 
     public:
         std::vector<MeshDrawCommand> m_DrawCommands;
@@ -39,6 +39,5 @@ namespace minEngine
         void SortDrawCommands();
 
         std::vector<MeshDrawPacket> m_DrawPackets;
-        RenderGraphFrameResources* m_ActiveFrameResources = nullptr;
     };
 }

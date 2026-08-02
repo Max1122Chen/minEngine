@@ -41,22 +41,37 @@ namespace minEngine
 
     void SceneRenderTarget::Resize(RHI* rhi, uint32_t width, uint32_t height)
     {
+        // RND-F07: size bookkeeping only; graph owns/creates frame RTs via SetupAttachments.
         if (!rhi || width == 0 || height == 0)
         {
             return;
         }
 
-        if (m_ColorTexture && m_ColorTexture->GetDesc().Width == width &&
-            m_ColorTexture->GetDesc().Height == height)
+        if (m_Width == width && m_Height == height)
         {
             return;
         }
 
         m_Width = width;
         m_Height = height;
+        // Drop published views so UI does not keep a mismatched size; graph will republish.
+        m_ColorTexture.reset();
+        m_DepthTexture.reset();
+    }
 
-        m_ColorTexture = rhi->RHICreateTexture2D(MakeColorDesc(width, height), nullptr);
-        m_DepthTexture = rhi->RHICreateTexture2D(MakeDepthDesc(width, height), nullptr);
+    void SceneRenderTarget::PublishGraphColorTexture(RHITextureRef colorTexture)
+    {
+        m_ColorTexture = std::move(colorTexture);
+        if (m_ColorTexture)
+        {
+            m_Width = m_ColorTexture->GetDesc().Width;
+            m_Height = m_ColorTexture->GetDesc().Height;
+        }
+    }
+
+    void SceneRenderTarget::PublishGraphDepthTexture(RHITextureRef depthTexture)
+    {
+        m_DepthTexture = std::move(depthTexture);
     }
 
     RHIRenderPassInfo SceneRenderTarget::BuildRenderPassInfo() const

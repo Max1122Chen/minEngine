@@ -1,7 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Render/RenderGraph/IRenderPass.h"
-#include "Render/RenderGraph/RDGTexture.h"
+#include "Render/RenderGraph/RDGTypes.h"
 #include "Runtime/Function/Render/RenderPipeline/RenderPasses/RenderPassBase.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
@@ -12,8 +12,8 @@
 namespace minEngine
 {
     class RHICommandList;
-    class RenderGraphFrameResources;
-    class RenderPassBuilder;
+    class RenderGraph;
+    class RenderPass;
 
     class BasePass : public RenderPassBase, public IRenderPass
     {
@@ -26,9 +26,9 @@ namespace minEngine
 
         void SetClearSceneTargets(bool clear) { m_ClearSceneTargets = clear; }
 
-        void Setup(RenderPassBuilder& builder) override;
-        void PreparePass(RenderGraphFrameResources& frameResources) override;
-        void BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters) override;
+        void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
+        void Prepare(RenderGraph& graph) override;
+        void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
 
     private:
         void Render(RHICommandList& cmdList);
@@ -42,6 +42,5 @@ namespace minEngine
     private:
         bool m_ClearSceneTargets = true;
         std::vector<MeshDrawPacket> m_DrawPackets;
-        RenderGraphFrameResources* m_ActiveFrameResources = nullptr;
     };
 }

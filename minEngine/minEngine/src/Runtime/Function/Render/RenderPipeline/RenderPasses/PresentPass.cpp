@@ -1,7 +1,7 @@
 #include "PresentPass.h"
 
-#include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Render/RenderGraph/RenderGraph.h"
+#include "Render/RenderGraph/RenderPass.h"
 #include "Render/RenderSystem.h"
 #include "Render/EngineShaderUtils.h"
 #include "Render/RHI/RHI.h"
@@ -23,39 +23,31 @@ namespace minEngine
         m_InputTextureName = inputName != nullptr ? inputName : kRDGSceneColor;
     }
 
-    void PresentPass::Setup(RenderPassBuilder& builder)
+    void PresentPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
-        builder.AddTextureInput(m_InputTextureName);
+        (void)graph;
+        self.AddTextureInput(m_InputTextureName);
     }
 
-    void PresentPass::PreparePass(RenderGraphFrameResources& frameResources)
+    void PresentPass::Prepare(RenderGraph& graph)
     {
-        m_ActiveFrameResources = &frameResources;
-        m_InputTexture = frameResources.GetRHI(m_InputTextureName);
-        PrepareDrawPacket(frameResources.GetCommandList(), m_InputTexture);
+        RHICommandList* cmdList = graph.GetFrameContext().CommandList;
+        m_InputTexture = graph.TryGetPhysicalTexture(graph.FindTextureResource(m_InputTextureName));
+        if (cmdList == nullptr)
+        {
+            return;
+        }
+        PrepareDrawPacket(*cmdList, m_InputTexture);
     }
 
-    void PresentPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters)
+    void PresentPass::BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph)
     {
-        (void)parameters;
+        (void)graph;
 
         if (!m_DrawPacket.PipelineState || !m_PresentShaderBindingSet || !m_InputTexture)
         {
             return;
         }
-
-        RenderGraphFrameResources* frameResources = m_ActiveFrameResources;
-        if (frameResources == nullptr)
-        {
-            return;
-        }
-
-        AddTransition(
-            cmdList,
-            m_InputTextureName,
-            *frameResources,
-            frameResources->GetLastKnownUsage(m_InputTextureName),
-            RDGTextureUsage::ShaderResource);
 
         RHIRenderPassInfo presentPassInfo;
         cmdList.BeginRenderPass(presentPassInfo);

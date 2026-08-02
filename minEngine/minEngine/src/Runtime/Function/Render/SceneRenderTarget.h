@@ -23,6 +23,13 @@ namespace minEngine
         const RHITextureRef& GetColorTexture() const { return m_ColorTexture; }
         const RHITextureRef& GetDepthTexture() const { return m_DepthTexture; }
 
+        /**
+         * Publish a graph-owned color texture for viewport display (RND-F07-S05).
+         * Does not allocate; shares ownership with RenderGraph physical table.
+         */
+        void PublishGraphColorTexture(RHITextureRef colorTexture);
+        void PublishGraphDepthTexture(RHITextureRef depthTexture);
+
         RHIRenderPassInfo BuildRenderPassInfo() const;
 
     private:

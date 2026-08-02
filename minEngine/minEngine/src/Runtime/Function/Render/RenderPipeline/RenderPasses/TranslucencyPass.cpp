@@ -1,7 +1,7 @@
 #include "TranslucencyPass.h"
 
-#include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Render/RenderGraph/RenderGraph.h"
+#include "Render/RenderGraph/RenderPass.h"
 #include "Render/RenderGraph/SceneRenderPassUtils.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/RenderCamera.h"
@@ -14,45 +14,69 @@
 
 namespace minEngine
 {
-    void TranslucencyPass::Setup(RenderPassBuilder& builder)
+    namespace
     {
-        RDGTextureDesc desc{};
-        builder.AddTextureInput(kRDGDirShadowAtlas);
-        builder.AddColorOutput(kRDGSceneColor, desc);
-        builder.SetDepthStencilOutput(kRDGSceneDepth, desc);
+        RDGAttachmentInfo MakeSceneColorAttachment()
+        {
+            RDGAttachmentInfo info{};
+            info.SizeClass = RDGSizeClass::SwapchainRelative;
+            info.SizeX = 1.0f;
+            info.SizeY = 1.0f;
+            info.Format = TextureFormat::RGBA8;
+            return info;
+        }
+
+        RDGAttachmentInfo MakeSceneDepthAttachment()
+        {
+            RDGAttachmentInfo info{};
+            info.SizeClass = RDGSizeClass::SwapchainRelative;
+            info.SizeX = 1.0f;
+            info.SizeY = 1.0f;
+            info.Format = TextureFormat::DEPTH24STENCIL8;
+            return info;
+        }
     }
 
-    void TranslucencyPass::PreparePass(RenderGraphFrameResources& frameResources)
+    void TranslucencyPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
-        m_ActiveFrameResources = &frameResources;
-        SortDrawCommands();
+        (void)graph;
+        self.AddColorOutput(kRDGSceneColor, MakeSceneColorAttachment());
+        self.SetDepthStencilOutput(kRDGSceneDepth, MakeSceneDepthAttachment());
+    }
 
+    void TranslucencyPass::Prepare(RenderGraph& graph)
+    {
+        SortDrawCommands();
+        m_DrawPackets.clear();
         if (!pipeline)
         {
-            m_DrawPackets.clear();
+            return;
+        }
+
+        RHICommandList* cmdList = graph.GetFrameContext().CommandList;
+        if (cmdList == nullptr)
+        {
             return;
         }
 
         PrepareSceneMeshDrawPackets(
             *pipeline,
-            frameResources.GetCommandList(),
+            *cmdList,
             m_DrawCommands,
             MeshPassKind::Translucent,
             m_DrawPackets);
     }
 
-    void TranslucencyPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters)
+    void TranslucencyPass::BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph)
     {
-        (void)parameters;
-
-        if (!pipeline || !m_ActiveFrameResources)
+        if (!pipeline)
         {
             return;
         }
 
-        RHITexture* colorTexture = m_ActiveFrameResources->GetRHI(kRDGSceneColor);
-        RHITexture* depthTexture = m_ActiveFrameResources->GetRHI(kRDGSceneDepth);
-        if (!colorTexture || !depthTexture)
+        RHITexture* colorTexture = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneColor));
+        RHITexture* depthTexture = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneDepth));
+        if (colorTexture == nullptr || depthTexture == nullptr)
         {
             return;
         }
@@ -62,9 +86,6 @@ namespace minEngine
         cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
         SubmitSceneMeshDrawPackets(*pipeline, cmdList, m_DrawCommands, m_DrawPackets);
         cmdList.EndRenderPass();
-
-        m_ActiveFrameResources->SetLastKnownUsage(kRDGSceneColor, RDGTextureUsage::RenderTarget);
-        m_ActiveFrameResources->SetLastKnownUsage(kRDGSceneDepth, RDGTextureUsage::DepthWrite);
     }
 
     void TranslucencyPass::Execute()

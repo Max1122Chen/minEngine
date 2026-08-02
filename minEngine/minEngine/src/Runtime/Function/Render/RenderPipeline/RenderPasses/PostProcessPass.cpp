@@ -4,8 +4,8 @@
 #include "Render/EngineShaderBindings.h"
 #include "Render/EnginePassUniforms.h"
 #include "Render/EngineShaderUtils.h"
-#include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Render/RenderGraph/RenderGraph.h"
+#include "Render/RenderGraph/RenderPass.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHIBuffers.h"
@@ -26,45 +26,50 @@ namespace minEngine
 
     void PostProcessPass::SetOutputDesc(uint32_t width, uint32_t height)
     {
-        m_OutputDesc.Width = width;
-        m_OutputDesc.Height = height;
+        m_OutputWidth = width;
+        m_OutputHeight = height;
     }
 
-    void PostProcessPass::Setup(RenderPassBuilder& builder)
+    void PostProcessPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
-        builder.AddTextureInput(m_InputTextureName);
-        builder.AddColorOutput(m_OutputTextureName, m_OutputDesc);
+        (void)graph;
+        self.AddTextureInput(m_InputTextureName);
+        RDGAttachmentInfo output{};
+        output.SizeClass = RDGSizeClass::SwapchainRelative;
+        output.SizeX = 1.0f;
+        output.SizeY = 1.0f;
+        output.Format = TextureFormat::RGBA8;
+        self.AddColorOutput(m_OutputTextureName, output);
     }
 
-    void PostProcessPass::PreparePass(RenderGraphFrameResources& frameResources)
+    void PostProcessPass::Prepare(RenderGraph& graph)
     {
-        m_ActiveFrameResources = &frameResources;
-        RHITexture* inputTexture = frameResources.GetRHI(m_InputTextureName);
-        m_OutputTexture = frameResources.GetRHI(m_OutputTextureName);
-        PrepareDrawPacket(frameResources.GetCommandList(), inputTexture);
-    }
-
-    void PostProcessPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters)
-    {
-        (void)parameters;
-
-        if (!m_DrawPacket.PipelineState || !m_PostShaderBindingSet || !m_OutputTexture)
+        m_CanRender = false;
+        RHICommandList* cmdList = graph.GetFrameContext().CommandList;
+        RHITexture* inputTexture = graph.TryGetPhysicalTexture(graph.FindTextureResource(m_InputTextureName));
+        m_OutputTexture = graph.TryGetPhysicalTexture(graph.FindTextureResource(m_OutputTextureName));
+        if (cmdList == nullptr)
         {
             return;
         }
+        if (m_Predecessor != nullptr && !m_Predecessor->NeedRenderPass())
+        {
+            // Do not overwrite SceneColor with an unproduced ping-pong buffer.
+            return;
+        }
+        PrepareDrawPacket(*cmdList, inputTexture);
+        m_CanRender = m_DrawPacket.PipelineState != nullptr && m_PostShaderBindingSet != nullptr
+            && m_OutputTexture != nullptr;
+    }
 
-        RenderGraphFrameResources* frameResources = m_ActiveFrameResources;
-        if (frameResources == nullptr)
+    void PostProcessPass::BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph)
+    {
+        (void)graph;
+
+        if (!m_CanRender)
         {
             return;
         }
-
-        AddTransition(
-            cmdList,
-            m_InputTextureName,
-            *frameResources,
-            frameResources->GetLastKnownUsage(m_InputTextureName),
-            RDGTextureUsage::ShaderResource);
 
         RHIRenderPassInfo passInfo(m_OutputTexture, RHIRenderTargetActions::DontLoadStore);
         cmdList.BeginRenderPass(passInfo);
@@ -75,8 +80,6 @@ namespace minEngine
             m_OutputTexture->GetDesc().Height);
         cmdList.SubmitMeshDrawPacket(m_DrawPacket);
         cmdList.EndRenderPass();
-
-        frameResources->SetLastKnownUsage(m_OutputTextureName, RDGTextureUsage::RenderTarget);
     }
 
     void PostProcessPass::Initialize()

@@ -150,10 +150,11 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
+                // RND-F07-S04: Granite-style Bake suite (not in smoke; run via `test render-graph`).
                 return TestSuiteMetadata{
                     "render-graph",
                     "Render Graph",
-                    true,
+                    false,
                     true,
                     false,
                 };

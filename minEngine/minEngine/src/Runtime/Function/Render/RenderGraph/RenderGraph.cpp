@@ -1,12 +1,12 @@
 #include "Render/RenderGraph/RenderGraph.h"
 
-#include "Render/RenderGraph/IRenderPass.h"
-#include "Render/RenderGraph/RenderGraphFrameResources.h"
+#include "Render/RHI/RHI.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHITexture.h"
 
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
-#include <unordered_set>
 
 namespace minEngine
 {
@@ -14,347 +14,494 @@ namespace minEngine
     {
         m_Passes.clear();
         m_PassByName.clear();
-        m_SelectedPasses.clear();
-        m_ExecutionOrder.clear();
+        m_ForcedPassNames.clear();
+        m_Resources.clear();
+        m_NameToResource.clear();
+        m_PassStack.clear();
+        m_PhysicalDims.clear();
+        m_PhysicalTextures.clear();
+        m_SwapchainPhysicalIndex = RDGResource::kUnused;
         m_IsBaked = false;
-        m_TextureRegistry.clear();
-        m_TextureIndexByName.clear();
+        m_ImplSetupDone = false;
+        m_FrameContext = {};
     }
 
-    RenderPass& RenderGraph::AddPass(const char* name)
+    void RenderGraph::SetFrameContext(const RenderGraphFrameContext& context)
     {
-        auto pass = std::make_unique<RenderPass>(name != nullptr ? name : "");
-        RenderPass* passPtr = pass.get();
-        m_PassByName[passPtr->GetName()] = passPtr;
+        m_FrameContext = context;
+    }
+
+    void RenderGraph::SetBackbufferSource(const std::string& logicalTextureName)
+    {
+        m_BackbufferSource = logicalTextureName;
+        m_IsBaked = false;
+        m_ImplSetupDone = false;
+    }
+
+    void RenderGraph::SetBackbufferDimensions(uint32_t width, uint32_t height)
+    {
+        m_BackbufferWidth = width;
+        m_BackbufferHeight = height;
+        m_IsBaked = false;
+        m_ImplSetupDone = false;
+    }
+
+    RenderPass& RenderGraph::AddPass(const std::string& name, RDGQueue queue)
+    {
+        if (m_PassByName.find(name) != m_PassByName.end())
+        {
+            throw std::logic_error("RenderGraph::AddPass: duplicate pass name '" + name + "'.");
+        }
+
+        const uint32_t index = static_cast<uint32_t>(m_Passes.size());
+        auto pass = std::make_unique<RenderPass>(*this, index, name, queue);
+        RenderPass* raw = pass.get();
         m_Passes.push_back(std::move(pass));
-        return *passPtr;
-    }
-
-    RenderPass& RenderGraph::AddPass(const char* name, std::unique_ptr<IRenderPass> implementation)
-    {
-        RenderPass& pass = AddPass(name);
-        pass.SetImplementation(std::move(implementation));
-        return pass;
-    }
-
-    void RenderGraph::RegisterExternalTexture(const char* name, RHITexture* texture)
-    {
-        if (name == nullptr || name[0] == '\0')
-        {
-            return;
-        }
-
-        RDGTextureDesc desc{};
-        if (texture != nullptr)
-        {
-            const RHITextureCreateDesc& createDesc = texture->GetDesc();
-            desc.Width = createDesc.Width;
-            desc.Height = createDesc.Height;
-        }
-
-        const std::string textureName(name);
-        auto existing = m_TextureIndexByName.find(textureName);
-        if (existing != m_TextureIndexByName.end())
-        {
-            RDGTextureRegistryEntry& entry = m_TextureRegistry[existing->second];
-            entry.IsExternal = true;
-            entry.ExternalTexture = texture;
-            if (texture != nullptr)
-            {
-                const RHITextureCreateDesc& createDesc = texture->GetDesc();
-                entry.Desc.Width = createDesc.Width;
-                entry.Desc.Height = createDesc.Height;
-            }
-            return;
-        }
-
-        RDGTextureRef textureRef = FindOrRegisterTexture(name, desc, true);
-        RDGTextureRegistryEntry& entry = m_TextureRegistry[textureRef.GetIndex()];
-        entry.IsExternal = true;
-        entry.ExternalTexture = texture;
-    }
-
-    void RenderGraph::SetPassExecutionOrder(const RenderPass* const* passes, size_t passCount)
-    {
-        m_SelectedPasses.clear();
-        m_ExecutionOrder.clear();
+        m_PassByName.emplace(name, raw);
         m_IsBaked = false;
-        if (passes == nullptr)
-        {
-            return;
-        }
-
-        m_SelectedPasses.reserve(passCount);
-        for (size_t i = 0; i < passCount; ++i)
-        {
-            if (passes[i] != nullptr)
-            {
-                m_SelectedPasses.push_back(passes[i]);
-            }
-        }
+        m_ImplSetupDone = false;
+        return *raw;
     }
 
-    void RenderGraph::SetupAttachments(RenderGraphFrameResources& frameResources)
+    RenderPass* RenderGraph::FindPass(const std::string& name)
     {
-        for (const std::unique_ptr<RenderPass>& pass : m_Passes)
-        {
-            RunPassSetup(*pass);
-        }
-
-        for (const RDGTextureRegistryEntry& entry : m_TextureRegistry)
-        {
-            frameResources.EnsureSlot(entry.Name.c_str());
-            if (entry.IsExternal && entry.ExternalTexture != nullptr)
-            {
-                frameResources.RegisterExternal(entry.Name.c_str(), entry.ExternalTexture);
-            }
-        }
-    }
-
-    RDGTextureRef RenderGraph::FindOrRegisterTexture(const char* name, const RDGTextureDesc& desc, bool isExternal)
-    {
-        if (name == nullptr || name[0] == '\0')
-        {
-            return RDGTextureRef{};
-        }
-
-        const std::string textureName(name);
-        auto existing = m_TextureIndexByName.find(textureName);
-        if (existing != m_TextureIndexByName.end())
-        {
-            return RDGTextureRef::FromIndex(existing->second);
-        }
-
-        RDGTextureRegistryEntry entry;
-        entry.Name = textureName;
-        entry.Desc = desc;
-        entry.IsExternal = isExternal;
-
-        const uint32_t index = static_cast<uint32_t>(m_TextureRegistry.size());
-        m_TextureRegistry.push_back(std::move(entry));
-        m_TextureIndexByName.emplace(textureName, index);
-        return RDGTextureRef::FromIndex(index);
-    }
-
-    const RDGTextureRegistryEntry* RenderGraph::FindTextureEntry(const char* name) const
-    {
-        if (name == nullptr)
-        {
-            return nullptr;
-        }
-
-        auto it = m_TextureIndexByName.find(name);
-        if (it == m_TextureIndexByName.end())
-        {
-            return nullptr;
-        }
-
-        return &m_TextureRegistry[it->second];
-    }
-
-    RenderPass* RenderGraph::FindPass(const char* name) const
-    {
-        if (name == nullptr)
-        {
-            return nullptr;
-        }
-
-        auto it = m_PassByName.find(name);
+        const auto it = m_PassByName.find(name);
         return it != m_PassByName.end() ? it->second : nullptr;
     }
 
-    void RenderGraph::RunPassSetup(RenderPass& pass)
+    void RenderGraph::ForceIncludePass(const std::string& name)
     {
-        pass.RunSetup(*this);
+        m_ForcedPassNames.insert(name);
+        m_IsBaked = false;
+        m_ImplSetupDone = false;
     }
 
-    std::vector<const RenderPass*> RenderGraph::CollectActivePasses() const
+    RDGTextureResource& RenderGraph::GetOrCreateTextureResource(const std::string& name)
     {
-        std::vector<const RenderPass*> activePasses;
-        activePasses.reserve(m_Passes.size());
-
-        if (m_SelectedPasses.empty())
+        if (RDGTextureResource* existing = FindTextureResource(name))
         {
-            for (const std::unique_ptr<RenderPass>& pass : m_Passes)
-            {
-                activePasses.push_back(pass.get());
-            }
-            return activePasses;
+            return *existing;
         }
 
-        std::unordered_set<const RenderPass*> selectedSet;
-        selectedSet.reserve(m_SelectedPasses.size());
-        for (const RenderPass* pass : m_SelectedPasses)
+        const uint32_t logicalIndex = static_cast<uint32_t>(m_Resources.size());
+        auto resource = std::make_unique<RDGTextureResource>(logicalIndex, name);
+        RDGTextureResource* raw = resource.get();
+        m_Resources.push_back(std::move(resource));
+        m_NameToResource.emplace(name, logicalIndex);
+        return *raw;
+    }
+
+    RDGTextureResource* RenderGraph::FindTextureResource(const std::string& name)
+    {
+        const auto it = m_NameToResource.find(name);
+        if (it == m_NameToResource.end())
         {
-            if (pass == nullptr)
+            return nullptr;
+        }
+
+        RDGResource* resource = m_Resources[it->second].get();
+        return static_cast<RDGTextureResource*>(resource);
+    }
+
+    RDGTextureResource& RenderGraph::GetTextureResource(const std::string& name)
+    {
+        RDGTextureResource* resource = FindTextureResource(name);
+        if (resource == nullptr)
+        {
+            throw std::logic_error("RenderGraph::GetTextureResource: unknown '" + name + "'.");
+        }
+        return *resource;
+    }
+
+    void RenderGraph::ValidatePasses() const
+    {
+        if (m_BackbufferSource.empty())
+        {
+            throw std::logic_error("RenderGraph::Bake: backbuffer source is not set.");
+        }
+
+        const auto it = m_NameToResource.find(m_BackbufferSource);
+        if (it == m_NameToResource.end())
+        {
+            throw std::logic_error(
+                "RenderGraph::Bake: backbuffer source '" + m_BackbufferSource + "' does not exist.");
+        }
+
+        const RDGResource& backbuffer = *m_Resources[it->second];
+        if (backbuffer.GetWritePasses().empty())
+        {
+            throw std::logic_error("RenderGraph::Bake: no pass writes to backbuffer source.");
+        }
+    }
+
+    void RenderGraph::TraverseDependencies(uint32_t passIndex, std::vector<bool>& visited)
+    {
+        if (visited[passIndex])
+        {
+            return;
+        }
+        visited[passIndex] = true;
+
+        const RenderPass& pass = *m_Passes[passIndex];
+        auto considerResource = [this, &visited](const RDGTextureResource* resource) {
+            if (resource == nullptr)
+            {
+                return;
+            }
+            for (uint32_t writer : resource->GetWritePasses())
+            {
+                TraverseDependencies(writer, visited);
+            }
+        };
+
+        for (RDGTextureResource* input : pass.GetTextureInputs())
+        {
+            considerResource(input);
+        }
+        considerResource(pass.GetDepthStencilInput());
+        for (RDGTextureResource* output : pass.GetColorOutputs())
+        {
+            if (output != nullptr && !output->GetColorInputAlias().empty())
+            {
+                considerResource(FindTextureResource(output->GetColorInputAlias()));
+            }
+        }
+
+        m_PassStack.push_back(passIndex);
+    }
+
+    void RenderGraph::FilterPassStack()
+    {
+        std::vector<uint32_t> unique;
+        unique.reserve(m_PassStack.size());
+        std::vector<bool> seen(m_Passes.size(), false);
+        for (uint32_t passIndex : m_PassStack)
+        {
+            if (seen[passIndex])
             {
                 continue;
             }
-
-            if (!selectedSet.insert(pass).second)
-            {
-                continue;
-            }
-
-            if (m_PassByName.find(pass->GetName()) == m_PassByName.end())
-            {
-                throw std::logic_error("RenderGraph::Bake: selected pass does not belong to this graph.");
-            }
+            seen[passIndex] = true;
+            unique.push_back(passIndex);
         }
+        m_PassStack = std::move(unique);
+    }
 
-        for (const std::unique_ptr<RenderPass>& pass : m_Passes)
+    RDGResourceDimensions RenderGraph::ResolveDimensions(const RDGTextureResource& resource) const
+    {
+        if (!resource.HasAttachmentInfo())
         {
-            if (selectedSet.find(pass.get()) != selectedSet.end())
-            {
-                activePasses.push_back(pass.get());
-            }
+            throw std::logic_error(
+                "RenderGraph::Bake: texture '" + resource.GetName() + "' has no attachment info.");
         }
 
-        return activePasses;
+        const RDGAttachmentInfo& info = resource.GetAttachmentInfo();
+        RDGResourceDimensions dims{};
+        dims.Format = info.Format;
+        dims.Layers = info.Layers;
+        dims.Levels = info.Levels;
+        dims.Samples = info.Samples;
+        dims.Flags = info.Flags;
+        dims.Usage = resource.GetUsage();
+        dims.Dimension = info.Dimension;
+        dims.DebugName = resource.GetName();
+
+        if (info.SizeClass == RDGSizeClass::Absolute)
+        {
+            dims.Width = static_cast<uint32_t>(std::lround(info.SizeX));
+            dims.Height = static_cast<uint32_t>(std::lround(info.SizeY));
+        }
+        else if (info.SizeClass == RDGSizeClass::SwapchainRelative)
+        {
+            if (m_BackbufferWidth == 0 || m_BackbufferHeight == 0)
+            {
+                throw std::logic_error("RenderGraph::Bake: swapchain-relative size needs SetBackbufferDimensions.");
+            }
+            dims.Width = std::max(1u, static_cast<uint32_t>(std::lround(m_BackbufferWidth * info.SizeX)));
+            dims.Height = std::max(1u, static_cast<uint32_t>(std::lround(m_BackbufferHeight * info.SizeY)));
+        }
+        else
+        {
+            throw std::logic_error("RenderGraph::Bake: InputRelative size is deferred (RND-F07).");
+        }
+
+        if (dims.Format == TextureFormat::None)
+        {
+            throw std::logic_error(
+                "RenderGraph::Bake: texture '" + resource.GetName() + "' has undefined format.");
+        }
+        if (dims.Width == 0 || dims.Height == 0)
+        {
+            throw std::logic_error(
+                "RenderGraph::Bake: texture '" + resource.GetName() + "' resolved to zero size.");
+        }
+        return dims;
+    }
+
+    void RenderGraph::AllocatePhysicalForTexture(RDGTextureResource* texture)
+    {
+        if (texture == nullptr || texture->GetPhysicalIndex() != RDGResource::kUnused)
+        {
+            return;
+        }
+
+        if (!texture->GetColorInputAlias().empty())
+        {
+            RDGTextureResource* aliasSource = FindTextureResource(texture->GetColorInputAlias());
+            if (aliasSource == nullptr)
+            {
+                throw std::logic_error(
+                    "RenderGraph::Bake: color input alias '" + texture->GetColorInputAlias()
+                    + "' missing for '" + texture->GetName() + "'.");
+            }
+            AllocatePhysicalForTexture(aliasSource);
+            texture->SetPhysicalIndex(aliasSource->GetPhysicalIndex());
+            return;
+        }
+
+        RDGResourceDimensions dims = ResolveDimensions(*texture);
+        const uint32_t physicalIndex = static_cast<uint32_t>(m_PhysicalDims.size());
+        m_PhysicalDims.push_back(std::move(dims));
+        texture->SetPhysicalIndex(physicalIndex);
+    }
+
+    void RenderGraph::BuildPhysicalResources()
+    {
+        m_PhysicalDims.clear();
+        for (std::unique_ptr<RDGResource>& resource : m_Resources)
+        {
+            resource->SetPhysicalIndex(RDGResource::kUnused);
+        }
+
+        for (uint32_t passIndex : m_PassStack)
+        {
+            RenderPass& pass = *m_Passes[passIndex];
+            for (RDGTextureResource* output : pass.GetColorOutputs())
+            {
+                AllocatePhysicalForTexture(output);
+            }
+            AllocatePhysicalForTexture(pass.GetDepthStencilOutput());
+        }
+
+        const auto backbufferIt = m_NameToResource.find(m_BackbufferSource);
+        m_SwapchainPhysicalIndex = m_Resources[backbufferIt->second]->GetPhysicalIndex();
     }
 
     void RenderGraph::Bake()
     {
-        for (const std::unique_ptr<RenderPass>& pass : m_Passes)
+        for (std::unique_ptr<RDGResource>& resource : m_Resources)
         {
-            RunPassSetup(*pass);
-        }
-
-        std::vector<const RenderPass*> activePasses = CollectActivePasses();
-        m_ExecutionOrder.clear();
-        if (activePasses.empty())
-        {
-            m_IsBaked = true;
-            return;
-        }
-
-        struct ResourceState
-        {
-            bool HasProducer = false;
-            const RenderPass* LastWriter = nullptr;
-            const RenderPass* LastAccessor = nullptr;
-        };
-
-        std::unordered_map<const RenderPass*, size_t> passIndex;
-        passIndex.reserve(activePasses.size());
-        for (size_t index = 0; index < activePasses.size(); ++index)
-        {
-            passIndex.emplace(activePasses[index], index);
-        }
-
-        std::vector<std::unordered_set<size_t>> adjacency(activePasses.size());
-        std::vector<size_t> indegree(activePasses.size(), 0);
-        std::unordered_map<std::string, ResourceState> resourceStates;
-        resourceStates.reserve(m_TextureRegistry.size());
-        for (const RDGTextureRegistryEntry& entry : m_TextureRegistry)
-        {
-            ResourceState& state = resourceStates[entry.Name];
-            state.HasProducer = entry.IsExternal;
-        }
-
-        for (const RenderPass* pass : activePasses)
-        {
-            const size_t currentIndex = passIndex.at(pass);
-            for (const PassResourceAccess& access : pass->GetDeclaredAccesses())
+            resource->ClearPassUsage();
+            resource->SetPhysicalIndex(RDGResource::kUnused);
+            if (RDGTextureResource* texture = dynamic_cast<RDGTextureResource*>(resource.get()))
             {
-                ResourceState& state = resourceStates[access.TextureName];
-                const bool isWrite = access.AccessType == RDGPassResourceAccessType::ColorOutput
-                    || access.AccessType == RDGPassResourceAccessType::DepthStencilOutput;
-                const bool isRead = access.AccessType == RDGPassResourceAccessType::TextureInput
-                    || access.AccessType == RDGPassResourceAccessType::DepthStencilInput;
-
-                if (isRead && !state.HasProducer)
-                {
-                    throw std::logic_error(
-                        "RenderGraph::Bake: texture input '" + access.TextureName + "' has no producer or external registration.");
-                }
-
-                const RenderPass* predecessor = nullptr;
-                if (isRead)
-                {
-                    predecessor = state.LastWriter;
-                }
-                else if (isWrite)
-                {
-                    predecessor = state.LastAccessor;
-                }
-
-                if (predecessor != nullptr)
-                {
-                    const size_t predecessorIndex = passIndex.at(predecessor);
-                    if (predecessorIndex != currentIndex && adjacency[predecessorIndex].insert(currentIndex).second)
-                    {
-                        ++indegree[currentIndex];
-                    }
-                }
-
-                if (isWrite)
-                {
-                    state.HasProducer = true;
-                    state.LastWriter = pass;
-                }
-                state.LastAccessor = pass;
+                texture->SetColorInputAlias({});
             }
         }
 
-        std::vector<bool> emitted(activePasses.size(), false);
-        m_ExecutionOrder.reserve(activePasses.size());
-        for (size_t emittedCount = 0; emittedCount < activePasses.size(); ++emittedCount)
+        for (std::unique_ptr<RenderPass>& pass : m_Passes)
         {
-            size_t nextIndex = activePasses.size();
-            for (size_t candidateIndex = 0; candidateIndex < activePasses.size(); ++candidateIndex)
-            {
-                if (!emitted[candidateIndex] && indegree[candidateIndex] == 0)
-                {
-                    nextIndex = candidateIndex;
-                    break;
-                }
-            }
+            pass->RunSetupDependencies();
+        }
 
-            if (nextIndex == activePasses.size())
-            {
-                throw std::logic_error("RenderGraph::Bake: cyclic or unsatisfied dependency graph.");
-            }
+        ValidatePasses();
 
-            emitted[nextIndex] = true;
-            m_ExecutionOrder.push_back(activePasses[nextIndex]);
-            for (size_t dependencyIndex : adjacency[nextIndex])
+        m_PassStack.clear();
+        std::vector<bool> visited(m_Passes.size(), false);
+
+        for (const std::string& forcedName : m_ForcedPassNames)
+        {
+            RenderPass* forcedPass = FindPass(forcedName);
+            if (forcedPass == nullptr)
             {
-                --indegree[dependencyIndex];
+                throw std::logic_error("RenderGraph::Bake: ForceIncludePass unknown '" + forcedName + "'.");
             }
+            TraverseDependencies(forcedPass->GetIndex(), visited);
+        }
+
+        const RDGResource& backbuffer = *m_Resources[m_NameToResource[m_BackbufferSource]];
+        std::vector<uint32_t> writers(
+            backbuffer.GetWritePasses().begin(),
+            backbuffer.GetWritePasses().end());
+        std::sort(writers.begin(), writers.end());
+        for (uint32_t writer : writers)
+        {
+            TraverseDependencies(writer, visited);
+        }
+
+        // Traverse pushes dependents after dependencies; stack is dependency-first order.
+        FilterPassStack();
+        BuildPhysicalResources();
+
+        // Keep existing physical textures across rebakes so ImGui can keep sampling last frame's
+        // handle until SetupAttachments replaces mismatched slots.
+        if (m_PhysicalTextures.size() > m_PhysicalDims.size())
+        {
+            m_PhysicalTextures.resize(m_PhysicalDims.size());
+        }
+        else if (m_PhysicalTextures.size() < m_PhysicalDims.size())
+        {
+            m_PhysicalTextures.resize(m_PhysicalDims.size(), nullptr);
         }
 
         m_IsBaked = true;
+        m_ImplSetupDone = false;
     }
 
-    void RenderGraph::ExecuteGraph(RHICommandList& cmdList, RenderGraphFrameResources& frameResources)
+    RHITextureCreateDesc RenderGraph::MakeCreateDesc(const RDGResourceDimensions& dims) const
+    {
+        RHITextureCreateDesc desc{};
+        desc.Dimension = dims.Dimension;
+        desc.Width = dims.Width;
+        desc.Height = dims.Height;
+        desc.DepthOrArrayLayers = dims.Layers;
+        desc.Format = dims.Format;
+        desc.Flags = dims.Usage;
+        desc.NumMips = dims.Levels;
+
+        // Color RTs must also be sampleable (viewport ImGui Image / post SRV).
+        const bool isDepth =
+            dims.Format == TextureFormat::DEPTH16 || dims.Format == TextureFormat::DEPTH24
+            || dims.Format == TextureFormat::DEPTH32 || dims.Format == TextureFormat::DEPTH24STENCIL8;
+        if (!isDepth)
+        {
+            desc.Flags = desc.Flags | RHITextureCreateFlags::ShaderResource;
+        }
+        if ((desc.Flags & RHITextureCreateFlags::RenderTarget) == RHITextureCreateFlags::None
+            && (desc.Flags & RHITextureCreateFlags::ShaderResource) == RHITextureCreateFlags::None)
+        {
+            desc.Flags = RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource;
+        }
+        return desc;
+    }
+
+    void RenderGraph::SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull)
     {
         if (!m_IsBaked)
         {
-            Bake();
+            throw std::logic_error("RenderGraph::SetupAttachments: Bake() required first.");
         }
 
-        frameResources.BeginFrame(cmdList);
-
-        for (const RenderPass* pass : m_ExecutionOrder)
+        if (!m_ImplSetupDone)
         {
-            if (pass == nullptr)
+            for (uint32_t passIndex : m_PassStack)
+            {
+                m_Passes[passIndex]->RunSetup(rhi);
+            }
+            m_ImplSetupDone = true;
+        }
+
+        if (m_PhysicalTextures.size() != m_PhysicalDims.size())
+        {
+            m_PhysicalTextures.assign(m_PhysicalDims.size(), nullptr);
+        }
+
+        for (uint32_t physicalIndex = 0; physicalIndex < m_PhysicalDims.size(); ++physicalIndex)
+        {
+            if (swapchainOrNull != nullptr && physicalIndex == m_SwapchainPhysicalIndex)
+            {
+                // Non-owning view of external swapchain/backbuffer when provided.
+                // Store as shared_ptr aliasing no-op deleter? Prefer keep separate path:
+                // For S04 tests we allocate all physical textures including backbuffer source.
+                (void)swapchainOrNull;
+            }
+
+            const RDGResourceDimensions& dims = m_PhysicalDims[physicalIndex];
+            std::shared_ptr<RHITexture>& slot = m_PhysicalTextures[physicalIndex];
+            const RHITextureCreateDesc wantDesc = MakeCreateDesc(dims);
+            if (slot
+                && slot->GetDesc().Width == dims.Width
+                && slot->GetDesc().Height == dims.Height
+                && slot->GetDesc().Format == dims.Format
+                && slot->GetDesc().DepthOrArrayLayers == dims.Layers
+                && (slot->GetDesc().Flags & wantDesc.Flags) == wantDesc.Flags)
             {
                 continue;
             }
 
-            pass->PreparePass(frameResources);
-        }
-
-        for (const RenderPass* pass : m_ExecutionOrder)
-        {
-            if (pass == nullptr)
+            slot = rhi.RHICreateTexture2D(wantDesc, nullptr);
+            if (!slot)
             {
-                continue;
+                throw std::runtime_error(
+                    "RenderGraph::SetupAttachments: failed to create '" + dims.DebugName + "'.");
             }
-
-            const PassParameters& parameters = frameResources.GetOrCreatePassParameters(*pass);
-            pass->BuildRenderPass(cmdList, parameters);
         }
+    }
+
+    void RenderGraph::EnqueueRenderPasses(RHICommandList& cmdList)
+    {
+        if (!m_IsBaked)
+        {
+            throw std::logic_error("RenderGraph::EnqueueRenderPasses: Bake() required first.");
+        }
+
+        for (uint32_t passIndex : m_PassStack)
+        {
+            m_Passes[passIndex]->RunPrepare();
+        }
+        for (uint32_t passIndex : m_PassStack)
+        {
+            m_Passes[passIndex]->RunBuildRenderPass(cmdList);
+        }
+    }
+
+    RHITexture* RenderGraph::GetPhysicalTexture(const RDGTextureResource& resource)
+    {
+        return GetPhysicalTexture(resource.GetPhysicalIndex());
+    }
+
+    RHITexture* RenderGraph::GetPhysicalTexture(uint32_t physicalIndex)
+    {
+        if (physicalIndex == RDGResource::kUnused || physicalIndex >= m_PhysicalTextures.size())
+        {
+            throw std::logic_error("RenderGraph::GetPhysicalTexture: invalid physical index.");
+        }
+        RHITexture* texture = m_PhysicalTextures[physicalIndex].get();
+        if (texture == nullptr)
+        {
+            throw std::logic_error("RenderGraph::GetPhysicalTexture: SetupAttachments not called.");
+        }
+        return texture;
+    }
+
+    RHITexture* RenderGraph::TryGetPhysicalTexture(RDGTextureResource* resource)
+    {
+        if (resource == nullptr || resource->GetPhysicalIndex() == RDGResource::kUnused)
+        {
+            return nullptr;
+        }
+        if (resource->GetPhysicalIndex() >= m_PhysicalTextures.size())
+        {
+            return nullptr;
+        }
+        return m_PhysicalTextures[resource->GetPhysicalIndex()].get();
+    }
+
+    RHITextureRef RenderGraph::GetPhysicalTextureShared(const RDGTextureResource& resource)
+    {
+        return GetPhysicalTextureShared(resource.GetPhysicalIndex());
+    }
+
+    RHITextureRef RenderGraph::GetPhysicalTextureShared(uint32_t physicalIndex)
+    {
+        if (physicalIndex == RDGResource::kUnused || physicalIndex >= m_PhysicalTextures.size())
+        {
+            throw std::logic_error("RenderGraph::GetPhysicalTextureShared: invalid physical index.");
+        }
+        RHITextureRef texture = m_PhysicalTextures[physicalIndex];
+        if (!texture)
+        {
+            throw std::logic_error("RenderGraph::GetPhysicalTextureShared: SetupAttachments not called.");
+        }
+        return texture;
+    }
+
+    const RDGResourceDimensions& RenderGraph::GetPhysicalDimensions(uint32_t physicalIndex) const
+    {
+        if (physicalIndex >= m_PhysicalDims.size())
+        {
+            throw std::logic_error("RenderGraph::GetPhysicalDimensions: invalid physical index.");
+        }
+        return m_PhysicalDims[physicalIndex];
     }
 }

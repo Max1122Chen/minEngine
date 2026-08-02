@@ -21,8 +21,7 @@
 #include "Runtime/Function/Render/SceneRenderTarget.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RenderGraph/RenderGraph.h"
-#include "Runtime/Function/Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Runtime/Function/Render/RenderGraph/RDGTexture.h"
+#include "Runtime/Function/Render/RenderGraph/RDGTypes.h"
 
 #include <unordered_map>
 
@@ -144,11 +143,12 @@ namespace minEngine
         RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
 
         RenderGraph m_FrameRenderGraph;
-        RenderGraphFrameResources m_RenderGraphFrameResources;
         RHITextureRef m_PostBufferTexture;
         std::vector<std::unique_ptr<ShadowGraphPass>> m_ShadowGraphPasses;
         std::vector<RenderPass*> m_ShadowGraphPassPtrs;
         size_t m_ConfiguredShadowGraphPassCount = 0;
+        bool m_ConfiguredEnablePostProcess = false;
+        bool m_ConfiguredPresentToBackBuffer = false;
         RenderPass* m_SceneSkyGraphPass = nullptr;
         RenderPass* m_SceneOpaqueGraphPass = nullptr;
         RenderPass* m_SceneTranslucentGraphPass = nullptr;
@@ -161,17 +161,12 @@ namespace minEngine
 
     private:
         void BindSceneRenderTarget(SceneRenderTarget& target);
-        void BuildFrameRenderGraph(size_t shadowPassCount);
+        void BuildFrameRenderGraph(size_t shadowPassCount, bool enablePostProcess, bool presentToBackBuffer);
         void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
-        void BuildRenderGraphFrameResources(
-            SceneRenderTarget& sceneTarget,
-            const SceneRenderContext& ctx,
-            bool registerPostBuffer);
         void ExecuteFrameRenderGraph(
             RHICommandList& cmdList,
             const SceneDrawDesc& desc,
             SceneRenderContext& ctx);
-        bool ShouldIncludeSkyGraphPass(const SceneDrawDesc& desc, const SceneRenderContext& ctx) const;
         void UpdatePerFrameUBO(const SceneRenderContext& ctx);
         void UpdateLightUBO(const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);

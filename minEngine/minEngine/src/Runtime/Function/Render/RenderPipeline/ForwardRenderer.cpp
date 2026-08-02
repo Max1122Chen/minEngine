@@ -17,8 +17,7 @@
 #include "Render/RHI/RHICommandList.h"
 #include "Render/EngineShaderUtils.h"
 #include "Render/RenderGraph/RenderGraph.h"
-#include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RDGTexture.h"
+#include "Render/RenderGraph/RDGTypes.h"
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Render/RenderCamera.h"
 #include "Render/LightSceneProxies/DirectionalLightSceneProxy.h"
@@ -119,10 +118,12 @@ namespace minEngine
         if (!m_PostProcessPasses.empty())
         {
             m_PostProcessPasses[0].SetGraphTextureNames(kRDGSceneColor, kRDGPostBufferA);
+            m_PostProcessPasses[0].SetPredecessor(nullptr);
         }
         if (m_PostProcessPasses.size() > 1)
         {
             m_PostProcessPasses[1].SetGraphTextureNames(kRDGPostBufferA, kRDGSceneColor);
+            m_PostProcessPasses[1].SetPredecessor(&m_PostProcessPasses[0]);
         }
         m_PresentPass.SetInputTextureName(kRDGSceneColor);
 
@@ -160,32 +161,16 @@ namespace minEngine
 
     void ForwardRenderer::EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height)
     {
-        if (!rhi || width == 0 || height == 0)
-        {
-            return;
-        }
-
-        if (m_PostBufferTexture && m_PostBufferWidth == width && m_PostBufferHeight == height)
-        {
-            return;
-        }
-
-        RHITextureCreateDesc desc;
-        desc.Dimension = RHITextureDimension::Texture2D;
-        desc.Width = width;
-        desc.Height = height;
-        desc.DepthOrArrayLayers = 1;
-        desc.Format = TextureFormat::RGBA8;
-        desc.Flags = RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource;
-        desc.NumMips = 1;
-
-        m_PostBufferTexture = rhi->RHICreateTexture2D(desc, nullptr);
-        m_PostBufferWidth = width;
-        m_PostBufferHeight = height;
-        m_FrameRenderGraphBuilt = false;
+        // RND-F07 Phase 1: do not allocate frame post buffers.
+        (void)rhi;
+        (void)width;
+        (void)height;
     }
 
-    void ForwardRenderer::BuildFrameRenderGraph(size_t shadowPassCount)
+    void ForwardRenderer::BuildFrameRenderGraph(
+        size_t shadowPassCount,
+        bool enablePostProcess,
+        bool presentToBackBuffer)
     {
         m_FrameRenderGraph.Reset();
         m_ShadowGraphPasses.clear();
@@ -206,8 +191,10 @@ namespace minEngine
                 MakeShadowGraphPassName(shadowIndex),
                 MakeShadowDepthSlotName(shadowIndex));
 
-            RenderPass& graphPass = m_FrameRenderGraph.AddPass(MakeShadowGraphPassName(shadowIndex).c_str());
+            const std::string passName = MakeShadowGraphPassName(shadowIndex);
+            RenderPass& graphPass = m_FrameRenderGraph.AddPass(passName);
             graphPass.SetImplementation(shadowGraphPass.get());
+            m_FrameRenderGraph.ForceIncludePass(passName);
             m_ShadowGraphPassPtrs.push_back(&graphPass);
             m_ShadowGraphPasses.push_back(std::move(shadowGraphPass));
         }
@@ -224,78 +211,32 @@ namespace minEngine
         translucentPass.SetImplementation(&m_TranslucentPass);
         m_SceneTranslucentGraphPass = &translucentPass;
 
-        if (!m_PostProcessPasses.empty())
+        if (enablePostProcess && !m_PostProcessPasses.empty())
         {
             RenderPass& fxaaPass = m_FrameRenderGraph.AddPass("Post.FXAA");
             fxaaPass.SetImplementation(&m_PostProcessPasses[0]);
             m_PostFxaaGraphPass = &fxaaPass;
         }
 
-        if (m_PostProcessPasses.size() > 1)
+        if (enablePostProcess && m_PostProcessPasses.size() > 1)
         {
             RenderPass& sharpenPass = m_FrameRenderGraph.AddPass("Post.Sharpen");
             sharpenPass.SetImplementation(&m_PostProcessPasses[1]);
             m_PostSharpenGraphPass = &sharpenPass;
         }
 
-        RenderPass& presentPass = m_FrameRenderGraph.AddPass("Present");
-        presentPass.SetImplementation(&m_PresentPass);
-        m_PresentGraphPass = &presentPass;
+        if (presentToBackBuffer)
+        {
+            RenderPass& presentPass = m_FrameRenderGraph.AddPass("Present");
+            presentPass.SetImplementation(&m_PresentPass);
+            m_FrameRenderGraph.ForceIncludePass("Present");
+            m_PresentGraphPass = &presentPass;
+        }
 
-        m_FrameRenderGraph.RegisterExternalTexture(kRDGSceneColor, nullptr);
-        m_FrameRenderGraph.RegisterExternalTexture(kRDGSceneDepth, nullptr);
-        m_FrameRenderGraph.RegisterExternalTexture(kRDGDirShadowAtlas, nullptr);
-
-        m_FrameRenderGraph.SetupAttachments(m_RenderGraphFrameResources);
+        m_FrameRenderGraph.SetBackbufferSource(kRDGSceneColor);
+        m_ConfiguredEnablePostProcess = enablePostProcess;
+        m_ConfiguredPresentToBackBuffer = presentToBackBuffer;
         m_FrameRenderGraphBuilt = true;
-    }
-
-    void ForwardRenderer::BuildRenderGraphFrameResources(
-        SceneRenderTarget& sceneTarget,
-        const SceneRenderContext& ctx,
-        bool registerPostBuffer)
-    {
-        m_RenderGraphFrameResources.RegisterExternal(kRDGSceneColor, sceneTarget.GetColorTexture().get());
-        m_RenderGraphFrameResources.RegisterExternal(kRDGSceneDepth, sceneTarget.GetDepthTexture().get());
-        m_RenderGraphFrameResources.SetLastKnownUsage(kRDGSceneColor, RDGTextureUsage::Unknown);
-        m_RenderGraphFrameResources.SetLastKnownUsage(kRDGSceneDepth, RDGTextureUsage::Unknown);
-
-        if (ctx.DirectionalShadowHandle.IsValid() && ctx.DirectionalShadowHandle.Texture)
-        {
-            m_RenderGraphFrameResources.RegisterExternal(
-                kRDGDirShadowAtlas,
-                ctx.DirectionalShadowHandle.Texture.get());
-            m_RenderGraphFrameResources.SetLastKnownUsage(kRDGDirShadowAtlas, RDGTextureUsage::ShaderResource);
-        }
-
-        for (size_t shadowIndex = 0; shadowIndex < m_ShadowGraphPasses.size(); ++shadowIndex)
-        {
-            ShadowGraphPass& shadowGraphPass = *m_ShadowGraphPasses[shadowIndex];
-            if (RHITexture* shadowTexture = shadowGraphPass.GetShadowTexture())
-            {
-                m_RenderGraphFrameResources.RegisterExternal(shadowGraphPass.GetDepthSlotName().c_str(), shadowTexture);
-                m_RenderGraphFrameResources.SetLastKnownUsage(
-                    shadowGraphPass.GetDepthSlotName().c_str(),
-                    RDGTextureUsage::Unknown);
-            }
-        }
-
-        if (registerPostBuffer && m_PostBufferTexture)
-        {
-            m_RenderGraphFrameResources.RegisterExternal(kRDGPostBufferA, m_PostBufferTexture.get());
-            m_RenderGraphFrameResources.SetLastKnownUsage(kRDGPostBufferA, RDGTextureUsage::Unknown);
-        }
-    }
-
-    bool ForwardRenderer::ShouldIncludeSkyGraphPass(const SceneDrawDesc& desc, const SceneRenderContext& ctx) const
-    {
-        if (!HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox) || !m_SkyBoxPass.IsReady() || !ctx.Scene)
-        {
-            return false;
-        }
-
-        SkyBoxSceneProxy* skyBoxProxy = ctx.Scene->GetSkyBoxProxy();
-        return skyBoxProxy != nullptr && skyBoxProxy->m_Enabled && skyBoxProxy->m_SkyBoxComponent != nullptr;
     }
 
     void ForwardRenderer::ExecuteFrameRenderGraph(
@@ -304,36 +245,33 @@ namespace minEngine
         SceneRenderContext& ctx)
     {
         SceneRenderTarget* sceneTarget = desc.RenderTarget;
-        if (!sceneTarget)
+        if (sceneTarget == nullptr)
         {
             return;
         }
 
         RHI* rhi = RenderSystem::Get().GetRHI();
+        if (rhi == nullptr)
+        {
+            return;
+        }
+
         const uint32_t width = sceneTarget->GetWidth();
         const uint32_t height = sceneTarget->GetHeight();
+        if (width == 0 || height == 0)
+        {
+            return;
+        }
 
         const bool enablePostProcess = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess);
         const bool presentToBackBuffer =
             m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer);
-
-        if (enablePostProcess)
-        {
-            EnsurePostBufferTexture(rhi, width, height);
-            if (!m_PostBufferTexture)
-            {
-                return;
-            }
-
-            if (!m_PostProcessPasses.empty())
-            {
-                m_PostProcessPasses[0].SetOutputDesc(width, height);
-            }
-        }
-
         const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
         const size_t shadowPassCount = enableShadows ? ctx.ShadowDrawCommands.size() : 0;
-        if (shadowPassCount != m_ConfiguredShadowGraphPassCount)
+
+        if (shadowPassCount != m_ConfiguredShadowGraphPassCount
+            || enablePostProcess != m_ConfiguredEnablePostProcess
+            || presentToBackBuffer != m_ConfiguredPresentToBackBuffer)
         {
             m_FrameRenderGraphBuilt = false;
             m_ConfiguredShadowGraphPassCount = shadowPassCount;
@@ -341,16 +279,13 @@ namespace minEngine
 
         if (!m_FrameRenderGraphBuilt)
         {
-            BuildFrameRenderGraph(shadowPassCount);
+            BuildFrameRenderGraph(shadowPassCount, enablePostProcess, presentToBackBuffer);
         }
 
-        m_FrameRenderGraph.RegisterExternalTexture(kRDGSceneColor, sceneTarget->GetColorTexture().get());
-        m_FrameRenderGraph.RegisterExternalTexture(kRDGSceneDepth, sceneTarget->GetDepthTexture().get());
-        if (ctx.DirectionalShadowHandle.IsValid() && ctx.DirectionalShadowHandle.Texture)
+        if (m_FrameRenderGraph.GetBackbufferWidth() != width
+            || m_FrameRenderGraph.GetBackbufferHeight() != height)
         {
-            m_FrameRenderGraph.RegisterExternalTexture(
-                kRDGDirShadowAtlas,
-                ctx.DirectionalShadowHandle.Texture.get());
+            m_FrameRenderGraph.SetBackbufferDimensions(width, height);
         }
 
         for (size_t shadowIndex = 0; shadowIndex < m_ShadowGraphPasses.size(); ++shadowIndex)
@@ -365,63 +300,34 @@ namespace minEngine
             }
         }
 
-        FrameRenderGraphContext frameContext;
+        // SkyBoxPass always clears SceneColor/Depth when present in the stack (first writer).
+        m_BasePass.SetClearSceneTargets(false);
+
+        RenderGraphFrameContext frameContext;
         frameContext.DrawDesc = &desc;
         frameContext.SceneContext = &ctx;
         frameContext.Renderer = this;
-        m_RenderGraphFrameResources.SetFrameContext(frameContext);
-        BuildRenderGraphFrameResources(*sceneTarget, ctx, enablePostProcess);
+        frameContext.CommandList = &cmdList;
+        m_FrameRenderGraph.SetFrameContext(frameContext);
 
-        const bool includeSky = ShouldIncludeSkyGraphPass(desc, ctx);
-        m_BasePass.SetClearSceneTargets(!includeSky);
-
-        std::vector<const RenderPass*> executionOrder;
-        if (enableShadows)
+        if (!m_FrameRenderGraph.IsBaked())
         {
-            for (RenderPass* shadowGraphPass : m_ShadowGraphPassPtrs)
+            m_FrameRenderGraph.Bake();
+        }
+
+        m_FrameRenderGraph.SetupAttachments(*rhi, nullptr);
+        m_FrameRenderGraph.EnqueueRenderPasses(cmdList);
+
+        sceneTarget->PublishGraphColorTexture(
+            m_FrameRenderGraph.GetPhysicalTextureShared(m_FrameRenderGraph.GetTextureResource(kRDGSceneColor)));
+        if (RDGTextureResource* depthResource = m_FrameRenderGraph.FindTextureResource(kRDGSceneDepth))
+        {
+            if (depthResource->GetPhysicalIndex() != RDGResource::kUnused)
             {
-                if (shadowGraphPass != nullptr)
-                {
-                    executionOrder.push_back(shadowGraphPass);
-                }
+                sceneTarget->PublishGraphDepthTexture(
+                    m_FrameRenderGraph.GetPhysicalTextureShared(*depthResource));
             }
         }
-        if (includeSky && m_SceneSkyGraphPass != nullptr)
-        {
-            executionOrder.push_back(m_SceneSkyGraphPass);
-        }
-        if (m_SceneOpaqueGraphPass != nullptr)
-        {
-            executionOrder.push_back(m_SceneOpaqueGraphPass);
-        }
-        if (m_SceneTranslucentGraphPass != nullptr)
-        {
-            executionOrder.push_back(m_SceneTranslucentGraphPass);
-        }
-        if (enablePostProcess)
-        {
-            if (m_PostFxaaGraphPass != nullptr)
-            {
-                executionOrder.push_back(m_PostFxaaGraphPass);
-            }
-            if (m_PostSharpenGraphPass != nullptr)
-            {
-                executionOrder.push_back(m_PostSharpenGraphPass);
-            }
-        }
-        if (presentToBackBuffer && m_PresentGraphPass != nullptr)
-        {
-            executionOrder.push_back(m_PresentGraphPass);
-        }
-
-        if (executionOrder.empty())
-        {
-            return;
-        }
-
-        m_FrameRenderGraph.SetPassExecutionOrder(executionOrder.data(), executionOrder.size());
-        m_FrameRenderGraph.Bake();
-        m_FrameRenderGraph.ExecuteGraph(cmdList, m_RenderGraphFrameResources);
     }
 
     void ForwardRenderer::Shutdown()
@@ -437,7 +343,6 @@ namespace minEngine
         m_ShadowGraphPassPtrs.clear();
         m_ConfiguredShadowGraphPassCount = 0;
         m_FrameRenderGraph.Reset();
-        m_RenderGraphFrameResources.Clear();
         m_PostBufferTexture.reset();
         m_SceneSkyGraphPass = nullptr;
         m_SceneOpaqueGraphPass = nullptr;
@@ -478,10 +383,8 @@ namespace minEngine
         }
 
         SceneRenderTarget* sceneTarget = desc.RenderTarget;
-        const RHITextureRef& sceneColorTexture = sceneTarget->GetColorTexture();
-        if (!sceneColorTexture)
+        if (sceneTarget->GetWidth() == 0 || sceneTarget->GetHeight() == 0)
         {
-            ME_CORE_ERROR("Scene render target is not ready");
             return;
         }
 
@@ -495,7 +398,6 @@ namespace minEngine
 
         desc.Scene->CollectOrphanedSceneProxies();
 
-        // Build render queue before shadow entries (opaque casters for CSM expansion).
         BuildRenderQueue(ctx);
 
         const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
@@ -534,12 +436,10 @@ namespace minEngine
         m_TranslucentPass.m_SpotShadowHandles = ctx.SpotShadowHandles;
         m_TranslucentPass.m_PointShadowHandles = ctx.PointShadowHandles;
 
-
         ExecuteFrameRenderGraph(cmdList, desc, ctx);
 
         m_ShadowResourceManager.EndFrame();
         ++m_FrameIndex;
-        
     }
 
     void ForwardRenderer::UpdatePerFrameUBO(const SceneRenderContext& ctx)

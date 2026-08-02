@@ -1,9 +1,8 @@
 #include "ShadowGraphPass.h"
 
-#include "Render/RenderGraph/RenderGraphFrameResources.h"
-#include "Render/RenderGraph/RenderPassBuilder.h"
+#include "Render/RenderGraph/RenderGraph.h"
+#include "Render/RenderGraph/RenderPass.h"
 #include "Runtime/Function/Render/RenderPipeline/RenderPasses/ShadowPass.h"
-#include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 
 namespace minEngine
@@ -30,43 +29,47 @@ namespace minEngine
         m_HasCommand = false;
     }
 
-    void ShadowGraphPass::Setup(RenderPassBuilder& builder)
+    void ShadowGraphPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
-        if (m_DepthSlotName.empty())
-        {
-            return;
-        }
-
-        RDGTextureDesc desc{};
-        desc.Width = kShadowMapResolution;
-        desc.Height = kShadowMapResolution;
-        builder.SetDepthStencilOutput(m_DepthSlotName.c_str(), desc);
+        // Shadow maps remain manager-owned for S08; ForceIncludePass keeps this node in Bake.
+        (void)self;
+        (void)graph;
     }
 
-    void ShadowGraphPass::PreparePass(RenderGraphFrameResources& frameResources)
+    void ShadowGraphPass::Prepare(RenderGraph& graph)
     {
         if (!m_HasCommand)
         {
             return;
         }
 
-        m_ShadowPass.PrepareShadowPass(frameResources.GetCommandList());
+        RHICommandList* cmdList = graph.GetFrameContext().CommandList;
+        if (cmdList == nullptr)
+        {
+            return;
+        }
+
+        m_ShadowPass.PrepareShadowPass(*cmdList);
     }
 
-    RHITexture* ShadowGraphPass::GetShadowTexture() const
+    void ShadowGraphPass::BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph)
     {
-        return m_HasCommand && m_Command.Handle.Texture ? m_Command.Handle.Texture.get() : nullptr;
-    }
-
-    void ShadowGraphPass::BuildRenderPass(RHICommandList& cmdList, const PassParameters& parameters)
-    {
-        (void)parameters;
-
+        (void)graph;
         if (!m_HasCommand)
         {
             return;
         }
 
         m_ShadowPass.RenderSingleDrawCommand(cmdList, m_Command);
+    }
+
+    bool ShadowGraphPass::NeedRenderPass() const
+    {
+        return m_HasCommand;
+    }
+
+    RHITexture* ShadowGraphPass::GetShadowTexture() const
+    {
+        return m_HasCommand && m_Command.Handle.Texture ? m_Command.Handle.Texture.get() : nullptr;
     }
 }
