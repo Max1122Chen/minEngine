@@ -4,6 +4,7 @@
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 
@@ -83,6 +84,13 @@ namespace minEngine
             .Extensions = {".ttf", ".otf"},
             .FileDialogFilterLabel = "Font (*.ttf;*.otf)"});
         m_AssetTypeIdByClass[Font::StaticClass()] = "Font";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "EnvironmentMap",
+            .RuntimeClassName = GetClassName<EnvironmentMap>(),
+            .Extensions = {".meenv"},
+            .FileDialogFilterLabel = "Environment Map (*.meenv)"});
+        m_AssetTypeIdByClass[EnvironmentMap::StaticClass()] = "EnvironmentMap";
     }
 
     void AssetTypeRegistry::RegisterType(const AssetTypeDescriptor& descriptor)

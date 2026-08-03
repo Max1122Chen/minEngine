@@ -551,4 +551,34 @@ namespace minEngine
         glDrawArrays(GL_TRIANGLES, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
     }
 
+    void OpenGLRHI::RHICmdGenerateMips(RHITexture* texture)
+    {
+        if (texture == nullptr)
+        {
+            return;
+        }
+
+        auto* glTexture = static_cast<OpenGLRHITexture*>(texture);
+        const GLuint textureId = glTexture->GetTextureId();
+        const GLenum target = glTexture->GetTextureTarget();
+        if (textureId == 0)
+        {
+            return;
+        }
+
+        glBindTexture(target, textureId);
+        glGenerateMipmap(target);
+
+        const RHITextureCreateDesc& desc = texture->GetDesc();
+        const bool useMipFilter = desc.NumMips > 1
+            || HasTextureCreateFlag(desc.Flags, RHITextureCreateFlags::GenerateMips);
+        if (useMipFilter)
+        {
+            glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+
+        glBindTexture(target, 0);
+    }
+
 }

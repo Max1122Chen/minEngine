@@ -7,22 +7,18 @@
 #include "Runtime/Core/Math/Math.h"
 #include "Runtime/Function/Render/EngineRHITextureUtils.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
-#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIRenderPass.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
-#include <glad/glad.h>
-
 #include <algorithm>
 
-// TODO: we have to refactor this file to use the new RHI system.
+// Offline bake path: modern RHI only (CommandList / PSO / SRV / GenerateMips).
 
 namespace minEngine
 {
@@ -103,34 +99,6 @@ namespace minEngine
             return 0;
         }
 
-        void AllocateRgb16fCubemapMipChain(
-            GLuint textureId,
-            uint32_t baseFaceSize,
-            uint32_t maxMipLevel)
-        {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, textureId);
-            for (uint32_t mip = 0; mip <= maxMipLevel; ++mip)
-            {
-                const uint32_t mipSize = std::max(1u, baseFaceSize >> mip);
-                for (uint32_t face = 0; face < 6; ++face)
-                {
-                    glTexImage2D(
-                        GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-                        static_cast<GLint>(mip),
-                        GL_RGB16F,
-                        static_cast<GLsizei>(mipSize),
-                        static_cast<GLsizei>(mipSize),
-                        0,
-                        GL_RGB,
-                        GL_FLOAT,
-                        nullptr);
-                }
-            }
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(maxMipLevel));
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-        }
-
         struct EnvMapMeshResources
         {
             RHIBufferRef VertexBuffer;
@@ -193,13 +161,14 @@ namespace minEngine
         EnvCaptureDrawResources CreateEnvCaptureDrawResources(
             RHICommandList& cmdList,
             RHIShader* shader,
+            RHIVertexInputLayout* vertexLayout,
             uint32_t sourceTextureUnit)
         {
             EnvCaptureDrawResources resources;
             RHIGraphicsPSODesc psoDesc;
             psoDesc.VertexShader = shader;
             psoDesc.PixelShader = shader;
-            psoDesc.VertexInputLayout = resources.
+            psoDesc.VertexInputLayout = vertexLayout;
             psoDesc.DepthStencilState.bDepthTestEnabled = true;
             psoDesc.DepthStencilState.bDepthWriteEnabled = true;
             psoDesc.BlendState.bBlendEnabled = false;
@@ -229,6 +198,11 @@ namespace minEngine
             RHIShaderResourceView* sourceSrv,
             const EnvCaptureFrameUBO& frameData)
         {
+            if (!drawResources.BindingLayout || !drawResources.FrameUniformBuffer || sourceSrv == nullptr)
+            {
+                return nullptr;
+            }
+
             drawResources.FrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(EnvCaptureFrameUBO));
             return cmdList.CreateShaderBindingSet(
                 drawResources.BindingLayout.get(),
@@ -238,18 +212,11 @@ namespace minEngine
                 });
         }
 
-        struct EnvMapSourceBinding
+        RHIShaderResourceViewRef CreateSourceSRV(RHICommandList& cmdList, RHITexture* sourceTexture)
         {
-            RHIShaderResourceViewRef SourceSRV;
-        };
-
-        EnvMapSourceBinding CreateSourceBinding(RHITexture* sourceTexture)
-        {
-            EnvMapSourceBinding binding;
             RHITextureSRVDesc srvDesc;
             srvDesc.Texture = sourceTexture;
-            binding.SourceSRV = std::make_shared<OpenGLRHIShaderResourceView>(srvDesc);
-            return binding;
+            return cmdList.CreateShaderResourceView(srvDesc);
         }
     }
 
@@ -275,12 +242,8 @@ namespace minEngine
             return reportError("faceSize must be > 0.");
         }
 
-        const TextureFormat cubeFormat = equirectTexture.GetDesc().Format;
+        const TextureFormat cubeFormat = TextureFormat::RGB16F;
         const uint32_t channels = ChannelsFromFormat(cubeFormat);
-        if (channels == 0)
-        {
-            return reportError("equirect texture must be RGB16F or RGBA16F.");
-        }
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
@@ -294,11 +257,12 @@ namespace minEngine
             return reportError("failed to compile equirect_to_cubemap shader.");
         }
 
+        const uint32_t environmentMipCount = ComputeTextureMipCount(faceSize);
         RHITextureRef environmentCube =
-            TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat);
+            TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat, environmentMipCount);
         if (!environmentCube)
         {
-            return reportError("failed to allocate cubemap.");
+            return reportError("failed to allocate environment cubemap.");
         }
 
         RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
@@ -309,14 +273,12 @@ namespace minEngine
 
         const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
         RHICommandList cmdList(&rhi);
-        const EnvMapSourceBinding sourceBinding = CreateSourceBinding(&equirectTexture);
+        RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &equirectTexture);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
             captureShader.get(),
+            mesh.VertexLayout.get(),
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
-
-        GLint previousViewport[4] = {0, 0, 0, 0};
-        glGetIntegerv(GL_VIEWPORT, previousViewport);
 
         const Matrix4 captureProjection =
             glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
@@ -341,7 +303,7 @@ namespace minEngine
             frameData.View = captureView;
             cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
             if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
-                    cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
+                    cmdList, drawResources, sourceSrv.get(), frameData))
             {
                 cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
             }
@@ -349,21 +311,7 @@ namespace minEngine
             cmdList.EndRenderPass();
         }
 
-        rhi.SetViewport(
-            static_cast<uint32_t>(previousViewport[0]),
-            static_cast<uint32_t>(previousViewport[1]),
-            static_cast<uint32_t>(previousViewport[2]),
-            static_cast<uint32_t>(previousViewport[3]));
-
-        const GLuint cubeTextureId = GetOpenGLTextureId(environmentCube.get());
-        if (cubeTextureId != 0)
-        {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTextureId);
-            glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-        }
+        cmdList.GenerateMips(environmentCube.get());
 
         return TextureCubeLoader::WrapTextureCube(std::move(environmentCube), faceSize, channels);
     }
@@ -399,14 +347,14 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        std::shared_ptr<RHIShader> convolutionShader = EngineShaderUtils::CreateShaderFromFiles(
+        std::shared_ptr<RHIShader> irradianceShader = EngineShaderUtils::CreateShaderFromFiles(
             rhi,
             shaderDirectory / "irradiance_convolution.vert",
             shaderDirectory / "irradiance_convolution.frag",
             outError);
-        if (!convolutionShader || !convolutionShader->IsValid())
+        if (!irradianceShader || !irradianceShader->IsValid())
         {
-            return reportError("failed to compile irradiance_convolution shader.");
+            return reportError("failed to compile irradiance convolution shader.");
         }
 
         RHITextureRef irradianceCube =
@@ -424,14 +372,12 @@ namespace minEngine
 
         const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
         RHICommandList cmdList(&rhi);
-        const EnvMapSourceBinding sourceBinding = CreateSourceBinding(&environmentCube);
+        RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &environmentCube);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
-            convolutionShader.get(),
+            irradianceShader.get(),
+            mesh.VertexLayout.get(),
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
-
-        GLint previousViewport[4] = {0, 0, 0, 0};
-        glGetIntegerv(GL_VIEWPORT, previousViewport);
 
         const Matrix4 captureProjection =
             glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
@@ -456,27 +402,12 @@ namespace minEngine
             frameData.View = captureView;
             cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
             if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
-                    cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
+                    cmdList, drawResources, sourceSrv.get(), frameData))
             {
                 cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
             }
             DrawEnvMapMesh(cmdList, mesh);
             cmdList.EndRenderPass();
-        }
-
-        rhi.SetViewport(
-            static_cast<uint32_t>(previousViewport[0]),
-            static_cast<uint32_t>(previousViewport[1]),
-            static_cast<uint32_t>(previousViewport[2]),
-            static_cast<uint32_t>(previousViewport[3]));
-
-        const GLuint cubeTextureId = GetOpenGLTextureId(irradianceCube.get());
-        if (cubeTextureId != 0)
-        {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTextureId);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         }
 
         ME_CORE_INFO(
@@ -542,14 +473,6 @@ namespace minEngine
             return reportError("failed to allocate prefilter cubemap.");
         }
 
-        const GLuint prefilterTextureId = GetOpenGLTextureId(prefilterCube.get());
-        if (prefilterTextureId == 0)
-        {
-            return reportError("prefilter cubemap has no GL texture id.");
-        }
-
-        AllocateRgb16fCubemapMipChain(prefilterTextureId, faceSize, maxMipLevel);
-
         RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
         if (!depthTarget)
         {
@@ -558,14 +481,12 @@ namespace minEngine
 
         const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
         RHICommandList cmdList(&rhi);
-        const EnvMapSourceBinding sourceBinding = CreateSourceBinding(&environmentCube);
+        RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &environmentCube);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
             prefilterShader.get(),
+            mesh.VertexLayout.get(),
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
-
-        GLint previousViewport[4] = {0, 0, 0, 0};
-        glGetIntegerv(GL_VIEWPORT, previousViewport);
 
         const Matrix4 captureProjection =
             glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
@@ -598,7 +519,7 @@ namespace minEngine
                 frameData.EnvironmentResolution = static_cast<float>(environmentResolution);
                 cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
                 if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
-                        cmdList, drawResources, sourceBinding.SourceSRV.get(), frameData))
+                        cmdList, drawResources, sourceSrv.get(), frameData))
                 {
                     cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
                 }
@@ -606,17 +527,6 @@ namespace minEngine
                 cmdList.EndRenderPass();
             }
         }
-
-        rhi.SetViewport(
-            static_cast<uint32_t>(previousViewport[0]),
-            static_cast<uint32_t>(previousViewport[1]),
-            static_cast<uint32_t>(previousViewport[2]),
-            static_cast<uint32_t>(previousViewport[3]));
-
-        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterTextureId);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
         ME_CORE_INFO(
             "EnvMapCapture: prefiltered environment cubemap {}x{} ({} mips) from environment.",

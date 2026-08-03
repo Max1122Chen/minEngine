@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-03 (RND-F09 Done：RHI hygiene；TD-015 仍 Open)  
+Last updated: 2026-08-03 (RND-F10：TD-015 Done；S04 退役全局 IBL；S06→TD-021)  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -32,6 +32,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F07` | Granite-style RDG + 帧资源所有权大重构 | **Done** | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) · [Impl](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_IMPLEMENTATION.md) · S01–S09；阴影尾升格 **RND-F08** |
 | `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019；**不含 TD-015** |
+| `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake（付清 TD-015） | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
 
 ---
 
@@ -45,7 +46,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE` | F01 | Reflection, object, startup |
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F01 | Editor productization (new IDs only) |
-| `RND` | F10 | F09 Done（RHI hygiene）；下一空号 F10 |
+| `RND` | F11 | F10 Draft（EnvironmentMap Asset）；下一空号 F11 |
 | `MAT` | F01 | Material (new IDs only; legacy Phase docs keep old names) |
 
 Update **Next Feature #** when you register a new row.

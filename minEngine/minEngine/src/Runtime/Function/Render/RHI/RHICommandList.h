@@ -68,8 +68,9 @@ namespace minEngine
         {
             m_RHI->RHICmdDraw(vertexCount, firstVertex);
         }
+        void GenerateMips(RHITexture* texture) { m_RHI->RHICmdGenerateMips(texture); }
 
-        /** Sole draw submit path: PSO â†?all binding sets â†?VB/IB â†?Draw. */
+        /** Sole draw submit path: PSO ? all binding sets ? VB/IB ? Draw. */
         void SubmitMeshDrawPacket(const MeshDrawPacket& packet);
 
         // Resource creation

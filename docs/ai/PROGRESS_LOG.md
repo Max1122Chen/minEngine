@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-03 (RND-F09 Done)
+Last updated: 2026-08-03 (RND-F10 TD-015/S04)
 
 ## Purpose
 
@@ -1091,6 +1091,50 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-08-03 - RND-F10：EnvMapCapture 去 GL 旁路 + 退役全局 IBL（`render`）
+- Goal:
+	用现代 RHI 表达 mip/filter；删除 `EngineIBLEnvironment` / `BrdfLutGenerator`；S06 挂 TD。
+- Main changes:
+	`RHICmdGenerateMips` + CommandList；OpenGL cube 按 `NumMips` 分配；Capture 去掉 glad/`GetOpenGLTextureId`；删死代码与 CMake exclude；登记 **TD-021**（Editor Bake UX）。
+- Validation done:
+	`mingw32-make minEngine/Editor/minEngineTests`；`.\scripts\verify.ps1` smoke PASS；Editor bake 日志仍通（irradiance/prefilter + baked HDR）。
+- Risks or caveats:
+	`EnvMapCapture.cpp` 仍有匿名命名空间静态 bake helpers（与全 static Baker API 并存；未再引入引擎层 GL）；BRDF 仍依赖项目 `brdf_lut.png`。
+- Next step:
+	用户确认是否将 F10 标 Done；准备 commit。
+
+### 2026-08-03 - RND-F10 S05：项目 HDR → 天空/IBL bake（`render`）
+- Goal:
+	无 face PNG 时从项目 `m_SourceHdrPath` GPU bake 真实天空（付清 TD-015 主路径）。
+- Main changes:
+	现代路径重开 `EnvMapCapture`（PSO/BindingSet/`CreateShaderResourceView`）；`EnvironmentMap::TryBakeFromSourceHdr`；`DefaultEnvironment.meenv` 指向 `citrus_orchard_puresky_1k.hdr`。
+- Validation done:
+	`mingw32-make minEngine/Editor`；Editor 日志：`baked sky/IBL from project HDR` + irradiance/prefilter；`.\scripts\verify.ps1` smoke PASS。
+- Risks or caveats:
+	仍含 `glGenerateMipmap`/glad（RHI 无 GenerateMips）；S04 全局 IBL 入口未删；S06 Editor 显式 Bake 未做。
+- Next step:
+	用户目视 Viewport 天空；可选 S04 / 去 glad / S06。
+
+### 2026-08-03 - RND-F10 S01–S03：EnvironmentMap 项目资产接线（`render`）
+- Goal:
+	EnvironmentMap 仅项目 Content；SkyBoxComponent ref → SkyPass / Set1；EngineDefault 只作复制种子。
+- Main changes:
+	`EnvironmentMap` + `.meenv` loader/registry；Sky proxy/pass 跟 Asset；Set1 IBL 从场景 EnvironmentMap；`MyMEProject` 种子 IBL + `DefaultEnvironment.meenv`。
+- Validation done:
+	`mingw32-make minEngine/Editor/minEngineTests`；`.\scripts\verify.ps1` smoke PASS；`test render-graph` PASS。
+- Risks or caveats:
+	无 face PNG 时 validation cube；BRDF 需在 Inspector 指到项目 `brdf_lut`；Bake（TD-015）未做。
+- Next step:
+	S04 清全局 IBL 入口；S05 现代 Baker；用户目视：给 SkyBox 指定 DefaultEnvironment。
+
+### 2026-08-03 - RND-F10 Draft：EnvironmentMap Asset + Sky/IBL（`render`）
+- Goal:
+	场景 Asset 引用驱动天空与 IBL；GPU Bake 后置并用现代 RHI 付清 TD-015。
+- Main changes:
+	登记 `RND-F10`；Design + Impl 草稿；ACTIVE_WORK / TECH_DEBT 指向 F10。
+- Next step:
+	用户确认 Draft → Planned；建议先 S01–S03 磁盘接线。
 
 ### 2026-08-03 - RND-F09 Done：RHI / Binding hygiene（`render`）
 - Goal:

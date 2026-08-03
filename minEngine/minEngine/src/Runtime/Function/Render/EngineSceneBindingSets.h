@@ -56,5 +56,8 @@ namespace minEngine
         RHIBuffer* m_CachedDirLightViewProjs = nullptr;
         RHIBuffer* m_CachedCascadeFarPlanes = nullptr;
         RHIBuffer* m_CachedSpotLightViewProjs = nullptr;
+        RHITexture* m_CachedIblIrradianceTexture = nullptr;
+        RHITexture* m_CachedIblPrefilterTexture = nullptr;
+        RHITexture* m_CachedIblBrdfLutTexture = nullptr;
     };
 }

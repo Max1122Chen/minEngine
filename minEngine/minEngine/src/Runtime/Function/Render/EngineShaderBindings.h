@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core.h"
-#include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
 
 namespace minEngine
 {
@@ -50,9 +49,10 @@ namespace minEngine
         /** Spot/point shadow sampler units (layout description only; SlotIndex selects maps). */
         constexpr uint32_t kGL_SpotShadowBaseUnit = kGL_DirShadowTextureUnit + 1u;
         constexpr uint32_t kGL_PointShadowBaseUnit = kGL_SpotLightViewProjsUBO;
-        constexpr uint32_t kGL_IBLIrradianceUnit = static_cast<uint32_t>(kEngineIBLIrradianceTextureUnit);
-        constexpr uint32_t kGL_IBLPrefilterUnit = static_cast<uint32_t>(kEngineIBLPrefilterTextureUnit);
-        constexpr uint32_t kGL_IBLBrdfLutUnit = static_cast<uint32_t>(kEngineIBLBrdfLutTextureUnit);
+        /** IBL sampler units (keep clear of material 0..N and shadow maps). */
+        constexpr uint32_t kGL_IBLIrradianceUnit = 4;
+        constexpr uint32_t kGL_IBLPrefilterUnit = 5;
+        constexpr uint32_t kGL_IBLBrdfLutUnit = 6;
 
         static_assert(
             kGL_SpotShadowBaseUnit == 9u,

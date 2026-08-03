@@ -43,6 +43,11 @@ namespace minEngine
             return ICON_FA_PALETTE;
         }
 
+        if (assetType == "EnvironmentMap")
+        {
+            return ICON_FA_GLOBE;
+        }
+
         if (assetType == "Scene")
         {
             return ICON_FA_MAP;
@@ -58,7 +63,8 @@ namespace minEngine
 
     AssetIconFontStyle ContentBrowserWindow::ResolveAssetTypeIconFontStyle(const std::string_view assetType) const
     {
-        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Font")
+        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Font"
+            || assetType == "EnvironmentMap")
         {
             return AssetIconFontStyle::Solid;
         }

@@ -50,6 +50,15 @@ namespace minEngine
         }
     }
 
+    void SkyBoxComponent::SetEnvironmentMap(const std::shared_ptr<EnvironmentMap>& environmentMap)
+    {
+        if (m_EnvironmentMap != environmentMap)
+        {
+            m_EnvironmentMap = environmentMap;
+            MarkRenderStateDirty();
+        }
+    }
+
     void SkyBoxComponent::DoEndOfFrameUpdate()
     {
         if (!m_bRenderStateDirty)
@@ -73,6 +82,7 @@ namespace minEngine
         proxy->m_Transform = GetTransform();
         proxy->m_SkyIntensity = m_SkyIntensity;
         proxy->m_Enabled = m_Enabled;
+        proxy->m_EnvironmentMap = m_EnvironmentMap;
         m_SkyBoxSceneProxy = proxy;
         return proxy;
     }

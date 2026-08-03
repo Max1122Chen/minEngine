@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-08-03 (RND-F09 Done；TD-015 仍 Open)  
+Last updated: 2026-08-03 (RND-F10：TD-015 Done；TD-021 Bake UX)  
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
 **Rules:** add a row when deferring non-trivial work; link Feature ID when known; do not delete rows — set Status `Done` or `Cancelled`.
@@ -21,12 +21,13 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-012 | Legacy doc IDs (Phase/M/E/P) vs F/S | WF | **Low** | Open | DOC_GOVERNANCE §10 | Migrate gradually; new docs use F/S only |
 | TD-013 | `BuildSceneSet0` 每帧 `CreateBindingSet` | RND | **Medium** | Done | `RND-F09` · `EngineSceneBindingSets.cpp` | 2026-08-03 F09-S01：脏标记 |
 | TD-014 | Material 纹理 SRV 未走 `RHITextureViewCache` | RND | **Medium** | Done | `RND-F09` · `Material.cpp` | 2026-08-03 F09-S02 |
-| TD-015 | `EnvMapCapture` 旁路 draw + 引擎层 `OpenGLRHIShaderResourceView` | RND | **Medium** | Open | `RND-F03` §16.5 · `EnvMapCapture.cpp` | **不在 F09**；用户后议专题 |
+| TD-015 | `EnvMapCapture` 旁路 draw + 引擎层 `OpenGLRHIShaderResourceView` | RND | **Medium** | Done | `RND-F10` · `EnvMapCapture.cpp` | 2026-08-03：`CreateShaderResourceView` + `RHICmdGenerateMips`；cube `NumMips` 分配在 OpenGL 后端；Capture 无 glad |
 | TD-016 | `RHIGraphicsPSOStateFallback` / GL Apply 子集 | RND | **Low** | Done | `RND-F09` · `OpenGLRHI.cpp` | 2026-08-03 F09-S04；blend 因子固定 alpha，尚未 desc 驱动 |
 | TD-017 | `RenderSystem` `static_cast<OpenGLRHI*>` 窗口 clear | RND | **Low** | Done | `RND-F09` · `RenderSystem.cpp` | 2026-08-03 F09-S03 |
 | TD-018 | `ShaderResource` 反射 / ContentBrowser 残留 | ASSET / RND | **Low** | Done | `RND-F09` · `RND-F03` §15.4 P2 | 2026-08-03 F09-S05：删除类与 gen；CB 去 Shader 图标 |
 | TD-019 | `ShadowTypes` GL texture unit 常量与 layout 双轨 | RND | **Low** | Done | `RND-F09` · `ShadowTypes.h` · `EngineShaderBindings` | 2026-08-03 F09-S06；unit 仅 Bindings |
 | TD-020 | Shadow atlas 仍由 `ShadowResourceManager` 分配 | RND | **Medium** | Done | `RND-F08` | 2026-08-02：图拥有 Dir/Spot/Point；Manager 仅 unit/metadata |
+| TD-021 | EnvironmentMap Editor/CLI Bake 按钮 + 可选写回磁盘 | RND / ED | **Low** | Open | `RND-F10` S06 | 运行时 EnsureGPU bake 已够用；显式 Bake UX / face PNG 落盘后置 |
 
 ---
 

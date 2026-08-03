@@ -13,6 +13,7 @@ namespace minEngine
     class RenderCamera;
     class SpotLightSceneProxy;
     class PointLightSceneProxy;
+    class RHITexture;
 
     /** Per-Execute transient state (queues, shadow build results). Not stored on ForwardRenderer. */
     struct SceneRenderContext
@@ -32,6 +33,11 @@ namespace minEngine
         std::unordered_map<const SpotLightSceneProxy*, ShadowResourceHandle> SpotShadowHandleMap;
         std::unordered_map<const PointLightSceneProxy*, ShadowResourceHandle> PointShadowHandleMap;
 
+        /** From active SkyBox EnvironmentMap (project asset); null if unset. */
+        RHITexture* IblIrradianceTexture = nullptr;
+        RHITexture* IblPrefilterTexture = nullptr;
+        RHITexture* IblBrdfLutTexture = nullptr;
+
         void ResetFrame()
         {
             Scene = nullptr;
@@ -45,6 +51,9 @@ namespace minEngine
             PointShadowHandles.clear();
             SpotShadowHandleMap.clear();
             PointShadowHandleMap.clear();
+            IblIrradianceTexture = nullptr;
+            IblPrefilterTexture = nullptr;
+            IblBrdfLutTexture = nullptr;
         }
     };
 }

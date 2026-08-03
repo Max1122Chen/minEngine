@@ -55,6 +55,9 @@ namespace minEngine
         m_CachedDirLightViewProjs = nullptr;
         m_CachedCascadeFarPlanes = nullptr;
         m_CachedSpotLightViewProjs = nullptr;
+        m_CachedIblIrradianceTexture = nullptr;
+        m_CachedIblPrefilterTexture = nullptr;
+        m_CachedIblBrdfLutTexture = nullptr;
     }
 
     RHIShaderResourceViewRef EngineSceneBindingSets::GetOrCreateTextureSRV(
@@ -173,13 +176,23 @@ namespace minEngine
             sceneSet1Dirty = true;
         }
 
+        auto refreshIblSrv = [&](RHITexture* texture, RHITexture*& cachedTexture, RHIShaderResourceViewRef& srv)
+        {
+            if (texture != cachedTexture)
+            {
+                cachedTexture = texture;
+                srv = texture ? GetOrCreateTextureSRV(cmdList, texture) : nullptr;
+                sceneSet1Dirty = true;
+            }
+        };
+        refreshIblSrv(ctx.IblIrradianceTexture, m_CachedIblIrradianceTexture, m_IblSRVs[0]);
+        refreshIblSrv(ctx.IblPrefilterTexture, m_CachedIblPrefilterTexture, m_IblSRVs[1]);
+        refreshIblSrv(ctx.IblBrdfLutTexture, m_CachedIblBrdfLutTexture, m_IblSRVs[2]);
+
         if (!sceneSet1Dirty)
         {
             return;
         }
-
-        // F03-M4 P0: IBL textures disabled; layout slots stay null until EnvMap returns.
-        m_IblSRVs = {};
 
         std::vector<RHIShaderBinding> resources(11);
         resources[kSet1_DirShadowSRV] = {RHIShaderBindingType::TextureSRV, nullptr, m_DirShadowSRV.get()};

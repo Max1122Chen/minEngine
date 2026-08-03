@@ -24,6 +24,7 @@
 #include "Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Render/LightSceneProxies/SpotLightSceneProxy.h"
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
+#include "Render/Environment/EnvironmentMap.h"
 #include "Math/Geometry/AABB.h"
 #include <filesystem>
 
@@ -515,6 +516,30 @@ namespace minEngine
         // RND-F08: allocate graph shadow maps before Set1 samples them.
         SetupFrameRenderGraph(cmdList, desc, ctx);
         BindGraphShadowTextures(ctx);
+
+        if (RHI* rhiForIbl = RenderSystem::Get().GetRHI())
+        {
+            if (SkyBoxSceneProxy* skyProxy = ctx.Scene ? ctx.Scene->GetSkyBoxProxy() : nullptr)
+            {
+                if (skyProxy->m_EnvironmentMap
+                    && skyProxy->m_EnvironmentMap->EnsureGPUResources(*rhiForIbl))
+                {
+                    EnvironmentMap* env = skyProxy->m_EnvironmentMap.get();
+                    if (env->GetIrradiance() != nullptr)
+                    {
+                        ctx.IblIrradianceTexture = env->GetIrradiance()->GetRHITexture();
+                    }
+                    if (env->GetPrefilter() != nullptr)
+                    {
+                        ctx.IblPrefilterTexture = env->GetPrefilter()->GetRHITexture();
+                    }
+                    if (env->GetBrdfLUT() != nullptr)
+                    {
+                        ctx.IblBrdfLutTexture = env->GetBrdfLUT()->GetRHITexture();
+                    }
+                }
+            }
+        }
 
         m_SceneBindings.BuildSceneSet0(
             cmdList,

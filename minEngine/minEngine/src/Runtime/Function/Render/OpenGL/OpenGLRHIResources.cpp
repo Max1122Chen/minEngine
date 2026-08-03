@@ -3,6 +3,7 @@
 #include "Log/LogSystem.h"
 #include "glad/glad.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace minEngine
@@ -208,7 +209,7 @@ namespace minEngine
             return textureId;
         }
 
-        GLuint UploadTextureCube(const RHITextureCreateDesc& desc, const void* initialData, bool generateMipmaps)
+        GLuint UploadTextureCube(const RHITextureCreateDesc& desc, const void* initialData)
         {
             if (desc.Width == 0 || desc.Height == 0)
             {
@@ -258,12 +259,17 @@ namespace minEngine
                 return 0;
             }
 
+            const uint32_t numMips = desc.NumMips == 0 ? 1u : desc.NumMips;
+            const bool wantGenerateMips =
+                HasTextureCreateFlag(desc.Flags, RHITextureCreateFlags::GenerateMips);
+            const bool useMipFilter = numMips > 1 || wantGenerateMips;
+
             if (isDepthLike)
             {
                 glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             }
-            else if (generateMipmaps)
+            else if (useMipFilter)
             {
                 glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                 glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -281,6 +287,7 @@ namespace minEngine
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
             }
 
+            bool hasBaseLevelData = false;
             for (unsigned int faceIndex = 0; faceIndex < 6; faceIndex++)
             {
                 const unsigned char* facePixels = faceData[faceIndex];
@@ -289,23 +296,40 @@ namespace minEngine
                     ME_CORE_ERROR("OpenGLRHITexture cube: color face {} is null.", faceIndex);
                     continue;
                 }
+                if (facePixels != nullptr)
+                {
+                    hasBaseLevelData = true;
+                }
 
-                glTexImage2D(
-                    GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex,
-                    0,
-                    internalFormat,
-                    static_cast<GLsizei>(desc.Width),
-                    static_cast<GLsizei>(desc.Height),
-                    0,
-                    dataFormat,
-                    dataType,
-                    facePixels);
+                for (uint32_t mip = 0; mip < numMips; ++mip)
+                {
+                    const uint32_t mipWidth = std::max(1u, desc.Width >> mip);
+                    const uint32_t mipHeight = std::max(1u, desc.Height >> mip);
+                    const void* mipPixels = (mip == 0) ? facePixels : nullptr;
+
+                    glTexImage2D(
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex,
+                        static_cast<GLint>(mip),
+                        internalFormat,
+                        static_cast<GLsizei>(mipWidth),
+                        static_cast<GLsizei>(mipHeight),
+                        0,
+                        dataFormat,
+                        dataType,
+                        mipPixels);
+                }
+            }
+
+            if (numMips > 1)
+            {
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(numMips - 1));
             }
 
             if (!isDepthLike)
             {
                 glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
-                if (generateMipmaps && textureId != 0)
+                if (wantGenerateMips && hasBaseLevelData && textureId != 0)
                 {
                     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
                 }
@@ -475,7 +499,7 @@ namespace minEngine
             break;
         case RHITextureDimension::TextureCube:
             m_Target = GL_TEXTURE_CUBE_MAP;
-            m_TextureId = UploadTextureCube(desc, initialData, false);
+            m_TextureId = UploadTextureCube(desc, initialData);
             break;
         case RHITextureDimension::Texture2D:
         default:

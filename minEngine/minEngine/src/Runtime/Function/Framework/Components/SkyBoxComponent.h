@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 
 namespace minEngine
 {
@@ -22,6 +23,10 @@ namespace minEngine
         void SetSkyIntensity(float intensity);
         float GetSkyIntensity() const { return m_SkyIntensity; }
 
+        void SetEnvironmentMap(const std::shared_ptr<EnvironmentMap>& environmentMap);
+        EnvironmentMap* GetEnvironmentMap() const { return m_EnvironmentMap.get(); }
+        const std::shared_ptr<EnvironmentMap>& GetEnvironmentMapShared() const { return m_EnvironmentMap; }
+
         virtual void DoEndOfFrameUpdate() override;
 
         SkyBoxSceneProxy* CreateSceneProxy();
@@ -32,6 +37,10 @@ namespace minEngine
 
         ME_PROPERTY(EditAnywhere)
         float m_SkyIntensity = 1.0f;
+
+        /** Project EnvironmentMap asset (not EngineDefault path). */
+        ME_PROPERTY(EditAnywhere)
+        std::shared_ptr<EnvironmentMap> m_EnvironmentMap;
 
         SkyBoxSceneProxy* m_SkyBoxSceneProxy = nullptr;
     };

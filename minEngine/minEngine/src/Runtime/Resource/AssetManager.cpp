@@ -11,6 +11,7 @@
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Resource/Font.h"
+#include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -1068,6 +1069,17 @@ namespace minEngine
             if (asset == nullptr)
             {
                 outErrorMessage = "failed to load font by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "EnvironmentMap")
+        {
+            std::shared_ptr<EnvironmentMap> asset = LoadAsset<EnvironmentMap>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load EnvironmentMap by guid";
                 return nullptr;
             }
             return std::static_pointer_cast<Asset>(asset);

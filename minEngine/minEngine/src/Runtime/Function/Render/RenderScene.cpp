@@ -233,6 +233,7 @@ namespace minEngine
             proxy->m_Transform = skyBoxComponent->GetTransform();
             proxy->m_SkyIntensity = skyBoxComponent->GetSkyIntensity();
             proxy->m_Enabled = skyBoxComponent->IsEnabled();
+            proxy->m_EnvironmentMap = skyBoxComponent->GetEnvironmentMapShared();
         }
     }
 

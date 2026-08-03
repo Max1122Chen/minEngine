@@ -12,9 +12,9 @@
 #include "../../EngineShaderUtils.h"
 #include "../../EnginePassUniforms.h"
 #include "../../SkyBoxSceneProxies/SkyBoxSceneProxy.h"
-#include "../../TextureCubeLoader.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
@@ -23,8 +23,6 @@
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Texture.h"
-
-#include <array>
 
 namespace minEngine
 {
@@ -73,36 +71,6 @@ namespace minEngine
              1.0f,  1.0f, -1.0f,
             -1.0f,  1.0f, -1.0f,
         };
-
-        std::shared_ptr<TextureCube> LoadSkyEnvironmentCube(RHI& rhi, const std::filesystem::path& engineDefaultAssetsRoot)
-        {
-            const std::string iblDirectory = (engineDefaultAssetsRoot / "Textures" / "IBL").string();
-            std::string error;
-            if (std::shared_ptr<TextureCube> environment = TextureCubeLoader::LoadCubeMapFromDirectory(
-                    rhi,
-                    iblDirectory,
-                    "environment",
-                    true,
-                    &error))
-            {
-                return environment;
-            }
-
-            ME_CORE_WARN(
-                "SkyBoxPass: could not load environment cubemap from {} ({}); using validation cube.",
-                iblDirectory,
-                error);
-
-            const std::array<uint8_t, 4> faceColors[6] = {
-                std::array<uint8_t, 4>{ 64, 128, 255, 255 },
-                std::array<uint8_t, 4>{ 32, 64, 128, 255 },
-                std::array<uint8_t, 4>{ 128, 192, 255, 255 },
-                std::array<uint8_t, 4>{ 16, 32, 64, 255 },
-                std::array<uint8_t, 4>{ 96, 160, 224, 255 },
-                std::array<uint8_t, 4>{ 48, 96, 160, 255 },
-            };
-            return TextureCubeLoader::CreateSolidColorCube(rhi, 32, faceColors, &error);
-        }
     }
 
     void SkyBoxPass::Initialize(RHI& rhi, const std::filesystem::path& engineDefaultAssetsRoot)
@@ -162,30 +130,6 @@ namespace minEngine
         psoDesc.DepthStencilState.bDepthWriteEnabled = false;
         psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::LessEqual;
         m_SkyPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
-
-        m_EnvironmentCube = LoadSkyEnvironmentCube(rhi, engineDefaultAssetsRoot);
-        if (!m_EnvironmentCube)
-        {
-            ME_CORE_ERROR("SkyBoxPass: failed to create sky environment cubemap.");
-            return;
-        }
-
-        RHITexture* environmentTexture = m_EnvironmentCube->GetRHITexture();
-        if (!environmentTexture)
-        {
-            ME_CORE_ERROR("SkyBoxPass: environment cubemap has no RHI texture.");
-            return;
-        }
-
-        RHITextureSRVDesc srvDesc;
-        srvDesc.Texture = environmentTexture;
-        m_EnvironmentSRV = cmdList.CreateShaderResourceView(srvDesc);
-        m_SkyShaderBindingSet = cmdList.CreateShaderBindingSet(
-            m_SkyShaderBindingSetLayout.get(),
-            {
-                {RHIShaderBindingType::TextureSRV, nullptr, m_EnvironmentSRV.get()},
-                {RHIShaderBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
-            });
     }
 
     void SkyBoxPass::Shutdown()
@@ -196,10 +140,34 @@ namespace minEngine
         m_SkyPipelineState.reset();
         m_SkyPipelineLayout.reset();
         m_SkyShaderBindingSetLayout.reset();
-        m_EnvironmentCube.reset();
+        m_BoundEnvironmentTexture = nullptr;
         m_EnvironmentSRV.reset();
         m_SkyShaderBindingSet.reset();
         m_SkyFrameUniformBuffer.reset();
+        m_TextureViewCache.Clear();
+    }
+
+    bool SkyBoxPass::BindEnvironmentTexture(RHICommandList& cmdList, RHITexture* environmentTexture)
+    {
+        if (!m_SkyShaderBindingSetLayout || !m_SkyFrameUniformBuffer || environmentTexture == nullptr)
+        {
+            return false;
+        }
+
+        if (environmentTexture == m_BoundEnvironmentTexture && m_SkyShaderBindingSet)
+        {
+            return true;
+        }
+
+        m_BoundEnvironmentTexture = environmentTexture;
+        m_EnvironmentSRV = m_TextureViewCache.GetOrCreate(cmdList, environmentTexture);
+        m_SkyShaderBindingSet = cmdList.CreateShaderBindingSet(
+            m_SkyShaderBindingSetLayout.get(),
+            {
+                {RHIShaderBindingType::TextureSRV, nullptr, m_EnvironmentSRV.get()},
+                {RHIShaderBindingType::UniformBuffer, m_SkyFrameUniformBuffer.get(), nullptr},
+            });
+        return m_SkyShaderBindingSet != nullptr;
     }
 
     void SkyBoxPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
@@ -243,7 +211,29 @@ namespace minEngine
             return;
         }
 
-        if (!m_SkyShader || !m_CubeVertexBuffer || !m_SkyPipelineState || !m_SkyShaderBindingSet || !m_SkyFrameUniformBuffer)
+        if (!m_SkyShader || !m_CubeVertexBuffer || !m_SkyPipelineState || !m_SkyFrameUniformBuffer)
+        {
+            return;
+        }
+
+        EnvironmentMap* environmentMap = skyBoxProxy->m_EnvironmentMap.get();
+        if (environmentMap == nullptr || context.CommandList == nullptr)
+        {
+            return;
+        }
+
+        RHI* rhi = context.CommandList->GetExecutingRHI();
+        if (rhi == nullptr)
+        {
+            return;
+        }
+
+        if (!environmentMap->EnsureGPUResources(*rhi) || !environmentMap->IsReadyForSky())
+        {
+            return;
+        }
+
+        if (!BindEnvironmentTexture(*context.CommandList, environmentMap->GetEnvironment()->GetRHITexture()))
         {
             return;
         }
@@ -269,7 +259,6 @@ namespace minEngine
             return;
         }
 
-        // First scene color writer: always clear so Opaque can LoadStore safely.
         RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, true);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
@@ -285,13 +274,21 @@ namespace minEngine
         const RenderCamera& camera,
         const SkyBoxSceneProxy& skyBox)
     {
-        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState || !m_SkyShaderBindingSetLayout ||
-            !m_SkyFrameUniformBuffer || !m_EnvironmentCube || !m_EnvironmentSRV || !m_SkyShaderBindingSet)
+        if (!m_SkyShader || !m_CubeVertexBuffer || !m_CubeVertexLayout || !m_SkyPipelineState
+            || !m_SkyFrameUniformBuffer || !skyBox.m_Enabled || !skyBox.m_EnvironmentMap)
         {
             return;
         }
 
-        if (!skyBox.m_Enabled)
+        RHI* rhi = cmdList.GetExecutingRHI();
+        if (rhi == nullptr
+            || !skyBox.m_EnvironmentMap->EnsureGPUResources(*rhi)
+            || !skyBox.m_EnvironmentMap->IsReadyForSky())
+        {
+            return;
+        }
+
+        if (!BindEnvironmentTexture(cmdList, skyBox.m_EnvironmentMap->GetEnvironment()->GetRHITexture()))
         {
             return;
         }

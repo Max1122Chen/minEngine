@@ -99,6 +99,9 @@ namespace minEngine
 
         virtual void RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex = 0) = 0;
 
+        /** Generate mip chain from mip 0 (backend-owned). Prefer after filling base level. */
+        virtual void RHICmdGenerateMips(RHITexture* texture) = 0;
+
         /** Backbuffer clear color / clear (swapchain surface owned by WindowSystem). */
         virtual void RHISetBackbufferClearColor(const Vector3& color) = 0;
         virtual void RHIClearBackbuffer() = 0;

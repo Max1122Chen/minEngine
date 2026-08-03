@@ -5,6 +5,7 @@
 #include "Render/RenderGraph/IRenderPass.h"
 #include "Render/RenderGraph/RDGTypes.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RHI/RHITextureViewCache.h"
 
 #include <filesystem>
 #include <memory>
@@ -23,7 +24,7 @@ namespace minEngine
     class SkyBoxSceneProxy;
     class RHIBuffer;
     class RHIVertexInputLayout;
-    class TextureCube;
+    class RHITexture;
     class RenderGraph;
     class RenderPass;
 
@@ -37,23 +38,25 @@ namespace minEngine
 
         bool IsReady() const
         {
-            return m_SkyShader != nullptr && m_CubeVertexBuffer != nullptr && m_EnvironmentCube != nullptr;
+            return m_SkyShader != nullptr && m_CubeVertexBuffer != nullptr && m_SkyPipelineState != nullptr;
         }
 
         void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
         void Prepare(RenderGraph& graph) override;
         void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
-        // Always run when in the pass stack: clear SceneColor/Depth even if sky geometry is skipped.
         bool NeedRenderPass() const override { return true; }
 
     private:
+        bool BindEnvironmentTexture(RHICommandList& cmdList, RHITexture* environmentTexture);
+
         std::shared_ptr<RHIShader> m_SkyShader;
         RHIBufferRef m_CubeVertexBuffer;
         RHIVertexInputLayoutRef m_CubeVertexLayout;
         std::shared_ptr<RHIGraphicsPipelineState> m_SkyPipelineState;
         std::shared_ptr<RHIShaderBindingSetLayout> m_SkyShaderBindingSetLayout;
         std::shared_ptr<RHIPipelineLayout> m_SkyPipelineLayout;
-        std::shared_ptr<TextureCube> m_EnvironmentCube;
+        RHITextureViewCache m_TextureViewCache;
+        RHITexture* m_BoundEnvironmentTexture = nullptr;
         std::shared_ptr<RHIShaderResourceView> m_EnvironmentSRV;
         std::shared_ptr<RHIShaderBindingSet> m_SkyShaderBindingSet;
         RHIBufferRef m_SkyFrameUniformBuffer;

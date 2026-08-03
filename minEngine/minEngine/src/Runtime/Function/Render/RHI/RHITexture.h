@@ -57,6 +57,30 @@ namespace minEngine
         return static_cast<RHITextureCreateFlags>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
     }
 
+    inline bool HasTextureCreateFlag(RHITextureCreateFlags flags, RHITextureCreateFlags bit)
+    {
+        return (static_cast<uint32_t>(flags) & static_cast<uint32_t>(bit)) != 0u;
+    }
+
+    /** Full mip chain count for a square (or max-edge) texture size. */
+    inline uint32_t ComputeTextureMipCount(uint32_t width, uint32_t height = 0)
+    {
+        const uint32_t size = height == 0 ? width : (width > height ? width : height);
+        if (size == 0)
+        {
+            return 1;
+        }
+
+        uint32_t mipCount = 1;
+        uint32_t dimension = size;
+        while (dimension > 1)
+        {
+            dimension >>= 1;
+            ++mipCount;
+        }
+        return mipCount;
+    }
+
     struct RHITextureCreateDesc
     {
         RHITextureDimension Dimension = RHITextureDimension::Texture2D;

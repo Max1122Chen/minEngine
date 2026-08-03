@@ -149,9 +149,13 @@ namespace minEngine
 
         std::shared_ptr<TextureCube> texture = std::make_shared<TextureCube>();
         const void* faceDataPtr = faceSet.FacePixels.data();
-        texture->m_RHITexture = rhi.RHICreateTexture2D(
-            MakeTextureCubeBindingDesc(faceSet.FaceSize, format, generateMipmaps ? 0 : 1),
-            faceDataPtr);
+        RHITextureCreateDesc cubeDesc = MakeTextureCubeBindingDesc(faceSet.FaceSize, format, 1);
+        if (generateMipmaps)
+        {
+            cubeDesc.NumMips = ComputeTextureMipCount(faceSet.FaceSize);
+            cubeDesc.Flags = cubeDesc.Flags | RHITextureCreateFlags::GenerateMips;
+        }
+        texture->m_RHITexture = rhi.RHICreateTexture2D(cubeDesc, faceDataPtr);
         if (!texture->m_RHITexture)
         {
             if (outError)

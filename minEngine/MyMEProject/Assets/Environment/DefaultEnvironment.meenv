@@ -1,0 +1,18 @@
+{
+    "m_BrdfLUT": {
+        "$guid": {
+            "high": 17293822569102704642,
+            "low": 1125899906842626
+        }
+    },
+    "m_EnvironmentPrefix": "environment",
+    "m_FaceDirectory": "Textures/IBL",
+    "m_Guid": {
+        "High": 17293822569102704641,
+        "Low": 1125899906842625
+    },
+    "m_IrradiancePrefix": "irradiance",
+    "m_Name": "DefaultEnvironment",
+    "m_PrefilterPrefix": "prefilter",
+    "m_SourceHdrPath": "Textures/IBL/citrus_orchard_puresky_1k.hdr"
+}
