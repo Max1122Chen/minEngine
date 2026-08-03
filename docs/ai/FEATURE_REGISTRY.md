@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-03 (`render` → `master` merge；RND-F10 Done；F05 Planned)
+Last updated: 2026-08-03（TD-013 Done；CORE-F04 / RND-F11 Planned）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -27,6 +27,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) · 原 physics 分支 `CORE-F01`，合入 master 时改号以免与 Lua 冲突 |
+| `CORE-F04` | Multicast Delegates（引擎事件 + 后续 Lua 绑定钩子） | Planned | — | 付清 **TD-006**；解锁 **PHYS-F03**；Design 待写 |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) · **S06+ 产品方向由 `RND-F07` 取代**（实验 Bake 非终态） |
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配 + Pass CommandList） | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · S0–S5 |
 | `RND-F03` | Legacy RHI removal（调用面 + 管线重构 M4 + 后端绞杀 M3） | In Progress | **M1–M2 Done**；**M4** 管线 §16；M3 §15 | [RND-F03_LEGACY_RHI_REMOVAL_DESIGN](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · §16 |
@@ -37,6 +38,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
+| `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | Planned | — | 排在 **RND-F05** Vulkan 竖切之后；Design 待写 |
 | `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) |
 | `PHYS-F02` | Collision + query shapes（Sphere/Capsule collider；Scene SphereTrace/CapsuleTrace） | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md) |
 | `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · blocked on **TD-006** Delegates；正式 Design 延后 |
@@ -50,11 +52,11 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | Command-line / tools entry |
 | `TEST` | F04 | Automated tests (follow-on) |
 | `WF` | F03 | Workflow / docs |
-| `CORE` | F04 | F01–F02 Lua Done；F03 Transform quaternion Done |
+| `CORE` | F05 | F01–F02 Lua Done；F03 Transform quaternion Done；F04 Delegates Planned |
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F01 | Editor productization (new IDs only) |
-| `RND` | F11 | F10 Done（EnvironmentMap）；下一空号 F11 |
-| `PHYS` | F04 | F01–F02 Done；F03 Deferred（TD-006） |
+| `RND` | F12 | F10 Done；F11 DebugDrawing Planned；下一空号 F12 |
+| `PHYS` | F04 | F01–F02 Done；F03 Deferred（TD-006 / CORE-F04） |
 | `MAT` | F01 | Material (new IDs only; legacy Phase docs keep old names) |
 
 Update **Next Feature #** when you register a new row.

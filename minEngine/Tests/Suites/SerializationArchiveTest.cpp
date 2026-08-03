@@ -13,6 +13,8 @@
 #include "Runtime/Function/Framework/Components/MovementComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
+#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 
 namespace minEngine
 {
@@ -824,9 +826,77 @@ namespace minEngine
             return true;
         }
 
+        bool TestUint8EnumPropertyRoundTrip()
+        {
+            SerializationArchiveTestScope scope;
+
+            const Reflection::MEClass* materialClass =
+                Reflection::ReflectionSystem::Get().FindClass<Material>();
+            if (materialClass == nullptr)
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: Material class not found.");
+                return false;
+            }
+
+            Material source;
+            source.m_ShadingModel = MaterialShadingModel::BlinnPhong;
+            source.m_BlendMode = MaterialBlendMode::Opaque;
+
+            std::vector<uint8_t> shadingBuffer;
+            const Serialization::SerializeResult writeShading =
+                Serialization::Serializer::SerializePropertyToBuffer(
+                    &source,
+                    materialClass,
+                    "m_ShadingModel",
+                    shadingBuffer);
+            if (!writeShading.ok)
+            {
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: m_ShadingModel serialize failed: {}",
+                    writeShading.message);
+                return false;
+            }
+
+            Material restored;
+            restored.m_ShadingModel = MaterialShadingModel::Unlit;
+            restored.m_BlendMode = MaterialBlendMode::Translucent;
+            std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+            const Serialization::SerializeResult readShading =
+                Serialization::Serializer::DeserializePropertyFromBuffer(
+                    &restored,
+                    materialClass,
+                    "m_ShadingModel",
+                    shadingBuffer,
+                    unresolvedRefs);
+            if (!readShading.ok)
+            {
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: m_ShadingModel deserialize failed: {}",
+                    readShading.message);
+                return false;
+            }
+
+            if (restored.m_ShadingModel != MaterialShadingModel::BlinnPhong)
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: m_ShadingModel mismatch after round-trip.");
+                return false;
+            }
+
+            // Neighbor uint8 enum must not be clobbered by size-mismatched enum codecs (TD-013).
+            if (restored.m_BlendMode != MaterialBlendMode::Translucent)
+            {
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: m_BlendMode neighbor corrupted by enum codec (TD-013).");
+                return false;
+            }
+
+            return true;
+        }
+
         bool RunSerializationArchiveSmokeTestsImpl()
         {
-            return TestStaticMeshComponentSerializeRoundTrip() && TestTransformSerializeRoundTrip();
+            return TestStaticMeshComponentSerializeRoundTrip() && TestTransformSerializeRoundTrip()
+                   && TestUint8EnumPropertyRoundTrip();
         }
 
         bool RunSerializationArchivePrimitiveTestsImpl()

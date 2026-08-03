@@ -3,6 +3,7 @@
 #include "MEFunction.h"
 #include "Runtime/Core/Serialization/PrimitiveCodecRegistry.h"
 
+#include <cstdint>
 #include <limits>
 
 namespace minEngine::Reflection
@@ -17,6 +18,57 @@ namespace minEngine::Reflection
             }
             const uint32_t remainder = value % alignment;
             return remainder == 0 ? value : value + (alignment - remainder);
+        }
+
+        // Function-pointer codecs (PrimitiveCodec cannot capture); one pair per storage size.
+        template <typename TStorage>
+        bool WriteEnumAsInt64(Serialization::WriterArchive& archive, const void* valuePtr)
+        {
+            if (valuePtr == nullptr)
+            {
+                return false;
+            }
+            const int64_t storedValue = static_cast<int64_t>(*static_cast<const TStorage*>(valuePtr));
+            return archive.WriteInt64(storedValue);
+        }
+
+        template <typename TStorage>
+        bool ReadEnumFromInt64(Serialization::ReaderArchive& archive, void* outValuePtr)
+        {
+            if (outValuePtr == nullptr)
+            {
+                return false;
+            }
+            int64_t intValue = 0;
+            if (!archive.ReadInt64(intValue))
+            {
+                return false;
+            }
+            if (intValue < 0
+                || static_cast<uint64_t>(intValue) > static_cast<uint64_t>(std::numeric_limits<TStorage>::max()))
+            {
+                return false;
+            }
+            *static_cast<TStorage*>(outValuePtr) = static_cast<TStorage>(intValue);
+            return true;
+        }
+
+        Serialization::PrimitiveCodec MakeSizedEnumCodec(size_t enumSize)
+        {
+            using Serialization::PrimitiveCodec;
+            switch (enumSize)
+            {
+            case 1:
+                return PrimitiveCodec{&WriteEnumAsInt64<uint8_t>, &ReadEnumFromInt64<uint8_t>};
+            case 2:
+                return PrimitiveCodec{&WriteEnumAsInt64<uint16_t>, &ReadEnumFromInt64<uint16_t>};
+            case 4:
+                return PrimitiveCodec{&WriteEnumAsInt64<uint32_t>, &ReadEnumFromInt64<uint32_t>};
+            case 8:
+                return PrimitiveCodec{&WriteEnumAsInt64<uint64_t>, &ReadEnumFromInt64<uint64_t>};
+            default:
+                return PrimitiveCodec{};
+            }
         }
     } // namespace
 
@@ -676,41 +728,28 @@ namespace minEngine::Reflection
     void ReflectionSystem::SetCodecForEnums()
     {
         using minEngine::Serialization::PrimitiveCodecRegistry;
-        using minEngine::Serialization::PrimitiveCodec;
-        using minEngine::Serialization::ReaderArchive;
-        using minEngine::Serialization::WriterArchive;
         PrimitiveCodecRegistry& codecRegistry = PrimitiveCodecRegistry::Get();
         
         for(auto& [enumTypeIdName, enumName] : m_DeclaredEnumNameByTypeIdName)
         {
-            codecRegistry.RegisterCodecWithAliases(
-                PrimitiveCodec{
-                    [](WriterArchive& archive, const void* valuePtr) -> bool
-                    {
-                        if (valuePtr == nullptr)
-                        {
-                            return false;
-                        }
+            const MEEnum* enumInfo = FindEnum(enumName);
+            if (enumInfo == nullptr)
+            {
+                AppendError("[Reflection] SetCodecForEnums: missing MEEnum for '" + enumName + "'.");
+                continue;
+            }
 
-                        return archive.WriteInt64(*static_cast<const int64_t*>(valuePtr));
-                    },
-                    [](ReaderArchive& archive, void* outValuePtr) -> bool
-                    {
-                        if (outValuePtr == nullptr)
-                        {
-                            return false;
-                        }
+            const size_t enumSize = enumInfo->GetSize();
+            Serialization::PrimitiveCodec codec = MakeSizedEnumCodec(enumSize);
+            if (codec.write == nullptr || codec.read == nullptr)
+            {
+                AppendError(
+                    "[Reflection] SetCodecForEnums: unsupported Size=" + std::to_string(enumSize)
+                    + " for enum '" + enumName + "'.");
+                continue;
+            }
 
-                        int64_t intValue = 0;
-                        if (!archive.ReadInt64(intValue))
-                        {
-                            return false;
-                        }
-
-                        *static_cast<int64_t*>(outValuePtr) = intValue;
-                        return true;
-                    }},
-                {enumName, enumTypeIdName});
+            codecRegistry.RegisterCodecWithAliases(codec, {enumName, enumTypeIdName});
         }
         
     }

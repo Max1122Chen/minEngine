@@ -81,6 +81,19 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Validation done:
 - Next step:
 
+### 2026-08-03 - TD-013：enum codec 按 MEEnum::GetSize 读写（`master`）
+- Goal:
+	Stop treating every reflected enum as in-memory int64 (overran uint8 neighbors; bad scene JSON).
+- Main changes:
+	`ReflectionSystem::SetCodecForEnums` loads/stores via size 1/2/4/8; archive wire still WriteInt64/ReadInt64.
+	`serialization-archive` smoke adds uint8 `m_ShadingModel` round-trip + neighbor `m_BlendMode` corruption check.
+	Registry: `CORE-F04` Delegates + `RND-F11` DebugDrawing Planned；ACTIVE_WORK 顺序 Vulkan→DebugDrawing.
+- Validation done:
+	`cmake --build minEngine/build --target minEngineTests`
+	`minEngineTests.exe test smoke` / `physics-load` → PASSED
+- Next step:
+	Base `render`/`physics` onto master；分支改名 `feat/*`；开 CORE-F04 或 F05 按 ACTIVE_WORK.
+
 ### 2026-08-03 - master ← merge render（现代 RHI/RDG/EnvMap + physics/Lua）
 - Goal:
 	Integrate `render` (RND-F02–F10) onto `master` (Lua/physics/Transform quat) without dropping either track.

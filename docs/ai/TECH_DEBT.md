@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-08-03 (`render` → `master` merge；RND TD + CORE enum codec 并集)
+Last updated: 2026-08-03（TD-013 Done；RND TD + CORE enum codec 并集）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -20,7 +20,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-010 | GitHub Actions / remote CI | WF | **Low** | Deferred | After CLI+verify local | **CI = Continuous Integration**; separate from CLI |
 | TD-011 | Post-commit context hook | WF | **Low** | Deferred | — | Optional; digest reduces need |
 | TD-012 | Legacy doc IDs (Phase/M/E/P) vs F/S | WF | **Low** | Open | DOC_GOVERNANCE §10 | Migrate gradually; new docs use F/S only |
-| TD-013 | Enum property codec reads/writes as int64 | CORE / Serialization | **High** | Open | Pay down on master/core (or serialization) branch | `SetCodecForEnums` casts to `int64_t*`; `uint8` enums (e.g. `EBodyType`, `ECollisionChannel`) overrun neighbors; scene JSON shows huge ints. Fix: size-aware read/write via `MEEnum::GetSize()`. Migrate scenes after fix. |
+| TD-013 | Enum property codec reads/writes as int64 | CORE / Serialization | **High** | Done | 2026-08-03 master | Fixed: `SetCodecForEnums` uses `MEEnum::GetSize()` for storage load/store; wire still int64. Smoke: `serialization-archive` uint8 enum neighbor test. Re-save scenes that were corrupted by old codec if needed. |
 | TD-014 | Material 纹理 SRV 未走 `RHITextureViewCache` | RND | **Medium** | Done | `RND-F09` · `Material.cpp` | 2026-08-03 F09-S02（原 render 轨编号；与 CORE TD-013 不同号段冲突已用并集保留 CORE 为 TD-013） |
 | TD-015 | `EnvMapCapture` 旁路 draw + 引擎层 `OpenGLRHIShaderResourceView` | RND | **Medium** | Done | `RND-F10` · `EnvMapCapture.cpp` | 2026-08-03：`CreateShaderResourceView` + `RHICmdGenerateMips`；cube `NumMips` 分配在 OpenGL 后端；Capture 无 glad |
 | TD-016 | `RHIGraphicsPSOStateFallback` / GL Apply 子集 | RND | **Low** | Done | `RND-F09` · `OpenGLRHI.cpp` | 2026-08-03 F09-S04；blend 因子固定 alpha，尚未 desc 驱动 |
