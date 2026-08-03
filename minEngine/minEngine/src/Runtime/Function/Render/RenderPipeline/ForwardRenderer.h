@@ -149,6 +149,7 @@ namespace minEngine
         size_t m_ConfiguredShadowGraphPassCount = 0;
         bool m_ConfiguredEnablePostProcess = false;
         bool m_ConfiguredPresentToBackBuffer = false;
+        std::string m_LastShadowResourceFingerprint;
         RenderPass* m_SceneSkyGraphPass = nullptr;
         RenderPass* m_SceneOpaqueGraphPass = nullptr;
         RenderPass* m_SceneTranslucentGraphPass = nullptr;
@@ -163,10 +164,13 @@ namespace minEngine
         void BindSceneRenderTarget(SceneRenderTarget& target);
         void BuildFrameRenderGraph(size_t shadowPassCount, bool enablePostProcess, bool presentToBackBuffer);
         void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
-        void ExecuteFrameRenderGraph(
+        void SetupFrameRenderGraph(
             RHICommandList& cmdList,
             const SceneDrawDesc& desc,
             SceneRenderContext& ctx);
+        void BindGraphShadowTextures(SceneRenderContext& ctx);
+        void EnqueueFrameRenderGraph(RHICommandList& cmdList, SceneRenderTarget* sceneTarget);
+        std::string BuildShadowResourceFingerprint(const SceneRenderContext& ctx) const;
         void UpdatePerFrameUBO(const SceneRenderContext& ctx);
         void UpdateLightUBO(const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);

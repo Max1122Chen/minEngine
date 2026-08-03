@@ -4,6 +4,7 @@
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
+#include <string>
 
 namespace minEngine
 {
@@ -55,19 +56,21 @@ namespace minEngine
 
         bool IsValid() const
         {
-            const bool valid =
-                ResourceType != ShadowResourceType::Invalid && Resolution.IsValid() && TextureUnit >= 0 && Texture != nullptr;
+            const bool meta =
+                ResourceType != ShadowResourceType::Invalid && Resolution.IsValid() && TextureUnit >= 0;
             switch (ResourceType)
             {
             case ShadowResourceType::Depth2D:
             case ShadowResourceType::DepthCube:
-                return valid;
+                return meta;
             case ShadowResourceType::Depth2DArray:
-                return valid && ArrayBaseLayer >= 0 && LayerCount > 0;
+                return meta && ArrayBaseLayer >= 0 && LayerCount > 0;
             default:
                 return false;
             }
         }
+
+        bool HasBoundTexture() const { return Texture != nullptr; }
 
         static ShadowResourceHandle InvalidHandle() { return ShadowResourceHandle{}; }
     };
@@ -91,6 +94,8 @@ namespace minEngine
     {
         LightType Type = LightType::Directional;
         ShadowResourceHandle Handle{};
+        /** RDG logical depth name (shared across cascades/faces of the same map). */
+        std::string GraphDepthResourceName;
 
         Matrix4 ViewProj = Matrix4(1.0f);
         Vector3 LightPosition{0.0f, 0.0f, 0.0f};

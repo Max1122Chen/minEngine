@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-02 (RND-F07 viewport display fix)
+Last updated: 2026-08-02 (RND-F08 shadow graph ownership Done)
 
 ## Purpose
 
@@ -1091,6 +1091,21 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-08-02 - RND-F08：阴影贴图图所有权（`render`）
+- Goal:
+	Directional/Spot/Point depth 由图拥有；关掉 TD-020；Manager 不再 Create 纹理。
+- Main changes:
+	`SetupFrameRenderGraph` → `BindGraphShadowTextures` → `BuildSceneSet1` → `EnqueueFrameRenderGraph`。
+	`ShadowGraphPass` Absolute 声明（Dir=`DirShadowAtlas` 2DArray；Spot/Point 共享 `GraphDepthResourceName`）。
+	`ShadowResourceHandle::IsValid` 与 `HasBoundTexture` 分离；Manager 仅 unit/metadata。
+	`RenderGraph::InvalidateBake` 在阴影尺寸指纹变化时失效。
+- Risks or caveats:
+	待用户目视黄金场景阴影；Manager 类仍保留作 slot 簿记（可后续内联删除）。
+- Validation done:
+	`test render-graph` 4 PASSED；`test smoke` PASSED。
+- Next step:
+	用户目视；准备 commit。
 
 ### 2026-08-02 - RND-F07：Editor 视口只显示 ImGui Image 占位（`render`）
 - Goal:

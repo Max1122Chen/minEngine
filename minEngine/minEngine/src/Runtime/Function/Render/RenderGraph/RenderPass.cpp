@@ -20,7 +20,7 @@ namespace minEngine
     {
         RDGTextureResource& resource = m_Graph.GetOrCreateTextureResource(name);
         resource.SetAttachmentInfo(info);
-        resource.AddUsage(RHITextureCreateFlags::RenderTarget);
+        resource.AddUsage(RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource);
         resource.MarkWrittenInPass(m_Index);
         m_DepthStencilOutput = &resource;
         return resource;

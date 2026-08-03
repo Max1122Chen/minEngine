@@ -9,12 +9,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-### RND-F07 — Granite-style RDG + 帧资源所有权（`render`）— **主线 Done**
+### 渲染主线（`render`）— 空闲
 
-- **Design / Impl:** Done（S01–S09）；阴影 atlas 图所有权见 **TD-020**。
-- **现状：** SceneColor/Depth/PostBuffer 由图 `Bake`→`SetupAttachments` 拥有；Sky/Opaque/Translucent/Post/Present 已接回；`RegisterExternal` 已清。
-- **视口：** 2026-08-02 修复后用户已确认黄金场景正常。
-- **尾项（非挡）：** TD-020 把 `ShadowResourceManager` 纹理迁入图。
+- **RND-F07** Done（帧 RT 图所有权）。
+- **RND-F08** Done（阴影图所有权；TD-020 关闭）；用户已确认阴影效果正常。
+- 下一候选：RND-F05 Vulkan / RND-F03 尾 / TD-013 Set0 BindingSet（按需开）。
 
 ### 相关（非紧急）
 
@@ -61,8 +60,7 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 | File | Role |
 |------|------|
 | [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status |
-| [RND-F07 Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) | 当前主线（Done） |
-| [RND-F06](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) | Renderer 宿主 |
-| [RND-F01](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) | 旧 Manual 图（Superseded by F07） |
+| [RND-F08 Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) | 阴影图所有权（Done） |
+| [RND-F07](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) | 帧 RT 图所有权（Done） |
 | [BOOTSTRAP_DIGEST.md](./BOOTSTRAP_DIGEST.md) | Commands, DoD |
 | [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |

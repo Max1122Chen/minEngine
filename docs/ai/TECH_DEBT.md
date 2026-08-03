@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-08-02 (RND-F07 Done；TD-020 shadow 图所有权尾)  
+Last updated: 2026-08-02 (RND-F08 Done；TD-020 closed)  
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
 **Rules:** add a row when deferring non-trivial work; link Feature ID when known; do not delete rows — set Status `Done` or `Cancelled`.
@@ -26,7 +26,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-017 | `RenderSystem` `static_cast<OpenGLRHI*>` 窗口 clear | RND | **Low** | Open | `RenderSystem.cpp` | 应收敛为 Pass 或 RHI 中性入口 |
 | TD-018 | `ShaderResource` 反射 / ContentBrowser 残留 | ASSET / RND | **Low** | Open | `RND-F03` §15.4 P2 | `Shader` Asset 已删；反射类型仍注册 |
 | TD-019 | `ShadowTypes` GL texture unit 常量与 layout 双轨 | RND | **Low** | Open | `ShadowTypes.h` · `EngineShaderBindings` | 逻辑 set 已有；unit 常量仍散落 |
-| TD-020 | Shadow atlas 仍由 `ShadowResourceManager` 分配 | RND | **Medium** | Open | `RND-F07` S08 尾 | Scene/Post 已图拥有；阴影仍 Manager Create；应迁 Absolute 图资源 |
+| TD-020 | Shadow atlas 仍由 `ShadowResourceManager` 分配 | RND | **Medium** | Done | `RND-F08` | 2026-08-02：图拥有 Dir/Spot/Point；Manager 仅 unit/metadata |
 
 ---
 

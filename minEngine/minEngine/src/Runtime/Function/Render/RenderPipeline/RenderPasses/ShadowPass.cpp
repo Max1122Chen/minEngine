@@ -218,7 +218,7 @@ namespace minEngine
 
     void ShadowPass::RenderDirectionalShadow(RHICommandList& cmdList, const ShadowDrawCommand& command)
     {
-        if (!command.Handle.IsValid() || !command.Handle.Texture)
+        if (!command.Handle.IsValid() || !command.Handle.HasBoundTexture())
         {
             return;
         }
@@ -243,7 +243,7 @@ namespace minEngine
 
     void ShadowPass::RenderSpotShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand)
     {
-        if (!shadowCommand.Handle.IsValid() || !shadowCommand.Handle.Texture)
+        if (!shadowCommand.Handle.IsValid() || !shadowCommand.Handle.HasBoundTexture())
         {
             return;
         }
@@ -268,7 +268,7 @@ namespace minEngine
 
     void ShadowPass::RenderPointShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand)
     {
-        if (!shadowCommand.Handle.IsValid() || !shadowCommand.Handle.Texture)
+        if (!shadowCommand.Handle.IsValid() || !shadowCommand.Handle.HasBoundTexture())
         {
             return;
         }

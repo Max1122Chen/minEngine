@@ -7,17 +7,20 @@
 
 namespace minEngine
 {
-    class RHI;
     class SpotLightSceneProxy;
     class PointLightSceneProxy;
 
+    /**
+     * Shadow slot metadata (texture units / resolution bookkeeping).
+     * RND-F08: textures are owned by RenderGraph SetupAttachments — this type must not Create.
+     */
     class ShadowResourceManager
     {
     public:
         ShadowResourceManager() = default;
         ~ShadowResourceManager() = default;
 
-        void Initialize(RHI* rhi);
+        void Initialize();
         void Shutdown();
 
         void BeginFrame(uint64_t frameIndex);
@@ -27,43 +30,23 @@ namespace minEngine
         ShadowResourceHandle AcquireSpot(const ShadowRequest& req);
         ShadowResourceHandle AcquirePoint(const ShadowRequest& req);
 
-        RHITextureRef GetDirectionalShadowArray() const { return m_DirectionalShadowArray; }
-
     private:
-        struct DirectionalArrayResource
+        struct SpotShadowSlot
         {
             ShadowResolution Resolution{};
-            uint32_t Layers = 0;
-            int TextureUnit = 8;
-        };
-
-        struct SpotShadowResource
-        {
-            ShadowResolution Resolution{};
-            RHITextureRef Texture;
             int TextureUnit = -1;
         };
 
-        struct PointShadowResource
+        struct PointShadowSlot
         {
             ShadowResolution Resolution{};
-            RHITextureRef Texture;
             int TextureUnit = -1;
         };
 
-    private:
-        bool EnsureDirectionalResource(const ShadowRequest& req, uint32_t cascadeCount);
-        bool EnsureSpotResource(const ShadowRequest& req, SpotShadowResource& resource);
-        bool EnsurePointResource(const ShadowRequest& req, PointShadowResource& resource);
-
-    private:
-        RHI* m_RHI = nullptr;
         uint64_t m_FrameIndex = 0;
+        int m_DirectionalTextureUnit = 8;
 
-        DirectionalArrayResource m_DirectionalConfig{};
-        RHITextureRef m_DirectionalShadowArray;
-
-        std::unordered_map<SpotLightSceneProxy*, SpotShadowResource> m_SpotShadowResources;
-        std::unordered_map<PointLightSceneProxy*, PointShadowResource> m_PointShadowResources;
+        std::unordered_map<SpotLightSceneProxy*, SpotShadowSlot> m_SpotShadowSlots;
+        std::unordered_map<PointLightSceneProxy*, PointShadowSlot> m_PointShadowSlots;
     };
 }

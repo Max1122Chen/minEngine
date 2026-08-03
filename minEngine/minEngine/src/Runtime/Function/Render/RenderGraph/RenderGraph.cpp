@@ -348,6 +348,12 @@ namespace minEngine
         m_ImplSetupDone = false;
     }
 
+    void RenderGraph::InvalidateBake()
+    {
+        m_IsBaked = false;
+        m_ImplSetupDone = false;
+    }
+
     RHITextureCreateDesc RenderGraph::MakeCreateDesc(const RDGResourceDimensions& dims) const
     {
         RHITextureCreateDesc desc{};
@@ -359,7 +365,7 @@ namespace minEngine
         desc.Flags = dims.Usage;
         desc.NumMips = dims.Levels;
 
-        // Color RTs must also be sampleable (viewport ImGui Image / post SRV).
+        // Color RTs and sampleable depth (shadow maps) keep ShaderResource from declared usage.
         const bool isDepth =
             dims.Format == TextureFormat::DEPTH16 || dims.Format == TextureFormat::DEPTH24
             || dims.Format == TextureFormat::DEPTH32 || dims.Format == TextureFormat::DEPTH24STENCIL8;

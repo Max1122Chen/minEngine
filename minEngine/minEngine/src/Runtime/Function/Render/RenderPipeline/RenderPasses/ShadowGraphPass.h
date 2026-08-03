@@ -23,6 +23,7 @@ namespace minEngine
         void SetSlotNames(std::string passName, std::string depthSlotName);
         void Configure(const ShadowDrawCommand& command);
         void ClearCommand();
+        void BindGraphTexture(RHITextureRef texture);
 
         void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
         void Prepare(RenderGraph& graph) override;

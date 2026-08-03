@@ -43,6 +43,7 @@ namespace minEngine
         RDGTextureResource& GetTextureResource(const std::string& name);
 
         void Bake();
+        void InvalidateBake();
         void SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull);
         void EnqueueRenderPasses(RHICommandList& cmdList);
 

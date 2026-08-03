@@ -50,7 +50,7 @@ namespace minEngine
     void ForwardRenderer::Initialize()
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
-        m_ShadowResourceManager.Initialize(rhi);
+        m_ShadowResourceManager.Initialize();
         m_FrameIndex = 0;
 
         RHICommandList cmdList(rhi);
@@ -173,6 +173,7 @@ namespace minEngine
         bool presentToBackBuffer)
     {
         m_FrameRenderGraph.Reset();
+        m_LastShadowResourceFingerprint.clear();
         m_ShadowGraphPasses.clear();
         m_ShadowGraphPassPtrs.clear();
         m_SceneSkyGraphPass = nullptr;
@@ -239,7 +240,7 @@ namespace minEngine
         m_FrameRenderGraphBuilt = true;
     }
 
-    void ForwardRenderer::ExecuteFrameRenderGraph(
+    void ForwardRenderer::SetupFrameRenderGraph(
         RHICommandList& cmdList,
         const SceneDrawDesc& desc,
         SceneRenderContext& ctx)
@@ -300,6 +301,13 @@ namespace minEngine
             }
         }
 
+        const std::string shadowFingerprint = BuildShadowResourceFingerprint(ctx);
+        if (shadowFingerprint != m_LastShadowResourceFingerprint)
+        {
+            m_FrameRenderGraph.InvalidateBake();
+            m_LastShadowResourceFingerprint = shadowFingerprint;
+        }
+
         // SkyBoxPass always clears SceneColor/Depth when present in the stack (first writer).
         m_BasePass.SetClearSceneTargets(false);
 
@@ -316,6 +324,83 @@ namespace minEngine
         }
 
         m_FrameRenderGraph.SetupAttachments(*rhi, nullptr);
+    }
+
+    void ForwardRenderer::BindGraphShadowTextures(SceneRenderContext& ctx)
+    {
+        for (size_t shadowIndex = 0; shadowIndex < m_ShadowGraphPasses.size(); ++shadowIndex)
+        {
+            ShadowGraphPass& shadowGraphPass = *m_ShadowGraphPasses[shadowIndex];
+            if (shadowIndex >= ctx.ShadowDrawCommands.size())
+            {
+                continue;
+            }
+
+            ShadowDrawCommand& command = ctx.ShadowDrawCommands[shadowIndex];
+            if (!command.Handle.IsValid() || command.GraphDepthResourceName.empty())
+            {
+                continue;
+            }
+
+            RDGTextureResource* depthResource =
+                m_FrameRenderGraph.FindTextureResource(command.GraphDepthResourceName);
+            if (depthResource == nullptr || depthResource->GetPhysicalIndex() == RDGResource::kUnused)
+            {
+                continue;
+            }
+
+            RHITextureRef texture = m_FrameRenderGraph.GetPhysicalTextureShared(*depthResource);
+            shadowGraphPass.BindGraphTexture(texture);
+            command.Handle.Texture = texture;
+
+            if (command.Type == LightType::Directional)
+            {
+                ctx.DirectionalShadowHandle.Texture = texture;
+            }
+            else if (command.Type == LightType::Spot)
+            {
+                for (ShadowResourceHandle& handle : ctx.SpotShadowHandles)
+                {
+                    if (handle.TextureUnit == command.Handle.TextureUnit)
+                    {
+                        handle.Texture = texture;
+                    }
+                }
+                for (auto& entry : ctx.SpotShadowHandleMap)
+                {
+                    if (entry.second.TextureUnit == command.Handle.TextureUnit)
+                    {
+                        entry.second.Texture = texture;
+                    }
+                }
+            }
+            else if (command.Type == LightType::Point)
+            {
+                for (ShadowResourceHandle& handle : ctx.PointShadowHandles)
+                {
+                    if (handle.TextureUnit == command.Handle.TextureUnit)
+                    {
+                        handle.Texture = texture;
+                    }
+                }
+                for (auto& entry : ctx.PointShadowHandleMap)
+                {
+                    if (entry.second.TextureUnit == command.Handle.TextureUnit)
+                    {
+                        entry.second.Texture = texture;
+                    }
+                }
+            }
+        }
+    }
+
+    void ForwardRenderer::EnqueueFrameRenderGraph(RHICommandList& cmdList, SceneRenderTarget* sceneTarget)
+    {
+        if (sceneTarget == nullptr || !m_FrameRenderGraph.IsBaked())
+        {
+            return;
+        }
+
         m_FrameRenderGraph.EnqueueRenderPasses(cmdList);
 
         sceneTarget->PublishGraphColorTexture(
@@ -328,6 +413,26 @@ namespace minEngine
                     m_FrameRenderGraph.GetPhysicalTextureShared(*depthResource));
             }
         }
+    }
+
+    std::string ForwardRenderer::BuildShadowResourceFingerprint(const SceneRenderContext& ctx) const
+    {
+        std::string key;
+        key.reserve(ctx.ShadowDrawCommands.size() * 32);
+        for (const ShadowDrawCommand& command : ctx.ShadowDrawCommands)
+        {
+            key += command.GraphDepthResourceName;
+            key.push_back('#');
+            key += std::to_string(static_cast<uint32_t>(command.Handle.ResourceType));
+            key.push_back('x');
+            key += std::to_string(command.Handle.Resolution.Width);
+            key.push_back('x');
+            key += std::to_string(command.Handle.Resolution.Height);
+            key.push_back('l');
+            key += std::to_string(command.Handle.LayerCount);
+            key.push_back(';');
+        }
+        return key;
     }
 
     void ForwardRenderer::Shutdown()
@@ -343,6 +448,7 @@ namespace minEngine
         m_ShadowGraphPassPtrs.clear();
         m_ConfiguredShadowGraphPassCount = 0;
         m_FrameRenderGraph.Reset();
+        m_LastShadowResourceFingerprint.clear();
         m_PostBufferTexture.reset();
         m_SceneSkyGraphPass = nullptr;
         m_SceneOpaqueGraphPass = nullptr;
@@ -414,6 +520,10 @@ namespace minEngine
         UpdatePerFrameUBO(ctx);
         UpdateLightUBO(ctx);
 
+        // RND-F08: allocate graph shadow maps before Set1 samples them.
+        SetupFrameRenderGraph(cmdList, desc, ctx);
+        BindGraphShadowTextures(ctx);
+
         m_SceneBindings.BuildSceneSet0(
             cmdList,
             m_PerFrameUniformBuffer.get(),
@@ -436,7 +546,7 @@ namespace minEngine
         m_TranslucentPass.m_SpotShadowHandles = ctx.SpotShadowHandles;
         m_TranslucentPass.m_PointShadowHandles = ctx.PointShadowHandles;
 
-        ExecuteFrameRenderGraph(cmdList, desc, ctx);
+        EnqueueFrameRenderGraph(cmdList, sceneTarget);
 
         m_ShadowResourceManager.EndFrame();
         ++m_FrameIndex;
@@ -685,6 +795,7 @@ namespace minEngine
                     ctx.SpotShadowHandles.push_back(handle);
                 }
                 ShadowDrawCommand command = BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy);
+                command.GraphDepthResourceName = "SpotShadow." + std::to_string(spotLightCount);
                 ctx.ShadowDrawCommands.push_back(command);
                 m_SpotLightViewProjUniformBuffer->UpdateSubresource(
                     &command.ViewProj,
@@ -706,6 +817,11 @@ namespace minEngine
                     ctx.PointShadowHandles.push_back(handle);
                 }
                 std::vector<ShadowDrawCommand> commands = BuildPointShadowDrawCommands(shadowRequest, handle, pointLightProxy);
+                const std::string pointDepthName = "PointShadow." + std::to_string(pointLightCount);
+                for (ShadowDrawCommand& command : commands)
+                {
+                    command.GraphDepthResourceName = pointDepthName;
+                }
                 ctx.ShadowDrawCommands.insert(ctx.ShadowDrawCommands.end(), commands.begin(), commands.end());
                 pointLightCount++;
             }
@@ -879,6 +995,7 @@ namespace minEngine
             ShadowDrawCommand command{};
             command.Type = LightType::Directional;
             command.Handle = handle;
+            command.GraphDepthResourceName = kRDGDirShadowAtlas;
             command.ViewProj = cascadeLightViewProjs[layerIndex];
             // command.ViewProj = CalculateDirectionalLightViewProjMatrix(lightProxy); // For simplicity, we use the same view projection matrix for all cascades for now, we can use the actual cascade-specific view projection matrix later.
             command.Target.TargetLayer = layerIndex;
