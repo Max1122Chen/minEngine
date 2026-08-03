@@ -12,7 +12,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 ### 渲染主线（`render`）— 空闲
 
 - **RND-F07** Done（帧 RT 图所有权）。
-- **RND-F08** Done（阴影图所有权；TD-020 关闭）；用户已确认阴影效果正常。
+- **RND-F08** Done（阴影图所有权；TD-020 关闭）；slot 语义瘦身见 [RND-F08_SHADOW_SLOT_SEMANTICS](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md)。
 - 下一候选：RND-F05 Vulkan / RND-F03 尾 / TD-013 Set0 BindingSet（按需开）。
 
 ### 相关（非紧急）

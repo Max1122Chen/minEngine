@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-02 (RND-F08 shadow graph ownership Done)
+Last updated: 2026-08-03 (RND-F08 slot slim Done)
 
 ## Purpose
 
@@ -1092,6 +1092,28 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
 
+### 2026-08-03 - RND-F08 follow-up：阴影 Slot 语义瘦身（`render`）
+- Goal:
+	删除 `ShadowResourceManager`；用显式 `SlotIndex` 对齐 Set1 / LightUBO。
+- Main changes:
+	`Make*ShadowBinding` 内联进 `ForwardRenderer`；Bind/UBO 按 `SlotIndex`；删 Manager 源文件。
+	短设计 `RND-F08_SHADOW_SLOT_SEMANTICS.md`。
+- Validation done:
+	`test render-graph` / `test smoke`（见本会话）。
+- Next step:
+	用户目视阴影；准备 commit。
+
+### 2026-08-03 - RND-F08 follow-up：阴影 Slot 语义瘦身（`render`）
+- Goal:
+	删除 `ShadowResourceManager`；用显式 `SlotIndex` 对齐 Set1 / LightUBO。
+- Main changes:
+	`Make*ShadowBinding` 内联进 `ForwardRenderer`；Bind/UBO 按 `SlotIndex`；删 Manager 源文件。
+	短设计 `RND-F08_SHADOW_SLOT_SEMANTICS.md`。
+- Validation done:
+	`test render-graph` / `test smoke` PASSED。
+- Next step:
+	用户目视阴影；准备 commit。
+
 ### 2026-08-02 - RND-F08：阴影贴图图所有权（`render`）
 - Goal:
 	Directional/Spot/Point depth 由图拥有；关掉 TD-020；Manager 不再 Create 纹理。
@@ -1101,11 +1123,11 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	`ShadowResourceHandle::IsValid` 与 `HasBoundTexture` 分离；Manager 仅 unit/metadata。
 	`RenderGraph::InvalidateBake` 在阴影尺寸指纹变化时失效。
 - Risks or caveats:
-	待用户目视黄金场景阴影；Manager 类仍保留作 slot 簿记（可后续内联删除）。
+	Manager 已在 2026-08-03 follow-up 删除。
 - Validation done:
 	`test render-graph` 4 PASSED；`test smoke` PASSED。
 - Next step:
-	用户目视；准备 commit。
+	Slot 语义瘦身（已做）。
 
 ### 2026-08-02 - RND-F07：Editor 视口只显示 ImGui Image 占位（`render`）
 - Goal:

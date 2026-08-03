@@ -50,7 +50,6 @@ namespace minEngine
     void ForwardRenderer::Initialize()
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
-        m_ShadowResourceManager.Initialize();
         m_FrameIndex = 0;
 
         RHICommandList cmdList(rhi);
@@ -359,16 +358,14 @@ namespace minEngine
             }
             else if (command.Type == LightType::Spot)
             {
-                for (ShadowResourceHandle& handle : ctx.SpotShadowHandles)
+                const int slot = command.Handle.SlotIndex;
+                if (slot >= 0 && slot < static_cast<int>(ctx.SpotShadowHandles.size()))
                 {
-                    if (handle.TextureUnit == command.Handle.TextureUnit)
-                    {
-                        handle.Texture = texture;
-                    }
+                    ctx.SpotShadowHandles[static_cast<size_t>(slot)].Texture = texture;
                 }
                 for (auto& entry : ctx.SpotShadowHandleMap)
                 {
-                    if (entry.second.TextureUnit == command.Handle.TextureUnit)
+                    if (entry.second.SlotIndex == slot)
                     {
                         entry.second.Texture = texture;
                     }
@@ -376,16 +373,14 @@ namespace minEngine
             }
             else if (command.Type == LightType::Point)
             {
-                for (ShadowResourceHandle& handle : ctx.PointShadowHandles)
+                const int slot = command.Handle.SlotIndex;
+                if (slot >= 0 && slot < static_cast<int>(ctx.PointShadowHandles.size()))
                 {
-                    if (handle.TextureUnit == command.Handle.TextureUnit)
-                    {
-                        handle.Texture = texture;
-                    }
+                    ctx.PointShadowHandles[static_cast<size_t>(slot)].Texture = texture;
                 }
                 for (auto& entry : ctx.PointShadowHandleMap)
                 {
-                    if (entry.second.TextureUnit == command.Handle.TextureUnit)
+                    if (entry.second.SlotIndex == slot)
                     {
                         entry.second.Texture = texture;
                     }
@@ -440,7 +435,6 @@ namespace minEngine
         m_PipelineLayouts.Shutdown();
         m_SceneBindings.Shutdown();
         m_SkyBoxPass.Shutdown();
-        m_ShadowResourceManager.Shutdown();
 
         m_ShadowPass.m_OpaqueQueue.clear();
 
@@ -500,8 +494,6 @@ namespace minEngine
         ctx.Scene = desc.Scene;
         ctx.Camera = desc.Camera;
 
-        m_ShadowResourceManager.BeginFrame(m_FrameIndex);
-
         desc.Scene->CollectOrphanedSceneProxies();
 
         BuildRenderQueue(ctx);
@@ -548,7 +540,6 @@ namespace minEngine
 
         EnqueueFrameRenderGraph(cmdList, sceneTarget);
 
-        m_ShadowResourceManager.EndFrame();
         ++m_FrameIndex;
     }
 
@@ -619,7 +610,7 @@ namespace minEngine
             auto pointShadowIt = ctx.PointShadowHandleMap.find(pointLightProxy);
             if (pointShadowIt != ctx.PointShadowHandleMap.end() && pointShadowIt->second.IsValid())
             {
-                shadowIndex = pointShadowIt->second.TextureUnit - POINT_SHADOW_MAP_BASE_UNIT;
+                shadowIndex = pointShadowIt->second.SlotIndex;
                 if (shadowIndex < 0 || shadowIndex >= MAX_POINT_SHADOW_MAPS)
                 {
                     shadowIndex = -1;
@@ -645,7 +636,7 @@ namespace minEngine
             auto spotShadowIt = ctx.SpotShadowHandleMap.find(spotLightProxy);
             if (spotShadowIt != ctx.SpotShadowHandleMap.end() && spotShadowIt->second.IsValid())
             {
-                shadowIndex = spotShadowIt->second.TextureUnit - SPOT_SHADOW_MAP_BASE_UNIT;
+                shadowIndex = spotShadowIt->second.SlotIndex;
                 if (shadowIndex < 0 || shadowIndex >= MAX_SPOT_SHADOW_MAPS)
                 {
                     shadowIndex = -1;
@@ -739,6 +730,55 @@ namespace minEngine
         }
     }
 
+    ShadowResourceHandle ForwardRenderer::MakeDirectionalShadowBinding(
+        const ShadowRequest& req,
+        uint32_t cascadeCount) const
+    {
+        if (!req.Resolution.IsValid() || cascadeCount == 0)
+        {
+            return ShadowResourceHandle::InvalidHandle();
+        }
+
+        ShadowResourceHandle handle{};
+        handle.ResourceType = ShadowResourceType::Depth2DArray;
+        handle.SlotIndex = 0;
+        handle.ArrayBaseLayer = 0;
+        handle.LayerCount = static_cast<int>(cascadeCount);
+        handle.Resolution = req.Resolution;
+        handle.Texture = nullptr;
+        return handle;
+    }
+
+    ShadowResourceHandle ForwardRenderer::MakeSpotShadowBinding(const ShadowRequest& req, int slotIndex) const
+    {
+        if (!req.Resolution.IsValid() || !req.LightProxy || slotIndex < 0 || slotIndex >= MAX_SPOT_SHADOW_MAPS)
+        {
+            return ShadowResourceHandle::InvalidHandle();
+        }
+
+        ShadowResourceHandle handle{};
+        handle.ResourceType = ShadowResourceType::Depth2D;
+        handle.SlotIndex = slotIndex;
+        handle.Resolution = req.Resolution;
+        handle.Texture = nullptr;
+        return handle;
+    }
+
+    ShadowResourceHandle ForwardRenderer::MakePointShadowBinding(const ShadowRequest& req, int slotIndex) const
+    {
+        if (!req.Resolution.IsValid() || !req.LightProxy || slotIndex < 0 || slotIndex >= MAX_POINT_SHADOW_MAPS)
+        {
+            return ShadowResourceHandle::InvalidHandle();
+        }
+
+        ShadowResourceHandle handle{};
+        handle.ResourceType = ShadowResourceType::DepthCube;
+        handle.SlotIndex = slotIndex;
+        handle.Resolution = req.Resolution;
+        handle.Texture = nullptr;
+        return handle;
+    }
+
     void ForwardRenderer::BuildShadowDrawCommands(SceneRenderContext& ctx)
     {
         ctx.ShadowDrawCommands.clear();
@@ -756,7 +796,7 @@ namespace minEngine
             if (shadowRequest.Type == LightType::Directional)
             {
                 auto dirLightProxy = static_cast<DirectionalLightSceneProxy*>(shadowRequest.LightProxy);
-                ShadowResourceHandle handle = m_ShadowResourceManager.AcquireDirectional(shadowRequest, MAX_CASCADES);
+                ShadowResourceHandle handle = MakeDirectionalShadowBinding(shadowRequest, MAX_CASCADES);
                 if (!dirLightProxy || !handle.IsValid())
                 {
                     continue;
@@ -784,40 +824,44 @@ namespace minEngine
             else if (shadowRequest.Type == LightType::Spot)
             {
                 auto spotLightProxy = static_cast<SpotLightSceneProxy*>(shadowRequest.LightProxy);
-                ShadowResourceHandle handle = m_ShadowResourceManager.AcquireSpot(shadowRequest);
+                if (ctx.SpotShadowHandles.size() >= static_cast<size_t>(MAX_SPOT_SHADOW_MAPS))
+                {
+                    continue;
+                }
+                const int spotSlot = static_cast<int>(ctx.SpotShadowHandles.size());
+                ShadowResourceHandle handle = MakeSpotShadowBinding(shadowRequest, spotSlot);
                 if (!spotLightProxy || !handle.IsValid())                
                 {
                     continue;
                 }
                 ctx.SpotShadowHandleMap[spotLightProxy] = handle;
-                if (ctx.SpotShadowHandles.size() < MAX_SPOT_SHADOW_MAPS)
-                {
-                    ctx.SpotShadowHandles.push_back(handle);
-                }
+                ctx.SpotShadowHandles.push_back(handle);
                 ShadowDrawCommand command = BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy);
-                command.GraphDepthResourceName = "SpotShadow." + std::to_string(spotLightCount);
+                command.GraphDepthResourceName = "SpotShadow." + std::to_string(spotSlot);
                 ctx.ShadowDrawCommands.push_back(command);
                 m_SpotLightViewProjUniformBuffer->UpdateSubresource(
                     &command.ViewProj,
-                    sizeof(Matrix4) * static_cast<uint32_t>(spotLightCount),
+                    sizeof(Matrix4) * static_cast<uint32_t>(spotSlot),
                     sizeof(Matrix4));
                 spotLightCount++;
             }
             else if(shadowRequest.Type == LightType::Point)
             {
                 auto pointLightProxy = static_cast<PointLightSceneProxy*>(shadowRequest.LightProxy);
-                ShadowResourceHandle handle = m_ShadowResourceManager.AcquirePoint(shadowRequest);
+                if (ctx.PointShadowHandles.size() >= static_cast<size_t>(MAX_POINT_SHADOW_MAPS))
+                {
+                    continue;
+                }
+                const int pointSlot = static_cast<int>(ctx.PointShadowHandles.size());
+                ShadowResourceHandle handle = MakePointShadowBinding(shadowRequest, pointSlot);
                 if (!pointLightProxy || !handle.IsValid())
                 {
                     continue;
                 }
                 ctx.PointShadowHandleMap[pointLightProxy] = handle;
-                if (ctx.PointShadowHandles.size() < MAX_POINT_SHADOW_MAPS)
-                {
-                    ctx.PointShadowHandles.push_back(handle);
-                }
+                ctx.PointShadowHandles.push_back(handle);
                 std::vector<ShadowDrawCommand> commands = BuildPointShadowDrawCommands(shadowRequest, handle, pointLightProxy);
-                const std::string pointDepthName = "PointShadow." + std::to_string(pointLightCount);
+                const std::string pointDepthName = "PointShadow." + std::to_string(pointSlot);
                 for (ShadowDrawCommand& command : commands)
                 {
                     command.GraphDepthResourceName = pointDepthName;

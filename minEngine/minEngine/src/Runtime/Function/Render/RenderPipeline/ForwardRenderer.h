@@ -15,7 +15,7 @@
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
-#include "Shadow/ShadowResourceManager.h"
+#include "Shadow/ShadowTypes.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 #include "Runtime/Function/Render/SceneRenderTarget.h"
@@ -132,7 +132,6 @@ namespace minEngine
         std::vector<PostProcessPass> m_PostProcessPasses;
         PresentPass m_PresentPass;
 
-        ShadowResourceManager m_ShadowResourceManager;
         EngineSceneBindingSets m_SceneBindings;
         EnginePipelineLayouts m_PipelineLayouts;
         std::string m_EngineDefaultAssetsRoot;
@@ -175,6 +174,9 @@ namespace minEngine
         void UpdateLightUBO(const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);
         void BuildShadowDrawCommands(SceneRenderContext& ctx);
+        ShadowResourceHandle MakeDirectionalShadowBinding(const ShadowRequest& req, uint32_t cascadeCount) const;
+        ShadowResourceHandle MakeSpotShadowBinding(const ShadowRequest& req, int slotIndex) const;
+        ShadowResourceHandle MakePointShadowBinding(const ShadowRequest& req, int slotIndex) const;
         void BuildRenderQueue(SceneRenderContext& ctx);
 
         DirShadowCommandBuildResult BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 

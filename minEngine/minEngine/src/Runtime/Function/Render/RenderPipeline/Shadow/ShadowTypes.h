@@ -10,6 +10,8 @@ namespace minEngine
 {
     constexpr int MAX_SPOT_SHADOW_MAPS = 2;
     constexpr int MAX_POINT_SHADOW_MAPS = 2;
+
+    /** Legacy GL unit bases — layout description only (EngineShaderBindings). Not shadow slot indices. */
     constexpr int SPOT_SHADOW_MAP_BASE_UNIT = 9;
     constexpr int POINT_SHADOW_MAP_BASE_UNIT = 11;
 
@@ -42,12 +44,18 @@ namespace minEngine
         }
     };
 
+    /**
+     * Sampling-slot descriptor (not a GPU resource owner).
+     * Texture is filled by BindGraphShadowTextures after RDG SetupAttachments.
+     * SlotIndex aligns with Set1 array index / LightUBO shadow index.
+     */
     struct ShadowResourceHandle
     {
         ShadowResourceType ResourceType = ShadowResourceType::Invalid;
         ShadowResolution Resolution{};
 
-        int TextureUnit = -1;
+        /** 0..MAX-1 for spot/point; 0 for directional atlas. */
+        int SlotIndex = -1;
 
         int ArrayBaseLayer = -1;
         int LayerCount = 0;
@@ -57,7 +65,7 @@ namespace minEngine
         bool IsValid() const
         {
             const bool meta =
-                ResourceType != ShadowResourceType::Invalid && Resolution.IsValid() && TextureUnit >= 0;
+                ResourceType != ShadowResourceType::Invalid && Resolution.IsValid() && SlotIndex >= 0;
             switch (ResourceType)
             {
             case ShadowResourceType::Depth2D:
@@ -106,7 +114,7 @@ namespace minEngine
             int TargetLayer = -1;
             int TargetFace;
         } Target;
-    
+
         ShadowAtlasRect AtlasRect{};
     };
 }
