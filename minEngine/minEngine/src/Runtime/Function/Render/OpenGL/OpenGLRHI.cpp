@@ -2,13 +2,39 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
-#include "OpenGLBuffers.h"
-#include "OpenGLVertexArrayObject.h"
-#include "OpenGLTexture.h"
-#include "OpenGLShader.h"
+#include "OpenGLRHIResources.h"
+
+#include "Render/RHI/RHIShaderBinding.h"
+#include "Log/LogSystem.h"
+#include "Render/RHI/RHIGraphicsPipelineState.h"
+#include "Render/RHI/RHIResourceTransition.h"
+#include "Render/RHI/RHIPipelineLayout.h"
+#include "Render/RHI/RHIRenderPass.h"
+
+#include "glad/glad.h"
+
+#include <algorithm>
 
 namespace minEngine
 {
+    namespace
+    {
+        GLenum ToGLDepthFunc(RHIDepthCompareFunc compare)
+        {
+            switch (compare)
+            {
+            case RHIDepthCompareFunc::LessEqual:
+                return GL_LEQUAL;
+            case RHIDepthCompareFunc::Always:
+                return GL_ALWAYS;
+            case RHIDepthCompareFunc::Less:
+            default:
+                return GL_LESS;
+            }
+        }
+
+    }
+
     void OpenGLRHI::Initialize()
     {
         // Initialize OpenGL specific resources here
@@ -24,172 +50,535 @@ namespace minEngine
         ME_CORE_INFO("OpenGLRHI Shutdown");
     }
 
-    void OpenGLRHI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    void OpenGLRHI::RHISetBackbufferClearColor(const Vector3& color)
     {
-        glViewport(x, y, width, height);
-    }
-
-    void OpenGLRHI::SetClearColor(Vector4 clearColor)
-    {
-        glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-    }
-
-    void OpenGLRHI::Clear()
-    {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    }
-
-    void OpenGLRHI::SetDrawBuffer(uint32_t index)
-    {
-        if(index == -1) // GL_NONE
+        if (m_WindowSystem)
         {
-            glDrawBuffer(GL_NONE);
-        }
-        else
-        {
-            glDrawBuffer(GL_COLOR_ATTACHMENT0 + index);
+            m_WindowSystem->SetClearColor(color);
         }
     }
 
-    void OpenGLRHI::SetReadBuffer(uint32_t index)
+    void OpenGLRHI::RHIClearBackbuffer()
     {
-        if(index == -1) // GL_NONE
+        if (m_WindowSystem)
         {
-            glReadBuffer(GL_NONE);
-        }
-        else
-        {
-            glReadBuffer(GL_COLOR_ATTACHMENT0 + index);
+            m_WindowSystem->Clear();
         }
     }
 
-    void OpenGLRHI::EnableDepthTest()
+    
+
+    namespace
     {
-        glEnable(GL_DEPTH_TEST);
+        bool ShouldClearColor(RHIRenderTargetActions action)
+        {
+            return GetLoadAction(action) == RHIRenderTargetLoadAction::Clear;
+        }
+
+        bool ShouldClearDepth(RHIDepthStencilTargetActions action)
+        {
+            return action == RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil ||
+                   action == RHIDepthStencilTargetActions::ClearDepthStencilDontStore;
+        }
     }
 
-    void OpenGLRHI::DisableDepthTest()
+    void OpenGLRHI::DestroyTransientFramebuffer()
     {
-        glDisable(GL_DEPTH_TEST);
+        if (m_OwnsTransientFramebuffer && m_TransientFramebuffer != 0)
+        {
+            glDeleteFramebuffers(1, &m_TransientFramebuffer);
+        }
+        m_TransientFramebuffer = 0;
+        m_OwnsTransientFramebuffer = false;
     }
 
-    void OpenGLRHI::SetDepthMask(bool bEnable)
+    std::shared_ptr<RHITexture> OpenGLRHI::RHICreateTexture2D(const RHITextureCreateDesc& desc, const void* initialData)
     {
-        glDepthMask(bEnable ? GL_TRUE : GL_FALSE);
+        return std::make_shared<OpenGLRHITexture>(desc, initialData);
     }
 
-    void OpenGLRHI::EnableStencilTest()
+    std::shared_ptr<RHIShaderResourceView> OpenGLRHI::RHICreateShaderResourceView(const RHITextureSRVDesc& desc)
     {
-        glEnable(GL_STENCIL_TEST);
-    }
-
-    void OpenGLRHI::DisableStencilTest()
-    {
-        glDisable(GL_STENCIL_TEST);
-    }
-
-    void OpenGLRHI::SetStencilMask(uint32_t mask)
-    {
-        glStencilMask(mask);
-    }
-
-    void OpenGLRHI::EnableBlend()
-    {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // Set default blend function for alpha blending
-    }
-
-    void OpenGLRHI::DisableBlend()
-    {
-        glDisable(GL_BLEND);
-
-    }
-
-    void OpenGLRHI::EnableCullFace()
-    {
-        glEnable(GL_CULL_FACE);
-    }
-
-    void OpenGLRHI::DisableCullFace()
-    {
-        glDisable(GL_CULL_FACE);
-    }
-
-    std::shared_ptr<VertexBuffer> OpenGLRHI::CreateVertexBuffer(float *vertices, uint32_t size, uint32_t numVertices)
-    {
-        return std::make_shared<OpenGLVertexBuffer>(vertices, size, numVertices);
-    }
-
-    std::shared_ptr<IndexBuffer> OpenGLRHI::CreateIndexBuffer(uint32_t *indices, uint32_t numIndices)
-    {
-        return std::make_shared<OpenGLIndexBuffer>(indices, numIndices);
-    }
-
-    std::shared_ptr<VertexDefinition> OpenGLRHI::CreateVertexDefinition(std::initializer_list<VertexElement> elements)
-    {
-        return std::make_shared<OpenGLVertexArrayObject>(elements);
-    }
-
-    std::shared_ptr<FrameBuffer> OpenGLRHI::CreateFrameBuffer(uint32_t width, uint32_t height)
-    {
-        return std::make_shared<OpenGLFrameBuffer>(width, height);
-    }
-
-    std::shared_ptr<UniformBuffer> OpenGLRHI::CreateUniformBuffer(uint32_t size, uint32_t bindingPoint)
-    {
-        return std::make_shared<OpenGLUniformBuffer>(size, bindingPoint);
-    }
-
-    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2D(const unsigned char *data, RHITextureDesc desc)
-    {
-        return std::make_shared<OpenGLTexture2D>(data, desc);
-    }
-
-    std::shared_ptr<RHITexture2D> OpenGLRHI::CreateRHITexture2DFloat(const float* data, RHITextureDesc desc)
-    {
-        auto texture = std::make_shared<OpenGLTexture2D>(data, desc);
-        if (texture->GetID() == 0)
+        if (!desc.Texture)
         {
             return nullptr;
         }
-        return texture;
+        return std::make_shared<OpenGLRHIShaderResourceView>(desc);
     }
 
-    std::shared_ptr<RHITextureCube> OpenGLRHI::CreateRHITextureCube(
-        const std::vector<unsigned char*>& faceData,
-        RHITextureDesc desc,
-        bool generateMipmaps)
+    std::shared_ptr<RHIBuffer> OpenGLRHI::RHICreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
     {
-        auto texture = std::make_shared<OpenGLTextureCube>(faceData, desc, generateMipmaps);
-        if (texture->GetID() == 0)
-        {
-            return nullptr;
-        }
-        return texture;
+        return std::make_shared<OpenGLRHIBuffer>(desc, initialData);
     }
 
-    std::shared_ptr<RHITexture2DArray> OpenGLRHI::CreateRHITexture2DArray(const unsigned char *data, RHITextureDesc desc)
-    {
-        return std::make_shared<OpenGLTexture2DArray>(data, desc);
-    }
-
-    std::shared_ptr<RHIShader> OpenGLRHI::CreateRHIShader(
+    std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
         const std::string& vertexSource,
         const std::string& fragmentSource,
         std::string* outCompileLog)
     {
-        std::shared_ptr<OpenGLShader> shader = std::make_shared<OpenGLShader>(vertexSource, fragmentSource);
-        if (outCompileLog != nullptr)
+        auto shader = std::make_shared<OpenGLRHIShader>(vertexSource, fragmentSource);
+        if (outCompileLog)
         {
             *outCompileLog = shader->GetCompileLog();
         }
-
         if (!shader->IsValid())
         {
             return nullptr;
         }
-
         return shader;
+    }
+
+    std::shared_ptr<RHIGraphicsPipelineState> OpenGLRHI::RHICreateGraphicsPipelineState(const RHIGraphicsPSODesc& desc)
+    {
+        if (!desc.PipelineLayout)
+        {
+            ME_CORE_WARN("RHICreateGraphicsPipelineState: PipelineLayout is null");
+        }
+        return std::make_shared<RHIGraphicsPSOStateFallback>(desc);
+    }
+
+    std::shared_ptr<RHIShaderBindingSetLayout> OpenGLRHI::RHICreateShaderBindingSetLayout(const std::vector<RHIShaderBindingSetLayoutEntry>& entries)
+    {
+        return std::make_shared<OpenGLRHIShaderBindingSetLayout>(entries);
+    }
+
+    std::shared_ptr<RHIPipelineLayout> OpenGLRHI::RHICreatePipelineLayout(
+        const std::vector<RHIShaderBindingSetLayout*>& setLayouts)
+    {
+        return std::make_shared<OpenGLRHIPipelineLayout>(setLayouts);
+    }
+
+    std::shared_ptr<RHIShaderBindingSet> OpenGLRHI::RHICreateShaderBindingSet(
+        RHIShaderBindingSetLayout* layout,
+        const std::vector<RHIShaderBinding>& resources)
+    {
+        return std::make_shared<OpenGLRHIShaderBindingSet>(layout, resources);
+    }
+
+    std::shared_ptr<RHIVertexInputLayout> OpenGLRHI::RHICreateVertexInputLayout(
+        std::initializer_list<RHIVertexElement> elements)
+    {
+        return std::make_shared<OpenGLRHIVertexInputLayout>(elements);
+    }
+
+    void OpenGLRHI::ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
+    {
+        m_BoundPipeline = pipelineState;
+        auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(pipelineState);
+        if (!fallback)
+        {
+            return;
+        }
+
+        const RHIGraphicsPSODesc& desc = fallback->GetDesc();
+
+        // Set shader program
+        if (auto* vs = dynamic_cast<OpenGLRHIShader*>(desc.VertexShader))
+        {
+            glUseProgram(vs->GetProgramId());
+        }
+
+        // Set vertex input layout
+        if (desc.VertexInputLayout)
+        {
+            m_BoundVertexLayout = static_cast<OpenGLRHIVertexInputLayout*>(desc.VertexInputLayout);
+            if (m_BoundVertexLayout)
+            {
+                glBindVertexArray(m_BoundVertexLayout->GetVertexArrayId());
+            }
+        }
+
+        // Set blend state
+        if (desc.BlendState.bBlendEnabled)
+        {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendEquation(GL_FUNC_ADD);
+        }
+        else
+        {
+            glDisable(GL_BLEND);
+        }
+
+        // Set depth test
+        if (desc.DepthStencilState.bDepthTestEnabled)
+        {
+            glEnable(GL_DEPTH_TEST);
+        }
+        else
+        {
+            glDisable(GL_DEPTH_TEST);
+        }
+        glDepthMask(desc.DepthStencilState.bDepthWriteEnabled ? GL_TRUE : GL_FALSE);
+        glDepthFunc(ToGLDepthFunc(desc.DepthStencilState.DepthCompare));
+
+        // Set rasterizer state
+        if (!desc.RasterizerState.bCullEnabled || desc.RasterizerState.CullMode == RHICullMode::None)
+        {
+            glDisable(GL_CULL_FACE);
+        }
+        else
+        {
+            glEnable(GL_CULL_FACE);
+            switch (desc.RasterizerState.CullMode)
+            {
+            case RHICullMode::Front:
+                glCullFace(GL_FRONT);
+                break;
+            case RHICullMode::Back:
+            default:
+                glCullFace(GL_BACK);
+                break;
+            }
+        }
+    
+        // Set primitive type
+        switch (desc.PrimitiveType)
+        {
+        case RHIPrimitiveType::TriangleList:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
+        case RHIPrimitiveType::TriangleStrip:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
+        case RHIPrimitiveType::LineList:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
+        }
+
+        ReapplyBoundShaderBindingSets();
+    }
+
+    void OpenGLRHI::ApplyShaderBindingSetResources(RHIShaderBindingSet* bindingSet)
+    {
+        auto* glSet = static_cast<OpenGLRHIShaderBindingSet*>(bindingSet);
+        if (!glSet)
+        {
+            return;
+        }
+
+        const RHIShaderBindingSetLayout* layout = glSet->GetLayout();
+        const std::vector<RHIShaderBinding>& resources = glSet->GetBindings();
+        if (!layout)
+        {
+            return;
+        }
+
+        const std::vector<RHIShaderBindingSetLayoutEntry>& entries = layout->GetEntries();
+        const size_t bindCount = std::min(resources.size(), entries.size());
+        for (size_t i = 0; i < bindCount; ++i)
+        {
+            const RHIShaderBinding& resource = resources[i];
+            const RHIShaderBindingSetLayoutEntry& entry = entries[i];
+
+            if (resource.Type == RHIShaderBindingType::TextureSRV && resource.TextureSRV)
+            {
+                const RHITextureSRVDesc& srvDesc = resource.TextureSRV->GetCreateDesc();
+                if (!srvDesc.Texture)
+                {
+                    continue;
+                }
+
+                GLuint texId = GetOpenGLTextureId(srvDesc.Texture);
+                if (texId == 0)
+                {
+                    continue;
+                }
+
+                GLenum target = GL_TEXTURE_2D;
+                if (auto* glTexture = dynamic_cast<OpenGLRHITexture*>(srvDesc.Texture))
+                {
+                    target = glTexture->GetTextureTarget();
+                }
+
+                glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(entry.ShaderBinding));
+                glBindTexture(target, texId);
+            }
+            else if (resource.Type == RHIShaderBindingType::UniformBuffer && resource.Buffer)
+            {
+                auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
+                if (ubo)
+                {
+                    glBindBufferBase(
+                        GL_UNIFORM_BUFFER,
+                        entry.ShaderBinding,
+                        ubo->GetBufferId());
+                }
+            }
+        }
+    }
+
+    void OpenGLRHI::ReapplyBoundShaderBindingSets()
+    {
+        for (uint32_t setIndex = 0; setIndex < kMaxShaderBindingSets; ++setIndex)
+        {
+            if (m_BoundShaderBindingSets[setIndex])
+            {
+                ApplyShaderBindingSetResources(m_BoundShaderBindingSets[setIndex]);
+            }
+        }
+    }
+
+    void OpenGLRHI::RHICmdBeginRenderPass(const RHIRenderPassInfo& info)
+    {
+        m_BoundShaderBindingSets = {};
+        DestroyTransientFramebuffer();
+
+        const RHIRenderPassInfo::ColorAttachment& color0 = info.ColorAttachments[0];
+        const bool hasColor = color0.RenderTarget != nullptr;
+        const bool hasDepth = info.DepthStencil.DepthStencilTarget != nullptr;
+
+        GLuint fbo = 0;
+        if (hasColor || hasDepth)
+        {
+            glGenFramebuffers(1, &fbo);
+            m_TransientFramebuffer = fbo;
+            m_OwnsTransientFramebuffer = true;
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+            if (hasColor)
+            {
+                auto* colorTex = static_cast<OpenGLRHITexture*>(color0.RenderTarget);
+                if (colorTex->GetTextureTarget() == GL_TEXTURE_2D_ARRAY &&
+                    color0.ArraySlice >= 0)
+                {
+                    glFramebufferTextureLayer(
+                        GL_FRAMEBUFFER,
+                        GL_COLOR_ATTACHMENT0,
+                        colorTex->GetTextureId(),
+                        color0.MipIndex,
+                        color0.ArraySlice);
+                }
+                else if (colorTex->GetTextureTarget() == GL_TEXTURE_CUBE_MAP &&
+                         color0.ArraySlice >= 0)
+                {
+                    const GLenum cubeFace =
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(color0.ArraySlice);
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_COLOR_ATTACHMENT0,
+                        cubeFace,
+                        colorTex->GetTextureId(),
+                        color0.MipIndex);
+                }
+                else
+                {
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_COLOR_ATTACHMENT0,
+                        colorTex->GetTextureTarget(),
+                        colorTex->GetTextureId(),
+                        color0.MipIndex);
+                }
+                GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
+                glDrawBuffers(1, drawBuffers);
+            }
+            else
+            {
+                glDrawBuffer(GL_NONE);
+                glReadBuffer(GL_NONE);
+            }
+
+            if (hasDepth)
+            {
+                auto* depthTex = static_cast<OpenGLRHITexture*>(info.DepthStencil.DepthStencilTarget);
+                if (depthTex->GetTextureTarget() == GL_TEXTURE_2D_ARRAY &&
+                    info.DepthStencil.ArraySlice >= 0)
+                {
+                    glFramebufferTextureLayer(
+                        GL_FRAMEBUFFER,
+                        GL_DEPTH_ATTACHMENT,
+                        depthTex->GetTextureId(),
+                        info.DepthStencil.MipIndex,
+                        info.DepthStencil.ArraySlice);
+                }
+                else if (depthTex->GetTextureTarget() == GL_TEXTURE_CUBE_MAP &&
+                         info.DepthStencil.ArraySlice >= 0)
+                {
+                    const GLenum cubeFace =
+                        GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(info.DepthStencil.ArraySlice);
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_DEPTH_ATTACHMENT,
+                        cubeFace,
+                        depthTex->GetTextureId(),
+                        info.DepthStencil.MipIndex);
+                }
+                else
+                {
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER,
+                        GL_DEPTH_ATTACHMENT,
+                        depthTex->GetTextureTarget(),
+                        depthTex->GetTextureId(),
+                        info.DepthStencil.MipIndex);
+                }
+            }
+        }
+        else
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glDrawBuffer(GL_BACK);
+            glReadBuffer(GL_BACK);
+        }
+
+        GLbitfield clearMask = 0;
+        if (hasColor && ShouldClearColor(color0.Action))
+        {
+            glClearColor(
+                info.ClearValue.Color[0],
+                info.ClearValue.Color[1],
+                info.ClearValue.Color[2],
+                info.ClearValue.Color[3]);
+            clearMask |= GL_COLOR_BUFFER_BIT;
+        }
+        if (hasDepth && ShouldClearDepth(info.DepthStencil.Action))
+        {
+            // glClear depth is skipped when GL_DEPTH_WRITEMASK is false (e.g. after SkyBox / translucency).
+            glDepthMask(GL_TRUE);
+            glClearDepth(info.ClearValue.Depth);
+            clearMask |= GL_DEPTH_BUFFER_BIT;
+        }
+        if (clearMask != 0)
+        {
+            glClear(clearMask);
+        }
+    }
+
+    void OpenGLRHI::RHICmdEndRenderPass()
+    {
+        DestroyTransientFramebuffer();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDepthMask(GL_FALSE);
+    }
+
+    void OpenGLRHI::RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
+    {
+        ApplyGraphicsPipelineState(pipelineState);
+    }
+
+    void OpenGLRHI::RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet)
+    {
+        if (setIndex >= kMaxShaderBindingSets)
+        {
+            ME_CORE_WARN("RHICmdSetShaderBindingSet: setIndex {} out of range", setIndex);
+            return;
+        }
+
+        if (bindingSet && m_BoundPipeline)
+        {
+            if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(m_BoundPipeline))
+            {
+                RHIPipelineLayout* pipelineLayout = fallback->GetDesc().PipelineLayout;
+                if (pipelineLayout && setIndex >= pipelineLayout->GetShaderBindingSetLayoutCount())
+                {
+                    ME_CORE_WARN(
+                        "RHICmdSetShaderBindingSet: setIndex {} exceeds pipeline layout set count {}",
+                        setIndex,
+                        pipelineLayout->GetShaderBindingSetLayoutCount());
+                    return;
+                }
+
+                if (pipelineLayout)
+                {
+                    RHIShaderBindingSetLayout* expectedLayout = pipelineLayout->GetShaderBindingSetLayout(setIndex);
+                    if (expectedLayout && bindingSet->GetLayout() != expectedLayout)
+                    {
+                        ME_CORE_WARN("RHICmdSetShaderBindingSet: binding layout mismatch at set {}", setIndex);
+                    }
+                }
+            }
+        }
+
+        m_BoundShaderBindingSets[setIndex] = bindingSet;
+        ApplyShaderBindingSetResources(bindingSet);
+    }
+
+    void OpenGLRHI::RHICmdTransition(const RHITextureTransitionInfo& transition)
+    {
+        (void)transition;
+    }
+
+    void OpenGLRHI::RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    {
+        glViewport(static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+    }
+
+
+    void OpenGLRHI::RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot)
+    {
+        (void)slot;
+        m_BoundVertexBuffer = static_cast<OpenGLRHIBuffer*>(vertexBuffer);
+        if (!m_BoundVertexBuffer)
+        {
+            return;
+        }
+
+        if (m_BoundVertexLayout)
+        {
+            m_BoundVertexLayout->BindVertexBuffer(m_BoundVertexBuffer->GetBufferId());
+            return;
+        }
+
+        glBindBuffer(m_BoundVertexBuffer->GetBindingTarget(), m_BoundVertexBuffer->GetBufferId());
+    }
+
+    void OpenGLRHI::RHICmdSetIndexBuffer(RHIBuffer* indexBuffer)
+    {
+        m_BoundIndexBuffer = static_cast<OpenGLRHIBuffer*>(indexBuffer);
+        if (!m_BoundIndexBuffer)
+        {
+            return;
+        }
+
+        if (m_BoundVertexLayout)
+        {
+            glBindVertexArray(m_BoundVertexLayout->GetVertexArrayId());
+        }
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_BoundIndexBuffer->GetBufferId());
+    }
+
+    void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)
+    {
+        const void* indices = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex * sizeof(uint32_t)));
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
+        (void)vertexOffset;
+    }
+
+    void OpenGLRHI::RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex)
+    {
+        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
+    }
+
+    void OpenGLRHI::RHICmdGenerateMips(RHITexture* texture)
+    {
+        if (texture == nullptr)
+        {
+            return;
+        }
+
+        auto* glTexture = static_cast<OpenGLRHITexture*>(texture);
+        const GLuint textureId = glTexture->GetTextureId();
+        const GLenum target = glTexture->GetTextureTarget();
+        if (textureId == 0)
+        {
+            return;
+        }
+
+        glBindTexture(target, textureId);
+        glGenerateMipmap(target);
+
+        const RHITextureCreateDesc& desc = texture->GetDesc();
+        const bool useMipFilter = desc.NumMips > 1
+            || HasTextureCreateFlag(desc.Flags, RHITextureCreateFlags::GenerateMips);
+        if (useMipFilter)
+        {
+            glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+
+        glBindTexture(target, 0);
     }
 
 }

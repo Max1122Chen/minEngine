@@ -13,7 +13,6 @@ namespace minEngine
 {
     class RHI;
     class TextureCube;
-    class Texture2D;
 
     struct TextureCubeFaceSet
     {
@@ -42,14 +41,13 @@ namespace minEngine
 
         static void FreeFaceSet(TextureCubeFaceSet& faceSet);
 
-        static std::shared_ptr<TextureCube> CreateRHITextureCubeFromFaceSet(
+        static std::shared_ptr<TextureCube> CreateTextureCubeFromFaceSet(
             RHI& rhi,
             const TextureCubeFaceSet& faceSet,
             TextureFormat format,
             bool generateMipmaps = false,
             std::string* outError = nullptr);
 
-        /** Six solid RGBA8 faces (size x size); useful for validation / fallback. */
         static std::shared_ptr<TextureCube> CreateSolidColorCube(
             RHI& rhi,
             uint32_t faceSize,
@@ -63,14 +61,14 @@ namespace minEngine
             bool generateMipmaps = false,
             std::string* outError = nullptr);
 
-        static std::shared_ptr<RHITextureCube> CreateEmptyRenderTargetCube(
+        static RHITextureRef CreateRenderTargetCube(
             RHI& rhi,
             uint32_t faceSize,
             TextureFormat format,
-            std::string* outError = nullptr);
+            uint32_t numMips = 1);
 
-        static std::shared_ptr<TextureCube> WrapRHITextureCube(
-            std::shared_ptr<RHITextureCube> rhiTexture,
+        static std::shared_ptr<TextureCube> WrapTextureCube(
+            RHITextureRef texture,
             uint32_t faceSize,
             uint32_t channels);
     };

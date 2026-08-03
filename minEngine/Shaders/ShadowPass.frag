@@ -1,10 +1,16 @@
-#version 330 core
+#version 420 core
 
 in vec3 WorldPos;
 
-uniform vec3 u_LightPos;
-uniform float u_FarPlane;
-uniform int u_UseLinearDepth;
+layout (std140, binding = 11) uniform ShadowPassParams
+{
+    int u_UseLinearDepth;
+    float _pad0;
+    float _pad1;
+    float _pad2;
+    vec3 u_LightPos;
+    float u_FarPlane;
+};
 
 void main()
 {

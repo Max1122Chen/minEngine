@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-02 (master: merge luaScript + physics; CORE-F03 Transform quat)
+Last updated: 2026-08-03 (master ← merge render; RND-F10 + physics/Lua union)
 
 ## Purpose
 
@@ -80,6 +80,17 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-08-03 - master ← merge render（现代 RHI/RDG/EnvMap + physics/Lua）
+- Goal:
+	Integrate `render` (RND-F02–F10) onto `master` (Lua/physics/Transform quat) without dropping either track.
+- Main changes:
+	Union AssetManager LuaScript + EnvironmentMap; TestSuiteRegistration all suites; docs ACTIVE_WORK/REGISTRY/TECH_DEBT (CORE TD-013 enum kept; render Set0 cache → TD-022).
+	`test.mescene` keeps physics + SkyBox EnvironmentMap.
+- Validation done:
+	(pending) build + verify.ps1 after merge commit.
+- Next step:
+	FF `render` to `master`; resume RND-F05 discussion when ready.
 
 ### 2026-05-25 - Asset Pipeline 业务线设计草案
 - Goal:
@@ -1074,6 +1085,32 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	Docs-only; no build.
 - Next step:
 	User review Design Draft；可选补 Implementation Plan；然后 S01 引入 sol2 + `LuaScriptSystem`.
+### 2026-06-01 - RND-F02 S5 remaining passes + native texture handle
+- Goal:
+  Complete migration wave 2: scene render pass via modern RHI; remove glad from RenderPasses.
+- Main changes:
+  `RenderPipeline` scene path `RHICmdBeginRenderPass`; Base/Translucency draw via `RHICommandList`; PostProcess/SkyBox modern PSO.
+  `GetRHINativeTextureHandle` + Editor viewport/thumbnails; PSO `RHIDepthCompareFunc`/`RHICullMode`; fix cull vs depth-clip mapping.
+- Risks or caveats:
+  Materials still `RHIShaderLegacy` + `BindForDraw`; Point shadow still legacy FBO.
+- Validation done:
+  `.\scripts\verify.ps1`.
+- Next step:
+  S5+: material binding migration; delete Legacy `RHI` public API.
+
+### 2026-06-01 - RND-F02 S4 OpenGL modern path + Present/Shadow migration
+- Goal:
+  Implement S3 contract on OpenGL; migrate Present and Directional/Spot shadow passes to `RHICommandList`.
+- Main changes:
+  `OpenGLRHIModern.{h,cpp}` (texture/buffer/shader/layout/SRV/binding wrappers); `OpenGLRHI` `RHICreate*`/`RHICmd*` (transient FBO, PSO fallback, draw/bind).
+  `PresentPass` / `ShadowPass` use modern render pass + pipeline; `SceneRenderTarget::BuildRenderPassInfo`; `RenderPipeline` passes `RHICommandList`.
+  Point shadow still Legacy `FrameBuffer` + `rhi->Clear()`. `RHIGraphicsPipelineStateRef`; raw-pointer legacy wrap overloads.
+- Risks or caveats:
+  Editor visual regression not automated; Point shadow hybrid until S5.
+- Validation done:
+  `.\scripts\verify.ps1` (build + smoke).
+- Next step:
+  S5: remaining passes, ImGui native handle, engine shaders via BindingSet.
 
 ### 2026-06-02 - WF-F02 handbook UX phase 2 (S04–S07)
 - Goal:
@@ -1230,6 +1267,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Design §3.2, §4 P10, §5 options E/F; Implementation S01-c/d assembly and sync wording.
 - Next step:
   User approval → commit docs; then S01-a.
+### 2026-06-01 - RND-F02 planning + Modern RHI design draft (`render`)
+- Goal:
+  Start GPU-model Modern RHI track; separate from RenderGraph (RND-F01 deferred).
+- Main changes:
+  `FEATURE_REGISTRY` + `ACTIVE_WORK` render focus; `docs/ai/Render/RND-F02_MODERN_RHI_DESIGN.md` (Part A 教案 + Part B 设计 + R0–R3 slices).
+  Branch `render` for subsequent implementation.
+- Validation done:
+  Docs only; `mkdocs build` N/A for ai/Render path.
+- Next step:
+  F02-R0: CommandList draw + remove `gl*` from RenderPasses.
 
 ### 2026-06-01 - WF-F02 handbook site skeleton (MkDocs + GitHub Pages CI)
 - Goal:
@@ -1247,3 +1294,410 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - **Docs:** `PLATFORM_ROADMAP.md`、`EDITOR_PLATFORM_PLAN.md`、`PROJECT_CONTEXT.md` aligned with repo state.
 - **Done (marked):** P6.1 CB UI; P3 Undo E1.1–E1.4 + S1–S2; E2.1–E2.3a Inspector/Material viewport preview (`6ccd9bf`).
 - **Deferred (consolidated):** E1 Inspector unification; E2.2b Texture preview; E2.3b CB thumbnails; E2.4; E1.5 Material Undo; Command E2 TryMerge; P7; P0/P1; P4/P5.
+
+### 2026-06-05 - RND-F03 M1 tail (`render`, WIP)
+- Goal:
+  Complete M1 D/E/F tail after golden-scene visual sign-off (dir/point/spot + shadows OK).
+- Main changes:
+  SkyBoxPass + EnvMapCapture → `RHICreate*` + `SetBindingSet` + `BeginRenderPass` (no `FrameBuffer`/`WrapLegacy`).
+  Material `BindForDraw` → Set2 `RHIBindingSet` (textures via `GetRHITexture()`); scalars still legacy uniform upload.
+  EnvMap shaders → `#version 420` + `layout(binding=0)`.
+  Deleted all `WrapLegacy*` (zero production callers).
+  `TextureCubeLoader::CreateRenderTargetCube` / `WrapTextureCube`.
+- Validation done:
+  `cmake --build` minEngine + Editor; `.\scripts\verify.ps1` smoke + material-ir PASS.
+  grep: Pass path `WrapLegacy` / `CreateUniformBuffer` / `CreateFrameBuffer` / `CreateVertexBuffer` = 0.
+- Remaining (M2):
+  Delete `RHI.h` Legacy API block; remove `Shader` Asset path; drop `m_RHITexture` dual-track on Texture2D/Cube; merge `OpenGLRHIModern` into `OpenGLRHI`.
+- Next step:
+  User final acceptance → commit; then M2 or RND-F04 prep.
+
+### 2026-06-08 - RND-F03 M2 partial (`render`, WIP)
+- Goal:
+  Continue M2 after M1 user sign-off: engine passes off Shader Asset, texture single-track, merge OpenGLRHIModern, delete Legacy RHI resource API.
+- Main changes:
+  `EngineShaderUtils` — engine fixed shaders via `RHICreateShader` (Present/Shadow/Sky/Post/EnvMap/FXAA/Sharpen).
+  `Texture2D`/`TextureCube` — single `RHITextureRef`; loaders use `RHICreateTexture2D` only.
+  Deleted `OpenGLRHIModern.*`; added `OpenGLRHIResources.*`.
+  `RHI.h` — removed `CreateVertexBuffer`/`CreateRHITexture*`/`CreateRHIShader` (Legacy); kept GL state toggles.
+  Removed `EngineIBLEnvironment::BindForPBRDraw`; Editor thumbnail + MaterialIRTest use `RHITexture::GetNativeHandle()`.
+  `TextureCubeLoader` — `CreateRenderTargetCube` / `WrapTextureCube`; dropped legacy cube factories.
+- Validation done:
+  grep (Render/): `OpenGLRHIModern`/`CreateRHITexture`/`GetRHITextureModern`/`Shader::CreateFromFiles` in Pass path = 0.
+  Full build not re-run this session (long compile); prior blocker was EnvMapCapture missing `OpenGLShader.h` (fixed).
+- Remaining (M2 tail):
+  Material compile still uses `Shader` Asset + `RHIShaderLegacy`; scalar uniforms still `UploadUniformFloat`.
+  Dead legacy impl files (`OpenGLBuffers`, legacy `RHITexture2D` types) still in tree.
+- Next step:
+  User local `cmake --build` + golden scene → commit; optional Material GPU program migration.
+
+### 2026-06-01 - RND-F03 M1 complete + M2 sign-off (`render`)
+- Goal:
+  Finish F03 steps 2–5: Material GPU path, engine Pass UBO/BindingSet, legacy file deletion, grep gate, maintainer docs.
+- Main changes:
+  Material: `RHIShader` + Set2 scalar UBO (`binding=8`) + per-material PSO; removed `Shader` Asset (`Shader.*`, `ShaderLoader.*`, asset registration).
+  Engine passes: Shadow/Post/Sky/EnvMap/Present → `EnginePassUniforms` UBO + `SetBindingSet`; shaders `#version 420` + fixed bindings.
+  Legacy cleanup: deleted `RHIShaderLegacy`, `OpenGLBuffers.*`, `OpenGLVertexArrayObject.*`; trimmed `OpenGLHeaders.h`; `OpenGLRHIResources` upload texture ownership fix.
+  Docs: `ACTIVE_WORK` / `FEATURE_REGISTRY` F03 → Done; `AssetManager.h` drops stale `LoadAsset_Impl<Shader>`.
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests Editor` PASS.
+  `.\scripts\verify.ps1` (smoke + material-ir) PASS.
+  grep `Render/`: `WrapLegacy`, `RHIShaderLegacy`, `UploadUniform*`, `CreateVertexBuffer`, `OpenGLRHIModern` = 0.
+  Golden scene visual OK (prior session user sign-off).
+- Next step:
+  User commit on `render`; promote F04 when ready.
+
+### 2026-06-02 - RND-F03 M4 P0–P2 pipeline refactor (`render`)
+- Goal:
+  Execute M4 adopted plan §9: detach runtime IBL/EnvMap, unify draw submission, move mesh PSO authority from Material to Pass + MeshDrawCommand; M3 backend type inline alongside.
+- Main changes:
+  **P0:** CMake excludes `EnvMapCapture` / `EngineIBLEnvironment` / `BrdfLutGenerator` from engine link; `RenderPipeline` drops IBL init; `SkyBoxPass` self-loads `environment_*` cubemap; `BuildSceneSet1` leaves IBL slots null; PBR template + assembler use direct light + simple ambient (`AO * 0.03`); MaterialIR IBL GPU tests skipped.
+  **P1:** `RHICommandList::SubmitDraw` / `SubmitDrawMesh` — sole four-step draw path (PSO → bindings → VB/IB → Draw); all passes migrated (Shadow/Present/Post/Sky/mesh).
+  **P2:** `RenderPassBase::PrepareMeshDrawCommands` builds per-draw PSO with `material shader + cmd.m_VertexInputLayout + pass fixed depth/blend`; `MeshDrawCommand::m_PipelineState`; `Material` no longer owns `m_PipelineState`.
+  **M3 (partial):** Delete `OpenGLShader.*` / `OpenGLTexture.*`; logic inlined into `OpenGLRHIResources`; trim legacy `RHI.h` surface.
+  **Docs:** `RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md` (§9 adopted plan); `FEATURE_REGISTRY` / `ACTIVE_WORK` / F03 §16 pointers updated.
+- Risks or caveats:
+  Per-frame PSO `Create` per mesh draw (no cache yet); `Material::BindForDraw` still creates BindingSet each draw (P3); `RHICreateSRV` direct `new` unchanged (P0′).
+- Validation done:
+  `cmake --build minEngine/build --target minEngineTests Editor` PASS.
+  `.\scripts\verify.ps1` (smoke + material-ir) PASS.
+  Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
+- Next step:
+  P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-08-03 - RND-F10：EnvMapCapture 去 GL 旁路 + 退役全局 IBL（`render`）
+- Goal:
+	用现代 RHI 表达 mip/filter；删除 `EngineIBLEnvironment` / `BrdfLutGenerator`；S06 挂 TD。
+- Main changes:
+	`RHICmdGenerateMips` + CommandList；OpenGL cube 按 `NumMips` 分配；Capture 去掉 glad/`GetOpenGLTextureId`；删死代码与 CMake exclude；登记 **TD-021**（Editor Bake UX）。
+- Validation done:
+	`mingw32-make minEngine/Editor/minEngineTests`；`.\scripts\verify.ps1` smoke PASS；Editor bake 日志仍通（irradiance/prefilter + baked HDR）。
+- Risks or caveats:
+	`EnvMapCapture.cpp` 仍有匿名命名空间静态 bake helpers（与全 static Baker API 并存；未再引入引擎层 GL）；BRDF 仍依赖项目 `brdf_lut.png`。
+- Next step:
+	用户确认是否将 F10 标 Done；准备 commit。
+
+### 2026-08-03 - RND-F10 S05：项目 HDR → 天空/IBL bake（`render`）
+- Goal:
+	无 face PNG 时从项目 `m_SourceHdrPath` GPU bake 真实天空（付清 TD-015 主路径）。
+- Main changes:
+	现代路径重开 `EnvMapCapture`（PSO/BindingSet/`CreateShaderResourceView`）；`EnvironmentMap::TryBakeFromSourceHdr`；`DefaultEnvironment.meenv` 指向 `citrus_orchard_puresky_1k.hdr`。
+- Validation done:
+	`mingw32-make minEngine/Editor`；Editor 日志：`baked sky/IBL from project HDR` + irradiance/prefilter；`.\scripts\verify.ps1` smoke PASS。
+- Risks or caveats:
+	仍含 `glGenerateMipmap`/glad（RHI 无 GenerateMips）；S04 全局 IBL 入口未删；S06 Editor 显式 Bake 未做。
+- Next step:
+	用户目视 Viewport 天空；可选 S04 / 去 glad / S06。
+
+### 2026-08-03 - RND-F10 S01–S03：EnvironmentMap 项目资产接线（`render`）
+- Goal:
+	EnvironmentMap 仅项目 Content；SkyBoxComponent ref → SkyPass / Set1；EngineDefault 只作复制种子。
+- Main changes:
+	`EnvironmentMap` + `.meenv` loader/registry；Sky proxy/pass 跟 Asset；Set1 IBL 从场景 EnvironmentMap；`MyMEProject` 种子 IBL + `DefaultEnvironment.meenv`。
+- Validation done:
+	`mingw32-make minEngine/Editor/minEngineTests`；`.\scripts\verify.ps1` smoke PASS；`test render-graph` PASS。
+- Risks or caveats:
+	无 face PNG 时 validation cube；BRDF 需在 Inspector 指到项目 `brdf_lut`；Bake（TD-015）未做。
+- Next step:
+	S04 清全局 IBL 入口；S05 现代 Baker；用户目视：给 SkyBox 指定 DefaultEnvironment。
+
+### 2026-08-03 - RND-F10 Draft：EnvironmentMap Asset + Sky/IBL（`render`）
+- Goal:
+	场景 Asset 引用驱动天空与 IBL；GPU Bake 后置并用现代 RHI 付清 TD-015。
+- Main changes:
+	登记 `RND-F10`；Design + Impl 草稿；ACTIVE_WORK / TECH_DEBT 指向 F10。
+- Next step:
+	用户确认 Draft → Planned；建议先 S01–S03 磁盘接线。
+
+### 2026-08-03 - RND-F09 Done：RHI / Binding hygiene（`render`）
+- Goal:
+	付清 TD-013/014/016/017/018/019（不含 TD-015）。
+- Main changes:
+	S01 Set0 脏缓存；S02 Material `RHITextureViewCache`；S03 `RHISetBackbufferClearColor`/`RHIClearBackbuffer`；S04 Apply 补 blend 因子；S05 删除 `ShaderResource`+CB 过滤；S06 unit → `EngineShaderBindings`。
+- Validation done:
+	`cmake --build` minEngine/Editor/minEngineTests；`.\scripts\verify.ps1` smoke PASS；`test render-graph` PASS。
+- Risks or caveats:
+	Blend 因子尚未 desc 驱动；Editor 黄金场景待用户目视。
+- Next step:
+	用户目视后准备 commit；TD-015 EnvMap 专题另议。
+
+### 2026-08-03 - RND-F09 Planned：RHI / Binding hygiene sweep（`render`）
+- Goal:
+	打包付清 TD-013/014/016/017/018/019；明确排除 TD-015 EnvMap。
+- Main changes:
+	登记 `RND-F09`；Design + Impl；TECH_DEBT / ACTIVE_WORK 指向 F09 切片。
+- Next step:
+	用户确认方案后从 S01（Set0 脏标记）开工。
+
+### 2026-08-03 - RND-F08 follow-up：阴影 Slot 语义瘦身（`render`）
+- Goal:
+	删除 `ShadowResourceManager`；用显式 `SlotIndex` 对齐 Set1 / LightUBO。
+- Main changes:
+	`Make*ShadowBinding` 内联进 `ForwardRenderer`；Bind/UBO 按 `SlotIndex`；删 Manager 源文件。
+	短设计 `RND-F08_SHADOW_SLOT_SEMANTICS.md`。
+- Validation done:
+	`test render-graph` / `test smoke`（见本会话）。
+- Next step:
+	用户目视阴影；准备 commit。
+
+### 2026-08-03 - RND-F08 follow-up：阴影 Slot 语义瘦身（`render`）
+- Goal:
+	删除 `ShadowResourceManager`；用显式 `SlotIndex` 对齐 Set1 / LightUBO。
+- Main changes:
+	`Make*ShadowBinding` 内联进 `ForwardRenderer`；Bind/UBO 按 `SlotIndex`；删 Manager 源文件。
+	短设计 `RND-F08_SHADOW_SLOT_SEMANTICS.md`。
+- Validation done:
+	`test render-graph` / `test smoke` PASSED。
+- Next step:
+	用户目视阴影；准备 commit。
+
+### 2026-08-02 - RND-F08：阴影贴图图所有权（`render`）
+- Goal:
+	Directional/Spot/Point depth 由图拥有；关掉 TD-020；Manager 不再 Create 纹理。
+- Main changes:
+	`SetupFrameRenderGraph` → `BindGraphShadowTextures` → `BuildSceneSet1` → `EnqueueFrameRenderGraph`。
+	`ShadowGraphPass` Absolute 声明（Dir=`DirShadowAtlas` 2DArray；Spot/Point 共享 `GraphDepthResourceName`）。
+	`ShadowResourceHandle::IsValid` 与 `HasBoundTexture` 分离；Manager 仅 unit/metadata。
+	`RenderGraph::InvalidateBake` 在阴影尺寸指纹变化时失效。
+- Risks or caveats:
+	Manager 已在 2026-08-03 follow-up 删除。
+- Validation done:
+	`test render-graph` 4 PASSED；`test smoke` PASSED。
+- Next step:
+	Slot 语义瘦身（已做）。
+
+### 2026-08-02 - RND-F07：Editor 视口只显示 ImGui Image 占位（`render`）
+- Goal:
+	接回后视口无正常场景，只见 ImGui Image 占位；修帧纹理寿命与采样/清屏链路。
+- Main changes:
+	`Bake` 不再 `assign(nullptr)` 清空物理纹理；rebake 前清 pass IO / resource usage。
+	Color RT 强制 `ShaderResource`；`SetupAttachments` 按 flags 不匹配则重建。
+	`SceneRenderTarget::Resize` 同尺寸不 `reset` publish。
+	`SkyBoxPass` 恒跑并 clear；Opaque LoadStore；Post 链 `NeedRenderPass` + predecessor，FXAA 失败时 Sharpen 不覆盖 SceneColor。
+- Risks or caveats:
+	阴影仍 TD-020。
+- Validation done:
+	`cmake --build … --target Editor minEngineTests`；`test render-graph` 4 PASSED；`test smoke` PASSED；用户目视黄金场景 OK。
+- Next step:
+	准备 commit；可选付清 TD-020。
+
+### 2026-08-02 - RND-F07 Phase1 S01–S03：真渲染停工 + 帧 RT 不分配（`render`）
+- Goal:
+	Phase1 中间态：无人分配 SceneColor/Depth/shadow/post；`ForwardRenderer` 不跑真图。
+- Main changes:
+	`ForwardRenderer::Execute` / `EnsurePostBufferTexture` 早退；`SceneRenderTarget::Resize` 只记尺寸不建纹理；`ShadowResourceManager::Ensure*` 恒 false。
+	`render-graph` 移出 smoke；Design 定名图节点 `RenderPass` / 钩子 `IRenderPass`；Status In Progress。
+- Risks or caveats:
+	Editor 视口黑屏（已有 null texture 提示）；旧 Manual 图代码暂留待 S04 替换。
+- Validation done:
+	`cmake --build minEngine/build --target minEngineTests`
+	`minEngine\bin\minEngineTests.exe test smoke` → PASSED（`render-graph` 已不在 smoke）
+- Next step:
+	S04 Granite 式图核心（§3.6）。
+
+### 2026-08-02 - RND-F07-S06–S09：接回场景/Post + 收口（`render`）
+- Goal:
+	完成 F07：主路径走 Granite 式图；Scene/Post 图拥有；删 Manual external。
+- Main changes:
+	`RenderGraphFrameContext` / `ForceIncludePass` / `Prepare(graph)`。
+	Sky/Opaque/Translucent/Post/Present 新生命周期；`ForwardRenderer::Execute` 全路径恢复。
+	SceneRT Publish color+depth；Shadow ForceInclude + Manager Ensure 恢复（**TD-020**）。
+	Registry F07 Done；无 `RegisterExternal`。
+- Risks or caveats:
+	阴影 atlas 尚未迁入图；Bake 每尺寸变化重建。
+- Validation done:
+	`test render-graph` 4 PASSED；`test smoke` PASSED。
+- Next step:
+	用户 Editor 黄金场景目视；可选付清 TD-020；准备 commit。
+
+### 2026-08-02 - RND-F07-S05：图拥有资源 GPU 竖切（`render`）
+- Goal:
+	证明 Bake/SetupAttachments 产生的物理纹理可上 GPU，并有可观察输出。
+- Main changes:
+	`GraphClearPass`：声明 `SceneColor` + ClearStore。
+	`ForwardRenderer::Execute` 跑竖切图；`PublishGraphColorTexture` 把图 `shared_ptr` 交给 SceneRT 显示。
+	`GetPhysicalTextureShared`；单测 `glGetTexImage` 校验 clear 色。
+- Risks or caveats:
+	仅 clear，无场景几何；S07 前视口固定 slate-blue。
+- Validation done:
+	`minEngineTests.exe test render-graph` → 4 PASSED（含 clear 读回）
+	`minEngineTests.exe test smoke` → PASSED
+- Next step:
+	S06 Pass 生命周期收紧，或直接进 S07 接回场景。
+
+### 2026-08-02 - RND-F07-S04：Granite 式 RenderGraph Bake 核心（`render`）
+- Goal:
+	落地 Design §3.6：声明 → Bake → SetupAttachments → GetPhysicalTexture；替换 Manual builder。
+- Main changes:
+	新增/重写 `RDGTypes` / `RDGResource` / `IRenderPass` / `RenderPass` / `RenderGraph`（Bake 依赖回溯 + 物理表；transient/merge Deferred）。
+	删除 `RenderPassBuilder` / `RenderGraphFrameResources` / `RDGTexture`；场景 Pass 改为新 `IRenderPass` stub；`ForwardRenderer` 旧构图路径 idle。
+	`RenderGraphTest`：headless GL + Bake/物理纹理/依赖序/缺 writer。
+- Risks or caveats:
+	主路径仍黑屏；InputRelative / swapchain 非拥有视图 / barrier 未做；S05 才上 GPU 竖切。
+- Validation done:
+	`cmake --build minEngine/build --target minEngine minEngineTests`
+	`minEngineTests.exe test render-graph` → 3 PASSED
+	`minEngineTests.exe test smoke` → PASSED
+- Next step:
+	S05 最小 GPU 竖切（图拥有 color → clear/present）。
+
+### 2026-08-02 - RND-F07 Draft：Granite-style RDG + 帧资源所有权大重构（`render`）
+- Goal:
+	拍板破坏性两阶段：Phase1 无人分配帧 RT、真渲染停工；Phase2 化用本机 Granite `render_graph` 再接回。取代 F01 S06+ 实验 Bake 产品方向。
+- Main changes:
+	新增 `RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md` / `_IMPLEMENTATION.md`；Registry / ACTIVE_WORK；F01 Meta 标注 Superseded by F07。
+- Risks or caveats:
+	中间态黑屏；Phase2 须对照 Granite `bake()` 防再发明。
+- Validation done:
+	Phase1 code landed；见同日 Phase1 条目。
+- Next step:
+	S04 Granite 式图核心（§3.6）。
+
+### 2026-07-24 - RND-F01 S05 RDG implementation hygiene (`render`)
+- Goal:
+  收敛 Manual RDG 过碎/空壳实现，名实相符；不扩 Bake/transient。
+- Main changes:
+  删除 `RenderGraphExecute.cpp`、`RDGBuffer.h` 占位、`PassParameters.h` / `RenderGraphFrameContext.h` / `RenderGraphTransition.*`（并入 `IRenderPass` / `RenderGraphFrameResources`）；`RenderGraphScenePass.h` → `SceneRenderPassUtils.h`。
+- Risks or caveats:
+  `RDGBuffer` 待真有 buffer 资源时再引入；目录仍含 `RenderPipeline/`（F06-S03 可选）。
+- Validation done:
+  `cmake --build` minEngine + minEngineTests PASS；`minEngineTests.exe test render-graph` PASS。
+- Next step:
+  F01-S06 Bake。
+
+### 2026-07-24 - RND-F06 S01–S02：ForwardRenderer 替换 RenderPipeline（`render`）
+- Goal:
+  删除 `RenderPipeline`；`SceneRenderer` 薄基类 + `ForwardRenderer` 实现；`RenderSystem` 只依赖基类。
+- Main changes:
+  `SceneRenderer.h`、`EngineRenderLimits.h`；`RenderPipeline.h/.cpp` → `ForwardRenderer.h/.cpp`；Pass/utils/Context 指针改名；`FrameRenderGraphContext::Renderer`；目录名暂留 `RenderPipeline/`。
+- Risks or caveats:
+  目录与类名短期不一致（S03）；黄金场景目视待维护者确认。
+- Validation done:
+  `cmake --build` minEngine + minEngineTests + Editor PASS。
+  `minEngineTests.exe test render-graph` + `test smoke`（from `bin/`）PASS。
+- Next step:
+  维护者 Editor 黄金场景目视；F06-S03 目录/注释收尾；然后 F01 S05 RDG 卫生。
+
+### 2026-07-24 - RND-F06 Design：ForwardRenderer / Graph 职责分离（文档）
+- Goal:
+  钉死 Renderer vs RenderGraph 心智模型；登记 Feature；调整 F01「下一步 Bake」口径，避免在 `RenderPipeline` 上帝对象上继续堆机制。
+- Main changes:
+  新增 `docs/ai/Render/RND-F06_FORWARD_RENDERER_DESIGN.md`；Registry / ACTIVE_WORK / PROJECT_CONTEXT 更新；F01 §6 切片改为 **F06 闸门 → S05 卫生 → S06 Bake → S08 调图形态**。
+- Risks or caveats:
+  尚未写 C++；须按 ACTIVE_WORK 接力，勿跳过 F06 直接 Bake。
+- Validation done:
+  Registry 已登记 `RND-F06`；RND next free → F07。
+- Next step:
+  F06-S01 抽出 `ForwardRenderer`；或先准备 commit 本批文档。
+
+### 2026-06-12 - RND-F01 S04 Shadow passes RenderGraph migration (`render`)
+- Goal:
+  Split monolithic ShadowPass into per-command graph passes; declare DirShadowAtlas scene input edge.
+- Main changes:
+  `ShadowGraphPass` (IRenderPass per `ShadowDrawCommand`); `ShadowPass::RenderSingleDrawCommand` + `PrepareShadowPass`.
+  Dynamic shadow pass pool in `m_FrameRenderGraph` (rebuild when command count changes); execution order Shadow.* → Scene → Post.
+  `kRDGDirShadowAtlas`; Base/Translucent `AddTextureInput(DirShadowAtlas)`; removed legacy `m_ShadowPass.Execute` from main path.
+- Risks or caveats:
+  Shadow pass names use index slots (`Shadow.N` / `ShadowDepth.N`); spot/point logical names deferred; visual shadow sign-off pending.
+- Validation done:
+  `cmake --build` + `minEngineTests.exe test render-graph` PASS.
+- Next step:
+  ~~F01-S05 Bake~~ → **已改口径（2026-07-24）：先 RND-F06，再 F01 S05 卫生 → S06 Bake。**
+
+### 2026-06-12 - RND-F01 S03 Scene passes RenderGraph migration (`render`)
+- Goal:
+  Migrate Sky / Opaque / Translucent into unified frame RenderGraph; extract mesh draw helpers from RenderPassBase.
+- Main changes:
+  `SkyBoxPass`, `BasePass`, `TranslucencyPass` implement `IRenderPass`; `SceneMeshDrawUtils` + `FrameRenderGraphContext`.
+  `m_FrameRenderGraph` merges scene + post + present; per-pass `BeginRenderPass` on SceneColor/SceneDepth (Sky/Opaque clear, Translucent load).
+  Removed monolithic scene `RHICmdBeginRenderPass` block from `RenderPipeline::Execute`.
+- Risks or caveats:
+  Visual golden-scene sign-off pending user; Shadow still Legacy outside graph (S04).
+- Validation done:
+  `cmake --build` + `minEngineTests.exe test render-graph` PASS.
+- Next step:
+  F01-S04 Shadow pass graph migration.
+
+### 2026-06-12 - RND-F01 S02 Post chain RenderGraph migration (`render`)
+- Goal:
+  Migrate FXAA → Sharpen → Present to Manual RenderGraph; remove scene-pass post loop and `m_SceneColorTexture` injection.
+- Main changes:
+  `PostProcessPass` / `PresentPass` implement `IRenderPass` (Setup / PreparePass / BuildRenderPass); `RenderPipeline` owns `m_PostRenderGraph`, `m_PostBufferTexture`, `ExecutePostRenderGraph` after scene `EndRenderPass`.
+  `RenderGraphFrameResources::BeginFrame`; `RegisterExternalTexture` re-register; `kRDGPostBufferA`.
+  Binding sets created in `PreparePass`, not `BuildRenderPass`.
+- Risks or caveats:
+  Visual golden-scene sign-off pending user; transient PostBufferA owned by pipeline (not graph pool).
+- Validation done:
+  `cmake --build` + `minEngineTests.exe test render-graph` PASS.
+- Next step:
+  F01-S03 Scene passes (Sky / Opaque / Translucent) graph migration.
+
+### 2026-06-12 - RND-F01 S01 Manual RenderGraph skeleton (`render`)
+- Goal:
+  Deliver compile-ready RenderGraph types + two-phase executor without touching main pipeline path.
+- Main changes:
+  New `Render/RenderGraph/`: `RenderGraph`, `RenderPass`, `RenderPassBuilder`, `RenderGraphFrameResources`, `IRenderPass`, `RDGTexture` (string names), `AddTransition`; deleted empty `RenderPipeline/RenderGraph.h` stub.
+  `ExecuteGraph`: all `PreparePass` then all `BuildRenderPass`; `render-graph` smoke tests (setup IO + execution order).
+- Risks or caveats:
+  No `Bake()` / no main-path wiring; internal RT creation deferred to S02.
+- Validation done:
+  `cmake --build` clean + `minEngineTests.exe test render-graph` PASS (2 cases, 7 asserts).
+- Next step:
+  F01-S02 Post/Present graph migration.
+
+### 2026-06-12 - RND-F01 S0 Binding vocabulary unification (`render`)
+- Goal:
+  Align RHI binding types/APIs with Vulkan descriptor mental model before RenderGraph S01.
+- Main changes:
+  `RHIBinding.h` → `RHIShaderBinding.h`; `RHIShaderBindingSetLayout` / `RHIShaderBindingSetLayoutEntry` / `RHIShaderBindingSet` / `RHIShaderBinding` / `RHIShaderBindingType`; `CreateShaderBindingSetLayout` / `CreateShaderBindingSet` / `SetShaderBindingSet`; `GetShaderBindingSetLayout` / `kMaxShaderBindingSets`; `MeshDrawPacket::ShaderBindingSets`; OpenGL impl classes renamed; all Pass/Material/Engine call sites updated.
+- Risks or caveats:
+  `EngineSceneBindingSets` class name unchanged (engine layer); Tier-B design docs still cite old `RHIBinding*` in places.
+- Validation done:
+  `cmake --build minEngine/build --target minEngine` PASS.
+  `minEngineTests.exe test smoke` + `material-ir` PASS (existing binary; test exe relink blocked by file lock).
+- Next step:
+  F01-S01 Manual RenderGraph skeleton; optional commit S0.
+
+### 2026-06-11 - RND-F04 S04 PSO/SRV cache + RHI contract cleanup (`render`)
+- Goal:
+  Close F04 hot-path caching and RHI contract gaps; remove legacy draw submit API.
+- Main changes:
+  **PSO cache:** `EnginePipelineLayouts::GetOrCreateSceneMeshGraphicsPipelineState` keyed by layout + VIL + shader + pass kind.
+  **SRV flyweight:** `RHITextureViewCache`; Scene Set1 dirty rebuild; Present/Post texture-keyed BindingSet cache; Sky SRV/set at init.
+  **RHI:** `RHICmdTransition` (GL no-op); `OpenGLRHI` tracks bound descriptor sets with setIndex validation; removed `SubmitDraw*` from `RHICommandList`.
+  Docs: F04 Done; TECH_DEBT TD-013–TD-019.
+- Risks or caveats:
+  `BuildSceneSet0` still rebuilds each frame; Material SRV not flyweighted; `verify.ps1` not recorded this session.
+- Validation done:
+  Maintainer local cmake build PASS; golden scene visual OK.
+- Next step:
+  Commit S04; run `verify.ps1`; start F03-M3 tail inventory (EnvMap bypass, asset ShaderResource).
+
+### 2026-06-11 - RND-F04 S01–S03 PipelineLayout + MeshDrawPacket (`render`)
+- Goal:
+  Modern RHI semantic evolution: glue PSO to binding via PipelineLayout; complete draw packet; unify all Pass submit paths.
+- Main changes:
+  **S01:** `RHIPipelineLayout`, `RHICreatePipelineLayout`, GL `OpenGLRHIPipelineLayout`; `RHIGraphicsPSODesc::PipelineLayout`; `EnginePipelineLayouts` (shadow / scene mesh / pass-local).
+  **S02:** `MeshDrawPacket`, `RHICommandList::SubmitMeshDrawPacket`; Present / Post / Sky migrated.
+  **S03:** `PrepareMeshDrawPackets` + `SubmitSceneMeshDrawPackets`; Base / Translucent / Shadow on full packet (Set0/1/2); `MeshDrawCommand` pass-agnostic; removed `BindSceneDrawResources`.
+  Docs: F04 design §12–§13 slice status; `ACTIVE_WORK` / `FEATURE_REGISTRY`.
+- Risks or caveats:
+  Per-draw PSO create still uncached; SRV per-frame create unchanged; `setIndex` still ignored; `SubmitDraw*` legacy API retained on CommandList.
+- Validation done:
+  User local cmake build PASS; golden scene visual OK.
+- Next step:
+  S04: PSO cache, SRV flyweight, `setIndex`, `RHICmdTransition` no-op; remove legacy SubmitDraw API.
+
+### 2026-06-02 - RND-F03 M4 P3 material BindingSet cache (`render`)
+- Goal:
+  Stop per-draw `CreateBindingSet` in `Material::BindForDraw`; cache Set2 at compile / texture parameter change.
+- Main changes:
+  `Material::m_MaterialBindingSet` + `RebuildMaterialBindingSet` (compile + `SetTextureParameter`).
+  `BindForDraw` only uploads scalar UBO; material Set2 bound via `SubmitDrawMesh` in `DrawMeshCommand`.
+  `PrepareMeshDrawCommands` fills `MeshDrawCommand::m_MaterialBindingSet` from `Material::GetMaterialBindingSet`.
+- Risks or caveats:
+  Texture SRVs still `make_shared<OpenGLRHIShaderResourceView>` (P0′); per-frame PSO create unchanged; fullscreen passes still create binding sets per frame.
+- Validation done:
+  User local cmake build + Editor visual OK.
+- Next step:
+  P0′ `RHICreateShaderResourceView`; optional Pass PSO cache; PROGRESS_LOG commit on `render`.

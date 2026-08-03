@@ -5,7 +5,12 @@
 
 // Requires MaterialSceneShadows.glslinc included earlier in the same translation unit.
 
-layout (std140) uniform PerFrameData
+// Set to 1 to visualize CSM cascade selection (R/G/B/Y = cascade 0/1/2/3). Recompile materials after toggling.
+#ifndef DIR_CASCADE_DEBUG
+#define DIR_CASCADE_DEBUG 0
+#endif
+
+layout (std140, binding = 0) uniform PerFrameData
 {
     mat4 View;
     mat4 Proj;
@@ -51,6 +56,11 @@ vec3 CalcDirLightGraph(
             break;
         }
     }
+
+#if DIR_CASCADE_DEBUG
+    return GetCascadeDebugColor(cascadeIndex);
+#endif
+
     vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
     shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
 

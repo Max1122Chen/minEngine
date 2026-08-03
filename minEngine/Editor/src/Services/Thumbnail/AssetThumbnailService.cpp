@@ -293,17 +293,18 @@ namespace minEngine
 
         RenderSystem::Get().SubmitSceneDraw(desc);
 
-        const std::shared_ptr<RHITexture2D>& displayTexture = m_InspectorViewport.GetColorTexture();
-        if (!displayTexture || displayTexture->GetWidth() == 0 || displayTexture->GetHeight() == 0)
+        const RHITextureRef& displayTexture = m_InspectorViewport.GetColorTexture();
+        const RHITextureCreateDesc& displayDesc = displayTexture ? displayTexture->GetDesc() : RHITextureCreateDesc{};
+        if (!displayTexture || displayDesc.Width == 0 || displayDesc.Height == 0)
         {
             return ThumbnailView{};
         }
 
         m_CachedView.State = ThumbnailState::Ready;
         m_CachedView.BackendKind = ThumbnailBackendKind::Scene3D;
-        m_CachedView.Width = displayTexture->GetWidth();
-        m_CachedView.Height = displayTexture->GetHeight();
-        m_CachedView.TextureId = static_cast<ImTextureID>(displayTexture->GetID());
+        m_CachedView.Width = displayDesc.Width;
+        m_CachedView.Height = displayDesc.Height;
+        m_CachedView.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(displayTexture.get()));
 
         m_bDirty = false;
         return m_CachedView;
@@ -320,14 +321,14 @@ namespace minEngine
             return view;
         }
 
-        const RHITexture2D* rhiTexture = textureAsset->GetRHITexture();
-        if (!rhiTexture || rhiTexture->GetID() == 0)
+        const RHITexture* rhiTexture = textureAsset->GetRHITexture();
+        if (!rhiTexture || GetRHINativeTextureHandle(rhiTexture) == 0)
         {
             return view;
         }
 
-        uint32_t textureWidth = rhiTexture->GetWidth();
-        uint32_t textureHeight = rhiTexture->GetHeight();
+        uint32_t textureWidth = rhiTexture->GetDesc().Width;
+        uint32_t textureHeight = rhiTexture->GetDesc().Height;
         if (textureWidth == 0 || textureHeight == 0)
         {
             textureWidth = textureAsset->GetWidth();
@@ -342,7 +343,7 @@ namespace minEngine
         view.State = ThumbnailState::Ready;
         view.Width = textureWidth;
         view.Height = textureHeight;
-        view.TextureId = static_cast<ImTextureID>(rhiTexture->GetID());
+        view.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(rhiTexture));
         return view;
     }
 
@@ -373,14 +374,14 @@ namespace minEngine
             return view;
         }
 
-        const RHITexture2D* rhiTexture = textureAsset->GetRHITexture();
-        if (!rhiTexture || rhiTexture->GetID() == 0)
+        const RHITexture* rhiTexture = textureAsset->GetRHITexture();
+        if (!rhiTexture || GetRHINativeTextureHandle(rhiTexture) == 0)
         {
             return view;
         }
 
-        uint32_t textureWidth = rhiTexture->GetWidth();
-        uint32_t textureHeight = rhiTexture->GetHeight();
+        uint32_t textureWidth = rhiTexture->GetDesc().Width;
+        uint32_t textureHeight = rhiTexture->GetDesc().Height;
         if (textureWidth == 0 || textureHeight == 0)
         {
             textureWidth = textureAsset->GetWidth();
@@ -395,7 +396,7 @@ namespace minEngine
         view.State = ThumbnailState::Ready;
         view.Width = textureWidth;
         view.Height = textureHeight;
-        view.TextureId = static_cast<ImTextureID>(rhiTexture->GetID());
+        view.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(rhiTexture));
         return view;
     }
 
@@ -551,17 +552,18 @@ namespace minEngine
 
         RenderSystem::Get().SubmitSceneDraw(desc);
 
-        const std::shared_ptr<RHITexture2D>& displayTexture = entry.Viewport.GetColorTexture();
-        if (!displayTexture || displayTexture->GetWidth() == 0 || displayTexture->GetHeight() == 0)
+        const RHITextureRef& displayTexture = entry.Viewport.GetColorTexture();
+        const RHITextureCreateDesc& displayDesc = displayTexture ? displayTexture->GetDesc() : RHITextureCreateDesc{};
+        if (!displayTexture || displayDesc.Width == 0 || displayDesc.Height == 0)
         {
             return ThumbnailView{};
         }
 
         entry.CachedView.State = ThumbnailState::Ready;
         entry.CachedView.BackendKind = ThumbnailBackendKind::Scene3D;
-        entry.CachedView.Width = displayTexture->GetWidth();
-        entry.CachedView.Height = displayTexture->GetHeight();
-        entry.CachedView.TextureId = static_cast<ImTextureID>(displayTexture->GetID());
+        entry.CachedView.Width = displayDesc.Width;
+        entry.CachedView.Height = displayDesc.Height;
+        entry.CachedView.TextureId = static_cast<ImTextureID>(GetRHINativeTextureHandle(displayTexture.get()));
 
         entry.bDirty = false;
         return entry.CachedView;

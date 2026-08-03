@@ -1,25 +1,31 @@
-#version 330 core
+#version 420 core
 
 in vec2 TexCoord;
 out vec4 FragColor;
 
-uniform sampler2D u_SceneColor; // bound to unit 0
-uniform vec2 u_InvResolution;   // (1/width, 1/height)
+layout (binding = 0) uniform sampler2D u_SceneColor;
 
-// FXAA parameters 
-uniform float u_ReduceMin;      // default: 1.0/128.0
-uniform float u_ReduceMul;      // default: 1.0/8.0
-uniform float u_SpanMax;        // default: 8.0
+layout (std140, binding = 1) uniform EnginePostParams
+{
+    vec2 u_InvResolution;
+    float u_ReduceMin;
+    float u_ReduceMul;
+    float u_SpanMax;
+    float u_Strength;
+    float u_EdgeThreshold;
+    vec2 _pad;
+};
 
 void main()
 {
-    vec3 rgbNW = texture(u_SceneColor, TexCoord + vec2(-1.0, -1.0) * u_InvResolution).rgb;
-    vec3 rgbNE = texture(u_SceneColor, TexCoord + vec2( 1.0, -1.0) * u_InvResolution).rgb;
-    vec3 rgbSW = texture(u_SceneColor, TexCoord + vec2(-1.0,  1.0) * u_InvResolution).rgb;
-    vec3 rgbSE = texture(u_SceneColor, TexCoord + vec2( 1.0,  1.0) * u_InvResolution).rgb;
+    vec2 texel = u_InvResolution;
+
+    vec3 rgbNW = texture(u_SceneColor, TexCoord + vec2(-1.0, -1.0) * texel).rgb;
+    vec3 rgbNE = texture(u_SceneColor, TexCoord + vec2( 1.0, -1.0) * texel).rgb;
+    vec3 rgbSW = texture(u_SceneColor, TexCoord + vec2(-1.0,  1.0) * texel).rgb;
+    vec3 rgbSE = texture(u_SceneColor, TexCoord + vec2( 1.0,  1.0) * texel).rgb;
     vec3 rgbM  = texture(u_SceneColor, TexCoord).rgb;
 
-    // To luma
     vec3 lumaWeights = vec3(0.299, 0.587, 0.114);
 
     float lumaNW = dot(rgbNW, lumaWeights);
@@ -31,7 +37,6 @@ void main()
     float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
     float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
 
-    // Edge detection
     vec2 dir;
     dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
     dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));
@@ -46,7 +51,6 @@ void main()
 
     dir = clamp(dir * rcpDirMin, vec2(-u_SpanMax), vec2(u_SpanMax)) * u_InvResolution;
 
-    // Sample along the edge
     vec3 rgbA = 0.5 * (
         texture(u_SceneColor, TexCoord + dir * (1.0/3.0 - 0.5)).rgb +
         texture(u_SceneColor, TexCoord + dir * (2.0/3.0 - 0.5)).rgb
@@ -59,7 +63,6 @@ void main()
 
     float lumaB = dot(rgbB, lumaWeights);
 
-    // Choose the final color
     if ((lumaB < lumaMin) || (lumaB > lumaMax))
     {
         FragColor = vec4(rgbA, 1.0);

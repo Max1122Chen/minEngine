@@ -1,6 +1,9 @@
 #pragma once
 #include "Core.h"
 
+#include <cstdint>
+#include <memory>
+
 namespace minEngine
 {
     enum class TextureFormat
@@ -27,84 +30,88 @@ namespace minEngine
         DepthStencil,
     };
 
-    struct RHITextureDesc
+    // --- Modern RHI (S2) ---
+
+    enum class RHITextureDimension : uint8_t
     {
-        uint32_t        Width       = 0;
-        uint32_t        Height      = 0;
-        uint32_t        Layers      = 1;
-        TextureFormat   Format      = TextureFormat::None;
-        TextureUsage    Usage       = TextureUsage::None;
+        Texture2D,
+        TextureCube,
+        Texture2DArray,
     };
 
-    class RHITexture2D
+    enum class RHITextureCreateFlags : uint32_t
+    {
+        None = 0,
+        RenderTarget = 1u << 0,
+        ShaderResource = 1u << 1,
+        GenerateMips = 1u << 2,
+    };
+
+    inline RHITextureCreateFlags operator|(RHITextureCreateFlags a, RHITextureCreateFlags b)
+    {
+        return static_cast<RHITextureCreateFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+    }
+
+    inline RHITextureCreateFlags operator&(RHITextureCreateFlags a, RHITextureCreateFlags b)
+    {
+        return static_cast<RHITextureCreateFlags>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+    }
+
+    inline bool HasTextureCreateFlag(RHITextureCreateFlags flags, RHITextureCreateFlags bit)
+    {
+        return (static_cast<uint32_t>(flags) & static_cast<uint32_t>(bit)) != 0u;
+    }
+
+    /** Full mip chain count for a square (or max-edge) texture size. */
+    inline uint32_t ComputeTextureMipCount(uint32_t width, uint32_t height = 0)
+    {
+        const uint32_t size = height == 0 ? width : (width > height ? width : height);
+        if (size == 0)
+        {
+            return 1;
+        }
+
+        uint32_t mipCount = 1;
+        uint32_t dimension = size;
+        while (dimension > 1)
+        {
+            dimension >>= 1;
+            ++mipCount;
+        }
+        return mipCount;
+    }
+
+    struct RHITextureCreateDesc
+    {
+        RHITextureDimension Dimension = RHITextureDimension::Texture2D;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint32_t DepthOrArrayLayers = 1;
+        TextureFormat Format = TextureFormat::None;
+        RHITextureCreateFlags Flags = RHITextureCreateFlags::None;
+        uint32_t NumMips = 1;
+    };
+
+    class RHITexture
     {
     public:
-        RHITexture2D() = default;
-        virtual ~RHITexture2D() = default;
+        virtual ~RHITexture() = default;
 
-        uint32_t GetID() const { return m_ID; }
-        int GetUnit() const { return m_Unit; }
-        const RHITextureDesc& GetDesc() const { return m_Desc; }
-        const uint32_t GetWidth() const { return m_Desc.Width; }
-        const uint32_t GetHeight() const { return m_Desc.Height; }
-        const TextureFormat GetFormat() const { return m_Desc.Format; }
-        const TextureUsage GetUsage() const { return m_Desc.Usage; }
+        virtual const RHITextureCreateDesc& GetDesc() const = 0;
 
-        virtual void Bind(int unit) = 0;
-        virtual void Unbind() = 0;
+        virtual void* GetNativeResource() const { return nullptr; }
 
-    protected:
-        uint32_t m_ID { 0 };
-        int m_Unit { 0 };
-        RHITextureDesc m_Desc;
-
+        // OpenGL: GLuint texture name. Legacy RHITexture2D uses GetID() until S5+ removal.
+        virtual uint32_t GetNativeHandle() const
+        {
+            return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(GetNativeResource()));
+        }
     };
 
-    class RHITextureCube
+    inline uint32_t GetRHINativeTextureHandle(const RHITexture* texture)
     {
-    public:
-        RHITextureCube() = default;
-        virtual ~RHITextureCube() = default;
+        return texture ? texture->GetNativeHandle() : 0;
+    }
 
-        uint32_t GetID() const { return m_ID; }
-        int GetUnit() const { return m_Unit; }
-        const RHITextureDesc& GetDesc() const { return m_Desc; }
-        const uint32_t GetWidth() const { return m_Desc.Width; }
-        const uint32_t GetHeight() const { return m_Desc.Height; }
-        const TextureFormat GetFormat() const { return m_Desc.Format; }
-        const TextureUsage GetUsage() const { return m_Desc.Usage; }
-
-        virtual void Bind(int unit) = 0;
-        virtual void Unbind() = 0;
-
-    protected:
-        uint32_t m_ID { 0 };
-        int m_Unit { 0 };
-        RHITextureDesc m_Desc;
-    };
-
-    class RHITexture2DArray
-    {
-    public:
-        RHITexture2DArray() = default;
-        virtual ~RHITexture2DArray() = default;
-
-        uint32_t GetID() const { return m_ID; }
-        int GetUnit() const { return m_Unit; }
-        const RHITextureDesc& GetDesc() const { return m_Desc; }
-        const uint32_t GetWidth() const { return m_Desc.Width; }
-        const uint32_t GetHeight() const { return m_Desc.Height; }
-        const uint32_t GetLayers() const { return m_Desc.Layers; }
-        const TextureFormat GetFormat() const { return m_Desc.Format; }
-        const TextureUsage GetUsage() const { return m_Desc.Usage; }
-
-        virtual void Bind(int unit) = 0;
-        virtual void Unbind() = 0;
-
-    protected:
-        uint32_t m_ID { 0 };
-        int m_Unit { 0 };
-        RHITextureDesc m_Desc;
-    };
-
+    using RHITextureRef = std::shared_ptr<RHITexture>;
 }

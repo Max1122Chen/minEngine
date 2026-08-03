@@ -15,13 +15,9 @@
 #include "Runtime/Function/Render/Material/MaterialValueType.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Material/MaterialTestGraph.h"
-#include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
-#include "Runtime/Function/Render/Environment/EnvMapCapture.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
-#include "Runtime/Function/Render/OpenGL/OpenGLTexture.h"
-#include "Runtime/Function/Render/Shader.h"
+#include "Runtime/Function/Render/EngineShaderUtils.h"
 #include "Runtime/Function/Render/TextureCubeLoader.h"
-#include "Runtime/Resource/Loaders/ImageLoader.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -228,7 +224,7 @@ namespace minEngine
             }
 
             std::string compileError;
-            if (!Shader::TryCompileSourcesOnGpu(result.FullVertexShader, result.FullFragmentShader, &compileError))
+            if (!EngineShaderUtils::TryCompileSourcesOnGpu(result.FullVertexShader, result.FullFragmentShader, &compileError))
             {
                 ME_CORE_ERROR("MaterialIR smoke: GPU shader compile failed.\n{}", compileError);
                 return false;
@@ -363,8 +359,9 @@ namespace minEngine
                 && passed;
 
             passed = AssertAllContains(result.FullVertexShader, {
-                { "layout (std140) uniform PerFrameData", "vertex PerFrameData UBO" },
-                { "uniform mat4 u_Model", "vertex u_Model uniform" },
+                { "layout (std140, binding = 0) uniform PerFrameData", "vertex PerFrameData UBO" },
+                { "layout (std140, binding = 2) uniform PerObject", "vertex PerObject UBO" },
+                { "mat4 u_Model", "vertex u_Model in PerObject UBO" },
                 { "ViewProj * u_Model * vec4(a_Position, 1.0)", "vertex standard transform" },
                 { "} MaterialParameters;", "vertex MaterialParameters struct global" },
                 { "MaterialParameters.TexCoords[0] = a_TexCoord", "vertex fills MaterialParameters" },
@@ -382,7 +379,7 @@ namespace minEngine
                 && passed;
 
             passed = AssertAllContains(result.FullFragmentShader, {
-                { "uniform sampler2D u_Texture0", "global texture uniform" },
+                { "layout (binding = 0) uniform sampler2D u_Texture0", "global texture uniform" },
                 { "MaterialParameters.TexCoords[0] = v_MaterialTexCoord0", "fragment restores MaterialParameters" },
                 { "FragmentMaterialInputs.Albedo + FragmentMaterialInputs.Emissive", "unlit self-lit composite" },
             }) && passed;
@@ -397,7 +394,7 @@ namespace minEngine
                 && passed;
 
             passed = AssertTrue(
-                result.FullFragmentShader.find("uniform sampler2D") < result.FullFragmentShader.find("void main"),
+                result.FullFragmentShader.find("layout (binding = 0) uniform sampler2D") < result.FullFragmentShader.find("void main"),
                 "uniforms must be declared outside main")
                 && passed;
 
@@ -890,13 +887,13 @@ namespace minEngine
             std::string error;
             std::shared_ptr<TextureCube> cube =
                 TextureCubeLoader::CreateSolidColorCube(rhi, 4, faceColors, &error);
-            if (!cube || cube->GetRHITexture() == nullptr || cube->GetRHITexture()->GetID() == 0)
+            if (!cube || cube->GetRHITexture() == nullptr || cube->GetRHITexture()->GetNativeHandle() == 0)
             {
                 ME_CORE_ERROR("MaterialIR TextureCube: CreateSolidColorCube failed ({})", error);
                 return false;
             }
 
-            const uint32_t textureId = cube->GetRHITexture()->GetID();
+            const uint32_t textureId = cube->GetRHITexture()->GetNativeHandle();
             if (!AssertTrue(textureId != 0, "cubemap GL texture id non-zero"))
             {
                 return false;
@@ -961,27 +958,18 @@ namespace minEngine
                     { "CalcDirLightPBR", "PBR directional light" },
                     { "BuildWorldNormalFromTangentSpace", "PBR uses TBN" },
                     { "FragmentMaterialInputs.Roughness", "PBR roughness input" },
-                    { "CalcIndirectPBR", "PBR split-sum IBL" },
-                    { "MaterialPBRIntegrateBrdfApprox", "PBR IBL BRDF fallback" },
-                    { "u_EnvIntensity", "PBR IBL intensity uniform" },
+                    { "FragmentMaterialInputs.AO * 0.03", "PBR simple ambient (no IBL)" },
                     { "u_Texture1", "roughness texture slot 1" },
-                    { "u_EnvIrradianceMap", "PBR IBL irradiance sampler" },
-                    { "u_EnvPrefilterMap", "PBR IBL prefilter sampler" },
-                    { "u_EnvBrdfLUT", "PBR IBL BRDF LUT sampler" },
                 })
                 && AssertTrue(
                     compiled.FullFragmentShader.find("texture(u_Texture1") != std::string::npos,
                     "PBR samples roughness texture")
                 && AssertTrue(
-                    compiled.FullFragmentShader.find("texture(irradianceMap") != std::string::npos
-                        || compiled.FullFragmentShader.find("texture( irradianceMap") != std::string::npos,
-                    "PBR IBL samples irradiance cubemap")
+                    compiled.FullFragmentShader.find("CalcIndirectPBR") == std::string::npos,
+                    "PBR fragment does not reference IBL helper")
                 && AssertTrue(
-                    compiled.FullFragmentShader.find("textureLod(prefilterMap") != std::string::npos,
-                    "PBR IBL samples prefilter cubemap with LOD")
-                && AssertTrue(
-                    compiled.FullFragmentShader.find("texture(brdfLUT") != std::string::npos,
-                    "PBR IBL samples BRDF LUT");
+                    compiled.FullFragmentShader.find("u_EnvIrradianceMap") == std::string::npos,
+                    "PBR fragment does not declare IBL irradiance sampler");
 
             if (!passed)
             {
@@ -997,202 +985,25 @@ namespace minEngine
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR PBR workflow (IBL): compile + GPU link PASSED.");
+            ME_CORE_INFO("MaterialIR PBR workflow (direct + ambient): compile + GPU link PASSED.");
             return true;
         }
 
         bool VerifyEngineIBLEnvironmentInit()
         {
-            ScopedShaderCompileGlContext glContext;
-            if (!glContext.IsReady())
-            {
-                ME_CORE_ERROR("MaterialIR IBL environment: failed to create OpenGL context.");
-                return false;
-            }
-
-            const std::string& assetsRoot = GetMaterialIRTestEngineDefaultAssetsRoot();
-            if (assetsRoot.empty())
-            {
-                ME_CORE_WARN("MaterialIR IBL environment: skip (no EngineDefaultAssetsRoot).");
-                return true;
-            }
-
-            OpenGLRHI rhi;
-            EngineIBLEnvironment ibl;
-            ibl.Initialize(&rhi, assetsRoot);
-
-            if (!AssertTrue(ibl.HasIrradiance(), "IBL irradiance cubemap loaded"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(ibl.GetBrdfLUT() != nullptr, "IBL BRDF LUT ready"))
-            {
-                return false;
-            }
-
-            if (std::filesystem::is_regular_file(
-                    std::filesystem::path(assetsRoot) / "Textures/IBL/brdf_lut.png"))
-            {
-                ME_CORE_INFO("MaterialIR IBL environment: brdf_lut.png present on disk.");
-            }
-
-            ME_CORE_INFO("MaterialIR IBL environment: irradiance + BRDF LUT init PASSED.");
+            ME_CORE_INFO("MaterialIR IBL environment: skipped (F03-M4 P0 — EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLEnvironmentFallbackChain()
         {
-            ScopedShaderCompileGlContext glContext;
-            if (!glContext.IsReady())
-            {
-                return false;
-            }
-
-            OpenGLRHI rhi;
-            EngineIBLEnvironment ibl;
-            ibl.Initialize(&rhi, "__minengine_ibl_missing_root__");
-
-            if (!AssertTrue(ibl.HasIrradiance(), "IBL fallback still provides a cubemap"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(ibl.GetBrdfLUT() != nullptr, "IBL fallback still provides BRDF LUT"))
-            {
-                return false;
-            }
-
-            ME_CORE_INFO("MaterialIR IBL environment: missing-assets fallback chain PASSED.");
+            ME_CORE_INFO("MaterialIR IBL fallback chain: skipped (F03-M4 P0 — EnvMap removed from engine link).");
             return true;
-        }
-
-        bool HasIrradianceFacesOnDisk(const std::string& iblDirectory)
-        {
-            return std::filesystem::is_regular_file(
-                std::filesystem::path(iblDirectory) / "irradiance_posx.png");
-        }
-
-        bool HasPrefilterFacesOnDisk(const std::string& iblDirectory)
-        {
-            return std::filesystem::is_regular_file(
-                std::filesystem::path(iblDirectory) / "prefilter_posx.png");
-        }
-
-        bool HasHdrInIblDirectory(const std::string& iblDirectory)
-        {
-            if (!std::filesystem::is_directory(iblDirectory))
-            {
-                return false;
-            }
-
-            for (const std::filesystem::directory_entry& entry :
-                 std::filesystem::directory_iterator(iblDirectory))
-            {
-                if (entry.is_regular_file() && ImageLoader::IsHdrPath(entry.path().string()))
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         bool VerifyIBLGpuConvolutionAndPrefilter()
         {
-            ScopedShaderCompileGlContext glContext;
-            if (!glContext.IsReady())
-            {
-                return false;
-            }
-
-            const std::string& assetsRoot = GetMaterialIRTestEngineDefaultAssetsRoot();
-            if (assetsRoot.empty())
-            {
-                ME_CORE_WARN("MaterialIR IBL GPU passes: skip (no EngineDefaultAssetsRoot).");
-                return true;
-            }
-
-            const std::filesystem::path iblDirectory =
-                std::filesystem::path(assetsRoot) / "Textures/IBL";
-            if (HasIrradianceFacesOnDisk(iblDirectory.string()) ||
-                HasPrefilterFacesOnDisk(iblDirectory.string()))
-            {
-                ME_CORE_INFO("MaterialIR IBL GPU passes: skip (offline cubemap faces on disk).");
-                return true;
-            }
-
-            if (!HasHdrInIblDirectory(iblDirectory.string()))
-            {
-                ME_CORE_WARN("MaterialIR IBL GPU passes: skip (no HDR in IBL folder).");
-                return true;
-            }
-
-            OpenGLRHI rhi;
-            EngineIBLEnvironment ibl;
-            ibl.Initialize(&rhi, assetsRoot);
-
-            if (!AssertTrue(ibl.HasEnvironment(), "IBL environment cubemap ready"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(ibl.HasIrradiance(), "IBL irradiance cubemap ready"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(ibl.HasPrefilter(), "IBL prefilter cubemap ready"))
-            {
-                return false;
-            }
-
-            const TextureCube* environment = ibl.GetEnvironment();
-            const TextureCube* irradiance = ibl.GetIrradiance();
-            const TextureCube* prefilter = ibl.GetPrefilter();
-            if (!AssertTrue(
-                    environment != nullptr && irradiance != nullptr && prefilter != nullptr,
-                    "IBL cubemap pointers"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(
-                    environment->GetSize() == EnvMapCapture::kDefaultCubeFaceSize,
-                    "environment cubemap face size"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(
-                    irradiance->GetSize() == EnvMapCapture::kDefaultIrradianceFaceSize,
-                    "convolved irradiance face size"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(
-                    prefilter->GetSize() == EnvMapCapture::kDefaultCubeFaceSize,
-                    "prefilter cubemap base face size"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(environment != irradiance, "irradiance distinct from environment"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(prefilter != environment, "prefilter distinct from environment"))
-            {
-                return false;
-            }
-
-            if (!AssertTrue(prefilter != irradiance, "prefilter distinct from irradiance"))
-            {
-                return false;
-            }
-
-            ME_CORE_INFO("MaterialIR IBL GPU convolution + prefilter: PASSED.");
+            ME_CORE_INFO("MaterialIR IBL GPU passes: skipped (F03-M4 P0 — EnvMap removed from engine link).");
             return true;
         }
 

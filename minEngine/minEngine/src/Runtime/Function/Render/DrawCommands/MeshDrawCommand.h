@@ -5,10 +5,9 @@
 
 namespace minEngine
 {
-    class VertexBuffer;
-    class VertexDefinition;
-    class IndexBuffer;
     class Material;
+    class RHIBuffer;
+    class RHIVertexInputLayout;
 
     class MeshDrawCommandSortKey
     {
@@ -16,36 +15,26 @@ namespace minEngine
         MeshDrawCommandSortKey() = default;
         virtual ~MeshDrawCommandSortKey() = default;
 
-        union 
+        union
         {
             uint64_t m_Key = 0;
         };
 
-        bool operator < (const MeshDrawCommandSortKey& other) const
-        {
-            return m_Key < other.m_Key;
-        }
-
-        bool operator == (const MeshDrawCommandSortKey& other) const
-        {
-            return m_Key == other.m_Key;
-        }
-
-        bool operator != (const MeshDrawCommandSortKey& other) const
-        {
-            return m_Key != other.m_Key;
-        }
+        bool operator<(const MeshDrawCommandSortKey& other) const { return m_Key < other.m_Key; }
+        bool operator==(const MeshDrawCommandSortKey& other) const { return m_Key == other.m_Key; }
+        bool operator!=(const MeshDrawCommandSortKey& other) const { return m_Key != other.m_Key; }
     };
 
+    /** Pass-agnostic logical draw item built by ForwardRenderer::BuildRenderQueue. */
     class MeshDrawCommand
     {
     public:
         MeshDrawCommand() = default;
         virtual ~MeshDrawCommand() = default;
 
-        VertexBuffer* m_VertexBuffer = nullptr;
-        VertexDefinition* m_VertexDefinition = nullptr;
-        IndexBuffer* m_IndexBuffer = nullptr;
+        RHIBuffer* m_VertexBuffer = nullptr;
+        RHIVertexInputLayout* m_VertexInputLayout = nullptr;
+        RHIBuffer* m_IndexBuffer = nullptr;
 
         Material* m_Material = nullptr;
 
@@ -55,6 +44,5 @@ namespace minEngine
 
         MeshDrawCommandSortKey m_SortKey;
     };
-
-    
 }
+

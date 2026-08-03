@@ -1,4 +1,4 @@
-layout (std140) uniform PerFrameData
+layout (std140, binding = 0) uniform PerFrameData
 {
     mat4 View;
     mat4 Proj;
@@ -6,4 +6,7 @@ layout (std140) uniform PerFrameData
     vec4 CameraPos;
 };
 
-uniform mat4 u_Model;
+layout (std140, binding = 2) uniform PerObject
+{
+    mat4 u_Model;
+};

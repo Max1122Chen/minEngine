@@ -12,6 +12,7 @@
 #include "Suites/AssetManagerTest.h"
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
+#include "Suites/RenderGraphTest.h"
 #include "Suites/LuaScriptMvpTest.h"
 #include "Suites/PhysicsSmokeTest.h"
 #include "Suites/PhysicsSyncTest.h"
@@ -42,22 +43,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "object-manager",
-                    "Object Manager",
-                    true,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"object-manager", "Object Manager", true, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'object-manager'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "object-manager",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("object-manager", context.GetCommandLine().TestKind);
             }
         };
 
@@ -65,22 +58,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "serialization-archive",
-                    "Serialization Archive",
-                    true,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"serialization-archive", "Serialization Archive", true, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'serialization-archive'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "serialization-archive",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("serialization-archive", context.GetCommandLine().TestKind);
             }
         };
 
@@ -88,22 +73,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "asset-manager",
-                    "Asset Manager",
-                    true,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"asset-manager", "Asset Manager", true, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'asset-manager'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "asset-manager",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("asset-manager", context.GetCommandLine().TestKind);
             }
         };
 
@@ -111,22 +88,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "reflection-function",
-                    "Reflection Function",
-                    true,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"reflection-function", "Reflection Function", true, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'reflection-function'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "reflection-function",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("reflection-function", context.GetCommandLine().TestKind);
             }
         };
 
@@ -134,22 +103,29 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "material-ir",
-                    "Material IR",
-                    true,
-                    true,
-                    true,
-                };
+                return TestSuiteMetadata{"material-ir", "Material IR", true, true, true};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'material-ir'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "material-ir",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("material-ir", context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct RenderGraphTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"render-graph", "Render Graph", false, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'render-graph'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("render-graph", context.GetCommandLine().TestKind);
             }
         };
 
@@ -157,23 +133,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                // Disposable feasibility suite ? not part of smoke/full gates.
-                return TestSuiteMetadata{
-                    "lua-script-mvp",
-                    "Lua Script MVP",
-                    false,
-                    false,
-                    false,
-                };
+                return TestSuiteMetadata{"lua-script-mvp", "Lua Script MVP", false, false, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'lua-script-mvp'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "lua-script-mvp",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("lua-script-mvp", context.GetCommandLine().TestKind);
             }
         };
 
@@ -181,22 +148,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "physics-smoke",
-                    "Physics Smoke",
-                    false,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"physics-smoke", "Physics Smoke", false, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'physics-smoke'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "physics-smoke",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("physics-smoke", context.GetCommandLine().TestKind);
             }
         };
 
@@ -204,22 +163,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "physics-sync",
-                    "Physics Sync",
-                    false,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"physics-sync", "Physics Sync", false, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'physics-sync'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "physics-sync",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("physics-sync", context.GetCommandLine().TestKind);
             }
         };
 
@@ -227,22 +178,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "physics-load",
-                    "Physics Load",
-                    false,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"physics-load", "Physics Load", false, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'physics-load'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "physics-load",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("physics-load", context.GetCommandLine().TestKind);
             }
         };
 
@@ -250,22 +193,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "physics-contact",
-                    "Physics Contact",
-                    false,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"physics-contact", "Physics Contact", false, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'physics-contact'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "physics-contact",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("physics-contact", context.GetCommandLine().TestKind);
             }
         };
 
@@ -273,22 +208,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "physics-linetrace",
-                    "Physics LineTrace",
-                    false,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"physics-linetrace", "Physics LineTrace", false, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'physics-linetrace'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "physics-linetrace",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("physics-linetrace", context.GetCommandLine().TestKind);
             }
         };
 
@@ -296,22 +223,14 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                return TestSuiteMetadata{
-                    "physics-shapes",
-                    "Physics Shapes",
-                    false,
-                    true,
-                    false,
-                };
+                return TestSuiteMetadata{"physics-shapes", "Physics Shapes", false, true, false};
             }
 
             static bool RunSuite(TestContext& context)
             {
                 ME_CORE_INFO("TestRunner: starting suite 'physics-shapes'.");
                 EngineTestContextScope scope(context);
-                return DoctestSuiteRunner::RunSuiteForContext(
-                    "physics-shapes",
-                    context.GetCommandLine().TestKind);
+                return DoctestSuiteRunner::RunSuiteForContext("physics-shapes", context.GetCommandLine().TestKind);
             }
         };
 
@@ -320,6 +239,7 @@ namespace minEngine
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
+        using RenderGraphSuite = TypedTestSuite<RenderGraphTestSuiteTraits>;
         using LuaScriptMvpSuite = TypedTestSuite<LuaScriptMvpTestSuiteTraits>;
         using PhysicsSmokeSuite = TypedTestSuite<PhysicsSmokeTestSuiteTraits>;
         using PhysicsSyncSuite = TypedTestSuite<PhysicsSyncTestSuiteTraits>;
@@ -342,6 +262,7 @@ namespace minEngine
             registry.Register(AssetManagerSuite::Get());
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
+            registry.Register(RenderGraphSuite::Get());
             registry.Register(LuaScriptMvpSuite::Get());
             registry.Register(PhysicsSmokeSuite::Get());
             registry.Register(PhysicsSyncSuite::Get());

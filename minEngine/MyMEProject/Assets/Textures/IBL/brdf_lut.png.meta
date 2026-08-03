@@ -1,0 +1,9 @@
+{
+    "AssetName": "brdf_lut",
+    "AssetPath": "Textures/IBL/brdf_lut.png",
+    "AssetType": "Texture2D",
+    "Guid": {
+        "High": 17293822569102704642,
+        "Low": 1125899906842626
+    }
+}

@@ -1,5 +1,7 @@
 #include "Runtime/Resource/Loaders/StaticMeshLoader.h"
 
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 
@@ -20,6 +22,13 @@ namespace minEngine
             return nullptr;
         }
 
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (!rhi)
+        {
+            ME_CORE_ERROR("StaticMeshLoader: RHI is not available.");
+            return nullptr;
+        }
+
         std::shared_ptr<StaticMesh> mesh = NewObject<StaticMesh>(meta.AssetName, nullptr, meta.Guid);
         mesh->m_BoundingBox = importData.BoundingBox;
         mesh->m_Sections.clear();
@@ -33,19 +42,26 @@ namespace minEngine
             mesh->m_Sections.push_back(sectionInfo);
         }
 
-        mesh->m_VertexBuffer = VertexBuffer::Create(
-            reinterpret_cast<float*>(importData.Vertices.data()),
-            static_cast<uint32_t>(importData.Vertices.size() * sizeof(MeshImportVertex)),
-            static_cast<uint32_t>(importData.Vertices.size()));
-        mesh->m_VertexDefinition = VertexDefinition::Create({
-            VertexElement("a_Position", VertexElementType::Float3),
-            VertexElement("a_TexCoord", VertexElementType::Float2),
-            VertexElement("a_Normal", VertexElementType::Float3),
-            VertexElement("a_Tangent", VertexElementType::Float4),
+        RHIBufferCreateDesc vbDesc;
+        vbDesc.Usage = RHIBufferUsage::Vertex;
+        vbDesc.ByteSize = static_cast<uint32_t>(importData.Vertices.size() * sizeof(MeshImportVertex));
+        vbDesc.ElementCount = static_cast<uint32_t>(importData.Vertices.size());
+        mesh->m_VertexBuffer = rhi->RHICreateBuffer(
+            vbDesc,
+            reinterpret_cast<const void*>(importData.Vertices.data()));
+
+        mesh->m_VertexInputLayout = rhi->RHICreateVertexInputLayout({
+            RHIVertexElement("a_Position", VertexElementType::Float3),
+            RHIVertexElement("a_TexCoord", VertexElementType::Float2),
+            RHIVertexElement("a_Normal", VertexElementType::Float3),
+            RHIVertexElement("a_Tangent", VertexElementType::Float4),
         });
-        mesh->m_IndexBuffer = IndexBuffer::Create(
-            importData.Indices.data(),
-            static_cast<uint32_t>(importData.Indices.size()));
+
+        RHIBufferCreateDesc ibDesc;
+        ibDesc.Usage = RHIBufferUsage::Index;
+        ibDesc.ByteSize = static_cast<uint32_t>(importData.Indices.size() * sizeof(uint32_t));
+        ibDesc.ElementCount = static_cast<uint32_t>(importData.Indices.size());
+        mesh->m_IndexBuffer = rhi->RHICreateBuffer(ibDesc, importData.Indices.data());
 
         return mesh;
     }

@@ -380,6 +380,12 @@
                 {
                     "$ptr_typeName": "minEngine::SkyBoxComponent",
                     "m_Enabled": true,
+                    "m_EnvironmentMap": {
+                        "$guid": {
+                            "high": 17293822569102704641,
+                            "low": 1125899906842625
+                        }
+                    },
                     "m_Guid": {
                         "High": 8844221100334455667,
                         "Low": 7766554433221100987

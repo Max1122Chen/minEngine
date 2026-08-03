@@ -1,6 +1,12 @@
 #pragma once
 #include "Core.h"
 
+#include <cstdint>
+#include <initializer_list>
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace minEngine
 {
     enum class VertexElementType
@@ -56,177 +62,59 @@ namespace minEngine
         return 0;
     }
 
-
-
-
-    struct VertexElement
-    { 
+    struct RHIVertexElement
+    {
         std::string Name;
-        VertexElementType Type;              // data type
-        uint32_t Size;                       // number of components
+        VertexElementType Type = VertexElementType::None;
+        uint32_t Size = 0;
         bool bNormalized = false;
-        uint32_t Offset;
+        uint32_t Offset = 0;
 
-        VertexElement(const std::string& name, VertexElementType type, bool normalized = false)
-            : Name(name), Type(type), Size(VertexElementSize(type)), bNormalized(normalized), Offset(0)
-        {}
+        RHIVertexElement(const std::string& name, VertexElementType type, bool normalized = false)
+            : Name(name)
+            , Type(type)
+            , Size(VertexElementSize(type))
+            , bNormalized(normalized)
+            , Offset(0)
+        {
+        }
     };
 
-    class VertexDefinition
+    enum class RHIBufferUsage : uint8_t
+    {
+        Vertex,
+        Index,
+        Uniform,
+        Staging,
+    };
+
+    struct RHIBufferCreateDesc
+    {
+        RHIBufferUsage Usage = RHIBufferUsage::Vertex;
+        uint32_t ByteSize = 0;
+        uint32_t Stride = 0;
+        uint32_t ElementCount = 0;
+    };
+
+    class RHIBuffer
     {
     public:
-        VertexDefinition(std::initializer_list<VertexElement> elements)
-            : m_Elements(elements)
-        {
-            // Calculate offsets and stride
-            uint32_t offset = 0;
-            for (auto& element : m_Elements)
-            {
-                element.Offset = offset;
-                offset += VertexElementTypeSize(element.Type);
-            }
-            m_Stride = offset;
-        }
+        virtual ~RHIBuffer() = default;
 
-        virtual ~VertexDefinition() = default;
-
-        virtual void Bind() const = 0;
-        virtual void Unbind() const = 0;
-
-        static std::shared_ptr<VertexDefinition> Create(std::initializer_list<VertexElement> elements);
-
-
-        inline const std::vector<VertexElement>& GetElements() const { return m_Elements; }
-        inline const uint32_t GetStride() const { return m_Stride; }
-
-        std::vector<VertexElement>::iterator begin() { return m_Elements.begin(); }
-        std::vector<VertexElement>::iterator end() { return m_Elements.end(); }
-        
-    protected:
-        std::vector<VertexElement> m_Elements;
-        uint32_t m_Stride = 0;
+        virtual const RHIBufferCreateDesc& GetDesc() const = 0;
+        virtual void UpdateSubresource(const void* data, uint32_t offset, uint32_t size) = 0;
     };
-    
 
-    class VertexBuffer
+    using RHIBufferRef = std::shared_ptr<RHIBuffer>;
+
+    class RHIVertexInputLayout
     {
     public:
-        virtual ~VertexBuffer() = default;
+        virtual ~RHIVertexInputLayout() = default;
 
-        static std::shared_ptr<VertexBuffer> Create(float* vertices, uint32_t size, uint32_t numVertices);
-
-        virtual void Bind() const = 0;
-        virtual void Unbind() const = 0;
-        uint32_t GetNumVertices() const { return m_NumVertices; }
-
-    protected:
-        uint32_t m_NumVertices = 0;
+        virtual const std::vector<RHIVertexElement>& GetElements() const = 0;
+        virtual uint32_t GetStride() const = 0;
     };
 
-    class IndexBuffer
-    {
-    public:
-        virtual ~IndexBuffer() = default;
-
-        static std::shared_ptr<IndexBuffer> Create(uint32_t* indices, uint32_t numIndices);
-
-        virtual void Bind() const = 0;
-        virtual void Unbind() const = 0;
-        uint32_t GetNumIndices() const { return m_NumIndices; }
-
-    protected:
-        uint32_t m_NumIndices = 0;
-    };
-
-    class RHITexture2D;
-    class RHITexture2DArray;
-    class RHITextureCube;
-
-    class FrameBuffer
-    {
-    public:
-        virtual ~FrameBuffer() = default;
-
-        static std::shared_ptr<FrameBuffer> Create(uint32_t width, uint32_t height);
-
-        uint32_t GetWidth() const { return m_Width; }
-        uint32_t GetHeight() const { return m_Height; }
-
-        virtual void Bind() const = 0;
-        virtual void Unbind() const = 0;
-
-        const std::vector<std::shared_ptr<RHITexture2D>>& GetColorBuffers() const { return m_ColorBuffers; }
-        virtual void AttachColorBuffer(std::shared_ptr<RHITexture2D> texture)
-        {
-            // TODO: check if the texture's size matches the framebuffer's size
-            m_ColorBuffers.push_back(texture);
-        }
-        
-        const std::shared_ptr<RHITexture2D>& GetDepthBuffer() const { return m_DepthBuffer; }
-        virtual void AttachDepthBuffer(std::shared_ptr<RHITexture2D> texture)
-        {
-            m_DepthBuffer = texture;
-        }
-
-        virtual void AttachDepthBufferLayer(std::shared_ptr<RHITexture2DArray> texture, uint32_t layer)
-        {
-            m_DepthBufferArray = texture;
-            m_DepthBufferLayer = layer;
-        }
-
-        virtual void AttachDepthCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face)
-        {
-            m_DepthCubeBuffer = texture;
-            m_DepthCubeFace = face;
-        }
-
-        virtual void AttachColorCubeFace(std::shared_ptr<RHITextureCube> texture, uint32_t face)
-        {
-            m_ColorCubeBuffer = texture;
-            m_ColorCubeFace = face;
-        }
-
-        const std::shared_ptr<RHITexture2D>& GetStencilBuffer() const { return m_StencilBuffer; }
-        virtual void AttachStencilBuffer(std::shared_ptr<RHITexture2D> texture)
-        {
-            m_StencilBuffer = texture;
-        }
-
-        const std::shared_ptr<RHITexture2D>& GetDepthStencilBuffer() const { return m_DepthStencilBuffer; }
-        virtual void AttachDepthStencilBuffer(std::shared_ptr<RHITexture2D> texture)
-        {
-            m_DepthStencilBuffer = texture;
-        }
-
-    protected:
-        uint32_t m_Width = 0;
-        uint32_t m_Height = 0;
-
-        std::vector<std::shared_ptr<RHITexture2D>> m_ColorBuffers;
-        std::shared_ptr<RHITexture2D> m_DepthBuffer;
-        std::shared_ptr<RHITexture2D> m_StencilBuffer;
-        std::shared_ptr<RHITexture2D> m_DepthStencilBuffer;
-        std::shared_ptr<RHITexture2DArray> m_DepthBufferArray;
-        std::shared_ptr<RHITextureCube> m_DepthCubeBuffer;
-        std::shared_ptr<RHITextureCube> m_ColorCubeBuffer;
-
-        uint32_t m_DepthBufferLayer = 0;
-        uint32_t m_DepthCubeFace = 0;
-        uint32_t m_ColorCubeFace = 0;
-    };
-
-    class UniformBuffer
-    {
-    public:
-        virtual ~UniformBuffer() = default;
-
-        static std::shared_ptr<UniformBuffer> Create(uint32_t size, uint32_t bindingPoint = 0);
-
-        // virtual void Bind() const = 0;
-        // virtual void Unbind() const = 0;
-        virtual void BindToBindingPoint(uint32_t bindingPoint) const = 0;
-        virtual void BindToBindingPoint(uint32_t bindingPoint, uint32_t offset, uint32_t size) const = 0;
-
-        virtual void UpdateData(const void* data, uint32_t offset, uint32_t size) const = 0;
-    };
+    using RHIVertexInputLayoutRef = std::shared_ptr<RHIVertexInputLayout>;
 }

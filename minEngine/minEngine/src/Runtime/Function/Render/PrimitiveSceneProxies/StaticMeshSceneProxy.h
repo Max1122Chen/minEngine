@@ -4,10 +4,9 @@
 
 namespace minEngine
 {
-    class VertexBuffer;
-    class VertexDefinition;
-    class IndexBuffer;
     class Material;
+    class RHIBuffer;
+    class RHIVertexInputLayout;
 
     class StaticMeshSceneProxy : public PrimitiveSceneProxy
     {
@@ -15,9 +14,10 @@ namespace minEngine
         StaticMeshSceneProxy() = default;
         virtual ~StaticMeshSceneProxy() = default;
 
-        VertexBuffer* m_VertexBuffer = nullptr;
-        VertexDefinition* m_VertexDefinition = nullptr;
-        IndexBuffer* m_IndexBuffer = nullptr;
+        // Non-owning; GPU resources are owned by StaticMesh (asset).
+        RHIBuffer* m_VertexBuffer = nullptr;
+        RHIVertexInputLayout* m_VertexInputLayout = nullptr;
+        RHIBuffer* m_IndexBuffer = nullptr;
 
         Material* m_Material = nullptr;
     };

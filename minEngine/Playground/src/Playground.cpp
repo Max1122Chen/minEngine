@@ -4,7 +4,7 @@
 // Playground is a legacy WorldManager + Level test harness. The team does not
 // run or maintain it for day-to-day work; Editor is the only supported app path.
 // Rendering no longer submits draws here (see P3/P4 in docs/ai/RENDER_REFACTOR_PLAN.md).
-// Do not extend Playground for new features â€” use Editor + SceneEditing viewport instead.
+// Do not extend Playground for new features â€?use Editor + SceneEditing viewport instead.
 // =============================================================================
 
 #include "minEngine.h"
@@ -247,9 +247,9 @@ public:
 
         // create plane mesh
         minEngine::StaticMesh plane(planeVertices, sizeof(planeVertices), 6,{
-            VertexElement("a_Position", VertexElementType::Float3),
-            VertexElement("a_TexCoord", VertexElementType::Float2),
-            VertexElement("a_Normal", VertexElementType::Float3)
+            RHIVertexElement("a_Position", VertexElementType::Float3),
+            RHIVertexElement("a_TexCoord", VertexElementType::Float2),
+            RHIVertexElement("a_Normal", VertexElementType::Float3)
         });
 
         // create backpack 
@@ -257,15 +257,15 @@ public:
 
         // create cube mesh
         minEngine::StaticMesh cubeMesh(cubeVertices, sizeof(cubeVertices), 36,{
-            VertexElement("a_Position", VertexElementType::Float3),
-            VertexElement("a_TexCoord", VertexElementType::Float2),
-            VertexElement("a_Normal", VertexElementType::Float3)
+            RHIVertexElement("a_Position", VertexElementType::Float3),
+            RHIVertexElement("a_TexCoord", VertexElementType::Float2),
+            RHIVertexElement("a_Normal", VertexElementType::Float3)
         });
 
 
         // create light mesh
         minEngine::StaticMesh lightMesh(lightVertices, sizeof(lightVertices), 36,{
-            VertexElement("a_Position", VertexElementType::Float3)
+            RHIVertexElement("a_Position", VertexElementType::Float3)
         });
 
         const PathRegistry& paths = PathRegistry::Get();

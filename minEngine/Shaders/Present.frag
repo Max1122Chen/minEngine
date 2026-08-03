@@ -1,8 +1,7 @@
-#version 330 core
+#version 420 core
 
-uniform sampler2D u_SceneColor;
+layout (binding = 0) uniform sampler2D u_SceneColor;
 
-// Vertex Attributes
 in vec3 FragPos;
 in vec2 TexCoord;
 
@@ -12,4 +11,3 @@ void main()
 {
     FragColor = texture(u_SceneColor, TexCoord);
 }
-

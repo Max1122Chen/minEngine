@@ -1,66 +1,82 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIPipelineLayout.h"
+#include "OpenGLRHIResources.h"
+
+#include <array>
 
 
 namespace minEngine
 {
 
     class WindowSystem;
-    class FrameBuffer;
 
     class OpenGLRHI : public RHI
     {
     public:
-        friend class RenderSystem;
-
         OpenGLRHI() = default;
         virtual ~OpenGLRHI() = default;
 
         virtual void Initialize() override;
         virtual void Shutdown() override;
 
-        virtual void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
-
-        virtual void SetClearColor(Vector4 clearColor) override;
-        virtual void Clear() override;
-
-        virtual void SetDrawBuffer(uint32_t index) override;
-        virtual void SetReadBuffer(uint32_t index) override;
-
-        virtual void EnableDepthTest() override;
-        virtual void DisableDepthTest() override;
-        virtual void SetDepthMask(bool bEnable) override;
-
-        virtual void EnableStencilTest() override;
-        virtual void DisableStencilTest() override;
-        virtual void SetStencilMask(uint32_t mask) override;
-
-        virtual void EnableBlend() override;
-        virtual void DisableBlend() override;
-
-        virtual void EnableCullFace() override;
-        virtual void DisableCullFace() override;
-
-        virtual std::shared_ptr<VertexBuffer> CreateVertexBuffer(float* vertices, uint32_t size, uint32_t numVertices) override;
-        virtual std::shared_ptr<IndexBuffer> CreateIndexBuffer(uint32_t* indices, uint32_t numIndices) override;
-        virtual std::shared_ptr<VertexDefinition> CreateVertexDefinition(std::initializer_list<VertexElement> elements) override;
-        virtual std::shared_ptr<FrameBuffer> CreateFrameBuffer(uint32_t width, uint32_t height) override;
-        virtual std::shared_ptr<UniformBuffer> CreateUniformBuffer(uint32_t size, uint32_t bindingPoint = 0) override;
-        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2D(const unsigned char* data, RHITextureDesc desc) override;
-        virtual std::shared_ptr<RHITexture2D> CreateRHITexture2DFloat(const float* data, RHITextureDesc desc) override;
-        virtual std::shared_ptr<RHITextureCube> CreateRHITextureCube(
-            const std::vector<unsigned char*>& faceData,
-            RHITextureDesc desc,
-            bool generateMipmaps = false) override;
-        virtual std::shared_ptr<RHITexture2DArray> CreateRHITexture2DArray(const unsigned char* data, RHITextureDesc desc) override;
-        virtual std::shared_ptr<RHIShader> CreateRHIShader(
+        virtual std::shared_ptr<RHITexture> RHICreateTexture2D(
+            const RHITextureCreateDesc& desc,
+            const void* initialData) override;
+        virtual std::shared_ptr<RHIShaderResourceView> RHICreateShaderResourceView(
+            const RHITextureSRVDesc& desc) override;
+        virtual std::shared_ptr<RHIBuffer> RHICreateBuffer(
+            const RHIBufferCreateDesc& desc,
+            const void* initialData) override;
+        virtual std::shared_ptr<RHIShader> RHICreateShader(
             const std::string& vertexSource,
             const std::string& fragmentSource,
-            std::string* outCompileLog = nullptr) override;
-    
+            std::string* outCompileLog) override;
+        virtual std::shared_ptr<RHIGraphicsPipelineState> RHICreateGraphicsPipelineState(
+            const RHIGraphicsPSODesc& desc) override;
+        virtual std::shared_ptr<RHIShaderBindingSetLayout> RHICreateShaderBindingSetLayout(
+            const std::vector<RHIShaderBindingSetLayoutEntry>& entries) override;
+        virtual std::shared_ptr<RHIPipelineLayout> RHICreatePipelineLayout(
+            const std::vector<RHIShaderBindingSetLayout*>& setLayouts) override;
+        virtual std::shared_ptr<RHIShaderBindingSet> RHICreateShaderBindingSet(
+            RHIShaderBindingSetLayout* layout,
+            const std::vector<RHIShaderBinding>& resources) override;
+
+        virtual void RHICmdBeginRenderPass(const RHIRenderPassInfo& info) override;
+        virtual void RHICmdEndRenderPass() override;
+
+        virtual void RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState) override;
+        virtual void RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet) override;
+        virtual void RHICmdTransition(const RHITextureTransitionInfo& transition) override;
+        virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
+            std::initializer_list<RHIVertexElement> elements) override;
+
+        virtual void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
+        virtual void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot) override;
+        virtual void RHICmdSetIndexBuffer(RHIBuffer* indexBuffer) override;
+
+        virtual void RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset) override;
+        virtual void RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex) override;
+        virtual void RHICmdGenerateMips(RHITexture* texture) override;
+
+        virtual void RHISetBackbufferClearColor(const Vector3& color) override;
+        virtual void RHIClearBackbuffer() override;
 
     private:
+        void ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState);
+        void ApplyShaderBindingSetResources(RHIShaderBindingSet* bindingSet);
+        void ReapplyBoundShaderBindingSets();
+        void DestroyTransientFramebuffer();
+
         WindowSystem* m_WindowSystem = nullptr;
+
+        GLuint m_TransientFramebuffer = 0;
+        bool m_OwnsTransientFramebuffer = false;
+        RHIGraphicsPipelineState* m_BoundPipeline = nullptr;
+        std::array<RHIShaderBindingSet*, kMaxShaderBindingSets> m_BoundShaderBindingSets{};
+        OpenGLRHIVertexInputLayout* m_BoundVertexLayout = nullptr;
+        OpenGLRHIBuffer* m_BoundVertexBuffer = nullptr;
+        OpenGLRHIBuffer* m_BoundIndexBuffer = nullptr;
     };
 }

@@ -55,15 +55,15 @@ bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportCli
 
     m_PinnedFrameTexture = GetDisplayColorTexture();
     if (!m_PinnedFrameTexture
-        || m_PinnedFrameTexture->GetWidth() == 0
-        || m_PinnedFrameTexture->GetHeight() == 0)
+        || m_PinnedFrameTexture->GetDesc().Width == 0
+        || m_PinnedFrameTexture->GetDesc().Height == 0)
     {
         ImGui::TextWrapped("Scene color texture is not ready.");
         return false;
     }
 
-    const ImTextureID textureID =
-        reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(m_PinnedFrameTexture->GetID()));
+    const ImTextureID textureID = reinterpret_cast<ImTextureID>(
+        static_cast<uintptr_t>(GetRHINativeTextureHandle(m_PinnedFrameTexture.get())));
     ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + layout.Offset.x, cursorPos.y + layout.Offset.y));
     ImGui::Image(
         textureID,

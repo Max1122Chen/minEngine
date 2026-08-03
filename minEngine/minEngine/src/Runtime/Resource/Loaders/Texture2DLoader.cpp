@@ -2,6 +2,7 @@
 
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/EngineRHITextureUtils.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/Loaders/ImageLoader.h"
@@ -72,14 +73,9 @@ namespace minEngine
         texture->m_Width = static_cast<uint32_t>(pixels.Width);
         texture->m_Height = static_cast<uint32_t>(pixels.Height);
         texture->m_Channels = static_cast<uint32_t>(pixels.Channels);
-        texture->m_RHITexture = rhi.CreateRHITexture2D(
-            pixels.U8,
-            RHITextureDesc{
-                .Width = texture->m_Width,
-                .Height = texture->m_Height,
-                .Format = format,
-                .Usage = TextureUsage::TextureBinding,
-            });
+        texture->m_RHITexture = rhi.RHICreateTexture2D(
+            MakeTexture2DBindingDesc(texture->m_Width, texture->m_Height, format),
+            pixels.U8);
 
         if (!texture->m_RHITexture)
         {
@@ -117,14 +113,9 @@ namespace minEngine
         texture->m_Width = static_cast<uint32_t>(pixels.Width);
         texture->m_Height = static_cast<uint32_t>(pixels.Height);
         texture->m_Channels = static_cast<uint32_t>(pixels.Channels);
-        texture->m_RHITexture = rhi.CreateRHITexture2DFloat(
-            pixels.F32,
-            RHITextureDesc{
-                .Width = texture->m_Width,
-                .Height = texture->m_Height,
-                .Format = format,
-                .Usage = TextureUsage::TextureBinding,
-            });
+        texture->m_RHITexture = rhi.RHICreateTexture2D(
+            MakeTexture2DBindingDesc(texture->m_Width, texture->m_Height, format),
+            pixels.F32);
 
         if (!texture->m_RHITexture)
         {

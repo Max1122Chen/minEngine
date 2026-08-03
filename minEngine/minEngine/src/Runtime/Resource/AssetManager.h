@@ -24,10 +24,10 @@ namespace minEngine
     class Texture2D;
     class StaticMesh;
     class Material;
-    class Shader;
     class Scene;
     class Font;
     class LuaScript;
+    class EnvironmentMap;
     class Asset;
 
     struct ImportAssetResult
@@ -232,11 +232,11 @@ namespace minEngine
     template<>
     std::shared_ptr<Material> AssetManager::LoadAsset_Impl<Material>(const AssetMeta& meta);
     template<>
-    std::shared_ptr<Shader> AssetManager::LoadAsset_Impl<Shader>(const AssetMeta& meta);
-    template<>
     std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta);
     template<>
     std::shared_ptr<LuaScript> AssetManager::LoadAsset_Impl<LuaScript>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<EnvironmentMap> AssetManager::LoadAsset_Impl<EnvironmentMap>(const AssetMeta& meta);
 
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;

@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "SceneDrawDesc.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Render/RHI/RHITexture.h"
 
 #include <memory>
 
@@ -12,7 +13,6 @@ namespace minEngine
     class RenderCamera;
     class SceneRenderTarget;
     class RHI;
-    class RHITexture2D;
 
     /** Main editor viewport (P2). P3: owned by EditorViewportClient instead of SceneManager. */
     class SceneViewport
@@ -30,7 +30,8 @@ namespace minEngine
 
         SceneRenderTarget* GetRenderTarget() { return m_RenderTarget.get(); }
         const SceneRenderTarget* GetRenderTarget() const { return m_RenderTarget.get(); }
-        const std::shared_ptr<RHITexture2D>& GetColorTexture() const;
+        const RHITextureRef& GetColorTexture() const;
+
         Math::Vector2 GetBufferSize() const;
 
         void RequestResizeByRatio(float widthRatio, float heightRatio);

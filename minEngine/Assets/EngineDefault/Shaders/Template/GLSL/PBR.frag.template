@@ -1,4 +1,4 @@
-#version 330 core
+#version 420 core
 
 @ME_INSERT:FRAGMENT_IN_TEXCOORDS@
 @ME_INSERT:FRAGMENT_LIGHTING_VARYINGS@
@@ -56,17 +56,9 @@ void main()
             FragmentMaterialInputs.Roughness);
     }
 
-    vec3 indirect = CalcIndirectPBR(
-        norm,
-        viewDir,
-        FragmentMaterialInputs.Albedo,
-        FragmentMaterialInputs.Metallic,
-        FragmentMaterialInputs.Roughness,
-        FragmentMaterialInputs.AO,
-        u_EnvIrradianceMap,
-        u_EnvPrefilterMap,
-        u_EnvBrdfLUT);
+    // F03-M4 P0: simple ambient until IBL / EnvMap returns (see RND-F03-M4 §9 D3).
+    vec3 ambient = FragmentMaterialInputs.Albedo * FragmentMaterialInputs.AO * 0.03;
     vec3 direct = dirLightResult + pointLightResult + spotLightResult;
-    vec3 result = indirect + direct;
+    vec3 result = ambient + direct;
     FragColor = vec4(result + FragmentMaterialInputs.Emissive, FragmentMaterialInputs.Opacity);
 }

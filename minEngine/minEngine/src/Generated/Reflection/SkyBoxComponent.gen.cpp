@@ -6,4 +6,5 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::SkyBoxComponent, GReflectionClassReg
     ME_REFLECTION_CLASS_SUPER(minEngine::SceneComponent)
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SkyBoxComponent, m_Enabled, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SkyBoxComponent, m_SkyIntensity, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SkyBoxComponent, m_EnvironmentMap, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::SkyBoxComponent)

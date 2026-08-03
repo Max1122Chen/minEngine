@@ -52,9 +52,12 @@ namespace minEngine
                 StaticMeshSceneProxy* staticMeshProxy = dynamic_cast<StaticMeshSceneProxy*>(proxy);
                 if (staticMeshProxy)
                 {
-                    staticMeshProxy->m_VertexBuffer = staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexBuffer.get() : nullptr;
-                    staticMeshProxy->m_VertexDefinition = staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexDefinition.get() : nullptr;
-                    staticMeshProxy->m_IndexBuffer = staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_IndexBuffer.get() : nullptr;
+                    staticMeshProxy->m_VertexBuffer =
+                        staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexBuffer.get() : nullptr;
+                    staticMeshProxy->m_VertexInputLayout =
+                        staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexInputLayout.get() : nullptr;
+                    staticMeshProxy->m_IndexBuffer =
+                        staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_IndexBuffer.get() : nullptr;
                     staticMeshProxy->m_Material = staticMeshComp->GetMaterial();
                 }
 
@@ -230,6 +233,7 @@ namespace minEngine
             proxy->m_Transform = skyBoxComponent->GetTransform();
             proxy->m_SkyIntensity = skyBoxComponent->GetSkyIntensity();
             proxy->m_Enabled = skyBoxComponent->IsEnabled();
+            proxy->m_EnvironmentMap = skyBoxComponent->GetEnvironmentMapShared();
         }
     }
 

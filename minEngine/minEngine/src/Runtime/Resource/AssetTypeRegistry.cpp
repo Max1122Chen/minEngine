@@ -2,9 +2,9 @@
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/Shader.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Resource/LuaScript.h"
 #include "Runtime/Core/Reflection/Reflection.h"
@@ -73,13 +73,6 @@ namespace minEngine
         m_AssetTypeIdByClass[Material::StaticClass()] = "Material";
 
         RegisterType(AssetTypeDescriptor{
-            .AssetTypeId = "Shader",
-            .RuntimeClassName = GetClassName<Shader>(),
-            .Extensions = {".meshader"},
-            .FileDialogFilterLabel = "Shader (*.meshader)"});
-        m_AssetTypeIdByClass[Shader::StaticClass()] = "Shader";
-
-        RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Scene",
             .RuntimeClassName = GetClassName<Scene>(),
             .Extensions = {".mescene"},
@@ -99,6 +92,13 @@ namespace minEngine
             .Extensions = {".lua"},
             .FileDialogFilterLabel = "Lua Script (*.lua)"});
         m_AssetTypeIdByClass[LuaScript::StaticClass()] = "LuaScript";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "EnvironmentMap",
+            .RuntimeClassName = GetClassName<EnvironmentMap>(),
+            .Extensions = {".meenv"},
+            .FileDialogFilterLabel = "Environment Map (*.meenv)"});
+        m_AssetTypeIdByClass[EnvironmentMap::StaticClass()] = "EnvironmentMap";
     }
 
     void AssetTypeRegistry::RegisterType(const AssetTypeDescriptor& descriptor)
