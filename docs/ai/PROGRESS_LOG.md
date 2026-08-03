@@ -88,9 +88,11 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 	Union AssetManager LuaScript + EnvironmentMap; TestSuiteRegistration all suites; docs ACTIVE_WORK/REGISTRY/TECH_DEBT (CORE TD-013 enum kept; render Set0 cache → TD-022).
 	`test.mescene` keeps physics + SkyBox EnvironmentMap.
 - Validation done:
-	(pending) build + verify.ps1 after merge commit.
+	`cmake --build minEngine/build --target minEngineTests`
+	`minEngineTests.exe test smoke` / `render-graph` / `lua-script-mvp` / `physics-smoke` → PASSED
+	(merge follow-up: drop nonexistent `RenderGraphTest.h` include in TestSuiteRegistration)
 - Next step:
-	FF `render` to `master`; resume RND-F05 discussion when ready.
+	Push when ready; resume RND-F05 discussion.
 
 ### 2026-05-25 - Asset Pipeline 业务线设计草案
 - Goal:
