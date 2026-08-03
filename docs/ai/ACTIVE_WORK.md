@@ -14,23 +14,23 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 - Size-aware enum storage via `MEEnum::GetSize()`; wire format remains int64.
 - Next on master: **`CORE-F04` Delegates**（付清 TD-006，解锁 PHYS-F03）.
 
-### Render 轨（`render` / 拟 `feat/render`）— 顺序已定
+### Render 轨（`feat/render`）— 顺序已定
 
 1. **小收尾**（F03 关账口径 / F06-S03 可选）  
 2. **RND-F05 Vulkan**（先于 DebugDrawing）  
 3. **RND-F11 DebugDrawing**（Vulkan 竖切后再开）
 
-合入前：把 master（含 TD-013 / 后续 Delegates）定期 merge 进 render。
+合入前：把 master（含 TD-013 / 后续 Delegates）定期 merge 进 `feat/render`。
 
 ### Master 并行 — CORE-F04 Delegates（**Planned**）
 
 - 付清 **TD-006**；正式 Design 后再实现。  
 - 完成后可恢复 **PHYS-F03** Contact gameplay dispatch。
 
-### Physics（`physics` / 拟 `feat/physics`）
+### Physics（`feat/physics`）
 
 - F01/F02 Done；**F03 Deferred** until Delegates.  
-- 建议：TD-013 + Delegates 落地后，将分支 base 到 master，再开 F03；DebugDrawing 会显著改善调试体验。
+- 已 base 到 master（含 TD-013）；Delegates 后再开 F03；DebugDrawing 会显著改善调试体验。
 
 ### 更远（先不占带宽）
 
