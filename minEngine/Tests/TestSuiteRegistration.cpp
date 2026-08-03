@@ -12,7 +12,6 @@
 #include "Suites/AssetManagerTest.h"
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
-#include "Suites/RenderGraphTest.h"
 #include "Suites/LuaScriptMvpTest.h"
 #include "Suites/PhysicsSmokeTest.h"
 #include "Suites/PhysicsSyncTest.h"
