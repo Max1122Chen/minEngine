@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-02  
+Last updated: 2026-08-03  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -11,15 +11,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### 渲染主线（`render`）— 空闲
 
-- **RND-F07** Done（帧 RT 图所有权）。
-- **RND-F08** Done（阴影图所有权；TD-020 关闭）；slot 语义瘦身见 [RND-F08_SHADOW_SLOT_SEMANTICS](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md)。
-- 下一候选：RND-F05 Vulkan / RND-F03 尾 / TD-013 Set0 BindingSet（按需开）。
+- **RND-F07 / F08** Done（帧 RT + 阴影图所有权；Manager 已删；SlotIndex 语义）。
+- 下一候选（择一）：**TD-013** Set0 BindingSet / **RND-F03** 尾 / **RND-F05** Vulkan（依赖 F03 更清）。
 
 ### 相关（非紧急）
 
 - **RND-F05** Vulkan — Planned。
-- **RND-F03** Legacy 清零尾。
-- **RND-F06-S03** 目录改名可选。
+- **RND-F03** Legacy 清零尾（含 TD-015 EnvMap、TD-016/017/018）。
+- **RND-F06-S03** 目录改名可选；**TD-019** GL unit 常量可再收。
 
 ### 分支约定
 
