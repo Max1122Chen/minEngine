@@ -76,9 +76,11 @@ namespace minEngine
             }
             else if (format == TextureFormat::DEPTH32)
             {
-                internalFormat = GL_DEPTH_COMPONENT32;
+                // Prefer 32F: GL_DEPTH_COMPONENT32 is not reliably framebuffer-complete on all drivers
+                // (point-light cube shadow FBOs were SIGSEGV'ing after attach/clear).
+                internalFormat = GL_DEPTH_COMPONENT32F;
                 dataFormat = GL_DEPTH_COMPONENT;
-                dataType = GL_UNSIGNED_INT;
+                dataType = GL_FLOAT;
             }
             else if (format == TextureFormat::DEPTH24STENCIL8)
             {
@@ -124,8 +126,9 @@ namespace minEngine
         {
             if (IsDepthLikeTexture(format, usage))
             {
-                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                // NEAREST: LINEAR on depth attachments can make FBOs incomplete and crash drivers.
+                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
                 glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
                 const float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -266,8 +269,8 @@ namespace minEngine
 
             if (isDepthLike)
             {
-                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             }
             else if (useMipFilter)
             {
@@ -356,8 +359,8 @@ namespace minEngine
 
             if (isDepthLike)
             {
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
                 float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};

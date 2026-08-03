@@ -60,7 +60,7 @@ namespace minEngine
         std::shared_ptr<RHIShaderBindingSet> m_ShadowShaderBindingSet;
         RHIBufferRef m_ShadowParamsUniformBuffer;
 
-        void UpdateLightViewProjBuffer(Matrix4 inMatrix);
+        void UpdateLightViewProjBuffer(const Matrix4& inMatrix);
         void RenderDirectionalShadow(RHICommandList& cmdList, const ShadowDrawCommand& command);
         void RenderSpotShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand);
         void RenderPointShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand);

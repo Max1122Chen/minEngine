@@ -36,9 +36,9 @@ namespace minEngine
         m_Command = {};
     }
 
-    void ShadowGraphPass::BindGraphTexture(RHITextureRef texture)
+    void ShadowGraphPass::BindGraphTexture(const RHITextureRef& texture)
     {
-        m_Command.Handle.Texture = std::move(texture);
+        m_Command.Handle.Texture = texture;
     }
 
     void ShadowGraphPass::SetupDependencies(RenderPass& self, RenderGraph& graph)

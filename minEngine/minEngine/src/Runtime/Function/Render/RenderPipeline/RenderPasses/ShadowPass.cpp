@@ -176,7 +176,7 @@ namespace minEngine
         }
     }
 
-    void ShadowPass::UpdateLightViewProjBuffer(Matrix4 inMatrix)
+    void ShadowPass::UpdateLightViewProjBuffer(const Matrix4& inMatrix)
     {
         if (m_LightViewProjUniformBuffer)
         {

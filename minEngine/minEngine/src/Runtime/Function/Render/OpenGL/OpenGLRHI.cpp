@@ -414,6 +414,19 @@ namespace minEngine
                         info.DepthStencil.MipIndex);
                 }
             }
+
+            const GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+            {
+                ME_CORE_ERROR(
+                    "RHICmdBeginRenderPass: framebuffer incomplete (status=0x{:X}, color={}, depth={}).",
+                    static_cast<unsigned int>(fboStatus),
+                    hasColor,
+                    hasDepth);
+                DestroyTransientFramebuffer();
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                return;
+            }
         }
         else
         {
