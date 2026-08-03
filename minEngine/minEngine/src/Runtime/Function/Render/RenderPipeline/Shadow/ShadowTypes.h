@@ -11,10 +11,6 @@ namespace minEngine
     constexpr int MAX_SPOT_SHADOW_MAPS = 2;
     constexpr int MAX_POINT_SHADOW_MAPS = 2;
 
-    /** Legacy GL unit bases — layout description only (EngineShaderBindings). Not shadow slot indices. */
-    constexpr int SPOT_SHADOW_MAP_BASE_UNIT = 9;
-    constexpr int POINT_SHADOW_MAP_BASE_UNIT = 11;
-
     enum class ShadowResourceType : uint8_t
     {
         Invalid = 0,

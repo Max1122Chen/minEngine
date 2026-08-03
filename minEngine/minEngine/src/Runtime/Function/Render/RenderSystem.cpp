@@ -39,7 +39,7 @@ namespace minEngine
         m_RHI = std::make_shared<OpenGLRHI>();
         m_RHI->Initialize();
 
-        static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->SetClearColor(Vector3(0.1f, 0.1f, 0.1f));
+        m_RHI->RHISetBackbufferClearColor(Vector3(0.1f, 0.1f, 0.1f));
 
         m_SceneRenderer = std::make_unique<ForwardRenderer>();
         m_SceneRenderer->Initialize();
@@ -114,7 +114,7 @@ namespace minEngine
     {
         (void)deltaTime;
 
-        static_cast<OpenGLRHI*>(m_RHI.get())->m_WindowSystem->Clear();
+        m_RHI->RHIClearBackbuffer();
 
         if (m_SceneRenderer)
         {

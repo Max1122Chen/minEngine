@@ -50,6 +50,22 @@ namespace minEngine
         ME_CORE_INFO("OpenGLRHI Shutdown");
     }
 
+    void OpenGLRHI::RHISetBackbufferClearColor(const Vector3& color)
+    {
+        if (m_WindowSystem)
+        {
+            m_WindowSystem->SetClearColor(color);
+        }
+    }
+
+    void OpenGLRHI::RHIClearBackbuffer()
+    {
+        if (m_WindowSystem)
+        {
+            m_WindowSystem->Clear();
+        }
+    }
+
     
 
     namespace
@@ -176,6 +192,8 @@ namespace minEngine
         if (desc.BlendState.bBlendEnabled)
         {
             glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendEquation(GL_FUNC_ADD);
         }
         else
         {

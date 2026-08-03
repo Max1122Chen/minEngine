@@ -15,8 +15,6 @@ namespace minEngine
     class OpenGLRHI : public RHI
     {
     public:
-        friend class RenderSystem;
-
         OpenGLRHI() = default;
         virtual ~OpenGLRHI() = default;
 
@@ -60,6 +58,9 @@ namespace minEngine
 
         virtual void RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset) override;
         virtual void RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex) override;
+
+        virtual void RHISetBackbufferClearColor(const Vector3& color) override;
+        virtual void RHIClearBackbuffer() override;
 
     private:
         void ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState);

@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-03 (RND-F08 slot slim Done)
+Last updated: 2026-08-03 (RND-F09 Done)
 
 ## Purpose
 
@@ -1091,6 +1091,26 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Editor golden scene visual OK (mesh layout / lighting / sky — user sign-off).
 - Next step:
   P3 material BindingSet cache; optional PSO map per pass; P0′ SRV factory + remaining M3 cleanup.
+
+### 2026-08-03 - RND-F09 Done：RHI / Binding hygiene（`render`）
+- Goal:
+	付清 TD-013/014/016/017/018/019（不含 TD-015）。
+- Main changes:
+	S01 Set0 脏缓存；S02 Material `RHITextureViewCache`；S03 `RHISetBackbufferClearColor`/`RHIClearBackbuffer`；S04 Apply 补 blend 因子；S05 删除 `ShaderResource`+CB 过滤；S06 unit → `EngineShaderBindings`。
+- Validation done:
+	`cmake --build` minEngine/Editor/minEngineTests；`.\scripts\verify.ps1` smoke PASS；`test render-graph` PASS。
+- Risks or caveats:
+	Blend 因子尚未 desc 驱动；Editor 黄金场景待用户目视。
+- Next step:
+	用户目视后准备 commit；TD-015 EnvMap 专题另议。
+
+### 2026-08-03 - RND-F09 Planned：RHI / Binding hygiene sweep（`render`）
+- Goal:
+	打包付清 TD-013/014/016/017/018/019；明确排除 TD-015 EnvMap。
+- Main changes:
+	登记 `RND-F09`；Design + Impl；TECH_DEBT / ACTIVE_WORK 指向 F09 切片。
+- Next step:
+	用户确认方案后从 S01（Set0 脏标记）开工。
 
 ### 2026-08-03 - RND-F08 follow-up：阴影 Slot 语义瘦身（`render`）
 - Goal:

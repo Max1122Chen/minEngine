@@ -2,7 +2,6 @@
 
 #include "Core.h"
 #include "Runtime/Function/Render/Environment/EngineIBLEnvironment.h"
-#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 
 namespace minEngine
 {
@@ -48,16 +47,19 @@ namespace minEngine
         constexpr uint32_t kGL_DirLightViewProjsUBO = 9;
         constexpr uint32_t kGL_CascadeFarPlanesUBO = 10;
         constexpr uint32_t kGL_SpotLightViewProjsUBO = 11;
+        /** Spot/point shadow sampler units (layout description only; SlotIndex selects maps). */
+        constexpr uint32_t kGL_SpotShadowBaseUnit = kGL_DirShadowTextureUnit + 1u;
+        constexpr uint32_t kGL_PointShadowBaseUnit = kGL_SpotLightViewProjsUBO;
         constexpr uint32_t kGL_IBLIrradianceUnit = static_cast<uint32_t>(kEngineIBLIrradianceTextureUnit);
         constexpr uint32_t kGL_IBLPrefilterUnit = static_cast<uint32_t>(kEngineIBLPrefilterTextureUnit);
         constexpr uint32_t kGL_IBLBrdfLutUnit = static_cast<uint32_t>(kEngineIBLBrdfLutTextureUnit);
 
         static_assert(
-            static_cast<uint32_t>(SPOT_SHADOW_MAP_BASE_UNIT) == kGL_DirShadowTextureUnit + 1u,
+            kGL_SpotShadowBaseUnit == 9u,
             "Set1 spot shadow base unit must follow dir shadow unit");
         static_assert(
-            static_cast<uint32_t>(POINT_SHADOW_MAP_BASE_UNIT) == kGL_SpotLightViewProjsUBO,
-            "Set1 point shadow base unit must match ShadowTypes");
+            kGL_PointShadowBaseUnit == 11u,
+            "Set1 point shadow base unit must follow spot light VPs UBO binding");
 
         // --- Set 2: material (per instance; k grows with MaterialShaderParameterLayout) ---
         constexpr uint32_t kSet2_MaterialTextureBase = 0;

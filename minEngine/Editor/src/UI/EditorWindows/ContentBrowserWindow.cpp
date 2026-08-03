@@ -43,11 +43,6 @@ namespace minEngine
             return ICON_FA_PALETTE;
         }
 
-        if (assetType == "Shader")
-        {
-            return ICON_FA_CODE;
-        }
-
         if (assetType == "Scene")
         {
             return ICON_FA_MAP;
@@ -63,7 +58,7 @@ namespace minEngine
 
     AssetIconFontStyle ContentBrowserWindow::ResolveAssetTypeIconFontStyle(const std::string_view assetType) const
     {
-        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Shader" || assetType == "Font")
+        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Font")
         {
             return AssetIconFontStyle::Solid;
         }

@@ -10,6 +10,8 @@
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Function/Render/RHI/RHITextureViewCache.h"
+#include "Runtime/Function/Render/RHI/RHITextureViewCache.h"
 
 #include <string>
 #include <vector>
@@ -93,6 +95,7 @@ namespace minEngine
         RHIShaderRef m_GPUShader;
         RHIShaderBindingSetLayoutRef m_MaterialShaderBindingSetLayout;
         RHIShaderBindingSetRef m_MaterialShaderBindingSet;
+        RHITextureViewCache m_TextureViewCache;
         std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
         RHIBufferRef m_ScalarParamsUBO;
         uint32_t m_ScalarParamsUBOSize = 0;

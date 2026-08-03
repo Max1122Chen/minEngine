@@ -25,10 +25,10 @@ namespace minEngine
             {kSet1_DirLightViewProjs, RHIShaderBindingType::UniformBuffer, kGL_DirLightViewProjsUBO, RHIGraphicsShaderStage::Pixel},
             {kSet1_CascadeFarPlanes, RHIShaderBindingType::UniformBuffer, kGL_CascadeFarPlanesUBO, RHIGraphicsShaderStage::Pixel},
             {kSet1_SpotLightViewProjs, RHIShaderBindingType::UniformBuffer, kGL_SpotLightViewProjsUBO, RHIGraphicsShaderStage::Pixel},
-            {kSet1_SpotShadow0, RHIShaderBindingType::TextureSRV, SPOT_SHADOW_MAP_BASE_UNIT, RHIGraphicsShaderStage::Pixel},
-            {kSet1_SpotShadow1, RHIShaderBindingType::TextureSRV, SPOT_SHADOW_MAP_BASE_UNIT + 1, RHIGraphicsShaderStage::Pixel},
-            {kSet1_PointShadow0, RHIShaderBindingType::TextureSRV, POINT_SHADOW_MAP_BASE_UNIT, RHIGraphicsShaderStage::Pixel},
-            {kSet1_PointShadow1, RHIShaderBindingType::TextureSRV, POINT_SHADOW_MAP_BASE_UNIT + 1, RHIGraphicsShaderStage::Pixel},
+            {kSet1_SpotShadow0, RHIShaderBindingType::TextureSRV, kGL_SpotShadowBaseUnit, RHIGraphicsShaderStage::Pixel},
+            {kSet1_SpotShadow1, RHIShaderBindingType::TextureSRV, kGL_SpotShadowBaseUnit + 1, RHIGraphicsShaderStage::Pixel},
+            {kSet1_PointShadow0, RHIShaderBindingType::TextureSRV, kGL_PointShadowBaseUnit, RHIGraphicsShaderStage::Pixel},
+            {kSet1_PointShadow1, RHIShaderBindingType::TextureSRV, kGL_PointShadowBaseUnit + 1, RHIGraphicsShaderStage::Pixel},
             {kSet1_IBLIrradiance, RHIShaderBindingType::TextureSRV, kGL_IBLIrradianceUnit, RHIGraphicsShaderStage::Pixel},
             {kSet1_IBLPrefilter, RHIShaderBindingType::TextureSRV, kGL_IBLPrefilterUnit, RHIGraphicsShaderStage::Pixel},
             {kSet1_IBLBrdfLut, RHIShaderBindingType::TextureSRV, kGL_IBLBrdfLutUnit, RHIGraphicsShaderStage::Pixel},
@@ -46,6 +46,9 @@ namespace minEngine
         m_PointShadowSRVs = {};
         m_IblSRVs = {};
         m_TextureViewCache.Clear();
+        m_CachedPerFrame = nullptr;
+        m_CachedLights = nullptr;
+        m_CachedPerObject = nullptr;
         m_CachedDirShadowTexture = nullptr;
         m_CachedSpotShadowTextures = {};
         m_CachedPointShadowTextures = {};
@@ -72,6 +75,20 @@ namespace minEngine
         {
             return;
         }
+
+        const bool sceneSet0Dirty =
+            !m_SceneSet0
+            || perFrame != m_CachedPerFrame
+            || lights != m_CachedLights
+            || perObject != m_CachedPerObject;
+        if (!sceneSet0Dirty)
+        {
+            return;
+        }
+
+        m_CachedPerFrame = perFrame;
+        m_CachedLights = lights;
+        m_CachedPerObject = perObject;
 
         std::vector<RHIShaderBinding> resources(3);
         resources[kSet0_PerFrame] = {RHIShaderBindingType::UniformBuffer, perFrame, nullptr};

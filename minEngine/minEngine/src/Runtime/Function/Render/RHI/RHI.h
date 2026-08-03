@@ -98,5 +98,9 @@ namespace minEngine
             int32_t vertexOffset = 0) = 0;
 
         virtual void RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex = 0) = 0;
+
+        /** Backbuffer clear color / clear (swapchain surface owned by WindowSystem). */
+        virtual void RHISetBackbufferClearColor(const Vector3& color) = 0;
+        virtual void RHIClearBackbuffer() = 0;
     };
 }

@@ -438,11 +438,10 @@ namespace minEngine
                 continue;
             }
 
-            RHITextureSRVDesc srvDesc;
-            srvDesc.Texture = modernTexture;
-            m_TextureSRVs.push_back(cmdList.CreateShaderResourceView(srvDesc));
+            RHIShaderResourceViewRef srv = m_TextureViewCache.GetOrCreate(cmdList, modernTexture);
+            m_TextureSRVs.push_back(srv);
             resources[entryIndex].Type = RHIShaderBindingType::TextureSRV;
-            resources[entryIndex].TextureSRV = m_TextureSRVs.back().get();
+            resources[entryIndex].TextureSRV = srv.get();
         }
 
         m_MaterialShaderBindingSet = cmdList.CreateShaderBindingSet(m_MaterialShaderBindingSetLayout.get(), resources);

@@ -46,6 +46,10 @@ namespace minEngine
         std::array<std::shared_ptr<RHIShaderResourceView>, MAX_POINT_SHADOW_MAPS> m_PointShadowSRVs{};
         std::array<std::shared_ptr<RHIShaderResourceView>, 3> m_IblSRVs{};
 
+        RHIBuffer* m_CachedPerFrame = nullptr;
+        RHIBuffer* m_CachedLights = nullptr;
+        RHIBuffer* m_CachedPerObject = nullptr;
+
         RHITexture* m_CachedDirShadowTexture = nullptr;
         std::array<RHITexture*, MAX_SPOT_SHADOW_MAPS> m_CachedSpotShadowTextures{};
         std::array<RHITexture*, MAX_POINT_SHADOW_MAPS> m_CachedPointShadowTextures{};

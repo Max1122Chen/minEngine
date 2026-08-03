@@ -23,6 +23,7 @@ namespace minEngine
     struct RHIBlendStateDesc
     {
         bool bBlendEnabled = false;
+        /** Factors are not yet desc-driven; OpenGL Apply uses SrcAlpha / OneMinusSrcAlpha when enabled. */
     };
 
     enum class RHIDepthCompareFunc : uint8_t

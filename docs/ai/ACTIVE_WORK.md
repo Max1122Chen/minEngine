@@ -9,16 +9,21 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-### 渲染主线（`render`）— 空闲
+### 渲染主线 — `render` 分支暂空闲
 
-- **RND-F07 / F08** Done（帧 RT + 阴影图所有权；Manager 已删；SlotIndex 语义）。
-- 下一候选（择一）：**TD-013** Set0 BindingSet / **RND-F03** 尾 / **RND-F05** Vulkan（依赖 F03 更清）。
+- **RND-F09** Done（RHI hygiene；TD-013/014/016/017/018/019）
+- **明确不做：** **TD-015 EnvMap**（后议用户专题）
+- 下一候选：用户选题 / F05 准备前契约 / F03 EnvMap 专题
+
+### 已关
+
+- **RND-F07 / F08 / F09** 帧 RT、阴影图所有权、Binding/RHI hygiene
 
 ### 相关（非紧急）
 
-- **RND-F05** Vulkan — Planned。
-- **RND-F03** Legacy 清零尾（含 TD-015 EnvMap、TD-016/017/018）。
-- **RND-F06-S03** 目录改名可选；**TD-019** GL unit 常量可再收。
+- **RND-F05** Vulkan — Planned（受益于 F09 的 016/017）
+- **RND-F03** 仍 In Progress；EnvMap 尾与 F09 解耦
+- **RND-F06-S03** 目录改名可选
 
 ### 分支约定
 
@@ -51,6 +56,7 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 - Core: delegates, Lua scripting bindings.
 - Deferred GBuffer Renderer（另开 Feature；非 F06）。
 - F01 实验 Bake 产品化（已拒绝）。
+- **TD-015 EnvMap** — 等用户专题，不塞进已完成的 F09。
 
 ---
 
@@ -59,7 +65,7 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 | File | Role |
 |------|------|
 | [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status |
-| [RND-F08 Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) | 阴影图所有权（Done） |
-| [RND-F07](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) | 帧 RT 图所有权（Done） |
+| [RND-F09 Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) | 刚收口的 hygiene |
+| [TECH_DEBT.md](./TECH_DEBT.md) | TD-015 仍 Open |
 | [BOOTSTRAP_DIGEST.md](./BOOTSTRAP_DIGEST.md) | Commands, DoD |
 | [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |
