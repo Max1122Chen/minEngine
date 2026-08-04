@@ -27,6 +27,9 @@ namespace minEngine
 
         void Tick(float deltaTime);
 
+        /** Swapchain/backbuffer present (RND-F05-S05 neutral frame boundary). */
+        void PresentFrame();
+
         void SubmitSceneDraw(const SceneDrawDesc& desc);
 
         void SetPresentPassEnabled(bool enabled);

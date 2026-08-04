@@ -30,8 +30,8 @@ S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀
 | `RND-F05-S01` | CMake/Vulkan SDK + `ShaderCompiler`（双目标 SPIR-V）+ 缓存 | **Done** | `test shader-compiler` PASSED |
 | `RND-F05-S02` | GL 4.6；bytecode `RHICreateShader`；Present 走 SPIR-V | **Done** | `test shader-compiler`（含 GL specialize）PASSED；smoke PASSED |
 | `RND-F05-S03` | CLI `--rhi`；`VulkanRHI` 设备/交换链 Clear/Present（semaphore/fence **内部**） | **Done** | `minEngineTests.exe --rhi vulkan test smoke` PASSED；Editor `--rhi vulkan` clear/present smoke PASS |
-| `RND-F05-S04` | VK 最小图形 + SPIR-V | Planned | 与 GL 对照有色输出 |
-| `RND-F05-S05` | PresentPass / 中立 `BeginFrame`·`Present`（若需要）对齐双后端 | Planned | 同 Pass 路径切换 |
+| `RND-F05-S04` | VK 最小图形 + SPIR-V | **Done** | Editor `--rhi vulkan` 彩色三角形 smoke PASS |
+| `RND-F05-S05` | PresentPass / 中立 `BeginFrame`·`Present`（若需要）对齐双后端 | In Progress | 同 Pass 路径切换 |
 | `RND-F05-S06` | 更多引擎 shader + MaterialCompiler `set=` 分批 | Planned | 每批 GL 回归 |
 | `RND-F05-S07+` | Base/Shadow/IBL… VK 扩覆盖 | Planned | 子切片另开 DoD |
 
@@ -70,7 +70,10 @@ S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀
 
 ### RND-F05-S04 — Vulkan 最小绘制
 - **Goal:** SPIR-V + PSO + draw。
-- **Verify:** 目视对照 GL
+- **DoD:**
+  - [x] `VulkanRHI` render pass + graphics pipeline（内嵌 triangle SPIR-V）
+  - [x] Editor `--rhi vulkan` 可见彩色三角形
+- **Verify:** Editor `--rhi vulkan` smoke PASS
 
 ### RND-F05-S05 — PresentPass 对齐
 - **Goal:** 同一 PresentPass/CommandList；必要时中立 `BeginFrame`/`Present`。
@@ -104,4 +107,6 @@ S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀
 | 2026-08-04 | S00 Done；S03 纳入 `--rhi` 与内部帧同步；对齐 Design §3.5–§3.6 |
 | 2026-08-04 | **S01 Done**：`ShaderCompiler` + Present location 修正；`test shader-compiler` / smoke PASS |
 | 2026-08-04 | **S02 Done**：GL 4.6；bytecode `RHICreateShader`；Present SPIR-V hot path；suite 含 GL specialize |
-| 2026-08-04 | **S03 Done**：`--rhi` 选择后端；GLFW `NO_API`；`VulkanRHI` swapchain clear/present（内部 semaphore/fence） |
+| 2026-08-04 | **S04 Done**：Vulkan 最小 graphics pipeline + SPIR-V triangle smoke |
+| 2026-08-04 | Post-process FXAA/Sharpen → OpenGL SPIR-V；`layout(location)` 修正 |
+| 2026-08-04 | **S05 启动**：`RenderSystem::PresentFrame()`；Editor OpenGL 走 RHI present |

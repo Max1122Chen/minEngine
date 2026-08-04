@@ -390,9 +390,9 @@ namespace minEngine
             {
                 const float deltaTime = m_Engine->CalculateDeltaTime();
                 m_Engine->TickOneFrame(deltaTime);
-                if (RenderSystem::HasInstance() && RenderSystem::Get().GetRHI())
+                if (RenderSystem::HasInstance())
                 {
-                    RenderSystem::Get().GetRHI()->RHIPresent();
+                    RenderSystem::Get().PresentFrame();
                 }
             }
             return;
@@ -429,7 +429,14 @@ namespace minEngine
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-            windowSystem.SwapBuffers();
+            if (RenderSystem::HasInstance())
+            {
+                RenderSystem::Get().PresentFrame();
+            }
+            else
+            {
+                windowSystem.SwapBuffers();
+            }
         }
     }
 

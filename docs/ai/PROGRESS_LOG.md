@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-04 (RND-F05-S02 Done)
+Last updated: 2026-08-04 (RND-F05-S05 in progress)
 
 ## Purpose
 
@@ -80,6 +80,27 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-08-04 - RND-F05-S05 Present 路径收口（进行中）
+- Goal:
+	Align Editor/Engine frame present on neutral RHI path (no direct `SwapBuffers` in Editor OpenGL loop).
+- Main changes:
+	`RenderSystem::PresentFrame()` → `RHI::RHIPresent()`; `Engine::Run` and Editor (OpenGL + Vulkan) call it.
+- Validation done:
+	Editor OpenGL + Vulkan startup OK (user visual).
+- Next step:
+	Continue S05 — PresentPass / post-process path parity; avoid `vulkan.h` in upper layers.
+
+### 2026-08-04 - RND-F05 post-process OpenGL SPIR-V + S04 Vulkan triangle
+- Goal:
+	Extend SPIR-V hot path to FXAA/Sharpen; land Vulkan minimal graphics draw for smoke validation.
+- Main changes:
+	ForwardRenderer FXAA/Sharpen → `CreateShaderFromSpirvFiles`; `FXAA.frag` / `Sharpen.frag` add `layout(location=...)`.
+	`VulkanRHI` render pass + pipeline; embedded triangle SPIR-V (RGB gradient).
+- Validation done:
+	Editor `--rhi vulkan` colored triangle PASS; OpenGL SPIR-V compile errors fixed.
+- Next step:
+	S05 present-path alignment.
 
 ### 2026-08-04 - RND-F05-S03 CLI `--rhi` + Vulkan clear/present vertical slice
 - Goal:

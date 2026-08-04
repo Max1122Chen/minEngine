@@ -121,6 +121,14 @@ namespace minEngine
         m_PendingDraws.push_back(desc);
     }
 
+    void RenderSystem::PresentFrame()
+    {
+        if (m_RHI)
+        {
+            m_RHI->RHIPresent();
+        }
+    }
+
     void RenderSystem::Tick(float deltaTime)
     {
         (void)deltaTime;

@@ -79,9 +79,9 @@ namespace minEngine
         {
             const float deltaTime = CalculateDeltaTime();
             TickOneFrame(deltaTime);
-            if (m_RenderSystem && m_RenderSystem->GetRHI())
+            if (m_RenderSystem)
             {
-                m_RenderSystem->GetRHI()->RHIPresent();
+                m_RenderSystem->PresentFrame();
             }
             else
             {
