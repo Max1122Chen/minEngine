@@ -1,6 +1,4 @@
 #include "ForwardRenderer.h"
-#include "Runtime/Function/Render/WindowSystem.h"
-#include "Render/WindowSystem.h"
 #include "Render/RenderSystem.h"
 #include "Render/SceneRenderTarget.h"
 #include "Render/RenderScene.h"
@@ -12,7 +10,6 @@
 #include "Render/RHI/RHITexture.h"
 #include "Render/EngineRHITextureUtils.h"
 #include "Render/EngineSceneBindingSets.h"
-#include "Render/EngineShaderBindings.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/EngineShaderUtils.h"
@@ -95,7 +92,7 @@ namespace minEngine
         m_PostProcessPasses.emplace_back();
         m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
         m_PostProcessPasses.back().m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
-        if (RHIShaderRef fxaaShader = EngineShaderUtils::CreateShaderFromFiles(
+        if (RHIShaderRef fxaaShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
                 *rhi,
                 EngineShaderUtils::EngineShaderPath("Present.vert"),
                 EngineShaderUtils::EngineShaderPath("FXAA.frag")))
@@ -107,7 +104,7 @@ namespace minEngine
         m_PostProcessPasses.emplace_back();
         m_PostProcessPasses.back().m_ScreenQuadVertexBuffer = m_ScreenQuadVertexBuffer;
         m_PostProcessPasses.back().m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
-        if (RHIShaderRef sharpenShader = EngineShaderUtils::CreateShaderFromFiles(
+        if (RHIShaderRef sharpenShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
                 *rhi,
                 EngineShaderUtils::EngineShaderPath("Present.vert"),
                 EngineShaderUtils::EngineShaderPath("Sharpen.frag")))
