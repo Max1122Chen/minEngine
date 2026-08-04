@@ -80,6 +80,8 @@ namespace minEngine
         bool CreateSwapchain();
         bool CreateCommandResources();
         bool CreateSyncObjects();
+        bool CreateRenderPassAndGraphicsPipeline();
+        void DestroyGraphicsPipelineAndRenderPass();
         void DestroySwapchain();
         void RecreateSwapchain();
         bool RecordClearCommands(uint32_t imageIndex);
@@ -107,6 +109,16 @@ namespace minEngine
         uint32_t m_CurrentImageIndex = 0;
         bool m_FramePrepared = false;
         bool m_Initialized = false;
+        bool m_HasRenderedOnce = false;
+
+        VkRenderPass m_RenderPass = VK_NULL_HANDLE;
+        VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
+        VkPipeline m_GraphicsPipeline = VK_NULL_HANDLE;
+
+        VkShaderModule m_VertShaderModule = VK_NULL_HANDLE;
+        VkShaderModule m_FragShaderModule = VK_NULL_HANDLE;
+
+        std::vector<VkFramebuffer> m_Framebuffers;
 #endif
 
         Vector3 m_ClearColor{0.1f, 0.1f, 0.1f};
