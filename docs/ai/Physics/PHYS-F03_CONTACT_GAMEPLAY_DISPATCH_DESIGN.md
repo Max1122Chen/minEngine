@@ -12,9 +12,9 @@
 玩法侧接触通知应走 **委托（Delegate）** 订阅，而不是先落地一套 Collider 虚函数过渡 API。依赖 **CORE-F04 Native multicast**（TD-006）；故 **本 Feature 搁置**；完整 Design / Implementation **暂不编写**。
 
 ## 依赖与重开条件
-- **Blocked on:** [CORE-F04](../Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) Native multicast 落地（TD-006）
-- **Reopen when:** `AddMEObject` / `Broadcast` 可用且可挂到组件或等价玩法入口
-- **Then:** 再写正式 Design（事件源仍为 F01 Contact 双缓冲；派发目标为本委托，而非虚函数方案）
+- **Blocked on:** ~~Delegates~~ → **RND-F11 DebugDrawing 成熟**（CORE-F04 已 Done，不再挡）
+- **Reopen when:** DebugDrawing 可在 Editor 视口稳定消费；再写正式 Design
+- **Then:** 事件源仍为 F01 Contact 双缓冲；派发目标为 CORE-F04 Native multicast
 
 ## 现状可用（不依赖本 Feature）
 - `PhysicsWorld::GetContactEvents()` 轮询 Begin/End（测试与临时玩法）
