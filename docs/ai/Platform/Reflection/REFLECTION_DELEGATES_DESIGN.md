@@ -1,31 +1,14 @@
-# 委托系统 — 占位说明（P4-Delegate）
+# 委托系统 — 占位说明（已移交）
 
-Last updated: 2026-05-27  
-Status: **占位，仅记录与函数反射/Lua 的关系；详细设计待后续**  
-父文档：[Platform 路线图](../PLATFORM_ROADMAP.md) §2 P4、§11  
-前置：[函数反射现状](./REFLECTION_FUNCTIONS_CURRENT_STATE.md)
+Last updated: 2026-08-04  
+Status: **Archived / 移交** — 实施约束以 **CORE-F04** 为准  
 
----
-
-## 0) 范围
-
-- 本文当前只作为 **「委托」模块的占位符**，不给出具体 API 或阶段划分。  
-- 真实的设计（单播/多播、与 `MEFunction`/Lua 的交互）将在函数反射方案稳定后，再单独补充。
+**请改读：** [CORE-F04 Native Multicast Delegates Design](../Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md)
 
 ---
 
-## 1) 与其它模块的关系（概念级）
+## 历史说明
 
-- **对函数反射的依赖：** 委托预计会以「绑定 `MEObject` + 可反射函数」为核心形态，因此必须在 `MEFunction` / `ProcessEvent` 设计完成后再详细讨论。  
-- **对 Lua 的关系：** Lua 侧订阅/广播事件最好通过同一套委托抽象，以避免脚本和 C++ 使用两种不同的事件模型；但具体实现方案（包括是否支持多播、如何做 GC）需要等 Lua 需求更清晰时一并设计。
-
----
-
-## 2) 未来讨论方向（仅做备忘）
-
-- 单播 vs 多播、同步 vs 异步调用模型。  
-- 与 `ObjectManager` GC / `weak_ptr` 的交互（避免悬挂目标）。  
-- 在编辑器中的展示方式（是否在 Inspector 中可视化绑定关系）。  
-
-这些内容目前 **不具约束力**，仅用于提醒后续需要重点讨论的点。
-
+- 本文原为 P4-Delegate 占位，强调「须先完成 ProcessEvent / 反射函数再设计委托」。
+- **CORE-F04** 将委托拆为：**Native multicast（本期）** vs **Dynamic/反射（远期）**。玩法/物理所需为前者，不再被反射路径阻塞。
+- 动态委托与 Lua 一等事件仍可在将来另开 Feature；概念备忘见 CORE-F04 Design §3.4。

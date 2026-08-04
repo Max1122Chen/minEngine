@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-03 (master ← merge render; RND-F10 + physics/Lua union)
+Last updated: 2026-08-04 (CORE-F04 Delegates Done)
 
 ## Purpose
 
@@ -80,6 +80,34 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-08-04 - CORE-F04 Native Multicast Delegates（实现 Done）
+- Goal:
+	Ship Native multicast delegates; unlock PHYS-F03; close TD-006 (Native).
+- Main changes:
+	`Runtime/Core/Delegates/` — `DelegateHandle`, `MulticastDelegate`, macros; AddRaw / AddLambda / AddMEObject; Broadcast snapshot + stale MEObject compact.
+	`Tests/Suites/DelegateTest.cpp` + suite id `delegates` (not in smoke).
+	Docs: Design/Impl Done；TD-006 Done；Registry/ACTIVE_WORK.
+- Risks or caveats:
+	Not thread-safe; prefer AddMEObject over AddRaw for gameplay; Dynamic/Lua still future.
+	MulticastDelegate must include ObjectManager before bare GUID.h (Win32 `GetClassName` macro).
+- Validation done:
+	`minEngineTests.exe test delegates` — 5/5 PASSED.
+- Next step:
+	Optional: PHYS-F03 Design on physics track; or feat/render F05.
+
+### 2026-08-04 - CORE-F04 Native Multicast Delegates Design Draft
+- Goal:
+	Formalize Native-only multicast delegates (unlock PHYS-F03); split from reflection/Dynamic path.
+- Main changes:
+	`docs/ai/Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_{DESIGN,IMPLEMENTATION}.md`（Status Draft）.
+	Old `REFLECTION_DELEGATES_DESIGN.md` → Archived pointer; Registry / ACTIVE_WORK / TD-006 Notes / PHYS-F03 dependency updated.
+- Risks or caveats:
+	Superseded by implementation entry above.
+- Validation done:
+	Docs only.
+- Next step:
+	(done) implement S01–S03.
 
 ### 2026-08-03 - TD-013：enum codec 按 MEEnum::GetSize 读写（`master`）
 - Goal:

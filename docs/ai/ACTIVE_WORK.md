@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-03  
+Last updated: 2026-08-04  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,10 +9,10 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-### Master — TD-013 enum codec（**Done 2026-08-03**）
+### Master — CORE-F04 Delegates（**Done 2026-08-04**）
 
-- Size-aware enum storage via `MEEnum::GetSize()`; wire format remains int64.
-- Next on master: **`CORE-F04` Delegates**（付清 TD-006，解锁 PHYS-F03）.
+- Native multicast：`Runtime/Core/Delegates/`；`test delegates` PASSED；**TD-006** Done。
+- Next on master（可选）：重开 **PHYS-F03** Design，或切 `feat/render` 做 F05。
 
 ### Render 轨（`feat/render`）— 顺序已定
 
@@ -20,21 +20,16 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 2. **RND-F05 Vulkan**（先于 DebugDrawing）  
 3. **RND-F11 DebugDrawing**（Vulkan 竖切后再开）
 
-合入前：把 master（含 TD-013 / 后续 Delegates）定期 merge 进 `feat/render`。
-
-### Master 并行 — CORE-F04 Delegates（**Planned**）
-
-- 付清 **TD-006**；正式 Design 后再实现。  
-- 完成后可恢复 **PHYS-F03** Contact gameplay dispatch。
+合入前：把 master（含 Delegates）定期 merge 进 `feat/render`。
 
 ### Physics（`feat/physics`）
 
-- F01/F02 Done；**F03 Deferred** until Delegates.  
-- 已 base 到 master（含 TD-013）；Delegates 后再开 F03；DebugDrawing 会显著改善调试体验。
+- F01/F02 Done；**F03** 依赖已满足（CORE-F04），可写正式 Design。  
+- DebugDrawing（RND-F11）会显著改善调试体验。
 
 ### 更远（先不占带宽）
 
-- Sprite / 骨骼网格 / 动画 — 等 RHI/Vulkan 竖切更稳后再登记 Feature。
+- Sprite / 骨骼网格 / 动画 — 等 RHI/Vulkan 竖切更稳后再登记 Viewer。
 
 ---
 
@@ -52,6 +47,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
 | Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
+| Delegates | `minEngineTests.exe test delegates` |
 | Material | `minEngineTests.exe test material-ir` |
 | RenderGraph | `minEngineTests.exe test render-graph` |
 | Lua MVP | `test lua-script-mvp` |

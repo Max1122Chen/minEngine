@@ -27,7 +27,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) · 原 physics 分支 `CORE-F01`，合入 master 时改号以免与 Lua 冲突 |
-| `CORE-F04` | Multicast Delegates（引擎事件 + 后续 Lua 绑定钩子） | Planned | — | 付清 **TD-006**；解锁 **PHYS-F03**；Design 待写 |
+| `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) · **TD-006** Done；Dynamic/Lua 后置 |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) · **S06+ 产品方向由 `RND-F07` 取代**（实验 Bake 非终态） |
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配 + Pass CommandList） | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · S0–S5 |
 | `RND-F03` | Legacy RHI removal（调用面 + 管线重构 M4 + 后端绞杀 M3） | In Progress | **M1–M2 Done**；**M4** 管线 §16；M3 §15 | [RND-F03_LEGACY_RHI_REMOVAL_DESIGN](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · §16 |

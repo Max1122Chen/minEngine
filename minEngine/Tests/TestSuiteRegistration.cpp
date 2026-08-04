@@ -19,6 +19,7 @@
 #include "Suites/PhysicsContactTest.h"
 #include "Suites/PhysicsLineTraceTest.h"
 #include "Suites/PhysicsShapesTest.h"
+#include "Suites/DelegateTest.h"
 
 namespace minEngine
 {
@@ -233,6 +234,22 @@ namespace minEngine
             }
         };
 
+        struct DelegateTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                // Not in smoke: native unit suite; run via `test delegates` or full.
+                return TestSuiteMetadata{"delegates", "Native Multicast Delegates", false, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'delegates'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("delegates", context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -246,6 +263,7 @@ namespace minEngine
         using PhysicsContactSuite = TypedTestSuite<PhysicsContactTestSuiteTraits>;
         using PhysicsLineTraceSuite = TypedTestSuite<PhysicsLineTraceTestSuiteTraits>;
         using PhysicsShapesSuite = TypedTestSuite<PhysicsShapesTestSuiteTraits>;
+        using DelegateSuite = TypedTestSuite<DelegateTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -269,6 +287,7 @@ namespace minEngine
             registry.Register(PhysicsContactSuite::Get());
             registry.Register(PhysicsLineTraceSuite::Get());
             registry.Register(PhysicsShapesSuite::Get());
+            registry.Register(DelegateSuite::Get());
             s_Registered = true;
         }
     }

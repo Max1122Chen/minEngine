@@ -67,7 +67,7 @@
 - [Platform 路线图](./Platform/PLATFORM_ROADMAP.md) — **Reference**；UE 化大方向与历史排期
 - [函数反射设计](./Platform/Reflection/REFLECTION_FUNCTIONS_DESIGN.md) — Invoke、阶段切片（实施时以代码为准）
 - [函数反射现状](./Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) — **Snapshot**（方法反射之前）；勿当现状
-- [委托系统（占位）](./Platform/Reflection/REFLECTION_DELEGATES_DESIGN.md)
+- [CORE-F04 Native Multicast Delegates](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md)（旧占位已移交）
 - [Lua 脚本（CORE-F01 Draft）](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md)
 - [引擎启动 / 配置](./Platform/Startup/ENGINE_STARTUP_DESIGN.md)
 - [内存管理](./Platform/MemoryManagement/MEMORY_MANAGEMENT_DESIGN.md)
