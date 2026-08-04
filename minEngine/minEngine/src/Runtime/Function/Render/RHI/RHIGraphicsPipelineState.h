@@ -53,6 +53,9 @@ namespace minEngine
         bool bDepthClipEnabled = true;
         bool bCullEnabled = false;
         RHICullMode CullMode = RHICullMode::Back;
+        // OpenGL: glPolygonOffset(factor, units). Used by depth-only shadow passes.
+        float DepthBiasSlopeScale = 0.0f;
+        float DepthBiasConstant = 0.0f;
     };
 
     class RHIGraphicsPipelineState

@@ -255,6 +255,19 @@ namespace minEngine
                 break;
             }
         }
+
+        if (desc.RasterizerState.DepthBiasSlopeScale != 0.0f
+            || desc.RasterizerState.DepthBiasConstant != 0.0f)
+        {
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(
+                desc.RasterizerState.DepthBiasSlopeScale,
+                desc.RasterizerState.DepthBiasConstant);
+        }
+        else
+        {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+        }
     
         // Set primitive type
         switch (desc.PrimitiveType)

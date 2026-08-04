@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-04 (RND-F05-S05 in progress)
+Last updated: 2026-08-04 (BUG-RENDER-004 Fixed; resume RND-F05-S05)
 
 ## Purpose
 
@@ -68,6 +68,7 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Any GL resource wrapper must own and release native handles in destructor.
 - Scene proxies or render entries must not be recreated indefinitely without ownership policy.
 - Shadow pass changes (viewport/state/targets) must be restored before later passes.
+- Large flat shadow casters: do not expand CSM Z with bounding-sphere radius (see BUG-RENDER-004).
 - Pointer deserialization must clearly separate ownership and reference semantics.
 - Serializer signature changes must be synchronized across all callsites.
 - Asset scanning must avoid duplicate registration and accidental GUID regeneration.
@@ -80,6 +81,18 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-08-04 - BUG-RENDER-004 directional CSM self-shadow acne (+ BUG-RENDER-003 gate)
+- Goal:
+	Remove texture-following stripe banding on large ground planes under directional light; restore RND-F05 track after diagnosis.
+- Main changes:
+	Shadow depth PSO front-face cull + polygon offset; cascade Z expand via AABB corners (not sphere);
+	receiver bias / light-dir offset; shadow map 1024; dir shadow sample gated on `Params.w` (also closes BUG-RENDER-003);
+	TBN: tangent uses model matrix under non-uniform scale.
+- Validation done:
+	User A/B: disable dir shadow pass → stripes gone; after fix → stripes gone with CSM on (Editor OpenGL).
+- Next step:
+	Resume **RND-F05-S05** (Present / post-process neutrality; more SPIR-V).
 
 ### 2026-08-04 - RND-F05-S05 Present 路径收口（进行中）
 - Goal:

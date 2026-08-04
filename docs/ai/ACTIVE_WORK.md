@@ -14,7 +14,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 1. ~~RND-F03 关账~~ — **Done**  
 2. **RND-F05** — [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md)  
    - **S01–S04 Done**；**S05 In Progress**（`PresentFrame` + SPIR-V 目标按 `--rhi` 选择）；下一刀继续 Present/后处理中立路径与更多 shader SPIR-V  
-3. **RND-F11 DebugDrawing** — F05 可演示后再设计  
+3. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**（顺带 **BUG-RENDER-003** `Params.w` 门闩）  
+4. **RND-F11 DebugDrawing** — F05 可演示后再设计  
 
 合入前：定期把 **master** rebase/merge 进 `feat/render`。
 

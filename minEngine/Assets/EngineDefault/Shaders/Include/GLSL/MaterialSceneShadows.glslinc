@@ -501,9 +501,8 @@ vec3 GetCascadeDebugColor(int cascadeIndex)
 float ComputeDirectionalShadowFactor(vec3 normal, vec3 fragPos, vec4 fragPosViewSpace)
 {
     vec3 lightDir = normalize(-DirectionalLight.Direction.xyz);
-    float ndotl = max(dot(normalize(normal), lightDir), 0.0);
-    float bias = max(0.0005, 0.005 * (1.0 - ndotl));
-    float shadow = 0.0;
+    vec3 N = normalize(normal);
+    float ndotl = max(dot(N, lightDir), 0.0);
     float viewDepth = -fragPosViewSpace.z;
     int cascadeIndex = 3;
     for (int i = 0; i < 4; i++)
@@ -514,15 +513,20 @@ float ComputeDirectionalShadowFactor(vec3 normal, vec3 fragPos, vec4 fragPosView
             break;
         }
     }
-    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
-    shadow = SampleDirShadowPCF(cascadeLightSpacePos, float(cascadeIndex), bias);
-    return shadow;
+    // Receiver bias: constant + slope, scaled by cascade (farther cascades have coarser depth).
+    float cascadeScale = 1.0 + float(cascadeIndex) * 0.75;
+    float bias = (0.0015 + 0.02 * (1.0 - ndotl)) * cascadeScale;
+    // Prefer geometric-ish offset along the light direction for large flat receivers.
+    vec3 samplePos = fragPos + lightDir * (0.02 * cascadeScale) + N * 0.01;
+    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(samplePos, 1.0);
+    return SampleDirShadowPCF(cascadeLightSpacePos, float(cascadeIndex), bias);
 }
 
 float ComputeMaterialSceneShadowVisibility(vec3 normal, vec3 fragPos, vec4 fragPosViewSpace)
 {
     float visibility = 1.0;
-    if (length(DirectionalLight.Direction.xyz) > 0.001)
+    int dirShadowIndex = int(DirectionalLight.Params.w + 0.5);
+    if (length(DirectionalLight.Direction.xyz) > 0.001 && dirShadowIndex >= 0)
     {
         visibility *= (1.0 - ComputeDirectionalShadowFactor(normal, fragPos, fragPosViewSpace));
     }

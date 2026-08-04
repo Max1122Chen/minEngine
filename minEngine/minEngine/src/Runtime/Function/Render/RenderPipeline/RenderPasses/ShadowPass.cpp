@@ -33,6 +33,13 @@ namespace minEngine
             m_ShadowPSODescTemplate.DepthStencilState.bDepthTestEnabled = true;
             m_ShadowPSODescTemplate.DepthStencilState.bDepthWriteEnabled = true;
             m_ShadowPSODescTemplate.BlendState.bBlendEnabled = false;
+            // Cull light-facing faces so receivers (especially large ground planes) do not
+            // write their own depth into the map — primary fix for directional self-shadow acne.
+            m_ShadowPSODescTemplate.RasterizerState.bCullEnabled = true;
+            m_ShadowPSODescTemplate.RasterizerState.CullMode = RHICullMode::Front;
+            // Extra depth push for remaining two-sided / grazing casters.
+            m_ShadowPSODescTemplate.RasterizerState.DepthBiasSlopeScale = 2.0f;
+            m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant = 4.0f;
 
             if (pipeline)
             {

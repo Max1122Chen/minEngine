@@ -1192,26 +1192,24 @@ namespace minEngine
         using Math::Geometry::AABB;
         for (const auto& command : opaqueQueue)
         {
-            if (command.m_CastShadow)
+            if (!command.m_CastShadow)
             {
-                AABB meshAABB = command.m_BoundingBox;
-                if (!meshAABB.IsValid())
-                {
-                    ME_CORE_WARN("Invalid mesh AABB for shadow caster, skipping it in cascade Z expansion");
-                    continue;
-                }
-                // Calculate the bounding sphere of the mesh in world space
-                Vector3 meshCenterWS = meshAABB.GetCenter();
-                Vector3 meshExtentWS = meshAABB.GetExtent();
-                float meshBoundingSphereRadius = glm::length(meshExtentWS);
-                // Transform the mesh center to light space
-                Vector4 meshCenterLS = lightView * Vector4(meshCenterWS, 1.0f);
-
-                if (meshCenterLS.z + meshBoundingSphereRadius > frustumAABB.Max.z)
-                {
-                    frustumAABB.Max.z = meshCenterLS.z + meshBoundingSphereRadius;
-                }
+                continue;
             }
+
+            const AABB& meshAABB = command.m_BoundingBox;
+            if (!meshAABB.IsValid())
+            {
+                ME_CORE_WARN("Invalid mesh AABB for shadow caster, skipping it in cascade Z expansion");
+                continue;
+            }
+
+            // Fit light-space Z to the caster's AABB corners. A bounding-sphere radius
+            // over-expands flat/large meshes (e.g. 100x100 ground) and destroys CSM depth
+            // precision, which shows up as directional self-shadow acne.
+            const AABB meshAabbLS = Math::Geometry::Transform(meshAABB, lightView);
+            frustumAABB.Min.z = glm::min(frustumAABB.Min.z, meshAabbLS.Min.z);
+            frustumAABB.Max.z = glm::max(frustumAABB.Max.z, meshAabbLS.Max.z);
         }
     }
 }
