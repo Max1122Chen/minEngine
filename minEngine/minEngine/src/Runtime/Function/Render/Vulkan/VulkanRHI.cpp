@@ -3,6 +3,7 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/ShaderCompiler/ShaderCompiler.h"
+#include "Runtime/Function/Render/Vulkan/VulkanRHIResources.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
 #include <algorithm>
@@ -953,12 +954,33 @@ void main()
         const RHIShaderCreateDesc& desc,
         std::string* outCompileLog)
     {
-        (void)desc;
+#if !defined(MINENGINE_HAS_VULKAN)
         if (outCompileLog)
         {
-            *outCompileLog = "VulkanRHI: bytecode shaders land in S04.";
+            *outCompileLog = "VulkanRHI: built without MINENGINE_HAS_VULKAN.";
         }
         return nullptr;
+#else
+        if (m_Device == VK_NULL_HANDLE)
+        {
+            if (outCompileLog)
+            {
+                *outCompileLog = "VulkanRHI: device is not initialized.";
+            }
+            return nullptr;
+        }
+
+        auto shader = std::make_shared<VulkanRHIShader>(m_Device, desc);
+        if (outCompileLog)
+        {
+            *outCompileLog = shader->GetCompileLog();
+        }
+        if (!shader->IsValid())
+        {
+            return nullptr;
+        }
+        return shader;
+#endif
     }
 
     std::shared_ptr<RHIShader> VulkanRHI::RHICreateShader(

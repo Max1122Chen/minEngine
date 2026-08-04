@@ -20,7 +20,7 @@ namespace minEngine
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
 
-        m_DepthShader = EngineShaderUtils::CreateShaderFromFiles(
+        m_DepthShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             *rhi,
             EngineShaderUtils::EngineShaderPath("ShadowPass.vert"),
             EngineShaderUtils::EngineShaderPath("ShadowPass.frag"));

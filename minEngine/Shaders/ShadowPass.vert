@@ -13,7 +13,7 @@ layout (std140, binding = 2) uniform PerObject
     mat4 u_Model;
 };
 
-out vec3 WorldPos;
+layout(location = 0) out vec3 WorldPos;
 
 void main()
 {

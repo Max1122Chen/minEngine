@@ -24,7 +24,7 @@ namespace minEngine
             const std::filesystem::path& fragmentShaderPath,
             std::string* outError = nullptr);
 
-        /** GLSL files -> ShaderCompiler (OpenGL SPIR-V) -> RHICreateShader(bytecode). */
+        /** GLSL files -> ShaderCompiler (backend SPIR-V target) -> RHICreateShader(bytecode). */
         RHIShaderRef CreateShaderFromSpirvFiles(
             RHI& rhi,
             const std::filesystem::path& vertexShaderPath,

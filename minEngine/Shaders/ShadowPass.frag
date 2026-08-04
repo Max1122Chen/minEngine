@@ -1,6 +1,6 @@
 #version 420 core
 
-in vec3 WorldPos;
+layout(location = 0) in vec3 WorldPos;
 
 layout (std140, binding = 11) uniform ShadowPassParams
 {

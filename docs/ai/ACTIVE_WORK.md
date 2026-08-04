@@ -13,7 +13,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 1. ~~RND-F03 关账~~ — **Done**  
 2. **RND-F05** — [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md)  
-   - **S01–S03 Done**（ShaderCompiler + GL Present SPIR-V + `--rhi` Vulkan clear/present）；下一刀 **S04** VK 最小图形 + SPIR-V  
+   - **S01–S04 Done**；**S05 In Progress**（`PresentFrame` + SPIR-V 目标按 `--rhi` 选择）；下一刀继续 Present/后处理中立路径与更多 shader SPIR-V  
 3. **RND-F11 DebugDrawing** — F05 可演示后再设计  
 
 合入前：定期把 **master** rebase/merge 进 `feat/render`。

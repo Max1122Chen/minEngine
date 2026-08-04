@@ -110,3 +110,4 @@ S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀
 | 2026-08-04 | **S04 Done**：Vulkan 最小 graphics pipeline + SPIR-V triangle smoke |
 | 2026-08-04 | Post-process FXAA/Sharpen → OpenGL SPIR-V；`layout(location)` 修正 |
 | 2026-08-04 | **S05 启动**：`RenderSystem::PresentFrame()`；Editor OpenGL 走 RHI present |
+| 2026-08-04 | `CreateShaderFromSpirvFiles` 按 `--rhi` 选 VK/GL SPIR-V；`VulkanRHIShader` bytecode；ShadowPass SPIR-V |

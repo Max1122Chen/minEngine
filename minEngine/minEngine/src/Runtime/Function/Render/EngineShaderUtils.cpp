@@ -3,6 +3,7 @@
 #include "OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/ShaderCompiler/ShaderCompiler.h"
 
 #include <fstream>
@@ -79,8 +80,12 @@ namespace minEngine
                 return nullptr;
             }
 
+            const ShaderSpirvTarget spirvTarget = RHIBackendSelection::IsVulkan()
+                ? ShaderSpirvTarget::Vulkan
+                : ShaderSpirvTarget::OpenGL;
+
             const ShaderCompileResult vertexResult =
-                compiler.CompileFile(vertexShaderPath, ShaderCompilerStage::Vertex, ShaderSpirvTarget::OpenGL);
+                compiler.CompileFile(vertexShaderPath, ShaderCompilerStage::Vertex, spirvTarget);
             if (!vertexResult.Success)
             {
                 if (outError != nullptr)
@@ -92,7 +97,7 @@ namespace minEngine
             }
 
             const ShaderCompileResult fragmentResult =
-                compiler.CompileFile(fragmentShaderPath, ShaderCompilerStage::Fragment, ShaderSpirvTarget::OpenGL);
+                compiler.CompileFile(fragmentShaderPath, ShaderCompilerStage::Fragment, spirvTarget);
             if (!fragmentResult.Success)
             {
                 if (outError != nullptr)
