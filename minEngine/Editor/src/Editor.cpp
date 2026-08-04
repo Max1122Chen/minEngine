@@ -16,6 +16,8 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
@@ -231,7 +233,21 @@ namespace minEngine
         m_Engine = new Engine();
         m_Engine->Initialize(commandLine);
 
-        RenderSystem::Get().SetPresentPassEnabled(false);
+        if (RHIBackendSelection::IsOpenGL())
+        {
+            RenderSystem::Get().SetPresentPassEnabled(false);
+        }
+        else
+        {
+            ME_CORE_WARN(
+                "Editor: Vulkan backend smoke mode (no ImGui/editor modules yet). "
+                "Only clear/present validation is active.");
+        }
+
+        if (RHIBackendSelection::IsVulkan())
+        {
+            return;
+        }
 
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -325,6 +341,17 @@ namespace minEngine
 
     void Editor::Shutdown()
     {
+        if (RHIBackendSelection::IsVulkan())
+        {
+            if (m_Engine)
+            {
+                m_Engine->Shutdown();
+                delete m_Engine;
+                m_Engine = nullptr;
+            }
+            return;
+        }
+
         m_EditorGUIManager.Shutdown();
 
         if (m_MaterialEditor)
@@ -356,6 +383,21 @@ namespace minEngine
     void Editor::Run()
     {
         WindowSystem& windowSystem = WindowSystem::Get();
+
+        if (RHIBackendSelection::IsVulkan())
+        {
+            while (!windowSystem.ShouldClose() && !m_ExitRequested)
+            {
+                const float deltaTime = m_Engine->CalculateDeltaTime();
+                m_Engine->TickOneFrame(deltaTime);
+                if (RenderSystem::HasInstance() && RenderSystem::Get().GetRHI())
+                {
+                    RenderSystem::Get().GetRHI()->RHIPresent();
+                }
+            }
+            return;
+        }
+
         while (!windowSystem.ShouldClose() && !m_ExitRequested)
         {
             const float deltaTime = m_Engine->CalculateDeltaTime();

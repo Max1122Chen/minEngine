@@ -5,7 +5,9 @@
 #include "imgui/backends/imgui_impl_opengl3.h"
 
 #include "OpenGL/OpenGLRHI.h"
+#include "Vulkan/VulkanRHI.h"
 #include "GLFWWindowSystem.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 
 #include "glm/gtc/type_ptr.hpp"
 
@@ -36,6 +38,15 @@ namespace minEngine
 
     void RenderSystem::Initialize()
     {
+        if (RHIBackendSelection::IsVulkan())
+        {
+            m_RHI = std::make_shared<VulkanRHI>();
+            m_RHI->Initialize();
+            m_RHI->RHISetBackbufferClearColor(Vector3(0.12f, 0.18f, 0.28f));
+            ME_CORE_INFO("RenderSystem Initialized (Vulkan clear/present S03; ForwardRenderer deferred).");
+            return;
+        }
+
         m_RHI = std::make_shared<OpenGLRHI>();
         m_RHI->Initialize();
 
@@ -44,7 +55,7 @@ namespace minEngine
         m_SceneRenderer = std::make_unique<ForwardRenderer>();
         m_SceneRenderer->Initialize();
 
-        ME_CORE_INFO("RenderSystem Initialized");
+        ME_CORE_INFO("RenderSystem Initialized (OpenGL)");
     }
 
     void RenderSystem::LoadEngineRenderingAssets()

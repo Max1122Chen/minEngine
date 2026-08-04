@@ -7,6 +7,8 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
@@ -28,6 +30,8 @@ namespace minEngine
         ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
         s_Instance = this;
 
+        RHIBackendSelection::Set(commandLine.RHIBackend);
+
         LogSystem::Get().Initialize();
         FinializeReflection();
 
@@ -36,7 +40,7 @@ namespace minEngine
 
         StartSystems();
 
-        if (m_RenderSystem && m_EnginePathConfigLoaded)
+        if (m_RenderSystem && m_EnginePathConfigLoaded && RHIBackendSelection::IsOpenGL())
         {
             m_RenderSystem->LoadEngineRenderingAssets();
         }
@@ -75,7 +79,14 @@ namespace minEngine
         {
             const float deltaTime = CalculateDeltaTime();
             TickOneFrame(deltaTime);
-            windowSystem.SwapBuffers();
+            if (m_RenderSystem && m_RenderSystem->GetRHI())
+            {
+                m_RenderSystem->GetRHI()->RHIPresent();
+            }
+            else
+            {
+                windowSystem.SwapBuffers();
+            }
         }
     }
 

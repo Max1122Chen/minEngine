@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "WindowSystem.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
@@ -44,6 +45,8 @@ namespace minEngine
 
         virtual uint32_t GetWidth() override { return m_Width; }
         virtual uint32_t GetHeight() override { return m_Height; }
+
+        bool HasOpenGLContext() const { return m_HasOpenGLContext; }
 
     protected:
         // Window events callbacks
@@ -108,6 +111,7 @@ namespace minEngine
 
         bool m_IsGlfwInitialized = false;
         bool m_IsInitialized = false;
+        bool m_HasOpenGLContext = false;
        
 
 

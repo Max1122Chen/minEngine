@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 
 #include <filesystem>
 #include <optional>
@@ -29,6 +30,9 @@ namespace minEngine
         std::optional<std::filesystem::path> EngineRootOverride;
 
         std::optional<std::filesystem::path> ProjectDescriptorPath;
+
+        /** Default OpenGL; set by global `--rhi opengl|vulkan` (aliases gl|vk). */
+        RHIBackendType RHIBackend = RHIBackendType::OpenGL;
 
         TestRunKind TestKind = TestRunKind::Smoke;
         std::string SuiteId;

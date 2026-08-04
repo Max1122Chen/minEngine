@@ -81,6 +81,23 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Validation done:
 - Next step:
 
+### 2026-08-04 - RND-F05-S03 CLI `--rhi` + Vulkan clear/present vertical slice
+- Goal:
+	Enable runtime backend switch (`--rhi opengl|vulkan`) and land Vulkan swapchain clear/present with backend-internal sync only.
+- Main changes:
+	CLI adds global `--rhi` (opengl|vulkan, aliases gl|vk); TestMain synthetic argv updated so option-first test invocations keep `test` subcommand semantics.
+	Introduce `RHIBackendSelection` and route Window/Render boot via selected backend.
+	GLFW adds Vulkan `GLFW_NO_API` path; OpenGL path stays 4.6 + glad.
+	`RHI` adds neutral `RHIPresent()`; OpenGL uses `SwapBuffers`, Vulkan owns acquire/submit/present with internal semaphore/fence.
+	`VulkanRHI` S03 scope: instance/device/surface/swapchain + clear color present; resource/draw APIs intentionally stubbed for S04+.
+	Editor Vulkan path runs smoke mode without ImGui/editor modules (clear/present validation only).
+- Validation done:
+	`minEngineTests.exe --rhi opengl test smoke` PASSED
+	`minEngineTests.exe --rhi vulkan test smoke` PASSED
+	`Editor.exe --rhi vulkan --project ...` startup log confirms NO_API + VulkanRHI clear/present loop.
+- Next step:
+	S04 — Vulkan minimal graphics pipeline + SPIR-V shader path (first visible triangle/fullscreen draw).
+
 ### 2026-08-04 - RND-F05-S02 OpenGL 4.6 + Present SPIR-V hot path
 - Goal:
 	Consume OpenGL SPIR-V on Present; keep Material GLSL string path as migration window.

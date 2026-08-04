@@ -108,8 +108,14 @@ namespace minEngine
         /** Generate mip chain from mip 0 (backend-owned). Prefer after filling base level. */
         virtual void RHICmdGenerateMips(RHITexture* texture) = 0;
 
-        /** Backbuffer clear color / clear (swapchain surface owned by WindowSystem). */
+        /** Backbuffer clear color / clear (swapchain surface). */
         virtual void RHISetBackbufferClearColor(const Vector3& color) = 0;
         virtual void RHIClearBackbuffer() = 0;
+
+        /**
+         * Present the backbuffer / swapchain.
+         * OpenGL: glfwSwapBuffers. Vulkan: submit + present (semaphores/fences internal).
+         */
+        virtual void RHIPresent() = 0;
     };
 }

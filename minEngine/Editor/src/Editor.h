@@ -112,6 +112,7 @@ namespace minEngine
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;
+        bool m_VulkanClearSmokeMode = false;
         bool m_IsPlaying = false;
         float m_LastDeltaTime = 0.0f;
         bool m_DockLayoutInitialized = false;

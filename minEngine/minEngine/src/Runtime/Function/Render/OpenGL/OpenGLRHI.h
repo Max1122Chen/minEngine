@@ -65,6 +65,7 @@ namespace minEngine
 
         virtual void RHISetBackbufferClearColor(const Vector3& color) override;
         virtual void RHIClearBackbuffer() override;
+        virtual void RHIPresent() override;
 
     private:
         void ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState);

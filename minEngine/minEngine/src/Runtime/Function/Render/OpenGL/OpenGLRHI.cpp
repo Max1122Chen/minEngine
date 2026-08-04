@@ -66,6 +66,14 @@ namespace minEngine
         }
     }
 
+    void OpenGLRHI::RHIPresent()
+    {
+        if (m_WindowSystem)
+        {
+            m_WindowSystem->SwapBuffers();
+        }
+    }
+
     
 
     namespace

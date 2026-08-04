@@ -29,7 +29,7 @@ S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀
 | `RND-F05-S00` | Design 定稿（§7） | **Done** | Meta Planned |
 | `RND-F05-S01` | CMake/Vulkan SDK + `ShaderCompiler`（双目标 SPIR-V）+ 缓存 | **Done** | `test shader-compiler` PASSED |
 | `RND-F05-S02` | GL 4.6；bytecode `RHICreateShader`；Present 走 SPIR-V | **Done** | `test shader-compiler`（含 GL specialize）PASSED；smoke PASSED |
-| `RND-F05-S03` | CLI `--rhi`；`VulkanRHI` 设备/交换链 Clear/Present（semaphore/fence **内部**） | Planned | `--rhi vulkan` 清屏；默认仍 GL |
+| `RND-F05-S03` | CLI `--rhi`；`VulkanRHI` 设备/交换链 Clear/Present（semaphore/fence **内部**） | **Done** | `minEngineTests.exe --rhi vulkan test smoke` PASSED；Editor `--rhi vulkan` clear/present smoke PASS |
 | `RND-F05-S04` | VK 最小图形 + SPIR-V | Planned | 与 GL 对照有色输出 |
 | `RND-F05-S05` | PresentPass / 中立 `BeginFrame`·`Present`（若需要）对齐双后端 | Planned | 同 Pass 路径切换 |
 | `RND-F05-S06` | 更多引擎 shader + MaterialCompiler `set=` 分批 | Planned | 每批 GL 回归 |
@@ -63,10 +63,10 @@ S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀
 - **Goal:** `--rhi opengl|vulkan`（默认 opengl）；`VulkanRHI` Clear/Present；**frame sync 仅内部**。
 - **Touch:** `ApplicationCommandLine` / `CommandLineResult`；`RenderSystem`；`Render/Vulkan/*`；Window `NO_API`。
 - **DoD:**
-  - [ ] 不传参 = OpenGL
-  - [ ] `--rhi vulkan` 无需重编译即可跑清屏 Present
-  - [ ] 公共头无 `VkSemaphore` / `VkFence`
-- **Verify:** 手动两种启动方式
+  - [x] 不传参 = OpenGL
+  - [x] `--rhi vulkan` 无需重编译即可跑清屏 Present
+  - [x] 公共头无 `VkSemaphore` / `VkFence`
+- **Verify:** `minEngineTests.exe --rhi opengl test smoke`；`minEngineTests.exe --rhi vulkan test smoke`；`Editor.exe --rhi vulkan --project ...`（clear/present smoke）
 
 ### RND-F05-S04 — Vulkan 最小绘制
 - **Goal:** SPIR-V + PSO + draw。
@@ -104,3 +104,4 @@ S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀
 | 2026-08-04 | S00 Done；S03 纳入 `--rhi` 与内部帧同步；对齐 Design §3.5–§3.6 |
 | 2026-08-04 | **S01 Done**：`ShaderCompiler` + Present location 修正；`test shader-compiler` / smoke PASS |
 | 2026-08-04 | **S02 Done**：GL 4.6；bytecode `RHICreateShader`；Present SPIR-V hot path；suite 含 GL specialize |
+| 2026-08-04 | **S03 Done**：`--rhi` 选择后端；GLFW `NO_API`；`VulkanRHI` swapchain clear/present（内部 semaphore/fence） |
