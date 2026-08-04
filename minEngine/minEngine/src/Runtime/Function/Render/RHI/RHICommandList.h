@@ -87,6 +87,12 @@ namespace minEngine
             return m_RHI->RHICreateBuffer(desc, initialData);
         }
         RHIShaderRef CreateShader(
+            const RHIShaderCreateDesc& desc,
+            std::string* outCompileLog = nullptr)
+        {
+            return m_RHI->RHICreateShader(desc, outCompileLog);
+        }
+        RHIShaderRef CreateShader(
             const std::string& vertexSource,
             const std::string& fragmentSource,
             std::string* outCompileLog = nullptr)

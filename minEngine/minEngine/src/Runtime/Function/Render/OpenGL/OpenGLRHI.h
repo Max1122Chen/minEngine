@@ -30,6 +30,9 @@ namespace minEngine
             const RHIBufferCreateDesc& desc,
             const void* initialData) override;
         virtual std::shared_ptr<RHIShader> RHICreateShader(
+            const RHIShaderCreateDesc& desc,
+            std::string* outCompileLog) override;
+        virtual std::shared_ptr<RHIShader> RHICreateShader(
             const std::string& vertexSource,
             const std::string& fragmentSource,
             std::string* outCompileLog) override;

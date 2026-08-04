@@ -174,8 +174,8 @@ namespace minEngine
 
                 m_OwnsGlfw = true;
                 glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
                 glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
                 m_Window = glfwCreateWindow(1, 1, "MaterialIRGpuCompile", nullptr, nullptr);
                 if (m_Window == nullptr)

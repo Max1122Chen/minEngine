@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-04 (CORE-F04 Delegates Done)
+Last updated: 2026-08-04 (RND-F05-S02 Done)
 
 ## Purpose
 
@@ -80,6 +80,42 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-08-04 - RND-F05-S02 OpenGL 4.6 + Present SPIR-V hot path
+- Goal:
+	Consume OpenGL SPIR-V on Present; keep Material GLSL string path as migration window.
+- Main changes:
+	GLFW / MaterialIR / RenderGraph contexts → **4.6**.
+	`RHIShaderCreateDesc` + bytecode `RHICreateShader`; OpenGL `glShaderBinary` + `glSpecializeShader`.
+	`EngineShaderUtils::CreateShaderFromSpirvFiles`; PresentPass uses SPIR-V path.
+	`test shader-compiler` adds GL specialize load case.
+- Validation done:
+	`minEngineTests.exe test shader-compiler` PASSED (2 cases); `test smoke` PASSED; `test render-graph` PASSED earlier.
+- Next step:
+	S03 — CLI `--rhi opengl|vulkan` + VulkanRHI Clear/Present (frame sync internal).
+
+### 2026-08-04 - RND-F05-S01 ShaderCompiler（Present → VK/GL SPIR-V）
+- Goal:
+	Land GLSL→SPIR-V toolchain without switching GL runtime hot path yet.
+- Main changes:
+	`Render/ShaderCompiler/` (glslangValidator invoke + disk cache); CMake finds Vulkan SDK / glslang.
+	`Present.vert/frag`: `#version 420` + explicit `location` (SPIR-V requirement); varyings `v_TexCoord`.
+	Suite `test shader-compiler` (not in smoke).
+- Validation done:
+	`minEngineTests.exe test shader-compiler` PASSED; `test smoke` PASSED.
+- Next step:
+	S02 — GL context 4.6 + Present loads SPIR-V via `RHICreateShader(bytecode)`.
+
+### 2026-08-04 - RND-F05 Design Draft（地基评估 + SPIR-V 双端）
+- Goal:
+	Assess render foundation for Vulkan; design SPIR-V for both GL and VK; multi-slice plan.
+- Main changes:
+	Expanded `RND-F05_*_DESIGN.md` + new `*_IMPLEMENTATION.md`; Registry Draft; ACTIVE_WORK pointer.
+	Key finding: GL SPIR-V requires DescriptorSet=0 → dual SPIR-V artifacts (VK multi-set / GL flat kGL_*).
+- Validation done:
+	Code survey (RHI/OpenGL/shaders/CMake); local `VULKAN_SDK` 1.4.350 + glslangValidator present.
+- Next step:
+	User confirms Design §7 → Planned → S01 ShaderCompiler.
 
 ### 2026-08-04 - RND-F03 关账 + 主线改为 F05（docs）
 - Goal:

@@ -19,6 +19,7 @@ namespace minEngine
     struct RHIBufferCreateDesc;
 
     class RHIShader;
+    struct RHIShaderCreateDesc;
 
     class RHIVertexInputLayout;
 
@@ -60,6 +61,11 @@ namespace minEngine
             const RHIBufferCreateDesc& desc,
             const void* initialData = nullptr) = 0;
 
+        virtual std::shared_ptr<RHIShader> RHICreateShader(
+            const RHIShaderCreateDesc& desc,
+            std::string* outCompileLog = nullptr) = 0;
+
+        /** Legacy GLSL source path (Material / unmigrated passes). Prefer bytecode overload. */
         virtual std::shared_ptr<RHIShader> RHICreateShader(
             const std::string& vertexSource,
             const std::string& fragmentSource,

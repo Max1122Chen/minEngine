@@ -11,11 +11,12 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### Render 轨（`feat/render`）— **当前主线**
 
-1. ~~RND-F03 关账~~ — **Done 2026-08-04**（文档收口；代码侧早干净）  
-2. **RND-F05 Vulkan** — 巨大目标，**多刀竖切**；最终上层管线 **GL + VK 双后端**（光追等 API 限制除外）  
-3. **RND-F11 DebugDrawing** — F05 有可演示竖切后再详细设计；物理玩法依赖其成熟度  
+1. ~~RND-F03 关账~~ — **Done**  
+2. **RND-F05** — [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md)  
+   - **S01–S02 Done**（ShaderCompiler + GL Present SPIR-V）；下一刀 **S03** CLI `--rhi` + Vulkan Clear/Present  
+3. **RND-F11 DebugDrawing** — F05 可演示后再设计  
 
-合入前：定期把 **master**（含 CORE-F04 Delegates）rebase/merge 进 `feat/render`。
+合入前：定期把 **master** rebase/merge 进 `feat/render`。
 
 ### Master / 平台
 
@@ -49,6 +50,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | Delegates | `minEngineTests.exe test delegates` |
 | Material | `minEngineTests.exe test material-ir` |
 | RenderGraph | `minEngineTests.exe test render-graph` |
+| ShaderCompiler（含 GL SPIR-V load） | `minEngineTests.exe test shader-compiler` |
 | Lua MVP | `test lua-script-mvp` |
 | Physics | `test physics-smoke` / `physics-sync` / `physics-load` / `physics-contact` / `physics-linetrace` / `physics-shapes` |
 

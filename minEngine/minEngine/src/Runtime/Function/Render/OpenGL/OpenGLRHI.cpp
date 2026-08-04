@@ -112,6 +112,22 @@ namespace minEngine
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
+        const RHIShaderCreateDesc& desc,
+        std::string* outCompileLog)
+    {
+        auto shader = std::make_shared<OpenGLRHIShader>(desc);
+        if (outCompileLog)
+        {
+            *outCompileLog = shader->GetCompileLog();
+        }
+        if (!shader->IsValid())
+        {
+            return nullptr;
+        }
+        return shader;
+    }
+
+    std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
         const std::string& vertexSource,
         const std::string& fragmentSource,
         std::string* outCompileLog)

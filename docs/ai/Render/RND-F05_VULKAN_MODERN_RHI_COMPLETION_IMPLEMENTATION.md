@@ -1,0 +1,106 @@
+# RND-F05 — Implementation Plan
+
+## Meta
+- **ID:** `RND-F05`
+- **Status:** In Progress
+- **Owner:** project maintainer
+- **Last updated:** 2026-08-04
+- **Related:** [Design](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)
+
+## TL;DR
+
+S01–S02 Done（ShaderCompiler + GL 4.6 Present SPIR-V 热路径）。下一刀 **S03** CLI `--rhi` + Vulkan Clear/Present。
+
+## Scope
+- **In:** Design §Scope In 对应切片 S00–S06（后续可加 S07+）；含 CLI `--rhi`。
+- **Out:** F11、PHYS-F03、全管线一次性 parity、ImGui-Vulkan（单独后置）；公共 Semaphore API。
+
+## Reader quick start
+1. [Design](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) §3.5–§3.6、§7。
+2. 本表切片顺序。
+3. 验证：各切片 Verify 行。
+
+---
+
+## 1) 切片总览
+
+| Slice ID | 内容 | 状态 | 验证 |
+|----------|------|------|------|
+| `RND-F05-S00` | Design 定稿（§7） | **Done** | Meta Planned |
+| `RND-F05-S01` | CMake/Vulkan SDK + `ShaderCompiler`（双目标 SPIR-V）+ 缓存 | **Done** | `test shader-compiler` PASSED |
+| `RND-F05-S02` | GL 4.6；bytecode `RHICreateShader`；Present 走 SPIR-V | **Done** | `test shader-compiler`（含 GL specialize）PASSED；smoke PASSED |
+| `RND-F05-S03` | CLI `--rhi`；`VulkanRHI` 设备/交换链 Clear/Present（semaphore/fence **内部**） | Planned | `--rhi vulkan` 清屏；默认仍 GL |
+| `RND-F05-S04` | VK 最小图形 + SPIR-V | Planned | 与 GL 对照有色输出 |
+| `RND-F05-S05` | PresentPass / 中立 `BeginFrame`·`Present`（若需要）对齐双后端 | Planned | 同 Pass 路径切换 |
+| `RND-F05-S06` | 更多引擎 shader + MaterialCompiler `set=` 分批 | Planned | 每批 GL 回归 |
+| `RND-F05-S07+` | Base/Shadow/IBL… VK 扩覆盖 | Planned | 子切片另开 DoD |
+
+---
+
+## 2) 切片详情
+
+### RND-F05-S00 — Design 定稿
+- **DoD:** [x] 用户确认 Design §7（含 `--rhi`、同步内聚）
+
+### RND-F05-S01 — ShaderCompiler 地基
+- **Goal:** `Render/ShaderCompiler/`；SDK glslang；VK/GL 两份 SPIR-V；磁盘缓存。
+- **DoD:**
+  - [x] Present 可编译两份 bytecode
+  - [x] CMake 发现 `glslangValidator` + Vulkan package
+  - [x] `test shader-compiler` PASSED；`test smoke` PASSED
+- **Verify:** `minEngineTests.exe test shader-compiler`；`test smoke`
+
+### RND-F05-S02 — OpenGL 消费 SPIR-V（Present）
+- **Goal:** GL **4.6**；Present SPIR-V specialize。
+- **DoD:**
+  - [x] GLFW / 测试上下文 **4.6**
+  - [x] `RHIShaderCreateDesc` + `RHICreateShader(bytecode)`；OpenGL `glShaderBinary` + `glSpecializeShader`
+  - [x] `EngineShaderUtils::CreateShaderFromSpirvFiles`；PresentPass 热路径走 SPIR-V（无 GLSL 字符串 compile）
+  - [x] `test shader-compiler`（编译 + GL load）PASSED；`test smoke` PASSED
+- **Verify:** `minEngineTests.exe test shader-compiler`；主视口 Present（手动）
+
+### RND-F05-S03 — CLI + Vulkan 交换链
+- **Goal:** `--rhi opengl|vulkan`（默认 opengl）；`VulkanRHI` Clear/Present；**frame sync 仅内部**。
+- **Touch:** `ApplicationCommandLine` / `CommandLineResult`；`RenderSystem`；`Render/Vulkan/*`；Window `NO_API`。
+- **DoD:**
+  - [ ] 不传参 = OpenGL
+  - [ ] `--rhi vulkan` 无需重编译即可跑清屏 Present
+  - [ ] 公共头无 `VkSemaphore` / `VkFence`
+- **Verify:** 手动两种启动方式
+
+### RND-F05-S04 — Vulkan 最小绘制
+- **Goal:** SPIR-V + PSO + draw。
+- **Verify:** 目视对照 GL
+
+### RND-F05-S05 — PresentPass 对齐
+- **Goal:** 同一 PresentPass/CommandList；必要时中立 `BeginFrame`/`Present`。
+- **DoD:** [ ] 上层 Present 无 `vulkan.h`
+- **Verify:** `--rhi` 切换对照
+
+### RND-F05-S06 — 着色器方言分批
+- **Goal:** includes / MaterialCompiler 跟进 `set=`；双目标 SPIR-V。
+- **Verify:** `material-ir` + 目视
+
+### RND-F05-S07+ — 场景管线扩 VK
+- **Goal:** Base → Shadow → IBL…；`RHICmdTransition` 真语义。
+- **DoD:** 开干前补子表
+
+---
+
+## 3) 非本计划
+
+- RND-F11 / PHYS-F03
+- ImGui Vulkan Editor
+- 公共 RHI 暴露 Semaphore/Fence/Queue
+- glslang 源码进仓库
+
+---
+
+## 变更记录
+
+| 日期 | 说明 |
+|------|------|
+| 2026-08-04 | 初稿 S00–S07+ |
+| 2026-08-04 | S00 Done；S03 纳入 `--rhi` 与内部帧同步；对齐 Design §3.5–§3.6 |
+| 2026-08-04 | **S01 Done**：`ShaderCompiler` + Present location 修正；`test shader-compiler` / smoke PASS |
+| 2026-08-04 | **S02 Done**：GL 4.6；bytecode `RHICreateShader`；Present SPIR-V hot path；suite 含 GL specialize |

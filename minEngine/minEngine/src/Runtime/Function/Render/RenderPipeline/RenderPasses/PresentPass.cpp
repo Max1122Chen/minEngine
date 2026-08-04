@@ -78,7 +78,7 @@ namespace minEngine
             });
         }
 
-        if (RHIShaderRef screenQuadShader = EngineShaderUtils::CreateShaderFromFiles(
+        if (RHIShaderRef screenQuadShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
                 *rhi,
                 EngineShaderUtils::EngineShaderPath("Present.vert"),
                 EngineShaderUtils::EngineShaderPath("Present.frag")))

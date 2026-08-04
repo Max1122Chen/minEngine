@@ -50,7 +50,7 @@
                 },
                 {
                     "$ptr_typeName": "minEngine::RigidBodyComponent",
-                    "m_BodyType": 4575657221408423937,
+                    "m_BodyType": 1,
                     "m_Guid": {
                         "High": 16004939002437389368,
                         "Low": 13577400440015074290
@@ -78,7 +78,7 @@
                         0.5
                     ],
                     "m_Name": "",
-                    "m_ObjectChannel": 4575657221408423937,
+                    "m_ObjectChannel": 1,
                     "m_Owner": {
                         "$guid": {
                             "high": 2269251532856313338,
@@ -207,7 +207,7 @@
                 },
                 {
                     "$ptr_typeName": "minEngine::RigidBodyComponent",
-                    "m_BodyType": 4575657221408423936,
+                    "m_BodyType": 0,
                     "m_Guid": {
                         "High": 9781684724731235247,
                         "Low": 10780055101789640687
@@ -235,7 +235,7 @@
                         1.7000000476837158
                     ],
                     "m_Name": "",
-                    "m_ObjectChannel": 4575657221408423936,
+                    "m_ObjectChannel": 0,
                     "m_Owner": {
                         "$guid": {
                             "high": 2752187127547708369,

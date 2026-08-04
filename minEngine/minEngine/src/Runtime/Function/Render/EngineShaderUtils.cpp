@@ -3,6 +3,7 @@
 #include "OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/ShaderCompiler/ShaderCompiler.h"
 
 #include <fstream>
 #include <sstream>
@@ -58,6 +59,55 @@ namespace minEngine
             }
 
             return rhi.RHICreateShader(vertexSource, fragmentSource, outError);
+        }
+
+        RHIShaderRef CreateShaderFromSpirvFiles(
+            RHI& rhi,
+            const std::filesystem::path& vertexShaderPath,
+            const std::filesystem::path& fragmentShaderPath,
+            std::string* outError)
+        {
+            ShaderCompiler& compiler = ShaderCompiler::Get();
+            std::string discoverError;
+            if (!compiler.DiscoverGlslangValidator(&discoverError))
+            {
+                if (outError != nullptr)
+                {
+                    *outError = discoverError;
+                }
+                ME_CORE_ERROR("{}", discoverError);
+                return nullptr;
+            }
+
+            const ShaderCompileResult vertexResult =
+                compiler.CompileFile(vertexShaderPath, ShaderCompilerStage::Vertex, ShaderSpirvTarget::OpenGL);
+            if (!vertexResult.Success)
+            {
+                if (outError != nullptr)
+                {
+                    *outError = vertexResult.Log;
+                }
+                ME_CORE_ERROR("SPIR-V vertex compile failed: {}", vertexResult.Log);
+                return nullptr;
+            }
+
+            const ShaderCompileResult fragmentResult =
+                compiler.CompileFile(fragmentShaderPath, ShaderCompilerStage::Fragment, ShaderSpirvTarget::OpenGL);
+            if (!fragmentResult.Success)
+            {
+                if (outError != nullptr)
+                {
+                    *outError = fragmentResult.Log;
+                }
+                ME_CORE_ERROR("SPIR-V fragment compile failed: {}", fragmentResult.Log);
+                return nullptr;
+            }
+
+            RHIShaderCreateDesc desc;
+            desc.DebugName = vertexShaderPath.filename().string() + "+" + fragmentShaderPath.filename().string();
+            desc.Stages.push_back({RHIGraphicsShaderStage::Vertex, vertexResult.SpirvWords});
+            desc.Stages.push_back({RHIGraphicsShaderStage::Pixel, fragmentResult.SpirvWords});
+            return rhi.RHICreateShader(desc, outError);
         }
 
         bool TryCompileSourcesOnGpu(
