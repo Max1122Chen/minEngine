@@ -81,6 +81,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Validation done:
 - Next step:
 
+### 2026-08-04 - RND-F03 关账 + 主线改为 F05（docs）
+- Goal:
+	Close stale F03 In Progress; lock render-first roadmap (Vulkan multi-slice, physics after DebugDrawing).
+- Main changes:
+	F03 Design Meta/§12 → Done；Registry F03 Done；F05 Design 明确多刀竖切 + GL/VK 终态；ACTIVE_WORK 主线 `feat/render`；PHYS-F03 等 F11。
+- Validation done:
+	Legacy grep (`WrapLegacy`/`RHIShaderLegacy`/`OpenGLRHIModern`/…) production src = 0.
+- Next step:
+	`feat/render` rebase master → F05 Pre-flight + Implementation 切片表。
+
 ### 2026-08-04 - CORE-F04 Native Multicast Delegates（实现 Done）
 - Goal:
 	Ship Native multicast delegates; unlock PHYS-F03; close TD-006 (Native).

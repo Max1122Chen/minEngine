@@ -30,9 +30,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) · **TD-006** Done；Dynamic/Lua 后置 |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) · **S06+ 产品方向由 `RND-F07` 取代**（实验 Bake 非终态） |
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配 + Pass CommandList） | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · S0–S5 |
-| `RND-F03` | Legacy RHI removal（调用面 + 管线重构 M4 + 后端绞杀 M3） | In Progress | **M1–M2 Done**；**M4** 管线 §16；M3 §15 | [RND-F03_LEGACY_RHI_REMOVAL_DESIGN](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · §16 |
+| `RND-F03` | Legacy RHI removal（调用面 + 管线重构 M4 + 后端绞杀 M3） | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · 2026-08-04 关账；残留债经 F09/F10 付清 |
 | `RND-F04` | Modern RHI further evolution（语义终态：PipelineLayout、Packet、Setup/Execute、缓存） | **Done** | — | [RND-F04_MODERN_RHI_EVOLUTION_DESIGN](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · S01–S04 |
-| `RND-F05` | Vulkan backend + modern RHI completion（第二后端 + 契约在 VK 补全） | Planned | — | [RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · 依赖口径待与 F03 对齐 |
+| `RND-F05` | Vulkan backend + modern RHI completion（第二后端 + 契约在 VK 补全；最终 GL/VK 同上层管线） | Planned | — | [RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · **F03 Done**；多切片竖切，非一刀 |
 | `RND-F06` | ForwardRenderer（Renderer / RenderGraph 职责分离；删除 `RenderPipeline`） | **In Progress** | — | [RND-F06_FORWARD_RENDERER_DESIGN](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) · S01–S02 Done；S03 可选 |
 | `RND-F07` | Granite-style RDG + 帧资源所有权大重构 | **Done** | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) · [Impl](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_IMPLEMENTATION.md) · S01–S09；阴影尾升格 **RND-F08** |
 | `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
@@ -41,7 +41,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | Planned | — | 排在 **RND-F05** Vulkan 竖切之后；Design 待写 |
 | `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) |
 | `PHYS-F02` | Collision + query shapes（Sphere/Capsule collider；Scene SphereTrace/CapsuleTrace） | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md) |
-| `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · blocked on **TD-006** Delegates；正式 Design 延后 |
+| `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · Delegates（CORE-F04）已满足；**等 RND-F11 DebugDrawing 成熟后再开** |
 
 ---
 

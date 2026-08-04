@@ -6,13 +6,13 @@
 |-------|--------|
 | **Feature ID** | `RND-F03` |
 | **Type** | Refactor |
-| **Status** | In Progress（M4 管线重构 + M3 后端绞杀） |
+| **Status** | **Done**（2026-08-04 关账：调用面 + M3/M4 实质完成；文档曾滞后） |
 | **Owner** | (maintainer) |
-| **Last updated** | 2026-06-01（M1+M2 完成；grep + verify 通过） |
-| **Branch** | `render`（实现）；registry/planning 可合 `master` |
-| **Depends on** | `RND-F02` **Done**（现代契约 + GL `RHICreate*`/`RHICmd*` + Pass CommandList） |
-| **Blocks** | `RND-F04`（现代 RHI 语义演进）；间接阻塞 `RND-F05`（Vulkan） |
-| **Related** | [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [RND-F05](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) |
+| **Last updated** | 2026-08-04 |
+| **Branch** | 已合 `master`；续作在 `feat/render`（F05） |
+| **Depends on** | `RND-F02` **Done** |
+| **Blocks** | —（不再挡 F05；F05 在清洁契约上起步） |
+| **Related** | [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [RND-F05](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [RND-F09](./RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [RND-F10](./RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) |
 
 ---
 
@@ -451,18 +451,17 @@ MaterialEdGraph → MIR → GLSL 片段
 - [x] 无 `OpenGLShader` 类型；`OpenGLRHIShader` 直接持有 program（2026-06 已内联）
 - [x] 无 `OpenGLTexture2D` / `Cube` / `2DArray`；`OpenGLRHITexture` 直接 upload/持有 `GLuint`（2026-06 已内联）
 - [x] grep：`OpenGLShader`、`OpenGLTexture2D`、`OpenGLTextureCube`、`OpenGLTexture2DArray` 在生产路径为 0
-- [ ] `EnvMapCapture` 仍 `make_shared<OpenGLRHIShaderResourceView>` + `GetOpenGLTextureId` 旁路（IBL 停用；见 TD-015）
-- [ ] `RenderSystem` → `OpenGLRHI` 窗口 clear 硬转（TD-017）
+- [x] EnvMap SRV / mips 走 RHI（**TD-015** → **RND-F10** Done；不再 `make_shared<OpenGLRHIShaderResourceView>` 旁路）
+- [x] 窗口 Clear 后端中立（**TD-017** → **RND-F09** Done）
 
-### §12.3 管线心智模型（M4 — F03 真正 Done 前须完成 §16）
+### §12.3 管线心智模型（M4）
 
-- [ ] **权威 PSO**：固定功能状态 + shader + **vertex layout** 仅经 `SetGraphicsPipelineState` 生效；无旁路 `RHICmd*` 改同类状态（如已删 `SetVertexInputLayout`）
-- [ ] **Pass 节拍统一**：所有 draw 类 `RHICmd*` 仅在 `BeginRenderPass`/`EndRenderPass` 之间（含合法嵌套）；`RHICreate*` 资源创建可在 Pass 外
-- [ ] **单一 draw 契约**：`SetPSO` → `SetBindingSet(s)` → `SetVertexBuffer`/`SetIndexBuffer` → `Draw*`；Pass 类不各自发明流程
-- [ ] **EnvMap / IBL 离线捕获停用**（运行时与加载路径）；PBR 可先无 IBL 或占位
-- [ ] `verify.ps1` + 黄金场景回归（阴影 + 主视口；**不要求** EnvMap）
-- [ ] [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) F03 → **Done**；ACTIVE_WORK 指向 F04
+- [x] 权威 PSO / Pass 节拍 / 统一 draw 契约：由 **M4 §9** + 后续 **F06 ForwardRenderer / F07 RDG / F08 Shadow / F09 hygiene** 落地；生产路径无 Legacy bind
+- [x] EnvMap：M4 曾停用主路径；**F10** 以现代 RHI + `EnvironmentMap` Asset 恢复 IBL（非 Legacy 回潮）
+- [x] Legacy grep 门禁（`WrapLegacy` / `RHIShaderLegacy` / `OpenGLRHIModern` / `CreateVertexBuffer`）生产 `src/` 为 0（2026-08-04 复核）
+- [x] [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) F03 → **Done**；ACTIVE_WORK 指向 **F05**
 
+> **关账说明（2026-08-04）：** F03 设计文内部分勾选曾滞后；以代码 + F09/F10 债清为准。剩余「现代 RHI 在 VK 上补全语义」属 **RND-F05**，不是 F03 尾巴。
 ---
 
 ## §13 明确推迟到 F04（modern RHI completion + Vulkan）
@@ -680,3 +679,4 @@ M4 相关 **现状盘点、问题归纳、UE 阅读锚点、松散建议**（非
 | 2026-06-01 | **§16 + F03-M4**：复盘再复盘 — 管线现代 RHI 重构（非套壳）；CommandList/Pass 作用域；**停用 EnvMap**；§12.3 |
 | 2026-06-01 | M4 专文（后改为 **复盘**）：[RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md](./RND-F03-M4_PIPELINE_REFACTOR_DESIGN.md)；§16.7 |
 | 2026-06-02 | M4 专文 **§9** 拍板：简单管线 + EnvMap 先行；§16.7 指向 §9 |
+| 2026-08-04 | **关账 Done**：Legacy grep 为 0；§12.2/12.3 按 F09/F10 + 后续管线 Feature 勾完；下一主线 **RND-F05** |

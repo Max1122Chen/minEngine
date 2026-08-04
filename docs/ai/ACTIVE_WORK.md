@@ -9,23 +9,22 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-### Master — CORE-F04 Delegates（**Done 2026-08-04**）
+### Render 轨（`feat/render`）— **当前主线**
 
-- Native multicast：`Runtime/Core/Delegates/`；`test delegates` PASSED；**TD-006** Done。
-- Next on master（可选）：重开 **PHYS-F03** Design，或切 `feat/render` 做 F05。
+1. ~~RND-F03 关账~~ — **Done 2026-08-04**（文档收口；代码侧早干净）  
+2. **RND-F05 Vulkan** — 巨大目标，**多刀竖切**；最终上层管线 **GL + VK 双后端**（光追等 API 限制除外）  
+3. **RND-F11 DebugDrawing** — F05 有可演示竖切后再详细设计；物理玩法依赖其成熟度  
 
-### Render 轨（`feat/render`）— 顺序已定
+合入前：定期把 **master**（含 CORE-F04 Delegates）rebase/merge 进 `feat/render`。
 
-1. **小收尾**（F03 关账口径 / F06-S03 可选）  
-2. **RND-F05 Vulkan**（先于 DebugDrawing）  
-3. **RND-F11 DebugDrawing**（Vulkan 竖切后再开）
+### Master / 平台
 
-合入前：把 master（含 Delegates）定期 merge 进 `feat/render`。
+- **CORE-F04** Delegates **Done**（解锁 PHYS-F03 依赖，但不抢渲染主线）。
 
-### Physics（`feat/physics`）
+### Physics（`feat/physics`）— **冷冻**
 
-- F01/F02 Done；**F03** 依赖已满足（CORE-F04），可写正式 Design。  
-- DebugDrawing（RND-F11）会显著改善调试体验。
+- F01/F02 Done；**PHYS-F03 Deferred** 直至 **RND-F11** 成熟后再开正式 Design。  
+- worktree 可闲置；重开前再 rebase master。
 
 ### 更远（先不占带宽）
 
