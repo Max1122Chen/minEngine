@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <regex>
 #include <sstream>
 
 #if defined(_WIN32)
@@ -54,6 +55,36 @@ namespace minEngine
     const char* ShaderCompiler::ToTargetEnv(ShaderSpirvTarget target)
     {
         return target == ShaderSpirvTarget::OpenGL ? "opengl" : "vulkan1.2";
+    }
+
+    std::string ShaderCompiler::FlattenDescriptorSetsForOpenGL(const std::string& source)
+    {
+        // Strip `set = N` from any layout(...) list so OpenGL (DescriptorSet must be 0 /
+        // desktop GLSL has no set=) accepts Vulkan-dialect material sources, including
+        // `layout (std140, set = 2, binding = 8)`.
+        static const std::regex kSetQualifier(
+            R"((\s*,\s*)?set\s*=\s*\d+(\s*,\s*)?)",
+            std::regex::ECMAScript);
+
+        std::string flattened;
+        flattened.reserve(source.size());
+        std::sregex_iterator it(source.begin(), source.end(), kSetQualifier);
+        const std::sregex_iterator end;
+        std::size_t last = 0;
+        for (; it != end; ++it)
+        {
+            const std::smatch& match = *it;
+            flattened.append(source, last, static_cast<std::size_t>(match.position()) - last);
+            const bool hasBefore = match[1].matched && !match[1].str().empty();
+            const bool hasAfter = match[2].matched && !match[2].str().empty();
+            if (hasBefore && hasAfter)
+            {
+                flattened.push_back(',');
+            }
+            last = static_cast<std::size_t>(match.position() + match.length());
+        }
+        flattened.append(source, last, std::string::npos);
+        return flattened;
     }
 
     bool ShaderCompiler::DiscoverGlslangValidator(std::string* outError)
@@ -347,6 +378,12 @@ namespace minEngine
             return result;
         }
 
+        ShaderCompileRequest effectiveRequest = request;
+        if (effectiveRequest.Target == ShaderSpirvTarget::OpenGL)
+        {
+            effectiveRequest.Source = FlattenDescriptorSetsForOpenGL(request.Source);
+        }
+
         if (!EnsureCacheDirectory(&result.Log))
         {
             return result;
@@ -354,7 +391,7 @@ namespace minEngine
 
         if (!m_CacheDirectory.empty())
         {
-            const std::filesystem::path cachePath = MakeCacheFilePath(request);
+            const std::filesystem::path cachePath = MakeCacheFilePath(effectiveRequest);
             if (std::filesystem::exists(cachePath))
             {
                 if (ReadSpirvFile(cachePath, result.SpirvWords, &result.Log))
@@ -376,11 +413,11 @@ namespace minEngine
             return result;
         }
 
-        const std::string key = HashSourceKey(request);
+        const std::string key = HashSourceKey(effectiveRequest);
         const std::filesystem::path tempGlsl = tempRoot / (key + ".glsl");
         const std::filesystem::path tempSpv = tempRoot / (key + ".spv");
 
-        if (!WriteTextFile(tempGlsl, request.Source, &result.Log))
+        if (!WriteTextFile(tempGlsl, effectiveRequest.Source, &result.Log))
         {
             return result;
         }
@@ -389,9 +426,9 @@ namespace minEngine
         const bool ok = InvokeGlslang(
             tempGlsl,
             tempSpv,
-            request.Stage,
-            request.Target,
-            request.EntryPoint.empty() ? "main" : request.EntryPoint,
+            effectiveRequest.Stage,
+            effectiveRequest.Target,
+            effectiveRequest.EntryPoint.empty() ? "main" : effectiveRequest.EntryPoint,
             &toolLog);
         result.Log = toolLog;
 
@@ -399,8 +436,8 @@ namespace minEngine
         {
             ME_CORE_ERROR(
                 "ShaderCompiler: glslang failed ({} / {}): {}",
-                request.DebugName.empty() ? "<memory>" : request.DebugName,
-                ToTargetFlag(request.Target),
+                effectiveRequest.DebugName.empty() ? "<memory>" : effectiveRequest.DebugName,
+                ToTargetFlag(effectiveRequest.Target),
                 toolLog);
             std::filesystem::remove(tempGlsl, errorCode);
             std::filesystem::remove(tempSpv, errorCode);
@@ -416,7 +453,7 @@ namespace minEngine
 
         if (!m_CacheDirectory.empty())
         {
-            const std::filesystem::path cachePath = MakeCacheFilePath(request);
+            const std::filesystem::path cachePath = MakeCacheFilePath(effectiveRequest);
             std::filesystem::copy_file(
                 tempSpv,
                 cachePath,
@@ -432,12 +469,12 @@ namespace minEngine
         std::filesystem::remove(tempSpv, errorCode);
 
         result.Success = true;
-        if (!request.DebugName.empty())
+        if (!effectiveRequest.DebugName.empty())
         {
             ME_CORE_INFO(
                 "ShaderCompiler: compiled {} -> {} ({} words)",
-                request.DebugName,
-                ToTargetFlag(request.Target),
+                effectiveRequest.DebugName,
+                ToTargetFlag(effectiveRequest.Target),
                 result.SpirvWords.size());
         }
         return result;

@@ -69,6 +69,13 @@ namespace minEngine
         static const char* ToTargetFlag(ShaderSpirvTarget target);
         static const char* ToTargetEnv(ShaderSpirvTarget target);
 
+        /**
+         * OpenGL SPIR-V requires DescriptorSet == 0; desktop GLSL has no `set=`.
+         * Strip `set = N` from any `layout(...)` list (including `std140, set = …`),
+         * keeping `binding = M` (flat GL binding / texture unit).
+         */
+        static std::string FlattenDescriptorSetsForOpenGL(const std::string& source);
+
     private:
         ShaderCompiler() = default;
 

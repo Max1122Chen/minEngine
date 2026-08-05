@@ -146,12 +146,13 @@ namespace minEngine
     {
         std::string ioBlock;
         ioBlock += "layout(location = 0) in vec3 a_Position;\n";
+        int outLocation = 0;
         if (numTexCoords > 0)
         {
             ioBlock += "layout(location = 1) in vec2 a_TexCoord;\n";
             for (int texCoordIndex = 0; texCoordIndex < numTexCoords; ++texCoordIndex)
             {
-                ioBlock += "out vec2 ";
+                ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec2 ";
                 ioBlock += GetGLSLMaterialTexCoordVaryingName(texCoordIndex);
                 ioBlock += ";\n";
             }
@@ -166,29 +167,32 @@ namespace minEngine
                 const int tangentLocation = normalLocation + 1;
                 ioBlock += "layout(location = " + std::to_string(tangentLocation) + ") in vec4 a_Tangent;\n";
             }
-            ioBlock += "out vec3 v_WorldFragPos;\n";
-            ioBlock += "out vec3 v_WorldNormal;\n";
+            ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec3 v_WorldFragPos;\n";
+            ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec3 v_WorldNormal;\n";
             if (usesTangentFrame)
             {
-                ioBlock += "out vec3 v_WorldTangent;\n";
-                ioBlock += "out float v_TangentSign;\n";
+                ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec3 v_WorldTangent;\n";
+                ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out float v_TangentSign;\n";
             }
-            ioBlock += "out vec4 v_FragPosViewSpace;\n";
+            ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec4 v_FragPosViewSpace;\n";
         }
 
         return ioBlock;
     }
 
-    std::string GLSLMaterialShellAssemblerImpl::BuildFragmentLightingVaryings(bool usesTangentFrame)
+    std::string GLSLMaterialShellAssemblerImpl::BuildFragmentLightingVaryings(
+        int numTexCoords,
+        bool usesTangentFrame)
     {
-        std::string block = "in vec3 v_WorldFragPos;\n"
-                            "in vec3 v_WorldNormal;\n";
+        int inLocation = numTexCoords;
+        std::string block = "layout(location = " + std::to_string(inLocation++) + ") in vec3 v_WorldFragPos;\n";
+        block += "layout(location = " + std::to_string(inLocation++) + ") in vec3 v_WorldNormal;\n";
         if (usesTangentFrame)
         {
-            block += "in vec3 v_WorldTangent;\n"
-                     "in float v_TangentSign;\n";
+            block += "layout(location = " + std::to_string(inLocation++) + ") in vec3 v_WorldTangent;\n";
+            block += "layout(location = " + std::to_string(inLocation++) + ") in float v_TangentSign;\n";
         }
-        block += "in vec4 v_FragPosViewSpace;\n\n";
+        block += "layout(location = " + std::to_string(inLocation++) + ") in vec4 v_FragPosViewSpace;\n\n";
         return block;
     }
 
@@ -261,7 +265,7 @@ namespace minEngine
         std::string block;
         for (int texCoordIndex = 0; texCoordIndex < numTexCoords; ++texCoordIndex)
         {
-            block += "in vec2 ";
+            block += "layout(location = " + std::to_string(texCoordIndex) + ") in vec2 ";
             block += GetGLSLMaterialTexCoordVaryingName(texCoordIndex);
             block += ";\n";
         }
@@ -364,7 +368,9 @@ namespace minEngine
         std::vector<std::pair<std::string, std::string>> fragmentAnchors = {
             { "FRAGMENT_IN_TEXCOORDS", BuildFragmentInTexCoords(numTexCoords) },
             { "FRAGMENT_LIGHTING_VARYINGS",
-                includeSceneLightingVaryings ? BuildFragmentLightingVaryings(env.UsesTangentFrame) : std::string{} },
+                includeSceneLightingVaryings
+                    ? BuildFragmentLightingVaryings(numTexCoords, env.UsesTangentFrame)
+                    : std::string{} },
             { "FRAGMENT_PREAMBLE", preamble },
             { "FRAGMENT_SCENE_LIGHTING", fragmentSceneLighting },
             { "FRAGMENT_MATERIAL_INPUTS_STRUCT",

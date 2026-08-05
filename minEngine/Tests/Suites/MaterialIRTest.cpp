@@ -379,7 +379,7 @@ namespace minEngine
                 && passed;
 
             passed = AssertAllContains(result.FullFragmentShader, {
-                { "layout (binding = 0) uniform sampler2D u_Texture0", "global texture uniform" },
+                { "layout (set = 2, binding = 0) uniform sampler2D u_Texture0", "global texture uniform" },
                 { "MaterialParameters.TexCoords[0] = v_MaterialTexCoord0", "fragment restores MaterialParameters" },
                 { "FragmentMaterialInputs.Albedo + FragmentMaterialInputs.Emissive", "unlit self-lit composite" },
             }) && passed;
@@ -394,7 +394,7 @@ namespace minEngine
                 && passed;
 
             passed = AssertTrue(
-                result.FullFragmentShader.find("layout (binding = 0) uniform sampler2D") < result.FullFragmentShader.find("void main"),
+                result.FullFragmentShader.find("layout (set = 2, binding = 0) uniform sampler2D") < result.FullFragmentShader.find("void main"),
                 "uniforms must be declared outside main")
                 && passed;
 
@@ -572,7 +572,7 @@ namespace minEngine
             bool passed = AssertAllContains(compiled.Stages[Stage_Fragment].Body, {
                 { "if (", "IfThenElse emits dynamic branch in GLSL" },
                 { "FragmentMaterialInputs.Albedo =", "branch drives Albedo" },
-                { "u_ScalarParam0", "branch condition uses scalar uniform" },
+                { "u_ScalarParams[0]", "branch condition uses scalar uniform" },
             });
             passed = AssertAllContains(compiled.IRDump, {
                 { "Branch", "IfThenElse lowers to MIR Branch" },
@@ -1233,7 +1233,7 @@ namespace minEngine
             || !AssertAllContains(blinnPhongCompiled.Stages[Stage_Fragment].Body, {
                 { "FragmentMaterialInputs.Normal = vec3(0.000000, 0.000000, 1.000000)", "default TSN +Z" },
                 { "FragmentMaterialInputs.AO = 1.000000", "default AO" },
-                { "FragmentMaterialInputs.Metallic = u_ScalarParam0", "BlinnPhong metallic scalar" },
+                { "FragmentMaterialInputs.Metallic = u_ScalarParams[0]", "BlinnPhong metallic scalar" },
             })
             || !VerifySmokeGpuCompile(blinnPhongCompiled))
         {

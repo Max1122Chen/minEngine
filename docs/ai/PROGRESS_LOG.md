@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-04 (BUG-RENDER-004 Fixed; resume RND-F05-S05)
+Last updated: 2026-08-04 (RND-F05-S06 Done)
 
 ## Purpose
 
@@ -81,6 +81,33 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-08-04 - RND-F05-S06 complete (SkyBox + EnvMapCapture + Material set=/SPIR-V)
+- Goal:
+	Finish S06 shader dialect batches so engine fixed passes and graph materials share SPIR-V delivery.
+- Main changes:
+	SkyBox + EnvMapCapture (equirect/irradiance/prefilter) → `CreateShaderFromSpirvFiles` + location quals.
+	MaterialCompiler emits `layout(set=kSetMaterial, binding=…)`; ShaderCompiler flattens set= for OpenGL.
+	`Material::CommitCompileResult` → `CreateShaderFromSpirvSources`; S05 marked Done in same docs pass.
+- Validation done:
+	`minEngineTests.exe --rhi opengl test material-ir` PASSED;
+	`test shader-compiler` PASSED; `test smoke` PASSED.
+	Flatten strips `set=` inside `layout(std140, set=…, binding=…)`.
+	Editor startup: material varyings `layout(location=…)` + remove dead `u_Material` in shadows include.
+- Next step:
+	S07+ — write VK scene sub-slice table before filling Vulkan resource stubs.
+
+### 2026-08-04 - RND-F05-S05 Done + S06 SkyBox background SPIR-V
+- Goal:
+	Close Present-path slice; start engine-shader SPIR-V batches with SkyBox.
+- Main changes:
+	S05 marked Done (`PresentFrame` / no upper-layer `vulkan.h`).
+	`background.vert/frag` explicit varyings/`out` locations; `SkyBoxPass` → `CreateShaderFromSpirvFiles`.
+- Validation done:
+	Editor build OK; `minEngineTests.exe --rhi opengl test smoke` PASSED;
+	background.vert/frag SPIR-V-ready locations; SkyBoxPass loads via CreateShaderFromSpirvFiles.
+- Next step:
+	S06 next batch — EnvMapCapture bake shaders and/or MaterialCompiler `set=`.
 
 ### 2026-08-04 - BUG-RENDER-004 directional CSM self-shadow acne (+ BUG-RENDER-003 gate)
 - Goal:

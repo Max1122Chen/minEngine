@@ -247,14 +247,14 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        std::shared_ptr<RHIShader> captureShader = EngineShaderUtils::CreateShaderFromFiles(
+        std::shared_ptr<RHIShader> captureShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             rhi,
             shaderDirectory / "equirect_to_cubemap.vert",
             shaderDirectory / "equirect_to_cubemap.frag",
             outError);
         if (!captureShader || !captureShader->IsValid())
         {
-            return reportError("failed to compile equirect_to_cubemap shader.");
+            return reportError("failed to load equirect_to_cubemap SPIR-V shader.");
         }
 
         const uint32_t environmentMipCount = ComputeTextureMipCount(faceSize);
@@ -347,14 +347,14 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        std::shared_ptr<RHIShader> irradianceShader = EngineShaderUtils::CreateShaderFromFiles(
+        std::shared_ptr<RHIShader> irradianceShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             rhi,
             shaderDirectory / "irradiance_convolution.vert",
             shaderDirectory / "irradiance_convolution.frag",
             outError);
         if (!irradianceShader || !irradianceShader->IsValid())
         {
-            return reportError("failed to compile irradiance convolution shader.");
+            return reportError("failed to load irradiance convolution SPIR-V shader.");
         }
 
         RHITextureRef irradianceCube =
@@ -455,14 +455,14 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        std::shared_ptr<RHIShader> prefilterShader = EngineShaderUtils::CreateShaderFromFiles(
+        std::shared_ptr<RHIShader> prefilterShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             rhi,
             shaderDirectory / "prefilter.vert",
             shaderDirectory / "prefilter.frag",
             outError);
         if (!prefilterShader || !prefilterShader->IsValid())
         {
-            return reportError("failed to compile prefilter shader.");
+            return reportError("failed to load prefilter SPIR-V shader.");
         }
 
         const uint32_t maxMipLevel = kMaterialPBRMaxReflectionLod;

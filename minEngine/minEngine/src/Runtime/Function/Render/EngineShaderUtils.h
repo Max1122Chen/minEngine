@@ -31,6 +31,14 @@ namespace minEngine
             const std::filesystem::path& fragmentShaderPath,
             std::string* outError = nullptr);
 
+        /** In-memory GLSL (e.g. MaterialCompiler output) -> SPIR-V -> RHICreateShader. */
+        RHIShaderRef CreateShaderFromSpirvSources(
+            RHI& rhi,
+            const std::string& vertexSource,
+            const std::string& fragmentSource,
+            const std::string& debugName = {},
+            std::string* outError = nullptr);
+
         std::filesystem::path EngineShaderPath(const char* fileName);
 
         bool TryCompileSourcesOnGpu(

@@ -25,14 +25,6 @@
 #define POISSON_SAMPLE_COUNT 16
 #endif
 
-struct Material
-{
-    // TODO: support simple value input
-    sampler2D DiffuseMap;
-    sampler2D SpecularMap;
-    float Shininess;
-};
-
 struct DirectionalLightData
 {
     vec4 Direction;
@@ -77,9 +69,6 @@ layout (std140, binding = 10) uniform CascadeFarPlanes
 {
     float FarPlanes[4];
 };
-
-// Material info
-uniform Material u_Material;
 
 // Shadow maps
 layout (binding = 8) uniform sampler2DArray u_DirLightShadowMap;

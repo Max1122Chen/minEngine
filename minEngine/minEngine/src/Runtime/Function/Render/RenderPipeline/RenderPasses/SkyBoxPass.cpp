@@ -79,13 +79,13 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
-        m_SkyShader = EngineShaderUtils::CreateShaderFromFiles(
+        m_SkyShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             rhi,
             shaderDirectory / "background.vert",
             shaderDirectory / "background.frag");
         if (!m_SkyShader || !m_SkyShader->IsValid())
         {
-            ME_CORE_ERROR("SkyBoxPass: failed to compile background shader.");
+            ME_CORE_ERROR("SkyBoxPass: failed to load background SPIR-V shader.");
             return;
         }
 
