@@ -82,13 +82,8 @@ namespace minEngine
 
             sceneBindings.UpdatePerObjectModel(pipeline.GetPerObjectUniformBuffer(), drawCommand.m_ModelMatrix);
             packet.ShaderBindingSets[EngineShaderBindings::kSetSceneObject] = sceneBindings.GetSceneSet0();
-
-            const bool bindSceneLighting = material->m_ShadingModel == MaterialShadingModel::BlinnPhong
-                || material->m_ShadingModel == MaterialShadingModel::PBR;
-            if (bindSceneLighting)
-            {
-                packet.ShaderBindingSets[EngineShaderBindings::kSetShadowIBL] = sceneBindings.GetSceneSet1();
-            }
+            // Pipeline layout always has set 1; leave it unbound and some drivers drop the draw.
+            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowIBL] = sceneBindings.GetSceneSet1();
 
             material->BindForDraw(cmdList);
             cmdList.SubmitMeshDrawPacket(packet);

@@ -1,4 +1,5 @@
-layout (std140, binding = 0) uniform PerFrameData
+// Logical Vulkan dialect: set = scene object set. OpenGL SPIR-V path flattens set= away.
+layout (std140, set = 0, binding = 0) uniform PerFrameData
 {
     mat4 View;
     mat4 Proj;
@@ -6,7 +7,7 @@ layout (std140, binding = 0) uniform PerFrameData
     vec4 CameraPos;
 };
 
-layout (std140, binding = 2) uniform PerObject
+layout (std140, set = 0, binding = 2) uniform PerObject
 {
     mat4 u_Model;
 };

@@ -15,9 +15,15 @@
 
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Core/Log/LogSystem.h"
 
 namespace minEngine
 {
+    namespace
+    {
+        bool s_LoggedFirstPresentFrame = false;
+    }
+
     void PresentPass::SetInputTextureName(const char* inputName)
     {
         m_InputTextureName = inputName != nullptr ? inputName : kRDGSceneColor;
@@ -46,6 +52,15 @@ namespace minEngine
 
         if (!m_DrawPacket.PipelineState || !m_PresentShaderBindingSet || !m_InputTexture)
         {
+            if (!s_LoggedFirstPresentFrame)
+            {
+                ME_CORE_ERROR(
+                    "PresentPass: skipped (pso={} set={} input={})",
+                    m_DrawPacket.PipelineState ? 1 : 0,
+                    m_PresentShaderBindingSet ? 1 : 0,
+                    m_InputTexture ? 1 : 0);
+                s_LoggedFirstPresentFrame = true;
+            }
             return;
         }
 
@@ -55,6 +70,16 @@ namespace minEngine
         const uint32_t width = m_InputTexture->GetDesc().Width;
         const uint32_t height = m_InputTexture->GetDesc().Height;
         cmdList.SetViewport(0, 0, width, height);
+
+        if (!s_LoggedFirstPresentFrame)
+        {
+            ME_CORE_INFO(
+                "PresentPass: first frame blit SceneColor {}x{} to swapchain.",
+                width,
+                height);
+            s_LoggedFirstPresentFrame = true;
+        }
+
         cmdList.SubmitMeshDrawPacket(m_DrawPacket);
 
         cmdList.EndRenderPass();

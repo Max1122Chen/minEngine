@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/Vulkan/VulkanRHIResources.h"
 
 #include <array>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #if defined(MINENGINE_HAS_VULKAN)
@@ -13,9 +15,8 @@
 namespace minEngine
 {
     /**
-     * Vulkan backend (RND-F05-S03): instance/device/swapchain Clear+Present.
+     * Vulkan backend (RND-F05): frame recording + descriptor/PSO/cmd path (S07b–d).
      * Frame sync (semaphore/fence) stays private — not exposed on RHI.
-     * Resource/draw APIs are stubs until later slices.
      */
     class VulkanRHI final : public RHI
     {
@@ -73,6 +74,68 @@ namespace minEngine
 #if defined(MINENGINE_HAS_VULKAN)
         static constexpr uint32_t kMaxFramesInFlight = 2;
 
+        struct OffscreenRenderPassKey
+        {
+            VkFormat ColorFormat = VK_FORMAT_UNDEFINED;
+            VkFormat DepthFormat = VK_FORMAT_UNDEFINED;
+            VkAttachmentLoadOp ColorLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            VkAttachmentStoreOp ColorStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+            VkAttachmentLoadOp DepthLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            VkAttachmentStoreOp DepthStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+            bool HasColor = false;
+            bool HasDepth = false;
+
+            bool operator==(const OffscreenRenderPassKey& other) const
+            {
+                return ColorFormat == other.ColorFormat && DepthFormat == other.DepthFormat &&
+                    ColorLoadOp == other.ColorLoadOp && ColorStoreOp == other.ColorStoreOp &&
+                    DepthLoadOp == other.DepthLoadOp && DepthStoreOp == other.DepthStoreOp &&
+                    HasColor == other.HasColor && HasDepth == other.HasDepth;
+            }
+        };
+
+        struct OffscreenRenderPassKeyHash
+        {
+            size_t operator()(const OffscreenRenderPassKey& key) const
+            {
+                size_t h = static_cast<size_t>(key.ColorFormat);
+                h ^= static_cast<size_t>(key.DepthFormat) << 1;
+                h ^= static_cast<size_t>(key.ColorLoadOp) << 2;
+                h ^= static_cast<size_t>(key.DepthLoadOp) << 3;
+                h ^= static_cast<size_t>(key.HasColor) << 4;
+                h ^= static_cast<size_t>(key.HasDepth) << 5;
+                return h;
+            }
+        };
+
+        struct OffscreenFramebufferKey
+        {
+            VkRenderPass RenderPass = VK_NULL_HANDLE;
+            VkImageView ColorView = VK_NULL_HANDLE;
+            VkImageView DepthView = VK_NULL_HANDLE;
+            uint32_t Width = 0;
+            uint32_t Height = 0;
+
+            bool operator==(const OffscreenFramebufferKey& other) const
+            {
+                return RenderPass == other.RenderPass && ColorView == other.ColorView &&
+                    DepthView == other.DepthView && Width == other.Width && Height == other.Height;
+            }
+        };
+
+        struct OffscreenFramebufferKeyHash
+        {
+            size_t operator()(const OffscreenFramebufferKey& key) const
+            {
+                size_t h = reinterpret_cast<size_t>(key.RenderPass);
+                h ^= reinterpret_cast<size_t>(key.ColorView) << 1;
+                h ^= reinterpret_cast<size_t>(key.DepthView) << 2;
+                h ^= static_cast<size_t>(key.Width) << 3;
+                h ^= static_cast<size_t>(key.Height) << 4;
+                return h;
+            }
+        };
+
         bool CreateInstance();
         bool CreateSurface();
         bool PickPhysicalDevice();
@@ -80,11 +143,33 @@ namespace minEngine
         bool CreateSwapchain();
         bool CreateCommandResources();
         bool CreateSyncObjects();
-        bool CreateRenderPassAndGraphicsPipeline();
-        void DestroyGraphicsPipelineAndRenderPass();
+        bool CreateSwapchainRenderPass();
+        bool CreateDescriptorResources();
+        void DestroyDescriptorResources();
+        void DestroySwapchainRenderPass();
         void DestroySwapchain();
         void RecreateSwapchain();
-        bool RecordClearCommands(uint32_t imageIndex);
+        bool BeginFrameRecording();
+        void RecordSwapchainClearPass();
+        void EndFrameRecordingAndSubmit();
+        VulkanDeviceContext GetDeviceContext() const;
+
+        VkCommandBuffer GetCurrentCommandBuffer() const;
+        bool EnsureFrameRecording() const;
+        void TransitionImage(
+            VkCommandBuffer cmd,
+            VkImage image,
+            VkImageAspectFlags aspect,
+            VkImageLayout oldLayout,
+            VkImageLayout newLayout);
+        void TransitionTextureTo(
+            VulkanRHITexture* texture,
+            VkImageLayout newLayout);
+        VkAttachmentLoadOp ToVkLoadOp(RHIRenderTargetLoadAction action) const;
+        VkAttachmentStoreOp ToVkStoreOp(RHIRenderTargetStoreAction action) const;
+        VkRenderPass GetOrCreateOffscreenRenderPass(const OffscreenRenderPassKey& key);
+        VkFramebuffer GetOrCreateOffscreenFramebuffer(const OffscreenFramebufferKey& key);
+        void BindPipelineForCurrentRenderPass();
 
         VkInstance m_Instance = VK_NULL_HANDLE;
         VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
@@ -98,6 +183,7 @@ namespace minEngine
         VkExtent2D m_SwapchainExtent{};
         std::vector<VkImage> m_SwapchainImages;
         std::vector<VkImageView> m_SwapchainImageViews;
+        std::vector<VkImageLayout> m_SwapchainImageLayouts;
 
         VkCommandPool m_CommandPool = VK_NULL_HANDLE;
         std::array<VkCommandBuffer, kMaxFramesInFlight> m_CommandBuffers{};
@@ -107,18 +193,37 @@ namespace minEngine
 
         uint32_t m_CurrentFrame = 0;
         uint32_t m_CurrentImageIndex = 0;
-        bool m_FramePrepared = false;
+        bool m_FrameRecording = false;
+        bool m_SwapchainDrawnThisFrame = false;
         bool m_Initialized = false;
-        bool m_HasRenderedOnce = false;
 
-        VkRenderPass m_RenderPass = VK_NULL_HANDLE;
-        VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
-        VkPipeline m_GraphicsPipeline = VK_NULL_HANDLE;
+        VkRenderPass m_SwapchainRenderPass = VK_NULL_HANDLE;
+        std::vector<VkFramebuffer> m_SwapchainFramebuffers;
 
-        VkShaderModule m_VertShaderModule = VK_NULL_HANDLE;
-        VkShaderModule m_FragShaderModule = VK_NULL_HANDLE;
+        VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
+        VkSampler m_DefaultSampler = VK_NULL_HANDLE;
+        VkBuffer m_DummyUniformBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory m_DummyUniformMemory = VK_NULL_HANDLE;
+        VkImage m_DummyImage = VK_NULL_HANDLE;
+        VkDeviceMemory m_DummyImageMemory = VK_NULL_HANDLE;
+        VkImageView m_DummyImageView = VK_NULL_HANDLE;
 
-        std::vector<VkFramebuffer> m_Framebuffers;
+        std::unordered_map<OffscreenRenderPassKey, VkRenderPass, OffscreenRenderPassKeyHash> m_OffscreenRenderPasses;
+        std::unordered_map<OffscreenFramebufferKey, VkFramebuffer, OffscreenFramebufferKeyHash> m_OffscreenFramebuffers;
+
+        bool m_InRenderPass = false;
+        VkRenderPass m_ActiveRenderPass = VK_NULL_HANDLE;
+        VulkanRHITexture* m_ActiveColorTexture = nullptr;
+        VulkanRHITexture* m_ActiveDepthTexture = nullptr;
+        VulkanRHIGraphicsPipelineState* m_BoundGraphicsPSO = nullptr;
+        uint32_t m_BoundVertexStride = 0;
+        bool m_GenerateMipsWarned = false;
+        bool m_BeginFrameFailureLogged = false;
+        bool m_PipelineBindFailureLogged = false;
+        bool m_DrawIndexedLogged = false;
+        uint32_t m_FrameDrawIndexedCount = 0;
+        uint32_t m_FrameDrawIndexedCalls = 0;
+        uint32_t m_LoggedDrawIndexedFrameCount = 0;
 #endif
 
         Vector3 m_ClearColor{0.1f, 0.1f, 0.1f};

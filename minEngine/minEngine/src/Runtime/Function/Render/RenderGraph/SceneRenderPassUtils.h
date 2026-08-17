@@ -15,9 +15,10 @@ namespace minEngine
                          : RHIDepthStencilTargetActions::LoadDepthStencilStoreDepthStencil);
         if (clearTargets)
         {
-            info.ClearValue.Color[0] = 0.1f;
-            info.ClearValue.Color[1] = 0.1f;
-            info.ClearValue.Color[2] = 0.1f;
+            // Visible slate blue — proves Base→Present even when meshes fail to draw.
+            info.ClearValue.Color[0] = 0.18f;
+            info.ClearValue.Color[1] = 0.32f;
+            info.ClearValue.Color[2] = 0.48f;
             info.ClearValue.Color[3] = 1.0f;
             info.ClearValue.Depth = 1.0f;
         }

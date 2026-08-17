@@ -14,8 +14,10 @@ namespace minEngine
 
     void EngineSceneBindingSets::Initialize(RHICommandList& cmdList)
     {
+        // PerFrame is read by both stages (VS transforms + FS CameraPos in lit templates).
+        // Vulkan requires stageFlags to cover every stage that declares the binding.
         m_SceneSet0Layout = cmdList.CreateShaderBindingSetLayout({
-            {kSet0_PerFrame, RHIShaderBindingType::UniformBuffer, kGL_PerFrameUBO, RHIGraphicsShaderStage::Vertex},
+            {kSet0_PerFrame, RHIShaderBindingType::UniformBuffer, kGL_PerFrameUBO, RHIGraphicsShaderStage::All},
             {kSet0_Lights, RHIShaderBindingType::UniformBuffer, kGL_LightsUBO, RHIGraphicsShaderStage::Pixel},
             {kSet0_PerObject, RHIShaderBindingType::UniformBuffer, kGL_PerObjectUBO, RHIGraphicsShaderStage::Vertex},
         });

@@ -16,6 +16,8 @@ namespace minEngine
     {
         Vertex,
         Pixel,
+        /** Uniforms / SRVs visible to both graphics stages (Vulkan stageFlags). */
+        All,
     };
 
     struct RHITextureSRVDesc

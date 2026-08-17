@@ -12,16 +12,24 @@
 #include "Runtime/Core/CLI/ApplicationCommandLine.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Engine.h"
+#include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
+#include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
+#include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Resource/AssetManager.h"
+
+#include <unordered_set>
 
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
@@ -183,6 +191,83 @@ namespace minEngine
         return false;
     }
 
+    bool Editor::OpenProjectForVulkanSmoke(const std::string& projectPath)
+    {
+        m_ProjectAssetWatcher.StopWatching();
+
+        ProjectManager& projectManager = ProjectManager::Get();
+        ProjectOpenResult result = projectManager.OpenProject(projectPath);
+        if (!result.IsSuccess())
+        {
+            ME_CORE_ERROR(result.Message);
+            return false;
+        }
+
+        ME_CORE_INFO(result.Message);
+        ApplyCommandStackSettingsFromProject();
+        ResetCommandStackForNewDocument();
+
+        // Prefer `default` — `test` references EnvironmentMap (cubemap; S07f).
+        constexpr const char* kVulkanSmokeSceneName = "default";
+        if (!m_SceneEditor.LoadScene(*this, kVulkanSmokeSceneName))
+        {
+            ME_CORE_ERROR(
+                "Editor: Vulkan smoke failed to load scene '{}'.",
+                kVulkanSmokeSceneName);
+            return false;
+        }
+
+        ME_CORE_INFO(
+            "Editor: Vulkan smoke scene '{}' loaded.",
+            kVulkanSmokeSceneName);
+
+        // S07d DoD: Unlit Base only. Lit materials still emit flat set0 shadow bindings (S07e).
+        if (Scene* scene = m_SceneEditor.GetActiveScene())
+        {
+            uint32_t forcedUnlitCount = 0;
+            std::unordered_set<Material*> recompiledMaterials;
+            for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+            {
+                if (!gameObject)
+                {
+                    continue;
+                }
+
+                for (const std::shared_ptr<StaticMeshComponent>& meshComponent :
+                     gameObject->GetComponentsOfType<StaticMeshComponent>())
+                {
+                    Material* material = meshComponent ? meshComponent->GetMaterial() : nullptr;
+                    if (!material || recompiledMaterials.find(material) != recompiledMaterials.end())
+                    {
+                        continue;
+                    }
+
+                    material->m_ShadingModel = MaterialShadingModel::Unlit;
+                    if (!material->Compile())
+                    {
+                        ME_CORE_ERROR(
+                            "Editor: Vulkan smoke failed to recompile material '{}' as Unlit.",
+                            material->GetName());
+                        return false;
+                    }
+                    recompiledMaterials.insert(material);
+                    ++forcedUnlitCount;
+                }
+            }
+
+            ME_CORE_INFO(
+                "Editor: Vulkan smoke forced {} material(s) to Unlit for S07d Base.",
+                forcedUnlitCount);
+        }
+
+        if (m_MaterialEditor)
+        {
+            m_MaterialEditor->RefreshMaterialList();
+        }
+        m_SceneEditor.OnProjectOpened();
+        return true;
+    }
+
     void Editor::CloseProject()
     {
         m_ContextMenu.Shutdown();
@@ -237,15 +322,109 @@ namespace minEngine
         {
             RenderSystem::Get().SetPresentPassEnabled(false);
         }
-        else
-        {
-            ME_CORE_WARN(
-                "Editor: Vulkan backend smoke mode (no ImGui/editor modules yet). "
-                "Only clear/present validation is active.");
-        }
 
         if (RHIBackendSelection::IsVulkan())
         {
+            // S07d acceptance: project + Forward Base → Present (no ImGui / shadows / sky / post).
+            ME_CORE_WARN(
+                "Editor: Vulkan S07d scene smoke (no ImGui). "
+                "PresentToBackBuffer only; shadows/sky/post disabled.");
+
+            RenderSystem::Get().SetPresentPassEnabled(true);
+            m_MaterialEditor = std::make_unique<MaterialEditor>();
+
+            const std::optional<std::filesystem::path> projectDescriptorPath =
+                ResolveProjectDescriptorPath(commandLine);
+            if (!projectDescriptorPath.has_value())
+            {
+                m_ExitRequested = true;
+                return;
+            }
+
+            if (!OpenProjectForVulkanSmoke(projectDescriptorPath->string()))
+            {
+                m_ExitRequested = true;
+                return;
+            }
+
+            RHI* rhi = RenderSystem::Get().GetRHI();
+            WindowSystem& windowSystem = WindowSystem::Get();
+            const uint32_t width = windowSystem.GetWidth();
+            const uint32_t height = windowSystem.GetHeight();
+            if (!rhi || width == 0 || height == 0)
+            {
+                ME_CORE_ERROR("Editor: Vulkan smoke viewport init failed (missing RHI or window size).");
+                m_ExitRequested = true;
+                return;
+            }
+
+            m_VulkanSmokeViewport.Initialize(rhi, width, height);
+            if (Scene* scene = m_SceneEditor.GetActiveScene())
+            {
+                m_VulkanSmokeViewport.SetObservedScene(scene->GetRenderScene());
+            }
+            else
+            {
+                ME_CORE_WARN("Editor: Vulkan smoke — no active scene after OpenProject.");
+            }
+
+            if (RenderCamera* camera = m_VulkanSmokeViewport.GetCamera())
+            {
+                // default.mescene meshes are far from origin (Cube ~51,-37,-23; Armadillo ~73,-46,155).
+                Vector3 focus(0.0f);
+                uint32_t meshCount = 0;
+                if (Scene* scene = m_SceneEditor.GetActiveScene())
+                {
+                    for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+                    {
+                        if (!gameObject)
+                        {
+                            continue;
+                        }
+                        for (const std::shared_ptr<StaticMeshComponent>& meshComponent :
+                             gameObject->GetComponentsOfType<StaticMeshComponent>())
+                        {
+                            if (!meshComponent)
+                            {
+                                continue;
+                            }
+                            focus += meshComponent->GetPosition();
+                            ++meshCount;
+                        }
+                    }
+                }
+
+                if (meshCount > 0)
+                {
+                    focus /= static_cast<float>(meshCount);
+                }
+                else
+                {
+                    focus = Vector3(50.0f, -40.0f, 50.0f);
+                }
+
+                const Vector3 eye = focus + Vector3(-60.0f, 45.0f, 90.0f);
+                camera->SetPosition(eye);
+                camera->m_AspectRatio =
+                    static_cast<float>(width) / static_cast<float>(height > 0 ? height : 1);
+                camera->m_zNear = 1.0f;
+                camera->m_zFar = 2000.0f;
+                camera->SetViewMatrix(glm::lookAt(eye, focus, Vector3(0.0f, 1.0f, 0.0f)));
+                camera->UpdateProjectionMatrix();
+                camera->UpdateViewProjMatrix();
+
+                ME_CORE_INFO(
+                    "Editor: Vulkan smoke camera eye=({:.1f},{:.1f},{:.1f}) focus=({:.1f},{:.1f},{:.1f}) meshes={}.",
+                    eye.x,
+                    eye.y,
+                    eye.z,
+                    focus.x,
+                    focus.y,
+                    focus.z,
+                    meshCount);
+            }
+
+            m_VulkanSceneSmokeMode = true;
             return;
         }
 
@@ -343,6 +522,20 @@ namespace minEngine
     {
         if (RHIBackendSelection::IsVulkan())
         {
+            if (m_VulkanSceneSmokeMode)
+            {
+                m_VulkanSmokeViewport.Shutdown();
+                m_VulkanSceneSmokeMode = false;
+            }
+
+            m_ProjectAssetWatcher.StopWatching();
+            if (m_MaterialEditor)
+            {
+                m_MaterialEditor->Shutdown();
+            }
+            m_MaterialEditor.reset();
+            m_ContextMenu.Shutdown();
+
             if (m_Engine)
             {
                 m_Engine->Shutdown();
@@ -389,7 +582,27 @@ namespace minEngine
             while (!windowSystem.ShouldClose() && !m_ExitRequested)
             {
                 const float deltaTime = m_Engine->CalculateDeltaTime();
-                m_Engine->TickOneFrame(deltaTime);
+                m_Engine->PollEvents();
+                m_Engine->TickLogicalFrame(deltaTime);
+                SceneManager::Get().SendAllEndOfFrameUpdates();
+
+                if (m_VulkanSceneSmokeMode && RenderSystem::HasInstance())
+                {
+                    // No shadows/sky/post — Texture2DArray / scene set= land in S07e/f.
+                    const SceneDrawDesc desc = m_VulkanSmokeViewport.BuildDrawDesc(
+                        SceneDrawFlags::PresentToBackBuffer);
+                    RenderSystem::Get().SubmitSceneDraw(desc);
+
+                    if (!m_VulkanSmokeLoggedFirstFrame)
+                    {
+                        ME_CORE_INFO(
+                            "Editor: Vulkan S07d smoke — first frame SubmitSceneDraw queued "
+                            "(PresentToBackBuffer, Unlit Base).");
+                        m_VulkanSmokeLoggedFirstFrame = true;
+                    }
+                }
+
+                m_Engine->TickRendererFrame(deltaTime);
                 if (RenderSystem::HasInstance())
                 {
                     RenderSystem::Get().PresentFrame();

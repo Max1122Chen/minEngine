@@ -44,7 +44,7 @@ namespace minEngine
         void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
         void Prepare(RenderGraph& graph) override;
         void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
-        bool NeedRenderPass() const override { return true; }
+        bool NeedRenderPass() const override { return m_ShouldRender; }
 
     private:
         bool BindEnvironmentTexture(RHICommandList& cmdList, RHITexture* environmentTexture);

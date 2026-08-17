@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-04  
+Last updated: 2026-08-05  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -13,7 +13,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 1. ~~RND-F03 关账~~ — **Done**  
 2. **RND-F05** — [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md)  
-   - **S01–S06 Done**；**下一刀 S07+**（先补 VK 场景子切片表，再资源/PSO → 最小 forward）  
+   - **S01–S07d Done**（S07d：VK Forward Unlit Base + Editor scene smoke；**目视已见 mesh 输出**）  
+   - **下一刀 S07e**（Shadow + 场景 include `set=`）
+   - 已登记后续收口债：`TD-023`（scene pass / clear contract），`TD-024`（Vulkan frame sync + debug leftovers）
 3. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**（顺带 **BUG-RENDER-003** `Params.w` 门闩）  
 4. **RND-F11 DebugDrawing** — F05 可演示后再设计  
 

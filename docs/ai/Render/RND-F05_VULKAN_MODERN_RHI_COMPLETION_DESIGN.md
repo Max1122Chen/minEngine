@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-04
+- **Last updated:** 2026-08-17（S07d 目视验收通过；下一刀 S07e）
 - **Depends on:** `RND-F03` **Done** · `RND-F04` **Done**
 - **Related:** [Implementation](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) · [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md)
 
@@ -340,6 +340,40 @@ EndFrame / Present (内部或 RHIPresent):
 
 进入 BasePass 级切片前，若动态渲染 vs legacy render pass 有争议，再补短 ADR。
 
+### 3.9 S07 场景扩覆盖（已批并推进到 S07d）
+
+**目标：** 同一套上层 Pass / `ForwardRenderer` 在 `--rhi vulkan` 下逐步可跑；**不是**重写业务层。OpenGL 路径每刀回归。
+
+**代码真值（S06 后）：**
+
+| 能力 | VulkanRHI |
+|------|-----------|
+| Instance / device / swapchain / Clear / Present / 内部 sync | **已有** |
+| `RHICreateShader`(bytecode) → `VulkanRHIShader` | **已有** |
+| 硬编码彩色三角（S04 smoke） | **已有**（S07c 后应退役） |
+| Buffer / Texture / SRV / VertexInput / PSO(desc) / BindingSet* / `RHICmd*` 场景路径 | **stub / no-op** |
+| `RenderSystem` + Editor | Vulkan **跳过** `ForwardRenderer`；Editor **无 ImGui**（smoke only） |
+
+**子切片（详见 Impl）：** S07a 资源 → S07b Descriptor → S07c PSO/Cmd → S07d Forward(Base 无阴影) → S07e Shadow+场景 `set=` → S07f Sky/IBL/Bake。
+
+**待审默认（同意则开 S07a）：** → **已批准 2026-08-05**；S07a 已落地。
+
+| # | 问题 | 推荐默认 |
+|---|------|----------|
+| A | RenderPass 模型 | **经典 `VkRenderPass`+FB** 映射 `RHIRenderPassInfo`；dynamic rendering 后置（有争议再 ADR） |
+| B | VK 验收怎么看图 | **不接 ImGui-Vulkan**；Editor 保持 smoke 模式但可 Present 场景色 **和/或** Engine/测试一帧 mesh |
+| C | 何时启用 ForwardRenderer | **S07d**（S07a–c 完成前禁止「特判 Vulkan」改 Pass） |
+| D | 场景 include `set=` | **S07e** 与 Shadow 同批；S07d 可用 Unlit/跳过阴影降低依赖 |
+| E | S04 硬编码三角 | **S07c 验收后删除**（避免双路径） |
+
+**Pre-flight（S07 竖切）：** 前置 S01–S06 sound；债 medium（绑定方言半迁移）；WIP = F05 本 Feature → **Go with scope cut**（按 a→f，不一次 parity）。
+
+**S07a 落地摘要：** Buffer（host-visible）/ Texture2D（DEVICE_LOCAL + staging）/ SRV / VertexInputLayout；Cube/Array 仍后置。
+
+**S07d 验收补记（2026-08-17）：**
+- Vulkan Editor smoke 已人工目视确认 mesh 输出，说明 Base → Present 主链路成立。
+- 本批顺带暴露两类后续收口债：`TD-023`（scene pass ordering / clear contract）与 `TD-024`（Vulkan frame sync + debug leftovers）。
+
 ---
 
 ## 4) 备选方案
@@ -407,3 +441,4 @@ EndFrame / Present (内部或 RHIPresent):
 | 2026-06-11 | 顺延 F05 |
 | 2026-08-04 | 地基评估 + SPIR-V 双端策略；Status Draft |
 | 2026-08-04 | 拍板确认 → Planned；补 CLI `--rhi`；补 §3.6 VK 接入与特有概念内聚 |
+| 2026-08-05 | 补 §3.9 S07 场景扩覆盖待审默认；Impl 展开 S07a–S07f |

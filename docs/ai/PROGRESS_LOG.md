@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-04 (RND-F05-S06 Done)
+Last updated: 2026-08-17 (RND-F05-S07d visual smoke confirmed)
 
 ## Purpose
 
@@ -81,6 +81,60 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Risks or caveats:
 - Validation done:
 - Next step:
+
+### 2026-08-17 - RND-F05-S07d visual smoke confirmed + deferred debt grouped
+- Goal:
+	Confirm S07d is not just alive but visibly drawing scene geometry, then record the remaining cleanup honestly before the next slice.
+- Main changes:
+	User visual check confirmed visible mesh output in Vulkan Editor smoke.
+	Root cause for the prior blue-only frame was `SkyBoxPass` still entering the graph and clearing `SceneColor` after Opaque; smoke now gates the pass via `NeedRenderPass()`.
+	Deferred follow-up grouped into two TDs: `TD-023` (scene pass ordering / clear contract) and `TD-024` (Vulkan frame sync + debug leftovers).
+- Risks or caveats:
+	S07d is visually accepted, but enabling Sky on the current graph still deserves a proper ordering/clear cleanup.
+	Vulkan present semaphore reuse on fast shutdown is not fully clean yet; some diagnostic logs also remain intentionally temporary.
+- Validation done:
+	Editor `--rhi vulkan --project ...\MyMEProject.meproject` manual visual check: visible mesh output.
+	Debug logs also showed BasePass draws and PresentPass blit on the same frame.
+- Next step:
+	S07e Shadow + scene include `set=`; pay down `TD-023` / `TD-024` when the render track has a natural cleanup window.
+
+### 2026-08-05 - RND-F05-S07b–S07d Vulkan Descriptor/PSO + Forward Unlit Base
+- Goal:
+	Batch S07b–S07d so `--rhi vulkan` can run Forward Base (Unlit) and Present without ImGui.
+- Main changes:
+	Vulkan descriptor pool / set layout / pipeline layout / binding sets; lazy graphics PSO per RenderPass;
+	frame recording Clear→Cmd→Present; enable `ForwardRenderer` on Vulkan; Editor `OpenProjectForVulkanSmoke`
+	loads `default` scene, forces Unlit, `SubmitSceneDraw(PresentToBackBuffer)`.
+	Fixes: depth RT no default SAMPLED; `DEPTH24STENCIL8`→`D32_SFLOAT_S8_UINT`; `PerFrame` visibility `All`.
+- Validation done:
+	Editor `--rhi vulkan --project MyMEProject`: Unlit recompile OK; 16s render loop alive;
+	`VK_LAYER_KHRONOS_validation` stderr empty; `test smoke` GL+VK PASSED.
+	**Human visual check still required for mesh silhouette.**
+- Next step:
+	S07e ShadowPass + `MaterialSceneShadows`/`lights` `set=` dialect; then prepare commit for S07a–d WIP.
+
+### 2026-08-05 - RND-F05-S07a Vulkan Buffer/Texture2D/SRV/VertexInputLayout
+- Goal:
+	Fill VulkanRHI resource create/upload stubs so later S07 draws have a data plane.
+- Main changes:
+	`VulkanRHIAllocator` + `VulkanRHIBuffer` (host-visible map) / `VulkanRHITexture` (2D + staging) /
+	`VulkanRHIShaderResourceView` / `VulkanRHIVertexInputLayout`; wire `RHICreate*`; init probes.
+- Validation done:
+	Editor `--rhi vulkan`: S07a buffer/texture/SRV/layout probe OK;
+	`minEngineTests.exe --rhi opengl|vulkan test smoke` PASSED.
+- Next step:
+	S07b Descriptor / BindingSet / PipelineLayout.
+
+### 2026-08-05 - RND-F05 S07 sub-slice table drafted (await review)
+- Goal:
+	Replace vague S07+ with reviewable S07a–S07f before any Vulkan scene implementation.
+- Main changes:
+	Impl expands S07a resources → S07b descriptor → S07c PSO/Cmd → S07d Forward Base → S07e Shadow+set= → S07f Sky/IBL;
+	Design §3.9 pending defaults (classic VkRenderPass, no ImGui-VK, enable Forward at S07d).
+- Validation done:
+	Docs only; no code.
+- Next step:
+	User review/approve §3.9 + Impl S07 table; then start S07a.
 
 ### 2026-08-04 - RND-F05-S06 complete (SkyBox + EnvMapCapture + Material set=/SPIR-V)
 - Goal:
