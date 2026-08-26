@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-25  
+Last updated: 2026-08-26  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -15,6 +15,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 2. ~~**RND-F05** RHI 竖切~~ — **Done**（S01–S07d；VK Forward Base + smoke 验收）  
 3. **ED-F01 Vulkan Editor Parity** — [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md)  
    - **S01–S05 Done**；**S07 HDR sky bake Done**（citrus HDR cubemap on VK；IBL convolution still deferred）
+   - **Bugfix batch Done / Verified**：[visual parity design](./Editor/ED-F01_VULKAN_VISUAL_PARITY_BUGFIX_DESIGN.md)；`BUG-RENDER-005`…`009`
    - **Next**: S06 shadow/post in editor flags；VK irradiance/prefilter convolution
    - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync），**`TD-025`**（clip/handedness 勿硬绑 `IsVulkan`）  
 

@@ -94,7 +94,21 @@ namespace minEngine
         virtual void RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet) = 0;
         virtual void RHICmdTransition(const RHITextureTransitionInfo& transition) = 0;
 
-        virtual void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
+        /**
+         * Set viewport/scissor.
+         * @param flipY When true (default), Vulkan flips Y (negative height) for GLM/OpenGL-style
+         *              clip space. Offline cubemap bake should pass false so face images match
+         *              samplerCube conventions without polar seams.
+         */
+        virtual void RHICmdSetViewport(
+            uint32_t x,
+            uint32_t y,
+            uint32_t width,
+            uint32_t height,
+            bool flipY = true) = 0;
+
+        /** Minimum uniform-buffer offset alignment (Vulkan device limit / GL UBO alignment). */
+        virtual uint32_t RHIGetMinUniformBufferOffsetAlignment() const { return 256; }
         virtual void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot = 0) = 0;
         virtual void RHICmdSetIndexBuffer(RHIBuffer* indexBuffer) = 0;
 

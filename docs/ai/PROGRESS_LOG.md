@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-26 (ED-F01 S07 HDR bake descriptor lifetime / DEVICE_LOST)
+Last updated: 2026-08-26 (ED-F01 Vulkan visual bugfix batch)
 
 ## Purpose
 
@@ -74,6 +74,16 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Asset scanning must avoid duplicate registration and accidental GUID regeneration.
 
 ## Entry Template (Append for each meaningful task)
+
+### 2026-08-26 - ED-F01 Vulkan visual bugfix: UBO ring + bake viewport + retired buffers
+- Goal: Fix Cube invisible / plane Y-scale oddity / sky ±Y split / mesh hot-swap DEVICE_LOST on Vulkan Editor.
+- Done:
+  - Per-Object UBO ring (aligned slots) + `RHIShaderBinding` BufferOffset/Range; scene + shadow draws bind distinct regions
+  - EnvMap bake `SetViewport(..., flipY=false)` while scene path keeps Y-flip
+  - `VulkanRHI` retires buffers and flushes after in-flight fences (BeginFrame / Shutdown)
+  - Bug records `BUG-RENDER-005`…`009`; design Status → In Progress
+- Verify: Vulkan Editor smoke loads `test` + HDR bake, no DEVICE_LOST in stderr; **user visual A/B still required**
+- Open: `BUG-RENDER-007` plane UV zoom — wait for post-UBO screenshots
 
 ### 2026-08-26 - ED-F01 S07 garbled HDR sky: float32→half upload
 - Goal: Fix psychedelic/moiré Vulkan sky after successful HDR bake (no DEVICE_LOST).

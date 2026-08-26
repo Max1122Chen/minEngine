@@ -9,7 +9,6 @@
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIRenderPass.h"
-#include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/DrawCommands/MeshDrawPacket.h"
@@ -53,32 +52,9 @@ namespace minEngine
         }
     }
 
-    void ShadowPass::EnsureShadowShaderBindingSet(RHICommandList& cmdList)
-    {
-        if (m_ShadowShaderBindingSet || !pipeline || !m_LightViewProjUniformBuffer || !m_PerObjectUniformBuffer ||
-            !m_ShadowParamsUniformBuffer)
-        {
-            return;
-        }
-
-        RHIShaderBindingSetLayout* shadowBindingLayout = pipeline->GetPipelineLayouts().GetShadowShaderBindingSetLayout();
-        if (!shadowBindingLayout)
-        {
-            return;
-        }
-
-        m_ShadowShaderBindingSet = cmdList.CreateShaderBindingSet(
-            shadowBindingLayout,
-            {
-                {RHIShaderBindingType::UniformBuffer, m_LightViewProjUniformBuffer, nullptr},
-                {RHIShaderBindingType::UniformBuffer, m_PerObjectUniformBuffer, nullptr},
-                {RHIShaderBindingType::UniformBuffer, m_ShadowParamsUniformBuffer.get(), nullptr},
-            });
-    }
-
     void ShadowPass::UpdateShadowParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params)
     {
-        EnsureShadowShaderBindingSet(cmdList);
+        (void)cmdList;
         if (m_ShadowParamsUniformBuffer)
         {
             m_ShadowParamsUniformBuffer->UpdateSubresource(&params, 0, sizeof(ShadowPassParamsUBO));
@@ -145,8 +121,7 @@ namespace minEngine
         {
             return;
         }
-
-        EnsureShadowShaderBindingSet(cmdList);
+        m_PendingShadowBindingSets.clear();
     }
 
     void ShadowPass::RenderSingleDrawCommand(RHICommandList& cmdList, const ShadowDrawCommand& command)
@@ -193,7 +168,13 @@ namespace minEngine
 
     void ShadowPass::DrawOpaqueMeshes(RHICommandList& cmdList)
     {
-        if (!m_ShadowShaderBindingSet || !m_PerObjectUniformBuffer)
+        if (!pipeline || !m_PerObjectUniformBuffer || !m_LightViewProjUniformBuffer || !m_ShadowParamsUniformBuffer)
+        {
+            return;
+        }
+
+        RHIShaderBindingSetLayout* shadowBindingLayout = pipeline->GetPipelineLayouts().GetShadowShaderBindingSetLayout();
+        if (!shadowBindingLayout)
         {
             return;
         }
@@ -212,11 +193,27 @@ namespace minEngine
                 continue;
             }
 
-            m_PerObjectUniformBuffer->UpdateSubresource(&drawCommand.m_ModelMatrix, 0, sizeof(Matrix4));
+            const uint32_t perObjectOffset = pipeline->GetSceneBindings().WriteNextPerObjectModel(drawCommand.m_ModelMatrix);
+            std::vector<RHIShaderBinding> resources(3);
+            resources[0] = {RHIShaderBindingType::UniformBuffer, m_LightViewProjUniformBuffer, nullptr, 0, 0};
+            resources[1] = {
+                RHIShaderBindingType::UniformBuffer,
+                m_PerObjectUniformBuffer,
+                nullptr,
+                perObjectOffset,
+                static_cast<uint32_t>(sizeof(Matrix4))};
+            resources[2] = {RHIShaderBindingType::UniformBuffer, m_ShadowParamsUniformBuffer.get(), nullptr, 0, 0};
+
+            RHIShaderBindingSetRef shadowSet = cmdList.CreateShaderBindingSet(shadowBindingLayout, resources);
+            if (!shadowSet)
+            {
+                continue;
+            }
+            m_PendingShadowBindingSets.push_back(shadowSet);
 
             MeshDrawPacket packet;
             packet.PipelineState = pipelineState;
-            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = m_ShadowShaderBindingSet.get();
+            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = shadowSet.get();
             packet.VertexBuffer = drawCommand.m_VertexBuffer;
             packet.IndexBuffer = drawCommand.m_IndexBuffer;
             cmdList.SubmitMeshDrawPacket(packet);

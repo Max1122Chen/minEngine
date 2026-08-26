@@ -20,6 +20,8 @@
 namespace minEngine
 {
 #if defined(MINENGINE_HAS_VULKAN)
+    class VulkanRHI;
+
     /** Shared Vulkan device handles for resource create/upload (RND-F05-S07a). */
     struct VulkanDeviceContext
     {
@@ -27,6 +29,8 @@ namespace minEngine
         VkPhysicalDevice PhysicalDevice = VK_NULL_HANDLE;
         VkQueue GraphicsQueue = VK_NULL_HANDLE;
         VkCommandPool CommandPool = VK_NULL_HANDLE;
+        /** When set, buffer destroy is deferred through the owning RHI (in-flight CB safety). */
+        VulkanRHI* OwnerRHI = nullptr;
 
         bool IsValid() const
         {

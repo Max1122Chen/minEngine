@@ -59,7 +59,16 @@ namespace minEngine
         void RHICmdSetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState) override;
         void RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet) override;
         void RHICmdTransition(const RHITextureTransitionInfo& transition) override;
-        void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
+        void RHICmdSetViewport(
+            uint32_t x,
+            uint32_t y,
+            uint32_t width,
+            uint32_t height,
+            bool flipY = true) override;
+        uint32_t RHIGetMinUniformBufferOffsetAlignment() const override;
+
+        /** Retire a buffer for destroy after in-flight frames complete (mesh hot-swap safety). */
+        void RetireBuffer(VkBuffer buffer, VkDeviceMemory memory);
         void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot) override;
         void RHICmdSetIndexBuffer(RHIBuffer* indexBuffer) override;
         void RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset) override;
@@ -254,6 +263,16 @@ namespace minEngine
         bool m_ImmediateRecording = false;
         bool m_SwapchainDrawnThisFrame = false;
         bool m_Initialized = false;
+        uint32_t m_MinUniformBufferOffsetAlignment = 256;
+
+        struct RetiredBuffer
+        {
+            VkBuffer Buffer = VK_NULL_HANDLE;
+            VkDeviceMemory Memory = VK_NULL_HANDLE;
+        };
+        std::vector<RetiredBuffer> m_RetiredBuffers;
+
+        void FlushRetiredBuffers();
 
         VkRenderPass m_SwapchainRenderPass = VK_NULL_HANDLE;
         std::vector<VkFramebuffer> m_SwapchainFramebuffers;

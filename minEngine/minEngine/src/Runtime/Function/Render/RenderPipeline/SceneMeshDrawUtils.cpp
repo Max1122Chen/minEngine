@@ -63,7 +63,7 @@ namespace minEngine
             return;
         }
 
-        const EngineSceneBindingSets& sceneBindings = pipeline.GetSceneBindings();
+        EngineSceneBindingSets& sceneBindings = pipeline.GetSceneBindings();
 
         for (size_t drawIndex = 0; drawIndex < drawCommands.size(); ++drawIndex)
         {
@@ -80,8 +80,13 @@ namespace minEngine
                 continue;
             }
 
-            sceneBindings.UpdatePerObjectModel(pipeline.GetPerObjectUniformBuffer(), drawCommand.m_ModelMatrix);
-            packet.ShaderBindingSets[EngineShaderBindings::kSetSceneObject] = sceneBindings.GetSceneSet0();
+            RHIShaderBindingSet* set0 = sceneBindings.BindNextPerObjectModel(cmdList, drawCommand.m_ModelMatrix);
+            if (!set0)
+            {
+                continue;
+            }
+
+            packet.ShaderBindingSets[EngineShaderBindings::kSetSceneObject] = set0;
             // Pipeline layout always has set 1; leave it unbound and some drivers drop the draw.
             packet.ShaderBindingSets[EngineShaderBindings::kSetShadowIBL] = sceneBindings.GetSceneSet1();
 

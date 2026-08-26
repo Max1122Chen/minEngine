@@ -40,7 +40,6 @@ namespace minEngine
         void Render(RHICommandList& cmdList);
         void Render();
         void DrawOpaqueMeshes(RHICommandList& cmdList);
-        void EnsureShadowShaderBindingSet(RHICommandList& cmdList);
         void UpdateShadowParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params);
         RHIGraphicsPipelineStateRef GetOrCreateShadowPipelineForLayout(
             RHIVertexInputLayout* vertexInputLayout,
@@ -57,7 +56,8 @@ namespace minEngine
         std::shared_ptr<RHIShader> m_DepthShader;
         RHIGraphicsPSODesc m_ShadowPSODescTemplate{};
         std::unordered_map<RHIVertexInputLayout*, std::shared_ptr<RHIGraphicsPipelineState>> m_ShadowPipelineByLayout;
-        std::shared_ptr<RHIShaderBindingSet> m_ShadowShaderBindingSet;
+        /** Keep per-draw shadow sets alive until the CB submits (Vulkan descriptor lifetime). */
+        std::vector<RHIShaderBindingSetRef> m_PendingShadowBindingSets;
         RHIBufferRef m_ShadowParamsUniformBuffer;
 
         void UpdateLightViewProjBuffer(const Matrix4& inMatrix);

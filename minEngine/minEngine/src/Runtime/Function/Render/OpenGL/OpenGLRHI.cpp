@@ -1,5 +1,4 @@
 #include "OpenGLRHI.h"
-#include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
 #include "OpenGLRHIResources.h"
@@ -336,10 +335,22 @@ namespace minEngine
                 auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
                 if (ubo)
                 {
-                    glBindBufferBase(
-                        GL_UNIFORM_BUFFER,
-                        entry.ShaderBinding,
-                        ubo->GetBufferId());
+                    if (resource.BufferRange != 0)
+                    {
+                        glBindBufferRange(
+                            GL_UNIFORM_BUFFER,
+                            entry.ShaderBinding,
+                            ubo->GetBufferId(),
+                            static_cast<GLintptr>(resource.BufferOffset),
+                            static_cast<GLsizeiptr>(resource.BufferRange));
+                    }
+                    else
+                    {
+                        glBindBufferBase(
+                            GL_UNIFORM_BUFFER,
+                            entry.ShaderBinding,
+                            ubo->GetBufferId());
+                    }
                 }
             }
         }
@@ -549,9 +560,20 @@ namespace minEngine
         (void)transition;
     }
 
-    void OpenGLRHI::RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    void OpenGLRHI::RHICmdSetViewport(
+        uint32_t x,
+        uint32_t y,
+        uint32_t width,
+        uint32_t height,
+        bool flipY)
     {
+        (void)flipY;
         glViewport(static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+    }
+
+    uint32_t OpenGLRHI::RHIGetMinUniformBufferOffsetAlignment() const
+    {
+        return 256;
     }
 
 

@@ -171,7 +171,9 @@ namespace minEngine
             passInfo.DepthStencil.Action = RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil;
             passInfo.ClearValue.Depth = 1.0f;
             cmdList.BeginRenderPass(passInfo);
-            cmdList.SetViewport(0, 0, viewportSize, viewportSize);
+            // Bake cubemap faces without the scene-path Vulkan Y-flip; otherwise ±Y faces
+            // end up rotated/split relative to samplerCube conventions.
+            cmdList.SetViewport(0, 0, viewportSize, viewportSize, false);
         }
 
         struct EnvCaptureDrawResources

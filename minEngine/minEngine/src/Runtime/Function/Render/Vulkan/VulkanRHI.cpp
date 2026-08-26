@@ -168,6 +168,7 @@ namespace minEngine
         if (m_Device != VK_NULL_HANDLE)
         {
             vkDeviceWaitIdle(m_Device);
+            FlushRetiredBuffers();
         }
 
         for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)
@@ -332,6 +333,14 @@ namespace minEngine
         }
 
         vkGetDeviceQueue(m_Device, m_GraphicsQueueFamily, 0, &m_GraphicsQueue);
+        VkPhysicalDeviceProperties properties{};
+        vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);
+        m_MinUniformBufferOffsetAlignment =
+            static_cast<uint32_t>(properties.limits.minUniformBufferOffsetAlignment);
+        if (m_MinUniformBufferOffsetAlignment == 0)
+        {
+            m_MinUniformBufferOffsetAlignment = 256;
+        }
         return true;
     }
 
@@ -1273,6 +1282,7 @@ namespace minEngine
             m_InFlightFences.data(),
             VK_TRUE,
             UINT64_MAX);
+        FlushRetiredBuffers();
 
         VkResult acquireResult = vkAcquireNextImageKHR(
             m_Device,
@@ -1758,7 +1768,31 @@ namespace minEngine
         context.PhysicalDevice = m_PhysicalDevice;
         context.GraphicsQueue = m_GraphicsQueue;
         context.CommandPool = m_CommandPool;
+        context.OwnerRHI = const_cast<VulkanRHI*>(this);
         return context;
+    }
+
+    uint32_t VulkanRHI::RHIGetMinUniformBufferOffsetAlignment() const
+    {
+        return m_MinUniformBufferOffsetAlignment;
+    }
+
+    void VulkanRHI::RetireBuffer(VkBuffer buffer, VkDeviceMemory memory)
+    {
+        if (buffer == VK_NULL_HANDLE && memory == VK_NULL_HANDLE)
+        {
+            return;
+        }
+        m_RetiredBuffers.push_back({buffer, memory});
+    }
+
+    void VulkanRHI::FlushRetiredBuffers()
+    {
+        for (RetiredBuffer& retired : m_RetiredBuffers)
+        {
+            VulkanRHIAllocator::DestroyBuffer(m_Device, retired.Buffer, retired.Memory);
+        }
+        m_RetiredBuffers.clear();
     }
 
     void VulkanRHI::FillEditorFrameInfo(VulkanEditorFrameInfo& outInfo) const
@@ -2132,13 +2166,19 @@ namespace minEngine
 #endif
     }
 
-    void VulkanRHI::RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    void VulkanRHI::RHICmdSetViewport(
+        uint32_t x,
+        uint32_t y,
+        uint32_t width,
+        uint32_t height,
+        bool flipY)
     {
 #if !defined(MINENGINE_HAS_VULKAN)
         (void)x;
         (void)y;
         (void)width;
         (void)height;
+        (void)flipY;
 #else
         if (!EnsureFrameRecording())
         {
@@ -2147,10 +2187,18 @@ namespace minEngine
 
         VkViewport viewport{};
         viewport.x = static_cast<float>(x);
-        // GLM/OpenGL-style projection: flip viewport Y (Vulkan NDC Y points down).
-        viewport.y = static_cast<float>(y + height);
         viewport.width = static_cast<float>(width);
-        viewport.height = -static_cast<float>(height);
+        if (flipY)
+        {
+            // GLM/OpenGL-style projection: flip viewport Y (Vulkan NDC Y points down).
+            viewport.y = static_cast<float>(y + height);
+            viewport.height = -static_cast<float>(height);
+        }
+        else
+        {
+            viewport.y = static_cast<float>(y);
+            viewport.height = static_cast<float>(height);
+        }
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 

@@ -55,7 +55,13 @@ namespace minEngine
         virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
             std::initializer_list<RHIVertexElement> elements) override;
 
-        virtual void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
+        virtual void RHICmdSetViewport(
+            uint32_t x,
+            uint32_t y,
+            uint32_t width,
+            uint32_t height,
+            bool flipY = true) override;
+        uint32_t RHIGetMinUniformBufferOffsetAlignment() const override;
         virtual void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot) override;
         virtual void RHICmdSetIndexBuffer(RHIBuffer* indexBuffer) override;
 

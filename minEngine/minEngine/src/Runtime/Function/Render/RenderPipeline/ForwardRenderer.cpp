@@ -55,7 +55,12 @@ namespace minEngine
         m_LightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4)));
         m_PerFrameUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(PerFrameData)));
         m_LightDataUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(LightsData)));
-        m_PerObjectUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4)));
+
+        const uint32_t uboAlign = rhi->RHIGetMinUniformBufferOffsetAlignment();
+        m_PerObjectSlotStride = ((static_cast<uint32_t>(sizeof(Matrix4)) + uboAlign - 1u) / uboAlign) * uboAlign;
+        m_PerObjectUniformBuffer = cmdList.CreateBuffer(
+            MakeUniformBufferDesc(m_PerObjectSlotStride * EngineSceneBindingSets::kPerObjectRingSlots));
+
         m_DirLightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4) * MAX_CASCADES));
         m_CascadeFarPlaneUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(float) * 4 * MAX_CASCADES));
         m_SpotLightViewProjUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(Matrix4) * MAX_SPOT_LIGHTS));
@@ -541,11 +546,12 @@ namespace minEngine
             }
         }
 
-        m_SceneBindings.BuildSceneSet0(
+        m_SceneBindings.BeginFrame(
             cmdList,
             m_PerFrameUniformBuffer.get(),
             m_LightDataUniformBuffer.get(),
-            m_PerObjectUniformBuffer.get());
+            m_PerObjectUniformBuffer.get(),
+            m_PerObjectSlotStride);
         m_SceneBindings.BuildSceneSet1(
             cmdList,
             ctx,

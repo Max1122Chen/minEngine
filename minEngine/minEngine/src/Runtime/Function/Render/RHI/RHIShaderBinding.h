@@ -66,6 +66,10 @@ namespace minEngine
         RHIShaderBindingType Type = RHIShaderBindingType::TextureSRV;
         RHIBuffer* Buffer = nullptr;
         RHIShaderResourceView* TextureSRV = nullptr;
+        /** Byte offset into Buffer for UniformBuffer (must respect min UBO alignment). */
+        uint32_t BufferOffset = 0;
+        /** Byte range; 0 means use the full buffer size from Buffer->GetDesc(). */
+        uint32_t BufferRange = 0;
     };
 
     class RHIShaderBindingSet

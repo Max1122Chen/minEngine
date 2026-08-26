@@ -1,4 +1,5 @@
 #include "VulkanRHIResources.h"
+#include "VulkanRHI.h"
 
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Core/Log/LogSystem.h"
@@ -991,6 +992,13 @@ namespace minEngine
             vkUnmapMemory(m_Context.Device, m_Memory);
             m_Mapped = nullptr;
         }
+        if (m_Context.OwnerRHI != nullptr)
+        {
+            m_Context.OwnerRHI->RetireBuffer(m_Buffer, m_Memory);
+            m_Buffer = VK_NULL_HANDLE;
+            m_Memory = VK_NULL_HANDLE;
+            return;
+        }
         VulkanRHIAllocator::DestroyBuffer(m_Context.Device, m_Buffer, m_Memory);
     }
 
@@ -1625,17 +1633,21 @@ namespace minEngine
             {
                 VkBuffer buffer = dummyUniformBuffer;
                 VkDeviceSize range = VK_WHOLE_SIZE;
+                VkDeviceSize offset = 0;
                 if (resource.Buffer != nullptr)
                 {
                     if (auto* vulkanBuffer = dynamic_cast<VulkanRHIBuffer*>(resource.Buffer))
                     {
                         buffer = vulkanBuffer->GetBuffer();
-                        range = vulkanBuffer->GetDesc().ByteSize;
+                        offset = resource.BufferOffset;
+                        range = resource.BufferRange != 0
+                            ? resource.BufferRange
+                            : vulkanBuffer->GetDesc().ByteSize;
                     }
                 }
 
                 bufferInfos[i].buffer = buffer;
-                bufferInfos[i].offset = 0;
+                bufferInfos[i].offset = offset;
                 bufferInfos[i].range = range == 0 ? VK_WHOLE_SIZE : range;
 
                 write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;

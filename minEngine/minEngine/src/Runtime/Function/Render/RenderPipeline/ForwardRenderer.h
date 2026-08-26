@@ -112,6 +112,8 @@ namespace minEngine
         void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot) override;
 
         RHIBuffer* GetPerObjectUniformBuffer() const { return m_PerObjectUniformBuffer.get(); }
+        uint32_t GetPerObjectSlotStride() const { return m_PerObjectSlotStride; }
+        EngineSceneBindingSets& GetSceneBindings() { return m_SceneBindings; }
         const EngineSceneBindingSets& GetSceneBindings() const { return m_SceneBindings; }
         const EnginePipelineLayouts& GetPipelineLayouts() const { return m_PipelineLayouts; }
 
@@ -120,6 +122,7 @@ namespace minEngine
         RHIBufferRef m_PerFrameUniformBuffer;
         RHIBufferRef m_LightDataUniformBuffer;
         RHIBufferRef m_PerObjectUniformBuffer;
+        uint32_t m_PerObjectSlotStride = 256;
 
         RHIBufferRef m_DirLightViewProjUniformBuffer;
         RHIBufferRef m_CascadeFarPlaneUniformBuffer;
