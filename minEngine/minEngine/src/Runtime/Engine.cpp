@@ -40,7 +40,8 @@ namespace minEngine
 
         StartSystems();
 
-        if (m_RenderSystem && m_EnginePathConfigLoaded && RHIBackendSelection::IsOpenGL())
+        // Sky / EnvMap shaders and validation resources — required on every RHI (ED-F01 VK parity).
+        if (m_RenderSystem && m_EnginePathConfigLoaded)
         {
             m_RenderSystem->LoadEngineRenderingAssets();
         }

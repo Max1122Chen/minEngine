@@ -582,51 +582,6 @@ namespace minEngine
         perFrameData.ViewProj = mainCamera->GetViewProjMatrix();
         perFrameData.CameraPos = Vector4(mainCamera->m_Position, 1.0f);
 
-        // Vulkan NDC depth is [0,1]; use RH_ZO projection. Y flip is done in RHICmdSetViewport.
-        if (RHIBackendSelection::IsVulkan())
-        {
-            perFrameData.Proj = glm::perspectiveRH_ZO(
-                glm::radians(mainCamera->m_FOV),
-                mainCamera->m_AspectRatio,
-                mainCamera->m_zNear,
-                mainCamera->m_zFar);
-            perFrameData.ViewProj = perFrameData.Proj * perFrameData.View;
-        }
-
-        if (m_FrameIndex == 0 && RHIBackendSelection::IsVulkan())
-        {
-            const Vector4 clipEye = perFrameData.ViewProj * Vector4(mainCamera->m_Position, 1.0f);
-            const Vector4 worldAhead = glm::inverse(perFrameData.View) * Vector4(0.0f, 0.0f, -10.0f, 1.0f);
-            const Vector4 clipAhead = perFrameData.ViewProj * worldAhead;
-            ME_CORE_INFO(
-                "ForwardRenderer: VK clip eye=({:.2f},{:.2f},{:.2f},{:.2f}) "
-                "ahead10=({:.2f},{:.2f},{:.2f},{:.2f})",
-                clipEye.x,
-                clipEye.y,
-                clipEye.z,
-                clipEye.w,
-                clipAhead.x,
-                clipAhead.y,
-                clipAhead.z,
-                clipAhead.w);
-
-            if (!ctx.OpaqueQueue.empty())
-            {
-                const MeshDrawCommand& firstDraw = ctx.OpaqueQueue[0];
-                const Vector4 worldOrigin = firstDraw.m_ModelMatrix * Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-                const Vector4 clipOrigin = perFrameData.ViewProj * worldOrigin;
-                ME_CORE_INFO(
-                    "ForwardRenderer: VK clip mesh0 origin=({:.2f},{:.2f},{:.2f},{:.2f}) ndc=({:.3f},{:.3f},{:.3f})",
-                    clipOrigin.x,
-                    clipOrigin.y,
-                    clipOrigin.z,
-                    clipOrigin.w,
-                    clipOrigin.w != 0.0f ? clipOrigin.x / clipOrigin.w : 0.0f,
-                    clipOrigin.w != 0.0f ? clipOrigin.y / clipOrigin.w : 0.0f,
-                    clipOrigin.w != 0.0f ? clipOrigin.z / clipOrigin.w : 0.0f);
-            }
-        }
-
         m_PerFrameUniformBuffer->UpdateSubresource(&perFrameData, 0, sizeof(PerFrameData));
     }
 

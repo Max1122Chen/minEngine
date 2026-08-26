@@ -16,11 +16,12 @@
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
-#include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 #include "Runtime/Function/Render/Texture.h"
 
@@ -111,7 +112,7 @@ namespace minEngine
             {EngineShaderBindings::kSkyPass_FrameData,
              RHIShaderBindingType::UniformBuffer,
              EngineShaderBindings::kGL_SkyFrameDataUBO,
-             RHIGraphicsShaderStage::Vertex},
+             RHIGraphicsShaderStage::All},
         });
 
         m_SkyPipelineLayout = cmdList.CreatePipelineLayout({m_SkyShaderBindingSetLayout.get()});
@@ -126,6 +127,9 @@ namespace minEngine
         psoDesc.VertexShader = m_SkyShader.get();
         psoDesc.PixelShader = m_SkyShader.get();
         psoDesc.VertexInputLayout = m_CubeVertexLayout.get();
+        // Inside cube; negative viewport height also flips winding — never cull sky faces.
+        psoDesc.RasterizerState.bCullEnabled = false;
+        psoDesc.RasterizerState.CullMode = RHICullMode::None;
         psoDesc.DepthStencilState.bDepthTestEnabled = true;
         psoDesc.DepthStencilState.bDepthWriteEnabled = false;
         psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::LessEqual;
@@ -189,18 +193,22 @@ namespace minEngine
 
     void SkyBoxPass::Prepare(RenderGraph& graph)
     {
+        m_ShouldEnterPass = false;
         m_ShouldRender = false;
         m_DrawPacket = {};
 
         const RenderGraphFrameContext& context = graph.GetFrameContext();
-        if (!IsReady() || context.SceneContext == nullptr || context.SceneContext->Camera == nullptr
-            || context.SceneContext->Scene == nullptr)
+        if (context.DrawDesc != nullptr
+            && !HasSceneDrawFlag(context.DrawDesc->Flags, SceneDrawFlags::EnableSkyBox))
         {
             return;
         }
 
-        if (context.DrawDesc != nullptr
-            && !HasSceneDrawFlag(context.DrawDesc->Flags, SceneDrawFlags::EnableSkyBox))
+        // Flag on: always enter BuildRenderPass to clear SceneColor (BasePass skips clear).
+        m_ShouldEnterPass = true;
+
+        if (!IsReady() || context.SceneContext == nullptr || context.SceneContext->Camera == nullptr
+            || context.SceneContext->Scene == nullptr)
         {
             return;
         }
@@ -252,6 +260,14 @@ namespace minEngine
 
     void SkyBoxPass::BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph)
     {
+        const RenderGraphFrameContext& context = graph.GetFrameContext();
+        if (context.DrawDesc != nullptr
+            && !HasSceneDrawFlag(context.DrawDesc->Flags, SceneDrawFlags::EnableSkyBox))
+        {
+            // Sky disabled: do not clear/draw — BasePass owns the clear for isolation.
+            return;
+        }
+
         RHITexture* colorTexture = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneColor));
         RHITexture* depthTexture = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneDepth));
         if (colorTexture == nullptr || depthTexture == nullptr)

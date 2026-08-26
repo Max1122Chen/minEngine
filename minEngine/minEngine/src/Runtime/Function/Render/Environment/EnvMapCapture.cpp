@@ -8,15 +8,18 @@
 #include "Runtime/Function/Render/EngineRHITextureUtils.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
+#include "Runtime/Function/Render/RHI/RHIPipelineLayout.h"
 #include "Runtime/Function/Render/RHI/RHIRenderPass.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
 #include <algorithm>
+#include <vector>
 
 // Offline bake path: modern RHI only (CommandList / PSO / SRV / GenerateMips).
 
@@ -131,6 +134,26 @@ namespace minEngine
             cmdList.Draw(mesh.VertexCount, 0);
         }
 
+        void SubmitVulkanImmediateCommandsBeforeResourceDestroy(RHI& rhi)
+        {
+            if (RHIBackendSelection::IsVulkan())
+            {
+                rhi.RHIEndImmediateCommands();
+            }
+        }
+
+        void TransitionTextureToShaderRead(RHICommandList& cmdList, RHITexture* texture)
+        {
+            if (texture == nullptr)
+            {
+                return;
+            }
+
+            RHITextureTransitionInfo transition{};
+            transition.Texture = texture;
+            cmdList.Transition(transition);
+        }
+
         void BeginCubeFaceRenderPass(
             RHICommandList& cmdList,
             RHITexture* colorCube,
@@ -154,8 +177,16 @@ namespace minEngine
         struct EnvCaptureDrawResources
         {
             RHIGraphicsPipelineStateRef PipelineState;
+            RHIPipelineLayoutRef PipelineLayout;
             RHIShaderBindingSetLayoutRef BindingLayout;
-            RHIBufferRef FrameUniformBuffer;
+        };
+
+        // Keep per-face UBOs + descriptor sets alive until the immediate CB has submitted.
+        // Destroying them mid-loop (while still referenced by the recorded CB) causes DEVICE_LOST.
+        struct EnvCapturePendingBindings
+        {
+            std::vector<RHIBufferRef> FrameUniformBuffers;
+            std::vector<RHIShaderBindingSetRef> BindingSets;
         };
 
         EnvCaptureDrawResources CreateEnvCaptureDrawResources(
@@ -165,19 +196,6 @@ namespace minEngine
             uint32_t sourceTextureUnit)
         {
             EnvCaptureDrawResources resources;
-            RHIGraphicsPSODesc psoDesc;
-            psoDesc.VertexShader = shader;
-            psoDesc.PixelShader = shader;
-            psoDesc.VertexInputLayout = vertexLayout;
-            psoDesc.DepthStencilState.bDepthTestEnabled = true;
-            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
-            psoDesc.BlendState.bBlendEnabled = false;
-            resources.PipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
-
-            RHIBufferCreateDesc frameDesc;
-            frameDesc.Usage = RHIBufferUsage::Uniform;
-            frameDesc.ByteSize = sizeof(EnvCaptureFrameUBO);
-            resources.FrameUniformBuffer = cmdList.CreateBuffer(frameDesc, nullptr);
 
             resources.BindingLayout = cmdList.CreateShaderBindingSetLayout({
                 {EngineShaderBindings::kEnvCapture_SourceSRV,
@@ -189,27 +207,55 @@ namespace minEngine
                  EngineShaderBindings::kGL_EnvCaptureFrameDataUBO,
                  RHIGraphicsShaderStage::Vertex},
             });
+            resources.PipelineLayout = cmdList.CreatePipelineLayout({resources.BindingLayout.get()});
+
+            RHIGraphicsPSODesc psoDesc;
+            psoDesc.PipelineLayout = resources.PipelineLayout.get();
+            psoDesc.VertexShader = shader;
+            psoDesc.PixelShader = shader;
+            psoDesc.VertexInputLayout = vertexLayout;
+            psoDesc.DepthStencilState.bDepthTestEnabled = true;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
+            psoDesc.BlendState.bBlendEnabled = false;
+            resources.PipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
             return resources;
         }
 
-        RHIShaderBindingSetRef CreateEnvCaptureBindingSet(
+        RHIShaderBindingSet* AppendEnvCaptureBindingSet(
             RHICommandList& cmdList,
             EnvCaptureDrawResources& drawResources,
+            EnvCapturePendingBindings& pending,
             RHIShaderResourceView* sourceSrv,
             const EnvCaptureFrameUBO& frameData)
         {
-            if (!drawResources.BindingLayout || !drawResources.FrameUniformBuffer || sourceSrv == nullptr)
+            if (!drawResources.BindingLayout || sourceSrv == nullptr)
             {
                 return nullptr;
             }
 
-            drawResources.FrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(EnvCaptureFrameUBO));
-            return cmdList.CreateShaderBindingSet(
+            RHIBufferCreateDesc frameDesc;
+            frameDesc.Usage = RHIBufferUsage::Uniform;
+            frameDesc.ByteSize = sizeof(EnvCaptureFrameUBO);
+            RHIBufferRef frameUniformBuffer = cmdList.CreateBuffer(frameDesc, &frameData);
+            if (!frameUniformBuffer)
+            {
+                return nullptr;
+            }
+
+            RHIShaderBindingSetRef bindingSet = cmdList.CreateShaderBindingSet(
                 drawResources.BindingLayout.get(),
                 {
                     {RHIShaderBindingType::TextureSRV, nullptr, sourceSrv},
-                    {RHIShaderBindingType::UniformBuffer, drawResources.FrameUniformBuffer.get(), nullptr},
+                    {RHIShaderBindingType::UniformBuffer, frameUniformBuffer.get(), nullptr},
                 });
+            if (!bindingSet)
+            {
+                return nullptr;
+            }
+
+            pending.FrameUniformBuffers.push_back(std::move(frameUniformBuffer));
+            pending.BindingSets.push_back(std::move(bindingSet));
+            return pending.BindingSets.back().get();
         }
 
         RHIShaderResourceViewRef CreateSourceSRV(RHICommandList& cmdList, RHITexture* sourceTexture)
@@ -234,6 +280,7 @@ namespace minEngine
             {
                 *outError = message;
             }
+            SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
             return nullptr;
         };
 
@@ -257,7 +304,8 @@ namespace minEngine
             return reportError("failed to load equirect_to_cubemap SPIR-V shader.");
         }
 
-        const uint32_t environmentMipCount = ComputeTextureMipCount(faceSize);
+        const uint32_t environmentMipCount =
+            RHIBackendSelection::IsVulkan() ? 1u : ComputeTextureMipCount(faceSize);
         RHITextureRef environmentCube =
             TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat, environmentMipCount);
         if (!environmentCube)
@@ -279,9 +327,11 @@ namespace minEngine
             captureShader.get(),
             mesh.VertexLayout.get(),
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
+        EnvCapturePendingBindings pendingBindings;
 
-        const Matrix4 captureProjection =
-            glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        const Matrix4 captureProjection = RHIBackendSelection::IsVulkan()
+            ? glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 0.1f, 10.0f)
+            : glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
 
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
@@ -302,18 +352,21 @@ namespace minEngine
             frameData.Projection = captureProjection;
             frameData.View = captureView;
             cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-            if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
-                    cmdList, drawResources, sourceSrv.get(), frameData))
+            if (RHIShaderBindingSet* bindingSet = AppendEnvCaptureBindingSet(
+                    cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData))
             {
-                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
+                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet);
             }
             DrawEnvMapMesh(cmdList, mesh);
             cmdList.EndRenderPass();
         }
 
+        TransitionTextureToShaderRead(cmdList, environmentCube.get());
         cmdList.GenerateMips(environmentCube.get());
 
-        return TextureCubeLoader::WrapTextureCube(std::move(environmentCube), faceSize, channels);
+        auto environment = TextureCubeLoader::WrapTextureCube(std::move(environmentCube), faceSize, channels);
+        SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
+        return environment;
     }
 
     std::shared_ptr<TextureCube> EnvMapCapture::ConvolveIrradiance(
@@ -330,6 +383,7 @@ namespace minEngine
             {
                 *outError = message;
             }
+            SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
             return nullptr;
         };
 
@@ -378,9 +432,11 @@ namespace minEngine
             irradianceShader.get(),
             mesh.VertexLayout.get(),
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
+        EnvCapturePendingBindings pendingBindings;
 
-        const Matrix4 captureProjection =
-            glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        const Matrix4 captureProjection = RHIBackendSelection::IsVulkan()
+            ? glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 0.1f, 10.0f)
+            : glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
 
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
@@ -401,21 +457,25 @@ namespace minEngine
             frameData.Projection = captureProjection;
             frameData.View = captureView;
             cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-            if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
-                    cmdList, drawResources, sourceSrv.get(), frameData))
+            if (RHIShaderBindingSet* bindingSet = AppendEnvCaptureBindingSet(
+                    cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData))
             {
-                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
+                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet);
             }
             DrawEnvMapMesh(cmdList, mesh);
             cmdList.EndRenderPass();
         }
+
+        TransitionTextureToShaderRead(cmdList, irradianceCube.get());
 
         ME_CORE_INFO(
             "EnvMapCapture: convolved irradiance cubemap {}x{} from environment.",
             faceSize,
             faceSize);
 
-        return TextureCubeLoader::WrapTextureCube(std::move(irradianceCube), faceSize, channels);
+        auto irradiance = TextureCubeLoader::WrapTextureCube(std::move(irradianceCube), faceSize, channels);
+        SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
+        return irradiance;
     }
 
     std::shared_ptr<TextureCube> EnvMapCapture::PrefilterEnvironment(
@@ -432,6 +492,7 @@ namespace minEngine
             {
                 *outError = message;
             }
+            SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
             return nullptr;
         };
 
@@ -487,9 +548,11 @@ namespace minEngine
             prefilterShader.get(),
             mesh.VertexLayout.get(),
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
+        EnvCapturePendingBindings pendingBindings;
 
-        const Matrix4 captureProjection =
-            glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        const Matrix4 captureProjection = RHIBackendSelection::IsVulkan()
+            ? glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 0.1f, 10.0f)
+            : glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
 
         for (uint32_t mip = 0; mip <= maxMipLevel; ++mip)
         {
@@ -518,15 +581,17 @@ namespace minEngine
                 frameData.Roughness = roughness;
                 frameData.EnvironmentResolution = static_cast<float>(environmentResolution);
                 cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-                if (RHIShaderBindingSetRef bindingSet = CreateEnvCaptureBindingSet(
-                        cmdList, drawResources, sourceSrv.get(), frameData))
+                if (RHIShaderBindingSet* bindingSet = AppendEnvCaptureBindingSet(
+                        cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData))
                 {
-                    cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet.get());
+                    cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet);
                 }
                 DrawEnvMapMesh(cmdList, mesh);
                 cmdList.EndRenderPass();
             }
         }
+
+        TransitionTextureToShaderRead(cmdList, prefilterCube.get());
 
         ME_CORE_INFO(
             "EnvMapCapture: prefiltered environment cubemap {}x{} ({} mips) from environment.",
@@ -534,6 +599,8 @@ namespace minEngine
             faceSize,
             PrefilterMipLevelCount());
 
-        return TextureCubeLoader::WrapTextureCube(std::move(prefilterCube), faceSize, channels);
+        auto prefilter = TextureCubeLoader::WrapTextureCube(std::move(prefilterCube), faceSize, channels);
+        SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
+        return prefilter;
     }
 }

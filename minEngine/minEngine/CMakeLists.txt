@@ -37,7 +37,8 @@ add_custom_command(
 add_custom_target(reflection_codegen DEPENDS ${REFLECTION_GENERATED_MANIFEST} ${SCRIPT_BINDING_GENERATED_MANIFEST})
 
 file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
-                ${THIRD_PARTY_PATH}/imgui/backends/*.cpp
+                ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_glfw.cpp
+                ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_opengl3.cpp
 )
 set(IMGUI_UPSTREAM_DIR ${THIRD_PARTY_PATH}/imgui-upstream)
 set(IMGUI_FREETYPE_SRC ${IMGUI_UPSTREAM_DIR}/misc/freetype/imgui_freetype.cpp)
@@ -187,6 +188,7 @@ if(Vulkan_FOUND)
     target_include_directories(${ENGINE_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
     target_link_libraries(${ENGINE_NAME} PRIVATE Vulkan::Vulkan)
     target_compile_definitions(${ENGINE_NAME} PUBLIC MINENGINE_HAS_VULKAN=1)
+    target_sources(${ENGINE_NAME} PRIVATE ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_vulkan.cpp)
 else()
     message(WARNING "RND-F05: find_package(Vulkan) failed. --rhi vulkan will not initialize.")
 endif()

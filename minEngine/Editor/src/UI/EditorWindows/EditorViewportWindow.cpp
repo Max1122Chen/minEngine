@@ -1,5 +1,6 @@
 #include "EditorViewportWindow.h"
 
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Shell/EditorInputHub.h"
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Appearance/EditorWindowTypography.h"
@@ -40,6 +41,7 @@ namespace minEngine
 
 bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportClient, ViewportFrameState& outFrameState)
 {
+    RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
     m_PinnedFrameTexture.reset();
 
     const ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -58,18 +60,24 @@ bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportCli
         || m_PinnedFrameTexture->GetDesc().Width == 0
         || m_PinnedFrameTexture->GetDesc().Height == 0)
     {
+        m_PinnedImGuiTexture.Reset(rhi);
         ImGui::TextWrapped("Scene color texture is not ready.");
         return false;
     }
 
-    const ImTextureID textureID = reinterpret_cast<ImTextureID>(
-        static_cast<uintptr_t>(GetRHINativeTextureHandle(m_PinnedFrameTexture.get())));
+    const ImTextureID textureID = m_PinnedImGuiTexture.Pin(rhi, m_PinnedFrameTexture.get());
+    if (textureID == ImTextureID_Invalid)
+    {
+        m_PinnedImGuiTexture.Reset(rhi);
+        ImGui::TextWrapped("Scene color texture is not ready.");
+        return false;
+    }
+
     ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + layout.Offset.x, cursorPos.y + layout.Offset.y));
-    ImGui::Image(
-        textureID,
-        ImVec2(layout.Size.x, layout.Size.y),
-        ImVec2(0.0f, 1.0f),
-        ImVec2(1.0f, 0.0f));
+    // GL FBO origin is bottom-left; Vulkan SceneColor is already top-left after viewport Y-flip.
+    const ImVec2 uv0 = RHIBackendSelection::IsVulkan() ? ImVec2(0.0f, 0.0f) : ImVec2(0.0f, 1.0f);
+    const ImVec2 uv1 = RHIBackendSelection::IsVulkan() ? ImVec2(1.0f, 1.0f) : ImVec2(1.0f, 0.0f);
+    ImGui::Image(textureID, ImVec2(layout.Size.x, layout.Size.y), uv0, uv1);
 
     const ImVec2 imageMin = ImGui::GetItemRectMin();
     const ImVec2 imageSize = ImGui::GetItemRectSize();

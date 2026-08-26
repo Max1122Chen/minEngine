@@ -15,7 +15,7 @@ namespace minEngine
                          : RHIDepthStencilTargetActions::LoadDepthStencilStoreDepthStencil);
         if (clearTargets)
         {
-            // Visible slate blue — proves Base→Present even when meshes fail to draw.
+            // Default scene clear when Sky is off / BasePass owns clear.
             info.ClearValue.Color[0] = 0.18f;
             info.ClearValue.Color[1] = 0.32f;
             info.ClearValue.Color[2] = 0.48f;

@@ -4,6 +4,7 @@
 #include "minEngine.h"
 
 #include "EditorGUIManager.h"
+#include "Platform/EditorImGuiBackend.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/AssetWatch/ProjectAssetWatcher.h"
@@ -21,7 +22,6 @@
 #include "UI/Appearance/EditorAppearance.h"
 
 #include "Runtime/Core/CLI/CommandLineResult.h"
-#include "Runtime/Function/Render/SceneViewport.h"
 
 #include <filesystem>
 #include <memory>
@@ -89,14 +89,12 @@ namespace minEngine
         void CloseProject();
 
     private:
-        /** S07d: open project + load a mesh scene without ContentBrowser/ImGui side effects. */
-        bool OpenProjectForVulkanSmoke(const std::string& projectPath);
-
         void RegisterModules();
         void UpdateWindowTitle();
         void ApplyCommandStackSettingsFromProject();
         void ApplyAppearanceSettingsFromProject();
         void ResetCommandStackForNewDocument();
+        bool InitializeImGuiBackend();
 
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
@@ -113,13 +111,10 @@ namespace minEngine
         EditorCommandStack m_CommandStack;
         EditorContextMenuSystem m_ContextMenu;
         EditorAppearance m_Appearance;
+        EditorImGuiBackend m_ImGuiBackend;
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;
-        /** Vulkan S07d: no ImGui; open project + SceneViewport → PresentToBackBuffer only. */
-        bool m_VulkanSceneSmokeMode = false;
-        bool m_VulkanSmokeLoggedFirstFrame = false;
-        SceneViewport m_VulkanSmokeViewport;
         bool m_IsPlaying = false;
         float m_LastDeltaTime = 0.0f;
         bool m_DockLayoutInitialized = false;

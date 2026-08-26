@@ -3,17 +3,17 @@
 ## Meta
 - **ID:** `RND-F05`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-17（S07d 目视验收通过；下一刀 S07e）
+- **Last updated:** 2026-08-17（S07d Done；RHI 竖切关账；S07e/f 迁至 **ED-F01**）
 - **Depends on:** `RND-F03` **Done** · `RND-F04` **Done**
-- **Related:** [Implementation](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) · [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md)
+- **Related:** [Implementation](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) · [ED-F01 Editor Parity](../Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [RND-F02](./RND-F02_MODERN_RHI_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md)
 
 > **Legacy mapping：** 曾登记为 RND-F04；Vulkan 顺延为 F05。
 
 ## TL;DR
 
-在**已清洁的现代 RHI 调用面**上引入 **Vulkan 第二后端**，并把着色器交付改为 **GLSL 源 → SPIR-V**（**OpenGL 与 Vulkan 都吃 SPIR-V**）。终态：上层 Pass/RDG/材质/阴影/IBL **同一套管线**可在 GL/VK 间切换；光追等 API 限制除外。本 Feature **多刀竖切**，禁止「一次写完整个 Vulkan 引擎」。
+在**已清洁的现代 RHI 调用面**上引入 **Vulkan 第二后端**，并把着色器交付改为 **GLSL 源 → SPIR-V**（**OpenGL 与 Vulkan 都吃 SPIR-V**）。**S01–S07d Done** = VKRHI 竖切 + Forward Base smoke 验收。**Editor 完整 parity 与 shadow/sky/IBL 剩余场景能力** 由 [**ED-F01**](../Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) 承接（原 S07e/f）。
 
 ## Scope
 - **In:**
@@ -442,3 +442,4 @@ EndFrame / Present (内部或 RHIPresent):
 | 2026-08-04 | 地基评估 + SPIR-V 双端策略；Status Draft |
 | 2026-08-04 | 拍板确认 → Planned；补 CLI `--rhi`；补 §3.6 VK 接入与特有概念内聚 |
 | 2026-08-05 | 补 §3.9 S07 场景扩覆盖待审默认；Impl 展开 S07a–S07f |
+| 2026-08-17 | S07d 目视验收；TD-023/024；**F05 关账**；S07e/f → **ED-F01** |

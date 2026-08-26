@@ -2,18 +2,18 @@
 
 ## Meta
 - **ID:** `RND-F05`
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-08-17
-- **Related:** [Design](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md)
+- **Related:** [Design](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [ED-F01](../Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md)
 
 ## TL;DR
 
-S01–S07d Done。**S07d** = VK `ForwardRenderer` Unlit Base + Editor scene smoke（`PresentToBackBuffer`）。**下一刀 S07e** Shadow + 场景 include `set=`。
+S01–S07d Done。**S07e/f 迁至 ED-F01**（在完整 Vulkan Editor 里验收 shadow / sky / IBL）。
 
 ## Scope
 - **In:** Design §Scope In；S00–S06 Done；**S07a–S07f** 场景管线 VK 扩覆盖；含 CLI `--rhi`。
-- **Out:** F11、PHYS-F03、单切片全管线 parity、ImGui-Vulkan Editor、公共 Semaphore API、glslang 源码进仓。
+- **Out:** F11、PHYS-F03、单切片全管线 parity、ImGui-Vulkan Editor（→ **ED-F01**）、公共 Semaphore API、glslang 源码进仓。
 
 ## Reader quick start
 1. [Design](./RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) §3.5–§3.9、§7。
@@ -37,10 +37,10 @@ S01–S07d Done。**S07d** = VK `ForwardRenderer` Unlit Base + Editor scene smok
 | `RND-F05-S07b` | VK Descriptor：SetLayout / PipelineLayout / BindingSet + bind | **Done** | Descriptor pool；set bind；validation 无致命错误（S07d 冒烟） |
 | `RND-F05-S07c` | VK PSO from desc + `Begin/EndRenderPass` + Transition；退役硬编码三角 | **Done** | 经 RHICmd 路径 Present；lazy PSO per RenderPass |
 | `RND-F05-S07d` | 启用 `ForwardRenderer`（VK）：无阴影 Base | **Done** | Editor `--rhi vulkan` Unlit mesh smoke（**人工目视已见 mesh 输出**）；GL/VK `test smoke` PASS |
-| `RND-F05-S07e` | ShadowPass + 场景 shadows include `set=` | **Planned** | VK 方向光阴影可辨；GL flatten 仍绿 |
-| `RND-F05-S07f` | SkyBox + IBL/EnvMapCapture 热路径；关账 S07 | **Planned** | 天空/IBL 对照；bake null-layout WARN 收口 |
+| `RND-F05-S07e` | ShadowPass + 场景 shadows include `set=` | **Deferred → ED-F01-S06** | 见 [ED-F01 Impl](../Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
+| `RND-F05-S07f` | SkyBox + IBL/EnvMapCapture 热路径；关账 S07 | **Deferred → ED-F01-S07** | 见 ED-F01 Impl |
 
-> 历史占位名 `RND-F05-S07+` 由上表取代。Feature 级「全 Forward 细项 parity」可在 S07f 后继续开刀；**本竖切 Done 以 S07f 验收为准**。
+> 历史占位名 `RND-F05-S07+` 由上表取代。**RHI 竖切以 S07d 关账**；shadow/sky parity 由 **ED-F01** 承接。
 
 ---
 
@@ -166,23 +166,19 @@ S01–S07d Done。**S07d** = VK `ForwardRenderer` Unlit Base + Editor scene smok
 ## 3) 非本计划
 
 - RND-F11 / PHYS-F03
-- ImGui Vulkan Editor（Design §7 #6）
+- ImGui Vulkan Editor → **[ED-F01](../Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md)**
 - 公共 RHI 暴露 Semaphore/Fence/Queue
 - glslang 源码进仓库
-- 单切片「一次写完」全 Forward↔VK parity（必须按 S07a→f）
+- 单切片「一次写完」全 Forward↔VK parity（Editor 环境见 ED-F01）
 
 ---
 
-## 4) 依赖与顺序
+## 4) 依赖与顺序（历史 — S07d 前）
 
 ```text
-S07a 资源 ──► S07b Descriptor ──► S07c PSO/Cmd ──► S07d Forward(Base)
+S07a 资源 ──► S07b Descriptor ──► S07c PSO/Cmd ──► S07d Forward(Base)  [Done]
                                                       │
-                                                      ▼
-                                                   S07e Shadow+set=
-                                                      │
-                                                      ▼
-                                                   S07f Sky/IBL/Bake
+                                                      └──► ED-F01（Editor + S07e/f）
 ```
 
 - **禁止**跳过 S07a–c 直接改 `ForwardRenderer`「特判 Vulkan」。
@@ -209,3 +205,4 @@ S07a 资源 ──► S07b Descriptor ──► S07c PSO/Cmd ──► S07d Forw
 | 2026-08-05 | **S07 子切片表起草（待审）**：S07a–S07f；替换笼统 S07+ |
 | 2026-08-05 | **S07 表批准**；**S07a Done**：VK Buffer/Texture2D/SRV/VertexInputLayout + init probes |
 | 2026-08-17 | **S07d 目视验收通过**：Vulkan Editor smoke 已见 mesh 输出；登记 `TD-023` / `TD-024` 跟踪 scene pass 契约与 VulkanRHI 收口债 |
+| 2026-08-17 | **F05 关账**；S07e/f Deferred → **ED-F01** |

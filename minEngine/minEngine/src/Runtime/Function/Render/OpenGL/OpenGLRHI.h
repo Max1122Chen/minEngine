@@ -66,6 +66,7 @@ namespace minEngine
         virtual void RHISetBackbufferClearColor(const Vector3& color) override;
         virtual void RHIClearBackbuffer() override;
         virtual void RHIPresent() override;
+        // Immediate commands: OpenGL executes inline; no-op overrides use RHI defaults.
 
     private:
         void ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState);

@@ -10,7 +10,7 @@
 #define DIR_CASCADE_DEBUG 0
 #endif
 
-layout (std140, binding = 0) uniform PerFrameData
+layout (std140, set = 0, binding = 0) uniform PerFrameData
 {
     mat4 View;
     mat4 Proj;

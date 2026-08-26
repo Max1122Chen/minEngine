@@ -5,6 +5,7 @@
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Function/Render/TextureCubeLoader.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/Loaders/ImageLoader.h"
 #include "Runtime/Resource/Loaders/Texture2DLoader.h"
@@ -18,6 +19,8 @@ namespace minEngine
     {
         std::shared_ptr<TextureCube> CreateValidationEnvironmentCube(RHI& rhi)
         {
+            // Distinct face colors so Vulkan sky sampling failures are obvious (not near-black).
+            // Mild sky-blue faces — fallback only when HDR bake / face PNGs are unavailable.
             const std::array<uint8_t, 4> faceColors[6] = {
                 std::array<uint8_t, 4>{64, 128, 255, 255},
                 std::array<uint8_t, 4>{32, 64, 128, 255},
@@ -92,6 +95,9 @@ namespace minEngine
             return false;
         }
 
+        // Vulkan bake must record into an immediate command buffer (outside swapchain frames).
+        rhi.RHIBeginImmediateCommands();
+
         std::string captureError;
         m_Environment = EnvMapCapture::EquirectToCubemap(
             rhi,
@@ -101,11 +107,23 @@ namespace minEngine
             &captureError);
         if (!m_Environment)
         {
+            rhi.RHIEndImmediateCommands();
             ME_CORE_WARN(
                 "EnvironmentMap: EquirectToCubemap failed for '{}' ({}).",
                 hdrAbsolute.string(),
                 captureError);
             return false;
+        }
+
+        // ED-F01: Vulkan irradiance/prefilter convolution deferred; sky only needs environment cube.
+        if (RHIBackendSelection::IsVulkan())
+        {
+            m_Irradiance = m_Environment;
+            m_Prefilter = m_Environment;
+            ME_CORE_INFO(
+                "EnvironmentMap: baked sky cubemap from HDR '{}' (VK: IBL convolution deferred).",
+                m_SourceHdrPath);
+            return true;
         }
 
         std::string irradianceError;
@@ -137,6 +155,8 @@ namespace minEngine
                 prefilterError);
             m_Prefilter = m_Environment;
         }
+
+        rhi.RHIEndImmediateCommands();
 
         ME_CORE_INFO(
             "EnvironmentMap: baked sky/IBL from project HDR '{}'.",
@@ -176,6 +196,7 @@ namespace minEngine
 
         if (!m_Environment && !m_SourceHdrPath.empty())
         {
+            // GL: full sky+IBL bake. VK: EquirectToCubemap + IBL alias (convolution still deferred).
             TryBakeFromSourceHdr(rhi);
         }
 

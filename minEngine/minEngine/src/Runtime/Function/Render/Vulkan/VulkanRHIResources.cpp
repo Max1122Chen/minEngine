@@ -1,13 +1,51 @@
 #include "VulkanRHIResources.h"
 
+#include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
+#include <glm/detail/type_half.hpp>
+
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <vector>
 
 namespace minEngine
 {
+#if defined(MINENGINE_HAS_VULKAN)
+    namespace
+    {
+        // OpenGL uploads TextureFormat::*16F with GL_FLOAT (float32 CPU pixels).
+        // Vulkan stores R16G16B16A16_SFLOAT — convert here to match that contract.
+        uint16_t Float32ToHalfBits(float value)
+        {
+            return static_cast<uint16_t>(glm::detail::toFloat16(value));
+        }
+
+        void PackFloatRgbToHalfRgba(const float* srcRgb, uint16_t* dstRgba, uint32_t pixelCount)
+        {
+            for (uint32_t i = 0; i < pixelCount; ++i)
+            {
+                dstRgba[i * 4 + 0] = Float32ToHalfBits(srcRgb[i * 3 + 0]);
+                dstRgba[i * 4 + 1] = Float32ToHalfBits(srcRgb[i * 3 + 1]);
+                dstRgba[i * 4 + 2] = Float32ToHalfBits(srcRgb[i * 3 + 2]);
+                dstRgba[i * 4 + 3] = Float32ToHalfBits(1.0f);
+            }
+        }
+
+        void PackFloatRgbaToHalfRgba(const float* srcRgba, uint16_t* dstRgba, uint32_t pixelCount)
+        {
+            for (uint32_t i = 0; i < pixelCount; ++i)
+            {
+                dstRgba[i * 4 + 0] = Float32ToHalfBits(srcRgba[i * 4 + 0]);
+                dstRgba[i * 4 + 1] = Float32ToHalfBits(srcRgba[i * 4 + 1]);
+                dstRgba[i * 4 + 2] = Float32ToHalfBits(srcRgba[i * 4 + 2]);
+                dstRgba[i * 4 + 3] = Float32ToHalfBits(srcRgba[i * 4 + 3]);
+            }
+        }
+    }
+#endif
+
 #if defined(MINENGINE_HAS_VULKAN)
     uint32_t VulkanRHIAllocator::FindMemoryType(
         VkPhysicalDevice physicalDevice,
@@ -175,6 +213,149 @@ namespace minEngine
         return true;
     }
 
+    bool VulkanRHIAllocator::CreateImage2DArray(
+        const VulkanDeviceContext& context,
+        uint32_t width,
+        uint32_t height,
+        uint32_t arrayLayers,
+        uint32_t mipLevels,
+        VkFormat format,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags memoryProperties,
+        VkImage& outImage,
+        VkDeviceMemory& outMemory)
+    {
+        outImage = VK_NULL_HANDLE;
+        outMemory = VK_NULL_HANDLE;
+        if (!context.IsValid() || width == 0 || height == 0 || arrayLayers == 0 || mipLevels == 0)
+        {
+            return false;
+        }
+
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = mipLevels;
+        imageInfo.arrayLayers = arrayLayers;
+        imageInfo.format = format;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (vkCreateImage(context.Device, &imageInfo, nullptr, &outImage) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImage(2DArray) failed.");
+            return false;
+        }
+
+        VkMemoryRequirements requirements{};
+        vkGetImageMemoryRequirements(context.Device, outImage, &requirements);
+        const uint32_t memoryTypeIndex =
+            FindMemoryType(context.PhysicalDevice, requirements.memoryTypeBits, memoryProperties);
+        if (memoryTypeIndex == UINT32_MAX)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: no suitable 2D array image memory type.");
+            vkDestroyImage(context.Device, outImage, nullptr);
+            outImage = VK_NULL_HANDLE;
+            return false;
+        }
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = requirements.size;
+        allocInfo.memoryTypeIndex = memoryTypeIndex;
+        if (vkAllocateMemory(context.Device, &allocInfo, nullptr, &outMemory) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkAllocateMemory(2D array image) failed.");
+            vkDestroyImage(context.Device, outImage, nullptr);
+            outImage = VK_NULL_HANDLE;
+            return false;
+        }
+
+        if (vkBindImageMemory(context.Device, outImage, outMemory, 0) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkBindImageMemory(2DArray) failed.");
+            DestroyImage(context.Device, outImage, outMemory);
+            return false;
+        }
+        return true;
+    }
+
+    bool VulkanRHIAllocator::CreateImageCube(
+        const VulkanDeviceContext& context,
+        uint32_t faceSize,
+        uint32_t mipLevels,
+        VkFormat format,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags memoryProperties,
+        VkImage& outImage,
+        VkDeviceMemory& outMemory)
+    {
+        outImage = VK_NULL_HANDLE;
+        outMemory = VK_NULL_HANDLE;
+        if (!context.IsValid() || faceSize == 0 || mipLevels == 0)
+        {
+            return false;
+        }
+
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = faceSize;
+        imageInfo.extent.height = faceSize;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = mipLevels;
+        imageInfo.arrayLayers = 6;
+        imageInfo.format = format;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (vkCreateImage(context.Device, &imageInfo, nullptr, &outImage) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImage(cube) failed.");
+            return false;
+        }
+
+        VkMemoryRequirements requirements{};
+        vkGetImageMemoryRequirements(context.Device, outImage, &requirements);
+        const uint32_t memoryTypeIndex =
+            FindMemoryType(context.PhysicalDevice, requirements.memoryTypeBits, memoryProperties);
+        if (memoryTypeIndex == UINT32_MAX)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: no suitable cube image memory type.");
+            vkDestroyImage(context.Device, outImage, nullptr);
+            outImage = VK_NULL_HANDLE;
+            return false;
+        }
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = requirements.size;
+        allocInfo.memoryTypeIndex = memoryTypeIndex;
+        if (vkAllocateMemory(context.Device, &allocInfo, nullptr, &outMemory) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkAllocateMemory(cube image) failed.");
+            vkDestroyImage(context.Device, outImage, nullptr);
+            outImage = VK_NULL_HANDLE;
+            return false;
+        }
+
+        if (vkBindImageMemory(context.Device, outImage, outMemory, 0) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkBindImageMemory(cube) failed.");
+            DestroyImage(context.Device, outImage, outMemory);
+            return false;
+        }
+        return true;
+    }
+
     void VulkanRHIAllocator::DestroyImage(VkDevice device, VkImage& image, VkDeviceMemory& memory)
     {
         if (device == VK_NULL_HANDLE)
@@ -220,6 +401,107 @@ namespace minEngine
         if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
         {
             ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView failed.");
+            outView = VK_NULL_HANDLE;
+            return false;
+        }
+        return true;
+    }
+
+    bool VulkanRHIAllocator::CreateImageView2DSubresource(
+        VkDevice device,
+        VkImage image,
+        VkFormat format,
+        VkImageAspectFlags aspect,
+        uint32_t baseMipLevel,
+        uint32_t baseArrayLayer,
+        VkImageView& outView)
+    {
+        outView = VK_NULL_HANDLE;
+        if (device == VK_NULL_HANDLE || image == VK_NULL_HANDLE)
+        {
+            return false;
+        }
+
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = aspect;
+        viewInfo.subresourceRange.baseMipLevel = baseMipLevel;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = baseArrayLayer;
+        viewInfo.subresourceRange.layerCount = 1;
+        if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView(2D subresource) failed.");
+            outView = VK_NULL_HANDLE;
+            return false;
+        }
+        return true;
+    }
+
+    bool VulkanRHIAllocator::CreateImageView2DArray(
+        VkDevice device,
+        VkImage image,
+        VkFormat format,
+        VkImageAspectFlags aspect,
+        uint32_t arrayLayers,
+        uint32_t mipLevels,
+        VkImageView& outView)
+    {
+        outView = VK_NULL_HANDLE;
+        if (device == VK_NULL_HANDLE || image == VK_NULL_HANDLE || arrayLayers == 0)
+        {
+            return false;
+        }
+
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = aspect;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = mipLevels;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = arrayLayers;
+        if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView(2DArray) failed.");
+            outView = VK_NULL_HANDLE;
+            return false;
+        }
+        return true;
+    }
+
+    bool VulkanRHIAllocator::CreateImageViewCube(
+        VkDevice device,
+        VkImage image,
+        VkFormat format,
+        VkImageAspectFlags aspect,
+        uint32_t mipLevels,
+        VkImageView& outView)
+    {
+        outView = VK_NULL_HANDLE;
+        if (device == VK_NULL_HANDLE || image == VK_NULL_HANDLE)
+        {
+            return false;
+        }
+
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = aspect;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = mipLevels;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 6;
+        if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView(cube) failed.");
             outView = VK_NULL_HANDLE;
             return false;
         }
@@ -342,6 +624,111 @@ namespace minEngine
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &region);
+
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &barrier);
+
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+        vkQueueSubmit(context.GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(context.GraphicsQueue);
+
+        vkFreeCommandBuffers(context.Device, context.CommandPool, 1, &commandBuffer);
+        return true;
+    }
+
+    bool VulkanRHIAllocator::UploadBufferToImageCube(
+        const VulkanDeviceContext& context,
+        VkBuffer stagingBuffer,
+        VkImage image,
+        uint32_t faceSize,
+        VkDeviceSize faceBytes,
+        VkImageAspectFlags aspect)
+    {
+        if (!context.IsValid() || context.CommandPool == VK_NULL_HANDLE || context.GraphicsQueue == VK_NULL_HANDLE)
+        {
+            ME_CORE_ERROR("VulkanRHIAllocator: UploadBufferToImageCube requires command pool and queue.");
+            return false;
+        }
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = context.CommandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        if (vkAllocateCommandBuffers(context.Device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+        {
+            return false;
+        }
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange.aspectMask = aspect;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 6;
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &barrier);
+
+        std::array<VkBufferImageCopy, 6> regions{};
+        for (uint32_t face = 0; face < 6; ++face)
+        {
+            VkBufferImageCopy& region = regions[face];
+            region.bufferOffset = faceBytes * face;
+            region.imageSubresource.aspectMask = aspect;
+            region.imageSubresource.mipLevel = 0;
+            region.imageSubresource.baseArrayLayer = face;
+            region.imageSubresource.layerCount = 1;
+            region.imageExtent = {faceSize, faceSize, 1};
+        }
+        vkCmdCopyBufferToImage(
+            commandBuffer,
+            stagingBuffer,
+            image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<uint32_t>(regions.size()),
+            regions.data());
 
         barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -648,10 +1035,11 @@ namespace minEngine
             ME_CORE_ERROR("VulkanRHITexture: invalid device context.");
             return;
         }
-        if (m_Desc.Dimension != RHITextureDimension::Texture2D)
+        if (m_Desc.Dimension != RHITextureDimension::Texture2D &&
+            m_Desc.Dimension != RHITextureDimension::TextureCube)
         {
             ME_CORE_ERROR(
-                "VulkanRHITexture: S07a supports Texture2D only (got dimension={}).",
+                "VulkanRHITexture: unsupported dimension {}.",
                 static_cast<int>(m_Desc.Dimension));
             return;
         }
@@ -659,6 +1047,15 @@ namespace minEngine
         {
             ME_CORE_ERROR("VulkanRHITexture: Width/Height must be > 0.");
             return;
+        }
+
+        const bool isCube = m_Desc.Dimension == RHITextureDimension::TextureCube;
+        if (isCube && m_Desc.Width != m_Desc.Height)
+        {
+            ME_CORE_WARN(
+                "VulkanRHITexture: cube faces should be square (got {}x{}).",
+                m_Desc.Width,
+                m_Desc.Height);
         }
 
         m_VkFormat = VulkanRHIAllocator::ToVkFormat(m_Desc.Format);
@@ -674,7 +1071,6 @@ namespace minEngine
         const VkImageAspectFlags aspect = VulkanRHIAllocator::AspectFromFormat(m_Desc.Format);
         const bool isDepth = (aspect & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
 
-        // Do not default SAMPLED — depth/stencil formats often lack SAMPLEABLE without an explicit SRV flag.
         VkImageUsageFlags usage = 0;
         if (HasTextureCreateFlag(m_Desc.Flags, RHITextureCreateFlags::RenderTarget))
         {
@@ -694,30 +1090,60 @@ namespace minEngine
             return;
         }
 
-        if (!VulkanRHIAllocator::CreateImage2D(
-                m_Context,
-                m_Desc.Width,
-                m_Desc.Height,
-                mipLevels,
-                m_VkFormat,
-                usage,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                m_Image,
-                m_Memory))
+        if (isCube)
         {
-            return;
-        }
+            if (!VulkanRHIAllocator::CreateImageCube(
+                    m_Context,
+                    m_Desc.Width,
+                    mipLevels,
+                    m_VkFormat,
+                    usage,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    m_Image,
+                    m_Memory))
+            {
+                return;
+            }
 
-        if (!VulkanRHIAllocator::CreateImageView2D(
-                m_Context.Device,
-                m_Image,
-                m_VkFormat,
-                aspect,
-                mipLevels,
-                m_ImageView))
+            if (!VulkanRHIAllocator::CreateImageViewCube(
+                    m_Context.Device,
+                    m_Image,
+                    m_VkFormat,
+                    aspect,
+                    mipLevels,
+                    m_ImageView))
+            {
+                VulkanRHIAllocator::DestroyImage(m_Context.Device, m_Image, m_Memory);
+                return;
+            }
+        }
+        else
         {
-            VulkanRHIAllocator::DestroyImage(m_Context.Device, m_Image, m_Memory);
-            return;
+            if (!VulkanRHIAllocator::CreateImage2D(
+                    m_Context,
+                    m_Desc.Width,
+                    m_Desc.Height,
+                    mipLevels,
+                    m_VkFormat,
+                    usage,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    m_Image,
+                    m_Memory))
+            {
+                return;
+            }
+
+            if (!VulkanRHIAllocator::CreateImageView2D(
+                    m_Context.Device,
+                    m_Image,
+                    m_VkFormat,
+                    aspect,
+                    mipLevels,
+                    m_ImageView))
+            {
+                VulkanRHIAllocator::DestroyImage(m_Context.Device, m_Image, m_Memory);
+                return;
+            }
         }
 
         if (initialData != nullptr && !isDepth)
@@ -727,12 +1153,100 @@ namespace minEngine
             {
                 ME_CORE_ERROR("VulkanRHITexture: cannot upload initialData for this format.");
             }
+            else if (isCube)
+            {
+                const auto* facePtrs = static_cast<const unsigned char* const*>(initialData);
+                const bool isFloat16Color =
+                    m_Desc.Format == TextureFormat::RGB16F || m_Desc.Format == TextureFormat::RGBA16F;
+                const bool expandRgb8 = m_Desc.Format == TextureFormat::RGB8;
+                const uint32_t dstBpp =
+                    isFloat16Color ? 8u : (expandRgb8 ? (srcBpp + srcBpp / 3u) : srcBpp);
+                const VkDeviceSize faceBytes =
+                    static_cast<VkDeviceSize>(m_Desc.Width) * m_Desc.Height * dstBpp;
+                const VkDeviceSize stagingBytes = faceBytes * 6;
+
+                VkBuffer stagingBuffer = VK_NULL_HANDLE;
+                VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+                if (VulkanRHIAllocator::CreateBuffer(
+                        m_Context,
+                        stagingBytes,
+                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        stagingBuffer,
+                        stagingMemory))
+                {
+                    void* mapped = nullptr;
+                    if (vkMapMemory(m_Context.Device, stagingMemory, 0, stagingBytes, 0, &mapped) ==
+                        VK_SUCCESS)
+                    {
+                        for (uint32_t face = 0; face < 6; ++face)
+                        {
+                            const unsigned char* facePixels =
+                                facePtrs != nullptr ? facePtrs[face] : nullptr;
+                            if (facePixels == nullptr)
+                            {
+                                continue;
+                            }
+
+                            auto* dstBase = static_cast<uint8_t*>(mapped) + faceBytes * face;
+                            const uint32_t pixelCount = m_Desc.Width * m_Desc.Height;
+                            if (m_Desc.Format == TextureFormat::RGB16F)
+                            {
+                                PackFloatRgbToHalfRgba(
+                                    reinterpret_cast<const float*>(facePixels),
+                                    reinterpret_cast<uint16_t*>(dstBase),
+                                    pixelCount);
+                            }
+                            else if (m_Desc.Format == TextureFormat::RGBA16F)
+                            {
+                                PackFloatRgbaToHalfRgba(
+                                    reinterpret_cast<const float*>(facePixels),
+                                    reinterpret_cast<uint16_t*>(dstBase),
+                                    pixelCount);
+                            }
+                            else if (expandRgb8)
+                            {
+                                for (uint32_t i = 0; i < pixelCount; ++i)
+                                {
+                                    dstBase[i * 4 + 0] = facePixels[i * 3 + 0];
+                                    dstBase[i * 4 + 1] = facePixels[i * 3 + 1];
+                                    dstBase[i * 4 + 2] = facePixels[i * 3 + 2];
+                                    dstBase[i * 4 + 3] = 255;
+                                }
+                            }
+                            else
+                            {
+                                std::memcpy(dstBase, facePixels, static_cast<size_t>(faceBytes));
+                            }
+                        }
+                        vkUnmapMemory(m_Context.Device, stagingMemory);
+
+                        if (!VulkanRHIAllocator::UploadBufferToImageCube(
+                                m_Context,
+                                stagingBuffer,
+                                m_Image,
+                                m_Desc.Width,
+                                faceBytes,
+                                aspect))
+                        {
+                            ME_CORE_ERROR("VulkanRHITexture: cube initial upload failed.");
+                        }
+                        else
+                        {
+                            m_CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        }
+                    }
+                    VulkanRHIAllocator::DestroyBuffer(m_Context.Device, stagingBuffer, stagingMemory);
+                }
+            }
             else
             {
-                // RGB8 / RGB16F expand into RGBA storage used by ToVkFormat.
-                const bool expandRgb =
-                    m_Desc.Format == TextureFormat::RGB8 || m_Desc.Format == TextureFormat::RGB16F;
-                const uint32_t dstBpp = expandRgb ? (srcBpp + srcBpp / 3) : srcBpp;
+                // 2D upload. TextureFormat::*16F CPU pixels are float32 (same contract as OpenGL GL_FLOAT).
+                const bool isFloat16Color =
+                    m_Desc.Format == TextureFormat::RGB16F || m_Desc.Format == TextureFormat::RGBA16F;
+                const bool expandRgb8 = m_Desc.Format == TextureFormat::RGB8;
+                const uint32_t dstBpp =
+                    isFloat16Color ? 8u : (expandRgb8 ? (srcBpp + srcBpp / 3u) : srcBpp);
                 const VkDeviceSize imageBytes =
                     static_cast<VkDeviceSize>(m_Desc.Width) * m_Desc.Height * dstBpp;
 
@@ -749,15 +1263,25 @@ namespace minEngine
                     void* mapped = nullptr;
                     if (vkMapMemory(m_Context.Device, stagingMemory, 0, imageBytes, 0, &mapped) == VK_SUCCESS)
                     {
-                        if (!expandRgb)
+                        const uint32_t pixelCount = m_Desc.Width * m_Desc.Height;
+                        if (m_Desc.Format == TextureFormat::RGB16F)
                         {
-                            std::memcpy(mapped, initialData, static_cast<size_t>(imageBytes));
+                            PackFloatRgbToHalfRgba(
+                                static_cast<const float*>(initialData),
+                                static_cast<uint16_t*>(mapped),
+                                pixelCount);
                         }
-                        else if (m_Desc.Format == TextureFormat::RGB8)
+                        else if (m_Desc.Format == TextureFormat::RGBA16F)
+                        {
+                            PackFloatRgbaToHalfRgba(
+                                static_cast<const float*>(initialData),
+                                static_cast<uint16_t*>(mapped),
+                                pixelCount);
+                        }
+                        else if (expandRgb8)
                         {
                             const auto* src = static_cast<const uint8_t*>(initialData);
                             auto* dst = static_cast<uint8_t*>(mapped);
-                            const uint32_t pixelCount = m_Desc.Width * m_Desc.Height;
                             for (uint32_t i = 0; i < pixelCount; ++i)
                             {
                                 dst[i * 4 + 0] = src[i * 3 + 0];
@@ -766,18 +1290,9 @@ namespace minEngine
                                 dst[i * 4 + 3] = 255;
                             }
                         }
-                        else // RGB16F → RGBA16F
+                        else
                         {
-                            const auto* src = static_cast<const uint16_t*>(initialData);
-                            auto* dst = static_cast<uint16_t*>(mapped);
-                            const uint32_t pixelCount = m_Desc.Width * m_Desc.Height;
-                            for (uint32_t i = 0; i < pixelCount; ++i)
-                            {
-                                dst[i * 4 + 0] = src[i * 3 + 0];
-                                dst[i * 4 + 1] = src[i * 3 + 1];
-                                dst[i * 4 + 2] = src[i * 3 + 2];
-                                dst[i * 4 + 3] = 0x3C00; // 1.0 in half float
-                            }
+                            std::memcpy(mapped, initialData, static_cast<size_t>(imageBytes));
                         }
                         vkUnmapMemory(m_Context.Device, stagingMemory);
 
@@ -1032,7 +1547,7 @@ namespace minEngine
         VkDescriptorPool pool,
         VkSampler defaultSampler,
         VkBuffer dummyUniformBuffer,
-        VkImageView dummyImageView,
+        const DummyImageViews& dummyImageViews,
         RHIShaderBindingSetLayout* layout,
         std::vector<RHIShaderBinding> resources)
         : m_Device(device)
@@ -1040,6 +1555,31 @@ namespace minEngine
         , m_Layout(layout)
         , m_Resources(std::move(resources))
     {
+        using namespace EngineShaderBindings;
+
+        auto selectDummyImageView = [&](const RHIShaderBindingSetLayoutEntry& entry) -> VkImageView
+        {
+            if (entry.Type != RHIShaderBindingType::TextureSRV)
+            {
+                return dummyImageViews.Image2D;
+            }
+
+            switch (entry.Slot)
+            {
+            case kSet1_DirShadowSRV:
+                return dummyImageViews.Image2DArray != VK_NULL_HANDLE ? dummyImageViews.Image2DArray
+                                                                      : dummyImageViews.Image2D;
+            case kSet1_PointShadow0:
+            case kSet1_PointShadow1:
+            case kSet1_IBLIrradiance:
+            case kSet1_IBLPrefilter:
+                return dummyImageViews.ImageCube != VK_NULL_HANDLE ? dummyImageViews.ImageCube
+                                                                   : dummyImageViews.Image2D;
+            default:
+                return dummyImageViews.Image2D;
+            }
+        };
+
         auto* vulkanLayout = dynamic_cast<VulkanRHIShaderBindingSetLayout*>(layout);
         if (m_Device == VK_NULL_HANDLE || m_Pool == VK_NULL_HANDLE || vulkanLayout == nullptr ||
             !vulkanLayout->IsValid())
@@ -1103,7 +1643,7 @@ namespace minEngine
             }
             else
             {
-                VkImageView imageView = dummyImageView;
+                VkImageView imageView = selectDummyImageView(entry);
                 if (resource.TextureSRV != nullptr)
                 {
                     if (auto* vulkanSrv = dynamic_cast<VulkanRHIShaderResourceView*>(resource.TextureSRV))

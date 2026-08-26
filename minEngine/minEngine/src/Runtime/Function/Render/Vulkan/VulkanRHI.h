@@ -69,6 +69,34 @@ namespace minEngine
         void RHISetBackbufferClearColor(const Vector3& color) override;
         void RHIClearBackbuffer() override;
         void RHIPresent() override;
+        void RHIBeginImmediateCommands() override;
+        void RHIEndImmediateCommands() override;
+
+#if defined(MINENGINE_HAS_VULKAN)
+        /** ED-F01: Editor / ImGui integration (not part of neutral RHI contract). */
+        struct VulkanEditorFrameInfo
+        {
+            VkInstance Instance = VK_NULL_HANDLE;
+            VkPhysicalDevice PhysicalDevice = VK_NULL_HANDLE;
+            VkDevice Device = VK_NULL_HANDLE;
+            uint32_t QueueFamily = 0;
+            VkQueue Queue = VK_NULL_HANDLE;
+            VkRenderPass SwapchainRenderPass = VK_NULL_HANDLE;
+            uint32_t SwapchainImageCount = 0;
+            uint32_t MinSwapchainImageCount = 0;
+            VkSampler DefaultSampler = VK_NULL_HANDLE;
+            VkExtent2D SwapchainExtent{};
+        };
+
+        using EditorSwapchainRecreatedCallback = void (*)();
+
+        void FillEditorFrameInfo(VulkanEditorFrameInfo& outInfo) const;
+        void SetEditorSwapchainRecreatedCallback(EditorSwapchainRecreatedCallback callback);
+        bool IsEditorFrameRecording() const { return m_FrameRecording; }
+        VkCommandBuffer GetEditorCommandBuffer() const;
+        bool BeginEditorSwapchainRenderPass();
+        void EndEditorSwapchainRenderPass();
+#endif
 
     private:
 #if defined(MINENGINE_HAS_VULKAN)
@@ -136,6 +164,29 @@ namespace minEngine
             }
         };
 
+        struct AttachmentViewKey
+        {
+            VkImage Image = VK_NULL_HANDLE;
+            int32_t ArraySlice = -1;
+            uint8_t MipIndex = 0;
+
+            bool operator==(const AttachmentViewKey& other) const
+            {
+                return Image == other.Image && ArraySlice == other.ArraySlice && MipIndex == other.MipIndex;
+            }
+        };
+
+        struct AttachmentViewKeyHash
+        {
+            size_t operator()(const AttachmentViewKey& key) const
+            {
+                size_t h = reinterpret_cast<size_t>(key.Image);
+                h ^= static_cast<size_t>(key.ArraySlice + 1) << 1;
+                h ^= static_cast<size_t>(key.MipIndex) << 2;
+                return h;
+            }
+        };
+
         bool CreateInstance();
         bool CreateSurface();
         bool PickPhysicalDevice();
@@ -169,6 +220,11 @@ namespace minEngine
         VkAttachmentStoreOp ToVkStoreOp(RHIRenderTargetStoreAction action) const;
         VkRenderPass GetOrCreateOffscreenRenderPass(const OffscreenRenderPassKey& key);
         VkFramebuffer GetOrCreateOffscreenFramebuffer(const OffscreenFramebufferKey& key);
+        VkImageView GetOrCreateAttachmentImageView(
+            VulkanRHITexture* texture,
+            int32_t arraySlice,
+            uint8_t mipIndex);
+        void DestroyOwnedAttachmentImageViews();
         void BindPipelineForCurrentRenderPass();
 
         VkInstance m_Instance = VK_NULL_HANDLE;
@@ -187,6 +243,7 @@ namespace minEngine
 
         VkCommandPool m_CommandPool = VK_NULL_HANDLE;
         std::array<VkCommandBuffer, kMaxFramesInFlight> m_CommandBuffers{};
+        VkCommandBuffer m_ImmediateCommandBuffer = VK_NULL_HANDLE;
         std::array<VkSemaphore, kMaxFramesInFlight> m_ImageAvailableSemaphores{};
         std::array<VkSemaphore, kMaxFramesInFlight> m_RenderFinishedSemaphores{};
         std::array<VkFence, kMaxFramesInFlight> m_InFlightFences{};
@@ -194,6 +251,7 @@ namespace minEngine
         uint32_t m_CurrentFrame = 0;
         uint32_t m_CurrentImageIndex = 0;
         bool m_FrameRecording = false;
+        bool m_ImmediateRecording = false;
         bool m_SwapchainDrawnThisFrame = false;
         bool m_Initialized = false;
 
@@ -207,23 +265,30 @@ namespace minEngine
         VkImage m_DummyImage = VK_NULL_HANDLE;
         VkDeviceMemory m_DummyImageMemory = VK_NULL_HANDLE;
         VkImageView m_DummyImageView = VK_NULL_HANDLE;
+        VkImage m_DummyArrayImage = VK_NULL_HANDLE;
+        VkDeviceMemory m_DummyArrayImageMemory = VK_NULL_HANDLE;
+        VkImageView m_DummyArrayImageView = VK_NULL_HANDLE;
+        VkImage m_DummyCubeImage = VK_NULL_HANDLE;
+        VkDeviceMemory m_DummyCubeImageMemory = VK_NULL_HANDLE;
+        VkImageView m_DummyCubeImageView = VK_NULL_HANDLE;
 
         std::unordered_map<OffscreenRenderPassKey, VkRenderPass, OffscreenRenderPassKeyHash> m_OffscreenRenderPasses;
         std::unordered_map<OffscreenFramebufferKey, VkFramebuffer, OffscreenFramebufferKeyHash> m_OffscreenFramebuffers;
+        std::unordered_map<AttachmentViewKey, VkImageView, AttachmentViewKeyHash> m_AttachmentViewCache;
 
         bool m_InRenderPass = false;
         VkRenderPass m_ActiveRenderPass = VK_NULL_HANDLE;
         VulkanRHITexture* m_ActiveColorTexture = nullptr;
+        int32_t m_ActiveColorArraySlice = -1;
         VulkanRHITexture* m_ActiveDepthTexture = nullptr;
         VulkanRHIGraphicsPipelineState* m_BoundGraphicsPSO = nullptr;
         uint32_t m_BoundVertexStride = 0;
         bool m_GenerateMipsWarned = false;
         bool m_BeginFrameFailureLogged = false;
         bool m_PipelineBindFailureLogged = false;
-        bool m_DrawIndexedLogged = false;
-        uint32_t m_FrameDrawIndexedCount = 0;
-        uint32_t m_FrameDrawIndexedCalls = 0;
-        uint32_t m_LoggedDrawIndexedFrameCount = 0;
+        uint32_t m_SwapchainImageCount = 0;
+        uint32_t m_MinSwapchainImageCount = 0;
+        EditorSwapchainRecreatedCallback m_EditorSwapchainRecreatedCallback = nullptr;
 #endif
 
         Vector3 m_ClearColor{0.1f, 0.1f, 0.1f};

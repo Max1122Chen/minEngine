@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-05  
+Last updated: 2026-08-25  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,30 +9,31 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus (edit as you go)
 
-### Render 轨（`feat/render`）— **当前主线**
+### Render / Editor 轨（`feat/render`）— **当前主线**
 
 1. ~~RND-F03 关账~~ — **Done**  
-2. **RND-F05** — [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md)  
-   - **S01–S07d Done**（S07d：VK Forward Unlit Base + Editor scene smoke；**目视已见 mesh 输出**）  
-   - **下一刀 S07e**（Shadow + 场景 include `set=`）
-   - 已登记后续收口债：`TD-023`（scene pass / clear contract），`TD-024`（Vulkan frame sync + debug leftovers）
-3. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**（顺带 **BUG-RENDER-003** `Params.w` 门闩）  
-4. **RND-F11 DebugDrawing** — F05 可演示后再设计  
+2. ~~**RND-F05** RHI 竖切~~ — **Done**（S01–S07d；VK Forward Base + smoke 验收）  
+3. **ED-F01 Vulkan Editor Parity** — [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md)  
+   - **S01–S05 Done**；**S07 HDR sky bake Done**（citrus HDR cubemap on VK；IBL convolution still deferred）
+   - **Next**: S06 shadow/post in editor flags；VK irradiance/prefilter convolution
+   - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync），**`TD-025`**（clip/handedness 勿硬绑 `IsVulkan`）  
+
+4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  
+5. **RND-F11 DebugDrawing** — ED-F01 主视口 parity 后再设计  
 
 合入前：定期把 **master** rebase/merge 进 `feat/render`。
 
 ### Master / 平台
 
-- **CORE-F04** Delegates **Done**（解锁 PHYS-F03 依赖，但不抢渲染主线）。
+- **CORE-F04** Delegates **Done**。
 
 ### Physics（`feat/physics`）— **冷冻**
 
-- F01/F02 Done；**PHYS-F03 Deferred** 直至 **RND-F11** 成熟后再开正式 Design。  
-- worktree 可闲置；重开前再 rebase master。
+- F01/F02 Done；**PHYS-F03 Deferred** 直至 **RND-F11** 成熟后再开正式 Design。
 
 ### 更远（先不占带宽）
 
-- Sprite / 骨骼网格 / 动画 — 等 RHI/Vulkan 竖切更稳后再登记 Viewer。
+- Sprite / 骨骼网格 / 动画 — 等 ED-F01 / RHI 更稳后再登记 Viewer。
 
 ---
 
@@ -50,6 +51,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
 | Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
+| VK Editor（ED-F01 起） | `minEngine\bin\Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` |
+| GL Editor 回归 | `Editor.exe --rhi opengl --project …` |
 | Delegates | `minEngineTests.exe test delegates` |
 | Material | `minEngineTests.exe test material-ir` |
 | RenderGraph | `minEngineTests.exe test render-graph` |
@@ -78,7 +81,5 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 | File | Role |
 |------|------|
 | [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status when starting a **new** registered feature |
-| [RND-F05](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) | 下一渲染主线（Vulkan） |
-| [TECH_DEBT.md](./TECH_DEBT.md) | Deferred problems worth tracking |
-| [BOOTSTRAP_DIGEST.md](./BOOTSTRAP_DIGEST.md) | Commands, DoD, agent habits |
-| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |
+| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What landed and how it was verified |
+| [TECH_DEBT.md](./TECH_DEBT.md) | Open debt rows only |

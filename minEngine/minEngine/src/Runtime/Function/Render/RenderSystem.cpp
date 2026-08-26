@@ -42,8 +42,7 @@ namespace minEngine
         {
             m_RHI = std::make_shared<VulkanRHI>();
             m_RHI->Initialize();
-            // Magenta if Present never runs; SceneColor clear/blit should overwrite when Present works.
-            m_RHI->RHISetBackbufferClearColor(Vector3(1.0f, 0.0f, 1.0f));
+            m_RHI->RHISetBackbufferClearColor(Vector3(0.1f, 0.1f, 0.1f));
 
             m_SceneRenderer = std::make_unique<ForwardRenderer>();
             m_SceneRenderer->Initialize();

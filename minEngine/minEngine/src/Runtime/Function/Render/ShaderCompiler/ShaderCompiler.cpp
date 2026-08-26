@@ -1,5 +1,6 @@
 #include "ShaderCompiler.h"
 
+#include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
 #include <array>
@@ -18,6 +19,147 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        bool TryRemapOpenGLFlatBinding(uint32_t setIndex, uint32_t binding, uint32_t& outFlat)
+        {
+            using namespace EngineShaderBindings;
+            if (setIndex == kSetSceneObject)
+            {
+                switch (binding)
+                {
+                case kSet0_PerFrame:
+                    outFlat = kGL_PerFrameUBO;
+                    return true;
+                case kSet0_Lights:
+                    outFlat = kGL_LightsUBO;
+                    return true;
+                case kSet0_PerObject:
+                    outFlat = kGL_PerObjectUBO;
+                    return true;
+                default:
+                    return false;
+                }
+            }
+
+            if (setIndex == kSetShadowIBL)
+            {
+                switch (binding)
+                {
+                case kSet1_DirShadowSRV:
+                    outFlat = kGL_DirShadowTextureUnit;
+                    return true;
+                case kSet1_DirLightViewProjs:
+                    outFlat = kGL_DirLightViewProjsUBO;
+                    return true;
+                case kSet1_CascadeFarPlanes:
+                    outFlat = kGL_CascadeFarPlanesUBO;
+                    return true;
+                case kSet1_SpotLightViewProjs:
+                    outFlat = kGL_SpotLightViewProjsUBO;
+                    return true;
+                case kSet1_SpotShadow0:
+                    outFlat = kGL_SpotShadowBaseUnit;
+                    return true;
+                case kSet1_SpotShadow1:
+                    outFlat = kGL_SpotShadowBaseUnit + 1u;
+                    return true;
+                case kSet1_PointShadow0:
+                    outFlat = kGL_PointShadowBaseUnit;
+                    return true;
+                case kSet1_PointShadow1:
+                    outFlat = kGL_PointShadowBaseUnit + 1u;
+                    return true;
+                case kSet1_IBLIrradiance:
+                    outFlat = kGL_IBLIrradianceUnit;
+                    return true;
+                case kSet1_IBLPrefilter:
+                    outFlat = kGL_IBLPrefilterUnit;
+                    return true;
+                case kSet1_IBLBrdfLut:
+                    outFlat = kGL_IBLBrdfLutUnit;
+                    return true;
+                default:
+                    return false;
+                }
+            }
+
+            if (setIndex == kSetMaterial)
+            {
+                outFlat = binding;
+                return true;
+            }
+
+            return false;
+        }
+
+        std::string StripSetQualifier(const std::string& block)
+        {
+            static const std::regex kSetQualifier(
+                R"((\s*,\s*)?set\s*=\s*\d+(\s*,\s*)?)",
+                std::regex::ECMAScript);
+
+            std::string flattened;
+            flattened.reserve(block.size());
+            std::sregex_iterator it(block.begin(), block.end(), kSetQualifier);
+            const std::sregex_iterator end;
+            std::size_t last = 0;
+            for (; it != end; ++it)
+            {
+                const std::smatch& match = *it;
+                flattened.append(block, last, static_cast<std::size_t>(match.position()) - last);
+                const bool hasBefore = match[1].matched && !match[1].str().empty();
+                const bool hasAfter = match[2].matched && !match[2].str().empty();
+                if (hasBefore && hasAfter)
+                {
+                    flattened.push_back(',');
+                }
+                last = static_cast<std::size_t>(match.position() + match.length());
+            }
+            flattened.append(block, last, std::string::npos);
+
+            static const std::regex kDoubleComma(R"(,\s*,)");
+            flattened = std::regex_replace(flattened, kDoubleComma, ",");
+            static const std::regex kLayoutLeadComma(R"(layout\s*\(\s*,)");
+            flattened = std::regex_replace(flattened, kLayoutLeadComma, "layout (");
+            return flattened;
+        }
+
+        std::string RemapLayoutBlockForOpenGL(const std::string& block)
+        {
+            static const std::regex kSetPattern(R"(\bset\s*=\s*(\d+))");
+            static const std::regex kBindingPattern(R"(\bbinding\s*=\s*(\d+))");
+
+            std::smatch setMatch;
+            if (!std::regex_search(block, setMatch, kSetPattern))
+            {
+                return block;
+            }
+
+            const uint32_t setIndex = static_cast<uint32_t>(std::stoul(setMatch[1].str()));
+            std::string result = block;
+
+            std::smatch bindingMatch;
+            if (std::regex_search(block, bindingMatch, kBindingPattern))
+            {
+                const uint32_t logicalBinding = static_cast<uint32_t>(std::stoul(bindingMatch[1].str()));
+                uint32_t flatBinding = logicalBinding;
+                if (!TryRemapOpenGLFlatBinding(setIndex, logicalBinding, flatBinding))
+                {
+                    flatBinding = logicalBinding;
+                }
+
+                static const std::regex kBindingReplace(R"(\bbinding\s*=\s*\d+)");
+                result = std::regex_replace(
+                    result,
+                    kBindingReplace,
+                    "binding = " + std::to_string(flatBinding));
+            }
+
+            return StripSetQualifier(result);
+        }
+    }
+
     ShaderCompiler& ShaderCompiler::Get()
     {
         static ShaderCompiler s_Instance;
@@ -59,28 +201,18 @@ namespace minEngine
 
     std::string ShaderCompiler::FlattenDescriptorSetsForOpenGL(const std::string& source)
     {
-        // Strip `set = N` from any layout(...) list so OpenGL (DescriptorSet must be 0 /
-        // desktop GLSL has no set=) accepts Vulkan-dialect material sources, including
-        // `layout (std140, set = 2, binding = 8)`.
-        static const std::regex kSetQualifier(
-            R"((\s*,\s*)?set\s*=\s*\d+(\s*,\s*)?)",
-            std::regex::ECMAScript);
+        static const std::regex kLayoutBlock(R"(layout\s*\([^)]+\))");
 
         std::string flattened;
         flattened.reserve(source.size());
-        std::sregex_iterator it(source.begin(), source.end(), kSetQualifier);
+        std::sregex_iterator it(source.begin(), source.end(), kLayoutBlock);
         const std::sregex_iterator end;
         std::size_t last = 0;
         for (; it != end; ++it)
         {
             const std::smatch& match = *it;
             flattened.append(source, last, static_cast<std::size_t>(match.position()) - last);
-            const bool hasBefore = match[1].matched && !match[1].str().empty();
-            const bool hasAfter = match[2].matched && !match[2].str().empty();
-            if (hasBefore && hasAfter)
-            {
-                flattened.push_back(',');
-            }
+            flattened.append(RemapLayoutBlockForOpenGL(match.str()));
             last = static_cast<std::size_t>(match.position() + match.length());
         }
         flattened.append(source, last, std::string::npos);

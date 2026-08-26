@@ -16,6 +16,7 @@
 
 #include "Runtime/Function/Render/RenderSystem.h"
 
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 
 #include "Render/RenderCamera.h"
@@ -157,11 +158,16 @@ namespace minEngine
         RHI* rhi = RenderSystem::Get().GetRHI();
 
         GetSceneViewport().ApplyPendingResize(rhi);
+        SyncSceneViewportCameraAspect();
 
 
 
-        const SceneDrawFlags flags = SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
-                                     SceneDrawFlags::EnableSkyBox;
+        // Vulkan ED-F01: sky on (validation cube until HDR bake is solid); shadows/post deferred.
+        const SceneDrawFlags flags =
+            RHIBackendSelection::IsVulkan()
+                ? SceneDrawFlags::EnableSkyBox
+                : (SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
+                   SceneDrawFlags::EnableSkyBox);
 
         const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
 
@@ -198,7 +204,8 @@ namespace minEngine
 
         scene->EnsureRenderScene();
 
-        GetSceneViewport().SetObservedScene(scene->GetRenderScene());
+        RenderScene* renderScene = scene->GetRenderScene();
+        GetSceneViewport().SetObservedScene(renderScene);
 
     }
 

@@ -67,9 +67,58 @@ namespace minEngine
             VkImage& outImage,
             VkDeviceMemory& outMemory);
 
+        static bool CreateImage2DArray(
+            const VulkanDeviceContext& context,
+            uint32_t width,
+            uint32_t height,
+            uint32_t arrayLayers,
+            uint32_t mipLevels,
+            VkFormat format,
+            VkImageUsageFlags usage,
+            VkMemoryPropertyFlags memoryProperties,
+            VkImage& outImage,
+            VkDeviceMemory& outMemory);
+
+        static bool CreateImageCube(
+            const VulkanDeviceContext& context,
+            uint32_t faceSize,
+            uint32_t mipLevels,
+            VkFormat format,
+            VkImageUsageFlags usage,
+            VkMemoryPropertyFlags memoryProperties,
+            VkImage& outImage,
+            VkDeviceMemory& outMemory);
+
         static void DestroyImage(VkDevice device, VkImage& image, VkDeviceMemory& memory);
 
         static bool CreateImageView2D(
+            VkDevice device,
+            VkImage image,
+            VkFormat format,
+            VkImageAspectFlags aspect,
+            uint32_t mipLevels,
+            VkImageView& outView);
+
+        /** Single mip + single array layer (cube face / array slice RT attachment). */
+        static bool CreateImageView2DSubresource(
+            VkDevice device,
+            VkImage image,
+            VkFormat format,
+            VkImageAspectFlags aspect,
+            uint32_t baseMipLevel,
+            uint32_t baseArrayLayer,
+            VkImageView& outView);
+
+        static bool CreateImageView2DArray(
+            VkDevice device,
+            VkImage image,
+            VkFormat format,
+            VkImageAspectFlags aspect,
+            uint32_t arrayLayers,
+            uint32_t mipLevels,
+            VkImageView& outView);
+
+        static bool CreateImageViewCube(
             VkDevice device,
             VkImage image,
             VkFormat format,
@@ -84,6 +133,15 @@ namespace minEngine
             VkImage image,
             uint32_t width,
             uint32_t height,
+            VkImageAspectFlags aspect);
+
+        /** One-shot submit: copy buffer→cube image (6 array layers) and transition to SHADER_READ_ONLY. */
+        static bool UploadBufferToImageCube(
+            const VulkanDeviceContext& context,
+            VkBuffer stagingBuffer,
+            VkImage image,
+            uint32_t faceSize,
+            VkDeviceSize faceBytes,
             VkImageAspectFlags aspect);
 
         static bool CopyBuffer(
@@ -295,12 +353,19 @@ namespace minEngine
     class VulkanRHIShaderBindingSet final : public RHIShaderBindingSet
     {
     public:
+        struct DummyImageViews
+        {
+            VkImageView Image2D = VK_NULL_HANDLE;
+            VkImageView Image2DArray = VK_NULL_HANDLE;
+            VkImageView ImageCube = VK_NULL_HANDLE;
+        };
+
         VulkanRHIShaderBindingSet(
             VkDevice device,
             VkDescriptorPool pool,
             VkSampler defaultSampler,
             VkBuffer dummyUniformBuffer,
-            VkImageView dummyImageView,
+            const DummyImageViews& dummyImageViews,
             RHIShaderBindingSetLayout* layout,
             std::vector<RHIShaderBinding> resources);
         ~VulkanRHIShaderBindingSet() override;

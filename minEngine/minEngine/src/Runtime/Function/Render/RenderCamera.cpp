@@ -1,4 +1,5 @@
 #include "RenderCamera.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace minEngine
@@ -20,7 +21,17 @@ namespace minEngine
 
     void RenderCamera::UpdateProjectionMatrix()
     {
-        m_ProjectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
+        // Vulkan NDC depth is [0,1]; OpenGL is [-1,1]. Keep one matrix for render, pick, and ImGuizmo.
+        if (RHIBackendSelection::IsVulkan())
+        {
+            m_ProjectionMatrix = glm::perspectiveRH_ZO(
+                glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
+        }
+        else
+        {
+            m_ProjectionMatrix = glm::perspective(
+                glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
+        }
     }
 
     void RenderCamera::UpdateViewProjMatrix()
@@ -38,10 +49,12 @@ namespace minEngine
         // Input contract: screenPoint is in top-left-origin pixel space.
         const float ndcX = (screenPoint.x / bufferSize.x) * 2.0f - 1.0f;
         const float ndcY = 1.0f - (screenPoint.y / bufferSize.y) * 2.0f;
+        const float nearNdcZ = RHIBackendSelection::IsVulkan() ? 0.0f : -1.0f;
+        const float farNdcZ = 1.0f;
 
         const Matrix4 invViewProj = glm::inverse(m_ViewProjMatrix);
-        Vector4 nearWorld = invViewProj * Vector4(ndcX, ndcY, -1.0f, 1.0f);
-        Vector4 farWorld = invViewProj * Vector4(ndcX, ndcY, 1.0f, 1.0f);
+        Vector4 nearWorld = invViewProj * Vector4(ndcX, ndcY, nearNdcZ, 1.0f);
+        Vector4 farWorld = invViewProj * Vector4(ndcX, ndcY, farNdcZ, 1.0f);
         nearWorld /= nearWorld.w;
         farWorld /= farWorld.w;
 

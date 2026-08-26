@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-17 (RND-F05-S07d visual smoke confirmed)
+Last updated: 2026-08-26 (ED-F01 S07 HDR bake descriptor lifetime / DEVICE_LOST)
 
 ## Purpose
 
@@ -75,12 +75,46 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 
 ## Entry Template (Append for each meaningful task)
 
-### YYYY-MM-DD - Task title
-- Goal:
+### 2026-08-26 - ED-F01 S07 garbled HDR sky: float32→half upload
+- Goal: Fix psychedelic/moiré Vulkan sky after successful HDR bake (no DEVICE_LOST).
+- Root cause: `CreateFromHdrPixels` passes float32 (stbi_loadf); OpenGL uploads with `GL_FLOAT`, but Vulkan treated `*16F` initialData as raw half bits.
+- Main changes: `VulkanRHITexture` converts float32 RGB/RGBA → `R16G16B16A16_SFLOAT` on upload (2D + cube paths).
+- Verify: rebuild Editor; user visual check for citrus HDR sky on `--rhi vulkan`.
+
+### 2026-08-26 - ED-F01 S07 HDR bake DEVICE_LOST: descriptor lifetime
+- Goal: Fix remaining Vulkan `DEVICE_LOST` after HDR sky bake (ImGui `VkResult=-4`).
+- Root cause: EnvMapCapture loop destroyed per-face `RHIShaderBindingSet` (and reused one UBO) while the immediate CB still referenced them.
 - Main changes:
-- Risks or caveats:
-- Validation done:
-- Next step:
+  - `EnvMapCapture`: `EnvCapturePendingBindings` keeps per-face UBO + descriptor set until after `RHIEndImmediateCommands`.
+  - Keep prior fixes: cube layout defer; submit before PSO destroy; depth `DEPTH_STENCIL_READ_ONLY`.
+- Verify:
+  - `--rhi vulkan`: HDR bake + ~10s loop + clean shutdown, no `DEVICE_LOST`.
+  - `--rhi opengl`: HDR/IBL bake + clean shutdown.
+
+### 2026-08-25 - ED-F01 S07 HDR sky bake on Vulkan (DEVICE_LOST fixed)
+- Goal: Restore project HDR → cubemap bake for Vulkan sky (citrus orchard); remove temp debug scaffolding.
+- Main changes:
+  - `EnvironmentMap`: Vulkan no longer skips `EquirectToCubemap`; IBL irradiance/prefilter still aliased to environment cube.
+  - `EnvMapCapture`: defer cube layout transition until all faces captured; submit immediate CB **before** bake PSO destroy.
+  - `VulkanRHI`: cube-face `EndRenderPass` skips premature ShaderResource transition; depth → `DEPTH_STENCIL_READ_ONLY`.
+  - Cleanup: removed first-frame VK debug logs; validation cube toned to mild blue.
+- Verify:
+  - `Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` — HDR bake log, no `DEVICE_LOST`, clean shutdown.
+  - `Editor.exe --rhi opengl` — full HDR/IBL bake + clean shutdown.
+- Deferred: VK IBL convolution (irradiance/prefilter passes), S06 shadow/post in editor flags, `TD-025` capabilities API.
+- Follow-up 2026-08-26: still saw DEVICE_LOST until descriptor/UBO lifetime fix (entry above).
+
+### 2026-08-25 - ED-F01 S05 viewport parity + S07 SkyPass (Vulkan)
+- Goal: Fix VK editor viewport (mesh/gizmo/nav); re-enable Sky with validation cube.
+- Main changes:
+  - `RenderCamera`: Vulkan `perspectiveRH_ZO` + pick NDC Z=0 (render/pick/gizmo unified).
+  - `EditorViewportWindow`: Vulkan ImGui UV `(0,0)-(1,1)` (no double Y-flip with viewport).
+  - `SceneEditingViewportClient`: `SyncSceneViewportCameraAspect`; VK flags `EnableSkyBox`.
+  - `SkyBoxPass`: explicit no-cull PSO; sky UBO stage `All`; first-prepare log.
+  - `EnvironmentMap`: brighter validation cube face colors for debug.
+  - Docs: **TD-025** clip/handedness vs `IsVulkan()` coupling.
+- Verify: `Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` — plane + gizmo OK; sky TBD user.
+- Deferred: HDR bake on VK (`EnvironmentMap`), IBL convolution, shadows/post (S06).
 
 ### 2026-08-17 - RND-F05-S07d visual smoke confirmed + deferred debt grouped
 - Goal:
@@ -1922,3 +1956,18 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   User local cmake build + Editor visual OK.
 - Next step:
   P0′ `RHICreateShaderResourceView`; optional Pass PSO cache; PROGRESS_LOG commit on `render`.
+
+### 2026-08-17 - ED-F01 Vulkan Editor Parity registered (`feat/render`)
+- Goal:
+  After RND-F05 S07d, restore full Vulkan Editor (ImGui-Vulkan, embedded viewport, navigation) and continue shadow/sky/IBL in real Editor — not smoke fork.
+- Main changes:
+  **Registry:** `ED-F01` Planned; `RND-F05` → Done (RHI vertical slice S01–S07d).
+  **Docs:** [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md), [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md).
+  **Handoff:** F05 S07e/f → ED-F01-S06/S07; smoke mode slated for removal at ED-F01-S03.
+  **Source:** `imgui_impl_vulkan` from sibling `../imgui` clone (1.92.7 aligned).
+- Risks or caveats:
+  Frame sync (TD-024), swapchain/ImGui render pass alignment, dynamic RT ImGui descriptors.
+- Validation done:
+  Design/Impl draft only; no code yet.
+- Next step:
+  ED-F01-S01: copy `imgui_impl_vulkan` + CMake; then S02 ImGui empty frame.

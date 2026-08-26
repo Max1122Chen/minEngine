@@ -117,5 +117,12 @@ namespace minEngine
          * OpenGL: glfwSwapBuffers. Vulkan: submit + present (semaphores/fences internal).
          */
         virtual void RHIPresent() = 0;
+
+        /**
+         * Offline / load-time GPU work outside the swapchain frame (EnvMap bake, etc.).
+         * OpenGL: no-op. Vulkan: one-shot command buffer + queue wait.
+         */
+        virtual void RHIBeginImmediateCommands() {}
+        virtual void RHIEndImmediateCommands() {}
     };
 }

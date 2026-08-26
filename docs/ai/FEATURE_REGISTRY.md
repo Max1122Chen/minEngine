@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-03（TD-013 Done；CORE-F04 / RND-F11 Planned）
+Last updated: 2026-08-17（ED-F01 登记；RND-F05 RHI 竖切关账；S07e/f → ED-F01）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -32,13 +32,14 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配 + Pass CommandList） | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · S0–S5 |
 | `RND-F03` | Legacy RHI removal（调用面 + 管线重构 M4 + 后端绞杀 M3） | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · 2026-08-04 关账；残留债经 F09/F10 付清 |
 | `RND-F04` | Modern RHI further evolution（语义终态：PipelineLayout、Packet、Setup/Execute、缓存） | **Done** | — | [RND-F04_MODERN_RHI_EVOLUTION_DESIGN](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · S01–S04 |
-| `RND-F05` | Vulkan backend + SPIR-V（GL+VK）+ modern RHI completion | **In Progress** | S07e | [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) · S01–S07d Done；下一刀 S07e Shadow+场景 set= |
+| `RND-F05` | Vulkan backend + SPIR-V（GL+VK）+ modern RHI completion | **Done** | — | [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) · S01–S07d Done；S07e/f **迁至 ED-F01** |
+| `ED-F01` | Vulkan Editor Parity（ImGui-Vulkan + viewport + navigation + 承接 shadow/sky） | **In Progress** | S05+ | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) · S01–S04 代码已落地，待人工验收 |
 | `RND-F06` | ForwardRenderer（Renderer / RenderGraph 职责分离；删除 `RenderPipeline`） | **In Progress** | — | [RND-F06_FORWARD_RENDERER_DESIGN](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) · S01–S02 Done；S03 可选 |
 | `RND-F07` | Granite-style RDG + 帧资源所有权大重构 | **Done** | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) · [Impl](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_IMPLEMENTATION.md) · S01–S09；阴影尾升格 **RND-F08** |
 | `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
-| `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | Planned | — | 排在 **RND-F05** Vulkan 竖切之后；Design 待写 |
+| `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | Planned | — | 排在 **ED-F01** 主视口 parity 之后；Design 待写 |
 | `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) |
 | `PHYS-F02` | Collision + query shapes（Sphere/Capsule collider；Scene SphereTrace/CapsuleTrace） | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md) |
 | `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · Delegates（CORE-F04）已满足；**等 RND-F11 DebugDrawing 成熟后再开** |
@@ -54,8 +55,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF` | F03 | Workflow / docs |
 | `CORE` | F05 | F01–F02 Lua Done；F03 Transform quaternion Done；F04 Delegates Planned |
 | `ASSET` | F01 | Asset pipeline extensions |
-| `ED` | F01 | Editor productization (new IDs only) |
-| `RND` | F12 | F10 Done；F11 DebugDrawing Planned；下一空号 F12 |
+| `ED` | F02 | F01 Vulkan Editor Parity Planned |
+| `RND` | F12 | F05 Done；F11 Planned；下一空号 F12 |
 | `PHYS` | F04 | F01–F02 Done；F03 Deferred（TD-006 / CORE-F04） |
 | `MAT` | F01 | Material (new IDs only; legacy Phase docs keep old names) |
 
