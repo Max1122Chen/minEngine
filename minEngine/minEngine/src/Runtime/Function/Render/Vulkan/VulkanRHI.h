@@ -80,6 +80,7 @@ namespace minEngine
         void RHIPresent() override;
         void RHIBeginImmediateCommands() override;
         void RHIEndImmediateCommands() override;
+        void NotifyAttachmentResourcesDiscarded() override;
 
 #if defined(MINENGINE_HAS_VULKAN)
         /** ED-F01: Editor / ImGui integration (not part of neutral RHI contract). */

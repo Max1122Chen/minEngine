@@ -138,5 +138,8 @@ namespace minEngine
          */
         virtual void RHIBeginImmediateCommands() {}
         virtual void RHIEndImmediateCommands() {}
+
+        /** Drop cached attachment views before RDG physical textures are destroyed/recreated (Vulkan). */
+        virtual void NotifyAttachmentResourcesDiscarded() {}
     };
 }

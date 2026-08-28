@@ -1,6 +1,6 @@
 #include "EditorViewportWindow.h"
 
-#include "Runtime/Function/Render/RHI/RHIBackend.h"
+#include "Runtime/Function/Render/RHI/RHIClipSpaceCapabilities.h"
 #include "Shell/EditorInputHub.h"
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Appearance/EditorWindowTypography.h"
@@ -74,9 +74,9 @@ bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportCli
     }
 
     ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + layout.Offset.x, cursorPos.y + layout.Offset.y));
-    // GL FBO origin is bottom-left; Vulkan SceneColor is already top-left after viewport Y-flip.
-    const ImVec2 uv0 = RHIBackendSelection::IsVulkan() ? ImVec2(0.0f, 0.0f) : ImVec2(0.0f, 1.0f);
-    const ImVec2 uv1 = RHIBackendSelection::IsVulkan() ? ImVec2(1.0f, 1.0f) : ImVec2(1.0f, 0.0f);
+    const RHIImGuiSceneColorUv sceneUv = GetImGuiSceneColorUv();
+    const ImVec2 uv0(sceneUv.U0, sceneUv.V0);
+    const ImVec2 uv1(sceneUv.U1, sceneUv.V1);
     ImGui::Image(textureID, ImVec2(layout.Size.x, layout.Size.y), uv0, uv1);
 
     const ImVec2 imageMin = ImGui::GetItemRectMin();

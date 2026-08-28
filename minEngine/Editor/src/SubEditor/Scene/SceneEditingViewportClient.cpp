@@ -162,12 +162,10 @@ namespace minEngine
 
 
 
-        // Vulkan ED-F01: sky on (validation cube until HDR bake is solid); shadows/post deferred.
+        // ED-F01-S06: Vulkan Editor matches OpenGL draw flags (shadows + post + sky).
         const SceneDrawFlags flags =
-            RHIBackendSelection::IsVulkan()
-                ? SceneDrawFlags::EnableSkyBox
-                : (SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
-                   SceneDrawFlags::EnableSkyBox);
+            SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
+            SceneDrawFlags::EnableSkyBox;
 
         const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
 

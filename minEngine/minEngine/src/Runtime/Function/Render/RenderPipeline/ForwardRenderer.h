@@ -148,7 +148,6 @@ namespace minEngine
         RHITextureRef m_PostBufferTexture;
         std::vector<std::unique_ptr<ShadowGraphPass>> m_ShadowGraphPasses;
         std::vector<RenderPass*> m_ShadowGraphPassPtrs;
-        size_t m_ConfiguredShadowGraphPassCount = 0;
         bool m_ConfiguredEnablePostProcess = false;
         bool m_ConfiguredPresentToBackBuffer = false;
         std::string m_LastShadowResourceFingerprint;
@@ -159,12 +158,16 @@ namespace minEngine
         RenderPass* m_PostSharpenGraphPass = nullptr;
         RenderPass* m_PresentGraphPass = nullptr;
         bool m_FrameRenderGraphBuilt = false;
+        bool m_PendingShadowBindingInvalidate = false;
         uint32_t m_PostBufferWidth = 0;
         uint32_t m_PostBufferHeight = 0;
 
     private:
         void BindSceneRenderTarget(SceneRenderTarget& target);
-        void BuildFrameRenderGraph(size_t shadowPassCount, bool enablePostProcess, bool presentToBackBuffer);
+        void BuildFrameRenderGraph(bool enablePostProcess, bool presentToBackBuffer);
+        void AssignShadowGraphPassCommands(const SceneRenderContext& ctx);
+        static size_t GetFixedShadowGraphPassIndex(const ShadowDrawCommand& command);
+        static ShadowGraphPermanentOutput MakePermanentShadowOutput(size_t passIndex);
         void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
         void SetupFrameRenderGraph(
             RHICommandList& cmdList,
@@ -193,6 +196,7 @@ namespace minEngine
         void ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB,
                                             const Matrix4& lightView,
                                             const std::vector<MeshDrawCommand>& opaqueQueue);
+        void ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx);
 
         ShadowDrawCommand BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,
                                                       const ShadowResourceHandle& handle,

@@ -1,11 +1,22 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-26 (ED-F01 Vulkan visual bugfix batch)
+Last updated: 2026-08-28 (TD-025 clip-space caps + VK shadow fix)
 
 ## Purpose
 
 This file is an AI-oriented progress digest converted from commit messages.
 It is not a full changelog. It focuses on architecture moves, rendering milestones, and known pitfalls.
+
+## Timeline Summary
+
+### 2026-08-28 - TD-025 RHI clip-space capabilities + VK shadow fix (`feat/render`)
+- Goal: Unify clip/viewport/cull policy; fix BUG-RENDER-010 (VK shadows) and BUG-RENDER-011 (disable point/spot shadow crash).
+- Main changes:
+  `RHIClipSpaceCapabilities`, `RHIClipSpace`, `RHIViewportConvention`; Shadow scheme A (no flipY + Front cull).
+  ShadowPass / ForwardRenderer / RenderCamera / EnvMapCapture / ShaderCompiler / Editor ImGui UV migrated.
+  `EngineSceneBindingSets` clears unused spot/point shadow SRV slots; dir shadow index gated in shader.
+  Docs: [RND-TD025 design](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md), BUG-RENDER-010/011 updated.
+- Validation: cmake build minEngine + Editor (pending user VK visual verify on `test` scene).
 
 ## Timeline Summary
 
@@ -74,6 +85,31 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Asset scanning must avoid duplicate registration and accidental GUID regeneration.
 
 ## Entry Template (Append for each meaningful task)
+
+### 2026-08-28 - BUG-RENDER-010: Vulkan directional shadow plane false self-shadow
+- Goal: Fix VK Editor CSM shadow — large false shadow on 100×100 plane (plane self-shadow via sampling); cube shadow OK at some angles.
+- Root cause: ShadowPass Z remap + OpenGL `glm::ortho` light matrices vs lit-pass `*0.5+0.5` sampling mismatch; CSM frustum used OpenGL NDC corners with Vulkan `perspectiveRH_ZO` camera.
+- Main changes:
+  - `ForwardRenderer`: `orthoRH_ZO` / `perspectiveRH_ZO` for VK light proj; backend-aware CSM NDC near/far.
+  - `ShadowPass.vert`: remove clip-Z remap (light matrices now ZO on VK).
+  - `MaterialSceneShadows.glslinc`, `Phong.frag`: `MinEngineShadowProject` — ZO depth = `ndc.z`, GL = `ndc.z*0.5+0.5`.
+  - Bug record: `docs/ai/bugs/BUG-RENDER-010.md`.
+- Verify:
+  - `cmake --build minEngine/build --target minEngine` — OK.
+  - `Editor.exe --rhi vulkan` visual A/B on `test` scene — **pending user**.
+
+### 2026-08-28 - ED-F01 S06: Vulkan Editor shadows + post flags
+- Goal: Enable shadow/post pipeline on Vulkan Editor (match OpenGL draw flags); fix VK shadow path blockers.
+- Main changes:
+  - `SceneEditingViewportClient`: VK uses `EnableShadows | EnablePostProcess | EnableSkyBox` (no sky-only fork).
+  - `VulkanRHITexture`: `Texture2DArray` create/view for `DirShadowAtlas` CSM atlas.
+  - `VulkanRHI`: per-layer depth attachment views for CSM cascade slices.
+  - `ShadowPass`: depth-only PSO desc; VK back-face cull; `ShadowPass.*` shaders use `set=0` bindings.
+  - `ShaderCompiler`: pass-local OpenGL flat remap for ShadowPass; Vulkan `MINENGINE_CLIP_SPACE_ZO` inject.
+- Verify:
+  - `cmake --build minEngine/build --target Editor` — OK.
+  - `Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` — loads `test`, ShadowPass SPIR-V OK, no `DirShadowAtlas` / PSO bind errors in log (~12s smoke).
+- Pending: user visual A/B — cube shadow on plane vs GL; then commit.
 
 ### 2026-08-26 - ED-F01 Vulkan visual bugfix: UBO ring + bake viewport + retired buffers
 - Goal: Fix Cube invisible / plane Y-scale oddity / sky ±Y split / mesh hot-swap DEVICE_LOST on Vulkan Editor.

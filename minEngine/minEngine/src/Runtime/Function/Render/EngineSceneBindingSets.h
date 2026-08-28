@@ -49,6 +49,9 @@ namespace minEngine
             RHIBuffer* cascadeFarPlanes,
             RHIBuffer* spotLightViewProjs);
 
+        /** Drop cached shadow SRVs / set1 after RDG shadow resources are recreated or removed. */
+        void InvalidateShadowTextureBindings();
+
         RHIShaderBindingSet* GetSceneSet1() const { return m_SceneSet1.get(); }
         RHIShaderBindingSetLayout* GetSceneSet0Layout() const { return m_SceneSet0Layout.get(); }
         RHIShaderBindingSetLayout* GetSceneSet1Layout() const { return m_SceneSet1Layout.get(); }
@@ -85,5 +88,8 @@ namespace minEngine
         RHITexture* m_CachedIblIrradianceTexture = nullptr;
         RHITexture* m_CachedIblPrefilterTexture = nullptr;
         RHITexture* m_CachedIblBrdfLutTexture = nullptr;
+
+        uint32_t m_ShadowBindingGeneration = 0;
+        uint32_t m_BuiltShadowBindingGeneration = UINT32_MAX;
     };
 }

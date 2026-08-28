@@ -8,6 +8,8 @@
 #include "Runtime/Function/Render/EngineRHITextureUtils.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIClipSpace.h"
+#include "Runtime/Function/Render/RHI/RHIClipSpaceCapabilities.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
@@ -173,7 +175,7 @@ namespace minEngine
             cmdList.BeginRenderPass(passInfo);
             // Bake cubemap faces without the scene-path Vulkan Y-flip; otherwise ±Y faces
             // end up rotated/split relative to samplerCube conventions.
-            cmdList.SetViewport(0, 0, viewportSize, viewportSize, false);
+            cmdList.SetViewport(0, 0, viewportSize, viewportSize, RHIViewportConvention::CubeMapFace);
         }
 
         struct EnvCaptureDrawResources
@@ -331,9 +333,11 @@ namespace minEngine
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
         EnvCapturePendingBindings pendingBindings;
 
-        const Matrix4 captureProjection = RHIBackendSelection::IsVulkan()
-            ? glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 0.1f, 10.0f)
-            : glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        const Matrix4 captureProjection = RHIClipSpace::MakePerspective(
+            glm::radians(90.0f),
+            1.0f,
+            0.1f,
+            10.0f);
 
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
@@ -436,9 +440,11 @@ namespace minEngine
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
         EnvCapturePendingBindings pendingBindings;
 
-        const Matrix4 captureProjection = RHIBackendSelection::IsVulkan()
-            ? glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 0.1f, 10.0f)
-            : glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        const Matrix4 captureProjection = RHIClipSpace::MakePerspective(
+            glm::radians(90.0f),
+            1.0f,
+            0.1f,
+            10.0f);
 
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
@@ -552,9 +558,11 @@ namespace minEngine
             EngineShaderBindings::kGL_EnvCaptureSourceUnit);
         EnvCapturePendingBindings pendingBindings;
 
-        const Matrix4 captureProjection = RHIBackendSelection::IsVulkan()
-            ? glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 0.1f, 10.0f)
-            : glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        const Matrix4 captureProjection = RHIClipSpace::MakePerspective(
+            glm::radians(90.0f),
+            1.0f,
+            0.1f,
+            10.0f);
 
         for (uint32_t mip = 0; mip <= maxMipLevel; ++mip)
         {

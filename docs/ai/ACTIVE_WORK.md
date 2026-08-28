@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-26  
+Last updated: 2026-08-28  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -16,8 +16,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 3. **ED-F01 Vulkan Editor Parity** — [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md)  
    - **S01–S05 Done**；**S07 HDR sky bake Done**（citrus HDR cubemap on VK；IBL convolution still deferred）
    - **Bugfix batch Done / Verified**：[visual parity design](./Editor/ED-F01_VULKAN_VISUAL_PARITY_BUGFIX_DESIGN.md)；`BUG-RENDER-005`…`009`
-   - **Next**: S06 shadow/post in editor flags；VK irradiance/prefilter convolution
-   - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync），**`TD-025`**（clip/handedness 勿硬绑 `IsVulkan`）  
+   - **S06 implemented / pending visual verify** — VK Editor flags: shadows + post + sky；`Texture2DArray` atlas + ShadowPass `set=` + depth-only PSO
+   - **BUG-RENDER-010 / TD-025** — VK shadow caps + scheme A implemented；**pending user visual verify**（[Design](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md)）
+   - **BUG-RENDER-011** — spot/point 关 shadow 崩溃；SRV 槽清空 fix landed
+   - **Next**: user A/B GL vs VK shadow on `test` scene；VK irradiance/prefilter convolution
+   - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync）  
 
 4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  
 5. **RND-F11 DebugDrawing** — ED-F01 主视口 parity 后再设计  

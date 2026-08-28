@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Function/Framework/Components/LightComponent.h"
+#include "Runtime/Function/Render/EngineRenderLimits.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
 #include <string>
@@ -10,6 +11,10 @@ namespace minEngine
 {
     constexpr int MAX_SPOT_SHADOW_MAPS = 2;
     constexpr int MAX_POINT_SHADOW_MAPS = 2;
+
+    /** Fixed RDG shadow pass slots: dir cascades + spot maps + point cube faces. */
+    constexpr uint32_t kMaxShadowGraphPasses =
+        MAX_CASCADES + static_cast<uint32_t>(MAX_SPOT_SHADOW_MAPS + MAX_POINT_SHADOW_MAPS * 6);
 
     enum class ShadowResourceType : uint8_t
     {

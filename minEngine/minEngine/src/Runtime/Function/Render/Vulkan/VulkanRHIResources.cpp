@@ -1044,7 +1044,8 @@ namespace minEngine
             return;
         }
         if (m_Desc.Dimension != RHITextureDimension::Texture2D &&
-            m_Desc.Dimension != RHITextureDimension::TextureCube)
+            m_Desc.Dimension != RHITextureDimension::TextureCube &&
+            m_Desc.Dimension != RHITextureDimension::Texture2DArray)
         {
             ME_CORE_ERROR(
                 "VulkanRHITexture: unsupported dimension {}.",
@@ -1058,12 +1059,17 @@ namespace minEngine
         }
 
         const bool isCube = m_Desc.Dimension == RHITextureDimension::TextureCube;
+        const bool isArray = m_Desc.Dimension == RHITextureDimension::Texture2DArray;
         if (isCube && m_Desc.Width != m_Desc.Height)
         {
             ME_CORE_WARN(
                 "VulkanRHITexture: cube faces should be square (got {}x{}).",
                 m_Desc.Width,
                 m_Desc.Height);
+        }
+        if (isArray && m_Desc.DepthOrArrayLayers == 0)
+        {
+            m_Desc.DepthOrArrayLayers = 1;
         }
 
         m_VkFormat = VulkanRHIAllocator::ToVkFormat(m_Desc.Format);
@@ -1118,6 +1124,36 @@ namespace minEngine
                     m_Image,
                     m_VkFormat,
                     aspect,
+                    mipLevels,
+                    m_ImageView))
+            {
+                VulkanRHIAllocator::DestroyImage(m_Context.Device, m_Image, m_Memory);
+                return;
+            }
+        }
+        else if (isArray)
+        {
+            if (!VulkanRHIAllocator::CreateImage2DArray(
+                    m_Context,
+                    m_Desc.Width,
+                    m_Desc.Height,
+                    m_Desc.DepthOrArrayLayers,
+                    mipLevels,
+                    m_VkFormat,
+                    usage,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    m_Image,
+                    m_Memory))
+            {
+                return;
+            }
+
+            if (!VulkanRHIAllocator::CreateImageView2DArray(
+                    m_Context.Device,
+                    m_Image,
+                    m_VkFormat,
+                    aspect,
+                    m_Desc.DepthOrArrayLayers,
                     mipLevels,
                     m_ImageView))
             {

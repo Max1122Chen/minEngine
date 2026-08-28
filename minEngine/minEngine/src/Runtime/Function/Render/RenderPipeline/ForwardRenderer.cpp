@@ -24,6 +24,9 @@
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Render/Environment/EnvironmentMap.h"
 #include "Math/Geometry/AABB.h"
+#include "Render/RHI/RHIClipSpace.h"
+#include "Render/RHI/RHIClipSpaceCapabilities.h"
+#include <glm/gtc/matrix_transform.hpp>
 #include <filesystem>
 
 namespace
@@ -46,6 +49,73 @@ namespace
 
 namespace minEngine
 {
+    ShadowGraphPermanentOutput ForwardRenderer::MakePermanentShadowOutput(size_t passIndex)
+    {
+        ShadowGraphPermanentOutput output{};
+        output.IsSet = true;
+        output.Resolution = ShadowResolution{
+            .Width = kShadowMapResolution,
+            .Height = kShadowMapResolution
+        };
+
+        if (passIndex < MAX_CASCADES)
+        {
+            output.DepthResourceName = kRDGDirShadowAtlas;
+            output.ResourceType = ShadowResourceType::Depth2DArray;
+            output.LayerCount = static_cast<int>(MAX_CASCADES);
+        }
+        else if (passIndex < MAX_CASCADES + static_cast<size_t>(MAX_SPOT_SHADOW_MAPS))
+        {
+            const int slot = static_cast<int>(passIndex - MAX_CASCADES);
+            output.DepthResourceName = "SpotShadow." + std::to_string(slot);
+            output.ResourceType = ShadowResourceType::Depth2D;
+            output.LayerCount = 1;
+        }
+        else
+        {
+            const size_t remainder = passIndex - (MAX_CASCADES + static_cast<size_t>(MAX_SPOT_SHADOW_MAPS));
+            const int pointSlot = static_cast<int>(remainder / 6u);
+            output.DepthResourceName = "PointShadow." + std::to_string(pointSlot);
+            output.ResourceType = ShadowResourceType::DepthCube;
+            output.LayerCount = 6;
+        }
+
+        return output;
+    }
+
+    size_t ForwardRenderer::GetFixedShadowGraphPassIndex(const ShadowDrawCommand& command)
+    {
+        switch (command.Type)
+        {
+        case LightType::Directional:
+            return static_cast<size_t>(command.Target.TargetLayer);
+        case LightType::Spot:
+            return MAX_CASCADES + static_cast<size_t>(command.Handle.SlotIndex);
+        case LightType::Point:
+            return MAX_CASCADES + static_cast<size_t>(MAX_SPOT_SHADOW_MAPS)
+                + static_cast<size_t>(command.Handle.SlotIndex * 6 + command.Target.TargetFace);
+        default:
+            return static_cast<size_t>(-1);
+        }
+    }
+
+    void ForwardRenderer::AssignShadowGraphPassCommands(const SceneRenderContext& ctx)
+    {
+        for (std::unique_ptr<ShadowGraphPass>& pass : m_ShadowGraphPasses)
+        {
+            pass->ClearCommand();
+        }
+
+        for (const ShadowDrawCommand& command : ctx.ShadowDrawCommands)
+        {
+            const size_t slot = GetFixedShadowGraphPassIndex(command);
+            if (slot < m_ShadowGraphPasses.size())
+            {
+                m_ShadowGraphPasses[slot]->Configure(command);
+            }
+        }
+    }
+
     void ForwardRenderer::Initialize()
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
@@ -172,10 +242,14 @@ namespace minEngine
     }
 
     void ForwardRenderer::BuildFrameRenderGraph(
-        size_t shadowPassCount,
         bool enablePostProcess,
         bool presentToBackBuffer)
     {
+        if (RHI* rhi = RenderSystem::Get().GetRHI())
+        {
+            rhi->NotifyAttachmentResourcesDiscarded();
+        }
+
         m_FrameRenderGraph.Reset();
         m_LastShadowResourceFingerprint.clear();
         m_ShadowGraphPasses.clear();
@@ -187,14 +261,15 @@ namespace minEngine
         m_PostSharpenGraphPass = nullptr;
         m_PresentGraphPass = nullptr;
 
-        m_ShadowGraphPasses.reserve(shadowPassCount);
-        m_ShadowGraphPassPtrs.reserve(shadowPassCount);
-        for (size_t shadowIndex = 0; shadowIndex < shadowPassCount; ++shadowIndex)
+        m_ShadowGraphPasses.reserve(kMaxShadowGraphPasses);
+        m_ShadowGraphPassPtrs.reserve(kMaxShadowGraphPasses);
+        for (size_t shadowIndex = 0; shadowIndex < kMaxShadowGraphPasses; ++shadowIndex)
         {
             auto shadowGraphPass = std::make_unique<ShadowGraphPass>(m_ShadowPass);
             shadowGraphPass->SetSlotNames(
                 MakeShadowGraphPassName(shadowIndex),
                 MakeShadowDepthSlotName(shadowIndex));
+            shadowGraphPass->SetPermanentGraphOutput(MakePermanentShadowOutput(shadowIndex));
 
             const std::string passName = MakeShadowGraphPassName(shadowIndex);
             RenderPass& graphPass = m_FrameRenderGraph.AddPass(passName);
@@ -271,20 +346,17 @@ namespace minEngine
         const bool enablePostProcess = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess);
         const bool presentToBackBuffer =
             m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer);
-        const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
-        const size_t shadowPassCount = enableShadows ? ctx.ShadowDrawCommands.size() : 0;
 
-        if (shadowPassCount != m_ConfiguredShadowGraphPassCount
-            || enablePostProcess != m_ConfiguredEnablePostProcess
+        if (enablePostProcess != m_ConfiguredEnablePostProcess
             || presentToBackBuffer != m_ConfiguredPresentToBackBuffer)
         {
             m_FrameRenderGraphBuilt = false;
-            m_ConfiguredShadowGraphPassCount = shadowPassCount;
+            m_PendingShadowBindingInvalidate = true;
         }
 
         if (!m_FrameRenderGraphBuilt)
         {
-            BuildFrameRenderGraph(shadowPassCount, enablePostProcess, presentToBackBuffer);
+            BuildFrameRenderGraph(enablePostProcess, presentToBackBuffer);
         }
 
         if (m_FrameRenderGraph.GetBackbufferWidth() != width
@@ -293,23 +365,15 @@ namespace minEngine
             m_FrameRenderGraph.SetBackbufferDimensions(width, height);
         }
 
-        for (size_t shadowIndex = 0; shadowIndex < m_ShadowGraphPasses.size(); ++shadowIndex)
-        {
-            if (shadowIndex < ctx.ShadowDrawCommands.size())
-            {
-                m_ShadowGraphPasses[shadowIndex]->Configure(ctx.ShadowDrawCommands[shadowIndex]);
-            }
-            else
-            {
-                m_ShadowGraphPasses[shadowIndex]->ClearCommand();
-            }
-        }
+        AssignShadowGraphPassCommands(ctx);
 
         const std::string shadowFingerprint = BuildShadowResourceFingerprint(ctx);
         if (shadowFingerprint != m_LastShadowResourceFingerprint)
         {
+            rhi->NotifyAttachmentResourcesDiscarded();
             m_FrameRenderGraph.InvalidateBake();
             m_LastShadowResourceFingerprint = shadowFingerprint;
+            m_PendingShadowBindingInvalidate = true;
         }
 
         // SkyBoxPass clears SceneColor/Depth when present; otherwise BasePass must clear.
@@ -333,19 +397,20 @@ namespace minEngine
 
     void ForwardRenderer::BindGraphShadowTextures(SceneRenderContext& ctx)
     {
-        for (size_t shadowIndex = 0; shadowIndex < m_ShadowGraphPasses.size(); ++shadowIndex)
+        for (const ShadowDrawCommand& command : ctx.ShadowDrawCommands)
         {
-            ShadowGraphPass& shadowGraphPass = *m_ShadowGraphPasses[shadowIndex];
-            if (shadowIndex >= ctx.ShadowDrawCommands.size())
-            {
-                continue;
-            }
-
-            ShadowDrawCommand& command = ctx.ShadowDrawCommands[shadowIndex];
             if (!command.Handle.IsValid() || command.GraphDepthResourceName.empty())
             {
                 continue;
             }
+
+            const size_t slot = GetFixedShadowGraphPassIndex(command);
+            if (slot >= m_ShadowGraphPasses.size())
+            {
+                continue;
+            }
+
+            ShadowGraphPass& shadowGraphPass = *m_ShadowGraphPasses[slot];
 
             RDGTextureResource* depthResource =
                 m_FrameRenderGraph.FindTextureResource(command.GraphDepthResourceName);
@@ -356,7 +421,6 @@ namespace minEngine
 
             RHITextureRef texture = m_FrameRenderGraph.GetPhysicalTextureShared(*depthResource);
             shadowGraphPass.BindGraphTexture(texture);
-            command.Handle.Texture = texture;
 
             if (command.Type == LightType::Directional)
             {
@@ -364,14 +428,14 @@ namespace minEngine
             }
             else if (command.Type == LightType::Spot)
             {
-                const int slot = command.Handle.SlotIndex;
-                if (slot >= 0 && slot < static_cast<int>(ctx.SpotShadowHandles.size()))
+                const int spotSlot = command.Handle.SlotIndex;
+                if (spotSlot >= 0 && spotSlot < static_cast<int>(ctx.SpotShadowHandles.size()))
                 {
-                    ctx.SpotShadowHandles[static_cast<size_t>(slot)].Texture = texture;
+                    ctx.SpotShadowHandles[static_cast<size_t>(spotSlot)].Texture = texture;
                 }
                 for (auto& entry : ctx.SpotShadowHandleMap)
                 {
-                    if (entry.second.SlotIndex == slot)
+                    if (entry.second.SlotIndex == spotSlot)
                     {
                         entry.second.Texture = texture;
                     }
@@ -379,14 +443,14 @@ namespace minEngine
             }
             else if (command.Type == LightType::Point)
             {
-                const int slot = command.Handle.SlotIndex;
-                if (slot >= 0 && slot < static_cast<int>(ctx.PointShadowHandles.size()))
+                const int pointSlot = command.Handle.SlotIndex;
+                if (pointSlot >= 0 && pointSlot < static_cast<int>(ctx.PointShadowHandles.size()))
                 {
-                    ctx.PointShadowHandles[static_cast<size_t>(slot)].Texture = texture;
+                    ctx.PointShadowHandles[static_cast<size_t>(pointSlot)].Texture = texture;
                 }
                 for (auto& entry : ctx.PointShadowHandleMap)
                 {
-                    if (entry.second.SlotIndex == slot)
+                    if (entry.second.SlotIndex == pointSlot)
                     {
                         entry.second.Texture = texture;
                     }
@@ -418,22 +482,8 @@ namespace minEngine
 
     std::string ForwardRenderer::BuildShadowResourceFingerprint(const SceneRenderContext& ctx) const
     {
-        std::string key;
-        key.reserve(ctx.ShadowDrawCommands.size() * 32);
-        for (const ShadowDrawCommand& command : ctx.ShadowDrawCommands)
-        {
-            key += command.GraphDepthResourceName;
-            key.push_back('#');
-            key += std::to_string(static_cast<uint32_t>(command.Handle.ResourceType));
-            key.push_back('x');
-            key += std::to_string(command.Handle.Resolution.Width);
-            key.push_back('x');
-            key += std::to_string(command.Handle.Resolution.Height);
-            key.push_back('l');
-            key += std::to_string(command.Handle.LayerCount);
-            key.push_back(';');
-        }
-        return key;
+        (void)ctx;
+        return "fixed:" + std::to_string(kShadowMapResolution);
     }
 
     void ForwardRenderer::Shutdown()
@@ -446,7 +496,6 @@ namespace minEngine
 
         m_ShadowGraphPasses.clear();
         m_ShadowGraphPassPtrs.clear();
-        m_ConfiguredShadowGraphPassCount = 0;
         m_FrameRenderGraph.Reset();
         m_LastShadowResourceFingerprint.clear();
         m_PostBufferTexture.reset();
@@ -510,17 +559,32 @@ namespace minEngine
             CollectShadowRequests(ctx);
             BuildShadowDrawCommands(ctx);
         }
+        else
+        {
+            ctx.ShadowDrawCommands.clear();
+            ctx.DirectionalShadowHandle = ShadowResourceHandle{};
+            ctx.SpotShadowHandles.clear();
+            ctx.PointShadowHandles.clear();
+            ctx.SpotShadowHandleMap.clear();
+            ctx.PointShadowHandleMap.clear();
+            ClearUnusedShadowViewProjSlots(ctx);
+        }
 
         m_ShadowPass.m_OpaqueQueue = ctx.OpaqueQueue;
 
         RHICommandList cmdList(rhi);
 
         UpdatePerFrameUBO(ctx);
-        UpdateLightUBO(ctx);
 
         // RND-F08: allocate graph shadow maps before Set1 samples them.
         SetupFrameRenderGraph(cmdList, desc, ctx);
         BindGraphShadowTextures(ctx);
+        if (m_PendingShadowBindingInvalidate)
+        {
+            m_SceneBindings.InvalidateShadowTextureBindings();
+            m_PendingShadowBindingInvalidate = false;
+        }
+        UpdateLightUBO(ctx);
 
         if (RHI* rhiForIbl = RenderSystem::Get().GetRHI())
         {
@@ -621,7 +685,7 @@ namespace minEngine
             lightsData.DirectionalLight.Direction = Vector4(dirLightProxy->m_Direction, 0.0f);
             lightsData.DirectionalLight.Color = Vector4(dirLightProxy->m_LightColor, dirLightProxy->m_Intensity);
             int shadowMapIndex = -1;
-            if (ctx.DirectionalShadowHandle.IsValid())
+            if (ctx.DirectionalShadowHandle.IsValid() && dirLightProxy->m_CastsShadow)
             {
                 shadowMapIndex = ctx.DirectionalShadowHandle.ArrayBaseLayer;
             }
@@ -640,7 +704,8 @@ namespace minEngine
             lightsData.PointLights[pointLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
             int shadowIndex = -1;
             auto pointShadowIt = ctx.PointShadowHandleMap.find(pointLightProxy);
-            if (pointShadowIt != ctx.PointShadowHandleMap.end() && pointShadowIt->second.IsValid())
+            if (pointShadowIt != ctx.PointShadowHandleMap.end() && pointShadowIt->second.IsValid()
+                && pointLightProxy->m_CastsShadow)
             {
                 shadowIndex = pointShadowIt->second.SlotIndex;
                 if (shadowIndex < 0 || shadowIndex >= MAX_POINT_SHADOW_MAPS)
@@ -666,7 +731,8 @@ namespace minEngine
             lightsData.SpotLights[spotLightCount].Color = Vector4(spotLightProxy->m_LightColor, spotLightProxy->m_Intensity);
             int shadowIndex = -1;
             auto spotShadowIt = ctx.SpotShadowHandleMap.find(spotLightProxy);
-            if (spotShadowIt != ctx.SpotShadowHandleMap.end() && spotShadowIt->second.IsValid())
+            if (spotShadowIt != ctx.SpotShadowHandleMap.end() && spotShadowIt->second.IsValid()
+                && spotLightProxy->m_CastsShadow)
             {
                 shadowIndex = spotShadowIt->second.SlotIndex;
                 if (shadowIndex < 0 || shadowIndex >= MAX_SPOT_SHADOW_MAPS)
@@ -902,6 +968,54 @@ namespace minEngine
                 pointLightCount++;
             }
         }
+
+        if (directionalLightCount == 0 && m_DirLightViewProjUniformBuffer && m_CascadeFarPlaneUniformBuffer)
+        {
+            const Matrix4 zeroMatrix{};
+            const float zeroFar = 0.0f;
+            for (int i = 0; i < MAX_CASCADES; ++i)
+            {
+                m_DirLightViewProjUniformBuffer->UpdateSubresource(
+                    &zeroMatrix,
+                    sizeof(Matrix4) * static_cast<uint32_t>(i),
+                    sizeof(Matrix4));
+                m_CascadeFarPlaneUniformBuffer->UpdateSubresource(
+                    &zeroFar,
+                    sizeof(float) * 4 * static_cast<uint32_t>(i),
+                    sizeof(float));
+            }
+        }
+
+        ClearUnusedShadowViewProjSlots(ctx);
+    }
+
+    void ForwardRenderer::ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx)
+    {
+        if (!m_SpotLightViewProjUniformBuffer)
+        {
+            return;
+        }
+
+        const Matrix4 zeroMatrix{};
+        for (int slot = 0; slot < MAX_SPOT_SHADOW_MAPS; ++slot)
+        {
+            bool slotInUse = false;
+            for (const ShadowResourceHandle& handle : ctx.SpotShadowHandles)
+            {
+                if (handle.IsValid() && handle.SlotIndex == slot)
+                {
+                    slotInUse = true;
+                    break;
+                }
+            }
+            if (!slotInUse)
+            {
+                m_SpotLightViewProjUniformBuffer->UpdateSubresource(
+                    &zeroMatrix,
+                    sizeof(Matrix4) * static_cast<uint32_t>(slot),
+                    sizeof(Matrix4));
+            }
+        }
     }
 
     void ForwardRenderer::BuildRenderQueue(SceneRenderContext& ctx)
@@ -987,16 +1101,17 @@ namespace minEngine
         result.CascadeFarPlaneVS = cascadeFarPlanesVS;
 
         // === Split the camera frustum ===
-        // An OpenGL NDC cube has corners from (-1, -1, -1) to (1, 1, 1)
+        const float nearNdcZ = GetFrustumNdcZNear();
+        const float farNdcZ = GetFrustumNdcZFar();
         Vector4 ndcCorners[8] = {
-            Vector4(-1, -1, -1, 1), // Near bottom left
-            Vector4(1, -1, -1, 1),  // Near bottom right
-            Vector4(1, 1, -1, 1),   // Near top right
-            Vector4(-1, 1, -1, 1),  // Near top left
-            Vector4(-1, -1, 1, 1), // Far bottom left
-            Vector4(1, -1, 1, 1),  // Far bottom right
-            Vector4(1, 1, 1, 1),   // Far top right
-            Vector4(-1, 1, 1, 1)   // Far top left
+            Vector4(-1, -1, nearNdcZ, 1), // Near bottom left
+            Vector4(1, -1, nearNdcZ, 1),  // Near bottom right
+            Vector4(1, 1, nearNdcZ, 1),   // Near top right
+            Vector4(-1, 1, nearNdcZ, 1),  // Near top left
+            Vector4(-1, -1, farNdcZ, 1),  // Far bottom left
+            Vector4(1, -1, farNdcZ, 1),   // Far bottom right
+            Vector4(1, 1, farNdcZ, 1),    // Far top right
+            Vector4(-1, 1, farNdcZ, 1)    // Far top left
         };
         // Build the whole camera frustum corners in world space
         Frustum cameraFrustumWS;    // "WS" stands for "world space"
@@ -1040,8 +1155,8 @@ namespace minEngine
             }
 
             ExpandCascadeZForShadowCasters(aabb, lightView, opaqueQueue);
-            
-            // Texel snapping 
+
+            // Texel snapping
             Vector3 aabbSize = aabb.GetSize();
             float texelSizeX = aabbSize.x / shadowRequest.Resolution.Width;
             float texelSizeY = aabbSize.y / shadowRequest.Resolution.Height;
@@ -1054,7 +1169,13 @@ namespace minEngine
 
 
             // Build the light Matrices for this cascade based on the bounding box of the split frustum in light space.
-            Matrix4 lightProj = glm::ortho(aabb.Min.x, aabb.Max.x, aabb.Min.y, aabb.Max.y, -aabb.Max.z, -aabb.Min.z);
+            Matrix4 lightProj = RHIClipSpace::MakeOrthographic(
+                aabb.Min.x,
+                aabb.Max.x,
+                aabb.Min.y,
+                aabb.Max.y,
+                -aabb.Max.z,
+                -aabb.Min.z);
             // TODO: what's wrong with this?
             // Vector4 aabbCenterWS = glm::inverse(lightView) * Vector4(aabb.GetCenter(), 1.0f);
             // aabbCenterWS /= aabbCenterWS.w;
@@ -1106,7 +1227,7 @@ namespace minEngine
         float fov = glm::radians(glm::clamp(outerAngle * 2.0f, 1.0f, 179.0f));
 
         Matrix4 lightView = glm::lookAt(lightPos, lightPos + lightDir, up);
-        Matrix4 lightProj = glm::perspective(fov, 1.0f, kSpotShadowNear, kSpotShadowFar);
+        Matrix4 lightProj = RHIClipSpace::MakePerspective(fov, 1.0f, kSpotShadowNear, kSpotShadowFar);
         command.ViewProj = lightProj * lightView;
 
         return command;
@@ -1125,7 +1246,8 @@ namespace minEngine
         }
 
         const Vector3 lightPos = lightProxy->m_Position;
-        Matrix4 lightProj = glm::perspective(glm::radians(90.0f), 1.0f, kPointShadowNear, kPointShadowFar);
+        Matrix4 lightProj =
+            RHIClipSpace::MakePerspective(glm::radians(90.0f), 1.0f, kPointShadowNear, kPointShadowFar);
 
         const Vector3 directions[6] = {
             Vector3(1.0f, 0.0f, 0.0f),

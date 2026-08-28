@@ -5,6 +5,8 @@
 #include "Render/EnginePassUniforms.h"
 #include "Render/RenderPipeline/ForwardRenderer.h"
 #include "Render/RHI/RHI.h"
+#include "Render/RHI/RHIClipSpaceCapabilities.h"
+#include "Render/RHI/RHIBackend.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
@@ -35,10 +37,13 @@ namespace minEngine
             // Cull light-facing faces so receivers (especially large ground planes) do not
             // write their own depth into the map — primary fix for directional self-shadow acne.
             m_ShadowPSODescTemplate.RasterizerState.bCullEnabled = true;
-            m_ShadowPSODescTemplate.RasterizerState.CullMode = RHICullMode::Front;
+            m_ShadowPSODescTemplate.RasterizerState.CullMode = GetShadowPassCapabilities().GetEffectiveCullMode();
             // Extra depth push for remaining two-sided / grazing casters.
             m_ShadowPSODescTemplate.RasterizerState.DepthBiasSlopeScale = 2.0f;
             m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant = 4.0f;
+            // Depth-only pass: tell Vulkan PSO creation to use zero color attachments.
+            m_ShadowPSODescTemplate.RenderTargetsEnabled = 0;
+            m_ShadowPSODescTemplate.DepthStencilTargetFormat = TextureFormat::DEPTH32;
 
             if (pipeline)
             {
@@ -235,7 +240,7 @@ namespace minEngine
 
         const ShadowResolution& resolution = command.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
-        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
+        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::ShadowMap2D);
         UpdateLightViewProjBuffer(command.ViewProj);
         ShadowPassParamsUBO params{};
         params.UseLinearDepth = 0;
@@ -259,7 +264,7 @@ namespace minEngine
 
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
-        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
+        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::ShadowMap2D);
 
         UpdateLightViewProjBuffer(shadowCommand.ViewProj);
         ShadowPassParamsUBO params{};
@@ -291,7 +296,7 @@ namespace minEngine
 
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
-        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
+        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::CubeMapFace);
 
         UpdateLightViewProjBuffer(shadowCommand.ViewProj);
         ShadowPassParamsUBO params{};

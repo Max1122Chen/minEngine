@@ -31,7 +31,7 @@
 | `ED-F01-S03` | 统一 Editor 主循环；删除 smoke 分叉 | Planned | VK/GL 同一 `Run()`；无 `m_VulkanSceneSmokeMode` |
 | `ED-F01-S04` | Scene viewport 离屏 RT + `EditorRHIImGuiTexture` | Planned | ImGui 内见 scene color；`PresentPass` off |
 | `ED-F01-S05` | `SceneEditingViewportClient` navigation + 选择/gizmo | Planned | orbit/fly 与 GL 一致 |
-| `ED-F01-S06` | Shadow + 场景 shadows `set=`（原 F05-S07e） | Planned | VK viewport 阴影可辨；GL 回归 |
+| `ED-F01-S06` | Shadow + 场景 shadows `set=`（原 F05-S07e） | Implemented / pending verify | VK viewport 阴影可辨；GL 回归 |
 | `ED-F01-S07` | Sky / IBL / EnvMapCapture（原 F05-S07f） | Planned | VK 天空/IBL 目视；GL 回归 |
 | `ED-F01-S08` | Material viewport + 其他 ImGui 纹理消费者 | Planned | Material 编辑器 VK 预览可用 |
 | `ED-F01-S09+` | 缩略图、Inspector 预览等 | Deferred | 按 backlog 单开子切片 |

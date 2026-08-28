@@ -1193,6 +1193,13 @@ namespace minEngine
         m_AttachmentViewCache.clear();
     }
 
+    void VulkanRHI::NotifyAttachmentResourcesDiscarded()
+    {
+#if defined(MINENGINE_HAS_VULKAN)
+        DestroyOwnedAttachmentImageViews();
+#endif
+    }
+
     VkImageView VulkanRHI::GetOrCreateAttachmentImageView(
         VulkanRHITexture* texture,
         int32_t arraySlice,
@@ -1203,15 +1210,20 @@ namespace minEngine
             return VK_NULL_HANDLE;
         }
 
-        // Default full view covers mip0 + all layers for ordinary 2D RTs.
-        if (arraySlice < 0 && mipIndex == 0)
+        // Default full view covers mip0 for ordinary 2D RTs. Array/cube attachments must use a
+        // single-layer VK_IMAGE_VIEW_TYPE_2D (framebuffer cannot bind 2D_ARRAY/CUBE views).
+        const RHITextureDimension dimension = texture->GetDesc().Dimension;
+        const bool needsSingleLayerView =
+            dimension == RHITextureDimension::Texture2DArray ||
+            dimension == RHITextureDimension::TextureCube;
+        if (arraySlice < 0 && mipIndex == 0 && !needsSingleLayerView)
         {
             return texture->GetImageView();
         }
 
         AttachmentViewKey key{};
         key.Image = texture->GetImage();
-        key.ArraySlice = arraySlice;
+        key.ArraySlice = arraySlice >= 0 ? arraySlice : 0;
         key.MipIndex = mipIndex;
         const auto existing = m_AttachmentViewCache.find(key);
         if (existing != m_AttachmentViewCache.end())
@@ -1970,7 +1982,8 @@ namespace minEngine
         }
 
         const uint32_t mipIndex = hasColor ? color0.MipIndex : 0;
-        const int32_t arraySlice = hasColor ? color0.ArraySlice : -1;
+        const int32_t colorArraySlice = hasColor ? color0.ArraySlice : -1;
+        const int32_t depthArraySlice = hasDepth ? info.DepthStencil.ArraySlice : -1;
         uint32_t width = hasColor ? colorTexture->GetDesc().Width : depthTexture->GetDesc().Width;
         uint32_t height = hasColor ? colorTexture->GetDesc().Height : depthTexture->GetDesc().Height;
         if (hasColor && mipIndex > 0)
@@ -1982,13 +1995,21 @@ namespace minEngine
         OffscreenFramebufferKey fbKey{};
         fbKey.RenderPass = renderPass;
         fbKey.ColorView =
-            hasColor ? GetOrCreateAttachmentImageView(colorTexture, arraySlice, mipIndex) : VK_NULL_HANDLE;
-        fbKey.DepthView = hasDepth ? depthTexture->GetImageView() : VK_NULL_HANDLE;
+            hasColor ? GetOrCreateAttachmentImageView(colorTexture, colorArraySlice, mipIndex)
+                     : VK_NULL_HANDLE;
+        fbKey.DepthView =
+            hasDepth ? GetOrCreateAttachmentImageView(depthTexture, depthArraySlice, 0)
+                     : VK_NULL_HANDLE;
         fbKey.Width = width;
         fbKey.Height = height;
         if (hasColor && fbKey.ColorView == VK_NULL_HANDLE)
         {
             ME_CORE_ERROR("VulkanRHI: failed to create color attachment image view (slice/mip).");
+            return;
+        }
+        if (hasDepth && fbKey.DepthView == VK_NULL_HANDLE)
+        {
+            ME_CORE_ERROR("VulkanRHI: failed to create depth attachment image view (slice).");
             return;
         }
         VkFramebuffer framebuffer = GetOrCreateOffscreenFramebuffer(fbKey);

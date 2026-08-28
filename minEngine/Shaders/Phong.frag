@@ -167,6 +167,27 @@ vec2 Rotate2D(vec2 v, float angle)
     return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
 }
 
+void MinEngineShadowProject(vec4 fragPosLightSpace, out vec2 uv, out float depth)
+{
+    vec3 ndc = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    uv = ndc.xy * 0.5 + 0.5;
+#if defined(MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y) && MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y
+    uv.y = 1.0 - uv.y;
+#endif
+#if defined(MINENGINE_CLIP_DEPTH_ZERO_TO_ONE) && MINENGINE_CLIP_DEPTH_ZERO_TO_ONE
+    depth = ndc.z;
+#elif defined(MINENGINE_CLIP_SPACE_ZO)
+    depth = ndc.z;
+#else
+    depth = ndc.z * 0.5 + 0.5;
+#endif
+}
+
+bool MinEngineShadowSampleInBounds(vec2 uv, float depth)
+{
+    return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 && depth >= 0.0 && depth <= 1.0;
+}
+
 out vec4 FragColor;
 
 void main()
@@ -334,18 +355,16 @@ float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
 
 float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5; // Transform from NDC to [0,1] range
+    vec2 baseUV;
+    float currentDepth;
+    MinEngineShadowProject(fragPosLightSpace, baseUV, currentDepth);
 
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
+    if (!MinEngineShadowSampleInBounds(baseUV, currentDepth))
     {
         return 0.0;
     }
 
     vec2 texelSize = 1.0 / vec2(textureSize(u_DirLightShadowMap, 0).xy);
-    float currentDepth = projCoords.z;
 
     float shadow = 0.0;
     for(int x = -1; x <= 1; ++x)
@@ -353,7 +372,7 @@ float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bi
         for(int y = -1; y <= 1; ++y)
         {
             vec2 offset = vec2(float(x), float(y)) * texelSize * kDirBoxRadius;
-            vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+            vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
             float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
             shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
         }
@@ -364,25 +383,23 @@ float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bi
 
 float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec2 baseUV;
+    float currentDepth;
+    MinEngineShadowProject(fragPosLightSpace, baseUV, currentDepth);
 
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
+    if (!MinEngineShadowSampleInBounds(baseUV, currentDepth))
     {
         return 0.0;
     }
 
     vec2 texelSize = 1.0 / vec2(textureSize(u_DirLightShadowMap, 0).xy);
-    float currentDepth = projCoords.z;
-    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+    float angle = Hash12(baseUV * 4096.0) * 6.2831853;
 
     float shadow = 0.0;
     for(int i = 0; i < kPoissonSampleCount; ++i)
     {
         vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kDirPoissonRadius;
-        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
         float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
         shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
     }
@@ -392,19 +409,17 @@ float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, floa
 
 float SampleDirShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec2 baseUV;
+    float currentDepth;
+    MinEngineShadowProject(fragPosLightSpace, baseUV, currentDepth);
 
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
+    if (!MinEngineShadowSampleInBounds(baseUV, currentDepth))
     {
         return 0.0;
     }
 
     vec2 texelSize = 1.0 / vec2(textureSize(u_DirLightShadowMap, 0).xy);
-    float currentDepth = projCoords.z;
-    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+    float angle = Hash12(baseUV * 4096.0) * 6.2831853;
 
     // PCSS step 1: blocker search.
     float blockerDepthSum = 0.0;
@@ -412,7 +427,7 @@ float SampleDirShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, float shadowLayer, 
     for(int i = 0; i < kPoissonSampleCount; ++i)
     {
         vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kDirPcssSearchRadius;
-        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
         float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
         if (currentDepth - bias > sampledDepth)
         {
@@ -435,7 +450,7 @@ float SampleDirShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, float shadowLayer, 
     for(int i = 0; i < kPoissonSampleCount; ++i)
     {
         vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * filterRadius;
-        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
         float sampledDepth = texture(u_DirLightShadowMap, vec3(sampleUV, shadowLayer)).r;
         shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
     }
@@ -458,26 +473,23 @@ float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
 
 float SampleSpotShadowPCF_Box(vec4 fragPosLightSpace, int shadowIndex, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec2 baseUV;
+    float currentDepth;
+    MinEngineShadowProject(fragPosLightSpace, baseUV, currentDepth);
 
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
+    if (!MinEngineShadowSampleInBounds(baseUV, currentDepth))
     {
         return 0.0;
     }
 
     vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
-    float currentDepth = projCoords.z;
-
     float shadow = 0.0;
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
             vec2 offset = vec2(float(x), float(y)) * texelSize * kSpotBoxRadius;
-            vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+            vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
             float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
             shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
         }
@@ -488,25 +500,23 @@ float SampleSpotShadowPCF_Box(vec4 fragPosLightSpace, int shadowIndex, float bia
 
 float SampleSpotShadowPCF_Poisson(vec4 fragPosLightSpace, int shadowIndex, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec2 baseUV;
+    float currentDepth;
+    MinEngineShadowProject(fragPosLightSpace, baseUV, currentDepth);
 
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
+    if (!MinEngineShadowSampleInBounds(baseUV, currentDepth))
     {
         return 0.0;
     }
 
     vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
-    float currentDepth = projCoords.z;
-    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+    float angle = Hash12(baseUV * 4096.0) * 6.2831853;
 
     float shadow = 0.0;
     for(int i = 0; i < kPoissonSampleCount; ++i)
     {
         vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kSpotPoissonRadius;
-        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
         float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
         shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
     }
@@ -516,26 +526,24 @@ float SampleSpotShadowPCF_Poisson(vec4 fragPosLightSpace, int shadowIndex, float
 
 float SampleSpotShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, int shadowIndex, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec2 baseUV;
+    float currentDepth;
+    MinEngineShadowProject(fragPosLightSpace, baseUV, currentDepth);
 
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
-       projCoords.y < 0.0 || projCoords.y > 1.0 ||
-       projCoords.z < 0.0 || projCoords.z > 1.0)
+    if (!MinEngineShadowSampleInBounds(baseUV, currentDepth))
     {
         return 0.0;
     }
 
     vec2 texelSize = 1.0 / vec2(textureSize(u_SpotShadowMaps[shadowIndex], 0));
-    float currentDepth = projCoords.z;
-    float angle = Hash12(projCoords.xy * 4096.0) * 6.2831853;
+    float angle = Hash12(baseUV * 4096.0) * 6.2831853;
 
     float blockerDepthSum = 0.0;
     float blockerCount = 0.0;
     for(int i = 0; i < kPoissonSampleCount; ++i)
     {
         vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * kSpotPcssSearchRadius;
-        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
         float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
         if (currentDepth - bias > sampledDepth)
         {
@@ -557,7 +565,7 @@ float SampleSpotShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, int shadowIndex, f
     for(int i = 0; i < kPoissonSampleCount; ++i)
     {
         vec2 offset = Rotate2D(kPoissonDisk[i], angle) * texelSize * filterRadius;
-        vec2 sampleUV = clamp(projCoords.xy + offset, 0.0, 1.0);
+        vec2 sampleUV = clamp(baseUV + offset, 0.0, 1.0);
         float sampledDepth = texture(u_SpotShadowMaps[shadowIndex], sampleUV).r;
         shadow += (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
     }

@@ -2,6 +2,7 @@
 
 #include "EngineShaderBindings.h"
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -61,6 +62,8 @@ namespace minEngine
         m_CachedIblIrradianceTexture = nullptr;
         m_CachedIblPrefilterTexture = nullptr;
         m_CachedIblBrdfLutTexture = nullptr;
+        m_ShadowBindingGeneration = 0;
+        m_BuiltShadowBindingGeneration = UINT32_MAX;
     }
 
     RHIShaderResourceViewRef EngineSceneBindingSets::GetOrCreateTextureSRV(
@@ -155,6 +158,18 @@ namespace minEngine
         return m_SceneSet0BySlot[slot].get();
     }
 
+    void EngineSceneBindingSets::InvalidateShadowTextureBindings()
+    {
+        ++m_ShadowBindingGeneration;
+        m_CachedDirShadowTexture = nullptr;
+        m_CachedSpotShadowTextures.fill(nullptr);
+        m_CachedPointShadowTextures.fill(nullptr);
+        m_DirShadowSRV.reset();
+        m_SpotShadowSRVs.fill(nullptr);
+        m_PointShadowSRVs.fill(nullptr);
+        m_TextureViewCache.Clear();
+    }
+
     void EngineSceneBindingSets::BuildSceneSet1(
         RHICommandList& cmdList,
         const SceneRenderContext& ctx,
@@ -167,7 +182,8 @@ namespace minEngine
             return;
         }
 
-        bool sceneSet1Dirty = !m_SceneSet1;
+        bool sceneSet1Dirty =
+            !m_SceneSet1 || m_ShadowBindingGeneration != m_BuiltShadowBindingGeneration;
 
         RHITexture* dirShadowTexture = nullptr;
         if (ctx.DirectionalShadowHandle.IsValid())
@@ -181,13 +197,16 @@ namespace minEngine
             sceneSet1Dirty = true;
         }
 
-        for (size_t i = 0; i < ctx.SpotShadowHandles.size() && i < m_SpotShadowSRVs.size(); ++i)
+        for (size_t i = 0; i < MAX_SPOT_SHADOW_MAPS; ++i)
         {
             RHITexture* spotTexture = nullptr;
-            const ShadowResourceHandle& handle = ctx.SpotShadowHandles[i];
-            if (handle.IsValid())
+            if (i < ctx.SpotShadowHandles.size())
             {
-                spotTexture = handle.Texture.get();
+                const ShadowResourceHandle& handle = ctx.SpotShadowHandles[i];
+                if (handle.IsValid())
+                {
+                    spotTexture = handle.Texture.get();
+                }
             }
 
             if (spotTexture != m_CachedSpotShadowTextures[i])
@@ -198,13 +217,16 @@ namespace minEngine
             }
         }
 
-        for (size_t i = 0; i < ctx.PointShadowHandles.size() && i < m_PointShadowSRVs.size(); ++i)
+        for (size_t i = 0; i < MAX_POINT_SHADOW_MAPS; ++i)
         {
             RHITexture* pointTexture = nullptr;
-            const ShadowResourceHandle& handle = ctx.PointShadowHandles[i];
-            if (handle.IsValid())
+            if (i < ctx.PointShadowHandles.size())
             {
-                pointTexture = handle.Texture.get();
+                const ShadowResourceHandle& handle = ctx.PointShadowHandles[i];
+                if (handle.IsValid())
+                {
+                    pointTexture = handle.Texture.get();
+                }
             }
 
             if (pointTexture != m_CachedPointShadowTextures[i])
@@ -263,6 +285,16 @@ namespace minEngine
         resources[kSet1_IBLPrefilter] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[1].get()};
         resources[kSet1_IBLBrdfLut] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[2].get()};
 
-        m_SceneSet1 = cmdList.CreateShaderBindingSet(m_SceneSet1Layout.get(), resources);
+        RHIShaderBindingSetRef newSceneSet1 =
+            cmdList.CreateShaderBindingSet(m_SceneSet1Layout.get(), resources);
+        if (newSceneSet1)
+        {
+            m_SceneSet1 = std::move(newSceneSet1);
+            m_BuiltShadowBindingGeneration = m_ShadowBindingGeneration;
+        }
+        else
+        {
+            ME_CORE_ERROR("EngineSceneBindingSets: failed to create scene set 1 (shadow/IBL bindings).");
+        }
     }
 }
