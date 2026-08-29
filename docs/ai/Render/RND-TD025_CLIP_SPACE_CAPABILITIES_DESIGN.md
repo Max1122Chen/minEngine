@@ -5,7 +5,7 @@
 - **Type:** Design Spec
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-28
+- **Last updated:** 2026-08-29
 - **Related:** ED-F01 · BUG-RENDER-010 · [Implementation](./RND-TD025_CLIP_SPACE_CAPABILITIES_IMPLEMENTATION.md)
 
 ## TL;DR
@@ -68,9 +68,62 @@ Shadow 有效剔除：`ViewportFlipY=false` → `Front`（GL/VK 相同）。
 - [ ] GL 回归无变
 - [ ] 关 point/spot Cast Shadow 不崩溃
 - [ ] `grep IsVulkan` clip 分支仅剩编译目标/窗口创建
+- [ ] ~~Shadow depth 可视化（TD025-S08）~~ — **已取消**（2026-08-29 分层回退）
+
+## BUG-RENDER-010 调查状态（2026-08-29）
+
+**目视结论：** TD-025 S01–S06 落地后，VK 三种阴影仍错；GL 正常。BUG-RENDER-010 文档「Fixed」不可信，状态应为 **未闭合**。
+
+### 强信号
+
+| 观察 | 推论 |
+|------|------|
+| Dir + Spot + Point 全坏 | 共同读路径（`MinEngineShadowProject`）不可能是唯一根因；Point 不经该函数 |
+| Dir+Point 同时开 → 多层平行四边形 | 更像错误 depth/坐标叠加，而非单纯 `uv.y` flip |
+| 关 plane Cast Shadow → 大暗斑消失 | ShadowPass 写入链确实在影响画面 |
+
+### 调查优先级（共识，暂停主查采样 flip）
+
+```text
+① Shadow Map 写出来对不对（depth 可视化）     ← P0
+② Point Shadow vs EnvMapCapture（可复用字段）
+③ ShadowPass VkViewport / depth-only RP / layer
+④ ViewProj / clip → NDC 数据流
+⑤ MinEngineShadowProject / inject / Y flip
+⑥ PCF / bias
+```
+
+**策略（2026-08-29 更新）：** 已完成分层回退 — shader/flip 注入回到 `bbdcdc` 语义；从 **Layer C（ZO depth 读）** 重新开始，一次只动一层。见 [handoff](../sessions/2026-08-29-vulkan-shadow-handoff.md)。
+
+### 写读链审计摘要
+
+- **数据流正确：** 同帧同 `ViewProj`、同 world pos、同 RDG 纹理句柄；帧顺序 Shadow 写 → Base 读。
+- **Dir/Spot：** 写硬件 ZO depth；读 `ndc.z`（须 inject `MINENGINE_CLIP_DEPTH_ZERO_TO_ONE`）。
+- **Point：** 写/读均为 `length(pos-light)/far`，不经 `MinEngineShadowProject`。
+- **VK 可疑断点：** Layer B（Shadow `flipY=false` vs Scene `flipY=true`）与 Layer C 闭合；实现中 `SAMPLE_FLIP_Y=1` 与设计「Lit 无额外 Y flip」不一致。
+- **Viewport 已核实：** `RHIViewportConvention::ShadowMap2D` → `GetViewportFlipY` → `vkCmdSetViewport` 确实 `y=0,height=+H`（非 no-op）。
+
+### EnvMapCapture vs Point Shadow（可对齐 / 不可对齐）
+
+| 可对比 | EnvMap | Point Shadow |
+|--------|--------|----------------|
+| 6 面 target/up、`CubeMapFace` viewport、`*RH_ZO` | ✅ 同源 | ✅ |
+| Depth 附件 | 独立 **2D** depth（每面复用） | **Depth Cube** |
+| FS 输出 | color | `gl_FragDepth` 线性 |
+| Cull | 默认不剔除 | Front |
+
+EnvMap 正常 **不能** 直接证明 depth cube 离屏写正确。
+
+### 实现与设计张力（回退后）
+
+- `MinEngineShadowProject` 与 `ShaderCompiler` flip/ZO 注入 **已移除**（2026-08-29）。
+- CPU 仍用 `RHIClipSpace` ZO 矩阵（Layer A）；shader 仍用 `projCoords.z` 直读（bbdcdc，未区分 ZO）。
+- 下一步：先闭合 Layer C depth，再按需 **二选一** viewport flip 或 sample flip（勿同时）。
 
 ## 变更记录
 
 | 日期 | 说明 |
 |------|------|
 | 2026-08-28 | Draft；用户审阅通过（§7 CSM 不改） |
+| 2026-08-29 | §BUG-RENDER-010 调查状态、优先级、写读审计 |
+| 2026-08-29 | 分层回退；S08 取消；handoff 文档 |

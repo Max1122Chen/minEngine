@@ -38,9 +38,11 @@ namespace minEngine
             // write their own depth into the map — primary fix for directional self-shadow acne.
             m_ShadowPSODescTemplate.RasterizerState.bCullEnabled = true;
             m_ShadowPSODescTemplate.RasterizerState.CullMode = GetShadowPassCapabilities().GetEffectiveCullMode();
+            m_ShadowPSODescTemplate.RasterizerState.DepthBiasSlopeScale =
+                GetShadowPassCapabilities().DepthBiasSlopeScale;
+            m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant =
+                GetShadowPassCapabilities().DepthBiasConstant;
             // Extra depth push for remaining two-sided / grazing casters.
-            m_ShadowPSODescTemplate.RasterizerState.DepthBiasSlopeScale = 2.0f;
-            m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant = 4.0f;
             // Depth-only pass: tell Vulkan PSO creation to use zero color attachments.
             m_ShadowPSODescTemplate.RenderTargetsEnabled = 0;
             m_ShadowPSODescTemplate.DepthStencilTargetFormat = TextureFormat::DEPTH32;

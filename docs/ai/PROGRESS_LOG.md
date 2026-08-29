@@ -86,6 +86,15 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 
 ## Entry Template (Append for each meaningful task)
 
+### 2026-08-29 - BUG-RENDER-010: layered rollback baseline before convention close
+- Goal: Freeze workspace as pre-fix baseline — keep TD-025 caps/matrix/viewport infra; roll back failed shader flip/`MinEngineShadowProject` inject stack; document GL→VK shadow convention gaps.
+- Main changes:
+  - Shader sampling back to `projCoords * 0.5 + 0.5` (`MaterialSceneShadows`, `Phong.frag`); remove `InjectClipSpaceDefines` / sample flip inject from `ShaderCompiler`.
+  - Retain `RHIClipSpaceCapabilities` / `RHIClipSpace` / ShadowPass convention + caps bias; dir shadow index gate.
+  - Docs: reopen BUG-RENDER-010; gap design `RND-TD025_SHADOW_CONVENTION_GAP_DESIGN.md`; session handoff note.
+- Verify: build not re-run in this commit; next: Step 1 ZO depth read only.
+- Status: Vulkan shadows still Open / incorrect by design at this baseline.
+
 ### 2026-08-28 - BUG-RENDER-010: Vulkan directional shadow plane false self-shadow
 - Goal: Fix VK Editor CSM shadow — large false shadow on 100×100 plane (plane self-shadow via sampling); cube shadow OK at some angles.
 - Root cause: ShadowPass Z remap + OpenGL `glm::ortho` light matrices vs lit-pass `*0.5+0.5` sampling mismatch; CSM frustum used OpenGL NDC corners with Vulkan `perspectiveRH_ZO` camera.

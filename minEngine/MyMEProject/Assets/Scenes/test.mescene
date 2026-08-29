@@ -31,15 +31,15 @@
                     },
                     "m_Transform": {
                         "Position": [
-                            14.748750686645508,
-                            51.321937561035156,
-                            5.492066383361816
+                            14.748751640319824,
+                            18.642776489257813,
+                            -15.227285385131836
                         ],
                         "Rotation": {
                             "W": 0.9984459280967712,
-                            "X": -3.513404180921498e-07,
-                            "Y": 0.05572933331131935,
-                            "Z": 1.2355491207927116e-07
+                            "X": -3.51343601323606e-07,
+                            "Y": 0.05572934076189995,
+                            "Z": 1.2356123590961943e-07
                         },
                         "Scale": [
                             4.0,
@@ -64,27 +64,7 @@
                         }
                     },
                     "m_PhysicsBodyId": 0,
-                    "m_bSimulatePhysics": true
-                },
-                {
-                    "$ptr_typeName": "minEngine::BoxColliderComponent",
-                    "m_Guid": {
-                        "High": 15150371143085278081,
-                        "Low": 11697683112345236733
-                    },
-                    "m_HalfExtent": [
-                        0.5,
-                        0.5,
-                        0.5
-                    ],
-                    "m_Name": "",
-                    "m_ObjectChannel": 1,
-                    "m_Owner": {
-                        "$guid": {
-                            "high": 2269251532856313338,
-                            "low": 11094257267653316277
-                        }
-                    }
+                    "m_bSimulatePhysics": false
                 }
             ],
             "m_Guid": {
@@ -221,27 +201,7 @@
                         }
                     },
                     "m_PhysicsBodyId": 1,
-                    "m_bSimulatePhysics": true
-                },
-                {
-                    "$ptr_typeName": "minEngine::BoxColliderComponent",
-                    "m_Guid": {
-                        "High": 2726419577445367861,
-                        "Low": 10411928496101145021
-                    },
-                    "m_HalfExtent": [
-                        1.100000023841858,
-                        0.5,
-                        1.7000000476837158
-                    ],
-                    "m_Name": "",
-                    "m_ObjectChannel": 0,
-                    "m_Owner": {
-                        "$guid": {
-                            "high": 2752187127547708369,
-                            "low": 10834008049559124436
-                        }
-                    }
+                    "m_bSimulatePhysics": false
                 }
             ],
             "m_Guid": {

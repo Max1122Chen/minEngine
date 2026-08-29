@@ -125,88 +125,8 @@ namespace minEngine
             return flattened;
         }
 
-        bool TryRemapPassLocalOpenGLFlatBinding(
-            const std::string& debugName,
-            uint32_t binding,
-            uint32_t& outFlat)
+        std::string RemapLayoutBlockForOpenGL(const std::string& block)
         {
-            using namespace EngineShaderBindings;
-
-            const auto contains = [&](const char* token) -> bool
-            {
-                return debugName.find(token) != std::string::npos;
-            };
-
-            if (contains("ShadowPass"))
-            {
-                switch (binding)
-                {
-                case kShadowPass_LightViewProj:
-                    outFlat = kGL_ShadowPassLightViewProjUBO;
-                    return true;
-                case kShadowPass_PerObject:
-                    outFlat = kGL_PerObjectUBO;
-                    return true;
-                case kShadowPass_Params:
-                    outFlat = kGL_ShadowPassParamsUBO;
-                    return true;
-                default:
-                    return false;
-                }
-            }
-
-            if (contains("Present") || contains("FXAA") || contains("Sharpen"))
-            {
-                switch (binding)
-                {
-                case kEnginePost_SceneColorSRV:
-                    outFlat = kGL_EnginePostSceneColorUnit;
-                    return true;
-                case kEnginePost_Params:
-                    outFlat = kGL_EnginePostParamsUBO;
-                    return true;
-                default:
-                    return false;
-                }
-            }
-
-            if (contains("background"))
-            {
-                switch (binding)
-                {
-                case kSkyPass_EnvironmentSRV:
-                    outFlat = kGL_SkyEnvironmentUnit;
-                    return true;
-                case kSkyPass_FrameData:
-                    outFlat = kGL_SkyFrameDataUBO;
-                    return true;
-                default:
-                    return false;
-                }
-            }
-
-            if (contains("equirect_to_cubemap"))
-            {
-                switch (binding)
-                {
-                case kEnvCapture_SourceSRV:
-                    outFlat = kGL_EnvCaptureSourceUnit;
-                    return true;
-                case kEnvCapture_FrameData:
-                    outFlat = kGL_EnvCaptureFrameDataUBO;
-                    return true;
-                default:
-                    return false;
-                }
-            }
-
-            return false;
-        }
-
-        std::string RemapLayoutBlockForOpenGL(const std::string& block, const std::string& debugName)
-        {
-            using namespace EngineShaderBindings;
-
             static const std::regex kSetPattern(R"(\bset\s*=\s*(\d+))");
             static const std::regex kBindingPattern(R"(\bbinding\s*=\s*(\d+))");
 
@@ -224,15 +144,7 @@ namespace minEngine
             {
                 const uint32_t logicalBinding = static_cast<uint32_t>(std::stoul(bindingMatch[1].str()));
                 uint32_t flatBinding = logicalBinding;
-                if (setIndex == kSetShadowPass || setIndex == kSetEnginePost || setIndex == kSetSkyPass
-                    || setIndex == kSetEnvCapture)
-                {
-                    if (!TryRemapPassLocalOpenGLFlatBinding(debugName, logicalBinding, flatBinding))
-                    {
-                        flatBinding = logicalBinding;
-                    }
-                }
-                else if (!TryRemapOpenGLFlatBinding(setIndex, logicalBinding, flatBinding))
+                if (!TryRemapOpenGLFlatBinding(setIndex, logicalBinding, flatBinding))
                 {
                     flatBinding = logicalBinding;
                 }
@@ -287,9 +199,7 @@ namespace minEngine
         return target == ShaderSpirvTarget::OpenGL ? "opengl" : "vulkan1.2";
     }
 
-    std::string ShaderCompiler::FlattenDescriptorSetsForOpenGL(
-        const std::string& source,
-        const std::string& debugName)
+    std::string ShaderCompiler::FlattenDescriptorSetsForOpenGL(const std::string& source)
     {
         static const std::regex kLayoutBlock(R"(layout\s*\([^)]+\))");
 
@@ -302,58 +212,11 @@ namespace minEngine
         {
             const std::smatch& match = *it;
             flattened.append(source, last, static_cast<std::size_t>(match.position()) - last);
-            flattened.append(RemapLayoutBlockForOpenGL(match.str(), debugName));
+            flattened.append(RemapLayoutBlockForOpenGL(match.str()));
             last = static_cast<std::size_t>(match.position() + match.length());
         }
         flattened.append(source, last, std::string::npos);
         return flattened;
-    }
-
-    std::string ShaderCompiler::InjectClipSpaceDefines(const std::string& source, ShaderSpirvTarget target)
-    {
-        std::string defineBlock;
-        if (target == ShaderSpirvTarget::Vulkan)
-        {
-            defineBlock += "#define MINENGINE_CLIP_SPACE_ZO 1\n";
-            defineBlock += "#define MINENGINE_CLIP_DEPTH_ZERO_TO_ONE 1\n";
-            defineBlock += "#define MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y 1\n";
-        }
-        else
-        {
-            defineBlock += "#define MINENGINE_CLIP_DEPTH_ZERO_TO_ONE 0\n";
-            defineBlock += "#define MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y 0\n";
-        }
-
-        if (source.find("MINENGINE_CLIP_DEPTH_ZERO_TO_ONE") != std::string::npos
-            && source.find("MINENGINE_CLIP_SPACE_ZO") != std::string::npos
-            && source.find("MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y") != std::string::npos)
-        {
-            return source;
-        }
-
-        const std::size_t versionPos = source.find("#version");
-        if (versionPos == std::string::npos)
-        {
-            return defineBlock + source;
-        }
-
-        const std::size_t lineEnd = source.find('\n', versionPos);
-        if (lineEnd == std::string::npos)
-        {
-            return source + "\n" + defineBlock;
-        }
-
-        std::string injected;
-        injected.reserve(source.size() + defineBlock.size() + 16);
-        injected.append(source, 0, lineEnd + 1);
-        injected.append(defineBlock);
-        injected.append(source, lineEnd + 1, std::string::npos);
-        return injected;
-    }
-
-    std::string ShaderCompiler::InjectVulkanClipSpaceDefine(const std::string& source)
-    {
-        return InjectClipSpaceDefines(source, ShaderSpirvTarget::Vulkan);
     }
 
     bool ShaderCompiler::DiscoverGlslangValidator(std::string* outError)
@@ -650,11 +513,7 @@ namespace minEngine
         ShaderCompileRequest effectiveRequest = request;
         if (effectiveRequest.Target == ShaderSpirvTarget::OpenGL)
         {
-            effectiveRequest.Source = FlattenDescriptorSetsForOpenGL(request.Source, request.DebugName);
-        }
-        else
-        {
-            effectiveRequest.Source = InjectClipSpaceDefines(request.Source, effectiveRequest.Target);
+            effectiveRequest.Source = FlattenDescriptorSetsForOpenGL(request.Source);
         }
 
         if (!EnsureCacheDirectory(&result.Log))

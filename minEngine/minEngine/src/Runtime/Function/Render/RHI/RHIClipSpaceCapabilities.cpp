@@ -21,13 +21,17 @@ namespace minEngine
         constexpr RHIShadowPassCapabilities kOpenGLShadowPass{
             false,
             RHICullMode::Front,
+            2.0f,
+            4.0f,
         };
 
-        // 2D shadow maps: native viewport + Front cull (same as GL). Lit pass flips UV Y on VK
-        // via MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y in MinEngineShadowProject.
+        // TD-025 scheme A: no shadow viewport flip; Front cull. Float D32 depth bias uses
+        // Vulkan semantics (not glPolygonOffset units).
         constexpr RHIShadowPassCapabilities kVulkanShadowPass{
             false,
             RHICullMode::Front,
+            1.5f,
+            0.0f,
         };
 
         constexpr RHICubeCaptureCapabilities kOpenGLCubeCapture{false};
@@ -80,6 +84,11 @@ namespace minEngine
         default:
             return false;
         }
+    }
+
+    bool GetShadowMapSampleFlipY()
+    {
+        return GetClipSpaceCapabilities().TextureOriginY == RHITextureOriginY::Top;
     }
 
     float GetFrustumNdcZNear()

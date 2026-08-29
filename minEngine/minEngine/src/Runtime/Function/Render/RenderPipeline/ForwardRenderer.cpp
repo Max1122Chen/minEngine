@@ -241,9 +241,7 @@ namespace minEngine
         (void)height;
     }
 
-    void ForwardRenderer::BuildFrameRenderGraph(
-        bool enablePostProcess,
-        bool presentToBackBuffer)
+    void ForwardRenderer::BuildFrameRenderGraph(bool enablePostProcess, bool presentToBackBuffer)
     {
         if (RHI* rhi = RenderSystem::Get().GetRHI())
         {
@@ -346,7 +344,6 @@ namespace minEngine
         const bool enablePostProcess = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess);
         const bool presentToBackBuffer =
             m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer);
-
         if (enablePostProcess != m_ConfiguredEnablePostProcess
             || presentToBackBuffer != m_ConfiguredPresentToBackBuffer)
         {
@@ -579,6 +576,12 @@ namespace minEngine
         // RND-F08: allocate graph shadow maps before Set1 samples them.
         SetupFrameRenderGraph(cmdList, desc, ctx);
         BindGraphShadowTextures(ctx);
+
+        RenderGraphFrameContext frameContext = m_FrameRenderGraph.GetFrameContext();
+        frameContext.DrawDesc = &desc;
+        frameContext.SceneContext = &ctx;
+        m_FrameRenderGraph.SetFrameContext(frameContext);
+
         if (m_PendingShadowBindingInvalidate)
         {
             m_SceneBindings.InvalidateShadowTextureBindings();

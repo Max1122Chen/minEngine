@@ -37,6 +37,9 @@ namespace minEngine
     {
         bool ViewportFlipY = false;
         RHICullMode ReceiverFacingCullMode = RHICullMode::Front;
+        /** Passed to VkPipelineRasterizationState / glPolygonOffset (backend semantics differ). */
+        float DepthBiasSlopeScale = 0.0f;
+        float DepthBiasConstant = 0.0f;
 
         RHICullMode GetEffectiveCullMode() const;
     };
@@ -59,6 +62,8 @@ namespace minEngine
     const RHICubeCaptureCapabilities& GetCubeCaptureCapabilities();
 
     bool GetViewportFlipY(RHIViewportConvention convention);
+    /** Lit-pass shadow UV flip: compensates TextureOriginY when sampling rendered depth. */
+    bool GetShadowMapSampleFlipY();
     float GetFrustumNdcZNear();
     float GetFrustumNdcZFar();
     RHIImGuiSceneColorUv GetImGuiSceneColorUv();
