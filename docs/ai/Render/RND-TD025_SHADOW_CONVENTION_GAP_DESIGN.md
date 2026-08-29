@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** TD-025（子文档；主设计见 [RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md](./RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md)）
 - **Type:** Design Spec（Gap → 最小闭合方案）
-- **Status:** Draft
+- **Status:** In Progress (Step 1 ZO depth read landed; pending visual)
 - **Owner:** project maintainer
 - **Last updated:** 2026-08-29
 - **Related:** BUG-RENDER-010 · ED-F01-S06 · [Implementation](./RND-TD025_CLIP_SPACE_CAPABILITIES_IMPLEMENTATION.md)
@@ -106,39 +106,60 @@ Layer C — Shader 采样（NDC → UV / CurrentDepth）
 
 **目标形态：** OpenGL baseline 语义不变；Vulkan 只补 convention 差。
 
-### Step 1 — 闭合 Gap 1（Layer C：Z only）
+### Step 1 — 闭合 Gap 1（Layer C：Z only） — **implemented 2026-08-29，待目视**
 
-在 Dir/Spot 采样路径引入 **单一** NDC→采样 helper：
+在 Dir/Spot 采样路径引入 **单一** NDC→采样 helper `MinEngineShadowMapCoords`：
 
 ```glsl
-// 伪代码
 vec3 ndc = clip.xyz / clip.w;
 vec2 uv = ndc.xy * 0.5 + 0.5;
-#if MINENGINE_CLIP_DEPTH_ZERO_TO_ONE   // VK 编译期注入
-    float depth = ndc.z;              // 已是 [0,1]
+#if MINENGINE_CLIP_DEPTH_ZERO_TO_ONE
+    float depth = ndc.z;
 #else
-    float depth = ndc.z * 0.5 + 0.5;  // GL N1 → [0,1]
+    float depth = ndc.z * 0.5 + 0.5;
 #endif
 ```
 
-- 恢复 **受限版** define 注入：仅 `MINENGINE_CLIP_DEPTH_ZERO_TO_ONE`（Vulkan）
-- **本步不加** `SAMPLE_FLIP_Y`，不改 Shadow viewport
-- Point 路径不动
+- `ShaderCompiler::InjectClipSpaceDefines`：仅注入 `MINENGINE_CLIP_DEPTH_ZERO_TO_ONE`（VK=1 / GL=0）
+- **未**注入 `SAMPLE_FLIP_Y`，未改 Shadow viewport
+- Point 路径未改
+- 顺带恢复 pass-local OpenGL flat remap（`set=0` ShadowPass/Post/Sky；基线回退时误删）
 
 **验收：** GL 回归无变；VK Dir/Spot 假阴影显著改善或消失。
 
-### Step 2 — 若需闭合 Gap 2（Y，二选一）
+### Step 2 — 闭合 Gap 2（Layer B + 读侧补偿） — **implemented 2026-08-29**
 
-| 选项 | 改哪里 | 代价 |
-|------|--------|------|
-| **B** | `GetShadowPassCapabilities().ViewportFlipY = true` + effective cull | 写路径与 Scene 对齐；改 caps |
-| **C** | 采样 `uv.y = 1.0 - uv.y`（caps 已有 `GetShadowMapSampleFlipY`） | 只动读路径 |
+**写路径方案 B**（保留）：
 
-**禁止：** B 与 C 同时开启。
+- `kVulkanShadowPass.ViewportFlipY = true` → `GetEffectiveCullMode()` 为 Back
+- Point cube face 用 `ShadowMap2D` convention（与 EnvMap `CubeMapFace` 分离）
 
-**验收：** UV 与阴影轮廓方向与 GL 一致；orbit 相机稳定。
+**读路径**：手算 `ndc→uv` 须补偿写路径 viewport flip（见 §8 P0）。原「B 与 C 二选一」对手算 UV 不适用——B 改 raster，C 改读式，是闭合对而非双重 flip。
 
-### Step 3 — Point（Gap 4）
+### BUG-RENDER-012 — shadow index 门控 — **Fixed 2026-08-29**
+
+`MinEngineShadowMapSlot(Params.w)`：`Params.w < 0` 时不采样（修复 `int(-0.5)==0`）。GL 点光关阴影已验证。
+
+---
+
+## 8) 待查项 / 试验队列（2026-08-29）
+
+写路径已大体可信（影子落在投射物上）。剩余问题倾向 **采样侧闭合**。按优先级：
+
+| ID | 嫌疑 | 适用 | 状态 |
+|----|------|------|------|
+| **P0** | 写 B（viewport flip）+ 读 `uv.y=1-y`（`MinEngineShadowMapCoords`，仅 Dir/Spot） | 多灯「同侧」、plane 偏移 | **in progress** |
+| **P1** | CSM cascade 选择：`viewDepth = -fragPosViewSpace.z` 在 VK ZO 下是否正确 | Dir | pending |
+| **P2** | `SpotLightViewProj` 槽位陈旧 / 复用（`ClearUnusedShadowViewProjSlots` 仅 Spot） | 多 Spot / Spot+Dir | pending |
+| **P3** | `sampler2DArray` cascade layer 与 CPU 层索引 | Dir | pending |
+| **P4** | Point cube：6 面写入 flip vs `normalize(fragPos-lightPos)` 采样朝向；四重对称鬼影 | Point | pending（Step 3） |
+| **P5** | bias / 深度比较符号 / SRV 残留（012 后 index 已门控） | 全类型 | 低优先 |
+
+**P0 原理：** Main Pass 由 GPU 做 viewport 变换；阴影读路径手算 `ndc*0.5+0.5`，VK shadow 写若 flip viewport，读必须 `uv.y=1-y` 才能与 texel 对齐。点光不走此函数。
+
+**P0 验收：** VK 仅 Dir / 仅 Spot → 影子是否不再「同侧」；Dir+Spot 交互是否减轻；Point 暂不要求改善。
+
+### Step 3 — Point（Gap 4，P4）
 
 在 Step 1/2 之后单独验证：
 
@@ -209,3 +230,5 @@ cmake --build minEngine/build --target Editor minEngineTests
 | 日期 | 说明 |
 |------|------|
 | 2026-08-29 | 初稿：问题 / 四类 gap / 分步最小闭合；供审阅 |
+| 2026-08-29 | §8 待查队列 P0–P5；P0 B+读侧 uv.y 补偿 |
+| 2026-08-29 | Step 2B viewport flip；BUG-RENDER-012 Fixed |

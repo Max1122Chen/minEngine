@@ -73,8 +73,17 @@ namespace minEngine
          * OpenGL SPIR-V requires DescriptorSet == 0; desktop GLSL has no `set=`.
          * Strip `set = N` from any `layout(...)` list (including `std140, set = …`),
          * keeping `binding = M` (flat GL binding / texture unit).
+         * @param debugName Optional compile label (e.g. ShadowPass.vert) for pass-local set=0 remaps.
          */
-        static std::string FlattenDescriptorSetsForOpenGL(const std::string& source);
+        static std::string FlattenDescriptorSetsForOpenGL(
+            const std::string& source,
+            const std::string& debugName = {});
+
+        /**
+         * Inject clip-depth range define after `#version` for SPIR-V targets.
+         * Vulkan: ZO depth read (MINENGINE_CLIP_DEPTH_ZERO_TO_ONE=1).
+         */
+        static std::string InjectClipSpaceDefines(const std::string& source, ShaderSpirvTarget target);
 
     private:
         ShaderCompiler() = default;

@@ -46,8 +46,7 @@ vec3 CalcDirLightGraph(
     float bias = max(0.0005, 0.005 * (1.0 - ndotl));
 
     float shadow = 0.0;
-    int dirShadowIndex = int(light.Params.w + 0.5);
-    if (dirShadowIndex >= 0)
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0)
     {
         float viewDepth = -fragPosViewSpace.z;
         int cascadeIndex = 3;
@@ -98,7 +97,7 @@ vec3 CalcPointLightGraph(
     vec3 lightColor = light.Color.rgb * light.Color.w;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);
@@ -152,7 +151,7 @@ vec3 CalcSpotLightGraph(
     specular *= intensity;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_SPOT_SHADOW_MAPS)
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);

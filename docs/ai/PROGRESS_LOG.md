@@ -86,6 +86,30 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 
 ## Entry Template (Append for each meaningful task)
 
+### 2026-08-29 - BUG-RENDER-010: P0 read-side uv.y补偿 (B+C for manual ndc→uv)
+- VK `MinEngineShadowMapCoords`: `uv.y = 1.0 - uv.y` when ZO define set; keeps shadow viewport flip (B).
+- Point cube path unchanged. Design §8 backlog recorded.
+- Pending: VK visual Dir/Spot/multi-light.
+
+### 2026-08-29 - BUG-RENDER-012 + TD-025 Step 2B shadow viewport flip
+- BUG-RENDER-012: `MinEngineShadowMapSlot` — gate `Params.w < 0` before shadow sample (all light types).
+- TD-025 Step 2B: revert sample Y flip; VK `kVulkanShadowPass.ViewportFlipY=true` + Back cull; point faces use ShadowMap2D viewport convention.
+- Pending: GL/VK visual on `test` scene.
+
+### 2026-08-29 - BUG-RENDER-010: Step 2 shadow sample Y flip (option C)
+- Goal: Close Gap 2 on read path only — VK `uv.y = 1.0 - uv.y` via `MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y`.
+- Main changes: `MinEngineShadowMapCoords`, `InjectClipSpaceDefines` (ZO + flip pair).
+- Shadow write viewport unchanged (scheme A).
+- Pending: user GL/VK visual Dir/Spot on `test` scene.
+
+### 2026-08-29 - BUG-RENDER-010: Step 1 ZO shadow depth read
+- Goal: Close Gap 1 only — Vulkan Dir/Spot CurrentDepth uses ZO `ndc.z`, not N1 `*0.5+0.5`.
+- Main changes:
+  - `MinEngineShadowMapCoords` in `MaterialSceneShadows.glslinc` / `Phong.frag`.
+  - `ShaderCompiler::InjectClipSpaceDefines` — ZO define only (no sample flip); restore pass-local OpenGL flat remap for set=0 ShadowPass.
+- Verify: `Editor` + `minEngineTests` build OK; `test smoke` fails known MaterialIR UBO golden (`set=` vs flat) — unrelated.
+- Pending: user GL/VK visual on `test` scene (Dir/Spot first).
+
 ### 2026-08-29 - BUG-RENDER-010: layered rollback baseline before convention close
 - Goal: Freeze workspace as pre-fix baseline — keep TD-025 caps/matrix/viewport infra; roll back failed shader flip/`MinEngineShadowProject` inject stack; document GL→VK shadow convention gaps.
 - Main changes:

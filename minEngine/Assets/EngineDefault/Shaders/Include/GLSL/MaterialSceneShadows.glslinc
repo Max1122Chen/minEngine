@@ -123,6 +123,31 @@ vec2 Rotate2D(vec2 v, float angle)
     float c = cos(angle);
     return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
 }
+
+// Params.w < 0 means no shadow (CPU sentinel -1). Do not round with +0.5: int(-0.5)==0 in GLSL.
+int MinEngineShadowMapSlot(float paramsW)
+{
+    if (paramsW < 0.0)
+    {
+        return -1;
+    }
+    return int(paramsW + 0.5);
+}
+
+// Layer C: NDC → shadow UV + compare depth (Dir/Spot projected shadows only).
+// Z: OpenGL N1 needs *0.5+0.5; Vulkan ZO uses ndc.z directly.
+vec3 MinEngineShadowMapCoords(vec4 fragPosLightSpace)
+{
+    vec3 ndc = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    vec2 uv = ndc.xy * 0.5 + 0.5;
+#if defined(MINENGINE_CLIP_DEPTH_ZERO_TO_ONE) && (MINENGINE_CLIP_DEPTH_ZERO_TO_ONE != 0)
+    float depth = ndc.z;
+#else
+    float depth = ndc.z * 0.5 + 0.5;
+#endif
+    return vec3(uv, depth);
+}
+
 void BuildPointShadowBasis(vec3 dir, out vec3 tangent, out vec3 bitangent)
 {
     vec3 up = abs(dir.y) > 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
@@ -160,8 +185,7 @@ float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
 
 float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5; // Transform from NDC to [0,1] range
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -190,8 +214,7 @@ float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bi
 
 float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -218,8 +241,7 @@ float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, floa
 
 float SampleDirShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -284,8 +306,7 @@ float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
 
 float SampleSpotShadowPCF_BoxForMap(vec4 fragPosLightSpace, sampler2D shadowMap, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -323,8 +344,7 @@ float SampleSpotShadowPCF_Box(vec4 fragPosLightSpace, int shadowIndex, float bia
 
 float SampleSpotShadowPCF_PoissonForMap(vec4 fragPosLightSpace, sampler2D shadowMap, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -360,8 +380,7 @@ float SampleSpotShadowPCF_Poisson(vec4 fragPosLightSpace, int shadowIndex, float
 
 float SampleSpotShadowPCF_PoissonPCSSForMap(vec4 fragPosLightSpace, sampler2D shadowMap, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -585,14 +604,14 @@ float ComputeDirectionalShadowFactor(vec3 normal, vec3 fragPos, vec4 fragPosView
 float ComputeMaterialSceneShadowVisibility(vec3 normal, vec3 fragPos, vec4 fragPosViewSpace)
 {
     float visibility = 1.0;
-    int dirShadowIndex = int(DirectionalLight.Params.w + 0.5);
+    int dirShadowIndex = MinEngineShadowMapSlot(DirectionalLight.Params.w);
     if (length(DirectionalLight.Direction.xyz) > 0.001 && dirShadowIndex >= 0)
     {
         visibility *= (1.0 - ComputeDirectionalShadowFactor(normal, fragPos, fragPosViewSpace));
     }
     for (uint i = 0u; i < PointLightsCount && i < 16u; ++i)
     {
-        int shadowIndex = int(PointLights[i].Params.w + 0.5);
+        int shadowIndex = MinEngineShadowMapSlot(PointLights[i].Params.w);
         if (shadowIndex < 0 || shadowIndex >= MAX_POINT_SHADOW_MAPS)
         {
             continue;
@@ -605,7 +624,7 @@ float ComputeMaterialSceneShadowVisibility(vec3 normal, vec3 fragPos, vec4 fragP
     }
     for (uint i = 0u; i < SpotLightsCount && i < 16u; ++i)
     {
-        int shadowIndex = int(SpotLights[i].Params.w + 0.5);
+        int shadowIndex = MinEngineShadowMapSlot(SpotLights[i].Params.w);
         if (shadowIndex < 0 || shadowIndex >= MAX_SPOT_SHADOW_MAPS)
         {
             continue;

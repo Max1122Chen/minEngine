@@ -102,18 +102,21 @@ vec3 CalcDirLightPBR(
     float bias = max(0.0005, 0.005 * (1.0 - ndotl));
 
     float shadow = 0.0;
-    float viewDepth = -fragPosViewSpace.z;
-    int cascadeIndex = 3;
-    for (int i = 0; i < 4; i++)
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0)
     {
-        if (viewDepth < FarPlanes[i])
+        float viewDepth = -fragPosViewSpace.z;
+        int cascadeIndex = 3;
+        for (int i = 0; i < 4; i++)
         {
-            cascadeIndex = i;
-            break;
+            if (viewDepth < FarPlanes[i])
+            {
+                cascadeIndex = i;
+                break;
+            }
         }
+        vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
+        shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
     }
-    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
-    shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
 
     vec3 radiance = MaterialPBRDirectRadiance(N, V, lightDir, lightColor, albedo, metallic, roughness);
     return radiance * (1.0 - shadow);
@@ -135,7 +138,7 @@ vec3 CalcPointLightPBR(
     vec3 lightColor = light.Color.rgb * light.Color.w;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
     {
         float ndotl = max(dot(N, lightDir), 0.0);
@@ -170,7 +173,7 @@ vec3 CalcSpotLightPBR(
     lightColor *= intensity;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_SPOT_SHADOW_MAPS)
     {
         float ndotl = max(dot(N, lightDir), 0.0);
