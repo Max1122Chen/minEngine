@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-28  
+Last updated: 2026-08-30  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -19,7 +19,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
    - **S06 implemented / pending visual verify** — VK Editor flags: shadows + post + sky；`Texture2DArray` atlas + ShadowPass `set=` + depth-only PSO
    - **BUG-RENDER-010 / TD-025** — VK shadow caps + scheme A implemented；**pending user visual verify**（[Design](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md)）
    - **BUG-RENDER-011** — spot/point 关 shadow 崩溃；SRV 槽清空 fix landed
-   - **Next**: user A/B GL vs VK shadow on `test` scene；VK irradiance/prefilter convolution
+   - **BUG-RENDER-013** — VK 多光源 shadow；根因 → 未完成 Granite RDG **全语义** → **[RND-F12](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)** Phase A（S01 起）
+   - **Next**: **RND-F12-S01** read edge + 删 shadow ForceInclude；然后 S03 VK barrier；并行 user A/B GL vs VK
    - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync）  
 
 4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  

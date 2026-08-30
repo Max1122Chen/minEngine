@@ -162,7 +162,7 @@ vec2 uv = ndc.xy * 0.5 + 0.5;
 | **P4** | Point cube | Point | open |
 | **P5** | bias / 深度比较 / SRV | 全类型 | 低优先 |
 | **P6** | VK Dir 影与 Point Cast Shadow 耦合 / latch | Dir+Point | **BUG-RENDER-013** — **RDG 主因假设**（2026-08-30 修订） |
-| **P7** | RDG：Scene 无 ShadowAtlas read edge；静态 fingerprint；enqueue vs bake 脱节 | Dir+VK | **BUG-RENDER-013** — 对齐 Granite `bake` / `setup_dependencies` |
+| **P7** | RDG：Scene 无 ShadowAtlas read edge；静态 fingerprint；enqueue vs bake 脱节 | Dir+VK | **[RND-F12](../Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)** — Granite bake 语义补全 |
 
 ### Dir 实验状态（2026-08-30，已回退）
 

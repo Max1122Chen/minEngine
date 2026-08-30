@@ -4,8 +4,8 @@
 - **ID:** `RND-F07`
 - **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-02
-- **Related:** [Design Spec](./RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md)
+- **Last updated:** 2026-08-30
+- **Related:** [Design Spec](./RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md), [**RND-F12**](./RND-F12_GRANITE_RDG_BAKE_SEMANTICS_IMPLEMENTATION.md)（bake 语义续作）
 - **Granite:** `D:\Dev\GitRepo\Granite\renderer\render_graph.hpp` / `.cpp`
 
 ## TL;DR

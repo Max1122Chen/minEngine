@@ -2,12 +2,12 @@
 
 ## Meta
 - **ID:** BUG-RENDER-013
-- **Status:** Open — **root cause class revised to RDG** (2026-08-30)
+- **Status:** Open — tracked under **[RND-F12](../Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)** (Planned)
 - **Owner:**
 - **Found:** 2026-08-30
 - **Last updated:** 2026-08-30 (S1 enqueue reverted; VK depth layout only)
 - **Affects:** Vulkan Editor; ForwardRenderer + `RenderGraph` shadow/scene pass ordering; `test` scene
-- **Related Feature/Slice:** BUG-RENDER-010 · RND-F07 · RND-TD025 · ED-F01-S06
+- **Related Feature/Slice:** **[RND-F12](../Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)**（主修复轨）· BUG-RENDER-010 · RND-F07（shell）· RND-TD025 · ED-F01-S06
 
 ## TL;DR
 
@@ -79,7 +79,7 @@ With **Dir + Spot + Point** shadow maps active on Vulkan, directional shadow is 
 | Depth SRV `imageLayout` | `VulkanRHIResources.cpp` | **保留** — VK convention，与 RDG 正交 |
 | Pass filter / shadow→set1→scene 拆 enqueue | `RenderGraph`, `ForwardRenderer` | **已回退** — 不靠手工调度修 shadow |
 
-Fix path: **RDG read edges + bake invalidate + Granite-aligned execute**（见 [RND-F07](../Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md)）。
+Fix path: **[RND-F12](../Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)** Phase A — Granite RDG **语义全复刻**（read edge / barrier / invalidate）；非 Renderer 补丁。F07 仅 shell。
 
 ## 修复方向（下一步）
 
@@ -117,3 +117,4 @@ Fix path: **RDG read edges + bake invalidate + Granite-aligned execute**（见 [
 | 2026-08-30 | S1 band-aid; S2–S4 binding patches (later reverted) |
 | 2026-08-30 | **Reframe:** primary hypothesis → **RDG** (Granite reference); VK convention largely excluded |
 | 2026-08-30 | **Revert S1 enqueue:** `RenderGraph` filter + `ForwardRenderer` shadow/scene split removed; only VK depth SRV layout remains |
+| 2026-08-30 | 登记 **RND-F12**；本 bug 作为 F12 验收探针；恢复 F07 Design UTF-8 |

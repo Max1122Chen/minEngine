@@ -1,8 +1,18 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-30 (BUG-013 reframed: RDG primary hypothesis)
+Last updated: 2026-08-30 (RND-F12 registered; F07 design recovered)
 
-### 2026-08-30 - BUG-RENDER-013: revert S1 enqueue band-aid (`feat/render`)
+### 2026-08-30 - RND-F12: Granite RDG full semantic parity design (`feat/render`)
+- North star: replicate Granite RenderGraph **semantics** (not copy code); Phase A–D.
+- Design §3 Adapter boundary; §4 full parity checklist; §6 delete non-Granite patches; Bake policy = per-frame until proven safe.
+- Impl: S01–S07 Phase A (BLOCK 013); S04–S15 Phase B–D.
+
+### 2026-08-30 - RND-F12: Granite RDG bake semantics (`feat/render`)
+- Reframe BUG-RENDER-013: not shadow-only fix — incomplete F07 bake vs Granite (`read edge`, `barrier`, `invalidate`).
+- Docs: recover `RND-F07` Design UTF-8; add `RND-F12` Design + Impl; Registry / ACTIVE_WORK / BUG-013 links.
+- Next: **RND-F12-S01** — Scene pass `AddTextureInput` shadow atlases; remove shadow `ForceIncludePass`.
+
+### 2026-08-30 - BUG-RENDER-013: partial commit + RDG gap analysis (`feat/render`)
 - User: pass-filter / split enqueue is patchwork; fix must be proper RDG.
 - Reverted: `RenderGraph::EnqueueRenderPasses(filter)`, `ForwardRenderer` shadow→set1→scene order.
 - Kept: `VulkanRHIResources` depth shadow SRV `DEPTH_STENCIL_READ_ONLY_OPTIMAL`.

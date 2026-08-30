@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-17（ED-F01 登记；RND-F05 RHI 竖切关账；S07e/f → ED-F01）
+Last updated: 2026-08-30（RND-F12 Granite RDG bake 语义续作登记）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -35,7 +35,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F05` | Vulkan backend + SPIR-V（GL+VK）+ modern RHI completion | **Done** | — | [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) · S01–S07d Done；S07e/f **迁至 ED-F01** |
 | `ED-F01` | Vulkan Editor Parity（ImGui-Vulkan + viewport + navigation + 承接 shadow/sky） | **In Progress** | S05+ | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) · S01–S04 代码已落地，待人工验收 |
 | `RND-F06` | ForwardRenderer（Renderer / RenderGraph 职责分离；删除 `RenderPipeline`） | **In Progress** | — | [RND-F06_FORWARD_RENDERER_DESIGN](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) · S01–S02 Done；S03 可选 |
-| `RND-F07` | Granite-style RDG + 帧资源所有权大重构 | **Done** | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) · [Impl](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_IMPLEMENTATION.md) · S01–S09；阴影尾升格 **RND-F08** |
+| `RND-F07` | Granite-style RDG + 帧资源所有权大重构 | **Done** *(shell)* | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) · [Impl](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_IMPLEMENTATION.md) · S01–S09；**bake 语义续作 → RND-F12** |
+| `RND-F12` | Granite RDG **语义全复刻**（Phase A–D；非粘贴代码）| **Planned** | — | [Design](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md) · [Impl](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_IMPLEMENTATION.md) · Phase A 验收 [BUG-RENDER-013](./bugs/BUG-RENDER-013.md) |
 | `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
@@ -56,7 +57,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE` | F05 | F01–F02 Lua Done；F03 Transform quaternion Done；F04 Delegates Planned |
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F02 | F01 Vulkan Editor Parity Planned |
-| `RND` | F12 | F05 Done；F11 Planned；下一空号 F12 |
+| `RND` | F13 | F05 Done；F11 Planned；F12 已登记；下一空号 F13 |
 | `PHYS` | F04 | F01–F02 Done；F03 Deferred（TD-006 / CORE-F04） |
 | `MAT` | F01 | Material (new IDs only; legacy Phase docs keep old names) |
 
