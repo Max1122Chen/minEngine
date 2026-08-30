@@ -1,5 +1,13 @@
 # minEngine Progress Log (for AI)
 
+Last updated: 2026-08-31 (multi-track backlog + worktrees)
+
+### 2026-08-31 - Multi-track backlog: LAUN / AUD / ANIM / UI / PHYS thaw (`master`)
+- Registered **LAUN-F01**, **AUD-F01**, **UI-F01**, **ANIM-F01**, **PHYS-F04**; **PHYS-F03** Deferred → Planned.
+- Branches from `master`: `feat/launcher`, `feat/audio`, `feat/ui-anim` (`feat/physics` 已存在).
+- Worktrees: `D:/Dev/GitRepo/minEngine-launcher`, `minEngine-audio`; `MyMEProject` ProjectRoot per worktree.
+- **Next:** commit docs on master; merge master → feature branches（保留各 worktree `ProjectRoot`）.
+
 Last updated: 2026-08-04 (CORE-F04 Delegates Done)
 
 ## Purpose

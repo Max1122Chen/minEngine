@@ -1,34 +1,64 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-04  
+Last updated: 2026-08-31  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
 
 ---
 
+## Worktrees（本机并行）
+
+| 路径 | 分支 | 用途 |
+|------|------|------|
+| `D:/Dev/GitRepo/minEngine` | `master` | 集成 / backlog / 合入目标 |
+| `D:/Dev/GitRepo/minEngine-launcher` | `feat/launcher` | **LAUN-F01** 启动器 |
+| `D:/Dev/GitRepo/minEngine-audio` | `feat/audio` | **AUD-F01** 音效 |
+| `D:/Dev/GitRepo/minEngine-physics` | `feat/physics` | **PHYS-F04 / F03**（重开前 merge `master`） |
+| `D:/Dev/GitRepo/minEngine`（stash） | `feat/render` | 渲染主线；`git checkout feat/render` + `stash pop` |
+
+各 worktree 内 `MyMEProject.meproject` → `ProjectRoot` 指向**该 worktree** 下的 `minEngine/MyMEProject`。
+
+---
+
 ## In focus (edit as you go)
 
-### Render 轨（`feat/render`）— **当前主线**
+### Render 轨（`feat/render`）— **持续；VK 局部阻塞**
 
-1. ~~RND-F03 关账~~ — **Done 2026-08-04**（文档收口；代码侧早干净）  
-2. **RND-F05 Vulkan** — 巨大目标，**多刀竖切**；最终上层管线 **GL + VK 双后端**（光追等 API 限制除外）  
-3. **RND-F11 DebugDrawing** — F05 有可演示竖切后再详细设计；物理玩法依赖其成熟度  
+> **master 文档滞后于 `feat/render` 代码**（ED-F01、RND-F12、F13 等在 render 分支 / stash）。合入前以 render 分支为准。
 
-合入前：定期把 **master**（含 CORE-F04 Delegates）rebase/merge 进 `feat/render`。
+1. **RND-F12** Granite RDG 语义 · **BUG-RENDER-013**（VK 多光源 shadow）
+2. **ED-F01** Vulkan Editor parity（GL 正常；VK 目视部分 pending）
+3. **RND-F11** DebugDrawing — GL-first MVP；**软依赖** PHYS-F03 视口调试
+4. **RND-F13** ManualRenderer — stash 中 S01 WIP
+
+合入前：定期 **merge `master` → `feat/render`**。
+
+### Physics 轨（`feat/physics`）— **解冻**
+
+1. **PHYS-F04** — [Placeholder](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) 碰撞体修复
+2. **PHYS-F03** — [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) Contact 回调（CORE-F04 Done；F11 为软依赖）
+3. worktree：`minEngine-physics` — **开干前** `git merge master`
+
+### Launcher 轨（`feat/launcher`）— **新开**
+
+1. **LAUN-F01** — [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md)
+2. worktree：`minEngine-launcher`
+
+### Audio 轨（`feat/audio`）— **新开**
+
+1. **AUD-F01** — [Placeholder](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md)
+2. worktree：`minEngine-audio`
+
+### UI / Animation 轨（`feat/ui-anim`）— **占位**
+
+1. **UI-F01** — [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)
+2. **ANIM-F01** — [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md)
+3. 分支已建；**无独立 worktree**
 
 ### Master / 平台
 
-- **CORE-F04** Delegates **Done**（解锁 PHYS-F03 依赖，但不抢渲染主线）。
-
-### Physics（`feat/physics`）— **冷冻**
-
-- F01/F02 Done；**PHYS-F03 Deferred** 直至 **RND-F11** 成熟后再开正式 Design。  
-- worktree 可闲置；重开前再 rebase master。
-
-### 更远（先不占带宽）
-
-- Sprite / 骨骼网格 / 动画 — 等 RHI/Vulkan 竖切更稳后再登记 Viewer。
+- **CORE-F04** Delegates **Done**
 
 ---
 
@@ -46,6 +76,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
 | Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
+| GL Editor | `minEngine\bin\Editor.exe --rhi opengl --project ..\MyMEProject\MyMEProject.meproject` |
+| VK Editor（render 轨） | `Editor.exe --rhi vulkan --project …` |
 | Delegates | `minEngineTests.exe test delegates` |
 | Material | `minEngineTests.exe test material-ir` |
 | RenderGraph | `minEngineTests.exe test render-graph` |
@@ -62,9 +94,8 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 - Content Browser: further registry/watcher optimizations beyond R1 incremental `AssetTreeModel` patch.
 - Infra: GitHub Actions (see `TECH_DEBT.md` TD-010 when you want it).
 - Deferred GBuffer Renderer（另开 Feature；非 F06）.
-- F01 实验 Bake 产品化（已拒绝）.
-- **TD-021** EnvironmentMap Editor Bake UX — 低优，不挡 F10 收口.
-- Sprite / Skeletal mesh / Animation — 愿景；先不注册 Feature ID.
+- **TD-021** EnvironmentMap Editor Bake UX — 低优.
+- Sprite — 愿景；未登记 Feature ID.
 
 ---
 
@@ -73,7 +104,5 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 | File | Role |
 |------|------|
 | [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status when starting a **new** registered feature |
-| [RND-F05](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) | 下一渲染主线（Vulkan） |
-| [TECH_DEBT.md](./TECH_DEBT.md) | Deferred problems worth tracking |
-| [BOOTSTRAP_DIGEST.md](./BOOTSTRAP_DIGEST.md) | Commands, DoD, agent habits |
-| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What already landed |
+| [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What landed and how it was verified |
+| [TECH_DEBT.md](./TECH_DEBT.md) | Open debt rows only |
