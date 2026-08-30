@@ -101,19 +101,18 @@ vec3 CalcDirLightPBR(
     float ndotl = max(dot(N, lightDir), 0.0);
     float bias = max(0.0005, 0.005 * (1.0 - ndotl));
 
+    vec3 dirDebugColor;
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0 &&
+        TryDirShadowDebugVisual(fragPos, fragPosViewSpace, dirDebugColor))
+    {
+        return dirDebugColor;
+    }
+
     float shadow = 0.0;
     if (MinEngineShadowMapSlot(light.Params.w) >= 0)
     {
         float viewDepth = -fragPosViewSpace.z;
-        int cascadeIndex = 3;
-        for (int i = 0; i < 4; i++)
-        {
-            if (viewDepth < FarPlanes[i])
-            {
-                cascadeIndex = i;
-                break;
-            }
-        }
+        int cascadeIndex = SelectDirectionalCascadeIndex(viewDepth);
         vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
         shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
     }

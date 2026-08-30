@@ -1624,6 +1624,26 @@ namespace minEngine
             }
         };
 
+        auto selectShaderReadImageLayout = [&](const RHIShaderBindingSetLayoutEntry& entry) -> VkImageLayout
+        {
+            if (entry.Type != RHIShaderBindingType::TextureSRV)
+            {
+                return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            }
+
+            switch (entry.Slot)
+            {
+            case kSet1_DirShadowSRV:
+            case kSet1_SpotShadow0:
+            case kSet1_SpotShadow1:
+            case kSet1_PointShadow0:
+            case kSet1_PointShadow1:
+                return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+            default:
+                return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            }
+        };
+
         auto* vulkanLayout = dynamic_cast<VulkanRHIShaderBindingSetLayout*>(layout);
         if (m_Device == VK_NULL_HANDLE || m_Pool == VK_NULL_HANDLE || vulkanLayout == nullptr ||
             !vulkanLayout->IsValid())
@@ -1705,7 +1725,7 @@ namespace minEngine
 
                 imageInfos[i].sampler = defaultSampler;
                 imageInfos[i].imageView = imageView;
-                imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imageInfos[i].imageLayout = selectShaderReadImageLayout(entry);
 
                 write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 write.pImageInfo = &imageInfos[i];

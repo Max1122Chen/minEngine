@@ -1,7 +1,18 @@
 #version 330 core
 
+// Prefer inject from ShaderCompiler. Sampler array size uses SLOTS (layout); MAX_* gates sampling.
+#ifndef MAX_SPOT_SHADOW_MAPS
 #define MAX_SPOT_SHADOW_MAPS 2
+#endif
+#ifndef MAX_POINT_SHADOW_MAPS
 #define MAX_POINT_SHADOW_MAPS 2
+#endif
+#ifndef SPOT_SHADOW_SAMPLER_SLOTS
+#define SPOT_SHADOW_SAMPLER_SLOTS 2
+#endif
+#ifndef POINT_SHADOW_SAMPLER_SLOTS
+#define POINT_SHADOW_SAMPLER_SLOTS 2
+#endif
 
 #define SHADOW_FILTER_BOX 0
 #define SHADOW_FILTER_POISSON 1
@@ -116,8 +127,8 @@ uniform Material u_Material;
 
 // Shadow maps
 uniform sampler2DArray u_DirLightShadowMap;
-uniform sampler2D u_SpotShadowMaps[MAX_SPOT_SHADOW_MAPS];
-uniform samplerCube u_PointShadowMaps[MAX_POINT_SHADOW_MAPS];
+uniform sampler2D u_SpotShadowMaps[SPOT_SHADOW_SAMPLER_SLOTS];
+uniform samplerCube u_PointShadowMaps[POINT_SHADOW_SAMPLER_SLOTS];
 
 const int kMaxPoissonSamples = 16;
 const int kPoissonSampleCount = (POISSON_SAMPLE_COUNT <= kMaxPoissonSamples) ? POISSON_SAMPLE_COUNT : kMaxPoissonSamples;

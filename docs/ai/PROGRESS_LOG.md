@@ -1,5 +1,45 @@
 # minEngine Progress Log (for AI)
 
+Last updated: 2026-08-30 (BUG-013 reframed: RDG primary hypothesis)
+
+### 2026-08-30 - BUG-RENDER-013: revert S1 enqueue band-aid (`feat/render`)
+- User: pass-filter / split enqueue is patchwork; fix must be proper RDG.
+- Reverted: `RenderGraph::EnqueueRenderPasses(filter)`, `ForwardRenderer` shadow→set1→scene order.
+- Kept: `VulkanRHIResources` depth shadow SRV `DEPTH_STENCIL_READ_ONLY_OPTIMAL`.
+- Next: Granite-aligned RDG read edges + bake invalidate for shadow atlases.
+
+### 2026-08-30 - BUG-RENDER-013 reframe: RDG not VK binding (`feat/render`)
+- User: S2–S4 ineffective; pivot to Granite RDG reference; TD-025 convention largely ruled out (dir-only OK).
+- Docs: BUG-013 status → Open, root cause class = RDG scheduling/lifetime; BUG-010 + TD-025 §8 P6/P7 updated.
+- Workspace: S1-only (pass filter enqueue, set1 after shadow, VK depth SRV layout) — documented as thin baseline, not root fix.
+- Next: Compare minEngine `RenderGraph` bake/deps to Granite `render_graph.cpp`; shadow atlas read edges + fingerprint invalidate.
+
+### 2026-08-30 - BUG-RENDER-013 rollback to S1-only (`feat/render`)
+- User: S2–S4 fixes ineffective; suspect RDG/fingerprint path; request revert to S1 baseline for fresh investigation.
+- Reverted: dynamic fingerprint, RDG shadow texture inputs, transition/retain, shadow ring split, set0 offset cache, limits co-location, ShaderCompiler macro inject, pool 8192.
+- Kept (S1): shadow→set1→scene enqueue order; `RenderGraph::EnqueueRenderPasses(filter)`; VK depth SRV `DEPTH_STENCIL_READ_ONLY_OPTIMAL`.
+- Next: Re-diagnose from clean S1 state; consider RDG architecture review before more binding patches.
+
+### 2026-08-30 - BUG-RENDER-013 S4 binding fixes (`feat/render`)
+- User: Dir shadow intermittent with point off; point position couples to Dir when on; latched state after point off.
+- S4: separate `m_ShadowPerObjectUniformBuffer`; set0 descriptor cache validates ring byte offset; force set1 rebuild after shadow passes.
+- Next: User VK retest on `test` — Dir stable with point Cast Shadow on/off; move point should not move Dir shadow.
+
+### 2026-08-30 - BUG-RENDER-013 confirmed via dir-only isolation (`feat/render`)
+- Result: With `MAX_*_SHADOW_MAPS=0`, user reports **VK directional shadow visually correct**.
+- Conclusion: Full-scene failure was **binding/pipeline state pollution** when point/spot shadow passes participate — not Dir light-space math as primary cause.
+- Next: Implement fix slices S1–S3 (set1 after shadow writes, VK depth layout, RDG read deps); restore shadow map budget=2; regress multi-light.
+
+### 2026-08-30 - Dir-only shadow isolation + limits co-location (`feat/render`)
+- Goal: BUG-RENDER-013 isolation — shut down point/spot shadow passes at engine budget; co-locate light vs shadow-map limits.
+- Main changes: `EngineRenderLimits.h` owns `MAX_*_LIGHTS` / `MAX_*_SHADOW_MAPS` / sampler slots + `static_assert`; experiment `MAX_*_SHADOW_MAPS=0`; ShaderCompiler injects macros; set1 arrays sized by sampler slots.
+- Next: User VK visual verify — Dir alone with point Cast Shadow on/off should no longer allocate point maps; if Dir still missing when point off, prioritize descriptor layout / set1 dirty (P0/P1).
+
+### 2026-08-30 - BUG-RENDER-013 RDG/VK shadow binding investigation (`feat/render`)
+- Goal: Explain VK Dir shadow visibility coupling to Point Cast Shadow; separate pollution vs cascade math.
+- Findings (code review): VK depth descriptor layout mismatch; `BuildSceneSet1` dirty only on texture cache change; `BasePass` missing `DirShadowAtlas` RDG input; static shadow fingerprint. Documented in BUG-RENDER-013 + RND-TD025 §8 P7 + shadow pass isolation matrix.
+- Next: User experiments via `MAX_*_SHADOW_MAPS` / `MAX_CASCADES` or scene Cast Shadow toggles; then fix P0–P3.
+
 Last updated: 2026-08-28 (TD-025 clip-space caps + VK shadow fix)
 
 ## Purpose
@@ -86,12 +126,42 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 
 ## Entry Template (Append for each meaningful task)
 
-### 2026-08-29 - BUG-RENDER-010: P0 read-side uv.y补偿 (B+C for manual ndc→uv)
+### 2026-08-30 - BUG-RENDER-010: rollback fixed ortho box; suspect GPU shader
+
+- Reverted `kDirShadowUseFixedOrthoBox` + `kDirShadowForceCascade=0` → normal CSM path.
+- Fixed ortho box: no Dir shadow on **both** GL and VK (box params invalid; experiment inconclusive for ortho depth).
+- FORCE=0 prior result kept: multi mesh shadows → one; still GL≠VK → cascade mixing + shader read path.
+- Next: GPU — `MinEngineShadowMapCoords`, Dir PCF, `sampler2DArray` layer. BUG-RENDER-013 (point shadow gate) still open.
+
+### 2026-08-30 - BUG-RENDER-010/013: FORCE_CASCADE=0 + fixed ortho box experiment
+
+- FORCE cascade 0: multiple Dir mesh shadows → one; GL vs VK (both FORCE=0) still mismatch → single-cascade Dir write/read still broken.
+- Added `kDirShadowUseFixedOrthoBox` in `ForwardRenderer.cpp` (cascade 0 fixed light-space ortho ±50, near/far 1/200) to isolate CSM frustum→AABB vs ortho depth.
+- Filed **BUG-RENDER-013**: VK Dir shadow visibility depends on Point Cast Shadow (suspect set1 bindings); keep separate from matrix experiments.
+- Keep `kDirShadowForceCascade=0` while running fixed-box visual on GL+VK.
+
+### 2026-08-29 - BUG-RENDER-010: Dir shadow debug modes (P1)
+
+- Added `DIR_SHADOW_DEBUG_MODE` via `TryDirShadowDebugVisual` in `MaterialSceneShadows.glslinc`; wired in Phong/PBR graph lighting.
+- Toggle: `kDirShadowDebugMode` in `ShaderCompiler.cpp` (inject after `#version`). Default **1** = cascade colors.
+- Modes: 1 cascade / 2 single-tap / 3 UV / 4 current Z / 5 sampled Z / 6 Z delta. See Gap Design §8.
+- Also fixed inject skip: only skip if `#define MINENGINE_CLIP_DEPTH_ZERO_TO_ONE` already present (not bare token in `#if`).
+
+### 2026-08-29 - BUG-RENDER-010: commit `3154700` + FlipY 共识修正
+
+- **Commit:** ZO depth read (`MinEngineShadowMapCoords`) + `MinEngineShadowMapSlot` (BUG-RENDER-012); scheme A only.
+- **Reverted:** scheme B shadow viewport flip, read `uv.y` flip, point `ShadowMap2D`, P4-A/P4-B experiments.
+- **共识:** Shadow 写→读独立闭环；Main Pass Scene flip **不**参与 shadow 采样。VK Spot ~OK.
+- **Open:** Dir (CSM), Point (cube / 四重鬼影). Docs: `RND-TD025_SHADOW_CONVENTION_GAP_DESIGN.md` §2/§8.
+
+### 2026-08-29 - BUG-RENDER-010: P0 read-side uv.y补偿 (B+C for manual ndc→uv) — **reverted**
 - VK `MinEngineShadowMapCoords`: `uv.y = 1.0 - uv.y` when ZO define set; keeps shadow viewport flip (B).
 - Point cube path unchanged. Design §8 backlog recorded.
 - Pending: VK visual Dir/Spot/multi-light.
 
-### 2026-08-29 - BUG-RENDER-012 + TD-025 Step 2B shadow viewport flip
+- **Reverted:** 见上条 `3154700` 共识；勿再按 Main Pass flip 推导读侧补偿。
+
+### 2026-08-29 - BUG-RENDER-012 + TD-025 Step 2B shadow viewport flip — **reverted**
 - BUG-RENDER-012: `MinEngineShadowMapSlot` — gate `Params.w < 0` before shadow sample (all light types).
 - TD-025 Step 2B: revert sample Y flip; VK `kVulkanShadowPass.ViewportFlipY=true` + Back cull; point faces use ShadowMap2D viewport convention.
 - Pending: GL/VK visual on `test` scene.

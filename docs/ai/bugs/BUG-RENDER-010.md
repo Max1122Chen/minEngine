@@ -6,7 +6,7 @@
 - **Severity:** S1
 - **Owner:**
 - **Found:** 2026-08-28
-- **Last updated:** 2026-08-29
+- **Last updated:** 2026-08-30
 - **Affects:** Vulkan Editor / ForwardRenderer CSM, `test` scene plane receiver, ED-F01-S06
 - **Related Feature/Slice:** ED-F01-S06 · TD-025
 
@@ -29,9 +29,12 @@ Vulkan Editor: directional shadow on 100×100 plane appeared as huge false self-
 
 **基础设施（保留）：** `RHIClipSpaceCapabilities` / `RHIClipSpace` / `RHIViewportConvention`；ShadowPass convention + Front cull；ForwardRenderer ZO 矩阵；`EngineSceneBindingSets` 槽清空；dir shadow index 门控。
 
-**已回退（2026-08-29）：** `MinEngineShadowProject`、`ShaderCompiler` clip/flip define 注入、TD025-S08 shadow debug。Shader 采样回到 `bbdcdc` 语义（`projCoords*0.5+0.5`，无 ZO depth 分支）。
+**当前（2026-08-30）：** ZO depth read + scheme A + slot gate。VK Spot ~OK。**Dir：仅方向光 shadow 预算下 VK 已正常**（BUG-RENDER-013 隔离实验）→ 全类型并存时异常 **主因修订为 RDG 调度/资源生命周期**（见 BUG-RENDER-013），非 Dir shader 坐标或 TD-025 convention 主链错误。
 
-**待做：** 按 [handoff §6](../sessions/2026-08-29-vulkan-shadow-handoff.md) 重新闭合 Layer C（必要时 B），一次一层。
+**实验结论（2026-08-30）：**
+- `FORCE_CASCADE=0`：多影→单影；GL/VK 强制0 仍不对 → 级联混用放大问题，单级仍错（点/聚光恢复后需再验）。
+- 固定光空间 ortho 盒子（cascade 0）：**GL/VK 均不见 Dir 影**（盒子参数/光空间 near-far 未闭合，实验无效）；CSM frustum→AABB 路径对可见性必要。
+- **Dir-only shadow maps (`MAX_*_SHADOW_MAPS=0`)：VK Dir 视觉正常** → BUG-RENDER-013：RDG 主因假设；关闭本 bug Dir 主项待 RDG 修复后回归。
 
 ## 回归验证
 - [ ] VK `test` scene visual parity

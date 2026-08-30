@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** TD-025（子文档；主设计见 [RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md](./RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md)）
 - **Type:** Design Spec（Gap → 最小闭合方案）
-- **Status:** In Progress (Step 1 ZO depth read landed; pending visual)
+- **Status:** In Progress (Step 1 ZO + slot gate landed, commit `3154700`; VK Spot ~OK, Dir/Point open)
 - **Owner:** project maintainer
 - **Last updated:** 2026-08-29
 - **Related:** BUG-RENDER-010 · ED-F01-S06 · [Implementation](./RND-TD025_CLIP_SPACE_CAPABILITIES_IMPLEMENTATION.md)
@@ -48,10 +48,18 @@ Layer C — Shader 采样（NDC → UV / CurrentDepth）
 | 层 | 管什么 | OpenGL | Vulkan（目标） |
 |----|--------|--------|----------------|
 | **A** | NDC Z 范围 | `[-1, 1]`（N1） | `[0, 1]`（ZO） |
-| **B** | clip Y → 纹理行 | 无 flip；`flipY` 被忽略 | 与投影约定一致，且 **只处理一次** |
+| **B** | clip Y → 纹理行 | 无 flip；`flipY` 被忽略 | Shadow **写** 不 flip（scheme A）；Scene **呈现** 可 flip |
 | **C** | NDC → 采样 UV/depth | `xy/z` 均 `*0.5+0.5` | XY：`*0.5+0.5`；**Z：直用 `ndc.z`** |
 
-**铁律：** Y flip 只能出现在 Projection **或** Viewport **或** Sample 之一；FrontFace/Cull 随 Y flip 成对调整。
+**铁律（Y）：** Shadow 写→读是**独立闭环**——写路径 viewport 若未 flip，读路径就按纯数学 `ndc→uv` 读，**不得**假设立过 flip。Main Pass 的 Scene viewport flip **只服务场景呈现**，与 Lit Pass 采样 shadow map **无关**。
+
+**已废弃的错误思路（2026-08-29 共识）：**
+
+- ~~因 Main Pass 在 VK 上 flip，就给 shadow **读**路径加 `uv.y = 1-y`~~
+- ~~Scheme B：Shadow 写 flip + Back cull + 读侧 `uv.y` 补偿~~（把 Scene 约定误套进 shadow 链）
+- ~~点光 cube 改用 `ShadowMap2D` 与 Dir/Spot 共用 flip~~（cube 采样不走 `ndc→uv`）
+
+**当前约定（scheme A，代码与 `3154700` 一致）：** 全部 Shadow 写路径 `ViewportFlipY=false` + Front cull；读路径无 sample Y flip。
 
 ---
 
@@ -69,15 +77,19 @@ Layer C — Shader 采样（NDC → UV / CurrentDepth）
 
 **涉及：** `MaterialSceneShadows.glslinc` / `Phong.frag` 全部 Dir/Spot PCF 路径。
 
-### Gap 2 — Y orientation（**可能，Dir/Spot；与 Gap 1 独立**）
+### Gap 2 — Y orientation（Dir/Spot 2D：**写读自洽即可**）
 
-| | Main Pass (VK ✅) | Shadow Pass (VK) |
-|--|------------------|------------------|
-| Viewport | `Scene` → `flipY=true`（负 height） | `ShadowMap2D` → `flipY=false` |
-| 采样 UV | 不经手动 NDC→UV | `ndc.xy * 0.5 + 0.5`，无 `1-y` |
+| Pass | VK viewport flip | 与 shadow 采样的关系 |
+|------|------------------|----------------------|
+| **Main / Scene** | `Scene` → `flipY=true` | 仅影响相机画面呈现；**不参与** shadow UV |
+| **Shadow 写** | `ShadowMap2D` → `flipY=false` | 决定 depth RT 内 texel 布局 |
+| **Shadow 读** | `uv = ndc.xy * 0.5 + 0.5`（无 `1-y`） | 必须与写路径一致（当前：写不 flip → 读不 flip） |
 
-**原理：** Main Pass 用 viewport flip 对齐 GLM 风格投影与 Vulkan 纹理原点。Shadow 写路径未 flip，读路径按「纯数学 NDC→UV」走——若与写入 texel 的 Y 不一致，会出现上下颠倒采样。  
-**注意：** 只修 Z 后若 UV 仍错，再单独闭合 Y；**禁止**同时改 viewport flip + sample flip。
+**原理：** NDC→RT 的 Y 映射在 shadow 链内由 **Shadow Pass 自己的 viewport** 决定。只要写、读同一套 `LightViewProj` 且读公式匹配写时的光栅约定，即闭合。**不应**用 Main Pass flip 推导读侧补偿。
+
+**VK Spot 目视（2026-08-29）：** 在 scheme A + ZO depth read 下已基本正确 → 支持「写不 flip / 读不 flip」模型。
+
+**若 Dir 仍错：** 优先查 CSM（cascade/layer/ortho）与多灯资源，而非回退 shadow viewport flip。
 
 ### Gap 3 — Rasterization / Cull（**低优先，写路径对称**）
 
@@ -106,7 +118,7 @@ Layer C — Shader 采样（NDC → UV / CurrentDepth）
 
 **目标形态：** OpenGL baseline 语义不变；Vulkan 只补 convention 差。
 
-### Step 1 — 闭合 Gap 1（Layer C：Z only） — **implemented 2026-08-29，待目视**
+### Step 1 — 闭合 Gap 1（Layer C：Z only） — **Done 2026-08-29** (`3154700`)
 
 在 Dir/Spot 采样路径引入 **单一** NDC→采样 helper `MinEngineShadowMapCoords`：
 
@@ -125,47 +137,116 @@ vec2 uv = ndc.xy * 0.5 + 0.5;
 - Point 路径未改
 - 顺带恢复 pass-local OpenGL flat remap（`set=0` ShadowPass/Post/Sky；基线回退时误删）
 
-**验收：** GL 回归无变；VK Dir/Spot 假阴影显著改善或消失。
+**验收：** GL 回归无变；VK Spot 已基本正确；Dir/Point 仍 Open。
 
-### Step 2 — 闭合 Gap 2（Layer B + 读侧补偿） — **implemented 2026-08-29**
+### Step 2 — Shadow viewport flip 试验 — **Reverted 2026-08-29**
 
-**写路径方案 B**（保留）：
+曾试验 **scheme B**（`kVulkanShadowPass.ViewportFlipY=true` + Back cull + 读 `uv.y=1-y`）及点光 `ShadowMap2D`；**已回退**。结论：不应把 Main Pass 的 flip 逻辑套入 shadow 写读链。当前保持 scheme A。
 
-- `kVulkanShadowPass.ViewportFlipY = true` → `GetEffectiveCullMode()` 为 Back
-- Point cube face 用 `ShadowMap2D` convention（与 EnvMap `CubeMapFace` 分离）
-
-**读路径**：手算 `ndc→uv` 须补偿写路径 viewport flip（见 §8 P0）。原「B 与 C 二选一」对手算 UV 不适用——B 改 raster，C 改读式，是闭合对而非双重 flip。
-
-### BUG-RENDER-012 — shadow index 门控 — **Fixed 2026-08-29**
+### BUG-RENDER-012 — shadow index 门控 — **Fixed 2026-08-29** (`3154700`)
 
 `MinEngineShadowMapSlot(Params.w)`：`Params.w < 0` 时不采样（修复 `int(-0.5)==0`）。GL 点光关阴影已验证。
 
 ---
 
-## 8) 待查项 / 试验队列（2026-08-29）
+## 8) 待查项 / 试验队列（2026-08-29 更新）
 
-写路径已大体可信（影子落在投射物上）。剩余问题倾向 **采样侧闭合**。按优先级：
+**FlipY / scheme B 试验已废弃。** Shadow 写读保持 scheme A（viewport 不 flip，读无 `uv.y` 补偿）。VK Spot 已基本正确。
 
 | ID | 嫌疑 | 适用 | 状态 |
 |----|------|------|------|
-| **P0** | 写 B（viewport flip）+ 读 `uv.y=1-y`（`MinEngineShadowMapCoords`，仅 Dir/Spot） | 多灯「同侧」、plane 偏移 | **in progress** |
-| **P1** | CSM cascade 选择：`viewDepth = -fragPosViewSpace.z` 在 VK ZO 下是否正确 | Dir | pending |
-| **P2** | `SpotLightViewProj` 槽位陈旧 / 复用（`ClearUnusedShadowViewProjSlots` 仅 Spot） | 多 Spot / Spot+Dir | pending |
-| **P3** | `sampler2DArray` cascade layer 与 CPU 层索引 | Dir | pending |
-| **P4** | Point cube：6 面写入 flip vs `normalize(fragPos-lightPos)` 采样朝向；四重对称鬼影 | Point | pending（Step 3） |
-| **P5** | bias / 深度比较符号 / SRV 残留（012 后 index 已门控） | 全类型 | 低优先 |
+| ~~P0~~ | ~~写 flip + 读 `uv.y`~~ | Dir/Spot | **cancelled**（错误模型） |
+| **P1** | CSM frustum→AABB / 级联混用（FORCE=0 多影→单影） | Dir | **CSM 路径相关**；固定盒子实验无效（双 RHI 无影） |
+| **P2** | `SpotLightViewProj` 槽位 / 多灯交互 | Spot+Dir | open（单 Spot 已好转） |
+| **P3** | `sampler2DArray` layer + shader `MinEngineShadowMapCoords` / Dir PCF | Dir | **open — 下一刀（GPU）** |
+| **P4** | Point cube | Point | open |
+| **P5** | bias / 深度比较 / SRV | 全类型 | 低优先 |
+| **P6** | VK Dir 影与 Point Cast Shadow 耦合 / latch | Dir+Point | **BUG-RENDER-013** — **RDG 主因假设**（2026-08-30 修订） |
+| **P7** | RDG：Scene 无 ShadowAtlas read edge；静态 fingerprint；enqueue vs bake 脱节 | Dir+VK | **BUG-RENDER-013** — 对齐 Granite `bake` / `setup_dependencies` |
 
-**P0 原理：** Main Pass 由 GPU 做 viewport 变换；阴影读路径手算 `ndc*0.5+0.5`，VK shadow 写若 flip viewport，读必须 `uv.y=1-y` 才能与 texel 对齐。点光不走此函数。
+### Dir 实验状态（2026-08-30，已回退）
 
-**P0 验收：** VK 仅 Dir / 仅 Spot → 影子是否不再「同侧」；Dir+Spot 交互是否减轻；Point 暂不要求改善。
+| 实验 | 结果 |
+|------|------|
+| FORCE cascade 0 | 多影→单影；GL/VK 强制0 仍不对 |
+| Fixed ortho box | **GL+VK 均无 Dir 影**（盒子未闭合，已回退） |
 
-### Step 3 — Point（Gap 4，P4）
+**当前：** `kDirShadowForceCascade=-1`（正常级联）；无固定盒子。Debug 开关仍可用（`DIR_SHADOW_DEBUG_MODE` / `DIR_SHADOW_FORCE_CASCADE` inject）。
 
-在 Step 1/2 之后单独验证：
+### P7 — RDG 调查（2026-08-30，修订）
 
-- 写：`UseLinearDepth=1` + `CubeMapFace` viewport
-- 读：`SamplePointShadowPCF` 方向与线性 depth
-- 对照 `EnvMapCapture` 面朝向 / up 向量
+**结论（修订）：** Dir-only 隔离下 VK 正常 → TD-025 convention **基本排除**为主因。全类型 shadow 失败更符合 **Granite 式 RDG 缺口**（read edge、rebake、fingerprint、pass 序），而非持续堆 set1/描述符 patch。S1 工作区改动仅为薄层调度 + VK depth layout。详记 [BUG-RENDER-013](../bugs/BUG-RENDER-013.md)。
+
+**隔离实验（仍有效）：** `MAX_*_SHADOW_MAPS=0` → **VK Dir 正常**（对照：问题随 shadow **图拓扑**出现，非 Dir 数学单路径）。
+
+| 机制 | 行为 |
+|------|------|
+| RDG shadow 槽 | 编译期固定 `kMaxShadowGraphPasses = MAX_CASCADES + MAX_SPOT_SHADOW_MAPS + MAX_POINT_SHADOW_MAPS×6`（当前 **18**）；`BuildFrameRenderGraph` 全部 `ForceInclude` |
+| 实际 GPU shadow pass | 仅 `ShadowGraphPass::NeedRenderPass()`（有 `ShadowDrawCommand` + 已 bind 纹理）为 true 的槽执行 `BeginRenderPass` |
+| Scene 读 shadow | `BasePass` **未**声明 `DirShadowAtlas` 为 texture input → 无自动 barrier |
+| set1 重建 | 点光 shadow map 指针 null→有效 会 `sceneSet1Dirty`；仅 Dir 时可能复用陈旧 VkDescriptorSet |
+
+### Shadow pass 隔离实验矩阵
+
+| 目标 | 场景层（推荐先试） | 编译期常量 | 影响 shadow **图**槽位 | 影响 shadow **GPU** pass |
+|------|-------------------|------------|------------------------|---------------------------|
+| 仅 Dir、无点/聚 shadow | 点/聚 `Cast Shadow` 关 | `MAX_POINT_SHADOW_MAPS=0`, `MAX_SPOT_SHADOW_MAPS=0` | 18→4（仅 cascade 槽） | 仅 Dir cascade 有 command 时 |
+| 单级联 Dir | 同上 + `DIR_SHADOW_FORCE_CASCADE=0` | `MAX_CASCADES=1` | 18→1（若 spot/point map 也为 0） | 1 个 `Shadow.0` |
+| 限制场景灯数量 | 删/关多余灯 | `MAX_POINT_LIGHTS` / `MAX_SPOT_LIGHTS` | **不变**（仍 18 槽） | 仅影响 `CollectShadowRequests` 是否生成 command |
+| 完全无 shadow | `EnableShadows` 关 | — | 图仍 bake 18 槽* | 无 command → 全 skip |
+
+\* `ForceInclude` 仍在 pass stack；空槽 `NeedRenderPass()==false`，不录 GPU render pass。
+
+**注意：** `MaterialSceneShadows.glslinc` 内 `MAX_SPOT_SHADOW_MAPS` / `MAX_POINT_SHADOW_MAPS` 为 shader 宏（当前 2）；若只改 C++ `ShadowTypes.h` 为 0，需同步 shader 或接受 set1 槽位与 shader 循环不一致。
+
+**推荐实验顺序（坐实 P6/P7）：**
+
+1. ~~场景：Dir Cast Shadow on，点/聚 Cast Shadow off~~ → **引擎层已设 `MAX_*_SHADOW_MAPS=0`（2026-08-30）**；图槽 = `MAX_CASCADES`（4）；set1 spot/point 仍绑 dummy。
+2. VK 复测：仅 Dir Cast Shadow → Dir 是否仍不可见（若是 → 支持 P0/P1，非点光 pass 污染）。
+3. `MAX_CASCADES=1` → 单槽 Dir；配合 `DIR_SHADOW_DEBUG_MODE=2` 排除级联。
+4. 修 P0–P3 后恢复 `MAX_*_SHADOW_MAPS=2` 作回归。
+
+### Dir debug（`DIR_SHADOW_DEBUG_MODE`）
+
+开关：`ShaderCompiler.cpp` 内 `kDirShadowDebugMode`（注入到材质 SPIR-V；改后需重编 Editor，材质会因源 hash 变化重编译）。
+
+| Mode | 画面 | 看什么 |
+|------|------|--------|
+| **0** | 正常 lit | 关 debug |
+| **1** | R/G/B/Y = cascade 0/1/2/3 | GL vs VK 条带是否一致（级联选择） |
+| **2** | 灰度 = 单 tap 阴影（无 PCF、bias=0） | 是否仍错 → 排除 PCF |
+| **3** | RG = shadow UV；品红 = OOB | UV 布局 / 越界 |
+| **4** | 灰度 = currentDepth（读侧算出的 Z） | ZO 读是否在合理范围 |
+| **5** | 灰度 = sampledDepth（shadow map） | 写路径内容是否合理 |
+| **6** | 灰度 = `(current−sampled)*10+0.5` | 比较符号/尺度 |
+
+**当前默认：`kDirShadowDebugMode = 0`（正常 lit）。** 固定盒子实验时保持 0；FORCE cascade 仍为 0。
+
+### Point 专项（P4 展开）
+
+**当前代码（无 flip）：**
+
+| 项 | 值 |
+|----|-----|
+| Viewport | `CubeMapFace` → `ViewportFlipY=false`（与 `EnvMapCapture` 同源） |
+| 写深度 | `gl_FragDepth = length(world-light)/far`（`UseLinearDepth=1`） |
+| 读 | `normalize(fragPos-lightPos)` + 同线性 depth；**无** `MinEngineShadowMapCoords`、**无** sample Y flip |
+
+**已做且已回退的 Point 试验：**
+
+| 试验 | 内容 | 结果 |
+|------|------|------|
+| Step 2B 副产品 | 点光面 `CubeMapFace`→`ShadowMap2D` | 已随 scheme B 回退 |
+| P4-A | 写 `CubeMapFace` + Front cull 专用 PSO | 有变化，四重鬼影仍在 → 回退 |
+| P4-B | 读侧 `dir.y = -dir.y`（VK） | 无效 → 回退 |
+
+**下一步（Point）：** debug 可视化 depth cube / 单 tap 比较；查 VK depth-only cube 每面 `EndRenderPass` layout 过渡；PCF 跨 cube 面泄漏 — **不是** shadow viewport flip。
+
+### Step 3 — Point（Gap 4）
+
+- 写：`CubeMapFace` + 线性 depth（保持）
+- 读：方向 + 线性 depth（保持）
+- 对照 `EnvMapCapture` 面朝向；**禁止**无依据改用 `ShadowMap2D` flip
 
 ### 明确不做
 
@@ -196,7 +277,9 @@ vec2 uv = ndc.xy * 0.5 + 0.5;
 
 ## 6) 验收
 
-- [ ] VK `test`：Dir / Spot / Point 与 GL 目视一致
+- [x] Step 1 ZO depth read + slot gate committed (`3154700`)
+- [x] Scheme A：Shadow viewport 不 flip；读无 sample Y flip
+- [ ] VK `test`：Dir / Point 与 GL 一致（Spot ~OK）
 - [ ] GL 回归无回归
 - [ ] 关 plane Cast Shadow / 关 spot·point Cast Shadow 行为合理、不崩
 - [ ] 一次只合一层；文档记录选了 Y 的 B 还是 C
@@ -232,3 +315,4 @@ cmake --build minEngine/build --target Editor minEngineTests
 | 2026-08-29 | 初稿：问题 / 四类 gap / 分步最小闭合；供审阅 |
 | 2026-08-29 | §8 待查队列 P0–P5；P0 B+读侧 uv.y 补偿 |
 | 2026-08-29 | Step 2B viewport flip；BUG-RENDER-012 Fixed |
+| 2026-08-29 | **回退** scheme B / 读 `uv.y`；确立 shadow 写读独立闭环；commit `3154700`；VK Spot ~OK |

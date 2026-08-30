@@ -100,8 +100,8 @@ Shadow 有效剔除：`ViewportFlipY=false` → `Front`（GL/VK 相同）。
 - **数据流正确：** 同帧同 `ViewProj`、同 world pos、同 RDG 纹理句柄；帧顺序 Shadow 写 → Base 读。
 - **Dir/Spot：** 写硬件 ZO depth；读 `ndc.z`（须 inject `MINENGINE_CLIP_DEPTH_ZERO_TO_ONE`）。
 - **Point：** 写/读均为 `length(pos-light)/far`，不经 `MinEngineShadowProject`。
-- **VK 可疑断点：** Layer B（Shadow `flipY=false` vs Scene `flipY=true`）与 Layer C 闭合；实现中 `SAMPLE_FLIP_Y=1` 与设计「Lit 无额外 Y flip」不一致。
-- **Viewport 已核实：** `RHIViewportConvention::ShadowMap2D` → `GetViewportFlipY` → `vkCmdSetViewport` 确实 `y=0,height=+H`（非 no-op）。
+- **VK 可疑断点（2026-08-29 更新）：** Shadow 写读为**独立闭环**——`Shadow flipY=false` 与 `Scene flipY=true` **不构成** shadow 采样 gap。曾试验 scheme B + 读 `uv.y` 已废弃。当前：ZO depth read + scheme A；VK Spot ~OK，Dir/Point 仍查 CSM / cube / 多灯。
+- **Viewport 已核实：** `ShadowMap2D` / `CubeMapFace` → `GetViewportFlipY` → VK `y=0,height=+H`（shadow 写不 flip）。
 
 ### EnvMapCapture vs Point Shadow（可对齐 / 不可对齐）
 
@@ -114,11 +114,12 @@ Shadow 有效剔除：`ViewportFlipY=false` → `Front`（GL/VK 相同）。
 
 EnvMap 正常 **不能** 直接证明 depth cube 离屏写正确。
 
-### 实现与设计张力（回退后）
+### 实现与设计张力（2026-08-29，`3154700`）
 
-- `MinEngineShadowProject` 与 `ShaderCompiler` flip/ZO 注入 **已移除**（2026-08-29）。
-- CPU 仍用 `RHIClipSpace` ZO 矩阵（Layer A）；shader 仍用 `projCoords.z` 直读（bbdcdc，未区分 ZO）。
-- 下一步：先闭合 Layer C depth，再按需 **二选一** viewport flip 或 sample flip（勿同时）。
+- `MinEngineShadowProject` 与 flip define 注入 **已移除**。
+- Layer C：`MinEngineShadowMapCoords` + `MINENGINE_CLIP_DEPTH_ZERO_TO_ONE`（ZO depth read）**已落地**。
+- Layer B：**scheme A**（shadow viewport 不 flip；读无 `uv.y` 补偿）。scheme B 试验 **已回退**。
+- 下一步：**Dir** → CSM（P1/P3）；**Point** → cube 线性 depth / PCF / VK layout（P4）；非 shadow viewport flip。
 
 ## 变更记录
 

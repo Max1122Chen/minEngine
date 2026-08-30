@@ -31,9 +31,9 @@
                     },
                     "m_Transform": {
                         "Position": [
-                            14.748751640319824,
+                            -3.444150924682617,
                             18.642776489257813,
-                            -15.227285385131836
+                            -16.479677200317383
                         ],
                         "Rotation": {
                             "W": 0.9984459280967712,
@@ -63,7 +63,7 @@
                             "low": 11094257267653316277
                         }
                     },
-                    "m_PhysicsBodyId": 0,
+                    "m_PhysicsBodyId": 4294967295,
                     "m_bSimulatePhysics": false
                 }
             ],
@@ -90,7 +90,7 @@
                         "High": 6184531821558383057,
                         "Low": 12354846377014207710
                     },
-                    "m_Intensity": 1.600000023841858,
+                    "m_Intensity": 0.6000000238418579,
                     "m_LightColor": [
                         1.0,
                         1.0,
@@ -107,7 +107,7 @@
                     "m_SpecularFactor": 1.0,
                     "m_Transform": {
                         "Position": [
-                            0.0,
+                            0.6839771270751953,
                             100.0,
                             0.0
                         ],
@@ -142,7 +142,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
-                    "m_CastShadow": true,
+                    "m_CastShadow": false,
                     "m_Guid": {
                         "High": 3385891046885969139,
                         "Low": 12619355072405068856
@@ -179,9 +179,9 @@
                             "Z": 0.0
                         },
                         "Scale": [
-                            100.0,
+                            1000.0,
                             1.0,
-                            100.0
+                            1000.0
                         ]
                     }
                 },
@@ -200,7 +200,7 @@
                             "low": 10834008049559124436
                         }
                     },
-                    "m_PhysicsBodyId": 1,
+                    "m_PhysicsBodyId": 4294967295,
                     "m_bSimulatePhysics": false
                 }
             ],
@@ -244,8 +244,8 @@
                     "m_SpecularFactor": 1.0,
                     "m_Transform": {
                         "Position": [
-                            0.4000000059604645,
-                            5.13526725769043,
+                            2.679324150085449,
+                            28.242700576782227,
                             1.9133453369140625
                         ],
                         "Rotation": {
@@ -279,14 +279,14 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::SpotLightComponent",
-                    "m_CastShadow": true,
+                    "m_CastShadow": false,
                     "m_DiffuseFactor": 1.0,
                     "m_Guid": {
                         "High": 6300424985727356680,
                         "Low": 10254652125913689710
                     },
-                    "m_InnerConeAngle": 30.0,
-                    "m_Intensity": 0.20000000298023224,
+                    "m_InnerConeAngle": 46.400001525878906,
+                    "m_Intensity": 1.399999976158142,
                     "m_LightColor": [
                         1.0,
                         1.0,
@@ -294,7 +294,7 @@
                         1.0
                     ],
                     "m_Name": "",
-                    "m_OuterConeAngle": 40.0,
+                    "m_OuterConeAngle": 61.400001525878906,
                     "m_Owner": {
                         "$guid": {
                             "high": 2003172142262273660,
@@ -304,15 +304,15 @@
                     "m_SpecularFactor": 1.0,
                     "m_Transform": {
                         "Position": [
-                            -3.406426429748535,
-                            11.093999862670898,
-                            5.050000190734863
+                            30.989715576171875,
+                            -1.5561861991882324,
+                            -20.526470184326172
                         ],
                         "Rotation": {
-                            "W": 0.962927520275116,
+                            "W": 0.9674888253211975,
                             "X": 0.0,
                             "Y": 0.0,
-                            "Z": 0.26976022124290466
+                            "Z": -0.2529137432575226
                         },
                         "Scale": [
                             1.0,

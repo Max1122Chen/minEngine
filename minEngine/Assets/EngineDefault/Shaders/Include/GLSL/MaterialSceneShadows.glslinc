@@ -2,8 +2,19 @@
 #ifndef MINENGINE_MATERIAL_SCENE_SHADOWS_GLSLINC
 #define MINENGINE_MATERIAL_SCENE_SHADOWS_GLSLINC
 
+// Prefer inject from ShaderCompiler (EngineRenderLimits). Fallbacks for IDE / non-injected paths.
+#ifndef MAX_SPOT_SHADOW_MAPS
 #define MAX_SPOT_SHADOW_MAPS 2
+#endif
+#ifndef MAX_POINT_SHADOW_MAPS
 #define MAX_POINT_SHADOW_MAPS 2
+#endif
+#ifndef SPOT_SHADOW_SAMPLER_SLOTS
+#define SPOT_SHADOW_SAMPLER_SLOTS 2
+#endif
+#ifndef POINT_SHADOW_SAMPLER_SLOTS
+#define POINT_SHADOW_SAMPLER_SLOTS 2
+#endif
 
 #define SHADOW_FILTER_BOX 0
 #define SHADOW_FILTER_POISSON 1
@@ -146,6 +157,107 @@ vec3 MinEngineShadowMapCoords(vec4 fragPosLightSpace)
     float depth = ndc.z * 0.5 + 0.5;
 #endif
     return vec3(uv, depth);
+}
+
+// Directional shadow debug (toggle via ShaderCompiler inject or #define before include).
+// 0 off | 1 cascade colors | 2 single-tap shadow | 3 UV.xy | 4 current depth | 5 sampled depth | 6 depth delta
+#ifndef DIR_SHADOW_DEBUG_MODE
+#define DIR_SHADOW_DEBUG_MODE 0
+#endif
+
+// Force a single cascade for experiments: -1 = normal selection, 0..3 = always use that layer.
+#ifndef DIR_SHADOW_FORCE_CASCADE
+#define DIR_SHADOW_FORCE_CASCADE -1
+#endif
+
+int SelectDirectionalCascadeIndex(float viewDepth)
+{
+#if DIR_SHADOW_FORCE_CASCADE >= 0
+    return DIR_SHADOW_FORCE_CASCADE;
+#else
+    for (int i = 0; i < 4; ++i)
+    {
+        if (viewDepth < FarPlanes[i])
+        {
+            return i;
+        }
+    }
+    return 3;
+#endif
+}
+
+bool DirShadowProjCoordsInBounds(vec3 projCoords)
+{
+    return projCoords.x >= 0.0 && projCoords.x <= 1.0 &&
+           projCoords.y >= 0.0 && projCoords.y <= 1.0 &&
+           projCoords.z >= 0.0 && projCoords.z <= 1.0;
+}
+
+float SampleDirShadowSingleTap(vec4 fragPosLightSpace, float shadowLayer, float bias)
+{
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
+    if (!DirShadowProjCoordsInBounds(projCoords))
+    {
+        return 0.0;
+    }
+
+    float sampledDepth = texture(u_DirLightShadowMap, vec3(projCoords.xy, shadowLayer)).r;
+    float currentDepth = projCoords.z;
+    return (currentDepth - bias > sampledDepth) ? 1.0 : 0.0;
+}
+
+vec3 GetCascadeDebugColor(int cascadeIndex);
+
+// Returns true when debug visualization replaces lighting for the directional pass.
+bool TryDirShadowDebugVisual(vec3 fragPos, vec4 fragPosViewSpace, out vec3 outColor)
+{
+#if DIR_SHADOW_DEBUG_MODE == 0
+    return false;
+#else
+    float viewDepth = -fragPosViewSpace.z;
+    int cascadeIndex = SelectDirectionalCascadeIndex(viewDepth);
+    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
+    float shadowLayer = float(cascadeIndex);
+    vec3 projCoords = MinEngineShadowMapCoords(cascadeLightSpacePos);
+    const vec3 kOutOfBoundsColor = vec3(1.0, 0.0, 1.0);
+
+#if DIR_SHADOW_DEBUG_MODE == 1
+    outColor = GetCascadeDebugColor(cascadeIndex);
+    return true;
+#elif DIR_SHADOW_DEBUG_MODE == 2
+    outColor = vec3(SampleDirShadowSingleTap(cascadeLightSpacePos, shadowLayer, 0.0));
+    return true;
+#elif DIR_SHADOW_DEBUG_MODE == 3
+    outColor = DirShadowProjCoordsInBounds(projCoords) ? vec3(projCoords.xy, 0.0) : kOutOfBoundsColor;
+    return true;
+#elif DIR_SHADOW_DEBUG_MODE == 4
+    outColor = DirShadowProjCoordsInBounds(projCoords)
+        ? vec3(projCoords.z)
+        : kOutOfBoundsColor;
+    return true;
+#elif DIR_SHADOW_DEBUG_MODE == 5
+    if (!DirShadowProjCoordsInBounds(projCoords))
+    {
+        outColor = kOutOfBoundsColor;
+        return true;
+    }
+    float sampledDepth = texture(u_DirLightShadowMap, vec3(projCoords.xy, shadowLayer)).r;
+    outColor = vec3(sampledDepth);
+    return true;
+#elif DIR_SHADOW_DEBUG_MODE == 6
+    if (!DirShadowProjCoordsInBounds(projCoords))
+    {
+        outColor = kOutOfBoundsColor;
+        return true;
+    }
+    float sampledDepth = texture(u_DirLightShadowMap, vec3(projCoords.xy, shadowLayer)).r;
+    float delta = projCoords.z - sampledDepth;
+    outColor = vec3(clamp(delta * 10.0 + 0.5, 0.0, 1.0));
+    return true;
+#else
+    return false;
+#endif
+#endif
 }
 
 void BuildPointShadowBasis(vec3 dir, out vec3 tangent, out vec3 bitangent)
@@ -583,15 +695,7 @@ float ComputeDirectionalShadowFactor(vec3 normal, vec3 fragPos, vec4 fragPosView
     vec3 N = normalize(normal);
     float ndotl = max(dot(N, lightDir), 0.0);
     float viewDepth = -fragPosViewSpace.z;
-    int cascadeIndex = 3;
-    for (int i = 0; i < 4; i++)
-    {
-        if (viewDepth < FarPlanes[i])
-        {
-            cascadeIndex = i;
-            break;
-        }
-    }
+    int cascadeIndex = SelectDirectionalCascadeIndex(viewDepth);
     // Receiver bias: constant + slope, scaled by cascade (farther cascades have coarser depth).
     float cascadeScale = 1.0 + float(cascadeIndex) * 0.75;
     float bias = (0.0015 + 0.02 * (1.0 - ndotl)) * cascadeScale;
