@@ -1,8 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-30 (RND-F12 S06 binding lifecycle in progress)
+Last updated: 2026-08-30 (RND-F13 design draft; S06 committed)
 
-### 2026-08-30 - RND-F12-S06: shadow set1 ↔ RDG physical (`feat/render`)
+### 2026-08-30 - RND-F13: Hand-Pass Probe Renderer design draft (`feat/render`)
+- Diagnostic renderer proposal: manual Shadow→Base→Present, no RDG; GL/VK parity to isolate BUG-013.
+- BUG-RENDER-010: user confirmed single-cascade → one shadow (multi-copy = CSM).
+- Pending: design approval → Implementation Plan.
+
+### 2026-08-30 - RND-F12-S06 + isolation experiment committed (`feat/render`)
+- `3fed4ef`: set1 physical lifecycle; dir-only + single-cascade experiment toggles; set1 OOB fix when MAX maps=0.
 - `ShadowResourceHandle::RdgPhysicalIndex`; `BindGraphShadowTextures` clears stale texture refs then binds physical.
 - `EngineSceneBindingSets`: dirty on ptr + physical index + texture desc; invalidate when `SetupAttachments` recreates.
 - User re-tested BUG-013: still open after S01–S03; S06 pending VK verify.

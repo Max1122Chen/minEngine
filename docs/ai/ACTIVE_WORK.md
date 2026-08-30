@@ -19,8 +19,10 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
    - **S06 implemented / pending visual verify** — VK Editor flags: shadows + post + sky；`Texture2DArray` atlas + ShadowPass `set=` + depth-only PSO
    - **BUG-RENDER-010 / TD-025** — VK shadow caps + scheme A implemented；**pending user visual verify**（[Design](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md)）
    - **BUG-RENDER-011** — spot/point 关 shadow 崩溃；SRV 槽清空 fix landed
-   - **BUG-RENDER-013** — VK 多光源 shadow；根因 → 未完成 Granite RDG **全语义** → **[RND-F12](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)** Phase A（S01 起）
-   - **Next**: **RND-F12-S03** barrier hook landed (`InsertPassInputBarriers`)；用户 VK 目视 BUG-013；然后 **S06** binding lifecycle
+   - **BUG-RENDER-013** — VK 多光源 shadow；根因 → 未完成 Granite RDG **全语义** → **[RND-F12](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)** Phase A
+   - **BUG-RENDER-010** — CSM 多影：`MAX_CASCADES=1` + `FORCE_CASCADE=0` → 单影（坐实级联）；浅影/强度待查
+   - **RND-F13** — Hand-Pass Probe Renderer（RDG 对照实验）— [Design Draft](./Render/RND-F13_HAND_PASS_PROBE_RENDERER_DESIGN.md) **待审批**
+   - **Next**: 审批 RND-F13 设计 → Impl；并行 F12 / BUG-010 CSM 修复
    - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync）  
 
 4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  
