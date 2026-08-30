@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-30 (RND-F12 S03 barriers in progress)
+Last updated: 2026-08-30 (RND-F12 S06 binding lifecycle in progress)
+
+### 2026-08-30 - RND-F12-S06: shadow set1 ↔ RDG physical (`feat/render`)
+- `ShadowResourceHandle::RdgPhysicalIndex`; `BindGraphShadowTextures` clears stale texture refs then binds physical.
+- `EngineSceneBindingSets`: dirty on ptr + physical index + texture desc; invalidate when `SetupAttachments` recreates.
+- User re-tested BUG-013: still open after S01–S03; S06 pending VK verify.
 
 ### 2026-08-30 - RND-F12-S03: pass input barriers (`feat/render`)
 - `RenderGraph::InsertPassInputBarriers` — before each pass `RunBuildRenderPass`, transition texture/depth/color-alias inputs via `RHICmdTransition` (shader-read layout on VK).

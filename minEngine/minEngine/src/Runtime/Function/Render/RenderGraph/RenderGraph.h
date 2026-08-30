@@ -44,7 +44,8 @@ namespace minEngine
 
         void Bake();
         void InvalidateBake();
-        void SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull);
+        /** Returns true when any physical texture was (re)created this call. */
+        bool SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull);
         void EnqueueRenderPasses(RHICommandList& cmdList);
 
         RHITexture* GetPhysicalTexture(const RDGTextureResource& resource);

@@ -9,8 +9,9 @@
 
 namespace minEngine
 {
-    constexpr int MAX_SPOT_SHADOW_MAPS = 2;
-    constexpr int MAX_POINT_SHADOW_MAPS = 2;
+    /** BUG-RENDER-013 isolation: dir-only RDG graph (4 cascade passes). Restore to 2 after verify. */
+    constexpr int MAX_SPOT_SHADOW_MAPS = 0;
+    constexpr int MAX_POINT_SHADOW_MAPS = 0;
 
     /** Fixed RDG shadow pass slots: dir cascades + spot maps + point cube faces. */
     constexpr uint32_t kMaxShadowGraphPasses =
@@ -62,6 +63,9 @@ namespace minEngine
         int LayerCount = 0;
 
         RHITextureRef Texture;
+
+        /** RDG physical slot after Bake/SetupAttachments; UINT32_MAX when unknown. */
+        uint32_t RdgPhysicalIndex = UINT32_MAX;
 
         bool IsValid() const
         {

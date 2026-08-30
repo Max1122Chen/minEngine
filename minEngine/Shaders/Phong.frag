@@ -2,10 +2,14 @@
 
 // Prefer inject from ShaderCompiler. Sampler array size uses SLOTS (layout); MAX_* gates sampling.
 #ifndef MAX_SPOT_SHADOW_MAPS
-#define MAX_SPOT_SHADOW_MAPS 2
+#define MAX_SPOT_SHADOW_MAPS 0
 #endif
 #ifndef MAX_POINT_SHADOW_MAPS
-#define MAX_POINT_SHADOW_MAPS 2
+#define MAX_POINT_SHADOW_MAPS 0
+#endif
+// BUG-RENDER-010 isolation: match MaterialSceneShadows (restore -1 after verify).
+#ifndef DIR_SHADOW_FORCE_CASCADE
+#define DIR_SHADOW_FORCE_CASCADE 0
 #endif
 #ifndef SPOT_SHADOW_SAMPLER_SLOTS
 #define SPOT_SHADOW_SAMPLER_SLOTS 2
@@ -242,10 +246,12 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 fragPos, vec3 vi
 
     if (MinEngineShadowMapSlot(light.Params.w) >= 0)
     {
-        // Determine which cascade to sample based on the fragment's view space depth
         float viewDepth = -FragPosViewSpace.z;
-        int cascadeIndex = 3; // Default to the last cascade if beyond all far planes
-
+        int cascadeIndex = 0;
+#if DIR_SHADOW_FORCE_CASCADE >= 0
+        cascadeIndex = DIR_SHADOW_FORCE_CASCADE;
+#else
+        cascadeIndex = 3;
         for(int i = 0; i < 4; i++)
         {
             if(viewDepth < FarPlanes[i])
@@ -254,7 +260,7 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 fragPos, vec3 vi
                 break;
             }
         }
-        // lightColor = GetCascadeDebugColor(cascadeIndex); // Debug: visualize cascade splits with colors
+#endif
         vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
         shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
     }

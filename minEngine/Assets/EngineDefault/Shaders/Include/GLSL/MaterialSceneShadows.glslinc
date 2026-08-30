@@ -4,10 +4,10 @@
 
 // Prefer inject from ShaderCompiler (EngineRenderLimits). Fallbacks for IDE / non-injected paths.
 #ifndef MAX_SPOT_SHADOW_MAPS
-#define MAX_SPOT_SHADOW_MAPS 2
+#define MAX_SPOT_SHADOW_MAPS 0
 #endif
 #ifndef MAX_POINT_SHADOW_MAPS
-#define MAX_POINT_SHADOW_MAPS 2
+#define MAX_POINT_SHADOW_MAPS 0
 #endif
 #ifndef SPOT_SHADOW_SAMPLER_SLOTS
 #define SPOT_SHADOW_SAMPLER_SLOTS 2
@@ -165,9 +165,9 @@ vec3 MinEngineShadowMapCoords(vec4 fragPosLightSpace)
 #define DIR_SHADOW_DEBUG_MODE 0
 #endif
 
-// Force a single cascade for experiments: -1 = normal selection, 0..3 = always use that layer.
+// BUG-RENDER-010 isolation: always sample cascade layer 0 (restore -1 after verify).
 #ifndef DIR_SHADOW_FORCE_CASCADE
-#define DIR_SHADOW_FORCE_CASCADE -1
+#define DIR_SHADOW_FORCE_CASCADE 0
 #endif
 
 int SelectDirectionalCascadeIndex(float viewDepth)

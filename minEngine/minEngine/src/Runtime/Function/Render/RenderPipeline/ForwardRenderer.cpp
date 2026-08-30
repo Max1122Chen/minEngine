@@ -374,11 +374,37 @@ namespace minEngine
         m_FrameRenderGraph.SetFrameContext(frameContext);
 
         m_FrameRenderGraph.Bake();
-        m_FrameRenderGraph.SetupAttachments(*rhi, nullptr);
+        if (m_FrameRenderGraph.SetupAttachments(*rhi, nullptr))
+        {
+            m_SceneBindings.InvalidateShadowTextureBindings();
+        }
     }
 
     void ForwardRenderer::BindGraphShadowTextures(SceneRenderContext& ctx)
     {
+        ctx.DirectionalShadowHandle.Texture = nullptr;
+        ctx.DirectionalShadowHandle.RdgPhysicalIndex = UINT32_MAX;
+        for (ShadowResourceHandle& handle : ctx.SpotShadowHandles)
+        {
+            handle.Texture = nullptr;
+            handle.RdgPhysicalIndex = UINT32_MAX;
+        }
+        for (ShadowResourceHandle& handle : ctx.PointShadowHandles)
+        {
+            handle.Texture = nullptr;
+            handle.RdgPhysicalIndex = UINT32_MAX;
+        }
+        for (auto& entry : ctx.SpotShadowHandleMap)
+        {
+            entry.second.Texture = nullptr;
+            entry.second.RdgPhysicalIndex = UINT32_MAX;
+        }
+        for (auto& entry : ctx.PointShadowHandleMap)
+        {
+            entry.second.Texture = nullptr;
+            entry.second.RdgPhysicalIndex = UINT32_MAX;
+        }
+
         for (const ShadowDrawCommand& command : ctx.ShadowDrawCommands)
         {
             if (!command.Handle.IsValid() || command.GraphDepthResourceName.empty())
@@ -402,11 +428,13 @@ namespace minEngine
             }
 
             RHITextureRef texture = m_FrameRenderGraph.GetPhysicalTextureShared(*depthResource);
+            const uint32_t physicalIndex = depthResource->GetPhysicalIndex();
             shadowGraphPass.BindGraphTexture(texture);
 
             if (command.Type == LightType::Directional)
             {
                 ctx.DirectionalShadowHandle.Texture = texture;
+                ctx.DirectionalShadowHandle.RdgPhysicalIndex = physicalIndex;
             }
             else if (command.Type == LightType::Spot)
             {
@@ -414,12 +442,14 @@ namespace minEngine
                 if (spotSlot >= 0 && spotSlot < static_cast<int>(ctx.SpotShadowHandles.size()))
                 {
                     ctx.SpotShadowHandles[static_cast<size_t>(spotSlot)].Texture = texture;
+                    ctx.SpotShadowHandles[static_cast<size_t>(spotSlot)].RdgPhysicalIndex = physicalIndex;
                 }
                 for (auto& entry : ctx.SpotShadowHandleMap)
                 {
                     if (entry.second.SlotIndex == spotSlot)
                     {
                         entry.second.Texture = texture;
+                        entry.second.RdgPhysicalIndex = physicalIndex;
                     }
                 }
             }
@@ -429,12 +459,14 @@ namespace minEngine
                 if (pointSlot >= 0 && pointSlot < static_cast<int>(ctx.PointShadowHandles.size()))
                 {
                     ctx.PointShadowHandles[static_cast<size_t>(pointSlot)].Texture = texture;
+                    ctx.PointShadowHandles[static_cast<size_t>(pointSlot)].RdgPhysicalIndex = physicalIndex;
                 }
                 for (auto& entry : ctx.PointShadowHandleMap)
                 {
                     if (entry.second.SlotIndex == pointSlot)
                     {
                         entry.second.Texture = texture;
+                        entry.second.RdgPhysicalIndex = physicalIndex;
                     }
                 }
             }

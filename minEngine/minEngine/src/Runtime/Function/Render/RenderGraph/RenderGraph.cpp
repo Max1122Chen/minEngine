@@ -403,7 +403,7 @@ namespace minEngine
         return desc;
     }
 
-    void RenderGraph::SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull)
+    bool RenderGraph::SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull)
     {
         if (!m_IsBaked)
         {
@@ -424,6 +424,7 @@ namespace minEngine
             m_PhysicalTextures.assign(m_PhysicalDims.size(), nullptr);
         }
 
+        bool anyRecreated = false;
         for (uint32_t physicalIndex = 0; physicalIndex < m_PhysicalDims.size(); ++physicalIndex)
         {
             if (swapchainOrNull != nullptr && physicalIndex == m_SwapchainPhysicalIndex)
@@ -453,7 +454,9 @@ namespace minEngine
                 throw std::runtime_error(
                     "RenderGraph::SetupAttachments: failed to create '" + dims.DebugName + "'.");
             }
+            anyRecreated = true;
         }
+        return anyRecreated;
     }
 
     void RenderGraph::InsertPassInputBarriers(RHICommandList& cmdList, const RenderPass& pass)

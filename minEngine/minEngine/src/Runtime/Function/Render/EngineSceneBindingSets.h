@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Render/RHI/RHIShaderBinding.h"
+#include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHITextureViewCache.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 
@@ -60,6 +61,18 @@ namespace minEngine
         uint32_t GetPerObjectSlotStride() const { return m_PerObjectSlotStride; }
 
     private:
+        struct ShadowTextureSlotCache
+        {
+            RHITexture* Texture = nullptr;
+            uint32_t PhysicalIndex = UINT32_MAX;
+            RHITextureCreateDesc Desc{};
+        };
+
+        bool ShadowTextureSlotChanged(
+            RHITexture* texture,
+            uint32_t physicalIndex,
+            ShadowTextureSlotCache& cache);
+
         RHIShaderBindingSetLayoutRef m_SceneSet0Layout;
         RHIShaderBindingSetLayoutRef m_SceneSet1Layout;
         RHIShaderBindingSetRef m_SceneSet1;
@@ -79,9 +92,9 @@ namespace minEngine
         uint32_t m_PerObjectSlotStride = 256;
         uint32_t m_PerObjectWriteIndex = 0;
 
-        RHITexture* m_CachedDirShadowTexture = nullptr;
-        std::array<RHITexture*, MAX_SPOT_SHADOW_MAPS> m_CachedSpotShadowTextures{};
-        std::array<RHITexture*, MAX_POINT_SHADOW_MAPS> m_CachedPointShadowTextures{};
+        ShadowTextureSlotCache m_CachedDirShadowSlot{};
+        std::array<ShadowTextureSlotCache, MAX_SPOT_SHADOW_MAPS> m_CachedSpotShadowSlots{};
+        std::array<ShadowTextureSlotCache, MAX_POINT_SHADOW_MAPS> m_CachedPointShadowSlots{};
         RHIBuffer* m_CachedDirLightViewProjs = nullptr;
         RHIBuffer* m_CachedCascadeFarPlanes = nullptr;
         RHIBuffer* m_CachedSpotLightViewProjs = nullptr;
