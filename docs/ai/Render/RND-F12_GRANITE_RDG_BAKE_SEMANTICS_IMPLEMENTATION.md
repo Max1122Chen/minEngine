@@ -2,7 +2,7 @@
 
 ## Meta
 - **ID:** `RND-F12`
-- **Status:** Planned
+- **Status:** Planned → **In Progress** (Phase A: S01–S02 Done, S03 in progress)
 - **Owner:** project maintainer
 - **Last updated:** 2026-08-30
 - **Related:** [Design](./RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md), [BUG-RENDER-013](../bugs/BUG-RENDER-013.md)
@@ -31,9 +31,9 @@ Phase A（S01–S07）闭合 read edge + barrier + 删补丁，验收 BUG-013。
 
 | Slice ID | Design §4 | 内容 | 状态 | 验证 |
 |----------|-----------|------|------|------|
-| RND-F12-S01 | 4.1 #3–5, 4.2 | Read edge；`pass_dependencies`；missing-writer throw；删 shadow ForceInclude；序单测 | Planned | render-graph |
-| RND-F12-S02 | 4.1 #1, §3.4 | 删 Fingerprint；每帧 Bake 或 prove-safe 缓存；结构化 invalidate | Planned | grep + rebake |
-| RND-F12-S03 | 4.1 #11–12, 4.3 events, 4.4 barrier | `RDGTextureAccess`；`Enqueue` 间 `RHICmdTransition`；VK 013 矩阵 | Planned | VK validation |
+| RND-F12-S01 | 4.1 #3–5, 4.2 | Read edge；`pass_dependencies`；missing-writer throw；删 shadow ForceInclude；序单测 | **Done** | render-graph |
+| RND-F12-S02 | 4.1 #1, §3.4 | 删 Fingerprint；每帧 Bake 或 prove-safe 缓存；结构化 invalidate | **Done** | grep + rebake |
+| RND-F12-S03 | 4.1 #11–12, 4.3 events, 4.4 barrier | `RDGTextureAccess`；`Enqueue` 间 `RHICmdTransition`；VK 013 矩阵 | **In Progress** | VK validation |
 | RND-F12-S06 | §3.2 | set1 dirty ← physical 变化；删 pending shadow invalidate | Planned | 013 toggle |
 | RND-F12-S07 | Phase A 收口 | Registry；BUG-013；PROGRESS_LOG | Planned | smoke + 目视 |
 
@@ -70,10 +70,10 @@ Phase A（S01–S07）闭合 read edge + barrier + 删补丁，验收 BUG-013。
 - **Goal:** Granite `generic_texture_inputs` 语义闭合。
 - **Touch:** `BasePass`, `TranslucencyPass`, `SkyBoxPass`, `PostProcessPass`；`RenderGraph.cpp`（`pass_dependencies`、missing-writer throw）；`ForwardRenderer` 删 shadow `ForceInclude`
 - **DoD:**
-  - [ ] Scene pass `AddTextureInput` 含 shadow atlases
-  - [ ] Read 无 writer → `Bake` throw
-  - [ ] `m_PassStack` shadow before scene（单测）；与 `reverse` 等价性有测试
-  - [ ] Shadow `ForceInclude` 为零
+  - [x] Scene pass `AddTextureInput` 含 shadow atlases
+  - [x] Read 无 writer → `Bake` throw
+  - [x] `m_PassStack` shadow before scene（单测）；与 `reverse` 等价性有测试
+  - [x] Shadow `ForceInclude` 为零
 - **Verify:** `test render-graph`
 
 ### RND-F12-S02 — Invalidate；每帧 Bake
@@ -81,8 +81,8 @@ Phase A（S01–S07）闭合 read edge + barrier + 删补丁，验收 BUG-013。
 - **Goal:** §3.4 策略 A；删 §6 指纹项。
 - **Touch:** `ForwardRenderer`；`RenderGraph::Bake` 调用频率
 - **DoD:**
-  - [ ] 无 `Fingerprint` / `m_PendingShadowBindingInvalidate`（shadow 路径）
-  - [ ] `Execute` 每帧 `Bake()` 或文档+单测证明缓存安全
+  - [x] 无 `Fingerprint` / `m_PendingShadowBindingInvalidate`（shadow 路径）
+  - [x] `Execute` 每帧 `Bake()` 或文档+单测证明缓存安全
 - **Verify:** viewport resize rebake；grep
 
 ### RND-F12-S03 — Barrier + Access 元数据
@@ -90,8 +90,9 @@ Phase A（S01–S07）闭合 read edge + barrier + 删补丁，验收 BUG-013。
 - **Goal:** `build_barriers` / `physical_events` 最小实现。
 - **Touch:** `RenderPass::AddTextureInput`；`RenderGraph::EnqueueRenderPasses`；`VulkanRHITexture` layout；`RHIResourceTransition`
 - **DoD:**
-  - [ ] `RDGTextureAccess` 落地
-  - [ ] VK depth shadow：attachment → shader read transition
+  - [ ] `RDGTextureAccess` 落地（deferred — 当前用 `RHITextureTransitionInfo` 最小 shader-read）
+  - [x] `EnqueueRenderPasses` 在 consumer pass 前 `InsertPassInputBarriers` → `RHICmdTransition`
+  - [ ] VK depth shadow：attachment → shader read transition（需用户 013 目视）
   - [ ] BUG-RENDER-013 全矩阵
 - **Verify:** VK validation + Editor `test` scene
 
@@ -162,4 +163,4 @@ Phase D:  按需 promote
 | 日期 | 说明 |
 |------|------|
 | 2026-08-30 | 初稿 S01–S07 |
-| 2026-08-30 | 扩充 Phase B–D（S04–S15）；全景表追踪；Bake 频率；北极星 |
+| 2026-08-30 | S01–S02 Done：read edge、pass_dependencies、每帧 Bake、删 Fingerprint/ForceInclude |

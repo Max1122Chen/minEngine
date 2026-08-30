@@ -39,6 +39,7 @@ namespace minEngine
     void BasePass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
         (void)graph;
+        AddSceneLitShadowTextureInputs(self);
         self.AddColorOutput(kRDGSceneColor, MakeSceneColorAttachment());
         self.SetDepthStencilOutput(kRDGSceneDepth, MakeSceneDepthAttachment());
     }

@@ -249,7 +249,6 @@ namespace minEngine
         }
 
         m_FrameRenderGraph.Reset();
-        m_LastShadowResourceFingerprint.clear();
         m_ShadowGraphPasses.clear();
         m_ShadowGraphPassPtrs.clear();
         m_SceneSkyGraphPass = nullptr;
@@ -272,7 +271,6 @@ namespace minEngine
             const std::string passName = MakeShadowGraphPassName(shadowIndex);
             RenderPass& graphPass = m_FrameRenderGraph.AddPass(passName);
             graphPass.SetImplementation(shadowGraphPass.get());
-            m_FrameRenderGraph.ForceIncludePass(passName);
             m_ShadowGraphPassPtrs.push_back(&graphPass);
             m_ShadowGraphPasses.push_back(std::move(shadowGraphPass));
         }
@@ -315,6 +313,7 @@ namespace minEngine
         m_ConfiguredEnablePostProcess = enablePostProcess;
         m_ConfiguredPresentToBackBuffer = presentToBackBuffer;
         m_FrameRenderGraphBuilt = true;
+        m_SceneBindings.InvalidateShadowTextureBindings();
     }
 
     void ForwardRenderer::SetupFrameRenderGraph(
@@ -348,7 +347,6 @@ namespace minEngine
             || presentToBackBuffer != m_ConfiguredPresentToBackBuffer)
         {
             m_FrameRenderGraphBuilt = false;
-            m_PendingShadowBindingInvalidate = true;
         }
 
         if (!m_FrameRenderGraphBuilt)
@@ -364,16 +362,7 @@ namespace minEngine
 
         AssignShadowGraphPassCommands(ctx);
 
-        const std::string shadowFingerprint = BuildShadowResourceFingerprint(ctx);
-        if (shadowFingerprint != m_LastShadowResourceFingerprint)
-        {
-            rhi->NotifyAttachmentResourcesDiscarded();
-            m_FrameRenderGraph.InvalidateBake();
-            m_LastShadowResourceFingerprint = shadowFingerprint;
-            m_PendingShadowBindingInvalidate = true;
-        }
-
-        // SkyBoxPass clears SceneColor/Depth when present; otherwise BasePass must clear.
+        // RND-F12: Granite-aligned — re-run setup_dependencies + pass order every frame.
         const bool enableSky = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox);
         m_BasePass.SetClearSceneTargets(!enableSky);
 
@@ -384,11 +373,7 @@ namespace minEngine
         frameContext.CommandList = &cmdList;
         m_FrameRenderGraph.SetFrameContext(frameContext);
 
-        if (!m_FrameRenderGraph.IsBaked())
-        {
-            m_FrameRenderGraph.Bake();
-        }
-
+        m_FrameRenderGraph.Bake();
         m_FrameRenderGraph.SetupAttachments(*rhi, nullptr);
     }
 
@@ -458,7 +443,7 @@ namespace minEngine
 
     void ForwardRenderer::EnqueueFrameRenderGraph(RHICommandList& cmdList, SceneRenderTarget* sceneTarget)
     {
-        if (sceneTarget == nullptr || !m_FrameRenderGraph.IsBaked())
+        if (sceneTarget == nullptr)
         {
             return;
         }
@@ -477,12 +462,6 @@ namespace minEngine
         }
     }
 
-    std::string ForwardRenderer::BuildShadowResourceFingerprint(const SceneRenderContext& ctx) const
-    {
-        (void)ctx;
-        return "fixed:" + std::to_string(kShadowMapResolution);
-    }
-
     void ForwardRenderer::Shutdown()
     {
         m_PipelineLayouts.Shutdown();
@@ -494,7 +473,6 @@ namespace minEngine
         m_ShadowGraphPasses.clear();
         m_ShadowGraphPassPtrs.clear();
         m_FrameRenderGraph.Reset();
-        m_LastShadowResourceFingerprint.clear();
         m_PostBufferTexture.reset();
         m_SceneSkyGraphPass = nullptr;
         m_SceneOpaqueGraphPass = nullptr;
@@ -582,11 +560,6 @@ namespace minEngine
         frameContext.SceneContext = &ctx;
         m_FrameRenderGraph.SetFrameContext(frameContext);
 
-        if (m_PendingShadowBindingInvalidate)
-        {
-            m_SceneBindings.InvalidateShadowTextureBindings();
-            m_PendingShadowBindingInvalidate = false;
-        }
         UpdateLightUBO(ctx);
 
         if (RHI* rhiForIbl = RenderSystem::Get().GetRHI())

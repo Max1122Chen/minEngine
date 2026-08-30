@@ -2,6 +2,7 @@
 
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHICommandList.h"
+#include "Render/RHI/RHIResourceTransition.h"
 #include "Render/RHI/RHITexture.h"
 
 #include <algorithm>
@@ -18,6 +19,7 @@ namespace minEngine
         m_Resources.clear();
         m_NameToResource.clear();
         m_PassStack.clear();
+        m_PassDependencies.clear();
         m_PhysicalDims.clear();
         m_PhysicalTextures.clear();
         m_SwapchainPhysicalIndex = RDGResource::kUnused;
@@ -134,6 +136,16 @@ namespace minEngine
         }
     }
 
+    void RenderGraph::RecordPassDependency(uint32_t dependentPass, uint32_t producerPass)
+    {
+        if (dependentPass == producerPass || dependentPass >= m_PassDependencies.size()
+            || producerPass >= m_PassDependencies.size())
+        {
+            return;
+        }
+        m_PassDependencies[dependentPass].insert(producerPass);
+    }
+
     void RenderGraph::TraverseDependencies(uint32_t passIndex, std::vector<bool>& visited)
     {
         if (visited[passIndex])
@@ -143,27 +155,36 @@ namespace minEngine
         visited[passIndex] = true;
 
         const RenderPass& pass = *m_Passes[passIndex];
-        auto considerResource = [this, &visited](const RDGTextureResource* resource) {
+        auto considerResource = [this, passIndex, &visited](
+                                    const RDGTextureResource* resource,
+                                    bool requireWriter) {
             if (resource == nullptr)
             {
                 return;
             }
-            for (uint32_t writer : resource->GetWritePasses())
+            const std::unordered_set<uint32_t>& writers = resource->GetWritePasses();
+            if (requireWriter && writers.empty())
             {
+                throw std::logic_error(
+                    "RenderGraph::Bake: no pass writes to resource '" + resource->GetName() + "'.");
+            }
+            for (uint32_t writer : writers)
+            {
+                RecordPassDependency(passIndex, writer);
                 TraverseDependencies(writer, visited);
             }
         };
 
         for (RDGTextureResource* input : pass.GetTextureInputs())
         {
-            considerResource(input);
+            considerResource(input, true);
         }
-        considerResource(pass.GetDepthStencilInput());
+        considerResource(pass.GetDepthStencilInput(), true);
         for (RDGTextureResource* output : pass.GetColorOutputs())
         {
             if (output != nullptr && !output->GetColorInputAlias().empty())
             {
-                considerResource(FindTextureResource(output->GetColorInputAlias()));
+                considerResource(FindTextureResource(output->GetColorInputAlias()), true);
             }
         }
 
@@ -307,6 +328,7 @@ namespace minEngine
         ValidatePasses();
 
         m_PassStack.clear();
+        m_PassDependencies.assign(m_Passes.size(), {});
         std::vector<bool> visited(m_Passes.size(), false);
 
         for (const std::string& forcedName : m_ForcedPassNames)
@@ -434,6 +456,35 @@ namespace minEngine
         }
     }
 
+    void RenderGraph::InsertPassInputBarriers(RHICommandList& cmdList, const RenderPass& pass)
+    {
+        auto transitionTexture = [&](RDGTextureResource* resource)
+        {
+            RHITexture* physical = TryGetPhysicalTexture(resource);
+            if (physical == nullptr)
+            {
+                return;
+            }
+
+            RHITextureTransitionInfo info{};
+            info.Texture = physical;
+            cmdList.Transition(info);
+        };
+
+        for (RDGTextureResource* input : pass.GetTextureInputs())
+        {
+            transitionTexture(input);
+        }
+        transitionTexture(pass.GetDepthStencilInput());
+        for (RDGTextureResource* output : pass.GetColorOutputs())
+        {
+            if (output != nullptr && !output->GetColorInputAlias().empty())
+            {
+                transitionTexture(FindTextureResource(output->GetColorInputAlias()));
+            }
+        }
+    }
+
     void RenderGraph::EnqueueRenderPasses(RHICommandList& cmdList)
     {
         if (!m_IsBaked)
@@ -447,6 +498,7 @@ namespace minEngine
         }
         for (uint32_t passIndex : m_PassStack)
         {
+            InsertPassInputBarriers(cmdList, *m_Passes[passIndex]);
             m_Passes[passIndex]->RunBuildRenderPass(cmdList);
         }
     }

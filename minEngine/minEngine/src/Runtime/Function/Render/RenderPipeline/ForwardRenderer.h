@@ -150,7 +150,6 @@ namespace minEngine
         std::vector<RenderPass*> m_ShadowGraphPassPtrs;
         bool m_ConfiguredEnablePostProcess = false;
         bool m_ConfiguredPresentToBackBuffer = false;
-        std::string m_LastShadowResourceFingerprint;
         RenderPass* m_SceneSkyGraphPass = nullptr;
         RenderPass* m_SceneOpaqueGraphPass = nullptr;
         RenderPass* m_SceneTranslucentGraphPass = nullptr;
@@ -158,7 +157,6 @@ namespace minEngine
         RenderPass* m_PostSharpenGraphPass = nullptr;
         RenderPass* m_PresentGraphPass = nullptr;
         bool m_FrameRenderGraphBuilt = false;
-        bool m_PendingShadowBindingInvalidate = false;
         uint32_t m_PostBufferWidth = 0;
         uint32_t m_PostBufferHeight = 0;
 
@@ -175,7 +173,6 @@ namespace minEngine
             SceneRenderContext& ctx);
         void BindGraphShadowTextures(SceneRenderContext& ctx);
         void EnqueueFrameRenderGraph(RHICommandList& cmdList, SceneRenderTarget* sceneTarget);
-        std::string BuildShadowResourceFingerprint(const SceneRenderContext& ctx) const;
         void UpdatePerFrameUBO(const SceneRenderContext& ctx);
         void UpdateLightUBO(const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);

@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-30 (RND-F12 registered; F07 design recovered)
+Last updated: 2026-08-30 (RND-F12 S03 barriers in progress)
+
+### 2026-08-30 - RND-F12-S03: pass input barriers (`feat/render`)
+- `RenderGraph::InsertPassInputBarriers` — before each pass `RunBuildRenderPass`, transition texture/depth/color-alias inputs via `RHICmdTransition` (shader-read layout on VK).
+- S03 partial: `RDGTextureAccess` metadata deferred; barrier hook landed.
+- Next: user VK visual verify BUG-013; then **S06** binding lifecycle.
+
+### 2026-08-30 - RND-F12-S01/S02: read edge + per-frame Bake (`feat/render`)
+- S01: `AddSceneLitShadowTextureInputs` on Base/Translucent; remove shadow `ForceIncludePass`; `pass_dependencies` + missing-writer throw; render-graph tests (6/6).
+- S02: delete `BuildShadowResourceFingerprint` / pending invalidate; `Bake()` every frame in `SetupFrameRenderGraph`.
+- Next: **S03** VK pass barriers (`RHICmdTransition`).
 
 ### 2026-08-30 - RND-F12: Granite RDG full semantic parity design (`feat/render`)
 - North star: replicate Granite RenderGraph **semantics** (not copy code); Phase A–D.

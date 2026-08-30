@@ -56,6 +56,12 @@ namespace minEngine
         const RDGResourceDimensions& GetPhysicalDimensions(uint32_t physicalIndex) const;
         bool IsBaked() const { return m_IsBaked; }
 
+        /** Baked pass execution order (pass indices). Empty until Bake(). */
+        const std::vector<uint32_t>& GetPassStack() const { return m_PassStack; }
+
+        /** producer → dependent edges recorded during Bake (Granite pass_dependencies subset). */
+        const std::vector<std::unordered_set<uint32_t>>& GetPassDependencies() const { return m_PassDependencies; }
+
         uint32_t GetBackbufferWidth() const { return m_BackbufferWidth; }
         uint32_t GetBackbufferHeight() const { return m_BackbufferHeight; }
 
@@ -64,6 +70,8 @@ namespace minEngine
 
         void ValidatePasses() const;
         void TraverseDependencies(uint32_t passIndex, std::vector<bool>& visited);
+        void RecordPassDependency(uint32_t dependentPass, uint32_t producerPass);
+        void InsertPassInputBarriers(RHICommandList& cmdList, const RenderPass& pass);
         void FilterPassStack();
         void BuildPhysicalResources();
         void AllocatePhysicalForTexture(RDGTextureResource* texture);
@@ -83,6 +91,7 @@ namespace minEngine
         RenderGraphFrameContext m_FrameContext{};
 
         std::vector<uint32_t> m_PassStack;
+        std::vector<std::unordered_set<uint32_t>> m_PassDependencies;
         std::vector<RDGResourceDimensions> m_PhysicalDims;
         std::vector<std::shared_ptr<RHITexture>> m_PhysicalTextures;
         uint32_t m_SwapchainPhysicalIndex = RDGResource::kUnused;

@@ -20,7 +20,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
    - **BUG-RENDER-010 / TD-025** — VK shadow caps + scheme A implemented；**pending user visual verify**（[Design](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md)）
    - **BUG-RENDER-011** — spot/point 关 shadow 崩溃；SRV 槽清空 fix landed
    - **BUG-RENDER-013** — VK 多光源 shadow；根因 → 未完成 Granite RDG **全语义** → **[RND-F12](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md)** Phase A（S01 起）
-   - **Next**: **RND-F12-S01** read edge + 删 shadow ForceInclude；然后 S03 VK barrier；并行 user A/B GL vs VK
+   - **Next**: **RND-F12-S03** barrier hook landed (`InsertPassInputBarriers`)；用户 VK 目视 BUG-013；然后 **S06** binding lifecycle
    - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync）  
 
 4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  
