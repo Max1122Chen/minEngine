@@ -1,6 +1,9 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
+
+use crate::editor_runtime::validate_editor_runtime;
 use crate::error::{LauncherError, LauncherResult};
 use crate::settings::LauncherSettings;
 
@@ -16,7 +19,58 @@ pub fn editor_executable_name() -> &'static str {
 
 pub struct EngineLocator;
 
+#[derive(Debug, Clone, Serialize)]
+pub struct EditorStatus {
+    pub path: Option<String>,
+    pub source: String,
+    pub ok: bool,
+}
+
 impl EngineLocator {
+    /// Report how Editor would be resolved without failing when not configured.
+    pub fn editor_status(settings: &LauncherSettings) -> EditorStatus {
+        if let Ok(path) = env::var(ENV_EDITOR) {
+            if !path.trim().is_empty() {
+                let path_buf = PathBuf::from(&path);
+                return EditorStatus {
+                    path: Some(path),
+                    source: "env".into(),
+                    ok: path_buf.is_file(),
+                };
+            }
+        }
+
+        if let Some(path) = settings.editor_executable_path.as_deref() {
+            if !path.trim().is_empty() {
+                let editor = Path::new(path);
+                let mut ok = editor.is_file();
+                if ok {
+                    ok = validate_editor_runtime(editor).is_ok();
+                }
+                return EditorStatus {
+                    path: Some(path.to_owned()),
+                    source: "settings".into(),
+                    ok,
+                };
+            }
+        }
+
+        if let Ok(Some(path)) = Self::discover_editor_from_cwd() {
+            let ok = validate_editor_runtime(&path).is_ok();
+            return EditorStatus {
+                path: Some(path.to_string_lossy().into_owned()),
+                source: "discover".into(),
+                ok,
+            };
+        }
+
+        EditorStatus {
+            path: None,
+            source: "none".into(),
+            ok: false,
+        }
+    }
+
     /// Resolve editor path: CLI override > env > settings > auto-discover.
     pub fn resolve_editor(
         cli_override: Option<&Path>,
@@ -64,6 +118,8 @@ impl EngineLocator {
                 file_name
             )));
         }
+
+        validate_editor_runtime(&path)?;
 
         Ok(path)
     }

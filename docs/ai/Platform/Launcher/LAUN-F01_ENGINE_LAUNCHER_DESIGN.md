@@ -3,9 +3,10 @@
 ## Meta
 - **ID:** `LAUN-F01`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-31（拍板：Rust CLI + Tauri GUI）
+- **Last updated:** 2026-08-31（S05 GUI 已实现）
+- **S05 GUI:** **Done** — React + Tauri 2；见 §3.11–§3.15
 - **Related:** [Implementation](./LAUN-F01_ENGINE_LAUNCHER_IMPLEMENTATION.md), [FEATURE_REGISTRY.md](../../FEATURE_REGISTRY.md), [ACTIVE_WORK.md](../../ACTIVE_WORK.md), [CLI_UNIFIED_DESIGN.md](../CLI/CLI_UNIFIED_DESIGN.md), [ENGINE_STARTUP_DESIGN.md](../Startup/ENGINE_STARTUP_DESIGN.md)
 - **Branch / worktree:** `feat/launcher` · `D:/Dev/GitRepo/minEngine-launcher`
 
@@ -17,7 +18,7 @@
 
 ```text
 LAUN-F01:     Rust  →  minlauncher-core  +  minlauncher (CLI, clap)
-LAUN-F01-S05+: Rust  →  同一 core crate  +  Tauri 2 app（系统 WebView + Web 前端）
+LAUN-F01-S05+: Rust  →  同一 core crate  +  Tauri 2 app（React + Vite + TS 前端）
 ```
 
 F01 **只交付 CLI**；GUI 延后，但架构从第一天按 Tauri 共享 Core 设计。**不做** Build / Package / Game / 引擎多版本安装。
@@ -146,7 +147,7 @@ minEngine-launcher/                 # worktree feat/launcher
 │   │   ├── minlauncher-core/       # 库：定位、校验、创建、进程、recent
 │   │   ├── minlauncher/            # F01：CLI 二进制（clap）
 │   │   └── minlauncher-app/        # S05：Tauri 2 应用（Deferred）
-│   │       └── ui/                 # Web 前端（Vite + TS；框架待 S05 定）
+│   │       └── ui/                 # React + Vite + TypeScript
 │   ├── Templates/
 │   │   └── Empty/
 │   └── README.md                   # 工具链：rustup、cargo、（S05）Node
@@ -191,7 +192,7 @@ minlauncher        minlauncher-app (S05)
 ```
 
 - 可执行名：`minlauncher`（CLI）；Tauri 打包产物可称 `MinEngine Launcher` / `minlauncher-app`。
-- 前端框架（S05 再拍）：React / Vue / Svelte / 纯 TS 均可；**不挡 F01**。建议默认 **Svelte 或 Vue**（轻）或 **React**（资料多）——S05 开工前再定。
+- **前端框架（S05 拍板）：React + Vite + TypeScript**；样式用 CSS 变量对齐 `EditorThemePalette` Dark 预设（§3.14）。否决 Svelte/Vue 主栈仅为「已选 React」——非技术否决。
 - Windows 可执行名：`Editor.exe`；Unix：`Editor`（定位逻辑按平台拼文件名）。
 
 ### 3.5 Core 模块（`minlauncher-core`）
@@ -294,17 +295,237 @@ minlauncher config set projects-dir <path>
 退出码：`0` 成功，`1` 运行时失败，`2` 用法错误。  
 `open` / `create` 成功后更新 Recent。
 
-### 3.11 GUI（S05 Deferred — 架构已定）
+### 3.11 GUI（S05 — 设计草案，待审批）
 
 | 项 | 约定 |
 |----|------|
 | 壳 | **Tauri 2** |
 | 后端 | `minlauncher-core` + `#[tauri::command]` 薄封装 |
-| 前端 | Web（TS）；框架 S05 开工前拍板 |
+| 前端 | **React 18+**、**Vite**、**TypeScript** |
+| 样式 | CSS 自定义属性（`--me-*`）；对齐 Editor `GetDarkEnginePreset()`（§3.14） |
 | 功能 | 最近列表、打开、新建向导、设置（Editor / 工程目录） |
 | 安全 | capability 白名单；仅暴露所需 command |
+| 状态 | **Done**（`cargo build -p minlauncher-app`） |
 
-**不阻塞 F01 Done。**
+**不阻塞 F01 CLI Done。** GUI 行为须与 §3.10 CLI **等价**（同一 `settings.json`、同一 core API）。
+
+#### 3.11.1 前端技术选型（拍板：React）
+
+| 维度 | React（选用） | 说明 |
+|------|---------------|------|
+| 与 Tauri | `@tauri-apps/api` + `invoke` | 社区示例与踩坑资料最多 |
+| 构建 | Vite（Tauri 官方模板默认） | 与 `minlauncher-app` 集成 |
+| 状态 | 组件 `useState` + 必要时 Context | 页面少，不引入 Redux |
+| 组件库 | **不强制**；优先手写 + CSS 变量 | 工业灰皮肤与 Editor 一致，避免 MUI 等自带主题冲突 |
+| 对话框 | Tauri `dialog` plugin | 打开 `.meproject` / 浏览目录 / 选 Editor 可执行文件 |
+| 路由 | 单窗口内视图切换（`Projects` / `Settings`） | 无需 `react-router`；左侧导航切换即可 |
+
+**目录约定（S05 落地后）：**
+
+```text
+Launcher/crates/minlauncher-app/
+├── src/                    # Rust：main.rs、tauri commands
+├── tauri.conf.json
+└── ui/
+    ├── package.json
+    ├── vite.config.ts
+    ├── index.html
+    └── src/
+        ├── main.tsx
+        ├── App.tsx
+        ├── theme/tokens.css    # §3.14 CSS 变量
+        ├── views/              # ProjectsView, SettingsView
+        ├── components/         # RecentList, NewProjectModal, StatusBar
+        └── api/launcher.ts     # invoke 封装
+```
+
+#### 3.11.2 信息架构
+
+单主窗口，**左导航 + 右内容**（Hub 式，非 Editor 多停靠）：
+
+| 视图 | 对应 CLI | 说明 |
+|------|----------|------|
+| **Projects**（默认） | `recent list` + `open` + `create` | 最近工程列表、打开、新建 |
+| **Settings** | `config show` / `config set` | Editor 路径、默认工程目录、Recent 上限 |
+
+模态：**New Project** 向导（`create`）；不单独占路由页。
+
+#### 3.11.3 线框（ASCII）
+
+**主窗口 — Recent Projects（默认）**
+
+```text
+┌─ minEngine Launcher ───────────────────────────────────────────── [ _ □ × ] ─┐
+│  minEngine                                                    ⚙ Settings     │
+├──────────────┬───────────────────────────────────────────────────────────────┤
+│              │  Recent Projects                              [ + New Project ]│
+│  ◉ Projects  │  ─────────────────────────────────────────────────────────────  │
+│              │  ┌─────────────────────────────────────────────────────────┐   │
+│  ○ Settings  │  │ ▌ MyMEProject                              2h ago      │   │
+│              │  │   D:\Dev\...\MyMEProject\MyMEProject.meproject        │   │
+│              │  ├─────────────────────────────────────────────────────────┤   │
+│              │  │   LaunSmokeTest                            yesterday    │   │
+│              │  │   D:\Dev\...\Projects\LaunSmokeTest\...               │   │
+│              │  ├─────────────────────────────────────────────────────────┤   │
+│              │  │   (empty: No recent projects — create or open one)    │   │
+│              │  └─────────────────────────────────────────────────────────┘   │
+│              │                                                                 │
+│              │  [ Open Project... ]              Editor: Editor.exe ✓        │
+│              │                                    (auto-discovered)          │
+└──────────────┴───────────────────────────────────────────────────────────────┘
+```
+
+**New Project（模态）**
+
+```text
+┌─ New Project ─────────────────────────────────────────────────── [ × ] ─┐
+│                                                                         │
+│  Project name                                                           │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ MyGame                                                          │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  Location                                                               │
+│  ┌──────────────────────────────────────────────┐  [ Browse... ]       │
+│  │ D:\...\minEngine-launcher\Projects             │                      │
+│  └──────────────────────────────────────────────┘                      │
+│  Preview: ...\Projects\MyGame\MyGame.meproject                          │
+│                                                                         │
+│  Template                                                               │
+│  ┌──────────┐  ┌──────────┐                                            │
+│  │  Empty   │  │ (future) │   ← F01/S05 仅 Empty；其余灰显不可选         │
+│  │ [active] │  │ disabled │                                            │
+│  └──────────┘  └──────────┘                                            │
+│                                                                         │
+│                              [ Cancel ]    [ Create & Open ]            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Settings**
+
+```text
+┌─ Settings ──────────────────────────────────────────────────────────────┐
+│                                                                         │
+│  Editor executable                                                    │
+│  ┌──────────────────────────────────────────────┐  [ Browse... ]       │
+│  │ D:\...\minEngine\bin\Editor.exe              │  [ Test launch ]     │
+│  └──────────────────────────────────────────────┘                      │
+│                                                                         │
+│  Default projects directory                                           │
+│  ┌──────────────────────────────────────────────┐  [ Browse... ]       │
+│  │ D:\...\Projects                              │                      │
+│  └──────────────────────────────────────────────┘                      │
+│                                                                         │
+│  Recent projects                                                        │
+│  Max entries: [ 20 ▼ ]     [ Clear all recent ]                        │
+│                                                                         │
+│                                          [ Reset defaults ]  [ Save ]   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+`Open Project...` 使用系统文件对话框（`.meproject` 或含 descriptor 的目录），逻辑同 `minlauncher open <path>`。
+
+#### 3.11.4 交互约定
+
+| 操作 | 行为 |
+|------|------|
+| 单击列表行 | 选中（`Selection` 底色） |
+| 双击 / Enter | `open` → spawn Editor；更新 Recent |
+| 右键菜单 | Remove from list · Reveal in Explorer（平台 API） |
+| `+ New Project` | 打开模态；`Create & Open` = `create` + `open` |
+| `Open Project...` | 原生对话框 → `open` |
+| 底栏 Editor 状态 | ✓ 已解析路径 · ⚠ 未配置（链到 Settings） |
+| 列表项 missing | 灰字 + 删除线可选；仍可从列表 remove |
+| 错误 | 行内或 toast；文案来自 core `Error` 字符串（与 CLI stderr 一致语义） |
+
+窗口默认尺寸建议 **960×640**（可缩放）；最小 **720×480**。
+
+### 3.12 Tauri commands（草案）
+
+薄封装 `minlauncher-core`；**不**在前端重复 JSON/路径逻辑。
+
+| Command | 参数 | 返回 | 对应 CLI |
+|---------|------|------|----------|
+| `list_recent` | — | `RecentProject[]` | `recent list` |
+| `remove_recent` | `descriptor_path: string` | `()` | `recent remove` |
+| `open_project` | `path: string` | `()` | `open` |
+| `create_project` | `name, parent, template` | `descriptor_path` | `create` |
+| `get_settings` | — | `LauncherSettings` | `config show` |
+| `set_editor_path` | `path: string` | `()` | `config set editor` |
+| `set_projects_dir` | `path: string` | `()` | `config set projects-dir` |
+| `resolve_editor_status` | — | `{ path?, source, ok }` | 定位策略 §3.7 |
+
+文件对话框走 Tauri **dialog** plugin（Rust 侧或官方 JS API），不新增 command。
+
+Capability：仅上述 command + `dialog` + 必要 `shell`（若 Reveal in Explorer 需要）；默认拒绝任意 `fs` 全量读写。
+
+### 3.13 与 Editor 的视觉关系
+
+| Launcher | Editor |
+|----------|--------|
+| 单窗口、左 nav + 内容区 | 多停靠、Viewport |
+| Web（React） | ImGui |
+| 复用 **同一套灰阶 token** | `EditorThemePalette` / `GetDarkEnginePreset()` |
+
+Launcher **不必**像素级复刻 ImGui 控件；保持 **色温、对比度、蓝色点缀用量** 一致，使用户从 Hub 进入 Editor 无「换软件」感。
+
+### 3.14 主题与配色（工业黑灰）
+
+色值来源：`minEngine/Editor/src/UI/Appearance/EditorThemePresets.cpp` → `GetDarkEnginePreset()`（对标 VS Code Dark+ / Rider Darcula：**低饱和、灰阶 chrome**）。
+
+**设计原则**
+
+1. 大面积无彩色 — 背景、边框、次要按钮均为灰阶。
+2. **品牌蓝仅作点缀** — 主 CTA（`+ New Project`、`Create & Open`）、键盘焦点环；对齐 Hierarchy 选中竖条 `#66b2ff`（`102,178,255`）。
+3. 层次靠 **明度** 而非饱和色：window → panel → card → selection 逐级略亮。
+4. 圆角 **0–4px** 或直角；偏工具感，避免大圆角消费级 App 风格。
+5. 字体：系统 UI（Windows Segoe UI / 微软雅黑）；正文 12–13px，次要 11px。
+
+**CSS 变量（`ui/src/theme/tokens.css`）**
+
+| Token | Hex | `EditorThemePalette` | 用途 |
+|-------|-----|----------------------|------|
+| `--me-window-bg` | `#1e1e1e` | `WindowBackground` | 窗口底、标题区 |
+| `--me-panel-bg` | `#252526` | `PanelBackground` | 侧栏、内容区底 |
+| `--me-popup-bg` | `#2d2d2d` | `PopupBackground` | 模态、下拉 |
+| `--me-field-bg` | `#3c3c3c` | `FieldBackground` | 输入框 |
+| `--me-field-hover` | `#454545` | `FieldBackgroundHovered` | 输入 hover |
+| `--me-field-active` | `#4e4e4e` | `FieldBackgroundActive` | 输入 focus |
+| `--me-border` | `#454545` | `Border` | 1px 边框 |
+| `--me-separator` | `#3f3f3f` | `Separator` | 列表分隔 |
+| `--me-text-primary` | `#cccccc` | `TextPrimary` | 主文字 |
+| `--me-text-muted` | `#858585` | `TextMuted` | 路径、时间戳 |
+| `--me-selection` | `#3d3d3d` | `Selection` | 列表选中行 |
+| `--me-button` | `#4a4a4a` | `Button` | 次要按钮 |
+| `--me-button-hover` | `#555555` | `ButtonHovered` | 按钮 hover |
+| `--me-button-active` | `#404040` | `ButtonActive` | 按钮按下 |
+| `--me-accent-brand` | `#66b2ff` | （Hierarchy 选中蓝，非 palette 字段） | 主 CTA、focus ring |
+| `--me-status-ok` | `#89d185` | 日志 Info 系 | Editor 路径有效 |
+| `--me-status-warn` | `#cca700` | 语义警告 | 路径未配置 |
+| `--me-status-error` | `#f48771` | 语义错误 | 打开/创建失败 |
+
+**明度层级（示意）**
+
+```text
+  #1e1e1e  ████████████  window
+  #252526  ████████████  sidebar / content area
+  #2d2d2d  ████████████  list card / modal
+  #3d3d3d  ████████████  selected row
+  #cccccc  ────────────  primary text
+  #858585  ············  secondary text
+  #66b2ff  ▓▓▓▓▓▓▓▓▓▓▓▓  primary button / focus (sparse)
+```
+
+S05 **仅实现 Dark**；Light 主题非 S05 范围（与 Editor Light 可后续对齐）。
+
+### 3.15 S05 验收标准（GUI）
+
+- [ ] `cargo tauri dev` 启动主窗口；主题符合 §3.14
+- [ ] Recent 列表与 CLI `recent list` 一致（含跨重启）
+- [ ] Open / Create 成功启动 Editor，等价 CLI
+- [ ] Settings 读写与 `config show/set` 一致
+- [ ] 未配置 Editor 时有明确引导（Settings / 底栏 ⚠）
+- [ ] `cargo test -p minlauncher-core` 仍通过；Launcher 不进 `verify.ps1`
 
 ---
 
@@ -366,3 +587,4 @@ minlauncher config set projects-dir <path>
 | 2026-08-31 | Placeholder 登记 |
 | 2026-08-31 | CLI 优先；曾拟 Avalonia |
 | 2026-08-31 | **拍板 Tauri**：Rust Core + clap CLI；S05 Tauri 2 GUI；否决 Avalonia/Electron |
+| 2026-08-31 | **S05 GUI 设计草案**：React + Vite + TS；Hub 线框；`EditorThemePalette` Dark tokens（§3.11–§3.15）；**Review 待审批** |

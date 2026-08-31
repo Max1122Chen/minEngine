@@ -1,6 +1,6 @@
 mod cli;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 
 use anyhow::Context;
@@ -11,6 +11,7 @@ use minlauncher_core::project_catalog::ProjectCatalog;
 use minlauncher_core::project_factory::ProjectFactory;
 use minlauncher_core::project_validator::ProjectValidator;
 use minlauncher_core::settings::LauncherSettings;
+use minlauncher_core::templates;
 use minlauncher_core::LauncherError;
 
 use crate::cli::{
@@ -62,7 +63,7 @@ fn cmd_open(path: &Path, editor_override: Option<&Path>) -> anyhow::Result<()> {
 
 fn cmd_create(name: &str, parent: &Path, template: &str) -> anyhow::Result<()> {
     let mut settings = LauncherSettings::load()?;
-    let templates_root = resolve_templates_root()?;
+    let templates_root = templates::resolve_templates_root()?;
     let descriptor_path =
         ProjectFactory::create(&mut settings, name, parent, template, &templates_root)?;
     settings.save()?;
@@ -149,50 +150,6 @@ fn cmd_config_set(key: crate::cli::ConfigSetKey) -> anyhow::Result<()> {
     settings.save()?;
     println!("settings updated");
     Ok(())
-}
-
-fn resolve_templates_root() -> anyhow::Result<PathBuf> {
-    let mut candidates = Vec::new();
-
-    if let Ok(dir) = std::env::var("MINENGINE_LAUNCHER_TEMPLATES") {
-        candidates.push(PathBuf::from(dir));
-    }
-
-    if let Ok(cwd) = std::env::current_dir() {
-        candidates.push(cwd.join("Templates"));
-        candidates.push(cwd.join("Launcher").join("Templates"));
-    }
-
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            candidates.push(parent.join("Templates"));
-            candidates.push(parent.join("../../Templates").clean_up());
-        }
-    }
-
-    candidates.push(PathBuf::from("Launcher/Templates"));
-
-    for candidate in candidates {
-        if candidate.is_dir() {
-            return Ok(candidate);
-        }
-    }
-
-    anyhow::bail!("could not locate Launcher/Templates; set MINENGINE_LAUNCHER_TEMPLATES")
-}
-
-trait PathCleanUp {
-    fn clean_up(self) -> PathBuf;
-}
-
-impl PathCleanUp for PathBuf {
-    fn clean_up(self) -> PathBuf {
-        self.components()
-            .fold(PathBuf::new(), |mut acc, component| {
-                acc.push(component.as_os_str());
-                acc
-            })
-    }
 }
 
 fn map_exit_code(error: &anyhow::Error) -> u8 {

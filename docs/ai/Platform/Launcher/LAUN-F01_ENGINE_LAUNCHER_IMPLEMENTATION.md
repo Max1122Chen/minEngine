@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `LAUN-F01`
 - **Type:** Implementation
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-31（拍板：Rust CLI + Tauri S05）
+- **Last updated:** 2026-08-31（S05 GUI 已实现）
 - **Related:** [Design](./LAUN-F01_ENGINE_LAUNCHER_DESIGN.md)
 
 ## TL;DR
@@ -32,7 +32,7 @@
 | LAUN-F01-S02 | `engine_locator` + `config show/set` + 自动发现 | Done | `config set editor` |
 | LAUN-F01-S03 | `project_factory` + `create` + `Templates/Empty` | Done | `create LaunSmokeTest` |
 | LAUN-F01-S04 | `project_catalog` + `recent list/remove` | Done | 列表跨命令持久化 |
-| LAUN-F01-S05 | Tauri 2 app + Web UI（**Deferred**） | Deferred | 操作等价 CLI |
+| LAUN-F01-S05 | Tauri 2 + React UI | Done | `cargo build -p minlauncher-app`；GUI 手动验收 |
 
 ---
 
@@ -84,15 +84,26 @@
   - [ ] remove 仅删列表项
 - **Verify:** open → list → 重启 CLI → 仍在
 
-### LAUN-F01-S05 — Tauri GUI（Deferred）
+### LAUN-F01-S05 — Tauri GUI + React（Review — 待设计审批）
 
-- **Goal:** 图形界面；**不阻塞 F01 Done**。
+- **Goal:** 图形界面；行为与 CLI 等价；视觉对齐 Editor Dark 工业灰（Design §3.14）。
+- **Design:** [§3.11–§3.15](./LAUN-F01_ENGINE_LAUNCHER_DESIGN.md#311-gui-s05--设计草案待审批)
 - **Touch:**
   - `crates/minlauncher-app`（Tauri 2）
-  - `ui/` Web 前端；`#[tauri::command]` 调 core
-  - capability 白名单
-- **Unblock:** S01–S04 Done + 用户要 GUI；开工前拍板前端框架（React / Vue / Svelte）
-- **Verify:** 主窗口 open/create/recent/settings 与 CLI 等价
+  - `ui/` — React + Vite + TypeScript + `theme/tokens.css`
+  - `#[tauri::command]` 薄封装（Design §3.12）
+  - Tauri dialog plugin；capability 白名单
+- **子切片（审批后执行）：**
+
+| 子步 | 内容 | 验证 |
+|------|------|------|
+| S05a | `tauri init`、workspace 接入、空窗口 + tokens.css | `cargo tauri dev` 黑灰壳 |
+| S05b | commands 对接 core（recent / settings / editor status） | 列表与 CLI 一致 |
+| S05c | Projects 视图：列表、Open、New Project 模态 | open/create → Editor |
+| S05d | Settings 视图、底栏状态、错误提示 | config 读写一致 |
+
+- **Unblock:** S01–S04 Done ✅；**用户审批 Design §3.11–§3.15**
+- **Verify:** Design §3.15 勾选全部通过
 
 ---
 
@@ -109,7 +120,7 @@ S01 → S02 → S03 → S04
 
 | Slice ID | Reason | Unblock |
 |----------|--------|---------|
-| S05 Tauri GUI | F01 聚焦 CLI 契约 | S04 Done + 审批开 GUI |
+| S05 Tauri GUI | 设计草案 Review | S04 Done + **Design §3.11–§3.15 审批** |
 | Build/Package | 无 Game target | LAUN-F02+ |
 
 ---
@@ -131,3 +142,4 @@ S01 → S02 → S03 → S04
 |------|------|
 | 2026-08-31 | 初版（曾拟 .NET / Avalonia） |
 | 2026-08-31 | **拍板 Tauri**：Rust S01–S04；S05 Tauri 2 Deferred |
+| 2026-08-31 | S05 细化：React + 子切片 S05a–d；状态 → **Review**（Design §3.11–§3.15） |

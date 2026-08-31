@@ -2,6 +2,15 @@
 
 Last updated: 2026-08-31 (LAUN-F01 CLI S01–S04)
 
+Last updated: 2026-08-31 (LAUN-F01 S05 GUI)
+
+### 2026-08-31 - LAUN-F01-S05: Tauri 2 + React GUI (`feat/launcher`)
+- Added `crates/minlauncher-app` (Tauri 2) + `ui/` (React + Vite + TS, industrial dark theme).
+- Tauri commands wrap `minlauncher-core`; shared `settings.json` with CLI.
+- Core: `templates` module, `EditorStatus`, `clear_all_recent`.
+- **Verified:** `cargo test -p minlauncher-core` 5/5; `cargo build -p minlauncher-app`.
+- **Manual:** `cargo tauri dev` → Projects / Settings / New Project.
+
 ### 2026-08-31 - LAUN-F01 CLI: Rust minlauncher S01–S04 (`feat/launcher`)
 - Added `Launcher/` Cargo workspace: `minlauncher-core` + `minlauncher` CLI (clap).
 - Commands: `open`, `create`, `recent`, `config`; spawn `Editor.exe --project <path>`.

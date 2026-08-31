@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
+use serde::Serialize;
 
 use crate::error::{LauncherError, LauncherResult};
 use crate::project_validator::ProjectValidator;
@@ -54,6 +55,10 @@ impl ProjectCatalog {
         Ok(())
     }
 
+    pub fn clear_all_recent(settings: &mut LauncherSettings) {
+        settings.recent_projects.clear();
+    }
+
     pub fn list_recent(settings: &LauncherSettings) -> Vec<RecentEntryStatus> {
         settings
             .recent_projects
@@ -69,7 +74,7 @@ impl ProjectCatalog {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RecentEntryStatus {
     pub entry: RecentProject,
     pub exists: bool,

@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/minlauncher-core",
     "crates/minlauncher",
+    "crates/minlauncher-app",
 ]
 
 [workspace.package]
