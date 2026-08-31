@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-31（RND-F14 Done；BUG-013/010/011 关闭）
+Last updated: 2026-08-31（RND-F11 In Progress on `feat/debug-drawing`）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -42,7 +42,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
-| `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | Planned | — | 排在 **ED-F01** 主视口 parity 之后；Design 待写 |
+| `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | **In Progress** | — | [Design Draft](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · 分支 `feat/debug-drawing` · Physics 可视化 MVP |
 | `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) |
 | `PHYS-F02` | Collision + query shapes（Sphere/Capsule collider；Scene SphereTrace/CapsuleTrace） | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md) |
 | `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · Delegates（CORE-F04）已满足；**等 RND-F11 DebugDrawing 成熟后再开** |

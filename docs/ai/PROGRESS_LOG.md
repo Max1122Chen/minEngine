@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-31 (VK shadow self-shadow handoff)
+Last updated: 2026-08-31 (RND-F11 debug drawing branch)
+
+### 2026-08-31 - RND-F11 DebugDrawing branch kickoff (`feat/debug-drawing`)
+- **Branch:** `feat/debug-drawing` from `feat/render` after shadow quality handoff commit.
+- **Registry:** `RND-F11` → **In Progress**; placeholder [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md).
+- **Goal:** Editor viewport debug primitives for Physics collider/contact/trace visualization.
+- **Parallel:** VK shadow quality remains on `feat/render` (RenderDoc / cull-winding).
+- **Next agent:** Expand Design → Implementation Plan → S01 lines+boxes MVP.
 
 ### 2026-08-31 - VK shadow self-shadow handoff (`feat/render`)
 - **Symptom refined:** Dir **and** Spot show receiver self-shadow / false shadows on VK; **Point** not observed; **different objects** per light type → winding/orientation, not global bias off.

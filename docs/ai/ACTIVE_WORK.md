@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-31 (VK shadow self-shadow handoff)
+Last updated: 2026-08-31 (RND-F11 debug drawing branch)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -29,9 +29,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
    - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync）
 
 4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  
-5. **RND-F11 DebugDrawing** — ED-F01 主视口 parity 后再设计  
 
 合入前：定期把 **master** rebase/merge 进 `feat/render`。
+
+### DebugDrawing 轨（`feat/debug-drawing`）— **当前分支**
+
+1. **RND-F11 DebugDrawing** — [Design Draft](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · **In Progress**
+   - **Goal:** Editor 视口即时调试图元（线/盒/wireframe）；优先 Physics collider、contact、trace 可视化
+   - **Next:** 扩写 Design → Implementation Plan → S01 线+盒 MVP
+   - **Parallel:** VK shadow 质量轨留在 `feat/render`（RenderDoc / cull-winding）
 
 ### Master / 平台
 
