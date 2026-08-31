@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-31  
+Last updated: 2026-08-31 (VK shadow self-shadow handoff)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -23,7 +23,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
    - ~~**RND-F14**~~ — **Done**（[Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) · [Impl](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_IMPLEMENTATION.md)）
    - ~~**RND-F13**~~ — **Done**（ManualRenderer 对照场地；`--renderer manual` 保留 Reference）
    - **RND-F12** — RDG 语义：降级为卫生项（不挡 shadow 正确性）
-   - **Next（shadow 质量）:** VK 接收体自阴影 / acne — 核查 ShadowPass **Front face cull** 是否生效（用户观察 2026-08-31）
+   - **Next（shadow 质量）:** VK **Dir + Spot** 接收体假自阴影（Point 暂无明显问题）；**CSM 级联已排除**（E3）；主因 **写路径 cull/winding**（非 cascade 选择、非全局 depthBias 未开）。Handoff → [session note](./sessions/2026-08-31-vk-shadow-self-shadow-handoff.md) · [playbook §4.5–7](./playbooks/Render/VK_SHADOW_DEBUGGING.md)
+     - 待做：Debug 5/6、RenderDoc、scheme B / `VK_FRONT_FACE_CLOCKWISE` A/B
+     - TEMP 实验值已恢复（`MAX_CASCADES=4`、`DIR_SHADOW_FORCE_CASCADE=-1`）
    - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync）
 
 4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  

@@ -14,6 +14,7 @@
 #include "Render/RHI/RHITexture.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/DrawCommands/MeshDrawPacket.h"
+#include "Runtime/Core/Log/LogSystem.h"
 
 namespace minEngine
 {
@@ -42,6 +43,24 @@ namespace minEngine
                 GetShadowPassCapabilities().DepthBiasSlopeScale;
             m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant =
                 GetShadowPassCapabilities().DepthBiasConstant;
+
+            const RHICullMode effectiveCull = GetShadowPassCapabilities().GetEffectiveCullMode();
+            const char* cullLabel = "None";
+            if (effectiveCull == RHICullMode::Front)
+            {
+                cullLabel = "Front";
+            }
+            else if (effectiveCull == RHICullMode::Back)
+            {
+                cullLabel = "Back";
+            }
+            ME_CORE_INFO(
+                "ShadowPass: raster cull={} (enabled={}), depthBias slope={} constant={}",
+                cullLabel,
+                m_ShadowPSODescTemplate.RasterizerState.bCullEnabled,
+                m_ShadowPSODescTemplate.RasterizerState.DepthBiasSlopeScale,
+                m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant);
+
             // Extra depth push for remaining two-sided / grazing casters.
             // Depth-only pass: tell Vulkan PSO creation to use zero color attachments.
             m_ShadowPSODescTemplate.RenderTargetsEnabled = 0;

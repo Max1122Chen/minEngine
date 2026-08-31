@@ -1,6 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-31 (RND-F14 Done; BUG-013/010/011 closed)
+Last updated: 2026-08-31 (VK shadow self-shadow handoff)
+
+### 2026-08-31 - VK shadow self-shadow handoff (`feat/render`)
+- **Symptom refined:** Dir **and** Spot show receiver self-shadow / false shadows on VK; **Point** not observed; **different objects** per light type → winding/orientation, not global bias off.
+- **E3 recap:** `MAX_CASCADES=1` + force cascade 0 — unchanged → CSM **index** ruled out; camera coupling persists (dir matrix still camera-frustum-derived).
+- **Depth bias audit (read-only):** Two layers — (A) raster via `RHIClipSpaceCapabilities` → ShadowPass PSO (`glPolygonOffset` / VK PSO `depthBiasEnable`); (B) shader receiver bias in `MaterialSceneShadows.glslinc`. VK raster bias **should be active** for Dir/Spot; Point bypasses via `gl_FragDepth`. Raising VK slope/constant inconclusive → prioritize write-path cull/winding.
+- **Docs:** `sessions/2026-08-31-vk-shadow-self-shadow-handoff.md`; playbook `VK_SHADOW_DEBUGGING.md` §4.5–4.6, §7; `ACTIVE_WORK.md` updated.
+- **Next agent:** Debug 5/6; RenderDoc; scheme B or frontFace A/B; restore TEMP limits/shader defines before production fix.
+
+### 2026-08-31 - VK dir self-shadow isolation: single cascade (`feat/render`)
+- **Experiment:** `MAX_CASCADES=1` + `DIR_SHADOW_FORCE_CASCADE=0` + Front cull restored (Back reverted); P1 (`gl_FragDepth` omit Dir/Spot) still in tree.
+- **User result:** Symptoms **unchanged** vs multi-cascade — ground self-shadow acne; cube/sphere false shadows still **camera-coupled**; PCF soft edges visible.
+- **Conclusion:** **Not** multi-cascade index / cascade-boundary mixing (rules out P5 as primary). Issue is **directional-light path** specific (Spot/Point not implicated in this round).
+- **Interpretation:** Single-cascade CSM still builds ortho frustum from **camera view frustum** + texel snap — camera coupling can persist without cascade *selection*. Combined with prior「关 Cast Shadow → map 消失」→ receiver still **writes** into dir shadow map on VK (cull/winding class), not read-only PCF artifact.
+- **Next (analysis / no code yet):** Debug 5/6 binary; RenderDoc face/winding; scheme B (shadow viewport flip + `GetEffectiveCullMode`) or `VK_FRONT_FACE_CLOCKWISE` A/B. Restore `MAX_CASCADES=4` / `DIR_SHADOW_FORCE_CASCADE=-1` before production fix lands.
+- **Doc:** `playbooks/Render/VK_SHADOW_DEBUGGING.md` §4.4.
+
+### 2026-08-31 - Playbooks + VK shadow cull audit (`feat/render`)
+- Added `docs/ai/playbooks/` (README + `Render/VK_SHADOW_DEBUGGING.md`) for reusable bug patterns.
+- Face cull audit: ShadowPass **already** sets Front cull on VK (`RHIClipSpaceCapabilities` → `VK_CULL_MODE_FRONT_BIT`). Next round: RenderDoc PSO verify, frontFace/winding A/B, VK depth bias constant (0 vs GL 4).
 
 ### 2026-08-31 - RND-F14 Phase A: ShadowPass UBO lifetime fix (`feat/render`)
 - **Root cause:** ShadowPass overwrote shared host-visible ViewProj/Params UBO at offset 0 per draw; Vulkan deferred execution → all shadow draws read last-written matrix.

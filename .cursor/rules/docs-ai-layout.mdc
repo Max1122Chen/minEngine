@@ -22,6 +22,7 @@ alwaysApply: false
 | `docs/ai/Render/Material/` | 材质系统 Phase、编辑器计划、着色模型、材质相关 bug | 通用 GC、编辑器 Undo |
 | `docs/ai/Editor/` | 编辑器窗口、视口、ImGui、编辑模式 | 运行时 Scene 逻辑 |
 | `docs/ai/bugs/` | 跨领域缺陷 | 已归属单一领域的（优先放子目录 `bugs/`） |
+| `docs/ai/playbooks/` | **典型缺陷模式 / 排查手册**（Tier B 参考） | 单次 `BUG-*` 事件记录 |
 | `docs/ai/sessions/` | 临时会话笔记 | 长期有效的设计定稿 |
 | `docs/ai/templates/` | 文档模板与 `DOC_GOVERNANCE.md`（规范源） | 业务设计定稿、Progress 条目 |
 

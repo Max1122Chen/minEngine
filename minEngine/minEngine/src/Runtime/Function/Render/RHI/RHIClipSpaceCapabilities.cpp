@@ -26,12 +26,13 @@ namespace minEngine
         };
 
         // TD-025 scheme A: no shadow viewport flip; Front cull. Float D32 depth bias uses
-        // Vulkan semantics (not glPolygonOffset units).
+        // Vulkan semantics (not glPolygonOffset units). Bias trial 2026-08-31: slope/constant 2.
+        // Back-cull A/B reverted — only fixed horizontal receivers; not a full winding fix.
         constexpr RHIShadowPassCapabilities kVulkanShadowPass{
             false,
             RHICullMode::Front,
-            1.5f,
-            0.0f,
+            2.0f,
+            2.0f,
         };
 
         constexpr RHICubeCaptureCapabilities kOpenGLCubeCapture{false};

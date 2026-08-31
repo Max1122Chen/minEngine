@@ -44,7 +44,7 @@ Vulkan Editor: directional shadow on 100×100 plane appeared as huge false self-
 
 ## 已知后续（非本 bug 阻塞）
 
-- VK 接收体仍有轻微 **自阴影 / acne**；维护者判断 ShadowPass **Front face cull** 可能未生效或未对齐 — **下一轮**单独修，见 `ACTIVE_WORK.md`。
+- VK **Dir + Spot** 接收体假自阴影（2026-08-31）：单级联实验症状不变；Spot 亦中招；Point 暂无明显问题；不同物体随光源变化 → **写路径 cull/winding** 优先于全局 depthBias。Raster bias 代码已接（见 playbook §4.6）。Handoff：[session](../sessions/2026-08-31-vk-shadow-self-shadow-handoff.md) · [playbook §4.5–7](../playbooks/Render/VK_SHADOW_DEBUGGING.md) · `ACTIVE_WORK.md`。
 
 ## 变更记录
 
