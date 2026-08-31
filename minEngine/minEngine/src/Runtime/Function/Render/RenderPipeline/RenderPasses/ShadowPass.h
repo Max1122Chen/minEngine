@@ -5,6 +5,7 @@
 #include "Runtime/Function/Render/EnginePassUniforms.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
+#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowUniformBuffers.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 
@@ -39,15 +40,14 @@ namespace minEngine
     private:
         void Render(RHICommandList& cmdList);
         void Render();
-        void DrawOpaqueMeshes(RHICommandList& cmdList);
-        void UpdateShadowParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params);
+        void DrawOpaqueMeshes(RHICommandList& cmdList, const ShadowPassUniformBinding& uniformBinding);
         RHIGraphicsPipelineStateRef GetOrCreateShadowPipelineForLayout(
             RHIVertexInputLayout* vertexInputLayout,
             RHICommandList& cmdList);
 
     public:
-        RHIBuffer* m_LightViewProjUniformBuffer = nullptr;
         RHIBuffer* m_PerObjectUniformBuffer = nullptr;
+        const ShadowUniformBuffers* m_ShadowUniformBuffers = nullptr;
         std::vector<MeshDrawCommand> m_OpaqueQueue;
 
         std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
@@ -58,9 +58,6 @@ namespace minEngine
         std::unordered_map<RHIVertexInputLayout*, std::shared_ptr<RHIGraphicsPipelineState>> m_ShadowPipelineByLayout;
         /** Keep per-draw shadow sets alive until the CB submits (Vulkan descriptor lifetime). */
         std::vector<RHIShaderBindingSetRef> m_PendingShadowBindingSets;
-        RHIBufferRef m_ShadowParamsUniformBuffer;
-
-        void UpdateLightViewProjBuffer(const Matrix4& inMatrix);
         void RenderDirectionalShadow(RHICommandList& cmdList, const ShadowDrawCommand& command);
         void RenderSpotShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand);
         void RenderPointShadow(RHICommandList& cmdList, const ShadowDrawCommand& shadowCommand);

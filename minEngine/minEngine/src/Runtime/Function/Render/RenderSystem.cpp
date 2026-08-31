@@ -13,6 +13,7 @@
 
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "RenderPipeline/ForwardRenderer.h"
+#include "RenderPipeline/ManualRenderer.h"
 
 #include <filesystem>
 
@@ -36,18 +37,31 @@ namespace minEngine
         return *s_Instance;
     }
 
-    void RenderSystem::Initialize()
+    void RenderSystem::Initialize(SceneRendererKind sceneRenderer)
     {
+        const auto createSceneRenderer = [sceneRenderer]() -> std::unique_ptr<SceneRenderer>
+        {
+            switch (sceneRenderer)
+            {
+            case SceneRendererKind::Manual:
+                ME_CORE_INFO("RenderSystem: using ManualRenderer (RND-F13 diagnostic; no RenderGraph).");
+                return std::make_unique<ManualRenderer>();
+            case SceneRendererKind::Forward:
+            default:
+                return std::make_unique<ForwardRenderer>();
+            }
+        };
+
         if (RHIBackendSelection::IsVulkan())
         {
             m_RHI = std::make_shared<VulkanRHI>();
             m_RHI->Initialize();
             m_RHI->RHISetBackbufferClearColor(Vector3(0.1f, 0.1f, 0.1f));
 
-            m_SceneRenderer = std::make_unique<ForwardRenderer>();
+            m_SceneRenderer = createSceneRenderer();
             m_SceneRenderer->Initialize();
 
-            ME_CORE_INFO("RenderSystem Initialized (Vulkan; ForwardRenderer enabled for S07d).");
+            ME_CORE_INFO("RenderSystem Initialized (Vulkan).");
             return;
         }
 
@@ -56,7 +70,7 @@ namespace minEngine
 
         m_RHI->RHISetBackbufferClearColor(Vector3(0.1f, 0.1f, 0.1f));
 
-        m_SceneRenderer = std::make_unique<ForwardRenderer>();
+        m_SceneRenderer = createSceneRenderer();
         m_SceneRenderer->Initialize();
 
         ME_CORE_INFO("RenderSystem Initialized (OpenGL)");

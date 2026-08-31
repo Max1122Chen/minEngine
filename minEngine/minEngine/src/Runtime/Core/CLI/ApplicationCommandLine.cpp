@@ -1,6 +1,7 @@
 #include "ApplicationCommandLine.h"
 
 #include "CLI11.hpp"
+#include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <cstdio>
 #include <string>
@@ -50,6 +51,20 @@ namespace minEngine
             }
             return std::nullopt;
         }
+
+        std::optional<SceneRendererKind> ParseSceneRenderer(const std::string& value)
+        {
+            const std::string lowered = ToLowerAscii(value);
+            if (lowered == "forward" || lowered == "rdg")
+            {
+                return SceneRendererKind::Forward;
+            }
+            if (lowered == "manual" || lowered == "handpass")
+            {
+                return SceneRendererKind::Manual;
+            }
+            return std::nullopt;
+        }
     }
 
     CommandLineExitCode ApplicationCommandLine::GetLastExitCode()
@@ -82,6 +97,13 @@ namespace minEngine
         std::string rhiBackend;
         app.add_option("--rhi", rhiBackend, "Graphics backend: opengl|vulkan (aliases gl|vk). Default: opengl")
             ->option_text("<opengl|vulkan>");
+
+        std::string sceneRenderer;
+        app.add_option(
+            "--renderer",
+            sceneRenderer,
+            "Scene renderer: forward|manual (aliases rdg|handpass). Default: forward")
+            ->option_text("<forward|manual>");
 
         CLI::App& testCommand = *app.add_subcommand("test", "Headless test mode (no editor window)");
         std::string testTarget;
@@ -143,6 +165,21 @@ namespace minEngine
                 return std::nullopt;
             }
             result.RHIBackend = *parsedBackend;
+        }
+
+        if (!sceneRenderer.empty())
+        {
+            const std::optional<SceneRendererKind> parsedRenderer = ParseSceneRenderer(sceneRenderer);
+            if (!parsedRenderer.has_value())
+            {
+                std::fprintf(
+                    stderr,
+                    "Invalid --renderer '%s'. Expected forward|manual (aliases rdg|handpass).\n",
+                    sceneRenderer.c_str());
+                s_LastExitCode = CommandLineExitCode::UsageError;
+                return std::nullopt;
+            }
+            result.SceneRenderer = *parsedRenderer;
         }
 
         if (app.got_subcommand("test"))

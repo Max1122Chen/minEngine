@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/CLI/CommandLineResult.h"
 #include "Runtime/EngineConfig.h"
+#include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <chrono>
 #include <memory>
@@ -70,6 +71,7 @@ namespace minEngine
 
         EngineConfig m_EngineConfig;
         bool m_EnginePathConfigLoaded = false;
+        SceneRendererKind m_SceneRendererKind = SceneRendererKind::Forward;
 
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
     };

@@ -51,20 +51,6 @@ namespace minEngine
             {
                 m_ShadowPSODescTemplate.PipelineLayout = pipeline->GetPipelineLayouts().GetShadowDepthPipelineLayout();
             }
-
-            RHIBufferCreateDesc paramsDesc;
-            paramsDesc.Usage = RHIBufferUsage::Uniform;
-            paramsDesc.ByteSize = sizeof(ShadowPassParamsUBO);
-            m_ShadowParamsUniformBuffer = cmdList.CreateBuffer(paramsDesc, nullptr);
-        }
-    }
-
-    void ShadowPass::UpdateShadowParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params)
-    {
-        (void)cmdList;
-        if (m_ShadowParamsUniformBuffer)
-        {
-            m_ShadowParamsUniformBuffer->UpdateSubresource(&params, 0, sizeof(ShadowPassParamsUBO));
         }
     }
 
@@ -165,17 +151,9 @@ namespace minEngine
         }
     }
 
-    void ShadowPass::UpdateLightViewProjBuffer(const Matrix4& inMatrix)
+    void ShadowPass::DrawOpaqueMeshes(RHICommandList& cmdList, const ShadowPassUniformBinding& uniformBinding)
     {
-        if (m_LightViewProjUniformBuffer)
-        {
-            m_LightViewProjUniformBuffer->UpdateSubresource(&inMatrix, 0, sizeof(Matrix4));
-        }
-    }
-
-    void ShadowPass::DrawOpaqueMeshes(RHICommandList& cmdList)
-    {
-        if (!pipeline || !m_PerObjectUniformBuffer || !m_LightViewProjUniformBuffer || !m_ShadowParamsUniformBuffer)
+        if (!pipeline || !m_PerObjectUniformBuffer || !uniformBinding.IsValid())
         {
             return;
         }
@@ -202,14 +180,24 @@ namespace minEngine
 
             const uint32_t perObjectOffset = pipeline->GetSceneBindings().WriteNextPerObjectModel(drawCommand.m_ModelMatrix);
             std::vector<RHIShaderBinding> resources(3);
-            resources[0] = {RHIShaderBindingType::UniformBuffer, m_LightViewProjUniformBuffer, nullptr, 0, 0};
+            resources[0] = {
+                RHIShaderBindingType::UniformBuffer,
+                uniformBinding.ViewProjBuffer,
+                nullptr,
+                uniformBinding.ViewProjByteOffset,
+                static_cast<uint32_t>(sizeof(Matrix4))};
             resources[1] = {
                 RHIShaderBindingType::UniformBuffer,
                 m_PerObjectUniformBuffer,
                 nullptr,
                 perObjectOffset,
                 static_cast<uint32_t>(sizeof(Matrix4))};
-            resources[2] = {RHIShaderBindingType::UniformBuffer, m_ShadowParamsUniformBuffer.get(), nullptr, 0, 0};
+            resources[2] = {
+                RHIShaderBindingType::UniformBuffer,
+                uniformBinding.ParamsBuffer,
+                nullptr,
+                uniformBinding.ParamsByteOffset,
+                static_cast<uint32_t>(sizeof(ShadowPassParamsUBO))};
 
             RHIShaderBindingSetRef shadowSet = cmdList.CreateShaderBindingSet(shadowBindingLayout, resources);
             if (!shadowSet)
@@ -243,12 +231,12 @@ namespace minEngine
         const ShadowResolution& resolution = command.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::ShadowMap2D);
-        UpdateLightViewProjBuffer(command.ViewProj);
-        ShadowPassParamsUBO params{};
-        params.UseLinearDepth = 0;
-        UpdateShadowParams(cmdList, params);
-
-        DrawOpaqueMeshes(cmdList);
+        ShadowPassUniformBinding uniformBinding{};
+        uniformBinding.ViewProjBuffer = command.ViewProjUniformBuffer;
+        uniformBinding.ViewProjByteOffset = command.ViewProjUniformOffset;
+        uniformBinding.ParamsBuffer = command.ParamsUniformBuffer;
+        uniformBinding.ParamsByteOffset = command.ParamsUniformOffset;
+        DrawOpaqueMeshes(cmdList, uniformBinding);
         cmdList.EndRenderPass();
     }
 
@@ -267,13 +255,12 @@ namespace minEngine
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::ShadowMap2D);
-
-        UpdateLightViewProjBuffer(shadowCommand.ViewProj);
-        ShadowPassParamsUBO params{};
-        params.UseLinearDepth = 0;
-        UpdateShadowParams(cmdList, params);
-
-        DrawOpaqueMeshes(cmdList);
+        ShadowPassUniformBinding uniformBinding{};
+        uniformBinding.ViewProjBuffer = shadowCommand.ViewProjUniformBuffer;
+        uniformBinding.ViewProjByteOffset = shadowCommand.ViewProjUniformOffset;
+        uniformBinding.ParamsBuffer = shadowCommand.ParamsUniformBuffer;
+        uniformBinding.ParamsByteOffset = shadowCommand.ParamsUniformOffset;
+        DrawOpaqueMeshes(cmdList, uniformBinding);
         cmdList.EndRenderPass();
     }
 
@@ -299,17 +286,12 @@ namespace minEngine
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::CubeMapFace);
-
-        UpdateLightViewProjBuffer(shadowCommand.ViewProj);
-        ShadowPassParamsUBO params{};
-        params.UseLinearDepth = 1;
-        params.LightPos[0] = shadowCommand.LightPosition.x;
-        params.LightPos[1] = shadowCommand.LightPosition.y;
-        params.LightPos[2] = shadowCommand.LightPosition.z;
-        params.FarPlane = shadowCommand.FarPlane;
-        UpdateShadowParams(cmdList, params);
-
-        DrawOpaqueMeshes(cmdList);
+        ShadowPassUniformBinding uniformBinding{};
+        uniformBinding.ViewProjBuffer = shadowCommand.ViewProjUniformBuffer;
+        uniformBinding.ViewProjByteOffset = shadowCommand.ViewProjUniformOffset;
+        uniformBinding.ParamsBuffer = shadowCommand.ParamsUniformBuffer;
+        uniformBinding.ParamsByteOffset = shadowCommand.ParamsUniformOffset;
+        DrawOpaqueMeshes(cmdList, uniformBinding);
         cmdList.EndRenderPass();
     }
 }

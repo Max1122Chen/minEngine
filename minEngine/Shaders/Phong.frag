@@ -2,14 +2,13 @@
 
 // Prefer inject from ShaderCompiler. Sampler array size uses SLOTS (layout); MAX_* gates sampling.
 #ifndef MAX_SPOT_SHADOW_MAPS
-#define MAX_SPOT_SHADOW_MAPS 0
+#define MAX_SPOT_SHADOW_MAPS 2
 #endif
 #ifndef MAX_POINT_SHADOW_MAPS
-#define MAX_POINT_SHADOW_MAPS 0
+#define MAX_POINT_SHADOW_MAPS 2
 #endif
-// BUG-RENDER-010 isolation: match MaterialSceneShadows (restore -1 after verify).
 #ifndef DIR_SHADOW_FORCE_CASCADE
-#define DIR_SHADOW_FORCE_CASCADE 0
+#define DIR_SHADOW_FORCE_CASCADE -1
 #endif
 #ifndef SPOT_SHADOW_SAMPLER_SLOTS
 #define SPOT_SHADOW_SAMPLER_SLOTS 2

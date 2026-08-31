@@ -23,6 +23,12 @@ namespace minEngine
         m_InputTextureName = inputName != nullptr ? inputName : kRDGSceneColor;
     }
 
+    void PresentPass::RunWithInputTexture(RHICommandList& cmdList, RHITexture* inputTexture)
+    {
+        PrepareDrawPacket(cmdList, inputTexture);
+        Render(cmdList);
+    }
+
     void PresentPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
         (void)graph;

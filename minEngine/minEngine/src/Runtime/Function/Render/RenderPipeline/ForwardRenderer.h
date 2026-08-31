@@ -16,6 +16,7 @@
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 #include "Shadow/ShadowTypes.h"
+#include "Shadow/ShadowUniformBuffers.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 #include "Runtime/Function/Render/SceneRenderTarget.h"
@@ -117,29 +118,38 @@ namespace minEngine
         const EngineSceneBindingSets& GetSceneBindings() const { return m_SceneBindings; }
         const EnginePipelineLayouts& GetPipelineLayouts() const { return m_PipelineLayouts; }
 
-    private:
-        RHIBufferRef m_LightViewProjUniformBuffer;
+    protected:
         RHIBufferRef m_PerFrameUniformBuffer;
         RHIBufferRef m_LightDataUniformBuffer;
         RHIBufferRef m_PerObjectUniformBuffer;
         uint32_t m_PerObjectSlotStride = 256;
 
-        RHIBufferRef m_DirLightViewProjUniformBuffer;
-        RHIBufferRef m_CascadeFarPlaneUniformBuffer;
-        RHIBufferRef m_SpotLightViewProjUniformBuffer;
+        ShadowUniformBuffers m_ShadowUniformBuffers;
 
         ShadowPass m_ShadowPass;
-        SkyBoxPass m_SkyBoxPass;
         BasePass m_BasePass;
-        TranslucencyPass m_TranslucentPass;
-        std::vector<PostProcessPass> m_PostProcessPasses;
         PresentPass m_PresentPass;
 
         EngineSceneBindingSets m_SceneBindings;
         EnginePipelineLayouts m_PipelineLayouts;
-        std::string m_EngineDefaultAssetsRoot;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
+
+        void BindSceneRenderTarget(SceneRenderTarget& target);
+        void UpdatePerFrameUBO(const SceneRenderContext& ctx);
+        void UpdateLightUBO(const SceneRenderContext& ctx);
+        void CollectShadowRequests(SceneRenderContext& ctx);
+        void BuildShadowDrawCommands(SceneRenderContext& ctx);
+        void BuildRenderQueue(SceneRenderContext& ctx);
+        void ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx);
+
+        SkyBoxPass m_SkyBoxPass;
+
+    private:
+        TranslucencyPass m_TranslucentPass;
+        std::vector<PostProcessPass> m_PostProcessPasses;
+
+        std::string m_EngineDefaultAssetsRoot;
 
         RHIBufferRef m_ScreenQuadVertexBuffer;
         RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
@@ -160,8 +170,6 @@ namespace minEngine
         uint32_t m_PostBufferWidth = 0;
         uint32_t m_PostBufferHeight = 0;
 
-    private:
-        void BindSceneRenderTarget(SceneRenderTarget& target);
         void BuildFrameRenderGraph(bool enablePostProcess, bool presentToBackBuffer);
         void AssignShadowGraphPassCommands(const SceneRenderContext& ctx);
         static size_t GetFixedShadowGraphPassIndex(const ShadowDrawCommand& command);
@@ -173,14 +181,9 @@ namespace minEngine
             SceneRenderContext& ctx);
         void BindGraphShadowTextures(SceneRenderContext& ctx);
         void EnqueueFrameRenderGraph(RHICommandList& cmdList, SceneRenderTarget* sceneTarget);
-        void UpdatePerFrameUBO(const SceneRenderContext& ctx);
-        void UpdateLightUBO(const SceneRenderContext& ctx);
-        void CollectShadowRequests(SceneRenderContext& ctx);
-        void BuildShadowDrawCommands(SceneRenderContext& ctx);
         ShadowResourceHandle MakeDirectionalShadowBinding(const ShadowRequest& req, uint32_t cascadeCount) const;
         ShadowResourceHandle MakeSpotShadowBinding(const ShadowRequest& req, int slotIndex) const;
         ShadowResourceHandle MakePointShadowBinding(const ShadowRequest& req, int slotIndex) const;
-        void BuildRenderQueue(SceneRenderContext& ctx);
 
         DirShadowCommandBuildResult BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 
                                                             const ShadowResourceHandle& handle, 
@@ -193,7 +196,6 @@ namespace minEngine
         void ExpandCascadeZForShadowCasters(Math::Geometry::AABB& frustumAABB,
                                             const Matrix4& lightView,
                                             const std::vector<MeshDrawCommand>& opaqueQueue);
-        void ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx);
 
         ShadowDrawCommand BuildSpotShadowDrawCommand(const ShadowRequest& shadowRequest,
                                                       const ShadowResourceHandle& handle,

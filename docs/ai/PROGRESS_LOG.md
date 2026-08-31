@@ -1,8 +1,33 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-30 (RND-F13 design draft; S06 committed)
+Last updated: 2026-08-31 (RND-F14 Done; BUG-013/010/011 closed)
 
-### 2026-08-30 - RND-F13: Hand-Pass Probe Renderer design draft (`feat/render`)
+### 2026-08-31 - RND-F14 Phase A: ShadowPass UBO lifetime fix (`feat/render`)
+- **Root cause:** ShadowPass overwrote shared host-visible ViewProj/Params UBO at offset 0 per draw; Vulkan deferred execution → all shadow draws read last-written matrix.
+- **Fix:** `ShadowUniformBuffers` — Dir/Spot fixed slots, Point ViewProj ring, Params ring; per-command `BufferOffset` in `ShadowDrawCommand`; removed single-mat4 path.
+- **Diagnostic:** `ManualRenderer` (`--renderer manual`) helped isolate non-RDG root cause (RND-F13 Done).
+- **Verified:** User VK full-map — Dir / Spot / Point shadows each work independently (2026-08-31).
+- **Closed:** BUG-RENDER-013, BUG-RENDER-010, BUG-RENDER-011; TD-025 Done.
+- **Next:** VK receiver self-shadow acne — verify ShadowPass Front face cull (user observation).
+
+### 2026-08-31 - BUG-RENDER-013 reframed: Manual == RDG wrong shadows (`feat/render`)
+- Full-map VK: ManualRenderer shows **same** wrong shadows as Forward+RDG → **RDG not primary**.
+- Work shifts to ManualRenderer diagnosis: shadow PSO/attachments, VK depth array/cube create/update, set1/UBO.
+- RND-F12 demoted to hygiene; fix on Manual first, then regress Forward.
+
+### 2026-08-30 - RND-F13: dir-only isolation + full map restore (`feat/render`)
+- User confirmed ManualRenderer; viewport fix (manual sky clear pass).
+- Dir-only + single cascade: Manual ≈ Forward, faint shadow → not RDG-only in isolation (BUG-013 note).
+- Restored: `MAX_*_SHADOW_MAPS=2`, `MAX_CASCADES=4`, `DIR_SHADOW_FORCE_CASCADE=-1` (C++ + shader fallbacks).
+- **Next:** VK `--renderer forward` vs `manual` on full map / `test` scene.
+
+### 2026-08-30 - RND-F13-S01: ManualRenderer (`feat/render`)
+- Renamed from HandPassProbe → **ManualRenderer** per maintainer.
+- `ManualRenderer` subclasses `ForwardRenderer`; manual Shadow→Base→Present; no RenderGraph.
+- CLI: `--renderer manual` (`handpass` alias); default Forward unchanged.
+- Build: minEngine + Editor OK. **Next:** S02 GL/VK parity run on `test` scene → BUG-013 note.
+
+### 2026-08-30 - RND-F13: design draft (`feat/render`)
 - Diagnostic renderer proposal: manual Shadow→Base→Present, no RDG; GL/VK parity to isolate BUG-013.
 - BUG-RENDER-010: user confirmed single-cascade → one shadow (multi-copy = CSM).
 - Pending: design approval → Implementation Plan.

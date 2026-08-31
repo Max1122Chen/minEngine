@@ -1,17 +1,17 @@
-# Hand-Pass Probe Renderer — Design Spec
+# ManualRenderer — Design Spec
 
 ## Meta
 - **ID:** `RND-F13`
 - **Type:** Feature *(diagnostic / experimental)*
-- **Status:** **Draft** — pending maintainer approval
+- **Status:** **Done** *(Reference — `--renderer manual` retained for diagnosis)*
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-30
+- **Last updated:** 2026-08-31
 - **Related:** [FEATURE_REGISTRY](../FEATURE_REGISTRY.md), [ACTIVE_WORK](../ACTIVE_WORK.md), [RND-F12](./RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md), [BUG-RENDER-013](../bugs/BUG-RENDER-013.md), [BUG-RENDER-010](../bugs/BUG-RENDER-010.md)
-- **Implementation:** *待审批后* — `RND-F13_HAND_PASS_PROBE_RENDERER_IMPLEMENTATION.md`
+- **Implementation:** [RND-F13_MANUAL_RENDERER_IMPLEMENTATION.md](./RND-F13_MANUAL_RENDERER_IMPLEMENTATION.md)
 
 ## TL;DR
 
-新增 **对照实验用** `HandPassProbeRenderer`（名称待定）：保留现有 `ForwardRenderer` + RDG 主线不动；新 Renderer **仅手写组织** `ShadowPass → BasePass → PresentPass`，不走 `RenderGraph::Bake/Enqueue/PermanentOutput`。
+新增 **对照实验用** `ManualRenderer`：保留现有 `ForwardRenderer` + RDG 主线不动；新 Renderer **仅手写组织** `ShadowPass → BasePass → PresentPass`，不走 `RenderGraph::Bake/Enqueue/PermanentOutput`。
 
 若 VK 手写路径与 GL 一致，而 `ForwardRenderer`+RDG 仍异常 → **坐实 BUG-RENDER-013 根因在 RDG 图语义层**（非 shadow shader / clip-space / 基础 RHI）。
 
@@ -19,7 +19,7 @@
 - **In:**
   - 独立 `SceneRenderer` 实现；复用现有 `ShadowPass` / `BasePass` / `PresentPass` 与 `EngineSceneBindingSets`
   - 手写帧资源（SceneColor、SceneDepth、DirShadowAtlas）分配与 pass 顺序、layout transition
-  - Editor / CLI 切换入口（如 `--renderer handpass` 或等效配置）
+  - Editor / CLI 切换入口：`--renderer manual`（`handpass` 别名）
   - 固定实验场景：`test`、dir shadow 为主；GL/VK 对照目视
 - **Out:**
   - 替换或删除 `ForwardRenderer` / `RenderGraph`
@@ -29,8 +29,8 @@
 
 ## Reader quick start
 1. 本文件：实验目的、边界、验收
-2. 审批通过后写 Implementation Plan（切片 + DoD）
-3. 代码入口（计划）：`RenderPipeline/HandPassProbeRenderer.*`、`RenderSystem` 工厂注册
+2. [Implementation Plan](./RND-F13_MANUAL_RENDERER_IMPLEMENTATION.md)（切片 + DoD）
+3. 代码入口：`RenderPipeline/ManualRenderer.*`、`RenderSystem` 工厂注册
 
 ---
 
@@ -53,7 +53,7 @@
 ```text
 同一套 Pass 实现 + 同一套 shader/UBO
   ├─ ForwardRenderer + RDG     → VK 异常（基线）
-  └─ HandPassProbeRenderer     → 若 VK ≈ GL → RDG 为差分变量
+  └─ ManualRenderer            → 若 VK ≈ GL → RDG 为差分变量
 ```
 
 ### 1.3 非目标
@@ -72,8 +72,9 @@
 | `RenderGraph` | PermanentOutput、read edge、pass stack、SetupAttachments |
 | `ShadowGraphPass` | RDG 包装 `ShadowPass`；`SetupDependencies` 永久声明 depth writer |
 | `BasePass` / `PresentPass` | 已实现；依赖 graph physical 或 scene target |
+| `ManualRenderer` | **S01 Done** — 继承 Forward 帧逻辑，手写 pass 顺序 |
 
-**实验配置（工作区临时，commit `3fed4ef`）：** `MAX_*_SHADOW_MAPS=0`、`MAX_CASCADES=1`、`DIR_SHADOW_FORCE_CASCADE=0` — 对照 Renderer **首版应在恢复生产常量前或与之对齐的实验矩阵中明确声明**。
+**实验配置（工作区临时）：** `MAX_*_SHADOW_MAPS=0`、`MAX_CASCADES=1`、`DIR_SHADOW_FORCE_CASCADE=0` — 对照实验前在 bug note 写明矩阵。
 
 ---
 
@@ -84,7 +85,7 @@
 ```text
 RenderSystem
   ├─ ForwardRenderer          (现有，RDG)
-  └─ HandPassProbeRenderer    (新建，实验)
+  └─ ManualRenderer           (新建，实验)
         │
         ├─ 自有：帧 RT 池（非 RDG physical）
         ├─ 复用：ShadowPass, BasePass, PresentPass
@@ -103,17 +104,15 @@ RenderSystem
 
 | 资源 | 分配方 | 说明 |
 |------|--------|------|
-| `DirShadowAtlas` | ProbeRenderer 持有 `RHITextureRef` | `Texture2DArray` 或单 cascade `Texture2D`（与实验矩阵一致） |
-| `SceneColor` / `SceneDepth` | ProbeRenderer 或 `SceneRenderTarget` 内部分配 | 与 Forward 同分辨率策略 |
+| `DirShadowAtlas` | ManualRenderer 持有 `RHITextureRef` | `Texture2DArray`，层数 = `MAX_CASCADES` |
+| `SceneColor` / `SceneDepth` | ManualRenderer | 与 viewport 同分辨率 |
 | Swapchain / viewport | `SceneRenderTarget` publish | Present 复用现有路径 |
-
-不调用 `RenderGraph::SetupAttachments`；shadow 纹理在 shadow pass 前绑定到 `ShadowPass` / set1。
 
 ### 3.3 API / 切换
 
 | 入口 | 行为 |
 |------|------|
-| `--renderer handpass`（或 `EngineConfig` 枚举） | `RenderSystem` 构造 `HandPassProbeRenderer` |
+| `--renderer manual`（`handpass` 别名） | `RenderSystem` 构造 `ManualRenderer` |
 | 默认 | 仍为 `ForwardRenderer` |
 
 文档与代码注释标明 **EXPERIMENTAL / DIAGNOSTIC ONLY**。
@@ -128,48 +127,21 @@ RenderSystem
 
 ---
 
-## 4) 备选方案
+## 4) 验收标准
 
-| 选项 | 优点 | 缺点 | 结论 |
-|------|------|------|------|
-| A. 新 Probe Renderer（本方案） | 隔离清晰；不污染 Forward | 多一个类 | **选用** |
-| B. `ForwardRenderer` 内 `if (bypassRdg)` | 改动集中 | 长期难维护；难读 | 拒绝 |
-| C. 仅 RenderDoc 对比 | 零代码 | 不能自动化回归；难证 enqueue 语义 | 作辅助，不替代 |
+### 4.1 对照实验结论（核心）
 
----
-
-## 5) 风险与缓解
-
-| 风险 | 影响 | 缓解 |
-|------|------|------|
-| 实验 Renderer 引入新 bug | 假阴性/假阳性 | 最大化复用 Pass；与 Forward 共享 UBO/set 路径 |
-| 与临时 isolation 常量纠缠 | 结论混淆 | Implementation 首 slice 写清实验矩阵；恢复常量后复测 |
-| 范围蔓延（加 Sky/Post） | 延期 | 严格 Out；仅 Shadow+Base+Present |
-| 实验代码被当成正式路径 | 误用 | Registry Status + 代码命名 + 文档 Tier C |
-
----
-
-## 6) 验收标准（Design Done ≠ Impl Done）
-
-### 6.1 对照实验结论（本 Feature 核心）
-
-- [ ] **同一 `test` 场景、同一实验矩阵**（建议先 dir-only / 单 cascade）：
-  - GL：`HandPassProbeRenderer` 阴影目视 OK
-  - VK：`HandPassProbeRenderer` 阴影目视 **≈ GL**
+- [ ] **同一 `test` 场景、同一实验矩阵**：
+  - GL：`ManualRenderer` 阴影目视 OK
+  - VK：`ManualRenderer` 阴影目视 **≈ GL**
   - VK：`ForwardRenderer`+RDG 仍异常（或记录差异）
-- [ ] 结论写入 [BUG-RENDER-013](../bugs/BUG-RENDER-013.md)（RDG 坐实 / 未坐实）
+- [ ] 结论写入 [BUG-RENDER-013](../bugs/BUG-RENDER-013.md)
 
-### 6.2 工程
+### 4.2 工程
 
-- [ ] `HandPassProbeRenderer` 可切换、可编译；不影响默认 Forward 路径
-- [ ] 无 `RenderGraph` 依赖（grep 验证）
-- [ ] Implementation Plan 与 PROGRESS_LOG 条目（审批后）
-
----
-
-## 7) Status note
-
-**Draft** — 待 maintainer 审批设计后进入 Implementation Plan；**不启动编码**直至批准。
+- [x] `ManualRenderer` 可切换、可编译；不影响默认 Forward 路径
+- [x] 无 `RenderGraph` 依赖（`ManualRenderer.cpp`）
+- [x] Implementation Plan 与 PROGRESS_LOG 条目
 
 ---
 
@@ -177,4 +149,5 @@ RenderSystem
 
 | 日期 | 说明 |
 |------|------|
-| 2026-08-30 | 初稿：对照实验 Renderer；动机来自 BUG-010 CSM 坐实 + BUG-013 RDG 假设 |
+| 2026-08-30 | 初稿（HandPassProbeRenderer） |
+| 2026-08-30 | 重命名 ManualRenderer；S01 实现 + CLI |

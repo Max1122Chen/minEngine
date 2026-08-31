@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
+#include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <filesystem>
 #include <optional>
@@ -33,6 +34,9 @@ namespace minEngine
 
         /** Default OpenGL; set by global `--rhi opengl|vulkan` (aliases gl|vk). */
         RHIBackendType RHIBackend = RHIBackendType::OpenGL;
+
+        /** Default ForwardRenderer; `--renderer manual` selects RND-F13 diagnostic path. */
+        SceneRendererKind SceneRenderer = SceneRendererKind::Forward;
 
         TestRunKind TestKind = TestRunKind::Smoke;
         std::string SuiteId;

@@ -9,9 +9,10 @@
 
 namespace minEngine
 {
-    /** BUG-RENDER-013 isolation: dir-only RDG graph (4 cascade passes). Restore to 2 after verify. */
-    constexpr int MAX_SPOT_SHADOW_MAPS = 0;
-    constexpr int MAX_POINT_SHADOW_MAPS = 0;
+    class RHIBuffer;
+
+    constexpr int MAX_SPOT_SHADOW_MAPS = 2;
+    constexpr int MAX_POINT_SHADOW_MAPS = 2;
 
     /** Fixed RDG shadow pass slots: dir cascades + spot maps + point cube faces. */
     constexpr uint32_t kMaxShadowGraphPasses =
@@ -121,5 +122,9 @@ namespace minEngine
         } Target;
 
         ShadowAtlasRect AtlasRect{};
+        RHIBuffer* ViewProjUniformBuffer = nullptr;
+        uint32_t ViewProjUniformOffset = 0;
+        RHIBuffer* ParamsUniformBuffer = nullptr;
+        uint32_t ParamsUniformOffset = 0;
     };
 }

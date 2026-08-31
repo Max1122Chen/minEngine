@@ -2,11 +2,11 @@
 
 ## Meta
 - **ID:** BUG-RENDER-010
-- **Status:** Open
+- **Status:** **Fixed / Verified** — TD-025 + RND-F14；用户 2026-08-31 验收通过（三种光源 VK shadow 可用）
 - **Severity:** S1
 - **Owner:**
 - **Found:** 2026-08-28
-- **Last updated:** 2026-08-30
+- **Last updated:** 2026-08-31
 - **Affects:** Vulkan Editor / ForwardRenderer CSM, `test` scene plane receiver, ED-F01-S06
 - **Related Feature/Slice:** ED-F01-S06 · TD-025
 
@@ -35,11 +35,16 @@ Vulkan Editor: directional shadow on 100×100 plane appeared as huge false self-
 - `FORCE_CASCADE=0`：多影→单影；GL/VK 强制0 仍不对 → 级联混用放大问题，单级仍错（点/聚光恢复后需再验）。
 - 固定光空间 ortho 盒子（cascade 0）：**GL/VK 均不见 Dir 影**（盒子参数/光空间 near-far 未闭合，实验无效）；CSM frustum→AABB 路径对可见性必要。
 - **Dir-only shadow maps (`MAX_*_SHADOW_MAPS=0`)：VK Dir 视觉正常** → BUG-RENDER-013：RDG 主因假设；关闭本 bug Dir 主项待 RDG 修复后回归。
+- **RND-F13 dir-only：** ManualRenderer ≈ Forward，**浅影两者一致** → 浅影属共用 shadow/shader 链（本 bug），非 RDG 独有；full map 对照待 S02。
 
 ## 回归验证
-- [ ] VK `test` scene visual parity
-- [ ] GL regression
+- [x] VK `test` scene: Dir / Spot / Point shadows work (user 2026-08-31)
+- [x] GL regression — user accepted with batch close 2026-08-31
 - [x] Build `minEngine` + `Editor`
+
+## 已知后续（非本 bug 阻塞）
+
+- VK 接收体仍有轻微 **自阴影 / acne**；维护者判断 ShadowPass **Front face cull** 可能未生效或未对齐 — **下一轮**单独修，见 `ACTIVE_WORK.md`。
 
 ## 变更记录
 
@@ -48,3 +53,4 @@ Vulkan Editor: directional shadow on 100×100 plane appeared as huge false self-
 | 2026-08-28 | Filed; initial ZO patch (ineffective) |
 | 2026-08-28 | TD-025 caps + shadow scheme A |
 | 2026-08-29 | 分层回退 shader/flip；BUG 重开 Open；见 sessions handoff |
+| 2026-08-31 | **Fixed / Verified** with RND-F14; residual receiver self-shadow → next round (Front cull) |

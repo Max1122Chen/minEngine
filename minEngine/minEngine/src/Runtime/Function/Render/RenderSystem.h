@@ -4,6 +4,7 @@
 #include "Runtime/Function/Render/EngineRenderLimits.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderer.h"
+#include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <memory>
 #include <vector>
@@ -19,7 +20,7 @@ namespace minEngine
         RenderSystem() = default;
         ~RenderSystem() = default;
 
-        void Initialize();
+        void Initialize(SceneRendererKind sceneRenderer = SceneRendererKind::Forward);
         void Shutdown();
 
         static bool HasInstance();

@@ -7,6 +7,7 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/SceneRendererKind.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -31,6 +32,7 @@ namespace minEngine
         s_Instance = this;
 
         RHIBackendSelection::Set(commandLine.RHIBackend);
+        m_SceneRendererKind = commandLine.SceneRenderer;
 
         LogSystem::Get().Initialize();
         FinializeReflection();
@@ -161,7 +163,7 @@ namespace minEngine
 
         m_RenderSystem = std::make_shared<RenderSystem>();
         RenderSystem::SetInstance(m_RenderSystem.get());
-        m_RenderSystem->Initialize();
+        m_RenderSystem->Initialize(m_SceneRendererKind);
 
         m_LuaScriptSystem = std::make_shared<LuaScriptSystem>();
         LuaScriptSystem::SetInstance(m_LuaScriptSystem.get());
