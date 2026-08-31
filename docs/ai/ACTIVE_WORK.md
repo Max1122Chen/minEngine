@@ -40,10 +40,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 2. **PHYS-F03** — [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) Contact 回调（CORE-F04 Done；F11 为软依赖）
 3. worktree：`minEngine-physics` — **开干前** `git merge master`
 
-### Launcher 轨（`feat/launcher`）— **新开**
+### Launcher 轨（`feat/launcher`）— **S01–S04 Done；下一步 S05 GUI**
 
-1. **LAUN-F01** — [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md)
-2. worktree：`minEngine-launcher`
+1. **LAUN-F01** — [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · [Impl](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_IMPLEMENTATION.md)
+   - CLI **Done**（`open` / `create` / `recent` / `config`）
+   - **Next:** **LAUN-F01-S05** Tauri 2 GUI
 
 ### Audio 轨（`feat/audio`）— **新开**
 

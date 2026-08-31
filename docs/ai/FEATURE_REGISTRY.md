@@ -39,7 +39,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
 | `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | Planned | — | `feat/render`；GL-first MVP；**软依赖** PHYS-F03 调试 |
-| `LAUN-F01` | Engine Launcher（工程选择、最近项目、启动 Editor） | **Planned** | — | [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · `feat/launcher` · worktree `minEngine-launcher` |
+| `LAUN-F01` | Engine Launcher（CLI Done；GUI S05 待做） | **In Progress** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · [Impl](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_IMPLEMENTATION.md) · `Launcher/` · Rust CLI **Done** S01–S04 · Tauri S05 · `feat/launcher` |
 | `AUD-F01` | Audio system（资产、播放、Scene 集成 MVP） | **Planned** | — | [Placeholder](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · `feat/audio` · worktree `minEngine-audio` |
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/ui-anim` |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui-anim` |

@@ -20,3 +20,9 @@ scripts/__pycache__/
 
 # Local debug / dump artifacts
 Saved/
+
+# Rust / Launcher
+Launcher/target/
+
+# Local launcher dev projects
+Projects/

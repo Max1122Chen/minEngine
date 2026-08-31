@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-31 (multi-track backlog + worktrees)
+Last updated: 2026-08-31 (LAUN-F01 CLI S01–S04)
+
+### 2026-08-31 - LAUN-F01 CLI: Rust minlauncher S01–S04 (`feat/launcher`)
+- Added `Launcher/` Cargo workspace: `minlauncher-core` + `minlauncher` CLI (clap).
+- Commands: `open`, `create`, `recent`, `config`; spawn `Editor.exe --project <path>`.
+- Empty template under `Launcher/Templates/Empty/`; settings at `%APPDATA%/minEngine/Launcher/`.
+- Design + Implementation plan finalized (Tauri 2 for S05); Registry **In Progress** → CLI slice **Done**.
+- **Verified:** `cargo test -p minlauncher-core` (5/5); manual `open` MyMEProject + `create` LaunSmokeTest.
+- **Next:** LAUN-F01-S05 Tauri GUI (Deferred).
 
 ### 2026-08-31 - Multi-track backlog: LAUN / AUD / ANIM / UI / PHYS thaw (`master`)
 - Registered **LAUN-F01**, **AUD-F01**, **UI-F01**, **ANIM-F01**, **PHYS-F04**; **PHYS-F03** Deferred → Planned.
