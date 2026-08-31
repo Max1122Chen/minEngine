@@ -12,6 +12,7 @@
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Resource/LuaScript.h"
+#include "Runtime/Resource/AudioClip.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -1092,6 +1093,17 @@ namespace minEngine
             if (asset == nullptr)
             {
                 outErrorMessage = "failed to load EnvironmentMap by guid";
+                return nullptr;
+            }
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "AudioClip")
+        {
+            std::shared_ptr<AudioClip> asset = LoadAsset<AudioClip>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load AudioClip by guid";
                 return nullptr;
             }
             return std::static_pointer_cast<Asset>(asset);

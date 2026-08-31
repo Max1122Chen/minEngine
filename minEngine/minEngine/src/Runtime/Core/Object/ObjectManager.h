@@ -121,6 +121,7 @@ namespace minEngine
         friend class PhysicsContactTestScope;
         friend class PhysicsLineTraceTestScope;
         friend class PhysicsShapesTestScope;
+        friend class AudioSmokeTestScope;
         friend class DelegateObjectManagerScope;
 
         static void SetInstance(ObjectManager* instance);

@@ -9,6 +9,7 @@
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
+#include "Runtime/Function/Audio/AudioSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
@@ -159,6 +160,10 @@ namespace minEngine
         SceneManager::SetInstance(m_SceneManager.get());
         m_SceneManager->Initialize();
 
+        m_AudioSystem = std::make_shared<AudioSystem>();
+        AudioSystem::SetInstance(m_AudioSystem.get());
+        m_AudioSystem->Initialize();
+
         m_PhysicsSystem = std::make_shared<PhysicsSystem>();
         PhysicsSystem::SetInstance(m_PhysicsSystem.get());
         m_PhysicsSystem->Initialize();
@@ -185,6 +190,13 @@ namespace minEngine
             m_SceneManager->Shutdown();
             SceneManager::SetInstance(nullptr);
             m_SceneManager.reset();
+        }
+
+        if (m_AudioSystem)
+        {
+            m_AudioSystem->Shutdown();
+            AudioSystem::SetInstance(nullptr);
+            m_AudioSystem.reset();
         }
 
         if (m_PhysicsSystem)
@@ -241,6 +253,10 @@ namespace minEngine
     {
         m_InputSystem->Tick(deltaTime);
         m_SceneManager->Tick(deltaTime);
+        if (m_AudioSystem)
+        {
+            m_AudioSystem->Tick(deltaTime);
+        }
         if (m_PhysicsSystem)
         {
             m_PhysicsSystem->SimulateActiveScene(deltaTime);

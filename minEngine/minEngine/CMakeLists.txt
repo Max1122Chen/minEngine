@@ -47,6 +47,7 @@ file(GLOB IMGUIZMO ${THIRD_PARTY_PATH}/ImGuizmo/*.cpp)
 add_library(${ENGINE_NAME} SHARED ${SRC}
                                   ${THIRD_PARTY_PATH}/glad/src/glad.c
                                   ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
+                                  ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/miniaudio/miniaudio.c
                                   ${IMGUI}
                                   ${IMGUI_FREETYPE_SRC}
                                   ${IMGUIZMO}
@@ -152,6 +153,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/json
                                           PUBLIC ${THIRD_PARTY_PATH}/ImGuizmo
                                           PUBLIC ${THIRD_PARTY_PATH}/CLI11
+                                          PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/miniaudio
                                           )
 
 if(ASSIMP_LINK_TARGET STREQUAL "")
