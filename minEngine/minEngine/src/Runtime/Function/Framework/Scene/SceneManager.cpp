@@ -107,6 +107,8 @@ namespace minEngine
         m_CurrentActiveScene = NewObject<Scene>();
         m_CurrentActiveScene->m_SceneName = sceneName;
         m_CurrentActiveScene->EnsureRenderScene();
+        ResolvePendingActivationsForScene(m_CurrentActiveScene.get());
+
         if (PhysicsSystem::HasInstance())
         {
             PhysicsSystem::Get().GetOrCreateWorld(m_CurrentActiveScene.get());
@@ -133,6 +135,8 @@ namespace minEngine
             UnloadActiveScene();
             m_CurrentActiveScene = scene;
             m_CurrentActiveScene->EnsureRenderScene();
+
+            ResolvePendingActivationsForScene(m_CurrentActiveScene.get());
 
             for (const std::shared_ptr<GameObject>& gameObject : m_CurrentActiveScene->GetAllGameObjects())
             {
@@ -214,5 +218,31 @@ namespace minEngine
             }
         }
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
+    }
+
+    void SceneManager::ResolvePendingActivationsForScene(Scene* scene)
+    {
+        if (scene == nullptr)
+        {
+            return;
+        }
+
+        for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+        {
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            {
+                if (component)
+                {
+                    // Reconcile runtime activation with m_bActive after deserialize.
+                    // Scene load assigns m_Owner via pending ref without SetOwner (TD-026).
+                    component->SyncActivationWithActiveFlag();
+                }
+            }
+        }
     }
 }

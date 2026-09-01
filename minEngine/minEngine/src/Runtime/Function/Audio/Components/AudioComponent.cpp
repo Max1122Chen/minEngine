@@ -63,18 +63,20 @@ namespace minEngine
         return true;
     }
 
-    void AudioComponent::SetOwner(GameObject* inOwner)
+    void AudioComponent::ApplyActivationToSystems()
     {
+        if (AudioSystem::HasInstance() && m_Owner != nullptr)
+        {
+            AudioSystem::Get().RegisterEmitter(this);
+        }
+    }
+
+    void AudioComponent::RemoveActivationFromSystems()
+    {
+        Stop();
         if (AudioSystem::HasInstance())
         {
             AudioSystem::Get().UnregisterEmitter(this);
-        }
-
-        SceneComponent::SetOwner(inOwner);
-
-        if (AudioSystem::HasInstance() && inOwner != nullptr)
-        {
-            AudioSystem::Get().RegisterEmitter(this);
         }
     }
 

@@ -18,8 +18,6 @@ namespace minEngine
         AudioComponent();
         ~AudioComponent() override;
 
-        void SetOwner(GameObject* inOwner) override;
-
         ME_FUNCTION(ScriptCallable)
         void Play();
 
@@ -56,6 +54,9 @@ namespace minEngine
 
     private:
         friend class AudioSystem;
+
+        void ApplyActivationToSystems() override;
+        void RemoveActivationFromSystems() override;
 
         bool TryConsumePlayOnAwake();
 

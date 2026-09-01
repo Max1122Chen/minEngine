@@ -5,6 +5,7 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Component)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Component, m_Owner)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Component, m_bActive)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::Component, GReflectionClassRegister_Component_616f6fc6)

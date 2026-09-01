@@ -82,25 +82,60 @@ namespace minEngine
     
     void LightComponent::DoEndOfFrameUpdate()
     {
-        if(m_bRenderStateDirty)     
+        if (!m_bRenderStateDirty || !IsActive())
         {
-            Vector4 clampedColor = glm::clamp(m_LightColor, Vector4(0.0f), Vector4(1.0f));
-            m_LightColor = clampedColor;
-            if (m_Intensity < 0.0f)
-            {
-                m_Intensity = 0.0f;
-            }
-            if (m_DiffuseFactor < 0.0f)
-            {
-                m_DiffuseFactor = 0.0f;
-            }
-            if (m_SpecularFactor < 0.0f)
-            {
-                m_SpecularFactor = 0.0f;
-            }
-
-            SceneManager::Get().GetRenderScene()->UpdateLight(this);
-            m_bRenderStateDirty = false;
+            return;
         }
+
+        Vector4 clampedColor = glm::clamp(m_LightColor, Vector4(0.0f), Vector4(1.0f));
+        m_LightColor = clampedColor;
+        if (m_Intensity < 0.0f)
+        {
+            m_Intensity = 0.0f;
+        }
+        if (m_DiffuseFactor < 0.0f)
+        {
+            m_DiffuseFactor = 0.0f;
+        }
+        if (m_SpecularFactor < 0.0f)
+        {
+            m_SpecularFactor = 0.0f;
+        }
+
+        SceneManager::Get().GetRenderScene()->UpdateLight(this);
+        m_bRenderStateDirty = false;
+    }
+
+    void LightComponent::ApplyActivationToSystems()
+    {
+        MarkRenderStateDirty();
+    }
+
+    void LightComponent::RemoveActivationFromSystems()
+    {
+        if (!m_LightSceneProxy)
+        {
+            m_bRenderStateDirty = false;
+            return;
+        }
+
+        bool removedFromScene = false;
+        if (SceneManager::HasInstance())
+        {
+            RenderScene* renderScene = SceneManager::Get().GetRenderScene();
+            if (renderScene)
+            {
+                renderScene->RemoveLight(this);
+                removedFromScene = true;
+            }
+        }
+
+        if (!removedFromScene)
+        {
+            m_LightSceneProxy->m_LightComponent = nullptr;
+        }
+
+        m_LightSceneProxy = nullptr;
+        m_bRenderStateDirty = false;
     }
 }

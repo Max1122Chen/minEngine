@@ -302,6 +302,36 @@ namespace minEngine
             const std::string headerLabel = GetShortTypeName(classInfo->GetName()) + "##component_" +
                                             std::to_string(reinterpret_cast<uintptr_t>(component.get()));
             bool componentOpen = false;
+
+            bool componentActive = component->IsActive();
+            const bool inactiveStylePushed = !componentActive;
+            const std::string activeCheckboxId =
+                std::string("##component_active_") + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+            const PropertyUndoCaptureContext activeUndoContext =
+                MakePropertyUndoCaptureContext(component.get(), classInfo, "m_bActive");
+            std::vector<uint8_t> activeBeforeBlob;
+            const bool capturedActiveBefore = SerializePropertyUndoBlob(activeUndoContext, activeBeforeBlob);
+
+            if (inactiveStylePushed)
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.55f);
+            }
+
+            if (ImGui::Checkbox(activeCheckboxId.c_str(), &componentActive))
+            {
+                // Capture before blob prior to SetActive; checkbox toggles are same-frame
+                // so IsItemActivated/IsItemDeactivatedAfterEdit hooks are unreliable here.
+                component->SetActive(componentActive);
+                m_SceneEditor.MarkSceneDirty();
+
+                std::vector<uint8_t> activeAfterBlob;
+                if (capturedActiveBefore && SerializePropertyUndoBlob(activeUndoContext, activeAfterBlob))
+                {
+                    TryPropertyUndoCommitImmediate(activeUndoContext, activeBeforeBlob, activeAfterBlob);
+                }
+            }
+
+            ImGui::SameLine();
             {
                 std::unique_ptr<EditorThemeScope> componentSectionTheme;
                 std::unique_ptr<EditorTypographyScope> componentHeaderTypography;
@@ -316,6 +346,11 @@ namespace minEngine
 
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
                 componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                ImGui::PopStyleVar();
+            }
+
+            if (inactiveStylePushed)
+            {
                 ImGui::PopStyleVar();
             }
 

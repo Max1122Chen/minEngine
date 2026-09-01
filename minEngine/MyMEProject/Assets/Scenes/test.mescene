@@ -46,7 +46,8 @@
                             4.0,
                             4.0
                         ]
-                    }
+                    },
+                    "m_bActive": true
                 },
                 {
                     "$ptr_typeName": "minEngine::RigidBodyComponent",
@@ -64,7 +65,8 @@
                         }
                     },
                     "m_PhysicsBodyId": 0,
-                    "m_bSimulatePhysics": true
+                    "m_bSimulatePhysics": true,
+                    "m_bActive": true
                 },
                 {
                     "$ptr_typeName": "minEngine::BoxColliderComponent",
@@ -84,7 +86,8 @@
                             "high": 2269251532856313338,
                             "low": 11094257267653316277
                         }
-                    }
+                    },
+                    "m_bActive": true
                 }
             ],
             "m_Guid": {
@@ -142,7 +145,8 @@
                             1.0,
                             1.0
                         ]
-                    }
+                    },
+                    "m_bActive": true
                 }
             ],
             "m_Guid": {
@@ -203,7 +207,8 @@
                             1.0,
                             100.0
                         ]
-                    }
+                    },
+                    "m_bActive": true
                 },
                 {
                     "$ptr_typeName": "minEngine::RigidBodyComponent",
@@ -221,7 +226,8 @@
                         }
                     },
                     "m_PhysicsBodyId": 1,
-                    "m_bSimulatePhysics": true
+                    "m_bSimulatePhysics": true,
+                    "m_bActive": true
                 },
                 {
                     "$ptr_typeName": "minEngine::BoxColliderComponent",
@@ -241,7 +247,8 @@
                             "high": 2752187127547708369,
                             "low": 10834008049559124436
                         }
-                    }
+                    },
+                    "m_bActive": true
                 }
             ],
             "m_Guid": {
@@ -301,7 +308,8 @@
                             1.0,
                             1.0
                         ]
-                    }
+                    },
+                    "m_bActive": true
                 }
             ],
             "m_Guid": {
@@ -363,7 +371,8 @@
                             1.0,
                             1.0
                         ]
-                    }
+                    },
+                    "m_bActive": true
                 }
             ],
             "m_Guid": {
@@ -383,7 +392,6 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::SkyBoxComponent",
-                    "m_Enabled": true,
                     "m_EnvironmentMap": {
                         "$guid": {
                             "high": 17293822569102704641,
@@ -419,7 +427,8 @@
                             1.0,
                             1.0
                         ]
-                    }
+                    },
+                    "m_bActive": true
                 }
             ],
             "m_Guid": {

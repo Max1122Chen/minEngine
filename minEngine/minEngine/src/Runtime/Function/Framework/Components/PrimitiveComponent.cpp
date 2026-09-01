@@ -38,7 +38,7 @@ namespace minEngine
 
     void PrimitiveComponent::DoEndOfFrameUpdate()
     {
-        if (!m_bRenderStateDirty)
+        if (!m_bRenderStateDirty || !IsActive())
         {
             return;
         }
@@ -50,6 +50,38 @@ namespace minEngine
         }
 
         renderScene->UpdatePrimitive(this);
+        m_bRenderStateDirty = false;
+    }
+
+    void PrimitiveComponent::ApplyActivationToSystems()
+    {
+        MarkRenderStateDirty();
+    }
+
+    void PrimitiveComponent::RemoveActivationFromSystems()
+    {
+        if (!m_SceneProxy)
+        {
+            return;
+        }
+
+        bool removedFromScene = false;
+        if (SceneManager::HasInstance())
+        {
+            SceneManager& sceneManager = SceneManager::Get();
+            if (sceneManager.GetRenderScene())
+            {
+                sceneManager.GetRenderScene()->RemovePrimitive(this);
+                removedFromScene = true;
+            }
+        }
+
+        if (!removedFromScene)
+        {
+            m_SceneProxy->m_PrimitiveComponent = nullptr;
+        }
+
+        m_SceneProxy = nullptr;
         m_bRenderStateDirty = false;
     }
 

@@ -164,7 +164,7 @@ namespace minEngine
                 }
             }
 
-            if (rigidBodyComponent != nullptr)
+            if (rigidBodyComponent != nullptr && rigidBodyComponent->IsActive())
             {
                 rigidBodyComponent->RefreshPhysicsBody(colliderComponent);
             }

@@ -6,6 +6,7 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::Component, GReflectionClassRegister_
     ME_REFLECTION_CLASS_SET_ANNOTATIONS((static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::ScriptType)), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MEObject)
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::Component, m_Owner, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Invisible)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::Component, m_bActive, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Invisible)), (minEngine::Reflection::PropertyMetadata{}))
     {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_5fcd519c, "GetOwner", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), (static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::ScriptCallable)), (minEngine::Reflection::FunctionMetadata{}))
         ME_REFLECTION_FUNCTION_RETURN(functionInfo_5fcd519c, minEngine::GameObject*)

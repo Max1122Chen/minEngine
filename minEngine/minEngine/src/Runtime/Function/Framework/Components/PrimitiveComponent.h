@@ -34,6 +34,10 @@ namespace minEngine
         PrimitiveSceneProxy* GetSceneProxy() const { return m_SceneProxy; }
 
     protected:
+        void ApplyActivationToSystems() override;
+        void RemoveActivationFromSystems() override;
+
+    protected:
         ME_PROPERTY()
         bool m_CastShadow{ true };
 

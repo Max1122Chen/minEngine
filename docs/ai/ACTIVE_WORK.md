@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-01（双轨：master 内核 + feat/editor；ANIM 待合并检查点）
+Last updated: 2026-09-02（双轨：master 内核 + feat/editor；CORE-F06 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -43,16 +43,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 1. ~~**[BUG-RENDER-014](./bugs/BUG-RENDER-014.md)**~~ — 点光半径/衰减 + 阴影截止（**待 commit**）；[Design](./Render/BUG-RENDER-014_POINT_LIGHT_RADIUS_ATTENUATION_DESIGN.md)
 2. **PHYS-F04** — Collider 尺寸与 Transform Scale **完全独立**；[Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md)
 3. （可选）[BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — Add `BoxColliderComponent` 间歇崩溃
+4. **[BUG-PHYS-004](./bugs/BUG-PHYS-004.md)** — 禁用/删除 Collider 后物理形体未注销（**Open，待修**）
 
 **验证：** `verify.ps1` + `physics-shapes` / `physics-smoke`；Editor GL 点光场景目视。
 
 ### B. `master` — 内核（CORE，ANIM 前置）
 
-1. **CORE-F06** Component Enable — [Placeholder](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · `bEnabled`、各 System 跳过
+1. ~~**CORE-F06** Component Activate~~ — **Done**（2026-09-02）；[Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md)
 2. **CORE-F05** Play Mode — [Placeholder](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · Edit/Play 切换、Stop 回 Edit
-3. **CORE-F07** 反射展示去 `m_`/`x_` 前缀 — [Placeholder](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · 低优，Enable/Play 之后
+3. **CORE-F07** 反射展示去 `m_`/`x_` 前缀 — [Placeholder](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · 低优，Play 之后
 
-**建议顺序：** F06 → F05 → F07。
+**建议顺序：** ~~F06~~ → **F05** → F07。
 
 ### C. `feat/editor` — ED-F02 Editor Workflow
 

@@ -4,7 +4,6 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SkyBoxComponent)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkyBoxComponent, m_Enabled)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkyBoxComponent, m_SkyIntensity)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkyBoxComponent, m_EnvironmentMap)
 ME_REFLECTION_ACCESSOR_END()

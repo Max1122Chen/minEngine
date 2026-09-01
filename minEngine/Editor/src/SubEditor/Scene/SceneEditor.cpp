@@ -569,6 +569,11 @@ namespace minEngine
             static_cast<SceneComponent*>(ownerObject.get())->MarkRenderStateDirty();
         }
 
+        if (propertyPath == "m_bActive" && ownerObject->IsA(Component::StaticClass()))
+        {
+            static_cast<Component*>(ownerObject.get())->SyncActivationWithActiveFlag();
+        }
+
         ApplyPhysicsEditorSideEffects(ownerObject.get(), propertyPath);
 
         MarkSceneDirty();

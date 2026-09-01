@@ -35,8 +35,11 @@ namespace minEngine
         SceneComponent* GetTargetSceneComponent() const;
         ColliderComponent* FindColliderComponent() const;
 
-        void SetOwner(GameObject* inOwner) override;
         void RefreshPhysicsBody(ColliderComponent* colliderOverride = nullptr);
+
+    protected:
+        void ApplyActivationToSystems() override;
+        void RemoveActivationFromSystems() override;
 
     private:
         friend class PhysicsWorld;

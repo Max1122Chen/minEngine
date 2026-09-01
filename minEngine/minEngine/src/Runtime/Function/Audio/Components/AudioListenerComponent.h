@@ -13,10 +13,12 @@ namespace minEngine
         AudioListenerComponent();
         ~AudioListenerComponent() override;
 
-        void SetOwner(GameObject* inOwner) override;
-
         bool GetUseTransformOrientation() const { return m_bUseTransformOrientation; }
         void SetUseTransformOrientation(bool useTransform) { m_bUseTransformOrientation = useTransform; }
+
+    protected:
+        void ApplyActivationToSystems() override;
+        void RemoveActivationFromSystems() override;
 
     private:
         ME_PROPERTY(EditAnywhere)

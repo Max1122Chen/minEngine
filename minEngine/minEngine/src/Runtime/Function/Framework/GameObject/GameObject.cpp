@@ -276,7 +276,10 @@ namespace minEngine
     {
         for (auto& component : m_Components)
         {
-            component->Tick(deltaTime);
+            if (component && component->IsActive())
+            {
+                component->Tick(deltaTime);
+            }
         }
     }
 

@@ -35,7 +35,7 @@ namespace minEngine
             m_HasLoggedTickError = false;
         }
 
-        if (!m_ScriptEnabled)
+        if (!m_ScriptEnabled || !IsActive())
         {
             return;
         }

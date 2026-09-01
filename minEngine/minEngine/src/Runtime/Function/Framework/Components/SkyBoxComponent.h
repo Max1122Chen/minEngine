@@ -17,9 +17,6 @@ namespace minEngine
         SkyBoxComponent();
         virtual ~SkyBoxComponent() override;
 
-        void SetEnabled(bool enabled);
-        bool IsEnabled() const { return m_Enabled; }
-
         void SetSkyIntensity(float intensity);
         float GetSkyIntensity() const { return m_SkyIntensity; }
 
@@ -31,9 +28,7 @@ namespace minEngine
 
         SkyBoxSceneProxy* CreateSceneProxy();
         SkyBoxSceneProxy* GetSceneProxy() const { return m_SkyBoxSceneProxy; }
-
-        ME_PROPERTY(EditAnywhere)
-        bool m_Enabled = true;
+        void DetachSceneProxy() { m_SkyBoxSceneProxy = nullptr; }
 
         ME_PROPERTY(EditAnywhere)
         float m_SkyIntensity = 1.0f;
@@ -41,6 +36,10 @@ namespace minEngine
         /** Project EnvironmentMap asset (not EngineDefault path). */
         ME_PROPERTY(EditAnywhere)
         std::shared_ptr<EnvironmentMap> m_EnvironmentMap;
+
+    protected:
+        void ApplyActivationToSystems() override;
+        void RemoveActivationFromSystems() override;
 
         SkyBoxSceneProxy* m_SkyBoxSceneProxy = nullptr;
     };

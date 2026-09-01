@@ -25,6 +25,11 @@ namespace minEngine
 
     void RenderScene::UpdatePrimitive(PrimitiveComponent *primitiveComponent)
     {
+        if (primitiveComponent == nullptr || !primitiveComponent->IsActive())
+        {
+            return;
+        }
+
         if(primitiveComponent->GetSceneProxy() == nullptr)
         {
             PrimitiveSceneProxy* proxy = primitiveComponent->CreateSceneProxy();
@@ -96,6 +101,11 @@ namespace minEngine
 
     void RenderScene::UpdateLight(LightComponent *lightComponent)
     {
+        if (lightComponent == nullptr || !lightComponent->IsActive())
+        {
+            return;
+        }
+
         if(lightComponent->GetSceneProxy() == nullptr)
         {
             switch(lightComponent->GetLightType())
@@ -219,7 +229,7 @@ namespace minEngine
 
     void RenderScene::UpdateSkyBox(SkyBoxComponent* skyBoxComponent)
     {
-        if (!skyBoxComponent)
+        if (skyBoxComponent == nullptr || !skyBoxComponent->IsActive())
         {
             return;
         }
@@ -242,7 +252,7 @@ namespace minEngine
             SkyBoxSceneProxy* proxy = skyBoxComponent->GetSceneProxy();
             proxy->m_Transform = skyBoxComponent->GetTransform();
             proxy->m_SkyIntensity = skyBoxComponent->GetSkyIntensity();
-            proxy->m_Enabled = skyBoxComponent->IsEnabled();
+            proxy->m_Enabled = skyBoxComponent->IsActive();
             proxy->m_EnvironmentMap = skyBoxComponent->GetEnvironmentMapShared();
         }
     }
@@ -260,7 +270,7 @@ namespace minEngine
         }
 
         m_SkyBoxProxy->m_SkyBoxComponent = nullptr;
-        skyBoxComponent->m_SkyBoxSceneProxy = nullptr;
+        skyBoxComponent->DetachSceneProxy();
         m_SkyBoxProxy = nullptr;
         m_SkyBoxProxyOwner.reset();
     }

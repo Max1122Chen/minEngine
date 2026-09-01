@@ -70,17 +70,21 @@ namespace minEngine
         PhysicsSystem::Get().GetOrCreateWorld(scene).OnRigidBodySimulatePhysicsChanged(this);
     }
 
-    void RigidBodyComponent::SetOwner(GameObject* inOwner)
+    void RigidBodyComponent::ApplyActivationToSystems()
     {
-        Component::SetOwner(inOwner);
         RefreshPhysicsBody();
+    }
+
+    void RigidBodyComponent::RemoveActivationFromSystems()
+    {
+        DestroyPhysicsBody();
     }
 
     void RigidBodyComponent::RefreshPhysicsBody(ColliderComponent* colliderOverride)
     {
         DestroyPhysicsBody();
 
-        if (m_Owner == nullptr || !PhysicsSystem::HasInstance())
+        if (!IsActive() || m_Owner == nullptr || !PhysicsSystem::HasInstance())
         {
             return;
         }

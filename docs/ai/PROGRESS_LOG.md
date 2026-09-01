@@ -1,6 +1,27 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-01 (BUG-RENDER-014 pending commit)
+Last updated: 2026-09-02（CORE-F06 Done；BUG-PHYS-004 Open）
+
+Last updated: 2026-09-02（CORE-F06 Done；BUG-PHYS-004 Open）
+
+### 2026-09-02 - CORE-F06 Component Activate Done (`master`)
+- **Runtime:** `m_bActive`, `SetActive`/`IsActive`, activation state machine, `SyncActivationWithActiveFlag`, system hooks (tick/physics/audio/render/Lua).
+- **Editor:** Inspector Active checkbox + undo; ImGui style var fix; scene load reconcile (TD-026 workaround).
+- **Assets:** `test.mescene` / `default.mescene` → `m_bActive`; SkyBox `m_Enabled` removed.
+- **Docs:** Design/Impl Done; TD-026 Open; BUG-PHYS-004 registered (collider shape not unregistered on disable/remove).
+- **Verified:** Editor build; physics-smoke; manual Active toggle on loaded scene.
+
+### 2026-09-02 - CORE-F06: scene load activation reconcile + TD-026
+- **Fix:** `ResolvePendingActivationsForScene` → `SyncActivationWithActiveFlag` per component（反序列化 `m_Owner` 未走 `SetOwner` 导致 `m_bActivationApplied` 假阴性与首 Deactivate 无效）。
+- **TD-026:** Open — 未来 pending ref resolve 对 `m_Owner` 走反射 Setter / `SetOwner` 根治。
+
+### 2026-09-01 - CORE-F06 Component Activate (S01–S07, pending commit)
+- **Runtime:** `Component::m_bActive` + `SetActive`/`IsActive`/`OnActivate`/`OnDeactivate`; private `TryActivate`/`Deactivate`/`m_bPendingActivation`/`m_bActivationApplied`; `SyncActivationWithActiveFlag` for undo/deserialize.
+- **Systems:** Tick/Lua skip inactive; Physics create/destroy body; Audio register/unregister; Render immediate Remove + EOF rebuild; SkyBox `m_Enabled` → `m_bActive` + `DetachSceneProxy`.
+- **Scene:** `ResolvePendingActivationsForScene` on Load/CreateNewScene.
+- **Editor:** Inspector Active checkbox + gray inactive; undo via `m_bActive` property blob + sync hook in `ApplySetObjectProperty`.
+- **Verified:** Editor/minEngine build PASS; `physics-smoke` / `physics-shapes` / `audio-smoke` / `object-manager` / `serialization-archive` PASS. `verify.ps1` smoke fails on pre-existing `material-ir` (unrelated).
+- **Next:** Editor 目视 Active 开关（mesh/light/skybox/RB/audio）；可选 DeferredActivation 队列 Defer；然后准备 commit。
 
 ### 2026-09-01 - BUG-RENDER-014: point light radius, attenuation, shadow cutoff (pending commit)
 - **Runtime:** `PointLightComponent` `m_AttenuationRadius` / `m_AttenuationFalloff`; UBO `Position.w` + `Params.x`; shadow pass far = radius (cap 50).

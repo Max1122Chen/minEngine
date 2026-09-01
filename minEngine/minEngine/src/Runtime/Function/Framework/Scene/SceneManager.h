@@ -48,6 +48,8 @@ namespace minEngine
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
         void SendAllEndOfFrameUpdates();
 
+        void ResolvePendingActivationsForScene(Scene* scene);
+
         /** Non-owning; registered by Editor scene-editing viewport (P3 bridge until P4). */
         void SetEditorSceneViewport(SceneViewport* viewport) { m_EditorSceneViewport = viewport; }
         SceneViewport* GetEditorSceneViewport() const { return m_EditorSceneViewport; }

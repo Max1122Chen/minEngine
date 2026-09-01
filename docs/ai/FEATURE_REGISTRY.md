@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-01（双轨 backlog 登记：master 内核 + feat/editor；ANIM 待 merge 后）
+Last updated: 2026-09-02（CORE-F06 Done；BUG-PHYS-004 Open）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -29,7 +29,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
 | `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
 | `CORE-F05` | Play Mode（Edit/Play 切换、运行时 Tick、Stop 回 Edit） | **Planned** | — | [Placeholder](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · **`master`** · ANIM 前置 |
-| `CORE-F06` | Component Enable（`bEnabled`、System 跳过 disabled） | **Planned** | — | [Placeholder](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · **`master`** |
+| `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) · **`master`** |
 | `CORE-F07` | 反射/Inspector 展示名去 `m_`/`x_` 前缀 | **Planned** | — | [Placeholder](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** · 低优 |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |

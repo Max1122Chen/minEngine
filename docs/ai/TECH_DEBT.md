@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-08-31（RND-F14 Done；BUG-013/010/011 closed；TD-025 Done）
+Last updated: 2026-09-02（CORE-F06 load reconcile；TD-026 Open）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -33,6 +33,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-023 | Scene pass ordering / clear contract still fragile after VK smoke | RND / ForwardRenderer | **Medium** | Open | `RND-F05` S07d / `ED-F01` | BasePass clears only when Sky off; Sky `NeedRenderPass` must still enter to clear when draw prep fails. 2026-08-25: fixed `NeedRenderPass`→`m_ShouldEnterPass` + Vulkan `LoadEngineRenderingAssets` (was OpenGL-only). Broader ordering still fragile. |
 | TD-024 | Vulkan frame sync leftovers after S07d smoke | VulkanRHI | **Medium** | Open | `RND-F05` S07d / `ED-F01` | Present semaphore reuse still triggers validation on fast shutdown; `RHICmdGenerateMips()` remains VK no-op. 2026-08-25: removed S07d DrawIndexed diagnostic logs; HDR bake DEVICE_LOST fixed (immediate submit before PSO destroy + cube layout defer). |
 | TD-025 | Clip-space / texture-origin policy hardcoded to `IsVulkan()` | RND / RHI | **Medium** | Done | [RND-TD025](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md) · ED-F01 | 2026-08-28: `RHIClipSpaceCapabilities` + shadow scheme A landed；2026-08-31 user visual verify with RND-F14 batch |
+| TD-026 | Scene deserialize `m_Owner` bypasses `Component::SetOwner` | CORE / Serialization | **Medium** | Open | `CORE-F06` · [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) | 2026-09-02: `ResolvePendingActivationsForScene` calls `SyncActivationWithActiveFlag` as load reconcile（首 Deactivate 失效 workaround）。**根治：** pending ref resolve 后对 `m_Owner` 走反射 Setter / `SetOwner`，与 `AddComponent_Internal` 一致；见 Serializer `ResolvePendingObjectRefs` raw ptr assign。 |
 
 ---
 

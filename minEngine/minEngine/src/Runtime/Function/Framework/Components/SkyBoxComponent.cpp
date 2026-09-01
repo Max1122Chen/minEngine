@@ -18,26 +18,17 @@ namespace minEngine
             return;
         }
 
-        RenderScene* renderScene = SceneManager::Get().GetRenderScene();
+        RenderScene* renderScene = SceneManager::HasInstance() ? SceneManager::Get().GetRenderScene() : nullptr;
         if (renderScene)
         {
             renderScene->RemoveSkyBox(this);
         }
-        else
+        else if (m_SkyBoxSceneProxy)
         {
             m_SkyBoxSceneProxy->m_SkyBoxComponent = nullptr;
         }
 
-        m_SkyBoxSceneProxy = nullptr;
-    }
-
-    void SkyBoxComponent::SetEnabled(bool enabled)
-    {
-        if (m_Enabled != enabled)
-        {
-            m_Enabled = enabled;
-            MarkRenderStateDirty();
-        }
+        DetachSceneProxy();
     }
 
     void SkyBoxComponent::SetSkyIntensity(float intensity)
@@ -61,7 +52,7 @@ namespace minEngine
 
     void SkyBoxComponent::DoEndOfFrameUpdate()
     {
-        if (!m_bRenderStateDirty)
+        if (!m_bRenderStateDirty || !IsActive())
         {
             return;
         }
@@ -75,13 +66,47 @@ namespace minEngine
         m_bRenderStateDirty = false;
     }
 
+    void SkyBoxComponent::ApplyActivationToSystems()
+    {
+        MarkRenderStateDirty();
+    }
+
+    void SkyBoxComponent::RemoveActivationFromSystems()
+    {
+        if (!m_SkyBoxSceneProxy)
+        {
+            m_bRenderStateDirty = false;
+            return;
+        }
+
+        if (SceneManager::HasInstance())
+        {
+            RenderScene* renderScene = SceneManager::Get().GetRenderScene();
+            if (renderScene)
+            {
+                renderScene->RemoveSkyBox(this);
+            }
+            else if (m_SkyBoxSceneProxy)
+            {
+                m_SkyBoxSceneProxy->m_SkyBoxComponent = nullptr;
+                DetachSceneProxy();
+            }
+        }
+        else
+        {
+            DetachSceneProxy();
+        }
+
+        m_bRenderStateDirty = false;
+    }
+
     SkyBoxSceneProxy* SkyBoxComponent::CreateSceneProxy()
     {
         SkyBoxSceneProxy* proxy = new SkyBoxSceneProxy();
         proxy->m_SkyBoxComponent = this;
         proxy->m_Transform = GetTransform();
         proxy->m_SkyIntensity = m_SkyIntensity;
-        proxy->m_Enabled = m_Enabled;
+        proxy->m_Enabled = IsActive();
         proxy->m_EnvironmentMap = m_EnvironmentMap;
         m_SkyBoxSceneProxy = proxy;
         return proxy;

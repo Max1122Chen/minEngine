@@ -46,6 +46,10 @@ namespace minEngine
         virtual LightSceneProxy* CreateSceneProxy() = 0;
         LightSceneProxy* GetSceneProxy() const { return m_LightSceneProxy; }
 
+    protected:
+        void ApplyActivationToSystems() override;
+        void RemoveActivationFromSystems() override;
+
         // properties
         ME_PROPERTY(EditAnywhere)
         Vector4 m_LightColor{ 1.0f, 1.0f, 1.0f, 1.0f };
