@@ -1,9 +1,27 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-01 (render + audio + launcher merged to `master`)
+Last updated: 2026-09-01（双轨：master 内核 + feat/editor；ANIM 待合并检查点）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
+
+---
+
+## 当前策略（2026-09-01，待审批）
+
+| 轨 | 分支 | 合入目标 | 说明 |
+|----|------|----------|------|
+| **小修复 + 内核** | `master` | `master` | 点光阴影、PHYS-F04、CORE-F05/06/07；**不另开 feat 修复分支** |
+| **编辑器工作流** | `feat/editor` | → `master`（**一次 merge 检查点**） | ED-F02；开干前 `git merge master` |
+| **动画** | `feat/animation` | — | **合并检查点之后**再规划/开分支 |
+| **愿景** | — | — | Registry 占位 only；**不阻塞** |
+
+**明确 Defer（不占当前带宽）：**
+- ED-F01 **VK Dir/Spot 自阴影质量**（handoff 保留：[session](./sessions/2026-08-31-vk-shadow-self-shadow-handoff.md) · [playbook](./playbooks/Render/VK_SHADOW_DEBUGGING.md)）
+- `RND-F12` RDG 语义卫生项
+- `PHYS-F03` Contact 玩法派发
+
+**废弃 / 不再使用：** `feat/ui-anim`（拆为 `feat/animation` / `feat/ui` 占位，无代码）
 
 ---
 
@@ -11,82 +29,71 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | `master` | 集成 / backlog / 合入目标 |
-| `D:/Dev/GitRepo/minEngine-launcher` | `feat/launcher` | **LAUN-F01** 启动器 |
-| `D:/Dev/GitRepo/minEngine-audio` | `feat/audio` | **AUD-F01** 音效 |
-| `D:/Dev/GitRepo/minEngine-physics` | `feat/physics` | **PHYS-F04 / F03**（重开前 merge `master`） |
+| `D:/Dev/GitRepo/minEngine` | `master` | 小修复 + CORE 内核 |
+| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | **ED-F02**（建议；开干前 merge `master`） |
 
-各 worktree 内 `MyMEProject.meproject` → `ProjectRoot` 指向**该 worktree** 下的 `minEngine/MyMEProject`。
+旧 `minEngine-physics` / `minEngine-audio` / `minEngine-launcher` worktree 可按需保留或删除；**PHYS-F04 改在 master 上做**。
 
 ---
 
-## In focus (edit as you go)
+## In focus
 
-### Render / Editor 轨（`master`）— **当前主线**
+### A. `master` — 小修复（直接 commit）
 
-1. ~~RND-F03 关账~~ — **Done**  
-2. ~~**RND-F05** RHI 竖切~~ — **Done**（S01–S07d；VK Forward Base + smoke 验收）  
-3. **ED-F01 Vulkan Editor Parity** — [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md)  
-   - **S01–S05 Done**；**S07 HDR sky bake Done**（citrus HDR cubemap on VK；IBL convolution still deferred）
-   - **Bugfix batch Done / Verified**：[visual parity design](./Editor/ED-F01_VULKAN_VISUAL_PARITY_BUGFIX_DESIGN.md)；`BUG-RENDER-005`…`009`
-   - **S06 Done / Verified** — VK shadows + post + sky；RND-F14 修复多光源 shadow UBO 寿命
-   - ~~**BUG-RENDER-010 / TD-025**~~ — **Fixed / Verified** 2026-08-31
-   - ~~**BUG-RENDER-011**~~ — **Fixed / Verified** 2026-08-31
-   - ~~**BUG-RENDER-013**~~ — **Fixed / Verified** 2026-08-31（RND-F14 Phase A）
-   - ~~**RND-F14**~~ — **Done**（[Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) · [Impl](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_IMPLEMENTATION.md)）
-   - ~~**RND-F13**~~ — **Done**（ManualRenderer 对照场地；`--renderer manual` 保留 Reference）
-   - **RND-F12** — RDG 语义：降级为卫生项（不挡 shadow 正确性）
-   - **Next（shadow 质量）:** VK **Dir + Spot** 接收体假自阴影（Point 暂无明显问题）；**CSM 级联已排除**（E3）；主因 **写路径 cull/winding**（非 cascade 选择、非全局 depthBias 未开）。Handoff → [session note](./sessions/2026-08-31-vk-shadow-self-shadow-handoff.md) · [playbook §4.5–7](./playbooks/Render/VK_SHADOW_DEBUGGING.md)
-     - 待做：Debug 5/6、RenderDoc、scheme B / `VK_FRONT_FACE_CLOCKWISE` A/B
-     - TEMP 实验值已恢复（`MAX_CASCADES=4`、`DIR_SHADOW_FORCE_CASCADE=-1`）
-   - 收口债：`TD-023`（scene pass / clear），`TD-024`（VK frame sync）
+1. **[BUG-RENDER-014](./bugs/BUG-RENDER-014.md)** — 点光源阴影：超出影响半径后全屏阴影衰减；补 **attenuation + radius** 配置（`PointLightComponent` + shader）
+2. **PHYS-F04** — Collider Extent 轴 convention、**Scale 对 extent 语义**（world half-extent vs local）；[Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md)
+3. （可选）[BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — Add `BoxColliderComponent` 间歇崩溃
 
-4. ~~BUG-RENDER-004~~ CSM 地面自阴影痤疮 — **Fixed 2026-08-04**  
-5. ~~**RND-F11** DebugDrawing~~ — **Done（MVP S01–S02）** — [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md)
-   - **Delivered:** `DebugDraw` 通道 + `DebugDrawPass` + Editor collider wireframe（`PhysicsDebugDraw` 示范）
-   - **Deferred:** contact/trace 可视化 → Physics 或后续消费 Feature；toggle / Persistent → **新 Feature**
-   - **Open:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent Add `BoxColliderComponent` crash（Physics/Editor，非 RND-F11 阻塞）
+**验证：** `verify.ps1` + `physics-shapes` / `physics-smoke`；Editor GL 点光场景目视。
 
-### Launcher 轨 — **Done（已合入 `master`）**
+### B. `master` — 内核（CORE，ANIM 前置）
 
-1. ~~**LAUN-F01**~~ — [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · [Impl](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_IMPLEMENTATION.md)
-   - CLI + **Tauri GUI** Done（`minlauncher-gui`）
-   - **手动验收：** `cargo tauri dev` → open/create/recent/settings
+1. **CORE-F06** Component Enable — [Placeholder](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · `bEnabled`、各 System 跳过
+2. **CORE-F05** Play Mode — [Placeholder](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · Edit/Play 切换、Stop 回 Edit
+3. **CORE-F07** 反射展示去 `m_`/`x_` 前缀 — [Placeholder](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · 低优，Enable/Play 之后
 
-### Audio 轨 — **Done（已合入 `master`）**
+**建议顺序：** F06 → F05 → F07。
 
-1. ~~**AUD-F01**~~ — [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · [Impl](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_IMPLEMENTATION.md) · MVP Done（S01–S09 + S11）
-2. **SceneComponent:** world transform + attach/detach 规则以 audio 分支为准（`GetWorldMatrix` / `KeepWorldTransform`）
-3. **后续（AUD-F02+）：** 衰减默认值/模型 Inspector、自定义曲线、HRTF 等见 Design Out of scope
+### C. `feat/editor` — ED-F02 Editor Workflow
 
-### Physics 轨（`feat/physics`）— **冷冻**
+[Placeholder](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · **开干前 `git merge master`**
 
-- F01/F02 Done；**PHYS-F03 Deferred** — RND-F11 Debug 通道已 Done，可独立评估
-- worktree：`minEngine-physics` — **开干前** `git merge master`
+| 切片 | 内容 | 优先级 |
+|------|------|--------|
+| S01 | 打开 Scene（File/Open、切换、dirty） | 高 |
+| S02 | 创建资产（Scene、Material、…） | 高 |
+| S03 | Material Editor SkyBox 修复 | 中 |
+| S04 | Viewport 鼠标约束 | 中 |
+| S05 | Abstract Component 过滤 + Component 下拉图标 | 低（可 merge 后） |
 
-### UI / Animation 轨（`feat/ui-anim`）— **占位**
+### D. 合并检查点（Gate）
 
-1. **UI-F01** — [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)
-2. **ANIM-F01** — [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md)
-3. 分支已建；**无独立 worktree**
+**当 A+B 核心项 + C 至少 S01–S02 Done：**
 
-### 更远（新 Feature 候选，未登记 ID）
+```text
+git checkout master && git merge feat/editor
+```
 
-- **Debug Persistent lifetime** — `DebugDrawService` Phase 2
-- **Debug Editor toggle** — category / CLI；各子系统自行决定如何响应
-- Sprite / 骨骼网格 / 动画 — 等 ED-F01 / RHI 更稳后再登记 Viewer。
-
-### Master / 平台
-
-- **CORE-F04** Delegates **Done**。
+验证 → `PROGRESS_LOG` → 再启动 **ANIM-F01** 正式 Design。
 
 ---
 
-## Maintenance (not blocking active tracks)
+## Done / 维护（不挡当前轨）
 
-- **WF-F02** handbook / Pages：骨架已上；正文按需补。  
-- **RND-F06-S03** 目录改名可选。  
-- **TD-021** EnvMap Editor Bake UX（低优）。
+- ~~RND-F05 / RND-F11 / AUD-F01 / LAUN-F01~~ — 已合入 `master`
+- **ED-F01** — S01–S07 代码在 master；**VK 阴影质量 defer**（见上）
+- **WF-F02** handbook — 骨架 Done，正文按需
+
+---
+
+## 愿景占位（Registry only，不排期）
+
+| ID | 分支（将来） | 前置 |
+|----|--------------|------|
+| `ANIM-F01` | `feat/animation` | 合并检查点 + Design |
+| `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
+| `RND-F16` | `feat/sprite`（未建） | — |
+| Gameplay 插件化 / 网络 / Debug Console / Agent-friendly | — | 仅文档占位，见 REGISTRY 备注 |
 
 ---
 
@@ -95,28 +102,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | Check | Command |
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` from repo root |
-| Tests only | `minEngine\bin\minEngineTests.exe test smoke` |
-| VK Editor（ED-F01 起） | `minEngine\bin\Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` |
-| GL Editor 回归 | `Editor.exe --rhi opengl --project …` |
-| Delegates | `minEngineTests.exe test delegates` |
-| Material | `minEngineTests.exe test material-ir` |
-| RenderGraph | `minEngineTests.exe test render-graph` |
-| ShaderCompiler（含 GL SPIR-V load） | `minEngineTests.exe test shader-compiler` |
-| Lua MVP | `test lua-script-mvp` |
-| Physics | `test physics-smoke` / `physics-sync` / `physics-load` / `physics-contact` / `physics-linetrace` / `physics-shapes` |
+| Physics | `minEngineTests.exe test physics-shapes` / `physics-smoke` |
+| GL Editor | `Editor.exe --rhi opengl --project …` |
+| VK Editor（非当前重点） | `Editor.exe --rhi vulkan --project …` |
 
 Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
-
----
-
-## Explicitly not backlog (unless you promote them)
-
-- Editor: unified Inspector target model, Material graph Undo, texture preview in Inspector.
-- Content Browser: further registry/watcher optimizations beyond R1 incremental `AssetTreeModel` patch.
-- Infra: GitHub Actions (see `TECH_DEBT.md` TD-010 when you want it).
-- Deferred GBuffer Renderer（另开 Feature；非 F06）.
-- **TD-021** EnvironmentMap Editor Bake UX — 低优.
-- Sprite — 愿景；未登记 Feature ID.
 
 ---
 
@@ -124,6 +114,6 @@ Record which command you ran in `PROGRESS_LOG.md` after a meaningful change.
 
 | File | Role |
 |------|------|
-| [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status when starting a **new** registered feature |
+| [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status |
 | [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What landed and how it was verified |
 | [TECH_DEBT.md](./TECH_DEBT.md) | Open debt rows only |

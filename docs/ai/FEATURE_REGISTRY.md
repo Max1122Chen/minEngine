@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-01（render + audio + launcher merged to `master`）
+Last updated: 2026-09-01（双轨 backlog 登记：master 内核 + feat/editor；ANIM 待 merge 后）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -26,31 +26,39 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | In Progress | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
-| `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) · 原 physics 分支 `CORE-F01`，合入 master 时改号以免与 Lua 冲突 |
-| `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) · **TD-006** Done；Dynamic/Lua 后置 |
-| `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) · **S06+ 产品方向由 `RND-F07` 取代**（实验 Bake 非终态） |
-| `RND-F02` | Modern RHI（GPU 工作模型抽象；GL 首适配 + Pass CommandList） | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) · S0–S5 |
-| `RND-F03` | Legacy RHI removal（调用面 + 管线重构 M4 + 后端绞杀 M3） | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · 2026-08-04 关账；残留债经 F09/F10 付清 |
-| `RND-F04` | Modern RHI further evolution（语义终态：PipelineLayout、Packet、Setup/Execute、缓存） | **Done** | — | [RND-F04_MODERN_RHI_EVOLUTION_DESIGN](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · S01–S04 |
-| `RND-F05` | Vulkan backend + SPIR-V（GL+VK）+ modern RHI completion | **Done** | — | [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) · S01–S07d Done；S07e/f **迁至 ED-F01** |
-| `ED-F01` | Vulkan Editor Parity（ImGui-Vulkan + viewport + navigation + 承接 shadow/sky） | **In Progress** | S05+ | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) · S01–S04 代码已落地，待人工验收 |
-| `RND-F06` | ForwardRenderer（Renderer / RenderGraph 职责分离；删除 `RenderPipeline`） | **In Progress** | — | [RND-F06_FORWARD_RENDERER_DESIGN](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) · S01–S02 Done；S03 可选 |
-| `RND-F07` | Granite-style RDG + 帧资源所有权大重构 | **Done** *(shell)* | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) · [Impl](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_IMPLEMENTATION.md) · S01–S09；**bake 语义续作 → RND-F12** |
-| `RND-F12` | Granite RDG **语义全复刻**（Phase A–D；非粘贴代码）| **In Progress** *(降级：BUG-013 卫生项)* | — | [Design](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md) · [Impl](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_IMPLEMENTATION.md) · BUG-013 主因已降级 |
-| `RND-F13` | ManualRenderer（对照→主诊场地） | **Done** *(Reference: `--renderer manual`)* | — | [Design](./Render/RND-F13_MANUAL_RENDERER_DESIGN.md) · [Impl](./Render/RND-F13_MANUAL_RENDERER_IMPLEMENTATION.md) · 坐实非 RDG 主因 |
-| `RND-F14` | ShadowPass UBO 寿命 + 矩阵单源 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) · [Impl](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_IMPLEMENTATION.md) |
-| `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
-| `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
-| `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
-| `RND-F11` | DebugDrawing（线/点/盒 wireframe 通道；Editor collider 示范） | **Done** | — | [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · [Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md) · MVP S01–S02 |
-| `LAUN-F01` | Engine Launcher（CLI + Tauri GUI） | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · [Impl](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_IMPLEMENTATION.md) · `Launcher/` |
-| `AUD-F01` | Audio system（资产、播放、Scene 集成 MVP） | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · [Impl](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_IMPLEMENTATION.md) · MVP S01–S09 + S11 |
-| `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/ui-anim` |
-| `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui-anim` |
-| `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) |
-| `PHYS-F02` | Collision + query shapes（Sphere/Capsule collider；Scene SphereTrace/CapsuleTrace） | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md) |
-| `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · Delegates（CORE-F04）已满足；**RND-F11 Debug 通道已 Done，可独立评估** |
-| `PHYS-F04` | Collider fixes & hygiene | **Planned** | — | [Placeholder](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · `feat/physics` |
+| `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
+| `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
+| `CORE-F05` | Play Mode（Edit/Play 切换、运行时 Tick、Stop 回 Edit） | **Planned** | — | [Placeholder](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · **`master`** · ANIM 前置 |
+| `CORE-F06` | Component Enable（`bEnabled`、System 跳过 disabled） | **Planned** | — | [Placeholder](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · **`master`** |
+| `CORE-F07` | 反射/Inspector 展示名去 `m_`/`x_` 前缀 | **Planned** | — | [Placeholder](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** · 低优 |
+| `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
+| `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
+| `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
+| `RND-F04` | Modern RHI further evolution | **Done** | — | [Design](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) |
+| `RND-F05` | Vulkan backend + SPIR-V | **Done** | — | [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) |
+| `RND-F06` | ForwardRenderer | **In Progress** | — | [RND-F06_FORWARD_RENDERER_DESIGN](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) · S01–S02 Done |
+| `RND-F07` | Granite-style RDG + 帧资源所有权 | **Done** *(shell)* | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) |
+| `RND-F08`–`F11` | Shadow 所有权 / RHI hygiene / EnvMap / DebugDrawing | **Done** | — | 见各 Design |
+| `RND-F12` | Granite RDG 语义全复刻 | **Deferred** *(卫生项)* | — | [Design](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md) · 不挡当前 backlog |
+| `RND-F13` | ManualRenderer（Reference） | **Done** | — | [Design](./Render/RND-F13_MANUAL_RENDERER_DESIGN.md) |
+| `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
+| `RND-F16` | Sprite 2D 渲染（UI 前置） | **Planned** | — | [Placeholder](./Render/RND-F16_SPRITE_2D_DESIGN.md) · 愿景；**不阻塞** |
+| `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
+| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **Planned** | — | [Placeholder](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · **`feat/editor`** |
+| `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
+| `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
+| `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · **merge 检查点后** |
+| `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |
+| `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
+| `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
+| `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
+| `PHYS-F04` | Collider fixes（Extent 轴、Scale 语义） | **Planned** | — | [Placeholder](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · **`master`** |
+
+---
+
+## Vision placeholders（无独立 Feature ID，不排期）
+
+登记于 [ACTIVE_WORK.md](./ACTIVE_WORK.md) §愿景：Gameplay 插件化框架、网络游戏、Editor Debug Console、Agent-friendly 设计规范。
 
 ---
 
@@ -58,18 +66,18 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 | DOMAIN | Next Feature # | Notes |
 |--------|----------------|-------|
-| `CLI` | F02 | Command-line / tools entry |
-| `TEST` | F04 | Automated tests (follow-on) |
-| `WF` | F03 | Workflow / docs |
-| `CORE` | F05 | F01–F04 Done |
-| `ASSET` | F01 | Asset pipeline extensions |
-| `ED` | F02 | F01 Vulkan Editor Parity In Progress |
-| `RND` | F15 | F11 Done；**Persistent debug / Editor toggle 待新 Feature 登记** |
+| `CLI` | F02 | |
+| `TEST` | F04 | |
+| `WF` | F03 | |
+| `CORE` | **F08** | F05–F07 Planned on `master` |
+| `ASSET` | F01 | |
+| `ED` | **F03** | F02 on `feat/editor` |
+| `RND` | **F17** | F16 Sprite 占位；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
-| `ANIM` | F02 | F01 占位 |
-| `UI` | F02 | F01 占位 |
-| `PHYS` | F05 | F03 Deferred；F04 Planned |
-| `MAT` | F01 | Material (new IDs only; legacy Phase docs keep old names) |
+| `ANIM` | F02 | F01 占位；merge 后开 `feat/animation` |
+| `UI` | F02 | F01 占位；`feat/ui` |
+| `PHYS` | F05 | F04 on `master` |
+| `MAT` | F01 | |
 
 Update **Next Feature #** when you register a new row.

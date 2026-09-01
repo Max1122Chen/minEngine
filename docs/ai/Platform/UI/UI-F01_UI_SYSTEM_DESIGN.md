@@ -5,9 +5,9 @@
 - **Type:** Feature
 - **Status:** Planned
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-31
+- **Last updated:** 2026-09-01
 - **Related:** [FEATURE_REGISTRY.md](../../FEATURE_REGISTRY.md), [ACTIVE_WORK.md](../../ACTIVE_WORK.md)
-- **Branch:** `feat/ui-anim`
+- **Branch:** `feat/ui`（未建；依赖 `RND-F16`）
 
 ## TL;DR
 UI 系统。正式 Design 待写。
@@ -17,7 +17,7 @@ UI 系统。正式 Design 待写。
 | 字段 | 内容 |
 |------|------|
 | What's not | Design / Implementation |
-| Branch | `feat/ui-anim`（与 `ANIM-F01` 共用） |
+| Branch | `feat/ui`（与 `ANIM-F01` 分离；前置 `RND-F16` Sprite） |
 
 ---
 
@@ -26,3 +26,4 @@ UI 系统。正式 Design 待写。
 | 日期 | 说明 |
 |------|------|
 | 2026-08-31 | Registry 占位登记 |
+| 2026-09-01 | 分支改为 `feat/ui`；与 ANIM 分离 |
