@@ -14,6 +14,8 @@
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
+#include "Runtime/Function/Debug/DebugDraw.h"
+
 #include "Runtime/Function/Render/RenderSystem.h"
 
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
@@ -165,7 +167,14 @@ namespace minEngine
         // ED-F01-S06: Vulkan Editor matches OpenGL draw flags (shadows + post + sky).
         const SceneDrawFlags flags =
             SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
-            SceneDrawFlags::EnableSkyBox;
+            SceneDrawFlags::EnableSkyBox | SceneDrawFlags::EnableDebugDraw;
+
+        if (HasSceneDrawFlag(flags, SceneDrawFlags::EnableDebugDraw))
+        {
+            DebugDraw::Line(Vector3(0.0f, 0.0f, 0.0f), Vector3(5.0f, 0.0f, 0.0f), Vector4(1.0f, 0.0f, 0.0f, 1.0f));
+            DebugDraw::Line(Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 5.0f, 0.0f), Vector4(0.0f, 1.0f, 0.0f, 1.0f));
+            DebugDraw::Line(Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 0.0f, 5.0f), Vector4(0.0f, 0.0f, 1.0f, 1.0f));
+        }
 
         const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
 

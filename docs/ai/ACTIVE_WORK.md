@@ -34,9 +34,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### DebugDrawing 轨（`feat/debug-drawing`）— **当前分支**
 
-1. **RND-F11 DebugDrawing** — [Design Draft](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · **In Progress**
+1. **RND-F11 DebugDrawing** — [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · **In Progress**
    - **Goal:** Editor 视口即时调试图元（线/盒/wireframe）；优先 Physics collider、contact、trace 可视化
-   - **Next:** 扩写 Design → Implementation Plan → S01 线+盒 MVP
+   - **Next:** S02 `PhysicsDebugDraw` collider wireframe（[Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md)）
    - **Parallel:** VK shadow 质量轨留在 `feat/render`（RenderDoc / cull-winding）
 
 ### Master / 平台

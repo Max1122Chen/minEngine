@@ -9,6 +9,7 @@
 #include "RenderPasses/PostProcessPass.h"
 #include "RenderPasses/PresentPass.h"
 #include "RenderPasses/SkyBoxPass.h"
+#include "RenderPasses/DebugDrawPass.h"
 #include "Runtime/Function/Render/EnginePipelineLayouts.h"
 #include "Runtime/Function/Render/EngineSceneBindingSets.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
@@ -112,6 +113,7 @@ namespace minEngine
 
         void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot) override;
 
+        RHIBuffer* GetPerFrameUniformBuffer() const { return m_PerFrameUniformBuffer.get(); }
         RHIBuffer* GetPerObjectUniformBuffer() const { return m_PerObjectUniformBuffer.get(); }
         uint32_t GetPerObjectSlotStride() const { return m_PerObjectSlotStride; }
         EngineSceneBindingSets& GetSceneBindings() { return m_SceneBindings; }
@@ -128,6 +130,7 @@ namespace minEngine
 
         ShadowPass m_ShadowPass;
         BasePass m_BasePass;
+        DebugDrawPass m_DebugDrawPass;
         PresentPass m_PresentPass;
 
         EngineSceneBindingSets m_SceneBindings;
@@ -160,9 +163,11 @@ namespace minEngine
         std::vector<RenderPass*> m_ShadowGraphPassPtrs;
         bool m_ConfiguredEnablePostProcess = false;
         bool m_ConfiguredPresentToBackBuffer = false;
+        bool m_ConfiguredEnableDebugDraw = false;
         RenderPass* m_SceneSkyGraphPass = nullptr;
         RenderPass* m_SceneOpaqueGraphPass = nullptr;
         RenderPass* m_SceneTranslucentGraphPass = nullptr;
+        RenderPass* m_SceneDebugGraphPass = nullptr;
         RenderPass* m_PostFxaaGraphPass = nullptr;
         RenderPass* m_PostSharpenGraphPass = nullptr;
         RenderPass* m_PresentGraphPass = nullptr;
@@ -170,7 +175,7 @@ namespace minEngine
         uint32_t m_PostBufferWidth = 0;
         uint32_t m_PostBufferHeight = 0;
 
-        void BuildFrameRenderGraph(bool enablePostProcess, bool presentToBackBuffer);
+        void BuildFrameRenderGraph(bool enablePostProcess, bool presentToBackBuffer, bool enableDebugDraw);
         void AssignShadowGraphPassCommands(const SceneRenderContext& ctx);
         static size_t GetFixedShadowGraphPassIndex(const ShadowDrawCommand& command);
         static ShadowGraphPermanentOutput MakePermanentShadowOutput(size_t passIndex);

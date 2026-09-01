@@ -32,6 +32,35 @@ namespace minEngine
             }
         }
 
+        GLenum ToGLPrimitiveType(RHIPrimitiveType primitiveType)
+        {
+            switch (primitiveType)
+            {
+            case RHIPrimitiveType::LineList:
+                return GL_LINES;
+            case RHIPrimitiveType::TriangleStrip:
+                return GL_TRIANGLE_STRIP;
+            case RHIPrimitiveType::TriangleList:
+            default:
+                return GL_TRIANGLES;
+            }
+        }
+
+        GLenum GetBoundPrimitiveType(RHIGraphicsPipelineState* boundPipeline)
+        {
+            if (boundPipeline == nullptr)
+            {
+                return GL_TRIANGLES;
+            }
+
+            if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(boundPipeline))
+            {
+                return ToGLPrimitiveType(fallback->GetDesc().PrimitiveType);
+            }
+
+            return GL_TRIANGLES;
+        }
+
     }
 
     void OpenGLRHI::Initialize()
@@ -613,14 +642,16 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)
     {
+        const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
         const void* indices = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex * sizeof(uint32_t)));
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
+        glDrawElements(primitiveType, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
         (void)vertexOffset;
     }
 
     void OpenGLRHI::RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex)
     {
-        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
+        const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
+        glDrawArrays(primitiveType, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
     }
 
     void OpenGLRHI::RHICmdGenerateMips(RHITexture* texture)

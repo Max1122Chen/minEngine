@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-31 (RND-F11 debug drawing branch)
+Last updated: 2026-09-01 (RND-F11-S01 landed)
+
+### 2026-09-01 - RND-F11-S01: DebugDraw pass + editor axis smoke (`feat/debug-drawing`)
+- **Delivered:** `DebugDrawService` / `DebugDraw::` API; `DebugDrawPass` + shaders; `Scene.Debug` RDG slot; `EnableDebugDraw` flag.
+- **Editor:** `SceneEditingViewportClient` submits RGB axis lines before `SubmitSceneDraw` (smoke until S02).
+- **Fix:** OpenGL `RHICmdDraw` honors PSO `LineList` (was hardcoded `GL_TRIANGLES`).
+- **Docs:** Full design spec + implementation plan; registry/active work updated.
+- **Verified:** `cmake --build` minEngine+Editor; Editor GL+VK axis visual acceptance; `test render-graph` pass.
+- **Next:** S02 `PhysicsDebugDraw` collider wireframe.
 
 ### 2026-08-31 - RND-F11 DebugDrawing branch kickoff (`feat/debug-drawing`)
 - **Branch:** `feat/debug-drawing` from `feat/render` after shadow quality handoff commit.

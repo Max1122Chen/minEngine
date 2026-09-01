@@ -137,6 +137,7 @@ namespace minEngine
         m_ShadowPass.pipeline = this;
         m_BasePass.pipeline = this;
         m_TranslucentPass.pipeline = this;
+        m_DebugDrawPass.pipeline = this;
 
         m_ShadowPass.Initialize();
         m_ShadowPass.m_PerObjectUniformBuffer = m_PerObjectUniformBuffer.get();
@@ -206,6 +207,8 @@ namespace minEngine
         m_PresentPass.m_ScreenQuadVertexLayout = m_ScreenQuadVertexLayout;
         m_PresentPass.Initialize();
 
+        m_DebugDrawPass.Initialize();
+
         // SkyBox cubemap: LoadEngineRenderingAssets() after PathRegistry is ready (F03-M4 P0: no runtime IBL).
     }
 
@@ -237,7 +240,10 @@ namespace minEngine
         (void)height;
     }
 
-    void ForwardRenderer::BuildFrameRenderGraph(bool enablePostProcess, bool presentToBackBuffer)
+    void ForwardRenderer::BuildFrameRenderGraph(
+        bool enablePostProcess,
+        bool presentToBackBuffer,
+        bool enableDebugDraw)
     {
         if (RHI* rhi = RenderSystem::Get().GetRHI())
         {
@@ -250,6 +256,7 @@ namespace minEngine
         m_SceneSkyGraphPass = nullptr;
         m_SceneOpaqueGraphPass = nullptr;
         m_SceneTranslucentGraphPass = nullptr;
+        m_SceneDebugGraphPass = nullptr;
         m_PostFxaaGraphPass = nullptr;
         m_PostSharpenGraphPass = nullptr;
         m_PresentGraphPass = nullptr;
@@ -283,6 +290,13 @@ namespace minEngine
         translucentPass.SetImplementation(&m_TranslucentPass);
         m_SceneTranslucentGraphPass = &translucentPass;
 
+        if (enableDebugDraw)
+        {
+            RenderPass& debugPass = m_FrameRenderGraph.AddPass("Scene.Debug");
+            debugPass.SetImplementation(&m_DebugDrawPass);
+            m_SceneDebugGraphPass = &debugPass;
+        }
+
         if (enablePostProcess && !m_PostProcessPasses.empty())
         {
             RenderPass& fxaaPass = m_FrameRenderGraph.AddPass("Post.FXAA");
@@ -308,6 +322,7 @@ namespace minEngine
         m_FrameRenderGraph.SetBackbufferSource(kRDGSceneColor);
         m_ConfiguredEnablePostProcess = enablePostProcess;
         m_ConfiguredPresentToBackBuffer = presentToBackBuffer;
+        m_ConfiguredEnableDebugDraw = enableDebugDraw;
         m_FrameRenderGraphBuilt = true;
         m_SceneBindings.InvalidateShadowTextureBindings();
     }
@@ -339,15 +354,17 @@ namespace minEngine
         const bool enablePostProcess = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess);
         const bool presentToBackBuffer =
             m_EnablePresentPass && HasSceneDrawFlag(desc.Flags, SceneDrawFlags::PresentToBackBuffer);
+        const bool enableDebugDraw = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableDebugDraw);
         if (enablePostProcess != m_ConfiguredEnablePostProcess
-            || presentToBackBuffer != m_ConfiguredPresentToBackBuffer)
+            || presentToBackBuffer != m_ConfiguredPresentToBackBuffer
+            || enableDebugDraw != m_ConfiguredEnableDebugDraw)
         {
             m_FrameRenderGraphBuilt = false;
         }
 
         if (!m_FrameRenderGraphBuilt)
         {
-            BuildFrameRenderGraph(enablePostProcess, presentToBackBuffer);
+            BuildFrameRenderGraph(enablePostProcess, presentToBackBuffer, enableDebugDraw);
         }
 
         if (m_FrameRenderGraph.GetBackbufferWidth() != width
@@ -495,6 +512,7 @@ namespace minEngine
         m_PipelineLayouts.Shutdown();
         m_SceneBindings.Shutdown();
         m_SkyBoxPass.Shutdown();
+        m_DebugDrawPass.Shutdown();
 
         m_ShadowPass.m_OpaqueQueue.clear();
 
@@ -505,6 +523,7 @@ namespace minEngine
         m_SceneSkyGraphPass = nullptr;
         m_SceneOpaqueGraphPass = nullptr;
         m_SceneTranslucentGraphPass = nullptr;
+        m_SceneDebugGraphPass = nullptr;
         m_PostFxaaGraphPass = nullptr;
         m_PostSharpenGraphPass = nullptr;
         m_PresentGraphPass = nullptr;
