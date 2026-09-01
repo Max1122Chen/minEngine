@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-01（RND-F11 In Progress on `feat/debug-drawing`）
+Last updated: 2026-09-01（RND-F11 Done on `feat/debug-drawing`）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -42,10 +42,10 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F08` | Shadow map 图所有权（Directional/Spot/Point） | **Done** | — | [Design](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_DESIGN.md) · [Impl](./Render/RND-F08_SHADOW_GRAPH_OWNERSHIP_IMPLEMENTATION.md) · [Slot slim](./Render/RND-F08_SHADOW_SLOT_SEMANTICS.md) · 付清 **TD-020** |
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
-| `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | **In Progress** | — | [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · [Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md) · 分支 `feat/debug-drawing` |
+| `RND-F11` | DebugDrawing（线/点/盒 wireframe 通道；Editor collider 示范） | **Done** | — | [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · [Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md) · MVP S01–S02 · `feat/debug-drawing` |
 | `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) |
 | `PHYS-F02` | Collision + query shapes（Sphere/Capsule collider；Scene SphereTrace/CapsuleTrace） | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) · [Impl](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_IMPLEMENTATION.md) |
-| `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · Delegates（CORE-F04）已满足；**等 RND-F11 DebugDrawing 成熟后再开** |
+| `PHYS-F03` | Contact gameplay dispatch（玩法接触通知） | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) · Delegates（CORE-F04）已满足；**RND-F11 Debug 通道已 Done，可独立评估** |
 
 ---
 
@@ -59,7 +59,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE` | F05 | F01–F02 Lua Done；F03 Transform quaternion Done；F04 Delegates Planned |
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F02 | F01 Vulkan Editor Parity Planned |
-| `RND` | F15 | F13 In Progress；**F14 Draft（Shadow UBO）**；F11 Planned；F12 降级 |
+| `RND` | F15 | F11 Done；**Persistent debug / Editor toggle 待新 Feature 登记** |
 | `PHYS` | F04 | F01–F02 Done；F03 Deferred（TD-006 / CORE-F04） |
 | `MAT` | F01 | Material (new IDs only; legacy Phase docs keep old names) |
 

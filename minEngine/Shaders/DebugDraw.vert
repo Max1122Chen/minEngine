@@ -15,6 +15,15 @@ layout(location = 0) out vec4 v_Color;
 
 void main()
 {
-    gl_Position = ViewProj * vec4(a_Position, 1.0);
+    vec3 worldPos = a_Position;
+    vec3 toCamera = CameraPos.xyz - worldPos;
+    float distSq = dot(toCamera, toCamera);
+    if (distSq > 1e-8)
+    {
+        // Small view-space bias reduces z-fighting when wireframes coincide with mesh surfaces.
+        worldPos += toCamera * inversesqrt(distSq) * 0.003;
+    }
+
+    gl_Position = ViewProj * vec4(worldPos, 1.0);
     v_Color = a_Color;
 }

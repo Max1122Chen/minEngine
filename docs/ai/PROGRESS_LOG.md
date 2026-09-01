@@ -1,8 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-01 (RND-F11-S02 landed)
+Last updated: 2026-09-01 (RND-F11 MVP closed)
 
-### 2026-09-01 - RND-F11-S02: Physics collider wireframe (`feat/debug-drawing`)
+### 2026-09-01 - RND-F11 MVP 收尾：范围收窄 + wireframe z-fighting (`feat/debug-drawing`)
+- **Scope:** MVP 定为 S01–S02 only；S03 contact/trace、S04 toggle **移出**本 Feature（Design/Impl/Registry 已更新，Status → Done）。
+- **Code:** 回退 S03 实验；`PhysicsDebugDraw` 仅 collider + `SubmitScene(scene, options)`；`DebugDraw.vert` 保留 3mm view bias。
+- **Principle:** Debug 为底层服务；不编排 Physics/Editor 如何调用；Persistent + toggle → 后续新 Feature。
+- **Next:** commit + merge `feat/debug-drawing`；新 Feature 讨论 Persistent / toggle。
+
+### 2026-09-01 - RND-F11-S02: Physics collider wireframe (`feat/debug-drawing`, commit 8c3ac07)
 - **Delivered:** `PhysicsDebugDraw::SubmitScene`; `DebugDraw::Sphere` / `Capsule`; sphere/capsule wireframe tessellation; Editor submits colliders before `SubmitSceneDraw` (S01 axis smoke removed).
 - **Verified:** User visual acceptance (wireframe visible); `physics-smoke` / `physics-shapes` / `render-graph` pass.
 - **Known issue:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent crash on Add `BoxColliderComponent` (not reproduced after retry).

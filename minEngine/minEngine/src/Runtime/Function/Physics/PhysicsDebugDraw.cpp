@@ -90,10 +90,8 @@ namespace minEngine::PhysicsDebugDraw
         return GetDefaultOptions();
     }
 
-    void SubmitScene(const Scene& scene, const PhysicsWorld& world, const Options& options)
+    void SubmitScene(const Scene& scene, const Options& options)
     {
-        (void)world;
-
         if (!options.bDrawColliders)
         {
             return;

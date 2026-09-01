@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `RND-F11`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-01
 - **Branch:** `feat/debug-drawing`
@@ -14,24 +14,27 @@
 
 为 minEngine 建立 **引擎级 Debug Visualization Channel**：各子系统通过 `DebugDraw` API 提交「画什么」，由独立 `DebugDrawPass`（Forward RDG 管线、Translucent 之后 / Post 之前）经 RHI 消费，**不**直接依赖 Vulkan/OpenGL。
 
-**MVP（S01–S03）：** World-space 线/点/盒 wireframe；DepthTested；单帧 Transient；Editor 主视口 GL+VK 一致；优先服务 Physics collider / contact / trace 可视化。
+**MVP（S01–S02，已完成）：** World-space 线/点/盒 wireframe；DepthTested；单帧 Transient；Editor 主视口 GL+VK；**示范消费**为 Physics collider wireframe（`PhysicsDebugDraw`，由 Physics/Editor 自行调用）。
 
-**明确不做：** ImGui 3D 投影替代方案；`ManualRenderer` 挂 DebugPass；Standalone HUD；文本标签；**ForwardRenderer / `SceneDrawDesc` 感知 Physics 或 gameplay `Scene`**。
+**边界：** `DebugDraw` / `DebugDrawService` 是**底层服务提供者** — 提供入队 API 与 Pass 消费；**不**编排其他子系统何时调用、**不**把 Physics contact / Editor toggle 纳入本 Feature。
+
+**明确不做（本 Feature）：** contact/trace 可视化；Editor debug toggle；Persistent lifetime；ImGui 3D 替代；`ManualRenderer` DebugPass；**ForwardRenderer / `SceneDrawDesc` 感知 Physics 或 gameplay `Scene`**。
 
 ## Scope
-- **In (MVP):**
+- **In (MVP, Done):**
   - `Runtime/Function/Debug/`：`DebugDrawService` + 几何展开 + 公开 API
   - `DebugDrawPass`：动态 VB、无光照 shader、读 `kRDGSceneColor` / `kRDGSceneDepth`
-  - `SceneDrawFlags::EnableDebugDraw`；**仅**关卡编辑视口（`SceneEditingViewportClient`）默认开启 pass
-  - `PhysicsDebugDraw`（`Runtime/Function/Physics/`）：collider / contact / trace → `DebugDraw::` 适配
-  - `PhysicsContactEvent` 扩展 world `Position` / `Normal`（Jolt manifold）
+  - `SceneDrawFlags::EnableDebugDraw`；关卡编辑视口默认开启 pass
+  - `PhysicsDebugDraw`（`Runtime/Function/Physics/`）：**仅** collider wireframe → `DebugDraw::`（示范适配；调用方在 Editor）
   - ForwardRenderer RDG 插入 `Scene.Debug` pass
-- **Out (initial):**
-  - `ManualRenderer` 路径（诊断 renderer 保持最小差分，不挂 DebugPass）
+- **Out (本 Feature & initial):**
+  - Physics contact / LineTrace **可视化**（归 Physics 或后续消费 Feature）
+  - `PhysicsContactEvent` Position/Normal **为 Debug 扩展**（若需要，由 Physics 轨单独立项）
+  - Editor debug **toggle**（后续 Feature）
+  - **Persistent lifetime**（Phase 2，后续 Feature）
+  - `ManualRenderer` 路径
   - UE `DrawDebugHelpers` 全量对等
   - Screen-space 文本、ImGui 混合排版
-  - Persistent lifetime、Debug Categories / CLI toggle（Phase 3）
-  - 线宽 &gt; 1px（VK 限制；MVP 接受 1px）
   - Lock-free 多线程命令收集（Phase 4）
 
 ## Reader quick start
@@ -54,7 +57,7 @@ Physics F01/F02 已提供 Contact、LineTrace、形状查询，但 **Editor 主�
 | **统一通道** | Physics / Editor / 未来子系统共用 `DebugDraw::` API，不各自碰 RHI |
 | **深度一致** | Debug 几何写入场景 RT，可读 scene depth，collider 可被场景遮挡 |
 | **GL/VK 一致** | 单条 RHI 路径；与 ED-F01 视口 parity 对齐 |
-| **Physics 优先** | 首版验收：Box/Sphere/Capsule wireframe、contact 点+法线、LineTrace 线段+命中 |
+| **Physics 优先（MVP）** | 首版验收：Box/Sphere/Capsule **collider wireframe**（Scene 驱动，每帧提交） |
 
 ### 1.3 非目标
 
@@ -354,9 +357,9 @@ public:
 };
 ```
 
-### 6.3 Physics 适配层
+### 6.3 Physics 适配层（MVP：仅 collider）
 
-位于 **`Runtime/Function/Physics/`**（Physics 域依赖 Debug API，而非 Debug 模块依赖 Physics）。
+位于 **`Runtime/Function/Physics/`**（Physics 域依赖 Debug API，而非 Debug 模块依赖 Physics）。**调用时机与是否绘制 contact/trace 由 Physics/Editor 自行决定**，Debug 模块不编排。
 
 ```cpp
 namespace minEngine::PhysicsDebugDraw
@@ -364,18 +367,13 @@ namespace minEngine::PhysicsDebugDraw
     struct Options
     {
         bool bDrawColliders = true;
-        bool bDrawContacts = true;
-        bool bDrawActiveTrace = false;   // 最近一次 trace（Editor 设置）
-        float ContactNormalLength = 0.15f;
     };
 
-    /** 从 Scene + PhysicsWorld 提交本帧 debug 原语 */
-    void SubmitScene(const Scene& scene, const PhysicsWorld& world, const Options& options);
-
-    /** LineTrace 结果可视化（测试 / Editor 工具调用） */
-    void SubmitLineTrace(const Vector3& start, const Vector3& end, const HitResult& hit);
+    void SubmitScene(const Scene& scene, const Options& options);
 }
 ```
+
+Contact / LineTrace 可视化、`SubmitLineTrace` 等 — **已移出 RND-F11**；若 Physics 需要，在 Physics 轨或后续 Feature 中自行调用 `DebugDraw::`。
 
 **Collider 颜色（默认，可配置）：**
 
@@ -607,50 +605,15 @@ enum class SceneDrawFlags : uint32_t
 
 需访问 `Scene` 组件迭代 API（与现有 physics sync 遍历一致）。
 
-### 12.2 Contact 可视化（S03）
+### 12.2 Contact 可视化 — **Deferred（非 RND-F11）**
 
-**扩展 `PhysicsContactEvent`：**
+原 S03 草案：扩展 `PhysicsContactEvent`（Position/Normal）、`SubmitContacts` 读 `GetContactEvents()` Begin。  
+**不纳入 RND-F11 MVP。** 若 Physics 需要 contact debug，由 **Physics 轨** 提供数据与调用策略，直接调用 `DebugDraw::Point` / `Line`；持久显示依赖 **Phase 2 Persistent**（后续 Feature）。
 
-```cpp
-struct PhysicsContactEvent
-{
-    PhysicsBodyId BodyA{InvalidPhysicsBodyId};
-    PhysicsBodyId BodyB{InvalidPhysicsBodyId};
-    ECollisionResponse Response{ECollisionResponse::Block};
-    EContactPhase Phase{EContactPhase::Begin};
-    Vector3 Position{};   // 新增：manifold 上一点（世界空间）
-    Vector3 Normal{};     // 新增：自 BodyB 指向 BodyA 或 Jolt 约定法线（文档写明）
-};
-```
+### 12.3 LineTrace 可视化 — **Deferred（非 RND-F11）**
 
-在 `ContactListenerImpl::OnContactAdded` 中从 `JPH::ContactManifold` 读取（例如 `GetWorldSpaceContactPointOn1(0)` 与 `GetWorldSpaceNormal()`）。`OnContactRemoved` 的 End 事件可填 last known 或 position=0（仅画 Begin 接触）。
-
-可视化：
-- `DebugDraw::Point(position, 0.08f, contactColor)`
-- `DebugDraw::Line(position, position + normal * ContactNormalLength, normalColor)`
-
-仅 `Phase == Begin` 且 `Response != Ignore` 时绘制；End 事件可选淡出（Phase 2 Persistent）。
-
-### 12.3 LineTrace（S03）
-
-```cpp
-void PhysicsDebugDraw::SubmitLineTrace(const Vector3& start, const Vector3& end, const HitResult& hit)
-{
-    const Vector4 missColor(1.f, 0.2f, 0.2f, 1.f);
-    const Vector4 hitColor(0.2f, 1.f, 0.2f, 1.f);
-    if (hit.bHit)
-    {
-        DebugDraw::Line(start, hit.Location, hitColor);
-        DebugDraw::Line(hit.Location, end, missColor * 0.5f);
-        DebugDraw::Point(hit.Location, 0.06f, hitColor);
-        DebugDraw::Line(hit.Location, hit.Location + hit.Normal * 0.2f, Vector4(0.2f, 0.6f, 1.f, 1.f));
-    }
-    else
-    {
-        DebugDraw::Line(start, end, missColor);
-    }
-}
-```
+原 S03 草案：`PhysicsDebugDraw::SubmitLineTrace` 包装 `DebugDraw::`。  
+**不纳入 RND-F11 MVP。** 消费方（Physics 工具、Editor）自行决定何时调用 `DebugDraw::`。
 
 ---
 
@@ -659,8 +622,8 @@ void PhysicsDebugDraw::SubmitLineTrace(const Vector3& start, const Vector3& end,
 | Phase | 内容 |
 |-------|------|
 | **1 (S01)** | 主线程 only；`DebugDrawService` 无锁 |
-| **2** | `AlwaysVisible` depth mode；Persistent lifetime（秒级 / 手动清除） |
-| **3** | `debug.draw physics on/off` CLI；category 位掩码 |
+| **2** | `AlwaysVisible` depth mode；**Persistent lifetime**（秒级 / 手动清除）— **新 Feature，扩展 `DebugDrawService`** |
+| **3** | Debug category / CLI toggle（含 `debug.draw physics` 等）— **新 Feature，由 Editor/各子系统消费方决定开关** |
 | **4** | 渲染线程消费；lock-free 或 double-buffer 命令队列；VB ring buffer |
 
 API 设计保持 **enqueue 与 render 解耦**，便于 Phase 4 把 `BuildFrameGeometry` 移到 render thread 前合并。
@@ -671,25 +634,25 @@ API 设计保持 **enqueue 与 render 解耦**，便于 Phase 4 把 `BuildFrameG
 
 详细 DoD 见 Implementation Plan。
 
-| Slice | 交付 | 验收 |
+| Slice | 交付 | 状态 |
 |-------|------|------|
-| **RND-F11-S01** | `DebugDrawTypes/Service/Geometry`、`DebugDrawPass`、shader、RDG 插入、`EnableDebugDraw` | Editor 视口调用 `DebugDraw::Line` 可见；`verify.ps1`；GL+VK 目视 |
-| **RND-F11-S02** | Sphere/Capsule wireframe、`PhysicsDebugDraw` collider 遍历 | 场景中带 Collider 的 GO 显示 wireframe |
-| **RND-F11-S03** | `PhysicsContactEvent` 扩展、contact + `SubmitLineTrace` | contact 点/法线；trace 线段目视 |
-| **RND-F11-S04** | Debug console / CLI category toggle | `debug.draw physics off` 关闭 collider |
+| **RND-F11-S01** | `DebugDrawTypes/Service/Geometry`、`DebugDrawPass`、shader、RDG、`EnableDebugDraw` | **Done** |
+| **RND-F11-S02** | Sphere/Capsule wireframe、`PhysicsDebugDraw` collider | **Done** |
+| *(deferred)* | Contact/trace 可视化、`PhysicsContactEvent` 扩展 | Physics / 后续 |
+| *(deferred)* | Editor toggle、Persistent | 后续 Feature |
 
 ---
 
 ## 15) 验收标准
 
-### 15.1 MVP（S01–S03）
+### 15.1 MVP（S01–S02）— Done
 
-- [ ] Editor 主视口（`--rhi vulkan` / `opengl`）可见 **Box** collider wireframe
-- [ ] `LineTrace` 命中：线段、命中点、法线可辨
-- [ ] Contact **Begin**：接触点 + 法线（扩展 `PhysicsContactEvent` 后）
-- [ ] Debug 几何 **被场景 mesh 遮挡**（DepthTested）
-- [ ] `verify.ps1` 与相关 physics tests 仍通过
-- [ ] **未修改** `ShadowPass`；`feat/render` shadow 轨可并行
+- [x] Editor 主视口（`--rhi vulkan` / `opengl`）可见 **Box/Sphere/Capsule** collider wireframe
+- [x] Debug 几何 **被场景 mesh 遮挡**（DepthTested）
+- [x] `verify.ps1` 与 `physics-smoke` / `physics-shapes` 通过
+- [x] **未修改** `ShadowPass`；`ManualRenderer` 无 DebugPass
+
+**不在本 Feature 验收：** Contact Begin、LineTrace 线段、Editor toggle、Persistent。
 
 ### 15.2 工程
 
@@ -720,7 +683,8 @@ API 设计保持 **enqueue 与 render 解耦**，便于 Phase 4 把 `BuildFrameG
 |---|------|------|
 | 1 | 方案 A（DebugPass + RHI），非 ImGui 3D | 2026-08-31 |
 | 2 | `DebugDrawService` 置于 `Runtime/Function/Debug/` | 2026-08-31 |
-| 3 | Contact 可视化前扩展 `PhysicsContactEvent`（Position + Normal） | 2026-08-31 |
+| 3 | Contact 可视化前扩展 `PhysicsContactEvent` — **已移出 RND-F11 MVP**；若做，由 Physics 轨立项 | 2026-09-01 |
+| 9 | **RND-F11 MVP 收窄为 S01–S02**；contact/toggle/Persistent 延后；Debug 为服务层、不编排消费方 | 2026-09-01 |
 | 4 | MVP 线宽 1px | 2026-08-31 |
 | 5 | `ManualRenderer` **不**挂 DebugPass | 2026-08-31 |
 | 6 | **提交在 Renderer 外**（Editor/测试在 `SubmitSceneDraw` 前）；`ForwardRenderer` 不感知 Physics | 2026-09-01 |

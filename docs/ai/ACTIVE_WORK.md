@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-31 (RND-F11 debug drawing branch)
+Last updated: 2026-09-01 (RND-F11 Done on `feat/debug-drawing`)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -32,14 +32,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 合入前：定期把 **master** rebase/merge 进 `feat/render`。
 
-### DebugDrawing 轨（`feat/debug-drawing`）— **当前分支**
+### DebugDrawing 轨（`feat/debug-drawing`）— **收尾 / 待 merge**
 
-1. **RND-F11 DebugDrawing** — [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · **In Progress**
-   - **Goal:** Editor 视口即时调试图元（线/盒/wireframe）；优先 Physics collider、contact、trace 可视化
-   - **S02 Done** — collider wireframe（[Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md)）
-   - **Next:** S03 contact + LineTrace visualization
-   - **Open:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent Editor crash on Add `BoxColliderComponent`（未稳定复现）
-   - **Parallel:** VK shadow 质量轨留在 `feat/render`（RenderDoc / cull-winding）
+1. **RND-F11 DebugDrawing** — [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · **Done（MVP S01–S02）**
+   - **Delivered:** `DebugDraw` 通道 + `DebugDrawPass` + Editor collider wireframe（`PhysicsDebugDraw` 示范）
+   - **Deferred:** contact/trace 可视化 → Physics 或后续消费 Feature；toggle / Persistent → **新 Feature**
+   - **Open:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent Add `BoxColliderComponent` crash（Physics/Editor，非 RND-F11 阻塞）
+   - **Next:** 本分支 commit + merge；新 Feature 讨论 Persistent Drawing + Editor toggle
+
+### 更远（新 Feature 候选，未登记 ID）
+
+- **Debug Persistent lifetime** — `DebugDrawService` Phase 2
+- **Debug Editor toggle** — category / CLI；各子系统自行决定如何响应
 
 ### Master / 平台
 
@@ -47,7 +51,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### Physics（`feat/physics`）— **冷冻**
 
-- F01/F02 Done；**PHYS-F03 Deferred** 直至 **RND-F11** 成熟后再开正式 Design。
+- F01/F02 Done；**PHYS-F03 Deferred** — RND-F11 Debug 通道已 Done，可独立评估
 
 ### 更远（先不占带宽）
 

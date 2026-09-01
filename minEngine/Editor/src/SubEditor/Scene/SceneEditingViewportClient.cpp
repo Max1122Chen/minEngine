@@ -15,7 +15,6 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
 #include "Runtime/Function/Physics/PhysicsDebugDraw.h"
-#include "Runtime/Function/Physics/PhysicsSystem.h"
 
 #include "Runtime/Function/Render/RenderSystem.h"
 
@@ -176,8 +175,7 @@ namespace minEngine
             Scene* scene = sceneEditor ? sceneEditor->GetActiveScene() : nullptr;
             if (scene != nullptr)
             {
-                PhysicsWorld& world = PhysicsSystem::Get().GetOrCreateWorld(scene);
-                PhysicsDebugDraw::SubmitScene(*scene, world, PhysicsDebugDraw::GetOptions());
+                PhysicsDebugDraw::SubmitScene(*scene, PhysicsDebugDraw::GetOptions());
             }
         }
 
