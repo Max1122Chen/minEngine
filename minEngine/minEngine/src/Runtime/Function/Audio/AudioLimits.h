@@ -11,4 +11,6 @@ namespace minEngine
     inline constexpr float kMaxAudioPitch = 4.0f;
     inline constexpr float kDefaultMinDistance = 1.0f;
     inline constexpr float kDefaultMaxDistance = 100.0f;
+    inline constexpr bool kEnableSpatialAudioDiagnostics = false;
+    inline constexpr float kSpatialAudioDiagnosticsLogIntervalSeconds = 0.5f;
 }

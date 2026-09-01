@@ -25,4 +25,11 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::GameObject, GReflectionClassRegister
         ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_90e0c859, minEngine::GameObject, Translate)
         ME_REFLECTION_FUNCTION_END(functionInfo_90e0c859)
     }
+    {
+        ME_REFLECTION_FUNCTION_BEGIN(functionInfo_9d224679, "FindComponentByClassName", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::ConstMethod) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), (static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::ScriptCallable)), (minEngine::Reflection::FunctionMetadata{}))
+        ME_REFLECTION_FUNCTION_PARAM(functionInfo_9d224679, "ComponentClassName", In, ConstRef, std::string)
+        ME_REFLECTION_FUNCTION_RETURN(functionInfo_9d224679, minEngine::Component*)
+        ME_REFLECTION_FUNCTION_BIND_NATIVE(functionInfo_9d224679, minEngine::GameObject, FindComponentByClassName)
+        ME_REFLECTION_FUNCTION_END(functionInfo_9d224679)
+    }
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::GameObject)

@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `AUD-F01`
 - **Type:** Implementation
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-31
+- **Last updated:** 2026-09-01
 - **Related:** [Design](./AUD-F01_AUDIO_SYSTEM_DESIGN.md), [FEATURE_REGISTRY.md](../../FEATURE_REGISTRY.md)
 
 ## TL;DR
@@ -30,7 +30,9 @@
 | **S10** | Playground 或测试场景手动 Demo | 人耳验收 |
 | **S11** | `test audio-smoke` suite；`verify.ps1` 登记（若需） | CI 本地命令文档化 |
 
-**MVP Done 门槛：** S01–S09 + S11。
+**MVP Done 门槛：** S01–S09 + S11 ✅（2026-09-01）。S10 Editor 人耳验收 ✅。
+
+**后续切片（非 MVP）：** 衰减默认值/模型 Inspector、自定义曲线 → 登记 `AUD-F02` 或按需小改。
 
 ---
 
@@ -138,5 +140,6 @@ m_AudioSystem->Tick(deltaTime);
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-01 | MVP Done：S01–S11 + Editor 验收；post-MVP 集成修复见 PROGRESS_LOG |
 | 2026-08-31 | 初稿 Implementation Plan（S01–S11） |
 | 2026-08-31 | 对齐 Design v2（文件清单、MockBackend、SceneManager 钩子） |

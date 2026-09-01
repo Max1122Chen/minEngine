@@ -9,7 +9,7 @@ namespace minEngine
     class AudioClip;
     class Scene;
 
-    ME_CLASS()
+    ME_CLASS(ScriptType)
     class AudioComponent : public SceneComponent
     {
         ME_GENERATED_BODY(AudioComponent)
@@ -57,6 +57,8 @@ namespace minEngine
     private:
         friend class AudioSystem;
 
+        bool TryConsumePlayOnAwake();
+
         Scene* GetOwnerScene() const;
         AudioSpatialSettings BuildSpatialSettings() const;
 
@@ -88,6 +90,7 @@ namespace minEngine
         EAudioBusId m_Bus{EAudioBusId::SFX};
 
         AudioVoiceHandle m_ActiveVoice{};
+        bool m_bPlayOnAwakeTriggered{false};
     };
 }
 

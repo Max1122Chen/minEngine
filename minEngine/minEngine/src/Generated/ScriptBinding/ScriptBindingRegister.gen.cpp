@@ -7,17 +7,19 @@
 
 namespace minEngine
 {
-    void RegisterLuaBind_GameObject(sol::state& state);
-    void RegisterLuaBind_Component(sol::state& state);
-    void RegisterLuaBind_LuaComponent(sol::state& state);
+    void RegisterLuaBind_AudioComponent(sol::state& state);
     void RegisterLuaBind_Transform(sol::state& state);
+    void RegisterLuaBind_Component(sol::state& state);
+    void RegisterLuaBind_GameObject(sol::state& state);
+    void RegisterLuaBind_LuaComponent(sol::state& state);
 
     void RegisterGeneratedLuaBindings(sol::state& state)
     {
         RegisterLuaScriptBindingPrimitives(state);
-        RegisterLuaBind_GameObject(state);
-        RegisterLuaBind_Component(state);
-        RegisterLuaBind_LuaComponent(state);
+        RegisterLuaBind_AudioComponent(state);
         RegisterLuaBind_Transform(state);
+        RegisterLuaBind_Component(state);
+        RegisterLuaBind_GameObject(state);
+        RegisterLuaBind_LuaComponent(state);
     }
 }

@@ -29,6 +29,8 @@ namespace minEngine
         void SetVoiceVolume(BackendVoiceHandle handle, float linearGain) override;
         void SetVoicePitch(BackendVoiceHandle handle, float pitch) override;
 
+        void SetListenerEnabled(bool enabled) override;
+        bool IsListenerEnabled() const override;
         void SetListener(const AudioListenerState& listener) override;
         void SetVoiceWorldPosition(BackendVoiceHandle handle, const Vector3& worldPosition) override;
         void SetVoiceSpatialSettings(BackendVoiceHandle handle, const AudioSpatialSettings& settings) override;

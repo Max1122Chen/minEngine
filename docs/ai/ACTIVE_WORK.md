@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-08-31  
+Last updated: 2026-09-01  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -45,10 +45,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 1. **LAUN-F01** — [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md)
 2. worktree：`minEngine-launcher`
 
-### Audio 轨（`feat/audio`）— **新开**
+### Audio 轨（`feat/audio`）— **MVP Done，待合入**
 
-1. **AUD-F01** — [Placeholder](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md)
-2. worktree：`minEngine-audio`
+1. **AUD-F01** — [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · MVP Done（S01–S09 + S11）；Editor 人耳验收通过
+2. worktree：`minEngine-audio` — **下一步** commit → merge `master` → 合入 `master`
+3. **后续（非本 feat）**：衰减默认值/模型 Inspector、自定义曲线、HRTF 等见 Design Out of scope
 
 ### UI / Animation 轨（`feat/ui-anim`）— **占位**
 

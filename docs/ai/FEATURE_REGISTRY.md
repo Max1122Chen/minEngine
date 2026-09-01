@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-08-31（LAUN / AUD / ANIM / UI / PHYS 多轨登记）
+Last updated: 2026-09-01（AUD-F01 MVP Done）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -40,7 +40,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
 | `RND-F11` | DebugDrawing（线/点/盒等即时调试图元；Editor 视口消费） | Planned | — | `feat/render`；GL-first MVP；**软依赖** PHYS-F03 调试 |
 | `LAUN-F01` | Engine Launcher（工程选择、最近项目、启动 Editor） | **Planned** | — | [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · `feat/launcher` · worktree `minEngine-launcher` |
-| `AUD-F01` | Audio system（资产、播放、Scene 集成 MVP） | **Planned** | — | [Placeholder](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · `feat/audio` · worktree `minEngine-audio` |
+| `AUD-F01` | Audio system（资产、播放、Scene 集成 MVP） | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · [Impl](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_IMPLEMENTATION.md) · `feat/audio` · worktree `minEngine-audio` |
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/ui-anim` |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui-anim` |
 | `PHYS-F01` | Jolt physics bootstrap（PhysicsSystem、RigidBody/BoxCollider、固定步长写回、Channel/Contact、Scene::LineTrace） | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) · [Impl](./Physics/PHYS-F01_JOLT_INTEGRATION_IMPLEMENTATION.md) |

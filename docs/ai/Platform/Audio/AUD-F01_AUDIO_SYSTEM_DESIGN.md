@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `AUD-F01`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-08-31
+- **Last updated:** 2026-09-01
 - **Related:** [FEATURE_REGISTRY.md](../../FEATURE_REGISTRY.md), [ACTIVE_WORK.md](../../ACTIVE_WORK.md), [ASSET_PIPELINE_DESIGN.md](../ContentBrowser/ASSET_PIPELINE_DESIGN.md), [ENGINE_STARTUP_DESIGN.md](../Startup/ENGINE_STARTUP_DESIGN.md), [Implementation](./AUD-F01_AUDIO_SYSTEM_IMPLEMENTATION.md)
 - **Branch / worktree:** `feat/audio` · `D:/Dev/GitRepo/minEngine-audio`
 
@@ -634,10 +634,12 @@ Per voice (when component-owned):
 
 ```text
 1. UpdateVoiceStates()        // poll backend: finished → Stopped; recycle slots
-2. SyncListenerToBackend()    // if m_bListenerDirty or listener moved
-3. SyncEmittersToBackend()    // for each emitter with active voice + spatialized:
-                              //   world position from SceneComponent transform
-4. m_Backend->Update()        // miniaudio ma_engine update / pump
+2. ProcessPlayOnAwake()      // one-shot PlayOnAwake for registered emitters
+3. SyncListenerToBackend()    // enable/disable listener; sync world pose when active
+4. SyncEmittersToBackend()    // for each emitter with active voice:
+                              //   world position from SceneComponent::GetWorldPosition()
+5. ValidateSpatializedSources() // WARN once if spatialized voices play without listener
+6. m_Backend->Update()        // miniaudio ma_engine update / pump
 ```
 
 **挂载点：** `Engine::LogicalTick` — `SceneManager::Tick` **之后**，`PhysicsSystem::SimulateActiveScene` **之前**。
@@ -714,6 +716,7 @@ namespace minEngine
 
         // --- 3D ---
 
+        virtual void SetListenerEnabled(bool enabled) = 0;
         virtual void SetListener(const AudioListenerState& listener) = 0;
 
         virtual void SetVoiceWorldPosition(BackendVoiceHandle handle, const Vector3& worldPosition) = 0;
@@ -883,7 +886,18 @@ AudioComponent::Stop() / ~AudioComponent()
   → AudioSystem::UnregisterEmitter(this) on destruction
 ```
 
-**首期不 Tick：** 位置同步由 `AudioSystem::SyncEmittersToBackend` 批量完成（每帧读 `GetPosition()` 或 world matrix）。
+**首期不 Tick：** 位置同步由 `AudioSystem::SyncEmittersToBackend` 批量完成（每帧读 **`SceneComponent::GetWorldPosition()`**，含 Attach 层级；**禁止**用局部 `GetPosition()`）。
+
+**3D 坐标约定：**
+
+- `AudioComponent` / `AudioListenerComponent` 作为子组件挂在 Root `SceneComponent` 上时，音频必须使用**世界坐标**（父级 Transform 参与合成）。
+- Listener 朝向同步 `GetWorldForwardVector()` / `GetWorldUpVector()`。
+
+**距离衰减（Editor 试听常见误区）：**
+
+- 默认 `MinDistance=1`、`MaxDistance=100`（`AudioLimits.h`）。超过 `MaxDistance` 后增益趋近 0，听感上像「没声」。
+- 听者越过声源继续远离时，距离再次增大、响度下降——属正常 3D 行为，不是 bug。
+- 非 Loop 的 clip 播完后 `UpdateVoiceStates` 会回收 voice；回到原位也不会再响，需重新 `Play()` 或开 `Loop`。
 
 ---
 
@@ -923,7 +937,14 @@ namespace minEngine
 
 - 多个 Listener 时 **最后 `RegisterListener` 的生效**。
 - 注册新 Listener 时对前一个 `ME_CORE_WARN`（可选，建议 debug build）。
-- `AudioSystem::SyncListenerToBackend` 从 `m_ActiveListener` 的 Transform 构建 `AudioListenerState`。
+- `AudioSystem::SyncListenerToBackend` 从 `m_ActiveListener` 的 **世界 Transform** 构建 `AudioListenerState`。
+
+**无 Listener 时的行为（已定，非测试兜底）：**
+
+- miniaudio 引擎初始化后 **默认 listener 0 禁用**（`SetListenerEnabled(false)`）；**不**依赖原点隐式听者。
+- 无 `AudioListenerComponent` 时：2D（`Spatialized=false`）照常播放；3D 声源仍会创建，但缺少正确听音点。
+- 存在 **正在播放的 spatialized voice** 且无 active listener → `ME_CORE_WARN`（每段缺失只 WARN 一次；挂上 listener 或声源停尽后重置）。
+- 有 listener 时 `RegisterListener` / `SyncListenerToBackend` 启用 listener 并同步位姿。
 
 ---
 
@@ -1110,6 +1131,8 @@ RegisterType(AssetTypeDescriptor{
 | Voice 泄漏 | 崩溃 / 爆音 | Handle 表 + Shutdown 顺序 + smoke |
 | Clip 卸载竞态 | UAF | `weak_ptr` + Play lock |
 | 多 Listener | 不确定 | 最后注册 + WARN |
+| 无 Listener + 3D | 隐式原点听者、行为误导 | 禁用默认 listener + WARN |
+| 子组件局部坐标 | 3D 衰减错乱 / 移动物体无声 | `GetWorldPosition()` 同步 |
 | 主线程假设 | glitch | 文档 + 首期仅主线程 `Update` |
 | Voice 池满 | 静音失败 | 明确错误返回 + log |
 
@@ -1117,11 +1140,12 @@ RegisterType(AssetTypeDescriptor{
 
 ## 6) 验收标准
 
-- [ ] `AudioClip` 可通过 `AssetManager` 加载 `.wav`（+ `.ogg` 若 S02 包含）
-- [ ] `test audio-smoke`：2D、Stop、Bus mute、3D 衰减、组件销毁、Scene 卸载
-- [ ] `.\scripts\verify.ps1` 仍绿
-- [ ] 公共头文件不 include miniaudio
-- [ ] S01–S09 完成 = MVP Done
+- [x] `AudioClip` 可通过 `AssetManager` 加载 `.wav`（+ `.ogg` 若 S02 包含）
+- [x] `test audio-smoke`：2D、Stop、Bus mute、3D 衰减、组件销毁、Scene 卸载
+- [x] 公共头文件不 include miniaudio
+- [x] S01–S09 完成 = MVP Done
+- [ ] `.\scripts\verify.ps1` 全绿（合入 `master` 前建议再跑）
+- [x] Editor 人耳验收（`test.mescene` + `AudioListenerComponent` on camera）
 
 ---
 
@@ -1135,6 +1159,8 @@ RegisterType(AssetTypeDescriptor{
 | 场景组件命名 | **`AudioComponent`**（不用 `AudioSource`） |
 | Voice 池上限 | **32** (`kMaxAudioVoices`) |
 | 多 Listener | **最后注册生效** + WARN |
+| 无 Listener + spatialized | **禁用默认 listener** + WARN；2D 不受影响 |
+| 3D 坐标 | **`SceneComponent::GetWorldPosition()`**（含 Attach 链） |
 | Component Tick | **否**；System 批量同步 Transform |
 | Clip 解码时机 | **Loader 时** 解码为 float PCM |
 
@@ -1155,3 +1181,5 @@ RegisterType(AssetTypeDescriptor{
 | 2026-08-31 | Registry + ACTIVE_WORK 登记；Placeholder |
 | 2026-08-31 | Design Draft v1（架构、生命周期、miniaudio） |
 | 2026-08-31 | Design Draft v2：扩充类型/接口/状态机/集成细节；**IAudioBackend** 命名已定 |
+| 2026-09-01 | MVP Done：验收勾选；后续衰减调参/Inspector 列为 AUD-F02+ |
+| 2026-09-01 | 无 Listener 策略：禁用 miniaudio 默认 listener + spatialized WARN；3D 同步改为世界坐标 |

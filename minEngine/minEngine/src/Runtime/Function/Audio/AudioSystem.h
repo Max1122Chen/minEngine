@@ -15,6 +15,7 @@ namespace minEngine
     class AudioListenerComponent;
     class AudioClip;
     class Scene;
+    class SceneComponent;
 
     class AudioSystem
     {
@@ -75,7 +76,13 @@ namespace minEngine
 
         void SyncListenerToBackend();
         void SyncEmittersToBackend();
+        void PushActiveListenerToBackend();
+        void ProcessPlayOnAwake();
         void UpdateVoiceStates();
+        void ValidateSpatializedSources();
+        void WarnMissingListenerForSpatializedAudio();
+        void LogSpatialAudioDiagnostics(bool forceLog);
+        void LogSceneComponentTransformDiagnostics(const char* role, const SceneComponent* component);
 
         static AudioSystem* s_Instance;
 
@@ -92,5 +99,7 @@ namespace minEngine
 
         AudioListenerState m_CachedListener{};
         bool m_bListenerDirty{true};
+        bool m_bWarnedMissingListenerForSpatial{false};
+        float m_SpatialDiagnosticsLogTimer{0.0f};
     };
 }

@@ -47,6 +47,22 @@ namespace minEngine
         return settings;
     }
 
+    bool AudioComponent::TryConsumePlayOnAwake()
+    {
+        if (!m_bPlayOnAwake || m_bPlayOnAwakeTriggered)
+        {
+            return false;
+        }
+
+        if (m_Clip == nullptr || !m_Clip->IsValid())
+        {
+            return false;
+        }
+
+        m_bPlayOnAwakeTriggered = true;
+        return true;
+    }
+
     void AudioComponent::SetOwner(GameObject* inOwner)
     {
         if (AudioSystem::HasInstance())
@@ -89,7 +105,7 @@ namespace minEngine
         params.Pitch = m_Pitch;
         params.bLoop = m_bLoop;
         params.Spatial = BuildSpatialSettings();
-        params.WorldPosition = GetPosition();
+        params.WorldPosition = GetWorldPosition();
         params.OwnerComponent = this;
         params.OwnerScene = GetOwnerScene();
 

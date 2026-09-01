@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-31 (multi-track backlog + worktrees)
+Last updated: 2026-09-01 (AUD-F01 MVP Done)
+
+### 2026-09-01 - AUD-F01 Audio System MVP Done (`feat/audio`)
+- **Runtime:** `IAudioBackend` + `MiniaudioBackend`, `AudioClip`/`AudioVoice`/`AudioSystem`, `AudioComponent`/`AudioListenerComponent`, Bus mixer, 2D/3D spatial audio, lifecycle on scene unload.
+- **Fixes (post-initial MVP):** `SceneComponent` world transform + `AttachToComponent`/`DetachFromParent`; 3D sync via `GetWorldPosition()`; disable miniaudio default listener; listener enable/sync + tick order; attenuation model wired to backend.
+- **Tests:** `minEngineTests.exe test audio-smoke` PASSED.
+- **Manual:** Editor ear-test on `test.mescene` — spatialized audio audible with listener on camera.
+- **Deferred (AUD-F02+):** gentler default attenuation / `AttenuationModel` in Inspector, custom curves, Inspector live volume/pitch.
+- **Next:** commit on `feat/audio`, merge `master`, PR to `master`.
 
 ### 2026-08-31 - Multi-track backlog: LAUN / AUD / ANIM / UI / PHYS thaw (`master`)
 - Registered **LAUN-F01**, **AUD-F01**, **UI-F01**, **ANIM-F01**, **PHYS-F04**; **PHYS-F03** Deferred → Planned.

@@ -1,6 +1,8 @@
 #include "LuaScriptBindingPrimitives.h"
 
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/Audio/Components/AudioComponent.h"
+#include "Runtime/Function/Framework/Components/Component.h"
 
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
@@ -57,5 +59,18 @@ namespace minEngine
                 "w",
                 &Vector4::w);
         }
+
+        state.set_function(
+            "AsAudioComponent",
+            [](Component* component) -> AudioComponent*
+            {
+                if (component == nullptr || component->GetClass() == nullptr
+                    || !component->IsA(AudioComponent::StaticClass()))
+                {
+                    return nullptr;
+                }
+
+                return static_cast<AudioComponent*>(component);
+            });
     }
 }

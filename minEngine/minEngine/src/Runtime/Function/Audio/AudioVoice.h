@@ -25,6 +25,8 @@ namespace minEngine
             return m_State == EAudioVoiceState::Playing || m_State == EAudioVoiceState::Paused;
         }
 
+        bool IsSpatialized() const { return m_Spatial.bSpatialized; }
+
         void Configure(
             std::shared_ptr<AudioClip> clip,
             EAudioBusId bus,

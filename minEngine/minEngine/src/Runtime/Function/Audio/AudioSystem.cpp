@@ -7,11 +7,14 @@
 #include "Runtime/Function/Audio/Backend/MiniaudioBackend.h"
 #include "Runtime/Function/Audio/Components/AudioComponent.h"
 #include "Runtime/Function/Audio/Components/AudioListenerComponent.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Resource/AudioClip.h"
 
 #include <algorithm>
+#include <cmath>
+#include <string>
 
 namespace minEngine
 {
@@ -60,6 +63,8 @@ namespace minEngine
             return;
         }
 
+        m_Backend->SetListenerEnabled(false);
+
         m_VoiceSlots.reserve(kMaxAudioVoices);
         m_Initialized = true;
     }
@@ -89,7 +94,6 @@ namespace minEngine
 
     void AudioSystem::Tick(float deltaTime)
     {
-        (void)deltaTime;
         if (!m_Initialized || !m_Backend)
         {
             return;
@@ -98,6 +102,16 @@ namespace minEngine
         UpdateVoiceStates();
         SyncListenerToBackend();
         SyncEmittersToBackend();
+        ProcessPlayOnAwake();
+        ValidateSpatializedSources();
+
+        m_SpatialDiagnosticsLogTimer += std::max(deltaTime, 0.0f);
+        if (m_SpatialDiagnosticsLogTimer >= kSpatialAudioDiagnosticsLogIntervalSeconds)
+        {
+            LogSpatialAudioDiagnostics(false);
+            m_SpatialDiagnosticsLogTimer = 0.0f;
+        }
+
         m_Backend->Update();
     }
 
@@ -114,6 +128,15 @@ namespace minEngine
         {
             result.ErrorMessage = "invalid audio clip";
             return result;
+        }
+
+        if (params.Spatial.bSpatialized && m_ActiveListener == nullptr)
+        {
+            WarnMissingListenerForSpatializedAudio();
+        }
+        else if (params.Spatial.bSpatialized && m_ActiveListener != nullptr)
+        {
+            PushActiveListenerToBackend();
         }
 
         AudioVoice* voice = AllocateVoice();
@@ -137,6 +160,18 @@ namespace minEngine
 
         result.Voice = AudioVoiceHandle{voice->GetId()};
         result.bSuccess = true;
+
+        if (params.Spatial.bSpatialized)
+        {
+            ME_CORE_INFO(
+                "AudioSystem: started spatialized voice {} at world position ({:.2f}, {:.2f}, {:.2f}).",
+                voice->GetId(),
+                params.WorldPosition.x,
+                params.WorldPosition.y,
+                params.WorldPosition.z);
+            LogSpatialAudioDiagnostics(true);
+        }
+
         return result;
     }
 
@@ -268,6 +303,11 @@ namespace minEngine
 
         m_ActiveListener = listener;
         m_bListenerDirty = true;
+        m_bWarnedMissingListenerForSpatial = false;
+        PushActiveListenerToBackend();
+
+        LogSceneComponentTransformDiagnostics("Active listener registered", listener);
+        LogSpatialAudioDiagnostics(true);
     }
 
     void AudioSystem::UnregisterListener(AudioListenerComponent* listener)
@@ -276,6 +316,10 @@ namespace minEngine
         {
             m_ActiveListener = nullptr;
             m_bListenerDirty = true;
+            if (m_Backend)
+            {
+                m_Backend->SetListenerEnabled(false);
+            }
         }
     }
 
@@ -391,6 +435,44 @@ namespace minEngine
         }
     }
 
+    void AudioSystem::ProcessPlayOnAwake()
+    {
+        for (AudioComponent* emitter : m_Emitters)
+        {
+            if (emitter == nullptr || !emitter->TryConsumePlayOnAwake())
+            {
+                continue;
+            }
+
+            emitter->Play();
+        }
+    }
+
+    void AudioSystem::PushActiveListenerToBackend()
+    {
+        if (!m_Backend)
+        {
+            return;
+        }
+
+        if (m_ActiveListener == nullptr)
+        {
+            m_Backend->SetListenerEnabled(false);
+            return;
+        }
+
+        m_Backend->SetListenerEnabled(true);
+
+        AudioListenerState listenerState;
+        listenerState.Position = m_ActiveListener->GetWorldPosition();
+        listenerState.Forward = m_ActiveListener->GetWorldForwardVector();
+        listenerState.Up = m_ActiveListener->GetWorldUpVector();
+
+        m_CachedListener = listenerState;
+        m_bListenerDirty = false;
+        m_Backend->SetListener(listenerState);
+    }
+
     void AudioSystem::SyncListenerToBackend()
     {
         if (!m_Backend)
@@ -400,23 +482,23 @@ namespace minEngine
 
         if (m_ActiveListener == nullptr)
         {
+            m_Backend->SetListenerEnabled(false);
             return;
         }
 
         AudioListenerState listenerState;
-        listenerState.Position = m_ActiveListener->GetPosition();
-        listenerState.Forward = m_ActiveListener->GetForwardVector();
-        listenerState.Up = m_ActiveListener->GetUpVector();
+        listenerState.Position = m_ActiveListener->GetWorldPosition();
+        listenerState.Forward = m_ActiveListener->GetWorldForwardVector();
+        listenerState.Up = m_ActiveListener->GetWorldUpVector();
 
         if (!m_bListenerDirty && listenerState.Position == m_CachedListener.Position
             && listenerState.Forward == m_CachedListener.Forward && listenerState.Up == m_CachedListener.Up)
         {
+            m_Backend->SetListenerEnabled(true);
             return;
         }
 
-        m_CachedListener = listenerState;
-        m_bListenerDirty = false;
-        m_Backend->SetListener(listenerState);
+        PushActiveListenerToBackend();
     }
 
     void AudioSystem::SyncEmittersToBackend()
@@ -440,7 +522,7 @@ namespace minEngine
                 continue;
             }
 
-            voice->SetWorldPosition(emitter->GetPosition(), *m_Backend);
+            voice->SetWorldPosition(emitter->GetWorldPosition(), *m_Backend);
         }
     }
 
@@ -474,6 +556,223 @@ namespace minEngine
         for (AudioVoice* voice : finishedVoices)
         {
             StopAndFreeVoice(voice);
+        }
+    }
+
+    void AudioSystem::WarnMissingListenerForSpatializedAudio()
+    {
+        if (m_bWarnedMissingListenerForSpatial)
+        {
+            return;
+        }
+
+        ME_CORE_WARN(
+            "AudioSystem: spatialized audio is active but no AudioListenerComponent is registered. "
+            "Add one (for example on the camera) for correct 3D audio.");
+        m_bWarnedMissingListenerForSpatial = true;
+    }
+
+    void AudioSystem::ValidateSpatializedSources()
+    {
+        bool hasSpatializedActiveVoice = false;
+        for (const auto& [voiceId, voice] : m_VoiceById)
+        {
+            (void)voiceId;
+            if (voice != nullptr && voice->IsActive() && voice->IsSpatialized())
+            {
+                hasSpatializedActiveVoice = true;
+                break;
+            }
+        }
+
+        if (!hasSpatializedActiveVoice)
+        {
+            m_bWarnedMissingListenerForSpatial = false;
+            return;
+        }
+
+        if (m_ActiveListener != nullptr)
+        {
+            m_bWarnedMissingListenerForSpatial = false;
+            return;
+        }
+
+        WarnMissingListenerForSpatializedAudio();
+    }
+
+    void AudioSystem::LogSceneComponentTransformDiagnostics(const char* role, const SceneComponent* component)
+    {
+        if (!kEnableSpatialAudioDiagnostics)
+        {
+            return;
+        }
+
+        if (component == nullptr)
+        {
+            ME_CORE_INFO("AudioSystem [{}]: component is null.", role);
+            return;
+        }
+
+        const Vector3 localPosition = component->GetPosition();
+        const Vector3 worldPosition = component->GetWorldPosition();
+        const SceneComponent* attachParent = component->GetAttachParent();
+        const GameObject* owner = component->GetOwner();
+
+        std::string ownerName = "(no owner)";
+        Vector3 rootPosition{};
+        bool hasRootPosition = false;
+        if (owner != nullptr)
+        {
+            ownerName = owner->GetName();
+            if (owner->GetRootComponent() != nullptr)
+            {
+                rootPosition = owner->GetRootComponent()->GetWorldPosition();
+                hasRootPosition = true;
+            }
+        }
+
+        std::string attachParentLabel = "(none)";
+        if (attachParent != nullptr)
+        {
+            const GameObject* parentOwner = attachParent->GetOwner();
+            const std::string parentOwnerName =
+                parentOwner != nullptr ? parentOwner->GetName() : std::string("(no owner)");
+            const bool isRoot = owner != nullptr && attachParent == owner->GetRootComponent();
+            attachParentLabel = parentOwnerName + (isRoot ? "/Root" : "/SceneComponent");
+        }
+
+        if (hasRootPosition)
+        {
+            ME_CORE_INFO(
+                "AudioSystem [{}]: owner='{}' local=({:.2f}, {:.2f}, {:.2f}) world=({:.2f}, {:.2f}, {:.2f}) "
+                "rootWorld=({:.2f}, {:.2f}, {:.2f}) attachParent={}",
+                role,
+                ownerName,
+                localPosition.x,
+                localPosition.y,
+                localPosition.z,
+                worldPosition.x,
+                worldPosition.y,
+                worldPosition.z,
+                rootPosition.x,
+                rootPosition.y,
+                rootPosition.z,
+                attachParentLabel);
+        }
+        else
+        {
+            ME_CORE_INFO(
+                "AudioSystem [{}]: owner='{}' local=({:.2f}, {:.2f}, {:.2f}) world=({:.2f}, {:.2f}, {:.2f}) "
+                "attachParent={}",
+                role,
+                ownerName,
+                localPosition.x,
+                localPosition.y,
+                localPosition.z,
+                worldPosition.x,
+                worldPosition.y,
+                worldPosition.z,
+                attachParentLabel);
+        }
+    }
+
+    void AudioSystem::LogSpatialAudioDiagnostics(bool forceLog)
+    {
+        if (!kEnableSpatialAudioDiagnostics)
+        {
+            return;
+        }
+
+        bool hasSpatializedActiveVoice = false;
+        for (const auto& [voiceId, voice] : m_VoiceById)
+        {
+            (void)voiceId;
+            if (voice != nullptr && voice->IsActive() && voice->IsSpatialized())
+            {
+                hasSpatializedActiveVoice = true;
+                break;
+            }
+        }
+
+        if (!forceLog && !hasSpatializedActiveVoice)
+        {
+            return;
+        }
+
+        const bool backendListenerEnabled = m_Backend != nullptr && m_Backend->IsListenerEnabled();
+        ME_CORE_INFO(
+            "AudioSystem [spatial diagnostics]: backendListenerEnabled={} activeListener={} spatializedActiveVoices={}",
+            backendListenerEnabled,
+            m_ActiveListener != nullptr ? "yes" : "no",
+            hasSpatializedActiveVoice ? "yes" : "no");
+
+        if (m_ActiveListener != nullptr)
+        {
+            LogSceneComponentTransformDiagnostics("Active listener", m_ActiveListener);
+
+            const Vector3 listenerWorldPosition = m_ActiveListener->GetWorldPosition();
+            const Vector3 listenerForward = m_ActiveListener->GetWorldForwardVector();
+            const Vector3 listenerUp = m_ActiveListener->GetWorldUpVector();
+            ME_CORE_INFO(
+                "AudioSystem [spatial diagnostics]: synced listener world=({:.2f}, {:.2f}, {:.2f}) forward=({:.2f}, {:.2f}, {:.2f}) up=({:.2f}, {:.2f}, {:.2f})",
+                listenerWorldPosition.x,
+                listenerWorldPosition.y,
+                listenerWorldPosition.z,
+                listenerForward.x,
+                listenerForward.y,
+                listenerForward.z,
+                listenerUp.x,
+                listenerUp.y,
+                listenerUp.z);
+        }
+        else if (hasSpatializedActiveVoice)
+        {
+            ME_CORE_WARN(
+                "AudioSystem [spatial diagnostics]: spatialized voices are active but AudioSystem has no active listener.");
+        }
+
+        for (AudioComponent* emitter : m_Emitters)
+        {
+            if (emitter == nullptr)
+            {
+                continue;
+            }
+
+            const AudioVoiceHandle activeVoiceHandle = emitter->GetActiveVoiceHandle();
+            AudioVoice* voice = FindVoice(activeVoiceHandle);
+            if (voice == nullptr || !voice->IsActive() || !voice->IsSpatialized())
+            {
+                continue;
+            }
+
+            LogSceneComponentTransformDiagnostics("Spatial emitter", emitter);
+
+            const Vector3 emitterWorldPosition = emitter->GetWorldPosition();
+            float distanceToListener = 0.0f;
+            if (m_ActiveListener != nullptr)
+            {
+                const Vector3 listenerWorldPosition = m_ActiveListener->GetWorldPosition();
+                distanceToListener = glm::length(emitterWorldPosition - listenerWorldPosition);
+            }
+
+            const float effectiveGain = m_Mixer.ComputeEffectiveGain(voice->m_Bus, voice->m_Volume);
+            const bool backendPlaying =
+                voice->m_BackendHandle.IsValid() && m_Backend->IsVoicePlaying(voice->m_BackendHandle);
+
+            ME_CORE_INFO(
+                "AudioSystem [spatial diagnostics]: voice={} ownerSpatialized={} loop={} voiceWorld=({:.2f}, {:.2f}, {:.2f}) "
+                "minDist={:.2f} maxDist={:.2f} distanceToListener={:.2f} effectiveGain={:.3f} backendPlaying={}",
+                voice->GetId(),
+                emitter->GetSpatialized(),
+                voice->m_bLoop,
+                voice->m_WorldPosition.x,
+                voice->m_WorldPosition.y,
+                voice->m_WorldPosition.z,
+                voice->m_Spatial.MinDistance,
+                voice->m_Spatial.MaxDistance,
+                distanceToListener,
+                effectiveGain,
+                backendPlaying);
         }
     }
 }

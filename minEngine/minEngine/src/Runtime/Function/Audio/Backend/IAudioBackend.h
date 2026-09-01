@@ -28,6 +28,8 @@ namespace minEngine
         virtual void SetVoiceVolume(BackendVoiceHandle handle, float linearGain) = 0;
         virtual void SetVoicePitch(BackendVoiceHandle handle, float pitch) = 0;
 
+        virtual void SetListenerEnabled(bool enabled) = 0;
+        virtual bool IsListenerEnabled() const = 0;
         virtual void SetListener(const AudioListenerState& listener) = 0;
         virtual void SetVoiceWorldPosition(BackendVoiceHandle handle, const Vector3& worldPosition) = 0;
         virtual void SetVoiceSpatialSettings(BackendVoiceHandle handle, const AudioSpatialSettings& settings) = 0;

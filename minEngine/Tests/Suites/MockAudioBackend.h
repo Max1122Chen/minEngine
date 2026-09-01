@@ -118,6 +118,10 @@ namespace minEngine
             }
         }
 
+        void SetListenerEnabled(bool enabled) override { m_bListenerEnabled = enabled; }
+
+        bool IsListenerEnabled() const override { return m_bListenerEnabled; }
+
         void SetListener(const AudioListenerState& listener) override { m_Listener = listener; }
 
         void SetVoiceWorldPosition(BackendVoiceHandle handle, const Vector3& worldPosition) override
@@ -172,6 +176,7 @@ namespace minEngine
 
         std::vector<VoiceRecord> m_Voices;
         AudioListenerState m_Listener{};
+        bool m_bListenerEnabled{false};
         uint32_t m_CreateVoiceCount{0};
         uint32_t m_DestroyVoiceCount{0};
     };

@@ -75,6 +75,7 @@ namespace minEngine
         }
 
         m_Impl->bEngineInitialized = true;
+        ma_engine_listener_set_enabled(&m_Impl->Engine, 0, MA_FALSE);
         return true;
     }
 
@@ -254,6 +255,26 @@ namespace minEngine
         ma_sound_set_pitch(&slot->Sound, std::clamp(pitch, kMinAudioPitch, kMaxAudioPitch));
     }
 
+    void MiniaudioBackend::SetListenerEnabled(bool enabled)
+    {
+        if (!m_Impl->bEngineInitialized)
+        {
+            return;
+        }
+
+        ma_engine_listener_set_enabled(&m_Impl->Engine, 0, enabled ? MA_TRUE : MA_FALSE);
+    }
+
+    bool MiniaudioBackend::IsListenerEnabled() const
+    {
+        if (!m_Impl->bEngineInitialized)
+        {
+            return false;
+        }
+
+        return ma_engine_listener_is_enabled(&m_Impl->Engine, 0) == MA_TRUE;
+    }
+
     void MiniaudioBackend::SetListener(const AudioListenerState& listener)
     {
         if (!m_Impl->bEngineInitialized)
@@ -300,6 +321,22 @@ namespace minEngine
             return;
         }
 
+        ma_attenuation_model attenuationModel = ma_attenuation_model_inverse;
+        switch (settings.AttenuationModel)
+        {
+        case EAudioAttenuationModel::None:
+            attenuationModel = ma_attenuation_model_none;
+            break;
+        case EAudioAttenuationModel::Linear:
+            attenuationModel = ma_attenuation_model_linear;
+            break;
+        case EAudioAttenuationModel::Inverse:
+        default:
+            attenuationModel = ma_attenuation_model_inverse;
+            break;
+        }
+
+        ma_sound_set_attenuation_model(&slot->Sound, attenuationModel);
         ma_sound_set_min_distance(&slot->Sound, std::max(settings.MinDistance, 0.0f));
         ma_sound_set_max_distance(&slot->Sound, std::max(settings.MaxDistance, settings.MinDistance));
     }

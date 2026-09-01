@@ -1,0 +1,9 @@
+{
+    "AssetName": "AudioPlayOnStart",
+    "AssetPath": "Scripts/AudioPlayOnStart.lua",
+    "AssetType": "LuaScript",
+    "Guid": {
+        "High": 9558128772064625520,
+        "Low": 11016044789971689603
+    }
+}
