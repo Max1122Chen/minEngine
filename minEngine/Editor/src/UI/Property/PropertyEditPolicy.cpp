@@ -1,6 +1,7 @@
 #include "UI/Property/PropertyEditPolicy.h"
 
 #include "Runtime/Core/Reflection/MEProperties.h"
+#include "Runtime/Core/Reflection/ReflectionDisplayNames.h"
 
 namespace minEngine
 {
@@ -88,12 +89,7 @@ namespace minEngine
 
     const char* PropertyEditPolicy::GetDisplayName(const Reflection::MEProperty& property)
     {
-        if (const std::string* displayName = property.FindMetadata("DisplayName"))
-        {
-            return displayName->c_str();
-        }
-
-        return property.GetName().c_str();
+        return Reflection::GetPropertyDisplayName(property);
     }
 
     const char* PropertyEditPolicy::GetTooltip(const Reflection::MEProperty& property)

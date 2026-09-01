@@ -22,6 +22,7 @@
 #include "Suites/DelegateTest.h"
 #include "Suites/ShaderCompilerTest.h"
 #include "Suites/AudioSmokeTest.h"
+#include "Suites/ReflectionDisplayNamesTest.h"
 
 namespace minEngine
 {
@@ -282,6 +283,28 @@ namespace minEngine
             }
         };
 
+        struct ReflectionDisplayNamesTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "reflection-display-names",
+                    "Reflection Display Names",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'reflection-display-names'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "reflection-display-names",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -298,6 +321,7 @@ namespace minEngine
         using DelegateSuite = TypedTestSuite<DelegateTestSuiteTraits>;
         using ShaderCompilerSuite = TypedTestSuite<ShaderCompilerTestSuiteTraits>;
         using AudioSmokeSuite = TypedTestSuite<AudioSmokeTestSuiteTraits>;
+        using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -324,6 +348,7 @@ namespace minEngine
             registry.Register(DelegateSuite::Get());
             registry.Register(ShaderCompilerSuite::Get());
             registry.Register(AudioSmokeSuite::Get());
+            registry.Register(ReflectionDisplayNamesSuite::Get());
             s_Registered = true;
         }
     }

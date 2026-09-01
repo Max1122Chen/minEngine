@@ -1,9 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-01 (BUG-RENDER-014 pending commit)
+Last updated: 2026-09-02 (CORE-F07 验收 A)
+
+### 2026-09-02 - CORE-F07: reflection display names (验收 A Done)
+- **Runtime:** `ReflectionDisplayNames` — strip `m_`/`x_`/`b_` prefix + camelCase word breaks; `GetPropertyDisplayName`.
+- **Editor:** `PropertyEditPolicy::GetDisplayName` delegates to runtime API.
+- **Tests:** `minEngineTests.exe test reflection-display-names` — 2 cases, 15 assertions PASSED.
+- **Verified:** `verify.ps1`; Editor 目视确认 Inspector 展示名。
 
 ### 2026-09-01 - BUG-RENDER-014: point light radius, attenuation, shadow cutoff (pending commit)
-- **Runtime:** `PointLightComponent` `m_AttenuationRadius` / `m_AttenuationFalloff`; UBO `Position.w` + `Params.x`; shadow pass far = radius (cap 50).
 - **Shaders:** `PointLightAttenuation` / `PointLightShadowFactor`; Phong 移除 per-point-light ambient；PBR 点光衰减 + 阴影 mask。
 - **Scene:** `test.mescene` 补点光/聚光衰减字段。
 - **Docs:** Design `BUG-RENDER-014_POINT_LIGHT_RADIUS_ATTENUATION_DESIGN.md`; Bug record updated。
