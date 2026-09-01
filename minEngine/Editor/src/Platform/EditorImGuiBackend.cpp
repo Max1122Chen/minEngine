@@ -270,7 +270,25 @@ namespace minEngine
 
     void EditorImGuiBackend::NotifyFontAtlasRebuilt()
     {
-        (void)0;
+        if (!m_Initialized)
+        {
+            return;
+        }
+
+        if (m_Api == RendererApi::OpenGL)
+        {
+            // ImGui 1.92 dynamic atlas: drop stale GPU textures/shaders so the next NewFrame
+            // recreates device objects against the rebuilt atlas.
+            ImGui_ImplOpenGL3_DestroyDeviceObjects();
+            return;
+        }
+
+#if defined(MINENGINE_HAS_VULKAN)
+        if (m_Api == RendererApi::Vulkan && m_VulkanBackendInitialized)
+        {
+            InvalidateViewportTextures();
+        }
+#endif
     }
 
     void EditorImGuiBackend::InvalidateViewportTextures()

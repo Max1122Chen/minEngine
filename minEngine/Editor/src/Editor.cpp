@@ -292,6 +292,7 @@ namespace minEngine
             m_ExitRequested = true;
             return;
         }
+        m_Appearance.SetImGuiBackend(&m_ImGuiBackend);
 
         WindowSystem::Get().SetCursorVisible(true);
 

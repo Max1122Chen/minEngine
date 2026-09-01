@@ -1,5 +1,6 @@
 #include "UI/Appearance/EditorAppearance.h"
 
+#include "Platform/EditorImGuiBackend.h"
 #include "UI/Appearance/EditorThemePresets.h"
 #include "UI/Appearance/EditorTypographyDefaults.h"
 #include "UI/Property/EditorColorConversion.h"
@@ -359,6 +360,22 @@ namespace minEngine
         return nullptr;
     }
 
+    void EditorAppearance::FinalizeFontAtlasBuild()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        const bool rendererHasTextures =
+            (io.BackendFlags & ImGuiBackendFlags_RendererHasTextures) != 0;
+        if (!rendererHasTextures)
+        {
+            io.Fonts->Build();
+        }
+
+        if (m_ImGuiBackend != nullptr)
+        {
+            m_ImGuiBackend->NotifyFontAtlasRebuilt();
+        }
+    }
+
     std::filesystem::path EditorAppearance::ResolveAssetIconFontPath() const
     {
         const std::filesystem::path& engineDefaultAssetsRoot = PathRegistry::Get().GetEngineDefaultAssetsRoot();
@@ -399,7 +416,7 @@ namespace minEngine
             {
                 m_RoleFonts[roleIndex] = m_RoleFonts[RoleIndex(EditorTypographyRole::Body)];
             }
-            io.Fonts->Build();
+            FinalizeFontAtlasBuild();
             return;
         }
 
@@ -515,9 +532,8 @@ namespace minEngine
             }
         }
 
-        io.Fonts->Build();
+        FinalizeFontAtlasBuild();
 
-        // ImGui 1.92 + OpenGL3 backend recreates the GPU font texture on the next frame.
         ME_CORE_INFO("EditorAppearance: UI font atlas rebuilt ({} roles, regularIconReady={}, solidIconReady={}).",
                      m_RoleFonts.size(),
                      m_AssetIconRegularFont != nullptr,

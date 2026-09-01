@@ -19,11 +19,14 @@ typedef unsigned short ImWchar;
 
 namespace minEngine
 {
+    class EditorImGuiBackend;
     class Font;
 
     class EditorAppearance
     {
     public:
+        void SetImGuiBackend(EditorImGuiBackend* backend) { m_ImGuiBackend = backend; }
+
         void ApplyDefaultTheme();
         void LoadFromAppearanceSettings(const EditorAppearanceSettings& settings);
         void ApplyResolvedPalette(const EditorThemePalette& palette);
@@ -64,6 +67,9 @@ namespace minEngine
         ImFont* m_AssetIconRegularFont = nullptr;
         ImFont* m_AssetIconSolidFont = nullptr;
         std::vector<std::shared_ptr<Font>> m_PinnedFontsForAtlas;
+        EditorImGuiBackend* m_ImGuiBackend = nullptr;
         bool m_UiFontBackendReady = false;
+
+        void FinalizeFontAtlasBuild();
     };
 }
