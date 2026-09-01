@@ -53,6 +53,9 @@ namespace minEngine
         ME_FUNCTION(ScriptCallable)
         void Translate(const Vector3& delta);
 
+        ME_FUNCTION(ScriptCallable)
+        Component* FindComponentByClassName(const std::string& componentClassName) const;
+
         Quaternion GetRotation();
         void SetRotation(const Quaternion& rotation);
         Vector3 GetRotationEulerDegrees();

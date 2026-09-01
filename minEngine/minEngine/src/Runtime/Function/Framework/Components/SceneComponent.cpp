@@ -1,10 +1,29 @@
 #include "SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_decompose.hpp>
+
 namespace minEngine
 {
-    SceneComponent::SceneComponent()
+    Transform SceneComponent::DecomposeMatrixToTransform(const Matrix4& matrix)
     {
+        glm::vec3 translation{};
+        glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
+        glm::vec3 scale{1.0f, 1.0f, 1.0f};
+        glm::vec3 skew{};
+        glm::vec4 perspective{};
+
+        glm::decompose(matrix, scale, rotation, translation, skew, perspective);
+
+        Transform result;
+        result.Position = Vector3(translation);
+        result.Rotation = Quaternion::FromGlm(rotation);
+        result.Scale = Vector3(scale);
+        return result;
+    }
+
+    SceneComponent::SceneComponent()    {
     }
 
     void SceneComponent::MarkRenderStateDirty()
@@ -50,19 +69,11 @@ namespace minEngine
         }
 
         m_Transform = inTransform;
-        for (SceneComponent* child : m_AttachChildren)
-        {
-            if (child != nullptr)
-            {
-                child->SetTransform(inTransform, teleport);
-            }
-        }
 
         m_bTransformDirty = true;
         m_PendingTeleportType = teleport;
         MarkRenderStateDirty();
     }
-
     void SceneComponent::SetPosition(const Vector3& position)
     {
         SetPosition(position, ETeleportType::ResetPhysics);
@@ -76,19 +87,11 @@ namespace minEngine
         }
 
         m_Transform.Position = position;
-        for (SceneComponent* child : m_AttachChildren)
-        {
-            if (child != nullptr)
-            {
-                child->SetPosition(position, teleport);
-            }
-        }
 
         m_bTransformDirty = true;
         m_PendingTeleportType = teleport;
         MarkRenderStateDirty();
     }
-
     void SceneComponent::Translate(const Vector3& delta)
     {
         Transform tempTransform = m_Transform;
@@ -109,19 +112,11 @@ namespace minEngine
         }
 
         m_Transform.SetRotation(rotation);
-        for (SceneComponent* child : m_AttachChildren)
-        {
-            if (child != nullptr)
-            {
-                child->SetRotation(rotation, teleport);
-            }
-        }
 
         m_bTransformDirty = true;
         m_PendingTeleportType = teleport;
         MarkRenderStateDirty();
     }
-
     void SceneComponent::SetRotationEulerDegrees(const Vector3& rotationEulerDegrees)
     {
         SetRotation(Quaternion::FromEulerDegreesXYZ(rotationEulerDegrees));
@@ -147,19 +142,11 @@ namespace minEngine
         }
 
         m_Transform.Scale = scale;
-        for (SceneComponent* child : m_AttachChildren)
-        {
-            if (child != nullptr)
-            {
-                child->SetScale(scale, teleport);
-            }
-        }
 
         m_bTransformDirty = true;
         m_PendingTeleportType = teleport;
         MarkRenderStateDirty();
     }
-
     void SceneComponent::ScaleBy(const Vector3& scaleFactor)
     {
         Transform tempTransform = m_Transform;
@@ -185,6 +172,35 @@ namespace minEngine
         return glm::normalize(rotationQuat * Vector3(0.0f, 1.0f, 0.0f));
     }
 
+    Matrix4 SceneComponent::GetWorldMatrix() const
+    {
+        const Matrix4 localMatrix = m_Transform.ToMatrix();
+        if (m_AttachParent == nullptr)
+        {
+            return localMatrix;
+        }
+
+        return m_AttachParent->GetWorldMatrix() * localMatrix;
+    }
+
+    Vector3 SceneComponent::GetWorldPosition() const
+    {
+        const Matrix4 worldMatrix = GetWorldMatrix();
+        return Vector3(worldMatrix[3]);
+    }
+
+    Vector3 SceneComponent::GetWorldForwardVector() const
+    {
+        const Matrix4 worldMatrix = GetWorldMatrix();
+        return glm::normalize(Vector3(worldMatrix[0]));
+    }
+
+    Vector3 SceneComponent::GetWorldUpVector() const
+    {
+        const Matrix4 worldMatrix = GetWorldMatrix();
+        return glm::normalize(Vector3(worldMatrix[1]));
+    }
+
     void SceneComponent::SetOwner(GameObject* inOwner)
     {
         Component::SetOwner(inOwner);
@@ -192,12 +208,12 @@ namespace minEngine
 
     bool SceneComponent::AttachToComponent(SceneComponent* inParent, AttachmentTransformRules attachRules)
     {
-        (void)attachRules;
-
         if (inParent == nullptr)
         {
             return false;
         }
+
+        const Matrix4 worldMatrixBeforeAttach = GetWorldMatrix();
 
         if (GetAttachParent() != nullptr)
         {
@@ -208,10 +224,15 @@ namespace minEngine
         SetAttachParent(inParent);
         inParent->m_AttachChildren.push_back(this);
 
+        if (attachRules == AttachmentTransformRules::KeepWorldTransform)
+        {
+            const Matrix4 parentWorldMatrix = inParent->GetWorldMatrix();
+            m_Transform = DecomposeMatrixToTransform(glm::inverse(parentWorldMatrix) * worldMatrixBeforeAttach);
+        }
+
         MarkRenderStateDirty();
         return true;
     }
-
     void SceneComponent::SetAttachParent(SceneComponent* inParent)
     {
         m_AttachParent = inParent;
@@ -219,6 +240,22 @@ namespace minEngine
 
     void SceneComponent::DetachFromParent(AttachmentTransformRules detachRules)
     {
-        (void)detachRules;
+        if (m_AttachParent == nullptr)
+        {
+            return;
+        }
+
+        const Matrix4 worldMatrixBeforeDetach = GetWorldMatrix();
+
+        auto& siblings = m_AttachParent->m_AttachChildren;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+        m_AttachParent = nullptr;
+
+        if (detachRules == AttachmentTransformRules::KeepWorldTransform)
+        {
+            m_Transform = DecomposeMatrixToTransform(worldMatrixBeforeDetach);
+        }
+
+        MarkRenderStateDirty();
     }
 }

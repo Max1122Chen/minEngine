@@ -1,11 +1,23 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-01 (render + debug-drawing merged to `master`)
+Last updated: 2026-09-01 (render + audio merged to `master`)
+
+### 2026-09-01 - Merge `feat/audio` → `master`（AUD-F01 MVP）
+- **Merged:** `IAudioBackend` + miniaudio、`AudioSystem`/`AudioComponent`/`AudioListenerComponent`、`AudioClip` asset、3D spatial sync。
+- **SceneComponent:** world matrix + attach/detach `KeepWorldTransform`（以 audio 分支为准）。
+- **Tests:** `audio-smoke` + existing `shader-compiler` suites both registered.
+- **Next:** merge `feat/launcher`.
 
 ### 2026-09-01 - Merge `feat/debug-drawing` → `master`（含 `feat/render` 全量）
 - **Merged:** ED-F01 S01–S07、RND-F05/F12–F14、RND-F11 DebugDrawing MVP、VK shadow playbook 等 27 commits。
 - **Docs:** 合并 ACTIVE_WORK / REGISTRY / PROGRESS_LOG；保留多轨 worktree 登记。
-- **Next:** merge `feat/audio`、`feat/launcher`；VK shadow 质量 handoff 继续在 master 推进。
+
+### 2026-09-01 - AUD-F01 Audio System MVP Done (`feat/audio`)
+- **Runtime:** `IAudioBackend` + `MiniaudioBackend`, `AudioClip`/`AudioVoice`/`AudioSystem`, `AudioComponent`/`AudioListenerComponent`, Bus mixer, 2D/3D spatial audio, lifecycle on scene unload.
+- **Fixes (post-initial MVP):** `SceneComponent` world transform + `AttachToComponent`/`DetachFromParent`; 3D sync via `GetWorldPosition()`; disable miniaudio default listener; listener enable/sync + tick order; attenuation model wired to backend.
+- **Tests:** `minEngineTests.exe test audio-smoke` PASSED.
+- **Manual:** Editor ear-test on `test.mescene` — spatialized audio audible with listener on camera.
+- **Deferred (AUD-F02+):** gentler default attenuation / `AttenuationModel` in Inspector, custom curves, Inspector live volume/pitch.
 
 ### 2026-08-31 - Multi-track backlog: LAUN / AUD / ANIM / UI / PHYS thaw (`master`)
 - Registered **LAUN-F01**, **AUD-F01**, **UI-F01**, **ANIM-F01**, **PHYS-F04**; **PHYS-F03** Deferred → Planned.

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-01 (render + debug-drawing merged to `master`)
+Last updated: 2026-09-01 (render + audio merged to `master`)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -52,10 +52,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 1. **LAUN-F01** — [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md)
 2. worktree：`minEngine-launcher`
 
-### Audio 轨（`feat/audio`）— **待 merge**
+### Audio 轨 — **Done（已合入 `master`）**
 
-1. **AUD-F01** — [Placeholder](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md)
-2. worktree：`minEngine-audio`
+1. ~~**AUD-F01**~~ — [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · [Impl](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_IMPLEMENTATION.md) · MVP Done（S01–S09 + S11）
+2. **SceneComponent:** world transform + attach/detach 规则以 audio 分支为准（`GetWorldMatrix` / `KeepWorldTransform`）
+3. **后续（AUD-F02+）：** 衰减默认值/模型 Inspector、自定义曲线、HRTF 等见 Design Out of scope
 
 ### Physics 轨（`feat/physics`）— **冷冻**
 

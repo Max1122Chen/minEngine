@@ -1,5 +1,7 @@
 #include "GameObject.h"
-#include "Core/Reflection/Reflection.h"
+
+#include "Runtime/Core/Reflection/Reflection.h"
+
 namespace minEngine
 {
     GameObject::GameObject()
@@ -37,6 +39,52 @@ namespace minEngine
         {
             m_RootComponent->Translate(delta);
         }
+    }
+
+    Component* GameObject::FindComponentByClassName(const std::string& componentClassName) const
+    {
+        if (componentClassName.empty())
+        {
+            return nullptr;
+        }
+
+        const Reflection::ReflectionSystem& reflection = Reflection::ReflectionSystem::Get();
+        const Reflection::MEClass* targetClass = reflection.FindClass(componentClassName);
+        if (targetClass == nullptr)
+        {
+            for (const std::shared_ptr<Component>& component : m_Components)
+            {
+                if (component == nullptr || component->GetClass() == nullptr)
+                {
+                    continue;
+                }
+
+                const std::string& className = component->GetClass()->GetName();
+                const size_t scopePos = className.rfind("::");
+                const std::string shortName =
+                    scopePos != std::string::npos ? className.substr(scopePos + 2) : className;
+                if (shortName == componentClassName)
+                {
+                    targetClass = component->GetClass();
+                    break;
+                }
+            }
+        }
+
+        if (targetClass == nullptr)
+        {
+            return nullptr;
+        }
+
+        for (const std::shared_ptr<Component>& component : m_Components)
+        {
+            if (component != nullptr && component->IsA(targetClass))
+            {
+                return component.get();
+            }
+        }
+
+        return nullptr;
     }
 
     Quaternion GameObject::GetRotation()

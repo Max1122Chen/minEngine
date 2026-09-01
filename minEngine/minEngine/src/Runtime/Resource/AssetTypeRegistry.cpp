@@ -7,6 +7,7 @@
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Resource/LuaScript.h"
+#include "Runtime/Resource/AudioClip.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 
 #include <algorithm>
@@ -99,6 +100,13 @@ namespace minEngine
             .Extensions = {".meenv"},
             .FileDialogFilterLabel = "Environment Map (*.meenv)"});
         m_AssetTypeIdByClass[EnvironmentMap::StaticClass()] = "EnvironmentMap";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "AudioClip",
+            .RuntimeClassName = GetClassName<AudioClip>(),
+            .Extensions = {".wav", ".ogg"},
+            .FileDialogFilterLabel = "Audio Clip (*.wav;*.ogg)"});
+        m_AssetTypeIdByClass[AudioClip::StaticClass()] = "AudioClip";
     }
 
     void AssetTypeRegistry::RegisterType(const AssetTypeDescriptor& descriptor)

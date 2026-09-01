@@ -57,6 +57,11 @@ namespace minEngine
         Vector3 GetRightVector() const;
         Vector3 GetUpVector() const;
 
+        Matrix4 GetWorldMatrix() const;
+        Vector3 GetWorldPosition() const;
+        Vector3 GetWorldForwardVector() const;
+        Vector3 GetWorldUpVector() const;
+
         virtual void SetOwner(GameObject* inOwner) override;
 
         // We don't implicitly attach to parent in constructor, because at that time.
@@ -66,6 +71,9 @@ namespace minEngine
         void SetAttachParent(SceneComponent* inParent);
         std::vector<SceneComponent*>& GetAttachChildren() { return m_AttachChildren; }
         void DetachFromParent(AttachmentTransformRules detachRules);
+
+    private:
+        static Transform DecomposeMatrixToTransform(const Matrix4& matrix);
 
     protected:
     

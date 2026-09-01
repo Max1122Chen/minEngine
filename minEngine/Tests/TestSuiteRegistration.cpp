@@ -21,6 +21,7 @@
 #include "Suites/PhysicsShapesTest.h"
 #include "Suites/DelegateTest.h"
 #include "Suites/ShaderCompilerTest.h"
+#include "Suites/AudioSmokeTest.h"
 
 namespace minEngine
 {
@@ -266,6 +267,21 @@ namespace minEngine
             }
         };
 
+        struct AudioSmokeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"audio-smoke", "Audio Smoke", false, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'audio-smoke'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("audio-smoke", context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -281,6 +297,7 @@ namespace minEngine
         using PhysicsShapesSuite = TypedTestSuite<PhysicsShapesTestSuiteTraits>;
         using DelegateSuite = TypedTestSuite<DelegateTestSuiteTraits>;
         using ShaderCompilerSuite = TypedTestSuite<ShaderCompilerTestSuiteTraits>;
+        using AudioSmokeSuite = TypedTestSuite<AudioSmokeTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -306,6 +323,7 @@ namespace minEngine
             registry.Register(PhysicsShapesSuite::Get());
             registry.Register(DelegateSuite::Get());
             registry.Register(ShaderCompilerSuite::Get());
+            registry.Register(AudioSmokeSuite::Get());
             s_Registered = true;
         }
     }

@@ -18,6 +18,7 @@ namespace minEngine
     class RenderSystem;
     class SceneManager;
     class PhysicsSystem;
+    class AudioSystem;
     class FileDialogService;
     class LuaScriptSystem;
 
@@ -66,6 +67,7 @@ namespace minEngine
         std::shared_ptr<RenderSystem> m_RenderSystem;
         std::shared_ptr<SceneManager> m_SceneManager;
         std::shared_ptr<PhysicsSystem> m_PhysicsSystem;
+        std::shared_ptr<AudioSystem> m_AudioSystem;
         std::shared_ptr<FileDialogService> m_FileDialogService;
         std::shared_ptr<LuaScriptSystem> m_LuaScriptSystem;
 

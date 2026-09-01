@@ -4,6 +4,7 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
+#include "Runtime/Function/Audio/AudioSystem.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -40,9 +41,17 @@ namespace minEngine
 
     void SceneManager::UnloadActiveScene()
     {
-        if (m_CurrentActiveScene && PhysicsSystem::HasInstance())
+        if (m_CurrentActiveScene)
         {
-            PhysicsSystem::Get().DestroyWorld(m_CurrentActiveScene.get());
+            if (AudioSystem::HasInstance())
+            {
+                AudioSystem::Get().OnSceneUnloaded(m_CurrentActiveScene.get());
+            }
+
+            if (PhysicsSystem::HasInstance())
+            {
+                PhysicsSystem::Get().DestroyWorld(m_CurrentActiveScene.get());
+            }
         }
 
         m_CurrentActiveScene.reset();

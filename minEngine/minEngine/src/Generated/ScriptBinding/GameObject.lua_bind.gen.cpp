@@ -14,7 +14,8 @@ namespace minEngine
             sol::no_constructor,
             "GetPosition", &minEngine::GameObject::GetPosition,
             "SetPosition", &minEngine::GameObject::SetPosition,
-            "Translate", &minEngine::GameObject::Translate
+            "Translate", &minEngine::GameObject::Translate,
+            "FindComponentByClassName", &minEngine::GameObject::FindComponentByClassName
         );
     }
 }
