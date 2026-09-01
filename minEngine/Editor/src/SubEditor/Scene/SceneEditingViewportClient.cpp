@@ -229,7 +229,7 @@ namespace minEngine
 
 
 
-        if (!IsFocused())
+        if (!IsFocused() || !IsHovered())
 
         {
 
@@ -523,7 +523,7 @@ namespace minEngine
 
 
 
-        if (requestBeginNavigate && IsHovered())
+        if (requestBeginNavigate && IsHovered() && IsFocused())
 
         {
 
@@ -566,8 +566,6 @@ namespace minEngine
         if (!m_IsNavigating)
 
         {
-
-            SyncStateFromRenderCamera(*viewportCamera);
 
             return;
 
@@ -621,7 +619,11 @@ namespace minEngine
 
         m_CameraPosition = camera.GetPosition();
 
-        m_CameraRotation = camera.GetRotationEulerDegrees();
+        const Vector3 euler = camera.GetRotationEulerDegrees();
+        // +X forward: yaw=Y, pitch=Z (roll unused).
+        m_CameraRotation.x = 0.0f;
+        m_CameraRotation.y = euler.y;
+        m_CameraRotation.z = euler.z;
 
     }
 
@@ -633,6 +635,7 @@ namespace minEngine
 
         camera.SetPosition(m_CameraPosition);
 
+        m_CameraRotation.x = 0.0f;
         camera.SetRotationEulerDegrees(m_CameraRotation);
 
         camera.UpdateViewMatrix();
@@ -661,7 +664,14 @@ namespace minEngine
 
         m_HasLastMousePositionSample = false;
 
-
+        if (m_IsNavigating)
+        {
+            RenderCamera* viewportCamera = GetSceneViewport().GetCamera();
+            if (viewportCamera != nullptr)
+            {
+                ApplyStateToRenderCamera(*viewportCamera);
+            }
+        }
 
         WindowSystem::Get().SetCursorVisible(!m_IsNavigating);
 
@@ -966,6 +976,8 @@ namespace minEngine
         m_CameraRotation.z -= mouseDelta.y * m_MouseSensitivity;
 
         m_CameraRotation.z = std::clamp(m_CameraRotation.z, m_MinPitch, m_MaxPitch);
+
+        m_CameraRotation.x = 0.0f;
 
         return true;
 

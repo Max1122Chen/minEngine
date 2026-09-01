@@ -45,6 +45,7 @@ namespace minEngine
         const IEditorInspectorSource* GetInspectorSource() const override { return &m_InspectorSource; }
 
         bool OpenAsset(const AssetMeta& meta) override;
+        bool CanOpenAsset(const AssetMeta& meta) const override;
         bool RouteViewportInput(EditorViewportClient& client) override;
 
         void InitializeComponentTypeNames();
@@ -61,6 +62,9 @@ namespace minEngine
         std::string GetGameObjectDisplayName(const GameObject& gameObject) const;
         std::string GetSelectedGameObjectName() const;
         bool LoadScene(IEditorContext& context, const std::string& sceneName);
+        bool OpenSceneByPath(IEditorContext& context, const std::string& projectRelativePath);
+        bool CreateNewSceneDocument(IEditorContext& context);
+        bool HasPersistedScenePath() const;
 
         bool ApplyRenameGameObject(uint64_t gameObjectId, const std::string& newName);
         void SubmitRenameGameObject(IEditorContext& context,
@@ -79,6 +83,8 @@ namespace minEngine
         void SubmitRemoveComponentFromGO(IEditorContext& context, GameObject& gameObject, Component& targetComponent);
 
         void SaveCurrentScene();
+        bool SaveCurrentScene(IEditorContext& context);
+        bool SaveCurrentSceneAs(IEditorContext& context);
         uint64_t ApplyAddEmptyGOToScene();
         void SubmitAddEmptyGOToScene(IEditorContext& context);
         bool ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform);

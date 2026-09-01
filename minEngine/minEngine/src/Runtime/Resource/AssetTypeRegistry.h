@@ -41,6 +41,7 @@ namespace minEngine
 
         std::vector<std::string> BuildFileDialogFilterSpec() const;
         std::vector<FileDialogFilter> BuildFileDialogFilters() const;
+        std::vector<FileDialogFilter> BuildFileDialogFiltersForAssetType(std::string_view assetTypeId) const;
         const std::vector<AssetTypeDescriptor>& GetDescriptors() const { return m_Descriptors; }
 
     private:

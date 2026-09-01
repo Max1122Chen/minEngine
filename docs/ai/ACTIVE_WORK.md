@@ -56,10 +56,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### C. `feat/editor` — ED-F02 Editor Workflow
 
-[Placeholder](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · **开干前 `git merge master`**
+[Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · **开干前 `git merge master`**
 
 | 切片 | 内容 | 优先级 |
 |------|------|--------|
+| S00 | Content Browser 双击 → `TryOpenAsset` | 高（接线） |
 | S01 | 打开 Scene（File/Open、切换、dirty） | 高 |
 | S02 | 创建资产（Scene、Material、…） | 高 |
 | S03 | Material Editor SkyBox 修复 | 中 |

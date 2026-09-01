@@ -4,6 +4,7 @@
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "Services/Inspector/InspectorModule.h"
+#include "Shell/EditorContextHelpers.h"
 #include "Shell/IEditorContext.h"
 #include "UI/Inspector/InspectorPreviewPresenter.h"
 #include "UI/Appearance/EditorTypographyScope.h"
@@ -12,6 +13,8 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Render/Material.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
@@ -25,6 +28,37 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        std::string TryMakeProjectRelativeAssetPath(const std::filesystem::path& absolutePath)
+        {
+            const std::filesystem::path contentRoot = PathRegistry::Get().GetProjectContentRoot();
+            if (contentRoot.empty())
+            {
+                return std::string();
+            }
+
+            std::error_code errorCode;
+            const std::filesystem::path normalizedAbsolute = absolutePath.lexically_normal();
+            const std::filesystem::path normalizedRoot = contentRoot.lexically_normal();
+            const std::filesystem::path relative =
+                std::filesystem::relative(normalizedAbsolute, normalizedRoot, errorCode);
+            if (errorCode)
+            {
+                return std::string();
+            }
+
+            return relative.generic_string();
+        }
+
+        void RefreshContentBrowserModel(IEditorContext& editor)
+        {
+            AssetTreeModel& model = editor.GetContentBrowser().GetModel();
+            model.RebuildDirectoryTree();
+            model.RebuildCurrentDirectoryAssetList();
+        }
+    }
+
     AssetWorkflowInspectorSource::AssetWorkflowInspectorSource(AssetWorkflowModule& owner)
         : m_Owner(owner)
     {
@@ -83,7 +117,122 @@ namespace minEngine
     {
         m_SelectedAssetPath.clear();
         m_ContentBrowserInspectorActive = false;
+        m_PendingProceed = nullptr;
+        m_PendingSave = nullptr;
+        m_PendingCheckKind = PendingUnsavedCheckKind::None;
+        m_UnsavedDialog.Close();
         m_Context = nullptr;
+    }
+
+    void AssetWorkflowModule::DrawModals()
+    {
+        const UnsavedChangesChoice choice = m_UnsavedDialog.Draw();
+        if (choice != UnsavedChangesChoice::None)
+        {
+            HandleUnsavedDialogChoice(choice);
+        }
+    }
+
+    bool AssetWorkflowModule::IsSceneDirty() const
+    {
+        const SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        return sceneEditor != nullptr && sceneEditor->IsSceneDirty();
+    }
+
+    bool AssetWorkflowModule::IsMaterialDirty() const
+    {
+        const MaterialEditor* materialEditor = GetMaterialEditor(m_Context);
+        return materialEditor != nullptr && materialEditor->GetSession().Dirty;
+    }
+
+    bool AssetWorkflowModule::SaveSceneDocument()
+    {
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        if (sceneEditor == nullptr)
+        {
+            return false;
+        }
+
+        return sceneEditor->SaveCurrentScene(*m_Context);
+    }
+
+    bool AssetWorkflowModule::SaveMaterialDocument()
+    {
+        MaterialEditor* materialEditor = GetMaterialEditor(m_Context);
+        if (materialEditor == nullptr)
+        {
+            return false;
+        }
+
+        return materialEditor->SaveActiveMaterial();
+    }
+
+    bool AssetWorkflowModule::RunWithUnsavedCheck(
+        const char* message,
+        std::function<bool()> isDirtyCallback,
+        std::function<bool()> saveCallback,
+        std::function<void()> proceedCallback)
+    {
+        if (!isDirtyCallback || !proceedCallback)
+        {
+            return false;
+        }
+
+        if (!isDirtyCallback())
+        {
+            proceedCallback();
+            return true;
+        }
+
+        if (m_UnsavedDialog.IsOpen())
+        {
+            return false;
+        }
+
+        m_PendingProceed = std::move(proceedCallback);
+        m_PendingSave = std::move(saveCallback);
+        m_UnsavedDialog.Open(message);
+        return false;
+    }
+
+    void AssetWorkflowModule::HandleUnsavedDialogChoice(UnsavedChangesChoice choice)
+    {
+        if (choice == UnsavedChangesChoice::Cancel || choice == UnsavedChangesChoice::None)
+        {
+            m_PendingProceed = nullptr;
+            m_PendingSave = nullptr;
+            m_PendingCheckKind = PendingUnsavedCheckKind::None;
+            return;
+        }
+
+        if (choice == UnsavedChangesChoice::Save)
+        {
+            if (!m_PendingSave || !m_PendingSave())
+            {
+                ME_CORE_WARN("AssetWorkflow: save failed; workflow action cancelled.");
+                m_PendingProceed = nullptr;
+                m_PendingSave = nullptr;
+                m_PendingCheckKind = PendingUnsavedCheckKind::None;
+                return;
+            }
+        }
+
+        if (m_PendingProceed)
+        {
+            m_PendingProceed();
+        }
+
+        m_PendingProceed = nullptr;
+        m_PendingSave = nullptr;
+        m_PendingCheckKind = PendingUnsavedCheckKind::None;
+    }
+
+    void AssetWorkflowModule::RefreshContentBrowser()
+    {
+        if (m_Context != nullptr)
+        {
+            RefreshContentBrowserModel(*m_Context);
+        }
     }
 
     bool AssetWorkflowModule::OpenAsset(const AssetMeta& meta)
@@ -112,6 +261,252 @@ namespace minEngine
         }
 
         return false;
+    }
+
+    bool AssetWorkflowModule::TryOpenAsset(const AssetMeta& meta)
+    {
+        if (!m_Context)
+        {
+            return false;
+        }
+
+        const bool openingMaterial = meta.AssetType == "Material";
+        const bool openingScene = meta.AssetType == "Scene";
+        if (!openingMaterial && !openingScene)
+        {
+            ME_CORE_WARN(
+                "AssetWorkflow: unsupported asset type '{}' for '{}'.",
+                meta.AssetType,
+                meta.AssetPath);
+            return false;
+        }
+
+        const char* message = openingMaterial
+            ? "Save changes to the current material before opening another asset?"
+            : "Save changes to the current scene before opening another scene?";
+
+        auto proceed = [this, meta]()
+        {
+            if (!OpenAsset(meta))
+            {
+                ME_CORE_WARN("AssetWorkflow: failed to open asset '{}'.", meta.AssetPath);
+                return;
+            }
+
+            SetSelectedAsset(&meta);
+        };
+
+        if (openingMaterial)
+        {
+            return RunWithUnsavedCheck(
+                message,
+                [this]() { return IsMaterialDirty(); },
+                [this]() { return SaveMaterialDocument(); },
+                std::move(proceed));
+        }
+
+        return RunWithUnsavedCheck(
+            message,
+            [this]() { return IsSceneDirty(); },
+            [this]() { return SaveSceneDocument(); },
+            std::move(proceed));
+    }
+
+    bool AssetWorkflowModule::TryOpenSceneByPath(const std::string& projectRelativePath)
+    {
+        if (!AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(projectRelativePath);
+        if (meta == nullptr)
+        {
+            ME_CORE_WARN("AssetWorkflow: scene asset '{}' is not registered.", projectRelativePath);
+            return false;
+        }
+
+        return TryOpenAsset(*meta);
+    }
+
+    void AssetWorkflowModule::OpenSceneDialog()
+    {
+        if (!m_Context)
+        {
+            return;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
+        if (projectContentRoot.empty())
+        {
+            ME_CORE_ERROR("OpenSceneDialog: ProjectContentRoot is not set.");
+            return;
+        }
+
+        FileDialogRequest request;
+        request.Title = "Open Scene";
+        request.Filters = AssetTypeRegistry::Get().BuildFileDialogFiltersForAssetType("Scene");
+        request.bAllowMultiple = false;
+        request.InitialDirectory = projectContentRoot;
+
+        const FileDialogResult dialogResult = m_Context->GetFileDialogService().OpenFiles(request);
+        if (dialogResult.bCancelled || dialogResult.Paths.empty())
+        {
+            return;
+        }
+
+        const std::string projectRelativePath = TryMakeProjectRelativeAssetPath(dialogResult.Paths.front());
+        if (projectRelativePath.empty())
+        {
+            ME_CORE_ERROR(
+                "OpenSceneDialog: selected file '{}' is outside project content root.",
+                dialogResult.Paths.front().string());
+            return;
+        }
+
+        TryOpenSceneByPath(projectRelativePath);
+    }
+
+    bool AssetWorkflowModule::TryNewScene()
+    {
+        if (!m_Context)
+        {
+            return false;
+        }
+
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        if (sceneEditor == nullptr)
+        {
+            return false;
+        }
+
+        return RunWithUnsavedCheck(
+            "Save changes to the current scene before creating a new scene?",
+            [this]() { return IsSceneDirty(); },
+            [this]() { return SaveSceneDocument(); },
+            [this, sceneEditor]()
+            {
+                if (!sceneEditor->CreateNewSceneDocument(*m_Context))
+                {
+                    ME_CORE_WARN("AssetWorkflow: failed to create a new scene document.");
+                    return;
+                }
+
+                m_Context->ActivateSubModule(SceneEditor::kModuleId);
+            });
+    }
+
+    bool AssetWorkflowModule::TryCreateSceneInDirectory(std::string_view directoryRel)
+    {
+        if (!m_Context || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const std::string directory = std::string(directoryRel);
+        return RunWithUnsavedCheck(
+            "Save changes to the current scene before creating a new scene?",
+            [this]() { return IsSceneDirty(); },
+            [this]() { return SaveSceneDocument(); },
+            [this, directory]()
+            {
+                std::shared_ptr<Scene> createdScene =
+                    AssetManager::Get().CreateAsset<Scene>("NewScene", directory);
+                if (!createdScene)
+                {
+                    return;
+                }
+
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdScene->GetGuid());
+                if (meta == nullptr)
+                {
+                    ME_CORE_WARN("AssetWorkflow: created scene has no registry meta.");
+                    return;
+                }
+
+                RefreshContentBrowser();
+                if (!OpenAsset(*meta))
+                {
+                    ME_CORE_WARN("AssetWorkflow: failed to open created scene '{}'.", meta->AssetPath);
+                    return;
+                }
+
+                SetSelectedAsset(meta);
+            });
+    }
+
+    bool AssetWorkflowModule::TryCreateMaterialInDirectory(std::string_view directoryRel)
+    {
+        if (!m_Context || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const std::string directory = std::string(directoryRel);
+        return RunWithUnsavedCheck(
+            "Save changes to the current material before creating a new material?",
+            [this]() { return IsMaterialDirty(); },
+            [this]() { return SaveMaterialDocument(); },
+            [this, directory]()
+            {
+                std::shared_ptr<Material> createdMaterial =
+                    AssetManager::Get().CreateAsset<Material>("NewMaterial", directory);
+                if (!createdMaterial)
+                {
+                    return;
+                }
+
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdMaterial->GetGuid());
+                if (meta == nullptr)
+                {
+                    ME_CORE_WARN("AssetWorkflow: created material has no registry meta.");
+                    return;
+                }
+
+                RefreshContentBrowser();
+                if (!OpenAsset(*meta))
+                {
+                    ME_CORE_WARN("AssetWorkflow: failed to open created material '{}'.", meta->AssetPath);
+                    return;
+                }
+
+                SetSelectedAsset(meta);
+            });
+    }
+
+    bool AssetWorkflowModule::TryRequestExit(IEditorContext& context)
+    {
+        const bool sceneDirty = IsSceneDirty();
+        const bool materialDirty = IsMaterialDirty();
+        if (!sceneDirty && !materialDirty)
+        {
+            return true;
+        }
+
+        const char* message = sceneDirty && materialDirty
+            ? "Save scene and material changes before exiting?"
+            : sceneDirty
+                ? "Save scene changes before exiting?"
+                : "Save material changes before exiting?";
+
+        return RunWithUnsavedCheck(
+            message,
+            [sceneDirty, materialDirty]() { return sceneDirty || materialDirty; },
+            [this]()
+            {
+                bool saved = true;
+                if (IsSceneDirty())
+                {
+                    saved = SaveSceneDocument() && saved;
+                }
+                if (IsMaterialDirty())
+                {
+                    saved = SaveMaterialDocument() && saved;
+                }
+                return saved;
+            },
+            [&context]() { context.ConfirmExit(); });
     }
 
     void AssetWorkflowModule::ImportAssetDialog(std::string_view destDirectoryRel)

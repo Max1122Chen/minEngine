@@ -150,16 +150,10 @@ namespace minEngine
             return SaveAsset_Impl<T>(*meta, asset);
         }
 
-    private:
         template<typename T>
-        std::shared_ptr<T> CreateAsset(const std::string& name, const std::string& directory)
-        {
-            static_assert(AlwaysFalse<T>::value, "CreateAsset<T> is not implemented for this type T");
-            (void)name;
-            (void)directory;
-            return nullptr;
-        }
+        std::shared_ptr<T> CreateAsset(const std::string& assetName, const std::string& directoryRel);
 
+    private:
         template<typename T>
         std::shared_ptr<T> RemoveAsset(const std::string& path)
         {
@@ -245,4 +239,13 @@ namespace minEngine
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
     template<>
     bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const;
+
+    template<>
+    std::shared_ptr<Scene> AssetManager::CreateAsset<Scene>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<Material> AssetManager::CreateAsset<Material>(
+        const std::string& assetName,
+        const std::string& directoryRel);
 }

@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-08-31（RND-F14 Done；BUG-013/010/011 closed；TD-025 Done）
+Last updated: 2026-09-01（TD-026 Open：缩略图 Scene3D 断开主 RenderSystem）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -33,6 +33,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-023 | Scene pass ordering / clear contract still fragile after VK smoke | RND / ForwardRenderer | **Medium** | Open | `RND-F05` S07d / `ED-F01` | BasePass clears only when Sky off; Sky `NeedRenderPass` must still enter to clear when draw prep fails. 2026-08-25: fixed `NeedRenderPass`→`m_ShouldEnterPass` + Vulkan `LoadEngineRenderingAssets` (was OpenGL-only). Broader ordering still fragile. |
 | TD-024 | Vulkan frame sync leftovers after S07d smoke | VulkanRHI | **Medium** | Open | `RND-F05` S07d / `ED-F01` | Present semaphore reuse still triggers validation on fast shutdown; `RHICmdGenerateMips()` remains VK no-op. 2026-08-25: removed S07d DrawIndexed diagnostic logs; HDR bake DEVICE_LOST fixed (immediate submit before PSO destroy + cube layout defer). |
 | TD-025 | Clip-space / texture-origin policy hardcoded to `IsVulkan()` | RND / RHI | **Medium** | Done | [RND-TD025](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md) · ED-F01 | 2026-08-28: `RHIClipSpaceCapabilities` + shadow scheme A landed；2026-08-31 user visual verify with RND-F14 batch |
+| TD-026 | Asset Scene3D thumbnails share main ForwardRenderer RDG color | ED / RND | **Medium** | Open | ED-F02 · `AssetThumbnailService` | 2026-09-01: disabled `SubmitSceneDraw` for Material/StaticMesh thumbnails (icon fallback). Future: dedicated thumbnail renderer / isolated graph + stable ImGui texture pin. |
 
 ---
 

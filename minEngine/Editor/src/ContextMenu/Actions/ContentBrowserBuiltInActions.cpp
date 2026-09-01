@@ -114,12 +114,100 @@ namespace minEngine
                 RefreshContentBrowser(editor);
             }
         };
+
+        class ContentBrowserCreateSceneAction final : public ContentBrowserScopedAction
+        {
+        public:
+            EditorActionId GetId() const override { return EditorActionId::OpenAsset; }
+            const char* GetLabel(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "Scene";
+            }
+            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Create; }
+            int GetSortOrder() const override { return 10; }
+
+            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                if (cbCtx == nullptr)
+                {
+                    return false;
+                }
+
+                return cbCtx->HitKind == ContentBrowserHitKind::TreeDirectory
+                    || cbCtx->HitKind == ContentBrowserHitKind::ListBackground;
+            }
+
+            bool CanExecute(const EditorMenuContext& ctx) const override
+            {
+                return IsVisibleInMenu(ctx);
+            }
+
+            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "";
+            }
+
+            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                const std::string_view destDir = cbCtx != nullptr ? cbCtx->CurrentDirectoryRel : std::string_view{};
+                editor.GetAssetWorkflow().TryCreateSceneInDirectory(destDir);
+            }
+        };
+
+        class ContentBrowserCreateMaterialAction final : public ContentBrowserScopedAction
+        {
+        public:
+            EditorActionId GetId() const override { return EditorActionId::CreateEmptyGameObject; }
+            const char* GetLabel(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "Material";
+            }
+            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Create; }
+            int GetSortOrder() const override { return 20; }
+
+            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                if (cbCtx == nullptr)
+                {
+                    return false;
+                }
+
+                return cbCtx->HitKind == ContentBrowserHitKind::TreeDirectory
+                    || cbCtx->HitKind == ContentBrowserHitKind::ListBackground;
+            }
+
+            bool CanExecute(const EditorMenuContext& ctx) const override
+            {
+                return IsVisibleInMenu(ctx);
+            }
+
+            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "";
+            }
+
+            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                const std::string_view destDir = cbCtx != nullptr ? cbCtx->CurrentDirectoryRel : std::string_view{};
+                editor.GetAssetWorkflow().TryCreateMaterialInDirectory(destDir);
+            }
+        };
     }
 
     void RegisterContentBrowserBuiltInActions(EditorActionRegistry& registry)
     {
         registry.Register(std::make_unique<ContentBrowserImportAction>());
         registry.Register(std::make_unique<ContentBrowserRefreshAction>());
+        registry.Register(std::make_unique<ContentBrowserCreateSceneAction>());
+        registry.Register(std::make_unique<ContentBrowserCreateMaterialAction>());
     }
 
 } // namespace minEngine

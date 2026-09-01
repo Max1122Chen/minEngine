@@ -293,4 +293,18 @@ namespace minEngine
 
         return filters;
     }
+
+    std::vector<FileDialogFilter> AssetTypeRegistry::BuildFileDialogFiltersForAssetType(
+        std::string_view assetTypeId) const
+    {
+        const AssetTypeDescriptor* descriptor = FindByAssetTypeId(assetTypeId);
+        if (descriptor == nullptr)
+        {
+            return {};
+        }
+
+        return {FileDialogFilter{
+            .Label = descriptor->FileDialogFilterLabel,
+            .ExtensionSpec = BuildExtensionSpec(descriptor->Extensions)}};
+    }
 }

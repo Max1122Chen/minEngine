@@ -659,10 +659,7 @@ namespace minEngine
 
     void ContentBrowserWindow::ActivateAssetFromBrowser(const AssetMeta& assetMeta)
     {
-        ME_CORE_INFO(
-            "ContentBrowser: activate asset '{}' (type: '{}') - editor routing is deferred.",
-            assetMeta.AssetPath,
-            assetMeta.AssetType);
+        m_Context.GetAssetWorkflow().TryOpenAsset(assetMeta);
     }
 
     void ContentBrowserWindow::SelectAsset(const AssetMeta* meta)

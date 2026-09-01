@@ -359,8 +359,8 @@ namespace minEngine
                 && passed;
 
             passed = AssertAllContains(result.FullVertexShader, {
-                { "layout (std140, binding = 0) uniform PerFrameData", "vertex PerFrameData UBO" },
-                { "layout (std140, binding = 2) uniform PerObject", "vertex PerObject UBO" },
+                { "layout (std140, set = 0, binding = 0) uniform PerFrameData", "vertex PerFrameData UBO" },
+                { "layout (std140, set = 0, binding = 2) uniform PerObject", "vertex PerObject UBO" },
                 { "mat4 u_Model", "vertex u_Model in PerObject UBO" },
                 { "ViewProj * u_Model * vec4(a_Position, 1.0)", "vertex standard transform" },
                 { "} MaterialParameters;", "vertex MaterialParameters struct global" },

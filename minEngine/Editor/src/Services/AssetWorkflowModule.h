@@ -3,7 +3,9 @@
 #include "Core.h"
 #include "Shell/EditorServiceModule.h"
 #include "Shell/IEditorInspectorSource.h"
+#include "UI/Dialogs/EditorUnsavedChangesDialog.h"
 
+#include <functional>
 #include <string>
 
 namespace minEngine
@@ -33,6 +35,16 @@ namespace minEngine
         void Register(IEditorContext& context) override;
         void Shutdown() override;
 
+        void DrawModals();
+
+        bool TryOpenAsset(const AssetMeta& meta);
+        bool TryOpenSceneByPath(const std::string& projectRelativePath);
+        void OpenSceneDialog();
+        bool TryNewScene();
+        bool TryCreateSceneInDirectory(std::string_view directoryRel);
+        bool TryCreateMaterialInDirectory(std::string_view directoryRel);
+        bool TryRequestExit(IEditorContext& context);
+
         bool OpenAsset(const AssetMeta& meta);
         void ImportAssetDialog(std::string_view destDirectoryRel = {});
 
@@ -50,9 +62,36 @@ namespace minEngine
         IEditorContext* GetEditorContext() const { return m_Context; }
 
     private:
+        enum class PendingUnsavedCheckKind
+        {
+            None,
+            OpenScene,
+            OpenMaterial,
+            Exit
+        };
+
+        bool IsSceneDirty() const;
+        bool IsMaterialDirty() const;
+        bool SaveSceneDocument();
+        bool SaveMaterialDocument();
+
+        bool RunWithUnsavedCheck(
+            const char* message,
+            std::function<bool()> isDirtyCallback,
+            std::function<bool()> saveCallback,
+            std::function<void()> proceedCallback);
+
+        void HandleUnsavedDialogChoice(UnsavedChangesChoice choice);
+        void RefreshContentBrowser();
+
         IEditorContext* m_Context = nullptr;
         std::string m_SelectedAssetPath;
         bool m_ContentBrowserInspectorActive = false;
         AssetWorkflowInspectorSource m_InspectorSource{*this};
+
+        EditorUnsavedChangesDialog m_UnsavedDialog;
+        std::function<void()> m_PendingProceed;
+        std::function<bool()> m_PendingSave;
+        PendingUnsavedCheckKind m_PendingCheckKind = PendingUnsavedCheckKind::None;
     };
 }

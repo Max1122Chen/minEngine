@@ -105,7 +105,7 @@ namespace minEngine
 
         materialEditor->GetPreviewScene().RefreshRenderScene();
 
-        const SceneDrawFlags flags = SceneDrawFlags::EnablePostProcess;
+        const SceneDrawFlags flags = SceneDrawFlags::EnableSkyBox | SceneDrawFlags::EnablePostProcess;
         SubmitObservedScene(flags);
     }
 
