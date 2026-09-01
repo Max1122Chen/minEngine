@@ -8,11 +8,11 @@
     "minEngine::LuaComponent"
   ],
   "generated_sources": [
-    "D:/Dev/GitRepo/minEngine-audio/minEngine/minEngine/src/Generated/ScriptBinding/AudioComponent.lua_bind.gen.cpp",
-    "D:/Dev/GitRepo/minEngine-audio/minEngine/minEngine/src/Generated/ScriptBinding/Component.lua_bind.gen.cpp",
-    "D:/Dev/GitRepo/minEngine-audio/minEngine/minEngine/src/Generated/ScriptBinding/GameObject.lua_bind.gen.cpp",
-    "D:/Dev/GitRepo/minEngine-audio/minEngine/minEngine/src/Generated/ScriptBinding/LuaComponent.lua_bind.gen.cpp",
-    "D:/Dev/GitRepo/minEngine-audio/minEngine/minEngine/src/Generated/ScriptBinding/ScriptBindingRegister.gen.cpp",
-    "D:/Dev/GitRepo/minEngine-audio/minEngine/minEngine/src/Generated/ScriptBinding/Transform.lua_bind.gen.cpp"
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/AudioComponent.lua_bind.gen.cpp",
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/Component.lua_bind.gen.cpp",
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/GameObject.lua_bind.gen.cpp",
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/LuaComponent.lua_bind.gen.cpp",
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/ScriptBindingRegister.gen.cpp",
+    "D:/Dev/GitRepo/minEngine/minEngine/minEngine/src/Generated/ScriptBinding/Transform.lua_bind.gen.cpp"
   ]
 }

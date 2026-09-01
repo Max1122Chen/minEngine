@@ -11,6 +11,7 @@
 #include "Runtime/Function/Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
+#include "Runtime/Function/Framework/Components/PointLightComponent.h"
 #include "Runtime/Function/Framework/Components/SpotLightComponent.h"
 #include "Runtime/Function/Render/LightSceneProxies/DirectionalLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
@@ -148,6 +149,13 @@ namespace minEngine
                 auto* dirProxy = static_cast<DirectionalLightSceneProxy*>(sceneProxy);
                 dirProxy->m_Direction = dirComp->GetDirection();
             }
+            else if(lightComponent->GetLightType() == LightType::Point)
+            {
+                auto* pointComp = static_cast<PointLightComponent*>(lightComponent);
+                auto* pointProxy = static_cast<PointLightSceneProxy*>(sceneProxy);
+                pointProxy->m_AttenuationRadius = pointComp->GetAttenuationRadius();
+                pointProxy->m_AttenuationFalloff = pointComp->GetAttenuationFalloff();
+            }
             else if(lightComponent->GetLightType() == LightType::Spot)
             {
                 auto* spotComp = static_cast<SpotLightComponent*>(lightComponent);
@@ -155,6 +163,8 @@ namespace minEngine
                 spotProxy->m_Direction = spotComp->GetDirection();
                 spotProxy->m_InnerConeAngle = spotComp->GetInnerConeAngle();
                 spotProxy->m_OuterConeAngle = spotComp->GetOuterConeAngle();
+                spotProxy->m_AttenuationRadius = spotComp->GetAttenuationRadius();
+                spotProxy->m_AttenuationFalloff = spotComp->GetAttenuationFalloff();
             }
         }
     }

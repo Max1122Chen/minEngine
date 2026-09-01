@@ -45,9 +45,9 @@ struct DirectionalLightData
 
 struct PointLightData
 {
-    vec4 Position;  // w for radius
-    vec4 Color;     // w for intensity
-    vec4 Params;    // w for shadow map index
+    vec4 Position;  // xyz = position; w = attenuation radius
+    vec4 Color;     // w = intensity
+    vec4 Params;    // x = falloff exponent; z = shadow far plane; w = shadow map index
 };
 
 struct SpotLightData
@@ -280,6 +280,44 @@ float SamplePointShadowPCF(vec3 fragPos, vec3 lightPos, float farPlane, int shad
 float SamplePointShadowPCF_Box(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
 float SamplePointShadowPCF_Poisson(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
 float SamplePointShadowPCF_PoissonPCSS(vec3 fragPos, vec3 lightPos, float farPlane, int shadowIndex, float bias);
+
+float PointLightAttenuation(vec3 fragPos, PointLightData light)
+{
+    float radius = max(light.Position.w, 1e-4);
+    float dist = length(light.Position.xyz - fragPos);
+    if (dist >= radius)
+    {
+        return 0.0;
+    }
+
+    float normalizedDistance = dist / radius;
+    return pow(clamp(1.0 - normalizedDistance, 0.0, 1.0), max(light.Params.x, 0.0));
+}
+
+float PointLightShadowFactor(vec3 fragPos, vec3 normal, PointLightData light, int shadowIndex)
+{
+    if (shadowIndex < 0 || shadowIndex >= MAX_POINT_SHADOW_MAPS)
+    {
+        return 0.0;
+    }
+
+    if (PointLightAttenuation(fragPos, light) <= 0.0)
+    {
+        return 0.0;
+    }
+
+    float farPlane = max(light.Params.z, 1e-4);
+    float dist = length(light.Position.xyz - fragPos);
+    if (dist / farPlane > 1.0 + 1e-4)
+    {
+        return 0.0;
+    }
+
+    vec3 lightDir = normalize(light.Position.xyz - fragPos);
+    float ndotl = max(dot(normalize(normal), lightDir), 0.0);
+    float bias = max(0.002, 0.01 * (1.0 - ndotl));
+    return SamplePointShadowPCF(fragPos, light.Position.xyz, farPlane, shadowIndex, bias);
+}
 
 float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
@@ -719,10 +757,7 @@ float ComputeMaterialSceneShadowVisibility(vec3 normal, vec3 fragPos, vec4 fragP
         {
             continue;
         }
-        vec3 lightDir = normalize(PointLights[i].Position.xyz - fragPos);
-        float ndotl = max(dot(normalize(normal), lightDir), 0.0);
-        float bias = max(0.002, 0.01 * (1.0 - ndotl));
-        float shadow = SamplePointShadowPCF(fragPos, PointLights[i].Position.xyz, PointLights[i].Params.z, shadowIndex, bias);
+        float shadow = PointLightShadowFactor(fragPos, normal, PointLights[i], shadowIndex);
         visibility *= (1.0 - shadow);
     }
     for (uint i = 0u; i < SpotLightsCount && i < 16u; ++i)

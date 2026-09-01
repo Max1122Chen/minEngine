@@ -84,18 +84,14 @@ vec3 CalcPointLightGraph(
     float shininess = MaterialPhongShininessFromRoughness(roughness);
     vec3 lightDir = normalize(light.Position.xyz - fragPos);
     vec3 lightColor = light.Color.rgb * light.Color.w;
+    float att = PointLightAttenuation(fragPos, light);
 
     float shadow = 0.0;
     int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
     {
-        float ndotl = max(dot(normalize(normal), lightDir), 0.0);
-        float bias = max(0.002, 0.01 * (1.0 - ndotl));
-        shadow = SamplePointShadowPCF(fragPos, light.Position.xyz, light.Params.z, shadowIndex, bias);
+        shadow = PointLightShadowFactor(fragPos, normal, light, shadowIndex);
     }
-
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * lightColor * albedo;
 
     float diff = max(dot(normal, lightDir), 0.0);
 
@@ -105,7 +101,7 @@ vec3 CalcPointLightGraph(
 
     vec3 diffuse = diff * lightColor * albedo;
     vec3 specular = spec * lightColor * specularColor;
-    return ambient + (diffuse + specular) * (1.0 - shadow);
+    return (diffuse + specular) * (1.0 - shadow) * att;
 }
 
 vec3 CalcSpotLightGraph(

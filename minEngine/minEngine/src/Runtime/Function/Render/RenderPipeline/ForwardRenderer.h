@@ -58,9 +58,9 @@ namespace minEngine
 
     struct PointLightData
     {
-        Vector4 Position;  // w component can be used for radius. we dont have radius for point light, but we can use it to do some distance-based attenuation in shader
-        Vector4 Color;     // w component can be used for intensity
-        Vector4 Params;    // w component can be used for shadow map index 
+        Vector4 Position;  // xyz = position; w = attenuation radius
+        Vector4 Color;     // w = intensity
+        Vector4 Params;    // x = falloff exponent; z = shadow far plane; w = shadow map index
     };
 
     struct SpotLightData

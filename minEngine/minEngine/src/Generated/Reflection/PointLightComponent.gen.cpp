@@ -4,4 +4,6 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::PointLightComponent, GReflectionClassRegister_PointLightComponent_a15aac01)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::LightComponent)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::PointLightComponent, m_AttenuationRadius, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::PointLightComponent, m_AttenuationFalloff, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::PointLightComponent)

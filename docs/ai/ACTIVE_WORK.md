@@ -40,8 +40,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ### A. `master` — 小修复（直接 commit）
 
-1. **[BUG-RENDER-014](./bugs/BUG-RENDER-014.md)** — 点光源阴影：超出影响半径后全屏阴影衰减；补 **attenuation + radius** 配置（`PointLightComponent` + shader）
-2. **PHYS-F04** — Collider Extent 轴 convention、**Scale 对 extent 语义**（world half-extent vs local）；[Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md)
+1. ~~**[BUG-RENDER-014](./bugs/BUG-RENDER-014.md)**~~ — 点光半径/衰减 + 阴影截止（**待 commit**）；[Design](./Render/BUG-RENDER-014_POINT_LIGHT_RADIUS_ATTENUATION_DESIGN.md)
+2. **PHYS-F04** — Collider 尺寸与 Transform Scale **完全独立**；[Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md)
 3. （可选）[BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — Add `BoxColliderComponent` 间歇崩溃
 
 **验证：** `verify.ps1` + `physics-shapes` / `physics-smoke`；Editor GL 点光场景目视。

@@ -721,8 +721,10 @@ namespace minEngine
             {
                 continue;
             }
-            lightsData.PointLights[pointLightCount].Position = Vector4(pointLightProxy->m_Position, 1.0f);
-            lightsData.PointLights[pointLightCount].Color = Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
+            lightsData.PointLights[pointLightCount].Position =
+                Vector4(pointLightProxy->m_Position, pointLightProxy->m_AttenuationRadius);
+            lightsData.PointLights[pointLightCount].Color =
+                Vector4(pointLightProxy->m_LightColor, pointLightProxy->m_Intensity);
             int shadowIndex = -1;
             auto pointShadowIt = ctx.PointShadowHandleMap.find(pointLightProxy);
             if (pointShadowIt != ctx.PointShadowHandleMap.end() && pointShadowIt->second.IsValid()
@@ -734,7 +736,15 @@ namespace minEngine
                     shadowIndex = -1;
                 }
             }
-            lightsData.PointLights[pointLightCount].Params = Vector4(0.0f, 0.0f, kPointShadowFar, static_cast<float>(shadowIndex));
+            const float shadowFar = glm::clamp(
+                pointLightProxy->m_AttenuationRadius,
+                kPointShadowNear + 0.01f,
+                kPointShadowFar);
+            lightsData.PointLights[pointLightCount].Params = Vector4(
+                pointLightProxy->m_AttenuationFalloff,
+                0.0f,
+                shadowFar,
+                static_cast<float>(shadowIndex));
             pointLightCount++;
         }
         lightsData.PointLightsCount = pointLightCount;
@@ -1295,8 +1305,12 @@ namespace minEngine
         }
 
         const Vector3 lightPos = lightProxy->m_Position;
+        const float shadowFar = glm::clamp(
+            lightProxy->m_AttenuationRadius,
+            kPointShadowNear + 0.01f,
+            kPointShadowFar);
         Matrix4 lightProj =
-            RHIClipSpace::MakePerspective(glm::radians(90.0f), 1.0f, kPointShadowNear, kPointShadowFar);
+            RHIClipSpace::MakePerspective(glm::radians(90.0f), 1.0f, kPointShadowNear, shadowFar);
 
         const Vector3 directions[6] = {
             Vector3(1.0f, 0.0f, 0.0f),
@@ -1324,7 +1338,7 @@ namespace minEngine
             command.Handle = handle;
             command.Target.TargetFace = face;
             command.LightPosition = lightPos;
-            command.FarPlane = kPointShadowFar;
+            command.FarPlane = shadowFar;
 
             Matrix4 lightView = glm::lookAt(lightPos, lightPos + directions[face], ups[face]);
             command.ViewProj = lightProj * lightView;

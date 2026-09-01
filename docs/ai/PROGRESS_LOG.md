@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-01 (render + audio + launcher merged to `master`)
+Last updated: 2026-09-01 (BUG-RENDER-014 pending commit)
+
+### 2026-09-01 - BUG-RENDER-014: point light radius, attenuation, shadow cutoff (pending commit)
+- **Runtime:** `PointLightComponent` `m_AttenuationRadius` / `m_AttenuationFalloff`; UBO `Position.w` + `Params.x`; shadow pass far = radius (cap 50).
+- **Shaders:** `PointLightAttenuation` / `PointLightShadowFactor`; Phong 移除 per-point-light ambient；PBR 点光衰减 + 阴影 mask。
+- **Scene:** `test.mescene` 补点光/聚光衰减字段。
+- **Docs:** Design `BUG-RENDER-014_POINT_LIGHT_RADIUS_ATTENUATION_DESIGN.md`; Bug record updated。
+- **Verified:** `shader-compiler`, `physics-shapes` / `physics-smoke` / `physics-sync`；Editor 目视待确认。
 
 ### 2026-09-01 - Merge `feat/launcher` → `master`（LAUN-F01）
 - **Merged:** `Launcher/` Rust workspace — CLI (`minlauncher`) + Tauri GUI (`minlauncher-app`).

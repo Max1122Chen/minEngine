@@ -10,6 +10,8 @@ namespace minEngine
     public:
         PointLightSceneProxy() = default;
         virtual ~PointLightSceneProxy() = default;
-        
+
+        float m_AttenuationRadius{10.0f};
+        float m_AttenuationFalloff{2.0f};
     };
 }

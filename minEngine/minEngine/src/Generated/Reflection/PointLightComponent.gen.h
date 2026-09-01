@@ -4,6 +4,8 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::PointLightComponent)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::PointLightComponent, m_AttenuationRadius)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::PointLightComponent, m_AttenuationFalloff)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::PointLightComponent, GReflectionClassRegister_PointLightComponent_a15aac01)

@@ -135,18 +135,17 @@ vec3 CalcPointLightPBR(
     vec3 V = normalize(viewDir);
     vec3 lightDir = normalize(light.Position.xyz - fragPos);
     vec3 lightColor = light.Color.rgb * light.Color.w;
+    float att = PointLightAttenuation(fragPos, light);
 
     float shadow = 0.0;
     int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
     {
-        float ndotl = max(dot(N, lightDir), 0.0);
-        float bias = max(0.002, 0.01 * (1.0 - ndotl));
-        shadow = SamplePointShadowPCF(fragPos, light.Position.xyz, light.Params.z, shadowIndex, bias);
+        shadow = PointLightShadowFactor(fragPos, normal, light, shadowIndex);
     }
 
     vec3 radiance = MaterialPBRDirectRadiance(N, V, lightDir, lightColor, albedo, metallic, roughness);
-    return radiance * (1.0 - shadow);
+    return radiance * (1.0 - shadow) * att;
 }
 
 vec3 CalcSpotLightPBR(
