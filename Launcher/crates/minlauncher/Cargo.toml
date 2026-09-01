@@ -1,0 +1,15 @@
+[package]
+name = "minlauncher"
+description = "minEngine Launcher CLI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "minlauncher"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+minlauncher-core = { path = "../minlauncher-core" }

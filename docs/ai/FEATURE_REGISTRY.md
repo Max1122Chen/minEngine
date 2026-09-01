@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-01（render + audio merged to `master`）
+Last updated: 2026-09-01（render + audio + launcher merged to `master`）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -43,7 +43,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F09` | Render Binding / RHI hygiene sweep（Set0/Material cache、PSO Apply、Clear、残留） | **Done** | — | [Design](./Render/RND-F09_RHI_HYGIENE_SWEEP_DESIGN.md) · [Impl](./Render/RND-F09_RHI_HYGIENE_SWEEP_IMPLEMENTATION.md) · TD-013/014/016/017/018/019（RND 号段）；**不含** EnvMap Bake |
 | `RND-F10` | EnvironmentMap Asset + Sky/IBL 接线；现代 Bake | **Done** | — | [Design](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_DESIGN.md) · [Impl](./Render/RND-F10_ENVIRONMENT_MAP_ASSET_IMPLEMENTATION.md) · TD-015 Done；S06→TD-021 |
 | `RND-F11` | DebugDrawing（线/点/盒 wireframe 通道；Editor collider 示范） | **Done** | — | [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · [Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md) · MVP S01–S02 |
-| `LAUN-F01` | Engine Launcher（工程选择、最近项目、启动 Editor） | **Planned** | — | [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · `feat/launcher` · worktree `minEngine-launcher` |
+| `LAUN-F01` | Engine Launcher（CLI + Tauri GUI） | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · [Impl](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_IMPLEMENTATION.md) · `Launcher/` |
 | `AUD-F01` | Audio system（资产、播放、Scene 集成 MVP） | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) · [Impl](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_IMPLEMENTATION.md) · MVP S01–S09 + S11 |
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/ui-anim` |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui-anim` |
@@ -65,7 +65,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ASSET` | F01 | Asset pipeline extensions |
 | `ED` | F02 | F01 Vulkan Editor Parity In Progress |
 | `RND` | F15 | F11 Done；**Persistent debug / Editor toggle 待新 Feature 登记** |
-| `LAUN` | F02 | F01 Launcher 登记 |
+| `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | F02 | F01 占位 |
 | `UI` | F02 | F01 占位 |

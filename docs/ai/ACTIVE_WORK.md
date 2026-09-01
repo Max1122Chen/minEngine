@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-01 (render + audio merged to `master`)
+Last updated: 2026-09-01 (render + audio + launcher merged to `master`)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -47,10 +47,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
    - **Deferred:** contact/trace 可视化 → Physics 或后续消费 Feature；toggle / Persistent → **新 Feature**
    - **Open:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent Add `BoxColliderComponent` crash（Physics/Editor，非 RND-F11 阻塞）
 
-### Launcher 轨（`feat/launcher`）— **待 merge**
+### Launcher 轨 — **Done（已合入 `master`）**
 
-1. **LAUN-F01** — [Placeholder](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md)
-2. worktree：`minEngine-launcher`
+1. ~~**LAUN-F01**~~ — [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) · [Impl](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_IMPLEMENTATION.md)
+   - CLI + **Tauri GUI** Done（`minlauncher-gui`）
+   - **手动验收：** `cargo tauri dev` → open/create/recent/settings
 
 ### Audio 轨 — **Done（已合入 `master`）**
 

@@ -1,0 +1,22 @@
+:root {
+  --me-window-bg: #1e1e1e;
+  --me-panel-bg: #252526;
+  --me-popup-bg: #2d2d2d;
+  --me-field-bg: #3c3c3c;
+  --me-field-hover: #454545;
+  --me-field-active: #4e4e4e;
+  --me-border: #454545;
+  --me-separator: #3f3f3f;
+  --me-text-primary: #cccccc;
+  --me-text-muted: #858585;
+  --me-selection: #3d3d3d;
+  --me-button: #4a4a4a;
+  --me-button-hover: #555555;
+  --me-button-active: #404040;
+  --me-accent-brand: #66b2ff;
+  --me-status-ok: #89d185;
+  --me-status-warn: #cca700;
+  --me-status-error: #f48771;
+  --me-font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+  --me-radius: 3px;
+}

@@ -1,12 +1,15 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-01 (render + audio merged to `master`)
+Last updated: 2026-09-01 (render + audio + launcher merged to `master`)
+
+### 2026-09-01 - Merge `feat/launcher` → `master`（LAUN-F01）
+- **Merged:** `Launcher/` Rust workspace — CLI (`minlauncher`) + Tauri GUI (`minlauncher-app`).
+- **Verified (branch):** `cargo test -p minlauncher-core` 5/5; manual `cargo tauri dev`.
 
 ### 2026-09-01 - Merge `feat/audio` → `master`（AUD-F01 MVP）
 - **Merged:** `IAudioBackend` + miniaudio、`AudioSystem`/`AudioComponent`/`AudioListenerComponent`、`AudioClip` asset、3D spatial sync。
 - **SceneComponent:** world matrix + attach/detach `KeepWorldTransform`（以 audio 分支为准）。
 - **Tests:** `audio-smoke` + existing `shader-compiler` suites both registered.
-- **Next:** merge `feat/launcher`.
 
 ### 2026-09-01 - Merge `feat/debug-drawing` → `master`（含 `feat/render` 全量）
 - **Merged:** ED-F01 S01–S07、RND-F05/F12–F14、RND-F11 DebugDrawing MVP、VK shadow playbook 等 27 commits。
@@ -18,6 +21,20 @@ Last updated: 2026-09-01 (render + audio merged to `master`)
 - **Tests:** `minEngineTests.exe test audio-smoke` PASSED.
 - **Manual:** Editor ear-test on `test.mescene` — spatialized audio audible with listener on camera.
 - **Deferred (AUD-F02+):** gentler default attenuation / `AttenuationModel` in Inspector, custom curves, Inspector live volume/pitch.
+
+### 2026-08-31 - LAUN-F01-S05: Tauri 2 + React GUI (`feat/launcher`)
+- Added `crates/minlauncher-app` (Tauri 2) + `ui/` (React + Vite + TS, industrial dark theme).
+- Tauri commands wrap `minlauncher-core`; shared `settings.json` with CLI.
+- Core: `templates` module, `EditorStatus`, `clear_all_recent`.
+- **Verified:** `cargo test -p minlauncher-core` 5/5; `cargo build -p minlauncher-app`.
+- **Manual:** `cargo tauri dev` → Projects / Settings / New Project.
+
+### 2026-08-31 - LAUN-F01 CLI: Rust minlauncher S01–S04 (`feat/launcher`)
+- Added `Launcher/` Cargo workspace: `minlauncher-core` + `minlauncher` CLI (clap).
+- Commands: `open`, `create`, `recent`, `config`; spawn `Editor.exe --project <path>`.
+- Empty template under `Launcher/Templates/Empty/`; settings at `%APPDATA%/minEngine/Launcher/`.
+- Design + Implementation plan finalized (Tauri 2 for S05); Registry **In Progress** → CLI slice **Done**.
+- **Verified:** `cargo test -p minlauncher-core` (5/5); manual `open` MyMEProject + `create` LaunSmokeTest.
 
 ### 2026-08-31 - Multi-track backlog: LAUN / AUD / ANIM / UI / PHYS thaw (`master`)
 - Registered **LAUN-F01**, **AUD-F01**, **UI-F01**, **ANIM-F01**, **PHYS-F04**; **PHYS-F03** Deferred → Planned.
