@@ -23,11 +23,6 @@ namespace minEngine::PhysicsDebugDraw
             return kDefaultOptions;
         }
 
-        float GetUniformScale(const Vector3& scale)
-        {
-            return scale.x;
-        }
-
         Matrix4 BuildColliderWorldTransform(const SceneComponent& rootComponent)
         {
             const Transform& transform = rootComponent.GetTransform();
@@ -56,20 +51,19 @@ namespace minEngine::PhysicsDebugDraw
             const SceneComponent& rootComponent)
         {
             const Matrix4 worldTransform = BuildColliderWorldTransform(rootComponent);
-            const float uniformScale = GetUniformScale(rootComponent.GetScale());
             const Vector4 color = GetColorForChannel(colliderComponent.GetObjectChannel());
 
             if (colliderComponent.IsA(BoxColliderComponent::StaticClass()))
             {
                 const auto& boxCollider = static_cast<const BoxColliderComponent&>(colliderComponent);
-                DebugDraw::Box(worldTransform, boxCollider.GetHalfExtent() * uniformScale, color);
+                DebugDraw::Box(worldTransform, boxCollider.GetHalfExtent(), color);
                 return;
             }
 
             if (colliderComponent.IsA(SphereColliderComponent::StaticClass()))
             {
                 const auto& sphereCollider = static_cast<const SphereColliderComponent&>(colliderComponent);
-                DebugDraw::Sphere(worldTransform, sphereCollider.GetRadius() * uniformScale, color);
+                DebugDraw::Sphere(worldTransform, sphereCollider.GetRadius(), color);
                 return;
             }
 
@@ -78,8 +72,8 @@ namespace minEngine::PhysicsDebugDraw
                 const auto& capsuleCollider = static_cast<const CapsuleColliderComponent&>(colliderComponent);
                 DebugDraw::Capsule(
                     worldTransform,
-                    capsuleCollider.GetRadius() * uniformScale,
-                    capsuleCollider.GetHalfHeight() * uniformScale,
+                    capsuleCollider.GetRadius(),
+                    capsuleCollider.GetHalfHeight(),
                     color);
             }
         }

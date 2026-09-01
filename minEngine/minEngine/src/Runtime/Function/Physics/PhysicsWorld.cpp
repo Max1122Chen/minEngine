@@ -39,11 +39,6 @@ namespace minEngine
 {
     namespace
     {
-        float GetUniformScale(const Vector3& scale)
-        {
-            return scale.x;
-        }
-
         JPH::EMotionType ToJoltMotionType(EBodyType bodyType)
         {
             switch (bodyType)
@@ -724,12 +719,11 @@ namespace minEngine
             return;
         }
 
-        const float uniformScale = GetUniformScale(rootComponent->GetScale());
         JPH::ShapeSettings::ShapeResult shapeResult;
         if (colliderComponent->IsA(BoxColliderComponent::StaticClass()))
         {
             const auto* boxCollider = static_cast<const BoxColliderComponent*>(colliderComponent);
-            const Vector3 engineHalfExtent = boxCollider->GetHalfExtent() * uniformScale;
+            const Vector3 engineHalfExtent = boxCollider->GetHalfExtent();
             const Vector3 joltHalfExtent = PhysicsConversion::ToJoltPosition(engineHalfExtent);
             JPH::BoxShapeSettings boxSettings(
                 JPH::Vec3(joltHalfExtent.x, joltHalfExtent.y, joltHalfExtent.z));
@@ -738,15 +732,15 @@ namespace minEngine
         else if (colliderComponent->IsA(SphereColliderComponent::StaticClass()))
         {
             const auto* sphereCollider = static_cast<const SphereColliderComponent*>(colliderComponent);
-            JPH::SphereShapeSettings sphereSettings(sphereCollider->GetRadius() * uniformScale);
+            JPH::SphereShapeSettings sphereSettings(sphereCollider->GetRadius());
             shapeResult = sphereSettings.Create();
         }
         else if (colliderComponent->IsA(CapsuleColliderComponent::StaticClass()))
         {
             const auto* capsuleCollider = static_cast<const CapsuleColliderComponent*>(colliderComponent);
             JPH::CapsuleShapeSettings capsuleShapeSettings(
-                capsuleCollider->GetHalfHeight() * uniformScale,
-                capsuleCollider->GetRadius() * uniformScale);
+                capsuleCollider->GetHalfHeight(),
+                capsuleCollider->GetRadius());
             shapeResult = capsuleShapeSettings.Create();
         }
         else

@@ -210,6 +210,67 @@ namespace minEngine
 
             return true;
         }
+
+        bool RunScaleDoesNotAffectColliderTest()
+        {
+            PhysicsShapesTestScope scope;
+            const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-shapes-scale-indep");
+            if (!scene)
+            {
+                return false;
+            }
+
+            const std::shared_ptr<GameObject> boxObject = scene->CreateGameObject();
+            boxObject->AddComponent<SceneComponent>()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            boxObject->AddComponent<RigidBodyComponent>()->SetBodyType(EBodyType::Static);
+            boxObject->AddComponent<BoxColliderComponent>();
+
+            auto traceHitDistance = [&scene]() -> float
+            {
+                HitResult hit;
+                const bool ok = scene->SphereTrace(
+                    Vector3(0.0f, 5.0f, 0.0f),
+                    Vector3(0.0f, -5.0f, 0.0f),
+                    0.25f,
+                    ECollisionChannel::Visibility,
+                    CollisionQueryParams{},
+                    hit);
+                if (!ok || !hit.bBlockingHit)
+                {
+                    return -1.0f;
+                }
+
+                return hit.Distance;
+            };
+
+            const float distanceBeforeScale = traceHitDistance();
+            if (distanceBeforeScale < 0.0f)
+            {
+                ME_CORE_ERROR("PhysicsShapesTest: baseline sphere trace failed before scale change.");
+                return false;
+            }
+
+            boxObject->GetRootComponent()->SetScale(Vector3(2.0f, 2.0f, 2.0f));
+
+            const float distanceAfterScale = traceHitDistance();
+            if (distanceAfterScale < 0.0f)
+            {
+                ME_CORE_ERROR("PhysicsShapesTest: sphere trace failed after scale change.");
+                return false;
+            }
+
+            if (std::abs(distanceAfterScale - distanceBeforeScale) > 1e-3f)
+            {
+                ME_CORE_ERROR(
+                    "PhysicsShapesTest: scale changed collider trace distance (before={}, after={}).",
+                    distanceBeforeScale,
+                    distanceAfterScale);
+                return false;
+            }
+
+            ME_CORE_INFO("PhysicsShapesTest: collider size independent of scale.");
+            return true;
+        }
     }
 
     bool RunPhysicsShapesTests()
@@ -217,7 +278,8 @@ namespace minEngine
         return RunSphereFallTest()
             && RunCapsuleFallTest()
             && RunSphereTraceHitTest()
-            && RunCapsuleTraceMissAndIgnoreTest();
+            && RunCapsuleTraceMissAndIgnoreTest()
+            && RunScaleDoesNotAffectColliderTest();
     }
 }
 

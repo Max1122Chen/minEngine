@@ -52,7 +52,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
-| `PHYS-F04` | Collider fixes（Extent 轴、Scale 语义） | **Planned** | — | [Placeholder](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · **`master`** |
+| `PHYS-F04` | Collider 尺寸与 Scale 解耦 | **Done** | — | [Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · **`master`** |
 
 ---
 
