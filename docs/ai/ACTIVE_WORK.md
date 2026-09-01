@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-01（双轨：master 内核 + feat/editor；ANIM 待合并检查点）
+Last updated: 2026-09-02（`feat/editor`：CORE-F07 Done；ED-F03 Runtime S00–S02）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -67,6 +67,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | S04 | Viewport 鼠标约束 | 中 |
 | S05 | Abstract Component 过滤 + Component 下拉图标 | 低（可 merge 后） |
 
+**Defer（不占带宽）：** S03 Material SkyBox（体验项，merge 后可补）
+
+### E. `feat/editor` — CORE-F07 + ED-F03（当前优先）
+
+| 顺序 | ID | 内容 | 文档 |
+|------|-----|------|------|
+| 1 | **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** — [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) |
+| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — Runtime S00–S02 Done；Console UI 待做 — [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
+
+**建议：** ED-F03 S05 Console Command Tab → S03/S04 补全与 `list_go`。
+
 ### D. 合并检查点（Gate）
 
 **当 A+B 核心项 + C 至少 S01–S02 Done：**
@@ -94,7 +105,7 @@ git checkout master && git merge feat/editor
 | `ANIM-F01` | `feat/animation` | 合并检查点 + Design |
 | `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
 | `RND-F16` | `feat/sprite`（未建） | — |
-| Gameplay 插件化 / 网络 / Debug Console / Agent-friendly | — | 仅文档占位，见 REGISTRY 备注 |
+| Gameplay 插件化 / 网络 | — | 仅文档占位，见 REGISTRY 备注 |
 
 ---
 

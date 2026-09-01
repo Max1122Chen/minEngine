@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02 (CORE-F07 验收 A)
+Last updated: 2026-09-02 (ED-F03 验收 B)
+
+### 2026-09-02 - ED-F03: command system Runtime S00–S02 (验收 B)
+- **Runtime:** `CommandRegistry` / `CommandExecutor` / `CommandResult`；Builtin `help` / `get` / `set` / `inspect`。
+- **PropertyPath:** GameObject 名解析 + Component 属性回退；`set` primitive 校验；复用 Serializer path。
+- **Tests:** `minEngineTests.exe test command-system` — 6 cases, 23 assertions PASSED。
+- **Verified:** `verify.ps1`。
 
 ### 2026-09-02 - CORE-F07: reflection display names (验收 A Done)
 - **Runtime:** `ReflectionDisplayNames` — strip `m_`/`x_`/`b_` prefix + camelCase word breaks; `GetPropertyDisplayName`.
