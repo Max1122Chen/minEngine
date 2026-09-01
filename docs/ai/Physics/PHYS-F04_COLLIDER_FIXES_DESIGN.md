@@ -193,11 +193,11 @@ flowchart TB
 
 ## 7) 验收标准
 
-- [ ] `grep`：`HalfExtent * uniformScale` / `GetUniformScale` 在 Physics 路径为 0
-- [ ] 同一 GO：`SetScale(2,2,2)` 前后，`BoxCollider` trace 结果 **不变**（仅 mesh 视觉变）
-- [ ] Debug wireframe 与 Jolt 碰撞一致（改 scale 线框不变；改 HalfExtent 两者同变）
-- [ ] `physics-shapes`、`physics-smoke`、`physics-sync` 全绿
-- [ ] GL Editor 手动：scale 与 collider 独立可调
+- [x] `grep`：`HalfExtent * uniformScale` / `GetUniformScale` 在 Physics 路径为 0
+- [x] 同一 GO：`SetScale(2,2,2)` 前后，`BoxCollider` trace 结果 **不变**（仅 mesh 视觉变）
+- [x] Debug wireframe 与 Jolt 碰撞一致（改 scale 线框不变；改 HalfExtent 两者同变）
+- [x] `physics-shapes`、`physics-smoke`、`physics-sync` 全绿
+- [x] GL Editor 手动：scale 与 collider 独立可调
 
 ---
 
@@ -218,3 +218,4 @@ flowchart TB
 | 2026-08-31 | Registry 占位 |
 | 2026-09-01 | 调查：scale 乘 extent + debug/物理分裂 |
 | 2026-09-01 | 用户确认语义：完全独立；扩写 Design Spec |
+| 2026-09-02 | S01–S04 Done；验收勾选（`c2c0893`） |

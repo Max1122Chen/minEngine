@@ -88,7 +88,8 @@ namespace minEngine
         }
 
         ColliderComponent* collider = static_cast<ColliderComponent*>(component);
-        if (propertyPath == "m_ObjectChannel"
+        if (propertyPath == "m_bActive"
+            || propertyPath == "m_ObjectChannel"
             || propertyPath == "m_HalfExtent"
             || propertyPath == "m_Radius"
             || propertyPath == "m_HalfHeight")

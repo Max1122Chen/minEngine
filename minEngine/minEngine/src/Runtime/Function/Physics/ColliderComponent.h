@@ -13,12 +13,15 @@ namespace minEngine
 
     public:
         ColliderComponent() = default;
-        ~ColliderComponent() override = default;
+        ~ColliderComponent() override;
 
         ECollisionChannel GetObjectChannel() const { return m_ObjectChannel; }
         void SetObjectChannel(ECollisionChannel objectChannel);
 
     protected:
+        void ApplyActivationToSystems() override;
+        void RemoveActivationFromSystems() override;
+
         void RefreshOwningRigidBody();
 
         ME_PROPERTY(EditAnywhere)

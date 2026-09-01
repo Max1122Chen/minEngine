@@ -33,7 +33,8 @@ namespace minEngine
 
         for (const std::shared_ptr<Component>& component : m_Owner->GetAllComponents())
         {
-            if (component && component->GetClass() && component->IsA(ColliderComponent::StaticClass()))
+            if (component && component->GetClass() && component->IsA(ColliderComponent::StaticClass())
+                && component->IsActive())
             {
                 return static_cast<ColliderComponent*>(component.get());
             }
@@ -95,7 +96,17 @@ namespace minEngine
             return;
         }
 
-        ColliderComponent* collider = colliderOverride != nullptr ? colliderOverride : FindColliderComponent();
+        ColliderComponent* collider = colliderOverride;
+        if (collider != nullptr && !collider->IsActive())
+        {
+            collider = nullptr;
+        }
+
+        if (collider == nullptr)
+        {
+            collider = FindColliderComponent();
+        }
+
         if (collider == nullptr || GetTargetSceneComponent() == nullptr)
         {
             return;

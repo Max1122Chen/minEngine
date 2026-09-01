@@ -158,7 +158,8 @@ namespace minEngine
                 {
                     rigidBodyComponent = static_cast<RigidBodyComponent*>(component.get());
                 }
-                else if (component->IsA(ColliderComponent::StaticClass()) && colliderComponent == nullptr)
+                else if (component->IsA(ColliderComponent::StaticClass()) && colliderComponent == nullptr
+                    && component->IsActive())
                 {
                     colliderComponent = static_cast<ColliderComponent*>(component.get());
                 }

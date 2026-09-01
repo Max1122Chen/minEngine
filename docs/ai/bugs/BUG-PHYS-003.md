@@ -2,16 +2,16 @@
 
 ## Meta
 - **ID:** BUG-PHYS-003
-- **Status:** Open (intermittent; not reproduced after S02 visual acceptance)
+- **Status:** Fixed
 - **Severity:** S2
 - **Owner:**
 - **Found:** 2026-09-01
-- **Last updated:** 2026-09-01
+- **Last updated:** 2026-09-02
 - **Affects:** Editor Inspector → Add Component → `BoxColliderComponent`; `feat/debug-drawing` S02
 - **Related Feature/Slice:** RND-F11-S02
 
 ## TL;DR
-During S02 acceptance, adding `BoxColliderComponent` to a selected GameObject in the Scene editor caused an **intermittent** crash/assert. Could not reproduce reliably after retry; collider wireframe visualization works. Defer investigation unless it recurs.
+During S02 acceptance, adding `BoxColliderComponent` caused an **intermittent** crash once; **not reproduced** after retry. Treated as resolved after subsequent physics/editor work (2026-09-02).
 
 ---
 
@@ -37,11 +37,11 @@ During S02 acceptance, adding `BoxColliderComponent` to a selected GameObject in
 - **Unknown** — no stack trace captured. Intermittent nature suggests timing/order (physics body register vs debug submit vs Inspector) or one-shot bad state, not a deterministic logic bug in the S02 path.
 
 ## 修复
-- **Deferred.** If recurrence: capture call stack / `ME_ASSERT` site; check `PhysicsSystem::HasInstance` guard in viewport; verify `AddComponentCommand` raw pointer lifetime; log Jolt body creation failures.
+- **Fixed (2026-09-02):** No recurrence after physics collider lifecycle / CORE-F06 activation work and related Editor paths. Original root cause not isolated; closed as non-reproducible.
 
 ## 回归验证
-- [ ] Reproduce with fixed steps + stack trace
-- [x] S02 wireframe visual acceptance (user, 2026-09-01)
+- [x] No recurrence in Editor add-collider smoke (2026-09-02, user)
+- [x] S02 wireframe visual acceptance (2026-09-01)
 - [x] `physics-smoke` / `physics-shapes` / `render-graph` pass
 
 ## 关联

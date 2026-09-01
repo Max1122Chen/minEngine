@@ -5,6 +5,21 @@
 
 namespace minEngine
 {
+    ColliderComponent::~ColliderComponent()
+    {
+        RefreshOwningRigidBody();
+    }
+
+    void ColliderComponent::ApplyActivationToSystems()
+    {
+        RefreshOwningRigidBody();
+    }
+
+    void ColliderComponent::RemoveActivationFromSystems()
+    {
+        RefreshOwningRigidBody();
+    }
+
     void ColliderComponent::SetObjectChannel(ECollisionChannel objectChannel)
     {
         if (m_ObjectChannel == objectChannel)

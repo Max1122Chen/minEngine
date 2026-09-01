@@ -1,8 +1,15 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（CORE-F06 Done；BUG-PHYS-004 Open）
+Last updated: 2026-09-02（CORE-F05 当前焦点；backlog 文档同步）
 
-Last updated: 2026-09-02（CORE-F06 Done；BUG-PHYS-004 Open）
+### 2026-09-02 - Backlog shift: CORE-F05 focus; PHYS-F04 / BUG-PHYS-003 closed (`master`)
+- **ACTIVE_WORK:** CORE-F05 Play Mode 抬为当前焦点；PHYS-F04、BUG-PHYS-003 标 Done/Fixed；CORE-F07 → `feat/editor`。
+- **Registry:** CORE-F05 In Progress；CORE-F07 branch 更新。
+- **Next:** CORE-F05 Pre-flight + Design 展开。
+
+### 2026-09-02 - BUG-PHYS-004: collider disable/remove refreshes physics body (`master`)
+- **Fix:** `ColliderComponent` activation/destructor → `RefreshOwningRigidBody`; `FindColliderComponent` / rebuild / override filter `IsActive()`; Editor `m_bActive` side-effect.
+- **Verified:** physics-smoke, physics-shapes; Editor test.mescene manual.
 
 ### 2026-09-02 - CORE-F06 Component Activate Done (`master`)
 - **Runtime:** `m_bActive`, `SetActive`/`IsActive`, activation state machine, `SyncActivationWithActiveFlag`, system hooks (tick/physics/audio/render/Lua).
