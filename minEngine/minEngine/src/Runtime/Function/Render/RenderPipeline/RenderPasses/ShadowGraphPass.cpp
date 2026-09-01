@@ -20,11 +20,20 @@ namespace minEngine
         m_DepthSlotName = std::move(depthSlotName);
     }
 
+    void ShadowGraphPass::SetPermanentGraphOutput(ShadowGraphPermanentOutput output)
+    {
+        m_PermanentOutput = std::move(output);
+        if (m_PermanentOutput.IsSet && !m_PermanentOutput.DepthResourceName.empty())
+        {
+            m_DepthSlotName = m_PermanentOutput.DepthResourceName;
+        }
+    }
+
     void ShadowGraphPass::Configure(const ShadowDrawCommand& command)
     {
         m_Command = command;
         m_HasCommand = command.Handle.IsValid();
-        if (m_HasCommand && !m_Command.GraphDepthResourceName.empty())
+        if (m_HasCommand && !m_Command.GraphDepthResourceName.empty() && !m_PermanentOutput.IsSet)
         {
             m_DepthSlotName = m_Command.GraphDepthResourceName;
         }
@@ -41,15 +50,21 @@ namespace minEngine
         m_Command.Handle.Texture = texture;
     }
 
-    void ShadowGraphPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
+    const ShadowDrawCommand* ShadowGraphPass::GetDrawCommand() const
     {
-        (void)graph;
-        if (!m_HasCommand || m_DepthSlotName.empty())
+        return m_HasCommand ? &m_Command : nullptr;
+    }
+
+    void ShadowGraphPass::DeclareDepthOutput(
+        RenderPass& self,
+        const ShadowResourceHandle& handle,
+        const std::string& depthName)
+    {
+        if (depthName.empty() || !handle.Resolution.IsValid())
         {
             return;
         }
 
-        const ShadowResourceHandle& handle = m_Command.Handle;
         RDGAttachmentInfo depth{};
         depth.SizeClass = RDGSizeClass::Absolute;
         depth.SizeX = static_cast<float>(handle.Resolution.Width);
@@ -73,7 +88,29 @@ namespace minEngine
             break;
         }
 
-        self.SetDepthStencilOutput(m_DepthSlotName, depth);
+        self.SetDepthStencilOutput(depthName, depth);
+    }
+
+    void ShadowGraphPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
+    {
+        (void)graph;
+        if (m_PermanentOutput.IsSet)
+        {
+            ShadowResourceHandle handle{};
+            handle.ResourceType = m_PermanentOutput.ResourceType;
+            handle.Resolution = m_PermanentOutput.Resolution;
+            handle.LayerCount = m_PermanentOutput.LayerCount;
+            handle.SlotIndex = 0;
+            DeclareDepthOutput(self, handle, m_PermanentOutput.DepthResourceName);
+            return;
+        }
+
+        if (!m_HasCommand || m_DepthSlotName.empty())
+        {
+            return;
+        }
+
+        DeclareDepthOutput(self, m_Command.Handle, m_DepthSlotName);
     }
 
     void ShadowGraphPass::Prepare(RenderGraph& graph)

@@ -23,6 +23,12 @@ namespace minEngine
         m_InputTextureName = inputName != nullptr ? inputName : kRDGSceneColor;
     }
 
+    void PresentPass::RunWithInputTexture(RHICommandList& cmdList, RHITexture* inputTexture)
+    {
+        PrepareDrawPacket(cmdList, inputTexture);
+        Render(cmdList);
+    }
+
     void PresentPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
         (void)graph;
@@ -55,6 +61,7 @@ namespace minEngine
         const uint32_t width = m_InputTexture->GetDesc().Width;
         const uint32_t height = m_InputTexture->GetDesc().Height;
         cmdList.SetViewport(0, 0, width, height);
+
         cmdList.SubmitMeshDrawPacket(m_DrawPacket);
 
         cmdList.EndRenderPass();
@@ -78,7 +85,7 @@ namespace minEngine
             });
         }
 
-        if (RHIShaderRef screenQuadShader = EngineShaderUtils::CreateShaderFromFiles(
+        if (RHIShaderRef screenQuadShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
                 *rhi,
                 EngineShaderUtils::EngineShaderPath("Present.vert"),
                 EngineShaderUtils::EngineShaderPath("Present.frag")))

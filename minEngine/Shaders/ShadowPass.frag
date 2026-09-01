@@ -1,8 +1,8 @@
 #version 420 core
 
-in vec3 WorldPos;
+layout(location = 0) in vec3 WorldPos;
 
-layout (std140, binding = 11) uniform ShadowPassParams
+layout (std140, set = 0, binding = 2) uniform ShadowPassParams
 {
     int u_UseLinearDepth;
     float _pad0;

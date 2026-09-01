@@ -9,6 +9,7 @@
 #include "RenderPasses/PostProcessPass.h"
 #include "RenderPasses/PresentPass.h"
 #include "RenderPasses/SkyBoxPass.h"
+#include "RenderPasses/DebugDrawPass.h"
 #include "Runtime/Function/Render/EnginePipelineLayouts.h"
 #include "Runtime/Function/Render/EngineSceneBindingSets.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
@@ -16,6 +17,7 @@
 #include "Runtime/Function/Render/LightSceneProxies/PointLightSceneProxy.h"
 #include "Runtime/Function/Render/LightSceneProxies/SpotLightSceneProxy.h"
 #include "Shadow/ShadowTypes.h"
+#include "Shadow/ShadowUniformBuffers.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 #include "Runtime/Function/Render/SceneRenderTarget.h"
@@ -111,32 +113,46 @@ namespace minEngine
 
         void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot) override;
 
+        RHIBuffer* GetPerFrameUniformBuffer() const { return m_PerFrameUniformBuffer.get(); }
         RHIBuffer* GetPerObjectUniformBuffer() const { return m_PerObjectUniformBuffer.get(); }
+        uint32_t GetPerObjectSlotStride() const { return m_PerObjectSlotStride; }
+        EngineSceneBindingSets& GetSceneBindings() { return m_SceneBindings; }
         const EngineSceneBindingSets& GetSceneBindings() const { return m_SceneBindings; }
         const EnginePipelineLayouts& GetPipelineLayouts() const { return m_PipelineLayouts; }
 
-    private:
-        RHIBufferRef m_LightViewProjUniformBuffer;
+    protected:
         RHIBufferRef m_PerFrameUniformBuffer;
         RHIBufferRef m_LightDataUniformBuffer;
         RHIBufferRef m_PerObjectUniformBuffer;
+        uint32_t m_PerObjectSlotStride = 256;
 
-        RHIBufferRef m_DirLightViewProjUniformBuffer;
-        RHIBufferRef m_CascadeFarPlaneUniformBuffer;
-        RHIBufferRef m_SpotLightViewProjUniformBuffer;
+        ShadowUniformBuffers m_ShadowUniformBuffers;
 
         ShadowPass m_ShadowPass;
-        SkyBoxPass m_SkyBoxPass;
         BasePass m_BasePass;
-        TranslucencyPass m_TranslucentPass;
-        std::vector<PostProcessPass> m_PostProcessPasses;
+        DebugDrawPass m_DebugDrawPass;
         PresentPass m_PresentPass;
 
         EngineSceneBindingSets m_SceneBindings;
         EnginePipelineLayouts m_PipelineLayouts;
-        std::string m_EngineDefaultAssetsRoot;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
+
+        void BindSceneRenderTarget(SceneRenderTarget& target);
+        void UpdatePerFrameUBO(const SceneRenderContext& ctx);
+        void UpdateLightUBO(const SceneRenderContext& ctx);
+        void CollectShadowRequests(SceneRenderContext& ctx);
+        void BuildShadowDrawCommands(SceneRenderContext& ctx);
+        void BuildRenderQueue(SceneRenderContext& ctx);
+        void ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx);
+
+        SkyBoxPass m_SkyBoxPass;
+
+    private:
+        TranslucencyPass m_TranslucentPass;
+        std::vector<PostProcessPass> m_PostProcessPasses;
+
+        std::string m_EngineDefaultAssetsRoot;
 
         RHIBufferRef m_ScreenQuadVertexBuffer;
         RHIVertexInputLayoutRef m_ScreenQuadVertexLayout;
@@ -145,13 +161,13 @@ namespace minEngine
         RHITextureRef m_PostBufferTexture;
         std::vector<std::unique_ptr<ShadowGraphPass>> m_ShadowGraphPasses;
         std::vector<RenderPass*> m_ShadowGraphPassPtrs;
-        size_t m_ConfiguredShadowGraphPassCount = 0;
         bool m_ConfiguredEnablePostProcess = false;
         bool m_ConfiguredPresentToBackBuffer = false;
-        std::string m_LastShadowResourceFingerprint;
+        bool m_ConfiguredEnableDebugDraw = false;
         RenderPass* m_SceneSkyGraphPass = nullptr;
         RenderPass* m_SceneOpaqueGraphPass = nullptr;
         RenderPass* m_SceneTranslucentGraphPass = nullptr;
+        RenderPass* m_SceneDebugGraphPass = nullptr;
         RenderPass* m_PostFxaaGraphPass = nullptr;
         RenderPass* m_PostSharpenGraphPass = nullptr;
         RenderPass* m_PresentGraphPass = nullptr;
@@ -159,9 +175,10 @@ namespace minEngine
         uint32_t m_PostBufferWidth = 0;
         uint32_t m_PostBufferHeight = 0;
 
-    private:
-        void BindSceneRenderTarget(SceneRenderTarget& target);
-        void BuildFrameRenderGraph(size_t shadowPassCount, bool enablePostProcess, bool presentToBackBuffer);
+        void BuildFrameRenderGraph(bool enablePostProcess, bool presentToBackBuffer, bool enableDebugDraw);
+        void AssignShadowGraphPassCommands(const SceneRenderContext& ctx);
+        static size_t GetFixedShadowGraphPassIndex(const ShadowDrawCommand& command);
+        static ShadowGraphPermanentOutput MakePermanentShadowOutput(size_t passIndex);
         void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
         void SetupFrameRenderGraph(
             RHICommandList& cmdList,
@@ -169,15 +186,9 @@ namespace minEngine
             SceneRenderContext& ctx);
         void BindGraphShadowTextures(SceneRenderContext& ctx);
         void EnqueueFrameRenderGraph(RHICommandList& cmdList, SceneRenderTarget* sceneTarget);
-        std::string BuildShadowResourceFingerprint(const SceneRenderContext& ctx) const;
-        void UpdatePerFrameUBO(const SceneRenderContext& ctx);
-        void UpdateLightUBO(const SceneRenderContext& ctx);
-        void CollectShadowRequests(SceneRenderContext& ctx);
-        void BuildShadowDrawCommands(SceneRenderContext& ctx);
         ShadowResourceHandle MakeDirectionalShadowBinding(const ShadowRequest& req, uint32_t cascadeCount) const;
         ShadowResourceHandle MakeSpotShadowBinding(const ShadowRequest& req, int slotIndex) const;
         ShadowResourceHandle MakePointShadowBinding(const ShadowRequest& req, int slotIndex) const;
-        void BuildRenderQueue(SceneRenderContext& ctx);
 
         DirShadowCommandBuildResult BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest, 
                                                             const ShadowResourceHandle& handle, 

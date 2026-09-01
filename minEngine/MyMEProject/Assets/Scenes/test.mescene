@@ -31,15 +31,15 @@
                     },
                     "m_Transform": {
                         "Position": [
-                            14.748750686645508,
-                            51.321937561035156,
-                            5.492066383361816
+                            -3.444150924682617,
+                            18.642776489257813,
+                            -16.479677200317383
                         ],
                         "Rotation": {
                             "W": 0.9984459280967712,
-                            "X": -3.513404180921498e-07,
-                            "Y": 0.05572933331131935,
-                            "Z": 1.2355491207927116e-07
+                            "X": -3.51343601323606e-07,
+                            "Y": 0.05572934076189995,
+                            "Z": 1.2356123590961943e-07
                         },
                         "Scale": [
                             4.0,
@@ -50,7 +50,7 @@
                 },
                 {
                     "$ptr_typeName": "minEngine::RigidBodyComponent",
-                    "m_BodyType": 4575657221408423937,
+                    "m_BodyType": 1,
                     "m_Guid": {
                         "High": 16004939002437389368,
                         "Low": 13577400440015074290
@@ -63,28 +63,8 @@
                             "low": 11094257267653316277
                         }
                     },
-                    "m_PhysicsBodyId": 0,
-                    "m_bSimulatePhysics": true
-                },
-                {
-                    "$ptr_typeName": "minEngine::BoxColliderComponent",
-                    "m_Guid": {
-                        "High": 15150371143085278081,
-                        "Low": 11697683112345236733
-                    },
-                    "m_HalfExtent": [
-                        0.5,
-                        0.5,
-                        0.5
-                    ],
-                    "m_Name": "",
-                    "m_ObjectChannel": 4575657221408423937,
-                    "m_Owner": {
-                        "$guid": {
-                            "high": 2269251532856313338,
-                            "low": 11094257267653316277
-                        }
-                    }
+                    "m_PhysicsBodyId": 4294967295,
+                    "m_bSimulatePhysics": false
                 }
             ],
             "m_Guid": {
@@ -110,7 +90,7 @@
                         "High": 6184531821558383057,
                         "Low": 12354846377014207710
                     },
-                    "m_Intensity": 1.600000023841858,
+                    "m_Intensity": 0.6000000238418579,
                     "m_LightColor": [
                         1.0,
                         1.0,
@@ -127,7 +107,7 @@
                     "m_SpecularFactor": 1.0,
                     "m_Transform": {
                         "Position": [
-                            0.0,
+                            0.6839771270751953,
                             100.0,
                             0.0
                         ],
@@ -162,7 +142,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
-                    "m_CastShadow": true,
+                    "m_CastShadow": false,
                     "m_Guid": {
                         "High": 3385891046885969139,
                         "Low": 12619355072405068856
@@ -199,15 +179,15 @@
                             "Z": 0.0
                         },
                         "Scale": [
-                            100.0,
+                            1000.0,
                             1.0,
-                            100.0
+                            1000.0
                         ]
                     }
                 },
                 {
                     "$ptr_typeName": "minEngine::RigidBodyComponent",
-                    "m_BodyType": 4575657221408423936,
+                    "m_BodyType": 0,
                     "m_Guid": {
                         "High": 9781684724731235247,
                         "Low": 10780055101789640687
@@ -220,28 +200,8 @@
                             "low": 10834008049559124436
                         }
                     },
-                    "m_PhysicsBodyId": 1,
-                    "m_bSimulatePhysics": true
-                },
-                {
-                    "$ptr_typeName": "minEngine::BoxColliderComponent",
-                    "m_Guid": {
-                        "High": 2726419577445367861,
-                        "Low": 10411928496101145021
-                    },
-                    "m_HalfExtent": [
-                        1.100000023841858,
-                        0.5,
-                        1.7000000476837158
-                    ],
-                    "m_Name": "",
-                    "m_ObjectChannel": 4575657221408423936,
-                    "m_Owner": {
-                        "$guid": {
-                            "high": 2752187127547708369,
-                            "low": 10834008049559124436
-                        }
-                    }
+                    "m_PhysicsBodyId": 4294967295,
+                    "m_bSimulatePhysics": false
                 }
             ],
             "m_Guid": {
@@ -284,8 +244,8 @@
                     "m_SpecularFactor": 1.0,
                     "m_Transform": {
                         "Position": [
-                            0.4000000059604645,
-                            5.13526725769043,
+                            2.679324150085449,
+                            28.242700576782227,
                             1.9133453369140625
                         ],
                         "Rotation": {
@@ -319,14 +279,14 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::SpotLightComponent",
-                    "m_CastShadow": true,
+                    "m_CastShadow": false,
                     "m_DiffuseFactor": 1.0,
                     "m_Guid": {
                         "High": 6300424985727356680,
                         "Low": 10254652125913689710
                     },
-                    "m_InnerConeAngle": 30.0,
-                    "m_Intensity": 0.20000000298023224,
+                    "m_InnerConeAngle": 46.400001525878906,
+                    "m_Intensity": 1.399999976158142,
                     "m_LightColor": [
                         1.0,
                         1.0,
@@ -334,7 +294,7 @@
                         1.0
                     ],
                     "m_Name": "",
-                    "m_OuterConeAngle": 40.0,
+                    "m_OuterConeAngle": 61.400001525878906,
                     "m_Owner": {
                         "$guid": {
                             "high": 2003172142262273660,
@@ -344,15 +304,15 @@
                     "m_SpecularFactor": 1.0,
                     "m_Transform": {
                         "Position": [
-                            -3.406426429748535,
-                            11.093999862670898,
-                            5.050000190734863
+                            30.989715576171875,
+                            -1.5561861991882324,
+                            -20.526470184326172
                         ],
                         "Rotation": {
-                            "W": 0.962927520275116,
+                            "W": 0.9674888253211975,
                             "X": 0.0,
                             "Y": 0.0,
-                            "Z": 0.26976022124290466
+                            "Z": -0.2529137432575226
                         },
                         "Scale": [
                             1.0,

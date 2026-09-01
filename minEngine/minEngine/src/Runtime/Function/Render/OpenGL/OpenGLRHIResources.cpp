@@ -448,6 +448,49 @@ namespace minEngine
             return false;
         }
 
+        bool SpecializeSpirvStage(
+            GLuint shaderObject,
+            GLenum stage,
+            const std::vector<uint32_t>& spirvWords,
+            std::string& outLog)
+        {
+            if (glShaderBinary == nullptr || glSpecializeShader == nullptr)
+            {
+                outLog = "OpenGL SPIR-V entry points unavailable (need GL 4.6 / ARB_gl_spirv).";
+                return false;
+            }
+
+            if (spirvWords.empty())
+            {
+                outLog = "Empty SPIR-V module.";
+                return false;
+            }
+
+            const GLsizei binarySize = static_cast<GLsizei>(spirvWords.size() * sizeof(uint32_t));
+            glShaderBinary(
+                1,
+                &shaderObject,
+                GL_SHADER_BINARY_FORMAT_SPIR_V,
+                spirvWords.data(),
+                binarySize);
+            glSpecializeShader(shaderObject, "main", 0, nullptr, nullptr);
+
+            int compileStatus = GL_FALSE;
+            glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &compileStatus);
+            if (compileStatus == GL_TRUE)
+            {
+                return true;
+            }
+
+            outLog = ReadShaderInfoLog(shaderObject);
+            if (outLog.empty())
+            {
+                outLog = stage == GL_VERTEX_SHADER ? "Vertex SPIR-V specialize failed."
+                                                  : "Fragment SPIR-V specialize failed.";
+            }
+            return false;
+        }
+
         GLenum VertexElementTypeToGL(VertexElementType type)
         {
             switch (type)
@@ -587,13 +630,84 @@ namespace minEngine
             return;
         }
 
+        if (!LinkProgram(vertexShader, fragmentShader))
+        {
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return;
+        }
+
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+    }
+
+    OpenGLRHIShader::OpenGLRHIShader(const RHIShaderCreateDesc& desc)
+    {
+        const std::vector<uint32_t>* vertexSpirv = nullptr;
+        const std::vector<uint32_t>* fragmentSpirv = nullptr;
+        for (const RHIShaderStageBytecode& stage : desc.Stages)
+        {
+            if (stage.Stage == RHIGraphicsShaderStage::Vertex)
+            {
+                vertexSpirv = &stage.SpirvWords;
+            }
+            else if (stage.Stage == RHIGraphicsShaderStage::Pixel)
+            {
+                fragmentSpirv = &stage.SpirvWords;
+            }
+        }
+
+        if (vertexSpirv == nullptr || fragmentSpirv == nullptr)
+        {
+            m_CompileLog = "RHIShaderCreateDesc requires Vertex and Pixel SPIR-V stages.";
+            ME_CORE_ERROR("{}", m_CompileLog);
+            return;
+        }
+
+        const GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        const GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+        std::string stageLog;
+        if (!SpecializeSpirvStage(vertexShader, GL_VERTEX_SHADER, *vertexSpirv, stageLog))
+        {
+            m_CompileLog = "Vertex SPIR-V error:\n" + stageLog;
+            ME_CORE_ERROR("{}", m_CompileLog);
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return;
+        }
+
+        if (!SpecializeSpirvStage(fragmentShader, GL_FRAGMENT_SHADER, *fragmentSpirv, stageLog))
+        {
+            m_CompileLog = "Fragment SPIR-V error:\n" + stageLog;
+            ME_CORE_ERROR("{}", m_CompileLog);
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return;
+        }
+
+        if (!LinkProgram(vertexShader, fragmentShader))
+        {
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return;
+        }
+
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        if (!desc.DebugName.empty())
+        {
+            ME_CORE_INFO("OpenGLRHIShader: loaded SPIR-V program '{}'", desc.DebugName);
+        }
+    }
+
+    bool OpenGLRHIShader::LinkProgram(GLuint vertexShader, GLuint fragmentShader)
+    {
         m_ProgramId = glCreateProgram();
         glAttachShader(m_ProgramId, vertexShader);
         glAttachShader(m_ProgramId, fragmentShader);
         glLinkProgram(m_ProgramId);
-
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
 
         int linkStatus = GL_FALSE;
         glGetProgramiv(m_ProgramId, GL_LINK_STATUS, &linkStatus);
@@ -603,10 +717,11 @@ namespace minEngine
             ME_CORE_ERROR("{}", m_CompileLog);
             glDeleteProgram(m_ProgramId);
             m_ProgramId = 0;
-            return;
+            return false;
         }
 
         m_IsValid = true;
+        return true;
     }
 
     OpenGLRHIVertexInputLayout::OpenGLRHIVertexInputLayout(std::initializer_list<RHIVertexElement> elements)

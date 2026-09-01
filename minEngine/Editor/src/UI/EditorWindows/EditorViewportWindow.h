@@ -4,7 +4,9 @@
 
 #include "imgui.h"
 
+#include "Platform/EditorRHIImGuiTexture.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
+#include "Runtime/Function/Render/RenderSystem.h"
 #include "UI/EditorWindows/EditorWindow.h"
 #include "Viewport/EditorViewportClient.h"
 
@@ -46,5 +48,6 @@ namespace minEngine
     private:
         bool DrawSceneColorImage(EditorViewportClient& viewportClient, ViewportFrameState& outFrameState);
         RHITextureRef m_PinnedFrameTexture;
+        EditorRHIImGuiTexturePin m_PinnedImGuiTexture;
     };
 }

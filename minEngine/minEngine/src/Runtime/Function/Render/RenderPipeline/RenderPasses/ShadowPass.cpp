@@ -5,14 +5,16 @@
 #include "Render/EnginePassUniforms.h"
 #include "Render/RenderPipeline/ForwardRenderer.h"
 #include "Render/RHI/RHI.h"
+#include "Render/RHI/RHIClipSpaceCapabilities.h"
+#include "Render/RHI/RHIBackend.h"
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIRenderPass.h"
-#include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/DrawCommands/MeshDrawPacket.h"
+#include "Runtime/Core/Log/LogSystem.h"
 
 namespace minEngine
 {
@@ -20,7 +22,7 @@ namespace minEngine
     {
         RHI* rhi = RenderSystem::Get().GetRHI();
 
-        m_DepthShader = EngineShaderUtils::CreateShaderFromFiles(
+        m_DepthShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             *rhi,
             EngineShaderUtils::EngineShaderPath("ShadowPass.vert"),
             EngineShaderUtils::EngineShaderPath("ShadowPass.frag"));
@@ -33,48 +35,41 @@ namespace minEngine
             m_ShadowPSODescTemplate.DepthStencilState.bDepthTestEnabled = true;
             m_ShadowPSODescTemplate.DepthStencilState.bDepthWriteEnabled = true;
             m_ShadowPSODescTemplate.BlendState.bBlendEnabled = false;
+            // Cull light-facing faces so receivers (especially large ground planes) do not
+            // write their own depth into the map — primary fix for directional self-shadow acne.
+            m_ShadowPSODescTemplate.RasterizerState.bCullEnabled = true;
+            m_ShadowPSODescTemplate.RasterizerState.CullMode = GetShadowPassCapabilities().GetEffectiveCullMode();
+            m_ShadowPSODescTemplate.RasterizerState.DepthBiasSlopeScale =
+                GetShadowPassCapabilities().DepthBiasSlopeScale;
+            m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant =
+                GetShadowPassCapabilities().DepthBiasConstant;
+
+            const RHICullMode effectiveCull = GetShadowPassCapabilities().GetEffectiveCullMode();
+            const char* cullLabel = "None";
+            if (effectiveCull == RHICullMode::Front)
+            {
+                cullLabel = "Front";
+            }
+            else if (effectiveCull == RHICullMode::Back)
+            {
+                cullLabel = "Back";
+            }
+            ME_CORE_INFO(
+                "ShadowPass: raster cull={} (enabled={}), depthBias slope={} constant={}",
+                cullLabel,
+                m_ShadowPSODescTemplate.RasterizerState.bCullEnabled,
+                m_ShadowPSODescTemplate.RasterizerState.DepthBiasSlopeScale,
+                m_ShadowPSODescTemplate.RasterizerState.DepthBiasConstant);
+
+            // Extra depth push for remaining two-sided / grazing casters.
+            // Depth-only pass: tell Vulkan PSO creation to use zero color attachments.
+            m_ShadowPSODescTemplate.RenderTargetsEnabled = 0;
+            m_ShadowPSODescTemplate.DepthStencilTargetFormat = TextureFormat::DEPTH32;
 
             if (pipeline)
             {
                 m_ShadowPSODescTemplate.PipelineLayout = pipeline->GetPipelineLayouts().GetShadowDepthPipelineLayout();
             }
-
-            RHIBufferCreateDesc paramsDesc;
-            paramsDesc.Usage = RHIBufferUsage::Uniform;
-            paramsDesc.ByteSize = sizeof(ShadowPassParamsUBO);
-            m_ShadowParamsUniformBuffer = cmdList.CreateBuffer(paramsDesc, nullptr);
-        }
-    }
-
-    void ShadowPass::EnsureShadowShaderBindingSet(RHICommandList& cmdList)
-    {
-        if (m_ShadowShaderBindingSet || !pipeline || !m_LightViewProjUniformBuffer || !m_PerObjectUniformBuffer ||
-            !m_ShadowParamsUniformBuffer)
-        {
-            return;
-        }
-
-        RHIShaderBindingSetLayout* shadowBindingLayout = pipeline->GetPipelineLayouts().GetShadowShaderBindingSetLayout();
-        if (!shadowBindingLayout)
-        {
-            return;
-        }
-
-        m_ShadowShaderBindingSet = cmdList.CreateShaderBindingSet(
-            shadowBindingLayout,
-            {
-                {RHIShaderBindingType::UniformBuffer, m_LightViewProjUniformBuffer, nullptr},
-                {RHIShaderBindingType::UniformBuffer, m_PerObjectUniformBuffer, nullptr},
-                {RHIShaderBindingType::UniformBuffer, m_ShadowParamsUniformBuffer.get(), nullptr},
-            });
-    }
-
-    void ShadowPass::UpdateShadowParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params)
-    {
-        EnsureShadowShaderBindingSet(cmdList);
-        if (m_ShadowParamsUniformBuffer)
-        {
-            m_ShadowParamsUniformBuffer->UpdateSubresource(&params, 0, sizeof(ShadowPassParamsUBO));
         }
     }
 
@@ -138,8 +133,7 @@ namespace minEngine
         {
             return;
         }
-
-        EnsureShadowShaderBindingSet(cmdList);
+        m_PendingShadowBindingSets.clear();
     }
 
     void ShadowPass::RenderSingleDrawCommand(RHICommandList& cmdList, const ShadowDrawCommand& command)
@@ -176,17 +170,15 @@ namespace minEngine
         }
     }
 
-    void ShadowPass::UpdateLightViewProjBuffer(const Matrix4& inMatrix)
+    void ShadowPass::DrawOpaqueMeshes(RHICommandList& cmdList, const ShadowPassUniformBinding& uniformBinding)
     {
-        if (m_LightViewProjUniformBuffer)
+        if (!pipeline || !m_PerObjectUniformBuffer || !uniformBinding.IsValid())
         {
-            m_LightViewProjUniformBuffer->UpdateSubresource(&inMatrix, 0, sizeof(Matrix4));
+            return;
         }
-    }
 
-    void ShadowPass::DrawOpaqueMeshes(RHICommandList& cmdList)
-    {
-        if (!m_ShadowShaderBindingSet || !m_PerObjectUniformBuffer)
+        RHIShaderBindingSetLayout* shadowBindingLayout = pipeline->GetPipelineLayouts().GetShadowShaderBindingSetLayout();
+        if (!shadowBindingLayout)
         {
             return;
         }
@@ -205,11 +197,37 @@ namespace minEngine
                 continue;
             }
 
-            m_PerObjectUniformBuffer->UpdateSubresource(&drawCommand.m_ModelMatrix, 0, sizeof(Matrix4));
+            const uint32_t perObjectOffset = pipeline->GetSceneBindings().WriteNextPerObjectModel(drawCommand.m_ModelMatrix);
+            std::vector<RHIShaderBinding> resources(3);
+            resources[0] = {
+                RHIShaderBindingType::UniformBuffer,
+                uniformBinding.ViewProjBuffer,
+                nullptr,
+                uniformBinding.ViewProjByteOffset,
+                static_cast<uint32_t>(sizeof(Matrix4))};
+            resources[1] = {
+                RHIShaderBindingType::UniformBuffer,
+                m_PerObjectUniformBuffer,
+                nullptr,
+                perObjectOffset,
+                static_cast<uint32_t>(sizeof(Matrix4))};
+            resources[2] = {
+                RHIShaderBindingType::UniformBuffer,
+                uniformBinding.ParamsBuffer,
+                nullptr,
+                uniformBinding.ParamsByteOffset,
+                static_cast<uint32_t>(sizeof(ShadowPassParamsUBO))};
+
+            RHIShaderBindingSetRef shadowSet = cmdList.CreateShaderBindingSet(shadowBindingLayout, resources);
+            if (!shadowSet)
+            {
+                continue;
+            }
+            m_PendingShadowBindingSets.push_back(shadowSet);
 
             MeshDrawPacket packet;
             packet.PipelineState = pipelineState;
-            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = m_ShadowShaderBindingSet.get();
+            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = shadowSet.get();
             packet.VertexBuffer = drawCommand.m_VertexBuffer;
             packet.IndexBuffer = drawCommand.m_IndexBuffer;
             cmdList.SubmitMeshDrawPacket(packet);
@@ -231,13 +249,13 @@ namespace minEngine
 
         const ShadowResolution& resolution = command.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
-        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
-        UpdateLightViewProjBuffer(command.ViewProj);
-        ShadowPassParamsUBO params{};
-        params.UseLinearDepth = 0;
-        UpdateShadowParams(cmdList, params);
-
-        DrawOpaqueMeshes(cmdList);
+        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::ShadowMap2D);
+        ShadowPassUniformBinding uniformBinding{};
+        uniformBinding.ViewProjBuffer = command.ViewProjUniformBuffer;
+        uniformBinding.ViewProjByteOffset = command.ViewProjUniformOffset;
+        uniformBinding.ParamsBuffer = command.ParamsUniformBuffer;
+        uniformBinding.ParamsByteOffset = command.ParamsUniformOffset;
+        DrawOpaqueMeshes(cmdList, uniformBinding);
         cmdList.EndRenderPass();
     }
 
@@ -255,14 +273,13 @@ namespace minEngine
 
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
-        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
-
-        UpdateLightViewProjBuffer(shadowCommand.ViewProj);
-        ShadowPassParamsUBO params{};
-        params.UseLinearDepth = 0;
-        UpdateShadowParams(cmdList, params);
-
-        DrawOpaqueMeshes(cmdList);
+        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::ShadowMap2D);
+        ShadowPassUniformBinding uniformBinding{};
+        uniformBinding.ViewProjBuffer = shadowCommand.ViewProjUniformBuffer;
+        uniformBinding.ViewProjByteOffset = shadowCommand.ViewProjUniformOffset;
+        uniformBinding.ParamsBuffer = shadowCommand.ParamsUniformBuffer;
+        uniformBinding.ParamsByteOffset = shadowCommand.ParamsUniformOffset;
+        DrawOpaqueMeshes(cmdList, uniformBinding);
         cmdList.EndRenderPass();
     }
 
@@ -287,18 +304,13 @@ namespace minEngine
 
         const ShadowResolution& resolution = shadowCommand.Handle.Resolution;
         cmdList.BeginRenderPass(passInfo);
-        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height);
-
-        UpdateLightViewProjBuffer(shadowCommand.ViewProj);
-        ShadowPassParamsUBO params{};
-        params.UseLinearDepth = 1;
-        params.LightPos[0] = shadowCommand.LightPosition.x;
-        params.LightPos[1] = shadowCommand.LightPosition.y;
-        params.LightPos[2] = shadowCommand.LightPosition.z;
-        params.FarPlane = shadowCommand.FarPlane;
-        UpdateShadowParams(cmdList, params);
-
-        DrawOpaqueMeshes(cmdList);
+        cmdList.SetViewport(0, 0, resolution.Width, resolution.Height, RHIViewportConvention::CubeMapFace);
+        ShadowPassUniformBinding uniformBinding{};
+        uniformBinding.ViewProjBuffer = shadowCommand.ViewProjUniformBuffer;
+        uniformBinding.ViewProjByteOffset = shadowCommand.ViewProjUniformOffset;
+        uniformBinding.ParamsBuffer = shadowCommand.ParamsUniformBuffer;
+        uniformBinding.ParamsByteOffset = shadowCommand.ParamsUniformOffset;
+        DrawOpaqueMeshes(cmdList, uniformBinding);
         cmdList.EndRenderPass();
     }
 }

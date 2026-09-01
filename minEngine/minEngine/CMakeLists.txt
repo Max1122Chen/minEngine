@@ -37,7 +37,8 @@ add_custom_command(
 add_custom_target(reflection_codegen DEPENDS ${REFLECTION_GENERATED_MANIFEST} ${SCRIPT_BINDING_GENERATED_MANIFEST})
 
 file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
-                ${THIRD_PARTY_PATH}/imgui/backends/*.cpp
+                ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_glfw.cpp
+                ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_opengl3.cpp
 )
 set(IMGUI_UPSTREAM_DIR ${THIRD_PARTY_PATH}/imgui-upstream)
 set(IMGUI_FREETYPE_SRC ${IMGUI_UPSTREAM_DIR}/misc/freetype/imgui_freetype.cpp)
@@ -161,3 +162,33 @@ endif()
 target_link_libraries(${ENGINE_NAME} PRIVATE glfw3 opengl32 ${ASSIMP_LINK_TARGET})
 
 target_link_directories(${ENGINE_NAME} PUBLIC ${THIRD_PARTY_PATH}/glfw/lib-mingw-w64)
+
+# RND-F05: Vulkan SDK (headers/libs later; glslangValidator for ShaderCompiler).
+find_package(Vulkan QUIET)
+find_program(MINENGINE_GLSLANG_VALIDATOR
+    NAMES glslangValidator glslang
+    HINTS
+        ENV VULKAN_SDK
+        ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE}
+    PATH_SUFFIXES Bin bin
+)
+if(MINENGINE_GLSLANG_VALIDATOR)
+    message(STATUS "RND-F05: glslangValidator = ${MINENGINE_GLSLANG_VALIDATOR}")
+    # Escape backslashes for stringize in C++.
+    file(TO_CMAKE_PATH "${MINENGINE_GLSLANG_VALIDATOR}" MINENGINE_GLSLANG_VALIDATOR_CMAKE)
+    string(REPLACE "\\" "/" MINENGINE_GLSLANG_VALIDATOR_CMAKE "${MINENGINE_GLSLANG_VALIDATOR_CMAKE}")
+    target_compile_definitions(${ENGINE_NAME} PRIVATE
+        MINENGINE_GLSLANG_VALIDATOR="${MINENGINE_GLSLANG_VALIDATOR_CMAKE}"
+    )
+else()
+    message(WARNING "RND-F05: glslangValidator not found. Set VULKAN_SDK. ShaderCompiler will fail at runtime until discovered.")
+endif()
+if(Vulkan_FOUND)
+    message(STATUS "RND-F05: Vulkan package found (${Vulkan_VERSION})")
+    target_include_directories(${ENGINE_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
+    target_link_libraries(${ENGINE_NAME} PRIVATE Vulkan::Vulkan)
+    target_compile_definitions(${ENGINE_NAME} PUBLIC MINENGINE_HAS_VULKAN=1)
+    target_sources(${ENGINE_NAME} PRIVATE ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_vulkan.cpp)
+else()
+    message(WARNING "RND-F05: find_package(Vulkan) failed. --rhi vulkan will not initialize.")
+endif()

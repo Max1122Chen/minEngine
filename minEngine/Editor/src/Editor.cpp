@@ -6,8 +6,6 @@
 #include "main.h"
 
 #include "imgui.h"
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
 
 #include "Runtime/Core/CLI/ApplicationCommandLine.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
@@ -16,16 +14,18 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
+#include "Runtime/Function/Render/Vulkan/VulkanRHI.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
-#include "Resource/AssetManager.h"
 
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
 #include "Shell/EditorSettingsDefaults.h"
 #include "UI/Appearance/EditorAppearance.h"
 
+#include <GLFW/glfw3.h>
 #include <filesystem>
 #include <optional>
 
@@ -153,17 +153,24 @@ namespace minEngine
             const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
             if (!projectCtx.Settings.EditorDefaultSceneName.empty())
             {
-                if (!m_SceneEditor.LoadScene(*this, projectCtx.Settings.EditorDefaultSceneName))
+                const std::string& defaultSceneName = projectCtx.Settings.EditorDefaultSceneName;
+                if (!m_SceneEditor.LoadScene(*this, defaultSceneName))
                 {
                     ME_CORE_WARN(
                         "Failed to load editor default scene '{}'.",
-                        projectCtx.Settings.EditorDefaultSceneName);
+                        defaultSceneName);
+
+                    if (defaultSceneName != "default" &&
+                        m_SceneEditor.LoadScene(*this, "default"))
+                    {
+                        ME_CORE_INFO("Editor: loaded fallback scene 'default'.");
+                    }
                 }
                 else
                 {
                     ME_CORE_INFO(
                         "Editor default scene '{}' loaded successfully.",
-                        projectCtx.Settings.EditorDefaultSceneName);
+                        defaultSceneName);
                 }
             }
 
@@ -210,6 +217,41 @@ namespace minEngine
         m_CommandStack.Clear();
     }
 
+    bool Editor::InitializeImGuiBackend()
+    {
+        GLFWwindow* windowHandle = static_cast<GLFWwindow*>(WindowSystem::Get().GetWindowHandle());
+        if (windowHandle == nullptr)
+        {
+            ME_CORE_ERROR("Editor: GLFW window handle is null.");
+            return false;
+        }
+
+        const EditorImGuiBackend::RendererApi api = RHIBackendSelection::IsVulkan()
+            ? EditorImGuiBackend::RendererApi::Vulkan
+            : EditorImGuiBackend::RendererApi::OpenGL;
+
+        if (!m_ImGuiBackend.Initialize(api, windowHandle))
+        {
+            ME_CORE_ERROR("Editor: ImGui backend initialization failed.");
+            return false;
+        }
+
+#if defined(MINENGINE_HAS_VULKAN)
+        if (api == EditorImGuiBackend::RendererApi::Vulkan)
+        {
+            RHI* rhi = RenderSystem::Get().GetRHI();
+            auto* vulkanRhi = dynamic_cast<VulkanRHI*>(rhi);
+            if (vulkanRhi == nullptr || !m_ImGuiBackend.InitializeVulkanRenderer(*vulkanRhi))
+            {
+                ME_CORE_ERROR("Editor: ImGui Vulkan renderer initialization failed.");
+                return false;
+            }
+        }
+#endif
+
+        return true;
+    }
+
     void Editor::Initialize(int argc, char** argv)
     {
         const std::optional<CommandLineResult> commandLine =
@@ -232,6 +274,11 @@ namespace minEngine
         m_Engine->Initialize(commandLine);
 
         RenderSystem::Get().SetPresentPassEnabled(false);
+        if (RHIBackendSelection::IsVulkan())
+        {
+            RenderSystem::Get().GetRHI()->RHISetBackbufferClearColor(Vector3(0.1f, 0.1f, 0.1f));
+            ME_CORE_INFO("Editor: Vulkan full Editor path (ED-F01); scene renders to viewport RT.");
+        }
 
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -240,9 +287,11 @@ namespace minEngine
         io.FontGlobalScale = 1.0f;
         m_Appearance.ApplyDefaultTheme();
 
-        GLFWwindow* windowHandle = static_cast<GLFWwindow*>(WindowSystem::Get().GetWindowHandle());
-        ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
-        ImGui_ImplOpenGL3_Init();
+        if (!InitializeImGuiBackend())
+        {
+            m_ExitRequested = true;
+            return;
+        }
 
         WindowSystem::Get().SetCursorVisible(true);
 
@@ -344,18 +393,22 @@ namespace minEngine
         m_ViewportRegistry.Clear();
         m_ContextMenu.Shutdown();
 
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
+        m_ImGuiBackend.Shutdown();
         ImGui::DestroyContext();
 
-        m_Engine->Shutdown();
-        delete m_Engine;
-        m_Engine = nullptr;
+        if (m_Engine)
+        {
+            m_Engine->Shutdown();
+            delete m_Engine;
+            m_Engine = nullptr;
+        }
     }
 
     void Editor::Run()
     {
         WindowSystem& windowSystem = WindowSystem::Get();
+        RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
+
         while (!windowSystem.ShouldClose() && !m_ExitRequested)
         {
             const float deltaTime = m_Engine->CalculateDeltaTime();
@@ -370,24 +423,26 @@ namespace minEngine
 
             UpdateWindowTitle();
 
-            ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplGlfw_NewFrame();
+            m_ImGuiBackend.NewFrame();
             ImGui::NewFrame();
 
             m_EditorGUIManager.Tick(deltaTime);
             m_ProjectAssetWatcher.Tick(deltaTime);
             m_InputHub.ProcessInput(*this);
 
-            // Inspector / UI can mark components dirty after LogicalTick already ran
-            // SendAllEndOfFrameUpdates. Flush again so mesh/material ref changes update
-            // scene proxies before render (avoids dangling VB/IB pointers when old assets drop).
             SceneManager::Get().SendAllEndOfFrameUpdates();
 
             m_Engine->TickRendererFrame(deltaTime);
 
-            ImGui::Render();
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-            windowSystem.SwapBuffers();
+            m_ImGuiBackend.RenderDrawData(rhi);
+            if (RenderSystem::HasInstance())
+            {
+                RenderSystem::Get().PresentFrame();
+            }
+            else
+            {
+                windowSystem.SwapBuffers();
+            }
         }
     }
 

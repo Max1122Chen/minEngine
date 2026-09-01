@@ -61,6 +61,7 @@ namespace minEngine
     {
     public:
         OpenGLRHIShader(std::string_view vertexSource, std::string_view fragmentSource);
+        explicit OpenGLRHIShader(const RHIShaderCreateDesc& desc);
         ~OpenGLRHIShader() override;
 
         OpenGLRHIShader(const OpenGLRHIShader&) = delete;
@@ -72,6 +73,8 @@ namespace minEngine
         GLuint GetProgramId() const { return m_ProgramId; }
 
     private:
+        bool LinkProgram(GLuint vertexShader, GLuint fragmentShader);
+
         GLuint m_ProgramId = 0;
         bool m_IsValid = false;
         std::string m_CompileLog;

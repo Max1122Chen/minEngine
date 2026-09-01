@@ -4,6 +4,7 @@
 #include "minEngine.h"
 
 #include "EditorGUIManager.h"
+#include "Platform/EditorImGuiBackend.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/AssetWatch/ProjectAssetWatcher.h"
@@ -93,6 +94,7 @@ namespace minEngine
         void ApplyCommandStackSettingsFromProject();
         void ApplyAppearanceSettingsFromProject();
         void ResetCommandStackForNewDocument();
+        bool InitializeImGuiBackend();
 
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
@@ -109,6 +111,7 @@ namespace minEngine
         EditorCommandStack m_CommandStack;
         EditorContextMenuSystem m_ContextMenu;
         EditorAppearance m_Appearance;
+        EditorImGuiBackend m_ImGuiBackend;
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;

@@ -2,14 +2,21 @@
 
 #include "Core.h"
 #include "Runtime/Function/Framework/Components/LightComponent.h"
+#include "Runtime/Function/Render/EngineRenderLimits.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
 #include <string>
 
 namespace minEngine
 {
+    class RHIBuffer;
+
     constexpr int MAX_SPOT_SHADOW_MAPS = 2;
     constexpr int MAX_POINT_SHADOW_MAPS = 2;
+
+    /** Fixed RDG shadow pass slots: dir cascades + spot maps + point cube faces. */
+    constexpr uint32_t kMaxShadowGraphPasses =
+        MAX_CASCADES + static_cast<uint32_t>(MAX_SPOT_SHADOW_MAPS + MAX_POINT_SHADOW_MAPS * 6);
 
     enum class ShadowResourceType : uint8_t
     {
@@ -57,6 +64,9 @@ namespace minEngine
         int LayerCount = 0;
 
         RHITextureRef Texture;
+
+        /** RDG physical slot after Bake/SetupAttachments; UINT32_MAX when unknown. */
+        uint32_t RdgPhysicalIndex = UINT32_MAX;
 
         bool IsValid() const
         {
@@ -112,5 +122,9 @@ namespace minEngine
         } Target;
 
         ShadowAtlasRect AtlasRect{};
+        RHIBuffer* ViewProjUniformBuffer = nullptr;
+        uint32_t ViewProjUniformOffset = 0;
+        RHIBuffer* ParamsUniformBuffer = nullptr;
+        uint32_t ParamsUniformOffset = 0;
     };
 }

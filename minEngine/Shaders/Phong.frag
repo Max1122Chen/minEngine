@@ -1,7 +1,21 @@
 #version 330 core
 
+// Prefer inject from ShaderCompiler. Sampler array size uses SLOTS (layout); MAX_* gates sampling.
+#ifndef MAX_SPOT_SHADOW_MAPS
 #define MAX_SPOT_SHADOW_MAPS 2
+#endif
+#ifndef MAX_POINT_SHADOW_MAPS
 #define MAX_POINT_SHADOW_MAPS 2
+#endif
+#ifndef DIR_SHADOW_FORCE_CASCADE
+#define DIR_SHADOW_FORCE_CASCADE -1
+#endif
+#ifndef SPOT_SHADOW_SAMPLER_SLOTS
+#define SPOT_SHADOW_SAMPLER_SLOTS 2
+#endif
+#ifndef POINT_SHADOW_SAMPLER_SLOTS
+#define POINT_SHADOW_SAMPLER_SLOTS 2
+#endif
 
 #define SHADOW_FILTER_BOX 0
 #define SHADOW_FILTER_POISSON 1
@@ -116,8 +130,8 @@ uniform Material u_Material;
 
 // Shadow maps
 uniform sampler2DArray u_DirLightShadowMap;
-uniform sampler2D u_SpotShadowMaps[MAX_SPOT_SHADOW_MAPS];
-uniform samplerCube u_PointShadowMaps[MAX_POINT_SHADOW_MAPS];
+uniform sampler2D u_SpotShadowMaps[SPOT_SHADOW_SAMPLER_SLOTS];
+uniform samplerCube u_PointShadowMaps[POINT_SHADOW_SAMPLER_SLOTS];
 
 const int kMaxPoissonSamples = 16;
 const int kPoissonSampleCount = (POISSON_SAMPLE_COUNT <= kMaxPoissonSamples) ? POISSON_SAMPLE_COUNT : kMaxPoissonSamples;
@@ -167,6 +181,30 @@ vec2 Rotate2D(vec2 v, float angle)
     return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
 }
 
+// Params.w < 0 means no shadow (CPU sentinel -1). Do not round with +0.5: int(-0.5)==0 in GLSL.
+int MinEngineShadowMapSlot(float paramsW)
+{
+    if (paramsW < 0.0)
+    {
+        return -1;
+    }
+    return int(paramsW + 0.5);
+}
+
+// Layer C: NDC → shadow UV + compare depth (Dir/Spot projected shadows only).
+// Z: OpenGL N1 needs *0.5+0.5; Vulkan ZO uses ndc.z directly.
+vec3 MinEngineShadowMapCoords(vec4 fragPosLightSpace)
+{
+    vec3 ndc = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    vec2 uv = ndc.xy * 0.5 + 0.5;
+#if defined(MINENGINE_CLIP_DEPTH_ZERO_TO_ONE) && (MINENGINE_CLIP_DEPTH_ZERO_TO_ONE != 0)
+    float depth = ndc.z;
+#else
+    float depth = ndc.z * 0.5 + 0.5;
+#endif
+    return vec3(uv, depth);
+}
+
 out vec4 FragColor;
 
 void main()
@@ -204,23 +242,27 @@ vec3 CalcDirLight(DirectionalLightData light, vec3 normal, vec3 fragPos, vec3 vi
     float bias = max(0.0005, 0.005 * (1.0 - ndotl));
 
     float shadow = 0.0;
-    
-    // Determine which cascade to sample based on the fragment's view space depth
-    float viewDepth = -FragPosViewSpace.z;
-    int cascadeIndex = 3; // Default to the last cascade if beyond all far planes
 
-    for(int i = 0; i < 4; i++)
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0)
     {
-        if(viewDepth < FarPlanes[i])
+        float viewDepth = -FragPosViewSpace.z;
+        int cascadeIndex = 0;
+#if DIR_SHADOW_FORCE_CASCADE >= 0
+        cascadeIndex = DIR_SHADOW_FORCE_CASCADE;
+#else
+        cascadeIndex = 3;
+        for(int i = 0; i < 4; i++)
         {
-            cascadeIndex = i;
-            break;
+            if(viewDepth < FarPlanes[i])
+            {
+                cascadeIndex = i;
+                break;
+            }
         }
+#endif
+        vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
+        shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
     }
-    // lightColor = GetCascadeDebugColor(cascadeIndex); // Debug: visualize cascade splits with colors
-    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
-    shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
-    
 
     // Ambient shading
     float ambientStrength = 0.1;    // TODO: make it configurable
@@ -247,7 +289,7 @@ vec3 CalcPointLight(PointLightData light, vec3 normal, vec3 fragPos, vec3 viewDi
     vec3 lightColor = light.Color.rgb * light.Color.w;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);
@@ -299,7 +341,7 @@ vec3 CalcSpotLight(SpotLightData light, vec3 normal, vec3 fragPos, vec3 viewDir,
     specular *= intensity;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_SPOT_SHADOW_MAPS)
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);
@@ -334,8 +376,7 @@ float SampleDirShadowPCF(vec4 fragPosLightSpace, float shadowLayer, float bias)
 
 float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5; // Transform from NDC to [0,1] range
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -364,8 +405,7 @@ float SampleDirShadowPCF_Box(vec4 fragPosLightSpace, float shadowLayer, float bi
 
 float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -392,8 +432,7 @@ float SampleDirShadowPCF_Poisson(vec4 fragPosLightSpace, float shadowLayer, floa
 
 float SampleDirShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, float shadowLayer, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -458,8 +497,7 @@ float SampleSpotShadowPCF(vec4 fragPosLightSpace, int shadowIndex, float bias)
 
 float SampleSpotShadowPCF_Box(vec4 fragPosLightSpace, int shadowIndex, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -488,8 +526,7 @@ float SampleSpotShadowPCF_Box(vec4 fragPosLightSpace, int shadowIndex, float bia
 
 float SampleSpotShadowPCF_Poisson(vec4 fragPosLightSpace, int shadowIndex, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||
@@ -516,8 +553,7 @@ float SampleSpotShadowPCF_Poisson(vec4 fragPosLightSpace, int shadowIndex, float
 
 float SampleSpotShadowPCF_PoissonPCSS(vec4 fragPosLightSpace, int shadowIndex, float bias)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    vec3 projCoords = MinEngineShadowMapCoords(fragPosLightSpace);
 
     if(projCoords.x < 0.0 || projCoords.x > 1.0 ||
        projCoords.y < 0.0 || projCoords.y > 1.0 ||

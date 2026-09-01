@@ -44,7 +44,8 @@ namespace minEngine
         void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
         void Prepare(RenderGraph& graph) override;
         void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;
-        bool NeedRenderPass() const override { return true; }
+        /** Enter when sky is enabled so SceneColor is cleared even if the draw packet is not ready. */
+        bool NeedRenderPass() const override { return m_ShouldEnterPass; }
 
     private:
         bool BindEnvironmentTexture(RHICommandList& cmdList, RHITexture* environmentTexture);
@@ -61,6 +62,7 @@ namespace minEngine
         std::shared_ptr<RHIShaderBindingSet> m_SkyShaderBindingSet;
         RHIBufferRef m_SkyFrameUniformBuffer;
 
+        bool m_ShouldEnterPass = false;
         bool m_ShouldRender = false;
         MeshDrawPacket m_DrawPacket;
     };

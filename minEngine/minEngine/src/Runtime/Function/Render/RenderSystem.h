@@ -4,6 +4,7 @@
 #include "Runtime/Function/Render/EngineRenderLimits.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/SceneRenderer.h"
+#include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <memory>
 #include <vector>
@@ -19,13 +20,16 @@ namespace minEngine
         RenderSystem() = default;
         ~RenderSystem() = default;
 
-        void Initialize();
+        void Initialize(SceneRendererKind sceneRenderer = SceneRendererKind::Forward);
         void Shutdown();
 
         static bool HasInstance();
         static RenderSystem& Get();
 
         void Tick(float deltaTime);
+
+        /** Swapchain/backbuffer present (RND-F05-S05 neutral frame boundary). */
+        void PresentFrame();
 
         void SubmitSceneDraw(const SceneDrawDesc& desc);
 

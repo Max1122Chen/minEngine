@@ -14,8 +14,11 @@
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
+#include "Runtime/Function/Physics/PhysicsDebugDraw.h"
+
 #include "Runtime/Function/Render/RenderSystem.h"
 
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 
 #include "Render/RenderCamera.h"
@@ -157,11 +160,24 @@ namespace minEngine
         RHI* rhi = RenderSystem::Get().GetRHI();
 
         GetSceneViewport().ApplyPendingResize(rhi);
+        SyncSceneViewportCameraAspect();
 
 
 
-        const SceneDrawFlags flags = SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
-                                     SceneDrawFlags::EnableSkyBox;
+        // ED-F01-S06: Vulkan Editor matches OpenGL draw flags (shadows + post + sky).
+        const SceneDrawFlags flags =
+            SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
+            SceneDrawFlags::EnableSkyBox | SceneDrawFlags::EnableDebugDraw;
+
+        if (HasSceneDrawFlag(flags, SceneDrawFlags::EnableDebugDraw))
+        {
+            SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+            Scene* scene = sceneEditor ? sceneEditor->GetActiveScene() : nullptr;
+            if (scene != nullptr)
+            {
+                PhysicsDebugDraw::SubmitScene(*scene, PhysicsDebugDraw::GetOptions());
+            }
+        }
 
         const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
 
@@ -198,7 +214,8 @@ namespace minEngine
 
         scene->EnsureRenderScene();
 
-        GetSceneViewport().SetObservedScene(scene->GetRenderScene());
+        RenderScene* renderScene = scene->GetRenderScene();
+        GetSceneViewport().SetObservedScene(renderScene);
 
     }
 

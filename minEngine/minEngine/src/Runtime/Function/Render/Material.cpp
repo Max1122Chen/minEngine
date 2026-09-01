@@ -7,6 +7,7 @@
 #include "Runtime/Function/Render/Material/MaterialValueType.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Function/Render/EngineShaderUtils.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "RHI/RHIShader.h"
@@ -288,9 +289,11 @@ namespace minEngine
         }
 
         std::string compileError;
-        m_GPUShader = ctx.RHI->RHICreateShader(
+        m_GPUShader = EngineShaderUtils::CreateShaderFromSpirvSources(
+            *ctx.RHI,
             result.FullVertexShader,
             result.FullFragmentShader,
+            GetName().empty() ? "Material" : GetName(),
             &compileError);
         m_ShaderCompileLog = compileError;
         if (!m_GPUShader)

@@ -19,6 +19,7 @@ namespace minEngine
     struct RHIBufferCreateDesc;
 
     class RHIShader;
+    struct RHIShaderCreateDesc;
 
     class RHIVertexInputLayout;
 
@@ -61,6 +62,11 @@ namespace minEngine
             const void* initialData = nullptr) = 0;
 
         virtual std::shared_ptr<RHIShader> RHICreateShader(
+            const RHIShaderCreateDesc& desc,
+            std::string* outCompileLog = nullptr) = 0;
+
+        /** Legacy GLSL source path (Material / unmigrated passes). Prefer bytecode overload. */
+        virtual std::shared_ptr<RHIShader> RHICreateShader(
             const std::string& vertexSource,
             const std::string& fragmentSource,
             std::string* outCompileLog = nullptr) = 0;
@@ -88,7 +94,21 @@ namespace minEngine
         virtual void RHICmdSetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet) = 0;
         virtual void RHICmdTransition(const RHITextureTransitionInfo& transition) = 0;
 
-        virtual void RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
+        /**
+         * Set viewport/scissor.
+         * @param flipY When true (default), Vulkan flips Y (negative height) for GLM/OpenGL-style
+         *              clip space. Offline cubemap bake should pass false so face images match
+         *              samplerCube conventions without polar seams.
+         */
+        virtual void RHICmdSetViewport(
+            uint32_t x,
+            uint32_t y,
+            uint32_t width,
+            uint32_t height,
+            bool flipY = true) = 0;
+
+        /** Minimum uniform-buffer offset alignment (Vulkan device limit / GL UBO alignment). */
+        virtual uint32_t RHIGetMinUniformBufferOffsetAlignment() const { return 256; }
         virtual void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot = 0) = 0;
         virtual void RHICmdSetIndexBuffer(RHIBuffer* indexBuffer) = 0;
 
@@ -102,8 +122,24 @@ namespace minEngine
         /** Generate mip chain from mip 0 (backend-owned). Prefer after filling base level. */
         virtual void RHICmdGenerateMips(RHITexture* texture) = 0;
 
-        /** Backbuffer clear color / clear (swapchain surface owned by WindowSystem). */
+        /** Backbuffer clear color / clear (swapchain surface). */
         virtual void RHISetBackbufferClearColor(const Vector3& color) = 0;
         virtual void RHIClearBackbuffer() = 0;
+
+        /**
+         * Present the backbuffer / swapchain.
+         * OpenGL: glfwSwapBuffers. Vulkan: submit + present (semaphores/fences internal).
+         */
+        virtual void RHIPresent() = 0;
+
+        /**
+         * Offline / load-time GPU work outside the swapchain frame (EnvMap bake, etc.).
+         * OpenGL: no-op. Vulkan: one-shot command buffer + queue wait.
+         */
+        virtual void RHIBeginImmediateCommands() {}
+        virtual void RHIEndImmediateCommands() {}
+
+        /** Drop cached attachment views before RDG physical textures are destroyed/recreated (Vulkan). */
+        virtual void NotifyAttachmentResourcesDiscarded() {}
     };
 }

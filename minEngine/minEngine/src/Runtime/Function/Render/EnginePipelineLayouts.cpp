@@ -125,17 +125,16 @@ namespace minEngine
         psoDesc.PixelShader = shader;
         psoDesc.VertexInputLayout = vertexInputLayout;
         psoDesc.DepthStencilState.bDepthTestEnabled = true;
-        psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::Less;
+        psoDesc.DepthStencilState.bDepthWriteEnabled = true;
+        psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::LessEqual;
 
         if (translucentPass)
         {
             psoDesc.BlendState.bBlendEnabled = true;
-            psoDesc.DepthStencilState.bDepthWriteEnabled = false;
         }
         else
         {
             psoDesc.BlendState.bBlendEnabled = false;
-            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
         }
 
         RHIGraphicsPipelineStateRef pipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);

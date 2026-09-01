@@ -38,6 +38,9 @@ namespace minEngine
 
         void SetInputTextureName(const char* inputName);
 
+        /** ManualRenderer path: bypass RenderGraph input binding. */
+        void RunWithInputTexture(RHICommandList& cmdList, RHITexture* inputTexture);
+
         void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
         void Prepare(RenderGraph& graph) override;
         void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override;

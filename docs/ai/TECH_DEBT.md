@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-08-04（CORE-F04 Done；TD-006 Done）
+Last updated: 2026-08-31（RND-F14 Done；BUG-013/010/011 closed；TD-025 Done）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -30,6 +30,9 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-020 | Shadow atlas 仍由 `ShadowResourceManager` 分配 | RND | **Medium** | Done | `RND-F08` | 2026-08-02：图拥有 Dir/Spot/Point；Manager 已删 |
 | TD-021 | EnvironmentMap Editor/CLI Bake 按钮 + 可选写回磁盘 | RND / ED | **Low** | Open | `RND-F10` S06 | 运行时 EnsureGPU bake 已够用；显式 Bake UX / face PNG 落盘后置 |
 | TD-022 | `BuildSceneSet0` 每帧 `CreateBindingSet`（原 render TD-013） | RND | **Medium** | Done | `RND-F09` · `EngineSceneBindingSets.cpp` | 2026-08-03 F09-S01：脏标记。合入 master 时与 CORE enum TD-013 撞号，改记为 TD-022 Done |
+| TD-023 | Scene pass ordering / clear contract still fragile after VK smoke | RND / ForwardRenderer | **Medium** | Open | `RND-F05` S07d / `ED-F01` | BasePass clears only when Sky off; Sky `NeedRenderPass` must still enter to clear when draw prep fails. 2026-08-25: fixed `NeedRenderPass`→`m_ShouldEnterPass` + Vulkan `LoadEngineRenderingAssets` (was OpenGL-only). Broader ordering still fragile. |
+| TD-024 | Vulkan frame sync leftovers after S07d smoke | VulkanRHI | **Medium** | Open | `RND-F05` S07d / `ED-F01` | Present semaphore reuse still triggers validation on fast shutdown; `RHICmdGenerateMips()` remains VK no-op. 2026-08-25: removed S07d DrawIndexed diagnostic logs; HDR bake DEVICE_LOST fixed (immediate submit before PSO destroy + cube layout defer). |
+| TD-025 | Clip-space / texture-origin policy hardcoded to `IsVulkan()` | RND / RHI | **Medium** | Done | [RND-TD025](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md) · ED-F01 | 2026-08-28: `RHIClipSpaceCapabilities` + shadow scheme A landed；2026-08-31 user visual verify with RND-F14 batch |
 
 ---
 

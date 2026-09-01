@@ -8,6 +8,8 @@
 #include "Runtime/Function/Render/RenderPipeline/SceneMeshDrawUtils.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHIClipSpaceCapabilities.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 
 namespace minEngine
 {
@@ -37,6 +39,7 @@ namespace minEngine
     void BasePass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
         (void)graph;
+        AddSceneLitShadowTextureInputs(self);
         self.AddColorOutput(kRDGSceneColor, MakeSceneColorAttachment());
         self.SetDepthStencilOutput(kRDGSceneDepth, MakeSceneDepthAttachment());
     }
@@ -79,7 +82,13 @@ namespace minEngine
 
         RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, m_ClearSceneTargets);
         cmdList.BeginRenderPass(passInfo);
-        cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
+        cmdList.SetViewport(
+            0,
+            0,
+            colorTexture->GetDesc().Width,
+            colorTexture->GetDesc().Height,
+            RHIViewportConvention::Scene);
+
         SubmitSceneMeshDrawPackets(*pipeline, cmdList, m_DrawCommands, m_DrawPackets);
         cmdList.EndRenderPass();
     }

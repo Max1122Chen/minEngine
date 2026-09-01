@@ -1,4 +1,8 @@
 #include "RenderCamera.h"
+
+#include "Render/RHI/RHIClipSpace.h"
+#include "Render/RHI/RHIClipSpaceCapabilities.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace minEngine
@@ -20,7 +24,11 @@ namespace minEngine
 
     void RenderCamera::UpdateProjectionMatrix()
     {
-        m_ProjectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_zNear, m_zFar);
+        m_ProjectionMatrix = RHIClipSpace::MakePerspective(
+            glm::radians(m_FOV),
+            m_AspectRatio,
+            m_zNear,
+            m_zFar);
     }
 
     void RenderCamera::UpdateViewProjMatrix()
@@ -35,13 +43,14 @@ namespace minEngine
             return Geometry::Ray(m_Position, Vector3(1.0f, 0.0f, 0.0f));
         }
 
-        // Input contract: screenPoint is in top-left-origin pixel space.
         const float ndcX = (screenPoint.x / bufferSize.x) * 2.0f - 1.0f;
         const float ndcY = 1.0f - (screenPoint.y / bufferSize.y) * 2.0f;
+        const float nearNdcZ = GetFrustumNdcZNear();
+        const float farNdcZ = GetFrustumNdcZFar();
 
         const Matrix4 invViewProj = glm::inverse(m_ViewProjMatrix);
-        Vector4 nearWorld = invViewProj * Vector4(ndcX, ndcY, -1.0f, 1.0f);
-        Vector4 farWorld = invViewProj * Vector4(ndcX, ndcY, 1.0f, 1.0f);
+        Vector4 nearWorld = invViewProj * Vector4(ndcX, ndcY, nearNdcZ, 1.0f);
+        Vector4 farWorld = invViewProj * Vector4(ndcX, ndcY, farNdcZ, 1.0f);
         nearWorld /= nearWorld.w;
         farWorld /= farWorld.w;
 

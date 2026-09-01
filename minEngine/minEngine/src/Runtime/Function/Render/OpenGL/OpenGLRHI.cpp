@@ -1,5 +1,4 @@
 #include "OpenGLRHI.h"
-#include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
 #include "OpenGLRHIResources.h"
@@ -33,6 +32,35 @@ namespace minEngine
             }
         }
 
+        GLenum ToGLPrimitiveType(RHIPrimitiveType primitiveType)
+        {
+            switch (primitiveType)
+            {
+            case RHIPrimitiveType::LineList:
+                return GL_LINES;
+            case RHIPrimitiveType::TriangleStrip:
+                return GL_TRIANGLE_STRIP;
+            case RHIPrimitiveType::TriangleList:
+            default:
+                return GL_TRIANGLES;
+            }
+        }
+
+        GLenum GetBoundPrimitiveType(RHIGraphicsPipelineState* boundPipeline)
+        {
+            if (boundPipeline == nullptr)
+            {
+                return GL_TRIANGLES;
+            }
+
+            if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(boundPipeline))
+            {
+                return ToGLPrimitiveType(fallback->GetDesc().PrimitiveType);
+            }
+
+            return GL_TRIANGLES;
+        }
+
     }
 
     void OpenGLRHI::Initialize()
@@ -63,6 +91,14 @@ namespace minEngine
         if (m_WindowSystem)
         {
             m_WindowSystem->Clear();
+        }
+    }
+
+    void OpenGLRHI::RHIPresent()
+    {
+        if (m_WindowSystem)
+        {
+            m_WindowSystem->SwapBuffers();
         }
     }
 
@@ -109,6 +145,22 @@ namespace minEngine
     std::shared_ptr<RHIBuffer> OpenGLRHI::RHICreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
     {
         return std::make_shared<OpenGLRHIBuffer>(desc, initialData);
+    }
+
+    std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
+        const RHIShaderCreateDesc& desc,
+        std::string* outCompileLog)
+    {
+        auto shader = std::make_shared<OpenGLRHIShader>(desc);
+        if (outCompileLog)
+        {
+            *outCompileLog = shader->GetCompileLog();
+        }
+        if (!shader->IsValid())
+        {
+            return nullptr;
+        }
+        return shader;
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
@@ -231,6 +283,19 @@ namespace minEngine
                 break;
             }
         }
+
+        if (desc.RasterizerState.DepthBiasSlopeScale != 0.0f
+            || desc.RasterizerState.DepthBiasConstant != 0.0f)
+        {
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(
+                desc.RasterizerState.DepthBiasSlopeScale,
+                desc.RasterizerState.DepthBiasConstant);
+        }
+        else
+        {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+        }
     
         // Set primitive type
         switch (desc.PrimitiveType)
@@ -299,10 +364,22 @@ namespace minEngine
                 auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
                 if (ubo)
                 {
-                    glBindBufferBase(
-                        GL_UNIFORM_BUFFER,
-                        entry.ShaderBinding,
-                        ubo->GetBufferId());
+                    if (resource.BufferRange != 0)
+                    {
+                        glBindBufferRange(
+                            GL_UNIFORM_BUFFER,
+                            entry.ShaderBinding,
+                            ubo->GetBufferId(),
+                            static_cast<GLintptr>(resource.BufferOffset),
+                            static_cast<GLsizeiptr>(resource.BufferRange));
+                    }
+                    else
+                    {
+                        glBindBufferBase(
+                            GL_UNIFORM_BUFFER,
+                            entry.ShaderBinding,
+                            ubo->GetBufferId());
+                    }
                 }
             }
         }
@@ -512,9 +589,20 @@ namespace minEngine
         (void)transition;
     }
 
-    void OpenGLRHI::RHICmdSetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    void OpenGLRHI::RHICmdSetViewport(
+        uint32_t x,
+        uint32_t y,
+        uint32_t width,
+        uint32_t height,
+        bool flipY)
     {
+        (void)flipY;
         glViewport(static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+    }
+
+    uint32_t OpenGLRHI::RHIGetMinUniformBufferOffsetAlignment() const
+    {
+        return 256;
     }
 
 
@@ -554,14 +642,16 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)
     {
+        const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
         const void* indices = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex * sizeof(uint32_t)));
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
+        glDrawElements(primitiveType, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
         (void)vertexOffset;
     }
 
     void OpenGLRHI::RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex)
     {
-        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
+        const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
+        glDrawArrays(primitiveType, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
     }
 
     void OpenGLRHI::RHICmdGenerateMips(RHITexture* texture)

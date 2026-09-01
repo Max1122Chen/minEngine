@@ -2,16 +2,16 @@
 
 ## Meta
 - **ID:** BUG-RENDER-003
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** S2
 - **Owner:**
 - **Found:** 2026-06-12
-- **Last updated:** 2026-06-12
+- **Last updated:** 2026-08-04
 - **Affects:** `DirectionalLightComponent`, `MaterialPhongLighting.glslinc`, `MaterialPBR.glslinc`, `MaterialSceneShadows.glslinc`
 - **Related Feature/Slice:** Render lighting / shadow pass
 
 ## TL;DR
-Toggling **Cast Shadow** on a directional light updates the component and proxy, but Phong/PBR directional lighting always samples cascaded shadow maps; CPU skips shadow pass when disabled, so the toggle has little or no visible effect.
+Toggling **Cast Shadow** on a directional light updated the component and proxy, but Phong/PBR always sampled cascaded shadow maps. **Fixed** 2026-08-04: `ComputeMaterialSceneShadowVisibility` gates on `DirectionalLight.Params.w >= 0` (same pattern as point/spot).
 
 ---
 
@@ -29,27 +29,25 @@ Toggling **Cast Shadow** on a directional light updates the component and proxy,
 3. Observe shadowing on meshes unchanged.
 
 ## 环境
-- Branch: `physics` (render code shared with master)
+- Branch: `physics` (render code shared with master); verified fix on `feat/render`
 - OpenGL Phong/PBR graph materials
 
 ## 根因
-- CPU: `CollectShadowRequests` correctly gates on `dirLightProxy->m_CastsShadow`; `UpdateLight` copies `CastShadow()` to proxy; Inspector **does** call `MarkRenderStateDirty` for `LightComponent` (subclass of `SceneComponent`).
-- GPU: `CalcDirLightGraph` / `CalcDirLightPBR` / `ComputeDirectionalShadowFactor` always call `SampleDirShadowPCF` — they do **not** check `DirectionalLight.Params.w` (shadow map index) unlike point/spot paths.
-- Stale `DirLightViewProj` / shadow atlas can keep shading dark even when shadow pass skipped.
-
-**Not the same root cause as BUG-PHYS-002** (setter bypass); proxy update path works; shader ignores cast-shadow gate.
+- CPU: `CollectShadowRequests` correctly gates on `dirLightProxy->m_CastsShadow`; `UpdateLight` copies `CastShadow()` to proxy.
+- GPU: `ComputeMaterialSceneShadowVisibility` always called `ComputeDirectionalShadowFactor` when direction was non-zero — it did **not** check `DirectionalLight.Params.w` (shadow map index) unlike point/spot paths.
 
 ## 修复
-<!-- TBD: gate directional shadow on Params.w or uniform flag when shadowIndex < 0 -->
+- Gate directional shadow application on `int(DirectionalLight.Params.w + 0.5) >= 0` in `MaterialSceneShadows.glslinc`.
+- Landed with BUG-RENDER-004 CSM acne work (same commit batch).
 
 ## 回归验证
-- [ ] Dir light CastShadow off → no shadow darkening on lit meshes
-- [ ] CastShadow on → shadows return
+- [x] Dir light CastShadow off / no dir shadow request → `Params.w < 0` → no dir shadow darkening (A/B during BUG-RENDER-004)
+- [ ] Inspector CastShadow toggle alone → shadows disappear/return without restart
 - [ ] Point/spot CastShadow regression check
 
 ## 关联
+- BUG-RENDER-004 (CSM self-shadow acne)
 - BUG-PHYS-002 (similar symptom class, different mechanism)
-- BUG-RENDER-001
 
 ---
 
@@ -58,3 +56,4 @@ Toggling **Cast Shadow** on a directional light updates the component and proxy,
 | 日期 | 说明 |
 |------|------|
 | 2026-06-12 | Filed; shader always samples dir shadows confirmed in code review |
+| 2026-08-04 | Fixed: `Params.w` gate in `ComputeMaterialSceneShadowVisibility` |

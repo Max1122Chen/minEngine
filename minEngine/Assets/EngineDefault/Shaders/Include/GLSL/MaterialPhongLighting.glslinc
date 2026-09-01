@@ -5,12 +5,7 @@
 
 // Requires MaterialSceneShadows.glslinc included earlier in the same translation unit.
 
-// Set to 1 to visualize CSM cascade selection (R/G/B/Y = cascade 0/1/2/3). Recompile materials after toggling.
-#ifndef DIR_CASCADE_DEBUG
-#define DIR_CASCADE_DEBUG 0
-#endif
-
-layout (std140, binding = 0) uniform PerFrameData
+layout (std140, set = 0, binding = 0) uniform PerFrameData
 {
     mat4 View;
     mat4 Proj;
@@ -45,24 +40,21 @@ vec3 CalcDirLightGraph(
     float ndotl = max(dot(normalize(normal), lightDir), 0.0);
     float bias = max(0.0005, 0.005 * (1.0 - ndotl));
 
-    float shadow = 0.0;
-    float viewDepth = -fragPosViewSpace.z;
-    int cascadeIndex = 3;
-    for (int i = 0; i < 4; i++)
+    vec3 dirDebugColor;
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0 &&
+        TryDirShadowDebugVisual(fragPos, fragPosViewSpace, dirDebugColor))
     {
-        if (viewDepth < FarPlanes[i])
-        {
-            cascadeIndex = i;
-            break;
-        }
+        return dirDebugColor;
     }
 
-#if DIR_CASCADE_DEBUG
-    return GetCascadeDebugColor(cascadeIndex);
-#endif
-
-    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
-    shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
+    float shadow = 0.0;
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0)
+    {
+        float viewDepth = -fragPosViewSpace.z;
+        int cascadeIndex = SelectDirectionalCascadeIndex(viewDepth);
+        vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
+        shadow = SampleDirShadowPCF(cascadeLightSpacePos, float(cascadeIndex), bias);
+    }
 
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * lightColor * albedo;
@@ -94,7 +86,7 @@ vec3 CalcPointLightGraph(
     vec3 lightColor = light.Color.rgb * light.Color.w;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);
@@ -148,7 +140,7 @@ vec3 CalcSpotLightGraph(
     specular *= intensity;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_SPOT_SHADOW_MAPS)
     {
         float ndotl = max(dot(normalize(normal), lightDir), 0.0);

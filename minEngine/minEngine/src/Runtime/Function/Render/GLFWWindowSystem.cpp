@@ -1,5 +1,6 @@
 #include "GLFWWindowSystem.h"
 #include "WindowSystem.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 
 #include "Core.h"
 
@@ -45,10 +46,18 @@ namespace minEngine
         }
         m_IsGlfwInitialized = true;
 
-        // Set GLFW window hints here as needed
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        const bool useVulkan = RHIBackendSelection::IsVulkan();
+        if (useVulkan)
+        {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        }
+        else
+        {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        }
 
         // Create the window
         m_Window = glfwCreateWindow(m_Width, m_Height, "minEngine Window", nullptr, nullptr);
@@ -61,9 +70,18 @@ namespace minEngine
             return;
         }
 
+        if (useVulkan)
+        {
+            m_HasOpenGLContext = false;
+            glfwSetWindowUserPointer(m_Window, this);
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            SetupWindowEventCallbacks();
+            ME_CORE_INFO("GLFW Window Initialized (Vulkan / NO_API)");
+            m_IsInitialized = true;
+            return;
+        }
 
-        // TODO: maybe we will add vulkan or other rendering API support later
-        // Make the OpenGL context current
+        m_HasOpenGLContext = true;
         glfwMakeContextCurrent(m_Window);
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -89,7 +107,7 @@ namespace minEngine
             glViewport(0, 0, width, height);
         });
 
-        ME_CORE_INFO("GLFW Window Initialized");
+        ME_CORE_INFO("GLFW Window Initialized (OpenGL 4.6)");
         m_IsInitialized = true;
     }
 
@@ -129,17 +147,32 @@ namespace minEngine
 
     void GLFWWindowSystem::SetClearColor(Vector3 color)
     {
+        if (!m_HasOpenGLContext)
+        {
+            return;
+        }
         glClearColor(color.x, color.y, color.z, 1.0f);
     }
 
     // Clear the window
     void GLFWWindowSystem::Clear()
     {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);     // TODO: should not do this here
+        if (!m_HasOpenGLContext)
+        {
+            return;
+        }
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     }
 
     // Swap the front and back buffers
-    void GLFWWindowSystem::SwapBuffers() { glfwSwapBuffers(m_Window);}
+    void GLFWWindowSystem::SwapBuffers()
+    {
+        if (!m_HasOpenGLContext || m_Window == nullptr)
+        {
+            return;
+        }
+        glfwSwapBuffers(m_Window);
+    }
 
     // Poll events
     void GLFWWindowSystem::PollEvents() const { glfwPollEvents(); }

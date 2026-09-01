@@ -1,6 +1,8 @@
 #include "EngineSceneBindingSets.h"
 
 #include "EngineShaderBindings.h"
+#include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -9,13 +11,14 @@ namespace minEngine
     namespace
     {
         using namespace EngineShaderBindings;
-
     }
 
     void EngineSceneBindingSets::Initialize(RHICommandList& cmdList)
     {
+        // PerFrame is read by both stages (VS transforms + FS CameraPos in lit templates).
+        // Vulkan requires stageFlags to cover every stage that declares the binding.
         m_SceneSet0Layout = cmdList.CreateShaderBindingSetLayout({
-            {kSet0_PerFrame, RHIShaderBindingType::UniformBuffer, kGL_PerFrameUBO, RHIGraphicsShaderStage::Vertex},
+            {kSet0_PerFrame, RHIShaderBindingType::UniformBuffer, kGL_PerFrameUBO, RHIGraphicsShaderStage::All},
             {kSet0_Lights, RHIShaderBindingType::UniformBuffer, kGL_LightsUBO, RHIGraphicsShaderStage::Pixel},
             {kSet0_PerObject, RHIShaderBindingType::UniformBuffer, kGL_PerObjectUBO, RHIGraphicsShaderStage::Vertex},
         });
@@ -37,7 +40,7 @@ namespace minEngine
 
     void EngineSceneBindingSets::Shutdown()
     {
-        m_SceneSet0.reset();
+        m_SceneSet0BySlot.clear();
         m_SceneSet1.reset();
         m_SceneSet0Layout.reset();
         m_SceneSet1Layout.reset();
@@ -48,16 +51,19 @@ namespace minEngine
         m_TextureViewCache.Clear();
         m_CachedPerFrame = nullptr;
         m_CachedLights = nullptr;
-        m_CachedPerObject = nullptr;
-        m_CachedDirShadowTexture = nullptr;
-        m_CachedSpotShadowTextures = {};
-        m_CachedPointShadowTextures = {};
+        m_PerObjectRing = nullptr;
+        m_PerObjectWriteIndex = 0;
+        m_CachedDirShadowSlot = {};
+        m_CachedSpotShadowSlots = {};
+        m_CachedPointShadowSlots = {};
         m_CachedDirLightViewProjs = nullptr;
         m_CachedCascadeFarPlanes = nullptr;
         m_CachedSpotLightViewProjs = nullptr;
         m_CachedIblIrradianceTexture = nullptr;
         m_CachedIblPrefilterTexture = nullptr;
         m_CachedIblBrdfLutTexture = nullptr;
+        m_ShadowBindingGeneration = 0;
+        m_BuiltShadowBindingGeneration = UINT32_MAX;
     }
 
     RHIShaderResourceViewRef EngineSceneBindingSets::GetOrCreateTextureSRV(
@@ -68,36 +74,127 @@ namespace minEngine
         return m_TextureViewCache.GetOrCreate(cmdList, texture, arraySlice);
     }
 
-    void EngineSceneBindingSets::BuildSceneSet0(
+    void EngineSceneBindingSets::BeginFrame(
         RHICommandList& cmdList,
         RHIBuffer* perFrame,
         RHIBuffer* lights,
-        RHIBuffer* perObject)
+        RHIBuffer* perObjectRing,
+        uint32_t perObjectSlotStride)
     {
-        if (!m_SceneSet0Layout)
-        {
-            return;
-        }
-
-        const bool sceneSet0Dirty =
-            !m_SceneSet0
-            || perFrame != m_CachedPerFrame
+        (void)cmdList;
+        const bool ringIdentityChanged =
+            perFrame != m_CachedPerFrame
             || lights != m_CachedLights
-            || perObject != m_CachedPerObject;
-        if (!sceneSet0Dirty)
-        {
-            return;
-        }
+            || perObjectRing != m_PerObjectRing
+            || perObjectSlotStride != m_PerObjectSlotStride;
 
         m_CachedPerFrame = perFrame;
         m_CachedLights = lights;
-        m_CachedPerObject = perObject;
+        m_PerObjectRing = perObjectRing;
+        m_PerObjectSlotStride = perObjectSlotStride == 0 ? 256u : perObjectSlotStride;
+        m_PerObjectWriteIndex = 0;
 
-        std::vector<RHIShaderBinding> resources(3);
-        resources[kSet0_PerFrame] = {RHIShaderBindingType::UniformBuffer, perFrame, nullptr};
-        resources[kSet0_Lights] = {RHIShaderBindingType::UniformBuffer, lights, nullptr};
-        resources[kSet0_PerObject] = {RHIShaderBindingType::UniformBuffer, perObject, nullptr};
-        m_SceneSet0 = cmdList.CreateShaderBindingSet(m_SceneSet0Layout.get(), resources);
+        if (ringIdentityChanged)
+        {
+            m_SceneSet0BySlot.clear();
+            m_SceneSet0BySlot.resize(kPerObjectRingSlots);
+        }
+    }
+
+    uint32_t EngineSceneBindingSets::WriteNextPerObjectModel(const Matrix4& model)
+    {
+        if (!m_PerObjectRing)
+        {
+            return 0;
+        }
+
+        if (m_PerObjectWriteIndex >= kPerObjectRingSlots)
+        {
+            ME_CORE_ERROR(
+                "EngineSceneBindingSets: Per-Object UBO ring exhausted ({} slots). "
+                "Wrapping — later draws may corrupt earlier in-flight matrices.",
+                kPerObjectRingSlots);
+            m_PerObjectWriteIndex = 0;
+        }
+
+        const uint32_t slot = m_PerObjectWriteIndex++;
+        const uint32_t offset = slot * m_PerObjectSlotStride;
+        m_PerObjectRing->UpdateSubresource(&model, offset, sizeof(Matrix4));
+        return offset;
+    }
+
+    RHIShaderBindingSet* EngineSceneBindingSets::BindNextPerObjectModel(
+        RHICommandList& cmdList,
+        const Matrix4& model)
+    {
+        if (!m_SceneSet0Layout || !m_CachedPerFrame || !m_CachedLights || !m_PerObjectRing)
+        {
+            return nullptr;
+        }
+
+        const uint32_t slotBefore = m_PerObjectWriteIndex;
+        const uint32_t offset = WriteNextPerObjectModel(model);
+        const uint32_t slot = slotBefore % kPerObjectRingSlots;
+
+        if (slot >= m_SceneSet0BySlot.size())
+        {
+            m_SceneSet0BySlot.resize(kPerObjectRingSlots);
+        }
+
+        if (!m_SceneSet0BySlot[slot])
+        {
+            std::vector<RHIShaderBinding> resources(3);
+            resources[kSet0_PerFrame] = {RHIShaderBindingType::UniformBuffer, m_CachedPerFrame, nullptr, 0, 0};
+            resources[kSet0_Lights] = {RHIShaderBindingType::UniformBuffer, m_CachedLights, nullptr, 0, 0};
+            resources[kSet0_PerObject] = {
+                RHIShaderBindingType::UniformBuffer,
+                m_PerObjectRing,
+                nullptr,
+                offset,
+                static_cast<uint32_t>(sizeof(Matrix4))};
+            m_SceneSet0BySlot[slot] = cmdList.CreateShaderBindingSet(m_SceneSet0Layout.get(), resources);
+        }
+
+        return m_SceneSet0BySlot[slot].get();
+    }
+
+    bool EngineSceneBindingSets::ShadowTextureSlotChanged(
+        RHITexture* texture,
+        uint32_t physicalIndex,
+        ShadowTextureSlotCache& cache)
+    {
+        RHITextureCreateDesc desc{};
+        if (texture != nullptr)
+        {
+            desc = texture->GetDesc();
+        }
+
+        const bool changed = texture != cache.Texture
+            || physicalIndex != cache.PhysicalIndex
+            || desc.Width != cache.Desc.Width
+            || desc.Height != cache.Desc.Height
+            || desc.Format != cache.Desc.Format
+            || desc.DepthOrArrayLayers != cache.Desc.DepthOrArrayLayers;
+
+        if (changed)
+        {
+            cache.Texture = texture;
+            cache.PhysicalIndex = physicalIndex;
+            cache.Desc = desc;
+        }
+        return changed;
+    }
+
+    void EngineSceneBindingSets::InvalidateShadowTextureBindings()
+    {
+        ++m_ShadowBindingGeneration;
+        m_CachedDirShadowSlot = {};
+        m_CachedSpotShadowSlots.fill({});
+        m_CachedPointShadowSlots.fill({});
+        m_DirShadowSRV.reset();
+        m_SpotShadowSRVs.fill(nullptr);
+        m_PointShadowSRVs.fill(nullptr);
+        m_TextureViewCache.Clear();
     }
 
     void EngineSceneBindingSets::BuildSceneSet1(
@@ -112,49 +209,59 @@ namespace minEngine
             return;
         }
 
-        bool sceneSet1Dirty = !m_SceneSet1;
+        bool sceneSet1Dirty =
+            !m_SceneSet1 || m_ShadowBindingGeneration != m_BuiltShadowBindingGeneration;
 
         RHITexture* dirShadowTexture = nullptr;
+        uint32_t dirShadowPhysicalIndex = UINT32_MAX;
         if (ctx.DirectionalShadowHandle.IsValid())
         {
             dirShadowTexture = ctx.DirectionalShadowHandle.Texture.get();
+            dirShadowPhysicalIndex = ctx.DirectionalShadowHandle.RdgPhysicalIndex;
         }
-        if (dirShadowTexture != m_CachedDirShadowTexture)
+        if (ShadowTextureSlotChanged(dirShadowTexture, dirShadowPhysicalIndex, m_CachedDirShadowSlot))
         {
-            m_CachedDirShadowTexture = dirShadowTexture;
             m_DirShadowSRV = dirShadowTexture ? GetOrCreateTextureSRV(cmdList, dirShadowTexture) : nullptr;
             sceneSet1Dirty = true;
         }
 
-        for (size_t i = 0; i < ctx.SpotShadowHandles.size() && i < m_SpotShadowSRVs.size(); ++i)
+        for (size_t i = 0; i < MAX_SPOT_SHADOW_MAPS; ++i)
         {
             RHITexture* spotTexture = nullptr;
-            const ShadowResourceHandle& handle = ctx.SpotShadowHandles[i];
-            if (handle.IsValid())
+            uint32_t spotPhysicalIndex = UINT32_MAX;
+            if (i < ctx.SpotShadowHandles.size())
             {
-                spotTexture = handle.Texture.get();
+                const ShadowResourceHandle& handle = ctx.SpotShadowHandles[i];
+                if (handle.IsValid())
+                {
+                    spotTexture = handle.Texture.get();
+                    spotPhysicalIndex = handle.RdgPhysicalIndex;
+                }
             }
 
-            if (spotTexture != m_CachedSpotShadowTextures[i])
+            if (ShadowTextureSlotChanged(spotTexture, spotPhysicalIndex, m_CachedSpotShadowSlots[i]))
             {
-                m_CachedSpotShadowTextures[i] = spotTexture;
                 m_SpotShadowSRVs[i] = spotTexture ? GetOrCreateTextureSRV(cmdList, spotTexture) : nullptr;
                 sceneSet1Dirty = true;
             }
         }
 
-        for (size_t i = 0; i < ctx.PointShadowHandles.size() && i < m_PointShadowSRVs.size(); ++i)
+        for (size_t i = 0; i < MAX_POINT_SHADOW_MAPS; ++i)
         {
             RHITexture* pointTexture = nullptr;
-            const ShadowResourceHandle& handle = ctx.PointShadowHandles[i];
-            if (handle.IsValid())
+            uint32_t pointPhysicalIndex = UINT32_MAX;
+            if (i < ctx.PointShadowHandles.size())
             {
-                pointTexture = handle.Texture.get();
+                const ShadowResourceHandle& handle = ctx.PointShadowHandles[i];
+                if (handle.IsValid())
+                {
+                    pointTexture = handle.Texture.get();
+                    pointPhysicalIndex = handle.RdgPhysicalIndex;
+                }
             }
 
-            if (pointTexture != m_CachedPointShadowTextures[i])
+            if (ShadowTextureSlotChanged(pointTexture, pointPhysicalIndex, m_CachedPointShadowSlots[i]))
             {
-                m_CachedPointShadowTextures[i] = pointTexture;
                 m_PointShadowSRVs[i] = pointTexture ? GetOrCreateTextureSRV(cmdList, pointTexture) : nullptr;
                 sceneSet1Dirty = true;
             }
@@ -185,6 +292,7 @@ namespace minEngine
                 sceneSet1Dirty = true;
             }
         };
+
         refreshIblSrv(ctx.IblIrradianceTexture, m_CachedIblIrradianceTexture, m_IblSRVs[0]);
         refreshIblSrv(ctx.IblPrefilterTexture, m_CachedIblPrefilterTexture, m_IblSRVs[1]);
         refreshIblSrv(ctx.IblBrdfLutTexture, m_CachedIblBrdfLutTexture, m_IblSRVs[2]);
@@ -199,22 +307,36 @@ namespace minEngine
         resources[kSet1_DirLightViewProjs] = {RHIShaderBindingType::UniformBuffer, dirLightViewProjs, nullptr};
         resources[kSet1_CascadeFarPlanes] = {RHIShaderBindingType::UniformBuffer, cascadeFarPlanes, nullptr};
         resources[kSet1_SpotLightViewProjs] = {RHIShaderBindingType::UniformBuffer, spotLightViewProjs, nullptr};
-        resources[kSet1_SpotShadow0] = {RHIShaderBindingType::TextureSRV, nullptr, m_SpotShadowSRVs[0].get()};
-        resources[kSet1_SpotShadow1] = {RHIShaderBindingType::TextureSRV, nullptr, m_SpotShadowSRVs[1].get()};
-        resources[kSet1_PointShadow0] = {RHIShaderBindingType::TextureSRV, nullptr, m_PointShadowSRVs[0].get()};
-        resources[kSet1_PointShadow1] = {RHIShaderBindingType::TextureSRV, nullptr, m_PointShadowSRVs[1].get()};
+        resources[kSet1_SpotShadow0] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            MAX_SPOT_SHADOW_MAPS > 0 ? m_SpotShadowSRVs[0].get() : nullptr};
+        resources[kSet1_SpotShadow1] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            MAX_SPOT_SHADOW_MAPS > 1 ? m_SpotShadowSRVs[1].get() : nullptr};
+        resources[kSet1_PointShadow0] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            MAX_POINT_SHADOW_MAPS > 0 ? m_PointShadowSRVs[0].get() : nullptr};
+        resources[kSet1_PointShadow1] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            MAX_POINT_SHADOW_MAPS > 1 ? m_PointShadowSRVs[1].get() : nullptr};
         resources[kSet1_IBLIrradiance] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[0].get()};
         resources[kSet1_IBLPrefilter] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[1].get()};
         resources[kSet1_IBLBrdfLut] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[2].get()};
 
-        m_SceneSet1 = cmdList.CreateShaderBindingSet(m_SceneSet1Layout.get(), resources);
-    }
-
-    void EngineSceneBindingSets::UpdatePerObjectModel(RHIBuffer* perObjectBuffer, const Matrix4& model) const
-    {
-        if (perObjectBuffer)
+        RHIShaderBindingSetRef newSceneSet1 =
+            cmdList.CreateShaderBindingSet(m_SceneSet1Layout.get(), resources);
+        if (newSceneSet1)
         {
-            perObjectBuffer->UpdateSubresource(&model, 0, sizeof(Matrix4));
+            m_SceneSet1 = std::move(newSceneSet1);
+            m_BuiltShadowBindingGeneration = m_ShadowBindingGeneration;
+        }
+        else
+        {
+            ME_CORE_ERROR("EngineSceneBindingSets: failed to create scene set 1 (shadow/IBL bindings).");
         }
     }
 }

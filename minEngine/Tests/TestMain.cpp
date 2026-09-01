@@ -24,12 +24,17 @@ namespace
         arguments.emplace_back(argc > 0 && argv[0] != nullptr ? argv[0] : "minEngineTests");
 
         bool insertTestVerb = true;
-        if (argc > 1 && argv[1] != nullptr)
+        for (int argIndex = 1; argIndex < argc; ++argIndex)
         {
-            const std::string_view first(argv[1]);
-            if (first == "test" || first == "--help" || first == "-h" || first == "--version")
+            if (argv[argIndex] == nullptr)
+            {
+                continue;
+            }
+            const std::string_view token(argv[argIndex]);
+            if (token == "test" || token == "--help" || token == "-h" || token == "--version")
             {
                 insertTestVerb = false;
+                break;
             }
         }
 

@@ -4,7 +4,7 @@
 
 // Requires MaterialSceneShadows.glslinc included earlier in the same translation unit.
 
-layout (std140, binding = 0) uniform PerFrameData
+layout (std140, set = 0, binding = 0) uniform PerFrameData
 {
     mat4 View;
     mat4 Proj;
@@ -101,19 +101,21 @@ vec3 CalcDirLightPBR(
     float ndotl = max(dot(N, lightDir), 0.0);
     float bias = max(0.0005, 0.005 * (1.0 - ndotl));
 
-    float shadow = 0.0;
-    float viewDepth = -fragPosViewSpace.z;
-    int cascadeIndex = 3;
-    for (int i = 0; i < 4; i++)
+    vec3 dirDebugColor;
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0 &&
+        TryDirShadowDebugVisual(fragPos, fragPosViewSpace, dirDebugColor))
     {
-        if (viewDepth < FarPlanes[i])
-        {
-            cascadeIndex = i;
-            break;
-        }
+        return dirDebugColor;
     }
-    vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
-    shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
+
+    float shadow = 0.0;
+    if (MinEngineShadowMapSlot(light.Params.w) >= 0)
+    {
+        float viewDepth = -fragPosViewSpace.z;
+        int cascadeIndex = SelectDirectionalCascadeIndex(viewDepth);
+        vec4 cascadeLightSpacePos = DirLightViewProj[cascadeIndex] * vec4(fragPos, 1.0);
+        shadow = SampleDirShadowPCF(cascadeLightSpacePos, cascadeIndex, bias);
+    }
 
     vec3 radiance = MaterialPBRDirectRadiance(N, V, lightDir, lightColor, albedo, metallic, roughness);
     return radiance * (1.0 - shadow);
@@ -135,7 +137,7 @@ vec3 CalcPointLightPBR(
     vec3 lightColor = light.Color.rgb * light.Color.w;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_POINT_SHADOW_MAPS)
     {
         float ndotl = max(dot(N, lightDir), 0.0);
@@ -170,7 +172,7 @@ vec3 CalcSpotLightPBR(
     lightColor *= intensity;
 
     float shadow = 0.0;
-    int shadowIndex = int(light.Params.w + 0.5);
+    int shadowIndex = MinEngineShadowMapSlot(light.Params.w);
     if (shadowIndex >= 0 && shadowIndex < MAX_SPOT_SHADOW_MAPS)
     {
         float ndotl = max(dot(N, lightDir), 0.0);

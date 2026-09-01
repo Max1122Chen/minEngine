@@ -2,6 +2,7 @@
 #include "Render/RenderGraph/RDGTypes.h"
 #include "Render/RenderGraph/RenderGraph.h"
 #include "Render/RenderGraph/RenderPass.h"
+#include "Render/RenderGraph/SceneRenderPassUtils.h"
 #include "Render/OpenGL/OpenGLRHI.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RenderPipeline/RenderPasses/GraphClearPass.h"
@@ -36,8 +37,8 @@ namespace minEngine
 
                 m_OwnsGlfw = true;
                 glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
                 glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
                 m_Window = glfwCreateWindow(1, 1, "RenderGraphBake", nullptr, nullptr);
                 if (m_Window == nullptr)
@@ -199,6 +200,100 @@ namespace minEngine
         private:
             std::string* m_Trace = nullptr;
         };
+
+        class ShadowAtlasWriterPass : public IRenderPass
+        {
+        public:
+            void SetupDependencies(RenderPass& self, RenderGraph& graph) override
+            {
+                (void)graph;
+                RDGAttachmentInfo depth{};
+                depth.SizeClass = RDGSizeClass::Absolute;
+                depth.SizeX = 64.0f;
+                depth.SizeY = 64.0f;
+                depth.Format = TextureFormat::DEPTH32;
+                depth.Dimension = RHITextureDimension::Texture2DArray;
+                depth.Layers = 4;
+                self.SetDepthStencilOutput(kRDGDirShadowAtlas, depth);
+            }
+
+            void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override
+            {
+                (void)cmdList;
+                (void)graph;
+            }
+        };
+
+        class LitScenePass : public IRenderPass
+        {
+        public:
+            explicit LitScenePass(std::string* trace)
+                : m_Trace(trace)
+            {
+            }
+
+            void SetupDependencies(RenderPass& self, RenderGraph& graph) override
+            {
+                (void)graph;
+                self.AddTextureInput(kRDGDirShadowAtlas);
+                RDGAttachmentInfo color{};
+                color.SizeClass = RDGSizeClass::SwapchainRelative;
+                color.SizeX = 1.0f;
+                color.SizeY = 1.0f;
+                color.Format = TextureFormat::RGBA8;
+                RDGAttachmentInfo depth{};
+                depth.SizeClass = RDGSizeClass::SwapchainRelative;
+                depth.SizeX = 1.0f;
+                depth.SizeY = 1.0f;
+                depth.Format = TextureFormat::DEPTH24STENCIL8;
+                self.AddColorOutput(kRDGSceneColor, color);
+                self.SetDepthStencilOutput(kRDGSceneDepth, depth);
+            }
+
+            void Prepare(RenderGraph& graph) override
+            {
+                (void)graph;
+                if (m_Trace != nullptr)
+                {
+                    *m_Trace += "LP;";
+                }
+            }
+
+            void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override
+            {
+                (void)cmdList;
+                (void)graph;
+                if (m_Trace != nullptr)
+                {
+                    *m_Trace += "BL;";
+                }
+            }
+
+        private:
+            std::string* m_Trace = nullptr;
+        };
+
+        class OrphanTextureConsumerPass : public IRenderPass
+        {
+        public:
+            void SetupDependencies(RenderPass& self, RenderGraph& graph) override
+            {
+                (void)graph;
+                self.AddTextureInput("OrphanAtlas");
+                RDGAttachmentInfo color{};
+                color.SizeClass = RDGSizeClass::Absolute;
+                color.SizeX = 16.0f;
+                color.SizeY = 16.0f;
+                color.Format = TextureFormat::RGBA8;
+                self.AddColorOutput(kRDGBackbuffer, color);
+            }
+
+            void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override
+            {
+                (void)cmdList;
+                (void)graph;
+            }
+        };
     }
 
     TEST_CASE("render-graph: bake then SetupAttachments yields physical texture")
@@ -270,6 +365,55 @@ namespace minEngine
         graph.SetBackbufferDimensions(16, 16);
 
         CHECK_THROWS_AS(graph.Bake(), std::logic_error);
+    }
+
+    TEST_CASE("render-graph: bake rejects texture input without writer")
+    {
+        RenderGraph graph;
+        OrphanTextureConsumerPass consumerImpl;
+        RenderPass& consumer = graph.AddPass("OrphanConsumer");
+        consumer.SetImplementation(&consumerImpl);
+
+        graph.SetBackbufferSource(kRDGBackbuffer);
+        graph.SetBackbufferDimensions(16, 16);
+
+        CHECK_THROWS_AS(graph.Bake(), std::logic_error);
+    }
+
+    TEST_CASE("render-graph: bake orders shadow atlas writer before lit scene pass")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        std::string trace;
+
+        ShadowAtlasWriterPass shadowImpl;
+        LitScenePass litImpl(&trace);
+
+        RenderPass& shadow = graph.AddPass("Shadow.Dir");
+        shadow.SetImplementation(&shadowImpl);
+        RenderPass& lit = graph.AddPass("Scene.Opaque");
+        lit.SetImplementation(&litImpl);
+
+        graph.SetBackbufferSource(kRDGSceneColor);
+        graph.SetBackbufferDimensions(32, 32);
+        graph.Bake();
+        graph.SetupAttachments(rhi, nullptr);
+
+        const std::vector<uint32_t>& stack = graph.GetPassStack();
+        REQUIRE(stack.size() == 2);
+        CHECK(stack[0] == shadow.GetIndex());
+        CHECK(stack[1] == lit.GetIndex());
+
+        const auto& deps = graph.GetPassDependencies();
+        REQUIRE(lit.GetIndex() < deps.size());
+        CHECK(deps[lit.GetIndex()].count(shadow.GetIndex()) == 1);
+
+        RHICommandList cmdList(&rhi);
+        graph.EnqueueRenderPasses(cmdList);
+        CHECK(trace == "LP;BL;");
     }
 
     TEST_CASE("render-graph: vertical slice clear writes observable color")

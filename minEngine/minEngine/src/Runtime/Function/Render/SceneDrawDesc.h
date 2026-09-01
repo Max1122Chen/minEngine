@@ -15,6 +15,7 @@ namespace minEngine
         EnablePostProcess = 1u << 1,
         PresentToBackBuffer = 1u << 2,
         EnableSkyBox = 1u << 3,
+        EnableDebugDraw = 1u << 4,
 
         Default = EnableShadows | EnablePostProcess | PresentToBackBuffer | EnableSkyBox,
     };

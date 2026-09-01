@@ -34,7 +34,7 @@ namespace minEngine
             bool includeSceneLightingVaryings,
             bool usesTangentFrame);
         static std::string BuildFragmentInTexCoords(int numTexCoords);
-        static std::string BuildFragmentLightingVaryings(bool usesTangentFrame);
+        static std::string BuildFragmentLightingVaryings(int numTexCoords, bool usesTangentFrame);
         static std::string BuildFragmentWorldNormal(const MaterialCompileEnvironment& env);
         static std::string BuildFragmentSceneLighting(
             const std::filesystem::path& assetsRoot,

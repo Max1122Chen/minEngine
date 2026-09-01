@@ -1,7 +1,7 @@
 #version 420 core
 layout (location = 0) in vec3 a_Position;
 
-out vec3 v_TexCoords;
+layout (location = 0) out vec3 v_TexCoords;
 
 layout (std140, binding = 1) uniform SkyPassFrame
 {

@@ -1,19 +1,176 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-08-31 (multi-track backlog + worktrees)
+Last updated: 2026-09-01 (render + debug-drawing merged to `master`)
+
+### 2026-09-01 - Merge `feat/debug-drawing` → `master`（含 `feat/render` 全量）
+- **Merged:** ED-F01 S01–S07、RND-F05/F12–F14、RND-F11 DebugDrawing MVP、VK shadow playbook 等 27 commits。
+- **Docs:** 合并 ACTIVE_WORK / REGISTRY / PROGRESS_LOG；保留多轨 worktree 登记。
+- **Next:** merge `feat/audio`、`feat/launcher`；VK shadow 质量 handoff 继续在 master 推进。
 
 ### 2026-08-31 - Multi-track backlog: LAUN / AUD / ANIM / UI / PHYS thaw (`master`)
 - Registered **LAUN-F01**, **AUD-F01**, **UI-F01**, **ANIM-F01**, **PHYS-F04**; **PHYS-F03** Deferred → Planned.
 - Branches from `master`: `feat/launcher`, `feat/audio`, `feat/ui-anim` (`feat/physics` 已存在).
 - Worktrees: `D:/Dev/GitRepo/minEngine-launcher`, `minEngine-audio`; `MyMEProject` ProjectRoot per worktree.
-- **Next:** commit docs on master; merge master → feature branches（保留各 worktree `ProjectRoot`）.
+- **Next:** merge feature branches after render track lands.
 
-Last updated: 2026-08-04 (CORE-F04 Delegates Done)
+
+### 2026-09-01 - RND-F11 MVP 收尾：范围收窄 + wireframe z-fighting (`feat/debug-drawing`)
+- **Scope:** MVP 定为 S01–S02 only；S03 contact/trace、S04 toggle **移出**本 Feature（Design/Impl/Registry 已更新，Status → Done）。
+- **Code:** 回退 S03 实验；`PhysicsDebugDraw` 仅 collider + `SubmitScene(scene, options)`；`DebugDraw.vert` 保留 3mm view bias。
+- **Principle:** Debug 为底层服务；不编排 Physics/Editor 如何调用；Persistent + toggle → 后续新 Feature。
+- **Next:** commit + merge `feat/debug-drawing`；新 Feature 讨论 Persistent / toggle。
+
+### 2026-09-01 - RND-F11-S02: Physics collider wireframe (`feat/debug-drawing`, commit 8c3ac07)
+- **Delivered:** `PhysicsDebugDraw::SubmitScene`; `DebugDraw::Sphere` / `Capsule`; sphere/capsule wireframe tessellation; Editor submits colliders before `SubmitSceneDraw` (S01 axis smoke removed).
+- **Verified:** User visual acceptance (wireframe visible); `physics-smoke` / `physics-shapes` / `render-graph` pass.
+- **Known issue:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent crash on Add `BoxColliderComponent` (not reproduced after retry).
+- **Next:** S03 contact + LineTrace visualization.
+
+### 2026-09-01 - RND-F11-S01: DebugDraw pass + editor axis smoke (`feat/debug-drawing`)
+- **Delivered:** `DebugDrawService` / `DebugDraw::` API; `DebugDrawPass` + shaders; `Scene.Debug` RDG slot; `EnableDebugDraw` flag.
+- **Editor:** `SceneEditingViewportClient` submits RGB axis lines before `SubmitSceneDraw` (smoke until S02).
+- **Fix:** OpenGL `RHICmdDraw` honors PSO `LineList` (was hardcoded `GL_TRIANGLES`).
+- **Docs:** Full design spec + implementation plan; registry/active work updated.
+- **Verified:** `cmake --build` minEngine+Editor; Editor GL+VK axis visual acceptance; `test render-graph` pass.
+- **Next:** S02 `PhysicsDebugDraw` collider wireframe.
+
+### 2026-08-31 - RND-F11 DebugDrawing branch kickoff (`feat/debug-drawing`)
+- **Branch:** `feat/debug-drawing` from `feat/render` after shadow quality handoff commit.
+- **Registry:** `RND-F11` → **In Progress**; placeholder [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md).
+- **Goal:** Editor viewport debug primitives for Physics collider/contact/trace visualization.
+- **Parallel:** VK shadow quality remains on `feat/render` (RenderDoc / cull-winding).
+- **Next agent:** Expand Design → Implementation Plan → S01 lines+boxes MVP.
+
+### 2026-08-31 - VK shadow self-shadow handoff (`feat/render`)
+- **Symptom refined:** Dir **and** Spot show receiver self-shadow / false shadows on VK; **Point** not observed; **different objects** per light type → winding/orientation, not global bias off.
+- **E3 recap:** `MAX_CASCADES=1` + force cascade 0 — unchanged → CSM **index** ruled out; camera coupling persists (dir matrix still camera-frustum-derived).
+- **Depth bias audit (read-only):** Two layers — (A) raster via `RHIClipSpaceCapabilities` → ShadowPass PSO (`glPolygonOffset` / VK PSO `depthBiasEnable`); (B) shader receiver bias in `MaterialSceneShadows.glslinc`. VK raster bias **should be active** for Dir/Spot; Point bypasses via `gl_FragDepth`. Raising VK slope/constant inconclusive → prioritize write-path cull/winding.
+- **Docs:** `sessions/2026-08-31-vk-shadow-self-shadow-handoff.md`; playbook `VK_SHADOW_DEBUGGING.md` §4.5–4.6, §7; `ACTIVE_WORK.md` updated.
+- **Next agent:** Debug 5/6; RenderDoc; scheme B or frontFace A/B; restore TEMP limits/shader defines before production fix.
+
+### 2026-08-31 - VK dir self-shadow isolation: single cascade (`feat/render`)
+- **Experiment:** `MAX_CASCADES=1` + `DIR_SHADOW_FORCE_CASCADE=0` + Front cull restored (Back reverted); P1 (`gl_FragDepth` omit Dir/Spot) still in tree.
+- **User result:** Symptoms **unchanged** vs multi-cascade — ground self-shadow acne; cube/sphere false shadows still **camera-coupled**; PCF soft edges visible.
+- **Conclusion:** **Not** multi-cascade index / cascade-boundary mixing (rules out P5 as primary). Issue is **directional-light path** specific (Spot/Point not implicated in this round).
+- **Interpretation:** Single-cascade CSM still builds ortho frustum from **camera view frustum** + texel snap — camera coupling can persist without cascade *selection*. Combined with prior「关 Cast Shadow → map 消失」→ receiver still **writes** into dir shadow map on VK (cull/winding class), not read-only PCF artifact.
+- **Next (analysis / no code yet):** Debug 5/6 binary; RenderDoc face/winding; scheme B (shadow viewport flip + `GetEffectiveCullMode`) or `VK_FRONT_FACE_CLOCKWISE` A/B. Restore `MAX_CASCADES=4` / `DIR_SHADOW_FORCE_CASCADE=-1` before production fix lands.
+- **Doc:** `playbooks/Render/VK_SHADOW_DEBUGGING.md` §4.4.
+
+### 2026-08-31 - Playbooks + VK shadow cull audit (`feat/render`)
+- Added `docs/ai/playbooks/` (README + `Render/VK_SHADOW_DEBUGGING.md`) for reusable bug patterns.
+- Face cull audit: ShadowPass **already** sets Front cull on VK (`RHIClipSpaceCapabilities` → `VK_CULL_MODE_FRONT_BIT`). Next round: RenderDoc PSO verify, frontFace/winding A/B, VK depth bias constant (0 vs GL 4).
+
+### 2026-08-31 - RND-F14 Phase A: ShadowPass UBO lifetime fix (`feat/render`)
+- **Root cause:** ShadowPass overwrote shared host-visible ViewProj/Params UBO at offset 0 per draw; Vulkan deferred execution → all shadow draws read last-written matrix.
+- **Fix:** `ShadowUniformBuffers` — Dir/Spot fixed slots, Point ViewProj ring, Params ring; per-command `BufferOffset` in `ShadowDrawCommand`; removed single-mat4 path.
+- **Diagnostic:** `ManualRenderer` (`--renderer manual`) helped isolate non-RDG root cause (RND-F13 Done).
+- **Verified:** User VK full-map — Dir / Spot / Point shadows each work independently (2026-08-31).
+- **Closed:** BUG-RENDER-013, BUG-RENDER-010, BUG-RENDER-011; TD-025 Done.
+- **Next:** VK receiver self-shadow acne — verify ShadowPass Front face cull (user observation).
+
+### 2026-08-31 - BUG-RENDER-013 reframed: Manual == RDG wrong shadows (`feat/render`)
+- Full-map VK: ManualRenderer shows **same** wrong shadows as Forward+RDG → **RDG not primary**.
+- Work shifts to ManualRenderer diagnosis: shadow PSO/attachments, VK depth array/cube create/update, set1/UBO.
+- RND-F12 demoted to hygiene; fix on Manual first, then regress Forward.
+
+### 2026-08-30 - RND-F13: dir-only isolation + full map restore (`feat/render`)
+- User confirmed ManualRenderer; viewport fix (manual sky clear pass).
+- Dir-only + single cascade: Manual ≈ Forward, faint shadow → not RDG-only in isolation (BUG-013 note).
+- Restored: `MAX_*_SHADOW_MAPS=2`, `MAX_CASCADES=4`, `DIR_SHADOW_FORCE_CASCADE=-1` (C++ + shader fallbacks).
+- **Next:** VK `--renderer forward` vs `manual` on full map / `test` scene.
+
+### 2026-08-30 - RND-F13-S01: ManualRenderer (`feat/render`)
+- Renamed from HandPassProbe → **ManualRenderer** per maintainer.
+- `ManualRenderer` subclasses `ForwardRenderer`; manual Shadow→Base→Present; no RenderGraph.
+- CLI: `--renderer manual` (`handpass` alias); default Forward unchanged.
+- Build: minEngine + Editor OK. **Next:** S02 GL/VK parity run on `test` scene → BUG-013 note.
+
+### 2026-08-30 - RND-F13: design draft (`feat/render`)
+- Diagnostic renderer proposal: manual Shadow→Base→Present, no RDG; GL/VK parity to isolate BUG-013.
+- BUG-RENDER-010: user confirmed single-cascade → one shadow (multi-copy = CSM).
+- Pending: design approval → Implementation Plan.
+
+### 2026-08-30 - RND-F12-S06 + isolation experiment committed (`feat/render`)
+- `3fed4ef`: set1 physical lifecycle; dir-only + single-cascade experiment toggles; set1 OOB fix when MAX maps=0.
+- `ShadowResourceHandle::RdgPhysicalIndex`; `BindGraphShadowTextures` clears stale texture refs then binds physical.
+- `EngineSceneBindingSets`: dirty on ptr + physical index + texture desc; invalidate when `SetupAttachments` recreates.
+- User re-tested BUG-013: still open after S01–S03; S06 pending VK verify.
+
+### 2026-08-30 - RND-F12-S03: pass input barriers (`feat/render`)
+- `RenderGraph::InsertPassInputBarriers` — before each pass `RunBuildRenderPass`, transition texture/depth/color-alias inputs via `RHICmdTransition` (shader-read layout on VK).
+- S03 partial: `RDGTextureAccess` metadata deferred; barrier hook landed.
+- Next: user VK visual verify BUG-013; then **S06** binding lifecycle.
+
+### 2026-08-30 - RND-F12-S01/S02: read edge + per-frame Bake (`feat/render`)
+- S01: `AddSceneLitShadowTextureInputs` on Base/Translucent; remove shadow `ForceIncludePass`; `pass_dependencies` + missing-writer throw; render-graph tests (6/6).
+- S02: delete `BuildShadowResourceFingerprint` / pending invalidate; `Bake()` every frame in `SetupFrameRenderGraph`.
+- Next: **S03** VK pass barriers (`RHICmdTransition`).
+
+### 2026-08-30 - RND-F12: Granite RDG full semantic parity design (`feat/render`)
+- North star: replicate Granite RenderGraph **semantics** (not copy code); Phase A–D.
+- Design §3 Adapter boundary; §4 full parity checklist; §6 delete non-Granite patches; Bake policy = per-frame until proven safe.
+- Impl: S01–S07 Phase A (BLOCK 013); S04–S15 Phase B–D.
+
+### 2026-08-30 - RND-F12: Granite RDG bake semantics (`feat/render`)
+- Reframe BUG-RENDER-013: not shadow-only fix — incomplete F07 bake vs Granite (`read edge`, `barrier`, `invalidate`).
+- Docs: recover `RND-F07` Design UTF-8; add `RND-F12` Design + Impl; Registry / ACTIVE_WORK / BUG-013 links.
+- Next: **RND-F12-S01** — Scene pass `AddTextureInput` shadow atlases; remove shadow `ForceIncludePass`.
+
+### 2026-08-30 - BUG-RENDER-013: partial commit + RDG gap analysis (`feat/render`)
+- User: pass-filter / split enqueue is patchwork; fix must be proper RDG.
+- Reverted: `RenderGraph::EnqueueRenderPasses(filter)`, `ForwardRenderer` shadow→set1→scene order.
+- Kept: `VulkanRHIResources` depth shadow SRV `DEPTH_STENCIL_READ_ONLY_OPTIMAL`.
+- Next: Granite-aligned RDG read edges + bake invalidate for shadow atlases.
+
+### 2026-08-30 - BUG-RENDER-013 reframe: RDG not VK binding (`feat/render`)
+- User: S2–S4 ineffective; pivot to Granite RDG reference; TD-025 convention largely ruled out (dir-only OK).
+- Docs: BUG-013 status → Open, root cause class = RDG scheduling/lifetime; BUG-010 + TD-025 §8 P6/P7 updated.
+- Workspace: S1-only (pass filter enqueue, set1 after shadow, VK depth SRV layout) — documented as thin baseline, not root fix.
+- Next: Compare minEngine `RenderGraph` bake/deps to Granite `render_graph.cpp`; shadow atlas read edges + fingerprint invalidate.
+
+### 2026-08-30 - BUG-RENDER-013 rollback to S1-only (`feat/render`)
+- User: S2–S4 fixes ineffective; suspect RDG/fingerprint path; request revert to S1 baseline for fresh investigation.
+- Reverted: dynamic fingerprint, RDG shadow texture inputs, transition/retain, shadow ring split, set0 offset cache, limits co-location, ShaderCompiler macro inject, pool 8192.
+- Kept (S1): shadow→set1→scene enqueue order; `RenderGraph::EnqueueRenderPasses(filter)`; VK depth SRV `DEPTH_STENCIL_READ_ONLY_OPTIMAL`.
+- Next: Re-diagnose from clean S1 state; consider RDG architecture review before more binding patches.
+
+### 2026-08-30 - BUG-RENDER-013 S4 binding fixes (`feat/render`)
+- User: Dir shadow intermittent with point off; point position couples to Dir when on; latched state after point off.
+- S4: separate `m_ShadowPerObjectUniformBuffer`; set0 descriptor cache validates ring byte offset; force set1 rebuild after shadow passes.
+- Next: User VK retest on `test` — Dir stable with point Cast Shadow on/off; move point should not move Dir shadow.
+
+### 2026-08-30 - BUG-RENDER-013 confirmed via dir-only isolation (`feat/render`)
+- Result: With `MAX_*_SHADOW_MAPS=0`, user reports **VK directional shadow visually correct**.
+- Conclusion: Full-scene failure was **binding/pipeline state pollution** when point/spot shadow passes participate — not Dir light-space math as primary cause.
+- Next: Implement fix slices S1–S3 (set1 after shadow writes, VK depth layout, RDG read deps); restore shadow map budget=2; regress multi-light.
+
+### 2026-08-30 - Dir-only shadow isolation + limits co-location (`feat/render`)
+- Goal: BUG-RENDER-013 isolation — shut down point/spot shadow passes at engine budget; co-locate light vs shadow-map limits.
+- Main changes: `EngineRenderLimits.h` owns `MAX_*_LIGHTS` / `MAX_*_SHADOW_MAPS` / sampler slots + `static_assert`; experiment `MAX_*_SHADOW_MAPS=0`; ShaderCompiler injects macros; set1 arrays sized by sampler slots.
+- Next: User VK visual verify — Dir alone with point Cast Shadow on/off should no longer allocate point maps; if Dir still missing when point off, prioritize descriptor layout / set1 dirty (P0/P1).
+
+### 2026-08-30 - BUG-RENDER-013 RDG/VK shadow binding investigation (`feat/render`)
+- Goal: Explain VK Dir shadow visibility coupling to Point Cast Shadow; separate pollution vs cascade math.
+- Findings (code review): VK depth descriptor layout mismatch; `BuildSceneSet1` dirty only on texture cache change; `BasePass` missing `DirShadowAtlas` RDG input; static shadow fingerprint. Documented in BUG-RENDER-013 + RND-TD025 §8 P7 + shadow pass isolation matrix.
+- Next: User experiments via `MAX_*_SHADOW_MAPS` / `MAX_CASCADES` or scene Cast Shadow toggles; then fix P0–P3.
+
+Last updated: 2026-08-28 (TD-025 clip-space caps + VK shadow fix)
 
 ## Purpose
 
 This file is an AI-oriented progress digest converted from commit messages.
 It is not a full changelog. It focuses on architecture moves, rendering milestones, and known pitfalls.
+
+## Timeline Summary
+
+### 2026-08-28 - TD-025 RHI clip-space capabilities + VK shadow fix (`feat/render`)
+- Goal: Unify clip/viewport/cull policy; fix BUG-RENDER-010 (VK shadows) and BUG-RENDER-011 (disable point/spot shadow crash).
+- Main changes:
+  `RHIClipSpaceCapabilities`, `RHIClipSpace`, `RHIViewportConvention`; Shadow scheme A (no flipY + Front cull).
+  ShadowPass / ForwardRenderer / RenderCamera / EnvMapCapture / ShaderCompiler / Editor ImGui UV migrated.
+  `EngineSceneBindingSets` clears unused spot/point shadow SRV slots; dir shadow index gated in shader.
+  Docs: [RND-TD025 design](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md), BUG-RENDER-010/011 updated.
+- Validation: cmake build minEngine + Editor (pending user VK visual verify on `test` scene).
 
 ## Timeline Summary
 
@@ -76,18 +233,318 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Any GL resource wrapper must own and release native handles in destructor.
 - Scene proxies or render entries must not be recreated indefinitely without ownership policy.
 - Shadow pass changes (viewport/state/targets) must be restored before later passes.
+- Large flat shadow casters: do not expand CSM Z with bounding-sphere radius (see BUG-RENDER-004).
 - Pointer deserialization must clearly separate ownership and reference semantics.
 - Serializer signature changes must be synchronized across all callsites.
 - Asset scanning must avoid duplicate registration and accidental GUID regeneration.
 
 ## Entry Template (Append for each meaningful task)
 
-### YYYY-MM-DD - Task title
-- Goal:
+### 2026-08-30 - BUG-RENDER-010: rollback fixed ortho box; suspect GPU shader
+
+- Reverted `kDirShadowUseFixedOrthoBox` + `kDirShadowForceCascade=0` → normal CSM path.
+- Fixed ortho box: no Dir shadow on **both** GL and VK (box params invalid; experiment inconclusive for ortho depth).
+- FORCE=0 prior result kept: multi mesh shadows → one; still GL≠VK → cascade mixing + shader read path.
+- Next: GPU — `MinEngineShadowMapCoords`, Dir PCF, `sampler2DArray` layer. BUG-RENDER-013 (point shadow gate) still open.
+
+### 2026-08-30 - BUG-RENDER-010/013: FORCE_CASCADE=0 + fixed ortho box experiment
+
+- FORCE cascade 0: multiple Dir mesh shadows → one; GL vs VK (both FORCE=0) still mismatch → single-cascade Dir write/read still broken.
+- Added `kDirShadowUseFixedOrthoBox` in `ForwardRenderer.cpp` (cascade 0 fixed light-space ortho ±50, near/far 1/200) to isolate CSM frustum→AABB vs ortho depth.
+- Filed **BUG-RENDER-013**: VK Dir shadow visibility depends on Point Cast Shadow (suspect set1 bindings); keep separate from matrix experiments.
+- Keep `kDirShadowForceCascade=0` while running fixed-box visual on GL+VK.
+
+### 2026-08-29 - BUG-RENDER-010: Dir shadow debug modes (P1)
+
+- Added `DIR_SHADOW_DEBUG_MODE` via `TryDirShadowDebugVisual` in `MaterialSceneShadows.glslinc`; wired in Phong/PBR graph lighting.
+- Toggle: `kDirShadowDebugMode` in `ShaderCompiler.cpp` (inject after `#version`). Default **1** = cascade colors.
+- Modes: 1 cascade / 2 single-tap / 3 UV / 4 current Z / 5 sampled Z / 6 Z delta. See Gap Design §8.
+- Also fixed inject skip: only skip if `#define MINENGINE_CLIP_DEPTH_ZERO_TO_ONE` already present (not bare token in `#if`).
+
+### 2026-08-29 - BUG-RENDER-010: commit `3154700` + FlipY 共识修正
+
+- **Commit:** ZO depth read (`MinEngineShadowMapCoords`) + `MinEngineShadowMapSlot` (BUG-RENDER-012); scheme A only.
+- **Reverted:** scheme B shadow viewport flip, read `uv.y` flip, point `ShadowMap2D`, P4-A/P4-B experiments.
+- **共识:** Shadow 写→读独立闭环；Main Pass Scene flip **不**参与 shadow 采样。VK Spot ~OK.
+- **Open:** Dir (CSM), Point (cube / 四重鬼影). Docs: `RND-TD025_SHADOW_CONVENTION_GAP_DESIGN.md` §2/§8.
+
+### 2026-08-29 - BUG-RENDER-010: P0 read-side uv.y补偿 (B+C for manual ndc→uv) — **reverted**
+- VK `MinEngineShadowMapCoords`: `uv.y = 1.0 - uv.y` when ZO define set; keeps shadow viewport flip (B).
+- Point cube path unchanged. Design §8 backlog recorded.
+- Pending: VK visual Dir/Spot/multi-light.
+
+- **Reverted:** 见上条 `3154700` 共识；勿再按 Main Pass flip 推导读侧补偿。
+
+### 2026-08-29 - BUG-RENDER-012 + TD-025 Step 2B shadow viewport flip — **reverted**
+- BUG-RENDER-012: `MinEngineShadowMapSlot` — gate `Params.w < 0` before shadow sample (all light types).
+- TD-025 Step 2B: revert sample Y flip; VK `kVulkanShadowPass.ViewportFlipY=true` + Back cull; point faces use ShadowMap2D viewport convention.
+- Pending: GL/VK visual on `test` scene.
+
+### 2026-08-29 - BUG-RENDER-010: Step 2 shadow sample Y flip (option C)
+- Goal: Close Gap 2 on read path only — VK `uv.y = 1.0 - uv.y` via `MINENGINE_SHADOW_MAP_SAMPLE_FLIP_Y`.
+- Main changes: `MinEngineShadowMapCoords`, `InjectClipSpaceDefines` (ZO + flip pair).
+- Shadow write viewport unchanged (scheme A).
+- Pending: user GL/VK visual Dir/Spot on `test` scene.
+
+### 2026-08-29 - BUG-RENDER-010: Step 1 ZO shadow depth read
+- Goal: Close Gap 1 only — Vulkan Dir/Spot CurrentDepth uses ZO `ndc.z`, not N1 `*0.5+0.5`.
 - Main changes:
+  - `MinEngineShadowMapCoords` in `MaterialSceneShadows.glslinc` / `Phong.frag`.
+  - `ShaderCompiler::InjectClipSpaceDefines` — ZO define only (no sample flip); restore pass-local OpenGL flat remap for set=0 ShadowPass.
+- Verify: `Editor` + `minEngineTests` build OK; `test smoke` fails known MaterialIR UBO golden (`set=` vs flat) — unrelated.
+- Pending: user GL/VK visual on `test` scene (Dir/Spot first).
+
+### 2026-08-29 - BUG-RENDER-010: layered rollback baseline before convention close
+- Goal: Freeze workspace as pre-fix baseline — keep TD-025 caps/matrix/viewport infra; roll back failed shader flip/`MinEngineShadowProject` inject stack; document GL→VK shadow convention gaps.
+- Main changes:
+  - Shader sampling back to `projCoords * 0.5 + 0.5` (`MaterialSceneShadows`, `Phong.frag`); remove `InjectClipSpaceDefines` / sample flip inject from `ShaderCompiler`.
+  - Retain `RHIClipSpaceCapabilities` / `RHIClipSpace` / ShadowPass convention + caps bias; dir shadow index gate.
+  - Docs: reopen BUG-RENDER-010; gap design `RND-TD025_SHADOW_CONVENTION_GAP_DESIGN.md`; session handoff note.
+- Verify: build not re-run in this commit; next: Step 1 ZO depth read only.
+- Status: Vulkan shadows still Open / incorrect by design at this baseline.
+
+### 2026-08-28 - BUG-RENDER-010: Vulkan directional shadow plane false self-shadow
+- Goal: Fix VK Editor CSM shadow — large false shadow on 100×100 plane (plane self-shadow via sampling); cube shadow OK at some angles.
+- Root cause: ShadowPass Z remap + OpenGL `glm::ortho` light matrices vs lit-pass `*0.5+0.5` sampling mismatch; CSM frustum used OpenGL NDC corners with Vulkan `perspectiveRH_ZO` camera.
+- Main changes:
+  - `ForwardRenderer`: `orthoRH_ZO` / `perspectiveRH_ZO` for VK light proj; backend-aware CSM NDC near/far.
+  - `ShadowPass.vert`: remove clip-Z remap (light matrices now ZO on VK).
+  - `MaterialSceneShadows.glslinc`, `Phong.frag`: `MinEngineShadowProject` — ZO depth = `ndc.z`, GL = `ndc.z*0.5+0.5`.
+  - Bug record: `docs/ai/bugs/BUG-RENDER-010.md`.
+- Verify:
+  - `cmake --build minEngine/build --target minEngine` — OK.
+  - `Editor.exe --rhi vulkan` visual A/B on `test` scene — **pending user**.
+
+### 2026-08-28 - ED-F01 S06: Vulkan Editor shadows + post flags
+- Goal: Enable shadow/post pipeline on Vulkan Editor (match OpenGL draw flags); fix VK shadow path blockers.
+- Main changes:
+  - `SceneEditingViewportClient`: VK uses `EnableShadows | EnablePostProcess | EnableSkyBox` (no sky-only fork).
+  - `VulkanRHITexture`: `Texture2DArray` create/view for `DirShadowAtlas` CSM atlas.
+  - `VulkanRHI`: per-layer depth attachment views for CSM cascade slices.
+  - `ShadowPass`: depth-only PSO desc; VK back-face cull; `ShadowPass.*` shaders use `set=0` bindings.
+  - `ShaderCompiler`: pass-local OpenGL flat remap for ShadowPass; Vulkan `MINENGINE_CLIP_SPACE_ZO` inject.
+- Verify:
+  - `cmake --build minEngine/build --target Editor` — OK.
+  - `Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` — loads `test`, ShadowPass SPIR-V OK, no `DirShadowAtlas` / PSO bind errors in log (~12s smoke).
+- Pending: user visual A/B — cube shadow on plane vs GL; then commit.
+
+### 2026-08-26 - ED-F01 Vulkan visual bugfix: UBO ring + bake viewport + retired buffers
+- Goal: Fix Cube invisible / plane Y-scale oddity / sky ±Y split / mesh hot-swap DEVICE_LOST on Vulkan Editor.
+- Done:
+  - Per-Object UBO ring (aligned slots) + `RHIShaderBinding` BufferOffset/Range; scene + shadow draws bind distinct regions
+  - EnvMap bake `SetViewport(..., flipY=false)` while scene path keeps Y-flip
+  - `VulkanRHI` retires buffers and flushes after in-flight fences (BeginFrame / Shutdown)
+  - Bug records `BUG-RENDER-005`…`009`; design Status → In Progress
+- Verify: Vulkan Editor smoke loads `test` + HDR bake, no DEVICE_LOST in stderr; **user visual A/B still required**
+- Open: `BUG-RENDER-007` plane UV zoom — wait for post-UBO screenshots
+
+### 2026-08-26 - ED-F01 S07 garbled HDR sky: float32→half upload
+- Goal: Fix psychedelic/moiré Vulkan sky after successful HDR bake (no DEVICE_LOST).
+- Root cause: `CreateFromHdrPixels` passes float32 (stbi_loadf); OpenGL uploads with `GL_FLOAT`, but Vulkan treated `*16F` initialData as raw half bits.
+- Main changes: `VulkanRHITexture` converts float32 RGB/RGBA → `R16G16B16A16_SFLOAT` on upload (2D + cube paths).
+- Verify: rebuild Editor; user visual check for citrus HDR sky on `--rhi vulkan`.
+
+### 2026-08-26 - ED-F01 S07 HDR bake DEVICE_LOST: descriptor lifetime
+- Goal: Fix remaining Vulkan `DEVICE_LOST` after HDR sky bake (ImGui `VkResult=-4`).
+- Root cause: EnvMapCapture loop destroyed per-face `RHIShaderBindingSet` (and reused one UBO) while the immediate CB still referenced them.
+- Main changes:
+  - `EnvMapCapture`: `EnvCapturePendingBindings` keeps per-face UBO + descriptor set until after `RHIEndImmediateCommands`.
+  - Keep prior fixes: cube layout defer; submit before PSO destroy; depth `DEPTH_STENCIL_READ_ONLY`.
+- Verify:
+  - `--rhi vulkan`: HDR bake + ~10s loop + clean shutdown, no `DEVICE_LOST`.
+  - `--rhi opengl`: HDR/IBL bake + clean shutdown.
+
+### 2026-08-25 - ED-F01 S07 HDR sky bake on Vulkan (DEVICE_LOST fixed)
+- Goal: Restore project HDR → cubemap bake for Vulkan sky (citrus orchard); remove temp debug scaffolding.
+- Main changes:
+  - `EnvironmentMap`: Vulkan no longer skips `EquirectToCubemap`; IBL irradiance/prefilter still aliased to environment cube.
+  - `EnvMapCapture`: defer cube layout transition until all faces captured; submit immediate CB **before** bake PSO destroy.
+  - `VulkanRHI`: cube-face `EndRenderPass` skips premature ShaderResource transition; depth → `DEPTH_STENCIL_READ_ONLY`.
+  - Cleanup: removed first-frame VK debug logs; validation cube toned to mild blue.
+- Verify:
+  - `Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` — HDR bake log, no `DEVICE_LOST`, clean shutdown.
+  - `Editor.exe --rhi opengl` — full HDR/IBL bake + clean shutdown.
+- Deferred: VK IBL convolution (irradiance/prefilter passes), S06 shadow/post in editor flags, `TD-025` capabilities API.
+- Follow-up 2026-08-26: still saw DEVICE_LOST until descriptor/UBO lifetime fix (entry above).
+
+### 2026-08-25 - ED-F01 S05 viewport parity + S07 SkyPass (Vulkan)
+- Goal: Fix VK editor viewport (mesh/gizmo/nav); re-enable Sky with validation cube.
+- Main changes:
+  - `RenderCamera`: Vulkan `perspectiveRH_ZO` + pick NDC Z=0 (render/pick/gizmo unified).
+  - `EditorViewportWindow`: Vulkan ImGui UV `(0,0)-(1,1)` (no double Y-flip with viewport).
+  - `SceneEditingViewportClient`: `SyncSceneViewportCameraAspect`; VK flags `EnableSkyBox`.
+  - `SkyBoxPass`: explicit no-cull PSO; sky UBO stage `All`; first-prepare log.
+  - `EnvironmentMap`: brighter validation cube face colors for debug.
+  - Docs: **TD-025** clip/handedness vs `IsVulkan()` coupling.
+- Verify: `Editor.exe --rhi vulkan --project ..\MyMEProject\MyMEProject.meproject` — plane + gizmo OK; sky TBD user.
+- Deferred: HDR bake on VK (`EnvironmentMap`), IBL convolution, shadows/post (S06).
+
+### 2026-08-17 - RND-F05-S07d visual smoke confirmed + deferred debt grouped
+- Goal:
+	Confirm S07d is not just alive but visibly drawing scene geometry, then record the remaining cleanup honestly before the next slice.
+- Main changes:
+	User visual check confirmed visible mesh output in Vulkan Editor smoke.
+	Root cause for the prior blue-only frame was `SkyBoxPass` still entering the graph and clearing `SceneColor` after Opaque; smoke now gates the pass via `NeedRenderPass()`.
+	Deferred follow-up grouped into two TDs: `TD-023` (scene pass ordering / clear contract) and `TD-024` (Vulkan frame sync + debug leftovers).
 - Risks or caveats:
+	S07d is visually accepted, but enabling Sky on the current graph still deserves a proper ordering/clear cleanup.
+	Vulkan present semaphore reuse on fast shutdown is not fully clean yet; some diagnostic logs also remain intentionally temporary.
 - Validation done:
+	Editor `--rhi vulkan --project ...\MyMEProject.meproject` manual visual check: visible mesh output.
+	Debug logs also showed BasePass draws and PresentPass blit on the same frame.
 - Next step:
+	S07e Shadow + scene include `set=`; pay down `TD-023` / `TD-024` when the render track has a natural cleanup window.
+
+### 2026-08-05 - RND-F05-S07b–S07d Vulkan Descriptor/PSO + Forward Unlit Base
+- Goal:
+	Batch S07b–S07d so `--rhi vulkan` can run Forward Base (Unlit) and Present without ImGui.
+- Main changes:
+	Vulkan descriptor pool / set layout / pipeline layout / binding sets; lazy graphics PSO per RenderPass;
+	frame recording Clear→Cmd→Present; enable `ForwardRenderer` on Vulkan; Editor `OpenProjectForVulkanSmoke`
+	loads `default` scene, forces Unlit, `SubmitSceneDraw(PresentToBackBuffer)`.
+	Fixes: depth RT no default SAMPLED; `DEPTH24STENCIL8`→`D32_SFLOAT_S8_UINT`; `PerFrame` visibility `All`.
+- Validation done:
+	Editor `--rhi vulkan --project MyMEProject`: Unlit recompile OK; 16s render loop alive;
+	`VK_LAYER_KHRONOS_validation` stderr empty; `test smoke` GL+VK PASSED.
+	**Human visual check still required for mesh silhouette.**
+- Next step:
+	S07e ShadowPass + `MaterialSceneShadows`/`lights` `set=` dialect; then prepare commit for S07a–d WIP.
+
+### 2026-08-05 - RND-F05-S07a Vulkan Buffer/Texture2D/SRV/VertexInputLayout
+- Goal:
+	Fill VulkanRHI resource create/upload stubs so later S07 draws have a data plane.
+- Main changes:
+	`VulkanRHIAllocator` + `VulkanRHIBuffer` (host-visible map) / `VulkanRHITexture` (2D + staging) /
+	`VulkanRHIShaderResourceView` / `VulkanRHIVertexInputLayout`; wire `RHICreate*`; init probes.
+- Validation done:
+	Editor `--rhi vulkan`: S07a buffer/texture/SRV/layout probe OK;
+	`minEngineTests.exe --rhi opengl|vulkan test smoke` PASSED.
+- Next step:
+	S07b Descriptor / BindingSet / PipelineLayout.
+
+### 2026-08-05 - RND-F05 S07 sub-slice table drafted (await review)
+- Goal:
+	Replace vague S07+ with reviewable S07a–S07f before any Vulkan scene implementation.
+- Main changes:
+	Impl expands S07a resources → S07b descriptor → S07c PSO/Cmd → S07d Forward Base → S07e Shadow+set= → S07f Sky/IBL;
+	Design §3.9 pending defaults (classic VkRenderPass, no ImGui-VK, enable Forward at S07d).
+- Validation done:
+	Docs only; no code.
+- Next step:
+	User review/approve §3.9 + Impl S07 table; then start S07a.
+
+### 2026-08-04 - RND-F05-S06 complete (SkyBox + EnvMapCapture + Material set=/SPIR-V)
+- Goal:
+	Finish S06 shader dialect batches so engine fixed passes and graph materials share SPIR-V delivery.
+- Main changes:
+	SkyBox + EnvMapCapture (equirect/irradiance/prefilter) → `CreateShaderFromSpirvFiles` + location quals.
+	MaterialCompiler emits `layout(set=kSetMaterial, binding=…)`; ShaderCompiler flattens set= for OpenGL.
+	`Material::CommitCompileResult` → `CreateShaderFromSpirvSources`; S05 marked Done in same docs pass.
+- Validation done:
+	`minEngineTests.exe --rhi opengl test material-ir` PASSED;
+	`test shader-compiler` PASSED; `test smoke` PASSED.
+	Flatten strips `set=` inside `layout(std140, set=…, binding=…)`.
+	Editor startup: material varyings `layout(location=…)` + remove dead `u_Material` in shadows include.
+- Next step:
+	S07+ — write VK scene sub-slice table before filling Vulkan resource stubs.
+
+### 2026-08-04 - RND-F05-S05 Done + S06 SkyBox background SPIR-V
+- Goal:
+	Close Present-path slice; start engine-shader SPIR-V batches with SkyBox.
+- Main changes:
+	S05 marked Done (`PresentFrame` / no upper-layer `vulkan.h`).
+	`background.vert/frag` explicit varyings/`out` locations; `SkyBoxPass` → `CreateShaderFromSpirvFiles`.
+- Validation done:
+	Editor build OK; `minEngineTests.exe --rhi opengl test smoke` PASSED;
+	background.vert/frag SPIR-V-ready locations; SkyBoxPass loads via CreateShaderFromSpirvFiles.
+- Next step:
+	S06 next batch — EnvMapCapture bake shaders and/or MaterialCompiler `set=`.
+
+### 2026-08-04 - BUG-RENDER-004 directional CSM self-shadow acne (+ BUG-RENDER-003 gate)
+- Goal:
+	Remove texture-following stripe banding on large ground planes under directional light; restore RND-F05 track after diagnosis.
+- Main changes:
+	Shadow depth PSO front-face cull + polygon offset; cascade Z expand via AABB corners (not sphere);
+	receiver bias / light-dir offset; shadow map 1024; dir shadow sample gated on `Params.w` (also closes BUG-RENDER-003);
+	TBN: tangent uses model matrix under non-uniform scale.
+- Validation done:
+	User A/B: disable dir shadow pass → stripes gone; after fix → stripes gone with CSM on (Editor OpenGL).
+- Next step:
+	Resume **RND-F05-S05** (Present / post-process neutrality; more SPIR-V).
+
+### 2026-08-04 - RND-F05-S05 Present 路径收口（进行中）
+- Goal:
+	Align Editor/Engine frame present on neutral RHI path (no direct `SwapBuffers` in Editor OpenGL loop).
+- Main changes:
+	`RenderSystem::PresentFrame()` → `RHI::RHIPresent()`; `Engine::Run` and Editor (OpenGL + Vulkan) call it.
+- Validation done:
+	Editor OpenGL + Vulkan startup OK (user visual).
+- Next step:
+	Continue S05 — PresentPass / post-process path parity; avoid `vulkan.h` in upper layers.
+
+### 2026-08-04 - RND-F05 post-process OpenGL SPIR-V + S04 Vulkan triangle
+- Goal:
+	Extend SPIR-V hot path to FXAA/Sharpen; land Vulkan minimal graphics draw for smoke validation.
+- Main changes:
+	ForwardRenderer FXAA/Sharpen → `CreateShaderFromSpirvFiles`; `FXAA.frag` / `Sharpen.frag` add `layout(location=...)`.
+	`VulkanRHI` render pass + pipeline; embedded triangle SPIR-V (RGB gradient).
+- Validation done:
+	Editor `--rhi vulkan` colored triangle PASS; OpenGL SPIR-V compile errors fixed.
+- Next step:
+	S05 present-path alignment.
+
+### 2026-08-04 - RND-F05-S03 CLI `--rhi` + Vulkan clear/present vertical slice
+- Goal:
+	Enable runtime backend switch (`--rhi opengl|vulkan`) and land Vulkan swapchain clear/present with backend-internal sync only.
+- Main changes:
+	CLI adds global `--rhi` (opengl|vulkan, aliases gl|vk); TestMain synthetic argv updated so option-first test invocations keep `test` subcommand semantics.
+	Introduce `RHIBackendSelection` and route Window/Render boot via selected backend.
+	GLFW adds Vulkan `GLFW_NO_API` path; OpenGL path stays 4.6 + glad.
+	`RHI` adds neutral `RHIPresent()`; OpenGL uses `SwapBuffers`, Vulkan owns acquire/submit/present with internal semaphore/fence.
+	`VulkanRHI` S03 scope: instance/device/surface/swapchain + clear color present; resource/draw APIs intentionally stubbed for S04+.
+	Editor Vulkan path runs smoke mode without ImGui/editor modules (clear/present validation only).
+- Validation done:
+	`minEngineTests.exe --rhi opengl test smoke` PASSED
+	`minEngineTests.exe --rhi vulkan test smoke` PASSED
+	`Editor.exe --rhi vulkan --project ...` startup log confirms NO_API + VulkanRHI clear/present loop.
+- Next step:
+	S04 — Vulkan minimal graphics pipeline + SPIR-V shader path (first visible triangle/fullscreen draw).
+
+### 2026-08-04 - RND-F05-S02 OpenGL 4.6 + Present SPIR-V hot path
+- Goal:
+	Consume OpenGL SPIR-V on Present; keep Material GLSL string path as migration window.
+- Main changes:
+	GLFW / MaterialIR / RenderGraph contexts → **4.6**.
+	`RHIShaderCreateDesc` + bytecode `RHICreateShader`; OpenGL `glShaderBinary` + `glSpecializeShader`.
+	`EngineShaderUtils::CreateShaderFromSpirvFiles`; PresentPass uses SPIR-V path.
+	`test shader-compiler` adds GL specialize load case.
+- Validation done:
+	`minEngineTests.exe test shader-compiler` PASSED (2 cases); `test smoke` PASSED; `test render-graph` PASSED earlier.
+- Next step:
+	S03 — CLI `--rhi opengl|vulkan` + VulkanRHI Clear/Present (frame sync internal).
+
+### 2026-08-04 - RND-F05-S01 ShaderCompiler（Present → VK/GL SPIR-V）
+- Goal:
+	Land GLSL→SPIR-V toolchain without switching GL runtime hot path yet.
+- Main changes:
+	`Render/ShaderCompiler/` (glslangValidator invoke + disk cache); CMake finds Vulkan SDK / glslang.
+	`Present.vert/frag`: `#version 420` + explicit `location` (SPIR-V requirement); varyings `v_TexCoord`.
+	Suite `test shader-compiler` (not in smoke).
+- Validation done:
+	`minEngineTests.exe test shader-compiler` PASSED; `test smoke` PASSED.
+- Next step:
+	S02 — GL context 4.6 + Present loads SPIR-V via `RHICreateShader(bytecode)`.
+
+### 2026-08-04 - RND-F05 Design Draft（地基评估 + SPIR-V 双端）
+- Goal:
+	Assess render foundation for Vulkan; design SPIR-V for both GL and VK; multi-slice plan.
+- Main changes:
+	Expanded `RND-F05_*_DESIGN.md` + new `*_IMPLEMENTATION.md`; Registry Draft; ACTIVE_WORK pointer.
+	Key finding: GL SPIR-V requires DescriptorSet=0 → dual SPIR-V artifacts (VK multi-set / GL flat kGL_*).
+- Validation done:
+	Code survey (RHI/OpenGL/shaders/CMake); local `VULKAN_SDK` 1.4.350 + glslangValidator present.
+- Next step:
+	User confirms Design §7 → Planned → S01 ShaderCompiler.
 
 ### 2026-08-04 - RND-F03 关账 + 主线改为 F05（docs）
 - Goal:
@@ -1762,3 +2219,18 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   User local cmake build + Editor visual OK.
 - Next step:
   P0′ `RHICreateShaderResourceView`; optional Pass PSO cache; PROGRESS_LOG commit on `render`.
+
+### 2026-08-17 - ED-F01 Vulkan Editor Parity registered (`feat/render`)
+- Goal:
+  After RND-F05 S07d, restore full Vulkan Editor (ImGui-Vulkan, embedded viewport, navigation) and continue shadow/sky/IBL in real Editor — not smoke fork.
+- Main changes:
+  **Registry:** `ED-F01` Planned; `RND-F05` → Done (RHI vertical slice S01–S07d).
+  **Docs:** [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md), [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md).
+  **Handoff:** F05 S07e/f → ED-F01-S06/S07; smoke mode slated for removal at ED-F01-S03.
+  **Source:** `imgui_impl_vulkan` from sibling `../imgui` clone (1.92.7 aligned).
+- Risks or caveats:
+  Frame sync (TD-024), swapchain/ImGui render pass alignment, dynamic RT ImGui descriptors.
+- Validation done:
+  Design/Impl draft only; no code yet.
+- Next step:
+  ED-F01-S01: copy `imgui_impl_vulkan` + CMake; then S02 ImGui empty frame.

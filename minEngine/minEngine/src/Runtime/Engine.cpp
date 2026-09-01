@@ -7,6 +7,9 @@
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/SceneRendererKind.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
@@ -28,6 +31,9 @@ namespace minEngine
         ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
         s_Instance = this;
 
+        RHIBackendSelection::Set(commandLine.RHIBackend);
+        m_SceneRendererKind = commandLine.SceneRenderer;
+
         LogSystem::Get().Initialize();
         FinializeReflection();
 
@@ -36,6 +42,7 @@ namespace minEngine
 
         StartSystems();
 
+        // Sky / EnvMap shaders and validation resources — required on every RHI (ED-F01 VK parity).
         if (m_RenderSystem && m_EnginePathConfigLoaded)
         {
             m_RenderSystem->LoadEngineRenderingAssets();
@@ -75,7 +82,14 @@ namespace minEngine
         {
             const float deltaTime = CalculateDeltaTime();
             TickOneFrame(deltaTime);
-            windowSystem.SwapBuffers();
+            if (m_RenderSystem)
+            {
+                m_RenderSystem->PresentFrame();
+            }
+            else
+            {
+                windowSystem.SwapBuffers();
+            }
         }
     }
 
@@ -149,7 +163,7 @@ namespace minEngine
 
         m_RenderSystem = std::make_shared<RenderSystem>();
         RenderSystem::SetInstance(m_RenderSystem.get());
-        m_RenderSystem->Initialize();
+        m_RenderSystem->Initialize(m_SceneRendererKind);
 
         m_LuaScriptSystem = std::make_shared<LuaScriptSystem>();
         LuaScriptSystem::SetInstance(m_LuaScriptSystem.get());

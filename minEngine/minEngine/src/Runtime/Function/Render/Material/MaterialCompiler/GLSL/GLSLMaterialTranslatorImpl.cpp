@@ -8,6 +8,7 @@
 #include "Render/Material/MaterialIR/MaterialIR.h"
 #include "Render/Material/MaterialIR/MaterialIRTypes.h"
 #include "Render/Material/MaterialPropertyUtil.h"
+#include "Runtime/Function/Render/EngineShaderBindings.h"
 
 namespace minEngine
 {
@@ -349,8 +350,13 @@ namespace minEngine
         std::sort(textureSlots.begin(), textureSlots.end());
         for (int textureSlotIndex : textureSlots)
         {
-            preamble += "layout (binding = ";
-            preamble += std::to_string(textureSlotIndex);
+            // Logical Vulkan dialect: set = material set, binding = texture slot.
+            // OpenGL SPIR-V path flattens set= away in ShaderCompiler.
+            preamble += "layout (set = ";
+            preamble += std::to_string(EngineShaderBindings::kSetMaterial);
+            preamble += ", binding = ";
+            preamble += std::to_string(
+                EngineShaderBindings::kSet2_MaterialTextureBase + static_cast<uint32_t>(textureSlotIndex));
             preamble += ") uniform sampler2D ";
             preamble += GetTextureSamplerName(textureSlotIndex);
             preamble += ";\n";
@@ -361,7 +367,11 @@ namespace minEngine
         if (!scalarUniformSlots.empty())
         {
             const int maxSlot = scalarUniformSlots.back();
-            preamble += "layout (std140, binding = 8) uniform MaterialScalarParams\n{\n";
+            preamble += "layout (std140, set = ";
+            preamble += std::to_string(EngineShaderBindings::kSetMaterial);
+            preamble += ", binding = ";
+            preamble += std::to_string(EngineShaderBindings::kSet2_MaterialParamsUBO);
+            preamble += ") uniform MaterialScalarParams\n{\n";
             preamble += "    float u_ScalarParams[" + std::to_string(maxSlot + 1) + "];\n";
             preamble += "};\n";
         }

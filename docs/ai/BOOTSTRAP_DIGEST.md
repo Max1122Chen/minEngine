@@ -1,6 +1,6 @@
 # Bootstrap Digest (read in under 2 min)
 
-Last updated: 2026-05-28  
+Last updated: 2026-08-31  
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` — do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
@@ -19,9 +19,12 @@ Purpose: **one-page** context for humans and AI when starting or recovering a se
 3. [ACTIVE_WORK.md](./ACTIVE_WORK.md) — **current backlog** (human-edited; agents prefer this over old roadmaps)  
 4. **This file** — rules + commands + habits  
 5. [TECH_DEBT.md](./TECH_DEBT.md) — Open rows only (what not to rush)  
-6. Task-specific design — **only** if the user names it or ACTIVE_WORK links it; check Meta **Status** first ([doc trust tiers](../.cursor/rules/docs-trust-tiers.mdc))  
+6. [playbooks/README.md](./playbooks/README.md) — typical bug patterns & debugging (Tier B)  
+7. Task-specific design — **only** if the user names it or ACTIVE_WORK links it; check Meta **Status** first ([doc trust tiers](../.cursor/rules/docs-trust-tiers.mdc))  
 
 Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
+
+**Active handoff (VK shadow quality, 2026-08-31):** [sessions/2026-08-31-vk-shadow-self-shadow-handoff.md](./sessions/2026-08-31-vk-shadow-self-shadow-handoff.md) · [playbooks/Render/VK_SHADOW_DEBUGGING.md](./playbooks/Render/VK_SHADOW_DEBUGGING.md) §7
 
 ---
 

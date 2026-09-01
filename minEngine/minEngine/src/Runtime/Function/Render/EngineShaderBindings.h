@@ -9,9 +9,10 @@ namespace minEngine
      *
      * Rules:
      * - (set, binding) is the logical key; ShaderBinding is the OpenGL UBO binding point or texture unit.
-     * - GLSL 420+ uses layout(binding = ShaderBinding) for UBOs and samplers.
+     * - MaterialCompiler emits layout(set = kSetMaterial, binding = …) (Vulkan dialect).
+     * - OpenGL SPIR-V compile flattens set= away in ShaderCompiler (DescriptorSet must be 0).
+     * - Hand-authored engine GLSL may still use flat layout(binding = ShaderBinding) for set-0 passes.
      * - MaterialCompiler / engine pass layouts MUST read from this header — no duplicated slot literals.
-     * - Pass-local sets reuse set index 0 inside their draw scope only (see kSetEnginePost, kSetShadowPass).
      */
     namespace EngineShaderBindings
     {

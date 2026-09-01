@@ -1,6 +1,7 @@
 #include "ApplicationCommandLine.h"
 
 #include "CLI11.hpp"
+#include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <cstdio>
 #include <string>
@@ -24,6 +25,46 @@ namespace minEngine
             }
             return std::nullopt;
         }
+
+        std::string ToLowerAscii(std::string value)
+        {
+            for (char& ch : value)
+            {
+                if (ch >= 'A' && ch <= 'Z')
+                {
+                    ch = static_cast<char>(ch - 'A' + 'a');
+                }
+            }
+            return value;
+        }
+
+        std::optional<RHIBackendType> ParseRHIBackend(const std::string& value)
+        {
+            const std::string lowered = ToLowerAscii(value);
+            if (lowered == "opengl" || lowered == "gl")
+            {
+                return RHIBackendType::OpenGL;
+            }
+            if (lowered == "vulkan" || lowered == "vk")
+            {
+                return RHIBackendType::Vulkan;
+            }
+            return std::nullopt;
+        }
+
+        std::optional<SceneRendererKind> ParseSceneRenderer(const std::string& value)
+        {
+            const std::string lowered = ToLowerAscii(value);
+            if (lowered == "forward" || lowered == "rdg")
+            {
+                return SceneRendererKind::Forward;
+            }
+            if (lowered == "manual" || lowered == "handpass")
+            {
+                return SceneRendererKind::Manual;
+            }
+            return std::nullopt;
+        }
     }
 
     CommandLineExitCode ApplicationCommandLine::GetLastExitCode()
@@ -36,6 +77,7 @@ namespace minEngine
         s_LastExitCode = CommandLineExitCode::Success;
 
         CLI::App app("minEngine Editor");
+        app.positionals_at_end(true);
         app.set_version_flag("--version", "minEngine (CLI-F01)");
 
         std::string engineConfigPath;
@@ -51,6 +93,17 @@ namespace minEngine
         std::string projectPositional;
         app.add_option("meproject", projectPositional, "Project descriptor (.meproject)")
             ->option_text("<path>");
+
+        std::string rhiBackend;
+        app.add_option("--rhi", rhiBackend, "Graphics backend: opengl|vulkan (aliases gl|vk). Default: opengl")
+            ->option_text("<opengl|vulkan>");
+
+        std::string sceneRenderer;
+        app.add_option(
+            "--renderer",
+            sceneRenderer,
+            "Scene renderer: forward|manual (aliases rdg|handpass). Default: forward")
+            ->option_text("<forward|manual>");
 
         CLI::App& testCommand = *app.add_subcommand("test", "Headless test mode (no editor window)");
         std::string testTarget;
@@ -97,6 +150,36 @@ namespace minEngine
         if (!engineRootOverride.empty())
         {
             result.EngineRootOverride = std::filesystem::path(engineRootOverride);
+        }
+
+        if (!rhiBackend.empty())
+        {
+            const std::optional<RHIBackendType> parsedBackend = ParseRHIBackend(rhiBackend);
+            if (!parsedBackend.has_value())
+            {
+                std::fprintf(
+                    stderr,
+                    "Invalid --rhi '%s'. Expected opengl|vulkan (or gl|vk).\n",
+                    rhiBackend.c_str());
+                s_LastExitCode = CommandLineExitCode::UsageError;
+                return std::nullopt;
+            }
+            result.RHIBackend = *parsedBackend;
+        }
+
+        if (!sceneRenderer.empty())
+        {
+            const std::optional<SceneRendererKind> parsedRenderer = ParseSceneRenderer(sceneRenderer);
+            if (!parsedRenderer.has_value())
+            {
+                std::fprintf(
+                    stderr,
+                    "Invalid --renderer '%s'. Expected forward|manual (aliases rdg|handpass).\n",
+                    sceneRenderer.c_str());
+                s_LastExitCode = CommandLineExitCode::UsageError;
+                return std::nullopt;
+            }
+            result.SceneRenderer = *parsedRenderer;
         }
 
         if (app.got_subcommand("test"))

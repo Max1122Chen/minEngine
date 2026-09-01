@@ -8,7 +8,8 @@ vec3 BuildWorldNormalFromTangentSpace(
     vec3 tangentSpaceNormal)
 {
     vec3 N = normalize(worldNormal);
-    vec3 T = normalize(worldTangent);
+    // Re-orthogonalize after non-uniform scale / interpolation.
+    vec3 T = normalize(worldTangent - N * dot(N, worldTangent));
     vec3 bitangent = cross(N, T) * tangentSign;
     mat3 TBN = mat3(T, bitangent, N);
     return normalize(TBN * tangentSpaceNormal);

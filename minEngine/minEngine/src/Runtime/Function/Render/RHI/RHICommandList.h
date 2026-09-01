@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Render/RHI/RHI.h"
+#include "Render/RHI/RHIClipSpaceCapabilities.h"
 #include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
@@ -51,9 +52,18 @@ namespace minEngine
         {
             m_RHI->RHICmdTransition(transition);
         }
-        void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+        void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height, bool flipY = true)
         {
-            m_RHI->RHICmdSetViewport(x, y, width, height);
+            m_RHI->RHICmdSetViewport(x, y, width, height, flipY);
+        }
+        void SetViewport(
+            uint32_t x,
+            uint32_t y,
+            uint32_t width,
+            uint32_t height,
+            RHIViewportConvention convention)
+        {
+            m_RHI->RHICmdSetViewport(x, y, width, height, GetViewportFlipY(convention));
         }
         void SetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot = 0)
         {
@@ -85,6 +95,12 @@ namespace minEngine
         RHIBufferRef CreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData = nullptr)
         {
             return m_RHI->RHICreateBuffer(desc, initialData);
+        }
+        RHIShaderRef CreateShader(
+            const RHIShaderCreateDesc& desc,
+            std::string* outCompileLog = nullptr)
+        {
+            return m_RHI->RHICreateShader(desc, outCompileLog);
         }
         RHIShaderRef CreateShader(
             const std::string& vertexSource,
