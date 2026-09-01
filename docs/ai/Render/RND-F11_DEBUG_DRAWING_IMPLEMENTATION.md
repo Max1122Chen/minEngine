@@ -11,7 +11,7 @@
 
 ## TL;DR
 
-共 **4 个切片**（S01–S04）。当前 **S02 Planned**（S01 Done）。
+共 **4 个切片**（S01–S04）。当前 **S03 Planned**（S01–S02 Done）。
 
 **架构约束（与 Design §4 / §11 一致）：**
 - **提交在 Renderer 外**：Editor / 测试在 `SubmitSceneDraw` **之前** 调用 `DebugDraw::` / `PhysicsDebugDraw::`
@@ -37,7 +37,7 @@
 | Slice ID | 标题 | 状态 | 验证 |
 |----------|------|------|------|
 | RND-F11-S01 | Debug 核心 + Pass + RDG 竖切 | Done | GL+VK 轴线目视 |
-| RND-F11-S02 | Collider wireframe | Planned | Editor collider 目视 |
+| RND-F11-S02 | Collider wireframe | **Done** | Editor collider 目视 |
 | RND-F11-S03 | Contact + LineTrace | Planned | `physics-contact` + trace 目视 |
 | RND-F11-S04 | Debug draw toggle | Planned | Editor toggle |
 
@@ -152,11 +152,12 @@ RenderSystem::Get().SubmitSceneDraw(desc);
 
 #### DoD
 
-- [ ] Box / Sphere / Capsule wireframe 目视正确
-- [ ] Channel 颜色可区分
-- [ ] S01 轴线 smoke 已移除
-- [ ] Thumbnail / Preview 视口无 collider 线（未开 `EnableDebugDraw`）
-- [ ] `physics-smoke` / `physics-shapes` 通过
+- [x] Box / Sphere / Capsule wireframe 目视正确
+- [x] Channel 颜色可区分
+- [x] S01 轴线 smoke 已移除
+- [x] Thumbnail / Preview 视口无 collider 线（未开 `EnableDebugDraw`）
+- [x] `physics-smoke` / `physics-shapes` 通过
+- [ ] [BUG-PHYS-003](../bugs/BUG-PHYS-003.md) — intermittent Add `BoxColliderComponent` crash（未稳定复现，登记待查）
 
 ---
 

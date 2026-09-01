@@ -21,6 +21,8 @@ namespace minEngine
         m_Lines.clear();
         m_Points.clear();
         m_Boxes.clear();
+        m_Spheres.clear();
+        m_Capsules.clear();
     }
 
     void DebugDrawService::BuildFrameGeometry()
@@ -72,6 +74,39 @@ namespace minEngine
                 DebugGeometry::AppendBoxWireframe(out, command.WorldTransform, command.HalfExtent, command.Color);
             });
         }
+
+        for (const DebugSphereCommand& command : m_Spheres)
+        {
+            std::vector<DebugVertex>* vertices = command.DepthMode == EDebugDepthMode::AlwaysVisible
+                ? &m_VerticesAlwaysVisible
+                : &m_VerticesDepthTested;
+            appendWithLimit(*vertices, [&](std::vector<DebugVertex>& out)
+            {
+                DebugGeometry::AppendSphereWireframe(
+                    out,
+                    command.WorldTransform,
+                    command.Radius,
+                    command.Color,
+                    command.Segments);
+            });
+        }
+
+        for (const DebugCapsuleCommand& command : m_Capsules)
+        {
+            std::vector<DebugVertex>* vertices = command.DepthMode == EDebugDepthMode::AlwaysVisible
+                ? &m_VerticesAlwaysVisible
+                : &m_VerticesDepthTested;
+            appendWithLimit(*vertices, [&](std::vector<DebugVertex>& out)
+            {
+                DebugGeometry::AppendCapsuleWireframe(
+                    out,
+                    command.WorldTransform,
+                    command.Radius,
+                    command.HalfHeight,
+                    command.Color,
+                    command.Segments);
+            });
+        }
     }
 
     const std::vector<DebugVertex>& DebugDrawService::GetVertices(EDebugDepthMode mode) const
@@ -106,5 +141,15 @@ namespace minEngine
     void DebugDrawService::EnqueueBox(DebugBoxCommand command)
     {
         m_Boxes.push_back(command);
+    }
+
+    void DebugDrawService::EnqueueSphere(DebugSphereCommand command)
+    {
+        m_Spheres.push_back(command);
+    }
+
+    void DebugDrawService::EnqueueCapsule(DebugCapsuleCommand command)
+    {
+        m_Capsules.push_back(command);
     }
 }

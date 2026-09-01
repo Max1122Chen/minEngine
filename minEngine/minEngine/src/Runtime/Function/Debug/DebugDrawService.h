@@ -21,11 +21,15 @@ namespace minEngine
         void EnqueueLine(DebugLineCommand command);
         void EnqueuePoint(DebugPointCommand command);
         void EnqueueBox(DebugBoxCommand command);
+        void EnqueueSphere(DebugSphereCommand command);
+        void EnqueueCapsule(DebugCapsuleCommand command);
 
     private:
         std::vector<DebugLineCommand> m_Lines;
         std::vector<DebugPointCommand> m_Points;
         std::vector<DebugBoxCommand> m_Boxes;
+        std::vector<DebugSphereCommand> m_Spheres;
+        std::vector<DebugCapsuleCommand> m_Capsules;
 
         std::vector<DebugVertex> m_VerticesDepthTested;
         std::vector<DebugVertex> m_VerticesAlwaysVisible;

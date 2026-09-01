@@ -24,5 +24,20 @@ namespace minEngine
             const Matrix4& worldTransform,
             const Vector3& halfExtent,
             const Vector4& color);
+
+        static void AppendSphereWireframe(
+            std::vector<DebugVertex>& outVertices,
+            const Matrix4& worldTransform,
+            float radius,
+            const Vector4& color,
+            uint32_t segments);
+
+        static void AppendCapsuleWireframe(
+            std::vector<DebugVertex>& outVertices,
+            const Matrix4& worldTransform,
+            float radius,
+            float halfHeight,
+            const Vector4& color,
+            uint32_t segments);
     };
 }

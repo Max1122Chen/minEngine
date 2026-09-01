@@ -45,4 +45,34 @@ namespace minEngine::DebugDraw
         command.DepthMode = depthMode;
         DebugDrawService::Get().EnqueueBox(command);
     }
+
+    void Sphere(
+        const Matrix4& worldTransform,
+        const float radius,
+        const Vector4& color,
+        const EDebugDepthMode depthMode)
+    {
+        DebugSphereCommand command;
+        command.WorldTransform = worldTransform;
+        command.Radius = radius;
+        command.Color = color;
+        command.DepthMode = depthMode;
+        DebugDrawService::Get().EnqueueSphere(command);
+    }
+
+    void Capsule(
+        const Matrix4& worldTransform,
+        const float radius,
+        const float halfHeight,
+        const Vector4& color,
+        const EDebugDepthMode depthMode)
+    {
+        DebugCapsuleCommand command;
+        command.WorldTransform = worldTransform;
+        command.Radius = radius;
+        command.HalfHeight = halfHeight;
+        command.Color = color;
+        command.DepthMode = depthMode;
+        DebugDrawService::Get().EnqueueCapsule(command);
+    }
 }

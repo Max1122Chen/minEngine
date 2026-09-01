@@ -51,4 +51,25 @@ namespace minEngine
         EDebugDepthMode DepthMode = EDebugDepthMode::Tested;
         EDebugLifetime Lifetime = EDebugLifetime::Transient;
     };
+
+    struct DebugSphereCommand
+    {
+        Matrix4 WorldTransform{1.0f};
+        float Radius = 0.5f;
+        Vector4 Color{1.0f, 1.0f, 1.0f, 1.0f};
+        uint32_t Segments = 16;
+        EDebugDepthMode DepthMode = EDebugDepthMode::Tested;
+        EDebugLifetime Lifetime = EDebugLifetime::Transient;
+    };
+
+    struct DebugCapsuleCommand
+    {
+        Matrix4 WorldTransform{1.0f};
+        float Radius = 0.5f;
+        float HalfHeight = 0.5f;
+        Vector4 Color{1.0f, 1.0f, 1.0f, 1.0f};
+        uint32_t Segments = 12;
+        EDebugDepthMode DepthMode = EDebugDepthMode::Tested;
+        EDebugLifetime Lifetime = EDebugLifetime::Transient;
+    };
 }

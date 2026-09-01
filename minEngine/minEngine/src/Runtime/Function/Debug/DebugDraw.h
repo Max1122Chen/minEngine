@@ -21,4 +21,17 @@ namespace minEngine::DebugDraw
         const Vector3& halfExtent,
         const Vector4& color,
         EDebugDepthMode depthMode = EDebugDepthMode::Tested);
+
+    void Sphere(
+        const Matrix4& worldTransform,
+        float radius,
+        const Vector4& color,
+        EDebugDepthMode depthMode = EDebugDepthMode::Tested);
+
+    void Capsule(
+        const Matrix4& worldTransform,
+        float radius,
+        float halfHeight,
+        const Vector4& color,
+        EDebugDepthMode depthMode = EDebugDepthMode::Tested);
 }

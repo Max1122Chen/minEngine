@@ -36,7 +36,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 1. **RND-F11 DebugDrawing** — [Design](./Render/RND-F11_DEBUG_DRAWING_DESIGN.md) · **In Progress**
    - **Goal:** Editor 视口即时调试图元（线/盒/wireframe）；优先 Physics collider、contact、trace 可视化
-   - **Next:** S02 `PhysicsDebugDraw` collider wireframe（[Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md)）
+   - **S02 Done** — collider wireframe（[Impl](./Render/RND-F11_DEBUG_DRAWING_IMPLEMENTATION.md)）
+   - **Next:** S03 contact + LineTrace visualization
+   - **Open:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent Editor crash on Add `BoxColliderComponent`（未稳定复现）
    - **Parallel:** VK shadow 质量轨留在 `feat/render`（RenderDoc / cull-winding）
 
 ### Master / 平台

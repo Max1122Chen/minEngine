@@ -14,7 +14,8 @@
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
-#include "Runtime/Function/Debug/DebugDraw.h"
+#include "Runtime/Function/Physics/PhysicsDebugDraw.h"
+#include "Runtime/Function/Physics/PhysicsSystem.h"
 
 #include "Runtime/Function/Render/RenderSystem.h"
 
@@ -171,9 +172,13 @@ namespace minEngine
 
         if (HasSceneDrawFlag(flags, SceneDrawFlags::EnableDebugDraw))
         {
-            DebugDraw::Line(Vector3(0.0f, 0.0f, 0.0f), Vector3(5.0f, 0.0f, 0.0f), Vector4(1.0f, 0.0f, 0.0f, 1.0f));
-            DebugDraw::Line(Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 5.0f, 0.0f), Vector4(0.0f, 1.0f, 0.0f, 1.0f));
-            DebugDraw::Line(Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 0.0f, 5.0f), Vector4(0.0f, 0.0f, 1.0f, 1.0f));
+            SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+            Scene* scene = sceneEditor ? sceneEditor->GetActiveScene() : nullptr;
+            if (scene != nullptr)
+            {
+                PhysicsWorld& world = PhysicsSystem::Get().GetOrCreateWorld(scene);
+                PhysicsDebugDraw::SubmitScene(*scene, world, PhysicsDebugDraw::GetOptions());
+            }
         }
 
         const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);

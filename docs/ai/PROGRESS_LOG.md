@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-01 (RND-F11-S01 landed)
+Last updated: 2026-09-01 (RND-F11-S02 landed)
+
+### 2026-09-01 - RND-F11-S02: Physics collider wireframe (`feat/debug-drawing`)
+- **Delivered:** `PhysicsDebugDraw::SubmitScene`; `DebugDraw::Sphere` / `Capsule`; sphere/capsule wireframe tessellation; Editor submits colliders before `SubmitSceneDraw` (S01 axis smoke removed).
+- **Verified:** User visual acceptance (wireframe visible); `physics-smoke` / `physics-shapes` / `render-graph` pass.
+- **Known issue:** [BUG-PHYS-003](./bugs/BUG-PHYS-003.md) — intermittent crash on Add `BoxColliderComponent` (not reproduced after retry).
+- **Next:** S03 contact + LineTrace visualization.
 
 ### 2026-09-01 - RND-F11-S01: DebugDraw pass + editor axis smoke (`feat/debug-drawing`)
 - **Delivered:** `DebugDrawService` / `DebugDraw::` API; `DebugDrawPass` + shaders; `Scene.Debug` RDG slot; `EnableDebugDraw` flag.
