@@ -10,6 +10,7 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Resource/AudioClip.h"
 
 #include <algorithm>
@@ -127,6 +128,12 @@ namespace minEngine
         if (params.Clip == nullptr || !params.Clip->IsValid())
         {
             result.ErrorMessage = "invalid audio clip";
+            return result;
+        }
+
+        if (!ShouldAcceptAudioFromScene(params.OwnerScene))
+        {
+            result.ErrorMessage = "audio from non-PIE scene is muted during Play In Editor";
             return result;
         }
 
@@ -296,6 +303,11 @@ namespace minEngine
             return;
         }
 
+        if (!ShouldAcceptAudioFromScene(GetComponentOwnerScene(listener)))
+        {
+            return;
+        }
+
         if (m_ActiveListener != nullptr && m_ActiveListener != listener)
         {
             ME_CORE_WARN("AudioSystem: replacing active listener (last registered wins).");
@@ -372,6 +384,91 @@ namespace minEngine
         }
     }
 
+    void AudioSystem::OnBeginPIE(Scene* pieScene)
+    {
+        if (pieScene == nullptr)
+        {
+            return;
+        }
+
+        StopVoicesNotOwnedByScene(pieScene);
+
+        if (m_ActiveListener != nullptr)
+        {
+            Scene* listenerScene = GetComponentOwnerScene(m_ActiveListener);
+            if (listenerScene != pieScene)
+            {
+                m_SuspendedEditorListener = m_ActiveListener;
+                m_ActiveListener = nullptr;
+                m_bListenerDirty = true;
+                if (m_Backend)
+                {
+                    m_Backend->SetListenerEnabled(false);
+                }
+            }
+        }
+    }
+
+    void AudioSystem::OnEndPIE(Scene* pieScene)
+    {
+        (void)pieScene;
+
+        if (m_SuspendedEditorListener != nullptr)
+        {
+            m_ActiveListener = m_SuspendedEditorListener;
+            m_SuspendedEditorListener = nullptr;
+            m_bListenerDirty = true;
+            PushActiveListenerToBackend();
+        }
+    }
+
+    Scene* AudioSystem::GetComponentOwnerScene(const SceneComponent* component) const
+    {
+        if (component == nullptr || component->GetOwner() == nullptr)
+        {
+            return nullptr;
+        }
+
+        const MEObject* outer = component->GetOwner()->GetOuter();
+        if (outer == nullptr || !outer->IsA(Scene::StaticClass()))
+        {
+            return nullptr;
+        }
+
+        return const_cast<Scene*>(static_cast<const Scene*>(outer));
+    }
+
+    bool AudioSystem::ShouldAcceptAudioFromScene(Scene* scene) const
+    {
+        if (!SceneManager::HasInstance() || !SceneManager::Get().IsPIEPlayActive())
+        {
+            return true;
+        }
+
+        return scene != nullptr && scene->IsPIEScene();
+    }
+
+    void AudioSystem::StopVoicesNotOwnedByScene(Scene* allowedScene)
+    {
+        if (!m_Backend)
+        {
+            return;
+        }
+
+        for (auto voiceIter = m_VoiceById.begin(); voiceIter != m_VoiceById.end();)
+        {
+            AudioVoice* voice = voiceIter->second;
+            if (voice != nullptr && voice->GetOwnerScene() != allowedScene)
+            {
+                StopAndFreeVoice(voice);
+                voiceIter = m_VoiceById.begin();
+                continue;
+            }
+
+            ++voiceIter;
+        }
+    }
+
     AudioVoice* AudioSystem::FindVoice(AudioVoiceHandle handle)
     {
         const auto iter = m_VoiceById.find(handle.Id);
@@ -444,6 +541,11 @@ namespace minEngine
                 continue;
             }
 
+            if (!ShouldAcceptAudioFromScene(emitter->GetOwnerScene()))
+            {
+                continue;
+            }
+
             emitter->Play();
         }
     }
@@ -480,7 +582,8 @@ namespace minEngine
             return;
         }
 
-        if (m_ActiveListener == nullptr)
+        if (m_ActiveListener == nullptr
+            || !ShouldAcceptAudioFromScene(GetComponentOwnerScene(m_ActiveListener)))
         {
             m_Backend->SetListenerEnabled(false);
             return;

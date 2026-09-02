@@ -28,6 +28,8 @@ namespace minEngine
         static bool HasInstance();
 
         void SimulateActiveScene(float deltaTime);
+        void OnBeginPIE(Scene* pieScene);
+        void OnEndPIE(Scene* pieScene);
 
         PhysicsWorld& GetOrCreateWorld(Scene* scene);
         void DestroyWorld(Scene* scene);

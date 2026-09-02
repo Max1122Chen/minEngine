@@ -1,6 +1,19 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（`master`：`feat/editor` 合入；BUG-EDITOR-002 Resolved）
+Last updated: 2026-09-03（`master`：CORE-F05 S04 Done；S03 WIP）
+
+### 2026-09-03 - CORE-F05 S03 WIP: viewport binds PIE during Play (`master`)
+- **Editor:** Play 时 viewport 观察 PIE `RenderScene`；主相机跟随；禁用 fly/gizmo/选择；`RouteViewportInput` 不路由。
+- **Build:** `Editor` compile OK；目视 deferred。
+- **Next:** commit（建议 S04 / S03 分两笔）；Runtime `InputSystem` 路由后续。
+
+### 2026-09-03 - CORE-F05 S04: Per-World Audio/Physics lifecycle (`master`)
+- **Audio:** `OnBeginPIE`/`OnEndPIE` — editor scene mute、listener suspend/restore；`ShouldAcceptAudioFromScene` 门控 Play/PlayOnAwake/RegisterListener。
+- **Physics:** `OnBeginPIE`/`OnEndPIE` hooks；`PlayInEditorSession` 统一调用。
+- **Render debug:** `SceneDrawDesc::GameplayScene`；`ForwardRenderer` 内 `PhysicsDebugDraw`（与 scene draw 同路径）；移除 Editor 帧头 `ClearFrameQueues`。
+- **Tests:** `audio-smoke` 新增 PIE playback gating — PASS。
+- **Manual:** Editor Play 目视 deferred。
+- **Next:** commit S04 + S03（建议分两笔）；Runtime Input 路由后续。
 
 ### 2026-09-02 - Merge `feat/editor` → `master`（ED-F02 基础 + CORE-F07 + ED-F04 Console MVP）
 - **Merged:** ED-F02 asset workflow；CORE-F07 reflection display names；ED-F04 Debug Console S00–S10a（Registry 自 feat/editor 的 ED-F03 重编号）；Command system + validation + undo/redo。

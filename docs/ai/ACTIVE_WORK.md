@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-02（`master`：`feat/editor` 合入；**CORE-F05** 当前焦点）
+Last updated: 2026-09-03（`master`：**CORE-F05** S04 Done → S03）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -19,9 +19,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 目标 | Edit/Play；**UE 式双 Scene 共存**（Editor + PIE）；Stop 仅销毁 PIE |
 | 分支 | `master` |
 
-**建议起步：** **S04** Per-World 系统生命周期；~~修复 EnterPlay 反序列化失败~~ → **TD-029** PIE JSON detour（2026-09-03）。
+**建议起步：** **S03** View/Input（viewport 绑定 PIE）；S04 Per-World 系统生命周期 **Done**（2026-09-03）。
 
-**最近提交（2026-09-03）：** EnterPlay 失败根因 **TD-028**（Binary field-stream）；PIE clone 改 JSON 绕行 **TD-029**。
+**最近提交（2026-09-03）：** EnterPlay JSON detour（TD-029）；S04 Audio/Physics `OnBeginPIE`/`OnEndPIE`（待 commit）。
 
 ---
 

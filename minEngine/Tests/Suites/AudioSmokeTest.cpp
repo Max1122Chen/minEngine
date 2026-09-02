@@ -11,6 +11,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Scene/SceneTypes.h"
 #include "Runtime/Resource/AudioClip.h"
 
 #include <cmath>
@@ -210,6 +211,86 @@ namespace minEngine
             AudioSystem::Get().StopVoice(playResult.Voice);
             return true;
         }
+
+        bool RunPIEPlaybackGatingTest(MockAudioBackend& backend)
+        {
+            const std::shared_ptr<Scene> editorScene = SceneManager::Get().CreateNewScene("editor-audio-pie");
+            if (!editorScene)
+            {
+                ME_CORE_ERROR("AudioSmokeTest: failed to create editor scene.");
+                return false;
+            }
+
+            editorScene->SetSceneType(ESceneType::Editor);
+
+            const std::shared_ptr<GameObject> editorEmitterObject = editorScene->CreateGameObject();
+            const std::shared_ptr<AudioComponent> editorAudio = editorEmitterObject->AddComponent<AudioComponent>();
+            editorAudio->SetClip(CreateTestToneClip(260.0f));
+            editorAudio->Play();
+
+            if (!editorAudio->IsPlaying())
+            {
+                ME_CORE_ERROR("AudioSmokeTest: editor audio did not start before PIE.");
+                return false;
+            }
+
+            const uint32_t voicesBeforePie = backend.GetCreateVoiceCount();
+
+            const std::shared_ptr<Scene> pieScene = SceneManager::Get().CreateNewScene("pie-audio");
+            if (!pieScene)
+            {
+                ME_CORE_ERROR("AudioSmokeTest: failed to create PIE scene.");
+                return false;
+            }
+
+            pieScene->SetSceneType(ESceneType::PIE);
+            SceneManager::Get().SetPIEPlayActive(true);
+            AudioSystem::Get().OnBeginPIE(pieScene.get());
+
+            if (editorAudio->IsPlaying())
+            {
+                ME_CORE_ERROR("AudioSmokeTest: editor audio still playing after OnBeginPIE.");
+                return false;
+            }
+
+            editorAudio->Play();
+            if (editorAudio->IsPlaying())
+            {
+                ME_CORE_ERROR("AudioSmokeTest: editor audio started during PIE.");
+                return false;
+            }
+
+            const std::shared_ptr<GameObject> pieEmitterObject = pieScene->CreateGameObject();
+            const std::shared_ptr<AudioComponent> pieAudio = pieEmitterObject->AddComponent<AudioComponent>();
+            pieAudio->SetClip(CreateTestToneClip(520.0f));
+            pieAudio->Play();
+
+            if (!pieAudio->IsPlaying())
+            {
+                ME_CORE_ERROR("AudioSmokeTest: PIE audio did not start during PIE.");
+                return false;
+            }
+
+            if (backend.GetCreateVoiceCount() <= voicesBeforePie)
+            {
+                ME_CORE_ERROR("AudioSmokeTest: PIE audio did not create a new voice.");
+                return false;
+            }
+
+            SceneManager::Get().SetPIEPlayActive(false);
+            AudioSystem::Get().OnEndPIE(pieScene.get());
+
+            editorAudio->Play();
+            if (!editorAudio->IsPlaying())
+            {
+                ME_CORE_ERROR("AudioSmokeTest: editor audio did not resume after PIE.");
+                return false;
+            }
+
+            pieAudio->Stop();
+            editorAudio->Stop();
+            return true;
+        }
     }
 
     bool RunAudioSmokeTests()
@@ -223,7 +304,7 @@ namespace minEngine
         }
 
         return RunPlay2DAndStopTest(*backend) && RunBusMuteTest(*backend) && RunPlay3DTest(*backend)
-            && RunComponentAndSceneLifecycleTest();
+            && RunComponentAndSceneLifecycleTest() && RunPIEPlaybackGatingTest(*backend);
     }
 }
 

@@ -59,6 +59,8 @@ namespace minEngine
         void UnregisterListener(AudioListenerComponent* listener);
 
         void OnSceneUnloaded(Scene* scene);
+        void OnBeginPIE(Scene* pieScene);
+        void OnEndPIE(Scene* pieScene);
 
         AudioVoice* FindVoice(AudioVoiceHandle handle);
         const AudioVoice* FindVoice(AudioVoiceHandle handle) const;
@@ -83,6 +85,9 @@ namespace minEngine
         void WarnMissingListenerForSpatializedAudio();
         void LogSpatialAudioDiagnostics(bool forceLog);
         void LogSceneComponentTransformDiagnostics(const char* role, const SceneComponent* component);
+        Scene* GetComponentOwnerScene(const SceneComponent* component) const;
+        bool ShouldAcceptAudioFromScene(Scene* scene) const;
+        void StopVoicesNotOwnedByScene(Scene* allowedScene);
 
         static AudioSystem* s_Instance;
 
@@ -96,6 +101,7 @@ namespace minEngine
 
         std::vector<AudioComponent*> m_Emitters;
         AudioListenerComponent* m_ActiveListener{nullptr};
+        AudioListenerComponent* m_SuspendedEditorListener{nullptr};
 
         AudioListenerState m_CachedListener{};
         bool m_bListenerDirty{true};

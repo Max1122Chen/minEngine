@@ -3,6 +3,7 @@
 #include "ActiveSceneScope.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Function/Audio/AudioSystem.h"
 #include "Runtime/Function/Framework/Scene/SceneDuplicator.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
@@ -131,10 +132,14 @@ namespace minEngine
             editorRenderScene->CollectOrphanedSceneProxies();
         }
 
+        if (AudioSystem::HasInstance())
+        {
+            AudioSystem::Get().OnBeginPIE(pieScene.get());
+        }
+
         if (PhysicsSystem::HasInstance())
         {
-            PhysicsSystem::Get().GetOrCreateWorld(pieScene.get());
-            PhysicsSystem::Get().RebuildWorldBodies(pieScene.get());
+            PhysicsSystem::Get().OnBeginPIE(pieScene.get());
         }
 
         m_State = PlayState::Playing;
@@ -150,10 +155,23 @@ namespace minEngine
 
         m_State = PlayState::Stopping;
 
+        Scene* pieScene = GetPIEScene();
+
         if (SceneManager::HasInstance())
         {
             SceneManager& sceneManager = SceneManager::Get();
             sceneManager.SetPIEPlayActive(false);
+
+            if (AudioSystem::HasInstance() && pieScene != nullptr)
+            {
+                AudioSystem::Get().OnEndPIE(pieScene);
+            }
+
+            if (PhysicsSystem::HasInstance() && pieScene != nullptr)
+            {
+                PhysicsSystem::Get().OnEndPIE(pieScene);
+            }
+
             for (const SceneContext& pieContext : m_PIEContexts)
             {
                 sceneManager.UnregisterPIEScene(pieContext.PIEInstanceId);

@@ -21,8 +21,8 @@
 | CORE-F05-S01 | `SceneDuplicator` + `SceneCloneContext` + Remap 单测 | Planned | `scene-clone` test |
 | CORE-F05-S02b | `ESceneType`、`ESceneTickPolicy`、`SceneContext`、`SceneManager` API | Planned | 编译 + smoke |
 | CORE-F05-S02 | `PlayInEditorSession` Enter/Stop、双 Scene、Mapping | Planned | Play/Stop 手动 |
-| CORE-F05-S03 | Toolbar、`ActiveSceneScope`、View/Input | Planned | Editor 目视 |
-| CORE-F05-S04 | Per-World Physics/Audio/Render/Lua + TickPolicy 门控 | Planned | smoke tests |
+| CORE-F05-S03 | Toolbar、`ActiveSceneScope`、View/Input | **In Progress** | Editor 目视 deferred |
+| CORE-F05-S04 | Per-World Physics/Audio/Render/Lua + TickPolicy 门控 | **Done** | `audio-smoke`（手动目视 deferred） |
 | CORE-F05-S05 | Pause/Step、PIE Inspector 只读 | Deferred | — |
 
 ---
@@ -84,19 +84,24 @@
 ### CORE-F05-S03 — View / Input / Toolbar
 
 - **依赖：** [ED-F03 Editor Toolbar](../../Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md)（Chrome 可见性；**Review 待批**）
-- **Touch:** `EditorChrome` / `ToolbarModule`、`ActiveSceneScope`、`IViewContextProvider`、`EditorInputHub`
-- **DoD:** Play/Stop；PIE Tick 包在 `ActiveSceneScope` 内
-- **Verify:** Editor 目视
+- **Touch:** `SceneEditingViewportClient`、`SceneEditor::RouteViewportInput`、`ActiveSceneScope`
+- **DoD:**
+  - [x] Play 时 viewport 绑定 PIE `RenderScene` + 主相机跟随
+  - [x] Play 时禁用 Editor 视口导航 / Gizmo / 选择
+  - [x] `RouteViewportInput` Play 时不路由到 SceneEditor
+  - [ ] Runtime Input 路由（`InputSystem` 独占）— 后续
+  - [ ] `IViewContextProvider` 抽象 — 后续
+- **Verify:** Editor 目视 deferred
 
 ---
 
 ### CORE-F05-S04 — Per-World Systems
 
 - **DoD:**
-  - [ ] Editor 静音；PIE Audio 正常
-  - [ ] 双 `PhysicsWorld` / 双 `RenderScene`
-  - [ ] `OnBeginPIE` / `OnEndPIE`
-- **Verify:** `physics-smoke` / `audio-smoke`
+  - [x] Editor 静音；PIE Audio 正常
+  - [x] 双 `PhysicsWorld` / 双 `RenderScene`（既有 per-Scene 实例 + tick 门控）
+  - [x] `OnBeginPIE` / `OnEndPIE`（Audio + Physics；`UnregisterPIEScene` 仍负责 PIE teardown）
+- **Verify:** `minEngineTests.exe test audio-smoke` PASS；`physics-smoke` 未在本切片重跑；Editor 目视 deferred
 
 ---
 
@@ -123,3 +128,5 @@ S00 → S01 → S02b → S02 → S03
 | 2026-09-02 | 初稿 |
 | 2026-09-02 | 双 World；S00 Attach；命名修订；TickPolicy |
 | 2026-09-03 | S01：PIE clone 改 in-memory JSON（TD-029）；Binary 待 TD-028 |
+| 2026-09-03 | **S04 Done：** Audio PIE 门控 + `OnBeginPIE`/`OnEndPIE`；Physics hooks；`audio-smoke` PIE gating |
+| 2026-09-03 | **S03 WIP：** viewport → PIE `RenderScene`；Play 时禁 Editor 视口输入；PIE 相机跟随 |

@@ -190,4 +190,20 @@ namespace minEngine
         world.Step(deltaTime);
         world.SyncBodiesToScene();
     }
+
+    void PhysicsSystem::OnBeginPIE(Scene* pieScene)
+    {
+        if (!m_Initialized || pieScene == nullptr)
+        {
+            return;
+        }
+
+        GetOrCreateWorld(pieScene);
+        RebuildWorldBodies(pieScene);
+    }
+
+    void PhysicsSystem::OnEndPIE(Scene* pieScene)
+    {
+        DestroyWorld(pieScene);
+    }
 }
