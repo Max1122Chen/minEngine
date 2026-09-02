@@ -14,8 +14,8 @@
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
+#include "Runtime/Function/Framework/Components/CameraComponent.h"
 #include "Runtime/Function/Physics/PhysicsDebugDraw.h"
-
 #include "Runtime/Function/Render/RenderSystem.h"
 
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
@@ -45,6 +45,7 @@
 #include "Function/Framework/GameObject/GameObject.h"
 
 #include "Shell/EditorContextHelpers.h"
+#include "PlayMode/IPlayModeService.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorSubModule.h"
 
@@ -144,17 +145,24 @@ namespace minEngine
             return;
         }
 
-        BeginGizmoCommandSessionIfNeeded();
-        ConsumeGizmoManipulation();
-        EndGizmoCommandSessionIfNeeded();
+        if (!IsPlayModeViewActive())
+        {
+            BeginGizmoCommandSessionIfNeeded();
+            ConsumeGizmoManipulation();
+            EndGizmoCommandSessionIfNeeded();
 
-        InputKeys();
-
-        ExecuteInputCommands();
+            InputKeys();
+            ExecuteInputCommands();
+        }
 
         SyncRenderTargetSize();
 
         SyncObservedScene();
+
+        if (IsPlayModeViewActive())
+        {
+            SyncPlayModeCamera();
+        }
 
 
 
@@ -184,8 +192,7 @@ namespace minEngine
 
         if (HasSceneDrawFlag(flags, SceneDrawFlags::EnableDebugDraw))
         {
-            SceneEditor* sceneEditor = GetSceneEditor(m_Context);
-            Scene* scene = sceneEditor ? sceneEditor->GetActiveScene() : nullptr;
+            Scene* scene = GetViewTargetScene();
             if (scene != nullptr)
             {
                 PhysicsDebugDraw::SubmitScene(*scene, PhysicsDebugDraw::GetOptions());
@@ -198,12 +205,90 @@ namespace minEngine
 
 
 
+    bool SceneEditingViewportClient::IsPlayModeViewActive() const
+    {
+        return m_Context != nullptr && m_Context->IsPlaying();
+    }
+
+    Scene* SceneEditingViewportClient::GetViewTargetScene() const
+    {
+        if (IsPlayModeViewActive())
+        {
+            return m_Context->GetPlayModeService().GetPIEScene();
+        }
+
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        return sceneEditor ? sceneEditor->GetActiveScene() : nullptr;
+    }
+
+    CameraComponent* SceneEditingViewportClient::FindViewCameraInScene(Scene* scene)
+    {
+        if (scene == nullptr)
+        {
+            return nullptr;
+        }
+
+        CameraComponent* fallbackCamera = nullptr;
+        for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+        {
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            for (const std::shared_ptr<CameraComponent>& cameraComponent : gameObject->GetComponentsOfType<CameraComponent>())
+            {
+                if (!cameraComponent || !cameraComponent->IsActive())
+                {
+                    continue;
+                }
+
+                if (cameraComponent->IsMainCamera())
+                {
+                    return cameraComponent.get();
+                }
+
+                if (fallbackCamera == nullptr)
+                {
+                    fallbackCamera = cameraComponent.get();
+                }
+            }
+        }
+
+        return fallbackCamera;
+    }
+
+    void SceneEditingViewportClient::SyncPlayModeCamera()
+    {
+        Scene* viewScene = GetViewTargetScene();
+        RenderCamera* viewportCamera = GetSceneViewport().GetCamera();
+        if (viewScene == nullptr || viewportCamera == nullptr)
+        {
+            return;
+        }
+
+        CameraComponent* viewCamera = FindViewCameraInScene(viewScene);
+        if (viewCamera == nullptr)
+        {
+            return;
+        }
+
+        RenderCamera* sceneCamera = viewCamera->GetRenderCamera();
+        if (sceneCamera == nullptr)
+        {
+            return;
+        }
+
+        viewportCamera->SetPosition(sceneCamera->GetPosition());
+        viewportCamera->SetRotation(sceneCamera->GetRotation());
+        viewportCamera->UpdateViewMatrix();
+    }
+
     void SceneEditingViewportClient::SyncObservedScene()
 
     {
 
-        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
-        Scene* scene = sceneEditor ? sceneEditor->GetActiveScene() : nullptr;
+        Scene* scene = GetViewTargetScene();
 
         if (!scene)
 

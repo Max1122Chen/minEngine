@@ -17,8 +17,9 @@ namespace minEngine
 {
 
     class RenderCamera;
-
     class RenderScene;
+    class Scene;
+    class CameraComponent;
 
     class GameObject;
     struct Transform;
@@ -88,6 +89,10 @@ namespace minEngine
         void ExecuteInputCommands();
 
         void SyncObservedScene();
+        bool IsPlayModeViewActive() const;
+        Scene* GetViewTargetScene() const;
+        void SyncPlayModeCamera();
+        static CameraComponent* FindViewCameraInScene(Scene* scene);
 
 
 

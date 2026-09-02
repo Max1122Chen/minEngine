@@ -119,7 +119,11 @@ namespace minEngine
 
     bool SceneEditor::RouteViewportInput(EditorViewportClient& client)
     {
-        (void)client;
+        if (m_Context != nullptr && m_Context->IsPlaying())
+        {
+            return false;
+        }
+
         return dynamic_cast<SceneEditingViewportClient*>(&client) != nullptr;
     }
 
