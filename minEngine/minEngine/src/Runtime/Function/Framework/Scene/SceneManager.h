@@ -19,6 +19,7 @@ namespace minEngine
     class PhysicsShapesTestScope;
     class AudioSmokeTestScope;
     class SceneCloneTestScope;
+    class CommandSystemTestScope;
 
     class SceneManager
     {
@@ -95,6 +96,7 @@ namespace minEngine
         friend class PhysicsShapesTestScope;
         friend class AudioSmokeTestScope;
         friend class SceneCloneTestScope;
+        friend class CommandSystemTestScope;
 
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;

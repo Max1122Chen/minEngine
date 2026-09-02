@@ -21,6 +21,7 @@
 #include "AssetMeta.h"
 
 #include <algorithm>
+#include <cctype>
 
 namespace minEngine
 {
@@ -1169,5 +1170,239 @@ namespace minEngine
         }
 
         return true;
+    }
+
+    namespace
+    {
+        std::string SanitizeAssetBaseName(std::string baseName)
+        {
+            if (baseName.empty())
+            {
+                return "NewAsset";
+            }
+
+            for (char& character : baseName)
+            {
+                const bool allowed = std::isalnum(static_cast<unsigned char>(character)) != 0
+                    || character == '_' || character == '-';
+                if (!allowed)
+                {
+                    character = '_';
+                }
+            }
+
+            return baseName;
+        }
+
+        std::string BuildUniqueProjectRelativeAssetPath(
+            const AssetManager& assetManager,
+            std::string_view directoryRel,
+            std::string_view baseName,
+            std::string_view extension)
+        {
+            std::string directory = std::string(directoryRel);
+            if (directory.empty())
+            {
+                directory = "Assets";
+            }
+
+            const std::string sanitizedBase = SanitizeAssetBaseName(std::string(baseName));
+            const std::filesystem::path directoryPath(directory);
+
+            for (int suffixIndex = 0; suffixIndex < 1000; ++suffixIndex)
+            {
+                const std::string candidateBase = suffixIndex == 0
+                    ? sanitizedBase
+                    : sanitizedBase + "_" + std::to_string(suffixIndex);
+                const std::filesystem::path relativePath =
+                    (directoryPath / (candidateBase + std::string(extension))).lexically_normal();
+                const std::string normalizedPath = relativePath.generic_string();
+
+                if (assetManager.FindAssetMetaByPath(normalizedPath) != nullptr)
+                {
+                    continue;
+                }
+
+                const std::filesystem::path absolutePath =
+                    assetManager.ResolveAssetAbsolutePath(normalizedPath);
+                std::error_code fileError;
+                if (!std::filesystem::exists(absolutePath, fileError))
+                {
+                    return normalizedPath;
+                }
+            }
+
+            return std::string();
+        }
+
+        bool WriteSceneAssetFile(const AssetManager& assetManager, const std::string& relativePath, const Scene& scene)
+        {
+            const std::string absoluteAssetPath = assetManager.ResolveAssetAbsolutePath(relativePath).string();
+
+            Serialization::JsonWriterArchive archive;
+            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+                absoluteAssetPath,
+                "minEngine::Scene",
+                &scene,
+                archive,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = true,
+                    .skipUnknownField = false,
+                    .allowObjectPtrSerialization = true});
+
+            if (!result.ok)
+            {
+                ME_CORE_ERROR(
+                    "CreateAsset<Scene>: failed to serialize '{}'. Error: {}. Field path: {}",
+                    relativePath,
+                    result.message,
+                    result.fieldPath);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool WriteMaterialAssetFile(
+            const AssetManager& assetManager,
+            const std::string& relativePath,
+            const Material& material)
+        {
+            const std::string absoluteAssetPath = assetManager.ResolveAssetAbsolutePath(relativePath).string();
+
+            Serialization::JsonWriterArchive archive;
+            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+                absoluteAssetPath,
+                "minEngine::Material",
+                &material,
+                archive,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = true,
+                    .skipUnknownField = false,
+                    .allowObjectPtrSerialization = true});
+
+            if (!result.ok)
+            {
+                ME_CORE_ERROR(
+                    "CreateAsset<Material>: failed to serialize '{}'. Error: {}. Field path: {}",
+                    relativePath,
+                    result.message,
+                    result.fieldPath);
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    template<>
+    std::shared_ptr<Scene> AssetManager::CreateAsset<Scene>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".mescene");
+        if (relativePath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<Scene>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_CORE_ERROR(
+                "CreateAsset<Scene>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string sceneName = absolutePath.stem().string();
+        std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, GenerateGUID());
+        scene->Reset();
+        scene->m_SceneName = sceneName;
+        scene->EnsureRenderScene();
+
+        if (!WriteSceneAssetFile(*this, relativePath, *scene))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "Scene");
+        if (meta.AssetPath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<Scene>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        if (SceneManager::HasInstance())
+        {
+            SceneManager::Get().RegisterScene(meta.AssetName, meta.AssetPath);
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+
+        ME_CORE_INFO("CreateAsset<Scene>: created '{}'.", meta.AssetPath);
+        return LoadAsset<Scene>(meta.AssetPath);
+    }
+
+    template<>
+    std::shared_ptr<Material> AssetManager::CreateAsset<Material>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".memtl");
+        if (relativePath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<Material>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_CORE_ERROR(
+                "CreateAsset<Material>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string materialName = absolutePath.stem().string();
+        std::shared_ptr<Material> material = NewObject<Material>(materialName, nullptr, GenerateGUID());
+        material->m_ShadingModel = MaterialShadingModel::Unlit;
+
+        if (!WriteMaterialAssetFile(*this, relativePath, *material))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "Material");
+        if (meta.AssetPath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<Material>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+
+        ME_CORE_INFO("CreateAsset<Material>: created '{}'.", meta.AssetPath);
+        return LoadAsset<Material>(meta.AssetPath);
     }
 }

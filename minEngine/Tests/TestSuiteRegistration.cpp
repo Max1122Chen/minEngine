@@ -23,6 +23,8 @@
 #include "Suites/ShaderCompilerTest.h"
 #include "Suites/AudioSmokeTest.h"
 #include "Suites/SceneCloneTest.h"
+#include "Suites/ReflectionDisplayNamesTest.h"
+#include "Suites/CommandSystemTest.h"
 
 namespace minEngine
 {
@@ -298,6 +300,45 @@ namespace minEngine
             }
         };
 
+        struct ReflectionDisplayNamesTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "reflection-display-names",
+                    "Reflection Display Names",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'reflection-display-names'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "reflection-display-names",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct CommandSystemTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"command-system", "Command System", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'command-system'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "command-system",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -315,6 +356,8 @@ namespace minEngine
         using ShaderCompilerSuite = TypedTestSuite<ShaderCompilerTestSuiteTraits>;
         using AudioSmokeSuite = TypedTestSuite<AudioSmokeTestSuiteTraits>;
         using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
+        using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
+        using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -342,6 +385,8 @@ namespace minEngine
             registry.Register(ShaderCompilerSuite::Get());
             registry.Register(AudioSmokeSuite::Get());
             registry.Register(SceneCloneSuite::Get());
+            registry.Register(ReflectionDisplayNamesSuite::Get());
+            registry.Register(CommandSystemSuite::Get());
             s_Registered = true;
         }
     }

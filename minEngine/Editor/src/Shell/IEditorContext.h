@@ -67,6 +67,7 @@ namespace minEngine
         virtual bool ActivateSubModule(std::string_view moduleId) = 0;
 
         virtual void RequestExit() = 0;
+        virtual void ConfirmExit() = 0;
 
         virtual bool& DockLayoutInitialized() = 0;
         virtual bool& RequestResetLayout() = 0;

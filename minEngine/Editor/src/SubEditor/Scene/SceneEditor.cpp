@@ -32,9 +32,17 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Core/Serialization/JsonArchive.h"
+#include "Runtime/Core/Serialization/Serializer.h"
+#include "Runtime/Platform/FileDialog/IFileDialogService.h"
+#include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Resource/AssetTypeRegistry.h"
+#include "Runtime/Resource/EditorFilesystemMutationPass.h"
 #include "Runtime/Resource/AssetMeta.h"
 
 #include <algorithm>
+#include <filesystem>
 
 namespace minEngine
 {
@@ -94,10 +102,19 @@ namespace minEngine
         EditorDockLayout::BuildSceneEditingLayout(dockspaceId);
     }
 
+    bool SceneEditor::CanOpenAsset(const AssetMeta& meta) const
+    {
+        return meta.AssetType == "Scene";
+    }
+
     bool SceneEditor::OpenAsset(const AssetMeta& meta)
     {
-        (void)meta;
-        return false;
+        if (!m_Context)
+        {
+            return false;
+        }
+
+        return OpenSceneByPath(*m_Context, meta.AssetPath);
     }
 
     bool SceneEditor::RouteViewportInput(EditorViewportClient& client)
@@ -118,10 +135,24 @@ namespace minEngine
         const std::vector<const Reflection::MEClass*>& allClasses = reflectionSystem.GetAllClasses();
         for (const Reflection::MEClass* classInfo : allClasses)
         {
-            if (classInfo->IsA(reflectionSystem.FindClass<Component>()))
+            if (!classInfo->IsA(reflectionSystem.FindClass<Component>()))
             {
-                m_AllComponentTypeNames.push_back(classInfo->GetName());
+                continue;
             }
+
+            if (classInfo->HasSpecifier(Reflection::ClassSpecifier::Abstract))
+            {
+                continue;
+            }
+
+            const std::string& typeName = classInfo->GetName();
+            if (typeName == "Component" || typeName == "SceneComponent" || typeName == "PrimitiveComponent"
+                || typeName == "LightComponent")
+            {
+                continue;
+            }
+
+            m_AllComponentTypeNames.push_back(typeName);
         }
     }
 
@@ -223,6 +254,42 @@ namespace minEngine
         SyncSelectionWithScene();
         ClearSceneDirty();
         return true;
+    }
+
+    bool SceneEditor::OpenSceneByPath(IEditorContext& context, const std::string& projectRelativePath)
+    {
+        if (!SceneManager::Get().LoadSceneByPath(projectRelativePath))
+        {
+            ME_CORE_ERROR("SceneEditor: failed to load scene '{}'.", projectRelativePath);
+            return false;
+        }
+
+        context.GetCommandStack().Clear();
+        SyncSelectionWithScene();
+        ClearSceneDirty();
+        ME_CORE_INFO("SceneEditor: opened scene '{}'.", projectRelativePath);
+        return true;
+    }
+
+    bool SceneEditor::CreateNewSceneDocument(IEditorContext& context)
+    {
+        SceneManager::Get().CreateNewScene("Untitled");
+        context.GetCommandStack().Clear();
+        SyncSelectionWithScene();
+        MarkSceneDirty();
+        ME_CORE_INFO("SceneEditor: created new untitled scene.");
+        return true;
+    }
+
+    bool SceneEditor::HasPersistedScenePath() const
+    {
+        const Scene* scene = GetActiveScene();
+        if (scene == nullptr || scene->GetSceneName().empty())
+        {
+            return false;
+        }
+
+        return SceneManager::Get().IsSceneRegistered(scene->GetSceneName());
     }
 
     bool SceneEditor::ApplyRenameGameObject(uint64_t gameObjectId, const std::string& newName)
@@ -405,21 +472,144 @@ namespace minEngine
 
     void SceneEditor::SaveCurrentScene()
     {
+        if (m_Context != nullptr)
+        {
+            SaveCurrentScene(*m_Context);
+        }
+    }
+
+    bool SceneEditor::SaveCurrentScene(IEditorContext& context)
+    {
+        if (!HasPersistedScenePath())
+        {
+            return SaveCurrentSceneAs(context);
+        }
+
         Scene* scene = GetActiveScene();
         if (!scene)
         {
             ME_CORE_ERROR("No active scene to save.");
-            return;
+            return false;
         }
+
         if (SceneManager::Get().SaveCurrentScene())
         {
             ClearSceneDirty();
             ME_CORE_INFO("Scene '{}' saved successfully.", scene->GetSceneName());
+            return true;
         }
-        else
+
+        ME_CORE_ERROR("Failed to save scene '{}'.", scene->GetSceneName());
+        return false;
+    }
+
+    bool SceneEditor::SaveCurrentSceneAs(IEditorContext& context)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)
         {
-            ME_CORE_ERROR("Failed to save scene '{}'.", scene->GetSceneName());
+            ME_CORE_ERROR("No active scene to save.");
+            return false;
         }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
+        if (projectContentRoot.empty())
+        {
+            ME_CORE_ERROR("SaveCurrentSceneAs: ProjectContentRoot is not set.");
+            return false;
+        }
+
+        FileDialogRequest request;
+        request.Title = "Save Scene As";
+        request.Filters = AssetTypeRegistry::Get().BuildFileDialogFiltersForAssetType("Scene");
+        request.bAllowMultiple = false;
+        request.InitialDirectory = projectContentRoot;
+
+        const FileDialogResult dialogResult =
+            context.GetFileDialogService().SaveFile(request, scene->GetSceneName() + ".mescene");
+        if (dialogResult.bCancelled || dialogResult.Paths.empty())
+        {
+            return false;
+        }
+
+        std::error_code errorCode;
+        const std::filesystem::path normalizedRoot = projectContentRoot.lexically_normal();
+        const std::filesystem::path relativePath =
+            std::filesystem::relative(dialogResult.Paths.front().lexically_normal(), normalizedRoot, errorCode);
+        if (errorCode)
+        {
+            ME_CORE_ERROR(
+                "SaveCurrentSceneAs: selected path '{}' is outside project content root.",
+                dialogResult.Paths.front().string());
+            return false;
+        }
+
+        const std::string projectRelativePath = relativePath.generic_string();
+        const std::string sceneName = relativePath.stem().string();
+        const std::filesystem::path absolutePath = dialogResult.Paths.front();
+
+        if (!AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        AssetManager& assetManager = AssetManager::Get();
+        const AssetMeta* existingMeta = assetManager.FindAssetMetaByPath(projectRelativePath);
+        if (existingMeta == nullptr)
+        {
+            std::error_code createError;
+            std::filesystem::create_directories(absolutePath.parent_path(), createError);
+            if (createError)
+            {
+                ME_CORE_ERROR(
+                    "SaveCurrentSceneAs: failed to create directory '{}': {}",
+                    absolutePath.parent_path().string(),
+                    createError.message());
+                return false;
+            }
+
+            Serialization::JsonWriterArchive archive;
+            const Serialization::SerializeResult serializeResult = Serialization::Serializer::ToFile(
+                absolutePath.string(),
+                "minEngine::Scene",
+                scene,
+                archive,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = true,
+                    .skipUnknownField = false,
+                    .allowObjectPtrSerialization = true});
+            if (!serializeResult.ok)
+            {
+                ME_CORE_ERROR(
+                    "SaveCurrentSceneAs: failed to serialize '{}': {}",
+                    projectRelativePath,
+                    serializeResult.message);
+                return false;
+            }
+
+            EditorFilesystemMutationPass::NoteMutatedAbsolutePath(absolutePath.parent_path());
+            EditorFilesystemMutationPass::NoteMutatedAbsolutePath(absolutePath);
+
+            const AssetMeta registeredMeta = assetManager.RegisterAsset(projectRelativePath, "Scene");
+            if (registeredMeta.AssetPath.empty())
+            {
+                ME_CORE_ERROR("SaveCurrentSceneAs: RegisterAsset failed for '{}'.", projectRelativePath);
+                return false;
+            }
+        }
+        else if (!assetManager.SaveAsset<Scene>(projectRelativePath, *scene))
+        {
+            ME_CORE_ERROR("SaveCurrentSceneAs: failed to overwrite scene '{}'.", projectRelativePath);
+            return false;
+        }
+
+        scene->m_SceneName = sceneName;
+        SceneManager::Get().RegisterScene(sceneName, projectRelativePath);
+        ClearSceneDirty();
+        ME_CORE_INFO("SceneEditor: saved scene as '{}'.", projectRelativePath);
+        return true;
     }
 
     uint64_t SceneEditor::ApplyAddEmptyGOToScene()

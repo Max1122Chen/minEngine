@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-02（CORE-F05 当前焦点；CORE-F07 → feat/editor）
+Last updated: 2026-09-02（`master`：`feat/editor` 合入；**CORE-F05** 当前焦点）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -30,7 +30,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
 | `CORE-F05` | Play Mode（Edit/Play 切换、运行时 Tick、Stop 回 Edit） | **In Progress** | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · **`master`** · **当前焦点** |
 | `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) · **`master`** |
-| `CORE-F07` | 反射/Inspector 展示名去 `m_`/`x_` 前缀 | **Planned** | — | [Placeholder](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`feat/editor`**（master 不处理） |
+| `CORE-F07` | 反射/Inspector 展示名（去 `m_`/`x_`/`b_` 前缀 + 驼峰分词） | **Done** | — | [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -44,8 +44,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
 | `RND-F16` | Sprite 2D 渲染（UI 前置） | **Planned** | — | [Placeholder](./Render/RND-F16_SPRITE_2D_DESIGN.md) · 愿景；**不阻塞** |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
-| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **Planned** | — | [Placeholder](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · **`feat/editor`** |
+| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **Planned** | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · **`master`** |
 | `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
+| `ED-F04` | Debug Console & Unified Command System（Runtime 控制面 + Agent-friendly） | **In Progress** *(MVP Done)* | — | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) · S00–S10a Done · **S10b Deferred** · S07 Deferred |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · **merge 检查点后** |
@@ -70,9 +71,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | F04 | |
 | `WF` | F03 | |
-| `CORE` | **F08** | F05–F07 Planned on `master` |
+| `CORE` | **F08** | F05 In Progress on `master`；F06–F07 Done |
 | `ASSET` | F01 | |
-| `ED` | **F04** | F02 on `feat/editor`；**F03 Review**（Toolbar Chrome） |
+| `ED` | **F05** | F02–F04 on `master`；F03 Toolbar Done；F04 Console In Progress |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |

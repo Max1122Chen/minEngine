@@ -410,6 +410,14 @@ namespace minEngine
         }
     }
 
+    void Editor::RequestExit()
+    {
+        if (m_AssetWorkflow.TryRequestExit(*this))
+        {
+            m_ExitRequested = true;
+        }
+    }
+
     void Editor::Run()
     {
         WindowSystem& windowSystem = WindowSystem::Get();
@@ -443,6 +451,7 @@ namespace minEngine
             ImGui::NewFrame();
 
             m_EditorGUIManager.Tick(deltaTime);
+            m_AssetWorkflow.DrawModals();
             m_ProjectAssetWatcher.Tick(deltaTime);
             m_InputHub.ProcessInput(*this);
 

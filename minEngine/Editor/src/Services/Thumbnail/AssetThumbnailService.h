@@ -42,10 +42,9 @@ namespace minEngine
     };
 
     /**
-     * MVP thumbnail service for Inspector (P1):
-     * - One active target selected by AssetWorkflow.
-     * - Scene3D backend renders once when dirty, then reuses cached RT texture.
-     * - Texture2D backend uses the asset's RHI texture id (no submit).
+     * Asset thumbnail service (Inspector + Content Browser tiles).
+     * - Texture2D: direct RHI texture id (no scene submit).
+     * - Material / StaticMesh Scene3D previews: disabled (TD-027); CB/Inspector fall back to icons.
      */
     class AssetThumbnailService
     {

@@ -8,6 +8,7 @@ ME_REFLECTION_ENUM_DECLARE(minEngine::ReflectionSampleEnum, GReflectionEnumRegis
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ReflectionSampleClass)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleClass, IntField)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleClass, FloatField)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleClass, ReadOnlyIntField)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleClass, StringField)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleClass, EnumField)
 ME_REFLECTION_ACCESSOR_END()

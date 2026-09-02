@@ -1,6 +1,6 @@
 #include "Shell/EditorInputHub.h"
 
-#include "Shell/EditorCommandStack.h"
+#include "Shell/EditorUndoRedoActions.h"
 #include "Shell/EditorSubModule.h"
 #include "Shell/IEditorContext.h"
 #include "Viewport/EditorViewportClient.h"
@@ -128,18 +128,12 @@ namespace minEngine
 
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal))
         {
-            if (context.GetCommandStack().CanUndo())
-            {
-                context.GetCommandStack().Undo();
-            }
+            TryUndo(context);
         }
 
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal))
         {
-            if (context.GetCommandStack().CanRedo())
-            {
-                context.GetCommandStack().Redo();
-            }
+            TryRedo(context);
         }
     }
 

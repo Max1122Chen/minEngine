@@ -2,6 +2,7 @@
 
 #include "EditorGUIManager.h"
 #include "Shell/EditorCommandStack.h"
+#include "Shell/EditorUndoRedoActions.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
@@ -52,22 +53,30 @@ namespace minEngine
         {
             if (ImGui::MenuItem("New Scene", "Ctrl+N"))
             {
+                m_Context.GetAssetWorkflow().TryNewScene();
             }
 
             if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
             {
+                m_Context.GetAssetWorkflow().OpenSceneDialog();
             }
 
             SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
             const bool hasScene = sceneEditor && sceneEditor->GetActiveScene();
-            const bool canSave = hasScene && sceneEditor->IsSceneDirty();
-            if (ImGui::MenuItem("Save", "Ctrl+S", false, canSave))
+            if (ImGui::MenuItem("Save", "Ctrl+S", false, hasScene))
             {
-                sceneEditor->SaveCurrentScene();
+                if (sceneEditor)
+                {
+                    sceneEditor->SaveCurrentScene(m_Context);
+                }
             }
 
-            if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, false))
+            if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, hasScene))
             {
+                if (sceneEditor)
+                {
+                    sceneEditor->SaveCurrentSceneAs(m_Context);
+                }
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Import Asset...", nullptr, false, true))
@@ -91,11 +100,11 @@ namespace minEngine
             const bool canRedo = m_Context.GetCommandStack().CanRedo();
             if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo) && canUndo)
             {
-                m_Context.GetCommandStack().Undo();
+                TryUndo(m_Context);
             }
             if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo) && canRedo)
             {
-                m_Context.GetCommandStack().Redo();
+                TryRedo(m_Context);
             }
             ImGui::Separator();
             ImGui::MenuItem("Cut", "Ctrl+X", false, false);

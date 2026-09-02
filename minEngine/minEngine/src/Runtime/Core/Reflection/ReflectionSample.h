@@ -22,8 +22,11 @@ namespace minEngine
         ME_PROPERTY(Transient, meta = (Category = "Sample", DisplayName = "Sample Int"), EditAnywhere)
         int IntField = 42;
 
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "10.0"))
         float FloatField = 3.14f;
+
+        ME_PROPERTY(EditAnywhere, meta = (ReadOnly = "true"))
+        int ReadOnlyIntField = 7;
 
         ME_PROPERTY(EditAnywhere)
         std::string StringField = "Hello, Reflection!";

@@ -81,7 +81,8 @@ namespace minEngine
 
         bool ActivateSubModule(std::string_view moduleId) override;
 
-        void RequestExit() override { m_ExitRequested = true; }
+        void RequestExit() override;
+        void ConfirmExit() override { m_ExitRequested = true; }
 
         bool& DockLayoutInitialized() override { return m_DockLayoutInitialized; }
         bool& RequestResetLayout() override { return m_RequestResetLayout; }

@@ -1,5 +1,5 @@
 {
-    "m_BlendMode": 2305843009213693952,
+    "m_BlendMode": 0,
     "m_Graph": {
         "$ptr_typeName": "minEngine::MaterialEdGraph",
         "m_Guid": {

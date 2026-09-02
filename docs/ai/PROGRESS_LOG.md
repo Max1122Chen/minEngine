@@ -1,30 +1,39 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（BUG-EDITOR-002 Resolved）
+Last updated: 2026-09-02（`master`：`feat/editor` 合入；BUG-EDITOR-002 Resolved）
 
-### 2026-09-02 - BUG-EDITOR-002 Resolved: Physics DebugDraw lifecycle + viewport RT (未提交)
+### 2026-09-02 - Merge `feat/editor` → `master`（ED-F02 基础 + CORE-F07 + ED-F04 Console MVP）
+- **Merged:** ED-F02 asset workflow；CORE-F07 reflection display names；ED-F04 Debug Console S00–S10a（Registry 自 feat/editor 的 ED-F03 重编号）；Command system + validation + undo/redo。
+- **Conflict notes:** ED-F03 保留 Viewport Play Toolbar（master）；Console 升为 **ED-F04**；TD-027 登记缩略图 Scene3D 债务（原 feat/editor TD-026）。
+- **Next:** CORE-F05 S04 Per-World 系统生命周期；修复 EnterPlay 反序列化失败。
+
+### 2026-09-02 - BUG-EDITOR-002 Resolved: Physics DebugDraw lifecycle + viewport RT (`df1ccc0`)
 - **Root cause:** `PhysicsDebugDraw::SubmitScene` enqueued before skipped `SubmitSceneDraw` → `DebugDrawService` queue never cleared → AV in `EnqueueBox` (`libminEngined.dll+0x33CD4`).
 - **Fix S04:** Physics debug与 scene draw 同条件；`Editor::Run` 帧头 `ClearFrameQueues()`；`Engine::Initialize` eager-init `DebugDrawService`.
 - **Fix S04b:** 撤销 S03 对已 publish color RT 的守卫（`ForwardRenderer`/`ManualRenderer`/`EndFrame`）——该守卫导致 viewport 永久 "Scene color texture is not ready".
 - **Verified:** 用户多次冷启动无崩溃；viewport RT 恢复显示。
 - **Docs:** [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md) → Resolved.
 
-### 2026-09-02 - BUG-EDITOR-002 S01: ImGui atlas invalidate + 窗口启动（未提交）
-- **Fix:** `RebuildUiFontAtlas` 先 `NotifyFontAtlasRebuilt` 再 `Clear()`；Vulkan `DestroyDeviceObjects`；`EditorRHIImGuiTexturePin` 全局 invalidate registry。
-- **Verified:** Editor build；OpenGL 10×15s 压测 → 4 early exit（`0xC0000005` / `0xC000041D`），**崩溃未完全修复**。
-- **Next:** gdb/VS 抓栈；或推迟 atlas 重建到首帧后。
-
 ### 2026-09-02 - CORE-F05 S00–S03 + ED-F03 Viewport Play Toolbar (`master`)
 - **Runtime:** `SceneDuplicator` / `SceneCloneContext`；`SceneManager` 双 Scene API；`SceneComponent::m_AttachParent` GUID 序列化；legacy `.mescene` `skipUnknownField`；`scene-clone` test。
 - **Editor:** `PlayInEditorSession`、`IPlayModeService`、`ActiveSceneScope`；`ToolbarModule`（F5/Shift+F5）；`EditorChrome`（MainMenu only）；`ViewportPlayToolbar`（Tab 下 Toolbar 行 + Separator + 30px Icon）；移除 `ToolbarWindow` / `DraggableOverlay`。
 - **Docs:** `ED-F03_EDITOR_TOOLBAR_DESIGN.md`；`CORE-F05` design/impl 更新；`docs/external/minEngine Play Mode Development Guideline.md` 纳入仓库。
 - **Verified:** Editor build；`minEngineTests.exe test scene-clone` PASS。
-- **Known / Next:** EnterPlay 偶发 `SceneDuplicator` 反序列化失败 → 下个 commit；启动偶发崩溃 → [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md)（Vulkan 已压测复现）。
+- **Known / Next:** EnterPlay 偶发 `SceneDuplicator` 反序列化失败 → S04+；~~启动偶发崩溃~~ → BUG-EDITOR-002 Resolved。
+
+### 2026-09-02 - ED-F04: MVP slice closure（非 Feature Done；原 feat/editor ED-F03）
+- **Status:** Registry **ED-F04** In Progress；S00–S10a **Done**；**S10b** `activate`/`deactivate` → **Deferred**；S07 ExportSchema 仍 Deferred。
+- **Commits:** `a420040`（undo/`@` paths）、`06aabce`（validation + `rename`）。
+- **Tests:** `command-system` — 25 cases, 120 assertions PASS。
+
+### 2026-09-02 - CORE-F07: reflection display names (Done on `feat/editor`)
+- **Runtime:** `ReflectionDisplayNames` — strip `m_`/`x_`/`b_` prefix + camelCase word breaks; `GetPropertyDisplayName`.
+- **Editor:** `PropertyEditPolicy::GetDisplayName` delegates to runtime API.
+- **Tests:** `minEngineTests.exe test reflection-display-names` — 2 cases, 15 assertions PASSED.
 
 ### 2026-09-02 - Backlog shift: CORE-F05 focus; PHYS-F04 / BUG-PHYS-003 closed (`master`)
-- **ACTIVE_WORK:** CORE-F05 Play Mode 抬为当前焦点；PHYS-F04、BUG-PHYS-003 标 Done/Fixed；CORE-F07 → `feat/editor`。
-- **Registry:** CORE-F05 In Progress；CORE-F07 branch 更新。
-- **Next:** CORE-F05 Pre-flight + Design 展开。
+- **ACTIVE_WORK:** CORE-F05 Play Mode 抬为当前焦点；PHYS-F04、BUG-PHYS-003 标 Done/Fixed。
+- **Registry:** CORE-F05 In Progress；CORE-F07 Done（合入后）。
 
 ### 2026-09-02 - BUG-PHYS-004: collider disable/remove refreshes physics body (`master`)
 - **Fix:** `ColliderComponent` activation/destructor → `RefreshOwningRigidBody`; `FindColliderComponent` / rebuild / override filter `IsActive()`; Editor `m_bActive` side-effect.
@@ -41,16 +50,7 @@ Last updated: 2026-09-02（BUG-EDITOR-002 Resolved）
 - **Fix:** `ResolvePendingActivationsForScene` → `SyncActivationWithActiveFlag` per component（反序列化 `m_Owner` 未走 `SetOwner` 导致 `m_bActivationApplied` 假阴性与首 Deactivate 无效）。
 - **TD-026:** Open — 未来 pending ref resolve 对 `m_Owner` 走反射 Setter / `SetOwner` 根治。
 
-### 2026-09-01 - CORE-F06 Component Activate (S01–S07, pending commit)
-- **Runtime:** `Component::m_bActive` + `SetActive`/`IsActive`/`OnActivate`/`OnDeactivate`; private `TryActivate`/`Deactivate`/`m_bPendingActivation`/`m_bActivationApplied`; `SyncActivationWithActiveFlag` for undo/deserialize.
-- **Systems:** Tick/Lua skip inactive; Physics create/destroy body; Audio register/unregister; Render immediate Remove + EOF rebuild; SkyBox `m_Enabled` → `m_bActive` + `DetachSceneProxy`.
-- **Scene:** `ResolvePendingActivationsForScene` on Load/CreateNewScene.
-- **Editor:** Inspector Active checkbox + gray inactive; undo via `m_bActive` property blob + sync hook in `ApplySetObjectProperty`.
-- **Verified:** Editor/minEngine build PASS; `physics-smoke` / `physics-shapes` / `audio-smoke` / `object-manager` / `serialization-archive` PASS. `verify.ps1` smoke fails on pre-existing `material-ir` (unrelated).
-- **Next:** Editor 目视 Active 开关（mesh/light/skybox/RB/audio）；可选 DeferredActivation 队列 Defer；然后准备 commit。
-
 ### 2026-09-01 - BUG-RENDER-014: point light radius, attenuation, shadow cutoff (pending commit)
-- **Runtime:** `PointLightComponent` `m_AttenuationRadius` / `m_AttenuationFalloff`; UBO `Position.w` + `Params.x`; shadow pass far = radius (cap 50).
 - **Shaders:** `PointLightAttenuation` / `PointLightShadowFactor`; Phong 移除 per-point-light ambient；PBR 点光衰减 + 阴影 mask。
 - **Scene:** `test.mescene` 补点光/聚光衰减字段。
 - **Docs:** Design `BUG-RENDER-014_POINT_LIGHT_RADIUS_ATTENUATION_DESIGN.md`; Bug record updated。
