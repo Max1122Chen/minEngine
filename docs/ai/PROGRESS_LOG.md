@@ -1,6 +1,17 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（`feat/editor`：ED-F03 S08 Done；S09 下一项）
+Last updated: 2026-09-02（`feat/editor`：ED-F03 S09+S10a Done；S10b 待 CORE-F06）
+
+### 2026-09-02 - ED-F03: rename console command (S10a)
+- **Editor:** `rename <GOName> <NewName>` → `SceneEditor::SubmitRenameGameObject` / `RenameGameObjectCommand`；歧义/未找到 GO 报错。
+- **Runtime:** `rename` 第一参数 GO 名补全（`CompletionService`）。
+- **Tests:** `command-system` — 25 cases, 120 assertions PASS。
+- **Manual:** Editor Console `rename Sun Sol` + `undo` 往返（待用户验收）。
+- **Next:** S10b `activate`/`deactivate` after CORE-F06；或 ED-F03 Feature 收口。
+
+### 2026-09-02 - ED-F03: ValidationService + property constraints (S09)
+- **Runtime:** `ValidationService`（命令参数 Required、`set` 执行前校验）；`SetValueValidation` 增强（`ClampMin`/`ClampMax`、`ReadOnly`、机器友好 `expected … got …` + `suggestions: [...]`）。
+- **Tests:** `command-system` — 24 cases at slice land（后随 S10a 增至 25 cases）。
 
 ### 2026-09-02 - ED-F03: PropertyPath v2 + completion types (S08)
 - **Runtime:** `PropertyPath` `@` 显式 Component 解析/歧义检测；`FormatComponentTypeName`（短类名）；`SceneCommandUtils` `@` 补全与歧义路径建议；属性 `Description` 显示反射类型名。

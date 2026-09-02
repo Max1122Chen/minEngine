@@ -139,6 +139,111 @@ namespace minEngine
 
             return propertyPath->BuildSetValueSuccessResult(context);
         }
+
+        GameObject* FindUniqueGameObjectByName(Scene* scene, std::string_view gameObjectName)
+        {
+            if (scene == nullptr || gameObjectName.empty())
+            {
+                return nullptr;
+            }
+
+            GameObject* matchedGameObject = nullptr;
+            for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+            {
+                if (!gameObject || gameObject->GetName() != gameObjectName)
+                {
+                    continue;
+                }
+
+                if (matchedGameObject != nullptr)
+                {
+                    return nullptr;
+                }
+
+                matchedGameObject = gameObject.get();
+            }
+
+            return matchedGameObject;
+        }
+
+        Command::CommandResult ExecuteRename(const Command::CommandContext& context, const std::vector<std::string>& args)
+        {
+            if (args.size() < 2)
+            {
+                Command::CommandOutputBuilder builder;
+                builder.AddLine(Command::CommandOutputKind::Error, "Error: rename requires <GOName> <NewName>.");
+                return builder.BuildError("missing arguments");
+            }
+
+            IEditorContext* editorContext = GetEditorContext(context);
+            if (editorContext == nullptr)
+            {
+                Command::CommandOutputBuilder builder;
+                builder.AddLine(Command::CommandOutputKind::Error, "Error: rename is only available in the editor.");
+                return builder.BuildError("editor only");
+            }
+
+            SceneEditor* sceneEditor = GetSceneEditor(editorContext);
+            if (sceneEditor == nullptr || context.ActiveScene == nullptr)
+            {
+                Command::CommandOutputBuilder builder;
+                builder.AddLine(Command::CommandOutputKind::Error, "Error: no active scene.");
+                return builder.BuildError("no active scene");
+            }
+
+            std::string newName = args[1];
+            for (size_t index = 2; index < args.size(); ++index)
+            {
+                newName.push_back(' ');
+                newName += args[index];
+            }
+
+            GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args.front());
+            if (gameObject == nullptr)
+            {
+                size_t matchCount = 0;
+                for (const std::shared_ptr<GameObject>& candidate : context.ActiveScene->GetAllGameObjects())
+                {
+                    if (candidate && candidate->GetName() == args.front())
+                    {
+                        ++matchCount;
+                    }
+                }
+
+                Command::CommandOutputBuilder builder;
+                if (matchCount > 1)
+                {
+                    builder.AddLine(
+                        Command::CommandOutputKind::Error,
+                        "Error: ambiguous game object name '" + args.front() + "'");
+                    return builder.BuildError("ambiguous game object");
+                }
+
+                builder.AddLine(
+                    Command::CommandOutputKind::Error,
+                    "Error: game object not found '" + args.front() + "'");
+                return builder.BuildError("game object not found");
+            }
+
+            const std::string oldName = gameObject->GetName();
+            if (oldName == newName)
+            {
+                Command::CommandOutputBuilder builder;
+                builder.AddSegment(Command::CommandOutputKind::Path, oldName);
+                builder.AddSegment(Command::CommandOutputKind::Muted, " (unchanged)");
+                builder.NewLine();
+                return builder.BuildOk("unchanged");
+            }
+
+            sceneEditor->SubmitRenameGameObject(*editorContext, gameObject->GetID(), newName);
+
+            Command::CommandOutputBuilder builder;
+            builder.AddSegment(Command::CommandOutputKind::Path, oldName);
+            builder.AddSegment(Command::CommandOutputKind::Muted, " -> ");
+            builder.AddSegment(Command::CommandOutputKind::ValueLiteral, newName);
+            builder.NewLine();
+            return builder.BuildOk(newName);
+        }
     }
 
     void RegisterEditorConsoleCommands()
@@ -176,6 +281,18 @@ namespace minEngine
         redoDescriptor.Scope = Command::CommandScope::Editor;
         redoDescriptor.Execute = ExecuteRedo;
         registry.Register(std::move(redoDescriptor));
+
+        Command::CommandDescriptor renameDescriptor;
+        renameDescriptor.Id = "rename";
+        renameDescriptor.DisplayName = "rename";
+        renameDescriptor.Description = "Rename a game object in the active scene";
+        renameDescriptor.Scope = Command::CommandScope::Editor;
+        renameDescriptor.Args = {
+            Command::CommandArgDescriptor{"GameObjectName", Command::CommandArgType::ObjectRef, true, "Current name"},
+            Command::CommandArgDescriptor{"NewName", Command::CommandArgType::String, true, "New name"},
+        };
+        renameDescriptor.Execute = ExecuteRename;
+        registry.Register(std::move(renameDescriptor));
 
         s_Registered = true;
     }

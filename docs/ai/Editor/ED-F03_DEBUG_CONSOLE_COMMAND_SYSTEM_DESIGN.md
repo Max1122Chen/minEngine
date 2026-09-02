@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `ED-F03`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** In Progress（MVP 切片 S00–S10a Done；S10b 待 CORE-F06；S07 Deferred）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-02（§10.2 S08 Done；§10.4 S10 Scene 对象命令）
+- **Last updated:** 2026-09-02（§10.3 S09 Done；§10.4 S10a `rename` Done）
 - **Branch:** `feat/editor`（Runtime Command 核心可合入 `master`；Console UI 在 Editor）
 - **Depends on:** P4 Reflection · Serialization property path · `CORE-F07`（展示名，inspect 可读性）
 - **Related:** [Implementation](./ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_IMPLEMENTATION.md)（待建） · [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md) · [ACTIVE_WORK.md](../ACTIVE_WORK.md) · 外部参考 [Debug Console Design Guide](../../external/minEngine%20Debug%20Console%20%26%20Command%20System%20Design%20Guide.md) · [CORE-F07](../Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md)
@@ -901,10 +901,10 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | **S06** | **`undo` / `redo` + Console `set` → CommandStack**（§10.1） | **Done** — `TryUndo`/`TryRedo`；`set`→`SetObjectPropertyCommand` |
 | **S07** | `ExportSchema` JSON（Agent 预留） | **Deferred** — 测试 schema 快照 |
 | **S08** | **PropertyPath v2** — `@` 显式 Component、歧义检测；**属性补全显示类型名**（§10.2） | **Done** — `command-system` 20 cases |
-| **S09** | **Validation 增强** — Min/Max、Required、机器友好错误 + 建议（§10.3） | `command-system` + Console |
-| **S10** | **Scene 对象命令** — `rename` / `activate` / `deactivate`（§10.4） | Undo 往返 + 与 Inspector 一致 |
+| **S09** | **Validation 增强** — Min/Max、Required、机器友好错误 + 建议（§10.3） | **Done** — `command-system` 25 cases |
+| **S10** | **Scene 对象命令** — `rename` / `activate` / `deactivate`（§10.4） | **S10a Done**（`rename`）；S10b 待 CORE-F06 |
 
-**建议顺序：** S00 → … → **S06** ✓ → **S08** ✓ → **S09** → **S10** →（Feature 可收口）；**S07** 按需。
+**建议顺序：** S00 → … → **S09** ✓ → **S10a** ✓ → **S10b**（CORE-F06）→ Feature 收口；**S07** 按需。
 
 **注：** S10 的 `activate`/`deactivate` 依赖 **`CORE-F06` Component Enable** land 到 `feat/editor`（或 merge `master`）后再实现；`rename` 可先做。
 
@@ -1034,7 +1034,7 @@ EditorUndoRedoResult TryRedo(IEditorContext& context);
 
 ### 10.4 S10 — Scene 对象命令（`rename` / `activate` / `deactivate`）
 
-**状态：** Planned（S09 之后，或 `rename` 子步可提前）
+**状态：** S10a Done（2026-09-02）；S10b 待 CORE-F06
 
 **动机（2026-09-02）：** 用户期望能改 GO 名称、启用/禁用 Component，但 **不** 通过扩展 PropertyPath 暴露 `MEObject`/`Invisible` 字段。与 §5.4 一致：**专用命令 + 现有 `IEditorCommand`**。
 
@@ -1103,7 +1103,7 @@ Activated DirectionalLightComponent on 'Sun'
 
 ### 10.3 S09 — Validation 增强
 
-**状态：** Planned（S08 之后或并行，视 S06 负载）
+**状态：** Done（2026-09-02）
 
 **动机：** §6.4 `ValidationService` MVP 由 `SetValueValidation` 覆盖 value 阶段；执行前校验、metadata 约束、Agent 友好错误尚未系统化。
 
@@ -1150,13 +1150,14 @@ Activated DirectionalLightComponent on 'Sun'
 
 ## 13) 验收标准（Feature Done 前）
 
-- [ ] `CommandRegistry` + ≥3 个示范命令 + Builtin meta 命令可 headless 测试
-- [ ] `get`/`set`/`inspect` 对 Scene 内 GameObject Component  primitive 字段可用
+- [x] `CommandRegistry` + ≥3 个示范命令 + Builtin meta 命令可 headless 测试 — **`command-system` 25 cases / 120 asserts**（2026-09-02）
+- [x] `get`/`set`/`inspect` 对 Scene 内 GameObject Component primitive 字段可用 — **含 `@` 显式路径与歧义检测（S08）**
 - [x] Console UI：Command Tab 输入、执行；IDE 式补全（§8.3）；成功/错误/路径/值分色（§8.4）；Output Tab 日志无回归 — **目视验收 C 已通过**（2026-09-02；极矮布局延后）
 - [x] **`undo` / `redo`** 可撤销 Console 触发的可 Undo 操作（与场景 Ctrl+Z / Ctrl+Y 共用 `TryUndo`/`TryRedo`）— **S06 Done**
-- [ ] **Scene 对象命令** `rename`（+ CORE-F06 后 `activate`/`deactivate`）可 Undo，与 Inspector 行为一致 — **S10**
+- [x] **`rename`** 走 `RenameGameObjectCommand`，与 Inspector/Hierarchy 共用 CommandStack — **S10a Done**（2026-09-02；Editor 手动 `rename` + `undo` 待验收）
+- [ ] **`activate` / `deactivate`**（`GOName@Component`，`@` 必填）— **S10b，待 CORE-F06**
 - [ ] `ExportSchema` 产出稳定 JSON — **S07 Deferred**
-- [ ] `verify.ps1` 通过；`PROGRESS_LOG` 记录人工步骤
+- [ ] `verify.ps1` 通过；本批已跑 `command-system`（25 cases PASS）
 
 ---
 
@@ -1186,5 +1187,7 @@ Activated DirectionalLightComponent on 'Sun'
 | 2026-09-02 | S04c：`SetValueValidation`、bool/enum value 补全、输入合法性整行着色、enum `set`；§10 切片表补 S04c |
 | 2026-09-02 | S10：`activate`/`deactivate` **必须** `GOName@Component`（`@` 必填）；不提供 GO 级一键启用/禁用 |
 | 2026-09-02 | 方案修订：§5.4 PropertyPath 边界；不扩展 `m_Name` 等引擎字段；**S10** Scene 命令 `rename`/`activate`/`deactivate`；S08 属性补全显示类型名；S10b 依赖 CORE-F06 |
+| 2026-09-02 | **S09 Done：** `ValidationService`（Required 参数、`set` 执行前校验）；`ClampMin`/`ClampMax`/`ReadOnly`；机器友好错误 + suggestions；`command-system` 25 cases PASS |
+| 2026-09-02 | **S10a Done：** Console `rename` → `SubmitRenameGameObject` / `RenameGameObjectCommand`；GO 名补全；S10b `activate`/`deactivate` 待 CORE-F06 |
 | 2026-09-02 | **S06 Done：** `EditorUndoRedoActions`（`TryUndo`/`TryRedo`）；Console `undo`/`redo`；`set`→`CommandStack`（`EditorSetValue` hook + `TryBuildSetTransaction`）；`command-system` 16 cases PASS |
 | 2026-09-02 | 排期修订：S06=`undo`/`redo`+CommandStack+TryUndo 与场景快捷键同接口；输入框 Ctrl+Z 仍为文本操作；S07 Deferred；S05 目视 C Done；S08=`GOName@Component.Field`；S09 Validation |

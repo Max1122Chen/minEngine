@@ -3,6 +3,7 @@
 #include "Runtime/Core/Command/CommandExecutor.h"
 #include "Runtime/Core/Command/CommandRegistry.h"
 #include "Runtime/Core/Command/SceneCommandUtils.h"
+#include "Runtime/Core/Command/ValidationService.h"
 #include "Runtime/Core/PropertyPath/PropertyPath.h"
 
 namespace minEngine::Command
@@ -88,6 +89,12 @@ namespace minEngine::Command
             {
                 valueLiteral.push_back(' ');
                 valueLiteral += args[index];
+            }
+
+            if (const std::optional<ValidationError> validationError =
+                    ValidationService::ValidateSetValue(context, args.front(), valueLiteral))
+            {
+                return ValidationService::BuildCommandError(*validationError);
             }
 
             if (context.EditorSetValue)
@@ -185,6 +192,9 @@ namespace minEngine::Command
         getDescriptor.DisplayName = "get";
         getDescriptor.Description = "Read a property value by path";
         getDescriptor.Scope = CommandScope::Both;
+        getDescriptor.Args = {
+            CommandArgDescriptor{"PropertyPath", CommandArgType::ObjectRef, true, "Property path"},
+        };
         getDescriptor.Execute = ExecuteGet;
         registry.Register(std::move(getDescriptor));
 
@@ -193,6 +203,10 @@ namespace minEngine::Command
         setDescriptor.DisplayName = "set";
         setDescriptor.Description = "Write a primitive property value by path";
         setDescriptor.Scope = CommandScope::Both;
+        setDescriptor.Args = {
+            CommandArgDescriptor{"PropertyPath", CommandArgType::ObjectRef, true, "Property path"},
+            CommandArgDescriptor{"Value", CommandArgType::String, true, "Value literal"},
+        };
         setDescriptor.Execute = ExecuteSet;
         registry.Register(std::move(setDescriptor));
 
@@ -201,6 +215,9 @@ namespace minEngine::Command
         inspectDescriptor.DisplayName = "inspect";
         inspectDescriptor.Description = "Inspect an object or nested property";
         inspectDescriptor.Scope = CommandScope::Both;
+        inspectDescriptor.Args = {
+            CommandArgDescriptor{"ObjectRef", CommandArgType::ObjectRef, true, "Object reference"},
+        };
         inspectDescriptor.Execute = ExecuteInspect;
         registry.Register(std::move(inspectDescriptor));
 
@@ -209,6 +226,9 @@ namespace minEngine::Command
         findDescriptor.DisplayName = "find";
         findDescriptor.Description = "Find game objects by name, type=, or name=";
         findDescriptor.Scope = CommandScope::Both;
+        findDescriptor.Args = {
+            CommandArgDescriptor{"Query", CommandArgType::String, true, "Search query"},
+        };
         findDescriptor.Execute = ExecuteFind;
         registry.Register(std::move(findDescriptor));
     }

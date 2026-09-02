@@ -1,6 +1,7 @@
 #include "Runtime/Core/PropertyPath/PropertyPath.h"
 
 #include "Runtime/Core/Command/CommandResult.h"
+#include "Runtime/Core/Command/SetValueValidation.h"
 #include "Runtime/Core/Reflection/MEEnum.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -39,6 +40,24 @@ namespace minEngine::Command
             }
 
             return std::string(literal.substr(begin, end - begin));
+        }
+
+        bool ValidateWriteConstraints(
+            const Reflection::MEProperty& property,
+            double numericValue,
+            std::string& outError)
+        {
+            PropertySetValueInfo valueInfo;
+            SetValueValidation::PopulatePropertyConstraints(property, valueInfo);
+            const std::optional<std::string> constraintError =
+                SetValueValidation::ValidateNumericConstraints(valueInfo, numericValue);
+            if (constraintError.has_value())
+            {
+                outError = *constraintError;
+                return false;
+            }
+
+            return true;
         }
     }
 
@@ -845,6 +864,11 @@ namespace minEngine::Command
                 return false;
             }
 
+            if (!ValidateWriteConstraints(property, static_cast<double>(value), outError))
+            {
+                return false;
+            }
+
             if (!writer.WriteDouble(static_cast<double>(value)))
             {
                 outError = "Failed to encode float literal.";
@@ -861,6 +885,11 @@ namespace minEngine::Command
             catch (const std::exception&)
             {
                 outError = "expected double, got '" + literalText + "'";
+                return false;
+            }
+
+            if (!ValidateWriteConstraints(property, value, outError))
+            {
                 return false;
             }
 
@@ -883,6 +912,11 @@ namespace minEngine::Command
                 return false;
             }
 
+            if (!ValidateWriteConstraints(property, static_cast<double>(value), outError))
+            {
+                return false;
+            }
+
             if (!writer.WriteInt64(value))
             {
                 outError = "Failed to encode integer literal.";
@@ -899,6 +933,11 @@ namespace minEngine::Command
             if (parseResult.ec != std::errc() || parseResult.ptr != end)
             {
                 outError = "expected unsigned integer, got '" + literalText + "'";
+                return false;
+            }
+
+            if (!ValidateWriteConstraints(property, static_cast<double>(value), outError))
+            {
                 return false;
             }
 

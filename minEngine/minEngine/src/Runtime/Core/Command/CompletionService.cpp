@@ -256,6 +256,25 @@ namespace minEngine::Command
             return items;
         }
 
+        if (commandId == "rename")
+        {
+            if (tokens.size() >= 3 && !hasPartialToken)
+            {
+                return items;
+            }
+
+            if (!currentToken.empty())
+            {
+                AppendGameObjectCompletions(context, currentToken, items);
+            }
+            else
+            {
+                AppendGameObjectCompletions(context, {}, items);
+            }
+
+            return items;
+        }
+
         AppendCommandCompletions(currentToken, items);
         return items;
     }

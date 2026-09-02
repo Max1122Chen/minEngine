@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-02（`feat/editor`：ED-F03 S08 Done；下一项 S09）
+Last updated: 2026-09-02（`feat/editor`：ED-F03 S09+S10a Done；S10b 待 CORE-F06）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -76,9 +76,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 顺序 | ID | 内容 | 文档 |
 |------|-----|------|------|
 | 1 | **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** — [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) |
-| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — S08 Done；**下一项 S09** | [Design §10](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
+| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — S00–S10a Done | [Design §10](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) · §13 验收 |
 
-**建议顺序：** S09 Validation → S10 Scene 命令（`rename` 可先；`activate`/`deactivate` 待 CORE-F06）。S07 / 极矮布局 Deferred。
+**本批切片（2026-09-02）：** S09 Validation + S10a `rename` 已落地；`command-system` **25 cases / 120 asserts PASS**。
+
+**剩余（Feature Done 前）：** S10b `activate`/`deactivate`（**CORE-F06**）；S07 ExportSchema（Deferred）；`verify.ps1` 全量；Editor 手动 `rename`+`undo` 验收。
 
 **ED-F03 边界（2026-09-02）：** 不扩展 PropertyPath 覆盖 `m_Name` 等引擎字段；用 `rename` / `activate` / `deactivate` 等专用命令（§10.4）。`activate`/`deactivate` **仅** `GOName@Component`（`@` 必填）。
 

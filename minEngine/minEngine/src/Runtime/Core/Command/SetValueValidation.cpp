@@ -312,6 +312,59 @@ namespace minEngine::Command
             return PropertySetValueKind::Unknown;
         }
 
+        std::vector<std::string> BuildValueSuggestions(const PropertySetValueInfo& info)
+        {
+            std::vector<std::string> suggestions;
+            switch (info.Kind)
+            {
+                case PropertySetValueKind::Bool:
+                    suggestions.push_back("true");
+                    suggestions.push_back("false");
+                    break;
+                case PropertySetValueKind::Enum:
+                    if (info.EnumType != nullptr)
+                    {
+                        for (const Reflection::MEEnumEntry& entry : info.EnumType->GetEntries())
+                        {
+                            suggestions.push_back(entry.name);
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            return suggestions;
+        }
+
+        void ApplyInvalidValue(
+            PropertyValueValidation& validation,
+            std::string_view expectedType,
+            std::string_view valuePrefix,
+            const PropertySetValueInfo& info)
+        {
+            validation.State = PropertyValueValidationState::Invalid;
+            validation.Message = "expected " + std::string(expectedType) + ", got '" + std::string(valuePrefix) + "'";
+            validation.Suggestions = BuildValueSuggestions(info);
+        }
+
+        bool ValidateParsedNumericConstraints(
+            const PropertySetValueInfo& info,
+            double numericValue,
+            PropertyValueValidation& validation)
+        {
+            const std::optional<std::string> constraintError =
+                SetValueValidation::ValidateNumericConstraints(info, numericValue);
+            if (!constraintError.has_value())
+            {
+                return true;
+            }
+
+            validation.State = PropertyValueValidationState::Invalid;
+            validation.Message = *constraintError;
+            return false;
+        }
+
         void AppendBoolCompletions(std::string_view prefix, std::vector<CompletionItem>& outItems)
         {
             static constexpr std::string_view kBoolValues[] = {"true", "false"};
@@ -393,6 +446,7 @@ namespace minEngine::Command
         }
 
         outInfo.bWritable = PropertyPath::IsPropertyWritable(*leafProperty);
+        SetValueValidation::PopulatePropertyConstraints(*leafProperty, outInfo);
         if (leafProperty->GetCategory() != Reflection::MEPropertyCategory::Primitive)
         {
             return false;
@@ -424,7 +478,7 @@ namespace minEngine::Command
         if (!info.bWritable)
         {
             validation.State = PropertyValueValidationState::Invalid;
-            validation.Message = "read-only property";
+            validation.Message = "property is read-only";
             return validation;
         }
 
@@ -443,7 +497,7 @@ namespace minEngine::Command
                                                                   : PropertyValueValidationState::Invalid;
                 if (validation.State == PropertyValueValidationState::Invalid)
                 {
-                    validation.Message = "expected bool (true/false)";
+                    ApplyInvalidValue(validation, "bool", valuePrefix, info);
                 }
                 return validation;
             }
@@ -471,8 +525,7 @@ namespace minEngine::Command
                     }
                 }
 
-                validation.State = PropertyValueValidationState::Invalid;
-                validation.Message = "expected enum value";
+                ApplyInvalidValue(validation, info.EnumType->GetName(), valuePrefix, info);
                 return validation;
             }
             case PropertySetValueKind::SignedInteger:
@@ -480,6 +533,11 @@ namespace minEngine::Command
                 int64_t parsedValue = 0;
                 if (TryParseSignedInteger(valuePrefix, parsedValue))
                 {
+                    if (!ValidateParsedNumericConstraints(info, static_cast<double>(parsedValue), validation))
+                    {
+                        return validation;
+                    }
+
                     validation.State = PropertyValueValidationState::Valid;
                     return validation;
                 }
@@ -488,7 +546,7 @@ namespace minEngine::Command
                                                               : PropertyValueValidationState::Invalid;
                 if (validation.State == PropertyValueValidationState::Invalid)
                 {
-                    validation.Message = "expected integer";
+                    ApplyInvalidValue(validation, "integer", valuePrefix, info);
                 }
                 return validation;
             }
@@ -497,6 +555,11 @@ namespace minEngine::Command
                 uint64_t parsedValue = 0;
                 if (TryParseUnsignedInteger(valuePrefix, parsedValue))
                 {
+                    if (!ValidateParsedNumericConstraints(info, static_cast<double>(parsedValue), validation))
+                    {
+                        return validation;
+                    }
+
                     validation.State = PropertyValueValidationState::Valid;
                     return validation;
                 }
@@ -505,16 +568,42 @@ namespace minEngine::Command
                                                               : PropertyValueValidationState::Invalid;
                 if (validation.State == PropertyValueValidationState::Invalid)
                 {
-                    validation.Message = "expected unsigned integer";
+                    ApplyInvalidValue(validation, "unsigned integer", valuePrefix, info);
                 }
                 return validation;
             }
             case PropertySetValueKind::Float:
+            {
+                double parsedValue = 0.0;
+                if (TryParseFloat(valuePrefix, parsedValue) && !IsIncompleteNumericLiteral(valuePrefix))
+                {
+                    if (!ValidateParsedNumericConstraints(info, parsedValue, validation))
+                    {
+                        return validation;
+                    }
+
+                    validation.State = PropertyValueValidationState::Valid;
+                    return validation;
+                }
+
+                validation.State = IsNumericPrefix(valuePrefix) ? PropertyValueValidationState::Partial
+                                                              : PropertyValueValidationState::Invalid;
+                if (validation.State == PropertyValueValidationState::Invalid)
+                {
+                    ApplyInvalidValue(validation, "float", valuePrefix, info);
+                }
+                return validation;
+            }
             case PropertySetValueKind::Double:
             {
                 double parsedValue = 0.0;
                 if (TryParseFloat(valuePrefix, parsedValue) && !IsIncompleteNumericLiteral(valuePrefix))
                 {
+                    if (!ValidateParsedNumericConstraints(info, parsedValue, validation))
+                    {
+                        return validation;
+                    }
+
                     validation.State = PropertyValueValidationState::Valid;
                     return validation;
                 }
@@ -523,7 +612,7 @@ namespace minEngine::Command
                                                               : PropertyValueValidationState::Invalid;
                 if (validation.State == PropertyValueValidationState::Invalid)
                 {
-                    validation.Message = "expected number";
+                    ApplyInvalidValue(validation, "double", valuePrefix, info);
                 }
                 return validation;
             }
@@ -557,6 +646,79 @@ namespace minEngine::Command
         }
 
         return ValidateValuePrefix(valueInfo, phase.ValuePrefix);
+    }
+
+    PropertyValueValidation SetValueValidation::ValidateSetLiteral(
+        const CommandContext& context,
+        std::string_view propertyPathText,
+        std::string_view valueLiteral)
+    {
+        PropertySetValueInfo valueInfo;
+        if (!TryGetValueInfo(context, propertyPathText, valueInfo))
+        {
+            PropertyValueValidation validation;
+            validation.State = PropertyValueValidationState::Invalid;
+            validation.Message = "unknown property path";
+            return validation;
+        }
+
+        return ValidateValuePrefix(valueInfo, valueLiteral);
+    }
+
+    void SetValueValidation::PopulatePropertyConstraints(
+        const Reflection::MEProperty& property,
+        PropertySetValueInfo& inOutInfo)
+    {
+        auto tryParseMetadataDouble = [](std::string_view text, double& outValue) -> bool
+        {
+            if (text.empty())
+            {
+                return false;
+            }
+
+            const std::string literalText(text);
+            const char* begin = literalText.data();
+            const char* end = literalText.data() + literalText.size();
+            const std::from_chars_result parseResult = std::from_chars(begin, end, outValue);
+            return parseResult.ec == std::errc() && parseResult.ptr == end;
+        };
+
+        if (const std::string* clampMin = property.FindMetadata("ClampMin"))
+        {
+            double parsedMin = 0.0;
+            if (tryParseMetadataDouble(*clampMin, parsedMin))
+            {
+                inOutInfo.bHasClampMin = true;
+                inOutInfo.ClampMin = parsedMin;
+            }
+        }
+
+        if (const std::string* clampMax = property.FindMetadata("ClampMax"))
+        {
+            double parsedMax = 0.0;
+            if (tryParseMetadataDouble(*clampMax, parsedMax))
+            {
+                inOutInfo.bHasClampMax = true;
+                inOutInfo.ClampMax = parsedMax;
+            }
+        }
+    }
+
+    std::optional<std::string> SetValueValidation::ValidateNumericConstraints(
+        const PropertySetValueInfo& info,
+        double numericValue)
+    {
+        if (info.bHasClampMin && numericValue < info.ClampMin)
+        {
+            return "value " + std::to_string(numericValue) + " is below ClampMin " + std::to_string(info.ClampMin);
+        }
+
+        if (info.bHasClampMax && numericValue > info.ClampMax)
+        {
+            return "value " + std::to_string(numericValue) + " is above ClampMax " + std::to_string(info.ClampMax);
+        }
+
+        return std::nullopt;
     }
 
     std::vector<CompletionItem> SetValueValidation::CompleteValue(

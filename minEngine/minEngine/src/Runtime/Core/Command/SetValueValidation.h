@@ -3,6 +3,7 @@
 #include "Runtime/Core/Command/CommandContext.h"
 #include "Runtime/Core/Command/CompletionTypes.h"
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -10,6 +11,7 @@
 namespace minEngine::Reflection
 {
     class MEEnum;
+    class MEProperty;
 }
 
 namespace minEngine::Command
@@ -39,6 +41,10 @@ namespace minEngine::Command
         PropertySetValueKind Kind = PropertySetValueKind::Unknown;
         const Reflection::MEEnum* EnumType = nullptr;
         bool bWritable = false;
+        bool bHasClampMin = false;
+        bool bHasClampMax = false;
+        double ClampMin = 0.0;
+        double ClampMax = 0.0;
     };
 
     struct SetValuePhase
@@ -52,6 +58,7 @@ namespace minEngine::Command
     {
         PropertyValueValidationState State = PropertyValueValidationState::None;
         std::string Message;
+        std::vector<std::string> Suggestions;
         PropertySetValueInfo ValueInfo{};
     };
 
@@ -70,6 +77,19 @@ namespace minEngine::Command
             std::string_view valuePrefix);
 
         static PropertyValueValidation ValidateInputLine(const CommandContext& context, std::string_view line);
+
+        static PropertyValueValidation ValidateSetLiteral(
+            const CommandContext& context,
+            std::string_view propertyPathText,
+            std::string_view valueLiteral);
+
+        static void PopulatePropertyConstraints(
+            const Reflection::MEProperty& property,
+            PropertySetValueInfo& inOutInfo);
+
+        static std::optional<std::string> ValidateNumericConstraints(
+            const PropertySetValueInfo& info,
+            double numericValue);
 
         static std::vector<CompletionItem> CompleteValue(const CommandContext& context, const SetValuePhase& phase);
     };

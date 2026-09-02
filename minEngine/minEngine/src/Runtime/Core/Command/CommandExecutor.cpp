@@ -1,6 +1,7 @@
 #include "Runtime/Core/Command/CommandExecutor.h"
 
 #include "Runtime/Core/Command/CommandRegistry.h"
+#include "Runtime/Core/Command/ValidationService.h"
 
 namespace minEngine::Command
 {
@@ -50,6 +51,11 @@ namespace minEngine::Command
             CommandOutputBuilder builder;
             builder.AddLine(CommandOutputKind::Error, "Error: unknown command '" + std::string(commandId) + "'");
             return builder.BuildError("unknown command");
+        }
+
+        if (const std::optional<ValidationError> argError = ValidationService::ValidateCommandArgs(*command, args))
+        {
+            return ValidationService::BuildCommandError(*argError);
         }
 
         CommandResult result = command->Execute(context, args);

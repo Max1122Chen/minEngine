@@ -383,6 +383,9 @@ TEST_CASE("command-system: set value validation colors bool and numeric input [f
     const minEngine::Command::PropertyValueValidation invalidFloat =
         minEngine::Command::SetValueValidation::ValidateInputLine(context, "set Sun.m_Intensity foo");
     CHECK(invalidFloat.State == minEngine::Command::PropertyValueValidationState::Invalid);
+    CHECK(invalidFloat.Message.find("expected") != std::string::npos);
+    CHECK(invalidFloat.Message.find("foo") != std::string::npos);
+    CHECK(invalidFloat.Suggestions.empty());
 
     const minEngine::Command::PropertyValueValidation partialFloat =
         minEngine::Command::SetValueValidation::ValidateInputLine(context, "set Sun.m_Intensity 3.");
@@ -578,4 +581,97 @@ TEST_CASE("command-system: short path ambiguity lists @ candidates [full]")
         minEngine::Command::CompletionService::Complete("set Sun.m_Intensity", 0, context);
     CHECK(CompletionContainsInsertText(items, "Sun@DirectionalLightComponent.m_Intensity"));
     CHECK(CompletionContainsInsertText(items, "Sun@PointLightComponent.m_Intensity"));
+}
+
+TEST_CASE("command-system: set rejects clamped value above ClampMax [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSampleEnumScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult result =
+        executor.ExecuteLine("set Sample.SampleData.FloatField 11.0", context);
+    CHECK(result.Status == minEngine::Command::CommandStatus::Error);
+    CHECK(ResultContainsText(result, "ClampMax"));
+}
+
+TEST_CASE("command-system: set rejects read-only property [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSampleEnumScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult result =
+        executor.ExecuteLine("set Sample.SampleData.ReadOnlyIntField 5", context);
+    CHECK(result.Status == minEngine::Command::CommandStatus::Error);
+    CHECK(ResultContainsText(result, "read-only"));
+}
+
+TEST_CASE("command-system: set invalid enum includes suggestions [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSampleEnumScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult result =
+        executor.ExecuteLine("set Sample.SampleData.EnumField NotAValue", context);
+    CHECK(result.Status == minEngine::Command::CommandStatus::Error);
+    CHECK(ResultContainsText(result, "suggestions:"));
+    CHECK(ResultContainsText(result, "ValueA"));
+    CHECK(ResultContainsText(result, "ValueB"));
+}
+
+TEST_CASE("command-system: get requires property path argument [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    minEngine::Command::CommandContext context;
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult result = executor.ExecuteLine("get", context);
+    CHECK(result.Status == minEngine::Command::CommandStatus::Error);
+    CHECK(ResultContainsText(result, "requires 1 argument"));
+}
+
+TEST_CASE("command-system: rename completion lists game objects [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const std::vector<minEngine::Command::CompletionItem> items =
+        minEngine::Command::CompletionService::Complete("rename Su", 0, context);
+    CHECK(CompletionContainsInsertText(items, "Sun"));
 }
