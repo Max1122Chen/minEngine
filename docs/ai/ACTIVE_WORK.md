@@ -19,9 +19,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 目标 | Edit/Play；**UE 式双 Scene 共存**（Editor + PIE）；Stop 仅销毁 PIE |
 | 分支 | `master` |
 
-**建议起步：** **S04** Per-World 系统生命周期；**修复** EnterPlay 反序列化失败；**调查** 启动后偶发崩溃。
+**建议起步：** **S04** Per-World 系统生命周期；**修复** EnterPlay 反序列化失败。
 
-**最近提交（2026-09-02）：** S00–S03 基础 + ED-F03 Toolbar Done；PIE Enter 仍不可靠。
+**最近提交（2026-09-02）：** S00–S03 基础 + ED-F03 Toolbar Done；~~BUG-EDITOR-002~~ **Resolved**（Physics DebugDraw）；PIE Enter 仍不可靠。
 
 ---
 

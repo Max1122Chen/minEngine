@@ -1,13 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（CORE-F05 S00–S03 + ED-F03 Toolbar 已提交；PIE Enter 待修）
+Last updated: 2026-09-02（BUG-EDITOR-002 Resolved）
+
+### 2026-09-02 - BUG-EDITOR-002 Resolved: Physics DebugDraw lifecycle + viewport RT (未提交)
+- **Root cause:** `PhysicsDebugDraw::SubmitScene` enqueued before skipped `SubmitSceneDraw` → `DebugDrawService` queue never cleared → AV in `EnqueueBox` (`libminEngined.dll+0x33CD4`).
+- **Fix S04:** Physics debug与 scene draw 同条件；`Editor::Run` 帧头 `ClearFrameQueues()`；`Engine::Initialize` eager-init `DebugDrawService`.
+- **Fix S04b:** 撤销 S03 对已 publish color RT 的守卫（`ForwardRenderer`/`ManualRenderer`/`EndFrame`）——该守卫导致 viewport 永久 "Scene color texture is not ready".
+- **Verified:** 用户多次冷启动无崩溃；viewport RT 恢复显示。
+- **Docs:** [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md) → Resolved.
+
+### 2026-09-02 - BUG-EDITOR-002 S01: ImGui atlas invalidate + 窗口启动（未提交）
+- **Fix:** `RebuildUiFontAtlas` 先 `NotifyFontAtlasRebuilt` 再 `Clear()`；Vulkan `DestroyDeviceObjects`；`EditorRHIImGuiTexturePin` 全局 invalidate registry。
+- **Verified:** Editor build；OpenGL 10×15s 压测 → 4 early exit（`0xC0000005` / `0xC000041D`），**崩溃未完全修复**。
+- **Next:** gdb/VS 抓栈；或推迟 atlas 重建到首帧后。
 
 ### 2026-09-02 - CORE-F05 S00–S03 + ED-F03 Viewport Play Toolbar (`master`)
 - **Runtime:** `SceneDuplicator` / `SceneCloneContext`；`SceneManager` 双 Scene API；`SceneComponent::m_AttachParent` GUID 序列化；legacy `.mescene` `skipUnknownField`；`scene-clone` test。
 - **Editor:** `PlayInEditorSession`、`IPlayModeService`、`ActiveSceneScope`；`ToolbarModule`（F5/Shift+F5）；`EditorChrome`（MainMenu only）；`ViewportPlayToolbar`（Tab 下 Toolbar 行 + Separator + 30px Icon）；移除 `ToolbarWindow` / `DraggableOverlay`。
 - **Docs:** `ED-F03_EDITOR_TOOLBAR_DESIGN.md`；`CORE-F05` design/impl 更新；`docs/external/minEngine Play Mode Development Guideline.md` 纳入仓库。
 - **Verified:** Editor build；`minEngineTests.exe test scene-clone` PASS。
-- **Known / Next:** EnterPlay 偶发 `SceneDuplicator` 反序列化失败 → 下个 commit；引擎启动数秒后偶发崩溃 → 调查中（`BUG-*`）。
+- **Known / Next:** EnterPlay 偶发 `SceneDuplicator` 反序列化失败 → 下个 commit；启动偶发崩溃 → [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md)（Vulkan 已压测复现）。
 
 ### 2026-09-02 - Backlog shift: CORE-F05 focus; PHYS-F04 / BUG-PHYS-003 closed (`master`)
 - **ACTIVE_WORK:** CORE-F05 Play Mode 抬为当前焦点；PHYS-F04、BUG-PHYS-003 标 Done/Fixed；CORE-F07 → `feat/editor`。

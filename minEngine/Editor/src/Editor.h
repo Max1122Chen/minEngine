@@ -124,6 +124,7 @@ namespace minEngine
         float m_LastDeltaTime = 0.0f;
         bool m_DockLayoutInitialized = false;
         bool m_RequestResetLayout = false;
+        bool m_PendingInitialFontAtlasRebuild = false;
 
         static std::optional<std::filesystem::path> ResolveProjectDescriptorPath(
             const CommandLineResult& commandLine);

@@ -1,5 +1,6 @@
 #include "Platform/EditorImGuiBackend.h"
 
+#include "Platform/EditorRHIImGuiTexture.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
@@ -9,7 +10,15 @@
 
 #if defined(MINENGINE_HAS_VULKAN)
 #include "imgui/backends/imgui_impl_vulkan.h"
+
+void ImGui_ImplVulkan_DestroyDeviceObjects();
 #endif
+
+#if defined(MINENGINE_HAS_VULKAN)
+void ImGui_ImplVulkan_UpdateTexture(ImTextureData* tex);
+#endif
+
+void ImGui_ImplOpenGL3_UpdateTexture(ImTextureData* tex);
 
 namespace minEngine
 {
@@ -224,6 +233,8 @@ namespace minEngine
             return;
         }
 
+        UploadPendingPlatformTextures();
+
 #if defined(MINENGINE_HAS_VULKAN)
         if (m_Api == RendererApi::Vulkan)
         {
@@ -277,15 +288,15 @@ namespace minEngine
 
         if (m_Api == RendererApi::OpenGL)
         {
-            // ImGui 1.92 dynamic atlas: drop stale GPU textures/shaders so the next NewFrame
-            // recreates device objects against the rebuilt atlas.
             ImGui_ImplOpenGL3_DestroyDeviceObjects();
+            InvalidateViewportTextures();
             return;
         }
 
 #if defined(MINENGINE_HAS_VULKAN)
         if (m_Api == RendererApi::Vulkan && m_VulkanBackendInitialized)
         {
+            ImGui_ImplVulkan_DestroyDeviceObjects();
             InvalidateViewportTextures();
         }
 #endif
@@ -293,6 +304,36 @@ namespace minEngine
 
     void EditorImGuiBackend::InvalidateViewportTextures()
     {
-        (void)0;
+        EditorRHIImGuiTexturePin::InvalidateAllBindings();
+    }
+
+    void EditorImGuiBackend::UploadPendingPlatformTextures()
+    {
+        if (!m_Initialized)
+        {
+            return;
+        }
+
+        ImGuiPlatformIO& platformIo = ImGui::GetPlatformIO();
+        for (ImTextureData* textureData : platformIo.Textures)
+        {
+            if (textureData == nullptr || textureData->Status == ImTextureStatus_OK)
+            {
+                continue;
+            }
+
+            if (m_Api == RendererApi::OpenGL)
+            {
+                ImGui_ImplOpenGL3_UpdateTexture(textureData);
+                continue;
+            }
+
+#if defined(MINENGINE_HAS_VULKAN)
+            if (m_Api == RendererApi::Vulkan && m_VulkanBackendInitialized)
+            {
+                ImGui_ImplVulkan_UpdateTexture(textureData);
+            }
+#endif
+        }
     }
 }

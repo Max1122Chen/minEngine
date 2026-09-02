@@ -369,11 +369,6 @@ namespace minEngine
         {
             io.Fonts->Build();
         }
-
-        if (m_ImGuiBackend != nullptr)
-        {
-            m_ImGuiBackend->NotifyFontAtlasRebuilt();
-        }
     }
 
     std::filesystem::path EditorAppearance::ResolveAssetIconFontPath() const
@@ -385,6 +380,11 @@ namespace minEngine
         }
 
         return std::filesystem::weakly_canonical(engineDefaultAssetsRoot / kAssetIconRegularFontRelativePath);
+    }
+
+    void EditorAppearance::MarkFontAtlasGpuInitialized()
+    {
+        m_FontAtlasGpuInitialized = true;
     }
 
     void EditorAppearance::RebuildUiFontAtlas()
@@ -401,6 +401,12 @@ namespace minEngine
         m_PinnedFontsForAtlas.clear();
 
         ImGuiIO& io = ImGui::GetIO();
+
+        if (m_FontAtlasGpuInitialized && m_ImGuiBackend != nullptr)
+        {
+            m_ImGuiBackend->NotifyFontAtlasRebuilt();
+        }
+
         io.Fonts->Clear();
         io.FontGlobalScale = 1.0f;
 

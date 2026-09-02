@@ -15,6 +15,7 @@
 #include "Runtime/Function/Audio/AudioSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
+#include "Runtime/Function/Debug/DebugDrawService.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 
 namespace minEngine
@@ -42,6 +43,9 @@ namespace minEngine
             PathRegistry::Get().LoadEngineConfiguration(commandLine, m_EngineConfig);
 
         StartSystems();
+
+        // Eager-init DebugDrawService on the main thread before efsw / first frame enqueue.
+        (void)DebugDrawService::Get();
 
         // Sky / EnvMap shaders and validation resources — required on every RHI (ED-F01 VK parity).
         if (m_RenderSystem && m_EnginePathConfigLoaded)

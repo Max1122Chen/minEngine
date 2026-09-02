@@ -49,6 +49,7 @@
 
 ## 关联
 - [FONT_ASSET_DESIGN.md](../Editor/FONT_ASSET_DESIGN.md) §7 `RebuildUiFontAtlas`
+- [BUG-EDITOR-002](./BUG-EDITOR-002.md) — Vulkan `NotifyFontAtlasRebuilt` 未对称失效（高概率崩溃）
 - ImGui 1.92 `ImGui_ImplOpenGL3_DestroyDeviceObjects` / dynamic `ImTextureData` 生命周期
 
 ---

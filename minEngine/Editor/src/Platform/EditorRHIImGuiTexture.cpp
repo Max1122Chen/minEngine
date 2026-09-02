@@ -7,8 +7,18 @@
 #include "Runtime/Function/Render/Vulkan/VulkanRHI.h"
 #include "Runtime/Function/Render/Vulkan/VulkanRHIResources.h"
 
+#include <vector>
+
 namespace minEngine
 {
+    namespace
+    {
+        std::vector<EditorRHIImGuiTexturePin*>& GetTrackedViewportPins()
+        {
+            static std::vector<EditorRHIImGuiTexturePin*> s_TrackedPins;
+            return s_TrackedPins;
+        }
+    }
     EditorRHIImGuiTexture::~EditorRHIImGuiTexture()
     {
         m_TextureId = ImTextureID_Invalid;
@@ -107,6 +117,7 @@ namespace minEngine
 
     EditorRHIImGuiTexturePin::~EditorRHIImGuiTexturePin()
     {
+        UntrackBinding();
         Reset(m_BoundRhi);
     }
 
@@ -120,19 +131,73 @@ namespace minEngine
 
         if (m_Binding.IsValid() && m_BoundRhi == rhi && m_BoundTexture == texture)
         {
+            TrackBinding();
             return m_Binding.GetTextureId();
         }
 
         Reset(rhi);
         m_BoundRhi = rhi;
         m_BoundTexture = texture;
-        return m_Binding.Register(rhi, texture);
+        const ImTextureID textureId = m_Binding.Register(rhi, texture);
+        if (textureId != ImTextureID_Invalid)
+        {
+            TrackBinding();
+        }
+        return textureId;
     }
 
     void EditorRHIImGuiTexturePin::Reset(RHI* rhi)
     {
+        UntrackBinding();
         m_Binding.Release(rhi != nullptr ? rhi : m_BoundRhi);
         m_BoundRhi = nullptr;
         m_BoundTexture = nullptr;
+    }
+
+    void EditorRHIImGuiTexturePin::InvalidateAllBindings()
+    {
+        InvalidateAllBindingsInternal();
+    }
+
+    void EditorRHIImGuiTexturePin::InvalidateAllBindingsInternal()
+    {
+        std::vector<EditorRHIImGuiTexturePin*> pins = GetTrackedViewportPins();
+        for (EditorRHIImGuiTexturePin* pin : pins)
+        {
+            if (pin != nullptr)
+            {
+                pin->Reset(pin->m_BoundRhi);
+            }
+        }
+    }
+
+    void EditorRHIImGuiTexturePin::TrackBinding()
+    {
+        if (m_IsTracked)
+        {
+            return;
+        }
+
+        GetTrackedViewportPins().push_back(this);
+        m_IsTracked = true;
+    }
+
+    void EditorRHIImGuiTexturePin::UntrackBinding()
+    {
+        if (!m_IsTracked)
+        {
+            return;
+        }
+
+        std::vector<EditorRHIImGuiTexturePin*>& pins = GetTrackedViewportPins();
+        for (auto it = pins.begin(); it != pins.end(); ++it)
+        {
+            if (*it == this)
+            {
+                pins.erase(it);
+                break;
+            }
+        }
+        m_IsTracked = false;
     }
 }

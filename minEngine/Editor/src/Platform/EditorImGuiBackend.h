@@ -29,6 +29,7 @@ namespace minEngine
 
         void NotifyFontAtlasRebuilt();
         void InvalidateViewportTextures();
+        void UploadPendingPlatformTextures();
 
         RendererApi GetRendererApi() const { return m_Api; }
         bool IsInitialized() const { return m_Initialized; }

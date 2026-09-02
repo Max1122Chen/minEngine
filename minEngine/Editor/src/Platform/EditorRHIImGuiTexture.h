@@ -45,7 +45,16 @@ namespace minEngine
         ImTextureID Pin(RHI* rhi, RHITexture* texture);
         void Reset(RHI* rhi);
 
+        /** BUG-EDITOR-002: drop cached bindings after ImGui device-object invalidation. */
+        static void InvalidateAllBindings();
+
     private:
+        void TrackBinding();
+        void UntrackBinding();
+
+        static void InvalidateAllBindingsInternal();
+
+        bool m_IsTracked = false;
         EditorRHIImGuiTexture m_Binding;
         RHI* m_BoundRhi = nullptr;
         RHITexture* m_BoundTexture = nullptr;

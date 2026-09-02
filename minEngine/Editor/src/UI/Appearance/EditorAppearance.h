@@ -44,6 +44,7 @@ namespace minEngine
         void PopThemeColors(int count) const;
 
         void RebuildUiFontAtlas();
+        void MarkFontAtlasGpuInitialized();
         ImFont* GetImFont(EditorTypographyRole role) const;
         ImFont* GetBodyImFont() const;
         ImFont* GetAssetIconRegularImFont() const { return m_AssetIconRegularFont; }
@@ -69,6 +70,7 @@ namespace minEngine
         std::vector<std::shared_ptr<Font>> m_PinnedFontsForAtlas;
         EditorImGuiBackend* m_ImGuiBackend = nullptr;
         bool m_UiFontBackendReady = false;
+        bool m_FontAtlasGpuInitialized = false;
 
         void FinalizeFontAtlasBuild();
     };

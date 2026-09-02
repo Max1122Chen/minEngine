@@ -1,5 +1,6 @@
 #include "Editor.h"
 
+#include "Platform/EditorCrashDiagnostics.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Material/MaterialEditorSession.h"
 
@@ -17,6 +18,7 @@
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/Vulkan/VulkanRHI.h"
 #include "Runtime/Function/Render/WindowSystem.h"
+#include "Runtime/Function/Debug/DebugDrawService.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 
@@ -282,6 +284,7 @@ namespace minEngine
         }
 
         ImGui::CreateContext();
+        InstallEditorCrashDiagnostics();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -317,7 +320,7 @@ namespace minEngine
             m_ExitRequested = true;
             return;
         }
-        m_Appearance.RebuildUiFontAtlas();
+        m_PendingInitialFontAtlasRebuild = true;
     }
 
     void Editor::UpdateWindowTitle()
@@ -411,9 +414,12 @@ namespace minEngine
     {
         WindowSystem& windowSystem = WindowSystem::Get();
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
+        bool fontAtlasGpuMarked = false;
 
         while (!windowSystem.ShouldClose() && !m_ExitRequested)
         {
+            DebugDrawService::Get().ClearFrameQueues();
+
             const float deltaTime = m_Engine->CalculateDeltaTime();
             m_Engine->PollEvents();
             m_Engine->TickLogicalFrame(deltaTime);
@@ -427,6 +433,12 @@ namespace minEngine
 
             UpdateWindowTitle();
 
+            if (m_PendingInitialFontAtlasRebuild)
+            {
+                m_Appearance.RebuildUiFontAtlas();
+                m_PendingInitialFontAtlasRebuild = false;
+            }
+
             m_ImGuiBackend.NewFrame();
             ImGui::NewFrame();
 
@@ -439,6 +451,11 @@ namespace minEngine
             m_Engine->TickRendererFrame(deltaTime);
 
             m_ImGuiBackend.RenderDrawData(rhi);
+            if (!fontAtlasGpuMarked)
+            {
+                m_Appearance.MarkFontAtlasGpuInitialized();
+                fontAtlasGpuMarked = true;
+            }
             if (RenderSystem::HasInstance())
             {
                 RenderSystem::Get().PresentFrame();

@@ -20,6 +20,7 @@
 
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/SceneRenderTarget.h"
 
 #include "Render/RenderCamera.h"
 
@@ -169,6 +170,18 @@ namespace minEngine
             SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
             SceneDrawFlags::EnableSkyBox | SceneDrawFlags::EnableDebugDraw;
 
+        const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
+        if (!desc.Scene || !desc.Camera || !desc.RenderTarget)
+        {
+            return;
+        }
+
+        const SceneRenderTarget* renderTarget = desc.RenderTarget;
+        if (renderTarget->GetWidth() == 0 || renderTarget->GetHeight() == 0)
+        {
+            return;
+        }
+
         if (HasSceneDrawFlag(flags, SceneDrawFlags::EnableDebugDraw))
         {
             SceneEditor* sceneEditor = GetSceneEditor(m_Context);
@@ -179,15 +192,7 @@ namespace minEngine
             }
         }
 
-        const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
-
-        if (desc.Scene && desc.Camera && desc.RenderTarget)
-
-        {
-
-            RenderSystem::Get().SubmitSceneDraw(desc);
-
-        }
+        RenderSystem::Get().SubmitSceneDraw(desc);
 
     }
 
