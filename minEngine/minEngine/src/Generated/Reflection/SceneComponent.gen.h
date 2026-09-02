@@ -5,6 +5,7 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SceneComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SceneComponent, m_Transform)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SceneComponent, m_AttachParent)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::SceneComponent, GReflectionClassRegister_SceneComponent_e28531cd)

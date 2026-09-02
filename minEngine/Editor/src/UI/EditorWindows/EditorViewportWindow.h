@@ -38,7 +38,9 @@ namespace minEngine
         virtual EditorViewportClient& GetOrCreateViewportClient() = 0;
         virtual const RHITextureRef& GetDisplayColorTexture() const = 0;
         virtual ImGuiWindowFlags GetViewportWindowFlags() const;
-        virtual void OnDrawViewportOverlay(EditorViewportClient& client, const ViewportFrameState& frameState);
+        virtual bool WantsViewportToolbarRow() const { return false; }
+        virtual void DrawViewportToolbarRow();
+        virtual void OnPostSceneImageDraw(EditorViewportClient& client, const ViewportFrameState& frameState);
 
         const std::string& GetViewportPanelId() const { return m_Id; }
 

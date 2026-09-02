@@ -34,7 +34,20 @@ namespace minEngine
     void SceneManager::Shutdown()
     {
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
+        m_PIEPlayActive = false;
+        m_ActiveSceneOverride = nullptr;
+
+        for (const SceneContext& pieContext : m_PIEContexts)
+        {
+            if (pieContext.Scene && PhysicsSystem::HasInstance())
+            {
+                PhysicsSystem::Get().DestroyWorld(pieContext.Scene.get());
+            }
+        }
+        m_PIEContexts.clear();
+
         UnloadActiveScene();
+        m_EditorSceneContext = {};
         m_RegisteredScenes.clear();
         ME_CORE_INFO("SceneManager Shutdown.");
     }
@@ -64,19 +77,223 @@ namespace minEngine
 
     void SceneManager::Tick(float deltaTime)
     {
-        if (m_CurrentActiveScene)
+        TickScenes(deltaTime);
+    }
+
+    void SceneManager::TickScenes(float deltaTime)
+    {
+        auto tickSceneIfNeeded = [deltaTime](const SceneContext& context)
         {
-            m_CurrentActiveScene->Tick(deltaTime);
+            if (context.Scene == nullptr || context.TickPolicy == ESceneTickPolicy::None)
+            {
+                return;
+            }
+
+            context.Scene->Tick(deltaTime);
+        };
+
+        tickSceneIfNeeded(m_EditorSceneContext);
+        for (const SceneContext& pieContext : m_PIEContexts)
+        {
+            tickSceneIfNeeded(pieContext);
+        }
+    }
+
+    Scene* SceneManager::GetEditorScene() const
+    {
+        if (m_EditorSceneContext.Scene)
+        {
+            return m_EditorSceneContext.Scene.get();
+        }
+
+        return m_CurrentActiveScene.get();
+    }
+
+    Scene* SceneManager::GetPIEScene(int32_t instanceId) const
+    {
+        for (const SceneContext& context : m_PIEContexts)
+        {
+            if (context.PIEInstanceId == instanceId && context.Scene)
+            {
+                return context.Scene.get();
+            }
+        }
+
+        return nullptr;
+    }
+
+    Scene* SceneManager::GetTickTargetScene() const
+    {
+        if (m_ActiveSceneOverride != nullptr)
+        {
+            return m_ActiveSceneOverride;
+        }
+
+        if (m_PIEPlayActive)
+        {
+            if (Scene* pieScene = GetPIEScene(0))
+            {
+                return pieScene;
+            }
+        }
+
+        return GetEditorScene();
+    }
+
+    const std::vector<SceneContext>& SceneManager::GetSceneContexts() const
+    {
+        m_CachedSceneContexts.clear();
+        if (m_EditorSceneContext.Scene)
+        {
+            m_CachedSceneContexts.push_back(m_EditorSceneContext);
+        }
+        m_CachedSceneContexts.insert(m_CachedSceneContexts.end(), m_PIEContexts.begin(), m_PIEContexts.end());
+        return m_CachedSceneContexts;
+    }
+
+    void SceneManager::SetEditorSceneContext(SceneContext context)
+    {
+        m_EditorSceneContext = std::move(context);
+        if (m_EditorSceneContext.Scene)
+        {
+            m_EditorSceneContext.Scene->SetSceneType(ESceneType::Editor);
+            m_EditorSceneContext.Scene->SetTickPolicy(m_EditorSceneContext.TickPolicy);
+            m_EditorSceneContext.Type = ESceneType::Editor;
+        }
+    }
+
+    void SceneManager::RegisterPIEScene(std::shared_ptr<Scene> pieScene, int32_t instanceId)
+    {
+        if (!pieScene)
+        {
+            return;
+        }
+
+        pieScene->SetSceneType(ESceneType::PIE);
+        pieScene->SetTickPolicy(ESceneTickPolicy::Gameplay);
+        pieScene->SetPIEInstanceId(instanceId);
+        pieScene->EnsureRenderScene();
+
+        SceneContext context;
+        context.Type = ESceneType::PIE;
+        context.TickPolicy = ESceneTickPolicy::Gameplay;
+        context.PIEInstanceId = instanceId;
+        context.Scene = std::move(pieScene);
+        context.ContextHandle = "PIE_" + std::to_string(instanceId);
+
+        m_PIEContexts.erase(
+            std::remove_if(
+                m_PIEContexts.begin(),
+                m_PIEContexts.end(),
+                [instanceId](const SceneContext& existingContext)
+                {
+                    return existingContext.PIEInstanceId == instanceId;
+                }),
+            m_PIEContexts.end());
+
+        m_PIEContexts.push_back(std::move(context));
+    }
+
+    void SceneManager::UnregisterPIEScene(int32_t instanceId)
+    {
+        Scene* pieScene = GetPIEScene(instanceId);
+        if (pieScene != nullptr)
+        {
+            if (AudioSystem::HasInstance())
+            {
+                AudioSystem::Get().OnSceneUnloaded(pieScene);
+            }
+
+            if (PhysicsSystem::HasInstance())
+            {
+                PhysicsSystem::Get().DestroyWorld(pieScene);
+            }
+        }
+
+        m_PIEContexts.erase(
+            std::remove_if(
+                m_PIEContexts.begin(),
+                m_PIEContexts.end(),
+                [instanceId](const SceneContext& context)
+                {
+                    return context.PIEInstanceId == instanceId;
+                }),
+            m_PIEContexts.end());
+    }
+
+    void SceneManager::RebuildSceneComponentAttachHierarchy(Scene* scene)
+    {
+        if (scene == nullptr)
+        {
+            return;
+        }
+
+        for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+        {
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            {
+                SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get());
+                if (sceneComponent != nullptr)
+                {
+                    sceneComponent->GetAttachChildren().clear();
+                }
+            }
+        }
+
+        for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+        {
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            {
+                SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get());
+                if (sceneComponent == nullptr)
+                {
+                    continue;
+                }
+
+                SceneComponent* parent = sceneComponent->GetAttachParent();
+                if (parent != nullptr)
+                {
+                    parent->GetAttachChildren().push_back(sceneComponent);
+                }
+            }
+        }
+    }
+
+    void SceneManager::FinalizeLoadedScene(Scene* scene)
+    {
+        if (scene == nullptr)
+        {
+            return;
+        }
+
+        scene->RebuildRuntimeGameObjectIndex();
+        RebuildSceneComponentAttachHierarchy(scene);
+
+        if (HasInstance())
+        {
+            Get().ResolvePendingActivationsForScene(scene);
         }
     }
 
     RenderScene* SceneManager::GetRenderScene()
     {
-        if (!m_CurrentActiveScene)
+        Scene* tickTargetScene = GetTickTargetScene();
+        if (tickTargetScene == nullptr)
         {
             return nullptr;
         }
-        return m_CurrentActiveScene->GetRenderScene();
+
+        return tickTargetScene->GetRenderScene();
     }
 
     bool SceneManager::RegisterScene(const std::string& sceneName, const std::string& path)
@@ -107,7 +324,19 @@ namespace minEngine
         m_CurrentActiveScene = NewObject<Scene>();
         m_CurrentActiveScene->m_SceneName = sceneName;
         m_CurrentActiveScene->EnsureRenderScene();
+        m_CurrentActiveScene->SetSceneType(ESceneType::Editor);
+        m_CurrentActiveScene->SetTickPolicy(ESceneTickPolicy::Gameplay);
+
+        SceneContext editorContext;
+        editorContext.Type = ESceneType::Editor;
+        editorContext.TickPolicy = ESceneTickPolicy::Gameplay;
+        editorContext.PIEInstanceId = -1;
+        editorContext.Scene = m_CurrentActiveScene;
+        editorContext.ContextHandle = "Editor";
+        SetEditorSceneContext(std::move(editorContext));
+
         ResolvePendingActivationsForScene(m_CurrentActiveScene.get());
+        RebuildSceneComponentAttachHierarchy(m_CurrentActiveScene.get());
 
         if (PhysicsSystem::HasInstance())
         {
@@ -135,8 +364,18 @@ namespace minEngine
             UnloadActiveScene();
             m_CurrentActiveScene = scene;
             m_CurrentActiveScene->EnsureRenderScene();
+            m_CurrentActiveScene->SetSceneType(ESceneType::Editor);
+            m_CurrentActiveScene->SetTickPolicy(ESceneTickPolicy::Gameplay);
 
-            ResolvePendingActivationsForScene(m_CurrentActiveScene.get());
+            SceneContext editorContext;
+            editorContext.Type = ESceneType::Editor;
+            editorContext.TickPolicy = ESceneTickPolicy::Gameplay;
+            editorContext.PIEInstanceId = -1;
+            editorContext.Scene = m_CurrentActiveScene;
+            editorContext.ContextHandle = "Editor";
+            SetEditorSceneContext(std::move(editorContext));
+
+            FinalizeLoadedScene(m_CurrentActiveScene.get());
 
             for (const std::shared_ptr<GameObject>& gameObject : m_CurrentActiveScene->GetAllGameObjects())
             {

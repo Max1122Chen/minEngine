@@ -20,6 +20,7 @@ namespace minEngine
         const std::string& GetTitle() const override { return m_Title; }
 
         void OnDraw() override;
+        void DrawChrome();
 
     private:
         void DrawFileMenu();

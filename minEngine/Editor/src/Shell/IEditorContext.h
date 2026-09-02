@@ -20,6 +20,7 @@ namespace minEngine
     class EditorInputHub;
     class EditorAppearance;
     class IFileDialogService;
+    class IPlayModeService;
 
     class IEditorContext
     {
@@ -60,6 +61,8 @@ namespace minEngine
         virtual void SetLastDeltaTime(float deltaTime) = 0;
         virtual float GetLastDeltaTime() const = 0;
         virtual bool IsPlaying() const = 0;
+        virtual IPlayModeService& GetPlayModeService() = 0;
+        virtual const IPlayModeService& GetPlayModeService() const = 0;
 
         virtual bool ActivateSubModule(std::string_view moduleId) = 0;
 

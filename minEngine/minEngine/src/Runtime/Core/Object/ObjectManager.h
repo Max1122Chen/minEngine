@@ -20,6 +20,7 @@ namespace minEngine
     class PhysicsLineTraceTestScope;
     class PhysicsShapesTestScope;
     class DelegateObjectManagerScope;
+    class SceneCloneTestScope;
 
     using ObjectReachabilityMarker = std::function<void(MEObject*)>;
     using ObjectReachabilityRootVisitor = std::function<void(const ObjectReachabilityMarker& markReachable)>;
@@ -38,6 +39,7 @@ namespace minEngine
         void Shutdown();
 
         void RegisterObject(const std::shared_ptr<MEObject>& object);
+        bool RemapObjectGuid(const std::shared_ptr<MEObject>& object, const GUID& newGuid);
         bool UnregisterObject(const GUID& guid);
         bool UnregisterObject(const MEObject* object);
 
@@ -123,6 +125,7 @@ namespace minEngine
         friend class PhysicsShapesTestScope;
         friend class AudioSmokeTestScope;
         friend class DelegateObjectManagerScope;
+        friend class SceneCloneTestScope;
 
         static void SetInstance(ObjectManager* instance);
         void PruneExpiredEntries();

@@ -179,13 +179,13 @@ namespace minEngine
             return;
         }
 
-        const std::shared_ptr<Scene> activeScene = SceneManager::Get().GetCurrentActiveScene();
-        if (!activeScene)
+        const Scene* activeScene = SceneManager::Get().GetTickTargetScene();
+        if (activeScene == nullptr || activeScene->GetTickPolicy() != ESceneTickPolicy::Gameplay)
         {
             return;
         }
 
-        PhysicsWorld& world = GetOrCreateWorld(activeScene.get());
+        PhysicsWorld& world = GetOrCreateWorld(const_cast<Scene*>(activeScene));
         world.SyncBodiesFromScene();
         world.Step(deltaTime);
         world.SyncBodiesToScene();

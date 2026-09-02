@@ -13,13 +13,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design | [CORE-F05_PLAY_MODE_DESIGN.md](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md)（Placeholder → 待展开正式 Design） |
+| Design | [CORE-F05_PLAY_MODE_DESIGN.md](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl Plan](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) |
 | Registry | `CORE-F05` **In Progress** |
 | 前置 | ~~`CORE-F06` Component Activate~~ **Done** |
-| 目标 | Edit/Play 切换；Play 时运行时 Tick；Stop 回 Edit（不丢未保存 Scene 上下文） |
+| 目标 | Edit/Play；**UE 式双 Scene 共存**（Editor + PIE）；Stop 仅销毁 PIE |
 | 分支 | `master` |
 
-**建议起步：** Pre-flight + Design Meta 展开 → Implementation Plan S01（Editor Play/Stop + 运行时域 gate）。
+**建议起步：** **S04** Per-World 系统生命周期；**修复** EnterPlay 反序列化失败；**调查** 启动后偶发崩溃。
+
+**最近提交（2026-09-02）：** S00–S03 基础 + ED-F03 Toolbar Done；PIE Enter 仍不可靠。
 
 ---
 

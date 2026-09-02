@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（CORE-F05 当前焦点；backlog 文档同步）
+Last updated: 2026-09-02（CORE-F05 S00–S03 + ED-F03 Toolbar 已提交；PIE Enter 待修）
+
+### 2026-09-02 - CORE-F05 S00–S03 + ED-F03 Viewport Play Toolbar (`master`)
+- **Runtime:** `SceneDuplicator` / `SceneCloneContext`；`SceneManager` 双 Scene API；`SceneComponent::m_AttachParent` GUID 序列化；legacy `.mescene` `skipUnknownField`；`scene-clone` test。
+- **Editor:** `PlayInEditorSession`、`IPlayModeService`、`ActiveSceneScope`；`ToolbarModule`（F5/Shift+F5）；`EditorChrome`（MainMenu only）；`ViewportPlayToolbar`（Tab 下 Toolbar 行 + Separator + 30px Icon）；移除 `ToolbarWindow` / `DraggableOverlay`。
+- **Docs:** `ED-F03_EDITOR_TOOLBAR_DESIGN.md`；`CORE-F05` design/impl 更新；`docs/external/minEngine Play Mode Development Guideline.md` 纳入仓库。
+- **Verified:** Editor build；`minEngineTests.exe test scene-clone` PASS。
+- **Known / Next:** EnterPlay 偶发 `SceneDuplicator` 反序列化失败 → 下个 commit；引擎启动数秒后偶发崩溃 → 调查中（`BUG-*`）。
 
 ### 2026-09-02 - Backlog shift: CORE-F05 focus; PHYS-F04 / BUG-PHYS-003 closed (`master`)
 - **ACTIVE_WORK:** CORE-F05 Play Mode 抬为当前焦点；PHYS-F04、BUG-PHYS-003 标 Done/Fixed；CORE-F07 → `feat/editor`。

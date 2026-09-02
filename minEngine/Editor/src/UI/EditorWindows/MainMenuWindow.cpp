@@ -17,6 +17,10 @@ namespace minEngine
 {
     void MainMenuWindow::OnDraw()
     {
+    }
+
+    void MainMenuWindow::DrawChrome()
+    {
         const ImVec2 framePadding = ImGui::GetStyle().FramePadding;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(framePadding.x, framePadding.y + 3.0f));
 

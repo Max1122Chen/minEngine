@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Framework/Scene/SceneTypes.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Physics/PhysicsTypes.h"
 #include "Runtime/Resource/Asset.h"
@@ -64,6 +65,15 @@ namespace minEngine
         RenderScene* GetRenderScene();
         const std::shared_ptr<RenderScene>& GetRenderSceneShared() const { return m_RenderScene; }
 
+        ESceneType GetSceneType() const { return m_SceneType; }
+        void SetSceneType(ESceneType sceneType) { m_SceneType = sceneType; }
+        ESceneTickPolicy GetTickPolicy() const { return m_TickPolicy; }
+        void SetTickPolicy(ESceneTickPolicy tickPolicy) { m_TickPolicy = tickPolicy; }
+        int32_t GetPIEInstanceId() const { return m_PIEInstanceId; }
+        void SetPIEInstanceId(int32_t instanceId) { m_PIEInstanceId = instanceId; }
+        bool IsEditorScene() const { return m_SceneType == ESceneType::Editor; }
+        bool IsPIEScene() const { return m_SceneType == ESceneType::PIE; }
+
         void MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const;
 
     // private: // temporarily public for testing
@@ -78,6 +88,9 @@ namespace minEngine
     private:
         uint64_t m_NextGOId{ 0 };
         std::shared_ptr<RenderScene> m_RenderScene;
+        ESceneType m_SceneType{ ESceneType::None };
+        ESceneTickPolicy m_TickPolicy{ ESceneTickPolicy::Gameplay };
+        int32_t m_PIEInstanceId{ -1 };
     };
 }
 

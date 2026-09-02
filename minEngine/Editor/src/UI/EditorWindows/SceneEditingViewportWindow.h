@@ -7,10 +7,9 @@
 
 #include "SubEditor/Scene/SceneEditor.h"
 #include "UI/EditorWindows/EditorViewportWindow.h"
-#include "UI/Widgets/DraggableOverlay.h"
 #include "SubEditor/Scene/SceneEditingViewportClient.h"
 
-#include <algorithm>
+#include <string>
 #include <utility>
 
 namespace minEngine
@@ -40,12 +39,11 @@ namespace minEngine
     protected:
         EditorViewportClient& GetOrCreateViewportClient() override;
         const RHITextureRef& GetDisplayColorTexture() const override;
-        void OnDrawViewportOverlay(EditorViewportClient& client, const ViewportFrameState& frameState) override;
+        bool WantsViewportToolbarRow() const override { return true; }
+        void DrawViewportToolbarRow() override;
+        void OnPostSceneImageDraw(EditorViewportClient& client, const ViewportFrameState& frameState) override;
 
     private:
         void DrawGizmo(SceneEditingViewportClient& client);
-
-        UI::DraggableOverlayState m_OverlayState;
-        UI::DraggableOverlayConfig m_OverlayConfig;
     };
 }

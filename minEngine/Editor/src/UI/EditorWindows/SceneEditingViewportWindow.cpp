@@ -1,12 +1,8 @@
 #include "SceneEditingViewportWindow.h"
 
 #include "Shell/EditorContextHelpers.h"
-#include "UI/Appearance/EditorThemeScope.h"
-#include "UI/Appearance/EditorTypographyScope.h"
-#include "UI/Appearance/EditorWindowTheme.h"
-
-#include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 #include "Shell/ViewportClientRegistry.h"
+#include "UI/Chrome/ViewportPlayToolbar.h"
 #include "Render/RenderCamera.h"
 #include "Function/Framework/GameObject/GameObject.h"
 
@@ -22,66 +18,15 @@ namespace minEngine
         return GetSceneEditingViewportClient().GetSceneViewport().GetColorTexture();
     }
 
-    void SceneEditingViewportWindow::OnDrawViewportOverlay(EditorViewportClient& client,
-                                                           const ViewportFrameState& frameState)
+    void SceneEditingViewportWindow::DrawViewportToolbarRow()
     {
-        SceneEditingViewportClient& sceneClient = static_cast<SceneEditingViewportClient&>(client);
+        ViewportPlayToolbar::DrawToolbarRow(m_Context);
+    }
 
-        const float deltaTime = sceneClient.GetLastDeltaTime();
-        const float fps = (deltaTime > 0.0001f) ? (1.0f / deltaTime) : 0.0f;
-        const std::string sceneName = "TODO: get correct scene name later";
-
-        const ImVec2 imageSize(frameState.ImageSize.x, frameState.ImageSize.y);
-        const ImVec2 imageMin(frameState.ImageMin.x, frameState.ImageMin.y);
-
-        m_OverlayConfig.expandedSize = ImVec2(std::max(220.0f, std::min(420.0f, imageSize.x * 0.46f)), 96.0f);
-        UI::ClampOverlayOffset(m_OverlayState, m_OverlayConfig, imageSize);
-
-        const std::string overlayId = m_Id + "_overlay";
-        ImGui::SetCursorScreenPos(UI::GetOverlayScreenPos(m_OverlayState, imageMin));
-        if (ImGui::BeginChild(overlayId.c_str(), UI::GetOverlaySize(m_OverlayState, m_OverlayConfig), true,
-                              ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav))
-        {
-            EditorThemeScope overlayTheme = EditorWindowTheme::PanelOverlay(m_Context.GetEditorAppearance());
-            EditorTypographyScope captionTypography(
-                m_Context.GetEditorAppearance(),
-                EditorTypographyRole::Caption);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
-            if (m_OverlayState.collapsed)
-            {
-                if (ImGui::Button(">"))
-                {
-                    m_OverlayState.collapsed = false;
-                }
-
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::SetTooltip("Expand overlay");
-                }
-            }
-            else
-            {
-                ImGui::TextUnformatted("Overlay");
-                ImGui::SameLine();
-                ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 24.0f);
-                if (ImGui::Button("_"))
-                {
-                    m_OverlayState.collapsed = true;
-                }
-
-                ImGui::Separator();
-                ImGui::TextWrapped("Scene: %s", sceneName.c_str());
-                ImGui::Text("FPS: %.1f", fps);
-                ImGui::Text("Frame: %.2f ms", deltaTime * 1000.0f);
-                ImGui::Text("Viewport: %.0f x %.0f", frameState.ContentSize.x, frameState.ContentSize.y);
-            }
-
-            UI::HandleOverlayDragging(m_OverlayState, m_OverlayConfig, imageSize);
-            ImGui::PopStyleVar();
-        }
-        ImGui::EndChild();
-
-        DrawGizmo(sceneClient);
+    void SceneEditingViewportWindow::OnPostSceneImageDraw(EditorViewportClient& client,
+                                                          const ViewportFrameState& /*frameState*/)
+    {
+        DrawGizmo(static_cast<SceneEditingViewportClient&>(client));
     }
 
     void SceneEditingViewportWindow::DrawGizmo(SceneEditingViewportClient& client)

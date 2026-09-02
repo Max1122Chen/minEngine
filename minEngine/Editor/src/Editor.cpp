@@ -72,6 +72,7 @@ namespace minEngine
         m_SceneEditor.InitializeComponentTypeNames();
 
         m_MainMenuModule.Register(*this);
+        m_ToolbarModule.Register(*this);
         m_InspectorModule.Register(*this);
         m_ConsoleModule.Register(*this);
         m_AssetWorkflow.Register(*this);
@@ -300,6 +301,7 @@ namespace minEngine
         m_MaterialEditor = std::make_unique<MaterialEditor>();
 
         m_EditorGUIManager.Initialize(*this);
+        m_InputHub.Initialize(*this);
         RegisterModules();
 
         const std::optional<std::filesystem::path> projectDescriptorPath =
@@ -415,6 +417,7 @@ namespace minEngine
             const float deltaTime = m_Engine->CalculateDeltaTime();
             m_Engine->PollEvents();
             m_Engine->TickLogicalFrame(deltaTime);
+            m_PlayInEditorSession.TickPIE(deltaTime);
             m_SceneEditor.SyncSelectionWithScene();
 
             if (m_ActiveSubModule)

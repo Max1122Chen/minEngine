@@ -5,6 +5,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Function/Framework/Scene/SceneCloneContext.h"
 #include "Runtime/Resource/AssetManager.h"
 
 #include <string_view>
@@ -148,6 +149,17 @@ namespace minEngine::Serialization
     }
 
     bool Serializer::m_IsHandlingPtr = false;
+    SceneCloneContext* Serializer::s_ActiveCloneContext = nullptr;
+
+    void Serializer::SetActiveCloneContext(SceneCloneContext* cloneContext)
+    {
+        s_ActiveCloneContext = cloneContext;
+    }
+
+    SceneCloneContext* Serializer::GetActiveCloneContext()
+    {
+        return s_ActiveCloneContext;
+    }
 
     SerializeResult Serializer::Serialize(const std::string& rootClassName,
                                                    const void* rootObject,
@@ -931,6 +943,15 @@ namespace minEngine::Serialization
                 meObjectPtr->SetOuter(static_cast<MEObject*>(ownerObjectPtr));
 
                 managedObject = std::static_pointer_cast<MEObject>(newObjectPtr);
+
+                if (SceneCloneContext* cloneContext = GetActiveCloneContext())
+                {
+                    const GUID sourceGuid = meObjectPtr->GetGuid();
+                    const GUID newGuid = GenerateGUID();
+                    cloneContext->RecordClone(sourceGuid, managedObject, newGuid);
+                    meObjectPtr->SetGuid(newGuid);
+                }
+
                 ObjectManager::Get().RegisterObject(managedObject);
             }
 
@@ -1079,6 +1100,30 @@ namespace minEngine::Serialization
         {
             outErrorMessage = "reference guid is zero";
             return false;
+        }
+
+        if (SceneCloneContext* cloneContext = GetActiveCloneContext())
+        {
+            std::shared_ptr<MEObject> clonedObject = cloneContext->ResolveSceneRefShared(pendingRef.refGuid);
+            if (clonedObject != nullptr)
+            {
+                if (pendingRef.expectsMEObject && pendingRef.expectedClass != nullptr)
+                {
+                    const MEClass* trackedClass = clonedObject->GetClass();
+                    if (trackedClass != nullptr
+                        && !ReflectionSystem::Get().IsClassSameOrDerived(trackedClass, pendingRef.expectedClass))
+                    {
+                        outErrorMessage = "resolved cloned object type mismatch";
+                        return false;
+                    }
+                }
+
+                outResolvedSharedPtr = std::static_pointer_cast<void>(clonedObject);
+                outResolvedRawPtr = clonedObject.get();
+                return true;
+            }
+
+            return ResolvePendingAssetRef(pendingRef, outResolvedSharedPtr, outResolvedRawPtr, outErrorMessage);
         }
 
         // First try to find the referenced object in the object manager using the GUID.

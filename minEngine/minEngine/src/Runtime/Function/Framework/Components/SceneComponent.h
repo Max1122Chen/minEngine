@@ -80,7 +80,9 @@ namespace minEngine
         ME_PROPERTY(EditAnywhere)
         Transform m_Transform;
 
+        ME_PROPERTY()
         SceneComponent* m_AttachParent{ nullptr };
+
         std::vector<SceneComponent*> m_AttachChildren;
 
         bool m_bRenderStateDirty{ false };

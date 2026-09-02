@@ -13,11 +13,13 @@
 #include "Services/ConsoleModule.h"
 #include "Services/Inspector/InspectorModule.h"
 #include "Services/MainMenuModule.h"
+#include "Services/ToolbarModule.h"
 #include "Shell/EditorInputHub.h"
 #include "ContextMenu/EditorContextMenuSystem.h"
 #include "Shell/EditorCommandStack.h"
 #include "Shell/EditorSubModule.h"
-#include "Shell/IEditorContext.h"
+#include "PlayMode/PlayInEditorSession.h"
+#include "PlayMode/IPlayModeService.h"
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Appearance/EditorAppearance.h"
 
@@ -73,7 +75,9 @@ namespace minEngine
 
         void SetLastDeltaTime(float deltaTime) override { m_LastDeltaTime = deltaTime; }
         float GetLastDeltaTime() const override { return m_LastDeltaTime; }
-        bool IsPlaying() const override { return m_IsPlaying; }
+        bool IsPlaying() const override { return m_PlayInEditorSession.IsPlaying(); }
+        IPlayModeService& GetPlayModeService() override { return m_PlayInEditorSession; }
+        const IPlayModeService& GetPlayModeService() const override { return m_PlayInEditorSession; }
 
         bool ActivateSubModule(std::string_view moduleId) override;
 
@@ -101,6 +105,7 @@ namespace minEngine
         SceneEditor m_SceneEditor;
         std::unique_ptr<MaterialEditor> m_MaterialEditor;
         MainMenuModule m_MainMenuModule;
+        ToolbarModule m_ToolbarModule;
         InspectorModule m_InspectorModule;
         ConsoleModule m_ConsoleModule;
         AssetWorkflowModule m_AssetWorkflow;
@@ -115,7 +120,7 @@ namespace minEngine
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;
-        bool m_IsPlaying = false;
+        PlayInEditorSession m_PlayInEditorSession;
         float m_LastDeltaTime = 0.0f;
         bool m_DockLayoutInitialized = false;
         bool m_RequestResetLayout = false;

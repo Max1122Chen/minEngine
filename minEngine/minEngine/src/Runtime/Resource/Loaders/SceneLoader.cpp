@@ -6,6 +6,7 @@
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 namespace minEngine
 {
@@ -27,7 +28,7 @@ namespace minEngine
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
-                .skipUnknownField = false,
+                .skipUnknownField = true,
                 .allowObjectPtrSerialization = true,
             });
 
@@ -42,7 +43,10 @@ namespace minEngine
             return nullptr;
         }
 
-        scene->RebuildRuntimeGameObjectIndex();
+        scene->SetSceneType(ESceneType::Editor);
+        scene->SetTickPolicy(ESceneTickPolicy::Gameplay);
+        scene->SetPIEInstanceId(-1);
+        SceneManager::FinalizeLoadedScene(scene.get());
         return scene;
     }
 

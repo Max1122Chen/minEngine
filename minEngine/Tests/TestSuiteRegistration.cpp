@@ -22,6 +22,7 @@
 #include "Suites/DelegateTest.h"
 #include "Suites/ShaderCompilerTest.h"
 #include "Suites/AudioSmokeTest.h"
+#include "Suites/SceneCloneTest.h"
 
 namespace minEngine
 {
@@ -267,6 +268,21 @@ namespace minEngine
             }
         };
 
+        struct SceneCloneTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"scene-clone", "Scene Clone", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'scene-clone'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("scene-clone", context.GetCommandLine().TestKind);
+            }
+        };
+
         struct AudioSmokeTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -298,6 +314,7 @@ namespace minEngine
         using DelegateSuite = TypedTestSuite<DelegateTestSuiteTraits>;
         using ShaderCompilerSuite = TypedTestSuite<ShaderCompilerTestSuiteTraits>;
         using AudioSmokeSuite = TypedTestSuite<AudioSmokeTestSuiteTraits>;
+        using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -324,6 +341,7 @@ namespace minEngine
             registry.Register(DelegateSuite::Get());
             registry.Register(ShaderCompilerSuite::Get());
             registry.Register(AudioSmokeSuite::Get());
+            registry.Register(SceneCloneSuite::Get());
             s_Registered = true;
         }
     }

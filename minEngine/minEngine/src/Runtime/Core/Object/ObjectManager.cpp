@@ -54,6 +54,19 @@ namespace minEngine
         m_ObjectsByGuid[guid] = object;
     }
 
+    bool ObjectManager::RemapObjectGuid(const std::shared_ptr<MEObject>& object, const GUID& newGuid)
+    {
+        if (object == nullptr || newGuid.IsZero())
+        {
+            return false;
+        }
+
+        UnregisterObject(object->GetGuid());
+        object->SetGuid(newGuid);
+        RegisterObject(object);
+        return true;
+    }
+
     bool ObjectManager::UnregisterObject(const GUID& guid)
     {
         if (guid.IsZero())

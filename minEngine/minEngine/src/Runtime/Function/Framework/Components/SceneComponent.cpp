@@ -1,6 +1,8 @@
 #include "SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 
+#include <algorithm>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -214,15 +216,7 @@ namespace minEngine
         }
 
         const Matrix4 worldMatrixBeforeAttach = GetWorldMatrix();
-
-        if (GetAttachParent() != nullptr)
-        {
-            auto& siblings = m_AttachParent->m_AttachChildren;
-            siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
-        }
-
         SetAttachParent(inParent);
-        inParent->m_AttachChildren.push_back(this);
 
         if (attachRules == AttachmentTransformRules::KeepWorldTransform)
         {
@@ -235,7 +229,27 @@ namespace minEngine
     }
     void SceneComponent::SetAttachParent(SceneComponent* inParent)
     {
+        if (m_AttachParent == inParent)
+        {
+            return;
+        }
+
+        if (m_AttachParent != nullptr)
+        {
+            auto& siblings = m_AttachParent->m_AttachChildren;
+            siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+        }
+
         m_AttachParent = inParent;
+
+        if (m_AttachParent != nullptr)
+        {
+            auto& siblings = m_AttachParent->m_AttachChildren;
+            if (std::find(siblings.begin(), siblings.end(), this) == siblings.end())
+            {
+                siblings.push_back(this);
+            }
+        }
     }
 
     void SceneComponent::DetachFromParent(AttachmentTransformRules detachRules)
@@ -246,10 +260,7 @@ namespace minEngine
         }
 
         const Matrix4 worldMatrixBeforeDetach = GetWorldMatrix();
-
-        auto& siblings = m_AttachParent->m_AttachChildren;
-        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
-        m_AttachParent = nullptr;
+        SetAttachParent(nullptr);
 
         if (detachRules == AttachmentTransformRules::KeepWorldTransform)
         {

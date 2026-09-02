@@ -1,5 +1,6 @@
 #include "EditorGUIManager.h"
 
+#include "Shell/EditorChrome.h"
 #include "Shell/EditorSubModule.h"
 #include "Shell/IEditorContext.h"
 
@@ -51,8 +52,13 @@ namespace minEngine
             return;
         }
 
+        EditorChrome::BeginFrame(*m_Context);
+
+        // Dock into the main viewport work area (accounts for MainMenuBar).
+        // Do not wrap DockSpace in a padded host window — that creates a visible inset frame.
         const ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(
             0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
         TickLayout(dockspaceId);
 
         TickWindows();
@@ -164,6 +170,11 @@ namespace minEngine
         for (const auto& window : m_Windows)
         {
             if (!window->IsOpen() || !window->IsVisibleForActiveModule())
+            {
+                continue;
+            }
+
+            if (window->GetId() == "main_menu")
             {
                 continue;
             }

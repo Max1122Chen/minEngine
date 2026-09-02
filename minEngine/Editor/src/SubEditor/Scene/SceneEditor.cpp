@@ -566,7 +566,16 @@ namespace minEngine
 
         if (ownerObject->IsA(SceneComponent::StaticClass()))
         {
-            static_cast<SceneComponent*>(ownerObject.get())->MarkRenderStateDirty();
+            SceneComponent* sceneComponent = static_cast<SceneComponent*>(ownerObject.get());
+            sceneComponent->MarkRenderStateDirty();
+
+            if (propertyPath == "m_AttachParent")
+            {
+                if (Scene* scene = GetActiveScene())
+                {
+                    SceneManager::RebuildSceneComponentAttachHierarchy(scene);
+                }
+            }
         }
 
         if (propertyPath == "m_bActive" && ownerObject->IsA(Component::StaticClass()))
@@ -808,6 +817,11 @@ namespace minEngine
             SceneManager::Get().MarkComponentForNeededEndOfFrameUpdate(componentPtr.get());
         }
 
+        if (Scene* scene = GetActiveScene())
+        {
+            SceneManager::RebuildSceneComponentAttachHierarchy(scene);
+        }
+
         MarkSceneDirty();
     }
 
@@ -968,6 +982,10 @@ namespace minEngine
             sceneComponent->MarkRenderStateDirty();
         }
         SceneManager::Get().MarkComponentForNeededEndOfFrameUpdate(component.get());
+        if (Scene* activeScene = GetActiveScene())
+        {
+            SceneManager::RebuildSceneComponentAttachHierarchy(activeScene);
+        }
         MarkSceneDirty();
 
         return component.get();

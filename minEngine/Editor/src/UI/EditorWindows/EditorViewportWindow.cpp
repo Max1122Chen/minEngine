@@ -34,8 +34,12 @@ namespace minEngine
                ImGuiWindowFlags_NoCollapse;
     }
 
-    void EditorViewportWindow::OnDrawViewportOverlay(EditorViewportClient& /*client*/,
-                                                   const ViewportFrameState& /*frameState*/)
+    void EditorViewportWindow::OnPostSceneImageDraw(EditorViewportClient& /*client*/,
+                                                    const ViewportFrameState& /*frameState*/)
+    {
+    }
+
+    void EditorViewportWindow::DrawViewportToolbarRow()
     {
     }
 
@@ -96,6 +100,11 @@ bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportCli
             return;
         }
 
+        if (WantsViewportToolbarRow())
+        {
+            DrawViewportToolbarRow();
+        }
+
     ViewportFrameState frameState{};
     const bool drewSceneImage = DrawSceneColorImage(viewportClient, frameState);
     viewportClient.UpdateFrameState(frameState);
@@ -112,7 +121,7 @@ bool EditorViewportWindow::DrawSceneColorImage(EditorViewportClient& viewportCli
 
     if (drewSceneImage)
     {
-        OnDrawViewportOverlay(viewportClient, frameState);
+        OnPostSceneImageDraw(viewportClient, frameState);
     }
 
     ImGui::End();

@@ -15,6 +15,11 @@ namespace minEngine::Reflection
     class MEObjectPtrProperty;
 }
 
+namespace minEngine
+{
+    struct SceneCloneContext;
+}
+
 namespace minEngine::Serialization
 {
     struct PendingObjectRef
@@ -108,6 +113,9 @@ namespace minEngine::Serialization
                                                            const std::vector<uint8_t>& buffer,
                                                            std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                            const SerializerOptions& options = SerializerOptions{});
+
+        static void SetActiveCloneContext(SceneCloneContext* cloneContext);
+        static SceneCloneContext* GetActiveCloneContext();
     private:
         static SerializeResult SerializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
                                               const void* objectPtr,
@@ -192,5 +200,6 @@ namespace minEngine::Serialization
             m_IsHandlingPtr = handling;
         }
         static bool m_IsHandlingPtr;
+        static SceneCloneContext* s_ActiveCloneContext;
     };
 }

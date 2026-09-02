@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Scene/SceneTypes.h"
 
 namespace minEngine
 {
@@ -17,6 +18,7 @@ namespace minEngine
     class PhysicsLineTraceTestScope;
     class PhysicsShapesTestScope;
     class AudioSmokeTestScope;
+    class SceneCloneTestScope;
 
     class SceneManager
     {
@@ -31,8 +33,26 @@ namespace minEngine
         static bool HasInstance();
         
         void Tick(float deltaTime);
+        void TickScenes(float deltaTime);
 
         std::shared_ptr<Scene> GetCurrentActiveScene() const { return m_CurrentActiveScene; }
+        Scene* GetEditorScene() const;
+        Scene* GetPIEScene(int32_t instanceId = 0) const;
+        Scene* GetTickTargetScene() const;
+        const std::vector<SceneContext>& GetSceneContexts() const;
+
+        void SetEditorSceneContext(SceneContext context);
+        void RegisterPIEScene(std::shared_ptr<Scene> pieScene, int32_t instanceId);
+        void UnregisterPIEScene(int32_t instanceId);
+        void SetPIEPlayActive(bool active) { m_PIEPlayActive = active; }
+        bool IsPIEPlayActive() const { return m_PIEPlayActive; }
+
+        void SetActiveSceneOverride(Scene* scene) { m_ActiveSceneOverride = scene; }
+        Scene* GetActiveSceneOverride() const { return m_ActiveSceneOverride; }
+
+        static void RebuildSceneComponentAttachHierarchy(Scene* scene);
+        static void FinalizeLoadedScene(Scene* scene);
+
         RenderScene* GetRenderScene();
 
         bool RegisterScene(const std::string& sceneName, const std::string& path);
@@ -57,6 +77,11 @@ namespace minEngine
     // private: // temporarily public for testing
         std::shared_ptr<Scene> m_CurrentActiveScene{ nullptr };
         std::vector<Component*> m_ComponentsThatNeedEndOfFrameUpdate;
+        SceneContext m_EditorSceneContext;
+        std::vector<SceneContext> m_PIEContexts;
+        bool m_PIEPlayActive = false;
+        Scene* m_ActiveSceneOverride = nullptr;
+        mutable std::vector<SceneContext> m_CachedSceneContexts;
 
     private:
         friend class Engine;
@@ -69,6 +94,7 @@ namespace minEngine
         friend class PhysicsLineTraceTestScope;
         friend class PhysicsShapesTestScope;
         friend class AudioSmokeTestScope;
+        friend class SceneCloneTestScope;
 
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;

@@ -28,7 +28,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
 | `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
-| `CORE-F05` | Play Mode（Edit/Play 切换、运行时 Tick、Stop 回 Edit） | **In Progress** | — | [Placeholder](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · **`master`** · **当前焦点** |
+| `CORE-F05` | Play Mode（Edit/Play 切换、运行时 Tick、Stop 回 Edit） | **In Progress** | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · **`master`** · **当前焦点** |
 | `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) · **`master`** |
 | `CORE-F07` | 反射/Inspector 展示名去 `m_`/`x_` 前缀 | **Planned** | — | [Placeholder](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`feat/editor`**（master 不处理） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
@@ -45,6 +45,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F16` | Sprite 2D 渲染（UI 前置） | **Planned** | — | [Placeholder](./Render/RND-F16_SPRITE_2D_DESIGN.md) · 愿景；**不阻塞** |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
 | `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **Planned** | — | [Placeholder](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · **`feat/editor`** |
+| `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · **merge 检查点后** |
@@ -71,7 +72,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF` | F03 | |
 | `CORE` | **F08** | F05–F07 Planned on `master` |
 | `ASSET` | F01 | |
-| `ED` | **F03** | F02 on `feat/editor` |
+| `ED` | **F04** | F02 on `feat/editor`；**F03 Review**（Toolbar Chrome） |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
