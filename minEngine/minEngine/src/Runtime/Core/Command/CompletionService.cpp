@@ -3,6 +3,7 @@
 #include "Runtime/Core/Command/CommandRegistry.h"
 #include "Runtime/Core/Command/SceneCommandUtils.h"
 #include "Runtime/Core/Command/SetValueValidation.h"
+#include "Runtime/Core/PropertyPath/PropertyPathTypes.h"
 
 namespace minEngine::Command
 {
@@ -153,17 +154,69 @@ namespace minEngine::Command
             }
 
             const size_t dotIndex = currentToken.find('.');
-            if (dotIndex != std::string::npos)
+            const std::string_view head =
+                dotIndex == std::string::npos ? currentToken : currentToken.substr(0, dotIndex);
+            const std::string_view memberPrefix =
+                dotIndex == std::string::npos || dotIndex + 1 >= currentToken.size()
+                ? std::string_view{}
+                : currentToken.substr(dotIndex + 1);
+
+            const size_t atIndex = head.find('@');
+            if (atIndex != std::string::npos)
             {
-                const std::string objectRef(currentToken.substr(0, dotIndex));
-                const std::string memberPrefix(currentToken.substr(dotIndex + 1));
-                for (const std::string& propertyName :
-                     SceneCommandUtils::ListPropertyPathPrefixes(context.ActiveScene, objectRef, memberPrefix))
+                const std::string_view gameObjectName = head.substr(0, atIndex);
+                const std::string_view componentPrefix = head.substr(atIndex + 1);
+                if (gameObjectName.empty())
+                {
+                    return items;
+                }
+
+                if (dotIndex != std::string::npos)
+                {
+                    for (const PropertyPathSuggestion& suggestion : SceneCommandUtils::ListPropertyPathSuggestions(
+                             context.ActiveScene,
+                             gameObjectName,
+                             componentPrefix,
+                             memberPrefix))
+                    {
+                        CompletionItem item;
+                        item.Label = suggestion.Label;
+                        item.InsertText = suggestion.InsertText;
+                        item.Description = suggestion.TypeName;
+                        item.Kind = CompletionKind::Property;
+                        items.push_back(std::move(item));
+                    }
+                    return items;
+                }
+
+                for (const std::string& componentName : SceneCommandUtils::ListAttachedComponentNames(
+                         context.ActiveScene,
+                         gameObjectName,
+                         componentPrefix))
                 {
                     CompletionItem item;
-                    item.Label = objectRef + "." + propertyName;
-                    item.InsertText = objectRef + "." + propertyName;
-                    item.Description = "property";
+                    const std::string pathHead = std::string(gameObjectName) + "@" + componentName;
+                    item.Label = pathHead;
+                    item.InsertText = pathHead;
+                    item.Description = "component";
+                    item.Kind = CompletionKind::ComponentType;
+                    items.push_back(std::move(item));
+                }
+                return items;
+            }
+
+            if (dotIndex != std::string::npos)
+            {
+                for (const PropertyPathSuggestion& suggestion : SceneCommandUtils::ListPropertyPathSuggestions(
+                         context.ActiveScene,
+                         head,
+                         {},
+                         memberPrefix))
+                {
+                    CompletionItem item;
+                    item.Label = suggestion.Label;
+                    item.InsertText = suggestion.InsertText;
+                    item.Description = suggestion.TypeName;
                     item.Kind = CompletionKind::Property;
                     items.push_back(std::move(item));
                 }

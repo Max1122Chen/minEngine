@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** Draft
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-02（§6.4 S04c value 补全与校验着色）
+- **Last updated:** 2026-09-02（§10.2 S08 Done；§10.4 S10 Scene 对象命令）
 - **Branch:** `feat/editor`（Runtime Command 核心可合入 `master`；Console UI 在 Editor）
 - **Depends on:** P4 Reflection · Serialization property path · `CORE-F07`（展示名，inspect 可读性）
 - **Related:** [Implementation](./ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_IMPLEMENTATION.md)（待建） · [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md) · [ACTIVE_WORK.md](../ACTIVE_WORK.md) · 外部参考 [Debug Console Design Guide](../../external/minEngine%20Debug%20Console%20%26%20Command%20System%20Design%20Guide.md) · [CORE-F07](../Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md)
@@ -88,7 +88,8 @@
 | P1 | **Schema-first** | 每个命令有机器可读的参数描述；Console/Agent 不靠猜 |
 | P2 | **Command ≠ Property** | 动作（`spawn`）与状态（`Player.Health`）分模型，Console 同时暴露两者 |
 | P3 | **Frontend 无关** | 命令不感知触发来源（菜单 / 文本 / JSON） |
-| P4 | **Reflection 优先** | `get`/`set`/`inspect` 走 `MEProperty` + setter，非 memory offset |
+| P4 | **Reflection 优先** | `get`/`set`/`inspect` 走 `MEProperty` + Serializer path，非 memory offset |
+| P4b | **PropertyPath 有边界** | **不**强行让 `get`/`set` 覆盖 GO/MEObject 引擎字段（如 `m_Name`、`Invisible` 元数据）；此类操作用 **专用 Scene 命令**（`rename`、`activate`…）走 `IEditorCommand` |
 | P5 | **Completion 一等公民** | 发现与补全与执行同等重要（Agent-friendly 前提） |
 | P6 | **Logger 解耦** | Log 管道独立；Console 可订阅展示 |
 | P7 | **渐进迁移** | 保留 `IEditorCommand` Undo 栈；Unified Command 通过 Adapter 接入，不 big-bang 重写 Scene 编辑 |
@@ -135,7 +136,7 @@ Layer B: Editor Undo Transaction (现有)
   - 由 Layer A 的 editor.* 命令内部构造（Adapter）
 ```
 
-**本期不删除 `IEditorCommand`。** 新增 `editor.undo` / `editor.redo` 等 meta 命令可调用 `EditorCommandStack`；Scene 变更类统一命令（如 `scene.delete_entity`）内部 `Submit` 现有 Command 对象。
+**本期不删除 `IEditorCommand`。** 新增 **`undo` / `redo`** meta 命令（无 `editor.` 前缀）调用 `EditorCommandStack`；Scene 变更类统一命令（如 `scene.delete_entity`）内部 `Submit` 现有 Command 对象。Console 的 **`undo` / `redo` 命令**与 Editor **场景级** Ctrl+Z / Ctrl+Y（`EditorInputHub`）共用同一 `TryUndo` / `TryRedo` 接口；**Command 输入框内** Ctrl+Z / Ctrl+Y 仍为 ImGui **文本撤销/重做**（见 §10.1.3）。
 
 ---
 
@@ -440,6 +441,8 @@ public:
 3. Object 嵌套：递归 inspect；set 仅叶子或支持 JSON 字面（后期）。
 4. ObjectPtr / Asset：MVP 只读或 GUID 字符串；完整 picker 补全属 Editor。
 
+**S08 路径扩展（§10.2）：** 显式 Component 语法 `GOName@ComponentName.FieldPath`（`@` 分隔 GO 与 Component）；短路径 `GOName.Field` 仅在无歧义时保留。
+
 ### 5.3 `find` 命令
 
 ```text
@@ -449,6 +452,24 @@ find name=Enemy_01
 ```
 
 实现：遍历 `ActiveScene` GameObject / Component 反射类型名匹配；返回列表（名称、类型、GUID）供补全与 Agent。
+
+### 5.4 PropertyPath vs Scene 对象命令（边界）
+
+**设计决策（2026-09-02，用户拍板）：**
+
+| 能力 | 模型 | 示例 |
+|------|------|------|
+| **可序列化组件/嵌套数据字段** | `get` / `set` / `inspect` + `PropertyPath` | `Sun@DirectionalLightComponent.m_Intensity` |
+| **对象级语义操作**（改名、启用/禁用、删除…） | **专用 Console 命令** → 现有 `IEditorCommand` | `rename Sun Sol`、`activate Sun@PhysicsComponent` |
+
+**不做的方向：**
+
+- 不为 `MEObject::m_Name`（`Invisible`）、GUID 等引擎内部字段扩展 PropertyPath 解析
+- 不为「继承链上所有反射成员」统一开放 `set` — 只覆盖 **Inspector 已通过 Serializer path 编辑的 data 字段**
+
+**专用命令收益：** 语义清晰、可独立校验（重名、空名）、与 Hierarchy/Inspector 共用 Undo、Agent schema 更稳定。
+
+详见 **§10.4 S10**。
 
 ---
 
@@ -480,7 +501,7 @@ public:
 |----------|------|
 | 行首 / 命令名 | `CommandRegistry::List(prefix)` + fuzzy |
 | 第一个参数 | 按 `CommandArgDescriptor.Type` + EnumValues |
-| PropertyPath | 对象名列表 → 属性名 → 嵌套字段 |
+| PropertyPath | 对象名列表 → 属性名 → 嵌套字段；**属性候选 `Description` = 反射类型名**（§10.2.2） |
 | `find` query | `type=` 后接 Component 类名列表 |
 
 与 **Command Palette**（未来）共用 `CompletionService` + `CommandRegistry`。
@@ -827,7 +848,7 @@ Player : Character             [InspectHeader]
 | `help` | Both | 列表 / `help <cmd>` |
 | `get` / `set` / `inspect` / `find` | Both | Builtin meta |
 | `list_go` | Editor | 列举当前场景 GameObject（名称 + 类型） |
-| `editor.undo` / `editor.redo` | Editor | 转 CommandStack |
+| `undo` / `redo` | Editor | 转 `EditorCommandStack`（与场景 Ctrl+Z / Ctrl+Y 共用 `TryUndo`/`TryRedo`，§10.1） |
 | `render.wireframe` | Both | 切换 debug draw（若已有 flag） |
 
 `list_go` 示例输出：
@@ -876,15 +897,228 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | **S04** | `CompletionService` + `CommandHistory`（Runtime + 基础 Presenter 接线） | headless + 手动 |
 | **S04b** | **IDE 式补全 UX**（§6.3、§8.3）：live Suggestions 条、选中高亮、Tab 写回、↑↓ 模式分离 | Editor 目视 + 交互回归 |
 | **S04c** | **Type-aware value completion**（§6.4）：`set <path> ` 后 bool/enum 补全；输入合法性整行着色（Valid/Partial/Invalid）；enum `set` | `command-system` + Editor 目视 |
-| **S05** | Console `Command` Tab + `CommandConsoleStyle` 配色 | Editor 目视 Dark/Light |
-| **S06** | 示范 `list_go` / `editor.undo` Adapter | Undo 回归 |
-| **S07** | `ExportSchema` JSON（Agent 预留） | 测试 schema 快照 |
+| **S05** | Console `Command` Tab + `CommandConsoleStyle` 配色 | Editor 目视 Dark/Light — **验收 C 已通过**（2026-09-02） |
+| **S06** | **`undo` / `redo` + Console `set` → CommandStack**（§10.1） | **Done** — `TryUndo`/`TryRedo`；`set`→`SetObjectPropertyCommand` |
+| **S07** | `ExportSchema` JSON（Agent 预留） | **Deferred** — 测试 schema 快照 |
+| **S08** | **PropertyPath v2** — `@` 显式 Component、歧义检测；**属性补全显示类型名**（§10.2） | **Done** — `command-system` 20 cases |
+| **S09** | **Validation 增强** — Min/Max、Required、机器友好错误 + 建议（§10.3） | `command-system` + Console |
+| **S10** | **Scene 对象命令** — `rename` / `activate` / `deactivate`（§10.4） | Undo 往返 + 与 Inspector 一致 |
 
-**建议顺序：** S00 → S01 → S02 → S05（最小可用 Console）→ S03/S04 → **S04b** → **S04c** → S06/S07。
+**建议顺序：** S00 → … → **S06** ✓ → **S08** ✓ → **S09** → **S10** →（Feature 可收口）；**S07** 按需。
+
+**注：** S10 的 `activate`/`deactivate` 依赖 **`CORE-F06` Component Enable** land 到 `feat/editor`（或 merge `master`）后再实现；`rename` 可先做。
+
+**Deferred（非硬卡点）：** Console 极矮窗口 min-size 布局；S07 ExportSchema；Command Palette。
 
 **前置：** `CORE-F07` S01 可与 ED-F03 S01 并行；inspect 展示名在 S05 前接入即可。
 
 **S04 / S04b 分界：** S04 交付 `CompletionService` API 与 headless 可测逻辑；S04b 交付 Editor 侧 IDE 式交互（本节 §6.3、§8.3），**Console 补全验收以 S04b 为准**。
+
+### 10.1 S06 — `undo` / `redo` 与 Console `set` 走 CommandStack
+
+**状态：** Done（2026-09-02）
+
+**用户约定（2026-09-02，修订）：**
+- Console 命令名为 **`undo` / `redo`**（**不要** `editor.undo` 命名空间）
+- **`undo` / `redo` 命令**与 Editor **场景级** Undo/Redo（菜单、Viewport 等 **`EditorInputHub` Ctrl+Z / Ctrl+Y**）共用 **`TryUndo` / `TryRedo`** → `EditorCommandStack`
+- **Command 输入框聚焦时**：Ctrl+Z / Ctrl+Y = **文本**撤销/重做（ImGui 默认）；**不**劫持为场景 Undo
+- **S06 范围包含**：Console `set` → `CommandStack`（`SetObjectPropertyCommand`）
+- S07 ExportSchema **延后**；Console 目视验收 C **已通过**；极矮布局 **延后**
+
+#### 10.1.1 命令契约
+
+| 命令 | Scope | 行为 | 输出 |
+|------|-------|------|------|
+| `undo` | Editor | `CommandStack::Undo()` 若 `CanUndo()` | Ok：`Undid: <PeekUndoDescription>`；否则 Warning：`Nothing to undo` |
+| `redo` | Editor | `CommandStack::Redo()` 若 `CanRedo()` | Ok：`Redid: <PeekRedoDescription>`；否则 Warning：`Nothing to redo` |
+
+- 注册于 `EditorConsoleCommands`（与 `list_go` 同级），**不**放入 Runtime Builtin。
+- `help` 列表可见；Completion 可补全命令名 `undo` / `redo`。
+
+#### 10.1.2 场景 Undo 单实现（`TryUndo` / `TryRedo`）
+
+抽取 Editor 侧薄封装（建议 `Editor/src/Shell/EditorUndoRedoActions.h`）：
+
+```cpp
+struct EditorUndoRedoResult { bool bPerformed; const char* Description; };
+
+EditorUndoRedoResult TryUndo(IEditorContext& context);
+EditorUndoRedoResult TryRedo(IEditorContext& context);
+```
+
+**调用方（场景级 Undo/Redo — 必须全部走此 API）：**
+
+1. **`EditorInputHub::ProcessGlobalUndoRedoShortcuts`** — Ctrl+Z / Ctrl+Y（`!WantTextInput` 时生效）
+2. **`MainMenuWindow` Undo/Redo 菜单项**
+3. **Console `undo` / `redo` 命令** — 将 `TryUndo`/`TryRedo` 结果格式化为 `CommandResult`
+
+三者行为一致：同一 `EditorCommandStack`、同一 `PeekUndoDescription` / `PeekRedoDescription`。
+
+#### 10.1.3 Command 输入框 vs 场景快捷键（分界）
+
+| 上下文 | Ctrl+Z / Ctrl+Y | 场景 Undo 方式 |
+|--------|-----------------|----------------|
+| **Command 输入框聚焦**（`WantTextInput`） | **文本**撤销/重做（ImGui `InputText` 内置） | 输入 `undo` / `redo` 命令 |
+| **Viewport / Hierarchy / 非文本输入** | **场景** Undo/Redo（`EditorInputHub` → `TryUndo`/`TryRedo`） | 同上 + 快捷键 |
+| **MainMenu** | — | Edit → Undo/Redo → `TryUndo`/`TryRedo` |
+
+**实现约束：**
+- **禁止**在 `CommandConsolePresenter` 中拦截 Ctrl+Z/Y 做场景 Undo。
+- 保持 `EditorInputHub::ShouldProcessGlobalShortcuts` 对 `WantTextInput` 的现有判断（输入框激活时不走全局场景快捷键）。
+- Console 用户若需撤销场景编辑：执行 `undo` / `redo`，或将焦点移出输入框后使用 Ctrl+Z / Ctrl+Y。
+
+#### 10.1.4 Console `set` → `IEditorCommand`（§13 门禁）
+
+当前 Builtin `set` 经 `PropertyPath::SetValue` **直接写场景**，**不进** Undo 栈 — §13「`undo` 可撤销 Console 触发的可 Undo 操作」未满足。
+
+**S06 必须包含：**
+
+- Editor 层拦截或替换 `set` 执行路径（`CommandScope::Editor` 专用 handler 或 Presenter 前置分发）：
+  1. 解析 path + value（复用现有 `PropertyPath` / `SetValueValidation`）
+  2. 序列化 **before** 值（与 Inspector `SetObjectPropertyCommand` 相同 buffer 格式）
+  3. 写入 **after** 值
+  4. `SceneEditor::SubmitSetObjectProperty` → `EditorCommandStack::Execute(SetObjectPropertyCommand)`
+- Runtime headless `set`（`minEngineTests`、无 Editor）可保留直写路径，或测试仅跑 Builtin 注册前的路径 — **实现时二选一并在 Progress 记录**。
+
+**验证：**
+
+- Editor：`set Sun.m_Intensity 3` → `undo` → `get` 恢复原值；焦点在 Viewport 时 Ctrl+Z 等效
+- Command 输入框内 Ctrl+Z 仅撤销**输入文本**，不改变场景属性
+- `command-system`：至少 2 case（undo/redo 空栈 + set/undo 往返）；Editor 集成测 `undo`/`redo` 命令
+- 菜单 Undo 与 Console `undo` 描述文案一致（同一 `PeekUndoDescription`）
+
+---
+
+### 10.2 S08 — PropertyPath v2（`GOName@Component.Field`）
+
+**状态：** Done（2026-09-02）
+
+**动机：** 当前 `PropertyPath` 在 GameObject 上 **Component 属性回退**（首个匹配 Component）对多 Component、同名字段可能**静默歧义** — 技术债自 S01 起已记录。
+
+#### 10.2.1 路径语法（定稿）
+
+**显式 Component 路径：**
+
+```text
+<GOName>@<ComponentName>.<FieldPath>
+```
+
+| 段 | 说明 | 示例 |
+|----|------|------|
+| `GOName` | 场景中 GameObject 名（与现有一致） | `Sun` |
+| `@` | **固定分隔符** — GameObject 与 Component 之分界 | `Sun@` |
+| `ComponentName` | 反射类名（短名或全名，与 `find type=` 一致） | `DirectionalLightComponent` |
+| `FieldPath` | 组件内属性子路径（`.` 分段，与现有一致） | `m_Intensity` |
+
+**完整示例：** `Sun@DirectionalLightComponent.m_Intensity`
+
+**嵌套 struct / 对象字段：** 点在 `FieldPath` 内继续展开，例如 `Player@ReflectionSampleComponent.SampleData.EnumField`（S08 随 v1 嵌套能力一并验）。
+
+**保留短路径（向后兼容）：** `Sun.m_Intensity` — 仅当**无歧义**（唯一 Component 含该字段）时解析成功；否则 **失败**并提示使用 `@` 显式路径。
+
+**非目标（S08）：** 层级 GameObject 路径、`[]` 数组下标、Asset GUID、`@selection`。
+
+#### 10.2.2 行为
+
+| 能力 | 说明 |
+|------|------|
+| **解析** | `PropertyPath::Parse` 识别 `@` 段；`Resolve` 定位到指定 Component 实例 |
+| **歧义检测** | 短路径多匹配 → Error + 列出 `GOName@Component.Field` 候选 |
+| **补全** | 输入 `Sun@` 后补 Component 类型；`Sun@DirectionalLightComponent.` 后补字段；歧义时 Suggestions 展示完整 `@` 路径 |
+| **属性类型显示** | 属性候选 `CompletionItem.Description` = **反射类型短名**（如 `float`、`bool`、`SampleEnum`、`Vector3`），**替代**固定文案 `property`；实现可复用 `SetValueValidation` / `MEProperty` 分类逻辑 |
+| **get/set/inspect** | 显式路径与 Inspector / Undo buffer 使用同一 property 子路径 |
+
+**验证：** `command-system` 多 Component 夹具；歧义错误含 ≥2 条 `@` 候选；`Sun@DirectionalLightComponent.m_Intensity` 与 Inspector 一致；Suggestions 行显示 `- float` 而非 `- property`。
+
+---
+
+### 10.4 S10 — Scene 对象命令（`rename` / `activate` / `deactivate`）
+
+**状态：** Planned（S09 之后，或 `rename` 子步可提前）
+
+**动机（2026-09-02）：** 用户期望能改 GO 名称、启用/禁用 Component，但 **不** 通过扩展 PropertyPath 暴露 `MEObject`/`Invisible` 字段。与 §5.4 一致：**专用命令 + 现有 `IEditorCommand`**。
+
+#### 10.4.1 设计原则
+
+| 原则 | 说明 |
+|------|------|
+| **命令 ≠ PropertyPath** | 对象级操作不进 `get`/`set` 路径语法 |
+| **复用 Editor 命令** | Console 只做解析 + 分发，不重复 Scene 逻辑 |
+| **可 Undo** | 全部 `EditorCommandStack::Execute`（与 S06 `set` 同模式） |
+| **Scope** | `CommandScope::Editor`；注册于 `EditorConsoleCommands` |
+
+#### 10.4.2 命令契约（MVP）
+
+| 命令 | 语法 | 行为 | 现有落点 |
+|------|------|------|----------|
+| `rename` | `rename <GOName> <NewName>` | 场景内按名查找 GO → 改名 | `SceneEditor::SubmitRenameGameObject` → `RenameGameObjectCommand` |
+| `activate` | `activate <GOName>@<ComponentName>` | 启用**指定 Component**（`@` **必填**） | **依赖 `CORE-F06`** `bEnabled` + 新/现有 Enable 命令 |
+| `deactivate` | `deactivate <GOName>@<ComponentName>` | 禁用**指定 Component**（`@` **必填**） | 同上 |
+
+**参数约定：**
+
+- `<GOName>`：与 `find` / PropertyPath 一致，场景内名称匹配（首匹配或唯一性错误 — 与 S08 歧义策略对齐）。
+- `<NewName>`：非空；空名行为与 Editor 一致（sanitize 为 `GameObject_<id>`）。
+- `@<ComponentName>`：**`activate` / `deactivate` 必填**；与 S08 相同 Component 类名解析。**不提供**省略 `@` 的 GO 级一键启用/禁用（无 `activate Sun` / `deactivate Sun`）。
+
+**输出示例：**
+
+```text
+> rename Sun Sol
+Renamed 'Sun' → 'Sol'
+
+> activate Sun@DirectionalLightComponent
+Activated DirectionalLightComponent on 'Sun'
+```
+
+失败：Error + 可读原因（未找到对象、重名、缺少 `@`、Component 不存在、CORE-F06 未就绪等）。
+
+#### 10.4.3 实现策略
+
+1. **`EditorConsoleCommands`** 注册 `rename` / `activate` / `deactivate`（与 `list_go`、`undo` 同级）。
+2. 解析层可抽 **`SceneCommandArgs`** 小工具：解析 `GOName`、`GOName@Component`（复用 S08 `@` 语法）。
+3. **`rename`（S10a，无阻塞）**：可直接落地；`command-system` 不必覆盖（Editor 命令），但可加 headless 解析单测或 Editor 手动验收清单。
+4. **`activate` / `deactivate`（S10b）**：**Blocked on `CORE-F06`**；Console 命令在 F06 land 后接线 `SubmitSetComponentEnabled`（或等价 `IEditorCommand`，实现时命名）。
+5. **补全：** 命令名 + 第一参数 GO 名（复用 `ListGameObjectNames`）；第二参数 `rename` 不补全；`activate`/`deactivate` 参数形如 `GOName@` 后补 Component 类型（与 S08 共用，**不接受**无 `@` 的 GO 名补全）。
+6. **ExportSchema（S07）**：上述命令纳入 schema 时标记 `undoable: true`。
+
+#### 10.4.4 非目标（S10）
+
+| 项 | 阶段 |
+|----|------|
+| `delete` / `duplicate` / `add_component` Console 命令 | 后续切片或 ED-F02 工作流 |
+| PropertyPath 访问 `m_Name`、GUID、`Invisible` 字段 | **明确不做**（§5.4） |
+| GO 级 `activate` / `deactivate`（无 `@`） | **明确不做**（§10.4.2） |
+
+#### 10.4.5 验证
+
+- `rename Sun Sol` → `find Sol` 命中；`undo` 恢复 `Sun`
+- 菜单/Hierarchy 改名与 Console `rename` 共用 `RenameGameObjectCommand` 描述
+- CORE-F06 就绪后：`deactivate Sun@X` → System 跳过该组件；`activate` 恢复；`undo` 往返
+- `help` 列出三条命令；Completion 补全命令名
+
+**建议子步：** **S10a** = `rename` only（可夹在 S08/S09 之间快速交付）；**S10b** = `activate`/`deactivate` after CORE-F06。
+
+---
+
+### 10.3 S09 — Validation 增强
+
+**状态：** Planned（S08 之后或并行，视 S06 负载）
+
+**动机：** §6.4 `ValidationService` MVP 由 `SetValueValidation` 覆盖 value 阶段；执行前校验、metadata 约束、Agent 友好错误尚未系统化。
+
+**目标：**
+
+| 能力 | 说明 |
+|------|------|
+| **执行前校验** | `CommandExecutor` 或 per-command hook：参数个数、Required、`CommandArgType` |
+| **属性约束** | 反射 metadata：`ClampMin` / `ClampMax` / `ReadOnly`（已有部分在 `PropertyPath`）→ `set` 前校验并 **着色/错误消息** |
+| **机器友好错误** | 统一格式：`expected float, got 'foo'` + `suggestions: [true, false]`（与 §6.4 对齐） |
+| **与 S04c 整合** | `SetValueValidation` 升格为 `ValidationService` 子集或合并；避免双份类型推断逻辑 |
+
+**非目标（S09）：** 跨字段交叉校验、自定义 Validator 插件、全命令 JSON Schema。
+
+**验证：** `command-system` 覆盖 clamp 越界、readonly `set`、enum 非法值；Console 错误行分色与建议文本一致。
 
 ---
 
@@ -909,7 +1143,7 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | `IEditorCommand` 与 Unified 重复 | 维护负担 | Adapter 模式；文档边界；不双写 Scene 逻辑 |
 | Completion 与 ImGui 焦点 / 输入模式 | 体验差、Tab 不写回 | §6.3 状态机；Tab 在 InputText Callback 内写回；Suggestions 固定条非 Tooltip |
 | Scope 泄漏（Runtime 调 Editor 命令） | 崩溃 | Executor 强制 scope 检查 |
-| 展示名 vs 逻辑名混淆 | set 失败 | 文档 + 错误提示列出合法成员名 |
+| 展示名 vs 逻辑名混淆 | set 失败 | 文档 + 错误提示列出合法成员名；对象级操作用专用命令（§5.4） |
 | 体量过大 | 延期 | 严格 MVP；S05 前不追求 Palette |
 
 ---
@@ -918,10 +1152,10 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 
 - [ ] `CommandRegistry` + ≥3 个示范命令 + Builtin meta 命令可 headless 测试
 - [ ] `get`/`set`/`inspect` 对 Scene 内 GameObject Component  primitive 字段可用
-- [ ] Console UI：Command Tab 输入、执行；**IDE 式补全**（§8.3）：输入时 Suggestions 条、选中高亮、Tab 写回、↑↓ 在补全与 history 间模式分离；**成功/错误/路径/值分色**（§8.4）；Output Tab 日志无回归
-- [ ] `editor.undo` 可撤销 Console 触发的可 Undo 操作
-- [ ] Logger 输出出现在 Console；关闭 Console 不影响 log
-- [ ] `ExportSchema` 产出稳定 JSON（Agent 预留）
+- [x] Console UI：Command Tab 输入、执行；IDE 式补全（§8.3）；成功/错误/路径/值分色（§8.4）；Output Tab 日志无回归 — **目视验收 C 已通过**（2026-09-02；极矮布局延后）
+- [x] **`undo` / `redo`** 可撤销 Console 触发的可 Undo 操作（与场景 Ctrl+Z / Ctrl+Y 共用 `TryUndo`/`TryRedo`）— **S06 Done**
+- [ ] **Scene 对象命令** `rename`（+ CORE-F06 后 `activate`/`deactivate`）可 Undo，与 Inspector 行为一致 — **S10**
+- [ ] `ExportSchema` 产出稳定 JSON — **S07 Deferred**
 - [ ] `verify.ps1` 通过；`PROGRESS_LOG` 记录人工步骤
 
 ---
@@ -950,3 +1184,7 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | 2026-09-02 | §4.4 `CommandOutputLine`；§8.4 语义配色规范 |
 | 2026-09-02 | §6.2–6.3、§8.2–8.3 修订：IDE 式 live 补全、Suggestions 条、输入模式状态机、Tab 写回契约、S04b 切片；记录当前实现差距 |
 | 2026-09-02 | S04c：`SetValueValidation`、bool/enum value 补全、输入合法性整行着色、enum `set`；§10 切片表补 S04c |
+| 2026-09-02 | S10：`activate`/`deactivate` **必须** `GOName@Component`（`@` 必填）；不提供 GO 级一键启用/禁用 |
+| 2026-09-02 | 方案修订：§5.4 PropertyPath 边界；不扩展 `m_Name` 等引擎字段；**S10** Scene 命令 `rename`/`activate`/`deactivate`；S08 属性补全显示类型名；S10b 依赖 CORE-F06 |
+| 2026-09-02 | **S06 Done：** `EditorUndoRedoActions`（`TryUndo`/`TryRedo`）；Console `undo`/`redo`；`set`→`CommandStack`（`EditorSetValue` hook + `TryBuildSetTransaction`）；`command-system` 16 cases PASS |
+| 2026-09-02 | 排期修订：S06=`undo`/`redo`+CommandStack+TryUndo 与场景快捷键同接口；输入框 Ctrl+Z 仍为文本操作；S07 Deferred；S05 目视 C Done；S08=`GOName@Component.Field`；S09 Validation |

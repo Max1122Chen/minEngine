@@ -4,7 +4,7 @@
 
 #include "Runtime/Core/Command/CompletionService.h"
 #include "Runtime/Core/Command/SetValueValidation.h"
-
+#include "Services/EditorConsoleCommands.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
 
@@ -181,6 +181,8 @@ namespace minEngine
 
         Command::CommandContext commandContext;
 
+        commandContext.EditorContextOpaque = &context;
+
         if (const EditorSubModule* sceneModule = context.FindSubModule(SceneEditor::kModuleId))
 
         {
@@ -194,6 +196,15 @@ namespace minEngine
             }
 
         }
+
+        const Command::CommandContext sceneContext = commandContext;
+        commandContext.EditorSetValue =
+            [&context, sceneContext](std::string_view propertyPathText, std::string_view valueLiteral) -> Command::CommandResult
+        {
+            Command::CommandContext editorSetContext = sceneContext;
+            editorSetContext.EditorContextOpaque = &context;
+            return ExecuteEditorConsoleSetValue(editorSetContext, propertyPathText, valueLiteral);
+        };
 
 
 

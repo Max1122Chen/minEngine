@@ -1,6 +1,9 @@
 #include "Runtime/Core/PropertyPath/PropertyPath.h"
 
 #include "Runtime/Core/Command/CommandResult.h"
+#include "Runtime/Core/Reflection/MEEnum.h"
+#include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/MEProperties.h"
 #include "Runtime/Core/Reflection/MEProperties.h"
 #include "Runtime/Core/Reflection/Reflection.h"
@@ -39,8 +42,12 @@ namespace minEngine::Command
         }
     }
 
-    PropertyPath::PropertyPath(std::string objectRef, std::string propertySubPath)
-        : m_ObjectRef(std::move(objectRef))
+    PropertyPath::PropertyPath(
+        std::string gameObjectName,
+        std::string explicitComponentName,
+        std::string propertySubPath)
+        : m_GameObjectName(std::move(gameObjectName))
+        , m_ExplicitComponentName(std::move(explicitComponentName))
         , m_PropertySubPath(std::move(propertySubPath))
     {
     }
@@ -53,17 +60,391 @@ namespace minEngine::Command
         }
 
         const size_t dotIndex = text.find('.');
-        if (dotIndex == std::string_view::npos)
+        const std::string_view head = dotIndex == std::string_view::npos ? text : text.substr(0, dotIndex);
+        std::string propertySubPath;
+        if (dotIndex != std::string_view::npos && dotIndex + 1 < text.size())
         {
-            return PropertyPath(std::string(text), std::string{});
+            propertySubPath = std::string(text.substr(dotIndex + 1));
         }
 
-        if (dotIndex == 0 || dotIndex + 1 >= text.size())
+        if (head.empty())
         {
             return std::nullopt;
         }
 
-        return PropertyPath(std::string(text.substr(0, dotIndex)), std::string(text.substr(dotIndex + 1)));
+        const size_t atIndex = head.find('@');
+        std::string gameObjectName;
+        std::string explicitComponentName;
+        if (atIndex != std::string_view::npos)
+        {
+            if (atIndex == 0)
+            {
+                return std::nullopt;
+            }
+
+            gameObjectName = std::string(head.substr(0, atIndex));
+            explicitComponentName = std::string(head.substr(atIndex + 1));
+            if (gameObjectName.empty())
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            gameObjectName = std::string(head);
+        }
+
+        return PropertyPath(std::move(gameObjectName), std::move(explicitComponentName), std::move(propertySubPath));
+    }
+
+    std::string PropertyPath::GetObjectRef() const
+    {
+        if (m_ExplicitComponentName.empty())
+        {
+            return m_GameObjectName;
+        }
+
+        return m_GameObjectName + "@" + m_ExplicitComponentName;
+    }
+
+    std::string PropertyPath::GetCanonicalPath() const
+    {
+        if (m_PropertySubPath.empty())
+        {
+            return GetObjectRef();
+        }
+
+        return GetObjectRef() + "." + m_PropertySubPath;
+    }
+
+    bool PropertyPath::ComponentTypeMatches(
+        const Reflection::MEClass* componentClass,
+        std::string_view typeQuery)
+    {
+        if (componentClass == nullptr || typeQuery.empty())
+        {
+            return false;
+        }
+
+        const std::string_view className = componentClass->GetName();
+        if (className == typeQuery)
+        {
+            return true;
+        }
+
+        if (className.size() >= typeQuery.size()
+            && className.substr(className.size() - typeQuery.size()) == typeQuery)
+        {
+            return true;
+        }
+
+        const std::string shortName = FormatComponentTypeName(componentClass);
+        return shortName == typeQuery;
+    }
+
+    std::string PropertyPath::FormatComponentTypeName(const Reflection::MEClass* componentClass)
+    {
+        if (componentClass == nullptr)
+        {
+            return {};
+        }
+
+        const std::string& className = componentClass->GetName();
+        const size_t scopePos = className.rfind("::");
+        return scopePos != std::string::npos ? className.substr(scopePos + 2) : className;
+    }
+
+    Component* PropertyPath::FindComponentByTypeName(GameObject& gameObject, std::string_view componentTypeName)
+    {
+        if (componentTypeName.empty())
+        {
+            return nullptr;
+        }
+
+        for (const std::shared_ptr<Component>& component : gameObject.GetAllComponents())
+        {
+            if (!component)
+            {
+                continue;
+            }
+
+            const Reflection::MEClass* componentClass = component->GetClass();
+            if (componentClass != nullptr && ComponentTypeMatches(componentClass, componentTypeName))
+            {
+                return component.get();
+            }
+        }
+
+        return nullptr;
+    }
+
+    void PropertyPath::CollectShortPathMatches(
+        GameObject& gameObject,
+        const std::string& propertySubPath,
+        std::vector<ResolvedPropertyTarget>& outMatches)
+    {
+        outMatches.clear();
+        if (propertySubPath.empty())
+        {
+            return;
+        }
+
+        const Reflection::MEClass* gameObjectClass = gameObject.GetClass();
+        if (gameObjectClass != nullptr
+            && TryResolvePropertySubPath(&gameObject, gameObjectClass, propertySubPath))
+        {
+            ResolvedPropertyTarget target;
+            target.OwnerObject = &gameObject;
+            target.OwnerClass = gameObjectClass;
+            target.PropertySubPath = propertySubPath;
+            outMatches.push_back(std::move(target));
+        }
+
+        for (const std::shared_ptr<Component>& component : gameObject.GetAllComponents())
+        {
+            if (!component)
+            {
+                continue;
+            }
+
+            const Reflection::MEClass* componentClass = component->GetClass();
+            if (componentClass == nullptr)
+            {
+                continue;
+            }
+
+            if (TryResolvePropertySubPath(component.get(), componentClass, propertySubPath))
+            {
+                ResolvedPropertyTarget target;
+                target.OwnerObject = component.get();
+                target.OwnerClass = componentClass;
+                target.PropertySubPath = propertySubPath;
+                outMatches.push_back(std::move(target));
+            }
+        }
+    }
+
+    PropertyPathResolveStatus PropertyPath::TryResolve(
+        const CommandContext& context,
+        ResolvedPropertyTarget& outTarget,
+        std::vector<std::string>* outAmbiguousCandidates) const
+    {
+        outTarget = {};
+        if (outAmbiguousCandidates != nullptr)
+        {
+            outAmbiguousCandidates->clear();
+        }
+
+        if (context.ActiveScene == nullptr)
+        {
+            return PropertyPathResolveStatus::NotFound;
+        }
+
+        GameObject* gameObject = FindGameObjectByName(context.ActiveScene, m_GameObjectName);
+        if (gameObject == nullptr)
+        {
+            return PropertyPathResolveStatus::NotFound;
+        }
+
+        if (m_PropertySubPath.empty())
+        {
+            outTarget.OwnerObject = gameObject;
+            outTarget.OwnerClass = gameObject->GetClass();
+            return outTarget.OwnerClass != nullptr ? PropertyPathResolveStatus::Ok
+                                                   : PropertyPathResolveStatus::NotFound;
+        }
+
+        if (!m_ExplicitComponentName.empty())
+        {
+            Component* component = FindComponentByTypeName(*gameObject, m_ExplicitComponentName);
+            if (component == nullptr)
+            {
+                return PropertyPathResolveStatus::NotFound;
+            }
+
+            const Reflection::MEClass* componentClass = component->GetClass();
+            if (componentClass == nullptr
+                || !TryResolvePropertySubPath(component, componentClass, m_PropertySubPath))
+            {
+                return PropertyPathResolveStatus::NotFound;
+            }
+
+            outTarget.OwnerObject = component;
+            outTarget.OwnerClass = componentClass;
+            outTarget.PropertySubPath = m_PropertySubPath;
+            return PropertyPathResolveStatus::Ok;
+        }
+
+        std::vector<ResolvedPropertyTarget> matches;
+        CollectShortPathMatches(*gameObject, m_PropertySubPath, matches);
+        if (matches.empty())
+        {
+            return PropertyPathResolveStatus::NotFound;
+        }
+
+        if (matches.size() == 1)
+        {
+            outTarget = std::move(matches.front());
+            return PropertyPathResolveStatus::Ok;
+        }
+
+        if (outAmbiguousCandidates != nullptr)
+        {
+            for (const ResolvedPropertyTarget& match : matches)
+            {
+                std::string candidatePath = m_GameObjectName;
+                if (match.OwnerObject != gameObject)
+                {
+                    const Reflection::MEClass* ownerClass = match.OwnerClass;
+                    if (ownerClass != nullptr)
+                    {
+                        candidatePath.push_back('@');
+                        candidatePath += FormatComponentTypeName(ownerClass);
+                    }
+                }
+
+                candidatePath.push_back('.');
+                candidatePath += m_PropertySubPath;
+                outAmbiguousCandidates->push_back(std::move(candidatePath));
+            }
+        }
+
+        return PropertyPathResolveStatus::Ambiguous;
+    }
+
+    bool PropertyPath::Resolve(const CommandContext& context, ResolvedPropertyTarget& outTarget) const
+    {
+        return TryResolve(context, outTarget, nullptr) == PropertyPathResolveStatus::Ok;
+    }
+
+    CommandResult PropertyPath::BuildResolveErrorResult(
+        PropertyPathResolveStatus status,
+        const std::vector<std::string>* ambiguousCandidates) const
+    {
+        CommandOutputBuilder builder;
+        if (status == PropertyPathResolveStatus::Ambiguous)
+        {
+            builder.AddLine(
+                CommandOutputKind::Error,
+                "Error: ambiguous property path '" + GetCanonicalPath() + "'. Use an explicit component path:");
+            if (ambiguousCandidates != nullptr)
+            {
+                for (const std::string& candidate : *ambiguousCandidates)
+                {
+                    builder.AddSegment(CommandOutputKind::Hint, "  ");
+                    builder.AddLine(CommandOutputKind::ListItemName, candidate);
+                }
+            }
+            return builder.BuildError("ambiguous property path");
+        }
+
+        builder.AddLine(
+            CommandOutputKind::Error,
+            "Error: could not resolve property path '" + GetCanonicalPath() + "'");
+        return builder.BuildError("property path not found");
+    }
+
+    CommandResult PropertyPath::GetValue(const CommandContext& context) const
+    {
+        std::vector<std::string> ambiguousCandidates;
+        ResolvedPropertyTarget target;
+        const PropertyPathResolveStatus status = TryResolve(context, target, &ambiguousCandidates);
+        if (status != PropertyPathResolveStatus::Ok)
+        {
+            return BuildResolveErrorResult(status, &ambiguousCandidates);
+        }
+
+        if (m_PropertySubPath.empty())
+        {
+            CommandOutputBuilder builder;
+            builder.AddLine(CommandOutputKind::Error, "Error: get requires a property path.");
+            return builder.BuildError("missing property path");
+        }
+
+        const std::string valueText =
+            FormatPropertyValueAsText(target.OwnerObject, target.OwnerClass, target.PropertySubPath);
+        if (valueText.empty())
+        {
+            CommandOutputBuilder builder;
+            builder.AddLine(CommandOutputKind::Error, "Error: failed to read property value.");
+            return builder.BuildError("read failed");
+        }
+
+        CommandOutputBuilder builder;
+        builder.AddSegment(CommandOutputKind::Path, GetCanonicalPath());
+        builder.AddSegment(CommandOutputKind::Muted, " = ");
+        builder.AddSegment(CommandOutputKind::ValueLiteral, valueText);
+        builder.NewLine();
+        return builder.BuildOk(valueText);
+    }
+
+    std::string PropertyPath::FormatPropertyTypeName(const Reflection::MEProperty& property)
+    {
+        if (property.GetCategory() == Reflection::MEPropertyCategory::Primitive)
+        {
+            const auto* primitiveProperty = static_cast<const Reflection::MEPrimitiveProperty*>(&property);
+            if (primitiveProperty->IsEnum())
+            {
+                if (const Reflection::MEEnum* enumType = primitiveProperty->GetEnum())
+                {
+                    return enumType->GetName();
+                }
+
+                return "enum";
+            }
+
+            const std::string& primitiveTypeName = primitiveProperty->primitiveTypeName;
+            if (primitiveTypeName == Reflection::GetPrimitiveName<bool>())
+            {
+                return "bool";
+            }
+
+            if (primitiveTypeName == Reflection::GetPrimitiveName<float>())
+            {
+                return "float";
+            }
+
+            if (primitiveTypeName == Reflection::GetPrimitiveName<double>())
+            {
+                return "double";
+            }
+
+            if (primitiveTypeName == Reflection::GetPrimitiveName<int32_t>()
+                || primitiveTypeName == Reflection::GetPrimitiveName<int64_t>())
+            {
+                return "int";
+            }
+
+            if (primitiveTypeName == Reflection::GetPrimitiveName<uint32_t>()
+                || primitiveTypeName == Reflection::GetPrimitiveName<uint64_t>())
+            {
+                return "uint";
+            }
+
+            if (primitiveTypeName == Reflection::GetPrimitiveName<std::string>())
+            {
+                return "string";
+            }
+
+            return primitiveTypeName;
+        }
+
+        if (property.GetCategory() == Reflection::MEPropertyCategory::Object)
+        {
+            return "object";
+        }
+
+        if (property.GetCategory() == Reflection::MEPropertyCategory::ObjectPtr)
+        {
+            return "objectptr";
+        }
+
+        if (property.GetCategory() == Reflection::MEPropertyCategory::Array)
+        {
+            return "array";
+        }
+
+        return "property";
     }
 
     GameObject* PropertyPath::FindGameObjectByName(Scene* scene, std::string_view objectRef)
@@ -594,85 +975,51 @@ namespace minEngine::Command
             });
     }
 
-    bool PropertyPath::Resolve(const CommandContext& context, ResolvedPropertyTarget& outTarget) const
-    {
-        outTarget = {};
-
-        if (context.ActiveScene == nullptr)
-        {
-            return false;
-        }
-
-        GameObject* gameObject = FindGameObjectByName(context.ActiveScene, m_ObjectRef);
-        if (gameObject == nullptr)
-        {
-            return false;
-        }
-
-        if (m_PropertySubPath.empty())
-        {
-            outTarget.OwnerObject = gameObject;
-            outTarget.OwnerClass = gameObject->GetClass();
-            return outTarget.OwnerClass != nullptr;
-        }
-
-        return ResolvePropertySubPathOnGameObject(*gameObject, m_PropertySubPath, outTarget);
-    }
-
-    CommandResult PropertyPath::GetValue(const CommandContext& context) const
+    CommandResult PropertyPath::BuildSetValueSuccessResult(const CommandContext& context) const
     {
         ResolvedPropertyTarget target;
         if (!Resolve(context, target))
         {
             CommandOutputBuilder builder;
-            builder.AddLine(
-                CommandOutputKind::Error,
-                "Error: could not resolve property path '" + m_ObjectRef
-                    + (m_PropertySubPath.empty() ? "" : "." + m_PropertySubPath) + "'");
+            builder.AddLine(CommandOutputKind::Error, "Error: could not resolve property path after set.");
             return builder.BuildError("property path not found");
-        }
-
-        if (m_PropertySubPath.empty())
-        {
-            CommandOutputBuilder builder;
-            builder.AddLine(CommandOutputKind::Error, "Error: get requires a property path.");
-            return builder.BuildError("missing property path");
         }
 
         const std::string valueText =
             FormatPropertyValueAsText(target.OwnerObject, target.OwnerClass, target.PropertySubPath);
-        if (valueText.empty())
-        {
-            CommandOutputBuilder builder;
-            builder.AddLine(CommandOutputKind::Error, "Error: failed to read property value.");
-            return builder.BuildError("read failed");
-        }
-
         CommandOutputBuilder builder;
-        builder.AddSegment(CommandOutputKind::Path, m_ObjectRef + "." + m_PropertySubPath);
+        builder.AddSegment(CommandOutputKind::Path, GetCanonicalPath());
         builder.AddSegment(CommandOutputKind::Muted, " = ");
         builder.AddSegment(CommandOutputKind::ValueLiteral, valueText);
         builder.NewLine();
         return builder.BuildOk(valueText);
     }
 
-    CommandResult PropertyPath::SetValue(const CommandContext& context, std::string_view literal) const
+    bool PropertyPath::TryBuildSetTransaction(
+        const CommandContext& context,
+        std::string_view literal,
+        PropertySetTransaction& outTransaction,
+        CommandResult& outError,
+        const Serialization::SerializerOptions* serializerOptions) const
     {
+        outTransaction = {};
+        outError = CommandResult::MakeError("set failed");
+
         if (literal.empty())
         {
             CommandOutputBuilder builder;
             builder.AddLine(CommandOutputKind::Error, "Error: set requires a value literal.");
-            return builder.BuildError("missing value");
+            outError = builder.BuildError("missing value");
+            return false;
         }
 
+        std::vector<std::string> ambiguousCandidates;
         ResolvedPropertyTarget target;
-        if (!Resolve(context, target))
+        const PropertyPathResolveStatus status = TryResolve(context, target, &ambiguousCandidates);
+        if (status != PropertyPathResolveStatus::Ok)
         {
-            CommandOutputBuilder builder;
-            builder.AddLine(
-                CommandOutputKind::Error,
-                "Error: could not resolve property path '" + m_ObjectRef + "." + m_PropertySubPath + "'");
-            return builder.BuildError("property path not found");
+            outError = BuildResolveErrorResult(status, &ambiguousCandidates);
+            return false;
         }
 
         void* leafOwner = nullptr;
@@ -690,7 +1037,8 @@ namespace minEngine::Command
         {
             CommandOutputBuilder builder;
             builder.AddLine(CommandOutputKind::Error, "Error: " + walkError);
-            return builder.BuildError(walkError);
+            outError = builder.BuildError(walkError);
+            return false;
         }
 
         const Reflection::MEProperty* leafProperty = FindPropertyInHierarchy(leafOwnerClass, leafPropertyName);
@@ -698,32 +1046,93 @@ namespace minEngine::Command
         {
             CommandOutputBuilder builder;
             builder.AddLine(CommandOutputKind::Error, "Error: leaf property not found.");
-            return builder.BuildError("leaf property not found");
+            outError = builder.BuildError("leaf property not found");
+            return false;
         }
 
         if (!IsPropertyWritable(*leafProperty))
         {
             CommandOutputBuilder builder;
             builder.AddLine(CommandOutputKind::Error, "Error: property is read-only.");
-            return builder.BuildError("read-only property");
+            outError = builder.BuildError("read-only property");
+            return false;
         }
 
-        std::vector<uint8_t> literalBuffer;
+        const Serialization::SerializerOptions options =
+            serializerOptions != nullptr ? *serializerOptions : Serialization::SerializerOptions{};
+
+        if (!Serialization::Serializer::SerializePropertyByPathToBuffer(
+                target.OwnerObject,
+                target.OwnerClass,
+                target.PropertySubPath,
+                outTransaction.BeforeValue,
+                options)
+                .ok)
+        {
+            CommandOutputBuilder builder;
+            builder.AddLine(CommandOutputKind::Error, "Error: failed to read current property value.");
+            outError = builder.BuildError("read failed");
+            return false;
+        }
+
         std::string encodeError;
-        if (!WritePrimitiveLiteralToBuffer(*leafProperty, literal, literalBuffer, encodeError))
+        if (!WritePrimitiveLiteralToBuffer(*leafProperty, literal, outTransaction.AfterValue, encodeError))
         {
             CommandOutputBuilder builder;
             builder.AddLine(CommandOutputKind::Error, "Error: " + encodeError);
-            return builder.BuildError(encodeError);
+            outError = builder.BuildError(encodeError);
+            return false;
+        }
+
+        auto* ownerObject = static_cast<MEObject*>(target.OwnerObject);
+        if (ownerObject == nullptr || target.OwnerClass == nullptr)
+        {
+            CommandOutputBuilder builder;
+            builder.AddLine(CommandOutputKind::Error, "Error: invalid property owner.");
+            outError = builder.BuildError("invalid owner");
+            return false;
+        }
+
+        outTransaction.OwnerGuid = ownerObject->GetGuid();
+        outTransaction.OwnerClassName = target.OwnerClass->GetName();
+        outTransaction.PropertySubPath = target.PropertySubPath;
+        outError = CommandResult::MakeOk();
+        return true;
+    }
+
+    CommandResult PropertyPath::SetValue(const CommandContext& context, std::string_view literal) const
+    {
+        PropertySetTransaction transaction;
+        CommandResult buildError;
+        if (!TryBuildSetTransaction(context, literal, transaction, buildError))
+        {
+            return buildError;
+        }
+
+        std::shared_ptr<MEObject> ownerObject = ObjectManager::Get().FindObject(transaction.OwnerGuid);
+        if (!ownerObject)
+        {
+            CommandOutputBuilder builder;
+            builder.AddLine(CommandOutputKind::Error, "Error: property owner not found.");
+            return builder.BuildError("owner not found");
+        }
+
+        const Reflection::MEClass* ownerClass =
+            Reflection::ReflectionSystem::Get().FindClass(transaction.OwnerClassName);
+        if (ownerClass == nullptr)
+        {
+            CommandOutputBuilder builder;
+            builder.AddLine(CommandOutputKind::Error, "Error: property owner class not found.");
+            return builder.BuildError("owner class not found");
         }
 
         std::vector<Serialization::PendingObjectRef> pendingRefs;
         const Serialization::SerializeResult deserializeResult =
             Serialization::Serializer::DeserializePropertyByPathFromBuffer(
-                target.OwnerObject,
-                target.OwnerClass,
-                target.PropertySubPath,
-                literalBuffer,
+                ownerObject.get(),
+                ownerClass,
+                transaction.PropertySubPath,
+                transaction.AfterValue,
                 pendingRefs);
         if (!deserializeResult.ok)
         {
@@ -734,14 +1143,7 @@ namespace minEngine::Command
             return builder.BuildError(deserializeResult.message);
         }
 
-        const std::string valueText =
-            FormatPropertyValueAsText(target.OwnerObject, target.OwnerClass, target.PropertySubPath);
-        CommandOutputBuilder builder;
-        builder.AddSegment(CommandOutputKind::Path, m_ObjectRef + "." + m_PropertySubPath);
-        builder.AddSegment(CommandOutputKind::Muted, " = ");
-        builder.AddSegment(CommandOutputKind::ValueLiteral, valueText);
-        builder.NewLine();
-        return builder.BuildOk(valueText);
+        return BuildSetValueSuccessResult(context);
     }
 
     CommandResult PropertyPath::Inspect(const CommandContext& context) const
@@ -753,11 +1155,11 @@ namespace minEngine::Command
             return builder.BuildError("no active scene");
         }
 
-        GameObject* gameObject = FindGameObjectByName(context.ActiveScene, m_ObjectRef);
+        GameObject* gameObject = FindGameObjectByName(context.ActiveScene, m_GameObjectName);
         if (gameObject == nullptr)
         {
             CommandOutputBuilder builder;
-            builder.AddLine(CommandOutputKind::Error, "Error: object not found '" + m_ObjectRef + "'");
+            builder.AddLine(CommandOutputKind::Error, "Error: object not found '" + m_GameObjectName + "'");
             return builder.BuildError("object not found");
         }
 
@@ -777,11 +1179,12 @@ namespace minEngine::Command
 
         if (!m_PropertySubPath.empty())
         {
+            std::vector<std::string> ambiguousCandidates;
             ResolvedPropertyTarget target;
-            if (!ResolvePropertySubPathOnGameObject(*gameObject, m_PropertySubPath, target))
+            const PropertyPathResolveStatus status = TryResolve(context, target, &ambiguousCandidates);
+            if (status != PropertyPathResolveStatus::Ok)
             {
-                builder.AddLine(CommandOutputKind::Error, "Error: could not resolve '" + m_PropertySubPath + "'");
-                return builder.BuildError("property path not found");
+                return BuildResolveErrorResult(status, &ambiguousCandidates);
             }
 
             void* leafOwner = nullptr;
@@ -821,6 +1224,29 @@ namespace minEngine::Command
             builder.AddSegment(CommandOutputKind::Muted, ": ");
             builder.AddSegment(CommandOutputKind::InspectValue, valueText.empty() ? "<unavailable>" : valueText);
             builder.NewLine();
+            return builder.BuildOk();
+        }
+
+        if (!m_ExplicitComponentName.empty())
+        {
+            Component* component = FindComponentByTypeName(*gameObject, m_ExplicitComponentName);
+            if (component == nullptr)
+            {
+                builder.AddLine(
+                    CommandOutputKind::Error,
+                    "Error: component not found '" + m_ExplicitComponentName + "'");
+                return builder.BuildError("component not found");
+            }
+
+            const Reflection::MEClass* componentClass = component->GetClass();
+            if (componentClass == nullptr)
+            {
+                builder.AddLine(CommandOutputKind::Error, "Error: component class unresolved.");
+                return builder.BuildError("class unresolved");
+            }
+
+            builder.AddLine(CommandOutputKind::InspectSection, componentClass->GetName());
+            AppendInspectProperties(builder, component, componentClass, 1);
             return builder.BuildOk();
         }
 

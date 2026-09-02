@@ -1,6 +1,36 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（`feat/editor`：ED-F03 S04c Done）
+Last updated: 2026-09-02（`feat/editor`：ED-F03 S08 Done；S09 下一项）
+
+### 2026-09-02 - ED-F03: PropertyPath v2 + completion types (S08)
+- **Runtime:** `PropertyPath` `@` 显式 Component 解析/歧义检测；`FormatComponentTypeName`（短类名）；`SceneCommandUtils` `@` 补全与歧义路径建议；属性 `Description` 显示反射类型名。
+- **Tests:** `command-system` — 20 cases, 101 assertions PASS（`@` get/set、组件补全、歧义候选、类型名补全）。
+- **Next:** S09 Validation 增强。
+
+### 2026-09-02 - ED-F03: 方案修订（PropertyPath 边界 + S10 Scene 命令 + S08 补全类型）
+- **边界：** 不强行 `get`/`set` 覆盖 GO/MEObject 引擎字段（`m_Name`、`Invisible` 等）；对象级操作用专用命令。
+- **S10：** `rename` / `activate` / `deactivate` → `IEditorCommand`；`activate`/`deactivate` **仅** `GOName@Component`（`@` 必填）；S10a=`rename`；S10b 依赖 CORE-F06。
+- **S08 附带：** 属性 Suggestions `Description` 显示反射类型名（替代固定 `property`）。
+- **Docs:** ED-F03 §5.4、§10.4；P4b 原则。
+- **Next:** S08 实现。
+
+### 2026-09-02 - ED-F03: undo/redo + set→CommandStack (S06)
+- **Editor:** `EditorUndoRedoActions`（`TryUndo`/`TryRedo`）；`undo`/`redo` 命令；`set` 经 `EditorSetValue` → `SubmitSetObjectProperty` / `SetObjectPropertyCommand`；`EditorInputHub` / `MainMenuWindow` 共用 `TryUndo`/`TryRedo`。
+- **Runtime:** `CommandContext::EditorSetValue` hook；`PropertyPath::TryBuildSetTransaction`；Builtin `set` 在 hook 存在时委托 Editor。
+- **Tests:** `command-system` — 16 cases, 80 assertions PASS（含 EditorSetValue hook、TryBuildSetTransaction）。
+- **Headless：** 无 `EditorSetValue` 时 `set` 仍直写（`minEngineTests` 路径不变）。
+- **Next:** S08 PropertyPath `GOName@Component.Field`；S09 Validation。
+
+### 2026-09-02 - ED-F03: 排期修订 v2（Undo 分界 + PropertyPath `@` 语法）
+- **Undo：** Console `undo`/`redo` 与场景 Ctrl+Z/Y（`EditorInputHub`）共用 `TryUndo`/`TryRedo`；**输入框内** Ctrl+Z/Y 仍为文本操作。
+- **PropertyPath S08：** 显式语法 `GOName@ComponentName.FieldName`；短路径仅无歧义时保留。
+- **S06 范围：** 含 Console `set` → `CommandStack`。
+- **Docs:** ED-F03 §10.1–10.2 修订。
+
+### 2026-09-02 - ED-F03: 排期修订（S06/S08/S09；S07 Deferred）
+- **User decision:** `undo`/`redo` 无 editor 前缀；Ctrl+Z/Y 与命令同源；Console 目视 C 通过；极矮布局延后；PropertyPath v2 → S08；Validation 增强 → S09。
+- **Docs:** ED-F03 §10.1–10.3；`ACTIVE_WORK` / `FEATURE_REGISTRY` 更新。
+- **Next:** S06 实现。
 
 ### 2026-09-02 - ED-F03: type-aware value completion (S04c)
 - **Runtime:** `SetValueValidation`（bool/enum 补全、数值/布尔校验）；`PropertyPath` enum `set` + `TryResolveLeafProperty`；`CompletionKind::ValueLiteral` / `EnumValue`。

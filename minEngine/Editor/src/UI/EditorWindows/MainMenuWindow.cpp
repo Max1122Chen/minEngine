@@ -2,6 +2,7 @@
 
 #include "EditorGUIManager.h"
 #include "Shell/EditorCommandStack.h"
+#include "Shell/EditorUndoRedoActions.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
@@ -95,11 +96,11 @@ namespace minEngine
             const bool canRedo = m_Context.GetCommandStack().CanRedo();
             if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo) && canUndo)
             {
-                m_Context.GetCommandStack().Undo();
+                TryUndo(m_Context);
             }
             if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo) && canRedo)
             {
-                m_Context.GetCommandStack().Redo();
+                TryRedo(m_Context);
             }
             ImGui::Separator();
             ImGui::MenuItem("Cut", "Ctrl+X", false, false);

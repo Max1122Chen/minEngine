@@ -1,5 +1,6 @@
 #include "Runtime/Core/Command/SceneCommandUtils.h"
 
+#include "Runtime/Core/PropertyPath/PropertyPath.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
@@ -7,6 +8,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <unordered_map>
 
 namespace minEngine::Command
 {
@@ -122,6 +124,60 @@ namespace minEngine::Command
                     inOutNames.push_back(std::string(propertyName));
                     return true;
                 });
+        }
+
+        void AppendVisiblePropertySuggestions(
+            void* ownerObject,
+            const Reflection::MEClass* ownerClass,
+            std::string_view memberPrefix,
+            const std::string& pathPrefix,
+            std::vector<PropertyPathSuggestion>& inOutSuggestions)
+        {
+            if (ownerObject == nullptr || ownerClass == nullptr)
+            {
+                return;
+            }
+
+            Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+                ownerClass->GetName(),
+                [&](const Reflection::MEProperty& property) -> bool
+                {
+                    if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+                    {
+                        return true;
+                    }
+
+                    const std::string_view propertyName = property.GetName();
+                    if (!memberPrefix.empty() && !SceneCommandUtils::ContainsIgnoreCase(propertyName, memberPrefix))
+                    {
+                        return true;
+                    }
+
+                    PropertyPathSuggestion suggestion;
+                    suggestion.Label = pathPrefix + std::string(propertyName);
+                    suggestion.InsertText = suggestion.Label;
+                    suggestion.TypeName = PropertyPath::FormatPropertyTypeName(property);
+                    inOutSuggestions.push_back(std::move(suggestion));
+                    return true;
+                });
+        }
+
+        GameObject* FindGameObjectByExactName(const Scene* scene, std::string_view gameObjectName)
+        {
+            if (scene == nullptr || gameObjectName.empty())
+            {
+                return nullptr;
+            }
+
+            for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+            {
+                if (gameObject && gameObject->GetName() == gameObjectName)
+                {
+                    return gameObject.get();
+                }
+            }
+
+            return nullptr;
         }
     }
 
@@ -239,6 +295,207 @@ namespace minEngine::Command
         return names;
     }
 
+    std::vector<std::string> SceneCommandUtils::ListAttachedComponentNames(
+        const Scene* scene,
+        std::string_view gameObjectName,
+        std::string_view prefix)
+    {
+        std::vector<std::string> names;
+        GameObject* gameObject = FindGameObjectByExactName(scene, gameObjectName);
+        if (gameObject == nullptr)
+        {
+            return names;
+        }
+
+        for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+        {
+            if (!component)
+            {
+                continue;
+            }
+
+            const Reflection::MEClass* componentClass = component->GetClass();
+            if (componentClass == nullptr)
+            {
+                continue;
+            }
+
+            const std::string className = PropertyPath::FormatComponentTypeName(componentClass);
+            if (!prefix.empty() && !ContainsIgnoreCase(className, prefix))
+            {
+                continue;
+            }
+
+            names.push_back(className);
+        }
+
+        std::sort(names.begin(), names.end());
+        names.erase(std::unique(names.begin(), names.end()), names.end());
+        return names;
+    }
+
+    std::vector<PropertyPathSuggestion> SceneCommandUtils::ListPropertyPathSuggestions(
+        const Scene* scene,
+        std::string_view gameObjectName,
+        std::string_view explicitComponentName,
+        std::string_view memberPrefix)
+    {
+        std::vector<PropertyPathSuggestion> suggestions;
+        GameObject* gameObject = FindGameObjectByExactName(scene, gameObjectName);
+        if (gameObject == nullptr)
+        {
+            return suggestions;
+        }
+
+        if (!explicitComponentName.empty())
+        {
+            const std::string pathPrefix =
+                std::string(gameObjectName) + "@" + std::string(explicitComponentName) + ".";
+
+            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            {
+                if (!component)
+                {
+                    continue;
+                }
+
+                const Reflection::MEClass* componentClass = component->GetClass();
+                if (componentClass == nullptr)
+                {
+                    continue;
+                }
+
+                if (!PropertyPath::ComponentTypeMatches(componentClass, explicitComponentName))
+                {
+                    continue;
+                }
+
+                AppendVisiblePropertySuggestions(
+                    component.get(),
+                    componentClass,
+                    memberPrefix,
+                    pathPrefix,
+                    suggestions);
+                break;
+            }
+
+            return suggestions;
+        }
+
+        struct OwnerPropertyEntry
+        {
+            std::string PathPrefix;
+            std::string PropertyName;
+            std::string TypeName;
+        };
+
+        std::vector<OwnerPropertyEntry> entries;
+        const std::string shortPathPrefix = std::string(gameObjectName) + ".";
+
+        const Reflection::MEClass* gameObjectClass = gameObject->GetClass();
+        if (gameObjectClass != nullptr)
+        {
+            Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+                gameObjectClass->GetName(),
+                [&](const Reflection::MEProperty& property) -> bool
+                {
+                    if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+                    {
+                        return true;
+                    }
+
+                    const std::string propertyName = property.GetName();
+                    if (!memberPrefix.empty() && !ContainsIgnoreCase(propertyName, memberPrefix))
+                    {
+                        return true;
+                    }
+
+                    entries.push_back(
+                        OwnerPropertyEntry{ shortPathPrefix, propertyName, PropertyPath::FormatPropertyTypeName(property) });
+                    return true;
+                });
+        }
+
+        for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+        {
+            if (!component)
+            {
+                continue;
+            }
+
+            const Reflection::MEClass* componentClass = component->GetClass();
+            if (componentClass == nullptr)
+            {
+                continue;
+            }
+
+            const std::string explicitPathPrefix = std::string(gameObjectName) + "@"
+                + PropertyPath::FormatComponentTypeName(componentClass) + ".";
+
+            Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+                componentClass->GetName(),
+                [&](const Reflection::MEProperty& property) -> bool
+                {
+                    if (property.HasSpecifier(Reflection::PropertySpecifier::Invisible))
+                    {
+                        return true;
+                    }
+
+                    const std::string propertyName = property.GetName();
+                    if (!memberPrefix.empty() && !ContainsIgnoreCase(propertyName, memberPrefix))
+                    {
+                        return true;
+                    }
+
+                    entries.push_back(OwnerPropertyEntry{
+                        explicitPathPrefix,
+                        propertyName,
+                        PropertyPath::FormatPropertyTypeName(property) });
+                    return true;
+                });
+        }
+
+        std::unordered_map<std::string, std::vector<size_t>> propertyNameToEntryIndices;
+        for (size_t index = 0; index < entries.size(); ++index)
+        {
+            propertyNameToEntryIndices[entries[index].PropertyName].push_back(index);
+        }
+
+        for (const auto& [propertyName, indices] : propertyNameToEntryIndices)
+        {
+            (void)propertyName;
+            if (indices.size() == 1)
+            {
+                const OwnerPropertyEntry& entry = entries[indices.front()];
+                PropertyPathSuggestion suggestion;
+                suggestion.Label = entry.PathPrefix + entry.PropertyName;
+                suggestion.InsertText = suggestion.Label;
+                suggestion.TypeName = entry.TypeName;
+                suggestions.push_back(std::move(suggestion));
+                continue;
+            }
+
+            for (const size_t index : indices)
+            {
+                const OwnerPropertyEntry& entry = entries[index];
+                PropertyPathSuggestion suggestion;
+                suggestion.Label = entry.PathPrefix + entry.PropertyName;
+                suggestion.InsertText = suggestion.Label;
+                suggestion.TypeName = entry.TypeName;
+                suggestions.push_back(std::move(suggestion));
+            }
+        }
+
+        std::sort(
+            suggestions.begin(),
+            suggestions.end(),
+            [](const PropertyPathSuggestion& lhs, const PropertyPathSuggestion& rhs)
+            {
+                return lhs.Label < rhs.Label;
+            });
+        return suggestions;
+    }
+
     std::vector<std::string> SceneCommandUtils::ListComponentTypeNames(std::string_view prefix)
     {
         std::vector<std::string> names;
@@ -256,7 +513,7 @@ namespace minEngine::Command
                 continue;
             }
 
-            const std::string shortName = classInfo->GetName();
+            const std::string shortName = PropertyPath::FormatComponentTypeName(classInfo);
             if (!prefix.empty() && !SceneCommandUtils::ContainsIgnoreCase(shortName, prefix))
             {
                 continue;

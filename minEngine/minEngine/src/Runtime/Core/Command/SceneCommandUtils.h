@@ -2,7 +2,8 @@
 
 #include "Core.h"
 
-#include "Runtime/Core/Command/CommandContext.h"
+#include "Runtime/Core/PropertyPath/PropertyPath.h"
+#include "Runtime/Core/PropertyPath/PropertyPathTypes.h"
 
 #include <string>
 #include <string_view>
@@ -34,6 +35,15 @@ namespace minEngine::Command
         static std::vector<std::string> ListPropertyPathPrefixes(
             const Scene* scene,
             std::string_view objectRef,
+            std::string_view memberPrefix);
+        static std::vector<std::string> ListAttachedComponentNames(
+            const Scene* scene,
+            std::string_view gameObjectName,
+            std::string_view prefix);
+        static std::vector<PropertyPathSuggestion> ListPropertyPathSuggestions(
+            const Scene* scene,
+            std::string_view gameObjectName,
+            std::string_view explicitComponentName,
             std::string_view memberPrefix);
         static std::vector<std::string> ListComponentTypeNames(std::string_view prefix);
     };

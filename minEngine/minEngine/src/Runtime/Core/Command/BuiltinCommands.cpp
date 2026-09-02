@@ -90,6 +90,11 @@ namespace minEngine::Command
                 valueLiteral += args[index];
             }
 
+            if (context.EditorSetValue)
+            {
+                return context.EditorSetValue(args.front(), valueLiteral);
+            }
+
             return propertyPath->SetValue(context, valueLiteral);
         }
 

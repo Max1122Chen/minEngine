@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-02（`feat/editor`：CORE-F07 Done；ED-F03 S04c Done）
+Last updated: 2026-09-02（`feat/editor`：ED-F03 S08 Done；下一项 S09）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -20,6 +20,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 - ED-F01 **VK Dir/Spot 自阴影质量**（handoff 保留：[session](./sessions/2026-08-31-vk-shadow-self-shadow-handoff.md) · [playbook](./playbooks/Render/VK_SHADOW_DEBUGGING.md)）
 - `RND-F12` RDG 语义卫生项
 - `PHYS-F03` Contact 玩法派发
+- **ED-F03 S07** ExportSchema（Agent 预留，按需）
+- **ED-F03** Console 极矮窗口布局（非 Feature Done 硬卡点）
 
 **废弃 / 不再使用：** `feat/ui-anim`（拆为 `feat/animation` / `feat/ui` 占位，无代码）
 
@@ -74,9 +76,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 顺序 | ID | 内容 | 文档 |
 |------|-----|------|------|
 | 1 | **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** — [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) |
-| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — S04c value 补全 + 校验着色 Done；**待做 S06 `editor.undo` + S07 ExportSchema** | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
+| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — S08 Done；**下一项 S09** | [Design §10](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
 
-**建议：** S06 undo/redo → S07 ExportSchema → Console 目视验收 C。
+**建议顺序：** S09 Validation → S10 Scene 命令（`rename` 可先；`activate`/`deactivate` 待 CORE-F06）。S07 / 极矮布局 Deferred。
+
+**ED-F03 边界（2026-09-02）：** 不扩展 PropertyPath 覆盖 `m_Name` 等引擎字段；用 `rename` / `activate` / `deactivate` 等专用命令（§10.4）。`activate`/`deactivate` **仅** `GOName@Component`（`@` 必填）。
 
 ### D. 合并检查点（Gate）
 

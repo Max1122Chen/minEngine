@@ -3,9 +3,11 @@
 #include "Runtime/Core/Command/CommandRegistry.h"
 #include "Runtime/Core/Command/CompletionService.h"
 #include "Runtime/Core/Command/SetValueValidation.h"
+#include "Runtime/Core/PropertyPath/PropertyPath.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/ReflectionSample.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
+#include "Runtime/Function/Framework/Components/PointLightComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -409,4 +411,171 @@ TEST_CASE("command-system: set updates enum property [full]")
         executor.ExecuteLine("get Sample.SampleData.EnumField", context);
     CHECK(getResult.Status == minEngine::Command::CommandStatus::Ok);
     CHECK(getResult.Message == setResult.Message);
+}
+
+TEST_CASE("command-system: set delegates to EditorSetValue hook when provided [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    bool hookInvoked = false;
+    context.EditorSetValue = [&](std::string_view propertyPathText, std::string_view valueLiteral) {
+        hookInvoked = true;
+        CHECK(propertyPathText == "Sun.m_Intensity");
+        CHECK(valueLiteral == "3.0");
+        return minEngine::Command::CommandResult::MakeOk("editor hook");
+    };
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult result = executor.ExecuteLine("set Sun.m_Intensity 3.0", context);
+
+    CHECK(hookInvoked);
+    CHECK(result.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK(result.Message == "editor hook");
+
+    minEngine::GameObject* sunObject = scene->GetAllGameObjects().front().get();
+    const std::vector<std::shared_ptr<minEngine::DirectionalLightComponent>> lights =
+        sunObject->GetComponentsOfType<minEngine::DirectionalLightComponent>();
+    REQUIRE_FALSE(lights.empty());
+    CHECK(lights.front()->GetIntensity() == doctest::Approx(2.5f));
+}
+
+TEST_CASE("command-system: TryBuildSetTransaction captures before and after values [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const std::optional<minEngine::Command::PropertyPath> propertyPath =
+        minEngine::Command::PropertyPath::Parse("Sun.m_Intensity");
+    REQUIRE(propertyPath.has_value());
+
+    minEngine::Command::PropertySetTransaction transaction;
+    minEngine::Command::CommandResult buildError;
+    CHECK(propertyPath->TryBuildSetTransaction(context, "3.0", transaction, buildError));
+    CHECK(buildError.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK_FALSE(transaction.BeforeValue.empty());
+    CHECK_FALSE(transaction.AfterValue.empty());
+    CHECK(transaction.BeforeValue != transaction.AfterValue);
+    CHECK_FALSE(transaction.OwnerGuid.IsZero());
+    CHECK_FALSE(transaction.OwnerClassName.empty());
+    CHECK(transaction.PropertySubPath == "m_Intensity");
+}
+
+TEST_CASE("command-system: explicit @ property path get and set [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const std::optional<minEngine::Command::PropertyPath> propertyPath =
+        minEngine::Command::PropertyPath::Parse("Sun@DirectionalLightComponent.m_Intensity");
+    REQUIRE(propertyPath.has_value());
+    CHECK(propertyPath->GetGameObjectName() == "Sun");
+    CHECK(propertyPath->GetExplicitComponentName() == "DirectionalLightComponent");
+    CHECK(propertyPath->GetPropertySubPath() == "m_Intensity");
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult setResult =
+        executor.ExecuteLine("set Sun@DirectionalLightComponent.m_Intensity 4.0", context);
+    CHECK(setResult.Status == minEngine::Command::CommandStatus::Ok);
+
+    const minEngine::Command::CommandResult getResult =
+        executor.ExecuteLine("get Sun@DirectionalLightComponent.m_Intensity", context);
+    CHECK(getResult.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK(getResult.Message.find("4") != std::string::npos);
+}
+
+TEST_CASE("command-system: property completion shows reflection type [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const std::vector<minEngine::Command::CompletionItem> items =
+        minEngine::Command::CompletionService::Complete("set Sun.m_Intensity", 0, context);
+    REQUIRE_FALSE(items.empty());
+
+    bool foundIntensity = false;
+    for (const minEngine::Command::CompletionItem& item : items)
+    {
+        if (item.InsertText.find("m_Intensity") != std::string::npos)
+        {
+            foundIntensity = true;
+            CHECK(item.Description == "float");
+        }
+    }
+
+    CHECK(foundIntensity);
+}
+
+TEST_CASE("command-system: @ component completion lists attached types [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const std::vector<minEngine::Command::CompletionItem> items =
+        minEngine::Command::CompletionService::Complete("get Sun@", 0, context);
+    CHECK(CompletionContainsInsertText(items, "Sun@DirectionalLightComponent"));
+}
+
+TEST_CASE("command-system: short path ambiguity lists @ candidates [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene =
+        minEngine::SceneManager::Get().CreateNewScene("command-system-ambiguity-test");
+    const std::shared_ptr<minEngine::GameObject> sunObject = scene->CreateGameObject();
+    sunObject->Rename("Sun");
+    sunObject->AddComponent<minEngine::DirectionalLightComponent>();
+    sunObject->AddComponent<minEngine::PointLightComponent>();
+
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult getResult =
+        executor.ExecuteLine("get Sun.m_Intensity", context);
+    CHECK(getResult.Status == minEngine::Command::CommandStatus::Error);
+    CHECK(ResultContainsText(getResult, "ambiguous"));
+    CHECK(ResultContainsText(getResult, "Sun@DirectionalLightComponent.m_Intensity"));
+    CHECK(ResultContainsText(getResult, "Sun@PointLightComponent.m_Intensity"));
+
+    const std::vector<minEngine::Command::CompletionItem> items =
+        minEngine::Command::CompletionService::Complete("set Sun.m_Intensity", 0, context);
+    CHECK(CompletionContainsInsertText(items, "Sun@DirectionalLightComponent.m_Intensity"));
+    CHECK(CompletionContainsInsertText(items, "Sun@PointLightComponent.m_Intensity"));
 }
