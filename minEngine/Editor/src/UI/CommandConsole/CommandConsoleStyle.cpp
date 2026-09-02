@@ -42,4 +42,21 @@ namespace minEngine
                 return m_Appearance.GetDisplayColor(palette.TextPrimary);
         }
     }
+
+    CommandCompletionRowStyle CommandConsoleStyle::GetCompletionRowStyle(bool selected) const
+    {
+        const EditorSemanticColors& colors = m_Appearance.GetSemanticColors();
+        const EditorThemePalette& palette = m_Appearance.GetActivePalette();
+
+        CommandCompletionRowStyle rowStyle;
+        rowStyle.LabelColor = selected ? m_Appearance.GetDisplayColor(palette.TextPrimary)
+                                       : m_Appearance.GetDisplayColor(palette.TextMuted);
+        rowStyle.DescriptionColor = m_Appearance.GetDisplayColor(palette.TextMuted);
+        rowStyle.SelectionBar = m_Appearance.GetDisplayColorU32(colors.HierarchySelectionBar);
+
+        ImVec4 selectionBackground = m_Appearance.GetDisplayColor(colors.HierarchySelectionBar);
+        selectionBackground.w = 0.22f;
+        rowStyle.SelectionBackground = ImGui::ColorConvertFloat4ToU32(selectionBackground);
+        return rowStyle;
+    }
 }

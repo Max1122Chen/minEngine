@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Command/CommandExecutor.h"
 #include "Runtime/Core/Command/CommandRegistry.h"
+#include "Runtime/Core/Command/SceneCommandUtils.h"
 #include "Runtime/Core/PropertyPath/PropertyPath.h"
 
 namespace minEngine::Command
@@ -69,7 +70,27 @@ namespace minEngine::Command
                 return builder.BuildError("invalid property path");
             }
 
-            return propertyPath->SetValue(context, args[1]);
+            size_t valueTokenIndex = 1;
+            if (args.size() > 2 && args[1] == "=")
+            {
+                valueTokenIndex = 2;
+            }
+
+            if (args.size() <= valueTokenIndex)
+            {
+                CommandOutputBuilder builder;
+                builder.AddLine(CommandOutputKind::Error, "Error: set requires a value literal.");
+                return builder.BuildError("missing value");
+            }
+
+            std::string valueLiteral = args[valueTokenIndex];
+            for (size_t index = valueTokenIndex + 1; index < args.size(); ++index)
+            {
+                valueLiteral.push_back(' ');
+                valueLiteral += args[index];
+            }
+
+            return propertyPath->SetValue(context, valueLiteral);
         }
 
         CommandResult ExecuteInspect(const CommandContext& context, const std::vector<std::string>& args)
@@ -90,6 +111,55 @@ namespace minEngine::Command
             }
 
             return propertyPath->Inspect(context);
+        }
+
+        CommandResult ExecuteFind(const CommandContext& context, const std::vector<std::string>& args)
+        {
+            if (args.empty())
+            {
+                CommandOutputBuilder builder;
+                builder.AddLine(CommandOutputKind::Error, "Error: find requires a query.");
+                return builder.BuildError("missing query");
+            }
+
+            if (context.ActiveScene == nullptr)
+            {
+                CommandOutputBuilder builder;
+                builder.AddLine(CommandOutputKind::Error, "Error: no active scene.");
+                return builder.BuildError("no active scene");
+            }
+
+            std::string query = args.front();
+            for (size_t index = 1; index < args.size(); ++index)
+            {
+                query.push_back(' ');
+                query += args[index];
+            }
+
+            const std::vector<SceneGameObjectMatch> matches =
+                SceneCommandUtils::FindGameObjects(context.ActiveScene, query);
+            if (matches.empty())
+            {
+                CommandOutputBuilder builder;
+                builder.AddLine(CommandOutputKind::Warning, "No matches.");
+                return builder.BuildError("no matches");
+            }
+
+            CommandOutputBuilder builder;
+            for (const SceneGameObjectMatch& match : matches)
+            {
+                builder.AddSegment(CommandOutputKind::ListItemName, match.Name);
+                builder.AddSegment(CommandOutputKind::Muted, "  ");
+                builder.AddSegment(CommandOutputKind::ListItemMeta, match.ClassName);
+                if (!match.GuidText.empty())
+                {
+                    builder.AddSegment(CommandOutputKind::Muted, "  ");
+                    builder.AddSegment(CommandOutputKind::Muted, match.GuidText);
+                }
+                builder.NewLine();
+            }
+
+            return builder.BuildOk(std::to_string(matches.size()) + " match(es)");
         }
     }
 
@@ -128,5 +198,13 @@ namespace minEngine::Command
         inspectDescriptor.Scope = CommandScope::Both;
         inspectDescriptor.Execute = ExecuteInspect;
         registry.Register(std::move(inspectDescriptor));
+
+        CommandDescriptor findDescriptor;
+        findDescriptor.Id = "find";
+        findDescriptor.DisplayName = "find";
+        findDescriptor.Description = "Find game objects by name, type=, or name=";
+        findDescriptor.Scope = CommandScope::Both;
+        findDescriptor.Execute = ExecuteFind;
+        registry.Register(std::move(findDescriptor));
     }
 }

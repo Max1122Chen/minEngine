@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** Draft
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-02（§8.4 Command 结果语义配色）
+- **Last updated:** 2026-09-02（§6.3 / §8.2–8.3 IDE 式补全交互修订）
 - **Branch:** `feat/editor`（Runtime Command 核心可合入 `master`；Console UI 在 Editor）
 - **Depends on:** P4 Reflection · Serialization property path · `CORE-F07`（展示名，inspect 可读性）
 - **Related:** [Implementation](./ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_IMPLEMENTATION.md)（待建） · [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md) · [ACTIVE_WORK.md](../ACTIVE_WORK.md) · 外部参考 [Debug Console Design Guide](../../external/minEngine%20Debug%20Console%20%26%20Command%20System%20Design%20Guide.md) · [CORE-F07](../Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md)
@@ -485,7 +485,66 @@ public:
 
 与 **Command Palette**（未来）共用 `CompletionService` + `CommandRegistry`。
 
-### 6.2 ValidationService
+### 6.2 Completion 触发与刷新（Frontend 契约）
+
+`CompletionService` 只负责 **「给定行文本 + 光标 → 候选列表」**；何时刷新、如何展示、如何把选中项写回输入框，由 **Editor `CommandConsolePresenter`** 按 §8.3 状态机实现。
+
+| 触发 | 行为 |
+|------|------|
+| **每帧 / 每次输入变更** | 输入框内容或光标变化时调用 `Complete(line, cursor, ctx)`；有候选则进入 **CompletionOpen** |
+| **Tab** | **接受当前高亮候选**（`InsertText` 写回输入框最后一个 token）；**不**用 Tab 轮询候选 |
+| **Ctrl+Space**（可选） | 强制刷新并打开补全；无候选时静默 |
+| **Esc** | 关闭补全会话（见 §8.3）；保留已输入文本 |
+
+**刷新规则：**
+
+- 有候选 → 保持 `CompletionOpen`；默认选中 index `0`（或保持用户已移动的 index，若仍有效）。
+- 候选变空 → 退回 `Normal`；清空建议列表。
+- 执行命令（Enter）→ 清空补全会话。
+
+**写回输入框（硬性要求）：**
+
+- 接受补全 **必须** 在 `ImGuiInputText` **Callback** 内通过 `DeleteChars` / `InsertChars` 修改 buffer（或等价 API），保证 ImGui 内部状态与 `m_InputBuffer` 同步。
+- **禁止** 仅更新 Presenter 侧 `char[]` 而不同步 ImGui —— 否则会出现「popup 出现但输入框不填入」的断裂体验（当前实现缺陷，见 §8.3.5）。
+
+### 6.3 输入模式状态机（History vs Completion）
+
+Console 输入框同一组 **↑ / ↓** 键在不同模式下语义不同；实现须用显式模式区分，**不得**让 history 与 completion 同时响应。
+
+```text
+                    输入变更（有候选）
+         ┌──────────────────────────────────────┐
+         │                                      │
+         ▼                                      │
+    ┌─────────┐   Esc / 候选空   ┌──────────────┐
+    │ Normal  │◄─────────────────│ CompletionOpen│
+    └─────────┘                  └──────────────┘
+         │                              │
+         │ ↑ / ↓                        │ ↑ / ↓
+         ▼                              ▼
+    ┌──────────────┐              移动选中 index
+    │ HistoryBrowse│              （不改变输入文本）
+    └──────────────┘
+         │ 任意输入 / Esc
+         ▼
+       Normal
+```
+
+| 模式 | 进入条件 | ↑ / ↓ | Tab | Enter |
+|------|----------|-------|-----|-------|
+| **Normal** | 默认；补全关闭 | 进入 **HistoryBrowse**，浏览 `CommandHistory` | 若有缓存候选则接受第 0 条；否则刷新后接受第 0 条 | 执行 |
+| **CompletionOpen** | `Complete()` 返回非空 | 在候选列表内移动 **选中 index**（循环） | **接受当前选中项**写回输入框；保持 CompletionOpen 并刷新 | 执行（补全关闭） |
+| **HistoryBrowse** | Normal 下按 ↑ 或 ↓ | 在 history 条目间移动；**替换整行输入** | 退出 HistoryBrowse → Normal（不插入补全） | 执行当前草稿 |
+
+**优先级（必须遵守）：**
+
+1. `CompletionOpen` 时，↑↓ **只** 操作补全选中项，**不** 触发 history。
+2. 仅当 **非** `CompletionOpen` 时，↑↓ 才浏览 history。
+3. 用户继续打字 → 退出 `HistoryBrowse`；若仍有候选则进入 `CompletionOpen`。
+
+**History prefix-aware（保留）：** `HistoryBrowse` 时，若当前行有非空 prefix（如 `render.`），仅匹配以该 prefix 开头的历史项（§7.1）。
+
+### 6.4 ValidationService
 
 - 执行前：参数个数、类型、enum 范围、Required。
 - `set`：目标是否 ReadOnly、类型是否可解析、Min/Max。
@@ -538,57 +597,106 @@ Dock 位置：保持现有 `EditorDockLayout` 底部 **Console** 槽位不变；
 ┌─ Console ───────────────────────────────────────────────────────────── [×] ┐
 │ [ Output ]  [ Command ]                                                    │
 ├────────────────────────────────────────────────────────────────────────────┤
-│  Toolbar: [Clear] [Copy]   History: ◀ ▶   [ ] Echo input                   │
+│  Toolbar: [Clear] [Copy]   [ ] Echo input   [ ] Show suggestions          │
 ├────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │
-│  › list_go                          ← 青色 Prompt + 白色 Echo              │
-│    Sun                    GameObject ← 名称白 + 类型灰                      │
-│    Player                 GameObject                                       │
-│  ✓ OK — 3 game objects              ← 绿色 Success                         │
+│  （滚动输出区 — 仅已执行命令的回显与结果，见 §8.4）                          │
+│  › list_go                          ← InputEcho                            │
+│    Sun                    GameObject ← ListItemName + ListItemMeta         │
+│  ✓ OK — 3 game objects              ← SuccessStatus                        │
 │                                                                            │
-│  › get Sun.m_Intensity                                                     │
-│  Sun.m_Intensity  →  1.2            ← Path 蓝 + 箭头灰 + Value 青          │
-│                                                                            │
-│  › set Sun.m_Intensity 2.5                                                 │
-│  ✓ OK                               ← 绿色                                 │
-│                                                                            │
-│  › lis_go                                                                  │
-│  ✗ Error: unknown command 'lis_go'  ← 红色 Error                           │
-│    Did you mean: list_go ?          ← 黄色 Hint + 高亮候选命令              │
-│                                                                            │
-│  (monospace — 见 §8.8 配色表)                                              │
-│                                                                            │
+├─ Suggestions ──────────────────────────────────────────────────────────────┤
+│  ▌ list_go          List game objects in active scene    ← 选中行高亮       │
+│    list_go          …                                    ← 非选中 Muted    │
+│    find             Find game objects by name, type=, …                    │
+│  （输入时动态刷新；最多 ~8 行可滚动；无候选时整块隐藏）                        │
 ├────────────────────────────────────────────────────────────────────────────┤
-│  ┌─ Suggestions ──────────────────────────────────────────────────────┐   │
-│  │ list_go          List game objects in active scene                  │   │
-│  └────────────────────────────────────────────────────────────────────┘   │
-│  › list_go█                                                                │
+│  › list█                                                                   │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**视觉层次（概要）：** 详见 **§8.8 语义配色**。原则：**状态一眼可辨、数据类型可扫读、错误带修复线索**。
+**三区职责（重要）：**
+
+| 区域 | 内容 | 何时更新 |
+|------|------|----------|
+| **滚动输出区** | 已执行命令的 echo + `CommandResult.Lines` | Enter 执行后 |
+| **Suggestions 条** | 当前补全候选（IDE 式列表） | **每次输入变更**（live completion） |
+| **输入行** | `›` + 单行草稿 | 实时 |
+
+补全候选 **不** 写入滚动输出区（避免与命令结果混淆、避免刷屏）；用户期望的「边输入边看到匹配列表」由 **Suggestions 条** 承担，视觉与 IDE 自动完成列表等价。
 
 ### 8.2 交互规格
 
 | 操作 | 行为 |
 |------|------|
-| **Enter** | 执行当前行；光标移到新空行 |
+| **输入任意字符** | Live 调用 `CompletionService`；有候选 → `CompletionOpen` + 刷新 Suggestions 条 |
+| **Enter** | 执行当前行；关闭补全；清空 Suggestions |
 | **Shift+Enter** | 多行输入（Post-MVP）；MVP 可忽略或禁用 |
-| **↑ / ↓** | 浏览 `CommandHistory`；有行内 prefix 时 prefix-aware（如 `render.`） |
-| **Tab** | 接受当前补全项；无 popup 时触发 `CompletionService` |
-| **Ctrl+Space** | 强制打开补全（与 Tab 二选一，实现时定一个） |
-| **Esc** | 关闭补全 popup；再按 Esc 清空输入 |
+| **↑ / ↓** | **见 §6.3 模式表**：CompletionOpen → 移动选中候选；否则 → HistoryBrowse |
+| **Tab** | **接受当前高亮候选**写入输入框（替换最后一个 token）；**不**用 Tab 在候选间轮询 |
+| **Ctrl+Space** | 强制刷新补全（可选，与 Tab 首次刷新二选一配置） |
+| **Esc** | CompletionOpen → 关闭 Suggestions，保持输入；再按 Esc → 清空输入（可选） |
 | **Ctrl+L** | Clear 输出区（与工具栏 Clear 相同） |
+| **点击 Suggestions 行** | 等同 Tab：接受该行候选 |
 | **点击输出行** | 选中文本；双击复制整行 |
 
 **焦点：** Command Tab 激活且未在拖拽视口时，输入框持焦；视口 RMB 导航（ED-F02 S04）优先，不抢焦点。
 
-### 8.3 补全 Popup
+### 8.3 补全 UX（IDE 式）
 
-- 锚定在输入框 **正上方**（`ImGui::SetNextWindowPos` + `AlwaysAutoResize`）。
-- 最大高度 ~8 行；超出可滚动。
-- 每项：**主标签**（命令名，主文本色）+ **描述**（`Muted` 灰，右对齐截断）；当前选中项 **加粗 + 左侧 2px 强调条**（`HierarchySelectionBar` 色）。
-- `↑↓` 在 popup 与 history 间：有 popup 时优先 popup；无 popup 时走 history。
+对标 **VS Code / IDE 自动完成**：输入即过滤、列表常驻输入上方、选中行高亮、Tab 确认插入。
+
+#### 8.3.1 Suggestions 条（非浮动 Tooltip）
+
+- **位置：** 滚动输出区与输入行 **之间** 的固定横条（§8.1 示意图）；**不用** 输入框上方的 `ImGuiWindowFlags_Tooltip` 浮动窗作为主要 UI。
+- **可见性：** `CompletionOpen` 且候选非空时显示；否则 **完全隐藏**（不占高度）。
+- **容量：** 默认最多显示 8 行；超出 `BeginChild` 纵向滚动。
+- **Live 刷新：** 每帧根据 `m_InputBuffer` + 光标调用 `CompletionService::Complete`；输入变化时重置选中 index 为 `0`（除非新列表仍包含原 `InsertText` 且 index 仍合法）。
+
+#### 8.3.2 候选项视觉（选中 vs 非选中）
+
+| 状态 | 样式 |
+|------|------|
+| **选中（active）** | 背景条：`HierarchySelectionBar` 或 `CommandHighlight` 半透明底；左侧 **2px 强调竖条**；主标签 `TextPrimary` **加粗** |
+| **非选中** | 无背景；主标签 `CommandMuted` 或 `TextSecondary` |
+| **描述列** | 始终 `CommandMuted`；过长省略号截断 |
+
+与 §8.4 `CommandHighlight` / `ListItemName` 色板一致；实现通过 `CommandConsoleStyle::GetCompletionRowStyle(selected)` 集中映射。
+
+#### 8.3.3 Tab 接受补全（写回规则）
+
+1. 取当前 **选中 index** 的 `CompletionItem.InsertText`。
+2. 定位输入行 **最后一个 token**（自最后一个空格/制表符至行尾，或整行若无空格）。
+3. 用 `InsertText` **替换** 该 token（保留 token 前的命令与参数，如 `get Sun.` + 补全 `m_Intensity` → `get Sun.m_Intensity`）。
+4. 写回后 **立即** 再调 `Complete` 刷新（便于连续补全下一段路径）。
+5. **Tab 不循环候选**；切换候选仅用 ↑↓ 或鼠标点击。
+
+#### 8.3.4 ↑↓ 与 History 的上下文切换（用户强需求）
+
+用户必须能 **无歧义** 感知当前 ↑↓ 在做什么：
+
+| 用户可见线索 | CompletionOpen | HistoryBrowse / Normal |
+|--------------|----------------|----------------------|
+| Suggestions 条 | **可见** | **隐藏** |
+| 输入框行为 | 文本不变，仅列表高亮移动 | 整行替换为 history 条目 |
+| 状态栏 hint（可选） | `↑↓ select · Tab accept · Esc close` | `↑↓ history · Esc cancel` |
+
+实现：`CommandConsolePresenter` 持有 `ConsoleInputMode` 枚举（§6.3）；`InputText` callback 内根据 mode 分发 `CallbackHistory` vs completion navigation。
+
+#### 8.3.5 已知实现差距（2026-09-02，待 S04b 修复）
+
+当前 `feat/editor` 落地与本文目标 **不一致**，验收前须对齐：
+
+| 项 | 设计目标 | 当前实现 |
+|----|----------|----------|
+| 刷新时机 | 输入时 live | 仅 Tab 时查询 |
+| 列表位置 | Suggestions 固定条 | 输入框上方 Tooltip popup |
+| Tab 写回 | Callback 内 InsertChars，输入框可见变化 | 可能只改 `m_InputBuffer`，ImGui 未同步 → **popup 无填入** |
+| Tab 语义 | 接受当前选中项 | 重复 Tab 轮询候选 |
+| ↑↓ | 有 Suggestions 时选候选，否则 history | 始终走 `CallbackHistory` |
+| 选中高亮 | 背景条 + 加粗 | 仅文字颜色略亮 |
+
+**切片：** 将上述对齐记为 **S04b — IDE-style Completion UX**（Runtime `CompletionService` 已具备，主要改 Presenter + `ConsoleWindow` 布局）。
 
 ### 8.4 语义配色与输出行渲染（§4.4）
 
@@ -765,14 +873,17 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | **S01** | `PropertyPath` parse + `get`/`inspect`（只读） | 测试 + headless |
 | **S02** | `set` + Validation（primitive） | 测试 set 后 Inspector 一致 |
 | **S03** | `find` + object ref 补全 | Editor 场景内 find |
-| **S04** | `CompletionService` + `CommandHistory` | 手动 Tab 补全 |
+| **S04** | `CompletionService` + `CommandHistory`（Runtime + 基础 Presenter 接线） | headless + 手动 |
+| **S04b** | **IDE 式补全 UX**（§6.3、§8.3）：live Suggestions 条、选中高亮、Tab 写回、↑↓ 模式分离 | Editor 目视 + 交互回归 |
 | **S05** | Console `Command` Tab + `CommandConsoleStyle` 配色 | Editor 目视 Dark/Light |
 | **S06** | 示范 `list_go` / `editor.undo` Adapter | Undo 回归 |
 | **S07** | `ExportSchema` JSON（Agent 预留） | 测试 schema 快照 |
 
-**建议顺序：** S00 → S01 → S02 → S05（最小可用 Console）→ S03/S04 → S06/S07。
+**建议顺序：** S00 → S01 → S02 → S05（最小可用 Console）→ S03/S04 → **S04b** → S06/S07。
 
 **前置：** `CORE-F07` S01 可与 ED-F03 S01 并行；inspect 展示名在 S05 前接入即可。
+
+**S04 / S04b 分界：** S04 交付 `CompletionService` API 与 headless 可测逻辑；S04b 交付 Editor 侧 IDE 式交互（本节 §6.3、§8.3），**Console 补全验收以 S04b 为准**。
 
 ---
 
@@ -795,7 +906,7 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 |------|------|------|
 | PropertyPath 与 Undo 路径不一致 | set 破坏场景 | 复用 Serializer path；集成测试 |
 | `IEditorCommand` 与 Unified 重复 | 维护负担 | Adapter 模式；文档边界；不双写 Scene 逻辑 |
-| Completion 与 ImGui 焦点 | 输入体验差 | 参考现有视口焦点规则（ED-F02 S04） |
+| Completion 与 ImGui 焦点 / 输入模式 | 体验差、Tab 不写回 | §6.3 状态机；Tab 在 InputText Callback 内写回；Suggestions 固定条非 Tooltip |
 | Scope 泄漏（Runtime 调 Editor 命令） | 崩溃 | Executor 强制 scope 检查 |
 | 展示名 vs 逻辑名混淆 | set 失败 | 文档 + 错误提示列出合法成员名 |
 | 体量过大 | 延期 | 严格 MVP；S05 前不追求 Palette |
@@ -806,7 +917,7 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 
 - [ ] `CommandRegistry` + ≥3 个示范命令 + Builtin meta 命令可 headless 测试
 - [ ] `get`/`set`/`inspect` 对 Scene 内 GameObject Component  primitive 字段可用
-- [ ] Console UI：Command Tab 输入、执行、↑↓ history、Tab 补全；**成功/错误/路径/值分色**（§8.4）；Output Tab 日志无回归
+- [ ] Console UI：Command Tab 输入、执行；**IDE 式补全**（§8.3）：输入时 Suggestions 条、选中高亮、Tab 写回、↑↓ 在补全与 history 间模式分离；**成功/错误/路径/值分色**（§8.4）；Output Tab 日志无回归
 - [ ] `editor.undo` 可撤销 Console 触发的可 Undo 操作
 - [ ] Logger 输出出现在 Console；关闭 Console 不影响 log
 - [ ] `ExportSchema` 产出稳定 JSON（Agent 预留）
@@ -836,3 +947,4 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | 2026-09-02 | 初版 Design（`feat/editor`）；自外部 Design Guide 适配 minEngine 现状 |
 | 2026-09-02 | `list_go` 命名；§8 UI 示意图与 Tab 方案 |
 | 2026-09-02 | §4.4 `CommandOutputLine`；§8.4 语义配色规范 |
+| 2026-09-02 | §6.2–6.3、§8.2–8.3 修订：IDE 式 live 补全、Suggestions 条、输入模式状态机、Tab 写回契约、S04b 切片；记录当前实现差距 |

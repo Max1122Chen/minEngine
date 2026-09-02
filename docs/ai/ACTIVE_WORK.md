@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-02（`feat/editor`：CORE-F07 Done；ED-F03 Runtime S00–S02）
+Last updated: 2026-09-02（`feat/editor`：CORE-F07 Done；ED-F03 S03–S04 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -74,9 +74,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 顺序 | ID | 内容 | 文档 |
 |------|-----|------|------|
 | 1 | **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** — [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) |
-| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — Runtime S00–S02 Done；Console C-minimal landed；**待做 S03 `find` + S04 CompletionService** | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
+| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — S04b IDE 补全 UX Done；**待做 S06 `editor.undo` + S07 ExportSchema** | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
 
-**建议：** S03 `find` → S04 智能补全 → 再安排 Console 目视验收 C。
+**建议：** S06 undo/redo → S07 ExportSchema → Console 目视验收 C。
 
 ### D. 合并检查点（Gate）
 

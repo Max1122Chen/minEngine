@@ -3,10 +3,28 @@
 #include "UI/CommandConsole/CommandConsoleStyle.h"
 
 #include <algorithm>
+#include <cfloat>
 #include <cstring>
 
 namespace minEngine
 {
+    namespace
+    {
+        void CommandConsoleSizeConstraint(ImGuiSizeCallbackData* data)
+        {
+            if (data == nullptr || data->UserData == nullptr)
+            {
+                return;
+            }
+
+            const float minHeight = *static_cast<const float*>(data->UserData);
+            if (data->DesiredSize.y < minHeight)
+            {
+                data->DesiredSize.y = minHeight;
+            }
+        }
+    }
+
     ConsoleWindow::ConsoleWindow(IEditorContext& context)
         : EditorWindow(context)
     {
@@ -16,6 +34,16 @@ namespace minEngine
     {
         const bool isPlaying = m_Context.IsPlaying();
         m_LastIsPlaying = isPlaying;
+
+        if (m_ActiveTab == ConsoleTab::Command)
+        {
+            m_CommandModeMinWindowHeight = GetCommandModeMinWindowHeight();
+            ImGui::SetNextWindowSizeConstraints(
+                ImVec2(-1.0f, m_CommandModeMinWindowHeight),
+                ImVec2(-1.0f, FLT_MAX),
+                CommandConsoleSizeConstraint,
+                &m_CommandModeMinWindowHeight);
+        }
 
         if (!EditorWindowTypography::BeginPanel(
                 m_Context,
@@ -48,6 +76,20 @@ namespace minEngine
         }
 
         ImGui::End();
+    }
+
+    float ConsoleWindow::GetCommandModeMinWindowHeight() const
+    {
+        const ImGuiStyle& imguiStyle = ImGui::GetStyle();
+        const float tabBarHeight = ImGui::GetTextLineHeightWithSpacing() + imguiStyle.FramePadding.y * 2.0f;
+        const float toolbarHeight = ImGui::GetFrameHeightWithSpacing() + imguiStyle.FramePadding.y * 2.0f;
+        const float separatorChrome = imguiStyle.ItemSpacing.y + 1.0f;
+        const float inputChrome = m_CommandPresenter.GetCommandInputRowHeight() + separatorChrome;
+        constexpr float kMinScrollHeight = 40.0f;
+        const float windowPadding = imguiStyle.WindowPadding.y * 2.0f;
+
+        return windowPadding + tabBarHeight + toolbarHeight + separatorChrome + kMinScrollHeight + inputChrome
+            + separatorChrome;
     }
 
     void ConsoleWindow::DrawOutputTab()
@@ -217,12 +259,33 @@ namespace minEngine
 
         ImGui::Separator();
 
-        const float inputRowHeight = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y * 2.0f;
-        const float scrollHeight = std::max(32.0f, ImGui::GetContentRegionAvail().y - inputRowHeight);
+        m_CommandPresenter.PrepareCommandTabFrame(m_Context);
+
+        const ImGuiStyle& imguiStyle = ImGui::GetStyle();
+        const float separatorChrome = imguiStyle.ItemSpacing.y + 1.0f;
+        const float inputChrome = m_CommandPresenter.GetCommandInputRowHeight() + separatorChrome;
+
+        float suggestionsDisplayHeight = 0.0f;
+        const float idealSuggestionsHeight = m_CommandPresenter.GetSuggestionsBarHeight();
+        if (idealSuggestionsHeight > 0.0f)
+        {
+            const float regionAvailY = ImGui::GetContentRegionAvail().y;
+            const float maxSuggestionsHeight =
+                std::max(0.0f, regionAvailY - inputChrome - separatorChrome - 8.0f);
+            suggestionsDisplayHeight = std::min(idealSuggestionsHeight, maxSuggestionsHeight);
+        }
+
+        float suggestionsChrome = 0.0f;
+        if (suggestionsDisplayHeight > 0.0f)
+        {
+            suggestionsChrome = suggestionsDisplayHeight + separatorChrome;
+        }
+
+        const float footerHeight = inputChrome + suggestionsChrome;
 
         ImGui::BeginChild(
             "CommandConsoleScrollRegion",
-            ImVec2(0.0f, scrollHeight),
+            ImVec2(0.0f, -footerHeight),
             false,
             ImGuiWindowFlags_HorizontalScrollbar);
         const bool wasAtBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f);
@@ -232,6 +295,12 @@ namespace minEngine
             ImGui::SetScrollHereY(1.0f);
         }
         ImGui::EndChild();
+
+        if (suggestionsDisplayHeight > 0.0f)
+        {
+            ImGui::Separator();
+            m_CommandPresenter.DrawSuggestionsBar(style, suggestionsDisplayHeight);
+        }
 
         ImGui::Separator();
         ImGui::TextColored(style.GetColor(Command::CommandOutputKind::Path), ">");

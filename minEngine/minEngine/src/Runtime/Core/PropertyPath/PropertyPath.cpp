@@ -13,10 +13,31 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
 #include <charconv>
+#include <cctype>
 #include <sstream>
 
 namespace minEngine::Command
 {
+    namespace
+    {
+        std::string TrimLiteral(std::string_view literal)
+        {
+            size_t begin = 0;
+            while (begin < literal.size() && std::isspace(static_cast<unsigned char>(literal[begin])))
+            {
+                ++begin;
+            }
+
+            size_t end = literal.size();
+            while (end > begin && std::isspace(static_cast<unsigned char>(literal[end - 1])))
+            {
+                --end;
+            }
+
+            return std::string(literal.substr(begin, end - begin));
+        }
+    }
+
     PropertyPath::PropertyPath(std::string objectRef, std::string propertySubPath)
         : m_ObjectRef(std::move(objectRef))
         , m_PropertySubPath(std::move(propertySubPath))
@@ -378,11 +399,25 @@ namespace minEngine::Command
         const std::string& primitiveTypeName = primitiveProperty.primitiveTypeName;
 
         Serialization::BinaryWriterArchive writer;
-        const std::string literalText(literal);
+        const std::string literalText = TrimLiteral(literal);
 
         if (primitiveTypeName == Reflection::GetPrimitiveName<bool>())
         {
-            const bool value = literalText == "true" || literalText == "1" || literalText == "True";
+            bool value = false;
+            if (literalText == "true" || literalText == "1" || literalText == "True" || literalText == "TRUE")
+            {
+                value = true;
+            }
+            else if (literalText == "false" || literalText == "0" || literalText == "False" || literalText == "FALSE")
+            {
+                value = false;
+            }
+            else
+            {
+                outError = "expected bool literal (true/false), got '" + literalText + "'";
+                return false;
+            }
+
             if (!writer.WriteBool(value))
             {
                 outError = "Failed to encode bool literal.";

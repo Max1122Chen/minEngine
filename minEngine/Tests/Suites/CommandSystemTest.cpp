@@ -42,6 +42,27 @@ namespace minEngine
 
 namespace
 {
+    bool ResultContainsText(const minEngine::Command::CommandResult& result, std::string_view needle)
+    {
+        if (result.Message.find(needle) != std::string::npos)
+        {
+            return true;
+        }
+
+        for (const minEngine::Command::CommandOutputLine& line : result.Lines)
+        {
+            for (const minEngine::Command::CommandOutputSegment& segment : line.Segments)
+            {
+                if (segment.Text.find(needle) != std::string::npos)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     std::shared_ptr<minEngine::Scene> CreateSunLightScene()
     {
         const std::shared_ptr<minEngine::Scene> scene = minEngine::SceneManager::Get().CreateNewScene("command-system-test");
@@ -68,6 +89,7 @@ TEST_CASE("command-system: help lists registered commands [full]")
     CHECK(minEngine::Command::CommandRegistry::Get().Find("get") != nullptr);
     CHECK(minEngine::Command::CommandRegistry::Get().Find("set") != nullptr);
     CHECK(minEngine::Command::CommandRegistry::Get().Find("inspect") != nullptr);
+    CHECK(minEngine::Command::CommandRegistry::Get().Find("find") != nullptr);
 }
 
 TEST_CASE("command-system: unknown command returns error [full]")
@@ -170,4 +192,104 @@ TEST_CASE("command-system: inspect lists object and component fields [full]")
     CHECK(result.Message.find("Sun") != std::string::npos);
     CHECK(result.Message.find("Intensity") != std::string::npos);
     CHECK(result.Message.find("DirectionalLightComponent") != std::string::npos);
+}
+
+TEST_CASE("command-system: find matches by substring name [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult result = executor.ExecuteLine("find Sun", context);
+
+    CHECK(result.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK(ResultContainsText(result, "Sun"));
+    CHECK(result.Message.find("1 match") != std::string::npos);
+}
+
+TEST_CASE("command-system: find matches by type query [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult result =
+        executor.ExecuteLine("find type=DirectionalLightComponent", context);
+
+    CHECK(result.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK(ResultContainsText(result, "Sun"));
+}
+
+TEST_CASE("command-system: find matches by exact name query [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult exactResult = executor.ExecuteLine("find name=Sun", context);
+    CHECK(exactResult.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK(ResultContainsText(exactResult, "Sun"));
+
+    const minEngine::Command::CommandResult noMatchResult = executor.ExecuteLine("find name=sun", context);
+    CHECK(noMatchResult.Status == minEngine::Command::CommandStatus::Error);
+    CHECK(ResultContainsText(noMatchResult, "No matches"));
+}
+
+TEST_CASE("command-system: set updates bool property [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult setTrueResult =
+        executor.ExecuteLine("set Sun.m_CastShadow true", context);
+    CHECK(setTrueResult.Status == minEngine::Command::CommandStatus::Ok);
+
+    minEngine::GameObject* sunObject = scene->GetAllGameObjects().front().get();
+    const std::vector<std::shared_ptr<minEngine::DirectionalLightComponent>> lights =
+        sunObject->GetComponentsOfType<minEngine::DirectionalLightComponent>();
+    REQUIRE_FALSE(lights.empty());
+    CHECK(lights.front()->CastShadow() == true);
+
+    const minEngine::Command::CommandResult setFalseResult =
+        executor.ExecuteLine("set Sun.m_CastShadow = false", context);
+    CHECK(setFalseResult.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK(lights.front()->CastShadow() == false);
+
+    const minEngine::Command::CommandResult invalidBoolResult =
+        executor.ExecuteLine("set Sun.m_CastShadow maybe", context);
+    CHECK(invalidBoolResult.Status == minEngine::Command::CommandStatus::Error);
+    CHECK(invalidBoolResult.Message.find("expected bool") != std::string::npos);
 }

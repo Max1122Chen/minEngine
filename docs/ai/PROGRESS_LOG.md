@@ -1,6 +1,23 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02 (ED-F03 Console C-minimal)
+Last updated: 2026-09-02 (ED-F03 S03–S04b commit)
+
+### 2026-09-02 - ED-F03: commit S03–S04b (find + IDE completion)
+- **Commit scope:** `find` / `SceneCommandUtils` / `CompletionService`；IDE Suggestions + Tab 写回；bool `set` 修复；`command-system` 10 cases PASS。
+- **Docs:** ED-F03 design §6.3/§8.3；`FEATURE_REGISTRY`；external Design Guide 入库。
+- **Known debt:** Console 极矮时输入框仍可能被挤（布局 min-size 未完全达标）；S04c value 补全、PropertyPath v2 歧义路径未做。
+- **Next:** S04c → S06 undo/redo → S07 ExportSchema。
+
+### 2026-09-02 - ED-F03: IDE-style completion UX (S04b)
+- **Editor:** Suggestions 固定条（输出区与输入行之间）；输入时 live 刷新；选中行高亮；Tab 经 Callback 写回；↑↓ 在补全/历史间模式分离（§6.3）。
+- **Style:** `CommandCompletionRowStyle` + `GetCompletionRowStyle`。
+- **Next:** S06 `editor.undo` / `editor.redo`；S07 ExportSchema。
+
+### 2026-09-02 - ED-F03: find command + CompletionService (S03–S04)
+- **Runtime:** `SceneCommandUtils`（`find` 查询：`name=` / `type=` / 自由文本）；`CompletionService`（命令名、ObjectRef、属性路径、`type=` 组件类型补全）；Builtin `find`。
+- **Editor:** `CommandConsolePresenter` 接入 `CompletionItem` + `CompletionService`；Tab 仅走 InputText callback；输入失焦清候选。
+- **Tests:** `command-system` — 9 cases, 36 assertions PASSED。
+- **Next:** S06 `editor.undo` / `editor.redo`；S07 ExportSchema；Console 目视验收 C 延后。
 
 ### 2026-09-02 - ED-F03: Console Command Tab (C-minimal, 目视验收延后)
 - **Editor:** `ConsoleWindow` Output | Command Tab；`CommandConsolePresenter` / `CommandConsoleStyle`；分色输出、↑↓ 历史、Tab 命令名前缀补全。

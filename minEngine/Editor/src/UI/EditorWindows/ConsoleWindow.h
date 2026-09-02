@@ -39,6 +39,7 @@ namespace minEngine
 
         void DrawOutputTab();
         void DrawCommandTab();
+        float GetCommandModeMinWindowHeight() const;
 
         bool PassFilter(const LogConsoleEntry& entry) const;
         bool PassLevelFilter(LogLevel::Level level) const;
@@ -66,5 +67,6 @@ namespace minEngine
 
         CommandConsolePresenter m_CommandPresenter;
         bool m_CommandAutoScroll = true;
+        float m_CommandModeMinWindowHeight = 0.0f;
     };
 }
