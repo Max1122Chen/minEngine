@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02 (ED-F03 验收 B)
+Last updated: 2026-09-02 (ED-F03 Console C-minimal)
+
+### 2026-09-02 - ED-F03: Console Command Tab (C-minimal, 目视验收延后)
+- **Editor:** `ConsoleWindow` Output | Command Tab；`CommandConsolePresenter` / `CommandConsoleStyle`；分色输出、↑↓ 历史、Tab 命令名前缀补全。
+- **Runtime:** `CommandHistory`；Editor `list_go` 命令。
+- **Note:** `CompletionService` / `find` / `editor.undo` / ExportSchema 未做；智能补全验收留待 S03–S04。
+- **Verified:** `Editor.exe` 编译；ImGui Command Tab 崩溃已修；`command-system` 测试仍 PASS。
 
 ### 2026-09-02 - ED-F03: command system Runtime S00–S02 (验收 B)
 - **Runtime:** `CommandRegistry` / `CommandExecutor` / `CommandResult`；Builtin `help` / `get` / `set` / `inspect`。

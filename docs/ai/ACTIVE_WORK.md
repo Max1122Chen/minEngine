@@ -74,9 +74,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 顺序 | ID | 内容 | 文档 |
 |------|-----|------|------|
 | 1 | **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** — [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) |
-| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — Runtime S00–S02 Done；Console UI 待做 — [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
+| 2 | **ED-F03** | Debug Console & Unified Command System | **In Progress** — Runtime S00–S02 Done；Console C-minimal landed；**待做 S03 `find` + S04 CompletionService** | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
 
-**建议：** ED-F03 S05 Console Command Tab → S03/S04 补全与 `list_go`。
+**建议：** S03 `find` → S04 智能补全 → 再安排 Console 目视验收 C。
 
 ### D. 合并检查点（Gate）
 
