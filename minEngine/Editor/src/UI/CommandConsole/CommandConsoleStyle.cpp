@@ -43,6 +43,22 @@ namespace minEngine
         }
     }
 
+    ImVec4 CommandConsoleStyle::GetInputValidationColor(Command::PropertyValueValidationState state) const
+    {
+        switch (state)
+        {
+            case Command::PropertyValueValidationState::Valid:
+                return GetColor(Command::CommandOutputKind::SuccessStatus);
+            case Command::PropertyValueValidationState::Partial:
+                return GetColor(Command::CommandOutputKind::Hint);
+            case Command::PropertyValueValidationState::Invalid:
+                return GetColor(Command::CommandOutputKind::Error);
+            case Command::PropertyValueValidationState::None:
+            default:
+                return m_Appearance.GetDisplayColor(m_Appearance.GetActivePalette().TextPrimary);
+        }
+    }
+
     CommandCompletionRowStyle CommandConsoleStyle::GetCompletionRowStyle(bool selected) const
     {
         const EditorSemanticColors& colors = m_Appearance.GetSemanticColors();

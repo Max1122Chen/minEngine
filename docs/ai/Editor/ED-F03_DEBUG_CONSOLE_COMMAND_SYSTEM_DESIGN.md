@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** Draft
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-02（§6.3 / §8.2–8.3 IDE 式补全交互修订）
+- **Last updated:** 2026-09-02（§6.4 S04c value 补全与校验着色）
 - **Branch:** `feat/editor`（Runtime Command 核心可合入 `master`；Console UI 在 Editor）
 - **Depends on:** P4 Reflection · Serialization property path · `CORE-F07`（展示名，inspect 可读性）
 - **Related:** [Implementation](./ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_IMPLEMENTATION.md)（待建） · [FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md) · [ACTIVE_WORK.md](../ACTIVE_WORK.md) · 外部参考 [Debug Console Design Guide](../../external/minEngine%20Debug%20Console%20%26%20Command%20System%20Design%20Guide.md) · [CORE-F07](../Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md)
@@ -875,11 +875,12 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | **S03** | `find` + object ref 补全 | Editor 场景内 find |
 | **S04** | `CompletionService` + `CommandHistory`（Runtime + 基础 Presenter 接线） | headless + 手动 |
 | **S04b** | **IDE 式补全 UX**（§6.3、§8.3）：live Suggestions 条、选中高亮、Tab 写回、↑↓ 模式分离 | Editor 目视 + 交互回归 |
+| **S04c** | **Type-aware value completion**（§6.4）：`set <path> ` 后 bool/enum 补全；输入合法性整行着色（Valid/Partial/Invalid）；enum `set` | `command-system` + Editor 目视 |
 | **S05** | Console `Command` Tab + `CommandConsoleStyle` 配色 | Editor 目视 Dark/Light |
 | **S06** | 示范 `list_go` / `editor.undo` Adapter | Undo 回归 |
 | **S07** | `ExportSchema` JSON（Agent 预留） | 测试 schema 快照 |
 
-**建议顺序：** S00 → S01 → S02 → S05（最小可用 Console）→ S03/S04 → **S04b** → S06/S07。
+**建议顺序：** S00 → S01 → S02 → S05（最小可用 Console）→ S03/S04 → **S04b** → **S04c** → S06/S07。
 
 **前置：** `CORE-F07` S01 可与 ED-F03 S01 并行；inspect 展示名在 S05 前接入即可。
 
@@ -948,3 +949,4 @@ Agent **不**模拟键盘、**不**读 UI；使用结构化 API：
 | 2026-09-02 | `list_go` 命名；§8 UI 示意图与 Tab 方案 |
 | 2026-09-02 | §4.4 `CommandOutputLine`；§8.4 语义配色规范 |
 | 2026-09-02 | §6.2–6.3、§8.2–8.3 修订：IDE 式 live 补全、Suggestions 条、输入模式状态机、Tab 写回契约、S04b 切片；记录当前实现差距 |
+| 2026-09-02 | S04c：`SetValueValidation`、bool/enum value 补全、输入合法性整行着色、enum `set`；§10 切片表补 S04c |

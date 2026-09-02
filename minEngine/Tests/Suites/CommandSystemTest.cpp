@@ -1,7 +1,10 @@
 #include "Runtime/Core/Command/BuiltinCommands.h"
 #include "Runtime/Core/Command/CommandExecutor.h"
 #include "Runtime/Core/Command/CommandRegistry.h"
+#include "Runtime/Core/Command/CompletionService.h"
+#include "Runtime/Core/Command/SetValueValidation.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/ReflectionSample.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -72,6 +75,31 @@ namespace
             sunObject->AddComponent<minEngine::DirectionalLightComponent>();
         lightComponent->SetIntensity(2.5f);
         return scene;
+    }
+
+    std::shared_ptr<minEngine::Scene> CreateSampleEnumScene()
+    {
+        const std::shared_ptr<minEngine::Scene> scene =
+            minEngine::SceneManager::Get().CreateNewScene("command-system-enum-test");
+        const std::shared_ptr<minEngine::GameObject> sampleObject = scene->CreateGameObject();
+        sampleObject->Rename("Sample");
+        sampleObject->AddComponent<minEngine::ReflectionSampleComponent>();
+        return scene;
+    }
+
+    bool CompletionContainsInsertText(
+        const std::vector<minEngine::Command::CompletionItem>& items,
+        std::string_view insertText)
+    {
+        for (const minEngine::Command::CompletionItem& item : items)
+        {
+            if (item.InsertText == insertText)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -292,4 +320,93 @@ TEST_CASE("command-system: set updates bool property [full]")
         executor.ExecuteLine("set Sun.m_CastShadow maybe", context);
     CHECK(invalidBoolResult.Status == minEngine::Command::CommandStatus::Error);
     CHECK(invalidBoolResult.Message.find("expected bool") != std::string::npos);
+}
+
+TEST_CASE("command-system: set value completion suggests bool literals [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const std::vector<minEngine::Command::CompletionItem> allBoolItems =
+        minEngine::Command::CompletionService::Complete("set Sun.m_CastShadow ", 0, context);
+    CHECK(CompletionContainsInsertText(allBoolItems, "true"));
+    CHECK(CompletionContainsInsertText(allBoolItems, "false"));
+
+    const std::vector<minEngine::Command::CompletionItem> filteredBoolItems =
+        minEngine::Command::CompletionService::Complete("set Sun.m_CastShadow tr", 0, context);
+    CHECK(CompletionContainsInsertText(filteredBoolItems, "true"));
+    CHECK_FALSE(CompletionContainsInsertText(filteredBoolItems, "false"));
+}
+
+TEST_CASE("command-system: set value completion suggests enum literals [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    const std::shared_ptr<minEngine::Scene> scene = CreateSampleEnumScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const std::vector<minEngine::Command::CompletionItem> enumItems =
+        minEngine::Command::CompletionService::Complete("set Sample.SampleData.EnumField ", 0, context);
+    CHECK(CompletionContainsInsertText(enumItems, "ValueA"));
+    CHECK(CompletionContainsInsertText(enumItems, "ValueB"));
+    CHECK(CompletionContainsInsertText(enumItems, "ValueC"));
+}
+
+TEST_CASE("command-system: set value validation colors bool and numeric input [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    const minEngine::Command::PropertyValueValidation partialBool =
+        minEngine::Command::SetValueValidation::ValidateInputLine(context, "set Sun.m_CastShadow tr");
+    CHECK(partialBool.State == minEngine::Command::PropertyValueValidationState::Partial);
+
+    const minEngine::Command::PropertyValueValidation validBool =
+        minEngine::Command::SetValueValidation::ValidateInputLine(context, "set Sun.m_CastShadow true");
+    CHECK(validBool.State == minEngine::Command::PropertyValueValidationState::Valid);
+
+    const minEngine::Command::PropertyValueValidation invalidFloat =
+        minEngine::Command::SetValueValidation::ValidateInputLine(context, "set Sun.m_Intensity foo");
+    CHECK(invalidFloat.State == minEngine::Command::PropertyValueValidationState::Invalid);
+
+    const minEngine::Command::PropertyValueValidation partialFloat =
+        minEngine::Command::SetValueValidation::ValidateInputLine(context, "set Sun.m_Intensity 3.");
+    CHECK(partialFloat.State == minEngine::Command::PropertyValueValidationState::Partial);
+}
+
+TEST_CASE("command-system: set updates enum property [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::Command::CommandRegistry::Get().Clear();
+    minEngine::Command::RegisterBuiltinCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSampleEnumScene();
+    minEngine::Command::CommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::Command::CommandExecutor executor;
+    const minEngine::Command::CommandResult setResult =
+        executor.ExecuteLine("set Sample.SampleData.EnumField ValueC", context);
+    CHECK(setResult.Status == minEngine::Command::CommandStatus::Ok);
+
+    const minEngine::Command::CommandResult getResult =
+        executor.ExecuteLine("get Sample.SampleData.EnumField", context);
+    CHECK(getResult.Status == minEngine::Command::CommandStatus::Ok);
+    CHECK(getResult.Message == setResult.Message);
 }

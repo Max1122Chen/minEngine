@@ -12,6 +12,8 @@ namespace minEngine::Command
         ObjectRef,
         Property,
         ComponentType,
+        ValueLiteral,
+        EnumValue,
         Plain,
     };
 

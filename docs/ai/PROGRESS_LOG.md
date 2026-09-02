@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02 (ED-F03 S03–S04b commit)
+Last updated: 2026-09-02（`feat/editor`：ED-F03 S04c Done）
+
+### 2026-09-02 - ED-F03: type-aware value completion (S04c)
+- **Runtime:** `SetValueValidation`（bool/enum 补全、数值/布尔校验）；`PropertyPath` enum `set` + `TryResolveLeafProperty`；`CompletionKind::ValueLiteral` / `EnumValue`。
+- **Editor:** `set` value 阶段整行输入合法性着色（绿/黄/红）；bool/enum Suggestions 经 `CompletionService`。
+- **Tests:** `command-system` — 14 cases, 62 assertions PASSED。
+- **Known debt:** 数值类型无补全候选；整行着色（非 value token 分色）；Console 极矮布局；PropertyPath v2 歧义路径。
+- **Next:** S06 `editor.undo` / `editor.redo` → S07 ExportSchema。
 
 ### 2026-09-02 - ED-F03: commit S03–S04b (find + IDE completion)
 - **Commit scope:** `find` / `SceneCommandUtils` / `CompletionService`；IDE Suggestions + Tab 写回；bool `set` 修复；`command-system` 10 cases PASS。

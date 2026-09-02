@@ -3,6 +3,7 @@
 
 
 #include "Runtime/Core/Command/CompletionService.h"
+#include "Runtime/Core/Command/SetValueValidation.h"
 
 #include "SubEditor/Scene/SceneEditor.h"
 
@@ -1008,10 +1009,6 @@ namespace minEngine
 
     {
 
-        (void)style;
-
-
-
         if (m_FocusInputNextFrame)
 
         {
@@ -1029,6 +1026,26 @@ namespace minEngine
         m_LastCompletionContext = commandContext;
 
         UpdateLiveCompletion(commandContext);
+
+
+
+        const Command::PropertyValueValidation valueValidation =
+
+            Command::SetValueValidation::ValidateInputLine(commandContext, m_InputBuffer);
+
+
+
+        int pushedStyleColors = 0;
+
+        if (valueValidation.State != Command::PropertyValueValidationState::None)
+
+        {
+
+            ImGui::PushStyleColor(ImGuiCol_Text, style.GetInputValidationColor(valueValidation.State));
+
+            pushedStyleColors = 1;
+
+        }
 
 
 
@@ -1057,6 +1074,16 @@ namespace minEngine
             CommandConsoleInputCallback,
 
             &callbackUserData);
+
+
+
+        if (pushedStyleColors > 0)
+
+        {
+
+            ImGui::PopStyleColor(pushedStyleColors);
+
+        }
 
 
 

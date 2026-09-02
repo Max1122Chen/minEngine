@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Command/CommandResult.h"
 #include "Runtime/Core/Reflection/MEProperties.h"
+#include "Runtime/Core/Reflection/MEProperties.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Reflection/ReflectionDisplayNames.h"
 #include "Runtime/Core/Reflection/ReflectionUtils.h"
@@ -400,6 +401,32 @@ namespace minEngine::Command
 
         Serialization::BinaryWriterArchive writer;
         const std::string literalText = TrimLiteral(literal);
+
+        if (primitiveProperty.IsEnum())
+        {
+            const Reflection::MEEnum* enumType = primitiveProperty.GetEnum();
+            if (enumType == nullptr)
+            {
+                outError = "enum type is unresolved.";
+                return false;
+            }
+
+            const Reflection::MEEnumEntry* enumEntry = enumType->FindByName(literalText);
+            if (enumEntry == nullptr)
+            {
+                outError = "expected enum '" + enumType->GetName() + "', got '" + literalText + "'";
+                return false;
+            }
+
+            if (!writer.WriteInt64(enumEntry->value))
+            {
+                outError = "Failed to encode enum literal.";
+                return false;
+            }
+
+            outBuffer = writer.TakeBuffer();
+            return true;
+        }
 
         if (primitiveTypeName == Reflection::GetPrimitiveName<bool>())
         {
@@ -818,5 +845,42 @@ namespace minEngine::Command
         }
 
         return builder.BuildOk();
+    }
+
+    bool PropertyPath::TryResolveLeafProperty(
+        const CommandContext& context,
+        const Reflection::MEProperty*& outProperty) const
+    {
+        outProperty = nullptr;
+
+        if (m_PropertySubPath.empty())
+        {
+            return false;
+        }
+
+        ResolvedPropertyTarget target;
+        if (!Resolve(context, target))
+        {
+            return false;
+        }
+
+        void* leafOwner = nullptr;
+        const Reflection::MEClass* leafOwnerClass = nullptr;
+        std::string leafPropertyName;
+        std::string walkError;
+        if (!WalkToLeafOwner(
+                target.OwnerObject,
+                target.OwnerClass,
+                target.PropertySubPath,
+                leafOwner,
+                leafOwnerClass,
+                leafPropertyName,
+                walkError))
+        {
+            return false;
+        }
+
+        outProperty = FindPropertyInHierarchy(leafOwnerClass, leafPropertyName);
+        return outProperty != nullptr;
     }
 }

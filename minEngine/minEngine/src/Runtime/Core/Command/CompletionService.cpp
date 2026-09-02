@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Command/CommandRegistry.h"
 #include "Runtime/Core/Command/SceneCommandUtils.h"
+#include "Runtime/Core/Command/SetValueValidation.h"
 
 namespace minEngine::Command
 {
@@ -142,7 +143,8 @@ namespace minEngine::Command
         {
             if (commandId == "set" && IsSetValuePhase(tokens, hasPartialToken))
             {
-                return items;
+                const SetValuePhase valuePhase = SetValueValidation::ParseValuePhase(trimmedLine);
+                return SetValueValidation::CompleteValue(context, valuePhase);
             }
 
             if (commandId != "set" && IsGetInspectPathComplete(tokens, hasPartialToken))

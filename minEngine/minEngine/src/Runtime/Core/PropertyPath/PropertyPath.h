@@ -33,6 +33,10 @@ namespace minEngine::Command
         CommandResult SetValue(const CommandContext& context, std::string_view literal) const;
         CommandResult Inspect(const CommandContext& context) const;
 
+        bool TryResolveLeafProperty(const CommandContext& context, const Reflection::MEProperty*& outProperty) const;
+
+        static bool IsPropertyWritable(const Reflection::MEProperty& property);
+
         const std::string& GetObjectRef() const { return m_ObjectRef; }
         const std::string& GetPropertySubPath() const { return m_PropertySubPath; }
 
@@ -63,7 +67,6 @@ namespace minEngine::Command
             const Reflection::MEClass* ownerClass,
             std::string_view propertyName);
         static bool IsPropertyVisible(const Reflection::MEProperty& property);
-        static bool IsPropertyWritable(const Reflection::MEProperty& property);
         static std::string FormatPropertyValueAsText(
             void* ownerObject,
             const Reflection::MEClass* ownerClass,
