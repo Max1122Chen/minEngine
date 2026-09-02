@@ -1,13 +1,19 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-02（`feat/editor`：ED-F03 S09+S10a Done；S10b 待 CORE-F06）
+Last updated: 2026-09-02（`feat/editor`：ED-F03 MVP 收口）
+
+### 2026-09-02 - ED-F03: MVP slice closure（非 Feature Done）
+- **Status:** Registry / Design 保持 **In Progress**；S00–S10a **Done**；**S10b** `activate`/`deactivate` → **Deferred**（CORE-F06）；S07 ExportSchema 仍 Deferred。
+- **Commits:** `a420040`（undo/`@` paths）、`06aabce`（validation + `rename`）。
+- **Tests:** `command-system` — 25 cases, 120 assertions PASS。
+- **Next:** `feat/editor` 优先 **ED-F02**；S10b 待 CORE-F06 merge 后单开切片。
 
 ### 2026-09-02 - ED-F03: rename console command (S10a)
 - **Editor:** `rename <GOName> <NewName>` → `SceneEditor::SubmitRenameGameObject` / `RenameGameObjectCommand`；歧义/未找到 GO 报错。
 - **Runtime:** `rename` 第一参数 GO 名补全（`CompletionService`）。
 - **Tests:** `command-system` — 25 cases, 120 assertions PASS。
-- **Manual:** Editor Console `rename Sun Sol` + `undo` 往返（待用户验收）。
-- **Next:** S10b `activate`/`deactivate` after CORE-F06；或 ED-F03 Feature 收口。
+- **Manual:** Editor Console `rename Sun Sol` + `undo` 往返（可选验收）。
+- **Next:** ~~S10b~~ → **Deferred**（见 MVP closure 条目）。
 
 ### 2026-09-02 - ED-F03: ValidationService + property constraints (S09)
 - **Runtime:** `ValidationService`（命令参数 Required、`set` 执行前校验）；`SetValueValidation` 增强（`ClampMin`/`ClampMax`、`ReadOnly`、机器友好 `expected … got …` + `suggestions: [...]`）。
