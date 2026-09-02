@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-02
+- **Last updated:** 2026-09-03
 - **Branch:** `master`
 - **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md) · [Implementation Plan](./CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [CORE-F06 Component Activate](./CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Play Mode Guideline](../../../external/minEngine%20Play%20Mode%20Development%20Guideline.md)（外部参考，Tier B）
 - **Depends on:** ~~`CORE-F06`~~ **Done**
@@ -349,13 +349,15 @@ struct ISceneContextListener
 
 ```text
 DuplicateForPIE(EditorScene)
-  ├── Serialize → memory archive
+  ├── Serialize → in-memory JSON (JsonWriterArchive; **TD-029**)
   ├── Deserialize → new Scene (Type=PIE, new GUIDs, SceneCloneContext)
   ├── FinalizePIEScene
   ├── ObjectManager register PIE subgraph
   ├── PlayObjectMapping::Build
   └── SceneManager::RegisterPIEScene
 ```
+
+**Wire format（2026-09-03）：** PIE clone 使用与 `.mescene` 相同的 **JSON + Serializer** 路径（`allowObjectPtrSerialization=true`），仅在内存 round-trip，**不写盘**。原计划 Binary in-memory buffer 因 **TD-028**（`EndObject` 与 10 字符字段名长度歧义）在多 physics-mesh GO 场景下失败；Binary 待协议修订后恢复（见 TD-029）。
 
 ### 5.2 `SceneComponent` Attach 升级（**CORE-F05 前置 / S00**）
 

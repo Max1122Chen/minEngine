@@ -129,11 +129,14 @@ namespace minEngine
             return m_ActiveSceneOverride;
         }
 
-        if (m_PIEPlayActive)
+        if (m_PIEPlayActive && !m_PIEContexts.empty())
         {
-            if (Scene* pieScene = GetPIEScene(0))
+            for (const SceneContext& pieContext : m_PIEContexts)
             {
-                return pieScene;
+                if (pieContext.Scene)
+                {
+                    return pieContext.Scene.get();
+                }
             }
         }
 

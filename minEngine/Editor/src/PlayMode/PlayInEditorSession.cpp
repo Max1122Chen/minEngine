@@ -2,12 +2,20 @@
 
 #include "ActiveSceneScope.h"
 
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Scene/SceneDuplicator.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
+#include "Runtime/Function/Render/RenderScene.h"
 
 namespace minEngine
 {
+    namespace
+    {
+        // MVP: single PIE instance; must match SceneManager::GetTickTargetScene PIE lookup.
+        constexpr int32_t kPIEInstanceId = 0;
+    }
+
     Scene* PlayInEditorSession::GetEditorScene() const
     {
         if (m_EditorContext.Scene)
@@ -90,7 +98,7 @@ namespace minEngine
         editorScene->SetTickPolicy(ESceneTickPolicy::None);
 
         m_CloneContext = {};
-        m_CloneContext.PIEInstanceId = m_NextPIEInstanceId;
+        m_CloneContext.PIEInstanceId = kPIEInstanceId;
         m_CloneContext.TargetType = ESceneType::PIE;
 
         std::shared_ptr<Scene> pieScene = SceneDuplicator::DuplicateForPIE(*editorScene, m_CloneContext);
@@ -101,12 +109,12 @@ namespace minEngine
             return false;
         }
 
-        pieScene->SetPIEInstanceId(m_NextPIEInstanceId);
+        pieScene->SetPIEInstanceId(kPIEInstanceId);
 
         SceneContext pieContext;
         pieContext.Type = ESceneType::PIE;
         pieContext.TickPolicy = ESceneTickPolicy::Gameplay;
-        pieContext.PIEInstanceId = m_NextPIEInstanceId;
+        pieContext.PIEInstanceId = kPIEInstanceId;
         pieContext.Scene = pieScene;
         pieContext.ContextHandle = "PIE_0";
         m_PIEContexts.clear();
@@ -115,8 +123,13 @@ namespace minEngine
         m_ObjectMapping.Build(m_CloneContext);
 
         sceneManager.SetEditorSceneContext(m_EditorContext);
-        sceneManager.RegisterPIEScene(pieScene, m_NextPIEInstanceId);
+        sceneManager.RegisterPIEScene(pieScene, kPIEInstanceId);
         sceneManager.SetPIEPlayActive(true);
+
+        if (RenderScene* editorRenderScene = editorScene->GetRenderScene())
+        {
+            editorRenderScene->CollectOrphanedSceneProxies();
+        }
 
         if (PhysicsSystem::HasInstance())
         {
@@ -125,7 +138,6 @@ namespace minEngine
         }
 
         m_State = PlayState::Playing;
-        ++m_NextPIEInstanceId;
         return true;
     }
 
@@ -142,7 +154,10 @@ namespace minEngine
         {
             SceneManager& sceneManager = SceneManager::Get();
             sceneManager.SetPIEPlayActive(false);
-            sceneManager.UnregisterPIEScene(0);
+            for (const SceneContext& pieContext : m_PIEContexts)
+            {
+                sceneManager.UnregisterPIEScene(pieContext.PIEInstanceId);
+            }
         }
 
         m_PIEContexts.clear();
@@ -154,9 +169,19 @@ namespace minEngine
             m_EditorContext.TickPolicy = ESceneTickPolicy::Gameplay;
             m_EditorContext.Scene->SetTickPolicy(ESceneTickPolicy::Gameplay);
 
+            if (RenderScene* editorRenderScene = m_EditorContext.Scene->GetRenderScene())
+            {
+                editorRenderScene->CollectOrphanedSceneProxies();
+            }
+
             if (SceneManager::HasInstance())
             {
                 SceneManager::Get().SetEditorSceneContext(m_EditorContext);
+            }
+
+            if (ObjectManager::HasInstance())
+            {
+                ObjectManager::Get().CollectGarbage();
             }
         }
 

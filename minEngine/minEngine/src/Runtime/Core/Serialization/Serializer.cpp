@@ -1,6 +1,7 @@
 #include "Serializer.h"
 
 #include "BinaryArchive.h"
+#include "JsonArchive.h"
 #include "PrimitiveCodecRegistry.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
@@ -1402,6 +1403,32 @@ namespace minEngine::Serialization
                                                             const SerializerOptions& options)
     {
         BinaryReaderArchive reader(buffer);
+        return Deserialize(rootClassName, outRootObject, reader, outUnresolvedRefs, options);
+    }
+
+    SerializeResult Serializer::SerializeObjectToJson(const std::string& rootClassName,
+                                                      const void* rootObject,
+                                                      Json& outRoot,
+                                                      const SerializerOptions& options)
+    {
+        JsonWriterArchive writer;
+        const SerializeResult result = Serialize(rootClassName, rootObject, writer, options);
+        if (!result.ok)
+        {
+            return result;
+        }
+
+        outRoot = std::move(writer.MoveRoot());
+        return SerializeResult::Success();
+    }
+
+    SerializeResult Serializer::DeserializeObjectFromJson(const std::string& rootClassName,
+                                                          void* outRootObject,
+                                                          const Json& root,
+                                                          std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                          const SerializerOptions& options)
+    {
+        JsonReaderArchive reader(root);
         return Deserialize(rootClassName, outRootObject, reader, outUnresolvedRefs, options);
     }
 }

@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Archive.h"
+#include "Json.h"
 #include "SerializationTypes.h"
 
 #include <string>
@@ -113,6 +114,17 @@ namespace minEngine::Serialization
                                                            const std::vector<uint8_t>& buffer,
                                                            std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                            const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult SerializeObjectToJson(const std::string& rootClassName,
+                                                     const void* rootObject,
+                                                     Json& outRoot,
+                                                     const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult DeserializeObjectFromJson(const std::string& rootClassName,
+                                                         void* outRootObject,
+                                                         const Json& root,
+                                                         std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                         const SerializerOptions& options = SerializerOptions{});
 
         static void SetActiveCloneContext(SceneCloneContext* cloneContext);
         static SceneCloneContext* GetActiveCloneContext();

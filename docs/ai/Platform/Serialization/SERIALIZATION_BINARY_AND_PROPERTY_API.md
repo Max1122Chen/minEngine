@@ -311,7 +311,7 @@ EndField
 
 **Reader 补充：** `BeginObjectPtr(MEClass*)` 在 wire `typeName` 为空时跳过校验（与 §6.4 Object 一致）。
 
-**EndObject 与 field-name length 歧义：** `BinaryWireTag::EndObject` 值为 `0x0a`，与 u16 小端 field-name 长度的低字节相同（例如 `m_Material` 长度 10 → `0a 00`）。`ParseObjectFields` / 内联 Object 扫描在循环头 **不能** 单字节判 `EndObject`；须先 peek u16，若 `readPos + 2 + length` 仍在 buffer 内则按字段解析，否则 consume `EndObject`。
+**EndObject 与 field-name length 歧义（TD-028，Open）：** `BinaryWireTag::EndObject` 值为 `0x0a`，与 u16 小端 field-name 长度的低字节相同（例如 `m_Material` / `m_BodyType` 长度 10 → `0a 00`）。`ParseObjectFields` / 内联 Object 扫描在循环头 **不能** 单字节判 `EndObject`；须先 peek u16，若 `readPos + 2 + length` 仍在 buffer 内则按字段解析，否则 consume `EndObject`。**现状：** 当前 `IsObjectFieldStreamEnd` 启发式仍不足，多 GO physics-mesh Scene 的 `SerializeObjectToBuffer` round-trip 失败。**PIE clone** 已绕行 JSON（**TD-029**）；Binary 协议可能部分重设计后再恢复 PIE Binary 路径。
 
 **验收：** `--serialization-archive-test` 含 Array×ObjectPtr 内联、Array×GuidRef、GameObject+m_Components round-trip；Delete GO 带 Component Undo capture 成功。
 

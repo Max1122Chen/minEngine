@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-09-02（`master`：`feat/editor` 合入；TD-026/027 Open）
+Last updated: 2026-09-03（`master`：TD-028/029 Open — Binary PIE detour）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -35,6 +35,8 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-025 | Clip-space / texture-origin policy hardcoded to `IsVulkan()` | RND / RHI | **Medium** | Done | [RND-TD025](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md) · ED-F01 | 2026-08-28: `RHIClipSpaceCapabilities` + shadow scheme A landed；2026-08-31 user visual verify with RND-F14 batch |
 | TD-026 | Scene deserialize `m_Owner` bypasses `Component::SetOwner` | CORE / Serialization | **Medium** | Open | `CORE-F06` · [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) | 2026-09-02: `ResolvePendingActivationsForScene` calls `SyncActivationWithActiveFlag` as load reconcile（首 Deactivate 失效 workaround）。**根治：** pending ref resolve 后对 `m_Owner` 走反射 Setter / `SetOwner`，与 `AddComponent_Internal` 一致；见 Serializer `ResolvePendingObjectRefs` raw ptr assign。 |
 | TD-027 | Asset Scene3D thumbnails share main ForwardRenderer RDG color | ED / RND | **Medium** | Open | ED-F02 · `AssetThumbnailService` | 2026-09-01: disabled `SubmitSceneDraw` for Material/StaticMesh thumbnails (icon fallback). Future: dedicated thumbnail renderer / isolated graph + stable ImGui texture pin. |
+| TD-028 | Binary wire format field-stream parsing fragile (`EndObject` vs u16 len) | CORE / Serialization | **High** | Open | [SERIALIZATION_BINARY_AND_PROPERTY_API.md](./Platform/Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) §6.4 · `BinaryArchive.cpp` | 2026-09-03: `EndObject` (0x0A) collides with 10-char field-name length prefix (`m_BodyType`, `m_Material`); `SerializeObjectToBuffer` Scene round-trip fails when ≥2 GOs have StaticMesh+RigidBody+Collider. May redesign parts of binary protocol; see TD-029 detour. |
+| TD-029 | PIE `SceneDuplicator` uses in-memory JSON instead of Binary | CORE-F05 / ED | **Medium** | Open | [CORE-F05_PLAY_MODE_DESIGN.md](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) §5.1 | 2026-09-03: `DuplicateForPIE` detour to `JsonArchive` (same options as `.mescene`) until TD-028 fixed. Disk format unchanged; revert to Binary when wire format stable. |
 
 ---
 

@@ -5,7 +5,7 @@
 - **Type:** Implementation Plan
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-02
+- **Last updated:** 2026-09-03
 - **Related:** [Design Spec](./CORE-F05_PLAY_MODE_DESIGN.md) · [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md)
 
 ## TL;DR
@@ -47,9 +47,11 @@
 
 - **Goal:** `DuplicateForPIE`；Invariant A/D；依赖 S00。
 - **Touch:** `SceneDuplicator.{h,cpp}`、`Serializer` clone 选项、`SceneCloneTest.cpp`
+- **Wire:** in-memory **JSON** round-trip（与 `SceneLoader` 同 `SerializerOptions`）；**TD-029**；Binary 恢复待 **TD-028**。
 - **DoD:**
   - [ ] PIE GUID ≠ Editor；Asset 共享
   - [ ] Attach parent GUID 在 PIE 内正确
+  - [ ] 含双 physics-mesh GO 的 scene clone 通过（`scene-clone` physics-stack 用例）
 - **Verify:** `minEngineTests.exe test scene-clone`
 
 ---
@@ -120,3 +122,4 @@ S00 → S01 → S02b → S02 → S03
 |------|------|
 | 2026-09-02 | 初稿 |
 | 2026-09-02 | 双 World；S00 Attach；命名修订；TickPolicy |
+| 2026-09-03 | S01：PIE clone 改 in-memory JSON（TD-029）；Binary 待 TD-028 |

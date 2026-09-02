@@ -9,17 +9,31 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        constexpr Serialization::SerializerOptions kPIECloneSerializerOptions{
+            .enumAsString = true,
+            .strictTypeCheck = true,
+            .skipUnknownField = true,
+            .allowObjectPtrSerialization = true,
+        };
+    }
+
     std::shared_ptr<Scene> SceneDuplicator::DuplicateForPIE(const Scene& editorScene, SceneCloneContext& inOutContext)
     {
-        std::vector<uint8_t> buffer;
-        std::vector<Serialization::PendingObjectRef> unresolvedRefs;
-        const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToBuffer(
+        Json sceneJson;
+        const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToJson(
             "minEngine::Scene",
             &editorScene,
-            buffer);
+            sceneJson,
+            kPIECloneSerializerOptions);
         if (!serializeResult.ok)
         {
-            ME_CORE_ERROR("SceneDuplicator: failed to serialize editor scene '{}'.", editorScene.GetSceneName());
+            ME_CORE_ERROR(
+                "SceneDuplicator: failed to serialize editor scene '{}'. {} (field: {})",
+                editorScene.GetSceneName(),
+                serializeResult.message,
+                serializeResult.fieldPath);
             return nullptr;
         }
 
@@ -36,17 +50,23 @@ namespace minEngine
         inOutContext.SourceToClonedGuid.clear();
         inOutContext.ClonedBySourceGuid.clear();
 
+        std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         Serialization::Serializer::SetActiveCloneContext(&inOutContext);
-        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
+        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromJson(
             "minEngine::Scene",
             pieScene.get(),
-            buffer,
-            unresolvedRefs);
+            sceneJson,
+            unresolvedRefs,
+            kPIECloneSerializerOptions);
         Serialization::Serializer::SetActiveCloneContext(nullptr);
 
         if (!deserializeResult.ok)
         {
-            ME_CORE_ERROR("SceneDuplicator: failed to deserialize PIE scene from editor scene '{}'.", editorScene.GetSceneName());
+            ME_CORE_ERROR(
+                "SceneDuplicator: failed to deserialize PIE scene from editor scene '{}'. {} (field: {})",
+                editorScene.GetSceneName(),
+                deserializeResult.message,
+                deserializeResult.fieldPath);
             return nullptr;
         }
 

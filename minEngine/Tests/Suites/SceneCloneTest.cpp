@@ -11,7 +11,11 @@
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Function/Framework/Scene/SceneDuplicator.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Physics/RigidBodyComponent.h"
+#include "Runtime/Function/Physics/BoxColliderComponent.h"
 
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 
@@ -351,13 +355,54 @@ namespace minEngine
 
             return true;
         }
+
+        bool RunSceneDuplicatePhysicsStackTest()
+        {
+            SceneCloneTestScope scope;
+
+            const std::shared_ptr<Scene> editorScene = SceneManager::Get().CreateNewScene("test");
+            if (!editorScene)
+            {
+                ME_CORE_ERROR("SceneCloneTest: failed to create physics-stack editor scene.");
+                return false;
+            }
+
+            const auto addPhysicsMeshGO = [&](const char* name, EBodyType bodyType)
+            {
+                const std::shared_ptr<GameObject> gameObject = editorScene->CreateGameObject();
+                gameObject->Rename(name);
+                gameObject->AddComponent<StaticMeshComponent>();
+                gameObject->AddComponent<RigidBodyComponent>()->SetBodyType(bodyType);
+                gameObject->AddComponent<BoxColliderComponent>();
+            };
+
+            addPhysicsMeshGO("Cube", EBodyType::Dynamic);
+            addPhysicsMeshGO("plane", EBodyType::Static);
+
+            SceneCloneContext cloneContext;
+            const std::shared_ptr<Scene> pieScene = SceneDuplicator::DuplicateForPIE(*editorScene, cloneContext);
+            if (!pieScene)
+            {
+                ME_CORE_ERROR("SceneCloneTest: DuplicateForPIE failed on physics-stack scene.");
+                return false;
+            }
+
+            if (pieScene->GetAllGameObjects().size() != editorScene->GetAllGameObjects().size())
+            {
+                ME_CORE_ERROR("SceneCloneTest: physics-stack scene game object count mismatch after PIE clone.");
+                return false;
+            }
+
+            return true;
+        }
     }
 
     bool RunSceneCloneTests()
     {
         return RunSceneCloneAttachHierarchyTest()
             && RunSceneAttachParentSerializationRoundTripTest()
-            && RunLegacySceneFileWithoutAttachParentTest();
+            && RunLegacySceneFileWithoutAttachParentTest()
+            && RunSceneDuplicatePhysicsStackTest();
     }
 }
 

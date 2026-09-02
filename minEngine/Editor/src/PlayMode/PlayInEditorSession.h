@@ -38,6 +38,5 @@ namespace minEngine
         std::vector<SceneContext> m_PIEContexts;
         PlayObjectMapping m_ObjectMapping;
         SceneCloneContext m_CloneContext;
-        int32_t m_NextPIEInstanceId = 0;
     };
 }
