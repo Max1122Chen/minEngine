@@ -160,9 +160,38 @@ namespace minEngine
         }
     }
 
+    Scene* SceneEditor::GetDocumentScene() const
+    {
+        if (!SceneManager::HasInstance())
+        {
+            return nullptr;
+        }
+
+        return SceneManager::Get().GetEditorScene();
+    }
+
     Scene* SceneEditor::GetActiveScene() const
     {
-        return SceneManager::Get().GetCurrentActiveScene().get();
+        if (m_Context != nullptr)
+        {
+            if (Scene* inspectingScene = m_Context->GetInspectingScene())
+            {
+                return inspectingScene;
+            }
+        }
+
+        return GetDocumentScene();
+    }
+
+    void SceneEditor::MarkSceneDirty()
+    {
+        // PIE inspect mutates must not dirty the authoring document.
+        if (m_Context != nullptr && m_Context->IsPlaying())
+        {
+            return;
+        }
+
+        m_SceneDirty = true;
     }
 
     std::vector<GameObject*> SceneEditor::GetHierarchyGameObjects() const
@@ -257,6 +286,7 @@ namespace minEngine
         context.GetCommandStack().Clear();
         SyncSelectionWithScene();
         ClearSceneDirty();
+        context.SetInspectingScene(GetDocumentScene());
         return true;
     }
 
@@ -271,6 +301,7 @@ namespace minEngine
         context.GetCommandStack().Clear();
         SyncSelectionWithScene();
         ClearSceneDirty();
+        context.SetInspectingScene(GetDocumentScene());
         ME_CORE_INFO("SceneEditor: opened scene '{}'.", projectRelativePath);
         return true;
     }
@@ -280,6 +311,7 @@ namespace minEngine
         SceneManager::Get().CreateNewScene("Untitled");
         context.GetCommandStack().Clear();
         SyncSelectionWithScene();
+        context.SetInspectingScene(GetDocumentScene());
         MarkSceneDirty();
         ME_CORE_INFO("SceneEditor: created new untitled scene.");
         return true;
@@ -287,7 +319,7 @@ namespace minEngine
 
     bool SceneEditor::HasPersistedScenePath() const
     {
-        const Scene* scene = GetActiveScene();
+        const Scene* scene = GetDocumentScene();
         if (scene == nullptr || scene->GetSceneName().empty())
         {
             return false;
@@ -489,7 +521,7 @@ namespace minEngine
             return SaveCurrentSceneAs(context);
         }
 
-        Scene* scene = GetActiveScene();
+        Scene* scene = GetDocumentScene();
         if (!scene)
         {
             ME_CORE_ERROR("No active scene to save.");
@@ -509,7 +541,7 @@ namespace minEngine
 
     bool SceneEditor::SaveCurrentSceneAs(IEditorContext& context)
     {
-        Scene* scene = GetActiveScene();
+        Scene* scene = GetDocumentScene();
         if (!scene)
         {
             ME_CORE_ERROR("No active scene to save.");

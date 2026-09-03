@@ -12,10 +12,13 @@
 namespace minEngine
 {
     class Scene;
+    class IEditorContext;
 
     class PlayInEditorSession final : public IPlayModeService
     {
     public:
+        void SetHostContext(IEditorContext* hostContext) { m_HostContext = hostContext; }
+
         PlayState GetPlayState() const override { return m_State; }
         bool IsPlaying() const override { return m_State == PlayState::Playing; }
         bool EnterPlay() override;
@@ -32,7 +35,9 @@ namespace minEngine
 
     private:
         void SyncSceneContextsToManager();
+        void ApplyInspectingSceneForPlayState();
 
+        IEditorContext* m_HostContext = nullptr;
         PlayState m_State = PlayState::Editing;
         SceneContext m_EditorContext;
         std::vector<SceneContext> m_PIEContexts;

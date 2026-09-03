@@ -52,6 +52,8 @@ namespace minEngine
         void SyncSelectionWithScene();
 
         Scene* GetActiveScene() const;
+        /** Document scene for Save/Dirty — always Editor, never PIE. */
+        Scene* GetDocumentScene() const;
 
         std::vector<GameObject*> GetHierarchyGameObjects() const;
         GameObject* GetSelectedGameObject() const;
@@ -118,7 +120,7 @@ namespace minEngine
         Component* ApplyRestoreComponentFromSnapshot(uint64_t ownerGameObjectId, const EditorObjectSnapshot& snapshot);
         void PostRestoreSceneObject(GameObject& gameObject);
 
-        void MarkSceneDirty() { m_SceneDirty = true; }
+        void MarkSceneDirty();
         void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }
 

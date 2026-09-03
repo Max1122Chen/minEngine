@@ -21,6 +21,7 @@ namespace minEngine
     class EditorAppearance;
     class IFileDialogService;
     class IPlayModeService;
+    class Scene;
 
     class IEditorContext
     {
@@ -63,6 +64,10 @@ namespace minEngine
         virtual bool IsPlaying() const = 0;
         virtual IPlayModeService& GetPlayModeService() = 0;
         virtual const IPlayModeService& GetPlayModeService() const = 0;
+
+        /** Scene currently shown/edited by Hierarchy, Inspector, and Console (Document vs PIE). */
+        virtual Scene* GetInspectingScene() const = 0;
+        virtual void SetInspectingScene(Scene* scene) = 0;
 
         virtual bool ActivateSubModule(std::string_view moduleId) = 0;
 

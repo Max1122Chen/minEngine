@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `CORE-F05`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** **Done**（MVP；S05 Deferred；见 Impl）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03
+- **Last updated:** 2026-09-03（MVP 收口）
 - **Branch:** `master`
 - **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md) · [Implementation Plan](./CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [CORE-F06 Component Activate](./CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Play Mode Guideline](../../../external/minEngine%20Play%20Mode%20Development%20Guideline.md)（外部参考，Tier B）
 - **Depends on:** ~~`CORE-F06`~~ **Done**
@@ -13,7 +13,7 @@
 - **Extends / 后续占位:** 见 §12；本文档 **不封闭**。
 
 ## TL;DR
-对齐 **UE PIE**：Enter Play 时 **Duplicate Editor Scene → PIE Scene**，**双 Scene 共存**；Stop **仅销毁 PIE**。`PlayInEditorSession` 协调 Clone、上下文、View/Input、Per-Scene System。**`ESceneType` + `SceneContext` + GUID Remap** 隔离；**`SceneComponent` Attach 升级为 `ME_PROPERTY` GUID 引用**，走统一序列化/Clone，无 Post-clone 手工复制。
+对齐 **UE PIE**：双 Scene 共存；Play 仅跑 PIE；Stop 销毁 PIE。**MVP Done（2026-09-03）：** Clone、TickPolicy、Viewport/Input、Per-World Audio/Physics、Inspecting Context。Deferred：Pause/Step（S05）；EnterPlay rollback（TD-030）；Binary PIE（TD-028/029）。
 
 ## Scope
 - **In（MVP）：**
@@ -23,12 +23,14 @@
   - `SceneContext`、`PlayObjectMapping`、`ActiveSceneScope`
   - **`SceneComponent` Attach：`m_AttachParent` → `ME_PROPERTY` GUID**（Clone 自动 Remap）
   - Per-Scene Physics / Render / Audio；View / Input 分离；Toolbar
+  - **Inspecting Context（S06）**
 - **Out（MVP，§12）：** 多 PIE、SIE、Pause/Step（S05）、Hot Reload、子进程 Play、`CORE-F08+` 完整生命周期
+  - EnterPlay 完整失败 rollback（**TD-030**）
+  - PIE Binary clone（**TD-028/029**）
 
 ## Reader quick start
-1. §2 架构 · §3 数据结构 · §7 **Editor World Tick 策略**
-2. §5 Clone · §6 状态机
-3. [Implementation Plan](./CORE-F05_PLAY_MODE_IMPLEMENTATION.md)
+1. §2 架构 · §3 数据结构 · §7 Tick · **§9 Inspecting**
+2. [Implementation Plan](./CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./CORE-F05_S06_INSPECTING_CONTEXT.md)
 
 ---
 
@@ -498,12 +500,44 @@ void SceneManager::TickScenes(float deltaTime)
 
 ---
 
-## 9) Editor 集成
+## 9) Editor 集成与 Inspecting Context（S06）
 
-- **Hierarchy @ Playing：** 默认 Editor Scene；S05 可选 PIE 观察模式。
-- **Selection：** Editor GUID；`PlayObjectMapping` 查 PIE 对应物。
-- **Toolbar：** Play/Stop → `PlayInEditorSession`。
-- **Viewport：** 方案 A（单窗切 Game Camera）或 B（分屏）— 实现时定。
+> 切片摘要：[CORE-F05_S06_INSPECTING_CONTEXT.md](./CORE-F05_S06_INSPECTING_CONTEXT.md)
+
+### 9.1 三种 Scene 语义
+
+| 语义 | API（目标） | Play 时指向 | 用途 |
+|------|-------------|-------------|------|
+| **Document** | `GetEditorScene()` / `SceneEditor::GetDocumentScene()` | **始终 Editor** | 保存、Dirty |
+| **Runtime / Tick** | `GetTickTargetScene()` | **PIE** | GO Tick、Physics |
+| **Inspecting** | `IEditorContext::GetInspectingScene()` | **默认 PIE** | Hierarchy、Selection、Inspector、Console |
+
+**不切 Document Active。** 命名用 **Inspecting**（对齐 Inspector），不用 Observing。
+
+### 9.2 决议
+
+| ID | 决议 |
+|----|------|
+| **D11** | Editor 维护 Inspecting Context；模块读 Inspecting，不直读 Document Active |
+| **D12** | Play → Inspecting=PIE；Stop → Editor |
+| **D13** | Play 允许修改性指令改 PIE（`set` 等） |
+| **D14** | mutate 目标必须是 Inspecting；禁止静默改 Editor |
+| **D15** | Mapping 仅可选边界选中，非 inspect 主路径 |
+
+**D5 修订：** 允许写 PIE；不 Dirty Editor。
+
+### 9.3 Mutate 安全
+
+- 单一路径：`set` / Inspector 写必须解析对象所属 Scene == Inspecting
+- 失败显式提示，不回退 Editor
+- PIE mutate 不 Dirty、默认不入 Editor Undo 栈
+- UI：`Inspecting: PIE` / `Editor`
+
+### 9.4 验收
+
+- [ ] Play：Hierarchy/`get`/`set` 作用于 PIE
+- [ ] Stop 后 Editor 文档未被 Play 中 `set` 污染
+- [ ] Save 仍只写 Document
 
 ---
 
@@ -515,12 +549,13 @@ void SceneManager::TickScenes(float deltaTime)
 | D2 | Stop | Editor 常驻；不 reload | 2026-09-02 |
 | D3 | Clone | Serializer + `SceneCloneContext` | 2026-09-02 |
 | D4 | Attach | **`ME_PROPERTY` GUID 序列化**；无 Post-clone 复制 | 2026-09-02 |
-| D5 | Inspector @ Playing | Runtime 只读（S05） | 开放 |
+| D5 | Inspector @ Playing | **允许写 PIE**；不 Dirty Editor | 2026-09-03 |
 | D6 | ObjectManager | 双注册 + Mapping | 2026-09-02 |
 | D7 | Pause/Step | Defer S05 | 2026-09-02 |
 | D8 | BeginPlay | S04 最小派发；完整 CORE-F08+ | 开放 |
 | D9 | Editor Tick @ Playing | **`ESceneTickPolicy::None`**（MVP） | 2026-09-02 |
 | D10 | 命名 | `ESceneType`、`SceneContext`、`PlayInEditorSession`；无 `F` 前缀 | 2026-09-02 |
+| D11–D15 | Inspecting Context | 见 §9 | 2026-09-03 |
 
 ---
 
@@ -534,8 +569,8 @@ void SceneManager::TickScenes(float deltaTime)
 | **S02** | `PlayInEditorSession` Enter/Stop |
 | **S03** | Toolbar + View/Input + `ActiveSceneScope` |
 | **S04** | Per-World System lifecycle |
-| **S05** | Pause/Step + PIE Inspector |
-| **S06** | Observing Context（Inspector / Debug Command 目标 World） |
+| **S05** | Pause/Step（Deferred） |
+| **S06** | Inspecting Context（Hierarchy / Inspector / Command） |
 
 ---
 
@@ -549,9 +584,10 @@ void SceneManager::TickScenes(float deltaTime)
 | PIE-EXT-04 | Hot Reload | Play 中重载 Script |
 | PIE-EXT-05 | 子进程 Play | Godot 式 |
 | PIE-EXT-06 | Gameplay 生命周期 | **CORE-F08** |
-| PIE-EXT-07 | Runtime Inspector 可写 | ED-F0x |
+| PIE-EXT-07 | Runtime Undo 栈 | Play 中 PIE mutate 可逆 |
 | PIE-EXT-08 | SceneSubsystem | per `ESceneType` |
 | PIE-EXT-09 | Editor `ViewportOnly` Tick | 对标 UE `LEVELTICK_ViewportsOnly` |
+| PIE-EXT-10 | 手动切换 Inspecting（Play 中看 Editor 树） | 调试用 |
 
 ---
 
@@ -560,8 +596,10 @@ void SceneManager::TickScenes(float deltaTime)
 | 风险 | 缓解 |
 |------|------|
 | Attach 序列化改动影响现有 `.mescene` | S00 迁移 + 加载后重建 children |
-| `GetCurrentActiveScene` 语义 | 拆分 API + 迁移表 |
+| `GetCurrentActiveScene` 语义 | 拆分 Document / Tick / Inspecting（§9） |
 | Editor 误 Tick | `ESceneTickPolicy` 集中门控 |
+| Play `set` 误改 Editor | D14 + Inspecting 门面 |
+| Save 写到 PIE | Document 永不切 PIE |
 
 ---
 
@@ -572,4 +610,6 @@ void SceneManager::TickScenes(float deltaTime)
 | 2026-09-01 | Registry 占位 |
 | 2026-09-02 | 双 World 共存初稿 |
 | 2026-09-02 | 命名修订；Attach ME_PROPERTY；§8 Editor Tick 业界对齐 |
-| 2026-09-03 | S03 Done；登记 S06 Observing Context（Inspector/Command 仍绑 Editor） |
+| 2026-09-03 | S03 Done；登记 S06 |
+| 2026-09-03 | **§9 Inspecting Context**（命名由 Observing 调整）；D11–D15 |
+| 2026-09-03 | **MVP Done**；S05 Deferred；TD-030 EnterPlay rollback |

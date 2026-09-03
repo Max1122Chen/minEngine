@@ -107,8 +107,23 @@ namespace minEngine
             if (sceneEditor == nullptr || context.ActiveScene == nullptr)
             {
                 Command::CommandOutputBuilder builder;
-                builder.AddLine(Command::CommandOutputKind::Error, "Error: no active scene.");
-                return builder.BuildError("no active scene");
+                builder.AddLine(Command::CommandOutputKind::Error, "Error: no inspecting scene.");
+                return builder.BuildError("no inspecting scene");
+            }
+
+            if (context.ActiveScene != editorContext->GetInspectingScene())
+            {
+                Command::CommandOutputBuilder builder;
+                builder.AddLine(
+                    Command::CommandOutputKind::Error,
+                    "Error: command target scene is not the inspecting scene.");
+                return builder.BuildError("not inspecting scene");
+            }
+
+            // Play: mutate PIE directly — no editor undo stack / document dirty.
+            if (editorContext->IsPlaying())
+            {
+                return propertyPath->SetValue(context, valueLiteral);
             }
 
             Command::PropertySetTransaction transaction;

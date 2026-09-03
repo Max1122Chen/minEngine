@@ -1,6 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（`master`：CORE-F05 S03 Done）
+Last updated: 2026-09-03（`master`：CORE-F05 MVP Done）
+
+### 2026-09-03 - CORE-F05 MVP Done (docs closeout)
+- **Registry / Design / Impl:** Status → **Done**（MVP）；S00–S02 表状态对齐代码。
+- **Deferred:** S05 Pause/Step。
+- **Debt:** TD-028/029（Binary/JSON）；**TD-030** EnterPlay rollback。
+- **Next:** 维护者选定下一阶段（候选 ED-F02）。
+
+### 2026-09-03 - CORE-F05 S06 Done: Inspecting Context
+- **Editor:** `Get/SetInspectingScene`；Play→PIE / Stop→Editor；Hierarchy/Inspector/Command 跟 Inspecting。
+- **Safety:** Play `set` 写 PIE；不 Dirty；不入 Editor Undo；dock 标题不变（状态行提示）。
+- **Verified:** 维护者目视通过。
+
+### 2026-09-03 - CORE-F05 S06: Inspecting Context (code)
+- **Rename:** Observing → **Inspecting**（对齐 Inspector）。
+- **Editor:** `Get/SetInspectingScene`；EnterPlay→PIE，Stop→Editor；清选中。
+- **SceneEditor:** `GetActiveScene`=Inspecting；`GetDocumentScene` 给 Save；Play 不 Dirty。
+- **Command:** Console `ActiveScene`=Inspecting；Play `set` 直写、无 Undo。
+- **UI:** Hierarchy/Inspector 标题 `Inspecting: PIE`。
+- **Build:** Editor OK。**Next:** 目视验收。
 
 ### 2026-09-03 - CORE-F05 S03 Done: hide gizmo + editor input gate during Play
 - **Gizmo:** Play 时不绘制 ImGuizmo。

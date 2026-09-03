@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（`master`：**CORE-F05** S03 Done；下一步 Observing / rollback）
+Last updated: 2026-09-03（`master`：**CORE-F05** MVP **Done** → 下一焦点待定）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,19 +9,16 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`master`）
 
-### **CORE-F05 — Play Mode** ← 下一步
+### ~~CORE-F05 — Play Mode~~ **Done（MVP）**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design | [CORE-F05_PLAY_MODE_DESIGN.md](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl Plan](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) |
-| Registry | `CORE-F05` **In Progress** |
-| 前置 | ~~`CORE-F06` Component Activate~~ **Done** |
-| 目标 | Edit/Play；**UE 式双 Scene 共存**（Editor + PIE）；Stop 仅销毁 PIE |
-| 分支 | `master` |
+| Design / Impl | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) |
+| Registry | `CORE-F05` **Done**（MVP） |
+| 交付 | 双 Scene PIE、Viewport、Per-World Audio/Physics、Inspecting Context |
+| Deferred / 债 | S05 Pause/Step；**TD-028/029** Binary/JSON；**TD-030** EnterPlay rollback |
 
-**建议起步：** EnterPlay 失败 rollback；或 **S06 Observing Context**（Inspector/Command 仍绑 Editor，Play 时为预期错位）。S03/S04 **Done**。
-
-**最近提交（2026-09-03）：** S03 收尾（隐藏 gizmo + 输入门控）；S06 登记为后续切片。
+**下一阶段：** 由维护者指定（候选：§C **ED-F02** Editor Workflow；或其它 Registry Planned 项）。
 
 ---
 
@@ -29,11 +26,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
-| **内核** | `master` | `master` | **CORE-F05** Play Mode；小修复收尾 |
+| **内核** | `master` | `master` | CORE-F05 MVP Done；小修复 / 下一 Feature |
 | **编辑器** | ~~`feat/editor`~~ | **已合入 `master`** | ED-F02 + **CORE-F07** + ED-F04 Console |
 | **动画** | `feat/animation` | — | 合并检查点之后再规划 |
 
-**明确 Defer：** ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` Contact 派发 · ED-F04 S10b `activate`/`deactivate`（CORE-F06 已 Done，可开切片）
+**明确 Defer：** ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` Contact 派发 · ED-F04 S10b `activate`/`deactivate` · CORE-F05-S05 Pause/Step
 
 ---
 
@@ -41,7 +38,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | `master` | **CORE-F05** + 内核 + 已合入 editor 轨 |
+| `D:/Dev/GitRepo/minEngine` | `master` | 内核 + 已合入 editor 轨 |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档或用于下一 editor 切片 |
 
 旧 `minEngine-physics` / `minEngine-audio` / `minEngine-launcher` worktree 可按需保留或删除。
@@ -64,10 +61,10 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 项 | 状态 |
 |----|------|
 | ~~CORE-F06~~ Component Activate | **Done** — `b07009e` |
-| **CORE-F05** Play Mode | **In Progress** ← 当前 |
+| ~~CORE-F05~~ Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred |
 | ~~CORE-F07~~ 反射展示名 | **Done** — 已合入 `master` |
 
-### C. `master` — ED-F02 Editor Workflow
+### C. `master` — ED-F02 Editor Workflow ← **下一优先候选**
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
@@ -80,8 +77,6 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | S04 | Viewport 鼠标约束 | 中 |
 | S05 | Abstract Component 过滤 + Component 下拉图标 | 低 |
 
-**Defer（不占带宽）：** S03 Material SkyBox（体验项，merge 后可补）
-
 ### D. `master` — ED-F03 Viewport Play Toolbar
 
 | ID | 内容 | 状态 |
@@ -92,27 +87,21 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 内容 | 状态 |
 |----|------|------|
-| **ED-F04** | Debug Console & Unified Command System | **In Progress** — MVP S00–S10a **Done**；[Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md)（文件名保留 feat/editor 编号） |
-
-**已交付（2026-09-02）：** Command Tab REPL、get/set/inspect/find、补全/校验、`undo`/`redo`、`@` PropertyPath、`rename`；`command-system` **25 cases / 120 asserts PASS**。
+| **ED-F04** | Debug Console & Unified Command System | **In Progress** — MVP S00–S10a **Done**；[Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
 
 **Deferred：** S10b `activate`/`deactivate`；S07 ExportSchema；极矮布局；Command Palette。
-
-**下一优先：** **ED-F02** Editor Workflow（§C）。
-
-**边界：** 不扩展 PropertyPath 覆盖 `m_Name` 等引擎字段；对象级操作用专用命令。`activate`/`deactivate` **仅** `GOName@Component`（`@` 必填）。
 
 ### F. `master` — CORE-F07（已完成）
 
 | ID | 内容 | 状态 |
 |----|------|------|
-| **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** — [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) |
+| **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** |
 
 ---
 
 ## Done / 维护
 
-- ~~RND-F05 / RND-F11 / AUD-F01 / LAUN-F01 / CORE-F06 / PHYS-F04 / BUG-PHYS-003/004 / CORE-F07 / feat/editor merge~~
+- ~~RND-F05 / RND-F11 / AUD-F01 / LAUN-F01 / CORE-F06 / PHYS-F04 / BUG-PHYS-003/004 / CORE-F07 / feat/editor merge / **CORE-F05 MVP**~~
 - **ED-F01** — 代码在 master；VK 阴影质量 defer
 - **WF-F02** handbook — 骨架 Done，正文按需
 

@@ -79,6 +79,9 @@ namespace minEngine
         IPlayModeService& GetPlayModeService() override { return m_PlayInEditorSession; }
         const IPlayModeService& GetPlayModeService() const override { return m_PlayInEditorSession; }
 
+        Scene* GetInspectingScene() const override { return m_InspectingScene; }
+        void SetInspectingScene(Scene* scene) override;
+
         bool ActivateSubModule(std::string_view moduleId) override;
 
         void RequestExit() override;
@@ -122,6 +125,7 @@ namespace minEngine
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;
         PlayInEditorSession m_PlayInEditorSession;
+        Scene* m_InspectingScene = nullptr;
         float m_LastDeltaTime = 0.0f;
         bool m_DockLayoutInitialized = false;
         bool m_RequestResetLayout = false;

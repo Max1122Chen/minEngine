@@ -26,6 +26,11 @@ namespace minEngine
             EditorAppearance& appearance = m_Context.GetEditorAppearance();
             EditorTypographyScope bodyTypography(appearance, EditorTypographyRole::Body);
 
+            if (m_Context.IsPlaying())
+            {
+                ImGui::TextDisabled("Inspecting: PIE");
+            }
+
             if (ImGui::Button("Create Empty"))
             {
                 GetSceneEditor(&m_Context)->SubmitAddEmptyGOToScene(m_Context);

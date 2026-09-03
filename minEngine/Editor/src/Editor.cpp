@@ -178,6 +178,10 @@ namespace minEngine
 
             m_MaterialEditor->RefreshMaterialList();
             m_SceneEditor.OnProjectOpened();
+            if (SceneManager::HasInstance())
+            {
+                SetInspectingScene(SceneManager::Get().GetEditorScene());
+            }
 
             const std::filesystem::path projectContentRoot = PathRegistry::Get().GetProjectContentRoot();
             m_ProjectAssetWatcher.StartWatching(projectContentRoot);
@@ -304,6 +308,7 @@ namespace minEngine
 
         m_EditorGUIManager.Initialize(*this);
         m_InputHub.Initialize(*this);
+        m_PlayInEditorSession.SetHostContext(this);
         RegisterModules();
 
         const std::optional<std::filesystem::path> projectDescriptorPath =
@@ -415,6 +420,11 @@ namespace minEngine
         {
             m_ExitRequested = true;
         }
+    }
+
+    void Editor::SetInspectingScene(Scene* scene)
+    {
+        m_InspectingScene = scene;
     }
 
     void Editor::Run()

@@ -61,12 +61,18 @@ namespace minEngine
             return;
         }
 
-        if (!EditorWindowTypography::BeginPanel(*editorContext, kWindowTitle))
+        const char* panelTitle = kWindowTitle;
+        if (!EditorWindowTypography::BeginPanel(*editorContext, panelTitle))
         {
             return;
         }
 
         EditorTypographyScope bodyTypography(editorContext->GetEditorAppearance(), EditorTypographyRole::Body);
+
+        if (editorContext->IsPlaying())
+        {
+            ImGui::TextDisabled("Inspecting: PIE");
+        }
 
         if (!gameObject)
         {
@@ -425,6 +431,12 @@ namespace minEngine
 
     bool SceneEditorInspectorSource::CanUndoInspectorProperty(const Reflection::MEProperty& property) const
     {
+        if (IEditorContext* editorContext = m_SceneEditor.GetEditorContext();
+            editorContext != nullptr && editorContext->IsPlaying())
+        {
+            return false;
+        }
+
         if (!PropertyEditPolicy::CanEdit(property, m_PropertyEditSession.ContextKind))
         {
             return false;

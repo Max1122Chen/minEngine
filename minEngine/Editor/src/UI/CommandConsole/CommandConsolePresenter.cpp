@@ -191,7 +191,11 @@ namespace minEngine
 
             {
 
-                commandContext.ActiveScene = sceneEditor->GetActiveScene();
+                commandContext.ActiveScene = context.GetInspectingScene();
+                if (commandContext.ActiveScene == nullptr)
+                {
+                    commandContext.ActiveScene = sceneEditor->GetActiveScene();
+                }
 
             }
 

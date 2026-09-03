@@ -8,6 +8,9 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
+#include "Shell/IEditorContext.h"
+#include "SubEditor/Scene/SceneEditor.h"
+#include "Shell/EditorContextHelpers.h"
 
 namespace minEngine
 {
@@ -143,6 +146,7 @@ namespace minEngine
         }
 
         m_State = PlayState::Playing;
+        ApplyInspectingSceneForPlayState();
         return true;
     }
 
@@ -204,6 +208,7 @@ namespace minEngine
         }
 
         m_State = PlayState::Editing;
+        ApplyInspectingSceneForPlayState();
     }
 
     void PlayInEditorSession::TickPIE(float deltaTime)
@@ -225,5 +230,32 @@ namespace minEngine
         }
 
         SceneManager::Get().SetEditorSceneContext(m_EditorContext);
+    }
+
+    void PlayInEditorSession::ApplyInspectingSceneForPlayState()
+    {
+        if (m_HostContext == nullptr)
+        {
+            return;
+        }
+
+        if (m_State == PlayState::Playing)
+        {
+            m_HostContext->SetInspectingScene(GetPIEScene());
+        }
+        else
+        {
+            Scene* editorScene = GetEditorScene();
+            if (editorScene == nullptr && SceneManager::HasInstance())
+            {
+                editorScene = SceneManager::Get().GetEditorScene();
+            }
+            m_HostContext->SetInspectingScene(editorScene);
+        }
+
+        if (SceneEditor* sceneEditor = GetSceneEditor(m_HostContext))
+        {
+            sceneEditor->ClearSelectedGameObject();
+        }
     }
 }
