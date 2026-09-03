@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-03（`master`：**CORE-F05** MVP **Done**）
+Last updated: 2026-09-03（设计哲学 + Capability Roadmap；CORE-F05 MVP Done）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -11,6 +11,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 3. Set Status: `Planned` → `In Progress` → `Done` | `Deferred` | `Cancelled`.
 4. Link the Design (or Implementation) path in **Design** column.
 5. Do not reuse IDs; deprecate by setting Status `Cancelled` and a note — do not recycle numbers.
+6. Architecture / Core vs Plugin choices: [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md). Stage tracks: [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
 
 ---
 
@@ -44,13 +45,13 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
 | `RND-F16` | Sprite 2D 渲染（UI 前置） | **Planned** | — | [Placeholder](./Render/RND-F16_SPRITE_2D_DESIGN.md) · 愿景；**不阻塞** |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
-| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **Planned** | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · **`master`** |
+| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **In Progress** *(S00–S02/S04 Done；S03/S05 余量)* | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · **`master`** |
 | `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
 | `ED-F04` | Debug Console & Unified Command System（Runtime 控制面 + Agent-friendly） | **In Progress** *(MVP Done)* | — | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) · S00–S10a Done · **S10b Deferred** · S07 Deferred |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
-| `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · **merge 检查点后** |
-| `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |
+| `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · worktree `minEngine-animation` |
+| `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · worktree `minEngine-ui` · 依赖 `RND-F16` |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
@@ -60,7 +61,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 ## Vision placeholders（无独立 Feature ID，不排期）
 
-登记于 [ACTIVE_WORK.md](./ACTIVE_WORK.md) §愿景：Gameplay 插件化框架、网络游戏、Editor Debug Console、Agent-friendly 设计规范。
+登记于 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 与 [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)：Gameplay 插件化框架、Networking / Net Game、Prefab、Object Lifetime/GC、Render Sort/Batch（待登记）、Agent-friendly 作为**设计原则**（见 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)），而非独立 Feature。
 
 ---
 
@@ -71,13 +72,13 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | F04 | |
 | `WF` | F03 | |
-| `CORE` | **F08** | F05 In Progress on `master`；F06–F07 Done |
-| `ASSET` | F01 | |
-| `ED` | **F05** | F02–F04 on `master`；F03 Toolbar Done；F04 Console In Progress |
+| `CORE` | **F08** | F05 MVP Done；F06–F07 Done |
+| `ASSET` | F01 | Async / Lifetime 愿景见 Capability Roadmap；尚未登记 Feature |
+| `ED` | **F05** | F02 In Progress（S00–S02/S04 Done）；F03 Done；F04 Console In Progress (MVP) |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
-| `ANIM` | F02 | F01 占位；merge 后开 `feat/animation` |
+| `ANIM` | F02 | F01 Planned；Primary track 候选 |
 | `UI` | F02 | F01 占位；`feat/ui` |
 | `PHYS` | F05 | F04 on `master` |
 | `MAT` | F01 | |

@@ -3,16 +3,24 @@
 ## Meta
 - **ID:** `ED-F02`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-01
-- **Branch:** `feat/editor`
+- **Last updated:** 2026-09-03
+- **Branch:** `master`（原 `feat/editor` 已合入）
 - **Depends on:** `ASSET` 资产扫描/registry（已有）；`SceneManager` Load/Save（已有）；`MaterialEditor` Open/Save session（已有）
 - **Related:** [Implementation](./ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) · [EDITOR_SHELL_DESIGN](./EDITOR_SHELL_DESIGN.md) · [EDITOR_CONTEXT_MENU_DESIGN](./EDITOR_CONTEXT_MENU_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md)
 
 ## TL;DR
 
-Editor 已具备 Scene/Material **dirty、保存、视口导航** 等局部能力，但 **打开/切换/创建** 的主路径未接通（File 菜单占位、Content Browser 双击 stub、`SceneEditor::OpenAsset` 返回 false、`CreateAsset<T>` 未实现）。本 Feature **不新建文档系统**，而是在 `AssetWorkflowModule` 上增加薄编排层，统一资产打开与未保存确认，并补齐 Runtime 创建 API 与若干体验修复（Material SkyBox、Viewport 局部鼠标捕获、Component Abstract 过滤）。
+**工作流主路径已在 `master` 落地**（`AssetWorkflowModule` 编排：Content Browser 双击、File Open/New/Save As、dirty 确认、`CreateAsset<Scene/Material>`）。剩余体验项：**S03** Material Preview 仍缺 SkyBox 实体；**S05** 过滤逻辑已有，但 Component 基类多数未标 `ME_CLASS(Abstract)`。S04 视口局部 RMB 捕获已基本完成。
+
+## Status note（In Progress）
+
+| 字段 | 内容 |
+|------|------|
+| Landed | S00–S02（merge gate）+ S04（局部导航 capture） |
+| Remaining | S03 SkyBox 内容；S05 Abstract **标注**补齐（过滤代码已在） |
+| Code | `b3917ef` + `feat/editor` → `master` merge |
 
 ## Scope
 - **In:**
@@ -51,6 +59,9 @@ Editor 已具备 Scene/Material **dirty、保存、视口导航** 等局部能�
 | WIP | 无并行 Editor 工作流大改 |
 | 建议 | **Go** — 先 S00+S01 打通主路径，再 S02 runtime 创建 |
 
+> **2026-09-03：** Pre-flight 为历史记录。S01–S02 merge gate 已完成；见 Status note。
+
+
 ---
 
 ## 1) 背景与目标
@@ -74,38 +85,29 @@ Editor 已具备 Scene/Material **dirty、保存、视口导航** 等局部能�
 
 ## 2) 现状
 
-### 已有能力
+### 已有能力（2026-09-03 对照代码）
 
 | 区域 | 状态 | 关键位置 |
 |------|------|----------|
-| Scene dirty | 有 `m_SceneDirty`、标题栏 `*`、Save 菜单 gating | `SceneEditor` |
-| Scene 加载 | `LoadScene` / `LoadSceneByPath`；启动默认 Scene | `SceneEditor::LoadScene`、`Editor.cpp` |
-| Scene 保存 | `SaveCurrentScene` → `SceneManager::SaveCurrentScene` | 要求 scene 已在 `RegisterScene` |
-| Material 打开/保存/dirty | 完整 | `MaterialEditor::OpenSession` / `SaveActiveMaterial` |
-| 资产打开路由 | Material 通；Scene **stub** | `AssetWorkflowModule::OpenAsset` |
-| Content Browser 双击 | UI 有；**未调用 OpenAsset** | `ContentBrowserWindow::ActivateAssetFromBrowser` |
-| File 菜单 | Save 接好；New/Open/Save As **空** | `MainMenuWindow::DrawFileMenu` |
-| 资产创建 | **无** `CreateAsset` 特化 | `AssetManager.h` |
-| Material 预览渲染 | 仅 `EnablePostProcess` | `MaterialEditorViewportClient::EndFrame` |
-| Scene 预览渲染 | `EnableSkyBox \| EnableDebugDraw` | `SceneEditingViewportClient` |
-| Preview 世界 | Sphere + DirLight；**无 SkyBox** | `PreviewScene::BuildDefaultSphereScene` |
-| 视口导航 | RMB orbit；`SetCursorVisible` **窗口级** | `SceneEditingViewportClient::SetNavigating` |
-| Component 列表 | 反射所有 `Component` 子类 | `SceneEditor::InitializeComponentTypeNames` |
-| Abstract 反射 | `ClassSpecifier::Abstract` 存在；**组件未标注** | `MEClass.h` |
+| Scene dirty / Save | Done | `SceneEditor` |
+| 资产打开编排 | **Done** | `AssetWorkflowModule::TryOpenAsset` / `TryOpenSceneByPath` |
+| Content Browser 双击 | **Done** | `ActivateAssetFromBrowser` → `TryOpenAsset` |
+| File New / Open / Save As | **Done** | `MainMenuWindow::DrawFileMenu` |
+| 未保存确认 | **Done** | `EditorUnsavedChangesDialog` |
+| `CreateAsset` Scene/Material | **Done** | `AssetManager` + CB Create / New Scene |
+| 视口局部 RMB 捕获 | **Done**（hover/focus 门控） | `SceneEditingViewportClient` |
+| Material draw flags SkyBox | 已开 flag | `MaterialEditorViewportClient` |
+| Preview 世界 SkyBox 实体 | **未做**（S03） | `PreviewScene::BuildDefaultSphereScene` 仍无 SkyBox |
+| Abstract 过滤代码 | **有** | `SceneEditor::InitializeComponentTypeNames` |
+| Component `ME_CLASS(Abstract)` | **多数缺失**（S05 余量；如 `PrimitiveComponent`） | 各 Component 头文件 |
 
-### 数据流（当前 vs 目标）
+### 数据流（已接通）
 
 ```text
-【当前 — 断开】
-ContentBrowser double-click → log only
-File Open Scene → (empty)
-SceneEditor::OpenAsset → return false
-
-【目标】
-UI (Menu / CB / 未来快捷键)
+UI (Menu / CB)
   → AssetWorkflowModule::TryOpenAsset / TryOpenSceneByPath / TryCreate*
-      → ConfirmDiscardIfDirty (Scene + active Material session)
-      → EditorSubModule::OpenAsset / SceneEditor::LoadSceneByPath
+      → UnsavedChanges dialog when dirty
+      → SceneEditor::OpenAsset / OpenSceneByPath / MaterialEditor session
       → CommandStack.Clear (Scene) / Material session swap
 ```
 
@@ -271,28 +273,28 @@ std::shared_ptr<Material> CreateAsset<Material>(const std::string& assetName, co
 
 ## 6) 验收标准（Feature Done）
 
-- [ ] Content Browser 双击 Scene/Material 可打开对应编辑器
-- [ ] File Open / New Scene / Save / Save As（Scene）可用
-- [ ] Content Browser 或菜单可创建 Scene、Material 并自动打开
-- [ ] 切换 dirty 文档时确认框三选项行为正确；Cancel 不改变当前文档
-- [ ] Material 预览可见 SkyBox
-- [ ] Scene 视口 RMB 导航不再导致全窗光标永久消失
-- [ ] Add Component 列表无 Abstract 基类
-- [ ] `.\scripts\verify.ps1` PASS
-- [ ] Implementation Plan 内 S01–S02 勾选；merge 检查点满足 [ACTIVE_WORK](../ACTIVE_WORK.md)
+- [x] Content Browser 双击 Scene/Material 可打开对应编辑器
+- [x] File Open / New Scene / Save / Save As（Scene）可用
+- [x] Content Browser 或菜单可创建 Scene、Material 并自动打开
+- [x] 切换 dirty 文档时确认框三选项行为正确；Cancel 不改变当前文档
+- [ ] Material 预览可见 SkyBox（**S03** — flag 已开，缺 Preview 实体）
+- [x] Scene 视口 RMB 导航局部捕获（**S04**）
+- [ ] Add Component 列表无 Abstract 基类（**S05** — 需补标注）
+- [x] Merge gate S01–S02 已合入 `master`
+- [ ] 剩余切片完成后 `.\scripts\verify.ps1` + 目视收口 → Feature **Done**
 
 ---
 
 ## 7) 切片索引
 
-| Slice | 摘要 | 优先级 |
-|-------|------|--------|
-| S00 | Content Browser 双击 → `TryOpenAsset` | 高（前置接线） |
-| S01 | Scene 打开 + File Open + dirty 确认 | 高 |
-| S02 | `CreateAsset` + New/Create Scene·Material | 高 |
-| S03 | Material Preview SkyBox | 中 |
-| S04 | Viewport 局部鼠标捕获 | 中 |
-| S05 | Abstract Component 过滤 | 低 |
+| Slice | 摘要 | 优先级 | 状态 |
+|-------|------|--------|------|
+| S00 | Content Browser 双击 → `TryOpenAsset` | 高 | **Done** |
+| S01 | Scene 打开 + File Open + dirty 确认 | 高 | **Done** |
+| S02 | `CreateAsset` + New/Create Scene·Material | 高 | **Done** |
+| S03 | Material Preview SkyBox | 中 | Remaining |
+| S04 | Viewport 局部鼠标捕获 | 中 | **Done** |
+| S05 | Abstract Component 过滤（含标注） | 低 | Partial（过滤有，标注缺） |
 
 详见 [Implementation](./ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)。
 
@@ -304,3 +306,4 @@ std::shared_ptr<Material> CreateAsset<Material>(const std::string& assetName, co
 |------|------|
 | 2026-09-01 | Registry 占位登记（双轨 backlog 审批稿） |
 | 2026-09-01 | 扩写为正式 Design Spec（编排层、API、切片、风险） |
+| 2026-09-03 | 对照 `master` 收口：S00–S02/S04 Done；S03/S05 余量；Branch=`master` |

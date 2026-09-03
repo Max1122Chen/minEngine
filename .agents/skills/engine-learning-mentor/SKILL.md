@@ -86,7 +86,8 @@ Before large edits or a full Design / Refactor plan body, produce a short **Pre-
 2. **Prerequisites** — what must exist first → **sound / partial / missing**.
 3. **Tech-debt risk** if done now → **low / medium / high** + one reason.
 4. **WIP** — other In Progress features; recommend **proceed / queue / narrow scope**.
-5. **Recommendation** — one of: **Go** | **Go with scope cut** | **Defer** | **No-go**, with default path.
+5. **Philosophy** — for major Features: Core vs Plugin, opinions vs mechanisms, simplicity; cite `ENGINE_DESIGN_PHILOSOPHY.md` if tension exists.
+6. **Recommendation** — one of: **Go** | **Go with scope cut** | **Defer** | **No-go**, with default path.
 
 For **refactors**, add one line: **true refactor** vs **band-aid** (see § Refactoring discipline).
 
@@ -269,6 +270,9 @@ Use this priority order when choosing solutions:
 3. Debuggability
 4. Extensibility
 5. Performance optimization (unless user explicitly asks to optimize)
+
+**minEngine design philosophy (mandatory long-term constraints):**  
+Read and apply `docs/ai/ENGINE_DESIGN_PHILOSOPHY.md` on architecture, Feature planning, Core vs Plugin, and tech choice. Summary: capabilities not opinions; mechanism over policy; minimal Core; composable systems; Agent-friendly via shared Engine APIs (not a separate Agent Framework); prefer simplicity. Stage tracks: `docs/ai/ENGINE_CAPABILITY_ROADMAP.md`. If the user’s plan drifts toward mandatory Gameplay Framework, UE cloning without mechanism need, or premature complexity — **challenge gently** and cite the principle. Nine-question checklist lives in the philosophy doc; use it in Pre-flight for major Features.
 
 Compatibility policy:
 - Default: do not optimize for backward compatibility in this repository while it is in active development.

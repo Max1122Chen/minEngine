@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-07-24
+Last updated: 2026-09-03
 
 ## 1) Project Goal
 
@@ -10,6 +10,7 @@ Primary objective:
 - Build a clear and extensible engine architecture (professional bar on platform/render/asset foundations).
 - Practice rendering pipeline design and graphics feature implementation.
 - Keep the codebase understandable and incrementally improvable.
+- **Expand overall engine capability and developer experience** under [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md): capabilities not opinions; mechanism over policy; minimal Core; Agent-friendly via shared APIs.
 
 ## 2) Current High-Level Architecture
 
@@ -25,7 +26,7 @@ Implemented or in-progress capabilities:
 - Modern RHI + MeshDrawPacket (RND-F02/F04 Done).
 - Manual RenderGraph: Shadow → Scene → Post → Present (RND-F01 S0–S04 Done).
 - Base / translucency / present / directional (and related) shadows.
-- Next render track: **RND-F06** (split Renderer vs Graph), then F01 S05+ (hygiene → Bake → …).
+- Next render side-track: Sort/Batch (Capability Roadmap); **RND-F06** continues without blocking Animation.
 
 Known risk themes from recent work:
 - Per-frame container cleanup must be explicit.
@@ -48,23 +49,27 @@ This docs/ai folder exists to convert those sources into AI-readable context sna
 ## 5) Collaboration Conventions (for AI)
 
 When starting a new coding task in this repo, AI should:
-- Read docs/ai/PROJECT_CONTEXT.md first.
+- Read `docs/ai/ENGINE_DESIGN_PHILOSOPHY.md` (constraints) and `docs/ai/PROJECT_CONTEXT.md`.
 - Read docs/ai/PROGRESS_LOG.md for recent timeline.
+- Read docs/ai/ACTIVE_WORK.md for backlog; Capability Roadmap for multi-track direction.
 - If present, read latest session note in docs/ai/sessions/.
 - For platform/render/editor design, use the subdirectory under docs/ai/ (see README).
 - Summarize current understanding in 5-8 lines before major edits.
+- Remind the maintainer when plans drift from the design philosophy.
 
 When finishing a task, AI should:
 - Append a short entry to docs/ai/PROGRESS_LOG.md.
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
 - Place new design docs in the correct docs/ai/ subtree per docs-ai-layout rule.
 
-## 6) Current product direction (2026-05-27)
+## 6) Current product direction (2026-09-03)
 
-- **Rendering / Material:** Phase 0–5 largely complete (IBL + Skybox); maintain via `docs/ai/Render/Material/`.
-- **Platform Core:** **P4** 函数反射已可用；**`CORE-F01` Lua runtime** + **`CORE-F02` Script binding** Done（`luaScript`；[绑定设计](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md)）。委托仍占位。渲染轨 **`RND-F02`** 在 `render`。
-- **Platform Editor (parallel):** E1 Inspector / P7 等产品化可并行；见 `PLATFORM_ROADMAP.md` §10。
-- **Roadmaps:** `docs/ai/Platform/PLATFORM_ROADMAP.md`（§11 Core 切片）、`docs/ai/Editor/EDITOR_PLATFORM_PLAN.md`。
+- **Stage:** capability expansion + full developer experience; **Primary track** Animation → 2D → UI; parallel Infra / Render / DX — see [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
+- **Play Mode:** **CORE-F05** MVP Done (dual Scene PIE, Inspecting Context).
+- **Platform Core:** Lua + script binding Done；delegates Done；serialization usable (Binary protocol debt TD-028).
+- **Editor:** Console MVP (**ED-F04**); Workflow **ED-F02** Planned; Play Toolbar Done.
+- **Gameplay Framework / Networking:** Future, plugin-oriented — do not rush into Core.
+- **Active backlog:** [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
 ## 7) Material Editor (stable)
 
@@ -76,6 +81,7 @@ When finishing a task, AI should:
 Keep this file stable and high-level. Put fast-changing details into:
 - docs/ai/PROGRESS_LOG.md (timeline)
 - docs/ai/sessions/*.md (task-level temporary context)
+- docs/ai/ACTIVE_WORK.md (current focus)
 - docs/ai/Platform/* (platform design drafts)
 
 ## 9) Input System and Playground Controls

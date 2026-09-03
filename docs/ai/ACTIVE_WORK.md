@@ -1,36 +1,74 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（`master`：**CORE-F05** MVP **Done** → 下一焦点待定）
+Last updated: 2026-09-03（哲学 + Capability Roadmap；ED-F02 文档收口；worktree 轨就位）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
-> **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
+> **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
+> **Philosophy / stage map:** [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) · [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) — long-term constraints + multi-track direction; **this file** still wins for “what to cut next”.
 
 ---
 
-## 当前焦点（`master`）
+## 当前阶段（2026-09-03）
 
-### ~~CORE-F05 — Play Mode~~ **Done（MVP）**
+从「单系统能力建设」进入 **整体能力扩展 + 完整开发体验**。模式：**一条主航道 + 多条可并行支线**（非线性 TODO）。
+
+| Track | 方向 | 阻塞 Primary？ |
+|-------|------|----------------|
+| **Primary（推荐）** | Animation → 2D/Sprite → UI | — |
+| **Infrastructure** | Async Asset / Lifetime / Thread · Binary Ser · Prefab · Object Lifetime | 否（真缺口再插入） |
+| **Rendering** | Sort / Batch | 否 |
+| **DX / Agent** | Editor Workflow 余量 · Reflection UX · Commands | 否 |
+| **Future** | Gameplay Plugins · Networking · AI | 刻意延后 |
+
+---
+
+## 当前焦点 — 推荐 Primary = `ANIM-F01`
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design / Impl | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) |
-| Registry | `CORE-F05` **Done**（MVP） |
-| 交付 | 双 Scene PIE、Viewport、Per-World Audio/Physics、Inspecting Context |
-| Deferred / 债 | S05 Pause/Step；**TD-028/029** Binary/JSON；**TD-030** EnterPlay rollback |
+| Worktree | `D:/Dev/GitRepo/minEngine-animation` · 分支 `feat/animation` |
+| Placeholder | [ANIM-F01](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · Registry **Planned** |
+| 下一步 | 正式 Design Spec（机制边界、Core 范围、M1 垂直切片）→ Pre-flight → 开码 |
+| 哲学闸门 | 先 Pose/Instance/Skinning；勿一次做成完整 Anim Graph Framework |
 
-**下一阶段：** 由维护者指定（候选：§C **ED-F02** Editor Workflow；或其它 Registry Planned 项）。
+### DX 余量（不挡 Primary）：`ED-F02`
+
+| 切片 | 状态 |
+|------|------|
+| S00–S02 工作流主路径 | **Done**（已合入 `master`） |
+| S04 视口局部 RMB | **Done** |
+| S03 Material Preview SkyBox 实体 | Remaining |
+| S05 Abstract 标注补齐 | Partial |
+
+[Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
+
+### 可并行（不升主线）
+
+| 项 | 说明 |
+|----|------|
+| **TD-028 / TD-029** | Binary 协议加固；PIE 暂用 JSON 绕道 |
+| **ED-F04** | Console MVP 已收；S10b / S07 **Deferred** |
+| **RND Sort/Batch** | Rendering track；另开设计时再登记 |
+| **RND-F06** | ForwardRenderer 收尾；不挡 Animation |
 
 ---
 
-## 当前策略（2026-09-02）
+## 已收口（近期）
 
-| 轨 | 分支 | 合入目标 | 说明 |
-|----|------|----------|------|
-| **内核** | `master` | `master` | CORE-F05 MVP Done；小修复 / 下一 Feature |
-| **编辑器** | ~~`feat/editor`~~ | **已合入 `master`** | ED-F02 + **CORE-F07** + ED-F04 Console |
-| **动画** | `feat/animation` | — | 合并检查点之后再规划 |
+| 项 | 状态 |
+|----|------|
+| **CORE-F05** Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred；TD-028/029/030 Open |
+| **CORE-F06 / F07** | Done |
+| **ED-F03** Viewport Play Toolbar | Done |
+| **ED-F02** S00–S02 / S04 | Done on `master` |
+| **PHYS-F04** / BUG-PHYS-003/004 | Done / Fixed |
+| **feat/editor** merge | 已合入 `master` |
 
-**明确 Defer：** ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` Contact 派发 · ED-F04 S10b `activate`/`deactivate` · CORE-F05-S05 Pause/Step
+---
+
+## 明确 Defer
+
+ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 · Prefab / GC / Gameplay Framework 大包 / Networking（Capability Roadmap §6）
 
 ---
 
@@ -38,83 +76,27 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | `master` | 内核 + 已合入 editor 轨 |
-| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档或用于下一 editor 切片 |
+| `D:/Dev/GitRepo/minEngine` | `master` | 主开发 |
+| `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | Primary — Animation |
+| `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | Primary 后续 — UI（依赖 `RND-F16`） |
+| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档 |
+| `D:/Dev/GitRepo/minEngine-physics` / `-audio` / `-launcher` / `-asset-workflow` | 历史轨 | 按需保留或删除 |
 
-旧 `minEngine-physics` / `minEngine-audio` / `minEngine-launcher` worktree 可按需保留或删除。
+**新建 worktree：** `.agents/skills/create-worktree` + `scripts/create-worktree.ps1`
+
+### Placeholder branches（无 worktree）
+
+`feat/asset-pipeline` · `feat/gameplay-framework` · `feat/network` · `feat/ai` · `feat/core` — 仅占位，需要时再 `create-worktree.ps1` 初始化。
 
 ---
 
-## In focus
+## Vision placeholders（Registry；不排期）
 
-### A. `master` — 小修复（收尾）
-
-| 项 | 状态 |
+| ID | 说明 |
 |----|------|
-| ~~BUG-RENDER-014~~ 点光半径/衰减 | Done（`f3c8200`） |
-| ~~PHYS-F04~~ Collider 与 Scale 解耦 | **Done** — [Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · `c2c0893` |
-| ~~BUG-PHYS-003~~ Add BoxCollider 间歇崩溃 | **Fixed** — [Record](./bugs/BUG-PHYS-003.md)（未再复现） |
-| ~~BUG-PHYS-004~~ Collider 禁/删形体刷新 | **Fixed** — `c0a51ce` |
-
-### B. `master` — 内核
-
-| 项 | 状态 |
-|----|------|
-| ~~CORE-F06~~ Component Activate | **Done** — `b07009e` |
-| ~~CORE-F05~~ Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred |
-| ~~CORE-F07~~ 反射展示名 | **Done** — 已合入 `master` |
-
-### C. `master` — ED-F02 Editor Workflow ← **下一优先候选**
-
-[Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
-
-| 切片 | 内容 | 优先级 |
-|------|------|--------|
-| S00 | Content Browser 双击 → `TryOpenAsset` | 高（接线） |
-| S01 | 打开 Scene（File/Open、切换、dirty） | 高 |
-| S02 | 创建资产（Scene、Material、…） | 高 |
-| S03 | Material Editor SkyBox 修复 | 中 |
-| S04 | Viewport 鼠标约束 | 中 |
-| S05 | Abstract Component 过滤 + Component 下拉图标 | 低 |
-
-### D. `master` — ED-F03 Viewport Play Toolbar
-
-| ID | 内容 | 状态 |
-|----|------|------|
-| **ED-F03** | Viewport 三行：Tab / Toolbar / 主体 | **Done** — [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
-
-### E. `master` — ED-F04 Debug Console（MVP 已收口，**非 Done**）
-
-| ID | 内容 | 状态 |
-|----|------|------|
-| **ED-F04** | Debug Console & Unified Command System | **In Progress** — MVP S00–S10a **Done**；[Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
-
-**Deferred：** S10b `activate`/`deactivate`；S07 ExportSchema；极矮布局；Command Palette。
-
-### F. `master` — CORE-F07（已完成）
-
-| ID | 内容 | 状态 |
-|----|------|------|
-| **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** |
-
----
-
-## Done / 维护
-
-- ~~RND-F05 / RND-F11 / AUD-F01 / LAUN-F01 / CORE-F06 / PHYS-F04 / BUG-PHYS-003/004 / CORE-F07 / feat/editor merge / **CORE-F05 MVP**~~
-- **ED-F01** — 代码在 master；VK 阴影质量 defer
-- **WF-F02** handbook — 骨架 Done，正文按需
-
----
-
-## 愿景占位（Registry only，不排期）
-
-| ID | 分支（将来） | 前置 |
-|----|--------------|------|
-| `ANIM-F01` | `feat/animation` | 合并检查点 + Design |
-| `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
-| `RND-F16` | `feat/sprite`（未建） | — |
-| Gameplay 插件化 / 网络 | — | 仅文档占位，见 REGISTRY 备注 |
+| `ANIM-F01` | Primary — Design 待写（`feat/animation`） |
+| `RND-F16` / `UI-F01` | Primary 后续（`feat/ui`） |
+| Gameplay 插件化 / 网络 / AI | Future；见哲学 |
 
 ---
 
@@ -134,6 +116,8 @@ Record in `PROGRESS_LOG.md` after meaningful slices.
 
 | File | Role |
 |------|------|
+| [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) | 长期设计约束 |
+| [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) | 多轨里程碑与并行关系 |
 | [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status |
 | [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What landed and how it was verified |
 | [TECH_DEBT.md](./TECH_DEBT.md) | Open debt rows only |

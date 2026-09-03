@@ -15,7 +15,7 @@ alwaysApply: false
 
 | 目录 | 放什么 | 不放什么 |
 |------|--------|----------|
-| `docs/ai/` 根 | `PROJECT_CONTEXT.md`、`PROGRESS_LOG.md`、`WORKING_WITH_AI.md`、`README.md` | 长篇 Phase 设计、渲染细节 |
+| `docs/ai/` 根 | `PROJECT_CONTEXT.md`、`PROGRESS_LOG.md`、`WORKING_WITH_AI.md`、`README.md`、`ENGINE_DESIGN_PHILOSOPHY.md`、`ENGINE_CAPABILITY_ROADMAP.md`、`ACTIVE_WORK.md`、`BOOTSTRAP_DIGEST.md` | 长篇 Phase 设计、渲染细节 |
 | `docs/ai/Platform/` | 启动、内存管理、反射/脚本/Content Browser **路线图**；跨模块约束 | 单 Pass 实现细节 |
 | `docs/ai/Platform/<Topic>/` | 某一平台主题的**详细设计**（如 `Startup/`、`MemoryManagement/`） | — |
 | `docs/ai/Render/` | 渲染管线、RHI、Pass、资源导入（HDR/网格） | 材质图 IR 细节 |

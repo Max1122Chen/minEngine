@@ -1,6 +1,21 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（`master`：CORE-F05 MVP Done）
+Last updated: 2026-09-03（ED-F02 文档收口 + worktree skill / 多轨分支）
+
+### 2026-09-03 - ED-F02 doc closeout + worktree bootstrap tooling
+- **ED-F02:** Design/Impl/Registry 对照 `master` — S00–S02/S04 **Done**；S03 SkyBox 实体、S05 Abstract 标注 **Remaining/Partial**。
+- **Philosophy / Roadmap:** 见既有 `ENGINE_DESIGN_PHILOSOPHY.md` / `ENGINE_CAPABILITY_ROADMAP.md`（本批一并提交）。
+- **Tooling:** `scripts/create-worktree.ps1` + `.agents`/`.github` skills `create-worktree`。
+- **Worktrees:** `minEngine-animation` (`feat/animation`)、`minEngine-ui` (`feat/ui`) 初始化。
+- **Placeholder branches:** `feat/asset-pipeline`、`feat/gameplay-framework`、`feat/network`、`feat/ai`、`feat/core`（无 worktree）。
+- **Misc:** `MyMEProject.meproject` ProjectRoot 指回主仓路径。
+- **Next:** 确认后准备 commit；然后 `ANIM-F01` Design。
+
+### 2026-09-03 - Bootstrap: design philosophy + capability roadmap
+- **Philosophy:** [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) — Capabilities not Opinions; Mechanism over Policy; Minimal Core; Composable; Agent-Friendly; Prefer Simplicity.
+- **Roadmap:** [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) — Primary Animation→2D→UI; parallel Infra/Render/DX; Future Gameplay Plugins/Net.
+- **Agent hooks:** `.cursor/rules/engine-design-philosophy.mdc` (always); trust-tiers / bootstrap / mentor skill / BOOTSTRAP_DIGEST / ACTIVE_WORK / PROJECT_CONTEXT updated.
+- **Next:** 维护者确认 ACTIVE_WORK 焦点（推荐 `ANIM-F01` Design；备选 ED-F02 短冲刺）。不开码直至确认。
 
 ### 2026-09-03 - CORE-F05 MVP Done (docs closeout)
 - **Registry / Design / Impl:** Status → **Done**（MVP）；S00–S02 表状态对齐代码。
