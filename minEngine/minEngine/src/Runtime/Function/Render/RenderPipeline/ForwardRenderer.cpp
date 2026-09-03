@@ -23,6 +23,8 @@
 #include "Render/LightSceneProxies/SpotLightSceneProxy.h"
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Render/Environment/EnvironmentMap.h"
+#include "Runtime/Function/Debug/DebugDrawService.h"
+#include "Runtime/Function/Physics/PhysicsDebugDraw.h"
 #include "Math/Geometry/AABB.h"
 #include "Render/RHI/RHIClipSpace.h"
 #include "Render/RHI/RHIClipSpaceCapabilities.h"
@@ -560,6 +562,12 @@ namespace minEngine
         if (sceneTarget->GetWidth() == 0 || sceneTarget->GetHeight() == 0)
         {
             return;
+        }
+
+        if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableDebugDraw) && desc.GameplayScene != nullptr)
+        {
+            DebugDrawService::Get().ClearFrameQueues();
+            PhysicsDebugDraw::SubmitScene(*desc.GameplayScene, PhysicsDebugDraw::GetOptions());
         }
 
         BindSceneRenderTarget(*sceneTarget);

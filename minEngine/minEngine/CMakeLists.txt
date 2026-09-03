@@ -135,6 +135,12 @@ set_target_properties(${ENGINE_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${EXECUTABLE_PATH} 
 )
 
+# MinGW + lld does not export undecorated symbols by default; GNU ld historically did.
+# Without this, Editor gets an almost-empty import lib (dll.a) and fails to link.
+if(WIN32 AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    target_link_options(${ENGINE_NAME} PRIVATE "-Wl,--export-all-symbols")
+endif()
+
 target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD IMGUI_ENABLE_FREETYPE)
 
 target_include_directories(${ENGINE_NAME} PUBLIC ./src

@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（`master`：CORE-F05 S04 Done；S03 WIP）
+Last updated: 2026-09-03（`master`：BUG-EDITOR-002 仍 Open；CORE-F05 推进中）
+
+### 2026-09-03 - BUG-EDITOR-002: ASan 未复现；保持 Open（可临时关 DebugDraw）
+- **二分：** A（关 atlas）仍崩；B（关 Physics debug 入队）20×0 崩 → 触发路径确认。
+- **S05：** 入队移至 `ForwardRenderer::Execute` 后栈正确，**GCC Debug 仍崩**。
+- **ASan：** LLVM-MinGW `bin-asan` 可跑；多次冷启动过 atlas **无 AV / 无 ASan 报告**（疑布局掩盖）。
+- **Docs：** [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md) Status=Open（Blocked）；记录临时绕过 = 关 `EnableDebugDraw`。
+- **Workaround 合入：** `SceneEditingViewportClient` 默认不置 `EnableDebugDraw`（注释指 BUG-EDITOR-002）。
+- **Next：** 根因仍待 GDB watchpoint / 其它工具；可继续推进 CORE-F05。
 
 ### 2026-09-03 - CORE-F05 S03 WIP: viewport binds PIE during Play (`master`)
 - **Editor:** Play 时 viewport 观察 PIE `RenderScene`；主相机跟随；禁用 fly/gizmo/选择；`RouteViewportInput` 不路由。

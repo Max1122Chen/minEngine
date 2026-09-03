@@ -15,7 +15,6 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
 #include "Runtime/Function/Framework/Components/CameraComponent.h"
-#include "Runtime/Function/Physics/PhysicsDebugDraw.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
@@ -174,9 +173,10 @@ namespace minEngine
 
 
         // ED-F01-S06: Vulkan Editor matches OpenGL draw flags (shadows + post + sky).
+        // BUG-EDITOR-002 workaround: omit EnableDebugDraw until EnqueueBox cold-start AV is fixed.
         const SceneDrawFlags flags =
             SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
-            SceneDrawFlags::EnableSkyBox | SceneDrawFlags::EnableDebugDraw;
+            SceneDrawFlags::EnableSkyBox;
 
         const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
         if (!desc.Scene || !desc.Camera || !desc.RenderTarget)
@@ -184,22 +184,16 @@ namespace minEngine
             return;
         }
 
-        const SceneRenderTarget* renderTarget = desc.RenderTarget;
+        SceneDrawDesc drawDesc = desc;
+        drawDesc.GameplayScene = GetViewTargetScene();
+
+        const SceneRenderTarget* renderTarget = drawDesc.RenderTarget;
         if (renderTarget->GetWidth() == 0 || renderTarget->GetHeight() == 0)
         {
             return;
         }
 
-        if (HasSceneDrawFlag(flags, SceneDrawFlags::EnableDebugDraw))
-        {
-            Scene* scene = GetViewTargetScene();
-            if (scene != nullptr)
-            {
-                PhysicsDebugDraw::SubmitScene(*scene, PhysicsDebugDraw::GetOptions());
-            }
-        }
-
-        RenderSystem::Get().SubmitSceneDraw(desc);
+        RenderSystem::Get().SubmitSceneDraw(drawDesc);
 
     }
 

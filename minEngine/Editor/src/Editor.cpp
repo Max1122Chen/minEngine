@@ -18,7 +18,6 @@
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/Vulkan/VulkanRHI.h"
 #include "Runtime/Function/Render/WindowSystem.h"
-#include "Runtime/Function/Debug/DebugDrawService.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 
@@ -426,8 +425,6 @@ namespace minEngine
 
         while (!windowSystem.ShouldClose() && !m_ExitRequested)
         {
-            DebugDrawService::Get().ClearFrameQueues();
-
             const float deltaTime = m_Engine->CalculateDeltaTime();
             m_Engine->PollEvents();
             m_Engine->TickLogicalFrame(deltaTime);

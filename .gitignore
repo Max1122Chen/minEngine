@@ -1,7 +1,9 @@
 .vs/
 .vscode/
 bin/
+bin-asan/
 build/
+build-asan/
 
 # Local editor layout state
 minEngine/imgui.ini

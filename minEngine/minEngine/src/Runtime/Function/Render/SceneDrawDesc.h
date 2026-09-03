@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Function/Framework/Scene/SceneTypes.h"
 
 namespace minEngine
 {
@@ -34,6 +35,7 @@ namespace minEngine
     struct SceneDrawDesc
     {
         RenderScene* Scene = nullptr;
+        class Scene* GameplayScene = nullptr;
         RenderCamera* Camera = nullptr;
         SceneRenderTarget* RenderTarget = nullptr;
         SceneDrawFlags Flags = SceneDrawFlags::Default;
