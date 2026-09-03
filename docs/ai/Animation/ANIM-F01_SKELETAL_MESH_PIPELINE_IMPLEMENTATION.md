@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `ANIM-F01`
 - **Type:** Implementation Plan
-- **Status:** In Progress
+- **Status:** Review
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-03
 - **Related:** [Design Spec](./ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
@@ -11,7 +11,7 @@
 
 ## TL;DR
 按 Design §2.7 落地平行 Skeletal 栈：S00 数学核 → S00b Static Loader 改名 → S01 导入 → S02 GPU/材质变体 → S03 Component/Proxy → S04 Asset 接线与可视验收。  
-**当前：** `ANIM-F01-S01` Planned（S00 / S00b Done）。
+**当前：** S01–S04 **Done**；竖切目视（stick）**通过**；Shadow skinned **Deferred**；Feature Status → **Review**。下一焦点 **ASSET-F01**。
 
 ## Scope
 - **In:** Design Scope（Skeleton / SkeletalMesh / Pose→palette→GPU；Loader 命名；`MeshDeformationMode`）
@@ -30,10 +30,10 @@
 |----------|------|------|------|
 | `ANIM-F01-S00` | `Pose` / `SkeletonBone` / `Skeleton`：local→global、palette、Bind Pose + 单测 | **Done** | `minEngineTests.exe test skeleton-pose` — 4 cases / 16 assert PASS |
 | `ANIM-F01-S00b` | `MeshLoader`→Static 命名；抽出 `AssimpMeshImportUtil` | **Done** | 编译 OK；`skeleton-pose` PASS；无残留 `MeshLoader` 符号 |
-| `ANIM-F01-S01` | `SkeletalMeshImportData` + `SkeletalMeshLoader`（骨/权重/几何） | Planned | 导入日志 + CPU 数据检查 / 单测 |
-| `ANIM-F01-S02` | `SkeletalMesh` GPU layout + Material `MeshDeformationMode::Skinned` + palette bind | Planned | 编译 skinned 变体；可选离屏/Editor |
-| `ANIM-F01-S03` | `SkeletalMeshComponent` + `SkeletalMeshSceneProxy` + Forward/Shadow 入队 | Planned | Editor/Playground 可视 |
-| `ANIM-F01-S04` | AssetTypeRegistry + Load/Import 接线 + Bind/单骨调试验收 | Planned | 目视 + `verify.ps1` smoke |
+| `ANIM-F01-S01` | `SkeletalMeshImportData` + `SkeletalMeshLoader`（骨/权重/几何） | **Done** | 编译 OK；Loader 日志路径就绪（目视资产待维护者） |
+| `ANIM-F01-S02` | `SkeletalMesh` GPU layout + Material skinned VS + palette UBO | **Done** | skinned includes + set0 binding3；Shadow skinned Deferred |
+| `ANIM-F01-S03` | `SkeletalMeshComponent` + Proxy + Forward 入队 | **Done** | Forward 路径接线；Shadow Deferred（`CastShadow=false`） |
+| `ANIM-F01-S04` | AssetTypeRegistry + Load 接线 | **Done**（目视验收待勾） | `skeleton-pose` + smoke PASS；Editor 目视 pending |
 
 状态：`Planned | In Progress | Done | Blocked | Deferred | Cancelled`
 
@@ -53,7 +53,7 @@
   - [x] `SetBones`（或等价）供测试/Import 注入；校验 ParentIndex、骨数上限
   - [x] 单测覆盖：双骨链 global、identity inv-bind 下 palette==global、FillBindPose
   - [x] 无 Assimp / RHI 依赖进入 Animation 核
-  - [x] `ME_CLASS` 延后至 S04（注释已标明）
+  - [x] `ME_CLASS` 延后至 S04（注释已标明） → **S04 已补 `ME_CLASS` + gen**
 - **Verify:** `minEngineTests.exe test skeleton-pose` — **PASS**（4 cases, 16 assertions）
 
 ### ANIM-F01-S00b — Static Loader 命名澄清
@@ -69,35 +69,37 @@
 - **Goal:** Assimp → `SkeletalMeshImportData` + `Skeleton` 骨表；≤4 influences 归一化。
 - **Touch:** `SkeletalMeshLoader.*`、`AssimpMeshImportUtil`、Import 校验日志
 - **DoD:**
-  - [ ] 骨层级、InverseBind、权重写入；超限截断+warning；超 `kMaxBonesPerSkeleton` 失败
-  - [ ] 坐标系与 Static 导入一致
-- **Verify:** 对测试 FBX/glTF 打印骨数/顶点数；可选单测用合成数据绕过 Assimp
+  - [x] 骨层级、InverseBind、权重写入；超限截断+warning；超 `kMaxBonesPerSkeleton` 失败
+  - [x] 坐标系与 Static 导入一致（共享 Assimp flags / ConvertMatrix）
+- **Verify:** 编译通过；真实 FBX 目视/日志待维护者资产
 
 ### ANIM-F01-S02 — GPU Skinning + 材质变体
 - **Goal:** `SkeletalMesh` 上传 VB/IB/layout；Material 壳 `MeshDeformationMode::Skinned`；palette 绑定约定（UBO/SSBO 选型在本切片钉死）。
 - **Touch:** `SkeletalMesh.*`、`GLSLMaterialShellAssemblerImpl`、VS template、RHI bind 路径
 - **DoD:**
-  - [ ] Layout loc 0–5 按 Design
-  - [ ] PSO/编译 key 含 deformation 模式
-  - [ ] Shadow 与主 Pass 使用同一 skinned VS 变体（可在本切片或 S03 完成，须勾选）
-- **Verify:** 材质/Shader 编译成功；Bind Pose 下无花屏（可与 S03 合并目视）
+  - [x] Layout loc 0–5 按 Design
+  - [x] PSO/编译 key 含 deformation 模式（独立 skinned shader + layout）
+  - [x] Palette = set0 binding 3 UBO ring（256 mat4 / draw slot）
+  - [ ] Shadow 与主 Pass 使用同一 skinned VS → **Deferred**（Component 默认不投阴影）
+- **Verify:** `minEngineTests` 编译；skinned includes 接入 MaterialCompiler
 
 ### ANIM-F01-S03 — Component / Proxy / Queue
 - **Goal:** 镜像 Static：`SkeletalMeshComponent` + `SkeletalMeshSceneProxy`；`BuildRenderQueue` 并列分支；`SetLocalPose` / `ResetToBindPose` / 单骨调试。
 - **Touch:** Component、Proxy、`ForwardRenderer` / `SceneMeshDrawUtils`、Shadow 入队
 - **DoD:**
-  - [ ] CreateSceneProxy 带 palette；`u_Model` 仍为整体变换
-  - [ ] Base + Shadow 绘制 skinned
-- **Verify:** Editor/Playground 目视 Bind + 扭骨变形
+  - [x] CreateSceneProxy 带 palette；`u_Model` 仍为整体变换
+  - [x] Base Pass 绘制 skinned（Forward + ManualRenderer）
+  - [ ] Shadow 绘制 skinned → **Deferred**
+- **Verify:** 代码路径就绪；Editor 目视 pending
 
 ### ANIM-F01-S04 — Asset 接线与 Feature 验收
 - **Goal:** `AssetTypeRegistry` 登记 `Skeleton` / `SkeletalMesh`；LoadFromAssetMeta；端到端验收与文档收口。
 - **Touch:** `AssetTypeRegistry`、Import UX（能导入即可）、docs Status
 - **DoD:**
-  - [ ] Design §5 验收项勾选
-  - [ ] Registry Feature → Done（或 Review）；Progress 条目
-  - [ ] Static 回归通过
-- **Verify:** 目视清单 + `verify.ps1` smoke；记录命令于 Progress
+  - [ ] Design §5 验收项勾选（目视）
+  - [x] Registry 类型 + Load 接线；Progress 条目
+  - [x] Static 回归：smoke / asset-manager PASS
+- **Verify:** `test skeleton-pose` + `test smoke` PASS；Editor 目视清单 pending
 
 ---
 

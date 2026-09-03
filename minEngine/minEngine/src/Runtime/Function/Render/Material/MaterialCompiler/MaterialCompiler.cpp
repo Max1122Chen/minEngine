@@ -9,13 +9,15 @@
 #include "../MaterialIR/MIRBuilder.h"
 #include "../MaterialIR/MIRDebug.h"
 #include "../MaterialIR/MIRGraph.h"
+#include "Runtime/Function/Render/EngineShaderUtils.h"
 
 namespace minEngine
 {
     MaterialCompileEnvironment MaterialCompiler::MakePipelineSettings(
         MaterialShadingModel shadingModel,
         MaterialBlendMode blendMode,
-        const MaterialCompileContext& ctx)
+        const MaterialCompileContext& ctx,
+        MeshDeformationMode deformationMode)
     {
         MaterialCompileEnvironment env;
         env.ShadingModel = shadingModel;
@@ -23,6 +25,7 @@ namespace minEngine
         env.ShaderLanguage = MaterialShaderLanguage::GLSL;
         env.UsesTangentFrame = shadingModel == MaterialShadingModel::BlinnPhong
             || shadingModel == MaterialShadingModel::PBR;
+        env.DeformationMode = deformationMode;
         env.EngineDefaultAssetsRootOverride = ctx.EngineDefaultAssetsRootOverride;
         return env;
     }
@@ -120,6 +123,44 @@ namespace minEngine
         }
 
         return target.CommitCompileResult(result, ctx);
+    }
+
+    bool MaterialCompiler::CompileSkinnedVariant(Material& target, const MaterialCompileContext& ctx)
+    {
+        if (!target.IsCompiledForDraw())
+        {
+            target.m_LastCompileDiagnostics.push_back({
+                MaterialCompileDiagnostic::Error,
+                "CompileSkinnedVariant requires a successful rigid Compile() first.",
+            });
+            return false;
+        }
+        if (!target.m_Graph)
+        {
+            return false;
+        }
+
+        const MaterialCompileEnvironment env = MakePipelineSettings(
+            target.m_ShadingModel,
+            target.m_BlendMode,
+            ctx,
+            MeshDeformationMode::Skinned);
+        MaterialCompileResult result = CompileGraphToResult(*target.m_Graph, env);
+        target.m_LastCompileDiagnostics = result.Diagnostics;
+        if (!result.Succeeded || ctx.RHI == nullptr)
+        {
+            return false;
+        }
+
+        std::string compileError;
+        target.m_GPUShaderSkinned = EngineShaderUtils::CreateShaderFromSpirvSources(
+            *ctx.RHI,
+            result.FullVertexShader,
+            result.FullFragmentShader,
+            (target.GetName().empty() ? "Material" : target.GetName()) + "_Skinned",
+            &compileError);
+        target.m_ShaderCompileLog = compileError;
+        return target.m_GPUShaderSkinned != nullptr && target.m_GPUShaderSkinned->IsValid();
     }
 
     MaterialCompileResult MaterialCompiler::CompileForDiagnostics(

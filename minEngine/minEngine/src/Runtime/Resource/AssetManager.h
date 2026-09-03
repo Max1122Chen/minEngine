@@ -23,6 +23,8 @@ namespace minEngine
     class MEObject;
     class Texture2D;
     class StaticMesh;
+    class SkeletalMesh;
+    class Skeleton;
     class Material;
     class Scene;
     class Font;
@@ -222,6 +224,8 @@ namespace minEngine
     std::shared_ptr<Scene> AssetManager::LoadAsset_Impl<Scene>(const AssetMeta& meta);
     template<>
     std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<SkeletalMesh> AssetManager::LoadAsset_Impl<SkeletalMesh>(const AssetMeta& meta);
     template<>
     std::shared_ptr<Texture2D> AssetManager::LoadAsset_Impl<Texture2D>(const AssetMeta& meta);
     template<>

@@ -1,0 +1,18 @@
+// Logical Vulkan dialect: set = scene object set. OpenGL SPIR-V path flattens set= away.
+layout (std140, set = 0, binding = 0) uniform PerFrameData
+{
+    mat4 View;
+    mat4 Proj;
+    mat4 ViewProj;
+    vec4 CameraPos;
+};
+
+layout (std140, set = 0, binding = 2) uniform PerObject
+{
+    mat4 u_Model;
+};
+
+layout (std140, set = 0, binding = 3) uniform BonePalette
+{
+    mat4 u_BoneMatrices[256];
+};

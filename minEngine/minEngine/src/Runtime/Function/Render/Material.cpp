@@ -223,6 +223,21 @@ namespace minEngine
         return MaterialCompiler::Compile(*this, ctx);
     }
 
+    bool Material::EnsureSkinnedCompiled()
+    {
+        if (IsCompiledForSkinnedDraw())
+        {
+            return true;
+        }
+        if (!IsCompiledForDraw() && !Compile())
+        {
+            return false;
+        }
+        MaterialCompileContext ctx;
+        ctx.RHI = RenderSystem::Get().GetRHI();
+        return MaterialCompiler::CompileSkinnedVariant(*this, ctx);
+    }
+
     const MaterialGraphNodeDef_TextureObject* Material::FindTextureNodeBySlot(int slotIndex) const
     {
         if (!m_Graph)

@@ -51,6 +51,8 @@ namespace minEngine
         virtual ~Material() = default;
 
         bool Compile();
+        /** Compiles a skinned VS variant; requires a successful rigid Compile() first (reuses material bindings). */
+        bool EnsureSkinnedCompiled();
         void BindForDraw(RHICommandList& cmdList) const;
 
         void SetTextureParameter(const std::string& parameterName, std::shared_ptr<Texture2D> texture);
@@ -61,7 +63,13 @@ namespace minEngine
             return m_GPUShader != nullptr && m_GPUShader->IsValid() && !m_ParameterLayout.Parameters.empty();
         }
 
+        bool IsCompiledForSkinnedDraw() const
+        {
+            return IsCompiledForDraw() && m_GPUShaderSkinned != nullptr && m_GPUShaderSkinned->IsValid();
+        }
+
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
+        RHIShader* GetGPUShaderSkinned() const { return m_GPUShaderSkinned.get(); }
         RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const { return m_MaterialShaderBindingSetLayout.get(); }
         RHIShaderBindingSet* GetMaterialShaderBindingSet() const { return m_MaterialShaderBindingSet.get(); }
         const std::string& GetShaderCompileLog() const { return m_ShaderCompileLog; }
@@ -93,6 +101,7 @@ namespace minEngine
 
     private:
         RHIShaderRef m_GPUShader;
+        RHIShaderRef m_GPUShaderSkinned;
         RHIShaderBindingSetLayoutRef m_MaterialShaderBindingSetLayout;
         RHIShaderBindingSetRef m_MaterialShaderBindingSet;
         RHITextureViewCache m_TextureViewCache;

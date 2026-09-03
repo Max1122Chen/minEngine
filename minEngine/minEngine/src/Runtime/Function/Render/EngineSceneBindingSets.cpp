@@ -3,8 +3,12 @@
 #include "EngineShaderBindings.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
+
+#include <algorithm>
+#include <cstring>
 
 namespace minEngine
 {
@@ -21,7 +25,16 @@ namespace minEngine
             {kSet0_PerFrame, RHIShaderBindingType::UniformBuffer, kGL_PerFrameUBO, RHIGraphicsShaderStage::All},
             {kSet0_Lights, RHIShaderBindingType::UniformBuffer, kGL_LightsUBO, RHIGraphicsShaderStage::Pixel},
             {kSet0_PerObject, RHIShaderBindingType::UniformBuffer, kGL_PerObjectUBO, RHIGraphicsShaderStage::Vertex},
+            {kSet0_BonePalette, RHIShaderBindingType::UniformBuffer, kGL_BonePaletteUBO, RHIGraphicsShaderStage::Vertex},
         });
+
+        {
+            std::vector<Matrix4> identityBones(kBonePaletteMatrices, Matrix4(1.0f));
+            RHIBufferCreateDesc desc;
+            desc.Usage = RHIBufferUsage::Uniform;
+            desc.ByteSize = static_cast<uint32_t>(identityBones.size() * sizeof(Matrix4));
+            m_IdentityBonePalette = cmdList.CreateBuffer(desc, identityBones.data());
+        }
 
         m_SceneSet1Layout = cmdList.CreateShaderBindingSetLayout({
             {kSet1_DirShadowSRV, RHIShaderBindingType::TextureSRV, kGL_DirShadowTextureUnit, RHIGraphicsShaderStage::Pixel},
@@ -53,6 +66,9 @@ namespace minEngine
         m_CachedLights = nullptr;
         m_PerObjectRing = nullptr;
         m_PerObjectWriteIndex = 0;
+        m_BonePaletteRing = nullptr;
+        m_BonePaletteSlotStride = 0;
+        m_IdentityBonePalette.reset();
         m_CachedDirShadowSlot = {};
         m_CachedSpotShadowSlots = {};
         m_CachedPointShadowSlots = {};
@@ -79,19 +95,25 @@ namespace minEngine
         RHIBuffer* perFrame,
         RHIBuffer* lights,
         RHIBuffer* perObjectRing,
-        uint32_t perObjectSlotStride)
+        uint32_t perObjectSlotStride,
+        RHIBuffer* bonePaletteRing,
+        uint32_t bonePaletteSlotStride)
     {
         (void)cmdList;
         const bool ringIdentityChanged =
             perFrame != m_CachedPerFrame
             || lights != m_CachedLights
             || perObjectRing != m_PerObjectRing
-            || perObjectSlotStride != m_PerObjectSlotStride;
+            || perObjectSlotStride != m_PerObjectSlotStride
+            || bonePaletteRing != m_BonePaletteRing
+            || bonePaletteSlotStride != m_BonePaletteSlotStride;
 
         m_CachedPerFrame = perFrame;
         m_CachedLights = lights;
         m_PerObjectRing = perObjectRing;
         m_PerObjectSlotStride = perObjectSlotStride == 0 ? 256u : perObjectSlotStride;
+        m_BonePaletteRing = bonePaletteRing;
+        m_BonePaletteSlotStride = bonePaletteSlotStride;
         m_PerObjectWriteIndex = 0;
 
         if (ringIdentityChanged)
@@ -125,7 +147,9 @@ namespace minEngine
 
     RHIShaderBindingSet* EngineSceneBindingSets::BindNextPerObjectModel(
         RHICommandList& cmdList,
-        const Matrix4& model)
+        const Matrix4& model,
+        const Matrix4* bonePalette,
+        uint32_t boneCount)
     {
         if (!m_SceneSet0Layout || !m_CachedPerFrame || !m_CachedLights || !m_PerObjectRing)
         {
@@ -135,6 +159,38 @@ namespace minEngine
         const uint32_t slotBefore = m_PerObjectWriteIndex;
         const uint32_t offset = WriteNextPerObjectModel(model);
         const uint32_t slot = slotBefore % kPerObjectRingSlots;
+        const uint32_t boneSize = static_cast<uint32_t>(kBonePaletteMatrices * sizeof(Matrix4));
+
+        // Prefer the ring so set0 always uses a fixed per-slot dynamic offset (matches PerObject).
+        // Rigid shaders may not read binding 3; content only matters for skinned draws.
+        RHIBuffer* boneBuffer = m_BonePaletteRing != nullptr ? m_BonePaletteRing : m_IdentityBonePalette.get();
+        uint32_t boneOffset = 0;
+        if (m_BonePaletteRing != nullptr && m_BonePaletteSlotStride > 0)
+        {
+            boneOffset = slot * m_BonePaletteSlotStride;
+            if (bonePalette != nullptr && boneCount > 0)
+            {
+                const uint32_t writeCount = std::min(boneCount, kBonePaletteMatrices);
+                if (writeCount == kBonePaletteMatrices)
+                {
+                    m_BonePaletteRing->UpdateSubresource(bonePalette, boneOffset, boneSize);
+                }
+                else
+                {
+                    std::vector<Matrix4> padded(kBonePaletteMatrices, Matrix4(1.0f));
+                    std::memcpy(
+                        padded.data(),
+                        bonePalette,
+                        writeCount * static_cast<uint32_t>(sizeof(Matrix4)));
+                    m_BonePaletteRing->UpdateSubresource(padded.data(), boneOffset, boneSize);
+                }
+            }
+        }
+
+        if (!boneBuffer)
+        {
+            return nullptr;
+        }
 
         if (slot >= m_SceneSet0BySlot.size())
         {
@@ -143,7 +199,7 @@ namespace minEngine
 
         if (!m_SceneSet0BySlot[slot])
         {
-            std::vector<RHIShaderBinding> resources(3);
+            std::vector<RHIShaderBinding> resources(4);
             resources[kSet0_PerFrame] = {RHIShaderBindingType::UniformBuffer, m_CachedPerFrame, nullptr, 0, 0};
             resources[kSet0_Lights] = {RHIShaderBindingType::UniformBuffer, m_CachedLights, nullptr, 0, 0};
             resources[kSet0_PerObject] = {
@@ -152,6 +208,12 @@ namespace minEngine
                 nullptr,
                 offset,
                 static_cast<uint32_t>(sizeof(Matrix4))};
+            resources[kSet0_BonePalette] = {
+                RHIShaderBindingType::UniformBuffer,
+                boneBuffer,
+                nullptr,
+                boneOffset,
+                boneSize};
             m_SceneSet0BySlot[slot] = cmdList.CreateShaderBindingSet(m_SceneSet0Layout.get(), resources);
         }
 

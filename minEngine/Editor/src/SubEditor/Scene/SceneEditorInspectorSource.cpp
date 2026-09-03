@@ -28,8 +28,10 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -856,6 +858,22 @@ namespace minEngine
                     if (objectPtrProperty.GetName() == "m_Material")
                     {
                         meshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
+                        return true;
+                    }
+                }
+
+                if (SkeletalMeshComponent* skeletalMeshComponent =
+                        dynamic_cast<SkeletalMeshComponent*>(const_cast<MEObject*>(owner)))
+                {
+                    if (objectPtrProperty.GetName() == "m_Mesh")
+                    {
+                        skeletalMeshComponent->SetMesh(std::static_pointer_cast<SkeletalMesh>(asset));
+                        return true;
+                    }
+
+                    if (objectPtrProperty.GetName() == "m_Material")
+                    {
+                        skeletalMeshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
                         return true;
                     }
                 }

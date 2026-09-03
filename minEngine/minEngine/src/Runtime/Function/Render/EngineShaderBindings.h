@@ -25,10 +25,12 @@ namespace minEngine
         constexpr uint32_t kSet0_PerFrame = 0;
         constexpr uint32_t kSet0_Lights = 1;
         constexpr uint32_t kSet0_PerObject = 2;
+        constexpr uint32_t kSet0_BonePalette = 3;
 
         constexpr uint32_t kGL_PerFrameUBO = 0;
         constexpr uint32_t kGL_LightsUBO = 1;
         constexpr uint32_t kGL_PerObjectUBO = 2; // mat4 u_Model or small PerDraw UBO
+        constexpr uint32_t kGL_BonePaletteUBO = 3;
 
         // --- Set 1: shadow + IBL (PBR only uses IBL bindings) ---
         constexpr uint32_t kSet1_DirShadowSRV = 0;

@@ -3,6 +3,8 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/SkeletalMesh.h"
+#include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Resource/Font.h"
@@ -65,6 +67,22 @@ namespace minEngine
             .Extensions = {".obj", ".fbx", ".gltf"},
             .FileDialogFilterLabel = "Static Mesh (*.obj;*.fbx;*.gltf)"});
         m_AssetTypeIdByClass[StaticMesh::StaticClass()] = "StaticMesh";
+
+        // Same source extensions as StaticMesh; FindByExtension keeps StaticMesh as default.
+        // Import/load as SkeletalMesh via explicit AssetTypeId / typed dialogs.
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "SkeletalMesh",
+            .RuntimeClassName = GetClassName<SkeletalMesh>(),
+            .Extensions = {".fbx", ".gltf", ".glb"},
+            .FileDialogFilterLabel = "Skeletal Mesh (*.fbx;*.gltf;*.glb)"});
+        m_AssetTypeIdByClass[SkeletalMesh::StaticClass()] = "SkeletalMesh";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "Skeleton",
+            .RuntimeClassName = GetClassName<Skeleton>(),
+            .Extensions = {".meskeleton"},
+            .FileDialogFilterLabel = "Skeleton (*.meskeleton)"});
+        m_AssetTypeIdByClass[Skeleton::StaticClass()] = "Skeleton";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Material",

@@ -125,6 +125,8 @@ namespace minEngine
         RHIBufferRef m_LightDataUniformBuffer;
         RHIBufferRef m_PerObjectUniformBuffer;
         uint32_t m_PerObjectSlotStride = 256;
+        RHIBufferRef m_BonePaletteUniformBuffer;
+        uint32_t m_BonePaletteSlotStride = 0;
 
         ShadowUniformBuffers m_ShadowUniformBuffers;
 

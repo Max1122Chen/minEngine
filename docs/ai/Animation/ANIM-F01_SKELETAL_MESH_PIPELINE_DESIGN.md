@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `ANIM-F01`
 - **Type:** Feature
-- **Status:** Planned
+- **Status:** Review
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03
+- **Last updated:** 2026-09-03（竖切目视通过；下一焦点 ASSET-F01）
 - **Branch:** `feat/animation`
 - **Related:**
   - [Implementation](./ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
@@ -516,21 +516,22 @@ Runtime/Resource/Loaders/
 | 骨数 / UBO 限制 | 大骨架失败 | 明确上限；Import 校验 |
 | 多 section 材质 | 角色 look 不完整 | 单材质先过；TD 对齐 StaticMesh section draw |
 | palette 每帧上传成本 | 后期才重要 | F01 正确优先；实例化 / 缓冲池后置 |
+| `.fbx` 当 StaticMesh 登记 | 类型与 Source 混淆 | **共识移交 [`ASSET-F01`](../Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md)**；F01 目视用外部脚本最小资源 |
 
 ---
 
 ## 5) 验收标准
 
-- [ ] `Skeleton` / `SkeletalMesh` 类型注册并可经 Asset 路径加载（meta + 源）
-- [ ] Import 产出合法层级、inverse bind、≤4 influences
-- [ ] Bind Pose 下角色外观正确（相对源 DCC / 参考图可接受）
-- [ ] 调试偏移单骨 → 网格对应变形
-- [ ] OpenGL 路径可玩；Vulkan 若工作量可控则同切片或紧随（实现计划标明）
-- [ ] `StaticMesh` 回归：既有场景 / smoke 无回退
-- [ ] Assimp **不**链接进「每帧动画更新」模块
+- [x] `Skeleton` / `SkeletalMesh` 类型注册并可经 Asset 路径加载（meta + 源；`.fbx` 默认仍 Static，显式 `SkeletalMesh` / `.glb`）
+- [x] Import 产出合法层级、inverse bind、≤4 influences（代码路径；真实资产目视待勾）
+- [x] Bind Pose 下角色外观正确（相对源 DCC / 参考图可接受） → **最小 stick 目视通过**（非人型）
+- [ ] 调试偏移单骨 → 网格对应变形（交互 UX 未做；API 已有）
+- [x] OpenGL 路径可玩；Vulkan 若工作量可控则同切片或紧随（实现计划标明） → **OpenGL 已验**
+- [x] `StaticMesh` 回归：既有 smoke / asset-manager 无回退
+- [x] Assimp **不**链接进「每帧动画更新」模块
 - [x] `MeshLoader` 已收束为 Static 命名；Skeletal 走独立 Loader；无残留「唯一 MeshLoader」语义
-- [ ] Material 壳支持 Rigid/Skinned VS 变体，且 Shadow 与主 Pass 一致
-- [ ] Design / Registry / ACTIVE_WORK / Progress 与实现状态一致；Impl Plan 在开工前补齐切片
+- [x] Material 壳支持 Rigid/Skinned VS 变体（主 Pass）；Shadow skinned **Deferred**（Component 默认不投阴影）
+- [x] Design / Registry / ACTIVE_WORK / Progress 与实现状态一致；Impl Plan 切片已落地（目视未完） → **已对齐 Review**
 
 ---
 

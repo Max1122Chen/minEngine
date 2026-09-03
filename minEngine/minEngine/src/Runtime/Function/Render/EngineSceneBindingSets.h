@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHITextureViewCache.h"
@@ -23,6 +24,7 @@ namespace minEngine
     {
     public:
         static constexpr uint32_t kPerObjectRingSlots = 512;
+        static constexpr uint32_t kBonePaletteMatrices = 256;
 
         void Initialize(RHICommandList& cmdList);
         void Shutdown();
@@ -32,10 +34,16 @@ namespace minEngine
             RHIBuffer* perFrame,
             RHIBuffer* lights,
             RHIBuffer* perObjectRing,
-            uint32_t perObjectSlotStride);
+            uint32_t perObjectSlotStride,
+            RHIBuffer* bonePaletteRing = nullptr,
+            uint32_t bonePaletteSlotStride = 0);
 
         /** Write next ring slot and return a set0 that views that slot (scene opaque/translucent). */
-        RHIShaderBindingSet* BindNextPerObjectModel(RHICommandList& cmdList, const Matrix4& model);
+        RHIShaderBindingSet* BindNextPerObjectModel(
+            RHICommandList& cmdList,
+            const Matrix4& model,
+            const Matrix4* bonePalette = nullptr,
+            uint32_t boneCount = 0);
 
         /**
          * Write next ring slot for ShadowPass (which uses a different set layout).
@@ -59,6 +67,8 @@ namespace minEngine
 
         RHIBuffer* GetPerObjectRingBuffer() const { return m_PerObjectRing; }
         uint32_t GetPerObjectSlotStride() const { return m_PerObjectSlotStride; }
+        RHIBuffer* GetBonePaletteRingBuffer() const { return m_BonePaletteRing; }
+        uint32_t GetBonePaletteSlotStride() const { return m_BonePaletteSlotStride; }
 
     private:
         struct ShadowTextureSlotCache
@@ -91,6 +101,10 @@ namespace minEngine
         RHIBuffer* m_PerObjectRing = nullptr;
         uint32_t m_PerObjectSlotStride = 256;
         uint32_t m_PerObjectWriteIndex = 0;
+
+        RHIBuffer* m_BonePaletteRing = nullptr;
+        uint32_t m_BonePaletteSlotStride = 0;
+        RHIBufferRef m_IdentityBonePalette;
 
         ShadowTextureSlotCache m_CachedDirShadowSlot{};
         std::array<ShadowTextureSlotCache, MAX_SPOT_SHADOW_MAPS> m_CachedSpotShadowSlots{};

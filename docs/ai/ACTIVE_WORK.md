@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（`feat/animation`：ANIM-F01 **In Progress** · S00）
+Last updated: 2026-09-03（ANIM-F01 目视竖切通过；**下一焦点 `ASSET-F01` FBX/Import Pipeline**）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,16 +9,23 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/animation`）
 
-### ANIM-F01 — Skeletal Mesh Pipeline ← **当前（S00）**
+### ASSET-F01 — External Import Pipeline ← **下一焦点（FBX 等为 Source）**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design / Impl | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md)（**Planned**） · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md)（**In Progress**） |
-| 系列 | [F02 Clip](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md)（Draft） · [F03 Graph](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md)（占位） |
-| 当前切片 | **S01** Skeletal 导入（S00 / S00b Done） |
-| Next | S01 Assimp 骨/权重 → … |
+| Design | [Placeholder](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md)（**Planned** → 开工前升 Draft/Design） |
+| 目标 | FBX/glTF 不当成引擎 AssetType；显式 Import → 原生 `StaticMesh` / `SkeletalMesh`(+`Skeleton`) 等 |
+| Next | Pre-flight + Design 扩写 → Implementation Plan → 切片开工 |
 
-**明确不排期（本轨）：** Animation Event 独立 Feature、IK、Root Motion、Retarget、完整 AnimBP 节点编辑器。
+### ANIM-F01 — Skeletal Mesh Pipeline ← **竖切目视通过（收尾中）**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) |
+| 验证 | `MinSkinnedStick.glb` + `DefaultMaterial_Skinned`；Editor 可见竖棍；Shadow skinned **仍 Deferred** |
+| 残留 | Feature 可标 Done/Review；扭骨交互 UX 可后补；完整 FBX 人型走 ASSET-F01 |
+
+**明确不排期（动画扩展）：** Animation Event、IK、Root Motion、Retarget、完整 AnimBP。
 
 ### `master` 旁路（非本 worktree 焦点）
 
@@ -37,7 +44,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **动画** | `feat/animation` | 竖切后再论 | **当前焦点** ANIM-F01 → F02 → F03 |
 | **内核 / 编辑器** | `master` | `master` | CORE-F05 Done；ED-F02 等可并行 |
 
-**明确 Defer：** Animation Event（暂不登记）· IK / Root Motion / Retarget · ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step
+**明确 Defer：** Animation Event（暂不登记）· IK / Root Motion / Retarget · ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step  
+**下一开干：** [`ASSET-F01`](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md)（FBX/glTF Import → 原生资产）
 
 ---
 

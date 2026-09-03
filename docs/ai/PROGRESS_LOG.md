@@ -1,6 +1,29 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（`feat/animation`：ANIM-F01 Design Draft）
+Last updated: 2026-09-03（ANIM-F01 目视通过；下一焦点 ASSET-F01）
+
+### 2026-09-03 - ANIM-F01 visual slice + proxy/shader fixes
+- **RenderScene:** Skeletal dirty 更新走 `SyncSceneProxy`（此前只刷新 Static，导致挂 mesh/mtl 不可见）。
+- **Inspector:** Skeletal `SetMesh`/`SetMaterial` hook。
+- **Shader:** 消除 skinned VS `skinMatrix` 重定义；模板先 Position 后 Lighting varyings。
+- **验证:** `DefaultMaterial_Skinned` 加载成功；Editor 可见 `MinSkinnedStick` 竖棍。
+- **Docs:** ASSET-F01 占位；ACTIVE_WORK 下一焦点改为 Import Pipeline。
+- **Next:** ASSET-F01 Design（FBX 为 Source → 原生资产）。
+
+### 2026-09-03 - ASSET-F01 Planned + ANIM 目视策略
+- **共识：** `.fbx` 等为 Import Source，不是引擎 AssetType；当前「`.fbx`→StaticMesh」为临时债务。
+- **登记：** [`ASSET-F01`](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) External Import Pipeline — **Planned**，不阻塞 ANIM。
+- **ANIM-F01 目视：** 外部脚本拆最小验证资源 → 再挂 Component；不依赖完整 FBX 管线。
+- **Script:** `scripts/animation/generate_min_skinned_glb.py` → `MyMEProject/Assets/Animations/MinSkinnedStick.glb`（+ meta `SkeletalMesh`）。
+- **Next:** Editor 挂 `SkeletalMeshComponent` 目视 Bind/扭 Chest。
+
+### 2026-09-03 - ANIM-F01-S01..S04 code: Skeletal pipeline vertical slice
+- **S01:** `SkeletalMeshLoader` Assimp 骨层级 / InverseBind / ≤4 influences；`AssimpMeshImportUtil::ConvertMatrix`/`DecomposeMatrix`。
+- **S02:** `SkeletalMesh` GPU layout（loc 0–5）；Material `EnsureSkinnedCompiled` + skinned GLSL includes；set0 binding3 `BonePalette` UBO ring（`EngineSceneBindingSets` / ForwardRenderer）。
+- **S03:** `SkeletalMeshComponent` + Proxy；`BuildRenderQueue` 并列分支；`SceneMeshDrawUtils` 选 skinned PSO + palette upload。**Shadow skinned Deferred**（`m_CastShadow=false`）。
+- **S04:** AssetType `SkeletalMesh` / `Skeleton`；`LoadAsset_Impl`；`.fbx` 默认仍 StaticMesh（显式类型导入 Skeletal）。
+- **Verified:** `cmake --build build --target minEngineTests`；`minEngineTests.exe test skeleton-pose` + `test smoke` PASS。
+- **Next:** Editor 导入 skinned 资产目视 Bind/扭骨；通过后 Feature → Done + 准备 commit。
 
 ### 2026-09-03 - ANIM-F01-S00b Done: StaticMeshLoader rename
 - **Rename:** 删除 `MeshLoader`；`StaticMeshImportVertex/Section/Data` + `StaticMeshLoader::ImportFromFile`。

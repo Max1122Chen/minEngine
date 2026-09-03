@@ -42,6 +42,11 @@ namespace minEngine
         Math::Geometry::AABB m_BoundingBox;
         bool m_CastShadow = true;
 
+        /** Optional skinning palette (null/empty = rigid). */
+        const Matrix4* m_BonePalette = nullptr;
+        uint32_t m_BoneCount = 0;
+        bool m_bSkinned = false;
+
         MeshDrawCommandSortKey m_SortKey;
     };
 }

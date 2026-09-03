@@ -20,9 +20,10 @@ namespace minEngine
         Matrix4 InverseBindPose{1.0f};
     };
 
-    // ANIM-F01: ME_CLASS / AssetType registration deferred to S04; math API is stable here.
+    ME_CLASS()
     class Skeleton : public Asset
     {
+        ME_GENERATED_BODY(Skeleton)
     public:
         Skeleton() = default;
         ~Skeleton() override = default;
@@ -44,3 +45,5 @@ namespace minEngine
         std::vector<SkeletonBone> m_Bones;
     };
 }
+
+#include "Generated/Reflection/Skeleton.gen.h"

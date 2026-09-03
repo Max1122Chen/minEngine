@@ -11,6 +11,7 @@ namespace minEngine
     {
     public:
         static bool Compile(Material& target, const MaterialCompileContext& ctx = {});
+        static bool CompileSkinnedVariant(Material& target, const MaterialCompileContext& ctx = {});
 
         static MaterialCompileResult CompileForDiagnostics(
             const MaterialEdGraph& graph,
@@ -22,7 +23,8 @@ namespace minEngine
         static MaterialCompileEnvironment MakePipelineSettings(
             MaterialShadingModel shadingModel,
             MaterialBlendMode blendMode,
-            const MaterialCompileContext& ctx);
+            const MaterialCompileContext& ctx,
+            MeshDeformationMode deformationMode = MeshDeformationMode::Rigid);
 
         static MaterialCompileResult CompileGraphToResult(
             const MaterialEdGraph& graph,

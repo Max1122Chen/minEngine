@@ -8,6 +8,8 @@
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/SkeletalMesh.h"
+#include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Resource/Font.h"
@@ -1019,6 +1021,18 @@ namespace minEngine
             if (asset == nullptr)
             {
                 outErrorMessage = "failed to load static mesh by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "SkeletalMesh")
+        {
+            std::shared_ptr<SkeletalMesh> asset = LoadAsset<SkeletalMesh>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load skeletal mesh by guid";
                 return nullptr;
             }
 
