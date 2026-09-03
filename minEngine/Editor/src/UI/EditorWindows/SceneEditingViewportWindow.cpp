@@ -26,6 +26,18 @@ namespace minEngine
     void SceneEditingViewportWindow::OnPostSceneImageDraw(EditorViewportClient& client,
                                                           const ViewportFrameState& /*frameState*/)
     {
+        // Play view is game camera / PIE world — no editor transform gizmo.
+        if (m_Context.IsPlaying())
+        {
+            SceneEditingViewportClient& sceneClient = static_cast<SceneEditingViewportClient&>(client);
+            GizmoState& gizmoState = sceneClient.GetGizmoState();
+            gizmoState.Hovering = false;
+            gizmoState.Using = false;
+            gizmoState.Manipulated = false;
+            sceneClient.SetInputBlockedByGizmo(false);
+            return;
+        }
+
         DrawGizmo(static_cast<SceneEditingViewportClient&>(client));
     }
 

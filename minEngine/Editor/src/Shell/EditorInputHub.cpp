@@ -155,6 +155,14 @@ namespace minEngine
 
     void EditorInputHub::ProcessInput(IEditorContext& context)
     {
+        // During PIE: keep Play/Stop (and other global chords); suppress editor edit shortcuts
+        // and undo/redo so they do not compete with gameplay InputSystem consumers.
+        if (context.IsPlaying())
+        {
+            ProcessGlobalCommands(context);
+            return;
+        }
+
         ProcessViewportRouting(context);
         ProcessActiveSubModuleCommands(context);
         ProcessGlobalCommands(context);

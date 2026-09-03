@@ -535,6 +535,7 @@ void SceneManager::TickScenes(float deltaTime)
 | **S03** | Toolbar + View/Input + `ActiveSceneScope` |
 | **S04** | Per-World System lifecycle |
 | **S05** | Pause/Step + PIE Inspector |
+| **S06** | Observing Context（Inspector / Debug Command 目标 World） |
 
 ---
 
@@ -571,3 +572,4 @@ void SceneManager::TickScenes(float deltaTime)
 | 2026-09-01 | Registry 占位 |
 | 2026-09-02 | 双 World 共存初稿 |
 | 2026-09-02 | 命名修订；Attach ME_PROPERTY；§8 Editor Tick 业界对齐 |
+| 2026-09-03 | S03 Done；登记 S06 Observing Context（Inspector/Command 仍绑 Editor） |

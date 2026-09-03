@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（`master`：BUG-EDITOR-002 仍 Open；CORE-F05 推进中）
+Last updated: 2026-09-03（`master`：CORE-F05 S03 Done）
+
+### 2026-09-03 - CORE-F05 S03 Done: hide gizmo + editor input gate during Play
+- **Gizmo:** Play 时不绘制 ImGuizmo。
+- **Input:** `EditorInputHub` PIE 仅全局命令（Stop/F5）。
+- **Deferred:** `IViewContextProvider`；**S06 Observing Context**（Inspector/Console 仍绑 Editor — 需求错位，另切片）。
+- **Verified:** 维护者目视通过。
 
 ### 2026-09-03 - BUG-EDITOR-002: ASan 未复现；保持 Open（可临时关 DebugDraw）
 - **二分：** A（关 atlas）仍崩；B（关 Physics debug 入队）20×0 崩 → 触发路径确认。

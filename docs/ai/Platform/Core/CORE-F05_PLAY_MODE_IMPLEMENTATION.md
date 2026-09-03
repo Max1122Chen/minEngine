@@ -21,9 +21,10 @@
 | CORE-F05-S01 | `SceneDuplicator` + `SceneCloneContext` + Remap 单测 | Planned | `scene-clone` test |
 | CORE-F05-S02b | `ESceneType`、`ESceneTickPolicy`、`SceneContext`、`SceneManager` API | Planned | 编译 + smoke |
 | CORE-F05-S02 | `PlayInEditorSession` Enter/Stop、双 Scene、Mapping | Planned | Play/Stop 手动 |
-| CORE-F05-S03 | Toolbar、`ActiveSceneScope`、View/Input | **In Progress** | Editor 目视 deferred |
+| CORE-F05-S03 | Toolbar、`ActiveSceneScope`、View/Input | **Done** | Editor 目视通过 |
 | CORE-F05-S04 | Per-World Physics/Audio/Render/Lua + TickPolicy 门控 | **Done** | `audio-smoke`（手动目视 deferred） |
 | CORE-F05-S05 | Pause/Step、PIE Inspector 只读 | Deferred | — |
+| CORE-F05-S06 | Observing Context（Inspector / Debug Command 观察目标） | Planned | Play 时可观察 PIE |
 
 ---
 
@@ -84,14 +85,15 @@
 ### CORE-F05-S03 — View / Input / Toolbar
 
 - **依赖：** [ED-F03 Editor Toolbar](../../Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md)（Chrome 可见性；**Review 待批**）
-- **Touch:** `SceneEditingViewportClient`、`SceneEditor::RouteViewportInput`、`ActiveSceneScope`
+- **Touch:** `SceneEditingViewportClient`、`SceneEditingViewportWindow`、`SceneEditor::RouteViewportInput`、`EditorInputHub`、`ActiveSceneScope`
 - **DoD:**
   - [x] Play 时 viewport 绑定 PIE `RenderScene` + 主相机跟随
-  - [x] Play 时禁用 Editor 视口导航 / Gizmo / 选择
+  - [x] Play 时禁用 Editor 视口导航 / 选择操作
+  - [x] Play 时**不绘制** ImGuizmo（仅禁操作不够）
   - [x] `RouteViewportInput` Play 时不路由到 SceneEditor
-  - [ ] Runtime Input 路由（`InputSystem` 独占）— 后续
-  - [ ] `IViewContextProvider` 抽象 — 后续
-- **Verify:** Editor 目视 deferred
+  - [x] Play 时 `EditorInputHub` 仅保留全局命令（如 Stop/F5）；跳过子模块编辑快捷键与 Undo/Redo
+  - [ ] `IViewContextProvider` 抽象 — **Deferred**（现有 `GetViewTargetScene` / `IsPlayModeViewActive` 够用；避免过早抽象）
+- **Verify:** Editor 目视 — Play 无 gizmo、相机跟随 PIE、Stop 后恢复 Editor 编辑 — **通过（2026-09-03）**
 
 ---
 
@@ -107,16 +109,29 @@
 
 ### CORE-F05-S05 — Deferred
 
-Pause/Step；PIE Inspector 只读。
+Pause/Step；PIE Inspector 只读（与 S06 observing 可协同，但本切片仍 defer）。
+
+---
+
+### CORE-F05-S06 — Observing Context（后续切片）
+
+- **问题：** Play 时 viewport 已看 PIE，但 **Inspector / Debug Console 命令**仍操作 Editor World（需求错位，非 bug）。
+- **Goal:** 显式 Observing Context — 选择观察/命令目标为 Editor 或 PIE（含 Hierarchy 是否切 PIE 树、get/set 走哪套 GUID）。
+- **DoD（草案）：**
+  - [ ] Play 时 Inspector 可切到 PIE 对象（只读优先，与 S05 对齐）
+  - [ ] Console / unified commands 可指定或跟随 Observing Context
+  - [ ] Stop 后自动回到 Editor Context
+- **Verify:** Play 中 inspect/get 命中 PIE；Stop 后恢复 Editor
 
 ---
 
 ## 3) 依赖顺序
 
 ```text
-S00 → S01 → S02b → S02 → S03
-                    ↘
-                     S04
+S00 → S01 → S02b → S02 → S03 → S04
+                           ↘
+                            S06（Observing；可后于 Feature MVP）
+S05 Deferred
 ```
 
 ---
@@ -130,3 +145,5 @@ S00 → S01 → S02b → S02 → S03
 | 2026-09-03 | S01：PIE clone 改 in-memory JSON（TD-029）；Binary 待 TD-028 |
 | 2026-09-03 | **S04 Done：** Audio PIE 门控 + `OnBeginPIE`/`OnEndPIE`；Physics hooks；`audio-smoke` PIE gating |
 | 2026-09-03 | **S03 WIP：** viewport → PIE `RenderScene`；Play 时禁 Editor 视口输入；PIE 相机跟随 |
+| 2026-09-03 | S03：Play 隐藏 gizmo；`EditorInputHub` PIE 输入门控；`IViewContextProvider` Deferred |
+| 2026-09-03 | **S03 Done**（目视通过）；登记 **S06 Observing Context**（Inspector/Command 仍绑 Editor） |
