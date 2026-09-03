@@ -1,6 +1,31 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（`master`：CORE-F05 MVP Done）
+Last updated: 2026-09-03（`feat/animation`：ANIM-F01 Design Draft）
+
+### 2026-09-03 - ANIM-F01-S00b Done: StaticMeshLoader rename
+- **Rename:** 删除 `MeshLoader`；`StaticMeshImportVertex/Section/Data` + `StaticMeshLoader::ImportFromFile`。
+- **Shared:** `AssimpMeshImportUtil`（post-process flags + tangent helpers）供 S01 复用。
+- **Verified:** build OK；`minEngine/bin` 下 `skeleton-pose` + `asset-manager` PASS。
+- **Next:** S01 `SkeletalMeshLoader`（骨/权重导入）。
+
+### 2026-09-03 - ANIM-F01-S00 Done: Pose / Skeleton math core
+- **Code:** `AnimationConstants` / `Pose` / `Skeleton`（`FillBindPose`、`LocalToGlobal`、`BuildSkinningPalette`、`SetBones` 校验）。
+- **Tests:** suite `skeleton-pose` — 4 cases, 16 assertions PASS。
+- **Note:** `Skeleton` 暂无 `ME_CLASS`（S04 登记 AssetType 时补）；补齐缺失的 `assimp/config.h`（自 sibling `minEngine` 拷贝）以恢复本 worktree 编译。
+- **Next:** S00b Static Loader 改名。
+
+### 2026-09-03 - ANIM-F01/F02 Design deepen (data structures + Clip draft)
+- **ANIM-F01:** §2.7 数据结构/接口（Skeleton/Pose/SkeletalMesh/Loader/Component/Proxy、源码布局）。
+- **ANIM-F02:** 占位升为 **Draft** — Clip/Player 契约、与 F01 `SetLocalPose` 接缝、单 Clip 无 Blend。
+- **Registry / ACTIVE_WORK:** F02 Status=Draft。
+- **Next:** 审阅 → F01 Implementation Plan（实现仍先 F01）。
+
+### 2026-09-03 - ANIM series docs: F01 Design Draft + F02/F03 placeholders
+- **ANIM-F01:** [Skeletal Mesh Pipeline Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) Status=**Draft**（替换旧 Animation system 占位）。
+- **ANIM-F02 / F03:** Clip Playback / Animation Graph MVP 占位登记。
+- **Out of schedule:** Animation Event、IK、Root Motion、Retarget（暂不登记独立 Feature）。
+- **ACTIVE_WORK / Registry:** 当前焦点改为 `feat/animation` 上 F01。
+- **Next:** 审阅 F01 Design → Implementation Plan → S00。
 
 ### 2026-09-03 - CORE-F05 MVP Done (docs closeout)
 - **Registry / Design / Impl:** Status → **Done**（MVP）；S00–S02 表状态对齐代码。

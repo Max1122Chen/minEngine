@@ -25,6 +25,7 @@
 #include "Suites/SceneCloneTest.h"
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/CommandSystemTest.h"
+#include "Suites/SkeletonPoseTest.h"
 
 namespace minEngine
 {
@@ -339,6 +340,23 @@ namespace minEngine
             }
         };
 
+        struct SkeletonPoseTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"skeleton-pose", "Skeleton Pose", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'skeleton-pose'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "skeleton-pose",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -358,6 +376,7 @@ namespace minEngine
         using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
+        using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -387,6 +406,7 @@ namespace minEngine
             registry.Register(SceneCloneSuite::Get());
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(CommandSystemSuite::Get());
+            registry.Register(SkeletonPoseSuite::Get());
             s_Registered = true;
         }
     }

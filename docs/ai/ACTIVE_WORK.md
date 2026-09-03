@@ -1,36 +1,43 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（`master`：**CORE-F05** MVP **Done** → 下一焦点待定）
+Last updated: 2026-09-03（`feat/animation`：ANIM-F01 **In Progress** · S00）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
 
 ---
 
-## 当前焦点（`master`）
+## 当前焦点（`feat/animation`）
 
-### ~~CORE-F05 — Play Mode~~ **Done（MVP）**
+### ANIM-F01 — Skeletal Mesh Pipeline ← **当前（S00）**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design / Impl | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) |
-| Registry | `CORE-F05` **Done**（MVP） |
-| 交付 | 双 Scene PIE、Viewport、Per-World Audio/Physics、Inspecting Context |
-| Deferred / 债 | S05 Pause/Step；**TD-028/029** Binary/JSON；**TD-030** EnterPlay rollback |
+| Design / Impl | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md)（**Planned**） · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md)（**In Progress**） |
+| 系列 | [F02 Clip](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md)（Draft） · [F03 Graph](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md)（占位） |
+| 当前切片 | **S01** Skeletal 导入（S00 / S00b Done） |
+| Next | S01 Assimp 骨/权重 → … |
 
-**下一阶段：** 由维护者指定（候选：§C **ED-F02** Editor Workflow；或其它 Registry Planned 项）。
+**明确不排期（本轨）：** Animation Event 独立 Feature、IK、Root Motion、Retarget、完整 AnimBP 节点编辑器。
+
+### `master` 旁路（非本 worktree 焦点）
+
+| 项 | 状态 |
+|----|------|
+| CORE-F05 Play Mode MVP | **Done** |
+| ED-F02 Editor Workflow | Planned（候选；与动画轨并行不抢） |
+| ED-F04 Console | In Progress（MVP Done） |
 
 ---
 
-## 当前策略（2026-09-02）
+## 当前策略（2026-09-03）
 
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
-| **内核** | `master` | `master` | CORE-F05 MVP Done；小修复 / 下一 Feature |
-| **编辑器** | ~~`feat/editor`~~ | **已合入 `master`** | ED-F02 + **CORE-F07** + ED-F04 Console |
-| **动画** | `feat/animation` | — | 合并检查点之后再规划 |
+| **动画** | `feat/animation` | 竖切后再论 | **当前焦点** ANIM-F01 → F02 → F03 |
+| **内核 / 编辑器** | `master` | `master` | CORE-F05 Done；ED-F02 等可并行 |
 
-**明确 Defer：** ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` Contact 派发 · ED-F04 S10b `activate`/`deactivate` · CORE-F05-S05 Pause/Step
+**明确 Defer：** Animation Event（暂不登记）· IK / Root Motion / Retarget · ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step
 
 ---
 
@@ -39,6 +46,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 路径 | 分支 | 用途 |
 |------|------|------|
 | `D:/Dev/GitRepo/minEngine` | `master` | 内核 + 已合入 editor 轨 |
+| `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | **动画轨**（当前） |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档或用于下一 editor 切片 |
 
 旧 `minEngine-physics` / `minEngine-audio` / `minEngine-launcher` worktree 可按需保留或删除。
@@ -46,6 +54,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 ---
 
 ## In focus
+
+> 本 worktree（`minEngine-animation` / `feat/animation`）以文首 **ANIM-F01** 为准。下列 A–F 为 `master` 轨历史与旁路 backlog。
 
 ### A. `master` — 小修复（收尾）
 
@@ -64,7 +74,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | ~~CORE-F05~~ Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred |
 | ~~CORE-F07~~ 反射展示名 | **Done** — 已合入 `master` |
 
-### C. `master` — ED-F02 Editor Workflow ← **下一优先候选**
+### C. `master` — ED-F02 Editor Workflow（旁路候选）
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
@@ -111,7 +121,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 分支（将来） | 前置 |
 |----|--------------|------|
-| `ANIM-F01` | `feat/animation` | 合并检查点 + Design |
+| `ANIM-F02` / `F03` | `feat/animation` | F01 Done 后依次 |
+| Animation Event / IK / Root Motion / Retarget | — | 未登记；Graph MVP 后再评估 |
 | `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
 | `RND-F16` | `feat/sprite`（未建） | — |
 | Gameplay 插件化 / 网络 | — | 仅文档占位，见 REGISTRY 备注 |

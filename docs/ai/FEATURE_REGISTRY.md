@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-03（`master`：**CORE-F05** MVP **Done**）
+Last updated: 2026-09-03（`feat/animation`：ANIM-F01 Design Draft；F02/F03 占位）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -49,7 +49,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F04` | Debug Console & Unified Command System（Runtime 控制面 + Agent-friendly） | **In Progress** *(MVP Done)* | — | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) · S00–S10a Done · **S10b Deferred** · S07 Deferred |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
-| `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · **merge 检查点后** |
+| `ANIM-F01` | Skeletal Mesh Pipeline（Skeleton / SkeletalMesh / GPU skinning） | **In Progress** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · `feat/animation` · **S00–S00b Done · next S01** |
+| `ANIM-F02` | Clip Playback（AnimationClip + Player） | **Draft** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · 依赖 F01 |
+| `ANIM-F03` | Animation Graph MVP（SM + Params + Transition Blend） | **Planned** | — | [Placeholder](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · 依赖 F02 |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
@@ -71,13 +73,13 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | F04 | |
 | `WF` | F03 | |
-| `CORE` | **F08** | F05 In Progress on `master`；F06–F07 Done |
+| `CORE` | **F08** | F05–F07 Done（F05 MVP） |
 | `ASSET` | F01 | |
 | `ED` | **F05** | F02–F04 on `master`；F03 Toolbar Done；F04 Console In Progress |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
-| `ANIM` | F02 | F01 占位；merge 后开 `feat/animation` |
+| `ANIM` | **F04** | F01–F02 Draft；F03 Planned；Event / IK / Root Motion 等未登记 |
 | `UI` | F02 | F01 占位；`feat/ui` |
 | `PHYS` | F05 | F04 on `master` |
 | `MAT` | F01 | |
