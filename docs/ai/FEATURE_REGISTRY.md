@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-04（CORE-F08 Design 定稿；F09 依赖 F08）
+Last updated: 2026-09-04（CORE-F09 Binary v2 Done）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -29,11 +29,12 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
 | `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
-| `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · **`master`** · S05 Pause/Step Deferred；TD-028/029/030 Open |
+| `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · **`master`** · S05 Pause/Step Deferred；TD-030 Open；TD-028/029 → **CORE-F09 Done** |
 | `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) · **`master`** |
 | `CORE-F07` | 反射/Inspector 展示名（去 `m_`/`x_`/`b_` 前缀 + 驼峰分词） | **Done** | — | [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** |
 | `CORE-F08` | 序列化系统整理（StaticClass API、删死代码、P1 内部整理；不改 Binary wire；TD-026 Deferred） | **Done** | — | [Design](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_IMPLEMENTATION.md) · **`feat/core`** |
-| `CORE-F09` | Binary wire 协议 v2 重设计（TD-028/029；ClassId/FieldId） | **Planned** | — | [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · **Depends:** `CORE-F08` · **`feat/core`** |
+| `CORE-F09` | Binary wire 协议 v2（Transient Ids；TD-028/029；Persistent 契约） | **Done** | — | [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_IMPLEMENTATION.md) · **`feat/core`** · Transient only；存盘 Binary 未做 |
+| `CORE-F10` | JSON 存盘兼容（宽松未知字段 + `$schemaVersion` meta） | **Planned** | — | [Placeholder](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md) · 对齐 F09 Persistent 容错 · **`feat/core`** |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -74,7 +75,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | F04 | |
 | `WF` | F03 | |
-| `CORE` | **F10** | F08/F09 Planned（`feat/core` 序列化轨）；F05–F07 Done |
+| `CORE` | **F11** | F08 Done；F09/F10 Planned（`feat/core` 序列化轨）；F05–F07 Done |
 | `ASSET` | F01 | Async / Lifetime 愿景见 Capability Roadmap；尚未登记 Feature |
 | `ED` | **F05** | F02 In Progress（S00–S02/S04 Done）；F03 Done；F04 Console In Progress (MVP) |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |

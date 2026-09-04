@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-04（CORE-F08 serialization cleanup Done）
+Last updated: 2026-09-04（CORE-F09 Binary Transient v2 Done）
+
+### 2026-09-04 - CORE-F09 Done: Binary wire v2 (`feat/core`)
+- **Protocol:** Magic `MEB2` + SchemaVersion + Fingerprint；Object = Tag + ClassId + FieldCount + BodyLength + `[FieldId + tagged value]*`；无 wire `EndObject`。
+- **Schema:** `TransientSchemaTable` 在 `FinalizeReflection` 后建表（dense ClassId/FieldId）。
+- **API:** `BeginObject`/`BeginObjectPtr` 走 `MEClass*`；Buffer 路径强制 `skipUnknownField=false`。
+- **PIE:** `SceneDuplicator` 恢复 Binary buffer（关 TD-029）。
+- **Debt:** TD-028 / TD-029 → **Done**。
+- **Out:** 存盘 Binary / Persistent 名字键未实现（契约已写在 Design）；→ `CORE-F10` JSON。
+- **Verified:** `serialization-archive` · `scene-clone`（含 physics-stack）· `verify.ps1` smoke。
+- **Next:** 准备 commit；可选目视 PIE；然后 `CORE-F10` 或回 Primary。
 
 ### 2026-09-04 - CORE-F08 Done: serialization cleanup (`feat/core`)
 - **API:** `Serialize`/`Deserialize`/`ToFile`/`FromFile`/`*ObjectToBuffer`/`*ObjectToJson` 增加 `MEClass*` 重载 + `StaticClass` 模板；`string` 薄兼容。

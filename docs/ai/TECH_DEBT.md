@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-09-04（TD-026 明确不进 CORE-F08；随 Setter 验证延后）
+Last updated: 2026-09-04（CORE-F09 Binary v2 Done；TD-028/029 Done）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -35,8 +35,8 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-025 | Clip-space / texture-origin policy hardcoded to `IsVulkan()` | RND / RHI | **Medium** | Done | [RND-TD025](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md) · ED-F01 | 2026-08-28: `RHIClipSpaceCapabilities` + shadow scheme A landed；2026-08-31 user visual verify with RND-F14 batch |
 | TD-026 | Scene deserialize `m_Owner` bypasses `Component::SetOwner` | CORE / Serialization | **Medium** | Open | `CORE-F06` · [CORE-F08 Out](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) | 2026-09-02: load reconcile workaround via `SyncActivationWithActiveFlag`。**根治：** resolve/`m_Owner` 走 Setter / `SetOwner`。**2026-09-04：** 明确 **不进 CORE-F08**；待反射 Setter/Getter 统一验证时一并处理。 |
 | TD-027 | Asset Scene3D thumbnails share main ForwardRenderer RDG color | ED / RND | **Medium** | Open | ED-F02 · `AssetThumbnailService` | 2026-09-01: disabled `SubmitSceneDraw` for Material/StaticMesh thumbnails (icon fallback). Future: dedicated thumbnail renderer / isolated graph + stable ImGui texture pin. |
-| TD-028 | Binary wire format field-stream parsing fragile (`EndObject` vs u16 len) | CORE / Serialization | **High** | Open | [SERIALIZATION_BINARY_AND_PROPERTY_API.md](./Platform/Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) §6.4 · `BinaryArchive.cpp` | 2026-09-03: `EndObject` (0x0A) collides with 10-char field-name length prefix (`m_BodyType`, `m_Material`); `SerializeObjectToBuffer` Scene round-trip fails when ≥2 GOs have StaticMesh+RigidBody+Collider. May redesign parts of binary protocol; see TD-029 detour. |
-| TD-029 | PIE `SceneDuplicator` uses in-memory JSON instead of Binary | CORE-F05 / ED | **Medium** | Open | [CORE-F05_PLAY_MODE_DESIGN.md](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) §5.1 | 2026-09-03: `DuplicateForPIE` detour to `JsonArchive` (same options as `.mescene`) until TD-028 fixed. Disk format unchanged; revert to Binary when wire format stable. |
+| TD-028 | Binary wire format field-stream parsing fragile (`EndObject` vs u16 len) | CORE / Serialization | **High** | Done | `CORE-F09` · [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) | **2026-09-04：** v2 framing（`fieldCount`+`bodyLength`，无 EndObject）；Transient ClassId/FieldId；`serialization-archive` + `scene-clone` physics-stack 绿。 |
+| TD-029 | PIE `SceneDuplicator` uses in-memory JSON instead of Binary | CORE-F05 / ED | **Medium** | Done | `CORE-F09` · `SceneDuplicator.cpp` | **2026-09-04：** `DuplicateForPIE` 恢复 `SerializeObjectToBuffer` / Binary v2；磁盘 `.mescene` 仍 JSON。 |
 | TD-030 | EnterPlay failure path lacks full rollback | CORE-F05 | **Medium** | Open | [CORE-F05_PLAY_MODE_IMPLEMENTATION.md](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) S02 | 2026-09-03 MVP closeout: clone/register mid-failure may leave partial PIE context; restore Editor TickPolicy on early fail exists, full teardown of half-registered PIE still owed. |
 
 ---

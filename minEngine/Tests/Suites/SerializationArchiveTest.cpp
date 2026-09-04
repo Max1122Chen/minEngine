@@ -166,21 +166,21 @@ namespace minEngine
         bool TestObjectFieldsRoundTrip()
         {
             BinaryWriterArchive writer;
-            if (!writer.BeginObject("TestObject"))
+            if (!writer.BeginObject("minEngine::GUID"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: BeginObject failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: BeginObject failed: {}", writer.GetLastArchiveError());
                 return false;
             }
 
-            if (!writer.BeginField("m_Alpha") || !writer.WriteDouble(1.5) || !writer.EndField())
+            if (!writer.BeginField("High") || !writer.WriteUInt64(0x1111ull) || !writer.EndField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: alpha field write failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: High field write failed.");
                 return false;
             }
 
-            if (!writer.BeginField("m_Flag") || !writer.WriteBool(false) || !writer.EndField())
+            if (!writer.BeginField("Low") || !writer.WriteUInt64(0x2222ull) || !writer.EndField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: flag field write failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: Low field write failed.");
                 return false;
             }
 
@@ -191,27 +191,27 @@ namespace minEngine
             }
 
             BinaryReaderArchive reader(writer.TakeBuffer());
-            if (!reader.BeginObject("TestObject"))
+            if (!reader.BeginObject("minEngine::GUID"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: BeginObject read failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: BeginObject read failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
-            double alpha = 0.0;
-            bool flag = true;
-            if (!reader.EnterField("m_Alpha") || !reader.ReadDouble(alpha) || !reader.LeaveField())
+            uint64_t high = 0;
+            uint64_t low = 0;
+            if (!reader.EnterField("High") || !reader.ReadUInt64(high) || !reader.LeaveField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: alpha field read failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: High field read failed.");
                 return false;
             }
 
-            if (!reader.EnterField("m_Flag") || !reader.ReadBool(flag) || !reader.LeaveField())
+            if (!reader.EnterField("Low") || !reader.ReadUInt64(low) || !reader.LeaveField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: flag field read failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: Low field read failed.");
                 return false;
             }
 
-            if (!reader.EndObject() || alpha != 1.5 || flag != false)
+            if (!reader.EndObject() || high != 0x1111ull || low != 0x2222ull)
             {
                 ME_CORE_ERROR("SerializationArchiveTest: object payload mismatch.");
                 return false;
@@ -223,17 +223,17 @@ namespace minEngine
         bool TestSerializeObjectToBufferEmptyObjectRoundTrip()
         {
             BinaryWriterArchive writer;
-            if (!writer.BeginObject("EmptySnapshotObject") || !writer.EndObject())
+            if (!writer.BeginObject("minEngine::GUID") || !writer.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: failed to write empty object shell.");
+                ME_CORE_ERROR("SerializationArchiveTest: failed to write empty object shell: {}", writer.GetLastArchiveError());
                 return false;
             }
 
             const std::vector<uint8_t> buffer = writer.TakeBuffer();
             BinaryReaderArchive reader(buffer);
-            if (!reader.BeginObject("EmptySnapshotObject") || !reader.EndObject())
+            if (!reader.BeginObject("minEngine::GUID") || !reader.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: failed to read empty object shell.");
+                ME_CORE_ERROR("SerializationArchiveTest: failed to read empty object shell: {}", reader.GetLastArchiveError());
                 return false;
             }
 
@@ -245,14 +245,14 @@ namespace minEngine
             const GUID sourceGuid(0xAABBCCDDEEFF0011ull, 0x1122334455667788ull);
 
             BinaryWriterArchive writer;
-            if (!writer.BeginObject("OwnerObject"))
+            if (!writer.BeginObject("minEngine::MEObject"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested object BeginObject failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: nested object BeginObject failed: {}", writer.GetLastArchiveError());
                 return false;
             }
 
             if (!writer.BeginField("m_Guid")
-                || !writer.BeginObject("GUID")
+                || !writer.BeginObject("minEngine::GUID")
                 || !writer.BeginField("High") || !writer.WriteUInt64(sourceGuid.High) || !writer.EndField()
                 || !writer.BeginField("Low") || !writer.WriteUInt64(sourceGuid.Low) || !writer.EndField()
                 || !writer.EndObject()
@@ -264,22 +264,22 @@ namespace minEngine
             }
 
             BinaryReaderArchive reader(writer.TakeBuffer());
-            if (!reader.BeginObject("OwnerObject"))
+            if (!reader.BeginObject("minEngine::MEObject"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested object read BeginObject failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: nested object read BeginObject failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
             GUID readGuid;
             if (!reader.EnterField("m_Guid")
-                || !reader.BeginObject("GUID")
+                || !reader.BeginObject("minEngine::GUID")
                 || !reader.EnterField("High") || !reader.ReadUInt64(readGuid.High) || !reader.LeaveField()
                 || !reader.EnterField("Low") || !reader.ReadUInt64(readGuid.Low) || !reader.LeaveField()
                 || !reader.EndObject()
                 || !reader.LeaveField()
                 || !reader.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested GUID field read failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: nested GUID field read failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
@@ -297,8 +297,8 @@ namespace minEngine
             const GUID sourceGuid(0xDEADBEEFCAFE0001ull, 0x0123456789ABCDEFull);
 
             BinaryWriterArchive writer;
-            if (!writer.BeginObject("GuidOwner")
-                || !writer.BeginField("m_Target")
+            if (!writer.BeginObject("minEngine::GameObject")
+                || !writer.BeginField("m_RootComponent")
                 || !writer.BeginGuidRef(sourceGuid)
                 || !writer.EndGuidRef()
                 || !writer.EndField()
@@ -310,14 +310,14 @@ namespace minEngine
 
             BinaryReaderArchive reader(writer.TakeBuffer());
             GUID readGuid;
-            if (!reader.BeginObject("GuidOwner")
-                || !reader.EnterField("m_Target")
+            if (!reader.BeginObject("minEngine::GameObject")
+                || !reader.EnterField("m_RootComponent")
                 || !reader.BeginGuidRef(readGuid)
                 || !reader.EndGuidRef()
                 || !reader.LeaveField()
                 || !reader.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GuidRef field read failed.");
+                ME_CORE_ERROR("SerializationArchiveTest: GuidRef field read failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
@@ -332,12 +332,12 @@ namespace minEngine
 
         bool TestArrayOfInlineObjectPtrFieldRoundTrip()
         {
+            // Hand-written framing uses GameObject.m_Components (array of ObjectPtr).
             BinaryWriterArchive writer;
-            if (!writer.BeginObject("ArrayOwner")
-                || !writer.BeginField("m_Items")
+            if (!writer.BeginObject("minEngine::GameObject")
+                || !writer.BeginField("m_Components")
                 || !writer.BeginArray(1)
-                || !writer.BeginObjectPtr("InlineItem")
-                || !writer.BeginField("m_Value") || !writer.WriteInt64(42) || !writer.EndField()
+                || !writer.BeginObjectPtr("minEngine::StaticMeshComponent")
                 || !writer.EndObjectPtr()
                 || !writer.EndArray()
                 || !writer.EndField()
@@ -351,30 +351,28 @@ namespace minEngine
 
             BinaryReaderArchive reader(writer.TakeBuffer());
             size_t count = 0;
-            int64_t readValue = 0;
             std::string dynamicClassName;
-            if (!reader.BeginObject("ArrayOwner")
-                || !reader.EnterField("m_Items")
+            if (!reader.BeginObject("minEngine::GameObject")
+                || !reader.EnterField("m_Components")
                 || !reader.BeginArray(count)
                 || count != 1
                 || !reader.EnterArrayElement(0)
                 || !reader.BeginObjectPtr(nullptr, dynamicClassName)
-                || !reader.EnterField("m_Value")
-                || !reader.ReadInt64(readValue)
-                || !reader.LeaveField()
                 || !reader.EndObjectPtr()
                 || !reader.LeaveArrayElement()
                 || !reader.EndArray()
                 || !reader.LeaveField()
                 || !reader.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: array ObjectPtr field read failed.");
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: array ObjectPtr field read failed: {}",
+                    reader.GetLastArchiveError());
                 return false;
             }
 
-            if (readValue != 42)
+            if (dynamicClassName.find("StaticMeshComponent") == std::string::npos)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: array ObjectPtr field payload mismatch.");
+                ME_CORE_ERROR("SerializationArchiveTest: array ObjectPtr dynamic class mismatch: {}", dynamicClassName);
                 return false;
             }
 
@@ -888,13 +886,17 @@ namespace minEngine
         bool RunSerializationArchiveSmokeTestsImpl()
         {
             return TestStaticMeshComponentSerializeRoundTrip() && TestTransformSerializeRoundTrip()
-                   && TestUint8EnumPropertyRoundTrip();
+                   && TestUint8EnumPropertyRoundTrip() && TestGameObjectSerializeObjectToBufferRoundTrip()
+                   && TestGameObjectWithComponentsSerializeRoundTrip()
+                   && TestNestedGuidObjectFieldRoundTrip() && TestGuidRefObjectFieldRoundTrip()
+                   && TestArrayOfInlineObjectPtrFieldRoundTrip();
         }
 
         bool RunSerializationArchivePrimitiveTestsImpl()
         {
             return TestBoolRoundTrip() && TestStringRoundTrip() && TestGuidRefRoundTrip()
-                   && TestArrayRoundTrip() && TestObjectFieldsRoundTrip();
+                   && TestArrayRoundTrip() && TestObjectFieldsRoundTrip()
+                   && TestSerializeObjectToBufferEmptyObjectRoundTrip();
         }
     }
 

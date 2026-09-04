@@ -22,9 +22,11 @@ namespace minEngine::Serialization
         virtual ~WriterArchive() = default;
 
         virtual bool BeginObject(const std::string& typeName) = 0;
+        virtual bool BeginObject(const minEngine::Reflection::MEClass* classInfo, bool writeTypeName);
         virtual bool EndObject() = 0;
 
         virtual bool BeginObjectPtr(const std::string& typeName) = 0;
+        virtual bool BeginObjectPtr(const minEngine::Reflection::MEClass* classInfo);
         virtual bool EndObjectPtr() = 0;
 
         virtual bool BeginGuidRef(const minEngine::GUID& guid) = 0;

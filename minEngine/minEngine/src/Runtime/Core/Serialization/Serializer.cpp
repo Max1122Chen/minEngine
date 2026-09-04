@@ -403,8 +403,7 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Serialize class failed: object pointer is null.", path);
         }
 
-        const std::string objectTypeName = options.writeObjectTypeName ? classInfo->GetName() : std::string();
-        if (!archive.BeginObject(objectTypeName))
+        if (!archive.BeginObject(classInfo, options.writeObjectTypeName))
         {
             return SerializeResult::Failure("Serialize class failed: BeginObject returned false.", path);
         }
@@ -604,7 +603,7 @@ namespace minEngine::Serialization
             return SerializeResult::Success();
         }
 
-        if (!archive.BeginObjectPtr(dynamicClass->GetName()))
+        if (!archive.BeginObjectPtr(dynamicClass))
         {
             return SerializeResult::Failure("Serialize class failed: BeginObjectPtr returned false.", path);
         }
@@ -731,7 +730,13 @@ namespace minEngine::Serialization
 
         if (!archive.EndObject())
         {
-            return SerializeResult::Failure("Deserialize class failed: EndObject returned false.", path);
+            std::string message = "Deserialize class failed: EndObject returned false.";
+            const std::string& archiveError = archive.GetLastArchiveError();
+            if (!archiveError.empty())
+            {
+                message += " reason: " + archiveError;
+            }
+            return SerializeResult::Failure(message, path);
         }
 
         return SerializeResult::Success();
@@ -1312,8 +1317,11 @@ namespace minEngine::Serialization
                                                           std::vector<uint8_t>& outBuffer,
                                                           const SerializerOptions& options)
     {
+        SerializerOptions binaryOptions = options;
+        binaryOptions.skipUnknownField = false;
+
         BinaryWriterArchive writer;
-        SerializeResult result = SerializeProperty(ownerObject, ownerClass, propertyName, writer, options);
+        SerializeResult result = SerializeProperty(ownerObject, ownerClass, propertyName, writer, binaryOptions);
         if (!result.ok)
         {
             return result;
@@ -1330,8 +1338,11 @@ namespace minEngine::Serialization
                                                               std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                               const SerializerOptions& options)
     {
+        SerializerOptions binaryOptions = options;
+        binaryOptions.skipUnknownField = false;
+
         BinaryReaderArchive reader(buffer);
-        return DeserializeProperty(ownerObject, ownerClass, propertyName, reader, outUnresolvedRefs, options);
+        return DeserializeProperty(ownerObject, ownerClass, propertyName, reader, outUnresolvedRefs, binaryOptions);
     }
 
     SerializeResult Serializer::SerializePropertyByPathToBuffer(void* ownerObject,
@@ -1396,8 +1407,11 @@ namespace minEngine::Serialization
                                                         std::vector<uint8_t>& outBuffer,
                                                         const SerializerOptions& options)
     {
+        SerializerOptions binaryOptions = options;
+        binaryOptions.skipUnknownField = false;
+
         BinaryWriterArchive writer;
-        SerializeResult result = Serialize(rootClass, rootObject, writer, options);
+        SerializeResult result = Serialize(rootClass, rootObject, writer, binaryOptions);
         if (!result.ok)
         {
             return result;
@@ -1427,8 +1441,11 @@ namespace minEngine::Serialization
                                                             std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                             const SerializerOptions& options)
     {
+        SerializerOptions binaryOptions = options;
+        binaryOptions.skipUnknownField = false;
+
         BinaryReaderArchive reader(buffer);
-        return Deserialize(rootClass, outRootObject, reader, outUnresolvedRefs, options);
+        return Deserialize(rootClass, outRootObject, reader, outUnresolvedRefs, binaryOptions);
     }
 
     SerializeResult Serializer::DeserializeObjectFromBuffer(const std::string& rootClassName,

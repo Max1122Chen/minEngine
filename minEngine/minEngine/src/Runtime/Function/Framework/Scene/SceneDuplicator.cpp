@@ -14,16 +14,16 @@ namespace minEngine
         constexpr Serialization::SerializerOptions kPIECloneSerializerOptions{
             .enumAsString = true,
             .strictTypeCheck = true,
-            .skipUnknownField = true,
+            .skipUnknownField = false,
         };
     }
 
     std::shared_ptr<Scene> SceneDuplicator::DuplicateForPIE(const Scene& editorScene, SceneCloneContext& inOutContext)
     {
-        Json sceneJson;
-        const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToJson(
+        std::vector<uint8_t> sceneBuffer;
+        const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToBuffer(
             &editorScene,
-            sceneJson,
+            sceneBuffer,
             kPIECloneSerializerOptions);
         if (!serializeResult.ok)
         {
@@ -50,9 +50,9 @@ namespace minEngine
 
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         Serialization::Serializer::SetActiveCloneContext(&inOutContext);
-        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromJson(
+        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
             pieScene.get(),
-            sceneJson,
+            sceneBuffer,
             unresolvedRefs,
             kPIECloneSerializerOptions);
         Serialization::Serializer::SetActiveCloneContext(nullptr);
