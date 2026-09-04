@@ -4,6 +4,7 @@
 #include "Render/SceneRenderTarget.h"
 #include "Render/RenderScene.h"
 #include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
+#include "Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/Material.h"
@@ -1121,6 +1122,35 @@ namespace minEngine
                 }
                   
                 if (command.m_Material->IsTranslucent())
+                {
+                    ctx.TranslucentQueue.push_back(command);
+                }
+                else
+                {
+                    ctx.OpaqueQueue.push_back(command);
+                }
+                continue;
+            }
+
+            SpriteSceneProxy* spriteProxy = dynamic_cast<SpriteSceneProxy*>(primitiveProxy);
+            if (spriteProxy)
+            {
+                MeshDrawCommand command;
+                command.m_VertexBuffer = spriteProxy->m_VertexBuffer;
+                command.m_VertexInputLayout = spriteProxy->m_VertexInputLayout;
+                command.m_IndexBuffer = spriteProxy->m_IndexBuffer;
+                command.m_Material = spriteProxy->m_Material;
+                command.m_ModelMatrix = spriteProxy->m_ModelMatrix;
+                command.m_CastShadow = false;
+                command.m_BoundingBox = spriteProxy->m_PrimitiveComponent->GetBoundingBox();
+
+                if (!command.m_Material || !command.m_VertexInputLayout || !command.m_VertexBuffer ||
+                    !spriteProxy->m_Texture)
+                {
+                    continue;
+                }
+
+                if (spriteProxy->m_bNeedsTranslucentPass)
                 {
                     ctx.TranslucentQueue.push_back(command);
                 }

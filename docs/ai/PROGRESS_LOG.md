@@ -1,6 +1,36 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（`master`：CORE-F05 MVP Done）
+Last updated: 2026-09-04（`feat/ui`：RND-F16 Path A committed；下一 Path B）
+
+### 2026-09-04 - RND-F16 Path A 目视验收 + Status → In Progress
+- **Verify:** 维护者 Editor 目视 Sprite opaque/translucent 基本正确；UVRect 仍未接 GPU（已知）。
+- **Docs:** Registry / Design / ACTIVE_WORK → In Progress；Next = Path B。
+
+### 2026-09-03 - RND-F16 Path A Done: S00–S02 code + tests
+- **Code:** `SpriteComponent` / `SpriteSceneProxy` / `SpriteQuadMesh` / `SpriteTranslucency` / `SpriteMaterialFactory`；`ForwardRenderer::BuildRenderQueue` + `RenderScene` dirty 更新。
+- **Build:** `minEngine` + `minEngineTests` 编译通过（`-j 2`）。
+- **Tests:** `minEngineTests.exe test sprite-translucency` — 2 cases / 7 assertions PASS。
+- **Impl DoD:** S00–S02 勾选完成；S03 Path B 仍 Deferred。
+- **Next:** Playground 目视（opaque + translucent sprite）；Path B 排期；可选 UVRect GPU remap。
+
+### 2026-09-03 - RND-F16 Planned: Path A 数据结构/接口/数据流
+- **Design §9:** `SpriteComponent` / `SpriteSceneProxy` / 共享 unit quad / MeshDrawCommand 同构入队。
+- **透明性:** `Color.a` **或** 纹理可能含 alpha（`Channels>=4` 保守）→ Translucent；eps 阈值写明。
+- **其余:** 无 billboard；`CastShadow=false`；Color 用 `Vector4`。
+- **Status:** Draft → **Planned**；Registry / ACTIVE_WORK 同步。
+- **Next:** Implementation Plan（S0–S2）后开码。
+
+### 2026-09-03 - RND-F16：先 Path A；Path B 坚持 Proxy 同构
+- **顺序:** 先 Path A；Billboard Out；Path B = SceneComponent+Proxy 同构。
+
+### 2026-09-03 - RND-F16 Design修订: Sprite 同构 + ScreenUI 分路径
+- **纠正:** 弃用「Sprite+HUD 共用单一 Overlay DrawList」。
+- **Path A / B / C** 与 UE Paper2D / WidgetComponent 对照写入 Design。
+
+### 2026-09-03 - RND-F16 Design Draft: 2D Rendering Foundation
+- **Rename scope:** 原「Sprite 2D」占位 → **2D Rendering Foundation**。
+- **Docs:** [RND-F16 Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md)；删除旧 Sprite 占位文件。
+- **UI-F01:** Canvas GO 方向稿；Registry / ACTIVE_WORK 指向 `feat/ui`。
 
 ### 2026-09-03 - CORE-F05 MVP Done (docs closeout)
 - **Registry / Design / Impl:** Status → **Done**（MVP）；S00–S02 表状态对齐代码。

@@ -24,6 +24,7 @@
 #include "Suites/AudioSmokeTest.h"
 #include "Suites/SceneCloneTest.h"
 #include "Suites/ReflectionDisplayNamesTest.h"
+#include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/CommandSystemTest.h"
 
 namespace minEngine
@@ -322,6 +323,23 @@ namespace minEngine
             }
         };
 
+        struct SpriteTranslucencyTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"sprite-translucency", "Sprite Translucency", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'sprite-translucency'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "sprite-translucency",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct CommandSystemTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -357,6 +375,7 @@ namespace minEngine
         using AudioSmokeSuite = TypedTestSuite<AudioSmokeTestSuiteTraits>;
         using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
+        using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
 
         void RegisterAllTestSuites()
@@ -386,6 +405,7 @@ namespace minEngine
             registry.Register(AudioSmokeSuite::Get());
             registry.Register(SceneCloneSuite::Get());
             registry.Register(ReflectionDisplayNamesSuite::Get());
+            registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             s_Registered = true;
         }

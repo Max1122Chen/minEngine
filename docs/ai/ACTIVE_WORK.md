@@ -1,24 +1,33 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（`master`：**CORE-F05** MVP **Done** → 下一焦点待定）
+Last updated: 2026-09-04（`feat/ui`：RND-F16 Path A 目视通过；下一主线 Path B）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
 
 ---
 
-## 当前焦点（`master`）
+## 当前焦点（`feat/ui`）
 
-### ~~CORE-F05 — Play Mode~~ **Done（MVP）**
+### RND-F16 — 2D Rendering Foundation ← **当前焦点**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design | [RND-F16 Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · **In Progress** |
+| Impl | [RND-F16 Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · Path A **S00–S02 Done** |
+| 目标 | Path A `SpriteComponent` 已目视验收；下一主线 **Path B** ScreenUI + `WidgetComponent` |
+| 下游 | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)（Canvas GO；等 Path B） |
+| 底稿 | [docs/external/minEngine_ui_mvp_suggestions.md](../external/minEngine_ui_mvp_suggestions.md) |
+
+**下一主线：** Path B — ScreenUI Queue/Pass + 最小 `WidgetComponent`（扩写 Design §10 → Impl S03）。  
+**明确后置：** UVRect GPU remap；Widget / Layout / Hit-test（`UI-F01`）。
+
+### ~~CORE-F05 — Play Mode~~ **Done（MVP）**（`master`）
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design / Impl | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) |
-| Registry | `CORE-F05` **Done**（MVP） |
-| 交付 | 双 Scene PIE、Viewport、Per-World Audio/Physics、Inspecting Context |
 | Deferred / 债 | S05 Pause/Step；**TD-028/029** Binary/JSON；**TD-030** EnterPlay rollback |
-
-**下一阶段：** 由维护者指定（候选：§C **ED-F02** Editor Workflow；或其它 Registry Planned 项）。
 
 ---
 
@@ -26,7 +35,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
-| **内核** | `master` | `master` | CORE-F05 MVP Done；小修复 / 下一 Feature |
+| **内核** | `master` | `master` | CORE-F05 MVP Done；小修复 |
+| **UI / 2D** | `feat/ui` | — | **RND-F16** Foundation → 再 `UI-F01` |
 | **编辑器** | ~~`feat/editor`~~ | **已合入 `master`** | ED-F02 + **CORE-F07** + ED-F04 Console |
 | **动画** | `feat/animation` | — | 合并检查点之后再规划 |
 
@@ -64,18 +74,20 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | ~~CORE-F05~~ Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred |
 | ~~CORE-F07~~ 反射展示名 | **Done** — 已合入 `master` |
 
-### C. `master` — ED-F02 Editor Workflow ← **下一优先候选**
+### C. `feat/ui` — RND-F16 / UI-F01
+
+| ID | 内容 | 状态 |
+|----|------|------|
+| **RND-F16** | 2D Rendering Foundation | **In Progress** — Path A Done；下一 Path B — [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) |
+| **UI-F01** | Canvas GO + Layout/Input/Widgets | **Planned**（方向）— 等 RND-F16 |
+
+### C2. `master` — ED-F02 Editor Workflow（并行候选，非本分支焦点）
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
 | 切片 | 内容 | 优先级 |
 |------|------|--------|
-| S00 | Content Browser 双击 → `TryOpenAsset` | 高（接线） |
-| S01 | 打开 Scene（File/Open、切换、dirty） | 高 |
-| S02 | 创建资产（Scene、Material、…） | 高 |
-| S03 | Material Editor SkyBox 修复 | 中 |
-| S04 | Viewport 鼠标约束 | 中 |
-| S05 | Abstract Component 过滤 + Component 下拉图标 | 低 |
+| S00–S05 | 见 Design | 维护者在 `master` 排期 |
 
 ### D. `master` — ED-F03 Viewport Play Toolbar
 
@@ -112,8 +124,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | ID | 分支（将来） | 前置 |
 |----|--------------|------|
 | `ANIM-F01` | `feat/animation` | 合并检查点 + Design |
-| `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
-| `RND-F16` | `feat/sprite`（未建） | — |
+| `UI-F01` | `feat/ui` | `RND-F16` 2D Foundation |
+| `RND-F16` | `feat/ui`（设计中） | — |
 | Gameplay 插件化 / 网络 | — | 仅文档占位，见 REGISTRY 备注 |
 
 ---
