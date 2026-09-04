@@ -1,6 +1,20 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（ED-F02 文档收口 + worktree skill / 多轨分支）
+Last updated: 2026-09-05（GP-F01/F02 Done）
+
+### 2026-09-05 - GP-F01/F02 Done: Tag + Scene Event bus
+- **GP-F01:** `GameplayTag` / Manager / Container；`ME_DECLARE/DEFINE_GAMEPLAY_TAG*`；Engine 持有 Manager；`TAG_Channel_Default`。
+- **GP-F02:** `GameplayEventSystemComponent`（Scene 作用域）；default channel；filter/priority/depth；`Scene::GetGameplayEventSystem`；无 Payload。
+- **Code:** `Runtime/Function/GameplayFramework/{Tags,Events}/`
+- **Verified:** `minEngineTests.exe test gameplay-tags` PASS；`test gameplay-events` PASS。
+- **Next:** 两批 commit（Tag / Event）待审批。
+
+### 2026-09-04 - GP-F01/F02 Design Draft（feat/gameplay-framework）
+- **Registry:** 新域 `GP`；`GP-F01` GameplayTag、`GP-F02` GameplayEventSystem → **Draft**。
+- **Docs:** `docs/ai/Gameplay/` — Design + Implementation；落点 `Runtime/Function/GameplayFramework/`。
+- **所有权：** TagManager → Engine 子系统（暂）；Event → Scene 作用域 GO Component；Payload **Deferred**；无 ASC。
+- **ACTIVE_WORK:** Side track 登记；不挡 Animation Primary。
+- **Next:** 审 Design → Planned → 开码 GP-F01-S01。
 
 ### 2026-09-03 - ED-F02 doc closeout + worktree bootstrap tooling
 - **ED-F02:** Design/Impl/Registry 对照 `master` — S00–S02/S04 **Done**；S03 SkyBox 实体、S05 Abstract 标注 **Remaining/Partial**。

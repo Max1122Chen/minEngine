@@ -57,7 +57,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
 | `PHYS-F04` | Collider 尺寸与 Scale 解耦 | **Done** | — | [Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · **`master`** |
 | `GP-F01` | GameplayTag（Manager + Container；Engine 子系统；Native 宏） | **Done** | — | [Design](./Gameplay/GP-F01_GAMEPLAY_TAG_DESIGN.md) · [Impl](./Gameplay/GP-F01_GAMEPLAY_TAG_IMPLEMENTATION.md) · `feat/gameplay-framework` · `test gameplay-tags` |
-| `GP-F02` | GameplayEventSystem（Scene 作用域 Component；无 Payload） | **Planned** | — | [Design](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md) · [Impl](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_IMPLEMENTATION.md) · 依赖 GP-F01 |
+| `GP-F02` | GameplayEventSystem（Scene 作用域 Component；无 Payload） | **Done** | — | [Design](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md) · [Impl](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_IMPLEMENTATION.md) · 依赖 GP-F01 · `test gameplay-events` |
 
 ---
 

@@ -22,6 +22,7 @@ namespace minEngine
     class DelegateObjectManagerScope;
     class SceneCloneTestScope;
     class CommandSystemTestScope;
+    class GameplayEventTestScope;
 
     using ObjectReachabilityMarker = std::function<void(MEObject*)>;
     using ObjectReachabilityRootVisitor = std::function<void(const ObjectReachabilityMarker& markReachable)>;
@@ -128,6 +129,7 @@ namespace minEngine
         friend class DelegateObjectManagerScope;
         friend class SceneCloneTestScope;
         friend class CommandSystemTestScope;
+        friend class GameplayEventTestScope;
 
         static void SetInstance(ObjectManager* instance);
         void PruneExpiredEntries();

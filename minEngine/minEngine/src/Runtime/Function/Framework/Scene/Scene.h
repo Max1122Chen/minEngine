@@ -11,6 +11,7 @@ namespace minEngine
 {
     class GameObject;
     class RenderScene;
+    class GameplayEventSystemComponent;
 
     ME_CLASS()
     class Scene : public Asset
@@ -76,6 +77,10 @@ namespace minEngine
 
         void MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const;
 
+        GameplayEventSystemComponent* GetGameplayEventSystem() const { return m_GameplayEventSystem; }
+        void RegisterGameplayEventSystem(GameplayEventSystemComponent* component);
+        void UnregisterGameplayEventSystem(GameplayEventSystemComponent* component);
+
     // private: // temporarily public for testing
         ME_PROPERTY()
         std::string m_SceneName;
@@ -91,6 +96,7 @@ namespace minEngine
         ESceneType m_SceneType{ ESceneType::None };
         ESceneTickPolicy m_TickPolicy{ ESceneTickPolicy::Gameplay };
         int32_t m_PIEInstanceId{ -1 };
+        GameplayEventSystemComponent* m_GameplayEventSystem{ nullptr };
     };
 }
 

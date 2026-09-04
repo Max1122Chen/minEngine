@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（哲学 + Capability Roadmap；ED-F02 文档收口；worktree 轨就位）
+Last updated: 2026-09-05（GP-F01/F02 Done on feat/gameplay-framework）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -18,7 +18,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **Infrastructure** | Async Asset / Lifetime / Thread · Binary Ser · Prefab · Object Lifetime | 否（真缺口再插入） |
 | **Rendering** | Sort / Batch | 否 |
 | **DX / Agent** | Editor Workflow 余量 · Reflection UX · Commands | 否 |
-| **Future** | Gameplay Plugins · Networking · AI | 刻意延后 |
+| **Future** | 完整 Gameplay Plugins / ASC · Networking · AI | 刻意延后 |
+| **Side（本 worktree）** | `GP-F01` Tag · `GP-F02` Event（机制基底，非 Framework） | 否 |
 
 ---
 
@@ -41,6 +42,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | S05 Abstract 标注补齐 | Partial |
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
+
+### Side track — `feat/gameplay-framework`（本仓）
+
+| 项 | 说明 |
+|----|------|
+| **GP-F01** | GameplayTag **Done** — `test gameplay-tags` |
+| **GP-F02** | Scene Event bus **Done** — `test gameplay-events`；Payload Deferred |
+| **下一步** | 准备两批 commit；之后可回 Animation Primary 或扩展 Tag/Event 消费者 |
+| **不做** | ASC / Pawn / GE/GA；Module 插件系统；Payload |
 
 ### 可并行（不升主线）
 
@@ -86,7 +96,8 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 
 ### Placeholder branches（无 worktree）
 
-`feat/asset-pipeline` · `feat/gameplay-framework` · `feat/network` · `feat/ai` · `feat/core` — 仅占位，需要时再 `create-worktree.ps1` 初始化。
+`feat/asset-pipeline` · `feat/network` · `feat/ai` · `feat/core` — 仅占位，需要时再 `create-worktree.ps1` 初始化。  
+`feat/gameplay-framework` — 本 worktree（`minEngine-gameplay`）；GP-F01/F02 Design Draft。
 
 ---
 
@@ -96,7 +107,8 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 |----|------|
 | `ANIM-F01` | Primary — Design 待写（`feat/animation`） |
 | `RND-F16` / `UI-F01` | Primary 后续（`feat/ui`） |
-| Gameplay 插件化 / 网络 / AI | Future；见哲学 |
+| 完整 Gameplay 插件化 / ASC / 网络 / AI | Future；见哲学 |
+| `GP-F01` / `GP-F02` | 已开 Design（机制基底，非完整 Framework） |
 
 ---
 

@@ -1,6 +1,7 @@
 #include "Scene.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/GameplayFramework/Events/GameplayEventSystemComponent.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
 
@@ -9,9 +10,36 @@ namespace minEngine
     Scene::~Scene()
     {
         ME_CORE_INFO("Scene '{}' is being destroyed. Cleaning up {} game objects.", m_SceneName, m_GameObjects.size());
+        m_GameplayEventSystem = nullptr;
         m_GameObjects.clear();
         m_GameObjectsById.clear();
         m_RenderScene.reset();
+    }
+
+    void Scene::RegisterGameplayEventSystem(GameplayEventSystemComponent* component)
+    {
+        if (component == nullptr)
+        {
+            return;
+        }
+
+        if (m_GameplayEventSystem != nullptr && m_GameplayEventSystem != component)
+        {
+            ME_CORE_WARN(
+                "Scene '{}': multiple GameplayEventSystemComponent instances; keeping the first registered.",
+                m_SceneName);
+            return;
+        }
+
+        m_GameplayEventSystem = component;
+    }
+
+    void Scene::UnregisterGameplayEventSystem(GameplayEventSystemComponent* component)
+    {
+        if (m_GameplayEventSystem == component)
+        {
+            m_GameplayEventSystem = nullptr;
+        }
     }
 
     bool Scene::LineTrace(
