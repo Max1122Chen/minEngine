@@ -359,7 +359,7 @@ DuplicateForPIE(EditorScene)
   └── SceneManager::RegisterPIEScene
 ```
 
-**Wire format（2026-09-03）：** PIE clone 使用与 `.mescene` 相同的 **JSON + Serializer** 路径（`allowObjectPtrSerialization=true`），仅在内存 round-trip，**不写盘**。原计划 Binary in-memory buffer 因 **TD-028**（`EndObject` 与 10 字符字段名长度歧义）在多 physics-mesh GO 场景下失败；Binary 待协议修订后恢复（见 TD-029）。
+**Wire format（2026-09-03 / 2026-09-04）：** PIE clone 使用与 `.mescene` 相同的 **JSON + Serializer** 路径（ObjectPtr 按 Instanced/Guid 规则；`allowObjectPtrSerialization` 已由 **CORE-F08** 删除），仅在内存 round-trip，**不写盘**。原计划 Binary in-memory buffer 因 **TD-028**（`EndObject` 与 10 字符字段名长度歧义）在多 physics-mesh GO 场景下失败；Binary 待 **CORE-F09** 协议修订后恢复（见 TD-029）。
 
 ### 5.2 `SceneComponent` Attach 升级（**CORE-F05 前置 / S00**）
 

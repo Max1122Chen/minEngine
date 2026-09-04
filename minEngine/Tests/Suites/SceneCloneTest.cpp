@@ -169,7 +169,6 @@ namespace minEngine
 
             std::vector<uint8_t> buffer;
             const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToBuffer(
-                "minEngine::Scene",
                 sourceScene.get(),
                 buffer);
             if (!serializeResult.ok)
@@ -184,7 +183,6 @@ namespace minEngine
 
             std::vector<Serialization::PendingObjectRef> deserializeRefs;
             const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-                "minEngine::Scene",
                 loadedScene.get(),
                 buffer,
                 deserializeRefs);
@@ -302,14 +300,12 @@ namespace minEngine
             Serialization::JsonReaderArchive archive;
             const Serialization::SerializeResult loadResult = Serialization::Serializer::FromFile(
                 tempScenePath.string(),
-                "minEngine::Scene",
                 scene.get(),
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
                     .strictTypeCheck = true,
                     .skipUnknownField = true,
-                    .allowObjectPtrSerialization = true,
                 });
             std::error_code removeError;
             std::filesystem::remove(tempScenePath, removeError);

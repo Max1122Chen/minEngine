@@ -608,14 +608,12 @@ namespace minEngine
             Serialization::JsonWriterArchive archive;
             const Serialization::SerializeResult serializeResult = Serialization::Serializer::ToFile(
                 absolutePath.string(),
-                "minEngine::Scene",
                 scene,
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
                     .strictTypeCheck = true,
-                    .skipUnknownField = false,
-                    .allowObjectPtrSerialization = true});
+                    .skipUnknownField = false});
             if (!serializeResult.ok)
             {
                 ME_CORE_ERROR(
@@ -963,7 +961,7 @@ namespace minEngine
         outSnapshot.rootClassName = rootClass->GetName();
 
         return Serialization::Serializer::SerializeObjectToBuffer(
-            outSnapshot.rootClassName,
+            rootClass,
             &gameObject,
             outSnapshot.payload);
     }
@@ -988,7 +986,7 @@ namespace minEngine
         outSnapshot.componentIndexInOwner = componentIndex;
 
         return Serialization::Serializer::SerializeObjectToBuffer(
-            outSnapshot.rootClassName,
+            rootClass,
             &component,
             outSnapshot.payload);
     }
@@ -997,7 +995,6 @@ namespace minEngine
     {
         Serialization::SerializerOptions options;
         options.skipUnknownField = false;
-        options.allowObjectPtrSerialization = true;
         return options;
     }
 
@@ -1086,7 +1083,7 @@ namespace minEngine
         const Serialization::SerializerOptions restoreOptions = GetRestoreSerializerOptions();
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-            snapshot.rootClassName,
+            rootClass,
             gameObject.get(),
             snapshot.payload,
             unresolvedRefs,
@@ -1172,7 +1169,7 @@ namespace minEngine
         const Serialization::SerializerOptions restoreOptions = GetRestoreSerializerOptions();
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-            snapshot.rootClassName,
+            rootClass,
             component.get(),
             snapshot.payload,
             unresolvedRefs,

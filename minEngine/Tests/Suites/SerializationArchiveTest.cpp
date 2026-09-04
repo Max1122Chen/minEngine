@@ -390,7 +390,6 @@ namespace minEngine
 
             std::vector<uint8_t> buffer;
             const Serialization::SerializeResult writeResult = Serialization::Serializer::SerializeObjectToBuffer(
-                "minEngine::GameObject",
                 sourceObject.get(),
                 buffer);
             if (!writeResult.ok)
@@ -405,7 +404,6 @@ namespace minEngine
             std::shared_ptr<GameObject> restoredObject = NewObject<GameObject>("SnapshotRestoredGO");
             std::vector<Serialization::PendingObjectRef> unresolvedRefs;
             const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-                "minEngine::GameObject",
                 restoredObject.get(),
                 buffer,
                 unresolvedRefs);
@@ -443,7 +441,6 @@ namespace minEngine
 
             std::vector<uint8_t> buffer;
             const Serialization::SerializeResult writeResult = Serialization::Serializer::SerializeObjectToBuffer(
-                "minEngine::MovementComponent",
                 sourceComponent.get(),
                 buffer);
             if (!writeResult.ok)
@@ -459,7 +456,6 @@ namespace minEngine
                 NewObject<MovementComponent>("", owner.get());
             std::vector<Serialization::PendingObjectRef> unresolvedRefs;
             const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-                "minEngine::MovementComponent",
                 restoredComponent.get(),
                 buffer,
                 unresolvedRefs);
@@ -495,7 +491,6 @@ namespace minEngine
 
             std::vector<uint8_t> buffer;
             const Serialization::SerializeResult writeResult = Serialization::Serializer::SerializeObjectToBuffer(
-                "minEngine::StaticMeshComponent",
                 sourceComponent.get(),
                 buffer);
             if (!writeResult.ok)
@@ -511,7 +506,6 @@ namespace minEngine
                 NewObject<StaticMeshComponent>("", owner.get());
             std::vector<Serialization::PendingObjectRef> unresolvedRefs;
             const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-                "minEngine::StaticMeshComponent",
                 restoredComponent.get(),
                 buffer,
                 unresolvedRefs);
@@ -683,7 +677,6 @@ namespace minEngine
 
             std::vector<uint8_t> buffer;
             const Serialization::SerializeResult writeResult = Serialization::Serializer::SerializeObjectToBuffer(
-                "minEngine::GameObject",
                 sourceObject.get(),
                 buffer);
             if (!writeResult.ok)
@@ -698,7 +691,6 @@ namespace minEngine
             std::shared_ptr<GameObject> restoredObject = NewObject<GameObject>("ComponentsRestoredGO");
             std::vector<Serialization::PendingObjectRef> unresolvedRefs;
             const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-                "minEngine::GameObject",
                 restoredObject.get(),
                 buffer,
                 unresolvedRefs);

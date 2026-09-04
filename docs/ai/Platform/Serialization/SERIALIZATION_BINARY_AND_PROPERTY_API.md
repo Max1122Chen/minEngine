@@ -129,7 +129,7 @@ SerializeResult DeserializePropertyFromBuffer(..., const std::vector<uint8_t>& i
 |------|------|
 | `enumAsString` | Json：字符串；Binary：建议 **定长 int32 枚举值**（更快） |
 | `skipTransient` | 全量遍历时常用；Property API 由调用方指定单个 property |
-| `allowObjectPtrSerialization` | 是否允许写出 GUID 引用（Editor Undo 对资产引用字段可能要 **拒绝** 或仅 Guid） |
+| ~~`allowObjectPtrSerialization`~~ | **Removed (`CORE-F08`):** 从未被 Serializer 读取；ObjectPtr 始终按 Instanced 内联 / GuidRef 规则。勿再添加。 |
 | `resolveRefsOnDeserialize` | Undo 场景：false → 只恢复 Guid/内联，不 `ResolvePendingObjectRefs` |
 
 ---
@@ -227,7 +227,7 @@ Archive 接口表达 **逻辑类型**；Binary 后端负责 **物理编码**：
 | 指向场景中已有对象（如 Material 资产） | **GuidRef** | `PendingObjectRef` → `ObjectManager::FindObject`；失败则 **保持 null 或保留旧值**（策略在 `SerializerOptions` 拍板） |
 | `Instanced` 子对象（outer == owner） | **内联** 完整子树 | 重建或覆盖子对象；可能需分配新 `MEObject`（E1.4 Snapshot 细案） |
 | Undo 单 property、字段为 Texture 引用 | 通常 **仅 Guid** 即可 | 不要求 blob 内嵌资产内容 |
-| `allowObjectPtrSerialization == false` | 写 GuidRef 还是报错？ | 建议：**Editor Undo 默认 true（Guid only）**；内联仅 Instanced |
+| ~~`allowObjectPtrSerialization == false`~~ | **N/A（`CORE-F08` 已删选项）** | — |
 
 **禁止：** 在 GuidRef 形态下写入 **裸指针地址**（进程内地址重开无效）。
 

@@ -1,6 +1,15 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（ED-F02 文档收口 + worktree skill / 多轨分支）
+Last updated: 2026-09-04（CORE-F08 serialization cleanup Done）
+
+### 2026-09-04 - CORE-F08 Done: serialization cleanup (`feat/core`)
+- **API:** `Serialize`/`Deserialize`/`ToFile`/`FromFile`/`*ObjectToBuffer`/`*ObjectToJson` 增加 `MEClass*` 重载 + `StaticClass` 模板；`string` 薄兼容。
+- **Cleanup:** 删除未使用的 `allowObjectPtrSerialization`、`m_IsHandlingPtr`；去掉过时 ObjectPtr TODO。
+- **P1:** `ForEachPropertyInHierarchy(MEClass*)`；`MEObject::StaticClass()`；合并 property 查找；Deserialize `static_cast`。
+- **Call sites:** SceneEditor snapshot、SceneDuplicator、Loaders、AssetManager、ProjectManager、PathRegistry、Tests。
+- **Out:** TD-026 Deferred；Binary wire 未改（→ CORE-F09）。
+- **Verified:** `serialization-archive` · `scene-clone` · `verify.ps1` smoke · Editor build。
+- **Next:** 准备 commit；然后 `CORE-F09` Wire Spec。
 
 ### 2026-09-03 - ED-F02 doc closeout + worktree bootstrap tooling
 - **ED-F02:** Design/Impl/Registry 对照 `master` — S00–S02/S04 **Done**；S03 SkyBox 实体、S05 Abstract 标注 **Remaining/Partial**。

@@ -321,7 +321,7 @@ struct PropertyUndoCaptureContext {
 `ApplySetObjectProperty` 与 Inspector Capture 共用：
 
 - `skipUnknownField = false`
-- `allowObjectPtrSerialization = true`
+- ObjectPtr：Instanced 内联 / GuidRef（`allowObjectPtrSerialization` 已移除，见 CORE-F08）
 
 #### 9.10.5 验收
 
@@ -523,7 +523,7 @@ ComponentRestoreResult RestoreComponentToGameObject(GameObject& owner, const Edi
 2. go->SetOuter(scene)
 3. DeserializeObjectFromBuffer(..., go.get(), payload, pendingRefs)
    // DeserializeObjectInstance 对 MEObject 派生类补 SetClass（CreateDefaultInstance  unlike NewObject）
-   // SerializerOptions: skipUnknownField=false, allowObjectPtrSerialization=true
+   // SerializerOptions: skipUnknownField=false（ObjectPtr 始终按规则序列化；allowObjectPtrSerialization 已移除）
    // 内联 m_Components[]：每项 CreateDefaultInstance + 字段 + RegisterObject(component)
    // m_Owner → GuidRef(父 GO 快照 GUID)，此时尚未 Resolve
 4. ObjectManager::RegisterObject(go)   // 使用 Deserialize 写回的 m_Guid
@@ -550,7 +550,7 @@ ComponentRestoreResult RestoreComponentToGameObject(GameObject& owner, const Edi
 1. 定位 owner：优先 ownerGameObjectGuid → ObjectManager::FindObject；其次 ownerGameObjectId → scene.FindGameObjectById
 2. componentClass->CreateDefaultInstance() → shared_ptr<Component>
 3. comp->SetOuter(owner)
-4. DeserializeObjectFromBuffer(..., skipUnknownField=false, allowObjectPtrSerialization=true)
+4. DeserializeObjectFromBuffer(..., skipUnknownField=false)
    // m_Owner → GuidRef(owner)；Resolve 前 owner 须已按快照 GUID 注册
 5. ResolvePendingObjectRefs
 6. RegisterObject(component)   // 快照 component GUID

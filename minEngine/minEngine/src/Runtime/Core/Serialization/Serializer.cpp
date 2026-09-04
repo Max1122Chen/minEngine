@@ -25,6 +25,29 @@ namespace minEngine::Serialization
     using minEngine::Reflection::PropertySpecifierMask;
     using minEngine::Reflection::ReflectionSystem;
 
+    static const MEProperty* FindPropertyInHierarchyShared(const MEClass* ownerClass, std::string_view propertyName)
+    {
+        if (ownerClass == nullptr || propertyName.empty())
+        {
+            return nullptr;
+        }
+
+        const MEProperty* foundProperty = nullptr;
+        ReflectionSystem::Get().ForEachPropertyInHierarchy(
+            ownerClass,
+            [&](const MEProperty& property) -> bool
+            {
+                if (property.GetName() == propertyName)
+                {
+                    foundProperty = &property;
+                    return false;
+                }
+                return true;
+            });
+
+        return foundProperty;
+    }
+
     static bool SplitPropertyPath(std::string_view propertyPath, std::vector<std::string_view>& outSegments)
     {
         outSegments.clear();
@@ -65,25 +88,7 @@ namespace minEngine::Serialization
     {
         auto FindPropertyInHierarchyLocal = [](const MEClass* ownerClass, std::string_view propertyName) -> const MEProperty*
         {
-            if (ownerClass == nullptr || propertyName.empty())
-            {
-                return nullptr;
-            }
-
-            const MEProperty* foundProperty = nullptr;
-            ReflectionSystem::Get().ForEachPropertyInHierarchy(
-                ownerClass->GetName(),
-                [&](const MEProperty& property) -> bool
-                {
-                    if (property.GetName() == propertyName)
-                    {
-                        foundProperty = &property;
-                        return false;
-                    }
-                    return true;
-                });
-
-            return foundProperty;
+            return FindPropertyInHierarchyShared(ownerClass, propertyName);
         };
 
         if (inOutOwnerObject == nullptr || inOutOwnerClass == nullptr)
@@ -149,7 +154,6 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
-    bool Serializer::m_IsHandlingPtr = false;
     SceneCloneContext* Serializer::s_ActiveCloneContext = nullptr;
 
     void Serializer::SetActiveCloneContext(SceneCloneContext* cloneContext)
@@ -162,43 +166,70 @@ namespace minEngine::Serialization
         return s_ActiveCloneContext;
     }
 
-    SerializeResult Serializer::Serialize(const std::string& rootClassName,
-                                                   const void* rootObject,
-                                                   WriterArchive& archive,
-                                                   const SerializerOptions& options)
+    SerializeResult Serializer::Serialize(const MEClass* rootClass,
+                                          const void* rootObject,
+                                          WriterArchive& archive,
+                                          const SerializerOptions& options)
     {
-        if (rootObject == nullptr)
+        if (rootClass == nullptr)
         {
-            return SerializeResult::Failure("Serialize failed: rootObject is null.", rootClassName);
+            return SerializeResult::Failure("Serialize failed: rootClass is null.");
         }
 
+        if (rootObject == nullptr)
+        {
+            return SerializeResult::Failure("Serialize failed: rootObject is null.", rootClass->GetName());
+        }
+
+        return SerializeObjectInstance(rootClass, rootObject, archive, options, rootClass->GetName());
+    }
+
+    SerializeResult Serializer::Serialize(const std::string& rootClassName,
+                                          const void* rootObject,
+                                          WriterArchive& archive,
+                                          const SerializerOptions& options)
+    {
         const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
         if (rootClass == nullptr)
         {
             return SerializeResult::Failure("Serialize failed: root class not found.", rootClassName);
         }
 
-        return SerializeObjectInstance(rootClass, rootObject, archive, options, rootClassName);
+        return Serialize(rootClass, rootObject, archive, options);
+    }
+
+    SerializeResult Serializer::Deserialize(const MEClass* rootClass,
+                                            void* outRootObject,
+                                            ReaderArchive& archive,
+                                            std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                            const SerializerOptions& options)
+    {
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize failed: rootClass is null.");
+        }
+
+        if (outRootObject == nullptr)
+        {
+            return SerializeResult::Failure("Deserialize failed: outRootObject is null.", rootClass->GetName());
+        }
+
+        return DeserializeObjectInstance(rootClass, outRootObject, archive, outUnresolvedRefs, options, rootClass->GetName());
     }
 
     SerializeResult Serializer::Deserialize(const std::string& rootClassName,
-                                                     void* outRootObject,
-                                                     ReaderArchive& archive,
-                                                     std::vector<PendingObjectRef>& outUnresolvedRefs,
-                                                     const SerializerOptions& options)
+                                            void* outRootObject,
+                                            ReaderArchive& archive,
+                                            std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                            const SerializerOptions& options)
     {
-        if (outRootObject == nullptr)
-        {
-            return SerializeResult::Failure("Deserialize failed: outRootObject is null.", rootClassName);
-        }
-
         const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
         if (rootClass == nullptr)
         {
             return SerializeResult::Failure("Deserialize failed: root class not found.", rootClassName);
         }
 
-        return DeserializeObjectInstance(rootClass, outRootObject, archive, outUnresolvedRefs, options, rootClassName);
+        return Deserialize(rootClass, outRootObject, archive, outUnresolvedRefs, options);
     }
 
     SerializeResult Serializer::ResolvePendingObjectRefs(std::vector<PendingObjectRef>& unresolvedRefs)
@@ -262,19 +293,19 @@ namespace minEngine::Serialization
     }
 
     SerializeResult Serializer::ToFile(const std::string& filePath,
-                                       const std::string& rootClassName,
+                                       const MEClass* rootClass,
                                        const void* rootObject,
                                        WriterArchive& archive,
                                        const SerializerOptions& options)
     {
         if (filePath.empty())
         {
-            return SerializeResult::Failure("ToFile failed: filePath is empty.", rootClassName);
+            return SerializeResult::Failure("ToFile failed: filePath is empty.");
         }
 
         archive.ResetWriteState();
 
-        SerializeResult serializeResult = Serialize(rootClassName, rootObject, archive, options);
+        SerializeResult serializeResult = Serialize(rootClass, rootObject, archive, options);
         if (!serializeResult.ok)
         {
             return serializeResult;
@@ -295,15 +326,30 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
+    SerializeResult Serializer::ToFile(const std::string& filePath,
+                                       const std::string& rootClassName,
+                                       const void* rootObject,
+                                       WriterArchive& archive,
+                                       const SerializerOptions& options)
+    {
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("ToFile failed: root class not found.", rootClassName);
+        }
+
+        return ToFile(filePath, rootClass, rootObject, archive, options);
+    }
+
     SerializeResult Serializer::FromFile(const std::string& filePath,
-                                         const std::string& rootClassName,
+                                         const MEClass* rootClass,
                                          void* outRootObject,
                                          ReaderArchive& archive,
                                          const SerializerOptions& options)
     {
         if (filePath.empty())
         {
-            return SerializeResult::Failure("FromFile failed: filePath is empty.", rootClassName);
+            return SerializeResult::Failure("FromFile failed: filePath is empty.");
         }
 
         std::vector<PendingObjectRef> unresolvedRefs;
@@ -321,14 +367,28 @@ namespace minEngine::Serialization
             return SerializeResult::Failure(message, filePath);
         }
 
-        SerializeResult deserializeResult = Deserialize(rootClassName, outRootObject, archive, unresolvedRefs, options);
+        SerializeResult deserializeResult = Deserialize(rootClass, outRootObject, archive, unresolvedRefs, options);
         if (!deserializeResult.ok)
         {
             return deserializeResult;
         }
 
-        SerializeResult resolveResult = ResolvePendingObjectRefs(unresolvedRefs);
-        return resolveResult;
+        return ResolvePendingObjectRefs(unresolvedRefs);
+    }
+
+    SerializeResult Serializer::FromFile(const std::string& filePath,
+                                         const std::string& rootClassName,
+                                         void* outRootObject,
+                                         ReaderArchive& archive,
+                                         const SerializerOptions& options)
+    {
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("FromFile failed: root class not found.", rootClassName);
+        }
+
+        return FromFile(filePath, rootClass, outRootObject, archive, options);
     }
 
     // Private methods for serialization
@@ -403,7 +463,6 @@ namespace minEngine::Serialization
         }
         case MEPropertyCategory::ObjectPtr:
         {
-            // TODO: support object pointer later
             const auto* objectPtrProperty = static_cast<const MEObjectPtrProperty*>(&property);
             return SerializeObjectPtr(*objectPtrProperty, objectPtrProperty->GetSpecifierMask() | propertySpecifierMask, valuePtr, ownerObjectPtr, archive, options, path);
 
@@ -572,7 +631,7 @@ namespace minEngine::Serialization
     {
         SerializeResult result = SerializeResult::Success();
         const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
-        classInfo->GetName(),
+        classInfo,
         [&](const MEProperty& property) -> bool
         {
             if (property.HasSpecifier(PropertySpecifier::Transient))
@@ -690,12 +749,7 @@ namespace minEngine::Serialization
         {
         case MEPropertyCategory::Primitive:
         {
-            const auto* primitive = dynamic_cast<const MEPrimitiveProperty*>(&property);
-            if (primitive == nullptr)
-            {
-                return SerializeResult::Failure("Deserialize primitive failed: invalid property type.", path);
-            }
-
+            const auto* primitive = static_cast<const MEPrimitiveProperty*>(&property);
             const PrimitiveCodec* codec = PrimitiveCodecRegistry::Get().Find(primitive->primitiveTypeName);
             if (codec == nullptr)
             {
@@ -711,12 +765,7 @@ namespace minEngine::Serialization
         }
         case MEPropertyCategory::Object:
         {
-            const auto* objectProperty = dynamic_cast<const MEObjectProperty*>(&property);
-            if (objectProperty == nullptr)
-            {
-                return SerializeResult::Failure("Deserialize object failed: invalid property type.", path);
-            }
-
+            const auto* objectProperty = static_cast<const MEObjectProperty*>(&property);
             const MEClass* valueClass = objectProperty->GetValueClass();
             if (valueClass == nullptr)
             {
@@ -727,13 +776,7 @@ namespace minEngine::Serialization
         }
         case MEPropertyCategory::ObjectPtr:
         {
-            // TODO: support object pointer later
-            const auto* objectPtrProperty = dynamic_cast<const MEObjectPtrProperty*>(&property);
-            if (objectPtrProperty == nullptr)            
-            {
-                return SerializeResult::Failure("Deserialize object pointer failed: invalid property type.", path);
-            }
-
+            const auto* objectPtrProperty = static_cast<const MEObjectPtrProperty*>(&property);
             const MEClass* valueClass = objectPtrProperty->GetValueClass();
             if (valueClass == nullptr)
             {
@@ -746,12 +789,7 @@ namespace minEngine::Serialization
         }
         case MEPropertyCategory::Array:
         {
-            const auto* arrayProperty = dynamic_cast<const MEArrayProperty*>(&property);
-            if (arrayProperty == nullptr)
-            {
-                return SerializeResult::Failure("Deserialize array failed: invalid property type.", path);
-            }
-
+            const auto* arrayProperty = static_cast<const MEArrayProperty*>(&property);
             MEProperty* innerProperty = arrayProperty->GetInnerProperty();
             if (innerProperty == nullptr)
             {
@@ -839,11 +877,7 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Deserialize object pointer failed: invalid pointer category.", path);
         }
 
-        const MEClass* meObjectClass = ReflectionSystem::Get().FindClass("minEngine::MEObject");
-        if (meObjectClass == nullptr)
-        {
-            meObjectClass = ReflectionSystem::Get().FindClass("MEObject");
-        }
+        const MEClass* meObjectClass = MEObject::StaticClass();
         const bool supportsMEObject = (meObjectClass != nullptr) && ReflectionSystem::Get().IsClassSameOrDerived(classInfo, meObjectClass);
 
         if (archive.ReadNull())
@@ -1019,7 +1053,7 @@ namespace minEngine::Serialization
     {
         SerializeResult result = SerializeResult::Success();
         const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
-        classInfo->GetName(),
+        classInfo,
         [&](const MEProperty& property) -> bool
         {
             if (property.HasSpecifier(PropertySpecifier::Transient))
@@ -1182,32 +1216,9 @@ namespace minEngine::Serialization
         return basePath + "." + nextSegment;
     }
 
-    const MEProperty* Serializer::FindPropertyInHierarchy(const MEClass* ownerClass, const std::string& propertyName)
+    const MEProperty* Serializer::FindPropertyInHierarchy(const MEClass* ownerClass, std::string_view propertyName)
     {
-        if (ownerClass == nullptr || propertyName.empty())
-        {
-            return nullptr;
-        }
-
-        const MEProperty* foundProperty = nullptr;
-        const bool iterationOk = ReflectionSystem::Get().ForEachPropertyInHierarchy(
-            ownerClass->GetName(),
-            [&](const MEProperty& property) -> bool
-            {
-                if (property.GetName() == propertyName)
-                {
-                    foundProperty = &property;
-                    return false;
-                }
-                return true;
-            });
-
-        if (!iterationOk && foundProperty == nullptr)
-        {
-            return nullptr;
-        }
-
-        return foundProperty;
+        return FindPropertyInHierarchyShared(ownerClass, propertyName);
     }
 
     SerializeResult Serializer::SerializeProperty(void* ownerObject,
@@ -1380,13 +1391,13 @@ namespace minEngine::Serialization
             options);
     }
 
-    SerializeResult Serializer::SerializeObjectToBuffer(const std::string& rootClassName,
+    SerializeResult Serializer::SerializeObjectToBuffer(const MEClass* rootClass,
                                                         const void* rootObject,
                                                         std::vector<uint8_t>& outBuffer,
                                                         const SerializerOptions& options)
     {
         BinaryWriterArchive writer;
-        SerializeResult result = Serialize(rootClassName, rootObject, writer, options);
+        SerializeResult result = Serialize(rootClass, rootObject, writer, options);
         if (!result.ok)
         {
             return result;
@@ -1396,23 +1407,52 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
-    SerializeResult Serializer::DeserializeObjectFromBuffer(const std::string& rootClassName,
+    SerializeResult Serializer::SerializeObjectToBuffer(const std::string& rootClassName,
+                                                        const void* rootObject,
+                                                        std::vector<uint8_t>& outBuffer,
+                                                        const SerializerOptions& options)
+    {
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("SerializeObjectToBuffer failed: root class not found.", rootClassName);
+        }
+
+        return SerializeObjectToBuffer(rootClass, rootObject, outBuffer, options);
+    }
+
+    SerializeResult Serializer::DeserializeObjectFromBuffer(const MEClass* rootClass,
                                                             void* outRootObject,
                                                             const std::vector<uint8_t>& buffer,
                                                             std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                             const SerializerOptions& options)
     {
         BinaryReaderArchive reader(buffer);
-        return Deserialize(rootClassName, outRootObject, reader, outUnresolvedRefs, options);
+        return Deserialize(rootClass, outRootObject, reader, outUnresolvedRefs, options);
     }
 
-    SerializeResult Serializer::SerializeObjectToJson(const std::string& rootClassName,
+    SerializeResult Serializer::DeserializeObjectFromBuffer(const std::string& rootClassName,
+                                                            void* outRootObject,
+                                                            const std::vector<uint8_t>& buffer,
+                                                            std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                            const SerializerOptions& options)
+    {
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("DeserializeObjectFromBuffer failed: root class not found.", rootClassName);
+        }
+
+        return DeserializeObjectFromBuffer(rootClass, outRootObject, buffer, outUnresolvedRefs, options);
+    }
+
+    SerializeResult Serializer::SerializeObjectToJson(const MEClass* rootClass,
                                                       const void* rootObject,
                                                       Json& outRoot,
                                                       const SerializerOptions& options)
     {
         JsonWriterArchive writer;
-        const SerializeResult result = Serialize(rootClassName, rootObject, writer, options);
+        const SerializeResult result = Serialize(rootClass, rootObject, writer, options);
         if (!result.ok)
         {
             return result;
@@ -1422,13 +1462,42 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
-    SerializeResult Serializer::DeserializeObjectFromJson(const std::string& rootClassName,
+    SerializeResult Serializer::SerializeObjectToJson(const std::string& rootClassName,
+                                                      const void* rootObject,
+                                                      Json& outRoot,
+                                                      const SerializerOptions& options)
+    {
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("SerializeObjectToJson failed: root class not found.", rootClassName);
+        }
+
+        return SerializeObjectToJson(rootClass, rootObject, outRoot, options);
+    }
+
+    SerializeResult Serializer::DeserializeObjectFromJson(const MEClass* rootClass,
                                                           void* outRootObject,
                                                           const Json& root,
                                                           std::vector<PendingObjectRef>& outUnresolvedRefs,
                                                           const SerializerOptions& options)
     {
         JsonReaderArchive reader(root);
-        return Deserialize(rootClassName, outRootObject, reader, outUnresolvedRefs, options);
+        return Deserialize(rootClass, outRootObject, reader, outUnresolvedRefs, options);
+    }
+
+    SerializeResult Serializer::DeserializeObjectFromJson(const std::string& rootClassName,
+                                                          void* outRootObject,
+                                                          const Json& root,
+                                                          std::vector<PendingObjectRef>& outUnresolvedRefs,
+                                                          const SerializerOptions& options)
+    {
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("DeserializeObjectFromJson failed: root class not found.", rootClassName);
+        }
+
+        return DeserializeObjectFromJson(rootClass, outRootObject, root, outUnresolvedRefs, options);
     }
 }

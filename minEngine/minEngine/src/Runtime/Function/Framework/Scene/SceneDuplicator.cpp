@@ -15,7 +15,6 @@ namespace minEngine
             .enumAsString = true,
             .strictTypeCheck = true,
             .skipUnknownField = true,
-            .allowObjectPtrSerialization = true,
         };
     }
 
@@ -23,7 +22,6 @@ namespace minEngine
     {
         Json sceneJson;
         const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToJson(
-            "minEngine::Scene",
             &editorScene,
             sceneJson,
             kPIECloneSerializerOptions);
@@ -53,7 +51,6 @@ namespace minEngine
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         Serialization::Serializer::SetActiveCloneContext(&inOutContext);
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromJson(
-            "minEngine::Scene",
             pieScene.get(),
             sceneJson,
             unresolvedRefs,

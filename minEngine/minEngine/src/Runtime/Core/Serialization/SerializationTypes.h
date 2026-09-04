@@ -11,7 +11,6 @@ namespace minEngine::Serialization
         bool strictTypeCheck = true;
         bool skipUnknownField = true;
         bool writeObjectTypeName = false;
-        bool allowObjectPtrSerialization = false;
     };
 
     struct MINENGINE_API SerializeResult

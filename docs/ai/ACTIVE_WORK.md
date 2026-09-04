@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（哲学 + Capability Roadmap；ED-F02 文档收口；worktree 轨就位）
+Last updated: 2026-09-04（CORE-F08 Done；下一 CORE-F09）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -42,11 +42,22 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
+### Infra 轨（`feat/core`）：序列化
+
+| 项 | 说明 |
+|----|------|
+| **CORE-F08** | StaticClass API + 删死代码 + P1 — **Done**（`feat/core`） |
+| **CORE-F09** | Binary wire v2（TD-028/029）— **Planned**，可开 Design |
+| **TD-026** | 延后至反射 Setter/Getter 统一验证；**不在 F08** |
+| GC / Lifetime | 刻意延后 |
+
+[CORE-F08 Design](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) · [CORE-F09 Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md)
+
 ### 可并行（不升主线）
 
 | 项 | 说明 |
 |----|------|
-| **TD-028 / TD-029** | Binary 协议加固；PIE 暂用 JSON 绕道 |
+| **TD-028 / TD-029** | → **CORE-F09**；PIE 暂用 JSON 绕道 |
 | **ED-F04** | Console MVP 已收；S10b / S07 **Deferred** |
 | **RND Sort/Batch** | Rendering track；另开设计时再登记 |
 | **RND-F06** | ForwardRenderer 收尾；不挡 Animation |
@@ -57,6 +68,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 项 | 状态 |
 |----|------|
+| **CORE-F08** | Done on `feat/core` — StaticClass Serializer API；死代码清理 |
 | **CORE-F05** Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred；TD-028/029/030 Open |
 | **CORE-F06 / F07** | Done |
 | **ED-F03** Viewport Play Toolbar | Done |
@@ -68,7 +80,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 明确 Defer
 
-ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 · Prefab / GC / Gameplay Framework 大包 / Networking（Capability Roadmap §6）
+ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 · **TD-026**（随 Setter 验证） · Prefab / GC / Gameplay Framework 大包 / Networking（Capability Roadmap §6）
 
 ---
 
@@ -86,7 +98,8 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 
 ### Placeholder branches（无 worktree）
 
-`feat/asset-pipeline` · `feat/gameplay-framework` · `feat/network` · `feat/ai` · `feat/core` — 仅占位，需要时再 `create-worktree.ps1` 初始化。
+`feat/asset-pipeline` · `feat/gameplay-framework` · `feat/network` · `feat/ai` — 仅占位。  
+**`feat/core`** — 已自 `master` 初始化；序列化轨 **CORE-F08/F09**（主仓 checkout，可选 `minEngine-core` worktree）。
 
 ---
 

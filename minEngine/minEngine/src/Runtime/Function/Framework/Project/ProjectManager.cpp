@@ -186,14 +186,12 @@ namespace minEngine
         Serialization::JsonWriterArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
             m_CurrentSettingsPath.string(),
-            minEngine::Reflection::GetClassName<ProjectSettings>(),
             &m_CurrentProjectCtx.Settings,
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
-                .skipUnknownField = true,
-                .allowObjectPtrSerialization = false});
+                .skipUnknownField = true});
 
         if (!result.ok)
         {
@@ -212,14 +210,12 @@ namespace minEngine
         Serialization::JsonReaderArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             descriptorPath.string(),
-            minEngine::Reflection::GetClassName<ProjectDescriptor>(),
             &outDescriptor,
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
                 .skipUnknownField = true,
-                .allowObjectPtrSerialization = false
             });
 
         if(!result.ok)
@@ -237,14 +233,12 @@ namespace minEngine
         Serialization::JsonReaderArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             settingsPath.string(),
-            minEngine::Reflection::GetClassName<ProjectSettings>(),
             &outSettings,
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
                 .skipUnknownField = true,
-                .allowObjectPtrSerialization = false
             });
         if(!result.ok)
         {
