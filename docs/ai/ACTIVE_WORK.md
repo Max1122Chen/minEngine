@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（ANIM-F01 目视竖切通过；**下一焦点 `ASSET-F01` FBX/Import Pipeline**）
+Last updated: 2026-09-04（**ASSET-F01** S00–S03 Done；S04 Deferred）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,13 +9,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/animation`）
 
-### ASSET-F01 — External Import Pipeline ← **下一焦点（FBX 等为 Source）**
+### ASSET-F01 — External Import Pipeline ← **当前焦点（In Progress）**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design | [Placeholder](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md)（**Planned** → 开工前升 Draft/Design） |
-| 目标 | FBX/glTF 不当成引擎 AssetType；显式 Import → 原生 `StaticMesh` / `SkeletalMesh`(+`Skeleton`) 等 |
-| Next | Pre-flight + Design 扩写 → Implementation Plan → 切片开工 |
+| Design / Impl | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) |
+| 目标 | FBX/glTF = Source；Import → 引擎资产（Static / Skeletal+Skeleton） |
+| S00–S03 | Registry / Import cook / Skeleton ObjectPtr / Static 对齐 | **Done**（手动验 Static+Skeletal） |
+| Next | S04 Reimport（Deferred）或二期 `.memesh`；可准备 commit | |
+| 迁移 | 勿提交错误 `.fbx.meta`；人型验证资产可留本地不入库 | |
 
 ### ANIM-F01 — Skeletal Mesh Pipeline ← **竖切目视通过（收尾中）**
 

@@ -3,7 +3,17 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SkeletonBone)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletonBone, Name)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletonBone, ParentIndex)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletonBone, LocalBind)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletonBone, InverseBindPose)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::SkeletonBone, GReflectionClassRegister_SkeletonBone_01ce8842)
+
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Skeleton)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Skeleton, m_Bones)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::Skeleton, GReflectionClassRegister_Skeleton_565b794c)

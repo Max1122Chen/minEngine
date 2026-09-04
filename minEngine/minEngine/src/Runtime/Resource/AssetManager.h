@@ -40,6 +40,12 @@ namespace minEngine
         AssetMeta Meta;
     };
 
+    enum class MeshImportProductType
+    {
+        StaticMesh,
+        SkeletalMesh
+    };
+
     class AssetManager
     {
     public:
@@ -54,8 +60,16 @@ namespace minEngine
         void ScanAssets(const std::filesystem::path& directory);
         AssetMeta RegisterAsset(const std::string& path, const std::string& assetTypeId);
 
+        // Copy-register recognized native assets (textures, .obj, .memtl, …).
+        // Rejects external mesh sources (.fbx/.gltf); use ImportExternalMesh.
         ImportAssetResult ImportAsset(const std::filesystem::path& sourcePath,
                                       const std::filesystem::path& destDirectory);
+
+        // ASSET-F01: copy source under Assets/Sources/, cook engine geometry, Register explicit type.
+        ImportAssetResult ImportExternalMesh(
+            const std::filesystem::path& sourcePath,
+            const std::filesystem::path& destDirectory,
+            MeshImportProductType productType);
 
         bool DeleteAsset(const std::string& assetPath, std::string& outError);
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
@@ -226,6 +240,8 @@ namespace minEngine
     std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta);
     template<>
     std::shared_ptr<SkeletalMesh> AssetManager::LoadAsset_Impl<SkeletalMesh>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<Skeleton> AssetManager::LoadAsset_Impl<Skeleton>(const AssetMeta& meta);
     template<>
     std::shared_ptr<Texture2D> AssetManager::LoadAsset_Impl<Texture2D>(const AssetMeta& meta);
     template<>

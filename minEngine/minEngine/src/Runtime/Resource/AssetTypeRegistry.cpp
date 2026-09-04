@@ -61,20 +61,20 @@ namespace minEngine
             .FileDialogFilterLabel = "Texture2D (*.png;*.jpg;*.jpeg)"});
         m_AssetTypeIdByClass[Texture2D::StaticClass()] = "Texture2D";
 
+        // Engine-owned geometry only. FBX/glTF are Import Sources (ASSET-F01), not AssetTypes.
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "StaticMesh",
             .RuntimeClassName = GetClassName<StaticMesh>(),
-            .Extensions = {".obj", ".fbx", ".gltf"},
-            .FileDialogFilterLabel = "Static Mesh (*.obj;*.fbx;*.gltf)"});
+            .Extensions = {".obj"},
+            .FileDialogFilterLabel = "Static Mesh (*.obj)"});
         m_AssetTypeIdByClass[StaticMesh::StaticClass()] = "StaticMesh";
 
-        // Same source extensions as StaticMesh; FindByExtension keeps StaticMesh as default.
-        // Import/load as SkeletalMesh via explicit AssetTypeId / typed dialogs.
+        // Transitional cooked/engine-owned format (MVP B). Source FBX/glTF import writes .glb.
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "SkeletalMesh",
             .RuntimeClassName = GetClassName<SkeletalMesh>(),
-            .Extensions = {".fbx", ".gltf", ".glb"},
-            .FileDialogFilterLabel = "Skeletal Mesh (*.fbx;*.gltf;*.glb)"});
+            .Extensions = {".glb"},
+            .FileDialogFilterLabel = "Skeletal Mesh (*.glb)"});
         m_AssetTypeIdByClass[SkeletalMesh::StaticClass()] = "SkeletalMesh";
 
         RegisterType(AssetTypeDescriptor{
@@ -324,5 +324,22 @@ namespace minEngine
         return {FileDialogFilter{
             .Label = descriptor->FileDialogFilterLabel,
             .ExtensionSpec = BuildExtensionSpec(descriptor->Extensions)}};
+    }
+
+    std::vector<FileDialogFilter> AssetTypeRegistry::BuildImportSourceFileDialogFilters() const
+    {
+        return {
+            FileDialogFilter{
+                .Label = "Mesh Import Sources (*.fbx;*.gltf;*.glb)",
+                .ExtensionSpec = "fbx,gltf,glb"},
+            FileDialogFilter{.Label = "FBX (*.fbx)", .ExtensionSpec = "fbx"},
+            FileDialogFilter{.Label = "glTF (*.gltf;*.glb)", .ExtensionSpec = "gltf,glb"},
+        };
+    }
+
+    bool AssetTypeRegistry::IsExternalMeshSourceExtension(std::string_view extension)
+    {
+        const std::string normalized = NormalizeExtension(extension);
+        return normalized == ".fbx" || normalized == ".gltf" || normalized == ".glb";
     }
 }

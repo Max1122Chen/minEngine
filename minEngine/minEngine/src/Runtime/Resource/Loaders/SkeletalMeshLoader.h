@@ -7,8 +7,7 @@
 #include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Resource/AssetMeta.h"
 
-#include <cstdint>
-#include <memory>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -61,6 +60,16 @@ namespace minEngine
             SkeletalMeshImportData& data,
             const std::shared_ptr<Skeleton>& skeleton);
 
+        static std::string BuildBuddyRelativePath(std::string_view meshAssetPath);
+        static bool SaveBuddy(const AssetMeta& meshMeta, const std::shared_ptr<Skeleton>& skeleton);
+        static bool TryLoadBuddySkeleton(const AssetMeta& meshMeta, std::shared_ptr<Skeleton>& outSkeleton);
+
         static std::shared_ptr<SkeletalMesh> LoadFromAssetMeta(const AssetMeta& meta);
+
+        /** After ImportExternalMesh writes .glb: skeleton + .meskmesh buddy. */
+        static bool FinishSkeletalImportCook(
+            const AssetMeta& meshMeta,
+            const std::filesystem::path& sourceAbsolutePath,
+            std::string* outError = nullptr);
     };
 }

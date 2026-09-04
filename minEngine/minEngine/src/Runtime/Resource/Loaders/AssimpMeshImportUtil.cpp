@@ -1,9 +1,14 @@
 #include "Runtime/Resource/Loaders/AssimpMeshImportUtil.h"
 
+#include "assimp/Exporter.hpp"
+#include "assimp/Importer.hpp"
 #include "assimp/matrix4x4.h"
 #include "assimp/postprocess.h"
+#include "assimp/scene.h"
 
 #include <cmath>
+#include <filesystem>
+#include <system_error>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
@@ -88,5 +93,74 @@ namespace minEngine
         outTransform.Position = translation;
         outTransform.SetRotation(Quaternion::FromGlm(glm::normalize(rotation)));
         outTransform.Scale = scale;
+    }
+
+    bool AssimpMeshImportUtil::CookExternalMeshToFile(
+        const std::filesystem::path& sourcePath,
+        const std::filesystem::path& destPath,
+        const char* exportFormatId,
+        std::string* outError)
+    {
+        auto setError = [outError](const std::string& message)
+        {
+            if (outError != nullptr)
+            {
+                *outError = message;
+            }
+        };
+
+        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
+        {
+            setError("source file does not exist: " + sourcePath.string());
+            return false;
+        }
+
+        std::error_code createError;
+        std::filesystem::create_directories(destPath.parent_path(), createError);
+        if (createError)
+        {
+            setError("failed to create destination directory: " + createError.message());
+            return false;
+        }
+
+        const bool useCopyOnly =
+            exportFormatId == nullptr || exportFormatId[0] == '\0'
+            || sourcePath.extension() == destPath.extension();
+
+        if (useCopyOnly)
+        {
+            std::error_code copyError;
+            std::filesystem::copy_file(
+                sourcePath,
+                destPath,
+                std::filesystem::copy_options::overwrite_existing,
+                copyError);
+            if (copyError)
+            {
+                setError("copy failed: " + copyError.message());
+                return false;
+            }
+            return true;
+        }
+
+        Assimp::Importer importer;
+        const aiScene* scene =
+            importer.ReadFile(sourcePath.string().c_str(), GetDefaultPostProcessFlags());
+        if (scene == nullptr)
+        {
+            setError(std::string("Assimp import failed: ") + importer.GetErrorString());
+            return false;
+        }
+
+        Assimp::Exporter exporter;
+        const aiReturn exportResult =
+            exporter.Export(scene, exportFormatId, destPath.string().c_str());
+        if (exportResult != aiReturn_SUCCESS)
+        {
+            setError(std::string("Assimp export failed: ") + exporter.GetErrorString());
+            return false;
+        }
+
+        return true;
     }
 }

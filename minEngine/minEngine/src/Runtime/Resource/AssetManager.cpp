@@ -2,6 +2,8 @@
 
 #include "AssetTypeRegistry.h"
 #include "Runtime/Resource/EditorFilesystemMutationPass.h"
+#include "Runtime/Resource/Loaders/AssimpMeshImportUtil.h"
+#include "Runtime/Resource/Loaders/SkeletalMeshLoader.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -24,6 +26,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <system_error>
 
 namespace minEngine
 {
@@ -283,6 +286,22 @@ namespace minEngine
             }
 
             const std::filesystem::path assetPath = entry.path().lexically_normal();
+
+            // Assets/Sources/** holds Import Sources only — never Infer as engine mesh assets.
+            bool underImportSources = false;
+            for (const std::filesystem::path& part : assetPath)
+            {
+                if (part == "Sources")
+                {
+                    underImportSources = true;
+                    break;
+                }
+            }
+            if (underImportSources)
+            {
+                continue;
+            }
+
             const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(assetPath);
             if (assetTypeId.empty())
             {
@@ -497,10 +516,24 @@ namespace minEngine
         }
 
         const AssetTypeRegistry& typeRegistry = AssetTypeRegistry::Get();
+        std::string extension = sourcePath.extension().string();
+        std::transform(
+            extension.begin(),
+            extension.end(),
+            extension.begin(),
+            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (extension == ".fbx" || extension == ".gltf")
+        {
+            result.ErrorMessage =
+                "external mesh source requires ImportExternalMesh (choose StaticMesh or SkeletalMesh): "
+                + sourcePath.extension().string();
+            return result;
+        }
+
         const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(sourcePath);
         if (assetTypeId.empty())
         {
-            result.ErrorMessage = "unsupported file extension: " + sourcePath.extension().string();
+            result.ErrorMessage = "unsupported file extension: " + extension;
             return result;
         }
 
@@ -530,6 +563,152 @@ namespace minEngine
         }
 
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
+
+        result.bSuccess = true;
+        return result;
+    }
+
+    ImportAssetResult AssetManager::ImportExternalMesh(
+        const std::filesystem::path& sourcePath,
+        const std::filesystem::path& destDirectory,
+        MeshImportProductType productType)
+    {
+        AssetRegistryBroadcastBatchScope batchScope;
+        ImportAssetResult result;
+
+        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
+        {
+            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
+            return result;
+        }
+
+        if (!AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string())
+            && sourcePath.extension() != ".obj")
+        {
+            result.ErrorMessage =
+                "ImportExternalMesh expects .fbx/.gltf/.glb/.obj, got: "
+                + sourcePath.extension().string();
+            return result;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        if (contentRoot.empty())
+        {
+            result.ErrorMessage = "project content root is not set";
+            return result;
+        }
+
+        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
+            ? std::filesystem::weakly_canonical(destDirectory)
+            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
+
+        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
+        {
+            result.ErrorMessage =
+                "destination directory is outside project Assets: " + absoluteDestDirectory.string();
+            return result;
+        }
+
+        const std::filesystem::path sourcesDirectory = contentRoot / "Sources";
+        std::error_code sourcesCreateError;
+        std::filesystem::create_directories(sourcesDirectory, sourcesCreateError);
+        if (sourcesCreateError)
+        {
+            result.ErrorMessage =
+                "failed to create Assets/Sources: " + sourcesCreateError.message();
+            return result;
+        }
+
+        const std::filesystem::path sourceCopyPath = sourcesDirectory / sourcePath.filename();
+        if (std::filesystem::exists(sourceCopyPath)
+            && !std::filesystem::equivalent(sourceCopyPath, sourcePath))
+        {
+            // Allow re-import when the picker already pointed at Assets/Sources/file.
+            result.ErrorMessage = "import source already exists: " + sourceCopyPath.string();
+            return result;
+        }
+
+        NoteEditorFilesystemMutation(sourcesDirectory);
+        NoteEditorFilesystemMutation(sourceCopyPath);
+
+        if (!std::filesystem::exists(sourceCopyPath))
+        {
+            std::error_code copySourceError;
+            std::filesystem::copy_file(
+                sourcePath,
+                sourceCopyPath,
+                std::filesystem::copy_options::none,
+                copySourceError);
+            if (copySourceError)
+            {
+                result.ErrorMessage = "failed to copy source into Assets/Sources: "
+                    + copySourceError.message();
+                return result;
+            }
+        }
+
+        const bool skeletal = productType == MeshImportProductType::SkeletalMesh;
+        const char* assetTypeId = skeletal ? "SkeletalMesh" : "StaticMesh";
+        const char* productExtension = skeletal ? ".glb" : ".obj";
+        const char* exportFormatId = skeletal ? "glb2" : "obj";
+
+        std::filesystem::path productFileName = sourcePath.stem();
+        productFileName += productExtension;
+        const std::filesystem::path productPath = absoluteDestDirectory / productFileName;
+        if (std::filesystem::exists(productPath))
+        {
+            result.ErrorMessage = "destination product already exists: " + productPath.string();
+            return result;
+        }
+
+        NoteEditorFilesystemMutation(absoluteDestDirectory);
+        NoteEditorFilesystemMutation(productPath);
+
+        std::string cookError;
+        if (!AssimpMeshImportUtil::CookExternalMeshToFile(
+                sourceCopyPath,
+                productPath,
+                exportFormatId,
+                &cookError))
+        {
+            result.ErrorMessage = cookError;
+            return result;
+        }
+
+        result.Meta = RegisterAsset(productPath.string(), assetTypeId);
+        if (result.Meta.AssetPath.empty())
+        {
+            result.ErrorMessage = "failed to register cooked mesh asset";
+            return result;
+        }
+
+        result.Meta.SourcePath = NormalizeProjectRelativeAssetPath(sourceCopyPath.string());
+        if (!WriteMetaFile(result.Meta))
+        {
+            result.ErrorMessage = "failed to write SourcePath into meta";
+            return result;
+        }
+        CacheMeta(result.Meta, true);
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
+
+        if (skeletal)
+        {
+            std::string skeletalCookError;
+            if (!SkeletalMeshLoader::FinishSkeletalImportCook(
+                    result.Meta,
+                    sourceCopyPath,
+                    &skeletalCookError))
+            {
+                result.ErrorMessage = skeletalCookError;
+                return result;
+            }
+
+            NoteEditorFilesystemMutation(
+                ResolveAssetAbsolutePath(
+                    SkeletalMeshLoader::BuildBuddyRelativePath(result.Meta.AssetPath)));
+        }
 
         result.bSuccess = true;
         return result;

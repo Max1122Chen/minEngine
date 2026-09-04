@@ -104,6 +104,10 @@ namespace minEngine
         ImGui::Text("Name: %s", selected->AssetName.c_str());
         ImGui::Text("Path: %s", selected->AssetPath.c_str());
         ImGui::Text("Type: %s", selected->AssetType.c_str());
+        if (!selected->SourcePath.empty())
+        {
+            ImGui::Text("Source: %s", selected->SourcePath.c_str());
+        }
         ImGui::Text("Guid: %s", selected->Guid.ToString().c_str());
         ImGui::End();
     }
@@ -121,6 +125,9 @@ namespace minEngine
         m_PendingSave = nullptr;
         m_PendingCheckKind = PendingUnsavedCheckKind::None;
         m_UnsavedDialog.Close();
+        m_MeshImportProductDialog.Close();
+        m_PendingMeshImportSources.clear();
+        m_PendingMeshImportDestDirectory.clear();
         m_Context = nullptr;
     }
 
@@ -130,6 +137,12 @@ namespace minEngine
         if (choice != UnsavedChangesChoice::None)
         {
             HandleUnsavedDialogChoice(choice);
+        }
+
+        const MeshImportProductChoice meshChoice = m_MeshImportProductDialog.Draw();
+        if (meshChoice != MeshImportProductChoice::None)
+        {
+            HandleMeshImportProductChoice(meshChoice);
         }
     }
 
@@ -527,6 +540,12 @@ namespace minEngine
         FileDialogRequest request;
         request.Title = "Import Assets";
         request.Filters = AssetTypeRegistry::Get().BuildFileDialogFilters();
+        const std::vector<FileDialogFilter> importSourceFilters =
+            AssetTypeRegistry::Get().BuildImportSourceFileDialogFilters();
+        request.Filters.insert(
+            request.Filters.begin(),
+            importSourceFilters.begin(),
+            importSourceFilters.end());
         request.bAllowMultiple = true;
         request.InitialDirectory = projectContentRoot;
 
@@ -554,12 +573,29 @@ namespace minEngine
 
         EditorFilesystemMutationPass::NoteMutatedAbsolutePath(destDirectory);
 
+        std::vector<std::filesystem::path> nativeImportPaths;
+        std::vector<std::filesystem::path> meshSourcePaths;
+        nativeImportPaths.reserve(dialogResult.Paths.size());
+        meshSourcePaths.reserve(dialogResult.Paths.size());
+
+        for (const std::filesystem::path& sourcePath : dialogResult.Paths)
+        {
+            if (AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string()))
+            {
+                meshSourcePaths.push_back(sourcePath);
+            }
+            else
+            {
+                nativeImportPaths.push_back(sourcePath);
+            }
+        }
+
         int successCount = 0;
         int failCount = 0;
 
         AssetManager::AssetRegistryBroadcastBatchScope batchScope;
 
-        for (const std::filesystem::path& sourcePath : dialogResult.Paths)
+        for (const std::filesystem::path& sourcePath : nativeImportPaths)
         {
             const ImportAssetResult importResult =
                 AssetManager::Get().ImportAsset(sourcePath, destDirectory);
@@ -580,7 +616,71 @@ namespace minEngine
                 importResult.Meta.AssetPath);
         }
 
-        ME_CORE_INFO("ImportAssetDialog: {} succeeded, {} failed.", successCount, failCount);
+        if (!meshSourcePaths.empty())
+        {
+            m_PendingMeshImportSources = std::move(meshSourcePaths);
+            m_PendingMeshImportDestDirectory = destDirectory;
+            m_MeshImportProductDialog.Open(static_cast<int>(m_PendingMeshImportSources.size()));
+        }
+
+        ME_CORE_INFO(
+            "ImportAssetDialog: {} native succeeded, {} failed; {} mesh source(s) pending product choice.",
+            successCount,
+            failCount,
+            m_PendingMeshImportSources.size());
+    }
+
+    void AssetWorkflowModule::HandleMeshImportProductChoice(MeshImportProductChoice choice)
+    {
+        if (choice == MeshImportProductChoice::Cancel || choice == MeshImportProductChoice::None)
+        {
+            m_PendingMeshImportSources.clear();
+            m_PendingMeshImportDestDirectory.clear();
+            return;
+        }
+
+        const MeshImportProductType productType = choice == MeshImportProductChoice::SkeletalMesh
+            ? MeshImportProductType::SkeletalMesh
+            : MeshImportProductType::StaticMesh;
+
+        int successCount = 0;
+        int failCount = 0;
+
+        AssetManager::AssetRegistryBroadcastBatchScope batchScope;
+
+        for (const std::filesystem::path& sourcePath : m_PendingMeshImportSources)
+        {
+            const ImportAssetResult importResult = AssetManager::Get().ImportExternalMesh(
+                sourcePath,
+                m_PendingMeshImportDestDirectory,
+                productType);
+            if (!importResult.bSuccess)
+            {
+                ++failCount;
+                ME_CORE_ERROR(
+                    "ImportAssetDialog: failed to import mesh source '{}': {}",
+                    sourcePath.string(),
+                    importResult.ErrorMessage);
+                continue;
+            }
+
+            ++successCount;
+            ME_CORE_INFO(
+                "ImportAssetDialog: cooked '{}' → '{}' (SourcePath='{}')",
+                sourcePath.string(),
+                importResult.Meta.AssetPath,
+                importResult.Meta.SourcePath);
+        }
+
+        m_PendingMeshImportSources.clear();
+        m_PendingMeshImportDestDirectory.clear();
+
+        ME_CORE_INFO(
+            "ImportAssetDialog mesh cook: {} succeeded, {} failed.",
+            successCount,
+            failCount);
+
+        RefreshContentBrowser();
     }
 
     void AssetWorkflowModule::SetSelectedAsset(const AssetMeta* meta)

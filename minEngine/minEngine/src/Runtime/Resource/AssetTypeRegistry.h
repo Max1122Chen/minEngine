@@ -42,6 +42,9 @@ namespace minEngine
         std::vector<std::string> BuildFileDialogFilterSpec() const;
         std::vector<FileDialogFilter> BuildFileDialogFilters() const;
         std::vector<FileDialogFilter> BuildFileDialogFiltersForAssetType(std::string_view assetTypeId) const;
+        // FBX/glTF/GLB picker for Import Source dialogs — not bound to AssetType Infer.
+        std::vector<FileDialogFilter> BuildImportSourceFileDialogFilters() const;
+        static bool IsExternalMeshSourceExtension(std::string_view extension);
         const std::vector<AssetTypeDescriptor>& GetDescriptors() const { return m_Descriptors; }
 
     private:

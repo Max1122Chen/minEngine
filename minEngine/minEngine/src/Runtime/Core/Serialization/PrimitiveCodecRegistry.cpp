@@ -427,6 +427,140 @@ namespace minEngine::Serialization
                 }},
             { GetPrimitiveName<Vector4>(), typeid(Vector4).name() });
 
+        RegisterCodecWithAliases(
+            PrimitiveCodec{
+                [](WriterArchive& archive, const void* valuePtr) -> bool
+                {
+                    if (valuePtr == nullptr)
+                    {
+                        return false;
+                    }
+
+                    const Matrix3& value = *static_cast<const Matrix3*>(valuePtr);
+                    if (!archive.BeginArray(9))
+                    {
+                        return false;
+                    }
+
+                    for (int column = 0; column < 3; ++column)
+                    {
+                        const Vector3& columnValue = value[column];
+                        if (!archive.WriteDouble(columnValue.x)
+                            || !archive.WriteDouble(columnValue.y)
+                            || !archive.WriteDouble(columnValue.z))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return archive.EndArray();
+                },
+                [](ReaderArchive& archive, void* outValuePtr) -> bool
+                {
+                    if (outValuePtr == nullptr)
+                    {
+                        return false;
+                    }
+
+                    size_t elementCount = 0;
+                    if (!archive.BeginArray(elementCount) || elementCount != 9)
+                    {
+                        return false;
+                    }
+
+                    Matrix3& value = *static_cast<Matrix3*>(outValuePtr);
+                    for (int column = 0; column < 3; ++column)
+                    {
+                        double x = 0.0;
+                        double y = 0.0;
+                        double z = 0.0;
+                        const size_t baseIndex = static_cast<size_t>(column) * 3;
+                        if (!archive.EnterArrayElement(baseIndex) || !archive.ReadDouble(x) || !archive.LeaveArrayElement()
+                            || !archive.EnterArrayElement(baseIndex + 1) || !archive.ReadDouble(y) || !archive.LeaveArrayElement()
+                            || !archive.EnterArrayElement(baseIndex + 2) || !archive.ReadDouble(z) || !archive.LeaveArrayElement())
+                        {
+                            return false;
+                        }
+
+                        value[column] = Vector3(
+                            static_cast<float>(x),
+                            static_cast<float>(y),
+                            static_cast<float>(z));
+                    }
+
+                    return archive.EndArray();
+                }},
+            { GetPrimitiveName<Matrix3>(), typeid(Matrix3).name() });
+
+        RegisterCodecWithAliases(
+            PrimitiveCodec{
+                [](WriterArchive& archive, const void* valuePtr) -> bool
+                {
+                    if (valuePtr == nullptr)
+                    {
+                        return false;
+                    }
+
+                    const Matrix4& value = *static_cast<const Matrix4*>(valuePtr);
+                    if (!archive.BeginArray(16))
+                    {
+                        return false;
+                    }
+
+                    for (int column = 0; column < 4; ++column)
+                    {
+                        const Vector4& columnValue = value[column];
+                        if (!archive.WriteDouble(columnValue.x)
+                            || !archive.WriteDouble(columnValue.y)
+                            || !archive.WriteDouble(columnValue.z)
+                            || !archive.WriteDouble(columnValue.w))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return archive.EndArray();
+                },
+                [](ReaderArchive& archive, void* outValuePtr) -> bool
+                {
+                    if (outValuePtr == nullptr)
+                    {
+                        return false;
+                    }
+
+                    size_t elementCount = 0;
+                    if (!archive.BeginArray(elementCount) || elementCount != 16)
+                    {
+                        return false;
+                    }
+
+                    Matrix4& value = *static_cast<Matrix4*>(outValuePtr);
+                    for (int column = 0; column < 4; ++column)
+                    {
+                        double x = 0.0;
+                        double y = 0.0;
+                        double z = 0.0;
+                        double w = 0.0;
+                        const size_t baseIndex = static_cast<size_t>(column) * 4;
+                        if (!archive.EnterArrayElement(baseIndex) || !archive.ReadDouble(x) || !archive.LeaveArrayElement()
+                            || !archive.EnterArrayElement(baseIndex + 1) || !archive.ReadDouble(y) || !archive.LeaveArrayElement()
+                            || !archive.EnterArrayElement(baseIndex + 2) || !archive.ReadDouble(z) || !archive.LeaveArrayElement()
+                            || !archive.EnterArrayElement(baseIndex + 3) || !archive.ReadDouble(w) || !archive.LeaveArrayElement())
+                        {
+                            return false;
+                        }
+
+                        value[column] = Vector4(
+                            static_cast<float>(x),
+                            static_cast<float>(y),
+                            static_cast<float>(z),
+                            static_cast<float>(w));
+                    }
+
+                    return archive.EndArray();
+                }},
+            { GetPrimitiveName<Matrix4>(), typeid(Matrix4).name() });
+
         m_DefaultCodecsRegistered = true;
     }
 

@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-03（登记 `ASSET-F01` Import Pipeline Planned；ANIM 目视走外部脚本）
+Last updated: 2026-09-03（`ASSET-F01` **In Progress** S00/S01；ANIM-F01 Review）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -52,7 +52,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ANIM-F01` | Skeletal Mesh Pipeline（Skeleton / SkeletalMesh / GPU skinning） | **Review** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · `feat/animation` · **竖切目视通过（stick）；Shadow skinned Deferred** |
 | `ANIM-F02` | Clip Playback（AnimationClip + Player） | **Draft** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · 依赖 F01 |
 | `ANIM-F03` | Animation Graph MVP（SM + Params + Transition Blend） | **Planned** | — | [Placeholder](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · 依赖 F02 |
-| `ASSET-F01` | External Import Pipeline（FBX/glTF 等为 Source → 原生资产） | **Planned** | — | [Placeholder](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · **下一焦点（`feat/animation`）** |
+| `ASSET-F01` | External Import Pipeline（FBX/glTF 等为 Source → 原生资产） | **In Progress** | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · **当前焦点（`feat/animation`）** · S00–S03 Done；S04 Deferred |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |

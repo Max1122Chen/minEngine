@@ -4,6 +4,7 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SkeletalMesh)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletalMesh, m_Skeleton)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::SkeletalMesh, GReflectionClassRegister_SkeletalMesh_dd42311f)

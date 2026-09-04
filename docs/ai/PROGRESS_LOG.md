@@ -1,6 +1,31 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（ANIM-F01 目视通过；下一焦点 ASSET-F01）
+Last updated: 2026-09-04（ASSET-F01 S00–S03 MVP）
+
+### 2026-09-04 - ASSET-F01-S03: Static Import 对齐（手动通过）
+- **验证:** 维护者确认 StaticMesh / SkeletalMesh Import 均正常。
+- **Status:** S00–S03 Done；S04 Reimport Deferred。
+- **Next:** 准备 commit（不含本地人型二进制 / 本地场景）。
+
+### 2026-09-04 - ASSET-F01-S02: Skeleton 直序列化 + ObjectPtr buddy
+- **Matrix3/4：** `kIsPrimitiveLike` + `PrimitiveCodecRegistry`（列主序扁平 9/16 float）。
+- **Skeleton：** `SkeletonBone` `ME_STRUCT`；`m_Bones` `ME_PROPERTY`；`SkeletonLoader` 直接 Serialize `Skeleton`（删 wire `SkeletonFileData`）。
+- **引用：** `.meskmesh` buddy 序列化 `SkeletalMesh::m_Skeleton` ObjectPtr；Load → `ResolvePendingAssetRef`。
+- **Import：** `FinishSkeletalImportCook` 写 `.meskeleton` + `.meskmesh`；`AssetMeta` 仅 `SourcePath`（无 SkeletonPath）。
+- **Verified:** `smoke` / `skeleton-pose` / `asset-manager` / `serialization-archive` PASS。
+- **Next:** S03 回归；Editor 手动 Import FBX 验 Skeleton GUID 稳定。
+
+### 2026-09-03 - ASSET-F01-S00/S01: Import Pipeline 开工
+- **Impl Plan:** [`ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md`](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md)。
+- **S00:** `StaticMesh` 仅 `.obj`；`SkeletalMesh` 仅 `.glb`；`BuildImportSourceFileDialogFilters`；Scan/Watcher 跳过 `Sources/`。
+- **S01:** `AssetMeta::SourcePath`；`ImportExternalMesh`（Sources 复制 + Assimp cook → `.glb`/`.obj`）；Editor 产物选择对话框。
+- **迁移:** 旧 `.fbx` meta（如 Mannequin→StaticMesh）不再扫描登记；需删 meta 后重导。
+- **Next:** 编译验证 → S02 Skeleton 序列化。
+
+### 2026-09-03 - ASSET-F01 Design Draft
+- **Commit:** `d39debe` ANIM-F01 skeletal pipeline vertical slice.
+- **Design:** [`ASSET-F01_IMPORT_PIPELINE_DESIGN.md`](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) Status=**Draft** — Source vs Asset；Registry 去 FBX Infer；Import API；MVP 写出引擎 glb/obj；Skeleton 独立资产；切片预览。
+- **Next:** 审阅 Draft → Implementation Plan（S00…）。
 
 ### 2026-09-03 - ANIM-F01 visual slice + proxy/shader fixes
 - **RenderScene:** Skeletal dirty 更新走 `SyncSceneProxy`（此前只刷新 Static，导致挂 mesh/mtl 不可见）。

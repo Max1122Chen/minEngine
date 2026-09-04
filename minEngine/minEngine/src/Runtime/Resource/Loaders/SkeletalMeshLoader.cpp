@@ -9,11 +9,16 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/Loaders/AssimpMeshImportUtil.h"
+#include "Runtime/Resource/Loaders/SkeletonLoader.h"
+
+#include "Runtime/Core/Serialization/JsonArchive.h"
+#include "Runtime/Core/Serialization/Serializer.h"
 
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <functional>
 #include <limits>
 #include <queue>
@@ -435,7 +440,7 @@ namespace minEngine
         const AssetMeta& meta,
         const SkeletalMeshImportData& data)
     {
-        std::shared_ptr<Skeleton> skeleton = NewObject<Skeleton>(meta.AssetName + "_Skeleton", nullptr, GenerateGUID());
+        std::shared_ptr<Skeleton> skeleton = NewObject<Skeleton>(meta.AssetName, nullptr, meta.Guid);
         std::string error;
         if (!skeleton->SetBones(data.Bones, &error))
         {
@@ -528,21 +533,210 @@ namespace minEngine
         return mesh;
     }
 
+    std::string SkeletalMeshLoader::BuildBuddyRelativePath(std::string_view meshAssetPath)
+    {
+        const std::filesystem::path meshPath(meshAssetPath);
+        std::filesystem::path buddyPath = meshPath;
+        buddyPath.replace_extension(".meskmesh");
+        return buddyPath.generic_string();
+    }
+
+    bool SkeletalMeshLoader::SaveBuddy(const AssetMeta& meshMeta, const std::shared_ptr<Skeleton>& skeleton)
+    {
+        if (!skeleton)
+        {
+            return false;
+        }
+
+        SkeletalMesh buddyPayload;
+        buddyPayload.SetSkeleton(skeleton);
+
+        const std::string buddyRelativePath = BuildBuddyRelativePath(meshMeta.AssetPath);
+        const std::string absoluteBuddyPath =
+            AssetManager::Get().ResolveAssetAbsolutePath(buddyRelativePath).string();
+
+        Serialization::JsonWriterArchive archive;
+        const Serialization::SerializeResult serializeResult = Serialization::Serializer::ToFile(
+            absoluteBuddyPath,
+            minEngine::Reflection::GetClassName<SkeletalMesh>(),
+            &buddyPayload,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = false,
+                .allowObjectPtrSerialization = true});
+
+        if (!serializeResult.ok)
+        {
+            ME_CORE_ERROR(
+                "SkeletalMeshLoader: SaveBuddy failed for '{}' — {} (field: {})",
+                buddyRelativePath,
+                serializeResult.message,
+                serializeResult.fieldPath);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool SkeletalMeshLoader::TryLoadBuddySkeleton(
+        const AssetMeta& meshMeta,
+        std::shared_ptr<Skeleton>& outSkeleton)
+    {
+        outSkeleton.reset();
+
+        const std::string buddyRelativePath = BuildBuddyRelativePath(meshMeta.AssetPath);
+        const std::string absoluteBuddyPath =
+            AssetManager::Get().ResolveAssetAbsolutePath(buddyRelativePath).string();
+
+        if (!std::filesystem::exists(absoluteBuddyPath))
+        {
+            return false;
+        }
+
+        SkeletalMesh buddyPayload;
+        Serialization::JsonReaderArchive archive;
+        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::FromFile(
+            absoluteBuddyPath,
+            minEngine::Reflection::GetClassName<SkeletalMesh>(),
+            &buddyPayload,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = true,
+                .skipUnknownField = true,
+                .allowObjectPtrSerialization = true});
+
+        if (!deserializeResult.ok)
+        {
+            ME_CORE_WARN(
+                "SkeletalMeshLoader: TryLoadBuddySkeleton failed for '{}' — {}",
+                buddyRelativePath,
+                deserializeResult.message);
+            return false;
+        }
+
+        outSkeleton = buddyPayload.m_Skeleton;
+        return outSkeleton != nullptr;
+    }
+
+    bool SkeletalMeshLoader::FinishSkeletalImportCook(
+        const AssetMeta& meshMeta,
+        const std::filesystem::path& sourceAbsolutePath,
+        std::string* outError)
+    {
+        SkeletalMeshImportData importData;
+        if (!ImportFromFile(sourceAbsolutePath.string(), importData, outError))
+        {
+            return false;
+        }
+
+        if (!importData.IsValid())
+        {
+            if (outError != nullptr)
+            {
+                *outError = "import data has no skinned bones";
+            }
+            return false;
+        }
+
+        const std::filesystem::path meshPath(meshMeta.AssetPath);
+        const std::string skeletonFileName = meshPath.stem().string() + "_Skeleton.meskeleton";
+        const std::filesystem::path skeletonAbsolutePath =
+            AssetManager::Get().ResolveAssetAbsolutePath(meshMeta.AssetPath).parent_path()
+            / skeletonFileName;
+
+        const std::string skeletonRelativePath =
+            (meshPath.parent_path() / skeletonFileName).generic_string();
+
+        AssetMeta skeletonMeta;
+        skeletonMeta.AssetName = meshPath.stem().string() + "_Skeleton";
+        skeletonMeta.AssetPath = skeletonRelativePath;
+        skeletonMeta.AssetType = "Skeleton";
+        skeletonMeta.Guid = GenerateGUID();
+
+        std::shared_ptr<Skeleton> skeleton = CreateSkeletonFromImport(skeletonMeta, importData);
+        if (!skeleton)
+        {
+            if (outError != nullptr)
+            {
+                *outError = "failed to build skeleton from import data";
+            }
+            return false;
+        }
+
+        std::error_code createError;
+        std::filesystem::create_directories(skeletonAbsolutePath.parent_path(), createError);
+
+        if (!SkeletonLoader::Save(skeletonMeta, *skeleton, outError))
+        {
+            return false;
+        }
+
+        AssetManager& assetManager = AssetManager::Get();
+        skeletonMeta = assetManager.RegisterAsset(skeletonAbsolutePath.string(), "Skeleton");
+        if (skeletonMeta.AssetPath.empty())
+        {
+            if (outError != nullptr)
+            {
+                *outError = "failed to register skeleton asset";
+            }
+            return false;
+        }
+
+        std::shared_ptr<Skeleton> registeredSkeleton = assetManager.LoadAsset<Skeleton>(skeletonMeta.AssetPath);
+        if (!registeredSkeleton)
+        {
+            if (outError != nullptr)
+            {
+                *outError = "failed to load registered skeleton";
+            }
+            return false;
+        }
+
+        if (!SaveBuddy(meshMeta, registeredSkeleton))
+        {
+            if (outError != nullptr)
+            {
+                *outError = "failed to write skeletal mesh buddy file";
+            }
+            return false;
+        }
+
+        return true;
+    }
+
     std::shared_ptr<SkeletalMesh> SkeletalMeshLoader::LoadFromAssetMeta(const AssetMeta& meta)
     {
         SkeletalMeshImportData importData;
         std::string error;
         const std::string absoluteAssetPath =
             AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
+
+        std::shared_ptr<Skeleton> skeleton;
+        if (TryLoadBuddySkeleton(meta, skeleton))
+        {
+            if (!ImportFromFile(absoluteAssetPath, importData, &error))
+            {
+                return nullptr;
+            }
+            return CreateFromImportData(meta, importData, skeleton);
+        }
+
+        ME_CORE_WARN(
+            "SkeletalMeshLoader: no '.meskmesh' buddy for '{}'; using legacy import (temporary skeleton).",
+            meta.AssetPath);
+
         if (!ImportFromFile(absoluteAssetPath, importData, &error))
         {
             return nullptr;
         }
 
-        AssetMeta skeletonMeta = meta;
-        skeletonMeta.AssetName = meta.AssetName + "_Skeleton";
-        skeletonMeta.Guid = GenerateGUID();
-        std::shared_ptr<Skeleton> skeleton = CreateSkeletonFromImport(skeletonMeta, importData);
+        AssetMeta legacySkeletonMeta = meta;
+        legacySkeletonMeta.AssetName = meta.AssetName + "_Skeleton";
+        legacySkeletonMeta.Guid = GenerateGUID();
+        skeleton = CreateSkeletonFromImport(legacySkeletonMeta, importData);
         if (!skeleton)
         {
             return nullptr;
@@ -555,5 +749,11 @@ namespace minEngine
     std::shared_ptr<SkeletalMesh> AssetManager::LoadAsset_Impl<SkeletalMesh>(const AssetMeta& meta)
     {
         return SkeletalMeshLoader::LoadFromAssetMeta(meta);
+    }
+
+    template<>
+    std::shared_ptr<Skeleton> AssetManager::LoadAsset_Impl<Skeleton>(const AssetMeta& meta)
+    {
+        return SkeletonLoader::Load(meta);
     }
 }

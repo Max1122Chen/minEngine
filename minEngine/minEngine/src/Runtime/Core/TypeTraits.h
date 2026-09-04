@@ -105,6 +105,8 @@ namespace minEngine
                                            || std::is_same_v<T, Vector2>
                                            || std::is_same_v<T, Vector3>
                                            || std::is_same_v<T, Vector4>
+                                           || std::is_same_v<T, Matrix3>
+                                           || std::is_same_v<T, Matrix4>
                                            || std::is_enum_v<T>;
 
     // Helper for static_assert false in templates

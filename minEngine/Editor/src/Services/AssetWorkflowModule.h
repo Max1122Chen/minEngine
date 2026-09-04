@@ -3,10 +3,13 @@
 #include "Core.h"
 #include "Shell/EditorServiceModule.h"
 #include "Shell/IEditorInspectorSource.h"
+#include "UI/Dialogs/EditorMeshImportProductDialog.h"
 #include "UI/Dialogs/EditorUnsavedChangesDialog.h"
 
+#include <filesystem>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace minEngine
 {
@@ -82,6 +85,7 @@ namespace minEngine
             std::function<void()> proceedCallback);
 
         void HandleUnsavedDialogChoice(UnsavedChangesChoice choice);
+        void HandleMeshImportProductChoice(MeshImportProductChoice choice);
         void RefreshContentBrowser();
 
         IEditorContext* m_Context = nullptr;
@@ -90,6 +94,9 @@ namespace minEngine
         AssetWorkflowInspectorSource m_InspectorSource{*this};
 
         EditorUnsavedChangesDialog m_UnsavedDialog;
+        EditorMeshImportProductDialog m_MeshImportProductDialog;
+        std::vector<std::filesystem::path> m_PendingMeshImportSources;
+        std::filesystem::path m_PendingMeshImportDestDirectory;
         std::function<void()> m_PendingProceed;
         std::function<bool()> m_PendingSave;
         PendingUnsavedCheckKind m_PendingCheckKind = PendingUnsavedCheckKind::None;

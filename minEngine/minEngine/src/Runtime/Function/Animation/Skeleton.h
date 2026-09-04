@@ -12,11 +12,21 @@
 
 namespace minEngine
 {
+    ME_STRUCT()
     struct SkeletonBone
     {
+        ME_GENERATED_BODY(SkeletonBone)
+
+        ME_PROPERTY()
         std::string Name;
+
+        ME_PROPERTY()
         int32_t ParentIndex = -1;
+
+        ME_PROPERTY()
         Transform LocalBind{};
+
+        ME_PROPERTY()
         Matrix4 InverseBindPose{1.0f};
     };
 
@@ -30,6 +40,7 @@ namespace minEngine
 
         int32_t GetBoneCount() const { return static_cast<int32_t>(m_Bones.size()); }
         const SkeletonBone& GetBone(int32_t index) const;
+        const std::vector<SkeletonBone>& GetBones() const { return m_Bones; }
         int32_t FindBoneIndex(std::string_view name) const;
 
         // Replaces bone table. Returns false if hierarchy/count invalid.
@@ -42,6 +53,7 @@ namespace minEngine
     private:
         bool ValidateBones(const std::vector<SkeletonBone>& bones, std::string* outError) const;
 
+        ME_PROPERTY()
         std::vector<SkeletonBone> m_Bones;
     };
 }

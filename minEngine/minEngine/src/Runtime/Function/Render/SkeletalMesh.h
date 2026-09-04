@@ -42,7 +42,7 @@ namespace minEngine
         std::vector<SkeletalMeshSectionInfo> m_Sections;
         std::vector<std::shared_ptr<Material>> m_Materials;
 
-    private:
+        ME_PROPERTY()
         std::shared_ptr<Skeleton> m_Skeleton;
     };
 }
