@@ -51,6 +51,11 @@ Owner: project maintainer + AI collaborator
 | `RND` | 渲染管线、RHI、Pass、网格导入 |
 | `MAT` | 材质 IR、编译器、材质编辑器 |
 | `TEST` | 测试 runner、fixture、自动化 |
+| `GP` | Gameplay 机制（Tag、Event bus 等；非强制 Framework） |
+| `PHYS` | 物理 |
+| `AUD` | 音频 |
+| `ANIM` | 动画 |
+| `UI` | UI |
 
 ### 3.2 功能点（Feature）
 

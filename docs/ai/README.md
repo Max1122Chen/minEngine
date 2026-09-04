@@ -54,6 +54,7 @@
 | **`Render/`** | 渲染管线、资源导入、非材质专项 |
 | **`Render/Material/`** | 材质 IR、编译器、编辑器、Phase 1–5 |
 | **`Editor/`** | 编辑器 UI、视口、ImGui 等 |
+| **`Gameplay/`** | Gameplay 机制（Tag、Event 等；非完整 Framework） |
 | **`bugs/`** | 跨领域缺陷记录（领域专项 bug 可放在对应子目录，如 `Render/Material/bugs/`） |
 | **`sessions/`** | 单次会话笔记（临时，可归档） |
 | **`../external/`** | 外部 AI / UE 参考讨论存档 | 定稿以 `docs/ai/` 为准 |

@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-03（设计哲学 + Capability Roadmap；CORE-F05 MVP Done）
+Last updated: 2026-09-05（GP-F01/F02 Done）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -56,12 +56,15 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
 | `PHYS-F04` | Collider 尺寸与 Scale 解耦 | **Done** | — | [Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · **`master`** |
+| `GP-F01` | GameplayTag（Manager + Container；Engine 子系统；Native 宏） | **Done** | — | [Design](./Gameplay/GP-F01_GAMEPLAY_TAG_DESIGN.md) · [Impl](./Gameplay/GP-F01_GAMEPLAY_TAG_IMPLEMENTATION.md) · `feat/gameplay-framework` · `test gameplay-tags` |
+| `GP-F02` | GameplayEventSystem（Scene 作用域 Component；无 Payload） | **Planned** | — | [Design](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md) · [Impl](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_IMPLEMENTATION.md) · 依赖 GP-F01 |
 
 ---
 
 ## Vision placeholders（无独立 Feature ID，不排期）
 
-登记于 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 与 [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)：Gameplay 插件化框架、Networking / Net Game、Prefab、Object Lifetime/GC、Render Sort/Batch（待登记）、Agent-friendly 作为**设计原则**（见 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)），而非独立 Feature。
+登记于 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 与 [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)：完整 Gameplay **Plugins / ASC / GAS 上层**、Networking / Net Game、Prefab、Object Lifetime/GC、Render Sort/Batch（待登记）、Agent-friendly 作为**设计原则**（见 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)）。  
+**例外：** `GP-F01`/`GP-F02` 为提前落地的**轻量机制基底**（Tag + Scene Event bus），不是完整 Framework。
 
 ---
 
@@ -81,6 +84,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ANIM` | F02 | F01 Planned；Primary track 候选 |
 | `UI` | F02 | F01 占位；`feat/ui` |
 | `PHYS` | F05 | F04 on `master` |
+| `GP` | **F03** | F01 Tag / F02 Event **Done**；`feat/gameplay-framework` |
 | `MAT` | F01 | |
 
 Update **Next Feature #** when you register a new row.

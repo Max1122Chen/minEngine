@@ -255,6 +255,21 @@ namespace minEngine
             }
         };
 
+        struct GameplayTagTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"gameplay-tags", "Gameplay Tags", false, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'gameplay-tags'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("gameplay-tags", context.GetCommandLine().TestKind);
+            }
+        };
+
         struct ShaderCompilerTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -353,6 +368,7 @@ namespace minEngine
         using PhysicsLineTraceSuite = TypedTestSuite<PhysicsLineTraceTestSuiteTraits>;
         using PhysicsShapesSuite = TypedTestSuite<PhysicsShapesTestSuiteTraits>;
         using DelegateSuite = TypedTestSuite<DelegateTestSuiteTraits>;
+        using GameplayTagSuite = TypedTestSuite<GameplayTagTestSuiteTraits>;
         using ShaderCompilerSuite = TypedTestSuite<ShaderCompilerTestSuiteTraits>;
         using AudioSmokeSuite = TypedTestSuite<AudioSmokeTestSuiteTraits>;
         using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
@@ -382,6 +398,7 @@ namespace minEngine
             registry.Register(PhysicsLineTraceSuite::Get());
             registry.Register(PhysicsShapesSuite::Get());
             registry.Register(DelegateSuite::Get());
+            registry.Register(GameplayTagSuite::Get());
             registry.Register(ShaderCompilerSuite::Get());
             registry.Register(AudioSmokeSuite::Get());
             registry.Register(SceneCloneSuite::Get());

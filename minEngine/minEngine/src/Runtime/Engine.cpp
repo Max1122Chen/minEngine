@@ -16,6 +16,7 @@
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
 #include "Runtime/Function/Debug/DebugDrawService.h"
+#include "Runtime/Function/GameplayFramework/Tags/GameplayTagManager.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 
 namespace minEngine
@@ -146,6 +147,10 @@ namespace minEngine
         ObjectManager::SetInstance(m_ObjectManager.get());
         m_ObjectManager->Initialize();
 
+        m_GameplayTagManager = std::make_shared<GameplayTagManager>();
+        GameplayTagManager::SetInstance(m_GameplayTagManager.get());
+        m_GameplayTagManager->Initialize();
+
         m_ProjectManager = std::make_shared<ProjectManager>();
         ProjectManager::SetInstance(m_ProjectManager.get());
         m_ProjectManager->Initialize();
@@ -264,6 +269,13 @@ namespace minEngine
             m_ObjectManager->Shutdown();
             ObjectManager::SetInstance(nullptr);
             m_ObjectManager.reset();
+        }
+
+        if (m_GameplayTagManager)
+        {
+            m_GameplayTagManager->Shutdown();
+            GameplayTagManager::SetInstance(nullptr);
+            m_GameplayTagManager.reset();
         }
     }
 
