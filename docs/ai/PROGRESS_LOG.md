@@ -1,6 +1,23 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-04（`feat/ui`：RND-F16 Path B 代码落地）
+Last updated: 2026-09-04（CORE-F08 MVP Review）
+
+### 2026-09-04 - CORE-F08 MVP 落地（父指针 GUID）
+- 弃整型 ParentId；ME_PROPERTY GameObject* m_Parent，加载后 Resolve 重建 Children + Root 附着（方案 A）。
+- 级联删除；FinalizeLoadedScene / FinalizePIEScene 接线；suite gameobject-hierarchy 通过。
+- Inactive 传播仍 Deferred（TD-031）。
+- Status：**Review**，待 ED-F05 联合验收后标 Done。
+- Next：ED-F05 Hierarchy 树；再开 UI-F01。
+
+### 2026-09-04 - CORE-F08：改用父指针 GUID 序列化
+- 弃 m_ParentId；ME_PROPERTY GameObject* m_Parent，对齐 SC m_AttachParent。
+- Resolve 重建 Children + Root 附着；Finalize/PIE 已接线。
+- Next：编译与 gameobject-hierarchy 单测通过后收尾 DoD。
+
+### 2026-09-04 - UI-F01 Draft + GO 父子前置
+- **UI-F01：** Canvas + Layout(Anchor/Margin) + Image；`WidgetComponent`=无样式 ScreenUI 基础。
+- **阻塞事实：** `GameObject` 无父子；Hierarchy 平铺 — 登记 **CORE-F08** / **ED-F05** Draft。
+- **Next：** 拍板 CORE-F08 Transform 方案 A/B → 实现 GO 父子，再开 UI-F01 代码。
 
 ### 2026-09-04 - RND-F16 Path B S03a/b 代码落地
 - **Code:** `UIDrawCommand` / `ScreenUIQueue` / `ScreenUIPass`；`WidgetComponent`+Proxy；`BuildScreenUIQueue`；复用 `SpriteQuadMesh`；像素左上 ortho。

@@ -1,11 +1,47 @@
 #include "GameObject.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+
+#include <algorithm>
 
 namespace minEngine
 {
     GameObject::GameObject()
     {}
+
+    GameObject::~GameObject()
+    {
+        UnlinkFromCurrentParent();
+
+        for (GameObject* child : m_Children)
+        {
+            if (child == nullptr)
+            {
+                continue;
+            }
+            child->m_Parent = nullptr;
+            if (SceneComponent* childRoot = child->GetRootComponent())
+            {
+                if (childRoot->GetAttachParent() != nullptr)
+                {
+                    childRoot->DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
+                }
+            }
+        }
+        m_Children.clear();
+
+        for (auto& component : m_Components)
+        {
+            if (component)
+            {
+                component->SetOwner(nullptr);
+                component.reset();
+            }
+        }
+        m_Components.clear();
+        ME_CORE_INFO("GameObject with ID {} and name '{}' is being destroyed.", m_ID, GetName());
+    }
 
     Transform GameObject::GetTransform()
     {
@@ -279,6 +315,113 @@ namespace minEngine
             if (component && component->IsActive())
             {
                 component->Tick(deltaTime);
+            }
+        }
+    }
+
+    void GameObject::UnlinkFromCurrentParent()
+    {
+        if (m_Parent == nullptr)
+        {
+            return;
+        }
+
+        auto& siblings = m_Parent->m_Children;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+        m_Parent = nullptr;
+    }
+
+    void GameObject::ClearChildrenLinks()
+    {
+        m_Children.clear();
+    }
+
+    bool GameObject::WouldCreateHierarchyCycle(const GameObject* candidateParent) const
+    {
+        const GameObject* cursor = candidateParent;
+        while (cursor != nullptr)
+        {
+            if (cursor == this)
+            {
+                return true;
+            }
+            cursor = cursor->m_Parent;
+        }
+        return false;
+    }
+
+    void GameObject::EnsureRootAttachedToParent(AttachmentTransformRules rules)
+    {
+        if (m_Parent == nullptr)
+        {
+            return;
+        }
+
+        SceneComponent* childRoot = GetRootComponent();
+        SceneComponent* parentRoot = m_Parent->GetRootComponent();
+        if (childRoot == nullptr || parentRoot == nullptr)
+        {
+            ME_CORE_WARN(
+                "GameObject::EnsureRootAttachedToParent: missing root on '{}' or '{}'.",
+                GetName(),
+                m_Parent->GetName());
+            return;
+        }
+
+        if (childRoot->GetAttachParent() != parentRoot)
+        {
+            childRoot->AttachToComponent(parentRoot, rules);
+        }
+    }
+
+    bool GameObject::AttachToParent(GameObject* parent, AttachmentTransformRules rules)
+    {
+        if (parent == nullptr || parent == this)
+        {
+            ME_CORE_ERROR("GameObject::AttachToParent: invalid parent for GO '{}'.", GetName());
+            return false;
+        }
+
+        if (WouldCreateHierarchyCycle(parent))
+        {
+            ME_CORE_ERROR(
+                "GameObject::AttachToParent: cycle detected attaching '{}' under '{}'.",
+                GetName(),
+                parent->GetName());
+            return false;
+        }
+
+        if (m_Parent == parent)
+        {
+            auto& siblings = parent->m_Children;
+            if (std::find(siblings.begin(), siblings.end(), this) == siblings.end())
+            {
+                siblings.push_back(this);
+            }
+            EnsureRootAttachedToParent(rules);
+            return true;
+        }
+
+        DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
+
+        m_Parent = parent;
+        parent->m_Children.push_back(this);
+        EnsureRootAttachedToParent(rules);
+        return true;
+    }
+
+    void GameObject::DetachFromParent(AttachmentTransformRules rules)
+    {
+        if (m_Parent != nullptr)
+        {
+            UnlinkFromCurrentParent();
+        }
+
+        if (SceneComponent* childRoot = GetRootComponent())
+        {
+            if (childRoot->GetAttachParent() != nullptr)
+            {
+                childRoot->DetachFromParent(rules);
             }
         }
     }

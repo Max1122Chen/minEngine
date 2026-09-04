@@ -20,21 +20,7 @@ namespace minEngine
         ME_GENERATED_BODY(GameObject)
     public:
         GameObject();
-        virtual ~GameObject()
-        {
-            // A simple implementation for demo purposes. We will handle component ownership and lifecycle more robustly in the future.
-            // TODO: handle lifecycle of components more robustly, we may want to implement a component system that can manage the lifecycle of components instead of relying on the game object to destroy them, we may also want to implement a reference counting system for components to avoid dangling pointers.
-            for (auto& component : m_Components)
-            {
-                if (component)
-                {
-                    component->SetOwner(nullptr);
-                    component.reset();
-                }
-            }
-            m_Components.clear();
-            ME_CORE_INFO("GameObject with ID {} and name '{}' is being destroyed.", m_ID, GetName());
-        }
+        virtual ~GameObject();
 
         void Tick(float deltaTime);
 
@@ -99,11 +85,30 @@ namespace minEngine
 
         void InsertRestoredComponent(std::shared_ptr<Component> component, size_t index);
 
-    private:
-        void AddComponent_Internal(std::shared_ptr<Component> newComponent);
+        /** CORE-F08: attach this GO under parent (scheme A: root SceneComponents). */
+        bool AttachToParent(GameObject* parent, AttachmentTransformRules rules);
+        void DetachFromParent(AttachmentTransformRules rules);
+        GameObject* GetParent() const { return m_Parent; }
+        const std::vector<GameObject*>& GetChildren() const { return m_Children; }
+
+        /** Clear m_Children only (keeps serialized m_Parent for Resolve). */
+        void ClearChildrenLinks();
 
     private:
+        void AddComponent_Internal(std::shared_ptr<Component> newComponent);
+        bool WouldCreateHierarchyCycle(const GameObject* candidateParent) const;
+        void UnlinkFromCurrentParent();
+        void EnsureRootAttachedToParent(AttachmentTransformRules rules);
+
+    private:
+        /** Runtime scene-local lookup id; not used for hierarchy serialization. */
         uint64_t m_ID{ 0 };
+
+        /** Serialized parent (GUID); null = scene root. Children rebuilt on load. */
+        ME_PROPERTY()
+        GameObject* m_Parent{ nullptr };
+
+        std::vector<GameObject*> m_Children;
 
         ME_PROPERTY()
         SceneComponent* m_RootComponent{ nullptr };

@@ -33,6 +33,9 @@ namespace minEngine
         bool RemoveGameObjectById(uint64_t id);
         uint64_t IncrementNextGOId() { return m_NextGOId++; }
 
+        /** Rebuild m_Children from serialized m_Parent and ensure root SceneComponent attach. */
+        void ResolveGameObjectHierarchy();
+
         /**
          * Closest ray query against this scene's physics world (UE UWorld-style entry point).
          * TraceChannel uses the same ECollisionChannel enum as ObjectChannel (Trace usage).

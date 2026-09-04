@@ -96,6 +96,7 @@ namespace minEngine
     {
         pieScene.RebuildRuntimeGameObjectIndex();
         pieScene.EnsureRenderScene();
+        pieScene.ResolveGameObjectHierarchy();
         SceneManager::RebuildSceneComponentAttachHierarchy(&pieScene);
         if (SceneManager::HasInstance())
         {

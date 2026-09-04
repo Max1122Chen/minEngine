@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-04（`feat/ui`：RND-F16 Path B S03a/b 代码落地）
+Last updated: 2026-09-04（CORE-F08 收尾；下一刀 ED-F05）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,18 +9,30 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/ui`）
 
-### RND-F16 — 2D Rendering Foundation ← **当前焦点**
+### CORE-F08 — GameObject Hierarchy ← **Review（待 ED-F05 联合验收）**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design | [RND-F16 Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · **In Progress** |
-| Impl | [RND-F16 Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · Path A + Path B **S03a/b Done** |
-| 目标 | `WidgetComponent` + ScreenUI Pass 已落地；待 Editor 目视 |
-| 下游 | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)（Canvas / Layout） |
-| 底稿 | [docs/external/minEngine_ui_mvp_suggestions.md](../external/minEngine_ui_mvp_suggestions.md) |
+| Design | [CORE-F08](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · **Review**（待 ED-F05 联合验收） |
+| 目标 | GO 父子；\ME_PROPERTY m_Parent\ + GUID；方案 A；级联删 |
+| 下游编辑器 | [ED-F05](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) 树 + 拖拽改父 |
 
-**下一验证步：** Editor 挂 `WidgetComponent`（Location.xy=像素左上，Size=像素）目视色块/层序。  
-**明确后置：** Canvas；Layout/Hit-test；UVRect GPU；World UI。
+### UI-F01 — UI System ← **设计中（Blocked）**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · **Draft** |
+| MVP | Canvas + Layout(Anchor/Margin) + Image；Widget=无样式基础 |
+| 阻塞 | CORE-F08 Review；编辑体验建议 **ED-F05** |
+
+### ~~RND-F16 — 2D Rendering Foundation~~ Path A/B **代码+目视 Done**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) |
+| 状态 | Sprite + ScreenUI/`WidgetComponent` 已落地 |
+
+**明确后置：** UI Hit-test / Text / Button；UVRect GPU；World Canvas；完整 Flex。
 
 ### ~~CORE-F05 — Play Mode~~ **Done（MVP）**（`master`）
 
@@ -36,7 +48,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
 | **内核** | `master` | `master` | CORE-F05 MVP Done；小修复 |
-| **UI / 2D** | `feat/ui` | — | **RND-F16** Foundation → 再 `UI-F01` |
+| **UI / 2D** | `feat/ui` | — | RND-F16 Done → **CORE-F08** → ED-F05 → **UI-F01** |
 | **编辑器** | ~~`feat/editor`~~ | **已合入 `master`** | ED-F02 + **CORE-F07** + ED-F04 Console |
 | **动画** | `feat/animation` | — | 合并检查点之后再规划 |
 
@@ -74,12 +86,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | ~~CORE-F05~~ Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred |
 | ~~CORE-F07~~ 反射展示名 | **Done** — 已合入 `master` |
 
-### C. `feat/ui` — RND-F16 / UI-F01
+### C. `feat/ui` — CORE-F08 / ED-F05 / UI-F01
 
 | ID | 内容 | 状态 |
 |----|------|------|
-| **RND-F16** | 2D Rendering Foundation | **In Progress** — Path A Done；§10 Path B 已扩写；下一 S03a/b — [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) |
-| **UI-F01** | Canvas GO + Layout/Input/Widgets | **Planned**（方向）— 等 RND-F16 |
+| **CORE-F08** | GameObject 父子 | **Review**（待 ED-F05 联合验收）— [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md)；下一刀 **ED-F05** |
+| **ED-F05** | Hierarchy 树 + 拖拽改父 | **Draft** — [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) |
+| **UI-F01** | Canvas + Layout + Image | **Draft / Blocked** — [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) |
+| **RND-F16** | 2D Foundation Path A/B | Path A/B **Done**（目视通过） |
 
 ### C2. `master` — ED-F02 Editor Workflow（并行候选，非本分支焦点）
 

@@ -5,6 +5,7 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::GameObject, GReflectionClassRegister_GameObject_1d0a74f7)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS((static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::ScriptType)), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MEObject)
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::GameObject, m_Parent, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::GameObject, m_RootComponent, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::GameObject, m_Components, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Instanced)), (minEngine::Reflection::PropertyMetadata{}))
     {

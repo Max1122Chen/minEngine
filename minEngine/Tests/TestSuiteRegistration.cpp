@@ -26,6 +26,7 @@
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
+#include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/CommandSystemTest.h"
 
 namespace minEngine
@@ -358,6 +359,23 @@ namespace minEngine
             }
         };
 
+        struct GameObjectHierarchyTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"gameobject-hierarchy", "GameObject Hierarchy", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'gameobject-hierarchy'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "gameobject-hierarchy",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct CommandSystemTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -395,6 +413,7 @@ namespace minEngine
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
+        using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
 
         void RegisterAllTestSuites()
@@ -426,6 +445,7 @@ namespace minEngine
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
+            registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             s_Registered = true;
         }

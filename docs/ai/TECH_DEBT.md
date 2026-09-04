@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-09-03（`master`：TD-030 Open — EnterPlay rollback；CORE-F05 MVP Done）
+Last updated: 2026-09-04（TD-031 Deferred：activeInHierarchy 传播）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -38,6 +38,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-028 | Binary wire format field-stream parsing fragile (`EndObject` vs u16 len) | CORE / Serialization | **High** | Open | [SERIALIZATION_BINARY_AND_PROPERTY_API.md](./Platform/Serialization/SERIALIZATION_BINARY_AND_PROPERTY_API.md) §6.4 · `BinaryArchive.cpp` | 2026-09-03: `EndObject` (0x0A) collides with 10-char field-name length prefix (`m_BodyType`, `m_Material`); `SerializeObjectToBuffer` Scene round-trip fails when ≥2 GOs have StaticMesh+RigidBody+Collider. May redesign parts of binary protocol; see TD-029 detour. |
 | TD-029 | PIE `SceneDuplicator` uses in-memory JSON instead of Binary | CORE-F05 / ED | **Medium** | Open | [CORE-F05_PLAY_MODE_DESIGN.md](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) §5.1 | 2026-09-03: `DuplicateForPIE` detour to `JsonArchive` (same options as `.mescene`) until TD-028 fixed. Disk format unchanged; revert to Binary when wire format stable. |
 | TD-030 | EnterPlay failure path lacks full rollback | CORE-F05 | **Medium** | Open | [CORE-F05_PLAY_MODE_IMPLEMENTATION.md](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) S02 | 2026-09-03 MVP closeout: clone/register mid-failure may leave partial PIE context; restore Editor TickPolicy on early fail exists, full teardown of half-registered PIE still owed. |
+| TD-031 | GO `activeInHierarchy` 随父 Active 传播未做 | CORE-F08 / CORE-F06 | **Medium** | **Deferred** | [CORE-F08 Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) §3.5 | 2026-09-04：父子层级 MVP 不做 Inactive 传播；日后与 CORE-F06 对齐再开切片。 |
 
 ---
 

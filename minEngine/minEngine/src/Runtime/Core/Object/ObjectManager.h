@@ -21,6 +21,7 @@ namespace minEngine
     class PhysicsShapesTestScope;
     class DelegateObjectManagerScope;
     class SceneCloneTestScope;
+    class GameObjectHierarchyTestScope;
     class CommandSystemTestScope;
 
     using ObjectReachabilityMarker = std::function<void(MEObject*)>;
@@ -127,6 +128,7 @@ namespace minEngine
         friend class AudioSmokeTestScope;
         friend class DelegateObjectManagerScope;
         friend class SceneCloneTestScope;
+        friend class GameObjectHierarchyTestScope;
         friend class CommandSystemTestScope;
 
         static void SetInstance(ObjectManager* instance);

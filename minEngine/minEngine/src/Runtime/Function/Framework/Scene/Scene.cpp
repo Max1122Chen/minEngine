@@ -1,8 +1,13 @@
 #include "Scene.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
+#include "Runtime/Core/Log/LogSystem.h"
+
+#include <algorithm>
+#include <functional>
 
 namespace minEngine
 {
@@ -207,10 +212,93 @@ namespace minEngine
             return false;
         }
 
-        m_GameObjects.erase(std::remove_if(m_GameObjects.begin(), m_GameObjects.end(), [gameObject](const std::shared_ptr<GameObject>& go) {
-            return go->GetID() == gameObject->GetID();
-        }), m_GameObjects.end());
-        m_GameObjectsById.erase(id);
+        std::vector<uint64_t> toRemove;
+        std::function<void(GameObject*)> collectSubtree = [&](GameObject* node)
+        {
+            if (node == nullptr)
+            {
+                return;
+            }
+            for (GameObject* child : node->GetChildren())
+            {
+                collectSubtree(child);
+            }
+            toRemove.push_back(node->GetID());
+        };
+        collectSubtree(gameObject);
+
+        for (uint64_t removeId : toRemove)
+        {
+            GameObject* node = FindGameObjectById(removeId);
+            if (node == nullptr)
+            {
+                continue;
+            }
+            node->DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
+            m_GameObjects.erase(
+                std::remove_if(
+                    m_GameObjects.begin(),
+                    m_GameObjects.end(),
+                    [removeId](const std::shared_ptr<GameObject>& go)
+                    {
+                        return go && go->GetID() == removeId;
+                    }),
+                m_GameObjects.end());
+            m_GameObjectsById.erase(removeId);
+        }
+
         return true;
+    }
+
+    void Scene::ResolveGameObjectHierarchy()
+    {
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        {
+            if (gameObject)
+            {
+                gameObject->ClearChildrenLinks();
+            }
+        }
+
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        {
+            if (!gameObject)
+            {
+                continue;
+            }
+
+            GameObject* parent = gameObject->GetParent();
+            if (parent == nullptr)
+            {
+                continue;
+            }
+
+            bool parentInScene = false;
+            for (const std::shared_ptr<GameObject>& candidate : m_GameObjects)
+            {
+                if (candidate.get() == parent)
+                {
+                    parentInScene = true;
+                    break;
+                }
+            }
+
+            if (!parentInScene)
+            {
+                ME_CORE_ERROR(
+                    "Scene::ResolveGameObjectHierarchy: GO '{}' parent not in scene; becoming root.",
+                    gameObject->GetName());
+                gameObject->DetachFromParent(AttachmentTransformRules::KeepRelativeTransform);
+                continue;
+            }
+
+            if (!gameObject->AttachToParent(parent, AttachmentTransformRules::KeepRelativeTransform))
+            {
+                ME_CORE_ERROR(
+                    "Scene::ResolveGameObjectHierarchy: failed to attach '{}'; becoming root.",
+                    gameObject->GetName());
+                gameObject->DetachFromParent(AttachmentTransformRules::KeepRelativeTransform);
+            }
+        }
     }
 }

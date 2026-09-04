@@ -280,6 +280,7 @@ namespace minEngine
         }
 
         scene->RebuildRuntimeGameObjectIndex();
+        scene->ResolveGameObjectHierarchy();
         RebuildSceneComponentAttachHierarchy(scene);
 
         if (HasInstance())
