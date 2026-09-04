@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `UI-F01`
 - **Type:** Feature
-- **Status:** Planned（方向稿；正式 Design 待 `RND-F16` Path B 契约稳定）
+- **Status:** Planned（方向稿；等 `RND-F16` Path B MVP：`WidgetComponent` 可画后再扩 Canvas）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03
+- **Last updated:** 2026-09-04
 - **Related:**
   - [RND-F16](../../Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md)（**硬依赖**；Screen UI = Path B）
   - [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md)
@@ -69,8 +69,8 @@ GameObject (Canvas root)
 
 | 字段 | 内容 |
 |------|------|
-| What's not | 完整 Design / 代码 |
-| Unblock | `RND-F16` Path B 可提交 API |
+| What's not | 完整 Design / 代码；**Canvas 等 Path B Widget 可画之后** |
+| Unblock | `RND-F16` Path B S03b（ScreenUI 可提交） |
 | Branch | `feat/ui` |
 
 ---
@@ -82,3 +82,4 @@ GameObject (Canvas root)
 | 2026-08-31 | 占位 |
 | 2026-09-03 | Canvas GO 方向；与 RND-F16 双路径对齐 |
 | 2026-09-03 | 可视节点统一命名为 **`WidgetComponent`** |
+| 2026-09-04 | 对齐 RND-F16 §10：Path B MVP **无 Canvas**；Canvas 仍属本 Feature 后续 |

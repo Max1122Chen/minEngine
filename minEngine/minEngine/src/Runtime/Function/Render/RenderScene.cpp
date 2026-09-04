@@ -10,7 +10,9 @@
 
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/SkyBoxComponent.h"
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
 #include "Runtime/Function/Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
+#include "Runtime/Function/Render/SceneProxies/WidgetSceneProxy.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
 #include "Runtime/Function/Framework/Components/PointLightComponent.h"
@@ -286,6 +288,59 @@ namespace minEngine
         m_SkyBoxProxyOwner.reset();
     }
 
+    void RenderScene::UpdateWidget(WidgetComponent* widgetComponent)
+    {
+        if (widgetComponent == nullptr || !widgetComponent->IsActive())
+        {
+            return;
+        }
+
+        if (widgetComponent->GetSceneProxy() == nullptr)
+        {
+            WidgetSceneProxy* proxy = widgetComponent->CreateSceneProxy();
+            m_WidgetSceneProxyOwners.emplace_back(proxy);
+            m_WidgetSceneProxies.push_back(proxy);
+        }
+        else
+        {
+            WidgetSceneProxy* proxy = widgetComponent->GetSceneProxy();
+            if (proxy)
+            {
+                widgetComponent->UpdateSceneProxy(*proxy);
+            }
+        }
+    }
+
+    void RenderScene::RemoveWidget(WidgetComponent* widgetComponent)
+    {
+        if (!widgetComponent)
+        {
+            return;
+        }
+
+        m_WidgetSceneProxies.erase(
+            std::remove_if(
+                m_WidgetSceneProxies.begin(),
+                m_WidgetSceneProxies.end(),
+                [widgetComponent](WidgetSceneProxy* proxy)
+                {
+                    return proxy && proxy->m_WidgetComponent == widgetComponent;
+                }),
+            m_WidgetSceneProxies.end());
+
+        m_WidgetSceneProxyOwners.erase(
+            std::remove_if(
+                m_WidgetSceneProxyOwners.begin(),
+                m_WidgetSceneProxyOwners.end(),
+                [widgetComponent](const std::unique_ptr<WidgetSceneProxy>& proxy)
+                {
+                    return proxy && proxy->m_WidgetComponent == widgetComponent;
+                }),
+            m_WidgetSceneProxyOwners.end());
+
+        widgetComponent->DetachSceneProxy();
+    }
+
     void RenderScene::CollectOrphanedSceneProxies()
     {
         m_PrimitiveSceneProxies.erase(
@@ -328,6 +383,16 @@ namespace minEngine
                 }),
             m_SpotLightSceneProxies.end());
 
+        m_WidgetSceneProxies.erase(
+            std::remove_if(
+                m_WidgetSceneProxies.begin(),
+                m_WidgetSceneProxies.end(),
+                [](WidgetSceneProxy* proxy)
+                {
+                    return (proxy == nullptr) || (proxy->m_WidgetComponent == nullptr);
+                }),
+            m_WidgetSceneProxies.end());
+
         m_PrimitiveSceneProxyOwners.erase(
             std::remove_if(
                 m_PrimitiveSceneProxyOwners.begin(),
@@ -347,6 +412,16 @@ namespace minEngine
                     return (!proxy) || (proxy->m_LightComponent == nullptr);
                 }),
             m_LightSceneProxyOwners.end());
+
+        m_WidgetSceneProxyOwners.erase(
+            std::remove_if(
+                m_WidgetSceneProxyOwners.begin(),
+                m_WidgetSceneProxyOwners.end(),
+                [](const std::unique_ptr<WidgetSceneProxy>& proxy)
+                {
+                    return (!proxy) || (proxy->m_WidgetComponent == nullptr);
+                }),
+            m_WidgetSceneProxyOwners.end());
 
         if (m_SkyBoxProxy && m_SkyBoxProxy->m_SkyBoxComponent == nullptr)
         {

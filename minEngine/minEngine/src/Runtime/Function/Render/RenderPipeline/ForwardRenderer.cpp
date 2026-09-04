@@ -5,6 +5,8 @@
 #include "Render/RenderScene.h"
 #include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 #include "Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
+#include "Render/SceneProxies/WidgetSceneProxy.h"
+#include "Render/ScreenUI/ScreenUICoords.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/Material.h"
@@ -31,6 +33,7 @@
 #include "Render/RHI/RHIClipSpaceCapabilities.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <filesystem>
+#include <algorithm>
 
 namespace
 {
@@ -141,6 +144,7 @@ namespace minEngine
         m_BasePass.pipeline = this;
         m_TranslucentPass.pipeline = this;
         m_DebugDrawPass.pipeline = this;
+        m_ScreenUIPass.pipeline = this;
 
         m_ShadowPass.Initialize();
         m_ShadowPass.m_PerObjectUniformBuffer = m_PerObjectUniformBuffer.get();
@@ -260,6 +264,7 @@ namespace minEngine
         m_SceneOpaqueGraphPass = nullptr;
         m_SceneTranslucentGraphPass = nullptr;
         m_SceneDebugGraphPass = nullptr;
+        m_SceneScreenUIGraphPass = nullptr;
         m_PostFxaaGraphPass = nullptr;
         m_PostSharpenGraphPass = nullptr;
         m_PresentGraphPass = nullptr;
@@ -299,6 +304,10 @@ namespace minEngine
             debugPass.SetImplementation(&m_DebugDrawPass);
             m_SceneDebugGraphPass = &debugPass;
         }
+
+        RenderPass& screenUIPass = m_FrameRenderGraph.AddPass("Scene.ScreenUI");
+        screenUIPass.SetImplementation(&m_ScreenUIPass);
+        m_SceneScreenUIGraphPass = &screenUIPass;
 
         if (enablePostProcess && !m_PostProcessPasses.empty())
         {
@@ -580,6 +589,7 @@ namespace minEngine
         desc.Scene->CollectOrphanedSceneProxies();
 
         BuildRenderQueue(ctx);
+        BuildScreenUIQueue(ctx, sceneTarget->GetWidth(), sceneTarget->GetHeight());
 
         const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
         if (enableShadows)
@@ -662,6 +672,16 @@ namespace minEngine
         m_TranslucentPass.m_DirectionalShadowHandle = ctx.DirectionalShadowHandle;
         m_TranslucentPass.m_SpotShadowHandles = ctx.SpotShadowHandles;
         m_TranslucentPass.m_PointShadowHandles = ctx.PointShadowHandles;
+
+        m_ScreenUIPass.m_DrawCommands.clear();
+        m_ScreenUIPass.m_DrawCommands.reserve(ctx.ScreenUIQueue.size());
+        for (const UIDrawCommand& uiCommand : ctx.ScreenUIQueue)
+        {
+            m_ScreenUIPass.m_DrawCommands.push_back(uiCommand.Draw);
+        }
+        m_ScreenUIPass.m_PerFrameUniformBuffer = m_PerFrameUniformBuffer.get();
+        m_ScreenUIPass.m_ViewportWidth = sceneTarget->GetWidth();
+        m_ScreenUIPass.m_ViewportHeight = sceneTarget->GetHeight();
 
         EnqueueFrameRenderGraph(cmdList, sceneTarget);
 
@@ -1160,6 +1180,51 @@ namespace minEngine
                 }
             }
         }
+    }
+
+    void ForwardRenderer::BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)
+    {
+        ctx.ScreenUIQueue.clear();
+        (void)viewportWidth;
+        (void)viewportHeight;
+
+        RenderScene* renderScene = ctx.Scene;
+        if (!renderScene)
+        {
+            return;
+        }
+
+        for (WidgetSceneProxy* widgetProxy : renderScene->m_WidgetSceneProxies)
+        {
+            if (!widgetProxy || !widgetProxy->m_bVisible || !widgetProxy->m_WidgetComponent)
+            {
+                continue;
+            }
+
+            if (!widgetProxy->m_Material || !widgetProxy->m_VertexBuffer || !widgetProxy->m_VertexInputLayout)
+            {
+                continue;
+            }
+
+            UIDrawCommand command;
+            command.StableOrder = widgetProxy->m_StableOrder;
+            command.Draw.m_VertexBuffer = widgetProxy->m_VertexBuffer;
+            command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
+            command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
+            command.Draw.m_Material = widgetProxy->m_Material;
+            command.Draw.m_ModelMatrix =
+                ScreenUICoords::MakeWidgetModelMatrix(widgetProxy->m_TopLeftPx, widgetProxy->m_SizePx);
+            command.Draw.m_CastShadow = false;
+            ctx.ScreenUIQueue.push_back(command);
+        }
+
+        std::stable_sort(
+            ctx.ScreenUIQueue.begin(),
+            ctx.ScreenUIQueue.end(),
+            [](const UIDrawCommand& a, const UIDrawCommand& b)
+            {
+                return a.StableOrder < b.StableOrder;
+            });
     }
 
     DirShadowCommandBuildResult ForwardRenderer::BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest,

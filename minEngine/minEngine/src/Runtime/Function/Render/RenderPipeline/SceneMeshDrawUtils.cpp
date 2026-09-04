@@ -45,7 +45,7 @@ namespace minEngine
                 material->GetMaterialShaderBindingSetLayout(),
                 shader,
                 drawCommand.m_VertexInputLayout,
-                translucentPass);
+                passKind);
             packet.VertexBuffer = drawCommand.m_VertexBuffer;
             packet.IndexBuffer = drawCommand.m_IndexBuffer;
             packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = material->GetMaterialShaderBindingSet();

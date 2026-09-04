@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
+#include "Runtime/Function/Render/DrawCommands/UIDrawCommand.h"
 #include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
 
 #include <unordered_map>
@@ -23,6 +24,7 @@ namespace minEngine
 
         std::vector<MeshDrawCommand> OpaqueQueue;
         std::vector<MeshDrawCommand> TranslucentQueue;
+        std::vector<UIDrawCommand> ScreenUIQueue;
 
         std::vector<ShadowRequest> ShadowRequests;
         std::vector<ShadowDrawCommand> ShadowDrawCommands;
@@ -44,6 +46,7 @@ namespace minEngine
             Camera = nullptr;
             OpaqueQueue.clear();
             TranslucentQueue.clear();
+            ScreenUIQueue.clear();
             ShadowRequests.clear();
             ShadowDrawCommands.clear();
             DirectionalShadowHandle = ShadowResourceHandle{};

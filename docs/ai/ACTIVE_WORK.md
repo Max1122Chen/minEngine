@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-04（`feat/ui`：RND-F16 Path A 目视通过；下一主线 Path B）
+Last updated: 2026-09-04（`feat/ui`：RND-F16 Path B S03a/b 代码落地）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -14,13 +14,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design | [RND-F16 Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · **In Progress** |
-| Impl | [RND-F16 Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · Path A **S00–S02 Done** |
-| 目标 | Path A `SpriteComponent` 已目视验收；下一主线 **Path B** ScreenUI + `WidgetComponent` |
-| 下游 | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)（Canvas GO；等 Path B） |
+| Impl | [RND-F16 Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · Path A + Path B **S03a/b Done** |
+| 目标 | `WidgetComponent` + ScreenUI Pass 已落地；待 Editor 目视 |
+| 下游 | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)（Canvas / Layout） |
 | 底稿 | [docs/external/minEngine_ui_mvp_suggestions.md](../external/minEngine_ui_mvp_suggestions.md) |
 
-**下一主线：** Path B — ScreenUI Queue/Pass + 最小 `WidgetComponent`（扩写 Design §10 → Impl S03）。  
-**明确后置：** UVRect GPU remap；Widget / Layout / Hit-test（`UI-F01`）。
+**下一验证步：** Editor 挂 `WidgetComponent`（Location.xy=像素左上，Size=像素）目视色块/层序。  
+**明确后置：** Canvas；Layout/Hit-test；UVRect GPU；World UI。
 
 ### ~~CORE-F05 — Play Mode~~ **Done（MVP）**（`master`）
 
@@ -78,7 +78,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 内容 | 状态 |
 |----|------|------|
-| **RND-F16** | 2D Rendering Foundation | **In Progress** — Path A Done；下一 Path B — [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) |
+| **RND-F16** | 2D Rendering Foundation | **In Progress** — Path A Done；§10 Path B 已扩写；下一 S03a/b — [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) |
 | **UI-F01** | Canvas GO + Layout/Input/Widgets | **Planned**（方向）— 等 RND-F16 |
 
 ### C2. `master` — ED-F02 Editor Workflow（并行候选，非本分支焦点）

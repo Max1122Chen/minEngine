@@ -33,6 +33,7 @@
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Framework/Components/SpriteComponent.h"
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
 
     // lights Components
 #include "Runtime/Function/Framework/Components/LightComponent.h"

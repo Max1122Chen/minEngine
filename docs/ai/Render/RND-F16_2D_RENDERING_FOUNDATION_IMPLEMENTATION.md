@@ -8,15 +8,15 @@
 - **Related:** [Design Spec](./RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md)
 
 ## TL;DR
-优先 **Path A（Sprite）** 三刀：共享 quad → Component/Proxy/入队 → 透明规则验证。Path B Deferred。
+Path A（Sprite）**Done**。下一刀 **Path B（ScreenUI）**：Queue@`SceneRenderContext` → Pass → `WidgetComponent`（无 Canvas）。详见 Design §10。
 
 ## Scope
-- **In:** `SpriteComponent` / `SpriteSceneProxy` / `SpriteQuadMesh` / 默认 Unlit Material 工厂 / `BuildRenderQueue` + `RenderScene` 更新
-- **Out:** Billboard；ScreenUI Pass；`WidgetComponent` 实现；完整 UV atlas 编辑器
+- **In:** Path A 全套；Path B：`UIDrawCommand` / `ScreenUIQueue` / `ScreenUIPass` / `WidgetComponent`+Proxy；复用 `SpriteQuadMesh`
+- **Out:** Canvas；Layout/Hit-test；UVRect GPU remap；Billboard；ImGui 耦合
 
 ## Reader quick start
-1. Design §9
-2. 下表切片
+1. Design §10（Path B）
+2. 下表 S03
 3. `PROGRESS_LOG.md`
 
 ---
@@ -28,7 +28,8 @@
 | `RND-F16-S00` | `SpriteQuadMesh` 共享 unit quad | Done | 编译 |
 | `RND-F16-S01` | `SpriteComponent` + `SpriteSceneProxy` + 入队 | Done | 编译 |
 | `RND-F16-S02` | 透明分流 + 默认 Material + 单测 | Done | `sprite-translucency` |
-| `RND-F16-S03` | Path B ScreenUI | Deferred | — |
+| `RND-F16-S03a` | `UIDrawCommand` + `ScreenUIQueue` + `ScreenUIPass` 骨架 | Done | 编译 |
+| `RND-F16-S03b` | `WidgetComponent` + Proxy + `BuildScreenUIQueue` + 可画色块 | Done | Editor 目视 + `screen-ui-coords` |
 
 ## 2) 切片详情
 
@@ -55,28 +56,55 @@
 - **DoD:**
   - [x] Color.a 或 Channels≥4 → Translucent
   - [x] 单测覆盖谓词（若易加）
-- **Verify:** `minEngineTests.exe test …` 或文档记录手动
+- **Verify:** `minEngineTests.exe test sprite-translucency`
 
-### RND-F16-S03 — Path B（Deferred）
-- **Goal:** ScreenUI Queue/Pass + `WidgetComponent` 契约落地
-- **DoD:** 见 Design §10
-- **Verify:** —
+### RND-F16-S03a — ScreenUI Queue + Pass 骨架
+- **Goal:** 帧内有 ScreenUI 槽位；空队列安全；挂在正确图序
+- **Touch:**
+  - `SceneRenderContext`（`ScreenUIQueue` + Reset）
+  - `UIDrawCommand.h`
+  - `ScreenUIPass.*`
+  - `ForwardRenderer::BuildFrameRenderGraph` / Execute 挂钩
+- **DoD:**
+  - [x] `ScreenUIQueue` 与 Opaque/Translucent 并列
+  - [x] Graph：Translucent → (Debug) → **ScreenUI** → Post → Present
+  - [x] Depth 关；空队列 no-op
+  - [x] **不**从 `BuildRenderQueue` 写入 ScreenUI
+- **Verify:** 编译；可选日志/断点确认 Pass 被调度
+
+### RND-F16-S03b — WidgetComponent 最小可画
+- **Goal:** Comp→Proxy→`BuildScreenUIQueue`→色块/贴图；像素左上
+- **Touch:**
+  - `WidgetComponent.*`、`WidgetSceneProxy`
+  - `RenderScene` Widget 登记（非 Primitive 列表）
+  - `BuildScreenUIQueue` + 屏幕矩阵（§10.3）
+  - ScreenUI 材质工厂（可复用/仿 Sprite Unlit）
+  - `minEngine.h` + 反射 codegen
+- **DoD:**
+  - [x] 反射：Texture(可选) / Color / Size / StableOrder；Location.xy = 左上像素
+  - [x] 复用 `SpriteQuadMesh`
+  - [x] 绝不入 Opaque/Translucent
+  - [x] 两 Widget 重叠时 StableOrder 保序可见
+- **Verify:** Editor 目视；`minEngineTests.exe test screen-ui-coords`
 
 ## 3) 依赖顺序
 
 ```text
-S00 → S01 → S02 → (S03 Deferred)
+S00 → S01 → S02 → S03a → S03b → (UI-F01 Canvas…)
 ```
 
 ## 4) 延后 / 取消切片
 
 | Slice ID | Reason | Unblock condition | Next check |
 |----------|--------|-------------------|------------|
-| S03 Path B | 先扎实 Sprite | Path A MVP Done | 维护者排期 |
-| UVRect≠0..1 GPU remap | 可用缓存 mesh 或后置 | S02 后 | 需要时 |
+| Canvas / Layout | UI-F01 | Path B MVP 可画 | Path B Done 后 |
+| UVRect GPU remap | Sprite+Widget 共用债 | 需要 atlas 时 | 维护者 |
+| Path C World UI | 后置 | Screen UI 稳 | — |
 
 ## 5) 变更记录
 
 | 日期 | 说明 |
 |------|------|
 | 2026-09-03 | 初稿；先 Path A S00–S02 |
+| 2026-09-04 | Path A Done；S03 拆 S03a/S03b；对齐 Design §10 拍板 |
+| 2026-09-04 | S03a/S03b 代码落地；`screen-ui-coords` 单测 |

@@ -25,6 +25,7 @@
 #include "Suites/SceneCloneTest.h"
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/SpriteTranslucencyTest.h"
+#include "Suites/ScreenUICoordsTest.h"
 #include "Suites/CommandSystemTest.h"
 
 namespace minEngine
@@ -340,6 +341,23 @@ namespace minEngine
             }
         };
 
+        struct ScreenUICoordsTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-coords", "Screen UI Coords", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-coords'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-coords",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct CommandSystemTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -376,6 +394,7 @@ namespace minEngine
         using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
+        using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
 
         void RegisterAllTestSuites()
@@ -406,6 +425,7 @@ namespace minEngine
             registry.Register(SceneCloneSuite::Get());
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(SpriteTranslucencySuite::Get());
+            registry.Register(ScreenUICoordsSuite::Get());
             registry.Register(CommandSystemSuite::Get());
             s_Registered = true;
         }

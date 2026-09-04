@@ -92,7 +92,7 @@ namespace minEngine
         RHIShaderBindingSetLayout* materialSetLayout,
         RHIShader* shader,
         RHIVertexInputLayout* vertexInputLayout,
-        bool translucentPass) const
+        MeshPassKind passKind) const
     {
         if (!materialSetLayout || !shader || !vertexInputLayout)
         {
@@ -112,7 +112,7 @@ namespace minEngine
             pipelineLayout.get(),
             vertexInputLayout,
             shader,
-            translucentPass};
+            passKind};
         const auto existing = m_SceneMeshPsoCache.find(key);
         if (existing != m_SceneMeshPsoCache.end())
         {
@@ -124,16 +124,24 @@ namespace minEngine
         psoDesc.VertexShader = shader;
         psoDesc.PixelShader = shader;
         psoDesc.VertexInputLayout = vertexInputLayout;
-        psoDesc.DepthStencilState.bDepthTestEnabled = true;
-        psoDesc.DepthStencilState.bDepthWriteEnabled = true;
         psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::LessEqual;
 
-        if (translucentPass)
+        if (passKind == MeshPassKind::ScreenUI)
         {
+            psoDesc.DepthStencilState.bDepthTestEnabled = false;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = false;
+            psoDesc.BlendState.bBlendEnabled = true;
+        }
+        else if (passKind == MeshPassKind::Translucent)
+        {
+            psoDesc.DepthStencilState.bDepthTestEnabled = true;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
             psoDesc.BlendState.bBlendEnabled = true;
         }
         else
         {
+            psoDesc.DepthStencilState.bDepthTestEnabled = true;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = true;
             psoDesc.BlendState.bBlendEnabled = false;
         }
 

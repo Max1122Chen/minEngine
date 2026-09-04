@@ -1,6 +1,17 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-04（`feat/ui`：RND-F16 Path A committed；下一 Path B）
+Last updated: 2026-09-04（`feat/ui`：RND-F16 Path B 代码落地）
+
+### 2026-09-04 - RND-F16 Path B S03a/b 代码落地
+- **Code:** `UIDrawCommand` / `ScreenUIQueue` / `ScreenUIPass`；`WidgetComponent`+Proxy；`BuildScreenUIQueue`；复用 `SpriteQuadMesh`；像素左上 ortho。
+- **Build:** `minEngine` + `Editor` 通过。
+- **Tests:** `screen-ui-coords` 单测。
+- **Next:** Editor 目视 Widget；再进 UI-F01 Canvas。
+
+### 2026-09-04 - RND-F16 §10 Path B 详细设计
+- **拍板：** 像素+左上；Queue@`SceneRenderContext`；复用 `SpriteQuadMesh`；关深度；与 ImGui 无关；无 Canvas。
+- **Docs：** Design §10 扩至数据结构/接口/数据流/红线；Impl 拆 **S03a/S03b**。
+- **Next：** 开码 S03a（Queue+Pass 骨架）。
 
 ### 2026-09-04 - RND-F16 Path A 目视验收 + Status → In Progress
 - **Verify:** 维护者 Editor 目视 Sprite opaque/translucent 基本正确；UVRect 仍未接 GPU（已知）。
