@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-04（CORE-F09 Binary Transient v2 Done）
+Last updated: 2026-09-04（CORE-F10 JSON disk compat Done）
+
+### 2026-09-04 - CORE-F10 Done: JSON disk compatibility (`feat/core`)
+- **Options:** 接线 `strictTypeCheck`；新增 `writeSchemaVersion` / `schemaVersion`；澄清 `skipUnknownField`=缺字段。
+- **Json:** EndObject 对多余非 meta 键 Warn；根 `$schemaVersion` 写 1 / 缺省读 0。
+- **Loose:** 叶子 codec 失败且非 strict → Warn+保留默认；盘路径 Loader/Project/PathRegistry/AssetManager 默认宽松。
+- **Strict:** Binary Buffer / PIE 仍强制 `skipUnknownField=false` + `strictTypeCheck=true`。
+- **Verified:** `serialization-archive`（含 schema/unknown 键）· `scene-clone` · `verify.ps1` smoke。
+- **Next:** 准备 commit；Infra 序列化轨可收；回 Primary `ANIM-F01` 或下一项。
 
 ### 2026-09-04 - CORE-F09 Done: Binary wire v2 (`feat/core`)
 - **Protocol:** Magic `MEB2` + SchemaVersion + Fingerprint；Object = Tag + ClassId + FieldCount + BodyLength + `[FieldId + tagged value]*`；无 wire `EndObject`。

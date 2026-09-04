@@ -190,7 +190,7 @@ namespace minEngine
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true});
 
         if (!result.ok)
@@ -214,7 +214,7 @@ namespace minEngine
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true,
             });
 
@@ -237,7 +237,7 @@ namespace minEngine
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true,
             });
         if(!result.ok)

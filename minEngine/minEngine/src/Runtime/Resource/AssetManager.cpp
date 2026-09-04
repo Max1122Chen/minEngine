@@ -329,7 +329,7 @@ namespace minEngine
 
         const Serialization::SerializerOptions metaSerializerOptions{
             .enumAsString = true,
-            .strictTypeCheck = true,
+            .strictTypeCheck = false,
             .skipUnknownField = true};
 
         auto loadMetaFromFile = [&](AssetMeta& outMeta) -> bool
@@ -580,7 +580,7 @@ namespace minEngine
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true});
 
         if (!result.ok)
@@ -1121,7 +1121,7 @@ namespace minEngine
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = false});
 
         if (!result.ok)
@@ -1148,7 +1148,7 @@ namespace minEngine
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = false});
 
         if (!result.ok)
@@ -1237,7 +1237,7 @@ namespace minEngine
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
-                    .strictTypeCheck = true,
+                    .strictTypeCheck = false,
                     .skipUnknownField = false});
 
             if (!result.ok)
@@ -1267,7 +1267,7 @@ namespace minEngine
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
-                    .strictTypeCheck = true,
+                    .strictTypeCheck = false,
                     .skipUnknownField = false});
 
             if (!result.ok)

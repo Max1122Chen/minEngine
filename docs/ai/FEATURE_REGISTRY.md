@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-04（CORE-F09 Binary v2 Done）
+Last updated: 2026-09-04（CORE-F10 JSON disk compat Done）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -34,7 +34,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F07` | 反射/Inspector 展示名（去 `m_`/`x_`/`b_` 前缀 + 驼峰分词） | **Done** | — | [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** |
 | `CORE-F08` | 序列化系统整理（StaticClass API、删死代码、P1 内部整理；不改 Binary wire；TD-026 Deferred） | **Done** | — | [Design](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_IMPLEMENTATION.md) · **`feat/core`** |
 | `CORE-F09` | Binary wire 协议 v2（Transient Ids；TD-028/029；Persistent 契约） | **Done** | — | [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_IMPLEMENTATION.md) · **`feat/core`** · Transient only；存盘 Binary 未做 |
-| `CORE-F10` | JSON 存盘兼容（宽松未知字段 + `$schemaVersion` meta） | **Planned** | — | [Placeholder](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md) · 对齐 F09 Persistent 容错 · **`feat/core`** |
+| `CORE-F10` | JSON 存盘兼容（宽松未知字段 + `$schemaVersion` meta） | **Done** | — | [Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_IMPLEMENTATION.md) · **`feat/core`** |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -75,7 +75,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | F04 | |
 | `WF` | F03 | |
-| `CORE` | **F11** | F08 Done；F09/F10 Planned（`feat/core` 序列化轨）；F05–F07 Done |
+| `CORE` | **F11** | F08–F10 Done（`feat/core` 序列化轨）；F05–F07 Done |
 | `ASSET` | F01 | Async / Lifetime 愿景见 Capability Roadmap；尚未登记 Feature |
 | `ED` | **F05** | F02 In Progress（S00–S02/S04 Done）；F03 Done；F04 Console In Progress (MVP) |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |

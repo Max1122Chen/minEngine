@@ -6,6 +6,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Scene/SceneCloneContext.h"
 #include "Runtime/Resource/AssetManager.h"
 
@@ -309,6 +310,14 @@ namespace minEngine::Serialization
         if (!serializeResult.ok)
         {
             return serializeResult;
+        }
+
+        if (options.writeSchemaVersion)
+        {
+            if (auto* jsonWriter = dynamic_cast<JsonWriterArchive*>(&archive))
+            {
+                jsonWriter->ApplyRootSchemaVersion(options.schemaVersion);
+            }
         }
 
         if (!archive.WriteToFile(filePath))
@@ -763,6 +772,15 @@ namespace minEngine::Serialization
 
             if (!codec->read(archive, outValuePtr))
             {
+                if (!options.strictTypeCheck)
+                {
+                    ME_CORE_WARN(
+                        "Deserialize primitive skipped (type mismatch / codec fail). path='{}', type='{}'",
+                        path,
+                        primitive->primitiveTypeName);
+                    return SerializeResult::Success();
+                }
+
                 return SerializeResult::Failure("Deserialize primitive failed: codec read returned false.", path);
             }
 
@@ -1319,6 +1337,7 @@ namespace minEngine::Serialization
     {
         SerializerOptions binaryOptions = options;
         binaryOptions.skipUnknownField = false;
+        binaryOptions.strictTypeCheck = true;
 
         BinaryWriterArchive writer;
         SerializeResult result = SerializeProperty(ownerObject, ownerClass, propertyName, writer, binaryOptions);
@@ -1340,6 +1359,7 @@ namespace minEngine::Serialization
     {
         SerializerOptions binaryOptions = options;
         binaryOptions.skipUnknownField = false;
+        binaryOptions.strictTypeCheck = true;
 
         BinaryReaderArchive reader(buffer);
         return DeserializeProperty(ownerObject, ownerClass, propertyName, reader, outUnresolvedRefs, binaryOptions);
@@ -1409,6 +1429,7 @@ namespace minEngine::Serialization
     {
         SerializerOptions binaryOptions = options;
         binaryOptions.skipUnknownField = false;
+        binaryOptions.strictTypeCheck = true;
 
         BinaryWriterArchive writer;
         SerializeResult result = Serialize(rootClass, rootObject, writer, binaryOptions);
@@ -1443,6 +1464,7 @@ namespace minEngine::Serialization
     {
         SerializerOptions binaryOptions = options;
         binaryOptions.skipUnknownField = false;
+        binaryOptions.strictTypeCheck = true;
 
         BinaryReaderArchive reader(buffer);
         return Deserialize(rootClass, outRootObject, reader, outUnresolvedRefs, binaryOptions);
@@ -1473,6 +1495,11 @@ namespace minEngine::Serialization
         if (!result.ok)
         {
             return result;
+        }
+
+        if (options.writeSchemaVersion)
+        {
+            writer.ApplyRootSchemaVersion(options.schemaVersion);
         }
 
         outRoot = std::move(writer.MoveRoot());

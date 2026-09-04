@@ -1,11 +1,17 @@
 #include "JsonArchive.h"
 #include "Reflection/MEClass.h"
 #include "Reflection/Reflection.h"
+#include "Runtime/Core/Log/LogSystem.h"
 
 #include <fstream>
 
 namespace minEngine::Serialization
 {
+    namespace
+    {
+        constexpr const char* kSchemaVersionKey = "$schemaVersion";
+    }
+
     Json* JsonWriterArchive::AttachValue(Json&& value)
     {
         if (!m_HasRoot)
@@ -41,6 +47,17 @@ namespace minEngine::Serialization
 
         context.node->push_back(std::move(value));
         return &(context.node->back());
+    }
+
+    void JsonWriterArchive::ApplyRootSchemaVersion(uint32_t schemaVersion)
+    {
+        if (!m_HasRoot || !m_Root.is_object() || m_SchemaVersionApplied)
+        {
+            return;
+        }
+
+        m_Root[kSchemaVersionKey] = schemaVersion;
+        m_SchemaVersionApplied = true;
     }
 
     bool JsonWriterArchive::BeginObject(const std::string& typeName)
@@ -231,7 +248,62 @@ namespace minEngine::Serialization
         m_Root = &root;
         m_ContextStack.clear();
         m_ValueStack.clear();
+        m_ObjectConsumedKeys.clear();
         m_LastArchiveError.clear();
+        ParseRootSchemaVersion(root);
+    }
+
+    bool JsonReaderArchive::IsKnownMetaKey(const std::string& key)
+    {
+        return key == "$typeName" || key == "$ptr_typeName" || key == "$guid" || key == kSchemaVersionKey;
+    }
+
+    void JsonReaderArchive::ParseRootSchemaVersion(const Json& root)
+    {
+        m_ReadSchemaVersion = 0;
+        if (!root.is_object() || !root.contains(kSchemaVersionKey))
+        {
+            return;
+        }
+
+        const Json& versionNode = root[kSchemaVersionKey];
+        if (versionNode.is_number_unsigned() || versionNode.is_number_integer())
+        {
+            m_ReadSchemaVersion = versionNode.get<uint32_t>();
+            return;
+        }
+
+        ME_CORE_WARN("JsonReaderArchive: invalid $schemaVersion type; treating as 0");
+    }
+
+    void JsonReaderArchive::PushObjectContext(const Json* object)
+    {
+        m_ContextStack.push_back(object);
+        m_ObjectConsumedKeys.emplace_back();
+    }
+
+    void JsonReaderArchive::WarnUnreadObjectKeys(const Json& object,
+                                                 const std::unordered_set<std::string>& consumedKeys) const
+    {
+        for (auto it = object.begin(); it != object.end(); ++it)
+        {
+            const std::string& key = it.key();
+            if (consumedKeys.find(key) != consumedKeys.end())
+            {
+                continue;
+            }
+            if (IsKnownMetaKey(key))
+            {
+                continue;
+            }
+            if (!key.empty() && key[0] == '$')
+            {
+                ME_CORE_WARN("Json deserialize: unrecognized meta key '{}' skipped", key);
+                continue;
+            }
+
+            ME_CORE_WARN("Json deserialize: unknown field '{}' skipped", key);
+        }
     }
 
     const Json* JsonReaderArchive::CurrentValue() const
@@ -269,7 +341,7 @@ namespace minEngine::Serialization
             }
         }
 
-        m_ContextStack.push_back(value);
+        PushObjectContext(value);
         return true;
     }
 
@@ -290,17 +362,19 @@ namespace minEngine::Serialization
             return false;
         }
 
-        m_ContextStack.push_back(value);
+        PushObjectContext(value);
         return true;
     }
 
     bool JsonReaderArchive::EndObject()
     {
-        if (m_ContextStack.empty() || !m_ContextStack.back()->is_object())
+        if (m_ContextStack.empty() || !m_ContextStack.back()->is_object() || m_ObjectConsumedKeys.empty())
         {
             return false;
         }
 
+        WarnUnreadObjectKeys(*m_ContextStack.back(), m_ObjectConsumedKeys.back());
+        m_ObjectConsumedKeys.pop_back();
         m_ContextStack.pop_back();
         return true;
     }
@@ -329,7 +403,7 @@ namespace minEngine::Serialization
 
         outClassName = typeName;
 
-        m_ContextStack.push_back(value);
+        PushObjectContext(value);
         return true;
     }
 
@@ -368,7 +442,7 @@ namespace minEngine::Serialization
         outGuid.High = highNode.get<uint64_t>();
         outGuid.Low = lowNode.get<uint64_t>();
 
-        m_ContextStack.push_back(value);
+        PushObjectContext(value);
         return true;
     }
 
@@ -389,6 +463,11 @@ namespace minEngine::Serialization
         if (iter == object.end())
         {
             return false;
+        }
+
+        if (!m_ObjectConsumedKeys.empty())
+        {
+            m_ObjectConsumedKeys.back().insert(fieldName);
         }
 
         m_ValueStack.push_back(&(*iter));
@@ -528,6 +607,8 @@ namespace minEngine::Serialization
     {
         m_ContextStack.clear();
         m_ValueStack.clear();
+        m_ObjectConsumedKeys.clear();
+        m_ReadSchemaVersion = 0;
         m_LastArchiveError.clear();
     }
 
@@ -553,6 +634,7 @@ namespace minEngine::Serialization
         }
 
         m_Root = &m_OwnedRoot;
+        ParseRootSchemaVersion(m_OwnedRoot);
         return true;
     }
 }

@@ -215,7 +215,7 @@ namespace minEngine
             reader,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true,
                 .writeObjectTypeName = false,
             });

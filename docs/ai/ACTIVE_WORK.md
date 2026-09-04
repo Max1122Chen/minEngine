@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-04（CORE-F09 Binary Transient v2 Done）
+Last updated: 2026-09-04（CORE-F10 JSON disk compat Done；`minEngine-gameplay` worktree 已初始化）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -48,11 +48,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|------|
 | **CORE-F08** | StaticClass API + 删死代码 + P1 — **Done** |
 | **CORE-F09** | Binary Transient v2 — **Done**（关 TD-028/029；PIE Binary） |
-| **CORE-F10** | JSON 存盘宽松 + `$schemaVersion` — **Planned** 占位 |
+| **CORE-F10** | JSON 存盘宽松 + `$schemaVersion` — **Done** |
 | **TD-026** | 延后至反射 Setter/Getter 统一验证 |
 | GC / Lifetime | 刻意延后 |
 
-[CORE-F09 Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [CORE-F10 Placeholder](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
+[CORE-F09 Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [CORE-F10 Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
 
 ### 可并行（不升主线）
 
@@ -69,6 +69,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 项 | 状态 |
 |----|------|
+| **CORE-F10** | Done on `feat/core` — JSON 盘路径宽松 + `$schemaVersion` |
 | **CORE-F09** | Done on `feat/core` — Binary v2；PIE Binary；TD-028/029 Done |
 | **CORE-F08** | Done on `feat/core` — StaticClass Serializer API；死代码清理 |
 | **CORE-F05** Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred；TD-030 Open |
@@ -90,9 +91,10 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | `master` | 主开发 |
+| `D:/Dev/GitRepo/minEngine` | `master` | 主开发（当前常 checkout `feat/core`） |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | Primary — Animation |
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | Primary 后续 — UI（依赖 `RND-F16`） |
+| `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | Future — Gameplay Framework（插件化） |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-physics` / `-audio` / `-launcher` / `-asset-workflow` | 历史轨 | 按需保留或删除 |
 
@@ -100,8 +102,8 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 
 ### Placeholder branches（无 worktree）
 
-`feat/asset-pipeline` · `feat/gameplay-framework` · `feat/network` · `feat/ai` — 仅占位。  
-**`feat/core`** — 已自 `master` 初始化；序列化轨 **CORE-F08/F09**（主仓 checkout，可选 `minEngine-core` worktree）。
+`feat/asset-pipeline` · `feat/network` · `feat/ai` — 仅占位。  
+**`feat/core`** — 已自 `master` 初始化；序列化轨 **CORE-F08–F10**（主仓 checkout，可选 `minEngine-core` worktree）。
 
 ---
 

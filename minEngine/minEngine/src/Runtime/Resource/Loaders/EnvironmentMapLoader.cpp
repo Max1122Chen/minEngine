@@ -26,8 +26,8 @@ namespace minEngine
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
-                .skipUnknownField = false,
+                .strictTypeCheck = false,
+                .skipUnknownField = true,
             });
         if (!deserializeResult.ok)
         {

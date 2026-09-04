@@ -5,7 +5,7 @@ Status: **S1–S2 已实现；S3 设计已定（E1.4 Snapshot）**；内存 Bina
 父文档：[Platform 路线图](../PLATFORM_ROADMAP.md)  
 关联：[Editor Command / Undo](../../Editor/EDITOR_COMMAND_HISTORY.md)（E1.3+ 依赖本能力）、`Runtime/Core/Serialization/`
 
-> **Agent：** 内存 Binary 协议以 **CORE-F09（v2，Done）** 为准。本文件 §5–§6 描述的是 **v1 历史**（含已关闭的 TD-028）。JSON 存盘宽松策略以 **CORE-F10** 为准。
+> **Agent：** 内存 Binary 协议以 **CORE-F09（v2，Done）** 为准。JSON 存盘宽松以 **CORE-F10（Done）** 为准。本文件 §5–§6 描述的是 **v1 历史**（含已关闭的 TD-028）。
 
 ---
 

@@ -5,6 +5,7 @@
 #include "Runtime/Core/Reflection/Reflection.h"
 
 #include "BinaryArchive.h"
+#include "JsonArchive.h"
 #include "Serializer.h"
 #include "Runtime/Core/GUID/GUID.h"
 
@@ -883,13 +884,120 @@ namespace minEngine
             return true;
         }
 
+        bool TestJsonSchemaVersionAndUnknownFieldCompat()
+        {
+            SerializationArchiveTestScope scope;
+
+            const GUID sourceGuid(0x1111222233334444ull, 0x5555666677778888ull);
+            std::shared_ptr<GameObject> sourceObject = NewObject<GameObject>("JsonCompatGO", nullptr, sourceGuid);
+
+            Json root;
+            const Serialization::SerializeResult writeResult = Serialization::Serializer::SerializeObjectToJson(
+                sourceObject.get(),
+                root,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = false,
+                    .skipUnknownField = true,
+                    .writeSchemaVersion = true,
+                    .schemaVersion = 1u,
+                });
+            if (!writeResult.ok || !root.is_object() || !root.contains("$schemaVersion"))
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: JSON schemaVersion write failed.");
+                return false;
+            }
+            if (root["$schemaVersion"].get<uint32_t>() != 1u)
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: unexpected $schemaVersion value.");
+                return false;
+            }
+
+            root["m_FutureOptionalField"] = 42;
+            root["$unknownMeta"] = "x";
+
+            std::shared_ptr<GameObject> restoredObject = NewObject<GameObject>("JsonCompatRestoredGO");
+            std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+            Serialization::JsonReaderArchive reader(root);
+            if (reader.GetReadSchemaVersion() != 1u)
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: GetReadSchemaVersion mismatch.");
+                return false;
+            }
+
+            const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializeObjectFromJson(
+                restoredObject.get(),
+                root,
+                unresolvedRefs,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = false,
+                    .skipUnknownField = true,
+                });
+            if (!readResult.ok)
+            {
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: JSON unknown-field load failed: {} ({})",
+                    readResult.message,
+                    readResult.fieldPath);
+                return false;
+            }
+
+            if (restoredObject->GetGuid() != sourceGuid)
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: JSON compat GUID mismatch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestJsonMissingFieldKeepsDefault()
+        {
+            SerializationArchiveTestScope scope;
+
+            // Minimal object JSON without m_Name / m_Guid — should load with defaults under loose options.
+            const Json root = Json::object();
+
+            std::shared_ptr<GameObject> restoredObject = NewObject<GameObject>("JsonMissingFieldsGO");
+            const std::string nameBefore = restoredObject->GetName();
+            std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+            const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializeObjectFromJson(
+                restoredObject.get(),
+                root,
+                unresolvedRefs,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = false,
+                    .skipUnknownField = true,
+                    .writeSchemaVersion = false,
+                });
+            if (!readResult.ok)
+            {
+                ME_CORE_ERROR(
+                    "SerializationArchiveTest: JSON missing-field load failed: {} ({})",
+                    readResult.message,
+                    readResult.fieldPath);
+                return false;
+            }
+
+            if (restoredObject->GetName() != nameBefore)
+            {
+                ME_CORE_ERROR("SerializationArchiveTest: missing field should keep default name.");
+                return false;
+            }
+
+            return true;
+        }
+
         bool RunSerializationArchiveSmokeTestsImpl()
         {
             return TestStaticMeshComponentSerializeRoundTrip() && TestTransformSerializeRoundTrip()
                    && TestUint8EnumPropertyRoundTrip() && TestGameObjectSerializeObjectToBufferRoundTrip()
                    && TestGameObjectWithComponentsSerializeRoundTrip()
                    && TestNestedGuidObjectFieldRoundTrip() && TestGuidRefObjectFieldRoundTrip()
-                   && TestArrayOfInlineObjectPtrFieldRoundTrip();
+                   && TestArrayOfInlineObjectPtrFieldRoundTrip()
+                   && TestJsonSchemaVersionAndUnknownFieldCompat() && TestJsonMissingFieldKeepsDefault();
         }
 
         bool RunSerializationArchivePrimitiveTestsImpl()
