@@ -73,6 +73,15 @@ namespace minEngine
                                     uint64_t gameObjectId,
                                     const std::string& newName);
 
+        /** Sentinel: not a real GO id — means scene root / Detach. Never use 0 (GO ids start at 0). */
+        static constexpr uint64_t kSceneRootParentId = std::numeric_limits<uint64_t>::max();
+
+        /** newParentId == kSceneRootParentId means Detach. KeepWorldTransform (current Attach path). */
+        bool ApplyReparentGameObject(uint64_t gameObjectId, uint64_t newParentId);
+        void SubmitReparentGameObject(IEditorContext& context,
+                                      uint64_t gameObjectId,
+                                      uint64_t newParentId);
+
         void ApplyGameObjectTransform(uint64_t gameObjectId, const Transform& transform);
         void SubmitGameObjectTransform(IEditorContext& context,
                                        uint64_t gameObjectId,

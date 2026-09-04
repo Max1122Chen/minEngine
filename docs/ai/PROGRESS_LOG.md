@@ -1,6 +1,22 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-04（CORE-F08 MVP Review）
+Last updated: 2026-09-05（ED-F05 根哨兵 + CORE-F09 Draft）
+
+### 2026-09-05 - ED-F05：根父哨兵修复 + CORE-F09 草拟
+- **Fix:** `SceneEditor::kSceneRootParentId`（`uint64_t` max）表示 Detach；不再用 `0`（与 GO id=0 冲突）。
+- **Docs:** ED-F05 契约更新；登记 **CORE-F09** Draft（GO/SC 平行层级 + KeepWorld，不在本 Feature 修补）。
+- **Verify:** 待 Editor 目视：拖到 id=0 的 GO 应成为其子；空白 Detach 仍可用。
+- **Next:** ED-F05 联合验收收尾 → 准备 commit → 开 CORE-F09 设计。
+
+### 2026-09-05 - ED-F05：Sticky 拖拽会话重构
+- **Docs:** Design §3.2/§4 — `DraggedGoId` + Sticky `TargetParentId` + Grace；弃用 ImGui `IsDelivery()` 唯一提交。
+- **Code:** `HierarchyWindow` 会话态命中/高亮/松手 commit；蓝框高亮保留。
+- **Build:** Editor Debug 通过。
+- **Next:** 目视改父/Undo/空白 Detach；通过后与 CORE-F08 联合验收。
+### 2026-09-05 - ED-F05 S00+S01：Hierarchy 树 + 拖拽改父
+- **Code:** HierarchyWindow TreeNode 递归；源节点保留 + ghost overlay；空白区 Detach；ReparentGameObjectCommand + KeepWorld。
+- **Build:** Editor Debug 通过。
+- **Next:** 维护者目视（改父/Undo/拒环）；通过后与 CORE-F08 联合验收 → Done。
 
 ### 2026-09-04 - CORE-F08 MVP 落地（父指针 GUID）
 - 弃整型 ParentId；ME_PROPERTY GameObject* m_Parent，加载后 Resolve 重建 Children + Root 附着（方案 A）。

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-04（CORE-F08 收尾；下一刀 ED-F05）
+Last updated: 2026-09-05（ED-F05 收尾中；下一运行时刀 CORE-F09）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -90,8 +90,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 内容 | 状态 |
 |----|------|------|
-| **CORE-F08** | GameObject 父子 | **Review**（待 ED-F05 联合验收）— [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md)；下一刀 **ED-F05** |
-| **ED-F05** | Hierarchy 树 + 拖拽改父 | **Draft** — [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) |
+| **CORE-F08** | GameObject 父子 | **Review**（待 ED-F05 联合验收）— [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md)；等 ED-F05 目视后联合验收 |
+| **ED-F05** | Hierarchy 树 + 拖拽改父 | **In Progress** — Sticky DnD + `kSceneRootParentId`；待目视/联合验收后 Done |
+| **CORE-F09** | GO/SC 平行层级 + KeepWorld | **Draft** — [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md)；ED-F05 后开设计 |
 | **UI-F01** | Canvas + Layout + Image | **Draft / Blocked** — [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) |
 | **RND-F16** | 2D Foundation Path A/B | Path A/B **Done**（目视通过） |
 
