@@ -25,10 +25,11 @@ namespace minEngine::PhysicsDebugDraw
 
         Matrix4 BuildColliderWorldTransform(const SceneComponent& rootComponent)
         {
-            const Transform& transform = rootComponent.GetTransform();
-            Matrix4 worldTransform = glm::translate(glm::mat4(1.0f), transform.Position);
-            worldTransform *= glm::mat4_cast(transform.Rotation.ToGlm());
-            return worldTransform;
+            // Collider debug draw uses world pose; scale comes from collider extents, not GO scale.
+            const Transform worldTransform = rootComponent.GetWorldTransform();
+            Matrix4 worldMatrix = glm::translate(glm::mat4(1.0f), worldTransform.Position);
+            worldMatrix *= glm::mat4_cast(worldTransform.Rotation.ToGlm());
+            return worldMatrix;
         }
 
         Vector4 GetColorForChannel(const ECollisionChannel channel)

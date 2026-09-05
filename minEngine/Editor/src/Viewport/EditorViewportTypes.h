@@ -43,6 +43,9 @@ namespace minEngine
         bool Using = false;
         bool Hovering = false;
         bool Manipulated = false;
+        /** When true, ResultWorldMatrix is the ImGuizmo-updated world matrix to apply. */
+        bool HasResultWorldMatrix = false;
+        Matrix4 ResultWorldMatrix{1.0f};
         struct DeltaTransform
         {
             Vector3 PositionDelta;

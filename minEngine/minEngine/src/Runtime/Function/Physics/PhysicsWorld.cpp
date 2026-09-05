@@ -73,9 +73,9 @@ namespace minEngine
             const SceneComponent& rootComponent,
             ETeleportType teleportType)
         {
-            const Vector3 enginePosition = rootComponent.GetPosition();
-            const Vector3 joltPosition = PhysicsConversion::ToJoltPosition(enginePosition);
-            const Quaternion joltRotation = PhysicsConversion::ToJoltQuaternion(rootComponent.GetRotation());
+            const Transform worldTransform = rootComponent.GetWorldTransform();
+            const Vector3 joltPosition = PhysicsConversion::ToJoltPosition(worldTransform.Position);
+            const Quaternion joltRotation = PhysicsConversion::ToJoltQuaternion(worldTransform.Rotation);
 
             bodyInterface.SetPositionAndRotation(
                 bodyId,
@@ -755,9 +755,9 @@ namespace minEngine
             return;
         }
 
-        const Vector3 enginePosition = rootComponent->GetPosition();
-        const Vector3 joltPosition = PhysicsConversion::ToJoltPosition(enginePosition);
-        const Quaternion joltRotation = PhysicsConversion::ToJoltQuaternion(rootComponent->GetRotation());
+        const Transform worldTransform = rootComponent->GetWorldTransform();
+        const Vector3 joltPosition = PhysicsConversion::ToJoltPosition(worldTransform.Position);
+        const Quaternion joltRotation = PhysicsConversion::ToJoltQuaternion(worldTransform.Rotation);
         const ECollisionChannel objectChannel = colliderComponent->GetObjectChannel();
 
         JPH::BodyCreationSettings bodySettings(
@@ -1011,10 +1011,11 @@ namespace minEngine
                 joltRotation.GetZ());
             const Quaternion engineRotation = PhysicsConversion::FromJoltQuaternion(joltRotationQuat);
 
-            Transform simulationTransform = rootComponent->GetTransform();
-            simulationTransform.Position = enginePosition;
-            simulationTransform.SetRotation(engineRotation);
-            rootComponent->SetTransformFromSimulation(simulationTransform);
+            Transform simulationWorldTransform;
+            simulationWorldTransform.Position = enginePosition;
+            simulationWorldTransform.SetRotation(engineRotation);
+            simulationWorldTransform.Scale = rootComponent->GetWorldTransform().Scale;
+            rootComponent->SetWorldTransformFromSimulation(simulationWorldTransform);
         }
     }
 }

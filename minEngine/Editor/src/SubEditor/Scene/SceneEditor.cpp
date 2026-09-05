@@ -763,6 +763,8 @@ namespace minEngine
         if (newGO)
         {
             newGO->Rename("GameObject");
+            // CORE-F09: GO parenting requires a Root SceneComponent.
+            newGO->AddComponent<SceneComponent>();
             MarkSceneDirty();
             SelectGameObject(newGO->GetID());
             ME_CORE_INFO("Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());

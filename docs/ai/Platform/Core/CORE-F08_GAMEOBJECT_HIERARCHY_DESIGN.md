@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `CORE-F08`
 - **Type:** Feature
-- **Status:** Review — 待 ED-F05 联合验收
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-04
+- **Last updated:** 2026-09-05
 - **Branch:** `feat/ui`
 - **Related:**
   - [UI-F01](../UI/UI-F01_UI_SYSTEM_DESIGN.md)
@@ -116,16 +116,16 @@ PIE：`FinalizePIEScene` 同样调用 `ResolveGameObjectHierarchy`。
 - [x] suite `gameobject-hierarchy`
 
 ### 联合验收（ED-F05）
-- [ ] Hierarchy 树形显示父子
-- [ ] 拖拽改父调用 CORE-F08 API；场景 dirty / 可存盘
+- [x] Hierarchy 树形显示父子
+- [x] 拖拽改父调用 CORE-F08 API；场景 dirty / 可存盘
 
 ## 5) Status note
 
 | 字段 | 内容 |
 |------|------|
-| Status | **Review — 待 ED-F05 联合验收** |
-| Next | 实现 ED-F05；联合验收后 CORE-F08 → Done |
-| Unblocks | UI-F01（运行时）；编辑体验等 ED-F05 |
+| Status | **Done** |
+| Next | —（变换语义见 CORE-F09） |
+| Unblocks | UI-F01 |
 
 ## 变更记录
 
@@ -135,3 +135,4 @@ PIE：`FinalizePIEScene` 同样调用 `ResolveGameObjectHierarchy`。
 | 2026-09-04 | Planned：方案 A；级联删除；Inactive Deferred |
 | 2026-09-04 | **改序列化：** 弃 `m_ParentId`；`ME_PROPERTY m_Parent` + GUID |
 | 2026-09-04 | **实现 + 单测**；Status=Review，待 ED-F05 联合验收 |
+| 2026-09-05 | 与 ED-F05 / CORE-F09 联合验收；Status→**Done** |

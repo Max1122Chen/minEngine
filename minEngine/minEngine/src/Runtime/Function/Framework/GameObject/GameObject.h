@@ -31,6 +31,8 @@ namespace minEngine
 
         Transform GetTransform();
         void SetTransform(const Transform& inTransform);
+        Transform GetWorldTransform() const;
+        void SetWorldTransform(const Transform& worldTransform);
 
         ME_FUNCTION(ScriptCallable)
         Vector3 GetPosition();
@@ -54,7 +56,8 @@ namespace minEngine
 
     
         SceneComponent* GetRootComponent() const { return m_RootComponent; }
-        void SetRootComponent(SceneComponent* rootComponent) { m_RootComponent = rootComponent; }
+        /** CORE-F09: swapping Root rebinds GO-parent Root↔Root (KeepWorld) or dissolves edges. */
+        void SetRootComponent(SceneComponent* rootComponent);
         std::vector<std::shared_ptr<Component>>& GetAllComponents() { return m_Components; }
 
         // just a simple implementation for demo purposes
@@ -85,7 +88,10 @@ namespace minEngine
 
         void InsertRestoredComponent(std::shared_ptr<Component> component, size_t index);
 
-        /** CORE-F08: attach this GO under parent (scheme A: root SceneComponents). */
+        /**
+         * CORE-F09: GO parent means child Root attaches under parent Root.
+         * Both GOs must have a Root SceneComponent; otherwise returns false.
+         */
         bool AttachToParent(GameObject* parent, AttachmentTransformRules rules);
         void DetachFromParent(AttachmentTransformRules rules);
         GameObject* GetParent() const { return m_Parent; }
@@ -98,7 +104,8 @@ namespace minEngine
         void AddComponent_Internal(std::shared_ptr<Component> newComponent);
         bool WouldCreateHierarchyCycle(const GameObject* candidateParent) const;
         void UnlinkFromCurrentParent();
-        void EnsureRootAttachedToParent(AttachmentTransformRules rules);
+        void RebindRootToGameObjectParent(AttachmentTransformRules rules);
+        void RebindChildGameObjectRoots(AttachmentTransformRules rules);
 
     private:
         /** Runtime scene-local lookup id; not used for hierarchy serialization. */

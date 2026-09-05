@@ -48,13 +48,8 @@ namespace minEngine
             // Update existing scene proxy
             // Simply update the transform for now. TODO: update other data if needed // P.S. we should not get transform from owner GameObject here. This is just a temporary design.
             PrimitiveSceneProxy* proxy = primitiveComponent->GetSceneProxy();
-            GameObject* owner = primitiveComponent->GetOwner();
-            if (owner == nullptr)
-            {
-                return;
-            }
-
-            proxy->m_Transform = owner->GetTransform();
+            // Proxy model matrix is world-space. SceneComponent::GetTransform() is local-to-attach-parent.
+            proxy->m_Transform = primitiveComponent->GetWorldTransform();
             proxy->m_CastShadow = primitiveComponent->CastShadow();
             StaticMeshComponent* staticMeshComp = dynamic_cast<StaticMeshComponent*>(primitiveComponent);
             if (staticMeshComp)
@@ -159,7 +154,7 @@ namespace minEngine
             // Update existing scene proxy
             // Keep the scene proxy in sync when light properties are changed.
             LightSceneProxy* sceneProxy = lightComponent->GetSceneProxy();
-            sceneProxy->m_Position = lightComponent->GetPosition();
+            sceneProxy->m_Position = lightComponent->GetWorldPosition();
             sceneProxy->m_LightColor = lightComponent->GetLightColor();
             sceneProxy->m_Intensity = lightComponent->GetIntensity();
             sceneProxy->m_DiffuseFactor = lightComponent->GetDiffuseFactor();
@@ -263,7 +258,7 @@ namespace minEngine
         else
         {
             SkyBoxSceneProxy* proxy = skyBoxComponent->GetSceneProxy();
-            proxy->m_Transform = skyBoxComponent->GetTransform();
+            proxy->m_Transform = skyBoxComponent->GetWorldTransform();
             proxy->m_SkyIntensity = skyBoxComponent->GetSkyIntensity();
             proxy->m_Enabled = skyBoxComponent->IsActive();
             proxy->m_EnvironmentMap = skyBoxComponent->GetEnvironmentMapShared();

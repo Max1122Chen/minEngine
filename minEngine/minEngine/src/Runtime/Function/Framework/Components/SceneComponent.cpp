@@ -34,11 +34,50 @@ namespace minEngine
         MarkForNeededEndOfFrameUpdate();
     }
 
-    void SceneComponent::ApplyEditorTransformEdit(ETeleportType teleport)
+    void SceneComponent::NotifyLocalTransformChanged(ETeleportType teleport)
     {
         m_bTransformDirty = true;
         m_PendingTeleportType = teleport;
         MarkRenderStateDirty();
+
+        for (SceneComponent* child : m_AttachChildren)
+        {
+            if (child != nullptr)
+            {
+                child->NotifyLocalTransformChanged(teleport);
+            }
+        }
+    }
+
+    Transform SceneComponent::GetWorldTransform() const
+    {
+        if (m_AttachParent == nullptr)
+        {
+            return m_Transform;
+        }
+
+        return DecomposeMatrixToTransform(GetWorldMatrix());
+    }
+
+    Transform SceneComponent::MakeTransformFromMatrix(const Matrix4& matrix)
+    {
+        return DecomposeMatrixToTransform(matrix);
+    }
+
+    Transform SceneComponent::ConvertWorldTransformToLocal(const Transform& worldTransform) const
+    {
+        if (m_AttachParent == nullptr)
+        {
+            return worldTransform;
+        }
+
+        const Matrix4 parentWorldMatrix = m_AttachParent->GetWorldMatrix();
+        return DecomposeMatrixToTransform(glm::inverse(parentWorldMatrix) * worldTransform.ToMatrix());
+    }
+
+    void SceneComponent::ApplyEditorTransformEdit(ETeleportType teleport)
+    {
+        NotifyLocalTransformChanged(teleport);
     }
 
     void SceneComponent::ClearTransformDirty()
@@ -56,6 +95,18 @@ namespace minEngine
 
         m_Transform = inTransform;
         MarkRenderStateDirty();
+        for (SceneComponent* child : m_AttachChildren)
+        {
+            if (child != nullptr)
+            {
+                child->NotifyLocalTransformChanged(ETeleportType::TeleportPhysics);
+            }
+        }
+    }
+
+    void SceneComponent::SetWorldTransformFromSimulation(const Transform& worldTransform)
+    {
+        SetTransformFromSimulation(ConvertWorldTransformToLocal(worldTransform));
     }
 
     void SceneComponent::SetTransform(const Transform& inTransform)
@@ -71,11 +122,19 @@ namespace minEngine
         }
 
         m_Transform = inTransform;
-
-        m_bTransformDirty = true;
-        m_PendingTeleportType = teleport;
-        MarkRenderStateDirty();
+        NotifyLocalTransformChanged(teleport);
     }
+
+    void SceneComponent::SetWorldTransform(const Transform& worldTransform)
+    {
+        SetWorldTransform(worldTransform, ETeleportType::ResetPhysics);
+    }
+
+    void SceneComponent::SetWorldTransform(const Transform& worldTransform, ETeleportType teleport)
+    {
+        SetTransform(ConvertWorldTransformToLocal(worldTransform), teleport);
+    }
+
     void SceneComponent::SetPosition(const Vector3& position)
     {
         SetPosition(position, ETeleportType::ResetPhysics);
@@ -89,10 +148,7 @@ namespace minEngine
         }
 
         m_Transform.Position = position;
-
-        m_bTransformDirty = true;
-        m_PendingTeleportType = teleport;
-        MarkRenderStateDirty();
+        NotifyLocalTransformChanged(teleport);
     }
     void SceneComponent::Translate(const Vector3& delta)
     {
@@ -114,10 +170,7 @@ namespace minEngine
         }
 
         m_Transform.SetRotation(rotation);
-
-        m_bTransformDirty = true;
-        m_PendingTeleportType = teleport;
-        MarkRenderStateDirty();
+        NotifyLocalTransformChanged(teleport);
     }
     void SceneComponent::SetRotationEulerDegrees(const Vector3& rotationEulerDegrees)
     {
@@ -144,10 +197,7 @@ namespace minEngine
         }
 
         m_Transform.Scale = scale;
-
-        m_bTransformDirty = true;
-        m_PendingTeleportType = teleport;
-        MarkRenderStateDirty();
+        NotifyLocalTransformChanged(teleport);
     }
     void SceneComponent::ScaleBy(const Vector3& scaleFactor)
     {
@@ -191,6 +241,11 @@ namespace minEngine
         return Vector3(worldMatrix[3]);
     }
 
+    Quaternion SceneComponent::GetWorldRotation() const
+    {
+        return GetWorldTransform().Rotation;
+    }
+
     Vector3 SceneComponent::GetWorldForwardVector() const
     {
         const Matrix4 worldMatrix = GetWorldMatrix();
@@ -224,7 +279,7 @@ namespace minEngine
             m_Transform = DecomposeMatrixToTransform(glm::inverse(parentWorldMatrix) * worldMatrixBeforeAttach);
         }
 
-        MarkRenderStateDirty();
+        NotifyLocalTransformChanged(ETeleportType::ResetPhysics);
         return true;
     }
     void SceneComponent::SetAttachParent(SceneComponent* inParent)
@@ -267,6 +322,6 @@ namespace minEngine
             m_Transform = DecomposeMatrixToTransform(worldMatrixBeforeDetach);
         }
 
-        MarkRenderStateDirty();
+        NotifyLocalTransformChanged(ETeleportType::ResetPhysics);
     }
 }

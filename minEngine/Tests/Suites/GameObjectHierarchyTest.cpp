@@ -152,3 +152,55 @@ TEST_CASE("gameobject-hierarchy: parent pointer serialize round-trip [full]")
     CHECK(loadedParent->GetChildren()[0] == loadedChild);
     CHECK(loadedChild->GetRootComponent()->GetAttachParent() == loadedParent->GetRootComponent());
 }
+
+
+TEST_CASE("gameobject-hierarchy: keep world and parent drives child [full]")
+{
+    using namespace minEngine;
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    GameObjectHierarchyTestScope scope;
+
+    const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("go-hier-xform");
+    REQUIRE(scene);
+
+    const std::shared_ptr<GameObject> parent = scene->CreateGameObject();
+    const std::shared_ptr<GameObject> child = scene->CreateGameObject();
+    parent->AddComponent<SceneComponent>();
+    child->AddComponent<SceneComponent>();
+
+    parent->GetRootComponent()->SetPosition(Vector3(10.0f, 0.0f, 0.0f));
+    child->GetRootComponent()->SetPosition(Vector3(12.0f, 0.0f, 0.0f));
+
+    REQUIRE(child->AttachToParent(parent.get(), AttachmentTransformRules::KeepWorldTransform));
+    CHECK(child->GetParent() == parent.get());
+    CHECK(child->GetRootComponent()->GetAttachParent() == parent->GetRootComponent());
+
+    const Vector3 worldAfterAttach = child->GetRootComponent()->GetWorldPosition();
+    CHECK(worldAfterAttach.x == doctest::Approx(12.0f).epsilon(0.001f));
+    CHECK(worldAfterAttach.y == doctest::Approx(0.0f).epsilon(0.001f));
+    CHECK(worldAfterAttach.z == doctest::Approx(0.0f).epsilon(0.001f));
+
+    parent->GetRootComponent()->SetPosition(Vector3(20.0f, 0.0f, 0.0f));
+    const Vector3 worldAfterParentMove = child->GetRootComponent()->GetWorldPosition();
+    CHECK(worldAfterParentMove.x == doctest::Approx(22.0f).epsilon(0.001f));
+    CHECK(worldAfterParentMove.y == doctest::Approx(0.0f).epsilon(0.001f));
+    CHECK(worldAfterParentMove.z == doctest::Approx(0.0f).epsilon(0.001f));
+}
+
+TEST_CASE("gameobject-hierarchy: attach without root fails [full]")
+{
+    using namespace minEngine;
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    GameObjectHierarchyTestScope scope;
+
+    const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("go-hier-noroot");
+    const std::shared_ptr<GameObject> parent = scene->CreateGameObject();
+    const std::shared_ptr<GameObject> child = scene->CreateGameObject();
+    parent->AddComponent<SceneComponent>();
+    // child has no SceneComponent / Root
+
+    CHECK_FALSE(child->AttachToParent(parent.get(), AttachmentTransformRules::KeepWorldTransform));
+    CHECK(child->GetParent() == nullptr);
+}

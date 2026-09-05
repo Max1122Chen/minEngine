@@ -45,7 +45,7 @@ namespace minEngine
         SceneProxy->m_PrimitiveComponent = this;
 
         assert(m_Owner);
-        SceneProxy->m_Transform = m_Owner->GetTransform();  // TODO: calculate the final world transform by combining with parent components' transforms
+        SceneProxy->m_Transform = GetWorldTransform();
         SceneProxy->m_CastShadow = CastShadow();
 
 

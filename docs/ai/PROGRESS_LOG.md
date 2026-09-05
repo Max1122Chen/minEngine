@@ -1,6 +1,34 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（ED-F05 根哨兵 + CORE-F09 Draft）
+Last updated: 2026-09-05（Hierarchy CORE-F08/F09 + ED-F05 收口 Done）
+
+### 2026-09-05 - Hierarchy 轨收口（CORE-F08 / ED-F05 / CORE-F09 → Done）
+- **验收：** Hierarchy KeepWorld 改父、父带动子、Inspector local vs 世界外观；目视通过。
+- **本 commit 范围：** CORE-F09 契约 + world Transform 同步（渲染/物理/Gizmo）；文档标 Done。
+- **Next：** UI-F01 设计推进（ACTIVE_WORK 已改焦点）。
+
+### 2026-09-05 - CORE-F09：物理 / Editor Gizmo 等 World Transform 对齐
+- **审计：** Audio 已用 `GetWorldPosition`（OK）。物理创建/推姿/回写、PhysicsDebugDraw、Gizmo/拾取 AABB 误用 local。
+- **Code：** `NotifyLocalTransformChanged`（脏标记下传到附着子，供物理+渲染）；`SetWorldTransform` / `SetWorldTransformFromSimulation`；Physics 读写 world；Gizmo 用 world 矩阵回写；拾取 AABB 用 world。
+- **Tests：** `gameobject-hierarchy` / `physics-sync` / `physics-smoke` PASS；Editor Debug 已链上。
+- **Next：** 目视挂父子后物理/Gizmo；通过后准备 commit。
+
+### 2026-09-05 - CORE-F09：Proxy 用 World Transform + 脏标记下传
+- **根因：** `RenderScene::UpdatePrimitive` / `CreateSceneProxy` 把 `GetTransform()`（local）当 model 矩阵；父变脏未 `MarkRenderStateDirty` 附着子孙。
+- **Code:** `GetWorldTransform()`；Proxy/灯光/相机/SkyBox 写 world；`MarkRenderStateDirty` 递归 `m_AttachChildren`。
+- **Tests:** `gameobject-hierarchy` 5/5 PASS；Editor Debug 已链上。
+- **Next:** 目视：挂父后 Scale 外观不变（Inspector local 可变）、移动父子跟随 → 准备 commit。
+
+### 2026-09-05 - CORE-F09：Root↔Root 契约落地
+- **Code:** `AttachToParent` 要求双 Root；`SetRootComponent` 重绑父/子 GO；无 Root 拆边；Create Empty 默认 `SceneComponent`。
+- **Tests:** `gameobject-hierarchy` 5 cases PASS（含 KeepWorld + 父带动子、无 Root 拒绝 Attach）。
+- **Build:** minEngine + minEngineTests + Editor Debug 通过。
+- **Next:** 目视 Hierarchy 改父后父动物体子跟随；通过后可标 Review/准备 commit。
+
+### 2026-09-05 - CORE-F09：Root↔Root 语义 + Transform 数据流
+- **拍板：** GO 父子 ≡ 子 Root Attach 父 Root；`m_Parent` 为投影。
+- **Docs：** Design 扩写理解/Attach 瞬间 KeepWorld·Relative/父带动子传播/换 Root 重挂；Status→Planned。
+- **Next：** Pre-flight 后 S00（不变量 + 单一写入口）。
 
 ### 2026-09-05 - ED-F05：根父哨兵修复 + CORE-F09 草拟
 - **Fix:** `SceneEditor::kSceneRootParentId`（`uint64_t` max）表示 Detach；不再用 `0`（与 GO id=0 冲突）。

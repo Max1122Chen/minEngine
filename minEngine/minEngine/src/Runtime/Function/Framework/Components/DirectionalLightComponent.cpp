@@ -5,7 +5,7 @@ namespace minEngine
 {
     Vector3 DirectionalLightComponent::GetDirection() const
     {
-        return -GetUpVector();
+        return -GetWorldUpVector();
     }
 
     LightSceneProxy *DirectionalLightComponent::CreateSceneProxy()

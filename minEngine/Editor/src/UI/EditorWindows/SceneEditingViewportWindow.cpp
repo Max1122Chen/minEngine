@@ -34,6 +34,7 @@ namespace minEngine
             gizmoState.Hovering = false;
             gizmoState.Using = false;
             gizmoState.Manipulated = false;
+            gizmoState.HasResultWorldMatrix = false;
             sceneClient.SetInputBlockedByGizmo(false);
             return;
         }
@@ -69,7 +70,7 @@ namespace minEngine
         SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
         if (GameObject* selected = sceneEditor ? sceneEditor->GetSelectedGameObject() : nullptr)
         {
-            Matrix4 model = selected->GetTransform().ToMatrix();
+            Matrix4 model = selected->GetWorldTransform().ToMatrix();
             Matrix4 deltaMatrix;
 
             ImGuizmo::OPERATION operation;
@@ -91,23 +92,15 @@ namespace minEngine
 
             gizmoState.Hovering = ImGuizmo::IsOver();
             gizmoState.Using = ImGuizmo::IsUsing();
+            gizmoState.HasResultWorldMatrix = false;
             gizmoState.Manipulated = ImGuizmo::Manipulate(
                 value_ptr(view), value_ptr(projection), operation, ImGuizmo::WORLD, value_ptr(model), value_ptr(deltaMatrix));
             client.SetInputBlockedByGizmo(gizmoState.Using || gizmoState.Hovering);
 
             if (gizmoState.Using && gizmoState.Manipulated)
             {
-                Vector3 translation = Vector3(deltaMatrix[3]);
-                Matrix3 rotMat = Matrix3(deltaMatrix);
-                rotMat[0] = glm::normalize(rotMat[0]);
-                rotMat[1] = glm::normalize(rotMat[1]);
-                rotMat[2] = glm::normalize(rotMat[2]);
-                glm::quat orientation = glm::quat_cast(deltaMatrix);
-                Vector3 scale = Vector3(
-                    glm::length(Vector3(deltaMatrix[0])),
-                    glm::length(Vector3(deltaMatrix[1])),
-                    glm::length(Vector3(deltaMatrix[2])));
-                gizmoState.Delta = { translation, orientation, scale };
+                gizmoState.HasResultWorldMatrix = true;
+                gizmoState.ResultWorldMatrix = model;
             }
         }
     }

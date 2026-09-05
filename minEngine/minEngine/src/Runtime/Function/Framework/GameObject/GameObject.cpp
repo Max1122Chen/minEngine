@@ -56,6 +56,19 @@ namespace minEngine
         }
     }
 
+    Transform GameObject::GetWorldTransform() const
+    {
+        return m_RootComponent ? m_RootComponent->GetWorldTransform() : Transform();
+    }
+
+    void GameObject::SetWorldTransform(const Transform& worldTransform)
+    {
+        if (m_RootComponent)
+        {
+            m_RootComponent->SetWorldTransform(worldTransform);
+        }
+    }
+
     Vector3 GameObject::GetPosition()
     {
         return m_RootComponent ? m_RootComponent->GetPosition() : Vector3();
@@ -205,47 +218,45 @@ namespace minEngine
                 SceneComponent* sceneComponent = static_cast<SceneComponent*>(it->get());
                 if (sceneComponent == m_RootComponent)
                 {
-                    m_RootComponent = nullptr;
-                    // Here we try to find another SceneComponent to be the new RootComponent, and reattach other SceneComponents to it
-                    // First we try to find the first child SceneComponent of the removed RootComponent to be the new RootComponent, and reattach other child SceneComponents to it
+                    // Prefer a former attach-child of the removed Root as the new Root.
                     SceneComponent* removedRoot = sceneComponent;
                     SceneComponent* newRootCandidate = nullptr;
                     for (SceneComponent* child : removedRoot->GetAttachChildren())
                     {
-                        if (child != removedRoot)
+                        if (child != nullptr && child != removedRoot)
                         {
                             newRootCandidate = child;
                             break;
                         }
                     }
-                    if(newRootCandidate)
-                    {
-                        SetRootComponent(newRootCandidate);
-                    }
-                    // If there is no child SceneComponent, we find the first SceneComponent in the components list to be the new RootComponent
-                    else
+                    if (newRootCandidate == nullptr)
                     {
                         for (auto& component : m_Components)
                         {
+                            if (component.get() == &target)
+                            {
+                                continue;
+                            }
                             if (component->GetClass() && component->IsA(SceneComponent::StaticClass()))
                             {
                                 newRootCandidate = std::static_pointer_cast<SceneComponent>(component).get();
                                 break;
                             }
                         }
-                        if(newRootCandidate)
-                        {
-                            SetRootComponent(newRootCandidate);
-                        }
                     }
-                    // Finally we reattach all other SceneComponents to the new RootComponent
-                    if(newRootCandidate)
+
+                    // Promotes Root and rebinds GO-parent / child-GO Roots (CORE-F09).
+                    SetRootComponent(newRootCandidate);
+
+                    if (newRootCandidate != nullptr)
                     {
-                        for (SceneComponent* child : removedRoot->GetAttachChildren())
+                        const std::vector<SceneComponent*> formerChildren = removedRoot->GetAttachChildren();
+                        for (SceneComponent* child : formerChildren)
                         {
-                            if (child != removedRoot && child != newRootCandidate)
+                            if (child != nullptr && child != removedRoot && child != newRootCandidate)
                             {
-                                child->AttachToComponent(newRootCandidate, AttachmentTransformRules::KeepRelativeTransform);
+                                child->AttachToComponent(
+                                    newRootCandidate, AttachmentTransformRules::KeepRelativeTransform);
                             }
                         }
                     }
@@ -350,7 +361,38 @@ namespace minEngine
         return false;
     }
 
-    void GameObject::EnsureRootAttachedToParent(AttachmentTransformRules rules)
+    void GameObject::SetRootComponent(SceneComponent* newRoot)
+    {
+        if (m_RootComponent == newRoot)
+        {
+            return;
+        }
+
+        SceneComponent* oldRoot = m_RootComponent;
+
+        // Promoting an attach-child of the old Root: detach KeepWorld first.
+        if (newRoot != nullptr && oldRoot != nullptr && newRoot->GetAttachParent() == oldRoot)
+        {
+            newRoot->DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
+        }
+
+        // Break old Root's GO-hierarchy attach under the parent Root before swap.
+        if (oldRoot != nullptr && m_Parent != nullptr)
+        {
+            SceneComponent* parentRoot = m_Parent->GetRootComponent();
+            if (parentRoot != nullptr && oldRoot->GetAttachParent() == parentRoot)
+            {
+                oldRoot->DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
+            }
+        }
+
+        m_RootComponent = newRoot;
+
+        RebindRootToGameObjectParent(AttachmentTransformRules::KeepWorldTransform);
+        RebindChildGameObjectRoots(AttachmentTransformRules::KeepWorldTransform);
+    }
+
+    void GameObject::RebindRootToGameObjectParent(AttachmentTransformRules rules)
     {
         if (m_Parent == nullptr)
         {
@@ -362,15 +404,41 @@ namespace minEngine
         if (childRoot == nullptr || parentRoot == nullptr)
         {
             ME_CORE_WARN(
-                "GameObject::EnsureRootAttachedToParent: missing root on '{}' or '{}'.",
+                "GameObject::RebindRootToGameObjectParent: missing Root on '{}' or parent '{}'; dissolving GO edge.",
                 GetName(),
                 m_Parent->GetName());
+            UnlinkFromCurrentParent();
             return;
         }
 
         if (childRoot->GetAttachParent() != parentRoot)
         {
             childRoot->AttachToComponent(parentRoot, rules);
+        }
+    }
+
+    void GameObject::RebindChildGameObjectRoots(AttachmentTransformRules rules)
+    {
+        SceneComponent* selfRoot = GetRootComponent();
+        const std::vector<GameObject*> childrenCopy = m_Children;
+        for (GameObject* child : childrenCopy)
+        {
+            if (child == nullptr)
+            {
+                continue;
+            }
+
+            SceneComponent* childRoot = child->GetRootComponent();
+            if (selfRoot == nullptr || childRoot == nullptr)
+            {
+                child->DetachFromParent(rules);
+                continue;
+            }
+
+            if (childRoot->GetAttachParent() != selfRoot)
+            {
+                childRoot->AttachToComponent(selfRoot, rules);
+            }
         }
     }
 
@@ -391,6 +459,17 @@ namespace minEngine
             return false;
         }
 
+        SceneComponent* childRoot = GetRootComponent();
+        SceneComponent* parentRoot = parent->GetRootComponent();
+        if (childRoot == nullptr || parentRoot == nullptr)
+        {
+            ME_CORE_ERROR(
+                "GameObject::AttachToParent: both GOs need a Root SceneComponent ('{}' under '{}').",
+                GetName(),
+                parent->GetName());
+            return false;
+        }
+
         if (m_Parent == parent)
         {
             auto& siblings = parent->m_Children;
@@ -398,7 +477,10 @@ namespace minEngine
             {
                 siblings.push_back(this);
             }
-            EnsureRootAttachedToParent(rules);
+            if (childRoot->GetAttachParent() != parentRoot)
+            {
+                childRoot->AttachToComponent(parentRoot, rules);
+            }
             return true;
         }
 
@@ -406,7 +488,7 @@ namespace minEngine
 
         m_Parent = parent;
         parent->m_Children.push_back(this);
-        EnsureRootAttachedToParent(rules);
+        childRoot->AttachToComponent(parentRoot, rules);
         return true;
     }
 

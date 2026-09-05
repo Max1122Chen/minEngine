@@ -3,12 +3,13 @@
 ## Meta
 - **ID:** `ED-F05`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-05
 - **Branch:** `feat/ui`
 - **Related:**
-  - [CORE-F08 GameObject Hierarchy](../Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md)（**硬依赖**，运行时已 Review）
+  - [CORE-F08 GameObject Hierarchy](../Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md)（**硬依赖**，已 Done）
+  - [CORE-F09](../Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md)（变换语义）
   - [UI-F01](../Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)
   - 代码：`HierarchyWindow`、`SceneEditor` CommandStack
 - **Depends on:** CORE-F08 MVP
@@ -190,22 +191,22 @@ MarkSceneDirty
 
 ## 6) 验收标准
 
-- [ ] 树缩进与 CORE-F08 `GetChildren` 一致  
-- [ ] 拖拽中源节点仍在 Hierarchy；ghost 跟随光标  
-- [ ] 落到合法 GO → 成为其子（KeepWorld）；Undo/Redo 正确  
-- [ ] 落到空白/根区 → Detach；Undo 恢复原父  
-- [ ] 拖到自身/子孙被拒绝  
-- [ ] 无 sibling 排序热区/承诺  
-- [ ] 与 CORE-F08 联合验收后，CORE-F08 可标 Done  
+- [x] 树缩进与 CORE-F08 `GetChildren` 一致  
+- [x] 拖拽中源节点仍在 Hierarchy；ghost 跟随光标  
+- [x] 落到合法 GO → 成为其子（KeepWorld）；Undo/Redo 正确  
+- [x] 落到空白/根区 → Detach；Undo 恢复原父  
+- [x] 拖到自身/子孙被拒绝  
+- [x] 无 sibling 排序热区/承诺  
+- [x] 与 CORE-F08 联合验收后，CORE-F08 可标 Done  
 
 ## 7) Status note
 
 | 字段 | 内容 |
 |------|------|
-| Status | **In Progress** |
+| Status | **Done** |
 | Blocked by | — |
-| Next | Sticky 会话 DnD 目视验收；通过后与 CORE-F08 联合验收 |
-| Joint | 待目视通过 |
+| Next | — |
+| Joint | 与 CORE-F08 / CORE-F09 一并收口 |
 
 ## 变更记录
 
@@ -216,3 +217,4 @@ MarkSceneDirty
 | 2026-09-05 | S00+S01 代码落地：树形 Hierarchy、ghost DnD、ReparentGameObjectCommand；Status→In Progress |
 | 2026-09-05 | **DnD 契约修订：** Sticky `DraggedGoId`/`TargetParentId` + Grace；松手 commit；弃用 ImGui `IsDelivery()` 作为唯一提交信号 |
 | 2026-09-05 | 根哨兵改为 `kSceneRootParentId`（修复 GO id=0）；KeepWorld/SC 平行层级 defer `CORE-F09` |
+| 2026-09-05 | 联合验收通过；Status→**Done** |

@@ -38,8 +38,9 @@ namespace minEngine
             // Update RenderCamera's View and Projection Matrices based on CameraComponent's Transform
             ME_ASSERT(m_RenderCamera, "RenderCamera is null!");
             
-            m_RenderCamera->SetPosition(GetPosition());
-            m_RenderCamera->SetRotation(GetRotation());
+            const Transform worldTransform = GetWorldTransform();
+            m_RenderCamera->SetPosition(worldTransform.Position);
+            m_RenderCamera->SetRotation(worldTransform.Rotation);
 
             m_RenderCamera->UpdateViewMatrix();
 

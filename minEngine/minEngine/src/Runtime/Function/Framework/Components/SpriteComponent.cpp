@@ -130,14 +130,7 @@ namespace minEngine
         proxy.m_ModelMatrix = worldMatrix * sizeScale;
 
         // Keep Transform for tools that still read it; model matrix is authoritative for draws.
-        if (GameObject* owner = GetOwner())
-        {
-            proxy.m_Transform = owner->GetTransform();
-        }
-        else
-        {
-            proxy.m_Transform = GetTransform();
-        }
+        proxy.m_Transform = GetWorldTransform();
     }
 
     PrimitiveSceneProxy* SpriteComponent::CreateSceneProxy()
