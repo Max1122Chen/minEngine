@@ -23,6 +23,10 @@ namespace minEngine::Reflection
     using FieldConstAccessorFn = const void* (*)(const void*);
     using FieldMutableAccessorFn = void* (*)(void*);
 
+    // Optional native Getter/Setter thunks (codegen → ME_REFLECTION_PROPERTY_*_THUNK macros).
+    using PropertyValueGetFn = void (*)(const void* object, void* outValue);
+    using PropertyValueSetFn = void (*)(void* object, const void* value);
+
     // Data underlying a pointer accessor function type, used for both raw pointers and smart pointers
     using PointingDataConstAccessorFn = const void* (*)(const void*);
     using PointingDataMutableAccessorFn = void* (*)(void*);
@@ -92,6 +96,17 @@ namespace minEngine::Reflection
             constAccessor = inConstAccessor;
             mutableAccessor = inMutableAccessor;
         }
+
+        void SetPropertyValueAccessors(PropertyValueGetFn inGetter, PropertyValueSetFn inSetter)
+        {
+            propertyGetter = inGetter;
+            propertySetter = inSetter;
+        }
+
+        PropertyValueGetFn GetPropertyGetter() const { return propertyGetter; }
+        PropertyValueSetFn GetPropertySetter() const { return propertySetter; }
+        bool HasPropertyGetter() const { return propertyGetter != nullptr; }
+        bool HasPropertySetter() const { return propertySetter != nullptr; }
 
         void* GetMutable(void* ptr) const { return mutableAccessor == nullptr ? nullptr : mutableAccessor(ptr); }
         const void* GetConst(const void* ptr) const { return constAccessor == nullptr ? nullptr : constAccessor(ptr); }
@@ -194,6 +209,8 @@ namespace minEngine::Reflection
         std::string name;
         FieldConstAccessorFn constAccessor = nullptr;
         FieldMutableAccessorFn mutableAccessor = nullptr;
+        PropertyValueGetFn propertyGetter = nullptr;
+        PropertyValueSetFn propertySetter = nullptr;
         PropertySpecifierMask specifierMask = static_cast<PropertySpecifierMask>(PropertySpecifier::None);
         PropertyMetadata metadata;
         size_t storageSize = 0;

@@ -1010,6 +1010,32 @@ def supports_native_instance_thunks(meta: ClassMeta) -> bool:
     return False
 
 
+def is_cpp_identifier(name: str) -> bool:
+    if not name:
+        return False
+    if not (name[0].isalpha() or name[0] == "_"):
+        return False
+    return all(ch.isalnum() or ch == "_" for ch in name)
+
+
+def property_accessor_method_name(metadata: dict[str, str], key: str, class_name: str, field_name: str) -> str | None:
+    if key not in metadata:
+        return None
+    method_name = metadata[key].strip()
+    if not is_cpp_identifier(method_name):
+        raise ValueError(
+            f"{class_name}::{field_name}: meta '{key}' must be a C++ identifier, got '{metadata[key]}'"
+        )
+    return method_name
+
+
+def render_property_value_accessor_expr(type_name: str, field_name: str, method_name: str | None, kind: str) -> str:
+    if method_name is None:
+        return "nullptr"
+    symbol = "PropertyGet_" if kind == "Getter" else "PropertySet_"
+    return f"&minEngine::Reflection::FieldAccessor<{type_name}>::{symbol}{field_name}"
+
+
 def render_class_registration_definition(meta: ClassMeta) -> list[str]:
     lines: list[str] = []
     type_name = full_type_name(meta)
@@ -1023,8 +1049,13 @@ def render_class_registration_definition(meta: ClassMeta) -> list[str]:
     for prop in meta.properties:
         specifier_expr = render_property_specifier_mask_expr(prop.specifiers)
         metadata_expr = render_property_metadata_expr(prop.metadata)
+        getter_name = property_accessor_method_name(prop.metadata, "Getter", type_name, prop.name)
+        setter_name = property_accessor_method_name(prop.metadata, "Setter", type_name, prop.name)
+        get_fn = render_property_value_accessor_expr(type_name, prop.name, getter_name, "Getter")
+        set_fn = render_property_value_accessor_expr(type_name, prop.name, setter_name, "Setter")
         lines.append(
-            f"    ME_REFLECTION_CLASS_ADD_FIELD({type_name}, {prop.name}, {specifier_expr}, {metadata_expr})"
+            f"    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS({type_name}, {prop.name}, {specifier_expr}, "
+            f"{get_fn}, {set_fn}, {metadata_expr})"
         )
     if supports_native_instance_thunks(meta):
         for function in meta.functions:
@@ -1106,6 +1137,16 @@ def render_class_accessor(meta: ClassMeta) -> list[str]:
     lines.append(f"ME_REFLECTION_ACCESSOR_BEGIN({type_name})")
     for prop in meta.properties:
         lines.append(f"    ME_REFLECTION_ACCESSOR_FIELD({type_name}, {prop.name})")
+        getter_name = property_accessor_method_name(prop.metadata, "Getter", type_name, prop.name)
+        setter_name = property_accessor_method_name(prop.metadata, "Setter", type_name, prop.name)
+        if getter_name is not None:
+            lines.append(
+                f"    ME_REFLECTION_PROPERTY_GETTER_THUNK({type_name}, {prop.name}, {getter_name})"
+            )
+        if setter_name is not None:
+            lines.append(
+                f"    ME_REFLECTION_PROPERTY_SETTER_THUNK({type_name}, {prop.name}, {setter_name})"
+            )
     lines.append("ME_REFLECTION_ACCESSOR_END()")
     return lines
 

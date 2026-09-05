@@ -2,6 +2,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 
 #include <algorithm>
+#include <string_view>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
@@ -39,6 +40,20 @@ namespace minEngine
         m_bTransformDirty = true;
         m_PendingTeleportType = teleport;
         MarkRenderStateDirty();
+    }
+
+    void SceneComponent::PostEditChangeProperty(const Reflection::PropertyChangedEvent& event)
+    {
+        const std::string_view name = event.propertyName;
+        const bool isTransformEdit =
+            name == "m_Transform"
+            || (name.size() >= 12 && name.compare(0, 12, "m_Transform.") == 0);
+        if (isTransformEdit)
+        {
+            ApplyEditorTransformEdit();
+        }
+
+        Component::PostEditChangeProperty(event);
     }
 
     void SceneComponent::ClearTransformDirty()

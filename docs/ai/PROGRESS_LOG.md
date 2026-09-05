@@ -1,6 +1,32 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-04（CORE-F10 JSON disk compat Done）
+Last updated: 2026-09-05（CORE-F11-S06 Done）
+
+### 2026-09-05 - CORE-F11-S06: Inspector live Assign + PostEdit semantics (`feat/core`)
+- **Semantics:** 属性编辑语义上皆为 PostEdit；有 Setter 时由 Setter 承担传播，实现层不调虚函数。
+- **Inspector:** 直接字段 Primitive/flat Color：`GetPropertyValue`→temp→`AssignProperty`（`notifyPostEdit=!HasSetter`）。
+- **Guard:** 仅 `GetMutable(owner)==propertyPtr` 走 Assign，避免嵌套 struct 误用外层 owner。
+- **Physics:** 删除 `RigidBodyComponent::PostEdit`；`ColliderComponent::PostEdit` 仅留无 Setter 的 `m_bActive`。
+- **Verified:** Editor / minEngineTests 编译；`reflection-function` · `physics-smoke` · `serialization-archive` · `scene-clone` PASS。
+- **Next:** 准备 commit；回 Primary `ANIM-F01`。
+
+### 2026-09-05 - CORE-F11 Done: property Getter/Setter native thunks (`feat/core`)
+- **Macros:** `ME_REFLECTION_PROPERTY_{GETTER,SETTER}_THUNK` 在 `ReflectionMacros.h`；codegen 只注入宏 + `ADD_FIELD_ACCESSORS`。
+- **Runtime:** `AssignProperty` / `GetPropertyValue`；`MEProperty` 挂 optional Get/Set fn；`MEObject::PostEditChangeProperty`。
+- **Call sites:** Serializer 有 Setter 则 temp→Assign；pending ObjectPtr resolve 走 Assign（`m_Owner`→`SetOwner`）；Editor undo 无 Setter 时 PostEdit。
+- **Migration:** 代表物理字段挂 meta Setter；删除 `ApplyPhysicsEditorSideEffects`。
+- **Fix:** AssignProperty 默认参数改为重载（避免 MinGW AVX `vmovdqa` 未对齐栈崩溃）。
+- **Debt/Bugs:** TD-026 → **Done**；BUG-CORE-001 → **Fixed**（残余：未挂 meta 的副作用字段需按需迁移）。
+- **Verified:** `serialization-archive` · `reflection-function`（含 assign）· `scene-clone` · `physics-smoke`。
+- **Next:** 准备 commit；Infra 属性写入轨可收；回 Primary `ANIM-F01` 或下一项。
+
+### 2026-09-05 - CORE-F11 Design: property Getter/Setter native thunks (`feat/core`)
+- **Decision:** header tool codegen **thin native Get/Set thunks**（对齐 UE UPROPERTY 访问器，不经 `InvokeFunction` 热路径）。
+- **API:** `AssignProperty` / `GetPropertyValue`；`meta=(Getter/Setter)`；无 Setter 字段行为不变。
+- **PostEdit:** `MEObject::PostEditChangeProperty` 作 Editor 对无 Setter 字段的兜底；有 Setter 默认不双调。
+- **Serialize:** 有 Setter 则 Assign；S04 关 TD-026（`SetOwner`）。
+- **Docs:** Design + Impl S01–S05；Registry Planned。
+- **Next:** 确认 Design 后开码 S01（tool + codegen）。
 
 ### 2026-09-04 - CORE-F10 Done: JSON disk compatibility (`feat/core`)
 - **Options:** 接线 `strictTypeCheck`；新增 `writeSchemaVersion` / `schemaVersion`；澄清 `skipUnknownField`=缺字段。

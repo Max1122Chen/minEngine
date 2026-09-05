@@ -4,5 +4,5 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialEdGraph, GReflectionClassRegister_MaterialEdGraph_762e384b)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::EditorGraph)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::MaterialEdGraph, m_Nodes, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Instanced)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::MaterialEdGraph, m_Nodes, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Instanced)), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialEdGraph)

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-04（CORE-F10 JSON disk compat Done；`minEngine-gameplay` worktree 已初始化）
+Last updated: 2026-09-05（CORE-F11-S06 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -42,17 +42,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
-### Infra 轨（`feat/core`）：序列化
+### Infra 轨（`feat/core`）：序列化 → 属性写入
 
 | 项 | 说明 |
 |----|------|
 | **CORE-F08** | StaticClass API + 删死代码 + P1 — **Done** |
 | **CORE-F09** | Binary Transient v2 — **Done**（关 TD-028/029；PIE Binary） |
 | **CORE-F10** | JSON 存盘宽松 + `$schemaVersion` — **Done** |
-| **TD-026** | 延后至反射 Setter/Getter 统一验证 |
+| **CORE-F11** | Getter/Setter + Assign — **Done**（含 S06 Inspector live Assign；关 TD-026） |
 | GC / Lifetime | 刻意延后 |
 
-[CORE-F09 Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [CORE-F10 Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
+[CORE-F11 Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [CORE-F10 Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
 
 ### 可并行（不升主线）
 
@@ -69,6 +69,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 项 | 状态 |
 |----|------|
+| **CORE-F11** | Done on `feat/core` — S01–S06；live Assign；TD-026；删 PhysicsEditorSideEffects |
 | **CORE-F10** | Done on `feat/core` — JSON 盘路径宽松 + `$schemaVersion` |
 | **CORE-F09** | Done on `feat/core` — Binary v2；PIE Binary；TD-028/029 Done |
 | **CORE-F08** | Done on `feat/core` — StaticClass Serializer API；死代码清理 |
@@ -83,7 +84,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 明确 Defer
 
-ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 · **TD-026**（随 Setter 验证） · Prefab / GC / Gameplay Framework 大包 / Networking（Capability Roadmap §6）
+ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 · Prefab / GC / Gameplay Framework 大包 / Networking（Capability Roadmap §6）
 
 ---
 

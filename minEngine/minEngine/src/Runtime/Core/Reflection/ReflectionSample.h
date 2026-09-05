@@ -85,8 +85,17 @@ namespace minEngine
         ME_PROPERTY(EditAnywhere)
         std::vector<int> IntArray{ 1, 2, 3, 4, 5 };
 
+        int32_t GetAssignProbe() const { return m_AssignProbe; }
+        void SetAssignProbe(int32_t value);
+        int32_t GetAssignProbeSetCount() const { return m_AssignProbeSetCount; }
+        void ResetAssignProbeSetCount() { m_AssignProbeSetCount = 0; }
+
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetAssignProbe", Getter = "GetAssignProbe"))
+        int32_t m_AssignProbe = 0;
+
     private:
         int32_t m_FunctionTestCounter = 0;
+        int32_t m_AssignProbeSetCount = 0;
         static int32_t s_StaticTestCounter;
     };
 }

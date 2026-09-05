@@ -5,6 +5,8 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::BoxColliderComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::BoxColliderComponent, m_HalfExtent)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::BoxColliderComponent, m_HalfExtent, GetHalfExtent)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::BoxColliderComponent, m_HalfExtent, SetHalfExtent)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::BoxColliderComponent, GReflectionClassRegister_BoxColliderComponent_4168ca82)

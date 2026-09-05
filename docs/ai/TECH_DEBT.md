@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-09-04（CORE-F09 Binary v2 Done；TD-028/029 Done）
+Last updated: 2026-09-05（CORE-F11 Done；TD-026 Done）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -33,7 +33,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-023 | Scene pass ordering / clear contract still fragile after VK smoke | RND / ForwardRenderer | **Medium** | Open | `RND-F05` S07d / `ED-F01` | BasePass clears only when Sky off; Sky `NeedRenderPass` must still enter to clear when draw prep fails. 2026-08-25: fixed `NeedRenderPass`→`m_ShouldEnterPass` + Vulkan `LoadEngineRenderingAssets` (was OpenGL-only). Broader ordering still fragile. |
 | TD-024 | Vulkan frame sync leftovers after S07d smoke | VulkanRHI | **Medium** | Open | `RND-F05` S07d / `ED-F01` | Present semaphore reuse still triggers validation on fast shutdown; `RHICmdGenerateMips()` remains VK no-op. 2026-08-25: removed S07d DrawIndexed diagnostic logs; HDR bake DEVICE_LOST fixed (immediate submit before PSO destroy + cube layout defer). |
 | TD-025 | Clip-space / texture-origin policy hardcoded to `IsVulkan()` | RND / RHI | **Medium** | Done | [RND-TD025](./Render/RND-TD025_CLIP_SPACE_CAPABILITIES_DESIGN.md) · ED-F01 | 2026-08-28: `RHIClipSpaceCapabilities` + shadow scheme A landed；2026-08-31 user visual verify with RND-F14 batch |
-| TD-026 | Scene deserialize `m_Owner` bypasses `Component::SetOwner` | CORE / Serialization | **Medium** | Open | `CORE-F06` · [CORE-F08 Out](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) | 2026-09-02: load reconcile workaround via `SyncActivationWithActiveFlag`。**根治：** resolve/`m_Owner` 走 Setter / `SetOwner`。**2026-09-04：** 明确 **不进 CORE-F08**；待反射 Setter/Getter 统一验证时一并处理。 |
+| TD-026 | Scene deserialize `m_Owner` bypasses `Component::SetOwner` | CORE / Serialization | **Medium** | **Done** | `CORE-F11` | 2026-09-05：pending ObjectPtr resolve → `AssignProperty` → `SetOwner`（`meta=(Setter="SetOwner")`）。 |
 | TD-027 | Asset Scene3D thumbnails share main ForwardRenderer RDG color | ED / RND | **Medium** | Open | ED-F02 · `AssetThumbnailService` | 2026-09-01: disabled `SubmitSceneDraw` for Material/StaticMesh thumbnails (icon fallback). Future: dedicated thumbnail renderer / isolated graph + stable ImGui texture pin. |
 | TD-028 | Binary wire format field-stream parsing fragile (`EndObject` vs u16 len) | CORE / Serialization | **High** | Done | `CORE-F09` · [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) | **2026-09-04：** v2 framing（`fieldCount`+`bodyLength`，无 EndObject）；Transient ClassId/FieldId；`serialization-archive` + `scene-clone` physics-stack 绿。 |
 | TD-029 | PIE `SceneDuplicator` uses in-memory JSON instead of Binary | CORE-F05 / ED | **Medium** | Done | `CORE-F09` · `SceneDuplicator.cpp` | **2026-09-04：** `DuplicateForPIE` 恢复 `SerializeObjectToBuffer` / Binary v2；磁盘 `.mescene` 仍 JSON。 |

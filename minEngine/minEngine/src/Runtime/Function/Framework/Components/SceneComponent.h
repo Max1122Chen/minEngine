@@ -26,6 +26,7 @@ namespace minEngine
 
         void MarkRenderStateDirty();
         void ApplyEditorTransformEdit(ETeleportType teleport = ETeleportType::ResetPhysics);
+        void PostEditChangeProperty(const Reflection::PropertyChangedEvent& event) override;
 
         bool IsTransformDirty() const { return m_bTransformDirty; }
         ETeleportType GetPendingTeleportType() const { return m_PendingTeleportType; }

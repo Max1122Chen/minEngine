@@ -30,6 +30,7 @@ namespace minEngine::Serialization
         void* ownerObjectPtr = nullptr;
         GUID refGuid;
         const minEngine::Reflection::MEClass* expectedClass = nullptr;
+        const minEngine::Reflection::MEProperty* property = nullptr;
         bool isRawPointer = false;
         bool expectsMEObject = false;
         std::string fieldPath;

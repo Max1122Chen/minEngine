@@ -4,16 +4,22 @@
 #include "JsonArchive.h"
 #include "PrimitiveCodecRegistry.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/PropertyAssign.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Scene/SceneCloneContext.h"
 #include "Runtime/Resource/AssetManager.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
 #include <string_view>
+#include <vector>
 
 namespace minEngine::Serialization
 {
+    using minEngine::Reflection::AssignProperty;
     using minEngine::Reflection::MEArrayProperty;
     using minEngine::Reflection::MEClass;
     using minEngine::Reflection::MEObjectProperty;
@@ -25,6 +31,67 @@ namespace minEngine::Serialization
     using minEngine::Reflection::PropertySpecifier;
     using minEngine::Reflection::PropertySpecifierMask;
     using minEngine::Reflection::ReflectionSystem;
+
+    struct AlignedPropertyTemp
+    {
+        std::vector<uint8_t> storage;
+        void* ptr = nullptr;
+
+        bool Allocate(const MEProperty& property)
+        {
+            const size_t size = property.GetStorageSize();
+            const size_t align = std::max<size_t>(property.GetStorageAlignment(), static_cast<size_t>(1));
+            if (size == 0)
+            {
+                return false;
+            }
+
+            storage.resize(size + align);
+            const uintptr_t addr = reinterpret_cast<uintptr_t>(storage.data());
+            const uintptr_t aligned = (addr + (align - 1)) & ~(static_cast<uintptr_t>(align) - 1);
+            ptr = reinterpret_cast<void*>(aligned);
+
+            if (property.GetValueConstructFn() != nullptr)
+            {
+                property.ConstructValue(ptr);
+            }
+            else
+            {
+                std::memset(ptr, 0, size);
+            }
+
+            return true;
+        }
+
+        void Destroy(const MEProperty& property)
+        {
+            if (ptr != nullptr && property.GetValueDestructFn() != nullptr)
+            {
+                property.DestructValue(ptr);
+            }
+
+            ptr = nullptr;
+        }
+    };
+
+    static bool WriteRawObjectPtrValue(void* ownerObjectPtr,
+                                       const MEObjectPtrProperty& objectPtrProperty,
+                                       void* ptrToPtr,
+                                       void* value)
+    {
+        if (objectPtrProperty.HasPropertySetter() && ownerObjectPtr != nullptr)
+        {
+            return AssignProperty(ownerObjectPtr, objectPtrProperty, &value);
+        }
+
+        if (ptrToPtr == nullptr)
+        {
+            return false;
+        }
+
+        *static_cast<void**>(ptrToPtr) = value;
+        return true;
+    }
 
     static const MEProperty* FindPropertyInHierarchyShared(const MEClass* ownerClass, std::string_view propertyName)
     {
@@ -261,7 +328,24 @@ namespace minEngine::Serialization
 
             if (pendingRef.isRawPointer)
             {
-                *static_cast<void**>(pendingRef.ptrToPtr) = resolvedRawPtr;
+                if (pendingRef.property != nullptr
+                    && pendingRef.property->HasPropertySetter()
+                    && pendingRef.ownerObjectPtr != nullptr)
+                {
+                    void* rawValue = resolvedRawPtr;
+                    if (!AssignProperty(pendingRef.ownerObjectPtr, *pendingRef.property, &rawValue))
+                    {
+                        remainingRefs.push_back(pendingRef);
+                        ME_CORE_WARN("Pending object reference AssignProperty failed. path='{}', guid='{}'",
+                                     pendingRef.fieldPath,
+                                     pendingRef.refGuid.ToString());
+                        continue;
+                    }
+                }
+                else
+                {
+                    *static_cast<void**>(pendingRef.ptrToPtr) = resolvedRawPtr;
+                }
                 ++resolvedCount;
                 continue;
             }
@@ -908,7 +992,10 @@ namespace minEngine::Serialization
             // Here is a good example of how we assign any value to the pointer.
             if (ptrCategory == MEObjectPtrCategory::Raw)
             {
-                *static_cast<void**>(ptrToPtr) = nullptr;
+                if (!WriteRawObjectPtrValue(ownerObjectPtr, objectPtrProperty, ptrToPtr, nullptr))
+                {
+                    return SerializeResult::Failure("Deserialize object pointer failed: failed to assign null raw pointer.", path);
+                }
                 return SerializeResult::Success();
             }
 
@@ -972,7 +1059,15 @@ namespace minEngine::Serialization
                     return SerializeResult::Failure("Deserialize object pointer failed: inline raw pointer requires MEObject-derived type.", path);
                 }
 
-                *static_cast<void**>(ptrToPtr) = objectPtr;
+                if (!WriteRawObjectPtrValue(ownerObjectPtr, objectPtrProperty, ptrToPtr, objectPtr))
+                {
+                    const bool closed = archive.EndObjectPtr();
+                    if (!closed)
+                    {
+                        return SerializeResult::Failure("Deserialize class failed: EndObjectPtr returned false after raw pointer assign failure.", path);
+                    }
+                    return SerializeResult::Failure("Deserialize object pointer failed: failed to assign raw pointer.", path);
+                }
             }
             else
             {
@@ -1037,6 +1132,7 @@ namespace minEngine::Serialization
         pendingRef.ownerObjectPtr = ownerObjectPtr;
         pendingRef.refGuid = referenceGuid;
         pendingRef.expectedClass = classInfo;
+        pendingRef.property = &objectPtrProperty;
         pendingRef.isRawPointer = (ptrCategory == MEObjectPtrCategory::Raw);
         pendingRef.expectsMEObject = supportsMEObject;
         pendingRef.fieldPath = path;
@@ -1044,6 +1140,7 @@ namespace minEngine::Serialization
 
         if (ptrCategory == MEObjectPtrCategory::Raw)
         {
+            // Clear storage without Setter — resolve will AssignProperty when Setter is present.
             *static_cast<void**>(ptrToPtr) = nullptr;
         }
         else
@@ -1110,7 +1207,30 @@ namespace minEngine::Serialization
                 return false;
             }
 
-            result = DeserializeProperty(property, valuePtr, objectPtr, archive, outUnresolvedRefs, options, propertyPath);
+            if (property.HasPropertySetter() && property.GetCategory() != MEPropertyCategory::ObjectPtr)
+            {
+                AlignedPropertyTemp temp;
+                if (!temp.Allocate(property))
+                {
+                    result = SerializeResult::Failure(
+                        "Deserialize property failed: failed to allocate temp storage for Setter.",
+                        propertyPath);
+                    return false;
+                }
+
+                result = DeserializeProperty(property, temp.ptr, objectPtr, archive, outUnresolvedRefs, options, propertyPath);
+                if (result.ok && !AssignProperty(objectPtr, property, temp.ptr))
+                {
+                    result = SerializeResult::Failure("Deserialize property failed: AssignProperty returned false.", propertyPath);
+                }
+
+                temp.Destroy(property);
+            }
+            else
+            {
+                result = DeserializeProperty(property, valuePtr, objectPtr, archive, outUnresolvedRefs, options, propertyPath);
+            }
+
             if (!result.ok)
             {
                 return false;
@@ -1318,6 +1438,34 @@ namespace minEngine::Serialization
         if (valuePtr == nullptr)
         {
             return SerializeResult::Failure("Deserialize property failed: value pointer is null.", propertyName);
+        }
+
+        if (property->HasPropertySetter() && property->GetCategory() != MEPropertyCategory::ObjectPtr)
+        {
+            AlignedPropertyTemp temp;
+            if (!temp.Allocate(*property))
+            {
+                return SerializeResult::Failure(
+                    "Deserialize property failed: failed to allocate temp storage for Setter.",
+                    propertyName);
+            }
+
+            SerializeResult result = DeserializeProperty(
+                *property,
+                temp.ptr,
+                ownerObject,
+                archive,
+                outUnresolvedRefs,
+                options,
+                propertyName);
+            if (result.ok && !AssignProperty(ownerObject, *property, temp.ptr))
+            {
+                temp.Destroy(*property);
+                return SerializeResult::Failure("Deserialize property failed: AssignProperty returned false.", propertyName);
+            }
+
+            temp.Destroy(*property);
+            return result;
         }
 
         return DeserializeProperty(*property,

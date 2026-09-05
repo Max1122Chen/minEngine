@@ -2,16 +2,16 @@
 
 ## Meta
 - **ID:** BUG-PHYS-002
-- **Status:** Open (tactical mitigation landed on physics branch)
+- **Status:** Fixed
 - **Severity:** S1
 - **Owner:**
 - **Found:** 2026-06-12
-- **Last updated:** 2026-06-12
+- **Last updated:** 2026-09-05
 - **Affects:** Editor Inspector, `RigidBodyComponent`, `BoxColliderComponent`, reflection `ME_REFLECTION_ACCESSOR_FIELD`
-- **Related Feature/Slice:** PHYS-F01-S01-e
+- **Related Feature/Slice:** PHYS-F01-S01-e · **CORE-F11**
 
 ## TL;DR
-Inspector and `SetObjectProperty` deserialize directly into reflected fields, skipping `SetSimulatePhysics` / collider refresh side effects; physics state drifts until an authority transform edit wakes the body.
+Inspector and `SetObjectProperty` deserialize directly into reflected fields, skipping `SetSimulatePhysics` / collider refresh side effects; physics state drifts until an authority transform edit wakes the body. **Fixed via CORE-F11:** physics fields use `meta=(Setter=...)` + `AssignProperty`; `ApplyPhysicsEditorSideEffects` removed.
 
 ---
 
@@ -41,16 +41,18 @@ Inspector and `SetObjectProperty` deserialize directly into reflected fields, sk
 **Note:** `SceneComponent` subclasses get generic `MarkRenderStateDirty` after Inspector edits; **non-SceneComponent** physics components do not.
 
 ## 修复
-**Tactical (physics branch, 2026-06-12):** `ApplyPhysicsEditorSideEffects` from Inspector / `ApplySetObjectProperty`; `RigidBodyComponent::ApplySimulatePhysicsToWorld`; `BoxColliderComponent::SetHalfExtent` refreshes shape; `SceneComponent::ApplyEditorTransformEdit` for `m_Transform`. **Not** unified Assign — see BUG-CORE-001 (master).
+**Tactical (physics branch, 2026-06-12):** `ApplyPhysicsEditorSideEffects` … **superseded 2026-09-05.**
+
+**Proper (CORE-F11, `feat/core`):** `meta=(Setter)` on body/mass/simulate/collider fields → thunk + `AssignProperty`; PostEdit for transform without Setter double-call; tactical `PhysicsEditorSideEffects` deleted. Umbrella: BUG-CORE-001 Fixed.
 
 ## 回归验证
-- [ ] Editor: simulate off → on without transform nudge → box falls same frame / next frame
-- [ ] Editor: HalfExtent change updates collision
-- [x] `physics-sync` + `physics-smoke` still pass
+- [ ] Editor: simulate off → on without transform nudge → box falls same frame / next frame（建议目视）
+- [ ] Editor: HalfExtent change updates collision（建议目视）
+- [x] `physics-smoke` pass after F11
 
 ## 关联
 - BUG-PHYS-001
-- BUG-CORE-001 (umbrella: reflection bypasses setters)
+- BUG-CORE-001 (umbrella: Fixed via CORE-F11)
 
 ---
 
@@ -58,4 +60,5 @@ Inspector and `SetObjectProperty` deserialize directly into reflected fields, sk
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-05 | Fixed via CORE-F11 Assign + meta Setter；删 PhysicsEditorSideEffects |
 | 2026-06-12 | Filed from SimulatePhysics Inspector investigation |

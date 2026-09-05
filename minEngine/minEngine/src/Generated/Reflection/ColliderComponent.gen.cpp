@@ -4,5 +4,5 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ColliderComponent, GReflectionClassRegister_ColliderComponent_fef64507)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::Component)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ColliderComponent, m_ObjectChannel, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ColliderComponent, m_ObjectChannel, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), &minEngine::Reflection::FieldAccessor<minEngine::ColliderComponent>::PropertyGet_m_ObjectChannel, &minEngine::Reflection::FieldAccessor<minEngine::ColliderComponent>::PropertySet_m_ObjectChannel, (minEngine::Reflection::PropertyMetadata{{"Getter", "GetObjectChannel"}, {"Setter", "SetObjectChannel"}}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::ColliderComponent)

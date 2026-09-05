@@ -20,7 +20,7 @@ namespace minEngine
         void SetOwner(GameObject* inOwner) override;
 
     private:
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetRadius", Getter = "GetRadius"))
         float m_Radius{0.5f};
     };
 }

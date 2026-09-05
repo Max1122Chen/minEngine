@@ -28,7 +28,7 @@ namespace minEngine
 
     private:
         /** Half-extents in engine units (meters); default matches Assets/.../cube.obj (±0.5). */
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetHalfExtent", Getter = "GetHalfExtent"))
         Vector3 m_HalfExtent{0.5f, 0.5f, 0.5f};
     };
 }

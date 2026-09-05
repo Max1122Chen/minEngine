@@ -18,6 +18,9 @@ ME_REFLECTION_CLASS_DECLARE(minEngine::ReflectionSampleClass, GReflectionClassRe
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ReflectionSampleComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleComponent, SampleData)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleComponent, IntArray)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ReflectionSampleComponent, m_AssignProbe)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ReflectionSampleComponent, m_AssignProbe, GetAssignProbe)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ReflectionSampleComponent, m_AssignProbe, SetAssignProbe)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::ReflectionSampleComponent, GReflectionClassRegister_ReflectionSampleComponent_95cd1884)

@@ -22,6 +22,7 @@
 #include "SubEditor/Scene/SceneEditingViewportClient.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/PropertyAssign.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/Component.h"
@@ -30,7 +31,6 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
-#include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -807,7 +807,29 @@ namespace minEngine
             static_cast<Component*>(ownerObject.get())->SyncActivationWithActiveFlag();
         }
 
-        ApplyPhysicsEditorSideEffects(ownerObject.get(), propertyPath);
+        {
+            const Reflection::MEProperty* leafProperty = nullptr;
+            if (propertyPath.find('.') == std::string::npos)
+            {
+                Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+                    ownerClass,
+                    [&](const Reflection::MEProperty& property) -> bool
+                    {
+                        if (property.GetName() == propertyPath)
+                        {
+                            leafProperty = &property;
+                            return false;
+                        }
+                        return true;
+                    });
+            }
+
+            if (leafProperty == nullptr || !leafProperty->HasPropertySetter())
+            {
+                ownerObject->PostEditChangeProperty(
+                    Reflection::PropertyChangedEvent{std::string_view(propertyPath)});
+            }
+        }
 
         MarkSceneDirty();
         return true;

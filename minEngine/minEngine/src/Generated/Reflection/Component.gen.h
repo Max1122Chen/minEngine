@@ -5,6 +5,8 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Component)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Component, m_Owner)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::Component, m_Owner, GetOwner)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::Component, m_Owner, SetOwner)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Component, m_bActive)
 ME_REFLECTION_ACCESSOR_END()
 

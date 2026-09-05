@@ -20,10 +20,10 @@ namespace minEngine
         ~RigidBodyComponent() override;
 
         EBodyType GetBodyType() const { return m_BodyType; }
-        void SetBodyType(EBodyType bodyType) { m_BodyType = bodyType; }
+        void SetBodyType(EBodyType bodyType);
 
         float GetMass() const { return m_Mass; }
-        void SetMass(float mass) { m_Mass = mass; }
+        void SetMass(float mass);
 
         bool GetSimulatePhysics() const { return m_bSimulatePhysics; }
         void SetSimulatePhysics(bool simulatePhysics);
@@ -47,13 +47,13 @@ namespace minEngine
         void SetPhysicsBodyId(PhysicsBodyId bodyId) { m_PhysicsBodyId = bodyId; }
         void DestroyPhysicsBody();
 
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetBodyType", Getter = "GetBodyType"))
         EBodyType m_BodyType{EBodyType::Dynamic};
 
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetMass", Getter = "GetMass"))
         float m_Mass{1.0f};
 
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetSimulatePhysics", Getter = "GetSimulatePhysics"))
         bool m_bSimulatePhysics{true};
 
         ME_PROPERTY(Invisible)
