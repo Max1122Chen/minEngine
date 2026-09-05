@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `ANIM-F01`
 - **Type:** Feature
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03（竖切目视通过；下一焦点 ASSET-F01）
+- **Last updated:** 2026-09-04（Feature Done；Shadow skinned / 扭骨 UX Deferred）
 - **Branch:** `feat/animation`
 - **Related:**
   - [Implementation](./ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
@@ -523,15 +523,15 @@ Runtime/Resource/Loaders/
 ## 5) 验收标准
 
 - [x] `Skeleton` / `SkeletalMesh` 类型注册并可经 Asset 路径加载（meta + 源；`.fbx` 默认仍 Static，显式 `SkeletalMesh` / `.glb`）
-- [x] Import 产出合法层级、inverse bind、≤4 influences（代码路径；真实资产目视待勾）
-- [x] Bind Pose 下角色外观正确（相对源 DCC / 参考图可接受） → **最小 stick 目视通过**（非人型）
-- [ ] 调试偏移单骨 → 网格对应变形（交互 UX 未做；API 已有）
+- [x] Import 产出合法层级、inverse bind、≤4 influences（stick + ASSET-F01 人型 Import 目视）
+- [x] Bind Pose 下角色外观正确（相对源 DCC / 参考图可接受） → stick + 人型 Import
+- [ ] 调试偏移单骨 → 网格对应变形（交互 UX **Deferred**；API 已有）
 - [x] OpenGL 路径可玩；Vulkan 若工作量可控则同切片或紧随（实现计划标明） → **OpenGL 已验**
 - [x] `StaticMesh` 回归：既有 smoke / asset-manager 无回退
 - [x] Assimp **不**链接进「每帧动画更新」模块
 - [x] `MeshLoader` 已收束为 Static 命名；Skeletal 走独立 Loader；无残留「唯一 MeshLoader」语义
 - [x] Material 壳支持 Rigid/Skinned VS 变体（主 Pass）；Shadow skinned **Deferred**（Component 默认不投阴影）
-- [x] Design / Registry / ACTIVE_WORK / Progress 与实现状态一致；Impl Plan 切片已落地（目视未完） → **已对齐 Review**
+- [x] Design / Registry / ACTIVE_WORK / Progress 与实现状态一致 → **Done**
 
 ---
 
@@ -552,9 +552,9 @@ Runtime/Resource/Loaders/
 
 | 字段 | 内容 |
 |------|------|
-| Status | **Planned** — Impl Plan 已开；实现自 S00 |
-| Branch | `feat/animation`（已存在） |
-| Next | `ANIM-F01-S00` Pose/Skeleton 核 |
+| Status | **Done** — Pose→palette→GPU 竖切验收通过 |
+| Deferred | Shadow skinned；扭骨交互 UX |
+| Next | [ANIM-F02](./ANIM-F02_CLIP_PLAYBACK_DESIGN.md) Clip Playback |
 
 ---
 
@@ -569,3 +569,5 @@ Runtime/Resource/Loaders/
 | 2026-09-03 | 增补 §2.7 数据结构与接口详设（Skeleton/Pose/Mesh/Loader/Component/Proxy） |
 | 2026-09-03 | Status → **Planned**；链接 Implementation Plan；开工 S00 |
 | 2026-09-03 | S00b：Loader 命名已落地（见 Impl）；验收项 MeshLoader 收束勾选 |
+| 2026-09-03 | 竖切目视（stick）通过；Status → **Review** |
+| 2026-09-04 | Status → **Done**；ASSET-F01 人型 Import 补强验收；焦点 → ANIM-F02 |

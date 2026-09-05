@@ -3,15 +3,15 @@
 ## Meta
 - **ID:** `ANIM-F01`
 - **Type:** Implementation Plan
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03
+- **Last updated:** 2026-09-04
 - **Related:** [Design Spec](./ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
 - **Branch:** `feat/animation`
 
 ## TL;DR
 按 Design §2.7 落地平行 Skeletal 栈：S00 数学核 → S00b Static Loader 改名 → S01 导入 → S02 GPU/材质变体 → S03 Component/Proxy → S04 Asset 接线与可视验收。  
-**当前：** S01–S04 **Done**；竖切目视（stick）**通过**；Shadow skinned **Deferred**；Feature Status → **Review**。下一焦点 **ASSET-F01**。
+**当前：** S00–S04 **Done**；竖切验收通过；Shadow skinned **Deferred**；Feature Status → **Done**。下一焦点 **ANIM-F02**。
 
 ## Scope
 - **In:** Design Scope（Skeleton / SkeletalMesh / Pose→palette→GPU；Loader 命名；`MeshDeformationMode`）
@@ -33,7 +33,7 @@
 | `ANIM-F01-S01` | `SkeletalMeshImportData` + `SkeletalMeshLoader`（骨/权重/几何） | **Done** | 编译 OK；Loader 日志路径就绪（目视资产待维护者） |
 | `ANIM-F01-S02` | `SkeletalMesh` GPU layout + Material skinned VS + palette UBO | **Done** | skinned includes + set0 binding3；Shadow skinned Deferred |
 | `ANIM-F01-S03` | `SkeletalMeshComponent` + Proxy + Forward 入队 | **Done** | Forward 路径接线；Shadow Deferred（`CastShadow=false`） |
-| `ANIM-F01-S04` | AssetTypeRegistry + Load 接线 | **Done**（目视验收待勾） | `skeleton-pose` + smoke PASS；Editor 目视 pending |
+| `ANIM-F01-S04` | AssetTypeRegistry + Load 接线 | **Done** | `skeleton-pose` + smoke；stick + ASSET-F01 人型目视 |
 
 状态：`Planned | In Progress | Done | Blocked | Deferred | Cancelled`
 
@@ -90,16 +90,16 @@
   - [x] CreateSceneProxy 带 palette；`u_Model` 仍为整体变换
   - [x] Base Pass 绘制 skinned（Forward + ManualRenderer）
   - [ ] Shadow 绘制 skinned → **Deferred**
-- **Verify:** 代码路径就绪；Editor 目视 pending
+- **Verify:** stick 目视 + Forward 路径；Shadow Deferred
 
 ### ANIM-F01-S04 — Asset 接线与 Feature 验收
 - **Goal:** `AssetTypeRegistry` 登记 `Skeleton` / `SkeletalMesh`；LoadFromAssetMeta；端到端验收与文档收口。
 - **Touch:** `AssetTypeRegistry`、Import UX（能导入即可）、docs Status
 - **DoD:**
-  - [ ] Design §5 验收项勾选（目视）
+  - [x] Design §5 验收项勾选（目视；扭骨 UX Deferred）
   - [x] Registry 类型 + Load 接线；Progress 条目
   - [x] Static 回归：smoke / asset-manager PASS
-- **Verify:** `test skeleton-pose` + `test smoke` PASS；Editor 目视清单 pending
+- **Verify:** `test skeleton-pose` + `test smoke` PASS；stick + ASSET-F01 人型 Import 目视
 
 ---
 
@@ -118,9 +118,11 @@ S00 → S00b → S01 → S02 → S03 → S04
 
 | Slice ID | Reason | Unblock condition | Next check |
 |----------|--------|-------------------|------------|
-| （无） cooked mesh | Design Out / TD | 竖切完成后再开 TD | F01 Done 后 |
+| Shadow skinned | 主 Pass 竖切优先 | 需要投阴影的 skinned 场景 | 有需求再开 |
+| 扭骨交互 UX | API 已有；Inspector 交互非竖切必需 | 调试便利 | 有空再补 |
+| （无） cooked mesh | Design Out / TD；ASSET-F01 `.memesh` 二期 | Import MVP 稳定后 | ASSET 续作 |
 | MeshComponent 薄基类 | 避免空抽象 | Static/Skeletal Component 出现真实重复 | F02/F03 后评估 |
-| Vulkan 蒙皮 | 若 GL 先通 | GL 验收后 | S02/S03 注明是否双后端 |
+| Vulkan 蒙皮 | 若 GL 先通 | GL 验收后 | 按需 |
 
 ---
 
@@ -131,3 +133,4 @@ S00 → S00b → S01 → S02 → S03 → S04
 | 2026-09-03 | 初稿；S00 开工 |
 | 2026-09-03 | S00 Done（`skeleton-pose` PASS）；S00b 开工 |
 | 2026-09-03 | S00b Done：`StaticMeshImport*` + `AssimpMeshImportUtil`；删除 `MeshLoader` |
+| 2026-09-04 | Feature **Done**：S04 目视收口；Shadow/扭骨 UX Deferred；下一 ANIM-F02 |

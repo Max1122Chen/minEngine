@@ -674,7 +674,18 @@ namespace minEngine
             return false;
         }
 
+        // Persist meta with the same Guid used by NewObject/Save, before RegisterAsset
+        // (RegisterAsset would otherwise mint a new Guid when .meta is missing).
         AssetManager& assetManager = AssetManager::Get();
+        if (!assetManager.WriteOrUpdateMetaFile(skeletonMeta))
+        {
+            if (outError != nullptr)
+            {
+                *outError = "failed to write skeleton meta";
+            }
+            return false;
+        }
+
         skeletonMeta = assetManager.RegisterAsset(skeletonAbsolutePath.string(), "Skeleton");
         if (skeletonMeta.AssetPath.empty())
         {

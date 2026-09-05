@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-04（**ASSET-F01** S00–S03 Done；S04 Deferred）
+Last updated: 2026-09-05（ANIM-F02 **Done**；人型目视 PASS）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,23 +9,31 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/animation`）
 
-### ASSET-F01 — External Import Pipeline ← **当前焦点（In Progress）**
+### ANIM-F02 — Clip Playback ← **Done**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design / Impl | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) |
-| 目标 | FBX/glTF = Source；Import → 引擎资产（Static / Skeletal+Skeleton） |
-| S00–S03 | Registry / Import cook / Skeleton ObjectPtr / Static 对齐 | **Done**（手动验 Static+Skeletal） |
-| Next | S04 Reimport（Deferred）或二期 `.memesh`；可准备 commit | |
-| 迁移 | 勿提交错误 `.fbx.meta`；人型验证资产可留本地不入库 | |
+| Design / Impl | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |
+| 目标 | MVP：`AnimationTrack`（骨 TRS）+ Player⊏SMC；Import `.meaclip`；`TryGetNamedFloat` 壳 |
+| 验证 | 人型 Walking Clip Editor 目视 PASS；`animation-clip` / smoke |
+| Next | 合入后下一焦点另议（ANIM-F03 Graph 按需；勿默认开干） |
 
-### ANIM-F01 — Skeletal Mesh Pipeline ← **竖切目视通过（收尾中）**
+### ANIM-F01 — Skeletal Mesh Pipeline ← **Done**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design / Impl | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) |
-| 验证 | `MinSkinnedStick.glb` + `DefaultMaterial_Skinned`；Editor 可见竖棍；Shadow skinned **仍 Deferred** |
-| 残留 | Feature 可标 Done/Review；扭骨交互 UX 可后补；完整 FBX 人型走 ASSET-F01 |
+| 验证 | stick 目视 + ASSET-F01 人型 Import；`skeleton-pose` / smoke |
+| Deferred | Shadow skinned；扭骨交互 UX |
+
+### ASSET-F01 — External Import Pipeline ← **Done（MVP）· 暂停**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) |
+| S00–S03 | **Done**（手动验 Static+Skeletal） |
+| Deferred | S04 Reimport / SourcePath UI；二期 `.memesh` — **有空再推，不挡 Anim** |
+| 迁移 | 勿提交错误 `.fbx.meta`；人型验证资产留本地不入库 |
 
 **明确不排期（动画扩展）：** Animation Event、IK、Root Motion、Retarget、完整 AnimBP。
 
@@ -43,11 +51,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
-| **动画** | `feat/animation` | 竖切后再论 | **当前焦点** ANIM-F01 → F02 → F03 |
+| **动画** | `feat/animation` | 竖切后再论 | ANIM-F02 **Done**（F01 Done；ASSET-F01 MVP 暂停） |
 | **内核 / 编辑器** | `master` | `master` | CORE-F05 Done；ED-F02 等可并行 |
 
-**明确 Defer：** Animation Event（暂不登记）· IK / Root Motion / Retarget · ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step  
-**下一开干：** [`ASSET-F01`](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md)（FBX/glTF Import → 原生资产）
+**明确 Defer：** ASSET-F01 S04 / `.memesh` · Animation Event（暂不登记）· IK / Root Motion / Retarget · ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned  
+**下一开干：** 动画轨暂无强制下一 Feature；用户指定后再开（候选 ANIM-F03）
 
 ---
 
@@ -65,7 +73,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus
 
-> 本 worktree（`minEngine-animation` / `feat/animation`）以文首 **ANIM-F01** 为准。下列 A–F 为 `master` 轨历史与旁路 backlog。
+> 本 worktree（`minEngine-animation` / `feat/animation`）以文首 **ANIM-F02** 为准。下列 A–F 为 `master` 轨历史与旁路 backlog。
 
 ### A. `master` — 小修复（收尾）
 
@@ -131,7 +139,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 分支（将来） | 前置 |
 |----|--------------|------|
-| `ANIM-F02` / `F03` | `feat/animation` | F01 Done 后依次 |
+| `ANIM-F03` | `feat/animation` | F02 Done 后 |
 | Animation Event / IK / Root Motion / Retarget | — | 未登记；Graph MVP 后再评估 |
 | `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
 | `RND-F16` | `feat/sprite`（未建） | — |

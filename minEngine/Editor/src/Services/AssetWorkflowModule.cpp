@@ -639,44 +639,90 @@ namespace minEngine
             return;
         }
 
-        const MeshImportProductType productType = choice == MeshImportProductChoice::SkeletalMesh
-            ? MeshImportProductType::SkeletalMesh
-            : MeshImportProductType::StaticMesh;
-
         int successCount = 0;
         int failCount = 0;
 
         AssetManager::AssetRegistryBroadcastBatchScope batchScope;
 
-        for (const std::filesystem::path& sourcePath : m_PendingMeshImportSources)
+        if (choice == MeshImportProductChoice::AnimationClip)
         {
-            const ImportAssetResult importResult = AssetManager::Get().ImportExternalMesh(
-                sourcePath,
-                m_PendingMeshImportDestDirectory,
-                productType);
-            if (!importResult.bSuccess)
+            const std::filesystem::path contentRoot = PathRegistry::Get().GetProjectContentRoot();
+            for (const std::filesystem::path& sourcePath : m_PendingMeshImportSources)
             {
-                ++failCount;
-                ME_CORE_ERROR(
-                    "ImportAssetDialog: failed to import mesh source '{}': {}",
-                    sourcePath.string(),
-                    importResult.ErrorMessage);
-                continue;
-            }
+                const std::filesystem::path skeletonAbsolute =
+                    m_PendingMeshImportDestDirectory
+                    / (sourcePath.stem().string() + "_Skeleton.meskeleton");
+                std::error_code relativeError;
+                std::filesystem::path skeletonRelPath =
+                    std::filesystem::relative(skeletonAbsolute, contentRoot, relativeError);
+                if (relativeError || skeletonRelPath.empty())
+                {
+                    ++failCount;
+                    ME_CORE_ERROR(
+                        "ImportAssetDialog: cannot resolve skeleton path for '{}'",
+                        sourcePath.string());
+                    continue;
+                }
 
-            ++successCount;
-            ME_CORE_INFO(
-                "ImportAssetDialog: cooked '{}' → '{}' (SourcePath='{}')",
-                sourcePath.string(),
-                importResult.Meta.AssetPath,
-                importResult.Meta.SourcePath);
+                const ImportAssetResult importResult = AssetManager::Get().ImportAnimationClip(
+                    sourcePath,
+                    m_PendingMeshImportDestDirectory,
+                    skeletonRelPath.generic_string(),
+                    0);
+                if (!importResult.bSuccess)
+                {
+                    ++failCount;
+                    ME_CORE_ERROR(
+                        "ImportAssetDialog: failed to import AnimationClip '{}': {}",
+                        sourcePath.string(),
+                        importResult.ErrorMessage);
+                    continue;
+                }
+
+                ++successCount;
+                ME_CORE_INFO(
+                    "ImportAssetDialog: AnimationClip '{}' → '{}' (SourcePath='{}')",
+                    sourcePath.string(),
+                    importResult.Meta.AssetPath,
+                    importResult.Meta.SourcePath);
+            }
+        }
+        else
+        {
+            const MeshImportProductType productType = choice == MeshImportProductChoice::SkeletalMesh
+                ? MeshImportProductType::SkeletalMesh
+                : MeshImportProductType::StaticMesh;
+
+            for (const std::filesystem::path& sourcePath : m_PendingMeshImportSources)
+            {
+                const ImportAssetResult importResult = AssetManager::Get().ImportExternalMesh(
+                    sourcePath,
+                    m_PendingMeshImportDestDirectory,
+                    productType);
+                if (!importResult.bSuccess)
+                {
+                    ++failCount;
+                    ME_CORE_ERROR(
+                        "ImportAssetDialog: failed to import mesh source '{}': {}",
+                        sourcePath.string(),
+                        importResult.ErrorMessage);
+                    continue;
+                }
+
+                ++successCount;
+                ME_CORE_INFO(
+                    "ImportAssetDialog: cooked '{}' → '{}' (SourcePath='{}')",
+                    sourcePath.string(),
+                    importResult.Meta.AssetPath,
+                    importResult.Meta.SourcePath);
+            }
         }
 
         m_PendingMeshImportSources.clear();
         m_PendingMeshImportDestDirectory.clear();
 
         ME_CORE_INFO(
-            "ImportAssetDialog mesh cook: {} succeeded, {} failed.",
+            "ImportAssetDialog cook: {} succeeded, {} failed.",
             successCount,
             failCount);
 

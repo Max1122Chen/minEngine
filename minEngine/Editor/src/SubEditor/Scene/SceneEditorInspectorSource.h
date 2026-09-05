@@ -71,7 +71,8 @@ namespace minEngine
 
         void TryPropertyUndoCommitImmediate(const PropertyUndoCaptureContext& context,
                                             const std::vector<uint8_t>& beforeBlob,
-                                            const std::vector<uint8_t>& afterBlob);
+                                            const std::vector<uint8_t>& afterBlob,
+                                            bool applyOnFirstExecute = true);
 
         void ApplyPropertyUndoCaptureHooks(const PropertyUndoCaptureContext& context, bool allowRowCapture);
 

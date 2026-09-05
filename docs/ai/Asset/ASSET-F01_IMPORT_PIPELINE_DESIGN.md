@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `ASSET-F01`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done（MVP）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03（§3.8 资产模型与引用；待审批）
+- **Last updated:** 2026-09-04（MVP Done；S04 / `.memesh` Deferred；暂停不挡 Anim）
 - **Related:**
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - [ANIM-F01](../Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md)（消费方：SkeletalMesh / Skeleton）
@@ -16,7 +16,7 @@
 ## TL;DR
 **问题：** `.fbx`/`.gltf` 被当成引擎 `AssetType`（扫描默认 StaticMesh），Assimp 在 **Load** 时反复解析；互换格式与原生资产混为一谈。  
 **方案：** Source（DCC 文件）≠ Asset（引擎可加载实体）。显式 **Import** → Assimp 只在 Import/Cook → 登记 **原生类型** 资产（mesh / skeleton / 后续 material、clip）。  
-**当前：** In Progress — S00–S02 Done；下一 S03 Static 对齐 / 回归。
+**当前：** **Done（MVP）** — S00–S03 通过；S04 Reimport / 二期 `.memesh` **Deferred**；续作有空再推，不挡 ANIM-F02。
 
 ## Scope
 - **In（MVP）：**
@@ -334,3 +334,4 @@ Static 保持薄；Skeletal 多的是 **独立 Skeleton 资产 + 原生描述序
 | 2026-09-03 | **§3.8** Static/Skeletal 资产模型、Import/Load 边界、双 Path、`SkeletonAssetPath` sidecar（**待审批**）；Reject `AssetMeta::SkeletonPath` |
 | 2026-09-03 | **§3.8 修订**：几何路径 = `meta.AssetPath`（`.glb`）；Skeleton = `SkeletalMesh::m_Skeleton` **ObjectPtr** + `.meskmesh` buddy；Reject `.mesk` 路径字符串 |
 | 2026-09-04 | §3.8 **审批通过**；S02 落地：Matrix3/4 primitive；Skeleton 直序列化；Import cook triplet |
+| 2026-09-04 | S03 Done；Status → **Done（MVP）**；S04 / `.memesh` Deferred；暂停不挡 ANIM-F02 |

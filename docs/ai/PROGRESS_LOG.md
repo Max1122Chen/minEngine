@@ -1,11 +1,31 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-04（ASSET-F01 S00–S03 MVP）
+Last updated: 2026-09-05（ANIM-F02 Done；人型目视 PASS）
+
+### 2026-09-05 - ANIM-F02 Done: humanoid clip playback + OpenGL bone indices
+- **Visual:** Walking `.meaclip` on `SkeletalMeshComponent` — Editor 目视 PASS（动作正常）。
+- **Blocker fixed:** OpenGL `a_BoneIndices` 须 `glVertexAttribIPointer`；`Pointer`+`GL_INT` 在 bind 仍“看起来对”（skin=I），动画时索引塌成 0（`ik_hand_root` 无轨）→ 画面不动。
+- **Also:** Skeleton Guid / `.meta` 对齐（Load `ApplyMetaIdentity`；Import 先写 meta）；ObjectPtr Guid 短路避免重复反序列化；`PlayOnAwake`；Player 默认可播。
+- **Docs:** Registry / ACTIVE_WORK / Design·Impl → **Done**。
+- **Not committed:** 本地 `MyMEProject/Assets/Animations/**`、Sources、场景/工程本地改动、`build_*.log`。
+- **Verify:** Editor 人型目视；此前 `test animation-clip` / smoke。
+
+### 2026-09-04 - ANIM-F02 MVP: Clip Playback (bone AnimationTrack)
+- **Code:** `AnimationTrack` / `AnimationClip::Evaluate` / `TryGetNamedFloat` 壳；`AnimationPlayer` ⊏ `SkeletalMeshComponent`；`.meaclip` Loader + `ImportAnimationClip`；Editor Import 可选 AnimationClip（需 `{stem}_Skeleton.meskeleton`）。
+- **定位:** MVP 过渡态；named float Import / 直写 property **Out**（Design §3.5）。
+- **Verified:** `test animation-clip` 4/4；`skeleton-pose`；`smoke` PASS；Editor+Tests 编译 OK。
+- **手动:** 人型 FBX → Import AnimationClip → 赋 Clip → Play（后补 PlayOnAwake / 目视）。
+
+### 2026-09-04 - ANIM-F01 收口 + ASSET-F01 MVP 暂停
+- **ANIM-F01:** Status → **Done**；竖切验收（stick + Import 人型）通过；Shadow skinned / 扭骨 UX **Deferred**。
+- **ASSET-F01:** S00–S03 MVP **Done**；S04 / `.memesh` **Deferred**；Feature → **Done（MVP）**，暂停不挡 Anim。
+- **Docs:** Registry / ACTIVE_WORK / Design·Impl Meta 对齐；下一焦点 **ANIM-F02** Draft 审阅 → Impl Plan。
+- **Note:** 本地人型验证资产 / 场景改动仍不入库。
 
 ### 2026-09-04 - ASSET-F01-S03: Static Import 对齐（手动通过）
 - **验证:** 维护者确认 StaticMesh / SkeletalMesh Import 均正常。
 - **Status:** S00–S03 Done；S04 Reimport Deferred。
-- **Next:** 准备 commit（不含本地人型二进制 / 本地场景）。
+- **Next:**（当时）准备 commit；后改为暂停 Import 续作、收口 ANIM-F01。
 
 ### 2026-09-04 - ASSET-F01-S02: Skeleton 直序列化 + ObjectPtr buddy
 - **Matrix3/4：** `kIsPrimitiveLike` + `PrimitiveCodecRegistry`（列主序扁平 9/16 float）。
@@ -357,6 +377,13 @@ Last updated: 2026-09-04（ASSET-F01 S00–S03 MVP）
 - Next: User experiments via `MAX_*_SHADOW_MAPS` / `MAX_CASCADES` or scene Cast Shadow toggles; then fix P0–P3.
 
 Last updated: 2026-08-28 (TD-025 clip-space caps + VK shadow fix)
+
+### 2026-09-04 - ANIM-F02 MVP: Clip Playback (bone AnimationTrack)
+- **Code:** `AnimationTrack` / `AnimationClip::Evaluate` / `TryGetNamedFloat` 壳；`AnimationPlayer` ⊏ `SkeletalMeshComponent`；`.meaclip` Loader + `ImportAnimationClip`；Editor Import 可选 AnimationClip（需 `{stem}_Skeleton.meskeleton`）。
+- **定位:** MVP 过渡态；named float Import / 直写 property **Out**（Design §3.5）。
+- **Verified:** `test animation-clip` 4/4；`skeleton-pose`；`smoke` PASS；Editor+Tests 编译 OK。
+- **手动:** 人型 FBX → Import AnimationClip → 赋 Clip → `GetAnimationPlayer().Play()`。
+- **Next:** 人型目视后可标 Feature Done；或准备 commit。
 
 ## Purpose
 

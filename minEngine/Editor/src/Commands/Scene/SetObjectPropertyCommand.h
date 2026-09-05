@@ -19,7 +19,8 @@ namespace minEngine
                                  std::string ownerClassName,
                                  std::string propertyPath,
                                  std::vector<uint8_t> beforeValue,
-                                 std::vector<uint8_t> afterValue);
+                                 std::vector<uint8_t> afterValue,
+                                 bool applyOnFirstExecute = true);
 
         void Execute() override;
         void Undo() override;
@@ -33,6 +34,8 @@ namespace minEngine
         std::string m_PropertyPath;
         std::vector<uint8_t> m_BeforeValue;
         std::vector<uint8_t> m_AfterValue;
+        // UI may already apply the after-value; first Execute then only records for Undo/Redo.
+        bool m_ApplyOnNextExecute = true;
         mutable std::string m_Description;
     };
 }

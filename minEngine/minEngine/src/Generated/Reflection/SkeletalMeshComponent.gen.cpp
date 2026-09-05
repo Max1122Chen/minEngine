@@ -6,4 +6,6 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::SkeletalMeshComponent, GReflectionCl
     ME_REFLECTION_CLASS_SUPER(minEngine::PrimitiveComponent)
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SkeletalMeshComponent, m_Mesh, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SkeletalMeshComponent, m_Material, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SkeletalMeshComponent, m_AnimationClip, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SkeletalMeshComponent, m_bPlayOnAwake, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::SkeletalMeshComponent)

@@ -40,13 +40,14 @@ namespace minEngine
         std::snprintf(
             message,
             sizeof(message),
-            "Import %d mesh source file(s) as which engine asset type?",
+            "Import %d source file(s) as which engine asset type?",
             m_SourceFileCount);
         ImGui::TextUnformatted(message);
         ImGui::Separator();
         ImGui::TextWrapped(
-            "FBX/glTF are Import Sources. The engine writes .glb (Skeletal) or .obj (Static) "
-            "and keeps the original under Assets/Sources/.");
+            "FBX/glTF are Import Sources. Mesh → .glb/.obj; AnimationClip → .meaclip "
+            "(requires {stem}_Skeleton.meskeleton in the destination folder). "
+            "Originals are kept under Assets/Sources/.");
 
         MeshImportProductChoice choice = MeshImportProductChoice::None;
 
@@ -58,6 +59,11 @@ namespace minEngine
         if (ImGui::Button("StaticMesh", ImVec2(140.0f, 0.0f)))
         {
             choice = MeshImportProductChoice::StaticMesh;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("AnimationClip", ImVec2(140.0f, 0.0f)))
+        {
+            choice = MeshImportProductChoice::AnimationClip;
         }
         ImGui::SameLine();
         if (ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)))

@@ -11,6 +11,7 @@ namespace minEngine
         None,
         StaticMesh,
         SkeletalMesh,
+        AnimationClip,
         Cancel
     };
 

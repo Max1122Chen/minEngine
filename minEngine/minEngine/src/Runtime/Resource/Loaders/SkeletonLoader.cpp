@@ -41,6 +41,9 @@ namespace minEngine
             return nullptr;
         }
 
+        // File may embed a stale m_Guid; registry identity comes from .meta.
+        AssetManager::Get().ApplyMetaIdentity(*skeleton, meta);
+
         std::vector<SkeletonBone> loadedBones = skeleton->GetBones();
         std::string validateError;
         if (!skeleton->SetBones(std::move(loadedBones), &validateError))

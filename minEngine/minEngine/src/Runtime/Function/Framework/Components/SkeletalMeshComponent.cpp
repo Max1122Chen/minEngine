@@ -7,12 +7,99 @@
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/Skeleton.h"
 
+
 namespace minEngine
 {
     SkeletalMeshComponent::SkeletalMeshComponent()
     {
         // Skinned shadow depth shader not yet wired (ShadowPass.vert is rigid-only).
         m_CastShadow = false;
+    }
+
+    void SkeletalMeshComponent::SyncPlayerClipFromProperty()
+    {
+        if (m_AnimationPlayer.GetClip() == m_AnimationClip.get())
+        {
+            return;
+        }
+
+        m_AnimationPlayer.SetClip(m_AnimationClip);
+        // New clip assignment: allow PlayOnAwake to fire again (Audio re-registers on activate;
+        // here Inspector can swap clips without deactivate).
+        m_bPlayOnAwakeTriggered = false;
+            }
+
+    bool SkeletalMeshComponent::TryConsumePlayOnAwake()
+    {
+        if (!m_bPlayOnAwake || m_bPlayOnAwakeTriggered)
+        {
+            return false;
+        }
+
+        if (m_AnimationClip == nullptr)
+        {
+            return false;
+        }
+
+        SyncPlayerClipFromProperty();
+        if (!EnsureClipSkeletonCompatible())
+        {
+            return false;
+        }
+
+        m_bPlayOnAwakeTriggered = true;
+        return true;
+    }
+
+    void SkeletalMeshComponent::ProcessPlayOnAwake()
+    {
+        if (!TryConsumePlayOnAwake())
+        {
+            return;
+        }
+
+        m_AnimationPlayer.Play();
+        ME_CORE_INFO(
+            "SkeletalMeshComponent: PlayOnAwake -> Playing clip='{}' duration={:.3f}s tracks={}",
+            m_AnimationClip ? m_AnimationClip->GetName() : std::string("<null>"),
+            m_AnimationClip ? m_AnimationClip->GetDuration() : 0.0f,
+            m_AnimationClip ? m_AnimationClip->GetTracks().size() : 0u);
+    }
+
+    void SkeletalMeshComponent::OnActivate()
+    {
+        Component::OnActivate();
+        m_bPlayOnAwakeTriggered = false;
+                ProcessPlayOnAwake();
+    }
+
+    void SkeletalMeshComponent::OnDeactivate()
+    {
+        m_AnimationPlayer.Stop();
+        m_bPlayOnAwakeTriggered = false;
+                Component::OnDeactivate();
+    }
+
+    void SkeletalMeshComponent::Tick(float deltaTime)
+    {
+        SyncPlayerClipFromProperty();
+
+        // Same lifecycle idea as AudioSystem::ProcessPlayOnAwake: keep trying until ready.
+        ProcessPlayOnAwake();
+
+        if (m_AnimationPlayer.GetState() != AnimationPlayState::Playing)
+        {
+            return;
+        }
+
+        if (!EnsureClipSkeletonCompatible())
+        {
+            return;
+        }
+
+        m_AnimationPlayer.Update(deltaTime, m_LocalPose);
+        m_bPoseDirty = true;
+        MarkRenderStateDirty();
     }
 
     void SkeletalMeshComponent::SetMesh(const std::shared_ptr<SkeletalMesh>& mesh)
@@ -23,6 +110,8 @@ namespace minEngine
         }
         m_Mesh = mesh;
         ResetToBindPose();
+        // Mesh/skeleton may become available after clip was assigned.
+        m_bPlayOnAwakeTriggered = false;
         MarkRenderStateDirty();
     }
 
@@ -72,6 +161,61 @@ namespace minEngine
     Skeleton* SkeletalMeshComponent::GetSkeleton() const
     {
         return m_Mesh ? m_Mesh->GetSkeleton() : nullptr;
+    }
+
+    void SkeletalMeshComponent::SetAnimationClip(const std::shared_ptr<AnimationClip>& clip)
+    {
+        m_AnimationClip = clip;
+        m_AnimationPlayer.SetClip(clip);
+        m_bPlayOnAwakeTriggered = false;
+                ProcessPlayOnAwake();
+    }
+
+    bool SkeletalMeshComponent::EnsureClipSkeletonCompatible() const
+    {
+        AnimationClip* clip = m_AnimationPlayer.GetClip();
+        if (clip == nullptr)
+        {
+            return false;
+        }
+
+        Skeleton* meshSkeleton = GetSkeleton();
+        if (meshSkeleton == nullptr)
+        {
+            static thread_local uint32_t s_NullMeshSkeletonLogCounter = 0;
+            if ((s_NullMeshSkeletonLogCounter++ % 120u) == 0u)
+            {
+                ME_CORE_WARN(
+                    "SkeletalMeshComponent: cannot play AnimationClip — mesh has no Skeleton "
+                    "(buddy '.meskmesh' missing or failed; mesh may be using a temporary skeleton).");
+            }
+            return false;
+        }
+
+        Skeleton* clipSkeleton = clip->GetSkeleton();
+        if (clipSkeleton == nullptr)
+        {
+            ME_CORE_ERROR("SkeletalMeshComponent: AnimationClip has no Skeleton.");
+            return false;
+        }
+
+        if (clipSkeleton != meshSkeleton
+            && clipSkeleton->GetGuid() != meshSkeleton->GetGuid())
+        {
+            static thread_local uint32_t s_GuidMismatchLogCounter = 0;
+            if ((s_GuidMismatchLogCounter++ % 120u) == 0u)
+            {
+                ME_CORE_ERROR(
+                    "SkeletalMeshComponent: AnimationClip Skeleton GUID mismatch with mesh Skeleton "
+                    "(clip='{}', mesh='{}'). Re-import skeletal mesh so buddy points at the same "
+                    "Skeleton asset as the clip.",
+                    clipSkeleton->GetGuid().ToString(),
+                    meshSkeleton->GetGuid().ToString());
+            }
+            return false;
+        }
+
+        return true;
     }
 
     void SkeletalMeshComponent::RebuildPaletteIfNeeded()

@@ -11,7 +11,8 @@ namespace minEngine
                                                        std::string ownerClassName,
                                                        std::string propertyPath,
                                                        std::vector<uint8_t> beforeValue,
-                                                       std::vector<uint8_t> afterValue)
+                                                       std::vector<uint8_t> afterValue,
+                                                       bool applyOnFirstExecute)
         : m_SceneEditor(sceneEditor)
         , m_OwnerGuidHigh(ownerGuid.High)
         , m_OwnerGuidLow(ownerGuid.Low)
@@ -19,14 +20,19 @@ namespace minEngine
         , m_PropertyPath(std::move(propertyPath))
         , m_BeforeValue(std::move(beforeValue))
         , m_AfterValue(std::move(afterValue))
+        , m_ApplyOnNextExecute(applyOnFirstExecute)
     {
         m_Description = "Set " + m_PropertyPath;
     }
 
     void SetObjectPropertyCommand::Execute()
     {
-        const GUID ownerGuid(m_OwnerGuidHigh, m_OwnerGuidLow);
-        m_SceneEditor.ApplySetObjectProperty(ownerGuid, m_OwnerClassName, m_PropertyPath, m_AfterValue);
+        if (m_ApplyOnNextExecute)
+        {
+            const GUID ownerGuid(m_OwnerGuidHigh, m_OwnerGuidLow);
+            m_SceneEditor.ApplySetObjectProperty(ownerGuid, m_OwnerClassName, m_PropertyPath, m_AfterValue);
+        }
+        m_ApplyOnNextExecute = true;
     }
 
     void SetObjectPropertyCommand::Undo()

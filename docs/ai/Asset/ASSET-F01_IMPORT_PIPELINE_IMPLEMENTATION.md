@@ -3,15 +3,15 @@
 ## Meta
 - **ID:** `ASSET-F01`
 - **Type:** Implementation Plan
-- **Status:** In Progress
+- **Status:** Done（MVP）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03（S02 对齐 Design §3.8；待审批）
+- **Last updated:** 2026-09-04（MVP 收口；续作 Deferred）
 - **Related:** [Design Spec](./ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
 - **Branch:** `feat/animation`
 
 ## TL;DR
 按 Design：Source≠Asset；Registry 去 FBX Infer → Import 写出引擎几何 → Skeleton 独立资产 → Static 对齐。  
-**当前：** S00–S03 Done（Import MVP 竖切通过）；S04 Reimport Deferred。
+**当前：** S00–S03 **Done**；S04 / `.memesh` **Deferred**；Feature → **Done（MVP）**，暂停不挡 Anim。
 
 ## Scope
 - **In:** Design MVP（Registry、Import API、Editor 产物选择、Skeleton 序列化、Static/Skeletal 导入）
@@ -115,3 +115,4 @@ S00 → S01 → S02 → S03
 | 2026-09-03 | §3.8 修订：Reject `.mesk`；Skeleton = ObjectPtr ref |
 | 2026-09-04 | S02 Done：Matrix3/4 primitive；Skeleton 直序列化；`.meskmesh` buddy；Import cook 成对 |
 | 2026-09-04 | S03 Done：Static Import 手动通过；MVP 竖切收口 |
+| 2026-09-04 | Status → **Done（MVP）**；暂停续作；焦点 → ANIM-F02 |

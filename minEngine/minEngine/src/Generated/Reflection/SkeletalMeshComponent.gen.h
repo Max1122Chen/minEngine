@@ -6,6 +6,8 @@
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SkeletalMeshComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletalMeshComponent, m_Mesh)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletalMeshComponent, m_Material)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletalMeshComponent, m_AnimationClip)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SkeletalMeshComponent, m_bPlayOnAwake)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::SkeletalMeshComponent, GReflectionClassRegister_SkeletalMeshComponent_382ff09f)

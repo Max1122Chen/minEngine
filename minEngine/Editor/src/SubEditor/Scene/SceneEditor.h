@@ -104,7 +104,8 @@ namespace minEngine
                                      const std::string& ownerClassName,
                                      const std::string& propertyPath,
                                      std::vector<uint8_t> beforeValue,
-                                     std::vector<uint8_t> afterValue);
+                                     std::vector<uint8_t> afterValue,
+                                     bool applyOnFirstExecute = true);
 
         bool TryCaptureGameObjectSnapshotForDelete(uint64_t gameObjectId,
                                                    EditorObjectSnapshot& outSnapshot,

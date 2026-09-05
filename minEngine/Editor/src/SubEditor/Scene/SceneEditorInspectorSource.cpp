@@ -505,7 +505,8 @@ namespace minEngine
 
     void SceneEditorInspectorSource::TryPropertyUndoCommitImmediate(const PropertyUndoCaptureContext& context,
                                                                     const std::vector<uint8_t>& beforeBlob,
-                                                                    const std::vector<uint8_t>& afterBlob)
+                                                                    const std::vector<uint8_t>& afterBlob,
+                                                                    bool applyOnFirstExecute)
     {
         if (!context.IsValid() || beforeBlob.empty() || afterBlob == beforeBlob)
         {
@@ -524,7 +525,8 @@ namespace minEngine
             context.ownerClassName,
             context.capturePropertyPath,
             beforeBlob,
-            afterBlob);
+            afterBlob,
+            applyOnFirstExecute);
     }
 
     void SceneEditorInspectorSource::TryPropertyUndoActivated(const PropertyUndoCaptureContext& context, uint32_t editId)
@@ -876,6 +878,13 @@ namespace minEngine
                         skeletalMeshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
                         return true;
                     }
+
+                    if (objectPtrProperty.GetName() == "m_AnimationClip")
+                    {
+                        skeletalMeshComponent->SetAnimationClip(
+                            std::static_pointer_cast<AnimationClip>(asset));
+                        return true;
+                    }
                 }
             }
 
@@ -902,7 +911,8 @@ namespace minEngine
             std::vector<uint8_t> afterBlob;
                 if (!beforeBlob.empty() && SerializePropertyUndoBlob(*undoContext, afterBlob))
             {
-                    TryPropertyUndoCommitImmediate(*undoContext, beforeBlob, afterBlob);
+                    // UI already applied the ObjectPtr; record undo without re-deserializing/reloading.
+                    TryPropertyUndoCommitImmediate(*undoContext, beforeBlob, afterBlob, false);
             }
 
             m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);

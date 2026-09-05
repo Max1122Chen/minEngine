@@ -31,6 +31,7 @@ namespace minEngine
     class LuaScript;
     class EnvironmentMap;
     class AudioClip;
+    class AnimationClip;
     class Asset;
 
     struct ImportAssetResult
@@ -71,11 +72,24 @@ namespace minEngine
             const std::filesystem::path& destDirectory,
             MeshImportProductType productType);
 
+        // ANIM-F02: Import Source animation → .meaclip bound to an existing Skeleton asset.
+        ImportAssetResult ImportAnimationClip(
+            const std::filesystem::path& sourcePath,
+            const std::filesystem::path& destDirectory,
+            std::string_view skeletonAssetPath,
+            int animationIndex = 0);
+
         bool DeleteAsset(const std::string& assetPath, std::string& outError);
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
         bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
         bool UnregisterAsset(const std::string& assetPath, std::string& outError);
         bool RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError);
+
+        // Write .meta before RegisterAsset so Guid stays stable (matches serialized MEObject::m_Guid).
+        bool WriteOrUpdateMetaFile(const AssetMeta& meta);
+
+        // After asset deserialize, force identity from registry meta (file may embed a stale m_Guid).
+        void ApplyMetaIdentity(MEObject& object, const AssetMeta& meta);
 
         void ClearProjectRegistry();
 
@@ -254,6 +268,8 @@ namespace minEngine
     std::shared_ptr<EnvironmentMap> AssetManager::LoadAsset_Impl<EnvironmentMap>(const AssetMeta& meta);
     template<>
     std::shared_ptr<AudioClip> AssetManager::LoadAsset_Impl<AudioClip>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<AnimationClip> AssetManager::LoadAsset_Impl<AnimationClip>(const AssetMeta& meta);
 
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;

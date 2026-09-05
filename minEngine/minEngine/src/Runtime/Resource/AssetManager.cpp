@@ -4,6 +4,7 @@
 #include "Runtime/Resource/EditorFilesystemMutationPass.h"
 #include "Runtime/Resource/Loaders/AssimpMeshImportUtil.h"
 #include "Runtime/Resource/Loaders/SkeletalMeshLoader.h"
+#include "Runtime/Resource/Loaders/AnimationClipLoader.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -11,6 +12,7 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
+#include "Runtime/Function/Animation/AnimationClip.h"
 #include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
@@ -714,6 +716,188 @@ namespace minEngine
         return result;
     }
 
+    ImportAssetResult AssetManager::ImportAnimationClip(
+        const std::filesystem::path& sourcePath,
+        const std::filesystem::path& destDirectory,
+        std::string_view skeletonAssetPath,
+        int animationIndex)
+    {
+        AssetRegistryBroadcastBatchScope batchScope;
+        ImportAssetResult result;
+
+        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
+        {
+            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
+            return result;
+        }
+
+        if (!AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string()))
+        {
+            result.ErrorMessage =
+                "ImportAnimationClip expects .fbx/.gltf/.glb, got: " + sourcePath.extension().string();
+            return result;
+        }
+
+        if (skeletonAssetPath.empty())
+        {
+            result.ErrorMessage = "skeletonAssetPath is empty";
+            return result;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        if (contentRoot.empty())
+        {
+            result.ErrorMessage = "project content root is not set";
+            return result;
+        }
+
+        std::shared_ptr<Skeleton> skeleton = LoadAsset<Skeleton>(std::string(skeletonAssetPath));
+        if (skeleton == nullptr)
+        {
+            result.ErrorMessage = "failed to load Skeleton: " + std::string(skeletonAssetPath);
+            return result;
+        }
+
+        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
+            ? std::filesystem::weakly_canonical(destDirectory)
+            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
+
+        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
+        {
+            result.ErrorMessage =
+                "destination directory is outside project Assets: " + absoluteDestDirectory.string();
+            return result;
+        }
+
+        const std::filesystem::path sourcesDirectory = contentRoot / "Sources";
+        std::error_code sourcesCreateError;
+        std::filesystem::create_directories(sourcesDirectory, sourcesCreateError);
+        if (sourcesCreateError)
+        {
+            result.ErrorMessage = "failed to create Assets/Sources: " + sourcesCreateError.message();
+            return result;
+        }
+
+        const std::filesystem::path sourceCopyPath = sourcesDirectory / sourcePath.filename();
+        NoteEditorFilesystemMutation(sourcesDirectory);
+        NoteEditorFilesystemMutation(sourceCopyPath);
+
+        if (!std::filesystem::exists(sourceCopyPath))
+        {
+            std::error_code copySourceError;
+            std::filesystem::copy_file(
+                sourcePath,
+                sourceCopyPath,
+                std::filesystem::copy_options::none,
+                copySourceError);
+            if (copySourceError)
+            {
+                result.ErrorMessage =
+                    "failed to copy source into Assets/Sources: " + copySourceError.message();
+                return result;
+            }
+        }
+        else if (!std::filesystem::equivalent(sourceCopyPath, sourcePath))
+        {
+            ME_CORE_INFO(
+                "ImportAnimationClip: reusing existing Sources copy '{}'",
+                sourceCopyPath.string());
+        }
+
+        AnimationClip importedClip;
+        std::string importError;
+        if (!AnimationClipLoader::ImportFromFile(
+                sourceCopyPath.string(),
+                skeleton,
+                animationIndex,
+                importedClip,
+                &importError))
+        {
+            result.ErrorMessage = importError;
+            return result;
+        }
+
+        std::filesystem::path productFileName = sourcePath.stem();
+        if (animationIndex > 0)
+        {
+            productFileName += "_";
+            productFileName += std::to_string(animationIndex);
+        }
+        productFileName += ".meaclip";
+        const std::filesystem::path productPath = absoluteDestDirectory / productFileName;
+        if (std::filesystem::exists(productPath))
+        {
+            result.ErrorMessage = "destination clip already exists: " + productPath.string();
+            return result;
+        }
+
+        NoteEditorFilesystemMutation(absoluteDestDirectory);
+        NoteEditorFilesystemMutation(productPath);
+
+        // Write clip + meta with a stable Guid before RegisterAsset (same order as Skeleton cook).
+        AssetMeta pendingMeta;
+        pendingMeta.AssetName = productFileName.stem().string();
+        pendingMeta.AssetPath =
+            NormalizeProjectRelativeAssetPath(productPath.string());
+        pendingMeta.AssetType = "AnimationClip";
+        pendingMeta.Guid = GenerateGUID();
+        if (pendingMeta.AssetPath.empty())
+        {
+            result.ErrorMessage = "failed to resolve AnimationClip destination path";
+            return result;
+        }
+
+        importedClip.SetName(pendingMeta.AssetName);
+        importedClip.SetGuid(pendingMeta.Guid);
+
+        std::string saveError;
+        if (!AnimationClipLoader::Save(pendingMeta, importedClip, &saveError))
+        {
+            result.ErrorMessage = saveError;
+            return result;
+        }
+
+        if (!WriteOrUpdateMetaFile(pendingMeta))
+        {
+            result.ErrorMessage = "failed to write AnimationClip meta";
+            return result;
+        }
+
+        result.Meta = RegisterAsset(productPath.string(), "AnimationClip");
+        if (result.Meta.AssetPath.empty())
+        {
+            result.ErrorMessage = "failed to register AnimationClip asset";
+            return result;
+        }
+
+        result.Meta.SourcePath = NormalizeProjectRelativeAssetPath(sourceCopyPath.string());
+        if (!WriteMetaFile(result.Meta))
+        {
+            result.ErrorMessage = "failed to write SourcePath into meta";
+            return result;
+        }
+        CacheMeta(result.Meta, true);
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
+
+        result.bSuccess = true;
+        return result;
+    }
+
+    bool AssetManager::WriteOrUpdateMetaFile(const AssetMeta& meta)
+    {
+        return WriteMetaFile(meta);
+    }
+
+    void AssetManager::ApplyMetaIdentity(MEObject& object, const AssetMeta& meta)
+    {
+        if (!meta.AssetName.empty())
+        {
+            object.SetName(meta.AssetName);
+        }
+        object.SetGuid(meta.Guid);
+    }
+
     void AssetManager::ClearProjectRegistry()
     {
         m_Registry.ClearRegistryData();
@@ -1212,6 +1396,30 @@ namespace minEngine
             if (asset == nullptr)
             {
                 outErrorMessage = "failed to load skeletal mesh by guid";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "Skeleton")
+        {
+            std::shared_ptr<Skeleton> asset = LoadAsset<Skeleton>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load Skeleton";
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        if (meta.AssetType == "AnimationClip")
+        {
+            std::shared_ptr<AnimationClip> asset = LoadAsset<AnimationClip>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = "failed to load AnimationClip";
                 return nullptr;
             }
 

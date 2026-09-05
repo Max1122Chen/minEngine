@@ -3,71 +3,71 @@
 ## Meta
 - **ID:** `ANIM-F02`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03
+- **Last updated:** 2026-09-05（人型 Editor 目视 PASS；OpenGL Int4 bone indices 修复）
 - **Branch:** `feat/animation`
 - **Related:**
-  - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
-  - Prerequisite: [ANIM-F01 Skeletal Mesh Pipeline](./ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md)
-  - Follow-up: [ANIM-F03 Animation Graph](./ANIM-F03_ANIMATION_GRAPH_DESIGN.md)
-  - Brief (reference): [`docs/external/...Development Brief.md`](../../external/minEngine%20—%203D%20Animation%20System%20Development%20Brief.md)
-- **Depends on:** `ANIM-F01` 验收（Pose → palette → GPU skinning 正确）
+  - [Implementation](./ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
+  - Prerequisite: [ANIM-F01](./ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md)（**Done**）
+  - Follow-up: [ANIM-F03](./ANIM-F03_ANIMATION_GRAPH_DESIGN.md)
+- **Depends on:** `ANIM-F01` — **已满足**
 
 ## TL;DR
-在 F01 地基上增加 **`AnimationClip` 资产 + 采样 + `AnimationPlayer`**，把「谁写 Pose」从手工/Bind 换成时间轴求值；**不改** SkeletalMesh / Proxy / Material 蒙皮路径。  
-与 Static∥Skeletal 平行产品线一致：Clip 是第三条资产线，经 Player 写入 `SkeletalMeshComponent::SetLocalPose`。
+**F02 = MVP 过渡态**（不代表最终 Clip 形态）：Import 写出 `AnimationClip`（**`AnimationTrack` = 骨 TRS**）+ `AnimationPlayer` 组合进 `SkeletalMeshComponent` → `Evaluate` → Pose → F01 蒙皮。  
+长期愿景：有限 **named float 轨**；外部用 **`TryGetNamedFloat`** 读采样值，**Clip 不直接改 Component 属性**（详见 §3.5）。
 
 ## Scope
 - **In:**
-  - `AnimationClip` Asset（per-bone TRS 曲线、duration）
-  - Assimp 动画通道 → Clip（Import 期 bone name→index；绑定目标 `Skeleton`）
-  - `AnimationPlayer`：Play / Pause / Stop / Loop / Speed / Time；每帧 `Evaluate → Pose`
-  - 与 `SkeletalMeshComponent` 接线（组件持有 Player，或外部求值后 `SetLocalPose`）
-  - 单测（采样/循环）+ 可视（Walk/Idle 循环）
+  - `AnimationClip`（`.meaclip`）：`AnimationTrack`（BoneIndex + TRS keys）、duration、`shared_ptr<Skeleton>`（序列化走 ObjectPtr 类别，同 `SkeletalMesh`）
+  - `TryGetNamedFloat` API 壳 + 可序列化 `NamedFloatTrack` 容器（F02 Import **不**填；恒可返回 false）
+  - Assimp → Import 写出引擎 Clip；Load 不跑 Assimp
+  - `AnimationPlayer` ⊏ `SkeletalMeshComponent`；单 Clip Play/Pause/Stop/Loop/Speed
+  - 单测 + Editor 可 Import AnimationClip（人型 FBX）
 - **Out:**
-  - State Machine / Animation Graph / Parameters（→ F03）
-  - Animation Event、Root Motion、IK、Retarget、Additive、Layer、Blend Tree
-  - 多 Clip 混合（F03 Transition Blend；本 Feature 最多 **单 Clip**）
-  - Clip 压缩、流式、Job 系统
-  - 完整 Anim 编辑器
+  - Graph / Blend / Event / IK / Root Motion / Retarget
+  - Clip 直接写任意 `ME_PROPERTY`；反射绑定表
+  - 完整 Anim 编辑器；Clip 压缩
+
+## Locked decisions
+
+| # | 决策 | 说明 |
+|---|------|------|
+| 1 | Player ⊏ SkeletalMeshComponent | 组合成员 |
+| 2 | 缺轨/缺分量 | F02 用 **Bind**；复杂策略后议 |
+| 3 | 非 Loop 播完 | **Paused at end** |
+| 4 | Clip↔Skeleton | `shared_ptr<Skeleton>` + ObjectPtr 序列化（对齐 SkeletalMesh） |
+| 5 | Clip 落盘 | Import 写出 `.meaclip` |
+| 6 | Demo | 人型 FBX 动画 |
+| 7 | 命名 | `AnimationChannel` → **`AnimationTrack`** |
+| 8 | 定位 | F02 = **MVP 过渡**；最终形态另议 |
 
 ## Reader quick start
-1. 本文件：Clip / Player 契约及与 F01 的接缝
-2. F01 §2.7：`Pose` / `Skeleton` / `SkeletalMeshComponent` 接口
-3. 实现计划：待 `ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md`
+1. 本文件 Locked + §3.2 / §3.5
+2. [Impl Plan](./ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md)
+3. F01 §2.7 Pose / Skeleton / Component
 
 ---
 
 ## 1) 背景与目标
 
-F01 交付后，系统已能：
-
 ```text
-Pose → Skeleton::BuildSkinningPalette → SkeletalMeshSceneProxy → Skinned VS
+AnimationClip.Evaluate(t) → Pose →（F01）palette → GPU
 ```
 
-缺的是 **随时间变化的 Pose 源**。F02 只补这一环：
-
-```text
-AnimationClip.Evaluate(time) → Pose →（F01 管道）
-```
-
-**成功标准：** 导入角色循环播放至少一条有意义的 Clip（如 Walk）；改 Speed/Loop 行为正确；Assimp 仍不进帧循环。
+成功标准：人型循环播 Clip；Speed/Loop/Pause/Stop 正确；Assimp 不进帧循环。
 
 ---
 
-## 2) 与 F01 平行产品线的关系
+## 2) 平行产品线
 
-| 层 | F01 | F02 增量 |
-|----|-----|----------|
-| Asset | `Skeleton` / `SkeletalMesh` | **`AnimationClip`**（引用兼容的 `Skeleton`） |
-| Import | `SkeletalMeshLoader` | **`AnimationClipLoader`**（可同文件抽 anim，或独立入口） |
-| Runtime 核 | `Pose` / palette | **采样器 + `AnimationPlayer`** |
-| Component | `SkeletalMeshComponent` 写 Pose | Player 驱动 `SetLocalPose` |
-| Render / Material | Skinned 路径 | **无改动**（验收项：零回归蒙皮） |
-
-F03 将再把「Pose 源」换成 Graph；Player 可作为 Graph 内单状态的实现，或被 Graph 替代为唯一入口——**F02 API 保持小而稳**，避免 Graph 倒逼重写采样器。
+| 层 | F01 | F02 |
+|----|-----|-----|
+| Asset | Skeleton / SkeletalMesh | **AnimationClip** |
+| Import | SkeletalMeshLoader | **AnimationClipLoader** |
+| Runtime | Pose | Player + Evaluate |
+| Component | 写 Pose | Player 驱动 local pose |
+| Render | Skinned | **无改** |
 
 ---
 
@@ -76,208 +76,141 @@ F03 将再把「Pose 源」换成 Graph；Player 可作为 Graph 内单状态的
 ### 3.1 数据流
 
 ```text
-FBX/glTF animation
-        ↓ Assimp（仅 Import）
-AnimationClip (channels by bone index)
-        ↓
-AnimationPlayer (time, speed, loop)
-        ↓ Evaluate
-Pose (local TRS)
-        ↓
-SkeletalMeshComponent::SetLocalPose
-        ↓
-（F01）palette → GPU
+FBX/glTF (Source) → Assimp (Import only)
+  → AnimationClip (.meaclip + meta.SourcePath)
+  → AnimationPlayer → Evaluate → Pose → F01
 ```
 
-### 3.2 数据结构与接口
+### 3.2 数据结构
 
-#### 3.2.1 关键帧与通道
+#### 3.2.1 Key / Track（骨 TRS）
 
 ```cpp
-template<typename T>
-struct AnimationKey
+ME_STRUCT()
+struct AnimationVec3Key { float Time; Vector3 Value; };
+
+ME_STRUCT()
+struct AnimationQuatKey { float Time; Quaternion Value; };
+
+ME_STRUCT()
+struct AnimationTrack
 {
-    float Time = 0.0f; // 秒，相对 Clip 起点
-    T Value{};
+    int32_t BoneIndex = -1;
+    std::vector<AnimationVec3Key> PositionKeys;
+    std::vector<AnimationQuatKey> RotationKeys;
+    std::vector<AnimationVec3Key> ScaleKeys;
 };
 
-struct AnimationChannel
-{
-    int32_t BoneIndex = -1; // 相对 Clip 绑定的 Skeleton；Import 后禁止靠名字
+ME_STRUCT()
+struct AnimationNamedFloatKey { float Time; float Value; };
 
-    std::vector<AnimationKey<Vector3>> PositionKeys;
-    std::vector<AnimationKey<Quaternion>> RotationKeys;
-    std::vector<AnimationKey<Vector3>> ScaleKeys;
+ME_STRUCT()
+struct AnimationNamedFloatTrack
+{
+    std::string Name;
+    std::vector<AnimationNamedFloatKey> Keys;
 };
 ```
 
-**采样规则（契约）：**
-- Position / Scale：线性插值  
-- Rotation：slerp（四元数已归一化）  
-- 时间在两端之外：Clamp（非 Loop 时）；Loop 由 Player 对 time 取模后再采样  
-- 某通道缺 Position/Rotation/Scale：**回退到 Skeleton bind local 对应分量**（或 Identity 分量）——实现选一种并单测钉死；推荐 **缺省用 Bind 的该分量**，避免 T-pose 崩坏  
+采样：Pos/Scale 线性；Rot slerp；缺分量 → Bind；Loop 由 Player wrap 时间。
 
-#### 3.2.2 AnimationClip 资产
+#### 3.2.2 AnimationClip
 
 ```cpp
 class AnimationClip : public Asset
 {
-public:
-    float GetDuration() const;          // 秒；通常 = max key time
-    Skeleton* GetSkeleton() const;      // 兼容骨架（逻辑绑定）
-    void SetSkeleton(const std::shared_ptr<Skeleton>& skeleton);
+    float GetDuration() const;
+    Skeleton* GetSkeleton() const;
+    void SetSkeleton(const std::shared_ptr<Skeleton>&);
 
-    const std::vector<AnimationChannel>& GetChannels() const;
-
-    // 写入 outPose（须已按 boneCount Resize）；未覆盖的骨保持 outPose 原值或先 FillBindPose
+    const std::vector<AnimationTrack>& GetTracks() const;
     void Evaluate(float timeSeconds, Pose& outPose) const;
 
-private:
+    // Future named curves: sample only — never writes Component properties.
+    bool TryGetNamedFloat(std::string_view name, float timeSeconds, float& outValue) const;
+
     std::shared_ptr<Skeleton> m_Skeleton;
     float m_Duration = 0.0f;
-    std::vector<AnimationChannel> m_Channels;
+    std::vector<AnimationTrack> m_Tracks;
+    std::vector<AnimationNamedFloatTrack> m_NamedFloatTracks; // F02: usually empty
 };
 ```
-
-**Skeleton 兼容（F02）：**
-- Clip 必须绑定与目标 `SkeletalMesh` **同一** `Skeleton` 资产（指针/GUID 相等），或 Import 时按名字映射到该 Skeleton 的 index。  
-- **不做** Runtime Retarget；不匹配则拒绝 Play 并打错误日志。
 
 #### 3.2.3 AnimationPlayer
 
-```cpp
-enum class AnimationPlayState : uint8_t
-{
-    Stopped,
-    Playing,
-    Paused,
-};
+Play / Pause / Stop / Loop / Speed / Time；`Update(dt, outPose)`；非 Loop 越界 → Paused at end。
 
-class AnimationPlayer
-{
-public:
-    void SetClip(const std::shared_ptr<AnimationClip>& clip);
-    AnimationClip* GetClip() const;
+#### 3.2.4 Component
 
-    void Play();
-    void Pause();
-    void Stop();                 // time → 0，State → Stopped
+`AnimationPlayer m_AnimationPlayer` 成员；`Tick` 在 Playing 时 Update → dirty palette。  
+可 `ME_PROPERTY` 暴露 `shared_ptr<AnimationClip>` 以便 Inspector 赋值。
 
-    void SetLooping(bool loop);
-    bool IsLooping() const;
-
-    void SetSpeed(float speed);  // 可负（倒放）；默认 1
-    float GetSpeed() const;
-
-    void SetTime(float timeSeconds);
-    float GetTime() const;
-
-    AnimationPlayState GetState() const;
-
-    // dt 推进时间；写入 outPose。Stopped 时可不改 pose 或保持最后一帧——推荐 Stopped 不调用 Evaluate
-    void Update(float deltaSeconds, Pose& outPose);
-
-private:
-    std::shared_ptr<AnimationClip> m_Clip;
-    float m_Time = 0.0f;
-    float m_Speed = 1.0f;
-    bool m_bLooping = true;
-    AnimationPlayState m_State = AnimationPlayState::Stopped;
-};
-```
-
-**时间推进：**
-- `Playing`：`m_Time += delta * m_Speed`  
-- `Looping`：在 `[0, duration)` 上 wrap（duration≤0 则 no-op）  
-- 非 Loop 且越界：Clamp 到端点并 → `Paused` 或 `Stopped`（推荐 **Paused at end**，便于 UI；实现计划钉死）
-
-#### 3.2.4 与 Component 接线
-
-**推荐默认（F02 MVP）：**
-
-```cpp
-// SkeletalMeshComponent 增量（F02）
-void SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player); // 或内嵌成员
-AnimationPlayer* GetAnimationPlayer();
-
-// 在 Component Tick / Scene 更新中：
-// if (player && playing) { player->Update(dt, m_LocalPose); m_bPoseDirty = true; }
-```
-
-备选：独立 `AnimationPlayerComponent` 找同 Entity 的 `SkeletalMeshComponent` 写 Pose——更「组合」，但多一层查找；**F02 默认内嵌/附属在 SkeletalMeshComponent**，F03 Graph 再决定是否外置。
-
-**不变量：** Player **从不**碰 RHI / Material / Assimp；只产出 `Pose`。
-
-### 3.3 导入管线
-
-```text
-Assimp scene.mAnimations[i]
-  → 通道 mNodeName → Skeleton.FindBoneIndex
-  → Position/Rotation/Scale keys（坐标与 F01 网格导入同一套约定）
-  → AnimationClip
-```
+### 3.3 导入
 
 | API | 职责 |
 |-----|------|
-| `AnimationClipLoader::ImportFromFile(path, skeleton, outClip)` | 指定目标 Skeleton；映射通道 |
-| `LoadFromAssetMeta` | meta + 源文件；需能解析到 Skeleton 引用（meta 字段或同目录约定） |
+| `AnimationClipLoader::ImportFromFile` | Assimp → tracks；需目标 Skeleton |
+| `Save` / `LoadFromAssetMeta` | JSON 序列化 `.meaclip`；Resolve skeleton |
+| `AssetManager::ImportAnimationClip` | Sources 复制 + 写出 + Register |
 
-**与网格同 FBX：**  
-允许一次源文件分别导入 `SkeletalMesh` 与 `AnimationClip`（两次 Import 或扩展 Import UX）。Clip 不强制与 Mesh 同 meta。
-
-**AssetTypeRegistry：** `AnimationClip`。
+扩展名：`.meaclip`。Editor Import 对话框可选 **AnimationClip**（需同目录 `{stem}_Skeleton.meskeleton`）。
 
 ### 3.4 测试与 Demo
 
-| 层级 | 内容 |
+单测：中间采样、loop、Paused-at-end、TryGetNamedFloat miss。  
+可视：人型 FBX Import Clip → Component 赋值 → Play。
+
+### 3.5 愿景（非 F02 交付）
+
+- Clip = 时间函数集合；骨 TRS 是第一特化。
+- **有限 named float 轨**：参数曲线（morph 权重、材质标量等）；调用方 `TryGetNamedFloat` 后**自己**写目标。
+- **拒绝（本阶段）**：Clip/Player 直接反射写任意 property（Godot VALUE 全量）。
+- F02 留容器 + TryGet 壳，避免日后拆 API。
+
+---
+
+## 4) 备选
+
+| 选项 | 结论 |
 |------|------|
-| 单测 | 两关键帧中间采样；duration 边界；loop wrap；缺通道回退 Bind |
-| 可视 | 角色循环 Walk；改 Speed；Pause/Stop |
-| 回归 | F01 Bind/单骨调试仍可用；StaticMesh smoke |
+| Clip 内嵌 Mesh | 拒绝 |
+| 独立 Clip + Player→Pose | **选用** |
+| F02 双 Clip Blend | 拒绝 → F03 |
+| 独立 Player Component | 拒绝（F02） |
+| F02 全量 Property 轨 | Defer → §3.5 |
 
 ---
 
-## 4) 备选方案
+## 5) 风险
 
-| 选项 | 说明 | 结论 |
-|------|------|------|
-| A. Clip 内嵌在 SkeletalMesh | 少资产，无法多动画共享骨架 | **拒绝** |
-| B. 独立 `AnimationClip` + Player → Pose | 与 F01/F03 接缝干净 | **选用** |
-| C. F02 做双 Clip Blend | 抢 F03 范围 | **拒绝** |
-| D. 独立 Player Component | 更组合，F02 多样板代码 | **Defer**；MVP 挂在 SkeletalMeshComponent |
-
----
-
-## 5) 风险与缓解
-
-| 风险 | 影响 | 缓解 |
-|------|------|------|
-| 通道名与 Skeleton 对不上 | 部分骨不动 / 错绑 | Import 报告未匹配通道；Play 前校验 |
-| 坐标系与网格导入不一致 | 滑动、翻转 | 与 F01 同一 Assimp 后处理 |
-| duration=0 / 空 Clip | 除零、闪烁 | Evaluate no-op；Player 拒绝 Play |
-| 负 Speed + Loop | 边界 wrap 易错 | 单测覆盖 |
+| 风险 | 缓解 |
+|------|------|
+| 骨名不匹配 | Import 警告；Play 校验 Skeleton |
+| 坐标系 | 与 F01 同一 Assimp flags / 向量约定 |
+| duration=0 | Evaluate no-op；拒 Play |
+| MVP 轨模型日后演进 | 文档标明过渡态；`.meaclip` 可再 cook |
 
 ---
 
-## 6) 验收标准
+## 6) 验收
 
-- [ ] `AnimationClip` 可导入并绑定 `Skeleton`
-- [ ] `Evaluate` / `AnimationPlayer` 驱动角色循环动画（可视）
-- [ ] Loop / Speed / Pause / Stop 行为符合 §3.2.3
-- [ ] 蒙皮路径无分叉；F01 回归通过
-- [ ] Assimp 不参与每帧更新
-- [ ] Design / Registry / Progress 更新；Impl Plan 开工前就绪
+- [x] Import `.meaclip` + Skeleton 绑定
+- [x] Evaluate / Player 驱动循环（单测 + 人型目视）
+- [x] Loop / Speed / Pause / Stop / Paused-at-end（单测覆盖 loop/pause-at-end；Editor 默认 Loop+PlayOnAwake）
+- [x] `TryGetNamedFloat` 对未知名返回 false
+- [x] Assimp 不进帧循环；F01 回归（skinned 路径仍用）
+- [x] Docs / Registry / Progress 更新
 
 ---
 
-## 7) 建议切片（预览）
+## 7) 切片（以 Impl 为准）
 
 | Slice | 目标 |
 |-------|------|
-| S00 | `AnimationKey` / `Channel` / `Clip::Evaluate` + 单测 |
-| S01 | Assimp → `AnimationClipLoader` + AssetType |
-| S02 | `AnimationPlayer` + `SkeletalMeshComponent` 接线 |
-| S03 | Demo 资产 + 可视验收 |
+| S00 | Track / Clip::Evaluate / TryGet 壳 + 单测 |
+| S01 | Loader Import/Save/Load + Registry + AssetManager |
+| S02 | Player + SkeletalMeshComponent Tick |
+| S03 | Editor Import 选项 + 人型验收入口 |
 
 ---
 
@@ -285,15 +218,14 @@ Assimp scene.mAnimations[i]
 
 | 字段 | 内容 |
 |------|------|
-| Status | **Draft** — 可与 F01 并行审阅；**实现**排在 F01 之后 |
-| Unblock 实现 | F01 Pose→GPU 验收 |
-| Next | 审阅 → 等 F01 Impl；再写 F02 Implementation Plan |
-
----
+| Status | **Done** — MVP 过渡态；人型目视 PASS |
+| Next | 下一焦点另议（ANIM-F03 Graph 按需） |
 
 ## 变更记录
 
 | 日期 | 说明 |
 |------|------|
-| 2026-09-03 | Registry 占位 |
-| 2026-09-03 | Draft：Clip/Player 数据结构与接口；对齐 F01 平行产品线与 Pose 接缝 |
+| 2026-09-03 | Draft 初稿 |
+| 2026-09-04 | Locked + §3.5 |
+| 2026-09-04 | Channel→**Track**；MVP 过渡定位；named float **TryGet** 愿景；Status→In Progress |
+| 2026-09-05 | 人型 Walking 目视 PASS；Status→Done；OpenGL Int4 / Guid / ObjectPtr / PlayOnAwake 收尾 |

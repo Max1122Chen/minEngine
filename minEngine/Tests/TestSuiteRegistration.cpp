@@ -26,6 +26,7 @@
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/CommandSystemTest.h"
 #include "Suites/SkeletonPoseTest.h"
+#include "Suites/AnimationClipTest.h"
 
 namespace minEngine
 {
@@ -357,6 +358,23 @@ namespace minEngine
             }
         };
 
+        struct AnimationClipTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"animation-clip", "Animation Clip", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'animation-clip'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "animation-clip",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -377,6 +395,7 @@ namespace minEngine
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
+        using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -407,6 +426,7 @@ namespace minEngine
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());
+            registry.Register(AnimationClipSuite::Get());
             s_Registered = true;
         }
     }
