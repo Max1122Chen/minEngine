@@ -61,6 +61,9 @@ namespace minEngine
                           void* propertyPtr,
                           const PropertyUndoCaptureContext* parentUndoContext = nullptr);
 
+        // Edit via temp buffer then AssignProperty (Setter or member + optional virtual PostEdit).
+        bool DrawLeafPropertyViaAssign(MEObject* owner, const Reflection::MEProperty& property);
+
         bool CanUndoInspectorProperty(const Reflection::MEProperty& property) const;
 
         bool SerializePropertyUndoBlob(const PropertyUndoCaptureContext& context, std::vector<uint8_t>& outBlob) const;

@@ -3,7 +3,9 @@
 #include "Archive.h"
 #include "Json.h"
 
+#include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -41,8 +43,11 @@ namespace minEngine::Serialization
         const std::string& GetLastArchiveError() const override { return m_LastArchiveError; }
 
         const Json& GetRoot() const { return m_Root; };
-        void ResetRoot() { m_Root = Json(); m_HasRoot = false; m_Stack.clear(); };
+        void ResetRoot() { m_Root = Json(); m_HasRoot = false; m_Stack.clear(); m_SchemaVersionApplied = false; };
         Json&& MoveRoot() { return std::move(m_Root); };
+
+        // Inject "$schemaVersion" on the root object if present (CORE-F10).
+        void ApplyRootSchemaVersion(uint32_t schemaVersion);
 
     private:
         struct WriteContext
@@ -56,6 +61,7 @@ namespace minEngine::Serialization
 
         Json m_Root;
         bool m_HasRoot = false;
+        bool m_SchemaVersionApplied = false;
         std::vector<WriteContext> m_Stack;
         std::string m_LastArchiveError;
     };
@@ -101,13 +107,23 @@ namespace minEngine::Serialization
         bool ReadFromFile(const std::string& filePath) override;
         const std::string& GetLastArchiveError() const override { return m_LastArchiveError; }
 
+        // Parsed from root "$schemaVersion"; missing => 0 (CORE-F10).
+        uint32_t GetReadSchemaVersion() const { return m_ReadSchemaVersion; }
+
     private:
         const Json* CurrentValue() const;
+        void PushObjectContext(const Json* object);
+        void WarnUnreadObjectKeys(const Json& object, const std::unordered_set<std::string>& consumedKeys) const;
+        void ParseRootSchemaVersion(const Json& root);
+        static bool IsKnownMetaKey(const std::string& key);
 
         const Json* m_Root = nullptr;
         Json m_OwnedRoot;
         std::vector<const Json*> m_ContextStack;
         std::vector<const Json*> m_ValueStack;
+        // Parallel to object frames only: pushed/popped with BeginObject/EndObject (incl. ObjectPtr/GuidRef shells).
+        std::vector<std::unordered_set<std::string>> m_ObjectConsumedKeys;
+        uint32_t m_ReadSchemaVersion = 0;
         std::string m_LastArchiveError;
     };
 }

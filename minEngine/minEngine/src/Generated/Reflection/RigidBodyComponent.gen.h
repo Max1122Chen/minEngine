@@ -5,8 +5,14 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::RigidBodyComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::RigidBodyComponent, m_BodyType)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::RigidBodyComponent, m_BodyType, GetBodyType)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::RigidBodyComponent, m_BodyType, SetBodyType)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::RigidBodyComponent, m_Mass)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::RigidBodyComponent, m_Mass, GetMass)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::RigidBodyComponent, m_Mass, SetMass)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::RigidBodyComponent, m_bSimulatePhysics)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::RigidBodyComponent, m_bSimulatePhysics, GetSimulatePhysics)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::RigidBodyComponent, m_bSimulatePhysics, SetSimulatePhysics)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::RigidBodyComponent, m_PhysicsBodyId)
 ME_REFLECTION_ACCESSOR_END()
 

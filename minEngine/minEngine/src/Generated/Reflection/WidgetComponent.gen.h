@@ -5,6 +5,8 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::WidgetComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_AnchorPreset)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::WidgetComponent, m_AnchorPreset, GetAnchorPreset)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::WidgetComponent, m_AnchorPreset, SetAnchorPreset)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_AnchorMin)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_AnchorMax)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_Margin)

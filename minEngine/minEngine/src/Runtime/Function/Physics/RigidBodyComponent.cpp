@@ -43,6 +43,28 @@ namespace minEngine
         return nullptr;
     }
 
+    void RigidBodyComponent::SetBodyType(EBodyType bodyType)
+    {
+        if (m_BodyType == bodyType)
+        {
+            return;
+        }
+
+        m_BodyType = bodyType;
+        RefreshPhysicsBody();
+    }
+
+    void RigidBodyComponent::SetMass(float mass)
+    {
+        if (m_Mass == mass)
+        {
+            return;
+        }
+
+        m_Mass = mass;
+        RefreshPhysicsBody();
+    }
+
     void RigidBodyComponent::SetSimulatePhysics(bool simulatePhysics)
     {
         if (m_bSimulatePhysics == simulatePhysics)

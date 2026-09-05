@@ -31,6 +31,18 @@ namespace minEngine
         RefreshOwningRigidBody();
     }
 
+    void ColliderComponent::PostEditChangeProperty(const Reflection::PropertyChangedEvent& event)
+    {
+        // Shape/channel fields with Setter already refresh inside the Setter (semantic PostEdit).
+        // Keep virtual PostEdit only for fields without Setter (e.g. m_bActive).
+        if (event.propertyName == "m_bActive")
+        {
+            RefreshOwningRigidBody();
+        }
+
+        Component::PostEditChangeProperty(event);
+    }
+
     void ColliderComponent::RefreshOwningRigidBody()
     {
         if (m_Owner == nullptr)

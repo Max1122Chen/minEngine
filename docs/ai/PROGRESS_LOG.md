@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（UI-F01 MVP 代码落地；未目视验收）
+Last updated: 2026-09-05（merge feat/core into feat/ui；CORE ID remap hierarchy F08/F09 → Registry F12/F13）
+
+### 2026-09-05 - Merge: feat/core into feat/ui
+- **Merge:** 合入序列化/反射 CORE-F08–F11（含 Getter/Setter Assign）；关 TD-026/028/029。
+- **ID remap:** feat/ui 上原 Hierarchy **CORE-F08/F09** → Registry **CORE-F12/F13**（design 文件名仍 CORE-F08_* / CORE-F09_*）；feat/core 的 CORE-F08–F11 保留权威 ID。
+- **Focus:** 本 worktree 仍 **UI-F01**（Setter 已合入 → 下一步 wire AnchorPreset + 目视）。
+- **Docs:** FEATURE_REGISTRY / ACTIVE_WORK / TECH_DEBT 已消冲突。
 
 ### 2026-09-05 - UI-F01 MVP：Canvas / Layout / Image 落地
 - **拍板：** Letterbox；Anchor Preset→写 Min/Max；绘制用 ComputedRect（非 world Transform）；Widget 去 Texture/Color。
@@ -111,6 +117,75 @@ Last updated: 2026-09-05（UI-F01 MVP 代码落地；未目视验收）
 - **Rename scope:** 原「Sprite 2D」占位 → **2D Rendering Foundation**。
 - **Docs:** [RND-F16 Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md)；删除旧 Sprite 占位文件。
 - **UI-F01:** Canvas GO 方向稿；Registry / ACTIVE_WORK 指向 `feat/ui`。
+
+### 2026-09-05 - CORE-F11-S06: Inspector live Assign + PostEdit semantics (`feat/core`)
+- **Semantics:** 属性编辑语义上皆为 PostEdit；有 Setter 时由 Setter 承担传播，实现层不调虚函数。
+- **Inspector:** 直接字段 Primitive/flat Color：`GetPropertyValue`→temp→`AssignProperty`（`notifyPostEdit=!HasSetter`）。
+- **Guard:** 仅 `GetMutable(owner)==propertyPtr` 走 Assign，避免嵌套 struct 误用外层 owner。
+- **Physics:** 删除 `RigidBodyComponent::PostEdit`；`ColliderComponent::PostEdit` 仅留无 Setter 的 `m_bActive`。
+- **Verified:** Editor / minEngineTests 编译；`reflection-function` · `physics-smoke` · `serialization-archive` · `scene-clone` PASS。
+- **Next:** 准备 commit；回 Primary `ANIM-F01`。
+
+### 2026-09-05 - CORE-F11 Done: property Getter/Setter native thunks (`feat/core`)
+- **Macros:** `ME_REFLECTION_PROPERTY_{GETTER,SETTER}_THUNK` 在 `ReflectionMacros.h`；codegen 只注入宏 + `ADD_FIELD_ACCESSORS`。
+- **Runtime:** `AssignProperty` / `GetPropertyValue`；`MEProperty` 挂 optional Get/Set fn；`MEObject::PostEditChangeProperty`。
+- **Call sites:** Serializer 有 Setter 则 temp→Assign；pending ObjectPtr resolve 走 Assign（`m_Owner`→`SetOwner`）；Editor undo 无 Setter 时 PostEdit。
+- **Migration:** 代表物理字段挂 meta Setter；删除 `ApplyPhysicsEditorSideEffects`。
+- **Fix:** AssignProperty 默认参数改为重载（避免 MinGW AVX `vmovdqa` 未对齐栈崩溃）。
+- **Debt/Bugs:** TD-026 → **Done**；BUG-CORE-001 → **Fixed**（残余：未挂 meta 的副作用字段需按需迁移）。
+- **Verified:** `serialization-archive` · `reflection-function`（含 assign）· `scene-clone` · `physics-smoke`。
+- **Next:** 准备 commit；Infra 属性写入轨可收；回 Primary `ANIM-F01` 或下一项。
+
+### 2026-09-05 - CORE-F11 Design: property Getter/Setter native thunks (`feat/core`)
+- **Decision:** header tool codegen **thin native Get/Set thunks**（对齐 UE UPROPERTY 访问器，不经 `InvokeFunction` 热路径）。
+- **API:** `AssignProperty` / `GetPropertyValue`；`meta=(Getter/Setter)`；无 Setter 字段行为不变。
+- **PostEdit:** `MEObject::PostEditChangeProperty` 作 Editor 对无 Setter 字段的兜底；有 Setter 默认不双调。
+- **Serialize:** 有 Setter 则 Assign；S04 关 TD-026（`SetOwner`）。
+- **Docs:** Design + Impl S01–S05；Registry Planned。
+- **Next:** 确认 Design 后开码 S01（tool + codegen）。
+
+### 2026-09-04 - CORE-F10 Done: JSON disk compatibility (`feat/core`)
+- **Options:** 接线 `strictTypeCheck`；新增 `writeSchemaVersion` / `schemaVersion`；澄清 `skipUnknownField`=缺字段。
+- **Json:** EndObject 对多余非 meta 键 Warn；根 `$schemaVersion` 写 1 / 缺省读 0。
+- **Loose:** 叶子 codec 失败且非 strict → Warn+保留默认；盘路径 Loader/Project/PathRegistry/AssetManager 默认宽松。
+- **Strict:** Binary Buffer / PIE 仍强制 `skipUnknownField=false` + `strictTypeCheck=true`。
+- **Verified:** `serialization-archive`（含 schema/unknown 键）· `scene-clone` · `verify.ps1` smoke。
+- **Next:** 准备 commit；Infra 序列化轨可收；回 Primary `ANIM-F01` 或下一项。
+
+### 2026-09-04 - CORE-F09 Done: Binary wire v2 (`feat/core`)
+- **Protocol:** Magic `MEB2` + SchemaVersion + Fingerprint；Object = Tag + ClassId + FieldCount + BodyLength + `[FieldId + tagged value]*`；无 wire `EndObject`。
+- **Schema:** `TransientSchemaTable` 在 `FinalizeReflection` 后建表（dense ClassId/FieldId）。
+- **API:** `BeginObject`/`BeginObjectPtr` 走 `MEClass*`；Buffer 路径强制 `skipUnknownField=false`。
+- **PIE:** `SceneDuplicator` 恢复 Binary buffer（关 TD-029）。
+- **Debt:** TD-028 / TD-029 → **Done**。
+- **Out:** 存盘 Binary / Persistent 名字键未实现（契约已写在 Design）；→ `CORE-F10` JSON。
+- **Verified:** `serialization-archive` · `scene-clone`（含 physics-stack）· `verify.ps1` smoke。
+- **Next:** 准备 commit；可选目视 PIE；然后 `CORE-F10` 或回 Primary。
+
+### 2026-09-04 - CORE-F08 Done: serialization cleanup (`feat/core`)
+- **API:** `Serialize`/`Deserialize`/`ToFile`/`FromFile`/`*ObjectToBuffer`/`*ObjectToJson` 增加 `MEClass*` 重载 + `StaticClass` 模板；`string` 薄兼容。
+- **Cleanup:** 删除未使用的 `allowObjectPtrSerialization`、`m_IsHandlingPtr`；去掉过时 ObjectPtr TODO。
+- **P1:** `ForEachPropertyInHierarchy(MEClass*)`；`MEObject::StaticClass()`；合并 property 查找；Deserialize `static_cast`。
+- **Call sites:** SceneEditor snapshot、SceneDuplicator、Loaders、AssetManager、ProjectManager、PathRegistry、Tests。
+- **Out:** TD-026 Deferred；Binary wire 未改（→ CORE-F09）。
+- **Verified:** `serialization-archive` · `scene-clone` · `verify.ps1` smoke · Editor build。
+- **Next:** 准备 commit；然后 `CORE-F09` Wire Spec。
+
+### 2026-09-03 - ED-F02 doc closeout + worktree bootstrap tooling
+- **ED-F02:** Design/Impl/Registry 对照 `master` — S00–S02/S04 **Done**；S03 SkyBox 实体、S05 Abstract 标注 **Remaining/Partial**。
+- **Philosophy / Roadmap:** 见既有 `ENGINE_DESIGN_PHILOSOPHY.md` / `ENGINE_CAPABILITY_ROADMAP.md`（本批一并提交）。
+- **Tooling:** `scripts/create-worktree.ps1` + `.agents`/`.github` skills `create-worktree`。
+- **Worktrees:** `minEngine-animation` (`feat/animation`)、`minEngine-ui` (`feat/ui`) 初始化。
+- **Placeholder branches:** `feat/asset-pipeline`、`feat/gameplay-framework`、`feat/network`、`feat/ai`、`feat/core`（无 worktree）。
+- **Misc:** `MyMEProject.meproject` ProjectRoot 指回主仓路径。
+- **Next:** 确认后准备 commit；然后 `ANIM-F01` Design。
+
+### 2026-09-03 - Bootstrap: design philosophy + capability roadmap
+- **Philosophy:** [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) — Capabilities not Opinions; Mechanism over Policy; Minimal Core; Composable; Agent-Friendly; Prefer Simplicity.
+- **Roadmap:** [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) — Primary Animation→2D→UI; parallel Infra/Render/DX; Future Gameplay Plugins/Net.
+- **Agent hooks:** `.cursor/rules/engine-design-philosophy.mdc` (always); trust-tiers / bootstrap / mentor skill / BOOTSTRAP_DIGEST / ACTIVE_WORK / PROJECT_CONTEXT updated.
+- **Next:** 维护者确认 ACTIVE_WORK 焦点（推荐 `ANIM-F01` Design；备选 ED-F02 短冲刺）。不开码直至确认。
+
 
 ### 2026-09-03 - CORE-F05 MVP Done (docs closeout)
 - **Registry / Design / Impl:** Status → **Done**（MVP）；S00–S02 表状态对齐代码。

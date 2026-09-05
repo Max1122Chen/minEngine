@@ -8,6 +8,12 @@ namespace minEngine
         m_FunctionTestCounter = 0;
     }
 
+    void ReflectionSampleComponent::SetAssignProbe(int32_t value)
+    {
+        m_AssignProbe = value;
+        ++m_AssignProbeSetCount;
+    }
+
     int32_t ReflectionSampleComponent::GetCounter() const
     {
         return m_FunctionTestCounter;

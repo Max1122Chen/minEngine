@@ -35,6 +35,21 @@ namespace minEngine::Reflection \
         return static_cast<void*>(&(typedObject->FIELD)); \
     }
 
+// Native property Setter/Getter thunks — authoritative bodies live here; codegen only injects these macros.
+#define ME_REFLECTION_PROPERTY_SETTER_THUNK(TYPE, FIELD, METHOD) \
+    static void ME_REFLECTION_CONCAT(PropertySet_, FIELD)(void* object, const void* value) \
+    { \
+        using FieldType = ME_REFLECTION_CONCAT(FieldType_, FIELD); \
+        static_cast<TYPE*>(object)->METHOD(*static_cast<const FieldType*>(value)); \
+    }
+
+#define ME_REFLECTION_PROPERTY_GETTER_THUNK(TYPE, FIELD, METHOD) \
+    static void ME_REFLECTION_CONCAT(PropertyGet_, FIELD)(const void* object, void* outValue) \
+    { \
+        using FieldType = ME_REFLECTION_CONCAT(FieldType_, FIELD); \
+        *static_cast<FieldType*>(outValue) = static_cast<const TYPE*>(object)->METHOD(); \
+    }
+
 #define ME_REFLECTION_ACCESSOR_END() \
     }; \
 }
@@ -72,6 +87,9 @@ const bool minEngine::Reflection::REGISTER_SYMBOL = []() \
     meClass->SetAnnotations(SPECIFIER_MASK, __VA_ARGS__);
 
 #define ME_REFLECTION_CLASS_ADD_FIELD(TYPE, FIELD, SPECIFIER_MASK, ...) \
+        ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(TYPE, FIELD, SPECIFIER_MASK, nullptr, nullptr, __VA_ARGS__)
+
+#define ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(TYPE, FIELD, SPECIFIER_MASK, GET_FN, SET_FN, ...) \
         { \
             using FIELD_TYPE = typename minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECTION_CONCAT(FieldType_, FIELD); \
             meSystem.AddFieldByType<TYPE, FIELD_TYPE>( \
@@ -80,7 +98,9 @@ const bool minEngine::Reflection::REGISTER_SYMBOL = []() \
                 &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECTION_CONCAT(GetConst_, FIELD), \
                 &minEngine::Reflection::FieldAccessor<TYPE>::ME_REFLECTION_CONCAT(GetMutable_, FIELD), \
                 SPECIFIER_MASK, \
-                __VA_ARGS__); \
+                __VA_ARGS__, \
+                GET_FN, \
+                SET_FN); \
         }
 
 #define ME_REFLECTION_FUNCTION_BEGIN(FUNC_VAR, FUNC_NAME, FLAGS, SPECIFIER_MASK, METADATA) \

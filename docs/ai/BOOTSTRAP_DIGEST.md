@@ -1,6 +1,6 @@
 # Bootstrap Digest (read in under 2 min)
 
-Last updated: 2026-08-31  
+Last updated: 2026-09-03  
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` — do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
@@ -8,19 +8,21 @@ Purpose: **one-page** context for humans and AI when starting or recovering a se
 
 ## Project in one line
 
-**minEngine** — personal C++ game engine; you learn by building it; **engineering bar is professional** on foundations (platform, reflection, assets, render core).
+**minEngine** — personal C++ game engine; you learn by building it; **engineering bar is professional** on foundations (platform, reflection, assets, render core). **Capabilities, not opinions** — see [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md).
 
 ---
 
 ## Read order (new session)
 
-1. [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) — architecture snapshot  
-2. [PROGRESS_LOG.md](./PROGRESS_LOG.md) — what changed recently (recent entries only)  
-3. [ACTIVE_WORK.md](./ACTIVE_WORK.md) — **current backlog** (human-edited; agents prefer this over old roadmaps)  
-4. **This file** — rules + commands + habits  
-5. [TECH_DEBT.md](./TECH_DEBT.md) — Open rows only (what not to rush)  
-6. [playbooks/README.md](./playbooks/README.md) — typical bug patterns & debugging (Tier B)  
-7. Task-specific design — **only** if the user names it or ACTIVE_WORK links it; check Meta **Status** first ([doc trust tiers](../.cursor/rules/docs-trust-tiers.mdc))  
+1. [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) — long-term design constraints (skim principles)  
+2. [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) — architecture snapshot  
+3. [PROGRESS_LOG.md](./PROGRESS_LOG.md) — what changed recently (recent entries only)  
+4. [ACTIVE_WORK.md](./ACTIVE_WORK.md) — **current backlog** (human-edited; agents prefer this over old roadmaps)  
+5. **This file** — rules + commands + habits  
+6. [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) — multi-track stage map (not a linear TODO)  
+7. [TECH_DEBT.md](./TECH_DEBT.md) — Open rows only (what not to rush)  
+8. [playbooks/README.md](./playbooks/README.md) — typical bug patterns & debugging (Tier B)  
+9. Task-specific design — **only** if the user names it or ACTIVE_WORK links it; check Meta **Status** first ([doc trust tiers](../.cursor/rules/docs-trust-tiers.mdc))  
 
 Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
 
@@ -44,13 +46,15 @@ Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
 ## Agent partner (short)
 
 - **Partner, not servant:** Pre-flight before new module / Feature / **refactor**; challenge weak plans; user decides after risks are stated.  
+- **Philosophy:** Capabilities not opinions; mechanism over policy; minimal Core; Agent-friendly via shared APIs — remind when plans drift ([philosophy](./ENGINE_DESIGN_PHILOSOPHY.md)).  
 - **Learning ≠ sloppy:** simplify scope, not ownership or foundation quality.  
 - **Refactor:** target state + delete old paths — no band-aid wrappers.  
 - **Defects:** fixing module A — don’t drive-by fix large bugs in B/C/D; file `BUG-*` first.  
 - **Work boundary:** after a finished batch → **offer 准备 commit** before starting unrelated work.  
+- **Stage mode:** one Primary track + parallel side tracks — not strict linear TODOs.
 
-Skills: `.cursor/skills/engine-learning-mentor/SKILL.md`, `.cursor/skills/git-commit-mentor/SKILL.md`  
-Triggers: `.cursor/rules/docs-workflow-triggers.mdc`
+Skills: `.agents/skills/engine-learning-mentor/SKILL.md`, `.agents/skills/git-commit-mentor/SKILL.md`  
+Triggers: `.cursor/rules/docs-workflow-triggers.mdc` · `.cursor/rules/engine-design-philosophy.mdc`
 
 ---
 

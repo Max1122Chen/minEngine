@@ -11,6 +11,8 @@ When inferring **what to build next**, **what is unfinished**, or **current beha
 
 Read these for session bootstrap and scheduling:
 
+- `docs/ai/ENGINE_DESIGN_PHILOSOPHY.md` — long-term design constraints (not a task backlog)
+- `docs/ai/ENGINE_CAPABILITY_ROADMAP.md` — multi-track stage direction (**Status: In Progress**); concrete next slice still from ACTIVE_WORK
 - `docs/ai/PROJECT_CONTEXT.md`
 - `docs/ai/PROGRESS_LOG.md` (recent entries only; older entries are history)
 - `docs/ai/BOOTSTRAP_DIGEST.md`

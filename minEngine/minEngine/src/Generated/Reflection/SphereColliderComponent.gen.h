@@ -5,6 +5,8 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SphereColliderComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SphereColliderComponent, m_Radius)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::SphereColliderComponent, m_Radius, GetRadius)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::SphereColliderComponent, m_Radius, SetRadius)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::SphereColliderComponent, GReflectionClassRegister_SphereColliderComponent_7c63d7b3)

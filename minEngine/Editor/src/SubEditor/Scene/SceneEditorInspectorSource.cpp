@@ -1,5 +1,4 @@
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
-#include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 
 #include "ContextMenu/Contexts/SceneInspectorMenuContext.h"
 #include "ContextMenu/EditorContextMenuSystem.h"
@@ -24,9 +23,9 @@
 
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/PropertyAssign.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
-#include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
@@ -254,6 +253,8 @@ namespace minEngine
                 if (valueChanged)
                 {
                     rootComponent->MarkRenderStateDirty();
+                    rootComponent->PostEditChangeProperty(
+                        Reflection::PropertyChangedEvent{std::string_view("m_Transform")});
                 }
             }
             else
@@ -629,28 +630,56 @@ namespace minEngine
         }
 
         bool valueChanged = false;
+        bool appliedViaAssign = false;
         const bool allowRowCapture = (property.GetCategory() != Reflection::MEPropertyCategory::Object
             && property.GetCategory() != Reflection::MEPropertyCategory::ObjectPtr);
 
-        switch(property.GetCategory())
+        MEObject* mutableOwner = const_cast<MEObject*>(owner);
+        const bool isOwnerDirectField =
+            mutableOwner != nullptr
+            && propertyPtr != nullptr
+            && property.GetMutableAccessor() != nullptr
+            && property.GetMutable(mutableOwner) == propertyPtr
+            && property.GetStorageSize() > 0;
+
+        switch (property.GetCategory())
         {
             case Reflection::MEPropertyCategory::Primitive:
-                valueChanged = DrawPrimitiveProperty(static_cast<const Reflection::MEPrimitiveProperty&>(property), propertyPtr);
+                if (isOwnerDirectField)
+                {
+                    valueChanged = DrawLeafPropertyViaAssign(mutableOwner, property);
+                    appliedViaAssign = true;
+                }
+                else
+                {
+                    valueChanged = DrawPrimitiveProperty(
+                        static_cast<const Reflection::MEPrimitiveProperty&>(property), propertyPtr);
+                }
                 break;
             case Reflection::MEPropertyCategory::Object:
             {
                 const Reflection::MEObjectProperty& objectProperty =
                     static_cast<const Reflection::MEObjectProperty&>(property);
-                if (PropertyValueWidget::Draw(property, propertyPtr, -FLT_MIN))
+                const bool isFlatObjectWidget =
+                    PropertyValueWidget::IsLinearColorStruct(objectProperty.GetValueClass());
+                if (isFlatObjectWidget && isOwnerDirectField)
                 {
-                    m_SceneEditor.MarkSceneDirty();
-                    valueChanged = true;
+                    valueChanged = DrawLeafPropertyViaAssign(mutableOwner, property);
+                    appliedViaAssign = true;
+                }
+                else if (!isFlatObjectWidget)
+                {
+                    valueChanged =
+                        DrawObjectProperty(owner, ownerClass, objectProperty, propertyPtr, activeUndoContext);
                 }
                 else
                 {
-                    valueChanged = DrawObjectProperty(owner, ownerClass, objectProperty, propertyPtr, activeUndoContext);
+                    if (PropertyValueWidget::Draw(property, propertyPtr, -FLT_MIN))
+                    {
+                        m_SceneEditor.MarkSceneDirty();
+                        valueChanged = true;
+                    }
                 }
-
                 break;
             }
             case Reflection::MEPropertyCategory::ObjectPtr:
@@ -686,13 +715,48 @@ namespace minEngine
             }
         }
 
-        if (valueChanged && owner != nullptr)
+        // Assign path already delivers semantic PostEdit (Setter or notifyPostEdit).
+        // In-place paths (ObjectPtr / nested Object / fallback) still need virtual PostEdit when no Setter.
+        if (valueChanged && mutableOwner != nullptr && !appliedViaAssign && !property.HasPropertySetter())
         {
-            ApplyPhysicsEditorSideEffects(const_cast<MEObject*>(owner), property.GetName());
+            mutableOwner->PostEditChangeProperty(
+                Reflection::PropertyChangedEvent{std::string_view(property.GetName())});
         }
 
         ImGui::PopID();
         return valueChanged;
+    }
+
+    bool SceneEditorInspectorSource::DrawLeafPropertyViaAssign(MEObject* owner,
+                                                               const Reflection::MEProperty& property)
+    {
+        const size_t storageSize = property.GetStorageSize();
+        if (owner == nullptr || storageSize == 0)
+        {
+            return false;
+        }
+
+        std::vector<uint8_t> editBuffer(storageSize);
+        if (!Reflection::GetPropertyValue(owner, property, editBuffer.data()))
+        {
+            return false;
+        }
+
+        if (!PropertyValueWidget::Draw(property, editBuffer.data(), -FLT_MIN))
+        {
+            return false;
+        }
+
+        Reflection::PropertyAssignOptions options;
+        options.notifyPostEdit = !property.HasPropertySetter();
+        options.postEditObject = owner;
+        if (!Reflection::AssignProperty(owner, property, editBuffer.data(), options))
+        {
+            return false;
+        }
+
+        m_SceneEditor.MarkSceneDirty();
+        return true;
     }
 
     bool SceneEditorInspectorSource::DrawPrimitiveProperty(const Reflection::MEPrimitiveProperty& primitiveProperty,

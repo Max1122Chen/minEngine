@@ -66,7 +66,7 @@ namespace minEngine
         void SyncMaterialParameters(ImageComponent* image);
         void FillSceneProxy(WidgetSceneProxy& proxy);
 
-        ME_PROPERTY()
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetAnchorPreset", Getter = "GetAnchorPreset"))
         EUIAnchorPreset m_AnchorPreset{ EUIAnchorPreset::TopLeft };
 
         ME_PROPERTY()

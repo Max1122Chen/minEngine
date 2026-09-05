@@ -1,11 +1,13 @@
 # Working With AI in minEngine
 
-Last updated: 2026-05-28
+Last updated: 2026-09-03
 
 ## Why this exists
 
 This project has no formal in-repo dev diary yet.
 To avoid repeating background in every chat, keep concise AI-readable context in docs/ai.
+
+**Design philosophy:** [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) — agents must apply it on architecture and Feature planning, and remind you when plans drift.
 
 ## Minimal workflow
 
@@ -13,7 +15,8 @@ To avoid repeating background in every chat, keep concise AI-readable context in
 - Mention one line only: continue previous task in this repo.
 
 2) During discussion
-- Ask AI to read docs/ai/PROJECT_CONTEXT.md and docs/ai/PROGRESS_LOG.md first.
+- Ask AI to read docs/ai/ENGINE_DESIGN_PHILOSOPHY.md, PROJECT_CONTEXT.md, PROGRESS_LOG.md, and ACTIVE_WORK.md first.
+- Stage direction: ENGINE_CAPABILITY_ROADMAP.md (multi-track; not a linear TODO).
 - Design docs live under docs/ai/Platform/, Render/, Editor/ — see docs/ai/README.md.
 - New design/work: copy from docs/ai/templates/ and follow docs/ai/templates/DOC_GOVERNANCE.md (Feature ID, Slice ID, status, DoD).
 - Triggers (plan/design/bug/wrap-up/commit prep): `.cursor/rules/docs-workflow-triggers.mdc` → mentor skill for execution; **准备 commit** = draft message + your approval (not auto-commit).
@@ -28,7 +31,7 @@ To avoid repeating background in every chat, keep concise AI-readable context in
 ## Suggested user prompts
 
 - Start prompt:
-  Continue last minEngine task. First read docs/ai/PROJECT_CONTEXT.md and docs/ai/PROGRESS_LOG.md, then summarize current context and propose next step.
+  Continue last minEngine task. First read docs/ai philosophy + PROJECT_CONTEXT + PROGRESS_LOG + ACTIVE_WORK, then summarize current context and propose next step.
 
 - End prompt:
   Please append today progress to docs/ai/PROGRESS_LOG.md using docs/ai/templates/progress-log-entry.template.md, and list the first action for next session.

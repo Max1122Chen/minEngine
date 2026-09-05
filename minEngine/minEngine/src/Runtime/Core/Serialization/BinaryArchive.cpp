@@ -1,7 +1,7 @@
 #include "BinaryArchive.h"
 
-#include "Reflection/MEClass.h"
-#include "Reflection/Reflection.h"
+#include "Runtime/Core/Reflection/MEClass.h"
+#include "Runtime/Core/Reflection/Reflection.h"
 
 #include <cstring>
 #include <fstream>
@@ -11,677 +11,403 @@ namespace minEngine::Serialization
 {
     namespace
     {
-        constexpr uint32_t kBinarySchemaVersion = 1u;
+        constexpr size_t kMaxStringBytes = 16u * 1024u * 1024u;
+        constexpr size_t kMaxArrayCount = 1u << 20;
+        constexpr size_t kMaxFieldCount = 1u << 20;
 
-        bool WriteTypeName(std::vector<uint8_t>& buffer, const std::string& typeName)
+        bool AppendRaw(std::vector<uint8_t>& out, const void* data, size_t size)
         {
-            if (typeName.size() > static_cast<size_t>(std::numeric_limits<uint16_t>::max()))
+            if (size == 0)
+            {
+                return true;
+            }
+            if (data == nullptr)
             {
                 return false;
             }
+            const uint8_t* bytes = static_cast<const uint8_t*>(data);
+            out.insert(out.end(), bytes, bytes + size);
+            return true;
+        }
 
-            const uint16_t nameLength = static_cast<uint16_t>(typeName.size());
-            const uint8_t lengthBytes[2] = {
-                static_cast<uint8_t>(nameLength & 0xFFu),
-                static_cast<uint8_t>((nameLength >> 8) & 0xFFu),
-            };
-            buffer.insert(buffer.end(), lengthBytes, lengthBytes + 2);
-            buffer.insert(buffer.end(), typeName.begin(), typeName.end());
+        void WriteU32LE(std::vector<uint8_t>& out, uint32_t value)
+        {
+            out.push_back(static_cast<uint8_t>(value & 0xFFu));
+            out.push_back(static_cast<uint8_t>((value >> 8) & 0xFFu));
+            out.push_back(static_cast<uint8_t>((value >> 16) & 0xFFu));
+            out.push_back(static_cast<uint8_t>((value >> 24) & 0xFFu));
+        }
+
+        void WriteU64LE(std::vector<uint8_t>& out, uint64_t value)
+        {
+            for (int shift = 0; shift < 64; shift += 8)
+            {
+                out.push_back(static_cast<uint8_t>((value >> shift) & 0xFFu));
+            }
+        }
+
+        bool ReadExact(const std::vector<uint8_t>& buffer, size_t& pos, void* outData, size_t size)
+        {
+            if (pos + size > buffer.size())
+            {
+                return false;
+            }
+            if (size > 0 && outData != nullptr)
+            {
+                std::memcpy(outData, buffer.data() + pos, size);
+            }
+            pos += size;
+            return true;
+        }
+
+        bool ReadU32LE(const std::vector<uint8_t>& buffer, size_t& pos, uint32_t& outValue)
+        {
+            uint8_t bytes[4];
+            if (!ReadExact(buffer, pos, bytes, 4))
+            {
+                return false;
+            }
+            outValue = static_cast<uint32_t>(bytes[0])
+                | (static_cast<uint32_t>(bytes[1]) << 8)
+                | (static_cast<uint32_t>(bytes[2]) << 16)
+                | (static_cast<uint32_t>(bytes[3]) << 24);
+            return true;
+        }
+
+        bool ReadU64LE(const std::vector<uint8_t>& buffer, size_t& pos, uint64_t& outValue)
+        {
+            uint8_t bytes[8];
+            if (!ReadExact(buffer, pos, bytes, 8))
+            {
+                return false;
+            }
+            outValue = 0;
+            for (int i = 0; i < 8; ++i)
+            {
+                outValue |= static_cast<uint64_t>(bytes[i]) << (8 * i);
+            }
             return true;
         }
     }
 
-    bool BinaryWriterArchive::AppendBytes(const void* data, size_t size)
+    bool BinaryWriterArchive::AppendBytes(std::vector<uint8_t>& out, const void* data, size_t size)
     {
-        if (size == 0)
+        if (!AppendRaw(out, data, size))
         {
-            return true;
-        }
-
-        if (data == nullptr)
-        {
-            m_LastArchiveError = "append bytes failed: data is null";
+            m_LastArchiveError = "append bytes failed";
             return false;
         }
-
-        const uint8_t* bytes = static_cast<const uint8_t*>(data);
-        m_Buffer.insert(m_Buffer.end(), bytes, bytes + size);
         return true;
     }
 
-    bool BinaryWriterArchive::AppendU8(uint8_t value)
+    bool BinaryWriterArchive::AppendU8(std::vector<uint8_t>& out, uint8_t value)
     {
-        return AppendBytes(&value, 1);
-    }
-
-    bool BinaryWriterArchive::AppendU16(uint16_t value)
-    {
-        const uint8_t bytes[2] = {
-            static_cast<uint8_t>(value & 0xFFu),
-            static_cast<uint8_t>((value >> 8) & 0xFFu),
-        };
-        return AppendBytes(bytes, 2);
-    }
-
-    bool BinaryWriterArchive::AppendU32(uint32_t value)
-    {
-        const uint8_t bytes[4] = {
-            static_cast<uint8_t>(value & 0xFFu),
-            static_cast<uint8_t>((value >> 8) & 0xFFu),
-            static_cast<uint8_t>((value >> 16) & 0xFFu),
-            static_cast<uint8_t>((value >> 24) & 0xFFu),
-        };
-        return AppendBytes(bytes, 4);
-    }
-
-    bool BinaryWriterArchive::AppendU64(uint64_t value)
-    {
-        const uint8_t bytes[8] = {
-            static_cast<uint8_t>(value & 0xFFu),
-            static_cast<uint8_t>((value >> 8) & 0xFFu),
-            static_cast<uint8_t>((value >> 16) & 0xFFu),
-            static_cast<uint8_t>((value >> 24) & 0xFFu),
-            static_cast<uint8_t>((value >> 32) & 0xFFu),
-            static_cast<uint8_t>((value >> 40) & 0xFFu),
-            static_cast<uint8_t>((value >> 48) & 0xFFu),
-            static_cast<uint8_t>((value >> 56) & 0xFFu),
-        };
-        return AppendBytes(bytes, 8);
-    }
-
-    bool BinaryWriterArchive::AppendStringBytes(const std::string& value)
-    {
-        if (value.size() > static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
-        {
-            m_LastArchiveError = "string too large for binary archive";
-            return false;
-        }
-
-        if (!AppendU32(static_cast<uint32_t>(value.size())))
-        {
-            return false;
-        }
-
-        return AppendBytes(value.data(), value.size());
-    }
-
-    bool BinaryWriterArchive::AppendToActiveBuffer(const void* data, size_t size)
-    {
-        if (size == 0)
-        {
-            return true;
-        }
-
-        if (data == nullptr)
-        {
-            m_LastArchiveError = "append bytes failed: data is null";
-            return false;
-        }
-
-        std::vector<uint8_t>& target = GetActiveWriteBuffer();
-        const uint8_t* bytes = static_cast<const uint8_t*>(data);
-        target.insert(target.end(), bytes, bytes + size);
+        out.push_back(value);
         return true;
     }
 
-    bool BinaryWriterArchive::ShouldWriteNextObjectAsFieldValue() const
+    bool BinaryWriterArchive::AppendU32(std::vector<uint8_t>& out, uint32_t value)
     {
-        if (m_Stack.empty())
-        {
-            return false;
-        }
-
-        const WriteFrame& frame = m_Stack.back();
-        return frame.kind == WriteFrameKind::Object && !frame.pendingFieldName.empty();
+        WriteU32LE(out, value);
+        return true;
     }
 
-    bool BinaryWriterArchive::ShouldWriteTaggedValueInSubBuffer() const
+    bool BinaryWriterArchive::AppendU64(std::vector<uint8_t>& out, uint64_t value)
     {
-        if (m_Stack.empty())
-        {
-            return false;
-        }
-
-        const WriteFrame& frame = m_Stack.back();
-        if (frame.kind == WriteFrameKind::Array)
-        {
-            return true;
-        }
-
-        return frame.kind == WriteFrameKind::Object && !frame.pendingFieldName.empty();
+        WriteU64LE(out, value);
+        return true;
     }
 
-    std::vector<uint8_t>& BinaryWriterArchive::GetActiveWriteBuffer()
+    std::vector<uint8_t>& BinaryWriterArchive::ActiveValueBuffer()
     {
-        if (m_Stack.empty())
+        if (!m_Stack.empty())
         {
-            return m_Buffer;
+            return m_Stack.back().pendingValue;
         }
-
-        const WriteFrame& top = m_Stack.back();
-        if (top.isFieldValueObject)
-        {
-            return m_Stack.back().fieldValueBody;
-        }
-
         return m_Buffer;
     }
 
-    std::vector<uint8_t>& BinaryWriterArchive::GetPayloadWriteBuffer()
+    bool BinaryWriterArchive::EnsureHeader()
     {
-        return GetActiveWriteBuffer();
-    }
-
-    bool BinaryWriterArchive::AppendU8ToActive(uint8_t value)
-    {
-        return AppendToActiveBuffer(&value, 1);
-    }
-
-    bool BinaryWriterArchive::AppendU16ToActive(uint16_t value)
-    {
-        const uint8_t bytes[2] = {
-            static_cast<uint8_t>(value & 0xFFu),
-            static_cast<uint8_t>((value >> 8) & 0xFFu),
-        };
-        return AppendToActiveBuffer(bytes, 2);
-    }
-
-    bool BinaryWriterArchive::AppendU32ToActive(uint32_t value)
-    {
-        const uint8_t bytes[4] = {
-            static_cast<uint8_t>(value & 0xFFu),
-            static_cast<uint8_t>((value >> 8) & 0xFFu),
-            static_cast<uint8_t>((value >> 16) & 0xFFu),
-            static_cast<uint8_t>((value >> 24) & 0xFFu),
-        };
-        return AppendToActiveBuffer(bytes, 4);
-    }
-
-    bool BinaryWriterArchive::AppendU64ToActive(uint64_t value)
-    {
-        const uint8_t bytes[8] = {
-            static_cast<uint8_t>(value & 0xFFu),
-            static_cast<uint8_t>((value >> 8) & 0xFFu),
-            static_cast<uint8_t>((value >> 16) & 0xFFu),
-            static_cast<uint8_t>((value >> 24) & 0xFFu),
-            static_cast<uint8_t>((value >> 32) & 0xFFu),
-            static_cast<uint8_t>((value >> 40) & 0xFFu),
-            static_cast<uint8_t>((value >> 48) & 0xFFu),
-            static_cast<uint8_t>((value >> 56) & 0xFFu),
-        };
-        return AppendToActiveBuffer(bytes, 8);
-    }
-
-    bool BinaryWriterArchive::AppendStringBytesToActive(const std::string& value)
-    {
-        if (value.size() > static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+        if (m_HeaderWritten)
         {
-            m_LastArchiveError = "string too large for binary archive";
+            return true;
+        }
+
+        const TransientSchemaTable& schema = TransientSchemaTable::Get();
+        if (!schema.IsReady())
+        {
+            m_LastArchiveError = "transient schema table is not ready";
             return false;
         }
 
-        if (!AppendU32ToActive(static_cast<uint32_t>(value.size())))
-        {
-            return false;
-        }
-
-        return AppendToActiveBuffer(value.data(), value.size());
-    }
-
-    bool BinaryWriterArchive::CommitFieldValue(std::vector<uint8_t> fieldValueBytes)
-    {
-        if (m_Stack.empty() || m_Stack.back().kind != WriteFrameKind::Object)
-        {
-            m_LastArchiveError = "binary write failed: CommitFieldValue outside object";
-            return false;
-        }
-
-        WriteFrame& frame = m_Stack.back();
-        if (frame.pendingFieldName.empty())
-        {
-            m_LastArchiveError = "binary write failed: field name is missing";
-            return false;
-        }
-
-        if (frame.pendingFieldName.size() > static_cast<size_t>(std::numeric_limits<uint16_t>::max()))
-        {
-            m_LastArchiveError = "binary write failed: field name too long";
-            return false;
-        }
-
-        std::vector<uint8_t>& target = frame.isFieldValueObject ? frame.fieldValueBody : m_Buffer;
-        const uint16_t fieldNameLength = static_cast<uint16_t>(frame.pendingFieldName.size());
-        const uint8_t lengthBytes[2] = {
-            static_cast<uint8_t>(fieldNameLength & 0xFFu),
-            static_cast<uint8_t>((fieldNameLength >> 8) & 0xFFu),
-        };
-        target.insert(target.end(), lengthBytes, lengthBytes + 2);
-        target.insert(target.end(), frame.pendingFieldName.begin(), frame.pendingFieldName.end());
-        target.insert(target.end(), fieldValueBytes.begin(), fieldValueBytes.end());
-        frame.pendingFieldName.clear();
+        m_Buffer.clear();
+        AppendRaw(m_Buffer, kBinaryMagicV2, 4);
+        const uint16_t version = schema.GetSchemaVersion();
+        m_Buffer.push_back(static_cast<uint8_t>(version & 0xFFu));
+        m_Buffer.push_back(static_cast<uint8_t>((version >> 8) & 0xFFu));
+        m_Buffer.push_back(0); // HeaderFlags low
+        m_Buffer.push_back(0); // HeaderFlags high
+        WriteU64LE(m_Buffer, schema.GetFingerprint());
+        m_HeaderWritten = true;
         return true;
     }
 
-    bool BinaryWriterArchive::CommitArrayElement(std::vector<uint8_t> elementBytes)
+    bool BinaryWriterArchive::CommitValueToParent(std::vector<uint8_t> valueBytes)
     {
-        if (m_Stack.empty() || m_Stack.back().kind != WriteFrameKind::Array)
+        if (valueBytes.empty())
         {
-            m_LastArchiveError = "binary write failed: CommitArrayElement outside array";
+            m_LastArchiveError = "commit value failed: empty";
             return false;
         }
 
-        WriteFrame& arrayFrame = m_Stack.back();
-        std::vector<uint8_t>& target = arrayFrame.isFieldValueObject ? arrayFrame.fieldValueBody : m_Buffer;
-        target.insert(target.end(), elementBytes.begin(), elementBytes.end());
-        ++arrayFrame.arrayWrittenCount;
-        return true;
-    }
-
-    bool BinaryWriterArchive::CommitTaggedValueToParent(std::vector<uint8_t> valueBytes)
-    {
         if (m_Stack.empty())
         {
-            m_Buffer.insert(m_Buffer.end(), valueBytes.begin(), valueBytes.end());
-            return true;
+            return AppendBytes(m_Buffer, valueBytes.data(), valueBytes.size());
         }
 
         WriteFrame& parent = m_Stack.back();
         if (parent.kind == WriteFrameKind::Array)
         {
-            if (!valueBytes.empty()
-                && static_cast<BinaryWireTag>(valueBytes[0]) == BinaryWireTag::Object
-                && m_Stack.size() >= 2
-                && m_Stack[m_Stack.size() - 2].kind == WriteFrameKind::Object)
-            {
-                WriteFrame& objectParent = m_Stack[m_Stack.size() - 2];
-                if (objectParent.pendingFieldName.empty())
-                {
-                    m_LastArchiveError = "binary write failed: nested object field name is missing";
-                    return false;
-                }
-
-                if (objectParent.pendingFieldName.size() > static_cast<size_t>(std::numeric_limits<uint16_t>::max()))
-                {
-                    m_LastArchiveError = "binary write failed: field name too long";
-                    return false;
-                }
-
-                std::vector<uint8_t>& fieldTarget =
-                    objectParent.isFieldValueObject ? objectParent.fieldValueBody : m_Buffer;
-                const uint16_t fieldNameLength = static_cast<uint16_t>(objectParent.pendingFieldName.size());
-                const uint8_t lengthBytes[2] = {
-                    static_cast<uint8_t>(fieldNameLength & 0xFFu),
-                    static_cast<uint8_t>((fieldNameLength >> 8) & 0xFFu),
-                };
-                fieldTarget.insert(fieldTarget.end(), lengthBytes, lengthBytes + 2);
-                fieldTarget.insert(
-                    fieldTarget.end(), objectParent.pendingFieldName.begin(), objectParent.pendingFieldName.end());
-                fieldTarget.insert(fieldTarget.end(), valueBytes.begin(), valueBytes.end());
-                objectParent.pendingFieldName.clear();
-                return true;
-            }
-
-            return CommitArrayElement(std::move(valueBytes));
-        }
-
-        if (parent.kind == WriteFrameKind::Object)
-        {
-            return CommitFieldValue(std::move(valueBytes));
-        }
-
-        m_LastArchiveError = "binary write failed: invalid parent container for tagged value";
-        return false;
-    }
-
-    bool BinaryWriterArchive::BeginObjectBody(BinaryWireTag objectTag, const std::string& typeName)
-    {
-        if (ShouldWriteTaggedValueInSubBuffer())
-        {
-            WriteFrame subFrame;
-            subFrame.kind = WriteFrameKind::Object;
-            subFrame.isFieldValueObject = true;
-            if (m_Stack.back().kind == WriteFrameKind::Object && !m_Stack.back().pendingFieldName.empty())
-            {
-                subFrame.committingFieldName = std::move(m_Stack.back().pendingFieldName);
-            }
-
-            subFrame.fieldValueBody.push_back(static_cast<uint8_t>(objectTag));
-            if (!WriteTypeName(subFrame.fieldValueBody, typeName))
-            {
-                m_LastArchiveError = "BeginObject failed: type name write failed";
-                return false;
-            }
-
-            m_Stack.push_back(std::move(subFrame));
+            parent.arrayElements.push_back(std::move(valueBytes));
             return true;
         }
 
-        if (!AppendU8(static_cast<uint8_t>(objectTag)))
+        if ((parent.kind == WriteFrameKind::Object || parent.kind == WriteFrameKind::ObjectPtr)
+            && parent.pendingFieldId != 0)
+        {
+            if (!parent.pendingValue.empty())
+            {
+                m_LastArchiveError = "commit value failed: field already has value";
+                return false;
+            }
+            parent.pendingValue = std::move(valueBytes);
+            return true;
+        }
+
+        m_LastArchiveError = "commit value failed: invalid parent";
+        return false;
+    }
+
+    bool BinaryWriterArchive::AppendTaggedValueTo(std::vector<uint8_t>& out,
+                                                  BinaryWireTag tag,
+                                                  const void* payload,
+                                                  size_t payloadSize)
+    {
+        out.push_back(static_cast<uint8_t>(tag));
+        if (payloadSize > 0)
+        {
+            return AppendBytes(out, payload, payloadSize);
+        }
+        return true;
+    }
+
+    bool BinaryWriterArchive::WriteTaggedValue(BinaryWireTag tag, const void* payload, size_t payloadSize)
+    {
+        if (!EnsureHeader())
         {
             return false;
         }
 
-        if (!WriteTypeName(m_Buffer, typeName))
+        std::vector<uint8_t> valueBytes;
+        if (!AppendTaggedValueTo(valueBytes, tag, payload, payloadSize))
         {
-            m_LastArchiveError = "BeginObject failed: type name write failed";
+            return false;
+        }
+        return CommitValueToParent(std::move(valueBytes));
+    }
+
+    bool BinaryWriterArchive::BeginObjectWithClass(const Reflection::MEClass* classInfo, BinaryWireTag objectTag)
+    {
+        if (!EnsureHeader())
+        {
+            return false;
+        }
+        if (classInfo == nullptr)
+        {
+            m_LastArchiveError = "BeginObject failed: classInfo is null";
+            return false;
+        }
+
+        const uint32_t classId = TransientSchemaTable::Get().GetClassId(classInfo);
+        if (classId == 0)
+        {
+            m_LastArchiveError = "BeginObject failed: class is not in transient schema";
             return false;
         }
 
         WriteFrame frame;
-        frame.kind = WriteFrameKind::Object;
+        frame.kind = (objectTag == BinaryWireTag::ObjectPtr) ? WriteFrameKind::ObjectPtr : WriteFrameKind::Object;
+        frame.classId = classId;
         m_Stack.push_back(std::move(frame));
         return true;
     }
 
-    bool BinaryWriterArchive::EndObjectBody(BinaryWireTag /*objectTag*/)
+    bool BinaryWriterArchive::BeginObject(const Reflection::MEClass* classInfo, bool /*writeTypeName*/)
     {
-        if (m_Stack.empty() || m_Stack.back().kind != WriteFrameKind::Object)
-        {
-            m_LastArchiveError = "EndObject failed: invalid writer stack";
-            return false;
-        }
-
-        if (!m_Stack.back().pendingFieldName.empty())
-        {
-            m_LastArchiveError = "EndObject failed: pending field was not written";
-            return false;
-        }
-
-        if (m_Stack.back().isFieldValueObject)
-        {
-            WriteFrame subFrame = std::move(m_Stack.back());
-            m_Stack.pop_back();
-            subFrame.fieldValueBody.push_back(static_cast<uint8_t>(BinaryWireTag::EndObject));
-
-            if (m_Stack.empty())
-            {
-                m_LastArchiveError = "EndObject failed: missing parent container frame";
-                return false;
-            }
-
-            WriteFrame& parent = m_Stack.back();
-            if (parent.kind == WriteFrameKind::Object)
-            {
-                parent.pendingFieldName = std::move(subFrame.committingFieldName);
-                if (parent.pendingFieldName.empty())
-                {
-                    m_LastArchiveError = "EndObject failed: field name is missing";
-                    return false;
-                }
-
-                return CommitFieldValue(std::move(subFrame.fieldValueBody));
-            }
-
-            if (parent.kind == WriteFrameKind::Array)
-            {
-                return CommitArrayElement(std::move(subFrame.fieldValueBody));
-            }
-
-            m_LastArchiveError = "EndObject failed: invalid parent container";
-            return false;
-        }
-
-        m_Stack.pop_back();
-        return AppendU8(static_cast<uint8_t>(BinaryWireTag::EndObject));
-    }
-
-    bool BinaryWriterArchive::CommitTaggedNull()
-    {
-        return CommitTaggedPayload(BinaryWireTag::Null, nullptr, 0);
-    }
-
-    bool BinaryWriterArchive::CommitTaggedPayload(BinaryWireTag tag, const void* payload, size_t payloadSize)
-    {
-        std::vector<uint8_t> tagged;
-        tagged.reserve(1 + payloadSize);
-        tagged.push_back(static_cast<uint8_t>(tag));
-        if (payloadSize > 0)
-        {
-            const uint8_t* bytes = static_cast<const uint8_t*>(payload);
-            tagged.insert(tagged.end(), bytes, bytes + payloadSize);
-        }
-
-        if (m_Stack.empty())
-        {
-            m_Buffer.insert(m_Buffer.end(), tagged.begin(), tagged.end());
-            return true;
-        }
-
-        WriteFrame& frame = m_Stack.back();
-        if (frame.kind == WriteFrameKind::Array)
-        {
-            std::vector<uint8_t>& target = GetPayloadWriteBuffer();
-            target.insert(target.end(), tagged.begin(), tagged.end());
-            ++frame.arrayWrittenCount;
-            return true;
-        }
-
-        if (frame.pendingFieldName.empty())
-        {
-            m_LastArchiveError = "binary write failed: object field name is missing";
-            return false;
-        }
-
-        const uint16_t fieldNameLength = static_cast<uint16_t>(frame.pendingFieldName.size());
-        if (fieldNameLength != frame.pendingFieldName.size())
-        {
-            m_LastArchiveError = "binary write failed: field name too long";
-            return false;
-        }
-
-        std::vector<uint8_t>& fieldTarget = frame.isFieldValueObject ? frame.fieldValueBody : m_Buffer;
-        const uint8_t lengthBytes[2] = {
-            static_cast<uint8_t>(fieldNameLength & 0xFFu),
-            static_cast<uint8_t>((fieldNameLength >> 8) & 0xFFu),
-        };
-        fieldTarget.insert(fieldTarget.end(), lengthBytes, lengthBytes + 2);
-        fieldTarget.insert(fieldTarget.end(), frame.pendingFieldName.begin(), frame.pendingFieldName.end());
-        fieldTarget.insert(fieldTarget.end(), tagged.begin(), tagged.end());
-        frame.pendingFieldName.clear();
-        return true;
+        return BeginObjectWithClass(classInfo, BinaryWireTag::Object);
     }
 
     bool BinaryWriterArchive::BeginObject(const std::string& typeName)
     {
-        return BeginObjectBody(BinaryWireTag::Object, typeName);
+        if (typeName.empty())
+        {
+            m_LastArchiveError = "BeginObject failed: empty typeName";
+            return false;
+        }
+        return BeginObjectWithClass(Reflection::ReflectionSystem::Get().FindClass(typeName), BinaryWireTag::Object);
     }
 
-    bool BinaryWriterArchive::EndObject()
+    bool BinaryWriterArchive::BeginObjectPtr(const Reflection::MEClass* classInfo)
     {
-        return EndObjectBody(BinaryWireTag::Object);
+        return BeginObjectWithClass(classInfo, BinaryWireTag::ObjectPtr);
     }
 
     bool BinaryWriterArchive::BeginObjectPtr(const std::string& typeName)
     {
-        return BeginObjectBody(BinaryWireTag::ObjectPtr, typeName);
-    }
-
-    bool BinaryWriterArchive::EndObjectPtr()
-    {
-        return EndObjectBody(BinaryWireTag::ObjectPtr);
-    }
-
-    bool BinaryWriterArchive::BeginGuidRef(const GUID& guid)
-    {
-        const uint64_t payload[2] = {guid.High, guid.Low};
-        return CommitTaggedPayload(BinaryWireTag::GuidRef, payload, sizeof(payload));
-    }
-
-    bool BinaryWriterArchive::EndGuidRef()
-    {
-        return true;
-    }
-
-    bool BinaryWriterArchive::CommitTaggedString(const std::string& value)
-    {
-        std::vector<uint8_t> tagged;
-        tagged.push_back(static_cast<uint8_t>(BinaryWireTag::String));
-        if (value.size() > static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+        if (typeName.empty())
         {
-            m_LastArchiveError = "string too large for binary archive";
+            m_LastArchiveError = "BeginObjectPtr failed: empty typeName";
             return false;
         }
+        return BeginObjectWithClass(Reflection::ReflectionSystem::Get().FindClass(typeName), BinaryWireTag::ObjectPtr);
+    }
 
-        const uint32_t length = static_cast<uint32_t>(value.size());
-        const uint8_t lengthBytes[4] = {
-            static_cast<uint8_t>(length & 0xFFu),
-            static_cast<uint8_t>((length >> 8) & 0xFFu),
-            static_cast<uint8_t>((length >> 16) & 0xFFu),
-            static_cast<uint8_t>((length >> 24) & 0xFFu),
-        };
-        tagged.insert(tagged.end(), lengthBytes, lengthBytes + 4);
-        tagged.insert(tagged.end(), value.begin(), value.end());
-
+    bool BinaryWriterArchive::CommitPendingField()
+    {
         if (m_Stack.empty())
         {
-            m_Buffer.insert(m_Buffer.end(), tagged.begin(), tagged.end());
-            return true;
+            return false;
         }
-
         WriteFrame& frame = m_Stack.back();
-        if (frame.kind == WriteFrameKind::Array)
+        if (frame.kind != WriteFrameKind::Object && frame.kind != WriteFrameKind::ObjectPtr)
         {
-            std::vector<uint8_t>& target = GetPayloadWriteBuffer();
-            target.insert(target.end(), tagged.begin(), tagged.end());
-            ++frame.arrayWrittenCount;
-            return true;
-        }
-
-        if (frame.pendingFieldName.empty())
-        {
-            m_LastArchiveError = "binary write failed: object field name is missing";
             return false;
         }
-
-        const uint16_t fieldNameLength = static_cast<uint16_t>(frame.pendingFieldName.size());
-        if (fieldNameLength != frame.pendingFieldName.size())
+        if (frame.pendingFieldId == 0)
         {
-            m_LastArchiveError = "binary write failed: field name too long";
+            m_LastArchiveError = "EndField failed: no pending field";
             return false;
         }
-
-        std::vector<uint8_t>& fieldTarget = frame.isFieldValueObject ? frame.fieldValueBody : m_Buffer;
-        const uint8_t fieldNameLengthBytes[2] = {
-            static_cast<uint8_t>(fieldNameLength & 0xFFu),
-            static_cast<uint8_t>((fieldNameLength >> 8) & 0xFFu),
-        };
-        fieldTarget.insert(fieldTarget.end(), fieldNameLengthBytes, fieldNameLengthBytes + 2);
-        fieldTarget.insert(fieldTarget.end(), frame.pendingFieldName.begin(), frame.pendingFieldName.end());
-        fieldTarget.insert(fieldTarget.end(), tagged.begin(), tagged.end());
-        frame.pendingFieldName.clear();
-        return true;
-    }
-
-    bool BinaryWriterArchive::BeginField(const std::string& fieldName)
-    {
-        if (m_Stack.empty() || m_Stack.back().kind != WriteFrameKind::Object)
-        {
-            m_LastArchiveError = "BeginField failed: not inside an object";
-            return false;
-        }
-
-        std::string sanitizedFieldName = fieldName;
-        while (!sanitizedFieldName.empty() && sanitizedFieldName.back() == '\0')
-        {
-            sanitizedFieldName.pop_back();
-        }
-
-        if (sanitizedFieldName.empty())
-        {
-            m_LastArchiveError = "BeginField failed: field name is empty";
-            return false;
-        }
-
-        m_Stack.back().pendingFieldName = std::move(sanitizedFieldName);
-        return true;
-    }
-
-    bool BinaryWriterArchive::EndField()
-    {
-        if (m_Stack.empty() || m_Stack.back().kind != WriteFrameKind::Object)
-        {
-            m_LastArchiveError = "EndField failed: not inside an object";
-            return false;
-        }
-
-        if (!m_Stack.back().pendingFieldName.empty())
+        if (frame.pendingValue.empty())
         {
             m_LastArchiveError = "EndField failed: field value was not written";
             return false;
         }
 
+        FieldRecord record;
+        record.fieldId = frame.pendingFieldId;
+        record.valueBytes = std::move(frame.pendingValue);
+        frame.fields.push_back(std::move(record));
+        frame.pendingFieldId = 0;
         return true;
+    }
+
+    bool BinaryWriterArchive::EndObjectWithTag(BinaryWireTag objectTag)
+    {
+        if (m_Stack.empty())
+        {
+            m_LastArchiveError = "EndObject failed: empty stack";
+            return false;
+        }
+
+        WriteFrame frame = std::move(m_Stack.back());
+        m_Stack.pop_back();
+
+        const bool expectPtr = objectTag == BinaryWireTag::ObjectPtr;
+        if (expectPtr != (frame.kind == WriteFrameKind::ObjectPtr))
+        {
+            m_LastArchiveError = "EndObject failed: frame kind mismatch";
+            return false;
+        }
+        if (frame.pendingFieldId != 0)
+        {
+            m_LastArchiveError = "EndObject failed: pending field not closed";
+            return false;
+        }
+
+        std::vector<uint8_t> body;
+        for (const FieldRecord& field : frame.fields)
+        {
+            WriteU32LE(body, field.fieldId);
+            AppendRaw(body, field.valueBytes.data(), field.valueBytes.size());
+        }
+        if (body.size() > std::numeric_limits<uint32_t>::max())
+        {
+            m_LastArchiveError = "EndObject failed: body too large";
+            return false;
+        }
+
+        std::vector<uint8_t> objectBytes;
+        objectBytes.push_back(static_cast<uint8_t>(objectTag));
+        WriteU32LE(objectBytes, frame.classId);
+        WriteU32LE(objectBytes, static_cast<uint32_t>(frame.fields.size()));
+        WriteU32LE(objectBytes, static_cast<uint32_t>(body.size()));
+        AppendRaw(objectBytes, body.data(), body.size());
+
+        return CommitValueToParent(std::move(objectBytes));
+    }
+
+    bool BinaryWriterArchive::EndObject()
+    {
+        return EndObjectWithTag(BinaryWireTag::Object);
+    }
+
+    bool BinaryWriterArchive::EndObjectPtr()
+    {
+        return EndObjectWithTag(BinaryWireTag::ObjectPtr);
+    }
+
+    bool BinaryWriterArchive::BeginField(const std::string& fieldName)
+    {
+        if (m_Stack.empty())
+        {
+            m_LastArchiveError = "BeginField failed: empty stack";
+            return false;
+        }
+        WriteFrame& frame = m_Stack.back();
+        if (frame.kind != WriteFrameKind::Object && frame.kind != WriteFrameKind::ObjectPtr)
+        {
+            m_LastArchiveError = "BeginField failed: not in object";
+            return false;
+        }
+        if (frame.pendingFieldId != 0)
+        {
+            m_LastArchiveError = "BeginField failed: previous field not ended";
+            return false;
+        }
+
+        const uint32_t fieldId = TransientSchemaTable::Get().GetFieldId(frame.classId, fieldName);
+        if (fieldId == 0)
+        {
+            m_LastArchiveError = "BeginField failed: unknown field " + fieldName;
+            return false;
+        }
+        frame.pendingFieldId = fieldId;
+        frame.pendingValue.clear();
+        return true;
+    }
+
+    bool BinaryWriterArchive::EndField()
+    {
+        return CommitPendingField();
     }
 
     bool BinaryWriterArchive::BeginArray(size_t count)
     {
-        if (count > static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+        if (!EnsureHeader())
+        {
+            return false;
+        }
+        if (count > kMaxArrayCount)
         {
             m_LastArchiveError = "BeginArray failed: count too large";
-            return false;
-        }
-
-        if (!m_Stack.empty()
-            && m_Stack.back().kind == WriteFrameKind::Object
-            && !m_Stack.back().pendingFieldName.empty())
-        {
-            WriteFrame arrayFrame;
-            arrayFrame.kind = WriteFrameKind::Array;
-            arrayFrame.isFieldValueObject = true;
-            arrayFrame.committingFieldName = std::move(m_Stack.back().pendingFieldName);
-            arrayFrame.arrayExpectedCount = count;
-            arrayFrame.arrayWrittenCount = 0;
-            arrayFrame.fieldValueBody.push_back(static_cast<uint8_t>(BinaryWireTag::Array));
-
-            const uint32_t elementCount = static_cast<uint32_t>(count);
-            const uint8_t countBytes[4] = {
-                static_cast<uint8_t>(elementCount & 0xFFu),
-                static_cast<uint8_t>((elementCount >> 8) & 0xFFu),
-                static_cast<uint8_t>((elementCount >> 16) & 0xFFu),
-                static_cast<uint8_t>((elementCount >> 24) & 0xFFu),
-            };
-            arrayFrame.fieldValueBody.insert(
-                arrayFrame.fieldValueBody.end(), countBytes, countBytes + 4);
-            m_Stack.push_back(std::move(arrayFrame));
-            return true;
-        }
-
-        if (!m_Stack.empty() && m_Stack.back().kind == WriteFrameKind::Array)
-        {
-            WriteFrame arrayFrame;
-            arrayFrame.kind = WriteFrameKind::Array;
-            arrayFrame.isFieldValueObject = true;
-            arrayFrame.arrayExpectedCount = count;
-            arrayFrame.arrayWrittenCount = 0;
-            arrayFrame.fieldValueBody.push_back(static_cast<uint8_t>(BinaryWireTag::Array));
-
-            const uint32_t elementCount = static_cast<uint32_t>(count);
-            const uint8_t countBytes[4] = {
-                static_cast<uint8_t>(elementCount & 0xFFu),
-                static_cast<uint8_t>((elementCount >> 8) & 0xFFu),
-                static_cast<uint8_t>((elementCount >> 16) & 0xFFu),
-                static_cast<uint8_t>((elementCount >> 24) & 0xFFu),
-            };
-            arrayFrame.fieldValueBody.insert(
-                arrayFrame.fieldValueBody.end(), countBytes, countBytes + 4);
-            m_Stack.push_back(std::move(arrayFrame));
-            return true;
-        }
-
-        if (!AppendU8(static_cast<uint8_t>(BinaryWireTag::Array)))
-        {
-            return false;
-        }
-
-        if (!AppendU32(static_cast<uint32_t>(count)))
-        {
             return false;
         }
 
         WriteFrame frame;
         frame.kind = WriteFrameKind::Array;
         frame.arrayExpectedCount = count;
-        frame.arrayWrittenCount = 0;
         m_Stack.push_back(std::move(frame));
         return true;
     }
@@ -690,98 +416,107 @@ namespace minEngine::Serialization
     {
         if (m_Stack.empty() || m_Stack.back().kind != WriteFrameKind::Array)
         {
-            m_LastArchiveError = "EndArray failed: invalid writer stack";
+            m_LastArchiveError = "EndArray failed: invalid stack";
             return false;
         }
 
-        WriteFrame arrayFrame = std::move(m_Stack.back());
+        WriteFrame frame = std::move(m_Stack.back());
         m_Stack.pop_back();
 
-        if (arrayFrame.arrayWrittenCount != arrayFrame.arrayExpectedCount)
+        if (frame.arrayElements.size() != frame.arrayExpectedCount)
         {
             m_LastArchiveError = "EndArray failed: element count mismatch";
             return false;
         }
 
-        if (arrayFrame.isFieldValueObject)
+        std::vector<uint8_t> arrayBytes;
+        arrayBytes.push_back(static_cast<uint8_t>(BinaryWireTag::Array));
+        WriteU32LE(arrayBytes, static_cast<uint32_t>(frame.arrayExpectedCount));
+        for (const std::vector<uint8_t>& element : frame.arrayElements)
         {
-            if (m_Stack.empty() || m_Stack.back().kind != WriteFrameKind::Object)
-            {
-                m_LastArchiveError = "EndArray failed: missing parent object frame";
-                return false;
-            }
-
-            WriteFrame& parent = m_Stack.back();
-            parent.pendingFieldName = std::move(arrayFrame.committingFieldName);
-
-            if (parent.pendingFieldName.empty())
-            {
-                m_LastArchiveError = "EndArray failed: field name is missing";
-                return false;
-            }
-
-            return CommitFieldValue(std::move(arrayFrame.fieldValueBody));
+            AppendRaw(arrayBytes, element.data(), element.size());
         }
+        return CommitValueToParent(std::move(arrayBytes));
+    }
 
+    bool BinaryWriterArchive::BeginGuidRef(const GUID& guid)
+    {
+        uint8_t payload[16];
+        const uint64_t high = guid.High;
+        const uint64_t low = guid.Low;
+        std::memcpy(payload, &high, 8);
+        std::memcpy(payload + 8, &low, 8);
+        return WriteTaggedValue(BinaryWireTag::GuidRef, payload, sizeof(payload));
+    }
+
+    bool BinaryWriterArchive::EndGuidRef()
+    {
         return true;
     }
 
     bool BinaryWriterArchive::WriteNull()
     {
-        return CommitTaggedNull();
+        return WriteTaggedValue(BinaryWireTag::Null, nullptr, 0);
     }
 
     bool BinaryWriterArchive::WriteBool(bool value)
     {
         const uint8_t payload = value ? 1u : 0u;
-        return CommitTaggedPayload(BinaryWireTag::Bool, &payload, 1);
+        return WriteTaggedValue(BinaryWireTag::Bool, &payload, 1);
     }
 
     bool BinaryWriterArchive::WriteInt64(int64_t value)
     {
-        return CommitTaggedPayload(BinaryWireTag::Int64, &value, sizeof(value));
+        return WriteTaggedValue(BinaryWireTag::Int64, &value, sizeof(value));
     }
 
     bool BinaryWriterArchive::WriteUInt64(uint64_t value)
     {
-        return CommitTaggedPayload(BinaryWireTag::UInt64, &value, sizeof(value));
+        return WriteTaggedValue(BinaryWireTag::UInt64, &value, sizeof(value));
     }
 
     bool BinaryWriterArchive::WriteDouble(double value)
     {
-        return CommitTaggedPayload(BinaryWireTag::Double, &value, sizeof(value));
+        return WriteTaggedValue(BinaryWireTag::Double, &value, sizeof(value));
     }
 
     bool BinaryWriterArchive::WriteString(const std::string& value)
     {
-        return CommitTaggedString(value);
+        if (value.size() > kMaxStringBytes)
+        {
+            m_LastArchiveError = "WriteString failed: string too large";
+            return false;
+        }
+        std::vector<uint8_t> payload;
+        WriteU32LE(payload, static_cast<uint32_t>(value.size()));
+        AppendRaw(payload, value.data(), value.size());
+        return WriteTaggedValue(BinaryWireTag::String, payload.data(), payload.size());
     }
 
     void BinaryWriterArchive::ResetWriteState()
     {
         m_Buffer.clear();
+        m_HeaderWritten = false;
         m_Stack.clear();
         m_LastArchiveError.clear();
     }
 
     bool BinaryWriterArchive::WriteToFile(const std::string& filePath)
     {
-        m_LastArchiveError.clear();
-
-        std::ofstream output(filePath, std::ios::binary);
-        if (!output.is_open())
+        std::ofstream stream(filePath, std::ios::binary | std::ios::trunc);
+        if (!stream)
         {
-            m_LastArchiveError = "failed to open output file";
+            m_LastArchiveError = "WriteToFile failed";
             return false;
         }
-
-        const uint8_t header[8] = {'M', 'E', 0x01, 'B', 'I', 'N', 0, 0};
-        output.write(reinterpret_cast<const char*>(header), sizeof(header));
-        const uint32_t version = kBinarySchemaVersion;
-        output.write(reinterpret_cast<const char*>(&version), sizeof(version));
-        output.write(reinterpret_cast<const char*>(m_Buffer.data()), static_cast<std::streamsize>(m_Buffer.size()));
-        return output.good();
+        if (!m_Buffer.empty())
+        {
+            stream.write(reinterpret_cast<const char*>(m_Buffer.data()), static_cast<std::streamsize>(m_Buffer.size()));
+        }
+        return static_cast<bool>(stream);
     }
+
+    // ----------------- Reader -----------------
 
     BinaryReaderArchive::BinaryReaderArchive(std::vector<uint8_t> buffer)
     {
@@ -790,31 +525,67 @@ namespace minEngine::Serialization
 
     void BinaryReaderArchive::BindBuffer(std::vector<uint8_t> buffer)
     {
-        m_Buffer = std::move(buffer);
         ResetReadState();
+        m_Buffer = std::move(buffer);
+        ParseHeader();
+    }
+
+    bool BinaryReaderArchive::ParseHeader()
+    {
+        m_HeaderParsed = false;
+        m_ReadPos = 0;
+        if (m_Buffer.size() < 16)
+        {
+            m_LastArchiveError = "binary header too small";
+            return false;
+        }
+        if (std::memcmp(m_Buffer.data(), kBinaryMagicV2, 4) != 0)
+        {
+            m_LastArchiveError = "binary magic mismatch (expected MEB2)";
+            return false;
+        }
+        m_ReadPos = 4;
+        uint32_t versionAndFlags = 0;
+        if (!ReadU32LE(m_Buffer, m_ReadPos, versionAndFlags))
+        {
+            return false;
+        }
+        const uint16_t version = static_cast<uint16_t>(versionAndFlags & 0xFFFFu);
+        if (version != kBinarySchemaVersionV2)
+        {
+            m_LastArchiveError = "unsupported binary schema version";
+            return false;
+        }
+
+        uint64_t fingerprint = 0;
+        if (!ReadU64LE(m_Buffer, m_ReadPos, fingerprint))
+        {
+            return false;
+        }
+
+        const TransientSchemaTable& schema = TransientSchemaTable::Get();
+        if (!schema.IsReady())
+        {
+            m_LastArchiveError = "transient schema table is not ready";
+            return false;
+        }
+        if (fingerprint != schema.GetFingerprint())
+        {
+            m_LastArchiveError = "schema fingerprint mismatch";
+            return false;
+        }
+
+        m_HeaderParsed = true;
+        return true;
     }
 
     bool BinaryReaderArchive::ReadBytes(void* outData, size_t size)
     {
-        if (size == 0)
+        if (!ReadExact(m_Buffer, m_ReadPos, outData, size))
         {
-            return true;
-        }
-
-        if (outData == nullptr)
-        {
-            m_LastArchiveError = "read bytes failed: out data is null";
+            m_LastArchiveError = "read past end of buffer";
             return false;
         }
-
-        if (m_ReadPos + size > m_Buffer.size())
-        {
-            m_LastArchiveError = "read bytes failed: buffer overrun";
-            return false;
-        }
-
-        std::memcpy(outData, m_Buffer.data() + m_ReadPos, size);
-        m_ReadPos += size;
         return true;
     }
 
@@ -824,7 +595,6 @@ namespace minEngine::Serialization
         {
             return false;
         }
-
         outValue = m_Buffer[m_ReadPos];
         return true;
     }
@@ -834,136 +604,24 @@ namespace minEngine::Serialization
         return ReadBytes(&outValue, 1);
     }
 
-    bool BinaryReaderArchive::ReadU16(uint16_t& outValue)
-    {
-        uint8_t bytes[2] = {};
-        if (!ReadBytes(bytes, 2))
-        {
-            return false;
-        }
-
-        outValue = static_cast<uint16_t>(bytes[0]) | (static_cast<uint16_t>(bytes[1]) << 8);
-        return true;
-    }
-
     bool BinaryReaderArchive::ReadU32(uint32_t& outValue)
     {
-        uint8_t bytes[4] = {};
-        if (!ReadBytes(bytes, 4))
-        {
-            return false;
-        }
-
-        outValue = static_cast<uint32_t>(bytes[0])
-            | (static_cast<uint32_t>(bytes[1]) << 8)
-            | (static_cast<uint32_t>(bytes[2]) << 16)
-            | (static_cast<uint32_t>(bytes[3]) << 24);
-        return true;
+        return ReadU32LE(m_Buffer, m_ReadPos, outValue);
     }
 
     bool BinaryReaderArchive::ReadU64(uint64_t& outValue)
     {
-        return ReadBytes(&outValue, sizeof(outValue));
+        return ReadU64LE(m_Buffer, m_ReadPos, outValue);
     }
 
-    bool BinaryReaderArchive::ReadStringPayload(std::string& outValue)
+    bool BinaryReaderArchive::ReadTaggedValueFromBuffer(const std::vector<uint8_t>& buffer,
+                                                        size_t& readPos,
+                                                        std::vector<uint8_t>& outSlice)
     {
-        uint32_t length = 0;
-        if (!ReadU32(length))
-        {
-            return false;
-        }
-
-        if (m_ReadPos + length > m_Buffer.size())
-        {
-            m_LastArchiveError = "read string failed: buffer overrun";
-            return false;
-        }
-
-        outValue.assign(reinterpret_cast<const char*>(m_Buffer.data() + m_ReadPos), length);
-        m_ReadPos += length;
-        return true;
-    }
-
-    bool BinaryReaderArchive::ConsumeFromActiveSlice(void* outData, size_t size)
-    {
-        if (size == 0)
-        {
-            return true;
-        }
-
-        if (outData == nullptr)
-        {
-            m_LastArchiveError = "consume slice failed: out data is null";
-            return false;
-        }
-
-        if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
-        {
-            m_LastArchiveError = "consume slice failed: no active value slice";
-            return false;
-        }
-
-        ReadFrame& frame = m_Stack.back();
-        if (frame.sliceReadPos + size > frame.valueSlice.size())
-        {
-            m_LastArchiveError = "consume slice failed: slice overrun";
-            return false;
-        }
-
-        std::memcpy(outData, frame.valueSlice.data() + frame.sliceReadPos, size);
-        frame.sliceReadPos += size;
-        return true;
-    }
-
-    bool BinaryReaderArchive::PeekActiveSliceTag(BinaryWireTag& outTag) const
-    {
-        if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
-        {
-            return false;
-        }
-
-        const ReadFrame& frame = m_Stack.back();
-        if (frame.sliceReadPos >= frame.valueSlice.size())
-        {
-            return false;
-        }
-
-        outTag = static_cast<BinaryWireTag>(frame.valueSlice[frame.sliceReadPos]);
-        return true;
-    }
-
-    bool BinaryReaderArchive::IsObjectFieldStreamEnd(const std::vector<uint8_t>& buffer, size_t readPos)
-    {
+        const size_t start = readPos;
         if (readPos >= buffer.size())
         {
-            return true;
-        }
-
-        if (static_cast<BinaryWireTag>(buffer[readPos]) != BinaryWireTag::EndObject)
-        {
-            return false;
-        }
-
-        // EndObject (0x0a) collides with the low byte of a u16 field-name length (e.g. "m_Material" -> 10).
-        if (readPos + 2 > buffer.size())
-        {
-            return true;
-        }
-
-        const uint16_t maybeFieldNameLength = static_cast<uint16_t>(buffer[readPos])
-            | (static_cast<uint16_t>(buffer[readPos + 1]) << 8);
-        return readPos + 2 + maybeFieldNameLength > buffer.size();
-    }
-
-    bool BinaryReaderArchive::ReadTaggedValueFromSlice(std::vector<uint8_t>& buffer,
-                                                       size_t& readPos,
-                                                       std::vector<uint8_t>& outSlice)
-    {
-        const size_t startPos = readPos;
-        if (readPos >= buffer.size())
-        {
-            m_LastArchiveError = "read tagged value failed: empty buffer";
+            m_LastArchiveError = "empty tagged value";
             return false;
         }
 
@@ -973,61 +631,43 @@ namespace minEngine::Serialization
         case BinaryWireTag::Null:
             break;
         case BinaryWireTag::Bool:
-        {
-            if (readPos + 1 > buffer.size())
+            if (!ReadExact(buffer, readPos, nullptr, 1))
             {
                 return false;
             }
-            readPos += 1;
             break;
-        }
         case BinaryWireTag::Int64:
         case BinaryWireTag::UInt64:
         case BinaryWireTag::Double:
-        {
-            if (readPos + 8 > buffer.size())
+            if (!ReadExact(buffer, readPos, nullptr, 8))
             {
                 return false;
             }
-            readPos += 8;
             break;
-        }
         case BinaryWireTag::String:
         {
-            if (readPos + 4 > buffer.size())
+            uint32_t length = 0;
+            if (!ReadU32LE(buffer, readPos, length) || length > kMaxStringBytes)
             {
                 return false;
             }
-
-            const uint32_t length = static_cast<uint32_t>(buffer[readPos])
-                | (static_cast<uint32_t>(buffer[readPos + 1]) << 8)
-                | (static_cast<uint32_t>(buffer[readPos + 2]) << 16)
-                | (static_cast<uint32_t>(buffer[readPos + 3]) << 24);
-            readPos += 4;
-            if (readPos + length > buffer.size())
+            if (!ReadExact(buffer, readPos, nullptr, length))
             {
                 return false;
             }
-            readPos += length;
             break;
         }
         case BinaryWireTag::Array:
         {
-            if (readPos + 4 > buffer.size())
+            uint32_t count = 0;
+            if (!ReadU32LE(buffer, readPos, count) || count > kMaxArrayCount)
             {
                 return false;
             }
-
-            const uint32_t count = static_cast<uint32_t>(buffer[readPos])
-                | (static_cast<uint32_t>(buffer[readPos + 1]) << 8)
-                | (static_cast<uint32_t>(buffer[readPos + 2]) << 16)
-                | (static_cast<uint32_t>(buffer[readPos + 3]) << 24);
-            readPos += 4;
-
-            for (uint32_t index = 0; index < count; ++index)
+            for (uint32_t i = 0; i < count; ++i)
             {
-                std::vector<uint8_t> ignored;
-                if (!ReadTaggedValueFromSlice(buffer, readPos, ignored))
+                std::vector<uint8_t> element;
+                if (!ReadTaggedValueFromBuffer(buffer, readPos, element))
                 {
                     return false;
                 }
@@ -1035,271 +675,235 @@ namespace minEngine::Serialization
             break;
         }
         case BinaryWireTag::GuidRef:
-        {
-            if (readPos + 16 > buffer.size())
+            if (!ReadExact(buffer, readPos, nullptr, 16))
             {
                 return false;
             }
-            readPos += 16;
             break;
-        }
         case BinaryWireTag::Object:
         case BinaryWireTag::ObjectPtr:
         {
-            if (readPos + 2 > buffer.size())
+            uint32_t classId = 0;
+            uint32_t fieldCount = 0;
+            uint32_t bodyLength = 0;
+            if (!ReadU32LE(buffer, readPos, classId)
+                || !ReadU32LE(buffer, readPos, fieldCount)
+                || !ReadU32LE(buffer, readPos, bodyLength))
             {
                 return false;
             }
-
-            const uint16_t typeNameLength = static_cast<uint16_t>(buffer[readPos])
-                | (static_cast<uint16_t>(buffer[readPos + 1]) << 8);
-            readPos += 2;
-            if (readPos + typeNameLength > buffer.size())
+            if (fieldCount > kMaxFieldCount || readPos + bodyLength > buffer.size())
             {
                 return false;
             }
-            readPos += typeNameLength;
-
-            while (readPos < buffer.size())
-            {
-                if (IsObjectFieldStreamEnd(buffer, readPos))
-                {
-                    if (readPos < buffer.size()
-                        && static_cast<BinaryWireTag>(buffer[readPos]) == BinaryWireTag::EndObject)
-                    {
-                        ++readPos;
-                    }
-                    break;
-                }
-
-                if (readPos + 2 > buffer.size())
-                {
-                    return false;
-                }
-
-                const uint16_t fieldNameLength = static_cast<uint16_t>(buffer[readPos])
-                    | (static_cast<uint16_t>(buffer[readPos + 1]) << 8);
-                readPos += 2;
-                if (readPos + fieldNameLength > buffer.size())
-                {
-                    return false;
-                }
-                readPos += fieldNameLength;
-
-                std::vector<uint8_t> ignored;
-                if (!ReadTaggedValueFromSlice(buffer, readPos, ignored))
-                {
-                    return false;
-                }
-            }
+            readPos += bodyLength;
             break;
         }
         default:
-            m_LastArchiveError = "read tagged value failed: unknown tag";
+            m_LastArchiveError = "unknown wire tag";
             return false;
         }
 
-        outSlice.assign(buffer.begin() + static_cast<std::ptrdiff_t>(startPos), buffer.begin() + static_cast<std::ptrdiff_t>(readPos));
+        outSlice.assign(buffer.begin() + static_cast<std::ptrdiff_t>(start),
+                       buffer.begin() + static_cast<std::ptrdiff_t>(readPos));
         return true;
     }
 
-    bool BinaryReaderArchive::ParseObjectFields(std::unordered_map<std::string, std::vector<uint8_t>>& outFields,
-                                                std::string& outTypeName,
-                                                std::vector<uint8_t>& buffer,
-                                                size_t& readPos)
+    bool BinaryReaderArchive::ReadTaggedValueIntoSlice(std::vector<uint8_t>& outSlice)
     {
-        if (readPos >= buffer.size())
+        return ReadTaggedValueFromBuffer(m_Buffer, m_ReadPos, outSlice);
+    }
+
+    bool BinaryReaderArchive::HasActiveValueSlice() const
+    {
+        return !m_Stack.empty() && m_Stack.back().kind == ReadFrameKind::ValueSlice;
+    }
+
+    bool BinaryReaderArchive::PeekNextTag(BinaryWireTag& outTag) const
+    {
+        if (HasActiveValueSlice())
         {
-            m_LastArchiveError = "parse object failed: empty buffer";
+            return PeekActiveSliceTag(outTag);
+        }
+        uint8_t tagByte = 0;
+        if (!PeekU8(tagByte))
+        {
             return false;
         }
-
-        const BinaryWireTag objectTag = static_cast<BinaryWireTag>(buffer[readPos]);
-        if (objectTag != BinaryWireTag::Object && objectTag != BinaryWireTag::ObjectPtr)
-        {
-            m_LastArchiveError = "parse object failed: expected object tag";
-            return false;
-        }
-
-        ++readPos;
-
-        if (readPos + 2 > buffer.size())
-        {
-            m_LastArchiveError = "parse object failed: type name length overrun";
-            return false;
-        }
-
-        const uint16_t typeNameLength = static_cast<uint16_t>(buffer[readPos])
-            | (static_cast<uint16_t>(buffer[readPos + 1]) << 8);
-        readPos += 2;
-
-        if (readPos + typeNameLength > buffer.size())
-        {
-            m_LastArchiveError = "parse object failed: type name overrun";
-            return false;
-        }
-
-        outTypeName.assign(reinterpret_cast<const char*>(buffer.data() + readPos), typeNameLength);
-        readPos += typeNameLength;
-
-        while (readPos < buffer.size())
-        {
-            if (IsObjectFieldStreamEnd(buffer, readPos))
-            {
-                if (readPos < buffer.size()
-                    && static_cast<BinaryWireTag>(buffer[readPos]) == BinaryWireTag::EndObject)
-                {
-                    ++readPos;
-                }
-                break;
-            }
-
-            if (readPos + 2 > buffer.size())
-            {
-                m_LastArchiveError = "parse object failed: field name length overrun";
-                return false;
-            }
-
-            const uint16_t fieldNameLength = static_cast<uint16_t>(buffer[readPos])
-                | (static_cast<uint16_t>(buffer[readPos + 1]) << 8);
-            readPos += 2;
-
-            if (readPos + fieldNameLength > buffer.size())
-            {
-                m_LastArchiveError = "parse object failed: field name overrun";
-                return false;
-            }
-
-            std::string fieldName(reinterpret_cast<const char*>(buffer.data() + readPos), fieldNameLength);
-            readPos += fieldNameLength;
-
-            std::vector<uint8_t> fieldSlice;
-            if (!ReadTaggedValueFromSlice(buffer, readPos, fieldSlice))
-            {
-                return false;
-            }
-
-            outFields.emplace(std::move(fieldName), std::move(fieldSlice));
-        }
-
+        outTag = static_cast<BinaryWireTag>(tagByte);
         return true;
     }
 
-    bool BinaryReaderArchive::BeginObjectFromFields(const std::string& expectedTypeName,
-                                                    const minEngine::Reflection::MEClass* baseClassInfo,
-                                                    std::unordered_map<std::string, std::vector<uint8_t>> fields,
-                                                    BinaryWireTag objectTag)
+    bool BinaryReaderArchive::BeginObjectCommon(const Reflection::MEClass* expectedClass, std::string* outDynamicClassName)
     {
-        (void)objectTag;
-
-        if (!expectedTypeName.empty()
-            && baseClassInfo != nullptr
-            && !Reflection::ReflectionSystem::Get().IsClassNameSameOrDerived(expectedTypeName, baseClassInfo))
+        if (!m_HeaderParsed && !ParseHeader())
         {
-            m_LastArchiveError = "BeginObject failed: type mismatch";
+            return false;
+        }
+
+        const bool fromSlice = HasActiveValueSlice();
+        const size_t parentSliceIndex = fromSlice ? (m_Stack.size() - 1) : 0;
+        const std::vector<uint8_t>& sourceBuffer = fromSlice ? m_Stack[parentSliceIndex].valueSlice : m_Buffer;
+        size_t readPos = fromSlice ? m_Stack[parentSliceIndex].sliceReadPos : m_ReadPos;
+
+        if (readPos >= sourceBuffer.size())
+        {
+            m_LastArchiveError = "BeginObject failed: no tag";
+            return false;
+        }
+
+        const BinaryWireTag tag = static_cast<BinaryWireTag>(sourceBuffer[readPos++]);
+        if (outDynamicClassName != nullptr)
+        {
+            if (tag != BinaryWireTag::ObjectPtr)
+            {
+                m_LastArchiveError = "BeginObjectPtr failed: not an ObjectPtr tag";
+                return false;
+            }
+        }
+        else if (tag != BinaryWireTag::Object)
+        {
+            m_LastArchiveError = "BeginObject failed: not an Object tag";
+            return false;
+        }
+
+        uint32_t classId = 0;
+        uint32_t fieldCount = 0;
+        uint32_t bodyLength = 0;
+        if (!ReadU32LE(sourceBuffer, readPos, classId)
+            || !ReadU32LE(sourceBuffer, readPos, fieldCount)
+            || !ReadU32LE(sourceBuffer, readPos, bodyLength))
+        {
+            m_LastArchiveError = "BeginObject failed: truncated header";
+            return false;
+        }
+        if (fieldCount > kMaxFieldCount)
+        {
+            m_LastArchiveError = "BeginObject failed: fieldCount too large";
+            return false;
+        }
+
+        const TransientSchemaTable& schema = TransientSchemaTable::Get();
+        const Reflection::MEClass* dynamicClass = schema.FindClass(classId);
+        if (dynamicClass == nullptr)
+        {
+            m_LastArchiveError = "BeginObject failed: unknown ClassId";
+            return false;
+        }
+        if (expectedClass != nullptr
+            && !Reflection::ReflectionSystem::Get().IsClassSameOrDerived(dynamicClass, expectedClass))
+        {
+            m_LastArchiveError = "BeginObject failed: class type mismatch";
+            return false;
+        }
+        if (outDynamicClassName != nullptr)
+        {
+            *outDynamicClassName = dynamicClass->GetName();
+        }
+
+        const size_t bodyStart = readPos;
+        if (bodyStart + bodyLength > sourceBuffer.size())
+        {
+            m_LastArchiveError = "BeginObject failed: bodyLength out of range";
             return false;
         }
 
         ReadFrame frame;
         frame.kind = ReadFrameKind::ObjectMap;
-        frame.objectFields = std::move(fields);
+        frame.classId = classId;
+
+        size_t bodyPos = bodyStart;
+        const size_t bodyEnd = bodyStart + bodyLength;
+        for (uint32_t i = 0; i < fieldCount; ++i)
+        {
+            uint32_t fieldId = 0;
+            if (!ReadU32LE(sourceBuffer, bodyPos, fieldId))
+            {
+                m_LastArchiveError = "BeginObject failed: bad field id";
+                return false;
+            }
+            if (schema.FindProperty(classId, fieldId) == nullptr)
+            {
+                m_LastArchiveError = "BeginObject failed: unknown FieldId";
+                return false;
+            }
+            std::vector<uint8_t> valueSlice;
+            if (!ReadTaggedValueFromBuffer(sourceBuffer, bodyPos, valueSlice))
+            {
+                return false;
+            }
+            if (!frame.objectFields.emplace(fieldId, std::move(valueSlice)).second)
+            {
+                m_LastArchiveError = "BeginObject failed: duplicate FieldId";
+                return false;
+            }
+        }
+        if (bodyPos != bodyEnd)
+        {
+            m_LastArchiveError = "BeginObject failed: bodyLength mismatch";
+            return false;
+        }
+
+        if (fromSlice)
+        {
+            m_Stack[parentSliceIndex].sliceReadPos = bodyEnd;
+        }
+        else
+        {
+            m_ReadPos = bodyEnd;
+        }
         m_Stack.push_back(std::move(frame));
         return true;
     }
 
     bool BinaryReaderArchive::BeginObject(const Reflection::MEClass* baseClassInfo)
     {
-        std::unordered_map<std::string, std::vector<uint8_t>> fields;
-        std::string typeName;
-
-        if (!m_Stack.empty() && m_Stack.back().kind == ReadFrameKind::ValueSlice)
-        {
-            ReadFrame& sliceFrame = m_Stack.back();
-            if (!ParseObjectFields(fields, typeName, sliceFrame.valueSlice, sliceFrame.sliceReadPos))
-            {
-                return false;
-            }
-        }
-        else if (!ParseObjectFields(fields, typeName, m_Buffer, m_ReadPos))
-        {
-            return false;
-        }
-
-        if (baseClassInfo != nullptr
-            && !typeName.empty()
-            && !Reflection::ReflectionSystem::Get().IsClassNameSameOrDerived(typeName, baseClassInfo))
-        {
-            m_LastArchiveError = "BeginObject failed: type mismatch";
-            return false;
-        }
-
-        return BeginObjectFromFields(typeName, baseClassInfo, std::move(fields), BinaryWireTag::Object);
+        return BeginObjectCommon(baseClassInfo, nullptr);
     }
 
     bool BinaryReaderArchive::BeginObject(const std::string& expectedTypeName)
     {
-        std::unordered_map<std::string, std::vector<uint8_t>> fields;
-        std::string typeName;
-
-        if (!m_Stack.empty() && m_Stack.back().kind == ReadFrameKind::ValueSlice)
+        const Reflection::MEClass* expected = nullptr;
+        if (!expectedTypeName.empty())
         {
-            ReadFrame& sliceFrame = m_Stack.back();
-            if (!ParseObjectFields(fields, typeName, sliceFrame.valueSlice, sliceFrame.sliceReadPos))
+            expected = Reflection::ReflectionSystem::Get().FindClass(expectedTypeName);
+            if (expected == nullptr)
             {
+                m_LastArchiveError = "BeginObject failed: expected class not found";
                 return false;
             }
         }
-        else if (!ParseObjectFields(fields, typeName, m_Buffer, m_ReadPos))
+        return BeginObjectCommon(expected, nullptr);
+    }
+
+    bool BinaryReaderArchive::BeginObjectPtr(const Reflection::MEClass* baseClassInfo, std::string& outClassName)
+    {
+        outClassName.clear();
+        BinaryWireTag tag = BinaryWireTag::Null;
+        if (!PeekNextTag(tag) || tag != BinaryWireTag::ObjectPtr)
         {
             return false;
         }
-
-        if (!expectedTypeName.empty() && !typeName.empty() && typeName != expectedTypeName)
-        {
-            m_LastArchiveError = "BeginObject failed: type name mismatch";
-            return false;
-        }
-
-        return BeginObjectFromFields(typeName, nullptr, std::move(fields), BinaryWireTag::Object);
+        return BeginObjectCommon(baseClassInfo, &outClassName);
     }
 
     bool BinaryReaderArchive::EndObject()
     {
         if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ObjectMap)
         {
-            m_LastArchiveError = "EndObject failed: invalid reader stack";
+            m_LastArchiveError = "EndObject failed: invalid stack";
+            return false;
+        }
+
+        const ReadFrame& frame = m_Stack.back();
+        if (frame.consumedFieldIds.size() != frame.objectFields.size())
+        {
+            m_LastArchiveError = "EndObject failed: unread fields remain (strict transient)";
             return false;
         }
 
         m_Stack.pop_back();
         return true;
-    }
-
-    bool BinaryReaderArchive::BeginObjectPtr(const Reflection::MEClass* baseClassInfo, std::string& outClassName)
-    {
-        std::unordered_map<std::string, std::vector<uint8_t>> fields;
-        if (!m_Stack.empty() && m_Stack.back().kind == ReadFrameKind::ValueSlice)
-        {
-            ReadFrame& sliceFrame = m_Stack.back();
-            if (!ParseObjectFields(fields, outClassName, sliceFrame.valueSlice, sliceFrame.sliceReadPos))
-            {
-                return false;
-            }
-        }
-        else if (!ParseObjectFields(fields, outClassName, m_Buffer, m_ReadPos))
-        {
-            return false;
-        }
-
-        if (baseClassInfo != nullptr
-            && !outClassName.empty()
-            && !Reflection::ReflectionSystem::Get().IsClassNameSameOrDerived(outClassName, baseClassInfo))
-        {
-            m_LastArchiveError = "BeginObjectPtr failed: type mismatch";
-            return false;
-        }
-
-        return BeginObjectFromFields(outClassName, baseClassInfo, std::move(fields), BinaryWireTag::ObjectPtr);
     }
 
     bool BinaryReaderArchive::EndObjectPtr()
@@ -1307,58 +911,33 @@ namespace minEngine::Serialization
         return EndObject();
     }
 
-    bool BinaryReaderArchive::BeginGuidRef(GUID& outGuid)
-    {
-        BinaryWireTag tag = BinaryWireTag::Null;
-        if (!PeekActiveSliceTag(tag))
-        {
-            return false;
-        }
-
-        if (tag != BinaryWireTag::GuidRef)
-        {
-            m_LastArchiveError = "BeginGuidRef failed: unexpected tag";
-            return false;
-        }
-
-        uint8_t rawTag = 0;
-        if (!ConsumeFromActiveSlice(&rawTag, 1))
-        {
-            return false;
-        }
-
-        if (!ConsumeFromActiveSlice(&outGuid.High, sizeof(outGuid.High)))
-        {
-            return false;
-        }
-
-        return ConsumeFromActiveSlice(&outGuid.Low, sizeof(outGuid.Low));
-    }
-
-    bool BinaryReaderArchive::EndGuidRef()
-    {
-        return true;
-    }
-
     bool BinaryReaderArchive::EnterField(const std::string& fieldName)
     {
         if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ObjectMap)
         {
-            m_LastArchiveError = "EnterField failed: not inside an object";
             return false;
         }
 
-        const auto iter = m_Stack.back().objectFields.find(fieldName);
-        if (iter == m_Stack.back().objectFields.end())
+        ReadFrame& frame = m_Stack.back();
+        const uint32_t fieldId = TransientSchemaTable::Get().GetFieldId(frame.classId, fieldName);
+        if (fieldId == 0)
         {
             return false;
         }
 
-        ReadFrame sliceFrame;
-        sliceFrame.kind = ReadFrameKind::ValueSlice;
-        sliceFrame.valueSlice = iter->second;
-        sliceFrame.sliceReadPos = 0;
-        m_Stack.push_back(std::move(sliceFrame));
+        const auto iter = frame.objectFields.find(fieldId);
+        if (iter == frame.objectFields.end())
+        {
+            return false;
+        }
+
+        frame.consumedFieldIds.insert(fieldId);
+
+        ReadFrame valueFrame;
+        valueFrame.kind = ReadFrameKind::ValueSlice;
+        valueFrame.valueSlice = iter->second;
+        valueFrame.sliceReadPos = 0;
+        m_Stack.push_back(std::move(valueFrame));
         return true;
     }
 
@@ -1366,64 +945,143 @@ namespace minEngine::Serialization
     {
         if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
         {
-            m_LastArchiveError = "LeaveField failed: not inside a field slice";
+            m_LastArchiveError = "LeaveField failed";
+            return false;
+        }
+        m_Stack.pop_back();
+        return true;
+    }
+
+    bool BinaryReaderArchive::PeekActiveSliceTag(BinaryWireTag& outTag) const
+    {
+        if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
+        {
+            return false;
+        }
+        const ReadFrame& frame = m_Stack.back();
+        if (frame.sliceReadPos >= frame.valueSlice.size())
+        {
+            return false;
+        }
+        outTag = static_cast<BinaryWireTag>(frame.valueSlice[frame.sliceReadPos]);
+        return true;
+    }
+
+    bool BinaryReaderArchive::EnsureSliceBytes(size_t size)
+    {
+        if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
+        {
+            return false;
+        }
+        ReadFrame& frame = m_Stack.back();
+        return frame.sliceReadPos + size <= frame.valueSlice.size();
+    }
+
+    bool BinaryReaderArchive::ConsumeFromActiveSlice(void* outData, size_t size)
+    {
+        if (!EnsureSliceBytes(size))
+        {
+            m_LastArchiveError = "slice underflow";
+            return false;
+        }
+        ReadFrame& frame = m_Stack.back();
+        if (size > 0 && outData != nullptr)
+        {
+            std::memcpy(outData, frame.valueSlice.data() + frame.sliceReadPos, size);
+        }
+        frame.sliceReadPos += size;
+        return true;
+    }
+
+    bool BinaryReaderArchive::BeginGuidRef(GUID& outGuid)
+    {
+        BinaryWireTag tag = BinaryWireTag::Null;
+        if (!PeekNextTag(tag) || tag != BinaryWireTag::GuidRef)
+        {
             return false;
         }
 
+        uint64_t high = 0;
+        uint64_t low = 0;
+        if (HasActiveValueSlice())
+        {
+            if (!ConsumeFromActiveSlice(nullptr, 1)
+                || !ConsumeFromActiveSlice(&high, 8)
+                || !ConsumeFromActiveSlice(&low, 8))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            uint8_t tagByte = 0;
+            if (!ReadU8(tagByte) || !ReadBytes(&high, 8) || !ReadBytes(&low, 8))
+            {
+                return false;
+            }
+        }
+        outGuid = GUID(high, low);
+
+        ReadFrame placeholder;
+        placeholder.kind = ReadFrameKind::GuidRefPlaceholder;
+        m_Stack.push_back(std::move(placeholder));
+        return true;
+    }
+
+    bool BinaryReaderArchive::EndGuidRef()
+    {
+        if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::GuidRefPlaceholder)
+        {
+            return false;
+        }
         m_Stack.pop_back();
         return true;
     }
 
     bool BinaryReaderArchive::BeginArray(size_t& outCount)
     {
-        if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
+        BinaryWireTag tag = BinaryWireTag::Null;
+        if (!PeekNextTag(tag) || tag != BinaryWireTag::Array)
         {
-            m_LastArchiveError = "BeginArray failed: no active value slice";
+            m_LastArchiveError = "BeginArray failed: not array tag";
             return false;
         }
 
-        ReadFrame& sliceFrame = m_Stack.back();
-        size_t readPos = sliceFrame.sliceReadPos;
-        if (readPos >= sliceFrame.valueSlice.size())
+        const bool fromSlice = HasActiveValueSlice();
+        const size_t parentSliceIndex = fromSlice ? (m_Stack.size() - 1) : 0;
+        const std::vector<uint8_t>& sourceBuffer = fromSlice ? m_Stack[parentSliceIndex].valueSlice : m_Buffer;
+        size_t readPos = fromSlice ? m_Stack[parentSliceIndex].sliceReadPos : m_ReadPos;
+
+        ++readPos; // consume Array tag
+        uint32_t count = 0;
+        if (!ReadU32LE(sourceBuffer, readPos, count) || count > kMaxArrayCount)
         {
-            m_LastArchiveError = "BeginArray failed: empty slice";
+            m_LastArchiveError = "BeginArray failed: bad count";
             return false;
         }
-
-        if (static_cast<BinaryWireTag>(sliceFrame.valueSlice[readPos]) != BinaryWireTag::Array)
-        {
-            m_LastArchiveError = "BeginArray failed: unexpected tag";
-            return false;
-        }
-
-        ++readPos;
-        if (readPos + 4 > sliceFrame.valueSlice.size())
-        {
-            m_LastArchiveError = "BeginArray failed: count overrun";
-            return false;
-        }
-
-        const uint32_t count = static_cast<uint32_t>(sliceFrame.valueSlice[readPos])
-            | (static_cast<uint32_t>(sliceFrame.valueSlice[readPos + 1]) << 8)
-            | (static_cast<uint32_t>(sliceFrame.valueSlice[readPos + 2]) << 16)
-            | (static_cast<uint32_t>(sliceFrame.valueSlice[readPos + 3]) << 24);
-        readPos += 4;
 
         ReadFrame arrayFrame;
         arrayFrame.kind = ReadFrameKind::ArrayElements;
-        arrayFrame.arrayElements.reserve(count);
-        for (uint32_t index = 0; index < count; ++index)
+        for (uint32_t i = 0; i < count; ++i)
         {
-            std::vector<uint8_t> elementSlice;
-            if (!ReadTaggedValueFromSlice(sliceFrame.valueSlice, readPos, elementSlice))
+            std::vector<uint8_t> element;
+            if (!ReadTaggedValueFromBuffer(sourceBuffer, readPos, element))
             {
                 return false;
             }
-            arrayFrame.arrayElements.push_back(std::move(elementSlice));
+            arrayFrame.arrayElements.push_back(std::move(element));
         }
 
-        sliceFrame.sliceReadPos = readPos;
-        outCount = arrayFrame.arrayElements.size();
+        if (fromSlice)
+        {
+            m_Stack[parentSliceIndex].sliceReadPos = readPos;
+        }
+        else
+        {
+            m_ReadPos = readPos;
+        }
+
+        outCount = count;
         m_Stack.push_back(std::move(arrayFrame));
         return true;
     }
@@ -1432,21 +1090,19 @@ namespace minEngine::Serialization
     {
         if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ArrayElements)
         {
-            m_LastArchiveError = "EnterArrayElement failed: not inside an array";
             return false;
         }
-
-        if (index >= m_Stack.back().arrayElements.size())
+        ReadFrame& arrayFrame = m_Stack.back();
+        if (index >= arrayFrame.arrayElements.size())
         {
-            m_LastArchiveError = "EnterArrayElement failed: index out of range";
             return false;
         }
 
-        ReadFrame sliceFrame;
-        sliceFrame.kind = ReadFrameKind::ValueSlice;
-        sliceFrame.valueSlice = m_Stack.back().arrayElements[index];
-        sliceFrame.sliceReadPos = 0;
-        m_Stack.push_back(std::move(sliceFrame));
+        ReadFrame valueFrame;
+        valueFrame.kind = ReadFrameKind::ValueSlice;
+        valueFrame.valueSlice = arrayFrame.arrayElements[index];
+        valueFrame.sliceReadPos = 0;
+        m_Stack.push_back(std::move(valueFrame));
         return true;
     }
 
@@ -1454,10 +1110,8 @@ namespace minEngine::Serialization
     {
         if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
         {
-            m_LastArchiveError = "LeaveArrayElement failed: not inside an array element";
             return false;
         }
-
         m_Stack.pop_back();
         return true;
     }
@@ -1466,10 +1120,8 @@ namespace minEngine::Serialization
     {
         if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ArrayElements)
         {
-            m_LastArchiveError = "EndArray failed: invalid reader stack";
             return false;
         }
-
         m_Stack.pop_back();
         return true;
     }
@@ -1479,180 +1131,194 @@ namespace minEngine::Serialization
         BinaryWireTag tag = BinaryWireTag::Null;
         if (!PeekActiveSliceTag(tag) || tag != BinaryWireTag::Null)
         {
+            // Also allow root-level: if stack empty, peek buffer
+            if (m_Stack.empty())
+            {
+                uint8_t tagByte = 0;
+                if (!PeekU8(tagByte) || static_cast<BinaryWireTag>(tagByte) != BinaryWireTag::Null)
+                {
+                    return false;
+                }
+                ++m_ReadPos;
+                return true;
+            }
             return false;
         }
-
-        uint8_t rawTag = 0;
-        return ConsumeFromActiveSlice(&rawTag, 1);
+        return ConsumeFromActiveSlice(nullptr, 1);
     }
 
     bool BinaryReaderArchive::ReadBool(bool& outValue)
     {
         BinaryWireTag tag = BinaryWireTag::Null;
+        if (m_Stack.empty())
+        {
+            std::vector<uint8_t> slice;
+            if (!ReadTaggedValueIntoSlice(slice) || slice.empty()
+                || static_cast<BinaryWireTag>(slice[0]) != BinaryWireTag::Bool || slice.size() < 2)
+            {
+                return false;
+            }
+            outValue = slice[1] != 0;
+            return true;
+        }
+
         if (!PeekActiveSliceTag(tag) || tag != BinaryWireTag::Bool)
         {
             return false;
         }
-
-        uint8_t rawTag = 0;
-        uint8_t payload = 0;
-        if (!ConsumeFromActiveSlice(&rawTag, 1) || !ConsumeFromActiveSlice(&payload, 1))
+        if (!ConsumeFromActiveSlice(nullptr, 1))
         {
             return false;
         }
-
-        outValue = payload != 0;
+        uint8_t value = 0;
+        if (!ConsumeFromActiveSlice(&value, 1))
+        {
+            return false;
+        }
+        outValue = value != 0;
         return true;
     }
 
     bool BinaryReaderArchive::ReadInt64(int64_t& outValue)
     {
+        if (m_Stack.empty())
+        {
+            std::vector<uint8_t> slice;
+            if (!ReadTaggedValueIntoSlice(slice) || slice.size() < 9
+                || static_cast<BinaryWireTag>(slice[0]) != BinaryWireTag::Int64)
+            {
+                return false;
+            }
+            std::memcpy(&outValue, slice.data() + 1, 8);
+            return true;
+        }
         BinaryWireTag tag = BinaryWireTag::Null;
         if (!PeekActiveSliceTag(tag) || tag != BinaryWireTag::Int64)
         {
             return false;
         }
-
-        uint8_t rawTag = 0;
-        if (!ConsumeFromActiveSlice(&rawTag, 1))
-        {
-            return false;
-        }
-
-        return ConsumeFromActiveSlice(&outValue, sizeof(outValue));
+        return ConsumeFromActiveSlice(nullptr, 1) && ConsumeFromActiveSlice(&outValue, 8);
     }
 
     bool BinaryReaderArchive::ReadUInt64(uint64_t& outValue)
     {
+        if (m_Stack.empty())
+        {
+            std::vector<uint8_t> slice;
+            if (!ReadTaggedValueIntoSlice(slice) || slice.size() < 9
+                || static_cast<BinaryWireTag>(slice[0]) != BinaryWireTag::UInt64)
+            {
+                return false;
+            }
+            std::memcpy(&outValue, slice.data() + 1, 8);
+            return true;
+        }
         BinaryWireTag tag = BinaryWireTag::Null;
         if (!PeekActiveSliceTag(tag) || tag != BinaryWireTag::UInt64)
         {
             return false;
         }
-
-        uint8_t rawTag = 0;
-        if (!ConsumeFromActiveSlice(&rawTag, 1))
-        {
-            return false;
-        }
-
-        return ConsumeFromActiveSlice(&outValue, sizeof(outValue));
+        return ConsumeFromActiveSlice(nullptr, 1) && ConsumeFromActiveSlice(&outValue, 8);
     }
 
     bool BinaryReaderArchive::ReadDouble(double& outValue)
     {
+        if (m_Stack.empty())
+        {
+            std::vector<uint8_t> slice;
+            if (!ReadTaggedValueIntoSlice(slice) || slice.size() < 9
+                || static_cast<BinaryWireTag>(slice[0]) != BinaryWireTag::Double)
+            {
+                return false;
+            }
+            std::memcpy(&outValue, slice.data() + 1, 8);
+            return true;
+        }
         BinaryWireTag tag = BinaryWireTag::Null;
         if (!PeekActiveSliceTag(tag) || tag != BinaryWireTag::Double)
         {
             return false;
         }
-
-        uint8_t rawTag = 0;
-        uint64_t rawBits = 0;
-        if (!ConsumeFromActiveSlice(&rawTag, 1) || !ConsumeFromActiveSlice(&rawBits, sizeof(rawBits)))
-        {
-            return false;
-        }
-
-        std::memcpy(&outValue, &rawBits, sizeof(outValue));
-        return true;
+        return ConsumeFromActiveSlice(nullptr, 1) && ConsumeFromActiveSlice(&outValue, 8);
     }
 
     bool BinaryReaderArchive::ReadString(std::string& outValue)
     {
+        auto parseFromSlice = [&](const std::vector<uint8_t>& slice, size_t pos) -> bool
+        {
+            if (pos >= slice.size() || static_cast<BinaryWireTag>(slice[pos]) != BinaryWireTag::String)
+            {
+                return false;
+            }
+            ++pos;
+            uint32_t length = 0;
+            if (!ReadU32LE(slice, pos, length) || length > kMaxStringBytes || pos + length > slice.size())
+            {
+                return false;
+            }
+            outValue.assign(reinterpret_cast<const char*>(slice.data() + pos), length);
+            return true;
+        };
+
+        if (m_Stack.empty())
+        {
+            std::vector<uint8_t> slice;
+            if (!ReadTaggedValueIntoSlice(slice))
+            {
+                return false;
+            }
+            return parseFromSlice(slice, 0);
+        }
+
         BinaryWireTag tag = BinaryWireTag::Null;
         if (!PeekActiveSliceTag(tag) || tag != BinaryWireTag::String)
         {
             return false;
         }
-
-        uint8_t rawTag = 0;
-        if (!ConsumeFromActiveSlice(&rawTag, 1))
-        {
-            return false;
-        }
-
-        if (m_Stack.empty() || m_Stack.back().kind != ReadFrameKind::ValueSlice)
-        {
-            return false;
-        }
-
         ReadFrame& frame = m_Stack.back();
-        if (frame.sliceReadPos + 4 > frame.valueSlice.size())
+        const size_t start = frame.sliceReadPos;
+        if (!parseFromSlice(frame.valueSlice, start))
         {
-            m_LastArchiveError = "read string failed: length overrun";
             return false;
         }
-
-        const uint32_t length = static_cast<uint32_t>(frame.valueSlice[frame.sliceReadPos])
-            | (static_cast<uint32_t>(frame.valueSlice[frame.sliceReadPos + 1]) << 8)
-            | (static_cast<uint32_t>(frame.valueSlice[frame.sliceReadPos + 2]) << 16)
-            | (static_cast<uint32_t>(frame.valueSlice[frame.sliceReadPos + 3]) << 24);
-        frame.sliceReadPos += 4;
-
-        if (frame.sliceReadPos + length > frame.valueSlice.size())
-        {
-            m_LastArchiveError = "read string failed: payload overrun";
-            return false;
-        }
-
-        outValue.assign(reinterpret_cast<const char*>(frame.valueSlice.data() + frame.sliceReadPos), length);
-        frame.sliceReadPos += length;
+        // advance slice pos: 1 + 4 + length
+        uint32_t length = 0;
+        size_t pos = start + 1;
+        ReadU32LE(frame.valueSlice, pos, length);
+        frame.sliceReadPos = pos + length;
         return true;
     }
 
     void BinaryReaderArchive::ResetReadState()
     {
+        m_Buffer.clear();
         m_ReadPos = 0;
+        m_HeaderParsed = false;
         m_Stack.clear();
         m_LastArchiveError.clear();
-
-        if (!m_Buffer.empty())
-        {
-            ReadFrame rootSlice;
-            rootSlice.kind = ReadFrameKind::ValueSlice;
-            rootSlice.valueSlice = m_Buffer;
-            rootSlice.sliceReadPos = 0;
-            m_Stack.push_back(std::move(rootSlice));
-        }
     }
 
     bool BinaryReaderArchive::ReadFromFile(const std::string& filePath)
     {
-        m_LastArchiveError.clear();
-
-        std::ifstream input(filePath, std::ios::binary);
-        if (!input.is_open())
+        std::ifstream stream(filePath, std::ios::binary);
+        if (!stream)
         {
-            m_LastArchiveError = "failed to open input file";
+            m_LastArchiveError = "ReadFromFile failed";
             return false;
         }
-
-        input.seekg(0, std::ios::end);
-        const std::streamsize fileSize = input.tellg();
-        input.seekg(0, std::ios::beg);
-        if (fileSize < static_cast<std::streamsize>(sizeof(uint32_t) + 8))
+        stream.seekg(0, std::ios::end);
+        const std::streamoff endPos = stream.tellg();
+        if (endPos < 0)
         {
-            m_LastArchiveError = "binary file too small";
             return false;
         }
-
-        std::vector<uint8_t> fileBytes(static_cast<size_t>(fileSize));
-        input.read(reinterpret_cast<char*>(fileBytes.data()), fileSize);
-        if (!input.good())
+        stream.seekg(0, std::ios::beg);
+        std::vector<uint8_t> buffer(static_cast<size_t>(endPos));
+        if (!buffer.empty())
         {
-            m_LastArchiveError = "failed to read input file";
-            return false;
+            stream.read(reinterpret_cast<char*>(buffer.data()), endPos);
         }
-
-        const uint32_t version = *reinterpret_cast<const uint32_t*>(fileBytes.data() + 8);
-        if (version != kBinarySchemaVersion)
-        {
-            m_LastArchiveError = "unsupported binary schema version";
-            return false;
-        }
-
-        BindBuffer(std::vector<uint8_t>(fileBytes.begin() + 12, fileBytes.end()));
-        return true;
+        BindBuffer(std::move(buffer));
+        return m_HeaderParsed;
     }
 }

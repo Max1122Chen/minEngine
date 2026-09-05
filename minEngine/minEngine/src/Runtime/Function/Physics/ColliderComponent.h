@@ -24,7 +24,9 @@ namespace minEngine
 
         void RefreshOwningRigidBody();
 
-        ME_PROPERTY(EditAnywhere)
+        void PostEditChangeProperty(const Reflection::PropertyChangedEvent& event) override;
+
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetObjectChannel", Getter = "GetObjectChannel"))
         ECollisionChannel m_ObjectChannel{ECollisionChannel::Default};
     };
 }

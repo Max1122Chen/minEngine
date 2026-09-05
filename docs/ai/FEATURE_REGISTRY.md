@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-05（UI-F01 MVP 代码落地；未目视验收）
+Last updated: 2026-09-05（merge feat/core into feat/ui；UI-F01 In Progress）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -11,6 +11,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 3. Set Status: `Planned` → `In Progress` → `Done` | `Deferred` | `Cancelled`.
 4. Link the Design (or Implementation) path in **Design** column.
 5. Do not reuse IDs; deprecate by setting Status `Cancelled` and a note — do not recycle numbers.
+6. Architecture / Core vs Plugin choices: [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md). Stage tracks: [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
 
 ---
 
@@ -28,11 +29,15 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
 | `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
-| `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · **`master`** · S05 Pause/Step Deferred；TD-028/029/030 Open |
+| `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · **`master`** · S05 Pause/Step Deferred；TD-030 Open；TD-028/029 → **CORE-F09 Done** |
 | `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) · **`master`** |
 | `CORE-F07` | 反射/Inspector 展示名（去 `m_`/`x_`/`b_` 前缀 + 驼峰分词） | **Done** | — | [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** |
-| `CORE-F08` | GameObject 父子层级（运行时 + 序列化） | **Done** | — | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_IMPLEMENTATION.md) · `feat/ui` · 与 ED-F05 / CORE-F09 联合验收 |
-| `CORE-F09` | GO 父子 = Root↔Root 附着 + KeepWorld/传播 | **Done** | — | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · `feat/ui` · world Proxy/物理/Gizmo |
+| `CORE-F08` | 序列化系统整理（StaticClass API、删死代码、P1 内部整理；不改 Binary wire；TD-026 Deferred→F11） | **Done** | — | [Design](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_IMPLEMENTATION.md) · **`feat/core`** |
+| `CORE-F09` | Binary wire 协议 v2（Transient Ids；TD-028/029；Persistent 契约） | **Done** | — | [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_IMPLEMENTATION.md) · **`feat/core`** · Transient only；存盘 Binary 未做 |
+| `CORE-F10` | JSON 存盘兼容（宽松未知字段 + `$schemaVersion` meta） | **Done** | — | [Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_IMPLEMENTATION.md) · **`feat/core`** |
+| `CORE-F11` | 属性 Getter/Setter native thunk + `AssignProperty`（TD-026 / BUG-CORE-001） | **Done** | — | [Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [Impl](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_IMPLEMENTATION.md) · **`feat/core`** |
+| `CORE-F12` | GameObject 父子层级（运行时 + 序列化） | **Done** | — | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_IMPLEMENTATION.md) · `feat/ui` · **docs filename still CORE-F08_\***（fork ID remap on merge；was CORE-F08 on feat/ui）· 与 ED-F05 / CORE-F13 联合验收 |
+| `CORE-F13` | GO 父子 = Root↔Root 附着 + KeepWorld/传播 | **Done** | — | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · `feat/ui` · **docs filename still CORE-F09_\***（fork ID remap on merge；was CORE-F09 on feat/ui）· world Proxy/物理/Gizmo |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -46,14 +51,14 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
 | `RND-F16` | 2D Rendering Foundation（Path A + Path B ScreenUI） | **Done** | — | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · `feat/ui` |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
-| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **Planned** | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · **`master`** |
+| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **In Progress** *(S00–S02/S04 Done；S03/S05 余量)* | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · **`master`** |
 | `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
 | `ED-F04` | Debug Console & Unified Command System（Runtime 控制面 + Agent-friendly） | **In Progress** *(MVP Done)* | — | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) · S00–S10a Done · **S10b Deferred** · S07 Deferred |
-| `ED-F05` | Hierarchy 树形显示 + 拖拽改父 | **Done** | — | [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) · `feat/ui` · Sticky DnD；与 CORE-F08/F09 联合验收 |
-| `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
-| `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
-| `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · **merge 检查点后** |
-| `UI-F01` | UI system（Canvas + Layout + Image；消费 RND-F16） | **In Progress** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 代码+单测；**未目视**（等 core Setter/Getter） |
+| `ED-F05` | Hierarchy 树形显示 + 拖拽改父 | **Done** | — | [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) · `feat/ui` · Sticky DnD；与 CORE-F12/F13（design docs CORE-F08/F09）联合验收 |
+| `LAUN-F01` | Engine Launcher | **Done** | — | [LAUN-F01_ENGINE_LAUNCHER_DESIGN](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
+| `AUD-F01` | Audio system | **Done** | — | [AUD-F01_AUDIO_SYSTEM_DESIGN](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
+| `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · worktree `minEngine-animation` · 本 worktree 非焦点；并行候选 |
+| `UI-F01` | UI system（Canvas + Layout + Image；消费 RND-F16） | **In Progress** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 代码+单测；**未目视**（Setter/Getter 已自 feat/core 合入；下一步 wire AnchorPreset） |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
@@ -63,7 +68,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 ## Vision placeholders（无独立 Feature ID，不排期）
 
-登记于 [ACTIVE_WORK.md](./ACTIVE_WORK.md) §愿景：Gameplay 插件化框架、网络游戏、Editor Debug Console、Agent-friendly 设计规范。
+登记于 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 与 [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)：Gameplay 插件化框架、Networking / Net Game、Prefab、Object Lifetime/GC、Render Sort/Batch（待登记）、Agent-friendly 作为**设计原则**（见 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)），而非独立 Feature。
 
 ---
 
@@ -74,13 +79,13 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | F04 | |
 | `WF` | F03 | |
-| `CORE` | **F08** | F05 MVP Done；F06–F07 Done |
-| `ASSET` | F01 | |
-| `ED` | **F05** | F02–F04 on `master`；F03 Toolbar Done；F04 Console In Progress |
-| `RND` | **F17** | F16 = 2D Foundation Draft；F12 Deferred |
+| `CORE` | **F14** | F08–F11 = Serialization/Reflection（`feat/core`）Done；F12–F13 = Hierarchy（`feat/ui`；docs still CORE-F08_/F09_）Done；F05–F07 Done |
+| `ASSET` | F01 | Async / Lifetime 愿景见 Capability Roadmap；尚未登记 Feature |
+| `ED` | **F06** | F02–F04 on `master`；F03 Toolbar Done；F04 Console In Progress；F05 Hierarchy Done |
+| `RND` | **F17** | F16 = 2D Foundation Done；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
-| `ANIM` | F02 | F01 占位；merge 后开 `feat/animation` |
+| `ANIM` | F02 | F01 Planned；并行候选（非本 worktree 焦点） |
 | `UI` | F02 | F01 In Progress（MVP 代码未目视）；Hit-test/Text 后置 |
 | `PHYS` | F05 | F04 on `master` |
 | `MAT` | F01 | |

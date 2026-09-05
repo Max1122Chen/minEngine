@@ -1,9 +1,10 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-05（UI-F01 MVP 代码落地；未目视验收）
+Last updated: 2026-09-05（merge feat/core into feat/ui；焦点仍 UI-F01）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
-> **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
+> **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
+> **Philosophy / stage map:** [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) · [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) — long-term constraints + multi-track direction; **this file** still wins for “what to cut next”.
 
 ---
 
@@ -15,16 +16,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|-------------|
 | Design | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · **In Progress** |
 | MVP | Canvas + Letterbox + Widget Layout/Preset + Image；Widget 已去 Texture/Color |
-| 验证 | `screen-ui-coords` / `ui-layout` PASS；**未目视**（Preset 直写字段无效；等 core Setter/Getter） |
-| 前置 | ~~CORE-F08~~ / ~~ED-F05~~ / ~~CORE-F09~~ / ~~RND-F16~~ **Done** |
+| 验证 | `screen-ui-coords` / `ui-layout` PASS；**未目视** |
+| 前置 | ~~Hierarchy（design CORE-F08/F09 → Registry CORE-F12/F13）~~ / ~~ED-F05~~ / ~~RND-F16~~ **Done**；~~Setter/Getter（CORE-F11）~~ **已自 feat/core 合入** |
+| **下一步** | wire `ME_PROPERTY` Setter on `AnchorPreset` + 目视验收 → Done |
 
-### ~~CORE-F08 / ED-F05 / CORE-F09~~ Hierarchy 变换语义 **Done**
+### ~~Hierarchy~~ design docs CORE-F08 / CORE-F09 **Done**（Registry remap → CORE-F12 / CORE-F13）
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| CORE-F08 | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · GUID 父指针 |
+| Hierarchy (docs `CORE-F08_*`) | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · Registry **CORE-F12** · GUID 父指针 |
 | ED-F05 | [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) · 树 + Sticky 拖拽改父 |
-| CORE-F09 | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · Root↔Root + world 同步 |
+| KeepWorld (docs `CORE-F09_*`) | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · Registry **CORE-F13** · Root↔Root + world 同步 |
 
 ### ~~RND-F16 — 2D Rendering Foundation~~ Path A/B **代码+目视 Done**
 
@@ -35,25 +37,64 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 **明确后置：** UI Hit-test / Text / Button；UVRect GPU；World Canvas；完整 Flex。
 
+### ~~feat/core CORE-F08–F11~~ Serialization / Reflection **Done**（已合入本分支）
+
+| 项 | 说明 |
+|----|------|
+| **CORE-F08** | StaticClass API + 删死代码 + P1 — **Done** |
+| **CORE-F09** | Binary Transient v2 — **Done**（关 TD-028/029；PIE Binary） |
+| **CORE-F10** | JSON 存盘宽松 + `$schemaVersion` — **Done** |
+| **CORE-F11** | Getter/Setter + Assign — **Done**（含 S06 Inspector live Assign；关 TD-026） |
+
+[CORE-F11 Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [CORE-F10 Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
+
 ### ~~CORE-F05 — Play Mode~~ **Done（MVP）**（`master`）
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design / Impl | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) |
-| Deferred / 债 | S05 Pause/Step；**TD-028/029** Binary/JSON；**TD-030** EnterPlay rollback |
+| Deferred / 债 | S05 Pause/Step；**TD-030** EnterPlay rollback |
+
+### 并行候选（非本 worktree 焦点）
+
+| 项 | 说明 |
+|----|------|
+| **ANIM-F01** | Primary 候选（其他 worktree `feat/animation`）；本仓焦点仍 UI-F01 |
+| **ED-F02** | S03/S05 余量；不挡 UI |
+| **ED-F04** | Console MVP 已收；S10b / S07 **Deferred** |
+| **RND-F06** | ForwardRenderer 收尾 |
 
 ---
 
-## 当前策略（2026-09-02）
+## 已收口（近期）
 
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
 | **内核** | `master` | `master` | CORE-F05 MVP Done；小修复 |
-| **UI / 2D** | `feat/ui` | — | RND-F16 Done → **CORE-F08** → ED-F05 → **UI-F01** |
+| **序列化/反射** | `feat/core` | **已合入 `feat/ui`** | CORE-F08–F11 Done；TD-026/028/029 Done |
+| **UI / 2D / Hierarchy** | `feat/ui` | — | RND-F16 Done → Hierarchy（docs F08/F09 → Registry F12/F13）→ ED-F05 → **UI-F01** |
 | **编辑器** | ~~`feat/editor`~~ | **已合入 `master`** | ED-F02 + **CORE-F07** + ED-F04 Console |
-| **动画** | `feat/animation` | — | 合并检查点之后再规划 |
+| **动画** | `feat/animation` | — | 并行候选；非本 worktree 焦点 |
 
-**明确 Defer：** ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` Contact 派发 · ED-F04 S10b `activate`/`deactivate` · CORE-F05-S05 Pause/Step
+| 项 | 状态 |
+|----|------|
+| **CORE-F11** | Done — S01–S06；live Assign；TD-026；删 PhysicsEditorSideEffects |
+| **CORE-F10** | Done — JSON 盘路径宽松 + `$schemaVersion` |
+| **CORE-F09** | Done — Binary v2；PIE Binary；TD-028/029 Done |
+| **CORE-F08** | Done — StaticClass Serializer API；死代码清理 |
+| **CORE-F12 / F13** | Done — Hierarchy / KeepWorld（design filenames CORE-F08_/F09_） |
+| **CORE-F05** Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred；TD-030 Open |
+| **CORE-F06 / F07** | Done |
+| **ED-F03** Viewport Play Toolbar | Done |
+| **ED-F02** S00–S02 / S04 | Done on `master` |
+| **PHYS-F04** / BUG-PHYS-003/004 | Done / Fixed |
+| **feat/editor** merge | 已合入 `master` |
+
+---
+
+## 明确 Defer
+
+ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 · Prefab / GC / Gameplay Framework 大包 / Networking（Capability Roadmap §6）
 
 ---
 
@@ -61,88 +102,36 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | `master` | 内核 + 已合入 editor 轨 |
-| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档或用于下一 editor 切片 |
+| `D:/Dev/GitRepo/minEngine` | `master` | 主开发（常 checkout `feat/core` 等） |
+| `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | Animation（并行候选） |
+| `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | **本 worktree 焦点 — UI-F01** |
+| `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | Future — Gameplay Framework（插件化） |
+| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档 |
+| `D:/Dev/GitRepo/minEngine-physics` / `-audio` / `-launcher` / `-asset-workflow` | 历史轨 | 按需保留或删除 |
 
-旧 `minEngine-physics` / `minEngine-audio` / `minEngine-launcher` worktree 可按需保留或删除。
+**新建 worktree：** `.agents/skills/create-worktree` + `scripts/create-worktree.ps1`
+
+### Placeholder branches（无 worktree）
+
+`feat/asset-pipeline` · `feat/network` · `feat/ai` — 仅占位。  
+**`feat/core`** — 序列化轨 CORE-F08–F11 **Done**（已合入 `feat/ui`）。
 
 ---
 
-## In focus
+## Vision placeholders（Registry；不排期）
 
-### A. `master` — 小修复（收尾）
-
-| 项 | 状态 |
+| ID | 说明 |
 |----|------|
-| ~~BUG-RENDER-014~~ 点光半径/衰减 | Done（`f3c8200`） |
-| ~~PHYS-F04~~ Collider 与 Scale 解耦 | **Done** — [Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) · `c2c0893` |
-| ~~BUG-PHYS-003~~ Add BoxCollider 间歇崩溃 | **Fixed** — [Record](./bugs/BUG-PHYS-003.md)（未再复现） |
-| ~~BUG-PHYS-004~~ Collider 禁/删形体刷新 | **Fixed** — `c0a51ce` |
-
-### B. `master` — 内核
-
-| 项 | 状态 |
-|----|------|
-| ~~CORE-F06~~ Component Activate | **Done** — `b07009e` |
-| ~~CORE-F05~~ Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred |
-| ~~CORE-F07~~ 反射展示名 | **Done** — 已合入 `master` |
-
-### C. `feat/ui` — CORE-F08 / ED-F05 / UI-F01
-
-| ID | 内容 | 状态 |
-|----|------|------|
-| **CORE-F08** | GameObject 父子 | **Done** — [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) |
-| **ED-F05** | Hierarchy 树 + 拖拽改父 | **Done** — Sticky DnD + `kSceneRootParentId` |
-| **CORE-F09** | GO 父子 = Root↔Root + KeepWorld/传播 | **Done** — [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) |
-| **UI-F01** | Canvas + Layout + Image | **In Progress** — [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)；未目视 |
-| **RND-F16** | 2D Foundation Path A/B | Path A/B **Done**（目视通过） |
-
-### C2. `master` — ED-F02 Editor Workflow（并行候选，非本分支焦点）
-
-[Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
-
-| 切片 | 内容 | 优先级 |
-|------|------|--------|
-| S00–S05 | 见 Design | 维护者在 `master` 排期 |
-
-### D. `master` — ED-F03 Viewport Play Toolbar
-
-| ID | 内容 | 状态 |
-|----|------|------|
-| **ED-F03** | Viewport 三行：Tab / Toolbar / 主体 | **Done** — [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
-
-### E. `master` — ED-F04 Debug Console（MVP 已收口，**非 Done**）
-
-| ID | 内容 | 状态 |
-|----|------|------|
-| **ED-F04** | Debug Console & Unified Command System | **In Progress** — MVP S00–S10a **Done**；[Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) |
-
-**Deferred：** S10b `activate`/`deactivate`；S07 ExportSchema；极矮布局；Command Palette。
-
-### F. `master` — CORE-F07（已完成）
-
-| ID | 内容 | 状态 |
-|----|------|------|
-| **CORE-F07** | 反射展示名去 `m_`/`x_`/`b_` 前缀 | **Done** |
+| `ANIM-F01` | 并行候选 — Design 待写（`feat/animation`） |
+| Gameplay 插件化 / 网络 / AI | Future；见哲学 |
 
 ---
 
 ## Done / 维护
 
-- ~~RND-F05 / RND-F11 / AUD-F01 / LAUN-F01 / CORE-F06 / PHYS-F04 / BUG-PHYS-003/004 / CORE-F07 / feat/editor merge / **CORE-F05 MVP**~~
+- ~~RND-F05 / RND-F11 / AUD-F01 / LAUN-F01 / CORE-F06 / PHYS-F04 / BUG-PHYS-003/004 / CORE-F07 / feat/editor merge / **CORE-F05 MVP** / CORE-F08–F11 / Hierarchy F12/F13~~
 - **ED-F01** — 代码在 master；VK 阴影质量 defer
 - **WF-F02** handbook — 骨架 Done，正文按需
-
----
-
-## 愿景占位（Registry only，不排期）
-
-| ID | 分支（将来） | 前置 |
-|----|--------------|------|
-| `ANIM-F01` | `feat/animation` | 合并检查点 + Design |
-| `UI-F01` | `feat/ui` | `RND-F16` 2D Foundation |
-| `RND-F16` | `feat/ui`（设计中） | — |
-| Gameplay 插件化 / 网络 | — | 仅文档占位，见 REGISTRY 备注 |
 
 ---
 
@@ -162,6 +151,8 @@ Record in `PROGRESS_LOG.md` after meaningful slices.
 
 | File | Role |
 |------|------|
+| [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) | 长期设计约束 |
+| [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) | 多轨里程碑与并行关系 |
 | [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) | IDs and status |
 | [PROGRESS_LOG.md](./PROGRESS_LOG.md) | What landed and how it was verified |
 | [TECH_DEBT.md](./TECH_DEBT.md) | Open debt rows only |

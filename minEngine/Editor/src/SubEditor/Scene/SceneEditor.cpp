@@ -23,6 +23,7 @@
 #include "SubEditor/Scene/SceneEditingViewportClient.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/PropertyAssign.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/Component.h"
@@ -31,7 +32,6 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
-#include "Runtime/Function/Physics/PhysicsEditorSideEffects.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -711,14 +711,12 @@ namespace minEngine
             Serialization::JsonWriterArchive archive;
             const Serialization::SerializeResult serializeResult = Serialization::Serializer::ToFile(
                 absolutePath.string(),
-                "minEngine::Scene",
                 scene,
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
                     .strictTypeCheck = true,
-                    .skipUnknownField = false,
-                    .allowObjectPtrSerialization = true});
+                    .skipUnknownField = false});
             if (!serializeResult.ok)
             {
                 ME_CORE_ERROR(
@@ -914,7 +912,29 @@ namespace minEngine
             static_cast<Component*>(ownerObject.get())->SyncActivationWithActiveFlag();
         }
 
-        ApplyPhysicsEditorSideEffects(ownerObject.get(), propertyPath);
+        {
+            const Reflection::MEProperty* leafProperty = nullptr;
+            if (propertyPath.find('.') == std::string::npos)
+            {
+                Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+                    ownerClass,
+                    [&](const Reflection::MEProperty& property) -> bool
+                    {
+                        if (property.GetName() == propertyPath)
+                        {
+                            leafProperty = &property;
+                            return false;
+                        }
+                        return true;
+                    });
+            }
+
+            if (leafProperty == nullptr || !leafProperty->HasPropertySetter())
+            {
+                ownerObject->PostEditChangeProperty(
+                    Reflection::PropertyChangedEvent{std::string_view(propertyPath)});
+            }
+        }
 
         MarkSceneDirty();
         return true;
@@ -1068,7 +1088,7 @@ namespace minEngine
         outSnapshot.rootClassName = rootClass->GetName();
 
         return Serialization::Serializer::SerializeObjectToBuffer(
-            outSnapshot.rootClassName,
+            rootClass,
             &gameObject,
             outSnapshot.payload);
     }
@@ -1093,7 +1113,7 @@ namespace minEngine
         outSnapshot.componentIndexInOwner = componentIndex;
 
         return Serialization::Serializer::SerializeObjectToBuffer(
-            outSnapshot.rootClassName,
+            rootClass,
             &component,
             outSnapshot.payload);
     }
@@ -1102,7 +1122,6 @@ namespace minEngine
     {
         Serialization::SerializerOptions options;
         options.skipUnknownField = false;
-        options.allowObjectPtrSerialization = true;
         return options;
     }
 
@@ -1191,7 +1210,7 @@ namespace minEngine
         const Serialization::SerializerOptions restoreOptions = GetRestoreSerializerOptions();
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-            snapshot.rootClassName,
+            rootClass,
             gameObject.get(),
             snapshot.payload,
             unresolvedRefs,
@@ -1277,7 +1296,7 @@ namespace minEngine
         const Serialization::SerializerOptions restoreOptions = GetRestoreSerializerOptions();
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-            snapshot.rootClassName,
+            rootClass,
             component.get(),
             snapshot.payload,
             unresolvedRefs,

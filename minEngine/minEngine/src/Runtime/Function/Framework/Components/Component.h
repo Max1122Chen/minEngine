@@ -55,7 +55,7 @@ namespace minEngine
         /** Unregister from runtime systems. */
         virtual void RemoveActivationFromSystems();
 
-        ME_PROPERTY(Invisible)
+        ME_PROPERTY(Invisible, meta = (Setter = "SetOwner", Getter = "GetOwner"))
         GameObject* m_Owner{ nullptr };
 
         ME_PROPERTY(Invisible)

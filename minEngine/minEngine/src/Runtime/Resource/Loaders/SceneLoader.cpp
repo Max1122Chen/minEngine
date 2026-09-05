@@ -22,14 +22,12 @@ namespace minEngine
 
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             absoluteAssetPath,
-            minEngine::Reflection::GetClassName<Scene>(),
             scene.get(),
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true,
-                .allowObjectPtrSerialization = true,
             });
 
         if (!result.ok)

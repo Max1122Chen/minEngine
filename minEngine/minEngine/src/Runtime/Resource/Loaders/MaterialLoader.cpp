@@ -24,14 +24,12 @@ namespace minEngine
 
             const Serialization::SerializeResult deserializeResult = Serialization::Serializer::FromFile(
                 absoluteAssetPath,
-                "minEngine::Material",
                 material.get(),
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
-                    .strictTypeCheck = true,
-                    .skipUnknownField = false,
-                    .allowObjectPtrSerialization = true,
+                    .strictTypeCheck = false,
+                    .skipUnknownField = true,
                 });
             if (!deserializeResult.ok)
             {

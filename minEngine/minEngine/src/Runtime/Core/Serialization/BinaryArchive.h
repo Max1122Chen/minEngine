@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Archive.h"
+#include "TransientSchemaTable.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace minEngine::Serialization
@@ -22,7 +24,6 @@ namespace minEngine::Serialization
         GuidRef = 7,
         Object = 8,
         ObjectPtr = 9,
-        EndObject = 10,
     };
 
     class MINENGINE_API BinaryWriterArchive final : public WriterArchive
@@ -31,9 +32,11 @@ namespace minEngine::Serialization
         BinaryWriterArchive() = default;
 
         bool BeginObject(const std::string& typeName) override;
+        bool BeginObject(const Reflection::MEClass* classInfo, bool writeTypeName) override;
         bool EndObject() override;
 
         bool BeginObjectPtr(const std::string& typeName) override;
+        bool BeginObjectPtr(const Reflection::MEClass* classInfo) override;
         bool EndObjectPtr() override;
 
         bool BeginGuidRef(const GUID& guid) override;
@@ -63,46 +66,42 @@ namespace minEngine::Serialization
         enum class WriteFrameKind
         {
             Object,
+            ObjectPtr,
             Array,
+        };
+
+        struct FieldRecord
+        {
+            uint32_t fieldId = 0;
+            std::vector<uint8_t> valueBytes;
         };
 
         struct WriteFrame
         {
             WriteFrameKind kind = WriteFrameKind::Object;
-            std::string pendingFieldName;
-            std::string committingFieldName;
-            bool isFieldValueObject = false;
-            std::vector<uint8_t> fieldValueBody;
+            uint32_t classId = 0;
+            uint32_t pendingFieldId = 0;
+            std::vector<uint8_t> pendingValue;
+            std::vector<FieldRecord> fields;
             size_t arrayExpectedCount = 0;
-            size_t arrayWrittenCount = 0;
+            std::vector<std::vector<uint8_t>> arrayElements;
         };
 
-        bool ShouldWriteNextObjectAsFieldValue() const;
-        bool ShouldWriteTaggedValueInSubBuffer() const;
-        std::vector<uint8_t>& GetActiveWriteBuffer();
-        std::vector<uint8_t>& GetPayloadWriteBuffer();
-        bool AppendToActiveBuffer(const void* data, size_t size);
-        bool AppendU8ToActive(uint8_t value);
-        bool AppendU16ToActive(uint16_t value);
-        bool AppendU32ToActive(uint32_t value);
-        bool AppendU64ToActive(uint64_t value);
-        bool AppendStringBytesToActive(const std::string& value);
-        bool CommitFieldValue(std::vector<uint8_t> fieldValueBytes);
-        bool CommitArrayElement(std::vector<uint8_t> elementBytes);
-        bool CommitTaggedValueToParent(std::vector<uint8_t> valueBytes);
-        bool BeginObjectBody(BinaryWireTag objectTag, const std::string& typeName);
-        bool EndObjectBody(BinaryWireTag objectTag);
-        bool CommitTaggedPayload(BinaryWireTag tag, const void* payload, size_t payloadSize);
-        bool CommitTaggedString(const std::string& value);
-        bool CommitTaggedNull();
-        bool AppendBytes(const void* data, size_t size);
-        bool AppendU8(uint8_t value);
-        bool AppendU16(uint16_t value);
-        bool AppendU32(uint32_t value);
-        bool AppendU64(uint64_t value);
-        bool AppendStringBytes(const std::string& value);
+        bool EnsureHeader();
+        bool BeginObjectWithClass(const Reflection::MEClass* classInfo, BinaryWireTag objectTag);
+        bool EndObjectWithTag(BinaryWireTag objectTag);
+        bool CommitPendingField();
+        bool CommitValueToParent(std::vector<uint8_t> valueBytes);
+        bool AppendTaggedValueTo(std::vector<uint8_t>& out, BinaryWireTag tag, const void* payload, size_t payloadSize);
+        bool WriteTaggedValue(BinaryWireTag tag, const void* payload, size_t payloadSize);
+        bool AppendBytes(std::vector<uint8_t>& out, const void* data, size_t size);
+        bool AppendU8(std::vector<uint8_t>& out, uint8_t value);
+        bool AppendU32(std::vector<uint8_t>& out, uint32_t value);
+        bool AppendU64(std::vector<uint8_t>& out, uint64_t value);
+        std::vector<uint8_t>& ActiveValueBuffer();
 
         std::vector<uint8_t> m_Buffer;
+        bool m_HeaderWritten = false;
         std::vector<WriteFrame> m_Stack;
         std::string m_LastArchiveError;
     };
@@ -111,16 +110,15 @@ namespace minEngine::Serialization
     {
     public:
         BinaryReaderArchive() = default;
-
         explicit BinaryReaderArchive(std::vector<uint8_t> buffer);
 
         void BindBuffer(std::vector<uint8_t> buffer);
 
-        bool BeginObject(const minEngine::Reflection::MEClass* baseClassInfo) override;
+        bool BeginObject(const Reflection::MEClass* baseClassInfo) override;
         bool BeginObject(const std::string& expectedTypeName) override;
         bool EndObject() override;
 
-        bool BeginObjectPtr(const minEngine::Reflection::MEClass* baseClassInfo, std::string& outClassName) override;
+        bool BeginObjectPtr(const Reflection::MEClass* baseClassInfo, std::string& outClassName) override;
         bool EndObjectPtr() override;
 
         bool BeginGuidRef(GUID& outGuid) override;
@@ -157,36 +155,32 @@ namespace minEngine::Serialization
         struct ReadFrame
         {
             ReadFrameKind kind = ReadFrameKind::ValueSlice;
-            std::unordered_map<std::string, std::vector<uint8_t>> objectFields;
+            uint32_t classId = 0;
+            std::unordered_map<uint32_t, std::vector<uint8_t>> objectFields;
+            std::unordered_set<uint32_t> consumedFieldIds;
             std::vector<std::vector<uint8_t>> arrayElements;
             std::vector<uint8_t> valueSlice;
             size_t sliceReadPos = 0;
         };
 
+        bool ParseHeader();
+        bool BeginObjectCommon(const Reflection::MEClass* expectedClass, std::string* outDynamicClassName);
+        bool ReadTaggedValueIntoSlice(std::vector<uint8_t>& outSlice);
+        bool ReadTaggedValueFromBuffer(const std::vector<uint8_t>& buffer, size_t& readPos, std::vector<uint8_t>& outSlice);
+        bool PeekNextTag(BinaryWireTag& outTag) const;
+        bool PeekActiveSliceTag(BinaryWireTag& outTag) const;
+        bool ConsumeFromActiveSlice(void* outData, size_t size);
+        bool EnsureSliceBytes(size_t size);
+        bool HasActiveValueSlice() const;
         bool ReadBytes(void* outData, size_t size);
         bool PeekU8(uint8_t& outValue) const;
         bool ReadU8(uint8_t& outValue);
-        bool ReadU16(uint16_t& outValue);
         bool ReadU32(uint32_t& outValue);
         bool ReadU64(uint64_t& outValue);
-        bool ReadStringPayload(std::string& outValue);
-        bool ReadTaggedValueIntoSlice(std::vector<uint8_t>& outSlice);
-        bool ParseObjectFields(std::unordered_map<std::string, std::vector<uint8_t>>& outFields,
-                               std::string& outTypeName,
-                               std::vector<uint8_t>& buffer,
-                               size_t& readPos);
-        bool BeginObjectFromFields(const std::string& expectedTypeName,
-                                   const minEngine::Reflection::MEClass* baseClassInfo,
-                                   std::unordered_map<std::string, std::vector<uint8_t>> fields,
-                                   BinaryWireTag objectTag);
-        bool EnsureSliceBytes(size_t size);
-        bool ConsumeFromActiveSlice(void* outData, size_t size);
-        bool PeekActiveSliceTag(BinaryWireTag& outTag) const;
-        bool ReadTaggedValueFromSlice(std::vector<uint8_t>& buffer, size_t& readPos, std::vector<uint8_t>& outSlice);
-        static bool IsObjectFieldStreamEnd(const std::vector<uint8_t>& buffer, size_t readPos);
 
         std::vector<uint8_t> m_Buffer;
         size_t m_ReadPos = 0;
+        bool m_HeaderParsed = false;
         std::vector<ReadFrame> m_Stack;
         std::string m_LastArchiveError;
     };

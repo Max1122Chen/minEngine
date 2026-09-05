@@ -8,10 +8,12 @@ alwaysApply: true
 For the first assistant response in each new session, complete this bootstrap before handling the main request:
 
 1. Read recent project context from:
+- `docs/ai/ENGINE_DESIGN_PHILOSOPHY.md` (if exists) — long-term design constraints; apply when advising architecture/priority
 - `docs/ai/PROJECT_CONTEXT.md` (if exists)
 - `docs/ai/PROGRESS_LOG.md` (if exists; recent entries only)
 - `docs/ai/ACTIVE_WORK.md` (if exists) — current backlog
 - `docs/ai/BOOTSTRAP_DIGEST.md` (if exists) — rules, DoD, CLI/test commands
+- `docs/ai/ENGINE_CAPABILITY_ROADMAP.md` (if exists; Status In Progress) — multi-track stage map; not a linear TODO
 - Do **not** infer backlog from old roadmaps; follow `docs-trust-tiers` rule
 - Task-specific design: only if user names it or ACTIVE_WORK links it (check Meta Status)
 

@@ -5,6 +5,8 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ColliderComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ColliderComponent, m_ObjectChannel)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ColliderComponent, m_ObjectChannel, GetObjectChannel)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ColliderComponent, m_ObjectChannel, SetObjectChannel)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::ColliderComponent, GReflectionClassRegister_ColliderComponent_fef64507)

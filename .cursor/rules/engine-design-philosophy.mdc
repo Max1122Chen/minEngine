@@ -1,0 +1,37 @@
+---
+description: minEngine long-term design philosophy — capabilities not opinions; mechanism over policy; remind when plans drift.
+alwaysApply: true
+---
+
+# Engine design philosophy (always)
+
+Canonical text: `docs/ai/ENGINE_DESIGN_PHILOSOPHY.md`. Stage tracks: `docs/ai/ENGINE_CAPABILITY_ROADMAP.md`.
+
+## Before architecture / Feature planning / tech choice
+
+Apply these constraints (not local-only optima):
+
+1. **Capabilities, not Opinions** — Engine supplies mechanisms; does not prescribe gameplay architecture or business object semantics.
+2. **Mechanism over Policy** — Engine answers How; Game answers What/Why. No Enemy/Weapon/Inventory/Quest in Core unless truly generic mechanism.
+3. **Minimal Core, Optional Extension** — Prefer Plugin / Package / Optional Module for opinionated or domain-specific capability.
+4. **Composable, not Prescriptive** — Independent, replaceable, optional; avoid forced mega-Framework coupling.
+5. **Agent-Friendly** — Same Engine APIs for human / Editor / script / Agent (query, command, reflection, serialization). Do **not** invent a separate Agent Framework.
+6. **Prefer Simplicity** — No premature abstraction or cloning UE/Unity historical baggage without clear payoff.
+
+## When to remind the user
+
+Gently cite the matching principle if the plan:
+
+- Puts gameplay business types or a mandatory Gameplay Framework into Core
+- Copies UE/Unity structure “because they have it” without a minEngine mechanism need
+- Adds complexity for hypothetical future (including premature GC / Net / full Anim Graph / full UI Framework)
+- Splits Agent-only code paths instead of improving shared Engine surface
+- Serializes work that has **no real dependency** (ignore multi-track mode in Capability Roadmap)
+
+## Planning mode
+
+Prefer **one Primary track + parallel side tracks**. Do not treat old roadmap checklists as a linear TODO. Concrete next work: `ACTIVE_WORK.md`.
+
+## Checklist (major Features)
+
+Nine questions in `ENGINE_DESIGN_PHILOSOPHY.md` § Decision checklist — use in Pre-flight for new modules / Features / refactors.
