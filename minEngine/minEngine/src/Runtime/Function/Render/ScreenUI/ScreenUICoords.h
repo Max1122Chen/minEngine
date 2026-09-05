@@ -17,5 +17,28 @@ namespace minEngine
          * topLeftPx / sizePx are in viewport pixels (origin top-left).
          */
         static Matrix4 MakeWidgetModelMatrix(const Vector2& topLeftPx, const Vector2& sizePx);
+
+        /** Letterbox: fit ref resolution inside viewport, preserve aspect, center. */
+        struct LetterboxMapping
+        {
+            float Scale = 1.0f;
+            Vector2 Offset{ 0.0f, 0.0f };
+
+            Vector2 MapPoint(const Vector2& refPoint) const
+            {
+                return Offset + refPoint * Scale;
+            }
+
+            Vector2 MapSize(const Vector2& refSize) const
+            {
+                return refSize * Scale;
+            }
+        };
+
+        static LetterboxMapping MakeLetterboxMapping(
+            float refWidth,
+            float refHeight,
+            float viewportWidth,
+            float viewportHeight);
     };
 }

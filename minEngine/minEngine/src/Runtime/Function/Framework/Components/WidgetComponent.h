@@ -2,13 +2,18 @@
 
 #include "Core.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
-#include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Function/UI/UITypes.h"
 
 namespace minEngine
 {
     class Material;
     class WidgetSceneProxy;
+    class ImageComponent;
 
+    /**
+     * ScreenUI layout node: Anchor/Margin/Size → ComputedRect (Canvas reference pixels).
+     * Visual style comes from a sibling ImageComponent.
+     */
     ME_CLASS()
     class WidgetComponent : public SceneComponent
     {
@@ -17,17 +22,32 @@ namespace minEngine
         WidgetComponent();
         virtual ~WidgetComponent() override;
 
-        void SetTexture(const std::shared_ptr<Texture2D>& texture);
-        Texture2D* GetTexture() const { return m_Texture.get(); }
-
-        void SetColor(const Vector4& color);
-        Vector4 GetColor() const { return m_Color; }
-
         void SetSize(const Vector2& size);
         Vector2 GetSize() const { return m_Size; }
 
+        void SetAnchorMin(const Vector2& anchorMin);
+        Vector2 GetAnchorMin() const { return m_AnchorMin; }
+
+        void SetAnchorMax(const Vector2& anchorMax);
+        Vector2 GetAnchorMax() const { return m_AnchorMax; }
+
+        /** Margin as (Left, Top, Right, Bottom) in reference pixels. */
+        void SetMargin(const Vector4& margin);
+        Vector4 GetMargin() const { return m_Margin; }
+
+        void SetAnchorPreset(EUIAnchorPreset preset);
+        EUIAnchorPreset GetAnchorPreset() const { return m_AnchorPreset; }
+
+        /** Writes AnchorMin/Max from preset; clears Margin; keeps Size. */
+        void ApplyAnchorPreset(EUIAnchorPreset preset);
+
         void SetStableOrder(uint32_t order);
         uint32_t GetStableOrder() const { return m_StableOrder; }
+
+        const UIRect& GetComputedRect() const { return m_ComputedRect; }
+        void SetComputedRect(const UIRect& rect);
+
+        ImageComponent* FindSiblingImage() const;
 
         virtual void DoEndOfFrameUpdate() override;
 
@@ -43,21 +63,29 @@ namespace minEngine
 
     private:
         void EnsureRuntimeMaterial();
-        void SyncMaterialParameters();
+        void SyncMaterialParameters(ImageComponent* image);
         void FillSceneProxy(WidgetSceneProxy& proxy);
 
         ME_PROPERTY()
-        std::shared_ptr<Texture2D> m_Texture{ nullptr };
+        EUIAnchorPreset m_AnchorPreset{ EUIAnchorPreset::TopLeft };
 
         ME_PROPERTY()
-        Vector4 m_Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        Vector2 m_AnchorMin{ 0.0f, 0.0f };
 
-        /** Pixel size (width, height). Location.xy = top-left in viewport pixels. */
+        ME_PROPERTY()
+        Vector2 m_AnchorMax{ 0.0f, 0.0f };
+
+        ME_PROPERTY()
+        Vector4 m_Margin{ 0.0f, 0.0f, 0.0f, 0.0f };
+
+        /** Fixed size when anchors form a point; ignored when stretching. */
         ME_PROPERTY()
         Vector2 m_Size{ 100.0f, 100.0f };
 
         ME_PROPERTY()
         uint32_t m_StableOrder = 0;
+
+        UIRect m_ComputedRect{};
 
         std::shared_ptr<Material> m_RuntimeMaterial{ nullptr };
         WidgetSceneProxy* m_WidgetSceneProxy = nullptr;

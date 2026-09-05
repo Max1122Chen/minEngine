@@ -34,6 +34,8 @@
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Framework/Components/SpriteComponent.h"
 #include "Runtime/Function/Framework/Components/WidgetComponent.h"
+#include "Runtime/Function/Framework/Components/CanvasComponent.h"
+#include "Runtime/Function/Framework/Components/ImageComponent.h"
 
     // lights Components
 #include "Runtime/Function/Framework/Components/LightComponent.h"

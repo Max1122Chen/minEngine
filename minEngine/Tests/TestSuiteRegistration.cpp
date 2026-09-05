@@ -26,6 +26,7 @@
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
+#include "Suites/UILayoutTest.h"
 #include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/CommandSystemTest.h"
 
@@ -359,6 +360,23 @@ namespace minEngine
             }
         };
 
+        struct UILayoutTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"ui-layout", "UI Layout", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'ui-layout'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "ui-layout",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct GameObjectHierarchyTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -413,6 +431,7 @@ namespace minEngine
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
+        using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
 
@@ -445,6 +464,7 @@ namespace minEngine
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
+            registry.Register(UILayoutSuite::Get());
             registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             s_Registered = true;

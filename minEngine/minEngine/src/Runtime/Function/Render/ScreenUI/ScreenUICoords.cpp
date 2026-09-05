@@ -2,6 +2,7 @@
 
 #include "Runtime/Function/Render/RHI/RHIClipSpace.h"
 
+#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace minEngine
@@ -22,5 +23,24 @@ namespace minEngine
         const Matrix4 translation = glm::translate(Matrix4(1.0f), center);
         const Matrix4 scale = glm::scale(Matrix4(1.0f), Vector3(width, height, 1.0f));
         return translation * scale;
+    }
+
+    ScreenUICoords::LetterboxMapping ScreenUICoords::MakeLetterboxMapping(
+        float refWidth,
+        float refHeight,
+        float viewportWidth,
+        float viewportHeight)
+    {
+        LetterboxMapping mapping;
+        const float safeRefW = refWidth > 0.0f ? refWidth : 1.0f;
+        const float safeRefH = refHeight > 0.0f ? refHeight : 1.0f;
+        const float safeVpW = viewportWidth > 0.0f ? viewportWidth : 1.0f;
+        const float safeVpH = viewportHeight > 0.0f ? viewportHeight : 1.0f;
+
+        mapping.Scale = std::min(safeVpW / safeRefW, safeVpH / safeRefH);
+        const float scaledW = safeRefW * mapping.Scale;
+        const float scaledH = safeRefH * mapping.Scale;
+        mapping.Offset = Vector2((safeVpW - scaledW) * 0.5f, (safeVpH - scaledH) * 0.5f);
+        return mapping;
     }
 }

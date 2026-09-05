@@ -4,8 +4,10 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::WidgetComponent)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_Texture)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_Color)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_AnchorPreset)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_AnchorMin)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_AnchorMax)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_Margin)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_Size)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::WidgetComponent, m_StableOrder)
 ME_REFLECTION_ACCESSOR_END()

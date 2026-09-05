@@ -1,5 +1,7 @@
 #include "WidgetComponent.h"
 
+#include "Runtime/Function/Framework/Components/ImageComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/RenderScene.h"
@@ -13,6 +15,8 @@ namespace minEngine
 {
     WidgetComponent::WidgetComponent()
     {
+        m_ComputedRect.TopLeft = Vector2(0.0f, 0.0f);
+        m_ComputedRect.Size = m_Size;
         MarkRenderStateDirty();
     }
 
@@ -36,26 +40,6 @@ namespace minEngine
         DetachSceneProxy();
     }
 
-    void WidgetComponent::SetTexture(const std::shared_ptr<Texture2D>& texture)
-    {
-        if (m_Texture == texture)
-        {
-            return;
-        }
-        m_Texture = texture;
-        MarkRenderStateDirty();
-    }
-
-    void WidgetComponent::SetColor(const Vector4& color)
-    {
-        if (m_Color == color)
-        {
-            return;
-        }
-        m_Color = color;
-        MarkRenderStateDirty();
-    }
-
     void WidgetComponent::SetSize(const Vector2& size)
     {
         if (m_Size == size)
@@ -63,6 +47,123 @@ namespace minEngine
             return;
         }
         m_Size = size;
+        MarkRenderStateDirty();
+    }
+
+    void WidgetComponent::SetAnchorMin(const Vector2& anchorMin)
+    {
+        if (m_AnchorMin == anchorMin)
+        {
+            return;
+        }
+        m_AnchorMin = anchorMin;
+        m_AnchorPreset = EUIAnchorPreset::Custom;
+        MarkRenderStateDirty();
+    }
+
+    void WidgetComponent::SetAnchorMax(const Vector2& anchorMax)
+    {
+        if (m_AnchorMax == anchorMax)
+        {
+            return;
+        }
+        m_AnchorMax = anchorMax;
+        m_AnchorPreset = EUIAnchorPreset::Custom;
+        MarkRenderStateDirty();
+    }
+
+    void WidgetComponent::SetMargin(const Vector4& margin)
+    {
+        if (m_Margin == margin)
+        {
+            return;
+        }
+        m_Margin = margin;
+        MarkRenderStateDirty();
+    }
+
+    void WidgetComponent::SetAnchorPreset(EUIAnchorPreset preset)
+    {
+        if (preset == EUIAnchorPreset::Custom)
+        {
+            m_AnchorPreset = EUIAnchorPreset::Custom;
+            return;
+        }
+        ApplyAnchorPreset(preset);
+    }
+
+    void WidgetComponent::ApplyAnchorPreset(EUIAnchorPreset preset)
+    {
+        Vector2 min(0.0f, 0.0f);
+        Vector2 max(0.0f, 0.0f);
+
+        switch (preset)
+        {
+        case EUIAnchorPreset::TopLeft:
+            min = max = Vector2(0.0f, 0.0f);
+            break;
+        case EUIAnchorPreset::TopCenter:
+            min = max = Vector2(0.5f, 0.0f);
+            break;
+        case EUIAnchorPreset::TopRight:
+            min = max = Vector2(1.0f, 0.0f);
+            break;
+        case EUIAnchorPreset::MiddleLeft:
+            min = max = Vector2(0.0f, 0.5f);
+            break;
+        case EUIAnchorPreset::Center:
+            min = max = Vector2(0.5f, 0.5f);
+            break;
+        case EUIAnchorPreset::MiddleRight:
+            min = max = Vector2(1.0f, 0.5f);
+            break;
+        case EUIAnchorPreset::BottomLeft:
+            min = max = Vector2(0.0f, 1.0f);
+            break;
+        case EUIAnchorPreset::BottomCenter:
+            min = max = Vector2(0.5f, 1.0f);
+            break;
+        case EUIAnchorPreset::BottomRight:
+            min = max = Vector2(1.0f, 1.0f);
+            break;
+        case EUIAnchorPreset::TopStretch:
+            min = Vector2(0.0f, 0.0f);
+            max = Vector2(1.0f, 0.0f);
+            break;
+        case EUIAnchorPreset::MiddleStretch:
+            min = Vector2(0.0f, 0.5f);
+            max = Vector2(1.0f, 0.5f);
+            break;
+        case EUIAnchorPreset::BottomStretch:
+            min = Vector2(0.0f, 1.0f);
+            max = Vector2(1.0f, 1.0f);
+            break;
+        case EUIAnchorPreset::LeftStretch:
+            min = Vector2(0.0f, 0.0f);
+            max = Vector2(0.0f, 1.0f);
+            break;
+        case EUIAnchorPreset::CenterStretch:
+            min = Vector2(0.5f, 0.0f);
+            max = Vector2(0.5f, 1.0f);
+            break;
+        case EUIAnchorPreset::RightStretch:
+            min = Vector2(1.0f, 0.0f);
+            max = Vector2(1.0f, 1.0f);
+            break;
+        case EUIAnchorPreset::StretchAll:
+            min = Vector2(0.0f, 0.0f);
+            max = Vector2(1.0f, 1.0f);
+            break;
+        case EUIAnchorPreset::Custom:
+        default:
+            m_AnchorPreset = EUIAnchorPreset::Custom;
+            return;
+        }
+
+        m_AnchorPreset = preset;
+        m_AnchorMin = min;
+        m_AnchorMax = max;
+        m_Margin = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
         MarkRenderStateDirty();
     }
 
@@ -74,6 +175,33 @@ namespace minEngine
         }
         m_StableOrder = order;
         MarkRenderStateDirty();
+    }
+
+    void WidgetComponent::SetComputedRect(const UIRect& rect)
+    {
+        const bool changed = m_ComputedRect.TopLeft != rect.TopLeft || m_ComputedRect.Size != rect.Size;
+        m_ComputedRect = rect;
+        if (changed)
+        {
+            MarkRenderStateDirty();
+        }
+    }
+
+    ImageComponent* WidgetComponent::FindSiblingImage() const
+    {
+        GameObject* owner = GetOwner();
+        if (owner == nullptr)
+        {
+            return nullptr;
+        }
+
+        const std::vector<std::shared_ptr<ImageComponent>> images =
+            owner->GetComponentsOfType<ImageComponent>();
+        if (images.empty() || !images[0])
+        {
+            return nullptr;
+        }
+        return images[0].get();
     }
 
     void WidgetComponent::DoEndOfFrameUpdate()
@@ -142,32 +270,46 @@ namespace minEngine
         m_RuntimeMaterial = ScreenUIMaterialFactory::CreateInstance(*rhi);
     }
 
-    void WidgetComponent::SyncMaterialParameters()
+    void WidgetComponent::SyncMaterialParameters(ImageComponent* image)
     {
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
-        if (!m_RuntimeMaterial || rhi == nullptr)
+        if (!m_RuntimeMaterial || rhi == nullptr || image == nullptr)
         {
             return;
         }
 
-        ScreenUIMaterialFactory::ApplyColorAndTexture(*m_RuntimeMaterial, m_Color, m_Texture, *rhi);
+        ScreenUIMaterialFactory::ApplyColorAndTexture(
+            *m_RuntimeMaterial,
+            image->GetColor(),
+            image->GetTextureShared(),
+            *rhi);
     }
 
     void WidgetComponent::FillSceneProxy(WidgetSceneProxy& proxy)
     {
         proxy.m_WidgetComponent = this;
-        proxy.m_Color = m_Color;
-        proxy.m_SizePx = m_Size;
         proxy.m_StableOrder = m_StableOrder;
         proxy.m_UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
-        proxy.m_Texture = m_Texture.get();
 
-        const Vector3 worldPos = GetWorldPosition();
-        proxy.m_TopLeftPx = Vector2(worldPos.x, worldPos.y);
+        // Reference-space rect; Letterbox applied in BuildScreenUIQueue.
+        proxy.m_TopLeftPx = m_ComputedRect.TopLeft;
+        proxy.m_SizePx = m_ComputedRect.Size;
 
-        EnsureRuntimeMaterial();
-        SyncMaterialParameters();
-        proxy.m_Material = m_RuntimeMaterial.get();
+        ImageComponent* image = FindSiblingImage();
+        if (image != nullptr)
+        {
+            proxy.m_Color = image->GetColor();
+            proxy.m_Texture = image->GetTexture();
+            EnsureRuntimeMaterial();
+            SyncMaterialParameters(image);
+            proxy.m_Material = m_RuntimeMaterial.get();
+        }
+        else
+        {
+            proxy.m_Color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+            proxy.m_Texture = nullptr;
+            proxy.m_Material = nullptr;
+        }
 
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
         if (rhi != nullptr)
@@ -180,9 +322,10 @@ namespace minEngine
         proxy.m_IndexBuffer = quad.GetIndexBuffer();
         proxy.m_VertexInputLayout = quad.GetVertexInputLayout();
 
-        proxy.m_bVisible = proxy.m_Material != nullptr && proxy.m_Material->IsCompiledForDraw()
-            && proxy.m_VertexBuffer != nullptr && proxy.m_VertexInputLayout != nullptr
-            && proxy.m_SizePx.x > 0.0f && proxy.m_SizePx.y > 0.0f;
+        proxy.m_bVisible = image != nullptr && proxy.m_Material != nullptr
+            && proxy.m_Material->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
+            && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
+            && proxy.m_SizePx.y > 0.0f;
     }
 
     WidgetSceneProxy* WidgetComponent::CreateSceneProxy()

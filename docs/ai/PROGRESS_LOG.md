@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（Hierarchy CORE-F08/F09 + ED-F05 收口 Done）
+Last updated: 2026-09-05（UI-F01 MVP 代码落地；未目视验收）
+
+### 2026-09-05 - UI-F01 MVP：Canvas / Layout / Image 落地
+- **拍板：** Letterbox；Anchor Preset→写 Min/Max；绘制用 ComputedRect（非 world Transform）；Widget 去 Texture/Color。
+- **Code：** `CanvasComponent`、`ImageComponent`、`UILayoutPass`、`UITypes`；`WidgetComponent` Layout 字段；`ScreenUICoords::MakeLetterboxMapping`；`BuildScreenUIQueue` 仅 Canvas 子树 + Letterbox。
+- **Tests：** `screen-ui-coords` 3/3、`ui-layout` 4/4 PASS；minEngine + Editor Debug 构建通过。
+- **Docs：** Design/Registry → In Progress（明确未目视验收）。
+- **Blocked 目视：** Inspector 直写 `m_AnchorPreset` 不走 Apply；等 core Setter/Getter 合入后再测。
+- **Next：** 合入 Setter/Getter → 目视 → Done。
 
 ### 2026-09-05 - Hierarchy 轨收口（CORE-F08 / ED-F05 / CORE-F09 → Done）
 - **验收：** Hierarchy KeepWorld 改父、父带动子、Inspector local vs 世界外观；目视通过。

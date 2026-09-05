@@ -7,7 +7,11 @@
 #include "Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
 #include "Render/SceneProxies/WidgetSceneProxy.h"
 #include "Render/ScreenUI/ScreenUICoords.h"
+#include "Runtime/Function/Framework/Components/CanvasComponent.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/UI/UITypes.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/Material.h"
 #include "Render/RHI/RHI.h"
@@ -1185,8 +1189,6 @@ namespace minEngine
     void ForwardRenderer::BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)
     {
         ctx.ScreenUIQueue.clear();
-        (void)viewportWidth;
-        (void)viewportHeight;
 
         RenderScene* renderScene = ctx.Scene;
         if (!renderScene)
@@ -1206,14 +1208,35 @@ namespace minEngine
                 continue;
             }
 
+            WidgetComponent* widget = widgetProxy->m_WidgetComponent;
+            CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(widget->GetOwner());
+            if (canvas == nullptr || !canvas->IsActive())
+            {
+                continue;
+            }
+
+            // Proxy stores Canvas reference-space rect; map to viewport pixels.
+            Vector2 topLeftPx = widgetProxy->m_TopLeftPx;
+            Vector2 sizePx = widgetProxy->m_SizePx;
+            if (canvas->GetScaleMode() == EUICanvasScaleMode::Letterbox)
+            {
+                const Vector2 ref = canvas->GetReferenceResolution();
+                const ScreenUICoords::LetterboxMapping mapping = ScreenUICoords::MakeLetterboxMapping(
+                    ref.x,
+                    ref.y,
+                    static_cast<float>(viewportWidth),
+                    static_cast<float>(viewportHeight));
+                topLeftPx = mapping.MapPoint(widgetProxy->m_TopLeftPx);
+                sizePx = mapping.MapSize(widgetProxy->m_SizePx);
+            }
+
             UIDrawCommand command;
             command.StableOrder = widgetProxy->m_StableOrder;
             command.Draw.m_VertexBuffer = widgetProxy->m_VertexBuffer;
             command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
             command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
             command.Draw.m_Material = widgetProxy->m_Material;
-            command.Draw.m_ModelMatrix =
-                ScreenUICoords::MakeWidgetModelMatrix(widgetProxy->m_TopLeftPx, widgetProxy->m_SizePx);
+            command.Draw.m_ModelMatrix = ScreenUICoords::MakeWidgetModelMatrix(topLeftPx, sizePx);
             command.Draw.m_CastShadow = false;
             ctx.ScreenUIQueue.push_back(command);
         }

@@ -98,6 +98,7 @@ namespace minEngine
         friend class AudioSmokeTestScope;
         friend class SceneCloneTestScope;
         friend class GameObjectHierarchyTestScope;
+        friend class UILayoutTestScope;
         friend class CommandSystemTestScope;
 
         static void SetInstance(SceneManager* instance);

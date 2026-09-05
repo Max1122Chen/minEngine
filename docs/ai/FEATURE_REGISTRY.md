@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-05（CORE-F09 Done；Hierarchy 变换语义收口）
+Last updated: 2026-09-05（UI-F01 MVP 代码落地；未目视验收）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -44,7 +44,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F12` | Granite RDG 语义全复刻 | **Deferred** *(卫生项)* | — | [Design](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md) · 不挡当前 backlog |
 | `RND-F13` | ManualRenderer（Reference） | **Done** | — | [Design](./Render/RND-F13_MANUAL_RENDERER_DESIGN.md) |
 | `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
-| `RND-F16` | 2D Rendering Foundation（Path A + Path B ScreenUI） | **Done** | — | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · `feat/ui` · 阻塞 `UI-F01` |
+| `RND-F16` | 2D Rendering Foundation（Path A + Path B ScreenUI） | **Done** | — | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · `feat/ui` |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
 | `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **Planned** | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) · **`master`** |
 | `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
@@ -53,7 +53,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · **merge 检查点后** |
-| `UI-F01` | UI system（Canvas GO + Layout/Input；消费 RND-F16） | **Planned** | — | [Direction](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · **依赖 `RND-F16`** |
+| `UI-F01` | UI system（Canvas + Layout + Image；消费 RND-F16） | **In Progress** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 代码+单测；**未目视**（等 core Setter/Getter） |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
@@ -81,7 +81,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | F02 | F01 占位；merge 后开 `feat/animation` |
-| `UI` | F02 | F01 方向稿；等 RND-F16 |
+| `UI` | F02 | F01 In Progress（MVP 代码未目视）；Hit-test/Text 后置 |
 | `PHYS` | F05 | F04 on `master` |
 | `MAT` | F01 | |
 

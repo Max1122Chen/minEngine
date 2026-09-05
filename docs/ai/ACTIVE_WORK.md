@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-05（Hierarchy 收口 Done；下一刀 UI-F01）
+Last updated: 2026-09-05（UI-F01 MVP 代码落地；未目视验收）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,13 +9,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/ui`）
 
-### UI-F01 — UI System ← **设计中（可推进）**
+### UI-F01 — UI System ← **In Progress（代码+单测；未目视验收）**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
-| Design | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · **Draft** |
-| MVP | Canvas + Layout(Anchor/Margin) + Image；Widget=无样式基础 |
-| 前置 | ~~CORE-F08~~ / ~~ED-F05~~ / ~~CORE-F09~~ **Done** |
+| Design | [UI-F01](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · **In Progress** |
+| MVP | Canvas + Letterbox + Widget Layout/Preset + Image；Widget 已去 Texture/Color |
+| 验证 | `screen-ui-coords` / `ui-layout` PASS；**未目视**（Preset 直写字段无效；等 core Setter/Getter） |
+| 前置 | ~~CORE-F08~~ / ~~ED-F05~~ / ~~CORE-F09~~ / ~~RND-F16~~ **Done** |
 
 ### ~~CORE-F08 / ED-F05 / CORE-F09~~ Hierarchy 变换语义 **Done**
 
@@ -90,10 +91,10 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 内容 | 状态 |
 |----|------|------|
-| **CORE-F08** | GameObject 父子 | **Review**（待 ED-F05 联合验收）— [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md)；等 ED-F05 目视后联合验收 |
-| **ED-F05** | Hierarchy 树 + 拖拽改父 | **In Progress** — Sticky DnD + `kSceneRootParentId`；待目视/联合验收后 Done |
-| **CORE-F09** | GO 父子 = Root↔Root + KeepWorld/传播 | **In Progress** — [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md)；Attach/SetRoot/CreateEmpty + 单测 |
-| **UI-F01** | Canvas + Layout + Image | **Draft / Blocked** — [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) |
+| **CORE-F08** | GameObject 父子 | **Done** — [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) |
+| **ED-F05** | Hierarchy 树 + 拖拽改父 | **Done** — Sticky DnD + `kSceneRootParentId` |
+| **CORE-F09** | GO 父子 = Root↔Root + KeepWorld/传播 | **Done** — [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) |
+| **UI-F01** | Canvas + Layout + Image | **In Progress** — [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)；未目视 |
 | **RND-F16** | 2D Foundation Path A/B | Path A/B **Done**（目视通过） |
 
 ### C2. `master` — ED-F02 Editor Workflow（并行候选，非本分支焦点）
