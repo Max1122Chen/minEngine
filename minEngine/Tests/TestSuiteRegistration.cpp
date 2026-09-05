@@ -27,6 +27,7 @@
 #include "Suites/CommandSystemTest.h"
 #include "Suites/SkeletonPoseTest.h"
 #include "Suites/AnimationClipTest.h"
+#include "Suites/ParameterStoreTest.h"
 
 namespace minEngine
 {
@@ -375,6 +376,24 @@ namespace minEngine
             }
         };
 
+        struct ParameterStoreTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                // Unit suite; smoke runs the empty-schema case via [smoke] filter.
+                return TestSuiteMetadata{"parameter-store", "Parameter Schema/Layout/Store", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'parameter-store'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "parameter-store",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -396,6 +415,7 @@ namespace minEngine
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
         using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
+        using ParameterStoreSuite = TypedTestSuite<ParameterStoreTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -427,6 +447,7 @@ namespace minEngine
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());
             registry.Register(AnimationClipSuite::Get());
+            registry.Register(ParameterStoreSuite::Get());
             s_Registered = true;
         }
     }

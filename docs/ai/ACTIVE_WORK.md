@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-05（**ASSET-F02 Done**；待准备 commit）
+Last updated: 2026-09-06（**CORE-F08 Done**；焦点 → ANIM-F03）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -8,6 +8,24 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 ---
 
 ## 当前焦点（`feat/animation`）
+
+### ANIM-F03 — Animation Graph MVP ← **Draft**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) |
+| 目标 | SM Graph + Transition Pose Blend；参数经 CORE-F08 |
+| Out | 图编辑器 / Event / Blend Tree / Retarget / 自研参数袋 |
+| Next | 补 Impl Plan → Planned → Pre-flight 编码（F08 已解阻） |
+
+### CORE-F08 — Parameter Schema / Layout / Store ← **Done**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md) |
+| 代码目录 | `Runtime/Function/Framework/Parameters/` |
+| 进度 | S00–S01 **Done**；S02 Deferred；`test parameter-store` PASS |
+| Next | 文档已收口；待用下方 commit msg 提交 |
 
 ### ASSET-F02 — Formal Import/Load 注册式管线 + ImportDialog ← **Done**
 
@@ -17,7 +35,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 目标 | **Register 式** Load/Import；共用 ImportDialog；Clip 显式 Skeleton |
 | 进度 | S00–S05 **Done**（自动化 + 手动验 PASS） |
 | Out | Import Settings 框架；`.memesh`；Retarget；大虚基类插件体系 |
-| Next | **准备 commit**（勿提交本地 Animations/Sources/`build_*.log`） |
+| Next | 已合入 `06b4d74` |
 
 ### ANIM-F02 — Clip Playback ← **Done**
 
@@ -61,11 +79,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
-| **动画 / 资产** | `feat/animation` | 竖切后再论 | 焦点 **ASSET-F02 Done**（待 commit）；ANIM-F01/F02 Done；ASSET-F01 MVP Done |
+| **动画 / 资产** | `feat/animation` | 竖切后再论 | 焦点空（ASSET-F02 已 commit）；ANIM-F01/F02 Done；ASSET-F01 MVP Done |
 | **内核 / 编辑器** | `master` | `master` | CORE-F05 Done；ED-F02 等可并行 |
 
 **明确 Defer：** `.memesh` · Animation Event（暂不登记）· IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned  
-**下一开干：** ASSET-F02 合入后另议（勿默认开 ANIM-F03 / Retarget / Import Settings）
+**下一开干：** **ANIM-F03** Impl Plan → Planned → Pre-flight 编码（CORE-F08 已解阻）
 
 ---
 
@@ -149,7 +167,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 分支（将来） | 前置 |
 |----|--------------|------|
-| `ANIM-F03` | `feat/animation` | F02 Done 后 |
+| `ANIM-F03` | `feat/animation` | F02 + CORE-F08 Done；待 Impl |
 | Animation Event / IK / Root Motion / Retarget | — | 未登记；Graph MVP 后再评估 |
 | `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
 | `RND-F16` | `feat/sprite`（未建） | — |
@@ -162,6 +180,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | Check | Command |
 |-------|---------|
 | Local smoke | `.\scripts\verify.ps1` |
+| Parameter store | `minEngineTests.exe test parameter-store` |
 | Physics | `minEngineTests.exe test physics-shapes` / `physics-smoke` |
 | GL Editor | `Editor.exe --rhi opengl --project …` |
 

@@ -1,6 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（ASSET-F02 Done）
+Last updated: 2026-09-06（CORE-F08 Done）
+
+### 2026-09-06 - CORE-F08 Done: Parameter Schema / Layout / Store
+- **Code:** `Runtime/Function/Framework/Parameters/`（ValueType / Schema / Layout / Store）。
+- **Slices:** S00–S01 Done；S02 ME_STRUCT 序列化 Deferred。
+- **Verify:** `minEngineTests.exe test parameter-store` — 6 cases / 70 asserts PASS。
+- **Docs:** Design/Impl/Registry/ACTIVE_WORK → **Done**；焦点转 ANIM-F03。
+- **Next:** commit msg 已定；提交后开 ANIM-F03 Impl。
+
+### 2026-09-05 - CORE-F08：目录锁定 Framework/Parameters
+- **Locked path:** `Runtime/Function/Framework/Parameters/`（不再 `Runtime/Core/Parameters/`）。
+- **边界：** 可被 Animation/AI include；禁止依赖 Animation / GameObject / Scene。
+- **Docs:** Design §0.2 · Impl Touch 路径 · ANIM-F03 / Registry / ACTIVE_WORK 同步。
+- **Next:** 审阅 → Planned → S00 编码。
+
+### 2026-09-05 - CORE-F08 Draft: Parameter Schema / Layout / Store
+- **Registered:** `CORE-F08`；[Design](./Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md)。
+- **Locked:** 命名 Schema/Entry/Layout/Store；Default=`DefaultBytes`+Type；Bool=1B；KeyId=声明序。
+- **ANIM-F03:** 依赖 CORE-F08；对齐命名。
+- **Next:** 审阅 → Planned → S00 编码（先于 Graph）。
 
 ### 2026-09-05 - ASSET-F02 Done: register-style Load/Import + ImportDialog
 - **S00–S05:** LoadHandler / ImportProduct 注册表；`Import()`；`AssetPipelineBootstrap`；`EditorImportDialog` + Skeleton picker；旧 Import* private；SourcePath + Reimport。

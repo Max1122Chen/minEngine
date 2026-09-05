@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-05（`ASSET-F02` **Done**）
+Last updated: 2026-09-06（`CORE-F08` **Done**；ANIM-F03 Draft 可开）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -31,6 +31,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · **`master`** · S05 Pause/Step Deferred；TD-028/029/030 Open |
 | `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) · **`master`** |
 | `CORE-F07` | 反射/Inspector 展示名（去 `m_`/`x_`/`b_` 前缀 + 驼峰分词） | **Done** | — | [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** |
+| `CORE-F08` | Parameter Schema / Layout / Store（Schema→紧凑实例内存） | **Done** | — | [Design](./Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md) · `Function/Framework/Parameters/`；S00–S01 Done；S02 Deferred；`test parameter-store` PASS |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -51,7 +52,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Skeleton / SkeletalMesh / GPU skinning） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · `feat/animation` · Shadow skinned **Deferred**；扭骨 UX Deferred |
 | `ANIM-F02` | Clip Playback（AnimationClip + Player） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) · S00–S03 Done；人型 Walking 目视 PASS；MVP 过渡（骨 Track + TryGet 壳） |
-| `ANIM-F03` | Animation Graph MVP（SM + Params + Transition Blend） | **Planned** | — | [Placeholder](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · 依赖 F02 |
+| `ANIM-F03` | Animation Graph MVP（SM + Params + Transition Blend） | **Draft** | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · 依赖 `CORE-F08` + F02；参数实现不在本 Feature |
 | `ASSET-F01` | External Import Pipeline（FBX/glTF 等为 Source → 原生资产） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S00–S03 Done；S04 / `.memesh` **Deferred**；续作见 `ASSET-F02` |
 | `ASSET-F02` | Formal Import/Load 注册式管线 + Reusable ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) · S00–S05 Done；自动化+手动验 PASS |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |
