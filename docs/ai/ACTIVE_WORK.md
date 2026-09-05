@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-05（ANIM-F02 **Done**；人型目视 PASS）
+Last updated: 2026-09-05（**ASSET-F02 Done**；待准备 commit）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,6 +9,16 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/animation`）
 
+### ASSET-F02 — Formal Import/Load 注册式管线 + ImportDialog ← **Done**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) |
+| 目标 | **Register 式** Load/Import；共用 ImportDialog；Clip 显式 Skeleton |
+| 进度 | S00–S05 **Done**（自动化 + 手动验 PASS） |
+| Out | Import Settings 框架；`.memesh`；Retarget；大虚基类插件体系 |
+| Next | **准备 commit**（勿提交本地 Animations/Sources/`build_*.log`） |
+
 ### ANIM-F02 — Clip Playback ← **Done**
 
 | 项 | 链接 / 说明 |
@@ -16,7 +26,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | Design / Impl | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |
 | 目标 | MVP：`AnimationTrack`（骨 TRS）+ Player⊏SMC；Import `.meaclip`；`TryGetNamedFloat` 壳 |
 | 验证 | 人型 Walking Clip Editor 目视 PASS；`animation-clip` / smoke |
-| Next | 合入后下一焦点另议（ANIM-F03 Graph 按需；勿默认开干） |
+| Next | 合入后另议（ANIM-F03 Graph 按需；勿默认开干） |
 
 ### ANIM-F01 — Skeletal Mesh Pipeline ← **Done**
 
@@ -26,13 +36,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 验证 | stick 目视 + ASSET-F01 人型 Import；`skeleton-pose` / smoke |
 | Deferred | Shadow skinned；扭骨交互 UX |
 
-### ASSET-F01 — External Import Pipeline ← **Done（MVP）· 暂停**
+### ASSET-F01 — External Import Pipeline ← **Done（MVP）**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design / Impl | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) |
 | S00–S03 | **Done**（手动验 Static+Skeletal） |
-| Deferred | S04 Reimport / SourcePath UI；二期 `.memesh` — **有空再推，不挡 Anim** |
+| Deferred | S04 / `.memesh` — 可由 **ASSET-F02** 可选切片吸收；二期 `.memesh` 仍另排 |
 | 迁移 | 勿提交错误 `.fbx.meta`；人型验证资产留本地不入库 |
 
 **明确不排期（动画扩展）：** Animation Event、IK、Root Motion、Retarget、完整 AnimBP。
@@ -47,15 +57,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ---
 
-## 当前策略（2026-09-03）
+## 当前策略（2026-09-05）
 
 | 轨 | 分支 | 合入目标 | 说明 |
 |----|------|----------|------|
-| **动画** | `feat/animation` | 竖切后再论 | ANIM-F02 **Done**（F01 Done；ASSET-F01 MVP 暂停） |
+| **动画 / 资产** | `feat/animation` | 竖切后再论 | 焦点 **ASSET-F02 Done**（待 commit）；ANIM-F01/F02 Done；ASSET-F01 MVP Done |
 | **内核 / 编辑器** | `master` | `master` | CORE-F05 Done；ED-F02 等可并行 |
 
-**明确 Defer：** ASSET-F01 S04 / `.memesh` · Animation Event（暂不登记）· IK / Root Motion / Retarget · ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned  
-**下一开干：** 动画轨暂无强制下一 Feature；用户指定后再开（候选 ANIM-F03）
+**明确 Defer：** `.memesh` · Animation Event（暂不登记）· IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned  
+**下一开干：** ASSET-F02 合入后另议（勿默认开 ANIM-F03 / Retarget / Import Settings）
 
 ---
 
@@ -73,7 +83,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## In focus
 
-> 本 worktree（`minEngine-animation` / `feat/animation`）以文首 **ANIM-F02** 为准。下列 A–F 为 `master` 轨历史与旁路 backlog。
+> 本 worktree（`minEngine-animation` / `feat/animation`）以文首 **ASSET-F02** 为准。下列 A–F 为 `master` 轨历史与旁路 backlog。
 
 ### A. `master` — 小修复（收尾）
 

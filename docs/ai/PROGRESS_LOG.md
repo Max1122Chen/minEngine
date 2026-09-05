@@ -1,6 +1,31 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（ANIM-F02 Done；人型目视 PASS）
+Last updated: 2026-09-05（ASSET-F02 Done）
+
+### 2026-09-05 - ASSET-F02 Done: register-style Load/Import + ImportDialog
+- **S00–S05:** LoadHandler / ImportProduct 注册表；`Import()`；`AssetPipelineBootstrap`；`EditorImportDialog` + Skeleton picker；旧 Import* private；SourcePath + Reimport。
+- **Verify:** `test smoke` / `asset-manager` / `animation-clip` PASS；维护者手动 Import（Static/Skeletal/Clip）+ Reimport PASS。
+- **Docs:** Design / Impl / Registry / ACTIVE_WORK → **Done**。
+- **Next:** 准备 commit（勿提交本地 Animations/Sources/`build_*.log`/场景本地改动）。
+
+### 2026-09-05 - ASSET-F02-S00/S01: LoadHandler + ImportProduct registry
+- **S00:** `RegisterLoadHandler`；`LoadAssetByMeta_Internal` 改为查表；builtin handlers 于 Initialize。
+- **S01:** `ImportRequest` / `ImportResult` / `ImportProductDescriptor`；`Import()` 查表；NativeCopy/Static/Skeletal/AnimationClip 登记（转调旧 Import*）；Clip 空 Skeleton Runtime fallback。
+- **Docs:** Impl Plan；Registry/ACTIVE_WORK → In Progress。
+- **Verify:** `test smoke` / `asset-manager` / `animation-clip` PASS。
+- **Next:** S02 Pipeline 迁出 Loader；S03 Editor Dialog。
+
+### 2026-09-05 - ASSET-F02 Design 修订: Register 式 Load/Import
+- **修订:** 弃用中心 `ImportProductKind`；改为 `RegisterLoadHandler` + `RegisterImportProduct`；Load if 链一并纳入；Dialog 读注册表。
+- **Design:** [`ASSET-F02_IMPORT_SERVICE_DESIGN.md`](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md)
+- **Next:** 审阅修订 → Planned → Impl；建议先 S00 Load 注册表。
+- **Not started:** 代码未动。
+
+### 2026-09-05 - ASSET-F02 Design Draft: formal Import + shared ImportDialog
+- **Registered:** `ASSET-F02` in FEATURE_REGISTRY（Status=**Draft**）.
+- **Design:** [`ASSET-F02_IMPORT_SERVICE_DESIGN.md`](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) — 初稿后经 Register 式修订。
+- **ACTIVE_WORK:** 焦点改为 ASSET-F02 Draft。
+- **Not started:** 代码未动。
 
 ### 2026-09-05 - ANIM-F02 Done: humanoid clip playback + OpenGL bone indices
 - **Visual:** Walking `.meaclip` on `SkeletalMeshComponent` — Editor 目视 PASS（动作正常）。

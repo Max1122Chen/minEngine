@@ -3,8 +3,9 @@
 #include "Core.h"
 #include "Shell/EditorServiceModule.h"
 #include "Shell/IEditorInspectorSource.h"
-#include "UI/Dialogs/EditorMeshImportProductDialog.h"
+#include "UI/Dialogs/EditorImportDialog.h"
 #include "UI/Dialogs/EditorUnsavedChangesDialog.h"
+#include "Runtime/Resource/AssetManager.h"
 
 #include <filesystem>
 #include <functional>
@@ -61,6 +62,7 @@ namespace minEngine
         const IEditorInspectorSource* GetInspectorSource() const;
 
         void DeleteSelectedAsset();
+        bool TryReimportSelectedAsset();
 
         IEditorContext* GetEditorContext() const { return m_Context; }
 
@@ -85,8 +87,11 @@ namespace minEngine
             std::function<void()> proceedCallback);
 
         void HandleUnsavedDialogChoice(UnsavedChangesChoice choice);
-        void HandleMeshImportProductChoice(MeshImportProductChoice choice);
+        void HandleImportDialogAction(EditorImportDialogAction action);
         void RefreshContentBrowser();
+
+        static std::vector<const ImportProductDescriptor*> CollectCompatibleImportProducts(
+            const std::filesystem::path& sourcePath);
 
         IEditorContext* m_Context = nullptr;
         std::string m_SelectedAssetPath;
@@ -94,9 +99,7 @@ namespace minEngine
         AssetWorkflowInspectorSource m_InspectorSource{*this};
 
         EditorUnsavedChangesDialog m_UnsavedDialog;
-        EditorMeshImportProductDialog m_MeshImportProductDialog;
-        std::vector<std::filesystem::path> m_PendingMeshImportSources;
-        std::filesystem::path m_PendingMeshImportDestDirectory;
+        EditorImportDialog m_ImportDialog;
         std::function<void()> m_PendingProceed;
         std::function<bool()> m_PendingSave;
         PendingUnsavedCheckKind m_PendingCheckKind = PendingUnsavedCheckKind::None;

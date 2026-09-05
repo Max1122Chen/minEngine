@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-05（`ANIM-F02` **Done**；ANIM-F01 Done；ASSET-F01 MVP Done）
+Last updated: 2026-09-05（`ASSET-F02` **Done**）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -52,7 +52,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ANIM-F01` | Skeletal Mesh Pipeline（Skeleton / SkeletalMesh / GPU skinning） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · `feat/animation` · Shadow skinned **Deferred**；扭骨 UX Deferred |
 | `ANIM-F02` | Clip Playback（AnimationClip + Player） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) · S00–S03 Done；人型 Walking 目视 PASS；MVP 过渡（骨 Track + TryGet 壳） |
 | `ANIM-F03` | Animation Graph MVP（SM + Params + Transition Blend） | **Planned** | — | [Placeholder](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · 依赖 F02 |
-| `ASSET-F01` | External Import Pipeline（FBX/glTF 等为 Source → 原生资产） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S00–S03 Done；S04 / `.memesh` **Deferred**；**暂停不挡 Anim** |
+| `ASSET-F01` | External Import Pipeline（FBX/glTF 等为 Source → 原生资产） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S00–S03 Done；S04 / `.memesh` **Deferred**；续作见 `ASSET-F02` |
+| `ASSET-F02` | Formal Import/Load 注册式管线 + Reusable ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) · S00–S05 Done；自动化+手动验 PASS |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
@@ -75,12 +76,12 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `TEST` | F04 | |
 | `WF` | F03 | |
 | `CORE` | **F08** | F05–F07 Done（F05 MVP） |
-| `ASSET` | **F02** | F01 Import MVP Done；S04/`.memesh` Deferred |
+| `ASSET` | **F03** | F01 MVP Done；F02 Import Service **Draft**；S04/`.memesh` 可并入 F02 可选切片 |
 | `ED` | **F05** | F02–F04 on `master`；F03 Toolbar Done；F04 Console In Progress |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
-| `ANIM` | **F04** | F01 Done；F02 Draft（焦点）；F03 Planned；Event / IK / Root Motion 等未登记 |
+| `ANIM` | **F04** | F01–F02 Done；F03 Planned；Event / IK / Root Motion 等未登记 |
 | `UI` | F02 | F01 占位；`feat/ui` |
 | `PHYS` | F05 | F04 on `master` |
 | `MAT` | F01 | |

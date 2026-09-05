@@ -107,6 +107,10 @@ namespace minEngine
         if (!selected->SourcePath.empty())
         {
             ImGui::Text("Source: %s", selected->SourcePath.c_str());
+            if (ImGui::Button("Reimport"))
+            {
+                m_Owner.TryReimportSelectedAsset();
+            }
         }
         ImGui::Text("Guid: %s", selected->Guid.ToString().c_str());
         ImGui::End();
@@ -125,9 +129,7 @@ namespace minEngine
         m_PendingSave = nullptr;
         m_PendingCheckKind = PendingUnsavedCheckKind::None;
         m_UnsavedDialog.Close();
-        m_MeshImportProductDialog.Close();
-        m_PendingMeshImportSources.clear();
-        m_PendingMeshImportDestDirectory.clear();
+        m_ImportDialog.Close();
         m_Context = nullptr;
     }
 
@@ -139,10 +141,10 @@ namespace minEngine
             HandleUnsavedDialogChoice(choice);
         }
 
-        const MeshImportProductChoice meshChoice = m_MeshImportProductDialog.Draw();
-        if (meshChoice != MeshImportProductChoice::None)
+        const EditorImportDialogAction importAction = m_ImportDialog.Draw();
+        if (importAction != EditorImportDialogAction::None)
         {
-            HandleMeshImportProductChoice(meshChoice);
+            HandleImportDialogAction(importAction);
         }
     }
 
@@ -573,69 +575,116 @@ namespace minEngine
 
         EditorFilesystemMutationPass::NoteMutatedAbsolutePath(destDirectory);
 
-        std::vector<std::filesystem::path> nativeImportPaths;
-        std::vector<std::filesystem::path> meshSourcePaths;
-        nativeImportPaths.reserve(dialogResult.Paths.size());
-        meshSourcePaths.reserve(dialogResult.Paths.size());
+        std::vector<std::filesystem::path> autoImportPaths;
+        std::vector<std::string> autoImportProductIds;
+        std::vector<std::filesystem::path> pendingChoicePaths;
+        autoImportPaths.reserve(dialogResult.Paths.size());
+        autoImportProductIds.reserve(dialogResult.Paths.size());
+        pendingChoicePaths.reserve(dialogResult.Paths.size());
 
         for (const std::filesystem::path& sourcePath : dialogResult.Paths)
         {
-            if (AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string()))
+            const std::vector<const ImportProductDescriptor*> compatible =
+                CollectCompatibleImportProducts(sourcePath);
+            if (compatible.empty())
             {
-                meshSourcePaths.push_back(sourcePath);
+                ME_CORE_ERROR(
+                    "ImportAssetDialog: no import product accepts '{}'",
+                    sourcePath.string());
+                continue;
+            }
+
+            if (compatible.size() == 1 && !compatible[0]->bNeedsSkeletonPicker)
+            {
+                autoImportPaths.push_back(sourcePath);
+                autoImportProductIds.push_back(compatible[0]->ProductId);
             }
             else
             {
-                nativeImportPaths.push_back(sourcePath);
+                pendingChoicePaths.push_back(sourcePath);
             }
         }
 
         int successCount = 0;
         int failCount = 0;
 
-        AssetManager::AssetRegistryBroadcastBatchScope batchScope;
-
-        for (const std::filesystem::path& sourcePath : nativeImportPaths)
         {
-            const ImportAssetResult importResult =
-                AssetManager::Get().ImportAsset(sourcePath, destDirectory);
-            if (!importResult.bSuccess)
+            AssetManager::AssetRegistryBroadcastBatchScope batchScope;
+            for (size_t index = 0; index < autoImportPaths.size(); ++index)
             {
-                ++failCount;
-                ME_CORE_ERROR(
-                    "ImportAssetDialog: failed to import '{}': {}",
-                    sourcePath.string(),
-                    importResult.ErrorMessage);
-                continue;
-            }
+                ImportRequest importRequest;
+                importRequest.SourcePath = autoImportPaths[index];
+                importRequest.DestDirectory = destDirectory;
+                importRequest.ProductId = autoImportProductIds[index];
 
-            ++successCount;
-            ME_CORE_INFO(
-                "ImportAssetDialog: imported '{}' as '{}'",
-                sourcePath.string(),
-                importResult.Meta.AssetPath);
+                const ImportResult importResult = AssetManager::Get().Import(importRequest);
+                if (!importResult.bSuccess)
+                {
+                    ++failCount;
+                    ME_CORE_ERROR(
+                        "ImportAssetDialog: failed to import '{}': {}",
+                        autoImportPaths[index].string(),
+                        importResult.ErrorMessage);
+                    continue;
+                }
+
+                ++successCount;
+                const std::string createdPath = importResult.Created.empty()
+                    ? std::string()
+                    : importResult.Created.front().AssetPath;
+                ME_CORE_INFO(
+                    "ImportAssetDialog: imported '{}' as '{}' (product '{}')",
+                    autoImportPaths[index].string(),
+                    createdPath,
+                    autoImportProductIds[index]);
+            }
         }
 
-        if (!meshSourcePaths.empty())
+        if (!pendingChoicePaths.empty())
         {
-            m_PendingMeshImportSources = std::move(meshSourcePaths);
-            m_PendingMeshImportDestDirectory = destDirectory;
-            m_MeshImportProductDialog.Open(static_cast<int>(m_PendingMeshImportSources.size()));
+            m_ImportDialog.Open(std::move(pendingChoicePaths), destDirectory);
         }
 
         ME_CORE_INFO(
-            "ImportAssetDialog: {} native succeeded, {} failed; {} mesh source(s) pending product choice.",
+            "ImportAssetDialog: {} auto-imported succeeded, {} failed; {} pending product choice.",
             successCount,
             failCount,
-            m_PendingMeshImportSources.size());
+            m_ImportDialog.IsOpen() ? m_ImportDialog.GetSourcePaths().size() : 0);
     }
 
-    void AssetWorkflowModule::HandleMeshImportProductChoice(MeshImportProductChoice choice)
+    std::vector<const ImportProductDescriptor*> AssetWorkflowModule::CollectCompatibleImportProducts(
+        const std::filesystem::path& sourcePath)
     {
-        if (choice == MeshImportProductChoice::Cancel || choice == MeshImportProductChoice::None)
+        std::vector<const ImportProductDescriptor*> compatible;
+        const std::string extension = sourcePath.extension().string();
+        for (const ImportProductDescriptor& product : AssetManager::Get().GetImportProducts())
         {
-            m_PendingMeshImportSources.clear();
-            m_PendingMeshImportDestDirectory.clear();
+            if (product.AcceptsSourceExtension != nullptr
+                && product.AcceptsSourceExtension(extension))
+            {
+                compatible.push_back(&product);
+            }
+        }
+
+        return compatible;
+    }
+
+    void AssetWorkflowModule::HandleImportDialogAction(EditorImportDialogAction action)
+    {
+        if (action == EditorImportDialogAction::Cancel || action == EditorImportDialogAction::None)
+        {
+            m_ImportDialog.Close();
+            return;
+        }
+
+        const std::string productId = m_ImportDialog.GetSelectedProductId();
+        const std::string skeletonAssetPath = m_ImportDialog.GetSkeletonAssetPath();
+        const std::filesystem::path destDirectory = m_ImportDialog.GetDestDirectory();
+        const std::vector<std::filesystem::path> sourcePaths = m_ImportDialog.GetSourcePaths();
+        m_ImportDialog.Close();
+
+        if (productId.empty() || sourcePaths.empty())
+        {
             return;
         }
 
@@ -643,90 +692,66 @@ namespace minEngine
         int failCount = 0;
 
         AssetManager::AssetRegistryBroadcastBatchScope batchScope;
-
-        if (choice == MeshImportProductChoice::AnimationClip)
+        for (const std::filesystem::path& sourcePath : sourcePaths)
         {
-            const std::filesystem::path contentRoot = PathRegistry::Get().GetProjectContentRoot();
-            for (const std::filesystem::path& sourcePath : m_PendingMeshImportSources)
+            ImportRequest importRequest;
+            importRequest.SourcePath = sourcePath;
+            importRequest.DestDirectory = destDirectory;
+            importRequest.ProductId = productId;
+            importRequest.SkeletonAssetPath = skeletonAssetPath;
+
+            const ImportResult importResult = AssetManager::Get().Import(importRequest);
+            if (!importResult.bSuccess)
             {
-                const std::filesystem::path skeletonAbsolute =
-                    m_PendingMeshImportDestDirectory
-                    / (sourcePath.stem().string() + "_Skeleton.meskeleton");
-                std::error_code relativeError;
-                std::filesystem::path skeletonRelPath =
-                    std::filesystem::relative(skeletonAbsolute, contentRoot, relativeError);
-                if (relativeError || skeletonRelPath.empty())
-                {
-                    ++failCount;
-                    ME_CORE_ERROR(
-                        "ImportAssetDialog: cannot resolve skeleton path for '{}'",
-                        sourcePath.string());
-                    continue;
-                }
-
-                const ImportAssetResult importResult = AssetManager::Get().ImportAnimationClip(
-                    sourcePath,
-                    m_PendingMeshImportDestDirectory,
-                    skeletonRelPath.generic_string(),
-                    0);
-                if (!importResult.bSuccess)
-                {
-                    ++failCount;
-                    ME_CORE_ERROR(
-                        "ImportAssetDialog: failed to import AnimationClip '{}': {}",
-                        sourcePath.string(),
-                        importResult.ErrorMessage);
-                    continue;
-                }
-
-                ++successCount;
-                ME_CORE_INFO(
-                    "ImportAssetDialog: AnimationClip '{}' → '{}' (SourcePath='{}')",
+                ++failCount;
+                ME_CORE_ERROR(
+                    "ImportAssetDialog: failed to import '{}' as '{}': {}",
                     sourcePath.string(),
-                    importResult.Meta.AssetPath,
-                    importResult.Meta.SourcePath);
+                    productId,
+                    importResult.ErrorMessage);
+                continue;
             }
+
+            ++successCount;
+            const std::string createdPath = importResult.Created.empty()
+                ? std::string()
+                : importResult.Created.front().AssetPath;
+            ME_CORE_INFO(
+                "ImportAssetDialog: '{}' → '{}' (product '{}')",
+                sourcePath.string(),
+                createdPath,
+                productId);
         }
-        else
-        {
-            const MeshImportProductType productType = choice == MeshImportProductChoice::SkeletalMesh
-                ? MeshImportProductType::SkeletalMesh
-                : MeshImportProductType::StaticMesh;
-
-            for (const std::filesystem::path& sourcePath : m_PendingMeshImportSources)
-            {
-                const ImportAssetResult importResult = AssetManager::Get().ImportExternalMesh(
-                    sourcePath,
-                    m_PendingMeshImportDestDirectory,
-                    productType);
-                if (!importResult.bSuccess)
-                {
-                    ++failCount;
-                    ME_CORE_ERROR(
-                        "ImportAssetDialog: failed to import mesh source '{}': {}",
-                        sourcePath.string(),
-                        importResult.ErrorMessage);
-                    continue;
-                }
-
-                ++successCount;
-                ME_CORE_INFO(
-                    "ImportAssetDialog: cooked '{}' → '{}' (SourcePath='{}')",
-                    sourcePath.string(),
-                    importResult.Meta.AssetPath,
-                    importResult.Meta.SourcePath);
-            }
-        }
-
-        m_PendingMeshImportSources.clear();
-        m_PendingMeshImportDestDirectory.clear();
 
         ME_CORE_INFO(
-            "ImportAssetDialog cook: {} succeeded, {} failed.",
+            "ImportAssetDialog product import: {} succeeded, {} failed.",
             successCount,
             failCount);
 
         RefreshContentBrowser();
+    }
+
+    bool AssetWorkflowModule::TryReimportSelectedAsset()
+    {
+        const AssetMeta* selected = GetSelectedAsset();
+        if (selected == nullptr)
+        {
+            return false;
+        }
+
+        std::string errorMessage;
+        if (!AssetManager::Get().Reimport(selected->AssetPath, errorMessage))
+        {
+            ME_CORE_ERROR(
+                "Reimport failed for '{}': {}",
+                selected->AssetPath,
+                errorMessage);
+            return false;
+        }
+
+        ME_CORE_INFO("Reimported '{}'", selected->AssetPath);
+        RefreshContentBrowser();
+        return true;
     }
 
     void AssetWorkflowModule::SetSelectedAsset(const AssetMeta* meta)
