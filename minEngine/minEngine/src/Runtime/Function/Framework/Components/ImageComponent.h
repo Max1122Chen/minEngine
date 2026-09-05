@@ -28,10 +28,15 @@ namespace minEngine
     private:
         void NotifySiblingWidgetDirty();
 
-        ME_PROPERTY()
+        /** Inspector must call SetTexture so the sibling Widget rematerializes. */
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTexture", Getter = "GetTextureShared"))
         std::shared_ptr<Texture2D> m_Texture{ nullptr };
 
-        ME_PROPERTY()
+        /**
+         * Tint RGBA. Final ScreenUI opacity = texture.a * color.a (white texture if none).
+         * Inspector must call SetColor so Opacity/Tint sync to the Widget material.
+         */
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetColor", Getter = "GetColor"))
         Vector4 m_Color{ 1.0f, 1.0f, 1.0f, 1.0f };
     };
 }

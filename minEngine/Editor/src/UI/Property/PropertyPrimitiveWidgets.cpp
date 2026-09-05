@@ -126,7 +126,17 @@ namespace minEngine
             float data[4] = {value->x, value->y, value->z, value->w};
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(8.0f, 6.0f));
-            const bool changed = ImGui::DragFloat4("##Value", data, 0.1f);
+
+            // Tint/Color Vector4: ColorEdit4 exposes alpha clearly (DragFloat4 .w is easy to miss).
+            const std::string& propertyName = primitiveProperty.GetName();
+            const bool treatAsColor =
+                propertyName.find("Color") != std::string::npos
+                || propertyName.find("Tint") != std::string::npos
+                || propertyName.find("color") != std::string::npos;
+            const bool changed = treatAsColor
+                ? ImGui::ColorEdit4("##Value", data, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar)
+                : ImGui::DragFloat4("##Value", data, 0.1f);
+
             ImGui::PopStyleVar(2);
             if (changed)
             {

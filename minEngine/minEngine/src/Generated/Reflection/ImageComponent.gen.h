@@ -5,7 +5,11 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ImageComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ImageComponent, m_Texture)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ImageComponent, m_Texture, GetTextureShared)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ImageComponent, m_Texture, SetTexture)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ImageComponent, m_Color)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ImageComponent, m_Color, GetColor)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ImageComponent, m_Color, SetColor)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::ImageComponent, GReflectionClassRegister_ImageComponent_b7f55f97)

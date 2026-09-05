@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-05（merge feat/core into feat/ui；UI-F01 In Progress）
+Last updated: 2026-09-05（UI-F01 Done；CORE-F14 Planned）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -38,6 +38,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F11` | 属性 Getter/Setter native thunk + `AssignProperty`（TD-026 / BUG-CORE-001） | **Done** | — | [Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [Impl](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_IMPLEMENTATION.md) · **`feat/core`** |
 | `CORE-F12` | GameObject 父子层级（运行时 + 序列化） | **Done** | — | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_IMPLEMENTATION.md) · `feat/ui` · **docs filename still CORE-F08_\***（fork ID remap on merge；was CORE-F08 on feat/ui）· 与 ED-F05 / CORE-F13 联合验收 |
 | `CORE-F13` | GO 父子 = Root↔Root 附着 + KeepWorld/传播 | **Done** | — | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · `feat/ui` · **docs filename still CORE-F09_\***（fork ID remap on merge；was CORE-F09 on feat/ui）· world Proxy/物理/Gizmo |
+| `CORE-F14` | 作者颜色统一为 LinearColor（Image/Sprite/Light）+ ColorPicker 显式关闭 | **Planned** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · `feat/ui` |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -58,7 +59,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `LAUN-F01` | Engine Launcher | **Done** | — | [LAUN-F01_ENGINE_LAUNCHER_DESIGN](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [AUD-F01_AUDIO_SYSTEM_DESIGN](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · worktree `minEngine-animation` · 本 worktree 非焦点；并行候选 |
-| `UI-F01` | UI system（Canvas + Layout + Image；消费 RND-F16） | **In Progress** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 代码+单测；**未目视**（Setter/Getter 已自 feat/core 合入；下一步 wire AnchorPreset） |
+| `UI-F01` | UI system（Canvas + Layout + Image；消费 RND-F16） | **Done** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 目视含 Image alpha |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
@@ -79,14 +80,14 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | F04 | |
 | `WF` | F03 | |
-| `CORE` | **F14** | F08–F11 = Serialization/Reflection（`feat/core`）Done；F12–F13 = Hierarchy（`feat/ui`；docs still CORE-F08_/F09_）Done；F05–F07 Done |
+| `CORE` | **F15** | F08–F11 = Serialization/Reflection（`feat/core`）Done；F12–F13 = Hierarchy（`feat/ui`；docs still CORE-F08_/F09_）Done；F05–F07 Done |
 | `ASSET` | F01 | Async / Lifetime 愿景见 Capability Roadmap；尚未登记 Feature |
 | `ED` | **F06** | F02–F04 on `master`；F03 Toolbar Done；F04 Console In Progress；F05 Hierarchy Done |
 | `RND` | **F17** | F16 = 2D Foundation Done；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | F02 | F01 Planned；并行候选（非本 worktree 焦点） |
-| `UI` | F02 | F01 In Progress（MVP 代码未目视）；Hit-test/Text 后置 |
+| `UI` | F02 | F01 Done；Hit-test/Text 后置 |
 | `PHYS` | F05 | F04 on `master` |
 | `MAT` | F01 | |
 

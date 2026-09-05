@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `UI-F01`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-05
 - **Branch:** `feat/ui`
@@ -136,7 +136,9 @@ Inspector：改 Preset 即 Apply；亦可直接改 Min/Max（高级）。
 | 属性 | 说明 |
 |------|------|
 | `Texture` | 可选；空则白贴图 × Tint |
-| `Color` | RGBA Tint |
+| `Color` | RGBA Tint；**不是**与贴图二选一 |
+
+**Tint 语义：** `finalRGB = texture.rgb * color.rgb`；`finalA = texture.a * color.a`（ScreenUI 半透明材质 `Opacity`）。Inspector 经 `SetColor`/`SetTexture` 同步到 Widget runtime material。
 
 **Invariant：** 无 Widget 或无 Image → 不入队。
 
@@ -204,9 +206,9 @@ CORE-F08 / CORE-F09 / ED-F05 / RND-F16 Path B 均 **Done**。本 Feature 不再 
 
 | 字段 | 内容 |
 |------|------|
-| Status | **In Progress**（代码+单测；**未目视验收**） |
+| Status | **Done**（代码 + 单测 + 目视验收通过，含 Image alpha） |
 | Blocked by | — |
-| Next | 合入 core 分支 Setter/Getter 后目视（Preset 直改字段当前无效）→ Done |
+| Next | 后续 UI Feat（Hit-test / Text 等）另开；并行 CORE-F14 LinearColor |
 
 ---
 
@@ -221,3 +223,5 @@ CORE-F08 / CORE-F09 / ED-F05 / RND-F16 Path B 均 **Done**。本 Feature 不再 
 | 2026-09-05 | **Planned→In Progress：** 前置已齐；拍板 Letterbox；Anchor Preset；一次落地 MVP |
 | 2026-09-05 | **MVP 代码落地：** Canvas/Letterbox、Widget Layout+Preset、Image；Widget 去 Texture/Color；screen-ui-coords/ui-layout PASS；**未目视验收** |
 | 2026-09-05 | Status 保持未验收：Inspector 直写 Preset 不触发 Apply；等 core Setter/Getter 合入后再目视 |
+| 2026-09-05 | Image alpha：Color.a→Opacity；Inspector Setter 同步；ColorEdit4 暴露 alpha |
+| 2026-09-05 | **Done：** 目视验收通过（含 Image Color alpha）；Setter/Preset/Letterbox OK |

@@ -1,6 +1,17 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（merge feat/core into feat/ui；CORE ID remap hierarchy F08/F09 → Registry F12/F13）
+Last updated: 2026-09-05（UI-F01 Done；CORE-F14 Planned）
+
+### 2026-09-05 - UI-F01 Done；起草 CORE-F14
+- **UI-F01：** 目视验收通过（Canvas/Layout/Image/alpha）；Design/Registry → **Done**。
+- **Next Feat：** `CORE-F14` LinearColor 作者颜色（Image/Sprite/Light）+ ColorPicker 显式关闭；场景迁移。
+- **Commit：** Image alpha Setter / ColorEdit 启发式仍随 UI-F01 收口提交（启发式在 F14 删除）。
+
+### 2026-09-05 - UI-F01：Image Color alpha 语义
+- **根因：** 材质已有 `Opacity = color.a`（× texture.a）；Inspector 直写 `m_Color` 不走 `SetColor` → Widget 材质不同步。
+- **Code：** Image `Color`/`Texture` 挂 Setter/Getter；Inspector ColorEdit4+AlphaBar；注释明确 multiply 语义。
+- **Docs：** Design §3.5；ACTIVE_WORK 下一步改为目视收口。
+- **Next：** 目视 alpha → UI-F01 Done → 再规划后续 feat。
 
 ### 2026-09-05 - Merge: feat/core into feat/ui
 - **Merge:** 合入序列化/反射 CORE-F08–F11（含 Getter/Setter Assign）；关 TD-026/028/029。

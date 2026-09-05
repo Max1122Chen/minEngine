@@ -110,6 +110,7 @@ namespace minEngine
         const Vector4& color,
         const std::shared_ptr<Texture2D>& texture)
     {
+        // Albedo = texture.rgb * TintRGB; Opacity = texture.a * color.a (translucent graph only).
         material.SetTextureParameter("BaseColor", texture);
         material.SetScalarParameter("TintR", color.r);
         material.SetScalarParameter("TintG", color.g);
