@@ -22,7 +22,7 @@ namespace minEngine
 
     public:
         SceneComponent();
-        virtual ~SceneComponent() = default;
+        virtual ~SceneComponent() override;
 
         /** Marks this component's render proxy dirty (does not cascade). */
         void MarkRenderStateDirty();
@@ -91,6 +91,8 @@ namespace minEngine
     private:
         static Transform DecomposeMatrixToTransform(const Matrix4& matrix);
         Transform ConvertWorldTransformToLocal(const Transform& worldTransform) const;
+        /** Unlink attach parent/children without Notify (safe during destruction). */
+        void ClearAttachLinksWithoutNotify();
 
     protected:
     

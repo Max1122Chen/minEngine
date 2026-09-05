@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 #include <algorithm>
 
@@ -261,7 +262,19 @@ namespace minEngine
                         }
                     }
                 }
+                else if (sceneComponent->GetAttachParent() != nullptr)
+                {
+                    sceneComponent->DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
+                }
             }
+
+            if (SceneManager::HasInstance())
+            {
+                SceneManager::Get().UnmarkComponentForNeededEndOfFrameUpdate(&target);
+            }
+
+            // Deactivate while still owned; destructor will also unlink attach safely.
+            target.SetOwner(nullptr);
             m_Components.erase(it);
             return true;
         }

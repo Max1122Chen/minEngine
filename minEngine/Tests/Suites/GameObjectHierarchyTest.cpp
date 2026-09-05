@@ -188,6 +188,35 @@ TEST_CASE("gameobject-hierarchy: keep world and parent drives child [full]")
     CHECK(worldAfterParentMove.z == doctest::Approx(0.0f).epsilon(0.001f));
 }
 
+
+TEST_CASE("gameobject-hierarchy: remove attached scene component cleans attach links [full]")
+{
+    using namespace minEngine;
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    GameObjectHierarchyTestScope scope;
+
+    const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("go-hier-remove");
+    REQUIRE(scene);
+
+    const std::shared_ptr<GameObject> go = scene->CreateGameObject();
+    const std::shared_ptr<SceneComponent> root = go->AddComponent<SceneComponent>();
+    const std::shared_ptr<SceneComponent> child = go->AddComponent<SceneComponent>();
+    REQUIRE(root);
+    REQUIRE(child);
+    REQUIRE(go->GetRootComponent() == root.get());
+    REQUIRE(child->GetAttachParent() == root.get());
+
+    child->MarkRenderStateDirty();
+    REQUIRE(go->RemoveComponent(*child));
+    CHECK(go->GetAllComponents().size() == 1);
+    CHECK(root->GetAttachChildren().empty());
+
+    // Parent transform notify must not touch freed child pointers.
+    root->SetPosition(Vector3(1.0f, 2.0f, 3.0f));
+    SceneManager::Get().SendAllEndOfFrameUpdates();
+}
+
 TEST_CASE("gameobject-hierarchy: attach without root fails [full]")
 {
     using namespace minEngine;

@@ -29,6 +29,31 @@ namespace minEngine
     SceneComponent::SceneComponent()    {
     }
 
+    SceneComponent::~SceneComponent()
+    {
+        ClearAttachLinksWithoutNotify();
+    }
+
+    void SceneComponent::ClearAttachLinksWithoutNotify()
+    {
+        // Children first: clear their parent pointer without Notify (we are being destroyed).
+        for (SceneComponent* child : m_AttachChildren)
+        {
+            if (child != nullptr && child->m_AttachParent == this)
+            {
+                child->m_AttachParent = nullptr;
+            }
+        }
+        m_AttachChildren.clear();
+
+        if (m_AttachParent != nullptr)
+        {
+            auto& siblings = m_AttachParent->m_AttachChildren;
+            siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+            m_AttachParent = nullptr;
+        }
+    }
+
     void SceneComponent::MarkRenderStateDirty()
     {
         m_bRenderStateDirty = true;

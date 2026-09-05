@@ -68,6 +68,8 @@ namespace minEngine
         void UnloadActiveScene();
 
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
+        /** Drop a destroyed/removed component from the pending EOF list (no-op if unmarked). */
+        void UnmarkComponentForNeededEndOfFrameUpdate(Component* component);
         void SendAllEndOfFrameUpdates();
 
         void ResolvePendingActivationsForScene(Scene* scene);
