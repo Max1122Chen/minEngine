@@ -107,14 +107,14 @@ namespace minEngine
 
     void SpriteMaterialFactory::ApplyColorAndTexture(
         Material& material,
-        const Vector4& color,
+        const LinearColor& color,
         const std::shared_ptr<Texture2D>& texture)
     {
         // Albedo = texture.rgb * TintRGB; Opacity = texture.a * color.a (translucent graph only).
         material.SetTextureParameter("BaseColor", texture);
-        material.SetScalarParameter("TintR", color.r);
-        material.SetScalarParameter("TintG", color.g);
-        material.SetScalarParameter("TintB", color.b);
-        material.SetScalarParameter("Opacity", color.a);
+        material.SetScalarParameter("TintR", color.R);
+        material.SetScalarParameter("TintG", color.G);
+        material.SetScalarParameter("TintB", color.B);
+        material.SetScalarParameter("Opacity", color.A);
     }
 }

@@ -5,6 +5,8 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::LightComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::LightComponent, m_LightColor)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::LightComponent, m_LightColor, GetLightColor)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::LightComponent, m_LightColor, SetLightColor)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::LightComponent, m_Intensity)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::LightComponent, m_DiffuseFactor)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::LightComponent, m_SpecularFactor)

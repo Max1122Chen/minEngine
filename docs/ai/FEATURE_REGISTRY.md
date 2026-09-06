@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-05（UI-F01 Done；CORE-F14 Planned）
+Last updated: 2026-09-06（CORE-F14 Done）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -38,7 +38,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F11` | 属性 Getter/Setter native thunk + `AssignProperty`（TD-026 / BUG-CORE-001） | **Done** | — | [Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [Impl](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_IMPLEMENTATION.md) · **`feat/core`** |
 | `CORE-F12` | GameObject 父子层级（运行时 + 序列化） | **Done** | — | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_IMPLEMENTATION.md) · `feat/ui` · **docs filename still CORE-F08_\***（fork ID remap on merge；was CORE-F08 on feat/ui）· 与 ED-F05 / CORE-F13 联合验收 |
 | `CORE-F13` | GO 父子 = Root↔Root 附着 + KeepWorld/传播 | **Done** | — | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · `feat/ui` · **docs filename still CORE-F09_\***（fork ID remap on merge；was CORE-F09 on feat/ui）· world Proxy/物理/Gizmo |
-| `CORE-F14` | 作者颜色统一为 LinearColor（Image/Sprite/Light）+ ColorPicker 显式关闭 | **Planned** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · `feat/ui` |
+| `CORE-F14` | 作者颜色统一为 LinearColor（Image/Sprite/Light）+ ColorPicker 显式关闭 | **Done** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · `feat/ui` |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |

@@ -14,7 +14,7 @@ namespace minEngine
         proxy->m_LightComponent = this;
         proxy->m_LightType = GetLightType();
         proxy->m_Direction = GetDirection();
-        proxy->m_LightColor = GetLightColor();
+        proxy->m_LightColor = GetLightColor().ToVector3();
         proxy->m_Intensity = GetIntensity();
         proxy->m_DiffuseFactor = GetDiffuseFactor();
         proxy->m_SpecularFactor = GetSpecularFactor();

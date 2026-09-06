@@ -22,7 +22,7 @@ namespace minEngine
 
     void ScreenUIMaterialFactory::ApplyColorAndTexture(
         Material& material,
-        const Vector4& color,
+        const LinearColor& color,
         const std::shared_ptr<Texture2D>& texture,
         RHI& rhi)
     {

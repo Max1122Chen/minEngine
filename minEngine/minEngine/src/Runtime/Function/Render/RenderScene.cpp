@@ -155,7 +155,7 @@ namespace minEngine
             // Keep the scene proxy in sync when light properties are changed.
             LightSceneProxy* sceneProxy = lightComponent->GetSceneProxy();
             sceneProxy->m_Position = lightComponent->GetWorldPosition();
-            sceneProxy->m_LightColor = lightComponent->GetLightColor();
+            sceneProxy->m_LightColor = lightComponent->GetLightColor().ToVector3();
             sceneProxy->m_Intensity = lightComponent->GetIntensity();
             sceneProxy->m_DiffuseFactor = lightComponent->GetDiffuseFactor();
             sceneProxy->m_SpecularFactor = lightComponent->GetSpecularFactor();

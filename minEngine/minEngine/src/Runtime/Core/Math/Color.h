@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Math.h"
 #include "Core/Reflection/ReflectionAnnotations.h"
 
 #include <cstdint>
@@ -38,7 +39,10 @@ namespace minEngine
         }
 
         static LinearColor FromColor(const struct Color& srgb);
+        static LinearColor FromVector4(const Vector4& value);
         struct Color ToColor() const;
+        Vector3 ToVector3() const { return Vector3(R, G, B); }
+        Vector4 ToVector4() const { return Vector4(R, G, B, A); }
 
         bool operator==(const LinearColor& other) const;
         bool operator!=(const LinearColor& other) const { return !(*this == other); }

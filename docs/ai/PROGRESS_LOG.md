@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（UI-F01 Done；CORE-F14 Planned）
+Last updated: 2026-09-06（CORE-F14 Done）
+
+### 2026-09-06 - CORE-F14 Done
+- **验收：** 目视 ColorPicker Close + Image/Sprite/Light LinearColor 改色通过。
+- **Docs：** Design/Registry/ACTIVE_WORK → Done；下一刀待选（UI-F02 / ANIM-F01 / ED-F02）。
+
+### 2026-09-06 - CORE-F14：LinearColor 作者颜色落地
+- **Code：** Image/Sprite/Light → `LinearColor`；`ToVector3/4` 边界；ColorWidget ColorButton+Popup+Close；删 Vector4 ColorEdit 启发式。
+- **Assets：** 仓库 `.mescene` `m_Color`/`m_LightColor` 改为 `{R,G,B,A}`（forward-only，无旧数组读兼容）。
+- **Tests：** `ui-layout` / `screen-ui-coords` / `sprite-translucency` PASS；minEngine + Editor Debug OK。
+- **Next：** 目视 ColorPicker Close + 三组件改色 → Done / 准备 commit。
 
 ### 2026-09-05 - UI-F01 Done；起草 CORE-F14
 - **UI-F01：** 目视验收通过（Canvas/Layout/Image/alpha）；Design/Registry → **Done**。

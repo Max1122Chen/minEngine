@@ -298,7 +298,7 @@ namespace minEngine
         ImageComponent* image = FindSiblingImage();
         if (image != nullptr)
         {
-            proxy.m_Color = image->GetColor();
+            proxy.m_Color = image->GetColor().ToVector4();
             proxy.m_Texture = image->GetTexture();
             EnsureRuntimeMaterial();
             SyncMaterialParameters(image);

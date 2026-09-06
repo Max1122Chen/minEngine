@@ -1,5 +1,7 @@
 #include "Preview/PreviewScene.h"
 
+#include "Runtime/Core/Math/Color.h"
+
 #include "Runtime/Core/GUID/GUID.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
@@ -115,7 +117,7 @@ namespace minEngine
         m_PreviewLightObject = m_Scene->CreateGameObject();
         m_PreviewLightComponent = m_PreviewLightObject->AddComponent<DirectionalLightComponent>();
         m_PreviewLightObject->SetRootComponent(m_PreviewLightComponent.get());
-        m_PreviewLightComponent->SetLightColor(Vector4(1.0f, 0.98f, 0.95f, 1.0f));
+        m_PreviewLightComponent->SetLightColor(LinearColor(1.0f, 0.98f, 0.95f, 1.0f));
         m_PreviewLightComponent->SetIntensity(1.2f);
         m_PreviewLightComponent->SetDiffuseFactor(12.0f);
         m_PreviewLightObject->SetRotationEulerDegrees(Vector3(-52.0f, 132.0f, 0.0f));

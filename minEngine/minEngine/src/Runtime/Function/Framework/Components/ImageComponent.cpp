@@ -17,7 +17,7 @@ namespace minEngine
         NotifySiblingWidgetDirty();
     }
 
-    void ImageComponent::SetColor(const Vector4& color)
+    void ImageComponent::SetColor(const LinearColor& color)
     {
         if (m_Color == color)
         {

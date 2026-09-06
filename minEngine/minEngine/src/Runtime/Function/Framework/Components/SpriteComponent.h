@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/Math/Color.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Render/Texture.h"
 
@@ -19,9 +20,10 @@ namespace minEngine
 
         void SetTexture(const std::shared_ptr<Texture2D>& texture);
         Texture2D* GetTexture() const { return m_Texture.get(); }
+        const std::shared_ptr<Texture2D>& GetTextureShared() const { return m_Texture; }
 
-        void SetColor(const Vector4& color);
-        Vector4 GetColor() const { return m_Color; }
+        void SetColor(const LinearColor& color);
+        LinearColor GetColor() const { return m_Color; }
 
         void SetSize(const Vector2& size);
         Vector2 GetSize() const { return m_Size; }
@@ -40,11 +42,11 @@ namespace minEngine
         void SyncMaterialParameters();
         void FillSceneProxy(SpriteSceneProxy& proxy);
 
-        ME_PROPERTY()
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTexture", Getter = "GetTextureShared"))
         std::shared_ptr<Texture2D> m_Texture{ nullptr };
 
-        ME_PROPERTY()
-        Vector4 m_Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetColor", Getter = "GetColor"))
+        LinearColor m_Color{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         ME_PROPERTY()
         Vector2 m_Size{ 1.0f, 1.0f };

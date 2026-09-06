@@ -16,8 +16,8 @@ TEST_CASE("sprite-translucency: compute pass queue [full]")
 {
     using namespace minEngine;
 
-    const Vector4 opaqueWhite(1.0f, 1.0f, 1.0f, 1.0f);
-    const Vector4 translucentWhite(1.0f, 1.0f, 1.0f, 0.5f);
+    const LinearColor opaqueWhite(1.0f, 1.0f, 1.0f, 1.0f);
+    const LinearColor translucentWhite(1.0f, 1.0f, 1.0f, 0.5f);
 
     CHECK_FALSE(ComputeSpriteNeedsTranslucentPass(opaqueWhite, nullptr, false));
     CHECK(ComputeSpriteNeedsTranslucentPass(translucentWhite, nullptr, false));

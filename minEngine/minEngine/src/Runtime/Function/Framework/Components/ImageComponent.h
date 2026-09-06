@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/Math/Color.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Render/Texture.h"
 
@@ -22,22 +23,20 @@ namespace minEngine
         Texture2D* GetTexture() const { return m_Texture.get(); }
         const std::shared_ptr<Texture2D>& GetTextureShared() const { return m_Texture; }
 
-        void SetColor(const Vector4& color);
-        Vector4 GetColor() const { return m_Color; }
+        void SetColor(const LinearColor& color);
+        LinearColor GetColor() const { return m_Color; }
 
     private:
         void NotifySiblingWidgetDirty();
 
-        /** Inspector must call SetTexture so the sibling Widget rematerializes. */
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTexture", Getter = "GetTextureShared"))
         std::shared_ptr<Texture2D> m_Texture{ nullptr };
 
         /**
-         * Tint RGBA. Final ScreenUI opacity = texture.a * color.a (white texture if none).
-         * Inspector must call SetColor so Opacity/Tint sync to the Widget material.
+         * Linear tint. Final ScreenUI opacity = texture.a * color.a (white texture if none).
          */
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetColor", Getter = "GetColor"))
-        Vector4 m_Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        LinearColor m_Color{ 1.0f, 1.0f, 1.0f, 1.0f };
     };
 }
 

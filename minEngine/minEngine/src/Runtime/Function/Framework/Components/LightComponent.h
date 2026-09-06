@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Core/Math/Color.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 
 namespace minEngine
@@ -26,9 +27,9 @@ namespace minEngine
 
         virtual LightType GetLightType() const = 0;
 
-        void SetLightColor(const Vector4& inColor);
-        Vector4 GetLightColor() const { return m_LightColor; }
-        
+        void SetLightColor(const LinearColor& inColor);
+        LinearColor GetLightColor() const { return m_LightColor; }
+
         void SetIntensity(float inIntensity);
         float GetIntensity() const { return m_Intensity; }
 
@@ -50,9 +51,8 @@ namespace minEngine
         void ApplyActivationToSystems() override;
         void RemoveActivationFromSystems() override;
 
-        // properties
-        ME_PROPERTY(EditAnywhere)
-        Vector4 m_LightColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetLightColor", Getter = "GetLightColor"))
+        LinearColor m_LightColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         ME_PROPERTY(EditAnywhere)
         float m_Intensity{ 1.0f };
@@ -65,9 +65,7 @@ namespace minEngine
 
         ME_PROPERTY(EditAnywhere)
         bool m_CastShadow{ false };
-        
 
-        //
         LightSceneProxy* m_LightSceneProxy{ nullptr };
     };
 }

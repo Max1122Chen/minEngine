@@ -5,7 +5,11 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SpriteComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpriteComponent, m_Texture)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::SpriteComponent, m_Texture, GetTextureShared)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::SpriteComponent, m_Texture, SetTexture)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpriteComponent, m_Color)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::SpriteComponent, m_Color, GetColor)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::SpriteComponent, m_Color, SetColor)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpriteComponent, m_Size)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpriteComponent, m_UVRect)
 ME_REFLECTION_ACCESSOR_END()

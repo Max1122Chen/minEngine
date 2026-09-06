@@ -23,7 +23,7 @@ namespace minEngine
     }
 
     bool ComputeSpriteNeedsTranslucentPass(
-        const Vector4& color,
+        const LinearColor& color,
         const Texture2D* texture,
         bool materialIsTranslucent)
     {
@@ -32,7 +32,7 @@ namespace minEngine
             return true;
         }
 
-        if (ColorAlphaIsTranslucent(color.a))
+        if (ColorAlphaIsTranslucent(color.A))
         {
             return true;
         }

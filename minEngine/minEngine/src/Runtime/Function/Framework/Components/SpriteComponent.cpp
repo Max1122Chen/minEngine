@@ -27,7 +27,7 @@ namespace minEngine
         MarkRenderStateDirty();
     }
 
-    void SpriteComponent::SetColor(const Vector4& color)
+    void SpriteComponent::SetColor(const LinearColor& color)
     {
         if (m_Color == color)
         {
@@ -102,7 +102,7 @@ namespace minEngine
     {
         proxy.m_PrimitiveComponent = this;
         proxy.m_CastShadow = false;
-        proxy.m_Color = m_Color;
+        proxy.m_Color = m_Color.ToVector4();
         proxy.m_UVRect = m_UVRect;
         proxy.m_Size = m_Size;
         proxy.m_Texture = m_Texture.get();

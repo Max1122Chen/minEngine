@@ -1,10 +1,12 @@
 {
+    "$schemaVersion": 1,
     "m_GameObjects": [
         {
             "$ptr_typeName": "minEngine::GameObject",
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_AttachParent": null,
                     "m_CastShadow": true,
                     "m_Guid": {
                         "High": 5681744671202297115,
@@ -31,9 +33,9 @@
                     },
                     "m_Transform": {
                         "Position": [
-                            14.487383842468262,
+                            14.487388610839844,
                             1.8219650983810425,
-                            7.1450395584106445
+                            7.1450324058532715
                         ],
                         "Rotation": {
                             "W": 0.9984449744224548,
@@ -65,8 +67,8 @@
                         }
                     },
                     "m_PhysicsBodyId": 0,
-                    "m_bSimulatePhysics": true,
-                    "m_bActive": true
+                    "m_bActive": true,
+                    "m_bSimulatePhysics": true
                 },
                 {
                     "$ptr_typeName": "minEngine::BoxColliderComponent",
@@ -95,6 +97,7 @@
                 "Low": 11094257267653316277
             },
             "m_Name": "Cube",
+            "m_Parent": null,
             "m_RootComponent": {
                 "$guid": {
                     "high": 5681744671202297115,
@@ -107,6 +110,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::DirectionalLightComponent",
+                    "m_AttachParent": null,
                     "m_CastShadow": true,
                     "m_DiffuseFactor": 1.0,
                     "m_Guid": {
@@ -114,12 +118,12 @@
                         "Low": 12354846377014207710
                     },
                     "m_Intensity": 0.5,
-                    "m_LightColor": [
-                        1.0,
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
+                    "m_LightColor": {
+                        "R": 1.0,
+                        "G": 1.0,
+                        "B": 1.0,
+                        "A": 1.0
+                    },
                     "m_Name": "",
                     "m_Owner": {
                         "$guid": {
@@ -154,6 +158,7 @@
                 "Low": 13137137897327963153
             },
             "m_Name": "Dirlight",
+            "m_Parent": null,
             "m_RootComponent": {
                 "$guid": {
                     "high": 6184531821558383057,
@@ -166,6 +171,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_AttachParent": null,
                     "m_CastShadow": true,
                     "m_Guid": {
                         "High": 3385891046885969139,
@@ -226,8 +232,8 @@
                         }
                     },
                     "m_PhysicsBodyId": 1,
-                    "m_bSimulatePhysics": true,
-                    "m_bActive": true
+                    "m_bActive": true,
+                    "m_bSimulatePhysics": true
                 },
                 {
                     "$ptr_typeName": "minEngine::BoxColliderComponent",
@@ -256,6 +262,7 @@
                 "Low": 10834008049559124436
             },
             "m_Name": "plane",
+            "m_Parent": null,
             "m_RootComponent": {
                 "$guid": {
                     "high": 3385891046885969139,
@@ -268,6 +275,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::PointLightComponent",
+                    "m_AttachParent": null,
                     "m_AttenuationFalloff": 3.299999952316284,
                     "m_AttenuationRadius": 16.200000762939453,
                     "m_CastShadow": true,
@@ -277,12 +285,12 @@
                         "Low": 9900555963215670978
                     },
                     "m_Intensity": 13.399999618530273,
-                    "m_LightColor": [
-                        0.20000000298023224,
-                        0.30000001192092896,
-                        0.6000000238418579,
-                        1.0
-                    ],
+                    "m_LightColor": {
+                        "R": 0.20000000298023224,
+                        "G": 0.30000001192092896,
+                        "B": 0.6000000238418579,
+                        "A": 1.0
+                    },
                     "m_Name": "",
                     "m_Owner": {
                         "$guid": {
@@ -317,6 +325,7 @@
                 "Low": 13377062911806056940
             },
             "m_Name": "PointLight",
+            "m_Parent": null,
             "m_RootComponent": {
                 "$guid": {
                     "high": 17879761517881214454,
@@ -329,6 +338,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::SpotLightComponent",
+                    "m_AttachParent": null,
                     "m_AttenuationFalloff": 2.0,
                     "m_AttenuationRadius": 10.0,
                     "m_CastShadow": true,
@@ -339,12 +349,12 @@
                     },
                     "m_InnerConeAngle": 30.0,
                     "m_Intensity": 0.20000000298023224,
-                    "m_LightColor": [
-                        1.0,
-                        1.0,
-                        1.0,
-                        1.0
-                    ],
+                    "m_LightColor": {
+                        "R": 1.0,
+                        "G": 1.0,
+                        "B": 1.0,
+                        "A": 1.0
+                    },
                     "m_Name": "",
                     "m_OuterConeAngle": 40.0,
                     "m_Owner": {
@@ -380,6 +390,7 @@
                 "Low": 11414526148972459514
             },
             "m_Name": "SpotLight",
+            "m_Parent": null,
             "m_RootComponent": {
                 "$guid": {
                     "high": 6300424985727356680,
@@ -392,6 +403,7 @@
             "m_Components": [
                 {
                     "$ptr_typeName": "minEngine::SkyBoxComponent",
+                    "m_AttachParent": null,
                     "m_EnvironmentMap": {
                         "$guid": {
                             "high": 17293822569102704641,
@@ -436,10 +448,368 @@
                 "Low": 9988776655443322110
             },
             "m_Name": "SkyBox",
+            "m_Parent": null,
             "m_RootComponent": {
                 "$guid": {
                     "high": 8844221100334455667,
                     "low": 7766554433221100987
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_AttachParent": {
+                        "$guid": {
+                            "high": 5681744671202297115,
+                            "low": 9920725021353707969
+                        }
+                    },
+                    "m_CastShadow": true,
+                    "m_Guid": {
+                        "High": 10776866520572120932,
+                        "Low": 11572262985098024276
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 9857531775437238383,
+                            "low": 2421337937482647406
+                        }
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 607701751770204618,
+                            "low": 9254168834165808632
+                        }
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 14175704348852043920,
+                            "low": 9643503011861292261
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            -3.4004902839660645,
+                            0.18265140056610107,
+                            -2.1783385276794434
+                        ],
+                        "Rotation": {
+                            "W": 0.9984449744224548,
+                            "X": 1.1070709682314828e-08,
+                            "Y": -0.0557464100420475,
+                            "Z": -1.4042171869732556e-08
+                        },
+                        "Scale": [
+                            0.25,
+                            0.25,
+                            0.25
+                        ]
+                    },
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 14175704348852043920,
+                "Low": 9643503011861292261
+            },
+            "m_Name": "CubeChild",
+            "m_Parent": {
+                "$guid": {
+                    "high": 2269251532856313338,
+                    "low": 11094257267653316277
+                }
+            },
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 10776866520572120932,
+                    "low": 11572262985098024276
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::SceneComponent",
+                    "m_AttachParent": null,
+                    "m_Guid": {
+                        "High": 14379007820242698489,
+                        "Low": 12906176939039664696
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 2638125029461344282,
+                            "low": 11521806217377604687
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        },
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    },
+                    "m_bActive": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::CanvasComponent",
+                    "m_Guid": {
+                        "High": 16698024109007719981,
+                        "Low": 9423984736587083939
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 2638125029461344282,
+                            "low": 11521806217377604687
+                        }
+                    },
+                    "m_ReferenceResolution": [
+                        1920.0,
+                        1080.0
+                    ],
+                    "m_RenderMode": 0,
+                    "m_ScaleMode": 0,
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 2638125029461344282,
+                "Low": 11521806217377604687
+            },
+            "m_Name": "Canvas",
+            "m_Parent": null,
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 14379007820242698489,
+                    "low": 12906176939039664696
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::WidgetComponent",
+                    "m_AnchorMax": [
+                        0.0,
+                        0.0
+                    ],
+                    "m_AnchorMin": [
+                        0.0,
+                        0.0
+                    ],
+                    "m_AnchorPreset": 0,
+                    "m_AttachParent": {
+                        "$guid": {
+                            "high": 14379007820242698489,
+                            "low": 12906176939039664696
+                        }
+                    },
+                    "m_Guid": {
+                        "High": 11747510681847024994,
+                        "Low": 11787705837599331194
+                    },
+                    "m_Margin": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 15849671995144946648,
+                            "low": 11008171569246777917
+                        }
+                    },
+                    "m_Size": [
+                        100.0,
+                        100.0
+                    ],
+                    "m_StableOrder": 1,
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        },
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    },
+                    "m_bActive": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::ImageComponent",
+                    "m_Color": {
+                        "R": 1.0,
+                        "G": 1.0,
+                        "B": 1.0,
+                        "A": 1.0
+                    },
+                    "m_Guid": {
+                        "High": 16110104361846459474,
+                        "Low": 13355631646625445949
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 15849671995144946648,
+                            "low": 11008171569246777917
+                        }
+                    },
+                    "m_Texture": {
+                        "$guid": {
+                            "high": 1547033894405426113,
+                            "low": 12891465852925505091
+                        }
+                    },
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 15849671995144946648,
+                "Low": 11008171569246777917
+            },
+            "m_Name": "Image",
+            "m_Parent": {
+                "$guid": {
+                    "high": 2638125029461344282,
+                    "low": 11521806217377604687
+                }
+            },
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 11747510681847024994,
+                    "low": 11787705837599331194
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::ImageComponent",
+                    "m_Color": {
+                        "R": 1.0,
+                        "G": 1.0,
+                        "B": 1.0,
+                        "A": 1.0
+                    },
+                    "m_Guid": {
+                        "High": 8015273559562866245,
+                        "Low": 11148523906412260798
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 3094225129843347382,
+                            "low": 11712543547976901286
+                        }
+                    },
+                    "m_Texture": null,
+                    "m_bActive": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::WidgetComponent",
+                    "m_AnchorMax": [
+                        0.0,
+                        0.0
+                    ],
+                    "m_AnchorMin": [
+                        0.0,
+                        0.0
+                    ],
+                    "m_AnchorPreset": 0,
+                    "m_AttachParent": {
+                        "$guid": {
+                            "high": 14379007820242698489,
+                            "low": 12906176939039664696
+                        }
+                    },
+                    "m_Guid": {
+                        "High": 1285154704021668153,
+                        "Low": 12836147986415005842
+                    },
+                    "m_Margin": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 3094225129843347382,
+                            "low": 11712543547976901286
+                        }
+                    },
+                    "m_Size": [
+                        100.0,
+                        100.0
+                    ],
+                    "m_StableOrder": 0,
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        },
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    },
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 3094225129843347382,
+                "Low": 11712543547976901286
+            },
+            "m_Name": "Image2",
+            "m_Parent": {
+                "$guid": {
+                    "high": 2638125029461344282,
+                    "low": 11521806217377604687
+                }
+            },
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 1285154704021668153,
+                    "low": 12836147986415005842
                 }
             }
         }
