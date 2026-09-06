@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `CORE-F08`
 - **Type:** Feature（Foundation）
-- **Status:** Done（S00–S01；S02 Deferred）
+- **Status:** Done（S00–S02）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-06（S00–S01 落地；`test parameter-store` PASS）
+- **Last updated:** 2026-09-06（S02 Schema JSON 往返 Done；`test parameter-store` PASS）
 - **Branch:** `feat/animation`（实现可随 ANIM 轨落地；**代码**在 Function/Framework，**不**依赖 Animation）
 - **Related:**
   - [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md)
@@ -302,9 +302,9 @@ S00 → S01 → (S02?) → ANIM-F03
 
 | 字段 | 内容 |
 |------|------|
-| Status | **Done**（S00–S01）；S02 ME_STRUCT 序列化 **Deferred** |
-| What's not | S02 Schema 反射序列化 |
-| Unblock | ANIM-F03 可开 Impl / 编码 |
+| Status | **Done**（S00–S02） |
+| What's not | Object/Vector 类型；完整 Blackboard 产品（Design Out） |
+| Unblock | ANIM-F03 资产内嵌 Schema 已解阻 |
 
 ---
 
@@ -317,3 +317,4 @@ S00 → S01 → (S02?) → ANIM-F03
 | 2026-09-05 | 补 Impl Plan；Bool=1B；链接 Impl；修正废弃名笔误 |
 | 2026-09-05 | 目录锁定：`Runtime/Function/Framework/Parameters/`（不再放 Core） |
 | 2026-09-06 | S00–S01 实现 + `parameter-store` PASS；Feature **Done**（S02 Deferred） |
+| 2026-09-06 | **S02 Done**：`ParameterValueType` ME_ENUM；Entry/Schema ME_STRUCT；JSON round-trip |

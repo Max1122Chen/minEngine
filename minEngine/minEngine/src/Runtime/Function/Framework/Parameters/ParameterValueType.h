@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Core.h"
+
 #include <cstdint>
 
 namespace minEngine
 {
+    ME_ENUM()
     enum class ParameterValueType : uint8_t
     {
         Bool = 0,
@@ -23,3 +26,5 @@ namespace minEngine
         static uint16_t AlignOf(ParameterValueType type);
     };
 }
+
+#include "Generated/Reflection/ParameterValueType.gen.h"

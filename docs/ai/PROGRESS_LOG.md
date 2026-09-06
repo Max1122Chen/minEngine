@@ -1,6 +1,18 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-06（CORE-F08 Done）
+Last updated: 2026-09-06（CORE-F08-S02 Done）
+
+### 2026-09-06 - CORE-F08-S02 Done: Schema ME_STRUCT JSON round-trip
+- **Code:** `ParameterValueType` ME_ENUM；`ParameterSchemaEntry` / `ParameterSchema` ME_STRUCT；Generated Reflection。
+- **Verify:** `minEngineTests.exe test parameter-store` — 7 cases / 95 asserts PASS（含 schema JSON round-trip）。
+- **Docs:** Design/Impl/Registry/ACTIVE_WORK → F08 **S00–S02 Done**；ANIM-F03 资产内嵌 Schema 解阻。
+- **Next:** 准备 F08-S02 commit；ANIM-F03 可全开编码。
+
+### 2026-09-06 - ANIM-F03 Design/Impl Planned（产品定稿扩写）
+- **Docs:** [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md)；Registry / ACTIVE_WORK → **Planned**。
+- **Locked:** Unity Mecanim-lite FSM（非 AnimBP）；资产即图（`EditorPos`）；Runtime 真源=StateMachine；`EditorGraph`+Pin=编辑投影（复用画布，不复用 Material IR）；Player∥GraphInstance 由 SMC 择一；参数仅 CORE-F08；Trigger=Anim Bool Raise/Consume；AnyState 数据预留 / Exit Time Deferred；图窗口 **S08 Deferred**。
+- **Depends:** CORE-F08-S02（Schema ME_STRUCT）由**并行 agent**；**禁止** Graph 侧 ParamDef 旁路。
+- **Code:** 未动。Next：S01 `Pose::Blend` 可先；S02 资产序列化等 F08-S02。
 
 ### 2026-09-06 - CORE-F08 Done: Parameter Schema / Layout / Store
 - **Code:** `Runtime/Function/Framework/Parameters/`（ValueType / Schema / Layout / Store）。

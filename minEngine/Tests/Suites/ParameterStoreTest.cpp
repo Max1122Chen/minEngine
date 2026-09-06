@@ -2,7 +2,10 @@
 #include "Runtime/Function/Framework/Parameters/ParameterSchema.h"
 #include "Runtime/Function/Framework/Parameters/ParameterStore.h"
 #include "Runtime/Function/Framework/Parameters/ParameterValueType.h"
+#include "Runtime/Core/Serialization/Serializer.h"
+#include "Runtime/Core/Serialization/Json.h"
 
+#include "EngineTestFixture.h"
 #include "doctest.h"
 
 #include <cstdint>
@@ -207,4 +210,58 @@ TEST_CASE("parameter-store: duplicate and empty name rejected [full]")
     ParameterLayout layout;
     REQUIRE(ParameterLayout::Compile(schema, layout, &error));
     CHECK(layout.GetEntryCount() == 1);
+}
+
+TEST_CASE("parameter-store: schema JSON round-trip [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    ParameterSchema source;
+    REQUIRE(source.AddEntry({"Speed", ParameterValueType::Float, MakeFloatDefault(2.5f)}));
+    REQUIRE(source.AddEntry({"Combo", ParameterValueType::Int32, MakeInt32Default(3)}));
+    REQUIRE(source.AddEntry({"Flag", ParameterValueType::Bool, MakeBoolDefault(true)}));
+
+    Json json;
+    const Serialization::SerializeResult writeResult =
+        Serialization::Serializer::SerializeObjectToJson("minEngine::ParameterSchema", &source, json);
+    REQUIRE(writeResult.ok);
+
+    ParameterSchema restored;
+    std::vector<Serialization::PendingObjectRef> unresolvedRefs;
+    const Serialization::SerializeResult readResult = Serialization::Serializer::DeserializeObjectFromJson(
+        "minEngine::ParameterSchema",
+        &restored,
+        json,
+        unresolvedRefs);
+    REQUIRE(readResult.ok);
+    CHECK(unresolvedRefs.empty());
+
+    REQUIRE(restored.GetEntryCount() == 3);
+    CHECK(restored.GetEntries()[0].Name == "Speed");
+    CHECK(restored.GetEntries()[0].Type == ParameterValueType::Float);
+    CHECK(restored.GetEntries()[0].DefaultBytes == MakeFloatDefault(2.5f));
+    CHECK(restored.GetEntries()[1].Name == "Combo");
+    CHECK(restored.GetEntries()[1].Type == ParameterValueType::Int32);
+    CHECK(restored.GetEntries()[1].DefaultBytes == MakeInt32Default(3));
+    CHECK(restored.GetEntries()[2].Name == "Flag");
+    CHECK(restored.GetEntries()[2].Type == ParameterValueType::Bool);
+    CHECK(restored.GetEntries()[2].DefaultBytes == MakeBoolDefault(true));
+
+    REQUIRE(restored.Validate());
+    auto layout = CompileSchema(restored);
+    ParameterStore store;
+    store.BindLayout(layout);
+
+    float speed = 0.0f;
+    int32_t combo = 0;
+    bool flag = false;
+    REQUIRE(store.TryGetFloat(0, speed));
+    REQUIRE(store.TryGetInt32(1, combo));
+    REQUIRE(store.TryGetBool(2, flag));
+    CHECK(speed == doctest::Approx(2.5f));
+    CHECK(combo == 3);
+    CHECK(flag == true);
 }

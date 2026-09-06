@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core.h"
 #include "Runtime/Function/Framework/Parameters/ParameterValueType.h"
 
 #include <cstdint>
@@ -9,17 +10,35 @@
 
 namespace minEngine
 {
+    ME_STRUCT()
     struct ParameterSchemaEntry
     {
+        ME_GENERATED_BODY(ParameterSchemaEntry)
+
+        ParameterSchemaEntry() = default;
+        ParameterSchemaEntry(std::string name, ParameterValueType type, std::vector<uint8_t> defaultBytes = {})
+            : Name(std::move(name))
+            , Type(type)
+            , DefaultBytes(std::move(defaultBytes))
+        {
+        }
+
+        ME_PROPERTY()
         std::string Name;
+
+        ME_PROPERTY()
         ParameterValueType Type = ParameterValueType::Float;
+
         // Interpreted by Type; empty => zero default at Compile.
+        ME_PROPERTY()
         std::vector<uint8_t> DefaultBytes;
     };
 
     // Ordered, closed declaration set. No runtime AddKey after Compile.
+    ME_STRUCT()
     class ParameterSchema
     {
+        ME_GENERATED_BODY(ParameterSchema)
     public:
         bool AddEntry(ParameterSchemaEntry entry, std::string* outError = nullptr);
         void Clear();
@@ -35,6 +54,9 @@ namespace minEngine
     private:
         static bool ValidateEntry(const ParameterSchemaEntry& entry, std::string* outError);
 
+        ME_PROPERTY()
         std::vector<ParameterSchemaEntry> m_Entries;
     };
 }
+
+#include "Generated/Reflection/ParameterSchema.gen.h"
