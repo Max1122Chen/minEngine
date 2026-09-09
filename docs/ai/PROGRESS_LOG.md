@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-06（CORE-F08-S02 Done）
+Last updated: 2026-09-06 (ANIM-F03 runtime MVP)
+
+
+### 2026-09-06 - ANIM-F03 runtime MVP: Graph SM + Pose Blend + SMC
+- **Code:** `Pose::Blend`; `AnimationGraph` / Instance / Loader (.meagraph); SMC Graph vs Player; AnyState + Trigger consume.
+- **Verify:** `minEngineTests.exe test animation-graph` - 3 cases / 28 asserts PASS; animation-clip / parameter-store / skeleton-pose regression PASS.
+- **Docs:** Design/Impl/Registry/ACTIVE_WORK -> In Progress; S08 graph window Deferred.
+- **Next:** prepare commit (do not commit local Animations/Sources/build_*.log/scenes); optional humanoid visual.
 
 ### 2026-09-06 - CORE-F08-S02 Done: Schema ME_STRUCT JSON round-trip
 - **Code:** `ParameterValueType` ME_ENUM；`ParameterSchemaEntry` / `ParameterSchema` ME_STRUCT；Generated Reflection。
@@ -11,8 +18,8 @@ Last updated: 2026-09-06（CORE-F08-S02 Done）
 ### 2026-09-06 - ANIM-F03 Design/Impl Planned（产品定稿扩写）
 - **Docs:** [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md)；Registry / ACTIVE_WORK → **Planned**。
 - **Locked:** Unity Mecanim-lite FSM（非 AnimBP）；资产即图（`EditorPos`）；Runtime 真源=StateMachine；`EditorGraph`+Pin=编辑投影（复用画布，不复用 Material IR）；Player∥GraphInstance 由 SMC 择一；参数仅 CORE-F08；Trigger=Anim Bool Raise/Consume；AnyState 数据预留 / Exit Time Deferred；图窗口 **S08 Deferred**。
-- **Depends:** CORE-F08-S02（Schema ME_STRUCT）由**并行 agent**；**禁止** Graph 侧 ParamDef 旁路。
-- **Code:** 未动。Next：S01 `Pose::Blend` 可先；S02 资产序列化等 F08-S02。
+- **Depends:** CORE-F08-S02 **已合入** `99d05b9`；**禁止** Graph 侧 ParamDef 旁路。
+- **Code:** 未动。Next：Pre-flight → S01 `Pose::Blend` → S02–S05。
 
 ### 2026-09-06 - CORE-F08 Done: Parameter Schema / Layout / Store
 - **Code:** `Runtime/Function/Framework/Parameters/`（ValueType / Schema / Layout / Store）。

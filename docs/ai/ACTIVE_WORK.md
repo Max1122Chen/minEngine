@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-06（**CORE-F08 S00–S02 Done**；ANIM-F03 **Planned** 可全开）
+Last updated: 2026-09-06（ANIM-F03 **In Progress** runtime MVP）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,7 +9,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/animation`）
 
-### ANIM-F03 — Animation Graph MVP ← **Planned**
+### ANIM-F03 — Animation Graph MVP ← **In Progress**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
@@ -17,7 +17,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 目标 | Unity 式 FSM（State+Transition+Params）+ Pose Blend；参数经 CORE-F08；Player∥Instance |
 | Out | AnimBP VM / BlendTree / Event / Retarget / 自研参数袋；完整图 UI → S08 Deferred |
 | Locked | 资产即图（EditorPos）；EditorGraph 投影真源=SM；内嵌 Schema 用 CORE-F08（**S02 已 Done**） |
-| Next | Pre-flight → **S01 Pose::Blend**；再 S02–S05 资产/Instance |
+| Next | 准备 commit；可选人型 Idle↔Walk 目视；S08 Deferred |
 
 ### CORE-F08 — Parameter Schema / Layout / Store ← **Done**
 
@@ -84,7 +84,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **内核 / 编辑器** | `master` | `master` | CORE-F05 Done；ED-F02 等可并行 |
 
 **明确 Defer：** `.memesh` · Animation Event（暂不登记）· IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned  
-**下一开干：** **ANIM-F03** Pre-flight → S01 Blend → 资产/Instance（CORE-F08 **S02 已解阻**）；图编辑 S08 分期
+**下一开干：** ANIM-F03 准备 commit（可选人型目视）；S08 图窗 Deferred
 
 ---
 
@@ -168,7 +168,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 分支（将来） | 前置 |
 |----|--------------|------|
-| `ANIM-F03` | `feat/animation` | **Planned**；F08 全切片 Done，可编码 |
+| `ANIM-F03` | `feat/animation` | **In Progress** runtime MVP；S08 Deferred |
 | Animation Event / IK / Root Motion / Retarget | — | 未登记；Graph MVP 后再评估 |
 | `UI-F01` | `feat/ui` | `RND-F16` Sprite 2D |
 | `RND-F16` | `feat/sprite`（未建） | — |

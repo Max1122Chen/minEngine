@@ -27,6 +27,7 @@
 #include "Suites/CommandSystemTest.h"
 #include "Suites/SkeletonPoseTest.h"
 #include "Suites/AnimationClipTest.h"
+#include "Suites/AnimationGraphTest.h"
 #include "Suites/ParameterStoreTest.h"
 
 namespace minEngine
@@ -376,6 +377,23 @@ namespace minEngine
             }
         };
 
+        struct AnimationGraphTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"animation-graph", "Animation Graph", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'animation-graph'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "animation-graph",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct ParameterStoreTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -415,6 +433,7 @@ namespace minEngine
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
         using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
+        using AnimationGraphSuite = TypedTestSuite<AnimationGraphTestSuiteTraits>;
         using ParameterStoreSuite = TypedTestSuite<ParameterStoreTestSuiteTraits>;
 
         void RegisterAllTestSuites()
@@ -447,6 +466,7 @@ namespace minEngine
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());
             registry.Register(AnimationClipSuite::Get());
+            registry.Register(AnimationGraphSuite::Get());
             registry.Register(ParameterStoreSuite::Get());
             s_Registered = true;
         }

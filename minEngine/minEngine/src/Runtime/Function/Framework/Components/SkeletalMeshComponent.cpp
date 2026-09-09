@@ -7,7 +7,6 @@
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/Skeleton.h"
 
-
 namespace minEngine
 {
     SkeletalMeshComponent::SkeletalMeshComponent()
@@ -24,16 +23,36 @@ namespace minEngine
         }
 
         m_AnimationPlayer.SetClip(m_AnimationClip);
-        // New clip assignment: allow PlayOnAwake to fire again (Audio re-registers on activate;
-        // here Inspector can swap clips without deactivate).
         m_bPlayOnAwakeTriggered = false;
-            }
+    }
+
+    void SkeletalMeshComponent::SyncGraphFromProperty()
+    {
+        if (m_GraphInstance.GetGraph() == m_AnimationGraph.get())
+        {
+            return;
+        }
+
+        m_GraphInstance.SetGraph(m_AnimationGraph);
+        m_bPlayOnAwakeTriggered = false;
+    }
 
     bool SkeletalMeshComponent::TryConsumePlayOnAwake()
     {
         if (!m_bPlayOnAwake || m_bPlayOnAwakeTriggered)
         {
             return false;
+        }
+
+        if (UsesGraphPath())
+        {
+            SyncGraphFromProperty();
+            if (!m_GraphInstance.IsBound() || !EnsureGraphSkeletonCompatible())
+            {
+                return false;
+            }
+            m_bPlayOnAwakeTriggered = true;
+            return true;
         }
 
         if (m_AnimationClip == nullptr)
@@ -58,6 +77,15 @@ namespace minEngine
             return;
         }
 
+        if (UsesGraphPath())
+        {
+            m_GraphInstance.ResetToDefaultState();
+            ME_CORE_INFO(
+                "SkeletalMeshComponent: PlayOnAwake -> Graph default state='{}'",
+                m_GraphInstance.GetCurrentStateName());
+            return;
+        }
+
         m_AnimationPlayer.Play();
         ME_CORE_INFO(
             "SkeletalMeshComponent: PlayOnAwake -> Playing clip='{}' duration={:.3f}s tracks={}",
@@ -70,21 +98,35 @@ namespace minEngine
     {
         Component::OnActivate();
         m_bPlayOnAwakeTriggered = false;
-                ProcessPlayOnAwake();
+        ProcessPlayOnAwake();
     }
 
     void SkeletalMeshComponent::OnDeactivate()
     {
         m_AnimationPlayer.Stop();
         m_bPlayOnAwakeTriggered = false;
-                Component::OnDeactivate();
+        Component::OnDeactivate();
     }
 
     void SkeletalMeshComponent::Tick(float deltaTime)
     {
-        SyncPlayerClipFromProperty();
+        if (UsesGraphPath())
+        {
+            SyncGraphFromProperty();
+            ProcessPlayOnAwake();
 
-        // Same lifecycle idea as AudioSystem::ProcessPlayOnAwake: keep trying until ready.
+            if (!m_GraphInstance.IsBound() || !EnsureGraphSkeletonCompatible())
+            {
+                return;
+            }
+
+            m_GraphInstance.Update(deltaTime, m_LocalPose);
+            m_bPoseDirty = true;
+            MarkRenderStateDirty();
+            return;
+        }
+
+        SyncPlayerClipFromProperty();
         ProcessPlayOnAwake();
 
         if (m_AnimationPlayer.GetState() != AnimationPlayState::Playing)
@@ -110,7 +152,6 @@ namespace minEngine
         }
         m_Mesh = mesh;
         ResetToBindPose();
-        // Mesh/skeleton may become available after clip was assigned.
         m_bPlayOnAwakeTriggered = false;
         MarkRenderStateDirty();
     }
@@ -168,7 +209,18 @@ namespace minEngine
         m_AnimationClip = clip;
         m_AnimationPlayer.SetClip(clip);
         m_bPlayOnAwakeTriggered = false;
-                ProcessPlayOnAwake();
+        if (!UsesGraphPath())
+        {
+            ProcessPlayOnAwake();
+        }
+    }
+
+    void SkeletalMeshComponent::SetAnimationGraph(const std::shared_ptr<AnimationGraph>& graph)
+    {
+        m_AnimationGraph = graph;
+        m_GraphInstance.SetGraph(graph);
+        m_bPlayOnAwakeTriggered = false;
+        ProcessPlayOnAwake();
     }
 
     bool SkeletalMeshComponent::EnsureClipSkeletonCompatible() const
@@ -213,6 +265,60 @@ namespace minEngine
                     meshSkeleton->GetGuid().ToString());
             }
             return false;
+        }
+
+        return true;
+    }
+
+    bool SkeletalMeshComponent::EnsureGraphSkeletonCompatible() const
+    {
+        AnimationGraph* graph = m_GraphInstance.GetGraph();
+        if (graph == nullptr)
+        {
+            return false;
+        }
+
+        Skeleton* meshSkeleton = GetSkeleton();
+        if (meshSkeleton == nullptr)
+        {
+            static thread_local uint32_t s_NullMeshSkeletonLogCounter = 0;
+            if ((s_NullMeshSkeletonLogCounter++ % 120u) == 0u)
+            {
+                ME_CORE_WARN(
+                    "SkeletalMeshComponent: cannot play AnimationGraph — mesh has no Skeleton.");
+            }
+            return false;
+        }
+
+        for (const AnimState& state : graph->GetStateMachine().States)
+        {
+            if (state.Clip == nullptr)
+            {
+                continue;
+            }
+            Skeleton* clipSkeleton = state.Clip->GetSkeleton();
+            if (clipSkeleton == nullptr)
+            {
+                ME_CORE_ERROR(
+                    "SkeletalMeshComponent: AnimationGraph state '{}' clip has no Skeleton.",
+                    state.Name);
+                return false;
+            }
+            if (clipSkeleton != meshSkeleton
+                && clipSkeleton->GetGuid() != meshSkeleton->GetGuid())
+            {
+                static thread_local uint32_t s_GuidMismatchLogCounter = 0;
+                if ((s_GuidMismatchLogCounter++ % 120u) == 0u)
+                {
+                    ME_CORE_ERROR(
+                        "SkeletalMeshComponent: AnimationGraph state '{}' Skeleton GUID mismatch "
+                        "(clip='{}', mesh='{}').",
+                        state.Name,
+                        clipSkeleton->GetGuid().ToString(),
+                        meshSkeleton->GetGuid().ToString());
+                }
+                return false;
+            }
         }
 
         return true;

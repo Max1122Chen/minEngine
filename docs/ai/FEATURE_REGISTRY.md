@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-06（`CORE-F08` **S00–S02 Done**；ANIM-F03 **Planned**）
+Last updated: 2026-09-06（ANIM-F03 **In Progress** runtime MVP）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -52,7 +52,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Skeleton / SkeletalMesh / GPU skinning） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · `feat/animation` · Shadow skinned **Deferred**；扭骨 UX Deferred |
 | `ANIM-F02` | Clip Playback（AnimationClip + Player） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) · S00–S03 Done；人型 Walking 目视 PASS；MVP 过渡（骨 Track + TryGet 壳） |
-| `ANIM-F03` | Animation Graph MVP（Unity 式 FSM + Params + Transition Blend） | **Planned** | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · 依赖 F02 + CORE-F08（**S02 Done**，可内嵌 Schema）；图编辑 S08 Deferred |
+| `ANIM-F03` | Animation Graph MVP（Unity 式 FSM + Params + Transition Blend） | **In Progress** | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · S01–S04/S06/S07 Done；`test animation-graph` PASS；S08 Deferred |
 | `ASSET-F01` | External Import Pipeline（FBX/glTF 等为 Source → 原生资产） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S00–S03 Done；S04 / `.memesh` **Deferred**；续作见 `ASSET-F02` |
 | `ASSET-F02` | Formal Import/Load 注册式管线 + Reusable ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) · S00–S05 Done；自动化+手动验 PASS |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |

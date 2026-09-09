@@ -10,6 +10,7 @@ namespace minEngine
         assetManager.RegisterLoadHandler("SkeletalMesh", &AssetManager::LoadHandler_SkeletalMesh);
         assetManager.RegisterLoadHandler("Skeleton", &AssetManager::LoadHandler_Skeleton);
         assetManager.RegisterLoadHandler("AnimationClip", &AssetManager::LoadHandler_AnimationClip);
+        assetManager.RegisterLoadHandler("AnimationGraph", &AssetManager::LoadHandler_AnimationGraph);
         assetManager.RegisterLoadHandler("Texture2D", &AssetManager::LoadHandler_Texture2D);
         assetManager.RegisterLoadHandler("Scene", &AssetManager::LoadHandler_Scene);
         assetManager.RegisterLoadHandler("Material", &AssetManager::LoadHandler_Material);

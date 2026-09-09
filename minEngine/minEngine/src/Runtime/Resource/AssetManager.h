@@ -34,6 +34,7 @@ namespace minEngine
     class EnvironmentMap;
     class AudioClip;
     class AnimationClip;
+    class AnimationGraph;
     class Asset;
     class AssetManager;
 
@@ -290,6 +291,8 @@ namespace minEngine
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_AnimationClip(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_AnimationGraph(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Texture2D(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Scene(
@@ -381,6 +384,8 @@ namespace minEngine
     std::shared_ptr<AudioClip> AssetManager::LoadAsset_Impl<AudioClip>(const AssetMeta& meta);
     template<>
     std::shared_ptr<AnimationClip> AssetManager::LoadAsset_Impl<AnimationClip>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<AnimationGraph> AssetManager::LoadAsset_Impl<AnimationGraph>(const AssetMeta& meta);
 
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;

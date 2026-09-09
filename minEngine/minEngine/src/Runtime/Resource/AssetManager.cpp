@@ -6,6 +6,7 @@
 #include "Runtime/Resource/Loaders/AssimpMeshImportUtil.h"
 #include "Runtime/Resource/Loaders/SkeletalMeshLoader.h"
 #include "Runtime/Resource/Loaders/AnimationClipLoader.h"
+#include "Runtime/Resource/Loaders/AnimationGraphLoader.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -14,6 +15,7 @@
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/AnimationClip.h"
+#include "Runtime/Function/Animation/AnimationGraph.h"
 #include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
@@ -1778,6 +1780,13 @@ namespace minEngine
     {
         return manager.LoadTypedAssetAsBase<AnimationClip>(
             meta, outErrorMessage, "failed to load AnimationClip");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_AnimationGraph(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<AnimationGraph>(
+            meta, outErrorMessage, "failed to load AnimationGraph");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Texture2D(

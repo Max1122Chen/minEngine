@@ -1,6 +1,8 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Animation/AnimationClip.h"
+#include "Runtime/Function/Animation/AnimationGraph.h"
+#include "Runtime/Function/Animation/AnimationGraphInstance.h"
 #include "Runtime/Function/Animation/AnimationPlayer.h"
 #include "Runtime/Function/Animation/Pose.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
@@ -41,11 +43,17 @@ namespace minEngine
         void SetAnimationClip(const std::shared_ptr<AnimationClip>& clip);
         AnimationClip* GetAnimationClip() const { return m_AnimationClip.get(); }
 
+        void SetAnimationGraph(const std::shared_ptr<AnimationGraph>& graph);
+        AnimationGraph* GetAnimationGraph() const { return m_AnimationGraph.get(); }
+
         void SetPlayOnAwake(bool playOnAwake) { m_bPlayOnAwake = playOnAwake; }
         bool GetPlayOnAwake() const { return m_bPlayOnAwake; }
 
         AnimationPlayer& GetAnimationPlayer() { return m_AnimationPlayer; }
         const AnimationPlayer& GetAnimationPlayer() const { return m_AnimationPlayer; }
+
+        AnimationGraphInstance& GetAnimationGraphInstance() { return m_GraphInstance; }
+        const AnimationGraphInstance& GetAnimationGraphInstance() const { return m_GraphInstance; }
 
         Math::Geometry::AABB GetBoundingBox() const override;
         PrimitiveSceneProxy* CreateSceneProxy() override;
@@ -60,10 +68,12 @@ namespace minEngine
     private:
         void RebuildPaletteIfNeeded();
         bool EnsureClipSkeletonCompatible() const;
+        bool EnsureGraphSkeletonCompatible() const;
         void SyncPlayerClipFromProperty();
-        // Audio-like: consume once when clip+skeleton are ready, then Play().
+        void SyncGraphFromProperty();
         bool TryConsumePlayOnAwake();
         void ProcessPlayOnAwake();
+        bool UsesGraphPath() const { return m_AnimationGraph != nullptr; }
 
         ME_PROPERTY()
         std::shared_ptr<SkeletalMesh> m_Mesh{nullptr};
@@ -73,11 +83,15 @@ namespace minEngine
         ME_PROPERTY()
         std::shared_ptr<AnimationClip> m_AnimationClip{nullptr};
 
+        ME_PROPERTY()
+        std::shared_ptr<AnimationGraph> m_AnimationGraph{nullptr};
+
         // Same idea as AudioComponent::m_bPlayOnAwake. Default true for F02 authoring/test.
         ME_PROPERTY(EditAnywhere)
         bool m_bPlayOnAwake{true};
 
         AnimationPlayer m_AnimationPlayer;
+        AnimationGraphInstance m_GraphInstance;
         Pose m_LocalPose;
         std::vector<Matrix4> m_SkinningPalette;
         bool m_bPoseDirty = true;

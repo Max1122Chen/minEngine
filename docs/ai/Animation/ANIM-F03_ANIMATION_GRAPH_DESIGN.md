@@ -3,273 +3,357 @@
 ## Meta
 - **ID:** `ANIM-F03`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-06（CORE-F08 已 Done；本 Feature 可开 Impl）
+- **Last updated:** 2026-09-06（runtime MVP；`test animation-graph` PASS）
 - **Branch:** `feat/animation`
 - **Related:**
-  - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
+  - [Implementation Plan](./ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - Prerequisite: [ANIM-F01](./ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md)（Done）· [ANIM-F02](./ANIM-F02_CLIP_PLAYBACK_DESIGN.md)（Done）
-  - Shared params: [CORE-F08 Design](../Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](../Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md)（**已落地**）
+  - Shared params: [CORE-F08 Design](../Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](../Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md)
   - Asset Import: [ASSET-F02](../Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md)（Done；多 Clip 共用 Skeleton）
-  - Input brief: [`docs/external/minEngine — 3D Animation System Development Brief.md`](../../external/minEngine%20—%203D%20Animation%20System%20Development%20Brief.md)
-- **Depends on:** `ANIM-F02`（已满足）；`CORE-F08`（**Done** — Parameter Schema/Layout/Store）
-- **Implementation Plan:** 审阅通过后补 `ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md`
+  - Editor substrate: `Runtime/Function/EditorGraph/`（与 Material 同 canvas 能力，不同 schema）
+- **Depends on:**
+  - `ANIM-F02` — **Done**（`AnimationClip` / `AnimationPlayer` / SMC 单 Clip 路径）
+  - `CORE-F08` S00–S02 — **Done**（含 Schema `ME_STRUCT` JSON 往返 `99d05b9`；Graph 可直接内嵌 `ParameterSchema`；**禁止** ParamDef 旁路）
+- **Implementation Plan:** [ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md](./ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md)
 
 ## TL;DR
-把「单 Clip Player」升级为 **参数驱动的轻量 Animation Graph**（State Machine + Transition + Pose Blend），定位接近精简 Animator Controller，**不是** UE AnimBP 节点 VM。  
-参数存储 **不**在本 Feature 实现：依赖 **CORE-F08**（Schema→Layout→Store）。Graph 内嵌/引用 `ParameterSchema`，Instance 持有 `ParameterStore`；Trigger 消费为 Anim 策略层。
+定位 **Unity Mecanim-lite FSM**（State + Transition + Params），**不是** UE AnimBP 节点 VM。  
+资产从 Day-1 即可编辑（State / Transition 带 `EditorPos`）；**Runtime 真相 = `AnimStateMachine` 数据**；`EditorGraph` + Pin = 编辑/呈现基板（与 Material 同 canvas 能力，不同 schema）。  
+参数只走 **CORE-F08** `ParameterStore`。`AnimationGraphInstance` 与 `AnimationPlayer` 是 **并行 Pose 生产者**；`SkeletalMeshComponent`（SMC）二选一。
 
 ## Scope
-- **In:**
-  - 参数：消费 **CORE-F08** `ParameterSchema` / `ParameterStore`（Bool/Int/Float）；Trigger = Anim 层策略
-  - 资产：`AnimationGraph`（参数声明、State→Clip、Transition+条件+blendTime）
-  - Runtime：Graph Instance（参数袋 + SM + 过渡双 Clip 评价 + Pose Blend）→ Pose
-  - 接入：`SkeletalMeshComponent` 在赋 Graph 时优先走 Graph；否则保留 F02 单 Clip Player
-  - Demo：同一 Skeleton 上 Idle↔Walk（`Speed` float + 过渡混合）
-  - 单测：Pose Blend、条件过渡、参数 Set/Get/Trigger consume
-- **Out:**
-  - 完整节点图编辑器 / AnimBP VM / Blend Tree / Layer / Mask / Additive / Montage
-  - Animation Event（建议后续 `ANIM-F04`）
-  - IK / Root Motion / Retarget / 引擎内重定向
-  - Parameter 基础设施实现（→ **CORE-F08**）
-  - 完整 AI Blackboard（Observer / Object / Synced / 动态键）
-  - Lua ScriptBinding 必做（C++ API 先落地；Lua 可标后续切片）
+
+### In
+- 资产：`AnimationGraph`（内嵌 / 引用 `ParameterSchema`、States、Transitions、DefaultState；`EditorPos`）
+- Runtime：`AnimationGraphInstance`（Store + SM + 过渡双 Clip 评价 + `Pose::Blend`）→ Pose
+- 参数：消费 CORE-F08；Trigger = Anim 层 Bool Raise/Consume（非 F08 新 ValueType）
+- SMC：有 Graph → Instance；否则 → F02 Player
+- EditorGraph 投影：Graph 真相 → EditorGraph 呈现（AnimGraphWindow 可分阶段）
+- Demo：同 Skeleton Idle↔Walk（`Speed` + blend）；单测 Blend / 条件 / Trigger
+
+### Out（分阶段切片 / 不进 MVP 主路径）
+- 完整 AnimBP 节点 VM / BlendTree / Layers / Mask / Additive / Montage
+- Animation Event / IK / Root Motion / Retarget
+- 第二套参数袋 / 完整 Blackboard 产品
+- 独立 `AnimatorComponent`（SMC 内嵌优先）
+- 完整图编辑器 UX 作为 Day-1 阻塞（`AnimGraphWindow` = S08 Deferred；数据层先可序列化）
 
 ## Locked decisions
 
 | # | 决策 | 说明 |
 |---|------|------|
-| 1 | 产品形态 | **数据驱动 SM Graph**，非节点 VM |
-| 2 | Player vs Graph | **保留** `AnimationPlayer`（单 Clip）；Graph **不**塞进 Player；过渡期由 Graph 持双时钟并 Blend |
-| 3 | Component 挂载 | Graph Instance **组合进** `SkeletalMeshComponent`（有 Graph 则走 Graph，否则走 Player）。独立 `AnimatorComponent` **Deferred** |
-| 4 | 参数基础设施 | **依赖 CORE-F08**；Anim 与未来 Blackboard **共享 Layout/Store**，不共享 Blackboard 产品 |
-| 5 | 值类型 MVP | Store：`Bool`/`Int`/`Float`；**Trigger** = Anim 对 Bool（或专用 API）的 raise/consume |
-| 6 | 多 Clip 同骨 | 各 Clip Import 时指向 **同一** `.meskeleton`（与 Mesh buddy 同 Guid）；引擎不做 Retarget |
-| 7 | 缺轨 | 评价仍 FillBind + 覆盖有轨分量（同 F02） |
-| 8 | 过渡混合 | Local Pose TRS：Pos/Scale Lerp，Rot Slerp；`alpha` 由 blendTime 线性（曲线后议） |
-| 9 | 编辑器 | MVP：**无**图编辑器；资产可序列化 + Inspector 最小赋 Graph / 调参 |
-| 10 | Event | **Out of F03** |
+| 1 | 产品形态 | **Unity-like FSM**（State + Transition + Params）；**非** UE AnimBP VM |
+| 2 | Graph-is-product | 资产从 Day-1 可编辑；`EditorPos` 进资产；真相在 SM 数据，非临时表 |
+| 3 | 并行生产者 | `AnimationGraphInstance` \|\| `AnimationPlayer`；SMC 选一；**不**把 SM 塞进 Player |
+| 4 | SMC 挂载 | Graph Instance **嵌入** SMC；独立 `AnimatorComponent` **Deferred** |
+| 5 | 参数 | **仅 CORE-F08**；禁止 Anim 自研 ParamDef / 第二袋 |
+| 6 | Trigger | Anim 策略：`Raise` / `Consume`（建议基于 Bool 槽）；匹配成功边后 Consume |
+| 7 | 同骨 | 图内 Clip **同一** `.meskeleton` Guid；引擎不做 Retarget |
+| 8 | 缺轨 | 评价前 `FillBind` + 覆盖有轨分量（同 F02） |
+| 9 | TRS Blend | Pos/Scale **Lerp**，Rot **Slerp**；`alpha` 对 `blendTime` **线性**（曲线后议） |
+| 10 | AnyState / Entry | **数据字段预留**；Runtime 可分阶段启用（S06） |
+| 11 | Exit Time | **Deferred**（字段可注释预留，不实现） |
+| 12 | EditorGraph | **复用** `EditorGraph` / Pin / ax 画布；Pin = **视觉连接**；不复用 MaterialEdGraph / NodeDef / MIR |
+| 13 | Event | **Out of F03**（建议后续 Feature） |
 
 ## Reader quick start
-1. 本文件：§0 共享层论点 · Locked · §3 数据流 · §4 结构
-2. Brief Tier 1（Animator / SM / Params / Blend）；Event 延后
-3. F02：`AnimationPlayer` / `AnimationClip::Evaluate` / SMC 兼容检查
+1. 本文件：§0 定位 · Locked · §3 数据流 / 结构 / SMC / Editor 边界
+2. [Implementation Plan](./ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) — S00–S08
+3. 代码入口（实现后）：`Animation/` Graph + `Framework/Parameters/` + `EditorGraph/`
 
 ---
+## 0) Product positioning（产品定位）
 
-## 0) 参数基础设施（依赖 CORE-F08）
+### 0.1 Unity vs AnimBP vs UEdGraph family
 
-参数袋实现见 [CORE-F08](../Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md)。  
-代码目录（已锁）：`Runtime/Function/Framework/Parameters/`（非 Animation、非 Core）。
+| 参照系 | 我们学什么 | 我们不学什么 |
+|--------|------------|--------------|
+| **Unity Mecanim / Animator Controller** | FSM：State、Transition、Parameters、AnyState 语义；Controller 即资产 | 完整 BlendTree 图、Layer 权重栈、Avatar Mask 全套 |
+| **UE AnimBP（AnimInstance VM）** | Pose 产出进 Component 的直觉 | 节点图 VM、AnimGraph 编译、AnimNode 网络求值 |
+| **UE UEdGraph 家族（EdGraph / Schema）** | 编辑器图 = **呈现与编辑**；运行时另有真相数据 | 把编辑器节点直接当 Runtime 执行图 |
 
-**与 UE 对齐的产品理解：**
-- AnimBP ≈ BP **类资产**上的变量生态 —— minEngine **不**走这条路做 Graph 参数。
-- Blackboard ≈ **数据资产** + 紧凑实例内存 —— 与 CORE-F08 同构；完整 BB 产品仍未来再做。
+结论：F03 = **Mecanim-lite 数据驱动 SM** + **可编辑图资产**；EditorGraph 是 Material 同级的 **canvas 基板**，不是 AnimBP。
 
-本 Feature 只：**声明 Graph 用哪些 ParameterSchemaEntry、过渡如何读 Store、Trigger 如何消费**。
+### 0.2 CORE-F08 note
+- 代码目录（已锁）：`Runtime/Function/Framework/Parameters/`
+- Graph **只消费** Schema / Layout / Store；**不**实现第二参数袋
+- Schema 写入 Graph 资产：直接内嵌 CORE-F08 `ParameterSchema`（S02 Done）；**禁止** ParamDef 旁路
+- Trigger **不是** F08 ValueType；在 Anim 策略层用 Bool Raise/Consume
+
+### 0.3 Glossary
+
+| Term | Meaning |
+|------|---------|
+| AnimationGraph | 资产：Schema + StateMachine + 编辑元数据 |
+| AnimStateMachine | Runtime 真相：States / Transitions / Default |
+| AnimState | 一状态 → 一 Clip（MVP）；含 `EditorPos` |
+| AnimTransition | From→To + Conditions + BlendDuration |
+| AnimCondition | 对 Store 的比较 / Trigger IsSet |
+| AnimationGraphInstance | Runtime：Store + SM 时钟 + Blend |
+| EditorGraph / Pin | 编辑呈现基板；Pin 为视觉连接，非 Material MIR |
+| Pose producer | Player **或** GraphInstance；SMC 选一 |
+
+---
 
 ## 1) 背景与目标
 
 ### 1.1 现状
 - F01：Skeleton / Pose / GPU skinning
-- F02：单 Clip + `AnimationPlayer` ⊏ SMC；多 Clip **可**共用同一 Skeleton（Import 时显式选择）
-- 无参数袋、无 SM、无 Pose Blend、无 Graph 资产
+- F02：单 Clip + `AnimationPlayer` ⊂ SMC；多 Clip 可共用同一 Skeleton（Import 显式选择）
+- CORE-F08 S00–S02 **Done**（Schema 可内嵌序列化）
+- 无 SM、无 Pose Blend、无 Graph 资产、无 Anim 图窗
 
 ### 1.2 目标
-Gameplay 通过参数驱动状态切换，过渡期视觉连续，输出仍是 **Pose → 既有 palette 路径**。
+Gameplay 通过参数驱动状态切换；过渡期视觉连续；输出仍是 **Pose → 既有 palette 路径**。
 
 **成功标准：**
-1. 同一 Skeleton 的 Idle/Walk 两 Clip + 一 Graph；`Speed` 跨阈值时过渡混合可目视
-2. 参数经 CORE-F08 Store；Graph 仅通过 Store 读参
+1. 同 Skeleton 两 Clip + 一 Graph；`Speed` 跨阈值时过渡混合可目视
+2. 参数只经 CORE-F08 Store；条件只读 Store
 3. 未赋 Graph 时 F02 单 Clip 路径仍可用
+4. 资产可保存 `EditorPos`；真相可投影到 EditorGraph（窗体可后置）
 
 ### 1.3 与 Brief 对齐
-对应 Brief **Step 5–6**（Pose Blend → Animator+SM）。**Step 7 Event** 不进 F03。到达 Idle/Walk（+可选 Attack 无 Event）后，按 Brief 停止线克制扩展。
+对应 Brief **Step 5+**（Pose Blend + Animator/SM）；**Step 7 Event** 不进 F03。到达 Idle/Walk（可选 Attack Trigger 仍无 Event）后克制扩展。
 
 ---
 
-## 2) 平行产品线
+## 2) 平行产品线（F02 vs F03）
 
-| 层 | F02 | F03 |
-|----|-----|-----|
-| 共享 | — | **CORE-F08** `ParameterSchema`/`ParameterStore` |
-| Asset | AnimationClip | **AnimationGraph**（引用多个 Clip） |
-| Runtime | AnimationPlayer | **AnimationGraphInstance** |
-| Component | Player 驱动 Pose | Graph **或** Player |
+| 轴 | F02 Clip Playback | F03 Animation Graph |
+|----|-------------------|---------------------|
+| 共享参数 | （无） | **CORE-F08** Schema / Store |
+| Asset | `AnimationClip` | **`AnimationGraph`**（引用多个 Clip） |
+| Runtime | `AnimationPlayer` | **`AnimationGraphInstance`** |
+| Component | Player 驱动 Pose | Instance **或** Player（互斥） |
+| 编辑 | Inspector / Import | SM 数据 + EditorGraph 投影（窗体分阶段） |
 | Render | 无改 | **无改** |
 
 ---
-
 ## 3) 方案
 
-### 3.1 数据流
+### 3.1 Runtime dataflow
 
 ```text
 Gameplay / Editor / (future Lua)
-        │ SetFloat/Bool/Int / SetTrigger
-        ▼
- ParameterStore   ◄── CORE-F08
-        │
-        ▼
- AnimationGraphInstance
-   ├─ read transitions (conditions on ParameterStore)
-   ├─ advance state / blend alpha
-   ├─ ClipA.Evaluate(tA) → PoseA
-   ├─ ClipB.Evaluate(tB) → PoseB   (only while blending)
-   └─ Pose::Blend(PoseA, PoseB, alpha) → outPose
-        │
-        ▼
- SkeletalMeshComponent → palette → GPU
+        |
+        |  SetFloat / SetBool / SetInt / SetTrigger
+        v
+  ParameterStore  <── CORE-F08 (Layout from Schema)
+        |
+        v
+  AnimationGraphInstance
+   |- evaluate transition conditions (read Store)
+   |- advance state / blend alpha
+   |- ClipA.Evaluate(tA) -> PoseA
+   |- ClipB.Evaluate(tB) -> PoseB   (only while blending)
+   `- Pose::Blend(PoseA, PoseB, alpha) -> outPose
+        |
+        v
+  SkeletalMeshComponent -> bone palette -> GPU
+
+No Graph assigned:
+  AnimationPlayer.Update -> Clip.Evaluate -> Pose
 ```
 
-单 Clip 路径（无 Graph）保持：
+### 3.2 Edit vs truth dataflow
 
 ```text
-AnimationPlayer.Update → Clip.Evaluate → Pose
+  AnimationGraph (asset truth)
+       |
+       |  AnimStateMachine + Schema + EditorPos
+       |  (serialize / load; Schema embed via CORE-F08 ME_STRUCT)
+       v
+  EditorGraph projection
+       |  nodes/pins for States & Transitions (visual only)
+       |  same canvas stack as Material (EditorGraph + Pin + ax)
+       |  NOT MaterialEdGraph / NodeDef / MIR
+       v
+  AnimGraphWindow (S08; may be Deferred)
+       |
+       `- edits write back to AnimationGraph truth
 ```
 
-### 3.2 参数（CORE-F08）
+**Invariant:** Runtime 只读 SM 数据 + Store；EditorGraph 可丢弃重建，只要真相资产完整。
 
-Graph 资产嵌入 `ParameterSchema`（或等价 Def 列表）。  
-Instance：`ParameterStore::BindLayout(Compile(schema))`。  
-过渡条件通过 `KeyId`（或冷路径 name）读 Bool/Int/Float。  
-Trigger：Anim 层 `Raise`/`Consume`（建议基于 Bool 槽）。
-
-详见 CORE-F08；此处不重复 Layout 规则。
-
-### 3.3 AnimationGraph 资产
+### 3.3 Data structures（示意）
 
 ```text
 AnimationGraph : Asset
-  Schema: ParameterSchema
-  States[]:
-    Id / Name
-    Clip: shared_ptr<AnimationClip>
-    bLoop (default true)
-  Transitions[]:
-    FromState / ToState   // or AnyState later — MVP: explicit from
-    Conditions[]:         // AND
-      ParamName, Op, Operand  // e.g. Speed > 0.1; Trigger Attack
-    BlendDurationSeconds
-  DefaultStateId
+  Schema: ParameterSchema          // embed CORE-F08 ME_STRUCT; no ParamDef bypass
+  Machine: AnimStateMachine
+  // optional: Skeleton ref for validation
+
+AnimStateMachine
+  States: AnimState[]
+  Transitions: AnimTransition[]
+  DefaultStateId: Id
+  // Reserved (data ok; runtime phased):
+  //   EntryStateId / bHasEntry
+  //   AnyState enabled flag
+
+AnimState
+  Id / Name
+  Clip: shared_ptr<AnimationClip>  // ObjectPtr on disk
+  bLoop: bool = true
+  EditorPos: Vec2                 // Day-1 editable graph
+  // Reserved: bIsAnyStateSink / Entry marker — runtime can phase (S06)
+
+AnimTransition
+  Id
+  FromStateId / ToStateId         // AnyState: From = reserved sentinel (S06)
+  Conditions: AnimCondition[]     // AND
+  BlendDurationSeconds: float
+  EditorPos: Vec2                 // optional anchor for edge label
+  // Deferred — Exit Time (do not implement in MVP):
+  //   bHasExitTime
+  //   ExitTimeNormalized
+  //   bFixedDuration
+
+AnimCondition
+  ParamName or KeyId
+  Op: > >= < <= == != | IsSet (Trigger)
+  Operand: Bool / Int / Float (by type)
 ```
 
-条件运算符 MVP：`>` `>=` `<` `<=` `==` `!=`（Float/Int/Bool）；Trigger 用 `IsSet`。
+**校验（Load）：** 全 Clip Skeleton Guid 一致；条件名 ∈ Schema；State Clip 非空。  
+扩展名建议：`.meagraph`（以 AssetTypeRegistry 为准）。
 
-**校验（Load/Import 时）：**
-- 所有 Clip 的 Skeleton Guid 一致（或与可选 Graph.Skeleton 一致）
-- 条件引用的 ParamName ∈ Schema
-- State Clip 非空
-
-扩展名建议：`.meagraph`（最终以 AssetTypeRegistry 为准）。
-
-### 3.4 AnimationGraphInstance（Runtime）
-
-职责：
-- 持有 `ParameterStore`（ResetFromSchema）
-- 当前状态、状态内时间、可选「过渡中」：from/to、blend 时钟、两边 Clip 时间
-- 每帧：`Update(dt, outPose)`  
-  - 非过渡：评价当前 Clip；检查出边（按声明顺序，先匹配先生效）  
-  - 过渡中：双评价 + Blend；结束则切到 ToState 并 Consume 相关 Trigger
-
-**不**负责：RHI、Assimp、Gameplay 逻辑。
-
-### 3.5 Pose Blend
+### 3.4 Runtime APIs sketch
 
 ```cpp
-// Free function or Pose static — prefer Pose::Blend / AnimationPoseUtility::Blend
-void BlendPoses(const Pose& a, const Pose& b, float alpha, Pose& out);
+// Prefer Pose member / static — avoid anonymous free helpers when member fits
+struct Pose {
+  static bool Blend(const Pose& a, const Pose& b, float alpha, Pose& out);
+  // Pos/Scale Lerp, Rot Slerp; requires same bone count
+};
+
+class AnimationGraphInstance {
+public:
+  bool Bind(const std::shared_ptr<AnimationGraph>& graph);
+  ParameterStore& GetStore();
+
+  void SetBool(std::string_view name, bool v);
+  void SetInt(std::string_view name, int32_t v);
+  void SetFloat(std::string_view name, float v);
+  void SetTrigger(std::string_view name);   // Raise
+
+  void Update(float dt, Pose& outPose);
+  // Consume triggers when a matching transition fires
+};
 ```
 
-- `alpha∈[0,1]`；骨数不一致 → 失败或按 min（MVP：要求同骨数，来自同 Skeleton）
-- 单测覆盖 0 / 0.5 / 1
+### 3.5 Instance behavior steps
 
-### 3.6 SkeletalMeshComponent 接入
+1. `Bind`：Compile Schema → Layout；`Store.BindLayout` / Reset defaults；进入 `DefaultState`；清过渡。
+2. 每帧 `Update(dt)`：
+   - 若 **非过渡**：推进当前状态时间；`Clip.Evaluate`（先 `FillBind`）；按声明顺序检查出边，先匹配先生效 → 进入过渡（记录 From/To、双时钟、`blendT=0`）；Trigger 条件边在 **进入过渡时 Consume**。
+   - 若 **过渡中**：推进 `blendT`；双评价 → `Pose::Blend`；`alpha = saturate(blendT / duration)`；结束则切到 ToState，单评价。
+3. 不负责 RHI / Assimp / Gameplay AI。
+
+### 3.6 Pose Blend rules
+- `alpha ∈ [0,1]`；同骨数（同 Skeleton）；否则失败
+- TRS：Pos/Scale Lerp，Rot Slerp
+- 单测：`alpha = 0 / 0.5 / 1`
+
+### 3.7 SMC integration
 
 ```text
 if (m_AnimationGraph)
-  GraphInstance.Update(dt, m_LocalPose)
+  m_GraphInstance.Update(dt, m_LocalPose)
 else
-  AnimationPlayer path (F02)
+  m_AnimationPlayer path (F02)
 ```
 
-- `EnsureClipSkeletonCompatible` 推广为：Graph 内 Clip 与 Mesh Skeleton Guid 一致
-- Inspector：可赋 `AnimationGraph`；可选暴露少量参数调试（Speed）
-- PlayOnAwake：有 Graph 则从 DefaultState 播放
+- Guid：Graph 内所有 Clip 与 Mesh Skeleton 一致
+- Inspector：赋 Graph；调试 SetFloat（Speed）
+- PlayOnAwake：有 Graph → 从 DefaultState 播
 
-### 3.7 与 Player 的关系（再强调）
+### 3.8 EditorGraph reuse boundary
 
-| | Player | GraphInstance |
-|--|--------|---------------|
-| 输入 | 单个 Clip | 参数 + Graph 资产 |
-| 时间 | 一个时钟 | 每状态一时钟；过渡两个 |
-| 输出 | Pose | Pose（可混合） |
+| 复用 | 不复用 |
+|------|--------|
+| `EditorGraph` | `MaterialEdGraph` |
+| `EditorGraphNode` / Pin | Material `NodeDef` / pin value types as Anim MIR |
+| ax 节点画布能力 | Material 编译 / MIR / shader codegen |
+| 视觉连线（State↔Transition 呈现） | 把 Pin 当 Runtime 求值边 |
 
-Graph **调用** `Clip::Evaluate`，可选用 Player 作为「单 Clip 辅助」但非必须；禁止把 SM 写进 Player。
+Pin = **visual / presentation**；Runtime 边在 `AnimTransition` 数组。
+
+### 3.9 Player vs Instance
+
+| | AnimationPlayer | AnimationGraphInstance |
+|--|-----------------|------------------------|
+| 输入 | 单个 Clip | Graph 资产 + 参数 |
+| 时间 | 一时钟 | 每状态一时钟；过渡两时钟 |
+| 输出 | Pose | Pose（可 Blend） |
+| SMC | 无 Graph 时 | 有 Graph 时 |
+| 实现 | 不内嵌 SM | 调用 `Clip::Evaluate`；可选用 Player 作辅助但非必须 |
 
 ---
-
-## 4) 测试与 Demo
+## 4) Tests / Demo
 
 | 层级 | 内容 |
 |------|------|
-| 单测 | ParameterStore Set/Get/Trigger consume；Pose Blend；假 Graph Idle↔Walk |
+| 单测 | `Pose::Blend`；假 Graph Idle↔Walk 条件边；Trigger Raise/Consume；Store Set/Get |
 | Editor | 人型：两 Clip 同 Skeleton + Graph；改 Speed 看过渡 |
-| 回归 | 无 Graph 时单 Clip 仍播 |
+| 回归 | 无 Graph 时单 Clip 仍播；`test smoke` / `animation-clip` / `parameter-store` |
 
----
-
-## 5) 风险与非目标
+## 5) Risks
 
 | 风险 | 缓解 |
 |------|------|
-| 共享层做成「半个 Blackboard」膨胀 | Schema 封闭；无 Object；目录不叫 Blackboard |
-| 双路径（Player+Graph）永久并存 | Design 写明：Graph 优先；未来可 Deprecated 纯 Player 赋 Clip UX |
-| 骨名不完全匹配导致 Clip 残缺 | 文档要求外部重定向 + 同 Skeleton Import；WARN 已有 |
-| Trigger 语义扯皮 | Locked：边匹配成功后 Consume |
-| 过早图编辑器 | Out；表格式资产 + 最小 Inspector |
+| 做成半套 Blackboard / 第二参数袋 | Locked #5；目录不进 Animation；无 ParamDef bypass |
+| Player+Graph 双路径永久分叉 | Design 写明互斥；未来可 Deprecated 单 Clip UX，不合并进 Player |
+| Schema 嵌入做错旁路 | 只用 CORE-F08 `ParameterSchema` ME_STRUCT；无 ParamDef |
+| 过早完整图窗拖垮 MVP | 数据 + EditorPos 先；AnimGraphWindow = S08 Deferred |
+| AnyState / Exit Time 范围蔓延 | 字段预留；Exit Time Deferred；AnyState Runtime = S06 |
+| 把 Material MIR 拖进 Anim | §3.8 边界表；只复用 EditorGraph/Pin/ax |
 
----
+## 6) Acceptance checklist
 
-## 6) 验收标准
-
-- [ ] 参数读写经 **CORE-F08** `ParameterStore`；本模块不实现 Layout 编译
-- [ ] `AnimationGraph` Load + Instance 可根据参数切换状态
-- [ ] 过渡期 Pose Blend 可目视 / 可单测
-- [ ] SMC：Graph 与 单 Clip 路径互斥清晰；同 Skeleton Guid 检查
+- [ ] 参数读写仅经 CORE-F08 `ParameterStore`；无第二袋 / ParamDef bypass
+- [ ] `AnimationGraph` 可序列化（含 `EditorPos`）；Schema 内嵌 CORE-F08 `ParameterSchema`
+- [ ] Instance 可按参数切换状态；过渡 Pose Blend 可单测 / 可目视
+- [ ] SMC：Graph 与单 Clip 路径互斥清晰；同 Skeleton Guid 校验
 - [ ] Demo Idle↔Walk PASS
-- [ ] Out 清单未偷偷实现（Event / Blend Tree / 完整 Blackboard）
+- [ ] EditorGraph 复用边界遵守（无 MaterialEdGraph/MIR 耦合）
+- [ ] Out 清单未偷偷实现（Event / BlendTree / AnimatorComponent / 完整图 UX）
 - [ ] Design / Impl / Registry / ACTIVE_WORK / Progress 对齐
 
----
+## 7) Slice preview
 
-## 7) 建议切片预览
-
-| Slice | 内容 | 优先级 |
-|-------|------|--------|
-| S00 | （前置）**CORE-F08** Schema/Layout/Store | **Done**（解阻） |
-| S01 | `Pose::Blend`（或等价）+ 单测 | 高 |
-| S02 | `AnimationGraph` 资产 schema + Loader/Save | 高 |
-| S03 | `AnimationGraphInstance` SM + 过渡混合 | 高 |
-| S04 | SMC 接入 + Skeleton Guid 校验 | 高 |
-| S05 | Inspector 最小赋 Graph / 调 Speed + 人型 Demo | 高 |
-| S06 | （可选）Attack Trigger 状态（仍无 Event） | 中 |
+| Slice | 内容 | 说明 |
+|-------|------|------|
+| **S00** | CORE-F08-S02 Schema `ME_STRUCT` 嵌入 | **Done**（`99d05b9`）；解阻 Graph 内嵌 Schema |
+| **S01** | `Pose::Blend` + 单测 | |
+| **S02** | `AnimationGraph` 资产 + Loader/Save（含 EditorPos） | Schema embed 对齐 S00 |
+| **S03** | `AnimationGraphInstance` SM + 过渡混合 | Set* / SetTrigger / Update / GetStore |
+| **S04** | SMC 接入 + Guid 校验 | |
+| **S05** | Demo Idle↔Walk + 最小 Inspector | |
+| **S06** | AnyState Runtime（数据已预留） | |
+| **S07** | Attack Trigger 状态（可选；仍无 Event） | Optional |
+| **S08** | `AnimGraphWindow`（EditorGraph 投影） | **Deferred**（非 Day-1 阻塞） |
 
 ```text
-CORE-F08 → S01 Pose Blend → S02 Graph 资产 → S03 Instance → S04 SMC → S05 Demo
-                                                    ↘ S06
+S00 F08-S02 Done
+    \
+     -> S01 Blend -> S02 Asset -> S03 Instance -> S04 SMC -> S05 Demo
+                                              \-> S06 AnyState
+                                              \-> S07 Attack (opt)
+                                              \-> S08 AnimGraphWindow (deferred)
 ```
-
----
 
 ## 8) Status note
 
 | 字段 | 内容 |
 |------|------|
-| Status | **Draft** |
-| What's not | Impl Plan；Graph 代码未动；SMC 挂载暂定内嵌 |
-| Unblock | 补 ANIM-F03 Impl Plan → Planned → Pre-flight 编码（CORE-F08 已 Done） |
+| Status | **In Progress** |
+| What's done | Runtime MVP：Blend / Graph / Instance / SMC / AnyState+Trigger；单测 PASS |
+| What's not | AnimGraphWindow（S08）Deferred；人型 Graph 目视待维护者 |
+| Next | 准备 commit；可选人型 Demo 目视 |
+| Blocked by | 无 |
 
 ---
 
@@ -281,3 +365,6 @@ CORE-F08 → S01 Pose Blend → S02 Graph 资产 → S03 Instance → S04 SMC �
 | 2026-09-05 | 正式 Design Draft：ParameterStore 共享层；Graph MVP；Event/完整 Blackboard Out |
 | 2026-09-05 | 参数实现抽出为 **CORE-F08**；本 Feature 改为依赖 Layout/Store |
 | 2026-09-06 | CORE-F08 Done 解阻；Status note / 依赖行同步 |
+| 2026-09-06 | **Final expansion：** Status→**Planned**；Unity Mecanim-lite；Graph-is-product；EditorGraph 投影；Instance \|\| Player；切片 S00–S08 |
+| 2026-09-06 | CORE-F08-S02 已合入（`99d05b9`）；Depends / S00 / Status note 同步为解阻 |
+| 2026-09-06 | Runtime MVP land：S01–S04/S06/S07；`test animation-graph` PASS；Status → In Progress |

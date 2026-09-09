@@ -6,6 +6,7 @@
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Function/Animation/AnimationClip.h"
+#include "Runtime/Function/Animation/AnimationGraph.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Resource/Font.h"
@@ -91,6 +92,13 @@ namespace minEngine
             .Extensions = {".meaclip"},
             .FileDialogFilterLabel = "Animation Clip (*.meaclip)"});
         m_AssetTypeIdByClass[AnimationClip::StaticClass()] = "AnimationClip";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "AnimationGraph",
+            .RuntimeClassName = GetClassName<AnimationGraph>(),
+            .Extensions = {".meagraph"},
+            .FileDialogFilterLabel = "Animation Graph (*.meagraph)"});
+        m_AssetTypeIdByClass[AnimationGraph::StaticClass()] = "AnimationGraph";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Material",
