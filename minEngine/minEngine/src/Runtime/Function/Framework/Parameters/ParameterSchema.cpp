@@ -1,5 +1,6 @@
 #include "Runtime/Function/Framework/Parameters/ParameterSchema.h"
 
+#include <cstddef>
 #include <unordered_set>
 
 namespace minEngine
@@ -93,6 +94,16 @@ namespace minEngine
             }
         }
 
+        return true;
+    }
+
+    bool ParameterSchema::RemoveEntryAt(size_t index)
+{
+        if (index >= m_Entries.size())
+        {
+            return false;
+        }
+        m_Entries.erase(m_Entries.begin() + static_cast<std::ptrdiff_t>(index));
         return true;
     }
 

@@ -1,5 +1,6 @@
 #include "Services/AssetWorkflowModule.h"
 
+#include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
@@ -160,6 +161,12 @@ namespace minEngine
         return materialEditor != nullptr && materialEditor->GetSession().Dirty;
     }
 
+    bool AssetWorkflowModule::IsAnimationGraphDirty() const
+    {
+        const AnimationGraphEditor* animGraphEditor = GetAnimationGraphEditor(m_Context);
+        return animGraphEditor != nullptr && animGraphEditor->GetSession().Dirty;
+    }
+
     bool AssetWorkflowModule::SaveSceneDocument()
     {
         SceneEditor* sceneEditor = GetSceneEditor(m_Context);
@@ -180,6 +187,17 @@ namespace minEngine
         }
 
         return materialEditor->SaveActiveMaterial();
+    }
+
+    bool AssetWorkflowModule::SaveAnimationGraphDocument()
+    {
+        AnimationGraphEditor* animGraphEditor = GetAnimationGraphEditor(m_Context);
+        if (animGraphEditor == nullptr)
+        {
+            return false;
+        }
+
+        return animGraphEditor->SaveActiveGraph();
     }
 
     bool AssetWorkflowModule::RunWithUnsavedCheck(
@@ -266,6 +284,16 @@ namespace minEngine
             }
         }
 
+        if (EditorSubModule* animGraphModule =
+                m_Context->FindSubModule(AnimationGraphEditor::kModuleId))
+        {
+            if (animGraphModule->CanOpenAsset(meta) && animGraphModule->OpenAsset(meta))
+            {
+                m_Context->ActivateSubModule(AnimationGraphEditor::kModuleId);
+                return true;
+            }
+        }
+
         if (EditorSubModule* sceneModule = m_Context->FindSubModule(SceneEditor::kModuleId))
         {
             if (sceneModule->CanOpenAsset(meta) && sceneModule->OpenAsset(meta))
@@ -287,7 +315,8 @@ namespace minEngine
 
         const bool openingMaterial = meta.AssetType == "Material";
         const bool openingScene = meta.AssetType == "Scene";
-        if (!openingMaterial && !openingScene)
+        const bool openingAnimationGraph = meta.AssetType == "AnimationGraph";
+        if (!openingMaterial && !openingScene && !openingAnimationGraph)
         {
             ME_CORE_WARN(
                 "AssetWorkflow: unsupported asset type '{}' for '{}'.",
@@ -298,7 +327,9 @@ namespace minEngine
 
         const char* message = openingMaterial
             ? "Save changes to the current material before opening another asset?"
-            : "Save changes to the current scene before opening another scene?";
+            : openingAnimationGraph
+                ? "Save changes to the current animation graph before opening another asset?"
+                : "Save changes to the current scene before opening another scene?";
 
         auto proceed = [this, meta]()
         {
@@ -317,6 +348,15 @@ namespace minEngine
                 message,
                 [this]() { return IsMaterialDirty(); },
                 [this]() { return SaveMaterialDocument(); },
+                std::move(proceed));
+        }
+
+        if (openingAnimationGraph)
+        {
+            return RunWithUnsavedCheck(
+                message,
+                [this]() { return IsAnimationGraphDirty(); },
+                [this]() { return SaveAnimationGraphDocument(); },
                 std::move(proceed));
         }
 
@@ -494,20 +534,30 @@ namespace minEngine
     {
         const bool sceneDirty = IsSceneDirty();
         const bool materialDirty = IsMaterialDirty();
-        if (!sceneDirty && !materialDirty)
+        const bool animGraphDirty = IsAnimationGraphDirty();
+        if (!sceneDirty && !materialDirty && !animGraphDirty)
         {
             return true;
         }
 
-        const char* message = sceneDirty && materialDirty
-            ? "Save scene and material changes before exiting?"
-            : sceneDirty
-                ? "Save scene changes before exiting?"
-                : "Save material changes before exiting?";
+        const char* message = "Save unsaved document changes before exiting?";
+        if (sceneDirty && !materialDirty && !animGraphDirty)
+        {
+            message = "Save scene changes before exiting?";
+        }
+        else if (!sceneDirty && materialDirty && !animGraphDirty)
+        {
+            message = "Save material changes before exiting?";
+        }
+        else if (!sceneDirty && !materialDirty && animGraphDirty)
+        {
+            message = "Save animation graph changes before exiting?";
+        }
 
         return RunWithUnsavedCheck(
             message,
-            [sceneDirty, materialDirty]() { return sceneDirty || materialDirty; },
+            [sceneDirty, materialDirty, animGraphDirty]()
+            { return sceneDirty || materialDirty || animGraphDirty; },
             [this]()
             {
                 bool saved = true;
@@ -518,6 +568,10 @@ namespace minEngine
                 if (IsMaterialDirty())
                 {
                     saved = SaveMaterialDocument() && saved;
+                }
+                if (IsAnimationGraphDirty())
+                {
+                    saved = SaveAnimationGraphDocument() && saved;
                 }
                 return saved;
             },

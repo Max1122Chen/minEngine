@@ -1,7 +1,36 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-06 (ANIM-F03 runtime MVP)
+Last updated: 2026-09-09（S08b 删连线崩溃修复）
 
+
+
+### 2026-09-09 - ANIM-F03-S08b fix: delete-link crash (Ed::Flow UAF)
+- **Cause:** per-frame \Ed::Flow(linkId)\ keeps FlowAnimation.Link*; AcceptDeletedItem marks DeleteOnNewFrame → freed next Begin → UAF.
+- **Fix:** remove Flow; harden QueryDeletedLink (no pin ids); AcceptDeletedItem(false); clear selection after structural delete.
+- **Note:** true SM edge-drag UX still deferred (ax pin model limit); reassess later.
+
+### 2026-09-09 - ANIM-F03-S08b: Inspector reuse + SM disguise (code)
+- **Code:** `AnimGraphInspectorSource`；删除 `AnimGraphDetailsWindow`；Dock Inspector；Schema 40/25/35；边缘热区 Pin；`Ed::Flow`；Transition Reverse。
+- **Verify:** Editor Debug force-rebuild PASS。
+- **Next:** 手动 smoke；准备 commit。
+
+### 2026-09-09 - ANIM-F03-S08b Design: Inspector reuse + SM disguise
+- **Docs:** Design §9 修订 — 复用共享 Inspector（`AnimGraphInspectorSource`）；**取消** `AnimGraphDetailsWindow`；Parameters 仍独立；Schema 列宽 40/25/35；ax 渐进伪装 SM（L1–L2/L4）；切片 **S08b Planned**。
+- **Code:** 未动（用户要求先文档，之后一口气实现）。
+- **Next:** 实现 S08b → smoke → 准备 commit。
+
+### 2026-09-09 - ANIM-F03-S08: Animation Graph Editor three-window MVP
+- **Code:** `AnimationGraphEditor` Session + Dock; `AnimGraphWindow` / Details / Parameters; OpenAsset `.meagraph`; Save/Dirty; `CreateAsset<AnimationGraph>`.
+- **Touch:** `Editor/src/SubEditor/AnimationGraph/`; three `*Window`; AssetWorkflow / MainMenu / DockLayout; ParameterSchema GetEntriesMutable/RemoveEntryAt.
+- **Verify:** `cmake --build build --target Editor` Debug PASS.
+- **Out / later:** Preview window; visual polish; AnyState canvas node UX; humanoid Idle↔Walk after Editor smoke.
+- **Next:** manual open/edit/save smoke; then prepare commit (exclude local Animations/Sources/build_*.log).
+
+### 2026-09-09 - ANIM-F03-S08 Design: Anim Graph Editor three-window layout
+- **Docs:** Design §9 — `AnimGraphWindow` + `AnimGraphDetailsWindow` (right-top) + `AnimGraphParametersWindow` (right-bottom Schema); Material-like Session/Dock/ax.
+- **Locked:** Parameters window always shows ParameterSchema; Details is selection-driven; Preview deferred.
+- **Code:** not started. Runtime MVP already at `a59b79a`.
+- **Next:** implement S08 SubEditor + Dock layout.
 
 ### 2026-09-06 - ANIM-F03 runtime MVP: Graph SM + Pose Blend + SMC
 - **Code:** `Pose::Blend`; `AnimationGraph` / Instance / Loader (.meagraph); SMC Graph vs Player; AnyState + Trigger consume.
@@ -439,7 +468,7 @@ Last updated: 2026-09-06 (ANIM-F03 runtime MVP)
 - Findings (code review): VK depth descriptor layout mismatch; `BuildSceneSet1` dirty only on texture cache change; `BasePass` missing `DirShadowAtlas` RDG input; static shadow fingerprint. Documented in BUG-RENDER-013 + RND-TD025 §8 P7 + shadow pass isolation matrix.
 - Next: User experiments via `MAX_*_SHADOW_MAPS` / `MAX_CASCADES` or scene Cast Shadow toggles; then fix P0–P3.
 
-Last updated: 2026-08-28 (TD-025 clip-space caps + VK shadow fix)
+Last updated: 2026-09-09（ANIM-F03-S08 Editor 布局设计）
 
 ### 2026-09-04 - ANIM-F02 MVP: Clip Playback (bone AnimationTrack)
 - **Code:** `AnimationTrack` / `AnimationClip::Evaluate` / `TryGetNamedFloat` 壳；`AnimationPlayer` ⊏ `SkeletalMeshComponent`；`.meaclip` Loader + `ImportAnimationClip`；Editor Import 可选 AnimationClip（需 `{stem}_Skeleton.meskeleton`）。

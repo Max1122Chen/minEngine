@@ -391,6 +391,8 @@ namespace minEngine
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
     template<>
     bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const;
+    template<>
+    bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const;
 
     template<>
     std::shared_ptr<Scene> AssetManager::CreateAsset<Scene>(
@@ -398,6 +400,10 @@ namespace minEngine
         const std::string& directoryRel);
     template<>
     std::shared_ptr<Material> AssetManager::CreateAsset<Material>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<AnimationGraph> AssetManager::CreateAsset<AnimationGraph>(
         const std::string& assetName,
         const std::string& directoryRel);
 }

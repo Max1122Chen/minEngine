@@ -69,5 +69,29 @@ namespace minEngine
 
             ImGui::DockBuilderFinish(dockspaceId);
         }
+
+        void BuildAnimationGraphEditingLayout(ImGuiID dockspaceId)
+        {
+            ImGui::DockBuilderRemoveNode(dockspaceId);
+            ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
+
+            ImGuiID mainArea = dockspaceId;
+            ImGuiID rightColumn = ImGui::DockBuilderSplitNode(
+                mainArea, ImGuiDir_Right, 0.35f, nullptr, &mainArea);
+            ImGuiID consoleArea = ImGui::DockBuilderSplitNode(
+                mainArea, ImGuiDir_Down, kConsoleSplitRatio, nullptr, &mainArea);
+
+            ImGuiID detailsArea = rightColumn;
+            ImGuiID parametersArea = ImGui::DockBuilderSplitNode(
+                rightColumn, ImGuiDir_Down, 0.45f, nullptr, &detailsArea);
+
+            ImGui::DockBuilderDockWindow("Anim Graph", mainArea);
+            ImGui::DockBuilderDockWindow("Inspector", detailsArea);
+            ImGui::DockBuilderDockWindow("Anim Graph Parameters", parametersArea);
+            ImGui::DockBuilderDockWindow("Console", consoleArea);
+
+            ImGui::DockBuilderFinish(dockspaceId);
+        }
     }
 }

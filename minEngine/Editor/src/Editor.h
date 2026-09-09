@@ -5,6 +5,7 @@
 
 #include "EditorGUIManager.h"
 #include "Platform/EditorImGuiBackend.h"
+#include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/AssetWatch/ProjectAssetWatcher.h"
@@ -108,6 +109,7 @@ namespace minEngine
         EditorGUIManager m_EditorGUIManager;
         SceneEditor m_SceneEditor;
         std::unique_ptr<MaterialEditor> m_MaterialEditor;
+        std::unique_ptr<AnimationGraphEditor> m_AnimationGraphEditor;
         MainMenuModule m_MainMenuModule;
         ToolbarModule m_ToolbarModule;
         InspectorModule m_InspectorModule;

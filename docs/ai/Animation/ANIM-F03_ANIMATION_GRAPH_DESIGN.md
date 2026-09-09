@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-06（runtime MVP；`test animation-graph` PASS）
+- **Last updated:** 2026-09-09（S08b 代码落地：Inspector + SM 伪装）
 - **Branch:** `feat/animation`
 - **Related:**
   - [Implementation Plan](./ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
@@ -334,7 +334,8 @@ Pin = **visual / presentation**；Runtime 边在 `AnimTransition` 数组。
 | **S05** | Demo Idle↔Walk + 最小 Inspector | |
 | **S06** | AnyState Runtime（数据已预留） | |
 | **S07** | Attack Trigger 状态（可选；仍无 Event） | Optional |
-| **S08** | `AnimGraphWindow`（EditorGraph 投影） | **Deferred**（非 Day-1 阻塞） |
+| **S08** | Anim Graph Editor 初版（Graph + Details窗 + Parameters） | **Done** (code MVP) |
+| **S08b** | Inspector 复用；取消 DetailsWindow；ax SM 伪装 L1–L2/L4；Schema 列宽 | **Done** (code) |
 
 ```text
 S00 F08-S02 Done
@@ -342,17 +343,164 @@ S00 F08-S02 Done
      -> S01 Blend -> S02 Asset -> S03 Instance -> S04 SMC -> S05 Demo
                                               \-> S06 AnyState
                                               \-> S07 Attack (opt)
-                                              \-> S08 AnimGraphWindow (deferred)
+                                              \-> S08 Editor MVP
+                                                   \-> S08b Inspector+SM disguise (Planned)
 ```
+
+
+## 9) Animation Graph Editor（S08 / S08b）— UI 与交互
+
+> 对标 Material：`*Window` + Dock + Session + **共享 Inspector**；画布用 `imgui-node-editor`。  
+> **真源**仍是 `AnimationGraph`（StateMachine + Schema）；ax Node/Pin/Link = **投影**，可丢弃重建。
+
+### 9.0 产品隐喻（Locked）
+
+| | 我们 | 不是 |
+|--|------|------|
+| Runtime | Mecanim-lite：**`DefaultStateName` = 逻辑 Entry**；当前 State 的 Clip → Pose | UE AnimBP：**Output Pose** 节点 / AnimNode VM |
+| Editor 目标感 | **状态机图**（有向边、边缘拖线、点边看 Transition） | Material 式多类型数据流节点图 |
+| 实现策略 | **ax 渐进伪装**（仍用 Pin/Link 基板）；**不**为本 Feature 自研 SM 画布 | 一口吃成 UE 级边中规则菱形 / 完美双向路由 |
+
+**播放机制（编辑器无关，写清以免再误解）：**  
+`AnimationGraphInstance` 每帧在当前 State 上评价 Clip → Pose；Transition 期间双 Clip + `Pose::Blend`。SMC 有 Graph 则走 Instance，否则 `AnimationPlayer`。图上**不需要** Output Pose 节点。
+
+### 9.1 产品目标
+
+打开 `.meagraph`：可视化编辑 State / Transition；Schema 固定可编辑；选中详情走 **Inspector**（与 Material 同壳）。  
+Runtime 行为不变。
+
+### 9.2 命名与模块
+
+| 角色 | 名称 | 说明 |
+|------|------|------|
+| SubEditor / Session | `AnimationGraphEditor` | OpenAsset、Dirty、Save、Validate；**不是** Window |
+| 画布窗 | `AnimGraphWindow` | 唯一持有 `ax::NodeEditor` |
+| 选中详情 | **共享 `Inspector` + `AnimGraphInspectorSource`** | 对齐 Material；**取消**独立 `AnimGraphDetailsWindow` |
+| 参数声明窗 | `AnimGraphParametersWindow` | **固定**整图 `ParameterSchema`（与选中无关） |
+| 预览窗 | `AnimGraphPreviewWindow` | **Deferred** |
+| 投影辅助 | `AnimGraphIds` | Node/Pin/Link ↔ State/Transition |
+
+**取消独立 DetailsWindow（Locked 2026-09-09）：** 曾落地的 `AnimGraphDetailsWindow` 在 **S08b** 删除；逻辑迁入 `AnimGraphInspectorSource`（`GetInspectorSource()` 非空）。
+
+### 9.3 Dock 布局（Locked — 修订）
+
+`BuildAnimationGraphEditingLayout()`：
+
+```text
+┌─ AnimGraphWindow（左 ~60–65%）─────────────────────────────────────┐
+│ Toolbar: [Graph] [Validate] [Save] [Add State] [New Graph] *dirty   │
+│  ax：State 块 + 有向 Transition 边（Pin 作边缘热区，弱化数据流感）   │
+└──────────────────────────────────────────────────────────────────────┘
+┌─ Inspector（右上 ~35%）──────────────┐
+│ AnimGraphInspectorSource             │
+│ 选中 State / Transition / 无选中     │
+└──────────────────────────────────────┘
+┌─ AnimGraphParametersWindow（右下）──┐
+│ Schema：Name | Type | Default        │
+└──────────────────────────────────────┘
+(+ 可选 Console 底栏，对齐 Material)
+```
+
+| # | 决策 |
+|---|------|
+| L1 | 右栏：**上 Inspector、下 Parameters**（不再用独立 Details 窗） |
+| L2 | Parameters **固定**右下；不随选中变空 |
+| L3 | 仅 `AnimGraphWindow` 调用 `ax::NodeEditor::Begin/End` |
+| L4 | Scene 套件窗在 Anim 模式下关闭（同 Material） |
+| L5 | Preview **Out of S08/S08b MVP** |
+| L6 | 共享 Inspector **必须**在 Anim 模式由 `AnimGraphInspectorSource` 供稿；勿留空壳无 Source |
+
+### 9.4 打开 / 保存 / Dirty
+
+（同前：ContentBrowser → TryOpenAsset → `AnimationGraphEditor::OpenAsset` → Activate SubModule → Session。）
+
+| 操作 | 行为 |
+|------|------|
+| 改 State/Transition/Schema/连线/位置 | `NotifyGraphChanged()` → Dirty |
+| Save | `AssetManager::SaveAsset` / Loader；清 Dirty |
+| Validate | `AnimationGraph::Validate`；日志 / Console |
+| 切模式 / 退出 | Dirty 提示（对齐 Material） |
+
+### 9.5 画布：状态机伪装分层（S08b Locked）
+
+真源不变：`Transitions[].From/To`；**禁止**第二套边权威。
+
+| 层 | 内容 | 切片 |
+|----|------|------|
+| **L1** | Link **箭头**表方向；点选 Link → Inspector 显示 Transition；命中可点 | **S08b** |
+| **L2** | Pin **收成节点边缘热区**（弱化 In/Out 标签与数据流观感）；从热区拖出 = Create Transition；禁止自环 | **S08b** |
+| **L3** | 可选 **Entry** 装饰节点（只读，指向 `DefaultStateName`）；改 Default 只在 Inspector 无选中时 | S08b 可做 / 可紧随 |
+| **L4** | Inspector：**Reverse**（交换 From/To）；To 可改；Conditions 表 | **S08b** |
+| **L5** | 边中段规则图标、花式双向曲线、完全自定义 SM 画布 | **Deferred**（非本 Feature 必达） |
+
+**节点：** 标题 = State `Name`；副标题可选 Clip；位置 → `EditorPos*`；`SettingsFile = nullptr`。  
+**删边 / 删节点：** 写回真源（含清理关联 Transition / AnyState 边）。  
+**AnyState：** 实体节点 UX 仍可后置；工具栏/列表入口可保留。
+
+### 9.6 Inspector（选中驱动 — 原 Details）
+
+由 `AnimGraphInspectorSource::DrawInspector` 绘制（Material 同模式）：
+
+| 选中 | 显示 |
+|------|------|
+| State | Name（Rename）、Clip、bLoop、Speed |
+| Transition | From（只读）、To、BlendDuration、Conditions；**Reverse** |
+| 无选中 | 提示 + **DefaultState** 下拉（逻辑 Entry） |
+
+Condition.`ParamName` ∈ Schema；Schema 改名后未更新的条件 Validate 失败。
+
+### 9.7 Parameters 窗（固定 Schema）
+
+| 能力 | 要求 |
+|------|------|
+| 列宽 | **Locked：** Name **~40%** / Type **~25%** / Default **~35%**（总和 100%；`WidthStretch` 权重，禁止 Default 无约束撑爆） |
+| 列表 | Name / Type（Bool·Int32·Float）/ Default + 删除 |
+| Add / Remove / 改 Type·Default | 写 `ParameterSchema`；Remove 若 Condition 仍引用 → WARN |
+
+**不**在此窗编辑运行时 Store（Preview/Play Deferred）。
+
+### 9.8 与 Material 的同 / 异（修订）
+
+| | Material | Anim Graph（S08b） |
+|--|----------|-------------------|
+| 模式 | Material SubModule | AnimationGraph SubModule |
+| 选中详情 | **共享 Inspector** + `MaterialEditorInspectorSource` | **共享 Inspector** + `AnimGraphInspectorSource` |
+| 右栏另窗 | （无独立 Details）+ Preview 在左 | **Parameters** 固定右下（Schema） |
+| 画布隐喻 | 多类型 NodeDef + typed Pin | **SM 伪装**：边缘热区 + 有向边 |
+| 改图后果 | Compile | Validate；无 GPU compile |
+| 复用边界 | — | **不**复用 MaterialEdGraph / IR / NodeDef |
+
+### 9.9 非目标
+
+- Preview 视口（S08c / 另议）
+- L5 完整 UE 边中规则 UX / 自研 SM 画布
+- BlendTree / 子状态机 / Exit Time UI
+- 把 Parameters 塞进 Inspector 折叠（**否决**：Schema 独立窗）
+- 重新引入独立 `AnimGraphDetailsWindow`
+
+### 9.10 验收
+
+**S08（已有代码基线）：**
+- [x] 打开/保存 `.meagraph`；Dirty；Graph + Schema 窗；真源 = AnimationGraph
+- [x] 拖线增删 Transition；拖节点 EditorPos（Pin 式 MVP）
+
+**S08b（本修订落地后）：**
+- [x] 删除 `AnimGraphDetailsWindow`；`GetInspectorSource()` → `AnimGraphInspectorSource`
+- [x] Dock：Graph | Inspector（上）| Parameters（下）；无空 Inspector
+- [x] Schema 列宽约 40/25/35，Name/Type 可读
+- [x] L1–L2：Flow 方向标记 + 边缘热区拖线 + 点选边进 Inspector
+- [x] L4：Inspector 可 Reverse Transition
+- [x] 仍无 Material IR；真源仅 `AnimationGraph`
+
 
 ## 8) Status note
 
 | 字段 | 内容 |
 |------|------|
 | Status | **In Progress** |
-| What's done | Runtime MVP：Blend / Graph / Instance / SMC / AnyState+Trigger；单测 PASS |
-| What's not | AnimGraphWindow（S08）Deferred；人型 Graph 目视待维护者 |
-| Next | 准备 commit；可选人型 Demo 目视 |
+| What's done | Runtime MVP `a59b79a`；S08 MVP + **S08b**（Inspector / SM 伪装 / Schema 列宽）；Editor Debug rebuild PASS |
+| What's not | 手动 smoke；Preview Deferred；人型目视；SM L5 |
+| Next | 手动验 S08b；再准备 commit |
 | Blocked by | 无 |
 
 ---
@@ -368,3 +516,7 @@ S00 F08-S02 Done
 | 2026-09-06 | **Final expansion：** Status→**Planned**；Unity Mecanim-lite；Graph-is-product；EditorGraph 投影；Instance \|\| Player；切片 S00–S08 |
 | 2026-09-06 | CORE-F08-S02 已合入（`99d05b9`）；Depends / S00 / Status note 同步为解阻 |
 | 2026-09-06 | Runtime MVP land：S01–S04/S06/S07；`test animation-graph` PASS；Status → In Progress |
+| 2026-09-09 | S08 设计：三窗 Dock（Graph + Details 右上 + Parameters Schema 右下）；交互对齐 Material |
+| 2026-09-09 | S08 Editor MVP code land：三窗 + OpenAsset/Save；Editor build PASS |
+| 2026-09-09 | §9 修订：**复用 Inspector**、**取消 AnimGraphDetailsWindow**、ax **SM 伪装** L1–L2/L4、Schema 列宽 40/25/35；切片 **S08b** |
+| 2026-09-09 | S08b code land：InspectorSource、删 DetailsWindow、Flow/边缘热区、Reverse、Schema 40/25/35 |

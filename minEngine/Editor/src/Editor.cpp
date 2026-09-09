@@ -3,6 +3,8 @@
 #include "Platform/EditorCrashDiagnostics.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Material/MaterialEditorSession.h"
+#include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
+#include "SubEditor/AnimationGraph/AnimationGraphEditorSession.h"
 
 #include "main.h"
 
@@ -69,6 +71,7 @@ namespace minEngine
         m_SubModules.clear();
         m_SubModules.push_back(&m_SceneEditor);
         m_SubModules.push_back(m_MaterialEditor.get());
+        m_SubModules.push_back(m_AnimationGraphEditor.get());
 
         m_SceneEditor.InitializeComponentTypeNames();
 
@@ -82,6 +85,7 @@ namespace minEngine
 
         m_SceneEditor.Register(*this);
         m_MaterialEditor->Register(*this);
+        m_AnimationGraphEditor->Register(*this);
 
         ActivateSubModule(SceneEditor::kModuleId);
     }
@@ -177,6 +181,7 @@ namespace minEngine
             }
 
             m_MaterialEditor->RefreshMaterialList();
+            m_AnimationGraphEditor->RefreshGraphList();
             m_SceneEditor.OnProjectOpened();
             if (SceneManager::HasInstance())
             {
@@ -305,6 +310,7 @@ namespace minEngine
 
         m_ViewportRegistry.SetContext(this);
         m_MaterialEditor = std::make_unique<MaterialEditor>();
+        m_AnimationGraphEditor = std::make_unique<AnimationGraphEditor>();
 
         m_EditorGUIManager.Initialize(*this);
         m_InputHub.Initialize(*this);
@@ -349,6 +355,28 @@ namespace minEngine
                 windowTitle = "minEngine Editor - " + materialLabel + dirtySuffix;
             }
         }
+        else if (
+            m_ActiveSubModule
+            && m_ActiveSubModule->GetModuleId() == AnimationGraphEditor::kModuleId)
+        {
+            if (AnimationGraphEditor* animGraphEditor =
+                    dynamic_cast<AnimationGraphEditor*>(m_ActiveSubModule))
+            {
+                const AnimationGraphEditorSession& session = animGraphEditor->GetSession();
+                std::string graphLabel = "Animation Graph";
+                if (session.HasOpenGraph())
+                {
+                    const std::filesystem::path graphPath(session.AssetPath);
+                    graphLabel = graphPath.filename().string();
+                    if (graphLabel.empty())
+                    {
+                        graphLabel = session.AssetPath;
+                    }
+                }
+                const char* dirtySuffix = session.Dirty ? " *" : "";
+                windowTitle = "minEngine Editor - " + graphLabel + dirtySuffix;
+            }
+        }
         else if (SceneEditor* sceneEditor = dynamic_cast<SceneEditor*>(m_ActiveSubModule))
         {
             std::string sceneDisplayName = "Untitled";
@@ -391,6 +419,12 @@ namespace minEngine
             m_MaterialEditor->Shutdown();
         }
         m_MaterialEditor.reset();
+
+        if (m_AnimationGraphEditor)
+        {
+            m_AnimationGraphEditor->Shutdown();
+        }
+        m_AnimationGraphEditor.reset();
 
         m_InputHub.Shutdown();
         m_SceneEditor.Shutdown();

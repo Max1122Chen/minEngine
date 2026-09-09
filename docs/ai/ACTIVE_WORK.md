@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-06（ANIM-F03 **In Progress** runtime MVP）
+Last updated: 2026-09-09（ANIM-F03-S08b smoke PASS；准备 commit）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -15,9 +15,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|-------------|
 | Design / Impl | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
 | 目标 | Unity 式 FSM（State+Transition+Params）+ Pose Blend；参数经 CORE-F08；Player∥Instance |
-| Out | AnimBP VM / BlendTree / Event / Retarget / 自研参数袋；完整图 UI → S08 Deferred |
-| Locked | 资产即图（EditorPos）；EditorGraph 投影真源=SM；内嵌 Schema 用 CORE-F08（**S02 已 Done**） |
-| Next | 准备 commit；可选人型 Idle↔Walk 目视；S08 Deferred |
+| Out | AnimBP VM / BlendTree / Event / Retarget / 自研参数袋；SM 画布 L5 / Preview Deferred |
+| Locked | 资产即图；真源=SM；F08 Schema；**S08b：复用 Inspector、取消 DetailsWindow、ax 伪装 SM** |
+| Next | 准备 commit；另议真·SM 画布方案（ax 限制已确认） |
 
 ### CORE-F08 — Parameter Schema / Layout / Store ← **Done**
 
@@ -84,7 +84,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **内核 / 编辑器** | `master` | `master` | CORE-F05 Done；ED-F02 等可并行 |
 
 **明确 Defer：** `.memesh` · Animation Event（暂不登记）· IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned  
-**下一开干：** ANIM-F03 准备 commit（可选人型目视）；S08 图窗 Deferred
+**下一开干：** ANIM-F03-S08 AnimationGraphEditor 三窗（Design §9）
 
 ---
 

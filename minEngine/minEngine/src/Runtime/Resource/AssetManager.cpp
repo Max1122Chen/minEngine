@@ -2148,4 +2148,77 @@ namespace minEngine
         ME_CORE_INFO("CreateAsset<Material>: created '{}'.", meta.AssetPath);
         return LoadAsset<Material>(meta.AssetPath);
     }
+    template<>
+    bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const
+    {
+        std::string error;
+        if (!AnimationGraphLoader::Save(meta, asset, &error))
+        {
+            ME_CORE_ERROR(
+                "Failed to save AnimationGraph '{}'. Error: {}",
+                meta.AssetPath,
+                error);
+            return false;
+        }
+        return true;
+    }
+
+    template<>
+    std::shared_ptr<AnimationGraph> AssetManager::CreateAsset<AnimationGraph>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".meagraph");
+        if (relativePath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<AnimationGraph>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_CORE_ERROR(
+                "CreateAsset<AnimationGraph>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string graphName = absolutePath.stem().string();
+        std::shared_ptr<AnimationGraph> graph = NewObject<AnimationGraph>(graphName, nullptr, GenerateGUID());
+
+        AssetMeta tempMeta;
+        tempMeta.AssetPath = relativePath;
+        tempMeta.AssetName = graphName;
+        tempMeta.AssetType = "AnimationGraph";
+        tempMeta.Guid = graph->GetGuid();
+
+        std::string saveError;
+        if (!AnimationGraphLoader::Save(tempMeta, *graph, &saveError))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            ME_CORE_ERROR("CreateAsset<AnimationGraph>: save failed: {}", saveError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph");
+        if (meta.AssetPath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<AnimationGraph>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+
+        ME_CORE_INFO("CreateAsset<AnimationGraph>: created '{}'.", meta.AssetPath);
+        return LoadAsset<AnimationGraph>(meta.AssetPath);
+    }
+
 }

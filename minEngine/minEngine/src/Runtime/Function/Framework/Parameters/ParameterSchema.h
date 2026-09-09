@@ -46,6 +46,8 @@ namespace minEngine
         bool Validate(std::string* outError = nullptr) const;
 
         const std::vector<ParameterSchemaEntry>& GetEntries() const { return m_Entries; }
+        std::vector<ParameterSchemaEntry>& GetEntriesMutable() { return m_Entries; }
+        bool RemoveEntryAt(size_t index);
         size_t GetEntryCount() const { return m_Entries.size(); }
 
         // Returns index into GetEntries(), or SIZE_MAX if missing.

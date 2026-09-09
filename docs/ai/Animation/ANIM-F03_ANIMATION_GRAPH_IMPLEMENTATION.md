@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `ANIM-F03`
 - **Type:** Feature
-- **Status:** In Progress（S01–S04/S06/S07 Done；S08 Deferred）
+- **Status:** In Progress（S01–S08b code Done；待手动 smoke）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-06（runtime MVP；`test animation-graph` PASS）
+- **Last updated:** 2026-09-09（§9/S08b 设计修订）
 - **Branch:** `feat/animation`
 - **Related:**
   - [Design Spec](./ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
@@ -13,7 +13,7 @@
 - **Depends on:** `ANIM-F02` Done；`CORE-F08` S00–S02 Done（no ParamDef bypass）
 
 ## TL;DR
-按 Design 落地 Mecanim-lite SM Graph：先 `Pose::Blend`，再资产与 Instance，再 SMC / Demo；AnyState 与可选 Attack 随后；`AnimGraphWindow` Deferred。参数只消费 CORE-F08。
+按 Design 落地 Mecanim-lite SM Graph；Runtime S01–S07 Done；Editor S08 MVP Done；**S08b** = Inspector 复用 + ax SM 伪装（Planned）。参数只消费 CORE-F08。
 
 ## Slice overview
 
@@ -27,7 +27,8 @@
 | S05 | Demo Idle↔Walk + Inspector | **Done** | 自动化 Idle↔Walk；Inspector 可赋 Graph；人型目视待维护者 |
 | S06 | AnyState runtime | **Done** | AnyState + Trigger consume 单测 |
 | S07 | Attack Trigger state | **Done** | 含于 AnyState Trigger 单测 |
-| S08 | AnimGraphWindow | Deferred | EditorGraph 投影编辑；非 MVP 阻塞 |
+| S08 | Anim Graph Editor MVP | **Done** (code) | Graph + Details窗 + Parameters；Pin 式连线基线 |
+| S08b | Inspector + SM disguise | **Done** (code) | 删 DetailsWindow；InspectorSource；Flow/边缘热区/Reverse；Schema 40/25/35 |
 
 ```text
 S00 F08-S02 Done
@@ -35,7 +36,8 @@ S00 F08-S02 Done
 S01 Blend -> S02 Asset -> S03 Instance -> S04 SMC -> S05 Demo
                                     |--> S06 AnyState
                                     |--> S07 Attack (opt)
-                                    `--> S08 Window (deferred)
+                                    `--> S08 MVP
+                                         `--> S08b (code Done)
 ```
 
 ---
@@ -124,23 +126,32 @@ S01 Blend -> S02 Asset -> S03 Instance -> S04 SMC -> S05 Demo
 
 ---
 
-## S08 — AnimGraphWindow（Deferred）
 
-**Goal:** Graph 真相 ↔ EditorGraph 投影；ax 画布编辑。
+## S08 — Anim Graph Editor（MVP 基线）
 
-**DoD（开启时）：**
-- [ ] 只复用 EditorGraph/Pin/ax；不复用 MaterialEdGraph/NodeDef/MIR
-- [ ] 编辑写回 AnimationGraph；Runtime 不读 EditorGraph
+- **Goal（已完成）：** Session + `AnimGraphWindow` + 曾用的 Details 窗 + Parameters；OpenAsset/Save/Dirty
+- **Status:** **Done** (code)；交互仍偏「节点图」
 
-**Note:** MVP **不**阻塞 S01–S05。
+## S08b — Inspector 复用 + ax 状态机伪装
 
----
+- **Status:** **Done** (code)
+- **Goal:** 对齐 Design §9 修订
+  1. 删除 `AnimGraphDetailsWindow`；新增 `AnimGraphInspectorSource`，`GetInspectorSource()` 非空
+  2. Dock：Graph | Inspector（上）| Parameters（下）
+  3. Schema 表列宽约 **40% / 25% / 35%**
+  4. 画布 L1–L2：有向箭头、边缘热区拖线、点选边 → Inspector
+  5. Inspector L4：Transition **Reverse**；无选中时 DefaultState
+- **Touch:** `SubEditor/AnimationGraph/`；`AnimGraphWindow`；`EditorDockLayout`；删除 Details 窗文件；Inspector 模块已有共享窗
+- **DoD:** Design §9.10 S08b 清单
+- **Out:** Preview；L5 UE 边中规则 / 自研 SM 画布
+- **Verify:** Editor 手测选节点/边进 Inspector；拖边缘建边；Schema 列可读；Save 往返
+
 
 ## Deferred / Optional
 
 | Item | Slice | Notes |
 |------|-------|-------|
-| AnimGraphWindow | S08 | Deferred |
+| SM canvas L5 / Preview | S08c+ | Deferred |
 | Attack Trigger demo | S07 | Optional；无 Event |
 | Exit Time | — | Design 字段注释；不实现 |
 | AnimatorComponent | — | SMC embed 足够 |
@@ -174,3 +185,6 @@ S01 Blend -> S02 Asset -> S03 Instance -> S04 SMC -> S05 Demo
 | 2026-09-06 | 初版 Implementation Plan：**Planned**；切片 S00–S08 |
 | 2026-09-06 | S00 → Done（F08-S02 `99d05b9`）；依赖行解阻 |
 | 2026-09-06 | Runtime MVP land: S01-S04/S06/S07; test animation-graph PASS; S08 Deferred |
+| 2026-09-09 | S08 Planned：三窗布局（Parameters 右下）写入 Design §9 |
+| 2026-09-09 | S08b Planned：Inspector 复用、取消 DetailsWindow、ax SM 伪装、Schema 列宽 |
+| 2026-09-09 | S08b code Done：Inspector + SM disguise；Editor rebuild PASS |
