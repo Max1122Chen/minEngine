@@ -221,6 +221,70 @@ namespace minEngine
         return false;
     }
 
+    size_t GameObject::FindComponentIndex(const Component& target) const
+    {
+        for (size_t index = 0; index < m_Components.size(); ++index)
+        {
+            if (m_Components[index] && m_Components[index].get() == &target)
+            {
+                return index;
+            }
+        }
+        return m_Components.size();
+    }
+
+    bool GameObject::MoveComponent(Component& target, size_t newIndex)
+    {
+        if (m_RootComponent != nullptr && &target == m_RootComponent)
+        {
+            return false;
+        }
+
+        const size_t count = m_Components.size();
+        const size_t oldIndex = FindComponentIndex(target);
+        if (oldIndex >= count)
+        {
+            return false;
+        }
+
+        if (newIndex >= count)
+        {
+            newIndex = count - 1;
+        }
+
+        // Keep Root pinned (Design ED-F05 §10.4): non-root may not land at/before Root.
+        if (m_RootComponent != nullptr)
+        {
+            const size_t rootIndex = FindComponentIndex(*m_RootComponent);
+            if (rootIndex < count)
+            {
+                const size_t minIndex = rootIndex + 1;
+                if (minIndex >= count)
+                {
+                    return false;
+                }
+                if (newIndex < minIndex)
+                {
+                    newIndex = minIndex;
+                }
+            }
+        }
+
+        if (oldIndex == newIndex)
+        {
+            return true;
+        }
+
+        std::shared_ptr<Component> held = m_Components[oldIndex];
+        m_Components.erase(m_Components.begin() + static_cast<std::ptrdiff_t>(oldIndex));
+        if (newIndex > m_Components.size())
+        {
+            newIndex = m_Components.size();
+        }
+        m_Components.insert(m_Components.begin() + static_cast<std::ptrdiff_t>(newIndex), held);
+        return true;
+    }
+
     void GameObject::InsertRestoredComponent(std::shared_ptr<Component> component, size_t index)
     {
         if (!component)

@@ -6,7 +6,7 @@
 
 namespace minEngine
 {
-    ME_CLASS()
+    ME_CLASS(Abstract)
     class ColliderComponent : public Component
     {
         ME_GENERATED_BODY(ColliderComponent)

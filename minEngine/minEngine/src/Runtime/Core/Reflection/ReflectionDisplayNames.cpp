@@ -106,12 +106,46 @@ namespace minEngine::Reflection
 
             return result;
         }
+
+        std::string_view GetShortTypeNameView(std::string_view reflectedOrShortTypeName)
+        {
+            const size_t scopePos = reflectedOrShortTypeName.rfind("::");
+            if (scopePos == std::string_view::npos)
+            {
+                return reflectedOrShortTypeName;
+            }
+
+            return reflectedOrShortTypeName.substr(scopePos + 2);
+        }
+
+        std::string StripComponentSuffix(std::string_view shortTypeName)
+        {
+            constexpr std::string_view kSuffix = "Component";
+            if (shortTypeName.size() > kSuffix.size()
+                && shortTypeName.substr(shortTypeName.size() - kSuffix.size()) == kSuffix)
+            {
+                return std::string(shortTypeName.substr(0, shortTypeName.size() - kSuffix.size()));
+            }
+
+            return std::string(shortTypeName);
+        }
     }
 
     std::string FormatMemberDisplayName(std::string_view memberName)
     {
         const std::string_view withoutPrefix = StripMemberPrefix(memberName);
         return InsertCamelCaseWordBreaks(withoutPrefix);
+    }
+
+    std::string FormatTypeDisplayName(std::string_view reflectedOrShortTypeName)
+    {
+        const std::string withoutSuffix = StripComponentSuffix(GetShortTypeNameView(reflectedOrShortTypeName));
+        return InsertCamelCaseWordBreaks(withoutSuffix);
+    }
+
+    std::string FormatDefaultComponentInstanceName(std::string_view reflectedOrShortTypeName)
+    {
+        return StripComponentSuffix(GetShortTypeNameView(reflectedOrShortTypeName));
     }
 
     const char* GetPropertyDisplayName(const MEProperty& property)

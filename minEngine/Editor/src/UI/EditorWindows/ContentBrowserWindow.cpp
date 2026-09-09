@@ -4,19 +4,25 @@
 #include "ContextMenu/EditorMenuContext.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
+#include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "Services/Inspector/InspectorModule.h"
 #include "Shell/IEditorContext.h"
 
 #include "Services/Thumbnail/AssetThumbnailService.h"
 #include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorThemeScope.h"
 #include "UI/Appearance/EditorTypographyDefaults.h"
 #include "UI/Appearance/EditorTypographyScope.h"
+#include "UI/Appearance/EditorWindowTheme.h"
+#include "UI/Widgets/InlineRenameField.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
+#include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include <algorithm>
@@ -216,6 +222,8 @@ namespace minEngine
         const bool browserFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         m_Context.GetAssetWorkflow().SetContentBrowserInspectorActive(browserFocused);
         SyncSelectionFromWorkflow();
+        TryConsumePendingRenameRequest();
+        TryCaptureF2RenameRequest();
 
         DrawToolbar();
         DrawBreadcrumb();
@@ -411,9 +419,134 @@ namespace minEngine
         }
     }
 
+    void ContentBrowserWindow::TryCaptureF2RenameRequest()
+    {
+        if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+        {
+            return;
+        }
+
+        if (!ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        {
+            return;
+        }
+
+        const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
+        if (selected == nullptr)
+        {
+            return;
+        }
+
+        BeginAssetRename(*selected);
+    }
+
+    void ContentBrowserWindow::TryConsumePendingRenameRequest()
+    {
+        const std::string pendingPath = m_Context.GetContentBrowser().ConsumePendingAssetRenamePath();
+        if (pendingPath.empty())
+        {
+            return;
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(pendingPath);
+        if (meta == nullptr)
+        {
+            return;
+        }
+
+        SelectAsset(meta);
+        BeginAssetRename(*meta);
+    }
+
+    void ContentBrowserWindow::BeginAssetRename(const AssetMeta& meta)
+    {
+        m_RenamingAssetPath = meta.AssetPath;
+        m_RenamingAssetExtension = std::filesystem::path(meta.AssetPath).extension().string();
+        std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+        std::strncpy(m_RenameBuffer, meta.AssetName.c_str(), sizeof(m_RenameBuffer) - 1);
+        m_RequestRenameFocus = true;
+    }
+
+    void ContentBrowserWindow::CancelAssetRename()
+    {
+        m_RenamingAssetPath.clear();
+        m_RenamingAssetExtension.clear();
+        m_RequestRenameFocus = false;
+        m_RenameBuffer[0] = '\0';
+    }
+
+    bool ContentBrowserWindow::IsRenamingAssetPath(std::string_view assetPath) const
+    {
+        return !m_RenamingAssetPath.empty() && m_RenamingAssetPath == assetPath;
+    }
+
+    bool ContentBrowserWindow::CommitAssetRename(const std::string& newStem)
+    {
+        if (m_RenamingAssetPath.empty())
+        {
+            return false;
+        }
+
+        if (newStem.empty() || newStem.find('/') != std::string::npos || newStem.find('\\') != std::string::npos)
+        {
+            CancelAssetRename();
+            return false;
+        }
+
+        const std::string oldPath = m_RenamingAssetPath;
+        const std::string newFileName = newStem + m_RenamingAssetExtension;
+        std::string error;
+        if (!AssetManager::Get().RenameAsset(oldPath, newFileName, error))
+        {
+            ME_CORE_ERROR("Content Browser rename failed: {}", error);
+            CancelAssetRename();
+            return false;
+        }
+
+        const std::filesystem::path newRel =
+            std::filesystem::path(oldPath).parent_path() / newFileName;
+        const std::string newPath = newRel.lexically_normal().generic_string();
+
+        CancelAssetRename();
+        m_Model.RebuildDirectoryTree();
+        m_Model.RebuildCurrentDirectoryAssetList();
+
+        const AssetMeta* newMeta = AssetManager::Get().FindAssetMetaByPath(newPath);
+        if (newMeta != nullptr)
+        {
+            SelectAsset(newMeta);
+        }
+        else
+        {
+            m_SelectedAssetIndex = -1;
+            m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
+        }
+
+        return true;
+    }
+
     void ContentBrowserWindow::DrawAssetTreeLeaf(const AssetMeta& assetMeta)
     {
         ImGui::PushID(assetMeta.AssetPath.c_str());
+
+        if (IsRenamingAssetPath(assetMeta.AssetPath))
+        {
+            EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(m_Context.GetEditorAppearance());
+            const InlineRenameField::Result renameResult =
+                InlineRenameField::Draw(m_RenameBuffer, sizeof(m_RenameBuffer), m_RequestRenameFocus);
+            if (renameResult == InlineRenameField::Result::Commit)
+            {
+                CommitAssetRename(m_RenameBuffer);
+            }
+            else if (renameResult == InlineRenameField::Result::Cancel)
+            {
+                CancelAssetRename();
+            }
+
+            ImGui::PopID();
+            return;
+        }
+
         const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
         const bool isSelected = selected != nullptr && selected->AssetPath == assetMeta.AssetPath;
         if (ImGui::Selectable(assetMeta.AssetName.c_str(), isSelected))
@@ -443,24 +576,23 @@ namespace minEngine
         ImGui::PopID();
     }
 
-    void ContentBrowserWindow::AdvanceTileLayout(const int tileIndex, const int columnCount)
+    void ContentBrowserWindow::PlaceTileInGrid(const int tileIndex,
+                                               const int columnCount,
+                                               const ImVec2& gridOrigin,
+                                               const float tileHeight) const
     {
-        if (tileIndex <= 0)
-        {
-            return;
-        }
-
-        if ((tileIndex % columnCount) == 0)
-        {
-            ImGui::Dummy(ImVec2(0.0f, ViewMetrics::TileSpacing));
-        }
-        else
-        {
-            ImGui::SameLine(0.0f, ViewMetrics::TileSpacing);
-        }
+        const int column = tileIndex % columnCount;
+        const int row = tileIndex / columnCount;
+        ImGui::SetCursorScreenPos(ImVec2(
+            gridOrigin.x
+                + static_cast<float>(column) * (ViewMetrics::TileOuterWidth + ViewMetrics::TileSpacing),
+            gridOrigin.y + static_cast<float>(row) * (tileHeight + ViewMetrics::TileSpacing)));
     }
 
-    void ContentBrowserWindow::DrawTileVisual(const char* label, const bool selected, const AssetMeta* iconAssetMeta)
+    void ContentBrowserWindow::DrawTileVisual(const char* label,
+                                              const bool selected,
+                                              const AssetMeta* iconAssetMeta,
+                                              const bool drawLabel)
     {
         const EditorAppearance& appearance = m_Context.GetEditorAppearance();
         const EditorThemePalette& palette = appearance.GetActivePalette();
@@ -513,26 +645,29 @@ namespace minEngine
                 1.0f);
         }
 
-        const float labelTop = iconMax.y + ViewMetrics::IconLabelGap;
-        const ImVec2 labelMin(outerMin.x + ViewMetrics::TilePadding, labelTop);
-        const ImVec2 labelMax(outerMax.x - ViewMetrics::TilePadding, outerMax.y - ViewMetrics::TilePadding);
-        const float labelWidth = labelMax.x - labelMin.x;
-
-        const ImU32 labelColor = appearance.GetDisplayColorU32(palette.TextPrimary);
-
-        if (captionFont != nullptr)
+        if (drawLabel)
         {
-            ImGui::PushFont(captionFont, 0.0f);
-        }
+            const float labelTop = iconMax.y + ViewMetrics::IconLabelGap;
+            const ImVec2 labelMin(outerMin.x + ViewMetrics::TilePadding, labelTop);
+            const ImVec2 labelMax(outerMax.x - ViewMetrics::TilePadding, outerMax.y - ViewMetrics::TilePadding);
+            const float labelWidth = labelMax.x - labelMin.x;
 
-        const std::string displayName = BuildEllipsizedLabel(label, labelWidth);
-        const ImVec2 displaySize = ImGui::CalcTextSize(displayName.c_str());
-        const float textX = labelMin.x + (labelWidth - displaySize.x) * 0.5f;
-        drawList->AddText(ImVec2(textX, labelMin.y), labelColor, displayName.c_str());
+            const ImU32 labelColor = appearance.GetDisplayColorU32(palette.TextPrimary);
 
-        if (captionFont != nullptr)
-        {
-            ImGui::PopFont();
+            if (captionFont != nullptr)
+            {
+                ImGui::PushFont(captionFont, 0.0f);
+            }
+
+            const std::string displayName = BuildEllipsizedLabel(label, labelWidth);
+            const ImVec2 displaySize = ImGui::CalcTextSize(displayName.c_str());
+            const float textX = labelMin.x + (labelWidth - displaySize.x) * 0.5f;
+            drawList->AddText(ImVec2(textX, labelMin.y), labelColor, displayName.c_str());
+
+            if (captionFont != nullptr)
+            {
+                ImGui::PopFont();
+            }
         }
 
         drawList->PopClipRect();
@@ -571,6 +706,59 @@ namespace minEngine
         ImGui::PushID(tileIndex);
 
         const ImVec2 outerSize(ViewMetrics::TileOuterWidth, ResolveTileOuterHeight());
+
+        if (IsRenamingAssetPath(meta.AssetPath))
+        {
+            ImGui::InvisibleButton("##tile_rename_hit", outerSize);
+            const ImVec2 outerMin = ImGui::GetItemRectMin();
+            const ImVec2 outerMax = ImGui::GetItemRectMax();
+            DrawTileVisual(meta.AssetName.c_str(), selected, &meta, false);
+
+            const float labelTop =
+                outerMin.y + ViewMetrics::TilePadding + ViewMetrics::IconSize + ViewMetrics::IconLabelGap;
+            const float labelWidth = ViewMetrics::TileOuterWidth - 2.0f * ViewMetrics::TilePadding;
+
+            // Overlay rename field inside the fixed tile rect. Do not BeginChild / rewrite
+            // CursorPosPrevLine — that corrupted ImGui layout and asserted on F2 rename.
+            ImGuiWindow* window = ImGui::GetCurrentWindow();
+            const ImVec2 cursorMaxPosAfterTile = window->DC.CursorMaxPos;
+
+            ImGui::PushClipRect(outerMin, outerMax, true);
+            ImGui::SetCursorScreenPos(ImVec2(outerMin.x + ViewMetrics::TilePadding, labelTop));
+            ImGui::PushItemWidth(labelWidth);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
+            ImFont* captionFont = m_Context.GetEditorAppearance().GetImFont(EditorTypographyRole::Caption);
+            if (captionFont != nullptr)
+            {
+                ImGui::PushFont(captionFont, 0.0f);
+            }
+            EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(m_Context.GetEditorAppearance());
+            const InlineRenameField::Result renameResult =
+                InlineRenameField::Draw(m_RenameBuffer, sizeof(m_RenameBuffer), m_RequestRenameFocus);
+            if (captionFont != nullptr)
+            {
+                ImGui::PopFont();
+            }
+            ImGui::PopStyleVar();
+            ImGui::PopItemWidth();
+            ImGui::PopClipRect();
+
+            // Keep content size at the InvisibleButton footprint (absolute grid places next tiles).
+            window->DC.CursorMaxPos = cursorMaxPosAfterTile;
+
+            if (renameResult == InlineRenameField::Result::Commit)
+            {
+                CommitAssetRename(m_RenameBuffer);
+            }
+            else if (renameResult == InlineRenameField::Result::Cancel)
+            {
+                CancelAssetRename();
+            }
+
+            ImGui::PopID();
+            return;
+        }
+
         if (ImGui::InvisibleButton("##tile", outerSize))
         {
             SelectAsset(&meta);
@@ -629,6 +817,9 @@ namespace minEngine
             static_cast<int>((availableWidth + ViewMetrics::TileSpacing) /
                              (ViewMetrics::TileOuterWidth + ViewMetrics::TileSpacing)));
 
+        const float tileHeight = ResolveTileOuterHeight();
+        const ImVec2 gridOrigin = ImGui::GetCursorScreenPos();
+
         int tileIndex = 0;
         for (const AssetTreeModel::DirectoryNode* directoryNode : subdirectories)
         {
@@ -637,7 +828,7 @@ namespace minEngine
                 continue;
             }
 
-            AdvanceTileLayout(tileIndex, columnCount);
+            PlaceTileInGrid(tileIndex, columnCount, gridOrigin, tileHeight);
             DrawDirectoryTile(*directoryNode);
             ++tileIndex;
         }
@@ -650,10 +841,20 @@ namespace minEngine
                 continue;
             }
 
-            AdvanceTileLayout(tileIndex, columnCount);
+            PlaceTileInGrid(tileIndex, columnCount, gridOrigin, tileHeight);
             const bool selectedTile = (m_SelectedAssetIndex == index);
             DrawAssetTile(*meta, tileIndex, selectedTile);
             ++tileIndex;
+        }
+
+        if (tileIndex > 0)
+        {
+            const int rowCount = (tileIndex + columnCount - 1) / columnCount;
+            const float gridBottom = gridOrigin.y
+                + static_cast<float>(rowCount) * tileHeight
+                + static_cast<float>(rowCount - 1) * ViewMetrics::TileSpacing;
+            ImGui::SetCursorScreenPos(ImVec2(gridOrigin.x, gridBottom));
+            ImGui::Dummy(ImVec2(1.0f, 1.0f));
         }
     }
 

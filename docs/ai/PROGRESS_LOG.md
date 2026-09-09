@@ -1,6 +1,49 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（ED-F02 文档收口 + worktree skill / 多轨分支）
+Last updated: 2026-09-09（ED-F05 CB 右键 Rename 补齐）
+
+### 2026-09-09 - ED-F05: CB 右键 Rename
+- **实现：** `EditorActionId::Rename` 对 TreeAsset/TileAsset 可见；`ContentBrowserModule::RequestBeginAssetRename` → Window 消费进 `InlineRenameField`。
+- **Docs：** Design §10.5 / Impl S04 DoD 更新。
+- **Next：** 并入既有 ED-F05 commit（amend）。
+
+### 2026-09-09 - ED-F05: 验收反馈 polish
+- **Rename 逃逸：** `InlineRenameField` 改用 `IsItemDeactivated()`（原先 `AfterEdit` 导致未改字点空白仍停在输入框）。
+- **Add Component：** Inspector → 按钮弹出 searchable 列表（滚动）；右键子菜单 → `BeginChild` 滚动。
+- **Icon：** `ComponentTypeUiCatalog::DrawIcon` 按正文字号绘制（约 0.92×）。
+- **Header：** Accent 半透明底条；右键挂在整行 Group 上；Rename 动作支持 Component。
+- **Next：** 再手测上述项 → 准备 commit。
+
+### 2026-09-09 - ED-F05: S00–S04 落地（S05 Deferred）
+- **S00:** `InlineRenameField` — Esc / 点空白 Cancel；Enter Commit；空名 Cancel。Hierarchy + Inspector GO/Component + CB 复用。
+- **S01:** `ComponentTypeUiCatalog` + `AddComponentPicker`；Abstract specifier；Inspector 右键根级 `Add Component ▶`（含搜索）；Hierarchy 不加。
+- **S02:** 组件头 `icon + instance name + TypeDisplay`；`RenameComponentCommand` + `Component::Rename`。
+- **S03:** `GameObject::MoveComponent`（Root 禁移且不可落到 Root 前）+ `MoveComponentCommand` + Inspector ↑↓。
+- **S04:** CB F2 / 树叶 / 瓦片内联改名 → `AssetManager::RenameAsset`（无 Undo）。
+- **Build:** `Editor` 目标通过。
+- **Docs:** Design/Impl/Registry/ACTIVE_WORK → Done（S05 Deferred）。
+- **Next:** 手测 §Acceptance → **准备 commit**（勿自动 commit）。
+
+### 2026-09-09 - ED-F05: 右键 Add Component + 上下文菜单评估
+- **评估：** Typed Context 模型健全；不必重做。现网 Add 埋在 Create 下且 Hierarchy 禁 Add。
+- **目标：** 根级 `Add Component ▶` 次级类型菜单；`AddComponentPicker` 与 Inspector 同构服务；Hierarchy GO 放开。
+- **Docs：** Design §10.9；确认 Q/R/S；Impl S01 DoD 更新。
+
+### 2026-09-09 - ED-F05: Design §10 实现设计补强
+- **图标：** 明确用 Editor `ComponentTypeUiCatalog` **C++ 静态表** + 基类回退；不用 Runtime `ME_CLASS` Icon / JSON registry。
+- **文档：** Design 增补 §10.1–10.8（S00–S04 API、文件、状态机；待确认 L–P）；Impl 对齐 Touch/DoD。
+- **Next:** 审阅 §10 与 L–P；确认后开 S00。
+
+### 2026-09-09 - ED-F05: Design Review（维护者反馈并入）
+- **契约：** Esc **或** 点空白 = 取消关闭输入框；仅 Enter 提交。
+- **组件头：** `icon + name(不切词) + TypeDisplay(切词、去 Component)`。
+- **Scope：** 升入 **CB 内联重命名（S04）**；视口世界图标 → **S05 Deferred**；Hierarchy 父子拖拽 Out（他分支已有）。
+- **Status：** Registry / Design / Impl → **Review**；待开干。
+- **Next：** 维护者确认开干 → S00。
+
+### 2026-09-09 - ED-F05: Inspector / Component UX Design Draft
+- **Registry:** `ED-F05` 初稿登记（其后已升 Review，见上条）。
+- **Next:** 已由 Review 条目承接。
 
 ### 2026-09-03 - ED-F02 doc closeout + worktree bootstrap tooling
 - **ED-F02:** Design/Impl/Registry 对照 `master` — S00–S02/S04 **Done**；S03 SkyBox 实体、S05 Abstract 标注 **Remaining/Partial**。

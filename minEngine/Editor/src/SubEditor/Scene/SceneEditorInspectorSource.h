@@ -21,6 +21,7 @@
 namespace minEngine
 {
     class SceneEditor;
+    class EditorAppearance;
 
     struct PropertyUndoCaptureContext
     {
@@ -43,6 +44,7 @@ namespace minEngine
         void DrawInspector() override;
 
         void StartInlineRename(const GameObject& gameObject);
+        void BeginComponentRename(Component& component, uint64_t ownerGameObjectId);
 
     private:
         std::string GetShortTypeName(const std::string& fullTypeName);
@@ -91,8 +93,12 @@ namespace minEngine
 
         void DrawGameObjectHeaderContextMenu(GameObject& gameObject);
         void DrawComponentContextMenu(Component& component);
-
-        bool TryDrawComponentContextMenu(Component& component);
+        bool DrawComponentHeaderRow(GameObject& gameObject,
+                                    Component& component,
+                                    const Reflection::MEClass* classInfo,
+                                    EditorAppearance* appearance,
+                                    bool& outComponentOpen,
+                                    bool& inOutOpenHeaderContextMenu);
 
         static std::string MakeAssetPropertyUndoKey(const GUID& ownerGuid, const std::string& propertyName);
 
@@ -100,10 +106,18 @@ namespace minEngine
         PropertyEditSession m_PropertyEditSession;
         static constexpr const char* kWindowTitle = "Inspector";
         std::string m_SelectedAddComponentTypeName;
+        char m_AddComponentFilterBuffer[128] = {};
         bool m_IsRenamingSelectedGameObject = false;
         bool m_RequestRenameFocus = false;
         uint64_t m_RenameTargetGameObjectId = kInvalidGameObjectId;
         char m_RenameBuffer[256] = {};
+
+        bool m_IsRenamingComponent = false;
+        bool m_RequestComponentRenameFocus = false;
+        GUID m_RenamingComponentGuid{};
+        uint64_t m_RenamingComponentOwnerId = kInvalidGameObjectId;
+        char m_ComponentRenameBuffer[256] = {};
+
         std::unordered_map<uint32_t, std::vector<uint8_t>> m_PropertyUndoBeforeByEditId;
         std::unordered_map<std::string, std::vector<uint8_t>> m_AssetPropertyUndoBeforeByKey;
     };

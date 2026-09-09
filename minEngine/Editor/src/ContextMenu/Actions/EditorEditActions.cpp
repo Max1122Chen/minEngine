@@ -143,6 +143,21 @@ namespace minEngine
 
             bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
             {
+                if (const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx))
+                {
+                    return (cbCtx->HitKind == ContentBrowserHitKind::TreeAsset
+                            || cbCtx->HitKind == ContentBrowserHitKind::TileAsset)
+                        && !cbCtx->SelectedAssets.empty()
+                        && cbCtx->SelectedAssets.front() != nullptr;
+                }
+
+                if (const SceneInspectorMenuContext* inspectorCtx = FindSceneInspectorContext(ctx))
+                {
+                    if (inspectorCtx->SelectionKind == SceneInspectorSelectionKind::Component)
+                    {
+                        return inspectorCtx->HoveredComponent != nullptr;
+                    }
+                }
                 return HasSceneGameObjectTarget(ctx);
             }
 
@@ -154,19 +169,40 @@ namespace minEngine
             const char* GetDisabledReason(const EditorMenuContext& ctx) const override
             {
                 (void)ctx;
-                return "No GameObject selected.";
+                return "Nothing to rename.";
             }
 
             void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
             {
-                const uint64_t gameObjectId = GetPrimarySceneGameObjectId(ctx);
-                if (gameObjectId == kInvalidGameObjectId)
+                if (const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx))
                 {
+                    if (!cbCtx->SelectedAssets.empty() && cbCtx->SelectedAssets.front() != nullptr)
+                    {
+                        const AssetMeta& meta = *cbCtx->SelectedAssets.front();
+                        editor.GetAssetWorkflow().SetSelectedAsset(&meta);
+                        editor.GetContentBrowser().RequestBeginAssetRename(meta.AssetPath);
+                    }
                     return;
                 }
 
                 SceneEditor* sceneEditor = GetSceneEditor(&editor);
                 if (!sceneEditor)
+                {
+                    return;
+                }
+
+                if (const SceneInspectorMenuContext* inspectorCtx = FindSceneInspectorContext(ctx))
+                {
+                    if (inspectorCtx->SelectionKind == SceneInspectorSelectionKind::Component
+                        && inspectorCtx->HoveredComponent != nullptr)
+                    {
+                        sceneEditor->BeginRenameComponentInInspector(*inspectorCtx->HoveredComponent);
+                        return;
+                    }
+                }
+
+                const uint64_t gameObjectId = GetPrimarySceneGameObjectId(ctx);
+                if (gameObjectId == kInvalidGameObjectId)
                 {
                     return;
                 }
