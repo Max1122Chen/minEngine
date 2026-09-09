@@ -10,5 +10,6 @@ namespace minEngine
     {
         MeshDrawCommand Draw;
         uint32_t StableOrder = 0;
+        int32_t CanvasSortOrder = 0;
     };
 }

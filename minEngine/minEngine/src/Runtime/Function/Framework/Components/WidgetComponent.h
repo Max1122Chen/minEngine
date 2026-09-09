@@ -44,6 +44,10 @@ namespace minEngine
         void SetStableOrder(uint32_t order);
         uint32_t GetStableOrder() const { return m_StableOrder; }
 
+        /** When false, skipped by ScreenUI hit-test (still may draw). Default true. */
+        void SetHitTestVisible(bool visible) { m_bHitTestVisible = visible; }
+        bool IsHitTestVisible() const { return m_bHitTestVisible; }
+
         const UIRect& GetComputedRect() const { return m_ComputedRect; }
         void SetComputedRect(const UIRect& rect);
 
@@ -84,6 +88,8 @@ namespace minEngine
 
         ME_PROPERTY()
         uint32_t m_StableOrder = 0;
+
+        bool m_bHitTestVisible = true;
 
         UIRect m_ComputedRect{};
 

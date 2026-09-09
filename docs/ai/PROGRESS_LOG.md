@@ -1,6 +1,32 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-06（CORE-F14 Done）
+Last updated: 2026-09-09（UI-F02 Done）
+
+### 2026-09-09 - UI-F02 Done：Viewport 注入 + PIE HUD + S2
+- **Code：** Scene viewport 注入 ImageMin/Size + `PollPointer`；Play HUD（Hover/Pressed/Click + 描边）；`ShouldBlockWorldPointer` + pick 守卫。
+- **Note：** Play 本就停 Editor 3D pick；S2 主要是消费侧 API。无 Button 用 HUD 目视。
+- **Docs：** Design/Registry/ACTIVE_WORK → **Done**（MVP）。
+- **Next：** 用户 PIE 验收 → 准备 commit。
+
+### 2026-09-09 - UI-F02 S0/S1：Hit + Pointer（单测绿）
+- **Code：** 多 Canvas 两阶段 Hit；`bHitTestVisible`；UISystem Tick（Hover/Press/Click + 宽松 Capture）；PIE `OnBegin/End` 开路由；Draw 队列 `CanvasSortOrder`。
+- **Tests：** `screen-ui-hit` 5/5；`screen-ui-coords` / `ui-layout` 回归绿。
+- **Docs：** Design/Registry/ACTIVE_WORK → **In Progress**（S0/S1 Done；S2 可选）。
+- **Next：** 可选 S2 / Viewport 注入；或收口后准备 commit。
+
+### 2026-09-07 - UI-F02 Planned：骨架（算法空）
+- **Docs：** Design → Planned；岔路已决；Canvas.SortOrder 入 Scope。
+- **Code：** `UISystem` 挂 Engine；`ScreenUIHitResult/Query/PointerState`；`ScreenUIHitTester` 空实现；`LetterboxMapping::TryUnmapPoint`；`UIRect::Contains`。
+- **Next：** 用户审查 API → S0 填多 Canvas Hit 算法。
+
+### 2026-09-06 - UI-F02：拍板单一 UISystem
+- **Design：** §3.0 落位/边界；HitTester 等为域内零件，禁止各自成 System；切片 S1 挂 Engine。
+- **Next：** 用户审阅 → §9 余下岔路口 → Planned。
+
+### 2026-09-06 - UI-F02 Design Draft + UE 对照
+- **Docs：** 登记 `UI-F02`；[Design](./Platform/UI/UI-F02_SCREENUI_HITTEST_DESIGN.md) **Draft**（三层 Hit + Query；§4 UE Slate/UMG 类职责表）。
+- **Registry / ACTIVE_WORK：** 焦点指向 UI-F02 Draft；未升 Planned / 未开码。
+- **Next：** 讨论 Design §9 岔路口 → Planned → S0。
 
 ### 2026-09-06 - CORE-F14 Done
 - **验收：** 目视 ColorPicker Close + Image/Sprite/Light LinearColor 改色通过。

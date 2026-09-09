@@ -4,7 +4,14 @@
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Chrome/ViewportPlayToolbar.h"
 #include "Render/RenderCamera.h"
+#include "Function/Framework/Components/CanvasComponent.h"
+#include "Function/Framework/Components/WidgetComponent.h"
 #include "Function/Framework/GameObject/GameObject.h"
+#include "Function/Framework/Scene/Scene.h"
+#include "Function/Render/ScreenUI/ScreenUICoords.h"
+#include "Function/UI/UISystem.h"
+
+#include <cstdio>
 
 namespace minEngine
 {
@@ -21,10 +28,123 @@ namespace minEngine
     void SceneEditingViewportWindow::DrawViewportToolbarRow()
     {
         ViewportPlayToolbar::DrawToolbarRow(m_Context);
+        if (m_Context.IsPlaying())
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 1.0f, 1.0f), "| ScreenUI hit debug (see viewport top-left)");
+        }
+    }
+
+    void SceneEditingViewportWindow::SyncScreenUIPointerViewport(const ViewportFrameState& frameState)
+    {
+        if (!UISystem::HasInstance())
+        {
+            return;
+        }
+
+        ScreenUIPointerViewportContext context;
+        context.ImageMin = frameState.ImageMin;
+        context.ImageSize = frameState.ImageSize;
+        context.bValid = frameState.ImageSize.x > 0.0f && frameState.ImageSize.y > 0.0f;
+        UISystem::Get().SetPointerViewportContext(context);
+        UISystem::Get().PollPointer();
+    }
+
+    void SceneEditingViewportWindow::DrawScreenUIPointerDebugOverlay(const ViewportFrameState& frameState)
+    {
+        // Always draw during Play so missing routing / UISystem is visible (acceptance aid).
+        const bool hasUI = UISystem::HasInstance();
+        const bool routing = hasUI && UISystem::Get().IsPointerRoutingEnabled();
+
+        const char* hoveredName = "(none)";
+        const char* pressedName = "(none)";
+        bool click = false;
+        bool pointerDown = false;
+        bool ctxValid = false;
+        float ctxW = 0.0f;
+        float ctxH = 0.0f;
+        WidgetComponent* hoveredWidget = nullptr;
+
+        if (hasUI)
+        {
+            const ScreenUIPointerState& pointer = UISystem::Get().GetPointerState();
+            const ScreenUIPointerViewportContext& viewport = UISystem::Get().GetPointerViewportContext();
+            click = pointer.bClickThisFrame;
+            pointerDown = pointer.bPointerDown;
+            ctxValid = viewport.bValid;
+            ctxW = viewport.ImageSize.x;
+            ctxH = viewport.ImageSize.y;
+            hoveredWidget = pointer.Hovered;
+            if (pointer.Hovered != nullptr && pointer.Hovered->GetOwner() != nullptr)
+            {
+                hoveredName = pointer.Hovered->GetOwner()->GetName().c_str();
+            }
+            if (pointer.Pressed != nullptr && pointer.Pressed->GetOwner() != nullptr)
+            {
+                pressedName = pointer.Pressed->GetOwner()->GetName().c_str();
+            }
+        }
+
+        char line[320];
+        std::snprintf(
+            line,
+            sizeof(line),
+            "ScreenUI [%s] Hover:%s Pressed:%s Click:%s Ctx:%s (%.0fx%.0f)",
+            !hasUI ? "NO UISystem" : (routing ? "routing ON" : "routing OFF"),
+            hoveredName,
+            pressedName,
+            click ? "YES" : "no",
+            ctxValid ? "ok" : "INVALID",
+            ctxW,
+            ctxH);
+
+        // Foreground list avoids clip from Image / child regions.
+        ImDrawList* drawList = ImGui::GetForegroundDrawList();
+        const ImVec2 textPos(frameState.ImageMin.x + 8.0f, frameState.ImageMin.y + 8.0f);
+        const ImVec2 textSize = ImGui::CalcTextSize(line);
+        drawList->AddRectFilled(
+            ImVec2(textPos.x - 6.0f, textPos.y - 4.0f),
+            ImVec2(textPos.x + textSize.x + 6.0f, textPos.y + textSize.y + 4.0f),
+            IM_COL32(0, 0, 0, 200));
+        drawList->AddRect(
+            ImVec2(textPos.x - 6.0f, textPos.y - 4.0f),
+            ImVec2(textPos.x + textSize.x + 6.0f, textPos.y + textSize.y + 4.0f),
+            IM_COL32(255, 220, 0, 255),
+            0.0f,
+            0,
+            2.0f);
+        drawList->AddText(textPos, IM_COL32(120, 255, 255, 255), line);
+
+        if (!routing || hoveredWidget == nullptr)
+        {
+            return;
+        }
+
+        GameObject* owner = hoveredWidget->GetOwner();
+        CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(owner);
+        if (canvas == nullptr)
+        {
+            return;
+        }
+
+        const Vector2 ref = canvas->GetReferenceResolution();
+        const ScreenUICoords::LetterboxMapping mapping = ScreenUICoords::MakeLetterboxMapping(
+            ref.x, ref.y, frameState.ImageSize.x, frameState.ImageSize.y);
+
+        const UIRect& rect = hoveredWidget->GetComputedRect();
+        const Vector2 topLeftVp = mapping.MapPoint(rect.TopLeft);
+        const Vector2 sizeVp = mapping.MapSize(rect.Size);
+        const ImVec2 screenMin(
+            frameState.ImageMin.x + topLeftVp.x,
+            frameState.ImageMin.y + topLeftVp.y);
+        const ImVec2 screenMax(screenMin.x + sizeVp.x, screenMin.y + sizeVp.y);
+
+        const ImU32 outlineColor = pointerDown ? IM_COL32(255, 180, 40, 255) : IM_COL32(80, 255, 120, 255);
+        drawList->AddRect(screenMin, screenMax, outlineColor, 0.0f, 0, 3.0f);
     }
 
     void SceneEditingViewportWindow::OnPostSceneImageDraw(EditorViewportClient& client,
-                                                          const ViewportFrameState& /*frameState*/)
+                                                          const ViewportFrameState& frameState)
     {
         // Play view is game camera / PIE world — no editor transform gizmo.
         if (m_Context.IsPlaying())
@@ -36,6 +156,9 @@ namespace minEngine
             gizmoState.Manipulated = false;
             gizmoState.HasResultWorldMatrix = false;
             sceneClient.SetInputBlockedByGizmo(false);
+
+            SyncScreenUIPointerViewport(frameState);
+            DrawScreenUIPointerDebugOverlay(frameState);
             return;
         }
 

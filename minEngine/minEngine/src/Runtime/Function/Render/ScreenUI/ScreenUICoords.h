@@ -33,6 +33,17 @@ namespace minEngine
             {
                 return refSize * Scale;
             }
+
+            /**
+             * Inverse of MapPoint. Returns false if Scale is invalid or the point
+             * lies outside the letterboxed content rect (black bars).
+             * Skeleton note: math is filled; HitTester election still TBD.
+             */
+            bool TryUnmapPoint(
+                const Vector2& viewportPoint,
+                float refWidth,
+                float refHeight,
+                Vector2& outRefPoint) const;
         };
 
         static LetterboxMapping MakeLetterboxMapping(

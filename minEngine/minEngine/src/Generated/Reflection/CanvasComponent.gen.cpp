@@ -7,4 +7,5 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::CanvasComponent, GReflectionClassReg
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::CanvasComponent, m_RenderMode, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::CanvasComponent, m_ScaleMode, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::CanvasComponent, m_ReferenceResolution, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::CanvasComponent, m_SortOrder, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::CanvasComponent)

@@ -28,8 +28,7 @@
 #include "Render/RenderScene.h"
 
 #include "Runtime/Function/Input/InputSystem.h"
-
-
+#include "Runtime/Function/UI/UISystem.h"
 
 #include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 
@@ -838,6 +837,11 @@ namespace minEngine
     void SceneEditingViewportClient::TrySelectAtMousePosition()
 
     {
+        // S2: ScreenUI consumes the pointer when routing is on and a widget is under it.
+        if (UISystem::HasInstance() && UISystem::Get().ShouldBlockWorldPointer())
+        {
+            return;
+        }
 
         Vector2 mousePosition = InputSystem::GetMousePosition();
 

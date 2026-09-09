@@ -36,6 +36,11 @@ namespace minEngine
         m_ReferenceResolution = resolution;
     }
 
+    void CanvasComponent::SetSortOrder(int32_t sortOrder)
+    {
+        m_SortOrder = sortOrder;
+    }
+
     UIRect CanvasComponent::GetReferenceRect() const
     {
         UIRect rect;

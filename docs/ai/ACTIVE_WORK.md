@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-06（CORE-F14 Done；下一刀待选）
+Last updated: 2026-09-09（UI-F02 Done：待用户 PIE 目视）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -10,17 +10,24 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/ui`）
 
+### ~~UI-F02 — ScreenUI Hit-test / Pointer~~ **Done**（MVP；待 PIE 目视）
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design | [UI-F02](./Platform/UI/UI-F02_SCREENUI_HITTEST_DESIGN.md) · **Done** |
+| 验收 | Play 后 Viewport 左上角 ScreenUI HUD：Hover/Pressed/Click + 描边 |
+| Next | 用户目视通过后准备 commit；下一 Feature（Button / ANIM / …）另选 |
+
 ### ~~CORE-F14 — LinearColor 作者颜色~~ **Done**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design | [CORE-F14](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · **Done** |
 
-### 下一刀（待选）
+### 并行候选（非本 Feature 焦点）
 
 | 候选 | 说明 |
 |------|------|
-| **UI-F02**（建议本分支） | Hit-test / 指针命中（UI-F01 Out）；再开 Text/Button |
 | **ANIM-F01** | Capability Primary；其他 worktree `feat/animation` |
 | **ED-F02 余量** | `master`：Material Preview / SkyBox 等 |
 | **RND-F06** | ForwardRenderer 收口（非阻塞） |

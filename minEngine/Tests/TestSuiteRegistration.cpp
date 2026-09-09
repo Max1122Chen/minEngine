@@ -27,6 +27,7 @@
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
 #include "Suites/UILayoutTest.h"
+#include "Suites/ScreenUIHitTest.h"
 #include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/CommandSystemTest.h"
 
@@ -377,6 +378,23 @@ namespace minEngine
             }
         };
 
+        struct ScreenUIHitTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-hit", "Screen UI Hit-test", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-hit'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-hit",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct GameObjectHierarchyTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -432,6 +450,7 @@ namespace minEngine
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
+        using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
 
@@ -465,6 +484,7 @@ namespace minEngine
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
             registry.Register(UILayoutSuite::Get());
+            registry.Register(ScreenUIHitSuite::Get());
             registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             s_Registered = true;

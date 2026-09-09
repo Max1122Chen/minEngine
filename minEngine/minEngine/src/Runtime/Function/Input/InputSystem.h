@@ -36,6 +36,7 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
+        static bool HasInstance() { return s_Instance != nullptr; }
         static InputSystem& Get();
 
         void Tick(float deltaTime);

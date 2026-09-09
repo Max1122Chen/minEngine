@@ -45,5 +45,7 @@ namespace minEngine
 
     private:
         void DrawGizmo(SceneEditingViewportClient& client);
+        void SyncScreenUIPointerViewport(const ViewportFrameState& frameState);
+        void DrawScreenUIPointerDebugOverlay(const ViewportFrameState& frameState);
     };
 }

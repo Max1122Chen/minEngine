@@ -13,6 +13,7 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Audio/AudioSystem.h"
+#include "Runtime/Function/UI/UISystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
 #include "Runtime/Function/Debug/DebugDrawService.h"
@@ -185,6 +186,10 @@ namespace minEngine
         m_PhysicsSystem = std::make_shared<PhysicsSystem>();
         PhysicsSystem::SetInstance(m_PhysicsSystem.get());
         m_PhysicsSystem->Initialize();
+
+        m_UISystem = std::make_shared<UISystem>();
+        UISystem::SetInstance(m_UISystem.get());
+        m_UISystem->Initialize();
     }
 
     void Engine::ShutdownSystems()
@@ -222,6 +227,13 @@ namespace minEngine
             m_PhysicsSystem->Shutdown();
             PhysicsSystem::SetInstance(nullptr);
             m_PhysicsSystem.reset();
+        }
+
+        if (m_UISystem)
+        {
+            m_UISystem->Shutdown();
+            UISystem::SetInstance(nullptr);
+            m_UISystem.reset();
         }
 
         if (m_LuaScriptSystem)
@@ -278,6 +290,10 @@ namespace minEngine
         if (m_PhysicsSystem)
         {
             m_PhysicsSystem->SimulateActiveScene(deltaTime);
+        }
+        if (m_UISystem)
+        {
+            m_UISystem->Tick(deltaTime);
         }
         m_SceneManager->SendAllEndOfFrameUpdates();
     }

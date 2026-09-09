@@ -73,6 +73,12 @@ namespace minEngine
             rect.Size = Vector2(right - left, bottom - top);
             return rect;
         }
+
+        /** Inclusive of left/top edges; exclusive of right/bottom (pixel-top-left convention). */
+        bool Contains(const Vector2& point) const
+        {
+            return point.x >= Left() && point.x < Right() && point.y >= Top() && point.y < Bottom();
+        }
     };
 }
 

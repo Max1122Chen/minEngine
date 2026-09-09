@@ -1232,6 +1232,7 @@ namespace minEngine
 
             UIDrawCommand command;
             command.StableOrder = widgetProxy->m_StableOrder;
+            command.CanvasSortOrder = canvas->GetSortOrder();
             command.Draw.m_VertexBuffer = widgetProxy->m_VertexBuffer;
             command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
             command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
@@ -1246,6 +1247,10 @@ namespace minEngine
             ctx.ScreenUIQueue.end(),
             [](const UIDrawCommand& a, const UIDrawCommand& b)
             {
+                if (a.CanvasSortOrder != b.CanvasSortOrder)
+                {
+                    return a.CanvasSortOrder < b.CanvasSortOrder;
+                }
                 return a.StableOrder < b.StableOrder;
             });
     }

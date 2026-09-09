@@ -7,6 +7,7 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::CanvasComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::CanvasComponent, m_RenderMode)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::CanvasComponent, m_ScaleMode)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::CanvasComponent, m_ReferenceResolution)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::CanvasComponent, m_SortOrder)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::CanvasComponent, GReflectionClassRegister_CanvasComponent_5f9d169e)

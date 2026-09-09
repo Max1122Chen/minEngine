@@ -29,6 +29,10 @@ namespace minEngine
         Vector2 GetReferenceResolution() const { return m_ReferenceResolution; }
         void SetReferenceResolution(const Vector2& resolution);
 
+        /** Higher draws / hits above lower (multi-Canvas). Default 0. */
+        int32_t GetSortOrder() const { return m_SortOrder; }
+        void SetSortOrder(int32_t sortOrder);
+
         UIRect GetReferenceRect() const;
 
         /** Walk GO parents to the nearest CanvasComponent, or null. */
@@ -43,6 +47,9 @@ namespace minEngine
 
         ME_PROPERTY()
         Vector2 m_ReferenceResolution{ 1920.0f, 1080.0f };
+
+        ME_PROPERTY()
+        int32_t m_SortOrder{ 0 };
     };
 }
 

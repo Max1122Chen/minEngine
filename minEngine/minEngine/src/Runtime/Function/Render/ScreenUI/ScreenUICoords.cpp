@@ -43,4 +43,31 @@ namespace minEngine
         mapping.Offset = Vector2((safeVpW - scaledW) * 0.5f, (safeVpH - scaledH) * 0.5f);
         return mapping;
     }
+
+    bool ScreenUICoords::LetterboxMapping::TryUnmapPoint(
+        const Vector2& viewportPoint,
+        float refWidth,
+        float refHeight,
+        Vector2& outRefPoint) const
+    {
+        outRefPoint = Vector2(0.0f, 0.0f);
+        if (Scale <= 0.0f)
+        {
+            return false;
+        }
+
+        const float safeRefW = refWidth > 0.0f ? refWidth : 1.0f;
+        const float safeRefH = refHeight > 0.0f ? refHeight : 1.0f;
+        const float contentW = safeRefW * Scale;
+        const float contentH = safeRefH * Scale;
+
+        if (viewportPoint.x < Offset.x || viewportPoint.x >= Offset.x + contentW ||
+            viewportPoint.y < Offset.y || viewportPoint.y >= Offset.y + contentH)
+        {
+            return false;
+        }
+
+        outRefPoint = (viewportPoint - Offset) / Scale;
+        return true;
+    }
 }
