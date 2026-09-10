@@ -1,8 +1,33 @@
+Last updated: 2026-09-09（ED-F05 SM Canvas MVP Done；准备 commit）
+
+
+
+### 2026-09-09 - ED-F05: SM Canvas MVP smoke + polish
+- **Code:** L1 UI/SmGraph + L2 AnimGraphSmBridge；AnimGraphWindow 去掉 ax Pin/Link；双区节点/自适应尺寸/蓝黄高亮；缩放对齐 ax Navigate。
+- **Verify:** Editor Debug PASS；维护者手测基本 OK（热区/缩放/选中）。
+- **Deferred:** 边右键菜单；Inspector UX；AnyState 画布。
+- **Next:** 准备 commit（排除本地 Animations/uild_*.log/scene 脏改）。
+
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-09（S08b 删连线崩溃修复）
+Last updated: 2026-09-09（ED-F05 In Progress：两层实现）
 
 
+
+### 2026-09-09 - ED-F05: two-layer SmGraph + AnimGraph bridge (code)
+- **L1:** `Editor/src/UI/SmGraph/` — `Document` / `EditEvent` / `Widget`（仅 imgui + `ImGuiEx::Canvas`）。
+- **L2:** `AnimGraphSmBridge` + `AnimGraphWindow` 去掉 ax Pin/Link 绘制路径。
+- **Verify:** `cmake --build build --target Editor` Debug PASS。
+- **Next:** 手动 smoke（拖节点/建边/选边 Inspector/Delete/Save）；Material 回归；再准备 commit。
+
+### 2026-09-09 - ED-F05: two-layer SmGraph + AnimGraph bridge (start)
+- **Docs:** Design §3 两层锁定（L1 ImGui-only / L2 Bridge）；多边允许；EditorPos=左上角；Status → In Progress。
+- **Code:** 随后落地。
+
+### 2026-09-09 - ED-F05 Design: State Machine Graph Canvas (Review)
+- **Docs:** Registry `ED-F05`；[Design](./Editor/ED-F05_STATE_MACHINE_CANVAS_DESIGN.md) · [Impl](./Editor/ED-F05_STATE_MACHINE_CANVAS_IMPLEMENTATION.md)。
+- **Locked draft:** 复用 `ImGuiEx::Canvas`；自研 State/Edge；交互 §5（边缘热区、有向边、禁自环）。
+- **Code:** 未动；待审批。
 
 ### 2026-09-09 - ANIM-F03-S08b fix: delete-link crash (Ed::Flow UAF)
 - **Cause:** per-frame \Ed::Flow(linkId)\ keeps FlowAnimation.Link*; AcceptDeletedItem marks DeleteOnNewFrame → freed next Begin → UAF.

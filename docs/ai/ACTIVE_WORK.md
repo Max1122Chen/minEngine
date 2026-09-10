@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-09（ANIM-F03-S08b smoke PASS；准备 commit）
+Last updated: 2026-09-09（ED-F05 In Progress：两层 SmGraph + AnimGraph bridge）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,15 +9,24 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/animation`）
 
+### ED-F05 — State Machine Graph Canvas ← **Done**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Editor/ED-F05_STATE_MACHINE_CANVAS_DESIGN.md) · [Impl](./Editor/ED-F05_STATE_MACHINE_CANVAS_IMPLEMENTATION.md) |
+| 目标 | **L1** 可复用 `UI/SmGraph`（ImGui+Canvas only）；**L2** AnimGraph bridge + 替换 ax Pin 层 |
+| Locked | 两层边界；边缘热区拖线；禁自环；同向多边允许；EditorPos=左上角；Material 继续 ax |
+| Next | MVP Done；Deferred：边右键菜单、Inspector UX；可准备 commit |
+
 ### ANIM-F03 — Animation Graph MVP ← **In Progress**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design / Impl | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
 | 目标 | Unity 式 FSM（State+Transition+Params）+ Pose Blend；参数经 CORE-F08；Player∥Instance |
-| Out | AnimBP VM / BlendTree / Event / Retarget / 自研参数袋；SM 画布 L5 / Preview Deferred |
+| Out | AnimBP VM / BlendTree / Event / Retarget / 自研参数袋；Preview Deferred；真·SM → **ED-F05** |
 | Locked | 资产即图；真源=SM；F08 Schema；**S08b：复用 Inspector、取消 DetailsWindow、ax 伪装 SM** |
-| Next | 准备 commit；另议真·SM 画布方案（ax 限制已确认） |
+| Next | S08/S08b 已合入 `958ac88`；真·SM 画布由 **ED-F05** 承接 |
 
 ### CORE-F08 — Parameter Schema / Layout / Store ← **Done**
 

@@ -500,7 +500,7 @@ Condition.`ParamName` ∈ Schema；Schema 改名后未更新的条件 Validate �
 | Status | **In Progress** |
 | What's done | Runtime MVP `a59b79a`；S08 MVP + **S08b**（Inspector / SM 伪装 / Schema 列宽）；Editor Debug rebuild PASS |
 | What's not | 手动 smoke；Preview Deferred；人型目视；SM L5 |
-| Next | 手动验 S08b；再准备 commit |
+| Next | S08b 已合入；真·SM 见 ED-F05 Review |
 | Blocked by | 无 |
 
 ---
@@ -520,3 +520,4 @@ Condition.`ParamName` ∈ Schema；Schema 改名后未更新的条件 Validate �
 | 2026-09-09 | S08 Editor MVP code land：三窗 + OpenAsset/Save；Editor build PASS |
 | 2026-09-09 | §9 修订：**复用 Inspector**、**取消 AnimGraphDetailsWindow**、ax **SM 伪装** L1–L2/L4、Schema 列宽 40/25/35；切片 **S08b** |
 | 2026-09-09 | S08b code land：InspectorSource、删 DetailsWindow、Flow/边缘热区、Reverse、Schema 40/25/35 |
+| 2026-09-09 | 真·SM 画布开项 **ED-F05**（复用 ImGuiEx::Canvas；待审批）；本 Feature 真源不变 |
