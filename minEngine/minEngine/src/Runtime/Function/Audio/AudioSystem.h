@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Testing/TestAccess.h"
 #include "Runtime/Function/Audio/AudioMixer.h"
 #include "Runtime/Function/Audio/AudioTypes.h"
 
@@ -68,7 +69,7 @@ namespace minEngine
 
     private:
         friend class Engine;
-        friend class AudioSmokeTestScope;
+        friend class Testing::TestAccess<AudioSystem>;
 
         static void SetInstance(AudioSystem* instance);
         void InitializeWithBackend(std::unique_ptr<IAudioBackend> backend);

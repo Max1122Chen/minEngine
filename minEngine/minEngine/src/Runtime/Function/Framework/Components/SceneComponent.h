@@ -18,7 +18,7 @@ namespace minEngine
     ME_CLASS()
     class SceneComponent : public Component
     {
-        ME_GENERATED_BODY(SceneComponent)
+        ME_GENERATED_BODY()
 
     public:
         SceneComponent();
@@ -26,6 +26,7 @@ namespace minEngine
 
         void MarkRenderStateDirty();
         void ApplyEditorTransformEdit(ETeleportType teleport = ETeleportType::ResetPhysics);
+        void PostEditChangeProperty(const Reflection::PropertyChangedEvent& event) override;
 
         bool IsTransformDirty() const { return m_bTransformDirty; }
         ETeleportType GetPendingTeleportType() const { return m_PendingTeleportType; }

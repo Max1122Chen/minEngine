@@ -1,4 +1,5 @@
 #include "Runtime/Core/Delegates/Delegates.h"
+#include "Access/ObjectManagerTestAccess.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/ReflectionSample.h"
@@ -16,14 +17,14 @@ namespace minEngine
     public:
         DelegateObjectManagerScope()
         {
-            ObjectManager::SetInstance(&m_Manager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_Manager);
             m_Manager.Initialize();
         }
 
         ~DelegateObjectManagerScope()
         {
             m_Manager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:

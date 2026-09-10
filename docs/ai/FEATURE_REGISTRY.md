@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-03（设计哲学 + Capability Roadmap；CORE-F05 MVP Done）
+Last updated: 2026-09-10（CORE-F12 Done；TEST-F04 Planned）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -23,15 +23,21 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `TEST-F01` | Test runner, suite registry, verify integration | Done | — | [TEST_UNIFIED_DESIGN](./Platform/Test/TEST_UNIFIED_DESIGN.md) |
 | `TEST-F02` | Test layout migration, doctest, minEngineTests exe | Done | — | [TEST_F02_LAYOUT_MIGRATION](./Platform/Test/TEST_F02_LAYOUT_MIGRATION.md) |
 | `TEST-F03` | Suite slim-down, doctest cases, fixture B reflection | Done | — | [TEST_F03_SUITE_SLIM_PLAN](./Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md) |
+| `TEST-F04` | `Testing::TestAccess<T>` — Core 前向声明 + Tests 特化，替代 N 个 TestScope friend | **Done** | — | [Design](./Platform/Test/TEST-F04_TEST_ACCESS_DESIGN.md) · S00–S04 · **`feat/core`** |
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | In Progress | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
 | `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
-| `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · **`master`** · S05 Pause/Step Deferred；TD-028/029/030 Open |
+| `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · **`master`** · S05 Pause/Step Deferred；TD-030 Open；TD-028/029 → **CORE-F09 Done** |
 | `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) · **`master`** |
 | `CORE-F07` | 反射/Inspector 展示名（去 `m_`/`x_`/`b_` 前缀 + 驼峰分词） | **Done** | — | [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) · **`master`** |
+| `CORE-F08` | 序列化系统整理（StaticClass API、删死代码、P1 内部整理；不改 Binary wire；TD-026 Deferred） | **Done** | — | [Design](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_IMPLEMENTATION.md) · **`feat/core`** |
+| `CORE-F09` | Binary wire 协议 v2（Transient Ids；TD-028/029；Persistent 契约） | **Done** | — | [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_IMPLEMENTATION.md) · **`feat/core`** · Transient only；存盘 Binary 未做 |
+| `CORE-F10` | JSON 存盘兼容（宽松未知字段 + `$schemaVersion` meta） | **Done** | — | [Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_IMPLEMENTATION.md) · **`feat/core`** |
+| `CORE-F11` | 属性 Getter/Setter native thunk + `AssignProperty`（TD-026 / BUG-CORE-001） | **Done** | — | [Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [Impl](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_IMPLEMENTATION.md) · **`feat/core`** |
+| `CORE-F12` | `ME_GENERATED_BODY()` 去无用类型实参 + header-tool marker 归属收紧 | **Done** | — | [Design](./Platform/Reflection/CORE-F12_GENERATED_BODY_NO_ARG_DESIGN.md) · **`feat/core`** |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -70,9 +76,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | DOMAIN | Next Feature # | Notes |
 |--------|----------------|-------|
 | `CLI` | F02 | |
-| `TEST` | F04 | |
+| `TEST` | **F05** | F04 Planned（TestAccess） |
 | `WF` | F03 | |
-| `CORE` | **F08** | F05 MVP Done；F06–F07 Done |
+| `CORE` | **F13** | F12 Done（GENERATED_BODY no-arg）；F08–F11 Done；`feat/core` |
 | `ASSET` | F01 | Async / Lifetime 愿景见 Capability Roadmap；尚未登记 Feature |
 | `ED` | **F05** | F02 In Progress（S00–S02/S04 Done）；F03 Done；F04 Console In Progress (MVP) |
 | `RND` | **F17** | F16 Sprite 占位；F12 Deferred |

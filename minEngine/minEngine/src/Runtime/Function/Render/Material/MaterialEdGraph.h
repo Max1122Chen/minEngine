@@ -24,7 +24,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialEdGraph : public EditorGraph
     {
-        ME_GENERATED_BODY(MaterialEdGraph)
+        ME_GENERATED_BODY()
 
     public:
         ME_PROPERTY(Instanced)

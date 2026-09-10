@@ -10,7 +10,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialEdGraphNode : public EditorGraphNode
     {
-        ME_GENERATED_BODY(MaterialEdGraphNode)
+        ME_GENERATED_BODY()
 
     public:
         MaterialEdGraphNode() = default;

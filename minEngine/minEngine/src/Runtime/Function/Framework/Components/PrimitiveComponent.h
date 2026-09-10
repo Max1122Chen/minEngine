@@ -11,7 +11,7 @@ namespace minEngine
     ME_CLASS()
     class PrimitiveComponent : public SceneComponent
     {
-        ME_GENERATED_BODY(PrimitiveComponent)
+        ME_GENERATED_BODY()
     public:
         PrimitiveComponent();
         virtual ~PrimitiveComponent() override;

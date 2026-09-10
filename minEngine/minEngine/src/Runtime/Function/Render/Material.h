@@ -43,7 +43,7 @@ namespace minEngine
     ME_CLASS()
     class Material : public Asset
     {
-        ME_GENERATED_BODY(Material)
+        ME_GENERATED_BODY()
         friend class MaterialCompiler;
 
     public:

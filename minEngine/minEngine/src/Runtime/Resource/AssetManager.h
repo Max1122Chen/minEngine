@@ -181,8 +181,7 @@ namespace minEngine
 
     private:
         friend class Engine;
-        friend class AssetManagerTestScope;
-        friend class LuaScriptMvpTestScope;
+        friend class Testing::TestAccess<AssetManager>;
 
         static void SetInstance(AssetManager* instance);
         static AssetManager* s_Instance;

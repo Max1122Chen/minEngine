@@ -9,7 +9,7 @@ namespace minEngine
     ME_CLASS()
     class ColliderComponent : public Component
     {
-        ME_GENERATED_BODY(ColliderComponent)
+        ME_GENERATED_BODY()
 
     public:
         ColliderComponent() = default;
@@ -24,7 +24,9 @@ namespace minEngine
 
         void RefreshOwningRigidBody();
 
-        ME_PROPERTY(EditAnywhere)
+        void PostEditChangeProperty(const Reflection::PropertyChangedEvent& event) override;
+
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetObjectChannel", Getter = "GetObjectChannel"))
         ECollisionChannel m_ObjectChannel{ECollisionChannel::Default};
     };
 }

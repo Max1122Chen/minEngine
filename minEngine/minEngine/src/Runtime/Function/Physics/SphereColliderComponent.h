@@ -8,7 +8,7 @@ namespace minEngine
     ME_CLASS()
     class SphereColliderComponent : public ColliderComponent
     {
-        ME_GENERATED_BODY(SphereColliderComponent)
+        ME_GENERATED_BODY()
 
     public:
         SphereColliderComponent() = default;
@@ -20,7 +20,7 @@ namespace minEngine
         void SetOwner(GameObject* inOwner) override;
 
     private:
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetRadius", Getter = "GetRadius"))
         float m_Radius{0.5f};
     };
 }

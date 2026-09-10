@@ -14,7 +14,7 @@ namespace minEngine
     {
         std::shared_ptr<Scene> scene = NewObject<Scene>(meta.AssetName, nullptr, meta.Guid);
         scene->Reset();
-        scene->m_SceneName = meta.AssetName;
+        scene->SetSceneName(meta.AssetName);
 
         Serialization::JsonReaderArchive archive;
         const std::string absoluteAssetPath =
@@ -22,14 +22,12 @@ namespace minEngine
 
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             absoluteAssetPath,
-            minEngine::Reflection::GetClassName<Scene>(),
             scene.get(),
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true,
-                .allowObjectPtrSerialization = true,
             });
 
         if (!result.ok)

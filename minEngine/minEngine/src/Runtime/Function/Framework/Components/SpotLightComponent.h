@@ -9,7 +9,7 @@ namespace minEngine
     ME_CLASS()
     class SpotLightComponent : public PointLightComponent
     {
-        ME_GENERATED_BODY(SpotLightComponent)
+        ME_GENERATED_BODY()
 
     public:
         SpotLightComponent() = default;

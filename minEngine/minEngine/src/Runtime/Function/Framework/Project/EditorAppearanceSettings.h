@@ -9,7 +9,7 @@ namespace minEngine
     ME_STRUCT()
     struct EditorAppearanceSettings
     {
-        ME_GENERATED_BODY(EditorAppearanceSettings)
+        ME_GENERATED_BODY()
 
         /** "DarkEngine", "LightEngine", or "Custom". Empty uses DarkEngine. */
         ME_PROPERTY()

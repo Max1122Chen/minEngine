@@ -15,7 +15,7 @@ namespace minEngine
     ME_CLASS()
     class Scene : public Asset
     {  
-        ME_GENERATED_BODY(Scene)
+        ME_GENERATED_BODY()
     public:
         Scene() = default;
         virtual ~Scene();
@@ -27,6 +27,7 @@ namespace minEngine
         void Reset();
         void RebuildRuntimeGameObjectIndex();
         const std::string& GetSceneName() const { return m_SceneName; }
+        void SetSceneName(const std::string& sceneName) { m_SceneName = sceneName; }
         const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() const { return m_GameObjects; }
         const std::unordered_map<uint64_t, GameObject*>& GetGameObjectsById() const { return m_GameObjectsById; }
         GameObject* FindGameObjectById(uint64_t id) const;
@@ -76,7 +77,7 @@ namespace minEngine
 
         void MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const;
 
-    // private: // temporarily public for testing
+    private:
         ME_PROPERTY()
         std::string m_SceneName;
 
@@ -85,7 +86,6 @@ namespace minEngine
 
         std::unordered_map<uint64_t, GameObject*> m_GameObjectsById;
 
-    private:
         uint64_t m_NextGOId{ 0 };
         std::shared_ptr<RenderScene> m_RenderScene;
         ESceneType m_SceneType{ ESceneType::None };

@@ -2,6 +2,7 @@
 
 #include "MEFunction.h"
 #include "Runtime/Core/Serialization/PrimitiveCodecRegistry.h"
+#include "Runtime/Core/Serialization/TransientSchemaTable.h"
 
 #include <cstdint>
 #include <limits>
@@ -686,6 +687,13 @@ namespace minEngine::Reflection
             BuildDerivedClassLinks();
             SetCodecForEnums();
             m_State = ReflectionSystemState::Ready;
+
+            if (!minEngine::Serialization::TransientSchemaTable::Get().BuildFromReflection())
+            {
+                AppendError("[Reflection] Failed to build transient serialization schema table.");
+                m_State = ReflectionSystemState::Failed;
+                succeeded = false;
+            }
         }
         else
         {

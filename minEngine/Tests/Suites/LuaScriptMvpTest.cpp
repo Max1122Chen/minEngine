@@ -1,4 +1,7 @@
 #include "LuaScriptMvpTest.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
+#include "Access/AssetManagerTestAccess.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -26,15 +29,15 @@ namespace minEngine
     public:
         LuaScriptMvpTestScope(bool withAssets)
         {
-            ObjectManager::SetInstance(&m_ObjectManager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
             m_ObjectManager.Initialize();
 
             if (withAssets)
             {
-                SceneManager::SetInstance(&m_SceneManager);
+                Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
                 m_SceneManager.Initialize();
 
-                AssetManager::SetInstance(&m_AssetManager);
+                Testing::TestAccess<AssetManager>::SetInstance(&m_AssetManager);
                 m_AssetManager.Initialize();
                 m_OwnsAssets = true;
             }
@@ -45,14 +48,14 @@ namespace minEngine
             if (m_OwnsAssets)
             {
                 m_AssetManager.Shutdown();
-                AssetManager::SetInstance(nullptr);
+                Testing::TestAccess<AssetManager>::SetInstance(nullptr);
 
                 m_SceneManager.Shutdown();
-                SceneManager::SetInstance(nullptr);
+                Testing::TestAccess<SceneManager>::SetInstance(nullptr);
             }
 
             m_ObjectManager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:

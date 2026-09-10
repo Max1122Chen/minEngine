@@ -329,16 +329,14 @@ namespace minEngine
 
         const Serialization::SerializerOptions metaSerializerOptions{
             .enumAsString = true,
-            .strictTypeCheck = true,
-            .skipUnknownField = true,
-            .allowObjectPtrSerialization = false};
+            .strictTypeCheck = false,
+            .skipUnknownField = true};
 
         auto loadMetaFromFile = [&](AssetMeta& outMeta) -> bool
         {
             Serialization::JsonReaderArchive archive;
             const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
                 metaPath.string(),
-                minEngine::Reflection::GetClassName<AssetMeta>(),
                 &outMeta,
                 archive,
                 metaSerializerOptions);
@@ -360,7 +358,6 @@ namespace minEngine
             Serialization::JsonWriterArchive archive;
             const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
                 metaPath.string(),
-                minEngine::Reflection::GetClassName<AssetMeta>(),
                 &inMeta,
                 archive,
                 metaSerializerOptions);
@@ -579,14 +576,12 @@ namespace minEngine
         Serialization::JsonWriterArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
             metaPath.string(),
-            minEngine::Reflection::GetClassName<AssetMeta>(),
             &meta,
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
-                .skipUnknownField = true,
-                .allowObjectPtrSerialization = false});
+                .strictTypeCheck = false,
+                .skipUnknownField = true});
 
         if (!result.ok)
         {
@@ -1122,14 +1117,12 @@ namespace minEngine
         Serialization::JsonWriterArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
             absoluteAssetPath,
-            "minEngine::Material",
             &asset,
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
-                .skipUnknownField = false,
-                .allowObjectPtrSerialization = true});
+                .strictTypeCheck = false,
+                .skipUnknownField = false});
 
         if (!result.ok)
         {
@@ -1151,14 +1144,12 @@ namespace minEngine
         Serialization::JsonWriterArchive archive;
         const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
             absoluteAssetPath,
-            "minEngine::Scene",
             &asset,
             archive,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
-                .skipUnknownField = false,
-                .allowObjectPtrSerialization = true});
+                .strictTypeCheck = false,
+                .skipUnknownField = false});
 
         if (!result.ok)
         {
@@ -1242,14 +1233,12 @@ namespace minEngine
             Serialization::JsonWriterArchive archive;
             const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
                 absoluteAssetPath,
-                "minEngine::Scene",
                 &scene,
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
-                    .strictTypeCheck = true,
-                    .skipUnknownField = false,
-                    .allowObjectPtrSerialization = true});
+                    .strictTypeCheck = false,
+                    .skipUnknownField = false});
 
             if (!result.ok)
             {
@@ -1274,14 +1263,12 @@ namespace minEngine
             Serialization::JsonWriterArchive archive;
             const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
                 absoluteAssetPath,
-                "minEngine::Material",
                 &material,
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
-                    .strictTypeCheck = true,
-                    .skipUnknownField = false,
-                    .allowObjectPtrSerialization = true});
+                    .strictTypeCheck = false,
+                    .skipUnknownField = false});
 
             if (!result.ok)
             {
@@ -1325,7 +1312,7 @@ namespace minEngine
         const std::string sceneName = absolutePath.stem().string();
         std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, GenerateGUID());
         scene->Reset();
-        scene->m_SceneName = sceneName;
+        scene->SetSceneName(sceneName);
         scene->EnsureRenderScene();
 
         if (!WriteSceneAssetFile(*this, relativePath, *scene))

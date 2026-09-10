@@ -12,10 +12,10 @@
  * MyProject/
  * ├── MyProject.meproject       // Project descriptor file (e.g., JSON format) that contains project metadata like name, unique ID, asset directory, etc.
  * ├── Assets/                   // All project assets (models, textures, materials, scenes, etc.) are stored here. This can be further organized into subdirectories if needed.
- * │   ├── Textures/
- * │   ├── Models/
- * │   ├── Materials/
- * │   └── Scenes/
+ * �?  ├── Textures/
+ * �?  ├── Models/
+ * �?  ├── Materials/
+ * �?  └── Scenes/
  * ├── Code/                     // (Optional) Source code for game-specific logic, editor extensions, etc.
  * └── Binaries/                 // (Optional) Compiled binaries, build outputs, etc.
  */
@@ -25,7 +25,7 @@ namespace minEngine
     ME_STRUCT()
     struct ProjectDescriptor
     {
-        ME_GENERATED_BODY(ProjectDescriptor)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string ProjectName;

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-03（哲学 + Capability Roadmap；ED-F02 文档收口；worktree 轨就位）
+Last updated: 2026-09-10（TEST-F04 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -42,12 +42,26 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
+### Infra 轨（`feat/core`）：序列化 → 属性写入 → 测试访问面
+
+| 项 | 说明 |
+|----|------|
+| **CORE-F08** | StaticClass API + 删死代码 + P1 — **Done** |
+| **CORE-F09** | Binary Transient v2 — **Done**（关 TD-028/029；PIE Binary） |
+| **CORE-F10** | JSON 存盘宽松 + `$schemaVersion` — **Done** |
+| **CORE-F11** | Getter/Setter + Assign — **Done**（含 S06 Inspector live Assign；关 TD-026） |
+| **CORE-F12** | `ME_GENERATED_BODY()` 无参 + marker 归属 — **Done** |
+| **TEST-F04** | `Testing::TestAccess<T>` — **Done**（S00–S04；半公开字段已收） |
+| GC / Lifetime | 刻意延后 |
+
+[CORE-F12 Design](./Platform/Reflection/CORE-F12_GENERATED_BODY_NO_ARG_DESIGN.md) · [TEST-F04 Design](./Platform/Test/TEST-F04_TEST_ACCESS_DESIGN.md) · [CORE-F11 Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [CORE-F10 Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
+
 ### 可并行（不升主线）
 
 | 项 | 说明 |
 |----|------|
-| **TD-028 / TD-029** | Binary 协议加固；PIE 暂用 JSON 绕道 |
 | **ED-F04** | Console MVP 已收；S10b / S07 **Deferred** |
+| **TD-030** | EnterPlay rollback（CORE-F05 遗留） |
 | **RND Sort/Batch** | Rendering track；另开设计时再登记 |
 | **RND-F06** | ForwardRenderer 收尾；不挡 Animation |
 
@@ -57,7 +71,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 项 | 状态 |
 |----|------|
-| **CORE-F05** Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred；TD-028/029/030 Open |
+| **TEST-F04** | Done on `feat/core` — TestAccess\<T\>；删 TestScope friends；Scene/SceneManager private |
+| **CORE-F12** | Done on `feat/core` — GENERATED_BODY no-arg + attached marker |
+| **CORE-F11** | Done on `feat/core` — S01–S06；live Assign；TD-026；删 PhysicsEditorSideEffects |
+| **CORE-F10** | Done on `feat/core` — JSON 盘路径宽松 + `$schemaVersion` |
+| **CORE-F09** | Done on `feat/core` — Binary v2；PIE Binary；TD-028/029 Done |
+| **CORE-F08** | Done on `feat/core` — StaticClass Serializer API；死代码清理 |
+| **CORE-F05** Play Mode MVP | **Done** — S00–S04 + S06；S05 Deferred；TD-030 Open |
 | **CORE-F06 / F07** | Done |
 | **ED-F03** Viewport Play Toolbar | Done |
 | **ED-F02** S00–S02 / S04 | Done on `master` |
@@ -76,9 +96,10 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | `master` | 主开发 |
+| `D:/Dev/GitRepo/minEngine` | `master` | 主开发（当前常 checkout `feat/core`） |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | Primary — Animation |
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | Primary 后续 — UI（依赖 `RND-F16`） |
+| `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | Future — Gameplay Framework（插件化） |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-physics` / `-audio` / `-launcher` / `-asset-workflow` | 历史轨 | 按需保留或删除 |
 
@@ -86,7 +107,8 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 
 ### Placeholder branches（无 worktree）
 
-`feat/asset-pipeline` · `feat/gameplay-framework` · `feat/network` · `feat/ai` · `feat/core` — 仅占位，需要时再 `create-worktree.ps1` 初始化。
+`feat/asset-pipeline` · `feat/network` · `feat/ai` — 仅占位。  
+**`feat/core`** — 已自 `master` 初始化；序列化轨 **CORE-F08–F10**（主仓 checkout，可选 `minEngine-core` worktree）。
 
 ---
 

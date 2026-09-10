@@ -211,15 +211,13 @@ namespace minEngine
         Serialization::JsonReaderArchive reader;
         const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
             configPath->string(),
-            Reflection::GetClassName<EngineConfig>(),
             &outConfig,
             reader,
             Serialization::SerializerOptions{
                 .enumAsString = true,
-                .strictTypeCheck = true,
+                .strictTypeCheck = false,
                 .skipUnknownField = true,
                 .writeObjectTypeName = false,
-                .allowObjectPtrSerialization = true,
             });
         if (!result.ok)
         {

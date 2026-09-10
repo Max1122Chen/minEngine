@@ -1,4 +1,6 @@
 #include "AssetManagerTest.h"
+#include "Access/SceneManagerTestAccess.h"
+#include "Access/AssetManagerTestAccess.h"
 
 #include "AssetManager.h"
 #include "AssetRegistryTypes.h"
@@ -20,20 +22,20 @@ namespace minEngine
     public:
         AssetManagerTestScope()
         {
-            SceneManager::SetInstance(&m_SceneManager);
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
 
-            AssetManager::SetInstance(&m_AssetManager);
+            Testing::TestAccess<AssetManager>::SetInstance(&m_AssetManager);
             m_AssetManager.Initialize();
         }
 
         ~AssetManagerTestScope()
         {
             m_AssetManager.Shutdown();
-            AssetManager::SetInstance(nullptr);
+            Testing::TestAccess<AssetManager>::SetInstance(nullptr);
 
             m_SceneManager.Shutdown();
-            SceneManager::SetInstance(nullptr);
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
         }
 
     private:

@@ -3,7 +3,7 @@
 
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::EditorAppearanceSettings, GReflectionClassRegister_EditorAppearanceSettings_4460ecf8)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::EditorAppearanceSettings, ThemePresetId, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::EditorAppearanceSettings, CustomPalette, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::EditorAppearanceSettings, Typography, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::EditorAppearanceSettings, ThemePresetId, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::EditorAppearanceSettings, CustomPalette, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::EditorAppearanceSettings, Typography, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::EditorAppearanceSettings)

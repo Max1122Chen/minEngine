@@ -1,4 +1,5 @@
 #include "ObjectManager.h"
+#include "Access/ObjectManagerTestAccess.h"
 
 #include "Runtime/Function/Framework/Components/MovementComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
@@ -15,14 +16,14 @@ namespace minEngine
     public:
         ObjectManagerTestScope()
         {
-            ObjectManager::SetInstance(&m_Manager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_Manager);
             m_Manager.Initialize();
         }
 
         ~ObjectManagerTestScope()
         {
             m_Manager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:

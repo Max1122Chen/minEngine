@@ -14,7 +14,7 @@ namespace minEngine
     ME_CLASS(ScriptType)
     class LuaComponent : public Component
     {
-        ME_GENERATED_BODY(LuaComponent)
+        ME_GENERATED_BODY()
 
     public:
         LuaComponent() = default;

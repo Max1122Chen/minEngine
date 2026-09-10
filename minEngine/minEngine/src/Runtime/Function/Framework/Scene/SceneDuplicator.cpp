@@ -14,18 +14,16 @@ namespace minEngine
         constexpr Serialization::SerializerOptions kPIECloneSerializerOptions{
             .enumAsString = true,
             .strictTypeCheck = true,
-            .skipUnknownField = true,
-            .allowObjectPtrSerialization = true,
+            .skipUnknownField = false,
         };
     }
 
     std::shared_ptr<Scene> SceneDuplicator::DuplicateForPIE(const Scene& editorScene, SceneCloneContext& inOutContext)
     {
-        Json sceneJson;
-        const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToJson(
-            "minEngine::Scene",
+        std::vector<uint8_t> sceneBuffer;
+        const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToBuffer(
             &editorScene,
-            sceneJson,
+            sceneBuffer,
             kPIECloneSerializerOptions);
         if (!serializeResult.ok)
         {
@@ -38,7 +36,7 @@ namespace minEngine
         }
 
         std::shared_ptr<Scene> pieScene = NewObject<Scene>();
-        pieScene->m_SceneName = editorScene.GetSceneName() + "_PIE";
+        pieScene->SetSceneName(editorScene.GetSceneName() + "_PIE");
         pieScene->SetSceneType(ESceneType::PIE);
         pieScene->SetTickPolicy(ESceneTickPolicy::Gameplay);
 
@@ -52,10 +50,9 @@ namespace minEngine
 
         std::vector<Serialization::PendingObjectRef> unresolvedRefs;
         Serialization::Serializer::SetActiveCloneContext(&inOutContext);
-        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromJson(
-            "minEngine::Scene",
+        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
             pieScene.get(),
-            sceneJson,
+            sceneBuffer,
             unresolvedRefs,
             kPIECloneSerializerOptions);
         Serialization::Serializer::SetActiveCloneContext(nullptr);

@@ -5,6 +5,7 @@
 #include "Runtime/Core/Reflection/MEFunction.h"
 #include "Runtime/Core/Reflection/MEFunctionFrame.h"
 
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -13,6 +14,11 @@ namespace minEngine::Reflection
     class ReflectionSystem;
     class MEClass;
     class MEFunction;
+
+    struct PropertyChangedEvent
+    {
+        std::string_view propertyName;
+    };
 }
 
 namespace minEngine::Serialization
@@ -26,7 +32,7 @@ namespace minEngine
     ME_CLASS()
     class MEObject
     {
-        ME_GENERATED_BODY(MEObject)
+        ME_GENERATED_BODY()
         // Friend declaration for engine core classes 
         friend class Reflection::ReflectionSystem;
         friend class Reflection::MEClass;
@@ -54,6 +60,9 @@ namespace minEngine
         bool InvokeFunction(Reflection::MEFunction* function, void* parmsBuffer);
         bool InvokeFunctionByName(const std::string& functionName, void* parmsBuffer);
         bool InvokeFunction(const std::string& functionName, uint64_t signatureHash, void* parmsBuffer);
+
+        /** Editor / Assign notify hook when a reflected field changes without a Setter thunk. */
+        virtual void PostEditChangeProperty(const Reflection::PropertyChangedEvent& event) {}
 
         template<typename TReturn, typename... TArgs>
         Reflection::MEFunction* FindFunctionTyped(const std::string& functionName) const

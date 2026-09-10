@@ -19,7 +19,7 @@ namespace minEngine
     ME_CLASS(ScriptType)
     class Component : public MEObject
     {
-        ME_GENERATED_BODY(Component)
+        ME_GENERATED_BODY()
     public:
         Component();
         virtual ~Component();
@@ -55,7 +55,7 @@ namespace minEngine
         /** Unregister from runtime systems. */
         virtual void RemoveActivationFromSystems();
 
-        ME_PROPERTY(Invisible)
+        ME_PROPERTY(Invisible, meta = (Setter = "SetOwner", Getter = "GetOwner"))
         GameObject* m_Owner{ nullptr };
 
         ME_PROPERTY(Invisible)

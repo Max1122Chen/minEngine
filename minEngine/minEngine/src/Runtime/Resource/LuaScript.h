@@ -12,7 +12,7 @@ namespace minEngine
     ME_CLASS()
     class LuaScript : public Asset
     {
-        ME_GENERATED_BODY(LuaScript)
+        ME_GENERATED_BODY()
 
     public:
         LuaScript() = default;

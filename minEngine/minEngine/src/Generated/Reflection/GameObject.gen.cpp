@@ -5,8 +5,8 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::GameObject, GReflectionClassRegister_GameObject_1d0a74f7)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS((static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::ScriptType)), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MEObject)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::GameObject, m_RootComponent, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::GameObject, m_Components, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Instanced)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::GameObject, m_RootComponent, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::GameObject, m_Components, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Instanced)), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
     {
         ME_REFLECTION_FUNCTION_BEGIN(functionInfo_c8092ee1, "GetPosition", static_cast<minEngine::Reflection::MEFunctionFlags>(static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::Native) | static_cast<uint32_t>(minEngine::Reflection::MEFunctionFlags::HasReturn)), (static_cast<minEngine::Reflection::FunctionSpecifierMask>(minEngine::Reflection::FunctionSpecifier::ScriptCallable)), (minEngine::Reflection::FunctionMetadata{}))
         ME_REFLECTION_FUNCTION_RETURN(functionInfo_c8092ee1, minEngine::Math::Vector3)

@@ -1,4 +1,7 @@
 #include "PhysicsShapesTest.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
+#include "Access/PhysicsSystemTestAccess.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -20,22 +23,22 @@ namespace minEngine
     public:
         PhysicsShapesTestScope()
         {
-            ObjectManager::SetInstance(&m_ObjectManager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
             m_ObjectManager.Initialize();
-            SceneManager::SetInstance(&m_SceneManager);
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
-            PhysicsSystem::SetInstance(&m_PhysicsSystem);
+            Testing::TestAccess<PhysicsSystem>::SetInstance(&m_PhysicsSystem);
             m_PhysicsSystem.Initialize();
         }
 
         ~PhysicsShapesTestScope()
         {
             m_SceneManager.Shutdown();
-            SceneManager::SetInstance(nullptr);
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
             m_PhysicsSystem.Shutdown();
-            PhysicsSystem::SetInstance(nullptr);
+            Testing::TestAccess<PhysicsSystem>::SetInstance(nullptr);
             m_ObjectManager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:

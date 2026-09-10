@@ -12,7 +12,7 @@ namespace minEngine
     ME_CLASS()
     class CapsuleColliderComponent : public ColliderComponent
     {
-        ME_GENERATED_BODY(CapsuleColliderComponent)
+        ME_GENERATED_BODY()
 
     public:
         CapsuleColliderComponent() = default;
@@ -27,10 +27,10 @@ namespace minEngine
         void SetOwner(GameObject* inOwner) override;
 
     private:
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetRadius", Getter = "GetRadius"))
         float m_Radius{0.5f};
 
-        ME_PROPERTY(EditAnywhere)
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetHalfHeight", Getter = "GetHalfHeight"))
         float m_HalfHeight{0.5f};
     };
 }

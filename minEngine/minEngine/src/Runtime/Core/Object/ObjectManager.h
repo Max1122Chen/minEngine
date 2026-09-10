@@ -10,18 +10,6 @@
 namespace minEngine
 {
     class Engine;
-    class MaterialIRTestObjectManagerScope;
-    class ObjectManagerTestScope;
-    class SerializationArchiveTestScope;
-    class PhysicsSmokeTestScope;
-    class PhysicsSyncTestScope;
-    class PhysicsLoadTestScope;
-    class PhysicsContactTestScope;
-    class PhysicsLineTraceTestScope;
-    class PhysicsShapesTestScope;
-    class DelegateObjectManagerScope;
-    class SceneCloneTestScope;
-    class CommandSystemTestScope;
 
     using ObjectReachabilityMarker = std::function<void(MEObject*)>;
     using ObjectReachabilityRootVisitor = std::function<void(const ObjectReachabilityMarker& markReachable)>;
@@ -113,21 +101,7 @@ namespace minEngine
 
     private:
         friend class Engine;
-        friend class AssetManagerTestScope;
-        friend class ObjectManagerTestScope;
-        friend class SerializationArchiveTestScope;
-        friend class MaterialIRTestObjectManagerScope;
-        friend class LuaScriptMvpTestScope;
-        friend class PhysicsSmokeTestScope;
-        friend class PhysicsSyncTestScope;
-        friend class PhysicsLoadTestScope;
-        friend class PhysicsContactTestScope;
-        friend class PhysicsLineTraceTestScope;
-        friend class PhysicsShapesTestScope;
-        friend class AudioSmokeTestScope;
-        friend class DelegateObjectManagerScope;
-        friend class SceneCloneTestScope;
-        friend class CommandSystemTestScope;
+        friend class Testing::TestAccess<ObjectManager>;
 
         static void SetInstance(ObjectManager* instance);
         void PruneExpiredEntries();

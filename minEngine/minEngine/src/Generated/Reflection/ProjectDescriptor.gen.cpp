@@ -3,7 +3,7 @@
 
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ProjectDescriptor, GReflectionClassRegister_ProjectDescriptor_a1b2211f)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ProjectDescriptor, ProjectName, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ProjectDescriptor, ProjectId, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::ProjectDescriptor, ProjectRoot, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ProjectDescriptor, ProjectName, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ProjectDescriptor, ProjectId, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ProjectDescriptor, ProjectRoot, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::ProjectDescriptor)

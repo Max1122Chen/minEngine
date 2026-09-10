@@ -7,4 +7,5 @@ namespace minEngine
     bool RunReflectionRefPhaseTests();
     bool RunReflectionTypesPhaseTests();
     bool RunReflectionStaticPhaseTests();
+    bool RunReflectionAssignPhaseTests();
 }

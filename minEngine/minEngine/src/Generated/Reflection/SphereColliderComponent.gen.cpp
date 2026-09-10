@@ -4,5 +4,5 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::SphereColliderComponent, GReflectionClassRegister_SphereColliderComponent_7c63d7b3)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::ColliderComponent)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SphereColliderComponent, m_Radius, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::SphereColliderComponent, m_Radius, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), &minEngine::Reflection::FieldAccessor<minEngine::SphereColliderComponent>::PropertyGet_m_Radius, &minEngine::Reflection::FieldAccessor<minEngine::SphereColliderComponent>::PropertySet_m_Radius, (minEngine::Reflection::PropertyMetadata{{"Getter", "GetRadius"}, {"Setter", "SetRadius"}}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::SphereColliderComponent)

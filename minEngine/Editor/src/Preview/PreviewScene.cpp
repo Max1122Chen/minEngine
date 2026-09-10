@@ -72,7 +72,7 @@ namespace minEngine
         }
 
         m_Scene = NewObject<Scene>();
-        m_Scene->m_SceneName = "EditorPreview";
+        m_Scene->SetSceneName("EditorPreview");
         m_Scene->EnsureRenderScene();
         RenderScene* renderScene = m_Scene->GetRenderScene();
 

@@ -4,6 +4,7 @@
 
 #include "MEFunction.h"
 #include "MEFunctionFrame.h"
+#include "PropertyAssign.h"
 #include "Reflection.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Components/Component.h"
@@ -1487,6 +1488,76 @@ namespace minEngine
     {
         return RunStaticPhaseTests();
     }
+
+    bool RunReflectionAssignPhaseTests()
+    {
+        if (!ReflectionSystem::Get().IsReady())
+        {
+            ME_CORE_ERROR("ReflectionAssignTest: reflection is not ready.");
+            return false;
+        }
+
+        const MEClass* sampleClass = ReflectionSystem::Get().FindClass<ReflectionSampleComponent>();
+        if (sampleClass == nullptr)
+        {
+            ME_CORE_ERROR("ReflectionAssignTest: ReflectionSampleComponent not found.");
+            return false;
+        }
+
+        const MEProperty* probeProperty = nullptr;
+        ReflectionSystem::Get().ForEachPropertyInHierarchy(
+            sampleClass,
+            [&](const MEProperty& property) -> bool
+            {
+                if (property.GetName() == "m_AssignProbe")
+                {
+                    probeProperty = &property;
+                    return false;
+                }
+                return true;
+            });
+
+        if (probeProperty == nullptr || !probeProperty->HasPropertySetter() || !probeProperty->HasPropertyGetter())
+        {
+            ME_CORE_ERROR("ReflectionAssignTest: m_AssignProbe missing Getter/Setter thunks.");
+            return false;
+        }
+
+        std::shared_ptr<void> instance = sampleClass->CreateDefaultInstance();
+        auto component = std::static_pointer_cast<ReflectionSampleComponent>(instance);
+        if (!component)
+        {
+            ME_CORE_ERROR("ReflectionAssignTest: failed to create sample component.");
+            return false;
+        }
+
+        component->ResetAssignProbeSetCount();
+
+        const int32_t newValue = 77;
+        if (!Reflection::AssignProperty(component.get(), *probeProperty, &newValue))
+        {
+            ME_CORE_ERROR("ReflectionAssignTest: AssignProperty failed.");
+            return false;
+        }
+
+        if (component->GetAssignProbe() != newValue || component->GetAssignProbeSetCount() != 1)
+        {
+            ME_CORE_ERROR(
+                "ReflectionAssignTest: Setter not invoked (value={}, setCount={}).",
+                component->GetAssignProbe(),
+                component->GetAssignProbeSetCount());
+            return false;
+        }
+
+        int32_t readBack = 0;
+        if (!Reflection::GetPropertyValue(component.get(), *probeProperty, &readBack) || readBack != newValue)
+        {
+            ME_CORE_ERROR("ReflectionAssignTest: GetPropertyValue mismatch (got {}).", readBack);
+            return false;
+        }
+
+        return true;
+    }
 } // namespace minEngine
 
 #include "doctest.h"
@@ -1521,4 +1592,10 @@ TEST_CASE("reflection-function: static [full]")
 {
     minEngine::EngineTestFixture fixture;
     CHECK(minEngine::RunReflectionStaticPhaseTests());
+}
+
+TEST_CASE("reflection-function: assign [smoke][full]")
+{
+    minEngine::EngineTestFixture fixture;
+    CHECK(minEngine::RunReflectionAssignPhaseTests());
 }

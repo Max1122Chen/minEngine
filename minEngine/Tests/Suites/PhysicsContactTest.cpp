@@ -1,4 +1,7 @@
 #include "PhysicsContactTest.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
+#include "Access/PhysicsSystemTestAccess.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -19,26 +22,26 @@ namespace minEngine
     public:
         PhysicsContactTestScope()
         {
-            ObjectManager::SetInstance(&m_ObjectManager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
             m_ObjectManager.Initialize();
 
-            SceneManager::SetInstance(&m_SceneManager);
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
 
-            PhysicsSystem::SetInstance(&m_PhysicsSystem);
+            Testing::TestAccess<PhysicsSystem>::SetInstance(&m_PhysicsSystem);
             m_PhysicsSystem.Initialize();
         }
 
         ~PhysicsContactTestScope()
         {
             m_SceneManager.Shutdown();
-            SceneManager::SetInstance(nullptr);
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
 
             m_PhysicsSystem.Shutdown();
-            PhysicsSystem::SetInstance(nullptr);
+            Testing::TestAccess<PhysicsSystem>::SetInstance(nullptr);
 
             m_ObjectManager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:
@@ -158,7 +161,7 @@ namespace minEngine
                 return false;
             }
 
-            // Tall trigger volume the dynamic box falls through (sensor â†’ no push).
+            // Tall trigger volume the dynamic box falls through (sensor â†?no push).
             const std::shared_ptr<GameObject> triggerObject = scene->CreateGameObject();
             const std::shared_ptr<SceneComponent> triggerRoot = triggerObject->AddComponent<SceneComponent>();
             triggerRoot->SetPosition(Vector3(0.0f, 5.0f, 0.0f));
@@ -232,7 +235,7 @@ namespace minEngine
                 return false;
             }
 
-            // Sensor must not stop the falling body near the trigger center (yâ‰ˆ5).
+            // Sensor must not stop the falling body near the trigger center (yâ‰?).
             const float finalHeight = dynamicRoot->GetPosition().y;
             if (!(finalHeight < heightAtBegin - 0.5f))
             {

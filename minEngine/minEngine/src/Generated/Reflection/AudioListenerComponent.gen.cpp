@@ -4,5 +4,5 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::AudioListenerComponent, GReflectionClassRegister_AudioListenerComponent_d3594074)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::SceneComponent)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::AudioListenerComponent, m_bUseTransformOrientation, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::AudioListenerComponent, m_bUseTransformOrientation, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::AudioListenerComponent)

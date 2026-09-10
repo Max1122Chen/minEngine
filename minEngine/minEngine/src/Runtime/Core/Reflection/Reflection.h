@@ -208,7 +208,9 @@ namespace minEngine::Reflection
                                    FieldConstAccessorFn constAccessor,
                                    FieldMutableAccessorFn mutableAccessor,
                                    PropertySpecifierMask specifierMask,
-                                   PropertyMetadata metadata)
+                                   PropertyMetadata metadata,
+                                   PropertyValueGetFn propertyGetter = nullptr,
+                                   PropertyValueSetFn propertySetter = nullptr)
         {
             if (ownerClass == nullptr)
             {
@@ -223,6 +225,8 @@ namespace minEngine::Reflection
             }
 
             property->SetAccessors(constAccessor, mutableAccessor);
+            property->SetValueOps<TField>();
+            property->SetPropertyValueAccessors(propertyGetter, propertySetter);
             property->SetAnnotations(specifierMask, std::move(metadata));
             ownerClass->AddProperty(property);
             return property;

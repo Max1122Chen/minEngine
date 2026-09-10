@@ -33,7 +33,7 @@ FUNCTION_DECL_RE = re.compile(
 )
 CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\(", re.DOTALL)
 
-TOOL_CACHE_VERSION = 15
+TOOL_CACHE_VERSION = 16
 
 PROPERTY_SPECIFIER_MAP = {
     "transient": "Transient",
@@ -237,7 +237,34 @@ def extract_balanced_parentheses_content(text: str, open_paren_index: int) -> st
     return None
 
 
-def extract_last_class_marker_args(window: str) -> str | None:
+def is_whitespace_or_comments_only(text: str) -> bool:
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch.isspace():
+            i += 1
+            continue
+        if text.startswith("//", i):
+            newline = text.find("\n", i)
+            if newline < 0:
+                return True
+            i = newline + 1
+            continue
+        if text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            if end < 0:
+                return False
+            i = end + 2
+            continue
+        return False
+    return True
+
+
+def find_attached_class_marker_args(source: str, class_start: int) -> str | None:
+    """ME_CLASS/ME_STRUCT args only when the marker immediately precedes this type."""
+    window_start = max(0, class_start - 256)
+    window = source[window_start:class_start]
     matches = list(CLASS_MARK_RE.finditer(window))
     if not matches:
         return None
@@ -247,7 +274,16 @@ def extract_last_class_marker_args(window: str) -> str | None:
     if open_paren_index < 0:
         return None
 
-    return extract_balanced_parentheses_content(window, open_paren_index)
+    args = extract_balanced_parentheses_content(window, open_paren_index)
+    if args is None:
+        return None
+
+    marker_end = open_paren_index + 1 + len(args) + 1
+    between = window[marker_end:]
+    if not is_whitespace_or_comments_only(between):
+        return None
+
+    return args
 
 
 def parse_annotation_metadata(arg_text: str) -> dict[str, str]:
@@ -648,15 +684,11 @@ def find_matching_brace(source: str, open_brace_index: int) -> int:
 
 
 def has_class_marker(source: str, class_start: int) -> bool:
-    window_start = max(0, class_start - 256)
-    window = source[window_start:class_start]
-    return extract_last_class_marker_args(window) is not None
+    return find_attached_class_marker_args(source, class_start) is not None
 
 
 def parse_class_annotations_at(source: str, class_start: int) -> tuple[list[str], dict[str, str]]:
-    window_start = max(0, class_start - 256)
-    window = source[window_start:class_start]
-    marker_arg_text = extract_last_class_marker_args(window)
+    marker_arg_text = find_attached_class_marker_args(source, class_start)
     if marker_arg_text is None:
         return [], {}
 
@@ -1010,6 +1042,32 @@ def supports_native_instance_thunks(meta: ClassMeta) -> bool:
     return False
 
 
+def is_cpp_identifier(name: str) -> bool:
+    if not name:
+        return False
+    if not (name[0].isalpha() or name[0] == "_"):
+        return False
+    return all(ch.isalnum() or ch == "_" for ch in name)
+
+
+def property_accessor_method_name(metadata: dict[str, str], key: str, class_name: str, field_name: str) -> str | None:
+    if key not in metadata:
+        return None
+    method_name = metadata[key].strip()
+    if not is_cpp_identifier(method_name):
+        raise ValueError(
+            f"{class_name}::{field_name}: meta '{key}' must be a C++ identifier, got '{metadata[key]}'"
+        )
+    return method_name
+
+
+def render_property_value_accessor_expr(type_name: str, field_name: str, method_name: str | None, kind: str) -> str:
+    if method_name is None:
+        return "nullptr"
+    symbol = "PropertyGet_" if kind == "Getter" else "PropertySet_"
+    return f"&minEngine::Reflection::FieldAccessor<{type_name}>::{symbol}{field_name}"
+
+
 def render_class_registration_definition(meta: ClassMeta) -> list[str]:
     lines: list[str] = []
     type_name = full_type_name(meta)
@@ -1023,8 +1081,13 @@ def render_class_registration_definition(meta: ClassMeta) -> list[str]:
     for prop in meta.properties:
         specifier_expr = render_property_specifier_mask_expr(prop.specifiers)
         metadata_expr = render_property_metadata_expr(prop.metadata)
+        getter_name = property_accessor_method_name(prop.metadata, "Getter", type_name, prop.name)
+        setter_name = property_accessor_method_name(prop.metadata, "Setter", type_name, prop.name)
+        get_fn = render_property_value_accessor_expr(type_name, prop.name, getter_name, "Getter")
+        set_fn = render_property_value_accessor_expr(type_name, prop.name, setter_name, "Setter")
         lines.append(
-            f"    ME_REFLECTION_CLASS_ADD_FIELD({type_name}, {prop.name}, {specifier_expr}, {metadata_expr})"
+            f"    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS({type_name}, {prop.name}, {specifier_expr}, "
+            f"{get_fn}, {set_fn}, {metadata_expr})"
         )
     if supports_native_instance_thunks(meta):
         for function in meta.functions:
@@ -1106,6 +1169,16 @@ def render_class_accessor(meta: ClassMeta) -> list[str]:
     lines.append(f"ME_REFLECTION_ACCESSOR_BEGIN({type_name})")
     for prop in meta.properties:
         lines.append(f"    ME_REFLECTION_ACCESSOR_FIELD({type_name}, {prop.name})")
+        getter_name = property_accessor_method_name(prop.metadata, "Getter", type_name, prop.name)
+        setter_name = property_accessor_method_name(prop.metadata, "Setter", type_name, prop.name)
+        if getter_name is not None:
+            lines.append(
+                f"    ME_REFLECTION_PROPERTY_GETTER_THUNK({type_name}, {prop.name}, {getter_name})"
+            )
+        if setter_name is not None:
+            lines.append(
+                f"    ME_REFLECTION_PROPERTY_SETTER_THUNK({type_name}, {prop.name}, {setter_name})"
+            )
     lines.append("ME_REFLECTION_ACCESSOR_END()")
     return lines
 

@@ -17,7 +17,7 @@ namespace minEngine
     ME_CLASS(ScriptType)
     class GameObject : public MEObject
     {
-        ME_GENERATED_BODY(GameObject)
+        ME_GENERATED_BODY()
     public:
         GameObject();
         virtual ~GameObject()

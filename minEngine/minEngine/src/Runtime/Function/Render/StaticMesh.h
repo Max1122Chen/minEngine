@@ -22,7 +22,7 @@ namespace minEngine
     ME_CLASS()
     class StaticMesh : public Asset
     {
-        ME_GENERATED_BODY(StaticMesh)
+        ME_GENERATED_BODY()
     public:
         StaticMesh() = default;
         StaticMesh(

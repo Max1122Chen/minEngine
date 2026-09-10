@@ -5,7 +5,11 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::CapsuleColliderComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::CapsuleColliderComponent, m_Radius)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::CapsuleColliderComponent, m_Radius, GetRadius)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::CapsuleColliderComponent, m_Radius, SetRadius)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::CapsuleColliderComponent, m_HalfHeight)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::CapsuleColliderComponent, m_HalfHeight, GetHalfHeight)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::CapsuleColliderComponent, m_HalfHeight, SetHalfHeight)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::CapsuleColliderComponent, GReflectionClassRegister_CapsuleColliderComponent_9bf7def5)

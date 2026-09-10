@@ -1,6 +1,86 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-03（ED-F02 文档收口 + worktree skill / 多轨分支）
+Last updated: 2026-09-10（TEST-F04 Done）
+
+### 2026-09-10 - TEST-F04 Done: TestAccess\<T\> + Scene private cleanup (`feat/core`)
+- **S00–S03:** Core `TestAccess` 前向；热点系统单 friend；`Tests/Access/*` 特化；删 `*TestScope` friend。
+- **S04:** `SceneManager` / `Scene` 去掉 temporarily-public；新增 `Scene::SetSceneName`，迁移 Editor/Loader/Duplicator/Tests 写入点。
+- **Deferred:** `LuaScriptSystem::SetInstance` 仍 public（非 friend 痛点）。
+- **Verified:** `minEngine` / `minEngineTests` / `Editor` 编译；`scene-clone` · `object-manager` · `physics-smoke` PASS（S04 后）。
+- **Next:** 准备 commit。
+
+### 2026-09-10 - TEST-F04 S00–S03: TestAccess\<T\> migrate hotspots (`feat/core`)
+- **Runtime:** `Core/Testing/TestAccess.h`（主模板前向）经 `Core.h` 自动包含；`ObjectManager` / `SceneManager` / `PhysicsSystem` / `AssetManager` / `AudioSystem` 仅 `friend Testing::TestAccess<T>`，删除全部 `*TestScope` friend/前向。
+- **Tests:** `Tests/Access/*TestAccess.h` 特化；各 Suite Scope 改调 `TestAccess<T>::SetInstance`；Audio 经 `InitializeWithBackend` 包装。
+- **Deferred:** S04 `SceneManager` temporarily-public 字段；`LuaScriptSystem::SetInstance` 仍为 public（未迁）。
+- **Verified:** `minEngine` / `minEngineTests` 编译；`object-manager` · `physics-smoke/sync/shapes` · `scene-clone` · `command-system` · `audio-smoke` · `asset-manager` · `serialization-archive` · `delegates` PASS。
+- **Next:** 准备 commit；S04 可选。
+
+### 2026-09-10 - TEST-F04 Design: Core-hosted TestAccess fwd + migration guide (`feat/core`)
+- **Decision:** `Runtime/Core/Testing/TestAccess.h`（仅主模板前向）由 `Core.h` include；生产类型一行 `friend Testing::TestAccess<T>`；特化只住 `Tests/Access/`。
+- **Docs:** Design §迁移 — S00–S04、单类型清单、多系统 Scope 策略、库存地图。
+- **Next:** 确认后开 S00（Core 头）→ S01（ObjectManager）。
+
+### 2026-09-10 - CORE-F12 Done: ME_GENERATED_BODY() no-arg + marker attach (`feat/core`)
+- **Macro:** `ME_GENERATED_BODY()` 去掉未使用的类型实参；Runtime 标注头全量更新。
+- **Tool:** `find_attached_class_marker_args` — marker 与 `class`/`struct` 之间仅空白/注释才附着；`TOOL_CACHE_VERSION` 16（防缩短宏行后误反射邻近无标记类型）。
+- **Docs:** Design + Registry Done；handbook / README 示例同步。
+- **Also registered:** `TEST-F04` Planned — `Testing::TestAccess<T>` 收敛 TestScope friends。
+- **Verified:** `minEngine` / `minEngineTests`；`reflection-function` PASS。
+- **Next:** `TEST-F04` S01（ObjectManager）或回 Primary `ANIM-F01`。
+
+### 2026-09-05 - CORE-F11-S06: Inspector live Assign + PostEdit semantics (`feat/core`)
+- **Semantics:** 属性编辑语义上皆为 PostEdit；有 Setter 时由 Setter 承担传播，实现层不调虚函数。
+- **Inspector:** 直接字段 Primitive/flat Color：`GetPropertyValue`→temp→`AssignProperty`（`notifyPostEdit=!HasSetter`）。
+- **Guard:** 仅 `GetMutable(owner)==propertyPtr` 走 Assign，避免嵌套 struct 误用外层 owner。
+- **Physics:** 删除 `RigidBodyComponent::PostEdit`；`ColliderComponent::PostEdit` 仅留无 Setter 的 `m_bActive`。
+- **Verified:** Editor / minEngineTests 编译；`reflection-function` · `physics-smoke` · `serialization-archive` · `scene-clone` PASS。
+- **Next:** 准备 commit；回 Primary `ANIM-F01`。
+
+### 2026-09-05 - CORE-F11 Done: property Getter/Setter native thunks (`feat/core`)
+- **Macros:** `ME_REFLECTION_PROPERTY_{GETTER,SETTER}_THUNK` 在 `ReflectionMacros.h`；codegen 只注入宏 + `ADD_FIELD_ACCESSORS`。
+- **Runtime:** `AssignProperty` / `GetPropertyValue`；`MEProperty` 挂 optional Get/Set fn；`MEObject::PostEditChangeProperty`。
+- **Call sites:** Serializer 有 Setter 则 temp→Assign；pending ObjectPtr resolve 走 Assign（`m_Owner`→`SetOwner`）；Editor undo 无 Setter 时 PostEdit。
+- **Migration:** 代表物理字段挂 meta Setter；删除 `ApplyPhysicsEditorSideEffects`。
+- **Fix:** AssignProperty 默认参数改为重载（避免 MinGW AVX `vmovdqa` 未对齐栈崩溃）。
+- **Debt/Bugs:** TD-026 → **Done**；BUG-CORE-001 → **Fixed**（残余：未挂 meta 的副作用字段需按需迁移）。
+- **Verified:** `serialization-archive` · `reflection-function`（含 assign）· `scene-clone` · `physics-smoke`。
+- **Next:** 准备 commit；Infra 属性写入轨可收；回 Primary `ANIM-F01` 或下一项。
+
+### 2026-09-05 - CORE-F11 Design: property Getter/Setter native thunks (`feat/core`)
+- **Decision:** header tool codegen **thin native Get/Set thunks**（对齐 UE UPROPERTY 访问器，不经 `InvokeFunction` 热路径）。
+- **API:** `AssignProperty` / `GetPropertyValue`；`meta=(Getter/Setter)`；无 Setter 字段行为不变。
+- **PostEdit:** `MEObject::PostEditChangeProperty` 作 Editor 对无 Setter 字段的兜底；有 Setter 默认不双调。
+- **Serialize:** 有 Setter 则 Assign；S04 关 TD-026（`SetOwner`）。
+- **Docs:** Design + Impl S01–S05；Registry Planned。
+- **Next:** 确认 Design 后开码 S01（tool + codegen）。
+
+### 2026-09-04 - CORE-F10 Done: JSON disk compatibility (`feat/core`)
+- **Options:** 接线 `strictTypeCheck`；新增 `writeSchemaVersion` / `schemaVersion`；澄清 `skipUnknownField`=缺字段。
+- **Json:** EndObject 对多余非 meta 键 Warn；根 `$schemaVersion` 写 1 / 缺省读 0。
+- **Loose:** 叶子 codec 失败且非 strict → Warn+保留默认；盘路径 Loader/Project/PathRegistry/AssetManager 默认宽松。
+- **Strict:** Binary Buffer / PIE 仍强制 `skipUnknownField=false` + `strictTypeCheck=true`。
+- **Verified:** `serialization-archive`（含 schema/unknown 键）· `scene-clone` · `verify.ps1` smoke。
+- **Next:** 准备 commit；Infra 序列化轨可收；回 Primary `ANIM-F01` 或下一项。
+
+### 2026-09-04 - CORE-F09 Done: Binary wire v2 (`feat/core`)
+- **Protocol:** Magic `MEB2` + SchemaVersion + Fingerprint；Object = Tag + ClassId + FieldCount + BodyLength + `[FieldId + tagged value]*`；无 wire `EndObject`。
+- **Schema:** `TransientSchemaTable` 在 `FinalizeReflection` 后建表（dense ClassId/FieldId）。
+- **API:** `BeginObject`/`BeginObjectPtr` 走 `MEClass*`；Buffer 路径强制 `skipUnknownField=false`。
+- **PIE:** `SceneDuplicator` 恢复 Binary buffer（关 TD-029）。
+- **Debt:** TD-028 / TD-029 → **Done**。
+- **Out:** 存盘 Binary / Persistent 名字键未实现（契约已写在 Design）；→ `CORE-F10` JSON。
+- **Verified:** `serialization-archive` · `scene-clone`（含 physics-stack）· `verify.ps1` smoke。
+- **Next:** 准备 commit；可选目视 PIE；然后 `CORE-F10` 或回 Primary。
+
+### 2026-09-04 - CORE-F08 Done: serialization cleanup (`feat/core`)
+- **API:** `Serialize`/`Deserialize`/`ToFile`/`FromFile`/`*ObjectToBuffer`/`*ObjectToJson` 增加 `MEClass*` 重载 + `StaticClass` 模板；`string` 薄兼容。
+- **Cleanup:** 删除未使用的 `allowObjectPtrSerialization`、`m_IsHandlingPtr`；去掉过时 ObjectPtr TODO。
+- **P1:** `ForEachPropertyInHierarchy(MEClass*)`；`MEObject::StaticClass()`；合并 property 查找；Deserialize `static_cast`。
+- **Call sites:** SceneEditor snapshot、SceneDuplicator、Loaders、AssetManager、ProjectManager、PathRegistry、Tests。
+- **Out:** TD-026 Deferred；Binary wire 未改（→ CORE-F09）。
+- **Verified:** `serialization-archive` · `scene-clone` · `verify.ps1` smoke · Editor build。
+- **Next:** 准备 commit；然后 `CORE-F09` Wire Spec。
 
 ### 2026-09-03 - ED-F02 doc closeout + worktree bootstrap tooling
 - **ED-F02:** Design/Impl/Registry 对照 `master` — S00–S02/S04 **Done**；S03 SkyBox 实体、S05 Abstract 标注 **Remaining/Partial**。

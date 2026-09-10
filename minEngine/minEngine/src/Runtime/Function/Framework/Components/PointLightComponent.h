@@ -11,7 +11,7 @@ namespace minEngine
     ME_CLASS()
     class PointLightComponent : public LightComponent
     {
-        ME_GENERATED_BODY(PointLightComponent)
+        ME_GENERATED_BODY()
     public:
         PointLightComponent();
         virtual ~PointLightComponent() = default;

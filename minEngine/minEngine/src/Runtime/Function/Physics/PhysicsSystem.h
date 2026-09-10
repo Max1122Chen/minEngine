@@ -9,11 +9,6 @@
 namespace minEngine
 {
     class Scene;
-    class PhysicsSyncTestScope;
-    class PhysicsLoadTestScope;
-    class PhysicsContactTestScope;
-    class PhysicsLineTraceTestScope;
-    class PhysicsShapesTestScope;
 
     class PhysicsSystem
     {
@@ -37,12 +32,7 @@ namespace minEngine
 
     private:
         friend class Engine;
-        friend class PhysicsSmokeTestScope;
-        friend class PhysicsSyncTestScope;
-        friend class PhysicsLoadTestScope;
-        friend class PhysicsContactTestScope;
-        friend class PhysicsLineTraceTestScope;
-        friend class PhysicsShapesTestScope;
+        friend class Testing::TestAccess<PhysicsSystem>;
 
         static void SetInstance(PhysicsSystem* instance);
 

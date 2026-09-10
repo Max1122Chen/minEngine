@@ -11,15 +11,6 @@ namespace minEngine
     class SceneViewport;
     class Component;
     class PrimitiveComponent;
-    class PhysicsSmokeTestScope;
-    class PhysicsSyncTestScope;
-    class PhysicsLoadTestScope;
-    class PhysicsContactTestScope;
-    class PhysicsLineTraceTestScope;
-    class PhysicsShapesTestScope;
-    class AudioSmokeTestScope;
-    class SceneCloneTestScope;
-    class CommandSystemTestScope;
 
     class SceneManager
     {
@@ -75,7 +66,13 @@ namespace minEngine
         void SetEditorSceneViewport(SceneViewport* viewport) { m_EditorSceneViewport = viewport; }
         SceneViewport* GetEditorSceneViewport() const { return m_EditorSceneViewport; }
 
-    // private: // temporarily public for testing
+    private:
+        friend class Engine;
+        friend class Testing::TestAccess<SceneManager>;
+
+        static void SetInstance(SceneManager* instance);
+        static SceneManager* s_Instance;
+
         std::shared_ptr<Scene> m_CurrentActiveScene{ nullptr };
         std::vector<Component*> m_ComponentsThatNeedEndOfFrameUpdate;
         SceneContext m_EditorSceneContext;
@@ -83,23 +80,6 @@ namespace minEngine
         bool m_PIEPlayActive = false;
         Scene* m_ActiveSceneOverride = nullptr;
         mutable std::vector<SceneContext> m_CachedSceneContexts;
-
-    private:
-        friend class Engine;
-        friend class AssetManagerTestScope;
-        friend class LuaScriptMvpTestScope;
-        friend class PhysicsSmokeTestScope;
-        friend class PhysicsSyncTestScope;
-        friend class PhysicsLoadTestScope;
-        friend class PhysicsContactTestScope;
-        friend class PhysicsLineTraceTestScope;
-        friend class PhysicsShapesTestScope;
-        friend class AudioSmokeTestScope;
-        friend class SceneCloneTestScope;
-        friend class CommandSystemTestScope;
-
-        static void SetInstance(SceneManager* instance);
-        static SceneManager* s_Instance;
 
         std::unordered_map<std::string, std::string> m_RegisteredScenes;
         SceneViewport* m_EditorSceneViewport = nullptr;

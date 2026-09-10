@@ -11,7 +11,7 @@ namespace minEngine
     ME_STRUCT()
     struct Quaternion
     {
-        ME_GENERATED_BODY(Quaternion)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY(EditAnywhere)
         float W = 1.0f;

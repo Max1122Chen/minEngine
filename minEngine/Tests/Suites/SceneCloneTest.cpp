@@ -1,4 +1,6 @@
 #include "SceneCloneTest.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -26,20 +28,20 @@ namespace minEngine
     public:
         SceneCloneTestScope()
         {
-            ObjectManager::SetInstance(&m_ObjectManager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
             m_ObjectManager.Initialize();
 
-            SceneManager::SetInstance(&m_SceneManager);
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
         }
 
         ~SceneCloneTestScope()
         {
             m_SceneManager.Shutdown();
-            SceneManager::SetInstance(nullptr);
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
 
             m_ObjectManager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:
@@ -169,7 +171,6 @@ namespace minEngine
 
             std::vector<uint8_t> buffer;
             const Serialization::SerializeResult serializeResult = Serialization::Serializer::SerializeObjectToBuffer(
-                "minEngine::Scene",
                 sourceScene.get(),
                 buffer);
             if (!serializeResult.ok)
@@ -179,12 +180,11 @@ namespace minEngine
             }
 
             std::shared_ptr<Scene> loadedScene = NewObject<Scene>();
-            loadedScene->m_SceneName = "attach-serialize-loaded";
+            loadedScene->SetSceneName("attach-serialize-loaded");
             ObjectManager::Get().UnregisterObject(loadedScene.get());
 
             std::vector<Serialization::PendingObjectRef> deserializeRefs;
             const Serialization::SerializeResult deserializeResult = Serialization::Serializer::DeserializeObjectFromBuffer(
-                "minEngine::Scene",
                 loadedScene.get(),
                 buffer,
                 deserializeRefs);
@@ -302,14 +302,12 @@ namespace minEngine
             Serialization::JsonReaderArchive archive;
             const Serialization::SerializeResult loadResult = Serialization::Serializer::FromFile(
                 tempScenePath.string(),
-                "minEngine::Scene",
                 scene.get(),
                 archive,
                 Serialization::SerializerOptions{
                     .enumAsString = true,
                     .strictTypeCheck = true,
                     .skipUnknownField = true,
-                    .allowObjectPtrSerialization = true,
                 });
             std::error_code removeError;
             std::filesystem::remove(tempScenePath, removeError);

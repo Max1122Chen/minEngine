@@ -7,7 +7,7 @@ namespace minEngine
     ME_STRUCT()
     struct EditorSettings
     {
-        ME_GENERATED_BODY(EditorSettings)
+        ME_GENERATED_BODY()
 
         /** 0 = use engine default (see EditorSettingsDefaults.h). */
         ME_PROPERTY()

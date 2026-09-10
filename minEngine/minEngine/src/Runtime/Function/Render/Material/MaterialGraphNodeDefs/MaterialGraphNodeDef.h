@@ -24,7 +24,7 @@ namespace minEngine
     ME_STRUCT()
     struct MaterialGraphNodeDefInput
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDefInput)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string Name;
@@ -45,7 +45,7 @@ namespace minEngine
     ME_STRUCT()
     struct MaterialGraphNodeDefOutput
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDefOutput)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string Name;
@@ -54,7 +54,7 @@ namespace minEngine
     ME_CLASS(Abstract)
     class MaterialGraphNodeDef : public MEObject
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef)
+        ME_GENERATED_BODY()
 
     public:
         using Input = MaterialGraphNodeDefInput;
@@ -90,7 +90,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Constant : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Constant)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Constant();
@@ -104,7 +104,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Constant3 : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Constant3)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Constant3();
@@ -124,7 +124,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_MakeFloat3 : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_MakeFloat3)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_MakeFloat3();
@@ -151,7 +151,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Multiply : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Multiply)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Multiply();
@@ -175,7 +175,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Subtract : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Subtract)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Subtract();
@@ -185,7 +185,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Divide : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Divide)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Divide();
@@ -195,7 +195,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Max : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Max)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Max();
@@ -205,7 +205,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Min : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Min)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Min();
@@ -215,7 +215,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Lerp : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Lerp)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Lerp();
@@ -225,7 +225,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_NormalUnpack : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_NormalUnpack)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_NormalUnpack();
@@ -235,7 +235,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_Select : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_Select)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_Select();
@@ -245,7 +245,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_IfThenElse : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_IfThenElse)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_IfThenElse();
@@ -255,7 +255,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_TextureCoordinate : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_TextureCoordinate)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_TextureCoordinate();
@@ -265,7 +265,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_TextureObject : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_TextureObject)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_TextureObject();
@@ -286,7 +286,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_TextureSample : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_TextureSample)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_TextureSample();
@@ -296,7 +296,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_ScalarParameter : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_ScalarParameter)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_ScalarParameter();
@@ -319,7 +319,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_ComponentMask : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_ComponentMask)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_ComponentMask();
@@ -333,7 +333,7 @@ namespace minEngine
     ME_CLASS()
     class MaterialGraphNodeDef_MaterialOutput : public MaterialGraphNodeDef
     {
-        ME_GENERATED_BODY(MaterialGraphNodeDef_MaterialOutput)
+        ME_GENERATED_BODY()
 
     public:
         MaterialGraphNodeDef_MaterialOutput();

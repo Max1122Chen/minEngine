@@ -4,6 +4,6 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::SceneComponent, GReflectionClassRegister_SceneComponent_e28531cd)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::Component)
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SceneComponent, m_Transform, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), (minEngine::Reflection::PropertyMetadata{}))
-    ME_REFLECTION_CLASS_ADD_FIELD(minEngine::SceneComponent, m_AttachParent, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::SceneComponent, m_Transform, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::SceneComponent, m_AttachParent, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::SceneComponent)

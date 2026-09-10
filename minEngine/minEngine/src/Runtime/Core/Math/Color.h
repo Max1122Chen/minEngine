@@ -14,7 +14,7 @@ namespace minEngine
     ME_STRUCT()
     struct LinearColor
     {
-        ME_GENERATED_BODY(LinearColor)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY(EditAnywhere)
         float R = 0.0f;
@@ -50,7 +50,7 @@ namespace minEngine
     ME_STRUCT()
     struct Color
     {
-        ME_GENERATED_BODY(Color)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY(EditAnywhere)
         uint8_t R = 255;
