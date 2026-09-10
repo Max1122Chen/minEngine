@@ -1,11 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-10（merge wave: core+editor — TEST-F04 Done；ED-F05 Done）
+Last updated: 2026-09-10（merge wave: core+editor+gameplay）
+
+### 2026-09-10 - Merge: feat/gameplay-framework → master（GP-F01/F02）
+- **Code:** Tag + Scene Event bus；`ObjectManager`/`Scene` 冲突按 TEST-F04 保留 `TestAccess` + private；`GameplayEventTest` 改走 `TestAccess<ObjectManager>`。
+- **Docs:** ACTIVE_WORK / FEATURE_REGISTRY / PROGRESS_LOG 并入 GP 条目。
+- **Next:** 继续合入 `feat/animation` → `feat/ui`。
 
 ### 2026-09-10 - Merge: feat/editor → master（ED-F05 + docs）
 - **Code:** Editor ED-F05（S00–S04；S05 Deferred）已与 master 自动合并。
 - **Docs:** ACTIVE_WORK / FEATURE_REGISTRY / PROGRESS_LOG 合并冲突已解：保留 core（CORE-F08–F12 / TEST-F04）与 editor（ED-F05）两侧历史。
-- **Next:** 父会话完成 merge commit。
+- **Next:** 继续 merge wave。
 
 ### 2026-09-10 - TEST-F04 Done: TestAccess\<T\> + Scene private cleanup (`feat/core`)
 - **S00–S03:** Core `TestAccess` 前向；热点系统单 friend；`Tests/Access/*` 特化；删 `*TestScope` friend。
@@ -77,6 +82,13 @@ Last updated: 2026-09-10（merge wave: core+editor — TEST-F04 Done；ED-F05 Do
 - **Registry:** `ED-F05` 初稿登记（其后已升 Review，见上条）。
 - **Next:** 已由 Review 条目承接。
 
+### 2026-09-05 - GP-F01/F02 Done: Tag + Scene Event bus
+- **GP-F01:** `GameplayTag` / Manager / Container；`ME_DECLARE/DEFINE_GAMEPLAY_TAG*`；Engine 持有 Manager；`TAG_Channel_Default`。
+- **GP-F02:** `GameplayEventSystemComponent`（Scene 作用域）；default channel；filter/priority/depth；`Scene::GetGameplayEventSystem`；无 Payload。
+- **Code:** `Runtime/Function/GameplayFramework/{Tags,Events}/`
+- **Verified:** `minEngineTests.exe test gameplay-tags` PASS；`test gameplay-events` PASS。
+- **Next:** 两批 commit（Tag / Event）待审批。
+
 ### 2026-09-05 - CORE-F11-S06: Inspector live Assign + PostEdit semantics (`feat/core`)
 - **Semantics:** 属性编辑语义上皆为 PostEdit；有 Setter 时由 Setter 承担传播，实现层不调虚函数。
 - **Inspector:** 直接字段 Primitive/flat Color：`GetPropertyValue`→temp→`AssignProperty`（`notifyPostEdit=!HasSetter`）。
@@ -103,8 +115,15 @@ Last updated: 2026-09-10（merge wave: core+editor — TEST-F04 Done；ED-F05 Do
 - **Docs:** Design + Impl S01–S05；Registry Planned。
 - **Next:** 确认 Design 后开码 S01（tool + codegen）。
 
+### 2026-09-04 - GP-F01/F02 Design Draft（feat/gameplay-framework）
+- **Registry:** 新域 `GP`；`GP-F01` GameplayTag、`GP-F02` GameplayEventSystem → **Draft**。
+- **Docs:** `docs/ai/Gameplay/` — Design + Implementation；落点 `Runtime/Function/GameplayFramework/`。
+- **所有权：** TagManager → Engine 子系统（暂）；Event → Scene 作用域 GO Component；Payload **Deferred**；无 ASC。
+- **ACTIVE_WORK:** Side track 登记；不挡 Animation Primary。
+- **Next:** 审 Design → Planned → 开码 GP-F01-S01。
+
 ### 2026-09-04 - CORE-F10 Done: JSON disk compatibility (`feat/core`)
-- **Options:** 接线 `strictTypeCheck`；新增 `writeSchemaVersion` / `schemaVersion`；澄清 `skipUnknownField`=缺字段。
+- **API:** 接线 `strictTypeCheck`；新增 `writeSchemaVersion` / `schemaVersion`；澄清 `skipUnknownField`=缺字段。
 - **Json:** EndObject 对多余非 meta 键 Warn；根 `$schemaVersion` 写 1 / 缺省读 0。
 - **Loose:** 叶子 codec 失败且非 strict → Warn+保留默认；盘路径 Loader/Project/PathRegistry/AssetManager 默认宽松。
 - **Strict:** Binary Buffer / PIE 仍强制 `skipUnknownField=false` + `strictTypeCheck=true`。
@@ -129,7 +148,6 @@ Last updated: 2026-09-10（merge wave: core+editor — TEST-F04 Done；ED-F05 Do
 - **Out:** TD-026 Deferred；Binary wire 未改（→ CORE-F09）。
 - **Verified:** `serialization-archive` · `scene-clone` · `verify.ps1` smoke · Editor build。
 - **Next:** 准备 commit；然后 `CORE-F09` Wire Spec。
-
 
 ### 2026-09-03 - ED-F02 doc closeout + worktree bootstrap tooling
 - **ED-F02:** Design/Impl/Registry 对照 `master` — S00–S02/S04 **Done**；S03 SkyBox 实体、S05 Abstract 标注 **Remaining/Partial**。

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-10（merge wave: core+editor — TEST-F04 Done；ED-F05 Done）
+Last updated: 2026-09-10（merge wave: core+editor+gameplay）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -18,7 +18,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **Infrastructure** | Async Asset / Lifetime / Thread · Binary Ser · Prefab · Object Lifetime | 否（真缺口再插入） |
 | **Rendering** | Sort / Batch | 否 |
 | **DX / Agent** | Editor Workflow 余量 · Reflection UX · Commands | 否 |
-| **Future** | Gameplay Plugins · Networking · AI | 刻意延后 |
+| **Future** | 完整 Gameplay Plugins / ASC · Networking · AI | 刻意延后 |
+| **Side（本 worktree）** | `GP-F01` Tag · `GP-F02` Event（机制基底，非 Framework） | 否 |
 
 ---
 
@@ -44,7 +45,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
-### Infra 轨（`feat/core`）：序列化 → 属性写入 → 测试访问面
+### Infra 轨（已合入 `master`）：序列化 → 属性写入 → 测试访问面
 
 | 项 | 说明 |
 |----|------|
@@ -57,6 +58,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | GC / Lifetime | 刻意延后 |
 
 [CORE-F12 Design](./Platform/Reflection/CORE-F12_GENERATED_BODY_NO_ARG_DESIGN.md) · [TEST-F04 Design](./Platform/Test/TEST-F04_TEST_ACCESS_DESIGN.md) · [CORE-F11 Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [CORE-F10 Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
+
+### Side track — Gameplay 机制基底（已合入 `master`）
+
+| 项 | 说明 |
+|----|------|
+| **GP-F01** | GameplayTag **Done** — `test gameplay-tags` |
+| **GP-F02** | Scene Event bus **Done** — `test gameplay-events`；Payload Deferred |
+| **不做** | ASC / Pawn / GE/GA；Module 插件系统；Payload |
 
 ### 可并行（不升主线）
 
@@ -84,8 +93,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **ED-F03** Viewport Play Toolbar | Done |
 | **ED-F02** S00–S02 / S04 | Done on `master` |
 | **ED-F05** S00–S04 | Done — 现合入 `master`（S05 Deferred） |
+| **GP-F01 / GP-F02** | Done — Tag + Scene Event；现合入 `master` |
 | **PHYS-F04** / BUG-PHYS-003/004 | Done / Fixed |
-| **feat/editor** merge | 先前批次已合入 `master`；本批 ED-F05 合入中 |
+| **feat/editor** merge | 先前批次已合入 `master`；本批 ED-F05 已合入 |
 
 ---
 
@@ -111,7 +121,7 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 ### Placeholder branches（无 worktree）
 
 `feat/asset-pipeline` · `feat/network` · `feat/ai` — 仅占位。  
-**`feat/core`** — 已自 `master` 初始化；序列化轨 **CORE-F08–F10**（主仓 checkout，可选 `minEngine-core` worktree）。
+**`feat/core`** / **`feat/gameplay-framework`** — 本波已合入 `master`；worktree 可留档。
 
 ---
 
@@ -121,7 +131,8 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 |----|------|
 | `ANIM-F01` | Primary — Design 待写（`feat/animation`） |
 | `RND-F16` / `UI-F01` | Primary 后续（`feat/ui`） |
-| Gameplay 插件化 / 网络 / AI | Future；见哲学 |
+| 完整 Gameplay 插件化 / ASC / 网络 / AI | Future；见哲学 |
+| `GP-F01` / `GP-F02` | 已开 Design（机制基底，非完整 Framework） |
 
 ---
 

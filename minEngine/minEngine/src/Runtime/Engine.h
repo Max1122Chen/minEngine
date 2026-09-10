@@ -21,6 +21,7 @@ namespace minEngine
     class AudioSystem;
     class FileDialogService;
     class LuaScriptSystem;
+    class GameplayTagManager;
 
     class Engine
     {
@@ -70,6 +71,7 @@ namespace minEngine
         std::shared_ptr<AudioSystem> m_AudioSystem;
         std::shared_ptr<FileDialogService> m_FileDialogService;
         std::shared_ptr<LuaScriptSystem> m_LuaScriptSystem;
+        std::shared_ptr<GameplayTagManager> m_GameplayTagManager;
 
         EngineConfig m_EngineConfig;
         bool m_EnginePathConfigLoaded = false;
