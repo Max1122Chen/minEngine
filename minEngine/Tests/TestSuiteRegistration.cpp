@@ -24,6 +24,12 @@
 #include "Suites/AudioSmokeTest.h"
 #include "Suites/SceneCloneTest.h"
 #include "Suites/ReflectionDisplayNamesTest.h"
+#include "Suites/SpriteTranslucencyTest.h"
+#include "Suites/ScreenUICoordsTest.h"
+#include "Suites/UILayoutTest.h"
+#include "Suites/ScreenUIHitTest.h"
+#include "Suites/ScreenUIButtonTest.h"
+#include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/CommandSystemTest.h"
 #include "Suites/SkeletonPoseTest.h"
 #include "Suites/AnimationClipTest.h"
@@ -356,6 +362,108 @@ namespace minEngine
             }
         };
 
+        struct SpriteTranslucencyTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"sprite-translucency", "Sprite Translucency", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'sprite-translucency'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "sprite-translucency",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ScreenUICoordsTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-coords", "Screen UI Coords", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-coords'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-coords",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct UILayoutTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"ui-layout", "UI Layout", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'ui-layout'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "ui-layout",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ScreenUIHitTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-hit", "Screen UI Hit-test", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-hit'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-hit",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ScreenUIButtonTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-button", "Screen UI Button", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-button'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-button",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct GameObjectHierarchyTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"gameobject-hierarchy", "GameObject Hierarchy", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'gameobject-hierarchy'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "gameobject-hierarchy",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct CommandSystemTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -462,6 +570,12 @@ namespace minEngine
         using AudioSmokeSuite = TypedTestSuite<AudioSmokeTestSuiteTraits>;
         using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
+        using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
+        using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
+        using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
+        using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
+        using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
+        using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
         using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
@@ -497,6 +611,12 @@ namespace minEngine
             registry.Register(AudioSmokeSuite::Get());
             registry.Register(SceneCloneSuite::Get());
             registry.Register(ReflectionDisplayNamesSuite::Get());
+            registry.Register(SpriteTranslucencySuite::Get());
+            registry.Register(ScreenUICoordsSuite::Get());
+            registry.Register(UILayoutSuite::Get());
+            registry.Register(ScreenUIHitSuite::Get());
+            registry.Register(ScreenUIButtonSuite::Get());
+            registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());
             registry.Register(AnimationClipSuite::Get());

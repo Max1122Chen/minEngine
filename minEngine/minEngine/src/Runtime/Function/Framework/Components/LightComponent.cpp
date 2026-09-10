@@ -34,16 +34,20 @@ namespace minEngine
         m_LightSceneProxy = nullptr;
     }
 
-    void LightComponent::SetLightColor(const Vector4 &inColor)
+    void LightComponent::SetLightColor(const LinearColor& inColor)
     {
-        Vector4 clampedColor = glm::clamp(inColor, Vector4(0.0f), Vector4(1.0f));
-        if(!(m_LightColor == clampedColor))
+        const LinearColor clampedColor(
+            std::clamp(inColor.R, 0.0f, 1.0f),
+            std::clamp(inColor.G, 0.0f, 1.0f),
+            std::clamp(inColor.B, 0.0f, 1.0f),
+            std::clamp(inColor.A, 0.0f, 1.0f));
+        if (!(m_LightColor == clampedColor))
         {
             m_LightColor = clampedColor;
             MarkRenderStateDirty();
         }
     }
-    
+
     void LightComponent::SetIntensity(float inIntensity)
     {
         if(!(m_Intensity == inIntensity))
@@ -87,8 +91,11 @@ namespace minEngine
             return;
         }
 
-        Vector4 clampedColor = glm::clamp(m_LightColor, Vector4(0.0f), Vector4(1.0f));
-        m_LightColor = clampedColor;
+        m_LightColor = LinearColor(
+            std::clamp(m_LightColor.R, 0.0f, 1.0f),
+            std::clamp(m_LightColor.G, 0.0f, 1.0f),
+            std::clamp(m_LightColor.B, 0.0f, 1.0f),
+            std::clamp(m_LightColor.A, 0.0f, 1.0f));
         if (m_Intensity < 0.0f)
         {
             m_Intensity = 0.0f;

@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-10（merge wave: +animation）
+Last updated: 2026-09-10（merge wave: +ui 完成）
+### 2026-09-10 - Merge: feat/ui → master
+- **Code:** ScreenUI / Sprite / Hierarchy / KeepWorld / LinearColor；`ForwardRenderer`/`RenderScene` 同时保留 Skeletal + Sprite；Hierarchy 树 + ED-F05 Inspector 组件 API 并存；TestAccess 保留并迁移 UI tests。
+- **Docs ID remap:** Hierarchy→**CORE-F14**；KeepWorld→**CORE-F15**；LinearColor→**CORE-F16**；Hierarchy Tree→**ED-F08**。
+- **Next:** merge wave 收口；按需 build/smoke。
+
 ### 2026-09-10 - Merge: feat/animation → master
 - **Code:** Animation / Import / Parameter Store / SmGraph canvas；`AssetMeta.gen` 保留 ACCESSORS + `SourcePath`；manifest 路径回主仓。
 - **Docs ID remap:** anim `CORE-F08`→**CORE-F13**；anim `ED-F05`→**ED-F06**；anim `ED-F06`→**ED-F07**（master 已占用 CORE-F08–12 与 ED-F05 Inspector）。
@@ -275,7 +280,7 @@ Last updated: 2026-09-10（merge wave: +animation）
 - Findings (code review): VK depth descriptor layout mismatch; `BuildSceneSet1` dirty only on texture cache change; `BasePass` missing `DirShadowAtlas` RDG input; static shadow fingerprint. Documented in BUG-RENDER-013 + RND-TD025 搂8 P7 + shadow pass isolation matrix.
 - Next: User experiments via `MAX_*_SHADOW_MAPS` / `MAX_CASCADES` or scene Cast Shadow toggles; then fix P0鈥揚3.
 
-Last updated: 2026-09-10（merge wave: +animation）
+Last updated: 2026-09-10（merge wave: +ui 完成）
 
 ## Purpose
 

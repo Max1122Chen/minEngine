@@ -10,6 +10,10 @@ namespace minEngine
 
     Component::~Component()
     {
+        if (SceneManager::HasInstance())
+        {
+            SceneManager::Get().UnmarkComponentForNeededEndOfFrameUpdate(this);
+        }
         Deactivate();
     }
 

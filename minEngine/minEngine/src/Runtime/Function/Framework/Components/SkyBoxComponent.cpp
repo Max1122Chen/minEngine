@@ -104,7 +104,7 @@ namespace minEngine
     {
         SkyBoxSceneProxy* proxy = new SkyBoxSceneProxy();
         proxy->m_SkyBoxComponent = this;
-        proxy->m_Transform = GetTransform();
+        proxy->m_Transform = GetWorldTransform();
         proxy->m_SkyIntensity = m_SkyIntensity;
         proxy->m_Enabled = IsActive();
         proxy->m_EnvironmentMap = m_EnvironmentMap;

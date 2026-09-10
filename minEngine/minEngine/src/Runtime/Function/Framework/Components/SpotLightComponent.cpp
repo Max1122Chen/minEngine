@@ -5,7 +5,7 @@ namespace minEngine
 {
     Vector3 SpotLightComponent::GetDirection() const
     {
-        return -GetUpVector();
+        return -GetWorldUpVector();
     }
 
     void SpotLightComponent::SetInnerConeAngle(float inInnerConeAngle)
@@ -32,9 +32,9 @@ namespace minEngine
         SpotLightSceneProxy* proxy = new SpotLightSceneProxy();
         proxy->m_LightComponent = this;
         proxy->m_LightType = GetLightType();
-        proxy->m_Position = GetPosition();
+        proxy->m_Position = GetWorldPosition();
         proxy->m_Direction = GetDirection();
-        proxy->m_LightColor = GetLightColor();
+        proxy->m_LightColor = GetLightColor().ToVector3();
         proxy->m_Intensity = GetIntensity();
         proxy->m_DiffuseFactor = GetDiffuseFactor();
         proxy->m_SpecularFactor = GetSpecularFactor();

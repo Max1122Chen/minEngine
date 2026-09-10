@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-09-05（CORE-F11 Done；TD-026 Done）
+Last updated: 2026-09-05（merge；TD-026 Done via CORE-F11；TD-031 still Deferred）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -38,6 +38,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-028 | Binary wire format field-stream parsing fragile (`EndObject` vs u16 len) | CORE / Serialization | **High** | Done | `CORE-F09` · [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) | **2026-09-04：** v2 framing（`fieldCount`+`bodyLength`，无 EndObject）；Transient ClassId/FieldId；`serialization-archive` + `scene-clone` physics-stack 绿。 |
 | TD-029 | PIE `SceneDuplicator` uses in-memory JSON instead of Binary | CORE-F05 / ED | **Medium** | Done | `CORE-F09` · `SceneDuplicator.cpp` | **2026-09-04：** `DuplicateForPIE` 恢复 `SerializeObjectToBuffer` / Binary v2；磁盘 `.mescene` 仍 JSON。 |
 | TD-030 | EnterPlay failure path lacks full rollback | CORE-F05 | **Medium** | Open | [CORE-F05_PLAY_MODE_IMPLEMENTATION.md](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) S02 | 2026-09-03 MVP closeout: clone/register mid-failure may leave partial PIE context; restore Editor TickPolicy on early fail exists, full teardown of half-registered PIE still owed. |
+| TD-031 | GO `activeInHierarchy` 随父 Active 传播未做 | CORE-F08 / CORE-F06 | **Medium** | **Deferred** | [CORE-F08 Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) §3.5 | 2026-09-04：父子层级 MVP 不做 Inactive 传播；日后与 CORE-F06 对齐再开切片。 |
 
 ---
 

@@ -5,7 +5,14 @@
 #include "Render/RenderScene.h"
 #include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 #include "Render/PrimitiveSceneProxies/SkeletalMeshSceneProxy.h"
+#include "Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
+#include "Render/SceneProxies/WidgetSceneProxy.h"
+#include "Render/ScreenUI/ScreenUICoords.h"
+#include "Runtime/Function/Framework/Components/CanvasComponent.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/UI/UITypes.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/Material.h"
 #include "Render/RHI/RHI.h"
@@ -31,6 +38,7 @@
 #include "Render/RHI/RHIClipSpaceCapabilities.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <filesystem>
+#include <algorithm>
 
 namespace
 {
@@ -147,6 +155,7 @@ namespace minEngine
         m_BasePass.pipeline = this;
         m_TranslucentPass.pipeline = this;
         m_DebugDrawPass.pipeline = this;
+        m_ScreenUIPass.pipeline = this;
 
         m_ShadowPass.Initialize();
         m_ShadowPass.m_PerObjectUniformBuffer = m_PerObjectUniformBuffer.get();
@@ -266,6 +275,7 @@ namespace minEngine
         m_SceneOpaqueGraphPass = nullptr;
         m_SceneTranslucentGraphPass = nullptr;
         m_SceneDebugGraphPass = nullptr;
+        m_SceneScreenUIGraphPass = nullptr;
         m_PostFxaaGraphPass = nullptr;
         m_PostSharpenGraphPass = nullptr;
         m_PresentGraphPass = nullptr;
@@ -305,6 +315,10 @@ namespace minEngine
             debugPass.SetImplementation(&m_DebugDrawPass);
             m_SceneDebugGraphPass = &debugPass;
         }
+
+        RenderPass& screenUIPass = m_FrameRenderGraph.AddPass("Scene.ScreenUI");
+        screenUIPass.SetImplementation(&m_ScreenUIPass);
+        m_SceneScreenUIGraphPass = &screenUIPass;
 
         if (enablePostProcess && !m_PostProcessPasses.empty())
         {
@@ -588,6 +602,7 @@ namespace minEngine
         desc.Scene->CollectOrphanedSceneProxies();
 
         BuildRenderQueue(ctx);
+        BuildScreenUIQueue(ctx, sceneTarget->GetWidth(), sceneTarget->GetHeight());
 
         const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
         if (enableShadows)
@@ -672,6 +687,16 @@ namespace minEngine
         m_TranslucentPass.m_DirectionalShadowHandle = ctx.DirectionalShadowHandle;
         m_TranslucentPass.m_SpotShadowHandles = ctx.SpotShadowHandles;
         m_TranslucentPass.m_PointShadowHandles = ctx.PointShadowHandles;
+
+        m_ScreenUIPass.m_DrawCommands.clear();
+        m_ScreenUIPass.m_DrawCommands.reserve(ctx.ScreenUIQueue.size());
+        for (const UIDrawCommand& uiCommand : ctx.ScreenUIQueue)
+        {
+            m_ScreenUIPass.m_DrawCommands.push_back(uiCommand.Draw);
+        }
+        m_ScreenUIPass.m_PerFrameUniformBuffer = m_PerFrameUniformBuffer.get();
+        m_ScreenUIPass.m_ViewportWidth = sceneTarget->GetWidth();
+        m_ScreenUIPass.m_ViewportHeight = sceneTarget->GetHeight();
 
         EnqueueFrameRenderGraph(cmdList, sceneTarget);
 
@@ -1162,8 +1187,105 @@ namespace minEngine
                     command.m_BoneCount = static_cast<uint32_t>(skeletalMeshProxy->m_BonePalette.size());
                 }
                 enqueueCommand(command);
+                continue;
+            }
+
+            if (SpriteSceneProxy* spriteProxy = dynamic_cast<SpriteSceneProxy*>(primitiveProxy))
+            {
+                MeshDrawCommand command;
+                command.m_VertexBuffer = spriteProxy->m_VertexBuffer;
+                command.m_VertexInputLayout = spriteProxy->m_VertexInputLayout;
+                command.m_IndexBuffer = spriteProxy->m_IndexBuffer;
+                command.m_Material = spriteProxy->m_Material;
+                command.m_ModelMatrix = spriteProxy->m_ModelMatrix;
+                command.m_CastShadow = false;
+                command.m_BoundingBox = spriteProxy->m_PrimitiveComponent->GetBoundingBox();
+
+                if (!command.m_Material || !command.m_VertexInputLayout || !command.m_VertexBuffer ||
+                    !spriteProxy->m_Texture)
+                {
+                    continue;
+                }
+
+                if (spriteProxy->m_bNeedsTranslucentPass)
+                {
+                    ctx.TranslucentQueue.push_back(command);
+                }
+                else
+                {
+                    ctx.OpaqueQueue.push_back(command);
+                }
             }
         }
+    }
+
+    void ForwardRenderer::BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)
+    {
+        ctx.ScreenUIQueue.clear();
+
+        RenderScene* renderScene = ctx.Scene;
+        if (!renderScene)
+        {
+            return;
+        }
+
+        for (WidgetSceneProxy* widgetProxy : renderScene->m_WidgetSceneProxies)
+        {
+            if (!widgetProxy || !widgetProxy->m_bVisible || !widgetProxy->m_WidgetComponent)
+            {
+                continue;
+            }
+
+            if (!widgetProxy->m_Material || !widgetProxy->m_VertexBuffer || !widgetProxy->m_VertexInputLayout)
+            {
+                continue;
+            }
+
+            WidgetComponent* widget = widgetProxy->m_WidgetComponent;
+            CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(widget->GetOwner());
+            if (canvas == nullptr || !canvas->IsActive())
+            {
+                continue;
+            }
+
+            // Proxy stores Canvas reference-space rect; map to viewport pixels.
+            Vector2 topLeftPx = widgetProxy->m_TopLeftPx;
+            Vector2 sizePx = widgetProxy->m_SizePx;
+            if (canvas->GetScaleMode() == EUICanvasScaleMode::Letterbox)
+            {
+                const Vector2 ref = canvas->GetReferenceResolution();
+                const ScreenUICoords::LetterboxMapping mapping = ScreenUICoords::MakeLetterboxMapping(
+                    ref.x,
+                    ref.y,
+                    static_cast<float>(viewportWidth),
+                    static_cast<float>(viewportHeight));
+                topLeftPx = mapping.MapPoint(widgetProxy->m_TopLeftPx);
+                sizePx = mapping.MapSize(widgetProxy->m_SizePx);
+            }
+
+            UIDrawCommand command;
+            command.StableOrder = widgetProxy->m_StableOrder;
+            command.CanvasSortOrder = canvas->GetSortOrder();
+            command.Draw.m_VertexBuffer = widgetProxy->m_VertexBuffer;
+            command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
+            command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
+            command.Draw.m_Material = widgetProxy->m_Material;
+            command.Draw.m_ModelMatrix = ScreenUICoords::MakeWidgetModelMatrix(topLeftPx, sizePx);
+            command.Draw.m_CastShadow = false;
+            ctx.ScreenUIQueue.push_back(command);
+        }
+
+        std::stable_sort(
+            ctx.ScreenUIQueue.begin(),
+            ctx.ScreenUIQueue.end(),
+            [](const UIDrawCommand& a, const UIDrawCommand& b)
+            {
+                if (a.CanvasSortOrder != b.CanvasSortOrder)
+                {
+                    return a.CanvasSortOrder < b.CanvasSortOrder;
+                }
+                return a.StableOrder < b.StableOrder;
+            });
     }
 
     DirShadowCommandBuildResult ForwardRenderer::BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest,

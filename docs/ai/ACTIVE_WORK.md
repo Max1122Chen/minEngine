@@ -14,8 +14,20 @@ Last updated: 2026-09-10锛圗D-F06 Done锛涘噯澶?commit锛?Purpose: **short,
 | editor | ED-F05 Inspector / Component UX |
 | gameplay | GP-F01 Tag + GP-F02 Event |
 | animation | ANIM-F01–F04 / ASSET-F01–F02 / Parameter→CORE-F13 / SM Canvas→ED-F06–F07 |
+| ui | UI-F01–F03 / RND-F16 / Hierarchy→CORE-F14–F16 / Tree→ED-F08 |
 
 > **ID：** 见 `FEATURE_REGISTRY.md` §Merge-wave ID remaps。
+
+### UI 轨（已合入 `master`）
+
+| 项 | 说明 |
+|----|------|
+| **UI-F01–F03** | ScreenUI Canvas/Widget/Image/Layout + Hit-test + Button MVP — **Done** |
+| **RND-F16** | 2D Rendering Foundation — **Done** |
+| **CORE-F14 / F15** | GameObject Hierarchy + KeepWorld（分支 docs F08/F09）— **Done** |
+| **CORE-F16** | LinearColor 作者颜色（分支 F14）— **Done** |
+| **ED-F08** | Hierarchy Tree 拖拽改父（分支 ED-F05）— **Done** |
+
 
 ---
 

@@ -10,6 +10,7 @@
 #include "RenderPasses/PresentPass.h"
 #include "RenderPasses/SkyBoxPass.h"
 #include "RenderPasses/DebugDrawPass.h"
+#include "RenderPasses/ScreenUIPass.h"
 #include "Runtime/Function/Render/EnginePipelineLayouts.h"
 #include "Runtime/Function/Render/EngineSceneBindingSets.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
@@ -146,9 +147,11 @@ namespace minEngine
         void CollectShadowRequests(SceneRenderContext& ctx);
         void BuildShadowDrawCommands(SceneRenderContext& ctx);
         void BuildRenderQueue(SceneRenderContext& ctx);
+        void BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight);
         void ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx);
 
         SkyBoxPass m_SkyBoxPass;
+        ScreenUIPass m_ScreenUIPass;
 
     private:
         TranslucencyPass m_TranslucentPass;
@@ -170,6 +173,7 @@ namespace minEngine
         RenderPass* m_SceneOpaqueGraphPass = nullptr;
         RenderPass* m_SceneTranslucentGraphPass = nullptr;
         RenderPass* m_SceneDebugGraphPass = nullptr;
+        RenderPass* m_SceneScreenUIGraphPass = nullptr;
         RenderPass* m_PostFxaaGraphPass = nullptr;
         RenderPass* m_PostSharpenGraphPass = nullptr;
         RenderPass* m_PresentGraphPass = nullptr;

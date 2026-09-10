@@ -78,6 +78,11 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | anim `ED-F05` SM Canvas | **`ED-F06`** | master `ED-F05` = Inspector Component UX |
 | anim `ED-F06` Canvas Polish | **`ED-F07`** | 顺延 |
 | 设计文件名 | 暂不改 | 路径仍含历史 `CORE-F08_PARAMETER_*` / `ED-F05_STATE_MACHINE_*` / `ED-F06_ANIM_SM_*` |
+| ui Hierarchy（docs CORE-F08 / Reg F12） | **`CORE-F14`** | F12–F13 已被 GENERATED_BODY / Parameter 占用 |
+| ui KeepWorld（docs CORE-F09 / Reg F13） | **`CORE-F15`** | 同上 |
+| ui LinearColor（`CORE-F14`） | **`CORE-F16`** | 顺延 |
+| ui Hierarchy Tree（`ED-F05`） | **`ED-F08`** | master ED-F05=Inspector；F06–F07=Anim canvas |
+
 
 ## Vision placeholders锛堟棤鐙珛 Feature ID锛屼笉鎺掓湡锛?
 鐧昏浜?[ACTIVE_WORK.md](./ACTIVE_WORK.md) 涓?[ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)锛氬畬鏁?Gameplay **Plugins / ASC / GAS 涓婂眰**銆丯etworking / Net Game銆丳refab銆丱bject Lifetime/GC銆丷ender Sort/Batch锛堝緟鐧昏锛夈€丄gent-friendly 浣滀负**璁捐鍘熷垯**锛堣 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)锛夈€? 

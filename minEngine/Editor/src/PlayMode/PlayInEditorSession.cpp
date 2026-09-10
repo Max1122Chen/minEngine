@@ -7,6 +7,7 @@
 #include "Runtime/Function/Framework/Scene/SceneDuplicator.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
+#include "Runtime/Function/UI/UISystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
@@ -145,6 +146,11 @@ namespace minEngine
             PhysicsSystem::Get().OnBeginPIE(pieScene.get());
         }
 
+        if (UISystem::HasInstance())
+        {
+            UISystem::Get().OnBeginPIE(pieScene.get());
+        }
+
         m_State = PlayState::Playing;
         ApplyInspectingSceneForPlayState();
         return true;
@@ -174,6 +180,11 @@ namespace minEngine
             if (PhysicsSystem::HasInstance() && pieScene != nullptr)
             {
                 PhysicsSystem::Get().OnEndPIE(pieScene);
+            }
+
+            if (UISystem::HasInstance() && pieScene != nullptr)
+            {
+                UISystem::Get().OnEndPIE(pieScene);
             }
 
             for (const SceneContext& pieContext : m_PIEContexts)

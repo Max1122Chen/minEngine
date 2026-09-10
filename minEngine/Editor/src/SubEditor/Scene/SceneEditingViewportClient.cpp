@@ -28,8 +28,7 @@
 #include "Render/RenderScene.h"
 
 #include "Runtime/Function/Input/InputSystem.h"
-
-
+#include "Runtime/Function/UI/UISystem.h"
 
 #include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 
@@ -116,6 +115,8 @@ namespace minEngine
         m_GizmoState.Hovering = false;
 
         m_GizmoState.Manipulated = false;
+
+        m_GizmoState.HasResultWorldMatrix = false;
 
         m_GizmoState.axis = GizmoState::Axis::None;
 
@@ -779,37 +780,12 @@ namespace minEngine
 
         SceneEditor* sceneEditor = GetSceneEditor(m_Context);
         if (GameObject* selected = sceneEditor ? sceneEditor->GetSelectedGameObject() : nullptr)
-
         {
-
-            switch (m_GizmoState.mode)
-
+            if (m_GizmoState.HasResultWorldMatrix)
             {
-
-            case GizmoState::Mode::Translate:
-
-                selected->Translate(m_GizmoState.Delta.PositionDelta);
-
-                break;
-
-            case GizmoState::Mode::Rotate:
-
-                selected->Rotate(m_GizmoState.Delta.RotationDelta, Space::World);
-
-                break;
-
-            case GizmoState::Mode::Scale:
-
-                selected->ScaleBy(m_GizmoState.Delta.ScaleDelta);
-
-                break;
-
-            default:
-
-                break;
-
+                selected->SetWorldTransform(SceneComponent::MakeTransformFromMatrix(m_GizmoState.ResultWorldMatrix));
+                m_GizmoState.HasResultWorldMatrix = false;
             }
-
         }
 
     }
@@ -861,6 +837,11 @@ namespace minEngine
     void SceneEditingViewportClient::TrySelectAtMousePosition()
 
     {
+        // S2: ScreenUI consumes the pointer when routing is on and a widget is under it.
+        if (UISystem::HasInstance() && UISystem::Get().ShouldBlockWorldPointer())
+        {
+            return;
+        }
 
         Vector2 mousePosition = InputSystem::GetMousePosition();
 
@@ -984,7 +965,7 @@ namespace minEngine
 
             Geometry::AABB boundingBox = staticMesh->m_BoundingBox;
 
-            Geometry::AABB worldBoundingBox = Geometry::Transform(boundingBox, staticMeshComponent->GetTransform().ToMatrix());
+            Geometry::AABB worldBoundingBox = Geometry::Transform(boundingBox, staticMeshComponent->GetWorldTransform().ToMatrix());
 
             float distance = std::numeric_limits<float>::max();
 

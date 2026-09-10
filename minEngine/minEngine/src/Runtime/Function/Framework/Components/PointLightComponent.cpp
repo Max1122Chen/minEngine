@@ -36,8 +36,8 @@ namespace minEngine
         PointLightSceneProxy* proxy = new PointLightSceneProxy();
         proxy->m_LightComponent = this;
         proxy->m_LightType = GetLightType();
-        proxy->m_Position = GetPosition();
-        proxy->m_LightColor = GetLightColor();
+        proxy->m_Position = GetWorldPosition();
+        proxy->m_LightColor = GetLightColor().ToVector3();
         proxy->m_Intensity = GetIntensity();
         proxy->m_DiffuseFactor = GetDiffuseFactor();
         proxy->m_SpecularFactor = GetSpecularFactor();

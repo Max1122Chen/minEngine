@@ -7,6 +7,8 @@
 #include "Runtime/Function/Audio/AudioSystem.h"
 #include "Runtime/Resource/AssetManager.h"
 
+#include <algorithm>
+
 namespace minEngine
 {
     SceneManager* SceneManager::s_Instance = nullptr;
@@ -280,6 +282,7 @@ namespace minEngine
         }
 
         scene->RebuildRuntimeGameObjectIndex();
+        scene->ResolveGameObjectHierarchy();
         RebuildSceneComponentAttachHierarchy(scene);
 
         if (HasInstance())
@@ -447,6 +450,28 @@ namespace minEngine
 
         component->SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate::Marked);
         m_ComponentsThatNeedEndOfFrameUpdate.push_back(component);
+    }
+
+    void SceneManager::UnmarkComponentForNeededEndOfFrameUpdate(Component* component)
+    {
+        if (component == nullptr)
+        {
+            return;
+        }
+
+        if (component->GetMarkedForNeededEndOfFrameUpdate()
+            != ComponentMarkedForNeededEndOfFrameUpdate::Marked)
+        {
+            return;
+        }
+
+        component->SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate::Unmarked);
+        m_ComponentsThatNeedEndOfFrameUpdate.erase(
+            std::remove(
+                m_ComponentsThatNeedEndOfFrameUpdate.begin(),
+                m_ComponentsThatNeedEndOfFrameUpdate.end(),
+                component),
+            m_ComponentsThatNeedEndOfFrameUpdate.end());
     }
 
     void SceneManager::SendAllEndOfFrameUpdates()

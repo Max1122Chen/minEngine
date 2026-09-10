@@ -19,6 +19,7 @@ namespace minEngine
     class SceneManager;
     class PhysicsSystem;
     class AudioSystem;
+    class UISystem;
     class FileDialogService;
     class LuaScriptSystem;
     class GameplayTagManager;
@@ -69,6 +70,7 @@ namespace minEngine
         std::shared_ptr<SceneManager> m_SceneManager;
         std::shared_ptr<PhysicsSystem> m_PhysicsSystem;
         std::shared_ptr<AudioSystem> m_AudioSystem;
+        std::shared_ptr<UISystem> m_UISystem;
         std::shared_ptr<FileDialogService> m_FileDialogService;
         std::shared_ptr<LuaScriptSystem> m_LuaScriptSystem;
         std::shared_ptr<GameplayTagManager> m_GameplayTagManager;

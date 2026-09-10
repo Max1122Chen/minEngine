@@ -8,6 +8,7 @@
 #include "Commands/Scene/MoveComponentCommand.h"
 #include "Commands/Scene/RenameComponentCommand.h"
 #include "Commands/Scene/RenameGameObjectCommand.h"
+#include "Commands/Scene/ReparentGameObjectCommand.h"
 #include "Commands/Scene/SetGameObjectTransformCommand.h"
 #include "Commands/Scene/SetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
@@ -520,6 +521,108 @@ namespace minEngine
             *this, ownerGameObjectId, componentGuid, fromIndex, newIndex));
     }
 
+    bool SceneEditor::ApplyReparentGameObject(uint64_t gameObjectId, uint64_t newParentId)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            return false;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (!gameObject)
+        {
+            return false;
+        }
+
+        constexpr AttachmentTransformRules kRules = AttachmentTransformRules::KeepWorldTransform;
+
+        if (newParentId == kSceneRootParentId)
+        {
+            if (gameObject->GetParent() == nullptr)
+            {
+                return false;
+            }
+
+            gameObject->DetachFromParent(kRules);
+            MarkSceneDirty();
+            return true;
+        }
+
+        GameObject* newParent = scene->FindGameObjectById(newParentId);
+        if (!newParent)
+        {
+            return false;
+        }
+
+        if (gameObject->GetParent() == newParent)
+        {
+            return false;
+        }
+
+        if (!gameObject->AttachToParent(newParent, kRules))
+        {
+            ME_CORE_ERROR(
+                "ApplyReparentGameObject: AttachToParent failed for id={} under id={}.",
+                gameObjectId,
+                newParentId);
+            return false;
+        }
+
+        ME_CORE_INFO(
+            "ApplyReparentGameObject: attached id={} under id={} (parent now={}).",
+            gameObjectId,
+            newParentId,
+            gameObject->GetParent() != nullptr ? gameObject->GetParent()->GetID() : 0ull);
+        MarkSceneDirty();
+        return true;
+    }
+
+    void SceneEditor::SubmitReparentGameObject(IEditorContext& context,
+                                               uint64_t gameObjectId,
+                                               uint64_t newParentId)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            return;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (!gameObject)
+        {
+            return;
+        }
+
+        const uint64_t oldParentId = gameObject->GetParent() != nullptr
+                                            ? gameObject->GetParent()->GetID()
+                                            : kSceneRootParentId;
+        if (oldParentId == newParentId)
+        {
+            return;
+        }
+
+        if (newParentId != kSceneRootParentId)
+        {
+            GameObject* newParent = scene->FindGameObjectById(newParentId);
+            if (!newParent)
+            {
+                return;
+            }
+
+            for (GameObject* walk = newParent; walk != nullptr; walk = walk->GetParent())
+            {
+                if (walk->GetID() == gameObjectId)
+                {
+                    return;
+                }
+            }
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<ReparentGameObjectCommand>(
+            *this, gameObjectId, oldParentId, newParentId));
+    }
+
     void SceneEditor::ApplyGameObjectTransform(uint64_t gameObjectId, const Transform& transform)
     {
         Scene* scene = GetActiveScene();
@@ -817,6 +920,8 @@ namespace minEngine
         if (newGO)
         {
             newGO->Rename("GameObject");
+            // CORE-F09: GO parenting requires a Root SceneComponent.
+            newGO->AddComponent<SceneComponent>();
             MarkSceneDirty();
             SelectGameObject(newGO->GetID());
             ME_CORE_INFO("Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());

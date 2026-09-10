@@ -3,14 +3,17 @@
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
+#include "Runtime/Function/Framework/Components/SpriteComponent.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/SkeletalMeshSceneProxy.h"
-
+#include "Runtime/Function/Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/SkyBoxComponent.h"
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
 #include "Runtime/Function/Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
+#include "Runtime/Function/Render/SceneProxies/WidgetSceneProxy.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
 #include "Runtime/Function/Framework/Components/PointLightComponent.h"
@@ -46,13 +49,8 @@ namespace minEngine
             // Update existing scene proxy
             // Simply update the transform for now. TODO: update other data if needed // P.S. we should not get transform from owner GameObject here. This is just a temporary design.
             PrimitiveSceneProxy* proxy = primitiveComponent->GetSceneProxy();
-            GameObject* owner = primitiveComponent->GetOwner();
-            if (owner == nullptr)
-            {
-                return;
-            }
-
-            proxy->m_Transform = owner->GetTransform();
+            // Proxy model matrix is world-space. SceneComponent::GetTransform() is local-to-attach-parent.
+            proxy->m_Transform = primitiveComponent->GetWorldTransform();
             proxy->m_CastShadow = primitiveComponent->CastShadow();
             StaticMeshComponent* staticMeshComp = dynamic_cast<StaticMeshComponent*>(primitiveComponent);
             if (staticMeshComp)
@@ -75,6 +73,13 @@ namespace minEngine
                 if (SkeletalMeshSceneProxy* skeletalMeshProxy = dynamic_cast<SkeletalMeshSceneProxy*>(proxy))
                 {
                     skeletalMeshComp->SyncSceneProxy(*skeletalMeshProxy);
+                }
+            }
+            else if (SpriteComponent* spriteComp = dynamic_cast<SpriteComponent*>(primitiveComponent))
+            {
+                if (SpriteSceneProxy* spriteProxy = dynamic_cast<SpriteSceneProxy*>(proxy))
+                {
+                    spriteComp->UpdateSceneProxy(*spriteProxy);
                 }
             }
         }
@@ -155,8 +160,8 @@ namespace minEngine
             // Update existing scene proxy
             // Keep the scene proxy in sync when light properties are changed.
             LightSceneProxy* sceneProxy = lightComponent->GetSceneProxy();
-            sceneProxy->m_Position = lightComponent->GetPosition();
-            sceneProxy->m_LightColor = lightComponent->GetLightColor();
+            sceneProxy->m_Position = lightComponent->GetWorldPosition();
+            sceneProxy->m_LightColor = lightComponent->GetLightColor().ToVector3();
             sceneProxy->m_Intensity = lightComponent->GetIntensity();
             sceneProxy->m_DiffuseFactor = lightComponent->GetDiffuseFactor();
             sceneProxy->m_SpecularFactor = lightComponent->GetSpecularFactor();
@@ -259,7 +264,7 @@ namespace minEngine
         else
         {
             SkyBoxSceneProxy* proxy = skyBoxComponent->GetSceneProxy();
-            proxy->m_Transform = skyBoxComponent->GetTransform();
+            proxy->m_Transform = skyBoxComponent->GetWorldTransform();
             proxy->m_SkyIntensity = skyBoxComponent->GetSkyIntensity();
             proxy->m_Enabled = skyBoxComponent->IsActive();
             proxy->m_EnvironmentMap = skyBoxComponent->GetEnvironmentMapShared();
@@ -282,6 +287,59 @@ namespace minEngine
         skyBoxComponent->DetachSceneProxy();
         m_SkyBoxProxy = nullptr;
         m_SkyBoxProxyOwner.reset();
+    }
+
+    void RenderScene::UpdateWidget(WidgetComponent* widgetComponent)
+    {
+        if (widgetComponent == nullptr || !widgetComponent->IsActive())
+        {
+            return;
+        }
+
+        if (widgetComponent->GetSceneProxy() == nullptr)
+        {
+            WidgetSceneProxy* proxy = widgetComponent->CreateSceneProxy();
+            m_WidgetSceneProxyOwners.emplace_back(proxy);
+            m_WidgetSceneProxies.push_back(proxy);
+        }
+        else
+        {
+            WidgetSceneProxy* proxy = widgetComponent->GetSceneProxy();
+            if (proxy)
+            {
+                widgetComponent->UpdateSceneProxy(*proxy);
+            }
+        }
+    }
+
+    void RenderScene::RemoveWidget(WidgetComponent* widgetComponent)
+    {
+        if (!widgetComponent)
+        {
+            return;
+        }
+
+        m_WidgetSceneProxies.erase(
+            std::remove_if(
+                m_WidgetSceneProxies.begin(),
+                m_WidgetSceneProxies.end(),
+                [widgetComponent](WidgetSceneProxy* proxy)
+                {
+                    return proxy && proxy->m_WidgetComponent == widgetComponent;
+                }),
+            m_WidgetSceneProxies.end());
+
+        m_WidgetSceneProxyOwners.erase(
+            std::remove_if(
+                m_WidgetSceneProxyOwners.begin(),
+                m_WidgetSceneProxyOwners.end(),
+                [widgetComponent](const std::unique_ptr<WidgetSceneProxy>& proxy)
+                {
+                    return proxy && proxy->m_WidgetComponent == widgetComponent;
+                }),
+            m_WidgetSceneProxyOwners.end());
+
+        widgetComponent->DetachSceneProxy();
     }
 
     void RenderScene::CollectOrphanedSceneProxies()
@@ -326,6 +384,16 @@ namespace minEngine
                 }),
             m_SpotLightSceneProxies.end());
 
+        m_WidgetSceneProxies.erase(
+            std::remove_if(
+                m_WidgetSceneProxies.begin(),
+                m_WidgetSceneProxies.end(),
+                [](WidgetSceneProxy* proxy)
+                {
+                    return (proxy == nullptr) || (proxy->m_WidgetComponent == nullptr);
+                }),
+            m_WidgetSceneProxies.end());
+
         m_PrimitiveSceneProxyOwners.erase(
             std::remove_if(
                 m_PrimitiveSceneProxyOwners.begin(),
@@ -345,6 +413,16 @@ namespace minEngine
                     return (!proxy) || (proxy->m_LightComponent == nullptr);
                 }),
             m_LightSceneProxyOwners.end());
+
+        m_WidgetSceneProxyOwners.erase(
+            std::remove_if(
+                m_WidgetSceneProxyOwners.begin(),
+                m_WidgetSceneProxyOwners.end(),
+                [](const std::unique_ptr<WidgetSceneProxy>& proxy)
+                {
+                    return (!proxy) || (proxy->m_WidgetComponent == nullptr);
+                }),
+            m_WidgetSceneProxyOwners.end());
 
         if (m_SkyBoxProxy && m_SkyBoxProxy->m_SkyBoxComponent == nullptr)
         {

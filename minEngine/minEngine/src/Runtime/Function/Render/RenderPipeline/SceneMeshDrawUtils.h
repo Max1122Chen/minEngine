@@ -15,6 +15,8 @@ namespace minEngine
     {
         Opaque,
         Translucent,
+        /** Screen-space UI: blend on, depth test/write off. */
+        ScreenUI,
     };
 
     void PrepareSceneMeshDrawPackets(

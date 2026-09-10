@@ -69,6 +69,11 @@ namespace minEngine
         return srgb.ToLinearColor();
     }
 
+    LinearColor LinearColor::FromVector4(const Vector4& value)
+    {
+        return LinearColor(value.r, value.g, value.b, value.a);
+    }
+
     Color Color::FromLinearColor(const LinearColor& linear)
     {
         return linear.ToColor();

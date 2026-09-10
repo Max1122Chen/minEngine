@@ -22,9 +22,15 @@ namespace minEngine
 
     public:
         SceneComponent();
-        virtual ~SceneComponent() = default;
+        virtual ~SceneComponent() override;
 
+        /** Marks this component's render proxy dirty (does not cascade). */
         void MarkRenderStateDirty();
+        /**
+         * Local transform changed: dirty self for physics/render and cascade to attach children
+         * so world-dependent systems (physics bodies, proxies) refresh.
+         */
+        void NotifyLocalTransformChanged(ETeleportType teleport = ETeleportType::ResetPhysics);
         void ApplyEditorTransformEdit(ETeleportType teleport = ETeleportType::ResetPhysics);
         void PostEditChangeProperty(const Reflection::PropertyChangedEvent& event) override;
 
@@ -35,6 +41,10 @@ namespace minEngine
         const Transform& GetTransform() const { return m_Transform; }
         void SetTransform(const Transform& inTransform);
         void SetTransform(const Transform& inTransform, ETeleportType teleport);
+        /** Writes local TRS from a world-space pose (used by physics simulation sync). */
+        void SetWorldTransformFromSimulation(const Transform& worldTransform);
+        void SetWorldTransform(const Transform& worldTransform);
+        void SetWorldTransform(const Transform& worldTransform, ETeleportType teleport);
         void SetTransformFromSimulation(const Transform& inTransform);
 
         const Vector3& GetPosition() const { return m_Transform.Position; }
@@ -59,9 +69,14 @@ namespace minEngine
         Vector3 GetUpVector() const;
 
         Matrix4 GetWorldMatrix() const;
+        /** World-space TRS (decomposed from GetWorldMatrix when attached). */
+        Transform GetWorldTransform() const;
         Vector3 GetWorldPosition() const;
+        Quaternion GetWorldRotation() const;
         Vector3 GetWorldForwardVector() const;
         Vector3 GetWorldUpVector() const;
+        /** Decompose a TRS matrix (e.g. ImGuizmo world result) into Transform. */
+        static Transform MakeTransformFromMatrix(const Matrix4& matrix);
 
         virtual void SetOwner(GameObject* inOwner) override;
 
@@ -75,6 +90,9 @@ namespace minEngine
 
     private:
         static Transform DecomposeMatrixToTransform(const Matrix4& matrix);
+        Transform ConvertWorldTransformToLocal(const Transform& worldTransform) const;
+        /** Unlink attach parent/children without Notify (safe during destruction). */
+        void ClearAttachLinksWithoutNotify();
 
     protected:
     

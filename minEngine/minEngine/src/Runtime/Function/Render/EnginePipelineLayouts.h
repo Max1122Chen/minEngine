@@ -4,6 +4,7 @@
 #include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIPipelineLayout.h"
+#include "Runtime/Function/Render/RenderPipeline/SceneMeshDrawUtils.h"
 
 #include <unordered_map>
 
@@ -39,7 +40,7 @@ namespace minEngine
             RHIShaderBindingSetLayout* materialSetLayout,
             RHIShader* shader,
             RHIVertexInputLayout* vertexInputLayout,
-            bool translucentPass) const;
+            MeshPassKind passKind) const;
 
     private:
         struct SceneMeshPSOKey
@@ -47,12 +48,12 @@ namespace minEngine
             RHIPipelineLayout* PipelineLayout = nullptr;
             RHIVertexInputLayout* VertexInputLayout = nullptr;
             RHIShader* Shader = nullptr;
-            bool bTranslucentPass = false;
+            MeshPassKind PassKind = MeshPassKind::Opaque;
 
             bool operator==(const SceneMeshPSOKey& other) const
             {
                 return PipelineLayout == other.PipelineLayout && VertexInputLayout == other.VertexInputLayout
-                    && Shader == other.Shader && bTranslucentPass == other.bTranslucentPass;
+                    && Shader == other.Shader && PassKind == other.PassKind;
             }
         };
 
@@ -63,7 +64,7 @@ namespace minEngine
                 const size_t layoutHash = std::hash<RHIPipelineLayout*>()(key.PipelineLayout);
                 const size_t vilHash = std::hash<RHIVertexInputLayout*>()(key.VertexInputLayout);
                 const size_t shaderHash = std::hash<RHIShader*>()(key.Shader);
-                const size_t passHash = key.bTranslucentPass ? 1u : 0u;
+                const size_t passHash = static_cast<size_t>(key.PassKind);
                 return layoutHash ^ (vilHash << 1) ^ (shaderHash << 2) ^ (passHash << 3);
             }
         };
