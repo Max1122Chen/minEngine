@@ -3,7 +3,7 @@
 #include "Runtime/Core/Reflection/ReflectionFunctionNativeThunkTemplates.h"
 
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::Component, GReflectionClassRegister_Component_616f6fc6)
-    ME_REFLECTION_CLASS_SET_ANNOTATIONS((static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::ScriptType)), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS((static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::ScriptType) | static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::Abstract)), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MEObject)
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::Component, m_Owner, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Invisible)), &minEngine::Reflection::FieldAccessor<minEngine::Component>::PropertyGet_m_Owner, &minEngine::Reflection::FieldAccessor<minEngine::Component>::PropertySet_m_Owner, (minEngine::Reflection::PropertyMetadata{{"Getter", "GetOwner"}, {"Setter", "SetOwner"}}))
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::Component, m_bActive, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Invisible)), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))

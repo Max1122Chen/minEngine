@@ -5,6 +5,7 @@
 #include "Services/ContentBrowser/AssetTreeModel.h"
 #include "UI/EditorWindows/EditorWindow.h"
 
+#include <cstring>
 #include <string>
 
 struct ImDrawList;
@@ -51,8 +52,14 @@ namespace minEngine
         void DrawDirectoryTree();
         void DrawDirectoryNode(const AssetTreeModel::DirectoryNode& node);
         void DrawAssetTileGrid();
-        void AdvanceTileLayout(int tileIndex, int columnCount);
-        void DrawTileVisual(const char* label, bool selected, const AssetMeta* iconAssetMeta = nullptr);
+        void PlaceTileInGrid(int tileIndex,
+                             int columnCount,
+                             const ImVec2& gridOrigin,
+                             float tileHeight) const;
+        void DrawTileVisual(const char* label,
+                            bool selected,
+                            const AssetMeta* iconAssetMeta = nullptr,
+                            bool drawLabel = true);
         void DrawDirectoryTile(const AssetTreeModel::DirectoryNode& directoryNode);
         void DrawAssetTile(const AssetMeta& meta, int tileIndex, bool selected);
         void DrawTileAssetIcon(const AssetMeta& meta,
@@ -69,6 +76,13 @@ namespace minEngine
                                            std::string_view directoryRel,
                                            const AssetMeta* assetForContext);
 
+        void TryCaptureF2RenameRequest();
+        void TryConsumePendingRenameRequest();
+        void BeginAssetRename(const AssetMeta& meta);
+        bool CommitAssetRename(const std::string& newStem);
+        void CancelAssetRename();
+        bool IsRenamingAssetPath(std::string_view assetPath) const;
+
         float ResolveTileOuterHeight() const;
         std::string BuildEllipsizedLabel(const char* text, float maxWidth) const;
         const char* ResolveAssetTypeIconGlyph(std::string_view assetType) const;
@@ -78,5 +92,10 @@ namespace minEngine
         const std::string m_Id = "ContentBrowser";
         const std::string m_Title = "Content Browser";
         int m_SelectedAssetIndex = -1;
+
+        std::string m_RenamingAssetPath;
+        std::string m_RenamingAssetExtension;
+        bool m_RequestRenameFocus = false;
+        char m_RenameBuffer[256] = {};
     };
 }

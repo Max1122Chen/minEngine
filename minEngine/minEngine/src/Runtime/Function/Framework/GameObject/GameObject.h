@@ -97,6 +97,10 @@ namespace minEngine
 
         bool RemoveComponent(Component& target);
 
+        /** Reorder m_Components. Root SceneComponent cannot be moved. Returns false on failure. */
+        bool MoveComponent(Component& target, size_t newIndex);
+        size_t FindComponentIndex(const Component& target) const;
+
         void InsertRestoredComponent(std::shared_ptr<Component> component, size_t index);
 
     private:

@@ -14,6 +14,9 @@
 #include "UI/Property/PropertyEditPolicy.h"
 #include "UI/Property/PropertyValueWidget.h"
 #include "UI/Property/TransformWidget.h"
+#include "UI/Widgets/InlineRenameField.h"
+#include "Services/AddComponentPicker.h"
+#include "Services/ComponentTypeUiCatalog.h"
 
 #include "imgui.h"
 
@@ -101,18 +104,10 @@ namespace minEngine
             EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(appearance);
 
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (m_RequestRenameFocus)
-            {
-                ImGui::SetKeyboardFocusHere();
-                m_RequestRenameFocus = false;
-            }
+            const InlineRenameField::Result renameResult =
+                InlineRenameField::Draw(m_RenameBuffer, sizeof(m_RenameBuffer), m_RequestRenameFocus);
 
-            const bool committed = ImGui::InputText("##SelectedGameObjectRename",
-                m_RenameBuffer,
-                sizeof(m_RenameBuffer),
-                ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue);
-
-            if (committed || ImGui::IsItemDeactivatedAfterEdit())
+            if (renameResult == InlineRenameField::Result::Commit)
             {
                 if (IEditorContext* context = m_SceneEditor.GetEditorContext())
                 {
@@ -121,11 +116,10 @@ namespace minEngine
                 }
                 m_IsRenamingSelectedGameObject = false;
             }
-            else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+            else if (renameResult == InlineRenameField::Result::Cancel)
             {
                 m_IsRenamingSelectedGameObject = false;
             }
-
         }
         else
         {
@@ -151,53 +145,20 @@ namespace minEngine
         ImGui::Spacing();
 
         // Add Component Section
-        const std::vector<std::string> componentTypeNames = m_SceneEditor.GetAllComponentTypeNames();
         ImGui::PushID("InspectorAddComponent");
         ImGui::SeparatorText("Add Component");
-        if (!componentTypeNames.empty())
+        if (IEditorContext* context = m_SceneEditor.GetEditorContext())
         {
-            if (std::find(componentTypeNames.begin(), componentTypeNames.end(), m_SelectedAddComponentTypeName) == componentTypeNames.end())
-            {
-                m_SelectedAddComponentTypeName = componentTypeNames.front();
-            }
-
-            ImGui::PushItemWidth(260.0f);
-            const std::string selectedDisplayName = GetShortTypeName(m_SelectedAddComponentTypeName);
-            if (ImGui::BeginCombo("##AddComponentCombo", selectedDisplayName.c_str()))
-            {
-                for (const std::string& typeName : componentTypeNames)
-                {
-                    ImGui::PushID(typeName.c_str());
-                    const bool isSelected = (typeName == m_SelectedAddComponentTypeName);
-                    const std::string displayName = GetShortTypeName(typeName);
-                    if (ImGui::Selectable(displayName.c_str(), isSelected))
-                    {
-                        m_SelectedAddComponentTypeName = typeName;
-                    }
-
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                    ImGui::PopID();
-                }
-
-                ImGui::EndCombo();
-            }
-            ImGui::PopItemWidth();
-
-            ImGui::SameLine();
-            if (ImGui::Button("Add Component##Button"))
-            {
-                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
-                {
-                    m_SceneEditor.SubmitAddComponentToSelectedGameObject(*context, m_SelectedAddComponentTypeName);
-                }
-            }
+            AddComponentPicker::DrawInspectorAddSection(
+                *context,
+                m_SceneEditor,
+                m_SelectedAddComponentTypeName,
+                m_AddComponentFilterBuffer,
+                sizeof(m_AddComponentFilterBuffer));
         }
         else
         {
-            ImGui::TextUnformatted("No reflected Component derived types found.");
+            ImGui::TextUnformatted("Editor context unavailable.");
         }
         ImGui::PopID();
 
@@ -306,10 +267,7 @@ namespace minEngine
             EditorAppearance* appearance =
                 componentEditorContext != nullptr ? &componentEditorContext->GetEditorAppearance() : nullptr;
 
-            const std::string headerLabel = GetShortTypeName(classInfo->GetName()) + "##component_" +
-                                            std::to_string(reinterpret_cast<uintptr_t>(component.get()));
             bool componentOpen = false;
-
             bool componentActive = component->IsActive();
             const bool inactiveStylePushed = !componentActive;
             const std::string activeCheckboxId =
@@ -319,15 +277,31 @@ namespace minEngine
             std::vector<uint8_t> activeBeforeBlob;
             const bool capturedActiveBefore = SerializePropertyUndoBlob(activeUndoContext, activeBeforeBlob);
 
+            ImGui::PushID(component.get());
+
             if (inactiveStylePushed)
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.55f);
             }
 
+            // Full-width header tint from content left (not SameLine mid-cursor),
+            // drawn before widgets so checkbox/header stay left-aligned.
+            if (appearance != nullptr)
+            {
+                const ImVec2 winPos = ImGui::GetWindowPos();
+                const float y0 = ImGui::GetCursorScreenPos().y;
+                const float y1 = y0 + ImGui::GetFrameHeight();
+                const float x0 = winPos.x + ImGui::GetCursorStartPos().x;
+                const float x1 = winPos.x + ImGui::GetContentRegionMax().x;
+                const ImU32 headerBg =
+                    appearance->GetDisplayColorU32(appearance->GetActivePalette().Accent, 0.32f);
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    ImVec2(x0, y0), ImVec2(x1, y1), headerBg, 3.0f);
+            }
+
+            bool openHeaderContextMenu = false;
             if (ImGui::Checkbox(activeCheckboxId.c_str(), &componentActive))
             {
-                // Capture before blob prior to SetActive; checkbox toggles are same-frame
-                // so IsItemActivated/IsItemDeactivatedAfterEdit hooks are unreliable here.
                 component->SetActive(componentActive);
                 m_SceneEditor.MarkSceneDirty();
 
@@ -337,23 +311,23 @@ namespace minEngine
                     TryPropertyUndoCommitImmediate(activeUndoContext, activeBeforeBlob, activeAfterBlob);
                 }
             }
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            {
+                openHeaderContextMenu = true;
+            }
 
             ImGui::SameLine();
-            {
-                std::unique_ptr<EditorThemeScope> componentSectionTheme;
-                std::unique_ptr<EditorTypographyScope> componentHeaderTypography;
-                if (appearance != nullptr)
-                {
-                    componentSectionTheme = std::make_unique<EditorThemeScope>(
-                        EditorWindowTheme::SectionHeader(*appearance));
-                    componentHeaderTypography = std::make_unique<EditorTypographyScope>(
-                        *appearance,
-                        EditorTypographyRole::Subheading);
-                }
+            DrawComponentHeaderRow(
+                *gameObject, *component, classInfo, appearance, componentOpen, openHeaderContextMenu);
 
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
-                componentOpen = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-                ImGui::PopStyleVar();
+            if (openHeaderContextMenu)
+            {
+                ImGui::OpenPopup("##ComponentHeaderContext");
+            }
+            if (ImGui::BeginPopup("##ComponentHeaderContext"))
+            {
+                DrawComponentContextMenu(*component);
+                ImGui::EndPopup();
             }
 
             if (inactiveStylePushed)
@@ -361,16 +335,17 @@ namespace minEngine
                 ImGui::PopStyleVar();
             }
 
-            (void)TryDrawComponentContextMenu(*component);
-
             if (!componentOpen)
             {
+                ImGui::PopID();
                 continue;
             }
 
             const std::string tableId = "ComponentTable##" + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
             if (!ImGui::BeginTable(tableId.c_str(), 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
             {
+                ImGui::TreePop();
+                ImGui::PopID();
                 continue;
             }
 
@@ -381,6 +356,8 @@ namespace minEngine
             if (componentObject == nullptr)
             {
                 ImGui::EndTable();
+                ImGui::TreePop();
+                ImGui::PopID();
                 continue;
             }
             const Reflection::MEClass* compClass = componentObject->GetClass();
@@ -388,6 +365,8 @@ namespace minEngine
             {
                 ImGui::TextUnformatted("Component class info missing.");
                 ImGui::EndTable();
+                ImGui::TreePop();
+                ImGui::PopID();
                 continue;
             }
             const std::string& compClassName = compClass->GetName();
@@ -424,6 +403,8 @@ namespace minEngine
             }
 
             ImGui::EndTable();
+            ImGui::TreePop();
+            ImGui::PopID();
         }
 
         ImGui::End();
@@ -981,6 +962,166 @@ namespace minEngine
         return false;
     }
 
+    void SceneEditorInspectorSource::BeginComponentRename(Component& component, uint64_t ownerGameObjectId)
+    {
+        m_IsRenamingComponent = true;
+        m_RequestComponentRenameFocus = true;
+        m_RenamingComponentGuid = component.GetGuid();
+        m_RenamingComponentOwnerId = ownerGameObjectId;
+        std::memset(m_ComponentRenameBuffer, 0, sizeof(m_ComponentRenameBuffer));
+        std::strncpy(
+            m_ComponentRenameBuffer, component.GetName().c_str(), sizeof(m_ComponentRenameBuffer) - 1);
+    }
+
+    bool SceneEditorInspectorSource::DrawComponentHeaderRow(GameObject& gameObject,
+                                                            Component& component,
+                                                            const Reflection::MEClass* classInfo,
+                                                            EditorAppearance* appearance,
+                                                            bool& outComponentOpen,
+                                                            bool& inOutOpenHeaderContextMenu)
+    {
+        outComponentOpen = false;
+        if (classInfo == nullptr)
+        {
+            return false;
+        }
+
+        auto noteRightClick = [&inOutOpenHeaderContextMenu]()
+        {
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            {
+                inOutOpenHeaderContextMenu = true;
+            }
+        };
+
+        std::unique_ptr<EditorTypographyScope> componentHeaderTypography;
+        if (appearance != nullptr)
+        {
+            componentHeaderTypography = std::make_unique<EditorTypographyScope>(
+                *appearance, EditorTypographyRole::Subheading);
+        }
+
+        // Do not wrap TreeNode in BeginGroup/EndGroup — that breaks Indent and
+        // shifts subsequent component rows into the left clip edge.
+
+        if (appearance != nullptr)
+        {
+            EditorThemeScope componentSectionTheme = EditorWindowTheme::SectionHeader(*appearance);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
+            const ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_DefaultOpen
+                | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_AllowOverlap
+                | ImGuiTreeNodeFlags_FramePadding;
+            outComponentOpen = ImGui::TreeNodeEx("##component_tree", treeFlags);
+            ImGui::PopStyleVar();
+        }
+        else
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
+            const ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_DefaultOpen
+                | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_AllowOverlap
+                | ImGuiTreeNodeFlags_FramePadding;
+            outComponentOpen = ImGui::TreeNodeEx("##component_tree", treeFlags);
+            ImGui::PopStyleVar();
+        }
+        noteRightClick();
+
+        ImGui::SameLine();
+
+        if (appearance != nullptr)
+        {
+            ComponentTypeUiCatalog::DrawIcon(*appearance, classInfo);
+            noteRightClick();
+            ImGui::SameLine();
+        }
+
+        const std::string typeDisplay = ComponentTypeUiCatalog::MakeTypeDisplayName(classInfo);
+        const bool isRenamingThis = m_IsRenamingComponent && m_RenamingComponentGuid == component.GetGuid();
+
+        if (isRenamingThis)
+        {
+            ImGui::SetNextItemWidth(160.0f);
+            const InlineRenameField::Result renameResult = InlineRenameField::Draw(
+                m_ComponentRenameBuffer, sizeof(m_ComponentRenameBuffer), m_RequestComponentRenameFocus);
+            if (renameResult == InlineRenameField::Result::Commit)
+            {
+                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
+                {
+                    m_SceneEditor.SubmitRenameComponent(
+                        *context, gameObject.GetID(), component.GetGuid(), m_ComponentRenameBuffer);
+                }
+                m_IsRenamingComponent = false;
+            }
+            else if (renameResult == InlineRenameField::Result::Cancel)
+            {
+                m_IsRenamingComponent = false;
+            }
+        }
+        else
+        {
+            std::string instanceName = component.GetName();
+            if (instanceName.empty())
+            {
+                instanceName = typeDisplay;
+            }
+
+            ImGui::TextUnformatted(instanceName.c_str());
+            noteRightClick();
+            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            {
+                BeginComponentRename(component, gameObject.GetID());
+            }
+        }
+
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", typeDisplay.c_str());
+        noteRightClick();
+
+        const SceneComponent* rootComponent = gameObject.GetRootComponent();
+        const bool isRoot = rootComponent != nullptr && &component == rootComponent;
+        if (!isRoot)
+        {
+            const size_t index = gameObject.FindComponentIndex(component);
+            const size_t count = gameObject.GetAllComponents().size();
+            size_t minMovableIndex = 0;
+            if (rootComponent != nullptr)
+            {
+                const size_t rootIndex = gameObject.FindComponentIndex(*rootComponent);
+                if (rootIndex < count)
+                {
+                    minMovableIndex = rootIndex + 1;
+                }
+            }
+            const bool canMoveUp = index > minMovableIndex && index < count;
+            const bool canMoveDown = index + 1 < count;
+
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!canMoveUp);
+            if (ImGui::SmallButton("^##MoveUp") && canMoveUp)
+            {
+                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
+                {
+                    m_SceneEditor.SubmitMoveComponent(
+                        *context, gameObject.GetID(), component.GetGuid(), index - 1);
+                }
+            }
+            ImGui::EndDisabled();
+
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!canMoveDown);
+            if (ImGui::SmallButton("v##MoveDown") && canMoveDown)
+            {
+                if (IEditorContext* context = m_SceneEditor.GetEditorContext())
+                {
+                    m_SceneEditor.SubmitMoveComponent(
+                        *context, gameObject.GetID(), component.GetGuid(), index + 1);
+                }
+            }
+            ImGui::EndDisabled();
+        }
+
+        return outComponentOpen;
+    }
+
     void SceneEditorInspectorSource::StartInlineRename(const GameObject& gameObject)
     {
         m_IsRenamingSelectedGameObject = true;
@@ -1024,17 +1165,6 @@ namespace minEngine
         EditorMenuContext menuContext;
         menuContext.Add(inspectorContext);
         editorContext->GetContextMenu().BuildAndDraw(*editorContext, menuContext);
-    }
-
-    bool SceneEditorInspectorSource::TryDrawComponentContextMenu(Component& component)
-    {
-        if (ImGui::BeginPopupContextItem(("ComponentContextMenu##" + std::to_string(reinterpret_cast<uintptr_t>(&component))).c_str()))
-        {
-            DrawComponentContextMenu(component);
-            ImGui::EndPopup();
-            return true;
-        }
-        return false;
     }
 
     std::string SceneEditorInspectorSource::GetShortTypeName(const std::string& fullTypeName)

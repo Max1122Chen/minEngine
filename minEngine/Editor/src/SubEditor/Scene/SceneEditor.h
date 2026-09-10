@@ -73,6 +73,21 @@ namespace minEngine
                                     uint64_t gameObjectId,
                                     const std::string& newName);
 
+        bool ApplyRenameComponent(uint64_t ownerGameObjectId,
+                                  const GUID& componentGuid,
+                                  const std::string& newName);
+        void SubmitRenameComponent(IEditorContext& context,
+                                   uint64_t ownerGameObjectId,
+                                   const GUID& componentGuid,
+                                   const std::string& newName);
+        Component* FindComponentByGuid(uint64_t ownerGameObjectId, const GUID& componentGuid) const;
+
+        bool ApplyMoveComponent(uint64_t ownerGameObjectId, const GUID& componentGuid, size_t newIndex);
+        void SubmitMoveComponent(IEditorContext& context,
+                                 uint64_t ownerGameObjectId,
+                                 const GUID& componentGuid,
+                                 size_t newIndex);
+
         void ApplyGameObjectTransform(uint64_t gameObjectId, const Transform& transform);
         void SubmitGameObjectTransform(IEditorContext& context,
                                        uint64_t gameObjectId,
@@ -95,6 +110,7 @@ namespace minEngine
         void RequestBeginRenameGameObject(uint64_t gameObjectId);
         uint64_t ConsumePendingRenameGameObjectId();
         void BeginRenameGameObjectInInspector(uint64_t gameObjectId);
+        void BeginRenameComponentInInspector(Component& component);
         bool ApplySetObjectProperty(const GUID& ownerGuid,
                                     const std::string& ownerClassName,
                                     const std::string& propertyPath,

@@ -16,7 +16,7 @@ namespace minEngine
      * @brief
      * Base class for all components that can be attached to GameObjects.
      */
-    ME_CLASS(ScriptType)
+    ME_CLASS(ScriptType, Abstract)
     class Component : public MEObject
     {
         ME_GENERATED_BODY()
@@ -38,6 +38,8 @@ namespace minEngine
         virtual void SetOwner(GameObject* inOwner);
         ME_FUNCTION(ScriptCallable)
         GameObject* GetOwner() const { return m_Owner; }
+
+        void Rename(const std::string& newName) { SetName(newName); }
 
         bool CanEverTick() const { return m_bCanEverTick; }
 

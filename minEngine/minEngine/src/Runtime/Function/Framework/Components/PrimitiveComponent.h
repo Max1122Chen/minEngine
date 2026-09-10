@@ -8,7 +8,7 @@ namespace minEngine
     class SceneComponent;
     class PrimitiveSceneProxy;
 
-    ME_CLASS()
+    ME_CLASS(Abstract)
     class PrimitiveComponent : public SceneComponent
     {
         ME_GENERATED_BODY()

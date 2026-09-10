@@ -1,25 +1,27 @@
 #include "SubEditor/Scene/SceneEditor.h"
 
-#include "Commands/Scene/DeleteGameObjectCommand.h"
-#include "Commands/Scene/AddEmptyGameObjectCommand.h"
 #include "Commands/Scene/AddComponentCommand.h"
+#include "Commands/Scene/AddEmptyGameObjectCommand.h"
+#include "Commands/Scene/DeleteGameObjectCommand.h"
+#include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Commands/Scene/RemoveComponentCommand.h"
+#include "Commands/Scene/MoveComponentCommand.h"
+#include "Commands/Scene/RenameComponentCommand.h"
 #include "Commands/Scene/RenameGameObjectCommand.h"
 #include "Commands/Scene/SetGameObjectTransformCommand.h"
-#include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Commands/Scene/SetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
-#include "SubEditor/Scene/SceneEditorInspectorSource.h"
+#include "Services/ComponentTypeUiCatalog.h"
 #include "Shell/EditorCommandStack.h"
-#include "Shell/IEditorContext.h"
-
-#include "UI/EditorWindows/HierarchyWindow.h"
-#include "UI/EditorWindows/SceneEditingViewportWindow.h"
 #include "Shell/EditorDockLayout.h"
 #include "Shell/EditorInputHub.h"
+#include "Shell/IEditorContext.h"
+#include "SubEditor/Scene/SceneEditingViewportClient.h"
+#include "SubEditor/Scene/SceneEditorInspectorSource.h"
+#include "UI/EditorWindows/HierarchyWindow.h"
+#include "UI/EditorWindows/SceneEditingViewportWindow.h"
 
 #include "imgui.h"
-#include "SubEditor/Scene/SceneEditingViewportClient.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/PropertyAssign.h"
@@ -27,7 +29,6 @@
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -150,12 +151,6 @@ namespace minEngine
             }
 
             const std::string& typeName = classInfo->GetName();
-            if (typeName == "Component" || typeName == "SceneComponent" || typeName == "PrimitiveComponent"
-                || typeName == "LightComponent")
-            {
-                continue;
-            }
-
             m_AllComponentTypeNames.push_back(typeName);
         }
     }
@@ -392,6 +387,139 @@ namespace minEngine
             *this, gameObjectId, oldName, sanitizedName));
     }
 
+    Component* SceneEditor::FindComponentByGuid(uint64_t ownerGameObjectId, const GUID& componentGuid) const
+    {
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr || componentGuid.IsZero())
+        {
+            return nullptr;
+        }
+
+        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
+        const auto iter = gameObjectsById.find(ownerGameObjectId);
+        if (iter == gameObjectsById.end() || iter->second == nullptr)
+        {
+            return nullptr;
+        }
+
+        for (const std::shared_ptr<Component>& component : iter->second->GetAllComponents())
+        {
+            if (component && component->GetGuid() == componentGuid)
+            {
+                return component.get();
+            }
+        }
+
+        return nullptr;
+    }
+
+    bool SceneEditor::ApplyRenameComponent(uint64_t ownerGameObjectId,
+                                           const GUID& componentGuid,
+                                           const std::string& newName)
+    {
+        Component* component = FindComponentByGuid(ownerGameObjectId, componentGuid);
+        if (component == nullptr)
+        {
+            return false;
+        }
+
+        if (newName.empty() || component->GetName() == newName)
+        {
+            return false;
+        }
+
+        component->Rename(newName);
+        MarkSceneDirty();
+        return true;
+    }
+
+    void SceneEditor::SubmitRenameComponent(IEditorContext& context,
+                                            uint64_t ownerGameObjectId,
+                                            const GUID& componentGuid,
+                                            const std::string& newName)
+    {
+        Component* component = FindComponentByGuid(ownerGameObjectId, componentGuid);
+        if (component == nullptr || newName.empty())
+        {
+            return;
+        }
+
+        const std::string& oldName = component->GetName();
+        if (oldName == newName)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<RenameComponentCommand>(
+            *this, ownerGameObjectId, componentGuid, oldName, newName));
+    }
+
+    bool SceneEditor::ApplyMoveComponent(uint64_t ownerGameObjectId,
+                                         const GUID& componentGuid,
+                                         size_t newIndex)
+    {
+        Component* component = FindComponentByGuid(ownerGameObjectId, componentGuid);
+        if (component == nullptr)
+        {
+            return false;
+        }
+
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr)
+        {
+            return false;
+        }
+
+        const auto& gameObjectsById = scene->GetGameObjectsById();
+        const auto iter = gameObjectsById.find(ownerGameObjectId);
+        if (iter == gameObjectsById.end() || iter->second == nullptr)
+        {
+            return false;
+        }
+
+        if (!iter->second->MoveComponent(*component, newIndex))
+        {
+            return false;
+        }
+
+        MarkSceneDirty();
+        return true;
+    }
+
+    void SceneEditor::SubmitMoveComponent(IEditorContext& context,
+                                          uint64_t ownerGameObjectId,
+                                          const GUID& componentGuid,
+                                          size_t newIndex)
+    {
+        Component* component = FindComponentByGuid(ownerGameObjectId, componentGuid);
+        if (component == nullptr)
+        {
+            return;
+        }
+
+        Scene* scene = GetActiveScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+
+        const auto& gameObjectsById = scene->GetGameObjectsById();
+        const auto iter = gameObjectsById.find(ownerGameObjectId);
+        if (iter == gameObjectsById.end() || iter->second == nullptr)
+        {
+            return;
+        }
+
+        const size_t fromIndex = iter->second->FindComponentIndex(*component);
+        if (fromIndex >= iter->second->GetAllComponents().size() || fromIndex == newIndex)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<MoveComponentCommand>(
+            *this, ownerGameObjectId, componentGuid, fromIndex, newIndex));
+    }
+
     void SceneEditor::ApplyGameObjectTransform(uint64_t gameObjectId, const Transform& transform)
     {
         Scene* scene = GetActiveScene();
@@ -454,6 +582,37 @@ namespace minEngine
                 gameObject->GetName());
             return false;
         }
+
+        if (newComponent->GetName().empty())
+        {
+            std::string defaultName = ComponentTypeUiCatalog::MakeDefaultInstanceName(componentTypeName);
+            if (defaultName.empty())
+            {
+                defaultName = "Component";
+            }
+
+            int suffix = 2;
+            std::string candidate = defaultName;
+            auto nameTaken = [&](const std::string& name) -> bool
+            {
+                for (const std::shared_ptr<Component>& existing : gameObject->GetAllComponents())
+                {
+                    if (existing && existing.get() != newComponent.get() && existing->GetName() == name)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            while (nameTaken(candidate))
+            {
+                candidate = defaultName + " " + std::to_string(suffix);
+                ++suffix;
+            }
+            newComponent->Rename(candidate);
+        }
+
         outNewComponent = newComponent.get();
         MarkSceneDirty();
         return true;
@@ -734,6 +893,18 @@ namespace minEngine
         }
 
         m_InspectorSource.StartInlineRename(*gameObject);
+    }
+
+    void SceneEditor::BeginRenameComponentInInspector(Component& component)
+    {
+        GameObject* owner = component.GetOwner();
+        if (owner == nullptr)
+        {
+            return;
+        }
+
+        SelectGameObject(owner->GetID());
+        m_InspectorSource.BeginComponentRename(component, owner->GetID());
     }
 
     bool SceneEditor::ApplySetObjectProperty(const GUID& ownerGuid,

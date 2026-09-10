@@ -15,7 +15,7 @@ namespace minEngine
         KeepWorldTransform
     };
     
-    ME_CLASS()
+    ME_CLASS(Abstract)
     class SceneComponent : public Component
     {
         ME_GENERATED_BODY()

@@ -9,6 +9,7 @@
 #include "UI/Appearance/EditorTypographyScope.h"
 #include "UI/Appearance/EditorWindowTheme.h"
 #include "UI/Appearance/EditorWindowTypography.h"
+#include "UI/Widgets/InlineRenameField.h"
 
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -61,30 +62,19 @@ namespace minEngine
 
             if (m_RenamingGameObjectId == gameObject->GetID())
             {
-                if (m_RequestRenameFocus)
+                EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(appearance);
+                const InlineRenameField::Result renameResult =
+                    InlineRenameField::Draw(m_RenameBuffer, sizeof(m_RenameBuffer), m_RequestRenameFocus);
+
+                if (renameResult == InlineRenameField::Result::Commit)
                 {
-                    ImGui::SetKeyboardFocusHere();
-                    m_RequestRenameFocus = false;
+                    GetSceneEditor(&m_Context)->SubmitRenameGameObject(
+                        m_Context, gameObject->GetID(), m_RenameBuffer);
+                    m_RenamingGameObjectId = kInvalidGameObjectId;
                 }
-
+                else if (renameResult == InlineRenameField::Result::Cancel)
                 {
-                    EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(appearance);
-                    const bool committed = ImGui::InputText("##Rename",
-                                                            m_RenameBuffer,
-                                                            sizeof(m_RenameBuffer),
-                                                            ImGuiInputTextFlags_AutoSelectAll |
-                                                                ImGuiInputTextFlags_EnterReturnsTrue);
-
-                    if (committed || ImGui::IsItemDeactivatedAfterEdit())
-                    {
-                        GetSceneEditor(&m_Context)->SubmitRenameGameObject(
-                            m_Context, gameObject->GetID(), m_RenameBuffer);
-                        m_RenamingGameObjectId = kInvalidGameObjectId;
-                    }
-                    else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
-                    {
-                        m_RenamingGameObjectId = kInvalidGameObjectId;
-                    }
+                    m_RenamingGameObjectId = kInvalidGameObjectId;
                 }
 
                 ImGui::PopID();

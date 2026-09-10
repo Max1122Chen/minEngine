@@ -22,6 +22,7 @@ namespace minEngine
             m_Model->Clear();
         }
         m_Model.reset();
+        m_PendingAssetRenamePath.clear();
         m_Context = nullptr;
     }
 
@@ -33,5 +34,17 @@ namespace minEngine
     const AssetTreeModel& ContentBrowserModule::GetModel() const
     {
         return *m_Model;
+    }
+
+    void ContentBrowserModule::RequestBeginAssetRename(std::string assetPath)
+    {
+        m_PendingAssetRenamePath = std::move(assetPath);
+    }
+
+    std::string ContentBrowserModule::ConsumePendingAssetRenamePath()
+    {
+        std::string pending = std::move(m_PendingAssetRenamePath);
+        m_PendingAssetRenamePath.clear();
+        return pending;
     }
 }

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-10（TEST-F04 Done）
+Last updated: 2026-09-10（merge wave: core+editor — TEST-F04 Done；ED-F05 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -31,14 +31,16 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 下一步 | 正式 Design Spec（机制边界、Core 范围、M1 垂直切片）→ Pre-flight → 开码 |
 | 哲学闸门 | 先 Pose/Instance/Skinning；勿一次做成完整 Anim Graph Framework |
 
-### DX 余量（不挡 Primary）：`ED-F02`
+### DX 余量（不挡 Primary）：`ED-F02` / `ED-F05`
 
 | 切片 | 状态 |
 |------|------|
 | S00–S02 工作流主路径 | **Done**（已合入 `master`） |
 | S04 视口局部 RMB | **Done** |
 | S03 Material Preview SkyBox 实体 | Remaining |
-| S05 Abstract 标注补齐 | Partial |
+| S05 Abstract 标注补齐 | → **并入 `ED-F05-S01`**（Done） |
+
+**`ED-F05` Inspector / Component UX：** S00–S04 **Done**（现合入 `master`）；视口图标 **S05 Deferred** — [Design](./Editor/ED-F05_INSPECTOR_COMPONENT_UX_DESIGN.md) · [Impl](./Editor/ED-F05_INSPECTOR_COMPONENT_UX_IMPLEMENTATION.md)。
 
 [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md)
 
@@ -81,8 +83,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **CORE-F06 / F07** | Done |
 | **ED-F03** Viewport Play Toolbar | Done |
 | **ED-F02** S00–S02 / S04 | Done on `master` |
+| **ED-F05** S00–S04 | Done — 现合入 `master`（S05 Deferred） |
 | **PHYS-F04** / BUG-PHYS-003/004 | Done / Fixed |
-| **feat/editor** merge | 已合入 `master` |
+| **feat/editor** merge | 先前批次已合入 `master`；本批 ED-F05 合入中 |
 
 ---
 
@@ -100,7 +103,7 @@ ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | Primary — Animation |
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | Primary 后续 — UI（依赖 `RND-F16`） |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | Future — Gameplay Framework（插件化） |
-| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档 |
+| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | DX — **ED-F05** Done（现合入 `master`） |
 | `D:/Dev/GitRepo/minEngine-physics` / `-audio` / `-launcher` / `-asset-workflow` | 历史轨 | 按需保留或删除 |
 
 **新建 worktree：** `.agents/skills/create-worktree` + `scripts/create-worktree.ps1`
