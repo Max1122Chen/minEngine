@@ -1,4 +1,5 @@
 #include "MaterialIRTest.h"
+#include "Access/ObjectManagerTestAccess.h"
 
 #include "Log/LogSystem.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
@@ -34,14 +35,14 @@ namespace minEngine
     public:
         MaterialIRTestObjectManagerScope()
         {
-            ObjectManager::SetInstance(&m_Manager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_Manager);
             m_Manager.Initialize();
         }
 
         ~MaterialIRTestObjectManagerScope()
         {
             m_Manager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:
@@ -991,19 +992,19 @@ namespace minEngine
 
         bool VerifyEngineIBLEnvironmentInit()
         {
-            ME_CORE_INFO("MaterialIR IBL environment: skipped (F03-M4 P0 â€” EnvMap removed from engine link).");
+            ME_CORE_INFO("MaterialIR IBL environment: skipped (F03-M4 P0 â€?EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLEnvironmentFallbackChain()
         {
-            ME_CORE_INFO("MaterialIR IBL fallback chain: skipped (F03-M4 P0 â€” EnvMap removed from engine link).");
+            ME_CORE_INFO("MaterialIR IBL fallback chain: skipped (F03-M4 P0 â€?EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLGpuConvolutionAndPrefilter()
         {
-            ME_CORE_INFO("MaterialIR IBL GPU passes: skipped (F03-M4 P0 â€” EnvMap removed from engine link).");
+            ME_CORE_INFO("MaterialIR IBL GPU passes: skipped (F03-M4 P0 â€?EnvMap removed from engine link).");
             return true;
         }
 

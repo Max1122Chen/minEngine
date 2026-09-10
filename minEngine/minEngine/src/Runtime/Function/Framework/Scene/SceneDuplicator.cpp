@@ -36,7 +36,7 @@ namespace minEngine
         }
 
         std::shared_ptr<Scene> pieScene = NewObject<Scene>();
-        pieScene->m_SceneName = editorScene.GetSceneName() + "_PIE";
+        pieScene->SetSceneName(editorScene.GetSceneName() + "_PIE");
         pieScene->SetSceneType(ESceneType::PIE);
         pieScene->SetTickPolicy(ESceneTickPolicy::Gameplay);
 

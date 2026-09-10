@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-10（CORE-F12 Done；TEST-F04 Planned）
+Last updated: 2026-09-10（TEST-F04 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -51,7 +51,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | **CORE-F10** | JSON 存盘宽松 + `$schemaVersion` — **Done** |
 | **CORE-F11** | Getter/Setter + Assign — **Done**（含 S06 Inspector live Assign；关 TD-026） |
 | **CORE-F12** | `ME_GENERATED_BODY()` 无参 + marker 归属 — **Done** |
-| **TEST-F04** | `Testing::TestAccess<T>` 收敛 friend — **Planned**（下一小切片） |
+| **TEST-F04** | `Testing::TestAccess<T>` — **Done**（S00–S04；半公开字段已收） |
 | GC / Lifetime | 刻意延后 |
 
 [CORE-F12 Design](./Platform/Reflection/CORE-F12_GENERATED_BODY_NO_ARG_DESIGN.md) · [TEST-F04 Design](./Platform/Test/TEST-F04_TEST_ACCESS_DESIGN.md) · [CORE-F11 Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [CORE-F10 Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md)
@@ -71,6 +71,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 项 | 状态 |
 |----|------|
+| **TEST-F04** | Done on `feat/core` — TestAccess\<T\>；删 TestScope friends；Scene/SceneManager private |
 | **CORE-F12** | Done on `feat/core` — GENERATED_BODY no-arg + attached marker |
 | **CORE-F11** | Done on `feat/core` — S01–S06；live Assign；TD-026；删 PhysicsEditorSideEffects |
 | **CORE-F10** | Done on `feat/core` — JSON 盘路径宽松 + `$schemaVersion` |

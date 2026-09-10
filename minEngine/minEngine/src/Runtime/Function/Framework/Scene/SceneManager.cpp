@@ -325,7 +325,7 @@ namespace minEngine
     {
         UnloadActiveScene();
         m_CurrentActiveScene = NewObject<Scene>();
-        m_CurrentActiveScene->m_SceneName = sceneName;
+        m_CurrentActiveScene->SetSceneName(sceneName);
         m_CurrentActiveScene->EnsureRenderScene();
         m_CurrentActiveScene->SetSceneType(ESceneType::Editor);
         m_CurrentActiveScene->SetTickPolicy(ESceneTickPolicy::Gameplay);
@@ -416,15 +416,15 @@ namespace minEngine
 
     bool SceneManager::SaveCurrentScene()
     {
-        if (!m_CurrentActiveScene || m_CurrentActiveScene->m_SceneName.empty())
+        if (!m_CurrentActiveScene || m_CurrentActiveScene->GetSceneName().empty())
         {
             return false;
         }
-        if (m_RegisteredScenes.find(m_CurrentActiveScene->m_SceneName) == m_RegisteredScenes.end())
+        if (m_RegisteredScenes.find(m_CurrentActiveScene->GetSceneName()) == m_RegisteredScenes.end())
         {
             return false;
         }
-        const std::string& path = m_RegisteredScenes[m_CurrentActiveScene->m_SceneName];
+        const std::string& path = m_RegisteredScenes[m_CurrentActiveScene->GetSceneName()];
         const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(path);
         if (meta == nullptr || meta->AssetType != "Scene")
         {

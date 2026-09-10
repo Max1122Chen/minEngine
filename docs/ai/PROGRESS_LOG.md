@@ -1,6 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-10（CORE-F12 Done；TEST-F04 Planned）
+Last updated: 2026-09-10（TEST-F04 Done）
+
+### 2026-09-10 - TEST-F04 Done: TestAccess\<T\> + Scene private cleanup (`feat/core`)
+- **S00–S03:** Core `TestAccess` 前向；热点系统单 friend；`Tests/Access/*` 特化；删 `*TestScope` friend。
+- **S04:** `SceneManager` / `Scene` 去掉 temporarily-public；新增 `Scene::SetSceneName`，迁移 Editor/Loader/Duplicator/Tests 写入点。
+- **Deferred:** `LuaScriptSystem::SetInstance` 仍 public（非 friend 痛点）。
+- **Verified:** `minEngine` / `minEngineTests` / `Editor` 编译；`scene-clone` · `object-manager` · `physics-smoke` PASS（S04 后）。
+- **Next:** 准备 commit。
+
+### 2026-09-10 - TEST-F04 S00–S03: TestAccess\<T\> migrate hotspots (`feat/core`)
+- **Runtime:** `Core/Testing/TestAccess.h`（主模板前向）经 `Core.h` 自动包含；`ObjectManager` / `SceneManager` / `PhysicsSystem` / `AssetManager` / `AudioSystem` 仅 `friend Testing::TestAccess<T>`，删除全部 `*TestScope` friend/前向。
+- **Tests:** `Tests/Access/*TestAccess.h` 特化；各 Suite Scope 改调 `TestAccess<T>::SetInstance`；Audio 经 `InitializeWithBackend` 包装。
+- **Deferred:** S04 `SceneManager` temporarily-public 字段；`LuaScriptSystem::SetInstance` 仍为 public（未迁）。
+- **Verified:** `minEngine` / `minEngineTests` 编译；`object-manager` · `physics-smoke/sync/shapes` · `scene-clone` · `command-system` · `audio-smoke` · `asset-manager` · `serialization-archive` · `delegates` PASS。
+- **Next:** 准备 commit；S04 可选。
+
+### 2026-09-10 - TEST-F04 Design: Core-hosted TestAccess fwd + migration guide (`feat/core`)
+- **Decision:** `Runtime/Core/Testing/TestAccess.h`（仅主模板前向）由 `Core.h` include；生产类型一行 `friend Testing::TestAccess<T>`；特化只住 `Tests/Access/`。
+- **Docs:** Design §迁移 — S00–S04、单类型清单、多系统 Scope 策略、库存地图。
+- **Next:** 确认后开 S00（Core 头）→ S01（ObjectManager）。
 
 ### 2026-09-10 - CORE-F12 Done: ME_GENERATED_BODY() no-arg + marker attach (`feat/core`)
 - **Macro:** `ME_GENERATED_BODY()` 去掉未使用的类型实参；Runtime 标注头全量更新。

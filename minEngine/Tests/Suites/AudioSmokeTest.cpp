@@ -1,4 +1,7 @@
 #include "AudioSmokeTest.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
+#include "Access/AudioSystemTestAccess.h"
 
 #include "MockAudioBackend.h"
 
@@ -25,26 +28,28 @@ namespace minEngine
     public:
         AudioSmokeTestScope()
         {
-            ObjectManager::SetInstance(&m_ObjectManager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
             m_ObjectManager.Initialize();
 
-            SceneManager::SetInstance(&m_SceneManager);
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
 
-            AudioSystem::SetInstance(&m_AudioSystem);
-            m_AudioSystem.InitializeWithBackend(std::make_unique<MockAudioBackend>());
+            Testing::TestAccess<AudioSystem>::SetInstance(&m_AudioSystem);
+            Testing::TestAccess<AudioSystem>::InitializeWithBackend(
+                m_AudioSystem,
+                std::make_unique<MockAudioBackend>());
         }
 
         ~AudioSmokeTestScope()
         {
             m_SceneManager.Shutdown();
-            SceneManager::SetInstance(nullptr);
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
 
             m_AudioSystem.Shutdown();
-            AudioSystem::SetInstance(nullptr);
+            Testing::TestAccess<AudioSystem>::SetInstance(nullptr);
 
             m_ObjectManager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
         MockAudioBackend* GetBackend() const

@@ -1,4 +1,5 @@
 #include "SerializationArchiveTest.h"
+#include "Access/ObjectManagerTestAccess.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Math/Math.h"
@@ -24,14 +25,14 @@ namespace minEngine
     public:
         SerializationArchiveTestScope()
         {
-            ObjectManager::SetInstance(&m_Manager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_Manager);
             m_Manager.Initialize();
         }
 
         ~SerializationArchiveTestScope()
         {
             m_Manager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:
@@ -956,7 +957,7 @@ namespace minEngine
         {
             SerializationArchiveTestScope scope;
 
-            // Minimal object JSON without m_Name / m_Guid â€” should load with defaults under loose options.
+            // Minimal object JSON without m_Name / m_Guid â€?should load with defaults under loose options.
             const Json root = Json::object();
 
             std::shared_ptr<GameObject> restoredObject = NewObject<GameObject>("JsonMissingFieldsGO");

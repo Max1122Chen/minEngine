@@ -639,7 +639,7 @@ namespace minEngine
             return false;
         }
 
-        scene->m_SceneName = sceneName;
+        scene->SetSceneName(sceneName);
         SceneManager::Get().RegisterScene(sceneName, projectRelativePath);
         ClearSceneDirty();
         ME_CORE_INFO("SceneEditor: saved scene as '{}'.", projectRelativePath);

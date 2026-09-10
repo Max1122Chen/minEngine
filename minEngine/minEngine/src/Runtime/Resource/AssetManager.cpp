@@ -1312,7 +1312,7 @@ namespace minEngine
         const std::string sceneName = absolutePath.stem().string();
         std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, GenerateGUID());
         scene->Reset();
-        scene->m_SceneName = sceneName;
+        scene->SetSceneName(sceneName);
         scene->EnsureRenderScene();
 
         if (!WriteSceneAssetFile(*this, relativePath, *scene))

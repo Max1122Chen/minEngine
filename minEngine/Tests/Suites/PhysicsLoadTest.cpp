@@ -8,6 +8,9 @@
 #include "Runtime/Function/Physics/BoxColliderComponent.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Physics/RigidBodyComponent.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
+#include "Access/PhysicsSystemTestAccess.h"
 
 #include <cmath>
 
@@ -18,26 +21,26 @@ namespace minEngine
     public:
         PhysicsLoadTestScope()
         {
-            ObjectManager::SetInstance(&m_ObjectManager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
             m_ObjectManager.Initialize();
 
-            SceneManager::SetInstance(&m_SceneManager);
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
 
-            PhysicsSystem::SetInstance(&m_PhysicsSystem);
+            Testing::TestAccess<PhysicsSystem>::SetInstance(&m_PhysicsSystem);
             m_PhysicsSystem.Initialize();
         }
 
         ~PhysicsLoadTestScope()
         {
             m_SceneManager.Shutdown();
-            SceneManager::SetInstance(nullptr);
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
 
             m_PhysicsSystem.Shutdown();
-            PhysicsSystem::SetInstance(nullptr);
+            Testing::TestAccess<PhysicsSystem>::SetInstance(nullptr);
 
             m_ObjectManager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:

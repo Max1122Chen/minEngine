@@ -20,6 +20,7 @@
 
 // minEngine core
 #include "Reflection/ReflectionAnnotations.h"
+#include "Testing/TestAccess.h"
 
 #include "Assert/Assert.h"
 #include "Log/LogSystem.h"

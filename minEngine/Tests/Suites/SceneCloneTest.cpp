@@ -1,4 +1,6 @@
 #include "SceneCloneTest.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -26,20 +28,20 @@ namespace minEngine
     public:
         SceneCloneTestScope()
         {
-            ObjectManager::SetInstance(&m_ObjectManager);
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
             m_ObjectManager.Initialize();
 
-            SceneManager::SetInstance(&m_SceneManager);
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
         }
 
         ~SceneCloneTestScope()
         {
             m_SceneManager.Shutdown();
-            SceneManager::SetInstance(nullptr);
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
 
             m_ObjectManager.Shutdown();
-            ObjectManager::SetInstance(nullptr);
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:
@@ -178,7 +180,7 @@ namespace minEngine
             }
 
             std::shared_ptr<Scene> loadedScene = NewObject<Scene>();
-            loadedScene->m_SceneName = "attach-serialize-loaded";
+            loadedScene->SetSceneName("attach-serialize-loaded");
             ObjectManager::Get().UnregisterObject(loadedScene.get());
 
             std::vector<Serialization::PendingObjectRef> deserializeRefs;

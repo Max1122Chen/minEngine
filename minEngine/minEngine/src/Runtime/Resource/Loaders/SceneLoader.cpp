@@ -14,7 +14,7 @@ namespace minEngine
     {
         std::shared_ptr<Scene> scene = NewObject<Scene>(meta.AssetName, nullptr, meta.Guid);
         scene->Reset();
-        scene->m_SceneName = meta.AssetName;
+        scene->SetSceneName(meta.AssetName);
 
         Serialization::JsonReaderArchive archive;
         const std::string absoluteAssetPath =
