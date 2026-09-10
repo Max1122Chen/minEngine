@@ -25,7 +25,7 @@ namespace minEngine
     ME_CLASS()
     class SkeletalMesh : public Asset
     {
-        ME_GENERATED_BODY(SkeletalMesh)
+        ME_GENERATED_BODY()
     public:
         SkeletalMesh() = default;
         ~SkeletalMesh() override = default;

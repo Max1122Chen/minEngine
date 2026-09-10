@@ -14,7 +14,7 @@ namespace minEngine
     ME_CLASS()
     class ImageComponent : public Component
     {
-        ME_GENERATED_BODY(ImageComponent)
+        ME_GENERATED_BODY()
     public:
         ImageComponent();
         virtual ~ImageComponent() override = default;

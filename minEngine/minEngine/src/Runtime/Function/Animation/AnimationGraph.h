@@ -27,7 +27,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimCondition
     {
-        ME_GENERATED_BODY(AnimCondition)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string ParamName;
@@ -48,7 +48,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimState
     {
-        ME_GENERATED_BODY(AnimState)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string Name;
@@ -72,7 +72,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimTransition
     {
-        ME_GENERATED_BODY(AnimTransition)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string FromStateName;
@@ -90,7 +90,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimStateMachine
     {
-        ME_GENERATED_BODY(AnimStateMachine)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::vector<AnimState> States;
@@ -109,7 +109,7 @@ namespace minEngine
     ME_CLASS()
     class AnimationGraph : public Asset
     {
-        ME_GENERATED_BODY(AnimationGraph)
+        ME_GENERATED_BODY()
     public:
         AnimationGraph() = default;
         ~AnimationGraph() override = default;

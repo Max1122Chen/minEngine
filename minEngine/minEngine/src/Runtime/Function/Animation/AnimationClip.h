@@ -17,7 +17,7 @@ namespace minEngine
     ME_CLASS()
     class AnimationClip : public Asset
     {
-        ME_GENERATED_BODY(AnimationClip)
+        ME_GENERATED_BODY()
     public:
         AnimationClip() = default;
         ~AnimationClip() override = default;

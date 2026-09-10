@@ -521,7 +521,7 @@ namespace minEngine
             RHIVertexElement("a_Normal", VertexElementType::Float3),
             RHIVertexElement("a_Tangent", VertexElementType::Float4),
             RHIVertexElement("a_BoneIndices", VertexElementType::Int4),
-            RHIVertexElement("a_BoneWeights", VertexElementType::Float4),
+            RHIVertexElement("a_BoneWeights", VertexElementType::Float4)
         });
 
         RHIBufferCreateDesc ibDesc;
@@ -564,8 +564,8 @@ namespace minEngine
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
-                .skipUnknownField = false,
-                .allowObjectPtrSerialization = true});
+                .skipUnknownField = false
+                });
 
         if (!serializeResult.ok)
         {
@@ -605,8 +605,8 @@ namespace minEngine
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
-                .skipUnknownField = true,
-                .allowObjectPtrSerialization = true});
+                .skipUnknownField = true
+                });
 
         if (!deserializeResult.ok)
         {

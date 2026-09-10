@@ -145,8 +145,13 @@ set_target_properties(${ENGINE_NAME} PROPERTIES
 
 # MinGW + lld does not export undecorated symbols by default; GNU ld historically did.
 # Without this, Editor gets an almost-empty import lib (dll.a) and fails to link.
+# Exclude heavy static deps from auto-export (PE max 65535 ordinals). Use LINKER: so
+# commas/colons are not split by the driver the way -Wl,a,b,c is.
+# Do NOT use ALL: that also drops symbols from our objects.a.
 if(WIN32 AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-    target_link_options(${ENGINE_NAME} PRIVATE "-Wl,--export-all-symbols")
+    target_link_options(${ENGINE_NAME} PRIVATE
+        "LINKER:--export-all-symbols"
+        "LINKER:--exclude-libs=libJolt.a:libJoltd.a:libfreetype.a:libfreetyped.a:libminengine_lua.a:libminengine_luad.a:libnfd.a:libnfdd.a")
 endif()
 
 target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD IMGUI_ENABLE_FREETYPE)

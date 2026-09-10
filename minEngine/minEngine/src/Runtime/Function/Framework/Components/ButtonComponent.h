@@ -21,7 +21,7 @@ namespace minEngine
     ME_CLASS()
     class ButtonComponent : public Component
     {
-        ME_GENERATED_BODY(ButtonComponent)
+        ME_GENERATED_BODY()
     public:
         ButtonComponent();
         virtual ~ButtonComponent() override = default;

@@ -24,8 +24,8 @@ namespace minEngine
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
-                .skipUnknownField = true,
-                .allowObjectPtrSerialization = false});
+                .skipUnknownField = true
+                });
 
         if (!deserializeResult.ok)
         {
@@ -76,8 +76,8 @@ namespace minEngine
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = true,
-                .skipUnknownField = false,
-                .allowObjectPtrSerialization = false});
+                .skipUnknownField = false
+                });
 
         if (!serializeResult.ok)
         {

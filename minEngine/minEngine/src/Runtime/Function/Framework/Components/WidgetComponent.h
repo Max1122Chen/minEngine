@@ -17,7 +17,7 @@ namespace minEngine
     ME_CLASS()
     class WidgetComponent : public SceneComponent
     {
-        ME_GENERATED_BODY(WidgetComponent)
+        ME_GENERATED_BODY()
     public:
         WidgetComponent();
         virtual ~WidgetComponent() override;

@@ -13,7 +13,7 @@ namespace minEngine
     ME_CLASS()
     class SpriteComponent : public PrimitiveComponent
     {
-        ME_GENERATED_BODY(SpriteComponent)
+        ME_GENERATED_BODY()
     public:
         SpriteComponent();
         virtual ~SpriteComponent() = default;

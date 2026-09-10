@@ -28,7 +28,7 @@ namespace minEngine
     ME_CLASS()
     class GameplayEventSystemComponent : public Component
     {
-        ME_GENERATED_BODY(GameplayEventSystemComponent)
+        ME_GENERATED_BODY()
     public:
         GameplayEventSystemComponent();
         virtual ~GameplayEventSystemComponent() override;

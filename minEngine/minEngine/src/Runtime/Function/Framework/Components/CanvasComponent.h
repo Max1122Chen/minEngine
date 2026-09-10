@@ -13,7 +13,7 @@ namespace minEngine
     ME_CLASS()
     class CanvasComponent : public Component
     {
-        ME_GENERATED_BODY(CanvasComponent)
+        ME_GENERATED_BODY()
     public:
         CanvasComponent();
         virtual ~CanvasComponent() override = default;

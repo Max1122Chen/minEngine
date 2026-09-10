@@ -13,7 +13,7 @@ namespace minEngine
     ME_STRUCT()
     struct ParameterSchemaEntry
     {
-        ME_GENERATED_BODY(ParameterSchemaEntry)
+        ME_GENERATED_BODY()
 
         ParameterSchemaEntry() = default;
         ParameterSchemaEntry(std::string name, ParameterValueType type, std::vector<uint8_t> defaultBytes = {})
@@ -38,7 +38,7 @@ namespace minEngine
     ME_STRUCT()
     class ParameterSchema
     {
-        ME_GENERATED_BODY(ParameterSchema)
+        ME_GENERATED_BODY()
     public:
         bool AddEntry(ParameterSchemaEntry entry, std::string* outError = nullptr);
         void Clear();

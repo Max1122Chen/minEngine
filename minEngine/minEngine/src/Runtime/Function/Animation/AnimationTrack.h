@@ -12,7 +12,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimationVec3Key
     {
-        ME_GENERATED_BODY(AnimationVec3Key)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         float Time = 0.0f;
@@ -24,7 +24,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimationQuatKey
     {
-        ME_GENERATED_BODY(AnimationQuatKey)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         float Time = 0.0f;
@@ -36,7 +36,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimationFloatKey
     {
-        ME_GENERATED_BODY(AnimationFloatKey)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         float Time = 0.0f;
@@ -49,7 +49,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimationTrack
     {
-        ME_GENERATED_BODY(AnimationTrack)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         int32_t BoneIndex = -1;
@@ -68,7 +68,7 @@ namespace minEngine
     ME_STRUCT()
     struct AnimationNamedFloatTrack
     {
-        ME_GENERATED_BODY(AnimationNamedFloatTrack)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string Name;

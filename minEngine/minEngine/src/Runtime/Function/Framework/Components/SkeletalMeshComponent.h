@@ -20,7 +20,7 @@ namespace minEngine
     ME_CLASS()
     class SkeletalMeshComponent : public PrimitiveComponent
     {
-        ME_GENERATED_BODY(SkeletalMeshComponent)
+        ME_GENERATED_BODY()
     public:
         SkeletalMeshComponent();
         ~SkeletalMeshComponent() override = default;

@@ -117,7 +117,7 @@ TEST_CASE("gameobject-hierarchy: parent pointer serialize round-trip [full]")
     REQUIRE(Serialization::Serializer::SerializeObjectToBuffer("minEngine::Scene", source.get(), buffer).ok);
 
     std::shared_ptr<Scene> loaded = NewObject<Scene>();
-    loaded->m_SceneName = "go-hier-ser-loaded";
+    loaded->SetSceneName("go-hier-ser-loaded");
     ObjectManager::Get().UnregisterObject(loaded.get());
 
     std::vector<Serialization::PendingObjectRef> refs;

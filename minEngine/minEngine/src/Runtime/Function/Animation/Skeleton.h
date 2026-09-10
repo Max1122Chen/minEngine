@@ -15,7 +15,7 @@ namespace minEngine
     ME_STRUCT()
     struct SkeletonBone
     {
-        ME_GENERATED_BODY(SkeletonBone)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string Name;
@@ -33,7 +33,7 @@ namespace minEngine
     ME_CLASS()
     class Skeleton : public Asset
     {
-        ME_GENERATED_BODY(Skeleton)
+        ME_GENERATED_BODY()
     public:
         Skeleton() = default;
         ~Skeleton() override = default;
