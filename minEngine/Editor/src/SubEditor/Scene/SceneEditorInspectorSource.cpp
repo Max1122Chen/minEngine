@@ -30,8 +30,10 @@
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -485,7 +487,8 @@ namespace minEngine
 
     void SceneEditorInspectorSource::TryPropertyUndoCommitImmediate(const PropertyUndoCaptureContext& context,
                                                                     const std::vector<uint8_t>& beforeBlob,
-                                                                    const std::vector<uint8_t>& afterBlob)
+                                                                    const std::vector<uint8_t>& afterBlob,
+                                                                    bool applyOnFirstExecute)
     {
         if (!context.IsValid() || beforeBlob.empty() || afterBlob == beforeBlob)
         {
@@ -504,7 +507,8 @@ namespace minEngine
             context.ownerClassName,
             context.capturePropertyPath,
             beforeBlob,
-            afterBlob);
+            afterBlob,
+            applyOnFirstExecute);
     }
 
     void SceneEditorInspectorSource::TryPropertyUndoActivated(const PropertyUndoCaptureContext& context, uint32_t editId)
@@ -904,6 +908,29 @@ namespace minEngine
                         return true;
                     }
                 }
+
+                if (SkeletalMeshComponent* skeletalMeshComponent =
+                        dynamic_cast<SkeletalMeshComponent*>(const_cast<MEObject*>(owner)))
+                {
+                    if (objectPtrProperty.GetName() == "m_Mesh")
+                    {
+                        skeletalMeshComponent->SetMesh(std::static_pointer_cast<SkeletalMesh>(asset));
+                        return true;
+                    }
+
+                    if (objectPtrProperty.GetName() == "m_Material")
+                    {
+                        skeletalMeshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
+                        return true;
+                    }
+
+                    if (objectPtrProperty.GetName() == "m_AnimationClip")
+                    {
+                        skeletalMeshComponent->SetAnimationClip(
+                            std::static_pointer_cast<AnimationClip>(asset));
+                        return true;
+                    }
+                }
             }
 
             return false;
@@ -929,7 +956,8 @@ namespace minEngine
             std::vector<uint8_t> afterBlob;
                 if (!beforeBlob.empty() && SerializePropertyUndoBlob(*undoContext, afterBlob))
             {
-                    TryPropertyUndoCommitImmediate(*undoContext, beforeBlob, afterBlob);
+                    // UI already applied the ObjectPtr; record undo without re-deserializing/reloading.
+                    TryPropertyUndoCommitImmediate(*undoContext, beforeBlob, afterBlob, false);
             }
 
             m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);

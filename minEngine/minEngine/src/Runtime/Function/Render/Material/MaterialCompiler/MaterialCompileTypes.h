@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Render/Material/MaterialIR/MaterialIR.h"
+#include "Runtime/Function/Animation/AnimationConstants.h"
 
 #include <array>
 #include <string>
@@ -64,6 +65,7 @@ namespace minEngine
         MaterialShaderLanguage ShaderLanguage = MaterialShaderLanguage::GLSL;
         /** BlinnPhong: TBN + a_Tangent; MP_Normal is tangent-space (default +Z). */
         bool UsesTangentFrame = false;
+        MeshDeformationMode DeformationMode = MeshDeformationMode::Rigid;
         std::string EngineDefaultAssetsRootOverride;
     };
 

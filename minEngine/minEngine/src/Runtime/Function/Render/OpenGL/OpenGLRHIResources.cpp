@@ -753,13 +753,29 @@ namespace minEngine
         for (const auto& element : m_Elements)
         {
             glEnableVertexAttribArray(index);
-            glVertexAttribPointer(
-                index,
-                element.Size,
-                VertexElementTypeToGL(element.Type),
-                element.bNormalized ? GL_TRUE : GL_FALSE,
-                m_Stride,
-                reinterpret_cast<const void*>(static_cast<uintptr_t>(element.Offset)));
+            const void* offsetPtr =
+                reinterpret_cast<const void*>(static_cast<uintptr_t>(element.Offset));
+            // ivec* shader inputs require IPointer; Pointer + GL_INT converts to float and
+            // breaks bone indices (bind pose still looks fine because every skin matrix is I).
+            if (IsIntegerVertexElementType(element.Type))
+            {
+                glVertexAttribIPointer(
+                    index,
+                    element.Size,
+                    VertexElementTypeToGL(element.Type),
+                    m_Stride,
+                    offsetPtr);
+            }
+            else
+            {
+                glVertexAttribPointer(
+                    index,
+                    element.Size,
+                    VertexElementTypeToGL(element.Type),
+                    element.bNormalized ? GL_TRUE : GL_FALSE,
+                    m_Stride,
+                    offsetPtr);
+            }
             ++index;
         }
     }

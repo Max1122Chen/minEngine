@@ -372,6 +372,14 @@ namespace minEngine
             return;
         }
 
+        for (const std::filesystem::path& part : absolutePath)
+        {
+            if (part == "Sources")
+            {
+                return;
+            }
+        }
+
         const std::string assetTypeId = AssetTypeRegistry::Get().InferAssetTypeFromExtension(absolutePath);
         if (assetTypeId.empty())
         {

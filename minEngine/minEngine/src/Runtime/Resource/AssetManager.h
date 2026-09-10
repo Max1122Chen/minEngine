@@ -9,7 +9,9 @@
 
 #include <filesystem>
 #include <functional>
+#include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace minEngine::Reflection
@@ -23,19 +25,65 @@ namespace minEngine
     class MEObject;
     class Texture2D;
     class StaticMesh;
+    class SkeletalMesh;
+    class Skeleton;
     class Material;
     class Scene;
     class Font;
     class LuaScript;
     class EnvironmentMap;
     class AudioClip;
+    class AnimationClip;
+    class AnimationGraph;
     class Asset;
+    class AssetManager;
 
     struct ImportAssetResult
     {
         bool bSuccess = false;
         std::string ErrorMessage;
         AssetMeta Meta;
+    };
+
+    // ASSET-F02: untyped Load dispatch by AssetTypeId (replaces if-chain in AssetManager).
+    using AssetLoadHandlerFn = std::shared_ptr<Asset> (*)(
+        AssetManager& manager,
+        const AssetMeta& meta,
+        std::string& outErrorMessage);
+
+    struct ImportRequest
+    {
+        std::filesystem::path SourcePath;
+        std::filesystem::path DestDirectory;
+        std::string ProductId;
+        std::string SkeletonAssetPath;
+        int AnimationIndex = 0;
+        // When true, overwrite an existing cooked product and keep its meta Guid.
+        bool bOverwriteExisting = false;
+    };
+
+    struct ImportCreatedAsset
+    {
+        std::string AssetPath;
+        std::string AssetTypeId;
+        GUID Guid;
+    };
+
+    struct ImportResult
+    {
+        bool bSuccess = false;
+        std::string ErrorMessage;
+        std::vector<ImportCreatedAsset> Created;
+        std::vector<std::string> Warnings;
+    };
+
+    struct ImportProductDescriptor
+    {
+        std::string ProductId;
+        std::string DisplayName;
+        bool (*AcceptsSourceExtension)(std::string_view extension) = nullptr;
+        bool bNeedsSkeletonPicker = false;
+        ImportResult (*Import)(AssetManager& manager, const ImportRequest& request) = nullptr;
     };
 
     class AssetManager
@@ -49,17 +97,34 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
+        // Register before untyped Load (typically from Loader pipeline bootstrap).
+        void RegisterLoadHandler(std::string_view assetTypeId, AssetLoadHandlerFn handler);
+        AssetLoadHandlerFn FindLoadHandler(std::string_view assetTypeId) const;
+
+        void RegisterImportProduct(const ImportProductDescriptor& descriptor);
+        const ImportProductDescriptor* FindImportProduct(std::string_view productId) const;
+        const std::vector<ImportProductDescriptor>& GetImportProducts() const { return m_ImportProducts; }
+
+        // ASSET-F02: dispatch by registered ProductId.
+        ImportResult Import(const ImportRequest& request);
+
+        // Re-cook from meta.SourcePath; overwrites product in place and keeps Guid.
+        bool Reimport(const std::string& assetPath, std::string& outError);
+
         void ScanAssets(const std::filesystem::path& directory);
         AssetMeta RegisterAsset(const std::string& path, const std::string& assetTypeId);
-
-        ImportAssetResult ImportAsset(const std::filesystem::path& sourcePath,
-                                      const std::filesystem::path& destDirectory);
 
         bool DeleteAsset(const std::string& assetPath, std::string& outError);
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
         bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
         bool UnregisterAsset(const std::string& assetPath, std::string& outError);
         bool RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError);
+
+        // Write .meta before RegisterAsset so Guid stays stable (matches serialized MEObject::m_Guid).
+        bool WriteOrUpdateMetaFile(const AssetMeta& meta);
+
+        // After asset deserialize, force identity from registry meta (file may embed a stale m_Guid).
+        void ApplyMetaIdentity(MEObject& object, const AssetMeta& meta);
 
         void ClearProjectRegistry();
 
@@ -179,7 +244,84 @@ namespace minEngine
             return true;
         }
 
-    private:
+        template<typename T>
+        std::shared_ptr<Asset> LoadTypedAssetAsBase(
+            const AssetMeta& meta,
+            std::string& outErrorMessage,
+            const char* failureMessage)
+        {
+            std::shared_ptr<T> asset = LoadAsset<T>(meta.AssetPath);
+            if (asset == nullptr)
+            {
+                outErrorMessage = failureMessage;
+                return nullptr;
+            }
+
+            return std::static_pointer_cast<Asset>(asset);
+        }
+
+        enum class MeshImportProductType
+        {
+            StaticMesh,
+            SkeletalMesh
+        };
+
+        // Private cook implementations used by ImportProduct_* handlers.
+        ImportAssetResult ImportAsset(
+            const std::filesystem::path& sourcePath,
+            const std::filesystem::path& destDirectory,
+            bool bOverwriteExisting = false);
+        ImportAssetResult ImportExternalMesh(
+            const std::filesystem::path& sourcePath,
+            const std::filesystem::path& destDirectory,
+            MeshImportProductType productType,
+            bool bOverwriteExisting = false);
+        ImportAssetResult ImportAnimationClip(
+            const std::filesystem::path& sourcePath,
+            const std::filesystem::path& destDirectory,
+            std::string_view skeletonAssetPath,
+            int animationIndex = 0,
+            bool bOverwriteExisting = false);
+
+        static std::shared_ptr<Asset> LoadHandler_StaticMesh(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_SkeletalMesh(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Skeleton(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_AnimationClip(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_AnimationGraph(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Texture2D(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Scene(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Material(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Font(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_LuaScript(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_EnvironmentMap(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_AudioClip(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_ShaderRemoved(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+
+        static bool AcceptsNativeCopyExtension(std::string_view extension);
+        static bool AcceptsExternalMeshCookExtension(std::string_view extension);
+        static bool AcceptsAnimationClipSourceExtension(std::string_view extension);
+
+        static ImportResult ImportProduct_NativeCopy(AssetManager& manager, const ImportRequest& request);
+        static ImportResult ImportProduct_StaticMesh(AssetManager& manager, const ImportRequest& request);
+        static ImportResult ImportProduct_SkeletalMesh(AssetManager& manager, const ImportRequest& request);
+        static ImportResult ImportProduct_AnimationClip(AssetManager& manager, const ImportRequest& request);
+
+        static ImportResult MakeImportResultFromLegacy(const ImportAssetResult& legacy);
+
+        friend void RegisterAllAssetPipelines(AssetManager& assetManager);
         friend class Engine;
         friend class Testing::TestAccess<AssetManager>;
 
@@ -214,6 +356,8 @@ namespace minEngine
 
         AssetRegistry m_Registry;
         std::unordered_map<std::string, std::weak_ptr<MEObject>> m_LoadedAssetCache;
+        std::unordered_map<std::string, AssetLoadHandlerFn> m_LoadHandlers;
+        std::vector<ImportProductDescriptor> m_ImportProducts;
         int m_RegistryBroadcastBatchDepth = 0;
     };
 
@@ -221,6 +365,10 @@ namespace minEngine
     std::shared_ptr<Scene> AssetManager::LoadAsset_Impl<Scene>(const AssetMeta& meta);
     template<>
     std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<SkeletalMesh> AssetManager::LoadAsset_Impl<SkeletalMesh>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<Skeleton> AssetManager::LoadAsset_Impl<Skeleton>(const AssetMeta& meta);
     template<>
     std::shared_ptr<Texture2D> AssetManager::LoadAsset_Impl<Texture2D>(const AssetMeta& meta);
     template<>
@@ -233,11 +381,17 @@ namespace minEngine
     std::shared_ptr<EnvironmentMap> AssetManager::LoadAsset_Impl<EnvironmentMap>(const AssetMeta& meta);
     template<>
     std::shared_ptr<AudioClip> AssetManager::LoadAsset_Impl<AudioClip>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<AnimationClip> AssetManager::LoadAsset_Impl<AnimationClip>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<AnimationGraph> AssetManager::LoadAsset_Impl<AnimationGraph>(const AssetMeta& meta);
 
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
     template<>
     bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const;
+    template<>
+    bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const;
 
     template<>
     std::shared_ptr<Scene> AssetManager::CreateAsset<Scene>(
@@ -245,6 +399,10 @@ namespace minEngine
         const std::string& directoryRel);
     template<>
     std::shared_ptr<Material> AssetManager::CreateAsset<Material>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<AnimationGraph> AssetManager::CreateAsset<AnimationGraph>(
         const std::string& assetName,
         const std::string& directoryRel);
 }

@@ -142,7 +142,8 @@ namespace minEngine
     std::string GLSLMaterialShellAssemblerImpl::BuildVertexIoBlock(
         int numTexCoords,
         bool includeSceneLightingVaryings,
-        bool usesTangentFrame)
+        bool usesTangentFrame,
+        bool skinned)
     {
         std::string ioBlock;
         ioBlock += "layout(location = 0) in vec3 a_Position;\n";
@@ -175,6 +176,13 @@ namespace minEngine
                 ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out float v_TangentSign;\n";
             }
             ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec4 v_FragPosViewSpace;\n";
+        }
+
+        if (skinned)
+        {
+            // Matches SkeletalMesh GPU layout: after P/UV/N/T.
+            ioBlock += "layout(location = 4) in ivec4 a_BoneIndices;\n";
+            ioBlock += "layout(location = 5) in vec4 a_BoneWeights;\n";
         }
 
         return ioBlock;
@@ -303,13 +311,18 @@ namespace minEngine
         const std::filesystem::path assetsRoot = ResolveEngineDefaultAssetsRoot(env);
 
         std::string meshVertexUniforms;
-        if (!LoadIncludeFile(assetsRoot, env, "MeshVertexUniforms.glslinc", meshVertexUniforms, compiled))
+        const bool skinned = env.DeformationMode == MeshDeformationMode::Skinned;
+        const char* uniformsInclude =
+            skinned ? "MeshVertexSkinnedUniforms.glslinc" : "MeshVertexUniforms.glslinc";
+        if (!LoadIncludeFile(assetsRoot, env, uniformsInclude, meshVertexUniforms, compiled))
         {
             return false;
         }
 
         std::string meshVertexPosition;
-        if (!LoadIncludeFile(assetsRoot, env, "MeshVertexPosition.glslinc", meshVertexPosition, compiled))
+        const char* positionInclude =
+            skinned ? "MeshVertexSkinnedPosition.glslinc" : "MeshVertexPosition.glslinc";
+        if (!LoadIncludeFile(assetsRoot, env, positionInclude, meshVertexPosition, compiled))
         {
             return false;
         }
@@ -319,8 +332,10 @@ namespace minEngine
         if (includeSceneLightingVaryings)
         {
             const char* lightingVaryingsInclude = env.UsesTangentFrame
-                ? "MeshVertexTangentFrameVaryings.glslinc"
-                : "MeshVertexLightingVaryings.glslinc";
+                ? (skinned ? "MeshVertexSkinnedTangentFrameVaryings.glslinc"
+                           : "MeshVertexTangentFrameVaryings.glslinc")
+                : (skinned ? "MeshVertexSkinnedLightingVaryings.glslinc"
+                           : "MeshVertexLightingVaryings.glslinc");
             if (!LoadIncludeFile(assetsRoot, env, lightingVaryingsInclude, meshVertexLightingVaryings, compiled))
             {
                 return false;
@@ -330,7 +345,7 @@ namespace minEngine
         const MaterialStageSource& vertexStage = compiled.Stages[Stage_Vertex];
         const std::vector<std::pair<std::string, std::string>> vertexAnchors = {
             { "VERTEX_IO_BLOCK",
-                BuildVertexIoBlock(numTexCoords, includeSceneLightingVaryings, env.UsesTangentFrame) },
+                BuildVertexIoBlock(numTexCoords, includeSceneLightingVaryings, env.UsesTangentFrame, skinned) },
             { "VERTEX_MATERIAL_PARAMETERS_STRUCT",
                 (numTexCoords > 0) ? BuildMaterialParametersStructGlobal(numTexCoords) : std::string{} },
             { "VERTEX_UNIFORMS", meshVertexUniforms },

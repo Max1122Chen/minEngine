@@ -91,5 +91,9 @@ namespace minEngine::Reflection
     inline std::string GetPrimitiveName<minEngine::Math::Vector3>() { return "Vector3"; }
     template<>
     inline std::string GetPrimitiveName<minEngine::Math::Vector4>() { return "Vector4"; }
+    template<>
+    inline std::string GetPrimitiveName<minEngine::Math::Matrix3>() { return "Matrix3"; }
+    template<>
+    inline std::string GetPrimitiveName<minEngine::Math::Matrix4>() { return "Matrix4"; }
 
 }

@@ -3,10 +3,14 @@
 #include "Core.h"
 #include "Shell/EditorServiceModule.h"
 #include "Shell/IEditorInspectorSource.h"
+#include "UI/Dialogs/EditorImportDialog.h"
 #include "UI/Dialogs/EditorUnsavedChangesDialog.h"
+#include "Runtime/Resource/AssetManager.h"
 
+#include <filesystem>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace minEngine
 {
@@ -58,6 +62,7 @@ namespace minEngine
         const IEditorInspectorSource* GetInspectorSource() const;
 
         void DeleteSelectedAsset();
+        bool TryReimportSelectedAsset();
 
         IEditorContext* GetEditorContext() const { return m_Context; }
 
@@ -72,8 +77,10 @@ namespace minEngine
 
         bool IsSceneDirty() const;
         bool IsMaterialDirty() const;
+        bool IsAnimationGraphDirty() const;
         bool SaveSceneDocument();
         bool SaveMaterialDocument();
+        bool SaveAnimationGraphDocument();
 
         bool RunWithUnsavedCheck(
             const char* message,
@@ -82,7 +89,11 @@ namespace minEngine
             std::function<void()> proceedCallback);
 
         void HandleUnsavedDialogChoice(UnsavedChangesChoice choice);
+        void HandleImportDialogAction(EditorImportDialogAction action);
         void RefreshContentBrowser();
+
+        static std::vector<const ImportProductDescriptor*> CollectCompatibleImportProducts(
+            const std::filesystem::path& sourcePath);
 
         IEditorContext* m_Context = nullptr;
         std::string m_SelectedAssetPath;
@@ -90,6 +101,7 @@ namespace minEngine
         AssetWorkflowInspectorSource m_InspectorSource{*this};
 
         EditorUnsavedChangesDialog m_UnsavedDialog;
+        EditorImportDialog m_ImportDialog;
         std::function<void()> m_PendingProceed;
         std::function<bool()> m_PendingSave;
         PendingUnsavedCheckKind m_PendingCheckKind = PendingUnsavedCheckKind::None;

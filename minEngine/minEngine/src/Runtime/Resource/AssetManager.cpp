@@ -1,13 +1,22 @@
 #include "AssetManager.h"
 
+#include "AssetPipelineBootstrap.h"
 #include "AssetTypeRegistry.h"
 #include "Runtime/Resource/EditorFilesystemMutationPass.h"
+#include "Runtime/Resource/Loaders/AssimpMeshImportUtil.h"
+#include "Runtime/Resource/Loaders/SkeletalMeshLoader.h"
+#include "Runtime/Resource/Loaders/AnimationClipLoader.h"
+#include "Runtime/Resource/Loaders/AnimationGraphLoader.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/SkeletalMesh.h"
+#include "Runtime/Function/Animation/AnimationClip.h"
+#include "Runtime/Function/Animation/AnimationGraph.h"
+#include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Resource/Font.h"
@@ -22,6 +31,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <system_error>
 
 namespace minEngine
 {
@@ -63,6 +73,7 @@ namespace minEngine
     void AssetManager::Initialize()
     {
         AssetTypeRegistry::Get().RegisterBuiltinTypes();
+        RegisterAllAssetPipelines(*this);
     }
 
     AssetManager::AssetRegistryBroadcastBatchScope::AssetRegistryBroadcastBatchScope()
@@ -111,6 +122,8 @@ namespace minEngine
         m_RegistryBroadcastBatchDepth = 0;
         m_Registry.Shutdown();
         m_LoadedAssetCache.clear();
+        m_LoadHandlers.clear();
+        m_ImportProducts.clear();
         EditorFilesystemMutationPass::Clear();
     }
 
@@ -281,6 +294,22 @@ namespace minEngine
             }
 
             const std::filesystem::path assetPath = entry.path().lexically_normal();
+
+            // Assets/Sources/** holds Import Sources only — never Infer as engine mesh assets.
+            bool underImportSources = false;
+            for (const std::filesystem::path& part : assetPath)
+            {
+                if (part == "Sources")
+                {
+                    underImportSources = true;
+                    break;
+                }
+            }
+            if (underImportSources)
+            {
+                continue;
+            }
+
             const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(assetPath);
             if (assetTypeId.empty())
             {
@@ -461,8 +490,10 @@ namespace minEngine
         return meta;
     }
 
-    ImportAssetResult AssetManager::ImportAsset(const std::filesystem::path& sourcePath,
-                                                const std::filesystem::path& destDirectory)
+    ImportAssetResult AssetManager::ImportAsset(
+        const std::filesystem::path& sourcePath,
+        const std::filesystem::path& destDirectory,
+        bool bOverwriteExisting)
     {
         AssetRegistryBroadcastBatchScope batchScope;
         ImportAssetResult result;
@@ -492,15 +523,29 @@ namespace minEngine
         }
 
         const AssetTypeRegistry& typeRegistry = AssetTypeRegistry::Get();
+        std::string extension = sourcePath.extension().string();
+        std::transform(
+            extension.begin(),
+            extension.end(),
+            extension.begin(),
+            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (extension == ".fbx" || extension == ".gltf")
+        {
+            result.ErrorMessage =
+                "external mesh source requires ImportExternalMesh (choose StaticMesh or SkeletalMesh): "
+                + sourcePath.extension().string();
+            return result;
+        }
+
         const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(sourcePath);
         if (assetTypeId.empty())
         {
-            result.ErrorMessage = "unsupported file extension: " + sourcePath.extension().string();
+            result.ErrorMessage = "unsupported file extension: " + extension;
             return result;
         }
 
         const std::filesystem::path destFilePath = absoluteDestDirectory / sourcePath.filename();
-        if (std::filesystem::exists(destFilePath))
+        if (std::filesystem::exists(destFilePath) && !bOverwriteExisting)
         {
             result.ErrorMessage = "destination file already exists: " + destFilePath.string();
             return result;
@@ -509,8 +554,11 @@ namespace minEngine
         NoteEditorFilesystemMutation(absoluteDestDirectory);
         NoteEditorFilesystemMutation(destFilePath);
 
+        const std::filesystem::copy_options copyOptions = bOverwriteExisting
+            ? std::filesystem::copy_options::overwrite_existing
+            : std::filesystem::copy_options::none;
         std::error_code copyError;
-        std::filesystem::copy_file(sourcePath, destFilePath, std::filesystem::copy_options::none, copyError);
+        std::filesystem::copy_file(sourcePath, destFilePath, copyOptions, copyError);
         if (copyError)
         {
             result.ErrorMessage = "copy failed: " + copyError.message();
@@ -524,10 +572,410 @@ namespace minEngine
             return result;
         }
 
+        if (bOverwriteExisting)
+        {
+            EvictLoadedAssetCache(result.Meta.AssetPath);
+        }
+
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
 
         result.bSuccess = true;
         return result;
+    }
+
+    ImportAssetResult AssetManager::ImportExternalMesh(
+        const std::filesystem::path& sourcePath,
+        const std::filesystem::path& destDirectory,
+        MeshImportProductType productType,
+        bool bOverwriteExisting)
+    {
+        AssetRegistryBroadcastBatchScope batchScope;
+        ImportAssetResult result;
+
+        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
+        {
+            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
+            return result;
+        }
+
+        if (!AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string())
+            && sourcePath.extension() != ".obj")
+        {
+            result.ErrorMessage =
+                "ImportExternalMesh expects .fbx/.gltf/.glb/.obj, got: "
+                + sourcePath.extension().string();
+            return result;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        if (contentRoot.empty())
+        {
+            result.ErrorMessage = "project content root is not set";
+            return result;
+        }
+
+        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
+            ? std::filesystem::weakly_canonical(destDirectory)
+            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
+
+        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
+        {
+            result.ErrorMessage =
+                "destination directory is outside project Assets: " + absoluteDestDirectory.string();
+            return result;
+        }
+
+        const std::filesystem::path sourcesDirectory = contentRoot / "Sources";
+        std::error_code sourcesCreateError;
+        std::filesystem::create_directories(sourcesDirectory, sourcesCreateError);
+        if (sourcesCreateError)
+        {
+            result.ErrorMessage =
+                "failed to create Assets/Sources: " + sourcesCreateError.message();
+            return result;
+        }
+
+        const std::filesystem::path sourceCopyPath = sourcesDirectory / sourcePath.filename();
+        if (!bOverwriteExisting
+            && std::filesystem::exists(sourceCopyPath)
+            && !std::filesystem::equivalent(sourceCopyPath, sourcePath))
+        {
+            // Allow re-import when the picker already pointed at Assets/Sources/file.
+            result.ErrorMessage = "import source already exists: " + sourceCopyPath.string();
+            return result;
+        }
+
+        NoteEditorFilesystemMutation(sourcesDirectory);
+        NoteEditorFilesystemMutation(sourceCopyPath);
+
+        if (!std::filesystem::exists(sourceCopyPath))
+        {
+            std::error_code copySourceError;
+            std::filesystem::copy_file(
+                sourcePath,
+                sourceCopyPath,
+                std::filesystem::copy_options::none,
+                copySourceError);
+            if (copySourceError)
+            {
+                result.ErrorMessage = "failed to copy source into Assets/Sources: "
+                    + copySourceError.message();
+                return result;
+            }
+        }
+        else if (bOverwriteExisting
+            && !std::filesystem::equivalent(sourceCopyPath, sourcePath))
+        {
+            // Reimport from a path that is not the Sources copy: refresh Sources from that path.
+            std::error_code copySourceError;
+            std::filesystem::copy_file(
+                sourcePath,
+                sourceCopyPath,
+                std::filesystem::copy_options::overwrite_existing,
+                copySourceError);
+            if (copySourceError)
+            {
+                result.ErrorMessage = "failed to refresh Assets/Sources copy: "
+                    + copySourceError.message();
+                return result;
+            }
+        }
+
+        const bool skeletal = productType == MeshImportProductType::SkeletalMesh;
+        const char* assetTypeId = skeletal ? "SkeletalMesh" : "StaticMesh";
+        const char* productExtension = skeletal ? ".glb" : ".obj";
+        const char* exportFormatId = skeletal ? "glb2" : "obj";
+
+        std::filesystem::path productFileName = sourcePath.stem();
+        productFileName += productExtension;
+        const std::filesystem::path productPath = absoluteDestDirectory / productFileName;
+        if (std::filesystem::exists(productPath) && !bOverwriteExisting)
+        {
+            result.ErrorMessage = "destination product already exists: " + productPath.string();
+            return result;
+        }
+
+        NoteEditorFilesystemMutation(absoluteDestDirectory);
+        NoteEditorFilesystemMutation(productPath);
+
+        std::string cookError;
+        if (!AssimpMeshImportUtil::CookExternalMeshToFile(
+                sourceCopyPath,
+                productPath,
+                exportFormatId,
+                &cookError))
+        {
+            result.ErrorMessage = cookError;
+            return result;
+        }
+
+        result.Meta = RegisterAsset(productPath.string(), assetTypeId);
+        if (result.Meta.AssetPath.empty())
+        {
+            result.ErrorMessage = "failed to register cooked mesh asset";
+            return result;
+        }
+
+        result.Meta.SourcePath = NormalizeProjectRelativeAssetPath(sourceCopyPath.string());
+        if (!WriteMetaFile(result.Meta))
+        {
+            result.ErrorMessage = "failed to write SourcePath into meta";
+            return result;
+        }
+        CacheMeta(result.Meta, true);
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
+
+        if (skeletal)
+        {
+            std::string skeletalCookError;
+            if (!SkeletalMeshLoader::FinishSkeletalImportCook(
+                    result.Meta,
+                    sourceCopyPath,
+                    &skeletalCookError))
+            {
+                result.ErrorMessage = skeletalCookError;
+                return result;
+            }
+
+            NoteEditorFilesystemMutation(
+                ResolveAssetAbsolutePath(
+                    SkeletalMeshLoader::BuildBuddyRelativePath(result.Meta.AssetPath)));
+            EvictLoadedAssetCache(
+                SkeletalMeshLoader::BuildBuddyRelativePath(result.Meta.AssetPath));
+            const std::filesystem::path meshPath(result.Meta.AssetPath);
+            const std::string skeletonRelative =
+                (meshPath.parent_path() / (meshPath.stem().string() + "_Skeleton.meskeleton"))
+                    .generic_string();
+            EvictLoadedAssetCache(skeletonRelative);
+        }
+
+        if (bOverwriteExisting)
+        {
+            EvictLoadedAssetCache(result.Meta.AssetPath);
+        }
+
+        result.bSuccess = true;
+        return result;
+    }
+
+    ImportAssetResult AssetManager::ImportAnimationClip(
+        const std::filesystem::path& sourcePath,
+        const std::filesystem::path& destDirectory,
+        std::string_view skeletonAssetPath,
+        int animationIndex,
+        bool bOverwriteExisting)
+    {
+        AssetRegistryBroadcastBatchScope batchScope;
+        ImportAssetResult result;
+
+        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
+        {
+            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
+            return result;
+        }
+
+        if (!AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string()))
+        {
+            result.ErrorMessage =
+                "ImportAnimationClip expects .fbx/.gltf/.glb, got: " + sourcePath.extension().string();
+            return result;
+        }
+
+        if (skeletonAssetPath.empty())
+        {
+            result.ErrorMessage = "skeletonAssetPath is empty";
+            return result;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        if (contentRoot.empty())
+        {
+            result.ErrorMessage = "project content root is not set";
+            return result;
+        }
+
+        std::shared_ptr<Skeleton> skeleton = LoadAsset<Skeleton>(std::string(skeletonAssetPath));
+        if (skeleton == nullptr)
+        {
+            result.ErrorMessage = "failed to load Skeleton: " + std::string(skeletonAssetPath);
+            return result;
+        }
+
+        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
+            ? std::filesystem::weakly_canonical(destDirectory)
+            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
+
+        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
+        {
+            result.ErrorMessage =
+                "destination directory is outside project Assets: " + absoluteDestDirectory.string();
+            return result;
+        }
+
+        const std::filesystem::path sourcesDirectory = contentRoot / "Sources";
+        std::error_code sourcesCreateError;
+        std::filesystem::create_directories(sourcesDirectory, sourcesCreateError);
+        if (sourcesCreateError)
+        {
+            result.ErrorMessage = "failed to create Assets/Sources: " + sourcesCreateError.message();
+            return result;
+        }
+
+        const std::filesystem::path sourceCopyPath = sourcesDirectory / sourcePath.filename();
+        NoteEditorFilesystemMutation(sourcesDirectory);
+        NoteEditorFilesystemMutation(sourceCopyPath);
+
+        if (!std::filesystem::exists(sourceCopyPath))
+        {
+            std::error_code copySourceError;
+            std::filesystem::copy_file(
+                sourcePath,
+                sourceCopyPath,
+                std::filesystem::copy_options::none,
+                copySourceError);
+            if (copySourceError)
+            {
+                result.ErrorMessage =
+                    "failed to copy source into Assets/Sources: " + copySourceError.message();
+                return result;
+            }
+        }
+        else if (!std::filesystem::equivalent(sourceCopyPath, sourcePath))
+        {
+            if (bOverwriteExisting)
+            {
+                std::error_code copySourceError;
+                std::filesystem::copy_file(
+                    sourcePath,
+                    sourceCopyPath,
+                    std::filesystem::copy_options::overwrite_existing,
+                    copySourceError);
+                if (copySourceError)
+                {
+                    result.ErrorMessage =
+                        "failed to refresh Assets/Sources copy: " + copySourceError.message();
+                    return result;
+                }
+            }
+            else
+            {
+                ME_CORE_INFO(
+                    "ImportAnimationClip: reusing existing Sources copy '{}'",
+                    sourceCopyPath.string());
+            }
+        }
+
+        AnimationClip importedClip;
+        std::string importError;
+        if (!AnimationClipLoader::ImportFromFile(
+                sourceCopyPath.string(),
+                skeleton,
+                animationIndex,
+                importedClip,
+                &importError))
+        {
+            result.ErrorMessage = importError;
+            return result;
+        }
+
+        std::filesystem::path productFileName = sourcePath.stem();
+        if (animationIndex > 0)
+        {
+            productFileName += "_";
+            productFileName += std::to_string(animationIndex);
+        }
+        productFileName += ".meaclip";
+        const std::filesystem::path productPath = absoluteDestDirectory / productFileName;
+        if (std::filesystem::exists(productPath) && !bOverwriteExisting)
+        {
+            result.ErrorMessage = "destination clip already exists: " + productPath.string();
+            return result;
+        }
+
+        NoteEditorFilesystemMutation(absoluteDestDirectory);
+        NoteEditorFilesystemMutation(productPath);
+
+        // Write clip + meta with a stable Guid before RegisterAsset (same order as Skeleton cook).
+        AssetMeta pendingMeta;
+        pendingMeta.AssetName = productFileName.stem().string();
+        pendingMeta.AssetPath =
+            NormalizeProjectRelativeAssetPath(productPath.string());
+        pendingMeta.AssetType = "AnimationClip";
+        pendingMeta.Guid = GenerateGUID();
+        if (pendingMeta.AssetPath.empty())
+        {
+            result.ErrorMessage = "failed to resolve AnimationClip destination path";
+            return result;
+        }
+
+        if (bOverwriteExisting)
+        {
+            if (const AssetMeta* existingMeta = FindAssetMetaByPath(pendingMeta.AssetPath))
+            {
+                pendingMeta.Guid = existingMeta->Guid;
+                if (!existingMeta->SourcePath.empty())
+                {
+                    pendingMeta.SourcePath = existingMeta->SourcePath;
+                }
+            }
+        }
+
+        importedClip.SetName(pendingMeta.AssetName);
+        importedClip.SetGuid(pendingMeta.Guid);
+
+        std::string saveError;
+        if (!AnimationClipLoader::Save(pendingMeta, importedClip, &saveError))
+        {
+            result.ErrorMessage = saveError;
+            return result;
+        }
+
+        if (!WriteOrUpdateMetaFile(pendingMeta))
+        {
+            result.ErrorMessage = "failed to write AnimationClip meta";
+            return result;
+        }
+
+        result.Meta = RegisterAsset(productPath.string(), "AnimationClip");
+        if (result.Meta.AssetPath.empty())
+        {
+            result.ErrorMessage = "failed to register AnimationClip asset";
+            return result;
+        }
+
+        result.Meta.SourcePath = NormalizeProjectRelativeAssetPath(sourceCopyPath.string());
+        if (!WriteMetaFile(result.Meta))
+        {
+            result.ErrorMessage = "failed to write SourcePath into meta";
+            return result;
+        }
+        CacheMeta(result.Meta, true);
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
+
+        if (bOverwriteExisting)
+        {
+            EvictLoadedAssetCache(result.Meta.AssetPath);
+        }
+
+        result.bSuccess = true;
+        return result;
+    }
+
+    bool AssetManager::WriteOrUpdateMetaFile(const AssetMeta& meta)
+    {
+        return WriteMetaFile(meta);
+    }
+
+    void AssetManager::ApplyMetaIdentity(MEObject& object, const AssetMeta& meta)
+    {
+        if (!meta.AssetName.empty())
+        {
+            object.SetName(meta.AssetName);
+        }
+        object.SetGuid(meta.Guid);
     }
 
     void AssetManager::ClearProjectRegistry()
@@ -1006,107 +1454,402 @@ namespace minEngine
         return m_Registry.FindMetasUnderDirectory(projectRelativeDirectory);
     }
 
-    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)
+    void AssetManager::RegisterLoadHandler(std::string_view assetTypeId, AssetLoadHandlerFn handler)
     {
-        if (meta.AssetType == "StaticMesh")
+        if (assetTypeId.empty() || handler == nullptr)
         {
-            std::shared_ptr<StaticMesh> asset = LoadAsset<StaticMesh>(meta.AssetPath);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load static mesh by guid";
-                return nullptr;
-            }
-
-            return std::static_pointer_cast<Asset>(asset);
+            ME_CORE_ERROR("RegisterLoadHandler: assetTypeId and handler are required");
+            return;
         }
 
-        if (meta.AssetType == "Texture2D")
+        m_LoadHandlers[std::string(assetTypeId)] = handler;
+    }
+
+    AssetLoadHandlerFn AssetManager::FindLoadHandler(std::string_view assetTypeId) const
+    {
+        const auto it = m_LoadHandlers.find(std::string(assetTypeId));
+        if (it == m_LoadHandlers.end())
         {
-            std::shared_ptr<Texture2D> asset = LoadAsset<Texture2D>(meta.AssetPath);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load texture2d by guid";
-                return nullptr;
-            }
-
-            return std::static_pointer_cast<Asset>(asset);
-        }
-
-        if (meta.AssetType == "Scene")
-        {
-            std::shared_ptr<Scene> asset = LoadAsset<Scene>(meta.AssetPath);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load scene by guid";
-                return nullptr;
-            }
-
-            return std::static_pointer_cast<Asset>(asset);
-        }
-
-        if (meta.AssetType == "Material")
-        {
-            std::shared_ptr<Material> asset = LoadAsset<Material>(meta.AssetPath);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load material by guid";
-                return nullptr;
-            }
-            return std::static_pointer_cast<Asset>(asset);
-        }
-
-        if (meta.AssetType == "Shader")
-        {
-            outErrorMessage = "Shader assets are removed; use Material compile instead.";
             return nullptr;
         }
 
-        if (meta.AssetType == "Font")
+        return it->second;
+    }
+
+    void AssetManager::RegisterImportProduct(const ImportProductDescriptor& descriptor)
+    {
+        if (descriptor.ProductId.empty() || descriptor.Import == nullptr
+            || descriptor.AcceptsSourceExtension == nullptr)
         {
-            std::shared_ptr<Font> asset = LoadAsset<Font>(meta.AssetPath);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load font by guid";
-                return nullptr;
-            }
-            return std::static_pointer_cast<Asset>(asset);
+            ME_CORE_ERROR(
+                "RegisterImportProduct: ProductId, AcceptsSourceExtension, and Import are required");
+            return;
         }
 
-        if (meta.AssetType == "LuaScript")
+        for (ImportProductDescriptor& existing : m_ImportProducts)
         {
-            std::shared_ptr<LuaScript> asset = LoadAsset<LuaScript>(meta.AssetPath);
-            if (asset == nullptr)
+            if (existing.ProductId == descriptor.ProductId)
             {
-                outErrorMessage = "failed to load lua script by guid";
-                return nullptr;
+                existing = descriptor;
+                return;
             }
-            return std::static_pointer_cast<Asset>(asset);
         }
 
-        if (meta.AssetType == "EnvironmentMap")
+        m_ImportProducts.push_back(descriptor);
+    }
+
+    const ImportProductDescriptor* AssetManager::FindImportProduct(std::string_view productId) const
+    {
+        for (const ImportProductDescriptor& descriptor : m_ImportProducts)
         {
-            std::shared_ptr<EnvironmentMap> asset = LoadAsset<EnvironmentMap>(meta.AssetPath);
-            if (asset == nullptr)
+            if (descriptor.ProductId == productId)
             {
-                outErrorMessage = "failed to load EnvironmentMap by guid";
-                return nullptr;
+                return &descriptor;
             }
-            return std::static_pointer_cast<Asset>(asset);
         }
 
-        if (meta.AssetType == "AudioClip")
-        {
-            std::shared_ptr<AudioClip> asset = LoadAsset<AudioClip>(meta.AssetPath);
-            if (asset == nullptr)
-            {
-                outErrorMessage = "failed to load AudioClip by guid";
-                return nullptr;
-            }
-            return std::static_pointer_cast<Asset>(asset);
-        }
-
-        outErrorMessage = "unsupported asset type '" + meta.AssetType + "'";
         return nullptr;
+    }
+
+    ImportResult AssetManager::MakeImportResultFromLegacy(const ImportAssetResult& legacy)
+    {
+        ImportResult result;
+        result.bSuccess = legacy.bSuccess;
+        result.ErrorMessage = legacy.ErrorMessage;
+        if (legacy.bSuccess && !legacy.Meta.AssetPath.empty())
+        {
+            result.Created.push_back(ImportCreatedAsset{
+                .AssetPath = legacy.Meta.AssetPath,
+                .AssetTypeId = legacy.Meta.AssetType,
+                .Guid = legacy.Meta.Guid});
+        }
+
+        return result;
+    }
+
+    bool AssetManager::AcceptsNativeCopyExtension(std::string_view extension)
+    {
+        if (AssetTypeRegistry::IsExternalMeshSourceExtension(extension))
+        {
+            return false;
+        }
+
+        std::string normalized(extension);
+        for (char& ch : normalized)
+        {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+
+        // .obj stays cookable via StaticMesh product; NativeCopy still accepts other registered
+        // extensions (textures, .memtl, …). Infer rejects unknown extensions at Import time.
+        return !normalized.empty();
+    }
+
+    bool AssetManager::AcceptsExternalMeshCookExtension(std::string_view extension)
+    {
+        if (AssetTypeRegistry::IsExternalMeshSourceExtension(extension))
+        {
+            return true;
+        }
+
+        std::string normalized(extension);
+        for (char& ch : normalized)
+        {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+
+        return normalized == ".obj";
+    }
+
+    bool AssetManager::AcceptsAnimationClipSourceExtension(std::string_view extension)
+    {
+        return AssetTypeRegistry::IsExternalMeshSourceExtension(extension);
+    }
+
+    ImportResult AssetManager::ImportProduct_NativeCopy(
+        AssetManager& manager, const ImportRequest& request)
+    {
+        return MakeImportResultFromLegacy(
+            manager.ImportAsset(
+                request.SourcePath, request.DestDirectory, request.bOverwriteExisting));
+    }
+
+    ImportResult AssetManager::ImportProduct_StaticMesh(
+        AssetManager& manager, const ImportRequest& request)
+    {
+        return MakeImportResultFromLegacy(manager.ImportExternalMesh(
+            request.SourcePath,
+            request.DestDirectory,
+            MeshImportProductType::StaticMesh,
+            request.bOverwriteExisting));
+    }
+
+    ImportResult AssetManager::ImportProduct_SkeletalMesh(
+        AssetManager& manager, const ImportRequest& request)
+    {
+        return MakeImportResultFromLegacy(manager.ImportExternalMesh(
+            request.SourcePath,
+            request.DestDirectory,
+            MeshImportProductType::SkeletalMesh,
+            request.bOverwriteExisting));
+    }
+
+    ImportResult AssetManager::ImportProduct_AnimationClip(
+        AssetManager& manager, const ImportRequest& request)
+    {
+        std::string skeletonAssetPath = request.SkeletonAssetPath;
+        if (skeletonAssetPath.empty())
+        {
+            const PathRegistry& paths = PathRegistry::Get();
+            const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+            std::filesystem::path absoluteDestDirectory = request.DestDirectory.is_absolute()
+                ? std::filesystem::weakly_canonical(request.DestDirectory)
+                : std::filesystem::weakly_canonical(contentRoot / request.DestDirectory);
+
+            const std::filesystem::path fallbackAbsolute =
+                absoluteDestDirectory
+                / (request.SourcePath.stem().string() + "_Skeleton.meskeleton");
+            if (std::filesystem::exists(fallbackAbsolute))
+            {
+                std::error_code relativeError;
+                const std::filesystem::path relativePath =
+                    std::filesystem::relative(fallbackAbsolute, contentRoot, relativeError);
+                if (!relativeError && !relativePath.empty())
+                {
+                    skeletonAssetPath = relativePath.generic_string();
+                }
+            }
+        }
+
+        if (skeletonAssetPath.empty())
+        {
+            ImportResult result;
+            result.ErrorMessage =
+                "AnimationClip import requires SkeletonAssetPath "
+                "(or an existing {stem}_Skeleton.meskeleton next to the destination)";
+            return result;
+        }
+
+        return MakeImportResultFromLegacy(manager.ImportAnimationClip(
+            request.SourcePath,
+            request.DestDirectory,
+            skeletonAssetPath,
+            request.AnimationIndex,
+            request.bOverwriteExisting));
+    }
+
+    ImportResult AssetManager::Import(const ImportRequest& request)
+    {
+        ImportResult result;
+        if (request.ProductId.empty())
+        {
+            result.ErrorMessage = "ImportRequest.ProductId is empty";
+            return result;
+        }
+
+        const ImportProductDescriptor* product = FindImportProduct(request.ProductId);
+        if (product == nullptr)
+        {
+            result.ErrorMessage = "unknown import product '" + request.ProductId + "'";
+            return result;
+        }
+
+        const std::string extension = request.SourcePath.extension().string();
+        if (product->AcceptsSourceExtension != nullptr
+            && !product->AcceptsSourceExtension(extension))
+        {
+            result.ErrorMessage =
+                "import product '" + request.ProductId + "' does not accept extension '"
+                + extension + "'";
+            return result;
+        }
+
+        return product->Import(*this, request);
+    }
+
+    bool AssetManager::Reimport(const std::string& assetPath, std::string& outError)
+    {
+        const std::string registryKey = NormalizeProjectRelativeAssetPath(assetPath);
+        const AssetMeta* meta = FindAssetMetaByPath(registryKey);
+        if (meta == nullptr)
+        {
+            outError = "asset not found: " + assetPath;
+            return false;
+        }
+
+        if (meta->SourcePath.empty())
+        {
+            outError = "asset has no SourcePath (cannot reimport): " + registryKey;
+            return false;
+        }
+
+        std::string productId;
+        if (meta->AssetType == "StaticMesh")
+        {
+            productId = "StaticMesh";
+        }
+        else if (meta->AssetType == "SkeletalMesh")
+        {
+            productId = "SkeletalMesh";
+        }
+        else if (meta->AssetType == "AnimationClip")
+        {
+            productId = "AnimationClip";
+        }
+        else
+        {
+            outError = "reimport is not supported for asset type '" + meta->AssetType + "'";
+            return false;
+        }
+
+        const std::filesystem::path sourceAbsolute = ResolveAssetAbsolutePath(meta->SourcePath);
+        if (!std::filesystem::exists(sourceAbsolute) || !std::filesystem::is_regular_file(sourceAbsolute))
+        {
+            outError = "SourcePath is missing on disk: " + meta->SourcePath;
+            return false;
+        }
+
+        const std::filesystem::path assetAbsolute = ResolveAssetAbsolutePath(meta->AssetPath);
+        ImportRequest request;
+        request.SourcePath = sourceAbsolute;
+        request.DestDirectory = assetAbsolute.parent_path();
+        request.ProductId = productId;
+        request.bOverwriteExisting = true;
+
+        if (productId == "AnimationClip")
+        {
+            std::string loadError;
+            std::shared_ptr<Asset> loaded = LoadAssetByPath(meta->AssetPath, loadError);
+            std::shared_ptr<AnimationClip> clip = std::dynamic_pointer_cast<AnimationClip>(loaded);
+            if (clip != nullptr && clip->GetSkeleton() != nullptr)
+            {
+                const Skeleton* skeleton = clip->GetSkeleton();
+                if (skeleton->GetMeta() != nullptr && !skeleton->GetMeta()->AssetPath.empty())
+                {
+                    request.SkeletonAssetPath = skeleton->GetMeta()->AssetPath;
+                }
+                else
+                {
+                    const AssetMeta* skeletonMeta = FindAssetMetaByGuid(skeleton->GetGuid());
+                    if (skeletonMeta != nullptr)
+                    {
+                        request.SkeletonAssetPath = skeletonMeta->AssetPath;
+                    }
+                }
+            }
+        }
+
+        const ImportResult result = Import(request);
+        if (!result.bSuccess)
+        {
+            outError = result.ErrorMessage.empty() ? "reimport failed" : result.ErrorMessage;
+            return false;
+        }
+
+        return true;
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_StaticMesh(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<StaticMesh>(
+            meta, outErrorMessage, "failed to load static mesh by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_SkeletalMesh(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<SkeletalMesh>(
+            meta, outErrorMessage, "failed to load skeletal mesh by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Skeleton(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Skeleton>(
+            meta, outErrorMessage, "failed to load Skeleton");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_AnimationClip(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<AnimationClip>(
+            meta, outErrorMessage, "failed to load AnimationClip");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_AnimationGraph(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<AnimationGraph>(
+            meta, outErrorMessage, "failed to load AnimationGraph");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Texture2D(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Texture2D>(
+            meta, outErrorMessage, "failed to load texture2d by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Scene(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Scene>(
+            meta, outErrorMessage, "failed to load scene by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Material(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Material>(
+            meta, outErrorMessage, "failed to load material by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Font(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Font>(
+            meta, outErrorMessage, "failed to load font by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_LuaScript(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<LuaScript>(
+            meta, outErrorMessage, "failed to load lua script by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_EnvironmentMap(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<EnvironmentMap>(
+            meta, outErrorMessage, "failed to load EnvironmentMap by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_AudioClip(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<AudioClip>(
+            meta, outErrorMessage, "failed to load AudioClip by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_ShaderRemoved(
+        AssetManager& /*manager*/, const AssetMeta& /*meta*/, std::string& outErrorMessage)
+    {
+        outErrorMessage = "Shader assets are removed; use Material compile instead.";
+        return nullptr;
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        const AssetLoadHandlerFn handler = FindLoadHandler(meta.AssetType);
+        if (handler == nullptr)
+        {
+            outErrorMessage = "unsupported asset type '" + meta.AssetType + "'";
+            return nullptr;
+        }
+
+        return handler(*this, meta, outErrorMessage);
     }
 
     template<>
@@ -1392,4 +2135,77 @@ namespace minEngine
         ME_CORE_INFO("CreateAsset<Material>: created '{}'.", meta.AssetPath);
         return LoadAsset<Material>(meta.AssetPath);
     }
+    template<>
+    bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const
+    {
+        std::string error;
+        if (!AnimationGraphLoader::Save(meta, asset, &error))
+        {
+            ME_CORE_ERROR(
+                "Failed to save AnimationGraph '{}'. Error: {}",
+                meta.AssetPath,
+                error);
+            return false;
+        }
+        return true;
+    }
+
+    template<>
+    std::shared_ptr<AnimationGraph> AssetManager::CreateAsset<AnimationGraph>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".meagraph");
+        if (relativePath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<AnimationGraph>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_CORE_ERROR(
+                "CreateAsset<AnimationGraph>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string graphName = absolutePath.stem().string();
+        std::shared_ptr<AnimationGraph> graph = NewObject<AnimationGraph>(graphName, nullptr, GenerateGUID());
+
+        AssetMeta tempMeta;
+        tempMeta.AssetPath = relativePath;
+        tempMeta.AssetName = graphName;
+        tempMeta.AssetType = "AnimationGraph";
+        tempMeta.Guid = graph->GetGuid();
+
+        std::string saveError;
+        if (!AnimationGraphLoader::Save(tempMeta, *graph, &saveError))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            ME_CORE_ERROR("CreateAsset<AnimationGraph>: save failed: {}", saveError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph");
+        if (meta.AssetPath.empty())
+        {
+            ME_CORE_ERROR("CreateAsset<AnimationGraph>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+
+        ME_CORE_INFO("CreateAsset<AnimationGraph>: created '{}'.", meta.AssetPath);
+        return LoadAsset<AnimationGraph>(meta.AssetPath);
+    }
+
 }

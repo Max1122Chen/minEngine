@@ -17,7 +17,11 @@ namespace minEngine
 
         ME_PROPERTY()
         std::string AssetType; // e.g., "Texture2D", "StaticMesh", "Scene"
-        
+
+        // Project-relative Import Source path (e.g. Assets/Sources/Hero.fbx). Empty if native-authored.
+        ME_PROPERTY()
+        std::string SourcePath;
+
         ME_PROPERTY()
         GUID Guid;
     };

@@ -62,6 +62,21 @@ namespace minEngine
         return 0;
     }
 
+    // Integer attributes must use glVertexAttribIPointer (OpenGL) / SINT formats (Vulkan).
+    static bool IsIntegerVertexElementType(VertexElementType type)
+    {
+        switch (type)
+        {
+        case VertexElementType::Int:
+        case VertexElementType::Int2:
+        case VertexElementType::Int3:
+        case VertexElementType::Int4:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     struct RHIVertexElement
     {
         std::string Name;

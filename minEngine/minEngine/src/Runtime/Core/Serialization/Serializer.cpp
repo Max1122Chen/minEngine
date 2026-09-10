@@ -1127,6 +1127,25 @@ namespace minEngine::Serialization
             return SerializeResult::Failure("Deserialize object pointer failed: reference GUID is zero.", path);
         }
 
+        // Already pointing at the requested object: keep the strong ref.
+        // Clearing first would drop the only shared_ptr (ObjectManager/cache hold weak_ptr only)
+        // and force a full asset reload on the subsequent resolve pass (Inspector undo re-apply).
+        if (ptrCategory != MEObjectPtrCategory::Raw && supportsMEObject)
+        {
+            const MEObject* currentObject =
+                static_cast<const MEObject*>(objectPtrProperty.GetConstPointingData(ptrToPtr));
+            if (currentObject != nullptr && currentObject->GetGuid() == referenceGuid)
+            {
+                if (!archive.EndGuidRef())
+                {
+                    return SerializeResult::Failure(
+                        "Deserialize object pointer failed: EndGuidRef returned false after matching GUID short-circuit.",
+                        path);
+                }
+                return SerializeResult::Success();
+            }
+        }
+
         PendingObjectRef pendingRef;
         pendingRef.ptrToPtr = ptrToPtr;
         pendingRef.ownerObjectPtr = ownerObjectPtr;

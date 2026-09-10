@@ -360,7 +360,9 @@ namespace minEngine
             m_PerFrameUniformBuffer.get(),
             m_LightDataUniformBuffer.get(),
             m_PerObjectUniformBuffer.get(),
-            m_PerObjectSlotStride);
+            m_PerObjectSlotStride,
+            m_BonePaletteUniformBuffer.get(),
+            m_BonePaletteSlotStride);
         m_SceneBindings.BuildSceneSet1(
             cmdList,
             ctx,

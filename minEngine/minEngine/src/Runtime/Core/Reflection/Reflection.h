@@ -535,6 +535,8 @@ namespace minEngine::Reflection
                 else if constexpr(std::is_same_v<RawFieldType, Vector2>) { primitiveTypeName = GetPrimitiveName<Vector2>(); }
                 else if constexpr(std::is_same_v<RawFieldType, Vector3>) { primitiveTypeName = GetPrimitiveName<Vector3>(); }
                 else if constexpr(std::is_same_v<RawFieldType, Vector4>) { primitiveTypeName = GetPrimitiveName<Vector4>(); }
+                else if constexpr(std::is_same_v<RawFieldType, Matrix3>) { primitiveTypeName = GetPrimitiveName<Matrix3>(); }
+                else if constexpr(std::is_same_v<RawFieldType, Matrix4>) { primitiveTypeName = GetPrimitiveName<Matrix4>(); }
                 else if constexpr (std::is_enum_v<RawFieldType>)
                 {
                     primitiveTypeName = "UnresolvedEnum";

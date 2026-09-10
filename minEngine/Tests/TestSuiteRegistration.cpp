@@ -25,6 +25,10 @@
 #include "Suites/SceneCloneTest.h"
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/CommandSystemTest.h"
+#include "Suites/SkeletonPoseTest.h"
+#include "Suites/AnimationClipTest.h"
+#include "Suites/AnimationGraphTest.h"
+#include "Suites/ParameterStoreTest.h"
 
 namespace minEngine
 {
@@ -369,6 +373,75 @@ namespace minEngine
             }
         };
 
+        struct SkeletonPoseTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"skeleton-pose", "Skeleton Pose", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'skeleton-pose'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "skeleton-pose",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct AnimationClipTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"animation-clip", "Animation Clip", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'animation-clip'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "animation-clip",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct AnimationGraphTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"animation-graph", "Animation Graph", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'animation-graph'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "animation-graph",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ParameterStoreTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                // Unit suite; smoke runs the empty-schema case via [smoke] filter.
+                return TestSuiteMetadata{"parameter-store", "Parameter Schema/Layout/Store", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'parameter-store'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "parameter-store",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -390,6 +463,10 @@ namespace minEngine
         using SceneCloneSuite = TypedTestSuite<SceneCloneTestSuiteTraits>;
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
+        using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
+        using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
+        using AnimationGraphSuite = TypedTestSuite<AnimationGraphTestSuiteTraits>;
+        using ParameterStoreSuite = TypedTestSuite<ParameterStoreTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -421,6 +498,10 @@ namespace minEngine
             registry.Register(SceneCloneSuite::Get());
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(CommandSystemSuite::Get());
+            registry.Register(SkeletonPoseSuite::Get());
+            registry.Register(AnimationClipSuite::Get());
+            registry.Register(AnimationGraphSuite::Get());
+            registry.Register(ParameterStoreSuite::Get());
             s_Registered = true;
         }
     }

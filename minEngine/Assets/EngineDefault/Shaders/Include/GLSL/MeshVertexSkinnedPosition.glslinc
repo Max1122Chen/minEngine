@@ -1,0 +1,7 @@
+    mat4 skinMatrix =
+        a_BoneWeights.x * u_BoneMatrices[a_BoneIndices.x] +
+        a_BoneWeights.y * u_BoneMatrices[a_BoneIndices.y] +
+        a_BoneWeights.z * u_BoneMatrices[a_BoneIndices.z] +
+        a_BoneWeights.w * u_BoneMatrices[a_BoneIndices.w];
+    vec4 skinnedPosition = skinMatrix * vec4(a_Position, 1.0);
+    gl_Position = ViewProj * u_Model * skinnedPosition;

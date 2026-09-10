@@ -2,9 +2,11 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"   // TODO: maybe remove this include later
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
+#include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
+#include "Runtime/Function/Render/PrimitiveSceneProxies/SkeletalMeshSceneProxy.h"
 
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/SkyBoxComponent.h"
@@ -66,7 +68,14 @@ namespace minEngine
                         staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_IndexBuffer.get() : nullptr;
                     staticMeshProxy->m_Material = staticMeshComp->GetMaterial();
                 }
-
+            }
+            else if (SkeletalMeshComponent* skeletalMeshComp =
+                         dynamic_cast<SkeletalMeshComponent*>(primitiveComponent))
+            {
+                if (SkeletalMeshSceneProxy* skeletalMeshProxy = dynamic_cast<SkeletalMeshSceneProxy*>(proxy))
+                {
+                    skeletalMeshComp->SyncSceneProxy(*skeletalMeshProxy);
+                }
             }
         }
     }

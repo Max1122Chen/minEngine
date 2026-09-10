@@ -1011,7 +1011,8 @@ namespace minEngine
                                               const std::string& ownerClassName,
                                               const std::string& propertyPath,
                                               std::vector<uint8_t> beforeValue,
-                                              std::vector<uint8_t> afterValue)
+                                              std::vector<uint8_t> afterValue,
+                                              bool applyOnFirstExecute)
     {
         if (beforeValue == afterValue)
         {
@@ -1024,7 +1025,8 @@ namespace minEngine
             ownerClassName,
             propertyPath,
             std::move(beforeValue),
-            std::move(afterValue)));
+            std::move(afterValue),
+            applyOnFirstExecute));
     }
 
     bool SceneEditor::TryCaptureGameObjectSnapshotForDelete(uint64_t gameObjectId,

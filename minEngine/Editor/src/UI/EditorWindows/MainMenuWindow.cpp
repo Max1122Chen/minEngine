@@ -3,6 +3,7 @@
 #include "EditorGUIManager.h"
 #include "Shell/EditorCommandStack.h"
 #include "Shell/EditorUndoRedoActions.h"
+#include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
@@ -193,6 +194,8 @@ namespace minEngine
             const EditorSubModule* active = m_Context.GetActiveSubModule();
             const bool sceneMode = active && active->GetModuleId() == SceneEditor::kModuleId;
             const bool materialMode = active && active->GetModuleId() == MaterialEditor::kModuleId;
+            const bool animGraphMode =
+                active && active->GetModuleId() == AnimationGraphEditor::kModuleId;
 
             if (ImGui::MenuItem("Scene Editor", nullptr, sceneMode))
             {
@@ -202,6 +205,11 @@ namespace minEngine
             if (ImGui::MenuItem("Material Editor", nullptr, materialMode))
             {
                 m_Context.ActivateSubModule(MaterialEditor::kModuleId);
+            }
+
+            if (ImGui::MenuItem("Animation Graph Editor", nullptr, animGraphMode))
+            {
+                m_Context.ActivateSubModule(AnimationGraphEditor::kModuleId);
             }
 
             ImGui::EndMenu();

@@ -7,6 +7,7 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::AssetMeta)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::AssetMeta, AssetName)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::AssetMeta, AssetPath)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::AssetMeta, AssetType)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::AssetMeta, SourcePath)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::AssetMeta, Guid)
 ME_REFLECTION_ACCESSOR_END()
 

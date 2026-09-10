@@ -1,5 +1,6 @@
 #include "Services/AssetWorkflowModule.h"
 
+#include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
@@ -104,6 +105,14 @@ namespace minEngine
         ImGui::Text("Name: %s", selected->AssetName.c_str());
         ImGui::Text("Path: %s", selected->AssetPath.c_str());
         ImGui::Text("Type: %s", selected->AssetType.c_str());
+        if (!selected->SourcePath.empty())
+        {
+            ImGui::Text("Source: %s", selected->SourcePath.c_str());
+            if (ImGui::Button("Reimport"))
+            {
+                m_Owner.TryReimportSelectedAsset();
+            }
+        }
         ImGui::Text("Guid: %s", selected->Guid.ToString().c_str());
         ImGui::End();
     }
@@ -121,6 +130,7 @@ namespace minEngine
         m_PendingSave = nullptr;
         m_PendingCheckKind = PendingUnsavedCheckKind::None;
         m_UnsavedDialog.Close();
+        m_ImportDialog.Close();
         m_Context = nullptr;
     }
 
@@ -130,6 +140,12 @@ namespace minEngine
         if (choice != UnsavedChangesChoice::None)
         {
             HandleUnsavedDialogChoice(choice);
+        }
+
+        const EditorImportDialogAction importAction = m_ImportDialog.Draw();
+        if (importAction != EditorImportDialogAction::None)
+        {
+            HandleImportDialogAction(importAction);
         }
     }
 
@@ -143,6 +159,12 @@ namespace minEngine
     {
         const MaterialEditor* materialEditor = GetMaterialEditor(m_Context);
         return materialEditor != nullptr && materialEditor->GetSession().Dirty;
+    }
+
+    bool AssetWorkflowModule::IsAnimationGraphDirty() const
+    {
+        const AnimationGraphEditor* animGraphEditor = GetAnimationGraphEditor(m_Context);
+        return animGraphEditor != nullptr && animGraphEditor->GetSession().Dirty;
     }
 
     bool AssetWorkflowModule::SaveSceneDocument()
@@ -165,6 +187,17 @@ namespace minEngine
         }
 
         return materialEditor->SaveActiveMaterial();
+    }
+
+    bool AssetWorkflowModule::SaveAnimationGraphDocument()
+    {
+        AnimationGraphEditor* animGraphEditor = GetAnimationGraphEditor(m_Context);
+        if (animGraphEditor == nullptr)
+        {
+            return false;
+        }
+
+        return animGraphEditor->SaveActiveGraph();
     }
 
     bool AssetWorkflowModule::RunWithUnsavedCheck(
@@ -251,6 +284,16 @@ namespace minEngine
             }
         }
 
+        if (EditorSubModule* animGraphModule =
+                m_Context->FindSubModule(AnimationGraphEditor::kModuleId))
+        {
+            if (animGraphModule->CanOpenAsset(meta) && animGraphModule->OpenAsset(meta))
+            {
+                m_Context->ActivateSubModule(AnimationGraphEditor::kModuleId);
+                return true;
+            }
+        }
+
         if (EditorSubModule* sceneModule = m_Context->FindSubModule(SceneEditor::kModuleId))
         {
             if (sceneModule->CanOpenAsset(meta) && sceneModule->OpenAsset(meta))
@@ -272,7 +315,8 @@ namespace minEngine
 
         const bool openingMaterial = meta.AssetType == "Material";
         const bool openingScene = meta.AssetType == "Scene";
-        if (!openingMaterial && !openingScene)
+        const bool openingAnimationGraph = meta.AssetType == "AnimationGraph";
+        if (!openingMaterial && !openingScene && !openingAnimationGraph)
         {
             ME_CORE_WARN(
                 "AssetWorkflow: unsupported asset type '{}' for '{}'.",
@@ -283,7 +327,9 @@ namespace minEngine
 
         const char* message = openingMaterial
             ? "Save changes to the current material before opening another asset?"
-            : "Save changes to the current scene before opening another scene?";
+            : openingAnimationGraph
+                ? "Save changes to the current animation graph before opening another asset?"
+                : "Save changes to the current scene before opening another scene?";
 
         auto proceed = [this, meta]()
         {
@@ -302,6 +348,15 @@ namespace minEngine
                 message,
                 [this]() { return IsMaterialDirty(); },
                 [this]() { return SaveMaterialDocument(); },
+                std::move(proceed));
+        }
+
+        if (openingAnimationGraph)
+        {
+            return RunWithUnsavedCheck(
+                message,
+                [this]() { return IsAnimationGraphDirty(); },
+                [this]() { return SaveAnimationGraphDocument(); },
                 std::move(proceed));
         }
 
@@ -479,20 +534,30 @@ namespace minEngine
     {
         const bool sceneDirty = IsSceneDirty();
         const bool materialDirty = IsMaterialDirty();
-        if (!sceneDirty && !materialDirty)
+        const bool animGraphDirty = IsAnimationGraphDirty();
+        if (!sceneDirty && !materialDirty && !animGraphDirty)
         {
             return true;
         }
 
-        const char* message = sceneDirty && materialDirty
-            ? "Save scene and material changes before exiting?"
-            : sceneDirty
-                ? "Save scene changes before exiting?"
-                : "Save material changes before exiting?";
+        const char* message = "Save unsaved document changes before exiting?";
+        if (sceneDirty && !materialDirty && !animGraphDirty)
+        {
+            message = "Save scene changes before exiting?";
+        }
+        else if (!sceneDirty && materialDirty && !animGraphDirty)
+        {
+            message = "Save material changes before exiting?";
+        }
+        else if (!sceneDirty && !materialDirty && animGraphDirty)
+        {
+            message = "Save animation graph changes before exiting?";
+        }
 
         return RunWithUnsavedCheck(
             message,
-            [sceneDirty, materialDirty]() { return sceneDirty || materialDirty; },
+            [sceneDirty, materialDirty, animGraphDirty]()
+            { return sceneDirty || materialDirty || animGraphDirty; },
             [this]()
             {
                 bool saved = true;
@@ -503,6 +568,10 @@ namespace minEngine
                 if (IsMaterialDirty())
                 {
                     saved = SaveMaterialDocument() && saved;
+                }
+                if (IsAnimationGraphDirty())
+                {
+                    saved = SaveAnimationGraphDocument() && saved;
                 }
                 return saved;
             },
@@ -527,6 +596,12 @@ namespace minEngine
         FileDialogRequest request;
         request.Title = "Import Assets";
         request.Filters = AssetTypeRegistry::Get().BuildFileDialogFilters();
+        const std::vector<FileDialogFilter> importSourceFilters =
+            AssetTypeRegistry::Get().BuildImportSourceFileDialogFilters();
+        request.Filters.insert(
+            request.Filters.begin(),
+            importSourceFilters.begin(),
+            importSourceFilters.end());
         request.bAllowMultiple = true;
         request.InitialDirectory = projectContentRoot;
 
@@ -554,33 +629,183 @@ namespace minEngine
 
         EditorFilesystemMutationPass::NoteMutatedAbsolutePath(destDirectory);
 
+        std::vector<std::filesystem::path> autoImportPaths;
+        std::vector<std::string> autoImportProductIds;
+        std::vector<std::filesystem::path> pendingChoicePaths;
+        autoImportPaths.reserve(dialogResult.Paths.size());
+        autoImportProductIds.reserve(dialogResult.Paths.size());
+        pendingChoicePaths.reserve(dialogResult.Paths.size());
+
+        for (const std::filesystem::path& sourcePath : dialogResult.Paths)
+        {
+            const std::vector<const ImportProductDescriptor*> compatible =
+                CollectCompatibleImportProducts(sourcePath);
+            if (compatible.empty())
+            {
+                ME_CORE_ERROR(
+                    "ImportAssetDialog: no import product accepts '{}'",
+                    sourcePath.string());
+                continue;
+            }
+
+            if (compatible.size() == 1 && !compatible[0]->bNeedsSkeletonPicker)
+            {
+                autoImportPaths.push_back(sourcePath);
+                autoImportProductIds.push_back(compatible[0]->ProductId);
+            }
+            else
+            {
+                pendingChoicePaths.push_back(sourcePath);
+            }
+        }
+
+        int successCount = 0;
+        int failCount = 0;
+
+        {
+            AssetManager::AssetRegistryBroadcastBatchScope batchScope;
+            for (size_t index = 0; index < autoImportPaths.size(); ++index)
+            {
+                ImportRequest importRequest;
+                importRequest.SourcePath = autoImportPaths[index];
+                importRequest.DestDirectory = destDirectory;
+                importRequest.ProductId = autoImportProductIds[index];
+
+                const ImportResult importResult = AssetManager::Get().Import(importRequest);
+                if (!importResult.bSuccess)
+                {
+                    ++failCount;
+                    ME_CORE_ERROR(
+                        "ImportAssetDialog: failed to import '{}': {}",
+                        autoImportPaths[index].string(),
+                        importResult.ErrorMessage);
+                    continue;
+                }
+
+                ++successCount;
+                const std::string createdPath = importResult.Created.empty()
+                    ? std::string()
+                    : importResult.Created.front().AssetPath;
+                ME_CORE_INFO(
+                    "ImportAssetDialog: imported '{}' as '{}' (product '{}')",
+                    autoImportPaths[index].string(),
+                    createdPath,
+                    autoImportProductIds[index]);
+            }
+        }
+
+        if (!pendingChoicePaths.empty())
+        {
+            m_ImportDialog.Open(std::move(pendingChoicePaths), destDirectory);
+        }
+
+        ME_CORE_INFO(
+            "ImportAssetDialog: {} auto-imported succeeded, {} failed; {} pending product choice.",
+            successCount,
+            failCount,
+            m_ImportDialog.IsOpen() ? m_ImportDialog.GetSourcePaths().size() : 0);
+    }
+
+    std::vector<const ImportProductDescriptor*> AssetWorkflowModule::CollectCompatibleImportProducts(
+        const std::filesystem::path& sourcePath)
+    {
+        std::vector<const ImportProductDescriptor*> compatible;
+        const std::string extension = sourcePath.extension().string();
+        for (const ImportProductDescriptor& product : AssetManager::Get().GetImportProducts())
+        {
+            if (product.AcceptsSourceExtension != nullptr
+                && product.AcceptsSourceExtension(extension))
+            {
+                compatible.push_back(&product);
+            }
+        }
+
+        return compatible;
+    }
+
+    void AssetWorkflowModule::HandleImportDialogAction(EditorImportDialogAction action)
+    {
+        if (action == EditorImportDialogAction::Cancel || action == EditorImportDialogAction::None)
+        {
+            m_ImportDialog.Close();
+            return;
+        }
+
+        const std::string productId = m_ImportDialog.GetSelectedProductId();
+        const std::string skeletonAssetPath = m_ImportDialog.GetSkeletonAssetPath();
+        const std::filesystem::path destDirectory = m_ImportDialog.GetDestDirectory();
+        const std::vector<std::filesystem::path> sourcePaths = m_ImportDialog.GetSourcePaths();
+        m_ImportDialog.Close();
+
+        if (productId.empty() || sourcePaths.empty())
+        {
+            return;
+        }
+
         int successCount = 0;
         int failCount = 0;
 
         AssetManager::AssetRegistryBroadcastBatchScope batchScope;
-
-        for (const std::filesystem::path& sourcePath : dialogResult.Paths)
+        for (const std::filesystem::path& sourcePath : sourcePaths)
         {
-            const ImportAssetResult importResult =
-                AssetManager::Get().ImportAsset(sourcePath, destDirectory);
+            ImportRequest importRequest;
+            importRequest.SourcePath = sourcePath;
+            importRequest.DestDirectory = destDirectory;
+            importRequest.ProductId = productId;
+            importRequest.SkeletonAssetPath = skeletonAssetPath;
+
+            const ImportResult importResult = AssetManager::Get().Import(importRequest);
             if (!importResult.bSuccess)
             {
                 ++failCount;
                 ME_CORE_ERROR(
-                    "ImportAssetDialog: failed to import '{}': {}",
+                    "ImportAssetDialog: failed to import '{}' as '{}': {}",
                     sourcePath.string(),
+                    productId,
                     importResult.ErrorMessage);
                 continue;
             }
 
             ++successCount;
+            const std::string createdPath = importResult.Created.empty()
+                ? std::string()
+                : importResult.Created.front().AssetPath;
             ME_CORE_INFO(
-                "ImportAssetDialog: imported '{}' as '{}'",
+                "ImportAssetDialog: '{}' → '{}' (product '{}')",
                 sourcePath.string(),
-                importResult.Meta.AssetPath);
+                createdPath,
+                productId);
         }
 
-        ME_CORE_INFO("ImportAssetDialog: {} succeeded, {} failed.", successCount, failCount);
+        ME_CORE_INFO(
+            "ImportAssetDialog product import: {} succeeded, {} failed.",
+            successCount,
+            failCount);
+
+        RefreshContentBrowser();
+    }
+
+    bool AssetWorkflowModule::TryReimportSelectedAsset()
+    {
+        const AssetMeta* selected = GetSelectedAsset();
+        if (selected == nullptr)
+        {
+            return false;
+        }
+
+        std::string errorMessage;
+        if (!AssetManager::Get().Reimport(selected->AssetPath, errorMessage))
+        {
+            ME_CORE_ERROR(
+                "Reimport failed for '{}': {}",
+                selected->AssetPath,
+                errorMessage);
+            return false;
+        }
+
+        ME_CORE_INFO("Reimported '{}'", selected->AssetPath);
+        RefreshContentBrowser();
+        return true;
     }
 
     void AssetWorkflowModule::SetSelectedAsset(const AssetMeta* meta)

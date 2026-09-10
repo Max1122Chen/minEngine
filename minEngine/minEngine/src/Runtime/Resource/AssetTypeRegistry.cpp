@@ -3,6 +3,10 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/SkeletalMesh.h"
+#include "Runtime/Function/Animation/Skeleton.h"
+#include "Runtime/Function/Animation/AnimationClip.h"
+#include "Runtime/Function/Animation/AnimationGraph.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Resource/Font.h"
@@ -59,12 +63,42 @@ namespace minEngine
             .FileDialogFilterLabel = "Texture2D (*.png;*.jpg;*.jpeg)"});
         m_AssetTypeIdByClass[Texture2D::StaticClass()] = "Texture2D";
 
+        // Engine-owned geometry only. FBX/glTF are Import Sources (ASSET-F01), not AssetTypes.
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "StaticMesh",
             .RuntimeClassName = GetClassName<StaticMesh>(),
-            .Extensions = {".obj", ".fbx", ".gltf"},
-            .FileDialogFilterLabel = "Static Mesh (*.obj;*.fbx;*.gltf)"});
+            .Extensions = {".obj"},
+            .FileDialogFilterLabel = "Static Mesh (*.obj)"});
         m_AssetTypeIdByClass[StaticMesh::StaticClass()] = "StaticMesh";
+
+        // Transitional cooked/engine-owned format (MVP B). Source FBX/glTF import writes .glb.
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "SkeletalMesh",
+            .RuntimeClassName = GetClassName<SkeletalMesh>(),
+            .Extensions = {".glb"},
+            .FileDialogFilterLabel = "Skeletal Mesh (*.glb)"});
+        m_AssetTypeIdByClass[SkeletalMesh::StaticClass()] = "SkeletalMesh";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "Skeleton",
+            .RuntimeClassName = GetClassName<Skeleton>(),
+            .Extensions = {".meskeleton"},
+            .FileDialogFilterLabel = "Skeleton (*.meskeleton)"});
+        m_AssetTypeIdByClass[Skeleton::StaticClass()] = "Skeleton";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "AnimationClip",
+            .RuntimeClassName = GetClassName<AnimationClip>(),
+            .Extensions = {".meaclip"},
+            .FileDialogFilterLabel = "Animation Clip (*.meaclip)"});
+        m_AssetTypeIdByClass[AnimationClip::StaticClass()] = "AnimationClip";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "AnimationGraph",
+            .RuntimeClassName = GetClassName<AnimationGraph>(),
+            .Extensions = {".meagraph"},
+            .FileDialogFilterLabel = "Animation Graph (*.meagraph)"});
+        m_AssetTypeIdByClass[AnimationGraph::StaticClass()] = "AnimationGraph";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Material",
@@ -306,5 +340,22 @@ namespace minEngine
         return {FileDialogFilter{
             .Label = descriptor->FileDialogFilterLabel,
             .ExtensionSpec = BuildExtensionSpec(descriptor->Extensions)}};
+    }
+
+    std::vector<FileDialogFilter> AssetTypeRegistry::BuildImportSourceFileDialogFilters() const
+    {
+        return {
+            FileDialogFilter{
+                .Label = "Mesh Import Sources (*.fbx;*.gltf;*.glb)",
+                .ExtensionSpec = "fbx,gltf,glb"},
+            FileDialogFilter{.Label = "FBX (*.fbx)", .ExtensionSpec = "fbx"},
+            FileDialogFilter{.Label = "glTF (*.gltf;*.glb)", .ExtensionSpec = "gltf,glb"},
+        };
+    }
+
+    bool AssetTypeRegistry::IsExternalMeshSourceExtension(std::string_view extension)
+    {
+        const std::string normalized = NormalizeExtension(extension);
+        return normalized == ".fbx" || normalized == ".gltf" || normalized == ".glb";
     }
 }

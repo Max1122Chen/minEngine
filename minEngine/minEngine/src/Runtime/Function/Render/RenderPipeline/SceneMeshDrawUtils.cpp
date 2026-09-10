@@ -33,7 +33,9 @@ namespace minEngine
                 continue;
             }
 
-            RHIShader* shader = material->GetGPUShader();
+            RHIShader* shader = drawCommand.m_bSkinned
+                ? material->GetGPUShaderSkinned()
+                : material->GetGPUShader();
             if (!shader)
             {
                 continue;
@@ -80,7 +82,11 @@ namespace minEngine
                 continue;
             }
 
-            RHIShaderBindingSet* set0 = sceneBindings.BindNextPerObjectModel(cmdList, drawCommand.m_ModelMatrix);
+            RHIShaderBindingSet* set0 = sceneBindings.BindNextPerObjectModel(
+                cmdList,
+                drawCommand.m_ModelMatrix,
+                drawCommand.m_BonePalette,
+                drawCommand.m_BoneCount);
             if (!set0)
             {
                 continue;

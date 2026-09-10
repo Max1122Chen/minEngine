@@ -32,7 +32,8 @@ namespace minEngine
         static std::string BuildVertexIoBlock(
             int numTexCoords,
             bool includeSceneLightingVaryings,
-            bool usesTangentFrame);
+            bool usesTangentFrame,
+            bool skinned);
         static std::string BuildFragmentInTexCoords(int numTexCoords);
         static std::string BuildFragmentLightingVaryings(int numTexCoords, bool usesTangentFrame);
         static std::string BuildFragmentWorldNormal(const MaterialCompileEnvironment& env);
