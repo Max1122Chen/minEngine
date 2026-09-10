@@ -5,17 +5,17 @@
 - **Type:** Feature
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-10（空 State Clip 允许 + hold-last Pose；ED-F06 画布）
-- **Branch:** `feat/animation`
+- **Last updated:** 2026-09-10（合入 master；人型闭环 smoke 收口待完成）
+- **Branch:** `master`（原 `feat/animation`）
 - **Related:**
   - [Implementation Plan](./ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - Prerequisite: [ANIM-F01](./ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md)（Done）· [ANIM-F02](./ANIM-F02_CLIP_PLAYBACK_DESIGN.md)（Done）
-  - Shared params: [CORE-F08 Design](../Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](../Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md)
+  - Shared params: **CORE-F13** — [Design](../Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](../Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md)（文件名历史 `CORE-F08_PARAMETER_*`）
   - Asset Import: [ASSET-F02](../Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md)（Done；多 Clip 共用 Skeleton）
-  - Editor substrate: `Runtime/Function/EditorGraph/`（与 Material 同 canvas 能力，不同 schema）
+  - Editor substrate: `Runtime/Function/EditorGraph/`；真·SM 画布 **ED-F06/F07**
 - **Depends on:**
-  - `ANIM-F02` — **Done**（`AnimationClip` / `AnimationPlayer` / SMC 单 Clip 路径）
-  - `CORE-F08` S00–S02 — **Done**（含 Schema `ME_STRUCT` JSON 往返 `99d05b9`；Graph 可直接内嵌 `ParameterSchema`；**禁止** ParamDef 旁路）
+  - `ANIM-F02` — **Done**
+  - `CORE-F13`（文档旧称 CORE-F08 Parameter）S00–S02 — **Done**
 - **Implementation Plan:** [ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md](./ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md)
 
 ## TL;DR

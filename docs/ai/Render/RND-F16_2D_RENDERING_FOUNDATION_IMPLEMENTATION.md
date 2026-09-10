@@ -2,14 +2,13 @@
 
 ## Meta
 - **ID:** `RND-F16`
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-04
+- **Last updated:** 2026-09-10
 - **Related:** [Design Spec](./RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md)
 
 ## TL;DR
-Path A（Sprite）**Done**。下一刀 **Path B（ScreenUI）**：Queue@`SceneRenderContext` → Pass → `WidgetComponent`（无 Canvas）。详见 Design §10。
-
+Path A（Sprite）与 Path B（ScreenUI Queue/Pass）均已随 `feat/ui` 合入 `master`。后续 UI 行为见 `UI-F01`–`UI-F03`。
 ## Scope
 - **In:** Path A 全套；Path B：`UIDrawCommand` / `ScreenUIQueue` / `ScreenUIPass` / `WidgetComponent`+Proxy；复用 `SpriteQuadMesh`
 - **Out:** Canvas；Layout/Hit-test；UVRect GPU remap；Billboard；ImGui 耦合

@@ -1,15 +1,15 @@
 # Feature Registry
 
-Last updated: 2026-09-10锛坢erge wave: core+editor+gameplay锛?
+Last updated: 2026-09-10（docs align：merge wave 后 Status / Next free）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
 
 1. **Register a row before** creating Design Spec or assigning `<DOMAIN>-Fnn` in docs.
-2. Pick the next free number for that `DOMAIN` (see [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) 搂3).
-3. Set Status: `Planned` 鈫?`In Progress` 鈫?`Done` | `Deferred` | `Cancelled`.
+2. Pick the next free number for that `DOMAIN` (see [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) §3).
+3. Set Status: `Planned` → `In Progress` → `Done` | `Deferred` | `Cancelled`.
 4. Link the Design (or Implementation) path in **Design** column.
-5. Do not reuse IDs; deprecate by setting Status `Cancelled` and a note 鈥?do not recycle numbers.
+5. Do not reuse IDs; deprecate by setting Status `Cancelled` and a note — do not recycle numbers.
 6. Architecture / Core vs Plugin choices: [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md). Stage tracks: [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
 
 ---
@@ -18,75 +18,93 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 | Feature ID | Title | Status | Owner | Design / plan |
 |------------|-------|--------|-------|----------------|
-| `CLI-F01` | Unified command-line interface | Done | 鈥?| [CLI_UNIFIED_DESIGN](./Platform/CLI/CLI_UNIFIED_DESIGN.md) |
-| `TEST-F01` | Test runner, suite registry, verify integration | Done | 鈥?| [TEST_UNIFIED_DESIGN](./Platform/Test/TEST_UNIFIED_DESIGN.md) |
-| `TEST-F02` | Test layout migration, doctest, minEngineTests exe | Done | 鈥?| [TEST_F02_LAYOUT_MIGRATION](./Platform/Test/TEST_F02_LAYOUT_MIGRATION.md) |
-| `TEST-F03` | Suite slim-down, doctest cases, fixture B reflection | Done | 鈥?| [TEST_F03_SUITE_SLIM_PLAN](./Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md) |
-| `TEST-F04` | `Testing::TestAccess<T>` 鈥?Core 鍓嶅悜澹版槑 + Tests 鐗瑰寲锛屾浛浠?N 涓?TestScope friend | **Done** | 鈥?| [Design](./Platform/Test/TEST-F04_TEST_ACCESS_DESIGN.md) 路 S00鈥揝04 路 **`feat/core`** |
-| `WF-F01` | Documentation templates and collaboration governance | Done | 鈥?| [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
-| `WF-F02` | 鍗忎綔鑰呮枃妗ｇ珯锛圡kDocs 鍏紑鎵嬪唽 + GitHub Pages锛?| In Progress | 鈥?| [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) 路 [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) 鈥?楠ㄦ灦 Done锛屽瓙绯荤粺鏂囨。寰呰ˉ |
-| `CORE-F01` | Lua scripting runtime锛坰ol2 + System + LuaScript asset + LuaComponent锛?| Done | 鈥?| [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
-| `CORE-F02` | Lua Script binding codegen锛圫cript\* specifier 鈫?sol2锛?| Done | 鈥?| [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
-| `CORE-F03` | Transform 鍥涘厓鏁板瓨鍌紙Quaternion 绫诲瀷銆佸簭鍒楀寲銆両nspector 娆ф媺 Widget锛?| Done | 鈥?| [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) 路 [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
-| `CORE-F04` | Multicast Delegates锛圢ative 澶氭挱锛涜В閿?PHYS-F03锛?| **Done** | 鈥?| [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) 路 [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
-| `CORE-F05` | Play Mode锛圗dit/Play銆佸弻 Scene銆両nspecting Context锛?| **Done**锛圡VP锛?| 鈥?| [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) 路 [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) 路 [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) 路 **`master`** 路 S05 Pause/Step Deferred锛汿D-030 Open锛汿D-028/029 鈫?**CORE-F09 Done** |
-| `CORE-F06` | Component Activate锛坄m_bActive`銆乣ApplyActivation`銆丼ystem 璺宠繃 inactive锛?| **Done** | 鈥?| [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) 路 [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) 路 **`master`** |
-| `CORE-F07` | 鍙嶅皠/Inspector 灞曠ず鍚嶏紙鍘?`m_`/`x_`/`b_` 鍓嶇紑 + 椹煎嘲鍒嗚瘝锛?| **Done** | 鈥?| [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) 路 **`master`** |
-| `CORE-F08` | 搴忓垪鍖栫郴缁熸暣鐞嗭紙StaticClass API銆佸垹姝讳唬鐮併€丳1 鍐呴儴鏁寸悊锛涗笉鏀?Binary wire锛汿D-026 Deferred锛?| **Done** | 鈥?| [Design](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) 路 [Impl](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_IMPLEMENTATION.md) 路 **`feat/core`** |
-| `CORE-F09` | Binary wire 鍗忚 v2锛圱ransient Ids锛汿D-028/029锛汸ersistent 濂戠害锛?| **Done** | 鈥?| [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) 路 [Impl](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_IMPLEMENTATION.md) 路 **`feat/core`** 路 Transient only锛涘瓨鐩?Binary 鏈仛 |
-| `CORE-F10` | JSON 瀛樼洏鍏煎锛堝鏉炬湭鐭ュ瓧娈?+ `$schemaVersion` meta锛?| **Done** | 鈥?| [Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md) 路 [Impl](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_IMPLEMENTATION.md) 路 **`feat/core`** |
-| `CORE-F11` | 灞炴€?Getter/Setter native thunk + `AssignProperty`锛圱D-026 / BUG-CORE-001锛?| **Done** | 鈥?| [Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) 路 [Impl](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_IMPLEMENTATION.md) 路 **`feat/core`** |
-| `CORE-F12` | `ME_GENERATED_BODY()` 鍘绘棤鐢ㄧ被鍨嬪疄鍙?+ header-tool marker 褰掑睘鏀剁揣 | **Done** | 鈥?| [Design](./Platform/Reflection/CORE-F12_GENERATED_BODY_NO_ARG_DESIGN.md) 路 **`feat/core`** |
-| `RND-F01` | RenderGraph锛圡anual 鍥撅紱S0鈥揝05 Done锛?| **Draft / Superseded direction** | 鈥?| [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
-| `RND-F02` | Modern RHI | Done | 鈥?| [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
-| `RND-F03` | Legacy RHI removal | **Done** | 鈥?| [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
-| `RND-F04` | Modern RHI further evolution | **Done** | 鈥?| [Design](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) |
-| `RND-F05` | Vulkan backend + SPIR-V | **Done** | 鈥?| [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) 路 [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) |
-| `RND-F06` | ForwardRenderer | **In Progress** | 鈥?| [RND-F06_FORWARD_RENDERER_DESIGN](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) 路 S01鈥揝02 Done |
-| `RND-F07` | Granite-style RDG + 甯ц祫婧愭墍鏈夋潈 | **Done** *(shell)* | 鈥?| [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) |
-| `RND-F08`鈥揱F11` | Shadow 鎵€鏈夋潈 / RHI hygiene / EnvMap / DebugDrawing | **Done** | 鈥?| 瑙佸悇 Design |
-| `RND-F12` | Granite RDG 璇箟鍏ㄥ鍒?| **Deferred** *(鍗敓椤?* | 鈥?| [Design](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md) 路 涓嶆尅褰撳墠 backlog |
-| `RND-F13` | ManualRenderer锛圧eference锛?| **Done** | 鈥?| [Design](./Render/RND-F13_MANUAL_RENDERER_DESIGN.md) |
-| `RND-F14` | ShadowPass UBO 瀵垮懡 | **Done** | 鈥?| [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
-| `RND-F16` | Sprite 2D 娓叉煋锛圲I 鍓嶇疆锛?| **Planned** | 鈥?| [Placeholder](./Render/RND-F16_SPRITE_2D_DESIGN.md) 路 鎰挎櫙锛?*涓嶉樆濉?* |
-| `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 闃村奖璐ㄩ噺 **Deferred**)* | 鈥?| [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) 路 [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
-| `ED-F02` | Editor Workflow锛堟墦寮€/鍒涘缓 Scene路Material銆丼kyBox銆乂iewport銆丆omponent UI锛?| **In Progress** *(S00鈥揝02/S04 Done锛汼03/S05 浣欓噺)* | 鈥?| [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) 路 [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) 路 **`master`** |
-| `ED-F03` | Editor Play Toolbar锛圴iewport 涓夎锛歍ab / Toolbar / 涓讳綋锛?| **Done** | 鈥?| [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
-| `ED-F04` | Debug Console & Unified Command System锛圧untime 鎺у埗闈?+ Agent-friendly锛?| **In Progress** *(MVP Done)* | 鈥?| [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) 路 S00鈥揝10a Done 路 **S10b Deferred** 路 S07 Deferred |
-| `ED-F05` | Inspector / Component UX锛堟敼鍚嶉€€鍑恒€丄dd 鍥炬爣/鎼滅储銆佺粍浠跺ご銆侀噸鎺掋€丆B 鍐呰仈閲嶅懡鍚嶏紱瑙嗗彛鍥炬爣 Deferred锛?| **Done**锛圫05 Deferred锛?| 鈥?| [Design](./Editor/ED-F05_INSPECTOR_COMPONENT_UX_DESIGN.md) 路 [Impl](./Editor/ED-F05_INSPECTOR_COMPONENT_UX_IMPLEMENTATION.md) 路 **`master`** |
-| `LAUN-F01` | Engine Launcher | **Done** | 鈥?| [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
-| `AUD-F01` | Audio system | **Done** | 鈥?| [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
-| `ANIM-F01` | Animation system | **Planned** | 鈥?| [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) 路 `feat/animation` 路 worktree `minEngine-animation` |
-| `UI-F01` | UI system | **Planned** | 鈥?| [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) 路 `feat/ui` 路 worktree `minEngine-ui` 路 渚濊禆 `RND-F16` |
-| `PHYS-F01` | Jolt physics bootstrap | Done | 鈥?| [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
-| `PHYS-F02` | Collision + query shapes | Done | 鈥?| [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
-| `PHYS-F03` | Contact gameplay dispatch | Deferred | 鈥?| [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
-| `PHYS-F04` | Collider 灏哄涓?Scale 瑙ｈ€?| **Done** | 鈥?| [Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) 路 **`master`** |
-| `GP-F01` | GameplayTag锛圡anager + Container锛汦ngine 瀛愮郴缁燂紱Native 瀹忥級 | **Done** | 鈥?| [Design](./Gameplay/GP-F01_GAMEPLAY_TAG_DESIGN.md) 路 [Impl](./Gameplay/GP-F01_GAMEPLAY_TAG_IMPLEMENTATION.md) 路 **`master`** 路 `test gameplay-tags` |
-| `GP-F02` | GameplayEventSystem锛圫cene 浣滅敤鍩?Component锛涙棤 Payload锛?| **Done** | 鈥?| [Design](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md) 路 [Impl](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_IMPLEMENTATION.md) 路 渚濊禆 GP-F01 路 **`master`** 路 `test gameplay-events` |
+| `CLI-F01` | Unified command-line interface | Done | — | [CLI_UNIFIED_DESIGN](./Platform/CLI/CLI_UNIFIED_DESIGN.md) |
+| `TEST-F01` | Test runner, suite registry, verify integration | Done | — | [TEST_UNIFIED_DESIGN](./Platform/Test/TEST_UNIFIED_DESIGN.md) |
+| `TEST-F02` | Test layout migration, doctest, minEngineTests exe | Done | — | [TEST_F02_LAYOUT_MIGRATION](./Platform/Test/TEST_F02_LAYOUT_MIGRATION.md) |
+| `TEST-F03` | Suite slim-down, doctest cases, fixture B reflection | Done | — | [TEST_F03_SUITE_SLIM_PLAN](./Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md) |
+| `TEST-F04` | `Testing::TestAccess<T>` — Core 前向声明 + Tests 特化，替代 N 个 TestScope friend | **Done** | — | [Design](./Platform/Test/TEST-F04_TEST_ACCESS_DESIGN.md) · **`master`** |
+| `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
+| `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | **In Progress** | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
+| `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
+| `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
+| `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
+| `CORE-F04` | Multicast Delegates（Native 多播；解锁 PHYS-F03） | **Done** | — | [Design](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) · [Impl](./Platform/Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_IMPLEMENTATION.md) |
+| `CORE-F05` | Play Mode（Edit/Play、双 Scene、Inspecting Context） | **Done**（MVP） | — | [Design](./Platform/Core/CORE-F05_PLAY_MODE_DESIGN.md) · [Impl](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) · [S06](./Platform/Core/CORE-F05_S06_INSPECTING_CONTEXT.md) · S05 Pause/Step Deferred；TD-030 Open |
+| `CORE-F06` | Component Activate（`m_bActive`、`ApplyActivation`、System 跳过 inactive） | **Done** | — | [Design](./Platform/Core/CORE-F06_COMPONENT_ENABLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F06_COMPONENT_ENABLE_IMPLEMENTATION.md) |
+| `CORE-F07` | 反射/Inspector 展示名（去 `m_`/`x_`/`b_` 前缀 + 驼峰分词） | **Done** | — | [Design](./Platform/Core/CORE-F07_REFLECTION_DISPLAY_NAMES_DESIGN.md) |
+| `CORE-F08` | 序列化系统整理（StaticClass API、删死代码、P1 内部整理；不改 Binary wire） | **Done** | — | [Design](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F08_SERIALIZATION_CLEANUP_IMPLEMENTATION.md) |
+| `CORE-F09` | Binary wire 协议 v2（Transient Ids；TD-028/029；Persistent 契约） | **Done** | — | [Design](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F09_BINARY_WIRE_PROTOCOL_IMPLEMENTATION.md) · Transient only；存盘 Binary 未做 |
+| `CORE-F10` | JSON 存盘兼容（宽松未知字段 + `$schemaVersion` meta） | **Done** | — | [Design](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_DESIGN.md) · [Impl](./Platform/Serialization/CORE-F10_JSON_DISK_COMPAT_IMPLEMENTATION.md) |
+| `CORE-F11` | 属性 Getter/Setter native thunk + `AssignProperty`（TD-026 / BUG-CORE-001） | **Done** | — | [Design](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_DESIGN.md) · [Impl](./Platform/Reflection/CORE-F11_PROPERTY_ACCESSOR_THUNKS_IMPLEMENTATION.md) |
+| `CORE-F12` | `ME_GENERATED_BODY()` 去无用类型实参 + header-tool marker 归属收紧 | **Done** | — | [Design](./Platform/Reflection/CORE-F12_GENERATED_BODY_NO_ARG_DESIGN.md) |
+| `CORE-F13` | Parameter Schema / Layout / Store（Anim Graph 等共享参数层） | **Done** | — | [Design](./Platform/Core/CORE-F08_PARAMETER_STORAGE_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_PARAMETER_STORAGE_IMPLEMENTATION.md) · 文件名保留历史 `CORE-F08_PARAMETER_*` |
+| `CORE-F14` | GameObject Hierarchy（父子 Transform） | **Done** | — | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_IMPLEMENTATION.md) · 文件名保留历史 `CORE-F08_GAMEOBJECT_*` |
+| `CORE-F15` | Parallel Hierarchy KeepWorld | **Done** | — | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · 文件名保留历史 `CORE-F09_*` |
+| `CORE-F16` | LinearColor 作者颜色（灯光等） | **Done** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · 文件名保留历史 `CORE-F14_*` |
+| `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
+| `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
+| `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
+| `RND-F04` | Modern RHI further evolution | **Done** | — | [Design](./Render/RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) |
+| `RND-F05` | Vulkan backend + SPIR-V | **Done** | — | [Design](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_DESIGN.md) · [Impl](./Render/RND-F05_VULKAN_MODERN_RHI_COMPLETION_IMPLEMENTATION.md) |
+| `RND-F06` | ForwardRenderer | **In Progress** | — | [RND-F06_FORWARD_RENDERER_DESIGN](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) · S01–S02 Done |
+| `RND-F07` | Granite-style RDG + 帧资源所有权 | **Done** *(shell)* | — | [Design](./Render/RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md) |
+| `RND-F08`–`F11` | Shadow 所有权 / RHI hygiene / EnvMap / DebugDrawing | **Done** | — | 见各 Design |
+| `RND-F12` | Granite RDG 语义全复刻 | **Deferred** *(卫生项)* | — | [Design](./Render/RND-F12_GRANITE_RDG_BAKE_SEMANTICS_DESIGN.md) · 不挡当前 backlog |
+| `RND-F13` | ManualRenderer（Reference） | **Done** | — | [Design](./Render/RND-F13_MANUAL_RENDERER_DESIGN.md) |
+| `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
+| `RND-F16` | Sprite / 2D Rendering Foundation（ScreenUI 绘制前置） | **Done** | — | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · 已合入 `master`（feat/ui） |
+| `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
+| `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **In Progress** *(S00–S02/S04 Done；S03/S05 余量)* | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) |
+| `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
+| `ED-F04` | Debug Console & Unified Command System（Runtime 控制面 + Agent-friendly） | **In Progress** *(MVP Done)* | — | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) · S00–S10a Done · **S10b Deferred** · S07 Deferred |
+| `ED-F05` | Inspector / Component UX（改名逃逸、Add 图标/搜索、组件头、重排、CB 内联重命名；视口图标 Deferred） | **Done**（S05 Deferred） | — | [Design](./Editor/ED-F05_INSPECTOR_COMPONENT_UX_DESIGN.md) · [Impl](./Editor/ED-F05_INSPECTOR_COMPONENT_UX_IMPLEMENTATION.md) |
+| `ED-F06` | State Machine Graph Canvas（Anim Graph 真·SM 画布） | **Done** | — | [Design](./Editor/ED-F05_STATE_MACHINE_CANVAS_DESIGN.md) · [Impl](./Editor/ED-F05_STATE_MACHINE_CANVAS_IMPLEMENTATION.md) · 文件名保留历史 `ED-F05_STATE_MACHINE_*` |
+| `ED-F07` | Anim SM Canvas Polish（Entry / AnyState / 边菜单 / 空 Clip） | **Done** | — | [Design](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_DESIGN.md) · [Impl](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_IMPLEMENTATION.md) · 文件名保留历史 `ED-F06_ANIM_SM_*` |
+| `ED-F08` | Hierarchy Tree（拖拽改父） | **Done** | — | [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) · 文件名保留历史 `ED-F05_HIERARCHY_*` |
+| `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
+| `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
+| `ASSET-F01` | External Import Pipeline（Assimp → 引擎资产；MVP） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S04 / `.memesh` Deferred |
+| `ASSET-F02` | Formal Import/Load 注册式管线 + ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) |
+| `ANIM-F01` | Skeletal Mesh Pipeline（Pose → palette → GPU） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · 旧 Placeholder `ANIM-F01_ANIMATION_SYSTEM_DESIGN.md` 已废弃勿用 |
+| `ANIM-F02` | Clip Playback（Track / Player / SMC / `.meaclip`） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |
+| `ANIM-F03` | Animation Graph MVP（FSM + Params + Pose Blend + Editor） | **In Progress** *(runtime+Editor 已合入；人型闭环 smoke 收口)* | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
+| `ANIM-F04` | Blend Tree 1D | **Review** | — | [Design](./Animation/ANIM-F04_BLEND_TREE_DESIGN.md) · [Impl](./Animation/ANIM-F04_BLEND_TREE_IMPLEMENTATION.md) · 待审批后再开实现 |
+| `ANIM-F05` | Nested State Machine | **Planned** | — | Design 未开；依赖 ANIM-F04 收口后再立 |
+| `UI-F01` | ScreenUI Canvas / Widget / Image / Layout MVP | **Done** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) |
+| `UI-F02` | ScreenUI Hit-test + Play pointer routing | **Done** | — | [Design](./Platform/UI/UI-F02_SCREENUI_HITTEST_DESIGN.md) |
+| `UI-F03` | ScreenUI Button（OnClicked + tint） | **Done** | — | [Design](./Platform/UI/UI-F03_SCREENUI_BUTTON_DESIGN.md) |
+| `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
+| `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
+| `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
+| `PHYS-F04` | Collider 尺寸与 Scale 解耦 | **Done** | — | [Design](./Physics/PHYS-F04_COLLIDER_FIXES_DESIGN.md) |
+| `GP-F01` | GameplayTag（Manager + Container；Engine 子系统；Native 宽） | **Done** | — | [Design](./Gameplay/GP-F01_GAMEPLAY_TAG_DESIGN.md) · [Impl](./Gameplay/GP-F01_GAMEPLAY_TAG_IMPLEMENTATION.md) · `test gameplay-tags` |
+| `GP-F02` | GameplayEventSystem（Scene 作用域 Component；无 Payload） | **Done** | — | [Design](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md) · [Impl](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_IMPLEMENTATION.md) · 依赖 GP-F01 · `test gameplay-events` |
 
 ---
 
-
----
-
-## Merge-wave ID remaps（feat/animation → master）
+## Merge-wave ID remaps（feat/animation · feat/ui → master）
 
 | 分支原 ID | master 正式 ID | 原因 |
 |-----------|----------------|------|
-| anim `CORE-F08` Parameter Store | **`CORE-F13`** | master `CORE-F08`–`F12` 已占用（序列化/反射/TestAccess） |
+| anim `CORE-F08` Parameter Store | **`CORE-F13`** | master `CORE-F08`–`F12` 已占用（序列化/反射） |
 | anim `ED-F05` SM Canvas | **`ED-F06`** | master `ED-F05` = Inspector Component UX |
 | anim `ED-F06` Canvas Polish | **`ED-F07`** | 顺延 |
-| 设计文件名 | 暂不改 | 路径仍含历史 `CORE-F08_PARAMETER_*` / `ED-F05_STATE_MACHINE_*` / `ED-F06_ANIM_SM_*` |
-| ui Hierarchy（docs CORE-F08 / Reg F12） | **`CORE-F14`** | F12–F13 已被 GENERATED_BODY / Parameter 占用 |
-| ui KeepWorld（docs CORE-F09 / Reg F13） | **`CORE-F15`** | 同上 |
-| ui LinearColor（`CORE-F14`） | **`CORE-F16`** | 顺延 |
-| ui Hierarchy Tree（`ED-F05`） | **`ED-F08`** | master ED-F05=Inspector；F06–F07=Anim canvas |
+| ui Hierarchy（docs CORE-F08） | **`CORE-F14`** | F12–F13 已被 GENERATED_BODY / Parameter 占用 |
+| ui KeepWorld（docs CORE-F09） | **`CORE-F15`** | 同上 |
+| ui LinearColor（docs CORE-F14） | **`CORE-F16`** | 顺延 |
+| ui Hierarchy Tree（docs ED-F05） | **`ED-F08`** | master ED-F05=Inspector；F06–F07=Anim canvas |
+| 设计文件名 | 暂不改 | 路径仍含历史前缀；以本表正式 ID 为准 |
 
+---
 
-## Vision placeholders锛堟棤鐙珛 Feature ID锛屼笉鎺掓湡锛?
-鐧昏浜?[ACTIVE_WORK.md](./ACTIVE_WORK.md) 涓?[ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)锛氬畬鏁?Gameplay **Plugins / ASC / GAS 涓婂眰**銆丯etworking / Net Game銆丳refab銆丱bject Lifetime/GC銆丷ender Sort/Batch锛堝緟鐧昏锛夈€丄gent-friendly 浣滀负**璁捐鍘熷垯**锛堣 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)锛夈€? 
-**渚嬪锛?* `GP-F01`/`GP-F02` 涓烘彁鍓嶈惤鍦扮殑**杞婚噺鏈哄埗鍩哄簳**锛圱ag + Scene Event bus锛夛紝涓嶆槸瀹屾暣 Framework銆?
+## Vision placeholders（无独立 Feature ID，不排期）
+
+登记在 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 与 [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)：完整 Gameplay **Plugins / ASC / GAS 上层**、Networking / Net Game、Prefab、Object Lifetime/GC、Render Sort/Batch（待登记）、Agent-friendly 作为**设计原则**（见 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)）。
+
+**例外：** `GP-F01`/`GP-F02` 为提前落地的**轻量机制底座**（Tag + Scene Event bus），不是完整 Framework。
+
+**明确不排期（动画扩展）：** Animation Event、IK、Root Motion、Retarget、完整 AnimBP。
+
 ---
 
 ## ID allocation by domain (next free)
@@ -94,18 +112,18 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | DOMAIN | Next Feature # | Notes |
 |--------|----------------|-------|
 | `CLI` | F02 | |
-| `TEST` | **F05** | F04 Done锛圱estAccess锛?|
-| `WF` | F03 | |
-| `CORE` | **F13** | F12 Done锛圙ENERATED_BODY no-arg锛夛紱F08鈥揊11 Done锛沗feat/core` |
-| `ASSET` | F01 | Async / Lifetime 鎰挎櫙瑙?Capability Roadmap锛涘皻鏈櫥璁?Feature |
-| `ED` | **F06** | F02 浣欓噺锛汧03 Done锛汧04 Console MVP锛?*F05 Done**锛圫05 Deferred锛?|
-| `RND` | **F17** | F16 Sprite 鍗犱綅锛汧12 Deferred |
+| `TEST` | **F05** | F04 Done（TestAccess） |
+| `WF` | F03 | F02 handbook In Progress |
+| `CORE` | **F17** | F13–F16 Done（Parameter / Hierarchy / KeepWorld / LinearColor） |
+| `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
+| `ED` | **F09** | F06–F08 Done；F02/F04 余量；F01 VK deferred |
+| `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
-| `ANIM` | F02 | F01 Planned锛汸rimary track 鍊欓€?|
-| `UI` | F02 | F01 鍗犱綅锛沗feat/ui` |
-| `PHYS` | F05 | F04 on `master` |
-| `GP` | **F03** | F01 Tag / F02 Event **Done**锛堝凡鍚堝叆 `master`锛?|
+| `ANIM` | **F06** | F01–F02 Done；F03 closeout；F04 Review；F05 Planned |
+| `UI` | **F04** | F01–F03 Done |
+| `PHYS` | F05 | F04 Done；F03 Deferred |
+| `GP` | **F03** | F01–F02 Done |
 | `MAT` | F01 | |
 
 Update **Next Feature #** when you register a new row.

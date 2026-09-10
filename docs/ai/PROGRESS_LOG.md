@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-10（merge wave: +ui 完成）
+Last updated: 2026-09-10（docs align post-merge）
+
+### 2026-09-10 - Docs align: Registry / ACTIVE_WORK / Capability after merge wave
+- **Why:** Active Registry rows still showed ANIM/UI/RND-F16 as Planned；Next free IDs and ACTIVE_WORK still pointed at pre-merge feat/* focus.
+- **Done:** FEATURE_REGISTRY 补齐 CORE-F13–F16、ED-F06–F08、ASSET-F01–F02、ANIM-F01–F05、UI-F01–F03；修正 Next free；ACTIVE_WORK 改为「无锁定 Primary + 候选 A–D」；Capability Roadmap M1–M3 landed + §4/§7；PROJECT_CONTEXT / BOOTSTRAP_DIGEST；RND-F16 Design/Impl → Done。
+- **Engineering note:** merge fallout build fix already on master (`54b228e`); verify earlier smoke/full PASS.
+- **Next:** 维护者选定下一 Primary（见 ACTIVE_WORK）。
+
 ### 2026-09-10 - Merge: feat/ui → master
 - **Code:** ScreenUI / Sprite / Hierarchy / KeepWorld / LinearColor；`ForwardRenderer`/`RenderScene` 同时保留 Skeletal + Sprite；Hierarchy 树 + ED-F05 Inspector 组件 API 并存；TestAccess 保留并迁移 UI tests。
 - **Docs ID remap:** Hierarchy→**CORE-F14**；KeepWorld→**CORE-F15**；LinearColor→**CORE-F16**；Hierarchy Tree→**ED-F08**。

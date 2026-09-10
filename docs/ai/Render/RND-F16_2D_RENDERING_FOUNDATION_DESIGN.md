@@ -3,18 +3,18 @@
 ## Meta
 - **ID:** `RND-F16`
 - **Type:** Feature
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-04
-- **Branch:** `feat/ui`
+- **Last updated:** 2026-09-10
+- **Branch:** `master`（via `feat/ui` merge）
 - **Related:**
-  - [UI-F01](../Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)（Canvas / Layout 消费者；Path B 之后）
+  - [UI-F01](../Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md)（Canvas / Layout 消费者）
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - 外部底稿：[minEngine_ui_mvp_suggestions.md](../../external/minEngine_ui_mvp_suggestions.md)
   - 代码对照：`SceneRenderContext` / `ForwardRenderer` / `SpriteQuadMesh` / SkyBox 登记模式
   - UE：Paper2D；UMG Screen vs 本引擎有 Proxy + ScreenUIQueue
 - **Depends on:** Modern RHI + `ForwardRenderer` / Manual RDG（可用即可）
-- **Blocks:** `UI-F01` Screen-space 绘制
+- **Blocks:** （原 Path B 阻塞已解除）`UI-F01`–`UI-F03` 已合入
 - **Implementation:** [RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md](./RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md)
 
 ## TL;DR
@@ -22,9 +22,10 @@
 **问题：** Sprite（世界面片）与 Screen Widget（HUD）不能走同一条 Overlay 通道。
 
 **方案：** 共享 2D 原语 + 分路径。  
-- **Path A（已落地）：** `SpriteComponent` → Opaque/Translucent；透明性 = Color.a 或纹理可能含 alpha；无阴影 / 无 billboard。  
-- **Path B（下一主线）：** `WidgetComponent` → `ScreenUIQueue`（在 `SceneRenderContext`）→ ScreenUI Pass；像素 + 左上；关深度；**无 Canvas**（留给 UI-F01）。
+- **Path A：** `SpriteComponent` → Opaque/Translucent；透明性 = Color.a 或纹理可能含 alpha；无阴影 / 无 billboard。  
+- **Path B：** `WidgetComponent` → `ScreenUIQueue` → ScreenUI Pass；像素 + 左上；关深度。Canvas / Layout / Hit-test / Button 由 **UI-F01–F03** 承接（均已 Done）。
 
+**Status：** Feature **Done**（随 feat/ui 合入 master）。
 ## Scope
 
 ### In（本 Feature）

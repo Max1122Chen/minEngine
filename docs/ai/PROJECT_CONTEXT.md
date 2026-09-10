@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-09-03
+Last updated: 2026-09-10
 
 ## 1) Project Goal
 
@@ -26,7 +26,7 @@ Implemented or in-progress capabilities:
 - Modern RHI + MeshDrawPacket (RND-F02/F04 Done).
 - Manual RenderGraph: Shadow → Scene → Post → Present (RND-F01 S0–S04 Done).
 - Base / translucency / present / directional (and related) shadows.
-- Next render side-track: Sort/Batch (Capability Roadmap); **RND-F06** continues without blocking Animation.
+- Next render side-track: Sort/Batch (Capability Roadmap); **RND-F06** continues without blocking experience tracks. Animation / Sprite / ScreenUI MVP already on `master`.
 
 Known risk themes from recent work:
 - Per-frame container cleanup must be explicit.
@@ -62,14 +62,14 @@ When finishing a task, AI should:
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
 - Place new design docs in the correct docs/ai/ subtree per docs-ai-layout rule.
 
-## 6) Current product direction (2026-09-03)
+## 6) Current product direction (2026-09-10)
 
-- **Stage:** capability expansion + full developer experience; **Primary track** Animation → 2D → UI; parallel Infra / Render / DX — see [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
+- **Stage:** M1 Animation + M2 2D + M3 UI MVP **landed on `master`**; next Primary **unset** — choose in [ACTIVE_WORK.md](./ACTIVE_WORK.md). Parallel Infra / Render / DX — see [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
 - **Play Mode:** **CORE-F05** MVP Done (dual Scene PIE, Inspecting Context).
-- **Platform Core:** Lua + script binding Done；delegates Done；serialization usable (Binary protocol debt TD-028).
-- **Editor:** Console MVP (**ED-F04**); Workflow **ED-F02** Planned; Play Toolbar Done.
-- **Gameplay Framework / Networking:** Future, plugin-oriented — do not rush into Core.
-- **Active backlog:** [ACTIVE_WORK.md](./ACTIVE_WORK.md).
+- **Platform Core:** Lua + script binding Done；delegates Done；serialization usable (Binary protocol debt)；Parameter Store **CORE-F13** Done；Hierarchy **CORE-F14/F15** Done.
+- **Editor:** Console MVP (**ED-F04**); Workflow **ED-F02** In Progress（S03/S05 余量）; Inspector UX **ED-F05** Done; Anim SM Canvas **ED-F06/F07** Done; Hierarchy Tree **ED-F08** Done.
+- **Gameplay Framework / Networking:** Future, plugin-oriented — light Tag/Event (**GP-F01/F02**) only; do not rush full Framework into Core.
+- **Active backlog:** [ACTIVE_WORK.md](./ACTIVE_WORK.md) · IDs [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md).
 
 ## 7) Material Editor (stable)
 
