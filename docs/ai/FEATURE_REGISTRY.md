@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-06（CORE-F14 Done）
+Last updated: 2026-09-10（UI-F03 Done）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -61,6 +61,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ANIM-F01` | Animation system | **Planned** | — | [Placeholder](./Animation/ANIM-F01_ANIMATION_SYSTEM_DESIGN.md) · `feat/animation` · worktree `minEngine-animation` · 本 worktree 非焦点；并行候选 |
 | `UI-F01` | UI system（Canvas + Layout + Image；消费 RND-F16） | **Done** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 目视含 Image alpha |
 | `UI-F02` | ScreenUI Hit-test / Pointer（UISystem + Query + 薄状态） | **Done** *(MVP；Button 后置)* | — | [Design](./Platform/UI/UI-F02_SCREENUI_HITTEST_DESIGN.md) · `feat/ui` · PIE debug HUD 可目视 |
+| `UI-F03` | ScreenUI Button（Click → 可订阅出口；薄组件） | **Done** | — | [Design](./Platform/UI/UI-F03_SCREENUI_BUTTON_DESIGN.md) · `feat/ui` · MVP：OnClicked+TargetGraphic tint；**Lua 后置** |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
@@ -88,7 +89,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | F02 | F01 Planned；并行候选（非本 worktree 焦点） |
-| `UI` | **F03** | F01 Done；F02 Hit-test Draft；Text/Button 后置 |
+| `UI` | **F04** | F01–F03 Done；Text / Focus / Lua 桥等后置 |
 | `PHYS` | F05 | F04 on `master` |
 | `MAT` | F01 | |
 

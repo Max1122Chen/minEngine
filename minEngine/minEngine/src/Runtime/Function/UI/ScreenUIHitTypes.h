@@ -49,15 +49,21 @@ namespace minEngine
     {
         WidgetComponent* Hovered = nullptr;
         WidgetComponent* Pressed = nullptr;
+        /** Widget that owned the Click edge this frame (valid while bClickThisFrame). */
+        WidgetComponent* Clicked = nullptr;
         bool bPointerDown = false;
         bool bClickThisFrame = false;
+        /** True when any ButtonComponent::OnClicked was broadcast this frame. */
+        bool bButtonOnClickedThisFrame = false;
 
         void Reset()
         {
             Hovered = nullptr;
             Pressed = nullptr;
+            Clicked = nullptr;
             bPointerDown = false;
             bClickThisFrame = false;
+            bButtonOnClickedThisFrame = false;
         }
     };
 

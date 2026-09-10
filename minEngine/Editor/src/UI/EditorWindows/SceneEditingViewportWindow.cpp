@@ -4,6 +4,7 @@
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Chrome/ViewportPlayToolbar.h"
 #include "Render/RenderCamera.h"
+#include "Function/Framework/Components/ButtonComponent.h"
 #include "Function/Framework/Components/CanvasComponent.h"
 #include "Function/Framework/Components/WidgetComponent.h"
 #include "Function/Framework/GameObject/GameObject.h"
@@ -61,15 +62,18 @@ namespace minEngine
         bool click = false;
         bool pointerDown = false;
         bool ctxValid = false;
+        bool buttonOnClicked = false;
         float ctxW = 0.0f;
         float ctxH = 0.0f;
         WidgetComponent* hoveredWidget = nullptr;
+        ButtonComponent* hoveredButton = nullptr;
 
         if (hasUI)
         {
             const ScreenUIPointerState& pointer = UISystem::Get().GetPointerState();
             const ScreenUIPointerViewportContext& viewport = UISystem::Get().GetPointerViewportContext();
             click = pointer.bClickThisFrame;
+            buttonOnClicked = pointer.bButtonOnClickedThisFrame;
             pointerDown = pointer.bPointerDown;
             ctxValid = viewport.bValid;
             ctxW = viewport.ImageSize.x;
@@ -78,11 +82,22 @@ namespace minEngine
             if (pointer.Hovered != nullptr && pointer.Hovered->GetOwner() != nullptr)
             {
                 hoveredName = pointer.Hovered->GetOwner()->GetName().c_str();
+                const std::vector<std::shared_ptr<ButtonComponent>> buttons =
+                    pointer.Hovered->GetOwner()->GetComponentsOfType<ButtonComponent>();
+                if (!buttons.empty() && buttons[0])
+                {
+                    hoveredButton = buttons[0].get();
+                }
             }
             if (pointer.Pressed != nullptr && pointer.Pressed->GetOwner() != nullptr)
             {
                 pressedName = pointer.Pressed->GetOwner()->GetName().c_str();
             }
+        }
+
+        if (buttonOnClicked)
+        {
+            ++m_ScreenUIButtonOnClickedCount;
         }
 
         char line[320];
@@ -98,22 +113,50 @@ namespace minEngine
             ctxW,
             ctxH);
 
+        char buttonLine[240];
+        if (hoveredButton != nullptr)
+        {
+            std::snprintf(
+                buttonLine,
+                sizeof(buttonLine),
+                "Button Hover:yes Interactable:%s OnClickedEdge:%s Total:%d (watch Image tint)",
+                hoveredButton->IsInteractable() ? "yes" : "NO",
+                buttonOnClicked ? "YES" : "no",
+                m_ScreenUIButtonOnClickedCount);
+        }
+        else
+        {
+            std::snprintf(
+                buttonLine,
+                sizeof(buttonLine),
+                "Button Hover:no OnClickedEdge:%s Total:%d (add ButtonComponent on Widget GO)",
+                buttonOnClicked ? "YES" : "no",
+                m_ScreenUIButtonOnClickedCount);
+        }
+
         // Foreground list avoids clip from Image / child regions.
         ImDrawList* drawList = ImGui::GetForegroundDrawList();
         const ImVec2 textPos(frameState.ImageMin.x + 8.0f, frameState.ImageMin.y + 8.0f);
         const ImVec2 textSize = ImGui::CalcTextSize(line);
+        const ImVec2 buttonTextSize = ImGui::CalcTextSize(buttonLine);
+        const float boxWidth = (textSize.x > buttonTextSize.x ? textSize.x : buttonTextSize.x) + 6.0f;
+        const float boxHeight = textSize.y + buttonTextSize.y + 8.0f;
         drawList->AddRectFilled(
             ImVec2(textPos.x - 6.0f, textPos.y - 4.0f),
-            ImVec2(textPos.x + textSize.x + 6.0f, textPos.y + textSize.y + 4.0f),
+            ImVec2(textPos.x + boxWidth, textPos.y + boxHeight),
             IM_COL32(0, 0, 0, 200));
         drawList->AddRect(
             ImVec2(textPos.x - 6.0f, textPos.y - 4.0f),
-            ImVec2(textPos.x + textSize.x + 6.0f, textPos.y + textSize.y + 4.0f),
+            ImVec2(textPos.x + boxWidth, textPos.y + boxHeight),
             IM_COL32(255, 220, 0, 255),
             0.0f,
             0,
             2.0f);
         drawList->AddText(textPos, IM_COL32(120, 255, 255, 255), line);
+        drawList->AddText(
+            ImVec2(textPos.x, textPos.y + textSize.y + 2.0f),
+            buttonOnClicked ? IM_COL32(255, 220, 80, 255) : IM_COL32(180, 255, 160, 255),
+            buttonLine);
 
         if (!routing || hoveredWidget == nullptr)
         {

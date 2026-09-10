@@ -1,6 +1,9 @@
 #include "Runtime/Function/UI/UISystem.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Framework/Components/ButtonComponent.h"
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Input/InputKeys.h"
@@ -72,6 +75,8 @@ namespace minEngine
         }
 
         m_PointerState.bClickThisFrame = false;
+        m_PointerState.Clicked = nullptr;
+        m_PointerState.bButtonOnClickedThisFrame = false;
 
         if (!m_bPointerRoutingEnabled)
         {
@@ -179,6 +184,33 @@ namespace minEngine
         SetPointerRoutingEnabled(false);
     }
 
+    void UISystem::TryDispatchButtonClick(WidgetComponent* pressedWidget)
+    {
+        if (pressedWidget == nullptr)
+        {
+            return;
+        }
+
+        GameObject* owner = pressedWidget->GetOwner();
+        if (owner == nullptr)
+        {
+            return;
+        }
+
+        const std::vector<std::shared_ptr<ButtonComponent>> buttons =
+            owner->GetComponentsOfType<ButtonComponent>();
+        for (const std::shared_ptr<ButtonComponent>& button : buttons)
+        {
+            if (!button || !button->CanAcceptClick())
+            {
+                continue;
+            }
+
+            button->NotifyClicked();
+            m_PointerState.bButtonOnClickedThisFrame = true;
+        }
+    }
+
     void UISystem::UpdatePointerFromInput(Scene* scene)
     {
         if (!InputSystem::HasInstance())
@@ -198,9 +230,13 @@ namespace minEngine
         if (InputSystem::MouseButtonReleased(InputKeys::Mouse_Left))
         {
             // Loose capture: Click belongs to Pressed even if pointer left the rect.
-            if (m_PointerState.Pressed != nullptr)
+            // Dispatch before clearing Pressed so Button can resolve ownership.
+            WidgetComponent* pressedWidget = m_PointerState.Pressed;
+            if (pressedWidget != nullptr)
             {
                 m_PointerState.bClickThisFrame = true;
+                m_PointerState.Clicked = pressedWidget;
+                TryDispatchButtonClick(pressedWidget);
             }
             m_PointerState.Pressed = nullptr;
             m_PointerState.bPointerDown = false;

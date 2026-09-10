@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-09（UI-F02 Done：待用户 PIE 目视）
+Last updated: 2026-09-10（UI-F03 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
@@ -10,13 +10,27 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/ui`）
 
-### ~~UI-F02 — ScreenUI Hit-test / Pointer~~ **Done**（MVP；待 PIE 目视）
+### ~~UI-F03 — ScreenUI Button~~ **Done**（MVP）
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design | [UI-F03](./Platform/UI/UI-F03_SCREENUI_BUTTON_DESIGN.md) · **Done** |
+| MVP | OnClicked（C++）+ TargetGraphic tint；Hit 仍 Widget；**无 Lua** |
+
+### Next（本分支候选，未立项则先登记）
+
+| 候选 | 说明 |
+|------|------|
+| **Text / Label** | ScreenUI 文字控件（未登记 Feature 前先 Design） |
+| **Focus / Tab** | 键盘·手柄激活（Button Out） |
+| **C++→Lua 调用** | 专用分支机制后再挂 Button `on_clicked` |
+| **合入 / PR** | `feat/ui` → 目标主干 |
+
+### ~~UI-F02 — ScreenUI Hit-test / Pointer~~ **Done**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design | [UI-F02](./Platform/UI/UI-F02_SCREENUI_HITTEST_DESIGN.md) · **Done** |
-| 验收 | Play 后 Viewport 左上角 ScreenUI HUD：Hover/Pressed/Click + 描边 |
-| Next | 用户目视通过后准备 commit；下一 Feature（Button / ANIM / …）另选 |
 
 ### ~~CORE-F14 — LinearColor 作者颜色~~ **Done**
 

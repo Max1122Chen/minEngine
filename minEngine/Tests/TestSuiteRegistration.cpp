@@ -28,6 +28,7 @@
 #include "Suites/ScreenUICoordsTest.h"
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
+#include "Suites/ScreenUIButtonTest.h"
 #include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/CommandSystemTest.h"
 
@@ -395,6 +396,23 @@ namespace minEngine
             }
         };
 
+        struct ScreenUIButtonTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-button", "Screen UI Button", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-button'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-button",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct GameObjectHierarchyTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -451,6 +469,7 @@ namespace minEngine
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
+        using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
 
@@ -485,6 +504,7 @@ namespace minEngine
             registry.Register(ScreenUICoordsSuite::Get());
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());
+            registry.Register(ScreenUIButtonSuite::Get());
             registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             s_Registered = true;

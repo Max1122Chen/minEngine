@@ -53,11 +53,13 @@ namespace minEngine
     private:
         friend class Engine;
         friend class ScreenUIHitTestScope;
+        friend class ScreenUIButtonTestScope;
 
         static void SetInstance(UISystem* instance);
 
         void UpdatePointerFromInput(Scene* scene);
         Scene* ResolvePointerScene() const;
+        void TryDispatchButtonClick(WidgetComponent* pressedWidget);
 
         static UISystem* s_Instance;
 

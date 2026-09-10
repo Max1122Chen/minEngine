@@ -1,6 +1,36 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-09（UI-F02 Done）
+Last updated: 2026-09-10（UI-F03 Done）
+
+### 2026-09-10 - UI-F03 Done（MVP）
+- **Ship：** Button OnClicked + TargetGraphic tint + Play HUD；`screen-ui-button` 绿；Lua 后置。
+- **Docs：** Design/Registry/ACTIVE_WORK → **Done**。
+
+### 2026-09-10 - UI-F03 Play HUD：Button OnClicked 可观察
+- **Code：** `ScreenUIPointerState::Clicked` + `bButtonOnClickedThisFrame`；Viewport Play overlay 第二行显示 Button / Interactable / OnClickedEdge / Total。
+- **Build：** `minEngineTests` + `Editor` 绿；`screen-ui-button` / `screen-ui-hit` 回归绿。
+- **Next：** 人工 Play 确认 tint + HUD → 标 Done / 准备 commit。
+
+### 2026-09-10 - UI-F03 S0/S1：Button + 单测绿
+- **Code：** `ButtonComponent`（OnClicked / TargetGraphic / interactable tint）；`UISystem::TryDispatchButtonClick` 在 Click 边沿派发；反射 gen 入库。
+- **Fix：** `GameObject::GetComponentsOfType` 跳过销毁中的空 `shared_ptr`（Button `OnDeactivate`→tint 触发的 UAF）。
+- **Tests：** `screen-ui-button` 4/4；`screen-ui-hit` 回归绿。
+- **Docs：** Design/Registry/ACTIVE_WORK → **In Progress**；Play 目视未做。
+- **Next：** Play 验收 tint + C++ 回调 → 准备 commit。
+
+### 2026-09-10 - UI-F03：Lua 从 MVP 撤出
+- **决议：** C++→Lua 调用需专用分支先设计；本 Feature **不做** `on_clicked` 薄桥 / ScriptCallable 脚本面。
+- **MVP 保留：** OnClicked（C++）+ TargetGraphic + tint；切片 S0–S1。
+- **Docs：** Design / Registry / ACTIVE_WORK 已改。
+
+### 2026-09-10 - UI-F03 Planned：TargetGraphic +（曾）Lua 进 MVP
+- **决议：** OnClicked 无参；UISystem 边沿派发；tint + TargetGraphic 进 MVP；Lua 薄桥随后同日撤出。
+- **Docs：** Design → Planned。
+- **Next：** S0 开码（无 Lua）。
+
+### 2026-09-09 - UI-F03 Draft：ScreenUI Button
+- **Docs：** 登记并起草 [UI-F03](./Platform/UI/UI-F03_SCREENUI_BUTTON_DESIGN.md)（Unity 式 Widget+Image+Button；OnClicked Delegate；UE 对照备忘）。
+- **Next：** 用户确认 §9 → Planned → S0。
 
 ### 2026-09-09 - UI-F02 Done：Viewport 注入 + PIE HUD + S2
 - **Code：** Scene viewport 注入 ImageMin/Size + `PollPointer`；Play HUD（Hover/Pressed/Click + 描边）；`ShouldBlockWorldPointer` + pick 守卫。

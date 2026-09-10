@@ -65,9 +65,18 @@ namespace minEngine
         std::vector<std::shared_ptr<T>> GetComponentsOfType()
         {
             std::vector<std::shared_ptr<T>> result;
-            for(auto& component : m_Components)
+            for (auto& component : m_Components)
             {
-                component->GetClass()->IsA(T::StaticClass()) ? result.push_back(std::static_pointer_cast<T>(component)) : void();
+                // Entries may be null mid-destruction (SetOwner(nullptr) then reset).
+                if (!component || component->GetClass() == nullptr)
+                {
+                    continue;
+                }
+
+                if (component->GetClass()->IsA(T::StaticClass()))
+                {
+                    result.push_back(std::static_pointer_cast<T>(component));
+                }
             }
             return result;
         }

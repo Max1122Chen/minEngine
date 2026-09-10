@@ -102,6 +102,7 @@ namespace minEngine
         friend class GameObjectHierarchyTestScope;
         friend class UILayoutTestScope;
         friend class ScreenUIHitTestScope;
+        friend class ScreenUIButtonTestScope;
         friend class CommandSystemTestScope;
 
         static void SetInstance(SceneManager* instance);
