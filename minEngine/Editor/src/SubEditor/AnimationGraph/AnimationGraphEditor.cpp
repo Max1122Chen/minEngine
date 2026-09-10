@@ -455,6 +455,52 @@ namespace minEngine
         return true;
     }
 
+    bool AnimationGraphEditor::AddAnyStateTransition(std::string_view toState, std::string* outError)
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+        if (toState.empty())
+        {
+            if (outError)
+            {
+                *outError = "AnyState transition requires a To state.";
+            }
+            return false;
+        }
+        if (m_Session.GraphAsset->FindState(toState) == nullptr)
+        {
+            if (outError)
+            {
+                *outError = "AnyState transition To state must exist.";
+            }
+            return false;
+        }
+
+        AnimStateMachine& sm = m_Session.GraphAsset->GetStateMachine();
+        for (const AnimTransition& existing : sm.AnyStateTransitions)
+        {
+            if (existing.ToStateName == toState)
+            {
+                if (outError)
+                {
+                    *outError = "AnyState transition to this state already exists.";
+                }
+                return false;
+            }
+        }
+
+        AnimTransition transition;
+        transition.FromStateName.clear();
+        transition.ToStateName = std::string(toState);
+        transition.BlendDurationSeconds = 0.15f;
+        sm.AnyStateTransitions.push_back(std::move(transition));
+        NotifyGraphChanged();
+        InvalidateGraphCanvas(false);
+        return true;
+    }
+
     bool AnimationGraphEditor::RemoveTransitionAt(size_t transitionIndex)
     {
         if (!m_Session.HasOpenGraph())
@@ -542,6 +588,41 @@ namespace minEngine
         }
 
         std::swap(transition.FromStateName, transition.ToStateName);
+        NotifyGraphChanged();
+        InvalidateGraphCanvas(false);
+        return true;
+    }
+
+    bool AnimationGraphEditor::SetDefaultStateName(std::string_view stateName, std::string* outError)
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+        if (stateName.empty())
+        {
+            if (outError)
+            {
+                *outError = "DefaultStateName cannot be empty.";
+            }
+            return false;
+        }
+        if (m_Session.GraphAsset->FindState(stateName) == nullptr)
+        {
+            if (outError)
+            {
+                *outError = "DefaultStateName must match an existing state.";
+            }
+            return false;
+        }
+
+        AnimStateMachine& sm = m_Session.GraphAsset->GetStateMachine();
+        if (sm.DefaultStateName == stateName)
+        {
+            return true;
+        }
+
+        sm.DefaultStateName = std::string(stateName);
         NotifyGraphChanged();
         InvalidateGraphCanvas(false);
         return true;

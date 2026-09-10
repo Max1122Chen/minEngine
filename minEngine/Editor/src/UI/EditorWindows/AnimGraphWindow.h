@@ -29,6 +29,7 @@ namespace minEngine
 
         SmGraph::Widget m_SmGraphWidget;
         SmGraph::Document m_SmGraphDocument;
+        AnimGraphSpecialNodeLayout m_SpecialNodeLayout;
         AnimationGraph* m_BoundGraph = nullptr;
     };
 }

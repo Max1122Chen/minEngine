@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Animation/AnimationClip.h"
+#include "Runtime/Function/Animation/Skeleton.h"
 
 #include <cmath>
 #include <utility>
@@ -17,6 +18,8 @@ namespace minEngine
         m_CurrentStateTime = 0.0f;
         m_bTransitioning = false;
         m_ActiveTransition = {};
+        m_HasLastValidPose = false;
+        m_LastValidPose = {};
 
         if (m_Graph == nullptr)
         {
@@ -281,14 +284,60 @@ namespace minEngine
         }
     }
 
-    void AnimationGraphInstance::EvaluateStatePose(const AnimState& state, float timeSeconds, Pose& outPose) const
+    void AnimationGraphInstance::CommitLastValidPose(const Pose& pose)
+    {
+        if (pose.GetBoneCount() == 0)
+        {
+            return;
+        }
+        m_LastValidPose = pose;
+        m_HasLastValidPose = true;
+    }
+
+    bool AnimationGraphInstance::TryFillRestPose(Pose& outPose) const
+    {
+        if (m_Graph == nullptr)
+        {
+            return false;
+        }
+
+        for (const AnimState& state : m_Graph->GetStateMachine().States)
+        {
+            if (state.Clip == nullptr)
+            {
+                continue;
+            }
+            Skeleton* skeleton = state.Clip->GetSkeleton();
+            if (skeleton == nullptr)
+            {
+                continue;
+            }
+            skeleton->FillBindPose(outPose);
+            return true;
+        }
+        return false;
+    }
+
+    void AnimationGraphInstance::EvaluateStatePose(const AnimState& state, float timeSeconds, Pose& outPose)
     {
         if (state.Clip == nullptr)
         {
+            if (m_HasLastValidPose)
+            {
+                outPose = m_LastValidPose;
+                return;
+            }
+            if (TryFillRestPose(outPose))
+            {
+                CommitLastValidPose(outPose);
+                return;
+            }
             outPose = {};
             return;
         }
+
         state.Clip->Evaluate(timeSeconds, outPose);
+        CommitLastValidPose(outPose);
     }
 
     void AnimationGraphInstance::StartTransition(const AnimTransition& transition)

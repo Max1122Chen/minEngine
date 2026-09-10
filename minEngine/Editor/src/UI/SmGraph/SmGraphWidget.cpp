@@ -11,7 +11,11 @@ namespace minEngine::SmGraph
         m_ActiveNode = kInvalidNodeId;
         m_DragGrabOffset = ImVec2(0.0f, 0.0f);
         m_LinkHoverTarget = kInvalidNodeId;
-        m_OpenContextMenu = false;
+        m_PendingContextMenu = ContextMenuTarget::None;
+        m_ContextMenuEdge = kInvalidEdgeId;
+        m_ContextMenuNode = kInvalidNodeId;
+        m_OpenRenamePopup = false;
+        m_RenameBuffer[0] = '\0';
         CancelNavigationAnimation();
     }
 
@@ -77,14 +81,20 @@ namespace minEngine::SmGraph
         for (Node& node : document.GetNodes())
         {
             const char* title = node.Title.empty() ? "(unnamed)" : node.Title.c_str();
-            const char* subtitle = node.Subtitle.empty() ? "(no clip)" : node.Subtitle.c_str();
             const ImVec2 titleSize = ImGui::CalcTextSize(title);
-            const ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle);
+            const bool hasSubtitle = !node.Subtitle.empty();
+            const ImVec2 subtitleSize =
+                hasSubtitle ? ImGui::CalcTextSize(node.Subtitle.c_str()) : ImVec2(0.0f, 0.0f);
 
-            const float contentW = (std::max)(titleSize.x, subtitleSize.x) + padX * 2.0f;
-            const float contentH = titleSize.y + gap + subtitleSize.y + padY * 2.0f;
-            const float width = (std::max)(contentW + inset * 2.0f, m_Style.MinNodeSize.x);
-            const float height = (std::max)(contentH + inset * 2.0f, m_Style.MinNodeSize.y);
+            const float contentW =
+                (std::max)(titleSize.x, subtitleSize.x) + padX * 2.0f;
+            const float contentH = hasSubtitle
+                ? (titleSize.y + gap + subtitleSize.y + padY * 2.0f)
+                : (titleSize.y + padY * 2.0f);
+            const ImVec2 minSize =
+                (node.Kind == NodeKind::State) ? m_Style.MinNodeSize : m_Style.MinSpecialNodeSize;
+            const float width = (std::max)(contentW + inset * 2.0f, minSize.x);
+            const float height = (std::max)(contentH + inset * 2.0f, minSize.y);
             node.Size = ImVec2(width, height);
         }
     }
@@ -129,7 +139,19 @@ namespace minEngine::SmGraph
                 border = m_Style.HoverTarget;
             }
 
-            const ImU32 ringFill = selected ? m_Style.NodeRingFillSelected : m_Style.NodeRingFill;
+            ImU32 ringFill = m_Style.NodeRingFill;
+            if (selected)
+            {
+                ringFill = m_Style.NodeRingFillSelected;
+            }
+            else if (node.Kind == NodeKind::Entry)
+            {
+                ringFill = m_Style.EntryRingFill;
+            }
+            else if (node.Kind == NodeKind::AnyState)
+            {
+                ringFill = m_Style.AnyStateRingFill;
+            }
 
             drawList->AddRectFilled(node.Pos, max, ringFill, m_Style.NodeRounding);
             drawList->AddRectFilled(bodyMin, bodyMax, m_Style.NodeBodyFill, innerRounding);
@@ -156,12 +178,14 @@ namespace minEngine::SmGraph
                 selected || hoveredTarget ? 2.5f : 1.5f);
 
             const char* title = node.Title.empty() ? "(unnamed)" : node.Title.c_str();
-            const char* subtitle = node.Subtitle.empty() ? "(no clip)" : node.Subtitle.c_str();
             const ImVec2 titlePos(bodyMin.x + padX, bodyMin.y + padY);
             const ImVec2 titleSize = ImGui::CalcTextSize(title);
-            const ImVec2 subtitlePos(bodyMin.x + padX, titlePos.y + titleSize.y + gap);
             drawList->AddText(titlePos, m_Style.NodeTitle, title);
-            drawList->AddText(subtitlePos, m_Style.NodeSubtitle, subtitle);
+            if (!node.Subtitle.empty())
+            {
+                const ImVec2 subtitlePos(bodyMin.x + padX, titlePos.y + titleSize.y + gap);
+                drawList->AddText(subtitlePos, m_Style.NodeSubtitle, node.Subtitle.c_str());
+            }
         }
     }
 
@@ -191,7 +215,19 @@ namespace minEngine::SmGraph
 
             const bool selected =
                 selection.Kind == SelectionKind::Edge && selection.Edge == edge.Id;
-            const ImU32 color = selected ? m_Style.EdgeSelected : m_Style.EdgeColor;
+            ImU32 color = m_Style.EdgeColor;
+            if (selected)
+            {
+                color = m_Style.EdgeSelected;
+            }
+            else if (edge.Kind == EdgeKind::EntryDefault)
+            {
+                color = m_Style.EntryEdgeColor;
+            }
+            else if (edge.Kind == EdgeKind::AnyState)
+            {
+                color = m_Style.AnyStateEdgeColor;
+            }
             const float thickness = selected ? 3.0f : 2.0f;
 
             drawList->AddLine(fromBorder, toBorder, color, thickness);
@@ -343,7 +379,35 @@ namespace minEngine::SmGraph
             if (hit.Kind == HitKind::None)
             {
                 m_ContextMenuCanvasPos = mouse;
-                m_OpenContextMenu = true;
+                m_PendingContextMenu = ContextMenuTarget::Background;
+                m_ContextMenuEdge = kInvalidEdgeId;
+                m_ContextMenuNode = kInvalidNodeId;
+            }
+            else if (hit.Kind == HitKind::Edge)
+            {
+                Selection selection;
+                selection.Kind = SelectionKind::Edge;
+                selection.Edge = hit.Edge;
+                SetSelection(document, selection, outEvents);
+
+                m_PendingContextMenu = ContextMenuTarget::Edge;
+                m_ContextMenuEdge = hit.Edge;
+                m_ContextMenuNode = kInvalidNodeId;
+            }
+            else if (hit.Kind == HitKind::NodeBody || hit.Kind == HitKind::NodeRing)
+            {
+                const Node* node = document.FindNode(hit.Node);
+                if (node != nullptr && node->Kind == NodeKind::State)
+                {
+                    Selection selection;
+                    selection.Kind = SelectionKind::Node;
+                    selection.Node = hit.Node;
+                    SetSelection(document, selection, outEvents);
+
+                    m_PendingContextMenu = ContextMenuTarget::Node;
+                    m_ContextMenuNode = hit.Node;
+                    m_ContextMenuEdge = kInvalidEdgeId;
+                }
             }
             return;
         }
@@ -435,7 +499,8 @@ namespace minEngine::SmGraph
 
         const HitResult hit = HitTest(document, mouse);
         if ((hit.Kind == HitKind::NodeBody || hit.Kind == HitKind::NodeRing)
-            && hit.Node != m_ActiveNode)
+            && hit.Node != m_ActiveNode
+            && CanCreateEdge(document, m_ActiveNode, hit.Node))
         {
             m_LinkHoverTarget = hit.Node;
         }
@@ -453,7 +518,8 @@ namespace minEngine::SmGraph
             return;
         }
 
-        if (m_LinkHoverTarget != kInvalidNodeId && m_LinkHoverTarget != m_ActiveNode)
+        if (m_LinkHoverTarget != kInvalidNodeId && m_LinkHoverTarget != m_ActiveNode
+            && CanCreateEdge(document, m_ActiveNode, m_LinkHoverTarget))
         {
             EditEvent event;
             event.Kind = EditKind::CreateEdgeRequested;
@@ -465,6 +531,30 @@ namespace minEngine::SmGraph
         m_Mode = Mode::Idle;
         m_ActiveNode = kInvalidNodeId;
         m_LinkHoverTarget = kInvalidNodeId;
+    }
+
+    bool Widget::CanCreateEdge(const Document& document, NodeId from, NodeId to) const
+    {
+        if (from == kInvalidNodeId || to == kInvalidNodeId || from == to)
+        {
+            return false;
+        }
+
+        const Node* fromNode = document.FindNode(from);
+        const Node* toNode = document.FindNode(to);
+        if (!fromNode || !toNode)
+        {
+            return false;
+        }
+
+        if (toNode->Kind != NodeKind::State)
+        {
+            return false;
+        }
+
+        return fromNode->Kind == NodeKind::State
+            || fromNode->Kind == NodeKind::Entry
+            || fromNode->Kind == NodeKind::AnyState;
     }
 
     void Widget::CancelNavigationAnimation()
@@ -662,13 +752,22 @@ namespace minEngine::SmGraph
 
     void Widget::HandleContextMenu(Document& document, std::vector<EditEvent>& outEvents)
     {
-        (void)document;
-
         m_Canvas.Suspend();
-        if (m_OpenContextMenu)
+
+        if (m_PendingContextMenu == ContextMenuTarget::Background)
         {
             ImGui::OpenPopup("SmGraphBackgroundContext");
-            m_OpenContextMenu = false;
+            m_PendingContextMenu = ContextMenuTarget::None;
+        }
+        else if (m_PendingContextMenu == ContextMenuTarget::Edge)
+        {
+            ImGui::OpenPopup("SmGraphEdgeContext");
+            m_PendingContextMenu = ContextMenuTarget::None;
+        }
+        else if (m_PendingContextMenu == ContextMenuTarget::Node)
+        {
+            ImGui::OpenPopup("SmGraphNodeContext");
+            m_PendingContextMenu = ContextMenuTarget::None;
         }
 
         if (ImGui::BeginPopup("SmGraphBackgroundContext"))
@@ -682,6 +781,91 @@ namespace minEngine::SmGraph
             }
             ImGui::EndPopup();
         }
+
+        if (ImGui::BeginPopup("SmGraphEdgeContext"))
+        {
+            const Edge* edge = document.FindEdge(m_ContextMenuEdge);
+            const bool canDelete = edge != nullptr && edge->Kind != EdgeKind::EntryDefault;
+            const bool canReverse = edge != nullptr && edge->CanReverse
+                && edge->Kind == EdgeKind::Transition;
+
+            if (ImGui::MenuItem("Delete", nullptr, false, canDelete))
+            {
+                EditEvent event;
+                event.Kind = EditKind::DeleteEdgeRequested;
+                event.Edge = m_ContextMenuEdge;
+                outEvents.push_back(event);
+            }
+            if (ImGui::MenuItem("Reverse", nullptr, false, canReverse))
+            {
+                EditEvent event;
+                event.Kind = EditKind::ReverseEdgeRequested;
+                event.Edge = m_ContextMenuEdge;
+                outEvents.push_back(event);
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopup("SmGraphNodeContext"))
+        {
+            const Node* node = document.FindNode(m_ContextMenuNode);
+            const bool isState = node != nullptr && node->Kind == NodeKind::State;
+
+            if (ImGui::MenuItem("Rename", nullptr, false, isState))
+            {
+                if (node != nullptr)
+                {
+                    const std::string& title = node->Title;
+                    const size_t copyLen = (std::min)(title.size(), sizeof(m_RenameBuffer) - 1);
+                    for (size_t i = 0; i < copyLen; ++i)
+                    {
+                        m_RenameBuffer[i] = title[i];
+                    }
+                    m_RenameBuffer[copyLen] = '\0';
+                    m_OpenRenamePopup = true;
+                }
+            }
+            if (ImGui::MenuItem("Delete", nullptr, false, isState && node->Deletable))
+            {
+                EditEvent event;
+                event.Kind = EditKind::DeleteSelectionRequested;
+                event.Node = m_ContextMenuNode;
+                outEvents.push_back(event);
+            }
+            ImGui::EndPopup();
+        }
+
+        if (m_OpenRenamePopup)
+        {
+            ImGui::OpenPopup("SmGraphRenameNode");
+            m_OpenRenamePopup = false;
+        }
+
+        if (ImGui::BeginPopup("SmGraphRenameNode"))
+        {
+            ImGui::SetKeyboardFocusHere();
+            const bool submit = ImGui::InputText(
+                "##SmGraphRename",
+                m_RenameBuffer,
+                sizeof(m_RenameBuffer),
+                ImGuiInputTextFlags_EnterReturnsTrue);
+            if (submit || ImGui::Button("OK"))
+            {
+                EditEvent event;
+                event.Kind = EditKind::RenameNodeRequested;
+                event.Node = m_ContextMenuNode;
+                event.Text = m_RenameBuffer;
+                outEvents.push_back(event);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
         m_Canvas.Resume();
     }
 

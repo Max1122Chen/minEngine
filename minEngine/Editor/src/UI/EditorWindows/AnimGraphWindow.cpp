@@ -200,6 +200,7 @@ namespace minEngine
             m_BoundGraph = &graph;
             m_SmGraphWidget.ResetInteraction();
             m_SmGraphDocument.Clear();
+            m_SpecialNodeLayout = AnimGraphSpecialNodeLayout{};
         }
 
         if (AnimGraphSmBridge::LayoutIfNeeded(graph.GetStateMachine()))
@@ -207,11 +208,16 @@ namespace minEngine
             animGraphEditor->NotifyGraphChanged();
         }
 
-        AnimGraphSmBridge::PullDocument(graph, m_SmGraphDocument);
+        AnimGraphSmBridge::PullDocument(graph, m_SmGraphDocument, m_SpecialNodeLayout);
         AnimGraphSmBridge::ApplyEditorTheme(m_Context.GetEditorAppearance(), m_SmGraphWidget.GetStyle());
 
         std::vector<SmGraph::EditEvent> events;
         m_SmGraphWidget.Draw("AnimSmGraph", m_SmGraphDocument, events);
-        AnimGraphSmBridge::ApplyEditEvents(*animGraphEditor, graph, m_SmGraphDocument, events);
+        AnimGraphSmBridge::ApplyEditEvents(
+            *animGraphEditor,
+            graph,
+            m_SmGraphDocument,
+            m_SpecialNodeLayout,
+            events);
     }
 }

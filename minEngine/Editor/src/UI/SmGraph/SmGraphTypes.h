@@ -14,20 +14,48 @@ namespace minEngine::SmGraph
     constexpr NodeId kInvalidNodeId = 0;
     constexpr EdgeId kInvalidEdgeId = 0;
 
+    /** Reserved view-only nodes (not state indices). */
+    constexpr NodeId kEntryNodeId = 900001;
+    constexpr NodeId kAnyStateNodeId = 900002;
+
+    /** Reserved edges. */
+    constexpr EdgeId kEntryEdgeId = 900101;
+    constexpr EdgeId kAnyStateEdgeBase = 800000;
+    /** Exclusive end of AnyState edge id range (Entry uses ids above this). */
+    constexpr EdgeId kAnyStateEdgeEnd = 900000;
+
+    enum class NodeKind : uint8_t
+    {
+        State = 0,
+        Entry = 1,
+        AnyState = 2,
+    };
+
+    enum class EdgeKind : uint8_t
+    {
+        Transition = 0,
+        EntryDefault = 1,
+        AnyState = 2,
+    };
+
     struct Node
     {
         NodeId Id = kInvalidNodeId;
+        NodeKind Kind = NodeKind::State;
         ImVec2 Pos{0.0f, 0.0f};
         ImVec2 Size{160.0f, 56.0f};
         std::string Title;
         std::string Subtitle;
+        bool Deletable = true;
     };
 
     struct Edge
     {
         EdgeId Id = kInvalidEdgeId;
+        EdgeKind Kind = EdgeKind::Transition;
         NodeId From = kInvalidNodeId;
         NodeId To = kInvalidNodeId;
+        bool CanReverse = true;
     };
 
     enum class SelectionKind : uint8_t
@@ -65,6 +93,9 @@ namespace minEngine::SmGraph
         CreateEdgeRequested = 2,
         DeleteSelectionRequested = 3,
         AddNodeRequested = 4,
+        DeleteEdgeRequested = 5,
+        ReverseEdgeRequested = 6,
+        RenameNodeRequested = 7,
     };
 
     struct EditEvent
@@ -75,6 +106,7 @@ namespace minEngine::SmGraph
         NodeId From = kInvalidNodeId;
         NodeId To = kInvalidNodeId;
         ImVec2 Pos{0.0f, 0.0f};
+        std::string Text;
     };
 
     class Document

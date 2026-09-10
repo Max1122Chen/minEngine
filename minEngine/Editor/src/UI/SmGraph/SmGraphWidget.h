@@ -20,6 +20,7 @@ namespace minEngine::SmGraph
         float MaxScale = 2.5f;
         float ZoomAnimDuration = 0.15f;   // ax c_MouseZoomDuration
         ImVec2 MinNodeSize{120.0f, 48.0f};
+        ImVec2 MinSpecialNodeSize{100.0f, 40.0f};
 
         // Defaults; host should call ApplyEditorTheme each frame for dark/light.
         ImU32 GridColor = IM_COL32(60, 60, 60, 70);
@@ -31,8 +32,12 @@ namespace minEngine::SmGraph
         ImU32 NodeBorderSelected = IM_COL32(70, 150, 255, 255);   // accent blue
         ImU32 NodeTitle = IM_COL32(220, 220, 220, 255);
         ImU32 NodeSubtitle = IM_COL32(160, 160, 160, 255);
+        ImU32 EntryRingFill = IM_COL32(45, 70, 55, 255);
+        ImU32 AnyStateRingFill = IM_COL32(70, 55, 45, 255);
         ImU32 EdgeColor = IM_COL32(180, 190, 210, 230);           // brighter than chrome gray
         ImU32 EdgeSelected = IM_COL32(70, 150, 255, 255);         // accent blue
+        ImU32 EntryEdgeColor = IM_COL32(120, 200, 140, 220);
+        ImU32 AnyStateEdgeColor = IM_COL32(220, 160, 110, 220);
         ImU32 LinkPreview = IM_COL32(240, 180, 60, 230);          // warm yellow
         ImU32 HoverTarget = IM_COL32(240, 180, 60, 255);
     };
@@ -64,6 +69,14 @@ namespace minEngine::SmGraph
             Edge = 3,
         };
 
+        enum class ContextMenuTarget : uint8_t
+        {
+            None = 0,
+            Background = 1,
+            Edge = 2,
+            Node = 3,
+        };
+
         struct HitResult
         {
             HitKind Kind = HitKind::None;
@@ -79,6 +92,7 @@ namespace minEngine::SmGraph
 
         HitResult HitTest(const Document& document, const ImVec2& canvasPos) const;
         bool HitEdge(const Document& document, const Edge& edge, const ImVec2& canvasPos) const;
+        bool CanCreateEdge(const Document& document, NodeId from, NodeId to) const;
 
         void SetSelection(Document& document, Selection selection, std::vector<EditEvent>& outEvents);
         void EmitSelectionChanged(const Document& document, std::vector<EditEvent>& outEvents) const;
@@ -115,7 +129,11 @@ namespace minEngine::SmGraph
         ImVec2 m_DragGrabOffset{0.0f, 0.0f};
         ImVec2 m_ContextMenuCanvasPos{0.0f, 0.0f};
         NodeId m_LinkHoverTarget = kInvalidNodeId;
-        bool m_OpenContextMenu = false;
+        ContextMenuTarget m_PendingContextMenu = ContextMenuTarget::None;
+        EdgeId m_ContextMenuEdge = kInvalidEdgeId;
+        NodeId m_ContextMenuNode = kInvalidNodeId;
+        bool m_OpenRenamePopup = false;
+        char m_RenameBuffer[128]{};
 
         // View-rect animation (same approach as ed::NavigateAnimation).
         bool m_NavAnimating = false;

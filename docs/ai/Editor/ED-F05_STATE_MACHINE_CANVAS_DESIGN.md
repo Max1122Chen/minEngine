@@ -297,3 +297,7 @@ LinkDrag
 | 2026-09-09 | 维护者确认：两层（可复用 ImGui SmGraph + AnimGraph 接入）；多边允许；EditorPos=左上角；Status → In Progress |
 | 2026-09-09 | UX：加宽 Link 热区（环+BodyInset）；直线边；空白菜单 Add State；边右键/Inspector UX Deferred |
 | 2026-09-09 | 自适应节点尺寸；蓝/暖黄高亮；HitBodyInset；缩放对齐 ax Navigate（Scroll/Zoom+ViewRect EaseOut）；Status → Done |
+
+
+## 后续（2026-09-10）
+Deferred（边右键 / AnyState 画布 / Entry）已迁入 [ED-F06](./ED-F06_ANIM_SM_CANVAS_POLISH_DESIGN.md)。

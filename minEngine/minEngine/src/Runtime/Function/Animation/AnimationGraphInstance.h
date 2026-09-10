@@ -49,7 +49,9 @@ namespace minEngine
         void StartTransition(const AnimTransition& transition);
         void ConsumeTriggersForTransition(const AnimTransition& transition);
         void AdvanceClipTime(const AnimState& state, float& inoutTime, float deltaSeconds) const;
-        void EvaluateStatePose(const AnimState& state, float timeSeconds, Pose& outPose) const;
+        void EvaluateStatePose(const AnimState& state, float timeSeconds, Pose& outPose);
+        bool TryFillRestPose(Pose& outPose) const;
+        void CommitLastValidPose(const Pose& pose);
 
         std::shared_ptr<AnimationGraph> m_Graph;
         std::shared_ptr<const ParameterLayout> m_Layout;
@@ -61,5 +63,7 @@ namespace minEngine
         ActiveTransition m_ActiveTransition;
         Pose m_PoseA;
         Pose m_PoseB;
+        Pose m_LastValidPose;
+        bool m_HasLastValidPose = false;
     };
 }

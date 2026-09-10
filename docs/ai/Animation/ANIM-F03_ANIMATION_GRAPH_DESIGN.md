@@ -5,7 +5,7 @@
 - **Type:** Feature
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-09（S08b 代码落地：Inspector + SM 伪装）
+- **Last updated:** 2026-09-10（空 State Clip 允许 + hold-last Pose；ED-F06 画布）
 - **Branch:** `feat/animation`
 - **Related:**
   - [Implementation Plan](./ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
@@ -217,7 +217,12 @@ AnimCondition
   Operand: Bool / Int / Float (by type)
 ```
 
-**校验（Load）：** 全 Clip Skeleton Guid 一致；条件名 ∈ Schema；State Clip 非空。  
+**校验（Load / Bind）：** 有 Clip 的 State 之间 Skeleton Guid 一致；条件名 ∈ Schema；**State.Clip 允许为空**（占位 State，连通与否不限）。空 Clip **不是** Validate 失败，也不刷 Warning。
+
+**空 State Runtime（Locked 2026-09-10 — 策略 B）：**
+- 允许进入无 Clip 的 State（状态机语义照常）。
+- 采样：输出 **上一帧有效 Pose**（hold last）；若尚从未有过有效 Pose，则用图中任一 Clip 的 Skeleton **bind/rest**；再无则空 Pose。
+- **不**因空 Clip 报 Error/Warn；不「跳过进入」空 State。
 扩展名建议：`.meagraph`（以 AssetTypeRegistry 为准）。
 
 ### 3.4 Runtime APIs sketch
@@ -374,11 +379,11 @@ Runtime 行为不变。
 | 角色 | 名称 | 说明 |
 |------|------|------|
 | SubEditor / Session | `AnimationGraphEditor` | OpenAsset、Dirty、Save、Validate；**不是** Window |
-| 画布窗 | `AnimGraphWindow` | 唯一持有 `ax::NodeEditor` |
+| 画布窗 | `AnimGraphWindow` | SmGraph L1 + `AnimGraphSmBridge`（ED-F05/F06；已离 ax Pin/Link） |
 | 选中详情 | **共享 `Inspector` + `AnimGraphInspectorSource`** | 对齐 Material；**取消**独立 `AnimGraphDetailsWindow` |
 | 参数声明窗 | `AnimGraphParametersWindow` | **固定**整图 `ParameterSchema`（与选中无关） |
 | 预览窗 | `AnimGraphPreviewWindow` | **Deferred** |
-| 投影辅助 | `AnimGraphIds` | Node/Pin/Link ↔ State/Transition |
+| 画布语义 | Entry / AnyState / 边菜单 | 见 [ED-F06](../Editor/ED-F06_ANIM_SM_CANVAS_POLISH_DESIGN.md)（`AnimGraphIds` 已删） |
 
 **取消独立 DetailsWindow（Locked 2026-09-09）：** 曾落地的 `AnimGraphDetailsWindow` 在 **S08b** 删除；逻辑迁入 `AnimGraphInspectorSource`（`GetInspectorSource()` 非空）。
 

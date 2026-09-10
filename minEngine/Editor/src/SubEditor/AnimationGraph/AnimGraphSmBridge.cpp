@@ -20,9 +20,16 @@ namespace minEngine
         return static_cast<SmGraph::EdgeId>(transitionIndex + 1);
     }
 
+    SmGraph::EdgeId AnimGraphSmBridge::ToAnyStateEdgeId(size_t anyTransitionIndex)
+    {
+        return SmGraph::kAnyStateEdgeBase + static_cast<SmGraph::EdgeId>(anyTransitionIndex);
+    }
+
     bool AnimGraphSmBridge::FromNodeId(SmGraph::NodeId id, size_t& outStateIndex)
     {
-        if (id == SmGraph::kInvalidNodeId)
+        if (id == SmGraph::kInvalidNodeId
+            || id == SmGraph::kEntryNodeId
+            || id == SmGraph::kAnyStateNodeId)
         {
             return false;
         }
@@ -32,7 +39,9 @@ namespace minEngine
 
     bool AnimGraphSmBridge::FromEdgeId(SmGraph::EdgeId id, size_t& outTransitionIndex)
     {
-        if (id == SmGraph::kInvalidEdgeId)
+        if (id == SmGraph::kInvalidEdgeId
+            || id == SmGraph::kEntryEdgeId
+            || id >= SmGraph::kAnyStateEdgeBase)
         {
             return false;
         }
@@ -40,18 +49,62 @@ namespace minEngine
         return true;
     }
 
-    void AnimGraphSmBridge::PullDocument(const AnimationGraph& graph, SmGraph::Document& outDocument)
+    bool AnimGraphSmBridge::FromAnyStateEdgeId(SmGraph::EdgeId id, size_t& outAnyTransitionIndex)
+    {
+        if (id < SmGraph::kAnyStateEdgeBase || id >= SmGraph::kAnyStateEdgeEnd)
+        {
+            return false;
+        }
+        outAnyTransitionIndex = static_cast<size_t>(id - SmGraph::kAnyStateEdgeBase);
+        return true;
+    }
+
+    void AnimGraphSmBridge::PullDocument(
+        const AnimationGraph& graph,
+        SmGraph::Document& outDocument,
+        AnimGraphSpecialNodeLayout& specialLayout)
     {
         const SmGraph::Selection previousSelection = outDocument.GetSelection();
         outDocument.Clear();
 
+        if (!specialLayout.Initialized)
+        {
+            specialLayout.EntryPos = ImVec2(-200.0f, 40.0f);
+            specialLayout.AnyStatePos = ImVec2(-200.0f, 200.0f);
+            specialLayout.Initialized = true;
+        }
+
         const AnimStateMachine& stateMachine = graph.GetStateMachine();
-        outDocument.GetNodes().reserve(stateMachine.States.size());
+        outDocument.GetNodes().reserve(stateMachine.States.size() + 2);
+
+        {
+            SmGraph::Node entry;
+            entry.Id = SmGraph::kEntryNodeId;
+            entry.Kind = SmGraph::NodeKind::Entry;
+            entry.Pos = specialLayout.EntryPos;
+            entry.Title = "Entry";
+            entry.Subtitle.clear();
+            entry.Deletable = false;
+            outDocument.GetNodes().push_back(std::move(entry));
+        }
+
+        {
+            SmGraph::Node anyState;
+            anyState.Id = SmGraph::kAnyStateNodeId;
+            anyState.Kind = SmGraph::NodeKind::AnyState;
+            anyState.Pos = specialLayout.AnyStatePos;
+            anyState.Title = "Any State";
+            anyState.Subtitle.clear();
+            anyState.Deletable = false;
+            outDocument.GetNodes().push_back(std::move(anyState));
+        }
+
         for (size_t i = 0; i < stateMachine.States.size(); ++i)
         {
             const AnimState& state = stateMachine.States[i];
             SmGraph::Node node;
             node.Id = ToNodeId(i);
+            node.Kind = SmGraph::NodeKind::State;
             node.Pos = ImVec2(state.EditorPosX, state.EditorPosY);
             node.Size = ImVec2(160.0f, 56.0f);
             node.Title = state.Name.empty() ? "(unnamed)" : state.Name;
@@ -63,10 +116,31 @@ namespace minEngine
             {
                 node.Subtitle = "(no clip)";
             }
+            node.Deletable = true;
             outDocument.GetNodes().push_back(std::move(node));
         }
 
-        outDocument.GetEdges().reserve(stateMachine.Transitions.size());
+        outDocument.GetEdges().reserve(
+            stateMachine.Transitions.size() + stateMachine.AnyStateTransitions.size() + 1);
+
+        if (!stateMachine.DefaultStateName.empty())
+        {
+            for (size_t stateIndex = 0; stateIndex < stateMachine.States.size(); ++stateIndex)
+            {
+                if (stateMachine.States[stateIndex].Name == stateMachine.DefaultStateName)
+                {
+                    SmGraph::Edge entryEdge;
+                    entryEdge.Id = SmGraph::kEntryEdgeId;
+                    entryEdge.Kind = SmGraph::EdgeKind::EntryDefault;
+                    entryEdge.From = SmGraph::kEntryNodeId;
+                    entryEdge.To = ToNodeId(stateIndex);
+                    entryEdge.CanReverse = false;
+                    outDocument.GetEdges().push_back(entryEdge);
+                    break;
+                }
+            }
+        }
+
         for (size_t i = 0; i < stateMachine.Transitions.size(); ++i)
         {
             const AnimTransition& transition = stateMachine.Transitions[i];
@@ -92,8 +166,37 @@ namespace minEngine
 
             SmGraph::Edge edge;
             edge.Id = ToEdgeId(i);
+            edge.Kind = SmGraph::EdgeKind::Transition;
             edge.From = ToNodeId(fromIndex);
             edge.To = ToNodeId(toIndex);
+            edge.CanReverse = true;
+            outDocument.GetEdges().push_back(edge);
+        }
+
+        for (size_t i = 0; i < stateMachine.AnyStateTransitions.size(); ++i)
+        {
+            const AnimTransition& transition = stateMachine.AnyStateTransitions[i];
+
+            size_t toIndex = SIZE_MAX;
+            for (size_t stateIndex = 0; stateIndex < stateMachine.States.size(); ++stateIndex)
+            {
+                if (stateMachine.States[stateIndex].Name == transition.ToStateName)
+                {
+                    toIndex = stateIndex;
+                    break;
+                }
+            }
+            if (toIndex == SIZE_MAX)
+            {
+                continue;
+            }
+
+            SmGraph::Edge edge;
+            edge.Id = ToAnyStateEdgeId(i);
+            edge.Kind = SmGraph::EdgeKind::AnyState;
+            edge.From = SmGraph::kAnyStateNodeId;
+            edge.To = ToNodeId(toIndex);
+            edge.CanReverse = false;
             outDocument.GetEdges().push_back(edge);
         }
 
@@ -116,13 +219,35 @@ namespace minEngine
         }
     }
 
-    bool AnimGraphSmBridge::PushPositions(const SmGraph::Document& document, AnimationGraph& graph)
+    bool AnimGraphSmBridge::PushPositions(
+        const SmGraph::Document& document,
+        AnimationGraph& graph,
+        AnimGraphSpecialNodeLayout& specialLayout)
     {
         AnimStateMachine& stateMachine = graph.GetStateMachine();
         bool changed = false;
 
         for (const SmGraph::Node& node : document.GetNodes())
         {
+            if (node.Id == SmGraph::kEntryNodeId)
+            {
+                if (specialLayout.EntryPos.x != node.Pos.x || specialLayout.EntryPos.y != node.Pos.y)
+                {
+                    specialLayout.EntryPos = node.Pos;
+                    // Session-only; do not dirty the asset for decorative moves.
+                }
+                continue;
+            }
+            if (node.Id == SmGraph::kAnyStateNodeId)
+            {
+                if (specialLayout.AnyStatePos.x != node.Pos.x
+                    || specialLayout.AnyStatePos.y != node.Pos.y)
+                {
+                    specialLayout.AnyStatePos = node.Pos;
+                }
+                continue;
+            }
+
             size_t stateIndex = 0;
             if (!FromNodeId(node.Id, stateIndex) || stateIndex >= stateMachine.States.size())
             {
@@ -182,6 +307,7 @@ namespace minEngine
         AnimationGraphEditor& editor,
         AnimationGraph& graph,
         SmGraph::Document& document,
+        AnimGraphSpecialNodeLayout& specialLayout,
         const std::vector<SmGraph::EditEvent>& events)
     {
         AnimStateMachine& stateMachine = graph.GetStateMachine();
@@ -196,8 +322,15 @@ namespace minEngine
                 AnimGraphSelection selection;
                 if (document.GetSelection().Kind == SmGraph::SelectionKind::Node)
                 {
+                    const SmGraph::NodeId nodeId = document.GetSelection().Node;
+                    if (nodeId == SmGraph::kEntryNodeId || nodeId == SmGraph::kAnyStateNodeId)
+                    {
+                        editor.ClearSelection();
+                        break;
+                    }
+
                     size_t stateIndex = 0;
-                    if (FromNodeId(document.GetSelection().Node, stateIndex)
+                    if (FromNodeId(nodeId, stateIndex)
                         && stateIndex < stateMachine.States.size())
                     {
                         selection.Kind = AnimGraphSelectionKind::State;
@@ -206,11 +339,24 @@ namespace minEngine
                 }
                 else if (document.GetSelection().Kind == SmGraph::SelectionKind::Edge)
                 {
+                    const SmGraph::EdgeId edgeId = document.GetSelection().Edge;
+                    if (edgeId == SmGraph::kEntryEdgeId)
+                    {
+                        editor.ClearSelection();
+                        break;
+                    }
+
                     size_t transitionIndex = 0;
-                    if (FromEdgeId(document.GetSelection().Edge, transitionIndex)
+                    if (FromEdgeId(edgeId, transitionIndex)
                         && transitionIndex < stateMachine.Transitions.size())
                     {
                         selection.Kind = AnimGraphSelectionKind::Transition;
+                        selection.TransitionIndex = static_cast<int>(transitionIndex);
+                    }
+                    else if (FromAnyStateEdgeId(edgeId, transitionIndex)
+                        && transitionIndex < stateMachine.AnyStateTransitions.size())
+                    {
+                        selection.Kind = AnimGraphSelectionKind::AnyStateTransition;
                         selection.TransitionIndex = static_cast<int>(transitionIndex);
                     }
                 }
@@ -221,6 +367,32 @@ namespace minEngine
                 break;
             case SmGraph::EditKind::CreateEdgeRequested:
             {
+                if (event.From == SmGraph::kEntryNodeId)
+                {
+                    size_t toIndex = 0;
+                    if (FromNodeId(event.To, toIndex) && toIndex < stateMachine.States.size())
+                    {
+                        if (editor.SetDefaultStateName(stateMachine.States[toIndex].Name))
+                        {
+                            structureChanged = true;
+                        }
+                    }
+                    break;
+                }
+
+                if (event.From == SmGraph::kAnyStateNodeId)
+                {
+                    size_t toIndex = 0;
+                    if (FromNodeId(event.To, toIndex) && toIndex < stateMachine.States.size())
+                    {
+                        if (editor.AddAnyStateTransition(stateMachine.States[toIndex].Name))
+                        {
+                            structureChanged = true;
+                        }
+                    }
+                    break;
+                }
+
                 size_t fromIndex = 0;
                 size_t toIndex = 0;
                 if (!FromNodeId(event.From, fromIndex) || !FromNodeId(event.To, toIndex)
@@ -239,22 +411,76 @@ namespace minEngine
                 }
                 break;
             }
+            case SmGraph::EditKind::DeleteEdgeRequested:
+            {
+                size_t transitionIndex = 0;
+                if (FromEdgeId(event.Edge, transitionIndex)
+                    && transitionIndex < stateMachine.Transitions.size())
+                {
+                    editor.RemoveTransitionAt(transitionIndex);
+                    structureChanged = true;
+                }
+                else if (FromAnyStateEdgeId(event.Edge, transitionIndex)
+                    && transitionIndex < stateMachine.AnyStateTransitions.size())
+                {
+                    editor.RemoveAnyStateTransitionAt(transitionIndex);
+                    structureChanged = true;
+                }
+                break;
+            }
+            case SmGraph::EditKind::ReverseEdgeRequested:
+            {
+                size_t transitionIndex = 0;
+                if (!FromEdgeId(event.Edge, transitionIndex)
+                    || transitionIndex >= stateMachine.Transitions.size())
+                {
+                    break;
+                }
+
+                AnimGraphSelection selection;
+                selection.Kind = AnimGraphSelectionKind::Transition;
+                selection.TransitionIndex = static_cast<int>(transitionIndex);
+                editor.SetSelection(std::move(selection));
+                if (editor.ReverseTransition())
+                {
+                    structureChanged = true;
+                }
+                break;
+            }
             case SmGraph::EditKind::DeleteSelectionRequested:
             {
                 if (document.GetSelection().Kind == SmGraph::SelectionKind::Edge)
                 {
+                    const SmGraph::EdgeId edgeId = document.GetSelection().Edge;
+                    if (edgeId == SmGraph::kEntryEdgeId)
+                    {
+                        break;
+                    }
+
                     size_t transitionIndex = 0;
-                    if (FromEdgeId(document.GetSelection().Edge, transitionIndex)
+                    if (FromEdgeId(edgeId, transitionIndex)
                         && transitionIndex < stateMachine.Transitions.size())
                     {
                         editor.RemoveTransitionAt(transitionIndex);
                         structureChanged = true;
                     }
+                    else if (FromAnyStateEdgeId(edgeId, transitionIndex)
+                        && transitionIndex < stateMachine.AnyStateTransitions.size())
+                    {
+                        editor.RemoveAnyStateTransitionAt(transitionIndex);
+                        structureChanged = true;
+                    }
                 }
                 else if (document.GetSelection().Kind == SmGraph::SelectionKind::Node)
                 {
+                    const SmGraph::Node* node = document.FindNode(document.GetSelection().Node);
+                    if (!node || !node->Deletable)
+                    {
+                        break;
+                    }
+
                     size_t stateIndex = 0;
-                    if (FromNodeId(document.GetSelection().Node, stateIndex)
+                    if (FromNodeId(node->Id, stateIndex)
                         && stateIndex < stateMachine.States.size())
                     {
                         const std::string name = stateMachine.States[stateIndex].Name;
@@ -270,22 +496,41 @@ namespace minEngine
                     structureChanged = true;
                 }
                 break;
+            case SmGraph::EditKind::RenameNodeRequested:
+            {
+                size_t stateIndex = 0;
+                if (!FromNodeId(event.Node, stateIndex)
+                    || stateIndex >= stateMachine.States.size())
+                {
+                    break;
+                }
+                const std::string oldName = stateMachine.States[stateIndex].Name;
+                if (editor.RenameState(oldName, event.Text))
+                {
+                    structureChanged = true;
+                }
+                break;
+            }
             }
         }
 
-        if (!structureChanged && PushPositions(document, graph))
+        if (!structureChanged && PushPositions(document, graph, specialLayout))
         {
             editor.NotifyGraphChanged();
+        }
+        else
+        {
+            // Keep session positions even when only special nodes moved.
+            PushPositions(document, graph, specialLayout);
         }
 
         if (structureChanged)
         {
             editor.ClearSelection();
             document.GetSelection().Clear();
-            PullDocument(graph, document);
+            PullDocument(graph, document, specialLayout);
         }
     }
-
 
     void AnimGraphSmBridge::ApplyEditorTheme(const EditorAppearance& appearance, SmGraph::Style& outStyle)
     {
@@ -297,7 +542,6 @@ namespace minEngine
         const float fieldLuma = 0.2126f * field.x + 0.7152f * field.y + 0.0722f * field.z;
         const bool lightChrome = fieldLuma > 0.55f;
 
-        // Editor-style accents (not tied to the achromatic dark chrome palette).
         const ImVec4 accentBlue = lightChrome
             ? ImVec4(0.26f, 0.45f, 0.85f, 1.0f)
             : ImVec4(0.35f, 0.62f, 0.98f, 1.0f);
@@ -310,6 +554,18 @@ namespace minEngine
         const ImVec4 ringSelected = lightChrome
             ? ImVec4(0.78f, 0.86f, 0.98f, 1.0f)
             : ImVec4(0.22f, 0.32f, 0.48f, 1.0f);
+        const ImVec4 entryRing = lightChrome
+            ? ImVec4(0.72f, 0.88f, 0.78f, 1.0f)
+            : ImVec4(0.20f, 0.34f, 0.26f, 1.0f);
+        const ImVec4 anyRing = lightChrome
+            ? ImVec4(0.92f, 0.82f, 0.72f, 1.0f)
+            : ImVec4(0.34f, 0.26f, 0.20f, 1.0f);
+        const ImVec4 entryEdge = lightChrome
+            ? ImVec4(0.25f, 0.55f, 0.35f, 0.95f)
+            : ImVec4(0.45f, 0.80f, 0.55f, 0.90f);
+        const ImVec4 anyEdge = lightChrome
+            ? ImVec4(0.70f, 0.45f, 0.20f, 0.95f)
+            : ImVec4(0.90f, 0.65f, 0.40f, 0.90f);
 
         if (lightChrome)
         {
@@ -328,10 +584,13 @@ namespace minEngine
         outStyle.NodeBorderSelected = ImGui::ColorConvertFloat4ToU32(accentBlue);
         outStyle.NodeTitle = appearance.GetDisplayColorU32(palette.TextPrimary);
         outStyle.NodeSubtitle = appearance.GetDisplayColorU32(palette.TextMuted);
+        outStyle.EntryRingFill = ImGui::ColorConvertFloat4ToU32(entryRing);
+        outStyle.AnyStateRingFill = ImGui::ColorConvertFloat4ToU32(anyRing);
         outStyle.EdgeColor = ImGui::ColorConvertFloat4ToU32(edgeBright);
         outStyle.EdgeSelected = ImGui::ColorConvertFloat4ToU32(accentBlue);
+        outStyle.EntryEdgeColor = ImGui::ColorConvertFloat4ToU32(entryEdge);
+        outStyle.AnyStateEdgeColor = ImGui::ColorConvertFloat4ToU32(anyEdge);
         outStyle.LinkPreview = ImGui::ColorConvertFloat4ToU32(accentWarm);
         outStyle.HoverTarget = ImGui::ColorConvertFloat4ToU32(accentWarm);
     }
-
 }

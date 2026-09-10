@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-09（**ED-F05** SM Canvas MVP Done）
+Last updated: 2026-09-10（**ED-F06** In Progress 实现落地）
 
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
@@ -49,11 +49,13 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
 | `ED-F04` | Debug Console & Unified Command System（Runtime 控制面 + Agent-friendly） | **In Progress** *(MVP Done)* | — | [Design](./Editor/ED-F03_DEBUG_CONSOLE_COMMAND_SYSTEM_DESIGN.md) · S00–S10a Done · **S10b Deferred** · S07 Deferred |
 | `ED-F05` | State Machine Graph Canvas（L1 SmGraph + L2 AnimGraph bridge） | **Done** | — | [Design](./Editor/ED-F05_STATE_MACHINE_CANVAS_DESIGN.md) · [Impl](./Editor/ED-F05_STATE_MACHINE_CANVAS_IMPLEMENTATION.md) · 首消 ANIM-F03 AnimGraph |
+| `ED-F06` | Anim SM Canvas Polish（Entry / AnyState 画布 / 边右键） | **Done** | — | [Design](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_DESIGN.md) · [Impl](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_IMPLEMENTATION.md) · 合入待 commit |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Skeleton / SkeletalMesh / GPU skinning） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · `feat/animation` · Shadow skinned **Deferred**；扭骨 UX Deferred |
 | `ANIM-F02` | Clip Playback（AnimationClip + Player） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) · S00–S03 Done；人型 Walking 目视 PASS；MVP 过渡（骨 Track + TryGet 壳） |
-| `ANIM-F03` | Animation Graph MVP（Unity 式 FSM + Params + Transition Blend） | **In Progress** | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · Runtime `a59b79a`；S08+S08b code Done（Inspector+SM disguise）；smoke PASS；Preview Deferred；真·SM 画布 → **ED-F05** Done |
+| `ANIM-F03` | Animation Graph MVP（Unity 式 FSM + Params + Transition Blend） | **In Progress** | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) · Runtime Done；Editor+SmGraph Done；画布语义收口 → **ED-F06** |
+| `ANIM-F04` | Blend Tree 1D（State 多 Clip 阈值混合） | **Review** | — | [Design](./Animation/ANIM-F04_BLEND_TREE_DESIGN.md) · [Impl](./Animation/ANIM-F04_BLEND_TREE_IMPLEMENTATION.md) · Nested SM → 后续 ANIM-F05 |
 | `ASSET-F01` | External Import Pipeline（FBX/glTF 等为 Source → 原生资产） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S00–S03 Done；S04 / `.memesh` **Deferred**；续作见 `ASSET-F02` |
 | `ASSET-F02` | Formal Import/Load 注册式管线 + Reusable ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) · S00–S05 Done；自动化+手动验 PASS |
 | `UI-F01` | UI system | **Planned** | — | [Placeholder](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) · `feat/ui` · 依赖 `RND-F16` |

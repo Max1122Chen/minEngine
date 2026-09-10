@@ -220,3 +220,54 @@ TEST_CASE("animation-graph: trigger any-state consume [full]")
     REQUIRE(instance.GetStore().TryGetBoolByName("Attack", stillSet));
     CHECK_FALSE(stillSet);
 }
+
+TEST_CASE("animation-graph: empty clip state allowed and holds last pose [full]")
+{
+    using namespace minEngine;
+
+    auto skeleton = MakeSharedTwoBoneSkeleton();
+    auto idleClip = MakeConstantPoseClip(skeleton, 1.0f);
+
+    auto graph = std::make_shared<AnimationGraph>();
+    ParameterSchema schema;
+    REQUIRE(schema.AddEntry({"GoEmpty", ParameterValueType::Bool, MakeBoolDefault(false)}));
+    graph->SetSchema(std::move(schema));
+
+    AnimStateMachine sm;
+    AnimState idle;
+    idle.Name = "Idle";
+    idle.Clip = idleClip;
+    AnimState empty;
+    empty.Name = "Empty";
+    empty.Clip = nullptr;
+    sm.States = {idle, empty};
+    sm.DefaultStateName = "Idle";
+
+    AnimTransition toEmpty;
+    toEmpty.FromStateName = "Idle";
+    toEmpty.ToStateName = "Empty";
+    toEmpty.BlendDurationSeconds = 0.0f;
+    AnimCondition go;
+    go.ParamName = "GoEmpty";
+    go.Op = AnimConditionOp::IsSet;
+    toEmpty.Conditions = {go};
+    sm.Transitions = {toEmpty};
+    graph->SetStateMachine(std::move(sm));
+
+    std::string error;
+    REQUIRE(graph->Validate(&error));
+
+    AnimationGraphInstance instance;
+    instance.SetGraph(graph);
+    REQUIRE(instance.IsBound());
+
+    Pose pose;
+    instance.Update(0.016f, pose);
+    CHECK(instance.GetCurrentStateName() == "Idle");
+    CHECK(pose.At(1).Position.y == doctest::Approx(1.0f));
+
+    REQUIRE(instance.SetTrigger("GoEmpty"));
+    instance.Update(0.016f, pose);
+    CHECK(instance.GetCurrentStateName() == "Empty");
+    CHECK(pose.At(1).Position.y == doctest::Approx(1.0f));
+}

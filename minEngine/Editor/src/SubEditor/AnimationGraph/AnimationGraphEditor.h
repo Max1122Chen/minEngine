@@ -75,9 +75,11 @@ namespace minEngine
         bool RemoveStateByName(std::string_view stateName);
         bool RenameState(std::string_view oldName, std::string_view newName, std::string* outError = nullptr);
         bool AddTransition(std::string_view fromState, std::string_view toState, std::string* outError = nullptr);
+        bool AddAnyStateTransition(std::string_view toState, std::string* outError = nullptr);
         bool RemoveTransitionAt(size_t transitionIndex);
         bool RemoveAnyStateTransitionAt(size_t anyTransitionIndex);
         bool ReverseTransition();
+        bool SetDefaultStateName(std::string_view stateName, std::string* outError = nullptr);
 
     private:
         void OnEnterMode();

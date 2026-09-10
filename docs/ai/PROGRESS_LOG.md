@@ -1,6 +1,25 @@
-Last updated: 2026-09-09（ED-F05 SM Canvas MVP Done；准备 commit）
+Last updated: 2026-09-10（ED-F06 Done；准备 commit）
 
+### 2026-09-10 - ED-F06 Done (canvas polish + empty-clip policy)
+- **Done:** Entry / AnyState 画布；边与 State 右键；删 AnimGraphIds；Validate 允许空 Clip + hold-last Pose。
+- **Verify:** Editor PASS；`animation-graph` 4/4；维护者 smoke OK。
+- **Next:** 准备 commit；ANIM-F04 仍 Review。
 
+### 2026-09-10 - ED-F06 S05 + empty-clip Runtime policy B
+- **Editor:** State 右键 Rename / Delete。
+- **Runtime:** `Validate` 允许空 Clip；`AnimationGraphInstance` 空 State → hold last Pose（无则 rest）。
+- **Verify:** Editor 编译 PASS；`minEngineTests test full` 中 suite `animation-graph` 4/4 PASS（含 empty clip hold-last）。
+- **Next:** smoke → ED-F06 Done → 准备 commit。
+
+### 2026-09-10 - ED-F06: canvas polish implemented
+- **Code:** 删 `AnimGraphIds`；SmGraph `NodeKind`/`EdgeKind` + 边右键 Delete/Reverse；Entry→`DefaultStateName`；AnyState 节点/边（会话坐标）；`AddAnyStateTransition` / `SetDefaultStateName`。
+- **Verify:** Editor Debug PASS；手测：边菜单、Entry 连线、AnyState 增删选中。
+- **Next:** smoke → Done → 准备 commit；ANIM-F04 仍 Review、错峰。
+
+### 2026-09-10 - ED-F06 + ANIM-F04 Design drafts (Review)
+- **Registry:** ED-F06（画布 Entry/AnyState/边右键）；ANIM-F04（1D BlendTree）；Nested SM → 后续 ANIM-F05。
+- **Docs:** [ED-F06 Design](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_DESIGN.md) · [ANIM-F04 Design](./Animation/ANIM-F04_BLEND_TREE_DESIGN.md)；ACTIVE_WORK backlog 记 Preview/高亮/Inspector UX/Undo/ExitTime/闭环。
+- **Next:** 先实现 ED-F06（已开干）。
 
 ### 2026-09-09 - ED-F05: SM Canvas MVP smoke + polish
 - **Code:** L1 UI/SmGraph + L2 AnimGraphSmBridge；AnimGraphWindow 去掉 ax Pin/Link；双区节点/自适应尺寸/蓝黄高亮；缩放对齐 ax Navigate。

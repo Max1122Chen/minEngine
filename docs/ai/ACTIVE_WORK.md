@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-09（ED-F05 In Progress：两层 SmGraph + AnimGraph bridge）
+Last updated: 2026-09-10（ED-F06 Done；准备 commit）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.
@@ -9,24 +9,50 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点（`feat/animation`）
 
+### ED-F06 — Anim SM Canvas Polish ← **Done**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_DESIGN.md) · [Impl](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_IMPLEMENTATION.md) |
+| 进度 | Entry / AnyState / 边与 State 菜单；空 Clip hold-last；维护者 smoke OK |
+| Next | 准备 commit；续 ANIM-F04（错峰） |
+
+### ANIM-F04 — Blend Tree 1D ← **Review（待审批）**
+
+| 项 | 链接 / 说明 |
+|----|-------------|
+| Design / Impl | [Design](./Animation/ANIM-F04_BLEND_TREE_DESIGN.md) · [Impl](./Animation/ANIM-F04_BLEND_TREE_IMPLEMENTATION.md) |
+| 目标 | State 可挂 1D BlendTree（float 参数 + 阈值 Clip） |
+| Out | 2D；Nested SM（→ **ANIM-F05** backlog）；AnimBP VM |
+| Next | 审批后实现；建议与 ED-F06 **错峰** |
+
 ### ED-F05 — State Machine Graph Canvas ← **Done**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design / Impl | [Design](./Editor/ED-F05_STATE_MACHINE_CANVAS_DESIGN.md) · [Impl](./Editor/ED-F05_STATE_MACHINE_CANVAS_IMPLEMENTATION.md) |
-| 目标 | **L1** 可复用 `UI/SmGraph`（ImGui+Canvas only）；**L2** AnimGraph bridge + 替换 ax Pin 层 |
-| Locked | 两层边界；边缘热区拖线；禁自环；同向多边允许；EditorPos=左上角；Material 继续 ax |
-| Next | MVP Done；Deferred：边右键菜单、Inspector UX；可准备 commit |
+| 进度 | 合入 `53e99f6`；后续画布语义 → **ED-F06** |
 
 ### ANIM-F03 — Animation Graph MVP ← **In Progress**
 
 | 项 | 链接 / 说明 |
 |----|-------------|
 | Design / Impl | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
-| 目标 | Unity 式 FSM（State+Transition+Params）+ Pose Blend；参数经 CORE-F08；Player∥Instance |
-| Out | AnimBP VM / BlendTree / Event / Retarget / 自研参数袋；Preview Deferred；真·SM → **ED-F05** |
-| Locked | 资产即图；真源=SM；F08 Schema；**S08b：复用 Inspector、取消 DetailsWindow、ax 伪装 SM** |
-| Next | S08/S08b 已合入 `958ac88`；真·SM 画布由 **ED-F05** 承接 |
+| 目标 | Unity 式 FSM + Params + Pose Blend；Editor+SmGraph 已可用 |
+| Next | ED-F06 收口画布语义后，人型闭环 smoke → 可标 Done |
+
+### 动画后续 backlog（先记一笔，未开 Feature）
+
+| 项 | 备注 |
+|----|------|
+| **ANIM-F05** Nested State Machine | 子状态机钻入；待 F04 后再立 Design |
+| Preview 窗 | AnimGraph 预览视口；另 Feature |
+| Play 时活跃 State/边高亮 | Editor 小切片 |
+| Inspector 条件编辑 UX | ED-F06 后 |
+| Undo/Redo 图编辑 | 痛感够再开 |
+| Exit Time | 曾 Deferred |
+| 人型 Idle↔Walk 闭环资产 | F03 收口验收 |
+
 
 ### CORE-F08 — Parameter Schema / Layout / Store ← **Done**
 

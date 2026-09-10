@@ -72,13 +72,11 @@ namespace minEngine
             {
                 return fail("AnimState Name is empty.");
             }
+
+            // Empty Clip is allowed (placeholder states). Only validate skeleton when present.
             if (state.Clip == nullptr)
             {
-                if (outError != nullptr)
-                {
-                    *outError = "AnimState '" + state.Name + "' has null Clip.";
-                }
-                return false;
+                continue;
             }
 
             Skeleton* skeleton = state.Clip->GetSkeleton();
