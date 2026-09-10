@@ -241,7 +241,7 @@ namespace minEngine
     ME_CLASS(Transient, meta = (Category = "ReflectionSample", DisplayName = "ReflectionSampleClass"))
     class MINENGINE_API ReflectionSampleClass
     {
-        ME_GENERATED_BODY(ReflectionSampleClass)
+        ME_GENERATED_BODY()
     public:
         ME_PROPERTY(Transient, meta = (Category = "Sample", DisplayName = "Sample Int"), EditAnywhere)
         int IntField = 42;
@@ -259,7 +259,7 @@ namespace minEngine
     ME_CLASS()
     class ReflectionSampleComponent : public Component
     {
-        ME_GENERATED_BODY(ReflectionSampleComponent)
+        ME_GENERATED_BODY()
     public:
         ME_PROPERTY(EditAnywhere)
         ReflectionSampleClass SampleData;

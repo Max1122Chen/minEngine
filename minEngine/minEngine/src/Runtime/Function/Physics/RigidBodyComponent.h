@@ -13,7 +13,7 @@ namespace minEngine
     ME_CLASS()
     class RigidBodyComponent : public Component
     {
-        ME_GENERATED_BODY(RigidBodyComponent)
+        ME_GENERATED_BODY()
 
     public:
         RigidBodyComponent() = default;

@@ -27,7 +27,7 @@
 
 - `ME_CLASS()`、`ME_STRUCT()`、`ME_ENUM()`
 - `ME_PROPERTY()`、`ME_FUNCTION()`
-- `ME_GENERATED_BODY(TypeName)` → 展开到 `*.gen.h` 中的注册逻辑
+- `ME_GENERATED_BODY()` → 声明 `StaticClass()`，并为 `FieldAccessor` 开友元（实现由 `*.gen.cpp` 生成）
 
 `FieldAccessor<T>` 模板在编译期绑定字段指针，供通用序列化/编辑器读写。
 

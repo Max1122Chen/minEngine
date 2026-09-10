@@ -10,7 +10,7 @@ namespace minEngine
     ME_STRUCT()
     struct EditorTypographySettings
     {
-        ME_GENERATED_BODY(EditorTypographySettings)
+        ME_GENERATED_BODY()
 
         /** Indexed by EditorTypographyRole; size should match EditorTypographyRole::Count. */
         ME_PROPERTY()

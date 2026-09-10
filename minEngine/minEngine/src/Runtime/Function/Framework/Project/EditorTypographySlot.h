@@ -8,7 +8,7 @@ namespace minEngine
     ME_STRUCT()
     struct EditorTypographySlot
     {
-        ME_GENERATED_BODY(EditorTypographySlot)
+        ME_GENERATED_BODY()
 
         /** Zero uses built-in default font resolution for the role. */
         ME_PROPERTY()

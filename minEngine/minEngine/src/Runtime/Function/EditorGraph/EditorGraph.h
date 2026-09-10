@@ -9,7 +9,7 @@ namespace minEngine
     ME_CLASS()
     class EditorGraph : public MEObject
     {
-        ME_GENERATED_BODY(EditorGraph)
+        ME_GENERATED_BODY()
     public:
         virtual ~EditorGraph() = default;
     };

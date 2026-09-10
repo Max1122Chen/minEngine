@@ -12,7 +12,7 @@ namespace minEngine
     ME_CLASS()
     class CapsuleColliderComponent : public ColliderComponent
     {
-        ME_GENERATED_BODY(CapsuleColliderComponent)
+        ME_GENERATED_BODY()
 
     public:
         CapsuleColliderComponent() = default;

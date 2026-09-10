@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-05（CORE-F11-S06 Done）
+Last updated: 2026-09-10（CORE-F12 Done；TEST-F04 Planned）
+
+### 2026-09-10 - CORE-F12 Done: ME_GENERATED_BODY() no-arg + marker attach (`feat/core`)
+- **Macro:** `ME_GENERATED_BODY()` 去掉未使用的类型实参；Runtime 标注头全量更新。
+- **Tool:** `find_attached_class_marker_args` — marker 与 `class`/`struct` 之间仅空白/注释才附着；`TOOL_CACHE_VERSION` 16（防缩短宏行后误反射邻近无标记类型）。
+- **Docs:** Design + Registry Done；handbook / README 示例同步。
+- **Also registered:** `TEST-F04` Planned — `Testing::TestAccess<T>` 收敛 TestScope friends。
+- **Verified:** `minEngine` / `minEngineTests`；`reflection-function` PASS。
+- **Next:** `TEST-F04` S01（ObjectManager）或回 Primary `ANIM-F01`。
 
 ### 2026-09-05 - CORE-F11-S06: Inspector live Assign + PostEdit semantics (`feat/core`)
 - **Semantics:** 属性编辑语义上皆为 PostEdit；有 Setter 时由 Setter 承担传播，实现层不调虚函数。

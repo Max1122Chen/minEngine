@@ -7,7 +7,7 @@ namespace minEngine
     ME_CLASS()
     class AudioListenerComponent : public SceneComponent
     {
-        ME_GENERATED_BODY(AudioListenerComponent)
+        ME_GENERATED_BODY()
 
     public:
         AudioListenerComponent();

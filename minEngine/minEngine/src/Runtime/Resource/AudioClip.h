@@ -22,7 +22,7 @@ namespace minEngine
     ME_CLASS()
     class AudioClip : public Asset
     {
-        ME_GENERATED_BODY(AudioClip)
+        ME_GENERATED_BODY()
 
     public:
         AudioClip() = default;

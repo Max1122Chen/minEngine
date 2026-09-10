@@ -15,7 +15,7 @@ namespace minEngine
     ME_CLASS()
     class Scene : public Asset
     {  
-        ME_GENERATED_BODY(Scene)
+        ME_GENERATED_BODY()
     public:
         Scene() = default;
         virtual ~Scene();

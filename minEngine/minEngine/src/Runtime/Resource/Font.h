@@ -12,7 +12,7 @@ namespace minEngine
     ME_CLASS()
     class Font : public Asset
     {
-        ME_GENERATED_BODY(Font)
+        ME_GENERATED_BODY()
 
     public:
         Font() = default;

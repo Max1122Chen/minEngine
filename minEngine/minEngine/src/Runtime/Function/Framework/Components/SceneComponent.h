@@ -18,7 +18,7 @@ namespace minEngine
     ME_CLASS()
     class SceneComponent : public Component
     {
-        ME_GENERATED_BODY(SceneComponent)
+        ME_GENERATED_BODY()
 
     public:
         SceneComponent();

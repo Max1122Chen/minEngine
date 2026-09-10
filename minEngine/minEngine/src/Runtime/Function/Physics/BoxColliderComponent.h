@@ -11,7 +11,7 @@ namespace minEngine
     ME_CLASS()
     class BoxColliderComponent : public ColliderComponent
     {
-        ME_GENERATED_BODY(BoxColliderComponent)
+        ME_GENERATED_BODY()
 
     public:
         BoxColliderComponent() = default;

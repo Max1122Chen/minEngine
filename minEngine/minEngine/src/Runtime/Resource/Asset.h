@@ -9,7 +9,7 @@ namespace minEngine
     ME_CLASS()
     class Asset : public MEObject
     {
-        ME_GENERATED_BODY(Asset)
+        ME_GENERATED_BODY()
     public:
         virtual ~Asset() = default;
 

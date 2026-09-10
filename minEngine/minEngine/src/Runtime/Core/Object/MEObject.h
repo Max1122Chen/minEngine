@@ -32,7 +32,7 @@ namespace minEngine
     ME_CLASS()
     class MEObject
     {
-        ME_GENERATED_BODY(MEObject)
+        ME_GENERATED_BODY()
         // Friend declaration for engine core classes 
         friend class Reflection::ReflectionSystem;
         friend class Reflection::MEClass;

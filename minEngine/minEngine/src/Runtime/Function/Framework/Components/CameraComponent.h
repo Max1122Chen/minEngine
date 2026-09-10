@@ -10,7 +10,7 @@ namespace minEngine
     ME_CLASS()
     class CameraComponent : public SceneComponent
     {
-        ME_GENERATED_BODY(CameraComponent)
+        ME_GENERATED_BODY()
     public:
         CameraComponent();
         virtual ~CameraComponent();    

@@ -33,7 +33,7 @@ FUNCTION_DECL_RE = re.compile(
 )
 CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\(", re.DOTALL)
 
-TOOL_CACHE_VERSION = 15
+TOOL_CACHE_VERSION = 16
 
 PROPERTY_SPECIFIER_MAP = {
     "transient": "Transient",
@@ -237,7 +237,34 @@ def extract_balanced_parentheses_content(text: str, open_paren_index: int) -> st
     return None
 
 
-def extract_last_class_marker_args(window: str) -> str | None:
+def is_whitespace_or_comments_only(text: str) -> bool:
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch.isspace():
+            i += 1
+            continue
+        if text.startswith("//", i):
+            newline = text.find("\n", i)
+            if newline < 0:
+                return True
+            i = newline + 1
+            continue
+        if text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            if end < 0:
+                return False
+            i = end + 2
+            continue
+        return False
+    return True
+
+
+def find_attached_class_marker_args(source: str, class_start: int) -> str | None:
+    """ME_CLASS/ME_STRUCT args only when the marker immediately precedes this type."""
+    window_start = max(0, class_start - 256)
+    window = source[window_start:class_start]
     matches = list(CLASS_MARK_RE.finditer(window))
     if not matches:
         return None
@@ -247,7 +274,16 @@ def extract_last_class_marker_args(window: str) -> str | None:
     if open_paren_index < 0:
         return None
 
-    return extract_balanced_parentheses_content(window, open_paren_index)
+    args = extract_balanced_parentheses_content(window, open_paren_index)
+    if args is None:
+        return None
+
+    marker_end = open_paren_index + 1 + len(args) + 1
+    between = window[marker_end:]
+    if not is_whitespace_or_comments_only(between):
+        return None
+
+    return args
 
 
 def parse_annotation_metadata(arg_text: str) -> dict[str, str]:
@@ -648,15 +684,11 @@ def find_matching_brace(source: str, open_brace_index: int) -> int:
 
 
 def has_class_marker(source: str, class_start: int) -> bool:
-    window_start = max(0, class_start - 256)
-    window = source[window_start:class_start]
-    return extract_last_class_marker_args(window) is not None
+    return find_attached_class_marker_args(source, class_start) is not None
 
 
 def parse_class_annotations_at(source: str, class_start: int) -> tuple[list[str], dict[str, str]]:
-    window_start = max(0, class_start - 256)
-    window = source[window_start:class_start]
-    marker_arg_text = extract_last_class_marker_args(window)
+    marker_arg_text = find_attached_class_marker_args(source, class_start)
     if marker_arg_text is None:
         return [], {}
 

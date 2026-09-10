@@ -9,7 +9,7 @@ namespace minEngine
     ME_STRUCT()
     struct ProjectSettings
     {
-        ME_GENERATED_BODY(ProjectSettings)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string EditorDefaultSceneName;

@@ -6,7 +6,7 @@ namespace minEngine
     ME_CLASS()
     struct EngineConfig
     {
-        ME_GENERATED_BODY(EngineConfig)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         std::string EngineDefaultAssetsRoot;

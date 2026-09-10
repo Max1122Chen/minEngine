@@ -18,7 +18,7 @@ namespace minEngine
     ME_STRUCT(ScriptType)
     struct Transform
     {
-        ME_GENERATED_BODY(Transform)
+        ME_GENERATED_BODY()
         
         ME_PROPERTY(EditAnywhere, ScriptReadWrite)
         Vector3 Position{ 0.0f, 0.0f, 0.0f };

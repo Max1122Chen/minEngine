@@ -9,7 +9,7 @@ namespace minEngine
     ME_STRUCT()
     struct EditorThemePalette
     {
-        ME_GENERATED_BODY(EditorThemePalette)
+        ME_GENERATED_BODY()
 
         ME_PROPERTY()
         LinearColor WindowBackground{};

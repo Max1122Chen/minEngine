@@ -19,7 +19,7 @@ namespace minEngine
     ME_CLASS(ScriptType)
     class Component : public MEObject
     {
-        ME_GENERATED_BODY(Component)
+        ME_GENERATED_BODY()
     public:
         Component();
         virtual ~Component();

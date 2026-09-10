@@ -11,7 +11,7 @@ namespace minEngine
     ME_CLASS()
     class SkyBoxComponent : public SceneComponent
     {
-        ME_GENERATED_BODY(SkyBoxComponent)
+        ME_GENERATED_BODY()
 
     public:
         SkyBoxComponent();

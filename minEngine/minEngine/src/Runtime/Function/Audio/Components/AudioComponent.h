@@ -12,7 +12,7 @@ namespace minEngine
     ME_CLASS(ScriptType)
     class AudioComponent : public SceneComponent
     {
-        ME_GENERATED_BODY(AudioComponent)
+        ME_GENERATED_BODY()
 
     public:
         AudioComponent();

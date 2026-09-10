@@ -14,13 +14,13 @@ namespace minEngine
 
     /**
      * Project-owned environment package (sky + IBL derivatives).
-     * Must live under Project Content â€” AssetManager does not register EngineDefault paths.
+     * Must live under Project Content â€?AssetManager does not register EngineDefault paths.
      * Face textures are loaded from a project-relative directory + prefixes (TextureCube is not an Asset yet).
      */
     ME_CLASS()
     class EnvironmentMap : public Asset
     {
-        ME_GENERATED_BODY(EnvironmentMap)
+        ME_GENERATED_BODY()
 
     public:
         EnvironmentMap() = default;
@@ -60,7 +60,7 @@ namespace minEngine
 
         /**
          * Project-relative HDR equirect path (e.g. Textures/IBL/foo.hdr).
-         * Used when face PNGs are missing â€” GPU bake via EnvMapCapture.
+         * Used when face PNGs are missing â€?GPU bake via EnvMapCapture.
          */
         ME_PROPERTY()
         std::string m_SourceHdrPath;
