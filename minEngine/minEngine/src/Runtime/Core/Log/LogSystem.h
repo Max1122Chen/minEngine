@@ -1,45 +1,50 @@
 #pragma once
-#include "Core.h"
-#include "spdlog/spdlog.h"
 
+#include "LogChannel.h"
+#include "LogRecord.h"
+
+#include "spdlog/fmt/fmt.h"
+
+#include <memory>
+#include <string>
+#include <string_view>
 
 namespace minEngine
 {
-    namespace LogChannelNames
-    {
-        inline constexpr const char* Core = "MINENGINE";
-        inline constexpr const char* Client = "APP";
-    }
-
     class MINENGINE_API LogSystem
     {
     public:
         static void Initialize();
         static void Shutdown();
-
         static LogSystem& Get();
 
-        inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
-        inline static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
-        
+        static void AddSink(std::shared_ptr<ILogSink> sink);
+        static void Emit(
+            const LogChannelBase& channel,
+            LogSeverity severity,
+            std::string message,
+            LogSourceLocation source);
+        static void SetChannelSeverity(LogChannelBase& channel, LogSeverity severity);
+        static void SetChannelSeverityByName(std::string_view name, LogSeverity severity);
+        static void Flush();
+
+        static void RegisterChannel(LogChannelBase& channel);
+        static void UnregisterChannel(LogChannelBase& channel);
+
     private:
-        static std::shared_ptr<spdlog::logger> s_CoreLogger;
-        static std::shared_ptr<spdlog::logger> s_ClientLogger;
+        LogSystem() = default;
     };
 }
 
-// Core log macros
-#define ME_CORE_TRACE(...)    ::minEngine::LogSystem::GetCoreLogger()->trace(__VA_ARGS__)
-#define ME_CORE_DEBUG(...)    ::minEngine::LogSystem::GetCoreLogger()->debug(__VA_ARGS__)
-#define ME_CORE_INFO(...)     ::minEngine::LogSystem::GetCoreLogger()->info(__VA_ARGS__)
-#define ME_CORE_WARN(...)     ::minEngine::LogSystem::GetCoreLogger()->warn(__VA_ARGS__)
-#define ME_CORE_ERROR(...)    ::minEngine::LogSystem::GetCoreLogger()->error(__VA_ARGS__)
-#define ME_CORE_CRITICAL(...) ::minEngine::LogSystem::GetCoreLogger()->critical(__VA_ARGS__)
-// Client log macros
-#define ME_TRACE(...)         ::minEngine::LogSystem::GetClientLogger()->trace(__VA_ARGS__)
-#define ME_DEBUG(...)         ::minEngine::LogSystem::GetClientLogger()->debug(__VA_ARGS__)
-#define ME_INFO(...)          ::minEngine::LogSystem::GetClientLogger()->info(__VA_ARGS__)
-#define ME_WARN(...)          ::minEngine::LogSystem::GetClientLogger()->warn(__VA_ARGS__)
-#define ME_ERROR(...)         ::minEngine::LogSystem::GetClientLogger()->error(__VA_ARGS__)
-#define ME_CRITICAL(...)      ::minEngine::LogSystem::GetClientLogger()->critical(__VA_ARGS__)
-
+#define ME_LOG(Channel, Severity, ...)                                                             \
+    do                                                                                             \
+    {                                                                                              \
+        if (!(Channel).IsSuppressed(::minEngine::LogSeverity::Severity))                           \
+        {                                                                                          \
+            ::minEngine::LogSystem::Emit(                                                          \
+                (Channel),                                                                         \
+                ::minEngine::LogSeverity::Severity,                                                \
+                ::fmt::format(__VA_ARGS__),                                                        \
+                ::minEngine::LogSourceLocation{__FILE__, __LINE__});                               \
+        }                                                                                          \
+    } while (0)

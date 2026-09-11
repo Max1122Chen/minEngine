@@ -59,7 +59,7 @@ namespace minEngine
 
         if (m_Listeners.find(listenerId) != m_Listeners.end())
         {
-            ME_CORE_ERROR("GameplayEvent listener id already registered: {}", listenerId);
+            ME_LOG(LogCore, Error, "GameplayEvent listener id already registered: {}", listenerId);
             ME_ASSERT(false, "Duplicate GameplayEvent listener id");
             return {};
         }
@@ -143,7 +143,7 @@ namespace minEngine
     {
         if (m_DispatchDepth >= m_MaxDispatchDepth)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "GameplayEvent dispatch depth exceeded maxDispatchDepth={}",
                 m_MaxDispatchDepth);
             ME_ASSERT(false, "GameplayEvent dispatch depth exceeded");

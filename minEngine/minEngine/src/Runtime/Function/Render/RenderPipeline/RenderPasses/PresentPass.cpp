@@ -140,7 +140,7 @@ namespace minEngine
     {
         if (!m_DrawPacket.PipelineState || !m_PresentShaderBindingSet || !m_InputTexture)
         {
-            ME_CORE_ERROR("PresentPass resources are not ready");
+            ME_LOG(LogRender, Error, "PresentPass resources are not ready");
             return;
         }
 

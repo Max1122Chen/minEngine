@@ -216,7 +216,7 @@ namespace minEngine
         {
             if (desc.Width == 0 || desc.Height == 0)
             {
-                ME_CORE_ERROR("OpenGLRHITexture cube: Width/Height must be > 0.");
+                ME_LOG(LogRHI, Error, "OpenGLRHITexture cube: Width/Height must be > 0.");
                 return 0;
             }
 
@@ -237,7 +237,7 @@ namespace minEngine
 
             if (faceData.size() < 6)
             {
-                ME_CORE_ERROR("OpenGLRHITexture cube: expected 6 face pointers, got {}.", faceData.size());
+                ME_LOG(LogRHI, Error, "OpenGLRHITexture cube: expected 6 face pointers, got {}.", faceData.size());
                 return 0;
             }
 
@@ -257,7 +257,7 @@ namespace minEngine
             const bool isDepthLike = IsDepthLikeTexture(desc.Format, usage);
             if (!isDepthLike && internalFormat == 0)
             {
-                ME_CORE_ERROR("OpenGLRHITexture cube: unsupported color format.");
+                ME_LOG(LogRHI, Error, "OpenGLRHITexture cube: unsupported color format.");
                 glDeleteTextures(1, &textureId);
                 return 0;
             }
@@ -296,7 +296,7 @@ namespace minEngine
                 const unsigned char* facePixels = faceData[faceIndex];
                 if (!isDepthLike && facePixels == nullptr && !IsFloatColorTexture(desc.Format))
                 {
-                    ME_CORE_ERROR("OpenGLRHITexture cube: color face {} is null.", faceIndex);
+                    ME_LOG(LogRHI, Error, "OpenGLRHITexture cube: color face {} is null.", faceIndex);
                     continue;
                 }
                 if (facePixels != nullptr)
@@ -615,7 +615,7 @@ namespace minEngine
         if (!CompileShaderStage(vertexShader, GL_VERTEX_SHADER, vertexSource, stageLog))
         {
             m_CompileLog = "Vertex shader compile error:\n" + stageLog;
-            ME_CORE_ERROR("{}", m_CompileLog);
+            ME_LOG(LogRHI, Error, "{}", m_CompileLog);
             glDeleteShader(vertexShader);
             glDeleteShader(fragmentShader);
             return;
@@ -624,7 +624,7 @@ namespace minEngine
         if (!CompileShaderStage(fragmentShader, GL_FRAGMENT_SHADER, fragmentSource, stageLog))
         {
             m_CompileLog = "Fragment shader compile error:\n" + stageLog;
-            ME_CORE_ERROR("{}", m_CompileLog);
+            ME_LOG(LogRHI, Error, "{}", m_CompileLog);
             glDeleteShader(vertexShader);
             glDeleteShader(fragmentShader);
             return;
@@ -660,7 +660,7 @@ namespace minEngine
         if (vertexSpirv == nullptr || fragmentSpirv == nullptr)
         {
             m_CompileLog = "RHIShaderCreateDesc requires Vertex and Pixel SPIR-V stages.";
-            ME_CORE_ERROR("{}", m_CompileLog);
+            ME_LOG(LogRHI, Error, "{}", m_CompileLog);
             return;
         }
 
@@ -671,7 +671,7 @@ namespace minEngine
         if (!SpecializeSpirvStage(vertexShader, GL_VERTEX_SHADER, *vertexSpirv, stageLog))
         {
             m_CompileLog = "Vertex SPIR-V error:\n" + stageLog;
-            ME_CORE_ERROR("{}", m_CompileLog);
+            ME_LOG(LogRHI, Error, "{}", m_CompileLog);
             glDeleteShader(vertexShader);
             glDeleteShader(fragmentShader);
             return;
@@ -680,7 +680,7 @@ namespace minEngine
         if (!SpecializeSpirvStage(fragmentShader, GL_FRAGMENT_SHADER, *fragmentSpirv, stageLog))
         {
             m_CompileLog = "Fragment SPIR-V error:\n" + stageLog;
-            ME_CORE_ERROR("{}", m_CompileLog);
+            ME_LOG(LogRHI, Error, "{}", m_CompileLog);
             glDeleteShader(vertexShader);
             glDeleteShader(fragmentShader);
             return;
@@ -698,7 +698,7 @@ namespace minEngine
 
         if (!desc.DebugName.empty())
         {
-            ME_CORE_INFO("OpenGLRHIShader: loaded SPIR-V program '{}'", desc.DebugName);
+            ME_LOG(LogRHI, Info, "OpenGLRHIShader: loaded SPIR-V program '{}'", desc.DebugName);
         }
     }
 
@@ -714,7 +714,7 @@ namespace minEngine
         if (linkStatus != GL_TRUE)
         {
             m_CompileLog = "Shader program link error:\n" + ReadProgramInfoLog(m_ProgramId);
-            ME_CORE_ERROR("{}", m_CompileLog);
+            ME_LOG(LogRHI, Error, "{}", m_CompileLog);
             glDeleteProgram(m_ProgramId);
             m_ProgramId = 0;
             return false;

@@ -1,6 +1,46 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-10（0.1.0 Roadmap Draft）
+Last updated: 2026-09-11（CORE-F17 channel remap）
+
+### 2026-09-11 - CORE-F17：按模块重归属 Channel + LogPlatform
+- **新增：** `LogPlatform`（NFD/FileDialog、GLFW WindowSystem）。
+- **映射：** Asset Loaders→`LogAsset`；Vulkan/OpenGL→`LogRHI`；其余 Render→`LogRender`；Editor→`LogEditor`；Tests→`LogTest`；其余按推荐表。
+- **脚本：** `scripts/remap_log_channels.py`
+- **Next：** 构建验证后可准备 commit。
+
+### 2026-09-11 - CORE-F17 Done：LogChannel + LogRecord 硬切
+- **实现：** typed Channel（方案 A）、`ME_LOG` 唯一宏面、`LogRecord`（channel* + name）、Sink、Fatal=Flush+abort；删除旧宏/`LogConsoleEntry`/`Get*Logger`。
+- **迁移：** 全仓机械替换（脚本 `scripts/migrate_log_macros.py`）；ConsoleWindow 最小读 `LogRecord`。
+- **验证：** `cmake --build … -j 2` → minEngine / Editor / minEngineTests；`minEngineTests.exe test logging-channels` PASS。
+- **Next：** Phase F2 `CORE-F18`；旁路 `ED-F09` Console 过滤 UX。
+
+### 2026-09-11 - CORE-F17：Fatal=abort；Record 持 Channel*；登记 ED-F09
+- **Fatal：** Flush 后 `std::abort`。
+- **LogRecord：** `const LogChannelBase*` + `channelName` 备份（进程内可解析 Channel 元数据）。
+- **ED-F09：** Editor Console LogRecord UI/过滤 — [草稿 Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md)。
+- **Next:** 确认后 CORE-F17 In Progress → S00。
+
+### 2026-09-11 - CORE-F17 拍板写入 Design
+- **显示名 A**；**先 runtime 过滤**；**旧宏硬切无兼容**。（Fatal 随后改为 abort，见上条）
+- **LogField** 暂缓（占位）；**删除 LogConsoleEntry**，Console 直接存/读 `LogRecord`。
+- **Next:** 全文确认 → In Progress → S00（含全仓 ME_LOG 替换）。
+
+### 2026-09-11 - CORE-F17 Design：typed LogChannel + 数据结构/迁移详设
+- **采纳：** 第一期上 UE 式 `ME_DECLARE/DEFINE_LOG_CHANNEL`（术语 LogChannel）。
+- **Docs:** Design §3–§5 数据结构/接口/旧宏迁移；Impl S00 DoD 同步；开放点（显示名方案 A、Fatal、Get*Logger）。
+- **Next:** 维护者审阅开放点后 → In Progress → S00。
+
+### 2026-09-11 - CORE-F17 Design 修订：LogChannel + structured LogRecord
+- **命名：** 用 **LogChannel**（不用 UE Category）。
+- **模型：** LogRecord L0/L1、Severity、ILogSink；spdlog 仅 Backend。
+- **Docs:** Design 重写 + [Impl](./Platform/Core/CORE-F17_LOGGING_CHANNELS_IMPLEMENTATION.md) S00–S03。
+- **Next:** 维护者确认 → In Progress → S00。
+
+### 2026-09-11 - Phase F kickoff: register F17/F18/WF-F03 + Logging Design
+- **Commit prior:** `7962a5f` 0.1.0 Roadmap docs.
+- **Registry:** `CORE-F17` Logging · `CORE-F18` Schema/engine version · `WF-F03` Maximum branding — **Planned**.
+- **Docs:** Roadmap Status → In Progress；ACTIVE_WORK Primary = F1 Logging；[CORE-F17 Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md)；F18/WF-F03 stubs.
+- **Next:** 维护者确认 CORE-F17 Design → In Progress → Impl S00（Channel 注册表）。
 
 ### 2026-09-10 - 0.1.0 Roadmap 修订：地基 fan-out + Prefab A/B
 - **采纳：** Phase F（Log+Schema+Brand）先合入再并行；editor 主攻世界 Query/Verify；mcp 跟 API；core Profiler。

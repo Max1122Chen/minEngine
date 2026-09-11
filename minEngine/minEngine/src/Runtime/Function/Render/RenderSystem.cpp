@@ -44,7 +44,7 @@ namespace minEngine
             switch (sceneRenderer)
             {
             case SceneRendererKind::Manual:
-                ME_CORE_INFO("RenderSystem: using ManualRenderer (RND-F13 diagnostic; no RenderGraph).");
+                ME_LOG(LogRender, Info, "RenderSystem: using ManualRenderer (RND-F13 diagnostic; no RenderGraph).");
                 return std::make_unique<ManualRenderer>();
             case SceneRendererKind::Forward:
             default:
@@ -61,7 +61,7 @@ namespace minEngine
             m_SceneRenderer = createSceneRenderer();
             m_SceneRenderer->Initialize();
 
-            ME_CORE_INFO("RenderSystem Initialized (Vulkan).");
+            ME_LOG(LogRender, Info, "RenderSystem Initialized (Vulkan).");
             return;
         }
 
@@ -73,7 +73,7 @@ namespace minEngine
         m_SceneRenderer = createSceneRenderer();
         m_SceneRenderer->Initialize();
 
-        ME_CORE_INFO("RenderSystem Initialized (OpenGL)");
+        ME_LOG(LogRender, Info, "RenderSystem Initialized (OpenGL)");
     }
 
     void RenderSystem::LoadEngineRenderingAssets()
@@ -86,7 +86,7 @@ namespace minEngine
         const std::filesystem::path& assetsRoot = PathRegistry::Get().GetEngineDefaultAssetsRoot();
         if (assetsRoot.empty())
         {
-            ME_CORE_WARN(
+            ME_LOG(LogRender, Warn, 
                 "RenderSystem: EngineDefaultAssetsRoot is empty; skipping IBL / SkyBox load (check EngineConfig).");
             return;
         }
@@ -96,7 +96,7 @@ namespace minEngine
             m_SceneRenderer->LoadEngineRenderingAssets(assetsRoot.string());
         }
         m_EngineRenderingAssetsLoaded = true;
-        ME_CORE_INFO("RenderSystem: engine rendering assets loaded.");
+        ME_LOG(LogRender, Info, "RenderSystem: engine rendering assets loaded.");
     }
 
     void RenderSystem::ReloadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot)
@@ -131,7 +131,7 @@ namespace minEngine
 
         m_PendingDraws.clear();
 
-        ME_CORE_INFO("RenderSystem Shutdown");
+        ME_LOG(LogRender, Info, "RenderSystem Shutdown");
     }
 
     void RenderSystem::SubmitSceneDraw(const SceneDrawDesc& desc)

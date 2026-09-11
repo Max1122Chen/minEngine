@@ -41,7 +41,7 @@ namespace minEngine
             }
         }
         m_Components.clear();
-        ME_CORE_INFO("GameObject with ID {} and name '{}' is being destroyed.", m_ID, GetName());
+        ME_LOG(LogCore, Info, "GameObject with ID {} and name '{}' is being destroyed.", m_ID, GetName());
     }
 
     Transform GameObject::GetTransform()
@@ -480,7 +480,7 @@ namespace minEngine
         SceneComponent* parentRoot = m_Parent->GetRootComponent();
         if (childRoot == nullptr || parentRoot == nullptr)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogCore, Warn, 
                 "GameObject::RebindRootToGameObjectParent: missing Root on '{}' or parent '{}'; dissolving GO edge.",
                 GetName(),
                 m_Parent->GetName());
@@ -523,13 +523,13 @@ namespace minEngine
     {
         if (parent == nullptr || parent == this)
         {
-            ME_CORE_ERROR("GameObject::AttachToParent: invalid parent for GO '{}'.", GetName());
+            ME_LOG(LogCore, Error, "GameObject::AttachToParent: invalid parent for GO '{}'.", GetName());
             return false;
         }
 
         if (WouldCreateHierarchyCycle(parent))
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "GameObject::AttachToParent: cycle detected attaching '{}' under '{}'.",
                 GetName(),
                 parent->GetName());
@@ -540,7 +540,7 @@ namespace minEngine
         SceneComponent* parentRoot = parent->GetRootComponent();
         if (childRoot == nullptr || parentRoot == nullptr)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "GameObject::AttachToParent: both GOs need a Root SceneComponent ('{}' under '{}').",
                 GetName(),
                 parent->GetName());

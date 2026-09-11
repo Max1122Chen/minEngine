@@ -67,7 +67,7 @@ namespace minEngine
             {
                 return true;
             }
-            ME_CORE_ERROR("VulkanRHI: {} failed ({})", what, VkResultToString(result));
+            ME_LOG(LogRHI, Error, "VulkanRHI: {} failed ({})", what, VkResultToString(result));
             return false;
         }
     }
@@ -81,7 +81,7 @@ namespace minEngine
     void VulkanRHI::Initialize()
     {
 #if !defined(MINENGINE_HAS_VULKAN)
-        ME_CORE_ERROR("VulkanRHI: built without MINENGINE_HAS_VULKAN (Vulkan SDK / CMake link required).");
+        ME_LOG(LogRHI, Error, "VulkanRHI: built without MINENGINE_HAS_VULKAN (Vulkan SDK / CMake link required).");
         return;
 #else
         if (m_Initialized)
@@ -94,12 +94,12 @@ namespace minEngine
             !CreateSyncObjects() || !CreateDescriptorResources())
         {
             Shutdown();
-            ME_CORE_ERROR("VulkanRHI: Initialize failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: Initialize failed.");
             return;
         }
 
         m_Initialized = true;
-        ME_CORE_INFO(
+        ME_LOG(LogRHI, Info, 
             "VulkanRHI Initialized (swapchain {}x{}, format={}, S07b-d descriptors/PSO/cmd)",
             m_SwapchainExtent.width,
             m_SwapchainExtent.height,
@@ -113,11 +113,11 @@ namespace minEngine
             const float probeBytes[16] = {};
             if (RHIBufferRef probe = RHICreateBuffer(probeDesc, probeBytes))
             {
-                ME_CORE_INFO("VulkanRHI: S07a buffer probe OK.");
+                ME_LOG(LogRHI, Info, "VulkanRHI: S07a buffer probe OK.");
             }
             else
             {
-                ME_CORE_ERROR("VulkanRHI: S07a buffer probe failed.");
+                ME_LOG(LogRHI, Error, "VulkanRHI: S07a buffer probe failed.");
             }
 
             RHITextureCreateDesc texDesc;
@@ -134,16 +134,16 @@ namespace minEngine
                 srvDesc.Texture = tex.get();
                 if (RHICreateShaderResourceView(srvDesc))
                 {
-                    ME_CORE_INFO("VulkanRHI: S07a texture/SRV probe OK.");
+                    ME_LOG(LogRHI, Info, "VulkanRHI: S07a texture/SRV probe OK.");
                 }
                 else
                 {
-                    ME_CORE_ERROR("VulkanRHI: S07a SRV probe failed.");
+                    ME_LOG(LogRHI, Error, "VulkanRHI: S07a SRV probe failed.");
                 }
             }
             else
             {
-                ME_CORE_ERROR("VulkanRHI: S07a texture probe failed.");
+                ME_LOG(LogRHI, Error, "VulkanRHI: S07a texture probe failed.");
             }
 
             auto layout = RHICreateVertexInputLayout({
@@ -152,11 +152,11 @@ namespace minEngine
             });
             if (layout && layout->GetStride() == 20)
             {
-                ME_CORE_INFO("VulkanRHI: S07a vertex layout probe OK (stride={}).", layout->GetStride());
+                ME_LOG(LogRHI, Info, "VulkanRHI: S07a vertex layout probe OK (stride={}).", layout->GetStride());
             }
             else
             {
-                ME_CORE_ERROR("VulkanRHI: S07a vertex layout probe failed.");
+                ME_LOG(LogRHI, Error, "VulkanRHI: S07a vertex layout probe failed.");
             }
         }
 #endif
@@ -223,7 +223,7 @@ namespace minEngine
         m_FrameRecording = false;
         m_SwapchainDrawnThisFrame = false;
         m_Initialized = false;
-        ME_CORE_INFO("VulkanRHI Shutdown");
+        ME_LOG(LogRHI, Info, "VulkanRHI Shutdown");
 #endif
     }
 
@@ -234,7 +234,7 @@ namespace minEngine
         const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
         if (glfwExtensions == nullptr || glfwExtensionCount == 0)
         {
-            ME_CORE_ERROR("VulkanRHI: glfwGetRequiredInstanceExtensions failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: glfwGetRequiredInstanceExtensions failed.");
             return false;
         }
 
@@ -263,7 +263,7 @@ namespace minEngine
         GLFWwindow* window = static_cast<GLFWwindow*>(glfwWindow->GetWindowHandle());
         if (window == nullptr)
         {
-            ME_CORE_ERROR("VulkanRHI: GLFW window handle is null.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: GLFW window handle is null.");
             return false;
         }
 
@@ -278,7 +278,7 @@ namespace minEngine
         vkEnumeratePhysicalDevices(m_Instance, &deviceCount, nullptr);
         if (deviceCount == 0)
         {
-            ME_CORE_ERROR("VulkanRHI: no physical devices.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: no physical devices.");
             return false;
         }
 
@@ -305,7 +305,7 @@ namespace minEngine
             }
         }
 
-        ME_CORE_ERROR("VulkanRHI: no suitable graphics+present queue family.");
+        ME_LOG(LogRHI, Error, "VulkanRHI: no suitable graphics+present queue family.");
         return false;
     }
 
@@ -355,7 +355,7 @@ namespace minEngine
         vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_Surface, &formatCount, formats.data());
         if (formats.empty())
         {
-            ME_CORE_ERROR("VulkanRHI: no surface formats.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: no surface formats.");
             return false;
         }
 
@@ -478,7 +478,7 @@ namespace minEngine
         DestroySwapchain();
         if (!CreateSwapchain() || !CreateSwapchainRenderPass())
         {
-            ME_CORE_ERROR("VulkanRHI: RecreateSwapchain failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: RecreateSwapchain failed.");
             m_FrameRecording = false;
             return;
         }
@@ -552,7 +552,7 @@ namespace minEngine
 
         if (m_SwapchainImageViews.empty())
         {
-            ME_CORE_ERROR("VulkanRHI: swapchain image views empty.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: swapchain image views empty.");
             return false;
         }
 
@@ -699,7 +699,7 @@ namespace minEngine
                 m_DummyUniformBuffer,
                 m_DummyUniformMemory))
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create dummy uniform buffer.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy uniform buffer.");
             return false;
         }
 
@@ -714,7 +714,7 @@ namespace minEngine
                 m_DummyImage,
                 m_DummyImageMemory))
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create dummy image.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy image.");
             return false;
         }
 
@@ -726,7 +726,7 @@ namespace minEngine
                 1,
                 m_DummyImageView))
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create dummy image view.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy image view.");
             return false;
         }
 
@@ -743,7 +743,7 @@ namespace minEngine
                 m_DummyArrayImage,
                 m_DummyArrayImageMemory))
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create dummy 2D array image.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy 2D array image.");
             return false;
         }
 
@@ -756,7 +756,7 @@ namespace minEngine
                 1,
                 m_DummyArrayImageView))
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create dummy 2D array image view.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy 2D array image view.");
             return false;
         }
 
@@ -770,7 +770,7 @@ namespace minEngine
                 m_DummyCubeImage,
                 m_DummyCubeImageMemory))
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create dummy cube image.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy cube image.");
             return false;
         }
 
@@ -782,7 +782,7 @@ namespace minEngine
                 1,
                 m_DummyCubeImageView))
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create dummy cube image view.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy cube image view.");
             return false;
         }
 
@@ -800,7 +800,7 @@ namespace minEngine
                     stagingBuffer,
                     stagingMemory))
             {
-                ME_CORE_ERROR("VulkanRHI: failed to create dummy image staging buffer.");
+                ME_LOG(LogRHI, Error, "VulkanRHI: failed to create dummy image staging buffer.");
                 return false;
             }
             void* mapped = nullptr;
@@ -1262,7 +1262,7 @@ namespace minEngine
         {
             if (!m_PipelineBindFailureLogged)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogRHI, Error, 
                     "VulkanRHI: failed to bind graphics pipeline for active render pass "
                     "(draw will be skipped).");
                 m_PipelineBindFailureLogged = true;
@@ -1459,7 +1459,7 @@ namespace minEngine
             {
                 if (!m_BeginFrameFailureLogged)
                 {
-                    ME_CORE_ERROR(
+                    ME_LOG(LogRHI, Error, 
                         "VulkanRHI: BeginFrameRecording failed twice; frame will not present "
                         "(window may stay black).");
                     m_BeginFrameFailureLogged = true;
@@ -1560,12 +1560,12 @@ namespace minEngine
 #if !defined(MINENGINE_HAS_VULKAN)
         (void)desc;
         (void)initialData;
-        ME_CORE_ERROR("VulkanRHI: built without MINENGINE_HAS_VULKAN.");
+        ME_LOG(LogRHI, Error, "VulkanRHI: built without MINENGINE_HAS_VULKAN.");
         return nullptr;
 #else
         if (!m_Initialized)
         {
-            ME_CORE_ERROR("VulkanRHI: RHICreateTexture2D before Initialize.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: RHICreateTexture2D before Initialize.");
             return nullptr;
         }
 
@@ -1582,12 +1582,12 @@ namespace minEngine
     {
 #if !defined(MINENGINE_HAS_VULKAN)
         (void)desc;
-        ME_CORE_ERROR("VulkanRHI: built without MINENGINE_HAS_VULKAN.");
+        ME_LOG(LogRHI, Error, "VulkanRHI: built without MINENGINE_HAS_VULKAN.");
         return nullptr;
 #else
         if (!m_Initialized)
         {
-            ME_CORE_ERROR("VulkanRHI: RHICreateShaderResourceView before Initialize.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: RHICreateShaderResourceView before Initialize.");
             return nullptr;
         }
         if (desc.Texture == nullptr)
@@ -1609,12 +1609,12 @@ namespace minEngine
 #if !defined(MINENGINE_HAS_VULKAN)
         (void)desc;
         (void)initialData;
-        ME_CORE_ERROR("VulkanRHI: built without MINENGINE_HAS_VULKAN.");
+        ME_LOG(LogRHI, Error, "VulkanRHI: built without MINENGINE_HAS_VULKAN.");
         return nullptr;
 #else
         if (!m_Initialized)
         {
-            ME_CORE_ERROR("VulkanRHI: RHICreateBuffer before Initialize.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: RHICreateBuffer before Initialize.");
             return nullptr;
         }
 
@@ -1687,7 +1687,7 @@ namespace minEngine
         }
         if (desc.PipelineLayout == nullptr)
         {
-            ME_CORE_WARN("RHICreateGraphicsPipelineState: PipelineLayout is null");
+            ME_LOG(LogRHI, Warn, "RHICreateGraphicsPipelineState: PipelineLayout is null");
         }
         return std::make_shared<VulkanRHIGraphicsPipelineState>(m_Device, desc);
 #endif
@@ -1943,7 +1943,7 @@ namespace minEngine
         if ((hasColor && (colorTexture == nullptr || !colorTexture->IsValid())) ||
             (hasDepth && (depthTexture == nullptr || !depthTexture->IsValid())))
         {
-            ME_CORE_ERROR("VulkanRHI: BeginRenderPass attachments are not Vulkan textures.");
+            ME_LOG(LogRHI, Error, "VulkanRHI: BeginRenderPass attachments are not Vulkan textures.");
             return;
         }
 
@@ -2004,12 +2004,12 @@ namespace minEngine
         fbKey.Height = height;
         if (hasColor && fbKey.ColorView == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create color attachment image view (slice/mip).");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create color attachment image view (slice/mip).");
             return;
         }
         if (hasDepth && fbKey.DepthView == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHI: failed to create depth attachment image view (slice).");
+            ME_LOG(LogRHI, Error, "VulkanRHI: failed to create depth attachment image view (slice).");
             return;
         }
         VkFramebuffer framebuffer = GetOrCreateOffscreenFramebuffer(fbKey);
@@ -2320,7 +2320,7 @@ namespace minEngine
 #if defined(MINENGINE_HAS_VULKAN)
         if (!m_GenerateMipsWarned)
         {
-            ME_CORE_WARN("VulkanRHI: RHICmdGenerateMips is a no-op in S07d.");
+            ME_LOG(LogRHI, Warn, "VulkanRHI: RHICmdGenerateMips is a no-op in S07d.");
             m_GenerateMipsWarned = true;
         }
 #endif

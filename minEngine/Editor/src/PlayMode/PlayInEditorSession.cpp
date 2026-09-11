@@ -90,7 +90,7 @@ namespace minEngine
         std::shared_ptr<Scene> editorScene = sceneManager.GetCurrentActiveScene();
         if (!editorScene)
         {
-            ME_CORE_WARN("PlayInEditorSession::EnterPlay: no active editor scene.");
+            ME_LOG(LogEditor, Warn, "PlayInEditorSession::EnterPlay: no active editor scene.");
             return false;
         }
 

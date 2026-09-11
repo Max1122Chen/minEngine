@@ -100,19 +100,19 @@ namespace minEngine
             }
 
             const TestSuiteMetadata metadata = suite->GetMetadata();
-            ME_CORE_INFO(
+            ME_LOG(LogTest, Info, 
                 "TestRunner: === suite '{}' ({}) ===",
                 metadata.Id,
                 metadata.DisplayName);
 
             if (!suite->Run(context))
             {
-                ME_CORE_ERROR("TestRunner: suite '{}' FAILED.", metadata.Id);
+                ME_LOG(LogTest, Error, "TestRunner: suite '{}' FAILED.", metadata.Id);
                 allPassed = false;
             }
             else
             {
-                ME_CORE_INFO("TestRunner: suite '{}' PASSED.", metadata.Id);
+                ME_LOG(LogTest, Info, "TestRunner: suite '{}' PASSED.", metadata.Id);
             }
         }
 

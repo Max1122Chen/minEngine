@@ -273,7 +273,7 @@ namespace minEngine::Serialization
             return;
         }
 
-        ME_CORE_WARN("JsonReaderArchive: invalid $schemaVersion type; treating as 0");
+        ME_LOG(LogSerialization, Warn, "JsonReaderArchive: invalid $schemaVersion type; treating as 0");
     }
 
     void JsonReaderArchive::PushObjectContext(const Json* object)
@@ -298,11 +298,11 @@ namespace minEngine::Serialization
             }
             if (!key.empty() && key[0] == '$')
             {
-                ME_CORE_WARN("Json deserialize: unrecognized meta key '{}' skipped", key);
+                ME_LOG(LogSerialization, Warn, "Json deserialize: unrecognized meta key '{}' skipped", key);
                 continue;
             }
 
-            ME_CORE_WARN("Json deserialize: unknown field '{}' skipped", key);
+            ME_LOG(LogSerialization, Warn, "Json deserialize: unknown field '{}' skipped", key);
         }
     }
 

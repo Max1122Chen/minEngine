@@ -93,7 +93,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-contact-block");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsContactTest: failed to create block scene.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: failed to create block scene.");
                 return false;
             }
 
@@ -116,7 +116,7 @@ namespace minEngine
 
             if (!floorRigidBody->HasValidPhysicsBody() || !dynamicRigidBody->HasValidPhysicsBody())
             {
-                ME_CORE_ERROR("PhysicsContactTest: block test bodies were not created.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: block test bodies were not created.");
                 return false;
             }
 
@@ -142,11 +142,11 @@ namespace minEngine
 
             if (!sawBlockBegin)
             {
-                ME_CORE_ERROR("PhysicsContactTest: expected Block Begin between Default and WorldStatic.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: expected Block Begin between Default and WorldStatic.");
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsContactTest: Block Begin observed.");
+            ME_LOG(LogTest, Info, "PhysicsContactTest: Block Begin observed.");
             return true;
         }
 
@@ -157,7 +157,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-contact-overlap");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsContactTest: failed to create overlap scene.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: failed to create overlap scene.");
                 return false;
             }
 
@@ -182,7 +182,7 @@ namespace minEngine
 
             if (!triggerRigidBody->HasValidPhysicsBody() || !dynamicRigidBody->HasValidPhysicsBody())
             {
-                ME_CORE_ERROR("PhysicsContactTest: overlap test bodies were not created.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: overlap test bodies were not created.");
                 return false;
             }
 
@@ -225,13 +225,13 @@ namespace minEngine
 
             if (!sawOverlapBegin)
             {
-                ME_CORE_ERROR("PhysicsContactTest: expected Overlap Begin with Trigger.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: expected Overlap Begin with Trigger.");
                 return false;
             }
 
             if (!sawOverlapEnd)
             {
-                ME_CORE_ERROR("PhysicsContactTest: expected Overlap End after leaving Trigger.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: expected Overlap End after leaving Trigger.");
                 return false;
             }
 
@@ -239,14 +239,14 @@ namespace minEngine
             const float finalHeight = dynamicRoot->GetPosition().y;
             if (!(finalHeight < heightAtBegin - 0.5f))
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsContactTest: Trigger appears to block motion (beginY={}, finalY={}).",
                     heightAtBegin,
                     finalHeight);
                 return false;
             }
 
-            ME_CORE_INFO(
+            ME_LOG(LogTest, Info, 
                 "PhysicsContactTest: Overlap Begin/End observed (beginY={}, finalY={}).",
                 heightAtBegin,
                 finalHeight);
@@ -262,21 +262,21 @@ namespace minEngine
             if (!registry.TryFindChannelByName("WorldStatic", channel)
                 || channel != ECollisionChannel::WorldStatic)
             {
-                ME_CORE_ERROR("PhysicsContactTest: WorldStatic name lookup failed.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: WorldStatic name lookup failed.");
                 return false;
             }
 
             if (registry.GetResponse(ECollisionChannel::Trigger, ECollisionChannel::Trigger)
                 != ECollisionResponse::Ignore)
             {
-                ME_CORE_ERROR("PhysicsContactTest: Trigger↔Trigger should Ignore.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: Trigger↔Trigger should Ignore.");
                 return false;
             }
 
             if (registry.GetResponse(ECollisionChannel::Default, ECollisionChannel::Trigger)
                 != ECollisionResponse::Overlap)
             {
-                ME_CORE_ERROR("PhysicsContactTest: Default↔Trigger should Overlap.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: Default↔Trigger should Overlap.");
                 return false;
             }
 

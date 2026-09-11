@@ -94,10 +94,10 @@ namespace minEngine
         ctx.RHI = &rhi;
         if (!MaterialCompiler::Compile(*material, ctx))
         {
-            ME_CORE_ERROR("SpriteMaterialFactory: failed to compile {} sprite material.", translucent ? "translucent" : "opaque");
+            ME_LOG(LogRender, Error, "SpriteMaterialFactory: failed to compile {} sprite material.", translucent ? "translucent" : "opaque");
             for (const MaterialCompileDiagnostic& diagnostic : material->m_LastCompileDiagnostics)
             {
-                ME_CORE_ERROR("  {}", diagnostic.Message);
+                ME_LOG(LogRender, Error, "  {}", diagnostic.Message);
             }
             return nullptr;
         }

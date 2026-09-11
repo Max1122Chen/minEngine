@@ -36,7 +36,7 @@ namespace minEngine
             {
                 *outError = std::string("Assimp failed: ") + importer.GetErrorString();
             }
-            ME_CORE_ERROR("StaticMeshLoader: Assimp failed for {}. {}", path, importer.GetErrorString());
+            ME_LOG(LogAsset, Error, "StaticMeshLoader: Assimp failed for {}. {}", path, importer.GetErrorString());
             return false;
         }
 
@@ -56,13 +56,13 @@ namespace minEngine
                 aiMesh* mesh = scene->mMeshes[node->mMeshes[meshIndex]];
                 if (mesh == nullptr)
                 {
-                    ME_CORE_WARN("StaticMeshLoader: null mesh pointer in {}.", path);
+                    ME_LOG(LogAsset, Warn, "StaticMeshLoader: null mesh pointer in {}.", path);
                     continue;
                 }
 
                 if (!mesh->HasPositions() || mesh->mVertices == nullptr)
                 {
-                    ME_CORE_WARN("StaticMeshLoader: skip mesh without positions in {}.", path);
+                    ME_LOG(LogAsset, Warn, "StaticMeshLoader: skip mesh without positions in {}.", path);
                     continue;
                 }
 
@@ -146,7 +146,7 @@ namespace minEngine
                     {
                         if (face.mIndices[indexInFace] >= mesh->mNumVertices)
                         {
-                            ME_CORE_WARN(
+                            ME_LOG(LogAsset, Warn, 
                                 "StaticMeshLoader: skip invalid index in {} (vertexCount={}, index={}).",
                                 path,
                                 mesh->mNumVertices,
@@ -213,7 +213,7 @@ namespace minEngine
                         }
                     }
 
-                    ME_CORE_WARN("StaticMeshLoader: generated fallback normals for {}.", path);
+                    ME_LOG(LogAsset, Warn, "StaticMeshLoader: generated fallback normals for {}.", path);
                 }
 
                 for (unsigned int vertexIndex = 0; vertexIndex < mesh->mNumVertices; ++vertexIndex)
@@ -248,12 +248,12 @@ namespace minEngine
 
                 if (!hasTangents)
                 {
-                    ME_CORE_WARN("StaticMeshLoader: generated fallback tangents for {}.", path);
+                    ME_LOG(LogAsset, Warn, "StaticMeshLoader: generated fallback tangents for {}.", path);
                 }
 
                 if (!hasTexCoords)
                 {
-                    ME_CORE_WARN("StaticMeshLoader: generated fallback UVs for {}.", path);
+                    ME_LOG(LogAsset, Warn, "StaticMeshLoader: generated fallback UVs for {}.", path);
                 }
 
                 if (mesh->mMaterialIndex >= 0)
@@ -276,7 +276,7 @@ namespace minEngine
             {
                 *outError = "No valid vertices produced.";
             }
-            ME_CORE_ERROR("StaticMeshLoader: no valid vertices for {}.", path);
+            ME_LOG(LogAsset, Error, "StaticMeshLoader: no valid vertices for {}.", path);
             return false;
         }
 
@@ -290,14 +290,14 @@ namespace minEngine
     {
         if (!importData.IsValid())
         {
-            ME_CORE_ERROR("StaticMeshLoader: invalid import data for {}.", meta.AssetPath);
+            ME_LOG(LogAsset, Error, "StaticMeshLoader: invalid import data for {}.", meta.AssetPath);
             return nullptr;
         }
 
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
-            ME_CORE_ERROR("StaticMeshLoader: RHI is not available.");
+            ME_LOG(LogAsset, Error, "StaticMeshLoader: RHI is not available.");
             return nullptr;
         }
 

@@ -27,12 +27,12 @@ namespace minEngine
     {
         if (m_Clip == nullptr || m_Clip->GetDuration() <= 0.0f)
         {
-            ME_CORE_ERROR("AnimationPlayer::Play rejected: missing clip or non-positive duration.");
+            ME_LOG(LogAnimation, Error, "AnimationPlayer::Play rejected: missing clip or non-positive duration.");
             return;
         }
         if (m_Clip->GetSkeleton() == nullptr)
         {
-            ME_CORE_ERROR("AnimationPlayer::Play rejected: clip has no Skeleton.");
+            ME_LOG(LogAnimation, Error, "AnimationPlayer::Play rejected: clip has no Skeleton.");
             return;
         }
         m_State = AnimationPlayState::Playing;

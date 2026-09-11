@@ -35,7 +35,7 @@ namespace minEngine
             {
                 *outError = deserializeResult.message;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "EnvironmentMapLoader: deserialize failed for '{}' — {} (field: {})",
                 meta.AssetPath,
                 deserializeResult.message,
@@ -46,7 +46,7 @@ namespace minEngine
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
         if (rhi == nullptr)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "EnvironmentMapLoader: RHI unavailable while loading {}; GPU resources deferred.",
                 meta.AssetPath);
             return environmentMap;
@@ -58,7 +58,7 @@ namespace minEngine
             {
                 *outError = "failed to create EnvironmentMap GPU resources";
             }
-            ME_CORE_ERROR("EnvironmentMapLoader: EnsureGPUResources failed for {}.", meta.AssetPath);
+            ME_LOG(LogAsset, Error, "EnvironmentMapLoader: EnsureGPUResources failed for {}.", meta.AssetPath);
             return nullptr;
         }
 

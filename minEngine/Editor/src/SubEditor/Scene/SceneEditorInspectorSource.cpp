@@ -877,7 +877,7 @@ namespace minEngine
                 AssetManager::Get().LoadAssetByPath(selected.Meta->AssetPath, errorMessage);
             if (!asset)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogEditor, Error, 
                     "ObjectPtrWidget: failed to load asset '{}' for property '{}': {}",
                     selected.Meta->AssetPath,
                     objectPtrProperty.GetName(),

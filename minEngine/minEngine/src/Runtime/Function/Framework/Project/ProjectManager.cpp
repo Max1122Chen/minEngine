@@ -30,7 +30,7 @@ namespace minEngine
     void ProjectManager::Shutdown()
     {
         CloseCurrentProject();
-        ME_CORE_INFO("ProjectManager Shutdown.");
+        ME_LOG(LogCore, Info, "ProjectManager Shutdown.");
     }
 
     ProjectOpenResult ProjectManager::OpenProject(const std::filesystem::path& projectRoot)
@@ -135,7 +135,7 @@ namespace minEngine
             }
             else
             {
-                ME_CORE_WARN("Assets directory not found in the project: {}", assetsPath.string());
+                ME_LOG(LogCore, Warn, "Assets directory not found in the project: {}", assetsPath.string());
             }
             return ProjectOpenResult(ProjectOpenStatus::Success, "Project " + descriptor.ProjectName + " opened successfully.");
         }
@@ -179,7 +179,7 @@ namespace minEngine
     {
         if (m_CurrentSettingsPath.empty())
         {
-            ME_CORE_WARN("SaveCurrentProjectSettings: no settings path (project not open).");
+            ME_LOG(LogCore, Warn, "SaveCurrentProjectSettings: no settings path (project not open).");
             return false;
         }
 
@@ -195,7 +195,7 @@ namespace minEngine
 
         if (!result.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "Failed to save project settings. Error: {}. Field path: {}. Settings file: {}",
                 result.message,
                 result.fieldPath,
@@ -220,7 +220,7 @@ namespace minEngine
 
         if(!result.ok)
         {
-            ME_CORE_ERROR("Failed to load project descriptor. Error: {}. Field path: {}. Descriptor file: {}",
+            ME_LOG(LogCore, Error, "Failed to load project descriptor. Error: {}. Field path: {}. Descriptor file: {}",
                           result.message,
                           result.fieldPath,
                           descriptorPath.string());
@@ -242,7 +242,7 @@ namespace minEngine
             });
         if(!result.ok)
         {
-            ME_CORE_ERROR("Failed to load project settings. Error: {}. Field path: {}. Settings file: {}",
+            ME_LOG(LogCore, Error, "Failed to load project settings. Error: {}. Field path: {}. Settings file: {}",
                           result.message,
                           result.fieldPath,
                           settingsPath.string());

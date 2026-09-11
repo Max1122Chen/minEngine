@@ -149,7 +149,7 @@ namespace minEngine
                 break;
 
             default:
-                ME_CORE_ERROR("Unknown LightType in RenderScene::UpdateLight");
+                ME_LOG(LogRender, Error, "Unknown LightType in RenderScene::UpdateLight");
                 break;
             }
 
@@ -252,7 +252,7 @@ namespace minEngine
         {
             if (m_SkyBoxProxy && m_SkyBoxProxy->m_SkyBoxComponent != skyBoxComponent)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogRender, Warn, 
                     "RenderScene: replacing existing SkyBox (only one allowed per scene).");
                 RemoveSkyBox(m_SkyBoxProxy->m_SkyBoxComponent);
             }

@@ -290,7 +290,7 @@ namespace minEngine
     {
         if (!SceneManager::Get().LoadSceneByPath(projectRelativePath))
         {
-            ME_CORE_ERROR("SceneEditor: failed to load scene '{}'.", projectRelativePath);
+            ME_LOG(LogEditor, Error, "SceneEditor: failed to load scene '{}'.", projectRelativePath);
             return false;
         }
 
@@ -298,7 +298,7 @@ namespace minEngine
         SyncSelectionWithScene();
         ClearSceneDirty();
         context.SetInspectingScene(GetDocumentScene());
-        ME_CORE_INFO("SceneEditor: opened scene '{}'.", projectRelativePath);
+        ME_LOG(LogEditor, Info, "SceneEditor: opened scene '{}'.", projectRelativePath);
         return true;
     }
 
@@ -309,7 +309,7 @@ namespace minEngine
         SyncSelectionWithScene();
         context.SetInspectingScene(GetDocumentScene());
         MarkSceneDirty();
-        ME_CORE_INFO("SceneEditor: created new untitled scene.");
+        ME_LOG(LogEditor, Info, "SceneEditor: created new untitled scene.");
         return true;
     }
 
@@ -562,14 +562,14 @@ namespace minEngine
 
         if (!gameObject->AttachToParent(newParent, kRules))
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "ApplyReparentGameObject: AttachToParent failed for id={} under id={}.",
                 gameObjectId,
                 newParentId);
             return false;
         }
 
-        ME_CORE_INFO(
+        ME_LOG(LogEditor, Info, 
             "ApplyReparentGameObject: attached id={} under id={} (parent now={}).",
             gameObjectId,
             newParentId,
@@ -679,7 +679,7 @@ namespace minEngine
         std::shared_ptr<Component> newComponent = gameObject->AddComponent(componentTypeName);
         if (!newComponent)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "Failed to add component of type '{}' to GameObject '{}'.",
                 componentTypeName,
                 gameObject->GetName());
@@ -737,7 +737,7 @@ namespace minEngine
     {
         if (targetComponent.GetOwner() != &gameObject)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "Failed to remove component '{}' from GameObject '{}': component does not belong to the specified GameObject.",
                 targetComponent.GetClass()->GetName(),
                 gameObject.GetName());
@@ -786,18 +786,18 @@ namespace minEngine
         Scene* scene = GetDocumentScene();
         if (!scene)
         {
-            ME_CORE_ERROR("No active scene to save.");
+            ME_LOG(LogEditor, Error, "No active scene to save.");
             return false;
         }
 
         if (SceneManager::Get().SaveCurrentScene())
         {
             ClearSceneDirty();
-            ME_CORE_INFO("Scene '{}' saved successfully.", scene->GetSceneName());
+            ME_LOG(LogEditor, Info, "Scene '{}' saved successfully.", scene->GetSceneName());
             return true;
         }
 
-        ME_CORE_ERROR("Failed to save scene '{}'.", scene->GetSceneName());
+        ME_LOG(LogEditor, Error, "Failed to save scene '{}'.", scene->GetSceneName());
         return false;
     }
 
@@ -806,7 +806,7 @@ namespace minEngine
         Scene* scene = GetDocumentScene();
         if (!scene)
         {
-            ME_CORE_ERROR("No active scene to save.");
+            ME_LOG(LogEditor, Error, "No active scene to save.");
             return false;
         }
 
@@ -814,7 +814,7 @@ namespace minEngine
         const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
         if (projectContentRoot.empty())
         {
-            ME_CORE_ERROR("SaveCurrentSceneAs: ProjectContentRoot is not set.");
+            ME_LOG(LogEditor, Error, "SaveCurrentSceneAs: ProjectContentRoot is not set.");
             return false;
         }
 
@@ -837,7 +837,7 @@ namespace minEngine
             std::filesystem::relative(dialogResult.Paths.front().lexically_normal(), normalizedRoot, errorCode);
         if (errorCode)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "SaveCurrentSceneAs: selected path '{}' is outside project content root.",
                 dialogResult.Paths.front().string());
             return false;
@@ -860,7 +860,7 @@ namespace minEngine
             std::filesystem::create_directories(absolutePath.parent_path(), createError);
             if (createError)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogEditor, Error, 
                     "SaveCurrentSceneAs: failed to create directory '{}': {}",
                     absolutePath.parent_path().string(),
                     createError.message());
@@ -878,7 +878,7 @@ namespace minEngine
                     .skipUnknownField = false});
             if (!serializeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogEditor, Error, 
                     "SaveCurrentSceneAs: failed to serialize '{}': {}",
                     projectRelativePath,
                     serializeResult.message);
@@ -891,20 +891,20 @@ namespace minEngine
             const AssetMeta registeredMeta = assetManager.RegisterAsset(projectRelativePath, "Scene");
             if (registeredMeta.AssetPath.empty())
             {
-                ME_CORE_ERROR("SaveCurrentSceneAs: RegisterAsset failed for '{}'.", projectRelativePath);
+                ME_LOG(LogEditor, Error, "SaveCurrentSceneAs: RegisterAsset failed for '{}'.", projectRelativePath);
                 return false;
             }
         }
         else if (!assetManager.SaveAsset<Scene>(projectRelativePath, *scene))
         {
-            ME_CORE_ERROR("SaveCurrentSceneAs: failed to overwrite scene '{}'.", projectRelativePath);
+            ME_LOG(LogEditor, Error, "SaveCurrentSceneAs: failed to overwrite scene '{}'.", projectRelativePath);
             return false;
         }
 
         scene->SetSceneName(sceneName);
         SceneManager::Get().RegisterScene(sceneName, projectRelativePath);
         ClearSceneDirty();
-        ME_CORE_INFO("SceneEditor: saved scene as '{}'.", projectRelativePath);
+        ME_LOG(LogEditor, Info, "SceneEditor: saved scene as '{}'.", projectRelativePath);
         return true;
     }
 
@@ -913,7 +913,7 @@ namespace minEngine
         Scene* scene = GetActiveScene();
         if (!scene)
         {
-            ME_CORE_ERROR("No active scene to add GameObject to.");
+            ME_LOG(LogEditor, Error, "No active scene to add GameObject to.");
             return std::numeric_limits<uint64_t>::max();
         }
         std::shared_ptr<GameObject> newGO = scene->CreateGameObject();
@@ -924,12 +924,12 @@ namespace minEngine
             newGO->AddComponent<SceneComponent>();
             MarkSceneDirty();
             SelectGameObject(newGO->GetID());
-            ME_CORE_INFO("Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());
+            ME_LOG(LogEditor, Info, "Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());
             return newGO->GetID();
         }
         else
         {
-            ME_CORE_ERROR("Failed to create new GameObject in scene '{}'.", scene->GetSceneName());
+            ME_LOG(LogEditor, Error, "Failed to create new GameObject in scene '{}'.", scene->GetSceneName());
             return std::numeric_limits<uint64_t>::max();
         }
     }
@@ -944,7 +944,7 @@ namespace minEngine
         Scene* scene = GetActiveScene();
         if (!scene)
         {
-            ME_CORE_ERROR("No active scene to remove GameObject from.");
+            ME_LOG(LogEditor, Error, "No active scene to remove GameObject from.");
             return false;
         }
 
@@ -964,11 +964,11 @@ namespace minEngine
             {
                 ClearSelectedGameObject();
             }
-            ME_CORE_INFO("Removed GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
+            ME_LOG(LogEditor, Info, "Removed GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
             return true;
         }
 
-        ME_CORE_ERROR("Failed to remove GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
+        ME_LOG(LogEditor, Error, "Failed to remove GameObject with ID {} from scene '{}'.", gameObjectId, scene->GetSceneName());
         return false;
     }
 
@@ -1020,7 +1020,7 @@ namespace minEngine
         std::shared_ptr<MEObject> ownerObject = ObjectManager::Get().FindObject(ownerGuid);
         if (!ownerObject)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "ApplySetObjectProperty: owner not found (guid='{}', property='{}').",
                 ownerGuid.ToString(),
                 propertyPath);
@@ -1030,7 +1030,7 @@ namespace minEngine
         const Reflection::MEClass* ownerClass = Reflection::ReflectionSystem::Get().FindClass(ownerClassName);
         if (ownerClass == nullptr)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "ApplySetObjectProperty: class '{}' not found (property='{}').",
                 ownerClassName,
                 propertyPath);
@@ -1047,7 +1047,7 @@ namespace minEngine
             GetPropertyCommandSerializerOptions());
         if (!result.ok)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "ApplySetObjectProperty failed: {} (path='{}').",
                 result.message,
                 result.fieldPath);
@@ -1060,7 +1060,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_WARN("ApplySetObjectProperty: unresolved object references remain.");
+                ME_LOG(LogEditor, Warn, "ApplySetObjectProperty: unresolved object references remain.");
             }
         }
 
@@ -1155,7 +1155,7 @@ namespace minEngine
         const Serialization::SerializeResult captureResult = CaptureGameObjectSnapshot(*gameObject, outSnapshot);
         if (!captureResult.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "TryCaptureGameObjectSnapshotForDelete: capture failed: {} (path='{}').",
                 captureResult.message,
                 captureResult.fieldPath);
@@ -1210,7 +1210,7 @@ namespace minEngine
             CaptureComponentSnapshot(*component, *owner, outComponentIndex, outSnapshot);
         if (!captureResult.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "TryCaptureComponentSnapshotForRemove: capture failed: {} (path='{}').",
                 captureResult.message,
                 captureResult.fieldPath);
@@ -1352,28 +1352,28 @@ namespace minEngine
     {
         if (snapshot.kind != EditorSnapshotKind::GameObject || snapshot.rootClassName.empty() || snapshot.payload.empty())
         {
-            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: invalid snapshot.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreGameObjectFromSnapshot: invalid snapshot.");
             return std::numeric_limits<uint64_t>::max();
         }
 
         Scene* scene = GetActiveScene();
         if (scene == nullptr)
         {
-            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: no active scene.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreGameObjectFromSnapshot: no active scene.");
             return std::numeric_limits<uint64_t>::max();
         }
 
         const Reflection::MEClass* rootClass = Reflection::ReflectionSystem::Get().FindClass(snapshot.rootClassName);
         if (rootClass == nullptr)
         {
-            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: class '{}' not found.", snapshot.rootClassName);
+            ME_LOG(LogEditor, Error, "ApplyRestoreGameObjectFromSnapshot: class '{}' not found.", snapshot.rootClassName);
             return std::numeric_limits<uint64_t>::max();
         }
 
         std::shared_ptr<void> instanceVoid = rootClass->CreateDefaultInstance();
         if (!instanceVoid)
         {
-            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: CreateDefaultInstance failed.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreGameObjectFromSnapshot: CreateDefaultInstance failed.");
             return std::numeric_limits<uint64_t>::max();
         }
 
@@ -1390,7 +1390,7 @@ namespace minEngine
             restoreOptions);
         if (!deserializeResult.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "ApplyRestoreGameObjectFromSnapshot: deserialize failed: {} (path='{}').",
                 deserializeResult.message,
                 deserializeResult.fieldPath);
@@ -1401,7 +1401,7 @@ namespace minEngine
 
         if (!scene->InsertRestoredGameObject(gameObject))
         {
-            ME_CORE_ERROR("ApplyRestoreGameObjectFromSnapshot: InsertRestoredGameObject failed.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreGameObjectFromSnapshot: InsertRestoredGameObject failed.");
             ObjectManager::Get().UnregisterObject(gameObject.get());
             return std::numeric_limits<uint64_t>::max();
         }
@@ -1412,7 +1412,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_WARN("ApplyRestoreGameObjectFromSnapshot: some pending references remain unresolved.");
+                ME_LOG(LogEditor, Warn, "ApplyRestoreGameObjectFromSnapshot: some pending references remain unresolved.");
             }
         }
 
@@ -1425,14 +1425,14 @@ namespace minEngine
     {
         if (snapshot.kind != EditorSnapshotKind::Component || snapshot.rootClassName.empty() || snapshot.payload.empty())
         {
-            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: invalid snapshot.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreComponentFromSnapshot: invalid snapshot.");
             return nullptr;
         }
 
         Scene* scene = GetActiveScene();
         if (scene == nullptr)
         {
-            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: no active scene.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreComponentFromSnapshot: no active scene.");
             return nullptr;
         }
 
@@ -1445,21 +1445,21 @@ namespace minEngine
 
         if (owner == nullptr)
         {
-            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: owner GameObject not found.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreComponentFromSnapshot: owner GameObject not found.");
             return nullptr;
         }
 
         const Reflection::MEClass* rootClass = Reflection::ReflectionSystem::Get().FindClass(snapshot.rootClassName);
         if (rootClass == nullptr)
         {
-            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: class '{}' not found.", snapshot.rootClassName);
+            ME_LOG(LogEditor, Error, "ApplyRestoreComponentFromSnapshot: class '{}' not found.", snapshot.rootClassName);
             return nullptr;
         }
 
         std::shared_ptr<void> instanceVoid = rootClass->CreateDefaultInstance();
         if (!instanceVoid)
         {
-            ME_CORE_ERROR("ApplyRestoreComponentFromSnapshot: CreateDefaultInstance failed.");
+            ME_LOG(LogEditor, Error, "ApplyRestoreComponentFromSnapshot: CreateDefaultInstance failed.");
             return nullptr;
         }
 
@@ -1476,7 +1476,7 @@ namespace minEngine
             restoreOptions);
         if (!deserializeResult.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "ApplyRestoreComponentFromSnapshot: deserialize failed: {} (path='{}').",
                 deserializeResult.message,
                 deserializeResult.fieldPath);
@@ -1491,7 +1491,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_WARN("ApplyRestoreComponentFromSnapshot: some pending references remain unresolved.");
+                ME_LOG(LogEditor, Warn, "ApplyRestoreComponentFromSnapshot: some pending references remain unresolved.");
             }
         }
 

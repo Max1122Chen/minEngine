@@ -48,7 +48,7 @@ namespace minEngine
         m_bPointerRoutingEnabled = false;
         m_PIEScene = nullptr;
         m_Initialized = true;
-        ME_CORE_INFO("UISystem Initialized");
+        ME_LOG(LogUI, Info, "UISystem Initialized");
     }
 
     void UISystem::Shutdown()
@@ -63,7 +63,7 @@ namespace minEngine
         m_bPointerRoutingEnabled = false;
         m_PIEScene = nullptr;
         m_Initialized = false;
-        ME_CORE_INFO("UISystem Shutdown");
+        ME_LOG(LogUI, Info, "UISystem Shutdown");
     }
 
     void UISystem::Tick(float deltaTime)

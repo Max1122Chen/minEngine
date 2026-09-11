@@ -129,7 +129,7 @@ namespace minEngine
             WriteStackTrace(log, exceptionPointers->ContextRecord);
             log.flush();
 
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "Unhandled exception 0x{:08X} at 0x{:p}. See '{}'.",
                 code,
                 exceptionPointers->ExceptionRecord->ExceptionAddress,
@@ -144,9 +144,9 @@ namespace minEngine
     {
 #if defined(_WIN32)
         SetUnhandledExceptionFilter(EditorUnhandledExceptionFilter);
-        ME_CORE_INFO("Editor crash diagnostics: logging to ed_crash.log beside Editor.exe.");
+        ME_LOG(LogEditor, Info, "Editor crash diagnostics: logging to ed_crash.log beside Editor.exe.");
 #else
-        ME_CORE_WARN("Editor crash diagnostics: Windows-only; not installed.");
+        ME_LOG(LogEditor, Warn, "Editor crash diagnostics: Windows-only; not installed.");
 #endif
     }
 }

@@ -60,7 +60,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-load");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsLoadTest: failed to create scene.");
+                ME_LOG(LogTest, Error, "PhysicsLoadTest: failed to create scene.");
                 return false;
             }
 
@@ -78,7 +78,7 @@ namespace minEngine
 
             if (!dynamicRigidBody->HasValidPhysicsBody())
             {
-                ME_CORE_ERROR("PhysicsLoadTest: dynamic body missing after setup.");
+                ME_LOG(LogTest, Error, "PhysicsLoadTest: dynamic body missing after setup.");
                 return false;
             }
 
@@ -88,7 +88,7 @@ namespace minEngine
 
             if (!dynamicRigidBody->HasValidPhysicsBody())
             {
-                ME_CORE_ERROR("PhysicsLoadTest: rebuild did not register dynamic body.");
+                ME_LOG(LogTest, Error, "PhysicsLoadTest: rebuild did not register dynamic body.");
                 return false;
             }
 
@@ -101,11 +101,11 @@ namespace minEngine
             const float finalHeight = dynamicRoot->GetPosition().y;
             if (!(finalHeight < 10.0f && finalHeight > 0.5f))
             {
-                ME_CORE_ERROR("PhysicsLoadTest: rebuild world bodies did not simulate (height={}).", finalHeight);
+                ME_LOG(LogTest, Error, "PhysicsLoadTest: rebuild world bodies did not simulate (height={}).", finalHeight);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsLoadTest: rebuild world bodies fell to {}.", finalHeight);
+            ME_LOG(LogTest, Info, "PhysicsLoadTest: rebuild world bodies fell to {}.", finalHeight);
             return true;
         }
     } // namespace

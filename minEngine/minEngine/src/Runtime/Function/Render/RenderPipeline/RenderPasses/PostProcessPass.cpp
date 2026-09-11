@@ -140,7 +140,7 @@ namespace minEngine
     {
         if (!m_DrawPacket.PipelineState || !m_PostShaderBindingSet || !m_OutputTexture)
         {
-            ME_CORE_ERROR("PostProcessPass resources are not ready");
+            ME_LOG(LogRender, Error, "PostProcessPass resources are not ready");
             return;
         }
 

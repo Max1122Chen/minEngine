@@ -274,7 +274,7 @@ namespace minEngine
         m_DragMouseWasDown = true;
         ClearStickyTarget();
         m_HitRowThisFrame = false;
-        ME_CORE_INFO("Hierarchy DnD: begin drag GO id={}.", draggedGoId);
+        ME_LOG(LogEditor, Info, "Hierarchy DnD: begin drag GO id={}.", draggedGoId);
     }
 
     void HierarchyWindow::ClearDragSession()
@@ -383,7 +383,7 @@ namespace minEngine
 
         if (dropKind == ReparentDropKind::None)
         {
-            ME_CORE_INFO("Hierarchy DnD: release with no sticky target (cancelled).");
+            ME_LOG(LogEditor, Info, "Hierarchy DnD: release with no sticky target (cancelled).");
             return;
         }
 
@@ -395,7 +395,7 @@ namespace minEngine
 
         if (dropKind == ReparentDropKind::AsRoot)
         {
-            ME_CORE_INFO("Hierarchy DnD: commit detach GO id={}.", draggedId);
+            ME_LOG(LogEditor, Info, "Hierarchy DnD: commit detach GO id={}.", draggedId);
             sceneEditor->SubmitReparentGameObject(m_Context, draggedId, SceneEditor::kSceneRootParentId);
             return;
         }
@@ -404,14 +404,14 @@ namespace minEngine
         {
             if (!IsValidReparentTarget(draggedId, targetParentId))
             {
-                ME_CORE_WARN(
+                ME_LOG(LogEditor, Warn, 
                     "Hierarchy DnD: sticky target id={} invalid for dragged id={}; skip.",
                     targetParentId,
                     draggedId);
                 return;
             }
 
-            ME_CORE_INFO(
+            ME_LOG(LogEditor, Info, 
                 "Hierarchy DnD: commit reparent GO id={} under parent id={}.",
                 draggedId,
                 targetParentId);

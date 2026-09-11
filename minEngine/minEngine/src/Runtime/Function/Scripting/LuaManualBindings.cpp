@@ -11,7 +11,7 @@ namespace minEngine
 {
     void LuaManualBindings::Log(std::string_view message)
     {
-        ME_CORE_INFO("[Lua] {}", message);
+        ME_LOG(LogScript, Info, "[Lua] {}", message);
     }
 
     void LuaManualBindings::Register(sol::state& state)

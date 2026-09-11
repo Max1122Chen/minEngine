@@ -31,7 +31,7 @@ namespace minEngine
             {
                 *outError = message;
             }
-            ME_CORE_ERROR("{}", message);
+            ME_LOG(LogAsset, Error, "{}", message);
             return false;
         }
 
@@ -44,7 +44,7 @@ namespace minEngine
             {
                 *outError = message;
             }
-            ME_CORE_ERROR("{}", message);
+            ME_LOG(LogAsset, Error, "{}", message);
             return false;
         }
 
@@ -68,7 +68,7 @@ namespace minEngine
             {
                 *outError = message;
             }
-            ME_CORE_ERROR("{}", message);
+            ME_LOG(LogAsset, Error, "{}", message);
             return false;
         }
 

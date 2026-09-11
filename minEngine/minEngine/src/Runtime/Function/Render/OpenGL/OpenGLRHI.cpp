@@ -68,14 +68,14 @@ namespace minEngine
         // Initialize OpenGL specific resources here
         m_WindowSystem = &WindowSystem::Get();
         
-        ME_CORE_INFO("OpenGLRHI Initialized"); 
+        ME_LOG(LogRHI, Info, "OpenGLRHI Initialized"); 
 
     }
 
     void OpenGLRHI::Shutdown()
     {
         m_WindowSystem = nullptr;
-        ME_CORE_INFO("OpenGLRHI Shutdown");
+        ME_LOG(LogRHI, Info, "OpenGLRHI Shutdown");
     }
 
     void OpenGLRHI::RHISetBackbufferClearColor(const Vector3& color)
@@ -184,7 +184,7 @@ namespace minEngine
     {
         if (!desc.PipelineLayout)
         {
-            ME_CORE_WARN("RHICreateGraphicsPipelineState: PipelineLayout is null");
+            ME_LOG(LogRHI, Warn, "RHICreateGraphicsPipelineState: PipelineLayout is null");
         }
         return std::make_shared<RHIGraphicsPSOStateFallback>(desc);
     }
@@ -495,7 +495,7 @@ namespace minEngine
             const GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
             if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogRHI, Error, 
                     "RHICmdBeginRenderPass: framebuffer incomplete (status=0x{:X}, color={}, depth={}).",
                     static_cast<unsigned int>(fboStatus),
                     hasColor,
@@ -551,7 +551,7 @@ namespace minEngine
     {
         if (setIndex >= kMaxShaderBindingSets)
         {
-            ME_CORE_WARN("RHICmdSetShaderBindingSet: setIndex {} out of range", setIndex);
+            ME_LOG(LogRHI, Warn, "RHICmdSetShaderBindingSet: setIndex {} out of range", setIndex);
             return;
         }
 
@@ -562,7 +562,7 @@ namespace minEngine
                 RHIPipelineLayout* pipelineLayout = fallback->GetDesc().PipelineLayout;
                 if (pipelineLayout && setIndex >= pipelineLayout->GetShaderBindingSetLayoutCount())
                 {
-                    ME_CORE_WARN(
+                    ME_LOG(LogRHI, Warn, 
                         "RHICmdSetShaderBindingSet: setIndex {} exceeds pipeline layout set count {}",
                         setIndex,
                         pipelineLayout->GetShaderBindingSetLayoutCount());
@@ -574,7 +574,7 @@ namespace minEngine
                     RHIShaderBindingSetLayout* expectedLayout = pipelineLayout->GetShaderBindingSetLayout(setIndex);
                     if (expectedLayout && bindingSet->GetLayout() != expectedLayout)
                     {
-                        ME_CORE_WARN("RHICmdSetShaderBindingSet: binding layout mismatch at set {}", setIndex);
+                        ME_LOG(LogRHI, Warn, "RHICmdSetShaderBindingSet: binding layout mismatch at set {}", setIndex);
                     }
                 }
             }

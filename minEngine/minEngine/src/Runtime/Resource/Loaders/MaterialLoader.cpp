@@ -37,7 +37,7 @@ namespace minEngine
                 {
                     *outError = deserializeResult.message;
                 }
-                ME_CORE_ERROR(
+                ME_LOG(LogAsset, Error, 
                     "MaterialLoader: deserialize failed for '{}' — {} (field: {})",
                     meta.AssetPath,
                     deserializeResult.message,
@@ -52,7 +52,7 @@ namespace minEngine
                 {
                     *outError = graphError;
                 }
-                ME_CORE_ERROR(
+                ME_LOG(LogAsset, Error, 
                     "MaterialLoader: finalize graph failed for '{}': {}",
                     meta.AssetPath,
                     graphError);
@@ -74,7 +74,7 @@ namespace minEngine
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (rhi == nullptr)
         {
-            ME_CORE_ERROR("MaterialLoader: RHI unavailable while loading {}.", meta.AssetPath);
+            ME_LOG(LogAsset, Error, "MaterialLoader: RHI unavailable while loading {}.", meta.AssetPath);
             return nullptr;
         }
 
@@ -82,10 +82,10 @@ namespace minEngine
         ctx.RHI = rhi;
         if (!MaterialCompiler::Compile(*material, ctx))
         {
-            ME_CORE_ERROR("MaterialLoader: compile failed for {}.", meta.AssetPath);
+            ME_LOG(LogAsset, Error, "MaterialLoader: compile failed for {}.", meta.AssetPath);
             for (const MaterialCompileDiagnostic& diagnostic : material->m_LastCompileDiagnostics)
             {
-                ME_CORE_ERROR("  {}", diagnostic.Message);
+                ME_LOG(LogAsset, Error, "  {}", diagnostic.Message);
             }
             return nullptr;
         }

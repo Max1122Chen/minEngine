@@ -161,7 +161,7 @@ me.log("probe ok")
             const int32_t counter = LuaBindProbe::GetStaticCounter();
             if (counter != 3)
             {
-                ME_CORE_ERROR("LuaScriptMvpTest: expected static counter 3, got {}.", counter);
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: expected static counter 3, got {}.", counter);
                 component.UnloadScript();
                 system.Shutdown();
                 LuaScriptSystem::SetInstance(nullptr);
@@ -188,7 +188,7 @@ me.log("probe ok")
                 component.Tick(0.016f);
                 if (LuaBindProbe::GetStaticCounter() != 1)
                 {
-                    ME_CORE_ERROR("LuaScriptMvpTest: destroy path preload failed.");
+                    ME_LOG(LogTest, Error, "LuaScriptMvpTest: destroy path preload failed.");
                     system.Shutdown();
                     LuaScriptSystem::SetInstance(nullptr);
                     return false;
@@ -211,7 +211,7 @@ me.log("probe ok")
                 std::ofstream output(scriptPath, std::ios::binary);
                 if (!output.is_open())
                 {
-                    ME_CORE_ERROR("LuaScriptMvpTest: failed to write fixture .lua");
+                    ME_LOG(LogTest, Error, "LuaScriptMvpTest: failed to write fixture .lua");
                     return false;
                 }
                 output << "function tick(dt)\n  LuaBindProbe.IncrementStaticCounter()\nend\n";
@@ -220,20 +220,20 @@ me.log("probe ok")
             const AssetMeta meta = AssetManager::Get().RegisterAsset(scriptPath.string(), "LuaScript");
             if (meta.AssetPath.empty())
             {
-                ME_CORE_ERROR("LuaScriptMvpTest: RegisterAsset failed for .lua fixture.");
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: RegisterAsset failed for .lua fixture.");
                 return false;
             }
 
             std::shared_ptr<LuaScript> script = AssetManager::Get().LoadAsset<LuaScript>(meta.AssetPath);
             if (script == nullptr || !script->IsValid())
             {
-                ME_CORE_ERROR("LuaScriptMvpTest: LoadAsset<LuaScript> failed.");
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: LoadAsset<LuaScript> failed.");
                 return false;
             }
 
             if (script->GetSource().find("IncrementStaticCounter") == std::string::npos)
             {
-                ME_CORE_ERROR("LuaScriptMvpTest: loaded source missing expected body.");
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: loaded source missing expected body.");
                 return false;
             }
 
@@ -250,7 +250,7 @@ me.log("probe ok")
             const bool ok = LuaBindProbe::GetStaticCounter() == 2;
             if (!ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "LuaScriptMvpTest: disk-loaded script tick expected 2, got {}.",
                     LuaBindProbe::GetStaticCounter());
             }
@@ -339,7 +339,7 @@ end
                 std::abs(position.z - 4.0f) < 1e-4f;
             if (!ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "LuaScriptMvpTest: scene entry expected (2,3,4), got ({},{},{}).",
                     position.x,
                     position.y,

@@ -745,13 +745,13 @@ namespace minEngine
         }
         else
         {
-            ME_CORE_ERROR("PhysicsWorld: unsupported collider type.");
+            ME_LOG(LogPhysics, Error, "PhysicsWorld: unsupported collider type.");
             return;
         }
 
         if (shapeResult.HasError())
         {
-            ME_CORE_ERROR("PhysicsWorld: failed to create collider shape.");
+            ME_LOG(LogPhysics, Error, "PhysicsWorld: failed to create collider shape.");
             return;
         }
 
@@ -779,7 +779,7 @@ namespace minEngine
         JPH::Body* body = bodyInterface.CreateBody(bodySettings);
         if (body == nullptr)
         {
-            ME_CORE_ERROR("PhysicsWorld: failed to create rigid body.");
+            ME_LOG(LogPhysics, Error, "PhysicsWorld: failed to create rigid body.");
             return;
         }
 

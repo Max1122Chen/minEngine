@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-10（docs align：merge wave 后 Status / Next free）  
+Last updated: 2026-09-11（Phase F + ED-F09 Console）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -41,6 +41,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F14` | GameObject Hierarchy（父子 Transform） | **Done** | — | [Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) · [Impl](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_IMPLEMENTATION.md) · 文件名保留历史 `CORE-F08_GAMEOBJECT_*` |
 | `CORE-F15` | Parallel Hierarchy KeepWorld | **Done** | — | [Design](./Platform/Core/CORE-F09_PARALLEL_HIERARCHY_KEEPWORLD_DESIGN.md) · 文件名保留历史 `CORE-F09_*` |
 | `CORE-F16` | LinearColor 作者颜色（灯光等） | **Done** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · 文件名保留历史 `CORE-F14_*` |
+| `CORE-F17` | LogChannel + structured LogRecord（spdlog Backend；非 UE Category） | **Done** | — | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) · [Impl](./Platform/Core/CORE-F17_LOGGING_CHANNELS_IMPLEMENTATION.md) · Phase F1 |
+| `CORE-F18` | Asset / Serialization schema + engine version 注入 | **Planned** | — | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) · Phase F2 |
+| `WF-F03` | Maximum 产品显示名与 0.1.0 版本展示 | **Planned** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
 | `RND-F03` | Legacy RHI removal | **Done** | — | [Design](./Render/RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) |
@@ -61,6 +64,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F06` | State Machine Graph Canvas（Anim Graph 真·SM 画布） | **Done** | — | [Design](./Editor/ED-F05_STATE_MACHINE_CANVAS_DESIGN.md) · [Impl](./Editor/ED-F05_STATE_MACHINE_CANVAS_IMPLEMENTATION.md) · 文件名保留历史 `ED-F05_STATE_MACHINE_*` |
 | `ED-F07` | Anim SM Canvas Polish（Entry / AnyState / 边菜单 / 空 Clip） | **Done** | — | [Design](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_DESIGN.md) · [Impl](./Editor/ED-F06_ANIM_SM_CANVAS_POLISH_IMPLEMENTATION.md) · 文件名保留历史 `ED-F06_ANIM_SM_*` |
 | `ED-F08` | Hierarchy Tree（拖拽改父） | **Done** | — | [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) · 文件名保留历史 `ED-F05_HIERARCHY_*` |
+| `ED-F09` | Editor Log Console（LogRecord 展示/按 Channel·Severity 过滤） | **Planned** | — | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) · 依赖 CORE-F17 |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ASSET-F01` | External Import Pipeline（Assimp → 引擎资产；MVP） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S04 / `.memesh` Deferred |
@@ -113,10 +117,10 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 |--------|----------------|-------|
 | `CLI` | F02 | |
 | `TEST` | **F05** | F04 Done（TestAccess） |
-| `WF` | F03 | F02 handbook In Progress |
-| `CORE` | **F17** | F13–F16 Done（Parameter / Hierarchy / KeepWorld / LinearColor） |
+| `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding Planned |
+| `CORE` | **F19** | F17 Logging / F18 Schema Planned（Phase F）；F13–F16 Done |
 | `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F09** | F06–F08 Done；F02/F04 余量；F01 VK deferred |
+| `ED` | **F10** | **F09** Log Console Planned；F02/F04 余量；Settings/Tab 等下一号 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |

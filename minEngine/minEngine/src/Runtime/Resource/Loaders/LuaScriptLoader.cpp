@@ -23,7 +23,7 @@ namespace minEngine
             {
                 *outError = message;
             }
-            ME_CORE_ERROR("{}", message);
+            ME_LOG(LogAsset, Error, "{}", message);
             return false;
         }
 
@@ -36,7 +36,7 @@ namespace minEngine
             {
                 *outError = message;
             }
-            ME_CORE_ERROR("{}", message);
+            ME_LOG(LogAsset, Error, "{}", message);
             return false;
         }
 
@@ -48,7 +48,7 @@ namespace minEngine
             {
                 *outError = message;
             }
-            ME_CORE_ERROR("{}", message);
+            ME_LOG(LogAsset, Error, "{}", message);
             return false;
         }
 
@@ -63,7 +63,7 @@ namespace minEngine
         std::string error;
         if (!ReadScriptFileText(absoluteAssetPath, source, &error))
         {
-            ME_CORE_ERROR("LuaScriptLoader: failed to load '{}' ({}).", meta.AssetPath, error);
+            ME_LOG(LogAsset, Error, "LuaScriptLoader: failed to load '{}' ({}).", meta.AssetPath, error);
             return nullptr;
         }
 

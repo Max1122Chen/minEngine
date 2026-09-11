@@ -169,7 +169,7 @@ namespace minEngine
         {
             if (selected != nullptr)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogEditor, Error, 
                     "ObjectPtrWidget: unsupported pointer category for property '{}'.",
                     objectPtrProperty.GetName());
             }
@@ -202,7 +202,7 @@ namespace minEngine
             AssetManager::Get().LoadAssetByPath(selected->Meta->AssetPath, errorMessage);
         if (!asset)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "ObjectPtrWidget: failed to load asset '{}' for property '{}': {}",
                 selected->Meta->AssetPath,
                 objectPtrProperty.GetName(),
@@ -213,7 +213,7 @@ namespace minEngine
         const std::shared_ptr<void> assetAsVoid = asset;
         if (!valueClass->SetSharedPtr(assetAsVoid, propertyPtr))
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "ObjectPtrWidget: SetSharedPtr failed for property '{}' on class '{}'.",
                 objectPtrProperty.GetName(),
                 valueClass->GetName());

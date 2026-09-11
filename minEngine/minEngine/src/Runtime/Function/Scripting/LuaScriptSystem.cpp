@@ -48,7 +48,7 @@ namespace minEngine
         LuaManualBindings::Register(*m_State);
         RegisterGeneratedLuaBindings(*m_State);
         m_Initialized = true;
-        ME_CORE_INFO("LuaScriptSystem initialized.");
+        ME_LOG(LogScript, Info, "LuaScriptSystem initialized.");
     }
 
     void LuaScriptSystem::Shutdown()
@@ -60,7 +60,7 @@ namespace minEngine
 
         m_State.reset();
         m_Initialized = false;
-        ME_CORE_INFO("LuaScriptSystem shut down.");
+        ME_LOG(LogScript, Info, "LuaScriptSystem shut down.");
     }
 
     sol::state& LuaScriptSystem::GetState()
@@ -77,12 +77,12 @@ namespace minEngine
 
     void LuaScriptSystem::ReportLuaError(std::string_view context, const sol::error& error)
     {
-        ME_CORE_ERROR("Lua error [{}]: {}", context, error.what());
+        ME_LOG(LogScript, Error, "Lua error [{}]: {}", context, error.what());
     }
 
     void LuaScriptSystem::ReportLuaError(std::string_view context, std::string_view message)
     {
-        ME_CORE_ERROR("Lua error [{}]: {}", context, message);
+        ME_LOG(LogScript, Error, "Lua error [{}]: {}", context, message);
     }
 
     bool LuaScriptSystem::RunString(std::string_view chunk, std::string_view chunkName)

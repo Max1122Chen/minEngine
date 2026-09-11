@@ -65,7 +65,7 @@ namespace minEngine
     {
         if (!m_NfdReady)
         {
-            ME_CORE_ERROR("OpenFiles: NFD is not initialized.");
+            ME_LOG(LogPlatform, Error, "OpenFiles: NFD is not initialized.");
             return MakeCancelledResult();
         }
 
@@ -100,14 +100,14 @@ namespace minEngine
 
             if (dialogResult != NFD_OKAY || pathSet == nullptr)
             {
-                ME_CORE_ERROR("OpenFiles (multiple): {}", NFD_GetError());
+                ME_LOG(LogPlatform, Error, "OpenFiles (multiple): {}", NFD_GetError());
                 return MakeCancelledResult();
             }
 
             nfdpathsetsize_t pathCount = 0;
             if (NFD_PathSet_GetCount(pathSet, &pathCount) != NFD_OKAY)
             {
-                ME_CORE_ERROR("OpenFiles (multiple): failed to read path set count.");
+                ME_LOG(LogPlatform, Error, "OpenFiles (multiple): failed to read path set count.");
                 NFD_PathSet_Free(pathSet);
                 return MakeCancelledResult();
             }
@@ -139,7 +139,7 @@ namespace minEngine
 
         if (dialogResult != NFD_OKAY || singlePath == nullptr)
         {
-            ME_CORE_ERROR("OpenFiles: {}", NFD_GetError());
+            ME_LOG(LogPlatform, Error, "OpenFiles: {}", NFD_GetError());
             return MakeCancelledResult();
         }
 
@@ -155,7 +155,7 @@ namespace minEngine
     {
         if (!m_NfdReady)
         {
-            ME_CORE_ERROR("SaveFile: NFD is not initialized.");
+            ME_LOG(LogPlatform, Error, "SaveFile: NFD is not initialized.");
             return MakeCancelledResult();
         }
 
@@ -188,7 +188,7 @@ namespace minEngine
 
         if (dialogResult != NFD_OKAY || outPath == nullptr)
         {
-            ME_CORE_ERROR("SaveFile: {}", NFD_GetError());
+            ME_LOG(LogPlatform, Error, "SaveFile: {}", NFD_GetError());
             return MakeCancelledResult();
         }
 
@@ -203,7 +203,7 @@ namespace minEngine
     {
         if (!m_NfdReady)
         {
-            ME_CORE_ERROR("SelectFolder: NFD is not initialized.");
+            ME_LOG(LogPlatform, Error, "SelectFolder: NFD is not initialized.");
             return MakeCancelledResult();
         }
 
@@ -221,7 +221,7 @@ namespace minEngine
 
         if (dialogResult != NFD_OKAY || outPath == nullptr)
         {
-            ME_CORE_ERROR("SelectFolder: {}", NFD_GetError());
+            ME_LOG(LogPlatform, Error, "SelectFolder: {}", NFD_GetError());
             return MakeCancelledResult();
         }
 

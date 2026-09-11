@@ -659,7 +659,7 @@ namespace minEngine
         {
             if (!rejectReason.empty())
             {
-                ME_CORE_WARN("Material graph: rejected pin connection: {}", rejectReason);
+                ME_LOG(LogEditor, Warn, "Material graph: rejected pin connection: {}", rejectReason);
             }
             return false;
         }

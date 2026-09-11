@@ -76,7 +76,7 @@ namespace minEngine
         if (scene == nullptr)
         {
             setError(std::string("Assimp ReadFile failed: ") + importer.GetErrorString());
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "AnimationClipLoader: Assimp failed for '{}': {}",
                 path,
                 importer.GetErrorString());
@@ -88,7 +88,7 @@ namespace minEngine
             setError(
                 "FBX/glTF opened but contains 0 animations (mesh/rig only). "
                 "Import a source file that includes animation takes/clips.");
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "AnimationClipLoader: '{}' has meshes={} bones-nodes ok, but mNumAnimations=0.",
                 path,
                 scene->mNumMeshes);
@@ -173,7 +173,7 @@ namespace minEngine
         if (tracks.empty())
         {
             setError("no animation channels matched skeleton bone names");
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "AnimationClipLoader: zero matched tracks in '{}' (unmatched={}).",
                 path,
                 unmatchedChannels);
@@ -182,7 +182,7 @@ namespace minEngine
 
         if (unmatchedChannels > 0)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "AnimationClipLoader: {} channel(s) unmatched to skeleton in '{}'.",
                 unmatchedChannels,
                 path);
@@ -218,7 +218,7 @@ namespace minEngine
             {
                 *outError = serializeResult.message;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "AnimationClipLoader: Save failed for '{}' — {} (field: {})",
                 meta.AssetPath,
                 serializeResult.message,
@@ -253,7 +253,7 @@ namespace minEngine
             {
                 *outError = deserializeResult.message;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "AnimationClipLoader: Load failed for '{}' — {} (field: {})",
                 meta.AssetPath,
                 deserializeResult.message,
@@ -265,7 +265,7 @@ namespace minEngine
 
         if (clip->GetSkeleton() == nullptr)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "AnimationClipLoader: '{}' loaded without resolved Skeleton reference.",
                 meta.AssetPath);
         }

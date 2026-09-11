@@ -80,14 +80,14 @@ namespace minEngine
         if (UsesGraphPath())
         {
             m_GraphInstance.ResetToDefaultState();
-            ME_CORE_INFO(
+            ME_LOG(LogAnimation, Info, 
                 "SkeletalMeshComponent: PlayOnAwake -> Graph default state='{}'",
                 m_GraphInstance.GetCurrentStateName());
             return;
         }
 
         m_AnimationPlayer.Play();
-        ME_CORE_INFO(
+        ME_LOG(LogAnimation, Info, 
             "SkeletalMeshComponent: PlayOnAwake -> Playing clip='{}' duration={:.3f}s tracks={}",
             m_AnimationClip ? m_AnimationClip->GetName() : std::string("<null>"),
             m_AnimationClip ? m_AnimationClip->GetDuration() : 0.0f,
@@ -237,7 +237,7 @@ namespace minEngine
             static thread_local uint32_t s_NullMeshSkeletonLogCounter = 0;
             if ((s_NullMeshSkeletonLogCounter++ % 120u) == 0u)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogAnimation, Warn, 
                     "SkeletalMeshComponent: cannot play AnimationClip — mesh has no Skeleton "
                     "(buddy '.meskmesh' missing or failed; mesh may be using a temporary skeleton).");
             }
@@ -247,7 +247,7 @@ namespace minEngine
         Skeleton* clipSkeleton = clip->GetSkeleton();
         if (clipSkeleton == nullptr)
         {
-            ME_CORE_ERROR("SkeletalMeshComponent: AnimationClip has no Skeleton.");
+            ME_LOG(LogAnimation, Error, "SkeletalMeshComponent: AnimationClip has no Skeleton.");
             return false;
         }
 
@@ -257,7 +257,7 @@ namespace minEngine
             static thread_local uint32_t s_GuidMismatchLogCounter = 0;
             if ((s_GuidMismatchLogCounter++ % 120u) == 0u)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogAnimation, Error, 
                     "SkeletalMeshComponent: AnimationClip Skeleton GUID mismatch with mesh Skeleton "
                     "(clip='{}', mesh='{}'). Re-import skeletal mesh so buddy points at the same "
                     "Skeleton asset as the clip.",
@@ -284,7 +284,7 @@ namespace minEngine
             static thread_local uint32_t s_NullMeshSkeletonLogCounter = 0;
             if ((s_NullMeshSkeletonLogCounter++ % 120u) == 0u)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogAnimation, Warn, 
                     "SkeletalMeshComponent: cannot play AnimationGraph — mesh has no Skeleton.");
             }
             return false;
@@ -299,7 +299,7 @@ namespace minEngine
             Skeleton* clipSkeleton = state.Clip->GetSkeleton();
             if (clipSkeleton == nullptr)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogAnimation, Error, 
                     "SkeletalMeshComponent: AnimationGraph state '{}' clip has no Skeleton.",
                     state.Name);
                 return false;
@@ -310,7 +310,7 @@ namespace minEngine
                 static thread_local uint32_t s_GuidMismatchLogCounter = 0;
                 if ((s_GuidMismatchLogCounter++ % 120u) == 0u)
                 {
-                    ME_CORE_ERROR(
+                    ME_LOG(LogAnimation, Error, 
                         "SkeletalMeshComponent: AnimationGraph state '{}' Skeleton GUID mismatch "
                         "(clip='{}', mesh='{}').",
                         state.Name,
@@ -382,7 +382,7 @@ namespace minEngine
         {
             if (!m_Material->EnsureSkinnedCompiled())
             {
-                ME_CORE_WARN(
+                ME_LOG(LogAnimation, Warn, 
                     "SkeletalMeshComponent: EnsureSkinnedCompiled failed for material '{}'; "
                     "skinned draws will be skipped until compile succeeds.",
                     m_Material->GetName());

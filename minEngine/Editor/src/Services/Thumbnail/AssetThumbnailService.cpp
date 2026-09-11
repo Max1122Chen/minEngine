@@ -113,7 +113,7 @@ namespace minEngine
         m_TextureAsset = AssetManager::Get().LoadAsset<Texture2D>(meta.AssetPath);
         if (!m_TextureAsset)
         {
-            ME_CORE_WARN("AssetThumbnailService: failed to load texture '{}'.", meta.AssetPath);
+            ME_LOG(LogEditor, Warn, "AssetThumbnailService: failed to load texture '{}'.", meta.AssetPath);
         }
     }
 
@@ -135,7 +135,7 @@ namespace minEngine
             m_MaterialAsset = AssetManager::Get().LoadAsset<Material>(meta.AssetPath);
             if (!m_MaterialAsset)
             {
-                ME_CORE_WARN("AssetThumbnailService: failed to load material '{}'.", meta.AssetPath);
+                ME_LOG(LogEditor, Warn, "AssetThumbnailService: failed to load material '{}'.", meta.AssetPath);
                 m_BackendKind = ThumbnailBackendKind::None;
                 return;
             }
@@ -150,7 +150,7 @@ namespace minEngine
             std::shared_ptr<StaticMesh> mesh = AssetManager::Get().LoadAsset<StaticMesh>(meta.AssetPath);
             if (!mesh)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogEditor, Warn, 
                     "AssetThumbnailService: failed to load static mesh '{}'.",
                     meta.AssetPath);
                 m_BackendKind = ThumbnailBackendKind::None;
@@ -159,7 +159,7 @@ namespace minEngine
 
             if (!m_InspectorPreviewScene.EnsureStaticMeshPreviewMaterial())
             {
-                ME_CORE_WARN(
+                ME_LOG(LogEditor, Warn, 
                     "AssetThumbnailService: static mesh preview material is not ready ('{}').",
                     PreviewScene::kStaticMeshPreviewMaterialPath);
                 m_BackendKind = ThumbnailBackendKind::None;

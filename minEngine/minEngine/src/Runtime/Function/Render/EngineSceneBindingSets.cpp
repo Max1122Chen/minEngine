@@ -132,7 +132,7 @@ namespace minEngine
 
         if (m_PerObjectWriteIndex >= kPerObjectRingSlots)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogRender, Error, 
                 "EngineSceneBindingSets: Per-Object UBO ring exhausted ({} slots). "
                 "Wrapping — later draws may corrupt earlier in-flight matrices.",
                 kPerObjectRingSlots);
@@ -398,7 +398,7 @@ namespace minEngine
         }
         else
         {
-            ME_CORE_ERROR("EngineSceneBindingSets: failed to create scene set 1 (shadow/IBL bindings).");
+            ME_LOG(LogRender, Error, "EngineSceneBindingSets: failed to create scene set 1 (shadow/IBL bindings).");
         }
     }
 }

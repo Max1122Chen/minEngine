@@ -62,13 +62,13 @@ namespace minEngine
             {
                 g_MaterialIRTestEngineDefaultAssetsRoot =
                     PathRegistry::Get().GetEngineDefaultAssetsRootString();
-                ME_CORE_INFO(
+                ME_LOG(LogTest, Info, 
                     "MaterialIR test: EngineDefaultAssetsRoot = '{}'",
                     g_MaterialIRTestEngineDefaultAssetsRoot);
             }
             else
             {
-                ME_CORE_WARN(
+                ME_LOG(LogTest, Warn, 
                     "MaterialIR test: EngineConfig load failed; continuing without EngineDefaultAssetsRoot.");
             }
         }
@@ -107,7 +107,7 @@ namespace minEngine
                 return true;
             }
 
-            ME_CORE_ERROR("MaterialIR smoke: {} missing substring '{}'", label, needle);
+            ME_LOG(LogTest, Error, "MaterialIR smoke: {} missing substring '{}'", label, needle);
             return false;
         }
 
@@ -131,7 +131,7 @@ namespace minEngine
                 return true;
             }
 
-            ME_CORE_ERROR("MaterialIR binding check failed: {}", label);
+            ME_LOG(LogTest, Error, "MaterialIR binding check failed: {}", label);
             return false;
         }
 
@@ -220,30 +220,30 @@ namespace minEngine
             ScopedShaderCompileGlContext glContext;
             if (!glContext.IsReady())
             {
-                ME_CORE_ERROR("MaterialIR smoke: failed to create OpenGL context for GPU shader compile test.");
+                ME_LOG(LogTest, Error, "MaterialIR smoke: failed to create OpenGL context for GPU shader compile test.");
                 return false;
             }
 
             std::string compileError;
             if (!EngineShaderUtils::TryCompileSourcesOnGpu(result.FullVertexShader, result.FullFragmentShader, &compileError))
             {
-                ME_CORE_ERROR("MaterialIR smoke: GPU shader compile failed.\n{}", compileError);
+                ME_LOG(LogTest, Error, "MaterialIR smoke: GPU shader compile failed.\n{}", compileError);
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR smoke: GPU vertex/fragment compile + link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR smoke: GPU vertex/fragment compile + link PASSED.");
             return true;
         }
 
         void LogCompiledShaders(const MaterialCompileResult& result)
         {
-            ME_CORE_INFO("======== MaterialIR generated vertex shader ========");
-            ME_CORE_INFO("\n{}", result.FullVertexShader);
-            ME_CORE_INFO("======== MaterialIR generated fragment shader ======");
-            ME_CORE_INFO("\n{}", result.FullFragmentShader);
-            ME_CORE_INFO("======== MaterialIR fragment stage body ============");
-            ME_CORE_INFO("\n{}", result.Stages[Stage_Fragment].Body);
-            ME_CORE_INFO("Artifacts: Saved/Materials/GeneratedVertex.glsl, GeneratedFragment.glsl, IRDump.txt");
+            ME_LOG(LogTest, Info, "======== MaterialIR generated vertex shader ========");
+            ME_LOG(LogTest, Info, "\n{}", result.FullVertexShader);
+            ME_LOG(LogTest, Info, "======== MaterialIR generated fragment shader ======");
+            ME_LOG(LogTest, Info, "\n{}", result.FullFragmentShader);
+            ME_LOG(LogTest, Info, "======== MaterialIR fragment stage body ============");
+            ME_LOG(LogTest, Info, "\n{}", result.Stages[Stage_Fragment].Body);
+            ME_LOG(LogTest, Info, "Artifacts: Saved/Materials/GeneratedVertex.glsl, GeneratedFragment.glsl, IRDump.txt");
         }
 
         bool VerifyPropertyBindingLayer(const MaterialEdGraph& graph, const MaterialGraphNodeDef_MaterialOutput& output)
@@ -296,7 +296,7 @@ namespace minEngine
 
             if (passed)
             {
-                ME_CORE_INFO("MaterialIR property binding checks PASSED.");
+                ME_LOG(LogTest, Info, "MaterialIR property binding checks PASSED.");
             }
 
             return passed;
@@ -314,7 +314,7 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : result.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR smoke diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR smoke diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
@@ -417,7 +417,7 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(result);
-                ME_CORE_ERROR("MaterialIR smoke FAILED (see logged shaders above).");
+                ME_LOG(LogTest, Error, "MaterialIR smoke FAILED (see logged shaders above).");
                 return false;
             }
 
@@ -426,14 +426,14 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(result);
-                ME_CORE_ERROR("MaterialIR smoke FAILED during GPU compile.");
+                ME_LOG(LogTest, Error, "MaterialIR smoke FAILED during GPU compile.");
                 return false;
             }
 
             WriteCompileArtifacts(result);
             LogCompiledShaders(result);
 
-            ME_CORE_INFO(
+            ME_LOG(LogTest, Info, 
                 "MaterialIR smoke PASSED.\n"
                 "Graph: Albedo = TextureSample * tint(0.2,0.8,0.2), Metallic = 0.3.\n"
                 "Unlit: FragColor = Albedo + Emissive. If texture=1 at UV0: rgb = (0.2, 0.8, 0.2).");
@@ -465,7 +465,7 @@ namespace minEngine
                     shadingModel,
                     blendMode))
             {
-                ME_CORE_ERROR("MaterialIR Constant3竊誰ormal: failed to connect Normal pin.");
+                ME_LOG(LogTest, Error, "MaterialIR Constant3竊誰ormal: failed to connect Normal pin.");
                 return false;
             }
 
@@ -478,7 +478,7 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR Constant3竊誰ormal diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR Constant3竊誰ormal diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
@@ -499,18 +499,18 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR Constant3竊誰ormal compile content check FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR Constant3竊誰ormal compile content check FAILED.");
                 return false;
             }
 
             if (!VerifySmokeGpuCompile(compiled))
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR Constant3竊誰ormal GPU compile FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR Constant3竊誰ormal GPU compile FAILED.");
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR Constant3竊誰ormal BlinnPhong: compile + GPU link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR Constant3竊誰ormal BlinnPhong: compile + GPU link PASSED.");
             return true;
         }
 
@@ -552,7 +552,7 @@ namespace minEngine
             graph.ConnectPins(falseColorNode, 0, branchNode, 2, shadingModel, blendMode);
             if (!graph.ConnectToMaterialProperty(branchNode, 0, outputNode, MP_Albedo, shadingModel, blendMode))
             {
-                ME_CORE_ERROR("MaterialIR IfThenElse: failed to connect Albedo.");
+                ME_LOG(LogTest, Error, "MaterialIR IfThenElse: failed to connect Albedo.");
                 return false;
             }
 
@@ -565,7 +565,7 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR IfThenElse diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR IfThenElse diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
@@ -582,18 +582,18 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR IfThenElse content check FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR IfThenElse content check FAILED.");
                 return false;
             }
 
             if (!VerifySmokeGpuCompile(compiled))
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR IfThenElse GPU compile FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR IfThenElse GPU compile FAILED.");
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR IfThenElse竊但lbedo BlinnPhong: compile + GPU link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR IfThenElse竊但lbedo BlinnPhong: compile + GPU link PASSED.");
             return true;
         }
 
@@ -626,7 +626,7 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR texture multi-use diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR texture multi-use diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
@@ -641,17 +641,17 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR texture multi-use content check FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR texture multi-use content check FAILED.");
                 return false;
             }
 
             if (!VerifySmokeGpuCompile(compiled))
             {
-                ME_CORE_ERROR("MaterialIR texture multi-use GPU compile FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR texture multi-use GPU compile FAILED.");
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR TextureSample dual-output: compile + GPU link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR TextureSample dual-output: compile + GPU link PASSED.");
             return true;
         }
 
@@ -682,7 +682,7 @@ namespace minEngine
                 ctx);
             if (compiled.Succeeded)
             {
-                ME_CORE_ERROR("MaterialIR divide-by-zero: expected compile failure.");
+                ME_LOG(LogTest, Error, "MaterialIR divide-by-zero: expected compile failure.");
                 return false;
             }
 
@@ -701,12 +701,12 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR divide-by-zero diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR divide-by-zero diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR divide-by-zero poison diagnostic PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR divide-by-zero poison diagnostic PASSED.");
             return true;
         }
 
@@ -761,7 +761,7 @@ namespace minEngine
 
             if (passed)
             {
-                ME_CORE_INFO(
+                ME_LOG(LogTest, Info, 
                     "MaterialIR capability struct check PASSED (shadingModel={}, emitted fields={}).",
                     static_cast<int>(shadingModel),
                     emitted.size());
@@ -803,7 +803,7 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR Translucent diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR Translucent diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
@@ -820,14 +820,14 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR Translucent Unlit compile content check FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR Translucent Unlit compile content check FAILED.");
                 return false;
             }
 
             if (!VerifySmokeGpuCompile(compiled))
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR Translucent Unlit GPU compile FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR Translucent Unlit GPU compile FAILED.");
                 return false;
             }
 
@@ -842,7 +842,7 @@ namespace minEngine
                 ctx);
             if (!warnCompiled.Succeeded)
             {
-                ME_CORE_ERROR("MaterialIR Translucent empty graph: expected successful compile.");
+                ME_LOG(LogTest, Error, "MaterialIR Translucent empty graph: expected successful compile.");
                 return false;
             }
 
@@ -862,7 +862,7 @@ namespace minEngine
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR Translucent Unlit: compile + GPU link + opacity warning PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR Translucent Unlit: compile + GPU link + opacity warning PASSED.");
             return true;
         }
 
@@ -871,7 +871,7 @@ namespace minEngine
             ScopedShaderCompileGlContext glContext;
             if (!glContext.IsReady())
             {
-                ME_CORE_ERROR("MaterialIR TextureCube: failed to create OpenGL context.");
+                ME_LOG(LogTest, Error, "MaterialIR TextureCube: failed to create OpenGL context.");
                 return false;
             }
 
@@ -890,7 +890,7 @@ namespace minEngine
                 TextureCubeLoader::CreateSolidColorCube(rhi, 4, faceColors, &error);
             if (!cube || cube->GetRHITexture() == nullptr || cube->GetRHITexture()->GetNativeHandle() == 0)
             {
-                ME_CORE_ERROR("MaterialIR TextureCube: CreateSolidColorCube failed ({})", error);
+                ME_LOG(LogTest, Error, "MaterialIR TextureCube: CreateSolidColorCube failed ({})", error);
                 return false;
             }
 
@@ -905,7 +905,7 @@ namespace minEngine
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR TextureCube: RHI upload PASSED (id={}).", textureId);
+            ME_LOG(LogTest, Info, "MaterialIR TextureCube: RHI upload PASSED (id={}).", textureId);
             return true;
         }
 
@@ -949,7 +949,7 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR PBR workflow diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR PBR workflow diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
@@ -975,36 +975,36 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR PBR workflow compile content check FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR PBR workflow compile content check FAILED.");
                 return false;
             }
 
             if (!VerifySmokeGpuCompile(compiled))
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR PBR workflow GPU compile FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR PBR workflow GPU compile FAILED.");
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR PBR workflow (direct + ambient): compile + GPU link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR PBR workflow (direct + ambient): compile + GPU link PASSED.");
             return true;
         }
 
         bool VerifyEngineIBLEnvironmentInit()
         {
-            ME_CORE_INFO("MaterialIR IBL environment: skipped (F03-M4 P0 窶?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL environment: skipped (F03-M4 P0 窶?EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLEnvironmentFallbackChain()
         {
-            ME_CORE_INFO("MaterialIR IBL fallback chain: skipped (F03-M4 P0 窶?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL fallback chain: skipped (F03-M4 P0 窶?EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLGpuConvolutionAndPrefilter()
         {
-            ME_CORE_INFO("MaterialIR IBL GPU passes: skipped (F03-M4 P0 窶?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL GPU passes: skipped (F03-M4 P0 窶?EnvMap removed from engine link).");
             return true;
         }
 
@@ -1049,7 +1049,7 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_CORE_ERROR("MaterialIR NormalMap workflow diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR NormalMap workflow diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
@@ -1071,18 +1071,18 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR NormalMap workflow compile content check FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR NormalMap workflow compile content check FAILED.");
                 return false;
             }
 
             if (!VerifySmokeGpuCompile(compiled))
             {
                 LogCompiledShaders(compiled);
-                ME_CORE_ERROR("MaterialIR NormalMap workflow GPU compile FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR NormalMap workflow GPU compile FAILED.");
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR NormalMap workflow: compile + GPU link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR NormalMap workflow: compile + GPU link PASSED.");
             return true;
         }
 
@@ -1091,11 +1091,11 @@ namespace minEngine
             std::string diskError;
             if (!VerifyGoldenMaterialIRSmokeMemtlOnDisk(&diskError))
             {
-                ME_CORE_ERROR("MaterialIR golden asset on-disk check failed: {}", diskError);
+                ME_LOG(LogTest, Error, "MaterialIR golden asset on-disk check failed: {}", diskError);
                 return false;
             }
 
-            ME_CORE_INFO("MaterialIR golden asset on-disk fields PASSED (m_ShadingModel=1, m_BlendMode=0).");
+            ME_LOG(LogTest, Info, "MaterialIR golden asset on-disk fields PASSED (m_ShadingModel=1, m_BlendMode=0).");
             return true;
         }
 
@@ -1116,7 +1116,7 @@ namespace minEngine
             smokeMaterial.m_Graph ? FindMaterialOutputNode(*smokeMaterial.m_Graph) : nullptr;
         if (outputNode == nullptr)
         {
-            ME_CORE_ERROR("MaterialIR test: smoke graph has no MaterialOutput node.");
+            ME_LOG(LogTest, Error, "MaterialIR test: smoke graph has no MaterialOutput node.");
             return false;
         }
 
@@ -1134,7 +1134,7 @@ namespace minEngine
                 smokeMaterial.m_BlendMode,
                 nullptr))
         {
-            ME_CORE_ERROR("MaterialIR test: smoke graph pin type validation failed.");
+            ME_LOG(LogTest, Error, "MaterialIR test: smoke graph pin type validation failed.");
             return false;
         }
 
@@ -1151,7 +1151,7 @@ namespace minEngine
 
         if (outputEdNode == nullptr || floatConstantEdNode == nullptr)
         {
-            ME_CORE_ERROR("MaterialIR test: missing nodes for pin compatibility check.");
+            ME_LOG(LogTest, Error, "MaterialIR test: missing nodes for pin compatibility check.");
             return false;
         }
 
@@ -1165,11 +1165,11 @@ namespace minEngine
                 smokeMaterial.m_BlendMode,
                 nullptr))
         {
-            ME_CORE_ERROR("MaterialIR test: float output must not connect to Albedo (float3) input.");
+            ME_LOG(LogTest, Error, "MaterialIR test: float output must not connect to Albedo (float3) input.");
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR pin type connection checks PASSED.");
+        ME_LOG(LogTest, Info, "MaterialIR pin type connection checks PASSED.");
 
         const MaterialCompileContext ctx = MakeMaterialIRCompileContext();
 
@@ -1188,7 +1188,7 @@ namespace minEngine
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR smoke subset PASSED (golden, pins, Constant3 BlinnPhong, Unlit GPU).");
+        ME_LOG(LogTest, Info, "MaterialIR smoke subset PASSED (golden, pins, Constant3 BlinnPhong, Unlit GPU).");
         return true;
         }
 
@@ -1211,7 +1211,7 @@ namespace minEngine
         {
             for (const MaterialCompileDiagnostic& diagnostic : blinnPhongCompiled.Diagnostics)
             {
-                ME_CORE_ERROR("MaterialIR BlinnPhong diagnostic: {}", diagnostic.Message);
+                ME_LOG(LogTest, Error, "MaterialIR BlinnPhong diagnostic: {}", diagnostic.Message);
             }
             return false;
         }
@@ -1239,11 +1239,11 @@ namespace minEngine
             || !VerifySmokeGpuCompile(blinnPhongCompiled))
         {
             LogCompiledShaders(blinnPhongCompiled);
-            ME_CORE_ERROR("MaterialIR BlinnPhong extended FAILED during compile or GPU link.");
+            ME_LOG(LogTest, Error, "MaterialIR BlinnPhong extended FAILED during compile or GPU link.");
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR BlinnPhong extended: GPU vertex/fragment compile + link PASSED.");
+        ME_LOG(LogTest, Info, "MaterialIR BlinnPhong extended: GPU vertex/fragment compile + link PASSED.");
 
         if (!VerifyIfThenElseAlbedoBlinnPhong(ctx))
         {
@@ -1303,7 +1303,7 @@ namespace minEngine
             return false;
         }
 
-        ME_CORE_INFO("MaterialIR full subset PASSED.");
+        ME_LOG(LogTest, Info, "MaterialIR full subset PASSED.");
         return true;
         }
     }

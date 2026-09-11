@@ -33,14 +33,14 @@ namespace minEngine
         const nfdresult_t initResult = NFD_Init();
         if (initResult != NFD_OKAY)
         {
-            ME_CORE_ERROR("FileDialogService: NFD_Init failed: {}", NFD_GetError());
+            ME_LOG(LogPlatform, Error, "FileDialogService: NFD_Init failed: {}", NFD_GetError());
             m_Implementation = std::make_unique<NativeFileDialogService>(false);
             return;
         }
 
         m_NfdReady = true;
         m_Implementation = std::make_unique<NativeFileDialogService>(true);
-        ME_CORE_INFO("FileDialogService initialized (NFD).");
+        ME_LOG(LogPlatform, Info, "FileDialogService initialized (NFD).");
     }
 
     void FileDialogService::Shutdown()
@@ -51,7 +51,7 @@ namespace minEngine
         {
             NFD_Quit();
             m_NfdReady = false;
-            ME_CORE_INFO("FileDialogService shutdown (NFD).");
+            ME_LOG(LogPlatform, Info, "FileDialogService shutdown (NFD).");
         }
     }
 

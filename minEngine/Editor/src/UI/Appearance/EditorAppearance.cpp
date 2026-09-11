@@ -338,7 +338,7 @@ namespace minEngine
                 return font;
             }
 
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "EditorAppearance: failed to load font GUID {} for role {} ({}).",
                 fontGuid.ToString(),
                 static_cast<int>(role),
@@ -413,7 +413,7 @@ namespace minEngine
         std::shared_ptr<Font> bodyFont = ResolveFontForRole(EditorTypographyRole::Body);
         if (bodyFont == nullptr || !bodyFont->IsValid())
         {
-            ME_CORE_WARN("EditorAppearance: no valid Body font; falling back to ImGui default font.");
+            ME_LOG(LogEditor, Warn, "EditorAppearance: no valid Body font; falling back to ImGui default font.");
             ImFontConfig defaultConfig;
             defaultConfig.FontDataOwnedByAtlas = true;
             m_RoleFonts[RoleIndex(EditorTypographyRole::Body)] =
@@ -435,7 +435,7 @@ namespace minEngine
             if (font == nullptr || !font->IsValid())
             {
                 font = bodyFont;
-                ME_CORE_WARN(
+                ME_LOG(LogEditor, Warn, 
                     "EditorAppearance: role {} uses Body font fallback.",
                     static_cast<int>(role));
             }
@@ -457,7 +457,7 @@ namespace minEngine
 
             if (bakedFont == nullptr)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogEditor, Error, 
                     "EditorAppearance: AddFontFromMemoryTTF failed for role {} (size {}).",
                     static_cast<int>(role),
                     sizePixels);
@@ -469,7 +469,7 @@ namespace minEngine
 
         if (m_RoleFonts[RoleIndex(EditorTypographyRole::Body)] == nullptr)
         {
-            ME_CORE_WARN("EditorAppearance: Body font bake failed; using ImGui default.");
+            ME_LOG(LogEditor, Warn, "EditorAppearance: Body font bake failed; using ImGui default.");
             m_RoleFonts[RoleIndex(EditorTypographyRole::Body)] = io.Fonts->AddFontDefault();
         }
 
@@ -477,7 +477,7 @@ namespace minEngine
             const std::filesystem::path iconFontPath = ResolveAssetIconFontPath();
             if (iconFontPath.empty())
             {
-                ME_CORE_WARN("EditorAppearance: EngineDefaultAssetsRoot is empty, icon font will be unavailable.");
+                ME_LOG(LogEditor, Warn, "EditorAppearance: EngineDefaultAssetsRoot is empty, icon font will be unavailable.");
             }
             else
             {
@@ -493,7 +493,7 @@ namespace minEngine
                     iconGlyphRanges);
                 if (m_AssetIconRegularFont == nullptr)
                 {
-                    ME_CORE_WARN(
+                    ME_LOG(LogEditor, Warn, 
                         "EditorAppearance: failed to load regular icon font '{}'.",
                         iconFontPath.string());
                 }
@@ -504,7 +504,7 @@ namespace minEngine
             const std::filesystem::path& engineDefaultAssetsRoot = PathRegistry::Get().GetEngineDefaultAssetsRoot();
             if (engineDefaultAssetsRoot.empty())
             {
-                ME_CORE_WARN("EditorAppearance: EngineDefaultAssetsRoot is empty, solid icon font will be unavailable.");
+                ME_LOG(LogEditor, Warn, "EditorAppearance: EngineDefaultAssetsRoot is empty, solid icon font will be unavailable.");
             }
             else
             {
@@ -522,7 +522,7 @@ namespace minEngine
                     iconGlyphRanges);
                 if (m_AssetIconSolidFont == nullptr)
                 {
-                    ME_CORE_WARN(
+                    ME_LOG(LogEditor, Warn, 
                         "EditorAppearance: failed to load solid icon font '{}'.",
                         solidIconFontPath.string());
                 }
@@ -540,7 +540,7 @@ namespace minEngine
 
         FinalizeFontAtlasBuild();
 
-        ME_CORE_INFO("EditorAppearance: UI font atlas rebuilt ({} roles, regularIconReady={}, solidIconReady={}).",
+        ME_LOG(LogEditor, Info, "EditorAppearance: UI font atlas rebuilt ({} roles, regularIconReady={}, solidIconReady={}).",
                      m_RoleFonts.size(),
                      m_AssetIconRegularFont != nullptr,
                      m_AssetIconSolidFont != nullptr);

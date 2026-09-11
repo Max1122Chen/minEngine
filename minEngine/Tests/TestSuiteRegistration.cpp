@@ -35,6 +35,7 @@
 #include "Suites/AnimationClipTest.h"
 #include "Suites/AnimationGraphTest.h"
 #include "Suites/ParameterStoreTest.h"
+#include "Suites/LoggingChannelsTest.h"
 
 namespace minEngine
 {
@@ -63,7 +64,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'object-manager'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'object-manager'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("object-manager", context.GetCommandLine().TestKind);
             }
@@ -78,7 +79,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'serialization-archive'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'serialization-archive'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("serialization-archive", context.GetCommandLine().TestKind);
             }
@@ -93,7 +94,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'asset-manager'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'asset-manager'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("asset-manager", context.GetCommandLine().TestKind);
             }
@@ -108,7 +109,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'reflection-function'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'reflection-function'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("reflection-function", context.GetCommandLine().TestKind);
             }
@@ -123,7 +124,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'material-ir'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'material-ir'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("material-ir", context.GetCommandLine().TestKind);
             }
@@ -138,7 +139,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'render-graph'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'render-graph'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("render-graph", context.GetCommandLine().TestKind);
             }
@@ -153,7 +154,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'lua-script-mvp'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'lua-script-mvp'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("lua-script-mvp", context.GetCommandLine().TestKind);
             }
@@ -168,7 +169,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'physics-smoke'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'physics-smoke'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("physics-smoke", context.GetCommandLine().TestKind);
             }
@@ -183,7 +184,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'physics-sync'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'physics-sync'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("physics-sync", context.GetCommandLine().TestKind);
             }
@@ -198,7 +199,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'physics-load'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'physics-load'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("physics-load", context.GetCommandLine().TestKind);
             }
@@ -213,7 +214,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'physics-contact'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'physics-contact'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("physics-contact", context.GetCommandLine().TestKind);
             }
@@ -228,7 +229,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'physics-linetrace'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'physics-linetrace'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("physics-linetrace", context.GetCommandLine().TestKind);
             }
@@ -243,7 +244,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'physics-shapes'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'physics-shapes'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("physics-shapes", context.GetCommandLine().TestKind);
             }
@@ -259,7 +260,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'delegates'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'delegates'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("delegates", context.GetCommandLine().TestKind);
             }
@@ -274,7 +275,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'gameplay-tags'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'gameplay-tags'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("gameplay-tags", context.GetCommandLine().TestKind);
             }
@@ -289,7 +290,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'gameplay-events'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'gameplay-events'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("gameplay-events", context.GetCommandLine().TestKind);
             }
@@ -304,7 +305,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'shader-compiler'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'shader-compiler'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("shader-compiler", context.GetCommandLine().TestKind);
             }
@@ -319,7 +320,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'scene-clone'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-clone'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("scene-clone", context.GetCommandLine().TestKind);
             }
@@ -334,7 +335,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'audio-smoke'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'audio-smoke'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("audio-smoke", context.GetCommandLine().TestKind);
             }
@@ -354,7 +355,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'reflection-display-names'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'reflection-display-names'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "reflection-display-names",
@@ -371,7 +372,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'sprite-translucency'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'sprite-translucency'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "sprite-translucency",
@@ -388,7 +389,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-coords'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-coords'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "screen-ui-coords",
@@ -405,7 +406,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'ui-layout'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'ui-layout'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "ui-layout",
@@ -422,7 +423,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-hit'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-hit'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "screen-ui-hit",
@@ -439,7 +440,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'screen-ui-button'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-button'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "screen-ui-button",
@@ -456,7 +457,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'gameobject-hierarchy'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'gameobject-hierarchy'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "gameobject-hierarchy",
@@ -473,7 +474,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'command-system'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'command-system'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "command-system",
@@ -490,7 +491,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'skeleton-pose'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'skeleton-pose'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "skeleton-pose",
@@ -507,7 +508,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'animation-clip'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'animation-clip'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "animation-clip",
@@ -524,7 +525,7 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'animation-graph'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'animation-graph'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "animation-graph",
@@ -542,10 +543,27 @@ namespace minEngine
 
             static bool RunSuite(TestContext& context)
             {
-                ME_CORE_INFO("TestRunner: starting suite 'parameter-store'.");
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'parameter-store'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "parameter-store",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct LoggingChannelsTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"logging-channels", "LogChannel / LogRecord", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'logging-channels'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "logging-channels",
                     context.GetCommandLine().TestKind);
             }
         };
@@ -581,6 +599,7 @@ namespace minEngine
         using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
         using AnimationGraphSuite = TypedTestSuite<AnimationGraphTestSuiteTraits>;
         using ParameterStoreSuite = TypedTestSuite<ParameterStoreTestSuiteTraits>;
+        using LoggingChannelsSuite = TypedTestSuite<LoggingChannelsTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -622,6 +641,7 @@ namespace minEngine
             registry.Register(AnimationClipSuite::Get());
             registry.Register(AnimationGraphSuite::Get());
             registry.Register(ParameterStoreSuite::Get());
+            registry.Register(LoggingChannelsSuite::Get());
             s_Registered = true;
         }
     }

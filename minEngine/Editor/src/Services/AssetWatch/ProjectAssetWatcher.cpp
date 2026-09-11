@@ -27,7 +27,7 @@ namespace minEngine
 
         if (projectContentRoot.empty())
         {
-            ME_CORE_WARN("ProjectAssetWatcher: content root is empty; watcher not started.");
+            ME_LOG(LogEditor, Warn, "ProjectAssetWatcher: content root is empty; watcher not started.");
             return;
         }
 
@@ -35,7 +35,7 @@ namespace minEngine
         if (!std::filesystem::exists(projectContentRoot, errorCode)
             || !std::filesystem::is_directory(projectContentRoot, errorCode))
         {
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "ProjectAssetWatcher: content root is not a directory: {}",
                 projectContentRoot.string());
             return;
@@ -47,7 +47,7 @@ namespace minEngine
         m_WatchId = m_FileWatcher->addWatch(m_WatchedRoot.string(), this, true);
         if (m_WatchId < 0)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "ProjectAssetWatcher: failed to watch '{}': {}",
                 m_WatchedRoot.string(),
                 efsw::Errors::Log::getLastErrorLog());
@@ -67,7 +67,7 @@ namespace minEngine
             m_DebounceElapsedSeconds = 0.0f;
         }
 
-        ME_CORE_INFO("ProjectAssetWatcher: watching '{}'", m_WatchedRoot.string());
+        ME_LOG(LogEditor, Info, "ProjectAssetWatcher: watching '{}'", m_WatchedRoot.string());
     }
 
     void ProjectAssetWatcher::StopWatching()
@@ -401,7 +401,7 @@ namespace minEngine
         std::string errorMessage;
         if (!assetManager.UnregisterAsset(absolutePath.string(), errorMessage))
         {
-            ME_CORE_DEBUG(
+            ME_LOG(LogEditor, Debug, 
                 "ProjectAssetWatcher: UnregisterAsset for '{}': {}",
                 absolutePath.string(),
                 errorMessage);
@@ -435,7 +435,7 @@ namespace minEngine
             return;
         }
 
-        ME_CORE_DEBUG(
+        ME_LOG(LogEditor, Debug, 
             "ProjectAssetWatcher: MoveAsset failed ({}); falling back to unregister + register.",
             moveError);
 
@@ -451,7 +451,7 @@ namespace minEngine
             return;
         }
 
-        ME_CORE_INFO(
+        ME_LOG(LogEditor, Info, 
             "ProjectAssetWatcher: running full ScanAssets on '{}'",
             m_WatchedRoot.string());
         AssetManager::Get().ScanAssets(m_WatchedRoot);

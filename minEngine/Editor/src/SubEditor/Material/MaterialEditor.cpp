@@ -180,7 +180,7 @@ namespace minEngine
         std::string finalizeError;
         if (!m_Session.MaterialAsset->FinalizeGraphAfterLoad(&finalizeError))
         {
-            ME_CORE_WARN("MaterialEditor: graph finalize failed: {}", finalizeError);
+            ME_LOG(LogEditor, Warn, "MaterialEditor: graph finalize failed: {}", finalizeError);
         }
 
         ScheduleDebouncedCompile();
@@ -230,14 +230,14 @@ namespace minEngine
         std::shared_ptr<Material> material = AssetManager::Get().LoadAsset<Material>(meta->AssetPath);
         if (!material)
         {
-            ME_CORE_ERROR("MaterialEditor: failed to load material '{}'.", meta->AssetPath);
+            ME_LOG(LogEditor, Error, "MaterialEditor: failed to load material '{}'.", meta->AssetPath);
             return;
         }
 
         std::string finalizeError;
         if (!material->FinalizeGraphAfterLoad(&finalizeError))
         {
-            ME_CORE_WARN("MaterialEditor: FinalizeGraphAfterLoad failed for '{}': {}", meta->AssetPath, finalizeError);
+            ME_LOG(LogEditor, Warn, "MaterialEditor: FinalizeGraphAfterLoad failed for '{}': {}", meta->AssetPath, finalizeError);
         }
 
         material->Compile();
@@ -324,7 +324,7 @@ namespace minEngine
         }
         else
         {
-            ME_CORE_ERROR("MaterialEditor: Save failed for '{}'.", m_Session.AssetPath);
+            ME_LOG(LogEditor, Error, "MaterialEditor: Save failed for '{}'.", m_Session.AssetPath);
         }
 
         return saved;

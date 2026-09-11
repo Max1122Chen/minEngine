@@ -51,7 +51,7 @@ namespace minEngine
 
         if (!EditorObjectSnapshotUtil::WriteEnvelope(snapshot, m_SnapshotEnvelope))
         {
-            ME_CORE_ERROR("RemoveComponentCommand: failed to write snapshot envelope.");
+            ME_LOG(LogEditor, Error, "RemoveComponentCommand: failed to write snapshot envelope.");
             return;
         }
 
@@ -74,7 +74,7 @@ namespace minEngine
         EditorObjectSnapshot snapshot;
         if (!EditorObjectSnapshotUtil::ReadEnvelope(m_SnapshotEnvelope, snapshot))
         {
-            ME_CORE_ERROR("RemoveComponentCommand: failed to read snapshot envelope.");
+            ME_LOG(LogEditor, Error, "RemoveComponentCommand: failed to read snapshot envelope.");
             return;
         }
 

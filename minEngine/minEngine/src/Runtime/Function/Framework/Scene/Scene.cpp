@@ -14,7 +14,7 @@ namespace minEngine
 {
     Scene::~Scene()
     {
-        ME_CORE_INFO("Scene '{}' is being destroyed. Cleaning up {} game objects.", m_SceneName, m_GameObjects.size());
+        ME_LOG(LogCore, Info, "Scene '{}' is being destroyed. Cleaning up {} game objects.", m_SceneName, m_GameObjects.size());
         m_GameplayEventSystem = nullptr;
         m_GameObjects.clear();
         m_GameObjectsById.clear();
@@ -30,7 +30,7 @@ namespace minEngine
 
         if (m_GameplayEventSystem != nullptr && m_GameplayEventSystem != component)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogCore, Warn, 
                 "Scene '{}': multiple GameplayEventSystemComponent instances; keeping the first registered.",
                 m_SceneName);
             return;
@@ -313,7 +313,7 @@ namespace minEngine
 
             if (!parentInScene)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogCore, Error, 
                     "Scene::ResolveGameObjectHierarchy: GO '{}' parent not in scene; becoming root.",
                     gameObject->GetName());
                 gameObject->DetachFromParent(AttachmentTransformRules::KeepRelativeTransform);
@@ -322,7 +322,7 @@ namespace minEngine
 
             if (!gameObject->AttachToParent(parent, AttachmentTransformRules::KeepRelativeTransform))
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogCore, Error, 
                     "Scene::ResolveGameObjectHierarchy: failed to attach '{}'; becoming root.",
                     gameObject->GetName());
                 gameObject->DetachFromParent(AttachmentTransformRules::KeepRelativeTransform);

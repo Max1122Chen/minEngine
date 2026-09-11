@@ -88,7 +88,7 @@ namespace minEngine
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         if (vkCreateBuffer(context.Device, &bufferInfo, nullptr, &outBuffer) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateBuffer failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateBuffer failed.");
             return false;
         }
 
@@ -98,7 +98,7 @@ namespace minEngine
             FindMemoryType(context.PhysicalDevice, requirements.memoryTypeBits, memoryProperties);
         if (memoryTypeIndex == UINT32_MAX)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: no suitable buffer memory type.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: no suitable buffer memory type.");
             vkDestroyBuffer(context.Device, outBuffer, nullptr);
             outBuffer = VK_NULL_HANDLE;
             return false;
@@ -110,7 +110,7 @@ namespace minEngine
         allocInfo.memoryTypeIndex = memoryTypeIndex;
         if (vkAllocateMemory(context.Device, &allocInfo, nullptr, &outMemory) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkAllocateMemory(buffer) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkAllocateMemory(buffer) failed.");
             vkDestroyBuffer(context.Device, outBuffer, nullptr);
             outBuffer = VK_NULL_HANDLE;
             return false;
@@ -118,7 +118,7 @@ namespace minEngine
 
         if (vkBindBufferMemory(context.Device, outBuffer, outMemory, 0) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkBindBufferMemory failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkBindBufferMemory failed.");
             DestroyBuffer(context.Device, outBuffer, outMemory);
             return false;
         }
@@ -177,7 +177,7 @@ namespace minEngine
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         if (vkCreateImage(context.Device, &imageInfo, nullptr, &outImage) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImage failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateImage failed.");
             return false;
         }
 
@@ -187,7 +187,7 @@ namespace minEngine
             FindMemoryType(context.PhysicalDevice, requirements.memoryTypeBits, memoryProperties);
         if (memoryTypeIndex == UINT32_MAX)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: no suitable image memory type.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: no suitable image memory type.");
             vkDestroyImage(context.Device, outImage, nullptr);
             outImage = VK_NULL_HANDLE;
             return false;
@@ -199,7 +199,7 @@ namespace minEngine
         allocInfo.memoryTypeIndex = memoryTypeIndex;
         if (vkAllocateMemory(context.Device, &allocInfo, nullptr, &outMemory) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkAllocateMemory(image) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkAllocateMemory(image) failed.");
             vkDestroyImage(context.Device, outImage, nullptr);
             outImage = VK_NULL_HANDLE;
             return false;
@@ -207,7 +207,7 @@ namespace minEngine
 
         if (vkBindImageMemory(context.Device, outImage, outMemory, 0) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkBindImageMemory failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkBindImageMemory failed.");
             DestroyImage(context.Device, outImage, outMemory);
             return false;
         }
@@ -249,7 +249,7 @@ namespace minEngine
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         if (vkCreateImage(context.Device, &imageInfo, nullptr, &outImage) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImage(2DArray) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateImage(2DArray) failed.");
             return false;
         }
 
@@ -259,7 +259,7 @@ namespace minEngine
             FindMemoryType(context.PhysicalDevice, requirements.memoryTypeBits, memoryProperties);
         if (memoryTypeIndex == UINT32_MAX)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: no suitable 2D array image memory type.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: no suitable 2D array image memory type.");
             vkDestroyImage(context.Device, outImage, nullptr);
             outImage = VK_NULL_HANDLE;
             return false;
@@ -271,7 +271,7 @@ namespace minEngine
         allocInfo.memoryTypeIndex = memoryTypeIndex;
         if (vkAllocateMemory(context.Device, &allocInfo, nullptr, &outMemory) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkAllocateMemory(2D array image) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkAllocateMemory(2D array image) failed.");
             vkDestroyImage(context.Device, outImage, nullptr);
             outImage = VK_NULL_HANDLE;
             return false;
@@ -279,7 +279,7 @@ namespace minEngine
 
         if (vkBindImageMemory(context.Device, outImage, outMemory, 0) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkBindImageMemory(2DArray) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkBindImageMemory(2DArray) failed.");
             DestroyImage(context.Device, outImage, outMemory);
             return false;
         }
@@ -320,7 +320,7 @@ namespace minEngine
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         if (vkCreateImage(context.Device, &imageInfo, nullptr, &outImage) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImage(cube) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateImage(cube) failed.");
             return false;
         }
 
@@ -330,7 +330,7 @@ namespace minEngine
             FindMemoryType(context.PhysicalDevice, requirements.memoryTypeBits, memoryProperties);
         if (memoryTypeIndex == UINT32_MAX)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: no suitable cube image memory type.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: no suitable cube image memory type.");
             vkDestroyImage(context.Device, outImage, nullptr);
             outImage = VK_NULL_HANDLE;
             return false;
@@ -342,7 +342,7 @@ namespace minEngine
         allocInfo.memoryTypeIndex = memoryTypeIndex;
         if (vkAllocateMemory(context.Device, &allocInfo, nullptr, &outMemory) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkAllocateMemory(cube image) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkAllocateMemory(cube image) failed.");
             vkDestroyImage(context.Device, outImage, nullptr);
             outImage = VK_NULL_HANDLE;
             return false;
@@ -350,7 +350,7 @@ namespace minEngine
 
         if (vkBindImageMemory(context.Device, outImage, outMemory, 0) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkBindImageMemory(cube) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkBindImageMemory(cube) failed.");
             DestroyImage(context.Device, outImage, outMemory);
             return false;
         }
@@ -401,7 +401,7 @@ namespace minEngine
         viewInfo.subresourceRange.layerCount = 1;
         if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateImageView failed.");
             outView = VK_NULL_HANDLE;
             return false;
         }
@@ -435,7 +435,7 @@ namespace minEngine
         viewInfo.subresourceRange.layerCount = 1;
         if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView(2D subresource) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateImageView(2D subresource) failed.");
             outView = VK_NULL_HANDLE;
             return false;
         }
@@ -469,7 +469,7 @@ namespace minEngine
         viewInfo.subresourceRange.layerCount = arrayLayers;
         if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView(2DArray) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateImageView(2DArray) failed.");
             outView = VK_NULL_HANDLE;
             return false;
         }
@@ -502,7 +502,7 @@ namespace minEngine
         viewInfo.subresourceRange.layerCount = 6;
         if (vkCreateImageView(device, &viewInfo, nullptr, &outView) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: vkCreateImageView(cube) failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: vkCreateImageView(cube) failed.");
             outView = VK_NULL_HANDLE;
             return false;
         }
@@ -517,7 +517,7 @@ namespace minEngine
     {
         if (!context.IsValid() || context.CommandPool == VK_NULL_HANDLE || context.GraphicsQueue == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: CopyBuffer requires command pool and queue.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: CopyBuffer requires command pool and queue.");
             return false;
         }
 
@@ -565,7 +565,7 @@ namespace minEngine
     {
         if (!context.IsValid() || context.CommandPool == VK_NULL_HANDLE || context.GraphicsQueue == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: UploadBufferToImage2D requires command pool and queue.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: UploadBufferToImage2D requires command pool and queue.");
             return false;
         }
 
@@ -665,7 +665,7 @@ namespace minEngine
     {
         if (!context.IsValid() || context.CommandPool == VK_NULL_HANDLE || context.GraphicsQueue == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHIAllocator: UploadBufferToImageCube requires command pool and queue.");
+            ME_LOG(LogRHI, Error, "VulkanRHIAllocator: UploadBufferToImageCube requires command pool and queue.");
             return false;
         }
 
@@ -885,7 +885,7 @@ namespace minEngine
         m_IsValid = true;
         if (!desc.DebugName.empty())
         {
-            ME_CORE_INFO("VulkanRHIShader: loaded SPIR-V modules '{}'", desc.DebugName);
+            ME_LOG(LogRHI, Info, "VulkanRHIShader: loaded SPIR-V modules '{}'", desc.DebugName);
         }
     }
 
@@ -927,7 +927,7 @@ namespace minEngine
     {
         if (!m_Context.IsValid() || m_Desc.ByteSize == 0)
         {
-            ME_CORE_ERROR("VulkanRHIBuffer: invalid device context or zero ByteSize.");
+            ME_LOG(LogRHI, Error, "VulkanRHIBuffer: invalid device context or zero ByteSize.");
             return;
         }
 
@@ -963,7 +963,7 @@ namespace minEngine
 
         if (vkMapMemory(m_Context.Device, m_Memory, 0, m_Desc.ByteSize, 0, &m_Mapped) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIBuffer: vkMapMemory failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIBuffer: vkMapMemory failed.");
             VulkanRHIAllocator::DestroyBuffer(m_Context.Device, m_Buffer, m_Memory);
             m_Mapped = nullptr;
             return;
@@ -1010,7 +1010,7 @@ namespace minEngine
         }
         if (offset + size > m_Desc.ByteSize)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogRHI, Error, 
                 "VulkanRHIBuffer::UpdateSubresource out of range (offset={}, size={}, capacity={}).",
                 offset,
                 size,
@@ -1040,21 +1040,21 @@ namespace minEngine
     {
         if (!m_Context.IsValid())
         {
-            ME_CORE_ERROR("VulkanRHITexture: invalid device context.");
+            ME_LOG(LogRHI, Error, "VulkanRHITexture: invalid device context.");
             return;
         }
         if (m_Desc.Dimension != RHITextureDimension::Texture2D &&
             m_Desc.Dimension != RHITextureDimension::TextureCube &&
             m_Desc.Dimension != RHITextureDimension::Texture2DArray)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogRHI, Error, 
                 "VulkanRHITexture: unsupported dimension {}.",
                 static_cast<int>(m_Desc.Dimension));
             return;
         }
         if (m_Desc.Width == 0 || m_Desc.Height == 0)
         {
-            ME_CORE_ERROR("VulkanRHITexture: Width/Height must be > 0.");
+            ME_LOG(LogRHI, Error, "VulkanRHITexture: Width/Height must be > 0.");
             return;
         }
 
@@ -1062,7 +1062,7 @@ namespace minEngine
         const bool isArray = m_Desc.Dimension == RHITextureDimension::Texture2DArray;
         if (isCube && m_Desc.Width != m_Desc.Height)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogRHI, Warn, 
                 "VulkanRHITexture: cube faces should be square (got {}x{}).",
                 m_Desc.Width,
                 m_Desc.Height);
@@ -1075,7 +1075,7 @@ namespace minEngine
         m_VkFormat = VulkanRHIAllocator::ToVkFormat(m_Desc.Format);
         if (m_VkFormat == VK_FORMAT_UNDEFINED)
         {
-            ME_CORE_ERROR("VulkanRHITexture: unsupported TextureFormat.");
+            ME_LOG(LogRHI, Error, "VulkanRHITexture: unsupported TextureFormat.");
             return;
         }
 
@@ -1100,7 +1100,7 @@ namespace minEngine
         }
         if (usage == 0)
         {
-            ME_CORE_ERROR("VulkanRHITexture: no usage flags derived from create desc.");
+            ME_LOG(LogRHI, Error, "VulkanRHITexture: no usage flags derived from create desc.");
             return;
         }
 
@@ -1195,7 +1195,7 @@ namespace minEngine
             const uint32_t srcBpp = VulkanRHIAllocator::BytesPerPixel(m_Desc.Format);
             if (srcBpp == 0)
             {
-                ME_CORE_ERROR("VulkanRHITexture: cannot upload initialData for this format.");
+                ME_LOG(LogRHI, Error, "VulkanRHITexture: cannot upload initialData for this format.");
             }
             else if (isCube)
             {
@@ -1273,7 +1273,7 @@ namespace minEngine
                                 faceBytes,
                                 aspect))
                         {
-                            ME_CORE_ERROR("VulkanRHITexture: cube initial upload failed.");
+                            ME_LOG(LogRHI, Error, "VulkanRHITexture: cube initial upload failed.");
                         }
                         else
                         {
@@ -1348,7 +1348,7 @@ namespace minEngine
                                 m_Desc.Height,
                                 aspect))
                         {
-                            ME_CORE_ERROR("VulkanRHITexture: initial upload failed.");
+                            ME_LOG(LogRHI, Error, "VulkanRHITexture: initial upload failed.");
                         }
                         else
                         {
@@ -1388,14 +1388,14 @@ namespace minEngine
     {
         if (m_Desc.Texture == nullptr)
         {
-            ME_CORE_ERROR("VulkanRHIShaderResourceView: Texture is null.");
+            ME_LOG(LogRHI, Error, "VulkanRHIShaderResourceView: Texture is null.");
             return;
         }
 
         auto* vulkanTexture = dynamic_cast<VulkanRHITexture*>(m_Desc.Texture);
         if (vulkanTexture == nullptr || !vulkanTexture->IsValid())
         {
-            ME_CORE_ERROR("VulkanRHIShaderResourceView: Texture is not a valid VulkanRHITexture.");
+            ME_LOG(LogRHI, Error, "VulkanRHIShaderResourceView: Texture is not a valid VulkanRHITexture.");
             return;
         }
 
@@ -1423,7 +1423,7 @@ namespace minEngine
         viewInfo.subresourceRange.layerCount = 1;
         if (vkCreateImageView(m_Device, &viewInfo, nullptr, &m_ImageView) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIShaderResourceView: vkCreateImageView failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIShaderResourceView: vkCreateImageView failed.");
             m_ImageView = VK_NULL_HANDLE;
             return;
         }
@@ -1477,7 +1477,7 @@ namespace minEngine
     {
         if (m_Device == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHIShaderBindingSetLayout: device is null.");
+            ME_LOG(LogRHI, Error, "VulkanRHIShaderBindingSetLayout: device is null.");
             return;
         }
 
@@ -1518,7 +1518,7 @@ namespace minEngine
         layoutInfo.pBindings = bindings.empty() ? nullptr : bindings.data();
         if (vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &m_Layout) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIShaderBindingSetLayout: vkCreateDescriptorSetLayout failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIShaderBindingSetLayout: vkCreateDescriptorSetLayout failed.");
             m_Layout = VK_NULL_HANDLE;
         }
     }
@@ -1540,7 +1540,7 @@ namespace minEngine
     {
         if (m_Device == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHIPipelineLayout: device is null.");
+            ME_LOG(LogRHI, Error, "VulkanRHIPipelineLayout: device is null.");
             return;
         }
 
@@ -1551,7 +1551,7 @@ namespace minEngine
             auto* vulkanLayout = dynamic_cast<VulkanRHIShaderBindingSetLayout*>(setLayout);
             if (vulkanLayout == nullptr || !vulkanLayout->IsValid())
             {
-                ME_CORE_ERROR("VulkanRHIPipelineLayout: set layout is invalid.");
+                ME_LOG(LogRHI, Error, "VulkanRHIPipelineLayout: set layout is invalid.");
                 return;
             }
             vkLayouts.push_back(vulkanLayout->GetVkLayout());
@@ -1563,7 +1563,7 @@ namespace minEngine
         layoutInfo.pSetLayouts = vkLayouts.empty() ? nullptr : vkLayouts.data();
         if (vkCreatePipelineLayout(m_Device, &layoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIPipelineLayout: vkCreatePipelineLayout failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIPipelineLayout: vkCreatePipelineLayout failed.");
             m_PipelineLayout = VK_NULL_HANDLE;
         }
     }
@@ -1648,7 +1648,7 @@ namespace minEngine
         if (m_Device == VK_NULL_HANDLE || m_Pool == VK_NULL_HANDLE || vulkanLayout == nullptr ||
             !vulkanLayout->IsValid())
         {
-            ME_CORE_ERROR("VulkanRHIShaderBindingSet: invalid device/pool/layout.");
+            ME_LOG(LogRHI, Error, "VulkanRHIShaderBindingSet: invalid device/pool/layout.");
             return;
         }
 
@@ -1660,7 +1660,7 @@ namespace minEngine
         allocInfo.pSetLayouts = &setLayout;
         if (vkAllocateDescriptorSets(m_Device, &allocInfo, &m_DescriptorSet) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIShaderBindingSet: vkAllocateDescriptorSets failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIShaderBindingSet: vkAllocateDescriptorSets failed.");
             m_DescriptorSet = VK_NULL_HANDLE;
             return;
         }
@@ -1853,14 +1853,14 @@ namespace minEngine
         auto* pixelShader = dynamic_cast<VulkanRHIShader*>(desc.PixelShader);
         if (vertexShader == nullptr || pixelShader == nullptr || !vertexShader->IsValid() || !pixelShader->IsValid())
         {
-            ME_CORE_ERROR("VulkanRHIGraphicsPipelineState: invalid shader modules.");
+            ME_LOG(LogRHI, Error, "VulkanRHIGraphicsPipelineState: invalid shader modules.");
             return VK_NULL_HANDLE;
         }
 
         VkPipelineLayout pipelineLayout = GetVkPipelineLayout();
         if (pipelineLayout == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("VulkanRHIGraphicsPipelineState: PipelineLayout is null.");
+            ME_LOG(LogRHI, Error, "VulkanRHIGraphicsPipelineState: PipelineLayout is null.");
             return VK_NULL_HANDLE;
         }
 
@@ -2013,7 +2013,7 @@ namespace minEngine
         VkPipeline pipeline = VK_NULL_HANDLE;
         if (vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
         {
-            ME_CORE_ERROR("VulkanRHIGraphicsPipelineState: vkCreateGraphicsPipelines failed.");
+            ME_LOG(LogRHI, Error, "VulkanRHIGraphicsPipelineState: vkCreateGraphicsPipelines failed.");
             return VK_NULL_HANDLE;
         }
 

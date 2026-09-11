@@ -50,7 +50,7 @@ namespace minEngine
             BinaryWriterArchive writer;
             if (!writer.WriteBool(true))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: WriteBool failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: WriteBool failed.");
                 return false;
             }
 
@@ -58,7 +58,7 @@ namespace minEngine
             bool value = false;
             if (!reader.ReadBool(value) || value != true)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: Bool round-trip failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: Bool round-trip failed.");
                 return false;
             }
 
@@ -70,7 +70,7 @@ namespace minEngine
             BinaryWriterArchive writer;
             if (!writer.WriteString("minEngine"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: WriteString failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: WriteString failed.");
                 return false;
             }
 
@@ -78,7 +78,7 @@ namespace minEngine
             std::string value;
             if (!reader.ReadString(value) || value != "minEngine")
             {
-                ME_CORE_ERROR("SerializationArchiveTest: String round-trip failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: String round-trip failed.");
                 return false;
             }
 
@@ -92,7 +92,7 @@ namespace minEngine
             BinaryWriterArchive writer;
             if (!writer.BeginGuidRef(sourceGuid) || !writer.EndGuidRef())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GuidRef write failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GuidRef write failed.");
                 return false;
             }
 
@@ -100,13 +100,13 @@ namespace minEngine
             GUID readGuid;
             if (!reader.BeginGuidRef(readGuid) || !reader.EndGuidRef())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GuidRef read failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GuidRef read failed.");
                 return false;
             }
 
             if (readGuid.High != sourceGuid.High || readGuid.Low != sourceGuid.Low)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GuidRef payload mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GuidRef payload mismatch.");
                 return false;
             }
 
@@ -118,19 +118,19 @@ namespace minEngine
             BinaryWriterArchive writer;
             if (!writer.BeginArray(2))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: BeginArray failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: BeginArray failed.");
                 return false;
             }
 
             if (!writer.WriteInt64(7) || !writer.WriteInt64(42))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: array element write failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: array element write failed.");
                 return false;
             }
 
             if (!writer.EndArray())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: EndArray failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: EndArray failed.");
                 return false;
             }
 
@@ -138,7 +138,7 @@ namespace minEngine
             size_t count = 0;
             if (!reader.BeginArray(count) || count != 2)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: BeginArray read failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: BeginArray read failed.");
                 return false;
             }
 
@@ -146,19 +146,19 @@ namespace minEngine
             int64_t second = 0;
             if (!reader.EnterArrayElement(0) || !reader.ReadInt64(first) || !reader.LeaveArrayElement())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: first array element read failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: first array element read failed.");
                 return false;
             }
 
             if (!reader.EnterArrayElement(1) || !reader.ReadInt64(second) || !reader.LeaveArrayElement())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: second array element read failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: second array element read failed.");
                 return false;
             }
 
             if (!reader.EndArray() || first != 7 || second != 42)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: array payload mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: array payload mismatch.");
                 return false;
             }
 
@@ -170,32 +170,32 @@ namespace minEngine
             BinaryWriterArchive writer;
             if (!writer.BeginObject("minEngine::GUID"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: BeginObject failed: {}", writer.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: BeginObject failed: {}", writer.GetLastArchiveError());
                 return false;
             }
 
             if (!writer.BeginField("High") || !writer.WriteUInt64(0x1111ull) || !writer.EndField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: High field write failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: High field write failed.");
                 return false;
             }
 
             if (!writer.BeginField("Low") || !writer.WriteUInt64(0x2222ull) || !writer.EndField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: Low field write failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: Low field write failed.");
                 return false;
             }
 
             if (!writer.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: EndObject failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: EndObject failed.");
                 return false;
             }
 
             BinaryReaderArchive reader(writer.TakeBuffer());
             if (!reader.BeginObject("minEngine::GUID"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: BeginObject read failed: {}", reader.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: BeginObject read failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
@@ -203,19 +203,19 @@ namespace minEngine
             uint64_t low = 0;
             if (!reader.EnterField("High") || !reader.ReadUInt64(high) || !reader.LeaveField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: High field read failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: High field read failed.");
                 return false;
             }
 
             if (!reader.EnterField("Low") || !reader.ReadUInt64(low) || !reader.LeaveField())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: Low field read failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: Low field read failed.");
                 return false;
             }
 
             if (!reader.EndObject() || high != 0x1111ull || low != 0x2222ull)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: object payload mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: object payload mismatch.");
                 return false;
             }
 
@@ -227,7 +227,7 @@ namespace minEngine
             BinaryWriterArchive writer;
             if (!writer.BeginObject("minEngine::GUID") || !writer.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: failed to write empty object shell: {}", writer.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: failed to write empty object shell: {}", writer.GetLastArchiveError());
                 return false;
             }
 
@@ -235,7 +235,7 @@ namespace minEngine
             BinaryReaderArchive reader(buffer);
             if (!reader.BeginObject("minEngine::GUID") || !reader.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: failed to read empty object shell: {}", reader.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: failed to read empty object shell: {}", reader.GetLastArchiveError());
                 return false;
             }
 
@@ -249,7 +249,7 @@ namespace minEngine
             BinaryWriterArchive writer;
             if (!writer.BeginObject("minEngine::MEObject"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested object BeginObject failed: {}", writer.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: nested object BeginObject failed: {}", writer.GetLastArchiveError());
                 return false;
             }
 
@@ -261,14 +261,14 @@ namespace minEngine
                 || !writer.EndField()
                 || !writer.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested GUID field write failed: {}", writer.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: nested GUID field write failed: {}", writer.GetLastArchiveError());
                 return false;
             }
 
             BinaryReaderArchive reader(writer.TakeBuffer());
             if (!reader.BeginObject("minEngine::MEObject"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested object read BeginObject failed: {}", reader.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: nested object read BeginObject failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
@@ -281,13 +281,13 @@ namespace minEngine
                 || !reader.LeaveField()
                 || !reader.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested GUID field read failed: {}", reader.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: nested GUID field read failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
             if (readGuid != sourceGuid)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: nested GUID payload mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: nested GUID payload mismatch.");
                 return false;
             }
 
@@ -306,7 +306,7 @@ namespace minEngine
                 || !writer.EndField()
                 || !writer.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GuidRef field write failed: {}", writer.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GuidRef field write failed: {}", writer.GetLastArchiveError());
                 return false;
             }
 
@@ -319,13 +319,13 @@ namespace minEngine
                 || !reader.LeaveField()
                 || !reader.EndObject())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GuidRef field read failed: {}", reader.GetLastArchiveError());
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GuidRef field read failed: {}", reader.GetLastArchiveError());
                 return false;
             }
 
             if (readGuid != sourceGuid)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GuidRef field payload mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GuidRef field payload mismatch.");
                 return false;
             }
 
@@ -345,7 +345,7 @@ namespace minEngine
                 || !writer.EndField()
                 || !writer.EndObject())
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: array ObjectPtr field write failed: {}",
                     writer.GetLastArchiveError());
                 return false;
@@ -366,7 +366,7 @@ namespace minEngine
                 || !reader.LeaveField()
                 || !reader.EndObject())
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: array ObjectPtr field read failed: {}",
                     reader.GetLastArchiveError());
                 return false;
@@ -374,7 +374,7 @@ namespace minEngine
 
             if (dynamicClassName.find("StaticMeshComponent") == std::string::npos)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: array ObjectPtr dynamic class mismatch: {}", dynamicClassName);
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: array ObjectPtr dynamic class mismatch: {}", dynamicClassName);
                 return false;
             }
 
@@ -394,7 +394,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: SerializeObjectToBuffer failed: {} ({})",
                     writeResult.message,
                     writeResult.fieldPath);
@@ -409,7 +409,7 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: DeserializeObjectFromBuffer failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -418,13 +418,13 @@ namespace minEngine
 
             if (restoredObject->GetName() != sourceObject->GetName())
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GameObject name mismatch after round-trip.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GameObject name mismatch after round-trip.");
                 return false;
             }
 
             if (restoredObject->GetGuid() != sourceGuid)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GameObject GUID mismatch after round-trip.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GameObject GUID mismatch after round-trip.");
                 return false;
             }
 
@@ -445,7 +445,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: MovementComponent serialize failed: {} ({})",
                     writeResult.message,
                     writeResult.fieldPath);
@@ -461,7 +461,7 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: MovementComponent deserialize failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -472,7 +472,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: MovementComponent ResolvePendingObjectRefs failed: {}",
                     resolveResult.message);
                 return false;
@@ -495,7 +495,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: StaticMeshComponent serialize failed: {} ({})",
                     writeResult.message,
                     writeResult.fieldPath);
@@ -511,7 +511,7 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: StaticMeshComponent deserialize failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -532,7 +532,7 @@ namespace minEngine
                 Reflection::ReflectionSystem::Get().FindClass("minEngine::GameObject");
             if (gameObjectClass == nullptr)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GameObject class not found.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GameObject class not found.");
                 return false;
             }
 
@@ -545,7 +545,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_Components property serialize failed: {} ({})",
                     writeResult.message,
                     writeResult.fieldPath);
@@ -563,7 +563,7 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_Components property deserialize failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -572,7 +572,7 @@ namespace minEngine
 
             if (restoredObject->GetAllComponents().size() != 1)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: m_Components property round-trip size mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: m_Components property round-trip size mismatch.");
                 return false;
             }
 
@@ -580,7 +580,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_Components ResolvePendingObjectRefs failed: {}",
                     resolveResult.message);
                 return false;
@@ -600,13 +600,13 @@ namespace minEngine
                 Reflection::ReflectionSystem::Get().FindClass("minEngine::GameObject");
             if (gameObjectClass == nullptr)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GameObject class not found.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GameObject class not found.");
                 return false;
             }
 
             if (sourceObject->GetRootComponent() == nullptr)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: expected non-null m_RootComponent for StaticMeshComponent GO.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: expected non-null m_RootComponent for StaticMeshComponent GO.");
                 return false;
             }
 
@@ -619,7 +619,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_RootComponent serialize failed: {} ({})",
                     writeResult.message,
                     writeResult.fieldPath);
@@ -635,7 +635,7 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_RootComponent deserialize failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -646,7 +646,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_RootComponent ResolvePendingObjectRefs failed: {}",
                     resolveResult.message);
                 return false;
@@ -654,7 +654,7 @@ namespace minEngine
 
             if (restoredObject->GetRootComponent() == nullptr)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: m_RootComponent should resolve after round-trip.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: m_RootComponent should resolve after round-trip.");
                 return false;
             }
 
@@ -671,7 +671,7 @@ namespace minEngine
 
             if (sourceObject->GetAllComponents().size() != 1)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: expected one component before serialize.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: expected one component before serialize.");
                 return false;
             }
 
@@ -681,7 +681,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: GameObject+Components serialize failed: {} ({})",
                     writeResult.message,
                     writeResult.fieldPath);
@@ -696,7 +696,7 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: GameObject+Components deserialize failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -705,7 +705,7 @@ namespace minEngine
 
             if (restoredObject->GetAllComponents().size() != 1)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: expected one component after round-trip.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: expected one component after round-trip.");
                 return false;
             }
 
@@ -713,7 +713,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: ResolvePendingObjectRefs failed: {}",
                     resolveResult.message);
                 return false;
@@ -727,7 +727,7 @@ namespace minEngine
             const Reflection::MEClass* vectorClass = Reflection::ReflectionSystem::Get().FindClass("Vector3");
             if (vectorClass == nullptr)
             {
-                ME_CORE_WARN("SerializationArchiveTest: Vector3 class not found; skipping serializer property test.");
+                ME_LOG(LogTest, Warn, "SerializationArchiveTest: Vector3 class not found; skipping serializer property test.");
                 return true;
             }
 
@@ -743,7 +743,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: SerializePropertyToBuffer failed: {}", writeResult.message);
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: SerializePropertyToBuffer failed: {}", writeResult.message);
                 return false;
             }
 
@@ -755,13 +755,13 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: DeserializePropertyFromBuffer failed: {}", readResult.message);
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: DeserializePropertyFromBuffer failed: {}", readResult.message);
                 return false;
             }
 
             if (restored.x != source.x)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: Vector3.x mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: Vector3.x mismatch.");
                 return false;
             }
 
@@ -773,7 +773,7 @@ namespace minEngine
             const Reflection::MEClass* transformClass = Reflection::ReflectionSystem::Get().FindClass<Transform>();
             if (transformClass == nullptr)
             {
-                ME_CORE_WARN("SerializationArchiveTest: Transform class not found; skipping transform test.");
+                ME_LOG(LogTest, Warn, "SerializationArchiveTest: Transform class not found; skipping transform test.");
                 return true;
             }
 
@@ -788,7 +788,7 @@ namespace minEngine
                 buffer);
             if (!writeResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: Transform Rotation serialize failed: {}",
                     writeResult.message);
                 return false;
@@ -803,7 +803,7 @@ namespace minEngine
                 unresolvedRefs);
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: Transform Rotation deserialize failed: {}",
                     readResult.message);
                 return false;
@@ -811,7 +811,7 @@ namespace minEngine
 
             if (!(source.Rotation == restored.Rotation))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: Transform Rotation mismatch after round-trip.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: Transform Rotation mismatch after round-trip.");
                 return false;
             }
 
@@ -826,7 +826,7 @@ namespace minEngine
                 Reflection::ReflectionSystem::Get().FindClass<Material>();
             if (materialClass == nullptr)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: Material class not found.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: Material class not found.");
                 return false;
             }
 
@@ -843,7 +843,7 @@ namespace minEngine
                     shadingBuffer);
             if (!writeShading.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_ShadingModel serialize failed: {}",
                     writeShading.message);
                 return false;
@@ -862,7 +862,7 @@ namespace minEngine
                     unresolvedRefs);
             if (!readShading.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_ShadingModel deserialize failed: {}",
                     readShading.message);
                 return false;
@@ -870,14 +870,14 @@ namespace minEngine
 
             if (restored.m_ShadingModel != MaterialShadingModel::BlinnPhong)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: m_ShadingModel mismatch after round-trip.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: m_ShadingModel mismatch after round-trip.");
                 return false;
             }
 
             // Neighbor uint8 enum must not be clobbered by size-mismatched enum codecs (TD-013).
             if (restored.m_BlendMode != MaterialBlendMode::Translucent)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: m_BlendMode neighbor corrupted by enum codec (TD-013).");
                 return false;
             }
@@ -905,12 +905,12 @@ namespace minEngine
                 });
             if (!writeResult.ok || !root.is_object() || !root.contains("$schemaVersion"))
             {
-                ME_CORE_ERROR("SerializationArchiveTest: JSON schemaVersion write failed.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: JSON schemaVersion write failed.");
                 return false;
             }
             if (root["$schemaVersion"].get<uint32_t>() != 1u)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: unexpected $schemaVersion value.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: unexpected $schemaVersion value.");
                 return false;
             }
 
@@ -922,7 +922,7 @@ namespace minEngine
             Serialization::JsonReaderArchive reader(root);
             if (reader.GetReadSchemaVersion() != 1u)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: GetReadSchemaVersion mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: GetReadSchemaVersion mismatch.");
                 return false;
             }
 
@@ -937,7 +937,7 @@ namespace minEngine
                 });
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: JSON unknown-field load failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -946,7 +946,7 @@ namespace minEngine
 
             if (restoredObject->GetGuid() != sourceGuid)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: JSON compat GUID mismatch.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: JSON compat GUID mismatch.");
                 return false;
             }
 
@@ -975,7 +975,7 @@ namespace minEngine
                 });
             if (!readResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SerializationArchiveTest: JSON missing-field load failed: {} ({})",
                     readResult.message,
                     readResult.fieldPath);
@@ -984,7 +984,7 @@ namespace minEngine
 
             if (restoredObject->GetName() != nameBefore)
             {
-                ME_CORE_ERROR("SerializationArchiveTest: missing field should keep default name.");
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: missing field should keep default name.");
                 return false;
             }
 

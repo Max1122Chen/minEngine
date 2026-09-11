@@ -36,7 +36,7 @@ namespace minEngine
             appendFn(target);
             if (target.size() > kSoftMaxVertices)
             {
-                ME_CORE_WARN("DebugDrawService: vertex count exceeded soft limit ({}); truncating.", kSoftMaxVertices);
+                ME_LOG(LogRender, Warn, "DebugDrawService: vertex count exceeded soft limit ({}); truncating.", kSoftMaxVertices);
                 target.resize(kSoftMaxVertices);
             }
             (void)before;

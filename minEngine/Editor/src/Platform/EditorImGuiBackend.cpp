@@ -33,7 +33,7 @@ namespace minEngine
             {
                 return;
             }
-            ME_CORE_ERROR("ImGui Vulkan backend: VkResult={}", static_cast<int>(err));
+            ME_LOG(LogEditor, Error, "ImGui Vulkan backend: VkResult={}", static_cast<int>(err));
         }
     }
 #endif
@@ -60,7 +60,7 @@ namespace minEngine
         m_Initialized = true;
         return true;
 #else
-        ME_CORE_ERROR("EditorImGuiBackend: Vulkan renderer requested but MINENGINE_HAS_VULKAN is off.");
+        ME_LOG(LogEditor, Error, "EditorImGuiBackend: Vulkan renderer requested but MINENGINE_HAS_VULKAN is off.");
         return false;
 #endif
     }
@@ -87,7 +87,7 @@ namespace minEngine
         vulkanRhi.FillEditorFrameInfo(frameInfo);
         if (frameInfo.SwapchainRenderPass == VK_NULL_HANDLE)
         {
-            ME_CORE_ERROR("EditorImGuiBackend: swapchain render pass not ready.");
+            ME_LOG(LogEditor, Error, "EditorImGuiBackend: swapchain render pass not ready.");
             return false;
         }
 
@@ -116,7 +116,7 @@ namespace minEngine
 
         if (!ImGui_ImplVulkan_Init(&initInfo))
         {
-            ME_CORE_ERROR("EditorImGuiBackend: ImGui_ImplVulkan_Init failed.");
+            ME_LOG(LogEditor, Error, "EditorImGuiBackend: ImGui_ImplVulkan_Init failed.");
             return false;
         }
 
@@ -124,7 +124,7 @@ namespace minEngine
         m_VulkanRhi = &vulkanRhi;
         vulkanRhi.SetEditorSwapchainRecreatedCallback(&EditorImGuiBackend::OnVulkanSwapchainRecreated);
         m_VulkanBackendInitialized = true;
-        ME_CORE_INFO("EditorImGuiBackend: ImGui Vulkan renderer initialized.");
+        ME_LOG(LogEditor, Info, "EditorImGuiBackend: ImGui Vulkan renderer initialized.");
         return true;
     }
 
@@ -148,7 +148,7 @@ namespace minEngine
             frameInfo.MinSwapchainImageCount > 0 ? frameInfo.MinSwapchainImageCount : 2;
         ImGui_ImplVulkan_SetMinImageCount(minImageCount);
         s_ActiveVulkanBackend->InvalidateViewportTextures();
-        ME_CORE_INFO("EditorImGuiBackend: swapchain recreated — ImGui pipeline refreshed.");
+        ME_LOG(LogEditor, Info, "EditorImGuiBackend: swapchain recreated — ImGui pipeline refreshed.");
     }
 #endif
 
@@ -241,13 +241,13 @@ namespace minEngine
             auto* vulkanRhi = dynamic_cast<VulkanRHI*>(rhi);
             if (vulkanRhi == nullptr)
             {
-                ME_CORE_ERROR("EditorImGuiBackend: Vulkan API selected but RHI is not VulkanRHI.");
+                ME_LOG(LogEditor, Error, "EditorImGuiBackend: Vulkan API selected but RHI is not VulkanRHI.");
                 return;
             }
 
             if (!m_VulkanBackendInitialized)
             {
-                ME_CORE_WARN("EditorImGuiBackend: Vulkan renderer not initialized; skipping ImGui draw.");
+                ME_LOG(LogEditor, Warn, "EditorImGuiBackend: Vulkan renderer not initialized; skipping ImGui draw.");
                 return;
             }
 
@@ -270,7 +270,7 @@ namespace minEngine
 
         if (!vulkanRhi.BeginEditorSwapchainRenderPass())
         {
-            ME_CORE_WARN("EditorImGuiBackend: BeginEditorSwapchainRenderPass failed (ImGui frame skipped).");
+            ME_LOG(LogEditor, Warn, "EditorImGuiBackend: BeginEditorSwapchainRenderPass failed (ImGui frame skipped).");
             return;
         }
 

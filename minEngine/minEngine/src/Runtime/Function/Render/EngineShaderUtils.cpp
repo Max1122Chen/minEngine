@@ -26,7 +26,7 @@ namespace minEngine
                 {
                     *outError = message;
                 }
-                ME_CORE_ERROR("{}", message);
+                ME_LOG(LogRender, Error, "{}", message);
                 return false;
             }
 
@@ -76,7 +76,7 @@ namespace minEngine
                 {
                     *outError = discoverError;
                 }
-                ME_CORE_ERROR("{}", discoverError);
+                ME_LOG(LogRender, Error, "{}", discoverError);
                 return nullptr;
             }
 
@@ -92,7 +92,7 @@ namespace minEngine
                 {
                     *outError = vertexResult.Log;
                 }
-                ME_CORE_ERROR("SPIR-V vertex compile failed: {}", vertexResult.Log);
+                ME_LOG(LogRender, Error, "SPIR-V vertex compile failed: {}", vertexResult.Log);
                 return nullptr;
             }
 
@@ -104,7 +104,7 @@ namespace minEngine
                 {
                     *outError = fragmentResult.Log;
                 }
-                ME_CORE_ERROR("SPIR-V fragment compile failed: {}", fragmentResult.Log);
+                ME_LOG(LogRender, Error, "SPIR-V fragment compile failed: {}", fragmentResult.Log);
                 return nullptr;
             }
 
@@ -130,7 +130,7 @@ namespace minEngine
                 {
                     *outError = discoverError;
                 }
-                ME_CORE_ERROR("{}", discoverError);
+                ME_LOG(LogRender, Error, "{}", discoverError);
                 return nullptr;
             }
 
@@ -152,7 +152,7 @@ namespace minEngine
                 {
                     *outError = vertexResult.Log;
                 }
-                ME_CORE_ERROR("SPIR-V vertex compile failed: {}", vertexResult.Log);
+                ME_LOG(LogRender, Error, "SPIR-V vertex compile failed: {}", vertexResult.Log);
                 return nullptr;
             }
 
@@ -168,7 +168,7 @@ namespace minEngine
                 {
                     *outError = fragmentResult.Log;
                 }
-                ME_CORE_ERROR("SPIR-V fragment compile failed: {}", fragmentResult.Log);
+                ME_LOG(LogRender, Error, "SPIR-V fragment compile failed: {}", fragmentResult.Log);
                 return nullptr;
             }
 

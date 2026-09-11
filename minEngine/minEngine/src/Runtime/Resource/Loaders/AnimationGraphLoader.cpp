@@ -32,7 +32,7 @@ namespace minEngine
             {
                 *outError = serializeResult.message;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "AnimationGraphLoader: Save failed for '{}' - {} (field: {})",
                 meta.AssetPath,
                 serializeResult.message,
@@ -67,7 +67,7 @@ namespace minEngine
             {
                 *outError = deserializeResult.message;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "AnimationGraphLoader: Load failed for '{}' - {} (field: {})",
                 meta.AssetPath,
                 deserializeResult.message,
@@ -80,7 +80,7 @@ namespace minEngine
         std::string validateError;
         if (!graph->Validate(&validateError))
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "AnimationGraphLoader: '{}' loaded with validation warning: {}",
                 meta.AssetPath,
                 validateError);

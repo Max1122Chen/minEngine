@@ -152,7 +152,7 @@ namespace minEngine
             AssetManager::Get().LoadAsset<AnimationGraph>(meta->AssetPath);
         if (!graph)
         {
-            ME_CORE_ERROR("AnimationGraphEditor: failed to load '{}'.", meta->AssetPath);
+            ME_LOG(LogEditor, Error, "AnimationGraphEditor: failed to load '{}'.", meta->AssetPath);
             return;
         }
 
@@ -196,7 +196,7 @@ namespace minEngine
         std::string validateError;
         if (!m_Session.GraphAsset->Validate(&validateError))
         {
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "AnimationGraphEditor: saving '{}' with validation warning: {}",
                 m_Session.AssetPath,
                 validateError);
@@ -211,7 +211,7 @@ namespace minEngine
         }
         else
         {
-            ME_CORE_ERROR("AnimationGraphEditor: Save failed for '{}'.", m_Session.AssetPath);
+            ME_LOG(LogEditor, Error, "AnimationGraphEditor: Save failed for '{}'.", m_Session.AssetPath);
         }
         return saved;
     }

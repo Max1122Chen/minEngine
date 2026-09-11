@@ -59,7 +59,7 @@ namespace minEngine
         m_Backend = std::move(backend);
         if (m_Backend == nullptr || !m_Backend->Initialize())
         {
-            ME_CORE_ERROR("AudioSystem: backend initialization failed.");
+            ME_LOG(LogAudio, Error, "AudioSystem: backend initialization failed.");
             m_Backend.reset();
             return;
         }
@@ -170,7 +170,7 @@ namespace minEngine
 
         if (params.Spatial.bSpatialized)
         {
-            ME_CORE_INFO(
+            ME_LOG(LogAudio, Info, 
                 "AudioSystem: started spatialized voice {} at world position ({:.2f}, {:.2f}, {:.2f}).",
                 voice->GetId(),
                 params.WorldPosition.x,
@@ -310,7 +310,7 @@ namespace minEngine
 
         if (m_ActiveListener != nullptr && m_ActiveListener != listener)
         {
-            ME_CORE_WARN("AudioSystem: replacing active listener (last registered wins).");
+            ME_LOG(LogAudio, Warn, "AudioSystem: replacing active listener (last registered wins).");
         }
 
         m_ActiveListener = listener;
@@ -669,7 +669,7 @@ namespace minEngine
             return;
         }
 
-        ME_CORE_WARN(
+        ME_LOG(LogAudio, Warn, 
             "AudioSystem: spatialized audio is active but no AudioListenerComponent is registered. "
             "Add one (for example on the camera) for correct 3D audio.");
         m_bWarnedMissingListenerForSpatial = true;
@@ -712,7 +712,7 @@ namespace minEngine
 
         if (component == nullptr)
         {
-            ME_CORE_INFO("AudioSystem [{}]: component is null.", role);
+            ME_LOG(LogAudio, Info, "AudioSystem [{}]: component is null.", role);
             return;
         }
 
@@ -746,7 +746,7 @@ namespace minEngine
 
         if (hasRootPosition)
         {
-            ME_CORE_INFO(
+            ME_LOG(LogAudio, Info, 
                 "AudioSystem [{}]: owner='{}' local=({:.2f}, {:.2f}, {:.2f}) world=({:.2f}, {:.2f}, {:.2f}) "
                 "rootWorld=({:.2f}, {:.2f}, {:.2f}) attachParent={}",
                 role,
@@ -764,7 +764,7 @@ namespace minEngine
         }
         else
         {
-            ME_CORE_INFO(
+            ME_LOG(LogAudio, Info, 
                 "AudioSystem [{}]: owner='{}' local=({:.2f}, {:.2f}, {:.2f}) world=({:.2f}, {:.2f}, {:.2f}) "
                 "attachParent={}",
                 role,
@@ -803,7 +803,7 @@ namespace minEngine
         }
 
         const bool backendListenerEnabled = m_Backend != nullptr && m_Backend->IsListenerEnabled();
-        ME_CORE_INFO(
+        ME_LOG(LogAudio, Info, 
             "AudioSystem [spatial diagnostics]: backendListenerEnabled={} activeListener={} spatializedActiveVoices={}",
             backendListenerEnabled,
             m_ActiveListener != nullptr ? "yes" : "no",
@@ -816,7 +816,7 @@ namespace minEngine
             const Vector3 listenerWorldPosition = m_ActiveListener->GetWorldPosition();
             const Vector3 listenerForward = m_ActiveListener->GetWorldForwardVector();
             const Vector3 listenerUp = m_ActiveListener->GetWorldUpVector();
-            ME_CORE_INFO(
+            ME_LOG(LogAudio, Info, 
                 "AudioSystem [spatial diagnostics]: synced listener world=({:.2f}, {:.2f}, {:.2f}) forward=({:.2f}, {:.2f}, {:.2f}) up=({:.2f}, {:.2f}, {:.2f})",
                 listenerWorldPosition.x,
                 listenerWorldPosition.y,
@@ -830,7 +830,7 @@ namespace minEngine
         }
         else if (hasSpatializedActiveVoice)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAudio, Warn, 
                 "AudioSystem [spatial diagnostics]: spatialized voices are active but AudioSystem has no active listener.");
         }
 
@@ -862,7 +862,7 @@ namespace minEngine
             const bool backendPlaying =
                 voice->m_BackendHandle.IsValid() && m_Backend->IsVoicePlaying(voice->m_BackendHandle);
 
-            ME_CORE_INFO(
+            ME_LOG(LogAudio, Info, 
                 "AudioSystem [spatial diagnostics]: voice={} ownerSpatialized={} loop={} voiceWorld=({:.2f}, {:.2f}, {:.2f}) "
                 "minDist={:.2f} maxDist={:.2f} distanceToListener={:.2f} effectiveGain={:.3f} backendPlaying={}",
                 voice->GetId(),

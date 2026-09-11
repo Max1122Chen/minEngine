@@ -59,7 +59,7 @@ namespace minEngine
             m_KeyStateMap.emplace(key, InputKeyState{});
         }
 
-        ME_CORE_INFO("InputSystem Initialized"); 
+        ME_LOG(LogCore, Info, "InputSystem Initialized"); 
     }
 
     void InputSystem::Shutdown()
@@ -72,7 +72,7 @@ namespace minEngine
 
         m_DefaultContext.reset();
 
-        ME_CORE_INFO("InputSystem Shutdown");
+        ME_LOG(LogCore, Info, "InputSystem Shutdown");
     }
 
     void InputSystem::Tick(float deltaTime)

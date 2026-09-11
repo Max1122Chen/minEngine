@@ -70,7 +70,7 @@ namespace minEngine
         const ma_result result = ma_engine_init(&engineConfig, &m_Impl->Engine);
         if (result != MA_SUCCESS)
         {
-            ME_CORE_ERROR("MiniaudioBackend: ma_engine_init failed ({})", static_cast<int>(result));
+            ME_LOG(LogAudio, Error, "MiniaudioBackend: ma_engine_init failed ({})", static_cast<int>(result));
             return false;
         }
 
@@ -126,7 +126,7 @@ namespace minEngine
             [](const Impl::VoiceSlot& slot) { return !slot.bAllocated; });
         if (freeSlotIt == m_Impl->Voices.end())
         {
-            ME_CORE_WARN("MiniaudioBackend: backend voice pool exhausted.");
+            ME_LOG(LogAudio, Warn, "MiniaudioBackend: backend voice pool exhausted.");
             return invalidHandle;
         }
 
@@ -145,7 +145,7 @@ namespace minEngine
         ma_result bufferResult = ma_audio_buffer_init(&bufferConfig, &slot.Buffer);
         if (bufferResult != MA_SUCCESS)
         {
-            ME_CORE_ERROR("MiniaudioBackend: ma_audio_buffer_init failed ({})", static_cast<int>(bufferResult));
+            ME_LOG(LogAudio, Error, "MiniaudioBackend: ma_audio_buffer_init failed ({})", static_cast<int>(bufferResult));
             return invalidHandle;
         }
 
@@ -156,7 +156,7 @@ namespace minEngine
         if (soundResult != MA_SUCCESS)
         {
             ma_audio_buffer_uninit(&slot.Buffer);
-            ME_CORE_ERROR("MiniaudioBackend: ma_sound_init_ex failed ({})", static_cast<int>(soundResult));
+            ME_LOG(LogAudio, Error, "MiniaudioBackend: ma_sound_init_ex failed ({})", static_cast<int>(soundResult));
             return invalidHandle;
         }
 

@@ -65,7 +65,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-linetrace-hit");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: failed to create hit scene.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: failed to create hit scene.");
                 return false;
             }
 
@@ -87,26 +87,26 @@ namespace minEngine
 
             if (!hit || !hitResult.bHit || !hitResult.bBlockingHit)
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: expected blocking Visibility hit on WorldStatic floor.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: expected blocking Visibility hit on WorldStatic floor.");
                 return false;
             }
 
             if (hitResult.HitObject != floorObject.get() || hitResult.RigidBody != floorRigidBody.get())
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: hit object/component mismatch.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: hit object/component mismatch.");
                 return false;
             }
 
             // Floor top surface is at y = 0.5 with center at origin and half-extent 0.5.
             if (!NearlyEqual(hitResult.Location.y, 0.5f))
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsLineTraceTest: unexpected hit Y {} (expected ~0.5).",
                     hitResult.Location.y);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsLineTraceTest: floor hit at Y={}.", hitResult.Location.y);
+            ME_LOG(LogTest, Info, "PhysicsLineTraceTest: floor hit at Y={}.", hitResult.Location.y);
             return true;
         }
 
@@ -117,7 +117,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-linetrace-miss");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: failed to create miss scene.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: failed to create miss scene.");
                 return false;
             }
 
@@ -139,7 +139,7 @@ namespace minEngine
 
             if (hit || hitResult.bHit)
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: expected miss far from floor.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: expected miss far from floor.");
                 return false;
             }
 
@@ -153,7 +153,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-linetrace-ignore");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: failed to create ignore scene.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: failed to create ignore scene.");
                 return false;
             }
 
@@ -184,7 +184,7 @@ namespace minEngine
 
             if (!hit || hitResult.HitObject != floorObject.get())
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: ignore-self should hit floor, not the box.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: ignore-self should hit floor, not the box.");
                 return false;
             }
 
@@ -198,7 +198,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-linetrace-trigger");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: failed to create trigger scene.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: failed to create trigger scene.");
                 return false;
             }
 
@@ -220,7 +220,7 @@ namespace minEngine
 
             if (!hit || !hitResult.bHit || hitResult.bBlockingHit)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsLineTraceTest: Default×Trigger should Overlap-hit (bBlockingHit=false). hit={} blocking={}",
                     hit,
                     hitResult.bBlockingHit);
@@ -229,7 +229,7 @@ namespace minEngine
 
             if (hitResult.HitObject != triggerObject.get())
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: trigger hit object mismatch.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: trigger hit object mismatch.");
                 return false;
             }
 
@@ -243,7 +243,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-linetrace-visibility");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: failed to create visibility scene.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: failed to create visibility scene.");
                 return false;
             }
 
@@ -263,7 +263,7 @@ namespace minEngine
 
             if (!hit || !hitResult.bBlockingHit || hitResult.HitObject != boxObject.get())
             {
-                ME_CORE_ERROR("PhysicsLineTraceTest: Visibility×Default should blocking-hit.");
+                ME_LOG(LogTest, Error, "PhysicsLineTraceTest: Visibility×Default should blocking-hit.");
                 return false;
             }
 

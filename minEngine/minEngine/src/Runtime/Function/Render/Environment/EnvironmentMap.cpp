@@ -34,7 +34,7 @@ namespace minEngine
                 TextureCubeLoader::CreateSolidColorCube(rhi, 32, faceColors, &error);
             if (!cube)
             {
-                ME_CORE_ERROR("EnvironmentMap: validation cubemap failed: {}", error);
+                ME_LOG(LogRender, Error, "EnvironmentMap: validation cubemap failed: {}", error);
             }
             return cube;
         }
@@ -61,7 +61,7 @@ namespace minEngine
         const std::filesystem::path hdrAbsolute = ResolveProjectRelativeAbsolute(m_SourceHdrPath);
         if (hdrAbsolute.empty() || !std::filesystem::exists(hdrAbsolute))
         {
-            ME_CORE_WARN(
+            ME_LOG(LogRender, Warn, 
                 "EnvironmentMap: SourceHdrPath '{}' not found under Project Content.",
                 m_SourceHdrPath);
             return false;
@@ -71,7 +71,7 @@ namespace minEngine
             PathRegistry::Get().GetEngineDefaultAssetsRoot();
         if (engineDefaultAssetsRoot.empty())
         {
-            ME_CORE_ERROR("EnvironmentMap: EngineDefaultAssetsRoot empty; cannot load EnvMap shaders.");
+            ME_LOG(LogRender, Error, "EnvironmentMap: EngineDefaultAssetsRoot empty; cannot load EnvMap shaders.");
             return false;
         }
 
@@ -79,7 +79,7 @@ namespace minEngine
         std::string loadError;
         if (!ImageLoader::LoadHdr(hdrAbsolute.string(), hdrPixels, false, &loadError))
         {
-            ME_CORE_WARN(
+            ME_LOG(LogRender, Warn, 
                 "EnvironmentMap: failed to load HDR '{}' ({}).",
                 hdrAbsolute.string(),
                 loadError);
@@ -91,7 +91,7 @@ namespace minEngine
         ImageLoader::Free(hdrPixels);
         if (!equirect || !equirect->GetRHITexture())
         {
-            ME_CORE_WARN("EnvironmentMap: failed to upload HDR '{}' to GPU.", hdrAbsolute.string());
+            ME_LOG(LogRender, Warn, "EnvironmentMap: failed to upload HDR '{}' to GPU.", hdrAbsolute.string());
             return false;
         }
 
@@ -108,7 +108,7 @@ namespace minEngine
         if (!m_Environment)
         {
             rhi.RHIEndImmediateCommands();
-            ME_CORE_WARN(
+            ME_LOG(LogRender, Warn, 
                 "EnvironmentMap: EquirectToCubemap failed for '{}' ({}).",
                 hdrAbsolute.string(),
                 captureError);
@@ -120,7 +120,7 @@ namespace minEngine
         {
             m_Irradiance = m_Environment;
             m_Prefilter = m_Environment;
-            ME_CORE_INFO(
+            ME_LOG(LogRender, Info, 
                 "EnvironmentMap: baked sky cubemap from HDR '{}' (VK: IBL convolution deferred).",
                 m_SourceHdrPath);
             return true;
@@ -135,7 +135,7 @@ namespace minEngine
             &irradianceError);
         if (!m_Irradiance)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogRender, Warn, 
                 "EnvironmentMap: irradiance bake failed ({}); aliasing environment.",
                 irradianceError);
             m_Irradiance = m_Environment;
@@ -150,7 +150,7 @@ namespace minEngine
             &prefilterError);
         if (!m_Prefilter)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogRender, Warn, 
                 "EnvironmentMap: prefilter bake failed ({}); aliasing environment.",
                 prefilterError);
             m_Prefilter = m_Environment;
@@ -158,7 +158,7 @@ namespace minEngine
 
         rhi.RHIEndImmediateCommands();
 
-        ME_CORE_INFO(
+        ME_LOG(LogRender, Info, 
             "EnvironmentMap: baked sky/IBL from project HDR '{}'.",
             m_SourceHdrPath);
         return true;
@@ -186,7 +186,7 @@ namespace minEngine
                 &error);
             if (!m_Environment)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogRender, Warn, 
                     "EnvironmentMap '{}': environment faces missing under {} ({})",
                     m_FaceDirectory,
                     faceDirectory.string(),
@@ -203,7 +203,7 @@ namespace minEngine
         if (!m_Environment)
         {
             m_Environment = CreateValidationEnvironmentCube(rhi);
-            ME_CORE_WARN(
+            ME_LOG(LogRender, Warn, 
                 "EnvironmentMap: using validation cube (add face PNGs or m_SourceHdrPath under Project Content).");
         }
 
@@ -256,7 +256,7 @@ namespace minEngine
                 }
                 else
                 {
-                    ME_CORE_WARN("EnvironmentMap: BRDF LUT Texture2D has no GPU resource ({})", loadError);
+                    ME_LOG(LogRender, Warn, "EnvironmentMap: BRDF LUT Texture2D has no GPU resource ({})", loadError);
                 }
             }
         }

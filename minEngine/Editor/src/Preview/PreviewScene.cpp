@@ -32,7 +32,7 @@ namespace minEngine
             std::shared_ptr<Asset> asset = AssetManager::Get().LoadAssetByGUID(guid, errorMessage);
             if (!asset)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogEditor, Warn, 
                     "PreviewScene: failed to load {} (GUID {}). Error: {}",
                     label,
                     guid.ToString(),
@@ -43,7 +43,7 @@ namespace minEngine
             std::shared_ptr<T> typedAsset = std::dynamic_pointer_cast<T>(asset);
             if (!typedAsset)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogEditor, Warn, 
                     "PreviewScene: asset for {} (GUID {}) is not the expected type.",
                     label,
                     guid.ToString());
@@ -52,7 +52,7 @@ namespace minEngine
 
             const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(guid);
             const std::string assetPath = meta ? meta->AssetPath : std::string("<unknown>");
-            ME_CORE_INFO(
+            ME_LOG(LogEditor, Info, 
                 "PreviewScene: loaded {} from '{}' (GUID {}).",
                 label,
                 assetPath,
@@ -90,7 +90,7 @@ namespace minEngine
                 ObjectManager::Get().CollectGarbage();
             }
 
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "PreviewScene: preview mesh GUID not in registry. "
                 "Ensure Editor scanned EngineDefault assets (EngineConfig EngineDefaultAssetsRoot, sphere.obj).");
             return;
@@ -125,7 +125,7 @@ namespace minEngine
         RefreshRenderScene();
 
         m_ContentReady = true;
-        ME_CORE_INFO(
+        ME_LOG(LogEditor, Info, 
             "PreviewScene: preview world ready (mesh proxies={}, dir lights={}).",
             renderScene->m_PrimitiveSceneProxies.size(),
             renderScene->m_DirectionalLightSceneProxies.size());
@@ -152,7 +152,7 @@ namespace minEngine
 
         if (!m_DefaultSphereMesh)
         {
-            ME_CORE_WARN("PreviewScene: default sphere mesh is not available.");
+            ME_LOG(LogEditor, Warn, "PreviewScene: default sphere mesh is not available.");
             return;
         }
 
@@ -174,14 +174,14 @@ namespace minEngine
 
         if (!m_ContentReady || !m_PreviewMeshComponent)
         {
-            ME_CORE_WARN("PreviewScene: cannot set preview mesh before preview world is ready.");
+            ME_LOG(LogEditor, Warn, "PreviewScene: cannot set preview mesh before preview world is ready.");
             return;
         }
 
         m_PreviewMeshComponent->SetMesh(mesh);
         RefreshRenderScene();
 
-        ME_CORE_INFO("PreviewScene: preview mesh set.");
+        ME_LOG(LogEditor, Info, "PreviewScene: preview mesh set.");
     }
 
     bool PreviewScene::EnsureStaticMeshPreviewMaterial()
@@ -195,7 +195,7 @@ namespace minEngine
             AssetManager::Get().LoadAsset<Material>(kStaticMeshPreviewMaterialPath);
         if (!m_StaticMeshPreviewMaterial)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "PreviewScene: failed to load static mesh preview material '{}'.",
                 kStaticMeshPreviewMaterialPath);
             return false;
@@ -205,7 +205,7 @@ namespace minEngine
         {
             if (!m_StaticMeshPreviewMaterial->Compile())
             {
-                ME_CORE_WARN(
+                ME_LOG(LogEditor, Warn, 
                     "PreviewScene: static mesh preview material compile failed ('{}').",
                     kStaticMeshPreviewMaterialPath);
             }
@@ -234,19 +234,19 @@ namespace minEngine
         {
             if (!material->Compile())
             {
-                ME_CORE_WARN("PreviewScene: preview material compile failed.");
+                ME_LOG(LogEditor, Warn, "PreviewScene: preview material compile failed.");
             }
         }
 
         if (!material->IsCompiledForDraw())
         {
-            ME_CORE_WARN("PreviewScene: preview material is not ready for draw.");
+            ME_LOG(LogEditor, Warn, "PreviewScene: preview material is not ready for draw.");
         }
 
         m_PreviewMeshComponent->SetMaterial(material);
         RefreshRenderScene();
 
-        ME_CORE_INFO(
+        ME_LOG(LogEditor, Info, 
             "PreviewScene: preview material set (compiled={}).",
             material->IsCompiledForDraw());
     }

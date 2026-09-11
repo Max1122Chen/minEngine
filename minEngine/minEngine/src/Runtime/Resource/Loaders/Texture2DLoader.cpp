@@ -52,7 +52,7 @@ namespace minEngine
     {
         if (pixels.Storage != ImageStorage::UInt8 || pixels.U8 == nullptr || !pixels.IsValid())
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "Texture2DLoader: '{}' requires 8-bit LDR pixels (HDR cubemap path is separate).",
                 debugName);
             return nullptr;
@@ -61,7 +61,7 @@ namespace minEngine
         const TextureFormat format = TextureFormatFromChannels(pixels.Channels);
         if (format == TextureFormat::None)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "Texture2DLoader: unsupported channel count {} for {} (expected 1, 3, or 4).",
                 pixels.Channels,
                 debugName);
@@ -79,7 +79,7 @@ namespace minEngine
 
         if (!texture->m_RHITexture)
         {
-            ME_CORE_ERROR("Texture2DLoader: RHI failed to create texture for {}.", debugName);
+            ME_LOG(LogAsset, Error, "Texture2DLoader: RHI failed to create texture for {}.", debugName);
             return nullptr;
         }
 
@@ -93,7 +93,7 @@ namespace minEngine
     {
         if (pixels.Storage != ImageStorage::Float32 || pixels.F32 == nullptr || !pixels.IsValid())
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "Texture2DLoader: '{}' requires float HDR pixels.",
                 debugName);
             return nullptr;
@@ -102,7 +102,7 @@ namespace minEngine
         const TextureFormat format = HdrTextureFormatFromChannels(pixels.Channels);
         if (format == TextureFormat::None)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "Texture2DLoader: unsupported HDR channel count {} for {} (expected 3 or 4).",
                 pixels.Channels,
                 debugName);
@@ -119,7 +119,7 @@ namespace minEngine
 
         if (!texture->m_RHITexture)
         {
-            ME_CORE_ERROR("Texture2DLoader: RHI failed to create HDR texture for {}.", debugName);
+            ME_LOG(LogAsset, Error, "Texture2DLoader: RHI failed to create HDR texture for {}.", debugName);
             return nullptr;
         }
 
@@ -141,7 +141,7 @@ namespace minEngine
         if (!rhi)
         {
             ImageLoader::Free(pixels);
-            ME_CORE_ERROR("Texture2DLoader: RHI unavailable while loading {}.", meta.AssetPath);
+            ME_LOG(LogAsset, Error, "Texture2DLoader: RHI unavailable while loading {}.", meta.AssetPath);
             return nullptr;
         }
 

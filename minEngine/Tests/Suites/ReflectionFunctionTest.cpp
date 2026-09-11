@@ -59,7 +59,7 @@ namespace minEngine
                 const_cast<MEClass*>(reflection.FindClass("minEngine::ReflectionSampleComponent"));
             if (sampleComponentClass == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest: ReflectionSampleComponent class not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest: ReflectionSampleComponent class not found.");
                 return false;
             }
 
@@ -67,7 +67,7 @@ namespace minEngine
             {
                 for (const std::string& error : reflection.GetLastErrors())
                 {
-                    ME_CORE_ERROR("{}", error);
+                    ME_LOG(LogTest, Error, "{}", error);
                 }
                 return false;
             }
@@ -99,20 +99,20 @@ namespace minEngine
                 reflection.FindClass("minEngine::ReflectionSampleComponent");
             if (sampleComponentClass == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A1: ReflectionSampleComponent not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A1: ReflectionSampleComponent not found.");
                 return false;
             }
 
             MEFunction* addFunction = sampleComponentClass->FindFunction("Add");
             if (addFunction == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A1: Add function not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A1: Add function not found.");
                 return false;
             }
 
             if (addFunction->GetOwnerClass() != sampleComponentClass)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A1: Add owner class mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A1: Add owner class mismatch.");
                 return false;
             }
 
@@ -125,13 +125,13 @@ namespace minEngine
             const MEClass* componentClass = reflection.FindClass("minEngine::Component");
             if (componentClass == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A2: Component class not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A2: Component class not found.");
                 return false;
             }
 
             if (componentClass->FindFunction("Add") != nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A2: expected Add to be absent on Component.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A2: expected Add to be absent on Component.");
                 return false;
             }
 
@@ -149,14 +149,14 @@ namespace minEngine
 
             if (addFunction == nullptr || resetFunction == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A3: fixture functions missing.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A3: fixture functions missing.");
                 return false;
             }
 
             if (addFunction->GetNumParms() != 3 || addFunction->GetParmsSize() != 12
                 || addFunction->GetReturnValueOffset() != 8)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "ReflectionFunctionTest A3: Add layout mismatch (numParms={}, parmsSize={}, returnOffset={}).",
                     addFunction->GetNumParms(),
                     addFunction->GetParmsSize(),
@@ -167,7 +167,7 @@ namespace minEngine
             if (resetFunction->GetNumParms() != 0 || resetFunction->GetParmsSize() != 0
                 || resetFunction->GetReturnValueOffset() != -1)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A3: ResetCounter layout mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A3: ResetCounter layout mismatch.");
                 return false;
             }
 
@@ -182,7 +182,7 @@ namespace minEngine
                 sampleComponentClass != nullptr ? sampleComponentClass->FindFunction("Add") : nullptr;
             if (addFunction == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A4: Add function not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A4: Add function not found.");
                 return false;
             }
 
@@ -192,19 +192,19 @@ namespace minEngine
             {
                 if (param.Property == nullptr)
                 {
-                    ME_CORE_ERROR("ReflectionFunctionTest A4: null parameter property.");
+                    ME_LOG(LogTest, Error, "ReflectionFunctionTest A4: null parameter property.");
                     return false;
                 }
 
                 if (param.PassKind != MEParamPassKind::Value)
                 {
-                    ME_CORE_ERROR("ReflectionFunctionTest A4: expected Value pass kind.");
+                    ME_LOG(LogTest, Error, "ReflectionFunctionTest A4: expected Value pass kind.");
                     return false;
                 }
 
                 if (param.Offset != expectedOffset)
                 {
-                    ME_CORE_ERROR("ReflectionFunctionTest A4: non-monotonic offset at parameter '{}'.",
+                    ME_LOG(LogTest, Error, "ReflectionFunctionTest A4: non-monotonic offset at parameter '{}'.",
                                   param.Property->GetName());
                     return false;
                 }
@@ -220,14 +220,14 @@ namespace minEngine
                 }
                 else
                 {
-                    ME_CORE_ERROR("ReflectionFunctionTest A4: unexpected param role.");
+                    ME_LOG(LogTest, Error, "ReflectionFunctionTest A4: unexpected param role.");
                     return false;
                 }
             }
 
             if (returnCount != 1)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A4: expected exactly one return parameter.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A4: expected exactly one return parameter.");
                 return false;
             }
 
@@ -242,14 +242,14 @@ namespace minEngine
                 sampleComponentClass != nullptr ? sampleComponentClass->FindFunction("Add") : nullptr;
             if (addFunction == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A5: Add function not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A5: Add function not found.");
                 return false;
             }
 
             const MEParamDescriptor* returnParam = addFunction->GetReturnParam();
             if (returnParam == nullptr || !returnParam->IsReturn())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A5: return parameter missing.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A5: return parameter missing.");
                 return false;
             }
 
@@ -264,7 +264,7 @@ namespace minEngine
 
             if (returnCount != 1)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A5: invalid return metadata.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A5: invalid return metadata.");
                 return false;
             }
 
@@ -276,7 +276,7 @@ namespace minEngine
             ReflectionSystem& reflection = ReflectionSystem::Get();
             if (reflection.IsReady())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A6: expected Collecting state before finalize.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A6: expected Collecting state before finalize.");
                 return false;
             }
 
@@ -284,13 +284,13 @@ namespace minEngine
                 const_cast<MEClass*>(reflection.FindClass("minEngine::ReflectionSampleComponent"));
             if (sampleComponentClass == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A6: ReflectionSampleComponent not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A6: ReflectionSampleComponent not found.");
                 return false;
             }
 
             if (sampleComponentClass->FindFunction("Add") == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A6: baseline Add function is missing.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A6: baseline Add function is missing.");
                 return false;
             }
 
@@ -306,13 +306,13 @@ namespace minEngine
             reflection.ClearErrors();
             if (reflection.RegisterFunction(sampleComponentClass, duplicateAddFunction))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A6: duplicate RegisterFunction should fail.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A6: duplicate RegisterFunction should fail.");
                 return false;
             }
 
             if (reflection.GetLastErrors().empty())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A6: expected reflection error for duplicate function.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A6: expected reflection error for duplicate function.");
                 return false;
             }
 
@@ -324,7 +324,7 @@ namespace minEngine
             ReflectionSystem& reflection = ReflectionSystem::Get();
             if (reflection.IsReady())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A7: expected Collecting state before finalize.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A7: expected Collecting state before finalize.");
                 return false;
             }
 
@@ -332,7 +332,7 @@ namespace minEngine
                 const_cast<MEClass*>(reflection.FindClass("minEngine::ReflectionSampleComponent"));
             if (sampleComponentClass == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A7: ReflectionSampleComponent not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A7: ReflectionSampleComponent not found.");
                 return false;
             }
 
@@ -346,7 +346,7 @@ namespace minEngine
             reflection.ClearErrors();
             if (!reflection.RegisterFunction(sampleComponentClass, overloadInt))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A7: failed to register int overload.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A7: failed to register int overload.");
                 return false;
             }
 
@@ -359,7 +359,7 @@ namespace minEngine
 
             if (!reflection.RegisterFunction(sampleComponentClass, overloadFloat))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A7: failed to register float overload.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A7: failed to register float overload.");
                 return false;
             }
 
@@ -369,14 +369,14 @@ namespace minEngine
                 "OverloadProbe", overloadFloat->GetSignatureHash());
             if (foundInt == nullptr || foundFloat == nullptr || foundInt == foundFloat)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A7: overload lookup by signature failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A7: overload lookup by signature failed.");
                 return false;
             }
 
             if (overloadInt->GetSignatureHash() != MEFunction::BuildSignatureHashForTypes<int32_t, int32_t>()
                 || overloadFloat->GetSignatureHash() != MEFunction::BuildSignatureHashForTypes<float, float>())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest A7: typed signature helper hash mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest A7: typed signature helper hash mismatch.");
                 return false;
             }
 
@@ -401,13 +401,13 @@ namespace minEngine
             else
             {
                 g_SkippedCollectingOnlyRegistrationTests = true;
-                ME_CORE_INFO(
+                ME_LOG(LogTest, Info, 
                     "ReflectionFunctionTest: skipping A6/A7 (reflection already finalized; TEST-F03 fixture B).");
             }
 
             if (!EnsureReflectionReadyWithFunctionFixtures())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest: reflection init failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest: reflection init failed.");
                 return false;
             }
 
@@ -444,7 +444,7 @@ namespace minEngine
             ReflectionSampleComponent* component = CreateInvokeTestComponent();
             if (component == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B1: failed to create sample component.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B1: failed to create sample component.");
                 return false;
             }
 
@@ -452,13 +452,13 @@ namespace minEngine
             MEFunction* resetFunction = component->GetClass()->FindFunction("ResetCounter");
             if (!component->InvokeFunction(resetFunction, nullptr))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B1: InvokeFunction ResetCounter failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B1: InvokeFunction ResetCounter failed.");
                 return false;
             }
 
             if (component->GetCounter() != 0)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B1: counter expected 0, got {}.", component->GetCounter());
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B1: counter expected 0, got {}.", component->GetCounter());
                 return false;
             }
 
@@ -478,14 +478,14 @@ namespace minEngine
             MEFunctionFrame frame(*getCounterFunction);
             if (!component->InvokeFunction(getCounterFunction, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B2: InvokeFunction GetCounter failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B2: InvokeFunction GetCounter failed.");
                 return false;
             }
 
             int32_t returnValue = 0;
             if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 42)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B2: return value mismatch (expected 42, got {}).", returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B2: return value mismatch (expected 42, got {}).", returnValue);
                 return false;
             }
 
@@ -507,14 +507,14 @@ namespace minEngine
 
             if (!component->InvokeFunction(addFunction, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B3: InvokeFunction Add failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B3: InvokeFunction Add failed.");
                 return false;
             }
 
             int32_t returnValue = 0;
             if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 5)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B3: Add return mismatch (expected 5, got {}).", returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B3: Add return mismatch (expected 5, got {}).", returnValue);
                 return false;
             }
 
@@ -558,7 +558,7 @@ namespace minEngine
 
             if (frameResult != 30 || rawResult != 30)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B4: frame/raw mismatch ({} vs {}).", frameResult, rawResult);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B4: frame/raw mismatch ({} vs {}).", frameResult, rawResult);
                 return false;
             }
 
@@ -576,13 +576,13 @@ namespace minEngine
             MEFunction* addFunction = component->GetClass()->FindFunction("Add");
             if (component->InvokeFunction(nullptr, nullptr))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B5: null function should fail.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B5: null function should fail.");
                 return false;
             }
 
             if (component->InvokeFunction(addFunction, nullptr))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B5: null buffer should fail for Add.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B5: null buffer should fail for Add.");
                 return false;
             }
 
@@ -592,7 +592,7 @@ namespace minEngine
             MEFunctionFrame frame(*addFunction);
             if (s_BaseComponent->InvokeFunction(addFunction, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B5: IsA mismatch should fail.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B5: IsA mismatch should fail.");
                 return false;
             }
 
@@ -610,7 +610,7 @@ namespace minEngine
             MEFunction* overloadInt = component->GetClass()->FindFunction("OverloadProbe");
             if (overloadInt == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B6: OverloadProbe baseline function not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B6: OverloadProbe baseline function not found.");
                 return false;
             }
 
@@ -619,7 +619,7 @@ namespace minEngine
                                                                MEFunction::BuildSignatureHashForTypes<float, float>());
             if (overloadFloat == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B6: float OverloadProbe signature not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B6: float OverloadProbe signature not found.");
                 return false;
             }
 
@@ -628,14 +628,14 @@ namespace minEngine
             if (!component->InvokeFunction(
                     "OverloadProbe", overloadInt->GetSignatureHash(), intFrame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B6: invoke int overload by signature failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B6: invoke int overload by signature failed.");
                 return false;
             }
 
             int32_t intResult = 0;
             if (!intFrame.GetParam("ReturnValue", intResult) || intResult != 10)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B6: int overload result mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B6: int overload result mismatch.");
                 return false;
             }
 
@@ -644,20 +644,20 @@ namespace minEngine
             if (!component->InvokeFunction(
                     "OverloadProbe", overloadFloat->GetSignatureHash(), floatFrame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B6: invoke float overload by signature failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B6: invoke float overload by signature failed.");
                 return false;
             }
 
             float floatResult = 0.0f;
             if (!floatFrame.GetParam("ReturnValue", floatResult) || std::fabs(floatResult - 2.5f) > 0.0001f)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B6: float overload result mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B6: float overload result mismatch.");
                 return false;
             }
 
             if (component->InvokeFunction("OverloadProbe", 0ull, floatFrame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B6: invalid signature hash should fail.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B6: invalid signature hash should fail.");
                 return false;
             }
 
@@ -675,32 +675,32 @@ namespace minEngine
             const Reflection::MEFunction* typedFind = component->FindFunctionTyped<int32_t, int32_t, int32_t>("Add");
             if (typedFind == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B7: FindFunctionTyped failed for Add.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B7: FindFunctionTyped failed for Add.");
                 return false;
             }
 
             int32_t addReturn = 0;
             if (!component->InvokeFunctionTyped("Add", addReturn, static_cast<int32_t>(2), static_cast<int32_t>(5)))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B7: InvokeFunctionTyped failed for Add.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B7: InvokeFunctionTyped failed for Add.");
                 return false;
             }
 
             if (addReturn != 7)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B7: typed Add return mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B7: typed Add return mismatch.");
                 return false;
             }
 
             if (!component->InvokeFunctionTyped("ResetCounter"))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B7: InvokeFunctionTyped failed for ResetCounter.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B7: InvokeFunctionTyped failed for ResetCounter.");
                 return false;
             }
 
             if (component->GetCounter() != 0)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest B7: ResetCounter typed invoke did not reset counter.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest B7: ResetCounter typed invoke did not reset counter.");
                 return false;
             }
 
@@ -711,7 +711,7 @@ namespace minEngine
         {
             if (!EnsureReflectionReadyWithFunctionFixtures())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest: reflection init failed for invoke.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest: reflection init failed for invoke.");
                 return false;
             }
 
@@ -742,7 +742,7 @@ namespace minEngine
 
             if (g_SkippedCollectingOnlyRegistrationTests)
             {
-                ME_CORE_INFO(
+                ME_LOG(LogTest, Info, 
                     "ReflectionFunctionTest: skipping B6 (OverloadProbe registered in A7; fixture B).");
             }
             else if (!TestB6_InvokeByNameAndSignature())
@@ -769,7 +769,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("AddInPlace");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C1: AddInPlace not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C1: AddInPlace not found.");
                 return false;
             }
 
@@ -780,13 +780,13 @@ namespace minEngine
 
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C1: InvokeFunction AddInPlace failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C1: InvokeFunction AddInPlace failed.");
                 return false;
             }
 
             if (value != 15)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C1: expected value 15, got {}.", value);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C1: expected value 15, got {}.", value);
                 return false;
             }
 
@@ -804,7 +804,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("PeekString");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C2: PeekString not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C2: PeekString not found.");
                 return false;
             }
 
@@ -816,13 +816,13 @@ namespace minEngine
 
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C2: InvokeFunction PeekString failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C2: InvokeFunction PeekString failed.");
                 return false;
             }
 
             if (outLength != 5)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C2: expected outLength 5, got {}.", outLength);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C2: expected outLength 5, got {}.", outLength);
                 return false;
             }
 
@@ -840,7 +840,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("FillOut");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C3: FillOut not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C3: FillOut not found.");
                 return false;
             }
 
@@ -851,13 +851,13 @@ namespace minEngine
 
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C3: InvokeFunction FillOut failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C3: InvokeFunction FillOut failed.");
                 return false;
             }
 
             if (outValue != 123)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest C3: expected outValue 123, got {}.", outValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest C3: expected outValue 123, got {}.", outValue);
                 return false;
             }
 
@@ -868,7 +868,7 @@ namespace minEngine
         {
             if (!EnsureReflectionReadyWithFunctionFixtures())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest: reflection init failed for ref.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest: reflection init failed for ref.");
                 return false;
             }
 
@@ -901,7 +901,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("EchoEnum");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D1: EchoEnum not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D1: EchoEnum not found.");
                 return false;
             }
 
@@ -911,14 +911,14 @@ namespace minEngine
 
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D1: InvokeFunction EchoEnum failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D1: InvokeFunction EchoEnum failed.");
                 return false;
             }
 
             ReflectionSampleEnum outValue = ReflectionSampleEnum::ValueA;
             if (!frame.GetParam("ReturnValue", outValue) || outValue != ReflectionSampleEnum::ValueC)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D1: enum return mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D1: enum return mismatch.");
                 return false;
             }
 
@@ -936,7 +936,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("SumIntArray");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D2: SumIntArray not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D2: SumIntArray not found.");
                 return false;
             }
 
@@ -946,14 +946,14 @@ namespace minEngine
 
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D2: InvokeFunction SumIntArray failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D2: InvokeFunction SumIntArray failed.");
                 return false;
             }
 
             int32_t returnValue = 0;
             if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 10)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D2: expected return 10, got {}.", returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D2: expected return 10, got {}.", returnValue);
                 return false;
             }
 
@@ -971,7 +971,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("IsSameObject");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D3: IsSameObject not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D3: IsSameObject not found.");
                 return false;
             }
 
@@ -983,14 +983,14 @@ namespace minEngine
 
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D3: InvokeFunction IsSameObject failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D3: InvokeFunction IsSameObject failed.");
                 return false;
             }
 
             bool returnValue = false;
             if (!frame.GetParam("ReturnValue", returnValue) || returnValue != true)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D3: expected true, got {}.", returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D3: expected true, got {}.", returnValue);
                 return false;
             }
 
@@ -1008,7 +1008,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("GetGreeting");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D4: GetGreeting not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D4: GetGreeting not found.");
                 return false;
             }
 
@@ -1018,20 +1018,20 @@ namespace minEngine
 
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D4: InvokeFunction GetGreeting failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D4: InvokeFunction GetGreeting failed.");
                 return false;
             }
 
             const std::string* returnValue = nullptr;
             if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D4: failed to read string return value.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D4: failed to read string return value.");
                 return false;
             }
 
             if (*returnValue != "Hello, minEngine")
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D4: expected 'Hello, minEngine', got '{}'.", *returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D4: expected 'Hello, minEngine', got '{}'.", *returnValue);
                 return false;
             }
 
@@ -1049,7 +1049,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("MakeSharedComponent");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D5: MakeSharedComponent not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D5: MakeSharedComponent not found.");
                 return false;
             }
 
@@ -1057,20 +1057,20 @@ namespace minEngine
             frame.SetParam("ReturnNull", false);
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D5: InvokeFunction MakeSharedComponent failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D5: InvokeFunction MakeSharedComponent failed.");
                 return false;
             }
 
             const std::shared_ptr<Component>* returnValue = nullptr;
             if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr || !(*returnValue))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D5: expected non-null shared_ptr return.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D5: expected non-null shared_ptr return.");
                 return false;
             }
 
             if (!(*returnValue)->IsA(Component::StaticClass()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D5: returned shared_ptr type mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D5: returned shared_ptr type mismatch.");
                 return false;
             }
 
@@ -1088,7 +1088,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("MakeSharedComponent");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D6: MakeSharedComponent not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D6: MakeSharedComponent not found.");
                 return false;
             }
 
@@ -1096,20 +1096,20 @@ namespace minEngine
             frame.SetParam("ReturnNull", true);
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D6: InvokeFunction MakeSharedComponent failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D6: InvokeFunction MakeSharedComponent failed.");
                 return false;
             }
 
             const std::shared_ptr<Component>* returnValue = nullptr;
             if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D6: failed to read shared_ptr return value.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D6: failed to read shared_ptr return value.");
                 return false;
             }
 
             if (returnValue->get() != nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D6: expected null shared_ptr return.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D6: expected null shared_ptr return.");
                 return false;
             }
 
@@ -1127,7 +1127,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("RewriteSharedComponentRef");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D7: RewriteSharedComponentRef not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D7: RewriteSharedComponentRef not found.");
                 return false;
             }
 
@@ -1137,7 +1137,7 @@ namespace minEngine
             assignFrame.SetParam("AssignNull", false);
             if (!component->InvokeFunction(function, assignFrame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D7: assign path invoke failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D7: assign path invoke failed.");
                 return false;
             }
 
@@ -1145,7 +1145,7 @@ namespace minEngine
             if (!assignFrame.GetParam("ReturnValue", assignResult) || !assignResult || !target
                 || !target->IsA(Component::StaticClass()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D7: assign path expected non-null component shared_ptr.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D7: assign path expected non-null component shared_ptr.");
                 return false;
             }
 
@@ -1154,14 +1154,14 @@ namespace minEngine
             clearFrame.SetParam("AssignNull", true);
             if (!component->InvokeFunction(function, clearFrame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D7: clear path invoke failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D7: clear path invoke failed.");
                 return false;
             }
 
             bool clearResult = false;
             if (!clearFrame.GetParam("ReturnValue", clearResult) || !clearResult || target)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D7: clear path expected null shared_ptr.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D7: clear path expected null shared_ptr.");
                 return false;
             }
 
@@ -1179,7 +1179,7 @@ namespace minEngine
             MEFunction* function = component->GetClass()->FindFunction("NormalizeNested");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D8: NormalizeNested not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D8: NormalizeNested not found.");
                 return false;
             }
 
@@ -1188,21 +1188,21 @@ namespace minEngine
             frame.SetParam("Values", nested);
             if (!component->InvokeFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D8: InvokeFunction NormalizeNested failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D8: InvokeFunction NormalizeNested failed.");
                 return false;
             }
 
             const std::vector<std::vector<int>>* returnValue = nullptr;
             if (!frame.GetParamValuePtr("ReturnValue", returnValue) || returnValue == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D8: failed to read nested return value.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D8: failed to read nested return value.");
                 return false;
             }
 
             if (returnValue->size() != 2 || (*returnValue)[0].size() != 2 || (*returnValue)[1].size() != 1
                 || (*returnValue)[0][0] != 2 || (*returnValue)[0][1] != 4 || (*returnValue)[1][0] != 6)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest D8: nested return shape/value mismatch.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest D8: nested return shape/value mismatch.");
                 return false;
             }
 
@@ -1213,7 +1213,7 @@ namespace minEngine
         {
             if (!EnsureReflectionReadyWithFunctionFixtures())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest: reflection init failed for types.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest: reflection init failed for types.");
                 return false;
             }
 
@@ -1266,7 +1266,7 @@ namespace minEngine
                 ReflectionSystem::Get().FindClass("minEngine::ReflectionSampleComponent");
             if (sampleComponentClass == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E1: ReflectionSampleComponent not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E1: ReflectionSampleComponent not found.");
                 return false;
             }
 
@@ -1274,19 +1274,19 @@ namespace minEngine
             MEFunction* resetFunction = sampleComponentClass->FindFunction("StaticResetCounter");
             if (resetFunction == nullptr || !resetFunction->IsStatic())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E1: StaticResetCounter missing or not static.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E1: StaticResetCounter missing or not static.");
                 return false;
             }
 
             if (!sampleComponentClass->InvokeStaticFunction(resetFunction, nullptr))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E1: InvokeStaticFunction StaticResetCounter failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E1: InvokeStaticFunction StaticResetCounter failed.");
                 return false;
             }
 
             if (ReflectionSampleComponent::StaticGetCounter() != 0)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E1: static counter expected 0, got {}.",
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E1: static counter expected 0, got {}.",
                               ReflectionSampleComponent::StaticGetCounter());
                 return false;
             }
@@ -1306,7 +1306,7 @@ namespace minEngine
             MEFunction* staticAddFunction = sampleComponentClass->FindFunction("StaticAdd");
             if (staticAddFunction == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E2: StaticAdd not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E2: StaticAdd not found.");
                 return false;
             }
 
@@ -1316,14 +1316,14 @@ namespace minEngine
 
             if (!sampleComponentClass->InvokeStaticFunction(staticAddFunction, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E2: InvokeStaticFunction StaticAdd failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E2: InvokeStaticFunction StaticAdd failed.");
                 return false;
             }
 
             int32_t returnValue = 0;
             if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 10)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E2: return value mismatch (expected 10, got {}).", returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E2: return value mismatch (expected 10, got {}).", returnValue);
                 return false;
             }
 
@@ -1342,7 +1342,7 @@ namespace minEngine
             MEFunction* function = sampleComponentClass->FindFunction("StaticAddInPlace");
             if (function == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E3: StaticAddInPlace not found.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E3: StaticAddInPlace not found.");
                 return false;
             }
 
@@ -1353,13 +1353,13 @@ namespace minEngine
 
             if (!sampleComponentClass->InvokeStaticFunction(function, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E3: InvokeStaticFunction StaticAddInPlace failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E3: InvokeStaticFunction StaticAddInPlace failed.");
                 return false;
             }
 
             if (value != 12)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E3: ref value expected 12, got {}.", value);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E3: ref value expected 12, got {}.", value);
                 return false;
             }
 
@@ -1371,7 +1371,7 @@ namespace minEngine
             ReflectionSampleComponent* component = CreateInvokeTestComponent();
             if (component == nullptr)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E4: failed to create sample component.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E4: failed to create sample component.");
                 return false;
             }
 
@@ -1379,21 +1379,21 @@ namespace minEngine
             MEFunction* getCounterFunction = component->GetClass()->FindFunction("StaticGetCounter");
             if (getCounterFunction == nullptr || !getCounterFunction->IsStatic())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E4: StaticGetCounter missing or not static.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E4: StaticGetCounter missing or not static.");
                 return false;
             }
 
             MEFunctionFrame frame(*getCounterFunction);
             if (!component->InvokeFunction(getCounterFunction, frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E4: InvokeFunction StaticGetCounter failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E4: InvokeFunction StaticGetCounter failed.");
                 return false;
             }
 
             int32_t returnValue = 0;
             if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 3)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E4: return value mismatch (expected 3, got {}).", returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E4: return value mismatch (expected 3, got {}).", returnValue);
                 return false;
             }
 
@@ -1412,14 +1412,14 @@ namespace minEngine
             MEFunctionFrame frame(*component->GetClass()->FindFunction("StaticGetCounter"));
             if (!component->InvokeFunctionByName("StaticGetCounter", frame.GetBuffer()))
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E5: InvokeFunctionByName StaticGetCounter failed.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E5: InvokeFunctionByName StaticGetCounter failed.");
                 return false;
             }
 
             int32_t returnValue = 0;
             if (!frame.GetParam("ReturnValue", returnValue) || returnValue != 11)
             {
-                ME_CORE_ERROR("ReflectionFunctionTest E5: return value mismatch (expected 11, got {}).", returnValue);
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest E5: return value mismatch (expected 11, got {}).", returnValue);
                 return false;
             }
 
@@ -1430,7 +1430,7 @@ namespace minEngine
         {
             if (!EnsureReflectionReadyWithFunctionFixtures())
             {
-                ME_CORE_ERROR("ReflectionFunctionTest: reflection init failed for static.");
+                ME_LOG(LogTest, Error, "ReflectionFunctionTest: reflection init failed for static.");
                 return false;
             }
 
@@ -1493,14 +1493,14 @@ namespace minEngine
     {
         if (!ReflectionSystem::Get().IsReady())
         {
-            ME_CORE_ERROR("ReflectionAssignTest: reflection is not ready.");
+            ME_LOG(LogTest, Error, "ReflectionAssignTest: reflection is not ready.");
             return false;
         }
 
         const MEClass* sampleClass = ReflectionSystem::Get().FindClass<ReflectionSampleComponent>();
         if (sampleClass == nullptr)
         {
-            ME_CORE_ERROR("ReflectionAssignTest: ReflectionSampleComponent not found.");
+            ME_LOG(LogTest, Error, "ReflectionAssignTest: ReflectionSampleComponent not found.");
             return false;
         }
 
@@ -1519,7 +1519,7 @@ namespace minEngine
 
         if (probeProperty == nullptr || !probeProperty->HasPropertySetter() || !probeProperty->HasPropertyGetter())
         {
-            ME_CORE_ERROR("ReflectionAssignTest: m_AssignProbe missing Getter/Setter thunks.");
+            ME_LOG(LogTest, Error, "ReflectionAssignTest: m_AssignProbe missing Getter/Setter thunks.");
             return false;
         }
 
@@ -1527,7 +1527,7 @@ namespace minEngine
         auto component = std::static_pointer_cast<ReflectionSampleComponent>(instance);
         if (!component)
         {
-            ME_CORE_ERROR("ReflectionAssignTest: failed to create sample component.");
+            ME_LOG(LogTest, Error, "ReflectionAssignTest: failed to create sample component.");
             return false;
         }
 
@@ -1536,13 +1536,13 @@ namespace minEngine
         const int32_t newValue = 77;
         if (!Reflection::AssignProperty(component.get(), *probeProperty, &newValue))
         {
-            ME_CORE_ERROR("ReflectionAssignTest: AssignProperty failed.");
+            ME_LOG(LogTest, Error, "ReflectionAssignTest: AssignProperty failed.");
             return false;
         }
 
         if (component->GetAssignProbe() != newValue || component->GetAssignProbeSetCount() != 1)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogTest, Error, 
                 "ReflectionAssignTest: Setter not invoked (value={}, setCount={}).",
                 component->GetAssignProbe(),
                 component->GetAssignProbeSetCount());
@@ -1552,7 +1552,7 @@ namespace minEngine
         int32_t readBack = 0;
         if (!Reflection::GetPropertyValue(component.get(), *probeProperty, &readBack) || readBack != newValue)
         {
-            ME_CORE_ERROR("ReflectionAssignTest: GetPropertyValue mismatch (got {}).", readBack);
+            ME_LOG(LogTest, Error, "ReflectionAssignTest: GetPropertyValue mismatch (got {}).", readBack);
             return false;
         }
 

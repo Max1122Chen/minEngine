@@ -68,7 +68,7 @@ namespace minEngine
                 *outError = std::string("Failed to load LDR image: ") + path
                     + (reason ? (std::string(" (") + reason + ")") : std::string());
             }
-            ME_CORE_ERROR("ImageLoader: failed to load LDR image {}. {}", path, reason ? reason : "unknown");
+            ME_LOG(LogAsset, Error, "ImageLoader: failed to load LDR image {}. {}", path, reason ? reason : "unknown");
             return false;
         }
 
@@ -101,7 +101,7 @@ namespace minEngine
                 *outError = std::string("Failed to load HDR image: ") + path
                     + (reason ? (std::string(" (") + reason + ")") : std::string());
             }
-            ME_CORE_ERROR("ImageLoader: failed to load HDR image {}. {}", path, reason ? reason : "unknown");
+            ME_LOG(LogAsset, Error, "ImageLoader: failed to load HDR image {}. {}", path, reason ? reason : "unknown");
             return false;
         }
 

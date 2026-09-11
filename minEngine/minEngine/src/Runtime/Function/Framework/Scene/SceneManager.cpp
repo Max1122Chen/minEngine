@@ -51,7 +51,7 @@ namespace minEngine
         UnloadActiveScene();
         m_EditorSceneContext = {};
         m_RegisteredScenes.clear();
-        ME_CORE_INFO("SceneManager Shutdown.");
+        ME_LOG(LogCore, Info, "SceneManager Shutdown.");
     }
 
     void SceneManager::UnloadActiveScene()

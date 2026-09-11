@@ -97,7 +97,7 @@ namespace minEngine
                 }
             }
 
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "PathRegistry: EngineConfig.meconfig not found (cwd='{}'). "
                 "Set cwd to engine dist root, pass --engine-config=, or set MINENGINE_ENGINE_CONFIG.",
                 cwd.string());
@@ -143,7 +143,7 @@ namespace minEngine
                 return explicitConfig;
             }
 
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "PathRegistry: --engine-config points to missing file '{}'.",
                 explicitConfig->string());
             return std::nullopt;
@@ -172,7 +172,7 @@ namespace minEngine
         if (!std::filesystem::exists(m_EngineDefaultAssetsRoot) ||
             !std::filesystem::is_directory(m_EngineDefaultAssetsRoot))
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "PathRegistry: EngineDefaultAssetsRoot does not exist: '{}'",
                 m_EngineDefaultAssetsRoot.string());
             return false;
@@ -192,7 +192,7 @@ namespace minEngine
             }
             else
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogCore, Error, 
                     "PathRegistry: --engine-config points to missing file '{}'.",
                     commandLine.EngineConfigPath->string());
                 return false;
@@ -221,7 +221,7 @@ namespace minEngine
             });
         if (!result.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "PathRegistry: failed to load '{}' — {} (field: {})",
                 configPath->string(),
                 result.message,
@@ -243,7 +243,7 @@ namespace minEngine
         if (!outConfig.EngineDefaultAssetsRoot.empty() &&
             std::filesystem::path(outConfig.EngineDefaultAssetsRoot).is_absolute())
         {
-            ME_CORE_WARN(
+            ME_LOG(LogCore, Warn, 
                 "PathRegistry: EngineDefaultAssetsRoot is absolute in config; prefer relative to EngineRoot ('{}').",
                 m_EngineRoot.string());
         }
@@ -292,7 +292,7 @@ namespace minEngine
         m_ProjectRoot = std::filesystem::weakly_canonical(projectRoot);
         m_ProjectContentRoot = m_ProjectRoot / "Assets";
 
-        ME_CORE_INFO(
+        ME_LOG(LogCore, Info, 
             "PathRegistry: ProjectRoot='{}' ProjectContent='{}'",
             m_ProjectRoot.string(),
             m_ProjectContentRoot.string());
@@ -331,11 +331,11 @@ namespace minEngine
 
     void PathRegistry::LogResolvedPaths() const
     {
-        ME_CORE_INFO("PathRegistry: EngineRoot='{}'", m_EngineRoot.string());
-        ME_CORE_INFO(
+        ME_LOG(LogCore, Info, "PathRegistry: EngineRoot='{}'", m_EngineRoot.string());
+        ME_LOG(LogCore, Info, 
             "PathRegistry: EngineConfig='{}'",
             m_EngineConfigFilePath.string());
-        ME_CORE_INFO(
+        ME_LOG(LogCore, Info, 
             "PathRegistry: EngineDefaultAssetsRoot='{}'",
             m_EngineDefaultAssetsRoot.string());
     }

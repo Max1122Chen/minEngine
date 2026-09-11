@@ -79,11 +79,11 @@ namespace minEngine
             const float y = ballObject->GetPosition().y;
             if (!(y < 8.0f && y > 0.4f))
             {
-                ME_CORE_ERROR("PhysicsShapesTest: sphere unexpected Y={}", y);
+                ME_LOG(LogTest, Error, "PhysicsShapesTest: sphere unexpected Y={}", y);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsShapesTest: sphere rested at Y={}.", y);
+            ME_LOG(LogTest, Info, "PhysicsShapesTest: sphere rested at Y={}.", y);
             return true;
         }
 
@@ -119,11 +119,11 @@ namespace minEngine
             const float y = capsuleObject->GetPosition().y;
             if (!(y < 8.0f && y > 0.5f))
             {
-                ME_CORE_ERROR("PhysicsShapesTest: capsule unexpected Y={}", y);
+                ME_LOG(LogTest, Error, "PhysicsShapesTest: capsule unexpected Y={}", y);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsShapesTest: capsule rested at Y={}.", y);
+            ME_LOG(LogTest, Info, "PhysicsShapesTest: capsule rested at Y={}.", y);
             return true;
         }
 
@@ -152,7 +152,7 @@ namespace minEngine
 
             if (!ok || !hit.bBlockingHit || hit.HitObject != boxObject.get())
             {
-                ME_CORE_ERROR("PhysicsShapesTest: SphereTrace expected blocking hit.");
+                ME_LOG(LogTest, Error, "PhysicsShapesTest: SphereTrace expected blocking hit.");
                 return false;
             }
 
@@ -190,7 +190,7 @@ namespace minEngine
                     CollisionQueryParams{},
                     missHit))
             {
-                ME_CORE_ERROR("PhysicsShapesTest: CapsuleTrace expected miss far away.");
+                ME_LOG(LogTest, Error, "PhysicsShapesTest: CapsuleTrace expected miss far away.");
                 return false;
             }
 
@@ -207,7 +207,7 @@ namespace minEngine
                     hit)
                 || hit.HitObject != floorObject.get())
             {
-                ME_CORE_ERROR("PhysicsShapesTest: CapsuleTrace ignore-self should hit floor.");
+                ME_LOG(LogTest, Error, "PhysicsShapesTest: CapsuleTrace ignore-self should hit floor.");
                 return false;
             }
 
@@ -249,7 +249,7 @@ namespace minEngine
             const float distanceBeforeScale = traceHitDistance();
             if (distanceBeforeScale < 0.0f)
             {
-                ME_CORE_ERROR("PhysicsShapesTest: baseline sphere trace failed before scale change.");
+                ME_LOG(LogTest, Error, "PhysicsShapesTest: baseline sphere trace failed before scale change.");
                 return false;
             }
 
@@ -258,20 +258,20 @@ namespace minEngine
             const float distanceAfterScale = traceHitDistance();
             if (distanceAfterScale < 0.0f)
             {
-                ME_CORE_ERROR("PhysicsShapesTest: sphere trace failed after scale change.");
+                ME_LOG(LogTest, Error, "PhysicsShapesTest: sphere trace failed after scale change.");
                 return false;
             }
 
             if (std::abs(distanceAfterScale - distanceBeforeScale) > 1e-3f)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsShapesTest: scale changed collider trace distance (before={}, after={}).",
                     distanceBeforeScale,
                     distanceAfterScale);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsShapesTest: collider size independent of scale.");
+            ME_LOG(LogTest, Info, "PhysicsShapesTest: collider size independent of scale.");
             return true;
         }
     }

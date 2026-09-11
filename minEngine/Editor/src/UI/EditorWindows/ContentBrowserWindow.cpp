@@ -498,7 +498,7 @@ namespace minEngine
         std::string error;
         if (!AssetManager::Get().RenameAsset(oldPath, newFileName, error))
         {
-            ME_CORE_ERROR("Content Browser rename failed: {}", error);
+            ME_LOG(LogEditor, Error, "Content Browser rename failed: {}", error);
             CancelAssetRename();
             return false;
         }

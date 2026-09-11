@@ -33,7 +33,7 @@ namespace minEngine
             {
                 *outError = deserializeResult.message;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "SkeletonLoader: deserialize failed for '{}' — {} (field: {})",
                 meta.AssetPath,
                 deserializeResult.message,
@@ -52,7 +52,7 @@ namespace minEngine
             {
                 *outError = validateError;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "SkeletonLoader: invalid bone data for '{}': {}",
                 meta.AssetPath,
                 validateError);
@@ -85,7 +85,7 @@ namespace minEngine
             {
                 *outError = serializeResult.message;
             }
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "SkeletonLoader: serialize failed for '{}' — {} (field: {})",
                 meta.AssetPath,
                 serializeResult.message,

@@ -58,7 +58,7 @@ namespace minEngine
         const GameplayTag tag = TryResolve(name);
         if (!tag.IsValid())
         {
-            ME_CORE_ERROR("Unknown GameplayTag: {}", name);
+            ME_LOG(LogCore, Error, "Unknown GameplayTag: {}", name);
             ME_ASSERT(false, "Unknown GameplayTag");
         }
         return tag;

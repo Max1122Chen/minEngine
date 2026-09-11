@@ -54,7 +54,7 @@ namespace minEngine
             {
                 cullLabel = "Back";
             }
-            ME_CORE_INFO(
+            ME_LOG(LogRender, Info, 
                 "ShadowPass: raster cull={} (enabled={}), depthBias slope={} constant={}",
                 cullLabel,
                 m_ShadowPSODescTemplate.RasterizerState.bCullEnabled,
@@ -155,7 +155,7 @@ namespace minEngine
             RenderPointShadow(cmdList, command);
             break;
         default:
-            ME_CORE_ERROR("Unsupported light type in ShadowPass::RenderSingleDrawCommand");
+            ME_LOG(LogRender, Error, "Unsupported light type in ShadowPass::RenderSingleDrawCommand");
             break;
         }
     }

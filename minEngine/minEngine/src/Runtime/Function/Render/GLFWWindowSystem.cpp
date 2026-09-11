@@ -41,7 +41,7 @@ namespace minEngine
         if (!glfwInit())
         {
             // Initialization failed
-            ME_CORE_ERROR("Failed to initialize GLFW");
+            ME_LOG(LogPlatform, Error, "Failed to initialize GLFW");
             return;
         }
         m_IsGlfwInitialized = true;
@@ -64,7 +64,7 @@ namespace minEngine
         if (!m_Window)
         {
             // Window creation failed
-            ME_CORE_ERROR("Failed to create GLFW window");
+            ME_LOG(LogPlatform, Error, "Failed to create GLFW window");
             glfwTerminate();
             m_IsGlfwInitialized = false;
             return;
@@ -76,7 +76,7 @@ namespace minEngine
             glfwSetWindowUserPointer(m_Window, this);
             glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             SetupWindowEventCallbacks();
-            ME_CORE_INFO("GLFW Window Initialized (Vulkan / NO_API)");
+            ME_LOG(LogPlatform, Info, "GLFW Window Initialized (Vulkan / NO_API)");
             m_IsInitialized = true;
             return;
         }
@@ -87,7 +87,7 @@ namespace minEngine
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
             // GLAD initialization failed
-            ME_CORE_ERROR("Failed to initialize GLAD");
+            ME_LOG(LogPlatform, Error, "Failed to initialize GLAD");
             glfwDestroyWindow(m_Window);
             m_Window = nullptr;
             glfwTerminate();
@@ -107,7 +107,7 @@ namespace minEngine
             glViewport(0, 0, width, height);
         });
 
-        ME_CORE_INFO("GLFW Window Initialized (OpenGL 4.6)");
+        ME_LOG(LogPlatform, Info, "GLFW Window Initialized (OpenGL 4.6)");
         m_IsInitialized = true;
     }
 
@@ -129,7 +129,7 @@ namespace minEngine
         {
             glfwTerminate();
             m_IsGlfwInitialized = false;
-            ME_CORE_INFO("GLFW Terminated");
+            ME_LOG(LogPlatform, Info, "GLFW Terminated");
         }
 
         m_IsInitialized = false;

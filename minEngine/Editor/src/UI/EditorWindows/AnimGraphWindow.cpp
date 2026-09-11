@@ -131,11 +131,11 @@ namespace minEngine
             std::string error;
             if (animGraphEditor->ValidateActiveGraph(&error))
             {
-                ME_CORE_INFO("AnimationGraph Validate OK: '{}'", session.AssetPath);
+                ME_LOG(LogEditor, Info, "AnimationGraph Validate OK: '{}'", session.AssetPath);
             }
             else
             {
-                ME_CORE_WARN("AnimationGraph Validate failed: {}", error);
+                ME_LOG(LogEditor, Warn, "AnimationGraph Validate failed: {}", error);
             }
         }
 
@@ -171,7 +171,7 @@ namespace minEngine
                 }
                 else
                 {
-                    ME_CORE_WARN("AnimGraphWindow: created graph has no registry meta.");
+                    ME_LOG(LogEditor, Warn, "AnimGraphWindow: created graph has no registry meta.");
                 }
             }
         }

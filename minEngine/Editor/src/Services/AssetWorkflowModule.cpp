@@ -242,7 +242,7 @@ namespace minEngine
         {
             if (!m_PendingSave || !m_PendingSave())
             {
-                ME_CORE_WARN("AssetWorkflow: save failed; workflow action cancelled.");
+                ME_LOG(LogEditor, Warn, "AssetWorkflow: save failed; workflow action cancelled.");
                 m_PendingProceed = nullptr;
                 m_PendingSave = nullptr;
                 m_PendingCheckKind = PendingUnsavedCheckKind::None;
@@ -318,7 +318,7 @@ namespace minEngine
         const bool openingAnimationGraph = meta.AssetType == "AnimationGraph";
         if (!openingMaterial && !openingScene && !openingAnimationGraph)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogEditor, Warn, 
                 "AssetWorkflow: unsupported asset type '{}' for '{}'.",
                 meta.AssetType,
                 meta.AssetPath);
@@ -335,7 +335,7 @@ namespace minEngine
         {
             if (!OpenAsset(meta))
             {
-                ME_CORE_WARN("AssetWorkflow: failed to open asset '{}'.", meta.AssetPath);
+                ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to open asset '{}'.", meta.AssetPath);
                 return;
             }
 
@@ -377,7 +377,7 @@ namespace minEngine
         const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(projectRelativePath);
         if (meta == nullptr)
         {
-            ME_CORE_WARN("AssetWorkflow: scene asset '{}' is not registered.", projectRelativePath);
+            ME_LOG(LogEditor, Warn, "AssetWorkflow: scene asset '{}' is not registered.", projectRelativePath);
             return false;
         }
 
@@ -395,7 +395,7 @@ namespace minEngine
         const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
         if (projectContentRoot.empty())
         {
-            ME_CORE_ERROR("OpenSceneDialog: ProjectContentRoot is not set.");
+            ME_LOG(LogEditor, Error, "OpenSceneDialog: ProjectContentRoot is not set.");
             return;
         }
 
@@ -414,7 +414,7 @@ namespace minEngine
         const std::string projectRelativePath = TryMakeProjectRelativeAssetPath(dialogResult.Paths.front());
         if (projectRelativePath.empty())
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "OpenSceneDialog: selected file '{}' is outside project content root.",
                 dialogResult.Paths.front().string());
             return;
@@ -444,7 +444,7 @@ namespace minEngine
             {
                 if (!sceneEditor->CreateNewSceneDocument(*m_Context))
                 {
-                    ME_CORE_WARN("AssetWorkflow: failed to create a new scene document.");
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to create a new scene document.");
                     return;
                 }
 
@@ -476,14 +476,14 @@ namespace minEngine
                 const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdScene->GetGuid());
                 if (meta == nullptr)
                 {
-                    ME_CORE_WARN("AssetWorkflow: created scene has no registry meta.");
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: created scene has no registry meta.");
                     return;
                 }
 
                 RefreshContentBrowser();
                 if (!OpenAsset(*meta))
                 {
-                    ME_CORE_WARN("AssetWorkflow: failed to open created scene '{}'.", meta->AssetPath);
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to open created scene '{}'.", meta->AssetPath);
                     return;
                 }
 
@@ -515,14 +515,14 @@ namespace minEngine
                 const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdMaterial->GetGuid());
                 if (meta == nullptr)
                 {
-                    ME_CORE_WARN("AssetWorkflow: created material has no registry meta.");
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: created material has no registry meta.");
                     return;
                 }
 
                 RefreshContentBrowser();
                 if (!OpenAsset(*meta))
                 {
-                    ME_CORE_WARN("AssetWorkflow: failed to open created material '{}'.", meta->AssetPath);
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to open created material '{}'.", meta->AssetPath);
                     return;
                 }
 
@@ -589,7 +589,7 @@ namespace minEngine
         const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
         if (projectContentRoot.empty())
         {
-            ME_CORE_ERROR("ImportAssetDialog: ProjectContentRoot is not set.");
+            ME_LOG(LogEditor, Error, "ImportAssetDialog: ProjectContentRoot is not set.");
             return;
         }
 
@@ -620,7 +620,7 @@ namespace minEngine
         std::filesystem::create_directories(destDirectory, createError);
         if (createError)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "ImportAssetDialog: failed to create destination directory '{}': {}",
                 destDirectory.string(),
                 createError.message());
@@ -642,7 +642,7 @@ namespace minEngine
                 CollectCompatibleImportProducts(sourcePath);
             if (compatible.empty())
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogEditor, Error, 
                     "ImportAssetDialog: no import product accepts '{}'",
                     sourcePath.string());
                 continue;
@@ -675,7 +675,7 @@ namespace minEngine
                 if (!importResult.bSuccess)
                 {
                     ++failCount;
-                    ME_CORE_ERROR(
+                    ME_LOG(LogEditor, Error, 
                         "ImportAssetDialog: failed to import '{}': {}",
                         autoImportPaths[index].string(),
                         importResult.ErrorMessage);
@@ -686,7 +686,7 @@ namespace minEngine
                 const std::string createdPath = importResult.Created.empty()
                     ? std::string()
                     : importResult.Created.front().AssetPath;
-                ME_CORE_INFO(
+                ME_LOG(LogEditor, Info, 
                     "ImportAssetDialog: imported '{}' as '{}' (product '{}')",
                     autoImportPaths[index].string(),
                     createdPath,
@@ -699,7 +699,7 @@ namespace minEngine
             m_ImportDialog.Open(std::move(pendingChoicePaths), destDirectory);
         }
 
-        ME_CORE_INFO(
+        ME_LOG(LogEditor, Info, 
             "ImportAssetDialog: {} auto-imported succeeded, {} failed; {} pending product choice.",
             successCount,
             failCount,
@@ -758,7 +758,7 @@ namespace minEngine
             if (!importResult.bSuccess)
             {
                 ++failCount;
-                ME_CORE_ERROR(
+                ME_LOG(LogEditor, Error, 
                     "ImportAssetDialog: failed to import '{}' as '{}': {}",
                     sourcePath.string(),
                     productId,
@@ -770,14 +770,14 @@ namespace minEngine
             const std::string createdPath = importResult.Created.empty()
                 ? std::string()
                 : importResult.Created.front().AssetPath;
-            ME_CORE_INFO(
+            ME_LOG(LogEditor, Info, 
                 "ImportAssetDialog: '{}' → '{}' (product '{}')",
                 sourcePath.string(),
                 createdPath,
                 productId);
         }
 
-        ME_CORE_INFO(
+        ME_LOG(LogEditor, Info, 
             "ImportAssetDialog product import: {} succeeded, {} failed.",
             successCount,
             failCount);
@@ -796,14 +796,14 @@ namespace minEngine
         std::string errorMessage;
         if (!AssetManager::Get().Reimport(selected->AssetPath, errorMessage))
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "Reimport failed for '{}': {}",
                 selected->AssetPath,
                 errorMessage);
             return false;
         }
 
-        ME_CORE_INFO("Reimported '{}'", selected->AssetPath);
+        ME_LOG(LogEditor, Info, "Reimported '{}'", selected->AssetPath);
         RefreshContentBrowser();
         return true;
     }
@@ -881,11 +881,11 @@ namespace minEngine
         std::string errorMessage;
         if (!AssetManager::Get().DeleteAsset(assetPath, errorMessage))
         {
-            ME_CORE_ERROR("DeleteSelectedAsset failed for '{}': {}", assetPath, errorMessage);
+            ME_LOG(LogEditor, Error, "DeleteSelectedAsset failed for '{}': {}", assetPath, errorMessage);
             return;
         }
 
         m_SelectedAssetPath.clear();
-        ME_CORE_INFO("DeleteSelectedAsset: removed '{}'", assetPath);
+        ME_LOG(LogEditor, Info, "DeleteSelectedAsset: removed '{}'", assetPath);
     }
 }

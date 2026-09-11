@@ -158,7 +158,7 @@ namespace minEngine
             case Reflection::TypeCategory::Array:          return WriteByName_Array(typeName, value);       
         }
 
-		ME_CORE_ERROR("[Serializer] No serialization function found for type '{}'", typeName);
+		ME_LOG(LogSerialization, Error, "[Serializer] No serialization function found for type '{}'", typeName);
 		return Json();
 	}
 
@@ -197,7 +197,7 @@ namespace minEngine
             return Write<minEngine::Vector4>(*static_cast<const minEngine::Vector4*>(value));
         }
 
-        ME_CORE_ERROR("[Serializer] No primitive serialization function found for type '{}'", typeName);
+        ME_LOG(LogSerialization, Error, "[Serializer] No primitive serialization function found for type '{}'", typeName);
         return Json();
     }
 
@@ -212,7 +212,7 @@ namespace minEngine
             return result;
         }
 
-        ME_CORE_ERROR("[Serializer] No object serialization function found for type '{}'", typeName);
+        ME_LOG(LogSerialization, Error, "[Serializer] No object serialization function found for type '{}'", typeName);
         return Json();
     }
 
@@ -226,7 +226,7 @@ namespace minEngine
             return Write<std::string>(enumValueInfo->name);
         }
 
-        ME_CORE_ERROR("[Serializer] No enum serialization function found for type '{}'", typeName);
+        ME_LOG(LogSerialization, Error, "[Serializer] No enum serialization function found for type '{}'", typeName);
         return Json();
     }
 
@@ -258,7 +258,7 @@ namespace minEngine
             return arrayContext;
         }
 
-        ME_CORE_ERROR("[Serializer] No array serialization function found for type '{}'", typeName);
+        ME_LOG(LogSerialization, Error, "[Serializer] No array serialization function found for type '{}'", typeName);
         return Json();
     }
 
@@ -397,7 +397,7 @@ namespace minEngine
             return true;
         }
 
-        ME_CORE_ERROR("[Serializer] No deserialization function found for type '{}'", typeName);
+        ME_LOG(LogSerialization, Error, "[Serializer] No deserialization function found for type '{}'", typeName);
         return false;
     }
 

@@ -20,13 +20,13 @@ namespace minEngine
     {
         if (function == nullptr)
         {
-            ME_CORE_ERROR("MEObject::InvokeFunction: null function.");
+            ME_LOG(LogCore, Error, "MEObject::InvokeFunction: null function.");
             return false;
         }
 
         if (parmsBuffer == nullptr && function->GetParmsSize() > 0)
         {
-            ME_CORE_ERROR("MEObject::InvokeFunction: null parms buffer for '{}'.", function->GetName());
+            ME_LOG(LogCore, Error, "MEObject::InvokeFunction: null parms buffer for '{}'.", function->GetName());
             return false;
         }
 
@@ -34,7 +34,7 @@ namespace minEngine
         {
             if (m_Class == nullptr || !IsA(function->GetOwnerClass()))
             {
-                ME_CORE_ERROR("MEObject::InvokeFunction: IsA mismatch for '{}'.", function->GetName());
+                ME_LOG(LogCore, Error, "MEObject::InvokeFunction: IsA mismatch for '{}'.", function->GetName());
                 return false;
             }
         }
@@ -42,7 +42,7 @@ namespace minEngine
         const Reflection::MENativeThunkFn nativeThunk = function->GetNativeThunk();
         if (nativeThunk == nullptr)
         {
-            ME_CORE_ERROR("MEObject::InvokeFunction: no native thunk for '{}'.", function->GetName());
+            ME_LOG(LogCore, Error, "MEObject::InvokeFunction: no native thunk for '{}'.", function->GetName());
             return false;
         }
 
@@ -55,14 +55,14 @@ namespace minEngine
     {
         if (m_Class == nullptr)
         {
-            ME_CORE_ERROR("MEObject::InvokeFunctionByName: object has no class.");
+            ME_LOG(LogCore, Error, "MEObject::InvokeFunctionByName: object has no class.");
             return false;
         }
 
         Reflection::MEFunction* function = m_Class->FindFunction(functionName);
         if (function == nullptr)
         {
-            ME_CORE_ERROR("MEObject::InvokeFunctionByName: function '{}' not found.", functionName);
+            ME_LOG(LogCore, Error, "MEObject::InvokeFunctionByName: function '{}' not found.", functionName);
             return false;
         }
 
@@ -73,14 +73,14 @@ namespace minEngine
     {
         if (m_Class == nullptr)
         {
-            ME_CORE_ERROR("MEObject::InvokeFunction(name, signature): object has no class.");
+            ME_LOG(LogCore, Error, "MEObject::InvokeFunction(name, signature): object has no class.");
             return false;
         }
 
         Reflection::MEFunction* function = m_Class->FindFunctionBySignature(functionName, signatureHash);
         if (function == nullptr)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "MEObject::InvokeFunction(name, signature): function '{}#{}' not found.",
                 functionName,
                 signatureHash);

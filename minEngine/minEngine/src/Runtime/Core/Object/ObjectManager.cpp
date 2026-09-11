@@ -34,7 +34,7 @@ namespace minEngine
     {
         m_GarbageRootSources.clear();
         m_ObjectsByGuid.clear();
-        ME_CORE_INFO("ObjectManager Shutdown.");
+        ME_LOG(LogCore, Info, "ObjectManager Shutdown.");
     }
 
     void ObjectManager::RegisterObject(const std::shared_ptr<MEObject>& object)
@@ -163,14 +163,14 @@ namespace minEngine
     {
         if (classInfo == nullptr)
         {
-            ME_CORE_ERROR("NewObject: classInfo is null.");
+            ME_LOG(LogCore, Error, "NewObject: classInfo is null.");
             return nullptr;
         }
 
         std::shared_ptr<MEObject> newObj = std::static_pointer_cast<MEObject>(classInfo->CreateDefaultInstance());
         if (newObj == nullptr)
         {
-            ME_CORE_ERROR("Failed to create instance of class '{}'.", classInfo->GetName());
+            ME_LOG(LogCore, Error, "Failed to create instance of class '{}'.", classInfo->GetName());
             return nullptr;
         }
 
@@ -191,7 +191,7 @@ namespace minEngine
         const Reflection::MEClass* classInfo = Reflection::ReflectionSystem::Get().FindClass(className);
         if (classInfo == nullptr)
         {
-            ME_CORE_ERROR("Failed to find class info for class name '{}'.", className);
+            ME_LOG(LogCore, Error, "Failed to find class info for class name '{}'.", className);
             return nullptr;
         }
 
@@ -309,7 +309,7 @@ namespace minEngine
 
             if (reachableGuids.find(guid) == reachableGuids.end())
             {
-                ME_CORE_WARN(
+                ME_LOG(LogCore, Warn, 
                     "ObjectManager::CollectGarbage: live object '{}' ({}) is not reachable from supplied roots.",
                     liveObject->GetName(),
                     guid.ToString());

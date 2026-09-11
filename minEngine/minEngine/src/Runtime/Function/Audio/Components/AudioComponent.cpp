@@ -84,13 +84,13 @@ namespace minEngine
     {
         if (!AudioSystem::HasInstance())
         {
-            ME_CORE_WARN("AudioComponent::Play: AudioSystem is not available.");
+            ME_LOG(LogAudio, Warn, "AudioComponent::Play: AudioSystem is not available.");
             return;
         }
 
         if (m_Clip == nullptr || !m_Clip->IsValid())
         {
-            ME_CORE_WARN("AudioComponent::Play: clip is invalid.");
+            ME_LOG(LogAudio, Warn, "AudioComponent::Play: clip is invalid.");
             return;
         }
 
@@ -114,7 +114,7 @@ namespace minEngine
         AudioPlayResult result = AudioSystem::Get().Play(params);
         if (!result.bSuccess)
         {
-            ME_CORE_WARN("AudioComponent::Play failed: {}", result.ErrorMessage);
+            ME_LOG(LogAudio, Warn, "AudioComponent::Play failed: {}", result.ErrorMessage);
             return;
         }
 

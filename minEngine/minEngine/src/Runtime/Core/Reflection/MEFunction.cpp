@@ -436,32 +436,32 @@ namespace minEngine::Reflection
     {
         if (function == nullptr)
         {
-            ME_CORE_ERROR("MEClass::InvokeStaticFunction: null function.");
+            ME_LOG(LogCore, Error, "MEClass::InvokeStaticFunction: null function.");
             return false;
         }
 
         if (!function->IsStatic())
         {
-            ME_CORE_ERROR("MEClass::InvokeStaticFunction: '{}' is not static.", function->GetName());
+            ME_LOG(LogCore, Error, "MEClass::InvokeStaticFunction: '{}' is not static.", function->GetName());
             return false;
         }
 
         if (function->GetOwnerClass() != this)
         {
-            ME_CORE_ERROR("MEClass::InvokeStaticFunction: owner class mismatch for '{}'.", function->GetName());
+            ME_LOG(LogCore, Error, "MEClass::InvokeStaticFunction: owner class mismatch for '{}'.", function->GetName());
             return false;
         }
 
         if (parmsBuffer == nullptr && function->GetParmsSize() > 0)
         {
-            ME_CORE_ERROR("MEClass::InvokeStaticFunction: null parms buffer for '{}'.", function->GetName());
+            ME_LOG(LogCore, Error, "MEClass::InvokeStaticFunction: null parms buffer for '{}'.", function->GetName());
             return false;
         }
 
         const MENativeThunkFn nativeThunk = function->GetNativeThunk();
         if (nativeThunk == nullptr)
         {
-            ME_CORE_ERROR("MEClass::InvokeStaticFunction: no native thunk for '{}'.", function->GetName());
+            ME_LOG(LogCore, Error, "MEClass::InvokeStaticFunction: no native thunk for '{}'.", function->GetName());
             return false;
         }
 

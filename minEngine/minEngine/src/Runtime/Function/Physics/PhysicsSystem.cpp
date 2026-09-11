@@ -30,7 +30,7 @@ namespace minEngine
             va_start(argumentList, format);
             vsnprintf(buffer, sizeof(buffer), format, argumentList);
             va_end(argumentList);
-            ME_CORE_TRACE("Jolt: {}", buffer);
+            ME_LOG(LogPhysics, Trace, "Jolt: {}", buffer);
         }
     };
 
@@ -44,7 +44,7 @@ namespace minEngine
             const char* file,
             JPH::uint line)
         {
-            ME_CORE_ERROR("Jolt assert failed: {}:{} ({}) {}", file, line, expression, message != nullptr ? message : "");
+            ME_LOG(LogPhysics, Error, "Jolt assert failed: {}:{} ({}) {}", file, line, expression, message != nullptr ? message : "");
             return true;
         }
     };
@@ -83,7 +83,7 @@ namespace minEngine
         JPH::RegisterTypes();
 
         m_Initialized = true;
-        ME_CORE_INFO("PhysicsSystem initialized.");
+        ME_LOG(LogPhysics, Info, "PhysicsSystem initialized.");
     }
 
     void PhysicsSystem::Shutdown()
@@ -100,7 +100,7 @@ namespace minEngine
         JPH::Factory::sInstance = nullptr;
 
         m_Initialized = false;
-        ME_CORE_INFO("PhysicsSystem shutdown.");
+        ME_LOG(LogPhysics, Info, "PhysicsSystem shutdown.");
     }
 
     PhysicsWorld& PhysicsSystem::GetOrCreateWorld(Scene* scene)

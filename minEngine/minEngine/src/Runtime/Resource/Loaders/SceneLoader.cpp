@@ -33,7 +33,7 @@ namespace minEngine
         if (!result.ok)
         {
             ObjectManager::Get().UnregisterObject(scene.get());
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "SceneLoader: failed to deserialize '{}' — {} (field: {})",
                 meta.AssetPath,
                 result.message,

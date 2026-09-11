@@ -279,7 +279,7 @@ namespace minEngine
     {
         auto reportError = [&](const std::string& message) -> std::shared_ptr<TextureCube>
         {
-            ME_CORE_ERROR("EnvMapCapture: {}", message);
+            ME_LOG(LogRender, Error, "EnvMapCapture: {}", message);
             if (outError)
             {
                 *outError = message;
@@ -384,7 +384,7 @@ namespace minEngine
     {
         auto reportError = [&](const std::string& message) -> std::shared_ptr<TextureCube>
         {
-            ME_CORE_ERROR("EnvMapCapture: {}", message);
+            ME_LOG(LogRender, Error, "EnvMapCapture: {}", message);
             if (outError)
             {
                 *outError = message;
@@ -476,7 +476,7 @@ namespace minEngine
 
         TransitionTextureToShaderRead(cmdList, irradianceCube.get());
 
-        ME_CORE_INFO(
+        ME_LOG(LogRender, Info, 
             "EnvMapCapture: convolved irradiance cubemap {}x{} from environment.",
             faceSize,
             faceSize);
@@ -495,7 +495,7 @@ namespace minEngine
     {
         auto reportError = [&](const std::string& message) -> std::shared_ptr<TextureCube>
         {
-            ME_CORE_ERROR("EnvMapCapture: {}", message);
+            ME_LOG(LogRender, Error, "EnvMapCapture: {}", message);
             if (outError)
             {
                 *outError = message;
@@ -603,7 +603,7 @@ namespace minEngine
 
         TransitionTextureToShaderRead(cmdList, prefilterCube.get());
 
-        ME_CORE_INFO(
+        ME_LOG(LogRender, Info, 
             "EnvMapCapture: prefiltered environment cubemap {}x{} ({} mips) from environment.",
             faceSize,
             faceSize,

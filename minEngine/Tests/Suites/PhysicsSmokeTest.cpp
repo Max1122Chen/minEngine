@@ -57,7 +57,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("physics-smoke");
             if (!scene)
             {
-                ME_CORE_ERROR("PhysicsSmokeTest: failed to create scene.");
+                ME_LOG(LogTest, Error, "PhysicsSmokeTest: failed to create scene.");
                 return false;
             }
 
@@ -79,7 +79,7 @@ namespace minEngine
 
             if (!floorRigidBody->HasValidPhysicsBody() || !dynamicRigidBody->HasValidPhysicsBody())
             {
-                ME_CORE_ERROR("PhysicsSmokeTest: rigid bodies were not created.");
+                ME_LOG(LogTest, Error, "PhysicsSmokeTest: rigid bodies were not created.");
                 return false;
             }
 
@@ -94,13 +94,13 @@ namespace minEngine
             const float finalHeight = dynamicObject->GetPosition().y;
             if (!(finalHeight < 10.0f && finalHeight > 0.5f))
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsSmokeTest: unexpected dynamic box height {} (expected < 10 and > 0.5).",
                     finalHeight);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsSmokeTest: dynamic box fell to Y={}.", finalHeight);
+            ME_LOG(LogTest, Info, "PhysicsSmokeTest: dynamic box fell to Y={}.", finalHeight);
             return true;
         }
     } // namespace

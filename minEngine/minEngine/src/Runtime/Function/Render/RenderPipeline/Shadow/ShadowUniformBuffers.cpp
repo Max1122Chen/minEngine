@@ -66,7 +66,7 @@ namespace minEngine
     {
         if (m_PointLightViewProjWriteIndex >= kPointViewProjRingSlots)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogRender, Error, 
                 "ShadowUniformBuffers: point ViewProj ring exhausted ({} slots). "
                 "Wrapping — later draws may read stale matrices.",
                 kPointViewProjRingSlots);
@@ -87,7 +87,7 @@ namespace minEngine
     {
         if (m_ParamsWriteIndex >= kParamsRingSlots)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogRender, Error, 
                 "ShadowUniformBuffers: params ring exhausted ({} slots). "
                 "Wrapping — later draws may read stale shadow params.",
                 kParamsRingSlots);

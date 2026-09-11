@@ -2,14 +2,14 @@
 
 ## Meta
 - **ID:** N/A（跨 Feature 迭代路线图；覆盖多 DOMAIN）
-- **Status:** Draft（待维护者评审后 → In Progress）
+- **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-10
+- **Last updated:** 2026-09-11
 - **Related:**
   - [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)
   - [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)（长期多轨；本文件 = **0.1.0 收口窗口**）
   - [ACTIVE_WORK.md](./ACTIVE_WORK.md) · [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md)
-- **Trust:** 评审通过并写入 ACTIVE_WORK 后升为 Tier A 排期源；此前为 Draft，不强制开码
+- **Trust:** Tier A — 与 ACTIVE_WORK 共同指导 0.1.0 窗口；具体下一刀以 ACTIVE_WORK 为准
 - **Product name:** 编辑器**产品名 / 构建产物显示名** → **Maximum**（仓库/路径不必改成 Maximum；标志引擎 **0.1.0**，当前心智 **≈0.0.9**）
 
 ## TL;DR
@@ -319,22 +319,20 @@ F1–F3 可在同一 `feat/core`（或 `master` 短切片）内串行；**全部
 
 | 建议 ID | 标题 | Phase | 备注 |
 |---------|------|-------|------|
-| `CORE-F17` | Logging channels / categories | F1 | 地基；先于 fan-out |
-| `CORE-F18` | Asset / Serialization schema & engine version | F2 | 地基 |
-| `WF-F03` 或 `LAUN-F02` | Maximum 产品显示名与版本展示 | F3 | 地基；窗口/About/产物名 |
-| `CORE-F19` | Prefab A（资产 + Instantiate） | P prefab | 默认 Core；亦可评 `ASSET-F03` |
-| `ED-F12` 或 `RND-F17` | Isolated preview / multi-RT（解串图） | P render | **解锁 Prefab B**；与 Prefab A 解耦 |
+| `CORE-F17` | LogChannel + structured LogRecord | F1 | **Done** · [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) · 术语 LogChannel（非 Category） |
+| `CORE-F18` | Asset / Serialization schema & engine version | F2 | **已登记 Planned** · [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
+| `WF-F03` | Maximum 产品显示名与版本展示 | F3 | **已登记 Planned** · [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
+| `CORE-F19` | Prefab A（资产 + Instantiate） | P prefab | 待 F 后登记 |
+| `ED-F12` 或 `RND-F17` | Isolated preview / multi-RT（解串图） | P render | 待登记 |
 | `ED-F13` | Prefab stage / 子编辑器（隔离 Scene） | P prefab B | 依赖隔离 RT |
-| `CORE-F20` | Lua ↔ Native callbacks | P lua | |
-| `CORE-F21` | Profiling harness | P core | |
-| `ED-F09` | EditorSettings | P editor | |
-| `ED-F10` | Multi-document Tab host MVP | P editor | 宜在控制面之后 |
-| `ED-F11` | World Query–Command–Verify surface | P editor | Agent 真源；可扩 ED-F04 |
-| `MCP-F01` | MCP adapter（thin） | P mcp | 跟 ED-F11；DOMAIN 待定 |
+| `CORE-F20` | Lua ↔ Native callbacks | P lua | 待登记 |
+| `CORE-F21` | Profiling harness | P core | 待登记 |
+| `ED-F09` | Editor Log Console（LogRecord UI / filter） | P editor / 跟 F17 | **已登记 Planned** · [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
+| `ED-F10` | EditorSettings（原草案 F09） | P editor | 待登记 |
+| `ED-F11` | Multi-document Tab host MVP | P editor | 待登记 |
+| `ED-F12` | World Query–Command–Verify surface | P editor | 待登记 |
+| `MCP-F01` | MCP adapter（thin） | P mcp | DOMAIN 待定 |
 | `DEMO-F01` | FPS mini-shooter sample | D | Demo Package |
-
-> ID 序号在正式登记时按 Registry Next free **重排一次**即可；上表顺序表示依赖，不强制最终号码。
-
 ### 已有、本周期顺带
 
 | ID | 角色 |
@@ -452,3 +450,5 @@ F1–F3 可在同一 `feat/core`（或 `master` 短切片）内串行；**全部
 | 2026-09-10 | 修订：采纳「地基先合入再 fan-out」；Prefab A/B + 隔离 RT/串图挡点；并行轨职责与合并纪律；验收 D3b |
 | 2026-09-10 | 增补 §3.0 Mermaid 拓扑依赖图 + 一层拓扑序 |
 | 2026-09-10 | 修复 Mermaid：去掉连到 subgraph 的边、嵌套 subgraph、边上中文标签与特殊字符 |
+| 2026-09-11 | Status → **In Progress**；登记 Phase F：`CORE-F17` / `CORE-F18` / `WF-F03` |
+| 2026-09-11 | `CORE-F17` → **Done**（硬切 ME_LOG + logging-channels 单测） |

@@ -21,7 +21,7 @@ namespace minEngine
             {
                 for (const std::string& error : reflection.GetLastErrors())
                 {
-                    ME_CORE_ERROR("EngineReflectionFixture: {}", error);
+                    ME_LOG(LogTest, Error, "EngineReflectionFixture: {}", error);
                 }
                 return false;
             }

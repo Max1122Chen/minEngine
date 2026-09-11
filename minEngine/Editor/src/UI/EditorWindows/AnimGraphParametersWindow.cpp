@@ -139,7 +139,7 @@ namespace minEngine
             }
             else
             {
-                ME_CORE_WARN("AnimGraphParameters: AddEntry failed: {}", error);
+                ME_LOG(LogEditor, Warn, "AnimGraphParameters: AddEntry failed: {}", error);
             }
         }
 
@@ -183,11 +183,11 @@ namespace minEngine
                 const size_t existing = schema.FindEntryIndex(newName);
                 if (newName.empty())
                 {
-                    ME_CORE_WARN("AnimGraphParameters: name must be non-empty.");
+                    ME_LOG(LogEditor, Warn, "AnimGraphParameters: name must be non-empty.");
                 }
                 else if (existing != SIZE_MAX && existing != static_cast<size_t>(entryIndex))
                 {
-                    ME_CORE_WARN("AnimGraphParameters: duplicate name '{}'.", newName);
+                    ME_LOG(LogEditor, Warn, "AnimGraphParameters: duplicate name '{}'.", newName);
                 }
                 else if (entry.Name != newName)
                 {

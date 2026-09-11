@@ -58,7 +58,7 @@ namespace minEngine
     {
         if (!LuaScriptSystem::HasInstance())
         {
-            ME_CORE_ERROR("LuaComponent::LoadScript: LuaScriptSystem is not available.");
+            ME_LOG(LogScript, Error, "LuaComponent::LoadScript: LuaScriptSystem is not available.");
             m_ScriptEnabled = false;
             return false;
         }
@@ -71,7 +71,7 @@ namespace minEngine
 
         if (!m_Script->IsValid())
         {
-            ME_CORE_ERROR("LuaComponent::LoadScript: LuaScript asset source is empty.");
+            ME_LOG(LogScript, Error, "LuaComponent::LoadScript: LuaScript asset source is empty.");
             ClearLuaEnvironment();
             m_ScriptEnabled = false;
             return false;

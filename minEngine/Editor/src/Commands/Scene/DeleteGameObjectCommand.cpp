@@ -36,7 +36,7 @@ namespace minEngine
 
         if (!EditorObjectSnapshotUtil::WriteEnvelope(snapshot, m_SnapshotEnvelope))
         {
-            ME_CORE_ERROR("DeleteGameObjectCommand: failed to write snapshot envelope.");
+            ME_LOG(LogEditor, Error, "DeleteGameObjectCommand: failed to write snapshot envelope.");
             return;
         }
 
@@ -61,7 +61,7 @@ namespace minEngine
         EditorObjectSnapshot snapshot;
         if (!EditorObjectSnapshotUtil::ReadEnvelope(m_SnapshotEnvelope, snapshot))
         {
-            ME_CORE_ERROR("DeleteGameObjectCommand: failed to read snapshot envelope.");
+            ME_LOG(LogEditor, Error, "DeleteGameObjectCommand: failed to read snapshot envelope.");
             return;
         }
 

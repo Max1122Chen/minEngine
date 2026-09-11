@@ -129,7 +129,7 @@ namespace minEngine
             {
                 *outError = std::string("Assimp failed: ") + importer.GetErrorString();
             }
-            ME_CORE_ERROR("SkeletalMeshLoader: Assimp failed for {}. {}", path, importer.GetErrorString());
+            ME_LOG(LogAsset, Error, "SkeletalMeshLoader: Assimp failed for {}. {}", path, importer.GetErrorString());
             return false;
         }
 
@@ -164,7 +164,7 @@ namespace minEngine
             {
                 *outError = "No skinned bones found in file.";
             }
-            ME_CORE_ERROR("SkeletalMeshLoader: no bones in {}.", path);
+            ME_LOG(LogAsset, Error, "SkeletalMeshLoader: no bones in {}.", path);
             return false;
         }
 
@@ -174,7 +174,7 @@ namespace minEngine
             {
                 *outError = "Bone count exceeds kMaxBonesPerSkeleton.";
             }
-            ME_CORE_ERROR("SkeletalMeshLoader: too many bones in {}.", path);
+            ME_LOG(LogAsset, Error, "SkeletalMeshLoader: too many bones in {}.", path);
             return false;
         }
 
@@ -242,7 +242,7 @@ namespace minEngine
                 bone.InverseBindPose = inverseBindByName[name];
                 boneNameToIndex.emplace(name, static_cast<int32_t>(bones.size()));
                 bones.push_back(std::move(bone));
-                ME_CORE_WARN("SkeletalMeshLoader: bone '{}' missing from node tree; attached as root.", name);
+                ME_LOG(LogAsset, Warn, "SkeletalMeshLoader: bone '{}' missing from node tree; attached as root.", name);
             }
         }
 
@@ -422,12 +422,12 @@ namespace minEngine
             {
                 *outError = "No valid skinned vertices produced.";
             }
-            ME_CORE_ERROR("SkeletalMeshLoader: invalid import data for {}.", path);
+            ME_LOG(LogAsset, Error, "SkeletalMeshLoader: invalid import data for {}.", path);
             return false;
         }
 
         outData.BoundingBox = boundingBox;
-        ME_CORE_INFO(
+        ME_LOG(LogAsset, Info, 
             "SkeletalMeshLoader: imported {} (bones={}, vertices={}, indices={}).",
             path,
             outData.Bones.size(),
@@ -444,7 +444,7 @@ namespace minEngine
         std::string error;
         if (!skeleton->SetBones(data.Bones, &error))
         {
-            ME_CORE_ERROR("SkeletalMeshLoader: SetBones failed for {}: {}", meta.AssetPath, error);
+            ME_LOG(LogAsset, Error, "SkeletalMeshLoader: SetBones failed for {}: {}", meta.AssetPath, error);
             return nullptr;
         }
         return skeleton;
@@ -457,14 +457,14 @@ namespace minEngine
     {
         if (!data.IsValid() || !skeleton)
         {
-            ME_CORE_ERROR("SkeletalMeshLoader: invalid import/skeleton for {}.", meta.AssetPath);
+            ME_LOG(LogAsset, Error, "SkeletalMeshLoader: invalid import/skeleton for {}.", meta.AssetPath);
             return nullptr;
         }
 
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi)
         {
-            ME_CORE_ERROR("SkeletalMeshLoader: RHI is not available.");
+            ME_LOG(LogAsset, Error, "SkeletalMeshLoader: RHI is not available.");
             return nullptr;
         }
 
@@ -569,7 +569,7 @@ namespace minEngine
 
         if (!serializeResult.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "SkeletalMeshLoader: SaveBuddy failed for '{}' — {} (field: {})",
                 buddyRelativePath,
                 serializeResult.message,
@@ -610,7 +610,7 @@ namespace minEngine
 
         if (!deserializeResult.ok)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "SkeletalMeshLoader: TryLoadBuddySkeleton failed for '{}' — {}",
                 buddyRelativePath,
                 deserializeResult.message);
@@ -735,7 +735,7 @@ namespace minEngine
             return CreateFromImportData(meta, importData, skeleton);
         }
 
-        ME_CORE_WARN(
+        ME_LOG(LogAsset, Warn, 
             "SkeletalMeshLoader: no '.meskmesh' buddy for '{}'; using legacy import (temporary skeleton).",
             meta.AssetPath);
 

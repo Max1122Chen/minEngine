@@ -185,7 +185,7 @@ namespace minEngine
 
         if (IsUnderEngineDefaultAssetsRoot(absolutePath))
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "Asset path is under EngineDefaultAssetsRoot and will not be registered: {}",
                 absolutePath.string());
             return std::string();
@@ -208,7 +208,7 @@ namespace minEngine
             }
         }
 
-        ME_CORE_WARN("Asset path is not under ProjectContentRoot: {}", absolutePath.string());
+        ME_LOG(LogAsset, Warn, "Asset path is not under ProjectContentRoot: {}", absolutePath.string());
         return std::string();
     }
 
@@ -272,13 +272,13 @@ namespace minEngine
     {
         if (!std::filesystem::exists(directory))
         {
-            ME_CORE_WARN("Skip scanning assets because directory does not exist: {}", directory.string());
+            ME_LOG(LogAsset, Warn, "Skip scanning assets because directory does not exist: {}", directory.string());
             return;
         }
 
         if (!std::filesystem::is_directory(directory))
         {
-            ME_CORE_WARN("Skip scanning assets because path is not a directory: {}", directory.string());
+            ME_LOG(LogAsset, Warn, "Skip scanning assets because path is not a directory: {}", directory.string());
             return;
         }
 
@@ -342,7 +342,7 @@ namespace minEngine
             RemoveMetaFileOnDisk(projectRelativePath, metaError);
             if (!metaError.empty())
             {
-                ME_CORE_WARN(
+                ME_LOG(LogAsset, Warn, 
                     "RegisterAsset: asset file missing for '{}'; failed to remove stale meta: {}",
                     projectRelativePath,
                     metaError);
@@ -372,7 +372,7 @@ namespace minEngine
 
             if (!result.ok)
             {
-                ME_CORE_WARN("Failed to deserialize asset meta. Error: {}. Field path: {}. Meta file: {}",
+                ME_LOG(LogAsset, Warn, "Failed to deserialize asset meta. Error: {}. Field path: {}. Meta file: {}",
                              result.message,
                              result.fieldPath,
                              metaPath.string());
@@ -393,7 +393,7 @@ namespace minEngine
 
             if (!result.ok)
             {
-                ME_CORE_WARN("Failed to serialize asset meta. Error: {}. Field path: {}. Meta file: {}",
+                ME_LOG(LogAsset, Warn, "Failed to serialize asset meta. Error: {}. Field path: {}. Meta file: {}",
                              result.message,
                              result.fieldPath,
                              metaPath.string());
@@ -410,7 +410,7 @@ namespace minEngine
             loadedExistingMeta = loadMetaFromFile(meta);
             if (!loadedExistingMeta)
             {
-                ME_CORE_WARN("Failed to parse asset meta, regenerate it: {}", metaPath.string());
+                ME_LOG(LogAsset, Warn, "Failed to parse asset meta, regenerate it: {}", metaPath.string());
             }
         }
 
@@ -423,7 +423,7 @@ namespace minEngine
 
             if (!saveMetaToFile(meta))
             {
-                ME_CORE_WARN("Failed to save new asset meta: {}", metaPath.string());
+                ME_LOG(LogAsset, Warn, "Failed to save new asset meta: {}", metaPath.string());
             }
         }
         else
@@ -461,27 +461,27 @@ namespace minEngine
 
             if (needsRewrite && !saveMetaToFile(meta))
             {
-                ME_CORE_WARN("Failed to rewrite asset meta: {}", metaPath.string());
+                ME_LOG(LogAsset, Warn, "Failed to rewrite asset meta: {}", metaPath.string());
             }
         }
 
         const AssetMeta* existingGuidMeta = m_Registry.FindMetaByGuid(meta.Guid);
         if (existingGuidMeta != nullptr && existingGuidMeta->AssetPath != projectRelativePath)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "GUID collision detected between '{}' and '{}'. Regenerating GUID for current asset.",
                 existingGuidMeta->AssetPath,
                 projectRelativePath);
             meta.Guid = GenerateGUID();
             if (!saveMetaToFile(meta))
             {
-                ME_CORE_WARN("Failed to save regenerated GUID to asset meta: {}", metaPath.string());
+                ME_LOG(LogAsset, Warn, "Failed to save regenerated GUID to asset meta: {}", metaPath.string());
             }
         }
 
         CacheMeta(meta, alreadyRegistered);
 
-        ME_CORE_INFO("Asset {}: type='{}', path='{}', guid='{}'",
+        ME_LOG(LogAsset, Info, "Asset {}: type='{}', path='{}', guid='{}'",
                      alreadyRegistered ? "updated" : "registered",
                      meta.AssetType,
                      meta.AssetPath,
@@ -862,7 +862,7 @@ namespace minEngine
             }
             else
             {
-                ME_CORE_INFO(
+                ME_LOG(LogAsset, Info, 
                     "ImportAnimationClip: reusing existing Sources copy '{}'",
                     sourceCopyPath.string());
             }
@@ -1011,7 +1011,7 @@ namespace minEngine
 
     bool AssetManager::LogReferenceWarningsForDelete(const AssetMeta& meta) const
     {
-        ME_CORE_WARN(
+        ME_LOG(LogAsset, Warn, 
             "DeleteAsset: reference scan is not implemented (v0); proceeding with '{}'.",
             meta.AssetPath);
         return true;
@@ -1033,7 +1033,7 @@ namespace minEngine
 
         if (!result.ok)
         {
-            ME_CORE_WARN(
+            ME_LOG(LogAsset, Warn, 
                 "Failed to serialize asset meta. Error: {}. Field path: {}. Meta file: {}",
                 result.message,
                 result.fieldPath,
@@ -1211,14 +1211,14 @@ namespace minEngine
 
             if (!std::filesystem::remove(metaPath, errorCode) || errorCode)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogAsset, Warn, 
                     "RemoveOrphanMetaFilesInDirectory: failed to remove orphan meta '{}': {}",
                     metaPath.string(),
                     errorCode.message());
                 continue;
             }
 
-            ME_CORE_INFO(
+            ME_LOG(LogAsset, Info, 
                 "RemoveOrphanMetaFilesInDirectory: removed orphan meta '{}'",
                 metaPath.string());
         }
@@ -1336,7 +1336,7 @@ namespace minEngine
 
         if (!WriteMetaFile(updatedMeta))
         {
-            ME_CORE_WARN("MoveAsset: meta file write failed after move to '{}'", newRel);
+            ME_LOG(LogAsset, Warn, "MoveAsset: meta file write failed after move to '{}'", newRel);
         }
 
         return true;
@@ -1458,7 +1458,7 @@ namespace minEngine
     {
         if (assetTypeId.empty() || handler == nullptr)
         {
-            ME_CORE_ERROR("RegisterLoadHandler: assetTypeId and handler are required");
+            ME_LOG(LogAsset, Error, "RegisterLoadHandler: assetTypeId and handler are required");
             return;
         }
 
@@ -1481,7 +1481,7 @@ namespace minEngine
         if (descriptor.ProductId.empty() || descriptor.Import == nullptr
             || descriptor.AcceptsSourceExtension == nullptr)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "RegisterImportProduct: ProductId, AcceptsSourceExtension, and Import are required");
             return;
         }
@@ -1869,7 +1869,7 @@ namespace minEngine
 
         if (!result.ok)
         {
-            ME_CORE_ERROR("Failed to serialize material '{}'. Error: {}. Field path: {}",
+            ME_LOG(LogAsset, Error, "Failed to serialize material '{}'. Error: {}. Field path: {}",
                           absoluteAssetPath,
                           result.message,
                           result.fieldPath);
@@ -1896,7 +1896,7 @@ namespace minEngine
 
         if (!result.ok)
         {
-            ME_CORE_ERROR("Failed to serialize scene '{}'. Error: {}. Field path: {}",
+            ME_LOG(LogAsset, Error, "Failed to serialize scene '{}'. Error: {}. Field path: {}",
                           absoluteAssetPath,
                           result.message,
                           result.fieldPath);
@@ -1985,7 +1985,7 @@ namespace minEngine
 
             if (!result.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogAsset, Error, 
                     "CreateAsset<Scene>: failed to serialize '{}'. Error: {}. Field path: {}",
                     relativePath,
                     result.message,
@@ -2015,7 +2015,7 @@ namespace minEngine
 
             if (!result.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogAsset, Error, 
                     "CreateAsset<Material>: failed to serialize '{}'. Error: {}. Field path: {}",
                     relativePath,
                     result.message,
@@ -2036,7 +2036,7 @@ namespace minEngine
             BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".mescene");
         if (relativePath.empty())
         {
-            ME_CORE_ERROR("CreateAsset<Scene>: failed to allocate unique path for '{}'.", assetName);
+            ME_LOG(LogAsset, Error, "CreateAsset<Scene>: failed to allocate unique path for '{}'.", assetName);
             return nullptr;
         }
 
@@ -2045,7 +2045,7 @@ namespace minEngine
         std::filesystem::create_directories(absolutePath.parent_path(), createError);
         if (createError)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "CreateAsset<Scene>: failed to create directory '{}': {}",
                 absolutePath.parent_path().string(),
                 createError.message());
@@ -2070,7 +2070,7 @@ namespace minEngine
         AssetMeta meta = RegisterAsset(relativePath, "Scene");
         if (meta.AssetPath.empty())
         {
-            ME_CORE_ERROR("CreateAsset<Scene>: RegisterAsset failed for '{}'.", relativePath);
+            ME_LOG(LogAsset, Error, "CreateAsset<Scene>: RegisterAsset failed for '{}'.", relativePath);
             return nullptr;
         }
 
@@ -2081,7 +2081,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
-        ME_CORE_INFO("CreateAsset<Scene>: created '{}'.", meta.AssetPath);
+        ME_LOG(LogAsset, Info, "CreateAsset<Scene>: created '{}'.", meta.AssetPath);
         return LoadAsset<Scene>(meta.AssetPath);
     }
 
@@ -2094,7 +2094,7 @@ namespace minEngine
             BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".memtl");
         if (relativePath.empty())
         {
-            ME_CORE_ERROR("CreateAsset<Material>: failed to allocate unique path for '{}'.", assetName);
+            ME_LOG(LogAsset, Error, "CreateAsset<Material>: failed to allocate unique path for '{}'.", assetName);
             return nullptr;
         }
 
@@ -2103,7 +2103,7 @@ namespace minEngine
         std::filesystem::create_directories(absolutePath.parent_path(), createError);
         if (createError)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "CreateAsset<Material>: failed to create directory '{}': {}",
                 absolutePath.parent_path().string(),
                 createError.message());
@@ -2126,13 +2126,13 @@ namespace minEngine
         AssetMeta meta = RegisterAsset(relativePath, "Material");
         if (meta.AssetPath.empty())
         {
-            ME_CORE_ERROR("CreateAsset<Material>: RegisterAsset failed for '{}'.", relativePath);
+            ME_LOG(LogAsset, Error, "CreateAsset<Material>: RegisterAsset failed for '{}'.", relativePath);
             return nullptr;
         }
 
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
-        ME_CORE_INFO("CreateAsset<Material>: created '{}'.", meta.AssetPath);
+        ME_LOG(LogAsset, Info, "CreateAsset<Material>: created '{}'.", meta.AssetPath);
         return LoadAsset<Material>(meta.AssetPath);
     }
     template<>
@@ -2141,7 +2141,7 @@ namespace minEngine
         std::string error;
         if (!AnimationGraphLoader::Save(meta, asset, &error))
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "Failed to save AnimationGraph '{}'. Error: {}",
                 meta.AssetPath,
                 error);
@@ -2159,7 +2159,7 @@ namespace minEngine
             BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".meagraph");
         if (relativePath.empty())
         {
-            ME_CORE_ERROR("CreateAsset<AnimationGraph>: failed to allocate unique path for '{}'.", assetName);
+            ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: failed to allocate unique path for '{}'.", assetName);
             return nullptr;
         }
 
@@ -2168,7 +2168,7 @@ namespace minEngine
         std::filesystem::create_directories(absolutePath.parent_path(), createError);
         if (createError)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogAsset, Error, 
                 "CreateAsset<AnimationGraph>: failed to create directory '{}': {}",
                 absolutePath.parent_path().string(),
                 createError.message());
@@ -2189,7 +2189,7 @@ namespace minEngine
         {
             std::error_code removeError;
             std::filesystem::remove(absolutePath, removeError);
-            ME_CORE_ERROR("CreateAsset<AnimationGraph>: save failed: {}", saveError);
+            ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: save failed: {}", saveError);
             return nullptr;
         }
 
@@ -2198,13 +2198,13 @@ namespace minEngine
         AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph");
         if (meta.AssetPath.empty())
         {
-            ME_CORE_ERROR("CreateAsset<AnimationGraph>: RegisterAsset failed for '{}'.", relativePath);
+            ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: RegisterAsset failed for '{}'.", relativePath);
             return nullptr;
         }
 
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
-        ME_CORE_INFO("CreateAsset<AnimationGraph>: created '{}'.", meta.AssetPath);
+        ME_LOG(LogAsset, Info, "CreateAsset<AnimationGraph>: created '{}'.", meta.AssetPath);
         return LoadAsset<AnimationGraph>(meta.AssetPath);
     }
 

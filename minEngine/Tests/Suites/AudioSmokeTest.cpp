@@ -87,13 +87,13 @@ namespace minEngine
             const AudioPlayResult playResult = AudioSystem::Get().Play2D(clip, EAudioBusId::SFX, 0.8f);
             if (!playResult.bSuccess)
             {
-                ME_CORE_ERROR("AudioSmokeTest: Play2D failed.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: Play2D failed.");
                 return false;
             }
 
             if (backend.GetCreateVoiceCount() == 0)
             {
-                ME_CORE_ERROR("AudioSmokeTest: backend did not create a voice.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: backend did not create a voice.");
                 return false;
             }
 
@@ -101,19 +101,19 @@ namespace minEngine
             const MockAudioBackend::VoiceRecord* voice = backend.GetVoiceRecord(backendHandle);
             if (voice == nullptr || !voice->bPlaying)
             {
-                ME_CORE_ERROR("AudioSmokeTest: voice is not playing.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: voice is not playing.");
                 return false;
             }
 
             if (!AudioSystem::Get().StopVoice(playResult.Voice))
             {
-                ME_CORE_ERROR("AudioSmokeTest: StopVoice failed.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: StopVoice failed.");
                 return false;
             }
 
             if (backend.GetDestroyVoiceCount() == 0)
             {
-                ME_CORE_ERROR("AudioSmokeTest: backend did not destroy voice.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: backend did not destroy voice.");
                 return false;
             }
 
@@ -127,14 +127,14 @@ namespace minEngine
             const AudioPlayResult playResult = AudioSystem::Get().Play2D(clip);
             if (!playResult.bSuccess)
             {
-                ME_CORE_ERROR("AudioSmokeTest: bus mute play failed.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: bus mute play failed.");
                 return false;
             }
 
             const MockAudioBackend::VoiceRecord* voice = backend.GetVoiceRecord(BackendVoiceHandle{0});
             if (voice == nullptr || voice->Volume != 0.0f)
             {
-                ME_CORE_ERROR("AudioSmokeTest: muted bus did not zero effective gain.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: muted bus did not zero effective gain.");
                 return false;
             }
 
@@ -148,7 +148,7 @@ namespace minEngine
             const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("audio-smoke");
             if (!scene)
             {
-                ME_CORE_ERROR("AudioSmokeTest: failed to create scene.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: failed to create scene.");
                 return false;
             }
 
@@ -159,14 +159,14 @@ namespace minEngine
 
             if (!audioComponent->IsPlaying())
             {
-                ME_CORE_ERROR("AudioSmokeTest: AudioComponent did not start playing.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: AudioComponent did not start playing.");
                 return false;
             }
 
             audioComponent->Stop();
             if (audioComponent->IsPlaying())
             {
-                ME_CORE_ERROR("AudioSmokeTest: AudioComponent did not stop.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: AudioComponent did not stop.");
                 return false;
             }
 
@@ -176,7 +176,7 @@ namespace minEngine
             SceneManager::Get().UnloadActiveScene();
             if (AudioSystem::Get().GetActiveVoiceCount() != 0)
             {
-                ME_CORE_ERROR("AudioSmokeTest: voices remained after scene unload.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: voices remained after scene unload.");
                 return false;
             }
 
@@ -196,20 +196,20 @@ namespace minEngine
                 spatial);
             if (!playResult.bSuccess)
             {
-                ME_CORE_ERROR("AudioSmokeTest: Play3D failed.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: Play3D failed.");
                 return false;
             }
 
             const MockAudioBackend::VoiceRecord* voice = backend.GetVoiceRecord(BackendVoiceHandle{0});
             if (voice == nullptr || !voice->bSpatializationEnabled)
             {
-                ME_CORE_ERROR("AudioSmokeTest: 3D voice spatialization was not enabled.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: 3D voice spatialization was not enabled.");
                 return false;
             }
 
             if (voice->Position.x != 10.0f)
             {
-                ME_CORE_ERROR("AudioSmokeTest: 3D voice position was not set.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: 3D voice position was not set.");
                 return false;
             }
 
@@ -222,7 +222,7 @@ namespace minEngine
             const std::shared_ptr<Scene> editorScene = SceneManager::Get().CreateNewScene("editor-audio-pie");
             if (!editorScene)
             {
-                ME_CORE_ERROR("AudioSmokeTest: failed to create editor scene.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: failed to create editor scene.");
                 return false;
             }
 
@@ -235,7 +235,7 @@ namespace minEngine
 
             if (!editorAudio->IsPlaying())
             {
-                ME_CORE_ERROR("AudioSmokeTest: editor audio did not start before PIE.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: editor audio did not start before PIE.");
                 return false;
             }
 
@@ -244,7 +244,7 @@ namespace minEngine
             const std::shared_ptr<Scene> pieScene = SceneManager::Get().CreateNewScene("pie-audio");
             if (!pieScene)
             {
-                ME_CORE_ERROR("AudioSmokeTest: failed to create PIE scene.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: failed to create PIE scene.");
                 return false;
             }
 
@@ -254,14 +254,14 @@ namespace minEngine
 
             if (editorAudio->IsPlaying())
             {
-                ME_CORE_ERROR("AudioSmokeTest: editor audio still playing after OnBeginPIE.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: editor audio still playing after OnBeginPIE.");
                 return false;
             }
 
             editorAudio->Play();
             if (editorAudio->IsPlaying())
             {
-                ME_CORE_ERROR("AudioSmokeTest: editor audio started during PIE.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: editor audio started during PIE.");
                 return false;
             }
 
@@ -272,13 +272,13 @@ namespace minEngine
 
             if (!pieAudio->IsPlaying())
             {
-                ME_CORE_ERROR("AudioSmokeTest: PIE audio did not start during PIE.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: PIE audio did not start during PIE.");
                 return false;
             }
 
             if (backend.GetCreateVoiceCount() <= voicesBeforePie)
             {
-                ME_CORE_ERROR("AudioSmokeTest: PIE audio did not create a new voice.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: PIE audio did not create a new voice.");
                 return false;
             }
 
@@ -288,7 +288,7 @@ namespace minEngine
             editorAudio->Play();
             if (!editorAudio->IsPlaying())
             {
-                ME_CORE_ERROR("AudioSmokeTest: editor audio did not resume after PIE.");
+                ME_LOG(LogTest, Error, "AudioSmokeTest: editor audio did not resume after PIE.");
                 return false;
             }
 
@@ -304,7 +304,7 @@ namespace minEngine
         MockAudioBackend* backend = scope.GetBackend();
         if (backend == nullptr)
         {
-            ME_CORE_ERROR("AudioSmokeTest: mock backend missing.");
+            ME_LOG(LogTest, Error, "AudioSmokeTest: mock backend missing.");
             return false;
         }
 

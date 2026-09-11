@@ -1300,7 +1300,7 @@ namespace minEngine
         RenderCamera* mainCamera = camera;
         if (!mainCamera)
         {
-            ME_CORE_ERROR("Main camera is not available when building directional shadow draw commands");
+            ME_LOG(LogRender, Error, "Main camera is not available when building directional shadow draw commands");
             return result;
         }
         float nearPlane = mainCamera->m_zNear;
@@ -1559,7 +1559,7 @@ namespace minEngine
             const AABB& meshAABB = command.m_BoundingBox;
             if (!meshAABB.IsValid())
             {
-                ME_CORE_WARN("Invalid mesh AABB for shadow caster, skipping it in cascade Z expansion");
+                ME_LOG(LogRender, Warn, "Invalid mesh AABB for shadow caster, skipping it in cascade Z expansion");
                 continue;
             }
 

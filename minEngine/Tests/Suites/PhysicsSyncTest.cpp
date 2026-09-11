@@ -96,7 +96,7 @@ namespace minEngine
             std::shared_ptr<SceneComponent> dynamicRoot;
             if (!CreateSceneWithFloorAndDynamic(dynamicRigidBody, dynamicRoot))
             {
-                ME_CORE_ERROR("PhysicsSyncTest: failed to create scene for reset teleport.");
+                ME_LOG(LogTest, Error, "PhysicsSyncTest: failed to create scene for reset teleport.");
                 return false;
             }
 
@@ -113,14 +113,14 @@ namespace minEngine
             const float heightAfterTeleport = dynamicRoot->GetPosition().y;
             if (!(heightAfterTeleport > heightBeforeTeleport && heightAfterTeleport > 14.5f && heightAfterTeleport <= 15.05f))
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsSyncTest: reset teleport did not reseed height (before={}, after={}).",
                     heightBeforeTeleport,
                     heightAfterTeleport);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsSyncTest: reset teleport reseeded height to {}.", heightAfterTeleport);
+            ME_LOG(LogTest, Info, "PhysicsSyncTest: reset teleport reseeded height to {}.", heightAfterTeleport);
             return true;
         }
 
@@ -132,7 +132,7 @@ namespace minEngine
             std::shared_ptr<SceneComponent> dynamicRoot;
             if (!CreateSceneWithFloorAndDynamic(dynamicRigidBody, dynamicRoot))
             {
-                ME_CORE_ERROR("PhysicsSyncTest: failed to create scene for simulate off.");
+                ME_LOG(LogTest, Error, "PhysicsSyncTest: failed to create scene for simulate off.");
                 return false;
             }
 
@@ -148,14 +148,14 @@ namespace minEngine
             const float finalHeight = dynamicRoot->GetPosition().y;
             if (std::fabs(finalHeight - initialHeight) > 0.01f)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsSyncTest: simulate off allowed movement (initial={}, final={}).",
                     initialHeight,
                     finalHeight);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsSyncTest: simulate off held height at {}.", finalHeight);
+            ME_LOG(LogTest, Info, "PhysicsSyncTest: simulate off held height at {}.", finalHeight);
             return true;
         }
 
@@ -167,7 +167,7 @@ namespace minEngine
             std::shared_ptr<SceneComponent> dynamicRoot;
             if (!CreateSceneWithFloorAndDynamic(dynamicRigidBody, dynamicRoot))
             {
-                ME_CORE_ERROR("PhysicsSyncTest: failed to create scene for simulate on.");
+                ME_LOG(LogTest, Error, "PhysicsSyncTest: failed to create scene for simulate on.");
                 return false;
             }
 
@@ -188,13 +188,13 @@ namespace minEngine
             const float finalHeight = dynamicRoot->GetPosition().y;
             if (!(finalHeight < 10.0f && finalHeight > 0.5f))
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsSyncTest: simulate on after off produced unexpected height {}.",
                     finalHeight);
                 return false;
             }
 
-            ME_CORE_INFO("PhysicsSyncTest: simulate on after off fell to {}.", finalHeight);
+            ME_LOG(LogTest, Info, "PhysicsSyncTest: simulate on after off fell to {}.", finalHeight);
             return true;
         }
 
@@ -206,7 +206,7 @@ namespace minEngine
             std::shared_ptr<SceneComponent> dynamicRoot;
             if (!CreateSceneWithFloorAndDynamic(dynamicRigidBody, dynamicRoot))
             {
-                ME_CORE_ERROR("PhysicsSyncTest: failed to create scene for teleport preserve velocity.");
+                ME_LOG(LogTest, Error, "PhysicsSyncTest: failed to create scene for teleport preserve velocity.");
                 return false;
             }
 
@@ -233,14 +233,14 @@ namespace minEngine
 
             if (preserveHeightAfterOneStep >= resetHeightAfterOneStep)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "PhysicsSyncTest: TeleportPhysics did not preserve fall speed (resetStep={}, preserveStep={}).",
                     resetHeightAfterOneStep,
                     preserveHeightAfterOneStep);
                 return false;
             }
 
-            ME_CORE_INFO(
+            ME_LOG(LogTest, Info, 
                 "PhysicsSyncTest: TeleportPhysics preserved velocity (resetStep={}, preserveStep={}).",
                 resetHeightAfterOneStep,
                 preserveHeightAfterOneStep);

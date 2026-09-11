@@ -319,7 +319,7 @@ namespace minEngine::Serialization
             if (!ResolvePendingObjectRef(pendingRef, resolvedSharedPtr, resolvedRawPtr, resolveError))
             {
                 remainingRefs.push_back(pendingRef);
-                ME_CORE_WARN("Pending object reference unresolved. path='{}', guid='{}', reason='{}'",
+                ME_LOG(LogSerialization, Warn, "Pending object reference unresolved. path='{}', guid='{}', reason='{}'",
                              pendingRef.fieldPath,
                              pendingRef.refGuid.ToString(),
                              resolveError);
@@ -336,7 +336,7 @@ namespace minEngine::Serialization
                     if (!AssignProperty(pendingRef.ownerObjectPtr, *pendingRef.property, &rawValue))
                     {
                         remainingRefs.push_back(pendingRef);
-                        ME_CORE_WARN("Pending object reference AssignProperty failed. path='{}', guid='{}'",
+                        ME_LOG(LogSerialization, Warn, "Pending object reference AssignProperty failed. path='{}', guid='{}'",
                                      pendingRef.fieldPath,
                                      pendingRef.refGuid.ToString());
                         continue;
@@ -354,7 +354,7 @@ namespace minEngine::Serialization
                 || !pendingRef.expectedClass->SetSharedPtr(resolvedSharedPtr, pendingRef.ptrToPtr))
             {
                 remainingRefs.push_back(pendingRef);
-                ME_CORE_WARN("Pending object reference assignment failed. path='{}', guid='{}'",
+                ME_LOG(LogSerialization, Warn, "Pending object reference assignment failed. path='{}', guid='{}'",
                              pendingRef.fieldPath,
                              pendingRef.refGuid.ToString());
                 continue;
@@ -365,7 +365,7 @@ namespace minEngine::Serialization
 
         unresolvedRefs = std::move(remainingRefs);
 
-        ME_CORE_INFO("Pending object reference resolve pass finished. resolved={}, unresolved={}",
+        ME_LOG(LogSerialization, Info, "Pending object reference resolve pass finished. resolved={}, unresolved={}",
                      resolvedCount,
                      unresolvedRefs.size());
 
@@ -858,7 +858,7 @@ namespace minEngine::Serialization
             {
                 if (!options.strictTypeCheck)
                 {
-                    ME_CORE_WARN(
+                    ME_LOG(LogSerialization, Warn, 
                         "Deserialize primitive skipped (type mismatch / codec fail). path='{}', type='{}'",
                         path,
                         primitive->primitiveTypeName);

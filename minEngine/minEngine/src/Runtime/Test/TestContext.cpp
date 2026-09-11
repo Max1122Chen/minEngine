@@ -25,7 +25,7 @@ namespace minEngine
             m_PathsLoaded = PathRegistry::Get().LoadEngineConfiguration(m_CommandLine, m_EngineConfig);
             if (!m_PathsLoaded)
             {
-                ME_CORE_WARN(
+                ME_LOG(LogTest, Warn, 
                     "TestRunner: EngineConfig not loaded; path-dependent suites may warn or skip checks.");
             }
         }

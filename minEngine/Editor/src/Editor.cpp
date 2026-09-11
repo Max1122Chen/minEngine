@@ -39,15 +39,15 @@ namespace minEngine
     {
         if (!commandLine.ProjectDescriptorPath.has_value())
         {
-            ME_CORE_ERROR("Editor requires a project descriptor path.");
-            ME_CORE_ERROR("Usage: Editor.exe --project <path-to-project.meproject> (see --help).");
+            ME_LOG(LogEditor, Error, "Editor requires a project descriptor path.");
+            ME_LOG(LogEditor, Error, "Usage: Editor.exe --project <path-to-project.meproject> (see --help).");
             return std::nullopt;
         }
 
         const std::filesystem::path descriptorPath = *commandLine.ProjectDescriptorPath;
         if (descriptorPath.extension() != ".meproject")
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogEditor, Error, 
                 "Project path '{}' is not a .meproject descriptor.",
                 descriptorPath.string());
             return std::nullopt;
@@ -55,7 +55,7 @@ namespace minEngine
 
         if (!std::filesystem::exists(descriptorPath))
         {
-            ME_CORE_ERROR("Project descriptor '{}' does not exist.", descriptorPath.string());
+            ME_LOG(LogEditor, Error, "Project descriptor '{}' does not exist.", descriptorPath.string());
             return std::nullopt;
         }
 
@@ -149,7 +149,7 @@ namespace minEngine
         ProjectOpenResult result = projectManager.OpenProject(projectPath);
         if (result.IsSuccess())
         {
-            ME_CORE_INFO(result.Message);
+            ME_LOG(LogEditor, Info, result.Message);
 
             ApplyCommandStackSettingsFromProject();
             ApplyAppearanceSettingsFromProject();
@@ -162,19 +162,19 @@ namespace minEngine
                 const std::string& defaultSceneName = projectCtx.Settings.EditorDefaultSceneName;
                 if (!m_SceneEditor.LoadScene(*this, defaultSceneName))
                 {
-                    ME_CORE_WARN(
+                    ME_LOG(LogEditor, Warn, 
                         "Failed to load editor default scene '{}'.",
                         defaultSceneName);
 
                     if (defaultSceneName != "default" &&
                         m_SceneEditor.LoadScene(*this, "default"))
                     {
-                        ME_CORE_INFO("Editor: loaded fallback scene 'default'.");
+                        ME_LOG(LogEditor, Info, "Editor: loaded fallback scene 'default'.");
                     }
                 }
                 else
                 {
-                    ME_CORE_INFO(
+                    ME_LOG(LogEditor, Info, 
                         "Editor default scene '{}' loaded successfully.",
                         defaultSceneName);
                 }
@@ -195,7 +195,7 @@ namespace minEngine
             return true;
         }
 
-        ME_CORE_ERROR(result.Message);
+        ME_LOG(LogEditor, Error, result.Message);
         return false;
     }
 
@@ -233,7 +233,7 @@ namespace minEngine
         GLFWwindow* windowHandle = static_cast<GLFWwindow*>(WindowSystem::Get().GetWindowHandle());
         if (windowHandle == nullptr)
         {
-            ME_CORE_ERROR("Editor: GLFW window handle is null.");
+            ME_LOG(LogEditor, Error, "Editor: GLFW window handle is null.");
             return false;
         }
 
@@ -243,7 +243,7 @@ namespace minEngine
 
         if (!m_ImGuiBackend.Initialize(api, windowHandle))
         {
-            ME_CORE_ERROR("Editor: ImGui backend initialization failed.");
+            ME_LOG(LogEditor, Error, "Editor: ImGui backend initialization failed.");
             return false;
         }
 
@@ -254,7 +254,7 @@ namespace minEngine
             auto* vulkanRhi = dynamic_cast<VulkanRHI*>(rhi);
             if (vulkanRhi == nullptr || !m_ImGuiBackend.InitializeVulkanRenderer(*vulkanRhi))
             {
-                ME_CORE_ERROR("Editor: ImGui Vulkan renderer initialization failed.");
+                ME_LOG(LogEditor, Error, "Editor: ImGui Vulkan renderer initialization failed.");
                 return false;
             }
         }
@@ -288,7 +288,7 @@ namespace minEngine
         if (RHIBackendSelection::IsVulkan())
         {
             RenderSystem::Get().GetRHI()->RHISetBackbufferClearColor(Vector3(0.1f, 0.1f, 0.1f));
-            ME_CORE_INFO("Editor: Vulkan full Editor path (ED-F01); scene renders to viewport RT.");
+            ME_LOG(LogEditor, Info, "Editor: Vulkan full Editor path (ED-F01); scene renders to viewport RT.");
         }
 
         ImGui::CreateContext();

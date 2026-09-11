@@ -59,13 +59,13 @@ namespace minEngine
 				}
 				else
 				{
-					ME_CORE_ERROR("[Serializer] Failed to access field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
+					ME_LOG(LogSerialization, Error, "[Serializer] Failed to access field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
                 }
             }
         }
 		else
 		{
-			ME_CORE_ERROR("[Serializer] Write is not implemented for type '{}'", typeid(T).name());
+			ME_LOG(LogSerialization, Error, "[Serializer] Write is not implemented for type '{}'", typeid(T).name());
 		}
         return result;
     }
@@ -86,7 +86,7 @@ namespace minEngine
 		const Reflection::TypeInfo* typeInfo = Reflection::GetTypeInfo<T>();
 		if (typeInfo == nullptr)
 		{
-			ME_CORE_ERROR("[Serializer] Read is not implemented for type '{}'", typeid(T).name());
+			ME_LOG(LogSerialization, Error, "[Serializer] Read is not implemented for type '{}'", typeid(T).name());
 			return false;
 		}
 
@@ -111,13 +111,13 @@ namespace minEngine
 			void* fieldValuePtr = fieldInfo.mutableAccessor(&outValue);
 			if (fieldValuePtr == nullptr)
 			{
-				ME_CORE_ERROR("[Serializer] Failed to access mutable field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
+				ME_LOG(LogSerialization, Error, "[Serializer] Failed to access mutable field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
 				return false;
 			}
 
 			if (!ReadByName(fieldInfo.fieldTypeName, (*context)[fieldInfo.fieldName], fieldValuePtr))
 			{
-				ME_CORE_ERROR("[Serializer] Failed to deserialize field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
+				ME_LOG(LogSerialization, Error, "[Serializer] Failed to deserialize field '{}' of type '{}'", fieldInfo.fieldName, typeInfo->typeName);
 				return false;
 			}
 		}

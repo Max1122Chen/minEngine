@@ -29,7 +29,7 @@ namespace minEngine
         std::string error;
         if (!m_Graph->Validate(&error))
         {
-            ME_CORE_ERROR("AnimationGraphInstance::SetGraph rejected: {}", error);
+            ME_LOG(LogAnimation, Error, "AnimationGraphInstance::SetGraph rejected: {}", error);
             m_Graph.reset();
             return;
         }
@@ -37,7 +37,7 @@ namespace minEngine
         ParameterLayout layout;
         if (!ParameterLayout::Compile(m_Graph->GetSchema(), layout, &error))
         {
-            ME_CORE_ERROR("AnimationGraphInstance::SetGraph layout compile failed: {}", error);
+            ME_LOG(LogAnimation, Error, "AnimationGraphInstance::SetGraph layout compile failed: {}", error);
             m_Graph.reset();
             return;
         }

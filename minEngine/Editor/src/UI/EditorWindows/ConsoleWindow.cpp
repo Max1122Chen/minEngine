@@ -3,8 +3,11 @@
 #include "UI/CommandConsole/CommandConsoleStyle.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cfloat>
+#include <cstdio>
 #include <cstring>
+#include <ctime>
 
 namespace minEngine
 {
@@ -124,7 +127,7 @@ namespace minEngine
                     "Source",
                     {
                         {"Core", &m_ShowCore},
-                        {"Client", &m_ShowClient},
+                        {"App", &m_ShowClient},
                     },
                 },
                 {
@@ -135,7 +138,7 @@ namespace minEngine
                         {"Info", &m_ShowInfo},
                         {"Warn", &m_ShowWarn},
                         {"Error", &m_ShowError},
-                        {"Critical", &m_ShowCritical},
+                        {"Fatal", &m_ShowFatal},
                     },
                 },
             };
@@ -150,7 +153,7 @@ namespace minEngine
         ImGui::InputTextWithHint("##ConsoleSearch", "Search message...", m_SearchText, sizeof(m_SearchText));
         ImGui::Separator();
 
-        const std::vector<LogConsoleEntry> liveEntries = LogConsoleStorage::Snapshot();
+        const std::vector<LogRecord> liveEntries = LogConsoleStorage::Snapshot();
         if (m_PauseStream)
         {
             if (!m_HasPausedSnapshot)
@@ -165,7 +168,7 @@ namespace minEngine
             m_HasPausedSnapshot = false;
         }
 
-        const std::vector<LogConsoleEntry>& entries = m_PauseStream ? m_PausedEntries : liveEntries;
+        const std::vector<LogRecord>& entries = m_PauseStream ? m_PausedEntries : liveEntries;
 
         std::string clipboardText;
         int visibleCount = 0;
@@ -173,7 +176,7 @@ namespace minEngine
         ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
         const bool wasAtBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f);
         int rowIndex = 0;
-        for (const LogConsoleEntry& entry : entries)
+        for (const LogRecord& entry : entries)
         {
             if (!PassFilter(entry))
             {
@@ -181,17 +184,9 @@ namespace minEngine
             }
             ++visibleCount;
 
-            const char* source = "UNKNOWN";
-            if (entry.source == LogSource::Core)
-            {
-                source = "CORE";
-            }
-            else if (entry.source == LogSource::Client)
-            {
-                source = "CLIENT";
-            }
-
-            const char* level = LogLevel::ToString(entry.level);
+            const std::string timestamp = FormatTimestamp(entry);
+            const char* channel = entry.GetChannelName();
+            const char* level = LogChannelBase::SeverityToString(entry.severity);
 
             {
                 EditorThemeScope rowTheme =
@@ -199,10 +194,10 @@ namespace minEngine
                 ImGui::PushID(rowIndex++);
                 ImGui::Selectable("##ConsoleRow", false, ImGuiSelectableFlags_SpanAllColumns);
                 ImGui::SameLine(0.0f, 6.0f);
-                ImGui::TextColored(GetLevelColor(entry.level),
+                ImGui::TextColored(GetLevelColor(entry.severity),
                                    "[%s] [%s] [%s] %s",
-                                   entry.timestamp.c_str(),
-                                   source,
+                                   timestamp.c_str(),
+                                   channel,
                                    level,
                                    entry.message.c_str());
                 ImGui::PopID();
@@ -211,9 +206,9 @@ namespace minEngine
             if (requestCopyVisible)
             {
                 clipboardText += "[";
-                clipboardText += entry.timestamp;
+                clipboardText += timestamp;
                 clipboardText += "] [";
-                clipboardText += source;
+                clipboardText += channel;
                 clipboardText += "] [";
                 clipboardText += level;
                 clipboardText += "] ";
@@ -309,19 +304,19 @@ namespace minEngine
         m_CommandPresenter.DrawInputAndHandleKeys(m_Context, style);
     }
 
-    bool ConsoleWindow::PassFilter(const LogConsoleEntry& entry) const
+    bool ConsoleWindow::PassFilter(const LogRecord& entry) const
     {
-        if (entry.source == LogSource::Core && !m_ShowCore)
+        const char* channelName = entry.GetChannelName();
+        if (std::strcmp(channelName, "Core") == 0 && !m_ShowCore)
+        {
+            return false;
+        }
+        if (std::strcmp(channelName, "App") == 0 && !m_ShowClient)
         {
             return false;
         }
 
-        if (entry.source == LogSource::Client && !m_ShowClient)
-        {
-            return false;
-        }
-
-        if (!PassLevelFilter(entry.level))
+        if (!PassLevelFilter(entry.severity))
         {
             return false;
         }
@@ -334,16 +329,16 @@ namespace minEngine
         return ContainsIgnoreCase(entry.message, m_SearchText);
     }
 
-    bool ConsoleWindow::PassLevelFilter(LogLevel::Level level) const
+    bool ConsoleWindow::PassLevelFilter(LogSeverity severity) const
     {
-        switch (level)
+        switch (severity)
         {
-            case LogLevel::Level::Trace: return m_ShowTrace;
-            case LogLevel::Level::Debug: return m_ShowDebug;
-            case LogLevel::Level::Info: return m_ShowInfo;
-            case LogLevel::Level::Warn: return m_ShowWarn;
-            case LogLevel::Level::Error: return m_ShowError;
-            case LogLevel::Level::Critical: return m_ShowCritical;
+            case LogSeverity::Trace: return m_ShowTrace;
+            case LogSeverity::Debug: return m_ShowDebug;
+            case LogSeverity::Info: return m_ShowInfo;
+            case LogSeverity::Warn: return m_ShowWarn;
+            case LogSeverity::Error: return m_ShowError;
+            case LogSeverity::Fatal: return m_ShowFatal;
             default: return true;
         }
     }
@@ -365,23 +360,37 @@ namespace minEngine
         return it != text.end();
     }
 
-    ImVec4 ConsoleWindow::GetLevelColor(LogLevel::Level level) const
+    std::string ConsoleWindow::FormatTimestamp(const LogRecord& entry)
+    {
+        const std::time_t tt = std::chrono::system_clock::to_time_t(entry.timestamp);
+        std::tm localTm = {};
+#ifdef _WIN32
+        localtime_s(&localTm, &tt);
+#else
+        localtime_r(&tt, &localTm);
+#endif
+        char buffer[16] = {};
+        std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", localTm.tm_hour, localTm.tm_min, localTm.tm_sec);
+        return std::string(buffer);
+    }
+
+    ImVec4 ConsoleWindow::GetLevelColor(LogSeverity severity) const
     {
         const EditorAppearance& appearance = m_Context.GetEditorAppearance();
         const EditorSemanticColors& colors = appearance.GetSemanticColors();
-        switch (level)
+        switch (severity)
         {
-            case LogLevel::Level::Trace:
+            case LogSeverity::Trace:
                 return appearance.GetDisplayColor(colors.LogTrace);
-            case LogLevel::Level::Debug:
+            case LogSeverity::Debug:
                 return appearance.GetDisplayColor(colors.LogDebug);
-            case LogLevel::Level::Info:
+            case LogSeverity::Info:
                 return appearance.GetDisplayColor(colors.LogInfo);
-            case LogLevel::Level::Warn:
+            case LogSeverity::Warn:
                 return appearance.GetDisplayColor(colors.LogWarn);
-            case LogLevel::Level::Error:
+            case LogSeverity::Error:
                 return appearance.GetDisplayColor(colors.LogError);
-            case LogLevel::Level::Critical:
+            case LogSeverity::Fatal:
                 return appearance.GetDisplayColor(colors.LogCritical);
             default:
                 return appearance.GetDisplayColor(appearance.GetActivePalette().TextPrimary);

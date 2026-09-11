@@ -690,7 +690,7 @@ namespace minEngine
 
         if (!ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogRender, Error, 
                 "ShaderCompiler: glslang failed ({} / {}): {}",
                 effectiveRequest.DebugName.empty() ? "<memory>" : effectiveRequest.DebugName,
                 ToTargetFlag(effectiveRequest.Target),
@@ -717,7 +717,7 @@ namespace minEngine
                 errorCode);
             if (errorCode)
             {
-                ME_CORE_WARN("ShaderCompiler: failed to write cache '{}'", cachePath.string());
+                ME_LOG(LogRender, Warn, "ShaderCompiler: failed to write cache '{}'", cachePath.string());
             }
         }
 
@@ -727,7 +727,7 @@ namespace minEngine
         result.Success = true;
         if (!effectiveRequest.DebugName.empty())
         {
-            ME_CORE_INFO(
+            ME_LOG(LogRender, Info, 
                 "ShaderCompiler: compiled {} -> {} ({} words)",
                 effectiveRequest.DebugName,
                 ToTargetFlag(effectiveRequest.Target),

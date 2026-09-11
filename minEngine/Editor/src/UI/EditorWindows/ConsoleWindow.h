@@ -5,6 +5,7 @@
 #include "imgui.h"
 
 #include "Runtime/Core/Log/LogConsole.h"
+#include "Runtime/Core/Log/LogRecord.h"
 
 #include "UI/Widgets/MultiSelectFilterDropdown.h"
 #include "UI/CommandConsole/CommandConsolePresenter.h"
@@ -41,15 +42,17 @@ namespace minEngine
         void DrawCommandTab();
         float GetCommandModeMinWindowHeight() const;
 
-        bool PassFilter(const LogConsoleEntry& entry) const;
-        bool PassLevelFilter(LogLevel::Level level) const;
+        bool PassFilter(const LogRecord& entry) const;
+        bool PassLevelFilter(LogSeverity severity) const;
         static bool ContainsIgnoreCase(const std::string& text, const char* keyword);
-        ImVec4 GetLevelColor(LogLevel::Level level) const;
+        static std::string FormatTimestamp(const LogRecord& entry);
+        ImVec4 GetLevelColor(LogSeverity severity) const;
 
         const std::string m_Id = "console";
         const std::string m_Title = "Console";
         ConsoleTab m_ActiveTab = ConsoleTab::Output;
 
+        // Minimal S00 mapping: Core/App checkboxes; other channels always shown.
         bool m_ShowCore = true;
         bool m_ShowClient = true;
         bool m_ShowTrace = true;
@@ -57,12 +60,12 @@ namespace minEngine
         bool m_ShowInfo = true;
         bool m_ShowWarn = true;
         bool m_ShowError = true;
-        bool m_ShowCritical = true;
+        bool m_ShowFatal = true;
         bool m_AutoScroll = true;
         bool m_PauseStream = false;
         bool m_LastIsPlaying = false;
         bool m_HasPausedSnapshot = false;
-        std::vector<LogConsoleEntry> m_PausedEntries;
+        std::vector<LogRecord> m_PausedEntries;
         char m_SearchText[128] = {};
 
         CommandConsolePresenter m_CommandPresenter;

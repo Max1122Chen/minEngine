@@ -54,7 +54,7 @@ namespace minEngine
                 return true;
             }
 
-            ME_CORE_ERROR(
+            ME_LOG(LogTest, Error, 
                 "AssetManagerTest: failed to load engine configuration. "
                 "Run from build bin with EngineConfig.meconfig nearby or pass --engine-root=.");
             return false;
@@ -110,7 +110,7 @@ namespace minEngine
             const std::filesystem::path sourcePath = project.GetEngineCubeSource();
             if (!std::filesystem::exists(sourcePath))
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "AssetManagerTest: engine cube source missing at '{}'.",
                     sourcePath.string());
                 return {};
@@ -128,7 +128,7 @@ namespace minEngine
                 copyError);
             if (copyError)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "AssetManagerTest: failed to copy test mesh: {}",
                     copyError.message());
                 return {};
@@ -137,7 +137,7 @@ namespace minEngine
             const AssetMeta meta = assetManager.RegisterAsset(destFile.string(), "StaticMesh");
             if (meta.AssetPath.empty())
             {
-                ME_CORE_ERROR("AssetManagerTest: RegisterAsset failed for test mesh.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: RegisterAsset failed for test mesh.");
                 return {};
             }
 
@@ -159,7 +159,7 @@ namespace minEngine
             const AssetMeta* metaBefore = assetManager.FindAssetMetaByPath(relativePath);
             if (metaBefore == nullptr)
             {
-                ME_CORE_ERROR("AssetManagerTest: imported mesh not registered.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: imported mesh not registered.");
                 return false;
             }
 
@@ -178,7 +178,7 @@ namespace minEngine
             std::string deleteError;
             if (!assetManager.DeleteAsset(relativePath, deleteError))
             {
-                ME_CORE_ERROR("AssetManagerTest: DeleteAsset failed: {}", deleteError);
+                ME_LOG(LogTest, Error, "AssetManagerTest: DeleteAsset failed: {}", deleteError);
                 assetManager.Unsubscribe(subscriptionId);
                 return false;
             }
@@ -187,14 +187,14 @@ namespace minEngine
 
             if (!sawUnregistered)
             {
-                ME_CORE_ERROR("AssetManagerTest: expected Unregistered event.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: expected Unregistered event.");
                 return false;
             }
 
             if (assetManager.FindAssetMetaByPath(relativePath) != nullptr ||
                 assetManager.FindAssetMetaByGuid(guid) != nullptr)
             {
-                ME_CORE_ERROR("AssetManagerTest: registry still contains deleted asset.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: registry still contains deleted asset.");
                 return false;
             }
 
@@ -203,7 +203,7 @@ namespace minEngine
             const std::filesystem::path metaPath = absolutePath.string() + ".meta";
             if (std::filesystem::exists(absolutePath) || std::filesystem::exists(metaPath))
             {
-                ME_CORE_ERROR("AssetManagerTest: deleted asset files still on disk.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: deleted asset files still on disk.");
                 return false;
             }
 
@@ -245,7 +245,7 @@ namespace minEngine
             std::string moveError;
             if (!assetManager.MoveAsset(relativePath, movedPath, moveError))
             {
-                ME_CORE_ERROR("AssetManagerTest: MoveAsset failed: {}", moveError);
+                ME_LOG(LogTest, Error, "AssetManagerTest: MoveAsset failed: {}", moveError);
                 assetManager.Unsubscribe(subscriptionId);
                 return false;
             }
@@ -254,14 +254,14 @@ namespace minEngine
 
             if (!sawMoved)
             {
-                ME_CORE_ERROR("AssetManagerTest: expected Moved event.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: expected Moved event.");
                 return false;
             }
 
             const AssetMeta* metaAfter = assetManager.FindAssetMetaByGuid(guid);
             if (metaAfter == nullptr || metaAfter->AssetPath != movedPath)
             {
-                ME_CORE_ERROR("AssetManagerTest: GUID lookup failed after move.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: GUID lookup failed after move.");
                 return false;
             }
 
@@ -269,14 +269,14 @@ namespace minEngine
             std::string renameError;
             if (!assetManager.RenameAsset(movedPath, "p2_move_renamed.obj", renameError))
             {
-                ME_CORE_ERROR("AssetManagerTest: RenameAsset failed: {}", renameError);
+                ME_LOG(LogTest, Error, "AssetManagerTest: RenameAsset failed: {}", renameError);
                 return false;
             }
 
             if (assetManager.FindAssetMetaByGuid(guid) == nullptr ||
                 assetManager.FindAssetMetaByGuid(guid)->AssetPath != renamedPath)
             {
-                ME_CORE_ERROR("AssetManagerTest: GUID lookup failed after rename.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: GUID lookup failed after rename.");
                 return false;
             }
 
@@ -298,13 +298,13 @@ namespace minEngine
             std::string moveError;
             if (assetManager.MoveAsset(relativePath, "_P2UnitTest/p2_ext_guard.txt", moveError))
             {
-                ME_CORE_ERROR("AssetManagerTest: extension change move should fail.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: extension change move should fail.");
                 return false;
             }
 
             if (moveError.empty())
             {
-                ME_CORE_ERROR("AssetManagerTest: expected error message for extension change.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: expected error message for extension change.");
                 return false;
             }
 
@@ -330,25 +330,25 @@ namespace minEngine
             std::string unregisterError;
             if (!assetManager.UnregisterAsset(relativePath, unregisterError))
             {
-                ME_CORE_ERROR("AssetManagerTest: UnregisterAsset failed: {}", unregisterError);
+                ME_LOG(LogTest, Error, "AssetManagerTest: UnregisterAsset failed: {}", unregisterError);
                 return false;
             }
 
             if (assetManager.FindAssetMetaByPath(relativePath) != nullptr)
             {
-                ME_CORE_ERROR("AssetManagerTest: asset still registered after UnregisterAsset.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: asset still registered after UnregisterAsset.");
                 return false;
             }
 
             if (!std::filesystem::exists(absolutePath))
             {
-                ME_CORE_ERROR("AssetManagerTest: UnregisterAsset should not delete the asset file.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: UnregisterAsset should not delete the asset file.");
                 return false;
             }
 
             if (std::filesystem::exists(metaPath))
             {
-                ME_CORE_ERROR("AssetManagerTest: UnregisterAsset should remove the meta file.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: UnregisterAsset should remove the meta file.");
                 return false;
             }
 
@@ -380,7 +380,7 @@ namespace minEngine
 
             if (assetManager.FindAssetMetaByPath(relativePath) != nullptr)
             {
-                ME_CORE_ERROR("AssetManagerTest: registry not empty after ClearProjectRegistry.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: registry not empty after ClearProjectRegistry.");
                 assetManager.Unsubscribe(subscriptionId);
                 return false;
             }
@@ -395,7 +395,7 @@ namespace minEngine
                 copyError);
             if (copyError)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "AssetManagerTest: failed to stage mesh after clear: {}",
                     copyError.message());
                 assetManager.Unsubscribe(subscriptionId);
@@ -406,7 +406,7 @@ namespace minEngine
                 assetManager.RegisterAsset(reimportFile.string(), "StaticMesh");
             if (reimportMeta.AssetPath.empty())
             {
-                ME_CORE_ERROR("AssetManagerTest: re-register after clear failed.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: re-register after clear failed.");
                 assetManager.Unsubscribe(subscriptionId);
                 return false;
             }
@@ -415,7 +415,7 @@ namespace minEngine
 
             if (!subscriberStillWorks)
             {
-                ME_CORE_ERROR("AssetManagerTest: subscriber was not invoked after clear.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: subscriber was not invoked after clear.");
                 return false;
             }
 
@@ -447,27 +447,27 @@ namespace minEngine
                 assetManager.RegisterAsset(sceneFile.string(), "Scene");
             if (sceneMeta.AssetPath.empty())
             {
-                ME_CORE_ERROR("AssetManagerTest: failed to register scene asset.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: failed to register scene asset.");
                 return false;
             }
 
             sceneManager.RegisterScene(sceneMeta.AssetName, sceneMeta.AssetPath);
             if (!sceneManager.IsSceneRegistered(sceneMeta.AssetName))
             {
-                ME_CORE_ERROR("AssetManagerTest: scene not registered in SceneManager.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: scene not registered in SceneManager.");
                 return false;
             }
 
             std::string deleteError;
             if (!assetManager.DeleteAsset(sceneMeta.AssetPath, deleteError))
             {
-                ME_CORE_ERROR("AssetManagerTest: scene DeleteAsset failed: {}", deleteError);
+                ME_LOG(LogTest, Error, "AssetManagerTest: scene DeleteAsset failed: {}", deleteError);
                 return false;
             }
 
             if (sceneManager.IsSceneRegistered(sceneMeta.AssetName))
             {
-                ME_CORE_ERROR("AssetManagerTest: scene still registered after delete.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: scene still registered after delete.");
                 return false;
             }
 
@@ -493,7 +493,7 @@ namespace minEngine
                 return false;
             }
 
-            ME_CORE_INFO("AssetManagerTest: smoke tests passed.");
+            ME_LOG(LogTest, Info, "AssetManagerTest: smoke tests passed.");
             return true;
         }
 
@@ -516,7 +516,7 @@ namespace minEngine
                 return false;
             }
 
-            ME_CORE_INFO("AssetManagerTest: full tests passed.");
+            ME_LOG(LogTest, Info, "AssetManagerTest: full tests passed.");
             return true;
         }
     }

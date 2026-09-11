@@ -27,7 +27,7 @@ namespace minEngine
             kPIECloneSerializerOptions);
         if (!serializeResult.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "SceneDuplicator: failed to serialize editor scene '{}'. {} (field: {})",
                 editorScene.GetSceneName(),
                 serializeResult.message,
@@ -59,7 +59,7 @@ namespace minEngine
 
         if (!deserializeResult.ok)
         {
-            ME_CORE_ERROR(
+            ME_LOG(LogCore, Error, 
                 "SceneDuplicator: failed to deserialize PIE scene from editor scene '{}'. {} (field: {})",
                 editorScene.GetSceneName(),
                 deserializeResult.message,
@@ -73,7 +73,7 @@ namespace minEngine
 
         if (!resolveResult.ok)
         {
-            ME_CORE_ERROR("SceneDuplicator: failed to resolve pending refs for PIE scene '{}'.", editorScene.GetSceneName());
+            ME_LOG(LogCore, Error, "SceneDuplicator: failed to resolve pending refs for PIE scene '{}'.", editorScene.GetSceneName());
             return nullptr;
         }
 

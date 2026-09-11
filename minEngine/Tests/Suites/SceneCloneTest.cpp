@@ -58,7 +58,7 @@ namespace minEngine
             const std::shared_ptr<Scene> editorScene = SceneManager::Get().CreateNewScene("scene-clone");
             if (!editorScene)
             {
-                ME_CORE_ERROR("SceneCloneTest: failed to create editor scene.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: failed to create editor scene.");
                 return false;
             }
 
@@ -70,7 +70,7 @@ namespace minEngine
             const std::shared_ptr<SceneComponent> childComponent = childObject->AddComponent<SceneComponent>();
             if (!childComponent->AttachToComponent(parentComponent.get(), AttachmentTransformRules::KeepRelativeTransform))
             {
-                ME_CORE_ERROR("SceneCloneTest: failed to attach child to parent.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: failed to attach child to parent.");
                 return false;
             }
 
@@ -81,13 +81,13 @@ namespace minEngine
             const std::shared_ptr<Scene> pieScene = SceneDuplicator::DuplicateForPIE(*editorScene, cloneContext);
             if (!pieScene)
             {
-                ME_CORE_ERROR("SceneCloneTest: DuplicateForPIE returned null.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: DuplicateForPIE returned null.");
                 return false;
             }
 
             if (pieScene->GetAllGameObjects().size() != editorScene->GetAllGameObjects().size())
             {
-                ME_CORE_ERROR("SceneCloneTest: game object count mismatch after clone.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: game object count mismatch after clone.");
                 return false;
             }
 
@@ -95,13 +95,13 @@ namespace minEngine
             const auto childIter = cloneContext.SourceToClonedGuid.find(editorChildGuid);
             if (parentIter == cloneContext.SourceToClonedGuid.end() || childIter == cloneContext.SourceToClonedGuid.end())
             {
-                ME_CORE_ERROR("SceneCloneTest: clone context missing component GUID mapping.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: clone context missing component GUID mapping.");
                 return false;
             }
 
             if (parentIter->second == editorParentGuid || childIter->second == editorChildGuid)
             {
-                ME_CORE_ERROR("SceneCloneTest: cloned GUIDs must differ from editor GUIDs.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: cloned GUIDs must differ from editor GUIDs.");
                 return false;
             }
 
@@ -135,19 +135,19 @@ namespace minEngine
 
             if (pieParent == nullptr || pieChild == nullptr)
             {
-                ME_CORE_ERROR("SceneCloneTest: failed to locate cloned components in PIE scene.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: failed to locate cloned components in PIE scene.");
                 return false;
             }
 
             if (pieChild->GetAttachParent() != pieParent)
             {
-                ME_CORE_ERROR("SceneCloneTest: attach parent was not remapped in PIE scene.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: attach parent was not remapped in PIE scene.");
                 return false;
             }
 
             if (pieParent->GetAttachChildren().size() != 1 || pieParent->GetAttachChildren()[0] != pieChild)
             {
-                ME_CORE_ERROR("SceneCloneTest: attach children were not rebuilt in PIE scene.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: attach children were not rebuilt in PIE scene.");
                 return false;
             }
 
@@ -165,7 +165,7 @@ namespace minEngine
             const std::shared_ptr<SceneComponent> childComponent = childObject->AddComponent<SceneComponent>();
             if (!childComponent->AttachToComponent(parentComponent.get(), AttachmentTransformRules::KeepRelativeTransform))
             {
-                ME_CORE_ERROR("SceneCloneTest: failed to attach child for serialization round-trip.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: failed to attach child for serialization round-trip.");
                 return false;
             }
 
@@ -175,7 +175,7 @@ namespace minEngine
                 buffer);
             if (!serializeResult.ok)
             {
-                ME_CORE_ERROR("SceneCloneTest: scene serialize failed.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: scene serialize failed.");
                 return false;
             }
 
@@ -190,7 +190,7 @@ namespace minEngine
                 deserializeRefs);
             if (!deserializeResult.ok)
             {
-                ME_CORE_ERROR("SceneCloneTest: scene deserialize failed.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: scene deserialize failed.");
                 return false;
             }
 
@@ -198,7 +198,7 @@ namespace minEngine
                 Serialization::Serializer::ResolvePendingObjectRefs(deserializeRefs);
             if (!resolveResult.ok)
             {
-                ME_CORE_ERROR("SceneCloneTest: scene deserialize resolve failed.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: scene deserialize resolve failed.");
                 return false;
             }
 
@@ -236,19 +236,19 @@ namespace minEngine
 
             if (loadedParent == nullptr || loadedChild == nullptr)
             {
-                ME_CORE_ERROR("SceneCloneTest: loaded scene missing attach components.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: loaded scene missing attach components.");
                 return false;
             }
 
             if (loadedChild->GetAttachParent() != loadedParent)
             {
-                ME_CORE_ERROR("SceneCloneTest: loaded scene attach parent mismatch.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: loaded scene attach parent mismatch.");
                 return false;
             }
 
             if (loadedParent->GetAttachChildren().size() != 1 || loadedParent->GetAttachChildren()[0] != loadedChild)
             {
-                ME_CORE_ERROR("SceneCloneTest: loaded scene attach children mismatch.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: loaded scene attach children mismatch.");
                 return false;
             }
 
@@ -289,7 +289,7 @@ namespace minEngine
                 std::ofstream output(tempScenePath);
                 if (!output.is_open())
                 {
-                    ME_CORE_ERROR("SceneCloneTest: failed to create temp legacy scene file.");
+                    ME_LOG(LogTest, Error, "SceneCloneTest: failed to create temp legacy scene file.");
                     return false;
                 }
                 output << legacySceneJson;
@@ -314,7 +314,7 @@ namespace minEngine
 
             if (!loadResult.ok)
             {
-                ME_CORE_ERROR(
+                ME_LOG(LogTest, Error, 
                     "SceneCloneTest: legacy scene without m_AttachParent failed to load: {} (field: {})",
                     loadResult.message,
                     loadResult.fieldPath);
@@ -324,7 +324,7 @@ namespace minEngine
             SceneManager::FinalizeLoadedScene(scene.get());
             if (scene->GetAllGameObjects().size() != 1)
             {
-                ME_CORE_ERROR("SceneCloneTest: legacy scene game object count mismatch.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: legacy scene game object count mismatch.");
                 return false;
             }
 
@@ -341,13 +341,13 @@ namespace minEngine
 
             if (sceneComponent == nullptr)
             {
-                ME_CORE_ERROR("SceneCloneTest: legacy scene scene component missing.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: legacy scene scene component missing.");
                 return false;
             }
 
             if (sceneComponent->GetAttachParent() != nullptr)
             {
-                ME_CORE_ERROR("SceneCloneTest: legacy scene attach parent should remain null.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: legacy scene attach parent should remain null.");
                 return false;
             }
 
@@ -361,7 +361,7 @@ namespace minEngine
             const std::shared_ptr<Scene> editorScene = SceneManager::Get().CreateNewScene("test");
             if (!editorScene)
             {
-                ME_CORE_ERROR("SceneCloneTest: failed to create physics-stack editor scene.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: failed to create physics-stack editor scene.");
                 return false;
             }
 
@@ -381,13 +381,13 @@ namespace minEngine
             const std::shared_ptr<Scene> pieScene = SceneDuplicator::DuplicateForPIE(*editorScene, cloneContext);
             if (!pieScene)
             {
-                ME_CORE_ERROR("SceneCloneTest: DuplicateForPIE failed on physics-stack scene.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: DuplicateForPIE failed on physics-stack scene.");
                 return false;
             }
 
             if (pieScene->GetAllGameObjects().size() != editorScene->GetAllGameObjects().size())
             {
-                ME_CORE_ERROR("SceneCloneTest: physics-stack scene game object count mismatch after PIE clone.");
+                ME_LOG(LogTest, Error, "SceneCloneTest: physics-stack scene game object count mismatch after PIE clone.");
                 return false;
             }
 

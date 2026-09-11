@@ -58,7 +58,7 @@ namespace minEngine
             EngineShaderUtils::EngineShaderPath("DebugDraw.frag"));
         if (m_Shader == nullptr || !m_Shader->IsValid())
         {
-            ME_CORE_ERROR("DebugDrawPass: failed to load DebugDraw shader.");
+            ME_LOG(LogRender, Error, "DebugDrawPass: failed to load DebugDraw shader.");
             return;
         }
 

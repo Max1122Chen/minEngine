@@ -1,38 +1,36 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-10（Draft：[ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md) 待评审）  
+Last updated: 2026-09-11（**Primary = Phase F / CORE-F18 Schema**）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
-> **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
-> **0.1.0 窗口：** 方向草案见 [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md)（**Draft** — 批准前勿当强制排期；长期轨仍看 Capability Roadmap）。  
-> **IDs:** 正式号以 [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) 为准；历史文件名 remap 见 Registry §Merge-wave。
+> **Agent:** Treat this file as the primary backlog.  
+> **0.1.0 窗口：** [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md)（**In Progress**）。  
+> **IDs:** [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md)。
 
 ---
 
 ## 当前焦点
 
-**无锁定 Primary。** 维护者正在评审 **Maximum 0.1.0** 迭代草案（FPS Demo + Prefab + Agent-friendly + Schema…）。
+**Primary：Phase F — Foundation（串行合入 `master` 后再 fan-out）**
 
-批准 Roadmap 后建议第一刀：**Phase F 地基**（Logger Channel → Schema/引擎版本 → Maximum 品牌名），**全部合入 `master` 后再** fan-out editor/prefab/lua/mcp/anim/ui。
+| 序 | ID | 标题 | Status | Design |
+|----|-----|------|--------|--------|
+| F1 | `CORE-F17` | LogChannel + LogRecord | **Done** | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) |
+| — | **`ED-F09`** | Editor Console ← LogRecord 过滤/展示 | **Planned**（可并行） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
+| F2 | **`CORE-F18`** | Schema + engine version | **Planned**（下一刀） | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
+| F3 | `WF-F03` | Maximum 产品显示名 | Planned | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
 
-### 0.1.0 执行模型（详见 Roadmap §3）
+**下一刀：** `CORE-F18` Design 充实 → In Progress → S00；`ED-F09` 可另轨打磨 Console 过滤。
+
+### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
 | Phase | 主题 |
 |-------|------|
-| **F** Foundation | Log channels · Schema/引擎版本 · Maximum 显示名 |
-| **P** Parallel | editor（Query/Verify）· prefab A · lua · mcp（跟 API）· anim/ui · core Profiler ·（可选）隔离 RT |
-| **D** Demo | FPS 竖切 + 0.1.0 打标；Prefab B 不挡门 |
+| **F** Foundation | **正在进行** — Log → Schema → Brand |
+| **P** Parallel | fan-out 待 F 合入后 |
+| **D** Demo | FPS + 0.1.0 tag |
 
-**Prefab：** A=Instantiate 必达倾向；B=Unity 式子编辑器依赖隔离 RT（防单 RDG 同尺寸串图），可后置。
-
-### 原候选（仍可作支线，不与 0.1.0 抢 Primary）
-
-| 选项 | 内容 | 说明 |
-|------|------|------|
-| **A. 动画加深** | ANIM-F03 收口；ANIM-F04/F05 | 服务 Demo 再拉 |
-| **B. Editor DX** | ED-F02 S03/S05 | 并入 Wave 5 按需 |
-| **C. Infra** | Schema / Prefab / Lifetime | **并入 0.1.0 Wave 1–2** |
-| **D. Render 债** | RND-F06 / Sort-Batch | 不挡 0.1.0 |
+**Prefab：** A=Instantiate；B=子编辑器依赖隔离 RT。
 
 ### 并行支线（不升主线）
 

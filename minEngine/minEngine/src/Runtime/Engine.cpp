@@ -77,7 +77,7 @@ namespace minEngine
 
     void Engine::Shutdown()
     {
-        ME_CORE_INFO("Engine Shutdown Started");
+        ME_LOG(LogCore, Info, "Engine Shutdown Started");
         ShutdownSystems();
         s_Instance = nullptr;
     }
@@ -131,13 +131,13 @@ namespace minEngine
         {
             for (const std::string& error : reflectionErrors)
             {
-                ME_CORE_ERROR(error);
+                ME_LOG(LogCore, Error, error);
             }
             ME_ASSERT(false, "Reflection System finalization failed. See previous errors for details.");
         }
         else
         {
-            ME_CORE_INFO("Reflection System finalized successfully.");
+            ME_LOG(LogCore, Info, "Reflection System finalized successfully.");
             Reflection::ReflectionSystem::Get().ClearErrors();
         }
     }
