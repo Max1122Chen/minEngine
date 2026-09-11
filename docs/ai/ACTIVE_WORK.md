@@ -1,25 +1,38 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-10（docs align：merge wave 后焦点清空，待选下一 Primary）  
+Last updated: 2026-09-10（Draft：[ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md) 待评审）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog. Do not infer mandatory tasks from `*_ROADMAP.md`, `*_PLAN.md`, or Snapshot/Archived docs unless the user points to them for the current task.  
+> **0.1.0 窗口：** 方向草案见 [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md)（**Draft** — 批准前勿当强制排期；长期轨仍看 Capability Roadmap）。  
 > **IDs:** 正式号以 [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) 为准；历史文件名 remap 见 Registry §Merge-wave。
 
 ---
 
 ## 当前焦点
 
-**无锁定 Primary。** 2026-09-10 多分支 merge wave 已合入 `master` 并 push；文档已与 Registry 对齐。下一阶段请维护者在下方候选中选定 **一条 Primary + 可选一条并行支线**。
+**无锁定 Primary。** 维护者正在评审 **Maximum 0.1.0** 迭代草案（FPS Demo + Prefab + Agent-friendly + Schema…）。
 
-### 候选 Primary（择一）
+批准 Roadmap 后建议第一刀：**Phase F 地基**（Logger Channel → Schema/引擎版本 → Maximum 品牌名），**全部合入 `master` 后再** fan-out editor/prefab/lua/mcp/anim/ui。
+
+### 0.1.0 执行模型（详见 Roadmap §3）
+
+| Phase | 主题 |
+|-------|------|
+| **F** Foundation | Log channels · Schema/引擎版本 · Maximum 显示名 |
+| **P** Parallel | editor（Query/Verify）· prefab A · lua · mcp（跟 API）· anim/ui · core Profiler ·（可选）隔离 RT |
+| **D** Demo | FPS 竖切 + 0.1.0 打标；Prefab B 不挡门 |
+
+**Prefab：** A=Instantiate 必达倾向；B=Unity 式子编辑器依赖隔离 RT（防单 RDG 同尺寸串图），可后置。
+
+### 原候选（仍可作支线，不与 0.1.0 抢 Primary）
 
 | 选项 | 内容 | 说明 |
 |------|------|------|
-| **A. 动画加深** | ANIM-F03 人型 smoke 收口 → Done；审批后做 **ANIM-F04** Blend Tree 1D；再立 **ANIM-F05** Nested SM Design | 机制向；勿上完整 AnimBP |
-| **B. Editor DX** | **ED-F02** 余量 S03 SkyBox / S05 Abstract+图标；可选将 **ED-F04** 正式标 Done（MVP 已收） | 开发体验；可短 sprint |
-| **C. Infra** | 新登记 ASSET Lifetime / 序列化加固（Capability M4/M5） | 需先 Registry + Design + Pre-flight |
-| **D. Render 债** | **RND-F06** 续作；或 Sort/Batch 新 Feature | 不挡体验轨 |
+| **A. 动画加深** | ANIM-F03 收口；ANIM-F04/F05 | 服务 Demo 再拉 |
+| **B. Editor DX** | ED-F02 S03/S05 | 并入 Wave 5 按需 |
+| **C. Infra** | Schema / Prefab / Lifetime | **并入 0.1.0 Wave 1–2** |
+| **D. Render 债** | RND-F06 / Sort-Batch | 不挡 0.1.0 |
 
 ### 并行支线（不升主线）
 

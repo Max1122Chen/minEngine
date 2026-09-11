@@ -10,7 +10,7 @@
 
 ## TL;DR
 
-CORE-F05 Play Mode MVP 已收口。**M1 动画垂直切片 + M2 2D + M3 UI MVP 已合入 `master`**（merge wave 2026-09-10）。下一阶段由维护者在 ACTIVE_WORK 候选中选定 Primary（动画加深 / Editor DX / Infra / Render 债）。Infra / Rendering / DX 可并行且不阻塞主线。Gameplay Framework 与 Networking 刻意延后为 Future Capability。排期服从设计哲学，不服从线性 TODO。
+CORE-F05 Play Mode MVP 已收口。**M1 动画垂直切片 + M2 2D + M3 UI MVP 已合入 `master`**（merge wave 2026-09-10）。**下一收口窗口：** [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md)（Draft）— Maximum 0.1.0 + FPS Demo + Prefab/Schema/Agent-friendly。Infra / Rendering / DX 可并行且不阻塞主线。完整 Gameplay Framework 与 Networking 见该 Roadmap §6（默认后置）。排期服从设计哲学，不服从线性 TODO。具体下一刀仍以 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 为准。
 
 ## Scope
 - **In:** 轨划分、优先级、Capability Milestone、前置条件、过度设计风险、延后项

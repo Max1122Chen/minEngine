@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-10（docs align post-merge）
+Last updated: 2026-09-10（0.1.0 Roadmap Draft）
+
+### 2026-09-10 - 0.1.0 Roadmap 修订：地基 fan-out + Prefab A/B
+- **采纳：** Phase F（Log+Schema+Brand）先合入再并行；editor 主攻世界 Query/Verify；mcp 跟 API；core Profiler。
+- **Prefab：** A=Instantiate；B=子编辑器依赖隔离 RT（单 Forward+单 RDG 同尺寸串图挡点）。
+- **Doc:** [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md) §3 重写。
+
+### 2026-09-10 - Draft: Maximum 0.1.0 Roadmap（FPS Demo + Agent-friendly）
+- **Doc:** [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md) — Waves 0–6；Prefab / Schema / Agent·MCP / Logger / Lua callbacks / Profiler / EditorSettings / Tab / Maximum 命名；Anim·UI 支线；Net·完整 AI Framework 后置。
+- **ACTIVE_WORK / Capability TL;DR:** 指向该 Draft；Feature ID **待批准后登记**。
+- **Next:** 维护者评审 → Status In Progress → 登记 CORE-F17… → Wave 1 Design。
 
 ### 2026-09-10 - Docs align: Registry / ACTIVE_WORK / Capability after merge wave
 - **Why:** Active Registry rows still showed ANIM/UI/RND-F16 as Planned；Next free IDs and ACTIVE_WORK still pointed at pre-merge feat/* focus.

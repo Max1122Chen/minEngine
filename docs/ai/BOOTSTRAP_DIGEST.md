@@ -4,7 +4,7 @@ Last updated: 2026-09-10
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` — do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** M1 Anim + M2 2D + M3 UI MVP on `master`. Next Primary **unset** — pick in ACTIVE_WORK (Anim deepen / ED-F02 / Infra / Render). IDs: [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md).
+**Snapshot:** M1 Anim + M2 2D + M3 UI MVP on `master`. **0.1.0 window (Draft):** [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md). Next Primary unset until that roadmap is approved. IDs: [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md).
 
 ---
 
