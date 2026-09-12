@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-12（**Phase F Done → 可 fan-out**）  
+Last updated: 2026-09-12（**Phase F Done · Primary → feat/editor worktree**）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,23 +11,23 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：Phase F — Foundation（串行合入 `master` 后再 fan-out）**
+**Primary：Phase P — `feat/editor`（worktree `minEngine-editor`）**
+
+Phase F（`CORE-F17` / `CORE-F18` / `WF-F03`）已合入 `master`。本轨建议主攻世界 **Query / Modify / Verify**；可并行短刀 `ED-F09` Console。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| F1 | `CORE-F17` | LogChannel + LogRecord | **Done** | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) |
-| — | **`ED-F09`** | Editor Console ← LogRecord 过滤/展示 | **Planned**（可并行） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| F2 | `CORE-F18` | EngineVersion + disk schema gate | **Done**（engine 0.0.9 / schema 1） | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
-| F3 | `WF-F03` | Maximum 产品显示名 | **Done** | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
+| F1–F3 | — | Foundation | **Done**（master） | Log / Schema / Maximum |
+| — | **`ED-F09`** | Editor Console ← LogRecord | **Planned**（可并行） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
 
-**下一刀：** Phase F 合入后 **fan-out**；或并行 `ED-F09` Console LogRecord UX。D8 数字「0.1.0」仍待 Phase D 打标。
+**下一刀：** 在 `D:/Dev/GitRepo/minEngine-editor` 定 Editor 控制面 Feature 登记/Design；旁路 Prefab A / Lua 另开 worktree。
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
 | Phase | 主题 |
 |-------|------|
-| **F** Foundation | **正在进行** — Log → Schema → Brand |
-| **P** Parallel | fan-out 待 F 合入后 |
+| **F** Foundation | **Done** — Log → Schema → Brand |
+| **P** Parallel | **进行中** — fan-out（editor 热轨） |
 | **D** Demo | FPS + 0.1.0 tag |
 
 **Prefab：** A=Instantiate；B=子编辑器依赖隔离 RT。
@@ -96,7 +96,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `D:/Dev/GitRepo/minEngine` | `master` | 主仓；merge 后默认工作区 |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | 可归档 |
-| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可归档；注意旧场景 `m_LightColor` 数组格式与主仓 LinearColor 不兼容 |
+| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | **Active** Phase P；已 FF 至 master（含 Maximum / F17–F18）；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
 
 `MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（主仓：`…/minEngine/minEngine/MyMEProject`）。
