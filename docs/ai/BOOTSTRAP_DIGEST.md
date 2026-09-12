@@ -75,7 +75,7 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 
 | What | Typical command |
 |------|-----------------|
-| Build Editor | `cmake --build minEngine/build --target Editor` |
+| Build Editor | `cmake --build minEngine/build --target Editor` → `bin/Maximum.exe` |
 | Build tests | `cmake --build minEngine/build --target minEngineTests` |
 | **Verify (smoke)** | `.\scripts\verify.ps1` from repo root |
 | Run tests | `minEngineTests.exe test smoke` from `minEngine/bin` |
@@ -85,12 +85,12 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) §7.
 
 | Command | Purpose |
 |---------|---------|
-| `Editor.exe --help` | Global options + `test` subcommand |
-| `Editor.exe test --help` | smoke / full / suite-id |
-| `Editor.exe test material-ir` | Material IR headless smoke (preferred) |
-| `Editor.exe --project <path.meproject>` | Open project (default editor mode) |
+| `Maximum.exe --help` | Global options + `test` subcommand |
+| `Maximum.exe test --help` | smoke / full / suite-id |
+| `Maximum.exe test material-ir` | Material IR headless smoke (preferred) |
+| `Maximum.exe --project <path.meproject>` | Open project (default editor mode) |
 
-Entry: `minEngineTests.exe` (`Tests/TestMain.cpp`) or `Editor.exe test …` (forwards to minEngineTests). No `--*-test` legacy flags.
+Entry: `minEngineTests.exe` (`Tests/TestMain.cpp`) or `Maximum.exe test …` (forwards to minEngineTests). No `--*-test` legacy flags.
 
 **Verify:** `.\scripts\verify.ps1` → `minEngineTests.exe test smoke`.
 

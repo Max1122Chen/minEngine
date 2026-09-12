@@ -12,6 +12,8 @@
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemePresets.h"
 #include "UI/Appearance/EditorTypographyScope.h"
+#include "Runtime/Core/EngineVersion.h"
+#include "Runtime/Core/ProductBranding.h"
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 
@@ -46,6 +48,8 @@ namespace minEngine
         }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleVar();
+
+        DrawAboutPopup();
     }
 
     void MainMenuWindow::DrawFileMenu()
@@ -233,8 +237,39 @@ namespace minEngine
         {
             ImGui::MenuItem("Documentation", nullptr, false, false);
             ImGui::MenuItem("Shortcuts", nullptr, false, false);
-            ImGui::MenuItem("About", nullptr, false, false);
+            if (ImGui::MenuItem("About"))
+            {
+                m_OpenAboutPopup = true;
+            }
             ImGui::EndMenu();
         }
+    }
+
+    void MainMenuWindow::DrawAboutPopup()
+    {
+        if (m_OpenAboutPopup)
+        {
+            ImGui::OpenPopup("About Maximum");
+            m_OpenAboutPopup = false;
+        }
+
+        if (!ImGui::BeginPopupModal(
+                "About Maximum",
+                nullptr,
+                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            return;
+        }
+
+        const std::string versionLine = FormatProductVersionLine(GetEngineVersion().ToString());
+        ImGui::TextUnformatted(versionLine.c_str());
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Engine identity: minEngine");
+        ImGui::Spacing();
+        if (ImGui::Button("OK", ImVec2(120.0f, 0.0f)))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }

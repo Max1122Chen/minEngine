@@ -12,8 +12,10 @@ set(IMGUI_NODE_EDITOR_SRC
 
 add_executable(${EDITOR_NAME} ${SRC} ${IMGUI_NODE_EDITOR_SRC})
 
+# CMake target stays "Editor" (module / --target); shipping artifact is Maximum.exe (WF-F03).
 set_target_properties(${EDITOR_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
+    OUTPUT_NAME Maximum
 )
 
 target_include_directories(${EDITOR_NAME} PUBLIC ./src

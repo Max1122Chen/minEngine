@@ -11,9 +11,9 @@ const ENV_EDITOR: &str = "MINENGINE_EDITOR";
 
 pub fn editor_executable_name() -> &'static str {
     if cfg!(windows) {
-        "Editor.exe"
+        "Maximum.exe"
     } else {
-        "Editor"
+        "Maximum"
     }
 }
 
@@ -180,9 +180,9 @@ mod tests {
     #[test]
     fn editor_name_matches_platform() {
         if cfg!(windows) {
-            assert_eq!(editor_executable_name(), "Editor.exe");
+            assert_eq!(editor_executable_name(), "Maximum.exe");
         } else {
-            assert_eq!(editor_executable_name(), "Editor");
+            assert_eq!(editor_executable_name(), "Maximum");
         }
     }
 }

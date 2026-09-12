@@ -29,8 +29,8 @@ if (-not (Test-Path $GdbExe)) {
 if (-not (Test-Path (Join-Path $GdbOptDir "libpython3.12.dll"))) {
     Write-Error "libpython3.12.dll missing under $GdbOptDir — add mingw64/opt/bin to PATH."
 }
-if (-not (Test-Path (Join-Path $BinDir "Editor.exe"))) {
-    Write-Error "Editor.exe not found. Build: cmake --build minEngine/build --target Editor"
+if (-not (Test-Path (Join-Path $BinDir "Maximum.exe"))) {
+    Write-Error "Maximum.exe not found. Build: cmake --build minEngine/build --target Editor"
 }
 if (-not (Test-Path $Project)) {
     Write-Error "Project not found: $Project"
@@ -64,9 +64,9 @@ set print thread-events on
 set debuginfod enabled off
 handle SIGSEGV stop print nopass
 handle SIGABRT stop print nopass
-file Editor.exe
+file Maximum.exe
 set args --rhi $Rhi --project $projGdb
-echo \n=== Editor GDB run (rhi=$Rhi) ===\n
+echo \n=== Maximum GDB run (rhi=$Rhi) ===\n
 run
 echo \n=== backtrace ===\n
 bt full

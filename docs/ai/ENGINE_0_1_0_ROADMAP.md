@@ -321,7 +321,7 @@ F1–F3 可在同一 `feat/core`（或 `master` 短切片）内串行；**全部
 |---------|------|-------|------|
 | `CORE-F17` | LogChannel + structured LogRecord | F1 | **Done** · [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) · 术语 LogChannel（非 Category） |
 | `CORE-F18` | EngineVersion + disk schema gate / `$engineVersion` stamp | F2 | **Done** · engine **0.0.9** / schema **1** · [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
-| `WF-F03` | Maximum 产品显示名与版本展示 | F3 | **已登记 Planned** · [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
+| `WF-F03` | Maximum 产品显示名与版本展示 | F3 | **Done** · [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
 | `CORE-F19` | Prefab A（资产 + Instantiate） | P prefab | 待 F 后登记 |
 | `ED-F12` 或 `RND-F17` | Isolated preview / multi-RT（解串图） | P render | 待登记 |
 | `ED-F13` | Prefab stage / 子编辑器（隔离 Scene） | P prefab B | 依赖隔离 RT |

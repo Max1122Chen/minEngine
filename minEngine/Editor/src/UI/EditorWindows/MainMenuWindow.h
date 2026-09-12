@@ -29,8 +29,10 @@ namespace minEngine
         void DrawWindowModeMenu();
         void DrawToolsMenu();
         void DrawHelpMenu();
+        void DrawAboutPopup();
 
         const std::string m_Id = "main_menu";
         const std::string m_Title = "MainMenu";
+        bool m_OpenAboutPopup = false;
     };
 }

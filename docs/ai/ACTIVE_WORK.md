@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-12（**Primary = Phase F / WF-F03 Brand**）  
+Last updated: 2026-09-12（**Phase F Done → 可 fan-out**）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -18,9 +18,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | F1 | `CORE-F17` | LogChannel + LogRecord | **Done** | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) |
 | — | **`ED-F09`** | Editor Console ← LogRecord 过滤/展示 | **Planned**（可并行） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
 | F2 | `CORE-F18` | EngineVersion + disk schema gate | **Done**（engine 0.0.9 / schema 1） | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
-| F3 | **`WF-F03`** | Maximum 产品显示名 | **Planned**（下一刀） | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
+| F3 | `WF-F03` | Maximum 产品显示名 | **Done** | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
 
-**下一刀：** `WF-F03` Design 充实 → In Progress；可消费 `GetEngineVersion().ToString()`。
+**下一刀：** Phase F 合入后 **fan-out**；或并行 `ED-F09` Console LogRecord UX。D8 数字「0.1.0」仍待 Phase D 打标。
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
@@ -117,7 +117,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | Full tests | `minEngineTests.exe test full` |
 | Parameter store | `minEngineTests.exe test parameter-store` |
 | Animation | `minEngineTests.exe test animation-graph` / `animation-clip` / `skeleton-pose` |
-| GL Editor | `Editor.exe --rhi opengl --project ..\MyMEProject\MyMEProject.meproject`（从 `minEngine/bin`） |
+| GL Editor | `Maximum.exe --rhi opengl --project ..\MyMEProject\MyMEProject.meproject`（从 `minEngine/bin`） |
 
 Record in `PROGRESS_LOG.md` after meaningful slices.
 

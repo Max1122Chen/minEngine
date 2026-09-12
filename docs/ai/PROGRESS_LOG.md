@@ -1,6 +1,17 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-12（CORE-F18 Done）
+Last updated: 2026-09-12（WF-F03 Done · Phase F complete）
+
+### 2026-09-12 - WF-F03 Done：Maximum 产品显示名
+- **实现：** `ProductBranding.h`；窗口标题 / GLFW 初始 / CLI `--version` / Vulkan 名 / Help→About。
+- **产物：** CMake `OUTPUT_NAME Maximum` → `bin/Maximum.exe`（`--target Editor` 不变）；Launcher / debug 脚本对齐。
+- **版本：** 仍消费 `GetEngineVersion()`（0.0.9）；D8 完整「0.1.0」数字待 Phase D。
+- **Next：** Phase F 可 fan-out；可选 `ED-F09`；准备 commit。
+
+### 2026-09-12 - WF-F03 Design 充实 → In Progress
+- **契约：** 显示名 `Maximum`；版本仍 `GetEngineVersion()`（0.0.9）；不改仓库/exe/命名空间。
+- **切片：** S00 ProductBranding + 标题/CLI/GLFW/Vulkan；S01 About 最小模态。
+- **Next：** 确认 §开放点推荐默认 → 实现。
 
 ### 2026-09-12 - CORE-F18 Done：EngineVersion 0.0.9 + schema 门闸
 - **实现：** `EngineVersion.h`（0.0.9）；`kDiskSchemaVersion=1`；根写 `$engineVersion`；`ValidateDiskSchema`；Serializer 统一门闸。

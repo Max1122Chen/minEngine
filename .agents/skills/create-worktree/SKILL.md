@@ -44,7 +44,7 @@ Create a linked git worktree for a feature branch with the checklist this repo a
    - `git submodule update --init --recursive` inside worktree
    - `.\scripts\fix-worktree-submodule-gitdirs.ps1 -MainGitRoot <Main>`
    - Ensure `minEngine/bin` exists; copy at least **`libassimp-6.dll`** from Main `minEngine/bin` (CMake/link expects it there)
-   - Optionally seed `Editor.exe` / `libminEngine*.dll` for smoke without rebuild (`-SeedBinaries`)
+   - Optionally seed `Maximum.exe` / `libminEngine*.dll` for smoke without rebuild (`-SeedBinaries`)
    - Rewrite `minEngine/MyMEProject/MyMEProject.meproject` → `ProjectRoot` = `<Worktree>/minEngine/MyMEProject` (forward slashes)
 4. **Register** worktree in `docs/ai/ACTIVE_WORK.md` Worktrees table.
 5. **Do not commit** machine-local `ProjectRoot` on a shared branch unless maintainer wants that machine’s path — prefer leave as local dirty or commit only on personal experiment branches.

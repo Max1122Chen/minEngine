@@ -1,12 +1,11 @@
 #include "GLFWWindowSystem.h"
 #include "WindowSystem.h"
+#include "Runtime/Core/ProductBranding.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 
 #include "Core.h"
 
-
-
-
+#include <string>
 // TODO: Include error handling and logging as needed
 
 
@@ -59,8 +58,9 @@ namespace minEngine
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         }
 
-        // Create the window
-        m_Window = glfwCreateWindow(m_Width, m_Height, "minEngine Window", nullptr, nullptr);
+        // Create the window (Editor replaces title each frame via UpdateWindowTitle).
+        const std::string initialTitle = FormatEditorWindowTitleBase();
+        m_Window = glfwCreateWindow(m_Width, m_Height, initialTitle.c_str(), nullptr, nullptr);
         if (!m_Window)
         {
             // Window creation failed

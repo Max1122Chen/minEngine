@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/EngineVersion.h"
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/ProductBranding.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIRenderPass.h"
@@ -244,9 +245,9 @@ namespace minEngine
         VkApplicationInfo appInfo{};
         const EngineVersion engineVersion = GetEngineVersion();
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "minEngine";
+        appInfo.pApplicationName = GetProductDisplayName();
         appInfo.applicationVersion = VK_MAKE_VERSION(engineVersion.Major, engineVersion.Minor, engineVersion.Patch);
-        appInfo.pEngineName = "minEngine";
+        appInfo.pEngineName = GetProductDisplayName();
         appInfo.engineVersion = VK_MAKE_VERSION(engineVersion.Major, engineVersion.Minor, engineVersion.Patch);
         appInfo.apiVersion = VK_API_VERSION_1_2;
 

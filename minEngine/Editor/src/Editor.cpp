@@ -11,6 +11,7 @@
 #include "imgui.h"
 
 #include "Runtime/Core/CLI/ApplicationCommandLine.h"
+#include "Runtime/Core/ProductBranding.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Engine.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
@@ -40,7 +41,7 @@ namespace minEngine
         if (!commandLine.ProjectDescriptorPath.has_value())
         {
             ME_LOG(LogEditor, Error, "Editor requires a project descriptor path.");
-            ME_LOG(LogEditor, Error, "Usage: Editor.exe --project <path-to-project.meproject> (see --help).");
+            ME_LOG(LogEditor, Error, "Usage: Maximum.exe --project <path-to-project.meproject> (see --help).");
             return std::nullopt;
         }
 
@@ -335,7 +336,7 @@ namespace minEngine
 
     void Editor::UpdateWindowTitle()
     {
-        std::string windowTitle = "minEngine Editor";
+        std::string documentSuffix;
         if (m_ActiveSubModule && m_ActiveSubModule->GetModuleId() == MaterialEditor::kModuleId)
         {
             if (MaterialEditor* materialEditor = dynamic_cast<MaterialEditor*>(m_ActiveSubModule))
@@ -351,8 +352,8 @@ namespace minEngine
                         materialLabel = session.AssetPath;
                     }
                 }
-                const char* dirtySuffix = session.Dirty ? " *" : "";
-                windowTitle = "minEngine Editor - " + materialLabel + dirtySuffix;
+                const char* dirtyMark = session.Dirty ? " *" : "";
+                documentSuffix = materialLabel + dirtyMark;
             }
         }
         else if (
@@ -373,8 +374,8 @@ namespace minEngine
                         graphLabel = session.AssetPath;
                     }
                 }
-                const char* dirtySuffix = session.Dirty ? " *" : "";
-                windowTitle = "minEngine Editor - " + graphLabel + dirtySuffix;
+                const char* dirtyMark = session.Dirty ? " *" : "";
+                documentSuffix = graphLabel + dirtyMark;
             }
         }
         else if (SceneEditor* sceneEditor = dynamic_cast<SceneEditor*>(m_ActiveSubModule))
@@ -393,10 +394,11 @@ namespace minEngine
                 }
             }
 
-            const char* dirtySuffix = sceneEditor->IsSceneDirty() ? " *" : "";
-            windowTitle = "minEngine Editor - " + sceneDisplayName + dirtySuffix;
+            const char* dirtyMark = sceneEditor->IsSceneDirty() ? " *" : "";
+            documentSuffix = sceneDisplayName + dirtyMark;
         }
 
+        const std::string windowTitle = FormatEditorWindowTitle(documentSuffix);
         WindowSystem::Get().SetTitle(windowTitle.c_str());
     }
 

@@ -2,6 +2,7 @@
 
 #include "CLI11.hpp"
 #include "Runtime/Core/EngineVersion.h"
+#include "Runtime/Core/ProductBranding.h"
 #include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <cstdio>
@@ -77,9 +78,11 @@ namespace minEngine
     {
         s_LastExitCode = CommandLineExitCode::Success;
 
-        CLI::App app("minEngine Editor");
+        CLI::App app(FormatEditorWindowTitleBase());
         app.positionals_at_end(true);
-        app.set_version_flag("--version", "minEngine " + minEngine::GetEngineVersion().ToString());
+        app.set_version_flag(
+            "--version",
+            FormatProductVersionLine(GetEngineVersion().ToString()));
 
         std::string engineConfigPath;
         std::string engineRootOverride;

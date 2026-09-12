@@ -91,7 +91,7 @@ function Copy-RuntimeBinaries([string]$worktreeRoot) {
     }
 
     if ($SeedBinaries -or $SeedHeavyBinaries) {
-        $light = @("libminEngine.dll", "libminEngine.dll.a", "Editor.exe", "minEngineTests.exe")
+        $light = @("libminEngine.dll", "libminEngine.dll.a", "Maximum.exe", "minEngineTests.exe")
         foreach ($name in $light) {
             $src = Join-Path $srcBin $name
             if (Test-Path $src) {

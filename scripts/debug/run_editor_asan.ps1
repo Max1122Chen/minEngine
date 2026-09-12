@@ -21,7 +21,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $BinAsan = Join-Path $RepoRoot "minEngine\bin-asan"
-$Exe = Join-Path $BinAsan "Editor.exe"
+$Exe = Join-Path $BinAsan "Maximum.exe"
 
 if (-not (Test-Path $Exe)) {
     throw "Missing $Exe — run configure_asan.ps1 + build_asan.ps1 first."

@@ -44,7 +44,7 @@ impl ProcessLauncher {
             Ok(Some(status)) => {
                 return Err(LauncherError::LaunchFailed(format!(
                     "Editor exited immediately (status: {status}). \
-                     Ensure {}/libminEngine.dll or libminEngined.dll exists next to Editor.exe",
+                     Ensure {}/libminEngine.dll or libminEngined.dll exists next to Maximum.exe",
                     working_dir.display()
                 )));
             }
