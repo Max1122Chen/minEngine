@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "Inter_18pt-Regular",
     "AssetPath": "Fonts/Inter_18pt-Regular.ttf",
     "AssetType": "Font",

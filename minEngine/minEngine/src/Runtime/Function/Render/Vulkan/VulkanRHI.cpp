@@ -1,5 +1,6 @@
 ﻿#include "VulkanRHI.h"
 
+#include "Runtime/Core/EngineVersion.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
@@ -241,11 +242,12 @@ namespace minEngine
         std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
         VkApplicationInfo appInfo{};
+        const EngineVersion engineVersion = GetEngineVersion();
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pApplicationName = "minEngine";
-        appInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
+        appInfo.applicationVersion = VK_MAKE_VERSION(engineVersion.Major, engineVersion.Minor, engineVersion.Patch);
         appInfo.pEngineName = "minEngine";
-        appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
+        appInfo.engineVersion = VK_MAKE_VERSION(engineVersion.Major, engineVersion.Minor, engineVersion.Patch);
         appInfo.apiVersion = VK_API_VERSION_1_2;
 
         VkInstanceCreateInfo createInfo{};

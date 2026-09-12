@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "07_sine_440hz_mono_48000",
     "AssetPath": "Audios/07_sine_440hz_mono_48000.wav",
     "AssetType": "AudioClip",

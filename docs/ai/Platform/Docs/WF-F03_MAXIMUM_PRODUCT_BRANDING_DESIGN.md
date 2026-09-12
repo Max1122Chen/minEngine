@@ -7,7 +7,7 @@
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-11
 - **Related:** [ENGINE_0_1_0_ROADMAP.md](../../ENGINE_0_1_0_ROADMAP.md) Phase F3
-- **Depends on:** 无硬依赖；建议 F1/F2 之后或穿插，同一 Foundation 合入波
+- **Depends on:** 无硬依赖；建议消费 [CORE-F18](../Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) 的 `EngineVersion::ToString()` 作为版本数字真源（本 Feature 只改显示名）
 - **Blocks:** 无；服务 D8 / 对外称呼 Maximum 0.1.0
 
 ## TL;DR

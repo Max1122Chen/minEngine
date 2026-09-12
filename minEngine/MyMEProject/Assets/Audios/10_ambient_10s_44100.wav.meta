@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "10_ambient_10s_44100",
     "AssetPath": "Audios/10_ambient_10s_44100.wav",
     "AssetType": "AudioClip",

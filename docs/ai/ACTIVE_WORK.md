@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-11（**Primary = Phase F / CORE-F18 Schema**）  
+Last updated: 2026-09-12（**Primary = Phase F / WF-F03 Brand**）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -17,10 +17,10 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|-----|------|--------|--------|
 | F1 | `CORE-F17` | LogChannel + LogRecord | **Done** | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) |
 | — | **`ED-F09`** | Editor Console ← LogRecord 过滤/展示 | **Planned**（可并行） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| F2 | **`CORE-F18`** | Schema + engine version | **Planned**（下一刀） | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
-| F3 | `WF-F03` | Maximum 产品显示名 | Planned | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
+| F2 | `CORE-F18` | EngineVersion + disk schema gate | **Done**（engine 0.0.9 / schema 1） | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
+| F3 | **`WF-F03`** | Maximum 产品显示名 | **Planned**（下一刀） | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
 
-**下一刀：** `CORE-F18` Design 充实 → In Progress → S00；`ED-F09` 可另轨打磨 Console 过滤。
+**下一刀：** `WF-F03` Design 充实 → In Progress；可消费 `GetEngineVersion().ToString()`。
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 

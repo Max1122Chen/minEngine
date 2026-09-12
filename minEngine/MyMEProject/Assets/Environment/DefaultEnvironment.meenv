@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "m_BrdfLUT": {
         "$guid": {
             "high": 17293822569102704642,

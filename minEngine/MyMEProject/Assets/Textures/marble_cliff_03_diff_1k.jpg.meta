@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "marble_cliff_03_diff_1k",
     "AssetPath": "Textures/marble_cliff_03_diff_1k.jpg",
     "AssetType": "Texture2D",

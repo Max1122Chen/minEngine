@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "test",
     "AssetPath": "Scenes/test.mescene",
     "AssetType": "Scene",

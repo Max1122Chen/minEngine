@@ -36,6 +36,7 @@
 #include "Suites/AnimationGraphTest.h"
 #include "Suites/ParameterStoreTest.h"
 #include "Suites/LoggingChannelsTest.h"
+#include "Suites/EngineVersionTest.h"
 
 namespace minEngine
 {
@@ -568,6 +569,23 @@ namespace minEngine
             }
         };
 
+        struct EngineVersionTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"engine-version", "EngineVersion / disk schema", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'engine-version'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "engine-version",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -600,6 +618,7 @@ namespace minEngine
         using AnimationGraphSuite = TypedTestSuite<AnimationGraphTestSuiteTraits>;
         using ParameterStoreSuite = TypedTestSuite<ParameterStoreTestSuiteTraits>;
         using LoggingChannelsSuite = TypedTestSuite<LoggingChannelsTestSuiteTraits>;
+        using EngineVersionSuite = TypedTestSuite<EngineVersionTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -642,6 +661,7 @@ namespace minEngine
             registry.Register(AnimationGraphSuite::Get());
             registry.Register(ParameterStoreSuite::Get());
             registry.Register(LoggingChannelsSuite::Get());
+            registry.Register(EngineVersionSuite::Get());
             s_Registered = true;
         }
     }

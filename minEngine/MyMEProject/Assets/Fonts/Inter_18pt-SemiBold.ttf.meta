@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "Inter_18pt-SemiBold",
     "AssetPath": "Fonts/Inter_18pt-SemiBold.ttf",
     "AssetType": "Font",

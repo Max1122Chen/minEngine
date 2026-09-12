@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "convexmesh",
     "AssetPath": "D:/Dev/GitRepo/minEngine/minEngine/Assets/EngineDefault/Meshes/BasicShapes/convexmesh.obj",
     "AssetType": "StaticMesh",

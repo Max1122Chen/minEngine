@@ -10,6 +10,7 @@ namespace minEngine::Serialization
     namespace
     {
         constexpr const char* kSchemaVersionKey = "$schemaVersion";
+        constexpr const char* kEngineVersionKey = "$engineVersion";
     }
 
     Json* JsonWriterArchive::AttachValue(Json&& value)
@@ -58,6 +59,17 @@ namespace minEngine::Serialization
 
         m_Root[kSchemaVersionKey] = schemaVersion;
         m_SchemaVersionApplied = true;
+    }
+
+    void JsonWriterArchive::ApplyRootEngineVersion(const std::string& engineVersion)
+    {
+        if (!m_HasRoot || !m_Root.is_object() || m_EngineVersionApplied)
+        {
+            return;
+        }
+
+        m_Root[kEngineVersionKey] = engineVersion;
+        m_EngineVersionApplied = true;
     }
 
     bool JsonWriterArchive::BeginObject(const std::string& typeName)
@@ -250,30 +262,52 @@ namespace minEngine::Serialization
         m_ValueStack.clear();
         m_ObjectConsumedKeys.clear();
         m_LastArchiveError.clear();
-        ParseRootSchemaVersion(root);
+        ParseRootDiskMeta(root);
     }
 
     bool JsonReaderArchive::IsKnownMetaKey(const std::string& key)
     {
-        return key == "$typeName" || key == "$ptr_typeName" || key == "$guid" || key == kSchemaVersionKey;
+        return key == "$typeName"
+            || key == "$ptr_typeName"
+            || key == "$guid"
+            || key == kSchemaVersionKey
+            || key == kEngineVersionKey;
     }
 
-    void JsonReaderArchive::ParseRootSchemaVersion(const Json& root)
+    void JsonReaderArchive::ParseRootDiskMeta(const Json& root)
     {
         m_ReadSchemaVersion = 0;
-        if (!root.is_object() || !root.contains(kSchemaVersionKey))
+        m_ReadEngineVersion.clear();
+        if (!root.is_object())
         {
             return;
         }
 
-        const Json& versionNode = root[kSchemaVersionKey];
-        if (versionNode.is_number_unsigned() || versionNode.is_number_integer())
+        if (root.contains(kSchemaVersionKey))
         {
-            m_ReadSchemaVersion = versionNode.get<uint32_t>();
-            return;
+            const Json& versionNode = root[kSchemaVersionKey];
+            if (versionNode.is_number_unsigned() || versionNode.is_number_integer())
+            {
+                m_ReadSchemaVersion = versionNode.get<uint32_t>();
+            }
+            else
+            {
+                ME_LOG(LogSerialization, Warn, "JsonReaderArchive: invalid $schemaVersion type; treating as 0");
+            }
         }
 
-        ME_LOG(LogSerialization, Warn, "JsonReaderArchive: invalid $schemaVersion type; treating as 0");
+        if (root.contains(kEngineVersionKey))
+        {
+            const Json& engineNode = root[kEngineVersionKey];
+            if (engineNode.is_string())
+            {
+                m_ReadEngineVersion = engineNode.get<std::string>();
+            }
+            else
+            {
+                ME_LOG(LogSerialization, Warn, "JsonReaderArchive: invalid $engineVersion type; treating as empty");
+            }
+        }
     }
 
     void JsonReaderArchive::PushObjectContext(const Json* object)
@@ -609,6 +643,7 @@ namespace minEngine::Serialization
         m_ValueStack.clear();
         m_ObjectConsumedKeys.clear();
         m_ReadSchemaVersion = 0;
+        m_ReadEngineVersion.clear();
         m_LastArchiveError.clear();
     }
 
@@ -634,7 +669,7 @@ namespace minEngine::Serialization
         }
 
         m_Root = &m_OwnedRoot;
-        ParseRootSchemaVersion(m_OwnedRoot);
+        ParseRootDiskMeta(m_OwnedRoot);
         return true;
     }
 }

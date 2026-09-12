@@ -1,5 +1,6 @@
 {
     "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "m_GameObjects": [
         {
             "$ptr_typeName": "minEngine::GameObject",

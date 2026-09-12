@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "06_stereo_left_then_right_44100",
     "AssetPath": "Audios/06_stereo_left_then_right_44100.wav",
     "AssetType": "AudioClip",

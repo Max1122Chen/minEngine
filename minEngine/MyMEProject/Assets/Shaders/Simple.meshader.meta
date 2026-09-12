@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "Simple",
     "AssetPath": "Shaders/Simple.meshader",
     "AssetType": "Shader",

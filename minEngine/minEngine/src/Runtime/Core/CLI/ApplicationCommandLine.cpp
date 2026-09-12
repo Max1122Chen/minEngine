@@ -1,6 +1,7 @@
 #include "ApplicationCommandLine.h"
 
 #include "CLI11.hpp"
+#include "Runtime/Core/EngineVersion.h"
 #include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <cstdio>
@@ -78,7 +79,7 @@ namespace minEngine
 
         CLI::App app("minEngine Editor");
         app.positionals_at_end(true);
-        app.set_version_flag("--version", "minEngine (CLI-F01)");
+        app.set_version_flag("--version", "minEngine " + minEngine::GetEngineVersion().ToString());
 
         std::string engineConfigPath;
         std::string engineRootOverride;

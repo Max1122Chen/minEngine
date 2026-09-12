@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "stanford-bunny",
     "AssetPath": "Meshes/stanford-bunny.obj",
     "AssetType": "StaticMesh",

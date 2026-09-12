@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "AssetName": "sphere",
     "AssetPath": "Meshes/BasicShapes/sphere.obj",
     "AssetType": "StaticMesh",

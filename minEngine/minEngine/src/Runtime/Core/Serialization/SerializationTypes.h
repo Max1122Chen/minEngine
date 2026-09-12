@@ -1,12 +1,15 @@
 #pragma once
 
+#include "EngineVersion.h"
+
 #include <cstdint>
 #include <string>
 #include <utility>
 
 namespace minEngine::Serialization
 {
-    // Disk JSON (CORE-F10) recommended: skipUnknownField=true, strictTypeCheck=false, writeSchemaVersion=true.
+    // Disk JSON (CORE-F10/F18) recommended: skipUnknownField=true, strictTypeCheck=false,
+    // writeSchemaVersion=true, writeEngineVersion=true.
     // Transient Binary buffer / PIE: Serializer forces skipUnknownField=false and strictTypeCheck=true.
     struct MINENGINE_API SerializerOptions
     {
@@ -20,7 +23,9 @@ namespace minEngine::Serialization
         // Root JSON object writes "$schemaVersion" when true (Json path).
         bool writeSchemaVersion = true;
         // Algebra written to "$schemaVersion". Missing on load is treated as 0.
-        uint32_t schemaVersion = 1u;
+        uint32_t schemaVersion = minEngine::kDiskSchemaVersion;
+        // Root JSON object writes "$engineVersion" string stamp when true (Json path).
+        bool writeEngineVersion = true;
     };
 
     struct MINENGINE_API SerializeResult

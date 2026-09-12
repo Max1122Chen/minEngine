@@ -1,6 +1,21 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-11（CORE-F17 channel remap）
+Last updated: 2026-09-12（CORE-F18 Done）
+
+### 2026-09-12 - CORE-F18 Done：EngineVersion 0.0.9 + schema 门闸
+- **实现：** `EngineVersion.h`（0.0.9）；`kDiskSchemaVersion=1`；根写 `$engineVersion`；`ValidateDiskSchema`；Serializer 统一门闸。
+- **资产：** stamp MyMEProject / EngineConfig / Launcher Empty / **`.meta` 侧车**（含 EngineDefault）；`scripts/stamp_disk_meta.py` 已纳入 `.meta`（首轮漏 stamp 导致 Editor 开项目 Warn）。
+- **验证：** `minEngine`/`Editor`/`minEngineTests` 构建；`test engine-version` 3/3 PASS。
+- **Next：** Phase F3 `WF-F03` Maximum 品牌；准备 commit。
+
+### 2026-09-11 - CORE-F18 Design：EngineVersion 一等公民 + 资产字符串戳
+- **修订：** C++ `EngineVersion{Major,Minor,Patch}` 真源；盘面 `$engineVersion` 用 **string**；门闸仍只认 `$schemaVersion`。
+- **Docs:** [CORE-F18](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md)；Registry/ACTIVE_WORK/WF-F03 交叉引用。
+- **Next:** 确认 §10 余项（缺 schema 策略等）→ In Progress → S00。
+
+### 2026-09-11 - CORE-F18 Design 详设草稿（待审阅）
+- **Docs:** [CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) 充实：`$schemaVersion` 门闸 + `$engineVersion` 戳；无迁移表。
+- **Next:** 维护者总览 §10 开放点 → 拍板 → In Progress → S00。
 
 ### 2026-09-11 - CORE-F17：按模块重归属 Channel + LogPlatform
 - **新增：** `LogPlatform`（NFD/FileDialog、GLFW WindowSystem）。

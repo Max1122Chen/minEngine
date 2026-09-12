@@ -1,8 +1,10 @@
 #include "Serializer.h"
 
 #include "BinaryArchive.h"
+#include "DiskVersion.h"
 #include "JsonArchive.h"
 #include "PrimitiveCodecRegistry.h"
+#include "Runtime/Core/EngineVersion.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/PropertyAssign.h"
 #include "Runtime/Core/Reflection/Reflection.h"
@@ -28,6 +30,36 @@ namespace minEngine::Serialization
     using minEngine::Reflection::MEPrimitiveProperty;
     using minEngine::Reflection::MEProperty;
     using minEngine::Reflection::MEPropertyCategory;
+
+    class SerializerDiskMeta
+    {
+    public:
+        static void ApplyToWriter(JsonWriterArchive& writer, const SerializerOptions& options)
+        {
+            if (options.writeSchemaVersion)
+            {
+                writer.ApplyRootSchemaVersion(options.schemaVersion);
+            }
+            if (options.writeEngineVersion)
+            {
+                writer.ApplyRootEngineVersion(GetEngineVersion().ToString());
+            }
+        }
+
+        static SerializeResult ValidateReader(const JsonReaderArchive& reader, const std::string& pathHint)
+        {
+            DiskVersionInfo info;
+            info.schemaVersion = reader.GetReadSchemaVersion();
+            info.engineVersion = reader.GetReadEngineVersion();
+
+            SerializeResult result = ValidateDiskSchema(info);
+            if (!result.ok && result.fieldPath.empty() && !pathHint.empty())
+            {
+                result.fieldPath = pathHint;
+            }
+            return result;
+        }
+    };
     using minEngine::Reflection::PropertySpecifier;
     using minEngine::Reflection::PropertySpecifierMask;
     using minEngine::Reflection::ReflectionSystem;
@@ -396,12 +428,9 @@ namespace minEngine::Serialization
             return serializeResult;
         }
 
-        if (options.writeSchemaVersion)
+        if (auto* jsonWriter = dynamic_cast<JsonWriterArchive*>(&archive))
         {
-            if (auto* jsonWriter = dynamic_cast<JsonWriterArchive*>(&archive))
-            {
-                jsonWriter->ApplyRootSchemaVersion(options.schemaVersion);
-            }
+            SerializerDiskMeta::ApplyToWriter(*jsonWriter, options);
         }
 
         if (!archive.WriteToFile(filePath))
@@ -458,6 +487,15 @@ namespace minEngine::Serialization
             }
 
             return SerializeResult::Failure(message, filePath);
+        }
+
+        if (const auto* jsonReader = dynamic_cast<const JsonReaderArchive*>(&archive))
+        {
+            const SerializeResult versionResult = SerializerDiskMeta::ValidateReader(*jsonReader, filePath);
+            if (!versionResult.ok)
+            {
+                return versionResult;
+            }
         }
 
         SerializeResult deserializeResult = Deserialize(rootClass, outRootObject, archive, unresolvedRefs, options);
@@ -1664,10 +1702,7 @@ namespace minEngine::Serialization
             return result;
         }
 
-        if (options.writeSchemaVersion)
-        {
-            writer.ApplyRootSchemaVersion(options.schemaVersion);
-        }
+        SerializerDiskMeta::ApplyToWriter(writer, options);
 
         outRoot = std::move(writer.MoveRoot());
         return SerializeResult::Success();
@@ -1694,6 +1729,11 @@ namespace minEngine::Serialization
                                                           const SerializerOptions& options)
     {
         JsonReaderArchive reader(root);
+        const SerializeResult versionResult = SerializerDiskMeta::ValidateReader(reader, {});
+        if (!versionResult.ok)
+        {
+            return versionResult;
+        }
         return Deserialize(rootClass, outRootObject, reader, outUnresolvedRefs, options);
     }
 

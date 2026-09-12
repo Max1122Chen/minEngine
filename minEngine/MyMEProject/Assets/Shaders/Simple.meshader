@@ -1,4 +1,6 @@
 {
+    "$schemaVersion": 1,
+    "$engineVersion": "0.0.9",
     "m_VertexPath": "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.vert",
     "m_FragmentPath": "D:/Dev/GitRepo/minEngine/minEngine/Shaders/Phong.frag"
 }
