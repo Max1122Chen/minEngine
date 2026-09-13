@@ -21,10 +21,10 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $BinAsan = Join-Path $RepoRoot "minEngine\bin-asan"
-$Exe = Join-Path $BinAsan "Maximum.exe"
+$Exe = Join-Path $BinAsan "MaximumEditor.exe"
 
 if (-not (Test-Path $Exe)) {
-    throw "Missing $Exe â€” run configure_asan.ps1 + build_asan.ps1 first."
+    throw "Missing $Exe â€?run configure_asan.ps1 + build_asan.ps1 first."
 }
 if (-not (Test-Path (Join-Path $LlvmMingwRoot "bin\libclang_rt.asan_dynamic-x86_64.dll"))) {
     throw "ASan runtime DLL missing under $LlvmMingwRoot\bin"

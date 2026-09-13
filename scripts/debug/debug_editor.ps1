@@ -24,13 +24,13 @@ $Project = Join-Path $RepoRoot "minEngine\MyMEProject\MyMEProject.meproject"
 $LogFile = Join-Path $BinDir "ed_gdb_bt.log"
 
 if (-not (Test-Path $GdbExe)) {
-    Write-Error "gdborig not found at $GdbExe â€” edit GdbDir in this script."
+    Write-Error "gdborig not found at $GdbExe â€?edit GdbDir in this script."
 }
 if (-not (Test-Path (Join-Path $GdbOptDir "libpython3.12.dll"))) {
-    Write-Error "libpython3.12.dll missing under $GdbOptDir â€” add mingw64/opt/bin to PATH."
+    Write-Error "libpython3.12.dll missing under $GdbOptDir â€?add mingw64/opt/bin to PATH."
 }
-if (-not (Test-Path (Join-Path $BinDir "Maximum.exe"))) {
-    Write-Error "Maximum.exe not found. Build: cmake --build minEngine/build --target Editor"
+if (-not (Test-Path (Join-Path $BinDir "MaximumEditor.exe"))) {
+    Write-Error "MaximumEditor.exe not found. Build: cmake --build minEngine/build --target Editor"
 }
 if (-not (Test-Path $Project)) {
     Write-Error "Project not found: $Project"
@@ -64,7 +64,7 @@ set print thread-events on
 set debuginfod enabled off
 handle SIGSEGV stop print nopass
 handle SIGABRT stop print nopass
-file Maximum.exe
+file MaximumEditor.exe
 set args --rhi $Rhi --project $projGdb
 echo \n=== Maximum GDB run (rhi=$Rhi) ===\n
 run
@@ -103,7 +103,7 @@ try {
                 if ($job.State -eq "Running") {
                     Stop-Job $job -Force
                     Write-LogLine "=== timed out after ${RunSeconds}s (no clean gdb exit) ==="
-                    Write-Host "Timed out after ${RunSeconds}s â€” see log" -ForegroundColor Yellow
+                    Write-Host "Timed out after ${RunSeconds}s â€?see log" -ForegroundColor Yellow
                 }
                 Remove-Job $job -Force -ErrorAction SilentlyContinue
             }
@@ -115,7 +115,7 @@ try {
 
             $tail = ($output | Select-Object -Last 40) -join "`n"
             if ($tail -match "SIGSEGV|received signal|Program received|EXCEPTION_ACCESS_VIOLATION|0xC0000005") {
-                Write-Host "Crash captured â€” see $LogFile" -ForegroundColor Green
+                Write-Host "Crash captured â€?see $LogFile" -ForegroundColor Green
                 break
             }
         }

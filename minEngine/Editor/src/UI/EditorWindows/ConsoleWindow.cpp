@@ -36,7 +36,7 @@ namespace minEngine
     void ConsoleWindow::OnDraw()
     {
         const bool isPlaying = m_Context.IsPlaying();
-        m_LastIsPlaying = isPlaying;
+        HandleClearOnPlayTransition(isPlaying);
 
         if (m_ActiveTab == ConsoleTab::Command)
         {
@@ -81,6 +81,27 @@ namespace minEngine
         ImGui::End();
     }
 
+    void ConsoleWindow::HandleClearOnPlayTransition(bool isPlaying)
+    {
+        if (isPlaying && !m_WasPlaying)
+        {
+            m_PlayStartedAt = std::chrono::system_clock::now();
+            m_HasPlayStartedAt = true;
+            if (m_ClearOnPlay)
+            {
+                LogConsoleStorage::Clear();
+                m_PausedEntries.clear();
+                m_HasPausedSnapshot = false;
+                m_ClearedAt = std::chrono::system_clock::now();
+            }
+        }
+        if (!isPlaying)
+        {
+            m_HasPlayStartedAt = false;
+        }
+        m_WasPlaying = isPlaying;
+    }
+
     float ConsoleWindow::GetCommandModeMinWindowHeight() const
     {
         const ImGuiStyle& imguiStyle = ImGui::GetStyle();
@@ -95,8 +116,28 @@ namespace minEngine
             + separatorChrome;
     }
 
+    void ConsoleWindow::EnsureChannelFilterState()
+    {
+        LogSystem::ForEachRegisteredChannel(
+            [this](LogChannelBase& channel)
+            {
+                const char* name = channel.GetName();
+                if (name == nullptr || name[0] == '\0')
+                {
+                    return;
+                }
+                if (m_ChannelEnabled.find(name) == m_ChannelEnabled.end())
+                {
+                    m_ChannelEnabled.emplace(name, true);
+                    m_ChannelOrder.emplace_back(name);
+                }
+            });
+    }
+
     void ConsoleWindow::DrawOutputTab()
     {
+        EnsureChannelFilterState();
+
         bool requestCopyVisible = false;
 
         {
@@ -106,6 +147,7 @@ namespace minEngine
                 LogConsoleStorage::Clear();
                 m_PausedEntries.clear();
                 m_HasPausedSnapshot = false;
+                m_ClearedAt = std::chrono::system_clock::now();
             }
             ImGui::SameLine();
             if (ImGui::Button("Copy"))
@@ -116,21 +158,35 @@ namespace minEngine
             ImGui::Checkbox("AutoScroll", &m_AutoScroll);
             ImGui::SameLine();
             ImGui::Checkbox("Pause", &m_PauseStream);
+            ImGui::SameLine();
+            ImGui::Checkbox("Collapse", &m_CollapseDuplicates);
+            ImGui::SameLine();
+            ImGui::Checkbox("Clear on Play", &m_ClearOnPlay);
             ImGui::PopStyleVar();
         }
 
         ImGui::Separator();
         {
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
-            std::vector<UI::FilterSection> filterSections = {
+            std::vector<UI::FilterSection> filterSections;
+            filterSections.reserve(2);
+
+            UI::FilterSection channelSection;
+            channelSection.title = "Channel";
+            channelSection.options.reserve(m_ChannelOrder.size());
+            for (const std::string& name : m_ChannelOrder)
+            {
+                auto it = m_ChannelEnabled.find(name);
+                if (it == m_ChannelEnabled.end())
                 {
-                    "Source",
-                    {
-                        {"Core", &m_ShowCore},
-                        {"App", &m_ShowClient},
-                    },
-                },
-                {
+                    continue;
+                }
+                channelSection.options.push_back(UI::FilterOptionRef{it->first.c_str(), &it->second});
+            }
+            filterSections.push_back(std::move(channelSection));
+
+            filterSections.push_back(
+                UI::FilterSection{
                     "Level",
                     {
                         {"Trace", &m_ShowTrace},
@@ -140,25 +196,55 @@ namespace minEngine
                         {"Error", &m_ShowError},
                         {"Fatal", &m_ShowFatal},
                     },
-                },
-            };
+                });
 
-            ImGui::SetNextItemWidth(180.0f);
+            ImGui::SetNextItemWidth(200.0f);
             UI::DrawFilterDropdown("##ConsoleFilterCombo", filterSections);
             ImGui::PopStyleVar();
         }
 
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(300.0f);
+        ImGui::SetNextItemWidth(110.0f);
+        const char* timestampItems[] = {"Time: Off", "Time: Clock", "Time: Date"};
+        int timestampIndex = static_cast<int>(m_TimestampDisplay);
+        if (ImGui::Combo("##ConsoleTimestampMode", &timestampIndex, timestampItems, IM_ARRAYSIZE(timestampItems)))
+        {
+            m_TimestampDisplay = static_cast<TimestampDisplayMode>(timestampIndex);
+        }
+
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(130.0f);
+        const char* timeWindowItems[] = {"Window: Off", "Window: Last N s", "Window: Since Play", "Window: Since Clear"};
+        int timeWindowIndex = static_cast<int>(m_TimeWindowMode);
+        if (ImGui::Combo("##ConsoleTimeWindow", &timeWindowIndex, timeWindowItems, IM_ARRAYSIZE(timeWindowItems)))
+        {
+            m_TimeWindowMode = static_cast<TimeWindowMode>(timeWindowIndex);
+        }
+
+        if (m_TimeWindowMode == TimeWindowMode::LastSeconds)
+        {
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(70.0f);
+            ImGui::DragFloat("##ConsoleLastSeconds", &m_TimeWindowLastSeconds, 0.5f, 0.5f, 3600.0f, "%.1fs");
+        }
+
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(220.0f);
         ImGui::InputTextWithHint("##ConsoleSearch", "Search message...", m_SearchText, sizeof(m_SearchText));
         ImGui::Separator();
 
-        const std::vector<LogRecord> liveEntries = LogConsoleStorage::Snapshot();
+        const uint64_t liveGeneration = LogConsoleStorage::GetGeneration();
+        if (liveGeneration != m_LiveCacheGeneration)
+        {
+            LogConsoleStorage::CopyInto(m_LiveCache);
+            m_LiveCacheGeneration = liveGeneration;
+        }
+
         if (m_PauseStream)
         {
             if (!m_HasPausedSnapshot)
             {
-                m_PausedEntries = liveEntries;
+                m_PausedEntries = m_LiveCache;
                 m_HasPausedSnapshot = true;
             }
         }
@@ -168,54 +254,123 @@ namespace minEngine
             m_HasPausedSnapshot = false;
         }
 
-        const std::vector<LogRecord>& entries = m_PauseStream ? m_PausedEntries : liveEntries;
+        const std::vector<LogRecord>& entries = m_PauseStream ? m_PausedEntries : m_LiveCache;
+        const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
+        std::vector<CollapsedRow> rows;
+        BuildCollapsedRows(entries, now, rows);
+
+        std::vector<size_t> drawIndices;
+        drawIndices.reserve(rows.size());
+        for (size_t i = 0; i < rows.size(); ++i)
+        {
+            if (rows[i].record != nullptr)
+            {
+                drawIndices.push_back(i);
+            }
+        }
+
+        const int visibleCount = static_cast<int>(drawIndices.size());
         std::string clipboardText;
-        int visibleCount = 0;
 
         ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
         const bool wasAtBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f);
-        int rowIndex = 0;
-        for (const LogRecord& entry : entries)
+
+        ImGuiListClipper clipper;
+        clipper.Begin(visibleCount);
+        while (clipper.Step())
         {
-            if (!PassFilter(entry))
+            for (int rowIndex = clipper.DisplayStart; rowIndex < clipper.DisplayEnd; ++rowIndex)
             {
-                continue;
+                const CollapsedRow& row = rows[drawIndices[static_cast<size_t>(rowIndex)]];
+                const LogRecord& entry = *row.record;
+                const std::string timestamp = FormatTimestamp(entry);
+                const char* channel = entry.GetChannelName();
+                const char* level = LogChannelBase::SeverityToString(entry.severity);
+
+                {
+                    EditorThemeScope rowTheme =
+                        EditorWindowTheme::SubduedSectionHeader(m_Context.GetEditorAppearance());
+                    ImGui::PushID(rowIndex);
+                    ImGui::Selectable("##ConsoleRow", false, ImGuiSelectableFlags_SpanAllColumns);
+                    if (ImGui::IsItemHovered() && entry.source.file != nullptr && entry.source.file[0] != '\0')
+                    {
+                        ImGui::SetTooltip("%s:%d", entry.source.file, entry.source.line);
+                    }
+                    ImGui::SameLine(0.0f, 6.0f);
+                    if (row.count > 1)
+                    {
+                        if (timestamp.empty())
+                        {
+                            ImGui::TextColored(GetLevelColor(entry.severity),
+                                               "[%s] [%s] (x%d) %s",
+                                               channel,
+                                               level,
+                                               row.count,
+                                               entry.message.c_str());
+                        }
+                        else
+                        {
+                            ImGui::TextColored(GetLevelColor(entry.severity),
+                                               "[%s] [%s] [%s] (x%d) %s",
+                                               timestamp.c_str(),
+                                               channel,
+                                               level,
+                                               row.count,
+                                               entry.message.c_str());
+                        }
+                    }
+                    else if (timestamp.empty())
+                    {
+                        ImGui::TextColored(GetLevelColor(entry.severity),
+                                           "[%s] [%s] %s",
+                                           channel,
+                                           level,
+                                           entry.message.c_str());
+                    }
+                    else
+                    {
+                        ImGui::TextColored(GetLevelColor(entry.severity),
+                                           "[%s] [%s] [%s] %s",
+                                           timestamp.c_str(),
+                                           channel,
+                                           level,
+                                           entry.message.c_str());
+                    }
+                    ImGui::PopID();
+                }
             }
-            ++visibleCount;
+        }
 
-            const std::string timestamp = FormatTimestamp(entry);
-            const char* channel = entry.GetChannelName();
-            const char* level = LogChannelBase::SeverityToString(entry.severity);
-
+        if (requestCopyVisible)
+        {
+            for (size_t drawIndex : drawIndices)
             {
-                EditorThemeScope rowTheme =
-                    EditorWindowTheme::SubduedSectionHeader(m_Context.GetEditorAppearance());
-                ImGui::PushID(rowIndex++);
-                ImGui::Selectable("##ConsoleRow", false, ImGuiSelectableFlags_SpanAllColumns);
-                ImGui::SameLine(0.0f, 6.0f);
-                ImGui::TextColored(GetLevelColor(entry.severity),
-                                   "[%s] [%s] [%s] %s",
-                                   timestamp.c_str(),
-                                   channel,
-                                   level,
-                                   entry.message.c_str());
-                ImGui::PopID();
-            }
-
-            if (requestCopyVisible)
-            {
+                const CollapsedRow& row = rows[drawIndex];
+                const LogRecord& entry = *row.record;
+                const std::string timestamp = FormatTimestamp(entry);
+                if (!timestamp.empty())
+                {
+                    clipboardText += "[";
+                    clipboardText += timestamp;
+                    clipboardText += "] ";
+                }
                 clipboardText += "[";
-                clipboardText += timestamp;
+                clipboardText += entry.GetChannelName();
                 clipboardText += "] [";
-                clipboardText += channel;
-                clipboardText += "] [";
-                clipboardText += level;
+                clipboardText += LogChannelBase::SeverityToString(entry.severity);
                 clipboardText += "] ";
+                if (row.count > 1)
+                {
+                    clipboardText += "(x";
+                    clipboardText += std::to_string(row.count);
+                    clipboardText += ") ";
+                }
                 clipboardText += entry.message;
                 clipboardText += "\n";
             }
         }
+
         if (m_AutoScroll && wasAtBottom)
         {
             ImGui::SetScrollHereY(1.0f);
@@ -228,6 +383,51 @@ namespace minEngine
         if (requestCopyVisible)
         {
             ImGui::SetClipboardText(clipboardText.c_str());
+        }
+    }
+
+    void ConsoleWindow::BuildCollapsedRows(const std::vector<LogRecord>& entries,
+                                           const std::chrono::system_clock::time_point& now,
+                                           std::vector<CollapsedRow>& outRows) const
+    {
+        outRows.clear();
+        if (!m_CollapseDuplicates)
+        {
+            outRows.reserve(entries.size());
+            for (const LogRecord& entry : entries)
+            {
+                if (!PassFilter(entry, now))
+                {
+                    continue;
+                }
+                outRows.push_back(CollapsedRow{&entry, 1});
+            }
+            return;
+        }
+
+        for (const LogRecord& entry : entries)
+        {
+            if (!PassFilter(entry, now))
+            {
+                continue;
+            }
+
+            // Consecutive-only collapse (Unity/UE style): merge with the last visible row only.
+            if (!outRows.empty())
+            {
+                CollapsedRow& lastRow = outRows.back();
+                if (lastRow.record != nullptr
+                    && lastRow.record->severity == entry.severity
+                    && std::strcmp(lastRow.record->GetChannelName(), entry.GetChannelName()) == 0
+                    && lastRow.record->message == entry.message)
+                {
+                    ++lastRow.count;
+                    lastRow.record = &entry;
+                    continue;
+                }
+            }
+
+            outRows.push_back(CollapsedRow{&entry, 1});
         }
     }
 
@@ -304,19 +504,25 @@ namespace minEngine
         m_CommandPresenter.DrawInputAndHandleKeys(m_Context, style);
     }
 
-    bool ConsoleWindow::PassFilter(const LogRecord& entry) const
+    bool ConsoleWindow::PassFilter(const LogRecord& entry, const std::chrono::system_clock::time_point& now) const
     {
         const char* channelName = entry.GetChannelName();
-        if (std::strcmp(channelName, "Core") == 0 && !m_ShowCore)
+        if (channelName != nullptr && channelName[0] != '\0')
         {
-            return false;
+            const auto it = m_ChannelEnabled.find(channelName);
+            if (it != m_ChannelEnabled.end() && !it->second)
+            {
+                return false;
+            }
+            // Unknown channel names (not yet in map) remain visible.
         }
-        if (std::strcmp(channelName, "App") == 0 && !m_ShowClient)
+
+        if (!PassLevelFilter(entry.severity))
         {
             return false;
         }
 
-        if (!PassLevelFilter(entry.severity))
+        if (!PassTimeFilter(entry, now))
         {
             return false;
         }
@@ -327,6 +533,33 @@ namespace minEngine
         }
 
         return ContainsIgnoreCase(entry.message, m_SearchText);
+    }
+
+    bool ConsoleWindow::PassTimeFilter(const LogRecord& entry,
+                                       const std::chrono::system_clock::time_point& now) const
+    {
+        switch (m_TimeWindowMode)
+        {
+            case TimeWindowMode::Off:
+                return true;
+            case TimeWindowMode::LastSeconds:
+            {
+                const auto age = now - entry.timestamp;
+                const auto limit = std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                    std::chrono::duration<float>(m_TimeWindowLastSeconds));
+                return age <= limit;
+            }
+            case TimeWindowMode::SincePlay:
+                if (!m_HasPlayStartedAt)
+                {
+                    return true;
+                }
+                return entry.timestamp >= m_PlayStartedAt;
+            case TimeWindowMode::SinceClear:
+                return entry.timestamp >= m_ClearedAt;
+            default:
+                return true;
+        }
     }
 
     bool ConsoleWindow::PassLevelFilter(LogSeverity severity) const
@@ -360,8 +593,19 @@ namespace minEngine
         return it != text.end();
     }
 
-    std::string ConsoleWindow::FormatTimestamp(const LogRecord& entry)
+    std::string ConsoleWindow::FormatTimestamp(const LogRecord& entry) const
     {
+        if (m_TimestampDisplay == TimestampDisplayMode::Off)
+        {
+            return {};
+        }
+
+        // Default Time mode uses Push-side displayTime (TD-032); avoid per-frame localtime.
+        if (m_TimestampDisplay == TimestampDisplayMode::Time)
+        {
+            return entry.displayTime;
+        }
+
         const std::time_t tt = std::chrono::system_clock::to_time_t(entry.timestamp);
         std::tm localTm = {};
 #ifdef _WIN32
@@ -369,8 +613,17 @@ namespace minEngine
 #else
         localtime_r(&tt, &localTm);
 #endif
-        char buffer[16] = {};
-        std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", localTm.tm_hour, localTm.tm_min, localTm.tm_sec);
+        char buffer[32] = {};
+        std::snprintf(
+            buffer,
+            sizeof(buffer),
+            "%04d-%02d-%02d %02d:%02d:%02d",
+            localTm.tm_year + 1900,
+            localTm.tm_mon + 1,
+            localTm.tm_mday,
+            localTm.tm_hour,
+            localTm.tm_min,
+            localTm.tm_sec);
         return std::string(buffer);
     }
 

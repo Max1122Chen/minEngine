@@ -5,10 +5,11 @@
 - **Type:** Feature
 - **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-12
+- **Last updated:** 2026-09-13
 - **Related:**
   - [ENGINE_0_1_0_ROADMAP.md](../../ENGINE_0_1_0_ROADMAP.md) Phase F3 · 验收 D8
   - [CORE-F18](../Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md)（**Done** — `GetEngineVersion().ToString()` 真源）
+  - [BUG-EDITOR-003](../../bugs/BUG-EDITOR-003.md)（shipping 名改为 MaximumEditor.exe）
   - [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md)
 - **Depends on:** `CORE-F18` Done（软：版本数字）
 - **Blocks:** 无；合入后 Phase F 可 fan-out
@@ -16,8 +17,9 @@
 ## TL;DR
 
 对外**产品显示名**改为 **Maximum**；版本数字继续走 `GetEngineVersion()`（当前 **0.0.9**）。  
-构建产物输出名为 **`Maximum.exe`**（CMake target 仍为 `Editor`，`--target Editor` 不变）。  
-**不**改仓库名、目录、C++ 命名空间。About 做最小可用模态。
+构建产物输出名为 **`MaximumEditor.exe`**（CMake target 仍为 `Editor`，`--target Editor` 不变；显示名仍为 Maximum）。  
+**不**改仓库名、目录、C++ 命名空间。About 做最小可用模态。  
+> **BUG-EDITOR-003：** 避免短名 `Maximum.exe`（本机曾与 GPU/OS 配置耦合导致最大化卡顿）。
 
 ## Scope
 
@@ -28,7 +30,7 @@
 - CLI：`--help` app 名、`--version` 文案
 - Help → About：最小模态（产品名 + 版本字符串）
 - Vulkan `pApplicationName` / `pEngineName` 对齐显示名（驱动侧一致性）
-- 构建产物 `OUTPUT_NAME Maximum` → `bin/Maximum.exe`；Launcher 默认解析同名
+- 构建产物 `OUTPUT_NAME MaximumEditor` → `bin/MaximumEditor.exe`；Launcher 默认解析同名（BUG-EDITOR-003）
 - Docs / Progress 记 D8 部分完成（完整「0.1.0 打标」仍属 Phase D）
 
 ### Out
@@ -119,7 +121,7 @@ S00+S01 可同一切合入。
 - [x] Editor 窗口标题以 **Maximum Editor** 开头  
 - [x] `--version` → `Maximum 0.0.9`（随 `kEngineVersion`）  
 - [x] Help → About 可用且展示产品名 + 版本  
-- [x] 构建产物为 **`Maximum.exe`**（CMake `--target Editor` 仍可用）  
+- [x] 构建产物为 **`MaximumEditor.exe`**（CMake `--target Editor` 仍可用；非短名 `Maximum.exe`，见 BUG-EDITOR-003）  
 - [x] 不改命名空间 / 仓库路径  
 - [x] Progress 记录：D8 显示名 + 产物名完成；0.1.0 数字待 Phase D  
 
@@ -155,3 +157,4 @@ S00+S01 可同一切合入。
 | 2026-09-12 | Design 充实；In Progress；锁定推荐默认 |
 | 2026-09-12 | S00+S01 Done：ProductBranding + 标题/CLI/GLFW/Vulkan/About |
 | 2026-09-12 | 增补：`OUTPUT_NAME Maximum` → `Maximum.exe`；Launcher/脚本对齐 |
+| 2026-09-13 | BUG-EDITOR-003：改为 `MaximumEditor.exe`；显示名不变 |

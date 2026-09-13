@@ -162,6 +162,7 @@ namespace minEngine
         record.message = std::move(message);
         record.source = source;
         record.threadId = LogSystemInternals::CurrentThreadId();
+        record.EnsureLocalDisplayTime();
 
         {
             LogSystemInternals& state = LogSystemInternals::Get();
@@ -237,6 +238,29 @@ namespace minEngine
             {
                 state.channels.erase(it);
                 return;
+            }
+        }
+    }
+
+    void LogSystem::ForEachRegisteredChannel(const std::function<void(LogChannelBase&)>& fn)
+    {
+        if (!fn)
+        {
+            return;
+        }
+
+        LogSystemInternals& state = LogSystemInternals::Get();
+        std::vector<LogChannelBase*> snapshot;
+        {
+            std::lock_guard<std::mutex> lock(state.mutex);
+            snapshot = state.channels;
+        }
+
+        for (LogChannelBase* channel : snapshot)
+        {
+            if (channel != nullptr)
+            {
+                fn(*channel);
             }
         }
     }

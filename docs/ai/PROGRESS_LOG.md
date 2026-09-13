@@ -1,6 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-12（WF-F03 Done · Phase F complete）
+Last updated: 2026-09-13（ED-F09 Done · ED-F11 W0–W2）
+
+### 2026-09-13 - ED-F09 Done + ED-F11 W0–W2：Console 过滤与多文档 Tab Host
+- **ED-F09：** `LogSystem::ForEachRegisteredChannel`；Console Channel 多选、时间显示/窗、Collapse、Clear on Play、source tooltip；去掉 Core/App Source 二分。
+- **ED-F11：** `EditorDocumentHost` + 可注册 DocumentType；OpenOrFocus（同资产聚焦）；Material/AnimGraph 多 Session 槽；Scene 单例策略；文档 Tab 条 + W1 右键；`GetCommandStack()` → Active Session 栈；切域默认不撕后台 Session。
+- **验证：** `cmake --build … --target Editor` → `Maximum.exe`；`minEngineTests.exe test logging-channels` PASS。
+- **未做（F11 W3+）：** Pin、Close All、Reopen Closed、撕窗/分屏。
+- **勿提交：** worktree 本地 `MyMEProject.meproject` ProjectRoot、`ScriptBinding/manifest.json` 绝对路径。
+- **Next：** 手测多 Tab；准备 commit；或 F11 W3 / 登记 Query 面。
+
+### 2026-09-13 - ED-F09 / ED-F11 Design 修订（维护者反馈）
+- **F09：** 完整过滤维度表 + UE/Unity 对比；纳入时间窗 / Collapse / Clear on Play；分期交付，非「仅 Channel MVP」。
+- **F11：** 去掉 Host 核心 enum kind → **DocumentTypeRegistry**；同类型多 Session + 同资产 Focus；**CommandStack per Session** 硬性；澄清方案 A = 共享 Dock **壳** + **按类型面板套件**（轨道编辑器属类型套件）。
+- **Next：** 维护者确认开放点 → In Progress / Impl。
+
+### 2026-09-13 - Phase P editor：登记 ED-F10/F11 + 起草 Console / Tab Design
+- **Registry：** `ED-F09` 仍 Planned（Design 充实）；新增 `ED-F10` Settings 占位、`ED-F11` Multi-document Tab Host Planned；ED next → **F12**。
+- **Docs：** [ED-F09](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md)；[ED-F11](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md)（方案 A 共享 Dock + Session）；ACTIVE_WORK Primary 改为先 UI 壳后 Query。
+- **决策待审：** F09 O1–O3；F11 O1–O5（默认 A、Scene 单例、Material 多开、Undo P2）。
+- **Next：** 维护者审阅 → In Progress；实现前可再补 `*_IMPLEMENTATION.md`。
 
 ### 2026-09-12 - WF-F03 Done：Maximum 产品显示名
 - **实现：** `ProductBranding.h`；窗口标题 / GLFW 初始 / CLI `--version` / Vulkan 名 / Help→About。

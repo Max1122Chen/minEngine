@@ -57,7 +57,7 @@ function Ensure-BranchExists([string]$branchName, [string]$base) {
 function Update-ProjectRoot([string]$worktreeRoot) {
     $meproject = Join-Path $worktreeRoot "minEngine\MyMEProject\MyMEProject.meproject"
     if (-not (Test-Path $meproject)) {
-        Write-Warning "No .meproject at $meproject â€” skip ProjectRoot update"
+        Write-Warning "No .meproject at $meproject â€?skip ProjectRoot update"
         return $null
     }
     $projectRoot = (Join-Path $worktreeRoot "minEngine\MyMEProject") -replace '\\', '/'
@@ -72,7 +72,7 @@ function Copy-RuntimeBinaries([string]$worktreeRoot) {
     $srcBin = Join-Path $MainGitRoot "minEngine\bin"
     $dstBin = Join-Path $worktreeRoot "minEngine\bin"
     if (-not (Test-Path $srcBin)) {
-        Write-Warning "Main bin missing: $srcBin â€” skip binary copy"
+        Write-Warning "Main bin missing: $srcBin â€?skip binary copy"
         return @()
     }
     New-Item -ItemType Directory -Force -Path $dstBin | Out-Null
@@ -91,7 +91,7 @@ function Copy-RuntimeBinaries([string]$worktreeRoot) {
     }
 
     if ($SeedBinaries -or $SeedHeavyBinaries) {
-        $light = @("libminEngine.dll", "libminEngine.dll.a", "Maximum.exe", "minEngineTests.exe")
+        $light = @("libminEngine.dll", "libminEngine.dll.a", "MaximumEditor.exe", "minEngineTests.exe")
         foreach ($name in $light) {
             $src = Join-Path $srcBin $name
             if (Test-Path $src) {

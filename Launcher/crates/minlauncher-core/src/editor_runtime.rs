@@ -36,7 +36,7 @@ mod tests {
     #[test]
     fn accepts_release_runtime_dll() {
         let dir = tempdir().unwrap();
-        let editor = dir.path().join("Maximum.exe");
+        let editor = dir.path().join("MaximumEditor.exe");
         fs::write(&editor, b"").unwrap();
         fs::write(dir.path().join(RELEASE_ENGINE_DLL), b"").unwrap();
         validate_editor_runtime(&editor).unwrap();
@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn accepts_debug_runtime_dll() {
         let dir = tempdir().unwrap();
-        let editor = dir.path().join("Maximum.exe");
+        let editor = dir.path().join("MaximumEditor.exe");
         fs::write(&editor, b"").unwrap();
         fs::write(dir.path().join(DEBUG_ENGINE_DLL), b"").unwrap();
         validate_editor_runtime(&editor).unwrap();
@@ -54,7 +54,7 @@ mod tests {
     #[test]
     fn rejects_missing_runtime_dll() {
         let dir = tempdir().unwrap();
-        let editor = dir.path().join("Maximum.exe");
+        let editor = dir.path().join("MaximumEditor.exe");
         fs::write(&editor, b"").unwrap();
         let err = validate_editor_runtime(&editor).unwrap_err();
         assert!(matches!(err, LauncherError::LaunchFailed(_)));

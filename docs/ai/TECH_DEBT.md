@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-09-05（merge；TD-026 Done via CORE-F11；TD-031 still Deferred）
+Last updated: 2026-09-13（TD-032 Done；TD-031 still Deferred）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -39,6 +39,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-029 | PIE `SceneDuplicator` uses in-memory JSON instead of Binary | CORE-F05 / ED | **Medium** | Done | `CORE-F09` · `SceneDuplicator.cpp` | **2026-09-04：** `DuplicateForPIE` 恢复 `SerializeObjectToBuffer` / Binary v2；磁盘 `.mescene` 仍 JSON。 |
 | TD-030 | EnterPlay failure path lacks full rollback | CORE-F05 | **Medium** | Open | [CORE-F05_PLAY_MODE_IMPLEMENTATION.md](./Platform/Core/CORE-F05_PLAY_MODE_IMPLEMENTATION.md) S02 | 2026-09-03 MVP closeout: clone/register mid-failure may leave partial PIE context; restore Editor TickPolicy on early fail exists, full teardown of half-registered PIE still owed. |
 | TD-031 | GO `activeInHierarchy` 随父 Active 传播未做 | CORE-F08 / CORE-F06 | **Medium** | **Deferred** | [CORE-F08 Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) §3.5 | 2026-09-04：父子层级 MVP 不做 Inactive 传播；日后与 CORE-F06 对齐再开切片。 |
+| TD-032 | Console Output draw path：每帧全量 Snapshot + 每行 FormatTimestamp | ED / CORE-F17 | **Medium** | **Done** | [ED-TD032 Design](./Editor/ED-TD032_CONSOLE_DRAW_PATH_PERF_DESIGN.md) · `ED-F09` S03 · [BUG-EDITOR-003](./bugs/BUG-EDITOR-003.md) | **2026-09-13 Done：** `displayTime` + generation/`CopyInto` + 环形仓 + `Push(const&)` + Output `ImGuiListClipper`；P5 通道过滤按维护者决定本期不做。`logging-channels` 19/19。 |
 
 ---
 

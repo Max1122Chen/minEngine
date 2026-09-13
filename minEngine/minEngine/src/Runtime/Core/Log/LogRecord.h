@@ -23,6 +23,8 @@ namespace minEngine
     struct LogRecord
     {
         std::chrono::system_clock::time_point timestamp{};
+        // Local wall-clock label filled once (e.g. "HH:MM:SS"); keep timestamp as source of truth.
+        std::string displayTime;
         LogSeverity severity = LogSeverity::Info;
         const LogChannelBase* channel = nullptr;
         std::string channelName;
@@ -30,6 +32,8 @@ namespace minEngine
         LogSourceLocation source{};
         uint32_t threadId = 0;
         std::vector<LogField> fields;
+
+        void EnsureLocalDisplayTime();
 
         const char* GetChannelName() const
         {

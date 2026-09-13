@@ -1,4 +1,4 @@
-# Force-stop all Maximum.exe instances (fixes locked libminEngined.dll during build).
+# Force-stop all MaximumEditor.exe (and legacy Maximum.exe / Editor.exe) instances (fixes locked libminEngined.dll during build).
 # Also stops legacy Editor.exe if still running from older builds.
 # Run from an elevated PowerShell if normal taskkill reports "Access denied".
 #
@@ -7,14 +7,14 @@
 
 $ErrorActionPreference = "Continue"
 
-$names = @("Maximum", "Editor")
+$names = @("MaximumEditor", "Maximum", "Editor")
 $processes = @()
 foreach ($name in $names) {
     $processes += @(Get-Process -Name $name -ErrorAction SilentlyContinue)
 }
 
 if ($processes.Count -eq 0) {
-    Write-Host "No Maximum.exe / Editor.exe processes found."
+    Write-Host "No MaximumEditor.exe / Maximum.exe / Editor.exe processes found."
     exit 0
 }
 

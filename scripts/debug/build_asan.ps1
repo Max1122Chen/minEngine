@@ -40,7 +40,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "ASan build failed (exit $LASTEXITCODE)."
 }
 
-$exe = Join-Path $SourceDir "bin-asan\Maximum.exe"
+$exe = Join-Path $SourceDir "bin-asan\MaximumEditor.exe"
 if (Test-Path $exe) {
     Write-Host "Built: $exe"
 }

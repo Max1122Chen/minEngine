@@ -14,7 +14,7 @@ If `minEngine/bin/` is empty in this worktree, copy from the main tree:
 $src = "D:\Dev\GitRepo\minEngine\minEngine\bin"
 $dst = "D:\Dev\GitRepo\minEngine-launcher\minEngine\bin"
 New-Item -ItemType Directory -Force -Path $dst | Out-Null
-Copy-Item "$src\Maximum.exe","$src\libminEngine.dll","$src\libminEngined.dll","$src\libassimp-6.dll" -Destination $dst
+Copy-Item "$src\MaximumEditor.exe","$src\libminEngine.dll","$src\libminEngined.dll","$src\libassimp-6.dll" -Destination $dst
 ```
 
 (`minEngine/bin/` is gitignored.)
@@ -52,9 +52,9 @@ Binary: `Launcher/target/debug/minlauncher-gui.exe` (or `release/` after `--rele
 ## Quick start (CLI)
 
 ```powershell
-# From repo root (after building Editor target â†’ Maximum.exe)
+# From repo root (after building Editor target â†?MaximumEditor.exe)
 cd Launcher
-cargo run -p minlauncher -- config set editor ..\minEngine\bin\Maximum.exe
+cargo run -p minlauncher -- config set editor ..\minEngine\bin\MaximumEditor.exe
 cargo run -p minlauncher -- open ..\minEngine\MyMEProject\MyMEProject.meproject
 
 # Create a project

@@ -144,7 +144,7 @@ namespace minEngine
     {
 #if defined(_WIN32)
         SetUnhandledExceptionFilter(EditorUnhandledExceptionFilter);
-        ME_LOG(LogEditor, Info, "Editor crash diagnostics: logging to ed_crash.log beside Maximum.exe.");
+        ME_LOG(LogEditor, Info, "Editor crash diagnostics: logging to ed_crash.log beside MaximumEditor.exe.");
 #else
         ME_LOG(LogEditor, Warn, "Editor crash diagnostics: Windows-only; not installed.");
 #endif

@@ -86,3 +86,35 @@ TEST_CASE("logging-channels: sink receives channel pointer [smoke]")
     CHECK(sink->LastSeverity == LogSeverity::Warn);
     CHECK(sink->LastMessage == "channel-pointer-check");
 }
+
+TEST_CASE("logging-channels: console ring capacity and displayTime [smoke]")
+{
+    using namespace minEngine;
+
+    LogSystem::Initialize();
+    LogConsoleStorage::Clear();
+
+    const LogSeverity previous = LogCore.GetSeverity();
+    LogCore.SetSeverity(LogSeverity::Trace);
+
+    for (int i = 0; i < 2100; ++i)
+    {
+        ME_LOG(LogCore, Info, "ring-fill-{}", i);
+    }
+
+    const auto entries = LogConsoleStorage::Snapshot();
+    CHECK(entries.size() == 2000);
+    REQUIRE_FALSE(entries.empty());
+    CHECK_FALSE(entries.front().displayTime.empty());
+    CHECK_FALSE(entries.back().displayTime.empty());
+    CHECK(entries.front().message == "ring-fill-100");
+    CHECK(entries.back().message == "ring-fill-2099");
+
+    uint64_t generationA = LogConsoleStorage::GetGeneration();
+    std::vector<LogRecord> cached;
+    LogConsoleStorage::CopyInto(cached);
+    CHECK(cached.size() == entries.size());
+    CHECK(LogConsoleStorage::GetGeneration() == generationA);
+
+    LogCore.SetSeverity(previous);
+}

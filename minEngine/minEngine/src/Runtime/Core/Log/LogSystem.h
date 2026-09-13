@@ -5,6 +5,7 @@
 
 #include "spdlog/fmt/fmt.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -30,6 +31,9 @@ namespace minEngine
 
         static void RegisterChannel(LogChannelBase& channel);
         static void UnregisterChannel(LogChannelBase& channel);
+
+        /** Snapshot of registered channels (stable after static init in normal Editor use). */
+        static void ForEachRegisteredChannel(const std::function<void(LogChannelBase&)>& fn);
 
     private:
         LogSystem() = default;
