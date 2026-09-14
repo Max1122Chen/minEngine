@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-15（合入 CORE-F22 + ED-F15）  
+Last updated: 2026-09-15（`feat/lua-script` rebase：F19 Design 链补上）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -43,7 +43,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F16` | LinearColor 作者颜色（灯光等） | **Done** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · 文件名保留历史 `CORE-F14_*` |
 | `CORE-F17` | LogChannel + structured LogRecord（spdlog Backend；非 UE Category） | **Done** | — | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) · [Impl](./Platform/Core/CORE-F17_LOGGING_CHANNELS_IMPLEMENTATION.md) · Phase F1 |
 | `CORE-F18` | EngineVersion（一等公民）+ 磁盘 `$schemaVersion` 门闸 / `$engineVersion` 戳 | **Done** | — | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) · Phase F2 · engine **0.0.9** / schema **1** |
-| `CORE-F19` | Lua C++→Lua Call-by-name（Delegate 桥后置） | **In Progress**（Call Done；Delegate Deferred） | — | Design 在 `feat/lua-script` · 契约摘要见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.6；合并后补链 |
+| `CORE-F19` | Lua C++→Lua Call-by-name（Delegate 桥后置） | **In Progress**（Call Done；Delegate Deferred） | — | [Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md) · 契约摘要亦见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.6 |
 | `CORE-F20` | Dynamic Multicast Delegate（类型系统 + AddDynamic；B1 包装 Native） | **Done** | — | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) · `feat/core` · Lua `Add(fn)` → F21 |
 | `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Planned** | — | Design 未开 · 挂钩契约见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · 分支 `feat/lua-script` |
 | `CORE-F22` | CPU Profiler Harness（Session/Phase/Frame · Scope · Trace 导出 · 查询 API） | **Done** | — | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) · `feat/core` · **不含** Editor UI |

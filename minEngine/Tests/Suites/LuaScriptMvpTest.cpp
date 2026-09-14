@@ -351,6 +351,64 @@ end
             LuaScriptSystem::SetInstance(nullptr);
             return ok;
         }
+
+        bool TestLuaComponentCallByName()
+        {
+            LuaScriptMvpTestScope scope(false);
+            LuaScriptSystem system;
+            LuaScriptSystem::SetInstance(&system);
+            system.Initialize();
+
+            LuaBindProbe::ResetStaticCounter();
+            std::shared_ptr<LuaScript> script = NewObject<LuaScript>("CallProbe");
+            script->SetSource(R"LUA(
+function on_probe(n)
+  for i = 1, n do
+    LuaBindProbe.IncrementStaticCounter()
+  end
+end
+)LUA");
+
+            LuaComponent component;
+            component.SetScript(script);
+            if (!component.LoadScript())
+            {
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: Call probe LoadScript failed.");
+                system.Shutdown();
+                LuaScriptSystem::SetInstance(nullptr);
+                return false;
+            }
+
+            if (!component.Call("on_probe", 4))
+            {
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: Call(on_probe) failed.");
+                component.UnloadScript();
+                system.Shutdown();
+                LuaScriptSystem::SetInstance(nullptr);
+                return false;
+            }
+
+            if (component.Call("missing_fn"))
+            {
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: Call(missing_fn) should fail.");
+                component.UnloadScript();
+                system.Shutdown();
+                LuaScriptSystem::SetInstance(nullptr);
+                return false;
+            }
+
+            const bool ok = LuaBindProbe::GetStaticCounter() == 4;
+            if (!ok)
+            {
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: Call expected counter 4, got {}.",
+                       LuaBindProbe::GetStaticCounter());
+            }
+
+            component.UnloadScript();
+            system.Shutdown();
+            LuaScriptSystem::SetInstance(nullptr);
+            return ok;
+        }
     } // namespace
 
     bool RunLuaScriptMvpTests()
@@ -384,6 +442,10 @@ end
             return false;
         }
         if (!TestSceneEntrySelfOwnerTranslate())
+        {
+            return false;
+        }
+        if (!TestLuaComponentCallByName())
         {
             return false;
         }

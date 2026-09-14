@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（master: CORE-F22 + ED-F15 合入）
+Last updated: 2026-09-15（feat/lua-script rebase onto master；F19 Call 保留）
 
 ### 2026-09-15 - master：合入 feat/core + feat/editor
 - **core：** CORE-F20 Dynamic Multicast；CORE-F22 Profiler Harness（`test profiler` 5/5）。
@@ -204,6 +204,19 @@ Last updated: 2026-09-15（master: CORE-F22 + ED-F15 合入）
 
 ### 2026-09-14 - ED-F12：World Query–Modify–Verify Design 初稿（已被上条口径修订取代）
 - 初稿聚焦 Scene list/get/set/verify；随后抬升为资产会话协议。
+
+### 2026-09-14 - CORE-F19：拆除 Lua↔Delegate 反模式竖切
+- **删除：** `LuaDelegateBind.h`、`ButtonComponent::BindOnClicked`、`LuaDelegateProbeComponent`、`DelegateProbeDemo.lua`、PostGenerated Button/Probe usertype、`TrackLuaBinding`。
+- **保留：** `LuaComponent::Call` / `TryGetFunction`（含 tick 缓存修复）。
+- **方向：** Lua `Add(fn)` → **CORE-F21**（基建已在 **CORE-F20**）。
+- **验证：** `minEngineTests.exe test lua-script-mvp` PASS。
+
+### 2026-09-14 - CORE-F19：C++→Lua Call + BindLua（0/1/2）+ Button 竖切（已部分撤回）
+- 曾落地 BindLua / Button Bind / Probe；**同日纠偏拆除**（见上条）。Call 路径保留。
+
+### 2026-09-14 - CORE-F19 Planned：Lua ↔ Delegate / C++→Lua Design 草稿
+- **Registry：** `CORE-F19`。
+- **Docs：** [CORE-F19 Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md)。
 
 ### 2026-09-13 - ED-F11：Mode→Active Session 语义 + Shared CB 入布局
 - **设计：** [ED-F11](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 — Shared vs Type Suite；Tab/Active Session 为前台真相。

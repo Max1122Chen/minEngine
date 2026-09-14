@@ -98,17 +98,8 @@ namespace minEngine
             return false;
         }
 
-        sol::object tickObject = m_Environment["tick"];
-        if (tickObject.is<sol::protected_function>())
-        {
-            m_TickFn = tickObject.as<sol::protected_function>();
-        }
-        else
-        {
-            m_TickFn = sol::protected_function();
-        }
-
         m_Loaded = true;
+        m_TickFn = TryGetFunction("tick");
         m_ScriptEnabled = true;
         m_HasLoggedTickError = false;
         return true;
@@ -119,6 +110,22 @@ namespace minEngine
         ClearLuaEnvironment();
         m_SyncedScript = m_Script.get();
         m_Loaded = false;
+    }
+
+    sol::protected_function LuaComponent::TryGetFunction(const char* name) const
+    {
+        if (!m_Loaded || name == nullptr || name[0] == '\0')
+        {
+            return sol::protected_function();
+        }
+
+        sol::object object = m_Environment[name];
+        if (object.is<sol::protected_function>())
+        {
+            return object.as<sol::protected_function>();
+        }
+
+        return sol::protected_function();
     }
 
     bool LuaComponent::EnsureLoaded()
