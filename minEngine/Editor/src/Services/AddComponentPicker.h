@@ -30,7 +30,7 @@ namespace minEngine
 
         /**
          * Draw contents inside an already-opened BeginMenu("Add Component").
-         * Search + scrollable list. On type click: SelectGameObject + SubmitAdd.
+         * Search + scrollable list. On type click: SubmitAdd with explicit GO id.
          */
         static void DrawContextSubMenu(IEditorContext& editor,
                                        SceneEditor& sceneEditor,
@@ -46,7 +46,6 @@ namespace minEngine
                                          const std::vector<std::string>& componentTypeNames,
                                          std::string_view filterText,
                                          uint64_t targetGameObjectId,
-                                         bool selectTargetBeforeAdd,
                                          bool closePopupOnAdd);
     };
 }

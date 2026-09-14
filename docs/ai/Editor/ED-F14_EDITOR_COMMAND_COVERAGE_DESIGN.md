@@ -3,16 +3,16 @@
 ## Meta
 - **ID:** `ED-F14`
 - **Type:** Feature
-- **Status:** Planned（Design 首稿；**依赖 ED-F13 收口后再开实现**）
+- **Status:** Planned（**F13 Done**；可审批后开实现）
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-14
 - **Branch:** `feat/editor`
 - **Depends on:**
-  - **`ED-F13` Done**（Command-first 形态：无 Apply 套壳）
+  - **`ED-F13` Done**（显式目标；无「先 Select 再改」）
   - `ED-F12` Done（Debug / EditorCommand 协议骨架）
   - `ED-F11` Session 栈（已有）
 - **Related:**
-  - [ED-F13 Command-first](./ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md)
+  - [ED-F13 显式目标编辑](./ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md)
   - [ED-F12 Agent Edit Protocol](./ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md)
   - Material / AnimGraph 既有 Editor 设计（按打开资产类型扩展命令集）
 - **Blocks:** MCP 富工具（软）；跨域 Agent 竖切完整度
@@ -20,8 +20,8 @@
 
 ## TL;DR
 
-在 F13 把 Scene 的「套壳」拆干净之后，本 Feature **按 SubEditor / 文档类型补齐应有的 EditorCommand**，并可选接上 Debug 动词（`edit` / `verify` / …）。  
-目标：每个已支持的编辑会话，人类 GUI 与 Debug/MCP **走同一命令集**，而不是各域私自改内存。
+在 F13 固定 **GUI → Command → Editor 实现方法**、并去掉「选中态模拟」之后，本 Feature **按 SubEditor / 文档类型补齐应有的 EditorCommand**，并接上 Debug 动词（`edit` / `verify` / …）。  
+目标：各域常见编辑都入 Session 栈；GUI / Debug / MCP 同一命令集；**实现仍在各 Editor**。
 
 ---
 
@@ -30,7 +30,7 @@
 | 项 | 结论 |
 |----|------|
 | 扫描 | Scene 已有一批 `Editor*Command`（待 F13 整形）；Material / AnimGraph **编辑未入 Session 栈** |
-| 前置 | **partial** — 必须等 **F13 Done**，否则新命令会继续抄 Apply 套壳 |
+| 前置 | **partial** — 必须等 **F13 Done**，否则新命令易再引入「先 Select 再改」 |
 | 债风险 | **medium** — AnimGraph 事件多；Material 预览与脏标记 |
 | WIP | 与 F13 串行；勿并行开码 |
 | 建议 | **Defer 实现** 至 F13；本文件先定 **覆盖矩阵与分期**，审批后锁定 |
@@ -41,14 +41,14 @@
 
 ### In
 - 盘点 **当前已注册文档类型** 的编辑操作 → 哪些已是 EditorCommand、哪些是直接变异
-- 为缺口建立 **EditorCommand**（遵循 F13 契约：显式目标、直接改对象/资产）
+- 为缺口建立 **EditorCommand**（遵循 F13：显式目标；Execute 调 **该域 Editor 实现方法**）
 - Scene：F13 之后仍缺的常用操作（若有）补齐
 - Material / AnimationGraph：第一批可撤销编辑命令（MVP 子集，见 §3）
 - Debug 前端：在已有 EditorCommand 上挂 **基线/方言** 字符串（含 F12 推迟的 `edit` / `verify`；`invoke` 另估）
 - 每域至少一条自动化或固定手测清单
 
 ### Out
-- 重做 F13（Apply 删除）
+- 重做 F13（选中态契约）
 - 完整 Anim Graph 一切操作的 undo（可分期；本期 MVP）
 - 全 MCP schema 产品化（`MCP-F01`）
 - Prefab / 未落地文档类型
@@ -67,7 +67,7 @@
 ## 1) 背景与目标
 
 F12 定了「一种 Command、多种前端」。  
-F13 定了「Command 不是 Editor 函数套壳」。  
+F13 定了「GUI 产生 Command；Command 调用 Editor；Editor 实现逻辑；禁止选中态冒充参数」。  
 F14 补 **产品完整度**：打开 Scene / Material / AnimGraph 时，该域常见编辑都应能：
 
 1. 由 GUI 构造 Command 入 Session 栈  
@@ -125,9 +125,9 @@ F14 补 **产品完整度**：打开 Scene / Material / AnimGraph 时，该域�
 
 ### 3.1 原则
 
-1. **先 F13 契约，再扩面** — 新命令禁止引入 `*Editor::Apply*` 套壳。  
+1. **先 F13 契约，再扩面** — 新命令禁止「先 Select 再改」；实现放在 Editor 显式 API。  
 2. **按文档类型注册命令集** — 与 Session `typeId` 对齐（F11/F12）。  
-3. **MVP 竖切** — 每域先「改一条可持久化数据 + undo」，再铺表。  
+3. **MVP 竖切** — 每域先「Command → Editor 方法改一条可持久化数据 + undo」，再铺表。  
 4. **Debug 后挂** — 先有 EditorCommand，再写字符串解析；避免又造平行语义。
 
 ### 3.2 推荐 Wave
@@ -144,8 +144,8 @@ F14 补 **产品完整度**：打开 Scene / Material / AnimGraph 时，该域�
 
 | 工作 | Feature |
 |------|---------|
-| 删 Scene Apply\*、去 Select 前置 | **F13** |
-| 新命令、新域、Debug 新动词 | **F14** |
+| 去 Select 前置；显式目标 API | **F13** |
+| 新命令、新域、Debug 新动词（Command→Editor） | **F14** |
 | 半吊子「Material 仍直接写但挂空 Command」 | **禁止** |
 
 ---
@@ -155,7 +155,7 @@ F14 补 **产品完整度**：打开 Scene / Material / AnimGraph 时，该域�
 | 选项 | 优点 | 缺点 | 结论 |
 |------|------|------|------|
 | A. F13 后按域扩 Command | 契约清晰 | 总周期长 | **选用** |
-| B. 与 F13 并行给 Material 先加套壳 Command | 表面上有 undo | 复制反模式 | 否 |
+| B. 与 F13 并行、且新命令再走 Select 模拟 | 表面上有 undo | 复制 F13 债 | 否 |
 | C. 只做 Debug 动词、不碰 Material/AnimGraph | 快 | 违背「各 Editor 完备」 | 否（可作为 F14 内再砍 Wave，但不改目标） |
 
 ---
@@ -165,7 +165,7 @@ F14 补 **产品完整度**：打开 Scene / Material / AnimGraph 时，该域�
 | 风险 | 影响 | 缓解 |
 |------|------|------|
 | AnimGraph 事件粒度与合并 | undo 体验差或栈爆炸 | MVP 合并为「一次手势一个 Command」；装饰节点不入栈 |
-| Material preview 与 Command 时序 | 预览不同步 | Command 成功后统一 `ApplySessionToPreview`（UI 钩子，非套壳变异） |
+| Material preview 与 Command 时序 | 预览不同步 | Editor 实现方法或成功后 UX 钩子刷新 preview（非选中态模拟） |
 | `invoke` 安全面 | 误调危险 API | 默认 Deferred；白名单另议 |
 | 范围变成「所有编辑器完美」 | 无法收口 | §2 矩阵 + Deferred 列；W4 强制停 |
 
@@ -176,14 +176,14 @@ F14 补 **产品完整度**：打开 Scene / Material / AnimGraph 时，该域�
 - [ ] §2 矩阵每个「F14 MVP」格有对应 EditorCommand（或显式 Deferred 行）
 - [ ] Material / AnimGraph 至少一类编辑走 Session `CommandStack` 且可 Undo
 - [ ] Debug：`edit` + `verify` 最小可用；与 GUI 同一 Command 类型
-- [ ] 无新增 `SceneEditor::Apply*` 式套壳
+- [ ] 无新增「先 Select 再变异」路径；新 Editor API 均为显式目标
 - [ ] 测试或手测清单写入 Progress；Registry → Done
 
 ---
 
 ## 7) Status note
 
-**Blocked on：** `ED-F13` 实现完成（删除 Apply 套壳）。  
+**Blocked on：** `ED-F13` 实现完成（显式目标契约）。  
 F13 未 Done 前本 Feature 保持 Planned，不开码。
 
 ---
@@ -193,3 +193,4 @@ F13 未 Done 前本 Feature 保持 Planned，不开码。
 | 日期 | 说明 |
 |------|------|
 | 2026-09-14 | 首稿：覆盖矩阵 + 依赖 F13；edit/verify 纳入 |
+| 2026-09-14 | 对齐 F13 修订：Editor=实现者；反的是选中态模拟而非 Apply 方法本身 |

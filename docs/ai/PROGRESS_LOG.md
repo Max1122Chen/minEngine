@@ -1,6 +1,18 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-14（ED-F13/F14 Design 首稿）
+Last updated: 2026-09-14（ED-F13 Done）
+
+### 2026-09-14 - ED-F13 Done：显式 AddComponent（去 Select 前置）
+- **API：** `ApplyAddComponentToGameObject(id,…)`；`ApplyRemoveComponentFromGameObject`；删 `ApplyAddComponentToSelected*`。
+- **Command：** `EditorAddComponentCommand` 不再先 Select；Undo 按 owner id 移除。
+- **Picker：** Inspector/Context 提交显式 id；去掉 `selectTargetBeforeAdd`。
+- **验证：** Editor 构建 OK；`test command-system` 25/25 PASS。
+- **保留：** 其它显式 `Apply*`；Delete 恢复后 Select 仅 UX。
+
+### 2026-09-14 - ED-F13 / F14 Design 修订（选中态口径）
+- **纠偏：** F13 不删 Editor `Apply*`、不把逻辑搬进 Command；只消灭「先 Select 再改」。
+- **分层：** GUI 产生 Command → Command 调用 → Editor 实现。
+- **状态：** 修订稿待维护者审批；未开码、未 commit。
 
 ### 2026-09-14 - ED-F13 / ED-F14 Design 首稿
 - **F13：** [ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) — 扫描 Scene Command→Apply* / Select 耦合；删除列表；Wave W1–W5。

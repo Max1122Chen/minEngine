@@ -16,9 +16,8 @@ namespace minEngine
 
     void EditorAddComponentCommand::Execute()
     {
-        // Ensure the desired owner is selected before applying.
-        m_SceneEditor.SelectGameObject(m_OwnerGameObjectId);
-        m_SceneEditor.ApplyAddComponentToSelectedGameObject(m_ComponentTypeName, m_CreatedComponent);
+        m_SceneEditor.ApplyAddComponentToGameObject(
+            m_OwnerGameObjectId, m_ComponentTypeName, m_CreatedComponent);
     }
 
     void EditorAddComponentCommand::Undo()
@@ -28,15 +27,7 @@ namespace minEngine
             return;
         }
 
-        // Owner might have changed selection; force selection for safety.
-        m_SceneEditor.SelectGameObject(m_OwnerGameObjectId);
-        GameObject* owner = m_SceneEditor.GetSelectedGameObject();
-        if (!owner)
-        {
-            return;
-        }
-
-        if (m_SceneEditor.ApplyRemoveComponentFromGO(*owner, *m_CreatedComponent))
+        if (m_SceneEditor.ApplyRemoveComponentFromGameObject(m_OwnerGameObjectId, *m_CreatedComponent))
         {
             m_CreatedComponent = nullptr;
         }
@@ -47,4 +38,3 @@ namespace minEngine
         return m_Description.c_str();
     }
 }
-

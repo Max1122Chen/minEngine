@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-14（ED-F13/F14 Design 首稿）  
+Last updated: 2026-09-14（ED-F13 Done）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -68,7 +68,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F10` | EditorSettings（布局/过滤等持久化） | **Planned** | — | Design 未开 · 0.1.0 Roadmap 占位；**勿抢号** |
 | `ED-F11` | Multi-document Tab Host（Session + 文档 Tab；共享 Dock MVP） | **In Progress**（W0–W2；**W3 缓**） | — | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) · Host/注册类型/Tab/per-Session 栈 |
 | `ED-F12` | Agent Edit Protocol（资产 Session × Debug/EditorCommand 命名收敛） | **Done** | — | [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) · `edit`/`verify`/`invoke` → 后续 Feature |
-| `ED-F13` | EditorCommand-first：去掉 Select/Apply 套壳，Editor 变薄、逻辑进 Command | **Planned** | — | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) · Scene 限定；真重构删 Apply* |
+| `ED-F13` | 显式目标编辑：去「先 Select 再改」；Editor=实现者、Command=调用者 | **Done** | — | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) · AddComponent 显式 API |
 | `ED-F14` | 各 SubEditor 命令面完备（按 Session/资产类型补齐 EditorCommand） | **Planned** | — | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) · **Blocked on F13**；含 edit/verify |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
@@ -125,7 +125,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
 | `CORE` | **F19** | F17 Logging / F18 Schema **Done**；F13–F16 Done |
 | `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F15** | F12 Done；**F13** Command-first Editor Planned；**F14** 命令面完备 Planned；F10 占位；F11 W3 缓 |
+| `ED` | **F15** | F12–**F13 Done**；**F14** 命令面完备 Planned；F10 占位；F11 W3 缓 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |

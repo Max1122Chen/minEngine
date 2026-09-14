@@ -688,18 +688,31 @@ namespace minEngine
         return m_AllComponentTypeNames;
     }
 
-    bool SceneEditor::ApplyAddComponentToSelectedGameObject(const std::string& componentTypeName, Component*& outNewComponent)
+    bool SceneEditor::ApplyAddComponentToGameObject(uint64_t gameObjectId,
+                                                    const std::string& componentTypeName,
+                                                    Component*& outNewComponent)
     {
         outNewComponent = nullptr;
-        GameObject* gameObject = GetSelectedGameObject();
-        if (!gameObject)
+        Scene* scene = GetActiveScene();
+        if (!scene)
         {
+            ME_LOG(LogEditor, Error, "ApplyAddComponentToGameObject: no active scene.");
             return false;
         }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (!gameObject)
+        {
+            ME_LOG(LogEditor, Error,
+                "ApplyAddComponentToGameObject: GameObject id={} not found.",
+                gameObjectId);
+            return false;
+        }
+
         std::shared_ptr<Component> newComponent = gameObject->AddComponent(componentTypeName);
         if (!newComponent)
         {
-            ME_LOG(LogEditor, Error, 
+            ME_LOG(LogEditor, Error,
                 "Failed to add component of type '{}' to GameObject '{}'.",
                 componentTypeName,
                 gameObject->GetName());
@@ -738,7 +751,17 @@ namespace minEngine
 
         outNewComponent = newComponent.get();
         MarkSceneDirty();
+        // Optional UX: focus owner after mutation (not used to resolve the target).
+        SelectGameObject(gameObjectId);
         return true;
+    }
+
+    void SceneEditor::SubmitAddComponentToGameObject(IEditorContext& context,
+                                                     uint64_t gameObjectId,
+                                                     const std::string& componentTypeName)
+    {
+        context.GetCommandStack().Execute(std::make_unique<EditorAddComponentCommand>(
+            *this, gameObjectId, componentTypeName));
     }
 
     void SceneEditor::SubmitAddComponentToSelectedGameObject(IEditorContext& context, const std::string& componentTypeName)
@@ -749,15 +772,14 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorAddComponentCommand>(
-            *this, gameObject->GetID(), componentTypeName));
+        SubmitAddComponentToGameObject(context, gameObject->GetID(), componentTypeName);
     }
 
     bool SceneEditor::ApplyRemoveComponentFromGO(GameObject& gameObject, Component& targetComponent)
     {
         if (targetComponent.GetOwner() != &gameObject)
         {
-            ME_LOG(LogEditor, Error, 
+            ME_LOG(LogEditor, Error,
                 "Failed to remove component '{}' from GameObject '{}': component does not belong to the specified GameObject.",
                 targetComponent.GetClass()->GetName(),
                 gameObject.GetName());
@@ -770,6 +792,27 @@ namespace minEngine
             return true;
         }
         return false;
+    }
+
+    bool SceneEditor::ApplyRemoveComponentFromGameObject(uint64_t ownerGameObjectId, Component& targetComponent)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            ME_LOG(LogEditor, Error, "ApplyRemoveComponentFromGameObject: no active scene.");
+            return false;
+        }
+
+        GameObject* owner = scene->FindGameObjectById(ownerGameObjectId);
+        if (!owner)
+        {
+            ME_LOG(LogEditor, Error,
+                "ApplyRemoveComponentFromGameObject: GameObject id={} not found.",
+                ownerGameObjectId);
+            return false;
+        }
+
+        return ApplyRemoveComponentFromGO(*owner, targetComponent);
     }
 
     void SceneEditor::SubmitRemoveComponentFromGO(IEditorContext& context, GameObject& gameObject, Component& targetComponent)

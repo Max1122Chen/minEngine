@@ -103,9 +103,17 @@ namespace minEngine
                                        const Transform& before,
                                        const Transform& after);
         const std::vector<std::string>& GetAllComponentTypeNames() const;
-        bool ApplyAddComponentToSelectedGameObject(const std::string& componentTypeName, Component*& outNewComponent);
+        /** Explicit-target add; does not require current selection. */
+        bool ApplyAddComponentToGameObject(uint64_t gameObjectId,
+                                           const std::string& componentTypeName,
+                                           Component*& outNewComponent);
+        void SubmitAddComponentToGameObject(IEditorContext& context,
+                                            uint64_t gameObjectId,
+                                            const std::string& componentTypeName);
+        /** GUI helper: resolve selection at submit time, then SubmitAddComponentToGameObject. */
         void SubmitAddComponentToSelectedGameObject(IEditorContext& context, const std::string& componentTypeName);
         bool ApplyRemoveComponentFromGO(GameObject& gameObject, Component& targetComponent);
+        bool ApplyRemoveComponentFromGameObject(uint64_t ownerGameObjectId, Component& targetComponent);
         void SubmitRemoveComponentFromGO(IEditorContext& context, GameObject& gameObject, Component& targetComponent);
 
         void SaveCurrentScene();
