@@ -1,6 +1,10 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-14（ED-F12 Done）
+Last updated: 2026-09-14（ED-F12 committed；ED-F13/F14 Planned）
+
+### 2026-09-14 - ED-F12 committed；下一刀 ED-F13/F14 登记
+- **Commit：** `aa56421` feat(editor): move debug commands into Editor and unify EditorCommand naming
+- **Next：** **ED-F13** EditorCommand-first（去 Select/Apply 套壳）；**ED-F14** 各 SubEditor 命令面完备（edit/verify 等可并入）
 
 ### 2026-09-14 - ED-F12：DebugCommand/PropertyPath 迁入 Editor
 - **目录：** `Editor/src/DebugCommand/`、`Editor/src/PropertyPath/`；Engine Runtime 不再含调试命令面。
