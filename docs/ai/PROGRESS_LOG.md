@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-14（ED-F12 committed；ED-F13/F14 Planned）
+Last updated: 2026-09-14（ED-F13/F14 Design 首稿）
+
+### 2026-09-14 - ED-F13 / ED-F14 Design 首稿
+- **F13：** [ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) — 扫描 Scene Command→Apply* / Select 耦合；删除列表；Wave W1–W5。
+- **F14：** [ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) — 覆盖矩阵；Blocked on F13；edit/verify + Material/AnimGraph MVP。
+- **Commit backlog：** `fab9a4c` 登记 ID。
 
 ### 2026-09-14 - ED-F12 committed；下一刀 ED-F13/F14 登记
 - **Commit：** `aa56421` feat(editor): move debug commands into Editor and unify EditorCommand naming
