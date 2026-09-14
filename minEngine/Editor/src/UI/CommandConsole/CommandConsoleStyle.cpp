@@ -7,53 +7,53 @@ namespace minEngine
     {
     }
 
-    ImVec4 CommandConsoleStyle::GetColor(Command::CommandOutputKind kind) const
+    ImVec4 CommandConsoleStyle::GetColor(DebugCommand::DebugCommandOutputKind kind) const
     {
         const EditorSemanticColors& colors = m_Appearance.GetSemanticColors();
         const EditorThemePalette& palette = m_Appearance.GetActivePalette();
 
         switch (kind)
         {
-            case Command::CommandOutputKind::InputEcho:
+            case DebugCommand::DebugCommandOutputKind::InputEcho:
                 return m_Appearance.GetDisplayColor(palette.TextPrimary);
-            case Command::CommandOutputKind::SuccessStatus:
+            case DebugCommand::DebugCommandOutputKind::SuccessStatus:
                 return m_Appearance.GetDisplayColor(colors.LogInfo);
-            case Command::CommandOutputKind::Error:
+            case DebugCommand::DebugCommandOutputKind::Error:
                 return m_Appearance.GetDisplayColor(colors.LogError);
-            case Command::CommandOutputKind::Warning:
+            case DebugCommand::DebugCommandOutputKind::Warning:
                 return m_Appearance.GetDisplayColor(colors.LogWarn);
-            case Command::CommandOutputKind::Hint:
+            case DebugCommand::DebugCommandOutputKind::Hint:
                 return m_Appearance.GetDisplayColor(colors.DiagnosticWarning);
-            case Command::CommandOutputKind::Path:
+            case DebugCommand::DebugCommandOutputKind::Path:
                 return m_Appearance.GetDisplayColor(colors.DiagnosticInfo);
-            case Command::CommandOutputKind::ValueLiteral:
-            case Command::CommandOutputKind::InspectValue:
+            case DebugCommand::DebugCommandOutputKind::ValueLiteral:
+            case DebugCommand::DebugCommandOutputKind::InspectValue:
                 return m_Appearance.GetDisplayColor(colors.LogDebug);
-            case Command::CommandOutputKind::InspectType:
-            case Command::CommandOutputKind::ListItemMeta:
-            case Command::CommandOutputKind::Muted:
+            case DebugCommand::DebugCommandOutputKind::InspectType:
+            case DebugCommand::DebugCommandOutputKind::ListItemMeta:
+            case DebugCommand::DebugCommandOutputKind::Muted:
                 return m_Appearance.GetDisplayColor(palette.TextMuted);
-            case Command::CommandOutputKind::InspectHeader:
-            case Command::CommandOutputKind::InspectSection:
-            case Command::CommandOutputKind::InspectKey:
-            case Command::CommandOutputKind::ListItemName:
-            case Command::CommandOutputKind::Plain:
+            case DebugCommand::DebugCommandOutputKind::InspectHeader:
+            case DebugCommand::DebugCommandOutputKind::InspectSection:
+            case DebugCommand::DebugCommandOutputKind::InspectKey:
+            case DebugCommand::DebugCommandOutputKind::ListItemName:
+            case DebugCommand::DebugCommandOutputKind::Plain:
             default:
                 return m_Appearance.GetDisplayColor(palette.TextPrimary);
         }
     }
 
-    ImVec4 CommandConsoleStyle::GetInputValidationColor(Command::PropertyValueValidationState state) const
+    ImVec4 CommandConsoleStyle::GetInputValidationColor(DebugCommand::PropertyValueValidationState state) const
     {
         switch (state)
         {
-            case Command::PropertyValueValidationState::Valid:
-                return GetColor(Command::CommandOutputKind::SuccessStatus);
-            case Command::PropertyValueValidationState::Partial:
-                return GetColor(Command::CommandOutputKind::Hint);
-            case Command::PropertyValueValidationState::Invalid:
-                return GetColor(Command::CommandOutputKind::Error);
-            case Command::PropertyValueValidationState::None:
+            case DebugCommand::PropertyValueValidationState::Valid:
+                return GetColor(DebugCommand::DebugCommandOutputKind::SuccessStatus);
+            case DebugCommand::PropertyValueValidationState::Partial:
+                return GetColor(DebugCommand::DebugCommandOutputKind::Hint);
+            case DebugCommand::PropertyValueValidationState::Invalid:
+                return GetColor(DebugCommand::DebugCommandOutputKind::Error);
+            case DebugCommand::PropertyValueValidationState::None:
             default:
                 return m_Appearance.GetDisplayColor(m_Appearance.GetActivePalette().TextPrimary);
         }

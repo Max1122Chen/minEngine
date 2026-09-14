@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Runtime/Core/Command/CommandExecutor.h"
-#include "Runtime/Core/Command/CommandHistory.h"
-#include "Runtime/Core/Command/CommandResult.h"
-#include "Runtime/Core/Command/CompletionTypes.h"
+#include "DebugCommand/DebugCommandExecutor.h"
+#include "DebugCommand/DebugCommandHistory.h"
+#include "DebugCommand/DebugCommandResult.h"
+#include "DebugCommand/DebugCommandCompletionTypes.h"
 #include "UI/CommandConsole/CommandConsoleStyle.h"
 
 #include "Shell/IEditorContext.h"
@@ -39,15 +39,15 @@ namespace minEngine
         bool GetShowInputEcho() const { return m_ShowInputEcho; }
         void SetShowInputEcho(bool showInputEcho) { m_ShowInputEcho = showInputEcho; }
 
-        void OnInputEdited(ImGuiInputTextCallbackData* data, const Command::CommandContext& context);
-        void AcceptSelectedCompletion(ImGuiInputTextCallbackData* data, const Command::CommandContext& context);
+        void OnInputEdited(ImGuiInputTextCallbackData* data, const DebugCommand::DebugCommandContext& context);
+        void AcceptSelectedCompletion(ImGuiInputTextCallbackData* data, const DebugCommand::DebugCommandContext& context);
         void NavigateCompletionSelection(int delta);
         void ApplyHistoryInInput(ImGuiInputTextCallbackData* data, bool navigateUp);
 
     private:
-        Command::CommandExecutor m_Executor;
-        Command::CommandHistory m_History;
-        std::vector<Command::CommandOutputLine> m_OutputLines;
+        DebugCommand::DebugCommandExecutor m_Executor;
+        DebugCommand::DebugCommandHistory m_History;
+        std::vector<DebugCommand::DebugCommandOutputLine> m_OutputLines;
         char m_InputBuffer[512] = {};
         bool m_ShowInputEcho = true;
         bool m_FocusInputNextFrame = true;
@@ -55,21 +55,21 @@ namespace minEngine
         bool m_ScrollCompletionSelectionIntoView = false;
         ConsoleInputMode m_InputMode = ConsoleInputMode::Normal;
         int m_CompletionIndex = -1;
-        std::vector<Command::CompletionItem> m_CompletionCandidates;
-        Command::CommandContext m_LastCompletionContext;
+        std::vector<DebugCommand::CompletionItem> m_CompletionCandidates;
+        DebugCommand::DebugCommandContext m_LastCompletionContext;
 
-        Command::CommandContext BuildCommandContext(IEditorContext& editorContext) const;
-        void AppendResult(const Command::CommandResult& result);
+        DebugCommand::DebugCommandContext BuildDebugCommandContext(IEditorContext& editorContext) const;
+        void AppendResult(const DebugCommand::DebugCommandResult& result);
         void AppendInputEcho(std::string_view line);
-        void UpdateLiveCompletion(const Command::CommandContext& context);
+        void UpdateLiveCompletion(const DebugCommand::DebugCommandContext& context);
         void RefreshCompletionCandidates(
             std::string_view inputLine,
             size_t cursorOffset,
-            const Command::CommandContext& context,
+            const DebugCommand::DebugCommandContext& context,
             bool preserveSelection);
         void CloseCompletion();
-        void ApplyCompletionToInputBuffer(const Command::CompletionItem& item);
-        static void ApplyCompletionToCallback(ImGuiInputTextCallbackData* data, const Command::CompletionItem& item);
+        void ApplyCompletionToInputBuffer(const DebugCommand::CompletionItem& item);
+        static void ApplyCompletionToCallback(ImGuiInputTextCallbackData* data, const DebugCommand::CompletionItem& item);
         static size_t FindLastTokenStart(std::string_view inputLine);
     };
 }

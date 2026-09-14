@@ -498,7 +498,7 @@ namespace minEngine
         }
 
         ImGui::Separator();
-        ImGui::TextColored(style.GetColor(Command::CommandOutputKind::Path), ">");
+        ImGui::TextColored(style.GetColor(DebugCommand::DebugCommandOutputKind::Path), ">");
         ImGui::SameLine(0.0f, 4.0f);
         ImGui::SetNextItemWidth(-1.0f);
         m_CommandPresenter.DrawInputAndHandleKeys(m_Context, style);

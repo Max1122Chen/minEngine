@@ -330,7 +330,7 @@ F1–F3 可在同一 `feat/core`（或 `master` 短切片）内串行；**全部
 | `ED-F09` | Editor Log Console（LogRecord UI / filter） | P editor / 跟 F17 | **Done**（W0–W2） · [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
 | `ED-F10` | EditorSettings（原草案 F09） | P editor | **Planned 占位** · Design 未开 |
 | `ED-F11` | Multi-document Tab host MVP | P editor | **In Progress**（W0–W2） · [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
-| `ED-F12` | World Query–Command–Verify surface | P editor | 待登记（editor UI 壳后） |
+| `ED-F12` | Agent Edit Protocol（资产 Session × Command） | P editor | **Done** · [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md)（edit/verify → 下一 Feature） |
 | `MCP-F01` | MCP adapter（thin） | P mcp | DOMAIN 待定 |
 | `DEMO-F01` | FPS mini-shooter sample | D | Demo Package |
 ### 已有、本周期顺带

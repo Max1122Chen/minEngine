@@ -31,14 +31,14 @@ namespace minEngine
         return { true, description };
     }
 
-    Command::CommandResult BuildUndoCommandResult(const EditorUndoRedoResult& result)
+    DebugCommand::DebugCommandResult BuildUndoDebugCommandResult(const EditorUndoRedoResult& result)
     {
         if (!result.bPerformed)
         {
-            Command::CommandOutputBuilder builder;
-            builder.AddLine(Command::CommandOutputKind::Warning, "Nothing to undo");
-            Command::CommandResult commandResult = builder.BuildOk("Nothing to undo");
-            commandResult.Status = Command::CommandStatus::Warning;
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(DebugCommand::DebugCommandOutputKind::Warning, "Nothing to undo");
+            DebugCommand::DebugCommandResult commandResult = builder.BuildOk("Nothing to undo");
+            commandResult.Status = DebugCommand::DebugCommandStatus::Warning;
             return commandResult;
         }
 
@@ -52,19 +52,19 @@ namespace minEngine
             message += "operation";
         }
 
-        Command::CommandOutputBuilder builder;
-        builder.AddLine(Command::CommandOutputKind::SuccessStatus, message);
+        DebugCommand::DebugCommandOutputBuilder builder;
+        builder.AddLine(DebugCommand::DebugCommandOutputKind::SuccessStatus, message);
         return builder.BuildOk(message);
     }
 
-    Command::CommandResult BuildRedoCommandResult(const EditorUndoRedoResult& result)
+    DebugCommand::DebugCommandResult BuildRedoDebugCommandResult(const EditorUndoRedoResult& result)
     {
         if (!result.bPerformed)
         {
-            Command::CommandOutputBuilder builder;
-            builder.AddLine(Command::CommandOutputKind::Warning, "Nothing to redo");
-            Command::CommandResult commandResult = builder.BuildOk("Nothing to redo");
-            commandResult.Status = Command::CommandStatus::Warning;
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(DebugCommand::DebugCommandOutputKind::Warning, "Nothing to redo");
+            DebugCommand::DebugCommandResult commandResult = builder.BuildOk("Nothing to redo");
+            commandResult.Status = DebugCommand::DebugCommandStatus::Warning;
             return commandResult;
         }
 
@@ -78,8 +78,8 @@ namespace minEngine
             message += "operation";
         }
 
-        Command::CommandOutputBuilder builder;
-        builder.AddLine(Command::CommandOutputKind::SuccessStatus, message);
+        DebugCommand::DebugCommandOutputBuilder builder;
+        builder.AddLine(DebugCommand::DebugCommandOutputKind::SuccessStatus, message);
         return builder.BuildOk(message);
     }
 }

@@ -1,16 +1,16 @@
 #include "SubEditor/Scene/SceneEditor.h"
 
-#include "Commands/Scene/AddComponentCommand.h"
-#include "Commands/Scene/AddEmptyGameObjectCommand.h"
-#include "Commands/Scene/DeleteGameObjectCommand.h"
+#include "Commands/Scene/EditorAddComponentCommand.h"
+#include "Commands/Scene/EditorAddEmptyGameObjectCommand.h"
+#include "Commands/Scene/EditorDeleteGameObjectCommand.h"
 #include "Commands/Scene/EditorObjectSnapshot.h"
-#include "Commands/Scene/RemoveComponentCommand.h"
-#include "Commands/Scene/MoveComponentCommand.h"
-#include "Commands/Scene/RenameComponentCommand.h"
-#include "Commands/Scene/RenameGameObjectCommand.h"
-#include "Commands/Scene/ReparentGameObjectCommand.h"
-#include "Commands/Scene/SetGameObjectTransformCommand.h"
-#include "Commands/Scene/SetObjectPropertyCommand.h"
+#include "Commands/Scene/EditorRemoveComponentCommand.h"
+#include "Commands/Scene/EditorMoveComponentCommand.h"
+#include "Commands/Scene/EditorRenameComponentCommand.h"
+#include "Commands/Scene/EditorRenameGameObjectCommand.h"
+#include "Commands/Scene/EditorReparentGameObjectCommand.h"
+#include "Commands/Scene/EditorSetGameObjectTransformCommand.h"
+#include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
 #include "Services/ComponentTypeUiCatalog.h"
 #include "Shell/EditorCommandStack.h"
@@ -404,7 +404,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<RenameGameObjectCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorRenameGameObjectCommand>(
             *this, gameObjectId, oldName, sanitizedName));
     }
 
@@ -471,7 +471,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<RenameComponentCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorRenameComponentCommand>(
             *this, ownerGameObjectId, componentGuid, oldName, newName));
     }
 
@@ -537,7 +537,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<MoveComponentCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorMoveComponentCommand>(
             *this, ownerGameObjectId, componentGuid, fromIndex, newIndex));
     }
 
@@ -639,7 +639,7 @@ namespace minEngine
             }
         }
 
-        context.GetCommandStack().Execute(std::make_unique<ReparentGameObjectCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorReparentGameObjectCommand>(
             *this, gameObjectId, oldParentId, newParentId));
     }
 
@@ -679,7 +679,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<SetGameObjectTransformCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorSetGameObjectTransformCommand>(
             *this, gameObjectId, before, after));
     }
 
@@ -749,7 +749,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<AddComponentCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorAddComponentCommand>(
             *this, gameObject->GetID(), componentTypeName));
     }
 
@@ -785,7 +785,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<RemoveComponentCommand>(*this, gameObject.GetID(), targetComponent));
+        context.GetCommandStack().Execute(std::make_unique<EditorRemoveComponentCommand>(*this, gameObject.GetID(), targetComponent));
     }
 
     void SceneEditor::SaveCurrentScene()
@@ -956,7 +956,7 @@ namespace minEngine
 
     void SceneEditor::SubmitAddEmptyGOToScene(IEditorContext& context)
     {
-        context.GetCommandStack().Execute(std::make_unique<AddEmptyGameObjectCommand>(*this));
+        context.GetCommandStack().Execute(std::make_unique<EditorAddEmptyGameObjectCommand>(*this));
     }
 
     bool SceneEditor::ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform)
@@ -994,7 +994,7 @@ namespace minEngine
 
     void SceneEditor::SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId)
     {
-        context.GetCommandStack().Execute(std::make_unique<DeleteGameObjectCommand>(*this, gameObjectId));
+        context.GetCommandStack().Execute(std::make_unique<EditorDeleteGameObjectCommand>(*this, gameObjectId));
     }
 
     void SceneEditor::RequestBeginRenameGameObject(uint64_t gameObjectId)
@@ -1144,7 +1144,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<SetObjectPropertyCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorSetObjectPropertyCommand>(
             *this,
             ownerGuid,
             ownerClassName,

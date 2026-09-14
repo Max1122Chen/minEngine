@@ -1,6 +1,44 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-13（ED-F11 Mode→Active Session + Shared CB dock）
+Last updated: 2026-09-14（ED-F12 Done）
+
+### 2026-09-14 - ED-F12：DebugCommand/PropertyPath 迁入 Editor
+- **目录：** `Editor/src/DebugCommand/`、`Editor/src/PropertyPath/`；Engine Runtime 不再含调试命令面。
+- **测试：** `minEngineTests` 直接编译上述 Editor 源（Editor 仍为 exe，未拆 Lib）。
+- **记账（另 Feature）：** `Editor*Command` 经 `SceneEditor::Select* + Apply*` 转发，应改为直接调用被编辑对象能力。
+- **验证：** （构建后）`test command-system`。
+
+### 2026-09-14 - ED-F12 Done：DebugCommand* / EditorCommand* 命名收敛 + W1–W2
+- **命名：** `Runtime/Core/Command` → `DebugCommand/`（`DebugCommandRegistry/Executor/Context/Result…`）；`IEditorCommand` → `EditorCommand`；Scene 操作类统一 `Editor*Command`。
+- **协议：** `DebugParseContext`；Console 填 Active Session；`PayloadJson`（get/find/list_go）。
+- **未做（下一 Feature）：** `edit` / `verify` / `invoke`；查询侧完整 EditorCommand 对象化；UI `CommandConsole` 文件夹改名。
+- **验证：** `minEngineTests.exe test command-system` 25/25 PASS；`Editor` 构建通过。
+
+### 2026-09-14 - ED-F12 W1–W2 开工：ParseContext + PayloadJson
+- **范围收窄：** 本 Feature 不新增 `edit`/`verify`/`invoke`。
+- **实现：** `DebugParseContext`；Console 从 `DocumentHost` Active Session 填充；`CommandResult.PayloadJson`；`get`/`find`/`list_go` 填机读 Payload。
+- **验证：** `minEngineTests.exe test command-system` — 25/25 PASS。
+- **Next：** W3 `set` 写路径整理；查询 EditorCommand 对象化（W4）。
+
+### 2026-09-14 - ED-F12：Command 目录表 + 迁移/目录布局
+- **Docs：** §3.9 续用/新增（get/set/edit/verify…）与 EditorCommand 映射；§3.10 迁移阶段与 `Commands/{Global,Scene}` + `DebugCommand/` 目标树。
+
+### 2026-09-14 - ED-F12：基线 vs 方言、双上下文、set/edit
+- **补强：** EditorCommand 基线（如 get Guid+path）vs Debug Suite 方言糖；DebugParseContext ≠ 执行载荷；`set` 侵入 / `edit` 守 specifier（对齐反射与 PropertyEditPolicy 精神）。
+- **Docs：** [ED-F12](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) §0.4–0.8。
+
+### 2026-09-14 - ED-F12：再校准为 EditorCommand 单核心
+- **口径：** Command≡EditorCommand；DebugCommand（原 Console）/ GUI / MCP 均为构造前端；补全与 Active Session 隐式→显式属 Debug 配件；命令按域（Global / Scene / Material…）管理。
+- **Docs：** [ED-F12](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) §0.3–0.5、§1、§3 已改。
+- **Next：** 维护者确认后拍 §9 → Planned。
+
+### 2026-09-14 - ED-F12：口径修订为 Agent Edit Protocol
+- **Docs：** [ED-F12 Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) — 资产中心；Edit Session 上下文；Command / EditorCommand / ConsoleCommand / MCP Tool 四层；§1 对照现码与 ED-F04 偏差；Scene 降为竖切。
+- **旧文件名** `ED-F12_WORLD_QUERY_*` 已替换。
+- **Next：** 维护者确认 §0–§1 → 拍板 §9 → Planned。
+
+### 2026-09-14 - ED-F12：World Query–Modify–Verify Design 初稿（已被上条口径修订取代）
+- 初稿聚焦 Scene list/get/set/verify；随后抬升为资产会话协议。
 
 ### 2026-09-13 - ED-F11：Mode→Active Session 语义 + Shared CB 入布局
 - **设计：** [ED-F11](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 — Shared vs Type Suite；Tab/Active Session 为前台真相。

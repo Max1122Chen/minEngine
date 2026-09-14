@@ -4,12 +4,19 @@ file(GLOB TEST_SUITE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Suites/*.cpp
 )
 
+# ED-F12: DebugCommand + PropertyPath live under Editor; tests compile them without the Editor exe.
+file(GLOB_RECURSE EDITOR_DEBUG_COMMAND_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/DebugCommand/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/PropertyPath/*.cpp
+)
+
 add_executable(${MINENGINE_TESTS_NAME}
     TestMain.cpp
     TestSuiteRegistration.cpp
     EngineTestFixture.cpp
     DoctestSuiteRunner.cpp
     ${TEST_SUITE_SOURCES}
+    ${EDITOR_DEBUG_COMMAND_SOURCES}
 )
 
 set_target_properties(${MINENGINE_TESTS_NAME} PROPERTIES
@@ -19,6 +26,7 @@ set_target_properties(${MINENGINE_TESTS_NAME} PROPERTIES
 target_include_directories(${MINENGINE_TESTS_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/Suites
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src/Runtime
     ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src/Runtime/Core

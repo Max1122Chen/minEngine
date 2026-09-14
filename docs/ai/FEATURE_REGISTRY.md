@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-13（ED-F09 Done · ED-F11 W0–W2 In Progress）  
+Last updated: 2026-09-14（ED-F12 Done）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -66,7 +66,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F08` | Hierarchy Tree（拖拽改父） | **Done** | — | [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) · 文件名保留历史 `ED-F05_HIERARCHY_*` |
 | `ED-F09` | Editor Log Console（LogRecord 展示/按 Channel·Severity 过滤） | **Done**（W0–W2） | — | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) · Channel/时间窗/Collapse/Clear on Play |
 | `ED-F10` | EditorSettings（布局/过滤等持久化） | **Planned** | — | Design 未开 · 0.1.0 Roadmap 占位；**勿抢号** |
-| `ED-F11` | Multi-document Tab Host（Session + 文档 Tab；共享 Dock MVP） | **In Progress**（W0–W2） | — | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) · Host/注册类型/Tab/per-Session 栈 |
+| `ED-F11` | Multi-document Tab Host（Session + 文档 Tab；共享 Dock MVP） | **In Progress**（W0–W2；**W3 缓**） | — | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) · Host/注册类型/Tab/per-Session 栈 |
+| `ED-F12` | Agent Edit Protocol（资产 Session × Debug/EditorCommand 命名收敛） | **Done** | — | [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) · `edit`/`verify`/`invoke` → 下一 Feature |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ASSET-F01` | External Import Pipeline（Assimp → 引擎资产；MVP） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S04 / `.memesh` Deferred |
@@ -122,7 +123,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
 | `CORE` | **F19** | F17 Logging / F18 Schema **Done**；F13–F16 Done |
 | `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F12** | F09 Console **Done**；F10 Settings 占位；F11 Tab Host **In Progress**（W0–W2）；F02/F04 余量 |
+| `ED` | **F13** | F09 Done；F10 占位；F11 In Progress（W3 缓）；**F12** Agent Edit Protocol **Done**（少增动词）；F02/F04 余量 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |

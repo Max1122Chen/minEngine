@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-13（ED-F11：Mode→Active Session + Shared CB dock）  
+Last updated: 2026-09-14（ED-F12 Done · 命名收敛；下一 Feature 补 edit/verify）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -17,11 +17,12 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|-----|------|--------|--------|
 | F1–F3 | — | Foundation | **Done**（master） | Log / Schema / Maximum |
 | 1 | **`ED-F09`** | Editor Console LogRecord 过滤 | **Done**（W0–W2） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2 + Mode→Session 语义切片） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 |
+| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2；**W3 缓**） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
+| 3 | **`ED-F12`** | Agent Edit Protocol | **Done**（命名 + ParseContext + Payload） | [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) |
+| — | （建议 `ED-F13`） | Debug/Editor 命令补全（edit/verify/invoke…） | 未登记 | 接 F12 |
 | — | `ED-F10` | EditorSettings | **Planned**（占位） | Design 未开 |
-| 后 | （建议 `ED-F12`） | World Query–Modify–Verify | 未登记 | 等 F11 壳稳定后再立 |
 
-**下一刀：** 手测 Shared CB dock / Focus Document；准备 ED-F11 commit；或 W3 Pin/Reopen。
+**下一刀：** 准备 ED-F12 commit；或登记 **ED-F13**（edit/verify + 去掉 SceneEditor Select/Apply 转发）。
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
