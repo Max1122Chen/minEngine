@@ -9,6 +9,8 @@
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Resource/AssetMeta.h"
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace minEngine
@@ -59,6 +61,12 @@ namespace minEngine
         void NotifyGraphChanged();
         void InvalidateGraphCanvas(bool rebindGraph = true);
 
+        /** Multi-document: stash/restore by asset path without destroying other sessions. */
+        void StashActiveSession();
+        bool ActivateStoredSession(const std::string& assetKey);
+        void DiscardStoredSession(const std::string& assetKey);
+        bool IsStoredSessionDirty(const std::string& assetKey) const;
+
         void SetSelectedEdNode(MaterialEdGraphNode* node) { m_SelectedEdNode = node; }
         MaterialEdGraphNode* GetSelectedEdNode() const { return m_SelectedEdNode; }
         void ClearSelectedEdNode() { m_SelectedEdNode = nullptr; }
@@ -94,6 +102,7 @@ namespace minEngine
         IEditorContext* m_Context = nullptr;
         MaterialEditorInspectorSource m_InspectorSource;
         MaterialEditorSession m_Session;
+        std::unordered_map<std::string, MaterialEditorSession> m_SessionsByKey;
         PreviewScene m_PreviewScene;
         std::vector<const AssetMeta*> m_MaterialMetas;
         int m_SelectedMaterialIndex = -1;

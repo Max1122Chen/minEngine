@@ -55,6 +55,9 @@ namespace minEngine
         void SetSelectedAsset(const AssetMeta* meta);
         const AssetMeta* GetSelectedAsset() const;
 
+        /** Navigate CB to the asset's folder, select it, and ensure the CB window is open. */
+        bool RevealAssetInContentBrowser(std::string_view assetPath);
+
         void SetContentBrowserInspectorActive(bool active);
         bool IsContentBrowserInspectorActive() const;
 

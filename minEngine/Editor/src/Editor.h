@@ -19,6 +19,7 @@
 #include "ContextMenu/EditorContextMenuSystem.h"
 #include "Shell/EditorCommandStack.h"
 #include "Shell/EditorSubModule.h"
+#include "Shell/Document/EditorDocumentHost.h"
 #include "PlayMode/PlayInEditorSession.h"
 #include "PlayMode/IPlayModeService.h"
 #include "Shell/ViewportClientRegistry.h"
@@ -67,7 +68,9 @@ namespace minEngine
         ConsoleModule& GetConsole() override { return m_ConsoleModule; }
         InspectorModule& GetInspectorModule() override { return m_InspectorModule; }
         const InspectorModule& GetInspectorModule() const override { return m_InspectorModule; }
-        EditorCommandStack& GetCommandStack() override { return m_CommandStack; }
+        EditorCommandStack& GetCommandStack() override;
+        EditorDocumentHost& GetDocumentHost() override { return m_DocumentHost; }
+        const EditorDocumentHost& GetDocumentHost() const override { return m_DocumentHost; }
         EditorContextMenuSystem& GetContextMenu() override { return m_ContextMenu; }
         const EditorContextMenuSystem& GetContextMenu() const override { return m_ContextMenu; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
@@ -84,6 +87,7 @@ namespace minEngine
         void SetInspectingScene(Scene* scene) override;
 
         bool ActivateSubModule(std::string_view moduleId) override;
+        bool ActivateSubModule(std::string_view moduleId, bool resetLayout) override;
 
         void RequestExit() override;
         void ConfirmExit() override { m_ExitRequested = true; }
@@ -104,6 +108,7 @@ namespace minEngine
         void ApplyAppearanceSettingsFromProject();
         void ResetCommandStackForNewDocument();
         bool InitializeImGuiBackend();
+        void BootstrapDocumentHost();
 
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
@@ -119,7 +124,8 @@ namespace minEngine
         ProjectAssetWatcher m_ProjectAssetWatcher;
         EditorInputHub m_InputHub;
         ViewportClientRegistry m_ViewportRegistry;
-        EditorCommandStack m_CommandStack;
+        EditorDocumentHost m_DocumentHost;
+        EditorCommandStack m_FallbackCommandStack;
         EditorContextMenuSystem m_ContextMenu;
         EditorAppearance m_Appearance;
         EditorImGuiBackend m_ImGuiBackend;
@@ -131,6 +137,7 @@ namespace minEngine
         float m_LastDeltaTime = 0.0f;
         bool m_DockLayoutInitialized = false;
         bool m_RequestResetLayout = false;
+        std::string m_LastWindowTitle;
         bool m_PendingInitialFontAtlasRebuild = false;
 
         static std::optional<std::filesystem::path> ResolveProjectDescriptorPath(

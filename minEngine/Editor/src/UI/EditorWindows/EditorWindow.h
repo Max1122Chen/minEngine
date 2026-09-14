@@ -21,7 +21,7 @@ namespace minEngine
         virtual const std::string& GetId() const = 0;
         virtual const std::string& GetTitle() const = 0;
 
-        /** Empty = shared (always visible). Otherwise must match active SubModule id. */
+        /** Empty = Shared shell panel (always eligible). Non-empty = Type Suite owner (ModuleId / DocumentType). */
         virtual std::string_view GetOwnerModuleId() const { return std::string_view(); }
 
         bool IsOpen() const { return m_IsOpen; }

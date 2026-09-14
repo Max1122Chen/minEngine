@@ -93,19 +93,72 @@ namespace minEngine
     {
         RefreshMaterialList();
 
-        m_PreviewScene.BuildDefaultSphereScene();
-        EnsureDefaultSession();
+        if (!m_PreviewScene.IsContentReady())
+        {
+            m_PreviewScene.BuildDefaultSphereScene();
+        }
+        // DocumentHost owns which materials are open; do not auto-open the first asset.
         ApplySessionToPreview();
     }
 
     void MaterialEditor::OnExitMode()
     {
+        // Keep material sessions/preview alive for multi-document host (ED-F11).
+        StashActiveSession();
         FlushPendingCompile();
         ClearSelectedEdNode();
-        if (m_Context)
+    }
+
+    void MaterialEditor::StashActiveSession()
+    {
+        if (!m_Session.HasOpenMaterial())
         {
-            m_Context->GetViewportRegistry().RemoveViewportClient(kPreviewViewportPanelId);
+            return;
         }
+        m_SessionsByKey[m_Session.AssetPath] = m_Session;
+    }
+
+    bool MaterialEditor::ActivateStoredSession(const std::string& assetKey)
+    {
+        if (m_Session.HasOpenMaterial() && m_Session.AssetPath == assetKey)
+        {
+            return true;
+        }
+
+        StashActiveSession();
+        const auto it = m_SessionsByKey.find(assetKey);
+        if (it == m_SessionsByKey.end())
+        {
+            return false;
+        }
+
+        m_Session = it->second;
+        ClearSelectedEdNode();
+        ApplySessionToPreview();
+        InvalidateGraphCanvas();
+        return m_Session.HasOpenMaterial();
+    }
+
+    void MaterialEditor::DiscardStoredSession(const std::string& assetKey)
+    {
+        m_SessionsByKey.erase(assetKey);
+        if (m_Session.AssetPath == assetKey)
+        {
+            m_Session.Clear();
+            ClearSelectedEdNode();
+            ApplySessionToPreview();
+            InvalidateGraphCanvas();
+        }
+    }
+
+    bool MaterialEditor::IsStoredSessionDirty(const std::string& assetKey) const
+    {
+        if (m_Session.AssetPath == assetKey)
+        {
+            return m_Session.Dirty;
+        }
+        const auto it = m_SessionsByKey.find(assetKey);
+        return it != m_SessionsByKey.end() && it->second.Dirty;
     }
 
     void MaterialEditor::Shutdown()
@@ -176,6 +229,10 @@ namespace minEngine
         }
 
         m_Session.Dirty = true;
+        if (!m_Session.AssetPath.empty())
+        {
+            m_SessionsByKey[m_Session.AssetPath] = m_Session;
+        }
 
         std::string finalizeError;
         if (!m_Session.MaterialAsset->FinalizeGraphAfterLoad(&finalizeError))
@@ -216,6 +273,7 @@ namespace minEngine
     void MaterialEditor::OpenSession(const AssetMeta* meta)
     {
         FlushPendingCompile();
+        StashActiveSession();
 
         if (!meta)
         {
@@ -224,6 +282,20 @@ namespace minEngine
             ClearSelectedEdNode();
             ApplySessionToPreview();
             InvalidateGraphCanvas();
+            return;
+        }
+
+        if (ActivateStoredSession(meta->AssetPath))
+        {
+            for (size_t i = 0; i < m_MaterialMetas.size(); ++i)
+            {
+                if (m_MaterialMetas[i] == meta ||
+                    (m_MaterialMetas[i] != nullptr && m_MaterialMetas[i]->AssetPath == meta->AssetPath))
+                {
+                    m_SelectedMaterialIndex = static_cast<int>(i);
+                    break;
+                }
+            }
             return;
         }
 
@@ -245,6 +317,7 @@ namespace minEngine
         m_Session.MaterialAsset = material;
         m_Session.AssetPath = meta->AssetPath;
         m_Session.Dirty = false;
+        m_SessionsByKey[m_Session.AssetPath] = m_Session;
         ClearSelectedEdNode();
 
         for (size_t i = 0; i < m_MaterialMetas.size(); ++i)
@@ -321,6 +394,10 @@ namespace minEngine
         if (saved)
         {
             m_Session.Dirty = false;
+            if (!m_Session.AssetPath.empty())
+            {
+                m_SessionsByKey[m_Session.AssetPath] = m_Session;
+            }
         }
         else
         {

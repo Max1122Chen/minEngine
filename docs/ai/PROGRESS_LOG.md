@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-13（ED-F09 Done · ED-F11 W0–W2）
+Last updated: 2026-09-13（ED-F11 Mode→Active Session + Shared CB dock）
+
+### 2026-09-13 - ED-F11：Mode→Active Session 语义 + Shared CB 入布局
+- **设计：** [ED-F11](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 — Shared vs Type Suite；Tab/Active Session 为前台真相。
+- **实现：** Material/AnimGraph 默认布局 dock Content Browser；Window → **Focus Document**（无打开文档则提示）；CB Shared owner。
+- **旁路已修：** OpenOrFocus 后同帧旧 Tab 抢焦点（仅 `IsItemActivated` 切 Session）。
+- **验证：** `cmake --build … --target Editor` → `MaximumEditor.exe`。
+- **Next：** 手测切 Material/AnimGraph 时 CB 在 dock 内；准备 ED-F11 commit。
 
 ### 2026-09-13 - ED-F09 Done + ED-F11 W0–W2：Console 过滤与多文档 Tab Host
 - **ED-F09：** `LogSystem::ForEachRegisteredChannel`；Console Channel 多选、时间显示/窗、Collapse、Clear on Play、source tooltip；去掉 Core/App Source 二分。

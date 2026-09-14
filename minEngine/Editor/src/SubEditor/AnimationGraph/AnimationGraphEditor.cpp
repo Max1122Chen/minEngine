@@ -77,12 +77,61 @@ namespace minEngine
     void AnimationGraphEditor::OnEnterMode()
     {
         RefreshGraphList();
-        EnsureDefaultSession();
+        // DocumentHost owns which graphs are open; do not auto-open the first asset.
     }
 
     void AnimationGraphEditor::OnExitMode()
     {
+        // Keep graph sessions alive for multi-document host (ED-F11).
+        StashActiveSession();
         ClearSelection();
+    }
+
+    void AnimationGraphEditor::StashActiveSession()
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return;
+        }
+        m_SessionsByKey[m_Session.AssetPath] = m_Session;
+    }
+
+    bool AnimationGraphEditor::ActivateStoredSession(const std::string& assetKey)
+    {
+        if (m_Session.HasOpenGraph() && m_Session.AssetPath == assetKey)
+        {
+            return true;
+        }
+
+        StashActiveSession();
+        const auto it = m_SessionsByKey.find(assetKey);
+        if (it == m_SessionsByKey.end())
+        {
+            return false;
+        }
+        m_Session = it->second;
+        InvalidateGraphCanvas();
+        return m_Session.HasOpenGraph();
+    }
+
+    void AnimationGraphEditor::DiscardStoredSession(const std::string& assetKey)
+    {
+        m_SessionsByKey.erase(assetKey);
+        if (m_Session.AssetPath == assetKey)
+        {
+            m_Session.Clear();
+            InvalidateGraphCanvas();
+        }
+    }
+
+    bool AnimationGraphEditor::IsStoredSessionDirty(const std::string& assetKey) const
+    {
+        if (m_Session.AssetPath == assetKey)
+        {
+            return m_Session.Dirty;
+        }
+        const auto it = m_SessionsByKey.find(assetKey);
+        return it != m_SessionsByKey.end() && it->second.Dirty;
     }
 
     void AnimationGraphEditor::Shutdown()
@@ -109,6 +158,10 @@ namespace minEngine
             return;
         }
         m_Session.Dirty = true;
+        if (!m_Session.AssetPath.empty())
+        {
+            m_SessionsByKey[m_Session.AssetPath] = m_Session;
+        }
     }
 
     void AnimationGraphEditor::RefreshGraphList()
@@ -140,11 +193,27 @@ namespace minEngine
 
     void AnimationGraphEditor::OpenSession(const AssetMeta* meta)
     {
+        StashActiveSession();
+
         if (!meta)
         {
             m_Session.Clear();
             m_SelectedGraphIndex = -1;
             InvalidateGraphCanvas();
+            return;
+        }
+
+        if (ActivateStoredSession(meta->AssetPath))
+        {
+            for (size_t i = 0; i < m_GraphMetas.size(); ++i)
+            {
+                if (m_GraphMetas[i] == meta ||
+                    (m_GraphMetas[i] != nullptr && m_GraphMetas[i]->AssetPath == meta->AssetPath))
+                {
+                    m_SelectedGraphIndex = static_cast<int>(i);
+                    break;
+                }
+            }
             return;
         }
 
@@ -160,6 +229,7 @@ namespace minEngine
         m_Session.AssetPath = meta->AssetPath;
         m_Session.Dirty = false;
         m_Session.Selection.Clear();
+        m_SessionsByKey[m_Session.AssetPath] = m_Session;
 
         for (size_t i = 0; i < m_GraphMetas.size(); ++i)
         {
@@ -208,6 +278,10 @@ namespace minEngine
         if (saved)
         {
             m_Session.Dirty = false;
+            if (!m_Session.AssetPath.empty())
+            {
+                m_SessionsByKey[m_Session.AssetPath] = m_Session;
+            }
         }
         else
         {

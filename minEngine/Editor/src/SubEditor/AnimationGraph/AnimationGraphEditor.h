@@ -7,6 +7,8 @@
 
 #include "Runtime/Resource/AssetMeta.h"
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace minEngine
@@ -50,6 +52,11 @@ namespace minEngine
         void NotifyGraphChanged();
         void InvalidateGraphCanvas(bool rebindGraph = true);
 
+        void StashActiveSession();
+        bool ActivateStoredSession(const std::string& assetKey);
+        void DiscardStoredSession(const std::string& assetKey);
+        bool IsStoredSessionDirty(const std::string& assetKey) const;
+
         bool ConsumeGraphCanvasInvalidation(bool& outRebindGraph)
         {
             outRebindGraph = m_GraphCanvasRebindPending;
@@ -89,6 +96,7 @@ namespace minEngine
         AnimGraphInspectorSource m_InspectorSource;
         IEditorContext* m_Context = nullptr;
         AnimationGraphEditorSession m_Session;
+        std::unordered_map<std::string, AnimationGraphEditorSession> m_SessionsByKey;
         std::vector<const AssetMeta*> m_GraphMetas;
         int m_SelectedGraphIndex = -1;
         bool m_GraphCanvasInvalidated = false;

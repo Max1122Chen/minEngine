@@ -3,6 +3,7 @@
 #include "Shell/EditorChrome.h"
 #include "Shell/EditorSubModule.h"
 #include "Shell/IEditorContext.h"
+#include "Services/AssetWorkflowModule.h"
 
 #include "imgui_internal.h"
 
@@ -14,11 +15,11 @@ namespace minEngine
         ApplyActiveSubModuleWindowVisibility();
     }
 
-    void EditorGUIManager::OnActiveSubModuleChanged()
+    void EditorGUIManager::OnActiveSubModuleChanged(bool resetLayout)
     {
         ApplyActiveSubModuleWindowVisibility();
 
-        if (!m_Context)
+        if (!m_Context || !resetLayout)
         {
             return;
         }
@@ -63,6 +64,17 @@ namespace minEngine
 
         TickWindows();
         DrawWindows();
+
+        // Unsaved / open-asset modals may call OpenOrFocus; draw tabs after so SetSelected applies same frame.
+        m_Context->GetAssetWorkflow().DrawModals();
+
+        // Cross-type OpenOrFocus during DrawWindows sets RequestResetLayout after the first TickLayout.
+        if (m_Context->RequestResetLayout() || !m_Context->DockLayoutInitialized())
+        {
+            TickLayout(dockspaceId);
+        }
+
+        EditorChrome::EndFrame(*m_Context);
 
         m_Context->SetLastDeltaTime(deltaTime);
     }

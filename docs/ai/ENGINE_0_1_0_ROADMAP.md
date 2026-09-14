@@ -323,14 +323,14 @@ F1–F3 可在同一 `feat/core`（或 `master` 短切片）内串行；**全部
 | `CORE-F18` | EngineVersion + disk schema gate / `$engineVersion` stamp | F2 | **Done** · engine **0.0.9** / schema **1** · [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) |
 | `WF-F03` | Maximum 产品显示名与版本展示 | F3 | **Done** · [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) |
 | `CORE-F19` | Prefab A（资产 + Instantiate） | P prefab | 待 F 后登记 |
-| `ED-F12` 或 `RND-F17` | Isolated preview / multi-RT（解串图） | P render | 待登记 |
+| `ED-F12` 或 `RND-F17` | Isolated preview / multi-RT（解串图） | P render | 待登记；**推荐占 `RND-F17`**（`ED-F12` 留给 Query 面） |
 | `ED-F13` | Prefab stage / 子编辑器（隔离 Scene） | P prefab B | 依赖隔离 RT |
 | `CORE-F20` | Lua ↔ Native callbacks | P lua | 待登记 |
 | `CORE-F21` | Profiling harness | P core | 待登记 |
-| `ED-F09` | Editor Log Console（LogRecord UI / filter） | P editor / 跟 F17 | **已登记 Planned** · [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| `ED-F10` | EditorSettings（原草案 F09） | P editor | 待登记 |
-| `ED-F11` | Multi-document Tab host MVP | P editor | 待登记 |
-| `ED-F12` | World Query–Command–Verify surface | P editor | 待登记 |
+| `ED-F09` | Editor Log Console（LogRecord UI / filter） | P editor / 跟 F17 | **Done**（W0–W2） · [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
+| `ED-F10` | EditorSettings（原草案 F09） | P editor | **Planned 占位** · Design 未开 |
+| `ED-F11` | Multi-document Tab host MVP | P editor | **In Progress**（W0–W2） · [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
+| `ED-F12` | World Query–Command–Verify surface | P editor | 待登记（editor UI 壳后） |
 | `MCP-F01` | MCP adapter（thin） | P mcp | DOMAIN 待定 |
 | `DEMO-F01` | FPS mini-shooter sample | D | Demo Package |
 ### 已有、本周期顺带

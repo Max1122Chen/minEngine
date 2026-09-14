@@ -17,7 +17,7 @@ namespace minEngine
         void Tick(float deltaTime);
         void Shutdown();
 
-        void OnActiveSubModuleChanged();
+        void OnActiveSubModuleChanged(bool resetLayout = true);
 
         EditorWindow* RegisterWindow(std::unique_ptr<EditorWindow> window);
         bool ToggleWindow(const std::string& id);

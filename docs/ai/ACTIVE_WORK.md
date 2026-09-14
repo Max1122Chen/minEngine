@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-12（**Phase F Done · Primary → feat/editor worktree**）  
+Last updated: 2026-09-13（ED-F11：Mode→Active Session + Shared CB dock）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -13,14 +13,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 **Primary：Phase P — `feat/editor`（worktree `minEngine-editor`）**
 
-Phase F（`CORE-F17` / `CORE-F18` / `WF-F03`）已合入 `master`。本轨建议主攻世界 **Query / Modify / Verify**；可并行短刀 `ED-F09` Console。
-
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | F1–F3 | — | Foundation | **Done**（master） | Log / Schema / Maximum |
-| — | **`ED-F09`** | Editor Console ← LogRecord | **Planned**（可并行） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
+| 1 | **`ED-F09`** | Editor Console LogRecord 过滤 | **Done**（W0–W2） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
+| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2 + Mode→Session 语义切片） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 |
+| — | `ED-F10` | EditorSettings | **Planned**（占位） | Design 未开 |
+| 后 | （建议 `ED-F12`） | World Query–Modify–Verify | 未登记 | 等 F11 壳稳定后再立 |
 
-**下一刀：** 在 `D:/Dev/GitRepo/minEngine-editor` 定 Editor 控制面 Feature 登记/Design；旁路 Prefab A / Lua 另开 worktree。
+**下一刀：** 手测 Shared CB dock / Focus Document；准备 ED-F11 commit；或 W3 Pin/Reopen。
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 

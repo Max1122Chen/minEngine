@@ -28,7 +28,7 @@ namespace minEngine
 
         const std::string& GetId() const override { return m_Id; }
         const std::string& GetTitle() const override { return m_Title; }
-        std::string_view GetOwnerModuleId() const override { return "Scene"; }
+        std::string_view GetOwnerModuleId() const override { return {}; }
 
         void OnDraw() override;
 

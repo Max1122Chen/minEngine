@@ -16,6 +16,7 @@ namespace minEngine
     class ConsoleModule;
     class InspectorModule;
     class EditorCommandStack;
+    class EditorDocumentHost;
     class EditorContextMenuSystem;
     class EditorInputHub;
     class EditorAppearance;
@@ -70,6 +71,10 @@ namespace minEngine
         virtual void SetInspectingScene(Scene* scene) = 0;
 
         virtual bool ActivateSubModule(std::string_view moduleId) = 0;
+        virtual bool ActivateSubModule(std::string_view moduleId, bool resetLayout) = 0;
+
+        virtual EditorDocumentHost& GetDocumentHost() = 0;
+        virtual const EditorDocumentHost& GetDocumentHost() const = 0;
 
         virtual void RequestExit() = 0;
         virtual void ConfirmExit() = 0;

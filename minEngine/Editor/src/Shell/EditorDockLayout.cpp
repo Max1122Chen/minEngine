@@ -26,7 +26,7 @@ namespace minEngine
             ImGuiID consoleArea = ImGui::DockBuilderSplitNode(
                 mainArea, ImGuiDir_Down, kConsoleSplitRatio, nullptr, &mainArea);
 
-            // Content Browser spans the full right column (below Hierarchy + Inspector), not only under Hierarchy.
+            // Shared: Content Browser spans the full right column (below Hierarchy + Inspector).
             ImGuiID rightColumnTop = rightColumn;
             ImGuiID contentBrowserArea = ImGui::DockBuilderSplitNode(
                 rightColumn, ImGuiDir_Down, kRightBottomSplitRatio, nullptr, &rightColumnTop);
@@ -55,16 +55,22 @@ namespace minEngine
             ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
 
             ImGuiID mainArea = dockspaceId;
-            ImGuiID inspectorArea = ImGui::DockBuilderSplitNode(
+            ImGuiID rightColumn = ImGui::DockBuilderSplitNode(
                 mainArea, ImGuiDir_Right, kInspectorSplitRatio, nullptr, &mainArea);
             ImGuiID consoleArea = ImGui::DockBuilderSplitNode(
                 mainArea, ImGuiDir_Down, kConsoleSplitRatio, nullptr, &mainArea);
             ImGuiID graphArea = ImGui::DockBuilderSplitNode(
                 mainArea, ImGuiDir_Right, 0.58f, nullptr, &mainArea);
 
+            ImGuiID rightColumnTop = rightColumn;
+            ImGuiID contentBrowserArea = ImGui::DockBuilderSplitNode(
+                rightColumn, ImGuiDir_Down, kRightBottomSplitRatio, nullptr, &rightColumnTop);
+            ImGuiID inspectorArea = rightColumnTop;
+
             ImGui::DockBuilderDockWindow("Material Editor Viewport", mainArea);
             ImGui::DockBuilderDockWindow("Material Graph", graphArea);
             ImGui::DockBuilderDockWindow("Inspector", inspectorArea);
+            ImGui::DockBuilderDockWindow("Content Browser", contentBrowserArea);
             ImGui::DockBuilderDockWindow("Console", consoleArea);
 
             ImGui::DockBuilderFinish(dockspaceId);
@@ -82,13 +88,18 @@ namespace minEngine
             ImGuiID consoleArea = ImGui::DockBuilderSplitNode(
                 mainArea, ImGuiDir_Down, kConsoleSplitRatio, nullptr, &mainArea);
 
-            ImGuiID detailsArea = rightColumn;
+            ImGuiID rightColumnTop = rightColumn;
+            ImGuiID contentBrowserArea = ImGui::DockBuilderSplitNode(
+                rightColumn, ImGuiDir_Down, kRightBottomSplitRatio, nullptr, &rightColumnTop);
+
+            ImGuiID detailsArea = rightColumnTop;
             ImGuiID parametersArea = ImGui::DockBuilderSplitNode(
-                rightColumn, ImGuiDir_Down, 0.45f, nullptr, &detailsArea);
+                rightColumnTop, ImGuiDir_Down, 0.45f, nullptr, &detailsArea);
 
             ImGui::DockBuilderDockWindow("Anim Graph", mainArea);
             ImGui::DockBuilderDockWindow("Inspector", detailsArea);
             ImGui::DockBuilderDockWindow("Anim Graph Parameters", parametersArea);
+            ImGui::DockBuilderDockWindow("Content Browser", contentBrowserArea);
             ImGui::DockBuilderDockWindow("Console", consoleArea);
 
             ImGui::DockBuilderFinish(dockspaceId);

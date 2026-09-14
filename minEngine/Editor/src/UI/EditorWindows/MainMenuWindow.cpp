@@ -9,11 +9,14 @@
 #include "Shell/EditorContextHelpers.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
+#include "Shell/Document/EditorDocumentHost.h"
+#include "Shell/Document/EditorDocumentSession.h"
 #include "UI/Appearance/EditorAppearance.h"
 #include "UI/Appearance/EditorThemePresets.h"
 #include "UI/Appearance/EditorTypographyScope.h"
 #include "Runtime/Core/EngineVersion.h"
 #include "Runtime/Core/ProductBranding.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 
@@ -42,7 +45,7 @@ namespace minEngine
             DrawFileMenu();
             DrawEditMenu();
             DrawViewMenu();
-            DrawWindowModeMenu();
+            DrawWindowMenu();
             DrawToolsMenu();
             DrawHelpMenu();
         }
@@ -50,6 +53,12 @@ namespace minEngine
         ImGui::PopStyleVar();
 
         DrawAboutPopup();
+    }
+
+    void MainMenuWindow::DrawDocumentTabBar()
+    {
+        m_Context.GetDocumentHost().DrawTabBar();
+        m_Context.GetDocumentHost().DrawPendingDialogs();
     }
 
     void MainMenuWindow::DrawFileMenu()
@@ -191,29 +200,44 @@ namespace minEngine
         }
     }
 
-    void MainMenuWindow::DrawWindowModeMenu()
+    void MainMenuWindow::DrawWindowMenu()
     {
         if (ImGui::BeginMenu("Window"))
         {
-            const EditorSubModule* active = m_Context.GetActiveSubModule();
-            const bool sceneMode = active && active->GetModuleId() == SceneEditor::kModuleId;
-            const bool materialMode = active && active->GetModuleId() == MaterialEditor::kModuleId;
-            const bool animGraphMode =
-                active && active->GetModuleId() == AnimationGraphEditor::kModuleId;
+            EditorDocumentHost& host = m_Context.GetDocumentHost();
+            const EditorDocumentSession* activeSession = host.GetActiveSession();
+            const std::string activeType = activeSession != nullptr ? activeSession->GetTypeId() : std::string{};
 
-            if (ImGui::MenuItem("Scene Editor", nullptr, sceneMode))
+            auto focusDocumentType = [this, &host](const char* typeId)
             {
-                m_Context.ActivateSubModule(SceneEditor::kModuleId);
-            }
+                if (EditorDocumentSession* session = host.FindFirstSessionOfType(typeId))
+                {
+                    host.Activate(session->GetId());
+                    return;
+                }
 
-            if (ImGui::MenuItem("Material Editor", nullptr, materialMode))
-            {
-                m_Context.ActivateSubModule(MaterialEditor::kModuleId);
-            }
+                ME_LOG(
+                    LogEditor,
+                    Info,
+                    "No open '{}' document. Open one from the Content Browser or File menu.",
+                    typeId);
+            };
 
-            if (ImGui::MenuItem("Animation Graph Editor", nullptr, animGraphMode))
+            if (ImGui::BeginMenu("Focus Document"))
             {
-                m_Context.ActivateSubModule(AnimationGraphEditor::kModuleId);
+                if (ImGui::MenuItem("Scene", nullptr, activeType == "Scene"))
+                {
+                    focusDocumentType("Scene");
+                }
+                if (ImGui::MenuItem("Material", nullptr, activeType == "Material"))
+                {
+                    focusDocumentType("Material");
+                }
+                if (ImGui::MenuItem("Animation Graph", nullptr, activeType == "AnimationGraph"))
+                {
+                    focusDocumentType("AnimationGraph");
+                }
+                ImGui::EndMenu();
             }
 
             ImGui::EndMenu();

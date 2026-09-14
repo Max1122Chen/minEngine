@@ -282,12 +282,30 @@ namespace minEngine
         context.GetCommandStack().Clear();
         SyncSelectionWithScene();
         ClearSceneDirty();
+        {
+            const std::vector<const AssetMeta*> scenes = AssetManager::Get().FindAssetMetasByType("Scene");
+            for (const AssetMeta* meta : scenes)
+            {
+                if (meta != nullptr && std::filesystem::path(meta->AssetPath).stem() == sceneName)
+                {
+                    m_OpenedSceneAssetPath = meta->AssetPath;
+                    break;
+                }
+            }
+        }
         context.SetInspectingScene(GetDocumentScene());
         return true;
     }
 
     bool SceneEditor::OpenSceneByPath(IEditorContext& context, const std::string& projectRelativePath)
     {
+        if (!m_OpenedSceneAssetPath.empty() && m_OpenedSceneAssetPath == projectRelativePath
+            && GetDocumentScene() != nullptr)
+        {
+            context.SetInspectingScene(GetDocumentScene());
+            return true;
+        }
+
         if (!SceneManager::Get().LoadSceneByPath(projectRelativePath))
         {
             ME_LOG(LogEditor, Error, "SceneEditor: failed to load scene '{}'.", projectRelativePath);
@@ -297,6 +315,7 @@ namespace minEngine
         context.GetCommandStack().Clear();
         SyncSelectionWithScene();
         ClearSceneDirty();
+        m_OpenedSceneAssetPath = projectRelativePath;
         context.SetInspectingScene(GetDocumentScene());
         ME_LOG(LogEditor, Info, "SceneEditor: opened scene '{}'.", projectRelativePath);
         return true;
@@ -308,6 +327,7 @@ namespace minEngine
         context.GetCommandStack().Clear();
         SyncSelectionWithScene();
         context.SetInspectingScene(GetDocumentScene());
+        m_OpenedSceneAssetPath.clear();
         MarkSceneDirty();
         ME_LOG(LogEditor, Info, "SceneEditor: created new untitled scene.");
         return true;

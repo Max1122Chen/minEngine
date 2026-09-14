@@ -21,12 +21,13 @@ namespace minEngine
 
         void OnDraw() override;
         void DrawChrome();
+        void DrawDocumentTabBar();
 
     private:
         void DrawFileMenu();
         void DrawEditMenu();
         void DrawViewMenu();
-        void DrawWindowModeMenu();
+        void DrawWindowMenu();
         void DrawToolsMenu();
         void DrawHelpMenu();
         void DrawAboutPopup();

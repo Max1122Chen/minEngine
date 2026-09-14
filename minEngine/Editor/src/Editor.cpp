@@ -17,6 +17,8 @@
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Resource/AssetMeta.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/Vulkan/VulkanRHI.h"
@@ -26,6 +28,7 @@
 
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
+#include "Shell/Document/EditorDocumentTypes.h"
 #include "Shell/EditorSettingsDefaults.h"
 #include "UI/Appearance/EditorAppearance.h"
 
@@ -35,6 +38,15 @@
 
 namespace minEngine
 {
+    EditorCommandStack& Editor::GetCommandStack()
+    {
+        if (EditorCommandStack* activeStack = m_DocumentHost.GetActiveCommandStack())
+        {
+            return *activeStack;
+        }
+        return m_FallbackCommandStack;
+    }
+
     std::optional<std::filesystem::path> Editor::ResolveProjectDescriptorPath(
         const CommandLineResult& commandLine)
     {
@@ -88,7 +100,27 @@ namespace minEngine
         m_MaterialEditor->Register(*this);
         m_AnimationGraphEditor->Register(*this);
 
-        ActivateSubModule(SceneEditor::kModuleId);
+        m_DocumentHost.SetContext(this);
+        RegisterBuiltinEditorDocumentTypes(*this, m_DocumentHost);
+
+        ActivateSubModule(SceneEditor::kModuleId, true);
+    }
+
+    void Editor::BootstrapDocumentHost()
+    {
+        const std::string& scenePath = m_SceneEditor.GetOpenedSceneAssetPath();
+        if (scenePath.empty())
+        {
+            return;
+        }
+
+        if (m_DocumentHost.FindSessionByAssetKey(scenePath) != nullptr)
+        {
+            return;
+        }
+
+        const std::string title = std::filesystem::path(scenePath).filename().string();
+        m_DocumentHost.AdoptOpenDocument("Scene", scenePath, title);
     }
 
     EditorSubModule* Editor::FindSubModule(std::string_view moduleId)
@@ -117,6 +149,11 @@ namespace minEngine
 
     bool Editor::ActivateSubModule(std::string_view moduleId)
     {
+        return ActivateSubModule(moduleId, true);
+    }
+
+    bool Editor::ActivateSubModule(std::string_view moduleId, bool resetLayout)
+    {
         EditorSubModule* target = FindSubModule(moduleId);
         if (!target || !target->CanActivate())
         {
@@ -125,6 +162,7 @@ namespace minEngine
 
         if (m_ActiveSubModule == target)
         {
+            m_EditorGUIManager.OnActiveSubModuleChanged(false);
             return true;
         }
 
@@ -138,7 +176,7 @@ namespace minEngine
         m_ActiveSubModule = target;
         m_ActiveSubModule->OnActivate(*this);
         m_ActiveSubModule->RegisterCommands(*this);
-        m_EditorGUIManager.OnActiveSubModuleChanged();
+        m_EditorGUIManager.OnActiveSubModuleChanged(resetLayout);
         return true;
     }
 
@@ -188,6 +226,7 @@ namespace minEngine
             {
                 SetInspectingScene(SceneManager::Get().GetEditorScene());
             }
+            BootstrapDocumentHost();
 
             const std::filesystem::path projectContentRoot = PathRegistry::Get().GetProjectContentRoot();
             m_ProjectAssetWatcher.StartWatching(projectContentRoot);
@@ -215,7 +254,7 @@ namespace minEngine
     void Editor::ApplyCommandStackSettingsFromProject()
     {
         const ProjectContext& projectCtx = ProjectManager::Get().GetCurrentProjectCtx();
-        m_CommandStack.SetMaxDepth(ResolveMaxUndoStackDepth(projectCtx.Settings.Editor.MaxUndoStackDepth));
+        m_FallbackCommandStack.SetMaxDepth(ResolveMaxUndoStackDepth(projectCtx.Settings.Editor.MaxUndoStackDepth));
     }
 
     void Editor::ApplyAppearanceSettingsFromProject()
@@ -226,7 +265,8 @@ namespace minEngine
 
     void Editor::ResetCommandStackForNewDocument()
     {
-        m_CommandStack.Clear();
+        m_FallbackCommandStack.Clear();
+        m_DocumentHost.ClearAllCommandStacks();
     }
 
     bool Editor::InitializeImGuiBackend()
@@ -399,7 +439,11 @@ namespace minEngine
         }
 
         const std::string windowTitle = FormatEditorWindowTitle(documentSuffix);
-        WindowSystem::Get().SetTitle(windowTitle.c_str());
+        if (windowTitle != m_LastWindowTitle)
+        {
+            WindowSystem::Get().SetTitle(windowTitle.c_str());
+            m_LastWindowTitle = windowTitle;
+        }
     }
 
     IFileDialogService& Editor::GetFileDialogService()
@@ -494,7 +538,6 @@ namespace minEngine
             ImGui::NewFrame();
 
             m_EditorGUIManager.Tick(deltaTime);
-            m_AssetWorkflow.DrawModals();
             m_ProjectAssetWatcher.Tick(deltaTime);
             m_InputHub.ProcessInput(*this);
 

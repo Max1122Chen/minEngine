@@ -13,5 +13,6 @@ namespace minEngine
     {
     public:
         static void BeginFrame(IEditorContext& context);
+        static void EndFrame(IEditorContext& context);
     };
 }

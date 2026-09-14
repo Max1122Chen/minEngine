@@ -150,6 +150,8 @@ namespace minEngine
         void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }
 
+        const std::string& GetOpenedSceneAssetPath() const { return m_OpenedSceneAssetPath; }
+
         void OnProjectOpened();
 
         IEditorContext* GetEditorContext() const { return m_Context; }
@@ -169,6 +171,7 @@ namespace minEngine
         IEditorContext* m_Context = nullptr;
         SceneEditorInspectorSource m_InspectorSource;
         bool m_SceneDirty = false;
+        std::string m_OpenedSceneAssetPath;
         uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
         GameObject* m_SelectedGameObject = nullptr;
         uint64_t m_PendingRenameGameObjectId = std::numeric_limits<uint64_t>::max();

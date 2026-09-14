@@ -7,6 +7,9 @@
 #include "Services/Inspector/InspectorModule.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Shell/IEditorContext.h"
+#include "Shell/Document/EditorDocumentHost.h"
+#include "EditorGUIManager.h"
+#include "UI/EditorWindows/EditorWindow.h"
 #include "UI/Inspector/InspectorPreviewPresenter.h"
 #include "UI/Appearance/EditorTypographyScope.h"
 #include "UI/Appearance/EditorWindowTypography.h"
@@ -275,35 +278,7 @@ namespace minEngine
             return false;
         }
 
-        if (EditorSubModule* materialModule = m_Context->FindSubModule(MaterialEditor::kModuleId))
-        {
-            if (materialModule->CanOpenAsset(meta) && materialModule->OpenAsset(meta))
-            {
-                m_Context->ActivateSubModule(MaterialEditor::kModuleId);
-                return true;
-            }
-        }
-
-        if (EditorSubModule* animGraphModule =
-                m_Context->FindSubModule(AnimationGraphEditor::kModuleId))
-        {
-            if (animGraphModule->CanOpenAsset(meta) && animGraphModule->OpenAsset(meta))
-            {
-                m_Context->ActivateSubModule(AnimationGraphEditor::kModuleId);
-                return true;
-            }
-        }
-
-        if (EditorSubModule* sceneModule = m_Context->FindSubModule(SceneEditor::kModuleId))
-        {
-            if (sceneModule->CanOpenAsset(meta) && sceneModule->OpenAsset(meta))
-            {
-                m_Context->ActivateSubModule(SceneEditor::kModuleId);
-                return true;
-            }
-        }
-
-        return false;
+        return m_Context->GetDocumentHost().OpenOrFocus(meta);
     }
 
     bool AssetWorkflowModule::TryOpenAsset(const AssetMeta& meta)
@@ -846,6 +821,36 @@ namespace minEngine
         }
 
         return AssetManager::Get().FindAssetMetaByPath(m_SelectedAssetPath);
+    }
+
+    bool AssetWorkflowModule::RevealAssetInContentBrowser(std::string_view assetPath)
+    {
+        if (!m_Context || assetPath.empty() || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(std::string(assetPath));
+        if (meta == nullptr)
+        {
+            ME_LOG(LogEditor, Warn, "RevealInContentBrowser: asset not found '{}'.", assetPath);
+            return false;
+        }
+
+        const std::filesystem::path assetRel(meta->AssetPath);
+        const std::string parentRel = assetRel.parent_path().lexically_normal().generic_string();
+        const std::string directoryRel = (parentRel == "." || parentRel == "..") ? std::string() : parentRel;
+
+        AssetTreeModel& model = m_Context->GetContentBrowser().GetModel();
+        model.SetCurrentDirectory(directoryRel);
+        SetSelectedAsset(meta);
+
+        if (EditorWindow* browserWindow = m_Context->GetGUIManager().FindWindow("ContentBrowser"))
+        {
+            browserWindow->SetOpen(true);
+        }
+
+        return true;
     }
 
     void AssetWorkflowModule::SetContentBrowserInspectorActive(bool active)
