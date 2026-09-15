@@ -23,6 +23,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "UI/Appearance/EditorAssetTypeIcons.h"
 #include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include <algorithm>
@@ -34,48 +35,14 @@ namespace minEngine
 {
     const char* ContentBrowserWindow::ResolveAssetTypeIconGlyph(const std::string_view assetType) const
     {
-        if (assetType == "Texture2D")
-        {
-            return ICON_FA_IMAGE;
-        }
-
-        if (assetType == "StaticMesh")
-        {
-            return ICON_FA_CUBE;
-        }
-
-        if (assetType == "Material")
-        {
-            return ICON_FA_PALETTE;
-        }
-
-        if (assetType == "EnvironmentMap")
-        {
-            return ICON_FA_GLOBE;
-        }
-
-        if (assetType == "Scene")
-        {
-            return ICON_FA_MAP;
-        }
-
-        if (assetType == "Font")
-        {
-            return ICON_FA_FONT;
-        }
-
-        return ICON_FA_FILE;
+        return EditorAssetTypeIcons::GlyphForAssetType(assetType);
     }
 
     AssetIconFontStyle ContentBrowserWindow::ResolveAssetTypeIconFontStyle(const std::string_view assetType) const
     {
-        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Font"
-            || assetType == "EnvironmentMap")
-        {
-            return AssetIconFontStyle::Solid;
-        }
-
-        return AssetIconFontStyle::Regular;
+        return EditorAssetTypeIcons::FontStyleForAssetType(assetType) == EditorAssetTypeIcons::FontStyle::Solid
+            ? AssetIconFontStyle::Solid
+            : AssetIconFontStyle::Regular;
     }
 
     void ContentBrowserWindow::DrawTileAssetIcon(

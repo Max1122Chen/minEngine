@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（ED-F14 Done）  
+Last updated: 2026-09-15（ED-F11 W3 大部落地）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -17,13 +17,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|-----|------|--------|--------|
 | F1–F3 | — | Foundation | **Done**（master） | Log / Schema / Maximum |
 | 1 | **`ED-F09`** | Editor Console LogRecord 过滤 | **Done**（W0–W2） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2；**W3 缓**） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
+| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2 Done；**W3 大部落地**，余 Save As / Scene 多开） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
 | 3 | **`ED-F12`** | Agent Edit Protocol | **Done**（`aa56421`） | [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) |
 | 4 | **`ED-F13`** | 显式目标编辑（去 Select 模拟） | **Done** | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) |
 | 5 | **`ED-F14`** | 各 SubEditor 命令面完备 | **Done** | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) |
 | — | `ED-F10` | EditorSettings | **Planned**（占位） | Design 未开 |
 
-**下一刀：** ED-F14 整批 commit 后，按 Phase P 另选焦点（如 ED-F11 W3 / ED-F10）。
+**下一刀：** ED-F11 余量（Save As / Scene 多开）或开 **ED-F10** Design；也可收口后合入/开新焦点。
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 

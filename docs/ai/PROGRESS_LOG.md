@@ -1,6 +1,20 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（ED-F14 Done）
+Last updated: 2026-09-15（ED-F11 W3 手测跟进修）
+
+### 2026-09-15 - ED-F11 W3 跟进：Reveal / Pin 直关 / Tab 类型图标
+- **Reveal：** 弃用 `explorer /select`（正斜杠/`"` 易错位）；改 `make_preferred` + `SHOpenFolderAndSelectItems`。
+- **Pin 直关：** `BeginTabItem` 选中帧点 X 时 `selected==true && open==false` 曾只 `EndTabItem` 不 `RequestClose`；现始终处理 `!open`。Pin 仍只挡 Close Others/All。
+- **Tab 图标：** `EditorAssetTypeIcons` 与 Content Browser 共用 FA glyph；标签改 `* Title` + 左侧 overlay 图标。
+- **验证：** Editor 构建 OK；手测 Reveal / Pin 直关 / Tab 图标通过（维护者）。
+
+### 2026-09-15 - ED-F11 W3：Pin / Close All / Reopen / 路径 / 快捷键
+- **Pin/Unpin：** Tab 右键；Pinned 沉到左侧区；批量 Close 跳过 Pinned；Close All 同策略。
+- **Reopen Closed：** 关闭历史（≤16）→ `OpenOrFocus`；Ctrl+Shift+T；Ctrl+Tab / Ctrl+Shift+Tab。
+- **路径：** Copy Relative；Reveal in Explorer（Windows `/select`）；Copy Asset Path 改为绝对路径。
+- **钩子：** `AppendTabContextMenu`；Tab 标签 `* TypeInitial: Title`。
+- **余量：** Save As；Scene 多开策略；手测。
+- **验证：** Editor 构建 OK。
 
 ### 2026-09-15 - ED-F14 Done：验收 + Console Domain / ObjectPtr Undo
 - **验收：** 人手 Undo/Redo 冒烟通过（维护者）。

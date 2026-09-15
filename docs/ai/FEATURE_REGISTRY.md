@@ -66,7 +66,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F08` | Hierarchy Tree（拖拽改父） | **Done** | — | [Design](./Editor/ED-F05_HIERARCHY_TREE_DESIGN.md) · 文件名保留历史 `ED-F05_HIERARCHY_*` |
 | `ED-F09` | Editor Log Console（LogRecord 展示/按 Channel·Severity 过滤） | **Done**（W0–W2） | — | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) · Channel/时间窗/Collapse/Clear on Play |
 | `ED-F10` | EditorSettings（布局/过滤等持久化） | **Planned** | — | Design 未开 · 0.1.0 Roadmap 占位；**勿抢号** |
-| `ED-F11` | Multi-document Tab Host（Session + 文档 Tab；共享 Dock MVP） | **In Progress**（W0–W2；**W3 缓**） | — | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) · Host/注册类型/Tab/per-Session 栈 |
+| `ED-F11` | Multi-document Tab Host（Session + 文档 Tab；共享 Dock MVP） | **In Progress**（W0–W2 Done；**W3 大部落地**） | — | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) · Pin/Close All/Reopen/路径/快捷键；余 Save As / Scene 多开 |
 | `ED-F12` | Agent Edit Protocol（资产 Session × Debug/EditorCommand 命名收敛） | **Done** | — | [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) · `edit`/`verify`/`invoke` → 后续 Feature |
 | `ED-F13` | 显式目标编辑：去「先 Select 再改」；Editor=实现者、Command=调用者 | **Done** | — | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) · AddComponent 显式 API |
 | `ED-F14` | 各 SubEditor 命令面完备（按 Session/资产类型补齐 EditorCommand） | **Done** | — | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) · W1–W4 + Session 域补全 / ObjectPtr Undo |
@@ -125,7 +125,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
 | `CORE` | **F19** | F17 Logging / F18 Schema **Done**；F13–F16 Done |
 | `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F15** | F12–**F13 Done**；**F14** In Progress（W1）；F10 占位；F11 W3 缓 |
+| `ED` | **F15** | F12–**F14 Done**；**F11** In Progress（W3 大部落地）；F10 占位 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |

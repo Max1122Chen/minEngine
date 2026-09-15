@@ -29,6 +29,8 @@ namespace minEngine
         std::function<bool(IEditorContext&, EditorDocumentSession&)> SaveSession;
         std::function<std::string(const AssetMeta&)> MakeAssetKey;
         std::function<std::string(const AssetMeta&)> MakeTitle;
+        /** Optional: append type-specific items while the Host tab context menu is open. */
+        std::function<void(IEditorContext&, EditorDocumentSession&)> AppendTabContextMenu;
     };
 
     class EditorDocumentTypeRegistry
