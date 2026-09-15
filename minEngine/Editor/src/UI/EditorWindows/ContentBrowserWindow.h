@@ -59,7 +59,8 @@ namespace minEngine
         void DrawTileVisual(const char* label,
                             bool selected,
                             const AssetMeta* iconAssetMeta = nullptr,
-                            bool drawLabel = true);
+                            bool drawLabel = true,
+                            bool drawFolderIcon = false);
         void DrawDirectoryTile(const AssetTreeModel::DirectoryNode& directoryNode);
         void DrawAssetTile(const AssetMeta& meta, int tileIndex, bool selected);
         void DrawTileAssetIcon(const AssetMeta& meta,
@@ -68,9 +69,15 @@ namespace minEngine
                                const EditorAppearance& appearance,
                                const EditorThemePalette& palette,
                                ImDrawList& drawList) const;
+        void DrawTileFolderIcon(const ImVec2& iconMin,
+                                const ImVec2& iconMax,
+                                const EditorAppearance& appearance,
+                                const EditorThemePalette& palette,
+                                ImDrawList& drawList) const;
         void DrawAssetTreeLeaf(const AssetMeta& assetMeta);
         void ActivateAssetFromBrowser(const AssetMeta& assetMeta);
         void SelectAsset(const AssetMeta* meta);
+        void SelectDirectory(std::string_view relativePath);
         void SyncSelectionFromWorkflow();
         void DrawContentBrowserContextMenu(ContentBrowserHitKind hitKind,
                                            std::string_view directoryRel,
@@ -92,6 +99,7 @@ namespace minEngine
         const std::string m_Id = "ContentBrowser";
         const std::string m_Title = "Content Browser";
         int m_SelectedAssetIndex = -1;
+        std::string m_SelectedDirectoryRelativePath;
 
         std::string m_RenamingAssetPath;
         std::string m_RenamingAssetExtension;

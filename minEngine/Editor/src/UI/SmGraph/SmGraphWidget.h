@@ -59,6 +59,7 @@ namespace minEngine::SmGraph
             DragNode = 1,
             LinkDrag = 2,
             Pan = 3,
+            BoxSelect = 4,
         };
 
         enum class HitKind : uint8_t
@@ -89,6 +90,7 @@ namespace minEngine::SmGraph
         void DrawNodes(ImDrawList* drawList, Document& document, NodeId hoverTarget) const;
         void DrawEdges(ImDrawList* drawList, const Document& document) const;
         void DrawLinkPreview(ImDrawList* drawList, const Document& document) const;
+        void DrawBoxSelectOverlay(ImDrawList* drawList) const;
 
         HitResult HitTest(const Document& document, const ImVec2& canvasPos) const;
         bool HitEdge(const Document& document, const Edge& edge, const ImVec2& canvasPos) const;
@@ -100,6 +102,10 @@ namespace minEngine::SmGraph
         void HandleDragNode(Document& document, std::vector<EditEvent>& outEvents);
         void HandleLinkDrag(Document& document, std::vector<EditEvent>& outEvents);
         void HandlePan();
+        void HandleBoxSelect(Document& document, std::vector<EditEvent>& outEvents);
+        void QueueContextMenuFromHit(const HitResult& hit, const ImVec2& canvasPos, Document& document,
+                                     std::vector<EditEvent>& outEvents);
+        NodeId PickBoxSelectPrimary(const Document& document, const ImRect& selectRect) const;
         void HandleZoom();
         void UpdateNavigationAnimation();
         void CancelNavigationAnimation();
@@ -114,6 +120,7 @@ namespace minEngine::SmGraph
         static ImVec2 ClosestPointOnRectBorder(const ImVec2& rectMin, const ImVec2& rectMax, const ImVec2& toward);
         static void DrawArrowHead(ImDrawList* drawList, const ImVec2& tip, const ImVec2& direction, ImU32 color);
         static float DistancePointToSegment(const ImVec2& point, const ImVec2& a, const ImVec2& b);
+        static ImRect MakeNormalizedRect(const ImVec2& a, const ImVec2& b);
 
         Style m_Style;
         ImGuiEx::Canvas m_Canvas;
@@ -125,6 +132,7 @@ namespace minEngine::SmGraph
         ImVec2 m_ScrollStart{0.0f, 0.0f};
 
         Mode m_Mode = Mode::Idle;
+        ImGuiMouseButton m_PanButton = ImGuiMouseButton_Middle;
         NodeId m_ActiveNode = kInvalidNodeId;
         ImVec2 m_DragGrabOffset{0.0f, 0.0f};
         ImVec2 m_ContextMenuCanvasPos{0.0f, 0.0f};
@@ -134,6 +142,11 @@ namespace minEngine::SmGraph
         NodeId m_ContextMenuNode = kInvalidNodeId;
         bool m_OpenRenamePopup = false;
         char m_RenameBuffer[128]{};
+
+        bool m_RightGestureActive = false;
+        HitResult m_RightGestureHit{};
+        ImVec2 m_BoxSelectStart{0.0f, 0.0f};
+        ImVec2 m_BoxSelectEnd{0.0f, 0.0f};
 
         // View-rect animation (same approach as ed::NavigateAnimation).
         bool m_NavAnimating = false;

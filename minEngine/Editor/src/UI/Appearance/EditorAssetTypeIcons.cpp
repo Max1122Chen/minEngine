@@ -79,4 +79,18 @@ namespace minEngine
     {
         return ResolveFont(appearance, documentTypeId);
     }
+
+    const char* EditorAssetTypeIcons::GlyphForFolder()
+    {
+        return ICON_FA_FOLDER;
+    }
+
+    ImFont* EditorAssetTypeIcons::ResolveFolderFont(const EditorAppearance& appearance)
+    {
+        if (ImFont* solid = appearance.GetAssetIconSolidImFont())
+        {
+            return solid;
+        }
+        return appearance.GetAssetIconRegularImFont();
+    }
 }

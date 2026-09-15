@@ -6,6 +6,7 @@
 #include "UI/Appearance/EditorTypographyScope.h"
 #include "UI/Appearance/EditorWindowTheme.h"
 #include "UI/Appearance/EditorWindowTypography.h"
+#include "UI/Widgets/InlineRenameField.h"
 
 #include "imgui.h"
 
@@ -25,6 +26,7 @@
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -35,14 +37,21 @@ namespace minEngine
     namespace
     {
         constexpr float kNodeWidth = MaterialGraphNodeRegistry::kNodeContentWidth;
-        constexpr float kHeaderHeight = 24.0f;
-        constexpr float kPinRadius = 4.5f;
-        constexpr float kPinTextGap = 6.0f;
-        constexpr float kRowHeight = 18.0f;
+        constexpr float kHeaderHeight = 28.0f;
+        constexpr float kHeaderTextPadX = 10.0f;
+        constexpr float kPinDiameter = 11.0f;
+        constexpr float kPinTextGap = 8.0f;
+        constexpr float kRowHeight = 22.0f;
+        constexpr float kBodyPadX = 4.0f;
+        constexpr float kLinkThickness = 2.5f;
 
-        ImU32 PinColor(bool connected)
+        ImU32 PinColor(bool connected, bool isOutput)
         {
-            return connected ? IM_COL32(120, 200, 255, 255) : IM_COL32(150, 150, 150, 255);
+            if (isOutput)
+            {
+                return connected ? IM_COL32(230, 200, 90, 255) : IM_COL32(180, 160, 80, 255);
+            }
+            return connected ? IM_COL32(140, 210, 150, 255) : IM_COL32(120, 150, 125, 255);
         }
     }
 
@@ -98,9 +107,12 @@ namespace minEngine
 
         const int visibleInputCount = static_cast<int>(visibleInputIndices.size());
         const int maxPinCount = std::max(visibleInputCount, outputCount);
-        const float halfWidth = kNodeWidth * 0.5f;
-        constexpr float kPinIconSize = 10.0f;
+        const float halfWidth = (kNodeWidth - kBodyPadX * 2.0f) * 0.5f;
 
+        ImGui::Dummy(ImVec2(kBodyPadX, 0.0f));
+        ImGui::SameLine(0.0f, 0.0f);
+
+        ImGui::BeginGroup();
         for (int row = 0; row < maxPinCount; ++row)
         {
             ImGui::PushID(row);
@@ -121,8 +133,10 @@ namespace minEngine
 
                 const Ed::PinId pinId = MaterialGraphIds::ToPinId(&node, Ed::PinKind::Input, inputIndex);
                 const bool pinDisabled = visibility == MaterialPropertyPinVisibility::Disabled;
+                const bool connected = input->IsConnected();
                 const ImColor inputPinColor =
-                    pinDisabled ? ImColor(110, 110, 110) : ImColor(150, 220, 150);
+                    pinDisabled ? ImColor(110, 110, 110, 255)
+                                : ImColor(PinColor(connected, false));
 
                 if (pinDisabled)
                 {
@@ -130,9 +144,10 @@ namespace minEngine
                 }
 
                 Ed::BeginPin(pinId, Ed::PinKind::Input);
-                DrawPinIcon(inputPinColor);
+                Ed::PinPivotAlignment(ImVec2(0.0f, 0.5f));
+                DrawPinIcon(inputPinColor, connected);
                 ImGui::SameLine(0.0f, kPinTextGap);
-                ImGui::TextUnformatted(input->Name.c_str());
+                DrawPinLabel(input->Name.c_str(), false, halfWidth - kPinDiameter - kPinTextGap);
                 Ed::EndPin();
 
                 if (pinDisabled)
@@ -152,19 +167,17 @@ namespace minEngine
             {
                 MaterialGraphNodeDef::Output* output = nodeDef->GetOutput(row);
                 const Ed::PinId pinId = MaterialGraphIds::ToPinId(&node, Ed::PinKind::Output, row);
+                MaterialEdGraph* graph = m_BoundGraph;
+                const bool connected =
+                    graph != nullptr && nodeDef != nullptr
+                    && graph->IsNodeOutputConnected(*nodeDef, row);
+
                 Ed::BeginPin(pinId, Ed::PinKind::Output);
+                Ed::PinPivotAlignment(ImVec2(1.0f, 0.5f));
 
-                const float labelWidth = ImGui::CalcTextSize(output->Name.c_str()).x;
-                const float contentWidth = labelWidth + kPinTextGap + kPinIconSize;
-                const float offset = halfWidth - contentWidth;
-                if (offset > 0.0f)
-                {
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
-                }
-
-                ImGui::TextUnformatted(output->Name.c_str());
+                DrawPinLabel(output->Name.c_str(), true, halfWidth - kPinDiameter - kPinTextGap);
                 ImGui::SameLine(0.0f, kPinTextGap);
-                DrawPinIcon(ImColor(220, 180, 80));
+                DrawPinIcon(ImColor(PinColor(connected, true)), connected);
                 Ed::EndPin();
             }
             else
@@ -174,6 +187,7 @@ namespace minEngine
 
             ImGui::PopID();
         }
+        ImGui::EndGroup();
     }
 
     MaterialGraphWindow::MaterialGraphWindow(IEditorContext& context)
@@ -370,6 +384,7 @@ namespace minEngine
     void MaterialGraphWindow::DrawNodeEditor(Material& material, MaterialEdGraph& graph)
     {
         Ed::SetCurrentEditor(m_NodeEditorContext);
+        ApplyNodeEditorTheme();
 
         if (m_BoundGraph != &graph)
         {
@@ -394,11 +409,109 @@ namespace minEngine
         DrawLinks(graph);
         HandleCreateLink(material, graph);
         HandleDeleteLink(graph);
+        HandleContextMenus(graph);
         SyncSelectionFromEditor();
         SyncNodePositions(graph);
 
         Ed::End();
         Ed::SetCurrentEditor(nullptr);
+    }
+
+    void MaterialGraphWindow::ApplyNodeEditorTheme()
+    {
+        const EditorAppearance& appearance = m_Context.GetEditorAppearance();
+        const EditorThemePalette& palette = appearance.GetActivePalette();
+        Ed::Style& style = Ed::GetStyle();
+
+        style.NodeRounding = 5.0f;
+        style.PinRounding = 3.0f;
+        style.NodeBorderWidth = 1.0f;
+        style.HoveredNodeBorderWidth = 1.5f;
+        style.SelectedNodeBorderWidth = 2.5f;
+        style.NodePadding = ImVec4(8.0f, 0.0f, 8.0f, 8.0f);
+
+        style.Colors[Ed::StyleColor_Bg] = appearance.GetDisplayColor(palette.WindowBackground, 0.92f);
+        style.Colors[Ed::StyleColor_Grid] = appearance.GetDisplayColor(palette.Border, 0.28f);
+        style.Colors[Ed::StyleColor_NodeBg] = appearance.GetDisplayColor(palette.PanelBackground, 0.98f);
+        style.Colors[Ed::StyleColor_NodeBorder] = appearance.GetDisplayColor(palette.Border, 0.85f);
+        style.Colors[Ed::StyleColor_HovNodeBorder] =
+            appearance.GetDisplayColor(appearance.GetSemanticColors().HierarchySelectionBar, 0.85f);
+        style.Colors[Ed::StyleColor_SelNodeBorder] =
+            appearance.GetDisplayColor(appearance.GetSemanticColors().HierarchySelectionBar);
+        style.Colors[Ed::StyleColor_NodeSelRect] = appearance.GetDisplayColor(palette.Selection, 0.35f);
+        style.Colors[Ed::StyleColor_NodeSelRectBorder] = appearance.GetDisplayColor(palette.Selection, 0.75f);
+        style.Colors[Ed::StyleColor_PinRect] = ImVec4(0.24f, 0.71f, 1.0f, 0.45f);
+        style.Colors[Ed::StyleColor_PinRectBorder] = ImVec4(0.24f, 0.71f, 1.0f, 0.75f);
+    }
+
+    void MaterialGraphWindow::DrawNodeHeader(const char* title, const ImU32 headerColor)
+    {
+        const float rounding = Ed::GetStyle().NodeRounding;
+        const ImVec2 headerOrigin = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(ImVec2(kNodeWidth, kHeaderHeight));
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        const ImVec2 headerMin = headerOrigin;
+        const ImVec2 headerMax(headerOrigin.x + kNodeWidth, headerOrigin.y + kHeaderHeight);
+        drawList->AddRectFilled(
+            headerMin,
+            headerMax,
+            headerColor,
+            rounding,
+            ImDrawFlags_RoundCornersTop);
+
+        const ImVec2 titleSize = ImGui::CalcTextSize(title);
+        const float titleX = headerMin.x + kHeaderTextPadX;
+        const float titleY = headerMin.y + (kHeaderHeight - titleSize.y) * 0.5f;
+        drawList->AddText(ImVec2(titleX, titleY), IM_COL32(245, 245, 245, 255), title);
+
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+    }
+
+    void MaterialGraphWindow::DrawNodes(Material& material, MaterialEdGraph& graph)
+    {
+        MaterialGraphNodeRegistry::EnsureRegistered();
+
+        int nodeDrawIndex = 0;
+        for (const std::shared_ptr<MaterialEdGraphNode>& nodePtr : graph.m_Nodes)
+        {
+            if (!nodePtr)
+            {
+                continue;
+            }
+
+            MaterialEdGraphNode& node = *nodePtr;
+            MaterialGraphNodeDef* nodeDef = node.GetNodeDef();
+            const MaterialGraphNodeStyle style = MaterialGraphNodeRegistry::GetStyle(nodeDef);
+
+            const Ed::NodeId nodeId = MaterialGraphIds::ToNodeId(&node);
+            ImGui::PushID(nodeDrawIndex++);
+            Ed::BeginNode(nodeId);
+            ImGui::PushItemWidth(kNodeWidth);
+
+            const char* title = node.m_Title.empty() ? style.DisplayName : node.m_Title.c_str();
+            DrawNodeHeader(title, style.HeaderColor);
+
+            MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+            if (!materialEditor)
+            {
+                ImGui::PopItemWidth();
+                Ed::EndNode();
+                ImGui::PopID();
+                continue;
+            }
+
+            if (MaterialGraphNodeRegistry::DrawNode(node, *materialEditor))
+            {
+                materialEditor->NotifyGraphChanged();
+            }
+
+            ImGui::Spacing();
+            DrawNodeBody(material, node, nodeDef);
+            ImGui::PopItemWidth();
+            Ed::EndNode();
+            ImGui::PopID();
+        }
     }
 
     void MaterialGraphWindow::LayoutNodesIfNeeded(MaterialEdGraph& graph)
@@ -467,69 +580,43 @@ namespace minEngine
         }
     }
 
-    void MaterialGraphWindow::DrawNodes(Material& material, MaterialEdGraph& graph)
-    {
-        MaterialGraphNodeRegistry::EnsureRegistered();
-
-        int nodeDrawIndex = 0;
-        for (const std::shared_ptr<MaterialEdGraphNode>& nodePtr : graph.m_Nodes)
-        {
-            if (!nodePtr)
-            {
-                continue;
-            }
-
-            MaterialEdGraphNode& node = *nodePtr;
-            MaterialGraphNodeDef* nodeDef = node.GetNodeDef();
-            const MaterialGraphNodeStyle style = MaterialGraphNodeRegistry::GetStyle(nodeDef);
-
-            const Ed::NodeId nodeId = MaterialGraphIds::ToNodeId(&node);
-            ImGui::PushID(nodeDrawIndex++);
-            Ed::BeginNode(nodeId);
-            ImGui::PushItemWidth(kNodeWidth);
-
-            const char* title = node.m_Title.empty() ? style.DisplayName : node.m_Title.c_str();
-            {
-                EditorThemeScope nodeTitleTheme = EditorWindowTheme::PrimaryText(m_Context.GetEditorAppearance());
-                ImGui::TextUnformatted(title);
-            }
-
-            MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
-            if (!materialEditor)
-            {
-                ImGui::PopItemWidth();
-                Ed::EndNode();
-                ImGui::PopID();
-                continue;
-            }
-
-            if (MaterialGraphNodeRegistry::DrawNode(node, *materialEditor))
-            {
-                materialEditor->NotifyGraphChanged();
-            }
-
-            ImGui::Spacing();
-            DrawNodeBody(material, node, nodeDef);
-            ImGui::PopItemWidth();
-            Ed::EndNode();
-            ImGui::PopID();
-        }
-    }
-
-    void MaterialGraphWindow::DrawPinIcon(const ImColor& color)
+    void MaterialGraphWindow::DrawPinIcon(const ImColor& color, const bool connected)
     {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
+        const ImVec2 cursor = ImGui::GetCursorScreenPos();
+        const float radius = kPinDiameter * 0.5f;
+        const ImVec2 center(cursor.x + radius, cursor.y + kRowHeight * 0.5f);
 
-        ImVec2 cursor = ImGui::GetCursorScreenPos();
+        if (connected)
+        {
+            drawList->AddCircleFilled(center, radius, color);
+        }
+        else
+        {
+            drawList->AddCircle(center, radius, color, 0, 1.75f);
+        }
 
-        constexpr float radius = 5.0f;
+        ImGui::Dummy(ImVec2(kPinDiameter, kRowHeight));
+    }
 
-        drawList->AddCircleFilled(
-            ImVec2(cursor.x + radius, cursor.y + radius),
-            radius,
-            color);
+    void MaterialGraphWindow::DrawPinLabel(const char* label, const bool alignRight, const float availableWidth)
+    {
+        const ImVec2 textSize = ImGui::CalcTextSize(label);
+        const float startX = ImGui::GetCursorPosX();
+        const float startY = ImGui::GetCursorPosY();
+        float textX = startX;
+        if (alignRight && availableWidth > textSize.x)
+        {
+            textX = startX + (availableWidth - textSize.x);
+        }
 
-        ImGui::Dummy(ImVec2(radius * 2, radius * 2));
+        const float textY = startY + (kRowHeight - textSize.y) * 0.5f;
+        ImGui::SetCursorPos(ImVec2(textX, textY));
+        ImGui::TextUnformatted(label);
+
+        // Keep the pin row footprint stable for SameLine layout.
+        ImGui::SetCursorPos(ImVec2(startX + (std::max)(availableWidth, textSize.x), startY));
+        ImGui::Dummy(ImVec2(0.0f, kRowHeight));
     }
 
     void MaterialGraphWindow::SyncSelectionFromEditor()
@@ -601,7 +688,7 @@ namespace minEngine
                     &toNode,
                     inputIndex);
 
-                Ed::Link(linkId, startPin, endPin);
+                Ed::Link(linkId, startPin, endPin, ImVec4(0.92f, 0.92f, 0.95f, 0.95f), kLinkThickness);
             }
         }
     }
@@ -870,6 +957,165 @@ namespace minEngine
         }
 
         Ed::EndDelete();
+    }
+
+    void MaterialGraphWindow::BeginRenameNode(MaterialEdGraphNode& node)
+    {
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (materialEditor == nullptr)
+        {
+            return;
+        }
+
+        const MaterialGraphNodeStyle style = MaterialGraphNodeRegistry::GetStyle(node.GetNodeDef());
+        const char* fallback = style.DisplayName != nullptr ? style.DisplayName : "Node";
+        const std::string& currentTitle = node.m_Title.empty() ? std::string(fallback) : node.m_Title;
+        const size_t copyLen = (std::min)(currentTitle.size(), sizeof(m_RenameBuffer) - 1);
+        std::memcpy(m_RenameBuffer, currentTitle.data(), copyLen);
+        m_RenameBuffer[copyLen] = '\0';
+
+        materialEditor->StorePropertyUndoBefore(node, "m_Title");
+        m_RenamingNodeGuid = node.GetGuid();
+        m_OpenRenamePopup = true;
+        m_RequestRenameFocus = true;
+    }
+
+    void MaterialGraphWindow::CommitRenameNode(MaterialEdGraphNode& node)
+    {
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (materialEditor == nullptr)
+        {
+            return;
+        }
+
+        node.m_Title = m_RenameBuffer;
+        materialEditor->TryCommitPropertyUndoAfterEdit(node, "m_Title");
+        materialEditor->NotifyGraphChanged();
+        m_RenamingNodeGuid = {};
+        m_RenameBuffer[0] = '\0';
+    }
+
+    void MaterialGraphWindow::HandleContextMenus(MaterialEdGraph& graph)
+    {
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (materialEditor == nullptr || materialEditor->GetEditorContext() == nullptr)
+        {
+            return;
+        }
+
+        Ed::Suspend();
+
+        if (Ed::ShowBackgroundContextMenu())
+        {
+            m_ContextMenuCanvasPos = Ed::ScreenToCanvas(ImGui::GetMousePos());
+            ImGui::OpenPopup("MaterialGraphBackgroundContext");
+        }
+
+        Ed::NodeId hoveredNodeId;
+        if (Ed::ShowNodeContextMenu(&hoveredNodeId))
+        {
+            m_ContextMenuNodeId = hoveredNodeId;
+            ImGui::OpenPopup("MaterialGraphNodeContext");
+        }
+
+        if (ImGui::BeginPopup("MaterialGraphBackgroundContext"))
+        {
+            if (ImGui::BeginMenu("Add Node"))
+            {
+                MaterialGraphNodeRegistry::EnsureRegistered();
+                const auto& creatable = MaterialGraphNodeRegistry::GetCreatableNodes();
+                for (const MaterialGraphNodeRegistryEntry& entry : creatable)
+                {
+                    if (entry.NodeDefClass == nullptr || entry.DisplayName == nullptr)
+                    {
+                        continue;
+                    }
+
+                    if (ImGui::MenuItem(entry.DisplayName))
+                    {
+                        materialEditor->SubmitAddNode(
+                            *materialEditor->GetEditorContext(),
+                            entry.NodeDefClass->GetName(),
+                            m_ContextMenuCanvasPos.x,
+                            m_ContextMenuCanvasPos.y);
+                        m_PushStoredPositionsToEditor = true;
+                    }
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopup("MaterialGraphNodeContext"))
+        {
+            MaterialEdGraphNode* node = MaterialGraphIds::FromNodeId(m_ContextMenuNodeId);
+            MaterialGraphNodeDef* nodeDef = node != nullptr ? node->GetNodeDef() : nullptr;
+            const bool canDelete = nodeDef != nullptr && !nodeDef->IsMaterialOutputNode();
+            const bool canRename = node != nullptr && nodeDef != nullptr;
+
+            if (ImGui::MenuItem("Rename", nullptr, false, canRename))
+            {
+                if (node != nullptr)
+                {
+                    BeginRenameNode(*node);
+                }
+            }
+            if (ImGui::MenuItem("Delete", nullptr, false, canDelete))
+            {
+                if (nodeDef != nullptr)
+                {
+                    materialEditor->SubmitRemoveNode(
+                        *materialEditor->GetEditorContext(), nodeDef->GetGuid());
+                    m_PushStoredPositionsToEditor = true;
+                }
+            }
+            ImGui::EndPopup();
+        }
+
+        if (m_OpenRenamePopup)
+        {
+            ImGui::OpenPopup("MaterialGraphRenameNode");
+            m_OpenRenamePopup = false;
+        }
+
+        if (ImGui::BeginPopup("MaterialGraphRenameNode"))
+        {
+            MaterialEdGraphNode* renamingNode = nullptr;
+            for (const std::shared_ptr<MaterialEdGraphNode>& nodePtr : graph.m_Nodes)
+            {
+                if (nodePtr && nodePtr->GetGuid() == m_RenamingNodeGuid)
+                {
+                    renamingNode = nodePtr.get();
+                    break;
+                }
+            }
+
+            if (renamingNode == nullptr)
+            {
+                m_RenamingNodeGuid = {};
+                m_RenameBuffer[0] = '\0';
+                ImGui::CloseCurrentPopup();
+            }
+            else
+            {
+                const InlineRenameField::Result renameResult =
+                    InlineRenameField::Draw(m_RenameBuffer, sizeof(m_RenameBuffer), m_RequestRenameFocus);
+                if (renameResult == InlineRenameField::Result::Commit)
+                {
+                    CommitRenameNode(*renamingNode);
+                    ImGui::CloseCurrentPopup();
+                }
+                else if (renameResult == InlineRenameField::Result::Cancel)
+                {
+                    materialEditor->ClearPropertyUndoBefore(*renamingNode, "m_Title");
+                    m_RenamingNodeGuid = {};
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndPopup();
+        }
+
+        Ed::Resume();
     }
 
     void MaterialGraphWindow::CommitNodePositionDragIfNeeded(MaterialEdGraph& graph)

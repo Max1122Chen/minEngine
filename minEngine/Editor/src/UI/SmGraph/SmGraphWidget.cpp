@@ -8,6 +8,7 @@ namespace minEngine::SmGraph
     void Widget::ResetInteraction()
     {
         m_Mode = Mode::Idle;
+        m_PanButton = ImGuiMouseButton_Middle;
         m_ActiveNode = kInvalidNodeId;
         m_DragGrabOffset = ImVec2(0.0f, 0.0f);
         m_LinkHoverTarget = kInvalidNodeId;
@@ -16,6 +17,10 @@ namespace minEngine::SmGraph
         m_ContextMenuNode = kInvalidNodeId;
         m_OpenRenamePopup = false;
         m_RenameBuffer[0] = '\0';
+        m_RightGestureActive = false;
+        m_RightGestureHit = {};
+        m_BoxSelectStart = ImVec2(0.0f, 0.0f);
+        m_BoxSelectEnd = ImVec2(0.0f, 0.0f);
         CancelNavigationAnimation();
     }
 
@@ -42,6 +47,10 @@ namespace minEngine::SmGraph
         {
             DrawLinkPreview(drawList, document);
         }
+        if (m_Mode == Mode::BoxSelect)
+        {
+            DrawBoxSelectOverlay(drawList);
+        }
 
         HandleZoom();
 
@@ -55,6 +64,9 @@ namespace minEngine::SmGraph
             break;
         case Mode::Pan:
             HandlePan();
+            break;
+        case Mode::BoxSelect:
+            HandleBoxSelect(document, outEvents);
             break;
         case Mode::Idle:
         default:
@@ -361,54 +373,52 @@ namespace minEngine::SmGraph
 
     void Widget::HandleIdleInput(Document& document, std::vector<EditEvent>& outEvents)
     {
+        constexpr float kPanDragThresholdPx = 4.0f;
+
         const ImGuiIO& io = ImGui::GetIO();
         const ImVec2 mouse = ImGui::GetMousePos();
+
+        if (m_RightGestureActive)
+        {
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Right))
+            {
+                QueueContextMenuFromHit(m_RightGestureHit, mouse, document, outEvents);
+                m_RightGestureActive = false;
+                m_RightGestureHit = {};
+                return;
+            }
+
+            const ImVec2 dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
+            if ((dragDelta.x * dragDelta.x + dragDelta.y * dragDelta.y)
+                >= (kPanDragThresholdPx * kPanDragThresholdPx))
+            {
+                CancelNavigationAnimation();
+                m_ScrollStart = m_Scroll;
+                m_PanButton = ImGuiMouseButton_Right;
+                m_Mode = Mode::Pan;
+                m_RightGestureActive = false;
+                m_RightGestureHit = {};
+                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
+            }
+            return;
+        }
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)
             || (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && io.KeyAlt))
         {
             CancelNavigationAnimation();
             m_ScrollStart = m_Scroll;
+            m_PanButton = ImGui::IsMouseClicked(ImGuiMouseButton_Middle) ? ImGuiMouseButton_Middle
+                                                                        : ImGuiMouseButton_Left;
             m_Mode = Mode::Pan;
             return;
         }
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && !io.KeyAlt)
         {
-            const HitResult hit = HitTest(document, mouse);
-            if (hit.Kind == HitKind::None)
-            {
-                m_ContextMenuCanvasPos = mouse;
-                m_PendingContextMenu = ContextMenuTarget::Background;
-                m_ContextMenuEdge = kInvalidEdgeId;
-                m_ContextMenuNode = kInvalidNodeId;
-            }
-            else if (hit.Kind == HitKind::Edge)
-            {
-                Selection selection;
-                selection.Kind = SelectionKind::Edge;
-                selection.Edge = hit.Edge;
-                SetSelection(document, selection, outEvents);
-
-                m_PendingContextMenu = ContextMenuTarget::Edge;
-                m_ContextMenuEdge = hit.Edge;
-                m_ContextMenuNode = kInvalidNodeId;
-            }
-            else if (hit.Kind == HitKind::NodeBody || hit.Kind == HitKind::NodeRing)
-            {
-                const Node* node = document.FindNode(hit.Node);
-                if (node != nullptr && node->Kind == NodeKind::State)
-                {
-                    Selection selection;
-                    selection.Kind = SelectionKind::Node;
-                    selection.Node = hit.Node;
-                    SetSelection(document, selection, outEvents);
-
-                    m_PendingContextMenu = ContextMenuTarget::Node;
-                    m_ContextMenuNode = hit.Node;
-                    m_ContextMenuEdge = kInvalidEdgeId;
-                }
-            }
+            m_RightGestureActive = true;
+            m_RightGestureHit = HitTest(document, mouse);
+            m_ScrollStart = m_Scroll;
             return;
         }
 
@@ -458,8 +468,165 @@ namespace minEngine::SmGraph
         case HitKind::None:
         default:
             SetSelection(document, Selection{}, outEvents);
+            m_BoxSelectStart = mouse;
+            m_BoxSelectEnd = mouse;
+            m_Mode = Mode::BoxSelect;
             break;
         }
+    }
+
+    void Widget::QueueContextMenuFromHit(const HitResult& hit,
+                                         const ImVec2& canvasPos,
+                                         Document& document,
+                                         std::vector<EditEvent>& outEvents)
+    {
+        if (hit.Kind == HitKind::None)
+        {
+            m_ContextMenuCanvasPos = canvasPos;
+            m_PendingContextMenu = ContextMenuTarget::Background;
+            m_ContextMenuEdge = kInvalidEdgeId;
+            m_ContextMenuNode = kInvalidNodeId;
+            return;
+        }
+
+        if (hit.Kind == HitKind::Edge)
+        {
+            Selection selection;
+            selection.Kind = SelectionKind::Edge;
+            selection.Edge = hit.Edge;
+            SetSelection(document, selection, outEvents);
+
+            m_PendingContextMenu = ContextMenuTarget::Edge;
+            m_ContextMenuEdge = hit.Edge;
+            m_ContextMenuNode = kInvalidNodeId;
+            return;
+        }
+
+        if (hit.Kind == HitKind::NodeBody || hit.Kind == HitKind::NodeRing)
+        {
+            const Node* node = document.FindNode(hit.Node);
+            if (node != nullptr && node->Kind == NodeKind::State)
+            {
+                Selection selection;
+                selection.Kind = SelectionKind::Node;
+                selection.Node = hit.Node;
+                SetSelection(document, selection, outEvents);
+
+                m_PendingContextMenu = ContextMenuTarget::Node;
+                m_ContextMenuNode = hit.Node;
+                m_ContextMenuEdge = kInvalidEdgeId;
+            }
+        }
+    }
+
+    ImRect Widget::MakeNormalizedRect(const ImVec2& a, const ImVec2& b)
+    {
+        return ImRect(
+            ImVec2((std::min)(a.x, b.x), (std::min)(a.y, b.y)),
+            ImVec2((std::max)(a.x, b.x), (std::max)(a.y, b.y)));
+    }
+
+    NodeId Widget::PickBoxSelectPrimary(const Document& document, const ImRect& selectRect) const
+    {
+        NodeId bestId = kInvalidNodeId;
+        float bestOverlap = 0.0f;
+
+        for (const Node& node : document.GetNodes())
+        {
+            if (node.Kind != NodeKind::State)
+            {
+                continue;
+            }
+
+            const ImRect nodeRect(node.Pos, ImVec2(node.Pos.x + node.Size.x, node.Pos.y + node.Size.y));
+            if (!nodeRect.Overlaps(selectRect))
+            {
+                continue;
+            }
+
+            const float overlapMinX = (std::max)(nodeRect.Min.x, selectRect.Min.x);
+            const float overlapMinY = (std::max)(nodeRect.Min.y, selectRect.Min.y);
+            const float overlapMaxX = (std::min)(nodeRect.Max.x, selectRect.Max.x);
+            const float overlapMaxY = (std::min)(nodeRect.Max.y, selectRect.Max.y);
+            const float overlapArea =
+                (std::max)(0.0f, overlapMaxX - overlapMinX) * (std::max)(0.0f, overlapMaxY - overlapMinY);
+            if (overlapArea > bestOverlap)
+            {
+                bestOverlap = overlapArea;
+                bestId = node.Id;
+            }
+        }
+
+        return bestId;
+    }
+
+    void Widget::DrawBoxSelectOverlay(ImDrawList* drawList) const
+    {
+        const ImRect rect = MakeNormalizedRect(m_BoxSelectStart, m_BoxSelectEnd);
+        drawList->AddRectFilled(rect.Min, rect.Max, IM_COL32(5, 130, 255, 48));
+        drawList->AddRect(rect.Min, rect.Max, IM_COL32(5, 130, 255, 180), 0.0f, 0, 1.5f);
+    }
+
+    void Widget::HandleBoxSelect(Document& document, std::vector<EditEvent>& outEvents)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+        {
+            m_Mode = Mode::Idle;
+            return;
+        }
+
+        m_BoxSelectEnd = ImGui::GetMousePos();
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            return;
+        }
+
+        const ImRect selectRect = MakeNormalizedRect(m_BoxSelectStart, m_BoxSelectEnd);
+        const NodeId picked = PickBoxSelectPrimary(document, selectRect);
+        if (picked != kInvalidNodeId)
+        {
+            Selection selection;
+            selection.Kind = SelectionKind::Node;
+            selection.Node = picked;
+            SetSelection(document, selection, outEvents);
+        }
+        else
+        {
+            SetSelection(document, Selection{}, outEvents);
+        }
+
+        m_Mode = Mode::Idle;
+    }
+
+    void Widget::HandlePan()
+    {
+        bool stillPanning = false;
+        if (m_PanButton == ImGuiMouseButton_Middle)
+        {
+            stillPanning = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+        }
+        else if (m_PanButton == ImGuiMouseButton_Right)
+        {
+            stillPanning = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+        }
+        else
+        {
+            stillPanning = ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetIO().KeyAlt;
+        }
+
+        if (!stillPanning)
+        {
+            m_Mode = Mode::Idle;
+            return;
+        }
+
+        // ax: Scroll = ScrollStart - dragDelta * Zoom (dragDelta is screen-space).
+        const ImVec2 dragDelta = ImGui::GetMouseDragDelta(m_PanButton);
+        m_Scroll = ImVec2(
+            m_ScrollStart.x - dragDelta.x * m_Zoom,
+            m_ScrollStart.y - dragDelta.y * m_Zoom);
+        ApplyScrollZoomToView();
+        m_Canvas.SetView(m_View);
     }
 
     void Widget::HandleDragNode(Document& document, std::vector<EditEvent>& outEvents)
@@ -650,25 +817,6 @@ namespace minEngine::SmGraph
             SetViewRect(m_NavTarget);
             CancelNavigationAnimation();
         }
-    }
-
-    void Widget::HandlePan()
-    {
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Middle)
-            && !(ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetIO().KeyAlt))
-        {
-            m_Mode = Mode::Idle;
-            return;
-        }
-
-        // ax: Scroll = ScrollStart - dragDelta * Zoom (dragDelta is screen-space).
-        const ImVec2 dragDelta = ImGui::GetMouseDragDelta(
-            ImGui::IsMouseDown(ImGuiMouseButton_Middle) ? ImGuiMouseButton_Middle : ImGuiMouseButton_Left);
-        m_Scroll = ImVec2(
-            m_ScrollStart.x - dragDelta.x * m_Zoom,
-            m_ScrollStart.y - dragDelta.y * m_Zoom);
-        ApplyScrollZoomToView();
-        m_Canvas.SetView(m_View);
     }
 
     void Widget::HandleZoom()

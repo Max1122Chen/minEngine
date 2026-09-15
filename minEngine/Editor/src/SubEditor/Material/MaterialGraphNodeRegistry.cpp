@@ -32,12 +32,13 @@ namespace minEngine
 
         ImU32 ColorFromHash(uint32_t hash)
         {
+            // UE-like muted headers: saturated but low value so white titles stay readable.
             const float hue = static_cast<float>(hash % 360) / 360.0f;
             float r = 0.0f;
             float g = 0.0f;
             float b = 0.0f;
-            const float s = 0.55f;
-            const float v = 0.85f;
+            const float s = 0.48f;
+            const float v = 0.36f;
 
             const int region = static_cast<int>(hue * 6.0f);
             const float fraction = hue * 6.0f - static_cast<float>(region);
@@ -273,7 +274,7 @@ namespace minEngine
             return false;
         }
 
-        ImGui::TextDisabled("%s", StripNodeDefPrefix(nodeDef->GetClass()->GetName().c_str()));
+        ImGui::Dummy(ImVec2(0.0f, 0.0f));
         return false;
     }
 

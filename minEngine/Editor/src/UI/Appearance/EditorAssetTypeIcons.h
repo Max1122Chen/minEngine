@@ -22,6 +22,10 @@ namespace minEngine
         static FontStyle FontStyleForAssetType(std::string_view assetType);
         static ImFont* ResolveFont(const EditorAppearance& appearance, std::string_view assetType);
 
+        /** Folder tile glyph (Content Browser directories). */
+        static const char* GlyphForFolder();
+        static ImFont* ResolveFolderFont(const EditorAppearance& appearance);
+
         /** Map EditorDocumentSession TypeId → same glyphs as AssetType where possible. */
         static const char* GlyphForDocumentTypeId(std::string_view documentTypeId);
         static ImFont* ResolveFontForDocumentTypeId(const EditorAppearance& appearance,

@@ -1,6 +1,28 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（ED-F11 W3 手测跟进修）
+Last updated: 2026-09-15（ED-F15 Done）
+
+### 2026-09-15 - ED-F15 Done：验收收口
+- Design §验收全勾；Registry / ACTIVE_WORK → **Done**。
+- 手测通过（维护者）：Anim 导航、Material chrome/右键、CB 文件夹、Inspector icon。
+
+### 2026-09-15 - ED-F15 跟进：Material 节点 UE 化 + 右键菜单
+- **视觉：** Header 低明度色；标题/Pin 行 padding；Pin 空心/实心（连线状态）；连线 thickness 2.5；去掉默认节点重复副标题。
+- **交互：** 画布右键 Add Node（Creatable 列表）；节点右键 Rename（`m_Title` + Undo）/ Delete（禁 Output）。
+- **验证：** Editor 构建 OK；手测通过。
+
+### 2026-09-15 - ED-F15 实现：Graph / CB / Inspector UX
+- **W4：** `ResolveIconGlyph(MEClass*)` 经 `GetShortTypeName` 查表 → Inspector 与 AddComponent 一致。
+- **W1：** SmGraph RMB 拖平移（阈值保住菜单）+ LMB 空处框选（单 State MVP）；Middle/Alt pan 保留。
+- **W3：** CB 文件夹 FA icon + 单击选中边框；双击进入清选中。
+- **W2：** Material 节点 Header 色条 + `ApplyNodeEditorTheme`（palette / 选中描边）。
+- **验证：** Editor 构建 OK；手测通过。
+
+### 2026-09-15 - 登记 ED-F15：Graph / CB / Inspector UX 抛光
+- **范围：** AnimGraph 导航对齐 Material（RMB pan + LMB 框选单选 MVP）；Material 节点 UE-ish chrome；CB 文件夹 icon + 选中框；Inspector 组件 icon 与 AddComponent 对齐。
+- **Scope cut：** Anim 框选不扩多选模型（已确认）。
+- **Inspector icon 根因：** `ResolveIconGlyph(MEClass*)` 用全名 `minEngine::X` 查短名表 → puzzle；string 路径会剥 `::`。
+- **Design：** [ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md](./Editor/ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md)。待审批后按 W4→W1→W3→W2 开工。
 
 ### 2026-09-15 - ED-F11 W3 跟进：Reveal / Pin 直关 / Tab 类型图标
 - **Reveal：** 弃用 `explorer /select`（正斜杠/`"` 易错位）；改 `make_preferred` + `SHOpenFolderAndSelectItems`。
