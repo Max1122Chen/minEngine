@@ -1,6 +1,21 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（master: CORE-F22 + ED-F15 合入）
+Last updated: 2026-09-15（feat/prefab: CORE-F23 Done）
+
+### 2026-09-15 - CORE-F23 Done：Prefab 资产 + Instantiate
+- **实现：** `Framework/Prefab/`（`Prefab`、`PrefabUtility`、引用切断）；`ObjectCloneContext`；Scene `m_PrefabInstances`；`.meprefab` 资产管线；PIE 清实例表。
+- **验证：** `minEngineTests.exe test prefab` 3/3 PASS；`test scene-clone` 回归 PASS。
+- **命名：** 类名 `Prefab`（非 PrefabAsset）。
+- **Next：** 准备 F23 commit；再开 CORE-F24。
+
+### 2026-09-15 - feat/prefab：登记 CORE-F23 / F24 / ED-F16 并起草 Design
+- **Registry：** Next CORE→F25；ED→F17；Vision 占位中的 Prefab 改为已登记。
+- **Design Draft：**
+  - [CORE-F23](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) — 单根 GO 树资产、Create/Instantiate、引用切断、空 PrefabInstance
+  - [CORE-F24](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) — 受限 override、传播、规则表
+  - [ED-F16](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) — 文档 Tab + Stage Scene + 复用 SceneEditor（单 Viewport）
+- **Worktree：** `D:/Dev/GitRepo/minEngine-prefab` @ `feat/prefab`（base `1a292de`）。
+- **Next：** 维护者审阅 Draft（F23 §8 等）→ Planned；再实现 F23-S01。
 
 ### 2026-09-15 - master：合入 feat/core + feat/editor
 - **core：** CORE-F20 Dynamic Multicast；CORE-F22 Profiler Harness（`test profiler` 5/5）。

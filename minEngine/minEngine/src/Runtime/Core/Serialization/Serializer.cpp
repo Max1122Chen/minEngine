@@ -10,7 +10,7 @@
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Log/LogSystem.h"
-#include "Runtime/Function/Framework/Scene/SceneCloneContext.h"
+#include "Runtime/Core/Object/ObjectCloneContext.h"
 #include "Runtime/Resource/AssetManager.h"
 
 #include <algorithm>
@@ -254,14 +254,14 @@ namespace minEngine::Serialization
         return SerializeResult::Success();
     }
 
-    SceneCloneContext* Serializer::s_ActiveCloneContext = nullptr;
+    ObjectCloneContext* Serializer::s_ActiveCloneContext = nullptr;
 
-    void Serializer::SetActiveCloneContext(SceneCloneContext* cloneContext)
+    void Serializer::SetActiveCloneContext(ObjectCloneContext* cloneContext)
     {
         s_ActiveCloneContext = cloneContext;
     }
 
-    SceneCloneContext* Serializer::GetActiveCloneContext()
+    ObjectCloneContext* Serializer::GetActiveCloneContext()
     {
         return s_ActiveCloneContext;
     }
@@ -1160,7 +1160,7 @@ namespace minEngine::Serialization
 
                 managedObject = std::static_pointer_cast<MEObject>(newObjectPtr);
 
-                if (SceneCloneContext* cloneContext = GetActiveCloneContext())
+                if (ObjectCloneContext* cloneContext = GetActiveCloneContext())
                 {
                     const GUID sourceGuid = meObjectPtr->GetGuid();
                     const GUID newGuid = GenerateGUID();
@@ -1368,9 +1368,9 @@ namespace minEngine::Serialization
             return false;
         }
 
-        if (SceneCloneContext* cloneContext = GetActiveCloneContext())
+        if (ObjectCloneContext* cloneContext = GetActiveCloneContext())
         {
-            std::shared_ptr<MEObject> clonedObject = cloneContext->ResolveSceneRefShared(pendingRef.refGuid);
+            std::shared_ptr<MEObject> clonedObject = cloneContext->ResolveRefShared(pendingRef.refGuid);
             if (clonedObject != nullptr)
             {
                 if (pendingRef.expectsMEObject && pendingRef.expectedClass != nullptr)
@@ -1389,7 +1389,16 @@ namespace minEngine::Serialization
                 return true;
             }
 
-            return ResolvePendingAssetRef(pendingRef, outResolvedSharedPtr, outResolvedRawPtr, outErrorMessage);
+            // During clone, do not bind to live ObjectManager instances (would alias source world).
+            // Shared assets may still resolve when AssetManager is available.
+            if (AssetManager::HasInstance())
+            {
+                return ResolvePendingAssetRef(
+                    pendingRef, outResolvedSharedPtr, outResolvedRawPtr, outErrorMessage);
+            }
+
+            outErrorMessage = "unresolved reference during clone";
+            return false;
         }
 
         // First try to find the referenced object in the object manager using the GUID.
@@ -1417,6 +1426,12 @@ namespace minEngine::Serialization
 
     bool Serializer::ResolvePendingAssetRef(const PendingObjectRef &pendingRef, std::shared_ptr<void> &outResolvedSharedPtr, void *&outResolvedRawPtr, std::string &outErrorMessage)
     {
+        if (!AssetManager::HasInstance())
+        {
+            outErrorMessage = "asset manager is not available";
+            return false;
+        }
+
         outResolvedSharedPtr = std::static_pointer_cast<void>(AssetManager::Get().LoadAssetByGUID(pendingRef.refGuid, outErrorMessage));
         outResolvedRawPtr = outResolvedSharedPtr.get();
 

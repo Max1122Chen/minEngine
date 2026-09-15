@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（master：CORE-F22 + editor ED-F11–F15 合入）  
+Last updated: 2026-09-15（`feat/prefab`：CORE-F23/F24 + ED-F16 Design Draft）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,41 +11,37 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`master` 合入后）：Phase P 余量 / 下一刀自选**
+**Primary（`feat/prefab`）：Prefab — F23 Done，下一刀 F24**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| F1–F3 | — | Foundation | **Done**（master） | Log / Schema / Maximum |
-| — | **`CORE-F20`** | Dynamic Multicast | **Done** | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) |
-| — | **`CORE-F22`** | CPU Profiler Harness | **Done** | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) |
-| 1 | **`ED-F09`** | Editor Console LogRecord 过滤 | **Done**（W0–W2） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2 Done；**W3 大部落地**，余 Save As / Scene 多开） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
-| 3 | **`ED-F12`** | Agent Edit Protocol | **Done** | [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) |
-| 4 | **`ED-F13`** | 显式目标编辑（去 Select 模拟） | **Done** | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) |
-| 5 | **`ED-F14`** | 各 SubEditor 命令面完备 | **Done** | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) |
-| 6 | **`ED-F15`** | Graph / CB / Inspector UX 抛光 | **Done** | [Design](./Editor/ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md) |
-| — | `ED-F10` | EditorSettings | **Planned**（占位） | Design 未开 |
+| 1 | **`CORE-F23`** | Prefab 资产 + Create/Instantiate | **Done** | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) |
+| 2 | **`CORE-F24`** | 受限 Override + default 传播 | **Draft** | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) |
+| 3 | **`ED-F16`** | Prefab 文档 Mode（Stage + 复用 SceneEditor） | **Draft** | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
 
-**下一刀：** ED-F11 余量 Deferred，或开 **ED-F10**；或 `feat/lua-script` **CORE-F21**；或 Editor **`ED-*`** Profiler 面板。
+**下一刀：** 验收 F23 commit → 实现 **CORE-F24**。
 
-**已收口（本波合入）：** CORE-F20 / CORE-F22；ED-F12–F15（ED-F11 W3 大部）。
+**master 已收口：** CORE-F20 / CORE-F22；ED-F12–F15（ED-F11 W3 大部）。ED-F11 余量 / ED-F10 / CORE-F21 仍为并行可选。
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
+| `feat/prefab` | `CORE-F23`→`F24`→`ED-F16` | 本轨 Primary |
 | `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
 | `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
+| — | `ED-F10` | EditorSettings Planned 占位 |
+
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
 | Phase | 主题 |
 |-------|------|
 | **F** Foundation | **Done** — Log → Schema → Brand |
-| **P** Parallel | **进行中** — fan-out（editor 热轨） |
+| **P** Parallel | **进行中** — fan-out（**prefab 热轨** + editor/lua） |
 | **D** Demo | FPS + 0.1.0 tag |
 
-**Prefab：** A=Instantiate；B=子编辑器依赖隔离 RT。
+**Prefab：** F23=资产+Instantiate；F24=Override；F16=编辑器（单 Viewport；并排预览依赖隔离 RT）。
 
 ### 并行支线（不升主线）
 
@@ -108,20 +104,21 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | **`master`**（合入后） | CORE-F20/F22 + editor ED-F11–F15 |
-| `D:/Dev/GitRepo/minEngine`（切分支） | `feat/lua-script` | CORE-F19 Call；后续 F21 |
+| `D:/Dev/GitRepo/minEngine` | **`master`** | 合入基线 |
+| `D:/Dev/GitRepo/minEngine-prefab` | **`feat/prefab`** | CORE-F23/F24 + ED-F16 |
+| `D:/Dev/GitRepo/minEngine-lua-script` | **`feat/lua-script`** | CORE-F19 Call；后续 F21 |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
 
-`MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（主仓：`…/minEngine/minEngine/MyMEProject`）。
+`MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（prefab 树：`…/minEngine-prefab/minEngine/MyMEProject`）。
 
 ---
 
 ## Explicitly deferred
 
-`.memesh` · Animation Event · IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned · Prefab / GC / Net / 完整 Gameplay Framework
+`.memesh` · Animation Event · IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned · GC / Net / 完整 Gameplay Framework · Prefab 并排预览（隔离 RT）· Nested Prefab
 
 ---
 

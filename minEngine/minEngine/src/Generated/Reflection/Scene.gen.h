@@ -6,6 +6,7 @@
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Scene)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Scene, m_SceneName)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Scene, m_GameObjects)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Scene, m_PrefabInstances)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::Scene, GReflectionClassRegister_Scene_395bf413)

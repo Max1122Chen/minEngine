@@ -12,6 +12,9 @@
 #include "Runtime/Core/Serialization/JsonArchive.h"
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Prefab/Prefab.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/AnimationClip.h"
@@ -1798,6 +1801,13 @@ namespace minEngine
             meta, outErrorMessage, "failed to load scene by guid");
     }
 
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Prefab(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Prefab>(
+            meta, outErrorMessage, "failed to load prefab by guid");
+    }
+
     std::shared_ptr<Asset> AssetManager::LoadHandler_Material(
         AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
     {
@@ -1906,6 +1916,33 @@ namespace minEngine
         return true;
     }
 
+    template<>
+    bool AssetManager::SaveAsset_Impl<Prefab>(const AssetMeta& meta, const Prefab& asset) const
+    {
+        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
+
+        Serialization::JsonWriterArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+            absoluteAssetPath,
+            &asset,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = false,
+                .skipUnknownField = false});
+
+        if (!result.ok)
+        {
+            ME_LOG(LogAsset, Error, "Failed to serialize prefab '{}'. Error: {}. Field path: {}",
+                          absoluteAssetPath,
+                          result.message,
+                          result.fieldPath);
+            return false;
+        }
+
+        return true;
+    }
+
     namespace
     {
         std::string SanitizeAssetBaseName(std::string baseName)
@@ -1987,6 +2024,33 @@ namespace minEngine
             {
                 ME_LOG(LogAsset, Error, 
                     "CreateAsset<Scene>: failed to serialize '{}'. Error: {}. Field path: {}",
+                    relativePath,
+                    result.message,
+                    result.fieldPath);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool WritePrefabAssetFile(const AssetManager& assetManager, const std::string& relativePath, const Prefab& prefab)
+        {
+            const std::string absoluteAssetPath = assetManager.ResolveAssetAbsolutePath(relativePath).string();
+
+            Serialization::JsonWriterArchive archive;
+            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+                absoluteAssetPath,
+                &prefab,
+                archive,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = false,
+                    .skipUnknownField = false});
+
+            if (!result.ok)
+            {
+                ME_LOG(LogAsset, Error,
+                    "CreateAsset<Prefab>: failed to serialize '{}'. Error: {}. Field path: {}",
                     relativePath,
                     result.message,
                     result.fieldPath);
@@ -2083,6 +2147,60 @@ namespace minEngine
 
         ME_LOG(LogAsset, Info, "CreateAsset<Scene>: created '{}'.", meta.AssetPath);
         return LoadAsset<Scene>(meta.AssetPath);
+    }
+
+    template<>
+    std::shared_ptr<Prefab> AssetManager::CreateAsset<Prefab>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".meprefab");
+        if (relativePath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<Prefab>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_LOG(LogAsset, Error,
+                "CreateAsset<Prefab>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string prefabName = absolutePath.stem().string();
+        std::shared_ptr<Prefab> prefab = NewObject<Prefab>(prefabName, nullptr, GenerateGUID());
+        std::shared_ptr<GameObject> rootObject = NewObject<GameObject>(prefabName, prefab.get());
+        rootObject->AddComponent<SceneComponent>();
+        prefab->AddTemplateObject(rootObject);
+        prefab->SetRootGuid(rootObject->GetGuid());
+
+        if (!WritePrefabAssetFile(*this, relativePath, *prefab))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "Prefab");
+        if (meta.AssetPath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<Prefab>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+
+        ME_LOG(LogAsset, Info, "CreateAsset<Prefab>: created '{}'.", meta.AssetPath);
+        return LoadAsset<Prefab>(meta.AssetPath);
     }
 
     template<>

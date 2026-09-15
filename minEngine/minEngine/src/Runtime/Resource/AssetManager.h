@@ -29,6 +29,7 @@ namespace minEngine
     class Skeleton;
     class Material;
     class Scene;
+    class Prefab;
     class Font;
     class LuaScript;
     class EnvironmentMap;
@@ -297,6 +298,8 @@ namespace minEngine
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Scene(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Prefab(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Material(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Font(
@@ -364,6 +367,8 @@ namespace minEngine
     template<>
     std::shared_ptr<Scene> AssetManager::LoadAsset_Impl<Scene>(const AssetMeta& meta);
     template<>
+    std::shared_ptr<Prefab> AssetManager::LoadAsset_Impl<Prefab>(const AssetMeta& meta);
+    template<>
     std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta);
     template<>
     std::shared_ptr<SkeletalMesh> AssetManager::LoadAsset_Impl<SkeletalMesh>(const AssetMeta& meta);
@@ -389,12 +394,18 @@ namespace minEngine
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
     template<>
+    bool AssetManager::SaveAsset_Impl<Prefab>(const AssetMeta& meta, const Prefab& asset) const;
+    template<>
     bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const;
     template<>
     bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const;
 
     template<>
     std::shared_ptr<Scene> AssetManager::CreateAsset<Scene>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<Prefab> AssetManager::CreateAsset<Prefab>(
         const std::string& assetName,
         const std::string& directoryRel);
     template<>

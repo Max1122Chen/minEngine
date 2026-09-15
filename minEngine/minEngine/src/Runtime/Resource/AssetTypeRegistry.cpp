@@ -1,6 +1,7 @@
 #include "AssetTypeRegistry.h"
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Prefab/Prefab.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
@@ -113,6 +114,13 @@ namespace minEngine
             .Extensions = {".mescene"},
             .FileDialogFilterLabel = "Scene (*.mescene)"});
         m_AssetTypeIdByClass[Scene::StaticClass()] = "Scene";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "Prefab",
+            .RuntimeClassName = GetClassName<Prefab>(),
+            .Extensions = {".meprefab"},
+            .FileDialogFilterLabel = "Prefab (*.meprefab)"});
+        m_AssetTypeIdByClass[Prefab::StaticClass()] = "Prefab";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Font",

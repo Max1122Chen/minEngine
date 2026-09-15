@@ -37,6 +37,8 @@
 #include "Suites/ParameterStoreTest.h"
 #include "Suites/LoggingChannelsTest.h"
 #include "Suites/EngineVersionTest.h"
+#include "Suites/ProfilerTest.h"
+#include "Suites/PrefabTest.h"
 
 namespace minEngine
 {
@@ -601,6 +603,21 @@ namespace minEngine
             }
         };
 
+        struct PrefabTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"prefab", "Prefab Asset + Instantiate", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'prefab'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("prefab", context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -635,6 +652,7 @@ namespace minEngine
         using LoggingChannelsSuite = TypedTestSuite<LoggingChannelsTestSuiteTraits>;
         using EngineVersionSuite = TypedTestSuite<EngineVersionTestSuiteTraits>;
         using ProfilerSuite = TypedTestSuite<ProfilerTestSuiteTraits>;
+        using PrefabSuite = TypedTestSuite<PrefabTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -679,6 +697,7 @@ namespace minEngine
             registry.Register(LoggingChannelsSuite::Get());
             registry.Register(EngineVersionSuite::Get());
             registry.Register(ProfilerSuite::Get());
+            registry.Register(PrefabSuite::Get());
             s_Registered = true;
         }
     }

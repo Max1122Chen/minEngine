@@ -13,6 +13,7 @@ namespace minEngine
         assetManager.RegisterLoadHandler("AnimationGraph", &AssetManager::LoadHandler_AnimationGraph);
         assetManager.RegisterLoadHandler("Texture2D", &AssetManager::LoadHandler_Texture2D);
         assetManager.RegisterLoadHandler("Scene", &AssetManager::LoadHandler_Scene);
+        assetManager.RegisterLoadHandler("Prefab", &AssetManager::LoadHandler_Prefab);
         assetManager.RegisterLoadHandler("Material", &AssetManager::LoadHandler_Material);
         assetManager.RegisterLoadHandler("Font", &AssetManager::LoadHandler_Font);
         assetManager.RegisterLoadHandler("LuaScript", &AssetManager::LoadHandler_LuaScript);

@@ -18,6 +18,7 @@ namespace minEngine
         m_GameplayEventSystem = nullptr;
         m_GameObjects.clear();
         m_GameObjectsById.clear();
+        m_PrefabInstances.clear();
         m_RenderScene.reset();
     }
 
@@ -191,6 +192,7 @@ namespace minEngine
     {
         m_GameObjects.clear();
         m_GameObjectsById.clear();
+        m_PrefabInstances.clear();
         m_NextGOId = 0;
     }
 
