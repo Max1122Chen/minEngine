@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-15（`feat/lua-script` rebase：F19 Design 链补上）
+Last updated: 2026-09-15（CORE-F19 / CORE-F21 **Done**）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -43,9 +43,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F16` | LinearColor 作者颜色（灯光等） | **Done** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · 文件名保留历史 `CORE-F14_*` |
 | `CORE-F17` | LogChannel + structured LogRecord（spdlog Backend；非 UE Category） | **Done** | — | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) · [Impl](./Platform/Core/CORE-F17_LOGGING_CHANNELS_IMPLEMENTATION.md) · Phase F1 |
 | `CORE-F18` | EngineVersion（一等公民）+ 磁盘 `$schemaVersion` 门闸 / `$engineVersion` 戳 | **Done** | — | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) · Phase F2 · engine **0.0.9** / schema **1** |
-| `CORE-F19` | Lua C++→Lua Call-by-name（Delegate 桥后置） | **In Progress**（Call Done；Delegate Deferred） | — | [Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md) · 契约摘要亦见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.6 |
+| `CORE-F19` | Lua C++→Lua Call-by-name（Delegate 桥后置） | **Done** | — | [Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md)；委托消费 → F21；Core 挂钩 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.6 |
 | `CORE-F20` | Dynamic Multicast Delegate（类型系统 + AddDynamic；B1 包装 Native） | **Done** | — | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) · `feat/core` · Lua `Add(fn)` → F21 |
-| `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Planned** | — | Design 未开 · 挂钩契约见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · 分支 `feat/lua-script` |
+| `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Done** | — | [Design](./Platform/Scripting/CORE-F21_LUA_DYNAMIC_MULTICAST_SUBSCRIBE_DESIGN.md) · 挂钩 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · `feat/lua-script` |
 | `CORE-F22` | CPU Profiler Harness（Session/Phase/Frame · Scope · Trace 导出 · 查询 API） | **Done** | — | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) · `feat/core` · **不含** Editor UI |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
@@ -128,7 +128,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | **F05** | F04 Done（TestAccess） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
-| `CORE` | **F23** | F17–F18 Done；F19 Lua Call In Progress；F20 Dynamic Multicast Done；F21 Lua Add(fn) Planned；F22 Profiler **Done** |
+| `CORE` | **F23** | F17–F19 Done；F20 Dynamic Multicast Done；F21 Lua Add(fn) **Done**；F22 Profiler **Done** |
 | `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F16** | F12–**F15 Done**；**F11** In Progress（W3）；F10 占位 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |

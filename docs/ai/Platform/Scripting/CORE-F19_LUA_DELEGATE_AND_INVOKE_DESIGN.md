@@ -3,13 +3,13 @@
 ## Meta
 - **ID:** `CORE-F19`
 - **Type:** Feature
-- **Status:** In Progress（**Call-by-name Done**；Lua↔Delegate **Deferred** — 待 `AddScript` + Delegate 反射/注册方案）
+- **Status:** **Done**（Call-by-name；Lua↔Delegate **移出本 Feature** → [`CORE-F21`](../../FEATURE_REGISTRY.md)）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-14
+- **Last updated:** 2026-09-15
 - **Branch:** `feat/lua-script`
 - **Related:**
   - [CORE-F01](./LUA_SCRIPTING_DESIGN.md) · [CORE-F02](./LUA_SCRIPT_BINDING_DESIGN.md) · [CORE-F04](../Core/CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md) §3.4
-  - [UI-F03](../UI/UI-F03_SCREENUI_BUTTON_DESIGN.md)（Lua 订 OnClicked 仍后置）
+  - [UI-F03](../UI/UI-F03_SCREENUI_BUTTON_DESIGN.md)（Lua 订 OnClicked → CORE-F21）
   - [TECH_DEBT TD-006](../../TECH_DEBT.md)
   - [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md)
 - **Depends on:** `CORE-F01` Done；`CORE-F02` Done
@@ -20,7 +20,7 @@
 本期落地：**`LuaComponent::Call` / `TryGetFunction`**（泛化硬编码 `tick`）。
 
 **已撤回（反模式）：** 域组件 `BindOnClicked` / 旁路 `BindLua` 当主 API、Probe 手写 Bind。  
-**后续方向（另议，可参考 UE）：** `MulticastDelegate::AddScript(ScriptCallable)` + `LuaCallable`；Lua **看见** C++ 类型上的 Delegate 再订 —— 需 Delegate 反射 + Lua 类型注册，**不在本切片强行竖切**。
+**后续方向（已另立 Feature）：** [`CORE-F21`](../../FEATURE_REGISTRY.md) Lua `Add(fn)` → F20 `AddScript`；Core 挂钩见 [CORE-F20](../Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6。
 
 ## Scope
 
@@ -29,17 +29,17 @@
 - Load 后缓存 `tick`（先 `m_Loaded=true` 再查找）
 - Headless：`Call` 命名函数 / 缺失名
 
-### Out / Deferred
-- `BindLua` helper、Button/Probe 上的 sol `Bind*`
-- `AddScript` / `ScriptCallable` / `LuaCallable`（设计中）
-- Delegate 字段反射露出 + Lua usertype 注册
-- Dynamic / 字符串方法名 / Inspector 绑脚本
+### Out（本 Feature 明确不做）
+- `BindLua` helper、Button/Probe 上的 sol `Bind*`（已拒绝）
+- Lua `Add(fn)` / Delegate usertype → **CORE-F21**
+- `AddScript` / `CallableScriptFunction` Core 挂钩 → **CORE-F20 Done**
+- Inspector 绑脚本 / 绑定列表落盘
 
 ## Reader quick start
 
-1. §3.2 Call API  
-2. §11 后续讨论提纲（AddScript + 反射）  
-3. 代码：`LuaComponent.h/.cpp`
+1. §3 Call API  
+2. 代码：`LuaComponent.h/.cpp`  
+3. 订阅事件：见 CORE-F21 / CORE-F20 §3.6
 
 ---
 
@@ -65,7 +65,7 @@
 |------|------|
 | `Call` / `TryGetFunction` | **有** |
 | Native `MulticastDelegate` | **有**（无 Script） |
-| Lua↔Delegate | **无**（已拆除反模式） |
+| Lua↔Delegate | **无**（已拆除反模式；F21） |
 
 ---
 
@@ -88,7 +88,7 @@ bool Call(const char* name, TArgs&&... args);
 |------|------|
 | 域 Comp `BindXxx(sol::fn)` | **已拒绝**（耦合） |
 | 旁路 `BindLua` 当主 API | **已拒绝**（非委托能力） |
-| `AddScript(ScriptCallable)` + 反射露出 | **后续默认方向** |
+| `AddScript` + 反射露出 | **F20 挂钩 Done；Lua 消费 = F21** |
 
 ---
 
@@ -106,7 +106,7 @@ bool Call(const char* name, TArgs&&... args);
 - [x] `Call` / `TryGetFunction`；`tick` 仍工作  
 - [x] 无 Button/Probe sol Bind；无 `LuaDelegateBind.h`  
 - [x] `lua-script-mvp` 含 Call 用例 PASS  
-- [ ]（后）`AddScript` + Delegate 可见性 — 另切片/Feature  
+- [x] Delegate 可见性 / `Add(fn)` **不在本 Feature**（F20/F21）  
 
 ---
 
@@ -115,32 +115,19 @@ bool Call(const char* name, TArgs&&... args);
 | Slice | 内容 | 状态 |
 |-------|------|------|
 | **S01** | Call / TryGetFunction | **Done** |
-| **S02+** | AddScript + 反射/注册 | **Deferred** |
+| **S02+** | AddScript + 反射/注册 | **Cancelled（迁出）** → F20/F21 |
 
 ---
 
 ## 8) Status note
 
-In Progress — Call Done；Delegate 桥等待方案讨论（可参考 UE）。
+**Done**（2026-09-15）。Call 路径已验收。原 S02+ 委托桥拆到 **CORE-F20**（Core 挂钩，master Done）与 **CORE-F21**（Lua `Add(fn)`，本树下一刀）。
 
 ---
 
-## 10) 开放点（委托后续）
+## 10) 开放点
 
-| # | 议题 |
-|---|------|
-| D1 | `ScriptCallable` 放 Core 旁 vs 更薄擦除 |
-| D2 | Lua 如何看见 `OnClicked`（手写 vs codegen / UE 对照） |
-| D3 | `AddScript` arity 0/1/2 与宏对齐 |
-| D4 | 是否新开 `CORE-F20` 专做 Script Events |
-
----
-
-## 11) 后续讨论提纲
-
-1. UE：`AddDynamic` / script delegate / UFunction 与我们规模的映射。  
-2. 反射：`MulticastDelegate` 别名如何进 ScriptBinding。  
-3. LuaCallable 包装与隐式 `function`→`AddScript`。  
+F19 内开放点已关闭（D4：已立 F20/F21）。Lua 发现字段 / 寿命 / usertype 见 F21 Design。
 
 ---
 
@@ -150,3 +137,4 @@ In Progress — Call Done；Delegate 桥等待方案讨论（可参考 UE）。
 |------|------|
 | 2026-09-14 | 初稿含 BindLua 竖切 |
 | 2026-09-14 | **纠偏：** 拆除反模式 Bind；仅保留 Call；Delegate 后置讨论 |
+| 2026-09-15 | **Done：** Call 收口；S02+ 迁出至 F20/F21 |

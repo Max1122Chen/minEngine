@@ -6,6 +6,7 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Function/Framework/Components/ButtonComponent.h"
 #include "Runtime/Function/Framework/Components/LuaComponent.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
@@ -409,6 +410,114 @@ end
             LuaScriptSystem::SetInstance(nullptr);
             return ok;
         }
+
+        bool TestLuaDynamicDelegateAddOnButton()
+        {
+            LuaScriptMvpTestScope scope(false);
+            LuaScriptSystem system;
+            LuaScriptSystem::SetInstance(&system);
+            system.Initialize();
+
+            std::shared_ptr<GameObject> gameObject = NewObject<GameObject>("LuaDelegateButtonGO");
+            std::shared_ptr<ButtonComponent> button = gameObject->AddComponent<ButtonComponent>();
+            std::shared_ptr<LuaComponent> luaHost = gameObject->AddComponent<LuaComponent>();
+            system.GetState()["testButton"] = button.get();
+            system.GetState()["testHost"] = luaHost.get();
+
+            LuaBindProbe::ResetStaticCounter();
+            const bool subscribed = system.RunString(R"LUA(
+assert(testButton ~= nil)
+assert(testButton.OnClicked ~= nil)
+assert(testHost ~= nil)
+testButton.OnClicked:Add(testHost, function()
+  LuaBindProbe.IncrementStaticCounter()
+end)
+assert(testButton.OnClicked:IsBound())
+)LUA",
+                                                     "lua_dynamic_delegate_add");
+            if (!subscribed)
+            {
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: Lua Add(fn) script failed.");
+                system.Shutdown();
+                LuaScriptSystem::SetInstance(nullptr);
+                return false;
+            }
+
+            button->OnClicked().Broadcast();
+            button->OnClicked().Broadcast();
+            const bool ok = LuaBindProbe::GetStaticCounter() == 2;
+            if (!ok)
+            {
+                ME_LOG(LogTest,
+                       Error,
+                       "LuaScriptMvpTest: expected 2 Lua clicks, got {}.",
+                       LuaBindProbe::GetStaticCounter());
+            }
+
+            // Drop script bindings before tearing down sol state / GameObject.
+            luaHost->UnloadScript();
+            system.Shutdown();
+            LuaScriptSystem::SetInstance(nullptr);
+            return ok;
+        }
+
+        bool TestLuaDynamicDelegateUnloadUnbinds()
+        {
+            LuaScriptMvpTestScope scope(false);
+            LuaScriptSystem system;
+            LuaScriptSystem::SetInstance(&system);
+            system.Initialize();
+
+            std::shared_ptr<GameObject> gameObject = NewObject<GameObject>("LuaDelegateUnloadGO");
+            std::shared_ptr<ButtonComponent> button = gameObject->AddComponent<ButtonComponent>();
+            std::shared_ptr<LuaComponent> luaComponent = gameObject->AddComponent<LuaComponent>();
+            system.GetState()["testButton"] = button.get();
+
+            LuaBindProbe::ResetStaticCounter();
+            std::shared_ptr<LuaScript> script = NewObject<LuaScript>("DelegateUnloadScript");
+            script->SetSource(R"LUA(
+testButton.OnClicked:Add(self, function()
+  LuaBindProbe.IncrementStaticCounter()
+end)
+)LUA");
+            luaComponent->SetScript(script);
+            if (!luaComponent->LoadScript())
+            {
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: Unload-unbind LoadScript failed.");
+                system.Shutdown();
+                LuaScriptSystem::SetInstance(nullptr);
+                return false;
+            }
+
+            button->OnClicked().Broadcast();
+            if (LuaBindProbe::GetStaticCounter() != 1)
+            {
+                ME_LOG(LogTest,
+                       Error,
+                       "LuaScriptMvpTest: before unload expected 1, got {}.",
+                       LuaBindProbe::GetStaticCounter());
+                luaComponent->UnloadScript();
+                system.Shutdown();
+                LuaScriptSystem::SetInstance(nullptr);
+                return false;
+            }
+
+            luaComponent->UnloadScript();
+            button->OnClicked().Broadcast();
+            const bool ok = LuaBindProbe::GetStaticCounter() == 1 && !button->OnClicked().IsBound();
+            if (!ok)
+            {
+                ME_LOG(LogTest,
+                       Error,
+                       "LuaScriptMvpTest: after unload counter={} bound={}.",
+                       LuaBindProbe::GetStaticCounter(),
+                       button->OnClicked().IsBound());
+            }
+
+            system.Shutdown();
+            LuaScriptSystem::SetInstance(nullptr);
+            return ok;
+        }
     } // namespace
 
     bool RunLuaScriptMvpTests()
@@ -446,6 +555,14 @@ end
             return false;
         }
         if (!TestLuaComponentCallByName())
+        {
+            return false;
+        }
+        if (!TestLuaDynamicDelegateAddOnButton())
+        {
+            return false;
+        }
+        if (!TestLuaDynamicDelegateUnloadUnbinds())
         {
             return false;
         }

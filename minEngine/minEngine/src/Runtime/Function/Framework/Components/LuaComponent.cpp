@@ -1,5 +1,6 @@
 #include "LuaComponent.h"
 
+#include "Runtime/Core/Delegates/DynamicMulticastDelegateBase.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
 
@@ -8,6 +9,28 @@ namespace minEngine
     LuaComponent::~LuaComponent()
     {
         UnloadScript();
+    }
+
+    void LuaComponent::TrackScriptDelegateBinding(DynamicMulticastDelegateBase* delegate, DelegateHandle handle)
+    {
+        if (delegate == nullptr || !handle.IsValid())
+        {
+            return;
+        }
+
+        m_ScriptDelegateBindings.push_back(ScriptDelegateBinding{delegate, handle});
+    }
+
+    void LuaComponent::ClearScriptDelegateBindings()
+    {
+        for (ScriptDelegateBinding& binding : m_ScriptDelegateBindings)
+        {
+            if (binding.Delegate != nullptr && binding.Handle.IsValid())
+            {
+                binding.Delegate->Remove(binding.Handle);
+            }
+        }
+        m_ScriptDelegateBindings.clear();
     }
 
     void LuaComponent::SetScript(const std::shared_ptr<LuaScript>& script)
@@ -107,6 +130,7 @@ namespace minEngine
 
     void LuaComponent::UnloadScript()
     {
+        ClearScriptDelegateBindings();
         ClearLuaEnvironment();
         m_SyncedScript = m_Script.get();
         m_Loaded = false;

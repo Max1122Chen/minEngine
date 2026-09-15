@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（`feat/lua-script` rebase 到 master：F19 Call + F21 待开）
+Last updated: 2026-09-15（CORE-F21 **Done**；待 commit）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,16 +11,16 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（本工作树 `minEngine-lua-script` / `feat/lua-script`）：`CORE-F19` → `CORE-F21`**
+**Primary（本工作树 `minEngine-lua-script` / `feat/lua-script`）：本波 Scripting 已收口**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 1 | **`CORE-F19`** | C++→Lua Call-by-name；Delegate 桥后置 | **In Progress**（Call Done） | [Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md) |
-| 2 | **`CORE-F21`** | Lua 订阅 Dynamic Multicast（`Add(fn)`） | **Planned** | Design 未开 · 契约见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 |
+| — | **`CORE-F21`** | Lua 订阅 Dynamic Multicast（`Add(self, fn)`） | **Done** | [Design](./Platform/Scripting/CORE-F21_LUA_DYNAMIC_MULTICAST_SUBSCRIBE_DESIGN.md) |
+| — | **`CORE-F19`** | C++→Lua Call-by-name | **Done** | [Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md) |
 | — | **`CORE-F20`** | Dynamic Multicast | **Done**（master） | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) |
 | — | **`CORE-F22`** | CPU Profiler Harness | **Done**（master） | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) |
 
-**下一刀：** 收口 F19 Call（DoD / commit）或开 **CORE-F21** Design（`Add(fn)` → `AddScript`）。
+**下一刀：** 执行本波 commit；之后另选 Primary。
 
 **master 已合入（勿当本树 WIP）：** ED-F11 W3 大部 + ED-F12–F15；ED-F11 余 Save As / Scene 多开。
 
@@ -30,8 +30,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
-| `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
+| `feat/lua-script` | `CORE-F19` | **Done** |
+| `feat/lua-script` | `CORE-F21` | **Done**（`Add(self, fn)`） |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
@@ -105,7 +105,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 路径 | 分支 | 用途 |
 |------|------|------|
 | `D:/Dev/GitRepo/minEngine` | **`master`** | CORE-F20/F22 + editor ED-F11–F15 |
-| `D:/Dev/GitRepo/minEngine-lua-script` | **`feat/lua-script`**（已 rebase 到 master `1a292de`） | **CORE-F19** Call；后续 **F21** |
+| `D:/Dev/GitRepo/minEngine-lua-script` | **`feat/lua-script`**（已 rebase 到 master `1a292de`） | **CORE-F21**（F19 Call Done） |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |

@@ -11,7 +11,7 @@
   - [CORE-F04 Native Multicast](./CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md)（Done — 本 Feature **包装**，不改写 Native 契约）
   - [CORE-F01](../Scripting/LUA_SCRIPTING_DESIGN.md) / [CORE-F02](../Scripting/LUA_SCRIPT_BINDING_DESIGN.md)（Script\* 白名单）
   - [CORE-F19](../Scripting/) Lua Call-by-name（`feat/lua-script`；C++→Lua；与本 Feature 正交）
-  - **`CORE-F21`** Lua `Add(fn)` 桥（Planned；Design 未开；挂钩见 §3.5–3.6）
+  - **`CORE-F21`** Lua `Add(fn)` 桥（Draft：[Design](../Scripting/CORE-F21_LUA_DYNAMIC_MULTICAST_SUBSCRIBE_DESIGN.md)；挂钩见 §3.5–3.6）
   - [UI-F03 Button](../UI/UI-F03_SCREENUI_BUTTON_DESIGN.md)（`OnClicked` 今日为 Native；迁移可选竖切）
   - [TECH_DEBT TD-006](../../TECH_DEBT.md) · [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md)
   - 哲学：[ENGINE_DESIGN_PHILOSOPHY](../../ENGINE_DESIGN_PHILOSOPHY.md) — Mechanism over Policy；Agent-friendly via shared APIs
@@ -47,7 +47,7 @@
 | 项 | 归属 |
 |----|------|
 | Lua `Add(fn)` / usertype / ScriptBinding codegen | **`CORE-F21`**（`feat/lua-script`） |
-| `LuaComponent::Call` 完善 | **`CORE-F19`**（已进行） |
+| `LuaComponent::Call` 完善 | **`CORE-F19`**（**Done**） |
 | 域组件 `BindOnClicked(sol::function)` | **禁止**（F19 已否决） |
 | 绑定图序列化进 `.mescene`（AddDynamic 列表） | **后置**（§3.4.1）；F20 只预留属性类型 + Serializer 跳过 |
 | Inspector 可视化绑函数名 / Undo | 后续 Editor Feature |
@@ -255,7 +255,7 @@ class DynamicMulticastDelegateBase {
 public:
     virtual ~DynamicMulticastDelegateBase() = default;
     virtual int GetArity() const = 0;
-    virtual DelegateHandle AddScriptErased(CallableScriptFunction) = 0;
+    virtual DelegateHandle AddScript(CallableScriptFunction) = 0;
     // 序列化后置用：枚举/重建「可落盘」绑定（仅 AddDynamic 槽）
     // virtual void GatherPersistentBindings(...) const;
     // virtual void RestorePersistentBindings(...);

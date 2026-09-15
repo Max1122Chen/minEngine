@@ -66,7 +66,7 @@ When finishing a task, AI should:
 
 - **Stage:** M1 Animation + M2 2D + M3 UI MVP **landed on `master`**; next Primary **unset** — choose in [ACTIVE_WORK.md](./ACTIVE_WORK.md). Parallel Infra / Render / DX — see [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
 - **Play Mode:** **CORE-F05** MVP Done (dual Scene PIE, Inspecting Context).
-- **Platform Core:** Lua + script binding Done；delegates Done；serialization usable (Binary protocol debt)；Parameter Store **CORE-F13** Done；Hierarchy **CORE-F14/F15** Done.
+- **Platform Core:** Lua + script binding Done；**CORE-F19** Call-by-name **Done**；Dynamic multicast **CORE-F20** Done（Lua `Add(fn)` = **CORE-F21** Planned）；serialization usable (Binary protocol debt)；Parameter Store **CORE-F13** Done；Hierarchy **CORE-F14/F15** Done.
 - **Editor:** Console MVP (**ED-F04**); Workflow **ED-F02** In Progress（S03/S05 余量）; Inspector UX **ED-F05** Done; Anim SM Canvas **ED-F06/F07** Done; Hierarchy Tree **ED-F08** Done.
 - **Gameplay Framework / Networking:** Future, plugin-oriented — light Tag/Event (**GP-F01/F02**) only; do not rush full Framework into Core.
 - **Active backlog:** [ACTIVE_WORK.md](./ACTIVE_WORK.md) · IDs [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md).
