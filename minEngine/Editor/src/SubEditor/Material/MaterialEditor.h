@@ -4,11 +4,16 @@
 #include "Preview/PreviewScene.h"
 #include "MaterialEditorSession.h"
 #include "MaterialEditorInspectorSource.h"
+#include "Commands/EditorSetObjectPropertyTarget.h"
+#include "Commands/Material/MaterialTopologyTypes.h"
+#include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "Shell/EditorSubModule.h"
+#include "Runtime/Core/GUID/GUID.h"
 
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Resource/AssetMeta.h"
 
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,9 +22,10 @@ namespace minEngine
 {
     class MaterialEdGraphNode;
     class IEditorContext;
+    class MEObject;
 
     /** Material editing SubModule: session, graph, preview, compile. */
-    class MaterialEditor : public EditorSubModule
+    class MaterialEditor : public EditorSubModule, public EditorSetObjectPropertyTarget
     {
     public:
         static constexpr const char* kModuleId = "Material";
@@ -57,6 +63,60 @@ namespace minEngine
         bool SaveActiveMaterial();
         void SetShadingModel(MaterialShadingModel model);
         void SetBlendMode(MaterialBlendMode blendMode);
+
+        bool ApplySetObjectProperty(const GUID& ownerGuid,
+                                    const std::string& ownerClassName,
+                                    const std::string& propertyPath,
+                                    const std::vector<uint8_t>& valueBlob) override;
+        void SubmitSetObjectProperty(IEditorContext& context,
+                                     const GUID& ownerGuid,
+                                     const std::string& ownerClassName,
+                                     const std::string& propertyPath,
+                                     std::vector<uint8_t> beforeValue,
+                                     std::vector<uint8_t> afterValue,
+                                     bool applyOnFirstExecute = true,
+                                     EditorSetObjectPropertySideEffects sideEffects = {});
+
+        void TryCapturePropertyUndoActivated(const MEObject& owner, const std::string& propertyPath);
+        void TryCommitPropertyUndoAfterEdit(const MEObject& owner, const std::string& propertyPath);
+        void TryCommitAllPropertyUndoAfterEdit(const MEObject& owner);
+        void StorePropertyUndoBefore(const MEObject& owner, const std::string& propertyPath);
+        void ClearPropertyUndoBefore(const MEObject& owner, const std::string& propertyPath);
+        void CommitStoredPropertyUndo(const MEObject& owner, const std::string& propertyPath);
+
+        bool ApplyAddNode(const std::string& nodeDefClassName,
+                          float editorPosX,
+                          float editorPosY,
+                          GUID* outCreatedNodeDefGuid = nullptr);
+        void SubmitAddNode(IEditorContext& context,
+                           const std::string& nodeDefClassName,
+                           float editorPosX,
+                           float editorPosY);
+
+        bool ApplyRemoveNodeByGuid(const GUID& nodeDefGuid);
+        bool TryCaptureRemoveNode(const GUID& nodeDefGuid,
+                                  std::vector<uint8_t>& outSnapshot,
+                                  std::vector<MaterialNodeInboundLink>& outInboundLinks) const;
+        bool ApplyRestoreNodeFromSnapshot(const std::vector<uint8_t>& snapshot,
+                                          const std::vector<MaterialNodeInboundLink>& inboundLinks);
+        void SubmitRemoveNode(IEditorContext& context, const GUID& nodeDefGuid);
+
+        bool ApplyConnectPins(const GUID& fromNodeDefGuid,
+                              int32_t fromOutputIndex,
+                              const GUID& toNodeDefGuid,
+                              int32_t toInputIndex);
+        void SubmitConnectPins(IEditorContext& context,
+                               const GUID& fromNodeDefGuid,
+                               int32_t fromOutputIndex,
+                               const GUID& toNodeDefGuid,
+                               int32_t toInputIndex);
+
+        bool ApplyDisconnectInput(const GUID& toNodeDefGuid, int32_t toInputIndex);
+        void SubmitDisconnectInput(IEditorContext& context,
+                                   const GUID& toNodeDefGuid,
+                                   int32_t toInputIndex,
+                                   const GUID& fromNodeDefGuid,
+                                   int32_t fromOutputIndex);
 
         void NotifyGraphChanged();
         void InvalidateGraphCanvas(bool rebindGraph = true);
@@ -99,6 +159,36 @@ namespace minEngine
         void ScheduleDebouncedCompile();
         void FlushPendingCompile();
 
+        struct MaterialOutputLinkRecord
+        {
+            uint64_t ToNodeDefHigh = 0;
+            uint64_t ToNodeDefLow = 0;
+            int32_t InputIndex = 0;
+            uint64_t FromNodeDefHigh = 0;
+            uint64_t FromNodeDefLow = 0;
+            int32_t OutputIndex = 0;
+        };
+
+        struct PendingPropertyUndoField
+        {
+            std::string PropertyPath;
+            std::vector<uint8_t> BeforeValue;
+        };
+
+        struct PendingPropertyUndo
+        {
+            GUID OwnerGuid;
+            std::string OwnerClassName;
+            std::vector<PendingPropertyUndoField> Fields;
+        };
+
+        void RefreshGraphAfterMutation();
+        void CaptureMaterialOutputLinks(std::vector<MaterialOutputLinkRecord>& outLinks) const;
+        void RestoreMaterialOutputLinks(const std::vector<MaterialOutputLinkRecord>& links);
+        void SubmitCapabilityProperty(const std::string& propertyPath, const std::function<void()>& assignAfterValue);
+        MaterialEdGraphNode* FindEdNodeByNodeDefGuid(const GUID& nodeDefGuid) const;
+        bool SerializeOwnedProperty(const MEObject& owner, const std::string& propertyPath, std::vector<uint8_t>& outBlob) const;
+
         IEditorContext* m_Context = nullptr;
         MaterialEditorInspectorSource m_InspectorSource;
         MaterialEditorSession m_Session;
@@ -111,5 +201,6 @@ namespace minEngine
         MaterialEdGraphNode* m_SelectedEdNode = nullptr;
         bool m_CompilePending = false;
         float m_CompileDebounceTimer = 0.0f;
+        std::unordered_map<uint32_t, PendingPropertyUndo> m_PropertyUndoBeforeByEditId;
     };
 }

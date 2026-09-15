@@ -2,8 +2,12 @@
 
 #include "Core.h"
 #include "EditorWindow.h"
+#include "Runtime/Core/GUID/GUID.h"
 
 #include "imgui_node_editor.h"
+
+#include <utility>
+#include <vector>
 
 namespace minEngine
 {
@@ -45,6 +49,16 @@ namespace minEngine
             ax::NodeEditor::PinId endPinId,
             Material& material,
             MaterialEdGraph& graph);
+        bool ResolveConnectPins(
+            ax::NodeEditor::PinId startPinId,
+            ax::NodeEditor::PinId endPinId,
+            Material& material,
+            MaterialEdGraph& graph,
+            MaterialEdGraphNode*& outFromNode,
+            int32_t& outFromOutputIndex,
+            MaterialEdGraphNode*& outToNode,
+            int32_t& outToInputIndex);
+        void CommitNodePositionDragIfNeeded(MaterialEdGraph& graph);
 
         const std::string m_Id = "material_graph";
         const std::string m_Title = "Material Graph";
@@ -52,5 +66,7 @@ namespace minEngine
         ax::NodeEditor::EditorContext* m_NodeEditorContext = nullptr;
         MaterialEdGraph* m_BoundGraph = nullptr;
         bool m_PushStoredPositionsToEditor = false;
+        bool m_PositionDragCaptured = false;
+        std::vector<std::pair<GUID, ImVec2>> m_PositionDragBefore;
     };
 }

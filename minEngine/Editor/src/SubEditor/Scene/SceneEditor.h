@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Commands/EditorSetObjectPropertyTarget.h"
 #include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Runtime/Core/GUID/GUID.h"
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
@@ -20,7 +21,7 @@ namespace minEngine
     class Scene;
     struct Transform;
 
-    class SceneEditor : public EditorSubModule
+    class SceneEditor : public EditorSubModule, public EditorSetObjectPropertyTarget
     {
     public:
         static constexpr const char* kModuleId = "Scene";
@@ -131,7 +132,7 @@ namespace minEngine
         bool ApplySetObjectProperty(const GUID& ownerGuid,
                                     const std::string& ownerClassName,
                                     const std::string& propertyPath,
-                                    const std::vector<uint8_t>& valueBlob);
+                                    const std::vector<uint8_t>& valueBlob) override;
         void SubmitSetObjectProperty(IEditorContext& context,
                                      const GUID& ownerGuid,
                                      const std::string& ownerClassName,

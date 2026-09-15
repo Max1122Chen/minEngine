@@ -7,30 +7,34 @@
 #include "DebugCommand/DebugCommandValidationService.h"
 #include "PropertyPath/PropertyPath.h"
 
+#include <sstream>
+
 namespace minEngine::DebugCommand
 {
     namespace
     {
         DebugCommandResult ExecuteHelp(const DebugCommandContext& context, const std::vector<std::string>& args)
         {
-            (void)context;
             (void)args;
 
+            const std::string_view sessionTypeId = context.ParseContext.ActiveSessionTypeId;
             DebugCommandOutputBuilder builder;
-            DebugCommandRegistry::Get().ForEach([&builder](const DebugCommandRegistry::StoredCommand& command) {
-                if (HasDebugCommandFlag(command.Flags, DebugCommandFlags::Hidden))
+            for (const DebugCommandRegistry::StoredCommand* command :
+                 DebugCommandRegistry::Get().List({}, DebugCommandScope::Both, sessionTypeId))
+            {
+                if (command == nullptr)
                 {
-                    return;
+                    continue;
                 }
 
-                builder.AddSegment(DebugCommandOutputKind::ListItemName, command.Id);
-                if (!command.Description.empty())
+                builder.AddSegment(DebugCommandOutputKind::ListItemName, command->Id);
+                if (!command->Description.empty())
                 {
                     builder.AddSegment(DebugCommandOutputKind::Muted, "  ");
-                    builder.AddSegment(DebugCommandOutputKind::Muted, command.Description);
+                    builder.AddSegment(DebugCommandOutputKind::Muted, command->Description);
                 }
                 builder.NewLine();
-            });
+            }
 
             return builder.BuildOk("OK");
         }
@@ -55,6 +59,55 @@ namespace minEngine::DebugCommand
             return propertyPath->GetValue(context);
         }
 
+        std::string JoinValueLiteral(const std::vector<std::string>& args, size_t valueTokenIndex)
+        {
+            std::string valueLiteral = args[valueTokenIndex];
+            for (size_t index = valueTokenIndex + 1; index < args.size(); ++index)
+            {
+                valueLiteral.push_back(' ');
+                valueLiteral += args[index];
+            }
+            return valueLiteral;
+        }
+
+        bool TryParseValueTokenIndex(const std::vector<std::string>& args, size_t& outValueTokenIndex)
+        {
+            if (args.size() < 2)
+            {
+                return false;
+            }
+
+            outValueTokenIndex = 1;
+            if (args.size() > 2 && DebugCommandSetValueValidation::IsOptionalAssignmentOperator(args[1]))
+            {
+                outValueTokenIndex = 2;
+            }
+
+            return args.size() > outValueTokenIndex;
+        }
+
+        bool ValuesMatchForVerify(std::string_view expected, std::string_view actual)
+        {
+            if (expected == actual)
+            {
+                return true;
+            }
+
+            double expectedNumber = 0.0;
+            double actualNumber = 0.0;
+            std::string expectedText(expected);
+            std::string actualText(actual);
+            std::istringstream expectedStream(expectedText);
+            std::istringstream actualStream(actualText);
+            if ((expectedStream >> expectedNumber) && expectedStream.eof()
+                && (actualStream >> actualNumber) && actualStream.eof())
+            {
+                return expectedNumber == actualNumber;
+            }
+
+            return false;
+        }
+
         DebugCommandResult ExecuteSet(const DebugCommandContext& context, const std::vector<std::string>& args)
         {
             if (args.size() < 2)
@@ -72,25 +125,15 @@ namespace minEngine::DebugCommand
                 return builder.BuildError("invalid property path");
             }
 
-            size_t valueTokenIndex = 1;
-            if (args.size() > 2 && args[1] == "=")
-            {
-                valueTokenIndex = 2;
-            }
-
-            if (args.size() <= valueTokenIndex)
+            size_t valueTokenIndex = 0;
+            if (!TryParseValueTokenIndex(args, valueTokenIndex))
             {
                 DebugCommandOutputBuilder builder;
                 builder.AddLine(DebugCommandOutputKind::Error, "Error: set requires a value literal.");
                 return builder.BuildError("missing value");
             }
 
-            std::string valueLiteral = args[valueTokenIndex];
-            for (size_t index = valueTokenIndex + 1; index < args.size(); ++index)
-            {
-                valueLiteral.push_back(' ');
-                valueLiteral += args[index];
-            }
+            const std::string valueLiteral = JoinValueLiteral(args, valueTokenIndex);
 
             if (const std::optional<DebugCommandValidationError> validationError =
                     DebugCommandValidationService::ValidateSetValue(context, args.front(), valueLiteral))
@@ -104,6 +147,113 @@ namespace minEngine::DebugCommand
             }
 
             return propertyPath->SetValue(context, valueLiteral);
+        }
+
+        DebugCommandResult ExecuteEdit(const DebugCommandContext& context, const std::vector<std::string>& args)
+        {
+            if (args.size() < 2)
+            {
+                DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommandOutputKind::Error, "Error: edit requires <PropertyPath> <value>.");
+                return builder.BuildError("missing arguments");
+            }
+
+            const std::optional<PropertyPath> propertyPath = PropertyPath::Parse(args.front());
+            if (!propertyPath.has_value())
+            {
+                DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommandOutputKind::Error, "Error: invalid property path.");
+                return builder.BuildError("invalid property path");
+            }
+
+            size_t valueTokenIndex = 0;
+            if (!TryParseValueTokenIndex(args, valueTokenIndex))
+            {
+                DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommandOutputKind::Error, "Error: edit requires a value literal.");
+                return builder.BuildError("missing value");
+            }
+
+            const std::string valueLiteral = JoinValueLiteral(args, valueTokenIndex);
+
+            if (const std::optional<DebugCommandValidationError> validationError =
+                    DebugCommandValidationService::ValidateSetValue(context, args.front(), valueLiteral))
+            {
+                return DebugCommandValidationService::BuildCommandError(*validationError);
+            }
+
+            if (context.EditorEditValue)
+            {
+                return context.EditorEditValue(args.front(), valueLiteral);
+            }
+
+            return propertyPath->SetValue(context, valueLiteral, PropertyWriteMode::RespectPolicy);
+        }
+
+        DebugCommandResult ExecuteVerify(const DebugCommandContext& context, const std::vector<std::string>& args)
+        {
+            if (args.size() < 2)
+            {
+                DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommandOutputKind::Error, "Error: verify requires <PropertyPath> <value>.");
+                return builder.BuildError("missing arguments");
+            }
+
+            const std::optional<PropertyPath> propertyPath = PropertyPath::Parse(args.front());
+            if (!propertyPath.has_value())
+            {
+                DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommandOutputKind::Error, "Error: invalid property path.");
+                return builder.BuildError("invalid property path");
+            }
+
+            size_t valueTokenIndex = 0;
+            if (!TryParseValueTokenIndex(args, valueTokenIndex))
+            {
+                DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommandOutputKind::Error, "Error: verify requires a value literal.");
+                return builder.BuildError("missing value");
+            }
+
+            const std::string expectedLiteral = JoinValueLiteral(args, valueTokenIndex);
+            const DebugCommandResult getResult = propertyPath->GetValue(context);
+            if (getResult.Status != DebugCommandStatus::Ok)
+            {
+                return getResult;
+            }
+
+            const std::string& actualValue = getResult.Message;
+            const bool matched = ValuesMatchForVerify(expectedLiteral, actualValue);
+
+            DebugCommandOutputBuilder builder;
+            builder.AddSegment(DebugCommandOutputKind::Path, propertyPath->GetCanonicalPath());
+            builder.AddSegment(DebugCommandOutputKind::Muted, matched ? " == " : " != ");
+            builder.AddSegment(DebugCommandOutputKind::ValueLiteral, actualValue);
+            if (!matched)
+            {
+                builder.AddSegment(DebugCommandOutputKind::Muted, " (expected ");
+                builder.AddSegment(DebugCommandOutputKind::ValueLiteral, expectedLiteral);
+                builder.AddSegment(DebugCommandOutputKind::Muted, ")");
+            }
+            builder.NewLine();
+
+            std::string payload = "{\"op\":\"verify\",\"ok\":";
+            payload += matched ? "true" : "false";
+            payload += ",\"path\":";
+            payload += DebugCommandPayloadJson::Quote(propertyPath->GetCanonicalPath());
+            payload += ",\"actual\":";
+            payload += DebugCommandPayloadJson::Quote(actualValue);
+            payload += ",\"expected\":";
+            payload += DebugCommandPayloadJson::Quote(expectedLiteral);
+            payload += '}';
+            builder.SetPayloadJson(std::move(payload));
+
+            if (matched)
+            {
+                return builder.BuildOk("ok");
+            }
+
+            return builder.BuildError("verify failed");
         }
 
         DebugCommandResult ExecuteInspect(const DebugCommandContext& context, const std::vector<std::string>& args)
@@ -213,6 +363,7 @@ namespace minEngine::DebugCommand
 
         DebugCommandDescriptor getDescriptor;
         getDescriptor.Id = "get";
+        getDescriptor.Domain = "Scene";
         getDescriptor.DisplayName = "get";
         getDescriptor.Description = "Read a property value by path";
         getDescriptor.Scope = DebugCommandScope::Both;
@@ -224,8 +375,9 @@ namespace minEngine::DebugCommand
 
         DebugCommandDescriptor setDescriptor;
         setDescriptor.Id = "set";
+        setDescriptor.Domain = "Scene";
         setDescriptor.DisplayName = "set";
-        setDescriptor.Description = "Write a primitive property value by path";
+        setDescriptor.Description = "Write a primitive property value by path (bypass edit policy)";
         setDescriptor.Scope = DebugCommandScope::Both;
         setDescriptor.Args = {
             DebugCommandArgDescriptor{"PropertyPath", DebugCommandArgType::ObjectRef, true, "Property path"},
@@ -234,8 +386,35 @@ namespace minEngine::DebugCommand
         setDescriptor.Execute = ExecuteSet;
         registry.Register(std::move(setDescriptor));
 
+        DebugCommandDescriptor editDescriptor;
+        editDescriptor.Id = "edit";
+        editDescriptor.Domain = "Scene";
+        editDescriptor.DisplayName = "edit";
+        editDescriptor.Description = "Write a property value respecting editor edit policy";
+        editDescriptor.Scope = DebugCommandScope::Both;
+        editDescriptor.Args = {
+            DebugCommandArgDescriptor{"PropertyPath", DebugCommandArgType::ObjectRef, true, "Property path"},
+            DebugCommandArgDescriptor{"Value", DebugCommandArgType::String, true, "Value literal"},
+        };
+        editDescriptor.Execute = ExecuteEdit;
+        registry.Register(std::move(editDescriptor));
+
+        DebugCommandDescriptor verifyDescriptor;
+        verifyDescriptor.Id = "verify";
+        verifyDescriptor.Domain = "Scene";
+        verifyDescriptor.DisplayName = "verify";
+        verifyDescriptor.Description = "Assert a property equals a value";
+        verifyDescriptor.Scope = DebugCommandScope::Both;
+        verifyDescriptor.Args = {
+            DebugCommandArgDescriptor{"PropertyPath", DebugCommandArgType::ObjectRef, true, "Property path"},
+            DebugCommandArgDescriptor{"Value", DebugCommandArgType::String, true, "Expected value"},
+        };
+        verifyDescriptor.Execute = ExecuteVerify;
+        registry.Register(std::move(verifyDescriptor));
+
         DebugCommandDescriptor inspectDescriptor;
         inspectDescriptor.Id = "inspect";
+        inspectDescriptor.Domain = "Scene";
         inspectDescriptor.DisplayName = "inspect";
         inspectDescriptor.Description = "Inspect an object or nested property";
         inspectDescriptor.Scope = DebugCommandScope::Both;
@@ -247,6 +426,7 @@ namespace minEngine::DebugCommand
 
         DebugCommandDescriptor findDescriptor;
         findDescriptor.Id = "find";
+        findDescriptor.Domain = "Scene";
         findDescriptor.DisplayName = "find";
         findDescriptor.Description = "Find game objects by name, type=, or name=";
         findDescriptor.Scope = DebugCommandScope::Both;

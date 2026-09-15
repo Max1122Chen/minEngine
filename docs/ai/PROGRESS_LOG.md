@@ -1,6 +1,56 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-14（ED-F13 Done）
+Last updated: 2026-09-15（ED-F14 Done）
+
+### 2026-09-15 - ED-F14 Done：验收 + Console Domain / ObjectPtr Undo
+- **验收：** 人手 Undo/Redo 冒烟通过（维护者）。
+- **跟进修：** Debug 补全/`help` 按 `ActiveSessionTypeId` + 命令 `Domain` 裁剪；Material ObjectPtr 走 `OnSelectionCommitted` 后再入栈。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。准备整批 commit。
+
+### 2026-09-14 - ED-F14 W4：Material / AnimGraph Debug 域动词
+- **Material：** `mat_list_node_types` / `mat_list_nodes` / `mat_add_node` / `mat_remove_node` / `mat_connect` / `mat_disconnect` / `mat_set_shading` / `mat_set_blend` → 同 GUI `Submit*` / `SetShading|Blend`。
+- **AnimGraph：** `anim_list_states|transitions|params`；`anim_add/remove/rename_state`；transition / any / reverse / set_default；`anim_add/remove_param` → `SubmitOwnedPropertyMutation(m_StateMachine|m_Schema)`。
+- **注册：** `RegisterEditorConsoleCommands` 旁挂 `EditorMaterialDebugCommands` / `EditorAnimGraphDebugCommands`。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。
+- **余量：** 人手 Undo/Redo 冒烟；通过后 Registry → Done + 准备 commit。未 commit。
+
+### 2026-09-14 - ED-F14 W2/W3：Material 拓扑 + AnimGraph 入栈
+- **Material：** `EditorAdd/Remove/Connect/DisconnectMaterial*Command`；位姿拖拽结束 SetProperty。
+- **AnimGraph：** `AnimationGraphEditor` 实现 `EditorSetObjectPropertyTarget`；变异走 `m_StateMachine` / `m_Schema` 整块 blob（数组叶子 path 不可用）。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。
+- **余量：** W4 Material/AnimGraph Debug；人手 Undo 冒烟。未 commit。
+
+### 2026-09-14 - ED-F14 W2 画布：节点 DragFloat 入栈
+- **路径：** `MaterialGraphNodeRegistry::DrawNode` 本地缓冲 → 激活捕获 before → 失活 `SubmitSetObjectProperty`。
+- **Constant3：** 一次手势提交 R/G/B 三条（同 editId 多字段）。
+- **未做：** 拓扑、位姿、Debug。
+- **验证：** Editor 构建 OK；`test command-system` 回归。
+
+### 2026-09-14 - ED-F14 W2-A：Material Inspector 字段入栈
+- **共用：** `EditorSetObjectPropertyTarget` + `EditorObjectPropertyApply`；`EditorSetObjectPropertyCommand` 不再绑死 SceneEditor。
+- **Material：** `Apply/SubmitSetObjectProperty`；Shading/Blend 经 Command + prune；Undo 还原 Output 连线快照。
+- **Inspector 节点字段：** 激活/失活捕获 blob → Submit（`applyOnFirstExecute=false`）。
+- **未做：** 画布 DragFloat、拓扑、位姿、Debug。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。未 commit（与 W1 同工作区）。
+
+### 2026-09-14 - ED-F14 W1 Done：edit/verify + Scene 结构 Debug
+- **edit：** `PropertyWriteMode::RespectPolicy`；`set` 仍 Force。`EditDefaultsOnly` 在 SceneInstance 下 `edit` 失败、`set` 成功。
+- **verify：** 可选 `=` / `==`；Payload `ok` / expected / actual。
+- **Scene Debug：** `add_go` / `delete_go` / `add_comp` / `remove_comp` / `reparent` / `rename_comp` / `move_comp` → 现有 `Submit*`。
+- **验证：** `minEngineTests.exe test command-system` 28/28 PASS；Editor 构建 OK。
+- **Next：** W2 Material 字段 Set/Edit + 拓扑 Command。未 commit。
+
+### 2026-09-14 - ED-F14 W1 开工：edit/verify + Scene 结构 Debug
+- **edit：** RespectPolicy（`PropertyEditPolicy` / SceneInstance）；`set` 仍 Force。
+- **verify：** `==` 断言 + PayloadJson。
+- **Scene Debug：** `add_go` / `delete_go` / `add_comp` / `remove_comp` / `reparent` / `rename_comp` / `move_comp` → 现有 Submit*。
+- **测试：** command-system 增 edit/verify 用例。
+
+### 2026-09-14 - ED-F14 Design 展开稿
+- 代码实况矩阵：Scene 已入栈；Material/AnimGraph 直写；Debug 动词缺口。
+- 锁定候选：Material 属性竖切（B 优先）或枚举字段（A）；AnimGraph Add/Remove State 或 Transition。
+- `edit`/`verify` 契约；Deferred 表；待审批。
+- F13 已提交：`c7b3f34`。
 
 ### 2026-09-14 - ED-F13 Done：显式 AddComponent（去 Select 前置）
 - **API：** `ApplyAddComponentToGameObject(id,…)`；`ApplyRemoveComponentFromGameObject`；删 `ApplyAddComponentToSelected*`。

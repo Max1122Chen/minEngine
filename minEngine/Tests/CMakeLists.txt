@@ -8,6 +8,7 @@ file(GLOB TEST_SUITE_SOURCES CONFIGURE_DEPENDS
 file(GLOB_RECURSE EDITOR_DEBUG_COMMAND_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/DebugCommand/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/PropertyPath/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/UI/Property/PropertyEditPolicy.cpp
 )
 
 add_executable(${MINENGINE_TESTS_NAME}

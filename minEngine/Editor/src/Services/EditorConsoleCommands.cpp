@@ -1,4 +1,7 @@
 #include "Services/EditorConsoleCommands.h"
+#include "Services/EditorAnimGraphDebugCommands.h"
+#include "Services/EditorMaterialDebugCommands.h"
+#include "Services/EditorSceneDebugCommands.h"
 
 #include "DebugCommand/DebugBuiltinCommands.h"
 #include "DebugCommand/DebugCommandContext.h"
@@ -13,6 +16,10 @@
 #include "Shell/EditorUndoRedoActions.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
+
+#include "Runtime/Core/Serialization/Serializer.h"
+
+#include <optional>
 
 namespace minEngine
 {
@@ -293,11 +300,15 @@ namespace minEngine
         }
 
         DebugCommand::RegisterBuiltinDebugCommands();
+        EditorSceneDebugCommands::Register();
+        EditorMaterialDebugCommands::Register();
+        EditorAnimGraphDebugCommands::Register();
 
         DebugCommand::DebugCommandRegistry& registry = DebugCommand::DebugCommandRegistry::Get();
 
         DebugCommand::DebugCommandDescriptor listGoDescriptor;
         listGoDescriptor.Id = "list_go";
+        listGoDescriptor.Domain = "Scene";
         listGoDescriptor.DisplayName = "list_go";
         listGoDescriptor.Description = "List game objects in the active scene";
         listGoDescriptor.Scope = DebugCommand::DebugCommandScope::Editor;
@@ -322,6 +333,7 @@ namespace minEngine
 
         DebugCommand::DebugCommandDescriptor renameDescriptor;
         renameDescriptor.Id = "rename";
+        renameDescriptor.Domain = "Scene";
         renameDescriptor.DisplayName = "rename";
         renameDescriptor.Description = "Rename a game object in the active scene";
         renameDescriptor.Scope = DebugCommand::DebugCommandScope::Editor;
@@ -341,5 +353,76 @@ namespace minEngine
         std::string_view valueLiteral)
     {
         return ExecuteEditorSetValue(context, propertyPathText, valueLiteral);
+    }
+
+    DebugCommand::DebugCommandResult ExecuteEditorConsoleEditValue(
+        const DebugCommand::DebugCommandContext& context,
+        std::string_view propertyPathText,
+        std::string_view valueLiteral)
+    {
+        const std::optional<DebugCommand::PropertyPath> propertyPath = DebugCommand::PropertyPath::Parse(propertyPathText);
+        if (!propertyPath.has_value())
+        {
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(DebugCommand::DebugCommandOutputKind::Error, "Error: invalid property path.");
+            return builder.BuildError("invalid property path");
+        }
+
+        IEditorContext* editorContext = GetEditorContext(context);
+        if (editorContext == nullptr)
+        {
+            return propertyPath->SetValue(context, valueLiteral, DebugCommand::PropertyWriteMode::RespectPolicy);
+        }
+
+        SceneEditor* sceneEditor = GetSceneEditor(editorContext);
+        if (sceneEditor == nullptr || context.ActiveScene == nullptr)
+        {
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(DebugCommand::DebugCommandOutputKind::Error, "Error: no inspecting scene.");
+            return builder.BuildError("no inspecting scene");
+        }
+
+        if (context.ActiveScene != editorContext->GetInspectingScene())
+        {
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(
+                DebugCommand::DebugCommandOutputKind::Error,
+                "Error: command target scene is not the inspecting scene.");
+            return builder.BuildError("not inspecting scene");
+        }
+
+        if (editorContext->IsPlaying())
+        {
+            return propertyPath->SetValue(context, valueLiteral, DebugCommand::PropertyWriteMode::RespectPolicy);
+        }
+
+        DebugCommand::PropertySetTransaction transaction;
+        DebugCommand::DebugCommandResult buildError;
+        const Serialization::SerializerOptions& serializerOptions = sceneEditor->GetPropertyCommandSerializerOptions();
+        if (!propertyPath->TryBuildSetTransaction(
+                context,
+                valueLiteral,
+                transaction,
+                buildError,
+                &serializerOptions,
+                DebugCommand::PropertyWriteMode::RespectPolicy))
+        {
+            return buildError;
+        }
+
+        if (transaction.BeforeValue == transaction.AfterValue)
+        {
+            return propertyPath->BuildSetValueSuccessResult(context);
+        }
+
+        sceneEditor->SubmitSetObjectProperty(
+            *editorContext,
+            transaction.OwnerGuid,
+            transaction.OwnerClassName,
+            transaction.PropertySubPath,
+            std::move(transaction.BeforeValue),
+            std::move(transaction.AfterValue));
+
+        return propertyPath->BuildSetValueSuccessResult(context);
     }
 }

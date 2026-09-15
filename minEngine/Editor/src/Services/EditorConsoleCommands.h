@@ -16,4 +16,9 @@ namespace minEngine
         const DebugCommand::DebugCommandContext& context,
         std::string_view propertyPathText,
         std::string_view valueLiteral);
+
+    DebugCommand::DebugCommandResult ExecuteEditorConsoleEditValue(
+        const DebugCommand::DebugCommandContext& context,
+        std::string_view propertyPathText,
+        std::string_view valueLiteral);
 }

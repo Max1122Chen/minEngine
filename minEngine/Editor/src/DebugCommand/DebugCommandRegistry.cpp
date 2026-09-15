@@ -31,6 +31,7 @@ namespace minEngine::DebugCommand
         stored.Description = std::string(descriptor.Description);
         stored.Scope = descriptor.Scope;
         stored.Flags = descriptor.Flags;
+        stored.Domain = std::string(descriptor.Domain);
         stored.Args = descriptor.Args;
         stored.Execute = std::move(descriptor.Execute);
         m_Commands.push_back(std::move(stored));
@@ -56,19 +57,26 @@ namespace minEngine::DebugCommand
 
     std::vector<const DebugCommandRegistry::StoredCommand*> DebugCommandRegistry::List(
         std::string_view prefix,
-        DebugCommandScope scopeFilter) const
+        DebugCommandScope scopeFilter,
+        std::string_view sessionTypeId) const
     {
         std::vector<const StoredCommand*> matches;
         matches.reserve(m_Commands.size());
 
         for (const StoredCommand& stored : m_Commands)
         {
-            if (scopeFilter != DebugCommandScope::Both && stored.Scope != DebugCommandScope::Both && stored.Scope != scopeFilter)
+            if (scopeFilter != DebugCommandScope::Both && stored.Scope != DebugCommandScope::Both
+                && stored.Scope != scopeFilter)
             {
                 continue;
             }
 
             if (HasDebugCommandFlag(stored.Flags, DebugCommandFlags::Hidden))
+            {
+                continue;
+            }
+
+            if (!stored.Domain.empty() && !sessionTypeId.empty() && stored.Domain != sessionTypeId)
             {
                 continue;
             }

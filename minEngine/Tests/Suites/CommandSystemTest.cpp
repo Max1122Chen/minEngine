@@ -652,6 +652,76 @@ TEST_CASE("command-system: set invalid enum includes suggestions [full]")
     CHECK(ResultContainsText(result, "ValueB"));
 }
 
+TEST_CASE("command-system: verify asserts property equality [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::DebugCommand::DebugCommandRegistry::Get().Clear();
+    minEngine::DebugCommand::RegisterBuiltinDebugCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSunLightScene();
+    minEngine::DebugCommand::DebugCommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::DebugCommand::DebugCommandExecutor executor;
+    const minEngine::DebugCommand::DebugCommandResult okResult =
+        executor.ExecuteLine("verify Sun.m_Intensity == 2.5", context);
+    CHECK(okResult.Status == minEngine::DebugCommand::DebugCommandStatus::Ok);
+    CHECK(okResult.PayloadJson.find("\"ok\":true") != std::string::npos);
+
+    const minEngine::DebugCommand::DebugCommandResult okWithoutOperator =
+        executor.ExecuteLine("verify Sun.m_Intensity 2.5", context);
+    CHECK(okWithoutOperator.Status == minEngine::DebugCommand::DebugCommandStatus::Ok);
+
+    const minEngine::DebugCommand::DebugCommandResult failResult =
+        executor.ExecuteLine("verify Sun.m_Intensity == 9.0", context);
+    CHECK(failResult.Status == minEngine::DebugCommand::DebugCommandStatus::Error);
+    CHECK(failResult.PayloadJson.find("\"ok\":false") != std::string::npos);
+}
+
+TEST_CASE("command-system: edit respects EditDefaultsOnly in scene context [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    minEngine::CommandSystemTestScope scope;
+    minEngine::DebugCommand::DebugCommandRegistry::Get().Clear();
+    minEngine::DebugCommand::RegisterBuiltinDebugCommands();
+
+    const std::shared_ptr<minEngine::Scene> scene = CreateSampleEnumScene();
+    minEngine::DebugCommand::DebugCommandContext context;
+    context.ActiveScene = scene.get();
+
+    minEngine::DebugCommand::DebugCommandExecutor executor;
+    const minEngine::DebugCommand::DebugCommandResult editDenied =
+        executor.ExecuteLine("edit Sample.SampleData.DefaultsOnlyIntField 8", context);
+    CHECK(editDenied.Status == minEngine::DebugCommand::DebugCommandStatus::Error);
+    CHECK(ResultContainsText(editDenied, "not editable"));
+
+    const minEngine::DebugCommand::DebugCommandResult setAllowed =
+        executor.ExecuteLine("set Sample.SampleData.DefaultsOnlyIntField 8", context);
+    CHECK(setAllowed.Status == minEngine::DebugCommand::DebugCommandStatus::Ok);
+
+    const minEngine::DebugCommand::DebugCommandResult editOk =
+        executor.ExecuteLine("edit Sample.SampleData.FloatField 4.0", context);
+    CHECK(editOk.Status == minEngine::DebugCommand::DebugCommandStatus::Ok);
+}
+
+TEST_CASE("command-system: help lists edit and verify [full]")
+{
+    minEngine::DebugCommand::DebugCommandRegistry::Get().Clear();
+    minEngine::DebugCommand::RegisterBuiltinDebugCommands();
+
+    minEngine::DebugCommand::DebugCommandContext context;
+    minEngine::DebugCommand::DebugCommandExecutor executor;
+    const minEngine::DebugCommand::DebugCommandResult result = executor.ExecuteLine("help", context);
+    CHECK(result.Status == minEngine::DebugCommand::DebugCommandStatus::Ok);
+    CHECK(ResultContainsText(result, "edit"));
+    CHECK(ResultContainsText(result, "verify"));
+}
+
 TEST_CASE("command-system: get requires property path argument [full]")
 {
     minEngine::EngineReflectionFixture fixture;

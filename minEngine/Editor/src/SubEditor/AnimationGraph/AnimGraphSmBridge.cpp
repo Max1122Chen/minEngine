@@ -4,6 +4,8 @@
 
 #include "UI/Appearance/EditorAppearance.h"
 
+#include "imgui.h"
+
 #include "Runtime/Resource/AssetMeta.h"
 
 #include <cmath>
@@ -372,7 +374,10 @@ namespace minEngine
                     size_t toIndex = 0;
                     if (FromNodeId(event.To, toIndex) && toIndex < stateMachine.States.size())
                     {
-                        if (editor.SetDefaultStateName(stateMachine.States[toIndex].Name))
+                        const std::string toName = stateMachine.States[toIndex].Name;
+                        if (editor.SubmitOwnedPropertyMutation(
+                                "m_StateMachine",
+                                [&]() { return editor.SetDefaultStateName(toName); }))
                         {
                             structureChanged = true;
                         }
@@ -385,7 +390,10 @@ namespace minEngine
                     size_t toIndex = 0;
                     if (FromNodeId(event.To, toIndex) && toIndex < stateMachine.States.size())
                     {
-                        if (editor.AddAnyStateTransition(stateMachine.States[toIndex].Name))
+                        const std::string toName = stateMachine.States[toIndex].Name;
+                        if (editor.SubmitOwnedPropertyMutation(
+                                "m_StateMachine",
+                                [&]() { return editor.AddAnyStateTransition(toName); }))
                         {
                             structureChanged = true;
                         }
@@ -403,9 +411,11 @@ namespace minEngine
                     break;
                 }
 
-                if (editor.AddTransition(
-                        stateMachine.States[fromIndex].Name,
-                        stateMachine.States[toIndex].Name))
+                const std::string fromName = stateMachine.States[fromIndex].Name;
+                const std::string toName = stateMachine.States[toIndex].Name;
+                if (editor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() { return editor.AddTransition(fromName, toName); }))
                 {
                     structureChanged = true;
                 }
@@ -417,14 +427,22 @@ namespace minEngine
                 if (FromEdgeId(event.Edge, transitionIndex)
                     && transitionIndex < stateMachine.Transitions.size())
                 {
-                    editor.RemoveTransitionAt(transitionIndex);
-                    structureChanged = true;
+                    if (editor.SubmitOwnedPropertyMutation(
+                            "m_StateMachine",
+                            [&]() { return editor.RemoveTransitionAt(transitionIndex); }))
+                    {
+                        structureChanged = true;
+                    }
                 }
                 else if (FromAnyStateEdgeId(event.Edge, transitionIndex)
                     && transitionIndex < stateMachine.AnyStateTransitions.size())
                 {
-                    editor.RemoveAnyStateTransitionAt(transitionIndex);
-                    structureChanged = true;
+                    if (editor.SubmitOwnedPropertyMutation(
+                            "m_StateMachine",
+                            [&]() { return editor.RemoveAnyStateTransitionAt(transitionIndex); }))
+                    {
+                        structureChanged = true;
+                    }
                 }
                 break;
             }
@@ -441,7 +459,9 @@ namespace minEngine
                 selection.Kind = AnimGraphSelectionKind::Transition;
                 selection.TransitionIndex = static_cast<int>(transitionIndex);
                 editor.SetSelection(std::move(selection));
-                if (editor.ReverseTransition())
+                if (editor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() { return editor.ReverseTransition(); }))
                 {
                     structureChanged = true;
                 }
@@ -461,14 +481,22 @@ namespace minEngine
                     if (FromEdgeId(edgeId, transitionIndex)
                         && transitionIndex < stateMachine.Transitions.size())
                     {
-                        editor.RemoveTransitionAt(transitionIndex);
-                        structureChanged = true;
+                        if (editor.SubmitOwnedPropertyMutation(
+                                "m_StateMachine",
+                                [&]() { return editor.RemoveTransitionAt(transitionIndex); }))
+                        {
+                            structureChanged = true;
+                        }
                     }
                     else if (FromAnyStateEdgeId(edgeId, transitionIndex)
                         && transitionIndex < stateMachine.AnyStateTransitions.size())
                     {
-                        editor.RemoveAnyStateTransitionAt(transitionIndex);
-                        structureChanged = true;
+                        if (editor.SubmitOwnedPropertyMutation(
+                                "m_StateMachine",
+                                [&]() { return editor.RemoveAnyStateTransitionAt(transitionIndex); }))
+                        {
+                            structureChanged = true;
+                        }
                     }
                 }
                 else if (document.GetSelection().Kind == SmGraph::SelectionKind::Node)
@@ -484,14 +512,20 @@ namespace minEngine
                         && stateIndex < stateMachine.States.size())
                     {
                         const std::string name = stateMachine.States[stateIndex].Name;
-                        editor.RemoveStateByName(name);
-                        structureChanged = true;
+                        if (editor.SubmitOwnedPropertyMutation(
+                                "m_StateMachine",
+                                [&]() { return editor.RemoveStateByName(name); }))
+                        {
+                            structureChanged = true;
+                        }
                     }
                 }
                 break;
             }
             case SmGraph::EditKind::AddNodeRequested:
-                if (editor.AddStateAt(event.Pos.x, event.Pos.y))
+                if (editor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() { return editor.AddStateAt(event.Pos.x, event.Pos.y); }))
                 {
                     structureChanged = true;
                 }
@@ -505,7 +539,9 @@ namespace minEngine
                     break;
                 }
                 const std::string oldName = stateMachine.States[stateIndex].Name;
-                if (editor.RenameState(oldName, event.Text))
+                if (editor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() { return editor.RenameState(oldName, event.Text); }))
                 {
                     structureChanged = true;
                 }
@@ -514,18 +550,24 @@ namespace minEngine
             }
         }
 
-        if (!structureChanged && PushPositions(document, graph, specialLayout))
+        if (!structureChanged)
         {
-            editor.NotifyGraphChanged();
+            if (!editor.HasPositionDragBefore() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            {
+                editor.CapturePositionDragBefore();
+            }
+
+            if (PushPositions(document, graph, specialLayout))
+            {
+                editor.NotifyGraphChanged();
+            }
+
+            editor.CommitPositionDragIfNeeded();
         }
         else
         {
             // Keep session positions even when only special nodes moved.
             PushPositions(document, graph, specialLayout);
-        }
-
-        if (structureChanged)
-        {
             editor.ClearSelection();
             document.GetSelection().Clear();
             PullDocument(graph, document, specialLayout);

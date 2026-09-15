@@ -12,6 +12,7 @@ namespace minEngine::Reflection
 namespace minEngine
 {
     class MaterialEdGraphNode;
+    class MaterialEditor;
     class MaterialGraphNodeDef;
     class MaterialGraphNodeDef_Constant;
     class MaterialGraphNodeDef_Constant3;
@@ -44,13 +45,13 @@ namespace minEngine
         static const char* GetDisplayName(const MaterialGraphNodeDef* nodeDef);
         static const MaterialGraphNodeRegistryEntry* FindEntry(const Reflection::MEClass* nodeDefClass);
 
-        /** In-node subtitle widgets; returns true if a value changed. */
-        static bool DrawNode(MaterialEdGraphNode& node);
+        /** In-node subtitle widgets; returns true if a value changed (live preview). */
+        static bool DrawNode(MaterialEdGraphNode& node, MaterialEditor& materialEditor);
 
     private:
-        static bool DrawConstant(MaterialGraphNodeDef_Constant* constant);
-        static bool DrawConstant3(MaterialGraphNodeDef_Constant3* constant3);
-        static bool DrawScalarParameter(MaterialGraphNodeDef_ScalarParameter* scalar);
+        static bool DrawConstant(MaterialGraphNodeDef_Constant* constant, MaterialEditor& materialEditor);
+        static bool DrawConstant3(MaterialGraphNodeDef_Constant3* constant3, MaterialEditor& materialEditor);
+        static bool DrawScalarParameter(MaterialGraphNodeDef_ScalarParameter* scalar, MaterialEditor& materialEditor);
         static bool DrawTextureObject(MaterialGraphNodeDef_TextureObject* textureObject);
         static bool DrawDefault(MaterialGraphNodeDef* nodeDef);
     };

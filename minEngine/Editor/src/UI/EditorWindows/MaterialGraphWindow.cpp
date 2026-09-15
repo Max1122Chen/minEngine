@@ -16,6 +16,7 @@
 #include "SubEditor/Material/MaterialGraphIds.h"
 #include "SubEditor/Material/MaterialCompileDiagnosticsDrawer.h"
 #include "SubEditor/Material/MaterialGraphNodeRegistry.h"
+#include "Commands/EditorObjectPropertyApply.h"
 
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/Material/MaterialCapability.h"
@@ -24,6 +25,7 @@
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
+#include <cstring>
 #include <vector>
 
 namespace minEngine
@@ -501,7 +503,7 @@ namespace minEngine
                 continue;
             }
 
-            if (MaterialGraphNodeRegistry::DrawNode(node))
+            if (MaterialGraphNodeRegistry::DrawNode(node, *materialEditor))
             {
                 materialEditor->NotifyGraphChanged();
             }
@@ -610,6 +612,39 @@ namespace minEngine
         Material& material,
         MaterialEdGraph& graph)
     {
+        MaterialEdGraphNode* fromNode = nullptr;
+        MaterialEdGraphNode* toNode = nullptr;
+        int32_t fromOutputIndex = 0;
+        int32_t toInputIndex = 0;
+        if (!ResolveConnectPins(startPinId, endPinId, material, graph, fromNode, fromOutputIndex, toNode, toInputIndex))
+        {
+            return false;
+        }
+
+        return graph.ConnectPins(
+            *fromNode,
+            fromOutputIndex,
+            *toNode,
+            toInputIndex,
+            material.m_ShadingModel,
+            material.m_BlendMode);
+    }
+
+    bool MaterialGraphWindow::ResolveConnectPins(
+        Ed::PinId startPinId,
+        Ed::PinId endPinId,
+        Material& material,
+        MaterialEdGraph& graph,
+        MaterialEdGraphNode*& outFromNode,
+        int32_t& outFromOutputIndex,
+        MaterialEdGraphNode*& outToNode,
+        int32_t& outToInputIndex)
+    {
+        outFromNode = nullptr;
+        outToNode = nullptr;
+        outFromOutputIndex = 0;
+        outToInputIndex = 0;
+
         MaterialEdGraphNode* startNode = nullptr;
         MaterialEdGraphNode* endNode = nullptr;
         Ed::PinKind startKind = Ed::PinKind::Input;
@@ -623,24 +658,19 @@ namespace minEngine
             return false;
         }
 
-        MaterialEdGraphNode* fromNode = nullptr;
-        MaterialEdGraphNode* toNode = nullptr;
-        int32_t fromOutputIndex = 0;
-        int32_t toInputIndex = 0;
-
         if (startKind == Ed::PinKind::Output && endKind == Ed::PinKind::Input)
         {
-            fromNode = startNode;
-            fromOutputIndex = startIndex;
-            toNode = endNode;
-            toInputIndex = endIndex;
+            outFromNode = startNode;
+            outFromOutputIndex = startIndex;
+            outToNode = endNode;
+            outToInputIndex = endIndex;
         }
         else if (startKind == Ed::PinKind::Input && endKind == Ed::PinKind::Output)
         {
-            fromNode = endNode;
-            fromOutputIndex = endIndex;
-            toNode = startNode;
-            toInputIndex = startIndex;
+            outFromNode = endNode;
+            outFromOutputIndex = endIndex;
+            outToNode = startNode;
+            outToInputIndex = startIndex;
         }
         else
         {
@@ -649,10 +679,10 @@ namespace minEngine
 
         std::string rejectReason;
         if (!graph.CanConnectPins(
-                *fromNode,
-                fromOutputIndex,
-                *toNode,
-                toInputIndex,
+                *outFromNode,
+                outFromOutputIndex,
+                *outToNode,
+                outToInputIndex,
                 material.m_ShadingModel,
                 material.m_BlendMode,
                 &rejectReason))
@@ -664,13 +694,7 @@ namespace minEngine
             return false;
         }
 
-        return graph.ConnectPins(
-            *fromNode,
-            fromOutputIndex,
-            *toNode,
-            toInputIndex,
-            material.m_ShadingModel,
-            material.m_BlendMode);
+        return true;
     }
 
     void MaterialGraphWindow::HandleCreateLink(Material& material, MaterialEdGraph& graph)
@@ -688,16 +712,38 @@ namespace minEngine
         if (Ed::QueryNewLink(&startPinId, &endPinId))
         {
             MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
-        if (!materialEditor)
-        {
-            return;
-        }
-            if (TryConnectPins(startPinId, endPinId, material, graph))
+            if (materialEditor == nullptr || materialEditor->GetEditorContext() == nullptr)
             {
-                if (Ed::AcceptNewItem())
-                {
-                    materialEditor->NotifyGraphChanged();
-                }
+                Ed::RejectNewItem();
+                Ed::EndCreate();
+                return;
+            }
+
+            MaterialEdGraphNode* fromNode = nullptr;
+            MaterialEdGraphNode* toNode = nullptr;
+            int32_t fromOutputIndex = 0;
+            int32_t toInputIndex = 0;
+            if (ResolveConnectPins(
+                    startPinId,
+                    endPinId,
+                    material,
+                    graph,
+                    fromNode,
+                    fromOutputIndex,
+                    toNode,
+                    toInputIndex)
+                && fromNode != nullptr
+                && toNode != nullptr
+                && fromNode->GetNodeDef() != nullptr
+                && toNode->GetNodeDef() != nullptr
+                && Ed::AcceptNewItem())
+            {
+                materialEditor->SubmitConnectPins(
+                    *materialEditor->GetEditorContext(),
+                    fromNode->GetNodeDef()->GetGuid(),
+                    fromOutputIndex,
+                    toNode->GetNodeDef()->GetGuid(),
+                    toInputIndex);
             }
             else
             {
@@ -769,12 +815,18 @@ namespace minEngine
                 }
             }
 
-            if (resolved && toNode)
+            if (resolved && toNode && toNode->GetNodeDef() != nullptr && fromNode != nullptr
+                && fromNode->GetNodeDef() != nullptr
+                && materialEditor->GetEditorContext() != nullptr)
             {
-                graph.DisconnectInput(*toNode, toInputIndex);
                 if (Ed::AcceptDeletedItem())
                 {
-                    materialEditor->NotifyGraphChanged();
+                    materialEditor->SubmitDisconnectInput(
+                        *materialEditor->GetEditorContext(),
+                        toNode->GetNodeDef()->GetGuid(),
+                        toInputIndex,
+                        fromNode->GetNodeDef()->GetGuid(),
+                        fromOutputIndex);
                 }
             }
             else
@@ -787,28 +839,28 @@ namespace minEngine
         while (Ed::QueryDeletedNode(&deletedNodeId))
         {
             MaterialEdGraphNode* nodeToDelete = MaterialGraphIds::FromNodeId(deletedNodeId);
-            if (nodeToDelete == nullptr)
+            if (nodeToDelete == nullptr || nodeToDelete->GetNodeDef() == nullptr)
             {
                 Ed::RejectDeletedItem();
                 continue;
             }
 
             MaterialGraphNodeDef* nodeDef = nodeToDelete->GetNodeDef();
-            if (nodeDef != nullptr && nodeDef->IsMaterialOutputNode())
+            if (nodeDef->IsMaterialOutputNode())
             {
                 Ed::RejectDeletedItem();
                 continue;
             }
 
-            if (materialEditor->GetSelectedEdNode() == nodeToDelete)
+            if (materialEditor->GetEditorContext() == nullptr)
             {
-                materialEditor->ClearSelectedEdNode();
+                Ed::RejectDeletedItem();
+                continue;
             }
 
-            if (graph.RemoveNode(*nodeToDelete) && Ed::AcceptDeletedItem())
+            if (Ed::AcceptDeletedItem())
             {
-                MaterialGraphIds::Reset();
-                materialEditor->NotifyGraphChanged();
+                materialEditor->SubmitRemoveNode(*materialEditor->GetEditorContext(), nodeDef->GetGuid());
                 m_PushStoredPositionsToEditor = true;
             }
             else
@@ -820,8 +872,132 @@ namespace minEngine
         Ed::EndDelete();
     }
 
+    void MaterialGraphWindow::CommitNodePositionDragIfNeeded(MaterialEdGraph& graph)
+    {
+        MaterialEditor* materialEditor = GetMaterialEditor(&m_Context);
+        if (materialEditor == nullptr || materialEditor->GetEditorContext() == nullptr)
+        {
+            m_PositionDragCaptured = false;
+            m_PositionDragBefore.clear();
+            return;
+        }
+
+        if (!m_PositionDragCaptured || !ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+        {
+            return;
+        }
+
+        for (const std::pair<GUID, ImVec2>& before : m_PositionDragBefore)
+        {
+            MaterialEdGraphNode* node = nullptr;
+            for (const std::shared_ptr<MaterialEdGraphNode>& candidate : graph.m_Nodes)
+            {
+                if (candidate && candidate->GetGuid() == before.first)
+                {
+                    node = candidate.get();
+                    break;
+                }
+            }
+            if (node == nullptr || node->GetClass() == nullptr)
+            {
+                continue;
+            }
+
+            const Reflection::MEClass* nodeClass = node->GetClass();
+            const auto submitAxis = [&](const char* propertyPath, float beforeValue, float afterValue) {
+                if (beforeValue == afterValue)
+                {
+                    return;
+                }
+
+                const float currentValue =
+                    (std::strcmp(propertyPath, "m_EditorPosX") == 0) ? node->m_EditorPosX : node->m_EditorPosY;
+                if (std::strcmp(propertyPath, "m_EditorPosX") == 0)
+                {
+                    node->m_EditorPosX = beforeValue;
+                }
+                else
+                {
+                    node->m_EditorPosY = beforeValue;
+                }
+
+                std::vector<uint8_t> beforeBlob;
+                if (!EditorObjectPropertyApply::SerializeBlob(
+                        node->GetGuid(),
+                        nodeClass->GetName(),
+                        propertyPath,
+                        beforeBlob,
+                        EditorObjectPropertyApply::MakeDefaultOptions()))
+                {
+                    if (std::strcmp(propertyPath, "m_EditorPosX") == 0)
+                    {
+                        node->m_EditorPosX = currentValue;
+                    }
+                    else
+                    {
+                        node->m_EditorPosY = currentValue;
+                    }
+                    return;
+                }
+
+                if (std::strcmp(propertyPath, "m_EditorPosX") == 0)
+                {
+                    node->m_EditorPosX = afterValue;
+                }
+                else
+                {
+                    node->m_EditorPosY = afterValue;
+                }
+
+                std::vector<uint8_t> afterBlob;
+                if (!EditorObjectPropertyApply::SerializeBlob(
+                        node->GetGuid(),
+                        nodeClass->GetName(),
+                        propertyPath,
+                        afterBlob,
+                        EditorObjectPropertyApply::MakeDefaultOptions()))
+                {
+                    return;
+                }
+
+                materialEditor->SubmitSetObjectProperty(
+                    *materialEditor->GetEditorContext(),
+                    node->GetGuid(),
+                    nodeClass->GetName(),
+                    propertyPath,
+                    std::move(beforeBlob),
+                    std::move(afterBlob),
+                    false);
+            };
+
+            submitAxis("m_EditorPosX", before.second.x, node->m_EditorPosX);
+            submitAxis("m_EditorPosY", before.second.y, node->m_EditorPosY);
+        }
+
+        m_PositionDragCaptured = false;
+        m_PositionDragBefore.clear();
+    }
+
     void MaterialGraphWindow::SyncNodePositions(MaterialEdGraph& graph)
     {
+        // Capture prior positions before overwriting from the live node editor.
+        if (!m_PositionDragCaptured && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        {
+            m_PositionDragBefore.clear();
+            for (const std::shared_ptr<MaterialEdGraphNode>& node : graph.m_Nodes)
+            {
+                if (!node)
+                {
+                    continue;
+                }
+
+                m_PositionDragBefore.emplace_back(
+                    node->GetGuid(),
+                    ImVec2(node->m_EditorPosX, node->m_EditorPosY));
+            }
+            m_PositionDragCaptured = true;
+        }
+
         for (const std::shared_ptr<MaterialEdGraphNode>& node : graph.m_Nodes)
         {
             if (!node)
@@ -833,6 +1009,8 @@ namespace minEngine
             node->m_EditorPosX = position.x;
             node->m_EditorPosY = position.y;
         }
+
+        CommitNodePositionDragIfNeeded(graph);
     }
 
     std::string_view MaterialGraphWindow::GetOwnerModuleId() const

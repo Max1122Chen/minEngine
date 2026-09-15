@@ -42,6 +42,8 @@ namespace minEngine::DebugCommand
         std::string_view Description;
         DebugCommandScope Scope = DebugCommandScope::Both;
         DebugCommandFlags Flags = DebugCommandFlags::None;
+        /** Empty = global (always discoverable). Otherwise match EditorDocumentSession TypeId. */
+        std::string_view Domain;
         std::vector<DebugCommandArgDescriptor> Args;
         DebugCommandExecuteFn Execute;
     };

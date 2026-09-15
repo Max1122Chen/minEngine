@@ -57,7 +57,8 @@ namespace minEngine
         bool DrawProperty(
             const Reflection::MEProperty& property,
             void* propertyPtr,
-            MaterialEditor& /*materialEditor*/,
+            MaterialGraphNodeDef& nodeDef,
+            MaterialEditor& materialEditor,
             const PropertyEditSession& editSession)
         {
             if (ShouldSkipNodeDefProperty(property))
@@ -84,15 +85,38 @@ namespace minEngine
                     case Reflection::MEPropertyCategory::Primitive:
                     case Reflection::MEPropertyCategory::Object:
                         changed = PropertyValueWidget::Draw(property, propertyPtr, kFieldWidth);
+                        materialEditor.TryCapturePropertyUndoActivated(nodeDef, property.GetName());
+                        materialEditor.TryCommitPropertyUndoAfterEdit(nodeDef, property.GetName());
                         break;
                     case Reflection::MEPropertyCategory::ObjectPtr:
+                    {
+                        // Same contract as Scene Inspector: capture on activate, commit on
+                        // OnSelectionCommitted (after ApplySelection). Deactivate-without-change clears.
+                        ObjectPtrWidgetHooks hooks;
+                        hooks.OnComboActivated = [&materialEditor, &nodeDef, &property]() {
+                            materialEditor.StorePropertyUndoBefore(nodeDef, property.GetName());
+                        };
+                        hooks.OnComboDeactivatedAfterEdit = [&materialEditor, &nodeDef, &property]() {
+                            materialEditor.ClearPropertyUndoBefore(nodeDef, property.GetName());
+                        };
+                        hooks.OnSelectionCommitted =
+                            [&materialEditor, &nodeDef, &property](bool selectionChanged) {
+                                if (!selectionChanged)
+                                {
+                                    materialEditor.ClearPropertyUndoBefore(nodeDef, property.GetName());
+                                    return;
+                                }
+
+                                materialEditor.CommitStoredPropertyUndo(nodeDef, property.GetName());
+                            };
                         changed = ObjectPtrWidget::Draw(
                             property,
                             propertyPtr,
                             editSession,
-                            {},
+                            hooks,
                             kFieldWidth);
                         break;
+                    }
                     default:
                         ImGui::TextDisabled("-");
                         break;
@@ -129,7 +153,7 @@ namespace minEngine
                     return true;
                 }
 
-                changed |= DrawProperty(property, valuePtr, materialEditor, editSession);
+                changed |= DrawProperty(property, valuePtr, *nodeDef, materialEditor, editSession);
                 return true;
             });
 

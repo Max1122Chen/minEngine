@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/GUID/GUID.h"
+#include "UI/Property/PropertyEditTypes.h"
 
 #include <string>
 #include <vector>
@@ -41,5 +42,11 @@ namespace minEngine::DebugCommand
         Ok,
         NotFound,
         Ambiguous,
+    };
+
+    enum class PropertyWriteMode : uint8_t
+    {
+        Force,
+        RespectPolicy,
     };
 }

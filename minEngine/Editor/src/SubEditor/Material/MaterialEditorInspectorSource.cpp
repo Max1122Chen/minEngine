@@ -202,12 +202,14 @@ namespace minEngine
                             spawnX,
                             spawnY);
 
-                        MaterialEdGraphNode& newNode =
-                            graph->AddNode(entry.NodeDefClass, spawnX, spawnY);
-                        m_MaterialEditor.SetSelectedEdNode(&newNode);
-                        MaterialGraphIds::Reset();
-                        m_MaterialEditor.NotifyGraphChanged();
-                        m_MaterialEditor.InvalidateGraphCanvas(false);
+                        if (IEditorContext* editorContext = m_MaterialEditor.GetEditorContext())
+                        {
+                            m_MaterialEditor.SubmitAddNode(
+                                *editorContext,
+                                entry.NodeDefClass->GetName(),
+                                spawnX,
+                                spawnY);
+                        }
                     }
                     ImGui::PopID();
                 }

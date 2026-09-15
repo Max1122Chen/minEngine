@@ -77,10 +77,13 @@ namespace minEngine::DebugCommand
             return tokens.size() == 2 && !hasPartialToken;
         }
 
-        void AppendCommandCompletions(std::string_view prefix, std::vector<CompletionItem>& outItems)
+        void AppendCommandCompletions(
+            std::string_view prefix,
+            std::string_view sessionTypeId,
+            std::vector<CompletionItem>& outItems)
         {
             const std::vector<const DebugCommandRegistry::StoredCommand*> commands =
-                DebugCommandRegistry::Get().List(prefix, DebugCommandScope::Both);
+                DebugCommandRegistry::Get().List(prefix, DebugCommandScope::Both, sessionTypeId);
             for (const DebugCommandRegistry::StoredCommand* command : commands)
             {
                 if (command == nullptr)
@@ -97,12 +100,24 @@ namespace minEngine::DebugCommand
             }
         }
 
+        bool IsSceneSession(const DebugCommandContext& context)
+        {
+            return context.ParseContext.ActiveSessionTypeId.empty()
+                || context.ParseContext.ActiveSessionTypeId == "Scene";
+        }
+
         void AppendGameObjectCompletions(
             const DebugCommandContext& context,
             std::string_view prefix,
             std::vector<CompletionItem>& outItems)
         {
-            for (const std::string& objectName : DebugCommandSceneUtils::ListGameObjectNames(context.ActiveScene, prefix))
+            if (!IsSceneSession(context))
+            {
+                return;
+            }
+
+            for (const std::string& objectName :
+                 DebugCommandSceneUtils::ListGameObjectNames(context.ActiveScene, prefix))
             {
                 CompletionItem item;
                 item.Label = objectName;
@@ -121,11 +136,12 @@ namespace minEngine::DebugCommand
     {
         (void)cursorOffset;
 
+        const std::string_view sessionTypeId = context.ParseContext.ActiveSessionTypeId;
         std::vector<CompletionItem> items;
         const std::string_view trimmedLine = line;
         if (trimmedLine.empty())
         {
-            AppendCommandCompletions({}, items);
+            AppendCommandCompletions({}, sessionTypeId, items);
             return items;
         }
 
@@ -135,20 +151,29 @@ namespace minEngine::DebugCommand
 
         if (tokens.empty() || (tokens.size() == 1 && hasPartialToken))
         {
-            AppendCommandCompletions(currentToken, items);
+            AppendCommandCompletions(currentToken, sessionTypeId, items);
             return items;
         }
 
         const std::string& commandId = tokens.front();
-        if (commandId == "get" || commandId == "set" || commandId == "inspect")
+        if (commandId == "get" || commandId == "set" || commandId == "inspect" || commandId == "edit"
+            || commandId == "verify")
         {
-            if (commandId == "set" && IsSetValuePhase(tokens, hasPartialToken))
+            if (!IsSceneSession(context))
+            {
+                // Scene path grammar only for now; Material/AnimGraph use domain verbs.
+                return items;
+            }
+
+            if ((commandId == "set" || commandId == "edit" || commandId == "verify")
+                && IsSetValuePhase(tokens, hasPartialToken))
             {
                 const SetValuePhase valuePhase = DebugCommandSetValueValidation::ParseValuePhase(trimmedLine);
                 return DebugCommandSetValueValidation::CompleteValue(context, valuePhase);
             }
 
-            if (commandId != "set" && IsGetInspectPathComplete(tokens, hasPartialToken))
+            if (commandId != "set" && commandId != "edit" && commandId != "verify"
+                && IsGetInspectPathComplete(tokens, hasPartialToken))
             {
                 return items;
             }
@@ -237,6 +262,11 @@ namespace minEngine::DebugCommand
 
         if (commandId == "find")
         {
+            if (!IsSceneSession(context))
+            {
+                return items;
+            }
+
             if (currentToken.rfind("type=", 0) == 0)
             {
                 const std::string_view typePrefix = currentToken.substr(std::string_view("type=").size());
@@ -256,10 +286,46 @@ namespace minEngine::DebugCommand
             return items;
         }
 
-        if (commandId == "rename")
+        if (commandId == "rename" || commandId == "delete_go" || commandId == "reparent"
+            || commandId == "add_comp" || commandId == "remove_comp" || commandId == "rename_comp"
+            || commandId == "move_comp")
         {
-            if (tokens.size() >= 3 && !hasPartialToken)
+            if (!IsSceneSession(context))
             {
+                return items;
+            }
+
+            if (commandId == "add_comp" && tokens.size() >= 2 && !(tokens.size() == 2 && hasPartialToken))
+            {
+                const std::string_view typePrefix =
+                    (tokens.size() >= 3 && hasPartialToken) ? currentToken : std::string_view{};
+                for (const std::string& typeName : DebugCommandSceneUtils::ListComponentTypeNames(typePrefix))
+                {
+                    CompletionItem item;
+                    item.Label = typeName;
+                    item.InsertText = typeName;
+                    item.Description = "component type";
+                    item.Kind = CompletionKind::ComponentType;
+                    items.push_back(std::move(item));
+                }
+                return items;
+            }
+
+            if (tokens.size() >= 3 && !hasPartialToken && commandId != "rename_comp" && commandId != "move_comp"
+                && commandId != "reparent")
+            {
+                return items;
+            }
+
+            if (commandId == "reparent" && tokens.size() >= 2 && !(tokens.size() == 2 && hasPartialToken))
+            {
+                CompletionItem rootItem;
+                rootItem.Label = "root";
+                rootItem.InsertText = "root";
+                rootItem.Description = "scene root";
+                rootItem.Kind = CompletionKind::ObjectRef;
+                items.push_back(std::move(rootItem));
+                AppendGameObjectCompletions(context, currentToken, items);
                 return items;
             }
 
@@ -275,7 +341,7 @@ namespace minEngine::DebugCommand
             return items;
         }
 
-        AppendCommandCompletions(currentToken, items);
+        AppendCommandCompletions(currentToken, sessionTypeId, items);
         return items;
     }
 }

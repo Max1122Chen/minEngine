@@ -29,5 +29,8 @@ namespace minEngine::DebugCommand
 
         // When set, `set` delegates to editor undoable path instead of direct PropertyPath::SetValue.
         std::function<DebugCommandResult(std::string_view propertyPathText, std::string_view valueLiteral)> EditorSetValue;
+
+        // When set, `edit` uses the same undoable path but RespectPolicy (PropertyEditPolicy).
+        std::function<DebugCommandResult(std::string_view propertyPathText, std::string_view valueLiteral)> EditorEditValue;
     };
 }

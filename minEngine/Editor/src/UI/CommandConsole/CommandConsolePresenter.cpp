@@ -208,6 +208,13 @@ namespace minEngine
             editorSetContext.EditorContextOpaque = &context;
             return ExecuteEditorConsoleSetValue(editorSetContext, propertyPathText, valueLiteral);
         };
+        commandContext.EditorEditValue =
+            [&context, sceneContext](std::string_view propertyPathText, std::string_view valueLiteral) -> DebugCommand::DebugCommandResult
+        {
+            DebugCommand::DebugCommandContext editorEditContext = sceneContext;
+            editorEditContext.EditorContextOpaque = &context;
+            return ExecuteEditorConsoleEditValue(editorEditContext, propertyPathText, valueLiteral);
+        };
 
         return commandContext;
     }

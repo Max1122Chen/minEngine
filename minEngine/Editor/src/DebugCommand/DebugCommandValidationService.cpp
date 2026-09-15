@@ -30,7 +30,7 @@ namespace minEngine::DebugCommand
                 return 0;
             }
 
-            if (args.size() >= 3 && args[1] == "=")
+            if (args.size() >= 3 && DebugCommandSetValueValidation::IsOptionalAssignmentOperator(args[1]))
             {
                 return args.size() - 1;
             }
@@ -46,7 +46,7 @@ namespace minEngine::DebugCommand
             }
 
             size_t valueTokenIndex = 1;
-            if (args.size() > 2 && args[1] == "=")
+            if (args.size() > 2 && DebugCommandSetValueValidation::IsOptionalAssignmentOperator(args[1]))
             {
                 valueTokenIndex = 2;
             }
@@ -163,7 +163,9 @@ namespace minEngine::DebugCommand
 
         const size_t requiredCount = CountRequiredArgs(command.Args);
         const size_t providedCount =
-            command.Id == "set" ? EffectiveSetArgCount(args) : args.size();
+            (command.Id == "set" || command.Id == "edit" || command.Id == "verify")
+                ? EffectiveSetArgCount(args)
+                : args.size();
         if (providedCount < requiredCount)
         {
             DebugCommandValidationError error;
@@ -172,13 +174,13 @@ namespace minEngine::DebugCommand
             return error;
         }
 
-        if (command.Id == "set")
+        if (command.Id == "set" || command.Id == "edit" || command.Id == "verify")
         {
             const std::string_view valueLiteral = ExtractSetValueLiteral(args);
             if (valueLiteral.empty())
             {
                 DebugCommandValidationError error;
-                error.Message = "set requires a value literal";
+                error.Message = command.Id + " requires a value literal";
                 return error;
             }
         }

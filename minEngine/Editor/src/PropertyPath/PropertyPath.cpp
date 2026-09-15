@@ -17,6 +17,7 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "UI/Property/PropertyEditPolicy.h"
 
 #include <charconv>
 #include <cctype>
@@ -1048,7 +1049,9 @@ namespace minEngine::DebugCommand
         std::string_view literal,
         PropertySetTransaction& outTransaction,
         DebugCommandResult& outError,
-        const Serialization::SerializerOptions* serializerOptions) const
+        const Serialization::SerializerOptions* serializerOptions,
+        PropertyWriteMode writeMode,
+        minEngine::EditorPropertyEditContextKind editContextKind) const
     {
         outTransaction = {};
         outError = DebugCommandResult::MakeError("set failed");
@@ -1106,6 +1109,17 @@ namespace minEngine::DebugCommand
             return false;
         }
 
+        if (writeMode == PropertyWriteMode::RespectPolicy
+            && !PropertyEditPolicy::CanEdit(*leafProperty, editContextKind))
+        {
+            DebugCommandOutputBuilder builder;
+            builder.AddLine(
+                DebugCommandOutputKind::Error,
+                "Error: property is not editable under editor policy.");
+            outError = builder.BuildError("edit policy rejected");
+            return false;
+        }
+
         const Serialization::SerializerOptions options =
             serializerOptions != nullptr ? *serializerOptions : Serialization::SerializerOptions{};
 
@@ -1148,11 +1162,14 @@ namespace minEngine::DebugCommand
         return true;
     }
 
-    DebugCommandResult PropertyPath::SetValue(const DebugCommandContext& context, std::string_view literal) const
+    DebugCommandResult PropertyPath::SetValue(
+        const DebugCommandContext& context,
+        std::string_view literal,
+        PropertyWriteMode writeMode) const
     {
         PropertySetTransaction transaction;
         DebugCommandResult buildError;
-        if (!TryBuildSetTransaction(context, literal, transaction, buildError))
+        if (!TryBuildSetTransaction(context, literal, transaction, buildError, nullptr, writeMode))
         {
             return buildError;
         }

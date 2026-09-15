@@ -1,5 +1,7 @@
 #include "AnimationGraphEditor.h"
 
+#include "Commands/EditorObjectPropertyApply.h"
+#include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
 #include "Shell/EditorDockLayout.h"
 #include "Shell/EditorInputHub.h"
@@ -8,7 +10,12 @@
 #include "UI/EditorWindows/AnimGraphWindow.h"
 #include "UI/EditorWindows/AnimGraphParametersWindow.h"
 
+#include "imgui.h"
+
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Function/Animation/AnimationGraph.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
 
@@ -700,5 +707,221 @@ namespace minEngine
         NotifyGraphChanged();
         InvalidateGraphCanvas(false);
         return true;
+    }
+
+    bool AnimationGraphEditor::SerializeOwnedProperty(const std::string& propertyPath, std::vector<uint8_t>& outBlob) const
+    {
+        if (!m_Session.HasOpenGraph() || propertyPath.empty())
+        {
+            return false;
+        }
+
+        AnimationGraph& graph = *m_Session.GraphAsset;
+        const Reflection::MEClass* graphClass = graph.GetClass();
+        if (graphClass == nullptr)
+        {
+            return false;
+        }
+
+        return EditorObjectPropertyApply::SerializeBlob(
+            graph.GetGuid(),
+            graphClass->GetName(),
+            propertyPath,
+            outBlob,
+            EditorObjectPropertyApply::MakeDefaultOptions());
+    }
+
+    bool AnimationGraphEditor::ApplySetObjectProperty(const GUID& ownerGuid,
+                                                      const std::string& ownerClassName,
+                                                      const std::string& propertyPath,
+                                                      const std::vector<uint8_t>& valueBlob)
+    {
+        if (!EditorObjectPropertyApply::ApplyBlob(
+                ownerGuid,
+                ownerClassName,
+                propertyPath,
+                valueBlob,
+                EditorObjectPropertyApply::MakeDefaultOptions()))
+        {
+            return false;
+        }
+
+        NotifyGraphChanged();
+        InvalidateGraphCanvas(true);
+        return true;
+    }
+
+    void AnimationGraphEditor::SubmitSetObjectProperty(IEditorContext& context,
+                                                       const GUID& ownerGuid,
+                                                       const std::string& ownerClassName,
+                                                       const std::string& propertyPath,
+                                                       std::vector<uint8_t> beforeValue,
+                                                       std::vector<uint8_t> afterValue,
+                                                       bool applyOnFirstExecute,
+                                                       EditorSetObjectPropertySideEffects sideEffects)
+    {
+        if (beforeValue == afterValue)
+        {
+            return;
+        }
+
+        context.GetCommandStack().Execute(std::make_unique<EditorSetObjectPropertyCommand>(
+            *this,
+            ownerGuid,
+            ownerClassName,
+            propertyPath,
+            std::move(beforeValue),
+            std::move(afterValue),
+            applyOnFirstExecute,
+            std::move(sideEffects)));
+    }
+
+    bool AnimationGraphEditor::SubmitOwnedPropertyMutation(const std::string& propertyPath,
+                                                           const std::function<bool()>& mutate)
+    {
+        if (!mutate || !m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+
+        if (m_Context == nullptr)
+        {
+            return mutate();
+        }
+
+        AnimationGraph& graph = *m_Session.GraphAsset;
+        const Reflection::MEClass* graphClass = graph.GetClass();
+        if (graphClass == nullptr)
+        {
+            return mutate();
+        }
+
+        std::vector<uint8_t> beforeValue;
+        if (!SerializeOwnedProperty(propertyPath, beforeValue))
+        {
+            return mutate();
+        }
+
+        if (!mutate())
+        {
+            return false;
+        }
+
+        std::vector<uint8_t> afterValue;
+        if (!SerializeOwnedProperty(propertyPath, afterValue))
+        {
+            return true;
+        }
+
+        SubmitSetObjectProperty(
+            *m_Context,
+            graph.GetGuid(),
+            graphClass->GetName(),
+            propertyPath,
+            std::move(beforeValue),
+            std::move(afterValue),
+            false);
+        return true;
+    }
+
+    void AnimationGraphEditor::StoreOwnedPropertyUndoBefore(const std::string& propertyPath)
+    {
+        if (ImGui::GetItemID() == 0)
+        {
+            return;
+        }
+
+        PendingOwnedPropertyUndo pending;
+        pending.PropertyPath = propertyPath;
+        if (!SerializeOwnedProperty(propertyPath, pending.BeforeValue))
+        {
+            return;
+        }
+
+        m_PropertyUndoBeforeByEditId[static_cast<uint32_t>(ImGui::GetItemID())] = std::move(pending);
+    }
+
+    void AnimationGraphEditor::TryCaptureOwnedPropertyUndoActivated(const std::string& propertyPath)
+    {
+        if (!ImGui::IsItemActivated())
+        {
+            return;
+        }
+
+        StoreOwnedPropertyUndoBefore(propertyPath);
+    }
+
+    void AnimationGraphEditor::TryCommitOwnedPropertyUndoAfterEdit(const std::string& propertyPath)
+    {
+        if (!ImGui::IsItemDeactivatedAfterEdit() || ImGui::GetItemID() == 0 || m_Context == nullptr
+            || !m_Session.HasOpenGraph())
+        {
+            return;
+        }
+
+        const uint32_t editId = static_cast<uint32_t>(ImGui::GetItemID());
+        const auto pendingIter = m_PropertyUndoBeforeByEditId.find(editId);
+        if (pendingIter == m_PropertyUndoBeforeByEditId.end()
+            || pendingIter->second.PropertyPath != propertyPath)
+        {
+            return;
+        }
+
+        PendingOwnedPropertyUndo pending = std::move(pendingIter->second);
+        m_PropertyUndoBeforeByEditId.erase(pendingIter);
+
+        AnimationGraph& graph = *m_Session.GraphAsset;
+        const Reflection::MEClass* graphClass = graph.GetClass();
+        if (graphClass == nullptr)
+        {
+            return;
+        }
+
+        std::vector<uint8_t> afterValue;
+        if (!SerializeOwnedProperty(propertyPath, afterValue))
+        {
+            return;
+        }
+
+        SubmitSetObjectProperty(
+            *m_Context,
+            graph.GetGuid(),
+            graphClass->GetName(),
+            propertyPath,
+            std::move(pending.BeforeValue),
+            std::move(afterValue),
+            false);
+    }
+
+    void AnimationGraphEditor::CapturePositionDragBefore()
+    {
+        m_HasPositionDragBefore = SerializeOwnedProperty("m_StateMachine", m_PositionDragBeforeBlob);
+    }
+
+    void AnimationGraphEditor::CommitPositionDragIfNeeded()
+    {
+        if (!m_HasPositionDragBefore || m_Context == nullptr || !m_Session.HasOpenGraph()
+            || !ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+        {
+            return;
+        }
+
+        AnimationGraph& graph = *m_Session.GraphAsset;
+        const Reflection::MEClass* graphClass = graph.GetClass();
+        std::vector<uint8_t> afterValue;
+        if (graphClass != nullptr && SerializeOwnedProperty("m_StateMachine", afterValue))
+        {
+            SubmitSetObjectProperty(
+                *m_Context,
+                graph.GetGuid(),
+                graphClass->GetName(),
+                "m_StateMachine",
+                std::move(m_PositionDragBeforeBlob),
+                std::move(afterValue),
+                false);
+        }
+
+        m_HasPositionDragBefore = false;
+        m_PositionDragBeforeBlob.clear();
     }
 }

@@ -271,13 +271,13 @@ namespace minEngine
             itemWidth,
             hooks.OnComboActivated);
 
-        if (hooks.OnComboDeactivatedAfterEdit && ImGui::IsItemDeactivatedAfterEdit())
-        {
-            hooks.OnComboDeactivatedAfterEdit();
-        }
-
         if (!pickerResult.ValueChanged)
         {
+            // Combo closed without a new selection — drop any pending "before" capture.
+            if (hooks.OnComboDeactivatedAfterEdit && ImGui::IsItemDeactivatedAfterEdit())
+            {
+                hooks.OnComboDeactivatedAfterEdit();
+            }
             return false;
         }
 
@@ -301,6 +301,7 @@ namespace minEngine
             hooks.OnRenderStateDirty();
         }
 
+        // Commit after ApplySelection so after-blob matches the new reference (not the old one).
         if (hooks.OnSelectionCommitted)
         {
             hooks.OnSelectionCommitted(pickerResult.SelectionChanged);

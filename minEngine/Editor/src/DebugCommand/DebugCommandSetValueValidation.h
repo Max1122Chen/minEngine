@@ -92,5 +92,7 @@ namespace minEngine::DebugCommand
             double numericValue);
 
         static std::vector<CompletionItem> CompleteValue(const DebugCommandContext& context, const SetValuePhase& phase);
+
+        static bool IsOptionalAssignmentOperator(std::string_view token);
     };
 }

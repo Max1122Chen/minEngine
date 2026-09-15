@@ -3,10 +3,14 @@
 #include "Core.h"
 #include "AnimationGraphEditorSession.h"
 #include "AnimGraphInspectorSource.h"
+#include "Commands/EditorSetObjectPropertyTarget.h"
+#include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "Shell/EditorSubModule.h"
+#include "Runtime/Core/GUID/GUID.h"
 
 #include "Runtime/Resource/AssetMeta.h"
 
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -16,7 +20,7 @@ namespace minEngine
     class IEditorContext;
 
     /** Animation Graph editing SubModule: session, canvas, details, parameters. */
-    class AnimationGraphEditor : public EditorSubModule
+    class AnimationGraphEditor : public EditorSubModule, public EditorSetObjectPropertyTarget
     {
     public:
         static constexpr const char* kModuleId = "AnimationGraph";
@@ -88,10 +92,39 @@ namespace minEngine
         bool ReverseTransition();
         bool SetDefaultStateName(std::string_view stateName, std::string* outError = nullptr);
 
+        bool ApplySetObjectProperty(const GUID& ownerGuid,
+                                    const std::string& ownerClassName,
+                                    const std::string& propertyPath,
+                                    const std::vector<uint8_t>& valueBlob) override;
+        void SubmitSetObjectProperty(IEditorContext& context,
+                                     const GUID& ownerGuid,
+                                     const std::string& ownerClassName,
+                                     const std::string& propertyPath,
+                                     std::vector<uint8_t> beforeValue,
+                                     std::vector<uint8_t> afterValue,
+                                     bool applyOnFirstExecute = true,
+                                     EditorSetObjectPropertySideEffects sideEffects = {});
+
+        bool SubmitOwnedPropertyMutation(const std::string& propertyPath, const std::function<bool()>& mutate);
+        void TryCaptureOwnedPropertyUndoActivated(const std::string& propertyPath);
+        void TryCommitOwnedPropertyUndoAfterEdit(const std::string& propertyPath);
+        void StoreOwnedPropertyUndoBefore(const std::string& propertyPath);
+
+        void CapturePositionDragBefore();
+        bool HasPositionDragBefore() const { return m_HasPositionDragBefore; }
+        void CommitPositionDragIfNeeded();
+
     private:
         void OnEnterMode();
         void OnExitMode();
         void EnsureDefaultSession();
+        bool SerializeOwnedProperty(const std::string& propertyPath, std::vector<uint8_t>& outBlob) const;
+
+        struct PendingOwnedPropertyUndo
+        {
+            std::string PropertyPath;
+            std::vector<uint8_t> BeforeValue;
+        };
 
         AnimGraphInspectorSource m_InspectorSource;
         IEditorContext* m_Context = nullptr;
@@ -101,5 +134,8 @@ namespace minEngine
         int m_SelectedGraphIndex = -1;
         bool m_GraphCanvasInvalidated = false;
         bool m_GraphCanvasRebindPending = false;
+        std::unordered_map<uint32_t, PendingOwnedPropertyUndo> m_PropertyUndoBeforeByEditId;
+        bool m_HasPositionDragBefore = false;
+        std::vector<uint8_t> m_PositionDragBeforeBlob;
     };
 }

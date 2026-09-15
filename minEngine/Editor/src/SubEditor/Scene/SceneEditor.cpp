@@ -10,6 +10,7 @@
 #include "Commands/Scene/EditorRenameGameObjectCommand.h"
 #include "Commands/Scene/EditorReparentGameObjectCommand.h"
 #include "Commands/Scene/EditorSetGameObjectTransformCommand.h"
+#include "Commands/EditorObjectPropertyApply.h"
 #include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
 #include "Services/ComponentTypeUiCatalog.h"
@@ -1080,52 +1081,23 @@ namespace minEngine
                                              const std::string& propertyPath,
                                              const std::vector<uint8_t>& valueBlob)
     {
+        if (!EditorObjectPropertyApply::ApplyBlob(
+                ownerGuid,
+                ownerClassName,
+                propertyPath,
+                valueBlob,
+                GetPropertyCommandSerializerOptions()))
+        {
+            return false;
+        }
+
         std::shared_ptr<MEObject> ownerObject = ObjectManager::Get().FindObject(ownerGuid);
         if (!ownerObject)
         {
-            ME_LOG(LogEditor, Warn, 
-                "ApplySetObjectProperty: owner not found (guid='{}', property='{}').",
-                ownerGuid.ToString(),
-                propertyPath);
             return false;
         }
 
         const Reflection::MEClass* ownerClass = Reflection::ReflectionSystem::Get().FindClass(ownerClassName);
-        if (ownerClass == nullptr)
-        {
-            ME_LOG(LogEditor, Warn, 
-                "ApplySetObjectProperty: class '{}' not found (property='{}').",
-                ownerClassName,
-                propertyPath);
-            return false;
-        }
-
-        std::vector<Serialization::PendingObjectRef> unresolvedRefs;
-        const Serialization::SerializeResult result = Serialization::Serializer::DeserializePropertyByPathFromBuffer(
-            ownerObject.get(),
-            ownerClass,
-            propertyPath,
-            valueBlob,
-            unresolvedRefs,
-            GetPropertyCommandSerializerOptions());
-        if (!result.ok)
-        {
-            ME_LOG(LogEditor, Warn, 
-                "ApplySetObjectProperty failed: {} (path='{}').",
-                result.message,
-                result.fieldPath);
-            return false;
-        }
-
-        if (!unresolvedRefs.empty())
-        {
-            const Serialization::SerializeResult resolveResult =
-                Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
-            if (!resolveResult.ok)
-            {
-                ME_LOG(LogEditor, Warn, "ApplySetObjectProperty: unresolved object references remain.");
-            }
-        }
 
         if (ownerObject->IsA(SceneComponent::StaticClass()))
         {
@@ -1148,7 +1120,7 @@ namespace minEngine
 
         {
             const Reflection::MEProperty* leafProperty = nullptr;
-            if (propertyPath.find('.') == std::string::npos)
+            if (ownerClass != nullptr && propertyPath.find('.') == std::string::npos)
             {
                 Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
                     ownerClass,

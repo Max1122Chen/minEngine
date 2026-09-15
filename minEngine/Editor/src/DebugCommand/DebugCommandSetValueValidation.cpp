@@ -81,7 +81,8 @@ namespace minEngine::DebugCommand
             }
 
             size_t valueTokenIndex = 2;
-            if (tokens.size() > valueTokenIndex && tokens[valueTokenIndex] == "=")
+            if (tokens.size() > valueTokenIndex
+                && DebugCommandSetValueValidation::IsOptionalAssignmentOperator(tokens[valueTokenIndex]))
             {
                 ++valueTokenIndex;
             }
@@ -410,7 +411,7 @@ namespace minEngine::DebugCommand
     {
         SetValuePhase phase;
         const std::vector<std::string> tokens = TokenizeLine(line);
-        if (tokens.empty() || tokens.front() != "set")
+        if (tokens.empty() || (tokens.front() != "set" && tokens.front() != "edit" && tokens.front() != "verify"))
         {
             return phase;
         }
@@ -753,5 +754,10 @@ namespace minEngine::DebugCommand
         }
 
         return items;
+    }
+
+    bool DebugCommandSetValueValidation::IsOptionalAssignmentOperator(std::string_view token)
+    {
+        return token == "=" || token == "==";
     }
 }

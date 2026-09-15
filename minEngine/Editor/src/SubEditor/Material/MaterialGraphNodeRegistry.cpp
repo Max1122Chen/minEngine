@@ -1,5 +1,6 @@
 #include "MaterialGraphNodeRegistry.h"
 
+#include "MaterialEditor.h"
 #include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Function/Render/Material/MaterialEdGraphNode.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
@@ -180,18 +181,30 @@ namespace minEngine
         return style;
     }
 
-    bool MaterialGraphNodeRegistry::DrawConstant(MaterialGraphNodeDef_Constant* constant)
+    bool MaterialGraphNodeRegistry::DrawConstant(MaterialGraphNodeDef_Constant* constant, MaterialEditor& materialEditor)
     {
         if (!constant)
         {
             return false;
         }
 
+        float value = constant->Value;
         ImGui::SetNextItemWidth(kNodeContentWidth);
-        return ImGui::DragFloat("##Value", &constant->Value, 0.01f, 0.0f, 0.0f, "%.3f");
+        const bool changed = ImGui::DragFloat("##Value", &value, 0.01f, 0.0f, 0.0f, "%.3f");
+        // Capture before assigning so the undo blob still sees the prior value.
+        if (ImGui::IsItemActivated())
+        {
+            materialEditor.StorePropertyUndoBefore(*constant, "Value");
+        }
+        if (changed)
+        {
+            constant->Value = value;
+        }
+        materialEditor.TryCommitPropertyUndoAfterEdit(*constant, "Value");
+        return changed;
     }
 
-    bool MaterialGraphNodeRegistry::DrawConstant3(MaterialGraphNodeDef_Constant3* constant3)
+    bool MaterialGraphNodeRegistry::DrawConstant3(MaterialGraphNodeDef_Constant3* constant3, MaterialEditor& materialEditor)
     {
         if (!constant3)
         {
@@ -200,26 +213,44 @@ namespace minEngine
 
         float rgb[3] = {constant3->R, constant3->G, constant3->B};
         ImGui::SetNextItemWidth(kNodeContentWidth);
-        if (ImGui::DragFloat3("##RGB", rgb, 0.01f, 0.0f, 0.0f, "%.3f"))
+        const bool changed = ImGui::DragFloat3("##RGB", rgb, 0.01f, 0.0f, 0.0f, "%.3f");
+        if (ImGui::IsItemActivated())
+        {
+            materialEditor.StorePropertyUndoBefore(*constant3, "R");
+            materialEditor.StorePropertyUndoBefore(*constant3, "G");
+            materialEditor.StorePropertyUndoBefore(*constant3, "B");
+        }
+        if (changed)
         {
             constant3->R = rgb[0];
             constant3->G = rgb[1];
             constant3->B = rgb[2];
-            return true;
         }
-
-        return false;
+        materialEditor.TryCommitAllPropertyUndoAfterEdit(*constant3);
+        return changed;
     }
 
-    bool MaterialGraphNodeRegistry::DrawScalarParameter(MaterialGraphNodeDef_ScalarParameter* scalar)
+    bool MaterialGraphNodeRegistry::DrawScalarParameter(MaterialGraphNodeDef_ScalarParameter* scalar,
+                                                        MaterialEditor& materialEditor)
     {
         if (!scalar)
         {
             return false;
         }
 
+        float defaultValue = scalar->DefaultValue;
         ImGui::SetNextItemWidth(kNodeContentWidth);
-        return ImGui::DragFloat("##Default", &scalar->DefaultValue, 0.01f, 0.0f, 0.0f, "%.3f");
+        const bool changed = ImGui::DragFloat("##Default", &defaultValue, 0.01f, 0.0f, 0.0f, "%.3f");
+        if (ImGui::IsItemActivated())
+        {
+            materialEditor.StorePropertyUndoBefore(*scalar, "DefaultValue");
+        }
+        if (changed)
+        {
+            scalar->DefaultValue = defaultValue;
+        }
+        materialEditor.TryCommitPropertyUndoAfterEdit(*scalar, "DefaultValue");
+        return changed;
     }
 
     bool MaterialGraphNodeRegistry::DrawTextureObject(MaterialGraphNodeDef_TextureObject* textureObject)
@@ -246,7 +277,7 @@ namespace minEngine
         return false;
     }
 
-    bool MaterialGraphNodeRegistry::DrawNode(MaterialEdGraphNode& node)
+    bool MaterialGraphNodeRegistry::DrawNode(MaterialEdGraphNode& node, MaterialEditor& materialEditor)
     {
         MaterialGraphNodeDef* nodeDef = node.GetNodeDef();
         if (!nodeDef || !nodeDef->GetClass())
@@ -257,17 +288,17 @@ namespace minEngine
         const Reflection::MEClass* nodeClass = nodeDef->GetClass();
         if (nodeClass->IsA(MaterialGraphNodeDef_Constant::StaticClass()))
         {
-            return DrawConstant(static_cast<MaterialGraphNodeDef_Constant*>(nodeDef));
+            return DrawConstant(static_cast<MaterialGraphNodeDef_Constant*>(nodeDef), materialEditor);
         }
 
         if (nodeClass->IsA(MaterialGraphNodeDef_Constant3::StaticClass()))
         {
-            return DrawConstant3(static_cast<MaterialGraphNodeDef_Constant3*>(nodeDef));
+            return DrawConstant3(static_cast<MaterialGraphNodeDef_Constant3*>(nodeDef), materialEditor);
         }
 
         if (nodeClass->IsA(MaterialGraphNodeDef_ScalarParameter::StaticClass()))
         {
-            return DrawScalarParameter(static_cast<MaterialGraphNodeDef_ScalarParameter*>(nodeDef));
+            return DrawScalarParameter(static_cast<MaterialGraphNodeDef_ScalarParameter*>(nodeDef), materialEditor);
         }
 
         if (nodeClass->IsA(MaterialGraphNodeDef_TextureObject::StaticClass()))

@@ -41,13 +41,19 @@ namespace minEngine::DebugCommand
         bool Resolve(const DebugCommandContext& context, ResolvedPropertyTarget& outTarget) const;
 
         DebugCommandResult GetValue(const DebugCommandContext& context) const;
-        DebugCommandResult SetValue(const DebugCommandContext& context, std::string_view literal) const;
+        DebugCommandResult SetValue(
+            const DebugCommandContext& context,
+            std::string_view literal,
+            PropertyWriteMode writeMode = PropertyWriteMode::Force) const;
         bool TryBuildSetTransaction(
             const DebugCommandContext& context,
             std::string_view literal,
             PropertySetTransaction& outTransaction,
             DebugCommandResult& outError,
-            const Serialization::SerializerOptions* serializerOptions = nullptr) const;
+            const Serialization::SerializerOptions* serializerOptions = nullptr,
+            PropertyWriteMode writeMode = PropertyWriteMode::Force,
+            minEngine::EditorPropertyEditContextKind editContextKind =
+                minEngine::EditorPropertyEditContextKind::SceneInstance) const;
         DebugCommandResult BuildSetValueSuccessResult(const DebugCommandContext& context) const;
         DebugCommandResult Inspect(const DebugCommandContext& context) const;
 
