@@ -28,6 +28,10 @@ namespace minEngine
         {
             return ICON_FA_MAP;
         }
+        if (assetType == "Prefab")
+        {
+            return ICON_FA_CUBES;
+        }
         if (assetType == "Font")
         {
             return ICON_FA_FONT;
@@ -44,7 +48,8 @@ namespace minEngine
     {
         if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Font"
             || assetType == "EnvironmentMap" || assetType == "AnimationGraph"
-            || assetType == "AnimationClip" || assetType == "Skeleton" || assetType == "SkeletalMesh")
+            || assetType == "AnimationClip" || assetType == "Skeleton" || assetType == "SkeletalMesh"
+            || assetType == "Prefab")
         {
             return FontStyle::Solid;
         }

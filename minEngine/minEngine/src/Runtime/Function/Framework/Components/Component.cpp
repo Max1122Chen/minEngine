@@ -3,6 +3,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Render/RenderScene.h"
 
 namespace minEngine
 {
@@ -19,13 +20,39 @@ namespace minEngine
 
     bool Component::CanApplyActivation() const
     {
+        return GetOwningScene() != nullptr;
+    }
+
+    Scene* Component::GetOwningScene() const
+    {
         if (m_Owner == nullptr)
         {
-            return false;
+            return nullptr;
         }
 
-        const MEObject* outer = m_Owner->GetOuter();
-        return outer != nullptr && outer->IsA(Scene::StaticClass());
+        return dynamic_cast<Scene*>(const_cast<MEObject*>(m_Owner->GetOuter()));
+    }
+
+    RenderScene* Component::GetOwningRenderScene() const
+    {
+        Scene* scene = GetOwningScene();
+        if (scene == nullptr)
+        {
+            return nullptr;
+        }
+
+        return scene->GetRenderScene();
+    }
+
+    RenderScene* Component::GetOwningRenderSceneIfPresent() const
+    {
+        Scene* scene = GetOwningScene();
+        if (scene == nullptr)
+        {
+            return nullptr;
+        }
+
+        return scene->GetRenderSceneShared().get();
     }
 
     void Component::SetActive(bool active)

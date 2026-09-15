@@ -1,5 +1,5 @@
 #include "LightComponent.h"
-#include "Runtime/Function/Framework/Scene/SceneManager.h"
+
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/LightSceneProxies/LightSceneProxy.h"
 
@@ -19,8 +19,7 @@ namespace minEngine
         }
 
         bool removedFromScene = false;
-        RenderScene* renderScene = SceneManager::Get().GetRenderScene();
-        if (renderScene)
+        if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
             renderScene->RemoveLight(this);
             removedFromScene = true;
@@ -109,7 +108,10 @@ namespace minEngine
             m_SpecularFactor = 0.0f;
         }
 
-        SceneManager::Get().GetRenderScene()->UpdateLight(this);
+        if (RenderScene* renderScene = GetOwningRenderScene())
+        {
+            renderScene->UpdateLight(this);
+        }
         m_bRenderStateDirty = false;
     }
 
@@ -127,14 +129,10 @@ namespace minEngine
         }
 
         bool removedFromScene = false;
-        if (SceneManager::HasInstance())
+        if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
-            RenderScene* renderScene = SceneManager::Get().GetRenderScene();
-            if (renderScene)
-            {
-                renderScene->RemoveLight(this);
-                removedFromScene = true;
-            }
+            renderScene->RemoveLight(this);
+            removedFromScene = true;
         }
 
         if (!removedFromScene)

@@ -4,6 +4,8 @@
 #include "Access/SceneManagerTestAccess.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Object/ObjectCloneContext.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -102,6 +104,35 @@ namespace minEngine
         CHECK(targetScene->GetPrefabInstances().front().Overrides.empty());
     }
 
+    TEST_CASE("prefab scene instantiate convenience [smoke]")
+    {
+        PrefabTestScope scope;
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-scene-instantiate");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("ConvRoot");
+        root->AddComponent<SceneComponent>();
+
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
+        REQUIRE(static_cast<bool>(prefab));
+
+        const std::shared_ptr<Scene> targetScene = SceneManager::Get().CreateNewScene("prefab-scene-target");
+        REQUIRE(static_cast<bool>(targetScene));
+        targetScene->SetSceneType(ESceneType::Editor);
+
+        PrefabInstantiateParams params;
+        params.bRegisterPrefabInstance = true;
+        std::string error;
+        const std::shared_ptr<GameObject> instanceRoot = targetScene->Instantiate(*prefab, params, &error);
+        REQUIRE(static_cast<bool>(instanceRoot));
+        CHECK(error.empty());
+        CHECK(PrefabUtility::FindInstanceRecord(*targetScene, instanceRoot->GetGuid()) != nullptr);
+        CHECK(instanceRoot->GetOuter() == targetScene.get());
+    }
+
     TEST_CASE("prefab disk roundtrip [smoke]")
     {
         PrefabTestScope scope;
@@ -173,5 +204,46 @@ namespace minEngine
         REQUIRE(static_cast<bool>(pieScene));
         CHECK(pieScene->GetPrefabInstances().empty());
         CHECK(!pieScene->GetAllGameObjects().empty());
+    }
+
+    TEST_CASE("prefab stage writeback preserves template guids [smoke]")
+    {
+        PrefabTestScope scope;
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-writeback");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("WBRoot");
+        root->AddComponent<SceneComponent>()->SetPosition(Vector3(1.0f, 0.0f, 0.0f));
+
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
+        REQUIRE(static_cast<bool>(prefab));
+        const GUID templateRootGuid = prefab->GetRootGuid();
+        REQUIRE_FALSE(templateRootGuid.IsZero());
+
+        std::shared_ptr<Scene> stage = NewObject<Scene>("Stage");
+        stage->SetSceneType(ESceneType::Editor);
+        stage->EnsureRenderScene();
+
+        PrefabInstantiateParams params;
+        params.bRegisterPrefabInstance = false;
+        ObjectCloneContext editMap;
+        std::shared_ptr<GameObject> stageRoot =
+            PrefabUtility::Instantiate(*prefab, *stage, params, &editMap, nullptr);
+        REQUIRE(static_cast<bool>(stageRoot));
+        stageRoot->Rename("EditedRoot");
+        REQUIRE(stageRoot->GetRootComponent() != nullptr);
+        stageRoot->GetRootComponent()->SetPosition(Vector3(9.0f, 8.0f, 7.0f));
+
+        REQUIRE(PrefabUtility::WriteStageTreeToPrefab(*stage, *prefab, editMap, nullptr));
+        CHECK(prefab->GetRootGuid() == templateRootGuid);
+        GameObject* writtenRoot = prefab->GetRootGameObject();
+        REQUIRE(writtenRoot != nullptr);
+        CHECK(writtenRoot->GetGuid() == templateRootGuid);
+        CHECK(writtenRoot->GetName() == "EditedRoot");
+        REQUIRE(writtenRoot->GetRootComponent() != nullptr);
+        CHECK(writtenRoot->GetRootComponent()->GetPosition().x == doctest::Approx(9.0f));
     }
 }

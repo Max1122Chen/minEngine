@@ -10,6 +10,7 @@
 #include "Runtime/Function/UI/UISystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Shell/IEditorContext.h"
+#include "SubEditor/Prefab/PrefabEditConstraints.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "Shell/EditorContextHelpers.h"
 
@@ -79,6 +80,19 @@ namespace minEngine
         if (m_State == PlayState::Playing || m_State == PlayState::Stopping)
         {
             return false;
+        }
+
+        if (m_HostContext != nullptr)
+        {
+            if (SceneEditor* sceneEditor = GetSceneEditor(m_HostContext))
+            {
+                std::string error;
+                if (!PrefabEditConstraints::AllowEnterPlay(*sceneEditor, &error))
+                {
+                    ME_LOG(LogEditor, Warn, "{}", error);
+                    return false;
+                }
+            }
         }
 
         if (!SceneManager::HasInstance())

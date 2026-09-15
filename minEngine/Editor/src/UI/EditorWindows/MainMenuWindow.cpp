@@ -77,7 +77,8 @@ namespace minEngine
 
             SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
             const bool hasScene = sceneEditor && sceneEditor->GetActiveScene();
-            if (ImGui::MenuItem("Save", "Ctrl+S", false, hasScene))
+            const bool editingPrefab = sceneEditor && sceneEditor->IsEditingPrefabStage();
+            if (ImGui::MenuItem(editingPrefab ? "Save Prefab" : "Save", "Ctrl+S", false, hasScene))
             {
                 if (sceneEditor)
                 {
@@ -85,7 +86,7 @@ namespace minEngine
                 }
             }
 
-            if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, hasScene))
+            if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, hasScene && !editingPrefab))
             {
                 if (sceneEditor)
                 {

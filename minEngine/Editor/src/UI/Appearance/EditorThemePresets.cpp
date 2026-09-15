@@ -163,6 +163,7 @@ namespace minEngine
             colors.HierarchySelectionHeaderHovered = FromDisplayRgb(0.27f, 0.42f, 0.61f, 0.85f);
             colors.HierarchySelectionHeaderActive = FromDisplayRgb(0.21f, 0.33f, 0.49f, 0.95f);
             colors.HierarchySelectionBar = FromDisplayRgb(0.40f, 0.698f, 1.0f);
+            colors.HierarchyPrefabInstance = FromDisplayRgb(0.35f, 0.78f, 0.92f);
             return colors;
         }
 
@@ -184,6 +185,7 @@ namespace minEngine
             colors.HierarchySelectionHeaderHovered = FromDisplayRgb(0.27f, 0.42f, 0.61f, 0.85f);
             colors.HierarchySelectionHeaderActive = FromDisplayRgb(0.21f, 0.33f, 0.49f, 0.95f);
             colors.HierarchySelectionBar = FromDisplayRgb(0.40f, 0.698f, 1.0f);
+            colors.HierarchyPrefabInstance = FromDisplayRgb(0.05f, 0.45f, 0.72f);
             return colors;
         }
     }

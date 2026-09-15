@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-15（CORE-F24 Done；Prefab 轨下一刀 ED-F16）  
+Last updated: 2026-09-15（CORE-F25 Done）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -49,6 +49,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F22` | CPU Profiler Harness（Session/Phase/Frame · Scope · Trace 导出 · 查询 API） | **Done** | — | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) · `feat/core` · **不含** Editor UI |
 | `CORE-F23` | Prefab 资产 + Create/Instantiate（单根 GO 树；空 PrefabInstance 链接） | **Done** | — | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) · `feat/prefab` · 类名 `Prefab`（非 PrefabAsset） |
 | `CORE-F24` | Prefab 受限 Override + default 传播 | **Done** | — | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) · `feat/prefab` · `test prefab-overrides` |
+| `CORE-F25` | 组件从 owning Scene 解析 RenderScene（禁 SceneManager 隐式当前世界） | **Done** | — | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) · Prefab Stage 可视隔离硬前置 |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
@@ -77,7 +78,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F13` | 显式目标编辑：去「先 Select 再改」；Editor=实现者、Command=调用者 | **Done** | — | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) · AddComponent 显式 API |
 | `ED-F14` | 各 SubEditor 命令面完备（按 Session/资产类型补齐 EditorCommand） | **Done** | — | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) · W1–W4 + Session 域补全 / ObjectPtr Undo |
 | `ED-F15` | Graph / CB / Inspector UX 小抛光（Anim 导航；Material chrome；CB 文件夹；组件 icon） | **Done** | — | [Design](./Editor/ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md) · W1–W4 + Material 右键/UE-ish |
-| `ED-F16` | Prefab 文档 Mode（Stage Scene + 复用 SceneEditor；单 Viewport） | **Draft** | — | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) · 依赖 F23；并排预览 / 隔离 RT Out |
+| `ED-F16` | Prefab 文档 Mode（Stage Scene + 复用 SceneEditor；单 Viewport）+ Hierarchy Create/Instantiate + `Scene::Instantiate` | **Done** | — | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) · `feat/prefab` · Amendment A |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ASSET-F01` | External Import Pipeline（Assimp → 引擎资产；MVP） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S04 / `.memesh` Deferred |
@@ -131,7 +132,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | **F05** | F04 Done（TestAccess） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
-| `CORE` | **F25** | F22 Profiler Done；**F23/F24** Prefab Draft（`feat/prefab`）；F19 Lua Call In Progress；F21 Planned |
+| `CORE` | **F26** | F25 Owning-Scene RenderScene **Review**；F23/F24/ED-F16 Prefab Done（`feat/prefab`）；F19 Lua Call In Progress；F21 Planned |
 | `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F17** | F12–**F15 Done**；**F16** Prefab Editor Draft；**F11** In Progress（W3）；F10 占位 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |

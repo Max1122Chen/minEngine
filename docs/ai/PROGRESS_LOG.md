@@ -1,6 +1,56 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（feat/prefab: CORE-F24 Done）
+Last updated: 2026-09-15（CORE-F25 Done）
+
+### 2026-09-15 - CORE-F25 Done：owning-Scene RenderScene
+- **API：** `Component::GetOwningScene` / `GetOwningRenderScene`（Ensure）/ `GetOwningRenderSceneIfPresent`（Remove/dtor）。
+- **迁移：** Primitive / Light / SkyBox / Widget 不再调用 `SceneManager::GetRenderScene`。
+- **验证：** `Editor`+`minEngineTests` 构建；`test scene-clone` / `test prefab` PASS；Components grep 清零。
+- **手验待确认：** Prefab Stage 非蓝底、Level 无串；PIE 进出。
+- **Next：** 手验通过后与 ED-F16 一并准备 commit。
+
+### 2026-09-15 - CORE-F25 Design Review：owning-Scene RenderScene
+- **动机：** Prefab Stage 串 Level / 蓝底；根因是组件经 `SceneManager::GetRenderScene()` 注册。
+- **文档：** [CORE-F25](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) Status **Review**；Registry/ACTIVE_WORK 已挂。
+- **Next：** 审批后 S01–S04；相机隔离 Out。
+
+### 2026-09-15 - 登记 BUG-ASSET-001；补齐 Prefab TryOpenAsset
+- **BUG-ASSET-001：** Create Prefab 写盘未挂 MutationPass + watcher 目录事件 threshold=1 → 全盘 `ScanAssets`；大量 `Asset registered/updated` 即全扫副作用（**Open，稍后修**）。
+- **Editor：** `TryOpenAsset` 放行 Prefab（unsaved → Stage Save）；不另开 BUG-EDITOR。
+- **处置：** 撤掉误拟的 Editor bug 登记。
+
+### 2026-09-15 - ED-F16 Amendment A Done：Hierarchy Prefab 工作流
+- **S07：** `Scene::Instantiate` → `PrefabUtility::Instantiate`；`test prefab` convenience 冒烟。
+- **S08/S09：** ContextMenu `Create Prefab…` / `Instantiate Prefab…` / as Child；Level only（Stage/Play 隐藏）；Save/Open 对话框；Instantiate Undo=删实例根；删 GO 时 prune `PrefabInstanceRecord`。
+- **S10：** Hierarchy 实例青/蓝字 + `ICON_FA_CUBES` 根图标；`HierarchyPrefabInstance` semantic color。
+- **验证：** `Editor` 构建；`minEngineTests.exe test prefab` **8/8 PASS**。
+- **Next：** 准备 ED-F16（含 Amendment A + Stage）commit。
+
+### 2026-09-15 - ED-F16 Amendment A 设计 Review（待批）
+- **缺口：** Hierarchy 无 Create Prefab / Instantiate Prefab；无法在编辑器内产出资产；缺实例视觉区分；希望 `Scene::Instantiate`。
+- **文档：** [ED-F16](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) §3.10 + S07–S11；Status **Review**；**未实现**。
+- **Next：** 维护者审批后再编码。
+
+### 2026-09-15 - ED-F16 Done：Prefab 文档 Mode
+- **S01–S02：** DocumentType Prefab；Stage Instantiate；InspectingScene 绑定 Scene UI。
+- **S03：** `WriteStageTreeToPrefab` + Save + Propagate；`test prefab` writeback。
+- **S04：** PrefabEditConstraints；禁 SaveAs/第二顶层/删根/PIE；`EnterPlay` 硬拦。
+- **S05：** Dirty=Stage flag；Undo=Host per-session CommandStack；Save→Propagate。
+- **验证：** `Editor` 构建；`test prefab` 7/7；`test prefab-overrides` 3/3。
+- **Next：** 准备 ED-F16 commit → `feat/prefab` 合入评估。
+
+### 2026-09-15 - ED-F16 S03/S04：Save 回写 + EditConstraints
+- **S03：** `PrefabUtility::WriteStageTreeToPrefab`（策略 B Guid 保持）；`PrefabStageController::SaveActive` + `PropagateDefaultsToOpenScenes`；单测 writeback。
+- **S04：** `PrefabEditConstraints` — 禁第二顶层 / 删根 / 解挂成第二根 / SaveAs Scene / PIE；菜单 Save Prefab；Play 按钮禁用。
+- **验证：** `test prefab` / `test prefab-overrides`；`Editor` 构建通过。
+- **Next：** S05 Dirty/Undo 隔离 + DoD。
+
+### 2026-09-15 - ED-F16 S01/S02：Prefab Document + Stage 绑定
+- **实现：** `PrefabStageController` + `PrefabEditorStage`；DocumentType `Prefab`（ModuleId=Scene 复用 Hierarchy/Viewport）；`SceneEditor::Enter/ExitPrefabStage`；CB 双击 `.meprefab` → OpenOrFocus。
+- **Instantiate：** `PrefabUtility::Instantiate(..., ObjectCloneContext*)` 供 Stage Save 映射（策略 B）。
+- **未做：** S03 Save 回写 Guid；S04 禁第二顶层 / SaveAs Scene / PIE；S05 Undo 隔离。
+- **验证：** `cmake --build … --target Editor` 通过。
+- **Next：** S03 Save 回写 + Propagate。
 
 ### 2026-09-15 - CORE-F24 Done：Prefab Overrides + Propagation
 - **实现：** `PrefabPropertyPath`（`bin:`+hex 载荷）；`PrefabOverrideUtility`（TryRecord / RevertProperty / RevertInstance / PropagateDefaults*）；`PrefabEditValidator`（禁删根等）；`EPrefabOverrideKind` + 完整 `PrefabPropertyOverride`。

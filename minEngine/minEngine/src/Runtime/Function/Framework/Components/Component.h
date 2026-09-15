@@ -5,6 +5,8 @@
 namespace minEngine
 {
     class GameObject;
+    class Scene;
+    class RenderScene;
 
     enum ComponentMarkedForNeededEndOfFrameUpdate
     {
@@ -38,6 +40,16 @@ namespace minEngine
         virtual void SetOwner(GameObject* inOwner);
         ME_FUNCTION(ScriptCallable)
         GameObject* GetOwner() const { return m_Owner; }
+
+        /** Owning Scene via GameObject Outer; nullptr if not yet in a Scene. */
+        Scene* GetOwningScene() const;
+        /**
+         * RenderScene of the owning Scene (Ensures RenderScene exists).
+         * nullptr if component is not in a Scene.
+         */
+        RenderScene* GetOwningRenderScene() const;
+        /** Existing RenderScene only; does not create. Prefer for Remove/dtor paths. */
+        RenderScene* GetOwningRenderSceneIfPresent() const;
 
         void Rename(const std::string& newName) { SetName(newName); }
 

@@ -3,6 +3,7 @@
 #include "Commands/Scene/EditorAddComponentCommand.h"
 #include "Commands/Scene/EditorAddEmptyGameObjectCommand.h"
 #include "Commands/Scene/EditorDeleteGameObjectCommand.h"
+#include "Commands/Scene/EditorInstantiatePrefabCommand.h"
 #include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Commands/Scene/EditorRemoveComponentCommand.h"
 #include "Commands/Scene/EditorMoveComponentCommand.h"
@@ -13,6 +14,7 @@
 #include "Commands/EditorObjectPropertyApply.h"
 #include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
+#include "Services/AssetWorkflowModule.h"
 #include "Services/ComponentTypeUiCatalog.h"
 #include "Shell/EditorCommandStack.h"
 #include "Shell/EditorDockLayout.h"
@@ -20,11 +22,13 @@
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditingViewportClient.h"
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
+#include "SubEditor/Prefab/PrefabEditConstraints.h"
 #include "UI/EditorWindows/HierarchyWindow.h"
 #include "UI/EditorWindows/SceneEditingViewportWindow.h"
 
 #include "imgui.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/PropertyAssign.h"
 #include "Runtime/Core/Reflection/Reflection.h"
@@ -32,6 +36,8 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Framework/Prefab/Prefab.h"
+#include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
@@ -76,6 +82,7 @@ namespace minEngine
 
     void SceneEditor::OnDeactivate(IEditorContext& context)
     {
+        ExitPrefabStage();
         (void)context;
     }
 
@@ -84,8 +91,30 @@ namespace minEngine
         EditorCommandBinding saveSceneCommand;
         saveSceneCommand.Name = "Save Scene";
         saveSceneCommand.Chord = { ImGuiKey_S, true, false, false };
-        saveSceneCommand.CanExecute = [this]() { return GetActiveScene() != nullptr; };
-        saveSceneCommand.Execute = [this]() { SaveCurrentScene(); };
+        saveSceneCommand.CanExecute = [this]()
+        {
+            if (IsEditingPrefabStage())
+            {
+                return m_PrefabStages.GetActiveStage() != nullptr;
+            }
+            return GetActiveScene() != nullptr;
+        };
+        saveSceneCommand.Execute = [this]()
+        {
+            if (IsEditingPrefabStage())
+            {
+                if (m_Context != nullptr)
+                {
+                    std::string error;
+                    if (!m_PrefabStages.SaveActive(*m_Context, &error))
+                    {
+                        ME_LOG(LogEditor, Warn, "Save Prefab Stage: {}", error);
+                    }
+                }
+                return;
+            }
+            SaveCurrentScene();
+        };
         context.GetInputHub().RegisterActiveSubModuleCommand(std::move(saveSceneCommand));
     }
 
@@ -188,7 +217,31 @@ namespace minEngine
             return;
         }
 
+        if (IsEditingPrefabStage())
+        {
+            m_PrefabStages.MarkDirty(m_PrefabStages.GetActiveAssetKey());
+            return;
+        }
+
         m_SceneDirty = true;
+    }
+
+    bool SceneEditor::EnterPrefabStage(const std::string& assetKey)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        return m_PrefabStages.Activate(assetKey, *m_Context);
+    }
+
+    void SceneEditor::ExitPrefabStage()
+    {
+        if (m_Context == nullptr || !m_PrefabStages.HasActiveStage())
+        {
+            return;
+        }
+        m_PrefabStages.ExitActive(*m_Context);
     }
 
     std::vector<GameObject*> SceneEditor::GetHierarchyGameObjects() const
@@ -565,6 +618,13 @@ namespace minEngine
                 return false;
             }
 
+            std::string constraintError;
+            if (!PrefabEditConstraints::AllowReparentToSceneRoot(*this, gameObjectId, &constraintError))
+            {
+                ME_LOG(LogEditor, Error, "{}", constraintError);
+                return false;
+            }
+
             gameObject->DetachFromParent(kRules);
             MarkSceneDirty();
             return true;
@@ -842,6 +902,17 @@ namespace minEngine
 
     bool SceneEditor::SaveCurrentScene(IEditorContext& context)
     {
+        if (IsEditingPrefabStage())
+        {
+            std::string error;
+            if (!m_PrefabStages.SaveActive(context, &error))
+            {
+                ME_LOG(LogEditor, Error, "Save Prefab: {}", error);
+                return false;
+            }
+            return true;
+        }
+
         if (!HasPersistedScenePath())
         {
             return SaveCurrentSceneAs(context);
@@ -867,6 +938,13 @@ namespace minEngine
 
     bool SceneEditor::SaveCurrentSceneAs(IEditorContext& context)
     {
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowSaveAsScene(*this, &constraintError))
+        {
+            ME_LOG(LogEditor, Error, "{}", constraintError);
+            return false;
+        }
+
         Scene* scene = GetDocumentScene();
         if (!scene)
         {
@@ -980,12 +1058,30 @@ namespace minEngine
             ME_LOG(LogEditor, Error, "No active scene to add GameObject to.");
             return std::numeric_limits<uint64_t>::max();
         }
+
+        GameObject* attachParent = nullptr;
+        if (IsEditingPrefabStage())
+        {
+            attachParent = GetSelectedGameObject();
+            if (attachParent == nullptr)
+            {
+                std::string error;
+                PrefabEditConstraints::AllowAddTopLevelGameObject(*this, &error);
+                ME_LOG(LogEditor, Error, "{}", error);
+                return std::numeric_limits<uint64_t>::max();
+            }
+        }
+
         std::shared_ptr<GameObject> newGO = scene->CreateGameObject();
         if (newGO)
         {
             newGO->Rename("GameObject");
             // CORE-F09: GO parenting requires a Root SceneComponent.
             newGO->AddComponent<SceneComponent>();
+            if (attachParent != nullptr)
+            {
+                newGO->AttachToParent(attachParent, AttachmentTransformRules::KeepWorldTransform);
+            }
             MarkSceneDirty();
             SelectGameObject(newGO->GetID());
             ME_LOG(LogEditor, Info, "Added new GameObject '{}' to scene '{}'.", newGO->GetName(), scene->GetSceneName());
@@ -1009,6 +1105,13 @@ namespace minEngine
         if (!scene)
         {
             ME_LOG(LogEditor, Error, "No active scene to remove GameObject from.");
+            return false;
+        }
+
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowDeleteGameObject(*this, gameObjectId, &constraintError))
+        {
+            ME_LOG(LogEditor, Error, "{}", constraintError);
             return false;
         }
 
@@ -1039,6 +1142,221 @@ namespace minEngine
     void SceneEditor::SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId)
     {
         context.GetCommandStack().Execute(std::make_unique<EditorDeleteGameObjectCommand>(*this, gameObjectId));
+    }
+
+    bool SceneEditor::CreatePrefabFromSelectedGameObject(IEditorContext& context, uint64_t gameObjectId)
+    {
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowCreatePrefab(*this, &constraintError))
+        {
+            ME_LOG(LogEditor, Error, "{}", constraintError);
+            return false;
+        }
+
+        if (context.IsPlaying())
+        {
+            ME_LOG(LogEditor, Error, "Create Prefab is unavailable during Play.");
+            return false;
+        }
+
+        Scene* scene = GetDocumentScene();
+        if (!scene)
+        {
+            ME_LOG(LogEditor, Error, "Create Prefab: no Level Scene.");
+            return false;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (!gameObject)
+        {
+            ME_LOG(LogEditor, Error, "Create Prefab: GameObject {} not found.", gameObjectId);
+            return false;
+        }
+
+        if (gameObject->GetRootComponent() == nullptr)
+        {
+            ME_LOG(LogEditor, Error, "Create Prefab: '{}' needs a root SceneComponent.", gameObject->GetName());
+            return false;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
+        if (projectContentRoot.empty())
+        {
+            ME_LOG(LogEditor, Error, "Create Prefab: ProjectContentRoot is not set.");
+            return false;
+        }
+
+        FileDialogRequest request;
+        request.Title = "Create Prefab";
+        request.Filters = AssetTypeRegistry::Get().BuildFileDialogFiltersForAssetType("Prefab");
+        request.bAllowMultiple = false;
+        request.InitialDirectory = projectContentRoot;
+
+        const std::string defaultName = gameObject->GetName().empty() ? "NewPrefab" : gameObject->GetName();
+        const FileDialogResult dialogResult =
+            context.GetFileDialogService().SaveFile(request, defaultName + ".meprefab");
+        if (dialogResult.bCancelled || dialogResult.Paths.empty())
+        {
+            return false;
+        }
+
+        std::error_code errorCode;
+        const std::filesystem::path normalizedRoot = projectContentRoot.lexically_normal();
+        const std::filesystem::path relativePath =
+            std::filesystem::relative(dialogResult.Paths.front().lexically_normal(), normalizedRoot, errorCode);
+        if (errorCode)
+        {
+            ME_LOG(LogEditor, Error,
+                "Create Prefab: selected path '{}' is outside project content root.",
+                dialogResult.Paths.front().string());
+            return false;
+        }
+
+        const std::string projectRelativePath = relativePath.generic_string();
+        PrefabCreateReport report;
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*gameObject, &report);
+        if (!prefab)
+        {
+            ME_LOG(LogEditor, Error, "Create Prefab: CreatePrefabFromGameObject failed.");
+            return false;
+        }
+
+        std::string saveError;
+        if (!PrefabUtility::SavePrefabAsset(*prefab, projectRelativePath, &saveError))
+        {
+            ME_LOG(LogEditor, Error, "Create Prefab: SavePrefabAsset failed: {}", saveError);
+            auto& records = scene->GetPrefabInstancesMutable();
+            records.erase(
+                std::remove_if(
+                    records.begin(),
+                    records.end(),
+                    [&](const PrefabInstanceRecord& record)
+                    {
+                        return record.RootInstanceGuid == gameObject->GetGuid();
+                    }),
+                records.end());
+            std::error_code removeError;
+            std::filesystem::remove(dialogResult.Paths.front(), removeError);
+            return false;
+        }
+
+        MarkSceneDirty();
+        SelectGameObject(gameObjectId);
+        context.GetAssetWorkflow().RevealAssetInContentBrowser(projectRelativePath);
+        ME_LOG(LogEditor, Info, "Created Prefab asset '{}'.", projectRelativePath);
+        return true;
+    }
+
+    void SceneEditor::SubmitInstantiatePrefab(IEditorContext& context, uint64_t attachParentGameObjectId)
+    {
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowInstantiatePrefab(*this, &constraintError))
+        {
+            ME_LOG(LogEditor, Error, "{}", constraintError);
+            return;
+        }
+
+        if (context.IsPlaying())
+        {
+            ME_LOG(LogEditor, Error, "Instantiate Prefab is unavailable during Play.");
+            return;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
+        if (projectContentRoot.empty())
+        {
+            ME_LOG(LogEditor, Error, "Instantiate Prefab: ProjectContentRoot is not set.");
+            return;
+        }
+
+        FileDialogRequest request;
+        request.Title = "Instantiate Prefab";
+        request.Filters = AssetTypeRegistry::Get().BuildFileDialogFiltersForAssetType("Prefab");
+        request.bAllowMultiple = false;
+        request.InitialDirectory = projectContentRoot;
+
+        const FileDialogResult dialogResult = context.GetFileDialogService().OpenFiles(request);
+        if (dialogResult.bCancelled || dialogResult.Paths.empty())
+        {
+            return;
+        }
+
+        std::error_code errorCode;
+        const std::filesystem::path normalizedRoot = projectContentRoot.lexically_normal();
+        const std::filesystem::path relativePath =
+            std::filesystem::relative(dialogResult.Paths.front().lexically_normal(), normalizedRoot, errorCode);
+        if (errorCode)
+        {
+            ME_LOG(LogEditor, Error,
+                "Instantiate Prefab: selected path '{}' is outside project content root.",
+                dialogResult.Paths.front().string());
+            return;
+        }
+
+        if (!AssetManager::HasInstance())
+        {
+            return;
+        }
+
+        const std::string projectRelativePath = relativePath.generic_string();
+        std::shared_ptr<Prefab> prefab = AssetManager::Get().LoadAsset<Prefab>(projectRelativePath);
+        if (!prefab)
+        {
+            ME_LOG(LogEditor, Error, "Instantiate Prefab: failed to load '{}'.", projectRelativePath);
+            return;
+        }
+
+        GameObject* attachParent = nullptr;
+        if (attachParentGameObjectId != std::numeric_limits<uint64_t>::max())
+        {
+            if (Scene* scene = GetDocumentScene())
+            {
+                attachParent = scene->FindGameObjectById(attachParentGameObjectId);
+            }
+        }
+
+        context.GetCommandStack().Execute(
+            std::make_unique<EditorInstantiatePrefabCommand>(*this, std::move(prefab), attachParent));
+    }
+
+    uint64_t SceneEditor::ApplyInstantiatePrefab(Prefab& prefab, uint64_t attachParentGameObjectId)
+    {
+        Scene* scene = GetDocumentScene();
+        if (!scene)
+        {
+            ME_LOG(LogEditor, Error, "Instantiate Prefab: no Level Scene.");
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        GameObject* attachParent = nullptr;
+        if (attachParentGameObjectId != std::numeric_limits<uint64_t>::max())
+        {
+            attachParent = scene->FindGameObjectById(attachParentGameObjectId);
+            if (!attachParent)
+            {
+                ME_LOG(LogEditor, Error, "Instantiate Prefab: attach parent {} not found.", attachParentGameObjectId);
+                return std::numeric_limits<uint64_t>::max();
+            }
+        }
+
+        PrefabInstantiateParams params;
+        params.bRegisterPrefabInstance = true;
+        params.AttachParent = attachParent;
+
+        std::string error;
+        const std::shared_ptr<GameObject> instanceRoot = scene->Instantiate(prefab, params, &error);
+        if (!instanceRoot)
+        {
+            ME_LOG(LogEditor, Error, "Instantiate Prefab failed: {}", error);
+            return std::numeric_limits<uint64_t>::max();
+        }
+
+        MarkSceneDirty();
+        SelectGameObject(instanceRoot->GetID());
+        ME_LOG(LogEditor, Info, "Instantiated Prefab as '{}'.", instanceRoot->GetName());
+        return instanceRoot->GetID();
     }
 
     void SceneEditor::RequestBeginRenameGameObject(uint64_t gameObjectId)

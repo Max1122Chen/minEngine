@@ -2,7 +2,6 @@
 
 #include "Runtime/Function/Framework/Components/ImageComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/RenderSystem.h"
@@ -27,7 +26,7 @@ namespace minEngine
             return;
         }
 
-        RenderScene* renderScene = SceneManager::HasInstance() ? SceneManager::Get().GetRenderScene() : nullptr;
+        RenderScene* renderScene = GetOwningRenderSceneIfPresent();
         if (renderScene)
         {
             renderScene->RemoveWidget(this);
@@ -211,7 +210,7 @@ namespace minEngine
             return;
         }
 
-        RenderScene* renderScene = SceneManager::Get().GetRenderScene();
+        RenderScene* renderScene = GetOwningRenderScene();
         if (renderScene)
         {
             renderScene->UpdateWidget(this);
@@ -233,21 +232,13 @@ namespace minEngine
             return;
         }
 
-        if (SceneManager::HasInstance())
+        if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
-            RenderScene* renderScene = SceneManager::Get().GetRenderScene();
-            if (renderScene)
-            {
-                renderScene->RemoveWidget(this);
-            }
-            else if (m_WidgetSceneProxy)
-            {
-                m_WidgetSceneProxy->m_WidgetComponent = nullptr;
-                DetachSceneProxy();
-            }
+            renderScene->RemoveWidget(this);
         }
-        else
+        else if (m_WidgetSceneProxy)
         {
+            m_WidgetSceneProxy->m_WidgetComponent = nullptr;
             DetachSceneProxy();
         }
 

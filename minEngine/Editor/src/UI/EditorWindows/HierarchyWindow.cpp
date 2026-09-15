@@ -12,9 +12,13 @@
 #include "UI/Widgets/InlineRenameField.h"
 
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
+#include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
+
+#include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include <algorithm>
 #include <vector>
@@ -184,7 +188,36 @@ namespace minEngine
         }
 
         const std::string displayName = sceneEditor->GetGameObjectDisplayName(gameObject);
-        const bool nodeOpen = ImGui::TreeNodeEx("##node", nodeFlags, "%s", displayName.c_str());
+
+        bool pushedPrefabTextColor = false;
+        bool isPrefabInstanceRoot = false;
+        if (!sceneEditor->IsEditingPrefabStage())
+        {
+            if (Scene* scene = sceneEditor->GetActiveScene())
+            {
+                if (const PrefabInstanceRecord* record =
+                        PrefabUtility::FindInstanceRecord(*scene, gameObject.GetGuid()))
+                {
+                    isPrefabInstanceRoot = record->RootInstanceGuid == gameObject.GetGuid();
+                    const ImU32 prefabColor =
+                        appearance.GetDisplayColorU32(appearance.GetSemanticColors().HierarchyPrefabInstance);
+                    ImGui::PushStyleColor(ImGuiCol_Text, prefabColor);
+                    pushedPrefabTextColor = true;
+                }
+            }
+        }
+
+        std::string label = displayName;
+        if (isPrefabInstanceRoot)
+        {
+            label = std::string(ICON_FA_CUBES) + " " + displayName;
+        }
+
+        const bool nodeOpen = ImGui::TreeNodeEx("##node", nodeFlags, "%s", label.c_str());
+        if (pushedPrefabTextColor)
+        {
+            ImGui::PopStyleColor();
+        }
 
         const ImVec2 itemRectMin = ImGui::GetItemRectMin();
         const ImVec2 itemRectMax = ImGui::GetItemRectMax();
@@ -593,9 +626,14 @@ namespace minEngine
                                            ImGuiPopupFlags_MouseButtonRight |
                                                ImGuiPopupFlags_NoOpenOverItems))
         {
+            SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
             auto hierarchyContext = std::make_shared<HierarchyMenuContext>();
             hierarchyContext->HitKind = HierarchyHitKind::Blank;
             hierarchyContext->bClickedEmpty = true;
+            hierarchyContext->bAllowPrefabLevelWorkflow =
+                sceneEditor != nullptr
+                && !sceneEditor->IsEditingPrefabStage()
+                && !m_Context.IsPlaying();
 
             EditorMenuContext menuContext;
             menuContext.Add(hierarchyContext);
@@ -608,11 +646,16 @@ namespace minEngine
 
     void HierarchyWindow::DrawHierarchyGameObjectContextMenu(GameObject& gameObject)
     {
-        GetSceneEditor(&m_Context)->SelectGameObject(gameObject.GetID());
+        SceneEditor* sceneEditor = GetSceneEditor(&m_Context);
+        sceneEditor->SelectGameObject(gameObject.GetID());
 
         auto hierarchyContext = std::make_shared<HierarchyMenuContext>();
         hierarchyContext->HitKind = HierarchyHitKind::GameObjectItem;
         hierarchyContext->bClickedEmpty = false;
+        hierarchyContext->bAllowPrefabLevelWorkflow =
+            sceneEditor != nullptr
+            && !sceneEditor->IsEditingPrefabStage()
+            && !m_Context.IsPlaying();
         hierarchyContext->SelectedGameObjectIds.push_back(gameObject.GetID());
 
         EditorMenuContext menuContext;

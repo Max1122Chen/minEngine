@@ -170,6 +170,17 @@ namespace minEngine
         return animGraphEditor != nullptr && animGraphEditor->GetSession().Dirty;
     }
 
+    bool AssetWorkflowModule::IsPrefabDirty() const
+    {
+        const SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        if (sceneEditor == nullptr || !sceneEditor->IsEditingPrefabStage())
+        {
+            return false;
+        }
+
+        return sceneEditor->GetPrefabStages().IsDirty(sceneEditor->GetPrefabStages().GetActiveAssetKey());
+    }
+
     bool AssetWorkflowModule::SaveSceneDocument()
     {
         SceneEditor* sceneEditor = GetSceneEditor(m_Context);
@@ -201,6 +212,24 @@ namespace minEngine
         }
 
         return animGraphEditor->SaveActiveGraph();
+    }
+
+    bool AssetWorkflowModule::SavePrefabDocument()
+    {
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+        if (sceneEditor == nullptr || m_Context == nullptr)
+        {
+            return false;
+        }
+
+        std::string error;
+        if (!sceneEditor->GetPrefabStages().SaveActive(*m_Context, &error))
+        {
+            ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to save Prefab: {}", error);
+            return false;
+        }
+
+        return true;
     }
 
     bool AssetWorkflowModule::RunWithUnsavedCheck(
@@ -291,7 +320,8 @@ namespace minEngine
         const bool openingMaterial = meta.AssetType == "Material";
         const bool openingScene = meta.AssetType == "Scene";
         const bool openingAnimationGraph = meta.AssetType == "AnimationGraph";
-        if (!openingMaterial && !openingScene && !openingAnimationGraph)
+        const bool openingPrefab = meta.AssetType == "Prefab";
+        if (!openingMaterial && !openingScene && !openingAnimationGraph && !openingPrefab)
         {
             ME_LOG(LogEditor, Warn, 
                 "AssetWorkflow: unsupported asset type '{}' for '{}'.",
@@ -299,12 +329,6 @@ namespace minEngine
                 meta.AssetPath);
             return false;
         }
-
-        const char* message = openingMaterial
-            ? "Save changes to the current material before opening another asset?"
-            : openingAnimationGraph
-                ? "Save changes to the current animation graph before opening another asset?"
-                : "Save changes to the current scene before opening another scene?";
 
         auto proceed = [this, meta]()
         {
@@ -320,7 +344,7 @@ namespace minEngine
         if (openingMaterial)
         {
             return RunWithUnsavedCheck(
-                message,
+                "Save changes to the current material before opening another asset?",
                 [this]() { return IsMaterialDirty(); },
                 [this]() { return SaveMaterialDocument(); },
                 std::move(proceed));
@@ -329,14 +353,23 @@ namespace minEngine
         if (openingAnimationGraph)
         {
             return RunWithUnsavedCheck(
-                message,
+                "Save changes to the current animation graph before opening another asset?",
                 [this]() { return IsAnimationGraphDirty(); },
                 [this]() { return SaveAnimationGraphDocument(); },
                 std::move(proceed));
         }
 
+        if (openingPrefab)
+        {
+            return RunWithUnsavedCheck(
+                "Save changes to the current Prefab before opening another asset?",
+                [this]() { return IsPrefabDirty(); },
+                [this]() { return SavePrefabDocument(); },
+                std::move(proceed));
+        }
+
         return RunWithUnsavedCheck(
-            message,
+            "Save changes to the current scene before opening another scene?",
             [this]() { return IsSceneDirty(); },
             [this]() { return SaveSceneDocument(); },
             std::move(proceed));

@@ -11,6 +11,7 @@
 namespace minEngine
 {
     class GameObject;
+    class Prefab;
     class RenderScene;
     class GameplayEventSystemComponent;
 
@@ -89,6 +90,12 @@ namespace minEngine
         const std::vector<PrefabInstanceRecord>& GetPrefabInstances() const { return m_PrefabInstances; }
         std::vector<PrefabInstanceRecord>& GetPrefabInstancesMutable() { return m_PrefabInstances; }
         void ClearPrefabInstances() { m_PrefabInstances.clear(); }
+
+        /** Thin convenience; authoritative clone path remains PrefabUtility::Instantiate. */
+        std::shared_ptr<GameObject> Instantiate(
+            const Prefab& prefab,
+            const PrefabInstantiateParams& params = {},
+            std::string* outError = nullptr);
 
     private:
         ME_PROPERTY()

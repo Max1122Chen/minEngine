@@ -100,7 +100,7 @@
 | Scene / GO / Component JSON Instanced | Sound | `.mescene` |
 | PIE 全 Scene Binary 克隆 + Guid remap | Partial | `SceneDuplicator` + `SceneCloneContext`；无子树 API |
 | AssetTypeRegistry | Sound | Scene / Material 可作插件样板 |
-| Prefab 类型 / Instantiate | **Done** | `Framework/Prefab/`；`test prefab` |
+| Prefab 类型 / Instantiate | **Done** | `Framework/Prefab/` + `test prefab` |
 | Override / Prefab Mode | Missing | F24 / F16 |
 
 关键复用：
@@ -140,19 +140,14 @@ Runtime / PIE load path
 |----|------|
 | **Template object** | Prefab 资产内的 GO/Component；其 `m_Guid` 在资产生命周期内稳定 |
 | **Instance object** | Scene 中的克隆；世界 Guid 唯一 |
-| **Prefab Guid** | `.meta` / 资产身份（与 Material 相同） |
+| **Prefab 资产 Guid** | `.meta` / 资产身份（与 Material 相同） |
 | **PrefabInstance** | Scene 侧一条「此根 GO 来自某 Prefab」记录；**不是** `GameObject` 子类 |
 
-**刻意不做：** `GameObject::m_Prefab` / `IsPrefabInstance()` 等 Runtime API。编辑器通过 Scene 表 + Guid 查询。
+**刻意不做：** `GameObject::m_PrefabAsset` / `IsPrefabInstance()` 等 Runtime API。编辑器通过 Scene 表 + Guid 查询。
 
 ### 3.2 数据结构
 
-#### 3.2.1 `Prefab`（最终形态）
-
-类名 **`Prefab`**（继承 `Asset`）。**禁止**再引入 `PrefabAsset` 类型名。  
-资产类型 Id：`"Prefab"`；扩展名：`.meprefab`。
-
-存储采用与 Scene 同构的 flat 模板列表（开放点 O2）：
+#### 3.2.1 `Prefab`
 
 ```cpp
 // Runtime/Function/Framework/Prefab/Prefab.h
@@ -162,25 +157,21 @@ class Prefab : public Asset
     ME_GENERATED_BODY()
 public:
     GameObject* GetRootGameObject() const;
-    const GUID& GetRootGuid() const;
-    const std::vector<std::shared_ptr<GameObject>>& GetTemplateObjects() const;
-    bool ValidateSingleRoot(std::string* outError = nullptr) const;
+    // ...
 
 private:
+    /** Single root of the template tree. Children via GameObject hierarchy. */
     ME_PROPERTY(Instanced)
-    std::vector<std::shared_ptr<GameObject>> m_TemplateObjects;
-
-    ME_PROPERTY()
-    GUID m_RootGuid;  // must identify the unique parent==null GO in m_TemplateObjects
+    std::shared_ptr<GameObject> m_RootGameObject;
 };
 ```
 
 不变量：
 
-- `m_RootGuid` 对应列表中 **唯一** `parent == nullptr` 的 GO；非空方可存盘
-- 其余 GO 的 parent 链均在 `m_TemplateObjects` 内，最终指向该根；无第二顶层 GO
-- Prefab **不** 嵌入 `Scene`，**不** 持有 `RenderScene` / PIE 字段
-- 对外语义仍是「单根 GO 树」；`GetRootGameObject()` 按 `m_RootGuid` 解析
+- `m_RootGameObject != nullptr`（空 Prefab 不允许存盘，或仅允许工具创建时短暂为空）
+- `m_RootGameObject->GetParent() == nullptr`
+- 树内所有 GO 的 parent 链最终指向该根；无第二顶层 GO
+- Prefab 资产 **不** 嵌入 `Scene`，**不** 持有 `RenderScene` / PIE 字段
 
 #### 3.2.2 `PrefabInstanceRecord`（Scene 侧）
 
@@ -292,20 +283,18 @@ Serializer 热路径：`GetActiveCloneContext()` 返回可写入的 map（PIE �
   "$engineVersion": "0.0.9",
   "$type": "Prefab",
   "m_Guid": "...",
-  "m_RootGuid": "template-root-...",
-  "m_TemplateObjects": [
-    {
-      "$type": "GameObject",
-      "m_Guid": "template-root-...",
-      "m_Name": "TargetDummy",
-      "m_Parent": null,
-      "m_Components": [ /* Instanced */ ]
-    }
-  ]
+  "m_RootGameObject": {
+    "$type": "GameObject",
+    "m_Guid": "template-root-...",
+    "m_Name": "TargetDummy",
+    "m_Parent": null,
+    "m_Components": [ /* Instanced */ ],
+    ...
+  }
 }
 ```
 
-子 GO：与 Scene 相同，flat `m_TemplateObjects` + `m_Parent` Guid。**容器语义是单根树**（由 `m_RootGuid` 标识），不是多根关卡。
+子 GO：作为 Instanced 嵌在树上，或通过与 Scene 相同的「根列表 + parent Guid」策略。**推荐与 Scene 一致的序列化形状尽量复用**（Instanced 子对象 + Guid 引用 parent），但 **容器只有一个根**，无 `m_GameObjects` 向量多根。
 
 实现选择（拍板默认）：
 
@@ -330,7 +319,27 @@ GUID m_RootGuid;  // must be one of m_TemplateObjects
 ```
 
 或仅 `m_RootGameObject` + 序列化时把整棵子树以嵌套 Instanced 写出（若 Serializer 对 parent 边支持）。  
-**默认拍板（已落地）：`m_TemplateObjects` + `m_RootGuid`**，与 Scene flat 列表同构，Create/Instantiate/Resolve 路径对称；对外 API 仍暴露「单根树」。详见 §3.2.1。
+**默认拍板：`m_TemplateObjects` + `m_RootGuid`**，与 Scene flat 列表同构，Create/Instantiate/Resolve 路径对称；对外 API 仍暴露「单根树」。
+
+```cpp
+ME_CLASS()
+class Prefab : public Asset
+{
+    ME_GENERATED_BODY()
+public:
+    GameObject* GetRootGameObject() const;
+    const std::vector<std::shared_ptr<GameObject>>& GetTemplateObjects() const;
+
+private:
+    ME_PROPERTY(Instanced)
+    std::vector<std::shared_ptr<GameObject>> m_TemplateObjects;
+
+    ME_PROPERTY()
+    GUID m_RootGuid;
+};
+```
+
+不变量：`m_RootGuid` 对应列表中 parent==null 的唯一对象；其余 GO parent 均在列表内。
 
 ### 3.3 引用切断（Create Prefab）
 
@@ -375,19 +384,19 @@ struct PrefabInstantiateParams
 class PrefabUtility
 {
 public:
-    /** Collect subtree, clone into new Prefab, strip external refs, assign stable template Guids; convert source tree to instance (O1). */
+    /** Collect subtree, clone into new Prefab, strip external refs, assign stable template Guids. */
     static std::shared_ptr<Prefab> CreatePrefabFromGameObject(
         GameObject& root,
         PrefabCreateReport* outReport = nullptr);
 
     /** Write asset to project path via AssetManager (JSON + meta). */
-    static bool SavePrefab(
-        Prefab& asset,
+    static bool SavePrefabAsset(
+        Prefab& prefab,
         const std::string& projectRelativePath,
         std::string* outError = nullptr);
 
     /** Load by path or Guid — thin wrappers over AssetManager. */
-    static std::shared_ptr<Prefab> LoadPrefab(const GUID& assetGuid);
+    static std::shared_ptr<Prefab> LoadPrefabAsset(const GUID& assetGuid);
 
     /**
      * Clone template tree into target Scene.
@@ -430,7 +439,7 @@ Scene GO root
   → DeepClone into Prefab.m_TemplateObjects (new template Guids)
   → StripExternalNonAssetRefs(S')
   → Validate single root
-  → SavePrefab → .meprefab + .meta
+  → SavePrefabAsset → .meprefab + .meta
   → (B) Remap original Scene subtree Guids + append PrefabInstanceRecord
 ```
 
@@ -478,12 +487,9 @@ Runtime/Function/Framework/Prefab/
   PrefabUtility.h / .cpp
   PrefabReferencePolicy.h / .cpp   // strip external refs
 
-Runtime/Core/Object/
-  ObjectCloneContext.h / .cpp
-
 Runtime/Function/Framework/Scene/
   Scene.h                // + m_PrefabInstances
-  SceneCloneContext.*    // PIE 辅助；Guid map 走 ObjectCloneContext
+  SceneCloneContext.*    // or ObjectCloneContext extraction
 
 Runtime/Resource/
   AssetTypeRegistry.cpp  // register Prefab / .meprefab
@@ -499,7 +505,7 @@ Tests/Suites/PrefabTest.cpp
 ```cpp
 RegisterType({
     .AssetTypeId = "Prefab",
-    .RuntimeClass = Prefab::StaticClass(),
+    .RuntimeClassName = /* Prefab::StaticClass() */,
     .Extensions = {".meprefab"},
     .FileDialogFilterLabel = "Prefab (*.meprefab)"
 });
@@ -562,21 +568,21 @@ Content Browser：F23 可只保证 Load/Save/CreateAsset 管线；双击打开 �
 - [x] `Prefab` 资产类型可 Create / Save / Load（`.meprefab` + meta）
 - [x] `CreatePrefabFromGameObject`：多级子树、树内互引保留、资产引用保留、外部引用 null + report
 - [x] `Instantiate`：进现有 Scene；新 Guid；层级正确；可选挂 parent；`PrefabInstanceRecord` 写入且 Overrides 空
-- [x] Scene 存盘再开：实例链接仍在；GO 数据完整
-- [x] PIE：实例可 Tick/渲染为普通 GO；不依赖 PrefabInstance 表
+- [x] Scene 存盘再开：实例链接仍在；GO 数据完整（Create→实例链接；磁盘 roundtrip 覆盖模板）
+- [x] PIE：实例可 Tick/渲染为普通 GO；PIE Scene 清空 `m_PrefabInstances`
 - [x] `minEngineTests.exe test prefab` 绿
 - [x] Core 无 Editor UI 依赖
 
 ---
 
-## 7) 实现切片（全部完成）
+## 7) 建议实现切片
 
-| Slice | 内容 | 验证 | Status |
-|-------|------|------|--------|
-| **S01** | `Prefab` + 类型注册 + Load/Save 空/最小根 | 文件往返 | **Done** |
-| **S02** | `ObjectCloneContext` + 子树克隆进 Scene（手写或 Serializer） | 单测 Instantiate 雏形 | **Done** |
+| Slice | 内容 | 验证 |
+|-------|------|------|
+| **S01** | `Prefab` + 类型注册 + Load/Save | 文件往返 | **Done** |
+| **S02** | `ObjectCloneContext` + 子树克隆进 Scene | 单测 Instantiate | **Done** |
 | **S03** | Create + 引用切断 + report | 单测 BrokenRefs | **Done** |
-| **S04** | Scene `m_PrefabInstances` + Create 原地转实例 + Instantiate 登记 | Scene JSON 往返 | **Done** |
+| **S04** | Scene `m_PrefabInstances` + Create 原地转实例 + Instantiate 登记 | Scene / Prefab 往返 | **Done** |
 | **S05** | PIE 清表 / bake 契约 + DoD | `test prefab` 全绿 | **Done** |
 
 ---
@@ -585,11 +591,11 @@ Content Browser：F23 可只保证 Load/Save/CreateAsset 管线；双击打开 �
 
 | # | 问题 | 拍板 | 落地 |
 |---|------|------|------|
-| O1 | Create 后源树是否变成实例 | **是（B）** | Create 后源树 Guid remap + 写 `PrefabInstanceRecord` |
+| O1 | Create 后源树是否变成实例 | **是（B）** | Create 后写 `PrefabInstanceRecord` |
 | O2 | Prefab 内部存储 | **`m_TemplateObjects` + `m_RootGuid`** | `Prefab.h` |
 | O3 | CloneContext 抽出 | **是，`ObjectCloneContext`** | `Runtime/Core/Object/ObjectCloneContext.*`；PIE 共用 |
 | O4 | F23 是否声明空的 `PrefabPropertyOverride` 结构 | **是（稳定 schema）**；字段语义 F24 定义 | `PrefabTypes.h`；F23 恒空 |
-| O5 | 最小 Editor 命令 | **可选**：测试/Agent 用 API 即可 | `test prefab` + `PrefabUtility`；右键菜单 → ED-F16 |
+| O5 | 最小 Editor 命令 | **可选**：测试/Agent 用 API 即可 | `test prefab` + `PrefabUtility`；右键菜单 → ED-F16 Amendment A |
 
 ---
 
@@ -599,5 +605,6 @@ Content Browser：F23 可只保证 Load/Save/CreateAsset 管线；双击打开 �
 |------|------|
 | 2026-09-15 | Draft：三期拆分之 F23；数据结构 / API / 引用切断 / 空 PrefabInstance |
 | 2026-09-15 | 类名定稿：**`Prefab`**（拒绝 `PrefabAsset`）；资产类型 Id 仍为 `"Prefab"`，扩展名 `.meprefab` |
-| 2026-09-15 | **Done**：S01–S05 落地；`test prefab` 3/3 PASS；开放点 O1–O5 按默认全部接受 |
+| 2026-09-15 | **Done**：S01–S05 落地；`test prefab` PASS；开放点 O1–O5 按默认全部接受 |
 | 2026-09-15 | UTF-8 重写：修复编码损坏；与实现对齐 `m_TemplateObjects` + `m_RootGuid` |
+| 2026-09-15 | API note（ED-F16 Amendment A）：计划增加 `Scene::Instantiate` 薄封装转发 `PrefabUtility::Instantiate`（契约不变；详见 ED-F16 §3.10.5） |

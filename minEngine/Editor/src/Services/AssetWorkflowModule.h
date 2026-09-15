@@ -81,9 +81,11 @@ namespace minEngine
         bool IsSceneDirty() const;
         bool IsMaterialDirty() const;
         bool IsAnimationGraphDirty() const;
+        bool IsPrefabDirty() const;
         bool SaveSceneDocument();
         bool SaveMaterialDocument();
         bool SaveAnimationGraphDocument();
+        bool SavePrefabDocument();
 
         bool RunWithUnsavedCheck(
             const char* message,

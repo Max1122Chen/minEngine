@@ -18,6 +18,9 @@ namespace minEngine
         FocusInViewport,
         OpenAsset,
         CreateEmptyGameObject,
+        CreatePrefab,
+        InstantiatePrefab,
+        InstantiatePrefabAsChild,
         RemoveComponent,
     };
 

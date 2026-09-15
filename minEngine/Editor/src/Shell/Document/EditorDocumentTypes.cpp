@@ -8,6 +8,7 @@
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Resource/AssetMeta.h"
 
 #include <filesystem>
@@ -73,6 +74,7 @@ namespace minEngine
                 {
                     return false;
                 }
+                editor->ExitPrefabStage();
                 if (!session.GetAssetKey().empty()
                     && editor->GetOpenedSceneAssetPath() != session.GetAssetKey())
                 {
@@ -212,6 +214,77 @@ namespace minEngine
                 return editor->SaveActiveGraph();
             };
             registry.Register(std::move(animGraph));
+        }
+
+        {
+            // Prefab documents reuse SceneEditor UI (Hierarchy / Viewport / Inspector).
+            EditorDocumentTypeInfo prefab;
+            prefab.TypeId = "Prefab";
+            prefab.DisplayName = "Prefab";
+            prefab.ModuleId = SceneEditor::kModuleId;
+            prefab.AllowMultipleSessions = true;
+            prefab.AllowCloseLastOfType = true;
+            prefab.CanOpenAsset = [](const AssetMeta& meta) { return meta.AssetType == "Prefab"; };
+            prefab.MakeAssetKey = [](const AssetMeta& meta) { return meta.AssetPath; };
+            prefab.MakeTitle = [](const AssetMeta& meta) { return FileTitleFromPath(meta.AssetPath); };
+            prefab.BindSession = [](IEditorContext& ctx, const AssetMeta& meta, EditorDocumentSession& session)
+            {
+                SceneEditor* editor = GetSceneEditor(ctx);
+                if (editor == nullptr)
+                {
+                    return false;
+                }
+
+                std::string error;
+                if (!editor->GetPrefabStages().OpenFromAsset(meta, &error))
+                {
+                    ME_LOG(LogEditor, Error, "Open Prefab document failed: {}", error);
+                    return false;
+                }
+
+                session.SetTitle(FileTitleFromPath(meta.AssetPath));
+                return true;
+            };
+            prefab.ActivateSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                SceneEditor* editor = GetSceneEditor(ctx);
+                return editor != nullptr && editor->EnterPrefabStage(session.GetAssetKey());
+            };
+            prefab.CloseSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                SceneEditor* editor = GetSceneEditor(ctx);
+                if (editor == nullptr)
+                {
+                    return;
+                }
+
+                if (editor->GetPrefabStages().GetActiveAssetKey() == session.GetAssetKey())
+                {
+                    editor->ExitPrefabStage();
+                }
+                editor->GetPrefabStages().Discard(session.GetAssetKey());
+            };
+            prefab.QueryDirty = [](IEditorContext& ctx, const EditorDocumentSession& session)
+            {
+                const SceneEditor* editor = GetSceneEditor(ctx);
+                return editor != nullptr && editor->GetPrefabStages().IsDirty(session.GetAssetKey());
+            };
+            prefab.SaveSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                SceneEditor* editor = GetSceneEditor(ctx);
+                if (editor == nullptr)
+                {
+                    return false;
+                }
+                if (!editor->EnterPrefabStage(session.GetAssetKey()))
+                {
+                    return false;
+                }
+
+                std::string error;
+                return editor->GetPrefabStages().SaveActive(ctx, &error);
+            };
+            registry.Register(std::move(prefab));
         }
     }
 }

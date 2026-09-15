@@ -1,8 +1,13 @@
 #include "Services/ToolbarModule.h"
 
 #include "PlayMode/IPlayModeService.h"
+#include "Shell/Document/EditorDocumentHost.h"
+#include "Shell/Document/EditorDocumentSession.h"
+#include "Shell/EditorContextHelpers.h"
 #include "Shell/EditorInputHub.h"
 #include "Shell/IEditorContext.h"
+#include "SubEditor/Prefab/PrefabEditConstraints.h"
+#include "SubEditor/Scene/SceneEditor.h"
 
 #include "imgui.h"
 
@@ -13,7 +18,20 @@ namespace minEngine
         EditorCommandBinding playCommand;
         playCommand.Name = "EnterPlay";
         playCommand.Chord = { ImGuiKey_F5, false, false, false };
-        playCommand.CanExecute = [&context]() { return !context.GetPlayModeService().IsPlaying(); };
+        playCommand.CanExecute = [&context]()
+        {
+            if (context.GetPlayModeService().IsPlaying())
+            {
+                return false;
+            }
+
+            if (SceneEditor* sceneEditor = GetSceneEditor(&context))
+            {
+                return PrefabEditConstraints::AllowEnterPlay(*sceneEditor);
+            }
+
+            return true;
+        };
         playCommand.Execute = [&context]() { context.GetPlayModeService().EnterPlay(); };
         context.GetInputHub().RegisterGlobalCommand(std::move(playCommand));
 

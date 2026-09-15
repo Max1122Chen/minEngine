@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（`feat/prefab`：CORE-F24 Done；下一刀 ED-F16）  
+Last updated: 2026-09-15（CORE-F25 **Done** — owning-Scene RenderScene）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,23 +11,29 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/prefab`）：Prefab — F23/F24 Done，下一刀 ED-F16**
+**Primary（`feat/prefab`）：ED-F16 + CORE-F25 收尾 — 准备 commit / Prefab 手验**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 1 | **`CORE-F23`** | Prefab 资产 + Create/Instantiate | **Done** | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) |
-| 2 | **`CORE-F24`** | 受限 Override + default 传播 | **Done** | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) |
-| 3 | **`ED-F16`** | Prefab 文档 Mode（Stage + 复用 SceneEditor） | **Draft** | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
+| 1 | **`CORE-F25`** | 组件从 owning Scene 取 RenderScene | **Done** | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) |
+| 2 | **`CORE-F23`** | Prefab 资产 + Create/Instantiate | **Done** | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) |
+| 3 | **`CORE-F24`** | 受限 Override + default 传播 | **Done** | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) |
+| 4 | **`ED-F16`** | Prefab 文档 Mode + Amendment A | **Done** | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
 
-**下一刀：** 准备 F24 commit → 实现 **ED-F16**（Prefab 文档 Mode）。
+**下一刀：** 准备 commit（见下方草稿）→ 合入评估。随后补齐：
+1. Prefab Stage **相机隔离**（进出 Stage 快照/恢复 flycam；不共享 Level 相机）
+2. Prefab Stage **缺默认光源**（Stage 内可见照明；方案待拍：临时 Directional / 继承 Level 环境 / 资产自带）
 
-**master 已收口：** CORE-F20 / CORE-F22；ED-F12–F15（ED-F11 W3 大部）。ED-F11 余量 / ED-F10 / CORE-F21 仍为并行可选。
+**已知缺口（已登记，勿顺手大修）：**
+| ID | 摘要 | Status |
+|----|------|--------|
+| [BUG-ASSET-001](./bugs/BUG-ASSET-001.md) | Create Prefab 等写盘触发 watcher **全盘 ScanAssets** + 注册日志风暴 | Open |
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/prefab` | `CORE-F23`/`F24` Done → **`ED-F16`** | 本轨 Primary |
+| `feat/prefab` | CORE-F25 / ED-F16 | **Done** — 待手验 + commit |
 | `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
 | `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |

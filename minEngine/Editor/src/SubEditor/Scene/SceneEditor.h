@@ -6,6 +6,7 @@
 #include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Runtime/Core/GUID/GUID.h"
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
+#include "SubEditor/Prefab/PrefabStageController.h"
 #include "Shell/EditorSubModule.h"
 
 #include <limits>
@@ -18,6 +19,7 @@ namespace minEngine
     class Component;
     class GameObject;
     class IEditorContext;
+    class Prefab;
     class Scene;
     struct Transform;
 
@@ -125,6 +127,12 @@ namespace minEngine
         bool ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform);
         void SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId);
 
+        /** Level Scene: create `.meprefab` from GO (file dialog). Disk file Undo is out of scope. */
+        bool CreatePrefabFromSelectedGameObject(IEditorContext& context, uint64_t gameObjectId);
+        /** Level Scene: open Prefab picker then instantiate (Undo deletes instance root). */
+        void SubmitInstantiatePrefab(IEditorContext& context, uint64_t attachParentGameObjectId);
+        uint64_t ApplyInstantiatePrefab(Prefab& prefab, uint64_t attachParentGameObjectId);
+
         void RequestBeginRenameGameObject(uint64_t gameObjectId);
         uint64_t ConsumePendingRenameGameObjectId();
         void BeginRenameGameObjectInInspector(uint64_t gameObjectId);
@@ -163,6 +171,12 @@ namespace minEngine
 
         void OnProjectOpened();
 
+        PrefabStageController& GetPrefabStages() { return m_PrefabStages; }
+        const PrefabStageController& GetPrefabStages() const { return m_PrefabStages; }
+        bool IsEditingPrefabStage() const { return m_PrefabStages.HasActiveStage(); }
+        bool EnterPrefabStage(const std::string& assetKey);
+        void ExitPrefabStage();
+
         IEditorContext* GetEditorContext() const { return m_Context; }
 
         Serialization::SerializerOptions GetPropertyCommandSerializerOptions() const;
@@ -179,6 +193,7 @@ namespace minEngine
 
         IEditorContext* m_Context = nullptr;
         SceneEditorInspectorSource m_InspectorSource;
+        PrefabStageController m_PrefabStages;
         bool m_SceneDirty = false;
         std::string m_OpenedSceneAssetPath;
         uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();

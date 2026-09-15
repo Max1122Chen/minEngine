@@ -3,19 +3,19 @@
 ## Meta
 - **ID:** `ED-F16`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** Done（含 Amendment A：Hierarchy Prefab 工作流 + `Scene::Instantiate`）
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-15
-- **Branch:** `feat/prefab`（建议 F23 落地后再实现；可与 F24 并行 UI）
+- **Branch:** `feat/prefab`
 - **Related:**
-  - [CORE-F23 Prefab Asset + Instantiate](../Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md)（**硬依赖**）
-  - [CORE-F24 Prefab Overrides](../Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md)（Inspector override 标记；可弱依赖）
+  - [CORE-F23 Prefab Asset + Instantiate](../Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md)（**硬依赖**；Amendment A 扩展薄 `Scene::Instantiate`）
+  - [CORE-F24 Prefab Overrides](../Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md)（Inspector override 标记；Hierarchy 仅做实例身份提示）
   - [ED-F11 Multi-document Tab Host](./ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md)
   - [ED-F13 Command-first](./ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md)
   - [ENGINE_0_1_0_ROADMAP](../ENGINE_0_1_0_ROADMAP.md) — Prefab B / 隔离 RT 说明
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
-- **Depends on:** CORE-F23 **Done**（类名 `Prefab`）；ED-F11 文档宿主；现有 `SceneEditor` 内核
-- **Blocks:** 舒适的 Prefab 创作流；不挡 F23 Demo Instantiate
+- **Depends on:** CORE-F23 **Done**（类名 `Prefab`）；ED-F11 文档宿主；现有 `SceneEditor` 内核；ContextMenu（Hierarchy actions）
+- **Blocks:** 舒适的 Prefab 创作流（无 Hierarchy Create 则无法在编辑器内产出 `.meprefab`）
 
 ## TL;DR
 
@@ -24,10 +24,11 @@
 - Prefab 文档背后是 **临时 Stage Scene**：**不可另存为 `.mescene`**；Save 写回 **`.meprefab`**。
 - Hierarchy **有且仅有一个根 GO**。
 - MVP：**聚焦占用主 Viewport**（不与 Level 并排实时预览）；隔离 RT / 串图问题 **不进本 Feature DoD**。
+- **Amendment A：** Level Hierarchy 右键 **Create Prefab** / **Instantiate Prefab**；实例与普通 GO 视觉区分；Core `Scene::Instantiate` 薄封装（Unity 式 `scene.Instantiate(prefab)`）。
 
 ## Scope
 
-### In（ED-F16）
+### In（ED-F16 原 MVP — 已落地 S01–S06）
 
 - `EditorDocumentTypeId = "Prefab"` 注册到 ED-F11 Host
 - Prefab 文档 Session：资产身份、Dirty、自有 CommandStack
@@ -37,20 +38,33 @@
 - Open：Content Browser 双击 `.meprefab` → `OpenOrFocus` Prefab 文档
 - 退出 / 关 Tab：确认 Dirty；丢弃 Stage Scene
 
+### In（Amendment A — Hierarchy Prefab 工作流）
+
+| 项 | 说明 |
+|----|------|
+| Hierarchy → **Create Prefab…** | 右键选中 GO（子树根）→ 另存 `.meprefab` → `CreatePrefabFromGameObject` + `SavePrefabAsset`；保留 F23 的实例链接（空 override 表） |
+| Hierarchy → **Instantiate Prefab…** | 空白处或 GO 上右键 → 选资产 → 写入当前 Level Scene；可选「作为选中对象的子节点」 |
+| Hierarchy **实例外观** | Prefab 实例根（及默认含其子孙）与普通 GO 区分：图标 + 着色（Unity 式蓝系）；**不做** override 蓝字明细 |
+| **`Scene::Instantiate`** | Runtime 薄封装：`scene.Instantiate(prefab, params)` → 转发 `PrefabUtility::Instantiate`；单测覆盖 |
+
 ### Out
 
 | 项 | 归属 |
 |----|------|
 | Level 与 Prefab **并排**同时渲染 | 隔离 RT（`RND-F17` 类）；本 Feature **不做** |
-| 完整 override 可视化（若 F24 未完成） | 可降级为无蓝字；机制在 F24 |
+| 完整 override 可视化（Inspector 蓝字） | F24 机制 + 后续 Editor UX；Hierarchy 仅身份区分 |
 | Nested Prefab 钻入 / 面包屑 | 后置 |
 | Prefab Variant | 后置 |
 | 缩略图管线修复（TD-027） | 不绑本 Feature |
+| 从 Content Browser **拖拽** Prefab 进 Hierarchy / Viewport | Amendment A **Out**（可后置；先右键菜单） |
+| Prefab Stage 内再 Create Prefab（嵌套资产） | Amendment A **Out**（仅 Level Scene 上下文） |
+| Apply to Prefab（实例写回资产） | 仍 O5 / 后置 |
 
 ## Reader quick start
 
 1. §3.1 产品模型 · §3.2 Stage Scene · §3.3 上下文限权 · §3.4 数据流 · §3.5 与 SceneEditor 集成  
-2. §5 风险 · §6 验收 · §7 切片  
+2. **§3.10 Amendment A**（Hierarchy Create/Instantiate、实例外观、`Scene::Instantiate`）  
+3. §5 风险 · §6 验收 · §7 切片  
 
 ---
 
@@ -304,6 +318,96 @@ Active document is Scene
 
 F16 **不** 在 Stage 上写 `PrefabInstanceRecord`（改的是资产 default）。
 
+### 3.10 Amendment A — Hierarchy Prefab 工作流 + `Scene::Instantiate`
+
+> **状态：Done（已实现）。**  
+> 动机：S01–S06 打通了「打开已有 Prefab 文档」，但 **无法在 Editor 内从 Level GO 创建 `.meprefab`**，也无法从 Hierarchy 放入实例；API 调用面仍偏 `PrefabUtility::Instantiate(prefab, scene)`。
+
+#### 3.10.1 产品行为（Level Scene 上下文）
+
+| 入口 | 行为 |
+|------|------|
+| 右键 **GameObject** → `Create Prefab…` | 以该 GO 为根（含子树）创建；弹出保存路径（项目 Content 下 `.meprefab`）；成功后磁盘有资产，且源 GO 成为带空 override 的 Prefab 实例（沿用 F23 `CreatePrefabFromGameObject` 链接语义） |
+| 右键 **空白** → `Instantiate Prefab…` | 资产选择器（过滤 `AssetType==Prefab`）→ 实例化到当前 Level，**顶层**放置（Identity 或选中附近可选后置） |
+| 右键 **GameObject** → `Instantiate Prefab…` | 同上；默认仍顶层。子菜单或同对话框勾选 **Instantiate as Child**：`AttachParent = selection` |
+| Prefab **Stage** Hierarchy | **不**提供 Create Prefab / Instantiate Prefab（避免嵌套资产与 Stage 语义混乱）；仅 Level 文档 |
+
+实现落点：现有 `EditorContextMenuSystem` + `HierarchyMenuContext`（与 `Create Empty` / Duplicate 同轨），新增 `EditorActionId`，**不要**在 `HierarchyWindow` 内硬编码整段逻辑。
+
+#### 3.10.2 Create Prefab 数据流
+
+```text
+Hierarchy GO context menu → Create Prefab…
+  → (optional) validate single connected subtree / has Root SceneComponent
+  → FileDialog SaveAs *.meprefab under ProjectContentRoot
+  → PrefabUtility::CreatePrefabFromGameObject(*go)   // already registers PrefabInstanceRecord
+  → PrefabUtility::SavePrefabAsset(*prefab, relativePath)
+  → Mark Scene dirty；选中仍留在实例根
+  → 默认不自动打开 Prefab 文档 Tab（减少打断；用户可再双击 CB）
+```
+
+失败：路径非法 / 序列化失败 → 明确日志 + 不留下半截资产（或删半成品 — 实现时 Fail closed）。
+
+#### 3.10.3 Instantiate Prefab 数据流
+
+```text
+Instantiate Prefab… → pick AssetMeta(Prefab)
+  → LoadAsset<Prefab>
+  → scene.Instantiate(*prefab, params)   // §3.10.5
+       params.bRegisterPrefabInstance = true（Level Editor Scene）
+       params.AttachParent = selection or null
+  → Select new instance root；Mark Scene dirty
+```
+
+#### 3.10.4 Hierarchy 实例视觉（Unity 式区分）
+
+| 对象 | 外观（默认拍板） |
+|------|------------------|
+| Prefab **实例根**（`PrefabUtility::FindInstanceRecord` 命中且 `RootInstanceGuid == go`） | Prefab 图标（如 `ICON_FA_CUBES`）+ **实例色**文字（语义色，建议青/蓝系，进 `EditorAppearance` SemanticColors，如 `HierarchyPrefabInstance`） |
+| 实例 **子孙** GO | 同色文字（轻量）；图标可仍用普通 GO 或小立方 |
+| 普通 GO | 现状不变 |
+| Prefab **Stage** 内 GO | **不**用实例色（编辑的是资产 default，不是关卡实例）；可选极弱「Asset」提示，非 DoD |
+
+查询：`SceneEditor` / Hierarchy 绘制时读当前 `GetActiveScene()->GetPrefabInstances()`，对每个节点 O(实例数) 或建 `InstanceGuid→Record*` 临时 map（每帧 Hierarchy 可接受；节点多再缓存）。
+
+**不做：** override 属性蓝字、断开/Unpack 图标矩阵、嵌套 Prefab 多层色。
+
+#### 3.10.5 Core：`Scene::Instantiate`（Unity 式入口）
+
+`PrefabUtility::Instantiate(prefab, scene, …)` 保留为权威实现。  
+Scene 增加成员，把 **自身** 填入目标 Scene 参数，降低调用摩擦：
+
+```cpp
+// Scene.h — thin convenience; no second clone path
+std::shared_ptr<GameObject> Instantiate(
+    const Prefab& prefab,
+    const PrefabInstantiateParams& params = {},
+    std::string* outError = nullptr);
+
+// Implementation:
+//   return PrefabUtility::Instantiate(prefab, *this, params, outError);
+```
+
+可选（同切片或紧随）：`Instantiate(const Prefab&, const Transform& worldTransform, …)` 仅填 `params.WorldTransform`。
+
+原则（ENGINE_DESIGN_PHILOSOPHY）：
+
+- **Mechanism：** Scene 暴露与 Utility 等价的机制入口；不引入 Gameplay PrefabManager。  
+- **单一路径：** 禁止 Scene 内复制一套 clone 逻辑。  
+- **测试：** `test prefab` 增加 `scene->Instantiate(*prefab)` 冒烟（与现有 Utility 路径对等）。
+
+文档归属：行为契约仍以 F23 为准；本 Amendment 在 F16 描述 Editor 消费，并在 F23 变更记录挂一条「API 便利封装」。
+
+#### 3.10.6 与 Stage / F24 边界
+
+| 场景 | Create Prefab | Instantiate Prefab | 实例着色 |
+|------|---------------|--------------------|----------|
+| Level Scene 文档 | 是 | 是 | 是 |
+| Prefab Stage 文档 | 否 | 否 | 否（非实例） |
+| PIE | 否 | 否（或后置） | N/A |
+
+Save Prefab 文档后的 Propagate（已有）不变。
+
 ---
 
 ## 4) 备选方案
@@ -326,22 +430,38 @@ F16 **不** 在 Stage 上写 `PrefabInstanceRecord`（改的是资产 default）
 | 用户以为 Stage 能 Save As Scene | 资产污染 | UI 禁用 + 文案「Saving Prefab」 |
 | 过早承诺并排预览 | 排期被 RT 拖死 | DoD 写明单 Viewport |
 | PIE 误用 Stage | 怪异 | PrefabStage 禁用 Play |
+| Hierarchy Create 与 Stage 混淆 | 嵌套 Prefab 半成品 | Stage 隐藏 Create/Instantiate |
+| 实例着色误伤 Stage GO | 编辑资产时满屏蓝 | Stage 禁用实例色 |
+| Scene::Instantiate 分叉实现 | 双路径 bug | 仅转发 PrefabUtility |
 
 ---
 
 ## 6) 验收标准
 
-- [ ] CB 双击 `.meprefab` → Prefab Tab；与 Scene Tab 可切换
-- [ ] 编辑 Stage 内组件 → Dirty → Save → `.meprefab` 更新；模板 Guid 稳定（同对象映射）
-- [ ] 无法 Save As `.mescene`；无法创建第二顶层 GO；无法删除根
-- [ ] 关 Tab 丢弃 Stage；不再出现在 Scene 文档中
-- [ ] 切回 Scene Tab，主 Viewport 显示关卡
-- [ ] （若 F24 已合）Save Prefab 后打开中的 Level 实例未覆盖字段更新
-- [ ] 无新增「第二套」完整 Hierarchy/Inspector 实现（允许薄包装）
+### 6.1 原 MVP（S01–S06）— 已完成
+
+- [x] CB 双击 `.meprefab` → Prefab Tab；与 Scene Tab 可切换（DocumentType Prefab + OpenOrFocus）
+- [x] 编辑 Stage → Dirty → Save → WriteStageTreeToPrefab（Guid 保持）+ SavePrefabAsset；单测 writeback
+- [x] 无法 Save As `.mescene`；无法创建第二顶层 GO（无选中父时）；无法删除根；禁 PIE
+- [x] 关 Tab：CloseSession Discard Stage；InspectingScene 回 Level
+- [x] 切回 Scene Tab：ExitPrefabStage → Viewport 显示关卡
+- [x] Save Prefab 调用 `PropagateDefaultsToOpenScenes`（F24）
+- [x] 无第二套 Hierarchy/Inspector（复用 SceneEditor ModuleId）
+
+### 6.2 Amendment A（S07–S11）
+
+- [x] Level Hierarchy 右键 GO → Create Prefab… → 磁盘 `.meprefab` + 源 GO 成为实例链接
+- [x] Level Hierarchy 右键空白/GO → Instantiate Prefab… → 场景出现实例根；可选 as Child
+- [x] Prefab Stage Hierarchy **无**上述两项菜单（或始终 Disabled + 原因）
+- [x] Hierarchy 中 Prefab 实例根（及子孙）与普通 GO 视觉可区分
+- [x] `Scene::Instantiate` 存在且与 `PrefabUtility::Instantiate` 行为一致；`test prefab` 覆盖
+- [x] 命令走 ContextMenu / Command 栈；Create/Instantiate 可 Undo（至少 Instantiate / 删除实例；Create 的资产文件 Undo **Out** — 仅撤销场景侧链接可选，默认拍板：场景 dirty + 命令撤销实例链接困难则 **Instantiate Undo = 删实例根**；Create Prefab **不**自动删磁盘文件）
 
 ---
 
 ## 7) 建议实现切片
+
+### 7.1 原 MVP
 
 | Slice | 内容 | 验证 |
 |-------|------|------|
@@ -349,8 +469,18 @@ F16 **不** 在 Stage 上写 `PrefabInstanceRecord`（改的是资产 default）
 | **S02** | Stage 构建 / 销毁 + Viewport 绑定 | 能看见 Prefab 根 |
 | **S03** | Save 回写资产（Guid 保持） | 磁盘往返 |
 | **S04** | EditConstraints（单根 / 禁 SaveAs Scene / 禁 PIE） | 负向用例 |
-| **S05** | Dirty / Undo 栈隔离；与 F24 Propagate 挂钩（可选） | 手工 + 冒烟 |
+| **S05** | Dirty / Undo 栈隔离；与 F24 Propagate 挂钩 | Host Session Dirty + per-session CommandStack；Save→Propagate |
 | **S06** | DoD | — |
+
+### 7.2 Amendment A
+
+| Slice | 内容 | 验证 |
+|-------|------|------|
+| **S07** | `Scene::Instantiate` 薄封装 + `test prefab` | 单测 |
+| **S08** | Hierarchy `Create Prefab…`（Level only）+ Save 对话框 | 手工 + 可选冒烟 |
+| **S09** | Hierarchy `Instantiate Prefab…`（顶层 / as Child） | 手工 |
+| **S10** | Hierarchy Prefab 实例着色 + 图标 | 手工 |
+| **S11** | Amendment DoD / 文档勾选 | — |
 
 ---
 
@@ -361,8 +491,13 @@ F16 **不** 在 Stage 上写 `PrefabInstanceRecord`（改的是资产 default）
 | O1 | Stage Guid 策略 | **B（编辑实例 Guid + Save 反向 remap）** |
 | O2 | Prefab Tab 是否允许 PIE | **否（MVP）** |
 | O3 | 并排预览 | **Out** → 隔离 RT Feature |
-| O4 | Hierarchy 是否显示「Prefab 根」徽章 | 可做小 UX；非 DoD 必须 |
-| O5 | Apply to Prefab（从 Level 实例） | 非本 Feature 首期；属 F24/后续 |
+| O4 | Hierarchy Prefab 实例视觉 | **Amendment A In**（实例色 + 图标；非 override 蓝字） |
+| O5 | Apply to Prefab（从 Level 实例） | 非本 Feature 首期；后置 |
+| O6 | Create Prefab 后是否自动打开 Prefab Tab | **否** |
+| O7 | Instantiate 默认父节点 | **顶层**；可选 as Child of selection |
+| O8 | Create Prefab 失败时磁盘残留 | **Fail closed**（尽量不留半成品） |
+| O9 | CB 拖拽 Prefab 到 Hierarchy | **Out**（Amendment A） |
+| O10 | Create Prefab 的磁盘文件 Undo | **Out**（不删文件）；场景侧以 dirty / 实例链接为准 |
 
 ---
 
@@ -372,3 +507,8 @@ F16 **不** 在 Stage 上写 `PrefabInstanceRecord`（改的是资产 default）
 |------|------|
 | 2026-09-15 | Draft：UE 式文档 Tab + Unity 式 SceneEditor 复用；Stage Scene；单 Viewport |
 | 2026-09-15 | 对齐 F23 类名 `Prefab`；Guid 策略 B；UTF-8 重写修复编码损坏 |
+| 2026-09-15 | **In Progress：** S01/S02 — Prefab DocumentType + Stage Instantiate + InspectingScene 绑定；Save 回写待 S03 |
+| 2026-09-15 | S03/S04：WriteStageTreeToPrefab + Save/Propagate；PrefabEditConstraints（单根/禁 SaveAs/禁 PIE） |
+| 2026-09-15 | **Done：** S01–S06；EnterPlay 硬拦 Prefab Stage；DoD 勾选 |
+| 2026-09-15 | **Amendment A → Review：** Hierarchy Create/Instantiate Prefab；实例视觉区分；`Scene::Instantiate`；S07–S11（**待审批**） |
+| 2026-09-15 | **Amendment A Done：** S07–S11；`Scene::Instantiate`；Hierarchy Create/Instantiate（Level only）；实例色+图标；`test prefab` 8/8 |

@@ -2,6 +2,7 @@
 
 #include "ContextMenu/Actions/ContentBrowserBuiltInActions.h"
 #include "ContextMenu/Actions/EditorEditActions.h"
+#include "ContextMenu/Actions/PrefabBuiltInActions.h"
 #include "ContextMenu/Actions/SceneBuiltInActions.h"
 #include "ContextMenu/Actions/SceneContextMenuProviders.h"
 #include "ContextMenu/EditorActionRegistry.h"
@@ -22,6 +23,7 @@ namespace minEngine
     {
         RegisterEditorEditActions(m_Registry);
         RegisterSceneBuiltInActions(m_Registry);
+        RegisterPrefabBuiltInActions(m_Registry);
         RegisterSceneContextMenuProviders(m_Registry);
         RegisterContentBrowserBuiltInActions(m_Registry);
     }

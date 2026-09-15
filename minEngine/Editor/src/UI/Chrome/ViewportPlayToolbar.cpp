@@ -3,7 +3,10 @@
 #include <algorithm>
 
 #include "PlayMode/IPlayModeService.h"
+#include "Shell/EditorContextHelpers.h"
 #include "Shell/IEditorContext.h"
+#include "SubEditor/Prefab/PrefabEditConstraints.h"
+#include "SubEditor/Scene/SceneEditor.h"
 #include "UI/Appearance/EditorAppearance.h"
 
 #include "IconFontCppHeaders/IconsFontAwesome7.h"
@@ -51,15 +54,24 @@ namespace minEngine
         {
             IPlayModeService& playMode = context.GetPlayModeService();
             const bool isPlaying = playMode.IsPlaying();
+            bool canEnterPlay = !isPlaying;
+            if (SceneEditor* sceneEditor = GetSceneEditor(&context))
+            {
+                canEnterPlay = !isPlaying && PrefabEditConstraints::AllowEnterPlay(*sceneEditor);
+            }
 
             ImGui::PushFont(iconFont, kToolbarIconFontSize);
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(kToolbarItemSpacing, 0.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
-            if (DrawIconButton(ICON_FA_PLAY "##Play", !isPlaying))
+            if (DrawIconButton(ICON_FA_PLAY "##Play", canEnterPlay))
             {
                 playMode.EnterPlay();
+            }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && !canEnterPlay && !isPlaying)
+            {
+                ImGui::SetTooltip("Play is disabled while editing a Prefab.");
             }
             ImGui::SameLine();
             if (DrawIconButton(ICON_FA_STOP "##Stop", isPlaying, isPlaying))
