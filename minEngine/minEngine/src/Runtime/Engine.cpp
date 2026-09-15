@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Profiling/Profile.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
@@ -30,6 +31,54 @@ namespace minEngine
         return *s_Instance;
     }
 
+    void Engine::BeginEngineProfileStartup()
+    {
+        Profile::Initialize();
+        if (!Profile::IsAutoEngineSessionEnabled())
+        {
+            return;
+        }
+
+        Profile::SetEnabled(true);
+        Profile::ProfileSessionDesc desc;
+        desc.Label = "Engine";
+        Profile::StartSession(desc);
+        Profile::BeginPhase("Engine.Startup");
+    }
+
+    void Engine::EndEngineProfileStartupAndEnterRuntime()
+    {
+        if (!Profile::IsSessionActive())
+        {
+            return;
+        }
+
+        Profile::EndPhase();
+        Profile::BeginPhase("Engine.Runtime");
+    }
+
+    void Engine::BeginEngineProfileShutdown()
+    {
+        if (!Profile::IsSessionActive())
+        {
+            return;
+        }
+
+        Profile::EndPhase();
+        Profile::BeginPhase("Engine.Shutdown");
+    }
+
+    void Engine::EndEngineProfileShutdown()
+    {
+        if (!Profile::IsSessionActive())
+        {
+            return;
+        }
+
+        Profile::EndPhase();
+        Profile::StopSession();
+    }
+
     void Engine::Initialize(const CommandLineResult& commandLine)
     {
         ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
@@ -39,21 +88,30 @@ namespace minEngine
         m_SceneRendererKind = commandLine.SceneRenderer;
 
         LogSystem::Get().Initialize();
-        FinializeReflection();
-
-        m_EnginePathConfigLoaded =
-            PathRegistry::Get().LoadEngineConfiguration(commandLine, m_EngineConfig);
-
-        StartSystems();
-
-        // Eager-init DebugDrawService on the main thread before efsw / first frame enqueue.
-        (void)DebugDrawService::Get();
-
-        // Sky / EnvMap shaders and validation resources — required on every RHI (ED-F01 VK parity).
-        if (m_RenderSystem && m_EnginePathConfigLoaded)
+        BeginEngineProfileStartup();
         {
-            m_RenderSystem->LoadEngineRenderingAssets();
+            ME_PROFILE_SCOPE("Engine.Initialize");
+            FinializeReflection();
+
+            m_EnginePathConfigLoaded =
+                PathRegistry::Get().LoadEngineConfiguration(commandLine, m_EngineConfig);
+
+            {
+                ME_PROFILE_SCOPE("Engine.StartSystems");
+                StartSystems();
+            }
+
+            // Eager-init DebugDrawService on the main thread before efsw / first frame enqueue.
+            (void)DebugDrawService::Get();
+
+            // Sky / EnvMap shaders and validation resources — required on every RHI (ED-F01 VK parity).
+            if (m_RenderSystem && m_EnginePathConfigLoaded)
+            {
+                ME_PROFILE_SCOPE("Engine.LoadEngineRenderingAssets");
+                m_RenderSystem->LoadEngineRenderingAssets();
+            }
         }
+        EndEngineProfileStartupAndEnterRuntime();
     }
 
     void Engine::Initialize(int argc, char** argv)
@@ -62,23 +120,37 @@ namespace minEngine
         s_Instance = this;
 
         LogSystem::Get().Initialize();
-        FinializeReflection();
-
-        m_EnginePathConfigLoaded =
-            PathRegistry::Get().LoadEngineConfiguration(argc, argv, m_EngineConfig);
-
-        StartSystems();
-
-        if (m_RenderSystem && m_EnginePathConfigLoaded)
+        BeginEngineProfileStartup();
         {
-            m_RenderSystem->LoadEngineRenderingAssets();
+            ME_PROFILE_SCOPE("Engine.Initialize");
+            FinializeReflection();
+
+            m_EnginePathConfigLoaded =
+                PathRegistry::Get().LoadEngineConfiguration(argc, argv, m_EngineConfig);
+
+            {
+                ME_PROFILE_SCOPE("Engine.StartSystems");
+                StartSystems();
+            }
+
+            if (m_RenderSystem && m_EnginePathConfigLoaded)
+            {
+                ME_PROFILE_SCOPE("Engine.LoadEngineRenderingAssets");
+                m_RenderSystem->LoadEngineRenderingAssets();
+            }
         }
+        EndEngineProfileStartupAndEnterRuntime();
     }
 
     void Engine::Shutdown()
     {
         ME_LOG(LogCore, Info, "Engine Shutdown Started");
-        ShutdownSystems();
+        BeginEngineProfileShutdown();
+        {
+            ME_PROFILE_SCOPE("Engine.ShutdownSystems");
+            ShutdownSystems();
+        }
+        EndEngineProfileShutdown();
         s_Instance = nullptr;
     }
 
@@ -118,9 +190,20 @@ namespace minEngine
 
     void Engine::TickOneFrame(float deltaTime)
     {
-        PollEvents();
-        TickLogicalFrame(deltaTime);
-        TickRendererFrame(deltaTime);
+        Profile::BeginFrame();
+        {
+            ME_PROFILE_SCOPE("Engine.Frame");
+            PollEvents();
+            {
+                ME_PROFILE_SCOPE("Engine.LogicalTick");
+                TickLogicalFrame(deltaTime);
+            }
+            {
+                ME_PROFILE_SCOPE("Engine.RendererTick");
+                TickRendererFrame(deltaTime);
+            }
+        }
+        Profile::EndFrame();
     }
 
     void Engine::FinializeReflection()

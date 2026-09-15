@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（CORE-F20 Done）  
+Last updated: 2026-09-15（CORE-F22 Done；待 commit）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -15,9 +15,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| — | **`CORE-F20`** | Dynamic Multicast Delegate | **Done** | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) |
+| — | **`CORE-F22`** | CPU Profiler Harness | **Done** | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) |
 
-**下一刀：** 准备 F20 收口 commit → 合入 master；或登记 **Profiler**；或切 `feat/lua-script` 开 **CORE-F21**。
+**下一刀：** 执行 F22 commit → 合入 master；或 `feat/lua-script` 开 **CORE-F21**；或 Editor **`ED-*`** Profiler 面板。
+
+**已收口：** `CORE-F20` Dynamic Multicast；`CORE-F22` Profiler Harness。
 
 **并行**
 

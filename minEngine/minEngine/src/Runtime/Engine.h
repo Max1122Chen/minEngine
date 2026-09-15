@@ -58,6 +58,10 @@ namespace minEngine
         void ShutdownSystems();
         void LogicalTick(float deltaTime);
         void RendererTick(float deltaTime);
+        void BeginEngineProfileStartup();
+        void EndEngineProfileStartupAndEnterRuntime();
+        void BeginEngineProfileShutdown();
+        void EndEngineProfileShutdown();
 
         static Engine* s_Instance;
 

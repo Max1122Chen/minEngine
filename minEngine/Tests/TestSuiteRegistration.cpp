@@ -586,6 +586,21 @@ namespace minEngine
             }
         };
 
+        struct ProfilerTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"profiler", "CPU Profiler Harness", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'profiler'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("profiler", context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -619,6 +634,7 @@ namespace minEngine
         using ParameterStoreSuite = TypedTestSuite<ParameterStoreTestSuiteTraits>;
         using LoggingChannelsSuite = TypedTestSuite<LoggingChannelsTestSuiteTraits>;
         using EngineVersionSuite = TypedTestSuite<EngineVersionTestSuiteTraits>;
+        using ProfilerSuite = TypedTestSuite<ProfilerTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -662,6 +678,7 @@ namespace minEngine
             registry.Register(ParameterStoreSuite::Get());
             registry.Register(LoggingChannelsSuite::Get());
             registry.Register(EngineVersionSuite::Get());
+            registry.Register(ProfilerSuite::Get());
             s_Registered = true;
         }
     }

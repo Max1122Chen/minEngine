@@ -1,6 +1,33 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（CORE-F20 Done）
+Last updated: 2026-09-15（CORE-F22 Done；待 commit）
+
+### 2026-09-15 - CORE-F22 Done：S05 收口
+- **Status：** Registry / Design → **Done**；验收勾选完成。
+- **验证：** `minEngineTests.exe test profiler` 5/5 PASS。
+- **Next：** 执行收口 commit。
+
+### 2026-09-15 - CORE-F22：`test profiler` 全绿（MinGW AV 根因）
+- **根因：** GCC 对 ~32B `ProfileEvent` **按值**传参发 `vmovdqa`；Win64 栈仅 16B 对齐，从 Ender 析构调用时 SIGSEGV。
+- **修复：** `PushEvent(..., const ProfileEvent&)`；宏改为 **POD + `ProfileScope_Begin/End` + 本地 Ender**；MVP **MainBuffer**（非 TLS）。
+- **验证：** `minEngineTests.exe test profiler` → **5/5 PASS**（30 assertions）。
+- **Next：** S05 DoD（见上条）。
+
+### 2026-09-15 - CORE-F22：S01–S04 实现落地
+- **实现：** `Runtime/Core/Profiling/`（Clock/Name/MainBuffer/Scope/Phase/Frame/Session/Analyze/Chrome Trace/Query）；Engine Startup/Runtime/Shutdown 插桩；`test profiler` suite。
+- **修正：** `ForEachSpan` 头文件模板（避免 `std::function` 跨 DLL AV）。
+- **验证：** 见上条（已绿）。
+
+### 2026-09-15 - CORE-F22：Design 细化（数据结构 / API）+ 开放点拍板
+- **Status：** Draft → **Planned**；§8 全部按默认。
+- **增补：** §3.8 POD/Session/Span/Stats；§3.9 完整 API；§3.10 不变量；§3.11 Chrome 映射；§3.12 文件布局。
+- **Docs：** [CORE-F22 Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md)。
+- **Next：** In Progress + 实现（见上条）。
+
+### 2026-09-15 - CORE-F22：Profiler Harness Design 草稿
+- **登记：** `CORE-F22`；Next CORE → F23。
+- **方案要点：** Session + Phase + Frame；Chrome Trace + 查询 API；无 Editor UI。
+- **Next：** 细化数据结构（已完成见上条）。
 
 ### 2026-09-15 - CORE-F20 Done：S05 反射收口
 - **实现：** `DynamicMulticastDelegateBase` + `IsDynamicMulticastDelegateField`（避免 Reflection include 环）；`CreatePropertyByType` 走 `MEDynamicMulticastDelegateProperty`；`SetValueOps` 对不可拷贝类型跳过 copy；Button `ME_PROPERTY(ScriptAssignable) m_OnClicked`。
