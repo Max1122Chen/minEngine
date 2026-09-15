@@ -6,6 +6,7 @@
 #include "Runtime/Function/Framework/Transform/Transform.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace minEngine
@@ -13,6 +14,14 @@ namespace minEngine
     class GameObject;
     class Scene;
     class Prefab;
+
+    ME_ENUM()
+    enum class EPrefabOverrideKind : uint8_t
+    {
+        PropertyValue = 0,
+        AddedComponent,
+        RemovedComponent,
+    };
 
     ME_STRUCT()
     struct PrefabObjectMapping
@@ -26,11 +35,13 @@ namespace minEngine
         GUID InstanceGuid;
     };
 
-    /** Schema placeholder for CORE-F24; always empty in CORE-F23. */
     ME_STRUCT()
     struct PrefabPropertyOverride
     {
         ME_GENERATED_BODY()
+
+        ME_PROPERTY()
+        EPrefabOverrideKind Kind{ EPrefabOverrideKind::PropertyValue };
 
         ME_PROPERTY()
         GUID TemplateObjectGuid;
@@ -38,8 +49,15 @@ namespace minEngine
         ME_PROPERTY()
         std::string PropertyPath;
 
+        /** Opaque payload; MVP uses "bin:" + hex of binary property buffer. */
         ME_PROPERTY()
         std::string ValueJson;
+
+        ME_PROPERTY()
+        std::string TypeName;
+
+        ME_PROPERTY()
+        GUID AddedInstanceGuid;
     };
 
     ME_STRUCT()
@@ -78,6 +96,30 @@ namespace minEngine
         Transform WorldTransform{};
         GameObject* AttachParent = nullptr;
         bool bRegisterPrefabInstance = true;
+    };
+
+    ME_ENUM()
+    enum class EPrefabEditOpKind : uint8_t
+    {
+        PropertyEdit = 0,
+        Reparent,
+        DeleteGameObject,
+        AddTopLevelGameObject,
+        AddComponent,
+        RemoveComponent,
+    };
+
+    struct PrefabEditOp
+    {
+        EPrefabEditOpKind Kind = EPrefabEditOpKind::PropertyEdit;
+        GUID TargetInstanceGuid;
+        GUID NewParentInstanceGuid;
+    };
+
+    struct PrefabEditValidationResult
+    {
+        bool bAllowed = true;
+        std::string Error;
     };
 }
 

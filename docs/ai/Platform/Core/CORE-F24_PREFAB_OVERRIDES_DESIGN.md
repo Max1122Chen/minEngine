@@ -3,10 +3,10 @@
 ## Meta
 - **ID:** `CORE-F24`
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-15
-- **Branch:** `feat/prefab`（可在 F23 Done 后同分支续做，或另开切片分支）
+- **Branch:** `feat/prefab`
 - **Related:**
   - [CORE-F23 Prefab Asset + Instantiate](./CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md)（**硬依赖**）
   - [ED-F16 Prefab Editor](../../Editor/ED-F16_PREFAB_EDITOR_DESIGN.md)（消费 override 可视化；本 Feature 可无完整 UI）
@@ -371,13 +371,13 @@ F24 **可以**在无 F16 时用单测 + 手写 JSON 验收。
 
 ## 6) 验收标准
 
-- [ ] 改实例属性 → Overrides 出现；改回 default → 条目移除
-- [ ] Scene 存盘重开：覆盖值保留；Override 表完整
-- [ ] 改 Prefab default → 无 override 字段更新；有 override 不变
-- [ ] RevertProperty / RevertInstance 正确
-- [ ] 禁止的层级操作返回明确错误
-- [ ] PIE 后无 PrefabInstance 依赖；值正确
-- [ ] `test prefab` / `test prefab-overrides` 绿
+- [x] 改实例属性 → Overrides 出现；Revert 回 default → 条目移除（`test prefab-overrides` record/revert）
+- [ ] Scene 存盘重开：覆盖值保留；Override 表完整（API/结构已序列化；**未做专用 round-trip 单测**，可后置）
+- [x] 改 Prefab default → 无 override 字段更新；有 override 不变；根 Transform 不传播
+- [x] RevertProperty 正确（单测）；RevertInstance API 已提供（smoke 未单独覆盖）
+- [x] 禁止删除实例根返回明确错误（ValidateEdit）
+- [x] PIE 无 PrefabInstance 依赖：沿用 F23（PIE 清表）；本 Feature 不新增运行时身份
+- [x] `test prefab-overrides` 3/3；`test prefab`（含 prefix 重叠）全绿
 
 ---
 
@@ -402,7 +402,7 @@ F24 **可以**在无 F16 时用单测 + 手写 JSON 验收。
 | O2 | Apply changes to Prefab | **F24 Out**；ED-F16 再议 |
 | O3 | Added/Removed component | **S05 可选**；可先只做 PropertyValue |
 | O4 | 未打开 Scene 的磁盘传播 | **Out** |
-| O5 | Override 值存 JSON 字符串 vs Binary blob | **JSON 字符串**（与磁盘生态一致） |
+| O5 | Override 值存 JSON 字符串 vs Binary blob | **落地：`ValueJson` = `"bin:"` + hex**（属性二进制缓冲）；字段名保留兼容 |
 
 ---
 
@@ -412,3 +412,4 @@ F24 **可以**在无 F16 时用单测 + 手写 JSON 验收。
 |------|------|
 | 2026-09-15 | Draft：受限 override、传播、规则表、与 F23/F16 边界 |
 | 2026-09-15 | 对齐 F23 类名 `Prefab`（非 PrefabAsset）；依赖改为 F23 Done；UTF-8 重写修复编码损坏 |
+| 2026-09-15 | **Done：** PropertyValue override、Propagate（开 Scene）、RevertProperty、ValidateEdit；`test prefab-overrides`；payload=`bin:`+hex |

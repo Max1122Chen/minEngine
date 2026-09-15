@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（feat/prefab: CORE-F23 Done）
+Last updated: 2026-09-15（feat/prefab: CORE-F24 Done）
+
+### 2026-09-15 - CORE-F24 Done：Prefab Overrides + Propagation
+- **实现：** `PrefabPropertyPath`（`bin:`+hex 载荷）；`PrefabOverrideUtility`（TryRecord / RevertProperty / RevertInstance / PropagateDefaults*）；`PrefabEditValidator`（禁删根等）；`EPrefabOverrideKind` + 完整 `PrefabPropertyOverride`。
+- **验证：** `minEngineTests.exe test prefab-overrides` **3/3 PASS**；`test prefab` 回归 PASS。
+- **已知缺口：** Scene override 存盘 round-trip 单测未做；Added/RemovedComponent 未做（O3）；Apply-to-Prefab Out。
+- **Next：** 准备 F24 commit；再开 ED-F16。
 
 ### 2026-09-15 - CORE-F23 Done：Prefab 资产 + Instantiate
 - **实现：** `Framework/Prefab/`（`Prefab`、`PrefabUtility`、引用切断）；`ObjectCloneContext`；Scene `m_PrefabInstances`；`.meprefab` 资产管线；PIE 清实例表。

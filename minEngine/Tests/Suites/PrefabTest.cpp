@@ -60,7 +60,7 @@ namespace minEngine
         PrefabTestScope scope;
 
         const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-test");
-        REQUIRE(scene != nullptr);
+        REQUIRE(static_cast<bool>(scene));
         scene->SetSceneType(ESceneType::Editor);
 
         const std::shared_ptr<GameObject> parent = scene->CreateGameObject();
@@ -77,13 +77,13 @@ namespace minEngine
 
         PrefabCreateReport report;
         const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*parent, &report);
-        REQUIRE(prefab != nullptr);
+        REQUIRE(static_cast<bool>(prefab));
         CHECK(prefab->ValidateSingleRoot());
         CHECK(prefab->GetTemplateObjects().size() == 2);
         CHECK(PrefabUtility::FindInstanceRecord(*scene, sourceParentGuid) != nullptr);
 
         const std::shared_ptr<Scene> targetScene = SceneManager::Get().CreateNewScene("prefab-target");
-        REQUIRE(targetScene != nullptr);
+        REQUIRE(static_cast<bool>(targetScene));
         targetScene->SetSceneType(ESceneType::Editor);
 
         PrefabInstantiateParams params;
@@ -93,7 +93,7 @@ namespace minEngine
         std::string error;
         const std::shared_ptr<GameObject> instanceRoot =
             PrefabUtility::Instantiate(*prefab, *targetScene, params, &error);
-        REQUIRE(instanceRoot != nullptr);
+        REQUIRE(static_cast<bool>(instanceRoot));
         CHECK(error.empty());
         CHECK(instanceRoot->GetGuid() != sourceParentGuid);
         CHECK(instanceRoot->GetGuid() != prefab->GetRootGuid());
@@ -107,7 +107,7 @@ namespace minEngine
         PrefabTestScope scope;
 
         const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-disk");
-        REQUIRE(scene != nullptr);
+        REQUIRE(static_cast<bool>(scene));
         scene->SetSceneType(ESceneType::Editor);
 
         const std::shared_ptr<GameObject> root = scene->CreateGameObject();
@@ -115,7 +115,7 @@ namespace minEngine
         root->AddComponent<SceneComponent>()->SetPosition(Vector3(1.0f, 2.0f, 3.0f));
 
         const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
-        REQUIRE(prefab != nullptr);
+        REQUIRE(static_cast<bool>(prefab));
 
         const std::filesystem::path tempPath =
             std::filesystem::temp_directory_path() / "minEngine_prefab_roundtrip.meprefab";
@@ -146,7 +146,7 @@ namespace minEngine
         CHECK(loaded->GetTemplateObjects().size() == prefab->GetTemplateObjects().size());
 
         GameObject* loadedRoot = loaded->GetRootGameObject();
-        REQUIRE(loadedRoot != nullptr);
+        REQUIRE(static_cast<bool>(loadedRoot));
         REQUIRE(loadedRoot->GetRootComponent() != nullptr);
         CHECK(loadedRoot->GetRootComponent()->GetPosition().x == doctest::Approx(1.0f));
 
@@ -159,18 +159,18 @@ namespace minEngine
         PrefabTestScope scope;
 
         const std::shared_ptr<Scene> editorScene = SceneManager::Get().CreateNewScene("prefab-pie");
-        REQUIRE(editorScene != nullptr);
+        REQUIRE(static_cast<bool>(editorScene));
         editorScene->SetSceneType(ESceneType::Editor);
 
         const std::shared_ptr<GameObject> root = editorScene->CreateGameObject();
         root->AddComponent<SceneComponent>();
         const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
-        REQUIRE(prefab != nullptr);
+        REQUIRE(static_cast<bool>(prefab));
         REQUIRE(!editorScene->GetPrefabInstances().empty());
 
         SceneCloneContext cloneContext;
         const std::shared_ptr<Scene> pieScene = SceneDuplicator::DuplicateForPIE(*editorScene, cloneContext);
-        REQUIRE(pieScene != nullptr);
+        REQUIRE(static_cast<bool>(pieScene));
         CHECK(pieScene->GetPrefabInstances().empty());
         CHECK(!pieScene->GetAllGameObjects().empty());
     }

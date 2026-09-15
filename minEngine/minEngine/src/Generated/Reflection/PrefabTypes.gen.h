@@ -3,6 +3,8 @@
 
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
+ME_REFLECTION_ENUM_DECLARE(minEngine::EPrefabOverrideKind, GReflectionEnumRegister_EPrefabOverrideKind_b0790d58)
+
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::PrefabObjectMapping)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabObjectMapping, TemplateGuid)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabObjectMapping, InstanceGuid)
@@ -11,9 +13,12 @@ ME_REFLECTION_ACCESSOR_END()
 ME_REFLECTION_CLASS_DECLARE(minEngine::PrefabObjectMapping, GReflectionClassRegister_PrefabObjectMapping_32afdef5)
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::PrefabPropertyOverride)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabPropertyOverride, Kind)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabPropertyOverride, TemplateObjectGuid)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabPropertyOverride, PropertyPath)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabPropertyOverride, ValueJson)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabPropertyOverride, TypeName)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::PrefabPropertyOverride, AddedInstanceGuid)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::PrefabPropertyOverride, GReflectionClassRegister_PrefabPropertyOverride_c98205f0)
@@ -26,3 +31,5 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::PrefabInstanceRecord)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::PrefabInstanceRecord, GReflectionClassRegister_PrefabInstanceRecord_54d4e332)
+
+ME_REFLECTION_ENUM_DECLARE(minEngine::EPrefabEditOpKind, GReflectionEnumRegister_EPrefabEditOpKind_7a4f3af2)

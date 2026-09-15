@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（`feat/prefab`：CORE-F23/F24 + ED-F16 Design Draft）  
+Last updated: 2026-09-15（`feat/prefab`：CORE-F24 Done；下一刀 ED-F16）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,15 +11,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/prefab`）：Prefab — F23 Done，下一刀 F24**
+**Primary（`feat/prefab`）：Prefab — F23/F24 Done，下一刀 ED-F16**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 1 | **`CORE-F23`** | Prefab 资产 + Create/Instantiate | **Done** | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) |
-| 2 | **`CORE-F24`** | 受限 Override + default 传播 | **Draft** | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) |
+| 2 | **`CORE-F24`** | 受限 Override + default 传播 | **Done** | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) |
 | 3 | **`ED-F16`** | Prefab 文档 Mode（Stage + 复用 SceneEditor） | **Draft** | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
 
-**下一刀：** 验收 F23 commit → 实现 **CORE-F24**。
+**下一刀：** 准备 F24 commit → 实现 **ED-F16**（Prefab 文档 Mode）。
 
 **master 已收口：** CORE-F20 / CORE-F22；ED-F12–F15（ED-F11 W3 大部）。ED-F11 余量 / ED-F10 / CORE-F21 仍为并行可选。
 
@@ -27,7 +27,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/prefab` | `CORE-F23`→`F24`→`ED-F16` | 本轨 Primary |
+| `feat/prefab` | `CORE-F23`/`F24` Done → **`ED-F16`** | 本轨 Primary |
 | `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
 | `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
