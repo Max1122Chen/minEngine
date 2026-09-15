@@ -12,7 +12,7 @@ namespace minEngine
     class ImageComponent;
     class WidgetComponent;
 
-    DECLARE_MULTICAST_DELEGATE(FOnButtonClicked);
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnButtonClicked);
 
     /**
      * ScreenUI button policy on the same GameObject as Widget (hit) + optional Image (skin).
@@ -71,7 +71,7 @@ namespace minEngine
         void ApplyVisualState();
         void ApplyTint(const LinearColor& color);
 
-        FOnButtonClicked m_OnClicked;
+        DOnButtonClicked m_OnClicked;
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTargetGraphic", Getter = "GetTargetGraphicShared"))
         std::shared_ptr<ImageComponent> m_TargetGraphic{ nullptr };

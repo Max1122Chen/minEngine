@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-13（ED-F11：Mode→Active Session + Shared CB dock）  
+Last updated: 2026-09-14（CORE-F20 S01–S04 实现；delegates / screen-ui-button PASS）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,17 +11,21 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：Phase P — `feat/editor`（worktree `minEngine-editor`）**
+**Primary（本工作树 `minEngine` / `feat/core`）：`CORE-F20`**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| F1–F3 | — | Foundation | **Done**（master） | Log / Schema / Maximum |
-| 1 | **`ED-F09`** | Editor Console LogRecord 过滤 | **Done**（W0–W2） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2 + Mode→Session 语义切片） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 |
-| — | `ED-F10` | EditorSettings | **Planned**（占位） | Design 未开 |
-| 后 | （建议 `ED-F12`） | World Query–Modify–Verify | 未登记 | 等 F11 壳稳定后再立 |
+| 1 | **`CORE-F20`** | Dynamic Multicast Delegate | **In Progress**（S01–S04 Done；S05 Deferred） | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) |
 
-**下一刀：** 手测 Shared CB dock / Focus Document；准备 ED-F11 commit；或 W3 Pin/Reopen。
+**下一刀：** 准备 commit；或 S05 header-tool；或切 `feat/lua-script` 开 **CORE-F21** `Add(fn)`。
+
+**并行**
+
+| 轨 | ID | 说明 |
+|----|-----|------|
+| `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
+| `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
+| `minEngine-editor` | `ED-F11` | Tab Host In Progress |
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
@@ -94,10 +98,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | `master` | 主仓；merge 后默认工作区 |
+| `D:/Dev/GitRepo/minEngine` | **`feat/core`** | **CORE-F20** Dynamic Multicast Design |
+| `D:/Dev/GitRepo/minEngine`（切分支） | `feat/lua-script` | CORE-F19 Call；后续 F21 |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | 可归档 |
-| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | **Active** Phase P；已 FF 至 master（含 Maximum / F17–F18）；`ProjectRoot` 本地指向本树 |
+| `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | **Active** Phase P（ED-F11）；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
 
 `MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（主仓：`…/minEngine/minEngine/MyMEProject`）。

@@ -2,6 +2,7 @@
 #include "Access/ObjectManagerTestAccess.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/MEProperties.h"
 #include "Runtime/Core/Reflection/ReflectionSample.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -217,4 +218,153 @@ TEST_CASE("delegates: AddMEObject skips after destroy [full]")
     // Must not crash; stale MEObject binding is skipped and compacted.
     onReset.Broadcast();
     CHECK(onReset.GetBindingCount() == 0);
+}
+
+TEST_CASE("delegates: dynamic AddScript mock Broadcast [full]")
+{
+    using namespace minEngine;
+
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnScriptZero);
+    FOnScriptZero onZero;
+
+    int callCount = 0;
+    CallableScriptFunction callable(
+        &callCount,
+        [](void* user, void* const* /*args*/, int arity)
+        {
+            CHECK(arity == 0);
+            ++(*static_cast<int*>(user));
+        },
+        nullptr);
+
+    const DelegateHandle handle = onZero.AddScript(std::move(callable));
+    REQUIRE(handle.IsValid());
+    CHECK(onZero.GetBindingCount() == 1);
+
+    onZero.Broadcast();
+    CHECK(callCount == 1);
+
+    onZero.Broadcast();
+    CHECK(callCount == 2);
+
+    onZero.Remove(handle);
+    onZero.Broadcast();
+    CHECK(callCount == 2);
+}
+
+TEST_CASE("delegates: dynamic AddScript one-param [full]")
+{
+    using namespace minEngine;
+
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnScriptOne, int);
+    FOnScriptOne onOne;
+
+    int lastValue = 0;
+    CallableScriptFunction callable(
+        &lastValue,
+        [](void* user, void* const* args, int arity)
+        {
+            REQUIRE(arity == 1);
+            REQUIRE(args != nullptr);
+            *static_cast<int*>(user) = *static_cast<int*>(args[0]);
+        },
+        nullptr);
+
+    REQUIRE(onOne.AddScript(std::move(callable)).IsValid());
+    onOne.Broadcast(42);
+    CHECK(lastValue == 42);
+}
+
+TEST_CASE("delegates: dynamic AddDynamic ResetCounter and destroy [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    DelegateObjectManagerScope scope;
+
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDynamicReset);
+    FOnDynamicReset onReset;
+
+    minEngine::GUID componentGuid;
+    {
+        std::shared_ptr<Scene> scene = NewObject<Scene>("DynamicDelegateScene");
+        std::shared_ptr<GameObject> gameObject = scene->CreateGameObject();
+        std::shared_ptr<ReflectionSampleComponent> sample =
+            gameObject->AddComponent<ReflectionSampleComponent>();
+        componentGuid = sample->GetGuid();
+        REQUIRE(componentGuid.IsValid());
+
+        sample->SetFunctionTestCounter(11);
+        const DelegateHandle handle = ME_ADD_DYNAMIC(onReset, sample.get(), ResetCounter);
+        REQUIRE(handle.IsValid());
+        CHECK(onReset.GetBindingCount() == 1);
+
+        onReset.Broadcast();
+        CHECK(sample->GetCounter() == 0);
+
+        sample->SetFunctionTestCounter(5);
+        onReset.AddLambda(
+            []()
+            {
+            });
+        CHECK(onReset.GetBindingCount() == 2);
+    }
+
+    CHECK(FindObject(componentGuid) == nullptr);
+    onReset.Broadcast();
+    CHECK(onReset.IsBound());
+}
+
+TEST_CASE("delegates: dynamic AddDynamic missing function returns invalid [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    DelegateObjectManagerScope scope;
+
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissing);
+    FOnMissing onMissing;
+
+    std::shared_ptr<Scene> scene = NewObject<Scene>("DynamicDelegateMissingScene");
+    std::shared_ptr<GameObject> gameObject = scene->CreateGameObject();
+    std::shared_ptr<ReflectionSampleComponent> sample =
+        gameObject->AddComponent<ReflectionSampleComponent>();
+
+    const DelegateHandle handle = onMissing.AddDynamic(sample.get(), "DoesNotExist");
+    CHECK_FALSE(handle.IsValid());
+    CHECK_FALSE(onMissing.IsBound());
+}
+
+TEST_CASE("delegates: MEDynamicMulticastDelegateProperty category [full]")
+{
+    using namespace minEngine;
+    using namespace minEngine::Reflection;
+
+    MEDynamicMulticastDelegateProperty property("OnEvent");
+    property.SetArity(0);
+    CHECK(property.GetCategory() == MEPropertyCategory::MulticastDelegate);
+    CHECK(property.GetArity() == 0);
+
+    property.SetAnnotations(
+        static_cast<PropertySpecifierMask>(PropertySpecifier::ScriptAssignable),
+        PropertyMetadata{});
+    CHECK(property.HasSpecifier(PropertySpecifier::ScriptAssignable));
+
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEvent);
+    FOnEvent storage;
+    property.SetAccessors(
+        [](const void* owner) -> const void*
+        {
+            return owner;
+        },
+        [](void* owner) -> void*
+        {
+            return owner;
+        });
+    CHECK(property.GetDelegateBase(static_cast<void*>(&storage)) == static_cast<DynamicMulticastDelegateBase*>(&storage));
+    CHECK(property.GetDelegateBase(static_cast<const void*>(&storage))->GetArity() == 0);
 }

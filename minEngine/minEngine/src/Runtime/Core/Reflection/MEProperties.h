@@ -12,6 +12,11 @@
 #include "MEEnum.h"
 #include "TypeTraits.h"
 
+namespace minEngine
+{
+    class DynamicMulticastDelegateBase;
+}
+
 namespace minEngine::Reflection
 {
     class MEClass;
@@ -42,7 +47,8 @@ namespace minEngine::Reflection
         Primitive,
         Object,
         ObjectPtr,
-        Array
+        Array,
+        MulticastDelegate
     };
 
     enum class MEObjectPtrCategory
@@ -66,6 +72,8 @@ namespace minEngine::Reflection
         Instanced = 1u << 8,
         ScriptReadOnly = 1u << 9,
         ScriptReadWrite = 1u << 10,
+        /// Dynamic multicast field may be subscribed from script (UE BlueprintAssignable-style).
+        ScriptAssignable = 1u << 11,
     };
 
     using PropertySpecifierMask = uint32_t;
@@ -413,5 +421,38 @@ namespace minEngine::Reflection
         MEArrayGetConstElementFn getConstElement = nullptr;
         MEArrayResizeFn resize = nullptr;
         MEArrayGetMutableElementFn getMutableElement = nullptr;
+    };
+
+    /// Reflection property for DynamicMulticastDelegate fields (UE FMulticastDelegateProperty-style).
+    class MINENGINE_API MEDynamicMulticastDelegateProperty final : public MEProperty
+    {
+    public:
+        explicit MEDynamicMulticastDelegateProperty(std::string inName)
+            : MEProperty(std::move(inName))
+        {
+        }
+
+        MEPropertyCategory GetCategory() const override
+        {
+            return MEPropertyCategory::MulticastDelegate;
+        }
+
+        void SetArity(int arity) { m_Arity = arity; }
+        int GetArity() const { return m_Arity; }
+
+        ::minEngine::DynamicMulticastDelegateBase* GetDelegateBase(void* ownerObject) const
+        {
+            void* field = GetMutable(ownerObject);
+            return field == nullptr ? nullptr : static_cast<::minEngine::DynamicMulticastDelegateBase*>(field);
+        }
+
+        const ::minEngine::DynamicMulticastDelegateBase* GetDelegateBase(const void* ownerObject) const
+        {
+            const void* field = GetConst(ownerObject);
+            return field == nullptr ? nullptr : static_cast<const ::minEngine::DynamicMulticastDelegateBase*>(field);
+        }
+
+    private:
+        int m_Arity = 0;
     };
 }

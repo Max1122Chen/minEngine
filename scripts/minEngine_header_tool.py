@@ -47,6 +47,7 @@ PROPERTY_SPECIFIER_MAP = {
     "instanced": "Instanced",
     "scriptreadonly": "ScriptReadOnly",
     "scriptreadwrite": "ScriptReadWrite",
+    "scriptassignable": "ScriptAssignable",
 }
 
 CLASS_SPECIFIER_MAP = {

@@ -256,7 +256,7 @@ namespace minEngine
             static TestSuiteMetadata BuildMetadata()
             {
                 // Not in smoke: native unit suite; run via `test delegates` or full.
-                return TestSuiteMetadata{"delegates", "Native Multicast Delegates", false, true, false};
+                return TestSuiteMetadata{"delegates", "Native + Dynamic Multicast Delegates", false, true, false};
             }
 
             static bool RunSuite(TestContext& context)

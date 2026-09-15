@@ -1,6 +1,26 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-13（ED-F11 Mode→Active Session + Shared CB dock）
+Last updated: 2026-09-14（CORE-F20 S01–S04 实现）
+
+### 2026-09-14 - CORE-F20：Dynamic Multicast MVP 落地（S01–S04）
+- **实现：** `DynamicMulticastDelegate`（B1 包装 Native）、`CallableScriptFunction`、`AddDynamic` / `AddScript`、`ME_ADD_DYNAMIC`、DYNAMIC 宏、`MEDynamicMulticastDelegateProperty` + `ScriptAssignable`、Serializer 跳过 MulticastDelegate。
+- **Button：** `OnClicked` → `DECLARE_DYNAMIC_MULTICAST_DELEGATE`。
+- **验证：** `minEngineTests.exe test delegates` 11/11 PASS；`test screen-ui-button` 4/4 PASS。
+- **后置：** S05 header-tool 自动生成 Dynamic 属性；绑定列表落盘；CORE-F21 Lua `Add(fn)`。
+- **Next：** 准备 commit；或开 F21 Design。
+
+### 2026-09-14 - CORE-F20 Design 修订：CallableScriptFunction · 独立 Property · 序列化策略
+- **改名：** 运行时类型 `ScriptCallable` → **`CallableScriptFunction`**（与 `ME_FUNCTION(ScriptCallable)` 区分）。
+- **反射：** 明确 **`MEDynamicMulticastDelegateProperty`**（对齐 UE `FMulticastDelegateProperty` 独立类型思路）。
+- **序列化：** F20 **不落绑定表**；Serializer 对类别 **显式跳过**；预留仅 `AddDynamic` 可落盘的 JSON 形状（§3.4.1 / O8）。
+- **Next：** 维护者确认 O8 等 → In Progress。
+
+### 2026-09-14 - CORE-F20：Dynamic Multicast Design 草稿
+- **拍板输入：** 存储 **B1**（Dynamic 包装 Native）；Lua 主订阅 **`Add(fn)`** → 另轨 **CORE-F21**；`feat/core` 只做基建。
+- **Registry：** `CORE-F19`（Lua Call，lua-script）· **`CORE-F20`** Dynamic · `CORE-F21` Lua Add(fn) Planned；Next CORE → F22。
+- **Docs：** [CORE-F20 Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md)；ACTIVE_WORK Primary → F20；TD-006 注 F20/F21。
+- **未做：** 实现代码；等维护者审阅 §10/§11。
+- **Next：** 拍板开放点 → In Progress + S01。
 
 ### 2026-09-13 - ED-F11：Mode→Active Session 语义 + Shared CB 入布局
 - **设计：** [ED-F11](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 — Shared vs Type Suite；Tab/Active Session 为前台真相。

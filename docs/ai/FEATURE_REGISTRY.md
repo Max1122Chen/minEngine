@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-13（ED-F09 Done · ED-F11 W0–W2 In Progress）  
+Last updated: 2026-09-14（登记 CORE-F19/F20/F21：Lua Call · Dynamic Multicast · Lua Add(fn)）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -43,6 +43,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F16` | LinearColor 作者颜色（灯光等） | **Done** | — | [Design](./Platform/Core/CORE-F14_LINEAR_COLOR_AUTHORING_DESIGN.md) · 文件名保留历史 `CORE-F14_*` |
 | `CORE-F17` | LogChannel + structured LogRecord（spdlog Backend；非 UE Category） | **Done** | — | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) · [Impl](./Platform/Core/CORE-F17_LOGGING_CHANNELS_IMPLEMENTATION.md) · Phase F1 |
 | `CORE-F18` | EngineVersion（一等公民）+ 磁盘 `$schemaVersion` 门闸 / `$engineVersion` 戳 | **Done** | — | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) · Phase F2 · engine **0.0.9** / schema **1** |
+| `CORE-F19` | Lua C++→Lua Call-by-name（Delegate 桥后置） | **In Progress**（Call Done；Delegate Deferred） | — | Design 在 `feat/lua-script` · 契约摘要见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.6；合并后补链 |
+| `CORE-F20` | Dynamic Multicast Delegate（类型系统 + AddDynamic；B1 包装 Native） | **In Progress**（S01–S04 Done；S05 Deferred） | — | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) · 分支 `feat/core` · **不含** Lua usertype |
+| `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Planned** | — | Design 未开 · 挂钩契约见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · 分支 `feat/lua-script` |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
@@ -120,7 +123,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | **F05** | F04 Done（TestAccess） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
-| `CORE` | **F19** | F17 Logging / F18 Schema **Done**；F13–F16 Done |
+| `CORE` | **F22** | F17–F18 Done；F19 Lua Call In Progress；F20 Dynamic Multicast Planned；F21 Lua Add(fn) Planned |
 | `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F12** | F09 Console **Done**；F10 Settings 占位；F11 Tab Host **In Progress**（W0–W2）；F02/F04 余量 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |

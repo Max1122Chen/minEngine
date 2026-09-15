@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-09-13（TD-032 Done；TD-031 still Deferred）
+Last updated: 2026-09-14（TD-006 指向 CORE-F20/F21）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -13,7 +13,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-003 | No `verify` script (build + smoke one command) | WF | **Medium** | Done | `TEST-F01` | 2026-05-28: `scripts/verify.ps1` → `minEngineTests test smoke` |
 | TD-004 | Content Browser full tree rebuild on registry change | ED / ASSET | **Medium** | Open | [CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md](./Platform/ContentBrowser/CONTENT_BROWSER_REGISTRY_REFRESH_ISSUE.md) | Incremental registry OK; UI model rebuilds whole tree |
 | TD-005 | P4 reflection docs lag implementation | CORE | **Medium** | Open | [REFLECTION_FUNCTIONS_CURRENT_STATE.md](./Platform/Reflection/REFLECTION_FUNCTIONS_CURRENT_STATE.md) | Code has invoke MVP; state doc still “no UFunction” — reconcile |
-| TD-006 | Delegates + Lua not designed for implementation | CORE | **Medium** | Done | **CORE-F04** | **2026-08-04：** Native multicast MVP 落地（`Runtime/Core/Delegates/`，`test delegates`）。Dynamic/反射/Lua 正式绑定不在本期；另开 Feature。PHYS-F03 可重开。 |
+| TD-006 | Delegates + Lua not designed for implementation | CORE | **Medium** | Done | **CORE-F04** · **CORE-F20/F21** | **2026-08-04：** Native multicast MVP（F04）。**2026-09-14：** Dynamic → [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md)；Lua `Add(fn)` → CORE-F21。 |
 | TD-007 | Render viewport refactor (multi-viewport) | RND | **Medium** | Deferred | [RENDER_REFACTOR_PLAN.md](./Render/RENDER_REFACTOR_PLAN.md) | Large; true refactor only with plan |
 | TD-008 | Playground unmaintained / path hardcoding | Platform | **Low** | Deferred | PLATFORM_ROADMAP P0 tail | BUILD_PLAYGROUND off |
 | TD-009 | Editor E1 Inspector unification | ED | **Medium** | Deferred | EDITOR_PLATFORM_PLAN E1 | Product; queue behind infra |
