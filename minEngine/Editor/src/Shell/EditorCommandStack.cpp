@@ -19,7 +19,7 @@ namespace minEngine
         TrimUndoStackToMaxDepth();
     }
 
-    void EditorCommandStack::Execute(std::unique_ptr<IEditorCommand> command)
+    void EditorCommandStack::Execute(std::unique_ptr<EditorCommand> command)
     {
         if (!command)
         {
@@ -39,7 +39,7 @@ namespace minEngine
             return false;
         }
 
-        std::unique_ptr<IEditorCommand> command = std::move(m_UndoStack.back());
+        std::unique_ptr<EditorCommand> command = std::move(m_UndoStack.back());
         m_UndoStack.pop_back();
         command->Undo();
         m_RedoStack.push_back(std::move(command));
@@ -53,7 +53,7 @@ namespace minEngine
             return false;
         }
 
-        std::unique_ptr<IEditorCommand> command = std::move(m_RedoStack.back());
+        std::unique_ptr<EditorCommand> command = std::move(m_RedoStack.back());
         m_RedoStack.pop_back();
         command->Execute();
         m_UndoStack.push_back(std::move(command));

@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `ED-F11`
 - **Type:** Feature
-- **Status:** In Progress（W0–W2 已落地；W3 Pin/Reopen 等未做）
+- **Status:** In Progress（W0–W2 Done；**W3 大部落地** — Pin/Close All/Reopen/路径/快捷键；Save As / Scene 多开策略仍可后置）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-13
+- **Last updated:** 2026-09-15
 - **Branch:** `feat/editor`
 - **Depends on:** Editor Shell（`EditorSubModule` / `EditorServiceModule` / DockSpace）；`ED-F02` 打开资产路径
 - **Related:**
@@ -397,14 +397,15 @@ TypeInfo.AppendTabContextMenu(session, menu);
 - [ ] Active=AnimGraph/未来 AnimClip 时，其专有面板可见，Scene 专有面板隐藏（套件切换）
 - [ ] Shared Console 不随文档关
 - [ ] Tab 排序/关闭/Dirty；右键 **W1 组**可用（Close / Close Others / Close to the Right / Close Saved / Save / Copy Path / Show in CB）
-- [ ]（W3）Pin 语义：批量关闭跳过 Pinned；Reopen Closed 可用
-- [ ] Editor 构建 + 手测记 Progress
+- [x]（W3）Pin 语义：批量关闭跳过 Pinned；Reopen Closed 可用  
+- [x] Editor 构建 + 手测记 Progress（Reveal / Pin 直关 / Tab 图标跟进已过）  
 
 ---
 
 ## 7) Status note
 
-（无）
+**W3（2026-09-15）：** Pin/Unpin + 左侧 Pin 区排序；Close All（跳过 Pinned）；Reopen Closed + Ctrl+Shift+T；Ctrl+Tab 切 Tab；Copy Relative / Reveal in Explorer（`SHOpenFolderAndSelectItems`）；Tab FA 类型图标 + Pin `*`；`AppendTabContextMenu` 钩子已挂。  
+**W3 余量：** Save As…；Scene `AllowMultipleSessions` 产品决策（现状 false）；汇总 Dirty 对话框（仍逐 Tab）。
 
 ---
 

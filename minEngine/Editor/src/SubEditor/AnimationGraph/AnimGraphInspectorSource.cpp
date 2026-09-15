@@ -98,8 +98,13 @@ namespace minEngine
             {
                 if (!stateMachine.DefaultStateName.empty())
                 {
-                    stateMachine.DefaultStateName.clear();
-                    m_AnimGraphEditor.NotifyGraphChanged();
+                    m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() {
+                            graph.GetStateMachine().DefaultStateName.clear();
+                            m_AnimGraphEditor.NotifyGraphChanged();
+                            return true;
+                        });
                 }
             }
 
@@ -110,8 +115,12 @@ namespace minEngine
                 {
                     if (stateMachine.DefaultStateName != state.Name)
                     {
-                        stateMachine.DefaultStateName = state.Name;
-                        m_AnimGraphEditor.NotifyGraphChanged();
+                        const std::string newDefault = state.Name;
+                        m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                            "m_StateMachine",
+                            [&]() {
+                                return m_AnimGraphEditor.SetDefaultStateName(newDefault);
+                            });
                     }
                 }
                 if (selected)
@@ -137,12 +146,15 @@ namespace minEngine
         std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", state->Name.c_str());
         if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer), ImGuiInputTextFlags_EnterReturnsTrue))
         {
+            const std::string oldName = state->Name;
+            const std::string newName = nameBuffer;
             std::string error;
-            if (!m_AnimGraphEditor.RenameState(state->Name, nameBuffer, &error))
+            if (!m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                    "m_StateMachine",
+                    [&]() { return m_AnimGraphEditor.RenameState(oldName, newName, &error); }))
             {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", error.c_str());
             }
-            // Rename may invalidate local pointer; refresh.
             state = session.GraphAsset->FindStateMutable(session.Selection.StateName);
             if (!state)
             {
@@ -166,8 +178,20 @@ namespace minEngine
             {
                 if (state->Clip)
                 {
-                    state->Clip.reset();
-                    m_AnimGraphEditor.NotifyGraphChanged();
+                    const std::string stateName = state->Name;
+                    m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() {
+                            AnimState* mutableState = session.GraphAsset->FindStateMutable(stateName);
+                            if (mutableState == nullptr)
+                            {
+                                return false;
+                            }
+
+                            mutableState->Clip.reset();
+                            m_AnimGraphEditor.NotifyGraphChanged();
+                            return true;
+                        });
                 }
             }
 
@@ -183,10 +207,21 @@ namespace minEngine
                     && state->Clip->GetMeta()->AssetPath == meta->AssetPath;
                 if (ImGui::Selectable(meta->AssetName.c_str(), selected))
                 {
-                    std::shared_ptr<AnimationClip> clip =
-                        AssetManager::Get().LoadAsset<AnimationClip>(meta->AssetPath);
-                    state->Clip = clip;
-                    m_AnimGraphEditor.NotifyGraphChanged();
+                    const std::string stateName = state->Name;
+                    const std::string assetPath = meta->AssetPath;
+                    m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() {
+                            AnimState* mutableState = session.GraphAsset->FindStateMutable(stateName);
+                            if (mutableState == nullptr)
+                            {
+                                return false;
+                            }
+
+                            mutableState->Clip = AssetManager::Get().LoadAsset<AnimationClip>(assetPath);
+                            m_AnimGraphEditor.NotifyGraphChanged();
+                            return true;
+                        });
                 }
                 if (selected)
                 {
@@ -196,15 +231,43 @@ namespace minEngine
             ImGui::EndCombo();
         }
 
-        if (ImGui::Checkbox("Loop", &state->bLoop))
+        state = session.GraphAsset->FindStateMutable(session.Selection.StateName);
+        if (!state)
         {
-            m_AnimGraphEditor.NotifyGraphChanged();
+            return;
         }
 
-        if (ImGui::DragFloat("Speed", &state->Speed, 0.01f, 0.0f, 10.0f, "%.2f"))
+        bool loop = state->bLoop;
+        if (ImGui::Checkbox("Loop", &loop))
         {
+            const std::string stateName = state->Name;
+            m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                "m_StateMachine",
+                [&]() {
+                    AnimState* mutableState = session.GraphAsset->FindStateMutable(stateName);
+                    if (mutableState == nullptr)
+                    {
+                        return false;
+                    }
+
+                    mutableState->bLoop = loop;
+                    m_AnimGraphEditor.NotifyGraphChanged();
+                    return true;
+                });
+        }
+
+        float speed = state->Speed;
+        const bool speedChanged = ImGui::DragFloat("Speed", &speed, 0.01f, 0.0f, 10.0f, "%.2f");
+        if (ImGui::IsItemActivated())
+        {
+            m_AnimGraphEditor.StoreOwnedPropertyUndoBefore("m_StateMachine");
+        }
+        if (speedChanged)
+        {
+            state->Speed = speed;
             m_AnimGraphEditor.NotifyGraphChanged();
         }
+        m_AnimGraphEditor.TryCommitOwnedPropertyUndoAfterEdit("m_StateMachine");
     }
 
     void AnimGraphInspectorSource::DrawTransitionDetails(bool anyState)
@@ -240,7 +303,9 @@ namespace minEngine
             }
             if (ImGui::Button("Reverse"))
             {
-                m_AnimGraphEditor.ReverseTransition();
+                m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                    "m_StateMachine",
+                    [&]() { return m_AnimGraphEditor.ReverseTransition(); });
             }
             if (!canReverse)
             {
@@ -260,9 +325,25 @@ namespace minEngine
                 {
                     if (transition.ToStateName != state.Name)
                     {
-                        transition.ToStateName = state.Name;
-                        m_AnimGraphEditor.NotifyGraphChanged();
-                        m_AnimGraphEditor.InvalidateGraphCanvas(false);
+                        const std::string newTo = state.Name;
+                        const bool isAny = anyState;
+                        const int index = transitionIndex;
+                        m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                            "m_StateMachine",
+                            [&]() {
+                                AnimStateMachine& sm = graph.GetStateMachine();
+                                std::vector<AnimTransition>& list =
+                                    isAny ? sm.AnyStateTransitions : sm.Transitions;
+                                if (index < 0 || static_cast<size_t>(index) >= list.size())
+                                {
+                                    return false;
+                                }
+
+                                list[static_cast<size_t>(index)].ToStateName = newTo;
+                                m_AnimGraphEditor.NotifyGraphChanged();
+                                m_AnimGraphEditor.InvalidateGraphCanvas(false);
+                                return true;
+                            });
                     }
                 }
                 if (selected)
@@ -273,16 +354,19 @@ namespace minEngine
             ImGui::EndCombo();
         }
 
-        if (ImGui::DragFloat(
-                "Blend Duration",
-                &transition.BlendDurationSeconds,
-                0.01f,
-                0.0f,
-                5.0f,
-                "%.2f s"))
+        float blendDuration = transition.BlendDurationSeconds;
+        const bool blendChanged =
+            ImGui::DragFloat("Blend Duration", &blendDuration, 0.01f, 0.0f, 5.0f, "%.2f s");
+        if (ImGui::IsItemActivated())
         {
+            m_AnimGraphEditor.StoreOwnedPropertyUndoBefore("m_StateMachine");
+        }
+        if (blendChanged)
+        {
+            transition.BlendDurationSeconds = blendDuration;
             m_AnimGraphEditor.NotifyGraphChanged();
         }
+        m_AnimGraphEditor.TryCommitOwnedPropertyUndoAfterEdit("m_StateMachine");
 
         ImGui::Separator();
         ImGui::TextUnformatted("Conditions");
@@ -291,13 +375,28 @@ namespace minEngine
 
         if (ImGui::Button("Add Condition"))
         {
-            AnimCondition condition;
-            if (!schemaEntries.empty())
-            {
-                condition.ParamName = schemaEntries.front().Name;
-            }
-            transition.Conditions.push_back(std::move(condition));
-            m_AnimGraphEditor.NotifyGraphChanged();
+            const bool isAny = anyState;
+            const int index = transitionIndex;
+            m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                "m_StateMachine",
+                [&]() {
+                    AnimStateMachine& sm = graph.GetStateMachine();
+                    std::vector<AnimTransition>& list =
+                        isAny ? sm.AnyStateTransitions : sm.Transitions;
+                    if (index < 0 || static_cast<size_t>(index) >= list.size())
+                    {
+                        return false;
+                    }
+
+                    AnimCondition condition;
+                    if (!schemaEntries.empty())
+                    {
+                        condition.ParamName = schemaEntries.front().Name;
+                    }
+                    list[static_cast<size_t>(index)].Conditions.push_back(std::move(condition));
+                    m_AnimGraphEditor.NotifyGraphChanged();
+                    return true;
+                });
         }
 
         if (ImGui::BeginTable(
@@ -340,8 +439,28 @@ namespace minEngine
                         const bool selected = (entry.Name == condition.ParamName);
                         if (ImGui::Selectable(entry.Name.c_str(), selected))
                         {
-                            condition.ParamName = entry.Name;
-                            m_AnimGraphEditor.NotifyGraphChanged();
+                            const std::string paramName = entry.Name;
+                            const bool isAny = anyState;
+                            const int tIndex = transitionIndex;
+                            const int cIndex = conditionIndex;
+                            m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                                "m_StateMachine",
+                                [&]() {
+                                    AnimStateMachine& sm = graph.GetStateMachine();
+                                    std::vector<AnimTransition>& list =
+                                        isAny ? sm.AnyStateTransitions : sm.Transitions;
+                                    if (tIndex < 0 || static_cast<size_t>(tIndex) >= list.size()
+                                        || cIndex < 0
+                                        || static_cast<size_t>(cIndex) >= list[static_cast<size_t>(tIndex)].Conditions.size())
+                                    {
+                                        return false;
+                                    }
+
+                                    list[static_cast<size_t>(tIndex)].Conditions[static_cast<size_t>(cIndex)].ParamName =
+                                        paramName;
+                                    m_AnimGraphEditor.NotifyGraphChanged();
+                                    return true;
+                                });
                         }
                         if (selected)
                         {
@@ -356,8 +475,27 @@ namespace minEngine
                 ImGui::SetNextItemWidth(-1.0f);
                 if (ImGui::Combo("##Op", &opIndex, kOpLabels, IM_ARRAYSIZE(kOpLabels)))
                 {
-                    condition.Op = static_cast<AnimConditionOp>(opIndex);
-                    m_AnimGraphEditor.NotifyGraphChanged();
+                    const AnimConditionOp newOp = static_cast<AnimConditionOp>(opIndex);
+                    const bool isAny = anyState;
+                    const int tIndex = transitionIndex;
+                    const int cIndex = conditionIndex;
+                    m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() {
+                            AnimStateMachine& sm = graph.GetStateMachine();
+                            std::vector<AnimTransition>& list =
+                                isAny ? sm.AnyStateTransitions : sm.Transitions;
+                            if (tIndex < 0 || static_cast<size_t>(tIndex) >= list.size()
+                                || cIndex < 0
+                                || static_cast<size_t>(cIndex) >= list[static_cast<size_t>(tIndex)].Conditions.size())
+                            {
+                                return false;
+                            }
+
+                            list[static_cast<size_t>(tIndex)].Conditions[static_cast<size_t>(cIndex)].Op = newOp;
+                            m_AnimGraphEditor.NotifyGraphChanged();
+                            return true;
+                        });
                 }
 
                 ImGui::TableSetColumnIndex(2);
@@ -374,32 +512,90 @@ namespace minEngine
                 ImGui::SetNextItemWidth(-1.0f);
                 if (paramType == ParameterValueType::Bool)
                 {
-                    if (ImGui::Checkbox("##OperandBool", &condition.OperandBool))
+                    bool operand = condition.OperandBool;
+                    if (ImGui::Checkbox("##OperandBool", &operand))
                     {
-                        m_AnimGraphEditor.NotifyGraphChanged();
+                        const bool isAny = anyState;
+                        const int tIndex = transitionIndex;
+                        const int cIndex = conditionIndex;
+                        m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                            "m_StateMachine",
+                            [&]() {
+                                AnimStateMachine& sm = graph.GetStateMachine();
+                                std::vector<AnimTransition>& list =
+                                    isAny ? sm.AnyStateTransitions : sm.Transitions;
+                                if (tIndex < 0 || static_cast<size_t>(tIndex) >= list.size()
+                                    || cIndex < 0
+                                    || static_cast<size_t>(cIndex)
+                                        >= list[static_cast<size_t>(tIndex)].Conditions.size())
+                                {
+                                    return false;
+                                }
+
+                                list[static_cast<size_t>(tIndex)].Conditions[static_cast<size_t>(cIndex)].OperandBool =
+                                    operand;
+                                m_AnimGraphEditor.NotifyGraphChanged();
+                                return true;
+                            });
                     }
                 }
                 else if (paramType == ParameterValueType::Int32)
                 {
-                    if (ImGui::DragInt("##OperandInt", &condition.OperandInt))
+                    int operand = condition.OperandInt;
+                    const bool changed = ImGui::DragInt("##OperandInt", &operand);
+                    if (ImGui::IsItemActivated())
                     {
+                        m_AnimGraphEditor.StoreOwnedPropertyUndoBefore("m_StateMachine");
+                    }
+                    if (changed)
+                    {
+                        condition.OperandInt = operand;
                         m_AnimGraphEditor.NotifyGraphChanged();
                     }
+                    m_AnimGraphEditor.TryCommitOwnedPropertyUndoAfterEdit("m_StateMachine");
                 }
                 else
                 {
-                    if (ImGui::DragFloat("##OperandFloat", &condition.OperandFloat, 0.01f))
+                    float operand = condition.OperandFloat;
+                    const bool changed = ImGui::DragFloat("##OperandFloat", &operand, 0.01f);
+                    if (ImGui::IsItemActivated())
                     {
+                        m_AnimGraphEditor.StoreOwnedPropertyUndoBefore("m_StateMachine");
+                    }
+                    if (changed)
+                    {
+                        condition.OperandFloat = operand;
                         m_AnimGraphEditor.NotifyGraphChanged();
                     }
+                    m_AnimGraphEditor.TryCommitOwnedPropertyUndoAfterEdit("m_StateMachine");
                 }
 
                 ImGui::TableSetColumnIndex(3);
                 if (ImGui::SmallButton("X"))
                 {
-                    transition.Conditions.erase(
-                        transition.Conditions.begin() + static_cast<std::ptrdiff_t>(conditionIndex));
-                    m_AnimGraphEditor.NotifyGraphChanged();
+                    const bool isAny = anyState;
+                    const int tIndex = transitionIndex;
+                    const int cIndex = conditionIndex;
+                    m_AnimGraphEditor.SubmitOwnedPropertyMutation(
+                        "m_StateMachine",
+                        [&]() {
+                            AnimStateMachine& sm = graph.GetStateMachine();
+                            std::vector<AnimTransition>& list =
+                                isAny ? sm.AnyStateTransitions : sm.Transitions;
+                            if (tIndex < 0 || static_cast<size_t>(tIndex) >= list.size()
+                                || cIndex < 0
+                                || static_cast<size_t>(cIndex)
+                                    >= list[static_cast<size_t>(tIndex)].Conditions.size())
+                            {
+                                return false;
+                            }
+
+                            list[static_cast<size_t>(tIndex)].Conditions.erase(
+                                list[static_cast<size_t>(tIndex)].Conditions.begin()
+                                + static_cast<std::ptrdiff_t>(cIndex));
+                            m_AnimGraphEditor.NotifyGraphChanged();
+                            return true;
+                        });
                     ImGui::PopID();
                     break;
                 }

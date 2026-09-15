@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Commands/EditorSetObjectPropertyTarget.h"
 #include "Commands/Scene/EditorObjectSnapshot.h"
 #include "Runtime/Core/GUID/GUID.h"
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
@@ -20,7 +21,7 @@ namespace minEngine
     class Scene;
     struct Transform;
 
-    class SceneEditor : public EditorSubModule
+    class SceneEditor : public EditorSubModule, public EditorSetObjectPropertyTarget
     {
     public:
         static constexpr const char* kModuleId = "Scene";
@@ -103,9 +104,17 @@ namespace minEngine
                                        const Transform& before,
                                        const Transform& after);
         const std::vector<std::string>& GetAllComponentTypeNames() const;
-        bool ApplyAddComponentToSelectedGameObject(const std::string& componentTypeName, Component*& outNewComponent);
+        /** Explicit-target add; does not require current selection. */
+        bool ApplyAddComponentToGameObject(uint64_t gameObjectId,
+                                           const std::string& componentTypeName,
+                                           Component*& outNewComponent);
+        void SubmitAddComponentToGameObject(IEditorContext& context,
+                                            uint64_t gameObjectId,
+                                            const std::string& componentTypeName);
+        /** GUI helper: resolve selection at submit time, then SubmitAddComponentToGameObject. */
         void SubmitAddComponentToSelectedGameObject(IEditorContext& context, const std::string& componentTypeName);
         bool ApplyRemoveComponentFromGO(GameObject& gameObject, Component& targetComponent);
+        bool ApplyRemoveComponentFromGameObject(uint64_t ownerGameObjectId, Component& targetComponent);
         void SubmitRemoveComponentFromGO(IEditorContext& context, GameObject& gameObject, Component& targetComponent);
 
         void SaveCurrentScene();
@@ -123,7 +132,7 @@ namespace minEngine
         bool ApplySetObjectProperty(const GUID& ownerGuid,
                                     const std::string& ownerClassName,
                                     const std::string& propertyPath,
-                                    const std::vector<uint8_t>& valueBlob);
+                                    const std::vector<uint8_t>& valueBlob) override;
         void SubmitSetObjectProperty(IEditorContext& context,
                                      const GUID& ownerGuid,
                                      const std::string& ownerClassName,

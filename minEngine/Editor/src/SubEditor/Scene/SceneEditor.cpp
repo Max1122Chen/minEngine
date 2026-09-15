@@ -1,16 +1,17 @@
 #include "SubEditor/Scene/SceneEditor.h"
 
-#include "Commands/Scene/AddComponentCommand.h"
-#include "Commands/Scene/AddEmptyGameObjectCommand.h"
-#include "Commands/Scene/DeleteGameObjectCommand.h"
+#include "Commands/Scene/EditorAddComponentCommand.h"
+#include "Commands/Scene/EditorAddEmptyGameObjectCommand.h"
+#include "Commands/Scene/EditorDeleteGameObjectCommand.h"
 #include "Commands/Scene/EditorObjectSnapshot.h"
-#include "Commands/Scene/RemoveComponentCommand.h"
-#include "Commands/Scene/MoveComponentCommand.h"
-#include "Commands/Scene/RenameComponentCommand.h"
-#include "Commands/Scene/RenameGameObjectCommand.h"
-#include "Commands/Scene/ReparentGameObjectCommand.h"
-#include "Commands/Scene/SetGameObjectTransformCommand.h"
-#include "Commands/Scene/SetObjectPropertyCommand.h"
+#include "Commands/Scene/EditorRemoveComponentCommand.h"
+#include "Commands/Scene/EditorMoveComponentCommand.h"
+#include "Commands/Scene/EditorRenameComponentCommand.h"
+#include "Commands/Scene/EditorRenameGameObjectCommand.h"
+#include "Commands/Scene/EditorReparentGameObjectCommand.h"
+#include "Commands/Scene/EditorSetGameObjectTransformCommand.h"
+#include "Commands/EditorObjectPropertyApply.h"
+#include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
 #include "Services/ComponentTypeUiCatalog.h"
 #include "Shell/EditorCommandStack.h"
@@ -404,7 +405,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<RenameGameObjectCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorRenameGameObjectCommand>(
             *this, gameObjectId, oldName, sanitizedName));
     }
 
@@ -471,7 +472,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<RenameComponentCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorRenameComponentCommand>(
             *this, ownerGameObjectId, componentGuid, oldName, newName));
     }
 
@@ -537,7 +538,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<MoveComponentCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorMoveComponentCommand>(
             *this, ownerGameObjectId, componentGuid, fromIndex, newIndex));
     }
 
@@ -639,7 +640,7 @@ namespace minEngine
             }
         }
 
-        context.GetCommandStack().Execute(std::make_unique<ReparentGameObjectCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorReparentGameObjectCommand>(
             *this, gameObjectId, oldParentId, newParentId));
     }
 
@@ -679,7 +680,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<SetGameObjectTransformCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorSetGameObjectTransformCommand>(
             *this, gameObjectId, before, after));
     }
 
@@ -688,18 +689,31 @@ namespace minEngine
         return m_AllComponentTypeNames;
     }
 
-    bool SceneEditor::ApplyAddComponentToSelectedGameObject(const std::string& componentTypeName, Component*& outNewComponent)
+    bool SceneEditor::ApplyAddComponentToGameObject(uint64_t gameObjectId,
+                                                    const std::string& componentTypeName,
+                                                    Component*& outNewComponent)
     {
         outNewComponent = nullptr;
-        GameObject* gameObject = GetSelectedGameObject();
-        if (!gameObject)
+        Scene* scene = GetActiveScene();
+        if (!scene)
         {
+            ME_LOG(LogEditor, Error, "ApplyAddComponentToGameObject: no active scene.");
             return false;
         }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (!gameObject)
+        {
+            ME_LOG(LogEditor, Error,
+                "ApplyAddComponentToGameObject: GameObject id={} not found.",
+                gameObjectId);
+            return false;
+        }
+
         std::shared_ptr<Component> newComponent = gameObject->AddComponent(componentTypeName);
         if (!newComponent)
         {
-            ME_LOG(LogEditor, Error, 
+            ME_LOG(LogEditor, Error,
                 "Failed to add component of type '{}' to GameObject '{}'.",
                 componentTypeName,
                 gameObject->GetName());
@@ -738,7 +752,17 @@ namespace minEngine
 
         outNewComponent = newComponent.get();
         MarkSceneDirty();
+        // Optional UX: focus owner after mutation (not used to resolve the target).
+        SelectGameObject(gameObjectId);
         return true;
+    }
+
+    void SceneEditor::SubmitAddComponentToGameObject(IEditorContext& context,
+                                                     uint64_t gameObjectId,
+                                                     const std::string& componentTypeName)
+    {
+        context.GetCommandStack().Execute(std::make_unique<EditorAddComponentCommand>(
+            *this, gameObjectId, componentTypeName));
     }
 
     void SceneEditor::SubmitAddComponentToSelectedGameObject(IEditorContext& context, const std::string& componentTypeName)
@@ -749,15 +773,14 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<AddComponentCommand>(
-            *this, gameObject->GetID(), componentTypeName));
+        SubmitAddComponentToGameObject(context, gameObject->GetID(), componentTypeName);
     }
 
     bool SceneEditor::ApplyRemoveComponentFromGO(GameObject& gameObject, Component& targetComponent)
     {
         if (targetComponent.GetOwner() != &gameObject)
         {
-            ME_LOG(LogEditor, Error, 
+            ME_LOG(LogEditor, Error,
                 "Failed to remove component '{}' from GameObject '{}': component does not belong to the specified GameObject.",
                 targetComponent.GetClass()->GetName(),
                 gameObject.GetName());
@@ -770,6 +793,27 @@ namespace minEngine
             return true;
         }
         return false;
+    }
+
+    bool SceneEditor::ApplyRemoveComponentFromGameObject(uint64_t ownerGameObjectId, Component& targetComponent)
+    {
+        Scene* scene = GetActiveScene();
+        if (!scene)
+        {
+            ME_LOG(LogEditor, Error, "ApplyRemoveComponentFromGameObject: no active scene.");
+            return false;
+        }
+
+        GameObject* owner = scene->FindGameObjectById(ownerGameObjectId);
+        if (!owner)
+        {
+            ME_LOG(LogEditor, Error,
+                "ApplyRemoveComponentFromGameObject: GameObject id={} not found.",
+                ownerGameObjectId);
+            return false;
+        }
+
+        return ApplyRemoveComponentFromGO(*owner, targetComponent);
     }
 
     void SceneEditor::SubmitRemoveComponentFromGO(IEditorContext& context, GameObject& gameObject, Component& targetComponent)
@@ -785,7 +829,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<RemoveComponentCommand>(*this, gameObject.GetID(), targetComponent));
+        context.GetCommandStack().Execute(std::make_unique<EditorRemoveComponentCommand>(*this, gameObject.GetID(), targetComponent));
     }
 
     void SceneEditor::SaveCurrentScene()
@@ -956,7 +1000,7 @@ namespace minEngine
 
     void SceneEditor::SubmitAddEmptyGOToScene(IEditorContext& context)
     {
-        context.GetCommandStack().Execute(std::make_unique<AddEmptyGameObjectCommand>(*this));
+        context.GetCommandStack().Execute(std::make_unique<EditorAddEmptyGameObjectCommand>(*this));
     }
 
     bool SceneEditor::ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform)
@@ -994,7 +1038,7 @@ namespace minEngine
 
     void SceneEditor::SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId)
     {
-        context.GetCommandStack().Execute(std::make_unique<DeleteGameObjectCommand>(*this, gameObjectId));
+        context.GetCommandStack().Execute(std::make_unique<EditorDeleteGameObjectCommand>(*this, gameObjectId));
     }
 
     void SceneEditor::RequestBeginRenameGameObject(uint64_t gameObjectId)
@@ -1037,52 +1081,23 @@ namespace minEngine
                                              const std::string& propertyPath,
                                              const std::vector<uint8_t>& valueBlob)
     {
+        if (!EditorObjectPropertyApply::ApplyBlob(
+                ownerGuid,
+                ownerClassName,
+                propertyPath,
+                valueBlob,
+                GetPropertyCommandSerializerOptions()))
+        {
+            return false;
+        }
+
         std::shared_ptr<MEObject> ownerObject = ObjectManager::Get().FindObject(ownerGuid);
         if (!ownerObject)
         {
-            ME_LOG(LogEditor, Warn, 
-                "ApplySetObjectProperty: owner not found (guid='{}', property='{}').",
-                ownerGuid.ToString(),
-                propertyPath);
             return false;
         }
 
         const Reflection::MEClass* ownerClass = Reflection::ReflectionSystem::Get().FindClass(ownerClassName);
-        if (ownerClass == nullptr)
-        {
-            ME_LOG(LogEditor, Warn, 
-                "ApplySetObjectProperty: class '{}' not found (property='{}').",
-                ownerClassName,
-                propertyPath);
-            return false;
-        }
-
-        std::vector<Serialization::PendingObjectRef> unresolvedRefs;
-        const Serialization::SerializeResult result = Serialization::Serializer::DeserializePropertyByPathFromBuffer(
-            ownerObject.get(),
-            ownerClass,
-            propertyPath,
-            valueBlob,
-            unresolvedRefs,
-            GetPropertyCommandSerializerOptions());
-        if (!result.ok)
-        {
-            ME_LOG(LogEditor, Warn, 
-                "ApplySetObjectProperty failed: {} (path='{}').",
-                result.message,
-                result.fieldPath);
-            return false;
-        }
-
-        if (!unresolvedRefs.empty())
-        {
-            const Serialization::SerializeResult resolveResult =
-                Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
-            if (!resolveResult.ok)
-            {
-                ME_LOG(LogEditor, Warn, "ApplySetObjectProperty: unresolved object references remain.");
-            }
-        }
 
         if (ownerObject->IsA(SceneComponent::StaticClass()))
         {
@@ -1105,7 +1120,7 @@ namespace minEngine
 
         {
             const Reflection::MEProperty* leafProperty = nullptr;
-            if (propertyPath.find('.') == std::string::npos)
+            if (ownerClass != nullptr && propertyPath.find('.') == std::string::npos)
             {
                 Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
                     ownerClass,
@@ -1144,7 +1159,7 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<SetObjectPropertyCommand>(
+        context.GetCommandStack().Execute(std::make_unique<EditorSetObjectPropertyCommand>(
             *this,
             ownerGuid,
             ownerClassName,

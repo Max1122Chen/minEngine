@@ -133,11 +133,17 @@ namespace minEngine
             entry.Type = ParameterValueType::Float;
             entry.DefaultBytes = packDefaultBytes(ParameterValueType::Float, false, 0, 0.0f);
             std::string error;
-            if (schema.AddEntry(std::move(entry), &error))
-            {
-                animGraphEditor->NotifyGraphChanged();
-            }
-            else
+            if (!animGraphEditor->SubmitOwnedPropertyMutation(
+                    "m_Schema",
+                    [&]() {
+                        if (!schema.AddEntry(std::move(entry), &error))
+                        {
+                            return false;
+                        }
+
+                        animGraphEditor->NotifyGraphChanged();
+                        return true;
+                    }))
             {
                 ME_LOG(LogEditor, Warn, "AnimGraphParameters: AddEntry failed: {}", error);
             }
@@ -191,8 +197,21 @@ namespace minEngine
                 }
                 else if (entry.Name != newName)
                 {
-                    entry.Name = newName;
-                    animGraphEditor->NotifyGraphChanged();
+                    const int index = entryIndex;
+                    animGraphEditor->SubmitOwnedPropertyMutation(
+                        "m_Schema",
+                        [&]() {
+                            std::vector<ParameterSchemaEntry>& mutableEntries =
+                                graph.GetSchema().GetEntriesMutable();
+                            if (index < 0 || static_cast<size_t>(index) >= mutableEntries.size())
+                            {
+                                return false;
+                            }
+
+                            mutableEntries[static_cast<size_t>(index)].Name = newName;
+                            animGraphEditor->NotifyGraphChanged();
+                            return true;
+                        });
                 }
             }
 
@@ -201,14 +220,29 @@ namespace minEngine
             ImGui::SetNextItemWidth(-1.0f);
             if (ImGui::Combo("##Type", &typeIndex, kTypeLabels, IM_ARRAYSIZE(kTypeLabels)))
             {
-                entry.Type = static_cast<ParameterValueType>(typeIndex);
-                bool boolValue = false;
-                int32_t intValue = 0;
-                float floatValue = 0.0f;
-                unpackDefault(entry, boolValue, intValue, floatValue);
-                entry.DefaultBytes =
-                    packDefaultBytes(entry.Type, boolValue, intValue, floatValue);
-                animGraphEditor->NotifyGraphChanged();
+                const ParameterValueType newType = static_cast<ParameterValueType>(typeIndex);
+                const int index = entryIndex;
+                animGraphEditor->SubmitOwnedPropertyMutation(
+                    "m_Schema",
+                    [&]() {
+                        std::vector<ParameterSchemaEntry>& mutableEntries =
+                            graph.GetSchema().GetEntriesMutable();
+                        if (index < 0 || static_cast<size_t>(index) >= mutableEntries.size())
+                        {
+                            return false;
+                        }
+
+                        ParameterSchemaEntry& mutableEntry = mutableEntries[static_cast<size_t>(index)];
+                        mutableEntry.Type = newType;
+                        bool localBool = false;
+                        int32_t localInt = 0;
+                        float localFloat = 0.0f;
+                        unpackDefault(mutableEntry, localBool, localInt, localFloat);
+                        mutableEntry.DefaultBytes =
+                            packDefaultBytes(mutableEntry.Type, localBool, localInt, localFloat);
+                        animGraphEditor->NotifyGraphChanged();
+                        return true;
+                    });
             }
 
             ImGui::TableSetColumnIndex(2);
@@ -221,35 +255,69 @@ namespace minEngine
             {
                 if (ImGui::Checkbox("##DefaultBool", &boolValue))
                 {
-                    entry.DefaultBytes =
-                        packDefaultBytes(entry.Type, boolValue, intValue, floatValue);
-                    animGraphEditor->NotifyGraphChanged();
+                    const int index = entryIndex;
+                    animGraphEditor->SubmitOwnedPropertyMutation(
+                        "m_Schema",
+                        [&]() {
+                            std::vector<ParameterSchemaEntry>& mutableEntries =
+                                graph.GetSchema().GetEntriesMutable();
+                            if (index < 0 || static_cast<size_t>(index) >= mutableEntries.size())
+                            {
+                                return false;
+                            }
+
+                            ParameterSchemaEntry& mutableEntry = mutableEntries[static_cast<size_t>(index)];
+                            mutableEntry.DefaultBytes =
+                                packDefaultBytes(mutableEntry.Type, boolValue, intValue, floatValue);
+                            animGraphEditor->NotifyGraphChanged();
+                            return true;
+                        });
                 }
             }
             else if (entry.Type == ParameterValueType::Int32)
             {
-                if (ImGui::DragInt("##DefaultInt", &intValue))
+                const bool changed = ImGui::DragInt("##DefaultInt", &intValue);
+                if (ImGui::IsItemActivated())
                 {
-                    entry.DefaultBytes =
-                        packDefaultBytes(entry.Type, boolValue, intValue, floatValue);
+                    animGraphEditor->StoreOwnedPropertyUndoBefore("m_Schema");
+                }
+                if (changed)
+                {
+                    entry.DefaultBytes = packDefaultBytes(entry.Type, boolValue, intValue, floatValue);
                     animGraphEditor->NotifyGraphChanged();
                 }
+                animGraphEditor->TryCommitOwnedPropertyUndoAfterEdit("m_Schema");
             }
             else
             {
-                if (ImGui::DragFloat("##DefaultFloat", &floatValue, 0.01f))
+                const bool changed = ImGui::DragFloat("##DefaultFloat", &floatValue, 0.01f);
+                if (ImGui::IsItemActivated())
                 {
-                    entry.DefaultBytes =
-                        packDefaultBytes(entry.Type, boolValue, intValue, floatValue);
+                    animGraphEditor->StoreOwnedPropertyUndoBefore("m_Schema");
+                }
+                if (changed)
+                {
+                    entry.DefaultBytes = packDefaultBytes(entry.Type, boolValue, intValue, floatValue);
                     animGraphEditor->NotifyGraphChanged();
                 }
+                animGraphEditor->TryCommitOwnedPropertyUndoAfterEdit("m_Schema");
             }
 
             ImGui::TableSetColumnIndex(3);
             if (ImGui::SmallButton("X"))
             {
-                schema.RemoveEntryAt(static_cast<size_t>(entryIndex));
-                animGraphEditor->NotifyGraphChanged();
+                const int index = entryIndex;
+                animGraphEditor->SubmitOwnedPropertyMutation(
+                    "m_Schema",
+                    [&]() {
+                        if (!graph.GetSchema().RemoveEntryAt(static_cast<size_t>(index)))
+                        {
+                            return false;
+                        }
+
+                        animGraphEditor->NotifyGraphChanged();
+                        return true;
+                    });
                 ImGui::PopID();
                 break;
             }

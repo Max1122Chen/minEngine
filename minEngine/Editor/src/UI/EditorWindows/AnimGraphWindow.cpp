@@ -203,10 +203,17 @@ namespace minEngine
             m_SpecialNodeLayout = AnimGraphSpecialNodeLayout{};
         }
 
-        if (AnimGraphSmBridge::LayoutIfNeeded(graph.GetStateMachine()))
-        {
-            animGraphEditor->NotifyGraphChanged();
-        }
+        animGraphEditor->SubmitOwnedPropertyMutation(
+            "m_StateMachine",
+            [&]() {
+                if (!AnimGraphSmBridge::LayoutIfNeeded(graph.GetStateMachine()))
+                {
+                    return false;
+                }
+
+                animGraphEditor->NotifyGraphChanged();
+                return true;
+            });
 
         AnimGraphSmBridge::PullDocument(graph, m_SmGraphDocument, m_SpecialNodeLayout);
         AnimGraphSmBridge::ApplyEditorTheme(m_Context.GetEditorAppearance(), m_SmGraphWidget.GetStyle());

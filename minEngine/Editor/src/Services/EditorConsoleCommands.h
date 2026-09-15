@@ -2,18 +2,23 @@
 
 #include <string_view>
 
-namespace minEngine::Command
+namespace minEngine::DebugCommand
 {
-    struct CommandContext;
-    struct CommandResult;
+    struct DebugCommandContext;
+    struct DebugCommandResult;
 }
 
 namespace minEngine
 {
     void RegisterEditorConsoleCommands();
 
-    Command::CommandResult ExecuteEditorConsoleSetValue(
-        const Command::CommandContext& context,
+    DebugCommand::DebugCommandResult ExecuteEditorConsoleSetValue(
+        const DebugCommand::DebugCommandContext& context,
+        std::string_view propertyPathText,
+        std::string_view valueLiteral);
+
+    DebugCommand::DebugCommandResult ExecuteEditorConsoleEditValue(
+        const DebugCommand::DebugCommandContext& context,
         std::string_view propertyPathText,
         std::string_view valueLiteral);
 }

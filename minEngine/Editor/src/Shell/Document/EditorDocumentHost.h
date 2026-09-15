@@ -14,15 +14,26 @@
 namespace minEngine
 {
     class AssetMeta;
+    class EditorInputHub;
     class IEditorContext;
 
     class EditorDocumentHost
     {
     public:
+        static constexpr size_t kClosedHistoryLimit = 16;
+
+        struct ClosedDocumentRecord
+        {
+            std::string TypeId;
+            std::string AssetKey;
+            std::string Title;
+        };
+
         EditorDocumentTypeRegistry& GetTypeRegistry() { return m_TypeRegistry; }
         const EditorDocumentTypeRegistry& GetTypeRegistry() const { return m_TypeRegistry; }
 
         void SetContext(IEditorContext* context) { m_Context = context; }
+        void RegisterInputCommands(EditorInputHub& inputHub);
 
         const std::vector<std::unique_ptr<EditorDocumentSession>>& GetSessions() const { return m_Sessions; }
         void ClearAllCommandStacks();
@@ -41,6 +52,13 @@ namespace minEngine
         bool RequestCloseOthers(EditorDocumentId keepId);
         bool RequestCloseToTheRight(EditorDocumentId fromId);
         bool RequestCloseSaved();
+        bool RequestCloseAll();
+        void SetSessionPinned(EditorDocumentId id, bool pinned);
+        bool ReopenClosedTab();
+        bool ActivateAdjacentTab(int delta);
+        bool CopyAssetPath(EditorDocumentId id, bool relativeToProjectRoot) const;
+        bool RevealInOsExplorer(EditorDocumentId id) const;
+        bool CanReopenClosedTab() const { return !m_ClosedHistory.empty(); }
         void Reorder(size_t fromIndex, size_t toIndex);
 
         void SyncDirtyFlags();
@@ -71,10 +89,16 @@ namespace minEngine
         void ContinuePendingClose();
         void HandleUnsavedChoice(UnsavedChangesChoice choice);
         float GetTabBarHeight() const;
+        void PushClosedHistory(ClosedDocumentRecord record);
+        void MoveSessionToPinnedZone(EditorDocumentId id, bool pinned);
+        std::string MakeTabLabel(const EditorDocumentSession& session) const;
+        void DrawTabTypeIcon(const EditorDocumentSession& session) const;
+        void DrawTabContextMenu(EditorDocumentSession& session, size_t sessionIndex);
 
         IEditorContext* m_Context = nullptr;
         EditorDocumentTypeRegistry m_TypeRegistry;
         std::vector<std::unique_ptr<EditorDocumentSession>> m_Sessions;
+        std::vector<ClosedDocumentRecord> m_ClosedHistory;
         EditorDocumentId m_ActiveId{};
         uint64_t m_NextId = 1;
 

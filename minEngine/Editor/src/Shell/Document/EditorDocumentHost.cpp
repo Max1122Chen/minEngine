@@ -1,7 +1,10 @@
 #include "Shell/Document/EditorDocumentHost.h"
 
+#include "Shell/EditorInputHub.h"
 #include "Shell/IEditorContext.h"
 #include "Services/AssetWorkflowModule.h"
+#include "UI/Appearance/EditorAppearance.h"
+#include "UI/Appearance/EditorAssetTypeIcons.h"
 #include "Runtime/Resource/AssetMeta.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Core/Log/LogSystem.h"
@@ -10,6 +13,14 @@
 
 #include <algorithm>
 #include <filesystem>
+
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <shlobj.h>
+#endif
 
 namespace minEngine
 {
@@ -286,9 +297,20 @@ namespace minEngine
 
         const size_t index = GetSessionIndex(id);
         const bool wasActive = m_ActiveId == id;
+
+        ClosedDocumentRecord closedRecord;
+        closedRecord.TypeId = session->GetTypeId();
+        closedRecord.AssetKey = session->GetAssetKey();
+        closedRecord.Title = session->GetTitle();
+
         if (index < m_Sessions.size())
         {
             m_Sessions.erase(m_Sessions.begin() + static_cast<std::ptrdiff_t>(index));
+        }
+
+        if (!closedRecord.AssetKey.empty())
+        {
+            PushClosedHistory(std::move(closedRecord));
         }
 
         if (wasActive)
@@ -481,12 +503,321 @@ namespace minEngine
         return m_PendingKind == PendingCloseKind::None;
     }
 
+    bool EditorDocumentHost::RequestCloseAll()
+    {
+        std::vector<EditorDocumentId> ids;
+        CollectCloseable(
+            [](const EditorDocumentSession&)
+            {
+                return true;
+            },
+            ids);
+        BeginBatchClose(std::move(ids));
+        return m_PendingKind == PendingCloseKind::None;
+    }
+
+    void EditorDocumentHost::PushClosedHistory(ClosedDocumentRecord record)
+    {
+        m_ClosedHistory.erase(
+            std::remove_if(
+                m_ClosedHistory.begin(),
+                m_ClosedHistory.end(),
+                [&](const ClosedDocumentRecord& entry)
+                {
+                    return entry.AssetKey == record.AssetKey;
+                }),
+            m_ClosedHistory.end());
+        m_ClosedHistory.push_back(std::move(record));
+        while (m_ClosedHistory.size() > kClosedHistoryLimit)
+        {
+            m_ClosedHistory.erase(m_ClosedHistory.begin());
+        }
+    }
+
+    void EditorDocumentHost::MoveSessionToPinnedZone(EditorDocumentId id, bool pinned)
+    {
+        const size_t fromIndex = GetSessionIndex(id);
+        if (fromIndex >= m_Sessions.size() || !m_Sessions[fromIndex])
+        {
+            return;
+        }
+
+        std::unique_ptr<EditorDocumentSession> moved = std::move(m_Sessions[fromIndex]);
+        m_Sessions.erase(m_Sessions.begin() + static_cast<std::ptrdiff_t>(fromIndex));
+
+        size_t insertIndex = 0;
+        if (pinned)
+        {
+            while (insertIndex < m_Sessions.size() && m_Sessions[insertIndex]
+                   && m_Sessions[insertIndex]->IsPinned())
+            {
+                ++insertIndex;
+            }
+        }
+        else
+        {
+            insertIndex = 0;
+            while (insertIndex < m_Sessions.size() && m_Sessions[insertIndex]
+                   && m_Sessions[insertIndex]->IsPinned())
+            {
+                ++insertIndex;
+            }
+        }
+
+        m_Sessions.insert(m_Sessions.begin() + static_cast<std::ptrdiff_t>(insertIndex), std::move(moved));
+    }
+
+    void EditorDocumentHost::SetSessionPinned(EditorDocumentId id, bool pinned)
+    {
+        EditorDocumentSession* session = FindSession(id);
+        if (session == nullptr || session->IsPinned() == pinned)
+        {
+            return;
+        }
+
+        session->SetPinned(pinned);
+        MoveSessionToPinnedZone(id, pinned);
+    }
+
+    bool EditorDocumentHost::ReopenClosedTab()
+    {
+        while (!m_ClosedHistory.empty())
+        {
+            const ClosedDocumentRecord record = std::move(m_ClosedHistory.back());
+            m_ClosedHistory.pop_back();
+            if (record.AssetKey.empty())
+            {
+                continue;
+            }
+
+            if (FindSessionByAssetKey(record.AssetKey) != nullptr)
+            {
+                continue;
+            }
+
+            if (!AssetManager::HasInstance())
+            {
+                return false;
+            }
+
+            const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(record.AssetKey);
+            if (meta == nullptr)
+            {
+                ME_LOG(
+                    LogEditor,
+                    Warn,
+                    "DocumentHost: reopen skipped; asset meta missing '{}'.",
+                    record.AssetKey);
+                continue;
+            }
+
+            return OpenOrFocus(*meta);
+        }
+
+        return false;
+    }
+
+    bool EditorDocumentHost::ActivateAdjacentTab(int delta)
+    {
+        if (m_Sessions.empty() || delta == 0)
+        {
+            return false;
+        }
+
+        size_t index = GetSessionIndex(m_ActiveId);
+        if (index >= m_Sessions.size())
+        {
+            index = 0;
+        }
+
+        const int count = static_cast<int>(m_Sessions.size());
+        int nextIndex = (static_cast<int>(index) + delta) % count;
+        if (nextIndex < 0)
+        {
+            nextIndex += count;
+        }
+
+        if (!m_Sessions[static_cast<size_t>(nextIndex)])
+        {
+            return false;
+        }
+
+        return Activate(m_Sessions[static_cast<size_t>(nextIndex)]->GetId());
+    }
+
+    bool EditorDocumentHost::CopyAssetPath(EditorDocumentId id, bool relativeToProjectRoot) const
+    {
+        const EditorDocumentSession* session = FindSession(id);
+        if (session == nullptr || session->GetAssetKey().empty())
+        {
+            return false;
+        }
+
+        if (relativeToProjectRoot)
+        {
+            ImGui::SetClipboardText(session->GetAssetKey().c_str());
+            return true;
+        }
+
+        if (!AssetManager::HasInstance())
+        {
+            ImGui::SetClipboardText(session->GetAssetKey().c_str());
+            return true;
+        }
+
+        const std::filesystem::path absolutePath =
+            AssetManager::Get().ResolveAssetAbsolutePath(session->GetAssetKey());
+        ImGui::SetClipboardText(absolutePath.string().c_str());
+        return true;
+    }
+
+    bool EditorDocumentHost::RevealInOsExplorer(EditorDocumentId id) const
+    {
+        const EditorDocumentSession* session = FindSession(id);
+        if (session == nullptr || session->GetAssetKey().empty() || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        std::filesystem::path absolutePath =
+            AssetManager::Get().ResolveAssetAbsolutePath(session->GetAssetKey());
+        absolutePath = absolutePath.lexically_normal().make_preferred();
+
+        std::error_code error;
+        if (!std::filesystem::exists(absolutePath, error))
+        {
+            ME_LOG(
+                LogEditor,
+                Warn,
+                "DocumentHost: reveal failed; missing '{}' (assetKey='{}').",
+                absolutePath.string(),
+                session->GetAssetKey());
+            return false;
+        }
+
+#if defined(_WIN32)
+        const std::wstring widePath = absolutePath.wstring();
+        PIDLIST_ABSOLUTE itemIdList = ILCreateFromPathW(widePath.c_str());
+        if (itemIdList == nullptr)
+        {
+            ME_LOG(
+                LogEditor,
+                Warn,
+                "DocumentHost: ILCreateFromPathW failed for '{}'.",
+                absolutePath.string());
+            return false;
+        }
+
+        const HRESULT openResult = SHOpenFolderAndSelectItems(itemIdList, 0, nullptr, 0);
+        ILFree(itemIdList);
+        if (FAILED(openResult))
+        {
+            ME_LOG(
+                LogEditor,
+                Warn,
+                "DocumentHost: SHOpenFolderAndSelectItems failed (hr=0x{:08X}) for '{}'.",
+                static_cast<unsigned>(openResult),
+                absolutePath.string());
+            return false;
+        }
+
+        return true;
+#else
+        ME_LOG(LogEditor, Warn, "DocumentHost: Reveal in Explorer is only implemented on Windows.");
+        return false;
+#endif
+    }
+
+    std::string EditorDocumentHost::MakeTabLabel(const EditorDocumentSession& session) const
+    {
+        // Leading spaces reserve room for the FA glyph drawn over the tab item.
+        std::string label = "    ";
+        if (session.IsPinned())
+        {
+            label += "* ";
+        }
+
+        label += session.GetTitle();
+        // Unique ImGui id suffix so titles can collide across types.
+        label += "###doc";
+        label += std::to_string(session.GetId().Value);
+        return label;
+    }
+
+    void EditorDocumentHost::DrawTabTypeIcon(const EditorDocumentSession& session) const
+    {
+        if (m_Context == nullptr)
+        {
+            return;
+        }
+
+        const EditorAppearance& appearance = m_Context->GetEditorAppearance();
+        ImFont* iconFont =
+            EditorAssetTypeIcons::ResolveFontForDocumentTypeId(appearance, session.GetTypeId());
+        const char* glyph = EditorAssetTypeIcons::GlyphForDocumentTypeId(session.GetTypeId());
+        if (iconFont == nullptr || glyph == nullptr || glyph[0] == '\0')
+        {
+            return;
+        }
+
+        const ImVec2 itemMin = ImGui::GetItemRectMin();
+        const ImVec2 itemMax = ImGui::GetItemRectMax();
+        constexpr float kIconFontSize = 13.0f;
+        ImGui::PushFont(iconFont, kIconFontSize);
+        const ImVec2 glyphSize = ImGui::CalcTextSize(glyph);
+        const float glyphX = itemMin.x + 6.0f;
+        const float glyphY = itemMin.y + (itemMax.y - itemMin.y - glyphSize.y) * 0.5f;
+        ImGui::GetWindowDrawList()->AddText(
+            ImVec2(glyphX, glyphY),
+            ImGui::GetColorU32(ImGuiCol_Text),
+            glyph);
+        ImGui::PopFont();
+    }
+
+    void EditorDocumentHost::RegisterInputCommands(EditorInputHub& inputHub)
+    {
+        {
+            EditorCommandBinding reopenCommand;
+            reopenCommand.Name = "Reopen Closed Tab";
+            reopenCommand.Chord = {ImGuiKey_T, true, true, false};
+            reopenCommand.CanExecute = [this]() { return CanReopenClosedTab(); };
+            reopenCommand.Execute = [this]() { ReopenClosedTab(); };
+            inputHub.RegisterGlobalCommand(std::move(reopenCommand));
+        }
+        {
+            EditorCommandBinding nextTabCommand;
+            nextTabCommand.Name = "Next Document Tab";
+            nextTabCommand.Chord = {ImGuiKey_Tab, true, false, false};
+            nextTabCommand.CanExecute = [this]() { return !m_Sessions.empty(); };
+            nextTabCommand.Execute = [this]() { ActivateAdjacentTab(1); };
+            inputHub.RegisterGlobalCommand(std::move(nextTabCommand));
+        }
+        {
+            EditorCommandBinding prevTabCommand;
+            prevTabCommand.Name = "Previous Document Tab";
+            prevTabCommand.Chord = {ImGuiKey_Tab, true, true, false};
+            prevTabCommand.CanExecute = [this]() { return !m_Sessions.empty(); };
+            prevTabCommand.Execute = [this]() { ActivateAdjacentTab(-1); };
+            inputHub.RegisterGlobalCommand(std::move(prevTabCommand));
+        }
+    }
+
     void EditorDocumentHost::Reorder(size_t fromIndex, size_t toIndex)
     {
         if (fromIndex >= m_Sessions.size() || toIndex >= m_Sessions.size() || fromIndex == toIndex)
         {
             return;
         }
+        if (!m_Sessions[fromIndex] || !m_Sessions[toIndex])
+        {
+            return;
+        }
+        // Keep pinned and unpinned zones separate (explicit Pin menu; drag does not cross).
+        if (m_Sessions[fromIndex]->IsPinned() != m_Sessions[toIndex]->IsPinned())
+        {
+            return;
+        }
+
         std::unique_ptr<EditorDocumentSession> moved = std::move(m_Sessions[fromIndex]);
         m_Sessions.erase(m_Sessions.begin() + static_cast<std::ptrdiff_t>(fromIndex));
         m_Sessions.insert(m_Sessions.begin() + static_cast<std::ptrdiff_t>(toIndex), std::move(moved));
@@ -606,7 +937,8 @@ namespace minEngine
                     }
 
                     ImGui::PushID(static_cast<int>(session->GetId().Value));
-                    const bool selected = ImGui::BeginTabItem(session->GetTitle().c_str(), &open, flags);
+                    const std::string tabLabel = MakeTabLabel(*session);
+                    const bool selected = ImGui::BeginTabItem(tabLabel.c_str(), &open, flags);
 
                     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
                     {
@@ -631,52 +963,21 @@ namespace minEngine
 
                     if (ImGui::BeginPopupContextItem("DocumentTabContext"))
                     {
-                        if (ImGui::MenuItem("Close"))
-                        {
-                            RequestClose(session->GetId());
-                        }
-                        if (ImGui::MenuItem("Close Others", nullptr, false, m_Sessions.size() > 1))
-                        {
-                            RequestCloseOthers(session->GetId());
-                        }
-                        if (ImGui::MenuItem("Close to the Right", nullptr, false, i + 1 < m_Sessions.size()))
-                        {
-                            RequestCloseToTheRight(session->GetId());
-                        }
-                        if (ImGui::MenuItem("Close Saved"))
-                        {
-                            RequestCloseSaved();
-                        }
-                        ImGui::Separator();
-                        if (ImGui::MenuItem("Save"))
-                        {
-                            const EditorDocumentTypeInfo* typeInfo = m_TypeRegistry.Find(session->GetTypeId());
-                            if (typeInfo != nullptr && typeInfo->SaveSession && m_Context != nullptr)
-                            {
-                                if (typeInfo->SaveSession(*m_Context, *session))
-                                {
-                                    session->SetDirty(false);
-                                }
-                            }
-                        }
-                        ImGui::Separator();
-                        if (ImGui::MenuItem("Copy Asset Path"))
-                        {
-                            ImGui::SetClipboardText(session->GetAssetKey().c_str());
-                        }
-                        if (ImGui::MenuItem("Show in Content Browser") && m_Context != nullptr)
-                        {
-                            m_Context->GetAssetWorkflow().RevealAssetInContentBrowser(session->GetAssetKey());
-                        }
+                        DrawTabContextMenu(*session, i);
                         ImGui::EndPopup();
                     }
+
+                    DrawTabTypeIcon(*session);
 
                     if (selected)
                     {
                         uiSelectedId = session->GetId();
                         ImGui::EndTabItem();
                     }
-                    else if (!open)
+
+                    // BeginTabItem can return true (selected) in the same frame the user clicks X
+                    // (open→false). Always honor close — Pin only protects batch Close Others/All.
+                    if (!open)
                     {
                         RequestClose(session->GetId());
                     }
@@ -706,5 +1007,89 @@ namespace minEngine
         }
         ImGui::End();
         ImGui::PopStyleVar(3);
+    }
+
+    void EditorDocumentHost::DrawTabContextMenu(EditorDocumentSession& session, size_t sessionIndex)
+    {
+        if (ImGui::MenuItem("Close"))
+        {
+            RequestClose(session.GetId());
+        }
+        if (ImGui::MenuItem("Close Others", nullptr, false, m_Sessions.size() > 1))
+        {
+            RequestCloseOthers(session.GetId());
+        }
+        if (ImGui::MenuItem("Close to the Right", nullptr, false, sessionIndex + 1 < m_Sessions.size()))
+        {
+            RequestCloseToTheRight(session.GetId());
+        }
+        if (ImGui::MenuItem("Close Saved"))
+        {
+            RequestCloseSaved();
+        }
+        if (ImGui::MenuItem("Close All", nullptr, false, !m_Sessions.empty()))
+        {
+            RequestCloseAll();
+        }
+
+        ImGui::Separator();
+        if (session.IsPinned())
+        {
+            if (ImGui::MenuItem("Unpin Tab"))
+            {
+                SetSessionPinned(session.GetId(), false);
+            }
+        }
+        else if (ImGui::MenuItem("Pin Tab"))
+        {
+            SetSessionPinned(session.GetId(), true);
+        }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem("Save"))
+        {
+            const EditorDocumentTypeInfo* typeInfo = m_TypeRegistry.Find(session.GetTypeId());
+            if (typeInfo != nullptr && typeInfo->SaveSession && m_Context != nullptr)
+            {
+                if (typeInfo->SaveSession(*m_Context, session))
+                {
+                    session.SetDirty(false);
+                }
+            }
+        }
+
+        if (m_Context != nullptr)
+        {
+            const EditorDocumentTypeInfo* typeInfo = m_TypeRegistry.Find(session.GetTypeId());
+            if (typeInfo != nullptr && typeInfo->AppendTabContextMenu)
+            {
+                ImGui::Separator();
+                typeInfo->AppendTabContextMenu(*m_Context, session);
+            }
+        }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem("Copy Asset Path", nullptr, false, !session.GetAssetKey().empty()))
+        {
+            CopyAssetPath(session.GetId(), false);
+        }
+        if (ImGui::MenuItem("Copy Relative Path", nullptr, false, !session.GetAssetKey().empty()))
+        {
+            CopyAssetPath(session.GetId(), true);
+        }
+        if (ImGui::MenuItem("Show in Content Browser") && m_Context != nullptr)
+        {
+            m_Context->GetAssetWorkflow().RevealAssetInContentBrowser(session.GetAssetKey());
+        }
+        if (ImGui::MenuItem("Reveal in Explorer", nullptr, false, !session.GetAssetKey().empty()))
+        {
+            RevealInOsExplorer(session.GetId());
+        }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem("Reopen Closed Tab", "Ctrl+Shift+T", false, CanReopenClosedTab()))
+        {
+            ReopenClosedTab();
+        }
     }
 }

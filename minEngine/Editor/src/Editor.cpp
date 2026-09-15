@@ -355,6 +355,7 @@ namespace minEngine
 
         m_EditorGUIManager.Initialize(*this);
         m_InputHub.Initialize(*this);
+        m_DocumentHost.RegisterInputCommands(m_InputHub);
         m_PlayInEditorSession.SetHostContext(this);
         RegisterModules();
 

@@ -23,6 +23,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "UI/Appearance/EditorAssetTypeIcons.h"
 #include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include <algorithm>
@@ -34,48 +35,14 @@ namespace minEngine
 {
     const char* ContentBrowserWindow::ResolveAssetTypeIconGlyph(const std::string_view assetType) const
     {
-        if (assetType == "Texture2D")
-        {
-            return ICON_FA_IMAGE;
-        }
-
-        if (assetType == "StaticMesh")
-        {
-            return ICON_FA_CUBE;
-        }
-
-        if (assetType == "Material")
-        {
-            return ICON_FA_PALETTE;
-        }
-
-        if (assetType == "EnvironmentMap")
-        {
-            return ICON_FA_GLOBE;
-        }
-
-        if (assetType == "Scene")
-        {
-            return ICON_FA_MAP;
-        }
-
-        if (assetType == "Font")
-        {
-            return ICON_FA_FONT;
-        }
-
-        return ICON_FA_FILE;
+        return EditorAssetTypeIcons::GlyphForAssetType(assetType);
     }
 
     AssetIconFontStyle ContentBrowserWindow::ResolveAssetTypeIconFontStyle(const std::string_view assetType) const
     {
-        if (assetType == "StaticMesh" || assetType == "Material" || assetType == "Font"
-            || assetType == "EnvironmentMap")
-        {
-            return AssetIconFontStyle::Solid;
-        }
-
-        return AssetIconFontStyle::Regular;
+        return EditorAssetTypeIcons::FontStyleForAssetType(assetType) == EditorAssetTypeIcons::FontStyle::Solid
+            ? AssetIconFontStyle::Solid
+            : AssetIconFontStyle::Regular;
     }
 
     void ContentBrowserWindow::DrawTileAssetIcon(
@@ -592,7 +559,8 @@ namespace minEngine
     void ContentBrowserWindow::DrawTileVisual(const char* label,
                                               const bool selected,
                                               const AssetMeta* iconAssetMeta,
-                                              const bool drawLabel)
+                                              const bool drawLabel,
+                                              const bool drawFolderIcon)
     {
         const EditorAppearance& appearance = m_Context.GetEditorAppearance();
         const EditorThemePalette& palette = appearance.GetActivePalette();
@@ -628,6 +596,10 @@ namespace minEngine
         if (iconAssetMeta != nullptr)
         {
             DrawTileAssetIcon(*iconAssetMeta, iconMin, iconMax, appearance, palette, *drawList);
+        }
+        else if (drawFolderIcon)
+        {
+            DrawTileFolderIcon(iconMin, iconMax, appearance, palette, *drawList);
         }
         else
         {
@@ -673,21 +645,61 @@ namespace minEngine
         drawList->PopClipRect();
     }
 
+    void ContentBrowserWindow::DrawTileFolderIcon(const ImVec2& iconMin,
+                                                  const ImVec2& iconMax,
+                                                  const EditorAppearance& appearance,
+                                                  const EditorThemePalette& palette,
+                                                  ImDrawList& drawList) const
+    {
+        drawList.AddRectFilled(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.FieldBackground),
+            0.0f);
+        drawList.AddRect(
+            iconMin,
+            iconMax,
+            appearance.GetDisplayColorU32(palette.Border),
+            0.0f,
+            0,
+            1.0f);
+
+        ImFont* iconFont = EditorAssetTypeIcons::ResolveFolderFont(appearance);
+        const char* glyph = EditorAssetTypeIcons::GlyphForFolder();
+        if (iconFont == nullptr || glyph == nullptr || glyph[0] == '\0')
+        {
+            return;
+        }
+
+        constexpr float kFolderIconFontSize = 42.0f;
+        ImGui::PushFont(iconFont, kFolderIconFontSize);
+        const ImVec2 glyphSize = ImGui::CalcTextSize(glyph);
+        const float glyphX = iconMin.x + (ViewMetrics::IconSize - glyphSize.x) * 0.5f;
+        const float glyphY = iconMin.y + (ViewMetrics::IconSize - glyphSize.y) * 0.5f;
+        drawList.AddText(ImVec2(glyphX, glyphY), appearance.GetDisplayColorU32(palette.TextPrimary), glyph);
+        ImGui::PopFont();
+    }
+
     void ContentBrowserWindow::DrawDirectoryTile(const AssetTreeModel::DirectoryNode& directoryNode)
     {
         ImGui::PushID(directoryNode.RelativePath.c_str());
 
         const ImVec2 outerSize(ViewMetrics::TileOuterWidth, ResolveTileOuterHeight());
-        ImGui::InvisibleButton("##dirTile", outerSize);
+        if (ImGui::InvisibleButton("##dirTile", outerSize))
+        {
+            SelectDirectory(directoryNode.RelativePath);
+        }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
             m_Model.SetCurrentDirectory(directoryNode.RelativePath);
             m_SelectedAssetIndex = -1;
+            m_SelectedDirectoryRelativePath.clear();
             m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
         }
 
-        DrawTileVisual(directoryNode.DisplayName.c_str(), false);
+        const bool selected = m_SelectedDirectoryRelativePath == directoryNode.RelativePath;
+        DrawTileVisual(directoryNode.DisplayName.c_str(), selected, nullptr, true, true);
 
         if (ImGui::BeginPopupContextItem())
         {
@@ -865,8 +877,16 @@ namespace minEngine
 
     void ContentBrowserWindow::SelectAsset(const AssetMeta* meta)
     {
+        m_SelectedDirectoryRelativePath.clear();
         m_Context.GetAssetWorkflow().SetSelectedAsset(meta);
         SyncSelectionFromWorkflow();
+    }
+
+    void ContentBrowserWindow::SelectDirectory(std::string_view relativePath)
+    {
+        m_SelectedDirectoryRelativePath = std::string(relativePath);
+        m_SelectedAssetIndex = -1;
+        m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
     }
 
     void ContentBrowserWindow::DrawContentBrowserContextMenu(
@@ -914,6 +934,7 @@ namespace minEngine
             return;
         }
 
+        m_SelectedDirectoryRelativePath.clear();
         const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
         m_SelectedAssetIndex = -1;
         for (int index = 0; index < static_cast<int>(assets.size()); ++index)

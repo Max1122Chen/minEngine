@@ -28,6 +28,9 @@ namespace minEngine
         ME_PROPERTY(EditAnywhere, meta = (ReadOnly = "true"))
         int ReadOnlyIntField = 7;
 
+        ME_PROPERTY(EditDefaultsOnly)
+        int DefaultsOnlyIntField = 1;
+
         ME_PROPERTY(EditAnywhere)
         std::string StringField = "Hello, Reflection!";
 

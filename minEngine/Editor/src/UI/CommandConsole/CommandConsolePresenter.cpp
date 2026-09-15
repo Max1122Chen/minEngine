@@ -1,10 +1,10 @@
 #include "UI/CommandConsole/CommandConsolePresenter.h"
 
-
-
-#include "Runtime/Core/Command/CompletionService.h"
-#include "Runtime/Core/Command/SetValueValidation.h"
+#include "DebugCommand/DebugCommandCompletionService.h"
+#include "DebugCommand/DebugCommandSetValueValidation.h"
 #include "Services/EditorConsoleCommands.h"
+#include "Shell/Document/EditorDocumentHost.h"
+#include "Shell/Document/EditorDocumentSession.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
 
@@ -39,7 +39,7 @@ namespace minEngine
 
             CommandConsolePresenter* Presenter = nullptr;
 
-            Command::CommandContext Context;
+            DebugCommand::DebugCommandContext Context;
 
         };
 
@@ -63,7 +63,7 @@ namespace minEngine
 
             CommandConsolePresenter& presenter = *userData->Presenter;
 
-            const Command::CommandContext& context = userData->Context;
+            const DebugCommand::DebugCommandContext& context = userData->Context;
 
 
 
@@ -167,7 +167,7 @@ namespace minEngine
 
     {
 
-        m_LastCompletionContext = BuildCommandContext(context);
+        m_LastCompletionContext = BuildDebugCommandContext(context);
 
         UpdateLiveCompletion(m_LastCompletionContext);
 
@@ -175,45 +175,48 @@ namespace minEngine
 
 
 
-    Command::CommandContext CommandConsolePresenter::BuildCommandContext(IEditorContext& context) const
-
+    DebugCommand::DebugCommandContext CommandConsolePresenter::BuildDebugCommandContext(IEditorContext& context) const
     {
-
-        Command::CommandContext commandContext;
-
+        DebugCommand::DebugCommandContext commandContext;
         commandContext.EditorContextOpaque = &context;
 
-        if (const EditorSubModule* sceneModule = context.FindSubModule(SceneEditor::kModuleId))
-
+        const EditorDocumentSession* activeSession = context.GetDocumentHost().GetActiveSession();
+        if (activeSession != nullptr)
         {
+            commandContext.ParseContext.ActiveSessionId = activeSession->GetId().Value;
+            commandContext.ParseContext.ActiveSessionTypeId = activeSession->GetTypeId();
+            commandContext.ParseContext.ActiveAssetKey = activeSession->GetAssetKey();
+        }
 
+        if (const EditorSubModule* sceneModule = context.FindSubModule(SceneEditor::kModuleId))
+        {
             if (const SceneEditor* sceneEditor = dynamic_cast<const SceneEditor*>(sceneModule))
-
             {
-
                 commandContext.ActiveScene = context.GetInspectingScene();
                 if (commandContext.ActiveScene == nullptr)
                 {
                     commandContext.ActiveScene = sceneEditor->GetActiveScene();
                 }
-
             }
-
         }
 
-        const Command::CommandContext sceneContext = commandContext;
+        const DebugCommand::DebugCommandContext sceneContext = commandContext;
         commandContext.EditorSetValue =
-            [&context, sceneContext](std::string_view propertyPathText, std::string_view valueLiteral) -> Command::CommandResult
+            [&context, sceneContext](std::string_view propertyPathText, std::string_view valueLiteral) -> DebugCommand::DebugCommandResult
         {
-            Command::CommandContext editorSetContext = sceneContext;
+            DebugCommand::DebugCommandContext editorSetContext = sceneContext;
             editorSetContext.EditorContextOpaque = &context;
             return ExecuteEditorConsoleSetValue(editorSetContext, propertyPathText, valueLiteral);
         };
-
-
+        commandContext.EditorEditValue =
+            [&context, sceneContext](std::string_view propertyPathText, std::string_view valueLiteral) -> DebugCommand::DebugCommandResult
+        {
+            DebugCommand::DebugCommandContext editorEditContext = sceneContext;
+            editorEditContext.EditorContextOpaque = &context;
+            return ExecuteEditorConsoleEditValue(editorEditContext, propertyPathText, valueLiteral);
+        };
 
         return commandContext;
-
     }
 
 
@@ -232,13 +235,13 @@ namespace minEngine
 
 
 
-        Command::CommandOutputLine echoLine;
+        DebugCommand::DebugCommandOutputLine echoLine;
 
-        echoLine.Segments.push_back(Command::CommandOutputSegment{Command::CommandOutputKind::Muted, "> "});
+        echoLine.Segments.push_back(DebugCommand::DebugCommandOutputSegment{DebugCommand::DebugCommandOutputKind::Muted, "> "});
 
         echoLine.Segments.push_back(
 
-            Command::CommandOutputSegment{Command::CommandOutputKind::InputEcho, std::string(line)});
+            DebugCommand::DebugCommandOutputSegment{DebugCommand::DebugCommandOutputKind::InputEcho, std::string(line)});
 
         m_OutputLines.push_back(std::move(echoLine));
 
@@ -246,7 +249,7 @@ namespace minEngine
 
 
 
-    void CommandConsolePresenter::AppendResult(const Command::CommandResult& result)
+    void CommandConsolePresenter::AppendResult(const DebugCommand::DebugCommandResult& result)
 
     {
 
@@ -266,37 +269,37 @@ namespace minEngine
 
         {
 
-            Command::CommandOutputKind kind = Command::CommandOutputKind::Plain;
+            DebugCommand::DebugCommandOutputKind kind = DebugCommand::DebugCommandOutputKind::Plain;
 
-            if (result.Status == Command::CommandStatus::Error)
-
-            {
-
-                kind = Command::CommandOutputKind::Error;
-
-            }
-
-            else if (result.Status == Command::CommandStatus::Warning)
+            if (result.Status == DebugCommand::DebugCommandStatus::Error)
 
             {
 
-                kind = Command::CommandOutputKind::Warning;
+                kind = DebugCommand::DebugCommandOutputKind::Error;
 
             }
 
-            else if (result.Status == Command::CommandStatus::Ok)
+            else if (result.Status == DebugCommand::DebugCommandStatus::Warning)
 
             {
 
-                kind = Command::CommandOutputKind::SuccessStatus;
+                kind = DebugCommand::DebugCommandOutputKind::Warning;
+
+            }
+
+            else if (result.Status == DebugCommand::DebugCommandStatus::Ok)
+
+            {
+
+                kind = DebugCommand::DebugCommandOutputKind::SuccessStatus;
 
             }
 
 
 
-            Command::CommandOutputLine line;
+            DebugCommand::DebugCommandOutputLine line;
 
-            line.Segments.push_back(Command::CommandOutputSegment{kind, result.Message});
+            line.Segments.push_back(DebugCommand::DebugCommandOutputSegment{kind, result.Message});
 
             m_OutputLines.push_back(std::move(line));
 
@@ -328,7 +331,7 @@ namespace minEngine
 
 
 
-        const Command::CommandResult result = m_Executor.ExecuteLine(trimmedLine, BuildCommandContext(context));
+        const DebugCommand::DebugCommandResult result = m_Executor.ExecuteLine(trimmedLine, BuildDebugCommandContext(context));
 
         AppendResult(result);
 
@@ -380,7 +383,7 @@ namespace minEngine
 
         size_t cursorOffset,
 
-        const Command::CommandContext& context,
+        const DebugCommand::DebugCommandContext& context,
 
         bool preserveSelection)
 
@@ -400,7 +403,7 @@ namespace minEngine
 
 
 
-        m_CompletionCandidates = Command::CompletionService::Complete(inputLine, cursorOffset, context);
+        m_CompletionCandidates = DebugCommand::DebugCommandCompletionService::Complete(inputLine, cursorOffset, context);
 
 
 
@@ -446,7 +449,7 @@ namespace minEngine
 
             m_CompletionCandidates.end(),
 
-            [&](const Command::CompletionItem& item) { return item.InsertText == previousInsertText; });
+            [&](const DebugCommand::CompletionItem& item) { return item.InsertText == previousInsertText; });
 
         if (matchedItem != m_CompletionCandidates.end())
 
@@ -490,7 +493,7 @@ namespace minEngine
 
 
 
-    void CommandConsolePresenter::UpdateLiveCompletion(const Command::CommandContext& context)
+    void CommandConsolePresenter::UpdateLiveCompletion(const DebugCommand::DebugCommandContext& context)
 
     {
 
@@ -522,7 +525,7 @@ namespace minEngine
 
 
 
-    void CommandConsolePresenter::ApplyCompletionToInputBuffer(const Command::CompletionItem& item)
+    void CommandConsolePresenter::ApplyCompletionToInputBuffer(const DebugCommand::CompletionItem& item)
 
     {
 
@@ -552,7 +555,7 @@ namespace minEngine
 
         ImGuiInputTextCallbackData* data,
 
-        const Command::CompletionItem& item)
+        const DebugCommand::CompletionItem& item)
 
     {
 
@@ -588,7 +591,7 @@ namespace minEngine
 
         ImGuiInputTextCallbackData* data,
 
-        const Command::CommandContext& context)
+        const DebugCommand::DebugCommandContext& context)
 
     {
 
@@ -622,7 +625,7 @@ namespace minEngine
 
         ImGuiInputTextCallbackData* data,
 
-        const Command::CommandContext& context)
+        const DebugCommand::DebugCommandContext& context)
 
     {
 
@@ -664,7 +667,7 @@ namespace minEngine
 
 
 
-        const Command::CompletionItem& selectedItem =
+        const DebugCommand::CompletionItem& selectedItem =
 
             m_CompletionCandidates[static_cast<size_t>(m_CompletionIndex)];
 
@@ -870,7 +873,7 @@ namespace minEngine
 
                 {
 
-                    const Command::CompletionItem& item =
+                    const DebugCommand::CompletionItem& item =
 
                         m_CompletionCandidates[static_cast<size_t>(itemIndex)];
 
@@ -980,7 +983,7 @@ namespace minEngine
 
         int rowIndex = 0;
 
-        for (const Command::CommandOutputLine& line : m_OutputLines)
+        for (const DebugCommand::DebugCommandOutputLine& line : m_OutputLines)
 
         {
 
@@ -990,7 +993,7 @@ namespace minEngine
 
             bool isFirstSegment = true;
 
-            for (const Command::CommandOutputSegment& segment : line.Segments)
+            for (const DebugCommand::DebugCommandOutputSegment& segment : line.Segments)
 
             {
 
@@ -1036,7 +1039,7 @@ namespace minEngine
 
 
 
-        const Command::CommandContext commandContext = BuildCommandContext(context);
+        const DebugCommand::DebugCommandContext commandContext = BuildDebugCommandContext(context);
 
         m_LastCompletionContext = commandContext;
 
@@ -1044,15 +1047,15 @@ namespace minEngine
 
 
 
-        const Command::PropertyValueValidation valueValidation =
+        const DebugCommand::PropertyValueValidation valueValidation =
 
-            Command::SetValueValidation::ValidateInputLine(commandContext, m_InputBuffer);
+            DebugCommand::DebugCommandSetValueValidation::ValidateInputLine(commandContext, m_InputBuffer);
 
 
 
         int pushedStyleColors = 0;
 
-        if (valueValidation.State != Command::PropertyValueValidationState::None)
+        if (valueValidation.State != DebugCommand::PropertyValueValidationState::None)
 
         {
 

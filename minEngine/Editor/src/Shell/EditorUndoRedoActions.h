@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/Command/CommandResult.h"
+#include "DebugCommand/DebugCommandResult.h"
 
 namespace minEngine
 {
@@ -15,6 +15,6 @@ namespace minEngine
     EditorUndoRedoResult TryUndo(IEditorContext& context);
     EditorUndoRedoResult TryRedo(IEditorContext& context);
 
-    Command::CommandResult BuildUndoCommandResult(const EditorUndoRedoResult& result);
-    Command::CommandResult BuildRedoCommandResult(const EditorUndoRedoResult& result);
+    DebugCommand::DebugCommandResult BuildUndoDebugCommandResult(const EditorUndoRedoResult& result);
+    DebugCommand::DebugCommandResult BuildRedoDebugCommandResult(const EditorUndoRedoResult& result);
 }

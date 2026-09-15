@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（CORE-F22 Done；待 commit）
+Last updated: 2026-09-15（master: CORE-F22 + ED-F15 合入）
+
+### 2026-09-15 - master：合入 feat/core + feat/editor
+- **core：** CORE-F20 Dynamic Multicast；CORE-F22 Profiler Harness（`test profiler` 5/5）。
+- **editor：** ED-F11 W3 大部 + ED-F12–F15（Command-first / 覆盖 / Graph·CB UX）。
+- **文档冲突：** ACTIVE_WORK / FEATURE_REGISTRY / PROGRESS_LOG 已手工合并。
 
 ### 2026-09-15 - CORE-F22 Done：S05 收口
 - **Status：** Registry / Design → **Done**；验收勾选完成。
@@ -54,6 +59,151 @@ Last updated: 2026-09-15（CORE-F22 Done；待 commit）
 - **Docs：** [CORE-F20 Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md)；ACTIVE_WORK Primary → F20；TD-006 注 F20/F21。
 - **未做：** 实现代码；等维护者审阅 §10/§11。
 - **Next：** 拍板开放点 → In Progress + S01。
+
+### 2026-09-15 - ED-F15 Done：验收收口
+- Design §验收全勾；Registry / ACTIVE_WORK → **Done**。
+- 手测通过（维护者）：Anim 导航、Material chrome/右键、CB 文件夹、Inspector icon。
+
+### 2026-09-15 - ED-F15 跟进：Material 节点 UE 化 + 右键菜单
+- **视觉：** Header 低明度色；标题/Pin 行 padding；Pin 空心/实心（连线状态）；连线 thickness 2.5；去掉默认节点重复副标题。
+- **交互：** 画布右键 Add Node（Creatable 列表）；节点右键 Rename（`m_Title` + Undo）/ Delete（禁 Output）。
+- **验证：** Editor 构建 OK；手测通过。
+
+### 2026-09-15 - ED-F15 实现：Graph / CB / Inspector UX
+- **W4：** `ResolveIconGlyph(MEClass*)` 经 `GetShortTypeName` 查表 → Inspector 与 AddComponent 一致。
+- **W1：** SmGraph RMB 拖平移（阈值保住菜单）+ LMB 空处框选（单 State MVP）；Middle/Alt pan 保留。
+- **W3：** CB 文件夹 FA icon + 单击选中边框；双击进入清选中。
+- **W2：** Material 节点 Header 色条 + `ApplyNodeEditorTheme`（palette / 选中描边）。
+- **验证：** Editor 构建 OK；手测通过。
+
+### 2026-09-15 - 登记 ED-F15：Graph / CB / Inspector UX 抛光
+- **范围：** AnimGraph 导航对齐 Material（RMB pan + LMB 框选单选 MVP）；Material 节点 UE-ish chrome；CB 文件夹 icon + 选中框；Inspector 组件 icon 与 AddComponent 对齐。
+- **Scope cut：** Anim 框选不扩多选模型（已确认）。
+- **Inspector icon 根因：** `ResolveIconGlyph(MEClass*)` 用全名 `minEngine::X` 查短名表 → puzzle；string 路径会剥 `::`。
+- **Design：** [ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md](./Editor/ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md)。待审批后按 W4→W1→W3→W2 开工。
+
+### 2026-09-15 - ED-F11 W3 跟进：Reveal / Pin 直关 / Tab 类型图标
+- **Reveal：** 弃用 `explorer /select`（正斜杠/`"` 易错位）；改 `make_preferred` + `SHOpenFolderAndSelectItems`。
+- **Pin 直关：** `BeginTabItem` 选中帧点 X 时 `selected==true && open==false` 曾只 `EndTabItem` 不 `RequestClose`；现始终处理 `!open`。Pin 仍只挡 Close Others/All。
+- **Tab 图标：** `EditorAssetTypeIcons` 与 Content Browser 共用 FA glyph；标签改 `* Title` + 左侧 overlay 图标。
+- **验证：** Editor 构建 OK；手测 Reveal / Pin 直关 / Tab 图标通过（维护者）。
+
+### 2026-09-15 - ED-F11 W3：Pin / Close All / Reopen / 路径 / 快捷键
+- **Pin/Unpin：** Tab 右键；Pinned 沉到左侧区；批量 Close 跳过 Pinned；Close All 同策略。
+- **Reopen Closed：** 关闭历史（≤16）→ `OpenOrFocus`；Ctrl+Shift+T；Ctrl+Tab / Ctrl+Shift+Tab。
+- **路径：** Copy Relative；Reveal in Explorer（Windows `/select`）；Copy Asset Path 改为绝对路径。
+- **钩子：** `AppendTabContextMenu`；Tab 标签 `* TypeInitial: Title`。
+- **余量：** Save As；Scene 多开策略；手测。
+- **验证：** Editor 构建 OK。
+
+### 2026-09-15 - ED-F14 Done：验收 + Console Domain / ObjectPtr Undo
+- **验收：** 人手 Undo/Redo 冒烟通过（维护者）。
+- **跟进修：** Debug 补全/`help` 按 `ActiveSessionTypeId` + 命令 `Domain` 裁剪；Material ObjectPtr 走 `OnSelectionCommitted` 后再入栈。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。准备整批 commit。
+
+### 2026-09-14 - ED-F14 W4：Material / AnimGraph Debug 域动词
+- **Material：** `mat_list_node_types` / `mat_list_nodes` / `mat_add_node` / `mat_remove_node` / `mat_connect` / `mat_disconnect` / `mat_set_shading` / `mat_set_blend` → 同 GUI `Submit*` / `SetShading|Blend`。
+- **AnimGraph：** `anim_list_states|transitions|params`；`anim_add/remove/rename_state`；transition / any / reverse / set_default；`anim_add/remove_param` → `SubmitOwnedPropertyMutation(m_StateMachine|m_Schema)`。
+- **注册：** `RegisterEditorConsoleCommands` 旁挂 `EditorMaterialDebugCommands` / `EditorAnimGraphDebugCommands`。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。
+- **余量：** 人手 Undo/Redo 冒烟；通过后 Registry → Done + 准备 commit。未 commit。
+
+### 2026-09-14 - ED-F14 W2/W3：Material 拓扑 + AnimGraph 入栈
+- **Material：** `EditorAdd/Remove/Connect/DisconnectMaterial*Command`；位姿拖拽结束 SetProperty。
+- **AnimGraph：** `AnimationGraphEditor` 实现 `EditorSetObjectPropertyTarget`；变异走 `m_StateMachine` / `m_Schema` 整块 blob（数组叶子 path 不可用）。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。
+- **余量：** W4 Material/AnimGraph Debug；人手 Undo 冒烟。未 commit。
+
+### 2026-09-14 - ED-F14 W2 画布：节点 DragFloat 入栈
+- **路径：** `MaterialGraphNodeRegistry::DrawNode` 本地缓冲 → 激活捕获 before → 失活 `SubmitSetObjectProperty`。
+- **Constant3：** 一次手势提交 R/G/B 三条（同 editId 多字段）。
+- **未做：** 拓扑、位姿、Debug。
+- **验证：** Editor 构建 OK；`test command-system` 回归。
+
+### 2026-09-14 - ED-F14 W2-A：Material Inspector 字段入栈
+- **共用：** `EditorSetObjectPropertyTarget` + `EditorObjectPropertyApply`；`EditorSetObjectPropertyCommand` 不再绑死 SceneEditor。
+- **Material：** `Apply/SubmitSetObjectProperty`；Shading/Blend 经 Command + prune；Undo 还原 Output 连线快照。
+- **Inspector 节点字段：** 激活/失活捕获 blob → Submit（`applyOnFirstExecute=false`）。
+- **未做：** 画布 DragFloat、拓扑、位姿、Debug。
+- **验证：** Editor 构建 OK；`test command-system` 28/28 PASS。未 commit（与 W1 同工作区）。
+
+### 2026-09-14 - ED-F14 W1 Done：edit/verify + Scene 结构 Debug
+- **edit：** `PropertyWriteMode::RespectPolicy`；`set` 仍 Force。`EditDefaultsOnly` 在 SceneInstance 下 `edit` 失败、`set` 成功。
+- **verify：** 可选 `=` / `==`；Payload `ok` / expected / actual。
+- **Scene Debug：** `add_go` / `delete_go` / `add_comp` / `remove_comp` / `reparent` / `rename_comp` / `move_comp` → 现有 `Submit*`。
+- **验证：** `minEngineTests.exe test command-system` 28/28 PASS；Editor 构建 OK。
+- **Next：** W2 Material 字段 Set/Edit + 拓扑 Command。未 commit。
+
+### 2026-09-14 - ED-F14 W1 开工：edit/verify + Scene 结构 Debug
+- **edit：** RespectPolicy（`PropertyEditPolicy` / SceneInstance）；`set` 仍 Force。
+- **verify：** `==` 断言 + PayloadJson。
+- **Scene Debug：** `add_go` / `delete_go` / `add_comp` / `remove_comp` / `reparent` / `rename_comp` / `move_comp` → 现有 Submit*。
+- **测试：** command-system 增 edit/verify 用例。
+
+### 2026-09-14 - ED-F14 Design 展开稿
+- 代码实况矩阵：Scene 已入栈；Material/AnimGraph 直写；Debug 动词缺口。
+- 锁定候选：Material 属性竖切（B 优先）或枚举字段（A）；AnimGraph Add/Remove State 或 Transition。
+- `edit`/`verify` 契约；Deferred 表；待审批。
+- F13 已提交：`c7b3f34`。
+
+### 2026-09-14 - ED-F13 Done：显式 AddComponent（去 Select 前置）
+- **API：** `ApplyAddComponentToGameObject(id,…)`；`ApplyRemoveComponentFromGameObject`；删 `ApplyAddComponentToSelected*`。
+- **Command：** `EditorAddComponentCommand` 不再先 Select；Undo 按 owner id 移除。
+- **Picker：** Inspector/Context 提交显式 id；去掉 `selectTargetBeforeAdd`。
+- **验证：** Editor 构建 OK；`test command-system` 25/25 PASS。
+- **保留：** 其它显式 `Apply*`；Delete 恢复后 Select 仅 UX。
+
+### 2026-09-14 - ED-F13 / F14 Design 修订（选中态口径）
+- **纠偏：** F13 不删 Editor `Apply*`、不把逻辑搬进 Command；只消灭「先 Select 再改」。
+- **分层：** GUI 产生 Command → Command 调用 → Editor 实现。
+- **状态：** 修订稿待维护者审批；未开码、未 commit。
+
+### 2026-09-14 - ED-F13 / ED-F14 Design 首稿
+- **F13：** [ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) — 扫描 Scene Command→Apply* / Select 耦合；删除列表；Wave W1–W5。
+- **F14：** [ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) — 覆盖矩阵；Blocked on F13；edit/verify + Material/AnimGraph MVP。
+- **Commit backlog：** `fab9a4c` 登记 ID。
+
+### 2026-09-14 - ED-F12 committed；下一刀 ED-F13/F14 登记
+- **Commit：** `aa56421` feat(editor): move debug commands into Editor and unify EditorCommand naming
+- **Next：** **ED-F13** EditorCommand-first（去 Select/Apply 套壳）；**ED-F14** 各 SubEditor 命令面完备（edit/verify 等可并入）
+
+### 2026-09-14 - ED-F12：DebugCommand/PropertyPath 迁入 Editor
+- **目录：** `Editor/src/DebugCommand/`、`Editor/src/PropertyPath/`；Engine Runtime 不再含调试命令面。
+- **测试：** `minEngineTests` 直接编译上述 Editor 源（Editor 仍为 exe，未拆 Lib）。
+- **记账（另 Feature）：** `Editor*Command` 经 `SceneEditor::Select* + Apply*` 转发，应改为直接调用被编辑对象能力。
+- **验证：** （构建后）`test command-system`。
+
+### 2026-09-14 - ED-F12 Done：DebugCommand* / EditorCommand* 命名收敛 + W1–W2
+- **命名：** `Runtime/Core/Command` → `DebugCommand/`（`DebugCommandRegistry/Executor/Context/Result…`）；`IEditorCommand` → `EditorCommand`；Scene 操作类统一 `Editor*Command`。
+- **协议：** `DebugParseContext`；Console 填 Active Session；`PayloadJson`（get/find/list_go）。
+- **未做（下一 Feature）：** `edit` / `verify` / `invoke`；查询侧完整 EditorCommand 对象化；UI `CommandConsole` 文件夹改名。
+- **验证：** `minEngineTests.exe test command-system` 25/25 PASS；`Editor` 构建通过。
+
+### 2026-09-14 - ED-F12 W1–W2 开工：ParseContext + PayloadJson
+- **范围收窄：** 本 Feature 不新增 `edit`/`verify`/`invoke`。
+- **实现：** `DebugParseContext`；Console 从 `DocumentHost` Active Session 填充；`CommandResult.PayloadJson`；`get`/`find`/`list_go` 填机读 Payload。
+- **验证：** `minEngineTests.exe test command-system` — 25/25 PASS。
+- **Next：** W3 `set` 写路径整理；查询 EditorCommand 对象化（W4）。
+
+### 2026-09-14 - ED-F12：Command 目录表 + 迁移/目录布局
+- **Docs：** §3.9 续用/新增（get/set/edit/verify…）与 EditorCommand 映射；§3.10 迁移阶段与 `Commands/{Global,Scene}` + `DebugCommand/` 目标树。
+
+### 2026-09-14 - ED-F12：基线 vs 方言、双上下文、set/edit
+- **补强：** EditorCommand 基线（如 get Guid+path）vs Debug Suite 方言糖；DebugParseContext ≠ 执行载荷；`set` 侵入 / `edit` 守 specifier（对齐反射与 PropertyEditPolicy 精神）。
+- **Docs：** [ED-F12](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) §0.4–0.8。
+
+### 2026-09-14 - ED-F12：再校准为 EditorCommand 单核心
+- **口径：** Command≡EditorCommand；DebugCommand（原 Console）/ GUI / MCP 均为构造前端；补全与 Active Session 隐式→显式属 Debug 配件；命令按域（Global / Scene / Material…）管理。
+- **Docs：** [ED-F12](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) §0.3–0.5、§1、§3 已改。
+- **Next：** 维护者确认后拍 §9 → Planned。
+
+### 2026-09-14 - ED-F12：口径修订为 Agent Edit Protocol
+- **Docs：** [ED-F12 Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) — 资产中心；Edit Session 上下文；Command / EditorCommand / ConsoleCommand / MCP Tool 四层；§1 对照现码与 ED-F04 偏差；Scene 降为竖切。
+- **旧文件名** `ED-F12_WORLD_QUERY_*` 已替换。
+- **Next：** 维护者确认 §0–§1 → 拍板 §9 → Planned。
+
+### 2026-09-14 - ED-F12：World Query–Modify–Verify Design 初稿（已被上条口径修订取代）
+- 初稿聚焦 Scene list/get/set/verify；随后抬升为资产会话协议。
 
 ### 2026-09-13 - ED-F11：Mode→Active Session 语义 + Shared CB 入布局
 - **设计：** [ED-F11](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 — Shared vs Type Suite；Tab/Active Session 为前台真相。

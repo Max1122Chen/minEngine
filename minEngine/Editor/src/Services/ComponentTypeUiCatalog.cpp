@@ -78,7 +78,8 @@ namespace minEngine
         for (const Reflection::MEClass* current = componentClass; current != nullptr;
              current = current->GetSuperClass())
         {
-            if (const char* glyph = LookupIconExact(current->GetName()))
+            const std::string shortName = GetShortTypeName(current->GetName());
+            if (const char* glyph = LookupIconExact(shortName))
             {
                 return glyph;
             }

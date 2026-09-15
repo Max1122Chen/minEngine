@@ -8,10 +8,10 @@
 
 namespace minEngine
 {
-    class IEditorCommand
+    class EditorCommand
     {
     public:
-        virtual ~IEditorCommand() = default;
+        virtual ~EditorCommand() = default;
         virtual void Execute() = 0;
         virtual void Undo() = 0;
         virtual const char* GetDescription() const = 0;
@@ -23,7 +23,7 @@ namespace minEngine
         void SetMaxDepth(uint32_t maxDepth);
         uint32_t GetMaxDepth() const { return m_MaxDepth; }
 
-        void Execute(std::unique_ptr<IEditorCommand> command);
+        void Execute(std::unique_ptr<EditorCommand> command);
         bool Undo();
         bool Redo();
         void Clear();
@@ -41,7 +41,7 @@ namespace minEngine
         void TrimUndoStackToMaxDepth();
 
         uint32_t m_MaxDepth = 100;
-        std::vector<std::unique_ptr<IEditorCommand>> m_UndoStack;
-        std::vector<std::unique_ptr<IEditorCommand>> m_RedoStack;
+        std::vector<std::unique_ptr<EditorCommand>> m_UndoStack;
+        std::vector<std::unique_ptr<EditorCommand>> m_RedoStack;
     };
 }

@@ -4,9 +4,10 @@
 #include "SubEditor/Scene/SceneEditor.h"
 #include "UI/Appearance/EditorAppearance.h"
 
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
+
 #include "imgui.h"
 
-#include <algorithm>
 #include <cctype>
 #include <cfloat>
 
@@ -76,7 +77,6 @@ namespace minEngine
                                                   const std::vector<std::string>& componentTypeNames,
                                                   std::string_view filterText,
                                                   uint64_t targetGameObjectId,
-                                                  bool selectTargetBeforeAdd,
                                                   bool closePopupOnAdd)
     {
         bool added = false;
@@ -92,11 +92,7 @@ namespace minEngine
             const std::string displayName = ComponentTypeUiCatalog::MakeTypeDisplayName(typeName);
             if (ImGui::Selectable(displayName.c_str()))
             {
-                if (selectTargetBeforeAdd)
-                {
-                    sceneEditor.SelectGameObject(targetGameObjectId);
-                }
-                sceneEditor.SubmitAddComponentToSelectedGameObject(editor, typeName);
+                sceneEditor.SubmitAddComponentToGameObject(editor, targetGameObjectId, typeName);
                 added = true;
                 if (closePopupOnAdd)
                 {
@@ -121,12 +117,20 @@ namespace minEngine
     {
         (void)selectedTypeNameInOut;
 
+        GameObject* selectedGameObject = sceneEditor.GetSelectedGameObject();
+        if (!selectedGameObject)
+        {
+            return false;
+        }
+
         const std::vector<std::string>& componentTypeNames = sceneEditor.GetAllComponentTypeNames();
         if (componentTypeNames.empty())
         {
             ImGui::TextUnformatted("No reflected Component derived types found.");
             return false;
         }
+
+        const uint64_t targetGameObjectId = selectedGameObject->GetID();
 
         const ImVec2 triggerSize(ImGui::GetContentRegionAvail().x, 0.0f);
         if (ImGui::Button("Add Component##InspectorDropdown", triggerSize))
@@ -159,7 +163,7 @@ namespace minEngine
                 ImGuiChildFlags_Borders,
                 ImGuiWindowFlags_AlwaysVerticalScrollbar);
             added = DrawFilteredTypeList(
-                editor, sceneEditor, componentTypeNames, filterText, 0, false, true);
+                editor, sceneEditor, componentTypeNames, filterText, targetGameObjectId, true);
             ImGui::EndChild();
             ImGui::EndPopup();
         }
@@ -190,7 +194,7 @@ namespace minEngine
             ImGuiChildFlags_Borders,
             ImGuiWindowFlags_AlwaysVerticalScrollbar);
         DrawFilteredTypeList(
-            editor, sceneEditor, componentTypeNames, filterText, targetGameObjectId, true, false);
+            editor, sceneEditor, componentTypeNames, filterText, targetGameObjectId, false);
         ImGui::EndChild();
     }
 }

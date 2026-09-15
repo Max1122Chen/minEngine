@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/Core/Command/CommandTypes.h"
-#include "Runtime/Core/Command/SetValueValidation.h"
+#include "DebugCommand/DebugCommandTypes.h"
+#include "DebugCommand/DebugCommandSetValueValidation.h"
 #include "UI/Appearance/EditorAppearance.h"
 
 #include "imgui.h"
@@ -21,8 +21,8 @@ namespace minEngine
     public:
         explicit CommandConsoleStyle(const EditorAppearance& appearance);
 
-        ImVec4 GetColor(Command::CommandOutputKind kind) const;
-        ImVec4 GetInputValidationColor(Command::PropertyValueValidationState state) const;
+        ImVec4 GetColor(DebugCommand::DebugCommandOutputKind kind) const;
+        ImVec4 GetInputValidationColor(DebugCommand::PropertyValueValidationState state) const;
         CommandCompletionRowStyle GetCompletionRowStyle(bool selected) const;
 
     private:
