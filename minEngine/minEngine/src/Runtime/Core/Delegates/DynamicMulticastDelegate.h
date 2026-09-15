@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/Delegates/CallableScriptFunction.h"
-#include "Runtime/Core/Delegates/DelegateHandle.h"
+#include "Runtime/Core/Delegates/DynamicMulticastDelegateBase.h"
 #include "Runtime/Core/Delegates/MulticastDelegate.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/MEObject.h"
@@ -14,20 +13,6 @@
 
 namespace minEngine
 {
-    /// Non-template base so reflection can hold DynamicMulticastDelegate* without knowing arity.
-    class DynamicMulticastDelegateBase
-    {
-    public:
-        virtual ~DynamicMulticastDelegateBase() = default;
-
-        virtual int GetArity() const = 0;
-        virtual DelegateHandle AddScriptErased(CallableScriptFunction callable) = 0;
-        virtual bool IsBound() const = 0;
-        virtual size_t GetBindingCount() const = 0;
-        virtual void Clear() = 0;
-        virtual void Remove(DelegateHandle handle) = 0;
-    };
-
     /// Dynamic multicast: wraps Native MulticastDelegate (B1). One Broadcast table.
     template <typename... TArgs>
     class DynamicMulticastDelegate final : public DynamicMulticastDelegateBase
@@ -148,6 +133,11 @@ namespace minEngine
 
     private:
         NativeType m_Native;
+    };
+
+    template <typename... TArgs>
+    struct IsDynamicMulticastDelegateField<DynamicMulticastDelegate<TArgs...>> : std::true_type
+    {
     };
 }
 

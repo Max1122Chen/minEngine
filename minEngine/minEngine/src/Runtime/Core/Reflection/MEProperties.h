@@ -190,14 +190,28 @@ namespace minEngine::Reflection
             {
                 valueConstruct = [](void* dst) { ::new (dst) RawValue(); };
                 valueDestruct = [](void* dst) { static_cast<RawValue*>(dst)->~RawValue(); };
-                valueCopyAssign = [](void* dst, const void* src)
+                if constexpr (std::is_copy_assignable_v<RawValue>)
                 {
-                    *static_cast<RawValue*>(dst) = *static_cast<const RawValue*>(src);
-                };
-                valueMoveAssign = [](void* dst, void* src)
+                    valueCopyAssign = [](void* dst, const void* src)
+                    {
+                        *static_cast<RawValue*>(dst) = *static_cast<const RawValue*>(src);
+                    };
+                }
+                else
                 {
-                    *static_cast<RawValue*>(dst) = std::move(*static_cast<RawValue*>(src));
-                };
+                    valueCopyAssign = nullptr;
+                }
+                if constexpr (std::is_move_assignable_v<RawValue>)
+                {
+                    valueMoveAssign = [](void* dst, void* src)
+                    {
+                        *static_cast<RawValue*>(dst) = std::move(*static_cast<RawValue*>(src));
+                    };
+                }
+                else
+                {
+                    valueMoveAssign = nullptr;
+                }
             }
         }
 

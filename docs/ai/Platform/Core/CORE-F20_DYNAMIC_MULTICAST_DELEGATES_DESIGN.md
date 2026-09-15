@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `CORE-F20`
 - **Type:** Feature
-- **Status:** In Progress（S01–S04 Done；S05 header-tool 属性生成后置；S06 宏已具备，1–2 参 AddDynamic 靠 InvokeFunctionTyped）
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-14
+- **Last updated:** 2026-09-15
 - **Branch:** `feat/core`
 - **Related:**
   - [CORE-F04 Native Multicast](./CORE-F04_NATIVE_MULTICAST_DELEGATES_DESIGN.md)（Done — 本 Feature **包装**，不改写 Native 契约）
@@ -106,7 +106,7 @@
 |----|------|
 | `MulticastDelegate` / `DECLARE_MULTICAST_DELEGATE*` | Done（0–2 参） |
 | `AddRaw` / `AddMEObject` / `AddLambda` / 快照 Broadcast | Done |
-| `ButtonComponent::m_OnClicked` | **Native** `FOnButtonClicked`；**非** `ME_PROPERTY` |
+| `ButtonComponent::m_OnClicked` | **Dynamic** `DOnButtonClicked` + `ScriptAssignable` |
 | `MEPropertyCategory` | Primitive / Object / ObjectPtr / Array — **无** Delegate |
 | Script\* codegen | 白名单 usertype；**无**委托字段 |
 | Lua | Tick + 少量 API；Call 在 `feat/lua-script`；**无**事件订阅 |
@@ -163,16 +163,16 @@ Runtime/Core/Reflection/
 #### 声明（示意）
 
 ```cpp
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnButtonClicked);
-// → using FOnButtonClicked = DynamicMulticastDelegate<>;
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnButtonClicked);
+// → using DOnButtonClicked = DynamicMulticastDelegate<>;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnValueChanged, float /* Value */);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(DOnValueChanged, float /* Value */);
 ```
 
 #### 成员用法（C++）
 
 ```cpp
-FOnButtonClicked OnClicked;
+DOnButtonClicked OnClicked;
 
 // Native 能力（转发到内部 m_Native）
 OnClicked.AddMEObject(listener, &Listener::Handle);
@@ -421,15 +421,16 @@ UISystem Click 边沿
 
 ## 6) 验收标准
 
-- [x] Design 拍板 → **In Progress**
+- [x] Design 拍板 → **In Progress** → **Done**
 - [x] `DynamicMulticastDelegate` + DYNAMIC 宏；包装 F04
 - [x] `AddDynamic` 0 参竖切 + 对象销毁安全（`test delegates`）
 - [x] `MEDynamicMulticastDelegateProperty`；Serializer IterateProps **显式跳过**
 - [x] `CallableScriptFunction` + `AddScript` mock 单测（无 Lua）
-- [x] Button `OnClicked` → Dynamic（`test screen-ui-button`）
+- [x] Button `OnClicked` → Dynamic + `ME_PROPERTY(ScriptAssignable)` 进反射
+- [x] `CreatePropertyByType` 识别 Dynamic 字段（`IsDynamicMulticastDelegateField`；无 Reflection↔Delegates include 环）
 - [x] Core 无 sol 依赖
-- [ ] header-tool 自动生成 Dynamic 属性（S05 Deferred）
 - [x] 绑定列表不落盘（O8）
+- [x] `test delegates` / `screen-ui-button` PASS（收口 2026-09-15）
 
 ---
 
@@ -442,8 +443,8 @@ UISystem Click 边沿
 | **S02** | AddDynamic 0 参 | 同上 | **Done** |
 | **S03** | MEDynamicMulticastDelegateProperty + Serializer skip | 属性单测 | **Done** |
 | **S04** | Button OnClicked → Dynamic | `test screen-ui-button` | **Done** |
-| **S05** | header-tool 生成 Dynamic 属性 | — | **Deferred**（`ScriptAssignable` 已入 map） |
-| **S06** | 1–2 参宏 / AddScript 一参；AddDynamic 多参路径 | `test delegates` | **Partial** |
+| **S05** | 反射生成 Dynamic 属性 | Button `m_OnClicked` 反射测 | **Done** |
+| **S06** | 1–2 参宏 / AddScript 一参；AddDynamic 多参路径 | `test delegates` | **Done**（多参 AddDynamic 靠 InvokeFunctionTyped；无独立多参 Dynamic 测） |
 
 **F21（另分支）：** ScriptBinding + `Add(fn)` → `AddScript`。
 
@@ -451,7 +452,7 @@ UISystem Click 边沿
 
 ## 8) Status note
 
-**In Progress** — MVP 竖切已落地；S05 Deferred。可合入或继续 S05/多参测后再标 Done。
+**Done**（2026-09-15）。后续：CORE-F21 Lua `Add(fn)`；绑定列表落盘待 Editor/Prefab。
 
 ---
 
@@ -463,16 +464,16 @@ UISystem Click 边沿
 | **O2** | Specifier | **`ScriptAssignable`** |
 | **O3** | AddDynamic 糖 | 字符串 + `ME_ADD_DYNAMIC` |
 | **O4** | Button 迁移 | **已做** |
-| **O5** | 手写夹具 | **允许**；S05 tool 后置 |
+| **O5** | 手写夹具 | **允许**；S05 以 CreatePropertyByType + codegen 完成 |
 | **O6** | CallableScriptFunction 目录 | **`Delegates/`** |
-| **O7** | 1–2 参 | 宏 + 路径已有；专用多参 AddDynamic 测可后补 |
+| **O7** | 1–2 参 | 宏 + 路径已有；AddScript 一参有测 |
 | **O8** | 绑定序列化 | **跳过落盘** |
 
 ---
 
 ## 11) 审阅清单
 
-（已确认并实现 MVP。）
+（已确认并实现；Feature Done。）
 
 ---
 
@@ -482,4 +483,6 @@ UISystem Click 边沿
 |------|------|
 | 2026-09-14 | 初稿：B1、Add(fn)→F21、feat/core 仅基建；登记 CORE-F20；并列 F19/F21 |
 | 2026-09-14 | 修订：`CallableScriptFunction`；`MEDynamicMulticastDelegateProperty`；§3.4.1 / O8 |
-| 2026-09-14 | **实现：** S01–S04；`test delegates` 11/11；`screen-ui-button` 4/4；S05 Deferred |
+| 2026-09-14 | **实现：** S01–S04；`test delegates` 11/11；`screen-ui-button` 4/4 |
+| 2026-09-15 | **S05 收口：** `DynamicMulticastDelegateBase` + type trait；Button `ScriptAssignable`；反射测；Status → **Done** |
+| 2026-09-15 | 命名约定：委托类型别名改用 **D** 前缀（`DOn*`），避免与 UE `F` 撞风格 |

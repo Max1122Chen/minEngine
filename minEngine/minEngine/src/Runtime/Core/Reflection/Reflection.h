@@ -18,6 +18,7 @@
 #include "MEFunction.h"
 #include "Math/Math.h"
 #include "Core/TypeTraits.h"
+#include "Runtime/Core/Delegates/DynamicMulticastDelegateBase.h"
 
 #ifdef GetClassName
 #undef GetClassName
@@ -550,6 +551,18 @@ namespace minEngine::Reflection
                 {
                     AddPendingEnumProperty<RawFieldType>(property);
                 }
+                return property;
+            }
+            // Dynamic multicast (CORE-F20) — before generic MEObjectProperty class path.
+            // Trait is specialized when DynamicMulticastDelegate.h is visible at the instantiation site.
+            else if constexpr (::minEngine::IsDynamicMulticastDelegateField<RawFieldType>::value)
+            {
+                MEDynamicMulticastDelegateProperty* property =
+                    CreateProperty<MEDynamicMulticastDelegateProperty>(propertyName);
+                property->SetStorageSize(sizeof(RawFieldType));
+                property->SetStorageAlignment(alignof(RawFieldType));
+                RawFieldType probe{};
+                property->SetArity(static_cast<::minEngine::DynamicMulticastDelegateBase&>(probe).GetArity());
                 return property;
             }
             // Finally, if it's a class type, we treat it as an object property

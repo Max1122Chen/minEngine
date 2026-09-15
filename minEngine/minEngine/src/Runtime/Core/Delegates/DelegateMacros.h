@@ -3,6 +3,8 @@
 #include "Runtime/Core/Delegates/DynamicMulticastDelegate.h"
 #include "Runtime/Core/Delegates/MulticastDelegate.h"
 
+// Convention: name declared aliases with D-prefix (e.g. DOnClicked), not UE-style F-prefix.
+
 /// Declares a 0-parameter multicast delegate type alias.
 #define DECLARE_MULTICAST_DELEGATE(DelegateName) \
     using DelegateName = ::minEngine::MulticastDelegate<>

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-14（CORE-F20 S01–S04 实现；delegates / screen-ui-button PASS）  
+Last updated: 2026-09-15（CORE-F20 Done）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,13 +11,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（本工作树 `minEngine` / `feat/core`）：`CORE-F20`**
+**Primary（本工作树 `minEngine` / `feat/core`）：收口后可选下一刀**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 1 | **`CORE-F20`** | Dynamic Multicast Delegate | **In Progress**（S01–S04 Done；S05 Deferred） | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) |
+| — | **`CORE-F20`** | Dynamic Multicast Delegate | **Done** | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) |
 
-**下一刀：** 准备 commit；或 S05 header-tool；或切 `feat/lua-script` 开 **CORE-F21** `Add(fn)`。
+**下一刀：** 准备 F20 收口 commit → 合入 master；或登记 **Profiler**；或切 `feat/lua-script` 开 **CORE-F21**。
 
 **并行**
 

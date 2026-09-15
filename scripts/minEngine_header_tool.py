@@ -33,7 +33,7 @@ FUNCTION_DECL_RE = re.compile(
 )
 CLASS_MARK_RE = re.compile(r"ME_(?:CLASS|STRUCT)\s*\(", re.DOTALL)
 
-TOOL_CACHE_VERSION = 16
+TOOL_CACHE_VERSION = 17
 
 PROPERTY_SPECIFIER_MAP = {
     "transient": "Transient",

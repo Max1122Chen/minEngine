@@ -28,8 +28,8 @@ namespace minEngine
 
         virtual void Tick(float deltaTime) override;
 
-        FOnButtonClicked& OnClicked() { return m_OnClicked; }
-        const FOnButtonClicked& OnClicked() const { return m_OnClicked; }
+        DOnButtonClicked& OnClicked() { return m_OnClicked; }
+        const DOnButtonClicked& OnClicked() const { return m_OnClicked; }
 
         /** Broadcast OnClicked when interactable and a sibling Widget exists. */
         void NotifyClicked();
@@ -71,6 +71,7 @@ namespace minEngine
         void ApplyVisualState();
         void ApplyTint(const LinearColor& color);
 
+        ME_PROPERTY(ScriptAssignable)
         DOnButtonClicked m_OnClicked;
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTargetGraphic", Getter = "GetTargetGraphicShared"))

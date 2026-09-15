@@ -4,6 +4,7 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ButtonComponent)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ButtonComponent, m_OnClicked)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ButtonComponent, m_TargetGraphic)
     ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ButtonComponent, m_TargetGraphic, GetTargetGraphicShared)
     ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ButtonComponent, m_TargetGraphic, SetTargetGraphic)

@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-14（CORE-F20 S01–S04 实现）
+Last updated: 2026-09-15（CORE-F20 Done）
+
+### 2026-09-15 - CORE-F20 Done：S05 反射收口
+- **实现：** `DynamicMulticastDelegateBase` + `IsDynamicMulticastDelegateField`（避免 Reflection include 环）；`CreatePropertyByType` 走 `MEDynamicMulticastDelegateProperty`；`SetValueOps` 对不可拷贝类型跳过 copy；Button `ME_PROPERTY(ScriptAssignable) m_OnClicked`。
+- **验证：** `test delegates` 12/12 PASS；`test screen-ui-button` 4/4 PASS。
+- **Status：** Registry / Design → **Done**。
+- **Next：** 准备收口 commit；F21 Lua `Add(fn)` 或 Profiler。
 
 ### 2026-09-14 - CORE-F20：Dynamic Multicast MVP 落地（S01–S04）
 - **实现：** `DynamicMulticastDelegate`（B1 包装 Native）、`CallableScriptFunction`、`AddDynamic` / `AddScript`、`ME_ADD_DYNAMIC`、DYNAMIC 宏、`MEDynamicMulticastDelegateProperty` + `ScriptAssignable`、Serializer 跳过 MulticastDelegate。

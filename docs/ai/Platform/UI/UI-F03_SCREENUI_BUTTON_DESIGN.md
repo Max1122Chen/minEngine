@@ -135,7 +135,7 @@ UISystem 确认 bClickThisFrame 且 Pressed = Widget W：
 
 **可交互：** Active + Widget `IsHitTestVisible` + `m_bInteractable`。
 
-**OnClicked：** `DECLARE_MULTICAST_DELEGATE(FOnButtonClicked)`，**无参**。
+**OnClicked：** `DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnButtonClicked)`，**无参**（命名用 **D** 前缀，非 UE 的 F）。
 
 **Lua（后置说明）：**  
 需求方向是「C++ 能调用 Lua 中的函数」。当前 `LuaComponent` 只有环境 + `tick`，缺少稳定、可复用的 **C++→Lua 调用** 机制（寿命、错误、签名、与 Delegate 关系）。在 Button 上先塞 `on_clicked` 约定会变成特例债。  

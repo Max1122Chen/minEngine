@@ -105,18 +105,18 @@ Runtime/Core/Delegates/
 
 ```cpp
 // 0 参数
-DECLARE_MULTICAST_DELEGATE(FOnSomethingChanged);
+DECLARE_MULTICAST_DELEGATE(DOnSomethingChanged);
 
 // 1+ 参数（宏生成或可变模板；实现选一种，对外一致）
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnContactBegin, const PhysicsContactEvent& /* Event */);
+DECLARE_MULTICAST_DELEGATE_OneParam(DOnContactBegin, const PhysicsContactEvent& /* Event */);
 ```
 
-展开为类型别名：`using FOnContactBegin = MulticastDelegate<void(const PhysicsContactEvent&)>;`（示意）。
+展开为类型别名：`using DOnContactBegin = MulticastDelegate<void(const PhysicsContactEvent&)>;`（示意）。命名约定：**D** 前缀（非 UE `F`）。
 
 #### 成员用法
 
 ```cpp
-FOnContactBegin OnContactBegin;
+DOnContactBegin OnContactBegin;
 
 DelegateHandle handle = OnContactBegin.AddRaw(listener, &Listener::OnBegin);
 OnContactBegin.AddMEObject(meObject, &MyComponent::OnBegin); // 弱：Broadcast 前 IsValid/存活检查

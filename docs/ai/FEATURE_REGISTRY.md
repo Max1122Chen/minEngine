@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-14（登记 CORE-F19/F20/F21：Lua Call · Dynamic Multicast · Lua Add(fn)）  
+Last updated: 2026-09-15（CORE-F20 Done）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -44,7 +44,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F17` | LogChannel + structured LogRecord（spdlog Backend；非 UE Category） | **Done** | — | [Design](./Platform/Core/CORE-F17_LOGGING_CHANNELS_DESIGN.md) · [Impl](./Platform/Core/CORE-F17_LOGGING_CHANNELS_IMPLEMENTATION.md) · Phase F1 |
 | `CORE-F18` | EngineVersion（一等公民）+ 磁盘 `$schemaVersion` 门闸 / `$engineVersion` 戳 | **Done** | — | [Design](./Platform/Serialization/CORE-F18_SCHEMA_ENGINE_VERSION_DESIGN.md) · Phase F2 · engine **0.0.9** / schema **1** |
 | `CORE-F19` | Lua C++→Lua Call-by-name（Delegate 桥后置） | **In Progress**（Call Done；Delegate Deferred） | — | Design 在 `feat/lua-script` · 契约摘要见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.6；合并后补链 |
-| `CORE-F20` | Dynamic Multicast Delegate（类型系统 + AddDynamic；B1 包装 Native） | **In Progress**（S01–S04 Done；S05 Deferred） | — | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) · 分支 `feat/core` · **不含** Lua usertype |
+| `CORE-F20` | Dynamic Multicast Delegate（类型系统 + AddDynamic；B1 包装 Native） | **Done** | — | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) · `feat/core` · Lua `Add(fn)` → F21 |
 | `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Planned** | — | Design 未开 · 挂钩契约见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · 分支 `feat/lua-script` |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |

@@ -4,6 +4,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Reflection/MEProperties.h"
 #include "Runtime/Core/Reflection/ReflectionSample.h"
+#include "Runtime/Function/Framework/Components/ButtonComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
@@ -83,8 +84,8 @@ TEST_CASE("delegates: multicast AddRaw Broadcast Remove [full]")
 {
     using namespace minEngine;
 
-    DECLARE_MULTICAST_DELEGATE_OneParam(FOnValue, int);
-    FOnValue onValue;
+    DECLARE_MULTICAST_DELEGATE_OneParam(DOnValue, int);
+    DOnValue onValue;
 
     RawListener a;
     RawListener b;
@@ -120,16 +121,16 @@ TEST_CASE("delegates: AddLambda and two-param Broadcast [full]")
 {
     using namespace minEngine;
 
-    DECLARE_MULTICAST_DELEGATE(FOnZero);
-    DECLARE_MULTICAST_DELEGATE_TwoParams(FOnPair, int, int);
+    DECLARE_MULTICAST_DELEGATE(DOnZero);
+    DECLARE_MULTICAST_DELEGATE_TwoParams(DOnPair, int, int);
 
-    FOnZero onZero;
+    DOnZero onZero;
     int zeroHits = 0;
     onZero.AddLambda([&zeroHits]() { ++zeroHits; });
     onZero.Broadcast();
     CHECK(zeroHits == 1);
 
-    FOnPair onPair;
+    DOnPair onPair;
     RawListener listener;
     onPair.AddRaw(&listener, &RawListener::OnTwo);
     onPair.Broadcast(3, 4);
@@ -141,8 +142,8 @@ TEST_CASE("delegates: RemoveAll by instance [full]")
 {
     using namespace minEngine;
 
-    DECLARE_MULTICAST_DELEGATE(FOnZero);
-    FOnZero onZero;
+    DECLARE_MULTICAST_DELEGATE(DOnZero);
+    DOnZero onZero;
 
     RawListener listener;
     onZero.AddRaw(&listener, &RawListener::OnZero);
@@ -190,8 +191,8 @@ TEST_CASE("delegates: AddMEObject skips after destroy [full]")
 
     DelegateObjectManagerScope scope;
 
-    DECLARE_MULTICAST_DELEGATE(FOnReset);
-    FOnReset onReset;
+    DECLARE_MULTICAST_DELEGATE(DOnReset);
+    DOnReset onReset;
 
     minEngine::GUID componentGuid;
     {
@@ -224,8 +225,8 @@ TEST_CASE("delegates: dynamic AddScript mock Broadcast [full]")
 {
     using namespace minEngine;
 
-    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnScriptZero);
-    FOnScriptZero onZero;
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnScriptZero);
+    DOnScriptZero onZero;
 
     int callCount = 0;
     CallableScriptFunction callable(
@@ -256,8 +257,8 @@ TEST_CASE("delegates: dynamic AddScript one-param [full]")
 {
     using namespace minEngine;
 
-    DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnScriptOne, int);
-    FOnScriptOne onOne;
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(DOnScriptOne, int);
+    DOnScriptOne onOne;
 
     int lastValue = 0;
     CallableScriptFunction callable(
@@ -284,8 +285,8 @@ TEST_CASE("delegates: dynamic AddDynamic ResetCounter and destroy [full]")
 
     DelegateObjectManagerScope scope;
 
-    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDynamicReset);
-    FOnDynamicReset onReset;
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnDynamicReset);
+    DOnDynamicReset onReset;
 
     minEngine::GUID componentGuid;
     {
@@ -326,8 +327,8 @@ TEST_CASE("delegates: dynamic AddDynamic missing function returns invalid [full]
 
     DelegateObjectManagerScope scope;
 
-    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissing);
-    FOnMissing onMissing;
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnMissing);
+    DOnMissing onMissing;
 
     std::shared_ptr<Scene> scene = NewObject<Scene>("DynamicDelegateMissingScene");
     std::shared_ptr<GameObject> gameObject = scene->CreateGameObject();
@@ -354,8 +355,8 @@ TEST_CASE("delegates: MEDynamicMulticastDelegateProperty category [full]")
         PropertyMetadata{});
     CHECK(property.HasSpecifier(PropertySpecifier::ScriptAssignable));
 
-    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEvent);
-    FOnEvent storage;
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnEvent);
+    DOnEvent storage;
     property.SetAccessors(
         [](const void* owner) -> const void*
         {
@@ -367,4 +368,43 @@ TEST_CASE("delegates: MEDynamicMulticastDelegateProperty category [full]")
         });
     CHECK(property.GetDelegateBase(static_cast<void*>(&storage)) == static_cast<DynamicMulticastDelegateBase*>(&storage));
     CHECK(property.GetDelegateBase(static_cast<const void*>(&storage))->GetArity() == 0);
+}
+
+TEST_CASE("delegates: Button OnClicked reflected as DynamicMulticast [full]")
+{
+    using namespace minEngine;
+    using namespace minEngine::Reflection;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    const MEClass* buttonClass = ButtonComponent::StaticClass();
+    REQUIRE(buttonClass != nullptr);
+
+    const MEProperty* onClicked = nullptr;
+    for (MEProperty* property : buttonClass->GetProperties())
+    {
+        if (property != nullptr && property->GetName() == "m_OnClicked")
+        {
+            onClicked = property;
+            break;
+        }
+    }
+    REQUIRE(onClicked != nullptr);
+    CHECK(onClicked->GetCategory() == MEPropertyCategory::MulticastDelegate);
+    CHECK(onClicked->HasSpecifier(PropertySpecifier::ScriptAssignable));
+
+    const auto* delegateProperty = static_cast<const MEDynamicMulticastDelegateProperty*>(onClicked);
+    CHECK(delegateProperty->GetArity() == 0);
+
+    DelegateObjectManagerScope scope;
+    std::shared_ptr<Scene> scene = NewObject<Scene>("DynamicDelegateButtonReflect");
+    std::shared_ptr<GameObject> gameObject = scene->CreateGameObject();
+    std::shared_ptr<ButtonComponent> button = gameObject->AddComponent<ButtonComponent>();
+    REQUIRE(button != nullptr);
+
+    DynamicMulticastDelegateBase* base = delegateProperty->GetDelegateBase(button.get());
+    REQUIRE(base != nullptr);
+    CHECK(base->GetArity() == 0);
+    CHECK_FALSE(base->IsBound());
 }
