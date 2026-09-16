@@ -179,6 +179,10 @@ namespace minEngine
         bool EnterPrefabStage(const std::string& assetKey);
         void ExitPrefabStage();
 
+        EditorFlyCameraPose& GetLevelCameraPoseMutable() { return m_LevelCameraPose; }
+        const EditorFlyCameraPose& GetLevelCameraPose() const { return m_LevelCameraPose; }
+        SceneEditingViewportClient* TryGetSceneEditingViewportClient();
+
         IEditorContext* GetEditorContext() const { return m_Context; }
 
         Serialization::SerializerOptions GetPropertyCommandSerializerOptions() const;
@@ -196,6 +200,7 @@ namespace minEngine
         IEditorContext* m_Context = nullptr;
         SceneEditorInspectorSource m_InspectorSource;
         PrefabStageController m_PrefabStages;
+        EditorFlyCameraPose m_LevelCameraPose;
         bool m_SceneDirty = false;
         std::string m_OpenedSceneAssetPath;
         uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();

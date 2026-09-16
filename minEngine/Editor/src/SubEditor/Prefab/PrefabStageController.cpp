@@ -1,10 +1,14 @@
 #include "SubEditor/Prefab/PrefabStageController.h"
 
 #include "Shell/IEditorContext.h"
+#include "Shell/ViewportClientRegistry.h"
+#include "SubEditor/Scene/SceneEditingViewportClient.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Function/Framework/Components/DirectionalLightComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Prefab/Prefab.h"
 #include "Runtime/Function/Framework/Prefab/PrefabOverrideUtility.h"
 #include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
@@ -18,6 +22,80 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        constexpr const char* kTempStageLightObjectName = "__ME_EditorTemp_DirectionalLight";
+
+        SceneEditingViewportClient* TryGetSceneEditingViewport(IEditorContext& context)
+        {
+            if (SceneEditor* sceneEditor = GetSceneEditor(&context))
+            {
+                if (SceneEditingViewportClient* client = sceneEditor->TryGetSceneEditingViewportClient())
+                {
+                    return client;
+                }
+            }
+
+            return context.GetViewportRegistry().FindSceneEditingViewportClient("scene_editing_viewport");
+        }
+
+        void StashAndApplyCameraPose(
+            IEditorContext& context,
+            EditorFlyCameraPose& stashTarget,
+            const EditorFlyCameraPose& poseToApply,
+            bool bUseDefaultIfInvalid)
+        {
+            if (SceneEditingViewportClient* viewport = TryGetSceneEditingViewport(context))
+            {
+                viewport->CaptureFlyCameraPose(stashTarget);
+                stashTarget.bValid = true;
+
+                EditorFlyCameraPose applyPose = poseToApply;
+                if (!applyPose.bValid)
+                {
+                    if (!bUseDefaultIfInvalid)
+                    {
+                        return;
+                    }
+                    applyPose = SceneEditingViewportClient::MakeDefaultPrefabStageCameraPose();
+                }
+                viewport->ApplyFlyCameraPose(applyPose);
+            }
+        }
+
+        bool EnsureTempStageDirectionalLight(Scene& stageScene)
+        {
+            for (const std::shared_ptr<GameObject>& gameObject : stageScene.GetAllGameObjects())
+            {
+                if (gameObject && PrefabUtility::IsEditorTempStageObject(*gameObject)
+                    && gameObject->GetName() == kTempStageLightObjectName)
+                {
+                    return true;
+                }
+            }
+
+            std::shared_ptr<GameObject> lightObject = stageScene.CreateGameObject();
+            if (!lightObject)
+            {
+                return false;
+            }
+
+            lightObject->Rename(kTempStageLightObjectName);
+            auto lightComponent = lightObject->AddComponent<DirectionalLightComponent>();
+            if (!lightComponent)
+            {
+                return false;
+            }
+
+            lightObject->SetRootComponent(lightComponent.get());
+            lightComponent->SetLightColor(LinearColor(1.0f, 0.98f, 0.95f, 1.0f));
+            lightComponent->SetIntensity(1.2f);
+            lightComponent->SetDiffuseFactor(12.0f);
+            lightObject->SetRotationEulerDegrees(Vector3(-52.0f, 132.0f, 0.0f));
+            return true;
+        }
+    }
+
     bool PrefabStageController::BuildStage(const AssetMeta& meta, PrefabEditorStage& outStage, std::string* outError)
     {
         if (!AssetManager::HasInstance())
@@ -61,10 +139,17 @@ namespace minEngine
             return false;
         }
 
+        outStage.bHasTempStageLight = EnsureTempStageDirectionalLight(*stageScene);
+        if (!outStage.bHasTempStageLight)
+        {
+            ME_LOG(LogEditor, Warn, "PrefabStageController::BuildStage: failed to add temp Stage light.");
+        }
+
         outStage.AssetKey = meta.AssetPath;
         outStage.Asset = std::move(prefab);
         outStage.StageScene = std::move(stageScene);
         outStage.EditCloneMap = std::move(editMap);
+        outStage.CameraPose = SceneEditingViewportClient::MakeDefaultPrefabStageCameraPose();
         outStage.bDirty = false;
         return true;
     }
@@ -74,6 +159,8 @@ namespace minEngine
         stage.EditCloneMap.Clear();
         stage.StageScene.reset();
         stage.Asset.reset();
+        stage.CameraPose = {};
+        stage.bHasTempStageLight = false;
         stage.bDirty = false;
         stage.AssetKey.clear();
     }
@@ -113,9 +200,33 @@ namespace minEngine
             return false;
         }
 
+        SceneEditor* sceneEditor = GetSceneEditor(&context);
+        const std::string previousKey = m_ActiveAssetKey;
+
+        if (sceneEditor != nullptr)
+        {
+            if (previousKey.empty())
+            {
+                StashAndApplyCameraPose(
+                    context, sceneEditor->GetLevelCameraPoseMutable(), stage->CameraPose, true);
+            }
+            else if (previousKey != assetKey)
+            {
+                if (PrefabEditorStage* previousStage = FindStage(previousKey))
+                {
+                    StashAndApplyCameraPose(context, previousStage->CameraPose, stage->CameraPose, true);
+                }
+                else
+                {
+                    StashAndApplyCameraPose(
+                        context, sceneEditor->GetLevelCameraPoseMutable(), stage->CameraPose, true);
+                }
+            }
+        }
+
         m_ActiveAssetKey = assetKey;
         context.SetInspectingScene(stage->StageScene.get());
-        if (SceneEditor* sceneEditor = GetSceneEditor(&context))
+        if (sceneEditor != nullptr)
         {
             sceneEditor->ClearSelectedGameObject();
             sceneEditor->SyncSelectionWithScene();
@@ -147,15 +258,23 @@ namespace minEngine
             return;
         }
 
+        PrefabEditorStage* activeStage = FindStage(m_ActiveAssetKey);
+        SceneEditor* sceneEditor = GetSceneEditor(&context);
+        if (activeStage != nullptr && sceneEditor != nullptr)
+        {
+            StashAndApplyCameraPose(
+                context, activeStage->CameraPose, sceneEditor->GetLevelCameraPose(), false);
+        }
+
         m_ActiveAssetKey.clear();
 
         Scene* documentScene = nullptr;
-        if (SceneEditor* sceneEditor = GetSceneEditor(&context))
+        if (sceneEditor != nullptr)
         {
             documentScene = sceneEditor->GetDocumentScene();
         }
         context.SetInspectingScene(documentScene);
-        if (SceneEditor* sceneEditor = GetSceneEditor(&context))
+        if (sceneEditor != nullptr)
         {
             sceneEditor->ClearSelectedGameObject();
             sceneEditor->SyncSelectionWithScene();

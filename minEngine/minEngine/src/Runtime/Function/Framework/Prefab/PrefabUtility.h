@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace minEngine
 {
@@ -17,6 +18,9 @@ namespace minEngine
     class PrefabUtility
     {
     public:
+        /** Prefab Stage editor-only objects (temp lights); excluded from Save / top-level checks. */
+        static constexpr const char* kEditorTempStageObjectNamePrefix = "__ME_EditorTemp_";
+
         static std::shared_ptr<Prefab> CreatePrefabFromGameObject(
             GameObject& root,
             PrefabCreateReport* outReport = nullptr);
@@ -56,5 +60,27 @@ namespace minEngine
 
         static PrefabInstanceRecord* FindInstanceRecord(Scene& scene, const GUID& instanceObjectGuid);
         static const PrefabInstanceRecord* FindInstanceRecord(const Scene& scene, const GUID& instanceObjectGuid);
+
+        static bool IsEditorTempStageObject(const GameObject& gameObject);
+
+        static std::vector<PrefabInstanceRef> FindInstanceRefsInScene(
+            Scene& scene,
+            const GUID& prefabAssetGuid);
+
+        /** Scans SceneManager editor Scene only (open Level); does not scan disk .mescene files. */
+        static std::vector<PrefabInstanceRef> FindInstanceRefsInOpenEditorScenes(const GUID& prefabAssetGuid);
+
+        /** Remove PrefabInstanceRecord; keep GameObject tree. */
+        static bool UnpackInstance(Scene& scene, const GUID& rootInstanceGuid, std::string* outError = nullptr);
+
+        static bool UnpackAllInstancesOfPrefab(
+            Scene& scene,
+            const GUID& prefabAssetGuid,
+            size_t* outUnpackedCount = nullptr,
+            std::string* outError = nullptr);
+
+        static std::string FormatPrefabInstanceRefsMessage(
+            const std::string& assetPath,
+            const std::vector<PrefabInstanceRef>& refs);
     };
 }

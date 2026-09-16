@@ -218,12 +218,64 @@ namespace minEngine
                 sceneEditor->RequestBeginRenameGameObject(gameObjectId);
             }
         };
+
+        class UnpackAndDeletePrefabEditorAction final : public IEditorAction
+        {
+        public:
+            EditorActionId GetId() const override { return EditorActionId::UnpackAndDeletePrefab; }
+
+            const char* GetLabel(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "Unpack and Delete Prefab";
+            }
+
+            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Asset; }
+            int GetSortOrder() const override { return 20; }
+
+            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx);
+                if (cbCtx == nullptr || cbCtx->SelectedAssets.empty())
+                {
+                    return false;
+                }
+
+                for (const AssetMeta* meta : cbCtx->SelectedAssets)
+                {
+                    if (meta != nullptr && meta->AssetType == "Prefab")
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            bool CanExecute(const EditorMenuContext& ctx) const override
+            {
+                return IsVisibleInMenu(ctx);
+            }
+
+            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "Select a Prefab asset.";
+            }
+
+            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                editor.GetAssetWorkflow().DeleteSelectedAsset(true);
+                RefreshContentBrowser(editor);
+            }
+        };
     }
 
     void RegisterEditorEditActions(EditorActionRegistry& registry)
     {
         registry.Register(std::make_unique<DeleteEditorAction>());
         registry.Register(std::make_unique<RenameEditorAction>());
+        registry.Register(std::make_unique<UnpackAndDeletePrefabEditorAction>());
     }
 
 } // namespace minEngine

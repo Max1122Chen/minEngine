@@ -121,6 +121,11 @@ namespace minEngine
             const GUID* preferredGuid = nullptr);
 
         bool DeleteAsset(const std::string& assetPath, std::string& outError);
+        /** Prefab: when bUnpackOpenPrefabInstanceRefs, unpack open-editor instances then delete. */
+        bool DeleteAsset(
+            const std::string& assetPath,
+            std::string& outError,
+            bool bUnpackOpenPrefabInstanceRefs);
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
         bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
         bool UnregisterAsset(const std::string& assetPath, std::string& outError);

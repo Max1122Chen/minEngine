@@ -100,6 +100,15 @@ namespace minEngine
         bool bRegisterPrefabInstance = true;
     };
 
+    /** Open-editor reference to a PrefabInstanceRecord (delete / unpack diagnostics). */
+    struct PrefabInstanceRef
+    {
+        Scene* Scene = nullptr;
+        GUID RootInstanceGuid;
+        std::string RootName;
+        std::string SceneName;
+    };
+
     ME_ENUM()
     enum class EPrefabEditOpKind : uint8_t
     {

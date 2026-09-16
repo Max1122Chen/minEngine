@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `ED-F16`
 - **Type:** Feature
-- **Status:** Done（含 Amendment A）；**Amendment B → Review**（Stage 独立相机 + 默认光源）
+- **Status:** Done（含 Amendment A / Amendment B）
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-16
 - **Branch:** `feat/prefab`
@@ -25,7 +25,7 @@
 - Hierarchy **有且仅有一个根 GO**。
 - MVP：**聚焦占用主 Viewport**（不与 Level 并排实时预览）；隔离 RT / 串图问题 **不进本 Feature DoD**。
 - **Amendment A：** Level Hierarchy 右键 **Create Prefab** / **Instantiate Prefab**；实例与普通 GO 视觉区分；Core `Scene::Instantiate` 薄封装（Unity 式 `scene.Instantiate(prefab)`）。
-- **Amendment B（待审批）：** Prefab Stage **独立编辑相机**，在编辑目标上下文切换时更换；Stage **临时默认光源**（不进 Prefab 资产）。资产 Guid / Propagate 修复见 CORE-F23 Amendment B。
+- **Amendment B（Done）：** Prefab Stage **独立编辑相机**（上下文切换 stash/restore）；Stage **临时默认光源**（`__ME_EditorTemp_*`，Save 排除）。
 
 ## Scope
 
@@ -506,7 +506,7 @@ Save Prefab 文档后的 Propagate（已有）不变。
 
 ---
 
-## 9) Amendment B — Prefab Stage 独立相机 + 默认光源（**Review，待审批**）
+## 9) Amendment B — Prefab Stage 独立相机 + 默认光源（**Done**）
 
 ### 9.1 现象与根因（代码已核对）
 
@@ -594,11 +594,11 @@ On ExitActive / switch to Level:
 
 ### 9.6 验收
 
-- [ ] 打开 Prefab Stage：视点为 Stage 默认 framing，**不等于**当时 Level 视点
-- [ ] 在 Stage 内飞移相机 → 切回 Level：Level 视点恢复进入前
-- [ ] 再进同一 Prefab：回到该 Stage 上次离开时的视点
-- [ ] Stage 内模板网格有可读照明；Save Prefab 后资产 **无** 临时灯
-- [ ] Guid 修复后：Stage 改 default → Save → Level 实例更新（依赖 F23-B；本 Amendment 手验联调）
+- [x] 打开 Prefab Stage：视点为 Stage 默认 framing，**不等于**当时 Level 视点（逻辑位姿仓）
+- [x] 在 Stage 内飞移相机 → 切回 Level：Level 视点恢复进入前
+- [x] 再进同一 Prefab：回到该 Stage 上次离开时的视点
+- [x] Stage 内模板网格有可读照明；Save Prefab 后资产 **无** 临时灯（单测 `prefab stage temp light excluded from save`）
+- [x] Guid / Propagate：依赖已 Fixed 的 002/003；本 Amendment 手验联调
 
 ### 9.7 切片
 
@@ -622,3 +622,4 @@ On ExitActive / switch to Level:
 | 2026-09-15 | **Amendment A Done：** S07–S11；`Scene::Instantiate`；Hierarchy Create/Instantiate（Level only）；实例色+图标；`test prefab` 8/8 |
 | 2026-09-15 | **Amendment B → Review：** Stage 独立编辑相机（上下文切换更换） + Stage 临时默认光源；Propagate/实例 Guid 见 F23-B |
 | 2026-09-16 | Stage Instantiate 注 `bApplyWorldTransform=false`；Propagate 缺口链 [BUG-CORE-003](../bugs/BUG-CORE-003.md) |
+| 2026-09-16 | **Amendment B Done：** Stage/Level 相机位姿仓 + 临时 DirectionalLight（Save 排除）；`test prefab` 16/16 |

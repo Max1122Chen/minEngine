@@ -906,7 +906,7 @@ namespace minEngine
         return &m_InspectorSource;
     }
 
-    void AssetWorkflowModule::DeleteSelectedAsset()
+    void AssetWorkflowModule::DeleteSelectedAsset(bool bUnpackOpenPrefabInstanceRefs)
     {
         const AssetMeta* selected = GetSelectedAsset();
         if (selected == nullptr)
@@ -915,15 +915,37 @@ namespace minEngine
         }
 
         const std::string assetPath = selected->AssetPath;
+        const std::string assetType = selected->AssetType;
+
+        if (assetType == "Prefab" && m_Context != nullptr)
+        {
+            if (SceneEditor* sceneEditor = GetSceneEditor(m_Context))
+            {
+                if (sceneEditor->GetPrefabStages().HasStage(assetPath))
+                {
+                    ME_LOG(
+                        LogEditor,
+                        Error,
+                        "DeleteSelectedAsset: close Prefab Stage for '{}' before deleting.",
+                        assetPath);
+                    return;
+                }
+            }
+        }
 
         std::string errorMessage;
-        if (!AssetManager::Get().DeleteAsset(assetPath, errorMessage))
+        if (!AssetManager::Get().DeleteAsset(assetPath, errorMessage, bUnpackOpenPrefabInstanceRefs))
         {
             ME_LOG(LogEditor, Error, "DeleteSelectedAsset failed for '{}': {}", assetPath, errorMessage);
             return;
         }
 
         m_SelectedAssetPath.clear();
-        ME_LOG(LogEditor, Info, "DeleteSelectedAsset: removed '{}'", assetPath);
+        ME_LOG(
+            LogEditor,
+            Info,
+            "DeleteSelectedAsset: removed '{}'{}",
+            assetPath,
+            bUnpackOpenPrefabInstanceRefs ? " (unpacked open instances)" : "");
     }
 }

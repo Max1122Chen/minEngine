@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `CORE-F26`
 - **Type:** Feature
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-16
 - **Branch:** `feat/prefab`（或后续 `feat/prefab-unlink`）
@@ -21,7 +21,7 @@
 
 **问题：** `DeleteAsset` 明确 **reference scan not implemented**；删除 `.meprefab` 后 Scene 仍保留 `PrefabInstanceRecord` → Hierarchy 假实例、Resolve 失败/幽灵 Guid。  
 **方案（默认）：** 删除前扫描 **已打开** Editor Scene；有引用则 **阻断** 或提供 **Unpack 后删除**；删除成功则清除/烘焙相关 Record。未打开 Scene 的磁盘引用本期仅文档警告。  
-**当前：** **Review（待审批）** — 未实现。
+**当前：** **Done** — 阻断 + Unpack API + Editor「Unpack and Delete Prefab」；`test prefab` 覆盖。
 
 ## Scope
 
@@ -161,11 +161,11 @@ bool PrefabUtility::UnpackAllInstancesOfPrefab(Scene& scene, const GUID& prefabA
 
 ## 6) 验收标准
 
-- [ ] 开 Scene 有该 Prefab 实例时，普通 Delete **失败**且说明引用
-- [ ] Unpack and Delete：Record 清除，GO 仍在，资产文件/meta 删除
-- [ ] 无引用时 Delete 成功
-- [ ] 单测覆盖阻断与 Unpack
-- [ ] 文档：Registry Done 勾选；与 BUG-CORE-002 边界清晰
+- [x] 开 Scene 有该 Prefab 实例时，普通 Delete **失败**且说明引用
+- [x] Unpack and Delete：Record 清除，GO 仍在，资产文件/meta 删除
+- [x] 无引用时 Delete 成功
+- [x] 单测覆盖阻断与 Unpack（`prefab unpack and delete gate`）
+- [x] 文档：Registry Done；与 BUG-CORE-002 边界清晰
 
 ---
 
@@ -196,3 +196,4 @@ bool PrefabUtility::UnpackAllInstancesOfPrefab(Scene& scene, const GUID& prefabA
 | 日期 | 说明 |
 |------|------|
 | 2026-09-16 | **Review：** 删 Prefab 断链；阻断 + Unpack 删除；全盘 Out；与 BUG-CORE-002 拆分 |
+| 2026-09-16 | **Done：** FindRefs + Delete 门禁 + Unpack；Editor Unpack and Delete；Stage 打开时拦删 |

@@ -446,4 +446,150 @@ namespace minEngine
         REQUIRE(writtenRoot->GetRootComponent() != nullptr);
         CHECK(writtenRoot->GetRootComponent()->GetPosition().x == doctest::Approx(3.0f));
     }
+
+    TEST_CASE("prefab unpack and delete gate [smoke]")
+    {
+        PrefabTestScope scope;
+
+        AssetManager assetManager;
+        Testing::TestAccess<AssetManager>::SetInstance(&assetManager);
+        assetManager.Initialize();
+
+        const std::filesystem::path tempRoot =
+            std::filesystem::temp_directory_path() / "minEngine_PrefabUnpackDeleteTest";
+        std::error_code removeError;
+        std::filesystem::remove_all(tempRoot, removeError);
+        const std::filesystem::path projectRoot = tempRoot / "Project";
+        const std::filesystem::path contentRoot = projectRoot / "Assets" / "Prefabs";
+        std::filesystem::create_directories(contentRoot);
+        PathRegistry::Get().SetProjectRoots(projectRoot);
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-unpack-delete");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("UnpackRoot");
+        root->AddComponent<SceneComponent>();
+        const GUID rootGuid = root->GetGuid();
+
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
+        REQUIRE(static_cast<bool>(prefab));
+        REQUIRE(PrefabUtility::FindInstanceRecord(*scene, rootGuid) != nullptr);
+
+        const std::string assetPath = "Assets/Prefabs/UnpackCube.meprefab";
+        std::string saveError;
+        REQUIRE(PrefabUtility::SavePrefabAsset(*prefab, assetPath, &saveError));
+        CHECK(saveError.empty());
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(assetPath);
+        REQUIRE(meta != nullptr);
+
+        std::vector<PrefabInstanceRef> refs =
+            PrefabUtility::FindInstanceRefsInOpenEditorScenes(meta->Guid);
+        REQUIRE(refs.size() == 1);
+        CHECK(refs.front().RootInstanceGuid == rootGuid);
+
+        std::string deleteError;
+        REQUIRE_FALSE(AssetManager::Get().DeleteAsset(assetPath, deleteError, false));
+        CHECK(deleteError.find("Cannot delete Prefab") != std::string::npos);
+        CHECK(AssetManager::Get().FindAssetMetaByPath(assetPath) != nullptr);
+        CHECK(PrefabUtility::FindInstanceRecord(*scene, rootGuid) != nullptr);
+
+        size_t unpacked = 0;
+        REQUIRE(PrefabUtility::UnpackAllInstancesOfPrefab(*scene, meta->Guid, &unpacked, nullptr));
+        CHECK(unpacked == 1);
+        CHECK(PrefabUtility::FindInstanceRecord(*scene, rootGuid) == nullptr);
+        CHECK(ObjectManager::Get().FindObject(rootGuid) != nullptr);
+
+        deleteError.clear();
+        REQUIRE(AssetManager::Get().DeleteAsset(assetPath, deleteError, false));
+        CHECK(deleteError.empty());
+        CHECK(AssetManager::Get().FindAssetMetaByPath(assetPath) == nullptr);
+
+        // Recreate for unpack-on-delete path.
+        const std::shared_ptr<GameObject> root2 = scene->CreateGameObject();
+        root2->Rename("UnpackRoot2");
+        root2->AddComponent<SceneComponent>();
+        const GUID root2Guid = root2->GetGuid();
+        const std::shared_ptr<Prefab> prefab2 = PrefabUtility::CreatePrefabFromGameObject(*root2);
+        REQUIRE(static_cast<bool>(prefab2));
+        const std::string assetPath2 = "Assets/Prefabs/UnpackCube2.meprefab";
+        REQUIRE(PrefabUtility::SavePrefabAsset(*prefab2, assetPath2, &saveError));
+        REQUIRE(PrefabUtility::FindInstanceRecord(*scene, root2Guid) != nullptr);
+
+        deleteError.clear();
+        REQUIRE(AssetManager::Get().DeleteAsset(assetPath2, deleteError, true));
+        CHECK(deleteError.empty());
+        CHECK(PrefabUtility::FindInstanceRecord(*scene, root2Guid) == nullptr);
+        CHECK(ObjectManager::Get().FindObject(root2Guid) != nullptr);
+        CHECK(AssetManager::Get().FindAssetMetaByPath(assetPath2) == nullptr);
+
+        assetManager.Shutdown();
+        Testing::TestAccess<AssetManager>::SetInstance(nullptr);
+        PathRegistry::Get().ClearProjectRoots();
+        std::filesystem::remove_all(tempRoot, removeError);
+    }
+
+    TEST_CASE("prefab stage temp light excluded from save [smoke]")
+    {
+        PrefabTestScope scope;
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-temp-light-src");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("LitRoot");
+        root->AddComponent<SceneComponent>();
+
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
+        REQUIRE(static_cast<bool>(prefab));
+        const GUID templateRootGuid = prefab->GetRootGuid();
+        const size_t templateCountBefore = prefab->GetTemplateObjects().size();
+
+        std::shared_ptr<Scene> stage = NewObject<Scene>("StageTempLight");
+        stage->SetSceneType(ESceneType::Editor);
+        stage->EnsureRenderScene();
+
+        PrefabInstantiateParams params;
+        params.bRegisterPrefabInstance = false;
+        ObjectCloneContext editMap;
+        std::shared_ptr<GameObject> stageRoot =
+            PrefabUtility::Instantiate(*prefab, *stage, params, &editMap, nullptr);
+        REQUIRE(static_cast<bool>(stageRoot));
+
+        std::shared_ptr<GameObject> tempLight = stage->CreateGameObject();
+        REQUIRE(static_cast<bool>(tempLight));
+        tempLight->Rename(std::string(PrefabUtility::kEditorTempStageObjectNamePrefix) + "DirectionalLight");
+        tempLight->AddComponent<SceneComponent>();
+
+        size_t topLevel = 0;
+        size_t tempTopLevel = 0;
+        for (const std::shared_ptr<GameObject>& go : stage->GetAllGameObjects())
+        {
+            if (!go || go->GetParent() != nullptr)
+            {
+                continue;
+            }
+            ++topLevel;
+            if (PrefabUtility::IsEditorTempStageObject(*go))
+            {
+                ++tempTopLevel;
+            }
+        }
+        CHECK(topLevel == 2);
+        CHECK(tempTopLevel == 1);
+
+        std::string writeError;
+        REQUIRE(PrefabUtility::WriteStageTreeToPrefab(*stage, *prefab, editMap, &writeError));
+        CHECK(writeError.empty());
+        CHECK(prefab->GetRootGuid() == templateRootGuid);
+        CHECK(prefab->GetTemplateObjects().size() == templateCountBefore);
+        for (const std::shared_ptr<GameObject>& templateObject : prefab->GetTemplateObjects())
+        {
+            REQUIRE(templateObject != nullptr);
+            CHECK_FALSE(PrefabUtility::IsEditorTempStageObject(*templateObject));
+        }
+    }
 }

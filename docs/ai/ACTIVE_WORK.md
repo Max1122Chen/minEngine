@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-16（BUG-CORE-003 **Fixed**；CORE-F26 / ED-F16-B Review）  
+Last updated: 2026-09-16（CORE-F26 / ED-F16-B **Done**）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -15,13 +15,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 1 | **`CORE-F26`** | Prefab 删除与实例断链 | **Review** | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) |
-| 2 | **`ED-F16`** Amendment B | Stage 独立相机 + 临时灯 | **Review** | [Design §9](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
+| 1 | **`CORE-F26`** | Prefab 删除与实例断链 | **Done** | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) |
+| 2 | **`ED-F16`** Amendment B | Stage 独立相机 + 临时灯 | **Done** | [Design §9](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
 | 3 | **`BUG-CORE-003`** | Propagate + F24 S02/S05 收口 | **Fixed** | [Bug](./bugs/BUG-CORE-003.md) |
 | 4 | **`BUG-CORE-002`** | Stage Transform / Save map | **Fixed** | [Bug](./bugs/BUG-CORE-002.md) |
 | 5 | **`ASSET-F03`** | Create 身份契约 | **Done** | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) |
 
-**下一刀：** 本轮先 commit（Stage Transform / 全属性 Propagate + Editor Override 挂钩）。随后 **一并实现** CORE-F26 + ED-F16-B。Instantiate 偏移后置。
+**下一刀：** 手验 Stage 相机/灯 + CB 删 Prefab / Unpack and Delete；准备 commit。Instantiate 偏移后置。
 
 **已知缺口（已登记，勿顺手大修）：**
 | ID | 摘要 | Status |
@@ -32,7 +32,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/prefab` | CORE-F26 / ED-F16-B | Review — 删除断链；Stage 相机/灯 |
+| `feat/prefab` | CORE-F26 / ED-F16-B | **Done** — 删除断链；Stage 相机/灯 |
 | `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
 | `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |

@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-16（BUG-CORE-003 Fixed）
+Last updated: 2026-09-16（CORE-F26 / ED-F16-B Done）
+
+### 2026-09-16 - CORE-F26 + ED-F16-B Done：删除断链 + Stage 相机/临时灯
+- **F26：** `FindInstanceRefs*` / `Unpack*`；`DeleteAsset` Prefab 门禁；Editor「Unpack and Delete Prefab」；Stage 打开时拦删。
+- **ED-F16-B：** Level/Stage `EditorFlyCameraPose` stash/restore；Stage `__ME_EditorTemp_DirectionalLight`；WriteStageTree / Hierarchy 排除 temp。
+- **验证：** `test prefab` 16/16、`test prefab-overrides` 5/5；`Editor`+`minEngineTests` 已编。
+- **Next：** 手验；准备 commit。
 
 ### 2026-09-16 - BUG-CORE-003 Fixed：全属性 Propagate + F24 S02/S05 收口
 - **Propagate / RevertInstance：** mapping 上反射叶子；跳过根 Transform / override / Instanced / Delegate / 非资产 ObjectPtr。

@@ -20,6 +20,7 @@
 #include "Shell/EditorDockLayout.h"
 #include "Shell/EditorInputHub.h"
 #include "Shell/IEditorContext.h"
+#include "Shell/ViewportClientRegistry.h"
 #include "SubEditor/Scene/SceneEditingViewportClient.h"
 #include "SubEditor/Scene/SceneEditorInspectorSource.h"
 #include "SubEditor/Prefab/PrefabEditConstraints.h"
@@ -255,6 +256,16 @@ namespace minEngine
         m_PrefabStages.ExitActive(*m_Context);
     }
 
+    SceneEditingViewportClient* SceneEditor::TryGetSceneEditingViewportClient()
+    {
+        if (m_Context == nullptr)
+        {
+            return nullptr;
+        }
+
+        return m_Context->GetViewportRegistry().FindSceneEditingViewportClient("scene_editing_viewport");
+    }
+
     std::vector<GameObject*> SceneEditor::GetHierarchyGameObjects() const
     {
         std::vector<GameObject*> result;
@@ -268,10 +279,12 @@ namespace minEngine
         result.reserve(gameObjects.size());
         for (const std::shared_ptr<GameObject>& gameObject : gameObjects)
         {
-            if (gameObject)
+            if (!gameObject || PrefabUtility::IsEditorTempStageObject(*gameObject))
             {
-                result.push_back(gameObject.get());
+                continue;
             }
+
+            result.push_back(gameObject.get());
         }
 
         std::sort(result.begin(), result.end(), [](const GameObject* lhs, const GameObject* rhs)

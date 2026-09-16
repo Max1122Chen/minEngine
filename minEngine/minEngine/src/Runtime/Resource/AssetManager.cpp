@@ -28,6 +28,7 @@
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 
 #include "AssetMeta.h"
@@ -1057,6 +1058,11 @@ namespace minEngine
 
     bool AssetManager::LogReferenceWarningsForDelete(const AssetMeta& meta) const
     {
+        if (meta.AssetType == "Prefab")
+        {
+            return true;
+        }
+
         ME_LOG(LogAsset, Warn, 
             "DeleteAsset: reference scan is not implemented (v0); proceeding with '{}'.",
             meta.AssetPath);
@@ -1103,6 +1109,14 @@ namespace minEngine
 
     bool AssetManager::DeleteAsset(const std::string& assetPath, std::string& outError)
     {
+        return DeleteAsset(assetPath, outError, false);
+    }
+
+    bool AssetManager::DeleteAsset(
+        const std::string& assetPath,
+        std::string& outError,
+        bool bUnpackOpenPrefabInstanceRefs)
+    {
         AssetRegistryBroadcastBatchScope batchScope;
         outError.clear();
 
@@ -1121,7 +1135,41 @@ namespace minEngine
         }
 
         const AssetMeta meta = *metaPtr;
-        LogReferenceWarningsForDelete(meta);
+
+        if (meta.AssetType == "Prefab")
+        {
+            const std::vector<PrefabInstanceRef> refs =
+                PrefabUtility::FindInstanceRefsInOpenEditorScenes(meta.Guid);
+            if (!refs.empty())
+            {
+                if (!bUnpackOpenPrefabInstanceRefs)
+                {
+                    outError = PrefabUtility::FormatPrefabInstanceRefsMessage(projectRelative, refs);
+                    return false;
+                }
+
+                for (const PrefabInstanceRef& ref : refs)
+                {
+                    if (ref.Scene == nullptr)
+                    {
+                        continue;
+                    }
+
+                    std::string unpackError;
+                    if (!PrefabUtility::UnpackInstance(*ref.Scene, ref.RootInstanceGuid, &unpackError))
+                    {
+                        outError = unpackError.empty()
+                            ? "Failed to unpack Prefab instance before delete."
+                            : unpackError;
+                        return false;
+                    }
+                }
+            }
+        }
+        else
+        {
+            LogReferenceWarningsForDelete(meta);
+        }
 
         const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(projectRelative);
         const std::filesystem::path metaAbsolutePath = BuildMetaAbsolutePath(projectRelative);
