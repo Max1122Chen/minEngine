@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `ED-F16`
 - **Type:** Feature
-- **Status:** Done（含 Amendment A：Hierarchy Prefab 工作流 + `Scene::Instantiate`）
+- **Status:** Done（含 Amendment A）；**Amendment B → Review**（Stage 独立相机 + 默认光源）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-15
+- **Last updated:** 2026-09-16
 - **Branch:** `feat/prefab`
 - **Related:**
   - [CORE-F23 Prefab Asset + Instantiate](../Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md)（**硬依赖**；Amendment A 扩展薄 `Scene::Instantiate`）
@@ -25,6 +25,7 @@
 - Hierarchy **有且仅有一个根 GO**。
 - MVP：**聚焦占用主 Viewport**（不与 Level 并排实时预览）；隔离 RT / 串图问题 **不进本 Feature DoD**。
 - **Amendment A：** Level Hierarchy 右键 **Create Prefab** / **Instantiate Prefab**；实例与普通 GO 视觉区分；Core `Scene::Instantiate` 薄封装（Unity 式 `scene.Instantiate(prefab)`）。
+- **Amendment B（待审批）：** Prefab Stage **独立编辑相机**，在编辑目标上下文切换时更换；Stage **临时默认光源**（不进 Prefab 资产）。资产 Guid / Propagate 修复见 CORE-F23 Amendment B。
 
 ## Scope
 
@@ -152,10 +153,12 @@ Open Prefab
   → Create empty Scene (not registered as project Scene asset)
   → PrefabUtility::Instantiate(asset, stageScene, {
         bRegisterPrefabInstance = false,  // editing the asset itself, not a level instance
-        WorldTransform = Identity
+        bApplyWorldTransform = false      // keep template root pose (BUG-CORE-002)
      })
   → OR: load template objects directly into stage with stable template Guids
 ```
+
+> **Propagate：** Stage Save 会调 `PropagateDefaultsToOpenScenes`。当前实现只拷 Name + 非根 Transform → [BUG-CORE-003](../bugs/BUG-CORE-003.md)（全反射属性传播待审）。
 
 **两种 Guid 策略：**
 
@@ -498,8 +501,113 @@ Save Prefab 文档后的 Propagate（已有）不变。
 | O8 | Create Prefab 失败时磁盘残留 | **Fail closed**（尽量不留半成品） |
 | O9 | CB 拖拽 Prefab 到 Hierarchy | **Out**（Amendment A） |
 | O10 | Create Prefab 的磁盘文件 Undo | **Out**（不删文件）；场景侧以 dirty / 实例链接为准 |
+| O11 | Prefab Stage 相机策略 | **Amendment B：** 每 Stage 独立位姿；上下文切换时替换共享 Viewport 相机 |
+| O12 | Prefab Stage 默认光 | **Amendment B：** Stage 临时 Directional；不写回 Prefab |
 
 ---
+
+## 9) Amendment B — Prefab Stage 独立相机 + 默认光源（**Review，待审批**）
+
+### 9.1 现象与根因（代码已核对）
+
+CORE-F25 已让组件从 **owning Scene** 取 `RenderScene`，Prefab Stage 与 Level **内容**已分离。摄像机仍「共享」的原因：
+
+- Editor 只有一个 `SceneManager::GetEditorSceneViewport()` → 单个 `SceneViewport` → **单个** `RenderCamera`。
+- `SceneEditingViewportClient` 内 flycam 状态（`m_CameraPosition` / `m_CameraRotation`）是 **一份**；`EnsureCameraStateInitialized` **只初始化一次**，之后对当前 Viewport 相机持续 `ApplyStateToRenderCamera`。
+- `PrefabStageController::Activate` / `ExitActive` 只切换 `InspectingScene` / selection，**不**切换或暂存相机位姿。
+
+因此进出 Prefab Stage 时，视点跟着同一套 flycam 走，而不是「Level 相机」与「Stage 相机」两套。
+
+默认光源：Stage Scene 通常只有 Prefab 模板树，**没有** Level 里的 Directional / Sky；蓝底/漆黑是照明缺口，不是串场景。
+
+### 9.2 目标
+
+| 目标 | 说明 |
+|------|------|
+| G1 | Prefab Stage 拥有 **独立编辑相机位姿**（按 Stage / 资产键持久于 Session） |
+| G2 | **编辑目标上下文切换**（Level ↔ Prefab Stage，或 Stage A ↔ Stage B）时 **更换** 当前 Viewport 使用的编辑相机位姿 |
+| G3 | Level 视点在退出 Stage 后 **恢复** 进入前的 Level 位姿 |
+| G4 | Stage 内有可读默认照明；**不**写入 `.meprefab` |
+
+### 9.3 方案（默认拍板）
+
+#### 9.3.1 相机 — 位姿仓 + 上下文切换（推荐）
+
+**不**为每个 Stage 新建 `SceneViewport`（避免多 RT / 多 Viewport 复杂度；隔离 RT 仍属另轨）。
+
+在现有单 Viewport / 单 `RenderCamera` 上做 **逻辑多相机**：
+
+```text
+SceneEditor / PrefabStageController
+  LevelCameraPose          // document Level 的编辑 flycam
+  PrefabEditorStage.CameraPose  // 每个 Stage 一份
+
+On Activate(Stage):
+  stash current flycam → LevelCameraPose（若上一上下文是 Level）
+                       或 → previousStage.CameraPose
+  load Stage.CameraPose → ViewportClient flycam
+  ApplyStateToRenderCamera(shared RenderCamera)
+
+On ExitActive / switch to Level:
+  stash flycam → activeStage.CameraPose
+  load LevelCameraPose → ViewportClient
+  Apply...
+```
+
+首进某 Stage（尚无位姿）：
+
+- **默认：** 固定 framing（例如看向原点、距离适合单位立方体），或对 Stage 根 bounds 做一次 fit。
+- **不**从 Level 相机拷贝（避免「共享」体感）。
+
+落点建议：
+
+- `PrefabEditorStage` 增加 `EditorCameraPose`（position + yaw/pitch）。
+- `SceneEditingViewportClient` 暴露 `CapturePose` / `ApplyPose`（或 SceneEditor 中转）；去掉「全局只 init 一次」对上下文切换的阻碍——切换时必须强制 Apply。
+- `PrefabStageController::Activate` / `ExitActive`（以及 Tab 切换导致的 Activate）调用切换。
+
+#### 9.3.2 默认光源 — Stage 临时对象（推荐）
+
+在 `BuildStage` / 首次 Activate 时，向 Stage Scene 加入 **编辑器临时** DirectionalLight（+ 可选弱 ambient / 沿用现有 Sky 策略若已有）：
+
+- 带明确标记（名称前缀或非序列化 flag / Guid 黑名单），`WriteStageTreeToPrefab` **排除**。
+- 不进入 `EditCloneMap` 模板映射。
+- 用户可在 Stage 内再加自己的灯；那些属于 Prefab 内容，正常 Save。
+
+**拒绝（本期）：** 把 Level 灯光「借用」进 Stage RenderScene（再次耦合两个世界）。
+
+### 9.4 Out
+
+| 项 | 说明 |
+|----|------|
+| 每 Stage 独立 `SceneViewport` / 隔离 RT | Out（另轨） |
+| Prefab 资产内强制烘焙默认灯 | Out |
+| PIE in Prefab Stage | 仍否 |
+| 相机动画 / 书签 UI | Out |
+
+### 9.5 与 CORE-F23 Amendment B 的分工
+
+| 问题 | 归属 |
+|------|------|
+| Stage 改 CastShadows，源树不变 | **CORE-F23 Amendment B**（Guid 失配 → Propagate 跳过） |
+| 进出 Stage 视点串 / 共享 flycam | **本 Amendment** |
+| Stage 太暗 / 无阴影可读性 | **本 Amendment**（临时灯） |
+
+### 9.6 验收
+
+- [ ] 打开 Prefab Stage：视点为 Stage 默认 framing，**不等于**当时 Level 视点
+- [ ] 在 Stage 内飞移相机 → 切回 Level：Level 视点恢复进入前
+- [ ] 再进同一 Prefab：回到该 Stage 上次离开时的视点
+- [ ] Stage 内模板网格有可读照明；Save Prefab 后资产 **无** 临时灯
+- [ ] Guid 修复后：Stage 改 default → Save → Level 实例更新（依赖 F23-B；本 Amendment 手验联调）
+
+### 9.7 切片
+
+| Slice | 内容 | 验证 |
+|-------|------|------|
+| **S12** | Stage/Level 位姿仓 + Activate/Exit 切换 | 手工 |
+| **S13** | Stage 临时 DirectionalLight + Save 排除 | 手工 + 可选单测 |
+| **S14** | DoD / 文档勾选 | — |
+
 
 ## 变更记录
 
@@ -512,3 +620,5 @@ Save Prefab 文档后的 Propagate（已有）不变。
 | 2026-09-15 | **Done：** S01–S06；EnterPlay 硬拦 Prefab Stage；DoD 勾选 |
 | 2026-09-15 | **Amendment A → Review：** Hierarchy Create/Instantiate Prefab；实例视觉区分；`Scene::Instantiate`；S07–S11（**待审批**） |
 | 2026-09-15 | **Amendment A Done：** S07–S11；`Scene::Instantiate`；Hierarchy Create/Instantiate（Level only）；实例色+图标；`test prefab` 8/8 |
+| 2026-09-15 | **Amendment B → Review：** Stage 独立编辑相机（上下文切换更换） + Stage 临时默认光源；Propagate/实例 Guid 见 F23-B |
+| 2026-09-16 | Stage Instantiate 注 `bApplyWorldTransform=false`；Propagate 缺口链 [BUG-CORE-003](../bugs/BUG-CORE-003.md) |

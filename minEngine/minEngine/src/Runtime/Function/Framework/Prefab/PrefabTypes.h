@@ -93,6 +93,8 @@ namespace minEngine
 
     struct PrefabInstantiateParams
     {
+        /** When true, apply WorldTransform to the instance root after clone. */
+        bool bApplyWorldTransform = false;
         Transform WorldTransform{};
         GameObject* AttachParent = nullptr;
         bool bRegisterPrefabInstance = true;

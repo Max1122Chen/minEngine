@@ -5,19 +5,22 @@
 - **Type:** Feature
 - **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-15
+- **Last updated:** 2026-09-16
 - **Branch:** `feat/prefab`
 - **Related:**
   - [CORE-F23 Prefab Asset + Instantiate](./CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md)（**硬依赖**）
   - [ED-F16 Prefab Editor](../../Editor/ED-F16_PREFAB_EDITOR_DESIGN.md)（消费 override 可视化；本 Feature 可无完整 UI）
   - [ENGINE_DESIGN_PHILOSOPHY](../../ENGINE_DESIGN_PHILOSOPHY.md)
   - [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md)
+  - [BUG-CORE-003](../../bugs/BUG-CORE-003.md)（传播表面积）
 - **Depends on:** CORE-F23 **Done**（类名 `Prefab`、模板 Guid、`PrefabInstanceRecord`、Instantiate 映射）
 - **Blocks:** 有意义的 Prefab 工作流（改资产 → 实例跟随）；ED-F16 Inspector 区分 default/override
 
 ## TL;DR
 
 在 F23（**Done**）的空 `PrefabInstance` 之上，支持 **受限的编辑期实例 Override**，以及 **Prefab 模板 default 变更向未覆盖字段传播**。
+
+> **2026-09-16：** Override / Revert / 根 Transform 排除成立。**Propagate 全属性 + Editor TryRecord + Level ValidateEdit** 已由 [BUG-CORE-003](../../bugs/BUG-CORE-003.md) **Fixed** 收口。Added/RemovedComponent、Apply→Prefab、磁盘传播仍 Out。
 
 - 运行时 / PIE 仍烘焙为普通 GO（应用 override 后无 Prefab 身份）。
 - **不是**完整 Unity：禁止部分层级编辑；允许 property override、有限的 add/remove component。
@@ -255,6 +258,8 @@ PropagatePrefabDefaults(Prefab& asset):
 
 磁盘上未打开的 Scene：**F24 MVP 不扫全项目**（避免无静默改盘）；可提供显式命令 `PropagateToAssetOnDisk(path)` 后置。
 
+**实现缺口（2026-09-16，≠ Guid）：** `PropagateDefaultsToScene` **没有**「For each reflected property」。当前只拷 GameObject `m_Name` 与 SceneComponent `m_Transform`（根再跳过）。因此 Instantiate（整树克隆）能带上新 default，已有实例在 Prefab Save 后不更新。挂钩 `PropagateDefaultsToOpenScenes` → `GetEditorScene()` 是通的。修复见 [BUG-CORE-003 Fix Design](./BUG-CORE-003_PREFAB_PROPAGATE_REFLECTED_PROPERTIES_FIX_DESIGN.md)。
+
 #### 3.4.4 Revert
 
 - `RevertProperty(record, templateGuid, path)`：删 override，从模板写回实例。  
@@ -373,11 +378,12 @@ F24 **可以**在无 F16 时用单测 + 手写 JSON 验收。
 
 - [x] 改实例属性 → Overrides 出现；Revert 回 default → 条目移除（`test prefab-overrides` record/revert）
 - [ ] Scene 存盘重开：覆盖值保留；Override 表完整（API/结构已序列化；**未做专用 round-trip 单测**，可后置）
-- [x] 改 Prefab default → 无 override 字段更新；有 override 不变；根 Transform 不传播
-- [x] RevertProperty 正确（单测）；RevertInstance API 已提供（smoke 未单独覆盖）
-- [x] 禁止删除实例根返回明确错误（ValidateEdit）
+- [x] 改 Prefab default → 无 override 字段更新；有 override 不变；根 Transform 不传播  
+  （BUG-CORE-003：**全反射叶子** + Name/子 Transform + CastShadows 单测）
+- [x] RevertProperty 正确；RevertInstance smoke（`test prefab-overrides`）
+- [x] 禁止删除实例根返回明确错误（ValidateEdit；Editor Hierarchy 已接）
 - [x] PIE 无 PrefabInstance 依赖：沿用 F23（PIE 清表）；本 Feature 不新增运行时身份
-- [x] `test prefab-overrides` 3/3；`test prefab`（含 prefix 重叠）全绿
+- [x] `test prefab-overrides` 5/5；`test prefab` 14/14 全绿
 
 ---
 
@@ -403,6 +409,26 @@ F24 **可以**在无 F16 时用单测 + 手写 JSON 验收。
 | O3 | Added/Removed component | **S05 可选**；可先只做 PropertyValue |
 | O4 | 未打开 Scene 的磁盘传播 | **Out** |
 | O5 | Override 值存 JSON 字符串 vs Binary blob | **落地：`ValueJson` = `"bin:"` + hex**（属性二进制缓冲）；字段名保留兼容 |
+| O6 | 传播是否扫全部反射叶子 | **是（BUG-CORE-003 Done）** |
+
+---
+
+## 9) Amendment A — 传播表面积（2026-09-16）
+
+曾用白名单代替全属性遍历。**已由 BUG-CORE-003 Fixed 纠正。**
+
+---
+
+## 10) Amendment B — F24 收口包（与 BUG-CORE-003）
+
+| 交付 | 状态 |
+|------|------|
+| S03 真传播 | **Done** |
+| S02 Editor TryRecord | **Done**（`ApplySetObjectProperty`） |
+| S05 Editor ValidateEdit | **Done**（Level 删/重挂） |
+| 测试收口 | **Done**（`prefab-overrides` 5/5） |
+
+**仍 Out：** Added/RemovedComponent 行为、Apply→Prefab、未打开 Scene 磁盘传播、Instantiate 偏移、Inspector 蓝字 UI。
 
 ---
 
@@ -414,3 +440,6 @@ F24 **可以**在无 F16 时用单测 + 手写 JSON 验收。
 | 2026-09-15 | 对齐 F23 类名 `Prefab`（非 PrefabAsset）；依赖改为 F23 Done；UTF-8 重写修复编码损坏 |
 | 2026-09-15 | **Done：** PropertyValue override、Propagate（开 Scene）、RevertProperty、ValidateEdit；`test prefab-overrides`；payload=`bin:`+hex |
 | 2026-09-15 | Note：Propagate 按 `PrefabAssetGuid == prefab.GetGuid()` 过滤；Create→首次 Register 若 Guid 失配会导致「改 Prefab default 源树不动」——根因与修复见 **CORE-F23 Amendment B**（非 Propagate 算法本身） |
+| 2026-09-16 | **Amendment A：** 实现仅 Name+非根 Transform；全属性传播 → BUG-CORE-003 Review |
+| 2026-09-16 | **Amendment B：** 003 + F24 S02/S05 收口同包 Review |
+| 2026-09-16 | **BUG-CORE-003 Fixed：** 全属性 Propagate + TryRecord + ValidateEdit；Amendment A/B 收口完成 |

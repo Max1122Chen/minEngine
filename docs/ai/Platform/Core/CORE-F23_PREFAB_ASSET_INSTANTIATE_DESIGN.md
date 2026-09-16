@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `CORE-F23`
 - **Type:** Feature
-- **Status:** Done (Amendment B Guid -> ASSET-F03; Prefab keeps Propagate DoD)
+- **Status:** Done (Amendment B Guid -> ASSET-F03; Amendment C spawn Transform 后置)
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-15
+- **Last updated:** 2026-09-16
 - **Branch:** `feat/prefab`
 - **Related:**
   - [CORE-F24 Prefab Overrides](./CORE-F24_PREFAB_OVERRIDES_DESIGN.md)（本期 **不做**；预留空 `PrefabInstance`）
@@ -376,7 +376,8 @@ Instanced 所有权边（`m_Components`、模板列表内对象）**不是** Gui
 ```cpp
 struct PrefabInstantiateParams
 {
-    Transform WorldTransform;          // applied to instance root
+    bool bApplyWorldTransform = false; // BUG-CORE-002: Stage false; Hierarchy spawn true
+    Transform WorldTransform{};        // when apply: **absolute world replace** of instance root (today)
     GameObject* AttachParent = nullptr; // optional; null = scene root
     bool bRegisterPrefabInstance = true; // Scene editor path: true; bake path: false
 };
@@ -452,7 +453,8 @@ Load Prefab (or in-memory)
   → Asset Guid refs unchanged
   → InsertRestoredGameObject for each GO (new m_ID)
   → ResolveGameObjectHierarchy + SC attach + activation
-  → Apply root WorldTransform / optional AttachParent
+  → Apply root WorldTransform **if bApplyWorldTransform** (absolute replace; see Amendment C)
+  → optional AttachParent KeepWorld
   → Append PrefabInstanceRecord (mappings from clone context; Overrides empty)
 ```
 
@@ -613,9 +615,22 @@ Content Browser：F23 可只保证 Load/Save/CreateAsset 管线；双击打开 �
 
 ### 9.2 Acceptance (depends on ASSET-F03 Done)
 
-- [ ] After Create Prefab: `PrefabInstanceRecord.PrefabAssetGuid == AssetMeta.Guid == Prefab.GetGuid()`
-- [ ] Stage edit non-override property -> Save -> same-session source instance updates
-- [ ] `test prefab` / `test prefab-overrides` green
+- [x] After Create Prefab: `PrefabInstanceRecord.PrefabAssetGuid == AssetMeta.Guid == Prefab.GetGuid()`（ASSET-F03）
+- [x] Stage edit non-override property -> Save -> same-session source instance updates → **BUG-CORE-003 Fixed**
+- [x] `test prefab` / `test prefab-overrides` green
+
+## 10) Amendment C — Instantiate 根 Transform（后置）
+
+**现状（BUG-CORE-002）：** `bApplyWorldTransform` 为 true 时 `SetWorldTransform(params.WorldTransform)` **整段替换**。Hierarchy 传入 identity → 模板根 Scale 4 变成 1。Stage 不 apply，保住模板姿态。
+
+**已接受的产品语义（未实现）：** `WorldTransform` 是相对 **模板根** 的偏移，不是绝对世界姿态。
+
+| 量 | 合成 |
+|----|------|
+| Position / Rotation | `templateRoot ∘ spawnOffset`（identity = 不额外挪） |
+| Scale | **相乘**（identity scale 保留模板 4） |
+
+**本 Amendment 不改代码。** 用户 2026-09-16 接受当前绝对替换；传播优先 BUG-CORE-003。实现偏移时改 `PrefabUtility::Instantiate` + Hierarchy 仍可传 identity（表示「无偏移」）。
 
 ## 变更记录
 
@@ -627,3 +642,4 @@ Content Browser：F23 可只保证 Load/Save/CreateAsset 管线；双击打开 �
 | 2026-09-15 | UTF-8 重写：修复编码损坏；与实现对齐 `m_TemplateObjects` + `m_RootGuid` |
 | 2026-09-15 | Amendment B: Guid root cause folded into [ASSET-F03](../../Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md); F23 keeps Propagate DoD |
 | 2026-09-15 | API note（ED-F16 Amendment A）：计划增加 `Scene::Instantiate` 薄封装转发 `PrefabUtility::Instantiate`（契约不变；详见 ED-F16 §3.10.5） |
+| 2026-09-16 | Amendment C：绝对 WorldTransform 替换 vs 相对偏移（后置）；Propagate 字段缺口 → BUG-CORE-003 |

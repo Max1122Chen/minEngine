@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-15（ASSET-F03 Create 身份 Done）  
+Last updated: 2026-09-16（BUG-CORE-003 Fixed；CORE-F26 Review）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -48,8 +48,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Planned** | — | Design 未开 · 挂钩契约见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · 分支 `feat/lua-script` |
 | `CORE-F22` | CPU Profiler Harness（Session/Phase/Frame · Scope · Trace 导出 · 查询 API） | **Done** | — | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) · `feat/core` · **不含** Editor UI |
 | `CORE-F23` | Prefab 资产 + Create/Instantiate（单根 GO 树；空 PrefabInstance 链接） | **Done**（Amendment B **Review**：Guid 同步） | — | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) · `feat/prefab` · 类名 `Prefab`（非 PrefabAsset） |
-| `CORE-F24` | Prefab 受限 Override + default 传播 | **Done** | — | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) · `feat/prefab` · `test prefab-overrides` |
+| `CORE-F24` | Prefab 受限 Override + default 传播 | **Done**（003 收口 **Fixed**） | — | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) · [BUG-CORE-003](./bugs/BUG-CORE-003.md) |
 | `CORE-F25` | 组件从 owning Scene 解析 RenderScene（禁 SceneManager 隐式当前世界） | **Done** | — | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) · Prefab Stage 可视隔离硬前置 |
+| `CORE-F26` | Prefab 资产删除与实例断链（阻断 / Unpack 后删除） | **Review** | — | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) · `feat/prefab` |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
@@ -133,8 +134,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | **F05** | F04 Done（TestAccess） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
-| `CORE` | **F26** | F25 Done；F23/F24/ED-F16 Prefab；F23-B Guid → **ASSET-F03**；F19 Lua Call In Progress；F21 Planned |
-| `ASSET` | **F04** | F01–F02 Done；**F03** Create 身份 Review；Async Lifetime 愿景见 Capability Roadmap |
+| `CORE` | **F27** | F25–F26；F26 Prefab 删除断链 Review；ASSET-F03 Done；F19/F21 Lua |
+| `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F17** | F12–**F15 Done**；**F16** Prefab Editor Draft；**F11** In Progress（W3）；F10 占位 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |

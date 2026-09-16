@@ -247,7 +247,13 @@ namespace minEngine
             return false;
         }
 
-        PrefabOverrideUtility::PropagateDefaultsToOpenScenes(*stage->Asset);
+        if (PrefabOverrideUtility::PropagateDefaultsToOpenScenes(*stage->Asset))
+        {
+            if (SceneEditor* sceneEditor = GetSceneEditor(&context))
+            {
+                sceneEditor->MarkDocumentSceneDirty();
+            }
+        }
         stage->bDirty = false;
         (void)context;
         ME_LOG(LogEditor, Info, "Prefab Stage saved '{}'.", stage->AssetKey);

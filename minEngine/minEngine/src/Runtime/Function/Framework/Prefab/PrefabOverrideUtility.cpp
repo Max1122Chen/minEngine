@@ -3,6 +3,8 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/MEProperties.h"
+#include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
@@ -13,6 +15,7 @@
 #include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Resource/Asset.h"
 #include "Runtime/Resource/AssetManager.h"
 
 #include <algorithm>
@@ -254,11 +257,124 @@ namespace minEngine
                 overrides.end());
         }
 
-        void CopyNonRootPropertiesFromTemplate(
+        bool ShouldCopyReflectedProperty(const Reflection::MEProperty& property)
+        {
+            using Reflection::MEObjectPtrCategory;
+            using Reflection::MEPropertyCategory;
+            using Reflection::PropertySpecifier;
+
+            if (property.HasSpecifier(PropertySpecifier::Transient)
+                || property.HasSpecifier(PropertySpecifier::Instanced))
+            {
+                return false;
+            }
+
+            // m_Name is Invisible for Inspector but must still propagate / revert.
+            if (property.HasSpecifier(PropertySpecifier::Invisible) && property.GetName() != "m_Name")
+            {
+                return false;
+            }
+
+            switch (property.GetCategory())
+            {
+            case MEPropertyCategory::MulticastDelegate:
+            case MEPropertyCategory::Array:
+                return false;
+
+            case MEPropertyCategory::ObjectPtr:
+            {
+                const auto& objectPtrProperty =
+                    static_cast<const Reflection::MEObjectPtrProperty&>(property);
+                if (objectPtrProperty.GetPtrCategory() != MEObjectPtrCategory::Shared)
+                {
+                    return false;
+                }
+
+                const Reflection::MEClass* valueClass = objectPtrProperty.GetValueClass();
+                return valueClass != nullptr && valueClass->IsA(Asset::StaticClass());
+            }
+
+            case MEPropertyCategory::Primitive:
+            case MEPropertyCategory::Object:
+                return true;
+
+            default:
+                return false;
+            }
+        }
+
+        bool CopyMappedObjectLeaves(
+            PrefabInstanceRecord& record,
+            MEObject& templateObject,
+            MEObject& instanceObject,
+            const GUID& templateObjectGuid,
+            bool respectOverrides)
+        {
+            const Reflection::MEClass* objectClass = templateObject.GetClass();
+            if (objectClass == nullptr)
+            {
+                return false;
+            }
+
+            bool anyWritten = false;
+            Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+                objectClass,
+                [&](const Reflection::MEProperty& property) -> bool
+                {
+                    if (!ShouldCopyReflectedProperty(property))
+                    {
+                        return true;
+                    }
+
+                    const std::string path = property.GetName();
+                    if (IsRootTransformPath(record, instanceObject, path))
+                    {
+                        return true;
+                    }
+
+                    if (respectOverrides
+                        && PrefabOverrideUtility::HasOverride(record, templateObjectGuid, path))
+                    {
+                        return true;
+                    }
+
+                    std::string payload;
+                    if (!SerializePathToPayload(templateObject, path, payload, nullptr))
+                    {
+                        ME_LOG(
+                            LogCore,
+                            Warn,
+                            "Prefab propagate: serialize '{}' on template {} failed; skipping.",
+                            path,
+                            templateObjectGuid.ToString());
+                        return true;
+                    }
+
+                    if (!ApplyPayloadToPath(instanceObject, path, payload, nullptr))
+                    {
+                        ME_LOG(
+                            LogCore,
+                            Warn,
+                            "Prefab propagate: apply '{}' to instance failed; skipping.",
+                            path);
+                        return true;
+                    }
+
+                    anyWritten = true;
+                    return true;
+                });
+
+            return anyWritten;
+        }
+
+        bool CopyAllMappedLeavesFromTemplate(
             Prefab& prefab,
             PrefabInstanceRecord& record,
-            bool clearOverrides)
+            bool respectOverrides,
+            bool clearOverridesAfter)
         {
+            bool anyWritten = false;
+
             for (const PrefabObjectMapping& mapping : record.ObjectMappings)
             {
                 MEObject* templateObject = FindTemplateObject(prefab, mapping.TemplateGuid);
@@ -266,65 +382,42 @@ namespace minEngine
                     ObjectManager::Get().FindObject(mapping.InstanceGuid);
                 if (templateObject == nullptr || !instanceObject)
                 {
+                    if (templateObject == nullptr)
+                    {
+                        ME_LOG(
+                            LogCore,
+                            Warn,
+                            "Prefab propagate: missing template object {}.",
+                            mapping.TemplateGuid.ToString());
+                    }
+                    else
+                    {
+                        ME_LOG(
+                            LogCore,
+                            Warn,
+                            "Prefab propagate: missing instance object {}.",
+                            mapping.InstanceGuid.ToString());
+                    }
                     continue;
                 }
 
-                GameObject* templateGo = dynamic_cast<GameObject*>(templateObject);
-                GameObject* instanceGo = dynamic_cast<GameObject*>(instanceObject.get());
-                if (templateGo != nullptr && instanceGo != nullptr)
+                if (CopyMappedObjectLeaves(
+                        record,
+                        *templateObject,
+                        *instanceObject,
+                        mapping.TemplateGuid,
+                        respectOverrides))
                 {
-                    // Copy GO name always (not transform).
-                    std::string namePayload;
-                    if (SerializePathToPayload(*templateGo, "m_Name", namePayload, nullptr))
-                    {
-                        ApplyPayloadToPath(*instanceGo, "m_Name", namePayload, nullptr);
-                    }
-
-                    for (const std::shared_ptr<Component>& templateComponent : templateGo->GetAllComponents())
-                    {
-                        if (!templateComponent)
-                        {
-                            continue;
-                        }
-
-                        const GUID instanceComponentGuid =
-                            PrefabPropertyPath::FindInstanceGuidForTemplate(record, templateComponent->GetGuid());
-                        std::shared_ptr<MEObject> instanceComponentObject =
-                            ObjectManager::Get().FindObject(instanceComponentGuid);
-                        Component* instanceComponent = dynamic_cast<Component*>(instanceComponentObject.get());
-                        if (instanceComponent == nullptr)
-                        {
-                            continue;
-                        }
-
-                        const bool isRootTransform =
-                            instanceGo->GetGuid() == record.RootInstanceGuid
-                            && instanceGo->GetRootComponent() == instanceComponent;
-
-                        if (SceneComponent* templateSceneComponent =
-                                dynamic_cast<SceneComponent*>(templateComponent.get()))
-                        {
-                            if (isRootTransform)
-                            {
-                                continue;
-                            }
-
-                            std::string transformPayload;
-                            if (SerializePathToPayload(
-                                    *templateSceneComponent, "m_Transform", transformPayload, nullptr))
-                            {
-                                ApplyPayloadToPath(
-                                    *instanceComponent, "m_Transform", transformPayload, nullptr);
-                            }
-                        }
-                    }
+                    anyWritten = true;
                 }
             }
 
-            if (clearOverrides)
+            if (clearOverridesAfter)
             {
                 record.Overrides.clear();
             }
+
+            return anyWritten;
         }
     }
 
@@ -363,7 +456,6 @@ namespace minEngine
 
         if (record == nullptr)
         {
-            // Plain GO — nothing to record.
             return true;
         }
 
@@ -371,7 +463,6 @@ namespace minEngine
             PrefabPropertyPath::FindTemplateGuidForInstance(*record, instanceObject.GetGuid());
         if (templateGuid.IsZero())
         {
-            // Component may map via its own Guid.
             if (outError)
             {
                 *outError = "Instance object is not in PrefabObjectMappings.";
@@ -382,7 +473,6 @@ namespace minEngine
         Prefab* prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
         if (prefab == nullptr)
         {
-            // Still record override without default comparison when asset unavailable.
             std::string payload;
             if (!SerializePathToPayload(instanceObject, propertyPath, payload, outError))
             {
@@ -402,7 +492,6 @@ namespace minEngine
             return false;
         }
 
-        // Map component path: if editing component with plain path, compare same path on template component.
         std::string instancePayload;
         std::string templatePayload;
         if (!SerializePathToPayload(instanceObject, propertyPath, instancePayload, outError))
@@ -493,17 +582,13 @@ namespace minEngine
         std::string* outError)
     {
         PrefabInstanceRecord* record = PrefabUtility::FindInstanceRecord(scene, rootInstanceGuid);
-        if (record == nullptr || record->RootInstanceGuid != rootInstanceGuid)
+        if (record == nullptr)
         {
-            // Allow lookup by any mapped object, then require root match for full revert.
-            if (record == nullptr)
+            if (outError)
             {
-                if (outError)
-                {
-                    *outError = "Prefab instance record not found.";
-                }
-                return false;
+                *outError = "Prefab instance record not found.";
             }
+            return false;
         }
 
         Prefab* prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
@@ -516,12 +601,14 @@ namespace minEngine
             return false;
         }
 
-        CopyNonRootPropertiesFromTemplate(*prefab, *record, true);
+        CopyAllMappedLeavesFromTemplate(*prefab, *record, false, true);
         return true;
     }
 
-    void PrefabOverrideUtility::PropagateDefaultsToScene(const Prefab& prefab, Scene& scene)
+    bool PrefabOverrideUtility::PropagateDefaultsToScene(const Prefab& prefab, Scene& scene)
     {
+        bool anyWritten = false;
+
         for (PrefabInstanceRecord& record : scene.GetPrefabInstancesMutable())
         {
             if (record.PrefabAssetGuid != prefab.GetGuid())
@@ -529,114 +616,28 @@ namespace minEngine
                 continue;
             }
 
-            for (const PrefabObjectMapping& mapping : record.ObjectMappings)
+            if (CopyAllMappedLeavesFromTemplate(const_cast<Prefab&>(prefab), record, true, false))
             {
-                MEObject* templateObject = FindTemplateObject(const_cast<Prefab&>(prefab), mapping.TemplateGuid);
-                std::shared_ptr<MEObject> instanceObject = ObjectManager::Get().FindObject(mapping.InstanceGuid);
-                if (templateObject == nullptr || !instanceObject)
-                {
-                    continue;
-                }
-
-                auto maybeCopy = [&](MEObject& templateOwner, MEObject& instanceOwner, std::string_view path)
-                {
-                    if (HasOverride(record, mapping.TemplateGuid, path))
-                    {
-                        return;
-                    }
-
-                    if (IsRootTransformPath(record, instanceOwner, path))
-                    {
-                        return;
-                    }
-
-                    std::string payload;
-                    if (!SerializePathToPayload(templateOwner, path, payload, nullptr))
-                    {
-                        return;
-                    }
-                    ApplyPayloadToPath(instanceOwner, path, payload, nullptr);
-                };
-
-                if (GameObject* templateGo = dynamic_cast<GameObject*>(templateObject))
-                {
-                    GameObject* instanceGo = dynamic_cast<GameObject*>(instanceObject.get());
-                    if (instanceGo == nullptr)
-                    {
-                        continue;
-                    }
-
-                    maybeCopy(*templateGo, *instanceGo, "m_Name");
-
-                    for (const std::shared_ptr<Component>& templateComponent : templateGo->GetAllComponents())
-                    {
-                        if (!templateComponent)
-                        {
-                            continue;
-                        }
-
-                        const GUID instanceComponentGuid =
-                            PrefabPropertyPath::FindInstanceGuidForTemplate(record, templateComponent->GetGuid());
-                        auto instanceComponentObject = ObjectManager::Get().FindObject(instanceComponentGuid);
-                        Component* instanceComponent = dynamic_cast<Component*>(instanceComponentObject.get());
-                        if (instanceComponent == nullptr)
-                        {
-                            continue;
-                        }
-
-                        if (dynamic_cast<SceneComponent*>(templateComponent.get()) != nullptr)
-                        {
-                            const std::string path =
-                                std::string("m_Components/") + templateComponent->GetGuid().ToString() + "/m_Transform";
-                            // Compare/apply using component-local path on both sides.
-                            if (HasOverride(record, templateComponent->GetGuid(), "m_Transform")
-                                || HasOverride(record, mapping.TemplateGuid, path))
-                            {
-                                continue;
-                            }
-
-                            if (instanceGo->GetGuid() == record.RootInstanceGuid
-                                && instanceGo->GetRootComponent() == instanceComponent)
-                            {
-                                continue;
-                            }
-
-                            std::string payload;
-                            if (SerializePathToPayload(*templateComponent, "m_Transform", payload, nullptr))
-                            {
-                                ApplyPayloadToPath(*instanceComponent, "m_Transform", payload, nullptr);
-                            }
-                        }
-                    }
-                }
-                else if (Component* templateComponent = dynamic_cast<Component*>(templateObject))
-                {
-                    Component* instanceComponent = dynamic_cast<Component*>(instanceObject.get());
-                    if (instanceComponent == nullptr)
-                    {
-                        continue;
-                    }
-
-                    if (dynamic_cast<SceneComponent*>(templateComponent) != nullptr)
-                    {
-                        maybeCopy(*templateComponent, *instanceComponent, "m_Transform");
-                    }
-                }
+                anyWritten = true;
             }
         }
+
+        return anyWritten;
     }
 
-    void PrefabOverrideUtility::PropagateDefaultsToOpenScenes(const Prefab& prefab)
+    bool PrefabOverrideUtility::PropagateDefaultsToOpenScenes(const Prefab& prefab)
     {
         if (!SceneManager::HasInstance())
         {
-            return;
+            return false;
         }
 
         if (Scene* editorScene = SceneManager::Get().GetEditorScene())
         {
-            PropagateDefaultsToScene(prefab, *editorScene);
+            return PropagateDefaultsToScene(prefab, *editorScene);
         }
+
+        return false;
     }
 
     PrefabEditValidationResult PrefabOverrideUtility::ValidateEdit(

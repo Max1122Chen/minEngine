@@ -37,6 +37,7 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Prefab/Prefab.h"
+#include "Runtime/Function/Framework/Prefab/PrefabOverrideUtility.h"
 #include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -220,6 +221,16 @@ namespace minEngine
         if (IsEditingPrefabStage())
         {
             m_PrefabStages.MarkDirty(m_PrefabStages.GetActiveAssetKey());
+            return;
+        }
+
+        m_SceneDirty = true;
+    }
+
+    void SceneEditor::MarkDocumentSceneDirty()
+    {
+        if (m_Context != nullptr && m_Context->IsPlaying())
+        {
             return;
         }
 
@@ -638,6 +649,13 @@ namespace minEngine
 
         if (gameObject->GetParent() == newParent)
         {
+            return false;
+        }
+
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowReparentGameObject(*this, gameObjectId, newParentId, &constraintError))
+        {
+            ME_LOG(LogEditor, Error, "{}", constraintError);
             return false;
         }
 
@@ -1343,6 +1361,8 @@ namespace minEngine
 
         PrefabInstantiateParams params;
         params.bRegisterPrefabInstance = true;
+        params.bApplyWorldTransform = true;
+        params.WorldTransform = Transform{};
         params.AttachParent = attachParent;
 
         std::string error;
@@ -1457,6 +1477,16 @@ namespace minEngine
             {
                 ownerObject->PostEditChangeProperty(
                     Reflection::PropertyChangedEvent{std::string_view(propertyPath)});
+            }
+        }
+
+        if (Scene* scene = GetActiveScene())
+        {
+            std::string recordError;
+            if (!PrefabOverrideUtility::TryRecordPropertyOverride(
+                    *scene, *ownerObject, propertyPath, &recordError))
+            {
+                ME_LOG(LogEditor, Warn, "Prefab TryRecordPropertyOverride failed: {}", recordError);
             }
         }
 

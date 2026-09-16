@@ -32,11 +32,11 @@ namespace minEngine
             const GUID& rootInstanceGuid,
             std::string* outError = nullptr);
 
-        /** Propagate template defaults into one editor Scene (tests / explicit callers). */
-        static void PropagateDefaultsToScene(const Prefab& prefab, Scene& scene);
+        /** Propagate template defaults into one editor Scene. Returns true if any property was written. */
+        static bool PropagateDefaultsToScene(const Prefab& prefab, Scene& scene);
 
-        /** Propagate into SceneManager editor Scene when available. */
-        static void PropagateDefaultsToOpenScenes(const Prefab& prefab);
+        /** Propagate into SceneManager editor Scene when available. Returns true if any property was written. */
+        static bool PropagateDefaultsToOpenScenes(const Prefab& prefab);
 
         static bool HasOverride(
             const PrefabInstanceRecord& record,

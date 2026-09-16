@@ -5,6 +5,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
+#include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Prefab/Prefab.h"
@@ -95,10 +96,11 @@ namespace minEngine
                 return nullptr;
             }
 
-            // Root object is filled in-place (not via Instanced ObjectPtr), so remap explicitly.
+            // Root object is filled in-place (not via Instanced ObjectPtr). Deserialize may copy the
+            // source Guid onto the clone. RemapObjectGuid only Unregisters when the Guid slot still
+            // points at *this* object, so the source GameObject stays registered.
             const GUID clonedGuid = GenerateGUID();
             cloneContext.RecordClone(sourceGuid, cloned, clonedGuid);
-            ObjectManager::Get().RegisterObject(cloned);
             ObjectManager::Get().RemapObjectGuid(cloned, clonedGuid);
 
             return cloned;
@@ -145,6 +147,44 @@ namespace minEngine
             }
         }
 
+        void ClearUnresolvedPendingRefs(
+            std::vector<Serialization::PendingObjectRef>& unresolvedRefs,
+            PrefabCreateReport* outReport)
+        {
+            for (const Serialization::PendingObjectRef& pendingRef : unresolvedRefs)
+            {
+                if (outReport != nullptr)
+                {
+                    PrefabBrokenRef broken;
+                    if (pendingRef.ownerObjectPtr != nullptr)
+                    {
+                        const MEObject* owner = static_cast<const MEObject*>(pendingRef.ownerObjectPtr);
+                        broken.OwnerTemplateGuid = owner->GetGuid();
+                    }
+                    broken.PropertyPath = pendingRef.fieldPath;
+                    broken.PreviousTargetGuid = pendingRef.refGuid;
+                    broken.Reason = "ExternalUnresolvedOnCreate";
+                    outReport->BrokenRefs.push_back(broken);
+                }
+
+                if (pendingRef.ptrToPtr == nullptr)
+                {
+                    continue;
+                }
+
+                if (pendingRef.isRawPointer)
+                {
+                    *static_cast<void**>(pendingRef.ptrToPtr) = nullptr;
+                }
+                else if (pendingRef.expectedClass != nullptr)
+                {
+                    pendingRef.expectedClass->SetSharedPtr(std::shared_ptr<void>{}, pendingRef.ptrToPtr);
+                }
+            }
+
+            unresolvedRefs.clear();
+        }
+
         void FinalizeSceneObjects(Scene& scene)
         {
             scene.RebuildRuntimeGameObjectIndex();
@@ -153,6 +193,175 @@ namespace minEngine
             if (SceneManager::HasInstance())
             {
                 SceneManager::Get().ResolvePendingActivationsForScene(&scene);
+            }
+        }
+
+        std::shared_ptr<MEObject> FindSharedObjectInScene(Scene& scene, const GUID& guid)
+        {
+            if (guid.IsZero())
+            {
+                return nullptr;
+            }
+
+            for (const std::shared_ptr<GameObject>& gameObject : scene.GetAllGameObjects())
+            {
+                if (!gameObject)
+                {
+                    continue;
+                }
+
+                if (gameObject->GetGuid() == guid)
+                {
+                    return gameObject;
+                }
+
+                for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+                {
+                    if (component && component->GetGuid() == guid)
+                    {
+                        return component;
+                    }
+                }
+            }
+
+            return nullptr;
+        }
+
+        bool TryRebuildEditCloneMapFromParallelTrees(
+            Prefab& prefab,
+            Scene& stageScene,
+            ObjectCloneContext& outMap,
+            std::string* outError)
+        {
+            outMap.Clear();
+
+            GameObject* templateRoot = prefab.GetRootGameObject();
+            if (templateRoot == nullptr)
+            {
+                if (outError)
+                {
+                    *outError = "Cannot rebuild EditCloneMap: Prefab has no root.";
+                }
+                return false;
+            }
+
+            std::shared_ptr<GameObject> stageRoot;
+            size_t topLevelCount = 0;
+            for (const std::shared_ptr<GameObject>& gameObject : stageScene.GetAllGameObjects())
+            {
+                if (gameObject && gameObject->GetParent() == nullptr)
+                {
+                    ++topLevelCount;
+                    stageRoot = gameObject;
+                }
+            }
+
+            if (topLevelCount != 1 || !stageRoot)
+            {
+                if (outError)
+                {
+                    *outError = "Cannot rebuild EditCloneMap: Stage must have exactly one top-level GameObject.";
+                }
+                return false;
+            }
+
+            std::vector<GameObject*> templateSubtree;
+            std::vector<GameObject*> stageSubtree;
+            CollectSubtree(*templateRoot, templateSubtree);
+            CollectSubtree(*stageRoot, stageSubtree);
+            if (templateSubtree.size() != stageSubtree.size())
+            {
+                if (outError)
+                {
+                    *outError = "Cannot rebuild EditCloneMap: Stage/template subtree size mismatch.";
+                }
+                return false;
+            }
+
+            for (size_t index = 0; index < templateSubtree.size(); ++index)
+            {
+                GameObject* templateObject = templateSubtree[index];
+                GameObject* stageObject = stageSubtree[index];
+                if (templateObject == nullptr || stageObject == nullptr)
+                {
+                    if (outError)
+                    {
+                        *outError = "Cannot rebuild EditCloneMap: null GameObject in subtree.";
+                    }
+                    return false;
+                }
+
+                std::shared_ptr<GameObject> stageShared =
+                    std::dynamic_pointer_cast<GameObject>(FindSharedObjectInScene(stageScene, stageObject->GetGuid()));
+                if (!stageShared)
+                {
+                    if (outError)
+                    {
+                        *outError = "Cannot rebuild EditCloneMap: Stage GameObject not held by Scene.";
+                    }
+                    return false;
+                }
+
+                outMap.RecordClone(templateObject->GetGuid(), stageShared, stageObject->GetGuid());
+
+                const auto& templateComponents = templateObject->GetAllComponents();
+                const auto& stageComponents = stageObject->GetAllComponents();
+                if (templateComponents.size() != stageComponents.size())
+                {
+                    if (outError)
+                    {
+                        *outError = "Cannot rebuild EditCloneMap: component count mismatch.";
+                    }
+                    return false;
+                }
+
+                for (size_t componentIndex = 0; componentIndex < templateComponents.size(); ++componentIndex)
+                {
+                    const std::shared_ptr<Component>& templateComponent = templateComponents[componentIndex];
+                    const std::shared_ptr<Component>& stageComponent = stageComponents[componentIndex];
+                    if (!templateComponent || !stageComponent)
+                    {
+                        continue;
+                    }
+
+                    outMap.RecordClone(
+                        templateComponent->GetGuid(),
+                        stageComponent,
+                        stageComponent->GetGuid());
+                }
+            }
+
+            if (outMap.SourceToClonedGuid.find(prefab.GetRootGuid()) == outMap.SourceToClonedGuid.end())
+            {
+                if (outError)
+                {
+                    *outError = "Cannot rebuild EditCloneMap: rebuilt map still missing Prefab root.";
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        void RefreshEditCloneMapAfterWrite(
+            Scene& stageScene,
+            const ObjectCloneContext& writeContext,
+            ObjectCloneContext& inOutEditMap)
+        {
+            inOutEditMap.Clear();
+            for (const auto& pair : writeContext.SourceToClonedGuid)
+            {
+                const GUID& stageGuid = pair.first;
+                const GUID& templateGuid = pair.second;
+                std::shared_ptr<MEObject> stageObject = FindSharedObjectInScene(stageScene, stageGuid);
+                if (!stageObject && ObjectManager::HasInstance())
+                {
+                    stageObject = ObjectManager::Get().FindObject(stageGuid);
+                }
+                if (stageObject)
+                {
+                    inOutEditMap.RecordClone(templateGuid, stageObject, stageGuid);
+                }
             }
         }
     }
@@ -168,6 +377,9 @@ namespace minEngine
             ME_LOG(LogCore, Error, "PrefabUtility::CreatePrefabFromGameObject: empty subtree.");
             return nullptr;
         }
+
+        // Capture before clone/strip — external parent may leave local scale relative.
+        const Transform sourceWorldTransform = root.GetWorldTransform();
 
         std::shared_ptr<Prefab> prefab = NewObject<Prefab>(root.GetName().empty() ? "Prefab" : root.GetName());
         prefab->ClearTemplateObjects();
@@ -199,11 +411,10 @@ namespace minEngine
         const Serialization::SerializeResult resolveResult =
             Serialization::Serializer::ResolvePendingObjectRefs(unresolvedRefs);
         Serialization::Serializer::SetActiveCloneContext(nullptr);
-        if (!resolveResult.ok)
+        // Subtree Create may leave external parent/attach refs unresolved — clear and continue.
+        if (!resolveResult.ok || !unresolvedRefs.empty())
         {
-            ME_LOG(LogCore, Error, "PrefabUtility::CreatePrefabFromGameObject: resolve refs failed: {}",
-                resolveResult.message);
-            return nullptr;
+            ClearUnresolvedPendingRefs(unresolvedRefs, outReport);
         }
 
         const auto rootMapping = cloneContext.SourceToClonedGuid.find(root.GetGuid());
@@ -217,8 +428,10 @@ namespace minEngine
         GameObject* templateRoot = prefab->GetRootGameObject();
         if (templateRoot != nullptr)
         {
-            // Prefab roots are never parented outside the asset.
+            // Prefab roots are never parented outside the asset. Detach may be a no-op if the
+            // external parent link was already cleared — always bake source world Transform.
             templateRoot->DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
+            templateRoot->SetWorldTransform(sourceWorldTransform);
         }
 
         std::unordered_set<GUID, GUID::Hash> templateGuidSet;
@@ -465,7 +678,11 @@ namespace minEngine
 
         FinalizeSceneObjects(targetScene);
 
-        instanceRoot->SetWorldTransform(params.WorldTransform);
+        // Stage / default: keep cloned template root pose. Level spawn: apply explicit placement.
+        if (params.bApplyWorldTransform)
+        {
+            instanceRoot->SetWorldTransform(params.WorldTransform);
+        }
         if (params.AttachParent != nullptr)
         {
             instanceRoot->AttachToParent(params.AttachParent, AttachmentTransformRules::KeepWorldTransform);
@@ -496,27 +713,42 @@ namespace minEngine
         ObjectCloneContext& inOutEditMap,
         std::string* outError)
     {
-        const auto rootMapIter = inOutEditMap.SourceToClonedGuid.find(prefab.GetRootGuid());
+        auto rootMapIter = inOutEditMap.SourceToClonedGuid.find(prefab.GetRootGuid());
         if (rootMapIter == inOutEditMap.SourceToClonedGuid.end())
         {
-            if (outError)
+            ME_LOG(
+                LogCore,
+                Warn,
+                "WriteStageTreeToPrefab: EditCloneMap missing root {} (map size={}); attempting rebuild.",
+                prefab.GetRootGuid().ToString(),
+                inOutEditMap.SourceToClonedGuid.size());
+
+            std::string rebuildError;
+            if (!TryRebuildEditCloneMapFromParallelTrees(prefab, stageScene, inOutEditMap, &rebuildError))
             {
-                *outError = "EditCloneMap missing Prefab root mapping; cannot Save without Guid table.";
+                if (outError)
+                {
+                    *outError = rebuildError.empty()
+                        ? "EditCloneMap missing Prefab root mapping; cannot Save without Guid table."
+                        : rebuildError;
+                }
+                return false;
             }
-            return false;
+
+            rootMapIter = inOutEditMap.SourceToClonedGuid.find(prefab.GetRootGuid());
+            if (rootMapIter == inOutEditMap.SourceToClonedGuid.end())
+            {
+                if (outError)
+                {
+                    *outError = "EditCloneMap missing Prefab root mapping after rebuild.";
+                }
+                return false;
+            }
         }
 
         const GUID stageRootGuid = rootMapIter->second;
-        std::shared_ptr<GameObject> stageRoot;
-        for (const std::shared_ptr<GameObject>& gameObject : stageScene.GetAllGameObjects())
-        {
-            if (gameObject && gameObject->GetGuid() == stageRootGuid)
-            {
-                stageRoot = gameObject;
-                break;
-            }
-        }
-
+        std::shared_ptr<GameObject> stageRoot =
+            std::dynamic_pointer_cast<GameObject>(FindSharedObjectInScene(stageScene, stageRootGuid));
         if (!stageRoot)
         {
             if (outError)
@@ -588,6 +820,10 @@ namespace minEngine
             newTemplates.push_back(cloned);
         }
 
+        // Keep previous templates for rollback if Guid remap / resolve fails after Clear.
+        std::vector<std::shared_ptr<GameObject>> previousTemplates = prefab.GetTemplateObjects();
+        const GUID previousRootGuid = prefab.GetRootGuid();
+
         // Free previous template Guids before remapping new templates onto them.
         prefab.ClearTemplateObjects();
 
@@ -620,6 +856,28 @@ namespace minEngine
         Serialization::Serializer::SetActiveCloneContext(nullptr);
         if (!resolveResult.ok)
         {
+            prefab.ClearTemplateObjects();
+            for (const std::shared_ptr<GameObject>& previous : previousTemplates)
+            {
+                if (!previous)
+                {
+                    continue;
+                }
+
+                prefab.AddTemplateObject(previous);
+                if (ObjectManager::HasInstance())
+                {
+                    ObjectManager::Get().RegisterObject(previous);
+                    for (const std::shared_ptr<Component>& component : previous->GetAllComponents())
+                    {
+                        if (component)
+                        {
+                            ObjectManager::Get().RegisterObject(component);
+                        }
+                    }
+                }
+            }
+            prefab.SetRootGuid(previousRootGuid);
             if (outError)
             {
                 *outError = resolveResult.message;
@@ -630,6 +888,28 @@ namespace minEngine
         const GUID newRootGuid = writeContext.SourceToClonedGuid[stageRootGuid];
         if (newRootGuid.IsZero())
         {
+            prefab.ClearTemplateObjects();
+            for (const std::shared_ptr<GameObject>& previous : previousTemplates)
+            {
+                if (!previous)
+                {
+                    continue;
+                }
+
+                prefab.AddTemplateObject(previous);
+                if (ObjectManager::HasInstance())
+                {
+                    ObjectManager::Get().RegisterObject(previous);
+                    for (const std::shared_ptr<Component>& component : previous->GetAllComponents())
+                    {
+                        if (component)
+                        {
+                            ObjectManager::Get().RegisterObject(component);
+                        }
+                    }
+                }
+            }
+            prefab.SetRootGuid(previousRootGuid);
             if (outError)
             {
                 *outError = "Failed to resolve Prefab root Guid after Stage writeback.";
@@ -658,6 +938,28 @@ namespace minEngine
         std::string validateError;
         if (!prefab.ValidateSingleRoot(&validateError))
         {
+            prefab.ClearTemplateObjects();
+            for (const std::shared_ptr<GameObject>& previous : previousTemplates)
+            {
+                if (!previous)
+                {
+                    continue;
+                }
+
+                prefab.AddTemplateObject(previous);
+                if (ObjectManager::HasInstance())
+                {
+                    ObjectManager::Get().RegisterObject(previous);
+                    for (const std::shared_ptr<Component>& component : previous->GetAllComponents())
+                    {
+                        if (component)
+                        {
+                            ObjectManager::Get().RegisterObject(component);
+                        }
+                    }
+                }
+            }
+            prefab.SetRootGuid(previousRootGuid);
             if (outError)
             {
                 *outError = validateError;
@@ -665,16 +967,27 @@ namespace minEngine
             return false;
         }
 
-        // Refresh Template→Stage map for continued editing.
-        inOutEditMap.Clear();
-        for (const auto& pair : writeContext.SourceToClonedGuid)
+        // Refresh Template→Stage map from Scene-held objects (not ObjectManager alone).
+        RefreshEditCloneMapAfterWrite(stageScene, writeContext, inOutEditMap);
+
+        if (inOutEditMap.SourceToClonedGuid.find(prefab.GetRootGuid()) == inOutEditMap.SourceToClonedGuid.end())
         {
-            const GUID& stageGuid = pair.first;
-            const GUID& templateGuid = pair.second;
-            std::shared_ptr<MEObject> stageObject = ObjectManager::Get().FindObject(stageGuid);
-            if (stageObject)
+            ME_LOG(
+                LogCore,
+                Warn,
+                "WriteStageTreeToPrefab: map refresh missed root {}; rebuilding from parallel trees.",
+                prefab.GetRootGuid().ToString());
+
+            std::string rebuildError;
+            if (!TryRebuildEditCloneMapFromParallelTrees(prefab, stageScene, inOutEditMap, &rebuildError))
             {
-                inOutEditMap.RecordClone(templateGuid, stageObject, stageGuid);
+                if (outError)
+                {
+                    *outError = rebuildError.empty()
+                        ? "EditCloneMap lost Prefab root mapping after Save refresh."
+                        : rebuildError;
+                }
+                return false;
             }
         }
 

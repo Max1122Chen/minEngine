@@ -1,6 +1,24 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（ASSET-F03 Done）
+Last updated: 2026-09-16（BUG-CORE-003 Fixed）
+
+### 2026-09-16 - BUG-CORE-003 Fixed：全属性 Propagate + F24 S02/S05 收口
+- **Propagate / RevertInstance：** mapping 上反射叶子；跳过根 Transform / override / Instanced / Delegate / 非资产 ObjectPtr。
+- **Editor：** `ApplySetObjectProperty` → `TryRecordPropertyOverride`；Level 删/重挂 → `ValidateEdit`；Stage Save 传播后 `MarkDocumentSceneDirty`。
+- **验证：** `test prefab-overrides` 5/5、`test prefab` 14/14；Editor 已编。
+- **仍 Out：** Added/RemovedComponent、Apply→Prefab、Instantiate 偏移、Inspector 蓝字。
+- **Next：** 手验；准备 commit；CORE-F26 Review。
+
+### 2026-09-16 - 登记 BUG-CORE-003：传播未扫反射属性
+- **结论：** F24 §3.4.3 未落地；实现只拷 Name + 非根 Transform；Editor 未接 TryRecord。
+- **扩包后实现：** 见上条 Fixed。
+
+### 2026-09-16 - BUG-CORE-002 Fixed：Stage Transform / Create Scale / Save map
+- **Instantiate：** `bApplyWorldTransform`（默认 false）；Hierarchy 显式 true+identity；Stage 保留模板根姿态。
+- **Create：** 捕获源世界 Transform 并 bake；外部父/attach unresolved 清空后继续（不再整单失败）。
+- **Save map：** `RemapObjectGuid` 仅卸本对象槽（修 Clone 根偷源 Guid）；WriteStageTree 用 Scene 刷新 map + 并行树 rebuild + 失败回滚。
+- **验证：** `test prefab` 12/12、`test prefab-overrides` 3/3 PASS；`Editor`+`minEngineTests` 已编。
+- **Next：** 手验 Create→Stage→Save→Propagate；准备 commit；CORE-F26 仍 Review。
 
 ### 2026-09-15 - ASSET-F03 Done：Create Asset 身份契约
 - **RegisterAsset：** 可选 preferredGuid；首次 .meta 播种对象 Guid（禁另造 Guid）。

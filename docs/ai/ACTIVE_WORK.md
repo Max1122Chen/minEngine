@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（ASSET-F03 **Done**；下一刀 ED-F16-B 相机/灯）  
+Last updated: 2026-09-16（BUG-CORE-003 **Fixed**；CORE-F26 / ED-F16-B Review）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,16 +11,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/prefab`）：ED-F16 Amendment B（Stage 相机 + 临时灯）**
+**Primary（`feat/prefab`）：Prefab 稳定性收口**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 1 | **`ED-F16`** Amendment B | Stage 独立相机 + 临时默认光 | **Review** | [Design §9](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
-| 2 | **`ASSET-F03`** | Create Asset 身份契约 | **Done** | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) |
-| 3 | **`CORE-F25`** | owning-Scene RenderScene | **Done** | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) |
+| 1 | **`CORE-F26`** | Prefab 删除与实例断链 | **Review** | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) |
+| 2 | **`ED-F16`** Amendment B | Stage 独立相机 + 临时灯 | **Review** | [Design §9](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
+| 3 | **`BUG-CORE-003`** | Propagate + F24 S02/S05 收口 | **Fixed** | [Bug](./bugs/BUG-CORE-003.md) |
+| 4 | **`BUG-CORE-002`** | Stage Transform / Save map | **Fixed** | [Bug](./bugs/BUG-CORE-002.md) |
+| 5 | **`ASSET-F03`** | Create 身份契约 | **Done** | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) |
 
-**下一刀：** 实现 ED-F16-B（相机切换 + Stage 临时 Directional）；手验 CastShadows Propagate。
-**已落地：** ASSET-F03 — Create/Save Prefab Guid 与实例表对齐。
+**下一刀：** 本轮先 commit（Stage Transform / 全属性 Propagate + Editor Override 挂钩）。随后 **一并实现** CORE-F26 + ED-F16-B。Instantiate 偏移后置。
 
 **已知缺口（已登记，勿顺手大修）：**
 | ID | 摘要 | Status |
@@ -31,7 +32,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/prefab` | ASSET-F03 / F16-B | **Review** — Guid→F03；相机仍 F16-B |
+| `feat/prefab` | CORE-F26 / ED-F16-B | Review — 删除断链；Stage 相机/灯 |
 | `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
 | `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |

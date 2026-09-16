@@ -164,6 +164,8 @@ namespace minEngine
         void PostRestoreSceneObject(GameObject& gameObject);
 
         void MarkSceneDirty();
+        /** Dirty the Level document even while Prefab Stage is active (e.g. after Propagate). */
+        void MarkDocumentSceneDirty();
         void ClearSceneDirty() { m_SceneDirty = false; }
         bool IsSceneDirty() const { return m_SceneDirty; }
 

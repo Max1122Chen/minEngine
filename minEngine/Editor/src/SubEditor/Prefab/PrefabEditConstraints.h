@@ -22,6 +22,11 @@ namespace minEngine
             const SceneEditor& sceneEditor,
             uint64_t gameObjectId,
             std::string* outError = nullptr);
+        static bool AllowReparentGameObject(
+            const SceneEditor& sceneEditor,
+            uint64_t gameObjectId,
+            uint64_t newParentId,
+            std::string* outError = nullptr);
         static bool AllowSaveAsScene(const SceneEditor& sceneEditor, std::string* outError = nullptr);
         static bool AllowEnterPlay(const SceneEditor& sceneEditor, std::string* outError = nullptr);
         static bool AllowCreatePrefab(const SceneEditor& sceneEditor, std::string* outError = nullptr);

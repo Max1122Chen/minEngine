@@ -93,6 +93,7 @@ namespace minEngine
 
         PrefabInstantiateParams params;
         params.WorldTransform.Position = Vector3(10.0f, 0.0f, 0.0f);
+        params.bApplyWorldTransform = true;
         params.bRegisterPrefabInstance = true;
 
         std::string error;
@@ -304,5 +305,145 @@ namespace minEngine
         Testing::TestAccess<AssetManager>::SetInstance(nullptr);
         PathRegistry::Get().ClearProjectRoots();
         std::filesystem::remove_all(tempRoot, removeError);
+    }
+
+    TEST_CASE("prefab instantiate preserves template transform unless applied [smoke]")
+    {
+        PrefabTestScope scope;
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-xform-src");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("XformRoot");
+        auto rootComponent = root->AddComponent<SceneComponent>();
+        REQUIRE(rootComponent != nullptr);
+        rootComponent->SetPosition(Vector3(3.0f, 4.0f, 5.0f));
+        rootComponent->SetScale(Vector3(2.0f, 2.0f, 2.0f));
+
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
+        REQUIRE(static_cast<bool>(prefab));
+        GameObject* templateRoot = prefab->GetRootGameObject();
+        REQUIRE(templateRoot != nullptr);
+        REQUIRE(templateRoot->GetRootComponent() != nullptr);
+        CHECK(templateRoot->GetRootComponent()->GetPosition().x == doctest::Approx(3.0f));
+        CHECK(templateRoot->GetRootComponent()->GetScale().x == doctest::Approx(2.0f));
+
+        const std::shared_ptr<Scene> stage = NewObject<Scene>("StageXform");
+        stage->SetSceneType(ESceneType::Editor);
+        stage->EnsureRenderScene();
+
+        PrefabInstantiateParams stageParams;
+        stageParams.bRegisterPrefabInstance = false;
+        ObjectCloneContext editMap;
+        const std::shared_ptr<GameObject> stageRoot =
+            PrefabUtility::Instantiate(*prefab, *stage, stageParams, &editMap, nullptr);
+        REQUIRE(static_cast<bool>(stageRoot));
+        REQUIRE(stageRoot->GetRootComponent() != nullptr);
+        CHECK(stageRoot->GetRootComponent()->GetPosition().x == doctest::Approx(3.0f));
+        CHECK(stageRoot->GetRootComponent()->GetScale().x == doctest::Approx(2.0f));
+        CHECK(editMap.SourceToClonedGuid.find(prefab->GetRootGuid()) != editMap.SourceToClonedGuid.end());
+
+        const std::shared_ptr<Scene> level = SceneManager::Get().CreateNewScene("prefab-xform-level");
+        REQUIRE(static_cast<bool>(level));
+        level->SetSceneType(ESceneType::Editor);
+
+        PrefabInstantiateParams levelParams;
+        levelParams.bRegisterPrefabInstance = true;
+        levelParams.bApplyWorldTransform = true;
+        levelParams.WorldTransform.Position = Vector3(10.0f, 0.0f, 0.0f);
+        const std::shared_ptr<GameObject> levelRoot =
+            PrefabUtility::Instantiate(*prefab, *level, levelParams, static_cast<std::string*>(nullptr));
+        REQUIRE(static_cast<bool>(levelRoot));
+        REQUIRE(levelRoot->GetRootComponent() != nullptr);
+        CHECK(levelRoot->GetRootComponent()->GetPosition().x == doctest::Approx(10.0f));
+    }
+
+    TEST_CASE("prefab create bakes source world scale [smoke]")
+    {
+        PrefabTestScope scope;
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-world-scale");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> parent = scene->CreateGameObject();
+        parent->Rename("ScaledParent");
+        parent->AddComponent<SceneComponent>()->SetScale(Vector3(2.0f, 2.0f, 2.0f));
+
+        const std::shared_ptr<GameObject> child = scene->CreateGameObject();
+        child->Rename("ChildRoot");
+        child->AddComponent<SceneComponent>()->SetScale(Vector3(3.0f, 3.0f, 3.0f));
+        REQUIRE(child->AttachToParent(parent.get(), AttachmentTransformRules::KeepRelativeTransform));
+
+        const Transform sourceWorldBefore = child->GetWorldTransform();
+        CHECK(sourceWorldBefore.Scale.x == doctest::Approx(6.0f));
+
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*child);
+        REQUIRE(static_cast<bool>(prefab));
+
+        const Transform sourceWorldAfter = child->GetWorldTransform();
+        CHECK(sourceWorldAfter.Scale.x == doctest::Approx(sourceWorldBefore.Scale.x));
+        CHECK(sourceWorldAfter.Position.x == doctest::Approx(sourceWorldBefore.Position.x));
+
+        GameObject* templateRoot = prefab->GetRootGameObject();
+        REQUIRE(templateRoot != nullptr);
+        CHECK(templateRoot->GetParent() == nullptr);
+        REQUIRE(templateRoot->GetRootComponent() != nullptr);
+        CHECK(templateRoot->GetRootComponent()->GetScale().x == doctest::Approx(6.0f));
+    }
+
+    TEST_CASE("prefab stage writeback twice keeps edit map root [smoke]")
+    {
+        PrefabTestScope scope;
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-writeback-2");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("WB2Root");
+        root->AddComponent<SceneComponent>()->SetPosition(Vector3(1.0f, 0.0f, 0.0f));
+
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
+        REQUIRE(static_cast<bool>(prefab));
+        const GUID templateRootGuid = prefab->GetRootGuid();
+
+        std::shared_ptr<Scene> stage = NewObject<Scene>("Stage2");
+        stage->SetSceneType(ESceneType::Editor);
+        stage->EnsureRenderScene();
+
+        PrefabInstantiateParams params;
+        params.bRegisterPrefabInstance = false;
+        ObjectCloneContext editMap;
+        std::shared_ptr<GameObject> stageRoot =
+            PrefabUtility::Instantiate(*prefab, *stage, params, &editMap, nullptr);
+        REQUIRE(static_cast<bool>(stageRoot));
+        REQUIRE(editMap.SourceToClonedGuid.find(templateRootGuid) != editMap.SourceToClonedGuid.end());
+
+        stageRoot->GetRootComponent()->SetPosition(Vector3(2.0f, 0.0f, 0.0f));
+        std::string writeError;
+        REQUIRE(PrefabUtility::WriteStageTreeToPrefab(*stage, *prefab, editMap, &writeError));
+        CHECK(writeError.empty());
+        CHECK(prefab->GetRootGuid() == templateRootGuid);
+        CHECK(editMap.SourceToClonedGuid.find(prefab->GetRootGuid()) != editMap.SourceToClonedGuid.end());
+
+        // Simulate the old bug: ObjectManager lost the stage root Guid slot.
+        if (ObjectManager::HasInstance())
+        {
+            ObjectManager::Get().UnregisterObject(stageRoot->GetGuid());
+        }
+
+        stageRoot->GetRootComponent()->SetPosition(Vector3(3.0f, 0.0f, 0.0f));
+        writeError.clear();
+        REQUIRE(PrefabUtility::WriteStageTreeToPrefab(*stage, *prefab, editMap, &writeError));
+        CHECK(writeError.empty());
+        CHECK(prefab->GetRootGuid() == templateRootGuid);
+        CHECK(editMap.SourceToClonedGuid.find(prefab->GetRootGuid()) != editMap.SourceToClonedGuid.end());
+        GameObject* writtenRoot = prefab->GetRootGameObject();
+        REQUIRE(writtenRoot != nullptr);
+        REQUIRE(writtenRoot->GetRootComponent() != nullptr);
+        CHECK(writtenRoot->GetRootComponent()->GetPosition().x == doctest::Approx(3.0f));
     }
 }

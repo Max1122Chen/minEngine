@@ -61,7 +61,19 @@ namespace minEngine
             return false;
         }
 
-        UnregisterObject(object->GetGuid());
+        const GUID oldGuid = object->GetGuid();
+        if (!oldGuid.IsZero())
+        {
+            // Only erase the ObjectManager slot when it still points at *this* object.
+            // Prefab clone deserializes Guid from the source buffer first; unregistering by Guid
+            // alone would steal the source object's registry entry.
+            const std::shared_ptr<MEObject> registered = FindObject(oldGuid);
+            if (registered && registered.get() == object.get())
+            {
+                UnregisterObject(oldGuid);
+            }
+        }
+
         object->SetGuid(newGuid);
         RegisterObject(object);
         return true;
