@@ -1,12 +1,15 @@
 #include "PrefabTest.h"
 
+#include "Access/AssetManagerTestAccess.h"
 #include "Access/ObjectManagerTestAccess.h"
 #include "Access/SceneManagerTestAccess.h"
 
+#include "AssetManager.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Object/ObjectCloneContext.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
@@ -245,5 +248,61 @@ namespace minEngine
         CHECK(writtenRoot->GetName() == "EditedRoot");
         REQUIRE(writtenRoot->GetRootComponent() != nullptr);
         CHECK(writtenRoot->GetRootComponent()->GetPosition().x == doctest::Approx(9.0f));
+    }
+
+    TEST_CASE("prefab create save keeps asset guid with instance record [smoke]")
+    {
+        PrefabTestScope scope;
+
+        AssetManager assetManager;
+        Testing::TestAccess<AssetManager>::SetInstance(&assetManager);
+        assetManager.Initialize();
+
+        const std::filesystem::path tempRoot =
+            std::filesystem::temp_directory_path() / "minEngine_PrefabCreateGuidTest";
+        std::error_code removeError;
+        std::filesystem::remove_all(tempRoot, removeError);
+        const std::filesystem::path projectRoot = tempRoot / "Project";
+        const std::filesystem::path contentRoot = projectRoot / "Assets" / "Prefabs";
+        std::filesystem::create_directories(contentRoot);
+        PathRegistry::Get().SetProjectRoots(projectRoot);
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("prefab-guid");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("GuidRoot");
+        root->AddComponent<SceneComponent>();
+
+        const GUID rootGuid = root->GetGuid();
+        const std::shared_ptr<Prefab> prefab = PrefabUtility::CreatePrefabFromGameObject(*root);
+        REQUIRE(static_cast<bool>(prefab));
+
+        const PrefabInstanceRecord* recordBeforeSave =
+            PrefabUtility::FindInstanceRecord(*scene, rootGuid);
+        REQUIRE(recordBeforeSave != nullptr);
+        const GUID recordedGuid = recordBeforeSave->PrefabAssetGuid;
+        CHECK(recordedGuid == prefab->GetGuid());
+
+        const std::string assetPath = "Assets/Prefabs/GuidCube.meprefab";
+        std::string saveError;
+        REQUIRE(PrefabUtility::SavePrefabAsset(*prefab, assetPath, &saveError));
+        CHECK(saveError.empty());
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(assetPath);
+        REQUIRE(meta != nullptr);
+        CHECK(meta->Guid == prefab->GetGuid());
+        CHECK(meta->Guid == recordedGuid);
+
+        const PrefabInstanceRecord* recordAfterSave =
+            PrefabUtility::FindInstanceRecord(*scene, rootGuid);
+        REQUIRE(recordAfterSave != nullptr);
+        CHECK(recordAfterSave->PrefabAssetGuid == meta->Guid);
+
+        assetManager.Shutdown();
+        Testing::TestAccess<AssetManager>::SetInstance(nullptr);
+        PathRegistry::Get().ClearProjectRoots();
+        std::filesystem::remove_all(tempRoot, removeError);
     }
 }

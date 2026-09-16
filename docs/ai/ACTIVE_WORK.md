@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-15（CORE-F25 **Done** — owning-Scene RenderScene）  
+Last updated: 2026-09-15（ASSET-F03 **Done**；下一刀 ED-F16-B 相机/灯）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,18 +11,16 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/prefab`）：ED-F16 + CORE-F25 收尾 — 准备 commit / Prefab 手验**
+**Primary（`feat/prefab`）：ED-F16 Amendment B（Stage 相机 + 临时灯）**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 1 | **`CORE-F25`** | 组件从 owning Scene 取 RenderScene | **Done** | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) |
-| 2 | **`CORE-F23`** | Prefab 资产 + Create/Instantiate | **Done** | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) |
-| 3 | **`CORE-F24`** | 受限 Override + default 传播 | **Done** | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) |
-| 4 | **`ED-F16`** | Prefab 文档 Mode + Amendment A | **Done** | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
+| 1 | **`ED-F16`** Amendment B | Stage 独立相机 + 临时默认光 | **Review** | [Design §9](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
+| 2 | **`ASSET-F03`** | Create Asset 身份契约 | **Done** | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) |
+| 3 | **`CORE-F25`** | owning-Scene RenderScene | **Done** | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) |
 
-**下一刀：** 准备 commit（见下方草稿）→ 合入评估。随后补齐：
-1. Prefab Stage **相机隔离**（进出 Stage 快照/恢复 flycam；不共享 Level 相机）
-2. Prefab Stage **缺默认光源**（Stage 内可见照明；方案待拍：临时 Directional / 继承 Level 环境 / 资产自带）
+**下一刀：** 实现 ED-F16-B（相机切换 + Stage 临时 Directional）；手验 CastShadows Propagate。
+**已落地：** ASSET-F03 — Create/Save Prefab Guid 与实例表对齐。
 
 **已知缺口（已登记，勿顺手大修）：**
 | ID | 摘要 | Status |
@@ -33,7 +31,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/prefab` | CORE-F25 / ED-F16 | **Done** — 待手验 + commit |
+| `feat/prefab` | ASSET-F03 / F16-B | **Review** — Guid→F03；相机仍 F16-B |
 | `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
 | `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |

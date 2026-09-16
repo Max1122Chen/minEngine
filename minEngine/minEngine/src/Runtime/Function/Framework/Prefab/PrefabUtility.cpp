@@ -313,12 +313,37 @@ namespace minEngine
 
         if (assetManager.FindAssetMetaByPath(projectRelativePath) == nullptr)
         {
-            const AssetMeta meta = assetManager.RegisterAsset(projectRelativePath, "Prefab");
+            const GUID preferredGuid = prefab.GetGuid();
+
+            AssetMeta pendingMeta;
+            pendingMeta.AssetName = absolutePath.stem().string();
+            pendingMeta.AssetPath = projectRelativePath;
+            pendingMeta.AssetType = "Prefab";
+            pendingMeta.Guid = preferredGuid;
+            if (!assetManager.WriteOrUpdateMetaFile(pendingMeta))
+            {
+                if (outError)
+                {
+                    *outError = "Failed to write Prefab .meta before RegisterAsset.";
+                }
+                return false;
+            }
+
+            const AssetMeta meta = assetManager.RegisterAsset(projectRelativePath, "Prefab", &preferredGuid);
             if (meta.AssetPath.empty())
             {
                 if (outError)
                 {
                     *outError = "RegisterAsset failed for Prefab.";
+                }
+                return false;
+            }
+
+            if (meta.Guid != preferredGuid)
+            {
+                if (outError)
+                {
+                    *outError = "RegisterAsset returned a different Prefab Guid than the in-memory asset.";
                 }
                 return false;
             }

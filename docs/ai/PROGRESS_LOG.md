@@ -1,6 +1,13 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（CORE-F25 Done）
+Last updated: 2026-09-15（ASSET-F03 Done）
+
+### 2026-09-15 - ASSET-F03 Done：Create Asset 身份契约
+- **RegisterAsset：** 可选 preferredGuid；首次 .meta 播种对象 Guid（禁另造 Guid）。
+- **CreateAsset：** Scene/Material/Prefab/AnimationGraph 单对象返回 + CacheCreatedAsset（禁 Load 换身）。
+- **Prefab Save：** 先写 .meta 再 Register；实例表 PrefabAssetGuid 与资产 Guid 对齐。
+- **验证：** 	est asset-manager / 	est prefab / 	est prefab-overrides PASS。
+- **已知余量：** Prefab default 传播仍有手验问题（另议）；ED-F16-B 相机/灯未实现。
 
 ### 2026-09-15 - CORE-F25 Done：owning-Scene RenderScene
 - **API：** `Component::GetOwningScene` / `GetOwningRenderScene`（Ensure）/ `GetOwningRenderSceneIfPresent`（Remove/dtor）。
@@ -664,6 +671,7 @@ Last updated: 2026-09-15（CORE-F25 Done）
 - Next: User experiments via `MAX_*_SHADOW_MAPS` / `MAX_CASCADES` or scene Cast Shadow toggles; then fix P0鈥揚3.
 
 Last updated: 2026-09-10（merge wave: +ui 完成）
+
 
 ## Purpose
 

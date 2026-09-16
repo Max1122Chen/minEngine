@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `CORE-F23`
 - **Type:** Feature
-- **Status:** Done
+- **Status:** Done (Amendment B Guid -> ASSET-F03; Prefab keeps Propagate DoD)
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-15
 - **Branch:** `feat/prefab`
@@ -599,6 +599,24 @@ Content Browser：F23 可只保证 Load/Save/CreateAsset 管线；双击打开 �
 
 ---
 
+## 9) Amendment B — Prefab Guid / Propagate (**Guid root cause -> ASSET-F03**)
+
+> **Upgrade (2026-09-15):** Hierarchy Create Prefab then Stage edits defaults (e.g. CastShadows) do not update the source instance because Create uses temp Guid A, RegisterAsset invents meta Guid B, and CreateAsset may Load a new object — while PrefabInstanceRecord already stored A.
+> This is an **Asset Create anti-pattern**. Unified fix: [ASSET-F03](../../Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md).
+> This Amendment is **not** a standalone Guid implementation; F23 keeps instance-record timing + Propagate acceptance after F03 lands.
+
+### 9.1 Root-cause summary
+
+1. CreatePrefabFromGameObject: Prefab(A) + PrefabInstanceRecord.PrefabAssetGuid = A
+2. SavePrefabAsset -> RegisterAsset -> meta Guid **B**; records/object not realigned
+3. Stage Load yields Prefab(B); Propagate filters by Guid and skips Level records(A)
+
+### 9.2 Acceptance (depends on ASSET-F03 Done)
+
+- [ ] After Create Prefab: `PrefabInstanceRecord.PrefabAssetGuid == AssetMeta.Guid == Prefab.GetGuid()`
+- [ ] Stage edit non-override property -> Save -> same-session source instance updates
+- [ ] `test prefab` / `test prefab-overrides` green
+
 ## 变更记录
 
 | 日期 | 说明 |
@@ -607,4 +625,5 @@ Content Browser：F23 可只保证 Load/Save/CreateAsset 管线；双击打开 �
 | 2026-09-15 | 类名定稿：**`Prefab`**（拒绝 `PrefabAsset`）；资产类型 Id 仍为 `"Prefab"`，扩展名 `.meprefab` |
 | 2026-09-15 | **Done**：S01–S05 落地；`test prefab` PASS；开放点 O1–O5 按默认全部接受 |
 | 2026-09-15 | UTF-8 重写：修复编码损坏；与实现对齐 `m_TemplateObjects` + `m_RootGuid` |
+| 2026-09-15 | Amendment B: Guid root cause folded into [ASSET-F03](../../Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md); F23 keeps Propagate DoD |
 | 2026-09-15 | API note（ED-F16 Amendment A）：计划增加 `Scene::Instantiate` 薄封装转发 `PrefabUtility::Instantiate`（契约不变；详见 ED-F16 §3.10.5） |

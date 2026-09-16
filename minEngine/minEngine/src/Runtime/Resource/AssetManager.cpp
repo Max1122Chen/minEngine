@@ -328,7 +328,10 @@ namespace minEngine
         }
     }
 
-    AssetMeta AssetManager::RegisterAsset(const std::string& path, const std::string& assetTypeId)
+    AssetMeta AssetManager::RegisterAsset(
+        const std::string& path,
+        const std::string& assetTypeId,
+        const GUID* preferredGuid)
     {
         const std::string projectRelativePath = NormalizeProjectRelativeAssetPath(path);
         if (projectRelativePath.empty())
@@ -406,6 +409,8 @@ namespace minEngine
             return true;
         };
 
+        const bool hasPreferredGuid = preferredGuid != nullptr && !preferredGuid->IsZero();
+
         AssetMeta meta;
         bool loadedExistingMeta = false;
         if (std::filesystem::exists(metaPath))
@@ -422,7 +427,7 @@ namespace minEngine
             meta.AssetName = inferredAssetName;
             meta.AssetPath = projectRelativePath;
             meta.AssetType = assetTypeId;
-            meta.Guid = GenerateGUID();
+            meta.Guid = hasPreferredGuid ? *preferredGuid : GenerateGUID();
 
             if (!saveMetaToFile(meta))
             {
@@ -458,7 +463,7 @@ namespace minEngine
 
             if (meta.Guid.High == 0 && meta.Guid.Low == 0)
             {
-                meta.Guid = GenerateGUID();
+                meta.Guid = hasPreferredGuid ? *preferredGuid : GenerateGUID();
                 needsRewrite = true;
             }
 
@@ -471,6 +476,16 @@ namespace minEngine
         const AssetMeta* existingGuidMeta = m_Registry.FindMetaByGuid(meta.Guid);
         if (existingGuidMeta != nullptr && existingGuidMeta->AssetPath != projectRelativePath)
         {
+            if (hasPreferredGuid && meta.Guid == *preferredGuid)
+            {
+                ME_LOG(LogAsset, Error,
+                    "RegisterAsset: preferred Guid '{}' for '{}' collides with '{}'.",
+                    preferredGuid->ToString(),
+                    projectRelativePath,
+                    existingGuidMeta->AssetPath);
+                return AssetMeta();
+            }
+
             ME_LOG(LogAsset, Warn, 
                 "GUID collision detected between '{}' and '{}'. Regenerating GUID for current asset.",
                 existingGuidMeta->AssetPath,
@@ -491,6 +506,34 @@ namespace minEngine
                      meta.Guid.ToString());
 
         return meta;
+    }
+
+    void AssetManager::CacheCreatedAsset(
+        const std::string& projectRelativePath,
+        const std::shared_ptr<Asset>& asset)
+    {
+        if (!asset)
+        {
+            return;
+        }
+
+        const std::string registryKey = NormalizeProjectRelativeAssetPath(projectRelativePath);
+        if (registryKey.empty())
+        {
+            return;
+        }
+
+        AssetMeta* meta = const_cast<AssetMeta*>(FindAssetMetaByPath(registryKey));
+        if (meta != nullptr)
+        {
+            asset->SetMeta(meta);
+            if (asset->GetGuid() != meta->Guid)
+            {
+                asset->SetGuid(meta->Guid);
+            }
+        }
+
+        m_LoadedAssetCache[registryKey] = asset;
     }
 
     ImportAssetResult AssetManager::ImportAsset(
@@ -2117,7 +2160,8 @@ namespace minEngine
         }
 
         const std::string sceneName = absolutePath.stem().string();
-        std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, GenerateGUID());
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, assetGuid);
         scene->Reset();
         scene->SetSceneName(sceneName);
         scene->EnsureRenderScene();
@@ -2131,7 +2175,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(absolutePath);
 
-        AssetMeta meta = RegisterAsset(relativePath, "Scene");
+        AssetMeta meta = RegisterAsset(relativePath, "Scene", &assetGuid);
         if (meta.AssetPath.empty())
         {
             ME_LOG(LogAsset, Error, "CreateAsset<Scene>: RegisterAsset failed for '{}'.", relativePath);
@@ -2146,7 +2190,8 @@ namespace minEngine
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
         ME_LOG(LogAsset, Info, "CreateAsset<Scene>: created '{}'.", meta.AssetPath);
-        return LoadAsset<Scene>(meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, scene);
+        return scene;
     }
 
     template<>
@@ -2175,7 +2220,8 @@ namespace minEngine
         }
 
         const std::string prefabName = absolutePath.stem().string();
-        std::shared_ptr<Prefab> prefab = NewObject<Prefab>(prefabName, nullptr, GenerateGUID());
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Prefab> prefab = NewObject<Prefab>(prefabName, nullptr, assetGuid);
         std::shared_ptr<GameObject> rootObject = NewObject<GameObject>(prefabName, prefab.get());
         rootObject->AddComponent<SceneComponent>();
         prefab->AddTemplateObject(rootObject);
@@ -2190,7 +2236,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(absolutePath);
 
-        AssetMeta meta = RegisterAsset(relativePath, "Prefab");
+        AssetMeta meta = RegisterAsset(relativePath, "Prefab", &assetGuid);
         if (meta.AssetPath.empty())
         {
             ME_LOG(LogAsset, Error, "CreateAsset<Prefab>: RegisterAsset failed for '{}'.", relativePath);
@@ -2200,7 +2246,8 @@ namespace minEngine
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
         ME_LOG(LogAsset, Info, "CreateAsset<Prefab>: created '{}'.", meta.AssetPath);
-        return LoadAsset<Prefab>(meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, prefab);
+        return prefab;
     }
 
     template<>
@@ -2229,7 +2276,8 @@ namespace minEngine
         }
 
         const std::string materialName = absolutePath.stem().string();
-        std::shared_ptr<Material> material = NewObject<Material>(materialName, nullptr, GenerateGUID());
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Material> material = NewObject<Material>(materialName, nullptr, assetGuid);
         material->m_ShadingModel = MaterialShadingModel::Unlit;
 
         if (!WriteMaterialAssetFile(*this, relativePath, *material))
@@ -2241,7 +2289,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(absolutePath);
 
-        AssetMeta meta = RegisterAsset(relativePath, "Material");
+        AssetMeta meta = RegisterAsset(relativePath, "Material", &assetGuid);
         if (meta.AssetPath.empty())
         {
             ME_LOG(LogAsset, Error, "CreateAsset<Material>: RegisterAsset failed for '{}'.", relativePath);
@@ -2251,7 +2299,8 @@ namespace minEngine
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
         ME_LOG(LogAsset, Info, "CreateAsset<Material>: created '{}'.", meta.AssetPath);
-        return LoadAsset<Material>(meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, material);
+        return material;
     }
     template<>
     bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const
@@ -2294,13 +2343,14 @@ namespace minEngine
         }
 
         const std::string graphName = absolutePath.stem().string();
-        std::shared_ptr<AnimationGraph> graph = NewObject<AnimationGraph>(graphName, nullptr, GenerateGUID());
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<AnimationGraph> graph = NewObject<AnimationGraph>(graphName, nullptr, assetGuid);
 
         AssetMeta tempMeta;
         tempMeta.AssetPath = relativePath;
         tempMeta.AssetName = graphName;
         tempMeta.AssetType = "AnimationGraph";
-        tempMeta.Guid = graph->GetGuid();
+        tempMeta.Guid = assetGuid;
 
         std::string saveError;
         if (!AnimationGraphLoader::Save(tempMeta, *graph, &saveError))
@@ -2313,7 +2363,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(absolutePath);
 
-        AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph");
+        AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph", &assetGuid);
         if (meta.AssetPath.empty())
         {
             ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: RegisterAsset failed for '{}'.", relativePath);
@@ -2323,7 +2373,8 @@ namespace minEngine
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
         ME_LOG(LogAsset, Info, "CreateAsset<AnimationGraph>: created '{}'.", meta.AssetPath);
-        return LoadAsset<AnimationGraph>(meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, graph);
+        return graph;
     }
 
 }

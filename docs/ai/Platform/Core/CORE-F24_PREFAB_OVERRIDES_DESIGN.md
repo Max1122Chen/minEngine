@@ -413,3 +413,4 @@ F24 **可以**在无 F16 时用单测 + 手写 JSON 验收。
 | 2026-09-15 | Draft：受限 override、传播、规则表、与 F23/F16 边界 |
 | 2026-09-15 | 对齐 F23 类名 `Prefab`（非 PrefabAsset）；依赖改为 F23 Done；UTF-8 重写修复编码损坏 |
 | 2026-09-15 | **Done：** PropertyValue override、Propagate（开 Scene）、RevertProperty、ValidateEdit；`test prefab-overrides`；payload=`bin:`+hex |
+| 2026-09-15 | Note：Propagate 按 `PrefabAssetGuid == prefab.GetGuid()` 过滤；Create→首次 Register 若 Guid 失配会导致「改 Prefab default 源树不动」——根因与修复见 **CORE-F23 Amendment B**（非 Propagate 算法本身） |

@@ -113,7 +113,12 @@ namespace minEngine
         bool Reimport(const std::string& assetPath, std::string& outError);
 
         void ScanAssets(const std::filesystem::path& directory);
-        AssetMeta RegisterAsset(const std::string& path, const std::string& assetTypeId);
+        // preferredGuid: when non-null and non-zero, seed a new .meta Guid (Create path).
+        // Existing on-disk meta still wins; do not silently replace a published Guid.
+        AssetMeta RegisterAsset(
+            const std::string& path,
+            const std::string& assetTypeId,
+            const GUID* preferredGuid = nullptr);
 
         bool DeleteAsset(const std::string& assetPath, std::string& outError);
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
@@ -340,6 +345,9 @@ namespace minEngine
 
         void CacheMeta(const AssetMeta& meta, bool alreadyRegistered);
         void UncacheMeta(std::string_view projectRelativePath);
+
+        // ASSET-F03: Create keeps one object — cache it instead of LoadAsset swap.
+        void CacheCreatedAsset(const std::string& projectRelativePath, const std::shared_ptr<Asset>& asset);
 
         void EvictLoadedAssetCache(std::string_view projectRelativePath);
         void MoveLoadedAssetCacheKey(std::string_view oldRel, std::string_view newRel);
