@@ -21,6 +21,7 @@
 | [bug-record.template.md](./bug-record.template.md) | 缺陷跟踪 | `bugs/` 或 `<Domain>/bugs/` |
 | [progress-log-entry.template.md](./progress-log-entry.template.md) | 会话/任务收尾 | 追加到 `PROGRESS_LOG.md` |
 | [session-note.template.md](./session-note.template.md) | 临时讨论上下文 | `sessions/` |
+| [system-engineering-review.template.md](./system-engineering-review.template.md) | 子系统工程复盘（0.1.0 / 合入前） | `Platform/<Topic>/`、`Editor/`、`Render/` 下 `*_SYSTEM_REVIEW.md`；流程见 `.agents/skills/engine-system-review/` |
 
 ## 快速规则（摘要）
 

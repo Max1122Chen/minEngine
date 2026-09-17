@@ -4,9 +4,10 @@ Last updated: 2026-09-17（master：合入 feat/lua-script + feat/prefab）
 
 ### 2026-09-17 - master：合入 feat/lua-script + feat/prefab
 - **lua：** CORE-F19 Call-by-name；CORE-F21 Lua Dynamic subscribe（Add(self, fn)）。
-- **prefab：** CORE-F23–F26 + ED-F16 + ASSET-F03 + Review 全包；含 Cube.meprefab / 	est.mescene / MyMEProject.meproject（ProjectRoot 改回主仓）。
+- **prefab：** CORE-F23–F26 + ED-F16 + ASSET-F03 + Review 全包；含 Cube.meprefab / test.mescene / MyMEProject.meproject（ProjectRoot 改回主仓）。
 - **文档冲突：** ACTIVE_WORK / FEATURE_REGISTRY / PROGRESS_LOG / ScriptBinding manifest 已手工合并。
-- **验证：** 见本波后续条目（合入后跑 lua-script-mvp / prefab / prefab-overrides）。
+- **验证（合入后）：** `test lua-script-mvp` PASS；`test prefab` 16/16；`test prefab-overrides` 5/5；`test delegates` 12/12；`Editor`+`minEngineTests` 已编。
+- **ProjectRoot：** `MyMEProject.meproject` 指向主仓 `D:/Dev/GitRepo/minEngine/minEngine/MyMEProject`。
 
 ### 2026-09-17 - Prefab Review 全包落地（A1–A5 / B1–B5）
 - **缺口：** 实例 Add/Remove 组件门禁；Save 单写盘；MutationPass（BUG-ASSET-001）；Stage Save 失败回滚；map rebuild fail-closed；ResolvePrefab `shared_ptr`。

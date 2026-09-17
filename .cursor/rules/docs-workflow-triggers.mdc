@@ -20,7 +20,8 @@ On matching user intent, **state the recommended workflow in 2–4 lines** and p
 | 做完、收尾、这轮结束、slice 完成 | Slice DoD + `PROGRESS_LOG`; then **propose 准备 commit** before unrelated next work (§7.4 / mentor Work boundary) |
 | Agent 完成一批 docs/rules/多文件改动 | Same: DoD + Progress → **offer 准备 commit**; do not jump to new Feature implementation |
 | 准备 commit、准备提交、写提交信息 | **git-commit-mentor**: draft message + **wait for approval** — not `git commit` unless user explicitly approves execution |
+| 系统复盘、工程 review、subsystem review、0.1.0 readiness | **engine-system-review**：先重建设计模型再出报告；默认只读；模板 `system-engineering-review.template.md` |
 
 **Not every message:** tiny fixes / pure questions — one-line reminder at most; skip if user says no docs.
 
-**Authority:** `DOC_GOVERNANCE.md` (IDs, DoD). **Execution:** `engine-learning-mentor` (Documentation collaboration, Pre-flight, Refactoring discipline, Partner stance, Defects).
+**Authority:** `DOC_GOVERNANCE.md` (IDs, DoD). **Execution:** `engine-learning-mentor` (Documentation collaboration, Pre-flight, Refactoring discipline, Partner stance, Defects); subsystem audits → `engine-system-review`.

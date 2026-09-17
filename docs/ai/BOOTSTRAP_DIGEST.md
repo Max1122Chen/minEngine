@@ -55,7 +55,7 @@ Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
 - **Work boundary:** after a finished batch â†?**offer å‡†å¤‡ commit** before starting unrelated work.  
 - **Stage mode:** one Primary track + parallel side tracks â€?not strict linear TODOs.
 
-Skills: `.agents/skills/engine-learning-mentor/SKILL.md`, `.agents/skills/git-commit-mentor/SKILL.md`  
+Skills: `.agents/skills/engine-learning-mentor/SKILL.md`, `.agents/skills/git-commit-mentor/SKILL.md`, `.agents/skills/engine-system-review/SKILL.md`  
 Triggers: `.cursor/rules/docs-workflow-triggers.mdc` Â· `.cursor/rules/engine-design-philosophy.mdc`
 
 ---
