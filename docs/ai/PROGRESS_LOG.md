@@ -1,12 +1,24 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-17（workflow：UE/Godot 源码路径 + 主动草拟 commit + design-review）
+Last updated: 2026-09-17（`feat/mcp`：合入 master 工作流 + MCP Design Draft）
+
+### 2026-09-17 - MCP 设计升 Planned（待 docs commit）
+- **Status：** MCP-F01/F02/F03、ED-F17、CLI-F02 → **Planned**（维护者认可）；ED-F18 仍 Planned 挂账。
+- **Next：** 提交本轮文档 → 按序写 Implementation 再编码；每 Feature 停一次审批。
+
+### 2026-09-17 - MCP 设计评审修补（待审批）
+- **高优已落文档：** `op` 主键 + `KindOpMismatch`；ED-F17 DoD 与 ED-F18 解耦；`get_state` 最小形状；Listen→ready-file 不变量；`componentObjectId`；validate P0 stub 诚实声明；禁 TS 独有 capabilities；§4.2 控制流改正；P0-alpha；人机并发/本机信任/RPC 30s。
+- **涉及：** MCP-F01/F02/F03、ED-F17、CLI-F02。
+
+### 2026-09-17 - MCP 轨 Design Draft（未实现代码）
+- **登记：** `MCP-F01`/`F02`/`F03`、`ED-F17`、`CLI-F02` → FEATURE_REGISTRY；ACTIVE_WORK Primary 切到 MCP。
+- **口径：** 外部 GPT 指南仅参考；不另造平行业务命令层。
 
 ### 2026-09-17 - 工作流补全：外部源码 + 主动 commit 草稿 + design-review skill
 - **内容：** mentor / git-commit-mentor：登记 `D:/Dev/GitRepo/UnrealEngine` 与 `D:/Dev/GitRepo/Godot`；参考 UE/Godot 时默认读源码；交付批次收口后**主动草拟** commit（不等用户再说准备 commit）。
 - **新增：** `design-review` skill（Mode A 开工前 / Mode B 多轮修订后）；模板 `design-review.template.md`；与 `engine-system-review`（代码复盘）区分。
 - **同步：** `.agents/skills` → `.cursor/skills`；`docs-workflow-triggers`、DOC_GOVERNANCE §7.4、WORKING_WITH_AI、BOOTSTRAP_DIGEST。
-- **Next：** 审批本批 commit message 后执行提交（或说先不提交）。
+- **合入：** `feat/mcp` fast-forward master `9438700`；PROGRESS_LOG 与 MCP WIP 手工合并。
 
 ### 2026-09-17 - master：合入 feat/lua-script + feat/prefab
 - **lua：** CORE-F19 Call-by-name；CORE-F21 Lua Dynamic subscribe（Add(self, fn)）。

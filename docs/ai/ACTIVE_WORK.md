@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-17（master：合入 `feat/lua-script` + `feat/prefab`）  
+Last updated: 2026-09-17（`feat/mcp`：MCP 轨 Design Draft）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,36 +11,47 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`master` 合入后）：Phase P 余量 / 下一刀自选**
+**Primary（`feat/mcp`）：MCP / Editor Automation — Design Planned，待 Impl**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| F1–F3 | — | Foundation | **Done**（master） | Log / Schema / Maximum |
-| — | **`CORE-F19`** | Lua Call-by-name | **Done** | [Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md) |
-| — | **`CORE-F20`** | Dynamic Multicast | **Done** | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) |
-| — | **`CORE-F21`** | Lua Dynamic subscribe | **Done** | [Design](./Platform/Scripting/CORE-F21_LUA_DYNAMIC_MULTICAST_SUBSCRIBE_DESIGN.md) |
-| — | **`CORE-F22`** | CPU Profiler Harness | **Done** | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) |
-| — | **`CORE-F23`–`F26`** | Prefab 资产 / Override / owning-RS / 删断链 | **Done** | F23–F26 Designs |
-| — | **`ED-F16`** | Prefab 文档 Mode + Hierarchy + Stage | **Done** | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
-| — | **`ASSET-F03`** | Create 身份契约 | **Done** | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) |
-| 1 | **`ED-F09`** | Editor Console LogRecord 过滤 | **Done**（W0–W2） | [Design](./Editor/ED-F09_LOG_CONSOLE_RECORD_UI_DESIGN.md) |
-| 2 | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W0–W2 Done；**W3 大部落地**，余 Save As / Scene 多开） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
-| 3 | **`ED-F12`** | Agent Edit Protocol | **Done** | [Design](./Editor/ED-F12_AGENT_EDIT_PROTOCOL_DESIGN.md) |
-| 4 | **`ED-F13`** | 显式目标编辑（去 Select 模拟） | **Done** | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) |
-| 5 | **`ED-F14`** | 各 SubEditor 命令面完备 | **Done** | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) |
-| 6 | **`ED-F15`** | Graph / CB / Inspector UX 抛光 | **Done** | [Design](./Editor/ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md) |
-| — | `ED-F10` | EditorSettings | **Planned**（占位） | Design 未开 |
+| 0 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Planned** | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
+| 1 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Planned** | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) |
+| 2 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Planned** | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) |
+| 3 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Planned** | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) |
+| 4 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Planned** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) |
 
-**下一刀：** ED-F11 余量 Deferred，或开 **ED-F10**；或 Prefab 后置（Instantiate 偏移 / Nested / Apply→Prefab / Inspector 蓝字）；或 Editor **`ED-*`** Profiler 面板。
+**下一刀：** 本轮 docs **准备 commit** → 批准后按依赖写 **Implementation** 再实现：MCP-F02 → CLI-F02 ∥ ED-F17 → MCP-F03；**每个 Feature 停一次等审批**。ED-F18 挂账不挡 P0。
 
-**已收口（本波合入）：** CORE-F19/F21（lua）；CORE-F23–F26 + ED-F16 + ASSET-F03（prefab）；此前 CORE-F20/F22 + ED-F12–F15。
+**参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 
-**并行**
+**并行 / 不挡 MCP**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
+| editor | `ED-F11` | Tab Host 余量（可选） |
+| editor | **`ED-F18`** | GUI/Debug → 域服务收敛（**Planned 挂账**；ED-F17 后有空再做） |
 | — | Prefab 后置 | Nested / Apply→Prefab / Instantiate 偏移 / 蓝字 |
+| — | `ED-F10` | EditorSettings 占位 |
+
+### 本波已合入 master（勿再当 WIP）
+
+| 轨 | 内容 | Status |
+|----|------|--------|
+| scripting / prefab / editor command | CORE-F19–F26、ED-F12–F16、ASSET-F03 等 | Done — 见下节历史表 |
+
+<details>
+<summary>历史焦点表（master 合入后 Phase P 余量，折叠）</summary>
+
+| 序 | ID | 标题 | Status |
+|----|-----|------|--------|
+| — | CORE-F19–F26 / ED-F16 / ASSET-F03 | Prefab + Lua 波 | **Done** |
+| 1 | ED-F09 | Console LogRecord | **Done** |
+| 2 | ED-F11 | Tab Host | **In Progress**（W3 大部） |
+| 3–6 | ED-F12–F15 | Agent Edit / Command-first | **Done** |
+| — | ED-F10 | EditorSettings | **Planned** |
+
+</details>
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 

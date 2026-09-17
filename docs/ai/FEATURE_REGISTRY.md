@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-17（master：合入 lua CORE-F19/F21 + prefab CORE-F23–F26 / ED-F16）  
+Last updated: 2026-09-17（`feat/mcp`：MCP-F01–F03 / ED-F17 / CLI-F02 Design → Planned）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -80,6 +80,12 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F14` | 各 SubEditor 命令面完备（按 Session/资产类型补齐 EditorCommand） | **Done** | — | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) · W1–W4 + Session 域补全 / ObjectPtr Undo |
 | `ED-F15` | Graph / CB / Inspector UX 小抛光（Anim 导航；Material chrome；CB 文件夹；组件 icon） | **Done** | — | [Design](./Editor/ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md) · W1–W4 + Material 右键/UE-ish |
 | `ED-F16` | Prefab 文档 Mode（Stage Scene + 复用 SceneEditor；单 Viewport）+ Hierarchy Create/Instantiate + `Scene::Instantiate` | **Done**（含 Amendment A/B） | — | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) · `feat/prefab` · Amendment A/B |
+| `ED-F17` | Editor Automation Host + Q/E/V Surface（Named Pipe → Editor API） | **Planned** | — | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · 服务 [MCP-F01](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
+| `ED-F18` | GUI / Debug 收敛到同源域服务（挂账；不挡 MCP P0） | **Planned** | — | [Design](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md) |
+| `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Planned** | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
+| `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Planned** | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) |
+| `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Planned** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) |
+| `CLI-F02` | Automation 启动面（Spawn + Attach 共用 flags / ready） | **Planned** | — | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ASSET-F01` | External Import Pipeline（Assimp → 引擎资产；MVP） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S04 / `.memesh` Deferred |
@@ -131,12 +137,13 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 | DOMAIN | Next Feature # | Notes |
 |--------|----------------|-------|
-| `CLI` | F02 | |
+| `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F05** | F04 Done（TestAccess） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
 | `CORE` | **F27** | F19/F21 Lua **Done**；F20/F22 Done；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F17** | F12–**F16 Done**；**F11** In Progress（W3）；F10 占位 |
+| `ED` | **F19** | F12–**F16 Done**；**F17** Host **Planned**；**F18** GUI/Debug 同源收敛 **Planned**（挂账）；**F11** In Progress；F10 占位 |
+| `MCP` | **F04** | F01–F03 **Planned**（架构 / 协议 / TS Server） |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
