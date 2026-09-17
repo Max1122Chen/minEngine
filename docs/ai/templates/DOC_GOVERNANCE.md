@@ -1,6 +1,6 @@
 # 文档与协作规范 v1
 
-Last updated: 2026-05-28  
+Last updated: 2026-09-17  
 Status: **Active**  
 Owner: project maintainer + AI collaborator
 
@@ -211,9 +211,9 @@ Draft → Planned → In Progress → Review → Done
 完成一个 **Slice**、一个 **Feature**，或一整批同属一个 Feature 的改动（含仅 docs/rules/skills）后：
 
 1. 完成 §7.1–7.2（及 Progress）。
-2. **默认下一步：提议「准备 commit」**（`git-commit-mentor` 草稿 + 审批），**不要**直接拉起另一个 Feature 的实现或 Pre-flight。
+2. **默认下一步：主动跑 `git-commit-mentor`**（DoD 自查 + commit message **草稿** + 等审批），**不要**只问「要不要准备 commit」，也**不要**直接拉起另一个 Feature 的实现或 Pre-flight。用户不必再提一句「请准备 commit」。
 
-**例外（用户明确说才可跳过 commit 提议）：**「先不提交」「继续在同一分支做 Y」「只给建议不写代码」。
+**例外（用户明确说才可跳过主动草稿）：**「先不提交」「继续在同一分支做 Y」「只给建议不写代码」「这轮先不 commit」。
 
 **Agent 给路线图/评估时：** 将 **「提交当前工作」** 与 **「后续 Feature（如 TEST-F01）」** 分两段写；后者标为 *after commit* 或 *next session*。
 

@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-17（master：合入 feat/lua-script + feat/prefab）
+Last updated: 2026-09-17（workflow：UE/Godot 源码路径 + 主动草拟 commit + design-review）
+
+### 2026-09-17 - 工作流补全：外部源码 + 主动 commit 草稿 + design-review skill
+- **内容：** mentor / git-commit-mentor：登记 `D:/Dev/GitRepo/UnrealEngine` 与 `D:/Dev/GitRepo/Godot`；参考 UE/Godot 时默认读源码；交付批次收口后**主动草拟** commit（不等用户再说准备 commit）。
+- **新增：** `design-review` skill（Mode A 开工前 / Mode B 多轮修订后）；模板 `design-review.template.md`；与 `engine-system-review`（代码复盘）区分。
+- **同步：** `.agents/skills` → `.cursor/skills`；`docs-workflow-triggers`、DOC_GOVERNANCE §7.4、WORKING_WITH_AI、BOOTSTRAP_DIGEST。
+- **Next：** 审批本批 commit message 后执行提交（或说先不提交）。
 
 ### 2026-09-17 - master：合入 feat/lua-script + feat/prefab
 - **lua：** CORE-F19 Call-by-name；CORE-F21 Lua Dynamic subscribe（Add(self, fn)）。

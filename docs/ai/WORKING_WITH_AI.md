@@ -1,6 +1,6 @@
 # Working With AI in minEngine
 
-Last updated: 2026-09-03
+Last updated: 2026-09-17
 
 ## Why this exists
 
@@ -23,7 +23,9 @@ To avoid repeating background in every chat, keep concise AI-readable context in
 - New feature: register in `docs/ai/FEATURE_REGISTRY.md` before Design.
 - Handoff end prompt: `请按 handoff 流程写 session 笔记、更新 Progress，未完成 slice 标 Blocked，并给我下一会话首句。`
 - New module / big feature / **refactor**: expect **Pre-flight**; refactors need a plan and **deletion of old paths**, not band-aid layers; learning project ≠ sloppy engineering.
-- After a finished batch (slice / workflow docs): agent should **offer 准备 commit** before suggesting the next Feature — say `先不提交` if you want to keep going without committing.
+- After a finished batch (slice / workflow docs): agent should **proactively draft the commit message** (DoD + draft) for your approval — you do **not** need to say 准备 commit first. Say `先不提交` if you want to keep going without a draft.
+- UE / Godot comparisons: agent should read local trees `D:/Dev/GitRepo/UnrealEngine` and `D:/Dev/GitRepo/Godot` (read-only) instead of relying on model memory for concrete APIs.
+- Design Spec readiness (before coding or after multi-round revisions): ask for **design review** → `.agents/skills/design-review/SKILL.md` (distinct from code **system review**).
 
 3) At the end of each meaningful session
 - Ask AI: record this session into progress log with next action.

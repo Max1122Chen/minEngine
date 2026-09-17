@@ -24,6 +24,7 @@ Use this skill when the user asks to:
 - Distinguish **must-fix** vs **known limitation** vs **future enhancement**
 
 Prefer **`engine-learning-mentor`** for day-to-day design/implement Pre-flight.  
+Prefer **`design-review`** when the ask is to review a **Design Spec** for clarity/readiness (not code).  
 Prefer **`git-commit-mentor`** for commit prep after review fixes land.
 
 ## When NOT to use
@@ -62,8 +63,9 @@ If the target is ambiguous, ask **one** clarifying question; otherwise discover 
 | Skill | Role |
 |-------|------|
 | `engine-learning-mentor` | Partner stance, Pre-flight, true-refactor discipline, docs collaboration |
+| `design-review` | Design Spec readiness / consistency **before** coding (or after design revisions) |
 | `git-commit-mentor` | After fix packs: prepare commit |
-| This skill | Deep subsystem audit → structured report → release assessment |
+| This skill | Deep subsystem **code** audit → structured report → release assessment |
 
 After review, if the user asks to fix: treat findings as a backlog; use mentor Pre-flight before large refactors; file `BUG-*` for cross-module defects.
 

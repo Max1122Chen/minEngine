@@ -1,6 +1,6 @@
 ---
 name: git-commit-mentor
-description: "Prepare high-quality commit messages for this repository. Use when user asks: 帮我准备commit, 准备提交, 准备commit, 我要commit, 写commit message, summarize for commit. Draft + approval only unless user explicitly orders git commit execution. Doc DoD gate before draft. Never commit without explicit post-draft approval."
+description: "Prepare high-quality commit messages for this repository. Triggers: user asks 帮我准备commit / 准备提交 / 我要commit / draft commit; OR agent finishes a deliverable slice/Feature/batch (proactive draft). Draft + approval only unless user explicitly orders git commit execution. Doc DoD gate before draft. Never commit without explicit post-draft approval."
 ---
 
 # Git Commit Mentor
@@ -9,7 +9,7 @@ description: "Prepare high-quality commit messages for this repository. Use when
 
 Help the user prepare accurate, reviewable commit messages that match repository style and common best practices.
 
-**Proactive offer:** When the agent (or user) has just **finished a slice, Feature, or coherent batch** (including workflow/docs-only), and the user has **not** started an unrelated Feature, the agent should **offer** 准备 commit using this skill — not assume the user will commit later while moving on to TEST-F01-style work. See `engine-learning-mentor` § Work boundary.
+**Proactive draft (default after deliverable work):** When the agent (or user) has just **finished a slice, Feature, or coherent batch** (including workflow/docs-only), and the user has **not** started an unrelated Feature and has **not** said 先不提交 / 继续改, the agent should **run this skill immediately** — present DoD + commit message draft — without waiting for the user to say 准备 commit. See `engine-learning-mentor` § Work boundary.
 
 ## Intent recognition (mandatory)
 
@@ -17,13 +17,17 @@ Distinguish **prepare** vs **execute**. Default for ambiguous Chinese phrasing i
 
 ### Prepare commit (draft + approval — do NOT run `git commit`)
 
-Treat as **prepare** when user says (including variants):
+Treat as **prepare** when **either**:
+
+**(A) User says** (including variants):
 
 - 帮我准备 commit / 帮我准备提交 / 准备 commit / 准备提交
 - 写 commit message / 写提交信息 / 帮我写提交信息
 - summarize for commit / draft commit
 - **我要 commit** / **我要提交** (wants to commit soon — still **draft first**, then wait for approval)
 - 准备一下 commit / 整理提交信息
+
+**(B) Agent self-trigger:** a deliverable batch just finished (Work boundary) — same prepare flow, no user phrase required.
 
 **Behavior:** run workflow below through **approval gate**; stop after presenting draft unless user then clearly orders execution.
 
@@ -44,8 +48,10 @@ If unclear whether they want draft-only or execution, ask one line:
 
 ## Trigger phrases
 
-This skill should be used when user intent matches **Prepare commit** above.  
-Also applies when user explicitly requests commit execution (after draft exists or they waive draft).
+This skill should be used when:
+- User intent matches **Prepare commit** above, **or**
+- Agent closes a deliverable batch (proactive draft), **or**
+- User explicitly requests commit execution (after draft exists or they waive draft).
 
 ## User style baseline in this repository
 
@@ -140,6 +146,7 @@ After drafting (prepare flow):
 ## Common pitfalls
 
 - Treating 准备 commit / 我要 commit as execute permission.
+- Finishing a deliverable batch and only *asking* whether to 准备 commit, instead of drafting.
 - Committing before explicit post-draft approval.
 - Skipping Doc DoD when design/docs were part of the task.
 - Mixing unrelated topics in one message.
