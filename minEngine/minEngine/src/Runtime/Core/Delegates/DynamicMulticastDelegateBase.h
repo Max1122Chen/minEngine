@@ -14,7 +14,7 @@ namespace minEngine
         virtual ~DynamicMulticastDelegateBase() = default;
 
         virtual int GetArity() const = 0;
-        virtual DelegateHandle AddScriptErased(CallableScriptFunction callable) = 0;
+        virtual DelegateHandle AddScript(CallableScriptFunction callable) = 0;
         virtual bool IsBound() const = 0;
         virtual size_t GetBindingCount() const = 0;
         virtual void Clear() = 0;

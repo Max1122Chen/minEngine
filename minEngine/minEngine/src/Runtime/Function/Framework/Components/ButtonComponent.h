@@ -18,7 +18,7 @@ namespace minEngine
      * ScreenUI button policy on the same GameObject as Widget (hit) + optional Image (skin).
      * Click is dispatched by UISystem; this component owns OnClicked and optional tint.
      */
-    ME_CLASS()
+    ME_CLASS(ScriptType)
     class ButtonComponent : public Component
     {
         ME_GENERATED_BODY()
@@ -71,7 +71,7 @@ namespace minEngine
         void ApplyVisualState();
         void ApplyTint(const LinearColor& color);
 
-        ME_PROPERTY(ScriptAssignable)
+        ME_PROPERTY(ScriptAssignable, meta = (ScriptGetter = "OnClicked"))
         DOnButtonClicked m_OnClicked;
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTargetGraphic", Getter = "GetTargetGraphicShared"))

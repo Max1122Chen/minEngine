@@ -1,6 +1,44 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-15（master: CORE-F22 + ED-F15 合入）
+Last updated: 2026-09-15（CORE-F21 **Done**）
+
+### 2026-09-15 - CORE-F21 Done：验收收口
+- **Status：** Registry / Design / ACTIVE_WORK → **Done**。
+- **验证：** 既有 `lua-script-mvp` / `delegates` PASS；后续应用中再发现问题另开 BUG。
+- **Next：** 准备 commit（含 F19 文档收口 + F21 实现）。
+
+### 2026-09-15 - CORE-F21：S05 Done（显式 Add(self,fn) / 虚 AddScript / 删 Active）
+- **Core：** `AddScriptErased` → 基类虚 `AddScript`，模板 override。
+- **Scripting：** `AddScriptFromLua(delegate, host, fn)`；删 `ActiveScriptComponent`。
+- **Lua：** `delegate:Add(self, fn)`；Unload 仍经 `LuaComponent` Track 表。
+- **验证：** `test lua-script-mvp` PASS；`test delegates` PASS。
+- **Next：** 验收 → Done；准备 commit。
+
+### 2026-09-15 - CORE-F21：§9 再修订（显式 self / 无 ScriptComponentBase / 命名）
+- **拍板：** `Add(self, fn)` 对象优先；不引入 ScriptComponentBase；删 Active。
+- **Core 命名：** 荐 **A** 合并虚 `AddScript`（删 Erased）；B=`AddScript_Internal` 后备。
+- **Next：** 确认 A vs B → S05。
+
+### 2026-09-15 - CORE-F21：§9 重构目标形态（文档）
+- **内容：** 删 `ActiveScriptComponent`；Scripting 引入 `ScriptComponentBase`；`Add` 经 `host*` Track，Core `AddScript` 不改；默认 host=调用方 env.`self`。
+- **Docs：** [CORE-F21 Design §9](./Platform/Scripting/CORE-F21_LUA_DYNAMIC_MULTICAST_SUBSCRIBE_DESIGN.md)；切片 **S05** Planned。
+- **Next：** 维护者审阅 §9 / O2b → 开 S05 或改默认。
+
+### 2026-09-15 - CORE-F21：S01–S03 落地（Add(fn) codegen）
+- **实现：** `LuaDynamicDelegateBindings`（Base usertype Add/Remove）；header tool `ScriptAssignable`→`OnClicked` 属性；Button `ScriptType` + `meta=(ScriptGetter=OnClicked)`；LuaComponent Unload 解绑跟踪。
+- **验证：** `minEngineTests.exe test lua-script-mvp` → **PASSED**（含 Add + Unload 用例）。
+- **Next：** 验收勾选 → Done；准备 commit（可与 F19 文档一并）。
+
+### 2026-09-15 - CORE-F21：Design Draft（ScriptAssignable codegen）
+- **方案：** 扩展 ScriptBinding——识别 `ME_PROPERTY(ScriptAssignable)` Dynamic 字段；共享 `DynamicMulticastDelegateBase` usertype（`Add`/`Remove`）；Scripting `sol`→`CallableScriptFunction`；Button `ScriptType` + 0 参竖切。
+- **拒绝：** 新宏 `ME_DELEGATE`；域组件 `Bind(sol::function)`。
+- **Docs：** [CORE-F21 Design](./Platform/Scripting/CORE-F21_LUA_DYNAMIC_MULTICAST_SUBSCRIBE_DESIGN.md)；Registry / ACTIVE_WORK → Draft。
+- **Next：** 维护者审阅 §3 / §10 → Planned → S01。
+
+### 2026-09-15 - CORE-F19 Done：Call 文档收口
+- **Status：** Registry / Design → **Done**。S02+ 委托桥标 **Cancelled（迁出）** → F20（挂钩，master Done）/ F21（Lua `Add(fn)`）。
+- **工程：** 本轮仅文档；Call 验收仍以既有 `minEngineTests.exe test lua-script-mvp` 为准（2026-09-14 PASS）。
+- **Next：** 讨论并起草 **CORE-F21** Design。维护者要求本轮不准备 commit。
 
 ### 2026-09-15 - master：合入 feat/core + feat/editor
 - **core：** CORE-F20 Dynamic Multicast；CORE-F22 Profiler Harness（`test profiler` 5/5）。
@@ -204,6 +242,19 @@ Last updated: 2026-09-15（master: CORE-F22 + ED-F15 合入）
 
 ### 2026-09-14 - ED-F12：World Query–Modify–Verify Design 初稿（已被上条口径修订取代）
 - 初稿聚焦 Scene list/get/set/verify；随后抬升为资产会话协议。
+
+### 2026-09-14 - CORE-F19：拆除 Lua↔Delegate 反模式竖切
+- **删除：** `LuaDelegateBind.h`、`ButtonComponent::BindOnClicked`、`LuaDelegateProbeComponent`、`DelegateProbeDemo.lua`、PostGenerated Button/Probe usertype、`TrackLuaBinding`。
+- **保留：** `LuaComponent::Call` / `TryGetFunction`（含 tick 缓存修复）。
+- **方向：** Lua `Add(fn)` → **CORE-F21**（基建已在 **CORE-F20**）。
+- **验证：** `minEngineTests.exe test lua-script-mvp` PASS。
+
+### 2026-09-14 - CORE-F19：C++→Lua Call + BindLua（0/1/2）+ Button 竖切（已部分撤回）
+- 曾落地 BindLua / Button Bind / Probe；**同日纠偏拆除**（见上条）。Call 路径保留。
+
+### 2026-09-14 - CORE-F19 Planned：Lua ↔ Delegate / C++→Lua Design 草稿
+- **Registry：** `CORE-F19`。
+- **Docs：** [CORE-F19 Design](./Platform/Scripting/CORE-F19_LUA_DELEGATE_AND_INVOKE_DESIGN.md)。
 
 ### 2026-09-13 - ED-F11：Mode→Active Session 语义 + Shared CB 入布局
 - **设计：** [ED-F11](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) §3.1.1 — Shared vs Type Suite；Tab/Active Session 为前台真相。

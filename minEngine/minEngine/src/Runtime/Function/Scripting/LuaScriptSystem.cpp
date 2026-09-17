@@ -1,5 +1,6 @@
 #include "LuaScriptSystem.h"
 
+#include "LuaDynamicDelegateBindings.h"
 #include "LuaManualBindings.h"
 
 #include "Generated/ScriptBinding/ScriptBindingRegister.gen.h"
@@ -46,6 +47,7 @@ namespace minEngine
         m_State = std::make_unique<sol::state>();
         OpenStandardLibraries();
         LuaManualBindings::Register(*m_State);
+        RegisterDynamicMulticastDelegateLuaUsertype(*m_State);
         RegisterGeneratedLuaBindings(*m_State);
         m_Initialized = true;
         ME_LOG(LogScript, Info, "LuaScriptSystem initialized.");

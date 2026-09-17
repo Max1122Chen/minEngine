@@ -99,7 +99,7 @@ namespace minEngine
                 });
         }
 
-        DelegateHandle AddScript(CallableScriptFunction callable)
+        DelegateHandle AddScript(CallableScriptFunction callable) override
         {
             if (!callable.IsValid())
             {
@@ -112,11 +112,6 @@ namespace minEngine
                 {
                     sharedCallable->Invoke(args...);
                 });
-        }
-
-        DelegateHandle AddScriptErased(CallableScriptFunction callable) override
-        {
-            return AddScript(std::move(callable));
         }
 
         void Remove(DelegateHandle handle) override { m_Native.Remove(handle); }

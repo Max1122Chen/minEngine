@@ -1,5 +1,6 @@
 #include "LuaComponent.h"
 
+#include "Runtime/Core/Delegates/DynamicMulticastDelegateBase.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
 
@@ -8,6 +9,28 @@ namespace minEngine
     LuaComponent::~LuaComponent()
     {
         UnloadScript();
+    }
+
+    void LuaComponent::TrackScriptDelegateBinding(DynamicMulticastDelegateBase* delegate, DelegateHandle handle)
+    {
+        if (delegate == nullptr || !handle.IsValid())
+        {
+            return;
+        }
+
+        m_ScriptDelegateBindings.push_back(ScriptDelegateBinding{delegate, handle});
+    }
+
+    void LuaComponent::ClearScriptDelegateBindings()
+    {
+        for (ScriptDelegateBinding& binding : m_ScriptDelegateBindings)
+        {
+            if (binding.Delegate != nullptr && binding.Handle.IsValid())
+            {
+                binding.Delegate->Remove(binding.Handle);
+            }
+        }
+        m_ScriptDelegateBindings.clear();
     }
 
     void LuaComponent::SetScript(const std::shared_ptr<LuaScript>& script)
@@ -98,17 +121,8 @@ namespace minEngine
             return false;
         }
 
-        sol::object tickObject = m_Environment["tick"];
-        if (tickObject.is<sol::protected_function>())
-        {
-            m_TickFn = tickObject.as<sol::protected_function>();
-        }
-        else
-        {
-            m_TickFn = sol::protected_function();
-        }
-
         m_Loaded = true;
+        m_TickFn = TryGetFunction("tick");
         m_ScriptEnabled = true;
         m_HasLoggedTickError = false;
         return true;
@@ -116,9 +130,26 @@ namespace minEngine
 
     void LuaComponent::UnloadScript()
     {
+        ClearScriptDelegateBindings();
         ClearLuaEnvironment();
         m_SyncedScript = m_Script.get();
         m_Loaded = false;
+    }
+
+    sol::protected_function LuaComponent::TryGetFunction(const char* name) const
+    {
+        if (!m_Loaded || name == nullptr || name[0] == '\0')
+        {
+            return sol::protected_function();
+        }
+
+        sol::object object = m_Environment[name];
+        if (object.is<sol::protected_function>())
+        {
+            return object.as<sol::protected_function>();
+        }
+
+        return sol::protected_function();
     }
 
     bool LuaComponent::EnsureLoaded()
