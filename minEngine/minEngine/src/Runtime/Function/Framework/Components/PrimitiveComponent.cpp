@@ -1,5 +1,5 @@
 #include "PrimitiveComponent.h"
-#include "Runtime/Function/Framework/Scene/SceneManager.h"
+
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 
@@ -17,15 +17,10 @@ namespace minEngine
         }
 
         bool removedFromScene = false;
-        SceneManager& sceneManager = SceneManager::Get();
-        if (sceneManager.GetRenderScene())
+        if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
-            RenderScene* renderScene = sceneManager.GetRenderScene();
-            if (renderScene)
-            {
-                renderScene->RemovePrimitive(this);
-                removedFromScene = true;
-            }
+            renderScene->RemovePrimitive(this);
+            removedFromScene = true;
         }
 
         if (!removedFromScene)
@@ -43,7 +38,7 @@ namespace minEngine
             return;
         }
 
-        RenderScene* renderScene = SceneManager::Get().GetRenderScene();
+        RenderScene* renderScene = GetOwningRenderScene();
         if (renderScene == nullptr)
         {
             return;
@@ -66,14 +61,10 @@ namespace minEngine
         }
 
         bool removedFromScene = false;
-        if (SceneManager::HasInstance())
+        if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
-            SceneManager& sceneManager = SceneManager::Get();
-            if (sceneManager.GetRenderScene())
-            {
-                sceneManager.GetRenderScene()->RemovePrimitive(this);
-                removedFromScene = true;
-            }
+            renderScene->RemovePrimitive(this);
+            removedFromScene = true;
         }
 
         if (!removedFromScene)

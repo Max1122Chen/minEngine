@@ -12,6 +12,9 @@
 #include "Runtime/Core/Serialization/JsonArchive.h"
 
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Prefab/Prefab.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/AnimationClip.h"
@@ -25,6 +28,7 @@
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 
 #include "AssetMeta.h"
@@ -325,7 +329,10 @@ namespace minEngine
         }
     }
 
-    AssetMeta AssetManager::RegisterAsset(const std::string& path, const std::string& assetTypeId)
+    AssetMeta AssetManager::RegisterAsset(
+        const std::string& path,
+        const std::string& assetTypeId,
+        const GUID* preferredGuid)
     {
         const std::string projectRelativePath = NormalizeProjectRelativeAssetPath(path);
         if (projectRelativePath.empty())
@@ -403,6 +410,8 @@ namespace minEngine
             return true;
         };
 
+        const bool hasPreferredGuid = preferredGuid != nullptr && !preferredGuid->IsZero();
+
         AssetMeta meta;
         bool loadedExistingMeta = false;
         if (std::filesystem::exists(metaPath))
@@ -419,7 +428,7 @@ namespace minEngine
             meta.AssetName = inferredAssetName;
             meta.AssetPath = projectRelativePath;
             meta.AssetType = assetTypeId;
-            meta.Guid = GenerateGUID();
+            meta.Guid = hasPreferredGuid ? *preferredGuid : GenerateGUID();
 
             if (!saveMetaToFile(meta))
             {
@@ -455,7 +464,7 @@ namespace minEngine
 
             if (meta.Guid.High == 0 && meta.Guid.Low == 0)
             {
-                meta.Guid = GenerateGUID();
+                meta.Guid = hasPreferredGuid ? *preferredGuid : GenerateGUID();
                 needsRewrite = true;
             }
 
@@ -468,6 +477,16 @@ namespace minEngine
         const AssetMeta* existingGuidMeta = m_Registry.FindMetaByGuid(meta.Guid);
         if (existingGuidMeta != nullptr && existingGuidMeta->AssetPath != projectRelativePath)
         {
+            if (hasPreferredGuid && meta.Guid == *preferredGuid)
+            {
+                ME_LOG(LogAsset, Error,
+                    "RegisterAsset: preferred Guid '{}' for '{}' collides with '{}'.",
+                    preferredGuid->ToString(),
+                    projectRelativePath,
+                    existingGuidMeta->AssetPath);
+                return AssetMeta();
+            }
+
             ME_LOG(LogAsset, Warn, 
                 "GUID collision detected between '{}' and '{}'. Regenerating GUID for current asset.",
                 existingGuidMeta->AssetPath,
@@ -488,6 +507,34 @@ namespace minEngine
                      meta.Guid.ToString());
 
         return meta;
+    }
+
+    void AssetManager::CacheCreatedAsset(
+        const std::string& projectRelativePath,
+        const std::shared_ptr<Asset>& asset)
+    {
+        if (!asset)
+        {
+            return;
+        }
+
+        const std::string registryKey = NormalizeProjectRelativeAssetPath(projectRelativePath);
+        if (registryKey.empty())
+        {
+            return;
+        }
+
+        AssetMeta* meta = const_cast<AssetMeta*>(FindAssetMetaByPath(registryKey));
+        if (meta != nullptr)
+        {
+            asset->SetMeta(meta);
+            if (asset->GetGuid() != meta->Guid)
+            {
+                asset->SetGuid(meta->Guid);
+            }
+        }
+
+        m_LoadedAssetCache[registryKey] = asset;
     }
 
     ImportAssetResult AssetManager::ImportAsset(
@@ -1011,6 +1058,11 @@ namespace minEngine
 
     bool AssetManager::LogReferenceWarningsForDelete(const AssetMeta& meta) const
     {
+        if (meta.AssetType == "Prefab")
+        {
+            return true;
+        }
+
         ME_LOG(LogAsset, Warn, 
             "DeleteAsset: reference scan is not implemented (v0); proceeding with '{}'.",
             meta.AssetPath);
@@ -1057,6 +1109,14 @@ namespace minEngine
 
     bool AssetManager::DeleteAsset(const std::string& assetPath, std::string& outError)
     {
+        return DeleteAsset(assetPath, outError, false);
+    }
+
+    bool AssetManager::DeleteAsset(
+        const std::string& assetPath,
+        std::string& outError,
+        bool bUnpackOpenPrefabInstanceRefs)
+    {
         AssetRegistryBroadcastBatchScope batchScope;
         outError.clear();
 
@@ -1075,7 +1135,41 @@ namespace minEngine
         }
 
         const AssetMeta meta = *metaPtr;
-        LogReferenceWarningsForDelete(meta);
+
+        if (meta.AssetType == "Prefab")
+        {
+            const std::vector<PrefabInstanceRef> refs =
+                PrefabUtility::FindInstanceRefsInEditorScene(meta.Guid);
+            if (!refs.empty())
+            {
+                if (!bUnpackOpenPrefabInstanceRefs)
+                {
+                    outError = PrefabUtility::FormatPrefabInstanceRefsMessage(projectRelative, refs);
+                    return false;
+                }
+
+                for (const PrefabInstanceRef& ref : refs)
+                {
+                    if (ref.Scene == nullptr)
+                    {
+                        continue;
+                    }
+
+                    std::string unpackError;
+                    if (!PrefabUtility::UnpackInstance(*ref.Scene, ref.RootInstanceGuid, &unpackError))
+                    {
+                        outError = unpackError.empty()
+                            ? "Failed to unpack Prefab instance before delete."
+                            : unpackError;
+                        return false;
+                    }
+                }
+            }
+        }
+        else
+        {
+            LogReferenceWarningsForDelete(meta);
+        }
 
         const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(projectRelative);
         const std::filesystem::path metaAbsolutePath = BuildMetaAbsolutePath(projectRelative);
@@ -1798,6 +1892,13 @@ namespace minEngine
             meta, outErrorMessage, "failed to load scene by guid");
     }
 
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Prefab(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Prefab>(
+            meta, outErrorMessage, "failed to load prefab by guid");
+    }
+
     std::shared_ptr<Asset> AssetManager::LoadHandler_Material(
         AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
     {
@@ -1906,6 +2007,33 @@ namespace minEngine
         return true;
     }
 
+    template<>
+    bool AssetManager::SaveAsset_Impl<Prefab>(const AssetMeta& meta, const Prefab& asset) const
+    {
+        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
+
+        Serialization::JsonWriterArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+            absoluteAssetPath,
+            &asset,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = false,
+                .skipUnknownField = false});
+
+        if (!result.ok)
+        {
+            ME_LOG(LogAsset, Error, "Failed to serialize prefab '{}'. Error: {}. Field path: {}",
+                          absoluteAssetPath,
+                          result.message,
+                          result.fieldPath);
+            return false;
+        }
+
+        return true;
+    }
+
     namespace
     {
         std::string SanitizeAssetBaseName(std::string baseName)
@@ -1996,6 +2124,33 @@ namespace minEngine
             return true;
         }
 
+        bool WritePrefabAssetFile(const AssetManager& assetManager, const std::string& relativePath, const Prefab& prefab)
+        {
+            const std::string absoluteAssetPath = assetManager.ResolveAssetAbsolutePath(relativePath).string();
+
+            Serialization::JsonWriterArchive archive;
+            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+                absoluteAssetPath,
+                &prefab,
+                archive,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = false,
+                    .skipUnknownField = false});
+
+            if (!result.ok)
+            {
+                ME_LOG(LogAsset, Error,
+                    "CreateAsset<Prefab>: failed to serialize '{}'. Error: {}. Field path: {}",
+                    relativePath,
+                    result.message,
+                    result.fieldPath);
+                return false;
+            }
+
+            return true;
+        }
+
         bool WriteMaterialAssetFile(
             const AssetManager& assetManager,
             const std::string& relativePath,
@@ -2053,7 +2208,8 @@ namespace minEngine
         }
 
         const std::string sceneName = absolutePath.stem().string();
-        std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, GenerateGUID());
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, assetGuid);
         scene->Reset();
         scene->SetSceneName(sceneName);
         scene->EnsureRenderScene();
@@ -2067,7 +2223,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(absolutePath);
 
-        AssetMeta meta = RegisterAsset(relativePath, "Scene");
+        AssetMeta meta = RegisterAsset(relativePath, "Scene", &assetGuid);
         if (meta.AssetPath.empty())
         {
             ME_LOG(LogAsset, Error, "CreateAsset<Scene>: RegisterAsset failed for '{}'.", relativePath);
@@ -2082,7 +2238,64 @@ namespace minEngine
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
         ME_LOG(LogAsset, Info, "CreateAsset<Scene>: created '{}'.", meta.AssetPath);
-        return LoadAsset<Scene>(meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, scene);
+        return scene;
+    }
+
+    template<>
+    std::shared_ptr<Prefab> AssetManager::CreateAsset<Prefab>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".meprefab");
+        if (relativePath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<Prefab>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_LOG(LogAsset, Error,
+                "CreateAsset<Prefab>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string prefabName = absolutePath.stem().string();
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Prefab> prefab = NewObject<Prefab>(prefabName, nullptr, assetGuid);
+        std::shared_ptr<GameObject> rootObject = NewObject<GameObject>(prefabName, prefab.get());
+        rootObject->AddComponent<SceneComponent>();
+        prefab->AddTemplateObject(rootObject);
+        prefab->SetRootGuid(rootObject->GetGuid());
+
+        if (!WritePrefabAssetFile(*this, relativePath, *prefab))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "Prefab", &assetGuid);
+        if (meta.AssetPath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<Prefab>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+
+        ME_LOG(LogAsset, Info, "CreateAsset<Prefab>: created '{}'.", meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, prefab);
+        return prefab;
     }
 
     template<>
@@ -2111,7 +2324,8 @@ namespace minEngine
         }
 
         const std::string materialName = absolutePath.stem().string();
-        std::shared_ptr<Material> material = NewObject<Material>(materialName, nullptr, GenerateGUID());
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Material> material = NewObject<Material>(materialName, nullptr, assetGuid);
         material->m_ShadingModel = MaterialShadingModel::Unlit;
 
         if (!WriteMaterialAssetFile(*this, relativePath, *material))
@@ -2123,7 +2337,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(absolutePath);
 
-        AssetMeta meta = RegisterAsset(relativePath, "Material");
+        AssetMeta meta = RegisterAsset(relativePath, "Material", &assetGuid);
         if (meta.AssetPath.empty())
         {
             ME_LOG(LogAsset, Error, "CreateAsset<Material>: RegisterAsset failed for '{}'.", relativePath);
@@ -2133,7 +2347,8 @@ namespace minEngine
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
         ME_LOG(LogAsset, Info, "CreateAsset<Material>: created '{}'.", meta.AssetPath);
-        return LoadAsset<Material>(meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, material);
+        return material;
     }
     template<>
     bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const
@@ -2176,13 +2391,14 @@ namespace minEngine
         }
 
         const std::string graphName = absolutePath.stem().string();
-        std::shared_ptr<AnimationGraph> graph = NewObject<AnimationGraph>(graphName, nullptr, GenerateGUID());
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<AnimationGraph> graph = NewObject<AnimationGraph>(graphName, nullptr, assetGuid);
 
         AssetMeta tempMeta;
         tempMeta.AssetPath = relativePath;
         tempMeta.AssetName = graphName;
         tempMeta.AssetType = "AnimationGraph";
-        tempMeta.Guid = graph->GetGuid();
+        tempMeta.Guid = assetGuid;
 
         std::string saveError;
         if (!AnimationGraphLoader::Save(tempMeta, *graph, &saveError))
@@ -2195,7 +2411,7 @@ namespace minEngine
 
         NoteEditorFilesystemMutation(absolutePath);
 
-        AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph");
+        AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph", &assetGuid);
         if (meta.AssetPath.empty())
         {
             ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: RegisterAsset failed for '{}'.", relativePath);
@@ -2205,7 +2421,8 @@ namespace minEngine
         NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
 
         ME_LOG(LogAsset, Info, "CreateAsset<AnimationGraph>: created '{}'.", meta.AssetPath);
-        return LoadAsset<AnimationGraph>(meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, graph);
+        return graph;
     }
 
 }

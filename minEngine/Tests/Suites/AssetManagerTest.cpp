@@ -1,14 +1,17 @@
 #include "AssetManagerTest.h"
 #include "Access/SceneManagerTestAccess.h"
 #include "Access/AssetManagerTestAccess.h"
+#include "Access/ObjectManagerTestAccess.h"
 
 #include "AssetManager.h"
 #include "AssetRegistryTypes.h"
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Render/Material.h"
 
 #include <filesystem>
 #include <fstream>
@@ -22,6 +25,9 @@ namespace minEngine
     public:
         AssetManagerTestScope()
         {
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
+            m_ObjectManager.Initialize();
+
             Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
 
@@ -36,9 +42,13 @@ namespace minEngine
 
             m_SceneManager.Shutdown();
             Testing::TestAccess<SceneManager>::SetInstance(nullptr);
+
+            m_ObjectManager.Shutdown();
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
     private:
+        ObjectManager m_ObjectManager;
         AssetManager m_AssetManager;
         SceneManager m_SceneManager;
     };
@@ -142,6 +152,64 @@ namespace minEngine
             }
 
             return meta.AssetPath;
+        }
+
+        bool TestCreateAssetKeepsSingleObjectIdentity()
+        {
+            AssetManagerTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            const std::string directoryRel = "Assets/_P2UnitTest";
+            std::shared_ptr<Material> created =
+                assetManager.CreateAsset<Material>("CreateIdentityMat", directoryRel);
+            if (!created)
+            {
+                ME_LOG(LogTest, Error, "AssetManagerTest: CreateAsset<Material> returned null.");
+                return false;
+            }
+
+            const GUID createdGuid = created->GetGuid();
+            const AssetMeta* meta = assetManager.FindAssetMetaByPath(
+                created->GetMeta() != nullptr ? created->GetMeta()->AssetPath : std::string());
+            if (meta == nullptr)
+            {
+                // Fall back: search by type+name under test dir.
+                const std::vector<const AssetMeta*> materials =
+                    assetManager.FindAssetMetasByType("Material");
+                for (const AssetMeta* candidate : materials)
+                {
+                    if (candidate != nullptr && candidate->Guid == createdGuid)
+                    {
+                        meta = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (meta == nullptr)
+            {
+                ME_LOG(LogTest, Error, "AssetManagerTest: CreateAsset meta not found.");
+                return false;
+            }
+
+            if (meta->Guid != createdGuid)
+            {
+                ME_LOG(LogTest, Error, 
+                    "AssetManagerTest: CreateAsset Guid mismatch object='{}' meta='{}'.",
+                    createdGuid.ToString(),
+                    meta->Guid.ToString());
+                return false;
+            }
+
+            std::shared_ptr<Material> loaded = assetManager.LoadAsset<Material>(meta->AssetPath);
+            if (loaded.get() != created.get())
+            {
+                ME_LOG(LogTest, Error, 
+                    "AssetManagerTest: LoadAsset after Create returned a different object (Load swap).");
+                return false;
+            }
+
+            return true;
         }
 
         bool TestDeleteAssetRemovesDiskAndRegistry()
@@ -482,6 +550,11 @@ namespace minEngine
             }
 
             AssetManagerTestScope scope;
+
+            if (!TestCreateAssetKeepsSingleObjectIdentity())
+            {
+                return false;
+            }
 
             if (!TestDeleteAssetRemovesDiskAndRegistry())
             {

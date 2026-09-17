@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Function/Framework/Scene/SceneTypes.h"
+#include "Runtime/Function/Framework/Prefab/PrefabTypes.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Physics/PhysicsTypes.h"
 #include "Runtime/Resource/Asset.h"
@@ -10,6 +11,7 @@
 namespace minEngine
 {
     class GameObject;
+    class Prefab;
     class RenderScene;
     class GameplayEventSystemComponent;
 
@@ -85,12 +87,25 @@ namespace minEngine
         void RegisterGameplayEventSystem(GameplayEventSystemComponent* component);
         void UnregisterGameplayEventSystem(GameplayEventSystemComponent* component);
 
+        const std::vector<PrefabInstanceRecord>& GetPrefabInstances() const { return m_PrefabInstances; }
+        std::vector<PrefabInstanceRecord>& GetPrefabInstancesMutable() { return m_PrefabInstances; }
+        void ClearPrefabInstances() { m_PrefabInstances.clear(); }
+
+        /** Thin convenience; authoritative clone path remains PrefabUtility::Instantiate. */
+        std::shared_ptr<GameObject> Instantiate(
+            const Prefab& prefab,
+            const PrefabInstantiateParams& params = {},
+            std::string* outError = nullptr);
+
     private:
         ME_PROPERTY()
         std::string m_SceneName;
 
         ME_PROPERTY(Instanced)
         std::vector<std::shared_ptr<GameObject>> m_GameObjects;
+
+        ME_PROPERTY()
+        std::vector<PrefabInstanceRecord> m_PrefabInstances;
 
         std::unordered_map<uint64_t, GameObject*> m_GameObjectsById;
 

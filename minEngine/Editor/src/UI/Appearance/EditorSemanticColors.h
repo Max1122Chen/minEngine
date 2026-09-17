@@ -22,5 +22,7 @@ namespace minEngine
         LinearColor HierarchySelectionHeaderHovered{};
         LinearColor HierarchySelectionHeaderActive{};
         LinearColor HierarchySelectionBar{};
+        /** Prefab instance roots / descendants in Hierarchy (Level Scene only). */
+        LinearColor HierarchyPrefabInstance{};
     };
 }

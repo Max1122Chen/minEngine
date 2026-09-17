@@ -1,0 +1,193 @@
+{
+    "$engineVersion": "0.0.9",
+    "$schemaVersion": 1,
+    "m_Guid": {
+        "High": 3720015298844511820,
+        "Low": 12665219168391941496
+    },
+    "m_Name": "Cube",
+    "m_RootGuid": {
+        "High": 14218301774912441500,
+        "Low": 12394364164807712298
+    },
+    "m_TemplateObjects": [
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_AttachParent": null,
+                    "m_CastShadow": false,
+                    "m_Guid": {
+                        "High": 15029005147337740225,
+                        "Low": 10481563763003430813
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 5561283508911332965,
+                            "low": 5138977438105866241
+                        }
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 142407137877117945,
+                            "low": 13645875646637003514
+                        }
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 14218301774912441500,
+                            "low": 12394364164807712298
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            4.0177998542785645,
+                            1.8345158100128174,
+                            2.438232421875
+                        ],
+                        "Rotation": {
+                            "W": 0.9999940991401672,
+                            "X": 5.823152946504706e-07,
+                            "Y": 0.0034407544881105423,
+                            "Z": 8.599790248808858e-07
+                        },
+                        "Scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    "m_bActive": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::RigidBodyComponent",
+                    "m_BodyType": 1,
+                    "m_Guid": {
+                        "High": 16498843988822016667,
+                        "Low": 12638211673452655187
+                    },
+                    "m_Mass": 1.0,
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 14218301774912441500,
+                            "low": 12394364164807712298
+                        }
+                    },
+                    "m_PhysicsBodyId": 4294967295,
+                    "m_bActive": true,
+                    "m_bSimulatePhysics": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::BoxColliderComponent",
+                    "m_Guid": {
+                        "High": 9222958155675943034,
+                        "Low": 11878771978464059661
+                    },
+                    "m_HalfExtent": [
+                        2.0,
+                        2.0,
+                        2.0
+                    ],
+                    "m_Name": "",
+                    "m_ObjectChannel": 1,
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 14218301774912441500,
+                            "low": 12394364164807712298
+                        }
+                    },
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 14218301774912441500,
+                "Low": 12394364164807712298
+            },
+            "m_Name": "Cube",
+            "m_Parent": null,
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 15029005147337740225,
+                    "low": 10481563763003430813
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::StaticMeshComponent",
+                    "m_AttachParent": {
+                        "$guid": {
+                            "high": 15029005147337740225,
+                            "low": 10481563763003430813
+                        }
+                    },
+                    "m_CastShadow": true,
+                    "m_Guid": {
+                        "High": 6970002726710627399,
+                        "Low": 13249019414731549146
+                    },
+                    "m_Material": {
+                        "$guid": {
+                            "high": 9857531775437238383,
+                            "low": 2421337937482647406
+                        }
+                    },
+                    "m_Mesh": {
+                        "$guid": {
+                            "high": 607701751770204618,
+                            "low": 9254168834165808632
+                        }
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 13591113933406881471,
+                            "low": 11760542143597612794
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            -3.4004902839660645,
+                            0.18265140056610107,
+                            -2.1783385276794434
+                        ],
+                        "Rotation": {
+                            "W": 0.9984449744224548,
+                            "X": 1.1070709682314828e-08,
+                            "Y": -0.0557464100420475,
+                            "Z": -1.4042171869732556e-08
+                        },
+                        "Scale": [
+                            0.25,
+                            0.25,
+                            0.25
+                        ]
+                    },
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 13591113933406881471,
+                "Low": 11760542143597612794
+            },
+            "m_Name": "CubeChild",
+            "m_Parent": {
+                "$guid": {
+                    "high": 14218301774912441500,
+                    "low": 12394364164807712298
+                }
+            },
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 6970002726710627399,
+                    "low": 13249019414731549146
+                }
+            }
+        }
+    ]
+}

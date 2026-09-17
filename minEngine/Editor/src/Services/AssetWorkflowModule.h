@@ -64,7 +64,7 @@ namespace minEngine
         IEditorInspectorSource* GetInspectorSource();
         const IEditorInspectorSource* GetInspectorSource() const;
 
-        void DeleteSelectedAsset();
+        void DeleteSelectedAsset(bool bUnpackOpenPrefabInstanceRefs = false);
         bool TryReimportSelectedAsset();
 
         IEditorContext* GetEditorContext() const { return m_Context; }
@@ -81,9 +81,11 @@ namespace minEngine
         bool IsSceneDirty() const;
         bool IsMaterialDirty() const;
         bool IsAnimationGraphDirty() const;
+        bool IsPrefabDirty() const;
         bool SaveSceneDocument();
         bool SaveMaterialDocument();
         bool SaveAnimationGraphDocument();
+        bool SavePrefabDocument();
 
         bool RunWithUnsavedCheck(
             const char* message,

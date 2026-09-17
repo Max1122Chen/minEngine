@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-15（CORE-F19 / CORE-F21 **Done**）
+Last updated: 2026-09-17（master：合入 lua CORE-F19/F21 + prefab CORE-F23–F26 / ED-F16）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -47,6 +47,10 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F20` | Dynamic Multicast Delegate（类型系统 + AddDynamic；B1 包装 Native） | **Done** | — | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) · `feat/core` · Lua `Add(fn)` → F21 |
 | `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Done** | — | [Design](./Platform/Scripting/CORE-F21_LUA_DYNAMIC_MULTICAST_SUBSCRIBE_DESIGN.md) · 挂钩 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · `feat/lua-script` |
 | `CORE-F22` | CPU Profiler Harness（Session/Phase/Frame · Scope · Trace 导出 · 查询 API） | **Done** | — | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) · `feat/core` · **不含** Editor UI |
+| `CORE-F23` | Prefab 资产 + Create/Instantiate（单根 GO 树；空 PrefabInstance 链接） | **Done**（手验通过；Guid→ASSET-F03） | — | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) · `feat/prefab` · 类名 `Prefab`（非 PrefabAsset） |
+| `CORE-F24` | Prefab 受限 Override + default 传播 | **Done**（003 收口 **Fixed**） | — | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) · [BUG-CORE-003](./bugs/BUG-CORE-003.md) |
+| `CORE-F25` | 组件从 owning Scene 解析 RenderScene（禁 SceneManager 隐式当前世界） | **Done** | — | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) · Prefab Stage 可视隔离硬前置 |
+| `CORE-F26` | Prefab 资产删除与实例断链（阻断 / Unpack 后删除） | **Done** | — | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) · `feat/prefab` |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Draft / Superseded direction** | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
@@ -75,10 +79,12 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F13` | 显式目标编辑：去「先 Select 再改」；Editor=实现者、Command=调用者 | **Done** | — | [Design](./Editor/ED-F13_EDITOR_COMMAND_FIRST_REFACTOR_DESIGN.md) · AddComponent 显式 API |
 | `ED-F14` | 各 SubEditor 命令面完备（按 Session/资产类型补齐 EditorCommand） | **Done** | — | [Design](./Editor/ED-F14_EDITOR_COMMAND_COVERAGE_DESIGN.md) · W1–W4 + Session 域补全 / ObjectPtr Undo |
 | `ED-F15` | Graph / CB / Inspector UX 小抛光（Anim 导航；Material chrome；CB 文件夹；组件 icon） | **Done** | — | [Design](./Editor/ED-F15_EDITOR_GRAPH_CB_UX_POLISH_DESIGN.md) · W1–W4 + Material 右键/UE-ish |
+| `ED-F16` | Prefab 文档 Mode（Stage Scene + 复用 SceneEditor；单 Viewport）+ Hierarchy Create/Instantiate + `Scene::Instantiate` | **Done**（含 Amendment A/B） | — | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) · `feat/prefab` · Amendment A/B |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |
 | `ASSET-F01` | External Import Pipeline（Assimp → 引擎资产；MVP） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S04 / `.memesh` Deferred |
 | `ASSET-F02` | Formal Import/Load 注册式管线 + ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) |
+| `ASSET-F03` | Create Asset 身份契约（单对象·同步 meta·禁 Load 换身） | **Done** | — | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) · 吸收 F23-B Guid 根因 |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Pose → palette → GPU） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · 旧 Placeholder `ANIM-F01_ANIMATION_SYSTEM_DESIGN.md` 已废弃勿用 |
 | `ANIM-F02` | Clip Playback（Track / Player / SMC / `.meaclip`） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |
 | `ANIM-F03` | Animation Graph MVP（FSM + Params + Pose Blend + Editor） | **In Progress** *(runtime+Editor 已合入；人型闭环 smoke 收口)* | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
@@ -113,7 +119,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 
 ## Vision placeholders（无独立 Feature ID，不排期）
 
-登记在 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 与 [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)：完整 Gameplay **Plugins / ASC / GAS 上层**、Networking / Net Game、Prefab、Object Lifetime/GC、Render Sort/Batch（待登记）、Agent-friendly 作为**设计原则**（见 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)）。
+登记在 [ACTIVE_WORK.md](./ACTIVE_WORK.md) 与 [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)：完整 Gameplay **Plugins / ASC / GAS 上层**、Networking / Net Game、Object Lifetime/GC、Render Sort/Batch（待登记）、Agent-friendly 作为**设计原则**（见 [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)）。Prefab 已登记为 `CORE-F23`/`F24`/`ED-F16`。
 
 **例外：** `GP-F01`/`GP-F02` 为提前落地的**轻量机制底座**（Tag + Scene Event bus），不是完整 Framework。
 
@@ -128,9 +134,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | **F05** | F04 Done（TestAccess） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
-| `CORE` | **F23** | F17–F19 Done；F20 Dynamic Multicast Done；F21 Lua Add(fn) **Done**；F22 Profiler **Done** |
-| `ASSET` | **F03** | F01–F02 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F16** | F12–**F15 Done**；**F11** In Progress（W3）；F10 占位 |
+| `CORE` | **F27** | F19/F21 Lua **Done**；F20/F22 Done；F23–F26 Prefab MVP **Done** |
+| `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
+| `ED` | **F17** | F12–**F16 Done**；**F11** In Progress（W3）；F10 占位 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |

@@ -1,6 +1,5 @@
 #include "SkyBoxComponent.h"
 
-#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 
@@ -18,8 +17,7 @@ namespace minEngine
             return;
         }
 
-        RenderScene* renderScene = SceneManager::HasInstance() ? SceneManager::Get().GetRenderScene() : nullptr;
-        if (renderScene)
+        if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
             renderScene->RemoveSkyBox(this);
         }
@@ -57,8 +55,7 @@ namespace minEngine
             return;
         }
 
-        RenderScene* renderScene = SceneManager::Get().GetRenderScene();
-        if (renderScene)
+        if (RenderScene* renderScene = GetOwningRenderScene())
         {
             renderScene->UpdateSkyBox(this);
         }
@@ -79,21 +76,13 @@ namespace minEngine
             return;
         }
 
-        if (SceneManager::HasInstance())
+        if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
-            RenderScene* renderScene = SceneManager::Get().GetRenderScene();
-            if (renderScene)
-            {
-                renderScene->RemoveSkyBox(this);
-            }
-            else if (m_SkyBoxSceneProxy)
-            {
-                m_SkyBoxSceneProxy->m_SkyBoxComponent = nullptr;
-                DetachSceneProxy();
-            }
+            renderScene->RemoveSkyBox(this);
         }
-        else
+        else if (m_SkyBoxSceneProxy)
         {
+            m_SkyBoxSceneProxy->m_SkyBoxComponent = nullptr;
             DetachSceneProxy();
         }
 

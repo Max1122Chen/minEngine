@@ -696,6 +696,35 @@ namespace minEngine
 
     }
 
+    void SceneEditingViewportClient::CaptureFlyCameraPose(EditorFlyCameraPose& outPose) const
+    {
+        outPose.Position = m_CameraPosition;
+        outPose.RotationEulerDegrees = m_CameraRotation;
+        outPose.bValid = m_CameraStateInitialized;
+    }
+
+    void SceneEditingViewportClient::ApplyFlyCameraPose(const EditorFlyCameraPose& pose)
+    {
+        m_CameraPosition = pose.Position;
+        m_CameraRotation = pose.RotationEulerDegrees;
+        m_CameraRotation.x = 0.0f;
+        m_CameraStateInitialized = true;
+
+        if (RenderCamera* viewportCamera = GetSceneViewport().GetCamera())
+        {
+            ApplyStateToRenderCamera(*viewportCamera);
+        }
+    }
+
+    EditorFlyCameraPose SceneEditingViewportClient::MakeDefaultPrefabStageCameraPose()
+    {
+        EditorFlyCameraPose pose;
+        pose.Position = Vector3(0.0f, 1.5f, -4.0f);
+        pose.RotationEulerDegrees = Vector3(0.0f, 0.0f, 12.0f);
+        pose.bValid = true;
+        return pose;
+    }
+
 
 
     void SceneEditingViewportClient::SyncStateFromRenderCamera(const RenderCamera& camera)

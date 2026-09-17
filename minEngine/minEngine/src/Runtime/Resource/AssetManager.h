@@ -29,6 +29,7 @@ namespace minEngine
     class Skeleton;
     class Material;
     class Scene;
+    class Prefab;
     class Font;
     class LuaScript;
     class EnvironmentMap;
@@ -112,9 +113,19 @@ namespace minEngine
         bool Reimport(const std::string& assetPath, std::string& outError);
 
         void ScanAssets(const std::filesystem::path& directory);
-        AssetMeta RegisterAsset(const std::string& path, const std::string& assetTypeId);
+        // preferredGuid: when non-null and non-zero, seed a new .meta Guid (Create path).
+        // Existing on-disk meta still wins; do not silently replace a published Guid.
+        AssetMeta RegisterAsset(
+            const std::string& path,
+            const std::string& assetTypeId,
+            const GUID* preferredGuid = nullptr);
 
         bool DeleteAsset(const std::string& assetPath, std::string& outError);
+        /** Prefab: when bUnpackOpenPrefabInstanceRefs, unpack open-editor instances then delete. */
+        bool DeleteAsset(
+            const std::string& assetPath,
+            std::string& outError,
+            bool bUnpackOpenPrefabInstanceRefs);
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
         bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
         bool UnregisterAsset(const std::string& assetPath, std::string& outError);
@@ -297,6 +308,8 @@ namespace minEngine
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Scene(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Prefab(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Material(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Font(
@@ -338,6 +351,9 @@ namespace minEngine
         void CacheMeta(const AssetMeta& meta, bool alreadyRegistered);
         void UncacheMeta(std::string_view projectRelativePath);
 
+        // ASSET-F03: Create keeps one object — cache it instead of LoadAsset swap.
+        void CacheCreatedAsset(const std::string& projectRelativePath, const std::shared_ptr<Asset>& asset);
+
         void EvictLoadedAssetCache(std::string_view projectRelativePath);
         void MoveLoadedAssetCacheKey(std::string_view oldRel, std::string_view newRel);
         bool LogReferenceWarningsForDelete(const AssetMeta& meta) const;
@@ -364,6 +380,8 @@ namespace minEngine
     template<>
     std::shared_ptr<Scene> AssetManager::LoadAsset_Impl<Scene>(const AssetMeta& meta);
     template<>
+    std::shared_ptr<Prefab> AssetManager::LoadAsset_Impl<Prefab>(const AssetMeta& meta);
+    template<>
     std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta);
     template<>
     std::shared_ptr<SkeletalMesh> AssetManager::LoadAsset_Impl<SkeletalMesh>(const AssetMeta& meta);
@@ -389,12 +407,18 @@ namespace minEngine
     template<>
     bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const;
     template<>
+    bool AssetManager::SaveAsset_Impl<Prefab>(const AssetMeta& meta, const Prefab& asset) const;
+    template<>
     bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const;
     template<>
     bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const;
 
     template<>
     std::shared_ptr<Scene> AssetManager::CreateAsset<Scene>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<Prefab> AssetManager::CreateAsset<Prefab>(
         const std::string& assetName,
         const std::string& directoryRel);
     template<>

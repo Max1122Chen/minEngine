@@ -18,7 +18,11 @@ namespace minEngine
         FocusInViewport,
         OpenAsset,
         CreateEmptyGameObject,
+        CreatePrefab,
+        InstantiatePrefab,
+        InstantiatePrefabAsChild,
         RemoveComponent,
+        UnpackAndDeletePrefab,
     };
 
     enum class EditorMenuSectionId : uint32_t

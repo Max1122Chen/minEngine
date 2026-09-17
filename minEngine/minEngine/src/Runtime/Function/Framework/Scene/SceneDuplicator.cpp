@@ -86,6 +86,7 @@ namespace minEngine
         }
 
         FinalizePIEScene(*pieScene);
+        pieScene->ClearPrefabInstances();
         return pieScene;
     }
 

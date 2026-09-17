@@ -19,7 +19,7 @@ namespace minEngine::Reflection
 
 namespace minEngine
 {
-    struct SceneCloneContext;
+    struct ObjectCloneContext;
 }
 
 namespace minEngine::Serialization
@@ -253,8 +253,8 @@ namespace minEngine::Serialization
                 options);
         }
 
-        static void SetActiveCloneContext(SceneCloneContext* cloneContext);
-        static SceneCloneContext* GetActiveCloneContext();
+        static void SetActiveCloneContext(ObjectCloneContext* cloneContext);
+        static ObjectCloneContext* GetActiveCloneContext();
 
     private:
         static SerializeResult SerializeObjectInstance(const minEngine::Reflection::MEClass* classInfo,
@@ -330,6 +330,6 @@ namespace minEngine::Serialization
         static const Reflection::MEProperty* FindPropertyInHierarchy(const Reflection::MEClass* ownerClass,
                                                                      std::string_view propertyName);
 
-        static SceneCloneContext* s_ActiveCloneContext;
+        static ObjectCloneContext* s_ActiveCloneContext;
     };
 }

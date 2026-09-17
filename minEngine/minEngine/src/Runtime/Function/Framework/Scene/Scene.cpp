@@ -2,6 +2,7 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Function/GameplayFramework/Events/GameplayEventSystemComponent.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
@@ -18,6 +19,7 @@ namespace minEngine
         m_GameplayEventSystem = nullptr;
         m_GameObjects.clear();
         m_GameObjectsById.clear();
+        m_PrefabInstances.clear();
         m_RenderScene.reset();
     }
 
@@ -172,6 +174,14 @@ namespace minEngine
         return gameObject;
     }
 
+    std::shared_ptr<GameObject> Scene::Instantiate(
+        const Prefab& prefab,
+        const PrefabInstantiateParams& params,
+        std::string* outError)
+    {
+        return PrefabUtility::Instantiate(prefab, *this, params, outError);
+    }
+
     std::shared_ptr<GameObject> Scene::InsertRestoredGameObject(std::shared_ptr<GameObject> gameObject)
     {
         if (!gameObject)
@@ -191,6 +201,7 @@ namespace minEngine
     {
         m_GameObjects.clear();
         m_GameObjectsById.clear();
+        m_PrefabInstances.clear();
         m_NextGOId = 0;
     }
 
@@ -274,6 +285,23 @@ namespace minEngine
                 m_GameObjects.end());
             m_GameObjectsById.erase(removeId);
         }
+
+        m_PrefabInstances.erase(
+            std::remove_if(
+                m_PrefabInstances.begin(),
+                m_PrefabInstances.end(),
+                [this](const PrefabInstanceRecord& record)
+                {
+                    for (const std::shared_ptr<GameObject>& go : m_GameObjects)
+                    {
+                        if (go && go->GetGuid() == record.RootInstanceGuid)
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                }),
+            m_PrefabInstances.end());
 
         return true;
     }

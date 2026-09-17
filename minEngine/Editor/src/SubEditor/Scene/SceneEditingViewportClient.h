@@ -26,7 +26,14 @@ namespace minEngine
 
     class RHI;
 
-
+    /** Fly-camera pose for Level / Prefab Stage context switching (single shared Viewport). */
+    struct EditorFlyCameraPose
+    {
+        Vector3 Position = Vector3(0.0f, 1.5f, -4.0f);
+        /** x unused; y = yaw degrees; z = pitch degrees (+X forward convention). */
+        Vector3 RotationEulerDegrees = Vector3(0.0f, 0.0f, 12.0f);
+        bool bValid = false;
+    };
 
     /** Scene editing viewport: fly camera, picking, gizmo consumption, owned scene RT. */
 
@@ -65,6 +72,12 @@ namespace minEngine
         const std::vector<ViewportInputCommand>& GetPendingInputCommands() const { return m_PendingInputCommands; }
 
         std::vector<ViewportInputCommand> ConsumePendingInputCommands();
+
+        void CaptureFlyCameraPose(EditorFlyCameraPose& outPose) const;
+
+        void ApplyFlyCameraPose(const EditorFlyCameraPose& pose);
+
+        static EditorFlyCameraPose MakeDefaultPrefabStageCameraPose();
 
 
 

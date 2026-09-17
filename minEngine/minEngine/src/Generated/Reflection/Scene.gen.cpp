@@ -6,4 +6,5 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::Scene, GReflectionClassRegister_Scen
     ME_REFLECTION_CLASS_SUPER(minEngine::Asset)
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::Scene, m_SceneName, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::Scene, m_GameObjects, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::Instanced)), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::Scene, m_PrefabInstances, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::Scene)

@@ -1,0 +1,12 @@
+{
+    "$engineVersion": "0.0.9",
+    "$schemaVersion": 1,
+    "AssetName": "Cube",
+    "AssetPath": "Prefabs/Cube.meprefab",
+    "AssetType": "Prefab",
+    "Guid": {
+        "High": 3720015298844511820,
+        "Low": 12665219168391941496
+    },
+    "SourcePath": ""
+}
