@@ -792,6 +792,13 @@ namespace minEngine
             return false;
         }
 
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowAddComponent(*this, gameObjectId, &constraintError))
+        {
+            ME_LOG(LogEditor, Error, "{}", constraintError);
+            return false;
+        }
+
         GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
         if (!gameObject)
         {
@@ -875,6 +882,14 @@ namespace minEngine
                 "Failed to remove component '{}' from GameObject '{}': component does not belong to the specified GameObject.",
                 targetComponent.GetClass()->GetName(),
                 gameObject.GetName());
+            return false;
+        }
+
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowRemoveComponent(
+                *this, gameObject.GetID(), targetComponent.GetGuid(), &constraintError))
+        {
+            ME_LOG(LogEditor, Error, "{}", constraintError);
             return false;
         }
 

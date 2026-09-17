@@ -2,13 +2,14 @@
 
 ## Meta
 - **ID:** BUG-ASSET-001
-- **Status:** Open
+- **Status:** Fixed
 - **Severity:** S2
 - **Owner:** project maintainer
 - **Found:** 2026-09-15
-- **Last updated:** 2026-09-15
-- **Affects:** `ProjectAssetWatcher` + `AssetManager::ScanAssets`；任意向 Content 写新文件且未正确 `EditorFilesystemMutationPass` 的路径（已确认：`PrefabUtility::SavePrefabAsset`）
-- **Related Feature/Slice:** ED-F16 Create Prefab · `EditorFilesystemMutationPass` · TD-004（CB UI 重建，相关但非同一根因）
+- **Last updated:** 2026-09-17
+- **Affects:** `ProjectAssetWatcher` + `AssetManager::ScanAssets`；任意向 Content 写新文件且未正确 `EditorFilesystemMutationPass` 的路径（已确认：`PrefabUtility::SavePrefabAsset` — **已挂 MutationPass**）
+- **Related Feature/Slice:** ED-F16 Create Prefab · `EditorFilesystemMutationPass` · [PREFAB_MVP_CODE_REVIEW](../Platform/Core/PREFAB_MVP_CODE_REVIEW.md) A4
+- **Fix:** `SavePrefabAsset` 写盘前 `NoteMutatedAbsolutePath`（父目录 + `.meprefab` + `.meta`）
 
 ## TL;DR
 Hierarchy **Create Prefab…**（或其它未挂 MutationPass 的落盘）后，efsw 把目录变更当成「需全量重扫」，`RunFullRescan` → `ScanAssets(Assets)`；Console 刷出大量 `Asset registered/updated`（看起来像「别处来的」日志），资产多时明显卡顿。
@@ -71,7 +72,8 @@ ProjectAssetWatcher::RunFullRescan
 3. 与 TD-004（CB 整树重建）区分：本 bug 是 **Runtime ScanAssets**，不是仅 UI model。
 
 ## 回归验证
-- [ ] Create Prefab 后 **无** `running full ScanAssets`（正常单文件场景）
+- [x] Create Prefab 路径已挂 MutationPass（代码）
+- [ ] 手验：Create Prefab 后 **无** `running full ScanAssets`（正常单文件场景）
 - [ ] Console **无**全库 `Asset registered/updated` 风暴
 - [ ] 新 Prefab 仍出现在 CB（增量 Register / watcher RegisterOrUpdate）
 - [ ] 外部工具往 Assets 丢文件仍能被 watcher 发现（增量或合理防抖全扫）
@@ -89,3 +91,4 @@ ProjectAssetWatcher::RunFullRescan
 | 日期 | 说明 |
 |------|------|
 | 2026-09-15 | Open：Create Prefab 后全盘 Scan；钉 MutationPass 缺口 + directory threshold=1；说明 Scan 刷屏日志来源 |
+| 2026-09-17 | **Fixed（代码）：** `SavePrefabAsset` Note 父目录/资产/meta；watcher 阈值策略仍可后续收紧 |

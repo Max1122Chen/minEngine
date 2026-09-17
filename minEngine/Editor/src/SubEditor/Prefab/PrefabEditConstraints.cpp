@@ -242,4 +242,70 @@ namespace minEngine
         }
         return false;
     }
+
+    bool PrefabEditConstraints::AllowAddComponent(
+        const SceneEditor& sceneEditor,
+        uint64_t gameObjectId,
+        std::string* outError)
+    {
+        if (sceneEditor.IsEditingPrefabStage())
+        {
+            return true;
+        }
+
+        return AllowLevelPrefabStructuralEdit(
+            sceneEditor,
+            gameObjectId,
+            0,
+            EPrefabEditOpKind::AddComponent,
+            outError);
+    }
+
+    bool PrefabEditConstraints::AllowRemoveComponent(
+        const SceneEditor& sceneEditor,
+        uint64_t gameObjectId,
+        const GUID& componentGuid,
+        std::string* outError)
+    {
+        if (sceneEditor.IsEditingPrefabStage())
+        {
+            return true;
+        }
+
+        Scene* scene = sceneEditor.GetDocumentScene();
+        if (scene == nullptr)
+        {
+            return true;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (gameObject == nullptr)
+        {
+            return true;
+        }
+
+        const PrefabInstanceRecord* record =
+            PrefabUtility::FindInstanceRecord(*scene, gameObject->GetGuid());
+        if (record == nullptr)
+        {
+            return true;
+        }
+
+        PrefabEditOp op;
+        op.Kind = EPrefabEditOpKind::RemoveComponent;
+        op.TargetInstanceGuid = componentGuid.IsZero() ? gameObject->GetGuid() : componentGuid;
+
+        const PrefabEditValidationResult validation =
+            PrefabOverrideUtility::ValidateEdit(*scene, *record, op);
+        if (!validation.bAllowed)
+        {
+            if (outError)
+            {
+                *outError = validation.Error;
+            }
+            return false;
+        }
+
+        return true;
+    }
 }

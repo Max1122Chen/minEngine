@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/GUID/GUID.h"
 
 #include <cstdint>
 #include <string>
@@ -31,5 +32,14 @@ namespace minEngine
         static bool AllowEnterPlay(const SceneEditor& sceneEditor, std::string* outError = nullptr);
         static bool AllowCreatePrefab(const SceneEditor& sceneEditor, std::string* outError = nullptr);
         static bool AllowInstantiatePrefab(const SceneEditor& sceneEditor, std::string* outError = nullptr);
+        static bool AllowAddComponent(
+            const SceneEditor& sceneEditor,
+            uint64_t gameObjectId,
+            std::string* outError = nullptr);
+        static bool AllowRemoveComponent(
+            const SceneEditor& sceneEditor,
+            uint64_t gameObjectId,
+            const GUID& componentGuid,
+            std::string* outError = nullptr);
     };
 }

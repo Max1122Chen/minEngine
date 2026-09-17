@@ -11,6 +11,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Prefab/Prefab.h"
 #include "Runtime/Function/Framework/Prefab/PrefabEditValidator.h"
+#include "Runtime/Function/Framework/Prefab/PrefabObjectLookup.h"
 #include "Runtime/Function/Framework/Prefab/PrefabPropertyPath.h"
 #include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -162,7 +163,7 @@ namespace minEngine
             return true;
         }
 
-        Prefab* ResolvePrefabAsset(const GUID& prefabAssetGuid)
+        std::shared_ptr<Prefab> ResolvePrefabAsset(const GUID& prefabAssetGuid)
         {
             if (prefabAssetGuid.IsZero())
             {
@@ -171,9 +172,10 @@ namespace minEngine
 
             if (ObjectManager::HasInstance())
             {
-                if (std::shared_ptr<Prefab> loaded = ObjectManager::Get().FindObjectAs<Prefab>(prefabAssetGuid))
+                if (std::shared_ptr<Prefab> loaded =
+                        ObjectManager::Get().FindObjectAs<Prefab>(prefabAssetGuid))
                 {
-                    return loaded.get();
+                    return loaded;
                 }
             }
 
@@ -181,7 +183,7 @@ namespace minEngine
             {
                 std::string error;
                 std::shared_ptr<Asset> asset = AssetManager::Get().LoadAssetByGUID(prefabAssetGuid, error);
-                return dynamic_cast<Prefab*>(asset.get());
+                return std::dynamic_pointer_cast<Prefab>(asset);
             }
 
             return nullptr;
@@ -189,28 +191,7 @@ namespace minEngine
 
         MEObject* FindTemplateObject(Prefab& prefab, const GUID& templateGuid)
         {
-            for (const std::shared_ptr<GameObject>& gameObject : prefab.GetTemplateObjects())
-            {
-                if (!gameObject)
-                {
-                    continue;
-                }
-
-                if (gameObject->GetGuid() == templateGuid)
-                {
-                    return gameObject.get();
-                }
-
-                for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
-                {
-                    if (component && component->GetGuid() == templateGuid)
-                    {
-                        return component.get();
-                    }
-                }
-            }
-
-            return nullptr;
+            return PrefabObjectLookup::FindInPrefab(prefab, templateGuid);
         }
 
         void UpsertOverride(
@@ -470,8 +451,8 @@ namespace minEngine
             return false;
         }
 
-        Prefab* prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
-        if (prefab == nullptr)
+        std::shared_ptr<Prefab> prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
+        if (!prefab)
         {
             std::string payload;
             if (!SerializePathToPayload(instanceObject, propertyPath, payload, outError))
@@ -542,8 +523,8 @@ namespace minEngine
 
         const GUID templateGuid =
             PrefabPropertyPath::FindTemplateGuidForInstance(*record, instanceObject.GetGuid());
-        Prefab* prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
-        if (templateGuid.IsZero() || prefab == nullptr)
+        std::shared_ptr<Prefab> prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
+        if (templateGuid.IsZero() || !prefab)
         {
             if (outError)
             {
@@ -591,8 +572,8 @@ namespace minEngine
             return false;
         }
 
-        Prefab* prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
-        if (prefab == nullptr)
+        std::shared_ptr<Prefab> prefab = ResolvePrefabAsset(record->PrefabAssetGuid);
+        if (!prefab)
         {
             if (outError)
             {
@@ -625,7 +606,7 @@ namespace minEngine
         return anyWritten;
     }
 
-    bool PrefabOverrideUtility::PropagateDefaultsToOpenScenes(const Prefab& prefab)
+    bool PrefabOverrideUtility::PropagateDefaultsToEditorScene(const Prefab& prefab)
     {
         if (!SceneManager::HasInstance())
         {

@@ -1,10 +1,6 @@
 #include "Runtime/Function/Framework/Prefab/PrefabEditValidator.h"
 
-#include "Runtime/Core/Object/ObjectManager.h"
-#include "Runtime/Function/Framework/Components/Component.h"
-#include "Runtime/Function/Framework/Components/SceneComponent.h"
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
-#include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Prefab/PrefabTypes.h"
 
 namespace minEngine
 {
@@ -18,8 +14,12 @@ namespace minEngine
         switch (op.Kind)
         {
         case EPrefabEditOpKind::PropertyEdit:
-        case EPrefabEditOpKind::AddComponent:
             result.bAllowed = true;
+            return result;
+
+        case EPrefabEditOpKind::AddComponent:
+            result.bAllowed = false;
+            result.Error = "Adding components to Prefab instances is not supported in CORE-F24 MVP.";
             return result;
 
         case EPrefabEditOpKind::AddTopLevelGameObject:
@@ -71,26 +71,8 @@ namespace minEngine
 
         case EPrefabEditOpKind::RemoveComponent:
         {
-            std::shared_ptr<MEObject> object = ObjectManager::HasInstance()
-                ? ObjectManager::Get().FindObject(op.TargetInstanceGuid)
-                : nullptr;
-            Component* component = dynamic_cast<Component*>(object.get());
-            if (component == nullptr)
-            {
-                result.bAllowed = false;
-                result.Error = "RemoveComponent target is not a Component.";
-                return result;
-            }
-
-            GameObject* owner = dynamic_cast<GameObject*>(const_cast<MEObject*>(component->GetOuter()));
-            if (owner != nullptr && owner->GetRootComponent() == component)
-            {
-                result.bAllowed = false;
-                result.Error = "Cannot remove Root SceneComponent from a Prefab instance.";
-                return result;
-            }
-
-            result.bAllowed = true;
+            result.bAllowed = false;
+            result.Error = "Removing components from Prefab instances is not supported in CORE-F24 MVP.";
             return result;
         }
         }

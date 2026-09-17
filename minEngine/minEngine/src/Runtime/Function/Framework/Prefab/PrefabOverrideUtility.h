@@ -36,7 +36,13 @@ namespace minEngine
         static bool PropagateDefaultsToScene(const Prefab& prefab, Scene& scene);
 
         /** Propagate into SceneManager editor Scene when available. Returns true if any property was written. */
-        static bool PropagateDefaultsToOpenScenes(const Prefab& prefab);
+        static bool PropagateDefaultsToEditorScene(const Prefab& prefab);
+
+        /** @deprecated Prefer PropagateDefaultsToEditorScene — same behavior. */
+        static bool PropagateDefaultsToOpenScenes(const Prefab& prefab)
+        {
+            return PropagateDefaultsToEditorScene(prefab);
+        }
 
         static bool HasOverride(
             const PrefabInstanceRecord& record,

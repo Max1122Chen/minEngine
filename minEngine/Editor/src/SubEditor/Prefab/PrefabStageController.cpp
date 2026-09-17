@@ -343,6 +343,10 @@ namespace minEngine
         }
 
         std::string writeError;
+        const std::vector<std::shared_ptr<GameObject>> previousTemplates = stage->Asset->GetTemplateObjects();
+        const GUID previousRootGuid = stage->Asset->GetRootGuid();
+        ObjectCloneContext previousEditMap = stage->EditCloneMap;
+
         if (!PrefabUtility::WriteStageTreeToPrefab(
                 *stage->StageScene,
                 *stage->Asset,
@@ -359,6 +363,8 @@ namespace minEngine
         std::string saveError;
         if (!PrefabUtility::SavePrefabAsset(*stage->Asset, stage->AssetKey, &saveError))
         {
+            PrefabUtility::RestoreTemplateObjects(*stage->Asset, previousTemplates, previousRootGuid);
+            stage->EditCloneMap = std::move(previousEditMap);
             if (outError)
             {
                 *outError = saveError.empty() ? "SavePrefabAsset failed." : saveError;
@@ -366,7 +372,7 @@ namespace minEngine
             return false;
         }
 
-        if (PrefabOverrideUtility::PropagateDefaultsToOpenScenes(*stage->Asset))
+        if (PrefabOverrideUtility::PropagateDefaultsToEditorScene(*stage->Asset))
         {
             if (SceneEditor* sceneEditor = GetSceneEditor(&context))
             {

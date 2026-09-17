@@ -51,12 +51,19 @@ namespace minEngine
         /**
          * Prefab Stage Save (strategy B): copy Stage tree into Prefab templates,
          * remapping Guids via inverted EditCloneMap (stage→template). Updates inOutEditMap.
+         * Requires a valid EditCloneMap (no topology-index rebuild); reopen Stage if map is lost.
          */
         static bool WriteStageTreeToPrefab(
             Scene& stageScene,
             Prefab& prefab,
             ObjectCloneContext& inOutEditMap,
             std::string* outError = nullptr);
+
+        /** Restore Prefab templates after a failed disk Save following WriteStageTreeToPrefab. */
+        static void RestoreTemplateObjects(
+            Prefab& prefab,
+            const std::vector<std::shared_ptr<GameObject>>& previousTemplates,
+            const GUID& previousRootGuid);
 
         static PrefabInstanceRecord* FindInstanceRecord(Scene& scene, const GUID& instanceObjectGuid);
         static const PrefabInstanceRecord* FindInstanceRecord(const Scene& scene, const GUID& instanceObjectGuid);
@@ -67,8 +74,17 @@ namespace minEngine
             Scene& scene,
             const GUID& prefabAssetGuid);
 
-        /** Scans SceneManager editor Scene only (open Level); does not scan disk .mescene files. */
-        static std::vector<PrefabInstanceRef> FindInstanceRefsInOpenEditorScenes(const GUID& prefabAssetGuid);
+        /**
+         * Scans SceneManager::GetEditorScene() only (current Level document).
+         * Does not scan disk .mescene files or Prefab Stage scenes.
+         */
+        static std::vector<PrefabInstanceRef> FindInstanceRefsInEditorScene(const GUID& prefabAssetGuid);
+
+        /** @deprecated Prefer FindInstanceRefsInEditorScene — same behavior. */
+        static std::vector<PrefabInstanceRef> FindInstanceRefsInOpenEditorScenes(const GUID& prefabAssetGuid)
+        {
+            return FindInstanceRefsInEditorScene(prefabAssetGuid);
+        }
 
         /** Remove PrefabInstanceRecord; keep GameObject tree. */
         static bool UnpackInstance(Scene& scene, const GUID& rootInstanceGuid, std::string* outError = nullptr);

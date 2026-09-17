@@ -3,8 +3,12 @@
 
 ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::EPrefabOverrideKind, GReflectionEnumRegister_EPrefabOverrideKind_b0790d58)
     ME_REFLECTION_ENUM_VALUE(PropertyValue, 0)
-    ME_REFLECTION_ENUM_VALUE(AddedComponent, minEngine::EPrefabOverrideKind::AddedComponent)
-    ME_REFLECTION_ENUM_VALUE(RemovedComponent, minEngine::EPrefabOverrideKind::RemovedComponent)
+    ME_REFLECTION_ENUM_VALUE(/** Reserved for F24+ AddedComponent override bookkeeping (not written in MVP). */
+        AddedComponent, minEngine::EPrefabOverrideKind::/** Reserved for F24+ AddedComponent override bookkeeping (not written in MVP). */
+        AddedComponent)
+    ME_REFLECTION_ENUM_VALUE(/** Reserved for F24+ RemovedComponent override bookkeeping (not written in MVP). */
+        RemovedComponent, minEngine::EPrefabOverrideKind::/** Reserved for F24+ RemovedComponent override bookkeeping (not written in MVP). */
+        RemovedComponent)
 ME_REFLECTION_ENUM_DEFINE_END(minEngine::EPrefabOverrideKind)
 
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::PrefabObjectMapping, GReflectionClassRegister_PrefabObjectMapping_32afdef5)

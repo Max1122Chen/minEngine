@@ -178,6 +178,14 @@ namespace minEngine
         PrefabEditValidationResult validation =
             PrefabOverrideUtility::ValidateEdit(*scene, *record, op);
         CHECK_FALSE(validation.bAllowed);
+
+        op.Kind = EPrefabEditOpKind::AddComponent;
+        validation = PrefabOverrideUtility::ValidateEdit(*scene, *record, op);
+        CHECK_FALSE(validation.bAllowed);
+
+        op.Kind = EPrefabEditOpKind::RemoveComponent;
+        validation = PrefabOverrideUtility::ValidateEdit(*scene, *record, op);
+        CHECK_FALSE(validation.bAllowed);
     }
 
     TEST_CASE("prefab-overrides propagate non-transform field [smoke]")

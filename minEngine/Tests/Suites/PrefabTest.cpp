@@ -486,7 +486,7 @@ namespace minEngine
         REQUIRE(meta != nullptr);
 
         std::vector<PrefabInstanceRef> refs =
-            PrefabUtility::FindInstanceRefsInOpenEditorScenes(meta->Guid);
+            PrefabUtility::FindInstanceRefsInEditorScene(meta->Guid);
         REQUIRE(refs.size() == 1);
         CHECK(refs.front().RootInstanceGuid == rootGuid);
 

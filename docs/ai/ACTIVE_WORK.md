@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-16（CORE-F26 / ED-F16-B **Done**）  
+Last updated: 2026-09-17（Prefab Review 全包落地；合入评估）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,28 +11,23 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/prefab`）：Prefab 稳定性收口**
+**Primary（`feat/prefab`）：Prefab MVP + Review 全包 Done — 合入评估**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 1 | **`CORE-F26`** | Prefab 删除与实例断链 | **Done** | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) |
-| 2 | **`ED-F16`** Amendment B | Stage 独立相机 + 临时灯 | **Done** | [Design §9](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
-| 3 | **`BUG-CORE-003`** | Propagate + F24 S02/S05 收口 | **Fixed** | [Bug](./bugs/BUG-CORE-003.md) |
-| 4 | **`BUG-CORE-002`** | Stage Transform / Save map | **Fixed** | [Bug](./bugs/BUG-CORE-002.md) |
-| 5 | **`ASSET-F03`** | Create 身份契约 | **Done** | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) |
+| 1 | **`CORE-F23`–`F26`** | Prefab 资产 / Override / owning-RS / 删断链 | **Done** | F23–F26 Designs |
+| 2 | **`ED-F16`** | Prefab 文档 Mode + Hierarchy + Stage 相机/灯 | **Done**（含 A/B） | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) |
+| 3 | **`ASSET-F03`** | Create 身份契约 | **Done** | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) |
+| 4 | **Review 全包** | A1–A5 / B1–B5 修复与精简 | **Done** | [PREFAB_MVP_CODE_REVIEW](./Platform/Core/PREFAB_MVP_CODE_REVIEW.md) |
+| 5 | **`BUG-ASSET-001`** | Create Prefab MutationPass | **Fixed**（手验勾可选） | [Bug](./bugs/BUG-ASSET-001.md) |
 
-**下一刀：** 手验 Stage 相机/灯 + CB 删 Prefab / Unpack and Delete；准备 commit。Instantiate 偏移后置。
-
-**已知缺口（已登记，勿顺手大修）：**
-| ID | 摘要 | Status |
-|----|------|--------|
-| [BUG-ASSET-001](./bugs/BUG-ASSET-001.md) | Create Prefab 等写盘触发 watcher **全盘 ScanAssets** + 注册日志风暴 | Open |
+**下一刀：** 合入 `master` 评估（可先准备 commit）；Instantiate 偏移 / Nested / Apply→Prefab / Inspector 蓝字 **后置**。
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/prefab` | CORE-F26 / ED-F16-B | **Done** — 删除断链；Stage 相机/灯 |
+| `feat/prefab` | F23–F26 / ED-F16 / Review | **Ready for merge评估** |
 | `feat/lua-script` | `CORE-F19` | Call Done；Delegate → **F21** |
 | `feat/lua-script` | `CORE-F21` | Lua `Add(fn)` — Design 未开 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |

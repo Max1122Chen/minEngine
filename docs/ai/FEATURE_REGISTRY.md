@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-16（CORE-F26 / ED-F16-B Done）  
+Last updated: 2026-09-16（`feat/prefab` MVP 手验验收通过；Registry 对齐）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -47,7 +47,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F20` | Dynamic Multicast Delegate（类型系统 + AddDynamic；B1 包装 Native） | **Done** | — | [Design](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) · `feat/core` · Lua `Add(fn)` → F21 |
 | `CORE-F21` | Lua 订阅 Dynamic Multicast（`Add(fn)` → `AddScript`） | **Planned** | — | Design 未开 · 挂钩契约见 [CORE-F20](./Platform/Core/CORE-F20_DYNAMIC_MULTICAST_DELEGATES_DESIGN.md) §3.5–3.6 · 分支 `feat/lua-script` |
 | `CORE-F22` | CPU Profiler Harness（Session/Phase/Frame · Scope · Trace 导出 · 查询 API） | **Done** | — | [Design](./Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md) · `feat/core` · **不含** Editor UI |
-| `CORE-F23` | Prefab 资产 + Create/Instantiate（单根 GO 树；空 PrefabInstance 链接） | **Done**（Amendment B **Review**：Guid 同步） | — | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) · `feat/prefab` · 类名 `Prefab`（非 PrefabAsset） |
+| `CORE-F23` | Prefab 资产 + Create/Instantiate（单根 GO 树；空 PrefabInstance 链接） | **Done**（手验通过；Guid→ASSET-F03） | — | [Design](./Platform/Core/CORE-F23_PREFAB_ASSET_INSTANTIATE_DESIGN.md) · `feat/prefab` · 类名 `Prefab`（非 PrefabAsset） |
 | `CORE-F24` | Prefab 受限 Override + default 传播 | **Done**（003 收口 **Fixed**） | — | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) · [BUG-CORE-003](./bugs/BUG-CORE-003.md) |
 | `CORE-F25` | 组件从 owning Scene 解析 RenderScene（禁 SceneManager 隐式当前世界） | **Done** | — | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) · Prefab Stage 可视隔离硬前置 |
 | `CORE-F26` | Prefab 资产删除与实例断链（阻断 / Unpack 后删除） | **Done** | — | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) · `feat/prefab` |
@@ -134,7 +134,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | F02 | |
 | `TEST` | **F05** | F04 Done（TestAccess） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
-| `CORE` | **F27** | F25–F26；F26 Prefab 删除断链 Review；ASSET-F03 Done；F19/F21 Lua |
+| `CORE` | **F27** | F23–F26 Prefab MVP Done（手验）；ASSET-F03 Done；F19/F21 Lua |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F17** | F12–**F15 Done**；**F16** Prefab Editor Draft；**F11** In Progress（W3）；F10 占位 |
 | `RND` | **F17** | F16 Done；F06 In Progress；F12 Deferred |

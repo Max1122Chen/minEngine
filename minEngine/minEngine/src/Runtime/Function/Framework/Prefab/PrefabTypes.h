@@ -19,7 +19,9 @@ namespace minEngine
     enum class EPrefabOverrideKind : uint8_t
     {
         PropertyValue = 0,
+        /** Reserved for F24+ AddedComponent override bookkeeping (not written in MVP). */
         AddedComponent,
+        /** Reserved for F24+ RemovedComponent override bookkeeping (not written in MVP). */
         RemovedComponent,
     };
 

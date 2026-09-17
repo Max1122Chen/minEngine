@@ -1139,7 +1139,7 @@ namespace minEngine
         if (meta.AssetType == "Prefab")
         {
             const std::vector<PrefabInstanceRef> refs =
-                PrefabUtility::FindInstanceRefsInOpenEditorScenes(meta.Guid);
+                PrefabUtility::FindInstanceRefsInEditorScene(meta.Guid);
             if (!refs.empty())
             {
                 if (!bUnpackOpenPrefabInstanceRefs)

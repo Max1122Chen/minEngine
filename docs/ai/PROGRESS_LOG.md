@@ -1,12 +1,28 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-16（CORE-F26 / ED-F16-B Done）
+Last updated: 2026-09-17（Prefab Review 全包落地）
+
+### 2026-09-17 - Prefab Review 全包落地（A1–A5 / B1–B5）
+- **缺口：** 实例 Add/Remove 组件门禁；Save 单写盘；MutationPass（BUG-ASSET-001）；Stage Save 失败回滚；map rebuild fail-closed；ResolvePrefab `shared_ptr`。
+- **精简：** `PrefabObjectLookup`；`PrefabUtilityDetail`；Utility 拆 StageWriteback / InstanceOps；mapping 方向合并；枚举 Reserved 注释。
+- **验证：** `test prefab` 16/16、`test prefab-overrides` 5/5；`Editor`+`minEngineTests` 已编。
+- **文档：** [PREFAB_MVP_CODE_REVIEW](./Platform/Core/PREFAB_MVP_CODE_REVIEW.md) → Done；BUG-ASSET-001 → Fixed。
+- **Next：** 准备 commit / 合入评估。
+
+### 2026-09-16 - feat/prefab 工程 Review 报告（待批）
+- **文档：** [PREFAB_MVP_CODE_REVIEW.md](./Platform/Core/PREFAB_MVP_CODE_REVIEW.md) — 区分功能缺口（A）与冗余（B）；推荐包 R1；**未改代码**。
+- **验证基线：** `test prefab` 16/16、`test prefab-overrides` 5/5。
+
+### 2026-09-16 - feat/prefab MVP 验收通过（文档对齐）
+- **结论：** CORE-F23–F26 / ED-F16（含 A/B）/ ASSET-F03 / BUG-CORE-002·003 手验已通过；分支 tip `15d0ab3`。
+- **文档：** ACTIVE_WORK 去掉「待手验 / 准备 commit」滞后表述；下一刀改为合入评估或 BUG-ASSET-001 / Review 精简。
+- **仍 Open：** BUG-ASSET-001（Create Prefab → 全盘 ScanAssets）。
 
 ### 2026-09-16 - CORE-F26 + ED-F16-B Done：删除断链 + Stage 相机/临时灯
 - **F26：** `FindInstanceRefs*` / `Unpack*`；`DeleteAsset` Prefab 门禁；Editor「Unpack and Delete Prefab」；Stage 打开时拦删。
 - **ED-F16-B：** Level/Stage `EditorFlyCameraPose` stash/restore；Stage `__ME_EditorTemp_DirectionalLight`；WriteStageTree / Hierarchy 排除 temp。
 - **验证：** `test prefab` 16/16、`test prefab-overrides` 5/5；`Editor`+`minEngineTests` 已编。
-- **Next：** 手验；准备 commit。
+- **验收：** 手验通过（见上条）。
 
 ### 2026-09-16 - BUG-CORE-003 Fixed：全属性 Propagate + F24 S02/S05 收口
 - **Propagate / RevertInstance：** mapping 上反射叶子；跳过根 Transform / override / Instanced / Delegate / 非资产 ObjectPtr。
