@@ -82,6 +82,17 @@ Surface / Debug ≈ 高级语言 / Client
 同源 = 同一套原语 + 同一批 `EditorCommand` 入 **指定** `session.GetCommandStack()`。  
 不是「大家都走 GetHierarchy / 都说 JSON」。
 
+### 1.4 Client 不指挥 Service（长期约束）
+
+权威表述：[ENGINE_DESIGN_PHILOSOPHY.md](../ENGINE_DESIGN_PHILOSOPHY.md) §5「Editor 域服务与 Client」。本 Feature 是落地实例。
+
+| 规则 | 本波例子 |
+|------|----------|
+| op / Debug / 菜单 ≠ Service API | `get_hierarchy` 在 Surface 拼；`rename` = `SetProperty(m_Name)`，没有 `Rename` |
+| 只属于 Client 的解析留在 Client | 按名找对象、Json、文件对话框、Active Tab |
+| 不为 Client 改 Service 形态 | Get/Set 保持 path + `void*`；不把 Json 或协议字符串收回服务 |
+| 新原语只补原语缺口 | `SetTransform(before, after)`：Gizmo 松手时世界已是 after，`SetProperty` 会抓错 before |
+
 ---
 
 ## 2) 命名
@@ -460,3 +471,4 @@ Debug 与 Surface **同一实例**（Editor 持有，经 `IEditorContext` 或等
 | 2026-09-18 | **新增 §6 DebugCommand 接入**：Client 职责、调用链、命令对照、验收；其后章节顺延 |
 | 2026-09-18 | 评审修补：§5.2 Session→Scene MVP 绑定；Prefab 门禁本波强制；Status → In Progress |
 | 2026-09-18 | S04：GUI 发 cmd vs 控制流拆分；Rename→SetProperty；Move/Instantiate 原语；Gizmo `SetTransform`；Status → Done |
+| 2026-09-18 | §1.4：Client/Service 三条约束，指向 Engine 设计哲学 |

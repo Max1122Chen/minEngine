@@ -1,6 +1,10 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：ED-F18 Done）
+Last updated: 2026-09-18（`feat/mcp`：Editor Client/Service 约束写入设计哲学）
+
+### 2026-09-18 - Editor 域服务与 Client 约束
+- **落点：** `ENGINE_DESIGN_PHILOSOPHY.md` §5；ED-F18 §1.4 为实例；agent rule 提醒同条。
+- **三条：** 原语不镜像 Client op；只属于 Client 的解析留在 Client；不为 Client 改 Service 形态。新原语只补原语缺口（如 Gizmo `SetTransform`）。
 
 ### 2026-09-18 - ED-F18 Done
 - **验收：** 维护者确认 Scene GUI/Debug 走 `SceneEditorServices` 无明显问题。

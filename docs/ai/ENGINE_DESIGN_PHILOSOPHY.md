@@ -4,7 +4,7 @@
 - **ID:** N/A（跨 Feature 长期约束；非 Feature 排期源）
 - **Status:** Active
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-03
+- **Last updated:** 2026-09-18
 - **Related:** [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md), [ACTIVE_WORK.md](./ACTIVE_WORK.md), [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md)
 - **Agent hook:** `.cursor/rules/engine-design-philosophy.mdc`（always apply）；bootstrap 读本文件摘要
 
@@ -81,6 +81,16 @@ Core 保持克制。高层、具体领域、有明显设计倾向的能力，优
 
 **不要**为 Agent 单独造复杂 Agent Framework；优先改善 Engine 本身的可观察性、可操作性与结构化程度。
 
+### Editor 域服务与 Client（GUI / Debug / Automation）
+
+`*EditorServices` 是 Editor 域的中性原语。GUI、DebugCommand、Automation Surface 都是 **Client**。实例：[ED-F18](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md)。
+
+1. **原语，不是 Client API 镜像。** Surface 的 op、Debug 命令、GUI 菜单项，不要求 Service 有同名方法。Service 提供底层能力；Client 用原语表达自己的语义。Service 不解释 Client 语义。Client 能用现有原语说清的，就用原语，不要指望 Service 为某个入口加 API。
+2. **只属于自己的解析留在 Client。** 名字查找、JSON、Hierarchy 拼装、文件对话框、Active Tab / 焦点，不进 Service。
+3. **不为 Client 改 Service 的接口形态。** 不为了让 Surface 少写序列化就把 Json 塞进 Service；不为了 Debug 的 `rename` 就把 `SetProperty` 改成字符串协议。
+
+**新原语的准入：** 现有原语无法诚实表达该操作（例如 Gizmo：按下时的 before 与松手时的 after；松手时世界已是 after，不能再走会重抓 before 的 `SetProperty`）。理由是原语缺口，不是「某个 Client 有一个同名 op」。
+
 ## 6) Prefer Simplicity
 
 目标不是复制 UE/Unity 的完整复杂度。这是个人 / 学习 Engine，也是验证 Engine Architecture 的长期项目。
@@ -128,3 +138,4 @@ Core 保持克制。高层、具体领域、有明显设计倾向的能力，优
 | 日期 | 说明 |
 |------|------|
 | 2026-09-03 | 正式确立；写入 docs/ai + agent always-apply rule |
+| 2026-09-18 | Editor 域服务与 Client：原语不镜像 op；解析留在 Client；不为 Client 改 Service 形态 |

@@ -26,6 +26,7 @@ Gently cite the matching principle if the plan:
 - Copies UE/Unity structure “because they have it” without a minEngine mechanism need
 - Adds complexity for hypothetical future (including premature GC / Net / full Anim Graph / full UI Framework)
 - Splits Agent-only code paths instead of improving shared Engine surface
+- Adds a domain-service API that only mirrors one client op, or changes the service shape so a client can skip its own parsing (see philosophy §5 Editor clients)
 - Serializes work that has **no real dependency** (ignore multi-track mode in Capability Roadmap)
 
 ## Planning mode
