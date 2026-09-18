@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-17（workflow：UE/Godot 源码路径 + 主动草拟 commit + design-review）
+Last updated: 2026-09-18（RND-F06 文档收口；登记 RND-F17 / MAT-F01）
+
+### 2026-09-18 - RND-F06 文档收口；登记 RND-F17 / MAT-F01（`feat/render`）
+- **F06：** Design / Registry / ACTIVE_WORK → **Done**（代码早已无 `class RenderPipeline`；S03 记 `RenderPipeline/` 目录名为历史路径）。
+- **登记：** `RND-F17` Isolated preview / multi-view draw scheduling（吸收 TD-027 / 0.1.0 IsoRT）；`MAT-F01` MaterialInstance（空壳类 → Planned Design）。
+- **Next：** 对照 UE/Godot/Unity 讨论 F17 方向后拍板 Design；再 Pre-flight。
+- **验证：** 文档收口（无新代码）。
 
 ### 2026-09-17 - 工作流补全：外部源码 + 主动 commit 草稿 + design-review skill
 - **内容：** mentor / git-commit-mentor：登记 `D:/Dev/GitRepo/UnrealEngine` 与 `D:/Dev/GitRepo/Godot`；参考 UE/Godot 时默认读源码；交付批次收口后**主动草拟** commit（不等用户再说准备 commit）。
