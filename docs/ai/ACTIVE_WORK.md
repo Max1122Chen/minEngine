@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（`feat/mcp`：ED-F17 Done → 下一刀 MCP-F03）  
+Last updated: 2026-09-18（`feat/mcp`：MCP P0 竖切 Done）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,17 +11,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/mcp`）：MCP-F03 minEngine MCP Server（粗 Tools；Spawn/Attach）**
+**Primary（`feat/mcp`）：MCP P0 竖切已齐 — 可选收口 / 下一主题另议**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Planned** | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
+| 0 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Planned**（伞；可随竖切升 Done） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | 1 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | 2 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
 | 3 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
-| 4 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Planned** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) |
+| 4 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 
-**下一刀：** MCP-F03 — TS MCP Server（粗 Tools → 细 op；Spawn/Attach 复用 CLI-F02）。GUI 收敛仍属 ED-F18。
+**下一刀（建议择一）：** Cursor 手配 MCP 手测竖切；或 **ED-F18** GUI/Debug 同源收敛；或升 **MCP-F01** 为 Done/归档。勿默认开新 MCP Feature。
 
 **参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 
@@ -30,7 +30,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 轨 | ID | 说明 |
 |----|-----|------|
 | editor | `ED-F11` | Tab Host 余量（可选） |
-| editor | **`ED-F18`** | GUI/Debug → 域服务收敛（**Planned 挂账**；有空再做） |
+| editor | **`ED-F18`** | GUI/Debug → 域服务收敛（**Planned 挂账**） |
 | — | Prefab 后置 | Nested / Apply→Prefab / Instantiate 偏移 / 蓝字 |
 | — | `ED-F10` | EditorSettings 占位 |
 

@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：ED-F17 Done）
+Last updated: 2026-09-18（`feat/mcp`：MCP-F03 Done）
+
+### 2026-09-18 - MCP-F03 Done（minEngine MCP Server）
+- **代码：** `minEngineMcpServer/` — Pipe client（u32 LE + JSON）、ConnectionManager（attach/spawn + ready-file）、stdio MCP + 粗 Tools（`editor_connect` / `get_state` / `query` / `edit` / `verify`）；`domain.action` 拼接；capabilities 来自 Host。
+- **验证：** `npm run build`；`smoke:ping`；`smoke_attach`（get_hierarchy）；`smoke_spawn` PASS。
+- **文档：** Design/Impl/Registry/ACTIVE_WORK → Done；MCP P0 竖切齐。
+- **Next：** 准备 commit；Cursor 手配或 ED-F18 / MCP-F01 收口另议。
 
 ### 2026-09-18 - ED-F17 Done（S04 Scene MVP 铺满）
 - **代码：** Surface 接齐 `get_hierarchy` / `get_object` / `create_game_object` / `delete_game_object` / `add_component` / `remove_component` / `reparent`；`SceneAutomationServices` 经 session Command 栈；`add_component` 支持全名或 unambiguous 短名。

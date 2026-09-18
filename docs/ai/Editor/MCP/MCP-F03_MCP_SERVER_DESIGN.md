@@ -3,11 +3,11 @@
 ## Meta
 - **ID:** `MCP-F03`
 - **Type:** Feature
-- **Status:** Planned（维护者已认可设计；待 Implementation）
-- **Last updated:** 2026-09-17（升 Planned）
+- **Status:** Done
+- **Last updated:** 2026-09-18（Server 落地；attach/spawn 冒烟）
 - **Branch:** `feat/mcp`
-- **Depends on:** `MCP-F02` · `ED-F17`（可先 mock）· `CLI-F02`
-- **Related:** [MCP-F01](./MCP-F01_ARCHITECTURE_DESIGN.md) §3.4（接口分层）· §7.5（粗 Tools）
+- **Depends on:** `MCP-F02` · `ED-F17` · `CLI-F02`
+- **Related:** [Implementation](./MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [MCP-F01](./MCP-F01_ARCHITECTURE_DESIGN.md) §3.4（接口分层）· §7.5（粗 Tools）
 - **Product name:** **minEngine MCP Server**
 
 ## TL;DR
@@ -184,11 +184,11 @@ MVP：**可选**；进程退出即断。Spawn 子进程建议在 Server 退出�
 
 ## 6) 验收标准
 
-- [ ] 粗 Tools 可被 Cursor 列出且 description 可读
-- [ ] Spawn 与 Attach 各一路径（或 P0-alpha 先通一种并文档声明）
-- [ ] 连接后 capabilities 来自 Host
-- [ ] Scene query→edit→verify→save 不经 TS 业务分支
-- [ ] 目录/包名 = minEngine MCP Server
+- [x] 粗 Tools 可被 Cursor 列出且 description 可读（stdio MCP；见 `minEngineMcpServer/README.md`）
+- [x] Spawn 与 Attach 各一路径（`scripts/smoke_spawn.ts` / `smoke_attach.ts`）
+- [x] 连接后 capabilities 来自 Host
+- [x] Scene query→edit→verify→save 不经 TS 业务分支（仅 `domain.action` 拼接）
+- [x] 目录/包名 = minEngine MCP Server（包名 `minengine-mcp-server`）
 
 ---
 
@@ -208,3 +208,4 @@ MVP：**可选**；进程退出即断。Spawn 子进程建议在 Server 退出�
 | 2026-09-17 | 粗 Tools + Spawn/Attach + 产品名 |
 | 2026-09-17 | L3 无业务；能力真源；业界对照后置 |
 | 2026-09-17 | **评审修补：** 禁 TS 独真源、超时、get_state 保留、链接 §7.5；待审批 |
+| 2026-09-18 | 实现 Done：`minEngineMcpServer/`；attach/spawn 冒烟；**Status → Done** |
