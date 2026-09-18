@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-17（`feat/mcp`：MCP-F02 契约落地 Done）
+Last updated: 2026-09-18（`feat/mcp`：CLI-F02 启动面 Done）
+
+### 2026-09-18 - CLI-F02 启动面落地（S01–S03 Done）
+- **代码：** `--automation-pipe` / `--automation-ready-file` / `--open-scene` 进 `CommandLineResult`；Editor 缓存 pipe/ready getters；`--open-scene` → `OpenSceneByPath`（覆盖默认场景）。**不**写 ready-file（属 ED-F17）。
+- **验证：** `cmake --build build --target Editor` PASS；`MaximumEditor.exe --help` 可见三 flag；仅 `--automation-ready-file` → exit 2。
+- **文档：** Design/Impl/Registry/ACTIVE_WORK → Done（启动面）。
+- **Next：** 等待 **CLI-F02 Feature 审批** → ED-F17 Impl。
 
 ### 2026-09-17 - MCP-F02 契约落地（S01–S03 Done）
 - **落盘：** [`schemas/automation/v1/`](../../schemas/automation/v1/) — `request`/`response` schema、README（u32 LE length-prefix）、`ERROR_CODES.md`、examples（ping / get_state / get_capabilities / set_property ok·fail / KindOpMismatch / remove_component）。

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-17（`feat/mcp`：MCP-F02 契约落地）  
+Last updated: 2026-09-18（`feat/mcp`：CLI-F02 启动面 Done；下一刀 ED-F17）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,17 +11,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/mcp`）：MCP / Editor Automation — F02 契约 Done，待 Feature 审批后开下游 Impl**
+**Primary（`feat/mcp`）：MCP / Editor Automation — CLI-F02 Done；待 Feature 审批后开 ED-F17**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Planned** | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | 1 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
-| 2 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Planned** | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) |
-| 3 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Planned** | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) |
+| 2 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
+| 3 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Planned** | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) |
 | 4 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Planned** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) |
 
-**下一刀（待 MCP-F02 Feature 审批）：** `CLI-F02` 与/或 `ED-F17` Implementation（读同一份 schema；依赖序：CLI flags ∥ Host 可并行起步，MCP-F03 后于 Host）。每 Feature 停一次审批。
+**下一刀（待 CLI-F02 Feature 审批）：** ED-F17 Implementation（Listen → ready-file；协议分派；读 `Editor` launch getters）。每 Feature 停一次审批。
 
 **参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 

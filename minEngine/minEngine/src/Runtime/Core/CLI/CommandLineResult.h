@@ -42,6 +42,13 @@ namespace minEngine
         std::string SuiteId;
         std::optional<std::string> ReflectionSuiteFilter;
 
+        /** Editor automation (CLI-F02): Named Pipe name for ED-F17 Host. */
+        std::optional<std::string> AutomationPipeName;
+        /** Main ready channel path; written by Host after Listen (not by CLI parse). */
+        std::optional<std::filesystem::path> AutomationReadyFilePath;
+        /** Project-relative scene asset path (e.g. Scenes/test.mescene). Guid deferred. */
+        std::optional<std::string> OpenSceneAssetPath;
+
         bool RequestedHelp = false;
         bool RequestedVersion = false;
     };

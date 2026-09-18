@@ -3,11 +3,14 @@
 ## Meta
 - **ID:** `CLI-F02`
 - **Type:** Feature
-- **Status:** Planned（维护者已认可设计；待 Implementation）
-- **Last updated:** 2026-09-17（升 Planned）
+- **Status:** Done（启动面：flags + open-scene + launch 配置缓存；ready-file/Listen → ED-F17）
+- **Last updated:** 2026-09-18
 - **Branch:** `feat/mcp`
 - **Depends on:** `CLI-F01` Done；配合 `ED-F17` / `MCP-F03`
-- **Related:** [MCP-F01](../../Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · [ApplicationCommandLine](../../../minEngine/minEngine/src/Runtime/Core/CLI/ApplicationCommandLine.h)
+- **Related:**
+  - [Implementation](./CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md)（**Done**）
+  - [MCP-F01](../../Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md)
+  - [ApplicationCommandLine](../../../minEngine/minEngine/src/Runtime/Core/CLI/ApplicationCommandLine.h)
 
 ## TL;DR
 
@@ -112,16 +115,16 @@ MCP 看到 R → connect(N) → 内部连通检查 → get_state → …
 
 ## 6) 验收标准
 
-- [ ] `--help` 可见 automation options
-- [ ] 带 pipe 启动后，超时内出现 ready-file
-- [ ] `--open-scene` 后 `editor.get_state` 可见对应 Session
-- [ ] 无第二套 argv 扫描
+- [x] `--help` 可见 automation options
+- [ ] 带 pipe 启动后，超时内出现 ready-file — **ED-F17**（本 Feature 只缓存路径；Listen→写文件不变量属 Host）
+- [ ] `--open-scene` 后 `editor.get_state` 可见对应 Session — **路径侧已打开场景**；`get_state` 协议出口属 **ED-F17**
+- [x] 无第二套 argv 扫描
 
 ---
 
 ## 7) 仍可议
 
-1. `--open-scene`：路径 vs Guid vs 两者？  
+1. `--open-scene`：路径 vs Guid vs 两者？（MVP：**项目相对资产路径**）  
 2. pipe 默认名模板？  
 
 ---
@@ -134,3 +137,4 @@ MCP 看到 R → connect(N) → 内部连通检查 → get_state → …
 | 2026-09-17 | MVP Spawn+Attach；对接 minEngine MCP Server |
 | 2026-09-17 | ready-file 为主；Attach 失败可读提示 |
 | 2026-09-17 | **评审修补：** Listen→ready 不变量；pipe 含 pid/随机；open-scene↔defaultSessionId；待审批 |
+| 2026-09-18 | 实现 Done（启动面）；ready-file / get_state 验收转 ED-F17 |

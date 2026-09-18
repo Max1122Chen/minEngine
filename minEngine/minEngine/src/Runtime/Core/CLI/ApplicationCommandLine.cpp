@@ -109,6 +109,25 @@ namespace minEngine
             "Scene renderer: forward|manual (aliases rdg|handpass). Default: forward")
             ->option_text("<forward|manual>");
 
+        std::string automationPipe;
+        app.add_option(
+            "--automation-pipe",
+            automationPipe,
+            "Enable Editor Automation Host on this Named Pipe (include pid/random; do not use a fixed global name)")
+            ->option_text("<name>");
+        std::string automationReadyFile;
+        app.add_option(
+            "--automation-ready-file",
+            automationReadyFile,
+            "Path written after Listen (+ optional --open-scene); primary Spawn ready channel")
+            ->option_text("<path>");
+        std::string openSceneAssetPath;
+        app.add_option(
+            "--open-scene",
+            openSceneAssetPath,
+            "Open this Scene after project load (project-relative asset path, e.g. Scenes/test.mescene)")
+            ->option_text("<asset-path>");
+
         CLI::App& testCommand = *app.add_subcommand("test", "Headless test mode (no editor window)");
         std::string testTarget;
         testCommand.add_option("target", testTarget, "smoke | full | <suite-id>")
@@ -188,6 +207,16 @@ namespace minEngine
 
         if (app.got_subcommand("test"))
         {
+            if (!automationPipe.empty() || !automationReadyFile.empty() || !openSceneAssetPath.empty())
+            {
+                std::fprintf(
+                    stderr,
+                    "Automation flags (--automation-pipe / --automation-ready-file / --open-scene) "
+                    "are only valid in Editor mode, not with 'test'.\n");
+                s_LastExitCode = CommandLineExitCode::UsageError;
+                return std::nullopt;
+            }
+
             result.Mode = ApplicationMode::Test;
 
             if (const std::optional<TestRunKind> kind = ParseTestTargetKind(testTarget))
@@ -206,6 +235,28 @@ namespace minEngine
             }
 
             return result;
+        }
+
+        if (!automationReadyFile.empty() && automationPipe.empty())
+        {
+            std::fprintf(
+                stderr,
+                "--automation-ready-file requires --automation-pipe.\n");
+            s_LastExitCode = CommandLineExitCode::UsageError;
+            return std::nullopt;
+        }
+
+        if (!automationPipe.empty())
+        {
+            result.AutomationPipeName = automationPipe;
+        }
+        if (!automationReadyFile.empty())
+        {
+            result.AutomationReadyFilePath = std::filesystem::path(automationReadyFile);
+        }
+        if (!openSceneAssetPath.empty())
+        {
+            result.OpenSceneAssetPath = openSceneAssetPath;
         }
 
         if (!projectPath.empty())

@@ -30,6 +30,8 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace minEngine
@@ -98,8 +100,16 @@ namespace minEngine
         IFileDialogService& GetFileDialogService() override;
         const IFileDialogService& GetFileDialogService() const override;
 
-        bool OpenProject(const std::string& projectPath);
+        bool OpenProject(
+            const std::string& projectPath,
+            const std::optional<std::string>& openSceneAssetPath = std::nullopt);
         void CloseProject();
+
+        const std::optional<std::string>& GetAutomationPipeName() const { return m_AutomationPipeName; }
+        const std::optional<std::filesystem::path>& GetAutomationReadyFilePath() const
+        {
+            return m_AutomationReadyFilePath;
+        }
 
     private:
         void RegisterModules();
@@ -109,6 +119,8 @@ namespace minEngine
         void ResetCommandStackForNewDocument();
         bool InitializeImGuiBackend();
         void BootstrapDocumentHost();
+        void ApplyAutomationLaunchConfig(const CommandLineResult& commandLine);
+        static std::string NormalizeOpenSceneAssetPath(std::string_view rawPath);
 
         Engine* m_Engine = nullptr;
         EditorGUIManager m_EditorGUIManager;
@@ -139,6 +151,8 @@ namespace minEngine
         bool m_RequestResetLayout = false;
         std::string m_LastWindowTitle;
         bool m_PendingInitialFontAtlasRebuild = false;
+        std::optional<std::string> m_AutomationPipeName;
+        std::optional<std::filesystem::path> m_AutomationReadyFilePath;
 
         static std::optional<std::filesystem::path> ResolveProjectDescriptorPath(
             const CommandLineResult& commandLine);

@@ -35,6 +35,8 @@
 #include <GLFW/glfw3.h>
 #include <filesystem>
 #include <optional>
+#include <string>
+#include <string_view>
 
 namespace minEngine
 {
@@ -180,7 +182,43 @@ namespace minEngine
         return true;
     }
 
-    bool Editor::OpenProject(const std::string& projectPath)
+    std::string Editor::NormalizeOpenSceneAssetPath(std::string_view rawPath)
+    {
+        std::filesystem::path path(rawPath);
+        path = path.lexically_normal();
+        std::string normalized = path.generic_string();
+        while (!normalized.empty() && (normalized.front() == '/' || normalized.front() == '\\'))
+        {
+            normalized.erase(normalized.begin());
+        }
+
+        constexpr std::string_view kAssetsPrefix = "Assets/";
+        if (normalized.size() >= kAssetsPrefix.size()
+            && normalized.compare(0, kAssetsPrefix.size(), kAssetsPrefix) == 0)
+        {
+            normalized.erase(0, kAssetsPrefix.size());
+        }
+
+        return normalized;
+    }
+
+    void Editor::ApplyAutomationLaunchConfig(const CommandLineResult& commandLine)
+    {
+        m_AutomationPipeName = commandLine.AutomationPipeName;
+        m_AutomationReadyFilePath = commandLine.AutomationReadyFilePath;
+        if (m_AutomationPipeName.has_value())
+        {
+            ME_LOG(
+                LogEditor,
+                Info,
+                "Editor: automation pipe requested ('{}'); Host Listen/ready-file belong to ED-F17.",
+                *m_AutomationPipeName);
+        }
+    }
+
+    bool Editor::OpenProject(
+        const std::string& projectPath,
+        const std::optional<std::string>& openSceneAssetPath)
     {
         m_ProjectAssetWatcher.StopWatching();
 
@@ -195,29 +233,51 @@ namespace minEngine
             ResetCommandStackForNewDocument();
             m_ContextMenu.RegisterBuiltInActions();
 
-            const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
-            if (!projectCtx.Settings.EditorDefaultSceneName.empty())
+            bool sceneLoaded = false;
+            if (openSceneAssetPath.has_value() && !openSceneAssetPath->empty())
             {
-                const std::string& defaultSceneName = projectCtx.Settings.EditorDefaultSceneName;
-                if (!m_SceneEditor.LoadScene(*this, defaultSceneName))
+                const std::string normalizedPath = NormalizeOpenSceneAssetPath(*openSceneAssetPath);
+                if (!m_SceneEditor.OpenSceneByPath(*this, normalizedPath))
                 {
-                    ME_LOG(LogEditor, Warn, 
-                        "Failed to load editor default scene '{}'.",
-                        defaultSceneName);
-
-                    if (defaultSceneName != "default" &&
-                        m_SceneEditor.LoadScene(*this, "default"))
+                    ME_LOG(
+                        LogEditor,
+                        Error,
+                        "Editor: --open-scene failed for '{}'.",
+                        normalizedPath);
+                    return false;
+                }
+                sceneLoaded = true;
+            }
+            else
+            {
+                const ProjectContext& projectCtx = projectManager.GetCurrentProjectCtx();
+                if (!projectCtx.Settings.EditorDefaultSceneName.empty())
+                {
+                    const std::string& defaultSceneName = projectCtx.Settings.EditorDefaultSceneName;
+                    if (!m_SceneEditor.LoadScene(*this, defaultSceneName))
                     {
-                        ME_LOG(LogEditor, Info, "Editor: loaded fallback scene 'default'.");
+                        ME_LOG(LogEditor, Warn, 
+                            "Failed to load editor default scene '{}'.",
+                            defaultSceneName);
+
+                        if (defaultSceneName != "default" &&
+                            m_SceneEditor.LoadScene(*this, "default"))
+                        {
+                            ME_LOG(LogEditor, Info, "Editor: loaded fallback scene 'default'.");
+                            sceneLoaded = true;
+                        }
+                    }
+                    else
+                    {
+                        ME_LOG(LogEditor, Info, 
+                            "Editor default scene '{}' loaded successfully.",
+                            defaultSceneName);
+                        sceneLoaded = true;
                     }
                 }
-                else
-                {
-                    ME_LOG(LogEditor, Info, 
-                        "Editor default scene '{}' loaded successfully.",
-                        defaultSceneName);
-                }
             }
+
+            (void)sceneLoaded;
 
             m_MaterialEditor->RefreshMaterialList();
             m_AnimationGraphEditor->RefreshGraphList();
@@ -358,6 +418,7 @@ namespace minEngine
         m_DocumentHost.RegisterInputCommands(m_InputHub);
         m_PlayInEditorSession.SetHostContext(this);
         RegisterModules();
+        ApplyAutomationLaunchConfig(commandLine);
 
         const std::optional<std::filesystem::path> projectDescriptorPath =
             ResolveProjectDescriptorPath(commandLine);
@@ -367,7 +428,7 @@ namespace minEngine
             return;
         }
 
-        if (!OpenProject(projectDescriptorPath->string()))
+        if (!OpenProject(projectDescriptorPath->string(), commandLine.OpenSceneAssetPath))
         {
             m_ExitRequested = true;
             return;
