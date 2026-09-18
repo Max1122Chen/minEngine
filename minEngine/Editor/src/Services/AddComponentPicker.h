@@ -40,6 +40,7 @@ namespace minEngine
 
     private:
         static bool MatchesFilter(std::string_view typeName, std::string_view filterText);
+        static std::vector<std::string> CollectAddableComponentTypeNames(IEditorContext& editor);
         static void DrawTypeRowIcon(IEditorContext& editor, std::string_view typeName);
         static bool DrawFilteredTypeList(IEditorContext& editor,
                                          SceneEditor& sceneEditor,

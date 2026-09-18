@@ -201,4 +201,65 @@ export function registerTools(server: McpServer, connection: ConnectionManager):
       }
     },
   );
+
+  server.registerTool(
+    "editor_control",
+    {
+      title: "Editor control",
+      description:
+        "Change what the user is looking at (open asset, focus session, select object, reveal in Content Browser). " +
+        "Does not push a Scene undo command. op = domain.action.",
+      inputSchema: {
+        domain: z.string(),
+        action: z.string(),
+        sessionId: z.string().optional(),
+        payload: z.record(z.unknown()).optional(),
+      },
+    },
+    async (args) => {
+      try {
+        connection.ensureReady();
+        const op = composeOp(args.domain, args.action);
+        const response = await connection.getClient().request({
+          kind: kindForTool("control"),
+          op,
+          sessionId: args.sessionId,
+          payload: args.payload ?? {},
+        });
+        assertOk(response, op);
+        return textResult(response.result ?? null);
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "editor_asset",
+    {
+      title: "Editor asset",
+      description:
+        "Create or delete an asset. Not a Scene undo unit. Listing assets uses editor_query asset.list. op = domain.action.",
+      inputSchema: {
+        domain: z.string(),
+        action: z.string(),
+        payload: z.record(z.unknown()).optional(),
+      },
+    },
+    async (args) => {
+      try {
+        connection.ensureReady();
+        const op = composeOp(args.domain, args.action);
+        const response = await connection.getClient().request({
+          kind: kindForTool("asset"),
+          op,
+          payload: args.payload ?? {},
+        });
+        assertOk(response, op);
+        return textResult(response.result ?? null);
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
 }

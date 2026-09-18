@@ -9,9 +9,15 @@
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Framework/Prefab/Prefab.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Resource/AssetMeta.h"
 #include "Services/Scene/ScenePropertyValueCodec.h"
+#include "Services/Asset/AssetEditorServices.h"
+#include "Services/Control/EditorControlServices.h"
+#include "Services/TypeQuery/TypeQueryServices.h"
 #include "Shell/Document/EditorDocumentHost.h"
 #include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/IEditorContext.h"
@@ -116,6 +122,61 @@ namespace minEngine
             "scene.validate",
             [this](IEditorContext& context, const AutomationRequest& request) {
                 return HandleValidate(context, request);
+            });
+        m_Handlers.emplace(
+            "scene.move_component",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMoveComponent(context, request);
+            });
+        m_Handlers.emplace(
+            "scene.instantiate_prefab",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleInstantiatePrefab(context, request);
+            });
+        m_Handlers.emplace(
+            "scene.select_object",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSelectObject(context, request);
+            });
+        m_Handlers.emplace(
+            "reflect.list_classes",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleListClasses(context, request);
+            });
+        m_Handlers.emplace(
+            "reflect.list_properties",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleListProperties(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.list",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleListAssets(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.create",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleCreateAsset(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.delete",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleDeleteAsset(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.open",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleOpenAsset(context, request);
+            });
+        m_Handlers.emplace(
+            "editor.activate_session",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleActivateSession(context, request);
+            });
+        m_Handlers.emplace(
+            "editor.reveal_asset",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleRevealAsset(context, request);
             });
     }
 
@@ -1007,5 +1068,370 @@ namespace minEngine
                 {"valid", true},
                 {"stub", true},
                 {"message", "Validation is a P0 stub."}});
+    }
+
+    bool EditorAutomationSurface::TryReadStringArray(
+        const Json& payload,
+        const char* key,
+        std::vector<std::string>& outNames,
+        std::string& outError)
+    {
+        outNames.clear();
+        if (!payload.contains(key) || payload[key].is_null())
+        {
+            return true;
+        }
+        if (!payload[key].is_array())
+        {
+            outError = std::string(key) + " must be an array of strings.";
+            return false;
+        }
+        for (const Json& item : payload[key])
+        {
+            if (!item.is_string())
+            {
+                outError = std::string(key) + " must contain only strings.";
+                return false;
+            }
+            outNames.push_back(item.get<std::string>());
+        }
+        return true;
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleMoveComponent(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string componentObjectId = request.Payload.value("componentObjectId", "");
+        if (componentObjectId.empty() || !request.Payload.contains("newIndex") || !request.Payload["newIndex"].is_number())
+        {
+            return MakeError(request, "InvalidPayload", "componentObjectId and numeric newIndex are required.");
+        }
+
+        AutomationResponse errorResponse;
+        EditorDocumentSession* session = ResolveSession(context, request, errorResponse);
+        if (session == nullptr)
+        {
+            return errorResponse;
+        }
+
+        Scene* scene = nullptr;
+        const SceneEditorResult sceneResult = m_SceneServices.GetScene(context, *session, &scene);
+        if (!sceneResult.Ok || scene == nullptr)
+        {
+            return FromEditorResult(request, sceneResult);
+        }
+
+        GUID componentGuid;
+        if (!ScenePropertyValueCodec::TryParseGuid(componentObjectId, componentGuid))
+        {
+            return MakeError(request, "InvalidObjectId", "componentObjectId is not a valid GUID.");
+        }
+
+        Component* component = nullptr;
+        GameObject* owner = nullptr;
+        const SceneEditorResult findResult =
+            m_SceneServices.FindComponent(*scene, componentGuid, &component, &owner);
+        if (!findResult.Ok || component == nullptr || owner == nullptr)
+        {
+            return FromEditorResult(request, findResult);
+        }
+
+        const size_t newIndex = request.Payload["newIndex"].get<size_t>();
+        const SceneEditorResult moveResult =
+            m_SceneServices.MoveComponent(context, *session, *owner, *component, newIndex);
+        return FromEditorResult(request, moveResult, Json{{"moved", moveResult.Ok}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleInstantiatePrefab(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string assetPath = request.Payload.value("assetPath", "");
+        if (assetPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "assetPath is required.");
+        }
+        if (!AssetManager::HasInstance())
+        {
+            return MakeError(request, "InternalError", "AssetManager is not available.");
+        }
+
+        AutomationResponse errorResponse;
+        EditorDocumentSession* session = ResolveSession(context, request, errorResponse);
+        if (session == nullptr)
+        {
+            return errorResponse;
+        }
+
+        std::shared_ptr<Prefab> prefab = AssetManager::Get().LoadAsset<Prefab>(assetPath);
+        if (!prefab)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load prefab.");
+        }
+
+        GameObject* attachParent = nullptr;
+        const std::string parentId = request.Payload.value("attachParentObjectId", "");
+        if (!parentId.empty())
+        {
+            Scene* scene = nullptr;
+            const SceneEditorResult sceneResult = m_SceneServices.GetScene(context, *session, &scene);
+            if (!sceneResult.Ok || scene == nullptr)
+            {
+                return FromEditorResult(request, sceneResult);
+            }
+            GUID parentGuid;
+            if (!ScenePropertyValueCodec::TryParseGuid(parentId, parentGuid))
+            {
+                return MakeError(request, "InvalidObjectId", "attachParentObjectId is not a valid GUID.");
+            }
+            const SceneEditorResult findResult = m_SceneServices.FindGameObject(*scene, parentGuid, &attachParent);
+            if (!findResult.Ok)
+            {
+                return FromEditorResult(request, findResult);
+            }
+        }
+
+        const SceneEditorResult instantiateResult =
+            m_SceneServices.InstantiatePrefab(context, *session, std::move(prefab), attachParent);
+        return FromEditorResult(request, instantiateResult, Json{{"instantiated", instantiateResult.Ok}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSelectObject(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string objectId = request.Payload.value("objectId", "");
+        if (objectId.empty())
+        {
+            return MakeError(request, "InvalidPayload", "objectId is required.");
+        }
+
+        AutomationResponse errorResponse;
+        EditorDocumentSession* session = ResolveSession(context, request, errorResponse);
+        if (session == nullptr)
+        {
+            return errorResponse;
+        }
+
+        GUID guid;
+        if (!ScenePropertyValueCodec::TryParseGuid(objectId, guid))
+        {
+            return MakeError(request, "InvalidObjectId", "objectId is not a valid GUID.");
+        }
+
+        const EditorControlResult selectResult =
+            context.GetEditorControlServices().SelectObject(context, *session, guid);
+        if (!selectResult.Ok)
+        {
+            return MakeError(request, "InvalidPayload", selectResult.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"sessionId", selectResult.SessionId}, {"objectId", objectId}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleListClasses(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::vector<std::string> requireNames;
+        std::vector<std::string> excludeNames;
+        std::string parseError;
+        if (!TryReadStringArray(request.Payload, "requireAll", requireNames, parseError)
+            || !TryReadStringArray(request.Payload, "excludeAny", excludeNames, parseError))
+        {
+            return MakeError(request, "InvalidPayload", parseError);
+        }
+
+        TypeQueryServices& typeQuery = context.GetTypeQueryServices();
+        Reflection::ClassSpecifierMask requireAll = 0;
+        Reflection::ClassSpecifierMask excludeAny = 0;
+        if (!typeQuery.TryParseClassSpecifierMask(requireNames, requireAll, parseError)
+            || !typeQuery.TryParseClassSpecifierMask(excludeNames, excludeAny, parseError))
+        {
+            return MakeError(request, "InvalidPayload", parseError);
+        }
+
+        const Reflection::MEClass* base = nullptr;
+        const std::string baseClassName = request.Payload.value("baseClass", "");
+        if (!baseClassName.empty())
+        {
+            base = Reflection::ReflectionSystem::Get().FindClass(baseClassName);
+            if (base == nullptr)
+            {
+                return MakeError(request, "InvalidPayload", "baseClass was not found.");
+            }
+        }
+
+        Json classes = Json::array();
+        for (const Reflection::MEClass* classInfo : typeQuery.QueryClasses(base, requireAll, excludeAny))
+        {
+            if (classInfo == nullptr)
+            {
+                continue;
+            }
+            std::vector<std::string> specifierNames;
+            typeQuery.AppendClassSpecifierNames(classInfo->GetSpecifierMask(), specifierNames);
+            const Reflection::MEClass* superClass = classInfo->GetSuperClass();
+            classes.push_back(Json{
+                {"name", classInfo->GetName()},
+                {"super", superClass != nullptr ? superClass->GetName() : std::string{}},
+                {"specifiers", specifierNames}});
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"classes", std::move(classes)}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleListProperties(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string className = request.Payload.value("className", "");
+        if (className.empty())
+        {
+            return MakeError(request, "InvalidPayload", "className is required.");
+        }
+
+        const Reflection::MEClass* owner = Reflection::ReflectionSystem::Get().FindClass(className);
+        if (owner == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "className was not found.");
+        }
+
+        std::vector<std::string> requireNames;
+        std::vector<std::string> excludeNames;
+        std::string parseError;
+        if (!TryReadStringArray(request.Payload, "requireAll", requireNames, parseError)
+            || !TryReadStringArray(request.Payload, "excludeAny", excludeNames, parseError))
+        {
+            return MakeError(request, "InvalidPayload", parseError);
+        }
+
+        TypeQueryServices& typeQuery = context.GetTypeQueryServices();
+        Reflection::PropertySpecifierMask requireAll = 0;
+        Reflection::PropertySpecifierMask excludeAny = 0;
+        if (!typeQuery.TryParsePropertySpecifierMask(requireNames, requireAll, parseError)
+            || !typeQuery.TryParsePropertySpecifierMask(excludeNames, excludeAny, parseError))
+        {
+            return MakeError(request, "InvalidPayload", parseError);
+        }
+
+        Json properties = Json::array();
+        for (const Reflection::MEProperty* property : typeQuery.QueryProperties(*owner, requireAll, excludeAny))
+        {
+            if (property == nullptr)
+            {
+                continue;
+            }
+            std::vector<std::string> specifierNames;
+            typeQuery.AppendPropertySpecifierNames(property->GetSpecifierMask(), specifierNames);
+            properties.push_back(Json{
+                {"name", property->GetName()},
+                {"type", TypeQueryServices::DescribePropertyType(*property)},
+                {"specifiers", specifierNames}});
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"properties", std::move(properties)}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleListAssets(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::vector<const AssetMeta*> metas;
+        const AssetEditorResult listResult = context.GetAssetEditorServices().List(
+            request.Payload.value("directory", ""),
+            request.Payload.value("assetType", ""),
+            metas);
+        if (!listResult.Ok)
+        {
+            return MakeError(request, "InternalError", listResult.Message);
+        }
+
+        Json assets = Json::array();
+        for (const AssetMeta* meta : metas)
+        {
+            if (meta == nullptr)
+            {
+                continue;
+            }
+            assets.push_back(Json{
+                {"path", meta->AssetPath},
+                {"guid", meta->Guid.ToString()},
+                {"assetType", meta->AssetType},
+                {"name", meta->AssetName}});
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"assets", std::move(assets)}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleCreateAsset(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::string path;
+        std::string guid;
+        const AssetEditorResult createResult = context.GetAssetEditorServices().Create(
+            request.Payload.value("assetType", ""),
+            request.Payload.value("directory", ""),
+            request.Payload.value("name", ""),
+            path,
+            guid);
+        if (!createResult.Ok)
+        {
+            return MakeError(request, "InvalidPayload", createResult.Message);
+        }
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{{"path", path}, {"guid", guid}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleDeleteAsset(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const AssetEditorResult deleteResult =
+            context.GetAssetEditorServices().Delete(context, request.Payload.value("path", ""));
+        if (!deleteResult.Ok)
+        {
+            return MakeError(request, "InvalidPayload", deleteResult.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"deleted", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleOpenAsset(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const EditorControlResult openResult =
+            context.GetEditorControlServices().OpenAsset(context, request.Payload.value("path", ""));
+        if (!openResult.Ok)
+        {
+            return MakeError(request, "InvalidPayload", openResult.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"sessionId", openResult.SessionId}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleActivateSession(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const EditorControlResult activateResult =
+            context.GetEditorControlServices().ActivateSession(context, request.SessionId);
+        if (!activateResult.Ok)
+        {
+            return MakeError(request, "InvalidPayload", activateResult.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"sessionId", activateResult.SessionId}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleRevealAsset(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const EditorControlResult revealResult =
+            context.GetEditorControlServices().RevealAsset(context, request.Payload.value("path", ""));
+        if (!revealResult.Ok)
+        {
+            return MakeError(request, "InvalidPayload", revealResult.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"revealed", true}});
     }
 }

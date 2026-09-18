@@ -10,6 +10,7 @@
 #include "Commands/Scene/EditorSetGameObjectTransformCommand.h"
 #include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "Services/Scene/ScenePropertyValueCodec.h"
+#include "Services/TypeQuery/TypeQueryServices.h"
 #include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Prefab/PrefabEditConstraints.h"
@@ -71,7 +72,7 @@ namespace minEngine
     }
 
     bool SceneEditorServices::TryResolveComponentTypeName(
-        SceneEditor& sceneEditor,
+        TypeQueryServices& typeQuery,
         std::string_view className,
         std::string& outResolvedTypeName,
         SceneEditorResult& outError)
@@ -83,8 +84,24 @@ namespace minEngine
             return false;
         }
 
+        const Reflection::MEClass* componentClass =
+            Reflection::ReflectionSystem::Get().FindClass<Component>();
+        const std::vector<const Reflection::MEClass*> componentClasses = typeQuery.QueryClasses(
+            componentClass,
+            0,
+            static_cast<Reflection::ClassSpecifierMask>(Reflection::ClassSpecifier::Abstract));
+
+        std::vector<std::string> typeNames;
+        typeNames.reserve(componentClasses.size());
+        for (const Reflection::MEClass* classInfo : componentClasses)
+        {
+            if (classInfo != nullptr)
+            {
+                typeNames.push_back(classInfo->GetName());
+            }
+        }
+
         const std::string requested(className);
-        const std::vector<std::string>& typeNames = sceneEditor.GetAllComponentTypeNames();
         for (const std::string& typeName : typeNames)
         {
             if (typeName == requested)
@@ -611,7 +628,7 @@ namespace minEngine
         }
 
         std::string resolvedTypeName;
-        if (!TryResolveComponentTypeName(*sceneEditor, typeName, resolvedTypeName, error))
+        if (!TryResolveComponentTypeName(context.GetTypeQueryServices(), typeName, resolvedTypeName, error))
         {
             return error;
         }

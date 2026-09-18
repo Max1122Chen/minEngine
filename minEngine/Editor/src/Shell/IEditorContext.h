@@ -80,6 +80,13 @@ namespace minEngine
         virtual SceneEditorServices& GetSceneEditorServices() = 0;
         virtual const SceneEditorServices& GetSceneEditorServices() const = 0;
 
+        virtual class TypeQueryServices& GetTypeQueryServices() = 0;
+        virtual const class TypeQueryServices& GetTypeQueryServices() const = 0;
+        virtual class AssetEditorServices& GetAssetEditorServices() = 0;
+        virtual const class AssetEditorServices& GetAssetEditorServices() const = 0;
+        virtual class EditorControlServices& GetEditorControlServices() = 0;
+        virtual const class EditorControlServices& GetEditorControlServices() const = 0;
+
         virtual void RequestExit() = 0;
         virtual void ConfirmExit() = 0;
 

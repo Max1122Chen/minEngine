@@ -2,7 +2,7 @@
 
 export const PROTOCOL_VERSION = 1 as const;
 
-export type AutomationKind = "query" | "edit" | "verify";
+export type AutomationKind = "query" | "edit" | "verify" | "control" | "asset";
 
 export interface AutomationRequest {
   protocolVersion: typeof PROTOCOL_VERSION;
@@ -38,6 +38,6 @@ export function composeOp(domain: string, action: string): string {
   return `${domain}.${action}`;
 }
 
-export function kindForTool(tool: "query" | "edit" | "verify"): AutomationKind {
+export function kindForTool(tool: AutomationKind): AutomationKind {
   return tool;
 }

@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP-F04 设计）
+Last updated: 2026-09-18（`feat/mcp`：MCP-F04 Done）
+
+### 2026-09-18 - MCP-F04 Done
+- **落地：** kind `control`/`asset`；`TypeQueryServices`；`AssetEditorServices`；`EditorControlServices`；Surface + MCP 粗 Tools；Scene `move_component` / `instantiate_prefab`。
+- **验证：** Editor + `tsc` 编译 PASS；维护者确认可收口。
+- **Next 候选：** Material/Anim 图编辑原语（打开已能做）；或 Create Prefab / Play / Console 反馈闭环。
 
 ### 2026-09-18 - MCP-F04 设计（Review，未写代码）
 - **kind：** 在 query/edit/verify 上加 `control`（给人看）与 `asset`（创建/删除资产）。打开资产是 control，不是 asset。

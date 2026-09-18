@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP-F04 设计 Review）  
+Last updated: 2026-09-18（`feat/mcp`：MCP-F04 Done）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,18 +11,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：MCP-F04 Automation 扩域（Design Review，未开工）**
+**Primary：无强制下一刀（MCP-F04 Done）**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`MCP-F04`** | kind `control`/`asset` + 资产与类型查询 | **Review** | [Design](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_DESIGN.md) · [Impl](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_IMPLEMENTATION.md) |
+| 0 | **`MCP-F04`** | kind `control`/`asset` + 资产与类型查询 | **Done** | [Design](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_DESIGN.md) · [Impl](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_IMPLEMENTATION.md) |
 | 1 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Done**（P0 伞） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | 2 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | 3 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
 | 4 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
 | 5 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 
-**下一刀：** 审阅 [MCP-F04](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_DESIGN.md)。通过后再实现。余量仍后置：Create Prefab、Material/Anim 图、Play、Console。
+**下一刀：** 候选见 Progress；默认建议 Material/Anim 图编辑原语（打开已有，改图另开 Feature）。余量：Create Prefab、Play、Console、字面量→void*。
 
 **参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 

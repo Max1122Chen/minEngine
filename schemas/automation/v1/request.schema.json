@@ -18,7 +18,7 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["query", "edit", "verify"],
+      "enum": ["query", "edit", "verify", "control", "asset"],
       "description": "Must match CapabilityRegistry kind for op (redundant check)"
     },
     "op": {

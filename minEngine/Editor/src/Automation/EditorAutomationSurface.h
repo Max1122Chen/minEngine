@@ -8,6 +8,7 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace minEngine
 {
@@ -65,5 +66,22 @@ namespace minEngine
         AutomationResponse HandleReparent(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSave(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleValidate(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMoveComponent(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleInstantiatePrefab(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleSelectObject(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleListClasses(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleListProperties(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleListAssets(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleCreateAsset(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleDeleteAsset(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleOpenAsset(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleActivateSession(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleRevealAsset(IEditorContext& context, const AutomationRequest& request);
+
+        static bool TryReadStringArray(
+            const Json& payload,
+            const char* key,
+            std::vector<std::string>& outNames,
+            std::string& outError);
     };
 }

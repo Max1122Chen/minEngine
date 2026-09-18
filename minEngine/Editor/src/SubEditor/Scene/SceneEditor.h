@@ -51,7 +51,6 @@ namespace minEngine
         bool CanOpenAsset(const AssetMeta& meta) const override;
         bool RouteViewportInput(EditorViewportClient& client) override;
 
-        void InitializeComponentTypeNames();
         void SyncSelectionWithScene();
 
         Scene* GetActiveScene() const;
@@ -101,7 +100,6 @@ namespace minEngine
                                        uint64_t gameObjectId,
                                        const Transform& before,
                                        const Transform& after);
-        const std::vector<std::string>& GetAllComponentTypeNames() const;
         /** Explicit-target add; does not require current selection. */
         bool ApplyAddComponentToGameObject(uint64_t gameObjectId,
                                            const std::string& componentTypeName,
@@ -202,6 +200,5 @@ namespace minEngine
         uint64_t m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
         GameObject* m_SelectedGameObject = nullptr;
         uint64_t m_PendingRenameGameObjectId = std::numeric_limits<uint64_t>::max();
-        std::vector<std::string> m_AllComponentTypeNames;
     };
 }

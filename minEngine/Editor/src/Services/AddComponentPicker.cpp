@@ -1,9 +1,13 @@
 #include "Services/AddComponentPicker.h"
 
 #include "Services/ComponentTypeUiCatalog.h"
+#include "Services/TypeQuery/TypeQueryServices.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "UI/Appearance/EditorAppearance.h"
 
+#include "Runtime/Core/Reflection/MEClass.h"
+#include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 
 #include "imgui.h"
@@ -123,7 +127,7 @@ namespace minEngine
             return false;
         }
 
-        const std::vector<std::string>& componentTypeNames = sceneEditor.GetAllComponentTypeNames();
+        const std::vector<std::string> componentTypeNames = CollectAddableComponentTypeNames(editor);
         if (componentTypeNames.empty())
         {
             ImGui::TextUnformatted("No reflected Component derived types found.");
@@ -177,7 +181,7 @@ namespace minEngine
                                                 char* filterBuffer,
                                                 size_t filterBufferSize)
     {
-        const std::vector<std::string>& componentTypeNames = sceneEditor.GetAllComponentTypeNames();
+        const std::vector<std::string> componentTypeNames = CollectAddableComponentTypeNames(editor);
         if (componentTypeNames.empty())
         {
             ImGui::TextDisabled("No component types");
@@ -196,5 +200,26 @@ namespace minEngine
         DrawFilteredTypeList(
             editor, sceneEditor, componentTypeNames, filterText, targetGameObjectId, false);
         ImGui::EndChild();
+    }
+
+    std::vector<std::string> AddComponentPicker::CollectAddableComponentTypeNames(IEditorContext& editor)
+    {
+        const Reflection::MEClass* componentClass =
+            Reflection::ReflectionSystem::Get().FindClass<Component>();
+        const std::vector<const Reflection::MEClass*> classes = editor.GetTypeQueryServices().QueryClasses(
+            componentClass,
+            0,
+            static_cast<Reflection::ClassSpecifierMask>(Reflection::ClassSpecifier::Abstract));
+
+        std::vector<std::string> typeNames;
+        typeNames.reserve(classes.size());
+        for (const Reflection::MEClass* classInfo : classes)
+        {
+            if (classInfo != nullptr)
+            {
+                typeNames.push_back(classInfo->GetName());
+            }
+        }
+        return typeNames;
     }
 }

@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `MCP-F04`
 - **Type:** Feature
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-18
 - **Branch:** `feat/mcp`
@@ -194,21 +194,21 @@ specifier 名解析失败 → 参数错误，不静默忽略。
 
 ## 6) 验收
 
-- [ ] schema / Host / MCP：kind 含 `control`、`asset`；未知组合 `KindOpMismatch`
-- [ ] `editor_control`、`editor_asset` 存在；list/reflect 走 `editor_query`
-- [ ] `TypeQueryServices` 与 Add Component 共用；无 `list_addable_components`；`m_AllComponentTypeNames` 删除
-- [ ] Agent 路径：list → create → open（人看到对应编辑器）→ 改 Scene 属性 → `scene.select_object` + `activate_session`（人看到该对象）
-- [ ] `move_component` / `instantiate_prefab` 与 GUI 同一 Service、同一撤销栈
-- [ ] 线协议结果无指针
+- [x] schema / Host / MCP：kind 含 `control`、`asset`；未知组合 `KindOpMismatch`
+- [x] `editor_control`、`editor_asset` 存在；list/reflect 走 `editor_query`
+- [x] `TypeQueryServices` 与 Add Component 共用；无 `list_addable_components`；`m_AllComponentTypeNames` 删除
+- [x] Agent 路径：list → create → open → 改 Scene → `select_object` + `activate_session`（维护者确认无明显问题）
+- [x] `move_component` / `instantiate_prefab` 与 GUI 同一 Service、同一撤销栈
+- [x] 线协议结果无指针
 
 ## 7) Status note
 
 | 字段 | 内容 |
 |------|------|
-| Reason | 设计待维护者审阅后开工 |
-| Impact | 未写代码 |
-| Decision | kind=`control`+`asset`；`TypeQueryServices` 独立、返回 `MEClass*` |
-| Next | 审阅通过 → S01 |
+| Reason | S01–S05 落地；维护者确认可收口 |
+| Impact | Host/MCP 可资产与聚焦；类型查询共享 |
+| Decision | kind=`control`+`asset`；`TypeQueryServices` 独立 |
+| Next | 无；余量见 Scope Out |
 
 ---
 
@@ -217,3 +217,4 @@ specifier 名解析失败 → 参数错误，不静默忽略。
 | 日期 | 说明 |
 |------|------|
 | 2026-09-18 | 初稿：五 kind；资产/控制/类型查询；Scene 两 op 补齐。Status Review |
+| 2026-09-18 | S01–S05 落地；Status → Done |

@@ -43,6 +43,21 @@ namespace minEngine
             true,
             false,
             "P0 stub: session/object/path resolvability only"});
+
+        Add({"scene", "move_component", "edit", "scene.move_component", true, true, ""});
+        Add({"scene", "instantiate_prefab", "edit", "scene.instantiate_prefab", true, true, ""});
+        Add({"scene", "select_object", "control", "scene.select_object", true, false, "Select only; does not focus the session"});
+
+        Add({"reflect", "list_classes", "query", "reflect.list_classes", false, false, ""});
+        Add({"reflect", "list_properties", "query", "reflect.list_properties", false, false, ""});
+
+        Add({"asset", "list", "query", "asset.list", false, false, ""});
+        Add({"asset", "create", "asset", "asset.create", false, false, "Not a Scene undo unit"});
+        Add({"asset", "delete", "asset", "asset.delete", false, false, "Not a Scene undo unit"});
+        Add({"asset", "open", "control", "asset.open", false, false, "Open and focus; no file dialog"});
+
+        Add({"editor", "activate_session", "control", "editor.activate_session", true, false, ""});
+        Add({"editor", "reveal_asset", "control", "editor.reveal_asset", false, false, ""});
     }
 
     const AutomationCapability* CapabilityRegistry::FindByOp(std::string_view op) const

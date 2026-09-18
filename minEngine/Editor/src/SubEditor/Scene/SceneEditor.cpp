@@ -157,28 +157,6 @@ namespace minEngine
         SyncSelectionWithScene();
     }
 
-    void SceneEditor::InitializeComponentTypeNames()
-    {
-        m_AllComponentTypeNames.clear();
-        Reflection::ReflectionSystem& reflectionSystem = Reflection::ReflectionSystem::Get();
-        const std::vector<const Reflection::MEClass*>& allClasses = reflectionSystem.GetAllClasses();
-        for (const Reflection::MEClass* classInfo : allClasses)
-        {
-            if (!classInfo->IsA(reflectionSystem.FindClass<Component>()))
-            {
-                continue;
-            }
-
-            if (classInfo->HasSpecifier(Reflection::ClassSpecifier::Abstract))
-            {
-                continue;
-            }
-
-            const std::string& typeName = classInfo->GetName();
-            m_AllComponentTypeNames.push_back(typeName);
-        }
-    }
-
     Scene* SceneEditor::GetDocumentScene() const
     {
         if (!SceneManager::HasInstance())
@@ -718,11 +696,6 @@ namespace minEngine
         }
 
         context.GetSceneEditorServices().SetTransform(context, *session, *gameObject, before, after);
-    }
-
-    const std::vector<std::string>& SceneEditor::GetAllComponentTypeNames() const
-    {
-        return m_AllComponentTypeNames;
     }
 
     bool SceneEditor::ApplyAddComponentToGameObject(uint64_t gameObjectId,

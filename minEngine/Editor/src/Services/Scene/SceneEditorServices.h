@@ -21,6 +21,7 @@ namespace minEngine
     class Scene;
     class SceneEditor;
     class Transform;
+    class TypeQueryServices;
 
     /**
      * Native Scene editor capability surface (ED-F18).
@@ -140,7 +141,7 @@ namespace minEngine
         static SceneEditorResult EnsureSceneSession(const EditorDocumentSession& session);
         static SceneEditor* ResolveSceneEditor(IEditorContext& context, SceneEditorResult& outError);
         static bool TryResolveComponentTypeName(
-            SceneEditor& sceneEditor,
+            TypeQueryServices& typeQuery,
             std::string_view className,
             std::string& outResolvedTypeName,
             SceneEditorResult& outError);

@@ -90,8 +90,6 @@ namespace minEngine
         m_SubModules.push_back(m_MaterialEditor.get());
         m_SubModules.push_back(m_AnimationGraphEditor.get());
 
-        m_SceneEditor.InitializeComponentTypeNames();
-
         m_MainMenuModule.Register(*this);
         m_ToolbarModule.Register(*this);
         m_InspectorModule.Register(*this);
