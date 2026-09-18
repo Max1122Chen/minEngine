@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP P0 竖切 Done）  
+Last updated: 2026-09-18（`feat/mcp`：MCP P0 程序收口 Done）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,21 +11,21 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/mcp`）：MCP P0 竖切已齐 — 可选收口 / 下一主题另议**
+**Primary：MCP P0 程序已收口 — 下一主题另议（非默认开新 MCP Feature）**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Planned**（伞；可随竖切升 Done） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
+| 0 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Done**（P0 伞） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | 1 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | 2 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
 | 3 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
 | 4 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 
-**下一刀（建议择一）：** Cursor 手配 MCP 手测竖切；或 **ED-F18** GUI/Debug 同源收敛；或升 **MCP-F01** 为 Done/归档。勿默认开新 MCP Feature。
+**下一刀（建议择一）：** **ED-F18** GUI/Debug 同源收敛；或回到 0.1.0 Phase P/D 其他轨。MCP 细 Tool / 队列吞吐等有证据再开新 Feature。
 
 **参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 
-**并行 / 不挡 MCP**
+**并行 / 不挡**
 
 | 轨 | ID | 说明 |
 |----|-----|------|

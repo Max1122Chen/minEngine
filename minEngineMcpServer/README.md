@@ -12,20 +12,35 @@ npm install
 npm run build
 ```
 
-## Cursor / MCP config (example)
+## Cursor / MCP config
+
+Project config is committed at [`.cursor/mcp.json`](../.cursor/mcp.json):
 
 ```json
 {
   "mcpServers": {
     "minengine": {
       "command": "node",
-      "args": ["D:/Dev/GitRepo/minEngine-mcp/minEngineMcpServer/dist/index.js"]
+      "args": ["${workspaceFolder}/minEngineMcpServer/dist/index.js"]
     }
   }
 }
 ```
 
-Then call `editor_connect` with `mode: "spawn"` or `"attach"`.
+1. `cd minEngineMcpServer && npm install && npm run build`
+2. Cursor: **Settings → MCP** — confirm `minengine` is listed (reload window if needed)
+3. In chat, tools `editor_connect` / `editor_query` / … should appear under that server
+
+### Full MCP-path acceptance (no Cursor UI required)
+
+Simulates Cursor: MCP Client SDK → stdio → this server → Pipe → Maximum:
+
+```bash
+npm run build
+npx tsx scripts/accept_mcp_path.ts --hold 30
+```
+
+Expect: `tools/list` shows 5 tools; spawn Editor; create `McpAcceptDemo`; hold so you can see Hierarchy; then delete.
 
 ## Tools
 

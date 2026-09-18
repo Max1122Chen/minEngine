@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP-F03 Done）
+Last updated: 2026-09-18（`feat/mcp`：MCP P0 程序收口）
+
+### 2026-09-18 - MCP P0 收口（Cursor MCP + 伞 Done）
+- **配置：** `.cursor/mcp.json` → `minengine` stdio Server（`${workspaceFolder}/minEngineMcpServer/dist/index.js`）。
+- **验收：** `scripts/accept_mcp_path.ts` — MCP Client → tools/list → connect/spawn → query/edit/verify → `McpAcceptDemo`；Cursor MCP 状态 OK；用户目击 Hierarchy。
+- **文档：** MCP-F01 伞 **Done**；ACTIVE_WORK 收口；下一主题另议（ED-F18 等）。
+- **Next：** 提交本收口；勿默认开新 MCP Feature。
 
 ### 2026-09-18 - MCP-F03 Done（minEngine MCP Server）
 - **代码：** `minEngineMcpServer/` — Pipe client（u32 LE + JSON）、ConnectionManager（attach/spawn + ready-file）、stdio MCP + 粗 Tools（`editor_connect` / `get_state` / `query` / `edit` / `verify`）；`domain.action` 拼接；capabilities 来自 Host。

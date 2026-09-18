@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "minengine": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/minEngineMcpServer/dist/index.js"
+      ]
+    }
+  }
+}

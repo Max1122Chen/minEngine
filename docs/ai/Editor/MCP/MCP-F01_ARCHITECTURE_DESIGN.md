@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** `MCP-F01`
 - **Type:** Feature（伞形 / 程序级）
-- **Status:** Planned（维护者已认可设计；待 Implementation）
+- **Status:** Done（P0 竖切：F02/CLI-F02/ED-F17/F03 已落地；Cursor MCP 验收 PASS）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-17（升 Planned）
+- **Last updated:** 2026-09-18（伞收口 Done）
 - **Branch:** `feat/mcp`
 - **Depends on:**
   - `ED-F12` / `ED-F13` / `ED-F14` Done（命令面与 Session；本蓝图将「核」上收为 Q/E/V）
@@ -698,10 +698,10 @@ flowchart LR
 
 ## 11) 验收标准（伞）
 
-- [ ] 命名：`IEditorAutomationSurface` + 域 `IScene*Service`
-- [ ] Spawn + Attach、粗 Tools、能力真源在 Editor
-- [ ] §8 拓扑被采纳或修订
-- [ ] 子 Feature 与本蓝图无冲突
+- [x] 命名：`IEditorAutomationSurface` + 域 `IScene*Service`
+- [x] Spawn + Attach、粗 Tools、能力真源在 Editor
+- [x] §8 拓扑被采纳或修订
+- [x] 子 Feature 与本蓝图无冲突（F02/CLI-F02/ED-F17/F03 Done；ED-F18 仍挂账）
 
 ---
 
@@ -736,3 +736,4 @@ flowchart LR
 | 2026-09-17 | 同源接口分层；开放点拍板 |
 | 2026-09-17 | §7 类型/C++ 骨架；命名选 Surface；§8 实现拓扑 mermaid |
 | 2026-09-17 | **评审修补：** op 主键、§4.2 控制流、ready 不变量、P0-alpha、人机并发/本机信任；待审批 |
+| 2026-09-18 | 子 Feature 竖切落地 + Cursor/`accept_mcp_path` 验收；**Status → Done** |

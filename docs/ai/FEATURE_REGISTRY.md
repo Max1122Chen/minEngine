@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-18（`feat/mcp`：MCP-F03 Done；P0 竖切齐）  
+Last updated: 2026-09-18（`feat/mcp`：MCP-F01 伞 Done；P0 竖切收口）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -82,7 +82,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F16` | Prefab 文档 Mode（Stage Scene + 复用 SceneEditor；单 Viewport）+ Hierarchy Create/Instantiate + `Scene::Instantiate` | **Done**（含 Amendment A/B） | — | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) · `feat/prefab` · Amendment A/B |
 | `ED-F17` | Editor Automation Host + Q/E/V Surface（Named Pipe → Editor API） | **Done**（S01–S04 Scene MVP） | — | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) · 服务 [MCP-F01](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | `ED-F18` | GUI / Debug 收敛到同源域服务（挂账；不挡 MCP P0） | **Planned** | — | [Design](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md) |
-| `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Planned** | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
+| `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Done**（P0 伞） | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
 | `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Done** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 | `CLI-F02` | Automation 启动面（Spawn + Attach 共用 flags / ready） | **Done**（启动面） | — | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
