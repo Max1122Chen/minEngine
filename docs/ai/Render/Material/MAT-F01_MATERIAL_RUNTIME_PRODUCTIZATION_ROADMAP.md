@@ -16,7 +16,7 @@
 
 ## TL;DR
 
-把材质升级为 **UE 式运行时产品面**。交付顺序以 **`MaterialRenderProxy` 为地基**，再 Interface → Instance → Dynamic → MIC。没有 Proxy，多态句柄与覆盖表都无法干净接入 Draw。**下一刀 MAT-F02（Proxy 详设）**。
+把材质升级为 **UE 式运行时产品面**。Proxy 与 Interface 已落地。**下一刀 MAT-F04（MaterialInstance）**。
 
 ## Scope
 - **In:** Proxy 绑定真源；Interface 多态；Material 编译真源；Instance 覆盖；Dynamic；后期 MIC
@@ -71,8 +71,8 @@ MaterialRenderProxy        ← Draw 唯一绑定视图（F02 地基）
 | Order | ID | 名称 | Status | Design |
 |-------|-----|------|--------|--------|
 | 0 | **MAT-F01** | 本路线图 | **In Progress** | 本文 |
-| 1 | **MAT-F02** | **MaterialRenderProxy**（绑定真源） | **In Progress** | [Design](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
-| 2 | **MAT-F03** | MaterialInterface + Material 迁入 | **Planned** | [Design](./MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
+| 1 | **MAT-F02** | **MaterialRenderProxy**（绑定真源） | **Done** | [Design](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
+| 2 | **MAT-F03** | MaterialInterface + Material 迁入 | **Done** | [Design](./MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
 | 3 | **MAT-F04** | MaterialInstance（覆盖 + Instance Proxy） | **Planned** | [Design](./MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
 | 4 | **MAT-F05** | MaterialInstanceDynamic | **Review**（详设；待 F04 后批切片） | [Design](./MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) |
 | 5 | **MAT-F06** | MIC 资产 / Editor（`.memi`） | **Planned** | Design 未开（占位） |

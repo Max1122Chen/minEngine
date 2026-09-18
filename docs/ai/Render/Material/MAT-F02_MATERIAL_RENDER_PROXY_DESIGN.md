@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** MAT-F02
 - **Type:** Feature + Refactor
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-18
 - **Related:**
@@ -292,14 +292,14 @@ StaticMeshSceneProxy / MeshDrawCommand / RenderScene 遍历到的图元
 
 ## 6) 验收标准
 
-- [ ] `MaterialRenderProxy` + `DefaultMaterialRenderProxy`；`Material::GetRenderProxy()` 恒非空
-- [ ] Scalar UBO / Material BindingSet / 纹理 SRV 缓存 **不**再作为 Draw 入口留在 Material 公有 API
-- [ ] 生产 Draw（`SceneMeshDrawUtils`、Forward mesh/widget 提交）只使用 `MaterialRenderProxy*`
-- [ ] 无公开 `Material::BindForDraw`
-- [ ] Set scalar/texture 后下一帧正确
-- [ ] 现网场景 / Editor 可画
-- [ ] 无 Interface/Instance 类也可 Done
-- [ ] §3.8 四条预留契约在代码中成立（可读 code review）
+- [x] `MaterialRenderProxy` + `DefaultMaterialRenderProxy`；`Material::GetRenderProxy()` 恒非空
+- [x] Scalar UBO / Material BindingSet / 纹理 SRV 缓存 **不**再作为 Draw 入口留在 Material 公有 API
+- [x] 生产 Draw（`SceneMeshDrawUtils`、Forward mesh/widget 提交）只使用 `MaterialRenderProxy*`
+- [x] 无公开 `Material::BindForDraw`
+- [x] Set scalar/texture 后下一帧正确
+- [x] 现网场景 / Editor 可画
+- [x] 无 Interface/Instance 类也可 Done（F03 在其后另立 Interface，不回改本条）
+- [x] §3.8 四条预留契约在代码中成立（可读 code review）
 
 **验证建议：** `cmake --build build --target minEngineTests Editor`；相关测试；手验改材质参数。
 
@@ -307,13 +307,7 @@ StaticMeshSceneProxy / MeshDrawCommand / RenderScene 遍历到的图元
 
 ## 7) Status note
 
-**In Progress** — S01–S02 代码已落地；等维护者场景/Editor **手验**后标 Done。
-
-**实现摘要：**
-- `MaterialRenderProxy` / `DefaultMaterialRenderProxy`；GPU BindingSet/UBO/SRV 在 Proxy
-- `Material::GetRenderProxy()`；Compile → `NotifyCompiled`
-- MDC / SceneProxy / Draw utils / Forward 使用 `m_MaterialProxy`
-- 验证：`material-ir` + `render-graph` PASSED（从 `minEngine/bin`）
+**Done** — Editor 手验场景可画。BindingSet 在 `BindForDraw` 之后刷新，避免 packet 持有已释放的 set。
 
 ---
 
@@ -321,6 +315,7 @@ StaticMeshSceneProxy / MeshDrawCommand / RenderScene 遍历到的图元
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-18 | **Done：** Editor 手验通过；提交后刷新 BindingSet 指针 |
 | 2026-09-18 | **实现：** S01–S02 代码；Status → In Progress（待手验） |
 | 2026-09-18 | **澄清栖息地：** Proxy ≠ SceneProxy；由 Material/MI 拥有，不进 RenderScene（§3.7） |
 | 2026-09-18 | **完善：** UE `FDefaultMaterialInstance` 对照；**GPU 缓存迁 Proxy**；参数虚查询；F04 预留契约；Compile↔Invalidate |

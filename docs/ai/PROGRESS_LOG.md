@@ -1,6 +1,17 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（MAT-F02 实现待手验）
+Last updated: 2026-09-18（MAT-F02/F03 Done）
+
+### 2026-09-18 - MAT-F02/F03 Done
+- **F02：** Draw 经 MaterialRenderProxy；BindingSet 在 Bind 后刷新。Editor 手验可画。
+- **F03：** `MaterialInterface : Asset`，`Material` 继承之；网格槽为 Interface。反射 gen 链入后父类与槽位可解析。场景 GUID 引用未改资产。
+- **Next：** MAT-F04 MaterialInstance。
+
+### 2026-09-18 - MAT-F03：MaterialInterface 单继承
+- **约束：** 反射拒绝双 super；`MaterialInterface : Asset`，`Material` 继承之。
+- **代码：** 组件材质槽 `shared_ptr<MaterialInterface>`；Draw 仍只经 `GetRenderProxy()`。
+- **验证：** `cmake --build build --target Editor` OK。
+- **Next：** 手验关卡材质。
 
 ### 2026-09-18 - MAT-F02 实现：MaterialRenderProxy（待手验）
 - **代码：** `MaterialRenderProxy` + `DefaultMaterialRenderProxy`；BindingSet/UBO 在 Proxy；MDC/SceneProxy/Draw 经 `m_MaterialProxy`；删除 `Material::BindForDraw`。

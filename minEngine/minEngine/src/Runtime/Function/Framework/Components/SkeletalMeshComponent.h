@@ -10,10 +10,12 @@
 #include <memory>
 #include <vector>
 
+#include "Runtime/Function/Render/MaterialInterface.h"
+
 namespace minEngine
 {
     class SkeletalMesh;
-    class Material;
+    class MaterialInterface;
     class Skeleton;
     class SkeletalMeshSceneProxy;
 
@@ -30,8 +32,8 @@ namespace minEngine
         void SetMesh(const std::shared_ptr<SkeletalMesh>& mesh);
         SkeletalMesh* GetMesh() const { return m_Mesh.get(); }
 
-        void SetMaterial(const std::shared_ptr<Material>& material);
-        Material* GetMaterial() const { return m_Material.get(); }
+        void SetMaterial(const std::shared_ptr<MaterialInterface>& material);
+        MaterialInterface* GetMaterial() const { return m_Material.get(); }
 
         void SetLocalPose(const Pose& pose);
         const Pose& GetLocalPose() const { return m_LocalPose; }
@@ -78,7 +80,7 @@ namespace minEngine
         ME_PROPERTY()
         std::shared_ptr<SkeletalMesh> m_Mesh{nullptr};
         ME_PROPERTY()
-        std::shared_ptr<Material> m_Material{nullptr};
+        std::shared_ptr<MaterialInterface> m_Material{nullptr};
 
         ME_PROPERTY()
         std::shared_ptr<AnimationClip> m_AnimationClip{nullptr};

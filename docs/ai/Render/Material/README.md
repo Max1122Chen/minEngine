@@ -3,8 +3,8 @@
 | 文档 | 状态 |
 |------|------|
 | **[MAT-F01 运行时产品化路线图](./MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md)** | **In Progress** — Proxy → Interface → MI → MID → MIC |
-| [MAT-F02 MaterialRenderProxy](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) | **In Progress**（代码待手验） |
-| [MAT-F03 MaterialInterface](./MAT-F03_MATERIAL_INTERFACE_DESIGN.md) | Planned |
+| [MAT-F02 MaterialRenderProxy](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) | **Done** |
+| [MAT-F03 MaterialInterface](./MAT-F03_MATERIAL_INTERFACE_DESIGN.md) | **Done** |
 | [MAT-F04 MaterialInstance](./MAT-F04_MATERIAL_INSTANCE_DESIGN.md) | Planned |
 | [MAT-F05 MaterialInstanceDynamic](./MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) | **Review**（详设；待 F04 后实施） |
 | [MATERIAL_SYSTEM_ROADMAP.md](./MATERIAL_SYSTEM_ROADMAP.md) | Phase 0–5 **作者/图侧**（维护模式） |

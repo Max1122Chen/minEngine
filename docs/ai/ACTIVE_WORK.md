@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（MAT-F02 代码落地；待手验）  
+Last updated: 2026-09-18（MAT-F02/F03 Done；下一刀 F04）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,25 +11,27 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/render`）：MAT-F02 MaterialRenderProxy — 手验验收**
+**Primary（`feat/render`）：MAT-F04 MaterialInstance — 尚未开工**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | — | **`MAT-F01`** | Material Runtime Productization **路线图** | **In Progress** | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
-| 1 | **`MAT-F02`** | **MaterialRenderProxy**（Draw 绑定真源） | **In Progress** | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
-| — | **`MAT-F03`–`F06`** | Interface → MI → MID → MIC | **Planned/Review** | 见路线图 §3 |
+| — | **`MAT-F02`** | MaterialRenderProxy | **Done** | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
+| — | **`MAT-F03`** | MaterialInterface + 组件槽 | **Done** | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
+| 1 | **`MAT-F04`** | MaterialInstance | **Planned** | [Design](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
+| — | **`MAT-F05`–`F06`** | MID / MIC | **Review/Planned** | 见路线图 §3 |
 | — | **`RND-F17`** | Isolated preview 调度 | **Done** | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) |
 | — | **`ED-F11`** | Multi-document Tab Host | **In Progress**（余量） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
 
-**下一刀：** 手验 F02（场景可画、改材质参数）→ 标 Done → 再开 F03。
+**下一刀：** 开 [MAT-F04](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md)（Parent + 覆盖 + Instance Proxy）。
 
-**已收口（近期）：** 设计文档 commit `b7469df`；CORE-F19/F21；Prefab；**RND-F06**；**RND-F17**。
+**已收口（近期）：** MAT-F02/F03；设计文档 `b7469df`；**RND-F17**。
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/render` | MAT-F02… | **Proxy（手验）→ Interface → MI → MID** |
+| `feat/render` | MAT-F04… | Instance → MID |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
 | — | Prefab 后置 | Nested / Apply→Prefab；并排预览可消费 F17 |
 
@@ -50,8 +52,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `WF-F02` | In Progress | handbook 子系统文档按需 |
 | `ED-F01` | In Progress | VK 阴影质量 **Deferred**；勿当主航道 |
 | `RND-F17` | **Done** | ViewId+SRT；TD-027 Done |
-| `MAT-F01` | **In Progress** | 运行时产品化路线图（Proxy 先行） |
-| `MAT-F02` | **In Progress** | MaterialRenderProxy 代码已合入工作区；待手验 |
+| `MAT-F01` | **In Progress** | 运行时产品化路线图（Proxy、Interface 已 Done） |
+| `MAT-F04` | **Planned** | MaterialInstance；下一刀 |
 | Open TD | Medium | TD-004/005/023/024/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md)（TD-027 Done） |
 
 ---

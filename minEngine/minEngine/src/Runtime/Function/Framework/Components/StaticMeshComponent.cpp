@@ -20,7 +20,7 @@ namespace minEngine
         MarkRenderStateDirty();
     }
 
-    void StaticMeshComponent::SetMaterial(const std::shared_ptr<Material>& material)
+    void StaticMeshComponent::SetMaterial(const std::shared_ptr<MaterialInterface>& material)
     {
         if(m_Material == material)
         {

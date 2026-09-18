@@ -156,7 +156,7 @@ namespace minEngine
         MarkRenderStateDirty();
     }
 
-    void SkeletalMeshComponent::SetMaterial(const std::shared_ptr<Material>& material)
+    void SkeletalMeshComponent::SetMaterial(const std::shared_ptr<MaterialInterface>& material)
     {
         if (m_Material == material)
         {
@@ -380,12 +380,13 @@ namespace minEngine
 
         if (m_Material)
         {
-            if (!m_Material->EnsureSkinnedCompiled())
+            Material* baseMaterial = m_Material->GetBaseMaterial();
+            if (baseMaterial != nullptr && !baseMaterial->EnsureSkinnedCompiled())
             {
                 ME_LOG(LogAnimation, Warn, 
                     "SkeletalMeshComponent: EnsureSkinnedCompiled failed for material '{}'; "
                     "skinned draws will be skipped until compile succeeds.",
-                    m_Material->GetName());
+                    baseMaterial->GetName());
             }
             sceneProxy.m_MaterialProxy = m_Material->GetRenderProxy();
         }

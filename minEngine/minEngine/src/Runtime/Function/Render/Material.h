@@ -2,7 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Render/Texture.h"
-#include "Runtime/Resource/Asset.h"
+#include "Runtime/Function/Render/MaterialInterface.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Function/Render/Material/MaterialEdGraph.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
@@ -39,7 +39,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class Material : public Asset
+    class Material : public MaterialInterface
     {
         ME_GENERATED_BODY()
         friend class MaterialCompiler;
@@ -56,9 +56,10 @@ namespace minEngine
         void SetTextureParameter(const std::string& parameterName, std::shared_ptr<Texture2D> texture);
         void SetScalarParameter(const std::string& parameterName, float value);
 
-        MaterialRenderProxy* GetRenderProxy() const { return m_RenderProxy.get(); }
+        Material* GetBaseMaterial() const override { return const_cast<Material*>(this); }
+        MaterialRenderProxy* GetRenderProxy() const override { return m_RenderProxy.get(); }
 
-        bool IsCompiledForDraw() const
+        bool IsCompiledForDraw() const override
         {
             return m_GPUShader != nullptr && m_GPUShader->IsValid() && !m_ParameterLayout.Parameters.empty();
         }
@@ -98,8 +99,8 @@ namespace minEngine
         std::vector<MaterialTextureParameter> m_TextureParameters;
         std::vector<MaterialScalarParameter> m_ScalarParameters;
 
-        bool IsTranslucent() const { return m_BlendMode == MaterialBlendMode::Translucent; }
-        bool IsMasked() const { return m_BlendMode == MaterialBlendMode::Masked; }
+        bool IsTranslucent() const override { return m_BlendMode == MaterialBlendMode::Translucent; }
+        bool IsMasked() const override { return m_BlendMode == MaterialBlendMode::Masked; }
 
     private:
         void EnsureRenderProxy();

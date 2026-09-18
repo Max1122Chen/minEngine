@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** MAT-F03
 - **Type:** Refactor + Feature
-- **Status:** Planned
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-18
 - **Related:** [Roadmap](./MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) · [MAT-F02 Proxy](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) · [MAT-F04](./MAT-F04_MATERIAL_INSTANCE_DESIGN.md)
@@ -43,10 +43,15 @@ UMaterialInterface          → MaterialInterface
   UMaterialInstance         → (F04)
 ```
 
-**继承默认 A：** `Material : public Asset, public MaterialInterface`  
-**回退 B：** 无双继承（codegen 冲突时）——开工 Pre-flight 锁定。
+**继承（已落地，偏离原稿双继承）：** 反射 `ResolvePendingSuperClasses` 拒绝第二个 super，且未登记的第二基类会报 unresolved。因此不用 `Material : Asset, MaterialInterface`。
 
-`MaterialInterface` MVP **不必**继承 `MEObject`（可后加反射）；优先薄抽象。
+```text
+Asset
+  └── MaterialInterface     ← MEObject/Asset 单链，组件槽可序列化
+        └── Material
+```
+
+`Material` 仍是 `Asset`。后续 Instance 若也继承 Interface，会同样是 `Asset`（`m_Meta` 可空，不强制进资产库）。这是反射约束，不是「Interface 拥有图」。
 
 ### 3.2 API（对标 UE 最小集）
 
@@ -80,9 +85,8 @@ UMaterialInterface          → MaterialInterface
 
 | 选项 | 结论 |
 |------|------|
-| A 双继承 | **默认** |
-| B 无双继承 | 冲突回退 |
-| Interface 继承 Asset | **否** — 仅 Material 是 Asset；Instance 另议（F04/F06） |
+| A 双继承 | 反射拒绝第二 super | **否决** |
+| B `MaterialInterface : Asset`，`Material` 继承之 | 单链、槽位可序列化 | **选用** |
 
 ## 5) 风险
 
@@ -93,14 +97,14 @@ UMaterialInterface          → MaterialInterface
 
 ## 6) 验收
 
-- [ ] 网格组件材质槽为 Interface
-- [ ] 填充 SceneProxy 只用 `GetRenderProxy()`
-- [ ] Draw 路径无回退到 `Material*` 绑定
-- [ ] 无 Instance 也可 Done
+- [x] 网格组件材质槽为 Interface
+- [x] 填充 SceneProxy 只用 `GetRenderProxy()`
+- [x] Draw 路径无回退到 `Material*` 绑定
+- [x] 无 Instance 也可 Done
 
 ## 7) Status note
 
-**Planned** — F02 审批落地后再升 Review。
+**Done** — Editor 打开关卡，网格材质可画。反射注册补进 `MaterialInterface.gen.cpp` 后，父类与材质槽均可解析。场景仍按 GUID 引用 `Material`，未改资产文件。
 
 ---
 
@@ -108,5 +112,7 @@ UMaterialInterface          → MaterialInterface
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-18 | **Done：** Editor 手验通过；反射 gen 链入后父类/槽位可解析 |
+| 2026-09-18 | **实现：** 单继承 `MaterialInterface : Asset`；组件槽改为 Interface |
 | 2026-09-18 | 按 UE Interface 最小集补强；明确禁止 Interface 绑 Draw |
 | 2026-09-18 | 从「首刀」后移为 F03 |
