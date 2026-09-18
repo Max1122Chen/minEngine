@@ -23,6 +23,7 @@ namespace minEngine
 
         void SetMaterial(const std::shared_ptr<MaterialInterface>& material);
         MaterialInterface* GetMaterial() const { return m_Material.get(); }
+        const std::shared_ptr<MaterialInterface>& GetMaterialShared() const { return m_Material; }
 
         // PrimitiveComponent Contract
         virtual Math::Geometry::AABB GetBoundingBox() const override;

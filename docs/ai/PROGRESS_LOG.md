@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（MAT-F02/F03 Done）
+Last updated: 2026-09-18（MAT-F04 Done）
+
+### 2026-09-18 - MAT-F04 Done
+- Instance + InstanceProxy；BindingSet 上收基类；`mat_apply_instance`；`material-ir` override smoke。
+- Editor 手验通过。Next：MAT-F05 MID。
+
+### 2026-09-18 - MAT-F04：MaterialInstance + Instance Proxy
+- **代码：** `MaterialInstance` / `InstanceMaterialRenderProxy`；BindingSet/UBO 上收 `MaterialRenderProxy`；Parent compile generation 同步。
+- **测试：** `material-ir` 含 instance override smoke（Parent 不被改；双 Instance 异值）。
+- **手验：** `mat_apply_instance <GO> <ScalarParam> <Value>`。
+- **Next：** 双 Mesh 画面确认 → Done → F05 MID。
 
 ### 2026-09-18 - MAT-F02/F03 Done
 - **F02：** Draw 经 MaterialRenderProxy；BindingSet 在 Bind 后刷新。Editor 手验可画。

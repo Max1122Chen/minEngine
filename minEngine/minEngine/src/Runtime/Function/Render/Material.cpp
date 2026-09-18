@@ -405,6 +405,7 @@ namespace minEngine
             ? nullptr
             : cmdList.CreateShaderBindingSetLayout(layoutEntries);
 
+        ++m_CompileGeneration;
         EnsureRenderProxy();
         m_RenderProxy->NotifyCompiled(cmdList);
         return true;

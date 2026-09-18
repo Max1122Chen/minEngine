@@ -34,6 +34,7 @@ namespace minEngine
 
         void SetMaterial(const std::shared_ptr<MaterialInterface>& material);
         MaterialInterface* GetMaterial() const { return m_Material.get(); }
+        const std::shared_ptr<MaterialInterface>& GetMaterialShared() const { return m_Material; }
 
         void SetLocalPose(const Pose& pose);
         const Pose& GetLocalPose() const { return m_LocalPose; }

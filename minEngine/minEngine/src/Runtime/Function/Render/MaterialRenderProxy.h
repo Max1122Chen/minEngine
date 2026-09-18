@@ -14,12 +14,14 @@
 namespace minEngine
 {
     class Material;
+    class MaterialInstance;
     class RHICommandList;
     class RHIShaderResourceView;
 
     /**
      * Render-side material binding view (UE FMaterialRenderProxy analogue).
      * Owned by Material / MaterialInstance; SceneProxy and MeshDrawCommand hold raw pointers only.
+     * GPU BindingSet / scalar UBO / texture SRV cache live on this object. Parameter values come from virtual Get*.
      */
     class MaterialRenderProxy
     {
@@ -36,7 +38,7 @@ namespace minEngine
         virtual RHIShader* GetGPUShader() const = 0;
         virtual RHIShader* GetGPUShaderSkinned() const = 0;
         virtual RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const = 0;
-        virtual RHIShaderBindingSet* GetMaterialShaderBindingSet() const = 0;
+        virtual RHIShaderBindingSet* GetMaterialShaderBindingSet() const;
 
         virtual bool GetScalarParameterValue(const std::string& name, float& outValue) const = 0;
         virtual bool GetTextureParameterValue(
@@ -45,11 +47,24 @@ namespace minEngine
         virtual bool GetTextureParameterValueBySlot(
             int slotIndex, std::shared_ptr<Texture2D>& outTexture) const = 0;
 
-        virtual void BindForDraw(RHICommandList& cmdList) = 0;
-        virtual void InvalidateParameterBindings() = 0;
+        virtual void BindForDraw(RHICommandList& cmdList);
+        virtual void InvalidateParameterBindings();
 
         /** Full GPU-cache rebuild after Material compile changes layout. */
         virtual void NotifyCompiled(RHICommandList& cmdList);
+
+    protected:
+        void EnsureScalarUniformBuffer(RHICommandList& cmdList);
+        void RebuildShaderBindingSet(RHICommandList& cmdList);
+
+        bool m_bParameterBindingsDirty = true;
+        uint32_t m_SeenCompileGeneration = 0;
+
+        RHIShaderBindingSetRef m_MaterialShaderBindingSet;
+        RHITextureViewCache m_TextureViewCache;
+        std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
+        RHIBufferRef m_ScalarParamsUBO;
+        uint32_t m_ScalarParamsUBOSize = 0;
     };
 
     /** Default proxy owned by Material; reads Material default parameter tables. */
@@ -72,7 +87,6 @@ namespace minEngine
         RHIShader* GetGPUShader() const override;
         RHIShader* GetGPUShaderSkinned() const override;
         RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const override;
-        RHIShaderBindingSet* GetMaterialShaderBindingSet() const override;
 
         bool GetScalarParameterValue(const std::string& name, float& outValue) const override;
         bool GetTextureParameterValue(
@@ -81,21 +95,44 @@ namespace minEngine
         bool GetTextureParameterValueBySlot(
             int slotIndex, std::shared_ptr<Texture2D>& outTexture) const override;
 
-        void BindForDraw(RHICommandList& cmdList) override;
-        void InvalidateParameterBindings() override;
-        void NotifyCompiled(RHICommandList& cmdList) override;
+    private:
+        Material* m_Material = nullptr;
+    };
+
+    /**
+     * Instance proxy (UE FMaterialInstanceResource analogue).
+     * Overrides win; misses forward to the parent Material proxy. Does not compile.
+     */
+    class InstanceMaterialRenderProxy : public MaterialRenderProxy
+    {
+    public:
+        explicit InstanceMaterialRenderProxy(MaterialInstance& instance);
+        ~InstanceMaterialRenderProxy() override = default;
+
+        InstanceMaterialRenderProxy(const InstanceMaterialRenderProxy&) = delete;
+        InstanceMaterialRenderProxy& operator=(const InstanceMaterialRenderProxy&) = delete;
+
+        Material* GetBaseMaterial() const override;
+
+        bool IsCompiledForDraw() const override;
+        bool IsCompiledForSkinnedDraw() const override;
+        bool IsTranslucent() const override;
+        bool IsMasked() const override;
+
+        RHIShader* GetGPUShader() const override;
+        RHIShader* GetGPUShaderSkinned() const override;
+        RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const override;
+
+        bool GetScalarParameterValue(const std::string& name, float& outValue) const override;
+        bool GetTextureParameterValue(
+            const std::string& name, std::shared_ptr<Texture2D>& outTexture) const override;
+        bool GetScalarParameterValueBySlot(int slotIndex, float& outValue) const override;
+        bool GetTextureParameterValueBySlot(
+            int slotIndex, std::shared_ptr<Texture2D>& outTexture) const override;
 
     private:
-        void EnsureScalarUniformBuffer(RHICommandList& cmdList);
-        void RebuildShaderBindingSet(RHICommandList& cmdList);
+        MaterialRenderProxy* GetParentProxy() const;
 
-        Material* m_Material = nullptr;
-        bool m_bParameterBindingsDirty = true;
-
-        RHIShaderBindingSetRef m_MaterialShaderBindingSet;
-        RHITextureViewCache m_TextureViewCache;
-        std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
-        RHIBufferRef m_ScalarParamsUBO;
-        uint32_t m_ScalarParamsUBOSize = 0;
+        MaterialInstance* m_Instance = nullptr;
     };
 }

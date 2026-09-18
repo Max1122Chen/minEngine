@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-18（MAT-F02/F03 Done）  
+Last updated: 2026-09-18（MAT-F04 Done；下一刀 F05）  
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -68,7 +68,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **In Progress** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
-| `MAT-F04` | MaterialInstance（Parent + 覆盖 + Instance Proxy） | **Planned** | — | [Design](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
+| `MAT-F04` | MaterialInstance（Parent + 覆盖 + Instance Proxy） | **Done** | — | [Design](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
 | `MAT-F05` | MaterialInstanceDynamic | **Review** | — | [Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) · 依赖 F04 |
 | `MAT-F06` | MIC 资产 / Editor（`.memi`） | **Planned** | — | Design 未开 · 依赖 F04 |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |

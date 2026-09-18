@@ -71,6 +71,7 @@ namespace minEngine
 
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
         RHIShader* GetGPUShaderSkinned() const { return m_GPUShaderSkinned.get(); }
+        uint32_t GetCompileGeneration() const { return m_CompileGeneration; }
         RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const
         {
             return m_MaterialShaderBindingSetLayout.get();
@@ -108,6 +109,7 @@ namespace minEngine
         RHIShaderRef m_GPUShader;
         RHIShaderRef m_GPUShaderSkinned;
         RHIShaderBindingSetLayoutRef m_MaterialShaderBindingSetLayout;
+        uint32_t m_CompileGeneration = 0;
         std::string m_ShaderCompileLog;
         std::unique_ptr<MaterialRenderProxy> m_RenderProxy;
 

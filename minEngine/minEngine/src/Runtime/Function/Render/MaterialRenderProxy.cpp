@@ -1,7 +1,7 @@
 #include "MaterialRenderProxy.h"
 
 #include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Function/Render/MaterialInstance.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -10,10 +10,146 @@
 
 namespace minEngine
 {
+    RHIShaderBindingSet* MaterialRenderProxy::GetMaterialShaderBindingSet() const
+    {
+        return m_MaterialShaderBindingSet.get();
+    }
+
+    void MaterialRenderProxy::InvalidateParameterBindings()
+    {
+        m_bParameterBindingsDirty = true;
+    }
+
     void MaterialRenderProxy::NotifyCompiled(RHICommandList& cmdList)
     {
-        InvalidateParameterBindings();
-        BindForDraw(cmdList);
+        m_MaterialShaderBindingSet.reset();
+        m_TextureSRVs.clear();
+        m_ScalarParamsUBO.reset();
+        m_ScalarParamsUBOSize = 0;
+        m_bParameterBindingsDirty = true;
+        const Material* base = GetBaseMaterial();
+        m_SeenCompileGeneration = base ? base->GetCompileGeneration() : 0;
+        EnsureScalarUniformBuffer(cmdList);
+        RebuildShaderBindingSet(cmdList);
+        m_bParameterBindingsDirty = false;
+    }
+
+    void MaterialRenderProxy::EnsureScalarUniformBuffer(RHICommandList& cmdList)
+    {
+        const Material* base = GetBaseMaterial();
+        if (!base || base->m_ScalarParameters.empty())
+        {
+            m_ScalarParamsUBO.reset();
+            m_ScalarParamsUBOSize = 0;
+            return;
+        }
+
+        int maxSlot = 0;
+        for (const MaterialScalarParameter& scalarParameter : base->m_ScalarParameters)
+        {
+            maxSlot = std::max(maxSlot, scalarParameter.SlotIndex);
+        }
+        const uint32_t uboSize = static_cast<uint32_t>((maxSlot + 1) * 16u);
+        if (m_ScalarParamsUBO && m_ScalarParamsUBOSize == uboSize)
+        {
+            return;
+        }
+
+        m_ScalarParamsUBOSize = uboSize;
+        RHIBufferCreateDesc uboDesc;
+        uboDesc.Usage = RHIBufferUsage::Uniform;
+        uboDesc.ByteSize = m_ScalarParamsUBOSize;
+        m_ScalarParamsUBO = cmdList.CreateBuffer(uboDesc, nullptr);
+    }
+
+    void MaterialRenderProxy::RebuildShaderBindingSet(RHICommandList& cmdList)
+    {
+        m_MaterialShaderBindingSet.reset();
+        m_TextureSRVs.clear();
+
+        RHIShaderBindingSetLayout* layout = GetMaterialShaderBindingSetLayout();
+        if (!layout)
+        {
+            return;
+        }
+
+        const std::vector<RHIShaderBindingSetLayoutEntry>& entries = layout->GetEntries();
+        std::vector<RHIShaderBinding> resources(entries.size());
+
+        for (size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex)
+        {
+            const RHIShaderBindingSetLayoutEntry& entry = entries[entryIndex];
+            if (entry.Type == RHIShaderBindingType::UniformBuffer)
+            {
+                resources[entryIndex].Type = RHIShaderBindingType::UniformBuffer;
+                resources[entryIndex].Buffer = m_ScalarParamsUBO.get();
+                continue;
+            }
+
+            std::shared_ptr<Texture2D> texture;
+            if (!GetTextureParameterValueBySlot(static_cast<int>(entry.ShaderBinding), texture) || !texture)
+            {
+                continue;
+            }
+
+            RHITexture* modernTexture = texture->GetRHITexture();
+            if (!modernTexture)
+            {
+                continue;
+            }
+
+            RHIShaderResourceViewRef srv = m_TextureViewCache.GetOrCreate(cmdList, modernTexture);
+            m_TextureSRVs.push_back(srv);
+            resources[entryIndex].Type = RHIShaderBindingType::TextureSRV;
+            resources[entryIndex].TextureSRV = srv.get();
+        }
+
+        m_MaterialShaderBindingSet = cmdList.CreateShaderBindingSet(layout, resources);
+    }
+
+    void MaterialRenderProxy::BindForDraw(RHICommandList& cmdList)
+    {
+        const Material* base = GetBaseMaterial();
+        const uint32_t generation = base ? base->GetCompileGeneration() : 0;
+        if (generation != m_SeenCompileGeneration)
+        {
+            m_MaterialShaderBindingSet.reset();
+            m_TextureSRVs.clear();
+            m_ScalarParamsUBO.reset();
+            m_ScalarParamsUBOSize = 0;
+            m_bParameterBindingsDirty = true;
+            m_SeenCompileGeneration = generation;
+        }
+
+        if (m_bParameterBindingsDirty)
+        {
+            EnsureScalarUniformBuffer(cmdList);
+            RebuildShaderBindingSet(cmdList);
+            m_bParameterBindingsDirty = false;
+        }
+
+        if (!m_ScalarParamsUBO || m_ScalarParamsUBOSize == 0 || !base)
+        {
+            return;
+        }
+
+        const uint32_t floatCount = m_ScalarParamsUBOSize / 16u;
+        std::vector<float> scalarData(floatCount * 4u, 0.0f);
+        for (const MaterialScalarParameter& scalarParameter : base->m_ScalarParameters)
+        {
+            if (scalarParameter.SlotIndex < 0 ||
+                static_cast<uint32_t>(scalarParameter.SlotIndex) >= floatCount)
+            {
+                continue;
+            }
+
+            float value = 0.0f;
+            if (GetScalarParameterValueBySlot(scalarParameter.SlotIndex, value))
+            {
+                scalarData[static_cast<size_t>(scalarParameter.SlotIndex) * 4u] = value;
+            }
+        }
+        m_ScalarParamsUBO->UpdateSubresource(scalarData.data(), 0, m_ScalarParamsUBOSize);
     }
 
     DefaultMaterialRenderProxy::DefaultMaterialRenderProxy(Material& material)
@@ -59,11 +195,6 @@ namespace minEngine
     RHIShaderBindingSetLayout* DefaultMaterialRenderProxy::GetMaterialShaderBindingSetLayout() const
     {
         return m_Material ? m_Material->GetMaterialShaderBindingSetLayout() : nullptr;
-    }
-
-    RHIShaderBindingSet* DefaultMaterialRenderProxy::GetMaterialShaderBindingSet() const
-    {
-        return m_MaterialShaderBindingSet.get();
     }
 
     bool DefaultMaterialRenderProxy::GetScalarParameterValue(const std::string& name, float& outValue) const
@@ -136,126 +267,154 @@ namespace minEngine
         return false;
     }
 
-    void DefaultMaterialRenderProxy::InvalidateParameterBindings()
+    InstanceMaterialRenderProxy::InstanceMaterialRenderProxy(MaterialInstance& instance)
+        : m_Instance(&instance)
     {
-        m_bParameterBindingsDirty = true;
     }
 
-    void DefaultMaterialRenderProxy::NotifyCompiled(RHICommandList& cmdList)
+    MaterialRenderProxy* InstanceMaterialRenderProxy::GetParentProxy() const
     {
-        m_MaterialShaderBindingSet.reset();
-        m_TextureSRVs.clear();
-        m_ScalarParamsUBO.reset();
-        m_ScalarParamsUBOSize = 0;
-        m_bParameterBindingsDirty = true;
-        EnsureScalarUniformBuffer(cmdList);
-        RebuildShaderBindingSet(cmdList);
-        m_bParameterBindingsDirty = false;
+        if (!m_Instance || m_Instance->m_Parent == nullptr)
+        {
+            return nullptr;
+        }
+        return m_Instance->m_Parent->GetRenderProxy();
     }
 
-    void DefaultMaterialRenderProxy::EnsureScalarUniformBuffer(RHICommandList& cmdList)
+    Material* InstanceMaterialRenderProxy::GetBaseMaterial() const
     {
-        if (!m_Material || m_Material->m_ScalarParameters.empty())
-        {
-            m_ScalarParamsUBO.reset();
-            m_ScalarParamsUBOSize = 0;
-            return;
-        }
-
-        int maxSlot = 0;
-        for (const MaterialScalarParameter& scalarParameter : m_Material->m_ScalarParameters)
-        {
-            maxSlot = std::max(maxSlot, scalarParameter.SlotIndex);
-        }
-        const uint32_t uboSize = static_cast<uint32_t>((maxSlot + 1) * 16u);
-        if (m_ScalarParamsUBO && m_ScalarParamsUBOSize == uboSize)
-        {
-            return;
-        }
-
-        m_ScalarParamsUBOSize = uboSize;
-        RHIBufferCreateDesc uboDesc;
-        uboDesc.Usage = RHIBufferUsage::Uniform;
-        uboDesc.ByteSize = m_ScalarParamsUBOSize;
-        m_ScalarParamsUBO = cmdList.CreateBuffer(uboDesc, nullptr);
+        return m_Instance ? m_Instance->GetBaseMaterial() : nullptr;
     }
 
-    void DefaultMaterialRenderProxy::RebuildShaderBindingSet(RHICommandList& cmdList)
+    bool InstanceMaterialRenderProxy::IsCompiledForDraw() const
     {
-        m_MaterialShaderBindingSet.reset();
-        m_TextureSRVs.clear();
-
-        RHIShaderBindingSetLayout* layout = GetMaterialShaderBindingSetLayout();
-        if (!layout)
-        {
-            return;
-        }
-
-        const std::vector<RHIShaderBindingSetLayoutEntry>& entries = layout->GetEntries();
-        std::vector<RHIShaderBinding> resources(entries.size());
-
-        for (size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex)
-        {
-            const RHIShaderBindingSetLayoutEntry& entry = entries[entryIndex];
-            if (entry.Type == RHIShaderBindingType::UniformBuffer)
-            {
-                resources[entryIndex].Type = RHIShaderBindingType::UniformBuffer;
-                resources[entryIndex].Buffer = m_ScalarParamsUBO.get();
-                continue;
-            }
-
-            std::shared_ptr<Texture2D> texture;
-            if (!GetTextureParameterValueBySlot(static_cast<int>(entry.ShaderBinding), texture) || !texture)
-            {
-                continue;
-            }
-
-            RHITexture* modernTexture = texture->GetRHITexture();
-            if (!modernTexture)
-            {
-                continue;
-            }
-
-            RHIShaderResourceViewRef srv = m_TextureViewCache.GetOrCreate(cmdList, modernTexture);
-            m_TextureSRVs.push_back(srv);
-            resources[entryIndex].Type = RHIShaderBindingType::TextureSRV;
-            resources[entryIndex].TextureSRV = srv.get();
-        }
-
-        m_MaterialShaderBindingSet = cmdList.CreateShaderBindingSet(layout, resources);
+        const Material* base = GetBaseMaterial();
+        return base && base->IsCompiledForDraw();
     }
 
-    void DefaultMaterialRenderProxy::BindForDraw(RHICommandList& cmdList)
+    bool InstanceMaterialRenderProxy::IsCompiledForSkinnedDraw() const
     {
-        if (m_bParameterBindingsDirty)
+        const Material* base = GetBaseMaterial();
+        return base && base->IsCompiledForSkinnedDraw();
+    }
+
+    bool InstanceMaterialRenderProxy::IsTranslucent() const
+    {
+        const Material* base = GetBaseMaterial();
+        return base && base->IsTranslucent();
+    }
+
+    bool InstanceMaterialRenderProxy::IsMasked() const
+    {
+        const Material* base = GetBaseMaterial();
+        return base && base->IsMasked();
+    }
+
+    RHIShader* InstanceMaterialRenderProxy::GetGPUShader() const
+    {
+        const Material* base = GetBaseMaterial();
+        return base ? base->GetGPUShader() : nullptr;
+    }
+
+    RHIShader* InstanceMaterialRenderProxy::GetGPUShaderSkinned() const
+    {
+        const Material* base = GetBaseMaterial();
+        return base ? base->GetGPUShaderSkinned() : nullptr;
+    }
+
+    RHIShaderBindingSetLayout* InstanceMaterialRenderProxy::GetMaterialShaderBindingSetLayout() const
+    {
+        const Material* base = GetBaseMaterial();
+        return base ? base->GetMaterialShaderBindingSetLayout() : nullptr;
+    }
+
+    bool InstanceMaterialRenderProxy::GetScalarParameterValue(const std::string& name, float& outValue) const
+    {
+        if (!m_Instance)
         {
-            EnsureScalarUniformBuffer(cmdList);
-            RebuildShaderBindingSet(cmdList);
-            m_bParameterBindingsDirty = false;
+            return false;
         }
 
-        if (!m_ScalarParamsUBO || m_ScalarParamsUBOSize == 0)
+        const auto overrideIt = m_Instance->m_ScalarOverrides.find(name);
+        if (overrideIt != m_Instance->m_ScalarOverrides.end())
         {
-            return;
+            outValue = overrideIt->second;
+            return true;
         }
 
-        const uint32_t floatCount = m_ScalarParamsUBOSize / 16u;
-        std::vector<float> scalarData(floatCount * 4u, 0.0f);
-        if (m_Material)
+        MaterialRenderProxy* parentProxy = GetParentProxy();
+        return parentProxy != nullptr && parentProxy->GetScalarParameterValue(name, outValue);
+    }
+
+    bool InstanceMaterialRenderProxy::GetTextureParameterValue(
+        const std::string& name, std::shared_ptr<Texture2D>& outTexture) const
+    {
+        if (!m_Instance)
         {
-            for (const MaterialScalarParameter& scalarParameter : m_Material->m_ScalarParameters)
+            return false;
+        }
+
+        const auto overrideIt = m_Instance->m_TextureOverrides.find(name);
+        if (overrideIt != m_Instance->m_TextureOverrides.end())
+        {
+            outTexture = overrideIt->second;
+            return true;
+        }
+
+        MaterialRenderProxy* parentProxy = GetParentProxy();
+        return parentProxy != nullptr && parentProxy->GetTextureParameterValue(name, outTexture);
+    }
+
+    bool InstanceMaterialRenderProxy::GetScalarParameterValueBySlot(int slotIndex, float& outValue) const
+    {
+        const Material* base = GetBaseMaterial();
+        if (m_Instance && base)
+        {
+            for (const MaterialScalarParameter& parameter : base->m_ScalarParameters)
             {
-                if (scalarParameter.SlotIndex >= 0 &&
-                    static_cast<uint32_t>(scalarParameter.SlotIndex) < floatCount)
+                if (parameter.SlotIndex != slotIndex)
                 {
-                    float value = 0.0f;
-                    if (GetScalarParameterValueBySlot(scalarParameter.SlotIndex, value))
-                    {
-                        scalarData[static_cast<size_t>(scalarParameter.SlotIndex) * 4u] = value;
-                    }
+                    continue;
                 }
+
+                const auto overrideIt = m_Instance->m_ScalarOverrides.find(parameter.ParameterName);
+                if (overrideIt != m_Instance->m_ScalarOverrides.end())
+                {
+                    outValue = overrideIt->second;
+                    return true;
+                }
+                break;
             }
         }
-        m_ScalarParamsUBO->UpdateSubresource(scalarData.data(), 0, m_ScalarParamsUBOSize);
+
+        MaterialRenderProxy* parentProxy = GetParentProxy();
+        return parentProxy != nullptr && parentProxy->GetScalarParameterValueBySlot(slotIndex, outValue);
+    }
+
+    bool InstanceMaterialRenderProxy::GetTextureParameterValueBySlot(
+        int slotIndex, std::shared_ptr<Texture2D>& outTexture) const
+    {
+        const Material* base = GetBaseMaterial();
+        if (m_Instance && base)
+        {
+            for (const MaterialTextureParameter& parameter : base->m_TextureParameters)
+            {
+                if (parameter.SlotIndex != slotIndex)
+                {
+                    continue;
+                }
+
+                const auto overrideIt = m_Instance->m_TextureOverrides.find(parameter.ParameterName);
+                if (overrideIt != m_Instance->m_TextureOverrides.end())
+                {
+                    outTexture = overrideIt->second;
+                    return true;
+                }
+                break;
+            }
+        }
+
+        MaterialRenderProxy* parentProxy = GetParentProxy();
+        return parentProxy != nullptr && parentProxy->GetTextureParameterValueBySlot(slotIndex, outTexture);
     }
 }
