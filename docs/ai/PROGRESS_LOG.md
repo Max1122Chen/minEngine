@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：Editor Client/Service 约束写入设计哲学）
+Last updated: 2026-09-18（`feat/mcp`：MCP-F04 设计）
+
+### 2026-09-18 - MCP-F04 设计（Review，未写代码）
+- **kind：** 在 query/edit/verify 上加 `control`（给人看）与 `asset`（创建/删除资产）。打开资产是 control，不是 asset。
+- **类型查询：** Editor 侧 `TypeQueryServices`，进程内返回 `MEClass*` / `MEProperty*`；过滤参数化；不挂 SceneEditor，不提供「可添加组件」API。
+- **Next：** 维护者审阅 Design 后按 Impl S01 开工。
+
 
 ### 2026-09-18 - Editor 域服务与 Client 约束
 - **落点：** `ENGINE_DESIGN_PHILOSOPHY.md` §5；ED-F18 §1.4 为实例；agent rule 提醒同条。
