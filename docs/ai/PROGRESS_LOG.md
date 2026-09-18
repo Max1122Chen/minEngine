@@ -1,6 +1,33 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（RND-F17 Done）
+Last updated: 2026-09-18（澄清 Proxy 栖息地；F05 详设展开）
+
+### 2026-09-18 - MaterialRenderProxy 栖息地澄清 + F05 详设
+- **澄清：** MaterialRenderProxy **由 Material/MI 拥有**，SceneProxy/MDC 仅裸指针引用；**不是** RenderScene 里与 Primitive SceneProxy 同类的对象（已写入 F02 §3.7、路线图类型表）。
+- **F05：** [MID Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) 展开为 Review 详设（工厂、寿命、切片、与 F06 边界）；Registry → Review。
+- **Next：** 审批 F02（及 D7/D8）→ S01；F05 原则可先认可，实施等 F04。
+
+### 2026-09-18 - MAT-F02/F03/F04 按 UE 完善（待审批）
+- **F02：** GPU BindingSet/UBO **迁 Proxy**（D7）；虚 `Get*ParameterValue*`（D8）；`FDefaultMaterialInstance` 对照；F04 预留契约；Compile→Invalidate。
+- **F03/F04/F05：** Interface 最小集；Instance Proxy 同构 `FMaterialInstanceResource`；MID 复用存储。
+- **Review：** 见会话 design-review 报告；**等维护者审批 F02（及 D7/D8）** 后 S01。
+- **未改代码。**
+
+### 2026-09-18 - MAT 路线图修订：Proxy 先行 + F02 详设
+- **决策：** 否决「Interface 首刀、Proxy 殿后」；**无 Proxy 则 Interface/MI 为空中楼阁**。
+- **重排：** F02=Proxy → F03=Interface → F04=MI → F05=MID → F06=MIC；删除旧错位 Design 文件。
+- **F02 详设：** [MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md)。
+- **Next：** 完善后审批 → S01。
+
+### 2026-09-18 - MAT 运行时产品化：F01 路线图 + F02–F05 Design（初版，顺序已修订）
+- **F01：** [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) Status In Progress。
+- **登记：** F02–F06；旧 MI 窄 Design → Superseded 指针页。
+- **注：** 初版曾以 Interface 为 F02；同日修订为 Proxy 先行（见上条）。
+
+### 2026-09-18 - MAT-F01 Design Review：UE 式 Interface + Material + MI
+- **文档：** [MAT-F01](./Render/Material/MAT-F01_MATERIAL_INSTANCE_DESIGN.md) 重写；Registry/ACTIVE_WORK → **Review**。
+- **要点：** draw 认 `MaterialInterface*`；Material=图+编译；Instance=Parent+覆盖；`.memi` 二期。
+- **Next：** 维护者审批（Parent 链 / 组件 shared_ptr / `.memi` Out）后 S01。
 
 ### 2026-09-18 - RND-F17 Done：ViewId+SRT 物理缓存隔离（`feat/render`）
 - **代码：** `SceneViewport` 发号；`SceneDrawDesc::ViewId`；`RenderGraph` per-view `m_ViewPhysicalCaches` + `SetActiveViewKey`；`ForwardRenderer`/`ManualRenderer` 拒 `ViewId==0`；CB Scene3D 重开。
