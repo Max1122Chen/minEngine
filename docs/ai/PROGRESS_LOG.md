@@ -1,6 +1,19 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（RND-F06 文档收口；登记 RND-F17 / MAT-F01）
+Last updated: 2026-09-18（RND-F17 Done）
+
+### 2026-09-18 - RND-F17 Done：ViewId+SRT 物理缓存隔离（`feat/render`）
+- **代码：** `SceneViewport` 发号；`SceneDrawDesc::ViewId`；`RenderGraph` per-view `m_ViewPhysicalCaches` + `SetActiveViewKey`；`ForwardRenderer`/`ManualRenderer` 拒 `ViewId==0`；CB Scene3D 重开。
+- **验证：** `cmake --build build --target minEngineTests Editor`；`minEngineTests.exe test render-graph` **7/7**（含双 ViewKey 同尺寸异纹理用例）。
+- **文档：** Design/Registry/TD-027 → Done；ACTIVE_WORK 下一刀 MAT-F01 / 手验。
+- **手验待确认：** Level+Material Preview；CB Material/Mesh 缩略图。
+- **Next：** 手验后准备 commit；或开 MAT-F01。
+
+### 2026-09-18 - RND-F17 Design 定稿待批（ViewId + SRT*）
+- **方案：** 单 ForwardRenderer + F07 图内分配；`SetupAttachments` 物理复用键 = **ViewId ∧ SceneRenderTarget*** + dims/format；不一致 fail-closed。
+- **Out：** 多长寿 Renderer；整帧外置 RT 双轨；纯 Manual 缩略图旁路。
+- **Status：** Design / Registry / ACTIVE_WORK → **Review**；**等维护者审批**后 S01。
+- **未改代码。**
 
 ### 2026-09-18 - RND-F06 文档收口；登记 RND-F17 / MAT-F01（`feat/render`）
 - **F06：** Design / Registry / ACTIVE_WORK → **Done**（代码早已无 `class RenderPipeline`；S03 记 `RenderPipeline/` 目录名为历史路径）。

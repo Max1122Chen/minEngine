@@ -39,10 +39,15 @@ namespace minEngine
 
         SceneDrawDesc BuildDrawDesc(SceneDrawFlags flags = SceneDrawFlags::Default) const;
 
+        uint64_t GetViewId() const { return m_ViewId; }
+
     private:
+        static uint64_t AllocateViewId();
+
         RenderScene* m_ObservedScene = nullptr;
         std::shared_ptr<RenderCamera> m_Camera;
         std::shared_ptr<SceneRenderTarget> m_RenderTarget;
+        uint64_t m_ViewId = 0;
 
         bool m_HasPendingResize = false;
         uint32_t m_PendingWidth = 0;

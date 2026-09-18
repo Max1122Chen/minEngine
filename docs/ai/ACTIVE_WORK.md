@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（`feat/render`：RND-F06 文档收口；登记 RND-F17 / MAT-F01）  
+Last updated: 2026-09-18（`feat/render`：RND-F17 Done）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,28 +11,27 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/render`）：`RND-F17` 方向讨论 → Design 拍板**
+**Primary（`feat/render`）：下一刀自选 — `MAT-F01` 或手验 F17**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| — | **`RND-F06`** | ForwardRenderer | **Done**（2026-09-18 文档收口） | [Design](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) |
-| 1 | **`RND-F17`** | Isolated preview / multi-view 调度（解串图） | **Planned** | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) |
-| 2 | **`MAT-F01`** | MaterialInstance | **Planned**（本波后置实现） | [Design](./Render/Material/MAT-F01_MATERIAL_INSTANCE_DESIGN.md) |
+| — | **`RND-F06`** | ForwardRenderer | **Done** | [Design](./Render/RND-F06_FORWARD_RENDERER_DESIGN.md) |
+| — | **`RND-F17`** | Isolated preview / multi-view 调度 | **Done** | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) |
+| 1 | **`MAT-F01`** | MaterialInstance | **Planned** | [Design](./Render/Material/MAT-F01_MATERIAL_INSTANCE_DESIGN.md) |
 | — | **`ED-F11`** | Multi-document Tab Host | **In Progress**（W3 大部；余 Save As / Scene 多开） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
 | — | `ED-F10` | EditorSettings | **Planned**（占位） | Design 未开 |
 
-**下一刀：** 拍板 **RND-F17** 方案（对照 UE/Godot/Unity）；再 Pre-flight 开切片。`MAT-F01` 登记占位，实现排在调度契约之后或旁路 Runtime MVP。
+**下一刀：** 手验 F17（Level+Material Preview；CB Scene3D）后准备 commit；或开 **MAT-F01** Design/Pre-flight。
 
-**已收口（近期 master）：** CORE-F19/F21；CORE-F23–F26 + ED-F16 + ASSET-F03；CORE-F20/F22 + ED-F12–F15；**RND-F06**。
+**已收口（近期）：** CORE-F19/F21；Prefab F23–F26；**RND-F06**；**RND-F17**（TD-027）。
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/render` | `RND-F17` | Primary 候选 |
-| `feat/render` | `MAT-F01` | Demo 变体；与 F17 正交 |
+| `feat/render` | `MAT-F01` | Demo 变体 |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
-| — | Prefab 后置 | Nested / Apply→Prefab；并排预览依赖 F17 |
+| — | Prefab 后置 | Nested / Apply→Prefab；并排预览可消费 F17 |
 
 ### 0.1.0 执行模型（详见 Roadmap §3.0 拓扑图）
 
@@ -50,9 +49,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|------|------|
 | `WF-F02` | In Progress | handbook 子系统文档按需 |
 | `ED-F01` | In Progress | VK 阴影质量 **Deferred**；勿当主航道 |
-| `RND-F17` | Planned | 隔离预览调度；吸收 TD-027 |
+| `RND-F17` | **Done** | ViewId+SRT；TD-027 Done |
 | `MAT-F01` | Planned | MaterialInstance |
-| Open TD | Medium | TD-004/005/023/024/027/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md) |
+| Open TD | Medium | TD-004/005/023/024/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md)（TD-027 Done） |
 
 ---
 

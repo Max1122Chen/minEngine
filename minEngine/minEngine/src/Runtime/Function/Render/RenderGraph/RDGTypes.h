@@ -73,4 +73,23 @@ namespace minEngine
     inline constexpr const char* kRDGBackbuffer = "Backbuffer";
     inline constexpr const char* kRDGPostBufferA = "PostBufferA";
     inline constexpr const char* kRDGDirShadowAtlas = "DirShadowAtlas";
+
+    class SceneRenderTarget;
+
+    /**
+     * RND-F17: physical attachment reuse key (ViewId AND SceneRenderTarget*).
+     * Both must match to reuse; partial match is logged and treated as a cache miss.
+     */
+    struct RDGViewKey
+    {
+        uint64_t ViewId = 0;
+        const SceneRenderTarget* RenderTarget = nullptr;
+
+        bool IsValid() const { return ViewId != 0; }
+
+        bool operator==(const RDGViewKey& other) const
+        {
+            return ViewId == other.ViewId && RenderTarget == other.RenderTarget;
+        }
+    };
 }

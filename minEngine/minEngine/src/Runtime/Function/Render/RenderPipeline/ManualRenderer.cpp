@@ -1,5 +1,6 @@
 #include "ManualRenderer.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Render/EngineRHITextureUtils.h"
 #include "Render/Environment/EnvironmentMap.h"
 #include "Render/RenderGraph/SceneRenderPassUtils.h"
@@ -286,6 +287,15 @@ namespace minEngine
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (!rhi || !desc.Scene || !desc.Camera || !desc.RenderTarget)
         {
+            return;
+        }
+
+        if (desc.ViewId == 0)
+        {
+            ME_LOG(
+                LogRender,
+                Error,
+                "ManualRenderer::Execute: ViewId == 0; SceneDrawDesc must come from SceneViewport::BuildDrawDesc.");
             return;
         }
 

@@ -390,6 +390,9 @@ namespace minEngine
             BuildFrameRenderGraph(enablePostProcess, presentToBackBuffer, enableDebugDraw);
         }
 
+        // RND-F17: bind per-view physical cache after topology rebuild (Reset unbinds).
+        m_FrameRenderGraph.SetActiveViewKey(desc.ViewId, desc.RenderTarget);
+
         if (m_FrameRenderGraph.GetBackbufferWidth() != width
             || m_FrameRenderGraph.GetBackbufferHeight() != height)
         {
@@ -578,6 +581,15 @@ namespace minEngine
 
         if (!desc.Scene || !desc.Camera || !desc.RenderTarget)
         {
+            return;
+        }
+
+        if (desc.ViewId == 0)
+        {
+            ME_LOG(
+                LogRender,
+                Error,
+                "ForwardRenderer::Execute: ViewId == 0; SceneDrawDesc must come from SceneViewport::BuildDrawDesc.");
             return;
         }
 

@@ -1,5 +1,6 @@
 #include "Render/RenderGraph/RenderGraph.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RHI/RHIResourceTransition.h"
@@ -21,11 +22,100 @@ namespace minEngine
         m_PassStack.clear();
         m_PassDependencies.clear();
         m_PhysicalDims.clear();
-        m_PhysicalTextures.clear();
+        m_BoundPhysicalTextures = nullptr;
+        m_ActiveViewKey = {};
+        // RND-F17: keep per-view physical caches across topology rebuilds.
         m_SwapchainPhysicalIndex = RDGResource::kUnused;
         m_IsBaked = false;
         m_ImplSetupDone = false;
         m_FrameContext = {};
+    }
+
+    void RenderGraph::SetActiveViewKey(uint64_t viewId, const SceneRenderTarget* renderTarget)
+    {
+        const RDGViewKey key{viewId, renderTarget};
+        if (!key.IsValid())
+        {
+            ME_LOG(LogRender, Error, "RenderGraph::SetActiveViewKey: ViewId must be non-zero.");
+            m_BoundPhysicalTextures = nullptr;
+            m_ActiveViewKey = {};
+            return;
+        }
+
+        for (const ViewPhysicalCache& cache : m_ViewPhysicalCaches)
+        {
+            if (cache.Key.ViewId == key.ViewId && cache.Key.RenderTarget != key.RenderTarget)
+            {
+                ME_LOG(
+                    LogRender,
+                    Warn,
+                    "RenderGraph: ViewId {} reused with a different SceneRenderTarget*; "
+                    "fail-closed (new physical cache).",
+                    key.ViewId);
+            }
+            else if (cache.Key.ViewId != key.ViewId && cache.Key.RenderTarget != nullptr
+                && cache.Key.RenderTarget == key.RenderTarget)
+            {
+                ME_LOG(
+                    LogRender,
+                    Warn,
+                    "RenderGraph: SceneRenderTarget* shared across ViewId {} and {}; "
+                    "fail-closed (separate caches).",
+                    cache.Key.ViewId,
+                    key.ViewId);
+            }
+        }
+
+        m_ActiveViewKey = key;
+        BindPhysicalTexturesForActiveView();
+    }
+
+    RenderGraph::ViewPhysicalCache& RenderGraph::FindOrCreateViewCache(const RDGViewKey& key)
+    {
+        for (ViewPhysicalCache& cache : m_ViewPhysicalCaches)
+        {
+            if (cache.Key == key)
+            {
+                return cache;
+            }
+        }
+
+        ViewPhysicalCache created{};
+        created.Key = key;
+        m_ViewPhysicalCaches.push_back(std::move(created));
+        return m_ViewPhysicalCaches.back();
+    }
+
+    void RenderGraph::BindPhysicalTexturesForActiveView()
+    {
+        if (!m_ActiveViewKey.IsValid())
+        {
+            m_BoundPhysicalTextures = nullptr;
+            return;
+        }
+
+        ViewPhysicalCache& cache = FindOrCreateViewCache(m_ActiveViewKey);
+        m_BoundPhysicalTextures = &cache.Textures;
+    }
+
+    std::vector<std::shared_ptr<RHITexture>>& RenderGraph::PhysicalTextures()
+    {
+        if (m_BoundPhysicalTextures == nullptr)
+        {
+            throw std::logic_error(
+                "RenderGraph: no active ViewKey; call SetActiveViewKey before Bake/SetupAttachments.");
+        }
+        return *m_BoundPhysicalTextures;
+    }
+
+    const std::vector<std::shared_ptr<RHITexture>>& RenderGraph::PhysicalTextures() const
+    {
+        if (m_BoundPhysicalTextures == nullptr)
+        {
+            throw std::logic_error(
+                "RenderGraph: no active ViewKey; call SetActiveViewKey before Bake/SetupAttachments.");
+        }
+        return *m_BoundPhysicalTextures;
     }
 
     void RenderGraph::SetFrameContext(const RenderGraphFrameContext& context)
@@ -356,14 +446,15 @@ namespace minEngine
         BuildPhysicalResources();
 
         // Keep existing physical textures across rebakes so ImGui can keep sampling last frame's
-        // handle until SetupAttachments replaces mismatched slots.
-        if (m_PhysicalTextures.size() > m_PhysicalDims.size())
+        // handle until SetupAttachments replaces mismatched slots (per active ViewKey cache).
+        std::vector<std::shared_ptr<RHITexture>>& physicalTextures = PhysicalTextures();
+        if (physicalTextures.size() > m_PhysicalDims.size())
         {
-            m_PhysicalTextures.resize(m_PhysicalDims.size());
+            physicalTextures.resize(m_PhysicalDims.size());
         }
-        else if (m_PhysicalTextures.size() < m_PhysicalDims.size())
+        else if (physicalTextures.size() < m_PhysicalDims.size())
         {
-            m_PhysicalTextures.resize(m_PhysicalDims.size(), nullptr);
+            physicalTextures.resize(m_PhysicalDims.size(), nullptr);
         }
 
         m_IsBaked = true;
@@ -419,9 +510,10 @@ namespace minEngine
             m_ImplSetupDone = true;
         }
 
-        if (m_PhysicalTextures.size() != m_PhysicalDims.size())
+        std::vector<std::shared_ptr<RHITexture>>& physicalTextures = PhysicalTextures();
+        if (physicalTextures.size() != m_PhysicalDims.size())
         {
-            m_PhysicalTextures.assign(m_PhysicalDims.size(), nullptr);
+            physicalTextures.assign(m_PhysicalDims.size(), nullptr);
         }
 
         bool anyRecreated = false;
@@ -436,7 +528,7 @@ namespace minEngine
             }
 
             const RDGResourceDimensions& dims = m_PhysicalDims[physicalIndex];
-            std::shared_ptr<RHITexture>& slot = m_PhysicalTextures[physicalIndex];
+            std::shared_ptr<RHITexture>& slot = physicalTextures[physicalIndex];
             const RHITextureCreateDesc wantDesc = MakeCreateDesc(dims);
             if (slot
                 && slot->GetDesc().Width == dims.Width
@@ -513,11 +605,12 @@ namespace minEngine
 
     RHITexture* RenderGraph::GetPhysicalTexture(uint32_t physicalIndex)
     {
-        if (physicalIndex == RDGResource::kUnused || physicalIndex >= m_PhysicalTextures.size())
+        const std::vector<std::shared_ptr<RHITexture>>& physicalTextures = PhysicalTextures();
+        if (physicalIndex == RDGResource::kUnused || physicalIndex >= physicalTextures.size())
         {
             throw std::logic_error("RenderGraph::GetPhysicalTexture: invalid physical index.");
         }
-        RHITexture* texture = m_PhysicalTextures[physicalIndex].get();
+        RHITexture* texture = physicalTextures[physicalIndex].get();
         if (texture == nullptr)
         {
             throw std::logic_error("RenderGraph::GetPhysicalTexture: SetupAttachments not called.");
@@ -531,11 +624,16 @@ namespace minEngine
         {
             return nullptr;
         }
-        if (resource->GetPhysicalIndex() >= m_PhysicalTextures.size())
+        if (m_BoundPhysicalTextures == nullptr)
         {
             return nullptr;
         }
-        return m_PhysicalTextures[resource->GetPhysicalIndex()].get();
+        const std::vector<std::shared_ptr<RHITexture>>& physicalTextures = PhysicalTextures();
+        if (resource->GetPhysicalIndex() >= physicalTextures.size())
+        {
+            return nullptr;
+        }
+        return physicalTextures[resource->GetPhysicalIndex()].get();
     }
 
     RHITextureRef RenderGraph::GetPhysicalTextureShared(const RDGTextureResource& resource)
@@ -545,11 +643,12 @@ namespace minEngine
 
     RHITextureRef RenderGraph::GetPhysicalTextureShared(uint32_t physicalIndex)
     {
-        if (physicalIndex == RDGResource::kUnused || physicalIndex >= m_PhysicalTextures.size())
+        const std::vector<std::shared_ptr<RHITexture>>& physicalTextures = PhysicalTextures();
+        if (physicalIndex == RDGResource::kUnused || physicalIndex >= physicalTextures.size())
         {
             throw std::logic_error("RenderGraph::GetPhysicalTextureShared: invalid physical index.");
         }
-        RHITextureRef texture = m_PhysicalTextures[physicalIndex];
+        RHITextureRef texture = physicalTextures[physicalIndex];
         if (!texture)
         {
             throw std::logic_error("RenderGraph::GetPhysicalTextureShared: SetupAttachments not called.");

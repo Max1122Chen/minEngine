@@ -3,74 +3,129 @@
 ## Meta
 - **ID:** RND-F17
 - **Type:** Refactor
-- **Status:** Planned
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-18
-- **Related:** [TD-027](../TECH_DEBT.md) · [ENGINE_0_1_0_ROADMAP](../ENGINE_0_1_0_ROADMAP.md) §3.4 IsoRT · Prefab B · `AssetThumbnailService` · `PreviewScene` · [RND-F06](./RND-F06_FORWARD_RENDERER_DESIGN.md) Done
+- **Related:**
+  - [TD-027](../TECH_DEBT.md) **Done**
+  - [ENGINE_0_1_0_ROADMAP](../ENGINE_0_1_0_ROADMAP.md) §3.4 IsoRT
+  - [RND-F06](./RND-F06_FORWARD_RENDERER_DESIGN.md) Done · [RND-F07](./RND-F07_GRANITE_RDG_RESOURCE_REFACTOR_DESIGN.md)（图内资源纪律）
+  - `SceneDrawDesc` · `SceneViewport` · `SceneRenderTarget` · `RenderGraph::SetupAttachments`
+  - Prefab B / `AssetThumbnailService` · `PreviewScene` · `MAT-F01`（正交）
 
 ## TL;DR
 
-主 Level Viewport、Material/Inspector `PreviewScene`、Content Browser Scene3D 缩略图若共用 **单 ForwardRenderer + 单帧 RDG/同尺寸 transient RT**，会串图。当前用 **禁用 Scene3D 缩略图** 绕过（TD-027）。本 Feature 重建 **多 view 提交与 RT 身份**，使预览可安全重开，并解锁 Prefab 并排/隔离预览。
+串图主因：长寿 `ForwardRenderer::m_FrameRenderGraph` 在 `SetupAttachments` 中 **仅按尺寸/格式** 复用物理纹理，多 `SceneDrawDesc` 同尺寸互相覆盖，再经 `PublishGraphColorTexture` 被多 Viewport 长期采样。
+
+**方案（已落地）：** 保持单 `ForwardRenderer` + Granite 式图内分配；物理复用键为 **`ViewId` + `SceneRenderTarget*`（双键 AND）** + dims/format。已重开 Scene3D 缩略图；TD-027 Done。
 
 ## Scope
-- **In:** 多 `SceneDrawDesc` 调度契约；RT / graph 身份（禁错误别名）；CB tile / Inspector / Material Preview /（可选）Prefab Stage 与主视口互不污染；重新启用 Scene3D 缩略图并关 TD-027 绕路
-- **Out:** Sort/Batch 主航道；RND-F12 全语义；完整 Prefab B 子编辑器产品（可依赖本 Feature，但不在本 DoD）；MaterialInstance（`MAT-F01`）
+- **In:**
+  - `SceneDrawDesc` / `SceneViewport` 携带稳定 `ViewId`
+  - `RenderGraph` 物理槽按 View 双键分缓存
+  - 双键不一致时 fail-closed（新缓存）+ 诊断日志
+  - 重开 CB/Inspector Scene3D 缩略图；关闭 TD-027 绕路
+- **Out:**
+  - 每预览独立长寿 `ForwardRenderer` / 完整第二套 Manual 缩略图管线
+  - 恢复 Scene/ShadowManager 外置创建主路径帧 RT（违反 F07）
+  - RND-F12 全 bake 语义；Sort/Batch；完整 Prefab B 产品
+  - `MAT-F01` MaterialInstance
 
 ## Reader quick start
-1. 本文件：问题边界与候选方案（讨论中）
-2. 对照：UE `FSceneRenderer` / PreviewScene；Godot Viewport；Unity Camera/stack
-3. 代码入口：`RenderSystem::SubmitSceneDraw` · `ForwardRenderer::Execute` · `Editor/.../AssetThumbnailService` · `Preview/PreviewScene`
+1. §3 方案与复用契约
+2. 代码：`RenderGraph::SetActiveViewKey` · `SceneViewport::AllocateViewId` · `AssetThumbnailService::ResolveBackendKind`
 
 ---
 
 ## 1) 背景与目标
 
-**Pain：** 帧内多次 `SubmitSceneDraw` 共享错误资源身份 → 主视口与预览串图；CB 被迫 icon fallback。
+**Pain：** 主视口 + Preview + Scene3D 缩略图同帧串图；TD-027 曾禁用 Scene3D。
 
-**成功：** 任意组合打开主视口 + Material Preview + N 个 Scene3D thumb，画面各自正确；TD-027 → Done 或 Closed。
+**成功（已达成工程门禁）：**
+- RDG 物理纹理按 View 隔离（单测）
+- Scene3D 缩略图路径重新启用
+- 仍遵守 F07：中间 RT 由 RDG 分配
 
-## 2) 现状
+**手验（维护者）：** Level + Material Preview 同帧；CB Material/Mesh 缩略图不串主视口。
 
-- `RenderSystem` 队列 `SceneDrawDesc`，由单一 `SceneRenderer`（`ForwardRenderer`）顺序 Execute
-- CORE-F25 已让组件挂 owning Scene 的 `RenderScene`（Prefab Stage 串世界部分缓解）
-- TD-027：`ResolveBackendKind` 对非 Texture2D 返回 None，禁用 Scene3D；实现路径仍在
+## 2) 现状（实现后）
 
-## 3) 方案
+| 组件 | 行为 |
+|------|------|
+| `SceneViewport` | `Initialize` 分配单调 `ViewId`；`BuildDrawDesc` 写入 desc |
+| `SceneDrawDesc` | `ViewId` 字段；`Execute` 要求非 0 |
+| `RenderGraph` | `m_ViewPhysicalCaches` 按 `{ViewId, SRT*}`；`SetActiveViewKey` 后 Bake/SetupAttachments |
+| `AssetThumbnailService` | Material/StaticMesh → Scene3D |
+| TD-027 | **Done** |
 
-> **讨论中（2026-09-18）** — 对照 UE / Godot / Unity 后再拍板。候选方向见会话结论，写入本节后 Status → Review / In Progress。
+---
 
-### 3.1 数据流 / 模块边界
-（待定）
+## 3) 方案（已实现）
 
-### 3.2 API 或行为契约
-（待定）
+### 3.0 设计原则
 
-## 4) 备选方案（可选）
+1. **调度：** 单 Renderer，按 View 重绑执行。  
+2. **分配：** F07 — 中间 RT 仍由 RDG `SetupAttachments` 创建/复用。  
+3. **隔离：** 复用键 = View 双键 + dims；禁止仅同 Size 跨 View 共享。  
+4. **显示：** `PublishGraph*` 仍指向本 View 缓存中的物理纹理。
 
-| 选项 | 优点 | 缺点 | 结论 |
-|------|------|------|------|
-| A. 每预览上下文独立 Renderer 或独立 RDG 实例 | 隔离强 | 成本高 | 讨论中 |
-| B. 显式 RT 身份 / 禁同尺寸错误别名 | 改动面可控 | 需理清 RDG 池语义 | 讨论中 |
-| C. 预览走简化 Manual/离屏路径 | 实现快 | 双路径行为漂移 | 讨论中 |
+### 3.1 View 双键
+
+| 键 | 来源 |
+|----|------|
+| `ViewId` (`uint64_t`) | `SceneViewport::AllocateViewId`（静态单调） |
+| `SceneRenderTarget*` | `SceneDrawDesc::RenderTarget` |
+
+复用：`ViewId` ∧ `SRT*` ∧ dims/format。部分匹配 → Warn + 新缓存条目。
+
+### 3.2 切片
+
+| Slice | 状态 |
+|-------|------|
+| S01 ViewId + desc | **Done** |
+| S02 SetupAttachments 双键缓存 | **Done** |
+| S03 重开 Scene3D / TD-027 | **Done** |
+| S04 文档收口 | **Done** |
+
+---
+
+## 4) 备选方案
+
+| 选项 | 结论 |
+|------|------|
+| A. 每预览长寿独立 Renderer | **否** |
+| B. View 双键扩展物理复用 | **选用（已实现）** |
+| C. Manual 缩略图旁路 | **否** |
+| D. 整帧外置 RT 双轨 | **否** |
+
+---
 
 ## 5) 风险与缓解
 
-| 风险 | 影响 | 缓解 |
-|------|------|------|
-| 范围膨胀成完整 Prefab B | 拖 0.1.0 | Prefab B Out；本 Feature 只解串图 |
-| 与 MAT-F01 预览耦合 | 扯皮 | Instance 可先 Runtime；预览重开依赖本 Feature |
+| 风险 | 缓解 |
+|------|------|
+| `ViewId == 0` | Execute 早退 + Error 日志 |
+| Viewport 销毁后缓存残留 | 可接受；图 Reset 不清缓存；后续可加 Release |
+| 阴影同池 | 同 ViewKey；预览可关阴影 |
+
+---
 
 ## 6) 验收标准
 
-- [ ] Design 拍板并 Status → In Progress
-- [ ] Scene3D CB/Inspector 缩略图可开且不串主视口
-- [ ] Material Preview 与 Level Viewport 同帧共存正确
-- [ ] TD-027 关闭或改为 Done
-- [ ] 记录验证命令 / 手验步骤于 PROGRESS_LOG
+- [x] 维护者批准 Design
+- [x] `test render-graph` PASS（含双 ViewKey 隔离用例）
+- [x] `Editor` + `minEngineTests` 构建通过
+- [x] 启用 Scene3D（去掉 TD-027 禁用绕路）
+- [x] TD-027 → Done
+- [x] `ViewId == 0` 不可静默当全局池
+- [x] 未恢复外置帧 SceneColor 双轨
+- [ ] 手验：Level + Material Preview；CB Scene3D 缩略图（维护者）
+
+---
 
 ## 7) Status note
 
-Planned — 方向讨论后再开实现切片。
+**Done** — 工程落地；手验项留给维护者确认后可再记一笔 PROGRESS。
 
 ---
 
@@ -78,4 +133,6 @@ Planned — 方向讨论后再开实现切片。
 
 | 日期 | 说明 |
 |------|------|
-| 2026-09-18 | 登记 Planned；吸收 0.1.0 IsoRT / TD-027 |
+| 2026-09-18 | 登记 Planned；吸收 IsoRT / TD-027 |
+| 2026-09-18 | 定稿 Review：ViewId + SRT* |
+| 2026-09-18 | 实现 S01–S04；Status → **Done**；`test render-graph` 7/7 |

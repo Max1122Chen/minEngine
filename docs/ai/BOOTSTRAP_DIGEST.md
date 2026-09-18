@@ -4,7 +4,7 @@ Last updated: 2026-09-18
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** Phase P (0.1.0). **`RND-F06` Done.** `feat/render` Primary candidate: **`RND-F17`** (isolated preview / CB·Preview scheduling); **`MAT-F01`** MaterialInstance Planned. See [ACTIVE_WORK.md](./ACTIVE_WORK.md). Window: [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md).
+**Snapshot:** Phase P (0.1.0). **`RND-F06`/`RND-F17` Done** (ViewId+SRT; TD-027 closed). Next: **`MAT-F01`** or F17 manual verify. See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
 ---
 
