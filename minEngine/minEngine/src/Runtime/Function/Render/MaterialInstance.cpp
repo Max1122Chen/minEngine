@@ -8,16 +8,25 @@ namespace minEngine
 {
     MaterialInstance::~MaterialInstance() = default;
 
-    std::shared_ptr<MaterialInstance> MaterialInstance::Create(std::shared_ptr<Material> parent)
+    bool MaterialInstance::InitializeParent(std::shared_ptr<Material> parent)
     {
         if (!parent)
         {
-            return nullptr;
+            return false;
         }
 
+        m_Parent = std::move(parent);
+        EnsureRenderProxy();
+        return true;
+    }
+
+    std::shared_ptr<MaterialInstance> MaterialInstance::Create(std::shared_ptr<Material> parent)
+    {
         std::shared_ptr<MaterialInstance> instance(new MaterialInstance());
-        instance->m_Parent = std::move(parent);
-        instance->EnsureRenderProxy();
+        if (!instance->InitializeParent(std::move(parent)))
+        {
+            return nullptr;
+        }
         return instance;
     }
 

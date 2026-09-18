@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** MAT-F05
 - **Type:** Feature
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-18
 - **Related:**
@@ -182,23 +182,18 @@ SceneProxy.m_MaterialProxy
 
 ## 6) 验收标准
 
-- [ ] `MaterialInstanceDynamic::Create` 可用；返回对象是 `MaterialInterface`
-- [ ] `GetRenderProxy()` 为 Instance Proxy（与 F04 同族）；Draw 经 Proxy
-- [ ] Set scalar/texture 影响画面；**Parent Material 默认值不变**
-- [ ] 连续多帧 Set 稳定（冒烟）
-- [ ] 无 `.memi` / 无新 Proxy 类也可 Done
-- [ ] Material README 有 MID 用法三行说明
+- [x] `MaterialInstanceDynamic::Create` 可用；返回对象是 `MaterialInterface`
+- [x] `GetRenderProxy()` 为 Instance Proxy（与 F04 同族）；Draw 经 Proxy
+- [x] Set scalar/texture 影响画面；**Parent Material 默认值不变**
+- [x] 连续多帧 Set 稳定（冒烟）
+- [x] 无 `.memi` / 无新 Proxy 类也可 Done
+- [x] Material README 有 MID 用法三行说明
 
-**验证建议：** `minEngineTests` 单测（Create + Set + Parent untouched）；可选 Editor 手验。
-
----
+**验证：** `material-ir` 含 MID smoke（8 帧 Set）；RTTI 解析 Parent 留 **MAT-F06** 收口。
 
 ## 7) Status note
 
-**Review** — 详设已展开；**依赖 F04 Done**，不与 F02 并行开工。  
-等路线图推进至 F05 时再批一次切片即可（本次可先原则认可）。
-
-**已拍板默认：** 子类 A；共用 F04 Proxy；不进 RenderScene 拥有关系。
+**Done** — MID 工厂 + 复用 F04 Proxy。类型分发改 `MEClass`/虚解析见 [MAT-F06](./MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md)。
 
 ---
 
@@ -206,5 +201,7 @@ SceneProxy.m_MaterialProxy
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-18 | **Done：** 单测通过；RTTI→反射延后 F06 |
+| 2026-09-18 | **实现：** MID 类 + Create；多帧 Set smoke；README 用法 |
 | 2026-09-18 | **展开详设：** 寿命、工厂、切片、MIC 边界、与 SceneProxy 对比 |
 | 2026-09-18 | 初版摘要；编号 F05 |

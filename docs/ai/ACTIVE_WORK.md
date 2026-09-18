@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（MAT-F04 Done；下一刀 F05）  
+Last updated: 2026-09-18（MAT-F05 Done；F06 Design Review）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,28 +11,25 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/render`）：MAT-F05 MaterialInstanceDynamic — 尚未开工**
+**Primary（`feat/render`）：MAT-F06 MIC / `.memi` — Design Review**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | — | **`MAT-F01`** | Material Runtime Productization **路线图** | **In Progress** | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
-| — | **`MAT-F02`** | MaterialRenderProxy | **Done** | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
-| — | **`MAT-F03`** | MaterialInterface + 组件槽 | **Done** | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
-| — | **`MAT-F04`** | MaterialInstance | **Done** | [Design](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
-| 1 | **`MAT-F05`** | MaterialInstanceDynamic | **Review** | [Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) |
-| — | **`MAT-F06`** | MIC / `.memi` | **Planned** | 见路线图 §3 |
+| — | **`MAT-F02`–`F05`** | Proxy / Interface / MI / MID | **Done** | 见 Material README |
+| 1 | **`MAT-F06`** | MIC 资产 / Editor（`.memi`） | **Review** | [Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) |
 | — | **`RND-F17`** | Isolated preview 调度 | **Done** | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) |
 | — | **`ED-F11`** | Multi-document Tab Host | **In Progress**（余量） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
 
-**下一刀：** 开 [MAT-F05](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md)（Create + 运行时 Set*）。
+**下一刀：** 审批 [MAT-F06](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) → S01（ME_CLASS + 去掉 MID RTTI）。
 
-**已收口（近期）：** MAT-F02–F04；设计文档 `b7469df`；**RND-F17**。
+**已收口（近期）：** MAT-F02–F05；**RND-F17**。
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/render` | MAT-F05… | **MID → MIC** |
+| `feat/render` | MAT-F06 | **MIC Design Review → 实现** |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
 | — | Prefab 后置 | Nested / Apply→Prefab；并排预览可消费 F17 |
 
@@ -53,8 +50,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `WF-F02` | In Progress | handbook 子系统文档按需 |
 | `ED-F01` | In Progress | VK 阴影质量 **Deferred**；勿当主航道 |
 | `RND-F17` | **Done** | ViewId+SRT；TD-027 Done |
-| `MAT-F01` | **In Progress** | 运行时产品化路线图（F02–F04 Done） |
-| `MAT-F05` | **Review** | MaterialInstanceDynamic；下一刀 |
+| `MAT-F01` | **In Progress** | 运行时产品化路线图（F02–F05 Done） |
+| `MAT-F06` | **Review** | MIC / `.memi`；含 ME_CLASS 与 MID Create 去 RTTI |
 | Open TD | Medium | TD-004/005/023/024/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md)（TD-027 Done） |
 
 ---

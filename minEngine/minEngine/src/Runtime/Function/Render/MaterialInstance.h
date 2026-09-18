@@ -33,12 +33,15 @@ namespace minEngine
         MaterialRenderProxy* GetRenderProxy() const override;
 
         Material* GetParent() const { return m_Parent.get(); }
+        const std::shared_ptr<Material>& GetParentShared() const { return m_Parent; }
 
-    private:
+    protected:
         MaterialInstance() = default;
 
+        bool InitializeParent(std::shared_ptr<Material> parent);
         void EnsureRenderProxy();
 
+    private:
         std::shared_ptr<Material> m_Parent;
         std::unordered_map<std::string, float> m_ScalarOverrides;
         std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_TextureOverrides;

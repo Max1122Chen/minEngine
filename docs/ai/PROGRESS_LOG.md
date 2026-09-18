@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（MAT-F04 Done）
+Last updated: 2026-09-18（MAT-F05 Done；F06 Design Review）
+
+### 2026-09-18 - MAT-F05 Done；开 MAT-F06 Design
+- **F05：** MID::Create；复用 Instance Proxy；多帧 Set smoke；README 用法。
+- **遗留：** Create 内 `dynamic_cast` → **F06**（ME_CLASS + ResolveParentMaterial）。
+- **F06：** [MIC Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) Review（`.memi` / CB / 反射）。
+
+### 2026-09-18 - MAT-F05：MaterialInstanceDynamic
+- **代码：** `MID : MaterialInstance`；`Create(Interface)`（D1 落到 Base Material）；复用 Instance Proxy。
+- **测试：** 多帧 Set + Parent 未污；可从 MI 创建。
+- **Next：** 手验挂 Mesh → Done → F06。
 
 ### 2026-09-18 - MAT-F04 Done
 - Instance + InstanceProxy；BindingSet 上收基类；`mat_apply_instance`；`material-ir` override smoke。

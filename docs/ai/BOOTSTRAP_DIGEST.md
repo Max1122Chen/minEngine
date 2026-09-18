@@ -4,7 +4,7 @@ Last updated: 2026-09-18
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** Phase P. **`RND-F17` Done.** **`MAT-F02`–`F04` Done.** Next: MaterialInstanceDynamic. See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
+**Snapshot:** Phase P. **`RND-F17` Done.** **`MAT-F02`–`F05` Done.** **`MAT-F06` Design Review.** See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
 ---
 
