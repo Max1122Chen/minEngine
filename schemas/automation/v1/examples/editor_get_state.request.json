@@ -1,0 +1,7 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-get-state-001",
+  "kind": "query",
+  "op": "editor.get_state",
+  "payload": {}
+}

@@ -1,0 +1,117 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-caps-001",
+  "ok": true,
+  "result": {
+    "protocolVersion": 1,
+    "editorProduct": "Maximum",
+    "editorVersion": "0.0.9",
+    "domains": [
+      {
+        "name": "editor",
+        "actions": [
+          {
+            "name": "ping",
+            "kind": "query",
+            "op": "editor.ping",
+            "sessionRequired": false,
+            "description": "Internal connectivity check"
+          },
+          {
+            "name": "get_state",
+            "kind": "query",
+            "op": "editor.get_state",
+            "sessionRequired": false,
+            "description": "Project path and open sessions"
+          },
+          {
+            "name": "get_capabilities",
+            "kind": "query",
+            "op": "editor.get_capabilities",
+            "sessionRequired": false
+          }
+        ]
+      },
+      {
+        "name": "scene",
+        "actions": [
+          {
+            "name": "get_hierarchy",
+            "kind": "query",
+            "op": "scene.get_hierarchy",
+            "sessionRequired": true
+          },
+          {
+            "name": "get_object",
+            "kind": "query",
+            "op": "scene.get_object",
+            "sessionRequired": true
+          },
+          {
+            "name": "get_property",
+            "kind": "query",
+            "op": "scene.get_property",
+            "sessionRequired": true
+          },
+          {
+            "name": "create_game_object",
+            "kind": "edit",
+            "op": "scene.create_game_object",
+            "sessionRequired": true,
+            "undo": true
+          },
+          {
+            "name": "delete_game_object",
+            "kind": "edit",
+            "op": "scene.delete_game_object",
+            "sessionRequired": true,
+            "undo": true
+          },
+          {
+            "name": "add_component",
+            "kind": "edit",
+            "op": "scene.add_component",
+            "sessionRequired": true,
+            "undo": true
+          },
+          {
+            "name": "remove_component",
+            "kind": "edit",
+            "op": "scene.remove_component",
+            "sessionRequired": true,
+            "undo": true
+          },
+          {
+            "name": "set_property",
+            "kind": "edit",
+            "op": "scene.set_property",
+            "sessionRequired": true,
+            "undo": true
+          },
+          {
+            "name": "reparent",
+            "kind": "edit",
+            "op": "scene.reparent",
+            "sessionRequired": true,
+            "undo": true
+          },
+          {
+            "name": "save",
+            "kind": "edit",
+            "op": "scene.save",
+            "sessionRequired": true,
+            "undo": false
+          },
+          {
+            "name": "validate",
+            "kind": "verify",
+            "op": "scene.validate",
+            "sessionRequired": true,
+            "description": "P0 stub: session/object/path resolvability only"
+          }
+        ]
+      }
+    ]
+  },
+  "errors": []
+}

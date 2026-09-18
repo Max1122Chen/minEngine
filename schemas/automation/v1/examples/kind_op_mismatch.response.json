@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-mismatch-001",
+  "ok": false,
+  "errors": [
+    {
+      "code": "KindOpMismatch",
+      "message": "Request kind 'edit' does not match registered kind 'query' for op 'scene.get_property'.",
+      "op": "scene.get_property"
+    }
+  ]
+}

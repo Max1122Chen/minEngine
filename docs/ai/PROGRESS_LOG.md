@@ -1,10 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-17（`feat/mcp`：合入 master 工作流 + MCP Design Draft）
+Last updated: 2026-09-17（`feat/mcp`：MCP-F02 契约落地 Done）
 
-### 2026-09-17 - MCP 设计升 Planned（待 docs commit）
-- **Status：** MCP-F01/F02/F03、ED-F17、CLI-F02 → **Planned**（维护者认可）；ED-F18 仍 Planned 挂账。
-- **Next：** 提交本轮文档 → 按序写 Implementation 再编码；每 Feature 停一次审批。
+### 2026-09-17 - MCP-F02 契约落地（S01–S03 Done）
+- **落盘：** [`schemas/automation/v1/`](../../schemas/automation/v1/) — `request`/`response` schema、README（u32 LE length-prefix）、`ERROR_CODES.md`、examples（ping / get_state / get_capabilities / set_property ok·fail / KindOpMismatch / remove_component）。
+- **校验：** `python` + `jsonschema` Draft202012Validator — 11/11 examples PASS。
+- **文档：** Design/Impl → **Done**；FEATURE_REGISTRY / ACTIVE_WORK 更新。
+- **Next：** 等待 **MCP-F02 Feature 审批** → 再开 CLI-F02 / ED-F17 Impl（不提前写 Host/MCP 代码）。
+
+### 2026-09-17 - docs commit + MCP-F02 Impl Draft
+- **Commit：** `d0c1234` docs(mcp): add Planned designs for editor automation and MCP server（未含 meproject）。
+- **Impl：** [MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) Draft — schema/examples 三切片；**待审批**后落盘，不提前写 Host/MCP 代码。
 
 ### 2026-09-17 - MCP 设计评审修补（待审批）
 - **高优已落文档：** `op` 主键 + `KindOpMismatch`；ED-F17 DoD 与 ED-F18 解耦；`get_state` 最小形状；Listen→ready-file 不变量；`componentObjectId`；validate P0 stub 诚实声明；禁 TS 独有 capabilities；§4.2 控制流改正；P0-alpha；人机并发/本机信任/RPC 30s。

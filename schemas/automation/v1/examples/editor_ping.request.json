@@ -1,0 +1,7 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-ping-001",
+  "kind": "query",
+  "op": "editor.ping",
+  "payload": {}
+}

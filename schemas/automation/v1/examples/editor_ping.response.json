@@ -1,0 +1,11 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-ping-001",
+  "ok": true,
+  "result": {
+    "protocolVersion": 1,
+    "editorProduct": "Maximum",
+    "alive": true
+  },
+  "errors": []
+}

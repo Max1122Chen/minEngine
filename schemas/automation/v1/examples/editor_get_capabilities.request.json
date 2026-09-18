@@ -1,0 +1,7 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-caps-001",
+  "kind": "query",
+  "op": "editor.get_capabilities",
+  "payload": {}
+}

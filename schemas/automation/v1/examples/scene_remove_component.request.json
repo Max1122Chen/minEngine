@@ -1,0 +1,10 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-rm-comp-001",
+  "kind": "edit",
+  "op": "scene.remove_component",
+  "sessionId": "sess-scene-001",
+  "payload": {
+    "componentObjectId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+  }
+}

@@ -3,10 +3,12 @@
 ## Meta
 - **ID:** `MCP-F02`
 - **Type:** Feature
-- **Status:** Planned（维护者已认可设计；待 Implementation）
-- **Last updated:** 2026-09-17（升 Planned）
+- **Status:** Done（契约层：schema + examples + ERROR_CODES；待 Feature 审批后开下游）
+- **Last updated:** 2026-09-17
 - **Depends on:** `MCP-F01`（边界）；语义对齐 Editor Surface + `ED-F12`（Edit）
 - **Related:**
+  - [Implementation](./MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md)（**Done**）
+  - Schema: [`schemas/automation/v1/`](../../../../schemas/automation/v1/)
   - [MCP-F01 Architecture](./MCP-F01_ARCHITECTURE_DESIGN.md)
   - [ED-F17 Automation Host](../ED-F17_AUTOMATION_HOST_DESIGN.md)
   - [MCP-F03 MCP Server](./MCP-F03_MCP_SERVER_DESIGN.md)
@@ -298,10 +300,10 @@ TS（MCP-F03）与 C++（ED-F17）共享 Schema，避免两处手写漂移。
 
 ## 6) 验收标准
 
-- [ ] `protocolVersion=1` 信封与 Scene 细 op 表评审通过
-- [ ] length-prefix 帧约定写入 examples
-- [ ] 映射表指向域服务方法 / EditorCommand 类
-- [ ] Schema 路径写入 Implementation（升 Planned 时）
+- [x] `protocolVersion=1` 信封与 Scene 细 op 表评审通过
+- [x] length-prefix 帧约定写入 `schemas/automation/v1/README.md`（examples 为 JSON 正文；帧在传输层）
+- [x] Scene MVP op / payload 表已定稿（域服务 / EditorCommand 类映射属 ED-F17）
+- [x] Schema 落盘：`schemas/automation/v1/`（request/response + examples + ERROR_CODES）
 
 ---
 
@@ -326,3 +328,4 @@ TS（MCP-F03）与 C++（ED-F17）共享 Schema，避免两处手写漂移。
 | 2026-09-17 | length-prefix；get_capabilities；Surface 命名 |
 | 2026-09-17 | capabilities 示例 + payload 表 |
 | 2026-09-17 | **评审修补：** op/kind 规则、get_state、componentObjectId、validate stub、错误分类、超时；待审批 |
+| 2026-09-17 | 契约落地 Done：`schemas/automation/v1/`；Impl S01–S03 收口 |

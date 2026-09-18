@@ -83,7 +83,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F17` | Editor Automation Host + Q/E/V Surface（Named Pipe → Editor API） | **Planned** | — | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · 服务 [MCP-F01](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | `ED-F18` | GUI / Debug 收敛到同源域服务（挂账；不挡 MCP P0） | **Planned** | — | [Design](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md) |
 | `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Planned** | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
-| `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Planned** | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) |
+| `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Planned** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) |
 | `CLI-F02` | Automation 启动面（Spawn + Attach 共用 flags / ready） | **Planned** | — | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |

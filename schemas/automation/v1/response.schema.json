@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://minengine.dev/schemas/automation/v1/response.schema.json",
+  "title": "AutomationResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "requestId", "ok", "errors"],
+  "properties": {
+    "protocolVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "result": {
+      "description": "Op-specific success payload; omit or null on hard failure"
+    },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/automationError" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/automationError" }
+    }
+  },
+  "$defs": {
+    "automationError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable machine code; see ERROR_CODES.md"
+        },
+        "message": {
+          "type": "string"
+        },
+        "objectId": { "type": "string" },
+        "propertyPath": { "type": "string" },
+        "op": { "type": "string" }
+      }
+    }
+  }
+}

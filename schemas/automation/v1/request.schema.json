@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://minengine.dev/schemas/automation/v1/request.schema.json",
+  "title": "AutomationRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "requestId", "kind", "op", "payload"],
+  "properties": {
+    "protocolVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Wire protocol version; mismatch → ProtocolVersionMismatch"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Client-generated id; echoed in the response"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["query", "edit", "verify"],
+      "description": "Must match CapabilityRegistry kind for op (redundant check)"
+    },
+    "op": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "description": "Primary key, e.g. scene.set_property"
+    },
+    "sessionId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Document session id; required when capability.sessionRequired"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Op-specific fields; see examples/"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-get-state-001",
+  "ok": true,
+  "result": {
+    "projectPath": "D:/path/to/MyMEProject.meproject",
+    "ready": true,
+    "sessions": [
+      {
+        "sessionId": "sess-scene-001",
+        "documentType": "Scene",
+        "assetId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "title": "test.mescene",
+        "dirty": false
+      }
+    ],
+    "defaultSessionId": "sess-scene-001"
+  },
+  "errors": []
+}

@@ -1,0 +1,14 @@
+{
+  "protocolVersion": 1,
+  "requestId": "req-set-prop-002",
+  "ok": false,
+  "errors": [
+    {
+      "code": "InvalidObjectId",
+      "message": "No object with this GUID in session scene.",
+      "objectId": "00000000-0000-0000-0000-000000000000",
+      "propertyPath": "Transform.Position",
+      "op": "scene.set_property"
+    }
+  ]
+}
