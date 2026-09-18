@@ -6,19 +6,17 @@
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Function/Render/Material/MaterialEdGraph.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
+#include "Runtime/Function/Render/MaterialRenderProxy.h"
 
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
-#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
-#include "Runtime/Function/Render/RHI/RHITextureViewCache.h"
-#include "Runtime/Function/Render/RHI/RHITextureViewCache.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace minEngine
 {
-    class RHIShaderResourceView;
     class RHICommandList;
     class MaterialCompiler;
     class MaterialGraphNodeDef_TextureObject;
@@ -45,18 +43,20 @@ namespace minEngine
     {
         ME_GENERATED_BODY()
         friend class MaterialCompiler;
+        friend class DefaultMaterialRenderProxy;
 
     public:
-        Material() = default;
+        Material();
         virtual ~Material() = default;
 
         bool Compile();
         /** Compiles a skinned VS variant; requires a successful rigid Compile() first (reuses material bindings). */
         bool EnsureSkinnedCompiled();
-        void BindForDraw(RHICommandList& cmdList) const;
 
         void SetTextureParameter(const std::string& parameterName, std::shared_ptr<Texture2D> texture);
         void SetScalarParameter(const std::string& parameterName, float value);
+
+        MaterialRenderProxy* GetRenderProxy() const { return m_RenderProxy.get(); }
 
         bool IsCompiledForDraw() const
         {
@@ -70,8 +70,10 @@ namespace minEngine
 
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
         RHIShader* GetGPUShaderSkinned() const { return m_GPUShaderSkinned.get(); }
-        RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const { return m_MaterialShaderBindingSetLayout.get(); }
-        RHIShaderBindingSet* GetMaterialShaderBindingSet() const { return m_MaterialShaderBindingSet.get(); }
+        RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const
+        {
+            return m_MaterialShaderBindingSetLayout.get();
+        }
         const std::string& GetShaderCompileLog() const { return m_ShaderCompileLog; }
 
         MaterialEdGraph& GetGraph();
@@ -100,18 +102,15 @@ namespace minEngine
         bool IsMasked() const { return m_BlendMode == MaterialBlendMode::Masked; }
 
     private:
+        void EnsureRenderProxy();
+
         RHIShaderRef m_GPUShader;
         RHIShaderRef m_GPUShaderSkinned;
         RHIShaderBindingSetLayoutRef m_MaterialShaderBindingSetLayout;
-        RHIShaderBindingSetRef m_MaterialShaderBindingSet;
-        RHITextureViewCache m_TextureViewCache;
-        std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
-        RHIBufferRef m_ScalarParamsUBO;
-        uint32_t m_ScalarParamsUBOSize = 0;
         std::string m_ShaderCompileLog;
+        std::unique_ptr<MaterialRenderProxy> m_RenderProxy;
 
         bool CommitCompileResult(const MaterialCompileResult& result, const MaterialCompileContext& ctx);
-        void RebuildMaterialShaderBindingSet(RHICommandList& cmdList);
 
         const MaterialGraphNodeDef_TextureObject* FindTextureNodeBySlot(int slotIndex) const;
         const MaterialGraphNodeDef_ScalarParameter* FindScalarNodeBySlot(int slotIndex) const;

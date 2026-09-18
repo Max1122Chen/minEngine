@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** MAT-F02
 - **Type:** Feature + Refactor
-- **Status:** Review
+- **Status:** In Progress
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-18
 - **Related:**
@@ -307,19 +307,13 @@ StaticMeshSceneProxy / MeshDrawCommand / RenderScene 遍历到的图元
 
 ## 7) Status note
 
-**Review** — 等维护者审批后 S01。
+**In Progress** — S01–S02 代码已落地；等维护者场景/Editor **手验**后标 Done。
 
-**本轮已写入的默认（请确认或改口）：**
-
-| # | 决策 | 默认 |
-|---|------|------|
-| P1 | GPU BindingSet/UBO 归属 | **Proxy**（§3.2 A） |
-| P2 | MDC 字段名 | `m_MaterialProxy` |
-| P3 | 参数查询 API | 基类虚 `Get*ParameterValue*`（为 F04 链做准备） |
-| P4 | 线程 | 单线程 Invalidate |
-| P5 | 文件位置 | 与 `Material.h` 同级 |
-
-**非 Blocking：** S01 是否短暂保留 Material private Bind helper（friend）——允许，S02 前删除公开面即可。
+**实现摘要：**
+- `MaterialRenderProxy` / `DefaultMaterialRenderProxy`；GPU BindingSet/UBO/SRV 在 Proxy
+- `Material::GetRenderProxy()`；Compile → `NotifyCompiled`
+- MDC / SceneProxy / Draw utils / Forward 使用 `m_MaterialProxy`
+- 验证：`material-ir` + `render-graph` PASSED（从 `minEngine/bin`）
 
 ---
 
@@ -327,6 +321,7 @@ StaticMeshSceneProxy / MeshDrawCommand / RenderScene 遍历到的图元
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-18 | **实现：** S01–S02 代码；Status → In Progress（待手验） |
 | 2026-09-18 | **澄清栖息地：** Proxy ≠ SceneProxy；由 Material/MI 拥有，不进 RenderScene（§3.7） |
 | 2026-09-18 | **完善：** UE `FDefaultMaterialInstance` 对照；**GPU 缓存迁 Proxy**；参数虚查询；F04 预留契约；Compile↔Invalidate |
 | 2026-09-18 | 升格为 F02 详设（Proxy 先行） |

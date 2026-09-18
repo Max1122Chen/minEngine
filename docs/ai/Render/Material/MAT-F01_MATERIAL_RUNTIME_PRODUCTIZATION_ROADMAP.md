@@ -71,7 +71,7 @@ MaterialRenderProxy        ← Draw 唯一绑定视图（F02 地基）
 | Order | ID | 名称 | Status | Design |
 |-------|-----|------|--------|--------|
 | 0 | **MAT-F01** | 本路线图 | **In Progress** | 本文 |
-| 1 | **MAT-F02** | **MaterialRenderProxy**（绑定真源） | **Review** | [Design](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
+| 1 | **MAT-F02** | **MaterialRenderProxy**（绑定真源） | **In Progress** | [Design](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | 2 | **MAT-F03** | MaterialInterface + Material 迁入 | **Planned** | [Design](./MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
 | 3 | **MAT-F04** | MaterialInstance（覆盖 + Instance Proxy） | **Planned** | [Design](./MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
 | 4 | **MAT-F05** | MaterialInstanceDynamic | **Review**（详设；待 F04 后批切片） | [Design](./MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) |

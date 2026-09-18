@@ -66,7 +66,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F16` | Sprite / 2D Rendering Foundation（ScreenUI 绘制前置） | **Done** | — | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · 已合入 `master`（feat/ui） |
 | `RND-F17` | Isolated preview / multi-view draw scheduling（CB·Preview·主视口解串图） | **Done** | — | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) · ViewId+SRT；TD-027 Done |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **In Progress** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
-| `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Review** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
+| `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **In Progress** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Planned** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) · 依赖 F02 |
 | `MAT-F04` | MaterialInstance（Parent + 覆盖 + Instance Proxy） | **Planned** | — | [Design](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
 | `MAT-F05` | MaterialInstanceDynamic | **Review** | — | [Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) · 依赖 F04 |

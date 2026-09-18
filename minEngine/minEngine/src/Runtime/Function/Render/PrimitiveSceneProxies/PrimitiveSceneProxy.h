@@ -5,7 +5,16 @@
 namespace minEngine
 {
     class PrimitiveComponent;
+    class MaterialRenderProxy;
+    class RHIBuffer;
+    class RHIVertexInputLayout;
 
+    /**
+     * Scene representation of a drawable primitive.
+     * Current subclasses (StaticMesh / SkeletalMesh / Sprite) all submit a mesh,
+     * so vertex buffers and the material proxy live here. Non-mesh proxies
+     * (Widget, lights, sky) do not inherit this type.
+     */
     class PrimitiveSceneProxy
     {
     public:
@@ -15,5 +24,13 @@ namespace minEngine
         PrimitiveComponent* m_PrimitiveComponent{ nullptr };
         Transform m_Transform;
         bool m_CastShadow = true;
+
+        /** Non-owning; GPU buffers are owned by the mesh/quad asset. */
+        RHIBuffer* m_VertexBuffer = nullptr;
+        RHIVertexInputLayout* m_VertexInputLayout = nullptr;
+        RHIBuffer* m_IndexBuffer = nullptr;
+
+        /** Non-owning; owned by Material (or later MaterialInstance). */
+        MaterialRenderProxy* m_MaterialProxy = nullptr;
     };
 }

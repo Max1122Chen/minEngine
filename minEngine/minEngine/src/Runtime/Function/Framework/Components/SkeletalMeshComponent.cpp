@@ -387,11 +387,11 @@ namespace minEngine
                     "skinned draws will be skipped until compile succeeds.",
                     m_Material->GetName());
             }
-            sceneProxy.m_Material = m_Material.get();
+            sceneProxy.m_MaterialProxy = m_Material->GetRenderProxy();
         }
         else
         {
-            sceneProxy.m_Material = nullptr;
+            sceneProxy.m_MaterialProxy = nullptr;
         }
     }
 

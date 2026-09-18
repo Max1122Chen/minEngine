@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（MAT 顺序修订：Proxy 先行 = F02）  
+Last updated: 2026-09-18（MAT-F02 代码落地；待手验）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,25 +11,25 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/render`）：MAT 运行时产品化 — 审批 MAT-F02（Proxy）**
+**Primary（`feat/render`）：MAT-F02 MaterialRenderProxy — 手验验收**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | — | **`MAT-F01`** | Material Runtime Productization **路线图** | **In Progress** | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
-| 1 | **`MAT-F02`** | **MaterialRenderProxy**（Draw 绑定真源） | **Review** | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
-| — | **`MAT-F03`–`F06`** | Interface → MI → MID → MIC | **Planned** | 见路线图 §3 |
+| 1 | **`MAT-F02`** | **MaterialRenderProxy**（Draw 绑定真源） | **In Progress** | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
+| — | **`MAT-F03`–`F06`** | Interface → MI → MID → MIC | **Planned/Review** | 见路线图 §3 |
 | — | **`RND-F17`** | Isolated preview 调度 | **Done** | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) |
 | — | **`ED-F11`** | Multi-document Tab Host | **In Progress**（余量） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
 
-**下一刀：** 审批 [MAT-F02 Proxy](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md)（含 **D7 GPU 缓存在 Proxy**、D8 参数虚查询）→ S01。
+**下一刀：** 手验 F02（场景可画、改材质参数）→ 标 Done → 再开 F03。
 
-**已收口（近期）：** CORE-F19/F21；Prefab F23–F26；**RND-F06**；**RND-F17**（TD-027）。
+**已收口（近期）：** 设计文档 commit `b7469df`；CORE-F19/F21；Prefab；**RND-F06**；**RND-F17**。
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/render` | MAT-F02… | **Proxy → Interface → MI → MID** |
+| `feat/render` | MAT-F02… | **Proxy（手验）→ Interface → MI → MID** |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
 | — | Prefab 后置 | Nested / Apply→Prefab；并排预览可消费 F17 |
 
@@ -51,7 +51,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `ED-F01` | In Progress | VK 阴影质量 **Deferred**；勿当主航道 |
 | `RND-F17` | **Done** | ViewId+SRT；TD-027 Done |
 | `MAT-F01` | **In Progress** | 运行时产品化路线图（Proxy 先行） |
-| `MAT-F02` | **Review** | MaterialRenderProxy 详设；待审批 |
+| `MAT-F02` | **In Progress** | MaterialRenderProxy 代码已合入工作区；待手验 |
 | Open TD | Medium | TD-004/005/023/024/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md)（TD-027 Done） |
 
 ---

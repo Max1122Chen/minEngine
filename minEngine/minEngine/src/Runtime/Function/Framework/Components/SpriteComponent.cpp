@@ -109,10 +109,13 @@ namespace minEngine
 
         EnsureRuntimeMaterial();
         SyncMaterialParameters();
-        proxy.m_Material = m_RuntimeMaterial.get();
+        proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
 
         proxy.m_bNeedsTranslucentPass =
-            ComputeSpriteNeedsTranslucentPass(m_Color, m_Texture.get(), proxy.m_Material && proxy.m_Material->IsTranslucent());
+            ComputeSpriteNeedsTranslucentPass(
+                m_Color,
+                m_Texture.get(),
+                proxy.m_MaterialProxy && proxy.m_MaterialProxy->IsTranslucent());
 
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
         if (rhi != nullptr)

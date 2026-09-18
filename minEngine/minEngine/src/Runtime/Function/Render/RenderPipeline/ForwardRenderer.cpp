@@ -401,7 +401,7 @@ namespace minEngine
 
         AssignShadowGraphPassCommands(ctx);
 
-        // RND-F12: Granite-aligned â€” re-run setup_dependencies + pass order every frame.
+        // RND-F12: Granite-aligned â€?re-run setup_dependencies + pass order every frame.
         const bool enableSky = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox);
         m_BasePass.SetClearSceneTargets(!enableSky);
 
@@ -1153,12 +1153,12 @@ namespace minEngine
 
             auto enqueueCommand = [&](MeshDrawCommand& command)
             {
-                if (!command.m_Material || !command.m_VertexInputLayout || !command.m_VertexBuffer)
+                if (!command.m_MaterialProxy || !command.m_VertexInputLayout || !command.m_VertexBuffer)
                 {
                     return;
                 }
 
-                if (command.m_Material->IsTranslucent())
+                if (command.m_MaterialProxy->IsTranslucent())
                 {
                     ctx.TranslucentQueue.push_back(command);
                 }
@@ -1174,7 +1174,7 @@ namespace minEngine
                 command.m_VertexBuffer = staticMeshProxy->m_VertexBuffer;
                 command.m_VertexInputLayout = staticMeshProxy->m_VertexInputLayout;
                 command.m_IndexBuffer = staticMeshProxy->m_IndexBuffer;
-                command.m_Material = staticMeshProxy->m_Material;
+                command.m_MaterialProxy = staticMeshProxy->m_MaterialProxy;
                 command.m_ModelMatrix = staticMeshProxy->m_Transform.ToMatrix();
                 command.m_CastShadow = staticMeshProxy->m_CastShadow;
                 command.m_BoundingBox = staticMeshProxy->m_PrimitiveComponent->GetBoundingBox();
@@ -1188,7 +1188,7 @@ namespace minEngine
                 command.m_VertexBuffer = skeletalMeshProxy->m_VertexBuffer;
                 command.m_VertexInputLayout = skeletalMeshProxy->m_VertexInputLayout;
                 command.m_IndexBuffer = skeletalMeshProxy->m_IndexBuffer;
-                command.m_Material = skeletalMeshProxy->m_Material;
+                command.m_MaterialProxy = skeletalMeshProxy->m_MaterialProxy;
                 command.m_ModelMatrix = skeletalMeshProxy->m_Transform.ToMatrix();
                 command.m_CastShadow = skeletalMeshProxy->m_CastShadow;
                 command.m_BoundingBox = skeletalMeshProxy->m_PrimitiveComponent->GetBoundingBox();
@@ -1208,12 +1208,12 @@ namespace minEngine
                 command.m_VertexBuffer = spriteProxy->m_VertexBuffer;
                 command.m_VertexInputLayout = spriteProxy->m_VertexInputLayout;
                 command.m_IndexBuffer = spriteProxy->m_IndexBuffer;
-                command.m_Material = spriteProxy->m_Material;
+                command.m_MaterialProxy = spriteProxy->m_MaterialProxy;
                 command.m_ModelMatrix = spriteProxy->m_ModelMatrix;
                 command.m_CastShadow = false;
                 command.m_BoundingBox = spriteProxy->m_PrimitiveComponent->GetBoundingBox();
 
-                if (!command.m_Material || !command.m_VertexInputLayout || !command.m_VertexBuffer ||
+                if (!command.m_MaterialProxy || !command.m_VertexInputLayout || !command.m_VertexBuffer ||
                     !spriteProxy->m_Texture)
                 {
                     continue;
@@ -1248,7 +1248,7 @@ namespace minEngine
                 continue;
             }
 
-            if (!widgetProxy->m_Material || !widgetProxy->m_VertexBuffer || !widgetProxy->m_VertexInputLayout)
+            if (!widgetProxy->m_MaterialProxy || !widgetProxy->m_VertexBuffer || !widgetProxy->m_VertexInputLayout)
             {
                 continue;
             }
@@ -1281,7 +1281,7 @@ namespace minEngine
             command.Draw.m_VertexBuffer = widgetProxy->m_VertexBuffer;
             command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
             command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
-            command.Draw.m_Material = widgetProxy->m_Material;
+            command.Draw.m_MaterialProxy = widgetProxy->m_MaterialProxy;
             command.Draw.m_ModelMatrix = ScreenUICoords::MakeWidgetModelMatrix(topLeftPx, sizePx);
             command.Draw.m_CastShadow = false;
             ctx.ScreenUIQueue.push_back(command);

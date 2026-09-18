@@ -293,13 +293,13 @@ namespace minEngine
             proxy.m_Texture = image->GetTexture();
             EnsureRuntimeMaterial();
             SyncMaterialParameters(image);
-            proxy.m_Material = m_RuntimeMaterial.get();
+            proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
         }
         else
         {
             proxy.m_Color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
             proxy.m_Texture = nullptr;
-            proxy.m_Material = nullptr;
+            proxy.m_MaterialProxy = nullptr;
         }
 
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
@@ -313,8 +313,8 @@ namespace minEngine
         proxy.m_IndexBuffer = quad.GetIndexBuffer();
         proxy.m_VertexInputLayout = quad.GetVertexInputLayout();
 
-        proxy.m_bVisible = image != nullptr && proxy.m_Material != nullptr
-            && proxy.m_Material->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
+        proxy.m_bVisible = image != nullptr && proxy.m_MaterialProxy != nullptr
+            && proxy.m_MaterialProxy->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
             && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
             && proxy.m_SizePx.y > 0.0f;
     }

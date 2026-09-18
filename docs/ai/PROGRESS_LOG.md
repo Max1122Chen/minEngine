@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（澄清 Proxy 栖息地；F05 详设展开）
+Last updated: 2026-09-18（MAT-F02 实现待手验）
+
+### 2026-09-18 - MAT-F02 实现：MaterialRenderProxy（待手验）
+- **代码：** `MaterialRenderProxy` + `DefaultMaterialRenderProxy`；BindingSet/UBO 在 Proxy；MDC/SceneProxy/Draw 经 `m_MaterialProxy`；删除 `Material::BindForDraw`。
+- **验证：** `cmake --build build --target minEngineTests Editor`；`minEngineTests.exe test material-ir` / `render-graph` **PASSED**（cwd=`minEngine/bin`）。
+- **Next：** 维护者手验场景/材质参数 → Done → commit → F03。
 
 ### 2026-09-18 - MaterialRenderProxy 栖息地澄清 + F05 详设
 - **澄清：** MaterialRenderProxy **由 Material/MI 拥有**，SceneProxy/MDC 仅裸指针引用；**不是** RenderScene 里与 Primitive SceneProxy 同类的对象（已写入 F02 §3.7、路线图类型表）。
