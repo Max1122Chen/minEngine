@@ -1,12 +1,29 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：CLI-F02 启动面 Done）
+Last updated: 2026-09-18（`feat/mcp`：ED-F17 Done）
+
+### 2026-09-18 - ED-F17 Done（S04 Scene MVP 铺满）
+- **代码：** Surface 接齐 `get_hierarchy` / `get_object` / `create_game_object` / `delete_game_object` / `add_component` / `remove_component` / `reparent`；`SceneAutomationServices` 经 session Command 栈；`add_component` 支持全名或 unambiguous 短名。
+- **验证：** `WorkingDirectory=bin` + `--automation-pipe` + `--open-scene Assets/Scenes/test.mescene`；Pipe 手测 PASS（create→add StaticMeshComponent→reparent→remove→validate stub→delete）。
+- **后续小改：** Surface 改为 `op → handler map`（与 CapabilityRegistry 双向覆盖检查）；Design §3.3 / Host 注释钉死 **single in-flight**（非 queue）。
+- **文档：** Design/Impl/Registry/ACTIVE_WORK → **Done**；下一刀 MCP-F03。
+- **Next：** 统一 commit；MCP-F03。
+
+### 2026-09-18 - ED-F17 S03（Scene get/set_property + save）
+- **代码：** `Services/Scene/` — `SceneAutomationServices` + `ScenePropertyValueCodec`（JSON↔blob；`Transform.*`→`m_Transform.*`）；Surface 接 `get_property`/`set_property`/`save`/`validate` stub；**set 写入 session Command 栈**（非 Active Tab 默认）。
+- **验证：** Pipe：`get_property` Cube/`m_Name`；`set_property` RootComp `Transform.Position`→`[0,2,0]` ok（读回 Y 可能被物理/teleport 微调）。
+- **Next：** S04 铺满其余 Scene MVP op → Feature 审批。
+
+### 2026-09-18 - ED-F17 S01–S02（Host + ping/get_state）
+- **代码：** `Editor/src/Automation/` — Pipe（u32 LE + JSON）、Host（Listen→ready-file→IO 线程；主线程 Tick 分派）、CapabilityRegistry、Dispatcher、Surface（`editor.ping` / `get_state` / `get_capabilities`）。
+- **验证：** `WorkingDirectory=bin` 启动带 `--automation-pipe` + ready-file；NamedPipe 客户端 ping/get_state PASS（`defaultSessionId=sess-1`）。
+- **Next：** ED-F17-S03 Scene `get/set_property` + `save`（值 JSON spike）。
 
 ### 2026-09-18 - CLI-F02 启动面落地（S01–S03 Done）
 - **代码：** `--automation-pipe` / `--automation-ready-file` / `--open-scene` 进 `CommandLineResult`；Editor 缓存 pipe/ready getters；`--open-scene` → `OpenSceneByPath`（覆盖默认场景）。**不**写 ready-file（属 ED-F17）。
 - **验证：** `cmake --build build --target Editor` PASS；`MaximumEditor.exe --help` 可见三 flag；仅 `--automation-ready-file` → exit 2。
 - **文档：** Design/Impl/Registry/ACTIVE_WORK → Done（启动面）。
-- **Next：** 等待 **CLI-F02 Feature 审批** → ED-F17 Impl。
+- **Commit：** `c82c832` feat(cli): add automation launch flags and open-scene wiring。
 
 ### 2026-09-17 - MCP-F02 契约落地（S01–S03 Done）
 - **落盘：** [`schemas/automation/v1/`](../../schemas/automation/v1/) — `request`/`response` schema、README（u32 LE length-prefix）、`ERROR_CODES.md`、examples（ping / get_state / get_capabilities / set_property ok·fail / KindOpMismatch / remove_component）。

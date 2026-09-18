@@ -36,6 +36,8 @@
 
 namespace minEngine
 {
+    class AutomationHost;
+
     class Editor : public Application, public IEditorContext
     {
     public:
@@ -153,6 +155,7 @@ namespace minEngine
         bool m_PendingInitialFontAtlasRebuild = false;
         std::optional<std::string> m_AutomationPipeName;
         std::optional<std::filesystem::path> m_AutomationReadyFilePath;
+        std::unique_ptr<AutomationHost> m_AutomationHost;
 
         static std::optional<std::filesystem::path> ResolveProjectDescriptorPath(
             const CommandLineResult& commandLine);

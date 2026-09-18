@@ -3,14 +3,16 @@
 ## Meta
 - **ID:** `ED-F17`
 - **Type:** Feature
-- **Status:** Planned（维护者已认可设计；待 Implementation）
-- **Last updated:** 2026-09-17（升 Planned）
+- **Status:** Done
+- **Last updated:** 2026-09-18（S04 Done；handler map + 单飞调度不变量写明）
 - **Branch:** `feat/mcp`
 - **Depends on:**
   - `MCP-F02`（协议形状；帧定界已拍板）
   - `CLI-F02`（pipe / ready-file）
   - `ED-F12`–`F14`（EditorCommand / Scene）
-- **Related:** [MCP-F01 §3.4–3.5 同源模型](./MCP/MCP-F01_ARCHITECTURE_DESIGN.md)
+- **Related:**
+  - [Implementation](./ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md)
+  - [MCP-F01 §3.4–3.5 同源模型](./MCP/MCP-F01_ARCHITECTURE_DESIGN.md)
 - **Blocks:** MCP-F03 端到端
 
 ## TL;DR
@@ -110,7 +112,11 @@ MVP 允许：先把现有 `SceneEditor::ApplySetObjectProperty` 等收进 `IScen
 | verify | `ISceneVerifyService` | 否 |
 
 - IO 在后台线程；**执行在 Editor 主线程**。
-- MVP **串行** 单飞。
+- **调度不变量（当前 MVP，故意为之）：单飞（single in-flight）。**
+  - Host 仅有一个 `PendingExchange` 槽；IO 读完一帧后 **阻塞** 等主线程 `Tick` 分派并写回响应，再读下一帧。
+  - **不是**请求队列；同连接严格串行；跨客户端也不并行改 Scene。
+  - Surface 路由：`op → handler map`（与 CapabilityRegistry 分离：后者是对外契约，前者是对内分派）。
+  - **升级触发（有证据再做）：** Agent 连打细 op 被帧率拖死、长 op 堵死管道、或产品需要 batch/多客户端——再考虑有界 queue + 每 Tick drain N。
 - **禁止** Active Tab 作为默认写目标；必须 `sessionId`。
 
 ### 3.4 生命周期 / Ready
@@ -186,19 +192,19 @@ Pipe 名建议含 **pid 或随机后缀**（本机信任模型，见 MCP-F01 §4
 
 ## 6) 验收标准
 
-- [ ] Pipe + length-prefix 可往返 JSON
-- [ ] `Listen` 成功之后才出现 ready-file
-- [ ] `scene.set_property` 经 **ISceneEditService** 入栈；Undo 有效
-- [ ] `editor.get_state` 返回含 `sessions` / `defaultSessionId`（open-scene 后）
-- [ ] `get_capabilities` 由 **CapabilityRegistry**（C++）生成；非 TS 独有手写真源
-- [ ] 文档写明：GUI/Debug 全量收敛属 **ED-F18**，不挡本 Feature Done
-- [ ] Kind/op 不一致返回 `KindOpMismatch`
+- [x] Pipe + length-prefix 可往返 JSON
+- [x] `Listen` 成功之后才出现 ready-file
+- [x] `scene.set_property` 经 **ISceneEditService** 入栈；Undo 有效
+- [x] `editor.get_state` 返回含 `sessions` / `defaultSessionId`（open-scene 后）
+- [x] `get_capabilities` 由 **CapabilityRegistry**（C++）生成；非 TS 独有手写真源
+- [x] 文档写明：GUI/Debug 全量收敛属 **ED-F18**，不挡本 Feature Done
+- [x] Kind/op 不一致返回 `KindOpMismatch`
 
 ---
 
 ## 7) 仍可议
 
-1. 域服务放 `Editor/src/Services/Scene/` 还是 `Automation/Domain/`？  
+1. ~~域服务放 `Editor/src/Services/Scene/` 还是 `Automation/Domain/`？~~ → **已选** `Services/Scene/`（与现有 Editor Services 并列；Host 只调度）。
 
 ---
 
@@ -209,3 +215,5 @@ Pipe 名建议含 **pid 或随机后缀**（本机信任模型，见 MCP-F01 §4
 | 2026-09-17 | Draft：Host / Q/E/V |
 | 2026-09-17 | 同源包装边界；帧定界/ready 对齐 |
 | 2026-09-17 | **评审修补：** ready 不变量、DoD 与 ED-F18 解耦、KindOpMismatch、capabilities 真源；待审批 |
+| 2026-09-18 | S01–S04 落地；Scene MVP op 全表经域服务；**Status → Done** |
+| 2026-09-18 | Surface：`op → handler map`；Design §3.3 钉死单飞（非 queue）与升级触发 |

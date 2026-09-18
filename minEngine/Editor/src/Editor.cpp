@@ -32,6 +32,8 @@
 #include "Shell/EditorSettingsDefaults.h"
 #include "UI/Appearance/EditorAppearance.h"
 
+#include "Automation/AutomationHost.h"
+
 #include <GLFW/glfw3.h>
 #include <filesystem>
 #include <optional>
@@ -433,6 +435,18 @@ namespace minEngine
             m_ExitRequested = true;
             return;
         }
+
+        if (m_AutomationPipeName.has_value())
+        {
+            m_AutomationHost = std::make_unique<AutomationHost>();
+            if (!m_AutomationHost->Start(*m_AutomationPipeName, m_AutomationReadyFilePath))
+            {
+                ME_LOG(LogEditor, Error, "Editor: Automation Host failed to start.");
+                m_ExitRequested = true;
+                return;
+            }
+        }
+
         m_PendingInitialFontAtlasRebuild = true;
     }
 
@@ -520,6 +534,12 @@ namespace minEngine
 
     void Editor::Shutdown()
     {
+        if (m_AutomationHost)
+        {
+            m_AutomationHost->Stop();
+            m_AutomationHost.reset();
+        }
+
         m_EditorGUIManager.Shutdown();
 
         if (m_MaterialEditor)
@@ -603,6 +623,11 @@ namespace minEngine
             m_ProjectAssetWatcher.Tick(deltaTime);
             m_InputHub.ProcessInput(*this);
 
+            if (m_AutomationHost)
+            {
+                m_AutomationHost->Tick(*this);
+            }
+
             SceneManager::Get().SendAllEndOfFrameUpdates();
 
             m_Engine->TickRendererFrame(deltaTime);
@@ -629,3 +654,5 @@ namespace minEngine
         return new Editor();
     }
 }
+
+
