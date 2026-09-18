@@ -2,7 +2,8 @@
 
 #include "Automation/CapabilityRegistry.h"
 #include "Automation/IEditorAutomationSurface.h"
-#include "Services/Scene/SceneAutomationServices.h"
+#include "Services/Scene/SceneEditorResult.h"
+#include "Services/Scene/SceneEditorServices.h"
 
 #include <functional>
 #include <string>
@@ -10,10 +11,13 @@
 
 namespace minEngine
 {
+    class EditorDocumentSession;
+    class GameObject;
+
     class EditorAutomationSurface : public IEditorAutomationSurface
     {
     public:
-        EditorAutomationSurface(CapabilityRegistry& capabilities, SceneAutomationServices& sceneServices);
+        EditorAutomationSurface(CapabilityRegistry& capabilities, SceneEditorServices& sceneServices);
 
         AutomationResponse Handle(IEditorContext& context, const AutomationRequest& request) override;
 
@@ -21,7 +25,7 @@ namespace minEngine
         using OpHandler = std::function<AutomationResponse(IEditorContext&, const AutomationRequest&)>;
 
         CapabilityRegistry& m_Capabilities;
-        SceneAutomationServices& m_SceneServices;
+        SceneEditorServices& m_SceneServices;
         std::unordered_map<std::string, OpHandler> m_Handlers;
 
         void RegisterHandlers();
@@ -33,7 +37,19 @@ namespace minEngine
             const std::string& message,
             Json extraFields = Json::object()) const;
 
-        AutomationResponse FromSceneResult(const AutomationRequest& request, SceneServiceResult&& serviceResult) const;
+        AutomationResponse FromEditorResult(
+            const AutomationRequest& request,
+            const SceneEditorResult& result,
+            Json okResult = Json::object()) const;
+
+        static const char* MapErrorCode(SceneEditorError code);
+
+        EditorDocumentSession* ResolveSession(
+            IEditorContext& context,
+            const AutomationRequest& request,
+            AutomationResponse& outErrorResponse) const;
+
+        Json BuildHierarchyNode(GameObject& gameObject, int depthRemaining) const;
 
         AutomationResponse HandlePing(IEditorContext& context, const AutomationRequest& request) const;
         AutomationResponse HandleGetState(IEditorContext& context, const AutomationRequest& request) const;

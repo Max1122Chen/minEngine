@@ -1,6 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP P0 程序收口）
+Last updated: 2026-09-18（`feat/mcp`：ED-F18 Done）
+
+### 2026-09-18 - ED-F18 Done
+- **验收：** 维护者确认 Scene GUI/Debug 走 `SceneEditorServices` 无明显问题。
+- **余量：** Create Prefab、Material/Anim、字面量→void* `SetProperty`。
+
+### 2026-09-18 - ED-F18 S04（GUI 发 cmd → Services；B 决策落地）
+- **B1：** Gizmo Transform 暂不迁——拖动预览是 Editor 控制流；落盘是一次 Transform command，不是逐帧 SetProperty。
+- **B2/B3：** Rename → `SetProperty(m_Name)`；加 `MoveComponent`；Debug/Console/GUI Submit 同路径。
+- **B4：** Instantiate 只迁发 cmd；文件对话框留 Submit；Create Prefab 后置（资产 Create 族）。
+- **A：** Create/Delete/Add/Remove/Reparent/`CommitObjectPropertyBlobs`；`Submit*` 薄壳。
+- **验证：** Editor 已编过；待 `accept:mcp`。
+- **Next：** accept → Done / commit。
+
+### 2026-09-18 - ED-F18 S01–S03（原生 SceneEditorServices）
+- **思想：** 删除协议型 `SceneAutomationServices`；`SceneEditorServices` = 原语（Result+out、path+void* Get/Set、无 GetHierarchy、无 Activate）；Surface 拼 Hierarchy/Json；Prefab 门禁进写路径。
+- **所有权：** `Editor::m_SceneEditorServices`；`IEditorContext::GetSceneEditorServices`；`AutomationHost(SceneEditorServices&)`。
+- **Debug：** `add_go` / `delete_go` / `add_comp` / `remove_comp` / `reparent` → Services；`rename_comp` / `move_comp` / 属性 `set` 仍旧路径（后置）。
+- **验证：** 本 agent 环境无可用 CMake 工具链/build 树；**待维护者** `cmake --build … --target Editor` + `accept:mcp`。
+- **Next：** 编译修错 → 验收 → Done / commit。
 
 ### 2026-09-18 - MCP P0 收口（Cursor MCP + 伞 Done）
 - **配置：** `.cursor/mcp.json` → `minengine` stdio Server（`${workspaceFolder}/minEngineMcpServer/dist/index.js`）。

@@ -24,6 +24,7 @@
 #include "PlayMode/IPlayModeService.h"
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Appearance/EditorAppearance.h"
+#include "Services/Scene/SceneEditorServices.h"
 
 #include "Runtime/Core/CLI/CommandLineResult.h"
 
@@ -75,6 +76,8 @@ namespace minEngine
         EditorCommandStack& GetCommandStack() override;
         EditorDocumentHost& GetDocumentHost() override { return m_DocumentHost; }
         const EditorDocumentHost& GetDocumentHost() const override { return m_DocumentHost; }
+        SceneEditorServices& GetSceneEditorServices() override { return m_SceneEditorServices; }
+        const SceneEditorServices& GetSceneEditorServices() const override { return m_SceneEditorServices; }
         EditorContextMenuSystem& GetContextMenu() override { return m_ContextMenu; }
         const EditorContextMenuSystem& GetContextMenu() const override { return m_ContextMenu; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
@@ -139,6 +142,7 @@ namespace minEngine
         EditorInputHub m_InputHub;
         ViewportClientRegistry m_ViewportRegistry;
         EditorDocumentHost m_DocumentHost;
+        SceneEditorServices m_SceneEditorServices;
         EditorCommandStack m_FallbackCommandStack;
         EditorContextMenuSystem m_ContextMenu;
         EditorAppearance m_Appearance;

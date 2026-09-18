@@ -438,7 +438,7 @@ namespace minEngine
 
         if (m_AutomationPipeName.has_value())
         {
-            m_AutomationHost = std::make_unique<AutomationHost>();
+            m_AutomationHost = std::make_unique<AutomationHost>(m_SceneEditorServices);
             if (!m_AutomationHost->Start(*m_AutomationPipeName, m_AutomationReadyFilePath))
             {
                 ME_LOG(LogEditor, Error, "Editor: Automation Host failed to start.");

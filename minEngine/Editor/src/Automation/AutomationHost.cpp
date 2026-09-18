@@ -13,8 +13,9 @@
 
 namespace minEngine
 {
-    AutomationHost::AutomationHost()
-        : m_Surface(m_Capabilities, m_SceneServices)
+    AutomationHost::AutomationHost(SceneEditorServices& sceneServices)
+        : m_SceneServices(sceneServices)
+        , m_Surface(m_Capabilities, m_SceneServices)
         , m_Dispatcher(m_Capabilities, m_Surface)
     {
     }

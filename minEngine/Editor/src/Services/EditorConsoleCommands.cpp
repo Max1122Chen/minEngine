@@ -12,6 +12,8 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Services/Scene/SceneEditorServices.h"
+#include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Shell/EditorUndoRedoActions.h"
 #include "Shell/IEditorContext.h"
@@ -174,13 +176,33 @@ namespace minEngine
                 return propertyPath->BuildSetValueSuccessResult(context);
             }
 
-            sceneEditor->SubmitSetObjectProperty(
-                *editorContext,
-                transaction.OwnerGuid,
-                transaction.OwnerClassName,
-                transaction.PropertySubPath,
-                std::move(transaction.BeforeValue),
-                std::move(transaction.AfterValue));
+            EditorDocumentSession* session = GetSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommand::DebugCommandOutputKind::Error, "Error: no Scene document session.");
+                return builder.BuildError("no scene session");
+            }
+
+            const SceneEditorResult commitResult =
+                editorContext->GetSceneEditorServices().CommitObjectPropertyBlobs(
+                    *editorContext,
+                    *session,
+                    transaction.OwnerGuid,
+                    transaction.OwnerClassName,
+                    transaction.PropertySubPath,
+                    std::move(transaction.BeforeValue),
+                    std::move(transaction.AfterValue));
+            if (!commitResult.Ok)
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(
+                    DebugCommand::DebugCommandOutputKind::Error,
+                    commitResult.Message.empty() ? "Error: set property failed."
+                                                 : ("Error: " + commitResult.Message));
+                return builder.BuildError(
+                    commitResult.Message.empty() ? "set property failed" : commitResult.Message);
+            }
 
             return propertyPath->BuildSetValueSuccessResult(context);
         }
@@ -280,7 +302,26 @@ namespace minEngine
                 return builder.BuildOk("unchanged");
             }
 
-            sceneEditor->SubmitRenameGameObject(*editorContext, gameObject->GetID(), newName);
+            EditorDocumentSession* session = GetSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(DebugCommand::DebugCommandOutputKind::Error, "Error: no Scene document session.");
+                return builder.BuildError("no scene session");
+            }
+
+            std::string nameStorage = newName;
+            const SceneEditorResult renameResult = editorContext->GetSceneEditorServices().SetProperty(
+                *editorContext, *session, *gameObject, "m_Name", &nameStorage, sizeof(nameStorage));
+            if (!renameResult.Ok)
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(
+                    DebugCommand::DebugCommandOutputKind::Error,
+                    renameResult.Message.empty() ? "Error: rename failed." : ("Error: " + renameResult.Message));
+                return builder.BuildError(
+                    renameResult.Message.empty() ? "rename failed" : renameResult.Message);
+            }
 
             DebugCommand::DebugCommandOutputBuilder builder;
             builder.AddSegment(DebugCommand::DebugCommandOutputKind::Path, oldName);
@@ -415,13 +456,32 @@ namespace minEngine
             return propertyPath->BuildSetValueSuccessResult(context);
         }
 
-        sceneEditor->SubmitSetObjectProperty(
+        EditorDocumentSession* session = GetSceneDocumentSession(*editorContext);
+        if (session == nullptr)
+        {
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(DebugCommand::DebugCommandOutputKind::Error, "Error: no Scene document session.");
+            return builder.BuildError("no scene session");
+        }
+
+        const SceneEditorResult commitResult = editorContext->GetSceneEditorServices().CommitObjectPropertyBlobs(
             *editorContext,
+            *session,
             transaction.OwnerGuid,
             transaction.OwnerClassName,
             transaction.PropertySubPath,
             std::move(transaction.BeforeValue),
             std::move(transaction.AfterValue));
+        if (!commitResult.Ok)
+        {
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(
+                DebugCommand::DebugCommandOutputKind::Error,
+                commitResult.Message.empty() ? "Error: set property failed."
+                                             : ("Error: " + commitResult.Message));
+            return builder.BuildError(
+                commitResult.Message.empty() ? "set property failed" : commitResult.Message);
+        }
 
         return propertyPath->BuildSetValueSuccessResult(context);
     }

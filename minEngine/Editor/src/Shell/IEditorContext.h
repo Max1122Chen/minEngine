@@ -23,6 +23,7 @@ namespace minEngine
     class IFileDialogService;
     class IPlayModeService;
     class Scene;
+    class SceneEditorServices;
 
     class IEditorContext
     {
@@ -75,6 +76,9 @@ namespace minEngine
 
         virtual EditorDocumentHost& GetDocumentHost() = 0;
         virtual const EditorDocumentHost& GetDocumentHost() const = 0;
+
+        virtual SceneEditorServices& GetSceneEditorServices() = 0;
+        virtual const SceneEditorServices& GetSceneEditorServices() const = 0;
 
         virtual void RequestExit() = 0;
         virtual void ConfirmExit() = 0;

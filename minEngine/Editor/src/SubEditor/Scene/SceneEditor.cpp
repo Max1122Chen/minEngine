@@ -1,22 +1,13 @@
 #include "SubEditor/Scene/SceneEditor.h"
 
-#include "Commands/Scene/EditorAddComponentCommand.h"
-#include "Commands/Scene/EditorAddEmptyGameObjectCommand.h"
-#include "Commands/Scene/EditorDeleteGameObjectCommand.h"
-#include "Commands/Scene/EditorInstantiatePrefabCommand.h"
 #include "Commands/Scene/EditorObjectSnapshot.h"
-#include "Commands/Scene/EditorRemoveComponentCommand.h"
-#include "Commands/Scene/EditorMoveComponentCommand.h"
-#include "Commands/Scene/EditorRenameComponentCommand.h"
-#include "Commands/Scene/EditorRenameGameObjectCommand.h"
-#include "Commands/Scene/EditorReparentGameObjectCommand.h"
-#include "Commands/Scene/EditorSetGameObjectTransformCommand.h"
 #include "Commands/EditorObjectPropertyApply.h"
-#include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ComponentTypeUiCatalog.h"
+#include "Services/Scene/SceneEditorServices.h"
 #include "Shell/EditorCommandStack.h"
+#include "Shell/EditorContextHelpers.h"
 #include "Shell/EditorDockLayout.h"
 #include "Shell/EditorInputHub.h"
 #include "Shell/IEditorContext.h"
@@ -422,68 +413,41 @@ namespace minEngine
         return SceneManager::Get().IsSceneRegistered(scene->GetSceneName());
     }
 
-    bool SceneEditor::ApplyRenameGameObject(uint64_t gameObjectId, const std::string& newName)
-    {
-        Scene* scene = GetActiveScene();
-        if (!scene)
-        {
-            return false;
-        }
-
-        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
-        const auto iter = gameObjectsById.find(gameObjectId);
-        if (iter == gameObjectsById.end() || iter->second == nullptr)
-        {
-            return false;
-        }
-
-        GameObject* gameObject = iter->second;
-        std::string sanitizedName = newName;
-        if (sanitizedName.empty())
-        {
-            sanitizedName = "GameObject_" + std::to_string(gameObject->GetID());
-        }
-
-        if (gameObject->GetName() != sanitizedName)
-        {
-            gameObject->Rename(sanitizedName);
-            MarkSceneDirty();
-        }
-
-        return true;
-    }
-
     void SceneEditor::SubmitRenameGameObject(IEditorContext& context,
                                              uint64_t gameObjectId,
                                              const std::string& newName)
     {
-        Scene* scene = GetActiveScene();
-        if (!scene)
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
         {
             return;
         }
 
-        const std::unordered_map<uint64_t, GameObject*>& gameObjectsById = scene->GetGameObjectsById();
-        const auto iter = gameObjectsById.find(gameObjectId);
-        if (iter == gameObjectsById.end() || iter->second == nullptr)
+        Scene* scene = nullptr;
+        if (!context.GetSceneEditorServices().GetScene(context, *session, &scene).Ok || scene == nullptr)
         {
             return;
         }
 
-        const std::string& oldName = iter->second->GetName();
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (gameObject == nullptr)
+        {
+            return;
+        }
+
         std::string sanitizedName = newName;
         if (sanitizedName.empty())
         {
             sanitizedName = "GameObject_" + std::to_string(gameObjectId);
         }
 
-        if (oldName == sanitizedName)
+        if (gameObject->GetName() == sanitizedName)
         {
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorRenameGameObjectCommand>(
-            *this, gameObjectId, oldName, sanitizedName));
+        context.GetSceneEditorServices().SetProperty(
+            context, *session, *gameObject, "m_Name", &sanitizedName, sizeof(sanitizedName));
     }
 
     Component* SceneEditor::FindComponentByGuid(uint64_t ownerGameObjectId, const GUID& componentGuid) const
@@ -512,45 +476,31 @@ namespace minEngine
         return nullptr;
     }
 
-    bool SceneEditor::ApplyRenameComponent(uint64_t ownerGameObjectId,
-                                           const GUID& componentGuid,
-                                           const std::string& newName)
-    {
-        Component* component = FindComponentByGuid(ownerGameObjectId, componentGuid);
-        if (component == nullptr)
-        {
-            return false;
-        }
-
-        if (newName.empty() || component->GetName() == newName)
-        {
-            return false;
-        }
-
-        component->Rename(newName);
-        MarkSceneDirty();
-        return true;
-    }
-
     void SceneEditor::SubmitRenameComponent(IEditorContext& context,
                                             uint64_t ownerGameObjectId,
                                             const GUID& componentGuid,
                                             const std::string& newName)
     {
+        if (newName.empty())
+        {
+            return;
+        }
+
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
         Component* component = FindComponentByGuid(ownerGameObjectId, componentGuid);
-        if (component == nullptr || newName.empty())
+        if (component == nullptr || component->GetName() == newName)
         {
             return;
         }
 
-        const std::string& oldName = component->GetName();
-        if (oldName == newName)
-        {
-            return;
-        }
-
-        context.GetCommandStack().Execute(std::make_unique<EditorRenameComponentCommand>(
-            *this, ownerGameObjectId, componentGuid, oldName, newName));
+        std::string nameStorage = newName;
+        context.GetSceneEditorServices().SetProperty(
+            context, *session, *component, "m_Name", &nameStorage, sizeof(nameStorage));
     }
 
     bool SceneEditor::ApplyMoveComponent(uint64_t ownerGameObjectId,
@@ -590,33 +540,26 @@ namespace minEngine
                                           const GUID& componentGuid,
                                           size_t newIndex)
     {
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
+        Scene* scene = nullptr;
+        if (!context.GetSceneEditorServices().GetScene(context, *session, &scene).Ok || scene == nullptr)
+        {
+            return;
+        }
+
+        GameObject* owner = scene->FindGameObjectById(ownerGameObjectId);
         Component* component = FindComponentByGuid(ownerGameObjectId, componentGuid);
-        if (component == nullptr)
+        if (owner == nullptr || component == nullptr)
         {
             return;
         }
 
-        Scene* scene = GetActiveScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-
-        const auto& gameObjectsById = scene->GetGameObjectsById();
-        const auto iter = gameObjectsById.find(ownerGameObjectId);
-        if (iter == gameObjectsById.end() || iter->second == nullptr)
-        {
-            return;
-        }
-
-        const size_t fromIndex = iter->second->FindComponentIndex(*component);
-        if (fromIndex >= iter->second->GetAllComponents().size() || fromIndex == newIndex)
-        {
-            return;
-        }
-
-        context.GetCommandStack().Execute(std::make_unique<EditorMoveComponentCommand>(
-            *this, ownerGameObjectId, componentGuid, fromIndex, newIndex));
+        context.GetSceneEditorServices().MoveComponent(context, *session, *owner, *component, newIndex);
     }
 
     bool SceneEditor::ApplyReparentGameObject(uint64_t gameObjectId, uint64_t newParentId)
@@ -694,45 +637,35 @@ namespace minEngine
                                                uint64_t gameObjectId,
                                                uint64_t newParentId)
     {
-        Scene* scene = GetActiveScene();
-        if (!scene)
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
+        Scene* scene = nullptr;
+        if (!context.GetSceneEditorServices().GetScene(context, *session, &scene).Ok || scene == nullptr)
         {
             return;
         }
 
         GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
-        if (!gameObject)
+        if (gameObject == nullptr)
         {
             return;
         }
 
-        const uint64_t oldParentId = gameObject->GetParent() != nullptr
-                                            ? gameObject->GetParent()->GetID()
-                                            : kSceneRootParentId;
-        if (oldParentId == newParentId)
-        {
-            return;
-        }
-
+        GameObject* newParent = nullptr;
         if (newParentId != kSceneRootParentId)
         {
-            GameObject* newParent = scene->FindGameObjectById(newParentId);
-            if (!newParent)
+            newParent = scene->FindGameObjectById(newParentId);
+            if (newParent == nullptr)
             {
                 return;
             }
-
-            for (GameObject* walk = newParent; walk != nullptr; walk = walk->GetParent())
-            {
-                if (walk->GetID() == gameObjectId)
-                {
-                    return;
-                }
-            }
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorReparentGameObjectCommand>(
-            *this, gameObjectId, oldParentId, newParentId));
+        context.GetSceneEditorServices().Reparent(context, *session, *gameObject, newParent);
     }
 
     void SceneEditor::ApplyGameObjectTransform(uint64_t gameObjectId, const Transform& transform)
@@ -766,13 +699,25 @@ namespace minEngine
                                                 const Transform& before,
                                                 const Transform& after)
     {
-        if (before == after)
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
         {
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorSetGameObjectTransformCommand>(
-            *this, gameObjectId, before, after));
+        Scene* scene = nullptr;
+        if (!context.GetSceneEditorServices().GetScene(context, *session, &scene).Ok || scene == nullptr)
+        {
+            return;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (gameObject == nullptr)
+        {
+            return;
+        }
+
+        context.GetSceneEditorServices().SetTransform(context, *session, *gameObject, before, after);
     }
 
     const std::vector<std::string>& SceneEditor::GetAllComponentTypeNames() const
@@ -859,8 +804,27 @@ namespace minEngine
                                                      uint64_t gameObjectId,
                                                      const std::string& componentTypeName)
     {
-        context.GetCommandStack().Execute(std::make_unique<EditorAddComponentCommand>(
-            *this, gameObjectId, componentTypeName));
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
+        Scene* scene = nullptr;
+        if (!context.GetSceneEditorServices().GetScene(context, *session, &scene).Ok || scene == nullptr)
+        {
+            return;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (gameObject == nullptr)
+        {
+            return;
+        }
+
+        Component* added = nullptr;
+        context.GetSceneEditorServices().AddComponent(
+            context, *session, *gameObject, componentTypeName, &added);
     }
 
     void SceneEditor::SubmitAddComponentToSelectedGameObject(IEditorContext& context, const std::string& componentTypeName)
@@ -929,13 +893,13 @@ namespace minEngine
             return;
         }
 
-        const Reflection::MEClass* classInfo = targetComponent.GetClass();
-        if (!classInfo)
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
         {
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorRemoveComponentCommand>(*this, gameObject.GetID(), targetComponent));
+        context.GetSceneEditorServices().RemoveComponent(context, *session, targetComponent);
     }
 
     void SceneEditor::SaveCurrentScene()
@@ -1142,7 +1106,14 @@ namespace minEngine
 
     void SceneEditor::SubmitAddEmptyGOToScene(IEditorContext& context)
     {
-        context.GetCommandStack().Execute(std::make_unique<EditorAddEmptyGameObjectCommand>(*this));
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
+        GameObject* created = nullptr;
+        context.GetSceneEditorServices().CreateGameObject(context, *session, {}, nullptr, &created);
     }
 
     bool SceneEditor::ApplyRemoveGameObjectFromScene(uint64_t gameObjectId, std::string& outName, Transform& outTransform)
@@ -1187,7 +1158,25 @@ namespace minEngine
 
     void SceneEditor::SubmitRemoveGameObjectFromScene(IEditorContext& context, uint64_t gameObjectId)
     {
-        context.GetCommandStack().Execute(std::make_unique<EditorDeleteGameObjectCommand>(*this, gameObjectId));
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
+        Scene* scene = nullptr;
+        if (!context.GetSceneEditorServices().GetScene(context, *session, &scene).Ok || scene == nullptr)
+        {
+            return;
+        }
+
+        GameObject* gameObject = scene->FindGameObjectById(gameObjectId);
+        if (gameObject == nullptr)
+        {
+            return;
+        }
+
+        context.GetSceneEditorServices().DeleteGameObject(context, *session, *gameObject);
     }
 
     bool SceneEditor::CreatePrefabFromSelectedGameObject(IEditorContext& context, uint64_t gameObjectId)
@@ -1296,6 +1285,8 @@ namespace minEngine
 
     void SceneEditor::SubmitInstantiatePrefab(IEditorContext& context, uint64_t attachParentGameObjectId)
     {
+        // Editor control flow (constraints preview + file dialog + asset load) stays here.
+        // Command emission goes through SceneEditorServices::InstantiatePrefab.
         std::string constraintError;
         if (!PrefabEditConstraints::AllowInstantiatePrefab(*this, &constraintError))
         {
@@ -1354,17 +1345,28 @@ namespace minEngine
             return;
         }
 
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
         GameObject* attachParent = nullptr;
         if (attachParentGameObjectId != std::numeric_limits<uint64_t>::max())
         {
-            if (Scene* scene = GetDocumentScene())
+            Scene* scene = nullptr;
+            if (context.GetSceneEditorServices().GetScene(context, *session, &scene).Ok && scene != nullptr)
             {
                 attachParent = scene->FindGameObjectById(attachParentGameObjectId);
             }
         }
 
-        context.GetCommandStack().Execute(
-            std::make_unique<EditorInstantiatePrefabCommand>(*this, std::move(prefab), attachParent));
+        const SceneEditorResult result = context.GetSceneEditorServices().InstantiatePrefab(
+            context, *session, std::move(prefab), attachParent);
+        if (!result.Ok)
+        {
+            ME_LOG(LogEditor, Error, "Instantiate Prefab: {}", result.Message);
+        }
     }
 
     uint64_t SceneEditor::ApplyInstantiatePrefab(Prefab& prefab, uint64_t attachParentGameObjectId)
@@ -1530,19 +1532,21 @@ namespace minEngine
                                               std::vector<uint8_t> afterValue,
                                               bool applyOnFirstExecute)
     {
-        if (beforeValue == afterValue)
+        EditorDocumentSession* session = GetSceneDocumentSession(context);
+        if (session == nullptr)
         {
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorSetObjectPropertyCommand>(
-            *this,
+        context.GetSceneEditorServices().CommitObjectPropertyBlobs(
+            context,
+            *session,
             ownerGuid,
             ownerClassName,
             propertyPath,
             std::move(beforeValue),
             std::move(afterValue),
-            applyOnFirstExecute));
+            applyOnFirstExecute);
     }
 
     bool SceneEditor::TryCaptureGameObjectSnapshotForDelete(uint64_t gameObjectId,

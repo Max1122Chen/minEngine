@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP P0 程序收口 Done）  
+Last updated: 2026-09-18（`feat/mcp`：ED-F18 Done）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,17 +11,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：MCP P0 程序已收口 — 下一主题另议（非默认开新 MCP Feature）**
+**Primary：无强制下一刀（ED-F18 Done）**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Done**（P0 伞） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
-| 1 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
-| 2 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
-| 3 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
-| 4 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
+| 0 | **`ED-F18`** | Editor 原生能力面纠偏 | **Done** | [Design](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md) · [Impl](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_IMPLEMENTATION.md) |
+| 1 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Done**（P0 伞） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
+| 2 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
+| 3 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
+| 4 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
+| 5 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 
-**下一刀（建议择一）：** **ED-F18** GUI/Debug 同源收敛；或回到 0.1.0 Phase P/D 其他轨。MCP 细 Tool / 队列吞吐等有证据再开新 Feature。
+**下一刀：** 未排。余量：Create Prefab、Material/Anim、字面量→void* `SetProperty`。
 
 **参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 
@@ -30,7 +31,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 轨 | ID | 说明 |
 |----|-----|------|
 | editor | `ED-F11` | Tab Host 余量（可选） |
-| editor | **`ED-F18`** | GUI/Debug → 域服务收敛（**Planned 挂账**） |
+| editor | **`ED-F18`** | Done（`SceneEditorServices` 原语） |
 | — | Prefab 后置 | Nested / Apply→Prefab / Instantiate 偏移 / 蓝字 |
 | — | `ED-F10` | EditorSettings 占位 |
 

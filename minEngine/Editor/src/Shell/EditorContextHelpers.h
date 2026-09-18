@@ -3,6 +3,8 @@
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
+#include "Shell/Document/EditorDocumentHost.h"
+#include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/IEditorContext.h"
 
 namespace minEngine
@@ -66,5 +68,27 @@ namespace minEngine
         }
         return dynamic_cast<const AnimationGraphEditor*>(
             context->FindSubModule(AnimationGraphEditor::kModuleId));
+    }
+
+    /** Scene document session for command stack (Active Scene tab, else first Scene session). */
+    inline EditorDocumentSession* GetSceneDocumentSession(IEditorContext& context)
+    {
+        EditorDocumentHost& host = context.GetDocumentHost();
+        if (EditorDocumentSession* active = host.GetActiveSession())
+        {
+            if (active->GetTypeId() == "Scene")
+            {
+                return active;
+            }
+        }
+
+        for (const auto& sessionPtr : host.GetSessions())
+        {
+            if (sessionPtr && sessionPtr->GetTypeId() == "Scene")
+            {
+                return sessionPtr.get();
+            }
+        }
+        return nullptr;
     }
 }

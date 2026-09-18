@@ -4,7 +4,7 @@
 #include "Automation/AutomationPipeServer.h"
 #include "Automation/CapabilityRegistry.h"
 #include "Automation/EditorAutomationSurface.h"
-#include "Services/Scene/SceneAutomationServices.h"
+#include "Services/Scene/SceneEditorServices.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -21,7 +21,7 @@ namespace minEngine
     class AutomationHost
     {
     public:
-        AutomationHost();
+        explicit AutomationHost(SceneEditorServices& sceneServices);
         ~AutomationHost();
 
         AutomationHost(const AutomationHost&) = delete;
@@ -59,7 +59,7 @@ namespace minEngine
         bool WriteReadyFile(const std::optional<std::filesystem::path>& readyFilePath) const;
 
         CapabilityRegistry m_Capabilities;
-        SceneAutomationServices m_SceneServices;
+        SceneEditorServices& m_SceneServices;
         EditorAutomationSurface m_Surface;
         AutomationDispatcher m_Dispatcher;
         AutomationPipeServer m_PipeServer;

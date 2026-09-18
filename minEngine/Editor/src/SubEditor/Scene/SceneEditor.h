@@ -71,14 +71,10 @@ namespace minEngine
         bool CreateNewSceneDocument(IEditorContext& context);
         bool HasPersistedScenePath() const;
 
-        bool ApplyRenameGameObject(uint64_t gameObjectId, const std::string& newName);
         void SubmitRenameGameObject(IEditorContext& context,
                                     uint64_t gameObjectId,
                                     const std::string& newName);
 
-        bool ApplyRenameComponent(uint64_t ownerGameObjectId,
-                                  const GUID& componentGuid,
-                                  const std::string& newName);
         void SubmitRenameComponent(IEditorContext& context,
                                    uint64_t ownerGameObjectId,
                                    const GUID& componentGuid,

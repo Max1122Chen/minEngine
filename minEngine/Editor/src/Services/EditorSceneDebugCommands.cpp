@@ -8,6 +8,9 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Services/Scene/SceneEditorServices.h"
+#include "Shell/Document/EditorDocumentHost.h"
+#include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
@@ -55,6 +58,45 @@ namespace minEngine
 
             outSceneEditor = GetSceneEditor(outEditor);
             return outSceneEditor != nullptr && context.ActiveScene != nullptr;
+        }
+
+        static EditorDocumentSession* ResolveSceneDocumentSession(IEditorContext& editor)
+        {
+            EditorDocumentHost& host = editor.GetDocumentHost();
+            if (EditorDocumentSession* active = host.GetActiveSession())
+            {
+                if (active->GetTypeId() == "Scene")
+                {
+                    return active;
+                }
+            }
+
+            for (const auto& sessionPtr : host.GetSessions())
+            {
+                if (sessionPtr && sessionPtr->GetTypeId() == "Scene")
+                {
+                    return sessionPtr.get();
+                }
+            }
+            return nullptr;
+        }
+
+        static DebugCommand::DebugCommandResult MissingSceneSession()
+        {
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(
+                DebugCommand::DebugCommandOutputKind::Error,
+                "Error: no Scene document session.");
+            return builder.BuildError("no scene session");
+        }
+
+        static DebugCommand::DebugCommandResult FromSceneEditorResult(const SceneEditorResult& result)
+        {
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddLine(
+                DebugCommand::DebugCommandOutputKind::Error,
+                result.Message.empty() ? "Error: scene edit failed." : ("Error: " + result.Message));
+            return builder.BuildError(result.Message.empty() ? "scene edit failed" : result.Message);
         }
 
         static GameObject* FindUniqueGameObjectByName(Scene* scene, std::string_view gameObjectName)
@@ -160,25 +202,33 @@ namespace minEngine
                 return editorContext == nullptr ? MissingEditor() : MissingScene();
             }
 
-            sceneEditor->SubmitAddEmptyGOToScene(*editorContext);
+            EditorDocumentSession* session = ResolveSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                return MissingSceneSession();
+            }
 
+            std::string newName;
             if (!args.empty())
             {
-                std::string newName = args.front();
+                newName = args.front();
                 for (size_t index = 1; index < args.size(); ++index)
                 {
                     newName.push_back(' ');
                     newName += args[index];
                 }
+            }
 
-                GameObject* created = context.ActiveScene->FindGameObjectById(
-                    sceneEditor->GetSelectedGameObject() != nullptr
-                        ? sceneEditor->GetSelectedGameObject()->GetID()
-                        : std::numeric_limits<uint64_t>::max());
-                if (created != nullptr)
-                {
-                    sceneEditor->SubmitRenameGameObject(*editorContext, created->GetID(), newName);
-                }
+            GameObject* created = nullptr;
+            const SceneEditorResult createResult = editorContext->GetSceneEditorServices().CreateGameObject(
+                *editorContext,
+                *session,
+                newName,
+                nullptr,
+                &created);
+            if (!createResult.Ok)
+            {
+                return FromSceneEditorResult(createResult);
             }
 
             DebugCommand::DebugCommandOutputBuilder builder;
@@ -204,13 +254,24 @@ namespace minEngine
                 return editorContext == nullptr ? MissingEditor() : MissingScene();
             }
 
+            EditorDocumentSession* session = ResolveSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                return MissingSceneSession();
+            }
+
             GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args.front());
             if (gameObject == nullptr)
             {
                 return GameObjectLookupError(context.ActiveScene, args.front());
             }
 
-            sceneEditor->SubmitRemoveGameObjectFromScene(*editorContext, gameObject->GetID());
+            const SceneEditorResult deleteResult = editorContext->GetSceneEditorServices().DeleteGameObject(
+                *editorContext, *session, *gameObject);
+            if (!deleteResult.Ok)
+            {
+                return FromSceneEditorResult(deleteResult);
+            }
 
             DebugCommand::DebugCommandOutputBuilder builder;
             builder.AddSegment(DebugCommand::DebugCommandOutputKind::Path, args.front());
@@ -239,13 +300,25 @@ namespace minEngine
                 return editorContext == nullptr ? MissingEditor() : MissingScene();
             }
 
+            EditorDocumentSession* session = ResolveSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                return MissingSceneSession();
+            }
+
             GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args.front());
             if (gameObject == nullptr)
             {
                 return GameObjectLookupError(context.ActiveScene, args.front());
             }
 
-            sceneEditor->SubmitAddComponentToGameObject(*editorContext, gameObject->GetID(), args[1]);
+            Component* added = nullptr;
+            const SceneEditorResult addResult = editorContext->GetSceneEditorServices().AddComponent(
+                *editorContext, *session, *gameObject, args[1], &added);
+            if (!addResult.Ok)
+            {
+                return FromSceneEditorResult(addResult);
+            }
 
             DebugCommand::DebugCommandOutputBuilder builder;
             builder.AddSegment(DebugCommand::DebugCommandOutputKind::Path, args.front());
@@ -275,6 +348,12 @@ namespace minEngine
                 return editorContext == nullptr ? MissingEditor() : MissingScene();
             }
 
+            EditorDocumentSession* session = ResolveSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                return MissingSceneSession();
+            }
+
             GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args.front());
             if (gameObject == nullptr)
             {
@@ -291,7 +370,12 @@ namespace minEngine
                 return builder.BuildError("component not found");
             }
 
-            sceneEditor->SubmitRemoveComponentFromGO(*editorContext, *gameObject, *component);
+            const SceneEditorResult removeResult = editorContext->GetSceneEditorServices().RemoveComponent(
+                *editorContext, *session, *component);
+            if (!removeResult.Ok)
+            {
+                return FromSceneEditorResult(removeResult);
+            }
 
             DebugCommand::DebugCommandOutputBuilder builder;
             builder.AddSegment(DebugCommand::DebugCommandOutputKind::Path, args.front());
@@ -321,25 +405,34 @@ namespace minEngine
                 return editorContext == nullptr ? MissingEditor() : MissingScene();
             }
 
+            EditorDocumentSession* session = ResolveSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                return MissingSceneSession();
+            }
+
             GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args.front());
             if (gameObject == nullptr)
             {
                 return GameObjectLookupError(context.ActiveScene, args.front());
             }
 
-            uint64_t newParentId = SceneEditor::kSceneRootParentId;
+            GameObject* newParent = nullptr;
             if (args[1] != "root")
             {
-                GameObject* newParent = FindUniqueGameObjectByName(context.ActiveScene, args[1]);
+                newParent = FindUniqueGameObjectByName(context.ActiveScene, args[1]);
                 if (newParent == nullptr)
                 {
                     return GameObjectLookupError(context.ActiveScene, args[1]);
                 }
-
-                newParentId = newParent->GetID();
             }
 
-            sceneEditor->SubmitReparentGameObject(*editorContext, gameObject->GetID(), newParentId);
+            const SceneEditorResult reparentResult = editorContext->GetSceneEditorServices().Reparent(
+                *editorContext, *session, *gameObject, newParent);
+            if (!reparentResult.Ok)
+            {
+                return FromSceneEditorResult(reparentResult);
+            }
 
             DebugCommand::DebugCommandOutputBuilder builder;
             builder.AddSegment(DebugCommand::DebugCommandOutputKind::Path, args.front());
@@ -369,6 +462,12 @@ namespace minEngine
                 return editorContext == nullptr ? MissingEditor() : MissingScene();
             }
 
+            EditorDocumentSession* session = ResolveSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                return MissingSceneSession();
+            }
+
             GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args.front());
             if (gameObject == nullptr)
             {
@@ -385,8 +484,22 @@ namespace minEngine
                 return builder.BuildError("component not found");
             }
 
-            sceneEditor->SubmitRenameComponent(
-                *editorContext, gameObject->GetID(), component->GetGuid(), args[2]);
+            std::string nameStorage = args[2];
+            if (component->GetName() == nameStorage)
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddSegment(DebugCommand::DebugCommandOutputKind::ListItemMeta, args[1]);
+                builder.AddSegment(DebugCommand::DebugCommandOutputKind::Muted, " (unchanged)");
+                builder.NewLine();
+                return builder.BuildOk("unchanged");
+            }
+
+            const SceneEditorResult renameResult = editorContext->GetSceneEditorServices().SetProperty(
+                *editorContext, *session, *component, "m_Name", &nameStorage, sizeof(nameStorage));
+            if (!renameResult.Ok)
+            {
+                return FromSceneEditorResult(renameResult);
+            }
 
             DebugCommand::DebugCommandOutputBuilder builder;
             builder.AddSegment(DebugCommand::DebugCommandOutputKind::ListItemMeta, args[1]);
@@ -416,6 +529,12 @@ namespace minEngine
                 return editorContext == nullptr ? MissingEditor() : MissingScene();
             }
 
+            EditorDocumentSession* session = ResolveSceneDocumentSession(*editorContext);
+            if (session == nullptr)
+            {
+                return MissingSceneSession();
+            }
+
             GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args.front());
             if (gameObject == nullptr)
             {
@@ -441,8 +560,16 @@ namespace minEngine
                 return builder.BuildError("invalid index");
             }
 
-            sceneEditor->SubmitMoveComponent(
-                *editorContext, gameObject->GetID(), component->GetGuid(), static_cast<size_t>(parsedIndex));
+            const SceneEditorResult moveResult = editorContext->GetSceneEditorServices().MoveComponent(
+                *editorContext,
+                *session,
+                *gameObject,
+                *component,
+                static_cast<size_t>(parsedIndex));
+            if (!moveResult.Ok)
+            {
+                return FromSceneEditorResult(moveResult);
+            }
 
             DebugCommand::DebugCommandOutputBuilder builder;
             builder.AddSegment(DebugCommand::DebugCommandOutputKind::ListItemMeta, args[1]);
