@@ -332,9 +332,7 @@ namespace minEngine
             }
 
             std::string createdName;
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->AddStateAt(posX, posY, &createdName); });
+            const bool ok = animEditor->SubmitAddState(posX, posY, &createdName);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;
@@ -372,9 +370,7 @@ namespace minEngine
             (void)editorContext;
 
             const std::string stateName = args[0];
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->RemoveStateByName(stateName); });
+            const bool ok = animEditor->SubmitRemoveState(stateName);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;
@@ -412,9 +408,7 @@ namespace minEngine
             (void)editorContext;
 
             std::string error;
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->RenameState(args[0], args[1], &error); });
+            const bool ok = animEditor->SubmitRenameState(args[0], args[1], &error);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;
@@ -454,9 +448,7 @@ namespace minEngine
             (void)editorContext;
 
             std::string error;
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->AddTransition(args[0], args[1], &error); });
+            const bool ok = animEditor->SubmitAddTransition(args[0], args[1], nullptr, &error);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;
@@ -496,9 +488,7 @@ namespace minEngine
             (void)editorContext;
 
             std::string error;
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->AddAnyStateTransition(args[0], &error); });
+            const bool ok = animEditor->SubmitAddAnyStateTransition(args[0], nullptr, &error);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;
@@ -546,9 +536,7 @@ namespace minEngine
                 return builder.BuildError("invalid index");
             }
 
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->RemoveTransitionAt(index); });
+            const bool ok = animEditor->SubmitRemoveTransition(index);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;
@@ -597,9 +585,7 @@ namespace minEngine
                 return builder.BuildError("invalid index");
             }
 
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->RemoveAnyStateTransitionAt(index); });
+            const bool ok = animEditor->SubmitRemoveAnyStateTransition(index);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;
@@ -696,9 +682,7 @@ namespace minEngine
             (void)editorContext;
 
             std::string error;
-            const bool ok = animEditor->SubmitOwnedPropertyMutation(
-                "m_StateMachine",
-                [&]() { return animEditor->SetDefaultStateName(args[0], &error); });
+            const bool ok = animEditor->SubmitSetDefaultState(args[0], &error);
             if (!ok)
             {
                 DebugCommand::DebugCommandOutputBuilder builder;

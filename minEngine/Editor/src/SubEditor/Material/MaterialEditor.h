@@ -15,6 +15,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -151,6 +152,9 @@ namespace minEngine
 
         IEditorContext* GetEditorContext() const { return m_Context; }
 
+        Material* FindOpenMaterial(std::string_view assetKey) const;
+        MaterialEdGraphNode* FindEdNodeByNodeDefGuid(const GUID& nodeDefGuid) const;
+
     private:
         void OnEnterMode();
         void OnExitMode();
@@ -186,7 +190,6 @@ namespace minEngine
         void CaptureMaterialOutputLinks(std::vector<MaterialOutputLinkRecord>& outLinks) const;
         void RestoreMaterialOutputLinks(const std::vector<MaterialOutputLinkRecord>& links);
         void SubmitCapabilityProperty(const std::string& propertyPath, const std::function<void()>& assignAfterValue);
-        MaterialEdGraphNode* FindEdNodeByNodeDefGuid(const GUID& nodeDefGuid) const;
         bool SerializeOwnedProperty(const MEObject& owner, const std::string& propertyPath, std::vector<uint8_t>& outBlob) const;
 
         IEditorContext* m_Context = nullptr;

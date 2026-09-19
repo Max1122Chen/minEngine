@@ -375,9 +375,7 @@ namespace minEngine
                     if (FromNodeId(event.To, toIndex) && toIndex < stateMachine.States.size())
                     {
                         const std::string toName = stateMachine.States[toIndex].Name;
-                        if (editor.SubmitOwnedPropertyMutation(
-                                "m_StateMachine",
-                                [&]() { return editor.SetDefaultStateName(toName); }))
+                        if (editor.SubmitSetDefaultState(toName))
                         {
                             structureChanged = true;
                         }
@@ -391,9 +389,7 @@ namespace minEngine
                     if (FromNodeId(event.To, toIndex) && toIndex < stateMachine.States.size())
                     {
                         const std::string toName = stateMachine.States[toIndex].Name;
-                        if (editor.SubmitOwnedPropertyMutation(
-                                "m_StateMachine",
-                                [&]() { return editor.AddAnyStateTransition(toName); }))
+                        if (editor.SubmitAddAnyStateTransition(toName))
                         {
                             structureChanged = true;
                         }
@@ -413,9 +409,7 @@ namespace minEngine
 
                 const std::string fromName = stateMachine.States[fromIndex].Name;
                 const std::string toName = stateMachine.States[toIndex].Name;
-                if (editor.SubmitOwnedPropertyMutation(
-                        "m_StateMachine",
-                        [&]() { return editor.AddTransition(fromName, toName); }))
+                if (editor.SubmitAddTransition(fromName, toName))
                 {
                     structureChanged = true;
                 }
@@ -427,9 +421,7 @@ namespace minEngine
                 if (FromEdgeId(event.Edge, transitionIndex)
                     && transitionIndex < stateMachine.Transitions.size())
                 {
-                    if (editor.SubmitOwnedPropertyMutation(
-                            "m_StateMachine",
-                            [&]() { return editor.RemoveTransitionAt(transitionIndex); }))
+                    if (editor.SubmitRemoveTransition(transitionIndex))
                     {
                         structureChanged = true;
                     }
@@ -437,9 +429,7 @@ namespace minEngine
                 else if (FromAnyStateEdgeId(event.Edge, transitionIndex)
                     && transitionIndex < stateMachine.AnyStateTransitions.size())
                 {
-                    if (editor.SubmitOwnedPropertyMutation(
-                            "m_StateMachine",
-                            [&]() { return editor.RemoveAnyStateTransitionAt(transitionIndex); }))
+                    if (editor.SubmitRemoveAnyStateTransition(transitionIndex))
                     {
                         structureChanged = true;
                     }
@@ -481,9 +471,7 @@ namespace minEngine
                     if (FromEdgeId(edgeId, transitionIndex)
                         && transitionIndex < stateMachine.Transitions.size())
                     {
-                        if (editor.SubmitOwnedPropertyMutation(
-                                "m_StateMachine",
-                                [&]() { return editor.RemoveTransitionAt(transitionIndex); }))
+                        if (editor.SubmitRemoveTransition(transitionIndex))
                         {
                             structureChanged = true;
                         }
@@ -491,9 +479,7 @@ namespace minEngine
                     else if (FromAnyStateEdgeId(edgeId, transitionIndex)
                         && transitionIndex < stateMachine.AnyStateTransitions.size())
                     {
-                        if (editor.SubmitOwnedPropertyMutation(
-                                "m_StateMachine",
-                                [&]() { return editor.RemoveAnyStateTransitionAt(transitionIndex); }))
+                        if (editor.SubmitRemoveAnyStateTransition(transitionIndex))
                         {
                             structureChanged = true;
                         }
@@ -512,9 +498,7 @@ namespace minEngine
                         && stateIndex < stateMachine.States.size())
                     {
                         const std::string name = stateMachine.States[stateIndex].Name;
-                        if (editor.SubmitOwnedPropertyMutation(
-                                "m_StateMachine",
-                                [&]() { return editor.RemoveStateByName(name); }))
+                        if (editor.SubmitRemoveState(name))
                         {
                             structureChanged = true;
                         }
@@ -523,9 +507,7 @@ namespace minEngine
                 break;
             }
             case SmGraph::EditKind::AddNodeRequested:
-                if (editor.SubmitOwnedPropertyMutation(
-                        "m_StateMachine",
-                        [&]() { return editor.AddStateAt(event.Pos.x, event.Pos.y); }))
+                if (editor.SubmitAddState(event.Pos.x, event.Pos.y))
                 {
                     structureChanged = true;
                 }
@@ -539,9 +521,7 @@ namespace minEngine
                     break;
                 }
                 const std::string oldName = stateMachine.States[stateIndex].Name;
-                if (editor.SubmitOwnedPropertyMutation(
-                        "m_StateMachine",
-                        [&]() { return editor.RenameState(oldName, event.Text); }))
+                if (editor.SubmitRenameState(oldName, event.Text))
                 {
                     structureChanged = true;
                 }

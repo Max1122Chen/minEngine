@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-19（`feat/mcp`：合入 feat/render Material；MCP-F04 Done）
+Last updated: 2026-09-19（`feat/mcp`：ED-F19 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,18 +11,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：无强制下一刀（MCP-F04 Done）**
+**Primary：无强制下一刀（ED-F19 Done）**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`MCP-F04`** | kind `control`/`asset` + 资产与类型查询 | **Done** | [Design](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_DESIGN.md) · [Impl](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_IMPLEMENTATION.md) |
+| 0 | **`ED-F19`** | 材质图 / 动画图原语 + Automation op | **Done** | [Design](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_DESIGN.md) · [Impl](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_IMPLEMENTATION.md) |
 | 1 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Done**（P0 伞） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | 2 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | 3 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
 | 4 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
 | 5 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 
-**下一刀：** 打开 Material EditorServices / Anim graph automation Design（MAT runtime F01–F06 已合入）。余量：Create Prefab、Play、Console、字面量→void*。
+**下一刀：** 未指定。余量：Create Prefab、Play、Console 反馈、字面量→void*、动画位置拖拽专用 Command、`ReverseTransition`。
 
 **参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 

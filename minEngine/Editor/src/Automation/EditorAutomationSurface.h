@@ -2,11 +2,13 @@
 
 #include "Automation/CapabilityRegistry.h"
 #include "Automation/IEditorAutomationSurface.h"
+#include "Services/Graph/GraphEditorResult.h"
 #include "Services/Scene/SceneEditorResult.h"
 #include "Services/Scene/SceneEditorServices.h"
 
 #include <functional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -14,6 +16,8 @@ namespace minEngine
 {
     class EditorDocumentSession;
     class GameObject;
+    class Material;
+    class AnimationGraph;
 
     class EditorAutomationSurface : public IEditorAutomationSurface
     {
@@ -77,6 +81,47 @@ namespace minEngine
         AutomationResponse HandleOpenAsset(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleActivateSession(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleRevealAsset(IEditorContext& context, const AutomationRequest& request);
+
+        EditorDocumentSession* ResolveSessionOfType(
+            IEditorContext& context,
+            const AutomationRequest& request,
+            std::string_view typeId,
+            AutomationResponse& outErrorResponse) const;
+
+        AutomationResponse FromGraphResult(
+            const AutomationRequest& request,
+            const GraphEditorResult& result,
+            Json okResult = Json::object()) const;
+
+        static const char* MapGraphError(GraphEditorError code);
+
+        Json BuildMaterialGraphJson(const Material& material) const;
+        Json BuildAnimGraphJson(const AnimationGraph& graph) const;
+
+        AutomationResponse HandleGetMaterialGraph(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMaterialAddNode(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMaterialRemoveNode(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMaterialConnectPins(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMaterialDisconnectInput(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMaterialSetProperty(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMaterialSave(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleMaterialCompile(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleGetAnimGraph(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimAddState(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimRemoveState(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimRenameState(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimAddTransition(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimAddAnyStateTransition(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimRemoveTransition(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimRemoveAnyStateTransition(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimSetDefaultState(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimSetProperty(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleAnimSave(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleGraphSetProperty(
+            IEditorContext& context,
+            const AutomationRequest& request,
+            std::string_view sessionTypeId,
+            bool materialDomain);
 
         static bool TryReadStringArray(
             const Json& payload,

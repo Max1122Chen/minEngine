@@ -4,6 +4,7 @@
 #include "AnimationGraphEditorSession.h"
 #include "AnimGraphInspectorSource.h"
 #include "Commands/EditorSetObjectPropertyTarget.h"
+#include "Commands/Animation/AnimGraphCommandTypes.h"
 #include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "Shell/EditorSubModule.h"
 #include "Runtime/Core/GUID/GUID.h"
@@ -91,6 +92,31 @@ namespace minEngine
         bool RemoveAnyStateTransitionAt(size_t anyTransitionIndex);
         bool ReverseTransition();
         bool SetDefaultStateName(std::string_view stateName, std::string* outError = nullptr);
+        bool ApplyDefaultStateName(std::string_view stateName, std::string* outError = nullptr);
+
+        bool ApplyInsertState(const AnimState& state, size_t index, const std::string& defaultStateName);
+        bool ApplyInsertTransition(size_t index, const AnimTransition& transition);
+        bool ApplyInsertAnyStateTransition(size_t index, const AnimTransition& transition);
+        bool CaptureStateRemoval(std::string_view stateName, AnimStateRemovalSnapshot& outSnapshot) const;
+        bool ApplyRestoreStateRemoval(const AnimStateRemovalSnapshot& snapshot);
+
+        bool SubmitAddState(float editorPosX, float editorPosY, std::string* outName = nullptr);
+        bool SubmitRemoveState(std::string_view stateName);
+        bool SubmitRenameState(std::string_view oldName, std::string_view newName, std::string* outError = nullptr);
+        bool SubmitAddTransition(
+            std::string_view fromState,
+            std::string_view toState,
+            size_t* outIndex = nullptr,
+            std::string* outError = nullptr);
+        bool SubmitAddAnyStateTransition(
+            std::string_view toState,
+            size_t* outIndex = nullptr,
+            std::string* outError = nullptr);
+        bool SubmitRemoveTransition(size_t transitionIndex);
+        bool SubmitRemoveAnyStateTransition(size_t anyTransitionIndex);
+        bool SubmitSetDefaultState(std::string_view stateName, std::string* outError = nullptr);
+
+        AnimationGraph* FindOpenGraph(std::string_view assetKey) const;
 
         bool ApplySetObjectProperty(const GUID& ownerGuid,
                                     const std::string& ownerClassName,

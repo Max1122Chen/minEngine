@@ -91,4 +91,48 @@ namespace minEngine
         }
         return nullptr;
     }
+
+    inline EditorDocumentSession* FindDocumentSessionByTypeAndKey(
+        IEditorContext& context,
+        std::string_view typeId,
+        std::string_view assetKey)
+    {
+        EditorDocumentHost& host = context.GetDocumentHost();
+        if (EditorDocumentSession* active = host.GetActiveSession())
+        {
+            if (active->GetTypeId() == typeId && active->GetAssetKey() == assetKey)
+            {
+                return active;
+            }
+        }
+
+        for (const auto& sessionPtr : host.GetSessions())
+        {
+            if (sessionPtr && sessionPtr->GetTypeId() == typeId && sessionPtr->GetAssetKey() == assetKey)
+            {
+                return sessionPtr.get();
+            }
+        }
+        return nullptr;
+    }
+
+    inline EditorDocumentSession* GetMaterialDocumentSession(IEditorContext& context)
+    {
+        MaterialEditor* editor = GetMaterialEditor(&context);
+        if (editor == nullptr || !editor->GetSession().HasOpenMaterial())
+        {
+            return nullptr;
+        }
+        return FindDocumentSessionByTypeAndKey(context, "Material", editor->GetSession().AssetPath);
+    }
+
+    inline EditorDocumentSession* GetAnimationGraphDocumentSession(IEditorContext& context)
+    {
+        AnimationGraphEditor* editor = GetAnimationGraphEditor(&context);
+        if (editor == nullptr || !editor->GetSession().HasOpenGraph())
+        {
+            return nullptr;
+        }
+        return FindDocumentSessionByTypeAndKey(context, "AnimationGraph", editor->GetSession().AssetPath);
+    }
 }

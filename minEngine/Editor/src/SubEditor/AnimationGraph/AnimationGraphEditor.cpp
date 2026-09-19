@@ -3,6 +3,9 @@
 #include "Commands/EditorObjectPropertyApply.h"
 #include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
+#include "Services/Animation/AnimationGraphEditorServices.h"
+#include "Shell/Document/EditorDocumentSession.h"
+#include "Shell/EditorContextHelpers.h"
 #include "Shell/EditorDockLayout.h"
 #include "Shell/EditorInputHub.h"
 #include "Shell/IEditorContext.h"
@@ -20,6 +23,7 @@
 #include "Runtime/Resource/AssetMeta.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <utility>
 
 namespace minEngine
@@ -676,10 +680,6 @@ namespace minEngine
 
     bool AnimationGraphEditor::SetDefaultStateName(std::string_view stateName, std::string* outError)
     {
-        if (!m_Session.HasOpenGraph())
-        {
-            return false;
-        }
         if (stateName.empty())
         {
             if (outError)
@@ -688,7 +688,16 @@ namespace minEngine
             }
             return false;
         }
-        if (m_Session.GraphAsset->FindState(stateName) == nullptr)
+        return ApplyDefaultStateName(stateName, outError);
+    }
+
+    bool AnimationGraphEditor::ApplyDefaultStateName(std::string_view stateName, std::string* outError)
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+        if (!stateName.empty() && m_Session.GraphAsset->FindState(stateName) == nullptr)
         {
             if (outError)
             {
@@ -697,13 +706,13 @@ namespace minEngine
             return false;
         }
 
-        AnimStateMachine& sm = m_Session.GraphAsset->GetStateMachine();
-        if (sm.DefaultStateName == stateName)
+        AnimStateMachine& stateMachine = m_Session.GraphAsset->GetStateMachine();
+        if (stateMachine.DefaultStateName == stateName)
         {
             return true;
         }
 
-        sm.DefaultStateName = std::string(stateName);
+        stateMachine.DefaultStateName = std::string(stateName);
         NotifyGraphChanged();
         InvalidateGraphCanvas(false);
         return true;
@@ -765,15 +774,22 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorSetObjectPropertyCommand>(
-            *this,
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
+        context.GetAnimationGraphEditorServices().CommitPropertyBlobs(
+            context,
+            *session,
             ownerGuid,
             ownerClassName,
             propertyPath,
             std::move(beforeValue),
             std::move(afterValue),
             applyOnFirstExecute,
-            std::move(sideEffects)));
+            std::move(sideEffects));
     }
 
     bool AnimationGraphEditor::SubmitOwnedPropertyMutation(const std::string& propertyPath,
@@ -923,5 +939,324 @@ namespace minEngine
 
         m_HasPositionDragBefore = false;
         m_PositionDragBeforeBlob.clear();
+    }
+
+    bool AnimationGraphEditor::ApplyInsertState(
+        const AnimState& state,
+        size_t index,
+        const std::string& defaultStateName)
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+        if (m_Session.GraphAsset->FindState(state.Name) != nullptr)
+        {
+            return false;
+        }
+
+        AnimStateMachine& stateMachine = m_Session.GraphAsset->GetStateMachine();
+        if (index > stateMachine.States.size())
+        {
+            index = stateMachine.States.size();
+        }
+        stateMachine.States.insert(stateMachine.States.begin() + static_cast<std::ptrdiff_t>(index), state);
+        stateMachine.DefaultStateName = defaultStateName;
+        NotifyGraphChanged();
+        InvalidateGraphCanvas(false);
+        return true;
+    }
+
+    bool AnimationGraphEditor::ApplyInsertTransition(size_t index, const AnimTransition& transition)
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+
+        AnimStateMachine& stateMachine = m_Session.GraphAsset->GetStateMachine();
+        if (index > stateMachine.Transitions.size())
+        {
+            index = stateMachine.Transitions.size();
+        }
+        stateMachine.Transitions.insert(
+            stateMachine.Transitions.begin() + static_cast<std::ptrdiff_t>(index),
+            transition);
+        NotifyGraphChanged();
+        InvalidateGraphCanvas(false);
+        return true;
+    }
+
+    bool AnimationGraphEditor::ApplyInsertAnyStateTransition(size_t index, const AnimTransition& transition)
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+
+        AnimStateMachine& stateMachine = m_Session.GraphAsset->GetStateMachine();
+        if (index > stateMachine.AnyStateTransitions.size())
+        {
+            index = stateMachine.AnyStateTransitions.size();
+        }
+        stateMachine.AnyStateTransitions.insert(
+            stateMachine.AnyStateTransitions.begin() + static_cast<std::ptrdiff_t>(index),
+            transition);
+        NotifyGraphChanged();
+        InvalidateGraphCanvas(false);
+        return true;
+    }
+
+    bool AnimationGraphEditor::CaptureStateRemoval(
+        std::string_view stateName,
+        AnimStateRemovalSnapshot& outSnapshot) const
+    {
+        if (!m_Session.HasOpenGraph())
+        {
+            return false;
+        }
+
+        const AnimState* state = m_Session.GraphAsset->FindState(stateName);
+        if (state == nullptr)
+        {
+            return false;
+        }
+
+        const AnimStateMachine& stateMachine = m_Session.GraphAsset->GetStateMachine();
+        outSnapshot.State = *state;
+        outSnapshot.DefaultStateName = stateMachine.DefaultStateName;
+        outSnapshot.StateIndex = 0;
+        for (size_t stateIndex = 0; stateIndex < stateMachine.States.size(); ++stateIndex)
+        {
+            if (stateMachine.States[stateIndex].Name == stateName)
+            {
+                outSnapshot.StateIndex = stateIndex;
+                break;
+            }
+        }
+
+        outSnapshot.Transitions.clear();
+        for (size_t transitionIndex = 0; transitionIndex < stateMachine.Transitions.size(); ++transitionIndex)
+        {
+            const AnimTransition& transition = stateMachine.Transitions[transitionIndex];
+            if (transition.FromStateName == stateName || transition.ToStateName == stateName)
+            {
+                outSnapshot.Transitions.push_back(AnimIndexedTransition{transitionIndex, transition});
+            }
+        }
+
+        outSnapshot.AnyStateTransitions.clear();
+        for (size_t transitionIndex = 0; transitionIndex < stateMachine.AnyStateTransitions.size(); ++transitionIndex)
+        {
+            const AnimTransition& transition = stateMachine.AnyStateTransitions[transitionIndex];
+            if (transition.ToStateName == stateName)
+            {
+                outSnapshot.AnyStateTransitions.push_back(AnimIndexedTransition{transitionIndex, transition});
+            }
+        }
+        return true;
+    }
+
+    bool AnimationGraphEditor::ApplyRestoreStateRemoval(const AnimStateRemovalSnapshot& snapshot)
+    {
+        if (!ApplyInsertState(snapshot.State, snapshot.StateIndex, snapshot.DefaultStateName))
+        {
+            return false;
+        }
+
+        for (const AnimIndexedTransition& item : snapshot.Transitions)
+        {
+            ApplyInsertTransition(item.Index, item.Transition);
+        }
+        for (const AnimIndexedTransition& item : snapshot.AnyStateTransitions)
+        {
+            ApplyInsertAnyStateTransition(item.Index, item.Transition);
+        }
+        return true;
+    }
+
+    AnimationGraph* AnimationGraphEditor::FindOpenGraph(std::string_view assetKey) const
+    {
+        if (assetKey.empty())
+        {
+            return nullptr;
+        }
+        if (m_Session.AssetPath == assetKey && m_Session.GraphAsset)
+        {
+            return m_Session.GraphAsset.get();
+        }
+
+        const auto it = m_SessionsByKey.find(std::string(assetKey));
+        if (it == m_SessionsByKey.end() || !it->second.GraphAsset)
+        {
+            return nullptr;
+        }
+        return it->second.GraphAsset.get();
+    }
+
+    bool AnimationGraphEditor::SubmitAddState(float editorPosX, float editorPosY, std::string* outName)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+        return m_Context->GetAnimationGraphEditorServices()
+            .AddState(*m_Context, *session, editorPosX, editorPosY, outName)
+            .Ok;
+    }
+
+    bool AnimationGraphEditor::SubmitRemoveState(std::string_view stateName)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+        return m_Context->GetAnimationGraphEditorServices().RemoveState(*m_Context, *session, stateName).Ok;
+    }
+
+    bool AnimationGraphEditor::SubmitRenameState(
+        std::string_view oldName,
+        std::string_view newName,
+        std::string* outError)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+
+        const GraphEditorResult result = m_Context->GetAnimationGraphEditorServices().RenameState(
+            *m_Context,
+            *session,
+            oldName,
+            newName);
+        if (!result.Ok && outError != nullptr)
+        {
+            *outError = result.Message;
+        }
+        return result.Ok;
+    }
+
+    bool AnimationGraphEditor::SubmitAddTransition(
+        std::string_view fromState,
+        std::string_view toState,
+        size_t* outIndex,
+        std::string* outError)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+
+        const GraphEditorResult result = m_Context->GetAnimationGraphEditorServices().AddTransition(
+            *m_Context,
+            *session,
+            fromState,
+            toState,
+            outIndex);
+        if (!result.Ok && outError != nullptr)
+        {
+            *outError = result.Message;
+        }
+        return result.Ok;
+    }
+
+    bool AnimationGraphEditor::SubmitAddAnyStateTransition(
+        std::string_view toState,
+        size_t* outIndex,
+        std::string* outError)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+
+        const GraphEditorResult result = m_Context->GetAnimationGraphEditorServices().AddAnyStateTransition(
+            *m_Context,
+            *session,
+            toState,
+            outIndex);
+        if (!result.Ok && outError != nullptr)
+        {
+            *outError = result.Message;
+        }
+        return result.Ok;
+    }
+
+    bool AnimationGraphEditor::SubmitRemoveTransition(size_t transitionIndex)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+        return m_Context->GetAnimationGraphEditorServices()
+            .RemoveTransition(*m_Context, *session, transitionIndex)
+            .Ok;
+    }
+
+    bool AnimationGraphEditor::SubmitRemoveAnyStateTransition(size_t anyTransitionIndex)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+        return m_Context->GetAnimationGraphEditorServices()
+            .RemoveAnyStateTransition(*m_Context, *session, anyTransitionIndex)
+            .Ok;
+    }
+
+    bool AnimationGraphEditor::SubmitSetDefaultState(std::string_view stateName, std::string* outError)
+    {
+        if (m_Context == nullptr)
+        {
+            return false;
+        }
+        EditorDocumentSession* session = GetAnimationGraphDocumentSession(*m_Context);
+        if (session == nullptr)
+        {
+            return false;
+        }
+
+        const GraphEditorResult result =
+            m_Context->GetAnimationGraphEditorServices().SetDefaultState(*m_Context, *session, stateName);
+        if (!result.Ok && outError != nullptr)
+        {
+            *outError = result.Message;
+        }
+        return result.Ok;
     }
 }

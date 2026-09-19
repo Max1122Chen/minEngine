@@ -1,6 +1,18 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-19（`feat/mcp`：合入 feat/render Material；MCP-F04 Done）
+Last updated: 2026-09-19（`feat/mcp`：ED-F19 Done）
+
+### 2026-09-19 - ED-F19 Done
+- **落地：** `MaterialEditorServices` 包现有材质 Command；动画状态/过渡补 Command 后再包 `AnimationGraphEditorServices`。GUI / Debug 拓扑改走服务。Surface 增加 `material.*` / `animgraph.*`。图 JSON 只在 Surface。
+- **验证：** `cmake --build build --target Editor` PASS。动画加→撤销无独立单测。
+- **不做：** 新 MCP kind / 粗 Tool；`ReverseTransition`；画布拖拽 Command。
+- **Next 候选：** Create Prefab；Play + Console 反馈闭环。
+
+### 2026-09-19 - ED-F19 设计（Review，未写代码）
+- **材质：** `MaterialEditorServices` 包现有加/删/连/断 Command；`get_graph` 只在 Surface。
+- **动画：** 状态与过渡今天无撤销；先补 Command，服务禁止直接调 `AddStateAt`。`ReverseTransition` 不做（选择语义）。
+- **协议：** 不新增 kind / 粗 Tool。`material.*` / `animgraph.*` 走已有 `editor_edit` / `editor_query`。
+- **Next：** 审阅后 S01。
 
 ### 2026-09-18 - MCP-F04 Done
 - **落地：** kind `control`/`asset`；`TypeQueryServices`；`AssetEditorServices`；`EditorControlServices`；Surface + MCP 粗 Tools；Scene `move_component` / `instantiate_prefab`。

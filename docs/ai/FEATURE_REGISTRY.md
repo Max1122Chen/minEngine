@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-19（合入 feat/render MAT；MCP-F04 Done）
+Last updated: 2026-09-19（`feat/mcp`：ED-F19 Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -89,6 +89,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F16` | Prefab 文档 Mode（Stage Scene + 复用 SceneEditor；单 Viewport）+ Hierarchy Create/Instantiate + `Scene::Instantiate` | **Done**（含 Amendment A/B） | — | [Design](./Editor/ED-F16_PREFAB_EDITOR_DESIGN.md) · `feat/prefab` · Amendment A/B |
 | `ED-F17` | Editor Automation Host + Q/E/V Surface（Named Pipe → Editor API） | **Done**（S01–S04 Scene MVP） | — | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) · 服务 [MCP-F01](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | `ED-F18` | Editor 原生能力面纠偏（`*EditorServices`；Surface 独占协议） | **Done** | — | [Design](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md) · [Impl](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_IMPLEMENTATION.md) |
+| `ED-F19` | Material / Anim EditorServices（图原语 + Automation op） | **Done** | — | [Design](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_DESIGN.md) · [Impl](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_IMPLEMENTATION.md) |
 | `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Done**（P0 伞） | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
 | `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Done** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
@@ -150,7 +151,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
 | `CORE` | **F27** | F19/F21 Lua **Done**；F20/F22 Done；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F19** | F12–**F16 Done**；**F17** Host **Done**；**F18** Done；**F11** In Progress；F10 占位 |
+| `ED` | **F20** | F12–**F19 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
 | `RND` | **F18** | F06/F17 **Done**；F12 Deferred |
 | `LAUN` | F02 | F01 Done |

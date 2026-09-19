@@ -148,7 +148,7 @@ namespace minEngine
         ImGui::SameLine();
         if (ImGui::Button("Add State"))
         {
-            animGraphEditor->AddStateAt(40.0f, 40.0f);
+            animGraphEditor->SubmitAddState(40.0f, 40.0f);
         }
 
         if (!session.HasOpenGraph())

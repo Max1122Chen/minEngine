@@ -58,6 +58,27 @@ namespace minEngine
 
         Add({"editor", "activate_session", "control", "editor.activate_session", true, false, ""});
         Add({"editor", "reveal_asset", "control", "editor.reveal_asset", false, false, ""});
+
+        Add({"material", "get_graph", "query", "material.get_graph", true, false, ""});
+        Add({"material", "add_node", "edit", "material.add_node", true, true, ""});
+        Add({"material", "remove_node", "edit", "material.remove_node", true, true, ""});
+        Add({"material", "connect_pins", "edit", "material.connect_pins", true, true, ""});
+        Add({"material", "disconnect_input", "edit", "material.disconnect_input", true, true, ""});
+        Add({"material", "set_property", "edit", "material.set_property", true, true, ""});
+        Add({"material", "save", "edit", "material.save", true, false, ""});
+        Add({"material", "compile", "edit", "material.compile", true, false, "Not an undo unit"});
+
+        Add({"animgraph", "get_graph", "query", "animgraph.get_graph", true, false, ""});
+        Add({"animgraph", "add_state", "edit", "animgraph.add_state", true, true, ""});
+        Add({"animgraph", "remove_state", "edit", "animgraph.remove_state", true, true, ""});
+        Add({"animgraph", "rename_state", "edit", "animgraph.rename_state", true, true, ""});
+        Add({"animgraph", "add_transition", "edit", "animgraph.add_transition", true, true, ""});
+        Add({"animgraph", "add_any_state_transition", "edit", "animgraph.add_any_state_transition", true, true, ""});
+        Add({"animgraph", "remove_transition", "edit", "animgraph.remove_transition", true, true, ""});
+        Add({"animgraph", "remove_any_state_transition", "edit", "animgraph.remove_any_state_transition", true, true, ""});
+        Add({"animgraph", "set_default_state", "edit", "animgraph.set_default_state", true, true, ""});
+        Add({"animgraph", "set_property", "edit", "animgraph.set_property", true, true, ""});
+        Add({"animgraph", "save", "edit", "animgraph.save", true, false, ""});
     }
 
     const AutomationCapability* CapabilityRegistry::FindByOp(std::string_view op) const

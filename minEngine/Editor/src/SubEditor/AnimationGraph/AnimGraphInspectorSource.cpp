@@ -116,11 +116,7 @@ namespace minEngine
                     if (stateMachine.DefaultStateName != state.Name)
                     {
                         const std::string newDefault = state.Name;
-                        m_AnimGraphEditor.SubmitOwnedPropertyMutation(
-                            "m_StateMachine",
-                            [&]() {
-                                return m_AnimGraphEditor.SetDefaultStateName(newDefault);
-                            });
+                        m_AnimGraphEditor.SubmitSetDefaultState(newDefault);
                     }
                 }
                 if (selected)
@@ -149,9 +145,7 @@ namespace minEngine
             const std::string oldName = state->Name;
             const std::string newName = nameBuffer;
             std::string error;
-            if (!m_AnimGraphEditor.SubmitOwnedPropertyMutation(
-                    "m_StateMachine",
-                    [&]() { return m_AnimGraphEditor.RenameState(oldName, newName, &error); }))
+            if (!m_AnimGraphEditor.SubmitRenameState(oldName, newName, &error))
             {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", error.c_str());
             }

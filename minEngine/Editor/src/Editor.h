@@ -24,8 +24,10 @@
 #include "PlayMode/IPlayModeService.h"
 #include "Shell/ViewportClientRegistry.h"
 #include "UI/Appearance/EditorAppearance.h"
+#include "Services/Animation/AnimationGraphEditorServices.h"
 #include "Services/Asset/AssetEditorServices.h"
 #include "Services/Control/EditorControlServices.h"
+#include "Services/Material/MaterialEditorServices.h"
 #include "Services/Scene/SceneEditorServices.h"
 #include "Services/TypeQuery/TypeQueryServices.h"
 
@@ -87,6 +89,16 @@ namespace minEngine
         const AssetEditorServices& GetAssetEditorServices() const override { return m_AssetEditorServices; }
         EditorControlServices& GetEditorControlServices() override { return m_EditorControlServices; }
         const EditorControlServices& GetEditorControlServices() const override { return m_EditorControlServices; }
+        MaterialEditorServices& GetMaterialEditorServices() override { return m_MaterialEditorServices; }
+        const MaterialEditorServices& GetMaterialEditorServices() const override { return m_MaterialEditorServices; }
+        AnimationGraphEditorServices& GetAnimationGraphEditorServices() override
+        {
+            return m_AnimationGraphEditorServices;
+        }
+        const AnimationGraphEditorServices& GetAnimationGraphEditorServices() const override
+        {
+            return m_AnimationGraphEditorServices;
+        }
         EditorContextMenuSystem& GetContextMenu() override { return m_ContextMenu; }
         const EditorContextMenuSystem& GetContextMenu() const override { return m_ContextMenu; }
         EditorInputHub& GetInputHub() override { return m_InputHub; }
@@ -155,6 +167,8 @@ namespace minEngine
         TypeQueryServices m_TypeQueryServices;
         AssetEditorServices m_AssetEditorServices;
         EditorControlServices m_EditorControlServices;
+        MaterialEditorServices m_MaterialEditorServices;
+        AnimationGraphEditorServices m_AnimationGraphEditorServices;
         EditorCommandStack m_FallbackCommandStack;
         EditorContextMenuSystem m_ContextMenu;
         EditorAppearance m_Appearance;

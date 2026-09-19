@@ -1,12 +1,11 @@
 #include "MaterialEditor.h"
 
 #include "Commands/EditorObjectPropertyApply.h"
-#include "Commands/Material/EditorAddMaterialNodeCommand.h"
-#include "Commands/Material/EditorConnectMaterialPinsCommand.h"
-#include "Commands/Material/EditorDisconnectMaterialPinCommand.h"
-#include "Commands/Material/EditorRemoveMaterialNodeCommand.h"
 #include "Commands/Scene/EditorSetObjectPropertyCommand.h"
 #include "EditorGUIManager.h"
+#include "Services/Material/MaterialEditorServices.h"
+#include "Shell/Document/EditorDocumentSession.h"
+#include "Shell/EditorContextHelpers.h"
 #include "SubEditor/Material/MaterialGraphIds.h"
 #include "Shell/EditorDockLayout.h"
 #include "Shell/EditorInputHub.h"
@@ -484,15 +483,22 @@ namespace minEngine
             return;
         }
 
-        context.GetCommandStack().Execute(std::make_unique<EditorSetObjectPropertyCommand>(
-            *this,
+        EditorDocumentSession* session = GetMaterialDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+
+        context.GetMaterialEditorServices().CommitPropertyBlobs(
+            context,
+            *session,
             ownerGuid,
             ownerClassName,
             propertyPath,
             std::move(beforeValue),
             std::move(afterValue),
             applyOnFirstExecute,
-            std::move(sideEffects)));
+            std::move(sideEffects));
     }
 
     void MaterialEditor::StorePropertyUndoBefore(const MEObject& owner, const std::string& propertyPath)
@@ -843,6 +849,26 @@ namespace minEngine
         return nullptr;
     }
 
+    Material* MaterialEditor::FindOpenMaterial(std::string_view assetKey) const
+    {
+        if (assetKey.empty())
+        {
+            return nullptr;
+        }
+
+        if (m_Session.AssetPath == assetKey && m_Session.MaterialAsset)
+        {
+            return m_Session.MaterialAsset.get();
+        }
+
+        const auto it = m_SessionsByKey.find(std::string(assetKey));
+        if (it == m_SessionsByKey.end() || !it->second.MaterialAsset)
+        {
+            return nullptr;
+        }
+        return it->second.MaterialAsset.get();
+    }
+
     bool MaterialEditor::SerializeOwnedProperty(const MEObject& owner,
                                                 const std::string& propertyPath,
                                                 std::vector<uint8_t>& outBlob) const
@@ -900,11 +926,18 @@ namespace minEngine
                                        float editorPosX,
                                        float editorPosY)
     {
-        context.GetCommandStack().Execute(std::make_unique<EditorAddMaterialNodeCommand>(
-            *this,
+        EditorDocumentSession* session = GetMaterialDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+        context.GetMaterialEditorServices().AddNode(
+            context,
+            *session,
             nodeDefClassName,
             editorPosX,
-            editorPosY));
+            editorPosY,
+            nullptr);
     }
 
     bool MaterialEditor::ApplyRemoveNodeByGuid(const GUID& nodeDefGuid)
@@ -1066,19 +1099,12 @@ namespace minEngine
 
     void MaterialEditor::SubmitRemoveNode(IEditorContext& context, const GUID& nodeDefGuid)
     {
-        std::vector<uint8_t> snapshot;
-        std::vector<MaterialNodeInboundLink> inboundLinks;
-        if (!TryCaptureRemoveNode(nodeDefGuid, snapshot, inboundLinks))
+        EditorDocumentSession* session = GetMaterialDocumentSession(context);
+        if (session == nullptr)
         {
             return;
         }
-
-        context.GetCommandStack().Execute(std::make_unique<EditorRemoveMaterialNodeCommand>(
-            *this,
-            nodeDefGuid.High,
-            nodeDefGuid.Low,
-            std::move(snapshot),
-            std::move(inboundLinks)));
+        context.GetMaterialEditorServices().RemoveNode(context, *session, nodeDefGuid);
     }
 
     bool MaterialEditor::ApplyConnectPins(const GUID& fromNodeDefGuid,
@@ -1120,35 +1146,18 @@ namespace minEngine
                                            const GUID& toNodeDefGuid,
                                            int32_t toInputIndex)
     {
-        MaterialEdGraphNode* toNode = FindEdNodeByNodeDefGuid(toNodeDefGuid);
-        if (toNode == nullptr || toNode->GetNodeDef() == nullptr)
+        EditorDocumentSession* session = GetMaterialDocumentSession(context);
+        if (session == nullptr)
         {
             return;
         }
-
-        MaterialGraphNodeDefInput* input = toNode->GetNodeDef()->GetInput(toInputIndex);
-        bool hadPrevious = false;
-        GUID previousFromGuid;
-        int32_t previousFromOutput = 0;
-        if (input != nullptr && input->IsConnected() && input->NodeDef != nullptr)
-        {
-            hadPrevious = true;
-            previousFromGuid = input->NodeDef->GetGuid();
-            previousFromOutput = input->OutputIndex;
-        }
-
-        context.GetCommandStack().Execute(std::make_unique<EditorConnectMaterialPinsCommand>(
-            *this,
-            fromNodeDefGuid.High,
-            fromNodeDefGuid.Low,
+        context.GetMaterialEditorServices().ConnectPins(
+            context,
+            *session,
+            fromNodeDefGuid,
             fromOutputIndex,
-            toNodeDefGuid.High,
-            toNodeDefGuid.Low,
-            toInputIndex,
-            previousFromGuid.High,
-            previousFromGuid.Low,
-            previousFromOutput,
-            hadPrevious));
+            toNodeDefGuid,
+            toInputIndex);
     }
 
     bool MaterialEditor::ApplyDisconnectInput(const GUID& toNodeDefGuid, int32_t toInputIndex)
@@ -1170,13 +1179,13 @@ namespace minEngine
                                                const GUID& fromNodeDefGuid,
                                                int32_t fromOutputIndex)
     {
-        context.GetCommandStack().Execute(std::make_unique<EditorDisconnectMaterialPinCommand>(
-            *this,
-            toNodeDefGuid.High,
-            toNodeDefGuid.Low,
-            toInputIndex,
-            fromNodeDefGuid.High,
-            fromNodeDefGuid.Low,
-            fromOutputIndex));
+        EditorDocumentSession* session = GetMaterialDocumentSession(context);
+        if (session == nullptr)
+        {
+            return;
+        }
+        context.GetMaterialEditorServices().DisconnectInput(context, *session, toNodeDefGuid, toInputIndex);
+        (void)fromNodeDefGuid;
+        (void)fromOutputIndex;
     }
 }

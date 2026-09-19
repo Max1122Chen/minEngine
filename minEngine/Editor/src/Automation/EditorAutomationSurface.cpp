@@ -178,6 +178,101 @@ namespace minEngine
             [this](IEditorContext& context, const AutomationRequest& request) {
                 return HandleRevealAsset(context, request);
             });
+        m_Handlers.emplace(
+            "material.get_graph",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleGetMaterialGraph(context, request);
+            });
+        m_Handlers.emplace(
+            "material.add_node",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMaterialAddNode(context, request);
+            });
+        m_Handlers.emplace(
+            "material.remove_node",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMaterialRemoveNode(context, request);
+            });
+        m_Handlers.emplace(
+            "material.connect_pins",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMaterialConnectPins(context, request);
+            });
+        m_Handlers.emplace(
+            "material.disconnect_input",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMaterialDisconnectInput(context, request);
+            });
+        m_Handlers.emplace(
+            "material.set_property",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMaterialSetProperty(context, request);
+            });
+        m_Handlers.emplace(
+            "material.save",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMaterialSave(context, request);
+            });
+        m_Handlers.emplace(
+            "material.compile",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMaterialCompile(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.get_graph",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleGetAnimGraph(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.add_state",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimAddState(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.remove_state",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimRemoveState(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.rename_state",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimRenameState(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.add_transition",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimAddTransition(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.add_any_state_transition",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimAddAnyStateTransition(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.remove_transition",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimRemoveTransition(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.remove_any_state_transition",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimRemoveAnyStateTransition(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.set_default_state",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimSetDefaultState(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.set_property",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimSetProperty(context, request);
+            });
+        m_Handlers.emplace(
+            "animgraph.save",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleAnimSave(context, request);
+            });
     }
 
     void EditorAutomationSurface::AssertHandlersCoverCapabilities() const
