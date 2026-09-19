@@ -20,7 +20,7 @@ namespace minEngine
         MarkRenderStateDirty();
     }
 
-    void StaticMeshComponent::SetMaterial(const std::shared_ptr<Material>& material)
+    void StaticMeshComponent::SetMaterial(const std::shared_ptr<MaterialInterface>& material)
     {
         if(m_Material == material)
         {
@@ -58,7 +58,7 @@ namespace minEngine
 
         if (m_Material)
         {
-            SceneProxy->m_Material = m_Material.get();
+            SceneProxy->m_MaterialProxy = m_Material ? m_Material->GetRenderProxy() : nullptr;
         }
         
         m_SceneProxy = SceneProxy;

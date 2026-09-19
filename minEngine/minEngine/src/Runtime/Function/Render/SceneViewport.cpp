@@ -10,8 +10,20 @@
 
 namespace minEngine
 {
+    uint64_t SceneViewport::AllocateViewId()
+    {
+        static uint64_t s_NextViewId = 0;
+        ++s_NextViewId;
+        return s_NextViewId;
+    }
+
     void SceneViewport::Initialize(RHI* rhi, uint32_t width, uint32_t height)
     {
+        if (m_ViewId == 0)
+        {
+            m_ViewId = AllocateViewId();
+        }
+
         m_Camera = std::make_shared<RenderCamera>();
         m_Camera->Initialize();
 
@@ -29,6 +41,8 @@ namespace minEngine
         m_Camera.reset();
         m_ObservedScene = nullptr;
         m_HasPendingResize = false;
+        // Keep m_ViewId so a recycled SceneViewport object does not collide with a new id
+        // while orphaned RDG caches for this id remain until graph teardown.
     }
 
     const RHITextureRef& SceneViewport::GetColorTexture() const
@@ -86,6 +100,7 @@ namespace minEngine
         desc.Scene = m_ObservedScene;
         desc.Camera = m_Camera.get();
         desc.RenderTarget = m_RenderTarget.get();
+        desc.ViewId = m_ViewId;
         desc.Flags = flags;
         return desc;
     }

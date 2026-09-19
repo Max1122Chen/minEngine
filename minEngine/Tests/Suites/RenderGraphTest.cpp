@@ -309,6 +309,7 @@ namespace minEngine
 
         graph.SetBackbufferSource(kRDGBackbuffer);
         graph.SetBackbufferDimensions(64, 64);
+        graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
         graph.SetupAttachments(rhi, nullptr);
 
@@ -340,6 +341,7 @@ namespace minEngine
 
         graph.SetBackbufferSource(kRDGBackbuffer);
         graph.SetBackbufferDimensions(32, 32);
+        graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
         graph.SetupAttachments(rhi, nullptr);
 
@@ -399,6 +401,7 @@ namespace minEngine
 
         graph.SetBackbufferSource(kRDGSceneColor);
         graph.SetBackbufferDimensions(32, 32);
+        graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
         graph.SetupAttachments(rhi, nullptr);
 
@@ -429,6 +432,7 @@ namespace minEngine
 
         graph.SetBackbufferSource(kRDGSceneColor);
         graph.SetBackbufferDimensions(8, 8);
+        graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
         graph.SetupAttachments(rhi, nullptr);
 
@@ -458,5 +462,38 @@ namespace minEngine
         CHECK(nearByte(pixels[1], expected[1]));
         CHECK(nearByte(pixels[2], expected[2]));
         CHECK(nearByte(pixels[3], expected[3]));
+    }
+
+    TEST_CASE("render-graph: distinct ViewKeys keep distinct physical textures at same size")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        BakeProbePass probe;
+        RenderPass& pass = graph.AddPass("Probe");
+        pass.SetImplementation(&probe);
+
+        graph.SetBackbufferSource(kRDGBackbuffer);
+        graph.SetBackbufferDimensions(64, 64);
+
+        graph.SetActiveViewKey(10, nullptr);
+        graph.Bake();
+        graph.SetupAttachments(rhi, nullptr);
+        RHITexture* textureA = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
+        REQUIRE(textureA != nullptr);
+
+        graph.SetActiveViewKey(11, nullptr);
+        graph.Bake();
+        graph.SetupAttachments(rhi, nullptr);
+        RHITexture* textureB = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
+        REQUIRE(textureB != nullptr);
+
+        CHECK(textureA != textureB);
+
+        graph.SetActiveViewKey(10, nullptr);
+        RHITexture* textureAAgain = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
+        CHECK(textureAAgain == textureA);
     }
 }

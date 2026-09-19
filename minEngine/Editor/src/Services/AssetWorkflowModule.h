@@ -35,6 +35,8 @@ namespace minEngine
     public:
         static constexpr const char* kModuleId = "AssetWorkflow";
 
+        friend class AssetWorkflowInspectorSource;
+
         std::string_view GetModuleId() const override { return kModuleId; }
         void Register(IEditorContext& context) override;
         void Shutdown() override;
@@ -47,6 +49,7 @@ namespace minEngine
         bool TryNewScene();
         bool TryCreateSceneInDirectory(std::string_view directoryRel);
         bool TryCreateMaterialInDirectory(std::string_view directoryRel);
+        bool TryCreateMaterialInstanceInDirectory(std::string_view directoryRel);
         bool TryRequestExit(IEditorContext& context);
 
         bool OpenAsset(const AssetMeta& meta);
@@ -86,6 +89,7 @@ namespace minEngine
         bool SaveMaterialDocument();
         bool SaveAnimationGraphDocument();
         bool SavePrefabDocument();
+        void DrawMaterialInstanceInspector(const AssetMeta& meta);
 
         bool RunWithUnsavedCheck(
             const char* message,
@@ -110,5 +114,7 @@ namespace minEngine
         std::function<void()> m_PendingProceed;
         std::function<bool()> m_PendingSave;
         PendingUnsavedCheckKind m_PendingCheckKind = PendingUnsavedCheckKind::None;
+        char m_NewMicOverrideName[64] = {};
+        float m_NewMicOverrideValue = 0.0f;
     };
 }

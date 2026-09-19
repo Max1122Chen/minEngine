@@ -17,10 +17,12 @@ namespace minEngine
 {
     class RHI;
     class RHICommandList;
+    class SceneRenderTarget;
 
     /**
      * Granite-style frame render graph (RND-F07).
      * Owns logical→physical texture mapping after Bake/SetupAttachments.
+     * RND-F17: physical textures are cached per ViewKey (ViewId + SceneRenderTarget*).
      */
     class RenderGraph
     {
@@ -33,6 +35,13 @@ namespace minEngine
         void SetBackbufferDimensions(uint32_t width, uint32_t height);
         void SetFrameContext(const RenderGraphFrameContext& context);
         const RenderGraphFrameContext& GetFrameContext() const { return m_FrameContext; }
+
+        /**
+         * Bind physical texture cache for this view before Bake/SetupAttachments.
+         * ViewId must be non-zero for production draws; tests may pass RenderTarget == nullptr.
+         */
+        void SetActiveViewKey(uint64_t viewId, const SceneRenderTarget* renderTarget);
+        const RDGViewKey& GetActiveViewKey() const { return m_ActiveViewKey; }
 
         RenderPass& AddPass(const std::string& name, RDGQueue queue = RDGQueue::Graphics);
         RenderPass* FindPass(const std::string& name);
@@ -69,6 +78,12 @@ namespace minEngine
     private:
         friend class RenderPass;
 
+        struct ViewPhysicalCache
+        {
+            RDGViewKey Key{};
+            std::vector<std::shared_ptr<RHITexture>> Textures;
+        };
+
         void ValidatePasses() const;
         void TraverseDependencies(uint32_t passIndex, std::vector<bool>& visited);
         void RecordPassDependency(uint32_t dependentPass, uint32_t producerPass);
@@ -78,6 +93,11 @@ namespace minEngine
         void AllocatePhysicalForTexture(RDGTextureResource* texture);
         RDGResourceDimensions ResolveDimensions(const RDGTextureResource& resource) const;
         RHITextureCreateDesc MakeCreateDesc(const RDGResourceDimensions& dims) const;
+
+        ViewPhysicalCache& FindOrCreateViewCache(const RDGViewKey& key);
+        void BindPhysicalTexturesForActiveView();
+        std::vector<std::shared_ptr<RHITexture>>& PhysicalTextures();
+        const std::vector<std::shared_ptr<RHITexture>>& PhysicalTextures() const;
 
         std::vector<std::unique_ptr<RenderPass>> m_Passes;
         std::unordered_map<std::string, RenderPass*> m_PassByName;
@@ -94,7 +114,9 @@ namespace minEngine
         std::vector<uint32_t> m_PassStack;
         std::vector<std::unordered_set<uint32_t>> m_PassDependencies;
         std::vector<RDGResourceDimensions> m_PhysicalDims;
-        std::vector<std::shared_ptr<RHITexture>> m_PhysicalTextures;
+        std::vector<ViewPhysicalCache> m_ViewPhysicalCaches;
+        RDGViewKey m_ActiveViewKey{};
+        std::vector<std::shared_ptr<RHITexture>>* m_BoundPhysicalTextures = nullptr;
         uint32_t m_SwapchainPhysicalIndex = RDGResource::kUnused;
         bool m_IsBaked = false;
         bool m_ImplSetupDone = false;

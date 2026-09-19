@@ -6,7 +6,7 @@
 
 namespace minEngine
 {
-    class Material;
+    class MaterialRenderProxy;
     class RHIBuffer;
     class RHIVertexInputLayout;
     class WidgetComponent;
@@ -26,7 +26,8 @@ namespace minEngine
         uint32_t m_StableOrder = 0;
 
         Texture2D* m_Texture = nullptr;
-        Material* m_Material = nullptr;
+        /** Non-owning; owned by Material (or later MaterialInstance). */
+        MaterialRenderProxy* m_MaterialProxy = nullptr;
 
         RHIBuffer* m_VertexBuffer = nullptr;
         RHIBuffer* m_IndexBuffer = nullptr;

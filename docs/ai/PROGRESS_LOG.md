@@ -1,6 +1,6 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP-F04 Done）
+Last updated: 2026-09-19（`feat/mcp`：合入 feat/render Material；MCP-F04 Done）
 
 ### 2026-09-18 - MCP-F04 Done
 - **落地：** kind `control`/`asset`；`TypeQueryServices`；`AssetEditorServices`；`EditorControlServices`；Surface + MCP 粗 Tools；Scene `move_component` / `instantiate_prefab`。
@@ -88,6 +88,100 @@ Last updated: 2026-09-18（`feat/mcp`：MCP-F04 Done）
 ### 2026-09-17 - MCP 轨 Design Draft（未实现代码）
 - **登记：** `MCP-F01`/`F02`/`F03`、`ED-F17`、`CLI-F02` → FEATURE_REGISTRY；ACTIVE_WORK Primary 切到 MCP。
 - **口径：** 外部 GPT 指南仅参考；不另造平行业务命令层。
+
+### 2026-09-19 - MAT-F06 / MAT-F01 Done：MIC 与运行时产品化主链收口
+- **F06：** `.memi` + ME_CLASS + CB Create/Inspector Save；材质槽 Interface 候选；`material-ir` 往返。
+- **F01：** Proxy→Interface→MI→MID→MIC 全 Done。
+- **后置：** Instance Parent 链、专用 MIC 编辑器。
+- **Next：** 选定下一 Primary（非默认开新 MAT）。
+
+### 2026-09-19 - MAT-F06 S01–S04：MIC / `.memi` 落地（待手验）
+- **S01：** `MaterialInstance` `ME_CLASS`；`ResolveParentMaterial`；MID `Create` 去 RTTI。
+- **S02–S03：** `.memi` 序列化 Parent + 覆盖向量；Loader + Registry；`material-ir` 往返单测。
+- **S04：** CB Create Material Instance；Inspector 改 scalar 并 Save；材质槽按 `MaterialInterface` 列 Material + Instance。
+- **验证：** `minEngineTests.exe test material-ir`；Editor 已编过。**收口：** 维护者合并收口 → Done。
+
+### 2026-09-18 - MAT-F05 Done；开 MAT-F06 Design
+- **F05：** MID::Create；复用 Instance Proxy；多帧 Set smoke；README 用法。
+- **遗留：** Create 内 `dynamic_cast` → **F06**（ME_CLASS + ResolveParentMaterial）。
+- **F06：** [MIC Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) Review（`.memi` / CB / 反射）。
+
+### 2026-09-18 - MAT-F05：MaterialInstanceDynamic
+- **代码：** `MID : MaterialInstance`；`Create(Interface)`（D1 落到 Base Material）；复用 Instance Proxy。
+- **测试：** 多帧 Set + Parent 未污；可从 MI 创建。
+- **Next：** 手验挂 Mesh → Done → F06。
+
+### 2026-09-18 - MAT-F04 Done
+- Instance + InstanceProxy；BindingSet 上收基类；`mat_apply_instance`；`material-ir` override smoke。
+- Editor 手验通过。Next：MAT-F05 MID。
+
+### 2026-09-18 - MAT-F04：MaterialInstance + Instance Proxy
+- **代码：** `MaterialInstance` / `InstanceMaterialRenderProxy`；BindingSet/UBO 上收 `MaterialRenderProxy`；Parent compile generation 同步。
+- **测试：** `material-ir` 含 instance override smoke（Parent 不被改；双 Instance 异值）。
+- **手验：** `mat_apply_instance <GO> <ScalarParam> <Value>`。
+- **Next：** 双 Mesh 画面确认 → Done → F05 MID。
+
+### 2026-09-18 - MAT-F02/F03 Done
+- **F02：** Draw 经 MaterialRenderProxy；BindingSet 在 Bind 后刷新。Editor 手验可画。
+- **F03：** `MaterialInterface : Asset`，`Material` 继承之；网格槽为 Interface。反射 gen 链入后父类与槽位可解析。场景 GUID 引用未改资产。
+- **Next：** MAT-F04 MaterialInstance。
+
+### 2026-09-18 - MAT-F03：MaterialInterface 单继承
+- **约束：** 反射拒绝双 super；`MaterialInterface : Asset`，`Material` 继承之。
+- **代码：** 组件材质槽 `shared_ptr<MaterialInterface>`；Draw 仍只经 `GetRenderProxy()`。
+- **验证：** `cmake --build build --target Editor` OK。
+- **Next：** 手验关卡材质。
+
+### 2026-09-18 - MAT-F02 实现：MaterialRenderProxy（待手验）
+- **代码：** `MaterialRenderProxy` + `DefaultMaterialRenderProxy`；BindingSet/UBO 在 Proxy；MDC/SceneProxy/Draw 经 `m_MaterialProxy`；删除 `Material::BindForDraw`。
+- **验证：** `cmake --build build --target minEngineTests Editor`；`minEngineTests.exe test material-ir` / `render-graph` **PASSED**（cwd=`minEngine/bin`）。
+- **Next：** 维护者手验场景/材质参数 → Done → commit → F03。
+
+### 2026-09-18 - MaterialRenderProxy 栖息地澄清 + F05 详设
+- **澄清：** MaterialRenderProxy **由 Material/MI 拥有**，SceneProxy/MDC 仅裸指针引用；**不是** RenderScene 里与 Primitive SceneProxy 同类的对象（已写入 F02 §3.7、路线图类型表）。
+- **F05：** [MID Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) 展开为 Review 详设（工厂、寿命、切片、与 F06 边界）；Registry → Review。
+- **Next：** 审批 F02（及 D7/D8）→ S01；F05 原则可先认可，实施等 F04。
+
+### 2026-09-18 - MAT-F02/F03/F04 按 UE 完善（待审批）
+- **F02：** GPU BindingSet/UBO **迁 Proxy**（D7）；虚 `Get*ParameterValue*`（D8）；`FDefaultMaterialInstance` 对照；F04 预留契约；Compile→Invalidate。
+- **F03/F04/F05：** Interface 最小集；Instance Proxy 同构 `FMaterialInstanceResource`；MID 复用存储。
+- **Review：** 见会话 design-review 报告；**等维护者审批 F02（及 D7/D8）** 后 S01。
+- **未改代码。**
+
+### 2026-09-18 - MAT 路线图修订：Proxy 先行 + F02 详设
+- **决策：** 否决「Interface 首刀、Proxy 殿后」；**无 Proxy 则 Interface/MI 为空中楼阁**。
+- **重排：** F02=Proxy → F03=Interface → F04=MI → F05=MID → F06=MIC；删除旧错位 Design 文件。
+- **F02 详设：** [MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md)。
+- **Next：** 完善后审批 → S01。
+
+### 2026-09-18 - MAT 运行时产品化：F01 路线图 + F02–F05 Design（初版，顺序已修订）
+- **F01：** [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) Status In Progress。
+- **登记：** F02–F06；旧 MI 窄 Design → Superseded 指针页。
+- **注：** 初版曾以 Interface 为 F02；同日修订为 Proxy 先行（见上条）。
+
+### 2026-09-18 - MAT-F01 Design Review：UE 式 Interface + Material + MI
+- **文档：** [MAT-F01](./Render/Material/MAT-F01_MATERIAL_INSTANCE_DESIGN.md) 重写；Registry/ACTIVE_WORK → **Review**。
+- **要点：** draw 认 `MaterialInterface*`；Material=图+编译；Instance=Parent+覆盖；`.memi` 二期。
+- **Next：** 维护者审批（Parent 链 / 组件 shared_ptr / `.memi` Out）后 S01。
+
+### 2026-09-18 - RND-F17 Done：ViewId+SRT 物理缓存隔离（`feat/render`）
+- **代码：** `SceneViewport` 发号；`SceneDrawDesc::ViewId`；`RenderGraph` per-view `m_ViewPhysicalCaches` + `SetActiveViewKey`；`ForwardRenderer`/`ManualRenderer` 拒 `ViewId==0`；CB Scene3D 重开。
+- **验证：** `cmake --build build --target minEngineTests Editor`；`minEngineTests.exe test render-graph` **7/7**（含双 ViewKey 同尺寸异纹理用例）。
+- **文档：** Design/Registry/TD-027 → Done；ACTIVE_WORK 下一刀 MAT-F01 / 手验。
+- **手验待确认：** Level+Material Preview；CB Material/Mesh 缩略图。
+- **Next：** 手验后准备 commit；或开 MAT-F01。
+
+### 2026-09-18 - RND-F17 Design 定稿待批（ViewId + SRT*）
+- **方案：** 单 ForwardRenderer + F07 图内分配；`SetupAttachments` 物理复用键 = **ViewId ∧ SceneRenderTarget*** + dims/format；不一致 fail-closed。
+- **Out：** 多长寿 Renderer；整帧外置 RT 双轨；纯 Manual 缩略图旁路。
+- **Status：** Design / Registry / ACTIVE_WORK → **Review**；**等维护者审批**后 S01。
+- **未改代码。**
+
+### 2026-09-18 - RND-F06 文档收口；登记 RND-F17 / MAT-F01（`feat/render`）
+- **F06：** Design / Registry / ACTIVE_WORK → **Done**（代码早已无 `class RenderPipeline`；S03 记 `RenderPipeline/` 目录名为历史路径）。
+- **登记：** `RND-F17` Isolated preview / multi-view draw scheduling（吸收 TD-027 / 0.1.0 IsoRT）；`MAT-F01` MaterialInstance（空壳类 → Planned Design）。
+- **Next：** 对照 UE/Godot/Unity 讨论 F17 方向后拍板 Design；再 Pre-flight。
+- **验证：** 文档收口（无新代码）。
 
 ### 2026-09-17 - 工作流补全：外部源码 + 主动 commit 草稿 + design-review skill
 - **内容：** mentor / git-commit-mentor：登记 `D:/Dev/GitRepo/UnrealEngine` 与 `D:/Dev/GitRepo/Godot`；参考 UE/Godot 时默认读源码；交付批次收口后**主动草拟** commit（不等用户再说准备 commit）。

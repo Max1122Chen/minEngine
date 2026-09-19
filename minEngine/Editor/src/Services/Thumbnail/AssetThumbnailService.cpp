@@ -81,10 +81,15 @@ namespace minEngine
 
     ThumbnailBackendKind AssetThumbnailService::ResolveBackendKind(const AssetMeta& meta) const
     {
-        // TD-027: Scene3D thumbnails disabled — do not SubmitSceneDraw via main RenderSystem.
         if (meta.AssetType == "Texture2D")
         {
             return ThumbnailBackendKind::Texture2DDirect;
+        }
+
+        // RND-F17: Scene3D thumbnails safe when RDG physical caches are keyed by ViewId+SRT.
+        if (meta.AssetType == "Material" || meta.AssetType == "StaticMesh")
+        {
+            return ThumbnailBackendKind::Scene3D;
         }
 
         return ThumbnailBackendKind::None;

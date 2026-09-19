@@ -1,10 +1,10 @@
 # Bootstrap Digest (read in under 2 min)
 
-Last updated: 2026-09-17  
+Last updated: 2026-09-19  
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** `master` -- Phase P (0.1.0 parallel). Prefab / Lua Dynamic / Profiler harness landed. Primary next: ED-F11 remainder or ED-F10 / Prefab follow-ups -- see [ACTIVE_WORK.md](./ACTIVE_WORK.md). IDs: [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md). Window: [ENGINE_0_1_0_ROADMAP.md](./ENGINE_0_1_0_ROADMAP.md).
+**Snapshot:** Phase P. **`RND-F17` Done.** **`MAT-F01`–`F06` Done**（运行时产品化主链）。See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
 ---
 

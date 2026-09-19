@@ -5,8 +5,12 @@
 #include "DebugCommand/DebugCommandResult.h"
 #include "PropertyPath/PropertyPath.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
+#include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/MaterialInstance.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Services/Scene/SceneEditorServices.h"
 #include "Shell/Document/EditorDocumentHost.h"
@@ -578,6 +582,134 @@ namespace minEngine
             builder.NewLine();
             return builder.BuildOk("moved");
         }
+
+        static DebugCommand::DebugCommandResult ExecuteMatApplyInstance(
+            const DebugCommand::DebugCommandContext& context,
+            const std::vector<std::string>& args)
+        {
+            if (args.size() < 3)
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(
+                    DebugCommand::DebugCommandOutputKind::Error,
+                    "Error: mat_apply_instance requires <GOName> <ScalarParam> <Value>.");
+                return builder.BuildError("missing arguments");
+            }
+
+            IEditorContext* editorContext = nullptr;
+            SceneEditor* sceneEditor = nullptr;
+            if (!ResolveEditorScene(context, editorContext, sceneEditor))
+            {
+                return editorContext == nullptr ? MissingEditor() : MissingScene();
+            }
+
+            GameObject* gameObject = FindUniqueGameObjectByName(context.ActiveScene, args[0]);
+            if (gameObject == nullptr)
+            {
+                return GameObjectLookupError(context.ActiveScene, args[0]);
+            }
+
+            char* end = nullptr;
+            const float scalarValue = std::strtof(args[2].c_str(), &end);
+            if (end == args[2].c_str() || *end != '\0')
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(
+                    DebugCommand::DebugCommandOutputKind::Error,
+                    "Error: Value must be a float.");
+                return builder.BuildError("invalid value");
+            }
+
+            StaticMeshComponent* staticMesh = nullptr;
+            SkeletalMeshComponent* skeletalMesh = nullptr;
+            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            {
+                if (!component)
+                {
+                    continue;
+                }
+                if (staticMesh == nullptr)
+                {
+                    staticMesh = dynamic_cast<StaticMeshComponent*>(component.get());
+                }
+                if (skeletalMesh == nullptr)
+                {
+                    skeletalMesh = dynamic_cast<SkeletalMeshComponent*>(component.get());
+                }
+            }
+
+            std::shared_ptr<MaterialInterface> currentMaterial;
+            if (staticMesh != nullptr)
+            {
+                currentMaterial = staticMesh->GetMaterialShared();
+            }
+            else if (skeletalMesh != nullptr)
+            {
+                currentMaterial = skeletalMesh->GetMaterialShared();
+            }
+            else
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(
+                    DebugCommand::DebugCommandOutputKind::Error,
+                    "Error: GameObject has no StaticMeshComponent or SkeletalMeshComponent.");
+                return builder.BuildError("no mesh component");
+            }
+
+            if (!currentMaterial)
+            {
+                DebugCommand::DebugCommandOutputBuilder builder;
+                builder.AddLine(
+                    DebugCommand::DebugCommandOutputKind::Error,
+                    "Error: mesh component has no material assigned.");
+                return builder.BuildError("no material");
+            }
+
+            std::shared_ptr<MaterialInstance> instance =
+                std::dynamic_pointer_cast<MaterialInstance>(currentMaterial);
+            if (!instance)
+            {
+                std::shared_ptr<Material> parent = std::dynamic_pointer_cast<Material>(currentMaterial);
+                if (!parent)
+                {
+                    DebugCommand::DebugCommandOutputBuilder builder;
+                    builder.AddLine(
+                        DebugCommand::DebugCommandOutputKind::Error,
+                        "Error: material slot is not a Material or MaterialInstance.");
+                    return builder.BuildError("unsupported material type");
+                }
+
+                instance = MaterialInstance::Create(parent);
+                if (!instance)
+                {
+                    DebugCommand::DebugCommandOutputBuilder builder;
+                    builder.AddLine(
+                        DebugCommand::DebugCommandOutputKind::Error,
+                        "Error: failed to create MaterialInstance.");
+                    return builder.BuildError("create failed");
+                }
+
+                if (staticMesh != nullptr)
+                {
+                    staticMesh->SetMaterial(instance);
+                }
+                else
+                {
+                    skeletalMesh->SetMaterial(instance);
+                }
+            }
+
+            instance->SetScalarParameter(args[1], scalarValue);
+
+            DebugCommand::DebugCommandOutputBuilder builder;
+            builder.AddSegment(DebugCommand::DebugCommandOutputKind::Path, args[0]);
+            builder.AddSegment(DebugCommand::DebugCommandOutputKind::Muted, " MaterialInstance.");
+            builder.AddSegment(DebugCommand::DebugCommandOutputKind::ListItemMeta, args[1]);
+            builder.AddSegment(DebugCommand::DebugCommandOutputKind::Muted, "=");
+            builder.AddSegment(DebugCommand::DebugCommandOutputKind::ValueLiteral, args[2]);
+            builder.NewLine();
+            return builder.BuildOk("applied");
+        }
     };
 
     void EditorSceneDebugCommands::Register()
@@ -674,5 +806,23 @@ namespace minEngine
         };
         moveComp.Execute = EditorSceneDebugCommandsImpl::ExecuteMoveComp;
         registry.Register(std::move(moveComp));
+
+        DebugCommand::DebugCommandDescriptor matApplyInstance;
+        matApplyInstance.Id = "mat_apply_instance";
+        matApplyInstance.Domain = "Material";
+        matApplyInstance.DisplayName = "mat_apply_instance";
+        matApplyInstance.Description =
+            "Wrap mesh material in MaterialInstance (or reuse) and set a scalar override";
+        matApplyInstance.Scope = DebugCommand::DebugCommandScope::Editor;
+        matApplyInstance.Args = {
+            DebugCommand::DebugCommandArgDescriptor{
+                "GameObjectName", DebugCommand::DebugCommandArgType::ObjectRef, true, "Mesh owner"},
+            DebugCommand::DebugCommandArgDescriptor{
+                "ScalarParam", DebugCommand::DebugCommandArgType::String, true, "Parameter name"},
+            DebugCommand::DebugCommandArgDescriptor{
+                "Value", DebugCommand::DebugCommandArgType::Float, true, "Override value"},
+        };
+        matApplyInstance.Execute = EditorSceneDebugCommandsImpl::ExecuteMatApplyInstance;
+        registry.Register(std::move(matApplyInstance));
     }
 }

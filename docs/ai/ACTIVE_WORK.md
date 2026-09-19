@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（`feat/mcp`：MCP-F04 Done）  
+Last updated: 2026-09-19（`feat/mcp`：合入 feat/render Material；MCP-F04 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -22,7 +22,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 4 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
 | 5 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 
-**下一刀：** 候选见 Progress；默认建议 Material/Anim 图编辑原语（打开已有，改图另开 Feature）。余量：Create Prefab、Play、Console、字面量→void*。
+**下一刀：** 打开 Material EditorServices / Anim graph automation Design（MAT runtime F01–F06 已合入）。余量：Create Prefab、Play、Console、字面量→void*。
 
 **参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
 
@@ -32,8 +32,10 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|-----|------|
 | editor | `ED-F11` | Tab Host 余量（可选） |
 | editor | **`ED-F18`** | Done（`SceneEditorServices` 原语） |
-| — | Prefab 后置 | Nested / Apply→Prefab / Instantiate 偏移 / 蓝字 |
+| — | Prefab 后置 | Nested / Apply→Prefab / Instantiate 偏移 / 蓝字；并排预览可消费 RND-F17 |
 | — | `ED-F10` | EditorSettings 占位 |
+| material | **`MAT-F01`–`F06`** | Done（运行时产品化主链，含 `.memi`） |
+| render | **`RND-F17`** | Done（ViewId+SRT） |
 
 ### 本波已合入 master（勿再当 WIP）
 
@@ -70,8 +72,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|------|------|
 | `WF-F02` | In Progress | handbook 子系统文档按需 |
 | `ED-F01` | In Progress | VK 阴影质量 **Deferred**；勿当主航道 |
-| `RND-F06` | In Progress | S01–S02 Done |
-| Open TD | Medium | TD-004/005/023/024/027/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md) |
+| `RND-F17` | **Done** | ViewId+SRT；TD-027 Done |
+| `MAT-F01`–`F06` | **Done** | 运行时产品化主链（含 `.memi`） |
+| Open TD | Medium | TD-004/005/023/024/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md)（TD-027 Done） |
 
 ---
 

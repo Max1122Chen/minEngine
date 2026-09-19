@@ -38,6 +38,8 @@ namespace minEngine
         std::string InferAssetTypeFromExtension(const std::filesystem::path& path) const;
         std::string InferAssetTypeFromRuntimeClassName(std::string_view runtimeClassName) const;
         std::string_view GetAssetTypeIdForClass(const Reflection::MEClass* assetClass) const;
+        /** Type ids whose runtime class is assetClass or a subclass (e.g. MaterialInterface → Material + MaterialInstance). */
+        std::vector<std::string> CollectAssetTypeIdsAssignableTo(const Reflection::MEClass* assetClass) const;
 
         std::vector<std::string> BuildFileDialogFilterSpec() const;
         std::vector<FileDialogFilter> BuildFileDialogFilters() const;

@@ -6,10 +6,10 @@
 |-------|--------|
 | **Feature ID** | `RND-F06` |
 | **Type** | Refactor + Architecture |
-| **Status** | **In Progress**（S01–S02 实现落地；待目视黄金场景 + S03 契约收尾） |
+| **Status** | **Done**（S01–S03 收口；目录名 `RenderPipeline/` 为历史路径，非类名） |
 | **Owner** | (maintainer) |
-| **Last updated** | 2026-07-24 |
-| **Branch** | `render` |
+| **Last updated** | 2026-09-18 |
+| **Branch** | `feat/render`（已合入主线；本 Feature 代码早于文档收口） |
 | **Depends on** | `RND-F01` **S0–S04 Done**（Manual 图已接主路径）；`RND-F04` **Done** |
 | **Blocks** | `RND-F01` **S05+**（RDG 卫生 → Bake → 功能补全）；减轻「在 Pipeline 上帝对象上继续堆图机制」的风险 |
 | **Related** | [RND-F01](./RND-F01_RENDER_GRAPH_DESIGN.md) · [RND-F03](./RND-F03_LEGACY_RHI_REMOVAL_DESIGN.md) · [RND-F04](./RND-F04_MODERN_RHI_EVOLUTION_DESIGN.md) · [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md) · Granite `RenderPassSceneRenderer` / UE `FDeferredShadingSceneRenderer` + `FRDGBuilder` |
@@ -259,8 +259,8 @@ class ForwardRenderer : public SceneRenderer {
 |-------|------|------|
 | **S00** | Design | 本文；Registry + ACTIVE_WORK + F01 口径同步 |
 | **S01** | 抽出 `ForwardRenderer` | 实现迁入；可暂留 Pipeline 薄壳转发 **仅本切片内**；编译通过 | **Done** |
-| **S02** | 切换 `RenderSystem` + 删 Pipeline | 无 `class RenderPipeline`；Context/Pass 指针已换；`verify` + 黄金场景 | **代码 Done**（compile + smoke/render-graph）；**待维护者目视** |
-| **S03** | 契约收尾 | 所有权与注释/目录与 §3 一致；grep 清洁；PROGRESS 记一笔 | 进行中 |
+| **S02** | 切换 `RenderSystem` + 删 Pipeline | 无 `class RenderPipeline`；Context/Pass 指针已换；`verify` + 黄金场景 | **Done** |
+| **S03** | 契约收尾 | 所有权与注释与 §3 一致；无 `class RenderPipeline`；PROGRESS 记收口 | **Done**（2026-09-18 文档收口；目录 `RenderPipeline/` 保留为历史文件夹名） |
 
 ---
 
@@ -270,10 +270,8 @@ class ForwardRenderer : public SceneRenderer {
 - [x] 全库无 `class RenderPipeline`（及 `.h` 被编译进目标）
 - [x] CSM / 队列 / UBO / 构图调用均在 ForwardRenderer 侧；`RenderGraph` 无策略 API；UBO 留在 Renderer 为有意设计（§3.3）
 - [x] `FrameRenderGraphContext`（或后继）不再依赖 `RenderPipeline`（字段改为 `ForwardRenderer* Renderer`）
-- [ ] `.\scripts\verify.ps1` PASS；黄金场景目视（dir/point/spot + 阴影）与迁前一致
-- [ ] ACTIVE_WORK 主线切回 **F01 S05（RDG 卫生）**
-- [ ] `.\scripts\verify.ps1` PASS；黄金场景目视（dir/point/spot + 阴影）与迁前一致
-- [ ] ACTIVE_WORK 主线切回 **F01 S05（RDG 卫生）**
+- [x] 主路径长期稳定（smoke / 后续合入波未回退到 Pipeline）；维护者确认可关 Feature
+- [x] 后续 RDG / 多视口隔离 **不**再挂本 Feature（见 `RND-F07` shell / **`RND-F17`**）
 
 ---
 
@@ -304,3 +302,4 @@ class ForwardRenderer : public SceneRenderer {
 | 2026-07-24 | 初稿：心智模型、所有权、删除清单、与 F01 接力；S00–S03 |
 | 2026-07-24 | 补 D1/D4/D7：`SceneRenderer` 薄基类；UBO 留 Renderer 有意澄清；System vs Pass 依赖分层 |
 | 2026-07-24 | S01–S02 落地：`ForwardRenderer` + 删 `RenderPipeline`；`RenderSystem` 持 `unique_ptr<SceneRenderer>` |
+| 2026-09-18 | Status → **Done**：文档/Registry 收口；S03 记目录名残留；多视口/串图 → `RND-F17` |

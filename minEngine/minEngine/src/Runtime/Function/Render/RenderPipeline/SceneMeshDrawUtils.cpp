@@ -3,7 +3,7 @@
 #include "Runtime/Function/Render/EnginePipelineLayouts.h"
 #include "Runtime/Function/Render/EngineSceneBindingSets.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
-#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/MaterialRenderProxy.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompileTypes.h"
 #include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
@@ -27,15 +27,15 @@ namespace minEngine
             MeshDrawPacket& packet = outPackets[drawIndex];
             packet = {};
 
-            Material* material = drawCommand.m_Material;
-            if (!material || !material->IsCompiledForDraw() || !drawCommand.m_VertexInputLayout)
+            MaterialRenderProxy* materialProxy = drawCommand.m_MaterialProxy;
+            if (!materialProxy || !materialProxy->IsCompiledForDraw() || !drawCommand.m_VertexInputLayout)
             {
                 continue;
             }
 
             RHIShader* shader = drawCommand.m_bSkinned
-                ? material->GetGPUShaderSkinned()
-                : material->GetGPUShader();
+                ? materialProxy->GetGPUShaderSkinned()
+                : materialProxy->GetGPUShader();
             if (!shader)
             {
                 continue;
@@ -44,13 +44,13 @@ namespace minEngine
             packet.PipelineState = pipeline.GetPipelineLayouts().GetOrCreateSceneMeshGraphicsPipelineState(
                 cmdList,
                 pipeline.GetSceneBindings(),
-                material->GetMaterialShaderBindingSetLayout(),
+                materialProxy->GetMaterialShaderBindingSetLayout(),
                 shader,
                 drawCommand.m_VertexInputLayout,
                 passKind);
             packet.VertexBuffer = drawCommand.m_VertexBuffer;
             packet.IndexBuffer = drawCommand.m_IndexBuffer;
-            packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = material->GetMaterialShaderBindingSet();
+            packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = materialProxy->GetMaterialShaderBindingSet();
         }
     }
 
@@ -67,7 +67,7 @@ namespace minEngine
 
         EngineSceneBindingSets& sceneBindings = pipeline.GetSceneBindings();
 
-        for (size_t drawIndex = 0; drawIndex < drawCommands.size(); ++drawIndex)
+        for (size_t drawIndex = 0; drawIndex < drawPackets.size(); ++drawIndex)
         {
             MeshDrawPacket& packet = drawPackets[drawIndex];
             if (!packet.PipelineState)
@@ -76,8 +76,8 @@ namespace minEngine
             }
 
             const MeshDrawCommand& drawCommand = drawCommands[drawIndex];
-            Material* material = drawCommand.m_Material;
-            if (!material || !drawCommand.m_VertexBuffer)
+            MaterialRenderProxy* materialProxy = drawCommand.m_MaterialProxy;
+            if (!materialProxy || !drawCommand.m_VertexBuffer)
             {
                 continue;
             }
@@ -96,7 +96,9 @@ namespace minEngine
             // Pipeline layout always has set 1; leave it unbound and some drivers drop the draw.
             packet.ShaderBindingSets[EngineShaderBindings::kSetShadowIBL] = sceneBindings.GetSceneSet1();
 
-            material->BindForDraw(cmdList);
+            // BindForDraw may recreate the material binding set; refresh the packet pointer after.
+            materialProxy->BindForDraw(cmdList);
+            packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = materialProxy->GetMaterialShaderBindingSet();
             cmdList.SubmitMeshDrawPacket(packet);
         }
     }

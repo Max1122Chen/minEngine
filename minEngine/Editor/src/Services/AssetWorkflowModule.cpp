@@ -19,6 +19,7 @@
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/MaterialInstance.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
@@ -117,6 +118,10 @@ namespace minEngine
             }
         }
         ImGui::Text("Guid: %s", selected->Guid.ToString().c_str());
+        if (selected->AssetType == "MaterialInstance")
+        {
+            m_Owner.DrawMaterialInstanceInspector(*selected);
+        }
         ImGui::End();
     }
 
@@ -315,6 +320,25 @@ namespace minEngine
         if (!m_Context)
         {
             return false;
+        }
+
+        if (meta.AssetType == "MaterialInstance")
+        {
+            if (!AssetManager::HasInstance())
+            {
+                return false;
+            }
+
+            const std::shared_ptr<MaterialInstance> instance =
+                AssetManager::Get().LoadAsset<MaterialInstance>(meta.AssetPath);
+            if (!instance)
+            {
+                ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to load material instance '{}'.", meta.AssetPath);
+                return false;
+            }
+
+            SetSelectedAsset(&meta);
+            return true;
         }
 
         const bool openingMaterial = meta.AssetType == "Material";
@@ -536,6 +560,85 @@ namespace minEngine
 
                 SetSelectedAsset(meta);
             });
+    }
+
+    bool AssetWorkflowModule::TryCreateMaterialInstanceInDirectory(std::string_view directoryRel)
+    {
+        if (!m_Context || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const std::string directory = std::string(directoryRel);
+        const std::shared_ptr<MaterialInstance> created =
+            AssetManager::Get().CreateAsset<MaterialInstance>("NewMaterialInstance", directory);
+        if (!created)
+        {
+            return false;
+        }
+
+        const AssetMeta* createdMeta = AssetManager::Get().FindAssetMetaByGuid(created->GetGuid());
+        if (createdMeta == nullptr)
+        {
+            ME_LOG(LogEditor, Warn, "AssetWorkflow: created material instance has no registry meta.");
+            return false;
+        }
+
+        RefreshContentBrowser();
+        SetSelectedAsset(createdMeta);
+        return true;
+    }
+
+    void AssetWorkflowModule::DrawMaterialInstanceInspector(const AssetMeta& meta)
+    {
+        if (!AssetManager::HasInstance())
+        {
+            return;
+        }
+
+        const std::shared_ptr<MaterialInstance> instance =
+            AssetManager::Get().LoadAsset<MaterialInstance>(meta.AssetPath);
+        if (!instance)
+        {
+            ImGui::TextUnformatted("Failed to load material instance.");
+            return;
+        }
+
+        const Material* parent = instance->GetParent();
+        ImGui::Separator();
+        ImGui::Text("Parent: %s", parent != nullptr ? parent->GetName().c_str() : "(none)");
+        ImGui::TextUnformatted("Scalar overrides");
+
+        for (const MaterialScalarOverrideEntry& entry : instance->GetScalarOverrides())
+        {
+            float value = entry.Value;
+            ImGui::PushID(entry.ParameterName.c_str());
+            if (ImGui::DragFloat(entry.ParameterName.c_str(), &value, 0.01f))
+            {
+                instance->SetScalarParameter(entry.ParameterName, value);
+            }
+            ImGui::PopID();
+        }
+
+        ImGui::InputText("New param", m_NewMicOverrideName, sizeof(m_NewMicOverrideName));
+        ImGui::DragFloat("New value", &m_NewMicOverrideValue, 0.01f);
+        if (ImGui::Button("Add override") && m_NewMicOverrideName[0] != '\0')
+        {
+            instance->SetScalarParameter(m_NewMicOverrideName, m_NewMicOverrideValue);
+            m_NewMicOverrideName[0] = '\0';
+        }
+
+        if (ImGui::Button("Save"))
+        {
+            if (!AssetManager::Get().SaveAsset(meta.AssetPath, *instance))
+            {
+                ME_LOG(LogEditor, Error, "AssetWorkflow: failed to save material instance '{}'.", meta.AssetPath);
+            }
+            else
+            {
+                ME_LOG(LogEditor, Info, "AssetWorkflow: saved material instance '{}'.", meta.AssetPath);
+            }
+        }
     }
 
     bool AssetWorkflowModule::TryRequestExit(IEditorContext& context)

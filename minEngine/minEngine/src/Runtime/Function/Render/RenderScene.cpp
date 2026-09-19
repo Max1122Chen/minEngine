@@ -5,6 +5,7 @@
 #include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
 #include "Runtime/Function/Framework/Components/SpriteComponent.h"
 #include "Runtime/Function/Render/StaticMesh.h"
+#include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/SkeletalMeshSceneProxy.h"
@@ -64,7 +65,8 @@ namespace minEngine
                         staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexInputLayout.get() : nullptr;
                     staticMeshProxy->m_IndexBuffer =
                         staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_IndexBuffer.get() : nullptr;
-                    staticMeshProxy->m_Material = staticMeshComp->GetMaterial();
+                    staticMeshProxy->m_MaterialProxy =
+                        staticMeshComp->GetMaterial() ? staticMeshComp->GetMaterial()->GetRenderProxy() : nullptr;
                 }
             }
             else if (SkeletalMeshComponent* skeletalMeshComp =

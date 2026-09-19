@@ -22,6 +22,7 @@
 #include "Runtime/Function/Animation/Skeleton.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/MaterialInstance.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Resource/LuaScript.h"
 #include "Runtime/Resource/AudioClip.h"
@@ -1520,13 +1521,16 @@ namespace minEngine
 
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasByClass(const Reflection::MEClass* assetClass) const
     {
-        const std::string_view assetTypeId = AssetTypeRegistry::Get().GetAssetTypeIdForClass(assetClass);
-        if (assetTypeId.empty())
+        const std::vector<std::string> typeIds =
+            AssetTypeRegistry::Get().CollectAssetTypeIdsAssignableTo(assetClass);
+        std::vector<const AssetMeta*> result;
+        for (const std::string& typeId : typeIds)
         {
-            return {};
+            const std::vector<const AssetMeta*> metas = FindAssetMetasByType(typeId);
+            result.insert(result.end(), metas.begin(), metas.end());
         }
 
-        return FindAssetMetasByType(std::string(assetTypeId));
+        return result;
     }
 
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasByRuntimeClass(
@@ -1906,6 +1910,13 @@ namespace minEngine
             meta, outErrorMessage, "failed to load material by guid");
     }
 
+    std::shared_ptr<Asset> AssetManager::LoadHandler_MaterialInstance(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<MaterialInstance>(
+            meta, outErrorMessage, "failed to load material instance by guid");
+    }
+
     std::shared_ptr<Asset> AssetManager::LoadHandler_Font(
         AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
     {
@@ -1974,6 +1985,35 @@ namespace minEngine
                           absoluteAssetPath,
                           result.message,
                           result.fieldPath);
+            return false;
+        }
+
+        return true;
+    }
+
+    template<>
+    bool AssetManager::SaveAsset_Impl<MaterialInstance>(
+        const AssetMeta& meta, const MaterialInstance& asset) const
+    {
+        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
+
+        Serialization::JsonWriterArchive archive;
+        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
+            absoluteAssetPath,
+            &asset,
+            archive,
+            Serialization::SerializerOptions{
+                .enumAsString = true,
+                .strictTypeCheck = false,
+                .skipUnknownField = false});
+
+        if (!result.ok)
+        {
+            ME_LOG(LogAsset, Error,
+                "Failed to serialize material instance '{}'. Error: {}. Field path: {}",
+                absoluteAssetPath,
+                result.message,
+                result.fieldPath);
             return false;
         }
 
@@ -2350,6 +2390,95 @@ namespace minEngine
         CacheCreatedAsset(meta.AssetPath, material);
         return material;
     }
+
+    template<>
+    std::shared_ptr<MaterialInstance> AssetManager::CreateAsset<MaterialInstance>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        std::shared_ptr<Material> parent;
+        if (const AssetMeta* defaultMeta = FindAssetMetaByPath("Materials/DefaultMaterial.memtl"))
+        {
+            parent = LoadAsset<Material>(defaultMeta->AssetPath);
+        }
+        if (!parent)
+        {
+            const std::vector<const AssetMeta*> materials = FindAssetMetasByType("Material");
+            for (const AssetMeta* materialMeta : materials)
+            {
+                if (materialMeta == nullptr)
+                {
+                    continue;
+                }
+                parent = LoadAsset<Material>(materialMeta->AssetPath);
+                if (parent)
+                {
+                    break;
+                }
+            }
+        }
+        if (!parent)
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<MaterialInstance>: no Material parent available.");
+            return nullptr;
+        }
+
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".memi");
+        if (relativePath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<MaterialInstance>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_LOG(LogAsset, Error,
+                "CreateAsset<MaterialInstance>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string instanceName = absolutePath.stem().string();
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<MaterialInstance> instance = NewObject<MaterialInstance>(instanceName, nullptr, assetGuid);
+        if (!instance->InitializeParent(parent))
+        {
+            return nullptr;
+        }
+
+        AssetMeta writeMeta;
+        writeMeta.AssetName = instanceName;
+        writeMeta.AssetPath = relativePath;
+        writeMeta.AssetType = "MaterialInstance";
+        writeMeta.Guid = assetGuid;
+        if (!SaveAsset_Impl<MaterialInstance>(writeMeta, *instance))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "MaterialInstance", &assetGuid);
+        if (meta.AssetPath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<MaterialInstance>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+        instance->SetMeta(const_cast<AssetMeta*>(FindAssetMetaByGuid(assetGuid)));
+        ME_LOG(LogAsset, Info, "CreateAsset<MaterialInstance>: created '{}'.", meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, instance);
+        return instance;
+    }
+
     template<>
     bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const
     {

@@ -5,7 +5,7 @@
 
 namespace minEngine
 {
-    class Material;
+    class MaterialRenderProxy;
     class RHIBuffer;
     class RHIVertexInputLayout;
 
@@ -36,7 +36,7 @@ namespace minEngine
         RHIVertexInputLayout* m_VertexInputLayout = nullptr;
         RHIBuffer* m_IndexBuffer = nullptr;
 
-        Material* m_Material = nullptr;
+        MaterialRenderProxy* m_MaterialProxy = nullptr;
 
         Matrix4 m_ModelMatrix;
         Math::Geometry::AABB m_BoundingBox;

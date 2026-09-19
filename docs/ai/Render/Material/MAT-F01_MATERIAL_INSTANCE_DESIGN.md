@@ -1,0 +1,12 @@
+# MAT-F01 — (superseded narrow MaterialInstance Design)
+
+## Meta
+- **Status:** Superseded
+- **Last updated:** 2026-09-18
+
+本文件原为「仅 MaterialInstance」窄方案，已作废。
+
+- **路线图：** [MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md](./MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md)
+- **首刀（Proxy）：** [MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md](./MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md)
+- **Interface：** [MAT-F03_MATERIAL_INTERFACE_DESIGN.md](./MAT-F03_MATERIAL_INTERFACE_DESIGN.md)
+- **Instance：** [MAT-F04_MATERIAL_INSTANCE_DESIGN.md](./MAT-F04_MATERIAL_INSTANCE_DESIGN.md)
