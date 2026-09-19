@@ -23,6 +23,7 @@ namespace minEngine
         InstantiatePrefabAsChild,
         RemoveComponent,
         UnpackAndDeletePrefab,
+        CreateMaterialInstance,
     };
 
     enum class EditorMenuSectionId : uint32_t

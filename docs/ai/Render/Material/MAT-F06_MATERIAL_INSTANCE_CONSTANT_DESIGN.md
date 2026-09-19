@@ -3,9 +3,9 @@
 ## Meta
 - **ID:** MAT-F06
 - **Type:** Feature
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-18
+- **Last updated:** 2026-09-19
 - **Related:**
   - [Roadmap](./MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md)
   - [MAT-F04 MaterialInstance](./MAT-F04_MATERIAL_INSTANCE_DESIGN.md)
@@ -182,11 +182,11 @@ else if (parent->IsA(MaterialInstance::StaticClass()))
 
 ## 6) 验收标准
 
-- [ ] `.memi` 保存/加载后覆盖与 Parent 正确
-- [ ] CB 可创建并打开 MIC；可挂到 Mesh 绘制
-- [ ] `MaterialInstance` 为 `ME_CLASS`；MID `Create` **无** `dynamic_cast`/`dynamic_pointer_cast` 材质分支
-- [ ] 无新 Proxy 类；Draw 仍只问 Instance Proxy
-- [ ] MID 仍默认不序列化为 `.memi`
+- [x] `.memi` 保存/加载后覆盖与 Parent 正确
+- [x] CB 可创建并打开 MIC；可挂到 Mesh 绘制（实现已接；维护者收口合并）
+- [x] `MaterialInstance` 为 `ME_CLASS`；MID `Create` **无** `dynamic_cast`/`dynamic_pointer_cast` 材质分支
+- [x] 无新 Proxy 类；Draw 仍只问 Instance Proxy
+- [x] MID 仍默认不序列化为 `.memi`
 
 **验证建议：** 单测序列化往返；Editor 手验 CB + 场景。
 
@@ -194,7 +194,7 @@ else if (parent->IsA(MaterialInstance::StaticClass()))
 
 ## 7) Status note
 
-**Review** — 详设待审批。依赖 F05 已合入。实现前确认：MIC 是否单独类名、Parent 是否允许 Interface。
+**Done** — S01–S05：`.memi` 资产面 + CB MVP + ME_CLASS / ResolveParentMaterial。后置：专用 Instance 编辑器、Parent=Instance 链。
 
 ---
 
@@ -202,4 +202,7 @@ else if (parent->IsA(MaterialInstance::StaticClass()))
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-19 | **Done / S05：** 文档收口；维护者合并收口 |
+| 2026-09-19 | **S04：** CB 创建 `.memi`；Inspector 改 scalar 覆盖并 Save；材质槽按 `MaterialInterface` 列候选 |
+| 2026-09-18 | **实现开始：** S01 ResolveParentMaterial + ME_CLASS；S02/S03 Loader `.memi` |
 | 2026-09-18 | **初版：** `.memi` / ME_CLASS / 替换 MID RTTI；切片 S01–S05 |

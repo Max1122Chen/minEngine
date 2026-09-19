@@ -8,6 +8,11 @@ namespace minEngine
 {
     MaterialInstance::~MaterialInstance() = default;
 
+    void MaterialInstance::ApplyClassIdentity()
+    {
+        SetClass(MaterialInstance::StaticClass());
+    }
+
     bool MaterialInstance::InitializeParent(std::shared_ptr<Material> parent)
     {
         if (!parent)
@@ -16,6 +21,7 @@ namespace minEngine
         }
 
         m_Parent = std::move(parent);
+        ApplyClassIdentity();
         EnsureRenderProxy();
         return true;
     }
@@ -38,16 +44,71 @@ namespace minEngine
         }
     }
 
+    bool MaterialInstance::TryGetScalarOverride(const std::string& name, float& outValue) const
+    {
+        for (const MaterialScalarOverrideEntry& entry : m_ScalarOverrides)
+        {
+            if (entry.ParameterName == name)
+            {
+                outValue = entry.Value;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool MaterialInstance::TryGetTextureOverride(
+        const std::string& name, std::shared_ptr<Texture2D>& outTexture) const
+    {
+        for (const MaterialTextureOverrideEntry& entry : m_TextureOverrides)
+        {
+            if (entry.ParameterName == name)
+            {
+                outTexture = entry.Value;
+                return true;
+            }
+        }
+        return false;
+    }
+
     void MaterialInstance::SetScalarParameter(const std::string& name, float value)
     {
-        m_ScalarOverrides[name] = value;
+        for (MaterialScalarOverrideEntry& entry : m_ScalarOverrides)
+        {
+            if (entry.ParameterName == name)
+            {
+                entry.Value = value;
+                EnsureRenderProxy();
+                m_RenderProxy->InvalidateParameterBindings();
+                return;
+            }
+        }
+
+        MaterialScalarOverrideEntry entry;
+        entry.ParameterName = name;
+        entry.Value = value;
+        m_ScalarOverrides.push_back(std::move(entry));
         EnsureRenderProxy();
         m_RenderProxy->InvalidateParameterBindings();
     }
 
     void MaterialInstance::SetTextureParameter(const std::string& name, std::shared_ptr<Texture2D> texture)
     {
-        m_TextureOverrides[name] = std::move(texture);
+        for (MaterialTextureOverrideEntry& entry : m_TextureOverrides)
+        {
+            if (entry.ParameterName == name)
+            {
+                entry.Value = std::move(texture);
+                EnsureRenderProxy();
+                m_RenderProxy->InvalidateParameterBindings();
+                return;
+            }
+        }
+
+        MaterialTextureOverrideEntry entry;
+        entry.ParameterName = name;
+        entry.Value = std::move(texture);
+        m_TextureOverrides.push_back(std::move(entry));
         EnsureRenderProxy();
         m_RenderProxy->InvalidateParameterBindings();
     }
@@ -60,5 +121,31 @@ namespace minEngine
     MaterialRenderProxy* MaterialInstance::GetRenderProxy() const
     {
         return m_RenderProxy.get();
+    }
+
+    std::shared_ptr<Material> MaterialInstance::ResolveParentMaterial(
+        const std::shared_ptr<MaterialInterface>& /*self*/) const
+    {
+        return m_Parent;
+    }
+
+    bool MaterialInstance::FinalizeAfterLoad(std::string* outError)
+    {
+        ApplyClassIdentity();
+        if (!m_Parent)
+        {
+            if (outError != nullptr)
+            {
+                *outError = "MaterialInstance has no Parent Material.";
+            }
+            return false;
+        }
+
+        EnsureRenderProxy();
+        if (m_RenderProxy)
+        {
+            m_RenderProxy->InvalidateParameterBindings();
+        }
+        return true;
     }
 }

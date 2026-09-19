@@ -58,6 +58,8 @@ namespace minEngine
 
         Material* GetBaseMaterial() const override { return const_cast<Material*>(this); }
         MaterialRenderProxy* GetRenderProxy() const override { return m_RenderProxy.get(); }
+        std::shared_ptr<Material> ResolveParentMaterial(
+            const std::shared_ptr<MaterialInterface>& self) const override;
 
         bool IsCompiledForDraw() const override
         {

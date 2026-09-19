@@ -26,6 +26,12 @@ namespace minEngine
         EnsureRenderProxy();
     }
 
+    std::shared_ptr<Material> Material::ResolveParentMaterial(
+        const std::shared_ptr<MaterialInterface>& self) const
+    {
+        return std::static_pointer_cast<Material>(self);
+    }
+
     void Material::EnsureRenderProxy()
     {
         if (!m_RenderProxy)

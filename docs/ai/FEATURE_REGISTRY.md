@@ -65,12 +65,12 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
 | `RND-F16` | Sprite / 2D Rendering Foundation（ScreenUI 绘制前置） | **Done** | — | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · 已合入 `master`（feat/ui） |
 | `RND-F17` | Isolated preview / multi-view draw scheduling（CB·Preview·主视口解串图） | **Done** | — | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) · ViewId+SRT；TD-027 Done |
-| `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **In Progress** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
+| `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
 | `MAT-F04` | MaterialInstance（Parent + 覆盖 + Instance Proxy） | **Done** | — | [Design](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
 | `MAT-F05` | MaterialInstanceDynamic | **Done** | — | [Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) |
-| `MAT-F06` | MIC 资产 / Editor（`.memi`） | **Review** | — | [Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) · 依赖 F04/F05 |
+| `MAT-F06` | MIC 资产 / Editor（`.memi`） | **Done** | — | [Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
 | `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **In Progress** *(S00–S02/S04 Done；S03/S05 余量)* | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) |
 | `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |

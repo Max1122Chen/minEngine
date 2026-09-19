@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-18（MAT-F05 Done；F06 Design Review）  
+Last updated: 2026-09-19（MAT-F01/F06 Done；材质运行时产品化主链收口）  
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,25 +11,22 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（`feat/render`）：MAT-F06 MIC / `.memi` — Design Review**
+**Primary（`feat/render`）：材质运行时产品化主链已收口 — 选下一轨**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| — | **`MAT-F01`** | Material Runtime Productization **路线图** | **In Progress** | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
-| — | **`MAT-F02`–`F05`** | Proxy / Interface / MI / MID | **Done** | 见 Material README |
-| 1 | **`MAT-F06`** | MIC 资产 / Editor（`.memi`） | **Review** | [Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) |
+| — | **`MAT-F01`–`F06`** | Proxy / Interface / MI / MID / MIC | **Done** | 见 Material README |
 | — | **`RND-F17`** | Isolated preview 调度 | **Done** | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) |
 | — | **`ED-F11`** | Multi-document Tab Host | **In Progress**（余量） | [Design](./Editor/ED-F11_MULTI_DOCUMENT_TAB_HOST_DESIGN.md) |
 
-**下一刀：** 审批 [MAT-F06](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) → S01（ME_CLASS + 去掉 MID RTTI）。
+**下一刀：** 维护者选定下一 Primary（候选：`ED-F11` 余量；Prefab Nested/Apply；0.1.0 其它轨）。材质后置：Instance Parent 链、专用 MIC 编辑器。
 
-**已收口（近期）：** MAT-F02–F05；**RND-F17**。
+**已收口（近期）：** **MAT-F01/F06**（`.memi` / CB MVP）；MAT-F02–F05；**RND-F17**。
 
 **并行**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| `feat/render` | MAT-F06 | **MIC Design Review → 实现** |
 | `minEngine-editor` | `ED-F11` | Tab Host 余量（可选） |
 | — | Prefab 后置 | Nested / Apply→Prefab；并排预览可消费 F17 |
 
@@ -50,8 +47,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `WF-F02` | In Progress | handbook 子系统文档按需 |
 | `ED-F01` | In Progress | VK 阴影质量 **Deferred**；勿当主航道 |
 | `RND-F17` | **Done** | ViewId+SRT；TD-027 Done |
-| `MAT-F01` | **In Progress** | 运行时产品化路线图（F02–F05 Done） |
-| `MAT-F06` | **Review** | MIC / `.memi`；含 ME_CLASS 与 MID Create 去 RTTI |
+| `MAT-F01`–`F06` | **Done** | 运行时产品化主链（含 `.memi`） |
 | Open TD | Medium | TD-004/005/023/024/030 — 见 [TECH_DEBT.md](./TECH_DEBT.md)（TD-027 Done） |
 
 ---

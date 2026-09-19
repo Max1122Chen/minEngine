@@ -13,15 +13,7 @@ namespace minEngine
             return nullptr;
         }
 
-        std::shared_ptr<Material> materialParent = std::dynamic_pointer_cast<Material>(parent);
-        if (!materialParent)
-        {
-            if (MaterialInstance* parentInstance = dynamic_cast<MaterialInstance*>(parent.get()))
-            {
-                materialParent = parentInstance->GetParentShared();
-            }
-        }
-
+        std::shared_ptr<Material> materialParent = parent->ResolveParentMaterial(parent);
         if (!materialParent)
         {
             return nullptr;
@@ -32,6 +24,9 @@ namespace minEngine
         {
             return nullptr;
         }
+
+        // MID is not a separate ME_CLASS yet; identity as MaterialInstance for IsA / tools.
+        mid->SetClass(MaterialInstance::StaticClass());
 
         if (!debugName.empty())
         {

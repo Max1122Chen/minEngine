@@ -3,6 +3,7 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Prefab/Prefab.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/MaterialInstance.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/Skeleton.h"
@@ -107,6 +108,13 @@ namespace minEngine
             .Extensions = {".memtl"},
             .FileDialogFilterLabel = "Material (*.memtl)"});
         m_AssetTypeIdByClass[Material::StaticClass()] = "Material";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "MaterialInstance",
+            .RuntimeClassName = GetClassName<MaterialInstance>(),
+            .Extensions = {".memi"},
+            .FileDialogFilterLabel = "Material Instance (*.memi)"});
+        m_AssetTypeIdByClass[MaterialInstance::StaticClass()] = "MaterialInstance";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Scene",
@@ -239,6 +247,27 @@ namespace minEngine
         }
 
         return iter->second;
+    }
+
+    std::vector<std::string> AssetTypeRegistry::CollectAssetTypeIdsAssignableTo(
+        const Reflection::MEClass* assetClass) const
+    {
+        std::vector<std::string> typeIds;
+        if (assetClass == nullptr)
+        {
+            return typeIds;
+        }
+
+        for (const auto& entry : m_AssetTypeIdByClass)
+        {
+            const Reflection::MEClass* registeredClass = entry.first;
+            if (registeredClass != nullptr && registeredClass->IsA(assetClass))
+            {
+                typeIds.push_back(entry.second);
+            }
+        }
+
+        return typeIds;
     }
 
     std::vector<std::string> AssetTypeRegistry::BuildFileDialogFilterSpec() const

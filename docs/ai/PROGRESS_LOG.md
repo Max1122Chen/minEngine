@@ -1,6 +1,18 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-18（MAT-F05 Done；F06 Design Review）
+Last updated: 2026-09-19（MAT-F01/F06 Done）
+
+### 2026-09-19 - MAT-F06 / MAT-F01 Done：MIC 与运行时产品化主链收口
+- **F06：** `.memi` + ME_CLASS + CB Create/Inspector Save；材质槽 Interface 候选；`material-ir` 往返。
+- **F01：** Proxy→Interface→MI→MID→MIC 全 Done。
+- **后置：** Instance Parent 链、专用 MIC 编辑器。
+- **Next：** 选定下一 Primary（非默认开新 MAT）。
+
+### 2026-09-19 - MAT-F06 S01–S04：MIC / `.memi` 落地（待手验）
+- **S01：** `MaterialInstance` `ME_CLASS`；`ResolveParentMaterial`；MID `Create` 去 RTTI。
+- **S02–S03：** `.memi` 序列化 Parent + 覆盖向量；Loader + Registry；`material-ir` 往返单测。
+- **S04：** CB Create Material Instance；Inspector 改 scalar 并 Save；材质槽按 `MaterialInterface` 列 Material + Instance。
+- **验证：** `minEngineTests.exe test material-ir`；Editor 已编过。**收口：** 维护者合并收口 → Done。
 
 ### 2026-09-18 - MAT-F05 Done；开 MAT-F06 Design
 - **F05：** MID::Create；复用 Instance Proxy；多帧 Set smoke；README 用法。

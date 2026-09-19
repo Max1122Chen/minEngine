@@ -335,10 +335,8 @@ namespace minEngine
             return false;
         }
 
-        const auto overrideIt = m_Instance->m_ScalarOverrides.find(name);
-        if (overrideIt != m_Instance->m_ScalarOverrides.end())
+        if (m_Instance->TryGetScalarOverride(name, outValue))
         {
-            outValue = overrideIt->second;
             return true;
         }
 
@@ -354,10 +352,8 @@ namespace minEngine
             return false;
         }
 
-        const auto overrideIt = m_Instance->m_TextureOverrides.find(name);
-        if (overrideIt != m_Instance->m_TextureOverrides.end())
+        if (m_Instance->TryGetTextureOverride(name, outTexture))
         {
-            outTexture = overrideIt->second;
             return true;
         }
 
@@ -377,10 +373,8 @@ namespace minEngine
                     continue;
                 }
 
-                const auto overrideIt = m_Instance->m_ScalarOverrides.find(parameter.ParameterName);
-                if (overrideIt != m_Instance->m_ScalarOverrides.end())
+                if (m_Instance->TryGetScalarOverride(parameter.ParameterName, outValue))
                 {
-                    outValue = overrideIt->second;
                     return true;
                 }
                 break;
@@ -404,10 +398,8 @@ namespace minEngine
                     continue;
                 }
 
-                const auto overrideIt = m_Instance->m_TextureOverrides.find(parameter.ParameterName);
-                if (overrideIt != m_Instance->m_TextureOverrides.end())
+                if (m_Instance->TryGetTextureOverride(parameter.ParameterName, outTexture))
                 {
-                    outTexture = overrideIt->second;
                     return true;
                 }
                 break;

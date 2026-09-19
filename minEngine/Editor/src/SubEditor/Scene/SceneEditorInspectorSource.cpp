@@ -31,7 +31,7 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
 #include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
-#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/MaterialInterface.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Resource/AssetManager.h"
@@ -904,7 +904,13 @@ namespace minEngine
 
                     if (objectPtrProperty.GetName() == "m_Material")
                     {
-                        meshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
+                        if (asset->GetClass() == nullptr
+                            || !asset->GetClass()->IsA(MaterialInterface::StaticClass()))
+                        {
+                            return false;
+                        }
+
+                        meshComponent->SetMaterial(std::static_pointer_cast<MaterialInterface>(asset));
                         return true;
                     }
                 }
@@ -920,7 +926,13 @@ namespace minEngine
 
                     if (objectPtrProperty.GetName() == "m_Material")
                     {
-                        skeletalMeshComponent->SetMaterial(std::static_pointer_cast<Material>(asset));
+                        if (asset->GetClass() == nullptr
+                            || !asset->GetClass()->IsA(MaterialInterface::StaticClass()))
+                        {
+                            return false;
+                        }
+
+                        skeletalMeshComponent->SetMaterial(std::static_pointer_cast<MaterialInterface>(asset));
                         return true;
                     }
 

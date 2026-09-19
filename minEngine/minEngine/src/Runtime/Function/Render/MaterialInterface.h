@@ -3,6 +3,8 @@
 #include "Core.h"
 #include "Runtime/Resource/Asset.h"
 
+#include <memory>
+
 namespace minEngine
 {
     class Material;
@@ -25,6 +27,13 @@ namespace minEngine
 
         virtual Material* GetBaseMaterial() const = 0;
         virtual MaterialRenderProxy* GetRenderProxy() const = 0;
+
+        /**
+         * Resolve the Material used as Instance/MID parent (roadmap D1).
+         * Material returns self; MaterialInstance returns its Parent shared_ptr.
+         */
+        virtual std::shared_ptr<Material> ResolveParentMaterial(
+            const std::shared_ptr<MaterialInterface>& self) const = 0;
 
         virtual bool IsTranslucent() const;
         virtual bool IsMasked() const;

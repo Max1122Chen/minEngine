@@ -28,6 +28,7 @@ namespace minEngine
     class SkeletalMesh;
     class Skeleton;
     class Material;
+    class MaterialInstance;
     class Scene;
     class Prefab;
     class Font;
@@ -312,6 +313,8 @@ namespace minEngine
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Material(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_MaterialInstance(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Font(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_LuaScript(
@@ -392,6 +395,8 @@ namespace minEngine
     template<>
     std::shared_ptr<Material> AssetManager::LoadAsset_Impl<Material>(const AssetMeta& meta);
     template<>
+    std::shared_ptr<MaterialInstance> AssetManager::LoadAsset_Impl<MaterialInstance>(const AssetMeta& meta);
+    template<>
     std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta);
     template<>
     std::shared_ptr<LuaScript> AssetManager::LoadAsset_Impl<LuaScript>(const AssetMeta& meta);
@@ -411,6 +416,9 @@ namespace minEngine
     template<>
     bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const;
     template<>
+    bool AssetManager::SaveAsset_Impl<MaterialInstance>(
+        const AssetMeta& meta, const MaterialInstance& asset) const;
+    template<>
     bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const;
 
     template<>
@@ -423,6 +431,10 @@ namespace minEngine
         const std::string& directoryRel);
     template<>
     std::shared_ptr<Material> AssetManager::CreateAsset<Material>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<MaterialInstance> AssetManager::CreateAsset<MaterialInstance>(
         const std::string& assetName,
         const std::string& directoryRel);
     template<>
