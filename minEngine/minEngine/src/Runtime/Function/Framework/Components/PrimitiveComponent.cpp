@@ -76,4 +76,11 @@ namespace minEngine
         m_bRenderStateDirty = false;
     }
 
+    void PrimitiveComponent::SyncSceneProxy(PrimitiveSceneProxy& proxy)
+    {
+        proxy.m_PrimitiveComponent = this;
+        proxy.m_Transform = GetWorldTransform();
+        proxy.m_CastShadow = CastShadow();
+    }
+
 }

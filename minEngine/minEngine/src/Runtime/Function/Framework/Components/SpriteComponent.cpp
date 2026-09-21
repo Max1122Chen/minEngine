@@ -139,13 +139,13 @@ namespace minEngine
     PrimitiveSceneProxy* SpriteComponent::CreateSceneProxy()
     {
         SpriteSceneProxy* sceneProxy = new SpriteSceneProxy();
-        FillSceneProxy(*sceneProxy);
+        SyncSceneProxy(*sceneProxy);
         m_SceneProxy = sceneProxy;
         return sceneProxy;
     }
 
-    void SpriteComponent::UpdateSceneProxy(SpriteSceneProxy& proxy)
+    void SpriteComponent::SyncSceneProxy(PrimitiveSceneProxy& proxy)
     {
-        FillSceneProxy(proxy);
+        FillSceneProxy(static_cast<SpriteSceneProxy&>(proxy));
     }
 }

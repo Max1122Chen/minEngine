@@ -41,28 +41,30 @@ namespace minEngine
 
     PrimitiveSceneProxy* StaticMeshComponent::CreateSceneProxy()
     {
-        StaticMeshSceneProxy* SceneProxy = new StaticMeshSceneProxy();
-        SceneProxy->m_PrimitiveComponent = this;
+        StaticMeshSceneProxy* sceneProxy = new StaticMeshSceneProxy();
+        SyncSceneProxy(*sceneProxy);
+        m_SceneProxy = sceneProxy;
+        return sceneProxy;
+    }
 
-        assert(m_Owner);
-        SceneProxy->m_Transform = GetWorldTransform();
-        SceneProxy->m_CastShadow = CastShadow();
+    void StaticMeshComponent::SyncSceneProxy(PrimitiveSceneProxy& proxy)
+    {
+        PrimitiveComponent::SyncSceneProxy(proxy);
 
-
+        StaticMeshSceneProxy& sceneProxy = static_cast<StaticMeshSceneProxy&>(proxy);
         if (m_Mesh)
         {
-            SceneProxy->m_VertexBuffer = m_Mesh->m_VertexBuffer.get();
-            SceneProxy->m_VertexInputLayout = m_Mesh->m_VertexInputLayout.get();
-            SceneProxy->m_IndexBuffer = m_Mesh->m_IndexBuffer.get();
+            sceneProxy.m_VertexBuffer = m_Mesh->m_VertexBuffer.get();
+            sceneProxy.m_VertexInputLayout = m_Mesh->m_VertexInputLayout.get();
+            sceneProxy.m_IndexBuffer = m_Mesh->m_IndexBuffer.get();
         }
-
-        if (m_Material)
+        else
         {
-            SceneProxy->m_MaterialProxy = m_Material ? m_Material->GetRenderProxy() : nullptr;
+            sceneProxy.m_VertexBuffer = nullptr;
+            sceneProxy.m_VertexInputLayout = nullptr;
+            sceneProxy.m_IndexBuffer = nullptr;
         }
-        
-        m_SceneProxy = SceneProxy;
 
-        return SceneProxy;
+        sceneProxy.m_MaterialProxy = m_Material ? m_Material->GetRenderProxy() : nullptr;
     }
 }

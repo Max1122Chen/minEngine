@@ -33,6 +33,9 @@ namespace minEngine
         virtual PrimitiveSceneProxy* CreateSceneProxy() = 0;
         PrimitiveSceneProxy* GetSceneProxy() const { return m_SceneProxy; }
 
+        /** Push game-thread state into the render mirror. RenderScene does not downcast. */
+        virtual void SyncSceneProxy(PrimitiveSceneProxy& proxy);
+
     protected:
         void ApplyActivationToSystems() override;
         void RemoveActivationFromSystems() override;

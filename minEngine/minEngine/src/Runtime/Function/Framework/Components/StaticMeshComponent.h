@@ -28,6 +28,7 @@ namespace minEngine
         // PrimitiveComponent Contract
         virtual Math::Geometry::AABB GetBoundingBox() const override;
         virtual PrimitiveSceneProxy* CreateSceneProxy() override;
+        void SyncSceneProxy(PrimitiveSceneProxy& proxy) override;
 
     private:
         ME_PROPERTY()

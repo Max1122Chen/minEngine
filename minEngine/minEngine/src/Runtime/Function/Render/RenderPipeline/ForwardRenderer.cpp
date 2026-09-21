@@ -3,9 +3,9 @@
 #include "Render/RHI/RHIBackend.h"
 #include "Render/SceneRenderTarget.h"
 #include "Render/RenderScene.h"
-#include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
-#include "Render/PrimitiveSceneProxies/SkeletalMeshSceneProxy.h"
-#include "Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
+#include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
+#include "Render/DrawCommands/MeshBatchCollector.h"
+#include "Render/DrawCommands/MeshPassProcessor.h"
 #include "Render/SceneProxies/WidgetSceneProxy.h"
 #include "Render/ScreenUI/ScreenUICoords.h"
 #include "Runtime/Function/Framework/Components/CanvasComponent.h"
@@ -401,7 +401,7 @@ namespace minEngine
 
         AssignShadowGraphPassCommands(ctx);
 
-        // RND-F12: Granite-aligned ‚Ä?re-run setup_dependencies + pass order every frame.
+        // RND-F12: Granite-aligned ù?re-run setup_dependencies + pass order every frame.
         const bool enableSky = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox);
         m_BasePass.SetClearSceneTargets(!enableSky);
 
@@ -634,7 +634,7 @@ namespace minEngine
             ClearUnusedShadowViewProjSlots(ctx);
         }
 
-        m_ShadowPass.m_OpaqueQueue = ctx.OpaqueQueue;
+        m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
 
         RHICommandList cmdList(rhi);
 
@@ -988,7 +988,7 @@ namespace minEngine
                 }
 
                 DirShadowCommandBuildResult result = BuildDirectionalShadowDrawCommands(
-                    shadowRequest, handle, dirLightProxy, MAX_CASCADES, ctx.Camera, ctx.OpaqueQueue);
+                    shadowRequest, handle, dirLightProxy, MAX_CASCADES, ctx.Camera, ctx.ShadowCasterQueue);
                 // Update directional UBO slots and per-command bindings before inserting into ctx.
                 for (size_t i = 0; i < result.Commands.size(); ++i)
                 {
@@ -1137,6 +1137,7 @@ namespace minEngine
     {
         ctx.OpaqueQueue.clear();
         ctx.TranslucentQueue.clear();
+        ctx.ShadowCasterQueue.clear();
 
         RenderScene* renderScene = ctx.Scene;
         if (!renderScene)
@@ -1144,91 +1145,23 @@ namespace minEngine
             return;
         }
 
-        for(auto& primitiveProxy : renderScene->m_PrimitiveSceneProxies)
+        MeshBatchCollector collector;
+        for (PrimitiveSceneProxy* primitiveProxy : renderScene->m_PrimitiveSceneProxies)
         {
             if (!primitiveProxy || !primitiveProxy->m_PrimitiveComponent)
             {
                 continue;
             }
 
-            auto enqueueCommand = [&](MeshDrawCommand& command)
-            {
-                if (!command.m_MaterialProxy || !command.m_VertexInputLayout || !command.m_VertexBuffer)
-                {
-                    return;
-                }
-
-                if (command.m_MaterialProxy->IsTranslucent())
-                {
-                    ctx.TranslucentQueue.push_back(command);
-                }
-                else
-                {
-                    ctx.OpaqueQueue.push_back(command);
-                }
-            };
-
-            if (StaticMeshSceneProxy* staticMeshProxy = dynamic_cast<StaticMeshSceneProxy*>(primitiveProxy))
-            {
-                MeshDrawCommand command;
-                command.m_VertexBuffer = staticMeshProxy->m_VertexBuffer;
-                command.m_VertexInputLayout = staticMeshProxy->m_VertexInputLayout;
-                command.m_IndexBuffer = staticMeshProxy->m_IndexBuffer;
-                command.m_MaterialProxy = staticMeshProxy->m_MaterialProxy;
-                command.m_ModelMatrix = staticMeshProxy->m_Transform.ToMatrix();
-                command.m_CastShadow = staticMeshProxy->m_CastShadow;
-                command.m_BoundingBox = staticMeshProxy->m_PrimitiveComponent->GetBoundingBox();
-                enqueueCommand(command);
-                continue;
-            }
-
-            if (SkeletalMeshSceneProxy* skeletalMeshProxy = dynamic_cast<SkeletalMeshSceneProxy*>(primitiveProxy))
-            {
-                MeshDrawCommand command;
-                command.m_VertexBuffer = skeletalMeshProxy->m_VertexBuffer;
-                command.m_VertexInputLayout = skeletalMeshProxy->m_VertexInputLayout;
-                command.m_IndexBuffer = skeletalMeshProxy->m_IndexBuffer;
-                command.m_MaterialProxy = skeletalMeshProxy->m_MaterialProxy;
-                command.m_ModelMatrix = skeletalMeshProxy->m_Transform.ToMatrix();
-                command.m_CastShadow = skeletalMeshProxy->m_CastShadow;
-                command.m_BoundingBox = skeletalMeshProxy->m_PrimitiveComponent->GetBoundingBox();
-                command.m_bSkinned = true;
-                if (!skeletalMeshProxy->m_BonePalette.empty())
-                {
-                    command.m_BonePalette = skeletalMeshProxy->m_BonePalette.data();
-                    command.m_BoneCount = static_cast<uint32_t>(skeletalMeshProxy->m_BonePalette.size());
-                }
-                enqueueCommand(command);
-                continue;
-            }
-
-            if (SpriteSceneProxy* spriteProxy = dynamic_cast<SpriteSceneProxy*>(primitiveProxy))
-            {
-                MeshDrawCommand command;
-                command.m_VertexBuffer = spriteProxy->m_VertexBuffer;
-                command.m_VertexInputLayout = spriteProxy->m_VertexInputLayout;
-                command.m_IndexBuffer = spriteProxy->m_IndexBuffer;
-                command.m_MaterialProxy = spriteProxy->m_MaterialProxy;
-                command.m_ModelMatrix = spriteProxy->m_ModelMatrix;
-                command.m_CastShadow = false;
-                command.m_BoundingBox = spriteProxy->m_PrimitiveComponent->GetBoundingBox();
-
-                if (!command.m_MaterialProxy || !command.m_VertexInputLayout || !command.m_VertexBuffer ||
-                    !spriteProxy->m_Texture)
-                {
-                    continue;
-                }
-
-                if (spriteProxy->m_bNeedsTranslucentPass)
-                {
-                    ctx.TranslucentQueue.push_back(command);
-                }
-                else
-                {
-                    ctx.OpaqueQueue.push_back(command);
-                }
-            }
+            primitiveProxy->GetMeshBatches(collector);
         }
+
+        OpaqueMeshPassProcessor opaqueProcessor(ctx.OpaqueQueue);
+        TranslucentMeshPassProcessor translucentProcessor(ctx.TranslucentQueue);
+        ShadowDepthMeshPassProcessor shadowProcessor(ctx.ShadowCasterQueue);
+        collector.DispatchTo(opaqueProcessor);
+        collector.DispatchTo(translucentProcessor);
+        collector.DispatchTo(shadowProcessor);
     }
 
     void ForwardRenderer::BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)

@@ -354,15 +354,12 @@ namespace minEngine
         return Math::Geometry::AABB();
     }
 
-    void SkeletalMeshComponent::SyncSceneProxy(SkeletalMeshSceneProxy& sceneProxy)
+    void SkeletalMeshComponent::SyncSceneProxy(PrimitiveSceneProxy& proxy)
     {
+        SkeletalMeshSceneProxy& sceneProxy = static_cast<SkeletalMeshSceneProxy&>(proxy);
         RebuildPaletteIfNeeded();
 
-        sceneProxy.m_PrimitiveComponent = this;
-
-        assert(m_Owner);
-        sceneProxy.m_Transform = m_Owner->GetTransform();
-        sceneProxy.m_CastShadow = CastShadow();
+        PrimitiveComponent::SyncSceneProxy(proxy);
         sceneProxy.m_BonePalette = m_SkinningPalette;
 
         if (m_Mesh)

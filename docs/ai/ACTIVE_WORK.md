@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-21（ED-F20 / TEST-F05 Done；Primary 空闲）
+Last updated: 2026-09-21（RND-F18 S01–S02 Done；Primary 空闲）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,16 +11,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：无强制下一刀。** ED-F20 / TEST-F05 **Done**（游戏 Dev 宿主 + 外仓测试扩展点）。版本号仍 **0.0.9**；玩法在 minCraft。
+**Primary：无强制下一刀。** `RND-F18` S01–S02 **Done**（MeshBatch + Pass Processor）。S03 stub 与 `verify.ps1` Deferred。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`ED-F20`** | Editor 可选链接外部游戏 SHARED（链接期 Dev 宿主） | **Done** | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) · [Impl](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md) |
-| 1 | **`TEST-F05`** | 外仓/附加测试接入 minEngineTests | **Done** | [Design](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md) · [Impl](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_IMPLEMENTATION.md) |
+| 0 | **`RND-F18`** | Proxy 虚提交 MeshBatch；Pass 子类 Processor 生成 MDC | **Done**（S03 Deferred） | [Design](./Render/RND-F18_MESH_BATCH_PASS_MDC_REFACTOR_DESIGN.md) |
+| 1 | **`ED-F20`** | Editor 可选链接外部游戏 SHARED | **Done** | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) |
+| 2 | **`TEST-F05`** | 外仓测试接入 minEngineTests | **Done** | [Design](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md) |
 
-**下一刀：** 未指定。minCraft 可用 `MINENGINE_GAME_DIR` / `MINENGINE_EXTRA_TEST_*` 接引擎；引擎侧 S03（Startup 符号 / Runner 导出）仍 Deferred。
+**下一刀：** 未指定。可选：RND-F18 S03 stub。
 
-**发现场景（只读）：** `D:\Dev\GitRepo\minCraft` · `INFRA-F01`。
+**发现场景（只读）：** minCraft 程序化网格；体素 mesher **不进** Core。
 
 **并行 / 不挡**
 

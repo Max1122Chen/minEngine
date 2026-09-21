@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-21（ED-F20 / TEST-F05 Done）
+Last updated: 2026-09-21（RND-F18 S01–S02 Done；S03 Deferred）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -66,6 +66,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F14` | ShadowPass UBO 寿命 | **Done** | — | [Design](./Render/RND-F14_SHADOW_PASS_UBO_LIFETIME_DESIGN.md) |
 | `RND-F16` | Sprite / 2D Rendering Foundation（ScreenUI 绘制前置） | **Done** | — | [Design](./Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md) · [Impl](./Render/RND-F16_2D_RENDERING_FOUNDATION_IMPLEMENTATION.md) · 已合入 `master`（feat/ui） |
 | `RND-F17` | Isolated preview / multi-view draw scheduling（CB·Preview·主视口解串图） | **Done** | — | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) · ViewId+SRT；TD-027 Done |
+| `RND-F18` | MeshBatch + Pass 生成 MDC（Proxy 虚提交；删 mesh 类型 dynamic_cast 入队） | **Done**（S03 stub Deferred） | — | [Design](./Render/RND-F18_MESH_BATCH_PASS_MDC_REFACTOR_DESIGN.md) |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |

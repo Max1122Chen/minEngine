@@ -1,15 +1,7 @@
 #include "RenderScene.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"   // TODO: maybe remove this include later
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
-#include "Runtime/Function/Framework/Components/StaticMeshComponent.h"
-#include "Runtime/Function/Framework/Components/SkeletalMeshComponent.h"
-#include "Runtime/Function/Framework/Components/SpriteComponent.h"
-#include "Runtime/Function/Render/StaticMesh.h"
-#include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
-#include "Runtime/Function/Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
-#include "Runtime/Function/Render/PrimitiveSceneProxies/SkeletalMeshSceneProxy.h"
-#include "Runtime/Function/Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/SkyBoxComponent.h"
 #include "Runtime/Function/Framework/Components/WidgetComponent.h"
@@ -50,40 +42,7 @@ namespace minEngine
             // Update existing scene proxy
             // Simply update the transform for now. TODO: update other data if needed // P.S. we should not get transform from owner GameObject here. This is just a temporary design.
             PrimitiveSceneProxy* proxy = primitiveComponent->GetSceneProxy();
-            // Proxy model matrix is world-space. SceneComponent::GetTransform() is local-to-attach-parent.
-            proxy->m_Transform = primitiveComponent->GetWorldTransform();
-            proxy->m_CastShadow = primitiveComponent->CastShadow();
-            StaticMeshComponent* staticMeshComp = dynamic_cast<StaticMeshComponent*>(primitiveComponent);
-            if (staticMeshComp)
-            {
-                StaticMeshSceneProxy* staticMeshProxy = dynamic_cast<StaticMeshSceneProxy*>(proxy);
-                if (staticMeshProxy)
-                {
-                    staticMeshProxy->m_VertexBuffer =
-                        staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexBuffer.get() : nullptr;
-                    staticMeshProxy->m_VertexInputLayout =
-                        staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_VertexInputLayout.get() : nullptr;
-                    staticMeshProxy->m_IndexBuffer =
-                        staticMeshComp->GetMesh() ? staticMeshComp->GetMesh()->m_IndexBuffer.get() : nullptr;
-                    staticMeshProxy->m_MaterialProxy =
-                        staticMeshComp->GetMaterial() ? staticMeshComp->GetMaterial()->GetRenderProxy() : nullptr;
-                }
-            }
-            else if (SkeletalMeshComponent* skeletalMeshComp =
-                         dynamic_cast<SkeletalMeshComponent*>(primitiveComponent))
-            {
-                if (SkeletalMeshSceneProxy* skeletalMeshProxy = dynamic_cast<SkeletalMeshSceneProxy*>(proxy))
-                {
-                    skeletalMeshComp->SyncSceneProxy(*skeletalMeshProxy);
-                }
-            }
-            else if (SpriteComponent* spriteComp = dynamic_cast<SpriteComponent*>(primitiveComponent))
-            {
-                if (SpriteSceneProxy* spriteProxy = dynamic_cast<SpriteSceneProxy*>(proxy))
-                {
-                    spriteComp->UpdateSceneProxy(*spriteProxy);
-                }
-            }
+            primitiveComponent->SyncSceneProxy(*proxy);
         }
     }
 

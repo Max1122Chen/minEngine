@@ -32,5 +32,8 @@ namespace minEngine
 
         /** Non-owning; owned by Material (or later MaterialInstance). */
         MaterialRenderProxy* m_MaterialProxy = nullptr;
+
+        /** Emit pass-agnostic mesh descriptions. Default: one batch from the fields above when drawable. */
+        virtual void GetMeshBatches(class MeshBatchCollector& collector) const;
     };
 }

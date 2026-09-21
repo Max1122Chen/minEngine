@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-21（ED-F20 / TEST-F05 Done）
+Last updated: 2026-09-21（RND-F18 S01–S02 Done）
+
+### 2026-09-21 - RND-F18 S01–S02 Done
+- **代码：** `SyncSceneProxy`；`MeshBatch`；Opaque / Translucent / ShadowDepth `MeshPassProcessor`；入队与 `UpdatePrimitive` 不再按 mesh 类型 `dynamic_cast`。
+- **验证：** `feat/render` 工作树 Editor 手验通过（静态网格 / 骨骼 / Sprite / 阴影）。`verify.ps1` 未跑。S03 stub **Deferred**。
+- **Next：** 合并 `master`。
+
+### 2026-09-21 - RND-F18 开工（feat/render 快进 master）
+- **分支：** `feat/render` fast-forward 至 `master`（`b94b6e6`）。
+- **契约：** `SyncSceneProxy`；`GetMeshBatches`；Pass 子类 `AddMeshBatch`（无 `MeshPassKind` 中心开关）。
+- **Next：** 编译 Editor 供手验。
 
 ### 2026-09-21 - ED-F20 / TEST-F05 Done（游戏 Dev 宿主 + 外仓测试）
 - **ED-F20：** `MINENGINE_GAME_DIR` + `MINENGINE_GAME_TARGET` + `COPY_RUNTIME`；`Examples/GameModuleStub`；默认关闭零回归。`MaximumEditor.exe --version` 在 stub 链接下 PASS。

@@ -207,7 +207,7 @@ namespace minEngine
     void ManualRenderer::ExecuteManualShadowPasses(RHICommandList& cmdList, SceneRenderContext& ctx)
     {
         m_ShadowPass.m_ShadowDrawCommands = ctx.ShadowDrawCommands;
-        m_ShadowPass.m_OpaqueQueue = ctx.OpaqueQueue;
+        m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
         m_ShadowPass.PrepareShadowPass(cmdList);
 
         for (const ShadowDrawCommand& command : ctx.ShadowDrawCommands)

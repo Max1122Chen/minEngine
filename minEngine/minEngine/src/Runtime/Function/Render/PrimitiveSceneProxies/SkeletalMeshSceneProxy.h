@@ -13,5 +13,7 @@ namespace minEngine
         ~SkeletalMeshSceneProxy() override = default;
 
         std::vector<Matrix4> m_BonePalette;
+
+        void GetMeshBatches(class MeshBatchCollector& collector) const override;
     };
 }

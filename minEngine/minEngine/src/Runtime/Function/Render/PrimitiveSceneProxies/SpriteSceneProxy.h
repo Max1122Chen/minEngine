@@ -21,5 +21,7 @@ namespace minEngine
         /** World matrix including Size scale (unit quad → world). */
         Matrix4 m_ModelMatrix{ 1.0f };
         bool m_bNeedsTranslucentPass = false;
+
+        void GetMeshBatches(class MeshBatchCollector& collector) const override;
     };
 }

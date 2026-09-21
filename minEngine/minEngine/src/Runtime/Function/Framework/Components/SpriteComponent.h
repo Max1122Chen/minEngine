@@ -33,9 +33,7 @@ namespace minEngine
 
         virtual Math::Geometry::AABB GetBoundingBox() const override;
         virtual PrimitiveSceneProxy* CreateSceneProxy() override;
-
-        /** Refresh an existing SpriteSceneProxy (RenderScene dirty update). */
-        void UpdateSceneProxy(SpriteSceneProxy& proxy);
+        void SyncSceneProxy(PrimitiveSceneProxy& proxy) override;
 
     private:
         void EnsureRuntimeMaterial();

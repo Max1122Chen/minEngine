@@ -24,6 +24,8 @@ namespace minEngine
 
         std::vector<MeshDrawCommand> OpaqueQueue;
         std::vector<MeshDrawCommand> TranslucentQueue;
+        /** Casters accepted by ShadowDepthMeshPassProcessor (not a copy of OpaqueQueue). */
+        std::vector<MeshDrawCommand> ShadowCasterQueue;
         std::vector<UIDrawCommand> ScreenUIQueue;
 
         std::vector<ShadowRequest> ShadowRequests;
@@ -46,6 +48,7 @@ namespace minEngine
             Camera = nullptr;
             OpaqueQueue.clear();
             TranslucentQueue.clear();
+            ShadowCasterQueue.clear();
             ScreenUIQueue.clear();
             ShadowRequests.clear();
             ShadowDrawCommands.clear();

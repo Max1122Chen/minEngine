@@ -62,7 +62,7 @@ namespace minEngine
         PrimitiveSceneProxy* CreateSceneProxy() override;
 
         /** Push mesh / material / palette into an existing proxy (RenderScene dirty update). */
-        void SyncSceneProxy(SkeletalMeshSceneProxy& sceneProxy);
+        void SyncSceneProxy(PrimitiveSceneProxy& proxy) override;
 
     protected:
         void OnActivate() override;
