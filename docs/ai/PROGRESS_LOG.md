@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-19（`feat/mcp`：ED-F19 Done）
+Last updated: 2026-09-21（0.1.0 验收改为 minCraft；Launcher 建项补 schema 戳）
+
+### 2026-09-21 - 0.1.0 验收改为 minCraft；Launcher 建项补版本戳
+- **决策：** 可玩竖切不在引擎仓做 FPS。独立仓 `D:\Dev\GitRepo\minCraft` 复刻一部分 Minecraft；缺口再回流引擎。`kEngineVersion` 维持 0.0.9，切片完成后再升 0.1.0。
+- **代码：** `ProjectFactory` 写入 `$schemaVersion` / `$engineVersion`，与 `MyMEProject` 及 CORE-F18 一致。缺戳时引擎只告警、仍当 legacy 加载。
+- **验证：** `cargo test -p minlauncher-core` 9/9 PASS。已创建 `D:\Dev\GitRepo\minCraft\minCraft\minCraft.meproject`（schema 1，引擎戳 0.0.9，默认场景 `Assets/Scenes/default.mescene`）。
+- **Next：** 用 Maximum 打开该工程做一次手测。不新开引擎 Feature。版本号仍待 minCraft 切片完成后再升。
 
 ### 2026-09-19 - ED-F19 Done
 - **落地：** `MaterialEditorServices` 包现有材质 Command；动画状态/过渡补 Command 后再包 `AnimationGraphEditorServices`。GUI / Debug 拓扑改走服务。Surface 增加 `material.*` / `animgraph.*`。图 JSON 只在 Surface。

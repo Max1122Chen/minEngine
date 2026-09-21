@@ -1,10 +1,10 @@
-# Maximum 0.1.0 Roadmap（推向可玩 FPS Demo + Agent-friendly）
+# Maximum 0.1.0 Roadmap（minCraft 竖切 + Agent-friendly）
 
 ## Meta
 - **ID:** N/A（跨 Feature 迭代路线图；覆盖多 DOMAIN）
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-11
+- **Last updated:** 2026-09-21
 - **Related:**
   - [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md)
   - [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md)（长期多轨；本文件 = **0.1.0 收口窗口**）
@@ -14,10 +14,11 @@
 
 ## TL;DR
 
-本周期目标不是「再堆一个系统」，而是把已有 Anim / UI / Physics / Render / Play Mode **收成一条可玩竖切**，并让 Engine **天然适合人 + AI 协作做游戏**。
+本周期目标不是「再堆一个系统」，也不是在引擎仓库里做 FPS。验收锚点改为**独立仓库 [minCraft](D:/Dev/GitRepo/minCraft)**：用现有引擎能力复刻一部分 Minecraft，玩法留在游戏仓，缺口再回流引擎。
 
-- **验收锚点：** 第一人称迷你射击 Demo（单机）+ Agent 同源 API 可查改验证。
-- **执行模型：** **先 Core 地基合入 `master`**（Logger Channel + Schema/引擎版本 + Maximum 品牌名）→ **再 fan-out 多 worktree**（editor / anim / ui / lua / mcp / prefab）并行；Core 续做 Profiler。
+- **验收锚点：** minCraft 可在 Maximum 中打开并玩到约定切片；引擎仓库不内置方块/合成/生物。
+- **版本号：** 保持 **0.0.9**，直到 minCraft 演示切片完成，再把 `kEngineVersion` 升到 **0.1.0** 并打 tag。
+- **本刀：** 只保证 Launcher 能创建可打开的工程，然后在 minCraft 仓落下空工程。不新开引擎 Feature。
 - **Prefab 两期：** A = 资产 + Instantiate（可先行）；B = Unity 式独立 Prefab 子编辑器（依赖 **隔离渲染目标 / 非单 RDG 复用同尺寸 RT**，见 §3.4）。
 - **MCP：** 可早开研究分支，但 **产品化适配必须接在 Editor Query–Command 面之后**（禁止双轨 API）。
 - **明确后置：** 完整 GAS、完整 AnimBP、多人联网（§6）。
@@ -72,37 +73,34 @@
 | Prefab 子编辑器阻塞 Prefab 机制 | **否** — Instantiate 先交付 Demo；隔离 RT 另开 Render/Editor 依赖项 |
 ---
 
-## 2) Demo 验收（First-Person Mini Shooter）
+## 2) Demo 验收（minCraft，独立仓库）
+
+0.1.0 的可玩竖切**不在本仓库实现**。游戏仓：`D:\Dev\GitRepo\minCraft`。引擎只提供机制（场景、Prefab、物理查询、动画、UI、脚本、资源）；方块、合成、生物、世界生成留在 minCraft。
+
+版本数字在 minCraft 演示切片完成前保持 `0.0.9`。完成后升到 `0.1.0`（D8）并打 tag。
 
 ### 2.1 体验目标（玩家侧）
 
-- 第一人称视角移动与瞄准（键鼠）。
-- 射击：命中世界几何 / 简单目标（物理 Raycast 或 overlap）。
-- 至少一个 **Skeletal** 角色或武器相关 3D 动画（Idle / Fire 或敌人受击即可）。
-- 至少一个有意义的 **渲染** 展示（方向光/点光、材质、阴影可用即可，不追求影视级）。
-- HUD：弹药 / 准星等用现有 ScreenUI（不必新 UI Framework）。
-- 可用 Prefab 刷出目标或弹匣类物体（体现 Prefab，而非手摆唯一实例）。
+范围以 minCraft 仓 `SCOPE-F01` 为准，不在本 Roadmap 重写玩法。引擎侧只要求：空工程能被 Maximum 打开，后续玩法能挂在该工程上迭代。
 
 ### 2.2 工程验收（开发者 / Agent 侧）
 
-| # | 验收项 |
-|---|--------|
-| D1 | 样例工程在 Maximum 中打开；`ProjectRoot` 正确；场景可 Play / 退出回 Edit |
-| D2 | 关键资产带 **schema / 引擎版本** 元数据；旧资产有明确失败或迁移策略（哪怕先「拒绝加载」） |
-| D3 | Prefab 可实例化到当前 Scene（Editor 或 Runtime API）— **不要求** 0.1.0 必达 Prefab 独立子编辑器 |
-| D3b | （加分 / 理想）Prefab 子编辑器：隔离预览 Scene + 独立 RT，无主视口串图 |
-| D4 | Lua 能订阅至少一种 C++ 侧事件/委托（例如命中、开火）并改游戏状态 |
-| D5 | 一组 **无 GUI** Command/Query smoke：查 Scene 对象数、改一个属性、触发一次验证 |
-| D6 | （可选加分）同一 smoke 经 MCP 适配层调用通过 |
-| D7 | 固定场景跑出一份 **帧时基线报告**（Profiler MVP），可存档对比 |
-| D8 | 构建产物 / About / 窗口标题等展示 **Maximum 0.1.0** |
+| # | 验收项 | 现状 |
+|---|--------|------|
+| D1 | 样例工程在 Maximum 中打开；`ProjectRoot` 正确；场景可 Play / 退出回 Edit | 机制已有；minCraft 工程待创建后手测打开 |
+| D2 | 关键资产带 **schema / 引擎版本** 元数据 | 已有；Launcher 新建工程必须打上 `$schemaVersion` / `$engineVersion` |
+| D3 | Prefab 可实例化到当前 Scene | 已有（Prefab A） |
+| D4 | Lua 能订阅至少一种 C++ 委托并改状态 | 已有 |
+| D5 | 无 GUI Command/Query smoke | 已有 |
+| D6 | 同一 smoke 经 MCP | 已有（加分，不挡 tag） |
+| D7 | 固定场景 Profiler 基线可存档 | Harness 已有；基线报告随 minCraft 场景再存 |
+| D8 | 构建产物展示 **Maximum 0.1.0** | **Deferred** 到 minCraft 切片完成 |
 
 ### 2.3 Demo 明确不做（0.1.0）
 
-- 完整枪械数值体系、库存、任务、大厅 UI  
-- 导航、载具、大地图流式加载  
-- 权威服务器多人同步（见 §6）  
-- 完整敌人导航网格 / Behavior Tree 产品化  
+- 在 Core 里写方块、物品、合成、生物、世界生成
+- 把 minCraft 源码或资产放进 minEngine 仓库
+- 完整枪械 FPS、导航、多人、GAS（仍后置）  
 
 ---
 
@@ -292,11 +290,11 @@ F1–F3 可在同一 `feat/core`（或 `master` 短切片）内串行；**全部
 2. **显式 RT 身份 / 禁用错误别名**（同尺寸不等于可复用同一 transient）  
 3. **预览走简化 Manual/离屏路径**（功能子集，专供 Prefab/缩略图）
 
-**默认立场：** Prefab B **不阻塞** Prefab A 与 FPS Demo；隔离渲染作为 **Render/Editor 显式 Feature**（建议登记如 `RND-F17` Isolated preview targets 或 `ED-F12` Prefab stage），与 Prefab 机制解耦排期。
+**默认立场：** Prefab B **不阻塞** Prefab A 与 minCraft；隔离渲染作为 **Render/Editor 显式 Feature**（建议登记如 `RND-F17` Isolated preview targets 或 `ED-F12` Prefab stage），与 Prefab 机制解耦排期。
 
 ### 3.5 Phase D — Demo + Maximum 0.1.0
 
-同原 Wave 6：FPS 竖切、Agent smoke、Perf 基线、版本打标。Prefab B / 精美 Tab 宿主若未完成，**不挡** 0.1.0，可进 changelog「Known limitations」。
+minCraft 仓的玩法切片完成后再升版本并打 tag。Prefab B / 精美 Tab 宿主若未完成，**不挡** 0.1.0。Agent smoke 与 Profiler harness 已在引擎侧；帧基线随 minCraft 场景再存。
 
 ### 3.6 与旧 Wave 编号对照
 
@@ -452,3 +450,4 @@ F1–F3 可在同一 `feat/core`（或 `master` 短切片）内串行；**全部
 | 2026-09-10 | 修复 Mermaid：去掉连到 subgraph 的边、嵌套 subgraph、边上中文标签与特殊字符 |
 | 2026-09-11 | Status → **In Progress**；登记 Phase F：`CORE-F17` / `CORE-F18` / `WF-F03` |
 | 2026-09-11 | `CORE-F17` → **Done**（硬切 ME_LOG + logging-channels 单测） |
+| 2026-09-21 | 验收从引擎内 FPS 改为独立仓 minCraft；版本号维持 0.0.9，切片完成后再升 0.1.0 |

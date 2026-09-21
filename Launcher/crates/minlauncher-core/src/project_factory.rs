@@ -5,7 +5,9 @@ use crate::error::{LauncherError, LauncherResult};
 use crate::guid::generate_guid;
 use crate::project_catalog::ProjectCatalog;
 use crate::settings::{normalize_path, LauncherSettings};
-use crate::types::{ProjectDescriptor, ProjectSettings};
+use crate::types::{
+    ProjectDescriptor, ProjectSettings, DISK_SCHEMA_VERSION, ENGINE_VERSION_STAMP,
+};
 
 const DEFAULT_TEMPLATE: &str = "Empty";
 const DEFAULT_SCENE_NAME: &str = "default";
@@ -43,14 +45,21 @@ impl ProjectFactory {
         let settings_path = project_dir.join(format!("{name}Settings.mesettings"));
 
         let descriptor = ProjectDescriptor {
+            schema_version: DISK_SCHEMA_VERSION,
+            engine_version: ENGINE_VERSION_STAMP.to_owned(),
             project_name: name.to_owned(),
             project_id: generate_guid(),
             project_root: project_root.to_string_lossy().into_owned(),
         };
 
-        let project_settings = Self::load_partial_settings(&template_dir).unwrap_or(ProjectSettings {
-            editor_default_scene_name: DEFAULT_SCENE_NAME.to_owned(),
-        });
+        let mut project_settings =
+            Self::load_partial_settings(&template_dir).unwrap_or(ProjectSettings {
+                schema_version: 0,
+                engine_version: String::new(),
+                editor_default_scene_name: DEFAULT_SCENE_NAME.to_owned(),
+            });
+        project_settings.schema_version = DISK_SCHEMA_VERSION;
+        project_settings.engine_version = ENGINE_VERSION_STAMP.to_owned();
 
         Self::write_json(&descriptor_path, &descriptor)?;
         Self::write_json(&settings_path, &project_settings)?;
@@ -125,5 +134,55 @@ impl ProjectFactory {
 
     pub fn default_template_name() -> &'static str {
         DEFAULT_TEMPLATE
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::project_validator::ProjectValidator;
+    use crate::settings::LauncherSettings;
+    use std::fs;
+    use std::path::PathBuf;
+
+    #[test]
+    fn create_stamps_disk_version_and_roundtrips() {
+        let parent = tempfile::tempdir().unwrap();
+        let templates_root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../Templates");
+        let mut settings = LauncherSettings::default();
+
+        let descriptor_path = ProjectFactory::create(
+            &mut settings,
+            "SmokeProj",
+            parent.path(),
+            ProjectFactory::default_template_name(),
+            &templates_root,
+        )
+        .unwrap();
+
+        let descriptor_text = fs::read_to_string(&descriptor_path).unwrap();
+        assert!(descriptor_text.contains("\"$schemaVersion\": 1"));
+        assert!(descriptor_text.contains("\"$engineVersion\": \"0.0.9\""));
+
+        let settings_path = parent.path().join("SmokeProj").join("SmokeProjSettings.mesettings");
+        let settings_text = fs::read_to_string(&settings_path).unwrap();
+        assert!(settings_text.contains("\"$schemaVersion\": 1"));
+        assert!(settings_text.contains("\"$engineVersion\": \"0.0.9\""));
+        assert!(settings_text.contains("\"EditorDefaultSceneName\": \"default\""));
+
+        let scene = parent
+            .path()
+            .join("SmokeProj")
+            .join("Assets")
+            .join("Scenes")
+            .join("default.mescene");
+        assert!(scene.is_file());
+
+        let resolved = ProjectValidator::resolve(&descriptor_path).unwrap();
+        assert_eq!(resolved.descriptor.project_name, "SmokeProj");
+        assert_eq!(resolved.descriptor.schema_version, DISK_SCHEMA_VERSION);
+        assert!(!resolved.descriptor.project_id.is_zero());
+        assert_eq!(settings.recent_projects.len(), 1);
     }
 }

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-19（`feat/mcp`：ED-F19 Done）
+Last updated: 2026-09-21（0.1.0 验收改为独立仓 minCraft；本刀只修 Launcher 建项）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,7 +11,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：无强制下一刀（ED-F19 Done）**
+**Primary：无新引擎 Feature。** 0.1.0 可玩竖切改到独立仓库 `D:\Dev\GitRepo\minCraft`（玩法不进 Core）。版本号保持 **0.0.9**，minCraft 演示切片完成后再升 **0.1.0**。
+
+本刀只做：Launcher `create` 打上磁盘 schema/引擎版本戳，并在 minCraft 仓创建空工程 `minCraft/`。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
