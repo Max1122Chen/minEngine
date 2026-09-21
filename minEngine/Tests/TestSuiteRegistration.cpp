@@ -2,6 +2,7 @@
 
 #include "DoctestSuiteRunner.h"
 #include "EngineTestFixture.h"
+#include "ExtraTestRegistration.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Test/ITestSuite.h"
@@ -717,6 +718,10 @@ namespace minEngine
             registry.Register(PrefabSuite::Get());
             registry.Register(PrefabOverridesSuite::Get());
             s_Registered = true;
+
+#if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS
+            RegisterExtraTestSuites();
+#endif
         }
     }
 

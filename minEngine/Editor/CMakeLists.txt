@@ -28,6 +28,27 @@ target_include_directories(${EDITOR_NAME} PUBLIC ./src
 
 target_link_libraries(${EDITOR_NAME} PRIVATE ${ENGINE_NAME})
 
+# ED-F20: optional link-time game SHARED (Dev host). Off unless root CMake enabled it.
+if(MINENGINE_HAS_GAME_MODULE)
+    target_link_libraries(${EDITOR_NAME} PRIVATE ${MINENGINE_GAME_TARGET})
+    target_compile_definitions(${EDITOR_NAME} PRIVATE MINENGINE_HAS_GAME_MODULE=1)
+    add_dependencies(${EDITOR_NAME} ${MINENGINE_GAME_TARGET})
+
+    if("${MINENGINE_GAME_TARGET}" STREQUAL "GameModuleStub")
+        target_compile_definitions(${EDITOR_NAME} PRIVATE MINENGINE_LINK_GAME_MODULE_STUB=1)
+    endif()
+
+    if(MINENGINE_GAME_COPY_RUNTIME)
+        add_custom_command(TARGET ${EDITOR_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:${MINENGINE_GAME_TARGET}>"
+                "$<TARGET_FILE_DIR:${EDITOR_NAME}>"
+            COMMENT "ED-F20: copy game module runtime next to MaximumEditor"
+            VERBATIM
+        )
+    endif()
+endif()
+
 set(EFSW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/Third-Party/efsw)
 if(EXISTS ${EFSW_DIR}/CMakeLists.txt)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)

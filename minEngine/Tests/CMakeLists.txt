@@ -11,6 +11,24 @@ file(GLOB_RECURSE EDITOR_DEBUG_COMMAND_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/UI/Property/PropertyEditPolicy.cpp
 )
 
+# TEST-F05: optional external / extra suite sources (off by default).
+set(_MINENGINE_EXTRA_TEST_SOURCES "${MINENGINE_EXTRA_TEST_SOURCES}")
+if(NOT "${MINENGINE_EXTRA_TEST_DIR}" STREQUAL "")
+    if(NOT EXISTS "${MINENGINE_EXTRA_TEST_DIR}")
+        message(FATAL_ERROR "MINENGINE_EXTRA_TEST_DIR does not exist: ${MINENGINE_EXTRA_TEST_DIR}")
+    endif()
+    file(GLOB _MINENGINE_EXTRA_TEST_DIR_SOURCES CONFIGURE_DEPENDS
+        "${MINENGINE_EXTRA_TEST_DIR}/*.cpp"
+    )
+    list(APPEND _MINENGINE_EXTRA_TEST_SOURCES ${_MINENGINE_EXTRA_TEST_DIR_SOURCES})
+endif()
+
+set(MINENGINE_ENABLE_EXTRA_TESTS OFF)
+if(NOT "${_MINENGINE_EXTRA_TEST_SOURCES}" STREQUAL "")
+    set(MINENGINE_ENABLE_EXTRA_TESTS ON)
+    message(STATUS "TEST-F05: minEngineTests EXTRA sources enabled")
+endif()
+
 add_executable(${MINENGINE_TESTS_NAME}
     TestMain.cpp
     TestSuiteRegistration.cpp
@@ -18,6 +36,7 @@ add_executable(${MINENGINE_TESTS_NAME}
     DoctestSuiteRunner.cpp
     ${TEST_SUITE_SOURCES}
     ${EDITOR_DEBUG_COMMAND_SOURCES}
+    ${_MINENGINE_EXTRA_TEST_SOURCES}
 )
 
 set_target_properties(${MINENGINE_TESTS_NAME} PROPERTIES
@@ -47,8 +66,18 @@ target_include_directories(${MINENGINE_TESTS_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/Third-Party/doctest
 )
 
+if(NOT "${MINENGINE_EXTRA_TEST_INCLUDE_DIRS}" STREQUAL "")
+    target_include_directories(${MINENGINE_TESTS_NAME} PRIVATE ${MINENGINE_EXTRA_TEST_INCLUDE_DIRS})
+endif()
+
 target_compile_definitions(${MINENGINE_TESTS_NAME} PRIVATE MINENGINE_BUILD)
+if(MINENGINE_ENABLE_EXTRA_TESTS)
+    target_compile_definitions(${MINENGINE_TESTS_NAME} PRIVATE MINENGINE_ENABLE_EXTRA_TESTS=1)
+endif()
 
 target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE ${ENGINE_NAME})
+if(NOT "${MINENGINE_EXTRA_TEST_LINK_LIBRARIES}" STREQUAL "")
+    target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE ${MINENGINE_EXTRA_TEST_LINK_LIBRARIES})
+endif()
 
 add_dependencies(${MINENGINE_TESTS_NAME} ${ENGINE_NAME})

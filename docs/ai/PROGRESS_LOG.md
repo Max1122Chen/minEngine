@@ -1,6 +1,18 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-21（0.1.0 验收改为 minCraft；Launcher 建项补 schema 戳）
+Last updated: 2026-09-21（ED-F20 / TEST-F05 Done）
+
+### 2026-09-21 - ED-F20 / TEST-F05 Done（游戏 Dev 宿主 + 外仓测试）
+- **ED-F20：** `MINENGINE_GAME_DIR` + `MINENGINE_GAME_TARGET` + `COPY_RUNTIME`；`Examples/GameModuleStub`；默认关闭零回归。`MaximumEditor.exe --version` 在 stub 链接下 PASS。
+- **TEST-F05：** `MINENGINE_EXTRA_TEST_*` + `RegisterExtraTestSuites`；stub `game.stub-extra`；重复 suite Id 打 Error 日志。`test game.stub-extra` PASS；默认 `verify.ps1` smoke PASS。
+- **不做：** Startup 符号 / LoadLibrary / Runner API 导出（S03 Deferred）。未改 minCraft。
+- **Next：** 提交本批；minCraft 侧接钩子。
+
+### 2026-09-21 - ED-F20 / TEST-F05 Design Draft（minCraft 反哺，未写代码）
+- **登记：** `ED-F20`（Editor 可选链接外部游戏 SHARED）、`TEST-F05`（外仓测试接入 harness）。
+- **选型：** ED-F20 → `MINENGINE_GAME_DIR` + `MINENGINE_GAME_TARGET`（链接期，非 LoadLibrary）；TEST-F05 → 路径 A（EXTRA 源进 minEngineTests + `RegisterExtraTestSuites`）；两 Feature 的显式 Startup / Runner 导出均 **S03 Deferred**。
+- **对照：** 只读 minCraft `INFRA-F01`；未改 minCraft 仓。
+- **Next：** 维护者确认 Design → Planned → 先 `ED-F20-S01`。
 
 ### 2026-09-21 - 0.1.0 验收改为 minCraft；Launcher 建项补版本戳
 - **决策：** 可玩竖切不在引擎仓做 FPS。独立仓 `D:\Dev\GitRepo\minCraft` 复刻一部分 Minecraft；缺口再回流引擎。`kEngineVersion` 维持 0.0.9，切片完成后再升 0.1.0。

@@ -92,6 +92,26 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) section 7.
 | Run tests | `minEngineTests.exe test smoke` from `minEngine/bin` |
 | Engine config | `--engine-config=`, `--engine-root=` (or space form); env `MINENGINE_ENGINE_*` |
 
+**Optional game Dev host (`ED-F20`, off by default):**
+
+```powershell
+cmake -S minEngine -B minEngine/build `
+  -DMINENGINE_GAME_DIR=<abs-path-to-game-or-Examples/GameModuleStub> `
+  -DMINENGINE_GAME_TARGET=<SHARED-target-name>
+```
+
+Example stub: `minEngine/Examples/GameModuleStub` with target `GameModuleStub`. See [ED-F20 Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md).
+
+**Optional extra test suites (`TEST-F05`, off by default):**
+
+```powershell
+cmake -S minEngine -B minEngine/build `
+  -DMINENGINE_EXTRA_TEST_DIR=minEngine/Tests/Fixtures/ExtraTestStub
+.\minEngine\bin\minEngineTests.exe test game.stub-extra
+```
+
+See [TEST-F05 Design](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md) and `Tests/Fixtures/ExtraTestStub/README.md`.
+
 **Unified CLI (`CLI-F01`, from `minEngine/bin`):**
 
 | Command | Purpose |

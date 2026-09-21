@@ -1,5 +1,7 @@
 #include "TestSuiteRegistry.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
+
 #include <algorithm>
 
 namespace minEngine
@@ -17,6 +19,11 @@ namespace minEngine
         {
             if (existing != nullptr && existing->GetMetadata().Id == metadata.Id)
             {
+                ME_LOG(
+                    LogTest,
+                    Error,
+                    "TestSuiteRegistry: duplicate suite id '{}'; ignoring second registration.",
+                    metadata.Id);
                 return;
             }
         }

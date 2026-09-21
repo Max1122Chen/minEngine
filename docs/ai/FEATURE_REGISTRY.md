@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-19（`feat/mcp`：ED-F19 Done）
+Last updated: 2026-09-21（ED-F20 / TEST-F05 Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -23,6 +23,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `TEST-F02` | Test layout migration, doctest, minEngineTests exe | Done | — | [TEST_F02_LAYOUT_MIGRATION](./Platform/Test/TEST_F02_LAYOUT_MIGRATION.md) |
 | `TEST-F03` | Suite slim-down, doctest cases, fixture B reflection | Done | — | [TEST_F03_SUITE_SLIM_PLAN](./Platform/Test/TEST_F03_SUITE_SLIM_PLAN.md) |
 | `TEST-F04` | `Testing::TestAccess<T>` — Core 前向声明 + Tests 特化，替代 N 个 TestScope friend | **Done** | — | [Design](./Platform/Test/TEST-F04_TEST_ACCESS_DESIGN.md) · **`master`** |
+| `TEST-F05` | 外仓 / 附加测试接入 minEngineTests harness | **Done** | — | [Design](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md) · [Impl](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_IMPLEMENTATION.md) · minCraft `ENG-GAP-003` |
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | **In Progress** | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
@@ -90,6 +91,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F17` | Editor Automation Host + Q/E/V Surface（Named Pipe → Editor API） | **Done**（S01–S04 Scene MVP） | — | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) · 服务 [MCP-F01](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | `ED-F18` | Editor 原生能力面纠偏（`*EditorServices`；Surface 独占协议） | **Done** | — | [Design](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md) · [Impl](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_IMPLEMENTATION.md) |
 | `ED-F19` | Material / Anim EditorServices（图原语 + Automation op） | **Done** | — | [Design](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_DESIGN.md) · [Impl](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_IMPLEMENTATION.md) |
+| `ED-F20` | Editor 可选链接外部游戏 SHARED（Dev 宿主；链接期模块） | **Done** | — | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) · [Impl](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md) · minCraft `ENG-GAP-001` |
 | `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Done**（P0 伞） | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
 | `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Done** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
@@ -147,11 +149,11 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | DOMAIN | Next Feature # | Notes |
 |--------|----------------|-------|
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
-| `TEST` | **F05** | F04 Done（TestAccess） |
+| `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
 | `CORE` | **F27** | F19/F21 Lua **Done**；F20/F22 Done；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F20** | F12–**F19 Done**；**F11** In Progress；F10 占位 |
+| `ED` | **F21** | F12–**F19 Done**；**F20** Draft（游戏模块链接）；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
 | `RND` | **F18** | F06/F17 **Done**；F12 Deferred |
 | `LAUN` | F02 | F01 Done |

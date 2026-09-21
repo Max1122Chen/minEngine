@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-21（0.1.0 验收改为独立仓 minCraft；本刀只修 Launcher 建项）
+Last updated: 2026-09-21（ED-F20 / TEST-F05 Done；Primary 空闲）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,33 +11,35 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：无新引擎 Feature。** 0.1.0 可玩竖切改到独立仓库 `D:\Dev\GitRepo\minCraft`（玩法不进 Core）。版本号保持 **0.0.9**，minCraft 演示切片完成后再升 **0.1.0**。
-
-本刀只做：Launcher `create` 打上磁盘 schema/引擎版本戳，并在 minCraft 仓创建空工程 `minCraft/`。
+**Primary：无强制下一刀。** ED-F20 / TEST-F05 **Done**（游戏 Dev 宿主 + 外仓测试扩展点）。版本号仍 **0.0.9**；玩法在 minCraft。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`ED-F19`** | 材质图 / 动画图原语 + Automation op | **Done** | [Design](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_DESIGN.md) · [Impl](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_IMPLEMENTATION.md) |
-| 1 | **`MCP-F01`** | minEngine MCP 总体架构（Q/E/V；产品蓝图） | **Done**（P0 伞） | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
-| 2 | **`MCP-F02`** | Automation Protocol（query/edit/verify） | **Done**（契约） | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
-| 3 | **`CLI-F02`** | Automation 启动面（Spawn + Attach） | **Done**（启动面） | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
-| 4 | **`ED-F17`** | Automation Host + Q/E/V Surface | **Done**（S01–S04） | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) |
-| 5 | **`MCP-F03`** | minEngine MCP Server（粗 Tools） | **Done** | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
+| 0 | **`ED-F20`** | Editor 可选链接外部游戏 SHARED（链接期 Dev 宿主） | **Done** | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) · [Impl](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md) |
+| 1 | **`TEST-F05`** | 外仓/附加测试接入 minEngineTests | **Done** | [Design](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md) · [Impl](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_IMPLEMENTATION.md) |
 
-**下一刀：** 未指定。余量：Create Prefab、Play、Console 反馈、字面量→void*、动画位置拖拽专用 Command、`ReverseTransition`。
+**下一刀：** 未指定。minCraft 可用 `MINENGINE_GAME_DIR` / `MINENGINE_EXTRA_TEST_*` 接引擎；引擎侧 S03（Startup 符号 / Runner 导出）仍 Deferred。
 
-**参考（非权威）：** `docs/external/minEngine_MCP_Server_Architecture_Design_Guide.md`。
+**发现场景（只读）：** `D:\Dev\GitRepo\minCraft` · `INFRA-F01`。
 
 **并行 / 不挡**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
 | editor | `ED-F11` | Tab Host 余量（可选） |
-| editor | **`ED-F18`** | Done（`SceneEditorServices` 原语） |
-| — | Prefab 后置 | Nested / Apply→Prefab / Instantiate 偏移 / 蓝字；并排预览可消费 RND-F17 |
+| — | Prefab 后置 | Nested / Apply→Prefab / 并排预览 |
 | — | `ED-F10` | EditorSettings 占位 |
-| material | **`MAT-F01`–`F06`** | Done（运行时产品化主链，含 `.memi`） |
-| render | **`RND-F17`** | Done（ViewId+SRT） |
+| material | **`MAT-F01`–`F06`** | Done |
+| render | **`RND-F17`** | Done |
+
+<details>
+<summary>历史焦点（MCP / ED-F19 等，折叠）</summary>
+
+| 序 | ID | 标题 | Status |
+|----|-----|------|--------|
+| — | ED-F19 / MCP-F01–F04 / CLI-F02 / ED-F17–F18 | Automation + MCP 波 | **Done** |
+
+</details>
 
 ### 本波已合入 master（勿再当 WIP）
 

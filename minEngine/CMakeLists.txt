@@ -45,8 +45,50 @@ else()
     set(EXECUTABLE_PATH ${PROJECT_SOURCE_DIR}/bin)
 endif()
 
+# ED-F20: optional link-time game SHARED into MaximumEditor (Dev host). Empty = off.
+set(MINENGINE_GAME_DIR "" CACHE PATH
+    "External game CMake root (directory with CMakeLists.txt). Empty disables game module link.")
+set(MINENGINE_GAME_TARGET "" CACHE STRING
+    "CMake SHARED target name to link into Editor when MINENGINE_GAME_DIR is set.")
+option(MINENGINE_GAME_COPY_RUNTIME
+    "Copy game SHARED runtime next to MaximumEditor when a game module is linked" ON)
+
+# TEST-F05: optional extra suite sources compiled into minEngineTests. Empty = off.
+set(MINENGINE_EXTRA_TEST_SOURCES "" CACHE STRING
+    "Semicolon-separated extra .cpp files compiled into minEngineTests (must define RegisterExtraTestSuites).")
+set(MINENGINE_EXTRA_TEST_DIR "" CACHE PATH
+    "Optional directory; all *.cpp under it are appended to MINENGINE_EXTRA_TEST_SOURCES.")
+set(MINENGINE_EXTRA_TEST_INCLUDE_DIRS "" CACHE STRING
+    "Semicolon-separated extra include dirs for minEngineTests when EXTRA tests are enabled.")
+set(MINENGINE_EXTRA_TEST_LINK_LIBRARIES "" CACHE STRING
+    "Semicolon-separated CMake targets/libs to link into minEngineTests for EXTRA suites.")
+
 add_subdirectory(${ENGINE_NAME})
- 
+
+# Resolve optional game module after the engine target exists (game may link minEngine).
+set(MINENGINE_HAS_GAME_MODULE OFF)
+if(NOT "${MINENGINE_GAME_DIR}" STREQUAL "")
+    if("${MINENGINE_GAME_TARGET}" STREQUAL "")
+        message(FATAL_ERROR
+            "MINENGINE_GAME_DIR is set (${MINENGINE_GAME_DIR}) but MINENGINE_GAME_TARGET is empty. "
+            "Pass -DMINENGINE_GAME_TARGET=<SHARED target name> (see docs/ai/Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md).")
+    endif()
+    if(NOT EXISTS "${MINENGINE_GAME_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR
+            "MINENGINE_GAME_DIR does not contain CMakeLists.txt: ${MINENGINE_GAME_DIR}")
+    endif()
+
+    add_subdirectory("${MINENGINE_GAME_DIR}" "${CMAKE_BINARY_DIR}/external_game" EXCLUDE_FROM_ALL)
+
+    if(NOT TARGET "${MINENGINE_GAME_TARGET}")
+        message(FATAL_ERROR
+            "MINENGINE_GAME_TARGET '${MINENGINE_GAME_TARGET}' was not defined by "
+            "add_subdirectory(${MINENGINE_GAME_DIR}).")
+    endif()
+
+    set(MINENGINE_HAS_GAME_MODULE ON)
+    message(STATUS "ED-F20: Editor will link game module target '${MINENGINE_GAME_TARGET}' from ${MINENGINE_GAME_DIR}")
+endif()
 
 if(BUILD_EDITOR) 
 	add_subdirectory(Editor)
