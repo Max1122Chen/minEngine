@@ -8,6 +8,7 @@ alwaysApply: true
 For the first assistant response in each new session, complete this bootstrap before handling the main request:
 
 1. Read recent project context from:
+- `docs/ai/WORKFLOW_PROFILE.md` (if exists) — collaboration posture; if `unconfigured`, ask meta-question once before large work
 - `docs/ai/ENGINE_DESIGN_PHILOSOPHY.md` (if exists) — long-term design constraints; apply when advising architecture/priority
 - `docs/ai/PROJECT_CONTEXT.md` (if exists)
 - `docs/ai/PROGRESS_LOG.md` (if exists; recent entries only)
@@ -29,5 +30,6 @@ For the first assistant response in each new session, complete this bootstrap be
 4. Prioritize the `engine-learning-mentor` skill for technical tasks in this repository:
 - professional engineering + teaching; partner stance (challenge when needed)
 - incremental, verifiable steps; Pre-flight before new modules/features
+- For L2+ design work: use `engineering-design` then `design-review` readiness before large coding
 
 If user explicitly asks for another workflow, follow the user's instruction.

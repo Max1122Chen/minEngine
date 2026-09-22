@@ -1,6 +1,6 @@
 # Working With AI in minEngine
 
-Last updated: 2026-09-17
+Last updated: 2026-09-22
 
 ## Why this exists
 
@@ -9,18 +9,20 @@ To avoid repeating background in every chat, keep concise AI-readable context in
 
 **Design philosophy:** [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) — agents must apply it on architecture and Feature planning, and remind you when plans drift.
 
+**Workflow posture:** [WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md) — preset/autonomy/role; say `reconfigure workflow` to change. Presets: [templates/WORKFLOW_PRESETS.md](./templates/WORKFLOW_PRESETS.md).
+
 ## Minimal workflow
 
 1) Before coding discussion
 - Mention one line only: continue previous task in this repo.
 
 2) During discussion
-- Ask AI to read docs/ai/ENGINE_DESIGN_PHILOSOPHY.md, PROJECT_CONTEXT.md, PROGRESS_LOG.md, and ACTIVE_WORK.md first.
+- Ask AI to read docs/ai/WORKFLOW_PROFILE.md, ENGINE_DESIGN_PHILOSOPHY.md, PROJECT_CONTEXT.md, PROGRESS_LOG.md, and ACTIVE_WORK.md first.
 - Stage direction: ENGINE_CAPABILITY_ROADMAP.md (multi-track; not a linear TODO).
 - Design docs live under docs/ai/Platform/, Render/, Editor/ — see docs/ai/README.md.
-- New design/work: copy from docs/ai/templates/ and follow docs/ai/templates/DOC_GOVERNANCE.md (Feature ID, Slice ID, status, DoD).
+- New design/work: assess **L0–L3**; copy from docs/ai/templates/ and follow docs/ai/templates/DOC_GOVERNANCE.md (Feature ID, Slice ID, status, DoD, readiness).
 - Triggers (plan/design/bug/wrap-up/commit prep): `.cursor/rules/docs-workflow-triggers.mdc` → mentor skill for execution; **准备 commit** = draft message + your approval (not auto-commit).
-- New feature: register in `docs/ai/FEATURE_REGISTRY.md` before Design.
+- New feature: register in `docs/ai/FEATURE_REGISTRY.md` before Design; L2+ use **`engineering-design`** then **design-review** readiness before large coding.
 - Handoff end prompt: `请按 handoff 流程写 session 笔记、更新 Progress，未完成 slice 标 Blocked，并给我下一会话首句。`
 - New module / big feature / **refactor**: expect **Pre-flight**; refactors need a plan and **deletion of old paths**, not band-aid layers; learning project ≠ sloppy engineering.
 - After a finished batch (slice / workflow docs): agent should **proactively draft the commit message** (DoD + draft) for your approval — you do **not** need to say 准备 commit first. Say `先不提交` if you want to keep going without a draft.

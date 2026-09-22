@@ -1,0 +1,20 @@
+---
+description: Optional implementation discipline for engineering-heavy repos.
+alwaysApply: false
+---
+
+# Implementation Discipline (Optional)
+
+Enable this rule in repos where codebase health is a primary objective.
+
+## Principles
+
+1. Reuse before duplication.
+2. Remove dead or superseded paths in the same change when safe.
+3. If transitional code must remain, register explicit debt with exit condition.
+4. Keep exports and public APIs aligned with actual usage.
+
+## Boundary
+
+- In scope: cleanup directly touched by the current task.
+- Out of scope: unrelated large rewrites; register debt instead.

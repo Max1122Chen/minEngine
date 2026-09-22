@@ -57,12 +57,13 @@ If the target Design is ambiguous, ask **one** clarifying question; otherwise di
 
 | Skill | Role |
 |-------|------|
+| `engineering-design` | Produce / revise Design Spec (discovery, boundaries, ownership, failure, alternatives) |
 | `engine-learning-mentor` | Partner stance, Pre-flight, docs collaboration, philosophy |
 | `engine-system-review` | **Code** / subsystem engineering review after (or instead of) design |
 | `git-commit-mentor` | After design clarifications or follow-up doc edits land |
 | This skill | Design readiness / consistency → structured report **before** coding |
 
-**Default gate:** substantial new Feature → Design Status ≥ Planned → **design-review (Mode A)** → then implement. Mentors Pre-flight still applies for Go/Defer.
+**Default gate:** substantial new Feature (L2+) → Design Status ≥ Planned → **design-review (Mode A)** with readiness verdict → then implement. Mentors Pre-flight still applies for Go/Defer. L3 always requires Implementation Readiness.
 
 ---
 
@@ -297,11 +298,11 @@ ID (`D01`, `D02`, …), Title, Category (dimension A–K or kind), Severity, Con
 5. **Missing Workflows / Edge Cases**  
 6. **Acceptance and Test Coverage Gaps**  
 7. **Positive Design Decisions** — **do not leave empty by default**  
-8. **Implementation Readiness Assessment** — one of:
-   - Ready to implement  
-   - Ready after targeted clarifications  
-   - Not ready: blocking design decisions remain  
-   (with reasoning; no score)  
+8. **Implementation Readiness Assessment** — one of (DOC_GOVERNANCE §5.6 / Design Spec Review field):
+   - `Ready` (synonym: Ready to implement)
+   - `Ready with deferred items` (synonym: Ready after targeted clarifications) — deferred items must be explicit and non-blocking
+   - `Not ready` — block large coding; list concrete gaps
+   (with reasoning; no score)
 9. **Recommended Next Steps** — ordered, practical  
 10. **Suggested Acceptance Checklist** — short list for later implementation review  
 

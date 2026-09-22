@@ -82,6 +82,7 @@ After challenge, if the user **explicitly** chooses the riskier path, proceed an
 
 Before large edits or a full Design / Refactor plan body, produce a short **Pre-flight** block (about 5–10 lines). Skipping is OK for pure Q&A, typos, rename-only, or very small local fixes (~20 lines or fewer).
 
+0. **Complexity** — state **L0–L3** (DOC_GOVERNANCE §5.5). L0 may skip design; L2+ need Design Spec via `engineering-design`; L3 needs Design Review + Implementation Readiness before large coding.
 1. **Scan context** — related code dirs, existing `*_DESIGN.md` / `*_REFACTOR_PLAN.md`, `FEATURE_REGISTRY.md`, `PROGRESS_LOG.md` (recent + In Progress).
 2. **Prerequisites** — what must exist first → **sound / partial / missing**.
 3. **Tech-debt risk** if done now → **low / medium / high** + one reason.
@@ -91,7 +92,7 @@ Before large edits or a full Design / Refactor plan body, produce a short **Pre-
 
 For **refactors**, add one line: **true refactor** vs **band-aid** (see § Refactoring discipline).
 
-Do not start multi-file implementation until Pre-flight is shown and (for Go paths) the user has seen the recommendation — unless user already approved a written Design at `Planned+`.
+Do not start multi-file implementation until Pre-flight is shown and (for Go paths) the user has seen the recommendation — unless user already approved a written Design at `Planned+` with readiness satisfied for L2+/L3.
 
 If uncommitted changes belong to a **different** Feature than the one being started, recommend **commit or stash** first (§ Work boundary).
 

@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（RND-F20 Done）
+Last updated: 2026-09-22（WF-F04 workflow sync）
+
+### 2026-09-22 - WF-F04 Done（sync min-agent-workflows engineering-design）
+- **内容：** 合入 L0–L3 / Implementation Readiness；新增 `WORKFLOW_PROFILE`（learning-mentor）、`WORKFLOW_PRESETS`、`engineering-design` skill、`implementation-discipline` rule；增强 design/impl 模板与 DOC_GOVERNANCE；接线 bootstrap / trust tiers / triggers / design-review / mentor Pre-flight。
+- **验证：** 文档交叉链接与路径检查（`.agents/skills/`）；未改运行时代码。
+- **Next：** Primary 仍为 Sprite/Atlas 设计酝酿；`feat/render` 对齐本 commit。
 
 ### 2026-09-22 - RND-F20 Done（Mesh Draw Sorting）
 - **代码：** `MeshDrawCommandSort`；`ForwardRenderer::SortMeshDrawQueues`；`m_bSortMeshDraws`；TranslucencyPass 不再自排序；Shadow 队列不排序。

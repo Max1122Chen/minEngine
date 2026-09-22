@@ -6,13 +6,14 @@
 
 **排期与「还有什么没做」** — 只认：
 
-1. [ACTIVE_WORK.md](./ACTIVE_WORK.md) — 当前短 backlog（人维护）
-2. [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) — 长期约束（非任务列表）
-3. [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) — 多轨方向（具体下一刀仍看 ACTIVE_WORK）
-4. [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) — 仅 **In Progress** / **Planned** 行
-5. [TECH_DEBT.md](./TECH_DEBT.md) — 仅 **Open** 行
-6. [PROGRESS_LOG.md](./PROGRESS_LOG.md) — 近期已落地事实
-7. **代码与测试** — `verify.ps1`、`minEngineTests`；与文档冲突时以代码为准
+1. [WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md) — 协作姿态（非 backlog；`unconfigured` 时先问 meta-question）
+2. [ACTIVE_WORK.md](./ACTIVE_WORK.md) — 当前短 backlog（人维护）
+3. [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) — 长期约束（非任务列表）
+4. [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) — 多轨方向（具体下一刀仍看 ACTIVE_WORK）
+5. [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md) — 仅 **In Progress** / **Planned** 行
+6. [TECH_DEBT.md](./TECH_DEBT.md) — 仅 **Open** 行
+7. [PROGRESS_LOG.md](./PROGRESS_LOG.md) — 近期已落地事实
+8. **代码与测试** — `verify.ps1`、`minEngineTests`；与文档冲突时以代码为准
 
 规则全文：`.cursor/rules/docs-trust-tiers.mdc`（always apply）。  
 **不要**根据下方「快速入口」里的旧路线图、未勾选清单或 `Status: Snapshot/Archived/Reference` 文档自动推导待办。
@@ -21,6 +22,7 @@
 
 | 文件 | 用途 |
 |------|------|
+| [WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md) | 协作预设 / 自主度 / 角色（非任务 backlog） |
 | [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) | 长期设计约束（非任务 backlog） |
 | [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) | 多轨阶段方向；具体下一刀仍看 ACTIVE_WORK |
 | [ACTIVE_WORK.md](./ACTIVE_WORK.md) | 你现在关心的 1–5 件事 |
@@ -42,6 +44,7 @@
 
 | 路径 | 用途 |
 |------|------|
+| **`WORKFLOW_PROFILE.md`** | 协作姿态（bootstrap 必读；预设见 `templates/WORKFLOW_PRESETS.md`） |
 | **`PROJECT_CONTEXT.md`** | 稳定、高层项目快照（bootstrap 必读） |
 | **`PROGRESS_LOG.md`** | 按时间线的变更记录（bootstrap 必读） |
 | **`FEATURE_REGISTRY.md`** | Feature ID 登记册（新功能先登记再写 Design） |

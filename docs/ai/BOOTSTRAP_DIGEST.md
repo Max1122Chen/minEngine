@@ -1,10 +1,10 @@
 # Bootstrap Digest (read in under 2 min)
 
-Last updated: 2026-09-19  
+Last updated: 2026-09-22  
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** Phase P. **`RND-F17` Done.** **`MAT-F01`–`F06` Done**（运行时产品化主链）。See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
+**Snapshot:** Phase P. Workflow profile: **`learning-mentor`** ([WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md)). Primary next: Sprite/Atlas design. See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
 ---
 
@@ -16,15 +16,16 @@ Purpose: **one-page** context for humans and AI when starting or recovering a se
 
 ## Read order (new session)
 
-1. [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) -- long-term design constraints (skim principles)  
-2. [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) -- architecture snapshot  
-3. [PROGRESS_LOG.md](./PROGRESS_LOG.md) -- what changed recently (recent entries only)  
-4. [ACTIVE_WORK.md](./ACTIVE_WORK.md) -- **current backlog** (human-edited; agents prefer this over old roadmaps)  
-5. **This file** -- rules + commands + habits  
-6. [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) -- multi-track stage map (not a linear TODO)  
-7. [TECH_DEBT.md](./TECH_DEBT.md) -- Open rows only (what not to rush)  
-8. [playbooks/README.md](./playbooks/README.md) -- typical bug patterns & debugging (Tier B)  
-9. Task-specific design -- **only** if the user names it or ACTIVE_WORK links it; check Meta **Status** first ([doc trust tiers](../../.cursor/rules/docs-trust-tiers.mdc))  
+1. [WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md) -- collaboration posture (if `unconfigured`, ask meta-question once)  
+2. [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md) -- long-term design constraints (skim principles)  
+3. [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) -- architecture snapshot  
+4. [PROGRESS_LOG.md](./PROGRESS_LOG.md) -- what changed recently (recent entries only)  
+5. [ACTIVE_WORK.md](./ACTIVE_WORK.md) -- **current backlog** (human-edited; agents prefer this over old roadmaps)  
+6. **This file** -- rules + commands + habits  
+7. [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md) -- multi-track stage map (not a linear TODO)  
+8. [TECH_DEBT.md](./TECH_DEBT.md) -- Open rows only (what not to rush)  
+9. [playbooks/README.md](./playbooks/README.md) -- typical bug patterns & debugging (Tier B)  
+10. Task-specific design -- **only** if the user names it or ACTIVE_WORK links it; check Meta **Status** first ([doc trust tiers](../../.cursor/rules/docs-trust-tiers.mdc))  
 
 Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
 
@@ -55,8 +56,9 @@ Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
 - **Work boundary:** after a finished deliverable batch -> **proactively draft commit** (DoD + message); wait for approval -- user need not say prepare commit first.  
 - **Stage mode:** one Primary track + parallel side tracks -- not strict linear TODOs.
 
-Skills: `.agents/skills/engine-learning-mentor/SKILL.md`, `.agents/skills/git-commit-mentor/SKILL.md`, `.agents/skills/design-review/SKILL.md`, `.agents/skills/engine-system-review/SKILL.md`  
-Triggers: `.cursor/rules/docs-workflow-triggers.mdc` / `.cursor/rules/engine-design-philosophy.mdc`
+Skills: `.agents/skills/engine-learning-mentor/SKILL.md`, `.agents/skills/engineering-design/SKILL.md`, `.agents/skills/design-review/SKILL.md`, `.agents/skills/git-commit-mentor/SKILL.md`, `.agents/skills/engine-system-review/SKILL.md`  
+Triggers: `.cursor/rules/docs-workflow-triggers.mdc` / `.cursor/rules/engine-design-philosophy.mdc`  
+Design loop (L2+): complexity → Design Spec → Design Review / readiness → Implementation Plan → verify (DOC_GOVERNANCE §5.5–5.6)
 
 ---
 

@@ -1,62 +1,88 @@
-# <Feature Name> — Implementation Plan
+# <FEATURE_ID>_<SLUG> Implementation Plan
+
+> **Filename (required):** `docs/ai/<DOMAIN>/<FEATURE_ID>_<SLUG>_IMPLEMENTATION.md` — ALL CAPS.
+> Example: `docs/ai/CORE/CORE-F01_EVENT_BUS_IMPLEMENTATION.md`
+>
+> This plan must trace back to a Design Spec. Avoid becoming a bare TODO list.
 
 ## Meta
-- **ID:** <DOMAIN>-F<nn>（父 Feature）
-- **Status:** Draft | In Progress | Done
-- **Owner:**
-- **Last updated:** YYYY-MM-DD
-- **Related:** [Design Spec](./<name>_DESIGN.md)
+- **ID:** `<DOMAIN>-F<nn>`
+- **Status:** `Draft | Planned | In Progress | Review | Done | Blocked | Deferred | Cancelled`
+- **Owner:** `<name>`
+- **Last updated:** `YYYY-MM-DD`
+- **Related:** `[Design Spec](./<FEATURE_ID>_<SLUG>_DESIGN.md)`
+- **Design readiness:** `Ready | Ready with deferred items` (must not be `Not ready` / `Draft-only`)
 
-## TL;DR
-<!-- 共几个切片、当前切片、阻塞项 -->
+## Goal
 
-## Scope
-- **In:** 本计划内的代码/文档变更
-- **Out:** 明确不做的切片
+Define independently verifiable slices that implement an already-reviewed design.
 
-## Reader quick start
-1. Design Spec — 方案与验收
-2. 下表 — 切片顺序与状态
-3. `PROGRESS_LOG.md` — 已落地记录
+## Design Decisions Being Implemented
 
----
+| Decision ID / title | Design section | Notes |
+|---------------------|----------------|-------|
+| `<D1>` | `<section>` | `<brief>` |
 
-## 1) 切片总览
+## Implementation Slices
 
-| Slice ID | 内容 | 状态 | 验证 |
-|----------|------|------|------|
-| <DOMAIN>-F<nn>-S01 | | Planned | |
-| <DOMAIN>-F<nn>-S02 | | | |
+| Slice ID | Summary | Design decision | Dependencies | Verification | Status |
+|----------|---------|-----------------|--------------|--------------|--------|
+| `<FeatureID>-S01` | `<summary>` | `<D1>` | `<dep>` | `<command/check>` | Planned |
+| `<FeatureID>-S02` | `<summary>` | `<D2>` | `<dep>` | `<command/check>` | Planned |
 
-状态：`Planned | In Progress | Done | Blocked | Deferred | Cancelled`
+## Slice → Design Traceability
 
-## 2) 切片详情
+For each slice (or group closely related slices):
 
-### <DOMAIN>-F<nn>-S01 — <title>
-- **Goal:**
-- **Touch:** <!-- 文件/模块 -->
-- **DoD:** <!-- 勾选项 -->
-- **Verify:** <!-- 命令或手动步骤 -->
+### `<FeatureID>-S01`
 
-### <DOMAIN>-F<nn>-S02 — <title>
-- **Goal:**
-- **Touch:**
-- **DoD:**
-- **Verify:**
+- **Design decision:**
+- **Implementation:**
+- **Verification:**
 
-## 3) 依赖顺序
+### `<FeatureID>-S02`
 
-```text
-S01 → S02 → S03
-```
+- **Design decision:**
+- **Implementation:**
+- **Verification:**
 
-## 4) 延后 / 取消切片
+## Integration Points
 
-| Slice ID | Reason | Unblock condition | Next check |
-|----------|--------|-------------------|------------|
-| | | | |
+- Modules / APIs touched:
+- Data contracts:
+- Feature flags / rollout hooks (if any):
 
-## 5) 变更记录
+## Risks / Mitigations
 
-| 日期 | 说明 |
-|------|------|
+- Risk:
+- Mitigation:
+
+## Verification per Slice
+
+Reuse profile `verification_bar`. Record commands/results in Progress Log when slices complete.
+
+## Migration / Compatibility
+
+- Steps required during rollout:
+- Backward-compat checks:
+- Removal plan for transitional paths:
+
+## Deferred Work
+
+| Item | Why deferred | Unblock condition |
+|------|--------------|-------------------|
+| `<item>` | `<reason>` | `<condition>` |
+
+## Completion Criteria
+
+- [ ] All in-scope slices Done or explicitly Deferred with note
+- [ ] Design acceptance criteria covered or mapped to deferred work
+- [ ] Docs DoD + engineering DoD satisfied
+- [ ] Ready to propose prepare commit
+
+## Blocked/Deferred note (required if applicable)
+
+- Reason:
+- Impact:
+- Unblock condition:
+- Next check date:

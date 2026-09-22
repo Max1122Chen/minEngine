@@ -1,8 +1,9 @@
 # 文档与协作规范 v1
 
-Last updated: 2026-09-17  
+Last updated: 2026-09-22  
 Status: **Active**  
-Owner: project maintainer + AI collaborator
+Owner: project maintainer + AI collaborator  
+Source sync: `min-agent-workflows` TMPL-F04 (complexity + readiness gates)
 
 ---
 
@@ -145,9 +146,55 @@ Draft → Planned → In Progress → Review → Done
 
 ### 5.3 Agent doc trust (summary)
 
-- **Planning:** [ACTIVE_WORK.md](../ACTIVE_WORK.md), FEATURE_REGISTRY (In Progress / Planned), TECH_DEBT (Open), user-named In Progress design, code + `verify.ps1`.
+- **Planning:** [WORKFLOW_PROFILE.md](../WORKFLOW_PROFILE.md)（姿态，非 backlog）、[ACTIVE_WORK.md](../ACTIVE_WORK.md), FEATURE_REGISTRY (In Progress / Planned), TECH_DEBT (Open), user-named In Progress design, code + `verify.ps1`.
 - **Not planning:** old roadmaps, Snapshot/Archived/Reference docs, unchecked design checklists, sessions/.
 - **Conflict:** code and tests override stale prose.
+
+### 5.4 Workflow profile
+
+- 协作姿态：[`WORKFLOW_PROFILE.md`](../WORKFLOW_PROFILE.md)；预设目录：[`WORKFLOW_PRESETS.md`](./WORKFLOW_PRESETS.md)。
+- 若 profile `status` 为 `unconfigured`，大规模开工前只问一次 meta-question。
+- Profile 可调节严格度 / 自主度 / 角色 / 文档语言 / 验证门槛 / 设计仪式；**不能**关闭：commit 门禁、planning trust tiers、L3 架构安全检查。
+
+### 5.5 Design complexity levels（L0–L3）
+
+大规模改动前先评估并声明复杂度：
+
+| Level | Typical scope | Required path |
+|-------|---------------|---------------|
+| **L0 Trivial** | typo、明显一行修复、局部常量 | Implement → Verify（无需 design review） |
+| **L1 Local** | 单模块逻辑 | Short design 可选；substantial 时登记 Feature ID |
+| **L2 Feature** | 多模块、API、状态或 lifetime | Design Spec → Design Review → Implementation Plan → Implement |
+| **L3 Architectural** | 核心抽象、跨模块依赖、持久化、并发、公开 API、迁移、大重构 | Full Design → Design Review → **Implementation Readiness** → Plan → Implement |
+
+Skills：
+- 设计行为：`.agents/skills/engineering-design/SKILL.md`
+- 设计评审：`.agents/skills/design-review/SKILL.md`
+- 引擎伙伴 / Pre-flight：`.agents/skills/engine-learning-mentor/SKILL.md`
+
+目标流（仅按级别允许跳过阶段）：
+
+```text
+Request → Discovery → Complexity Assessment
+  → Design → Design Review → Implementation Readiness
+  → Implementation → Verification → Done
+```
+
+### 5.6 Implementation readiness gate
+
+对 **L2+**（**L3 一律强制**）：在 Design Review 结论为 `Ready` 或 `Ready with deferred items`，且 Design Spec readiness checklist 满足前，**不要**开始大规模编码：
+
+- requirements / constraints 已澄清
+- 已检查相关现有架构
+- responsibilities / boundaries / 关键依赖清楚
+- ownership/lifetime 与主要 state/invariants 已定或标注 N/A + 理由
+- API 语义足够；重要 failure 已考虑
+- 有意义备选已比较；集成影响清楚
+- 有 verification strategy
+- 未决问题已解决或显式接受/延期
+
+`Draft` 设计永不授权大规模编码。  
+`Not ready` 阻塞大规模实现，直到缺口关闭。
 
 ### 5.2 Blocked / Deferred / Cancelled 必填
 
@@ -187,6 +234,7 @@ Draft → Planned → In Progress → Review → Done
 | 更新 Design 状态 / 风险 / 验收勾选 | 对应 `*_DESIGN.md` |
 | Implementation 切片行 | 对应 `*-Snn` → **Done** |
 | `FEATURE_REGISTRY` | Feature 行 Status 与整体进度一致 |
+| L2+：Design Review 结论已记录；切片追溯到设计决策 | Design Meta / Review 小节 + Implementation Plan |
 | 有架构取舍 | 新建或更新 ADR |
 | 修 Bug | 更新 Bug Record → Fixed/Verified |
 | 大任务结束 | 可选 `sessions/` 笔记归档 |
@@ -232,8 +280,8 @@ Draft → Planned → In Progress → Review → Done
 
 ## 9) AI 协作约束
 
-- 新功能：**先登记 `FEATURE_REGISTRY` → Design Spec → Implementation Plan**（可同次会话，须分文件或分节）。
-- **开工门槛：** Design Status 为 `Planned` 或更高，且用户已确认方案（或 Design 内验收/Approval 已勾选）；`Draft` 不得大规模改代码。
+- 新功能：先评估 **L0–L3**；substantial 时 **登记 `FEATURE_REGISTRY` → `engineering-design`（Design Spec）→ Design Review / readiness（按级别）→ Implementation Plan**（可同次会话，须分文件或分节）。
+- **开工门槛：** Design Status 为 `Planned` 或更高；L2+ 还需 Design Review `Ready` / `Ready with deferred items` 与 §5.6 readiness；`Draft` / `Not ready` 不得大规模改代码。
 - Agent 不得只在聊天里留决策；争议点落 ADR。
 - 会话结束：默认追加 `PROGRESS_LOG`；复杂讨论补 `sessions/`。
 - **Handoff（交接）：** 换 chat、长按程暂停、或用户说 handoff/交接 → 见 §9.1。

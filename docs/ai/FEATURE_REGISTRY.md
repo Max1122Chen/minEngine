@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-22（RND-F20 Done；CORE-F27 / ED-F21 Done；ED-F22 Cancelled）
+Last updated: 2026-09-22（WF-F04 workflow sync；RND-F20 Done；CORE-F27 / ED-F21 Done；ED-F22 Cancelled）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -26,6 +26,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `TEST-F05` | 外仓 / 附加测试接入 minEngineTests harness | **Done** | — | [Design](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md) · [Impl](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_IMPLEMENTATION.md) · minCraft `ENG-GAP-003` |
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | **In Progress** | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
+| `WF-F04` | Sync engineering-design workflow from min-agent-workflows (L0–L3 + readiness) | **Done** | — | [WORKFLOW_PROFILE](./WORKFLOW_PROFILE.md) · [WORKFLOW_PRESETS](./templates/WORKFLOW_PRESETS.md) · `.agents/skills/engineering-design/` |
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |
@@ -157,7 +158,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 |--------|----------------|-------|
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
-| `WF` | **F04** | F02 handbook In Progress；**F03** Maximum branding **Done** |
+| `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
 | `CORE` | **F27** | F19/F21 Lua **Done**；F20/F22 Done；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F21** | F12–**F19 Done**；**F20** Draft（游戏模块链接）；**F11** In Progress；F10 占位 |

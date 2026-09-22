@@ -6,7 +6,8 @@
 
 | 文件 | 用途 |
 |------|------|
-| **[DOC_GOVERNANCE.md](./DOC_GOVERNANCE.md)** | ID 规则、状态机、Slice DoD、Bug/Defer、Handoff |
+| **[DOC_GOVERNANCE.md](./DOC_GOVERNANCE.md)** | ID 规则、L0–L3、readiness、状态机、Slice DoD、Bug/Defer、Handoff |
+| **[WORKFLOW_PRESETS.md](./WORKFLOW_PRESETS.md)** | 协作预设目录（部署/重配 `WORKFLOW_PROFILE`） |
 | **[FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md)** | 新 Feature 先登记 ID |
 | 下方模板 | 复制后填占位符，删除说明性注释 |
 
@@ -15,13 +16,14 @@
 | 模板 | 何时用 | 落盘位置 |
 |------|--------|----------|
 | [roadmap.template.md](./roadmap.template.md) | 多模块优先级与里程碑 | `Platform/*_ROADMAP.md` 等 |
-| [design-spec.template.md](./design-spec.template.md) | 单能力设计定稿 | `Platform/<Topic>/`、`Editor/`、`Render/` |
-| [implementation-plan.template.md](./implementation-plan.template.md) | 设计 → 可提交切片 | 与设计同目录或 `*_ROLLOUT*.md` |
+| [design-spec.template.md](./design-spec.template.md) | 单能力设计定稿（含 readiness） | `Platform/<Topic>/`、`Editor/`、`Render/`；技能 `.agents/skills/engineering-design/` |
+| [implementation-plan.template.md](./implementation-plan.template.md) | 设计 → 可提交切片（含 design 追溯） | 与设计同目录或 `*_ROLLOUT*.md` |
 | [adr.template.md](./adr.template.md) | 有争议的架构取舍 | 同主题目录或 `Platform/ADR/` |
 | [bug-record.template.md](./bug-record.template.md) | 缺陷跟踪 | `bugs/` 或 `<Domain>/bugs/` |
 | [progress-log-entry.template.md](./progress-log-entry.template.md) | 会话/任务收尾 | 追加到 `PROGRESS_LOG.md` |
 | [session-note.template.md](./session-note.template.md) | 临时讨论上下文 | `sessions/` |
 | [system-engineering-review.template.md](./system-engineering-review.template.md) | 子系统工程复盘（0.1.0 / 合入前） | `Platform/<Topic>/`、`Editor/`、`Render/` 下 `*_SYSTEM_REVIEW.md`；流程见 `.agents/skills/engine-system-review/` |
+| [design-review.template.md](./design-review.template.md) | Design Review 报告落盘（可选） | 与 Design 同目录或 chat-only |
 
 ## 快速规则（摘要）
 
