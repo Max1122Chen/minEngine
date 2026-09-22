@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-22（SPR-F04 Done；SPR-F03/F02 Done；WF-F04 / RND-F20 / CORE-F27 Done）
+Last updated: 2026-09-22（SPR-F05 Done；SPR-F04/F03/F02 Done；WF-F04 / RND-F20 / CORE-F27 Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -82,7 +82,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `SPR-F02` | Sprite / SpriteAtlas 资产真源 + Rebuild + Runtime 解析 | **Done** | — | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) · suite `sprite-atlas` |
 | `SPR-F03` | Sprite 运行时消费（Component + UVRect→GPU） | **Done** | — | [Design](./Sprite/SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) · suite `sprite-runtime-consume` |
 | `SPR-F04` | Sprite Authoring Services（人/Agent 同面） | **Done** | — | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) · suite `sprite-authoring` |
-| `SPR-F05` | Sprite Editor MVP（纹理预览 + 矩形切分） | **Draft** | — | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |
+| `SPR-F05` | Sprite Editor MVP（纹理预览 + 矩形切分） | **Done** | — | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |
 | `SPR-F06` | Sprite Atlas 工作流 UX（多选创建 / Rebuild / 预览） | **Draft** | — | [Design](./Sprite/SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
 | `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **In Progress** *(S00–S02/S04 Done；S03/S05 余量)* | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) |

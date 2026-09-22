@@ -7,6 +7,7 @@
 #include "SubEditor/Scene/SceneEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
+#include "SubEditor/Sprite/SpriteEditor.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Resource/AssetMeta.h"
@@ -35,6 +36,11 @@ namespace minEngine
         AnimationGraphEditor* GetAnimGraphEditor(IEditorContext& context)
         {
             return dynamic_cast<AnimationGraphEditor*>(context.FindSubModule(AnimationGraphEditor::kModuleId));
+        }
+
+        SpriteEditor* GetSpriteEditorLocal(IEditorContext& context)
+        {
+            return dynamic_cast<SpriteEditor*>(context.FindSubModule(SpriteEditor::kModuleId));
         }
     }
 
@@ -214,6 +220,63 @@ namespace minEngine
                 return editor->SaveActiveGraph();
             };
             registry.Register(std::move(animGraph));
+        }
+
+        {
+            EditorDocumentTypeInfo sprite;
+            sprite.TypeId = "Sprite";
+            sprite.DisplayName = "Sprite";
+            sprite.ModuleId = SpriteEditor::kModuleId;
+            sprite.AllowMultipleSessions = true;
+            sprite.AllowCloseLastOfType = true;
+            sprite.CanOpenAsset = [](const AssetMeta& meta) { return meta.AssetType == "Sprite"; };
+            sprite.MakeAssetKey = [](const AssetMeta& meta) { return meta.AssetPath; };
+            sprite.MakeTitle = [](const AssetMeta& meta) { return FileTitleFromPath(meta.AssetPath); };
+            sprite.BindSession = [](IEditorContext& ctx, const AssetMeta& meta, EditorDocumentSession& session)
+            {
+                SpriteEditor* editor = GetSpriteEditorLocal(ctx);
+                if (editor == nullptr)
+                {
+                    return false;
+                }
+                if (!editor->OpenAsset(meta))
+                {
+                    return false;
+                }
+                session.SetTitle(FileTitleFromPath(meta.AssetPath));
+                return true;
+            };
+            sprite.ActivateSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                SpriteEditor* editor = GetSpriteEditorLocal(ctx);
+                return editor != nullptr && editor->ActivateStoredSession(session.GetAssetKey());
+            };
+            sprite.CloseSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                if (SpriteEditor* editor = GetSpriteEditorLocal(ctx))
+                {
+                    editor->DiscardStoredSession(session.GetAssetKey());
+                }
+            };
+            sprite.QueryDirty = [](IEditorContext& ctx, const EditorDocumentSession& session)
+            {
+                const SpriteEditor* editor = GetSpriteEditorLocal(ctx);
+                return editor != nullptr && editor->IsStoredSessionDirty(session.GetAssetKey());
+            };
+            sprite.SaveSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                SpriteEditor* editor = GetSpriteEditorLocal(ctx);
+                if (editor == nullptr)
+                {
+                    return false;
+                }
+                if (!editor->ActivateStoredSession(session.GetAssetKey()))
+                {
+                    return false;
+                }
+                return editor->SaveActiveSprite();
+            };
+            registry.Register(std::move(sprite));
         }
 
         {

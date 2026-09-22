@@ -89,6 +89,7 @@ namespace minEngine
         m_SubModules.push_back(&m_SceneEditor);
         m_SubModules.push_back(m_MaterialEditor.get());
         m_SubModules.push_back(m_AnimationGraphEditor.get());
+        m_SubModules.push_back(m_SpriteEditor.get());
 
         m_MainMenuModule.Register(*this);
         m_ToolbarModule.Register(*this);
@@ -101,6 +102,7 @@ namespace minEngine
         m_SceneEditor.Register(*this);
         m_MaterialEditor->Register(*this);
         m_AnimationGraphEditor->Register(*this);
+        m_SpriteEditor->Register(*this);
 
         m_DocumentHost.SetContext(this);
         RegisterBuiltinEditorDocumentTypes(*this, m_DocumentHost);
@@ -412,6 +414,7 @@ namespace minEngine
         m_ViewportRegistry.SetContext(this);
         m_MaterialEditor = std::make_unique<MaterialEditor>();
         m_AnimationGraphEditor = std::make_unique<AnimationGraphEditor>();
+        m_SpriteEditor = std::make_unique<SpriteEditor>();
 
         m_EditorGUIManager.Initialize(*this);
         m_InputHub.Initialize(*this);

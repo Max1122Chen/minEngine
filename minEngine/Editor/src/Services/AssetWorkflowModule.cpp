@@ -3,6 +3,7 @@
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
+#include "SubEditor/Sprite/SpriteEditor.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "Services/Inspector/InspectorModule.h"
 #include "Shell/EditorContextHelpers.h"
@@ -20,6 +21,7 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialInstance.h"
+#include "Runtime/Function/Render/Sprite/Sprite.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
@@ -175,6 +177,12 @@ namespace minEngine
         return animGraphEditor != nullptr && animGraphEditor->GetSession().Dirty;
     }
 
+    bool AssetWorkflowModule::IsSpriteDirty() const
+    {
+        const SpriteEditor* spriteEditor = GetSpriteEditor(m_Context);
+        return spriteEditor != nullptr && spriteEditor->GetSession().Dirty;
+    }
+
     bool AssetWorkflowModule::IsPrefabDirty() const
     {
         const SceneEditor* sceneEditor = GetSceneEditor(m_Context);
@@ -217,6 +225,17 @@ namespace minEngine
         }
 
         return animGraphEditor->SaveActiveGraph();
+    }
+
+    bool AssetWorkflowModule::SaveSpriteDocument()
+    {
+        SpriteEditor* spriteEditor = GetSpriteEditor(m_Context);
+        if (spriteEditor == nullptr)
+        {
+            return false;
+        }
+
+        return spriteEditor->SaveActiveSprite();
     }
 
     bool AssetWorkflowModule::SavePrefabDocument()
@@ -344,8 +363,9 @@ namespace minEngine
         const bool openingMaterial = meta.AssetType == "Material";
         const bool openingScene = meta.AssetType == "Scene";
         const bool openingAnimationGraph = meta.AssetType == "AnimationGraph";
+        const bool openingSprite = meta.AssetType == "Sprite";
         const bool openingPrefab = meta.AssetType == "Prefab";
-        if (!openingMaterial && !openingScene && !openingAnimationGraph && !openingPrefab)
+        if (!openingMaterial && !openingScene && !openingAnimationGraph && !openingSprite && !openingPrefab)
         {
             ME_LOG(LogEditor, Warn, 
                 "AssetWorkflow: unsupported asset type '{}' for '{}'.",
@@ -380,6 +400,15 @@ namespace minEngine
                 "Save changes to the current animation graph before opening another asset?",
                 [this]() { return IsAnimationGraphDirty(); },
                 [this]() { return SaveAnimationGraphDocument(); },
+                std::move(proceed));
+        }
+
+        if (openingSprite)
+        {
+            return RunWithUnsavedCheck(
+                "Save changes to the current sprite before opening another asset?",
+                [this]() { return IsSpriteDirty(); },
+                [this]() { return SaveSpriteDocument(); },
                 std::move(proceed));
         }
 
@@ -555,6 +584,45 @@ namespace minEngine
                 if (!OpenAsset(*meta))
                 {
                     ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to open created material '{}'.", meta->AssetPath);
+                    return;
+                }
+
+                SetSelectedAsset(meta);
+            });
+    }
+
+    bool AssetWorkflowModule::TryCreateSpriteInDirectory(std::string_view directoryRel)
+    {
+        if (!m_Context || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const std::string directory = std::string(directoryRel);
+        return RunWithUnsavedCheck(
+            "Save changes to the current sprite before creating a new sprite?",
+            [this]() { return IsSpriteDirty(); },
+            [this]() { return SaveSpriteDocument(); },
+            [this, directory]()
+            {
+                std::shared_ptr<Sprite> createdSprite =
+                    AssetManager::Get().CreateAsset<Sprite>("NewSprite", directory);
+                if (!createdSprite)
+                {
+                    return;
+                }
+
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdSprite->GetGuid());
+                if (meta == nullptr)
+                {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: created sprite has no registry meta.");
+                    return;
+                }
+
+                RefreshContentBrowser();
+                if (!OpenAsset(*meta))
+                {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to open created sprite '{}'.", meta->AssetPath);
                     return;
                 }
 

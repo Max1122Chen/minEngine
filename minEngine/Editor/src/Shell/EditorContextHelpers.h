@@ -3,6 +3,7 @@
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
+#include "SubEditor/Sprite/SpriteEditor.h"
 #include "Shell/Document/EditorDocumentHost.h"
 #include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/IEditorContext.h"
@@ -70,6 +71,29 @@ namespace minEngine
             context->FindSubModule(AnimationGraphEditor::kModuleId));
     }
 
+    inline SpriteEditor* GetSpriteEditor(IEditorContext* context)
+    {
+        if (!context)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<SpriteEditor*>(context->FindSubModule(SpriteEditor::kModuleId));
+    }
+
+    inline const SpriteEditor* GetSpriteEditor(const IEditorContext* context)
+    {
+        if (!context)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<const SpriteEditor*>(context->FindSubModule(SpriteEditor::kModuleId));
+    }
+
+    inline SpriteEditor* GetSpriteEditor(IEditorContext& context)
+    {
+        return GetSpriteEditor(&context);
+    }
+
     /** Scene document session for command stack (Active Scene tab, else first Scene session). */
     inline EditorDocumentSession* GetSceneDocumentSession(IEditorContext& context)
     {
@@ -134,5 +158,15 @@ namespace minEngine
             return nullptr;
         }
         return FindDocumentSessionByTypeAndKey(context, "AnimationGraph", editor->GetSession().AssetPath);
+    }
+
+    inline EditorDocumentSession* GetSpriteDocumentSession(IEditorContext& context)
+    {
+        SpriteEditor* editor = GetSpriteEditor(&context);
+        if (editor == nullptr || !editor->GetSession().HasOpenSprite())
+        {
+            return nullptr;
+        }
+        return FindDocumentSessionByTypeAndKey(context, "Sprite", editor->GetSession().AssetPath);
     }
 }

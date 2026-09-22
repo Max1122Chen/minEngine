@@ -104,5 +104,30 @@ namespace minEngine
 
             ImGui::DockBuilderFinish(dockspaceId);
         }
+
+        void BuildSpriteEditingLayout(ImGuiID dockspaceId)
+        {
+            ImGui::DockBuilderRemoveNode(dockspaceId);
+            ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
+
+            ImGuiID mainArea = dockspaceId;
+            ImGuiID rightColumn = ImGui::DockBuilderSplitNode(
+                mainArea, ImGuiDir_Right, kInspectorSplitRatio, nullptr, &mainArea);
+            ImGuiID consoleArea = ImGui::DockBuilderSplitNode(
+                mainArea, ImGuiDir_Down, kConsoleSplitRatio, nullptr, &mainArea);
+
+            ImGuiID rightColumnTop = rightColumn;
+            ImGuiID contentBrowserArea = ImGui::DockBuilderSplitNode(
+                rightColumn, ImGuiDir_Down, kRightBottomSplitRatio, nullptr, &rightColumnTop);
+            ImGuiID inspectorArea = rightColumnTop;
+
+            ImGui::DockBuilderDockWindow("Sprite Editor", mainArea);
+            ImGui::DockBuilderDockWindow("Inspector", inspectorArea);
+            ImGui::DockBuilderDockWindow("Content Browser", contentBrowserArea);
+            ImGui::DockBuilderDockWindow("Console", consoleArea);
+
+            ImGui::DockBuilderFinish(dockspaceId);
+        }
     }
 }

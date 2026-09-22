@@ -50,6 +50,7 @@ namespace minEngine
         bool TryCreateSceneInDirectory(std::string_view directoryRel);
         bool TryCreateMaterialInDirectory(std::string_view directoryRel);
         bool TryCreateMaterialInstanceInDirectory(std::string_view directoryRel);
+        bool TryCreateSpriteInDirectory(std::string_view directoryRel);
         bool TryRequestExit(IEditorContext& context);
 
         bool OpenAsset(const AssetMeta& meta);
@@ -84,10 +85,12 @@ namespace minEngine
         bool IsSceneDirty() const;
         bool IsMaterialDirty() const;
         bool IsAnimationGraphDirty() const;
+        bool IsSpriteDirty() const;
         bool IsPrefabDirty() const;
         bool SaveSceneDocument();
         bool SaveMaterialDocument();
         bool SaveAnimationGraphDocument();
+        bool SaveSpriteDocument();
         bool SavePrefabDocument();
         void DrawMaterialInstanceInspector(const AssetMeta& meta);
 

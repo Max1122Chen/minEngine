@@ -4,7 +4,7 @@
 - **ID:** SPR-F05
 - **Type:** Feature
 - **Complexity:** L2
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-22
 - **Related:**
@@ -19,7 +19,7 @@
 
 **方案：** Sprite 文档编辑器：显示 Source 纹理，拖拽/输入像素矩形，调用 F04 Services 写回；Save；双击 CB 打开。不做动画帧时间轴。
 
-**状态：** Draft。
+**状态：** Done。
 
 ## Scope
 - **In:**
@@ -159,16 +159,16 @@ ContentBrowser / File
 
 ## Design Review
 
-- **Verdict:** Pending  
+- **Verdict:** Accepted（实现合入）  
 
 ## Implementation Readiness
 
-**Ready for implementation?** `no` — 依赖 F04 Planned。
+**Ready for implementation?** `done`
 
 ## Acceptance Checklist
 
-- [ ] Design review complete  
-- [ ] Registry / Progress synced  
+- [x] Design / code review complete  
+- [x] Registry / Progress synced  
 
 ---
 
@@ -177,3 +177,4 @@ ContentBrowser / File
 | 日期 | 说明 |
 |------|------|
 | 2026-09-22 | Draft |
+| 2026-09-22 | Done：`SpriteEditor` + Window（预览/拖拽/数值）；Document Tab；TryOpenAsset / CB Create |

@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（SPR-F04 Done；待 commit）
+Last updated: 2026-09-22（SPR-F05 Done；待 commit）
+
+### 2026-09-22 - SPR-F05 Done（Sprite Editor MVP）
+- **代码：** `SpriteEditor` SubModule + Document Tab；`SpriteEditorWindow`（ImGui 预览/拖拽选区/SourceRect 数值）；写入走 `SpriteEditorServices`；`TryOpenAsset` / CB Create Sprite。
+- **验证：** Editor 编译通过；手验：CB 打开 `.mesprite` → 改 rect → Save。
+- **Next：** commit 审批后 → SPR-F06。
 
 ### 2026-09-22 - SPR-F04 Done（Sprite Authoring Services）
 - **代码：** `SpriteEditorServices`（Create/SetRect/Atlas/Add/Remove/Rebuild/Save）；`EditorSpriteCommands`；`AssetEditorServices` 白名单 Sprite/SpriteAtlas；`IEditorContext` 挂接。
