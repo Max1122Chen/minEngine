@@ -1,6 +1,29 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（CORE-F28 Noise Math Library Done）
+Last updated: 2026-09-22（RND-F22/F23/SPR-F07 design-review 完成）
+
+### 2026-09-22 - RND-F23 / SPR-F07 design-review（回写 Design）
+- **F23：** Verdict **Ready** — Scene Mesh 单点 Back cull；API 名更正；Translucent=Back 锁定。
+- **F07：** Verdict **Ready with deferred** — inset 密度下降 Accepted；PadWithZero 同 inset；Dilate 在 flipped 内存空间；Editor 补 PaddingMode。
+- **Next：** Planned / 按 F23 ∥ F22 → F07 开工。
+
+### 2026-09-22 - RND-F22 design-review → Ready with deferred（已回写 Design）
+- **Verdict：** Ready with deferred items（非阻塞：Preferred meta 磁盘、AddressW UI、冲突改 error）。
+- **吸收：** Compile→`MaterialTextureParameter`；`bOverrideSampler` 显式 Inherit；全 Binding 填 Sampler；Mip 映射；`glBindSampler(0)`。
+- **Status：** Design/Registry → **Review**。
+- **Next：** 短 Implementation Plan 或直接按 S02–S06 开工（Pre-flight）；F23/F07 仍待审。
+
+### 2026-09-22 - RND-F22 设计升格（Texture / Sampler 分离）
+- **变更：** 否决「仅 CreateDesc 加 Filtering」；重写为 L3：`RHISampler` + Desc **cache 复用** + Binding(SRV,Sampler) + GL Sampler Object + Texture Preferred。
+- **消费面（硬需求）：** `TextureSample` 图节点可编 Filter/Wrap（序列化 + Inspector）；否决「仅 C++ Preferred」。
+- **文档：** [RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md](./Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md)
+- **Next：** Design 审批 / design-review。
+
+### 2026-09-22 - RND-F22 / SPR-F07 / RND-F23 Draft（Filtering + Dilate + Backface Cull）
+- **来源：** minCraft 反哺（纹理 Nearest + Atlas Dilate）；另发现 Scene Mesh PSO 未开背面剔除。
+- **文档：** 登记三 Feature；Design Draft 待审批。未改运行时代码。
+- **核对锚点：** `Texture2D`/`Texture2DLoader`；`Configure2DTextureSampling` 写死 Linear；VK `DefaultSampler` LINEAR；`SpriteAtlas` Dilate stub；`PackShelf` 仅槽间 gap；`EnginePipelineLayouts` Mesh PSO 未设 `bCullEnabled`（desc 默认 false）。
+- **Next：** F22 已升格分离设计；审批后 Planned；实现序建议 F23 ∥ F22 → F07。
 
 ### 2026-09-22 - CORE-F28 Done（Noise Math Library）
 - **代码：** `Runtime/Core/Math/Noise/` — 虚基类 `Noise`；`NoiseHash`；`ValueNoise` / `PerlinNoise` / `CellularNoise`；`FractalNoise`（FBM + `shared_ptr` 源）。

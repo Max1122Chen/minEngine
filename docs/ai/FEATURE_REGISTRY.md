@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-22（CORE-F28 Noise Math Library Done）
+Last updated: 2026-09-22（RND-F22/F23/SPR-F07 design-review）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -73,6 +73,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F19` | CPU Mesh Visibility（主视图视锥剔除；Shadow 不用主锥） | **Done** | — | [Design](./Render/RND-F19_CPU_MESH_VISIBILITY_DESIGN.md) · `Math::Geometry::Frustum` |
 | `RND-F20` | Mesh Draw Sorting（Opaque 状态序 / Translucent 深度序） | **Done** | — | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) · Opaque SortKey + Translucent 远→近 |
 | `RND-F21` | Shadow 光视锥 / CSM cascade caster 剔除 | **Deferred** | — | [Design](./Render/RND-F21_SHADOW_FRUSTUM_CASTER_CULLING_DESIGN.md) · 复用 F19 `Frustum`；F19 后开工 |
+| `RND-F22` | Texture / Sampler 分离升级（RHI→Material；TextureSample 可编） | **Review** | — | [Design](./Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md) · design-review：Ready with deferred items |
+| `RND-F23` | Scene Mesh Pass 默认背面剔除（Opaque/Translucent） | **Review** | — | [Design](./Render/RND-F23_MESH_PASS_BACKFACE_CULL_DESIGN.md) · design-review：**Ready** |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
@@ -85,6 +87,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `SPR-F04` | Sprite Authoring Services（人/Agent 同面） | **Done** | — | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) · suite `sprite-authoring` |
 | `SPR-F05` | Sprite Editor MVP（纹理预览 + 矩形切分） | **Done** | — | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |
 | `SPR-F06` | Sprite Atlas 工作流 UX（多选创建 / Rebuild / 预览） | **Done** | — | [Design](./Sprite/SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
+| `SPR-F07` | SpriteAtlas `DilateBorder` 真正边渗（Rebuild） | **Review** | — | [Design](./Sprite/SPR-F07_ATLAS_DILATE_BORDER_DESIGN.md) · design-review：**Ready with deferred** |
 | `ED-F01` | Vulkan Editor Parity | **In Progress** *(VK 阴影质量 **Deferred**)* | — | [Design](./Editor/ED-F01_VULKAN_EDITOR_PARITY_DESIGN.md) · [Impl](./Editor/ED-F01_VULKAN_EDITOR_PARITY_IMPLEMENTATION.md) |
 | `ED-F02` | Editor Workflow（打开/创建 Scene·Material、SkyBox、Viewport、Component UI） | **In Progress** *(S00–S02/S04 Done；S03/S05 余量)* | — | [Design](./Editor/ED-F02_EDITOR_WORKFLOW_DESIGN.md) · [Impl](./Editor/ED-F02_EDITOR_WORKFLOW_IMPLEMENTATION.md) |
 | `ED-F03` | Editor Play Toolbar（Viewport 三行：Tab / Toolbar / 主体） | **Done** | — | [Design](./Editor/ED-F03_EDITOR_TOOLBAR_DESIGN.md) |
@@ -166,11 +169,11 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
-| `CORE` | **F27** | F19/F21 Lua **Done**；F20/F22 Done；F23–F26 Prefab MVP **Done** |
+| `CORE` | **F29** | F27–F28 **Done**；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F21** | F12–**F19 Done**；**F20** Draft（游戏模块链接）；**F11** In Progress；F10 占位 |
+| `ED` | **F23** | F12–**F21 Done**（F22 Cancelled）；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
-| `RND` | **F18** | F06/F17 **Done**；F12 Deferred |
+| `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Draft**；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | **F06** | F01–F02 Done；F03 closeout；F04 Review；F05 Planned |
@@ -178,6 +181,6 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `PHYS` | F05 | F04 Done；F03 Deferred |
 | `GP` | **F03** | F01–F02 Done |
 | `MAT` | **F07** | **F01–F06 Done** |
-| `SPR` | **F07** | **F01–F06 Draft**（Sprite 系统 MVP 族） |
+| `SPR` | **F08** | F01–F06 **Done**；**F07 Draft**（DilateBorder） |
 
 Update **Next Feature #** when you register a new row.
