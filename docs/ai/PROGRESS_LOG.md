@@ -1,6 +1,19 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（SPR-F01–F06 Sprite MVP 族 Done）
+Last updated: 2026-09-22（CORE-F28 Noise Math Library Done）
+
+### 2026-09-22 - CORE-F28 Done（Noise Math Library）
+- **代码：** `Runtime/Core/Math/Noise/` — 虚基类 `Noise`；`NoiseHash`；`ValueNoise` / `PerlinNoise` / `CellularNoise`；`FractalNoise`（FBM + `shared_ptr` 源）。
+- **测试：** suite `noise` — `minEngineTests.exe test noise` PASS（5/5，529 asserts）。
+- **文档：** Design/Impl Done；Registry Done；ACTIVE_WORK Primary 空闲。
+- **Out：** Terrain/Texture/Editor/FastNoiseLite（按 Design）。
+- **Next：** minCraft 可消费；Domain Warp / Ridged 另开。
+
+### 2026-09-22 - CORE-F28 Draft（Noise Math Library 设计登记）
+- **文档：** 登记 `CORE-F28`；Design Spec Draft：`Platform/Core/CORE-F28_NOISE_MATH_LIBRARY_DESIGN.md`（正文已改中文）；ACTIVE_WORK 标为 Primary 候选。
+- **拍板：** 虚基类 `Noise`（对齐 Godot 分层，非 Resource）；v1 = Value/Perlin/Cellular + Fractal FBM；不嵌入 FastNoiseLite；Terrain/Texture/Editor Out。
+- **验证：** 仅文档；未改运行时代码。
+- **Next：** Design Review → Implementation Plan → S01。
 
 ### 2026-09-22 - SPR-F01 Done（Sprite System MVP 路线图收口）
 - **文档：** F01 Meta/表 → Done；Registry / ACTIVE_WORK Primary 空闲；Trust → Tier B。

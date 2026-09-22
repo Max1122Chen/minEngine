@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-22（SPR-F01–F06 Sprite MVP 族 Done；Primary 空闲）
+Last updated: 2026-09-22（CORE-F28 Noise Done；Primary 空闲）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,13 +11,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：空闲。** `SPR-F01`–`F06` Sprite MVP 族已 Done（合入后勿再当 WIP）。开下一轨前先定 ACTIVE_WORK。
+**Primary：空闲。** `CORE-F28` Noise Math Library **Done**（合入后勿再当 WIP）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | — | — | （无 Primary） | — | — |
 
-**本波已收口（勿当 WIP）：** `SPR-F01`–`F06`；`RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
+**本波已收口（勿当 WIP）：** `CORE-F28`；`SPR-F01`–`F06`；`RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 
 **并行 / 不挡**
 

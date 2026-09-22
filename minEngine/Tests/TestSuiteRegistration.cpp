@@ -28,6 +28,7 @@
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
 #include "Suites/FrustumTest.h"
+#include "Suites/NoiseTest.h"
 #include "Suites/MeshDrawSortTest.h"
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
@@ -424,6 +425,23 @@ namespace minEngine
             }
         };
 
+        struct NoiseTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"noise", "Noise Math", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'noise'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "noise",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct MeshDrawSortTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -766,6 +784,7 @@ namespace minEngine
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
+        using NoiseSuite = TypedTestSuite<NoiseTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
         using SpriteRuntimeConsumeSuite = TypedTestSuite<SpriteRuntimeConsumeTestSuiteTraits>;
@@ -818,6 +837,7 @@ namespace minEngine
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
             registry.Register(FrustumSuite::Get());
+            registry.Register(NoiseSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());
             registry.Register(SpriteRuntimeConsumeSuite::Get());

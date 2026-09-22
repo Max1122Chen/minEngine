@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-22（SPR-F01–F06 Sprite MVP 族 Done）
+Last updated: 2026-09-22（CORE-F28 Noise Math Library Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -54,6 +54,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F25` | 组件从 owning Scene 解析 RenderScene（禁 SceneManager 隐式当前世界） | **Done** | — | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) · Prefab Stage 可视隔离硬前置 |
 | `CORE-F26` | Prefab 资产删除与实例断链（阻断 / Unpack 后删除） | **Done** | — | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) · `feat/prefab` |
 | `CORE-F27` | 多模块 Reflection codegen（引擎 + 游戏各自 src → 各自 Generated） | **Done** | — | [Design](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md) · [Impl](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_IMPLEMENTATION.md) · [Review](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md) · minCraft `ENG-GAP-006-A` |
+| `CORE-F28` | Noise Math Library（虚基类 `Noise` + Value/Perlin/Cellular + Fractal FBM） | **Done** | — | [Design](./Platform/Core/CORE-F28_NOISE_MATH_LIBRARY_DESIGN.md) · [Impl](./Platform/Core/CORE-F28_NOISE_MATH_LIBRARY_IMPLEMENTATION.md) · 输入 `docs/external/minEngine_Noise_Library_Agent_Prompt.md` |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
