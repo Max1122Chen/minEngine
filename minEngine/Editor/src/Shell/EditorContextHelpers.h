@@ -4,6 +4,7 @@
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "SubEditor/Sprite/SpriteEditor.h"
+#include "SubEditor/SpriteAtlas/SpriteAtlasEditor.h"
 #include "Shell/Document/EditorDocumentHost.h"
 #include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/IEditorContext.h"
@@ -94,6 +95,30 @@ namespace minEngine
         return GetSpriteEditor(&context);
     }
 
+    inline SpriteAtlasEditor* GetSpriteAtlasEditor(IEditorContext* context)
+    {
+        if (!context)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<SpriteAtlasEditor*>(context->FindSubModule(SpriteAtlasEditor::kModuleId));
+    }
+
+    inline const SpriteAtlasEditor* GetSpriteAtlasEditor(const IEditorContext* context)
+    {
+        if (!context)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<const SpriteAtlasEditor*>(
+            context->FindSubModule(SpriteAtlasEditor::kModuleId));
+    }
+
+    inline SpriteAtlasEditor* GetSpriteAtlasEditor(IEditorContext& context)
+    {
+        return GetSpriteAtlasEditor(&context);
+    }
+
     /** Scene document session for command stack (Active Scene tab, else first Scene session). */
     inline EditorDocumentSession* GetSceneDocumentSession(IEditorContext& context)
     {
@@ -168,5 +193,15 @@ namespace minEngine
             return nullptr;
         }
         return FindDocumentSessionByTypeAndKey(context, "Sprite", editor->GetSession().AssetPath);
+    }
+
+    inline EditorDocumentSession* GetSpriteAtlasDocumentSession(IEditorContext& context)
+    {
+        SpriteAtlasEditor* editor = GetSpriteAtlasEditor(&context);
+        if (editor == nullptr || !editor->GetSession().HasOpenAtlas())
+        {
+            return nullptr;
+        }
+        return FindDocumentSessionByTypeAndKey(context, "SpriteAtlas", editor->GetSession().AssetPath);
     }
 }

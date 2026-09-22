@@ -1,6 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（SPR-F05 Done；待 commit）
+Last updated: 2026-09-22（SPR-F01–F06 Sprite MVP 族 Done）
+
+### 2026-09-22 - SPR-F01 Done（Sprite System MVP 路线图收口）
+- **文档：** F01 Meta/表 → Done；Registry / ACTIVE_WORK Primary 空闲；Trust → Tier B。
+- **范围：** F02–F06 实现均已 Done；族完成，不绑定 Flipbook 等延后项。
+- **Next：** 合入 `master`；下一轨另定。
+
+### 2026-09-22 - SPR-F06 Done（Sprite Atlas 工作流 UX）
+- **代码：** `SpriteAtlasEditor` + Window（成员/MaxSize/Padding/Rebuild/Generated 预览）；Document Tab；CB 空 Atlas +「Create Sprite Atlas From Selection」（Create+Add+Rebuild+级联 Save）。
+- **验证：** Editor 编译通过；手验：多选 Sprite → Create Atlas → 预览 → Save。
+- **Next：** 路线图收口后合入 master。
 
 ### 2026-09-22 - SPR-F05 Done（Sprite Editor MVP）
 - **代码：** `SpriteEditor` SubModule + Document Tab；`SpriteEditorWindow`（ImGui 预览/拖拽选区/SourceRect 数值）；写入走 `SpriteEditorServices`；`TryOpenAsset` / CB Create Sprite。

@@ -9,6 +9,7 @@
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "SubEditor/Sprite/SpriteEditor.h"
+#include "SubEditor/SpriteAtlas/SpriteAtlasEditor.h"
 #include "Services/AssetWatch/ProjectAssetWatcher.h"
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
@@ -161,6 +162,7 @@ namespace minEngine
         std::unique_ptr<MaterialEditor> m_MaterialEditor;
         std::unique_ptr<AnimationGraphEditor> m_AnimationGraphEditor;
         std::unique_ptr<SpriteEditor> m_SpriteEditor;
+        std::unique_ptr<SpriteAtlasEditor> m_SpriteAtlasEditor;
         MainMenuModule m_MainMenuModule;
         ToolbarModule m_ToolbarModule;
         InspectorModule m_InspectorModule;

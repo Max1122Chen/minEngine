@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-22（SPR-F05 Done；下一刀 SPR-F06）
+Last updated: 2026-09-22（SPR-F01–F06 Sprite MVP 族 Done；Primary 空闲）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,21 +11,13 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：`SPR-F06` Sprite Atlas 工作流 UX（下一刀）。**  
-minCraft 图集需求为催化剂；验收锚点是引擎能力面，**不**绑定 chunk 上线。
+**Primary：空闲。** `SPR-F01`–`F06` Sprite MVP 族已 Done（合入后勿再当 WIP）。开下一轨前先定 ACTIVE_WORK。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`SPR-F01`** | Sprite System 路线图 | **Draft** | [Roadmap](./Sprite/SPR-F01_SPRITE_SYSTEM_ROADMAP.md) |
-| 1 | **`SPR-F02`** | Sprite / Atlas 资产真源 + Rebuild | **Done** | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
-| 2 | **`SPR-F03`** | Component + UV→GPU | **Done** | [Design](./Sprite/SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
-| 3 | **`SPR-F04`** | Authoring Services（人/Agent） | **Done** | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
-| 4 | **`SPR-F05`** | Sprite Editor MVP | **Done** | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |
-| 5 | **`SPR-F06`** | Atlas 工作流 UX | **Draft** | [Design](./Sprite/SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
+| — | — | （无 Primary） | — | — |
 
-**下一动作：** Review SPR-F05 commit → 实现 F06（多选创建 / Rebuild / 预览）；F01 可标 Done。
-
-**本波已收口（勿当 WIP）：** `RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
+**本波已收口（勿当 WIP）：** `SPR-F01`–`F06`；`RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 
 **并行 / 不挡**
 
@@ -71,7 +63,7 @@ minCraft 图集需求为催化剂；验收锚点是引擎能力面，**不**绑�
 | Phase | 主题 |
 |-------|------|
 | **F** Foundation | **Done** — Log → Schema → Brand |
-| **P** Parallel | **进行中** — fan-out（editor 余量；Prefab 已合入；**Sprite 族设计中**） |
+| **P** Parallel | **进行中** — fan-out（editor 余量；Prefab / Sprite MVP 已合入） |
 | **D** Demo | FPS + 0.1.0 tag |
 
 **Prefab：** F23=资产+Instantiate；F24=Override；F16=编辑器（单 Viewport；并排预览依赖隔离 RT）。
@@ -147,7 +139,7 @@ minCraft 图集需求为催化剂；验收锚点是引擎能力面，**不**绑�
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
-| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`**（可继续或迁 `feat/sprite`） | 原 RND 轨；**当前 Primary = SPR** |
+| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`** | 原 RND + Sprite MVP；族完成后可对齐 master |
 
 `MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（主仓：`…/minEngine/minEngine/MyMEProject`）。
 

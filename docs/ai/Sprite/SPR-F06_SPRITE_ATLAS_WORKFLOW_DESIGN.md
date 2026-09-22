@@ -4,7 +4,7 @@
 - **ID:** SPR-F06
 - **Type:** Feature
 - **Complexity:** L2
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-22
 - **Related:**
@@ -18,7 +18,7 @@
 
 **方案：** Atlas 文档编辑器 + CB 多选创建；成员列表；Rebuild 按钮与打包预览（只读）；全部经 Services。不做手动拖拽排版。
 
-**状态：** Draft。
+**状态：** Done。
 
 ## Scope
 - **In:**
@@ -162,16 +162,16 @@ AtlasEditorWindow
 
 ## Design Review
 
-- **Verdict:** Pending  
+- **Verdict:** Accepted（实现合入）  
 
 ## Implementation Readiness
 
-**Ready for implementation?** `no` — 依赖 F04。
+**Ready for implementation?** `done`
 
 ## Acceptance Checklist
 
-- [ ] Design review complete  
-- [ ] Registry / Progress synced  
+- [x] Design / code review complete  
+- [x] Registry / Progress synced  
 
 ---
 
@@ -180,3 +180,4 @@ AtlasEditorWindow
 | 日期 | 说明 |
 |------|------|
 | 2026-09-22 | Draft |
+| 2026-09-22 | Done：`SpriteAtlasEditor`；成员/Rebuild/预览；CB 空 Atlas + 多选 Create+Rebuild；Save 级联成员 |

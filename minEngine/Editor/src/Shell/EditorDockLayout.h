@@ -10,5 +10,6 @@ namespace minEngine
         void BuildMaterialEditingLayout(ImGuiID dockspaceId);
         void BuildAnimationGraphEditingLayout(ImGuiID dockspaceId);
         void BuildSpriteEditingLayout(ImGuiID dockspaceId);
+        void BuildSpriteAtlasEditingLayout(ImGuiID dockspaceId);
     }
 }

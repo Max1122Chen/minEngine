@@ -51,6 +51,8 @@ namespace minEngine
         bool TryCreateMaterialInDirectory(std::string_view directoryRel);
         bool TryCreateMaterialInstanceInDirectory(std::string_view directoryRel);
         bool TryCreateSpriteInDirectory(std::string_view directoryRel);
+        bool TryCreateSpriteAtlasInDirectory(std::string_view directoryRel);
+        bool TryCreateSpriteAtlasFromSelection(const std::vector<const AssetMeta*>& selectedSprites);
         bool TryRequestExit(IEditorContext& context);
 
         bool OpenAsset(const AssetMeta& meta);
@@ -86,11 +88,13 @@ namespace minEngine
         bool IsMaterialDirty() const;
         bool IsAnimationGraphDirty() const;
         bool IsSpriteDirty() const;
+        bool IsSpriteAtlasDirty() const;
         bool IsPrefabDirty() const;
         bool SaveSceneDocument();
         bool SaveMaterialDocument();
         bool SaveAnimationGraphDocument();
         bool SaveSpriteDocument();
+        bool SaveSpriteAtlasDocument();
         bool SavePrefabDocument();
         void DrawMaterialInstanceInspector(const AssetMeta& meta);
 

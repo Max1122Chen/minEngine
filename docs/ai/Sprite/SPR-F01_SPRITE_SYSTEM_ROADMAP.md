@@ -4,7 +4,7 @@
 - **ID:** SPR-F01（本文件为 **Capability 路线图**；落地见 SPR-F02+）
 - **Type:** Roadmap
 - **Complexity:** L3（多 Feature 族）
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-22
 - **Related:**
@@ -12,7 +12,7 @@
   - [ENGINE_DESIGN_PHILOSOPHY](../ENGINE_DESIGN_PHILOSOPHY.md)
   - 绘制底座（Done）：[RND-F16](../Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md)
   - 子 Feature：[F02](./SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) · [F03](./SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) · [F04](./SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) · [F05](./SPR-F05_SPRITE_EDITOR_DESIGN.md) · [F06](./SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md)
-- **Trust:** Tier A（与 ACTIVE_WORK 共同指导 Sprite 轨）
+- **Trust:** Tier B（MVP 族已合入；后续 Sprite 增强另开 Feature）
 - **Driver note:** minCraft 图集需求是**催化剂**，不是本期验收闸门；目标是引擎 Sprite 能力面。
 
 ## TL;DR
@@ -77,12 +77,12 @@ SpriteComponent                    ← 场景消费（F03）
 
 | Order | ID | 名称 | Status | Design |
 |-------|-----|------|--------|--------|
-| 0 | **SPR-F01** | 本路线图 | **Draft** | 本文 |
+| 0 | **SPR-F01** | 本路线图 | **Done** | 本文 |
 | 1 | **SPR-F02** | Sprite / Atlas **资产真源** + 序列化 + Runtime 解析 + Rebuild | **Done** | [Design](./SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
-| 2 | **SPR-F03** | 运行时消费（Component + UVRect→GPU） | **Draft** | [Design](./SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
-| 3 | **SPR-F04** | Authoring 命令面（人/Agent 同 API） | **Draft** | [Design](./SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
-| 4 | **SPR-F05** | Sprite Editor MVP（纹理预览 + 矩形切分） | **Draft** | [Design](./SPR-F05_SPRITE_EDITOR_DESIGN.md) |
-| 5 | **SPR-F06** | Atlas 工作流 UX（多选创建、成员、Rebuild、预览） | **Draft** | [Design](./SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
+| 2 | **SPR-F03** | 运行时消费（Component + UVRect→GPU） | **Done** | [Design](./SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
+| 3 | **SPR-F04** | Authoring 命令面（人/Agent 同 API） | **Done** | [Design](./SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
+| 4 | **SPR-F05** | Sprite Editor MVP（纹理预览 + 矩形切分） | **Done** | [Design](./SPR-F05_SPRITE_EDITOR_DESIGN.md) |
+| 5 | **SPR-F06** | Atlas 工作流 UX（多选创建、成员、Rebuild、预览） | **Done** | [Design](./SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
 
 **硬依赖：** **F02 → F03 / F04**；**F05 / F06 依赖 F04**（可先并行 Design，实现不得早于 F02/F04 契约）。  
 **建议实现序：** F02 → F03（可与 F04 小并行）→ F04 → F05 ∥ F06。
@@ -151,4 +151,5 @@ SpriteComponent                    ← 场景消费（F03）
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-22 | **Done：** F02–F06 实现合入；路线图收口；MVP 族完成 |
 | 2026-09-22 | Draft：登记 SPR 族；升格为 Sprite 系统 MVP（非仅 minCraft atlas） |

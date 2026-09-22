@@ -4,8 +4,11 @@
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Scene/SceneEditor.h"
 #include "SubEditor/Sprite/SpriteEditor.h"
+#include "SubEditor/SpriteAtlas/SpriteAtlasEditor.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "Services/Inspector/InspectorModule.h"
+#include "Services/Sprite/SpriteEditorServices.h"
+#include "Shell/EditorCommandStack.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Shell/IEditorContext.h"
 #include "Shell/Document/EditorDocumentHost.h"
@@ -21,7 +24,10 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialInstance.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/Sprite/Sprite.h"
+#include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
@@ -183,6 +189,12 @@ namespace minEngine
         return spriteEditor != nullptr && spriteEditor->GetSession().Dirty;
     }
 
+    bool AssetWorkflowModule::IsSpriteAtlasDirty() const
+    {
+        const SpriteAtlasEditor* atlasEditor = GetSpriteAtlasEditor(m_Context);
+        return atlasEditor != nullptr && atlasEditor->GetSession().Dirty;
+    }
+
     bool AssetWorkflowModule::IsPrefabDirty() const
     {
         const SceneEditor* sceneEditor = GetSceneEditor(m_Context);
@@ -236,6 +248,17 @@ namespace minEngine
         }
 
         return spriteEditor->SaveActiveSprite();
+    }
+
+    bool AssetWorkflowModule::SaveSpriteAtlasDocument()
+    {
+        SpriteAtlasEditor* atlasEditor = GetSpriteAtlasEditor(m_Context);
+        if (atlasEditor == nullptr)
+        {
+            return false;
+        }
+
+        return atlasEditor->SaveActiveAtlas();
     }
 
     bool AssetWorkflowModule::SavePrefabDocument()
@@ -364,8 +387,10 @@ namespace minEngine
         const bool openingScene = meta.AssetType == "Scene";
         const bool openingAnimationGraph = meta.AssetType == "AnimationGraph";
         const bool openingSprite = meta.AssetType == "Sprite";
+        const bool openingSpriteAtlas = meta.AssetType == "SpriteAtlas";
         const bool openingPrefab = meta.AssetType == "Prefab";
-        if (!openingMaterial && !openingScene && !openingAnimationGraph && !openingSprite && !openingPrefab)
+        if (!openingMaterial && !openingScene && !openingAnimationGraph && !openingSprite &&
+            !openingSpriteAtlas && !openingPrefab)
         {
             ME_LOG(LogEditor, Warn, 
                 "AssetWorkflow: unsupported asset type '{}' for '{}'.",
@@ -409,6 +434,15 @@ namespace minEngine
                 "Save changes to the current sprite before opening another asset?",
                 [this]() { return IsSpriteDirty(); },
                 [this]() { return SaveSpriteDocument(); },
+                std::move(proceed));
+        }
+
+        if (openingSpriteAtlas)
+        {
+            return RunWithUnsavedCheck(
+                "Save changes to the current sprite atlas before opening another asset?",
+                [this]() { return IsSpriteAtlasDirty(); },
+                [this]() { return SaveSpriteAtlasDocument(); },
                 std::move(proceed));
         }
 
@@ -626,6 +660,152 @@ namespace minEngine
                     return;
                 }
 
+                SetSelectedAsset(meta);
+            });
+    }
+
+    bool AssetWorkflowModule::TryCreateSpriteAtlasInDirectory(std::string_view directoryRel)
+    {
+        if (!m_Context || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const std::string directory = std::string(directoryRel);
+        return RunWithUnsavedCheck(
+            "Save changes to the current sprite atlas before creating a new atlas?",
+            [this]() { return IsSpriteAtlasDirty(); },
+            [this]() { return SaveSpriteAtlasDocument(); },
+            [this, directory]()
+            {
+                std::shared_ptr<SpriteAtlas> created =
+                    AssetManager::Get().CreateAsset<SpriteAtlas>("NewSpriteAtlas", directory);
+                if (!created)
+                {
+                    return;
+                }
+
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(created->GetGuid());
+                if (meta == nullptr)
+                {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: created sprite atlas has no registry meta.");
+                    return;
+                }
+
+                RefreshContentBrowser();
+                if (!OpenAsset(*meta))
+                {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to open created atlas '{}'.", meta->AssetPath);
+                    return;
+                }
+
+                SetSelectedAsset(meta);
+            });
+    }
+
+    bool AssetWorkflowModule::TryCreateSpriteAtlasFromSelection(const std::vector<const AssetMeta*>& selectedSprites)
+    {
+        if (!m_Context || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        std::vector<const AssetMeta*> spritesOnly;
+        spritesOnly.reserve(selectedSprites.size());
+        for (const AssetMeta* meta : selectedSprites)
+        {
+            if (meta != nullptr && meta->AssetType == "Sprite")
+            {
+                spritesOnly.push_back(meta);
+            }
+        }
+        if (spritesOnly.empty())
+        {
+            ME_LOG(LogEditor, Warn, "AssetWorkflow: Create Sprite Atlas requires at least one Sprite selection.");
+            return false;
+        }
+
+        std::string directory = "Assets";
+        {
+            const std::filesystem::path firstPath(spritesOnly.front()->AssetPath);
+            if (firstPath.has_parent_path())
+            {
+                directory = firstPath.parent_path().generic_string();
+            }
+        }
+
+        return RunWithUnsavedCheck(
+            "Save changes to the current sprite atlas before creating a new atlas?",
+            [this]() { return IsSpriteAtlasDirty(); },
+            [this]() { return SaveSpriteAtlasDocument(); },
+            [this, directory, spritesOnly]()
+            {
+                SpriteEditorServices& services = m_Context->GetSpriteEditorServices();
+                std::shared_ptr<SpriteAtlas> atlas;
+                std::string atlasPath;
+                const GraphEditorResult createResult =
+                    services.CreateAtlas(directory, "NewSpriteAtlas", &atlas, &atlasPath, nullptr);
+                if (!createResult.Ok || !atlas)
+                {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: CreateAtlas failed — {}", createResult.Message);
+                    return;
+                }
+
+                std::vector<std::shared_ptr<Sprite>> members;
+                members.reserve(spritesOnly.size());
+                for (const AssetMeta* meta : spritesOnly)
+                {
+                    std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(meta->AssetPath);
+                    if (sprite)
+                    {
+                        members.push_back(sprite);
+                    }
+                }
+
+                EditorCommandStack localStack;
+                const GraphEditorResult addResult = services.AddAtlasMembers(localStack, *atlas, members);
+                if (!addResult.Ok)
+                {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: AddAtlasMembers failed — {}", addResult.Message);
+                }
+
+                if (RenderSystem::HasInstance() && RenderSystem::Get().GetRHI() != nullptr)
+                {
+                    const GraphEditorResult rebuildResult =
+                        services.RebuildAtlas(*atlas, *RenderSystem::Get().GetRHI());
+                    if (!rebuildResult.Ok)
+                    {
+                        ME_LOG(LogEditor, Warn, "AssetWorkflow: initial Rebuild failed — {}", rebuildResult.Message);
+                    }
+                    else
+                    {
+                        services.SaveAtlas(*atlas);
+                        for (const std::shared_ptr<Sprite>& sprite : members)
+                        {
+                            if (sprite)
+                            {
+                                services.SaveSprite(*sprite);
+                            }
+                        }
+                    }
+                }
+
+                RefreshContentBrowser();
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(atlasPath);
+                if (meta == nullptr)
+                {
+                    meta = AssetManager::Get().FindAssetMetaByGuid(atlas->GetGuid());
+                }
+                if (meta == nullptr)
+                {
+                    return;
+                }
+
+                if (!OpenAsset(*meta))
+                {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to open created atlas '{}'.", meta->AssetPath);
+                    return;
+                }
                 SetSelectedAsset(meta);
             });
     }

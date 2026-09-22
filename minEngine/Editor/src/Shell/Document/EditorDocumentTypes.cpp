@@ -8,6 +8,7 @@
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/Sprite/SpriteEditor.h"
+#include "SubEditor/SpriteAtlas/SpriteAtlasEditor.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Resource/AssetMeta.h"
@@ -41,6 +42,11 @@ namespace minEngine
         SpriteEditor* GetSpriteEditorLocal(IEditorContext& context)
         {
             return dynamic_cast<SpriteEditor*>(context.FindSubModule(SpriteEditor::kModuleId));
+        }
+
+        SpriteAtlasEditor* GetSpriteAtlasEditorLocal(IEditorContext& context)
+        {
+            return dynamic_cast<SpriteAtlasEditor*>(context.FindSubModule(SpriteAtlasEditor::kModuleId));
         }
     }
 
@@ -277,6 +283,63 @@ namespace minEngine
                 return editor->SaveActiveSprite();
             };
             registry.Register(std::move(sprite));
+        }
+
+        {
+            EditorDocumentTypeInfo spriteAtlas;
+            spriteAtlas.TypeId = "SpriteAtlas";
+            spriteAtlas.DisplayName = "Sprite Atlas";
+            spriteAtlas.ModuleId = SpriteAtlasEditor::kModuleId;
+            spriteAtlas.AllowMultipleSessions = true;
+            spriteAtlas.AllowCloseLastOfType = true;
+            spriteAtlas.CanOpenAsset = [](const AssetMeta& meta) { return meta.AssetType == "SpriteAtlas"; };
+            spriteAtlas.MakeAssetKey = [](const AssetMeta& meta) { return meta.AssetPath; };
+            spriteAtlas.MakeTitle = [](const AssetMeta& meta) { return FileTitleFromPath(meta.AssetPath); };
+            spriteAtlas.BindSession = [](IEditorContext& ctx, const AssetMeta& meta, EditorDocumentSession& session)
+            {
+                SpriteAtlasEditor* editor = GetSpriteAtlasEditorLocal(ctx);
+                if (editor == nullptr)
+                {
+                    return false;
+                }
+                if (!editor->OpenAsset(meta))
+                {
+                    return false;
+                }
+                session.SetTitle(FileTitleFromPath(meta.AssetPath));
+                return true;
+            };
+            spriteAtlas.ActivateSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                SpriteAtlasEditor* editor = GetSpriteAtlasEditorLocal(ctx);
+                return editor != nullptr && editor->ActivateStoredSession(session.GetAssetKey());
+            };
+            spriteAtlas.CloseSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                if (SpriteAtlasEditor* editor = GetSpriteAtlasEditorLocal(ctx))
+                {
+                    editor->DiscardStoredSession(session.GetAssetKey());
+                }
+            };
+            spriteAtlas.QueryDirty = [](IEditorContext& ctx, const EditorDocumentSession& session)
+            {
+                const SpriteAtlasEditor* editor = GetSpriteAtlasEditorLocal(ctx);
+                return editor != nullptr && editor->IsStoredSessionDirty(session.GetAssetKey());
+            };
+            spriteAtlas.SaveSession = [](IEditorContext& ctx, EditorDocumentSession& session)
+            {
+                SpriteAtlasEditor* editor = GetSpriteAtlasEditorLocal(ctx);
+                if (editor == nullptr)
+                {
+                    return false;
+                }
+                if (!editor->ActivateStoredSession(session.GetAssetKey()))
+                {
+                    return false;
+                }
+                return editor->SaveActiveAtlas();
+            };
+            registry.Register(std::move(spriteAtlas));
         }
 
         {
