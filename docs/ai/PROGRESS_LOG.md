@@ -1,6 +1,42 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-21（RND-F18 S01–S02 Done）
+Last updated: 2026-09-22（RND-F19 Done）
+
+### 2026-09-22 - RND-F19 Done（主视图视锥剔除）
+- **代码：** `Math::Geometry::Frustum`/`Plane`；`ResolveWorldBounds`；`BuildRenderQueue` 双 Collector + 主锥剔除；`m_bFrustumCullMainView`；`ME_PROFILE_SCOPE("Render.BuildRenderQueue")`。
+- **验证：** `minEngineTests.exe test frustum` PASS；Editor（MyMEProject）手验后收口。
+- **Next：** `RND-F20` Mesh Draw Sorting（Design Draft）。
+
+### 2026-09-22 - RND-F19 实现（S02–S03，待 Editor 手验）
+- **代码：** `Math::Geometry::Frustum`/`Plane`；`ResolveWorldBounds`；`BuildRenderQueue` 双 Collector + 主锥剔除；`m_bFrustumCullMainView`；`ME_PROFILE_SCOPE("Render.BuildRenderQueue")`。
+- **单测：** suite `frustum`（内/外/骑缝/身后；OpenGL vs Vulkan near；active-clip 对齐）。
+- **Next：** Editor 手验（锥外不画；身后 caster 仍投阴影；开关 Off 回归）→ 收口 Done。
+
+### 2026-09-22 - Reflection 多模块 codegen System Review + CORE-F27 纠偏（未写代码）
+- **Review：** [REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md)。
+- **根因：** header tool CLI 已参数化，但 CMake 只扫引擎单根；游戏无 `.gen` → 无 `GetClassName`；`Ready` 后禁止再 Register。
+- **纠偏：** `CORE-F27` 主线 = 多模块 codegen（CMake 封装 + stub `ME_CLASS`）；挂接热修**降级**。`ED-F22` 明确不做首次 RegisterClass。
+- **Next：** 维护者确认 Review/Design → `CORE-F27-S02`。
+
+### 2026-09-22 - 外仓游戏模块支撑 Design Draft（ENG-GAP-006，初稿；已被上条纠偏）
+- **初稿误点：** 以 `AddComponentInstance` 热修为主线（已撤销为终态）。
+- **仍有效：** `ED-F21` / `ED-F22` 登记（F22 经纠偏边界）。
+
+### 2026-09-22 - RND-F19/F20 design-review 修订
+- **结论：** Ready with revisions（已落文档）。
+- **F19：** Plane 必做；Intersect 仅 valid AABB；无 Camera/关阴影行为；GetMeshBatches world Bounds；双 Collector 锁定。
+- **F20：** Opaque bit 布局锁定；半透明远→近距离；Shadow 不排序；stable_sort 必用；硬前置 F19。
+- **Next：** 维护者审批 → Planned。
+
+### 2026-09-22 - RND-F19 Design 细化（Frustum 数学域 + 数据流）
+- **拍板：** `Math::Geometry::Frustum` + `Intersect(AABB)`；双 Collector 分流；Batch bounds → world。
+- **占位：** `RND-F21` Deferred（光视锥 / CSM caster，复用 Frustum）。
+- **Next：** 维护者继续审阅 → Planned。
+
+### 2026-09-22 - RND-F19 / RND-F20 Design Draft（未写代码）
+- **登记：** `RND-F19` 主视图视锥可见性；`RND-F20` Opaque/Translucent 排序。
+- **顺序：** 实现建议 F19 → F20。F19 硬契约：主锥外仍可向 Shadow 贡献 caster。
+- **Next：** 维护者审阅 Design。
 
 ### 2026-09-21 - RND-F18 S01–S02 Done
 - **代码：** `SyncSceneProxy`；`MeshBatch`；Opaque / Translucent / ShadowDepth `MeshPassProcessor`；入队与 `UpdatePrimitive` 不再按 mesh 类型 `dynamic_cast`。

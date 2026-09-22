@@ -4,6 +4,23 @@
 
 namespace minEngine
 {
+    Matrix4 PrimitiveSceneProxy::GetBoundsLocalToWorld() const
+    {
+        return m_Transform.ToMatrix();
+    }
+
+    Math::Geometry::AABB PrimitiveSceneProxy::ResolveWorldBounds() const
+    {
+        if (m_PrimitiveComponent == nullptr)
+        {
+            return Math::Geometry::AABB{};
+        }
+
+        return Math::Geometry::Transform(
+            m_PrimitiveComponent->GetBoundingBox(),
+            GetBoundsLocalToWorld());
+    }
+
     void PrimitiveSceneProxy::GetMeshBatches(MeshBatchCollector& collector) const
     {
         if (m_VertexBuffer == nullptr || m_VertexInputLayout == nullptr || m_MaterialProxy == nullptr)
@@ -18,10 +35,7 @@ namespace minEngine
         batch.m_MaterialProxy = m_MaterialProxy;
         batch.m_LocalToWorld = m_Transform.ToMatrix();
         batch.m_CastShadow = m_CastShadow;
-        if (m_PrimitiveComponent != nullptr)
-        {
-            batch.m_BoundingBox = m_PrimitiveComponent->GetBoundingBox();
-        }
+        batch.m_BoundingBox = ResolveWorldBounds();
         batch.m_Proxy = this;
         collector.AddMesh(batch);
     }

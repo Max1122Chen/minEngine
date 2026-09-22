@@ -42,6 +42,9 @@ namespace minEngine
         RHITexture* IblPrefilterTexture = nullptr;
         RHITexture* IblBrdfLutTexture = nullptr;
 
+        /** Copied from SceneDrawFlags before BuildRenderQueue (RND-F19 shadowOnly path). */
+        bool bEnableShadows = true;
+
         void ResetFrame()
         {
             Scene = nullptr;
@@ -60,6 +63,7 @@ namespace minEngine
             IblIrradianceTexture = nullptr;
             IblPrefilterTexture = nullptr;
             IblBrdfLutTexture = nullptr;
+            bEnableShadows = true;
         }
     };
 }

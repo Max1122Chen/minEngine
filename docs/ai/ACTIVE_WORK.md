@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-21（RND-F18 S01–S02 Done；Primary 空闲）
+Last updated: 2026-09-22（CORE-F27 纠偏：多模块 codegen；System Review）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,22 +11,26 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：无强制下一刀。** `RND-F18` S01–S02 **Done**（MeshBatch + Pass Processor）。S03 stub 与 `verify.ps1` Deferred。
+**Primary（待确认 Design）：外仓游戏模块 — 多模块 Reflection codegen（ENG-GAP-006）**
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`RND-F18`** | Proxy 虚提交 MeshBatch；Pass 子类 Processor 生成 MDC | **Done**（S03 Deferred） | [Design](./Render/RND-F18_MESH_BATCH_PASS_MDC_REFACTOR_DESIGN.md) |
-| 1 | **`ED-F20`** | Editor 可选链接外部游戏 SHARED | **Done** | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) |
-| 2 | **`TEST-F05`** | 外仓测试接入 minEngineTests | **Done** | [Design](./Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md) |
+| 0 | **`CORE-F27`** | 引擎+游戏各自 src → header tool → 各自 Generated / DLL | **Draft** | [Design](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md) · [Review](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md) |
+| 1 | **`ED-F21`** | 游戏模块始终链 minEngine（文档契约） | **Draft** | [Design](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md) |
+| 2 | **`ED-F22`** | `GameModuleStartup`（**不**做 ME_CLASS 首次注册） | **Draft** | [Design](./Editor/ED-F22_GAME_MODULE_STARTUP_DESIGN.md) |
 
-**下一刀：** 未指定。可选：RND-F18 S03 stub。
+**下一刀：** 确认 Review + F27 Design → Planned；实现 **F27-S02（CMake 封装）→ S03（stub ME_CLASS）**；F21/F22 配合。
 
-**发现场景（只读）：** minCraft 程序化网格；体素 mesher **不进** Core。
+**硬约束：** 玩法不进 Core；不改 minCraft；**拒绝**以无反射挂接 API 当官方终态。
 
 **并行 / 不挡**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
+| render | `RND-F19` | **Done** — 主视图视锥 + world Bounds + 双 Collector |
+| render | `RND-F20` | Design Draft；**下一刀实现**（依赖 F19 world Bounds） |
+| render | `RND-F21` | 光视锥 / CSM caster 剔除 — **Deferred** |
+| render | `RND-F18` | MeshBatch + Pass — **Done** |
 | editor | `ED-F11` | Tab Host 余量（可选） |
 | — | Prefab 后置 | Nested / Apply→Prefab / 并排预览 |
 | — | `ED-F10` | EditorSettings 占位 |

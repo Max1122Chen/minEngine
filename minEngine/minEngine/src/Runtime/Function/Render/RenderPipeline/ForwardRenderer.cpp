@@ -34,8 +34,10 @@
 #include "Runtime/Function/Debug/DebugDrawService.h"
 #include "Runtime/Function/Physics/PhysicsDebugDraw.h"
 #include "Math/Geometry/AABB.h"
+#include "Math/Geometry/Frustum.h"
 #include "Render/RHI/RHIClipSpace.h"
 #include "Render/RHI/RHIClipSpaceCapabilities.h"
+#include "Runtime/Core/Profiling/ProfileMacros.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <filesystem>
 #include <algorithm>
@@ -610,14 +612,14 @@ namespace minEngine
         SceneRenderContext ctx;
         ctx.Scene = desc.Scene;
         ctx.Camera = desc.Camera;
+        ctx.bEnableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
 
         desc.Scene->CollectOrphanedSceneProxies();
 
         BuildRenderQueue(ctx);
         BuildScreenUIQueue(ctx, sceneTarget->GetWidth(), sceneTarget->GetHeight());
 
-        const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
-        if (enableShadows)
+        if (ctx.bEnableShadows)
         {
             m_ShadowUniformBuffers.BeginShadowFrame();
             CollectShadowRequests(ctx);
@@ -1135,6 +1137,8 @@ namespace minEngine
 
     void ForwardRenderer::BuildRenderQueue(SceneRenderContext& ctx)
     {
+        ME_PROFILE_SCOPE("Render.BuildRenderQueue");
+
         ctx.OpaqueQueue.clear();
         ctx.TranslucentQueue.clear();
         ctx.ShadowCasterQueue.clear();
@@ -1145,7 +1149,16 @@ namespace minEngine
             return;
         }
 
-        MeshBatchCollector collector;
+        const bool cullEnabled = m_bFrustumCullMainView && ctx.Camera != nullptr;
+        Math::Geometry::Frustum mainFrustum;
+        if (cullEnabled)
+        {
+            mainFrustum = Math::Geometry::Frustum::FromViewProjection(ctx.Camera->GetViewProjMatrix());
+        }
+
+        MeshBatchCollector mainCollector;
+        MeshBatchCollector shadowOnlyCollector;
+
         for (PrimitiveSceneProxy* primitiveProxy : renderScene->m_PrimitiveSceneProxies)
         {
             if (!primitiveProxy || !primitiveProxy->m_PrimitiveComponent)
@@ -1153,15 +1166,38 @@ namespace minEngine
                 continue;
             }
 
-            primitiveProxy->GetMeshBatches(collector);
+            const Math::Geometry::AABB worldBounds = primitiveProxy->ResolveWorldBounds();
+
+            bool bMainViewVisible = true;
+            if (cullEnabled && worldBounds.IsValid())
+            {
+                bMainViewVisible = mainFrustum.Intersect(worldBounds);
+            }
+
+            const bool bWantShadowCollect = ctx.bEnableShadows && primitiveProxy->m_CastShadow;
+            if (!bMainViewVisible && !bWantShadowCollect)
+            {
+                continue;
+            }
+
+            if (bMainViewVisible)
+            {
+                primitiveProxy->GetMeshBatches(mainCollector);
+            }
+            else
+            {
+                primitiveProxy->GetMeshBatches(shadowOnlyCollector);
+            }
         }
 
         OpaqueMeshPassProcessor opaqueProcessor(ctx.OpaqueQueue);
         TranslucentMeshPassProcessor translucentProcessor(ctx.TranslucentQueue);
         ShadowDepthMeshPassProcessor shadowProcessor(ctx.ShadowCasterQueue);
-        collector.DispatchTo(opaqueProcessor);
-        collector.DispatchTo(translucentProcessor);
-        collector.DispatchTo(shadowProcessor);
+
+        mainCollector.DispatchTo(opaqueProcessor);
+        mainCollector.DispatchTo(translucentProcessor);
+        mainCollector.DispatchTo(shadowProcessor);
+        shadowOnlyCollector.DispatchTo(shadowProcessor);
     }
 
     void ForwardRenderer::BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)

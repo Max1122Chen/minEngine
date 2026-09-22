@@ -22,6 +22,7 @@ namespace minEngine
         Matrix4 m_ModelMatrix{ 1.0f };
         bool m_bNeedsTranslucentPass = false;
 
+        Matrix4 GetBoundsLocalToWorld() const override;
         void GetMeshBatches(class MeshBatchCollector& collector) const override;
     };
 }

@@ -27,6 +27,7 @@
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
+#include "Suites/FrustumTest.h"
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
 #include "Suites/ScreenUIButtonTest.h"
@@ -402,6 +403,23 @@ namespace minEngine
             }
         };
 
+        struct FrustumTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"frustum", "Frustum Math", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'frustum'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "frustum",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct UILayoutTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -657,6 +675,7 @@ namespace minEngine
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
+        using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
         using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
@@ -703,6 +722,7 @@ namespace minEngine
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
+            registry.Register(FrustumSuite::Get());
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());
             registry.Register(ScreenUIButtonSuite::Get());

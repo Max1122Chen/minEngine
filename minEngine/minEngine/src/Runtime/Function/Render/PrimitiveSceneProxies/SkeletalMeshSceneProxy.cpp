@@ -18,10 +18,7 @@ namespace minEngine
         batch.m_MaterialProxy = m_MaterialProxy;
         batch.m_LocalToWorld = m_Transform.ToMatrix();
         batch.m_CastShadow = m_CastShadow;
-        if (m_PrimitiveComponent != nullptr)
-        {
-            batch.m_BoundingBox = m_PrimitiveComponent->GetBoundingBox();
-        }
+        batch.m_BoundingBox = ResolveWorldBounds();
         batch.m_bSkinned = true;
         if (!m_BonePalette.empty())
         {

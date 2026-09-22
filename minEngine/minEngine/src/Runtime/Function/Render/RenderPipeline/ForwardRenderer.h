@@ -112,6 +112,9 @@ namespace minEngine
 
         void SetPresentPassEnabled(bool enabled) override { m_EnablePresentPass = enabled; }
 
+        void SetFrustumCullMainViewEnabled(bool enabled) { m_bFrustumCullMainView = enabled; }
+        bool IsFrustumCullMainViewEnabled() const { return m_bFrustumCullMainView; }
+
         void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot) override;
 
         RHIBuffer* GetPerFrameUniformBuffer() const { return m_PerFrameUniformBuffer.get(); }
@@ -140,6 +143,8 @@ namespace minEngine
         EnginePipelineLayouts m_PipelineLayouts;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
+        /** RND-F19: cull proxies against main-camera frustum before Collect (default on). */
+        bool m_bFrustumCullMainView = true;
 
         void BindSceneRenderTarget(SceneRenderTarget& target);
         void UpdatePerFrameUBO(const SceneRenderContext& ctx);

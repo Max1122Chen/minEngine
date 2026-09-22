@@ -312,12 +312,12 @@ namespace minEngine
         SceneRenderContext ctx;
         ctx.Scene = desc.Scene;
         ctx.Camera = desc.Camera;
+        ctx.bEnableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
 
         desc.Scene->CollectOrphanedSceneProxies();
         BuildRenderQueue(ctx);
 
-        const bool enableShadows = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableShadows);
-        if (enableShadows)
+        if (ctx.bEnableShadows)
         {
             m_ShadowUniformBuffers.BeginShadowFrame();
             CollectShadowRequests(ctx);
@@ -380,7 +380,7 @@ namespace minEngine
             m_ShadowUniformBuffers.GetCascadeFarPlaneBuffer(),
             m_ShadowUniformBuffers.GetSpotLightViewProjBuffer());
 
-        if (enableShadows && !ctx.ShadowDrawCommands.empty())
+        if (ctx.bEnableShadows && !ctx.ShadowDrawCommands.empty())
         {
             ExecuteManualShadowPasses(cmdList, ctx);
         }

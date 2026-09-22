@@ -4,6 +4,11 @@
 
 namespace minEngine
 {
+    Matrix4 SpriteSceneProxy::GetBoundsLocalToWorld() const
+    {
+        return m_ModelMatrix;
+    }
+
     void SpriteSceneProxy::GetMeshBatches(MeshBatchCollector& collector) const
     {
         if (m_Texture == nullptr || m_VertexBuffer == nullptr || m_VertexInputLayout == nullptr || m_MaterialProxy == nullptr)
@@ -19,10 +24,7 @@ namespace minEngine
         batch.m_LocalToWorld = m_ModelMatrix;
         batch.m_CastShadow = false;
         batch.m_bForceTranslucentPass = m_bNeedsTranslucentPass;
-        if (m_PrimitiveComponent != nullptr)
-        {
-            batch.m_BoundingBox = m_PrimitiveComponent->GetBoundingBox();
-        }
+        batch.m_BoundingBox = ResolveWorldBounds();
         batch.m_Proxy = this;
         collector.AddMesh(batch);
     }
