@@ -2,12 +2,16 @@
 
 #include "Core.h"
 #include "Runtime/Core/Math/Color.h"
+#include "Runtime/Core/Math/Math.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Render/Texture.h"
+
+#include <memory>
 
 namespace minEngine
 {
     class Material;
+    class Sprite;
     class SpriteSceneProxy;
 
     ME_CLASS()
@@ -17,6 +21,10 @@ namespace minEngine
     public:
         SpriteComponent();
         virtual ~SpriteComponent() = default;
+
+        void SetSprite(const std::shared_ptr<Sprite>& sprite);
+        Sprite* GetSprite() const { return m_Sprite.get(); }
+        const std::shared_ptr<Sprite>& GetSpriteShared() const { return m_Sprite; }
 
         void SetTexture(const std::shared_ptr<Texture2D>& texture);
         Texture2D* GetTexture() const { return m_Texture.get(); }
@@ -31,6 +39,15 @@ namespace minEngine
         void SetUVRect(const Vector4& uvRect);
         Vector4 GetUVRect() const { return m_UVRect; }
 
+        /** Draw texture: Sprite runtime when set, else legacy m_Texture. */
+        std::shared_ptr<Texture2D> ResolveDrawTextureShared() const;
+        Texture2D* ResolveDrawTexture() const { return ResolveDrawTextureShared().get(); }
+
+        /** Draw UV (u0,v0,u1,v1): Sprite runtime UV when set, else m_UVRect. */
+        Vector4 ResolveDrawUVRect() const;
+
+        static bool IsUVRectDegenerate(const Vector4& uvRect);
+
         virtual Math::Geometry::AABB GetBoundingBox() const override;
         virtual PrimitiveSceneProxy* CreateSceneProxy() override;
         void SyncSceneProxy(PrimitiveSceneProxy& proxy) override;
@@ -39,6 +56,9 @@ namespace minEngine
         void EnsureRuntimeMaterial();
         void SyncMaterialParameters();
         void FillSceneProxy(SpriteSceneProxy& proxy);
+
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetSprite", Getter = "GetSpriteShared"))
+        std::shared_ptr<Sprite> m_Sprite{ nullptr };
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTexture", Getter = "GetTextureShared"))
         std::shared_ptr<Texture2D> m_Texture{ nullptr };
@@ -49,8 +69,8 @@ namespace minEngine
         ME_PROPERTY()
         Vector2 m_Size{ 1.0f, 1.0f };
 
-        /** (u0, v0, u1, v1). Non-default remap is stored; GPU remap may be deferred. */
-        ME_PROPERTY()
+        /** Legacy path when m_Sprite is null. (u0, v0, u1, v1) OpenGL-style. */
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetUVRect", Getter = "GetUVRect"))
         Vector4 m_UVRect{ 0.0f, 0.0f, 1.0f, 1.0f };
 
         std::shared_ptr<Material> m_RuntimeMaterial{ nullptr };

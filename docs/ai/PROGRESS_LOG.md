@@ -1,14 +1,16 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（SPR-F02 实现待 review）
+Last updated: 2026-09-22（SPR-F03 Done；开 SPR-F04）
+
+### 2026-09-22 - SPR-F03 Done（Sprite 运行时消费）
+- **代码：** `SpriteComponent::m_Sprite` + ResolveDraw*；Material UVRectU0–V1（Lerp + MakeFloat2）；退化 UV 跳过入队；`MakeFloat2` / `Vector2`。
+- **验证：** `minEngineTests.exe test sprite-runtime-consume` PASS（3/3）。
+- **Next：** SPR-F04 Authoring Services。
 
 ### 2026-09-22 - SPR-F02 Done（Sprite / Atlas 资产真源）
 - **代码：** `Sprite` / `SpriteAtlas` / `SpriteAtlasPacker`；`.mesprite` / `.mespriteatlas`；CreateAsset/Load/Save；Rebuild 事务式；Runtime 查询 API。
 - **验证：** `minEngineTests.exe test sprite-atlas` PASS（6/6）。
 - **Next：** SPR-F03 运行时消费（Component + UV→GPU）。
-
-### 2026-09-22 - SPR-F02 实现（In Progress，待 code review）
-- **（已收口为上条 Done）**
 
 ### 2026-09-22 - SPR-F01–F06 Draft（Sprite 系统 MVP 设计族）
 - **内容：** 新领域 `SPR`；登记 F01 路线图 + F02 资产真源 + F03 运行时消费 + F04 Authoring Services + F05 Sprite Editor + F06 Atlas UX；全部 **Draft** 待逐篇审阅。目录 `docs/ai/Sprite/`。ACTIVE_WORK Primary 指向本族。minCraft 为催化剂，非本期 DoD。

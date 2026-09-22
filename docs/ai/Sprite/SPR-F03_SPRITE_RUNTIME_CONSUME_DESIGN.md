@@ -4,11 +4,11 @@
 - **ID:** SPR-F03
 - **Type:** Feature
 - **Complexity:** L2
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-22
 - **Related:**
-  - 硬前置：[SPR-F02](./SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md)
+  - 硬前置：[SPR-F02](./SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md)（**Done**）
   - Roadmap：[SPR-F01](./SPR-F01_SPRITE_SYSTEM_ROADMAP.md)
   - 底座：[RND-F16](../Render/RND-F16_2D_RENDERING_FOUNDATION_DESIGN.md)
   - 入队：[RND-F18](../Render/RND-F18_MESH_BATCH_PASS_MDC_REFACTOR_DESIGN.md)
@@ -17,9 +17,9 @@
 
 **问题：** `SpriteComponent` 只认裸 `Texture2D`；`UVRect` 存了但 GPU 未 remap；无法消费 Sprite 资产的 Baked 图集。
 
-**方案：** 组件优先持 `Sprite`；每帧/dirty 时用 Runtime API 填 Proxy；打通 VS/Material **UVRect remap**；保留裸 Texture 路径作兼容。
+**方案：** 组件优先持 `Sprite`；每帧/dirty 时用 Runtime API 填 Proxy；打通 Material **UVRect remap**（4 scalars + Lerp + MakeFloat2）；保留裸 Texture 路径作兼容。
 
-**状态：** Draft。
+**状态：** Done。
 
 ## Scope
 - **In:**
@@ -168,22 +168,22 @@ SpriteComponent
 
 1. Sprite 持有时是否禁用 legacy Texture 字段编辑 — **blocking?** 否  
 2. Atlas Rebuild 后已加载组件如何刷新 — dirty 通知 vs 重载 — **blocking?** 否（MVP：Mark dirty on asset save）  
-3. V 翻转与 F02 同一约定 — **blocking?** 是（跟 F02 Q2）  
+3. V 翻转与 F02 同一约定 — **Resolved**（F02 `GetUVRectNormalized` top-left→OpenGL V flip）  
 
 ## Design Review
 
-- **Verdict:** Pending  
+- **Verdict:** Accepted（实现合入）  
 
 ## Implementation Readiness
 
 - [x] Responsibilities / API sketched  
-- [ ] Unresolved Q3 with F02  
-**Ready for implementation?** `no` — 依赖 F02 Planned + UV 约定。
+- [x] Q3 resolved via F02  
+**Ready for implementation?** `done`
 
 ## Acceptance Checklist
 
-- [ ] Design review complete  
-- [ ] Registry / Progress synced  
+- [x] Design / code review complete  
+- [x] Registry / Progress synced  
 
 ---
 
@@ -192,3 +192,5 @@ SpriteComponent
 | 日期 | 说明 |
 |------|------|
 | 2026-09-22 | Draft |
+| 2026-09-22 | In Progress：`m_Sprite` + ResolveDraw*；Material UVRectU0–V1 remap；`MakeFloat2`；suite `sprite-runtime-consume` |
+| 2026-09-22 | Done |

@@ -122,6 +122,16 @@ namespace minEngine
     };
 
     ME_CLASS()
+    class MaterialGraphNodeDef_MakeFloat2 : public MaterialGraphNodeDef
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        MaterialGraphNodeDef_MakeFloat2();
+        void BuildIR(MIREmitter& emitter) override;
+    };
+
+    ME_CLASS()
     class MaterialGraphNodeDef_MakeFloat3 : public MaterialGraphNodeDef
     {
         ME_GENERATED_BODY()

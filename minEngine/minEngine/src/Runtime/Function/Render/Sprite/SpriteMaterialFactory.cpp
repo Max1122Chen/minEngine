@@ -20,6 +20,38 @@ namespace minEngine
             graph.m_Nodes.clear();
 
             MaterialEdGraphNode& texCoord = graph.AddNode<MaterialGraphNodeDef_TextureCoordinate>();
+            MaterialEdGraphNode& maskU = graph.AddNode<MaterialGraphNodeDef_ComponentMask>();
+            static_cast<MaterialGraphNodeDef_ComponentMask*>(maskU.GetNodeDef())->ChannelIndex = 0;
+            MaterialEdGraphNode& maskV = graph.AddNode<MaterialGraphNodeDef_ComponentMask>();
+            static_cast<MaterialGraphNodeDef_ComponentMask*>(maskV.GetNodeDef())->ChannelIndex = 1;
+
+            // UV remap: uv = lerp(uvMin, uvMax, attrib). Slots after tint/opacity.
+            const int uvSlotBase = translucent ? 4 : 3;
+
+            MaterialEdGraphNode& uvU0 = graph.AddNode<MaterialGraphNodeDef_ScalarParameter>();
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvU0.GetNodeDef())->ParameterName = "UVRectU0";
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvU0.GetNodeDef())->UniformSlotIndex = uvSlotBase + 0;
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvU0.GetNodeDef())->DefaultValue = 0.0f;
+
+            MaterialEdGraphNode& uvV0 = graph.AddNode<MaterialGraphNodeDef_ScalarParameter>();
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvV0.GetNodeDef())->ParameterName = "UVRectV0";
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvV0.GetNodeDef())->UniformSlotIndex = uvSlotBase + 1;
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvV0.GetNodeDef())->DefaultValue = 0.0f;
+
+            MaterialEdGraphNode& uvU1 = graph.AddNode<MaterialGraphNodeDef_ScalarParameter>();
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvU1.GetNodeDef())->ParameterName = "UVRectU1";
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvU1.GetNodeDef())->UniformSlotIndex = uvSlotBase + 2;
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvU1.GetNodeDef())->DefaultValue = 1.0f;
+
+            MaterialEdGraphNode& uvV1 = graph.AddNode<MaterialGraphNodeDef_ScalarParameter>();
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvV1.GetNodeDef())->ParameterName = "UVRectV1";
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvV1.GetNodeDef())->UniformSlotIndex = uvSlotBase + 3;
+            static_cast<MaterialGraphNodeDef_ScalarParameter*>(uvV1.GetNodeDef())->DefaultValue = 1.0f;
+
+            MaterialEdGraphNode& lerpU = graph.AddNode<MaterialGraphNodeDef_Lerp>();
+            MaterialEdGraphNode& lerpV = graph.AddNode<MaterialGraphNodeDef_Lerp>();
+            MaterialEdGraphNode& makeUv = graph.AddNode<MaterialGraphNodeDef_MakeFloat2>();
+
             MaterialEdGraphNode& texObject = graph.AddNode<MaterialGraphNodeDef_TextureObject>();
             MaterialEdGraphNode& texSample = graph.AddNode<MaterialGraphNodeDef_TextureSample>();
 
@@ -51,12 +83,22 @@ namespace minEngine
             const MaterialBlendMode blend =
                 translucent ? MaterialBlendMode::Translucent : MaterialBlendMode::Opaque;
 
+            graph.ConnectPins(texCoord, 0, maskU, 0, shading, blend);
+            graph.ConnectPins(texCoord, 0, maskV, 0, shading, blend);
+            graph.ConnectPins(uvU0, 0, lerpU, 0, shading, blend);
+            graph.ConnectPins(uvU1, 0, lerpU, 1, shading, blend);
+            graph.ConnectPins(maskU, 0, lerpU, 2, shading, blend);
+            graph.ConnectPins(uvV0, 0, lerpV, 0, shading, blend);
+            graph.ConnectPins(uvV1, 0, lerpV, 1, shading, blend);
+            graph.ConnectPins(maskV, 0, lerpV, 2, shading, blend);
+            graph.ConnectPins(lerpU, 0, makeUv, 0, shading, blend);
+            graph.ConnectPins(lerpV, 0, makeUv, 1, shading, blend);
+
             graph.ConnectPins(texObject, 0, texSample, 0, shading, blend);
-            graph.ConnectPins(texCoord, 0, texSample, 1, shading, blend);
+            graph.ConnectPins(makeUv, 0, texSample, 1, shading, blend);
             graph.ConnectPins(tintR, 0, makeTint, 0, shading, blend);
             graph.ConnectPins(tintG, 0, makeTint, 1, shading, blend);
             graph.ConnectPins(tintB, 0, makeTint, 2, shading, blend);
-            // TextureSample output 1 = RGB
             graph.ConnectPins(texSample, 1, albedoMul, 0, shading, blend);
             graph.ConnectPins(makeTint, 0, albedoMul, 1, shading, blend);
             graph.ConnectToMaterialProperty(albedoMul, 0, output, MP_Albedo, shading, blend);
@@ -72,7 +114,6 @@ namespace minEngine
                 static_cast<MaterialGraphNodeDef_ComponentMask*>(alphaMask.GetNodeDef())->ChannelIndex = 3;
 
                 MaterialEdGraphNode& opacityMul = graph.AddNode<MaterialGraphNodeDef_Multiply>();
-                // RGBA → mask A
                 graph.ConnectPins(texSample, 0, alphaMask, 0, shading, blend);
                 graph.ConnectPins(alphaMask, 0, opacityMul, 0, shading, blend);
                 graph.ConnectPins(opacity, 0, opacityMul, 1, shading, blend);
@@ -110,11 +151,23 @@ namespace minEngine
         const LinearColor& color,
         const std::shared_ptr<Texture2D>& texture)
     {
-        // Albedo = texture.rgb * TintRGB; Opacity = texture.a * color.a (translucent graph only).
+        ApplyColorTextureAndUVRect(material, color, texture, Vector4(0.0f, 0.0f, 1.0f, 1.0f));
+    }
+
+    void SpriteMaterialFactory::ApplyColorTextureAndUVRect(
+        Material& material,
+        const LinearColor& color,
+        const std::shared_ptr<Texture2D>& texture,
+        const Vector4& uvRect)
+    {
         material.SetTextureParameter("BaseColor", texture);
         material.SetScalarParameter("TintR", color.R);
         material.SetScalarParameter("TintG", color.G);
         material.SetScalarParameter("TintB", color.B);
         material.SetScalarParameter("Opacity", color.A);
+        material.SetScalarParameter("UVRectU0", uvRect.x);
+        material.SetScalarParameter("UVRectV0", uvRect.y);
+        material.SetScalarParameter("UVRectU1", uvRect.z);
+        material.SetScalarParameter("UVRectV1", uvRect.w);
     }
 }

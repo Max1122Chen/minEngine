@@ -5,16 +5,30 @@
 #include "Runtime/Function/Render/PrimitiveSceneProxies/SpriteSceneProxy.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/Sprite/Sprite.h"
 #include "Runtime/Function/Render/Sprite/SpriteMaterialFactory.h"
 #include "Runtime/Function/Render/Sprite/SpriteQuadMesh.h"
 #include "Runtime/Function/Render/Sprite/SpriteTranslucency.h"
 #include "Runtime/Core/Math/Geometry/AABB.h"
+
+#include <cmath>
 
 namespace minEngine
 {
     SpriteComponent::SpriteComponent()
     {
         m_CastShadow = false;
+    }
+
+    void SpriteComponent::SetSprite(const std::shared_ptr<Sprite>& sprite)
+    {
+        if (m_Sprite == sprite)
+        {
+            return;
+        }
+
+        m_Sprite = sprite;
+        MarkRenderStateDirty();
     }
 
     void SpriteComponent::SetTexture(const std::shared_ptr<Texture2D>& texture)
@@ -57,6 +71,32 @@ namespace minEngine
         MarkRenderStateDirty();
     }
 
+    std::shared_ptr<Texture2D> SpriteComponent::ResolveDrawTextureShared() const
+    {
+        if (m_Sprite)
+        {
+            return m_Sprite->GetRuntimeTextureShared();
+        }
+
+        return m_Texture;
+    }
+
+    Vector4 SpriteComponent::ResolveDrawUVRect() const
+    {
+        if (m_Sprite)
+        {
+            return m_Sprite->GetUVRectNormalized();
+        }
+
+        return m_UVRect;
+    }
+
+    bool SpriteComponent::IsUVRectDegenerate(const Vector4& uvRect)
+    {
+        constexpr float kEps = 1.0e-6f;
+        return std::fabs(uvRect.z - uvRect.x) < kEps || std::fabs(uvRect.w - uvRect.y) < kEps;
+    }
+
     Math::Geometry::AABB SpriteComponent::GetBoundingBox() const
     {
         if (m_Size.x <= 0.0f || m_Size.y <= 0.0f)
@@ -77,7 +117,8 @@ namespace minEngine
             return;
         }
 
-        const bool needsTranslucent = ComputeSpriteNeedsTranslucentPass(m_Color, m_Texture.get(), false);
+        Texture2D* drawTexture = ResolveDrawTexture();
+        const bool needsTranslucent = ComputeSpriteNeedsTranslucentPass(m_Color, drawTexture, false);
         if (m_RuntimeMaterial && m_bRuntimeMaterialTranslucent == needsTranslucent &&
             m_RuntimeMaterial->IsCompiledForDraw())
         {
@@ -95,7 +136,11 @@ namespace minEngine
             return;
         }
 
-        SpriteMaterialFactory::ApplyColorAndTexture(*m_RuntimeMaterial, m_Color, m_Texture);
+        SpriteMaterialFactory::ApplyColorTextureAndUVRect(
+            *m_RuntimeMaterial,
+            m_Color,
+            ResolveDrawTextureShared(),
+            ResolveDrawUVRect());
     }
 
     void SpriteComponent::FillSceneProxy(SpriteSceneProxy& proxy)
@@ -103,9 +148,24 @@ namespace minEngine
         proxy.m_PrimitiveComponent = this;
         proxy.m_CastShadow = false;
         proxy.m_Color = m_Color.ToVector4();
-        proxy.m_UVRect = m_UVRect;
         proxy.m_Size = m_Size;
-        proxy.m_Texture = m_Texture.get();
+
+        const std::shared_ptr<Texture2D> drawTexture = ResolveDrawTextureShared();
+        const Vector4 drawUv = ResolveDrawUVRect();
+        proxy.m_Texture = drawTexture.get();
+        proxy.m_UVRect = drawUv;
+
+        if (drawTexture == nullptr || IsUVRectDegenerate(drawUv) || m_Size.x <= 0.0f || m_Size.y <= 0.0f)
+        {
+            proxy.m_MaterialProxy = nullptr;
+            proxy.m_VertexBuffer = nullptr;
+            proxy.m_IndexBuffer = nullptr;
+            proxy.m_VertexInputLayout = nullptr;
+            proxy.m_bNeedsTranslucentPass = false;
+            proxy.m_ModelMatrix = GetWorldMatrix();
+            proxy.m_Transform = GetWorldTransform();
+            return;
+        }
 
         EnsureRuntimeMaterial();
         SyncMaterialParameters();
@@ -114,7 +174,7 @@ namespace minEngine
         proxy.m_bNeedsTranslucentPass =
             ComputeSpriteNeedsTranslucentPass(
                 m_Color,
-                m_Texture.get(),
+                drawTexture.get(),
                 proxy.m_MaterialProxy && proxy.m_MaterialProxy->IsTranslucent());
 
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
@@ -131,8 +191,6 @@ namespace minEngine
         const Matrix4 worldMatrix = GetWorldMatrix();
         const Matrix4 sizeScale = glm::scale(Matrix4(1.0f), Vector3(m_Size.x, m_Size.y, 1.0f));
         proxy.m_ModelMatrix = worldMatrix * sizeScale;
-
-        // Keep Transform for tools that still read it; model matrix is authoritative for draws.
         proxy.m_Transform = GetWorldTransform();
     }
 

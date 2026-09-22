@@ -53,6 +53,20 @@ namespace minEngine
         }
     }
 
+    MaterialGraphNodeDef_MakeFloat2::MaterialGraphNodeDef_MakeFloat2()
+    {
+        m_Inputs.push_back({ "X" });
+        m_Inputs.push_back({ "Y" });
+        m_Outputs.push_back({ "Value" });
+    }
+
+    void MaterialGraphNodeDef_MakeFloat2::BuildIR(MIREmitter& emitter)
+    {
+        MIRValue* x = emitter.Input(GetInput(0));
+        MIRValue* y = emitter.Input(GetInput(1));
+        emitter.Output(0, emitter.Vector2(x, y));
+    }
+
     MaterialGraphNodeDef_MakeFloat3::MaterialGraphNodeDef_MakeFloat3()
     {
         m_Inputs.push_back({ "R" });

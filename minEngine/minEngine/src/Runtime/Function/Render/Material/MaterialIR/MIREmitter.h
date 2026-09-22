@@ -25,6 +25,7 @@ namespace minEngine
         MIRValue* ConstantDefaultForProperty(MaterialProperty property);
 
         MIRValue* MakeDimensional(const MIRPrimitiveType* type, std::vector<MIRValue*> components);
+        MIRValue* Vector2(MIRValue* x, MIRValue* y);
         MIRValue* Vector3(MIRValue* x, MIRValue* y, MIRValue* z);
 
         const MIRValueType* TryGetCommonType(const MIRValueType* a, const MIRValueType* b) const;

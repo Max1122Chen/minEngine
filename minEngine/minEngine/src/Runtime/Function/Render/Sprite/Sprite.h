@@ -43,6 +43,7 @@ namespace minEngine
         SpriteAtlas* GetAtlas() const { return m_AtlasOwner; }
 
         Texture2D* GetRuntimeTexture() const;
+        std::shared_ptr<Texture2D> GetRuntimeTextureShared() const;
         Vector4 GetUVRectNormalized() const;
 
         Vector4 ResolveSourceRectPx() const;

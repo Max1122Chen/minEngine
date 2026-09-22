@@ -38,6 +38,11 @@ ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_Constant3, GReflectionClassRegister_MaterialGraphNodeDef_Constant3_291b0702)
 
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialGraphNodeDef_MakeFloat2)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_MakeFloat2, GReflectionClassRegister_MaterialGraphNodeDef_MakeFloat2_07c0003c)
+
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialGraphNodeDef_MakeFloat3)
 ME_REFLECTION_ACCESSOR_END()
 

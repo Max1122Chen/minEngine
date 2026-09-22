@@ -451,6 +451,32 @@ namespace minEngine
         return dimensional;
     }
 
+    MIRValue* MIREmitter::Vector2(MIRValue* x, MIRValue* y)
+    {
+        if (x == nullptr || y == nullptr)
+        {
+            EmitDiagnostic("Vector2 input is null.");
+            return Poison();
+        }
+
+        const MIRValueType* commonType = GetCommonType(x->Type, y->Type);
+        const MIRPrimitiveType* commonScalar = commonType != nullptr ? commonType->AsScalar() : nullptr;
+        if (commonScalar == nullptr)
+        {
+            return Poison();
+        }
+
+        x = Cast(x, commonScalar);
+        y = Cast(y, commonScalar);
+        if (x == nullptr || x->IsPoison() || y == nullptr || y->IsPoison())
+        {
+            return Poison();
+        }
+
+        const MIRPrimitiveType* vectorType = MIRPrimitiveType::Get(commonScalar->ScalarKind, 2, 1);
+        return MakeDimensional(vectorType, { x, y });
+    }
+
     MIRValue* MIREmitter::Vector3(MIRValue* x, MIRValue* y, MIRValue* z)
     {
         if (x == nullptr || y == nullptr || z == nullptr)

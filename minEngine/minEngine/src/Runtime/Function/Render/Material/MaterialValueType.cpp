@@ -120,6 +120,11 @@ namespace minEngine
             return nullptr;
         }
 
+        if (dynamic_cast<const MaterialGraphNodeDef_MakeFloat2*>(nodeDef) != nullptr)
+        {
+            return MIRPrimitiveType::GetFloat2();
+        }
+
         if (dynamic_cast<const MaterialGraphNodeDef_MakeFloat3*>(nodeDef) != nullptr)
         {
             return MIRPrimitiveType::GetFloat3();
@@ -206,7 +211,8 @@ namespace minEngine
             return nullptr;
         }
 
-        if (dynamic_cast<const MaterialGraphNodeDef_MakeFloat3*>(nodeDef) != nullptr)
+        if (dynamic_cast<const MaterialGraphNodeDef_MakeFloat2*>(nodeDef) != nullptr ||
+            dynamic_cast<const MaterialGraphNodeDef_MakeFloat3*>(nodeDef) != nullptr)
         {
             return MIRPrimitiveType::GetFloat();
         }

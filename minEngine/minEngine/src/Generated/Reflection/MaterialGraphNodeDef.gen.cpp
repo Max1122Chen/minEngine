@@ -34,6 +34,11 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_Constant3, GRef
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::MaterialGraphNodeDef_Constant3, B, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_Constant3)
 
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_MakeFloat2, GReflectionClassRegister_MaterialGraphNodeDef_MakeFloat2_07c0003c)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_MakeFloat2)
+
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_MakeFloat3, GReflectionClassRegister_MaterialGraphNodeDef_MakeFloat3_76b554c8)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)

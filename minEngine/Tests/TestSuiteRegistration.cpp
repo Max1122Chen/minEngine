@@ -43,6 +43,8 @@
 #include "Suites/ProfilerTest.h"
 #include "Suites/PrefabTest.h"
 #include "Suites/PrefabOverridesTest.h"
+#include "Suites/SpriteAtlasTest.h"
+#include "Suites/SpriteRuntimeConsumeTest.h"
 
 namespace minEngine
 {
@@ -455,6 +457,23 @@ namespace minEngine
             }
         };
 
+        struct SpriteRuntimeConsumeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"sprite-runtime-consume", "Sprite Runtime Consume", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'sprite-runtime-consume'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "sprite-runtime-consume",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct GameModuleStubReflectionTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -731,6 +750,7 @@ namespace minEngine
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
+        using SpriteRuntimeConsumeSuite = TypedTestSuite<SpriteRuntimeConsumeTestSuiteTraits>;
         using GameModuleStubReflectionSuite = TypedTestSuite<GameModuleStubReflectionTestSuiteTraits>;
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
@@ -781,6 +801,7 @@ namespace minEngine
             registry.Register(FrustumSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());
+            registry.Register(SpriteRuntimeConsumeSuite::Get());
             registry.Register(GameModuleStubReflectionSuite::Get());
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());

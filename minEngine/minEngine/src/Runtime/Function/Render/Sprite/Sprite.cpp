@@ -46,6 +46,16 @@ namespace minEngine
         return m_SourceTexture.get();
     }
 
+    std::shared_ptr<Texture2D> Sprite::GetRuntimeTextureShared() const
+    {
+        if (m_BakedTexture)
+        {
+            return m_BakedTexture;
+        }
+
+        return m_SourceTexture;
+    }
+
     Vector4 Sprite::MakeFullTextureRect(const Texture2D& texture)
     {
         return Vector4(
