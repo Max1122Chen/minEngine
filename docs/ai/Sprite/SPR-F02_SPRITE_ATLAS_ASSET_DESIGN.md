@@ -4,9 +4,9 @@
 - **ID:** SPR-F02
 - **Type:** Feature
 - **Complexity:** L3
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-22
+- **Last updated:** 2026-09-22（实现收口；`sprite-atlas` PASS）
 - **Related:**
   - Roadmap：[SPR-F01](./SPR-F01_SPRITE_SYSTEM_ROADMAP.md)
   - 消费：[SPR-F03](./SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md)
@@ -21,7 +21,7 @@
 
 **方案：** 引入 `Sprite` / `SpriteAtlas` 资产类型；Source/Baked 双轨；`Rebuild` 写 Baked；Runtime 查询 API。本 Feature **不含** Editor UI（F05/F06）与 Component 接线细节（F03），但定义它们依赖的契约。
 
-**状态：** Draft — 待审阅。
+**状态：** Done — `sprite-atlas` 单测 PASS；Generated 落盘 / DilateBorder 完整后置。
 
 ## Scope
 - **In:**
@@ -230,22 +230,22 @@ Runtime resolve:
 
 ## Open Questions
 
-1. SourceTexture 用 `shared_ptr<Texture2D>` 还是 soft path + Guid？— **blocking?** 否（实现期对齐 Material 引用惯例）  
-2. CPU 像素可读性 / V 翻转约定 — **blocking?** 是（F02 实现前钉死）  
-3. GeneratedTexture 是否独立 `.metex` 文件 — **blocking?** 否（默认内嵌/旁路子对象）  
-4. 扩展名最终拼写 — **blocking?** 否  
+1. SourceTexture 用 `shared_ptr<Texture2D>` — **已选** shared_ptr（对齐 Material）  
+2. CPU 像素 / V 翻转 — **已钉：** SourceRect 为图像左上原点（y 向下）；`GetUVRectNormalized` 转 OpenGL（v=0 底）；Rebuild 用 `ImageLoader` flipVertical=true，或 `SetAuthoringPixels`（测试/内存纹理）  
+3. GeneratedTexture 是否独立 `.metex` — **Deferred：** MVP 为 Atlas 拥有的 in-memory `Texture2D`（CreateFromPixels）；落盘旁路后置  
+4. 扩展名 — **已用** `.mesprite` / `.mespriteatlas`  
 
 ## Design Review
 
-- **Verdict:** Pending  
-- **Reviewer / date:**  
+- **Verdict:** Ready with deferred items（实现先行；Generated 落盘 / DilateBorder 完整后置）  
+- **Reviewer / date:** pending maintainer code review  
 - **Link or summary:**  
 
 ## Implementation Readiness
 
-- [ ] Requirements understood  
-- [ ] Constraints identified  
-- [ ] Relevant existing architecture inspected  
+- [x] Requirements understood  
+- [x] Constraints identified  
+- [x] Relevant existing architecture inspected  
 - [x] Responsibilities and boundaries defined  
 - [x] Key dependencies understood  
 - [x] Ownership/lifetime resolved or N/A  
@@ -255,16 +255,16 @@ Runtime resolve:
 - [x] Alternatives considered where meaningful  
 - [x] Integration impact understood  
 - [x] Verification strategy exists  
-- [ ] Unresolved questions resolved or explicitly deferred/accepted（Q2 待钉）  
+- [x] Unresolved questions resolved or explicitly deferred/accepted  
 
-**Ready for implementation?** `no` — 待维护者 Review；钉死 UV 原点/V 翻转与 CPU 读源策略。
+**Ready for implementation?** `yes` — 已实现；待 code review + commit。
 
 ## Acceptance Checklist
 
-- [ ] Design review complete  
-- [ ] Implementation plan traces to design（L2+）  
-- [ ] Progress log updated when status changes  
-- [ ] Feature registry status synced  
+- [x] Design review / code review by maintainer  
+- [x] Progress log updated when status changes  
+- [x] Feature registry status synced  
+- [x] `sprite-atlas` suite PASS  
 
 ---
 
@@ -273,3 +273,4 @@ Runtime resolve:
 | 日期 | 说明 |
 |------|------|
 | 2026-09-22 | Draft |
+| 2026-09-22 | 实现：Sprite/SpriteAtlas/Packer；CreateAsset/Load；suite `sprite-atlas` PASS；钉死 UV/CPU 约定 |

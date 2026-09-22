@@ -79,7 +79,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `MAT-F05` | MaterialInstanceDynamic | **Done** | — | [Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) |
 | `MAT-F06` | MIC 资产 / Editor（`.memi`） | **Done** | — | [Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) |
 | `SPR-F01` | Sprite System MVP（Asset + Runtime + Editor）**路线图** | **Draft** | — | [Roadmap](./Sprite/SPR-F01_SPRITE_SYSTEM_ROADMAP.md) |
-| `SPR-F02` | Sprite / SpriteAtlas 资产真源 + Rebuild + Runtime 解析 | **Draft** | — | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
+| `SPR-F02` | Sprite / SpriteAtlas 资产真源 + Rebuild + Runtime 解析 | **Done** | — | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) · suite `sprite-atlas` |
 | `SPR-F03` | Sprite 运行时消费（Component + UVRect→GPU） | **Draft** | — | [Design](./Sprite/SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
 | `SPR-F04` | Sprite Authoring Services（人/Agent 同面） | **Draft** | — | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
 | `SPR-F05` | Sprite Editor MVP（纹理预览 + 矩形切分） | **Draft** | — | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |

@@ -4,6 +4,8 @@
 #include "Runtime/Function/Framework/Prefab/Prefab.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialInstance.h"
+#include "Runtime/Function/Render/Sprite/Sprite.h"
+#include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
 #include "Runtime/Function/Render/StaticMesh.h"
 #include "Runtime/Function/Render/SkeletalMesh.h"
 #include "Runtime/Function/Animation/Skeleton.h"
@@ -115,6 +117,20 @@ namespace minEngine
             .Extensions = {".memi"},
             .FileDialogFilterLabel = "Material Instance (*.memi)"});
         m_AssetTypeIdByClass[MaterialInstance::StaticClass()] = "MaterialInstance";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "Sprite",
+            .RuntimeClassName = GetClassName<Sprite>(),
+            .Extensions = {".mesprite"},
+            .FileDialogFilterLabel = "Sprite (*.mesprite)"});
+        m_AssetTypeIdByClass[Sprite::StaticClass()] = "Sprite";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "SpriteAtlas",
+            .RuntimeClassName = GetClassName<SpriteAtlas>(),
+            .Extensions = {".mespriteatlas"},
+            .FileDialogFilterLabel = "Sprite Atlas (*.mespriteatlas)"});
+        m_AssetTypeIdByClass[SpriteAtlas::StaticClass()] = "SpriteAtlas";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Scene",

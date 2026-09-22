@@ -29,6 +29,8 @@ namespace minEngine
     class Skeleton;
     class Material;
     class MaterialInstance;
+    class Sprite;
+    class SpriteAtlas;
     class Scene;
     class Prefab;
     class Font;
@@ -315,6 +317,10 @@ namespace minEngine
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_MaterialInstance(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_Sprite(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_SpriteAtlas(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Font(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_LuaScript(
@@ -397,6 +403,10 @@ namespace minEngine
     template<>
     std::shared_ptr<MaterialInstance> AssetManager::LoadAsset_Impl<MaterialInstance>(const AssetMeta& meta);
     template<>
+    std::shared_ptr<Sprite> AssetManager::LoadAsset_Impl<Sprite>(const AssetMeta& meta);
+    template<>
+    std::shared_ptr<SpriteAtlas> AssetManager::LoadAsset_Impl<SpriteAtlas>(const AssetMeta& meta);
+    template<>
     std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta);
     template<>
     std::shared_ptr<LuaScript> AssetManager::LoadAsset_Impl<LuaScript>(const AssetMeta& meta);
@@ -419,6 +429,10 @@ namespace minEngine
     bool AssetManager::SaveAsset_Impl<MaterialInstance>(
         const AssetMeta& meta, const MaterialInstance& asset) const;
     template<>
+    bool AssetManager::SaveAsset_Impl<Sprite>(const AssetMeta& meta, const Sprite& asset) const;
+    template<>
+    bool AssetManager::SaveAsset_Impl<SpriteAtlas>(const AssetMeta& meta, const SpriteAtlas& asset) const;
+    template<>
     bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const;
 
     template<>
@@ -435,6 +449,14 @@ namespace minEngine
         const std::string& directoryRel);
     template<>
     std::shared_ptr<MaterialInstance> AssetManager::CreateAsset<MaterialInstance>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<Sprite> AssetManager::CreateAsset<Sprite>(
+        const std::string& assetName,
+        const std::string& directoryRel);
+    template<>
+    std::shared_ptr<SpriteAtlas> AssetManager::CreateAsset<SpriteAtlas>(
         const std::string& assetName,
         const std::string& directoryRel);
     template<>

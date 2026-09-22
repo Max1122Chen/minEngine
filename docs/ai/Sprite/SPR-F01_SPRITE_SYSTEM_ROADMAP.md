@@ -78,7 +78,7 @@ SpriteComponent                    ← 场景消费（F03）
 | Order | ID | 名称 | Status | Design |
 |-------|-----|------|--------|--------|
 | 0 | **SPR-F01** | 本路线图 | **Draft** | 本文 |
-| 1 | **SPR-F02** | Sprite / Atlas **资产真源** + 序列化 + Runtime 解析 + Rebuild | **Draft** | [Design](./SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
+| 1 | **SPR-F02** | Sprite / Atlas **资产真源** + 序列化 + Runtime 解析 + Rebuild | **Done** | [Design](./SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
 | 2 | **SPR-F03** | 运行时消费（Component + UVRect→GPU） | **Draft** | [Design](./SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
 | 3 | **SPR-F04** | Authoring 命令面（人/Agent 同 API） | **Draft** | [Design](./SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
 | 4 | **SPR-F05** | Sprite Editor MVP（纹理预览 + 矩形切分） | **Draft** | [Design](./SPR-F05_SPRITE_EDITOR_DESIGN.md) |

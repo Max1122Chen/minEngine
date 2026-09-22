@@ -17,13 +17,13 @@ minCraft 图集需求为催化剂；验收锚点是引擎能力面，**不**绑�
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | **`SPR-F01`** | Sprite System 路线图 | **Draft** | [Roadmap](./Sprite/SPR-F01_SPRITE_SYSTEM_ROADMAP.md) |
-| 1 | **`SPR-F02`** | Sprite / Atlas 资产真源 + Rebuild | **Draft** | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
+| 1 | **`SPR-F02`** | Sprite / Atlas 资产真源 + Rebuild | **Done** | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
 | 2 | **`SPR-F03`** | Component + UV→GPU | **Draft** | [Design](./Sprite/SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
 | 3 | **`SPR-F04`** | Authoring Services（人/Agent） | **Draft** | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
 | 4 | **`SPR-F05`** | Sprite Editor MVP | **Draft** | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |
 | 5 | **`SPR-F06`** | Atlas 工作流 UX | **Draft** | [Design](./Sprite/SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
 
-**下一动作：** 维护者按 **F01 → F02 → F03…F06** 逐篇 Design Review；全部 Planned 前 **不开大码**。实现序：**F02 → F03∥F04 → F05∥F06**。
+**下一动作：** 维护者按 **F03 → F04 → F05∥F06** 实现（每 Feature review 后 commit）。F01 路线图可随族进度标 Done。
 
 **本波已收口（勿当 WIP）：** `RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 

@@ -438,6 +438,23 @@ namespace minEngine
             }
         };
 
+        struct SpriteAtlasTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"sprite-atlas", "Sprite Atlas Asset", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'sprite-atlas'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "sprite-atlas",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct GameModuleStubReflectionTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -713,6 +730,7 @@ namespace minEngine
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
+        using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
         using GameModuleStubReflectionSuite = TypedTestSuite<GameModuleStubReflectionTestSuiteTraits>;
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
@@ -762,6 +780,7 @@ namespace minEngine
             registry.Register(ScreenUICoordsSuite::Get());
             registry.Register(FrustumSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
+            registry.Register(SpriteAtlasSuite::Get());
             registry.Register(GameModuleStubReflectionSuite::Get());
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());

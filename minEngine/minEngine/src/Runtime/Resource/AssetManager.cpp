@@ -23,6 +23,9 @@
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialInstance.h"
+#include "Runtime/Function/Render/Sprite/Sprite.h"
+#include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
+#include "Runtime/Resource/Loaders/SpriteLoader.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Resource/LuaScript.h"
 #include "Runtime/Resource/AudioClip.h"
@@ -1917,6 +1920,20 @@ namespace minEngine
             meta, outErrorMessage, "failed to load material instance by guid");
     }
 
+    std::shared_ptr<Asset> AssetManager::LoadHandler_Sprite(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<Sprite>(
+            meta, outErrorMessage, "failed to load sprite by guid");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_SpriteAtlas(
+        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return manager.LoadTypedAssetAsBase<SpriteAtlas>(
+            meta, outErrorMessage, "failed to load sprite atlas by guid");
+    }
+
     std::shared_ptr<Asset> AssetManager::LoadHandler_Font(
         AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
     {
@@ -2017,6 +2034,30 @@ namespace minEngine
             return false;
         }
 
+        return true;
+    }
+
+    template<>
+    bool AssetManager::SaveAsset_Impl<Sprite>(const AssetMeta& meta, const Sprite& asset) const
+    {
+        std::string error;
+        if (!SpriteLoader::Save(meta, asset, &error))
+        {
+            ME_LOG(LogAsset, Error, "Failed to save Sprite '{}'. Error: {}", meta.AssetPath, error);
+            return false;
+        }
+        return true;
+    }
+
+    template<>
+    bool AssetManager::SaveAsset_Impl<SpriteAtlas>(const AssetMeta& meta, const SpriteAtlas& asset) const
+    {
+        std::string error;
+        if (!SpriteAtlasLoader::Save(meta, asset, &error))
+        {
+            ME_LOG(LogAsset, Error, "Failed to save SpriteAtlas '{}'. Error: {}", meta.AssetPath, error);
+            return false;
+        }
         return true;
     }
 
@@ -2477,6 +2518,120 @@ namespace minEngine
         ME_LOG(LogAsset, Info, "CreateAsset<MaterialInstance>: created '{}'.", meta.AssetPath);
         CacheCreatedAsset(meta.AssetPath, instance);
         return instance;
+    }
+
+    template<>
+    std::shared_ptr<Sprite> AssetManager::CreateAsset<Sprite>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".mesprite");
+        if (relativePath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<Sprite>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_LOG(LogAsset, Error,
+                "CreateAsset<Sprite>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string spriteName = absolutePath.stem().string();
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Sprite> sprite = NewObject<Sprite>(spriteName, nullptr, assetGuid);
+
+        AssetMeta writeMeta;
+        writeMeta.AssetName = spriteName;
+        writeMeta.AssetPath = relativePath;
+        writeMeta.AssetType = "Sprite";
+        writeMeta.Guid = assetGuid;
+        if (!SaveAsset_Impl<Sprite>(writeMeta, *sprite))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "Sprite", &assetGuid);
+        if (meta.AssetPath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<Sprite>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+        sprite->SetMeta(const_cast<AssetMeta*>(FindAssetMetaByGuid(assetGuid)));
+        ME_LOG(LogAsset, Info, "CreateAsset<Sprite>: created '{}'.", meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, sprite);
+        return sprite;
+    }
+
+    template<>
+    std::shared_ptr<SpriteAtlas> AssetManager::CreateAsset<SpriteAtlas>(
+        const std::string& assetName,
+        const std::string& directoryRel)
+    {
+        const std::string relativePath =
+            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".mespriteatlas");
+        if (relativePath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<SpriteAtlas>: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_LOG(LogAsset, Error,
+                "CreateAsset<SpriteAtlas>: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string atlasName = absolutePath.stem().string();
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>(atlasName, nullptr, assetGuid);
+
+        AssetMeta writeMeta;
+        writeMeta.AssetName = atlasName;
+        writeMeta.AssetPath = relativePath;
+        writeMeta.AssetType = "SpriteAtlas";
+        writeMeta.Guid = assetGuid;
+        if (!SaveAsset_Impl<SpriteAtlas>(writeMeta, *atlas))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = RegisterAsset(relativePath, "SpriteAtlas", &assetGuid);
+        if (meta.AssetPath.empty())
+        {
+            ME_LOG(LogAsset, Error, "CreateAsset<SpriteAtlas>: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
+        atlas->SetMeta(const_cast<AssetMeta*>(FindAssetMetaByGuid(assetGuid)));
+        ME_LOG(LogAsset, Info, "CreateAsset<SpriteAtlas>: created '{}'.", meta.AssetPath);
+        CacheCreatedAsset(meta.AssetPath, atlas);
+        return atlas;
     }
 
     template<>
