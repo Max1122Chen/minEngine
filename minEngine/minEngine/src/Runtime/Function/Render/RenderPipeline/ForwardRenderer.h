@@ -115,6 +115,9 @@ namespace minEngine
         void SetFrustumCullMainViewEnabled(bool enabled) { m_bFrustumCullMainView = enabled; }
         bool IsFrustumCullMainViewEnabled() const { return m_bFrustumCullMainView; }
 
+        void SetSortMeshDrawsEnabled(bool enabled) { m_bSortMeshDraws = enabled; }
+        bool IsSortMeshDrawsEnabled() const { return m_bSortMeshDraws; }
+
         void LoadEngineRenderingAssets(const std::string& engineDefaultAssetsRoot) override;
 
         RHIBuffer* GetPerFrameUniformBuffer() const { return m_PerFrameUniformBuffer.get(); }
@@ -145,6 +148,8 @@ namespace minEngine
         bool m_EnablePresentPass = true;
         /** RND-F19: cull proxies against main-camera frustum before Collect (default on). */
         bool m_bFrustumCullMainView = true;
+        /** RND-F20: sort Opaque/Translucent queues before Pass consume (default on). */
+        bool m_bSortMeshDraws = true;
 
         void BindSceneRenderTarget(SceneRenderTarget& target);
         void UpdatePerFrameUBO(const SceneRenderContext& ctx);
@@ -152,6 +157,7 @@ namespace minEngine
         void CollectShadowRequests(SceneRenderContext& ctx);
         void BuildShadowDrawCommands(SceneRenderContext& ctx);
         void BuildRenderQueue(SceneRenderContext& ctx);
+        void SortMeshDrawQueues(SceneRenderContext& ctx);
         void BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight);
         void ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx);
 

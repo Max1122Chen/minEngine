@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（CORE-F27 / ED-F21 Done）
+Last updated: 2026-09-22（RND-F20 Done）
+
+### 2026-09-22 - RND-F20 Done（Mesh Draw Sorting）
+- **代码：** `MeshDrawCommandSort`；`ForwardRenderer::SortMeshDrawQueues`；`m_bSortMeshDraws`；TranslucencyPass 不再自排序；Shadow 队列不排序。
+- **验证：** `minEngineTests.exe test mesh-draw-sort` PASS；Editor（MyMEProject）手验通过。
+- **Next：** Primary 空闲；`RND-F21` 仍 Deferred。
 
 ### 2026-09-22 - CORE-F27 / ED-F21 Done（多模块 reflection codegen）
 - **代码：** `cmake/MinEngineReflection.cmake`；引擎迁封装；`GameModuleStub` 链 `minEngine` + `StubGamePrimitiveComponent` + 自有 Generated；suite `game-module-stub`。

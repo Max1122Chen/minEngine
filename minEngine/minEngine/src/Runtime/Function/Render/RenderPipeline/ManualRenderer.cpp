@@ -316,6 +316,7 @@ namespace minEngine
 
         desc.Scene->CollectOrphanedSceneProxies();
         BuildRenderQueue(ctx);
+        SortMeshDrawQueues(ctx);
 
         if (ctx.bEnableShadows)
         {

@@ -6,6 +6,7 @@
 #include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Render/DrawCommands/MeshBatchCollector.h"
 #include "Render/DrawCommands/MeshPassProcessor.h"
+#include "Render/DrawCommands/MeshDrawCommandSort.h"
 #include "Render/SceneProxies/WidgetSceneProxy.h"
 #include "Render/ScreenUI/ScreenUICoords.h"
 #include "Runtime/Function/Framework/Components/CanvasComponent.h"
@@ -617,6 +618,7 @@ namespace minEngine
         desc.Scene->CollectOrphanedSceneProxies();
 
         BuildRenderQueue(ctx);
+        SortMeshDrawQueues(ctx);
         BuildScreenUIQueue(ctx, sceneTarget->GetWidth(), sceneTarget->GetHeight());
 
         if (ctx.bEnableShadows)
@@ -1198,6 +1200,21 @@ namespace minEngine
         mainCollector.DispatchTo(translucentProcessor);
         mainCollector.DispatchTo(shadowProcessor);
         shadowOnlyCollector.DispatchTo(shadowProcessor);
+    }
+
+    void ForwardRenderer::SortMeshDrawQueues(SceneRenderContext& ctx)
+    {
+        if (!m_bSortMeshDraws)
+        {
+            return;
+        }
+
+        SortOpaqueMeshDraws(ctx.OpaqueQueue);
+
+        if (ctx.Camera != nullptr)
+        {
+            SortTranslucentMeshDraws(ctx.TranslucentQueue, ctx.Camera->m_Position);
+        }
     }
 
     void ForwardRenderer::BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)

@@ -3,14 +3,14 @@
 ## Meta
 - **ID:** RND-F20
 - **Type:** Feature
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-22（design-review 收紧契约）
+- **Last updated:** 2026-09-22（S02–S04 收口；Editor 手验通过）
 - **Related:**
   - **硬前置（半透明深度）：** [RND-F19](./RND-F19_CPU_MESH_VISIBILITY_DESIGN.md) world `MeshBatch.m_BoundingBox`（实现顺序 **F19 → F20**）
   - 入队：[RND-F18](./RND-F18_MESH_BATCH_PASS_MDC_REFACTOR_DESIGN.md) Done
   - 测量：[CORE-F22](../Platform/Core/CORE-F22_PROFILER_HARNESS_DESIGN.md)
-  - 代码：`MeshDrawCommand` / `MeshDrawCommandSortKey` · `BuildRenderQueue` 之后 · Pass Execute 之前
+  - 代码：`MeshDrawCommand` / `MeshDrawCommandSort` · `BuildRenderQueue` 之后 · Pass Execute 之前
 
 ## TL;DR
 
@@ -18,7 +18,7 @@
 
 **方案：** Processor 产出后、Pass 消费前，单点 `SortMeshDrawQueues`——Opaque 用锁定的 64-bit `m_SortKey` + `stable_sort`；Translucent 用 **view 距离远→近** 比较器（不与 Opaque 抢 key 语义）。**本期不对 ShadowCasterQueue 排序。**
 
-**状态：** Draft（评审修订）— 待审批 → Planned（F19 后实现）。
+**状态：** Done — Opaque SortKey + Translucent 远→近；`mesh-draw-sort` PASS；Editor 手验通过。
 
 ## Scope
 - **In:**
@@ -167,18 +167,18 @@ BuildRenderQueue (F18 + F19)
 
 ## 6) 验收标准
 
-- [ ] Opaque `stable_sort` 后 `m_SortKey` 非降序（单测）  
-- [ ] Translucent 远→近（单测构造两盒）  
-- [ ] ShadowCasterQueue **未**被本 Feature 排序（文档/代码路径确认）  
-- [ ] 开关 Off 可关  
-- [ ] Profiler Scope：`MeshDraw.SortOpaque` / `MeshDraw.SortTranslucent`  
-- [ ] Editor 手验：不透明无回归；半透明叠层更稳  
+- [x] Opaque `stable_sort` 后 `m_SortKey` 非降序（单测）  
+- [x] Translucent 远→近（单测构造两盒）  
+- [x] ShadowCasterQueue **未**被本 Feature 排序（文档/代码路径确认）  
+- [x] 开关 Off 可关  
+- [x] Profiler Scope：`MeshDraw.SortOpaque` / `MeshDraw.SortTranslucent`  
+- [x] Editor 手验：不透明无回归；半透明叠层更稳  
 
 ---
 
 ## 7) Status note
 
-（Draft）实现须在 **RND-F19** Done（至少 world Bounds 契约落地）之后。
+Done — 单点 `SortMeshDrawQueues`；TranslucencyPass 不再自排序。下一刀可选 `RND-F21`（Deferred）或其它轨。
 
 ---
 
@@ -199,3 +199,4 @@ BuildRenderQueue (F18 + F19)
 |------|------|
 | 2026-09-22 | Draft：与 F19 拆分；Opaque / Translucent 排序 |
 | 2026-09-22 | **Review 修订：** 锁定 bit 布局与远→近距离；Shadow 明确不排序；`stable_sort` 必用；F19 world Bounds 硬前置；去掉未决「可选」 |
+| 2026-09-22 | **Done：** `MeshDrawCommandSort` + 入队后排序；suite `mesh-draw-sort`；Editor 手验 |

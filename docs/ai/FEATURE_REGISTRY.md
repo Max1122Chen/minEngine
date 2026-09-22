@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-22（CORE-F27 / ED-F21 Done；ED-F22 Cancelled）
+Last updated: 2026-09-22（RND-F20 Done；CORE-F27 / ED-F21 Done；ED-F22 Cancelled）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -69,7 +69,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F17` | Isolated preview / multi-view draw scheduling（CB·Preview·主视口解串图） | **Done** | — | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) · ViewId+SRT；TD-027 Done |
 | `RND-F18` | MeshBatch + Pass 生成 MDC（Proxy 虚提交；删 mesh 类型 dynamic_cast 入队） | **Done**（S03 stub Deferred） | — | [Design](./Render/RND-F18_MESH_BATCH_PASS_MDC_REFACTOR_DESIGN.md) |
 | `RND-F19` | CPU Mesh Visibility（主视图视锥剔除；Shadow 不用主锥） | **Done** | — | [Design](./Render/RND-F19_CPU_MESH_VISIBILITY_DESIGN.md) · `Math::Geometry::Frustum` |
-| `RND-F20` | Mesh Draw Sorting（Opaque 状态序 / Translucent 深度序） | **In Progress** | — | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) · 建议实现在 F19 后 |
+| `RND-F20` | Mesh Draw Sorting（Opaque 状态序 / Translucent 深度序） | **Done** | — | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) · Opaque SortKey + Translucent 远→近 |
 | `RND-F21` | Shadow 光视锥 / CSM cascade caster 剔除 | **Deferred** | — | [Design](./Render/RND-F21_SHADOW_FRUSTUM_CASTER_CULLING_DESIGN.md) · 复用 F19 `Frustum`；F19 后开工 |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-22（CORE-F27 / ED-F21 Done；ED-F22 Cancelled）
+Last updated: 2026-09-22（RND-F20 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,11 +11,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** `RND-F20` Mesh Draw Sorting（In Progress）
+**Primary：无强制下一刀。** `RND-F20` **Done**（Opaque / Translucent 排序）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`RND-F20`** | Opaque SortKey / Translucent 远→近 | **In Progress** | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) |
+| 0 | **`RND-F20`** | Opaque SortKey / Translucent 远→近 | **Done** | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) |
 
 **本波已收口（外仓模块）：** `CORE-F27` / `ED-F21` **Done**；`ED-F22` **Cancelled**。
 
@@ -24,7 +24,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 轨 | ID | 说明 |
 |----|-----|------|
 | render | `RND-F19` | **Done** — 主视图视锥 + world Bounds + 双 Collector |
-| render | `RND-F20` | **In Progress** — Opaque SortKey + Translucent 远→近；Editor 手验中 |
+| render | `RND-F20` | **Done** — Opaque SortKey + Translucent 远→近 |
 | render | `RND-F21` | 光视锥 / CSM caster 剔除 — **Deferred** |
 | render | `RND-F18` | MeshBatch + Pass — **Done** |
 | editor | `ED-F11` | Tab Host 余量（可选） |
