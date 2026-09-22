@@ -4,7 +4,7 @@
 - **ID:** SPR-F04
 - **Type:** Feature
 - **Complexity:** L2
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-22
 - **Related:**
@@ -17,9 +17,9 @@
 
 **问题：** 即使有 Sprite/Atlas 资产，人和 Agent 仍缺**同一套**可撤销/可脚本的创建、切分、组 Atlas、Rebuild 原语。
 
-**方案：** 新增 `SpriteEditorServices`（命名可最终化为 `SpriteAuthoringServices`）：只暴露域操作；GUI 与 Automation Surface 薄封装；不新增「Agent 专用」API。
+**方案：** 新增 `SpriteEditorServices`：只暴露域操作；GUI 与 Automation Surface 薄封装；不新增「Agent 专用」API。Undo 走显式 `EditorCommandStack`（F05 Tab Session 接入时直接传 session 栈）。
 
-**状态：** Draft。
+**状态：** Done。
 
 ## Scope
 - **In:**
@@ -176,16 +176,16 @@ GUI / Automation Surface
 
 ## Design Review
 
-- **Verdict:** Pending  
+- **Verdict:** Accepted（实现合入）  
 
 ## Implementation Readiness
 
-**Ready for implementation?** `no` — 依赖 F02；Session 细节可 Ready with deferred。
+**Ready for implementation?** `done`
 
 ## Acceptance Checklist
 
-- [ ] Design review complete  
-- [ ] Registry / Progress synced  
+- [x] Design / code review complete  
+- [x] Registry / Progress synced  
 
 ---
 
@@ -194,3 +194,4 @@ GUI / Automation Surface
 | 日期 | 说明 |
 |------|------|
 | 2026-09-22 | Draft |
+| 2026-09-22 | Done：`SpriteEditorServices` + Commands；Asset create 白名单 Sprite/SpriteAtlas；suite `sprite-authoring` |

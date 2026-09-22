@@ -90,6 +90,8 @@ namespace minEngine
         virtual const class MaterialEditorServices& GetMaterialEditorServices() const = 0;
         virtual class AnimationGraphEditorServices& GetAnimationGraphEditorServices() = 0;
         virtual const class AnimationGraphEditorServices& GetAnimationGraphEditorServices() const = 0;
+        virtual class SpriteEditorServices& GetSpriteEditorServices() = 0;
+        virtual const class SpriteEditorServices& GetSpriteEditorServices() const = 0;
 
         virtual void RequestExit() = 0;
         virtual void ConfirmExit() = 0;

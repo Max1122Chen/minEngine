@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-22（SPR-F03 Done；SPR-F02 Done；下一刀 SPR-F04）
+Last updated: 2026-09-22（SPR-F04 Done；下一刀 SPR-F05∥F06）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,7 +11,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：`SPR-F04` Sprite Authoring Services（下一刀）。**  
+**Primary：`SPR-F05` Sprite Editor MVP（下一刀；F06 可并行）。**  
 minCraft 图集需求为催化剂；验收锚点是引擎能力面，**不**绑定 chunk 上线。
 
 | 序 | ID | 标题 | Status | Design |
@@ -19,11 +19,11 @@ minCraft 图集需求为催化剂；验收锚点是引擎能力面，**不**绑�
 | 0 | **`SPR-F01`** | Sprite System 路线图 | **Draft** | [Roadmap](./Sprite/SPR-F01_SPRITE_SYSTEM_ROADMAP.md) |
 | 1 | **`SPR-F02`** | Sprite / Atlas 资产真源 + Rebuild | **Done** | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
 | 2 | **`SPR-F03`** | Component + UV→GPU | **Done** | [Design](./Sprite/SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
-| 3 | **`SPR-F04`** | Authoring Services（人/Agent） | **Draft** | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
+| 3 | **`SPR-F04`** | Authoring Services（人/Agent） | **Done** | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
 | 4 | **`SPR-F05`** | Sprite Editor MVP | **Draft** | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |
 | 5 | **`SPR-F06`** | Atlas 工作流 UX | **Draft** | [Design](./Sprite/SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
 
-**下一动作：** 实现 SPR-F04（Create/rect/Atlas/Rebuild/Save + Session/Command）；review 后 commit → F05∥F06。
+**下一动作：** Review SPR-F04 commit → 实现 F05（纹理预览 + 矩形切分）；F06 可并行。
 
 **本波已收口（勿当 WIP）：** `RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 

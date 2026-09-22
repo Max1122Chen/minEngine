@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（SPR-F03 Done；开 SPR-F04）
+Last updated: 2026-09-22（SPR-F04 Done；待 commit）
+
+### 2026-09-22 - SPR-F04 Done（Sprite Authoring Services）
+- **代码：** `SpriteEditorServices`（Create/SetRect/Atlas/Add/Remove/Rebuild/Save）；`EditorSpriteCommands`；`AssetEditorServices` 白名单 Sprite/SpriteAtlas；`IEditorContext` 挂接。
+- **验证：** `minEngineTests.exe test sprite-authoring` PASS（3/3）。
+- **Deferred：** Document Tab Session / Automation `sprite.*` Surface（F05/F06 / 后续）。
+- **Next：** commit 审批后 → SPR-F05。
 
 ### 2026-09-22 - SPR-F03 Done（Sprite 运行时消费）
 - **代码：** `SpriteComponent::m_Sprite` + ResolveDraw*；Material UVRectU0–V1（Lerp + MakeFloat2）；退化 UV 跳过入队；`MakeFloat2` / `Vector2`。

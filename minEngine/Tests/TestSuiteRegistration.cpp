@@ -45,6 +45,7 @@
 #include "Suites/PrefabOverridesTest.h"
 #include "Suites/SpriteAtlasTest.h"
 #include "Suites/SpriteRuntimeConsumeTest.h"
+#include "Suites/SpriteAuthoringTest.h"
 
 namespace minEngine
 {
@@ -474,6 +475,23 @@ namespace minEngine
             }
         };
 
+        struct SpriteAuthoringTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"sprite-authoring", "Sprite Authoring Services", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'sprite-authoring'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "sprite-authoring",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct GameModuleStubReflectionTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -751,6 +769,7 @@ namespace minEngine
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
         using SpriteRuntimeConsumeSuite = TypedTestSuite<SpriteRuntimeConsumeTestSuiteTraits>;
+        using SpriteAuthoringSuite = TypedTestSuite<SpriteAuthoringTestSuiteTraits>;
         using GameModuleStubReflectionSuite = TypedTestSuite<GameModuleStubReflectionTestSuiteTraits>;
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
@@ -802,6 +821,7 @@ namespace minEngine
             registry.Register(MeshDrawSortSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());
             registry.Register(SpriteRuntimeConsumeSuite::Get());
+            registry.Register(SpriteAuthoringSuite::Get());
             registry.Register(GameModuleStubReflectionSuite::Get());
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());

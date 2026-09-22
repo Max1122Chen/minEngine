@@ -29,6 +29,7 @@
 #include "Services/Control/EditorControlServices.h"
 #include "Services/Material/MaterialEditorServices.h"
 #include "Services/Scene/SceneEditorServices.h"
+#include "Services/Sprite/SpriteEditorServices.h"
 #include "Services/TypeQuery/TypeQueryServices.h"
 
 #include "Runtime/Core/CLI/CommandLineResult.h"
@@ -98,6 +99,11 @@ namespace minEngine
         const AnimationGraphEditorServices& GetAnimationGraphEditorServices() const override
         {
             return m_AnimationGraphEditorServices;
+        }
+        SpriteEditorServices& GetSpriteEditorServices() override { return m_SpriteEditorServices; }
+        const SpriteEditorServices& GetSpriteEditorServices() const override
+        {
+            return m_SpriteEditorServices;
         }
         EditorContextMenuSystem& GetContextMenu() override { return m_ContextMenu; }
         const EditorContextMenuSystem& GetContextMenu() const override { return m_ContextMenu; }
@@ -169,6 +175,7 @@ namespace minEngine
         EditorControlServices m_EditorControlServices;
         MaterialEditorServices m_MaterialEditorServices;
         AnimationGraphEditorServices m_AnimationGraphEditorServices;
+        SpriteEditorServices m_SpriteEditorServices;
         EditorCommandStack m_FallbackCommandStack;
         EditorContextMenuSystem m_ContextMenu;
         EditorAppearance m_Appearance;

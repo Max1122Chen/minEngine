@@ -11,6 +11,14 @@ file(GLOB_RECURSE EDITOR_DEBUG_COMMAND_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/UI/Property/PropertyEditPolicy.cpp
 )
 
+# SPR-F04: Sprite authoring services + command stack (Editor sources linked into tests).
+set(SPRITE_AUTHORING_EDITOR_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Shell/EditorCommandStack.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Shell/EditorSettingsDefaults.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Commands/Sprite/EditorSpriteCommands.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Sprite/SpriteEditorServices.cpp
+)
+
 # TEST-F05: optional external / extra suite sources (off by default).
 set(_MINENGINE_EXTRA_TEST_SOURCES "${MINENGINE_EXTRA_TEST_SOURCES}")
 if(NOT "${MINENGINE_EXTRA_TEST_DIR}" STREQUAL "")
@@ -36,6 +44,7 @@ add_executable(${MINENGINE_TESTS_NAME}
     DoctestSuiteRunner.cpp
     ${TEST_SUITE_SOURCES}
     ${EDITOR_DEBUG_COMMAND_SOURCES}
+    ${SPRITE_AUTHORING_EDITOR_SOURCES}
     ${_MINENGINE_EXTRA_TEST_SOURCES}
 )
 

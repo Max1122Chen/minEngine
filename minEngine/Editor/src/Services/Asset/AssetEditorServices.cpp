@@ -7,6 +7,8 @@
 #include "Runtime/Function/Animation/AnimationGraph.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/Sprite/Sprite.h"
+#include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
 
@@ -114,6 +116,24 @@ namespace minEngine
         {
             if (std::shared_ptr<AnimationGraph> asset =
                     AssetManager::Get().CreateAsset<AnimationGraph>(nameStorage, directoryStorage))
+            {
+                createdGuid = asset->GetGuid();
+                created = true;
+            }
+        }
+        else if (typeStorage == "Sprite")
+        {
+            if (std::shared_ptr<Sprite> asset =
+                    AssetManager::Get().CreateAsset<Sprite>(nameStorage, directoryStorage))
+            {
+                createdGuid = asset->GetGuid();
+                created = true;
+            }
+        }
+        else if (typeStorage == "SpriteAtlas")
+        {
+            if (std::shared_ptr<SpriteAtlas> asset =
+                    AssetManager::Get().CreateAsset<SpriteAtlas>(nameStorage, directoryStorage))
             {
                 createdGuid = asset->GetGuid();
                 created = true;
