@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-22（RND-F19 Done；CORE-F27 / ED-F21 / ED-F22 Draft 并行登记）
+Last updated: 2026-09-22（CORE-F27 / ED-F21 Done；ED-F22 Cancelled）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -52,7 +52,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F24` | Prefab 受限 Override + default 传播 | **Done**（003 收口 **Fixed**） | — | [Design](./Platform/Core/CORE-F24_PREFAB_OVERRIDES_DESIGN.md) · [BUG-CORE-003](./bugs/BUG-CORE-003.md) |
 | `CORE-F25` | 组件从 owning Scene 解析 RenderScene（禁 SceneManager 隐式当前世界） | **Done** | — | [Design](./Platform/Core/CORE-F25_OWNING_SCENE_RENDERSCENE_DESIGN.md) · Prefab Stage 可视隔离硬前置 |
 | `CORE-F26` | Prefab 资产删除与实例断链（阻断 / Unpack 后删除） | **Done** | — | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) · `feat/prefab` |
-| `CORE-F27` | 多模块 Reflection codegen（引擎 + 游戏各自 src → 各自 Generated） | **Draft** | — | [Design](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md) · [Impl](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_IMPLEMENTATION.md) · [Review](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md) · minCraft `ENG-GAP-006-A` |
+| `CORE-F27` | 多模块 Reflection codegen（引擎 + 游戏各自 src → 各自 Generated） | **Done** | — | [Design](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md) · [Impl](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_IMPLEMENTATION.md) · [Review](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md) · minCraft `ENG-GAP-006-A` |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
@@ -69,7 +69,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F17` | Isolated preview / multi-view draw scheduling（CB·Preview·主视口解串图） | **Done** | — | [Design](./Render/RND-F17_ISOLATED_PREVIEW_DRAW_SCHEDULING_DESIGN.md) · ViewId+SRT；TD-027 Done |
 | `RND-F18` | MeshBatch + Pass 生成 MDC（Proxy 虚提交；删 mesh 类型 dynamic_cast 入队） | **Done**（S03 stub Deferred） | — | [Design](./Render/RND-F18_MESH_BATCH_PASS_MDC_REFACTOR_DESIGN.md) |
 | `RND-F19` | CPU Mesh Visibility（主视图视锥剔除；Shadow 不用主锥） | **Done** | — | [Design](./Render/RND-F19_CPU_MESH_VISIBILITY_DESIGN.md) · `Math::Geometry::Frustum` |
-| `RND-F20` | Mesh Draw Sorting（Opaque 状态序 / Translucent 深度序） | **Draft** | — | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) · 建议实现在 F19 后 |
+| `RND-F20` | Mesh Draw Sorting（Opaque 状态序 / Translucent 深度序） | **In Progress** | — | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) · 建议实现在 F19 后 |
 | `RND-F21` | Shadow 光视锥 / CSM cascade caster 剔除 | **Deferred** | — | [Design](./Render/RND-F21_SHADOW_FRUSTUM_CASTER_CULLING_DESIGN.md) · 复用 F19 `Frustum`；F19 后开工 |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
@@ -96,9 +96,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F17` | Editor Automation Host + Q/E/V Surface（Named Pipe → Editor API） | **Done**（S01–S04 Scene MVP） | — | [Design](./Editor/ED-F17_AUTOMATION_HOST_DESIGN.md) · [Impl](./Editor/ED-F17_AUTOMATION_HOST_IMPLEMENTATION.md) · 服务 [MCP-F01](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) |
 | `ED-F18` | Editor 原生能力面纠偏（`*EditorServices`；Surface 独占协议） | **Done** | — | [Design](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md) · [Impl](./Editor/ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_IMPLEMENTATION.md) |
 | `ED-F19` | Material / Anim EditorServices（图原语 + Automation op） | **Done** | — | [Design](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_DESIGN.md) · [Impl](./Editor/ED-F19_MATERIAL_ANIM_EDITOR_SERVICES_IMPLEMENTATION.md) |
-| `ED-F20` | Editor 可选链接外部游戏 SHARED（Dev 宿主；链接期模块） | **Done**（S03 → `ED-F22`） | — | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) · [Impl](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md) · minCraft `ENG-GAP-001` |
-| `ED-F21` | 游戏模块始终链接 minEngine（consumer 契约；去双构建） | **Draft** | — | [Design](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md) · [Impl](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_IMPLEMENTATION.md) · minCraft `ENG-GAP-006-B` |
-| `ED-F22` | `MinEngine_GameModuleStartup` 钩子（Initialize 后一次） | **Draft** | — | [Design](./Editor/ED-F22_GAME_MODULE_STARTUP_DESIGN.md) · [Impl](./Editor/ED-F22_GAME_MODULE_STARTUP_IMPLEMENTATION.md) · 吸收 ED-F20-S03 · minCraft `ENG-GAP-006-C` |
+| `ED-F20` | Editor 可选链接外部游戏 SHARED（Dev 宿主；链接期模块） | **Done**（S03 **Cancelled**，不升温） | — | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) · [Impl](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md) · minCraft `ENG-GAP-001` |
+| `ED-F21` | 游戏模块始终链接 minEngine（consumer 契约；去双构建） | **Done** | — | [Design](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md) · [Impl](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_IMPLEMENTATION.md) · minCraft `ENG-GAP-006-B` |
+| `ED-F22` | `MinEngine_GameModuleStartup` 钩子 | **Cancelled** | — | [Design](./Editor/ED-F22_GAME_MODULE_STARTUP_DESIGN.md) · 世界搭建归游戏仓/场景；原 ED-F20-S03 / `ENG-GAP-006-C` |
 | `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Done**（P0 伞） | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
 | `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Done** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |

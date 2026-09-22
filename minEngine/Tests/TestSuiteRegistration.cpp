@@ -28,6 +28,7 @@
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
 #include "Suites/FrustumTest.h"
+#include "Suites/MeshDrawSortTest.h"
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
 #include "Suites/ScreenUIButtonTest.h"
@@ -420,6 +421,41 @@ namespace minEngine
             }
         };
 
+        struct MeshDrawSortTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"mesh-draw-sort", "Mesh Draw Sort", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'mesh-draw-sort'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "mesh-draw-sort",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct GameModuleStubReflectionTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                // Not in default smoke: requires ED-F20 GameModuleStub link for the real assert path.
+                return TestSuiteMetadata{"game-module-stub", "Game Module Stub Reflection", false, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'game-module-stub'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "game-module-stub",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct UILayoutTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -676,6 +712,8 @@ namespace minEngine
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
+        using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
+        using GameModuleStubReflectionSuite = TypedTestSuite<GameModuleStubReflectionTestSuiteTraits>;
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
         using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
@@ -723,6 +761,8 @@ namespace minEngine
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
             registry.Register(FrustumSuite::Get());
+            registry.Register(MeshDrawSortSuite::Get());
+            registry.Register(GameModuleStubReflectionSuite::Get());
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());
             registry.Register(ScreenUIButtonSuite::Get());

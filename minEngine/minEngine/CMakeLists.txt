@@ -1,40 +1,24 @@
 # Runtime sources are collected recursively (includes MaterialCompiler: MaterialCompileTypes,
 # MaterialCompiler (facades + types); GLSL/ backend impls).
+# Generated/*.gen.cpp are attached by minengine_add_reflection_codegen (CORE-F27).
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS ./src/*.cpp)
 list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Serialization/Legacy/.*")
 list(FILTER SRC EXCLUDE REGEX ".*/Runtime/Core/Reflection/Legacy/.*")
+list(FILTER SRC EXCLUDE REGEX ".*/Generated/.*")
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-
-set(REFLECTION_GENERATOR_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool.py)
+if(NOT DEFINED MINENGINE_CMAKE_DIR)
+    set(MINENGINE_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+endif()
+if(NOT DEFINED MINENGINE_HEADER_TOOL)
+    set(MINENGINE_HEADER_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool.py")
+endif()
+include("${MINENGINE_CMAKE_DIR}/MinEngineReflection.cmake")
 
 set(REFLECTION_SCAN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(REFLECTION_GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Generated/Reflection)
-set(REFLECTION_GENERATED_MANIFEST ${REFLECTION_GENERATED_DIR}/manifest.json)
 set(SCRIPT_BINDING_GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Generated/ScriptBinding)
-set(SCRIPT_BINDING_GENERATED_MANIFEST ${SCRIPT_BINDING_GENERATED_DIR}/manifest.json)
-file(GLOB_RECURSE REFLECTION_SCAN_HEADERS CONFIGURE_DEPENDS
-    ${REFLECTION_SCAN_ROOT}/*.h
-    ${REFLECTION_SCAN_ROOT}/*.hpp
-)
-list(FILTER REFLECTION_SCAN_HEADERS EXCLUDE REGEX ".*/Runtime/Core/Serialization/Legacy/.*")
-list(FILTER REFLECTION_SCAN_HEADERS EXCLUDE REGEX ".*/Runtime/Core/Reflection/Legacy/.*")
-add_custom_command(
-    OUTPUT ${REFLECTION_GENERATED_MANIFEST} ${SCRIPT_BINDING_GENERATED_MANIFEST}
-    COMMAND ${Python3_EXECUTABLE} ${REFLECTION_GENERATOR_SCRIPT}
-            --src-root ${REFLECTION_SCAN_ROOT}
-            --out-dir ${REFLECTION_GENERATED_DIR}
-            --manifest ${REFLECTION_GENERATED_MANIFEST}
-            --script-binding-out-dir ${SCRIPT_BINDING_GENERATED_DIR}
-            --script-binding-manifest ${SCRIPT_BINDING_GENERATED_MANIFEST}
-    DEPENDS ${REFLECTION_GENERATOR_SCRIPT} ${REFLECTION_SCAN_HEADERS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Generating reflection and ScriptBinding sources"
-    VERBATIM
-)
-
-add_custom_target(reflection_codegen DEPENDS ${REFLECTION_GENERATED_MANIFEST} ${SCRIPT_BINDING_GENERATED_MANIFEST})
 
 file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
                 ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_glfw.cpp
@@ -54,7 +38,18 @@ add_library(${ENGINE_NAME} SHARED ${SRC}
                                   ${IMGUIZMO}
                                   )
 
-add_dependencies(${ENGINE_NAME} reflection_codegen)
+minengine_add_reflection_codegen(${ENGINE_NAME}
+    SRC_ROOT ${REFLECTION_SCAN_ROOT}
+    OUT_DIR ${REFLECTION_GENERATED_DIR}
+    MANIFEST ${REFLECTION_GENERATED_DIR}/manifest.json
+    SCRIPT_BINDING_OUT_DIR ${SCRIPT_BINDING_GENERATED_DIR}
+    SCRIPT_BINDING_MANIFEST ${SCRIPT_BINDING_GENERATED_DIR}/manifest.json
+    CODEGEN_TARGET_NAME reflection_codegen
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    EXCLUDE_REGEX
+        ".*/Runtime/Core/Serialization/Legacy/.*"
+        ".*/Runtime/Core/Reflection/Legacy/.*"
+)
 
 set(NFD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/nativefiledialog-extended)
 if(EXISTS ${NFD_DIR}/CMakeLists.txt)

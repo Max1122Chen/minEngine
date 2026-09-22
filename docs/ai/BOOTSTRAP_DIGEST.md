@@ -92,7 +92,7 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) section 7.
 | Run tests | `minEngineTests.exe test smoke` from `minEngine/bin` |
 | Engine config | `--engine-config=`, `--engine-root=` (or space form); env `MINENGINE_ENGINE_*` |
 
-**Optional game Dev host (`ED-F20`, off by default):**
+**Optional game Dev host (`ED-F20` + `CORE-F27` / `ED-F21`, off by default):**
 
 ```powershell
 cmake -S minEngine -B minEngine/build `
@@ -100,7 +100,17 @@ cmake -S minEngine -B minEngine/build `
   -DMINENGINE_GAME_TARGET=<SHARED-target-name>
 ```
 
-Example stub: `minEngine/Examples/GameModuleStub` with target `GameModuleStub`. See [ED-F20 Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md).
+Example stub: `minEngine/Examples/GameModuleStub` with target `GameModuleStub` — **always** `target_link_libraries(... minEngine)` and runs `minengine_add_reflection_codegen` on its own `src/` (see [CORE-F27](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md), [ED-F21](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)).
+
+Prove external `ME_CLASS` + `AddComponent<T>()`:
+
+```powershell
+.\minEngine\bin\minEngineTests.exe test game-module-stub
+```
+
+(Requires the configure above so tests link `GameModuleStub`.)
+
+Do **not** copy engine math types or maintain a no-engine dual build; use TEST-F05 for domain suites. World setup = game/default scene (no official C Startup — `ED-F22` Cancelled).
 
 **Optional extra test suites (`TEST-F05`, off by default):**
 

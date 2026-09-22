@@ -1,0 +1,38 @@
+{
+  "tool_cache_version": 17,
+  "files": {
+    "StubGamePrimitiveComponent.h": {
+      "mtime_ns": 1790048084827638200,
+      "size": 1139,
+      "file_hash": "55186cfd7b8cb2177bca9994777019157c6dd3f498c890bd573febf3b329deee",
+      "has_markers": true,
+      "class_keys": [
+        "GameModuleStub::StubGamePrimitiveComponent"
+      ],
+      "enum_keys": []
+    }
+  },
+  "classes": {
+    "GameModuleStub::StubGamePrimitiveComponent": {
+      "namespace": "GameModuleStub",
+      "class_name": "StubGamePrimitiveComponent",
+      "decl_pos": 402,
+      "class_hash": "791481753c211cc92e42c2c2623b596ac41cf11d18ef7052b804be9efd801c1e",
+      "specifiers": [],
+      "metadata": {},
+      "base_types": [
+        "minEngine::PrimitiveComponent"
+      ],
+      "has_virtual_inheritance": false,
+      "content_hash": "67c154a9dac5050ed10dcf9cb0042869a6f4087ae35fe8737cada168aeb781f3",
+      "output_header": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGamePrimitiveComponent.gen.h",
+      "output_source": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGamePrimitiveComponent.gen.cpp",
+      "source_file": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/src/StubGamePrimitiveComponent.h",
+      "source_include": "StubGamePrimitiveComponent.h",
+      "source_rel": "StubGamePrimitiveComponent.h",
+      "properties": [],
+      "functions": []
+    }
+  },
+  "enums": {}
+}

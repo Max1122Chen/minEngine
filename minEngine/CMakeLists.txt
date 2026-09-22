@@ -63,6 +63,12 @@ set(MINENGINE_EXTRA_TEST_INCLUDE_DIRS "" CACHE STRING
 set(MINENGINE_EXTRA_TEST_LINK_LIBRARIES "" CACHE STRING
     "Semicolon-separated CMake targets/libs to link into minEngineTests for EXTRA suites.")
 
+# ED-F20 / CORE-F27: paths for optional game modules that call minengine_add_reflection_codegen.
+set(MINENGINE_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH
+    "Directory containing MinEngineReflection.cmake and related helpers.")
+set(MINENGINE_HEADER_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/minEngine_header_tool.py" CACHE FILEPATH
+    "Path to minEngine_header_tool.py")
+
 add_subdirectory(${ENGINE_NAME})
 
 # Resolve optional game module after the engine target exists (game may link minEngine).

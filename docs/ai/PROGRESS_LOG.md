@@ -1,6 +1,21 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（RND-F19 Done）
+Last updated: 2026-09-22（CORE-F27 / ED-F21 Done）
+
+### 2026-09-22 - CORE-F27 / ED-F21 Done（多模块 reflection codegen）
+- **代码：** `cmake/MinEngineReflection.cmake`；引擎迁封装；`GameModuleStub` 链 `minEngine` + `StubGamePrimitiveComponent` + 自有 Generated；suite `game-module-stub`。
+- **验证：** stub ON → `test game-module-stub` PASS；默认配置 → Editor + `test smoke` PASS。
+- **文档：** BOOTSTRAP；Design/Impl Done；ED-F22 仍 Cancelled。
+- **Next：** 提交本批；minCraft 可按 stub 模式接 codegen。
+
+### 2026-09-22 - RND-F20 实现（In Progress）
+- **代码：** `MeshDrawCommandSort`；`ForwardRenderer::SortMeshDrawQueues`（Opaque SortKey + Translucent 远→近）；`m_bSortMeshDraws`；TranslucencyPass 不再自排序。
+- **Next：** `mesh-draw-sort` 单测 + Editor 手验 → Done。
+
+### 2026-09-22 - ED-F22 Cancelled（不做 GameModuleStartup）
+- **拍板：** 世界搭建归游戏仓（CreateScene / Add GO / Add Comp / 默认场景）；引擎不提供官方 C Startup 承载业务。
+- **文档：** ED-F22 / ED-F20-S03 Cancelled；ACTIVE_WORK 仅留 CORE-F27 + ED-F21。
+- **仍推进：** CORE-F27（多模块 codegen）、ED-F21（始终链引擎）。
 
 ### 2026-09-22 - RND-F19 Done（主视图视锥剔除）
 - **代码：** `Math::Geometry::Frustum`/`Plane`；`ResolveWorldBounds`；`BuildRenderQueue` 双 Collector + 主锥剔除；`m_bFrustumCullMainView`；`ME_PROFILE_SCOPE("Render.BuildRenderQueue")`。
@@ -15,12 +30,12 @@ Last updated: 2026-09-22（RND-F19 Done）
 ### 2026-09-22 - Reflection 多模块 codegen System Review + CORE-F27 纠偏（未写代码）
 - **Review：** [REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md)。
 - **根因：** header tool CLI 已参数化，但 CMake 只扫引擎单根；游戏无 `.gen` → 无 `GetClassName`；`Ready` 后禁止再 Register。
-- **纠偏：** `CORE-F27` 主线 = 多模块 codegen（CMake 封装 + stub `ME_CLASS`）；挂接热修**降级**。`ED-F22` 明确不做首次 RegisterClass。
-- **Next：** 维护者确认 Review/Design → `CORE-F27-S02`。
+- **纠偏：** `CORE-F27` 主线 = 多模块 codegen（CMake 封装 + stub `ME_CLASS`）；挂接热修**降级**。
+- **Next：** 维护者确认 Review/Design → `CORE-F27-S02`。（ED-F22 已另条 Cancelled）
 
 ### 2026-09-22 - 外仓游戏模块支撑 Design Draft（ENG-GAP-006，初稿；已被上条纠偏）
 - **初稿误点：** 以 `AddComponentInstance` 热修为主线（已撤销为终态）。
-- **仍有效：** `ED-F21` / `ED-F22` 登记（F22 经纠偏边界）。
+- **仍有效：** `ED-F21` 登记；`ED-F22` 后已 **Cancelled**（见上条）。
 
 ### 2026-09-22 - RND-F19/F20 design-review 修订
 - **结论：** Ready with revisions（已落文档）。

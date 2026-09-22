@@ -9,7 +9,7 @@
 
 ## TL;DR
 
-S01–S02 **Done**。S03 Startup 符号仍 Deferred。
+S01–S02 **Done**。S03 Startup 符号：**Cancelled**（曾短暂标为迁 `ED-F22`；维护者拍板不做官方游戏 Startup 钩子，世界搭建归游戏仓/场景）。
 
 ## Scope
 - **In:** S01–S02
@@ -28,7 +28,7 @@ S01–S02 **Done**。S03 Startup 符号仍 Deferred。
 |----------|------|------|------|
 | `ED-F20-S01` | 根/`Editor` CMake 选项；条件 `add_subdirectory` + link；BOOTSTRAP 一小节 | **Done** | 默认编 Editor；文档有变量表 |
 | `ED-F20-S02` | `Examples/GameModuleStub`；`COPY_RUNTIME`；开 stub 编通并启动；默认 smoke | **Done** | stub ON 编过；默认 `verify.ps1` |
-| `ED-F20-S03` | `MinEngine_GameModuleStartup` 钩子 | Deferred | — |
+| `ED-F20-S03` | `MinEngine_GameModuleStartup` 钩子 | **Cancelled** | — |
 
 ## 2) 切片详情
 
@@ -52,10 +52,9 @@ S01–S02 **Done**。S03 Startup 符号仍 Deferred。
   - 默认：`.\scripts\verify.ps1` PASS
   - Stub：`-DMINENGINE_GAME_DIR=…/GameModuleStub -DMINENGINE_GAME_TARGET=GameModuleStub` → `MaximumEditor.exe --version` PASS
 
-### ED-F20-S03 — Startup 符号（Deferred）
-- **Goal:** Editor Initialize 后调用游戏导出的 C 符号。
-- **Unblock:** 实践证明仅链接不够。
-- **Next check:** 游戏仓反馈。
+### ED-F20-S03 — Startup 符号（Cancelled）
+- **Goal:** 曾拟 Editor Initialize 后调用游戏 C 符号。
+- **Status:** **Cancelled**。世界搭建（Scene/GO/Comp）由游戏仓与工程默认场景承担；见 [ED-F22](./ED-F22_GAME_MODULE_STARTUP_DESIGN.md) Cancelled 说明。反射注册 → [CORE-F27](../Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md)。
 
 ## 3) 依赖顺序
 
@@ -68,7 +67,7 @@ S03 独立，默认跳过
 
 | Slice ID | Reason | Unblock | Next check |
 |----------|--------|---------|------------|
-| S03 | MVP 仅链接足够 | 显式 init 刚需 | 游戏仓反馈 |
+| S03 | Cancelled（不做官方 Startup） | — | — |
 
 ## 5) 变更记录
 
@@ -76,3 +75,5 @@ S03 独立，默认跳过
 |------|------|
 | 2026-09-21 | Draft 切片计划 |
 | 2026-09-21 | S01–S02 Done |
+| 2026-09-22 | S03 → ED-F22（ENG-GAP-006-C） |
+| 2026-09-22 | S03 / ED-F22 **Cancelled**（场景数据驱动，非 C 钩子） |

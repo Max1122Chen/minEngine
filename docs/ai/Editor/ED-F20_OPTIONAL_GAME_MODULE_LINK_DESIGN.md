@@ -128,18 +128,9 @@ cmake ... -DMINENGINE_GAME_DIR=<abs-path-to-game-cmake-root> \
 | 初始化符号 | **不要求**。DLL 随进程加载即可 |
 | 源码位置 | 留在外仓；引擎只 `add_subdirectory` 引用 |
 
-### 3.5 显式 Startup 符号（S03，可选）
+### 3.5 显式 Startup 符号（S03 — **Cancelled**）
 
-仅当实践证明「仅链接不够」（例如必须在 `Application::Initialize` 之后注册系统）时再做：
-
-```cpp
-// 约定（草案，S03 定稿）
-extern "C" void MinEngine_GameModuleStartup(void); // 游戏提供
-// Editor 在 Initialize 末尾调用；未链接游戏模块时不编译该调用
-```
-
-用 CMake `MINENGINE_GAME_DIR` 启用时定义 `MINENGINE_HAS_GAME_MODULE=1`，Editor 源里 `#if` 调用。  
-**Draft 默认：S03 Deferred**，除非评审要求 MVP 带钩子。
+曾草案：`MinEngine_GameModuleStartup`。**已取消**（见 [ED-F22](./ED-F22_GAME_MODULE_STARTUP_DESIGN.md)）：世界搭建归游戏仓 / 默认场景，引擎不提供官方业务 Startup 钩子。反射类型注册由游戏侧 codegen（CORE-F27）在 Finalize 前静态完成。
 
 ### 3.6 Stub（引擎仓内）
 

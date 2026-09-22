@@ -1,0 +1,19 @@
+{
+  "generated_count": 2,
+  "removed_count": 0,
+  "scanned_files": 1,
+  "parsed_files": 1,
+  "sources": [
+    "StubGamePrimitiveComponent.h"
+  ],
+  "generated_headers": [
+    "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGamePrimitiveComponent.gen.h"
+  ],
+  "generated_sources": [
+    "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGamePrimitiveComponent.gen.cpp"
+  ],
+  "classes": [
+    "GameModuleStub::StubGamePrimitiveComponent"
+  ],
+  "enums": []
+}
