@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-22（RND-F20 Done）
+Last updated: 2026-09-22（Primary → SPR Sprite 系统 MVP Draft）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,33 +11,38 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：无强制下一刀。** `RND-F20` **Done**（Opaque / Translucent 排序）。
+**Primary：`SPR` Sprite 系统 MVP（设计审阅中）。**  
+minCraft 图集需求为催化剂；验收锚点是引擎能力面，**不**绑定 chunk 上线。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`RND-F20`** | Opaque SortKey / Translucent 远→近 | **Done** | [Design](./Render/RND-F20_MESH_DRAW_SORTING_DESIGN.md) |
+| 0 | **`SPR-F01`** | Sprite System 路线图 | **Draft** | [Roadmap](./Sprite/SPR-F01_SPRITE_SYSTEM_ROADMAP.md) |
+| 1 | **`SPR-F02`** | Sprite / Atlas 资产真源 + Rebuild | **Draft** | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) |
+| 2 | **`SPR-F03`** | Component + UV→GPU | **Draft** | [Design](./Sprite/SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) |
+| 3 | **`SPR-F04`** | Authoring Services（人/Agent） | **Draft** | [Design](./Sprite/SPR-F04_SPRITE_AUTHORING_SERVICES_DESIGN.md) |
+| 4 | **`SPR-F05`** | Sprite Editor MVP | **Draft** | [Design](./Sprite/SPR-F05_SPRITE_EDITOR_DESIGN.md) |
+| 5 | **`SPR-F06`** | Atlas 工作流 UX | **Draft** | [Design](./Sprite/SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md) |
 
-**本波已收口（外仓模块）：** `CORE-F27` / `ED-F21` **Done**；`ED-F22` **Cancelled**。
+**下一动作：** 维护者按 **F01 → F02 → F03…F06** 逐篇 Design Review；全部 Planned 前 **不开大码**。实现序：**F02 → F03∥F04 → F05∥F06**。
+
+**本波已收口（勿当 WIP）：** `RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 
 **并行 / 不挡**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| render | `RND-F19` | **Done** — 主视图视锥 + world Bounds + 双 Collector |
-| render | `RND-F20` | **Done** — Opaque SortKey + Translucent 远→近 |
-| render | `RND-F21` | 光视锥 / CSM caster 剔除 — **Deferred** |
-| render | `RND-F18` | MeshBatch + Pass — **Done** |
 | editor | `ED-F11` | Tab Host 余量（可选） |
+| editor | `ED-F02` | S03/S05 余量（低优） |
 | — | Prefab 后置 | Nested / Apply→Prefab / 并排预览 |
 | — | `ED-F10` | EditorSettings 占位 |
-| material | **`MAT-F01`–`F06`** | Done |
-| render | **`RND-F17`** | Done |
+| render | `RND-F21` | 光视锥 / CSM — Deferred |
 
 <details>
-<summary>历史焦点（MCP / ED-F19 等，折叠）</summary>
+<summary>历史焦点（MCP / ED-F19 / RND-F20 等，折叠）</summary>
 
 | 序 | ID | 标题 | Status |
 |----|-----|------|--------|
+| — | RND-F18–F20 | MeshBatch / Cull / Sort | **Done** |
 | — | ED-F19 / MCP-F01–F04 / CLI-F02 / ED-F17–F18 | Automation + MCP 波 | **Done** |
 
 </details>
@@ -66,7 +71,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | Phase | 主题 |
 |-------|------|
 | **F** Foundation | **Done** — Log → Schema → Brand |
-| **P** Parallel | **进行中** — fan-out（editor 余量；Prefab 已合入） |
+| **P** Parallel | **进行中** — fan-out（editor 余量；Prefab 已合入；**Sprite 族设计中**） |
 | **D** Demo | FPS + 0.1.0 tag |
 
 **Prefab：** F23=资产+Instantiate；F24=Override；F16=编辑器（单 Viewport；并排预览依赖隔离 RT）。
@@ -142,7 +147,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `D:/Dev/GitRepo/minEngine-ui` | `feat/ui` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
-| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`**（已对齐 master） | Render 轨（RND）；`ProjectRoot` 本地指向本树 |
+| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`**（可继续或迁 `feat/sprite`） | 原 RND 轨；**当前 Primary = SPR** |
 
 `MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（主仓：`…/minEngine/minEngine/MyMEProject`）。
 
@@ -150,7 +155,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## Explicitly deferred
 
-`.memesh` · Animation Event · IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned · Prefab Nested / Apply→Prefab / 并排预览（隔离 RT）· GC / Net / 完整 Gameplay Framework
+`.memesh` · Animation Event · IK / Root Motion / Retarget · Import Settings 框架（F02 之后）· ED-F01 VK 阴影质量 · `RND-F12` · `PHYS-F03` · ED-F04 S10b · CORE-F05-S05 Pause/Step · ANIM Shadow skinned · Prefab Nested / Apply→Prefab / 并排预览（隔离 RT）· GC / Net / 完整 Gameplay Framework · Sprite Flipbook / 运行时动态 Pack / 体素专用 API
 
 ---
 

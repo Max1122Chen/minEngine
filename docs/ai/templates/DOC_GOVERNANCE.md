@@ -57,6 +57,7 @@ Source sync: `min-agent-workflows` TMPL-F04 (complexity + readiness gates)
 | `AUD` | 音频 |
 | `ANIM` | 动画 |
 | `UI` | UI |
+| `SPR` | Sprite 资产、Atlas、Sprite Editor / Authoring Services |
 
 ### 3.2 功能点（Feature）
 

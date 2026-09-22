@@ -4,7 +4,7 @@ Last updated: 2026-09-22
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** Phase P. Workflow profile: **`learning-mentor`** ([WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md)). Primary next: Sprite/Atlas design. See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
+**Snapshot:** Phase P. Workflow profile: **`learning-mentor`** ([WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md)). Primary: **SPR Sprite 系统 MVP**（F01–F06 **Draft**，审阅中）. See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
 ---
 

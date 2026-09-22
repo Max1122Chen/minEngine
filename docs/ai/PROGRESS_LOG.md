@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（WF-F04 workflow sync）
+Last updated: 2026-09-22（SPR-F01–F06 Draft 登记）
+
+### 2026-09-22 - SPR-F01–F06 Draft（Sprite 系统 MVP 设计族）
+- **内容：** 新领域 `SPR`；登记 F01 路线图 + F02 资产真源 + F03 运行时消费 + F04 Authoring Services + F05 Sprite Editor + F06 Atlas UX；全部 **Draft** 待逐篇审阅。目录 `docs/ai/Sprite/`。ACTIVE_WORK Primary 指向本族。minCraft 为催化剂，非本期 DoD。
+- **验证：** 文档交叉链接；未改运行时代码。
+- **Next：** 维护者 Review（建议序 F01→F02→…）；通过后 Planned；实现序 F02→F03∥F04→F05∥F06。
 
 ### 2026-09-22 - WF-F04 Done（sync min-agent-workflows engineering-design）
 - **内容：** 合入 L0–L3 / Implementation Readiness；新增 `WORKFLOW_PROFILE`（learning-mentor）、`WORKFLOW_PRESETS`、`engineering-design` skill、`implementation-discipline` rule；增强 design/impl 模板与 DOC_GOVERNANCE；接线 bootstrap / trust tiers / triggers / design-review / mentor Pre-flight。

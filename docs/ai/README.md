@@ -56,6 +56,7 @@
 | **`Platform/`** | 跨模块平台能力：启动、内存管理、反射/脚本路线图等 |
 | **`Render/`** | 渲染管线、资源导入、非材质专项 |
 | **`Render/Material/`** | 材质 IR、编译器、编辑器、Phase 1–5 |
+| **`Sprite/`** | Sprite / Atlas 资产、Authoring、Editor（`SPR-F*`） |
 | **`Editor/`** | 编辑器 UI、视口、ImGui 等 |
 | **`Gameplay/`** | Gameplay 机制（Tag、Event 等；非完整 Framework） |
 | **`bugs/`** | 跨领域缺陷记录（领域专项 bug 可放在对应子目录，如 `Render/Material/bugs/`） |
@@ -87,6 +88,10 @@
 - [渲染重构](./Render/RENDER_REFACTOR_PLAN.md)
 - [资源管线 R2](./Render/RESOURCE_PIPELINE_PLAN.md)
 - [材质系统路线图](./Render/Material/MATERIAL_SYSTEM_ROADMAP.md)
+
+### Sprite（设计 Draft）
+
+- [SPR-F01 Sprite System 路线图](./Sprite/SPR-F01_SPRITE_SYSTEM_ROADMAP.md) — **Draft**；子 Feature F02–F06
 
 ### 编辑器
 
