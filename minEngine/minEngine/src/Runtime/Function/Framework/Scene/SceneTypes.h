@@ -32,6 +32,13 @@ namespace minEngine
         Stopping,
     };
 
+    /** Reason passed to GameObject/Component EndPlay (CORE-F31). */
+    enum class EEndPlayReason : uint8_t
+    {
+        Stopped = 0,
+        Destroyed,
+    };
+
     struct SceneContext
     {
         ESceneType Type = ESceneType::None;

@@ -165,6 +165,8 @@ namespace minEngine
             UISystem::Get().OnBeginPIE(pieScene.get());
         }
 
+        pieScene->DispatchBeginPlay();
+
         m_State = PlayState::Playing;
         ApplyInspectingSceneForPlayState();
         return true;
@@ -180,6 +182,11 @@ namespace minEngine
         m_State = PlayState::Stopping;
 
         Scene* pieScene = GetPIEScene();
+
+        if (pieScene != nullptr && pieScene->HasBegunPlay())
+        {
+            pieScene->DispatchEndPlay(EEndPlayReason::Stopped);
+        }
 
         if (SceneManager::HasInstance())
         {

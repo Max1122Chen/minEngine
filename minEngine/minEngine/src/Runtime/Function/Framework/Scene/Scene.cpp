@@ -164,6 +164,42 @@ namespace minEngine
         }
     }
 
+    void Scene::DispatchBeginPlay()
+    {
+        if (m_bHasBegunPlay)
+        {
+            return;
+        }
+
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        {
+            if (gameObject)
+            {
+                gameObject->BeginPlay();
+            }
+        }
+
+        m_bHasBegunPlay = true;
+    }
+
+    void Scene::DispatchEndPlay(EEndPlayReason reason)
+    {
+        if (!m_bHasBegunPlay)
+        {
+            return;
+        }
+
+        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        {
+            if (gameObject)
+            {
+                gameObject->EndPlay(reason);
+            }
+        }
+
+        m_bHasBegunPlay = false;
+    }
+
     std::shared_ptr<GameObject> Scene::CreateGameObject()
     {
         const uint64_t id = m_NextGOId++;
@@ -171,6 +207,12 @@ namespace minEngine
         gameObject->SetID(id);
         m_GameObjects.push_back(gameObject);
         m_GameObjectsById[id] = gameObject.get();
+
+        if (m_bHasBegunPlay)
+        {
+            gameObject->BeginPlay();
+        }
+
         return gameObject;
     }
 

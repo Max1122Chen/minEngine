@@ -24,6 +24,11 @@ namespace minEngine
 
         void Tick(float deltaTime);
 
+        /** Simulation lifecycle (CORE-F31). Routes to Components then OnBeginPlay (UE order). */
+        void BeginPlay();
+        void EndPlay(EEndPlayReason reason);
+        bool HasBegunPlay() const { return m_bHasBegunPlay; }
+
         uint64_t GetID() const { return m_ID; }
         void SetID(uint64_t id) { m_ID = id; }
 
@@ -113,6 +118,10 @@ namespace minEngine
         /** Clear m_Children only (keeps serialized m_Parent for Resolve). */
         void ClearChildrenLinks();
 
+    protected:
+        virtual void OnBeginPlay() {}
+        virtual void OnEndPlay(EEndPlayReason reason) { (void)reason; }
+
     private:
         void AddComponent_Internal(std::shared_ptr<Component> newComponent);
         bool WouldCreateHierarchyCycle(const GameObject* candidateParent) const;
@@ -135,6 +144,8 @@ namespace minEngine
 
         ME_PROPERTY(Instanced)
         std::vector<std::shared_ptr<Component>> m_Components;
+
+        bool m_bHasBegunPlay{ false };
 
     };
 }

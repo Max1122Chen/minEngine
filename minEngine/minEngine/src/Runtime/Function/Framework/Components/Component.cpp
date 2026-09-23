@@ -111,6 +111,7 @@ namespace minEngine
         OnActivate();
         m_bActivationApplied = true;
         m_bPendingActivation = false;
+        TryBeginPlayIfSimulating();
     }
 
     void Component::Deactivate()
@@ -123,6 +124,55 @@ namespace minEngine
         }
 
         m_bPendingActivation = false;
+    }
+
+    void Component::BeginPlay()
+    {
+        if (m_bHasBegunPlay || !m_bActivationApplied)
+        {
+            return;
+        }
+
+        OnBeginPlay();
+        m_bHasBegunPlay = true;
+    }
+
+    void Component::EndPlay(EEndPlayReason reason)
+    {
+        if (!m_bHasBegunPlay)
+        {
+            return;
+        }
+
+        OnEndPlay(reason);
+        m_bHasBegunPlay = false;
+    }
+
+    void Component::TryBeginPlayIfSimulating()
+    {
+        if (m_bHasBegunPlay || !m_bActivationApplied)
+        {
+            return;
+        }
+
+        Scene* scene = GetOwningScene();
+        if (scene == nullptr || !scene->HasBegunPlay())
+        {
+            return;
+        }
+
+        if (m_Owner == nullptr)
+        {
+            return;
+        }
+
+        if (!m_Owner->HasBegunPlay())
+        {
+            m_Owner->BeginPlay();
+            return;
+        }
+
+        BeginPlay();
     }
 
     void Component::SetOwner(GameObject* inOwner)

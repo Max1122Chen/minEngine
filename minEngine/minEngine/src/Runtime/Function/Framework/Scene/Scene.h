@@ -81,6 +81,11 @@ namespace minEngine
         bool IsEditorScene() const { return m_SceneType == ESceneType::Editor; }
         bool IsPIEScene() const { return m_SceneType == ESceneType::PIE; }
 
+        /** Simulation lifecycle (CORE-F31). */
+        void DispatchBeginPlay();
+        void DispatchEndPlay(EEndPlayReason reason);
+        bool HasBegunPlay() const { return m_bHasBegunPlay; }
+
         void MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const;
 
         GameplayEventSystemComponent* GetGameplayEventSystem() const { return m_GameplayEventSystem; }
@@ -114,6 +119,7 @@ namespace minEngine
         ESceneType m_SceneType{ ESceneType::None };
         ESceneTickPolicy m_TickPolicy{ ESceneTickPolicy::Gameplay };
         int32_t m_PIEInstanceId{ -1 };
+        bool m_bHasBegunPlay{ false };
         GameplayEventSystemComponent* m_GameplayEventSystem{ nullptr };
     };
 }

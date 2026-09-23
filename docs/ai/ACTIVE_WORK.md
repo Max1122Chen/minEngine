@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-23（RND-F22/F23/SPR-F07 Done）
+Last updated: 2026-09-23（CORE-F31 Done；下一 F29/F30）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,17 +11,19 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** 空闲（本波 F22/F23/F07 已收口）。
+**Primary：** F31 底座已落地；下一刀 **F29**（Input 闸门），再 **F30**（Camera BeginPlay bool）。等待 F31 commit 审批后再开。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| — | `RND-F22` | Texture / Sampler 分离 | **Done** | [Design](./Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md) |
-| — | `RND-F23` | Scene Mesh 背面剔除 | **Done** | [Design](./Render/RND-F23_MESH_PASS_BACKFACE_CULL_DESIGN.md) |
-| — | `SPR-F07` | SpriteAtlas DilateBorder 边渗 | **Done** | [Design](./Sprite/SPR-F07_ATLAS_DILATE_BORDER_DESIGN.md) |
+| 0 | `CORE-F31` | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
+| 1 | `CORE-F29` | Play-gated gameplay Input | **Draft**（Depends F31） | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
+| 2 | `CORE-F30` | Play main Camera（BeginPlay bool） | **Draft**（Depends F31） | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) |
 
-**下一动作：** 提交本波（F22+F23+F07）；或选下一 backlog。
+**下一动作：** 审批并提交 F31 → 实现 F29。
 
-**本波已收口（勿当 WIP）：** `CORE-F28`；`SPR-F01`–`F07`；`RND-F18`–`F20`/`F22`/`F23`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
+**后置（不升 Primary）：** UI Text/Font；Skylight / Atmosphere / 高度雾（仅后续研究）。
+
+**本波已收口（勿当 WIP）：** `CORE-F28`；`CORE-F31`；`SPR-F01`–`F07`；`RND-F18`–`F20`/`F22`/`F23`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 
 **并行 / 不挡**
 

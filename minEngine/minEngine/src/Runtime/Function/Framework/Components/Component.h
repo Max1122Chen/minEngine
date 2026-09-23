@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Core/Object/MEObject.h"
+#include "Runtime/Function/Framework/Scene/SceneTypes.h"
 
 namespace minEngine
 {
@@ -60,9 +61,16 @@ namespace minEngine
         void SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate marked) { m_MarkedForNeededEndOfFrameUpdate = marked; }
         virtual void DoEndOfFrameUpdate() {}
 
+        /** Simulation lifecycle (CORE-F31). Orthogonal to Activate. */
+        void BeginPlay();
+        void EndPlay(EEndPlayReason reason);
+        bool HasBegunPlay() const { return m_bHasBegunPlay; }
+
     protected:
         virtual void OnActivate();
         virtual void OnDeactivate();
+        virtual void OnBeginPlay() {}
+        virtual void OnEndPlay(EEndPlayReason reason) { (void)reason; }
 
         /** Register with runtime systems (physics, audio, render, ...). */
         virtual void ApplyActivationToSystems();
@@ -82,9 +90,11 @@ namespace minEngine
         bool CanApplyActivation() const;
         void TryActivate();
         void Deactivate();
+        void TryBeginPlayIfSimulating();
 
         bool m_bPendingActivation{ false };
         bool m_bActivationApplied{ false };
+        bool m_bHasBegunPlay{ false };
     };
 }
 

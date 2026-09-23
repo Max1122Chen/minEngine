@@ -58,6 +58,11 @@ namespace minEngine
     {
         if (m_CurrentActiveScene)
         {
+            if (m_CurrentActiveScene->HasBegunPlay())
+            {
+                m_CurrentActiveScene->DispatchEndPlay(EEndPlayReason::Destroyed);
+            }
+
             if (AudioSystem::HasInstance())
             {
                 AudioSystem::Get().OnSceneUnloaded(m_CurrentActiveScene.get());
@@ -75,6 +80,24 @@ namespace minEngine
         {
             ObjectManager::Get().CollectGarbage();
         }
+    }
+
+    bool SceneManager::HasBegunPlayWorld() const
+    {
+        for (const SceneContext& pieContext : m_PIEContexts)
+        {
+            if (pieContext.Scene && pieContext.Scene->HasBegunPlay())
+            {
+                return true;
+            }
+        }
+
+        if (m_CurrentActiveScene && m_CurrentActiveScene->HasBegunPlay())
+        {
+            return true;
+        }
+
+        return false;
     }
 
     void SceneManager::Tick(float deltaTime)

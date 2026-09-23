@@ -13,6 +13,11 @@ namespace minEngine
 
     GameObject::~GameObject()
     {
+        if (m_bHasBegunPlay)
+        {
+            EndPlay(EEndPlayReason::Destroyed);
+        }
+
         UnlinkFromCurrentParent();
 
         for (GameObject* child : m_Children)
@@ -42,6 +47,50 @@ namespace minEngine
         }
         m_Components.clear();
         ME_LOG(LogCore, Info, "GameObject with ID {} and name '{}' is being destroyed.", m_ID, GetName());
+    }
+
+    void GameObject::BeginPlay()
+    {
+        if (m_bHasBegunPlay)
+        {
+            return;
+        }
+
+        for (const std::shared_ptr<Component>& component : m_Components)
+        {
+            if (!component || !component->IsActive())
+            {
+                continue;
+            }
+
+            if (!component->HasBegunPlay())
+            {
+                component->BeginPlay();
+            }
+        }
+
+        OnBeginPlay();
+        m_bHasBegunPlay = true;
+    }
+
+    void GameObject::EndPlay(EEndPlayReason reason)
+    {
+        if (!m_bHasBegunPlay)
+        {
+            return;
+        }
+
+        OnEndPlay(reason);
+
+        for (const std::shared_ptr<Component>& component : m_Components)
+        {
+            if (component && component->HasBegunPlay())
+            {
+                component->EndPlay(reason);
+            }
+        }
+
+        m_bHasBegunPlay = false;
     }
 
     Transform GameObject::GetTransform()

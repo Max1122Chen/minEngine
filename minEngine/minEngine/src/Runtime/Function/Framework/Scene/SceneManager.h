@@ -39,6 +39,9 @@ namespace minEngine
         void SetPIEPlayActive(bool active) { m_PIEPlayActive = active; }
         bool IsPIEPlayActive() const { return m_PIEPlayActive; }
 
+        /** True if any managed Scene has begun play (PIE or standalone Dispatch). CORE-F31. */
+        bool HasBegunPlayWorld() const;
+
         void SetActiveSceneOverride(Scene* scene) { m_ActiveSceneOverride = scene; }
         Scene* GetActiveSceneOverride() const { return m_ActiveSceneOverride; }
 

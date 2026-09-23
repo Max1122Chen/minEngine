@@ -1,13 +1,28 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-23（RND-F22/F23/SPR-F07 Done）
+Last updated: 2026-09-23（CORE-F31 Done）
+
+### 2026-09-23 - CORE-F31 Done（BeginPlay / EndPlay）
+- **API：** `EEndPlayReason`；`Component`/`GameObject` BeginPlay·EndPlay·HasBegunPlay；`Scene::Dispatch*`；`SceneManager::HasBegunPlayWorld`。
+- **路由：** BeginPlay = Comp → GO；EndPlay = GO → Comp（对齐 UE Actor）。
+- **PIE：** EnterPlay 在 System OnBeginPIE 后 DispatchBeginPlay；Stop 先 DispatchEndPlay(Stopped)。
+- **动态：** 模拟中 CreateGameObject / 晚 Activate → BeginPlay。
+- **测试：** `minEngineTests.exe test begin-play` PASS。
+- **Next：** 提交 F31；再 F29 Input 闸门。
+
+### 2026-09-23 - CORE-F31 Draft + Review；F29/F30 收为消费面
+- **根因 reframed：** 缺 GO/Component BeginPlay/EndPlay（非仅 Camera/Input 特判）。
+- **UE 锚点：** `AActor::BeginPlay` 先转发 Component 再 Receive；`EndPlay` 先 Actor 再 Component。
+- **登记：** `CORE-F31` 底座；F29=Input 开关；F30=`bSetAsMainCameraOnBeginPlay`。
+- **Design Review：** F31 Ready with deferred。
+- **Next：** 实现 F31（已完成，见上条）。
 
 ### 2026-09-23 - SPR-F07 Done（DilateBorder inset + 边渗）
 - **Pack：** `PackShelf` 改为每 sprite 独占 inset 环（outer = content + 2*pad）；返回内容矩形。
 - **Dilate：** `SpriteAtlasPacker::DilateBorderRing` 边/角复制；`Rebuild` DilateBorder 调用。
 - **Editor：** PaddingMode Combo；Inspector 显示。
 - **测试：** `sprite-atlas` 7/7；`smoke` PASS（`minEngine/bin`）。
-- **Next：** 提交本波。
+- **提交：** 已合入 `c106924`（与 RND-F22/F23 同波）。
 
 ### 2026-09-22 - RND-F22 Done（Texture / Sampler 分离）
 - **RHI：** `RHISampler`/`RHISamplerDesc` + `GetOrCreateSampler` cache；Binding.Sampler；GL `glBindSampler`；VK `VulkanRHISampler` + descriptor write。

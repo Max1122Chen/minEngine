@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-23（RND-F22/F23/SPR-F07 Done）
+Last updated: 2026-09-23（CORE-F31 Done；F29/F30 Draft）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -55,6 +55,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F26` | Prefab 资产删除与实例断链（阻断 / Unpack 后删除） | **Done** | — | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) · `feat/prefab` |
 | `CORE-F27` | 多模块 Reflection codegen（引擎 + 游戏各自 src → 各自 Generated） | **Done** | — | [Design](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md) · [Impl](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_IMPLEMENTATION.md) · [Review](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md) · minCraft `ENG-GAP-006-A` |
 | `CORE-F28` | Noise Math Library（虚基类 `Noise` + Value/Perlin/Cellular + Fractal FBM） | **Done** | — | [Design](./Platform/Core/CORE-F28_NOISE_MATH_LIBRARY_DESIGN.md) · [Impl](./Platform/Core/CORE-F28_NOISE_MATH_LIBRARY_IMPLEMENTATION.md) · 输入 `docs/external/minEngine_Noise_Library_Agent_Prompt.md` |
+| `CORE-F29` | Play-gated gameplay Input（F31 模拟态开关；Edit 不派发玩法 IMC→IA） | **Draft** | — | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) · Depends `CORE-F31` · minCraft TD-007 |
+| `CORE-F30` | Play main Camera（`bSetAsMainCameraOnBeginPlay` + 手动 SetSelfAsMainCamera） | **Draft** | — | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) · Depends `CORE-F31` · minCraft TD-008 |
+| `CORE-F31` | GameObject / Component BeginPlay · EndPlay（UE Actor→Comp 转发；Scene Dispatch） | **Done** | — | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_IMPLEMENTATION.md) · suite `begin-play` · 解锁 F29/F30 |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
@@ -169,11 +172,11 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
-| `CORE` | **F29** | F27–F28 **Done**；F23–F26 Prefab MVP **Done** |
+| `CORE` | **F32** | F27–F28 **Done**；**F31 Draft**（BeginPlay/EndPlay 底座）· **F29/F30 Draft**（消费面）；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F23** | F12–**F21 Done**（F22 Cancelled）；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
-| `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Draft**；F12 Deferred |
+| `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | **F06** | F01–F02 Done；F03 closeout；F04 Review；F05 Planned |
@@ -181,6 +184,6 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `PHYS` | F05 | F04 Done；F03 Deferred |
 | `GP` | **F03** | F01–F02 Done |
 | `MAT` | **F07** | **F01–F06 Done** |
-| `SPR` | **F08** | F01–F06 **Done**；**F07 Draft**（DilateBorder） |
+| `SPR` | **F08** | F01–**F07 Done** |
 
 Update **Next Feature #** when you register a new row.
