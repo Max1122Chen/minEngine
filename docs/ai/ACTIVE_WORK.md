@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-22（RND-F22/F23/SPR-F07 Review；design-review 完成）
+Last updated: 2026-09-23（RND-F22/F23/SPR-F07 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,17 +11,17 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（设计 Review 完成）：** F22 / F07 / F23 — 可按序实现。
+**Primary：** 空闲（本波 F22/F23/F07 已收口）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | **`RND-F22`** | Texture / Sampler 分离（TextureSample 可编） | **Review** | [Design](./Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md) |
-| 1 | **`SPR-F07`** | SpriteAtlas DilateBorder 边渗 | **Review** | [Design](./Sprite/SPR-F07_ATLAS_DILATE_BORDER_DESIGN.md) |
-| 2 | **`RND-F23`** | Scene Mesh Pass 默认背面剔除 | **Review** | [Design](./Render/RND-F23_MESH_PASS_BACKFACE_CULL_DESIGN.md) |
+| — | `RND-F22` | Texture / Sampler 分离 | **Done** | [Design](./Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md) |
+| — | `RND-F23` | Scene Mesh 背面剔除 | **Done** | [Design](./Render/RND-F23_MESH_PASS_BACKFACE_CULL_DESIGN.md) |
+| — | `SPR-F07` | SpriteAtlas DilateBorder 边渗 | **Done** | [Design](./Sprite/SPR-F07_ATLAS_DILATE_BORDER_DESIGN.md) |
 
-**下一动作：** 三篇均已 design-review。建议实现序：**F23（Ready）∥ F22（Ready w/ deferred）→ F07（Ready w/ deferred）**。
+**下一动作：** 提交本波（F22+F23+F07）；或选下一 backlog。
 
-**本波已收口（勿当 WIP）：** `CORE-F28`；`SPR-F01`–`F06`；`RND-F18`–`F20`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
+**本波已收口（勿当 WIP）：** `CORE-F28`；`SPR-F01`–`F07`；`RND-F18`–`F20`/`F22`/`F23`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 
 **并行 / 不挡**
 

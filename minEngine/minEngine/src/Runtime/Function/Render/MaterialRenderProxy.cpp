@@ -3,6 +3,7 @@
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialInstance.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
 #include <algorithm>
@@ -10,6 +11,33 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        RHISamplerRef ResolveMaterialSlotSampler(
+            RHICommandList& cmdList,
+            const MaterialTextureParameter* compiledParameter,
+            const std::shared_ptr<Texture2D>& texture)
+        {
+            RHI* rhi = cmdList.GetExecutingRHI();
+            if (rhi == nullptr)
+            {
+                return nullptr;
+            }
+
+            if (compiledParameter != nullptr && compiledParameter->bOverrideSampler)
+            {
+                return rhi->RHIGetOrCreateSampler(compiledParameter->SamplerDesc);
+            }
+
+            if (texture != nullptr)
+            {
+                return rhi->RHIGetOrCreateSampler(texture->GetPreferredSamplerDesc());
+            }
+
+            return rhi->RHIGetOrCreateSampler(MakeLinearRepeatSamplerDesc());
+        }
+    }
+
     RHIShaderBindingSet* MaterialRenderProxy::GetMaterialShaderBindingSet() const
     {
         return m_MaterialShaderBindingSet.get();
@@ -24,6 +52,7 @@ namespace minEngine
     {
         m_MaterialShaderBindingSet.reset();
         m_TextureSRVs.clear();
+        m_BoundSamplers.clear();
         m_ScalarParamsUBO.reset();
         m_ScalarParamsUBOSize = 0;
         m_bParameterBindingsDirty = true;
@@ -66,6 +95,7 @@ namespace minEngine
     {
         m_MaterialShaderBindingSet.reset();
         m_TextureSRVs.clear();
+        m_BoundSamplers.clear();
 
         RHIShaderBindingSetLayout* layout = GetMaterialShaderBindingSetLayout();
         if (!layout)
@@ -73,6 +103,7 @@ namespace minEngine
             return;
         }
 
+        const Material* base = GetBaseMaterial();
         const std::vector<RHIShaderBindingSetLayoutEntry>& entries = layout->GetEntries();
         std::vector<RHIShaderBinding> resources(entries.size());
 
@@ -100,8 +131,29 @@ namespace minEngine
 
             RHIShaderResourceViewRef srv = m_TextureViewCache.GetOrCreate(cmdList, modernTexture);
             m_TextureSRVs.push_back(srv);
+
+            const MaterialTextureParameter* compiledParameter = nullptr;
+            if (base != nullptr)
+            {
+                for (const MaterialTextureParameter& parameter : base->m_TextureParameters)
+                {
+                    if (parameter.SlotIndex == static_cast<int>(entry.ShaderBinding))
+                    {
+                        compiledParameter = &parameter;
+                        break;
+                    }
+                }
+            }
+
+            RHISamplerRef sampler = ResolveMaterialSlotSampler(cmdList, compiledParameter, texture);
+            if (sampler)
+            {
+                m_BoundSamplers.push_back(sampler);
+            }
+
             resources[entryIndex].Type = RHIShaderBindingType::TextureSRV;
             resources[entryIndex].TextureSRV = srv.get();
+            resources[entryIndex].Sampler = sampler.get();
         }
 
         m_MaterialShaderBindingSet = cmdList.CreateShaderBindingSet(layout, resources);
@@ -115,6 +167,7 @@ namespace minEngine
         {
             m_MaterialShaderBindingSet.reset();
             m_TextureSRVs.clear();
+            m_BoundSamplers.clear();
             m_ScalarParamsUBO.reset();
             m_ScalarParamsUBOSize = 0;
             m_bParameterBindingsDirty = true;

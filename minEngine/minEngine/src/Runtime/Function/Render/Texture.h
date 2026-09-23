@@ -3,6 +3,7 @@
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Resource/Asset.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 
 namespace minEngine
 {
@@ -45,6 +46,10 @@ namespace minEngine
         TextureFiltering GetFiltering() const { return m_Filtering; }
         uint32_t GetChannels() const { return m_Channels; }
 
+        /** Preferred sampling when Material TextureSample inherits (RND-F22). */
+        const RHISamplerDesc& GetPreferredSamplerDesc() const { return m_PreferredSamplerDesc; }
+        void SetPreferredSamplerDesc(const RHISamplerDesc& desc);
+
         static std::shared_ptr<Texture2D> CreateSolidRGBA(RHI& rhi, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 
     protected:
@@ -56,6 +61,7 @@ namespace minEngine
         uint32_t m_Channels {0};
         TextureWrapping m_Wrapping {TextureWrapping::Repeat};
         TextureFiltering m_Filtering {TextureFiltering::Linear};
+        RHISamplerDesc m_PreferredSamplerDesc{};
     };
 
     class TextureCubeLoader;

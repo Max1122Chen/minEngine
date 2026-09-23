@@ -124,9 +124,11 @@ namespace minEngine
 
         void Configure2DTextureSampling(GLenum target, TextureFormat format, TextureUsage usage, bool generateMipmaps)
         {
+            // RND-F22: author sampling lives on RHISampler (glBindSampler). Texture object
+            // keeps only attachment-safe defaults; depth still needs NEAREST for FBO completeness.
+            (void)generateMipmaps;
             if (IsDepthLikeTexture(format, usage))
             {
-                // NEAREST: LINEAR on depth attachments can make FBOs incomplete and crash drivers.
                 glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -140,16 +142,14 @@ namespace minEngine
             {
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                return;
             }
-
-            glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            else
+            {
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            }
             glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            (void)generateMipmaps;
         }
 
         GLuint UploadTexture2D(const RHITextureCreateDesc& desc, const void* initialData)
@@ -808,5 +808,56 @@ namespace minEngine
         : m_Layout(layout)
         , m_Resources(std::move(resources))
     {
+    }
+
+    namespace
+    {
+        GLint ToGLWrap(RHISamplerAddress address)
+        {
+            switch (address)
+            {
+            case RHISamplerAddress::MirroredRepeat:
+                return GL_MIRRORED_REPEAT;
+            case RHISamplerAddress::ClampToEdge:
+                return GL_CLAMP_TO_EDGE;
+            case RHISamplerAddress::ClampToBorder:
+                return GL_CLAMP_TO_BORDER;
+            case RHISamplerAddress::Repeat:
+            default:
+                return GL_REPEAT;
+            }
+        }
+    }
+
+    OpenGLRHISampler::OpenGLRHISampler(const RHISamplerDesc& desc)
+        : m_Desc(desc)
+    {
+        glGenSamplers(1, &m_SamplerId);
+        const GLint mag = (desc.MagFilter == RHISamplerFilter::Nearest) ? GL_NEAREST : GL_LINEAR;
+        // Mip mapping is selected at bind time via texture NumMips; sampler stores base Min.
+        // When the bound texture has mips, Material/Proxy should request LinearMipmap via desc
+        // expansion — MVP uses Linear/Nearest here; GenerateMips no longer bakes tex params.
+        const GLint min = (desc.MinFilter == RHISamplerFilter::Nearest) ? GL_NEAREST : GL_LINEAR;
+        glSamplerParameteri(m_SamplerId, GL_TEXTURE_MAG_FILTER, mag);
+        glSamplerParameteri(m_SamplerId, GL_TEXTURE_MIN_FILTER, min);
+        glSamplerParameteri(m_SamplerId, GL_TEXTURE_WRAP_S, ToGLWrap(desc.AddressU));
+        glSamplerParameteri(m_SamplerId, GL_TEXTURE_WRAP_T, ToGLWrap(desc.AddressV));
+        glSamplerParameteri(m_SamplerId, GL_TEXTURE_WRAP_R, ToGLWrap(desc.AddressW));
+        if (desc.AddressU == RHISamplerAddress::ClampToBorder
+            || desc.AddressV == RHISamplerAddress::ClampToBorder
+            || desc.AddressW == RHISamplerAddress::ClampToBorder)
+        {
+            const float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            glSamplerParameterfv(m_SamplerId, GL_TEXTURE_BORDER_COLOR, borderColor);
+        }
+    }
+
+    OpenGLRHISampler::~OpenGLRHISampler()
+    {
+        if (m_SamplerId != 0)
+        {
+            glDeleteSamplers(1, &m_SamplerId);
+            m_SamplerId = 0;
+        }
     }
 }

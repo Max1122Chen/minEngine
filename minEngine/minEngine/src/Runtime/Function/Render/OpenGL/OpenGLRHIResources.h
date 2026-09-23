@@ -7,12 +7,14 @@
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 #include "Render/RHI/RHIShader.h"
 #include "Render/RHI/RHITexture.h"
+#include "Render/RHI/RHISampler.h"
 
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace minEngine
@@ -144,6 +146,23 @@ namespace minEngine
     private:
         RHIShaderBindingSetLayout* m_Layout = nullptr;
         std::vector<RHIShaderBinding> m_Resources;
+    };
+
+    class OpenGLRHISampler final : public RHISampler
+    {
+    public:
+        explicit OpenGLRHISampler(const RHISamplerDesc& desc);
+        ~OpenGLRHISampler() override;
+
+        OpenGLRHISampler(const OpenGLRHISampler&) = delete;
+        OpenGLRHISampler& operator=(const OpenGLRHISampler&) = delete;
+
+        const RHISamplerDesc& GetDesc() const override { return m_Desc; }
+        GLuint GetSamplerId() const { return m_SamplerId; }
+
+    private:
+        RHISamplerDesc m_Desc;
+        GLuint m_SamplerId = 0;
     };
 
     GLuint GetOpenGLTextureId(RHITexture* texture);

@@ -285,7 +285,7 @@ TEST_CASE("sprite-atlas: rebuild fails transactionally when MaxSize too small [f
     CHECK(atlas->GetGeneratedTextures().empty());
 }
 
-TEST_CASE("sprite-atlas: shelf pack places non-overlapping rects [smoke]")
+TEST_CASE("sprite-atlas: shelf pack places non-overlapping content rects with inset padding [smoke]")
 {
     using namespace minEngine;
 
@@ -296,10 +296,60 @@ TEST_CASE("sprite-atlas: shelf pack places non-overlapping rects [smoke]")
     const SpritePackLayoutResult layout = SpriteAtlasPacker::PackShelf(sizes, 32, 1);
     REQUIRE(layout.Ok);
     REQUIRE(layout.Entries.size() == 2);
+    CHECK(layout.AtlasWidth == 20);
+    CHECK(layout.AtlasHeight == 10);
 
     const SpritePackLayoutEntry& a = layout.Entries[0];
     const SpritePackLayoutEntry& b = layout.Entries[1];
+    CHECK(a.X == 1);
+    CHECK(a.Y == 1);
+    CHECK(b.X == 11);
+    CHECK(b.Y == 1);
     const bool overlap =
         a.X < b.X + b.Width && a.X + a.Width > b.X && a.Y < b.Y + b.Height && a.Y + a.Height > b.Y;
     CHECK_FALSE(overlap);
+}
+
+TEST_CASE("sprite-atlas: DilateBorderRing copies edge into exclusive pad ring [smoke]")
+{
+    using namespace minEngine;
+
+    ImagePixels atlas;
+    atlas.Storage = ImageStorage::UInt8;
+    atlas.Width = 5;
+    atlas.Height = 5;
+    atlas.Channels = 4;
+    const size_t byteCount = 5u * 5u * 4u;
+    atlas.U8 = static_cast<unsigned char*>(std::malloc(byteCount));
+    REQUIRE(atlas.U8 != nullptr);
+    std::memset(atlas.U8, 0, byteCount);
+
+    // Center 3x3 content solid red.
+    for (int32_t y = 1; y <= 3; ++y)
+    {
+        for (int32_t x = 1; x <= 3; ++x)
+        {
+            const size_t i = (static_cast<size_t>(y) * 5u + static_cast<size_t>(x)) * 4u;
+            atlas.U8[i + 0] = 255;
+            atlas.U8[i + 1] = 0;
+            atlas.U8[i + 2] = 0;
+            atlas.U8[i + 3] = 255;
+        }
+    }
+
+    SpriteAtlasPacker::DilateBorderRing(atlas, 1, 1, 3, 3, 1);
+
+    auto sample = [&](int32_t x, int32_t y) -> unsigned char
+    {
+        return atlas.U8[(static_cast<size_t>(y) * 5u + static_cast<size_t>(x)) * 4u];
+    };
+
+    CHECK(sample(0, 2) == 255); // left ring
+    CHECK(sample(4, 2) == 255); // right ring
+    CHECK(sample(2, 0) == 255); // bottom (memory -Y) ring
+    CHECK(sample(2, 4) == 255); // top (memory +Y) ring
+    CHECK(sample(0, 0) == 255); // corner
+    CHECK(sample(4, 4) == 255);
+
+    ImageLoader::Free(atlas);
 }

@@ -200,10 +200,15 @@ namespace minEngine
                 placed.X,
                 placed.Y);
 
-            // DilateBorder: MVP copies edge into a 1px ring inside the slot when padding > 0.
             if (m_PaddingMode == SpriteAtlasPaddingMode::DilateBorder && m_Padding > 0)
             {
-                // Intentionally minimal: zero padding remains; full dilate can come later.
+                SpriteAtlasPacker::DilateBorderRing(
+                    atlasPixels,
+                    placed.X,
+                    placed.Y,
+                    placed.Width,
+                    placed.Height,
+                    m_Padding);
             }
 
             SpriteAtlasSlot slot;

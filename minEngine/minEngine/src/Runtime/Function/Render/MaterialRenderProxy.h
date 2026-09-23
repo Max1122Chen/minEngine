@@ -5,6 +5,7 @@
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "Runtime/Function/Render/RHI/RHITextureViewCache.h"
 
 #include <memory>
@@ -63,6 +64,8 @@ namespace minEngine
         RHIShaderBindingSetRef m_MaterialShaderBindingSet;
         RHITextureViewCache m_TextureViewCache;
         std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
+        /** Pins GetOrCreateSampler results for Binding.Sampler lifetime (RND-F22). */
+        std::vector<RHISamplerRef> m_BoundSamplers;
         RHIBufferRef m_ScalarParamsUBO;
         uint32_t m_ScalarParamsUBOSize = 0;
     };

@@ -3,6 +3,7 @@
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIPipelineLayout.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
@@ -263,6 +264,35 @@ namespace minEngine
         VkImageView m_ImageView = VK_NULL_HANDLE;
         VkFormat m_VkFormat = VK_FORMAT_UNDEFINED;
         VkImageLayout m_CurrentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+#endif
+    };
+
+    class VulkanRHISampler final : public RHISampler
+    {
+    public:
+#if defined(MINENGINE_HAS_VULKAN)
+        VulkanRHISampler(VkDevice device, const RHISamplerDesc& desc);
+#else
+        explicit VulkanRHISampler(const RHISamplerDesc& desc);
+#endif
+        ~VulkanRHISampler() override;
+
+        VulkanRHISampler(const VulkanRHISampler&) = delete;
+        VulkanRHISampler& operator=(const VulkanRHISampler&) = delete;
+
+        const RHISamplerDesc& GetDesc() const override { return m_Desc; }
+        bool IsValid() const { return m_IsValid; }
+
+#if defined(MINENGINE_HAS_VULKAN)
+        VkSampler GetVkSampler() const { return m_Sampler; }
+#endif
+
+    private:
+        RHISamplerDesc m_Desc;
+        bool m_IsValid = false;
+#if defined(MINENGINE_HAS_VULKAN)
+        VkDevice m_Device = VK_NULL_HANDLE;
+        VkSampler m_Sampler = VK_NULL_HANDLE;
 #endif
     };
 

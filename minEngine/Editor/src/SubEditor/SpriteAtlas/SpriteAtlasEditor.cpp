@@ -315,4 +315,14 @@ namespace minEngine
         m_Session.AtlasAsset->SetPadding(padding);
         NotifyChanged();
     }
+
+    void SpriteAtlasEditor::SetPaddingMode(SpriteAtlasPaddingMode mode)
+    {
+        if (!m_Session.HasOpenAtlas())
+        {
+            return;
+        }
+        m_Session.AtlasAsset->SetPaddingMode(mode);
+        NotifyChanged();
+    }
 }

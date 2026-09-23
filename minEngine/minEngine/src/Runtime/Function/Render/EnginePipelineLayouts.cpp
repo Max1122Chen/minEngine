@@ -131,18 +131,25 @@ namespace minEngine
             psoDesc.DepthStencilState.bDepthTestEnabled = false;
             psoDesc.DepthStencilState.bDepthWriteEnabled = false;
             psoDesc.BlendState.bBlendEnabled = true;
+            // Screen quads / text often face the camera; keep both sides.
+            psoDesc.RasterizerState.bCullEnabled = false;
+            psoDesc.RasterizerState.CullMode = RHICullMode::None;
         }
         else if (passKind == MeshPassKind::Translucent)
         {
             psoDesc.DepthStencilState.bDepthTestEnabled = true;
             psoDesc.DepthStencilState.bDepthWriteEnabled = true;
             psoDesc.BlendState.bBlendEnabled = true;
+            psoDesc.RasterizerState.bCullEnabled = true;
+            psoDesc.RasterizerState.CullMode = RHICullMode::Back;
         }
         else
         {
             psoDesc.DepthStencilState.bDepthTestEnabled = true;
             psoDesc.DepthStencilState.bDepthWriteEnabled = true;
             psoDesc.BlendState.bBlendEnabled = false;
+            psoDesc.RasterizerState.bCullEnabled = true;
+            psoDesc.RasterizerState.CullMode = RHICullMode::Back;
         }
 
         RHIGraphicsPipelineStateRef pipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);

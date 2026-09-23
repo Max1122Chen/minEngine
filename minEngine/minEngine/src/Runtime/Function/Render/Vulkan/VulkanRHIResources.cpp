@@ -1382,6 +1382,81 @@ namespace minEngine
         return reinterpret_cast<void*>(m_Image);
     }
 
+    namespace
+    {
+        VkFilter ToVkFilter(RHISamplerFilter filter)
+        {
+            return filter == RHISamplerFilter::Nearest ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+        }
+
+        VkSamplerMipmapMode ToVkMipmapMode(RHISamplerFilter minFilter)
+        {
+            return minFilter == RHISamplerFilter::Nearest ? VK_SAMPLER_MIPMAP_MODE_NEAREST
+                                                         : VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        }
+
+        VkSamplerAddressMode ToVkAddressMode(RHISamplerAddress address)
+        {
+            switch (address)
+            {
+            case RHISamplerAddress::MirroredRepeat:
+                return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+            case RHISamplerAddress::ClampToEdge:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            case RHISamplerAddress::ClampToBorder:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            case RHISamplerAddress::Repeat:
+            default:
+                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            }
+        }
+    }
+
+    VulkanRHISampler::VulkanRHISampler(VkDevice device, const RHISamplerDesc& desc)
+        : m_Desc(desc)
+        , m_Device(device)
+    {
+        if (m_Device == VK_NULL_HANDLE)
+        {
+            ME_LOG(LogRHI, Error, "VulkanRHISampler: device is null.");
+            return;
+        }
+
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.magFilter = ToVkFilter(desc.MagFilter);
+        samplerInfo.minFilter = ToVkFilter(desc.MinFilter);
+        samplerInfo.mipmapMode = ToVkMipmapMode(desc.MinFilter);
+        samplerInfo.addressModeU = ToVkAddressMode(desc.AddressU);
+        samplerInfo.addressModeV = ToVkAddressMode(desc.AddressV);
+        samplerInfo.addressModeW = ToVkAddressMode(desc.AddressW);
+        samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+        if (desc.AddressU == RHISamplerAddress::ClampToBorder
+            || desc.AddressV == RHISamplerAddress::ClampToBorder
+            || desc.AddressW == RHISamplerAddress::ClampToBorder)
+        {
+            samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        }
+
+        if (vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_Sampler) != VK_SUCCESS)
+        {
+            ME_LOG(LogRHI, Error, "VulkanRHISampler: vkCreateSampler failed.");
+            m_Sampler = VK_NULL_HANDLE;
+            return;
+        }
+
+        m_IsValid = true;
+    }
+
+    VulkanRHISampler::~VulkanRHISampler()
+    {
+        if (m_Device != VK_NULL_HANDLE && m_Sampler != VK_NULL_HANDLE)
+        {
+            vkDestroySampler(m_Device, m_Sampler, nullptr);
+            m_Sampler = VK_NULL_HANDLE;
+        }
+    }
+
     VulkanRHIShaderResourceView::VulkanRHIShaderResourceView(VkDevice device, const RHITextureSRVDesc& desc)
         : m_Desc(desc)
         , m_Device(device)
@@ -1446,6 +1521,13 @@ namespace minEngine
     }
 
     VulkanRHITexture::~VulkanRHITexture() = default;
+
+    VulkanRHISampler::VulkanRHISampler(const RHISamplerDesc& desc)
+        : m_Desc(desc)
+    {
+    }
+
+    VulkanRHISampler::~VulkanRHISampler() = default;
 
     VulkanRHIShaderResourceView::VulkanRHIShaderResourceView(const RHITextureSRVDesc& desc)
         : m_Desc(desc)
@@ -1724,6 +1806,16 @@ namespace minEngine
                 }
 
                 imageInfos[i].sampler = defaultSampler;
+                if (resource.Sampler != nullptr)
+                {
+                    if (auto* vulkanSampler = dynamic_cast<VulkanRHISampler*>(resource.Sampler))
+                    {
+                        if (vulkanSampler->IsValid())
+                        {
+                            imageInfos[i].sampler = vulkanSampler->GetVkSampler();
+                        }
+                    }
+                }
                 imageInfos[i].imageView = imageView;
                 imageInfos[i].imageLayout = selectShaderReadImageLayout(entry);
 

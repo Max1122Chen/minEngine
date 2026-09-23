@@ -4,7 +4,7 @@
 - **ID:** RND-F23
 - **Type:** Feature
 - **Complexity:** L1
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-22
 - **Related:**

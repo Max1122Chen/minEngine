@@ -677,20 +677,16 @@ namespace minEngine
             return false;
         }
 
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
-        if (!CheckVk(
-                vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_DefaultSampler),
-                "vkCreateSampler(default)"))
         {
-            return false;
+            const RHISamplerDesc linearRepeat = MakeLinearRepeatSamplerDesc();
+            auto seeded = std::make_shared<VulkanRHISampler>(m_Device, linearRepeat);
+            if (!seeded->IsValid())
+            {
+                ME_LOG(LogRHI, Error, "VulkanRHI: failed to create default LinearRepeat sampler.");
+                return false;
+            }
+            m_DefaultSampler = seeded->GetVkSampler();
+            m_SamplerCache.emplace(linearRepeat, std::move(seeded));
         }
 
         const VulkanDeviceContext context = GetDeviceContext();
@@ -924,11 +920,8 @@ namespace minEngine
         VulkanRHIAllocator::DestroyImage(m_Device, m_DummyImage, m_DummyImageMemory);
         VulkanRHIAllocator::DestroyBuffer(m_Device, m_DummyUniformBuffer, m_DummyUniformMemory);
 
-        if (m_DefaultSampler != VK_NULL_HANDLE)
-        {
-            vkDestroySampler(m_Device, m_DefaultSampler, nullptr);
-            m_DefaultSampler = VK_NULL_HANDLE;
-        }
+        m_SamplerCache.clear();
+        m_DefaultSampler = VK_NULL_HANDLE;
         if (m_DescriptorPool != VK_NULL_HANDLE)
         {
             vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
@@ -1766,6 +1759,34 @@ namespace minEngine
             return nullptr;
         }
         return set;
+#endif
+    }
+
+    std::shared_ptr<RHISampler> VulkanRHI::RHIGetOrCreateSampler(const RHISamplerDesc& desc)
+    {
+#if !defined(MINENGINE_HAS_VULKAN)
+        (void)desc;
+        return nullptr;
+#else
+        if (!m_Initialized || m_Device == VK_NULL_HANDLE)
+        {
+            return nullptr;
+        }
+
+        const auto existing = m_SamplerCache.find(desc);
+        if (existing != m_SamplerCache.end())
+        {
+            return existing->second;
+        }
+
+        auto sampler = std::make_shared<VulkanRHISampler>(m_Device, desc);
+        if (!sampler->IsValid())
+        {
+            return nullptr;
+        }
+
+        m_SamplerCache.emplace(desc, sampler);
+        return sampler;
 #endif
     }
 

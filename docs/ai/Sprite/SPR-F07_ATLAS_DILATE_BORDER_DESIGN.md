@@ -4,15 +4,15 @@
 - **ID:** SPR-F07
 - **Type:** Feature
 - **Complexity:** L2
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-22
+- **Last updated:** 2026-09-23
 - **Related:**
   - 硬前置：[SPR-F02](./SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md)
   - 正交：[RND-F22](../Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md)
   - UX：[SPR-F06](./SPR-F06_SPRITE_ATLAS_WORKFLOW_DESIGN.md)
-  - 代码：`SpriteAtlas::Rebuild` Dilate stub · `SpriteAtlasPacker::PackShelf` / `BlitTopLeftRectToAtlas`
-  - Editor：`SpriteAtlasEditorWindow` 有 Padding，**尚无 PaddingMode UI**
+  - 代码：`SpriteAtlasPacker::PackShelf`（inset）· `DilateBorderRing` · `SpriteAtlas::Rebuild`
+  - Editor：`SpriteAtlasEditorWindow` PaddingMode Combo
 
 ## TL;DR
 
@@ -20,7 +20,7 @@
 
 **方案：** **所有 PaddingMode** 改为 inset 独占环布局；DilateBorder 边/角复制填环；PadWithZero 环保持 0；BakedRect/UV = **内容矩形**。Editor 补 PaddingMode 控件。
 
-**状态：** Review — design-review **Ready with deferred items**（inset 密度下降已锁定接受）。
+**状态：** Done — inset PackShelf + DilateBorderRing + Editor PaddingMode；`sprite-atlas`/`smoke` PASS。
 
 ## Problem
 

@@ -11,6 +11,7 @@
 #include "Runtime/Function/Render/EngineShaderUtils.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "RHI/RHIShader.h"
 #include "Texture.h"
 
@@ -347,6 +348,52 @@ namespace minEngine
         m_TextureParameters.clear();
         m_ScalarParameters.clear();
 
+        // RND-F22: compile-time slot → SamplerDesc from TextureSample Override (first wins).
+        std::unordered_map<int, RHISamplerDesc> slotOverrideSamplers;
+        if (m_Graph)
+        {
+            for (const std::shared_ptr<MaterialEdGraphNode>& graphNode : m_Graph->m_Nodes)
+            {
+                if (!graphNode)
+                {
+                    continue;
+                }
+
+                const auto* sampleNode =
+                    dynamic_cast<const MaterialGraphNodeDef_TextureSample*>(graphNode->GetDefinition());
+                if (sampleNode == nullptr || !sampleNode->bOverrideSampler)
+                {
+                    continue;
+                }
+
+                const MaterialGraphNodeDefInput* textureInput = sampleNode->GetInput(0);
+                if (textureInput == nullptr || !textureInput->IsConnected())
+                {
+                    continue;
+                }
+
+                const auto* textureObject =
+                    dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(textureInput->NodeDef);
+                if (textureObject == nullptr)
+                {
+                    continue;
+                }
+
+                const int slotIndex = textureObject->TextureSlotIndex;
+                const RHISamplerDesc overrideDesc = sampleNode->MakeOverrideSamplerDesc();
+                const auto inserted = slotOverrideSamplers.emplace(slotIndex, overrideDesc);
+                if (!inserted.second && inserted.first->second != overrideDesc)
+                {
+                    ME_LOG(
+                        LogRender,
+                        Warn,
+                        "Material '{}': TextureSample Override conflict on slot {} — first Override wins.",
+                        GetName(),
+                        slotIndex);
+                }
+            }
+        }
+
         for (const MaterialShaderParameterDesc& parameterDesc : m_ParameterLayout.Parameters)
         {
             if (parameterDesc.Type == MaterialShaderParameterType::Texture2D)
@@ -364,6 +411,13 @@ namespace minEngine
                 if (!textureParameter.Value)
                 {
                     textureParameter.Value = Texture2D::CreateSolidRGBA(*ctx.RHI, 255, 255, 255, 255);
+                }
+
+                const auto overrideIt = slotOverrideSamplers.find(parameterDesc.SlotIndex);
+                if (overrideIt != slotOverrideSamplers.end())
+                {
+                    textureParameter.bOverrideSampler = true;
+                    textureParameter.SamplerDesc = overrideIt->second;
                 }
 
                 m_TextureParameters.push_back(textureParameter);

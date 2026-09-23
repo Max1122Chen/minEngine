@@ -45,6 +45,18 @@ namespace minEngine
             int32_t maxSize,
             int32_t padding);
 
+        /**
+         * Copy content edge texels outward into the exclusive padding ring (SPR-F07).
+         * Operates in atlas memory space (row 0 = image bottom); content rect is Blit dest.
+         */
+        static void DilateBorderRing(
+            ImagePixels& atlas,
+            int32_t contentX,
+            int32_t contentY,
+            int32_t contentW,
+            int32_t contentH,
+            int32_t padding);
+
         static bool TryLoadMemberSourcePixels(
             const Sprite& sprite,
             ImagePixels& outPixels,

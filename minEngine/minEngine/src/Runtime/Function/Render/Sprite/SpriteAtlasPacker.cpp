@@ -33,6 +33,7 @@ namespace minEngine
             return result;
         }
 
+        // SPR-F07: padding is an exclusive inset ring per sprite (not a shared gap).
         const int32_t pad = std::max(0, padding);
         std::vector<SpritePackLayoutEntry> sorted = sizes;
         std::stable_sort(
@@ -49,7 +50,7 @@ namespace minEngine
 
         int32_t cursorX = 0;
         int32_t cursorY = 0;
-        int32_t rowHeight = 0;
+        int32_t rowOuterHeight = 0;
         int32_t usedWidth = 0;
         int32_t usedHeight = 0;
 
@@ -63,40 +64,115 @@ namespace minEngine
                 return result;
             }
 
-            if (item.Width > maxSize || item.Height > maxSize)
+            const int32_t outerW = item.Width + 2 * pad;
+            const int32_t outerH = item.Height + 2 * pad;
+            if (outerW > maxSize || outerH > maxSize)
             {
-                result.Message = "PackShelf: entry exceeds MaxSize.";
+                result.Message = "PackShelf: entry with padding ring exceeds MaxSize.";
                 return result;
             }
 
-            if (cursorX > 0 && cursorX + item.Width > maxSize)
+            if (cursorX > 0 && cursorX + outerW > maxSize)
             {
                 cursorX = 0;
-                cursorY += rowHeight + pad;
-                rowHeight = 0;
+                cursorY += rowOuterHeight;
+                rowOuterHeight = 0;
             }
 
-            if (cursorY + item.Height > maxSize)
+            if (cursorY + outerH > maxSize)
             {
                 result.Message = "PackShelf: exceeds MaxSize (single page).";
                 return result;
             }
 
             SpritePackLayoutEntry placed = item;
-            placed.X = cursorX;
-            placed.Y = cursorY;
+            placed.X = cursorX + pad;
+            placed.Y = cursorY + pad;
             result.Entries[static_cast<size_t>(item.MemberIndex)] = placed;
 
-            cursorX += item.Width + pad;
-            rowHeight = std::max(rowHeight, item.Height);
-            usedWidth = std::max(usedWidth, placed.X + item.Width);
-            usedHeight = std::max(usedHeight, placed.Y + item.Height);
+            cursorX += outerW;
+            rowOuterHeight = std::max(rowOuterHeight, outerH);
+            usedWidth = std::max(usedWidth, cursorX);
+            usedHeight = std::max(usedHeight, cursorY + outerH);
         }
 
         result.AtlasWidth = std::max(1, usedWidth);
         result.AtlasHeight = std::max(1, usedHeight);
         result.Ok = true;
         return result;
+    }
+
+    void SpriteAtlasPacker::DilateBorderRing(
+        ImagePixels& atlas,
+        int32_t contentX,
+        int32_t contentY,
+        int32_t contentW,
+        int32_t contentH,
+        int32_t padding)
+    {
+        if (!atlas.IsValid() || atlas.U8 == nullptr || padding <= 0 || contentW <= 0 || contentH <= 0)
+        {
+            return;
+        }
+
+        const int32_t channels = atlas.Channels;
+        if (channels <= 0)
+        {
+            return;
+        }
+
+        auto copyPixel = [&](int32_t srcX, int32_t srcY, int32_t dstX, int32_t dstY)
+        {
+            if (srcX < 0 || srcY < 0 || dstX < 0 || dstY < 0
+                || srcX >= atlas.Width || srcY >= atlas.Height
+                || dstX >= atlas.Width || dstY >= atlas.Height)
+            {
+                return;
+            }
+
+            const size_t srcIndex =
+                (static_cast<size_t>(srcY) * static_cast<size_t>(atlas.Width)
+                 + static_cast<size_t>(srcX))
+                * static_cast<size_t>(channels);
+            const size_t dstIndex =
+                (static_cast<size_t>(dstY) * static_cast<size_t>(atlas.Width)
+                 + static_cast<size_t>(dstX))
+                * static_cast<size_t>(channels);
+            for (int32_t c = 0; c < channels; ++c)
+            {
+                atlas.U8[dstIndex + static_cast<size_t>(c)] = atlas.U8[srcIndex + static_cast<size_t>(c)];
+            }
+        };
+
+        const int32_t left = contentX;
+        const int32_t right = contentX + contentW - 1;
+        const int32_t bottom = contentY;
+        const int32_t top = contentY + contentH - 1;
+
+        for (int32_t d = 1; d <= padding; ++d)
+        {
+            for (int32_t y = bottom; y <= top; ++y)
+            {
+                copyPixel(left, y, left - d, y);
+                copyPixel(right, y, right + d, y);
+            }
+            for (int32_t x = left; x <= right; ++x)
+            {
+                copyPixel(x, bottom, x, bottom - d);
+                copyPixel(x, top, x, top + d);
+            }
+
+            for (int32_t dy = 1; dy <= d; ++dy)
+            {
+                for (int32_t dx = 1; dx <= d; ++dx)
+                {
+                    copyPixel(left, bottom, left - dx, bottom - dy);
+                    copyPixel(right, bottom, right + dx, bottom - dy);
+                    copyPixel(left, top, left - dx, top + dy);
+                    copyPixel(right, top, right + dx, top + dy);
+                }
+            }
+        }
     }
 
     bool SpriteAtlasPacker::TryLoadMemberSourcePixels(

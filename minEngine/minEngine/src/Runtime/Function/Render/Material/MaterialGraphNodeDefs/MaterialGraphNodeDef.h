@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/GUID/GUID.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "../MaterialTypes.h"
 
 #include <cstdint>
@@ -301,6 +302,33 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_TextureSample();
         void BuildIR(MIREmitter& emitter) override;
+
+        /** false = Inherit Texture Preferred / DefaultLinearRepeat (RND-F22). */
+        ME_PROPERTY()
+        bool bOverrideSampler = false;
+
+        ME_PROPERTY()
+        RHISamplerFilter MinFilter = RHISamplerFilter::Linear;
+
+        ME_PROPERTY()
+        RHISamplerFilter MagFilter = RHISamplerFilter::Linear;
+
+        ME_PROPERTY()
+        RHISamplerAddress AddressU = RHISamplerAddress::Repeat;
+
+        ME_PROPERTY()
+        RHISamplerAddress AddressV = RHISamplerAddress::Repeat;
+
+        RHISamplerDesc MakeOverrideSamplerDesc() const
+        {
+            RHISamplerDesc desc;
+            desc.MinFilter = MinFilter;
+            desc.MagFilter = MagFilter;
+            desc.AddressU = AddressU;
+            desc.AddressV = AddressV;
+            desc.AddressW = AddressU;
+            return desc;
+        }
     };
 
     ME_CLASS()

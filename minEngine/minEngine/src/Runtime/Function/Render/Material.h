@@ -10,6 +10,7 @@
 
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 
 #include <memory>
 #include <string>
@@ -28,6 +29,9 @@ namespace minEngine
         int SlotIndex = 0;
         std::string ShaderSymbolName;
         std::shared_ptr<Texture2D> Value;
+        /** Compile-time sampler intent from TextureSample Override (RND-F22). */
+        bool bOverrideSampler = false;
+        RHISamplerDesc SamplerDesc{};
     };
 
     struct MaterialScalarParameter

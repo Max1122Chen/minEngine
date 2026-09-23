@@ -65,15 +65,15 @@ namespace minEngine
 
     void OpenGLRHI::Initialize()
     {
-        // Initialize OpenGL specific resources here
         m_WindowSystem = &WindowSystem::Get();
-        
-        ME_LOG(LogRHI, Info, "OpenGLRHI Initialized"); 
-
+        m_DefaultLinearSampler = RHIGetOrCreateSampler(MakeLinearRepeatSamplerDesc());
+        ME_LOG(LogRHI, Info, "OpenGLRHI Initialized");
     }
 
     void OpenGLRHI::Shutdown()
     {
+        m_DefaultLinearSampler.reset();
+        m_SamplerCache.clear();
         m_WindowSystem = nullptr;
         ME_LOG(LogRHI, Info, "OpenGLRHI Shutdown");
     }
@@ -358,6 +358,23 @@ namespace minEngine
 
                 glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(entry.ShaderBinding));
                 glBindTexture(target, texId);
+
+                GLuint samplerId = 0;
+                if (resource.Sampler != nullptr)
+                {
+                    if (auto* glSampler = dynamic_cast<OpenGLRHISampler*>(resource.Sampler))
+                    {
+                        samplerId = glSampler->GetSamplerId();
+                    }
+                }
+                else if (m_DefaultLinearSampler)
+                {
+                    if (auto* glSampler = dynamic_cast<OpenGLRHISampler*>(m_DefaultLinearSampler.get()))
+                    {
+                        samplerId = glSampler->GetSamplerId();
+                    }
+                }
+                glBindSampler(static_cast<GLuint>(entry.ShaderBinding), samplerId);
             }
             else if (resource.Type == RHIShaderBindingType::UniformBuffer && resource.Buffer)
             {
@@ -671,17 +688,21 @@ namespace minEngine
 
         glBindTexture(target, textureId);
         glGenerateMipmap(target);
+        // RND-F22: sampling filter lives on RHISampler, not the texture object.
+        glBindTexture(target, 0);
+    }
 
-        const RHITextureCreateDesc& desc = texture->GetDesc();
-        const bool useMipFilter = desc.NumMips > 1
-            || HasTextureCreateFlag(desc.Flags, RHITextureCreateFlags::GenerateMips);
-        if (useMipFilter)
+    std::shared_ptr<RHISampler> OpenGLRHI::RHIGetOrCreateSampler(const RHISamplerDesc& desc)
+    {
+        const auto existing = m_SamplerCache.find(desc);
+        if (existing != m_SamplerCache.end())
         {
-            glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            return existing->second;
         }
 
-        glBindTexture(target, 0);
+        RHISamplerRef sampler = std::make_shared<OpenGLRHISampler>(desc);
+        m_SamplerCache.emplace(desc, sampler);
+        return sampler;
     }
 
 }

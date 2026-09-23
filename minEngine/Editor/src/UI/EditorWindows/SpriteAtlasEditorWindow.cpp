@@ -98,6 +98,17 @@ namespace minEngine
             editor->SetPadding(padding);
         }
 
+        int paddingMode = static_cast<int>(atlas.GetPaddingMode());
+        const char* paddingModeItems[] = {"PadWithZero", "DilateBorder"};
+        if (ImGui::Combo(
+                "PaddingMode",
+                &paddingMode,
+                paddingModeItems,
+                static_cast<int>(IM_ARRAYSIZE(paddingModeItems))))
+        {
+            editor->SetPaddingMode(static_cast<SpriteAtlasPaddingMode>(paddingMode));
+        }
+
         ImGui::Separator();
         ImGui::Text("Members (%zu)", atlas.GetMembers().size());
 

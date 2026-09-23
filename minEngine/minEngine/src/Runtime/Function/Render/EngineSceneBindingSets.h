@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Render/RHI/RHIBuffers.h"
+#include "Render/RHI/RHISampler.h"
 #include "Render/RHI/RHIShaderBinding.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHITextureViewCache.h"
@@ -95,6 +96,10 @@ namespace minEngine
         std::array<std::shared_ptr<RHIShaderResourceView>, MAX_SPOT_SHADOW_MAPS> m_SpotShadowSRVs{};
         std::array<std::shared_ptr<RHIShaderResourceView>, MAX_POINT_SHADOW_MAPS> m_PointShadowSRVs{};
         std::array<std::shared_ptr<RHIShaderResourceView>, 3> m_IblSRVs{};
+
+        /** Pinned set1 samplers (RND-F22). */
+        RHISamplerRef m_ShadowCompareSampler;
+        RHISamplerRef m_IblLinearClampSampler;
 
         RHIBuffer* m_CachedPerFrame = nullptr;
         RHIBuffer* m_CachedLights = nullptr;

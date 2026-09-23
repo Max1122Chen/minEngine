@@ -37,6 +37,9 @@ namespace minEngine
     class RHIShaderResourceView;
     struct RHITextureSRVDesc;
 
+    class RHISampler;
+    struct RHISamplerDesc;
+
     class RHIRenderPassInfo;
 
     struct RHITextureTransitionInfo;
@@ -83,6 +86,9 @@ namespace minEngine
         virtual std::shared_ptr<RHIShaderBindingSet> RHICreateShaderBindingSet(
             RHIShaderBindingSetLayout* layout,
             const std::vector<RHIShaderBinding>& resources) = 0;
+
+        /** RND-F22: create or return cached sampler for desc (shared across textures). */
+        virtual std::shared_ptr<RHISampler> RHIGetOrCreateSampler(const RHISamplerDesc& desc) = 0;
 
         virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
             std::initializer_list<RHIVertexElement> elements) = 0;

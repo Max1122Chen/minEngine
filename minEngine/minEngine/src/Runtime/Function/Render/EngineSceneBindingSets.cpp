@@ -3,8 +3,10 @@
 #include "EngineShaderBindings.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowTypes.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
 #include <algorithm>
@@ -49,6 +51,12 @@ namespace minEngine
             {kSet1_IBLPrefilter, RHIShaderBindingType::TextureSRV, kGL_IBLPrefilterUnit, RHIGraphicsShaderStage::Pixel},
             {kSet1_IBLBrdfLut, RHIShaderBindingType::TextureSRV, kGL_IBLBrdfLutUnit, RHIGraphicsShaderStage::Pixel},
         });
+
+        if (RHI* rhi = cmdList.GetExecutingRHI())
+        {
+            m_ShadowCompareSampler = rhi->RHIGetOrCreateSampler(MakeShadowCompareSamplerDesc());
+            m_IblLinearClampSampler = rhi->RHIGetOrCreateSampler(MakeLinearClampSamplerDesc());
+        }
     }
 
     void EngineSceneBindingSets::Shutdown()
@@ -61,6 +69,8 @@ namespace minEngine
         m_SpotShadowSRVs = {};
         m_PointShadowSRVs = {};
         m_IblSRVs = {};
+        m_ShadowCompareSampler.reset();
+        m_IblLinearClampSampler.reset();
         m_TextureViewCache.Clear();
         m_CachedPerFrame = nullptr;
         m_CachedLights = nullptr;
@@ -365,29 +375,65 @@ namespace minEngine
         }
 
         std::vector<RHIShaderBinding> resources(11);
-        resources[kSet1_DirShadowSRV] = {RHIShaderBindingType::TextureSRV, nullptr, m_DirShadowSRV.get()};
+        resources[kSet1_DirShadowSRV] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            m_DirShadowSRV.get(),
+            0,
+            0,
+            m_ShadowCompareSampler.get()};
         resources[kSet1_DirLightViewProjs] = {RHIShaderBindingType::UniformBuffer, dirLightViewProjs, nullptr};
         resources[kSet1_CascadeFarPlanes] = {RHIShaderBindingType::UniformBuffer, cascadeFarPlanes, nullptr};
         resources[kSet1_SpotLightViewProjs] = {RHIShaderBindingType::UniformBuffer, spotLightViewProjs, nullptr};
         resources[kSet1_SpotShadow0] = {
             RHIShaderBindingType::TextureSRV,
             nullptr,
-            MAX_SPOT_SHADOW_MAPS > 0 ? m_SpotShadowSRVs[0].get() : nullptr};
+            MAX_SPOT_SHADOW_MAPS > 0 ? m_SpotShadowSRVs[0].get() : nullptr,
+            0,
+            0,
+            m_ShadowCompareSampler.get()};
         resources[kSet1_SpotShadow1] = {
             RHIShaderBindingType::TextureSRV,
             nullptr,
-            MAX_SPOT_SHADOW_MAPS > 1 ? m_SpotShadowSRVs[1].get() : nullptr};
+            MAX_SPOT_SHADOW_MAPS > 1 ? m_SpotShadowSRVs[1].get() : nullptr,
+            0,
+            0,
+            m_ShadowCompareSampler.get()};
         resources[kSet1_PointShadow0] = {
             RHIShaderBindingType::TextureSRV,
             nullptr,
-            MAX_POINT_SHADOW_MAPS > 0 ? m_PointShadowSRVs[0].get() : nullptr};
+            MAX_POINT_SHADOW_MAPS > 0 ? m_PointShadowSRVs[0].get() : nullptr,
+            0,
+            0,
+            m_ShadowCompareSampler.get()};
         resources[kSet1_PointShadow1] = {
             RHIShaderBindingType::TextureSRV,
             nullptr,
-            MAX_POINT_SHADOW_MAPS > 1 ? m_PointShadowSRVs[1].get() : nullptr};
-        resources[kSet1_IBLIrradiance] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[0].get()};
-        resources[kSet1_IBLPrefilter] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[1].get()};
-        resources[kSet1_IBLBrdfLut] = {RHIShaderBindingType::TextureSRV, nullptr, m_IblSRVs[2].get()};
+            MAX_POINT_SHADOW_MAPS > 1 ? m_PointShadowSRVs[1].get() : nullptr,
+            0,
+            0,
+            m_ShadowCompareSampler.get()};
+        resources[kSet1_IBLIrradiance] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            m_IblSRVs[0].get(),
+            0,
+            0,
+            m_IblLinearClampSampler.get()};
+        resources[kSet1_IBLPrefilter] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            m_IblSRVs[1].get(),
+            0,
+            0,
+            m_IblLinearClampSampler.get()};
+        resources[kSet1_IBLBrdfLut] = {
+            RHIShaderBindingType::TextureSRV,
+            nullptr,
+            m_IblSRVs[2].get(),
+            0,
+            0,
+            m_IblLinearClampSampler.get()};
 
         RHIShaderBindingSetRef newSceneSet1 =
             cmdList.CreateShaderBindingSet(m_SceneSet1Layout.get(), resources);

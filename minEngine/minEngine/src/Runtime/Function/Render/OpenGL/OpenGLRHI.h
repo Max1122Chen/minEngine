@@ -2,9 +2,11 @@
 #include "Core.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIPipelineLayout.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "OpenGLRHIResources.h"
 
 #include <array>
+#include <unordered_map>
 
 
 namespace minEngine
@@ -45,6 +47,8 @@ namespace minEngine
         virtual std::shared_ptr<RHIShaderBindingSet> RHICreateShaderBindingSet(
             RHIShaderBindingSetLayout* layout,
             const std::vector<RHIShaderBinding>& resources) override;
+
+        std::shared_ptr<RHISampler> RHIGetOrCreateSampler(const RHISamplerDesc& desc) override;
 
         virtual void RHICmdBeginRenderPass(const RHIRenderPassInfo& info) override;
         virtual void RHICmdEndRenderPass() override;
@@ -89,5 +93,8 @@ namespace minEngine
         OpenGLRHIVertexInputLayout* m_BoundVertexLayout = nullptr;
         OpenGLRHIBuffer* m_BoundVertexBuffer = nullptr;
         OpenGLRHIBuffer* m_BoundIndexBuffer = nullptr;
+
+        std::unordered_map<RHISamplerDesc, RHISamplerRef, RHISamplerDescHash> m_SamplerCache;
+        RHISamplerRef m_DefaultLinearSampler;
     };
 }

@@ -1,6 +1,25 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-22（RND-F22/F23/SPR-F07 design-review 完成）
+Last updated: 2026-09-23（RND-F22/F23/SPR-F07 Done）
+
+### 2026-09-23 - SPR-F07 Done（DilateBorder inset + 边渗）
+- **Pack：** `PackShelf` 改为每 sprite 独占 inset 环（outer = content + 2*pad）；返回内容矩形。
+- **Dilate：** `SpriteAtlasPacker::DilateBorderRing` 边/角复制；`Rebuild` DilateBorder 调用。
+- **Editor：** PaddingMode Combo；Inspector 显示。
+- **测试：** `sprite-atlas` 7/7；`smoke` PASS（`minEngine/bin`）。
+- **Next：** 提交本波。
+
+### 2026-09-22 - RND-F22 Done（Texture / Sampler 分离）
+- **RHI：** `RHISampler`/`RHISamplerDesc` + `GetOrCreateSampler` cache；Binding.Sampler；GL `glBindSampler`；VK `VulkanRHISampler` + descriptor write。
+- **Material：** TextureSample `bOverrideSampler`+Filter/Address；`CommitCompileResult`→`MaterialTextureParameter`；Proxy Resolve + pin；Scene set1 shadow/IBL samplers。
+- **Texture2D：** `PreferredSamplerDesc`。
+- **验证：** `minEngine`/`minEngineTests` build；`minEngineTests.exe test smoke` PASS（from `minEngine/bin`）。
+- **Next：** SPR-F07 DilateBorder。
+
+### 2026-09-22 - RND-F23 Done（Scene Mesh 默认背面剔除）
+- **代码：** `GetOrCreateSceneMeshGraphicsPipelineState` — Opaque/Translucent Back cull；ScreenUI cull off。
+- **验证：** `minEngine` 目标编译通过。
+- **Next：** RND-F22 Texture/Sampler 分离。
 
 ### 2026-09-22 - RND-F23 / SPR-F07 design-review（回写 Design）
 - **F23：** Verdict **Ready** — Scene Mesh 单点 Back cull；API 名更正；Translucent=Back 锁定。

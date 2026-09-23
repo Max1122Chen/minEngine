@@ -33,6 +33,10 @@ namespace minEngine
         ImGui::Text("Asset: %s", session.AssetPath.c_str());
         ImGui::Text("Members: %zu", atlas.GetMembers().size());
         ImGui::Text("MaxSize: %d  Padding: %d", atlas.GetMaxSize(), atlas.GetPadding());
+        ImGui::Text(
+            "PaddingMode: %s",
+            atlas.GetPaddingMode() == SpriteAtlasPaddingMode::DilateBorder ? "DilateBorder"
+                                                                           : "PadWithZero");
         ImGui::Text("Generated pages: %zu", atlas.GetGeneratedTextures().size());
         if (!session.LastRebuildMessage.empty())
         {

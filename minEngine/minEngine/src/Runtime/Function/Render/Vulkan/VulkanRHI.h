@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "Runtime/Function/Render/Vulkan/VulkanRHIResources.h"
 
 #include <array>
@@ -51,6 +52,9 @@ namespace minEngine
         std::shared_ptr<RHIShaderBindingSet> RHICreateShaderBindingSet(
             RHIShaderBindingSetLayout* layout,
             const std::vector<RHIShaderBinding>& resources) override;
+
+        std::shared_ptr<RHISampler> RHIGetOrCreateSampler(const RHISamplerDesc& desc) override;
+
         std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(
             std::initializer_list<RHIVertexElement> elements) override;
 
@@ -280,6 +284,7 @@ namespace minEngine
 
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
         VkSampler m_DefaultSampler = VK_NULL_HANDLE;
+        std::unordered_map<RHISamplerDesc, RHISamplerRef, RHISamplerDescHash> m_SamplerCache;
         VkBuffer m_DummyUniformBuffer = VK_NULL_HANDLE;
         VkDeviceMemory m_DummyUniformMemory = VK_NULL_HANDLE;
         VkImage m_DummyImage = VK_NULL_HANDLE;

@@ -107,6 +107,11 @@ ME_REFLECTION_ACCESSOR_END()
 ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_TextureObject, GReflectionClassRegister_MaterialGraphNodeDef_TextureObject_70c2da68)
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialGraphNodeDef_TextureSample)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureSample, bOverrideSampler)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureSample, MinFilter)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureSample, MagFilter)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureSample, AddressU)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureSample, AddressV)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_TextureSample, GReflectionClassRegister_MaterialGraphNodeDef_TextureSample_11b6a5f6)

@@ -4,7 +4,7 @@
 - **ID:** RND-F22
 - **Type:** Feature / Refactor
 - **Complexity:** L3
-- **Status:** Review
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-22
 - **Related:**
@@ -23,7 +23,7 @@
 
 **验收：** Editor 将 TextureSample 设为 Override+Nearest 后 GL/VK Nearest；同 Desc 指针相同；旧材质 Inherit → 行为同今日 Linear。
 
-**状态：** Review — design-review 后已吸收修订（见 §变更记录 / §Design Review）。
+**状态：** Done — RHI Sampler cache + Binding + TextureSample Override + Proxy Resolve；smoke PASS（bin cwd）。
 
 ---
 
