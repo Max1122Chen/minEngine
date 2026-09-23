@@ -41,6 +41,14 @@ namespace minEngine
 
         void Tick(float deltaTime);
 
+        /**
+         * CORE-F29: whether gameplay IMC→IA should update this frame.
+         * - HasBegunPlayWorld → true (PIE / host after DispatchBeginPlay)
+         * - Editor shell (viewport registered) without begun world → false (Edit)
+         * - No editor shell → true (standalone / Playground compat until host DispatchBeginPlay)
+         */
+        bool IsGameplayInputEnabled() const;
+
         void AddInputComponent(InputComponent* component);
         void RemoveInputComponent(InputComponent* component);
 
@@ -77,9 +85,11 @@ namespace minEngine
         
         InputActionValue ApplyModifiers(const std::vector<std::shared_ptr<InputModifier>>& modifiers, const InputActionValue& rawValue, float deltaTime);
         InputTriggerEvent GetTriggerStateChangeEvent(InputTriggerState lastState, InputTriggerState newState);
+        void ClearGameplayActionEvents();
 
     private:
         friend class Engine;
+        friend class Testing::TestAccess<InputSystem>;
 
         static void SetInstance(InputSystem* instance);
         static InputSystem* s_Instance;

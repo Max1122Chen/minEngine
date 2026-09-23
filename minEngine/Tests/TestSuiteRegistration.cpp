@@ -30,6 +30,7 @@
 #include "Suites/FrustumTest.h"
 #include "Suites/NoiseTest.h"
 #include "Suites/BeginPlayTest.h"
+#include "Suites/GameplayInputGateTest.h"
 #include "Suites/MeshDrawSortTest.h"
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
@@ -460,6 +461,23 @@ namespace minEngine
             }
         };
 
+        struct GameplayInputGateTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"gameplay-input-gate", "Gameplay Input Gate", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'gameplay-input-gate'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "gameplay-input-gate",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct MeshDrawSortTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -804,6 +822,7 @@ namespace minEngine
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using NoiseSuite = TypedTestSuite<NoiseTestSuiteTraits>;
         using BeginPlaySuite = TypedTestSuite<BeginPlayTestSuiteTraits>;
+        using GameplayInputGateSuite = TypedTestSuite<GameplayInputGateTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
         using SpriteRuntimeConsumeSuite = TypedTestSuite<SpriteRuntimeConsumeTestSuiteTraits>;
@@ -858,6 +877,7 @@ namespace minEngine
             registry.Register(FrustumSuite::Get());
             registry.Register(NoiseSuite::Get());
             registry.Register(BeginPlaySuite::Get());
+            registry.Register(GameplayInputGateSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());
             registry.Register(SpriteRuntimeConsumeSuite::Get());

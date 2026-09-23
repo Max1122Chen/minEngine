@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-23（CORE-F31 Done；F29/F30 Draft）
+Last updated: 2026-09-23（CORE-F29 Done；F30 Draft）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -55,7 +55,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F26` | Prefab 资产删除与实例断链（阻断 / Unpack 后删除） | **Done** | — | [Design](./Platform/Core/CORE-F26_PREFAB_ASSET_DELETE_UNLINK_DESIGN.md) · `feat/prefab` |
 | `CORE-F27` | 多模块 Reflection codegen（引擎 + 游戏各自 src → 各自 Generated） | **Done** | — | [Design](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md) · [Impl](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_IMPLEMENTATION.md) · [Review](./Platform/Reflection/REFLECTION_MULTI_MODULE_CODEGEN_SYSTEM_REVIEW.md) · minCraft `ENG-GAP-006-A` |
 | `CORE-F28` | Noise Math Library（虚基类 `Noise` + Value/Perlin/Cellular + Fractal FBM） | **Done** | — | [Design](./Platform/Core/CORE-F28_NOISE_MATH_LIBRARY_DESIGN.md) · [Impl](./Platform/Core/CORE-F28_NOISE_MATH_LIBRARY_IMPLEMENTATION.md) · 输入 `docs/external/minEngine_Noise_Library_Agent_Prompt.md` |
-| `CORE-F29` | Play-gated gameplay Input（F31 模拟态开关；Edit 不派发玩法 IMC→IA） | **Draft** | — | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) · Depends `CORE-F31` · minCraft TD-007 |
+| `CORE-F29` | Play-gated gameplay Input（F31 模拟态开关；Edit 不派发玩法 IMC→IA） | **Done** | — | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) · [Impl](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_IMPLEMENTATION.md) · suite `gameplay-input-gate` · Depends `CORE-F31` |
 | `CORE-F30` | Play main Camera（`bSetAsMainCameraOnBeginPlay` + 手动 SetSelfAsMainCamera） | **Draft** | — | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) · Depends `CORE-F31` · minCraft TD-008 |
 | `CORE-F31` | GameObject / Component BeginPlay · EndPlay（UE Actor→Comp 转发；Scene Dispatch） | **Done** | — | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_IMPLEMENTATION.md) · suite `begin-play` · 解锁 F29/F30 |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |

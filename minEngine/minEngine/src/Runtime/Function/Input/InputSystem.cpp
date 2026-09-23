@@ -8,7 +8,7 @@
 #include "InputModifiers.h"
 #include "Framework/Components/InputComponent.h"
 
-#include "Runtime/Function/Render/WindowSystem.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RenderCamera.h"
@@ -31,6 +31,42 @@ namespace minEngine
     {
         ME_ASSERT(s_Instance != nullptr, "InputSystem is not initialized");
         return *s_Instance;
+    }
+
+    bool InputSystem::IsGameplayInputEnabled() const
+    {
+        if (!SceneManager::HasInstance())
+        {
+            return true;
+        }
+
+        const SceneManager& sceneManager = SceneManager::Get();
+        if (sceneManager.HasBegunPlayWorld())
+        {
+            return true;
+        }
+
+        // Editor document Edit: viewport registered, no simulating world.
+        if (sceneManager.GetEditorSceneViewport() != nullptr)
+        {
+            return false;
+        }
+
+        // Standalone / tests without editor shell — keep prior always-on until host DispatchBeginPlay.
+        return true;
+    }
+
+    void InputSystem::ClearGameplayActionEvents()
+    {
+        m_ActionsWithEventThisTick.clear();
+        for (auto& [action, instance] : m_ActionInstances)
+        {
+            (void)action;
+            instance.Value.Reset();
+            instance.TriggerEvent = InputTriggerEvent::None;
+            instance.LastState = InputTriggerState::None;
+            instance.TriggerStateTracker = InputTriggerStateTracker{};
+        }
     }
 
     void InputSystem::Initialize()
@@ -79,6 +115,12 @@ namespace minEngine
     {
         // Clear actions with events last frame
         m_ActionsWithEventThisTick.clear();
+
+        if (!IsGameplayInputEnabled())
+        {
+            ClearGameplayActionEvents();
+            return;
+        }
 
         // bool bConsumed = false; TODO: maybe we will need it later
 

@@ -4,7 +4,7 @@
 - **ID:** `CORE-F29`
 - **Type:** Feature
 - **Complexity:** L1–L2
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-23
 - **Related:**
@@ -100,3 +100,4 @@ Non-blocking on F31. Implement **after** F31 exposes simulation query + Enter/St
 |------|--------|
 | 2026-09-23 | Draft from minCraft TD-007 |
 | 2026-09-23 | Reframe: Depend F31; gate-switch model |
+| 2026-09-23 | Implementation Done: IsGameplayInputEnabled gate + ClearGameplayActionEvents; suite gameplay-input-gate |

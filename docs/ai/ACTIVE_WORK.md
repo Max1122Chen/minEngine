@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-23（CORE-F31 Done；下一 F29/F30）
+Last updated: 2026-09-23（CORE-F29 Done；下一 F30）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,19 +11,19 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** F31 底座已落地；下一刀 **F29**（Input 闸门），再 **F30**（Camera BeginPlay bool）。等待 F31 commit 审批后再开。
+**Primary：** F29 玩法输入闸门已落地；下一刀 **F30**（Camera BeginPlay bool）。等待 F29 commit 审批后再开。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | `CORE-F31` | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
-| 1 | `CORE-F29` | Play-gated gameplay Input | **Draft**（Depends F31） | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
+| 1 | `CORE-F29` | Play-gated gameplay Input | **Done** | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
 | 2 | `CORE-F30` | Play main Camera（BeginPlay bool） | **Draft**（Depends F31） | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) |
 
-**下一动作：** 审批并提交 F31 → 实现 F29。
+**下一动作：** 审批并提交 F29 → 实现 F30。
 
 **后置（不升 Primary）：** UI Text/Font；Skylight / Atmosphere / 高度雾（仅后续研究）。
 
-**本波已收口（勿当 WIP）：** `CORE-F28`；`CORE-F31`；`SPR-F01`–`F07`；`RND-F18`–`F20`/`F22`/`F23`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
+**本波已收口（勿当 WIP）：** `CORE-F28`；`CORE-F31`；`CORE-F29`；`SPR-F01`–`F07`；`RND-F18`–`F20`/`F22`/`F23`、`CORE-F27` / `ED-F21`、`WF-F04`；`RND-F21` **Deferred**。
 
 **并行 / 不挡**
 

@@ -1,0 +1,111 @@
+#include "GameplayInputGateTest.h"
+#include "Access/InputSystemTestAccess.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "Access/SceneManagerTestAccess.h"
+
+#include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Framework/Scene/SceneTypes.h"
+#include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Render/SceneViewport.h"
+
+namespace minEngine
+{
+    class GameplayInputGateTestScope
+    {
+    public:
+        GameplayInputGateTestScope()
+        {
+            Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
+            m_ObjectManager.Initialize();
+
+            Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
+            m_SceneManager.Initialize();
+
+            Testing::TestAccess<InputSystem>::SetInstance(&m_InputSystem);
+        }
+
+        ~GameplayInputGateTestScope()
+        {
+            Testing::TestAccess<InputSystem>::SetInstance(nullptr);
+
+            m_SceneManager.Shutdown();
+            Testing::TestAccess<SceneManager>::SetInstance(nullptr);
+
+            m_ObjectManager.Shutdown();
+            Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
+        }
+
+        InputSystem& GetInput() { return m_InputSystem; }
+
+    private:
+        ObjectManager m_ObjectManager;
+        SceneManager m_SceneManager;
+        InputSystem m_InputSystem;
+    };
+
+    namespace
+    {
+        bool RunStandaloneEnabledWithoutEditorViewport()
+        {
+            GameplayInputGateTestScope scope;
+            if (!scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: standalone without viewport should enable input.");
+                return false;
+            }
+            return true;
+        }
+
+        bool RunEditorViewportBlocksUntilBeginPlay()
+        {
+            GameplayInputGateTestScope scope;
+
+            SceneViewport dummyViewport;
+            SceneManager::Get().SetEditorSceneViewport(&dummyViewport);
+
+            if (scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: Edit with viewport should disable gameplay input.");
+                return false;
+            }
+
+            const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("input-gate");
+            scene->DispatchBeginPlay();
+
+            if (!scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: after DispatchBeginPlay should enable gameplay input.");
+                return false;
+            }
+
+            scene->DispatchEndPlay(EEndPlayReason::Stopped);
+            if (scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: after EndPlay with viewport should disable again.");
+                return false;
+            }
+
+            SceneManager::Get().SetEditorSceneViewport(nullptr);
+            return true;
+        }
+    }
+
+    bool RunGameplayInputGateTests()
+    {
+        return RunStandaloneEnabledWithoutEditorViewport()
+            && RunEditorViewportBlocksUntilBeginPlay();
+    }
+}
+
+#include "doctest.h"
+#include "EngineTestFixture.h"
+
+TEST_CASE("gameplay-input-gate: editor viewport and begin-play [full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunGameplayInputGateTests());
+}

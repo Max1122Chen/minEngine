@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-23（CORE-F31 Done）
+Last updated: 2026-09-23（CORE-F29 Done）
+
+### 2026-09-23 - CORE-F29 Done（Play-gated gameplay Input）
+- **Gate：** `InputSystem::IsGameplayInputEnabled` — `HasBegunPlayWorld` 或无 Editor viewport（standalone 兼容）。
+- **Tick：** 非玩法态 early-out + `ClearGameplayActionEvents`（清 Triggered 残留）。
+- **测试：** `minEngineTests.exe test gameplay-input-gate` PASS。
+- **Next：** 提交 F29；再 F30 Camera BeginPlay bool。
 
 ### 2026-09-23 - CORE-F31 Done（BeginPlay / EndPlay）
 - **API：** `EEndPlayReason`；`Component`/`GameObject` BeginPlay·EndPlay·HasBegunPlay；`Scene::Dispatch*`；`SceneManager::HasBegunPlayWorld`。
@@ -8,7 +14,7 @@ Last updated: 2026-09-23（CORE-F31 Done）
 - **PIE：** EnterPlay 在 System OnBeginPIE 后 DispatchBeginPlay；Stop 先 DispatchEndPlay(Stopped)。
 - **动态：** 模拟中 CreateGameObject / 晚 Activate → BeginPlay。
 - **测试：** `minEngineTests.exe test begin-play` PASS。
-- **Next：** 提交 F31；再 F29 Input 闸门。
+- **提交：** `d36e311`。
 
 ### 2026-09-23 - CORE-F31 Draft + Review；F29/F30 收为消费面
 - **根因 reframed：** 缺 GO/Component BeginPlay/EndPlay（非仅 Camera/Input 特判）。
