@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-23（CORE-F29 Done；F30 Draft）
+Last updated: 2026-09-23（CORE-F30 Done；下一 UI-F04）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**

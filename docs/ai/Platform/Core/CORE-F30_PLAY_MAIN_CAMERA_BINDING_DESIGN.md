@@ -4,7 +4,7 @@
 - **ID:** `CORE-F30`
 - **Type:** Feature
 - **Complexity:** L1–L2
-- **Status:** Draft
+- **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-23
 - **Related:**
@@ -116,3 +116,4 @@ Non-blocking on F31. Implement after F31 BeginPlay reaches CameraComponent.
 |------|--------|
 | 2026-09-23 | Draft from minCraft TD-008 |
 | 2026-09-23 | Reframe: F31 consumer; bSetAsMainCameraOnBeginPlay; manual Set allowed |
+| 2026-09-23 | Implement Done: OnBeginPlay + sole-camera auto-Main; suite \play-main-camera\ |

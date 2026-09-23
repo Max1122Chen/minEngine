@@ -4,6 +4,7 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::CameraComponent)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::CameraComponent, m_bSetAsMainCameraOnBeginPlay)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::CameraComponent, GReflectionClassRegister_CameraComponent_ace79077)

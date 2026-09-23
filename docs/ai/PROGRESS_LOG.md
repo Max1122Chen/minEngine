@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-23（CORE-F29 Done）
+Last updated: 2026-09-23（CORE-F30 Done）
+
+### 2026-09-23 - CORE-F30 Done（Play main Camera BeginPlay policy）
+- **API：** m_bSetAsMainCameraOnBeginPlay；OnBeginPlay（bool 或唯一 active Camera）→ SetSelfAsMainCamera。
+- **Edit/PIE：** SetSelfAsMainCamera 仅在非 PIE 时推 Edit viewport；Play 仍靠 Main + SyncPlayModeCamera。
+- **测试：** minEngineTests.exe test play-main-camera PASS。
+- **Next：** 提交 F30；登记 UI-F04 Text/Font。
 
 ### 2026-09-23 - CORE-F29 Done（Play-gated gameplay Input）
 - **Gate：** `InputSystem::IsGameplayInputEnabled` — `HasBegunPlayWorld` 或无 Editor viewport（standalone 兼容）。
