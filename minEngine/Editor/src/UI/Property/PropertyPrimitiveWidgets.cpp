@@ -6,9 +6,68 @@
 
 #include <cstring>
 #include <string>
+#include <unordered_map>
 
 namespace minEngine
 {
+    std::unordered_map<ImGuiID, std::string>& PropertyPrimitiveWidgets::ActiveStringEditBuffers()
+    {
+        static std::unordered_map<ImGuiID, std::string> s_Buffers;
+        return s_Buffers;
+    }
+
+    bool PropertyPrimitiveWidgets::DrawDeferredString(std::string* stringValue, float itemWidth)
+    {
+        if (stringValue == nullptr)
+        {
+            return false;
+        }
+
+        if (itemWidth != 0.0f)
+        {
+            ImGui::SetNextItemWidth(itemWidth);
+        }
+
+        const ImGuiID editId = ImGui::GetID("##Value");
+        std::unordered_map<ImGuiID, std::string>& buffers = ActiveStringEditBuffers();
+        const auto bufferIt = buffers.find(editId);
+        const std::string& source =
+            (bufferIt != buffers.end()) ? bufferIt->second : *stringValue;
+
+        char textBuffer[512] = {};
+        std::strncpy(textBuffer, source.c_str(), sizeof(textBuffer) - 1);
+
+        ImGui::InputText("##Value", textBuffer, sizeof(textBuffer));
+
+        if (ImGui::IsItemActivated())
+        {
+            buffers[editId] = *stringValue;
+        }
+        if (ImGui::IsItemActive())
+        {
+            buffers[editId] = textBuffer;
+        }
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+        {
+            const std::string committed = textBuffer;
+            buffers.erase(editId);
+            if (committed != *stringValue)
+            {
+                *stringValue = committed;
+                return true;
+            }
+            return false;
+        }
+
+        if (ImGui::IsItemDeactivated())
+        {
+            buffers.erase(editId);
+        }
+
+        return false;
+    }
+
     std::string PropertyPrimitiveWidgets::GetShortTypeName(const std::string& fullTypeName)
     {
         const size_t colon = fullTypeName.rfind(':');
@@ -73,16 +132,7 @@ namespace minEngine
 
         if (shortTypeName == "string" || shortTypeName == "std::string")
         {
-            std::string* stringValue = static_cast<std::string*>(propertyPtr);
-            char textBuffer[256] = {};
-            std::strncpy(textBuffer, stringValue->c_str(), sizeof(textBuffer) - 1);
-            if (ImGui::InputText("##Value", textBuffer, sizeof(textBuffer)))
-            {
-                *stringValue = textBuffer;
-                return true;
-            }
-
-            return false;
+            return DrawDeferredString(static_cast<std::string*>(propertyPtr), itemWidth);
         }
 
         if (shortTypeName == "Vector2")

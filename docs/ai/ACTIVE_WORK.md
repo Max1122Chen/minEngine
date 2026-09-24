@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-23（CORE-F30 Done；下一 UI Text/Font）
+Last updated: 2026-09-24（UI-F04 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,20 +11,20 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** PIE 输入/相机闭环（F31→F29→F30）已收口。下一刀：**UI Text/Font**（登记 UI-F04）。
+**Primary：** 空闲（UI-F04 Text/Font 已收口）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 | 1 | CORE-F29 | Play-gated gameplay Input | **Done** | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
 | 2 | CORE-F30 | Play main Camera（BeginPlay bool） | **Done** | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) |
-| 3 | UI-F04 | ScreenUI Text / Font | **Planned** | Design TBD |
+| 3 | UI-F04 | ScreenUI Text / Font | **Done** | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) |
 
-**下一动作：** 提交 F30 → 起草 UI-F04 Design。
+**下一动作：** 提交 UI-F04；再从 Capability / 后置轨挑下一刀。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 
-**本波已收口（勿当 WIP）：** CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04；RND-F21 **Deferred**。
+**本波已收口（勿当 WIP）：** UI-F04；CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04；RND-F21 **Deferred**。
 **并行 / 不挡**
 
 | 轨 | ID | 说明 |

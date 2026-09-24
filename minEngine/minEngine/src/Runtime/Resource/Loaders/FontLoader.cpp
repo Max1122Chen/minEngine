@@ -86,6 +86,22 @@ namespace minEngine
         return font;
     }
 
+    std::shared_ptr<Font> FontLoader::CreateFromBytes(
+        std::vector<uint8_t> bytes,
+        const std::string& extension,
+        const std::string& name)
+    {
+        if (bytes.empty())
+        {
+            return nullptr;
+        }
+
+        std::shared_ptr<Font> font = NewObject<Font>(name);
+        font->m_FontFileBytes = std::move(bytes);
+        font->m_SourceExtension = extension;
+        return font;
+    }
+
     template<>
     std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta)
     {

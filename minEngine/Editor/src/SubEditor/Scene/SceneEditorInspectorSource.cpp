@@ -668,12 +668,24 @@ namespace minEngine
                 break;
             }
             case Reflection::MEPropertyCategory::ObjectPtr:
-                valueChanged = DrawObjectPtrProperty(
-                    owner,
-                    ownerClass,
-                    static_cast<const Reflection::MEObjectPtrProperty&>(property),
-                    propertyPtr,
-                    activeUndoContext);
+                if (isOwnerDirectField && property.HasPropertySetter())
+                {
+                    valueChanged = DrawObjectPtrLeafViaAssign(
+                        mutableOwner,
+                        ownerClass,
+                        static_cast<const Reflection::MEObjectPtrProperty&>(property),
+                        activeUndoContext);
+                    appliedViaAssign = true;
+                }
+                else
+                {
+                    valueChanged = DrawObjectPtrProperty(
+                        owner,
+                        ownerClass,
+                        static_cast<const Reflection::MEObjectPtrProperty&>(property),
+                        propertyPtr,
+                        activeUndoContext);
+                }
                 break;
             case Reflection::MEPropertyCategory::Array:
                 valueChanged = DrawArrayProperty(static_cast<const Reflection::MEArrayProperty&>(property), propertyPtr);
@@ -722,6 +734,27 @@ namespace minEngine
         }
 
         std::vector<uint8_t> editBuffer(storageSize);
+        const bool needsLifetime = property.GetValueConstructFn() != nullptr;
+        if (needsLifetime)
+        {
+            property.ConstructValue(editBuffer.data());
+        }
+
+        struct ScopedPropertyValue
+        {
+            const Reflection::MEProperty* Property = nullptr;
+            void* Storage = nullptr;
+            bool Live = false;
+
+            ~ScopedPropertyValue()
+            {
+                if (Live && Property != nullptr && Storage != nullptr)
+                {
+                    Property->DestructValue(Storage);
+                }
+            }
+        } scoped{&property, editBuffer.data(), needsLifetime};
+
         if (!Reflection::GetPropertyValue(owner, property, editBuffer.data()))
         {
             return false;
@@ -839,6 +872,11 @@ namespace minEngine
                                                            void* propertyPtr,
                                                            const PropertyUndoCaptureContext* undoContext)
     {
+        const bool editingTempBuffer =
+            owner != nullptr
+            && objectPtrProperty.GetMutableAccessor() != nullptr
+            && objectPtrProperty.GetMutable(const_cast<MEObject*>(owner)) != propertyPtr;
+
         const std::string assetUndoKey = MakeAssetPropertyUndoKey(
             (undoContext && undoContext->IsValid()) ? undoContext->ownerGuid : GUID::Zero(),
             objectPtrProperty.GetName());
@@ -864,9 +902,17 @@ namespace minEngine
                 m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
             }
         };
-        hooks.TryApplySelection = [owner, ownerClass, &objectPtrProperty, propertyPtr](
+        hooks.TryApplySelection = [owner, ownerClass, &objectPtrProperty, propertyPtr, editingTempBuffer](
                                       const PropertyRefCandidate& selected) -> bool
         {
+            // When drawing into an Assign temp buffer, always write the shared_ptr slot so
+            // AssignProperty can invoke the reflected Setter. Special-cases mutate the owner
+            // in place and would leave the temp buffer stale.
+            if (editingTempBuffer)
+            {
+                return false;
+            }
+
             if (selected.Kind != PropertyRefCandidateKind::AssetMeta || selected.Meta == nullptr)
             {
                 return false;
@@ -947,10 +993,20 @@ namespace minEngine
 
             return false;
         };
-        hooks.OnSelectionCommitted = [this, undoContext, assetUndoKey](bool selectionChanged)
+        hooks.OnSelectionCommitted = [this, undoContext, assetUndoKey, editingTempBuffer](bool selectionChanged)
         {
-            if (!selectionChanged || undoContext == nullptr || !undoContext->IsValid())
+            // Assign path commits undo after AssignProperty (owner still stale here).
+            if (editingTempBuffer || !selectionChanged || undoContext == nullptr || !undoContext->IsValid())
             {
+                if (editingTempBuffer && undoContext != nullptr && undoContext->IsValid())
+                {
+                    // Keep before blob for LeafViaAssign; do not erase yet.
+                    return;
+                }
+                if (!selectionChanged && undoContext != nullptr && undoContext->IsValid())
+                {
+                    m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
+                }
                 return;
             }
 
@@ -994,6 +1050,87 @@ namespace minEngine
             m_PropertyEditSession,
             hooks,
             260.0f);
+    }
+
+    bool SceneEditorInspectorSource::DrawObjectPtrLeafViaAssign(
+        MEObject* owner,
+        const Reflection::MEClass* ownerClass,
+        const Reflection::MEObjectPtrProperty& objectPtrProperty,
+        const PropertyUndoCaptureContext* undoContext)
+    {
+        const size_t storageSize = objectPtrProperty.GetStorageSize();
+        if (owner == nullptr || storageSize == 0)
+        {
+            return false;
+        }
+
+        const std::string assetUndoKey = MakeAssetPropertyUndoKey(
+            (undoContext && undoContext->IsValid()) ? undoContext->ownerGuid : GUID::Zero(),
+            objectPtrProperty.GetName());
+
+        std::vector<uint8_t> editBuffer(storageSize);
+        const bool needsLifetime = objectPtrProperty.GetValueConstructFn() != nullptr;
+        if (needsLifetime)
+        {
+            objectPtrProperty.ConstructValue(editBuffer.data());
+        }
+
+        struct ScopedPropertyValue
+        {
+            const Reflection::MEProperty* Property = nullptr;
+            void* Storage = nullptr;
+            bool Live = false;
+
+            ~ScopedPropertyValue()
+            {
+                if (Live && Property != nullptr && Storage != nullptr)
+                {
+                    Property->DestructValue(Storage);
+                }
+            }
+        } scoped{&objectPtrProperty, editBuffer.data(), needsLifetime};
+
+        if (!Reflection::GetPropertyValue(owner, objectPtrProperty, editBuffer.data()))
+        {
+            return false;
+        }
+
+        if (!DrawObjectPtrProperty(owner, ownerClass, objectPtrProperty, editBuffer.data(), undoContext))
+        {
+            return false;
+        }
+
+        Reflection::PropertyAssignOptions options;
+        options.notifyPostEdit = !objectPtrProperty.HasPropertySetter();
+        options.postEditObject = owner;
+        if (!Reflection::AssignProperty(owner, objectPtrProperty, editBuffer.data(), options))
+        {
+            return false;
+        }
+
+        if (undoContext != nullptr && undoContext->IsValid())
+        {
+            std::vector<uint8_t> beforeBlob;
+            const auto beforeIter = m_AssetPropertyUndoBeforeByKey.find(assetUndoKey);
+            if (beforeIter != m_AssetPropertyUndoBeforeByKey.end())
+            {
+                beforeBlob = beforeIter->second;
+            }
+            else if (!SerializePropertyUndoBlob(*undoContext, beforeBlob))
+            {
+                beforeBlob.clear();
+            }
+
+            std::vector<uint8_t> afterBlob;
+            if (!beforeBlob.empty() && SerializePropertyUndoBlob(*undoContext, afterBlob))
+            {
+                TryPropertyUndoCommitImmediate(*undoContext, beforeBlob, afterBlob, false);
+            }
+            m_AssetPropertyUndoBeforeByKey.erase(assetUndoKey);
+        }
+
+        m_SceneEditor.MarkSceneDirty();
+        return true;
     }
 
     bool SceneEditorInspectorSource::DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr)

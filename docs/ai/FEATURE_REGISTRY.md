@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-09-23（CORE-F30 Done；下一 UI-F04）
+Last updated: 2026-09-24（UI-F04 Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -131,6 +131,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `UI-F01` | ScreenUI Canvas / Widget / Image / Layout MVP | **Done** | — | [Design](./Platform/UI/UI-F01_UI_SYSTEM_DESIGN.md) |
 | `UI-F02` | ScreenUI Hit-test + Play pointer routing | **Done** | — | [Design](./Platform/UI/UI-F02_SCREENUI_HITTEST_DESIGN.md) |
 | `UI-F03` | ScreenUI Button（OnClicked + tint） | **Done** | — | [Design](./Platform/UI/UI-F03_SCREENUI_BUTTON_DESIGN.md) |
+| `UI-F04` | ScreenUI Text / Font | **Done** | — | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) · [Impl](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_IMPLEMENTATION.md) |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |

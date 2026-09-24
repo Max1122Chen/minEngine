@@ -18,6 +18,12 @@ namespace minEngine
          */
         static Matrix4 MakeWidgetModelMatrix(const Vector2& topLeftPx, const Vector2& sizePx);
 
+        /**
+         * Model matrix for meshes authored in Widget-local pixels (origin top-left, Y down).
+         * topLeftPx is the widget top-left in viewport pixels; uniformScale is letterbox Scale (1 if none).
+         */
+        static Matrix4 MakeWidgetLocalPixelModelMatrix(const Vector2& topLeftPx, float uniformScale);
+
         /** Letterbox: fit ref resolution inside viewport, preserve aspect, center. */
         struct LetterboxMapping
         {

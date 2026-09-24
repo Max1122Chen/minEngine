@@ -8,6 +8,7 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Input/InputKeys.h"
 #include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/UI/Font/FontGlyphAtlasCache.h"
 
 namespace minEngine
 {
@@ -62,6 +63,7 @@ namespace minEngine
         m_ViewportContext.Reset();
         m_bPointerRoutingEnabled = false;
         m_PIEScene = nullptr;
+        FontGlyphAtlasCache::Get().Clear();
         m_Initialized = false;
         ME_LOG(LogUI, Info, "UISystem Shutdown");
     }

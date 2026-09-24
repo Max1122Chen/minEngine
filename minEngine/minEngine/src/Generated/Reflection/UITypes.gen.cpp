@@ -30,3 +30,9 @@ ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::EUIAnchorPreset, GReflectionEnumRegis
     ME_REFLECTION_ENUM_VALUE(StretchAll, minEngine::EUIAnchorPreset::StretchAll)
     ME_REFLECTION_ENUM_VALUE(Custom, minEngine::EUIAnchorPreset::Custom)
 ME_REFLECTION_ENUM_DEFINE_END(minEngine::EUIAnchorPreset)
+
+ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::EUITextHorizontalAlignment, GReflectionEnumRegister_EUITextHorizontalAlignment_6f6d681f)
+    ME_REFLECTION_ENUM_VALUE(Left, 0)
+    ME_REFLECTION_ENUM_VALUE(Center, minEngine::EUITextHorizontalAlignment::Center)
+    ME_REFLECTION_ENUM_VALUE(Right, minEngine::EUITextHorizontalAlignment::Right)
+ME_REFLECTION_ENUM_DEFINE_END(minEngine::EUITextHorizontalAlignment)

@@ -9,6 +9,7 @@ namespace minEngine
     class Material;
     class WidgetSceneProxy;
     class ImageComponent;
+    class TextComponent;
 
     /**
      * ScreenUI layout node: Anchor/Margin/Size → ComputedRect (Canvas reference pixels).
@@ -52,6 +53,7 @@ namespace minEngine
         void SetComputedRect(const UIRect& rect);
 
         ImageComponent* FindSiblingImage() const;
+        TextComponent* FindSiblingText() const;
 
         virtual void DoEndOfFrameUpdate() override;
 

@@ -1,6 +1,12 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-23（CORE-F30 Done）
+Last updated: 2026-09-24 (UI-F04 Done)
+
+### 2026-09-24 - UI-F04 Done (ScreenUI Text / Font)
+- **Runtime:** TextComponent + FontGlyphAtlas/Cache + TextMeshBuilder; Widget prefers Text for proxy; local-pixel VB + ScreenUIPass.
+- **Editor:** deferred string Inspector commit on deactivate; ObjectPtr+Setter via Assign (fixes Content crash / Font no-refresh).
+- **Verify:** minEngineTests.exe test screen-ui-text; MCP accept_ui_text.ts visual PASS.
+- **Docs:** Design/Impl/Registry Done.
 
 ### 2026-09-23 - CORE-F30 Done（Play main Camera BeginPlay policy）
 - **API：** m_bSetAsMainCameraOnBeginPlay；OnBeginPlay（bool 或唯一 active Camera）→ SetSelfAsMainCamera。

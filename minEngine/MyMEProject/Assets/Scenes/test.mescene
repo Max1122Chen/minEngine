@@ -34,15 +34,15 @@
                     },
                     "m_Transform": {
                         "Position": [
-                            4.017966270446777,
+                            4.017967700958252,
                             1.8219653367996216,
-                            4.885628700256348
+                            4.885627746582031
                         ],
                         "Rotation": {
-                            "W": 0.9999718070030212,
-                            "X": -2.624451322930099e-09,
+                            "W": 0.9999716877937317,
+                            "X": -2.6244511008854943e-09,
                             "Y": 0.007521041668951511,
-                            "Z": 9.753921226263174e-09
+                            "Z": 9.753922114441593e-09
                         },
                         "Scale": [
                             5.0,
@@ -812,6 +812,229 @@
                 "$guid": {
                     "high": 1285154704021668153,
                     "low": 12836147986415005842
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::SceneComponent",
+                    "m_AttachParent": null,
+                    "m_Guid": {
+                        "High": 2675420773360947058,
+                        "Low": 11199851942806913774
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 1563207272052705048,
+                            "low": 9238957565173964235
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        },
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    },
+                    "m_bActive": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::CanvasComponent",
+                    "m_Guid": {
+                        "High": 15859276164375661429,
+                        "Low": 13763280887316606553
+                    },
+                    "m_Name": "Canvas",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 1563207272052705048,
+                            "low": 9238957565173964235
+                        }
+                    },
+                    "m_ReferenceResolution": [
+                        1920.0,
+                        1080.0
+                    ],
+                    "m_RenderMode": 0,
+                    "m_ScaleMode": 0,
+                    "m_SortOrder": 0,
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 1563207272052705048,
+                "Low": 9238957565173964235
+            },
+            "m_Name": "UI_F04_Canvas",
+            "m_Parent": null,
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 2675420773360947058,
+                    "low": 11199851942806913774
+                }
+            }
+        },
+        {
+            "$ptr_typeName": "minEngine::GameObject",
+            "m_Components": [
+                {
+                    "$ptr_typeName": "minEngine::SceneComponent",
+                    "m_AttachParent": {
+                        "$guid": {
+                            "high": 2675420773360947058,
+                            "low": 11199851942806913774
+                        }
+                    },
+                    "m_Guid": {
+                        "High": 3502481696370672934,
+                        "Low": 12872529278719202496
+                    },
+                    "m_Name": "",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 2141250696028505267,
+                            "low": 9357769209896850912
+                        }
+                    },
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        },
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    },
+                    "m_bActive": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::WidgetComponent",
+                    "m_AnchorMax": [
+                        0.0,
+                        0.0
+                    ],
+                    "m_AnchorMin": [
+                        0.0,
+                        0.0
+                    ],
+                    "m_AnchorPreset": 0,
+                    "m_AttachParent": {
+                        "$guid": {
+                            "high": 3502481696370672934,
+                            "low": 12872529278719202496
+                        }
+                    },
+                    "m_Guid": {
+                        "High": 4971933649800479770,
+                        "Low": 11696284141884682537
+                    },
+                    "m_Margin": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "m_Name": "Widget",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 2141250696028505267,
+                            "low": 9357769209896850912
+                        }
+                    },
+                    "m_Size": [
+                        480.0,
+                        96.0
+                    ],
+                    "m_StableOrder": 0,
+                    "m_Transform": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        },
+                        "Scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    },
+                    "m_bActive": true
+                },
+                {
+                    "$ptr_typeName": "minEngine::TextComponent",
+                    "m_Color": {
+                        "A": 1.0,
+                        "B": 1.0,
+                        "G": 1.0,
+                        "R": 1.0
+                    },
+                    "m_Content": "Hello World",
+                    "m_Font": {
+                        "$guid": {
+                            "high": 12411318281514927934,
+                            "low": 10351155873599353985
+                        }
+                    },
+                    "m_FontSize": 48.0,
+                    "m_Guid": {
+                        "High": 13935897331181637089,
+                        "Low": 11961632378309225572
+                    },
+                    "m_HorizontalAlignment": 0,
+                    "m_Name": "Text",
+                    "m_Owner": {
+                        "$guid": {
+                            "high": 2141250696028505267,
+                            "low": 9357769209896850912
+                        }
+                    },
+                    "m_bActive": true
+                }
+            ],
+            "m_Guid": {
+                "High": 2141250696028505267,
+                "Low": 9357769209896850912
+            },
+            "m_Name": "UI_F04_Text",
+            "m_Parent": {
+                "$guid": {
+                    "high": 1563207272052705048,
+                    "low": 9238957565173964235
+                }
+            },
+            "m_RootComponent": {
+                "$guid": {
+                    "high": 3502481696370672934,
+                    "low": 12872529278719202496
                 }
             }
         }

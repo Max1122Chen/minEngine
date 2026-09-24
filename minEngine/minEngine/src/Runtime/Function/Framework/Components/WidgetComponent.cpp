@@ -1,6 +1,7 @@
 #include "WidgetComponent.h"
 
 #include "Runtime/Function/Framework/Components/ImageComponent.h"
+#include "Runtime/Function/Framework/Components/TextComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/RenderScene.h"
@@ -203,6 +204,23 @@ namespace minEngine
         return images[0].get();
     }
 
+    TextComponent* WidgetComponent::FindSiblingText() const
+    {
+        GameObject* owner = GetOwner();
+        if (owner == nullptr)
+        {
+            return nullptr;
+        }
+
+        const std::vector<std::shared_ptr<TextComponent>> texts =
+            owner->GetComponentsOfType<TextComponent>();
+        if (texts.empty() || !texts[0])
+        {
+            return nullptr;
+        }
+        return texts[0].get();
+    }
+
     void WidgetComponent::DoEndOfFrameUpdate()
     {
         if (!m_bRenderStateDirty || !IsActive())
@@ -281,10 +299,33 @@ namespace minEngine
         proxy.m_WidgetComponent = this;
         proxy.m_StableOrder = m_StableOrder;
         proxy.m_UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
+        proxy.m_bLocalPixelMesh = false;
 
         // Reference-space rect; Letterbox applied in BuildScreenUIQueue.
         proxy.m_TopLeftPx = m_ComputedRect.TopLeft;
         proxy.m_SizePx = m_ComputedRect.Size;
+
+        TextComponent* text = FindSiblingText();
+        if (text != nullptr && text->CanAttemptDraw())
+        {
+            text->RebuildMeshIfNeeded(m_ComputedRect.Size);
+            if (text->HasDrawableMesh())
+            {
+                proxy.m_Color = text->GetColor().ToVector4();
+                proxy.m_Texture = text->GetAtlasTexture();
+                proxy.m_MaterialProxy =
+                    text->GetRuntimeMaterial() ? text->GetRuntimeMaterial()->GetRenderProxy() : nullptr;
+                proxy.m_VertexBuffer = text->GetVertexBuffer();
+                proxy.m_IndexBuffer = text->GetIndexBuffer();
+                proxy.m_VertexInputLayout = text->GetVertexInputLayout();
+                proxy.m_bLocalPixelMesh = true;
+                proxy.m_bVisible = proxy.m_MaterialProxy != nullptr
+                    && proxy.m_MaterialProxy->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
+                    && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
+                    && proxy.m_SizePx.y > 0.0f;
+                return;
+            }
+        }
 
         ImageComponent* image = FindSiblingImage();
         if (image != nullptr)

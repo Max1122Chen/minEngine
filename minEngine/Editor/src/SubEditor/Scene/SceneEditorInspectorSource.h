@@ -93,6 +93,11 @@ namespace minEngine
                                    const Reflection::MEObjectPtrProperty& objectPtrProperty,
                                    void* propertyPtr,
                                    const PropertyUndoCaptureContext* undoContext);
+        /** Temp shared_ptr buffer + AssignProperty so meta Setter (e.g. SetFont) runs. */
+        bool DrawObjectPtrLeafViaAssign(MEObject* owner,
+                                        const Reflection::MEClass* ownerClass,
+                                        const Reflection::MEObjectPtrProperty& objectPtrProperty,
+                                        const PropertyUndoCaptureContext* undoContext);
         bool DrawArrayProperty(const Reflection::MEArrayProperty& arrayProperty, void* propertyPtr);
 
         void DrawGameObjectHeaderContextMenu(GameObject& gameObject);

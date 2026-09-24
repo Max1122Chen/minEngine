@@ -404,7 +404,7 @@ namespace minEngine
 
         AssignShadowGraphPassCommands(ctx);
 
-        // RND-F12: Granite-aligned ?re-run setup_dependencies + pass order every frame.
+        // RND-F12: Granite-aligned ï¿½?re-run setup_dependencies + pass order every frame.
         const bool enableSky = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox);
         m_BasePass.SetClearSceneTargets(!enableSky);
 
@@ -1249,6 +1249,7 @@ namespace minEngine
             // Proxy stores Canvas reference-space rect; map to viewport pixels.
             Vector2 topLeftPx = widgetProxy->m_TopLeftPx;
             Vector2 sizePx = widgetProxy->m_SizePx;
+            float letterboxScale = 1.0f;
             if (canvas->GetScaleMode() == EUICanvasScaleMode::Letterbox)
             {
                 const Vector2 ref = canvas->GetReferenceResolution();
@@ -1259,6 +1260,7 @@ namespace minEngine
                     static_cast<float>(viewportHeight));
                 topLeftPx = mapping.MapPoint(widgetProxy->m_TopLeftPx);
                 sizePx = mapping.MapSize(widgetProxy->m_SizePx);
+                letterboxScale = mapping.Scale;
             }
 
             UIDrawCommand command;
@@ -1268,7 +1270,15 @@ namespace minEngine
             command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
             command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
             command.Draw.m_MaterialProxy = widgetProxy->m_MaterialProxy;
-            command.Draw.m_ModelMatrix = ScreenUICoords::MakeWidgetModelMatrix(topLeftPx, sizePx);
+            if (widgetProxy->m_bLocalPixelMesh)
+            {
+                command.Draw.m_ModelMatrix =
+                    ScreenUICoords::MakeWidgetLocalPixelModelMatrix(topLeftPx, letterboxScale);
+            }
+            else
+            {
+                command.Draw.m_ModelMatrix = ScreenUICoords::MakeWidgetModelMatrix(topLeftPx, sizePx);
+            }
             command.Draw.m_CastShadow = false;
             ctx.ScreenUIQueue.push_back(command);
         }

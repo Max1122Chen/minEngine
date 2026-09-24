@@ -25,6 +25,14 @@ namespace minEngine
         return translation * scale;
     }
 
+    Matrix4 ScreenUICoords::MakeWidgetLocalPixelModelMatrix(const Vector2& topLeftPx, float uniformScale)
+    {
+        const float scale = uniformScale > 0.0f ? uniformScale : 1.0f;
+        const Matrix4 translation = glm::translate(Matrix4(1.0f), Vector3(topLeftPx.x, topLeftPx.y, 0.0f));
+        const Matrix4 scaleMatrix = glm::scale(Matrix4(1.0f), Vector3(scale, scale, 1.0f));
+        return translation * scaleMatrix;
+    }
+
     ScreenUICoords::LetterboxMapping ScreenUICoords::MakeLetterboxMapping(
         float refWidth,
         float refHeight,

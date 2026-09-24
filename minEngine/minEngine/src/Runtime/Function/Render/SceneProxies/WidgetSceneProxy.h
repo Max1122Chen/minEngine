@@ -33,6 +33,12 @@ namespace minEngine
         RHIBuffer* m_IndexBuffer = nullptr;
         RHIVertexInputLayout* m_VertexInputLayout = nullptr;
 
+        /**
+         * When true, VB is in Widget-local pixels (top-left origin, Y down).
+         * BuildScreenUIQueue uses translation + uniform letterbox scale (not unit-quad scale).
+         */
+        bool m_bLocalPixelMesh = false;
+
         bool m_bVisible = false;
     };
 }

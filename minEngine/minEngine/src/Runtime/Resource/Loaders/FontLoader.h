@@ -18,6 +18,12 @@ namespace minEngine
     public:
         static std::shared_ptr<Font> LoadFromAssetMeta(const AssetMeta& meta);
 
+        /** Create an in-memory Font (tests / runtime helpers). Does not register as a disk asset. */
+        static std::shared_ptr<Font> CreateFromBytes(
+            std::vector<uint8_t> bytes,
+            const std::string& extension = ".ttf",
+            const std::string& name = "RuntimeFont");
+
     private:
         static bool ReadFontFileBytes(
             const std::filesystem::path& absolutePath,

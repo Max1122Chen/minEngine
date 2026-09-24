@@ -51,6 +51,7 @@ namespace minEngine
         void SetPreferredSamplerDesc(const RHISamplerDesc& desc);
 
         static std::shared_ptr<Texture2D> CreateSolidRGBA(RHI& rhi, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
+        static std::shared_ptr<Texture2D> CreateFromRGBA8(RHI& rhi, uint32_t width, uint32_t height, const uint8_t* rgba);
 
     protected:
         friend class Texture2DLoader;

@@ -48,4 +48,21 @@ namespace minEngine
             pixel);
         return texture;
     }
+
+    std::shared_ptr<Texture2D> Texture2D::CreateFromRGBA8(RHI& rhi, uint32_t width, uint32_t height, const uint8_t* rgba)
+    {
+        if (width == 0 || height == 0 || rgba == nullptr)
+        {
+            return nullptr;
+        }
+
+        std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>();
+        texture->m_Width = width;
+        texture->m_Height = height;
+        texture->m_Channels = 4;
+        texture->m_RHITexture = rhi.RHICreateTexture2D(
+            MakeTexture2DBindingDesc(width, height, TextureFormat::RGBA8),
+            rgba);
+        return texture;
+    }
 }

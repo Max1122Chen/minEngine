@@ -36,6 +36,7 @@
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
 #include "Suites/ScreenUIButtonTest.h"
+#include "Suites/ScreenUITextTest.h"
 #include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/CommandSystemTest.h"
 #include "Suites/SkeletonPoseTest.h"
@@ -633,6 +634,23 @@ namespace minEngine
             }
         };
 
+        struct ScreenUITextTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-text", "Screen UI Text", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-text'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-text",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct GameObjectHierarchyTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -850,6 +868,7 @@ namespace minEngine
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
         using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
+        using ScreenUITextSuite = TypedTestSuite<ScreenUITextTestSuiteTraits>;
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
@@ -906,6 +925,7 @@ namespace minEngine
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());
             registry.Register(ScreenUIButtonSuite::Get());
+            registry.Register(ScreenUITextSuite::Get());
             registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());

@@ -53,6 +53,15 @@ namespace minEngine
         Custom,
     };
 
+    /** Horizontal alignment of ScreenUI text inside the Widget rect. */
+    ME_ENUM()
+    enum class EUITextHorizontalAlignment : uint8_t
+    {
+        Left = 0,
+        Center,
+        Right,
+    };
+
     /** Axis-aligned rect in Canvas reference pixels (top-left origin, +Y down). */
     struct UIRect
     {
