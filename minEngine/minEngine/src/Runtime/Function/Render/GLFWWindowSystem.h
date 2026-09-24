@@ -35,6 +35,7 @@ namespace minEngine
         virtual void PollEvents() const override;
         virtual void SetCursorVisible(bool visible) override;
         virtual void SetCursorClipRect(const WindowCursorClipRect& rect) override;
+        virtual Vector2 ConsumeRelativeMouseDelta() override;
 
         virtual void* GetWindowHandle() const override { return m_Window; }
 
@@ -42,6 +43,9 @@ namespace minEngine
         virtual uint32_t GetHeight() override { return m_Height; }
 
         bool HasOpenGLContext() const { return m_HasOpenGLContext; }
+
+        /** Called from Win32 WndProc while Raw Input is registered. */
+        void AccumulateRelativeMouseDelta(float deltaX, float deltaY);
 
     protected:
         static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -106,8 +110,12 @@ namespace minEngine
         bool m_IsInitialized = false;
         bool m_HasOpenGLContext = false;
         bool m_bCursorClipActive = false;
+        bool m_bRawMouseRegistered = false;
+        mutable Vector2 m_PendingRelativeMouseDelta = Vector2(0.0f, 0.0f);
 
         void SetupWindowEventCallbacks();
+        void SetRelativeMouseCaptureEnabled(bool enabled);
+        void SyncMouseIntentPreserveWithClip(bool clipActive);
         const static InputKey& ConvertGLFWKeyToInputKey(int glfwKey);
         const static InputKeyAction ConvertGLFWKeyActionToInputKeyAction(int action);
     };

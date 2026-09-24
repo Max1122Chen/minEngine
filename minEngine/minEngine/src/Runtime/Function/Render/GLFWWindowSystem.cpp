@@ -2,16 +2,20 @@
 #include "WindowSystem.h"
 #include "Runtime/Core/ProductBranding.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
+#include "Runtime/Function/Input/InputSystem.h"
 
 #include "Core.h"
 
 #include <string>
+#include <vector>
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 #endif
 
 // TODO: Include error handling and logging as needed
@@ -20,6 +24,49 @@
 
 namespace minEngine
 {
+#if defined(_WIN32)
+    namespace
+    {
+        GLFWWindowSystem* s_RawMouseOwner = nullptr;
+        WNDPROC s_PreviousWndProc = nullptr;
+
+        LRESULT CALLBACK RawMouseWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+        {
+            if (msg == WM_INPUT && s_RawMouseOwner != nullptr)
+            {
+                UINT size = 0;
+                ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER));
+                if (size > 0)
+                {
+                    alignas(RAWINPUT) unsigned char stackBuffer[sizeof(RAWINPUT)];
+                    RAWINPUT* raw = reinterpret_cast<RAWINPUT*>(stackBuffer);
+                    std::vector<unsigned char> heapBuffer;
+                    if (size > sizeof(stackBuffer))
+                    {
+                        heapBuffer.resize(size);
+                        raw = reinterpret_cast<RAWINPUT*>(heapBuffer.data());
+                    }
+
+                    if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, raw, &size, sizeof(RAWINPUTHEADER)) == size
+                        && raw->header.dwType == RIM_TYPEMOUSE
+                        && (raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
+                    {
+                        s_RawMouseOwner->AccumulateRelativeMouseDelta(
+                            static_cast<float>(raw->data.mouse.lLastX),
+                            static_cast<float>(raw->data.mouse.lLastY));
+                    }
+                }
+            }
+
+            if (s_PreviousWndProc != nullptr)
+            {
+                return ::CallWindowProcW(s_PreviousWndProc, hwnd, msg, wParam, lParam);
+            }
+            return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+        }
+    }
+#endif
+
     WindowSystem* WindowSystem::s_Instance = nullptr;
 
     void WindowSystem::SetInstance(WindowSystem* instance)
@@ -130,6 +177,7 @@ namespace minEngine
         WindowCursorClipRect clearRect;
         clearRect.bEnabled = false;
         SetCursorClipRect(clearRect);
+        SetRelativeMouseCaptureEnabled(false);
 
         if (m_Window)
         {
@@ -197,23 +245,17 @@ namespace minEngine
     void GLFWWindowSystem::SetCursorClipRect(const WindowCursorClipRect& rect)
     {
 #if defined(_WIN32)
-        if (!rect.bEnabled)
+        const bool wantClip = rect.bEnabled && rect.Right > rect.Left && rect.Bottom > rect.Top;
+        if (!wantClip)
         {
             if (m_bCursorClipActive)
             {
                 ::ClipCursor(nullptr);
                 m_bCursorClipActive = false;
             }
-            return;
-        }
-
-        if (rect.Right <= rect.Left || rect.Bottom <= rect.Top)
-        {
-            if (m_bCursorClipActive)
-            {
-                ::ClipCursor(nullptr);
-                m_bCursorClipActive = false;
-            }
+            SetRelativeMouseCaptureEnabled(false);
+            SyncMouseIntentPreserveWithClip(false);
+            m_PendingRelativeMouseDelta = Vector2(0.0f, 0.0f);
             return;
         }
 
@@ -225,11 +267,98 @@ namespace minEngine
         if (::ClipCursor(&clipRect))
         {
             m_bCursorClipActive = true;
+            SetRelativeMouseCaptureEnabled(true);
+            SyncMouseIntentPreserveWithClip(true);
         }
 #else
         (void)rect;
-        // Non-Win32: no ClipCursor equivalent wired yet (BUG-EDITOR-004 MVP is Win32-first).
+        // Non-Win32: no ClipCursor / Raw Input equivalent wired yet (BUG-EDITOR-004 MVP is Win32-first).
 #endif
+    }
+
+    Vector2 GLFWWindowSystem::ConsumeRelativeMouseDelta()
+    {
+        const Vector2 delta = m_PendingRelativeMouseDelta;
+        m_PendingRelativeMouseDelta = Vector2(0.0f, 0.0f);
+        return delta;
+    }
+
+    void GLFWWindowSystem::AccumulateRelativeMouseDelta(float deltaX, float deltaY)
+    {
+        m_PendingRelativeMouseDelta.x += deltaX;
+        m_PendingRelativeMouseDelta.y += deltaY;
+    }
+
+    void GLFWWindowSystem::SetRelativeMouseCaptureEnabled(bool enabled)
+    {
+#if defined(_WIN32)
+        if (m_Window == nullptr)
+        {
+            return;
+        }
+
+        HWND hwnd = glfwGetWin32Window(m_Window);
+        if (hwnd == nullptr)
+        {
+            return;
+        }
+
+        if (enabled)
+        {
+            if (!m_bRawMouseRegistered)
+            {
+                RAWINPUTDEVICE rid{};
+                rid.usUsagePage = 0x01;
+                rid.usUsage = 0x02; // mouse
+                rid.dwFlags = 0;
+                rid.hwndTarget = hwnd;
+                if (::RegisterRawInputDevices(&rid, 1, sizeof(rid)))
+                {
+                    m_bRawMouseRegistered = true;
+                    s_RawMouseOwner = this;
+                    if (s_PreviousWndProc == nullptr)
+                    {
+                        s_PreviousWndProc = reinterpret_cast<WNDPROC>(
+                            ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&RawMouseWndProc)));
+                    }
+                }
+            }
+            return;
+        }
+
+        if (m_bRawMouseRegistered)
+        {
+            RAWINPUTDEVICE rid{};
+            rid.usUsagePage = 0x01;
+            rid.usUsage = 0x02;
+            rid.dwFlags = RIDEV_REMOVE;
+            rid.hwndTarget = nullptr;
+            ::RegisterRawInputDevices(&rid, 1, sizeof(rid));
+            m_bRawMouseRegistered = false;
+        }
+
+        if (s_RawMouseOwner == this)
+        {
+            if (s_PreviousWndProc != nullptr)
+            {
+                ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(s_PreviousWndProc));
+                s_PreviousWndProc = nullptr;
+            }
+            s_RawMouseOwner = nullptr;
+        }
+#else
+        (void)enabled;
+#endif
+    }
+
+    void GLFWWindowSystem::SyncMouseIntentPreserveWithClip(bool clipActive)
+    {
+        if (!InputSystem::HasInstance())
+        {
+            return;
+        }
+
+        InputSystem::Get().SetPreserveMouseIntentBeyondClip(clipActive);
     }
 
     void GLFWWindowSystem::OnKey(InputKey key, int scancode, InputKeyAction action, int mods)

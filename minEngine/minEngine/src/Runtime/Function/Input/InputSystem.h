@@ -73,6 +73,12 @@ namespace minEngine
         static Vector2 GetMousePosition();
         static Vector2 GetMouseScrollDelta();
 
+        /**
+         * When true (PIE cursor clip): Mouse2D for IMC look tracks virtual absolute from Raw Input
+         * so intent continues at ClipCursor edges; GetMousePosition stays physical for ScreenUI.
+         */
+        void SetPreserveMouseIntentBeyondClip(bool enabled);
+
     private:
         void OnKey(InputKey key, int scancode, InputKeyAction action, int mods);
         void OnMouseButton(InputKey key, InputKeyAction action, int mods);
@@ -88,6 +94,8 @@ namespace minEngine
         void ClearGameplayActionEvents();
         /** Per-frame device edge cleanup (e.g. MouseScroll sticky Down). Runs even when gameplay IMC is gated off. */
         void EndFrameDeviceEdgeCleanup();
+        void WriteMouse2DState(const Vector2& position);
+        void ApplyRelativeMouseIntentFromWindow();
 
     private:
         friend class Engine;
@@ -107,5 +115,9 @@ namespace minEngine
 
         // Registered Input Components
         std::vector<InputComponent*> m_InputComponents;
+
+        Vector2 m_PhysicalMousePos = Vector2(0.0f, 0.0f);
+        Vector2 m_VirtualMousePos = Vector2(0.0f, 0.0f);
+        bool m_bPreserveMouseIntentBeyondClip = false;
     };
 }

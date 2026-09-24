@@ -1,6 +1,11 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-24 (BUG-CORE-004/EDITOR-004 Fixed)
+Last updated: 2026-09-24（BUG-EDITOR-004 S03 In Progress）
+
+### 2026-09-24 - BUG-EDITOR-004 S03 Fixed (edge look intent)
+- Clip 边界：Raw Input → virtual Mouse2D；GetMousePosition 仍 physical。
+- Editor build PASS；手验边界持续看向 OK。
+- **Next:** commit S03.
 
 ### 2026-09-24 - BUG-CORE-004 / BUG-EDITOR-004 Fixed
 - **S01:** EndFrameDeviceEdgeCleanup on gated Tick; gameplay-input-gate + scroll clear unit PASS.

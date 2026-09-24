@@ -8,7 +8,7 @@
 - **Found:** 2026-09-24
 - **Last updated:** 2026-09-24
 - **Affects:** Play-In-Editor；Scene 视口指针 UX
-- **Related Feature/Slice:** CORE-F05-S03 · Fix Design：[BUG-CORE-004 Fix Design](../Platform/Core/BUG-CORE-004_INPUT_GATE_DEVICE_CLEANUP_AND_PIE_POINTER_FIX_DESIGN.md) S02
+- **Related Feature/Slice:** CORE-F05-S03 · Fix Design：[BUG-CORE-004 Fix Design](../Platform/Core/BUG-CORE-004_INPUT_GATE_DEVICE_CLEANUP_AND_PIE_POINTER_FIX_DESIGN.md) S02–S03
 - **Related:** [BUG-CORE-004](./BUG-CORE-004.md)
 
 ## TL;DR
@@ -40,10 +40,14 @@ PIE 期间 Editor 关闭视口导航路由，也未提供「指针限制在 Scen
 ## 修复
 S02: PIE+Scene viewport focused -> \WindowSystem::SetCursorClipRect\ (Win32 ClipCursor) on ImageMin/Size; clear on unfocus/Stop/dtor.
 
+S03 follow-up: while clipped, Win32 Raw Input feeds virtual Mouse2D so look intent continues at edges; GetMousePosition stays physical for ScreenUI.
+
 ## 回归验证
 - [x] ClipCursor on focused PIE viewport image rect (Win32) — hand-verify
 - [x] Clear clip on unfocus / Stop / viewport dtor
 - [x] Edit navigate path unchanged (separate SetCursorVisible)
+- [x] S03: look continues when cursor is pressed against viewport edge
+- [x] S03: ScreenUI hit-test still follows physical cursor
 
 ## 关联
 - BUG-CORE-004 · CORE-F05 Play Mode
@@ -56,3 +60,5 @@ S02: PIE+Scene viewport focused -> \WindowSystem::SetCursorClipRect\ (Win32 Clip
 |------|------|
 | 2026-09-24 | Open；与 CORE-004 同波 Fix Design |
 | 2026-09-24 | Fixed S02 ClipCursor confine |
+| 2026-09-24 | Reopened residual：边界 look 意图；S03 Raw Intent |
+| 2026-09-24 | Fixed S03；手验 OK |

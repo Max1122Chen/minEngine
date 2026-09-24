@@ -40,6 +40,11 @@ namespace minEngine
         virtual void SetCursorVisible(bool visible) = 0;
         /** Confine OS cursor to a screen-space rect; bEnabled=false clears. Win32 ClipCursor; other platforms may no-op or degrade. */
         virtual void SetCursorClipRect(const WindowCursorClipRect& rect) = 0;
+        /**
+         * Relative mouse motion accumulated since last consume (e.g. Win32 Raw Input while clipped).
+         * Zero when unsupported or idle. Used so look intent continues at ClipCursor edges.
+         */
+        virtual Vector2 ConsumeRelativeMouseDelta() { return Vector2(0.0f, 0.0f); }
 
         virtual void* GetWindowHandle() const = 0;
 

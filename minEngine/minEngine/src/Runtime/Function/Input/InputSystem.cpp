@@ -80,6 +80,53 @@ namespace minEngine
         }
     }
 
+    void InputSystem::WriteMouse2DState(const Vector2& position)
+    {
+        InputKeyState* keyState = GetKeyState(InputKeys::Mouse2D);
+        keyState->action = (Math::abs(position.x) > 0.1f || Math::abs(position.y) > 0.1f)
+            ? InputKeyAction::Down
+            : InputKeyAction::Idle;
+        keyState->RawValue = Vector3(position.x, position.y, 0.0f);
+    }
+
+    void InputSystem::SetPreserveMouseIntentBeyondClip(bool enabled)
+    {
+        if (m_bPreserveMouseIntentBeyondClip == enabled)
+        {
+            return;
+        }
+
+        m_bPreserveMouseIntentBeyondClip = enabled;
+        if (enabled)
+        {
+            m_VirtualMousePos = m_PhysicalMousePos;
+            WriteMouse2DState(m_VirtualMousePos);
+        }
+        else
+        {
+            m_VirtualMousePos = m_PhysicalMousePos;
+            WriteMouse2DState(m_PhysicalMousePos);
+        }
+    }
+
+    void InputSystem::ApplyRelativeMouseIntentFromWindow()
+    {
+        if (!m_bPreserveMouseIntentBeyondClip || !WindowSystem::HasInstance())
+        {
+            return;
+        }
+
+        const Vector2 relativeDelta = WindowSystem::Get().ConsumeRelativeMouseDelta();
+        if (Math::abs(relativeDelta.x) < 0.0001f && Math::abs(relativeDelta.y) < 0.0001f)
+        {
+            return;
+        }
+
+        m_VirtualMousePos.x += relativeDelta.x;
+        m_VirtualMousePos.y += relativeDelta.y;
+        WriteMouse2DState(m_VirtualMousePos);
+    }
+
     void InputSystem::Initialize()
     {
         WindowSystem* windowSystem = &WindowSystem::Get();
@@ -126,6 +173,9 @@ namespace minEngine
     {
         // Clear actions with events last frame
         m_ActionsWithEventThisTick.clear();
+
+        // Apply Raw Input deltas before IMC so look-at-edge still advances Mouse2D while clipped.
+        ApplyRelativeMouseIntentFromWindow();
 
         if (!IsGameplayInputEnabled())
         {
@@ -317,12 +367,7 @@ namespace minEngine
 
     Vector2 InputSystem::GetMousePosition()
     {
-        auto it = Get().m_KeyStateMap.find(InputKeys::Mouse2D);
-        if(it != Get().m_KeyStateMap.end())        
-        {
-            return Vector2(it->second.RawValue.x, it->second.RawValue.y);
-        }
-        return Vector2(0.0f, 0.0f);
+        return Get().m_PhysicalMousePos;
     }
 
     Vector2 InputSystem::GetMouseScrollDelta()
@@ -347,14 +392,14 @@ namespace minEngine
 
     void InputSystem::OnCursorPos(double xPos, double yPos)
     {
-        auto it = m_KeyStateMap.find(InputKeys::Mouse2D);
-        if(it != m_KeyStateMap.end())
-        {
-            InputKeyState& keyState = it->second;
+        m_PhysicalMousePos = Vector2(static_cast<float>(xPos), static_cast<float>(yPos));
 
-            keyState.action = (Math::abs(xPos) > 0.1f || Math::abs(yPos) > 0.1f) ? InputKeyAction::Down : InputKeyAction::Idle;
-            keyState.RawValue = Vector3(static_cast<float>(xPos), static_cast<float>(yPos), 0.0f);
+        if (!m_bPreserveMouseIntentBeyondClip)
+        {
+            m_VirtualMousePos = m_PhysicalMousePos;
+            WriteMouse2DState(m_PhysicalMousePos);
         }
+        // While preserve is on: Mouse2D advances from Raw Input only (see ApplyRelativeMouseIntentFromWindow).
     }
 
     void InputSystem::OnMouseScroll(double xOffset, double yOffset)

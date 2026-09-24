@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** BUG-CORE-004（主）· BUG-EDITOR-004（同波）
 - **Type:** Bug fix design
-- **Complexity:** L1（S01 L0；S02 L1）
+- **Complexity:** L1（S01 L0；S02 L1；S03 L1）
 - **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-24
@@ -15,9 +15,9 @@
 
 ## TL;DR
 
-**S01（先做）：** F29 gated Tick 与「每帧设备边角清理」解耦 — Edit 仍不派发玩法 IMC，但必须清 MouseScroll（及同类瞬时态）。  
-**S02：** PIE 时把指针约束在 Scene Viewport（或相对鼠标），Stop/失焦恢复。  
-本包一次写清；实现可先合 S01 再做 S02。
+**S01：** F29 gated Tick 与设备边角清理解耦。  
+**S02：** PIE 时 ClipCursor 到 Scene Viewport。  
+**S03：** Clip 边界仍保留 look 意图（Raw Input → virtual Mouse2D；物理位留给 UI）。
 
 ---
 
@@ -27,8 +27,9 @@
 
 | Slice | Goal | Done when |
 |-------|------|-----------|
-| **S01** | Gated Tick 仍跑设备边角清理 | **Code Done** — EndFrameDeviceEdgeCleanup + unit |
+| **S01** | Gated Tick 仍跑设备边角清理 | **Done** — EndFrameDeviceEdgeCleanup + unit |
 | **S02** | PIE 指针约束到 Scene viewport | **Done** — Win32 ClipCursor on ImageMin/Size |
+| **S03** | Clip 边界保留 look 意图 | **Done** — Raw Input + virtual Mouse2D；手验 OK |
 
 ### Out
 
@@ -100,10 +101,32 @@ InputSystem::Tick(dt)
 
 ---
 
+## S03 — Clip 边界保留 look 意图（BUG-EDITOR-004 follow-up）
+
+### 问题
+`ClipCursor` 把物理光标卡在视口边后，GLFW 绝对坐标不再变化；依赖 `Mouse2D` 位置差分的 Look（及同类）在边界「推不动」。
+
+### 要求
+1. 物理光标仍约束在 viewport（ScreenUI `GetMousePosition` 用物理坐标）。
+2. 在边界继续推动时，IMC/`Mouse2D` 的 look 意图仍累计（Raw 相对位移）。
+
+### 方案
+- Clip 开启时：Win32 Raw Input 相对位移 → `WindowSystem::ConsumeRelativeMouseDelta`。
+- `InputSystem::SetPreserveMouseIntentBeyondClip(true)`：`Mouse2D` 走 virtual absolute（物理种子 + Raw 积分）；`GetMousePosition` 始终 physical。
+- Clip 关闭：同步回 physical，注销 Raw Input / 还原 WndProc。
+
+### 验证
+- [ ] PIE：光标停在视口边时仍可持续左右/上下看
+- [ ] ScreenUI 点击仍跟物理光标
+- [ ] Stop/失焦后 clip + preserve 清除
+
+---
+
 ## 实现顺序
 
 1. **S01** 立刻做（小、确认回归）
 2. **S02** 紧随（需 WindowSystem API + 手验）
+3. **S03** Clip 边界 Raw Intent（本 follow-up）
 
 ## 风险
 
@@ -112,18 +135,23 @@ InputSystem::Tick(dt)
 | S01 抽函数漏其它瞬时键 | 先只搬 scroll；注释契约 |
 | S02 ClipCursor 与 ImGui 抢光标 | 仅 PIE+viewport focus；Stop 必清理 |
 | 多监控坐标 | 用 GLFW/ImGui 屏幕坐标一致路径 |
+| S03 Raw + 绝对双计 | preserve 期间 Mouse2D 只用 Raw，不用 glfw 绝对 |
 
 ## Acceptance
 
 ### S01
 - [x] Unit: gated Tick clears MouseScroll
 - [x] F29 gate paths unchanged (early-out still clears IMC)
-- [ ] `gameplay-input-gate` PASS
+- [x] `gameplay-input-gate` PASS
 
 ### S02
 - [x] Win32 ClipCursor when PIE viewport focused
 - [x] Stop/失焦/dtor clear clip
 - [x] Edit navigate SetCursorVisible unchanged
+
+### S03
+- [x] Raw Input relative while clipped; Mouse2D virtual; GetMousePosition physical
+- [x] Hand-verify look continues at viewport edge
 
 ---
 
@@ -133,3 +161,6 @@ InputSystem::Tick(dt)
 |------|------|
 | 2026-09-24 | Draft：S01 清理解耦；S02 Clip/DISABLED 方案 |
 | 2026-09-24 | S01 EndFrameDeviceEdgeCleanup landed |
+| 2026-09-24 | S02 ClipCursor landed |
+| 2026-09-24 | S03：Clip 边界 Raw Intent / physical vs virtual Mouse2D |
+| 2026-09-24 | S03 Done；手验 OK |
