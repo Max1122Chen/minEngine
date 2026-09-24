@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-24（UI-F04 Done）
+Last updated: 2026-09-24（BUG-CORE-004/EDITOR-004 Fixed）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,7 +11,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** 空闲（UI-F04 Text/Font 已收口）。
+**Primary：** 空闲（BUG-CORE-004 / BUG-EDITOR-004 Fixed）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
@@ -20,7 +20,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 2 | CORE-F30 | Play main Camera（BeginPlay bool） | **Done** | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) |
 | 3 | UI-F04 | ScreenUI Text / Font | **Done** | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) |
 
-**下一动作：** 提交 UI-F04；再从 Capability / 后置轨挑下一刀。
+**下一动作：** 提交 BUG-CORE-004 / BUG-EDITOR-004 修复；再挑下一刀。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

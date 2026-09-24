@@ -69,6 +69,17 @@ namespace minEngine
         }
     }
 
+    void InputSystem::EndFrameDeviceEdgeCleanup()
+    {
+        // Scroll is edge-triggered; clear after the frame so KeyDown(MouseScroll) is one-shot.
+        InputKeyState* mouseScrollState = GetKeyState(InputKeys::MouseScroll);
+        if (mouseScrollState->action == InputKeyAction::Down)
+        {
+            mouseScrollState->action = InputKeyAction::Idle;
+            mouseScrollState->RawValue = Vector3(0.0f, 0.0f, 0.0f);
+        }
+    }
+
     void InputSystem::Initialize()
     {
         WindowSystem* windowSystem = &WindowSystem::Get();
@@ -119,6 +130,7 @@ namespace minEngine
         if (!IsGameplayInputEnabled())
         {
             ClearGameplayActionEvents();
+            EndFrameDeviceEdgeCleanup();
             return;
         }
 
@@ -211,14 +223,7 @@ namespace minEngine
             }
         }
 
-        // Special handling for scroll input to reset its state after processing to avoid continuous scroll input
-        InputKeyState* mouseScrollState = GetKeyState(InputKeys::MouseScroll);
-        if(mouseScrollState->action == InputKeyAction::Down)
-        {
-            // Reset scroll state after processing to avoid continuous scroll input
-            mouseScrollState->action = InputKeyAction::Idle;
-            mouseScrollState->RawValue = Vector3(0.0f, 0.0f, 0.0f);
-        }
+        EndFrameDeviceEdgeCleanup();
     }
 
     void InputSystem::AddInputComponent(InputComponent *component)

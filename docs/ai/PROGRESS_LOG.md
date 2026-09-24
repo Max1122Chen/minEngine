@@ -1,6 +1,17 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-24 (UI-F04 Done)
+Last updated: 2026-09-24 (BUG-CORE-004/EDITOR-004 Fixed)
+
+### 2026-09-24 - BUG-CORE-004 / BUG-EDITOR-004 Fixed
+- **S01:** EndFrameDeviceEdgeCleanup on gated Tick; gameplay-input-gate + scroll clear unit PASS.
+- **S02:** PIE focused Scene viewport ClipCursor (Win32); clear on unfocus/Stop/dtor.
+- **Next:** commit draft.
+
+### 2026-09-24 - BUG-CORE-004 / BUG-EDITOR-004 Open (post-F29 input UX)
+- **CORE-004:** F29 gated Tick skips MouseScroll reset -> Edit fly speed sticks at 0.5/64.
+- **EDITOR-004:** PIE has no viewport pointer confine (F05-S03 + missing Clip/DISABLED policy).
+- **Fix Design:** Draft S01 device cleanup / S02 PIE pointer — BUG-CORE-004_INPUT_GATE_DEVICE_CLEANUP_AND_PIE_POINTER_FIX_DESIGN.md.
+- **Next:** Implement S01 first.
 
 ### 2026-09-24 - UI-F04 Done (ScreenUI Text / Font)
 - **Runtime:** TextComponent + FontGlyphAtlas/Cache + TextMeshBuilder; Widget prefers Text for proxy; local-pixel VB + ScreenUIPass.

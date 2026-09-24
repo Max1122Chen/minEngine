@@ -9,6 +9,7 @@
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/UI/UISystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Prefab/PrefabEditConstraints.h"
 #include "SubEditor/Scene/SceneEditor.h"
@@ -241,6 +242,13 @@ namespace minEngine
 
         m_State = PlayState::Editing;
         ApplyInspectingSceneForPlayState();
+
+        if (WindowSystem::HasInstance())
+        {
+            WindowCursorClipRect clearRect;
+            clearRect.bEnabled = false;
+            WindowSystem::Get().SetCursorClipRect(clearRect);
+        }
     }
 
     void PlayInEditorSession::TickPIE(float deltaTime)

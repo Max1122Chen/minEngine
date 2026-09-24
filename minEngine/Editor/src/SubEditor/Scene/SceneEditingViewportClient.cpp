@@ -30,6 +30,8 @@
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/UI/UISystem.h"
 
+#include <cmath>
+
 #include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 
 #include "Render/PrimitiveSceneProxies/StaticMeshSceneProxy.h"
@@ -77,8 +79,8 @@ namespace minEngine
 
 
     SceneEditingViewportClient::~SceneEditingViewportClient()
-
     {
+        ClearPlayModePointerConfine();
 
         if (SceneManager::Get().GetEditorSceneViewport() == &GetSceneViewport())
         {
@@ -162,6 +164,11 @@ namespace minEngine
         if (IsPlayModeViewActive())
         {
             SyncPlayModeCamera();
+            UpdatePlayModePointerConfine();
+        }
+        else
+        {
+            ClearPlayModePointerConfine();
         }
 
 
@@ -277,6 +284,50 @@ namespace minEngine
         viewportCamera->SetPosition(sceneCamera->GetPosition());
         viewportCamera->SetRotation(sceneCamera->GetRotation());
         viewportCamera->UpdateViewMatrix();
+    }
+
+    void SceneEditingViewportClient::ClearPlayModePointerConfine()
+    {
+        if (!m_bPlayPointerClipActive)
+        {
+            return;
+        }
+
+        if (WindowSystem::HasInstance())
+        {
+            WindowCursorClipRect clearRect;
+            clearRect.bEnabled = false;
+            WindowSystem::Get().SetCursorClipRect(clearRect);
+        }
+        m_bPlayPointerClipActive = false;
+    }
+
+    void SceneEditingViewportClient::UpdatePlayModePointerConfine()
+    {
+        if (!WindowSystem::HasInstance())
+        {
+            return;
+        }
+
+        const ViewportFrameState& frame = GetFrameState();
+        const bool wantClip = IsFocused()
+            && frame.ImageSize.x > 1.0f
+            && frame.ImageSize.y > 1.0f;
+
+        if (!wantClip)
+        {
+            ClearPlayModePointerConfine();
+            return;
+        }
+
+        WindowCursorClipRect clipRect;
+        clipRect.bEnabled = true;
+        clipRect.Left = static_cast<int>(std::floor(frame.ImageMin.x));
+        clipRect.Top = static_cast<int>(std::floor(frame.ImageMin.y));
+        clipRect.Right = static_cast<int>(std::ceil(frame.ImageMin.x + frame.ImageSize.x));
+        clipRect.Bottom = static_cast<int>(std::ceil(frame.ImageMin.y + frame.ImageSize.y));
+        WindowSystem::Get().SetCursorClipRect(clipRect);
+        m_bPlayPointerClipActive = true;
     }
 
     void SceneEditingViewportClient::SyncObservedScene()

@@ -9,6 +9,16 @@ namespace minEngine
 {
     class Engine;
 
+    /** Inclusive-exclusive screen pixel rect for OS cursor clip (Win32 ClipCursor). */
+    struct WindowCursorClipRect
+    {
+        bool bEnabled = false;
+        int Left = 0;
+        int Top = 0;
+        int Right = 0;
+        int Bottom = 0;
+    };
+
     class WindowSystem
     {
     public:
@@ -28,12 +38,15 @@ namespace minEngine
         virtual void SwapBuffers() = 0;
         virtual void PollEvents() const = 0;
         virtual void SetCursorVisible(bool visible) = 0;
+        /** Confine OS cursor to a screen-space rect; bEnabled=false clears. Win32 ClipCursor; other platforms may no-op or degrade. */
+        virtual void SetCursorClipRect(const WindowCursorClipRect& rect) = 0;
 
         virtual void* GetWindowHandle() const = 0;
 
         virtual uint32_t GetWidth() = 0;
         virtual uint32_t GetHeight() = 0;
 
+        static bool HasInstance() { return s_Instance != nullptr; }
         static WindowSystem& Get();
 
         // Window event callback function types

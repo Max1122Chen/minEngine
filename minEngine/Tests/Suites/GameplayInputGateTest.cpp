@@ -91,12 +91,47 @@ namespace minEngine
             SceneManager::Get().SetEditorSceneViewport(nullptr);
             return true;
         }
+
+        bool RunGatedTickStillClearsMouseScroll()
+        {
+            GameplayInputGateTestScope scope;
+
+            SceneViewport dummyViewport;
+            SceneManager::Get().SetEditorSceneViewport(&dummyViewport);
+
+            if (scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: Edit viewport required for scroll-cleanup case.");
+                SceneManager::Get().SetEditorSceneViewport(nullptr);
+                return false;
+            }
+
+            Testing::TestAccess<InputSystem>::SimulateMouseScroll(scope.GetInput(), -1.0f);
+            if (!Testing::TestAccess<InputSystem>::IsMouseScrollDown(scope.GetInput()))
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: scroll inject should mark MouseScroll Down.");
+                SceneManager::Get().SetEditorSceneViewport(nullptr);
+                return false;
+            }
+
+            Testing::TestAccess<InputSystem>::Tick(scope.GetInput(), 1.0f / 60.0f);
+            if (Testing::TestAccess<InputSystem>::IsMouseScrollDown(scope.GetInput()))
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: gated Tick must clear MouseScroll (BUG-CORE-004).");
+                SceneManager::Get().SetEditorSceneViewport(nullptr);
+                return false;
+            }
+
+            SceneManager::Get().SetEditorSceneViewport(nullptr);
+            return true;
+        }
     }
 
     bool RunGameplayInputGateTests()
     {
         return RunStandaloneEnabledWithoutEditorViewport()
-            && RunEditorViewportBlocksUntilBeginPlay();
+            && RunEditorViewportBlocksUntilBeginPlay()
+            && RunGatedTickStillClearsMouseScroll();
     }
 }
 

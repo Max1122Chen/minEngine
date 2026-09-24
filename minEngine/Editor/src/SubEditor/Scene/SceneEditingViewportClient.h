@@ -105,6 +105,8 @@ namespace minEngine
         bool IsPlayModeViewActive() const;
         Scene* GetViewTargetScene() const;
         void SyncPlayModeCamera();
+        void UpdatePlayModePointerConfine();
+        void ClearPlayModePointerConfine();
         static CameraComponent* FindViewCameraInScene(Scene* scene);
 
 
@@ -148,7 +150,7 @@ namespace minEngine
 
         bool m_IsNavigating = false;
 
-
+        bool m_bPlayPointerClipActive = false;
 
         bool m_CameraStateInitialized = false;
 

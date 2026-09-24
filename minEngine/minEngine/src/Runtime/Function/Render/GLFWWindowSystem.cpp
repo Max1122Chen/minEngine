@@ -6,6 +6,14 @@
 #include "Core.h"
 
 #include <string>
+
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
 // TODO: Include error handling and logging as needed
 
 
@@ -119,6 +127,10 @@ namespace minEngine
             return;
         }
 
+        WindowCursorClipRect clearRect;
+        clearRect.bEnabled = false;
+        SetCursorClipRect(clearRect);
+
         if (m_Window)
         {
             glfwDestroyWindow(m_Window);
@@ -180,6 +192,44 @@ namespace minEngine
     void GLFWWindowSystem::SetCursorVisible(bool visible)
     {
         glfwSetInputMode(m_Window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+    }
+
+    void GLFWWindowSystem::SetCursorClipRect(const WindowCursorClipRect& rect)
+    {
+#if defined(_WIN32)
+        if (!rect.bEnabled)
+        {
+            if (m_bCursorClipActive)
+            {
+                ::ClipCursor(nullptr);
+                m_bCursorClipActive = false;
+            }
+            return;
+        }
+
+        if (rect.Right <= rect.Left || rect.Bottom <= rect.Top)
+        {
+            if (m_bCursorClipActive)
+            {
+                ::ClipCursor(nullptr);
+                m_bCursorClipActive = false;
+            }
+            return;
+        }
+
+        RECT clipRect;
+        clipRect.left = rect.Left;
+        clipRect.top = rect.Top;
+        clipRect.right = rect.Right;
+        clipRect.bottom = rect.Bottom;
+        if (::ClipCursor(&clipRect))
+        {
+            m_bCursorClipActive = true;
+        }
+#else
+        (void)rect;
+        // Non-Win32: no ClipCursor equivalent wired yet (BUG-EDITOR-004 MVP is Win32-first).
+#endif
     }
 
     void GLFWWindowSystem::OnKey(InputKey key, int scancode, InputKeyAction action, int mods)

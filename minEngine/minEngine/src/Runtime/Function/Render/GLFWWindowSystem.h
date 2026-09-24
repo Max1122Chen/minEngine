@@ -4,27 +4,22 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-
-
 struct GLFWwindow;
 
 namespace minEngine
 {
-
     class GLFWWindowSystem : public WindowSystem
     {
     public:
-
-
         int m_Width;
         int m_Height;
         GLFWwindow* m_Window = nullptr;
 
-
         GLFWWindowSystem(int width = 800, int height = 600)
             : m_Width(width), m_Height(height), m_Window(nullptr)
-        {};
-        
+        {
+        }
+
         ~GLFWWindowSystem();
 
         virtual void Initialize() override;
@@ -39,7 +34,8 @@ namespace minEngine
         virtual void SwapBuffers() override;
         virtual void PollEvents() const override;
         virtual void SetCursorVisible(bool visible) override;
-        
+        virtual void SetCursorClipRect(const WindowCursorClipRect& rect) override;
+
         virtual void* GetWindowHandle() const override { return m_Window; }
 
         virtual uint32_t GetWidth() override { return m_Width; }
@@ -48,7 +44,6 @@ namespace minEngine
         bool HasOpenGLContext() const { return m_HasOpenGLContext; }
 
     protected:
-        // Window events callbacks
         static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
         {
             GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
@@ -56,7 +51,6 @@ namespace minEngine
             {
                 const InputKey& inputKey = ConvertGLFWKeyToInputKey(key);
                 InputKeyAction keyAction = ConvertGLFWKeyActionToInputKeyAction(action);
-                
                 windowSystem->OnKey(inputKey, scancode, keyAction, mods);
             }
         }
@@ -111,13 +105,10 @@ namespace minEngine
         bool m_IsGlfwInitialized = false;
         bool m_IsInitialized = false;
         bool m_HasOpenGLContext = false;
-       
+        bool m_bCursorClipActive = false;
 
-
-    private:
         void SetupWindowEventCallbacks();
         const static InputKey& ConvertGLFWKeyToInputKey(int glfwKey);
         const static InputKeyAction ConvertGLFWKeyActionToInputKeyAction(int action);
-
     };
 }

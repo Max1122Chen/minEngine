@@ -86,6 +86,8 @@ namespace minEngine
         InputActionValue ApplyModifiers(const std::vector<std::shared_ptr<InputModifier>>& modifiers, const InputActionValue& rawValue, float deltaTime);
         InputTriggerEvent GetTriggerStateChangeEvent(InputTriggerState lastState, InputTriggerState newState);
         void ClearGameplayActionEvents();
+        /** Per-frame device edge cleanup (e.g. MouseScroll sticky Down). Runs even when gameplay IMC is gated off. */
+        void EndFrameDeviceEdgeCleanup();
 
     private:
         friend class Engine;
