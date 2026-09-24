@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-24（ED-F23 Done）
+Last updated: 2026-09-24（CORE-F32 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,21 +11,21 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** 空闲（ED-F23 Done）。
+**Primary：** （空 — 待选下一主线）
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
-| 1 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
-| 2 | CORE-F29 | Play-gated gameplay Input | **Done** | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
-| 3 | CORE-F30 | Play main Camera（BeginPlay bool） | **Done** | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) |
+| 0 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
+| 1 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
+| 2 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
+| 3 | CORE-F29 | Play-gated gameplay Input | **Done** | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
 | 4 | UI-F04 | ScreenUI Text / Font | **Done** | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) |
 
-**下一动作：** 提交 ED-F23；再挑下一刀。
+**下一动作：** 待定 Primary（minCraft 可验证 hold/Down；后置 Skylight / Atmosphere 仅研究）。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 
-**本波已收口（勿当 WIP）：** UI-F04；CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04；RND-F21 **Deferred**。
+**本波已收口（勿当 WIP）：** CORE-F32；ED-F23；UI-F04；CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04；RND-F21 **Deferred**。
 **并行 / 不挡**
 
 | 轨 | ID | 说明 |

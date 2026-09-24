@@ -1,6 +1,14 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-24（ED-F23 Done）
+Last updated: 2026-09-24（CORE-F32 Done）
+
+### 2026-09-24 - CORE-F32 Done (Enhanced Input hold / InputTriggerDown)
+- **Fix A:** finalize `prevState = LastState`; reset tracker before Evaluate (avoid mapping NoTrigger pollution).
+- **Fix B:** release/idle re-enqueue instances with LastState Ongoing|Triggered (Value=0) so Canceled/Completed fire.
+- **Clarify:** NoTrigger = Triggered-while-held (Jump); InputTriggerDown = Ongoing → Started/Canceled.
+- **Verify:** `minEngineTests.exe test input-trigger-down` PASS (Down Started/Canceled + Jump Triggered regression).
+- **Docs:** Design/Registry/ACTIVE_WORK Done.
+- **Next:** commit draft; minCraft can drop KeyDown bypass for hold binds.
 
 ### 2026-09-24 - ED-F23 Done (Viewport Pointer Capture)
 - Unified Navigate/PIE policy: clip + Raw intent; Captured hide; Released show.

@@ -3,6 +3,8 @@
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Input/InputKeys.h"
 #include "Runtime/Function/Input/InputKeyState.h"
+#include "Runtime/Function/Input/InputTriggers.h"
+#include "Runtime/Function/Input/InputAction.h"
 
 namespace minEngine::Testing
 {
@@ -20,6 +22,11 @@ namespace minEngine::Testing
             input.OnMouseScroll(0.0, static_cast<double>(yOffset));
         }
 
+        static void SimulateKey(InputSystem& input, const InputKey& key, InputKeyAction action)
+        {
+            input.OnKey(key, 0, action, 0);
+        }
+
         static void Tick(InputSystem& input, float deltaTime)
         {
             input.Tick(deltaTime);
@@ -28,6 +35,18 @@ namespace minEngine::Testing
         static bool IsMouseScrollDown(const InputSystem& input)
         {
             return input.GetKeyState(InputKeys::MouseScroll)->action == InputKeyAction::Down;
+        }
+
+        static InputTriggerEvent GetTriggerEvent(InputSystem& input, InputAction* action)
+        {
+            InputActionInstance* instance = input.FindInputActionInstance(action);
+            return instance != nullptr ? instance->TriggerEvent : InputTriggerEvent::None;
+        }
+
+        static InputTriggerState GetLastTriggerState(InputSystem& input, InputAction* action)
+        {
+            InputActionInstance* instance = input.FindInputActionInstance(action);
+            return instance != nullptr ? instance->LastState : InputTriggerState::None;
         }
     };
 }

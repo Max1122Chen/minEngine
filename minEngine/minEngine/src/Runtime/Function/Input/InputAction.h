@@ -59,6 +59,16 @@ namespace minEngine
         {
             NoTriggerState = inState;
         }
+        void Reset()
+        {
+            NoTriggerState = InputTriggerState::None;
+            bEvaluatedTriggers = false;
+            bFoundActiveTrigger = false;
+            bFoundExplicit = false;
+            bAnyExplicitTriggered = false;
+            bAllImplicitTriggered = true;
+            bBlocking = false;
+        }
         InputTriggerState GetState() const;
         InputTriggerState EvaluateTriggerState(const std::vector<std::shared_ptr<InputTrigger>>& triggers, const InputActionValue& modifiedValue, float deltaTime);
     
@@ -72,7 +82,7 @@ namespace minEngine
         bool bFoundActiveTrigger = false;
         bool bFoundExplicit = false;
         bool bAnyExplicitTriggered = false;
-        bool bAllImplicitTriggered = false;
+        bool bAllImplicitTriggered = true;
         bool bBlocking = false;
     }; 
 

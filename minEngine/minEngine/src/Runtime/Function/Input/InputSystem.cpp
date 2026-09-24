@@ -141,23 +141,26 @@ namespace minEngine
 
     void InputSystem::Initialize()
     {
-        WindowSystem* windowSystem = &WindowSystem::Get();
-
-        // TODO: maybe we will wrap these logic into a private function later
-        windowSystem->RegisterOnKeyCallback([this](InputKey key, int scancode, InputKeyAction action, int mods)
+        if (WindowSystem::HasInstance())
         {
-            this->OnKey(key, scancode, action, mods);
-        });
+            WindowSystem* windowSystem = &WindowSystem::Get();
 
-        windowSystem->RegisterOnCursorPosCallback([this](double xPos, double yPos)
-        {
-            this->OnCursorPos(xPos, yPos);
-        });
+            // TODO: maybe we will wrap these logic into a private function later
+            windowSystem->RegisterOnKeyCallback([this](InputKey key, int scancode, InputKeyAction action, int mods)
+            {
+                this->OnKey(key, scancode, action, mods);
+            });
 
-        windowSystem->RegisterOnMouseScrollCallback([this](double xOffset, double yOffset)
-        {
-            this->OnMouseScroll(xOffset, yOffset);
-        });
+            windowSystem->RegisterOnCursorPosCallback([this](double xPos, double yPos)
+            {
+                this->OnCursorPos(xPos, yPos);
+            });
+
+            windowSystem->RegisterOnMouseScrollCallback([this](double xOffset, double yOffset)
+            {
+                this->OnMouseScroll(xOffset, yOffset);
+            });
+        }
     
         m_InputKeys.Initialize();
         for(const auto& key : m_InputKeys.GetAllKeys())
@@ -185,6 +188,13 @@ namespace minEngine
     {
         // Clear actions with events last frame
         m_ActionsWithEventThisTick.clear();
+
+        for (auto& [action, instance] : m_ActionInstances)
+        {
+            (void)action;
+            instance.TriggerStateTracker.Reset();
+            instance.TriggerEvent = InputTriggerEvent::None;
+        }
 
         // Apply Raw Input deltas before IMC so look-at-edge still advances Mouse2D while clipped.
         ApplyRelativeMouseIntentFromWindow();
@@ -239,15 +249,41 @@ namespace minEngine
                     InputActionValue modifiedValue = ApplyModifiers(mapping.GetModifiers(), rawValue, deltaTime);
                     instance->Value += modifiedValue;   // we directly accumulate values from multiple mappings. TODO: maybe distinguish different behaviors of accumulation later
                 
-                    // Evaluate trigger state
+                    // Evaluate mapping-level triggers (if any).
                     InputTriggerState newState = triggerStateTracker.EvaluateTriggerState(mapping.GetTriggers(), modifiedValue, deltaTime);
-                    
-                    // handle no trigger situation. Same behavior as InputTriggerDown
+                    (void)newState;
+
+                    // No mapping triggers: Boolean held → Triggered (Jump-style). Not the same as InputTriggerDown (Ongoing).
                     triggerStateTracker.SetNoTriggerState(modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
 
                     instance->TriggerStateTracker = std::max(instance->TriggerStateTracker, triggerStateTracker);
                 }
                 
+            }
+        }
+
+        // CORE-F32: release / idle frames must still finalize actions that were Ongoing/Triggered
+        // so Ongoing→None (Canceled) and Triggered→None (Completed) can fire.
+        for (auto& [action, instance] : m_ActionInstances)
+        {
+            if (!action)
+            {
+                continue;
+            }
+
+            const bool bUpdatedThisFrame =
+                std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action)
+                != m_ActionsWithEventThisTick.end();
+            if (bUpdatedThisFrame)
+            {
+                continue;
+            }
+
+            if (instance.LastState == InputTriggerState::Ongoing
+                || instance.LastState == InputTriggerState::Triggered)
+            {
+                instance.Value.Reset();
+                m_ActionsWithEventThisTick.push_back(action);
             }
         }
 
@@ -262,10 +298,15 @@ namespace minEngine
                 InputActionValue modifiedValue = ApplyModifiers(action->GetModifiers(), instance.Value, deltaTime);
                 instance.Value = modifiedValue;
 
-                InputTriggerState prevState = instance.TriggerStateTracker.GetState();
+                // Stable previous frame state — do not use the mapping-polluted tracker (CORE-F32).
+                const InputTriggerState prevState = instance.LastState;
 
-                instance.TriggerStateTracker.SetNoTriggerState(modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
-                InputTriggerState newState = instance.TriggerStateTracker.EvaluateTriggerState(action->GetTriggers(), modifiedValue, deltaTime);
+                instance.TriggerStateTracker.Reset();
+                // No action triggers: held Boolean → Triggered (Jump). InputTriggerDown → Ongoing via Evaluate.
+                instance.TriggerStateTracker.SetNoTriggerState(
+                    modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
+                const InputTriggerState newState =
+                    instance.TriggerStateTracker.EvaluateTriggerState(action->GetTriggers(), modifiedValue, deltaTime);
                 
                 instance.TriggerEvent = GetTriggerStateChangeEvent(prevState, newState);
                 instance.LastState = newState;

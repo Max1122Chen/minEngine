@@ -31,6 +31,7 @@
 #include "Suites/NoiseTest.h"
 #include "Suites/BeginPlayTest.h"
 #include "Suites/GameplayInputGateTest.h"
+#include "Suites/InputTriggerDownTest.h"
 #include "Suites/PlayMainCameraTest.h"
 #include "Suites/MeshDrawSortTest.h"
 #include "Suites/UILayoutTest.h"
@@ -480,6 +481,23 @@ namespace minEngine
             }
         };
 
+        struct InputTriggerDownTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"input-trigger-down", "Input Trigger Down Hold Events", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'input-trigger-down'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "input-trigger-down",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct PlayMainCameraTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -859,6 +877,7 @@ namespace minEngine
         using NoiseSuite = TypedTestSuite<NoiseTestSuiteTraits>;
         using BeginPlaySuite = TypedTestSuite<BeginPlayTestSuiteTraits>;
         using GameplayInputGateSuite = TypedTestSuite<GameplayInputGateTestSuiteTraits>;
+        using InputTriggerDownSuite = TypedTestSuite<InputTriggerDownTestSuiteTraits>;
         using PlayMainCameraSuite = TypedTestSuite<PlayMainCameraTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
@@ -916,6 +935,7 @@ namespace minEngine
             registry.Register(NoiseSuite::Get());
             registry.Register(BeginPlaySuite::Get());
             registry.Register(GameplayInputGateSuite::Get());
+            registry.Register(InputTriggerDownSuite::Get());
             registry.Register(PlayMainCameraSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());
