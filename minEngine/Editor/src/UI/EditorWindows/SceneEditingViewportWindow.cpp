@@ -32,6 +32,19 @@ namespace minEngine
         if (m_Context.IsPlaying())
         {
             ImGui::SameLine();
+            SceneEditingViewportClient& sceneClient =
+                static_cast<SceneEditingViewportClient&>(GetOrCreateViewportClient());
+            if (sceneClient.IsPlayPointerCaptured())
+            {
+                ImGui::TextColored(ImVec4(0.55f, 0.9f, 0.55f, 1.0f),
+                    "| Captured  Esc=Stop  Alt=Release");
+            }
+            else
+            {
+                ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.4f, 1.0f),
+                    "| Released  Click viewport=Capture  Esc=Stop");
+            }
+            ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 1.0f, 1.0f), "| ScreenUI hit debug (see viewport top-left)");
         }
     }

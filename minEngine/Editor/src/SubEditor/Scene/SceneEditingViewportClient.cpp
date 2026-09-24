@@ -30,6 +30,8 @@
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/UI/UISystem.h"
 
+#include "imgui.h"
+
 #include <cmath>
 
 #include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
@@ -80,7 +82,7 @@ namespace minEngine
 
     SceneEditingViewportClient::~SceneEditingViewportClient()
     {
-        ClearPlayModePointerConfine();
+        ApplyPointerPolicy(ViewportPointerMode::Off);
 
         if (SceneManager::Get().GetEditorSceneViewport() == &GetSceneViewport())
         {
@@ -161,17 +163,24 @@ namespace minEngine
 
         SyncObservedScene();
 
+        SyncPointerModeFromPlayTransition();
         if (IsPlayModeViewActive())
         {
             SyncPlayModeCamera();
-            UpdatePlayModePointerConfine();
+            HandlePlayPointerCaptureInput();
         }
-        else
+
+        ViewportPointerMode desiredMode = ViewportPointerMode::Off;
+        if (IsPlayModeViewActive())
         {
-            ClearPlayModePointerConfine();
+            desiredMode = m_bPlayPointerCaptured ? ViewportPointerMode::PieCaptured
+                                                : ViewportPointerMode::PieReleased;
         }
-
-
+        else if (m_IsNavigating)
+        {
+            desiredMode = ViewportPointerMode::EditNavigate;
+        }
+        ApplyPointerPolicy(desiredMode);
 
         RHI* rhi = RenderSystem::Get().GetRHI();
 
@@ -286,48 +295,130 @@ namespace minEngine
         viewportCamera->UpdateViewMatrix();
     }
 
-    void SceneEditingViewportClient::ClearPlayModePointerConfine()
+    bool SceneEditingViewportClient::IsPlayPointerCaptured() const
     {
-        if (!m_bPlayPointerClipActive)
-        {
-            return;
-        }
-
-        if (WindowSystem::HasInstance())
-        {
-            WindowCursorClipRect clearRect;
-            clearRect.bEnabled = false;
-            WindowSystem::Get().SetCursorClipRect(clearRect);
-        }
-        m_bPlayPointerClipActive = false;
+        return IsPlayModeViewActive() && m_bPlayPointerCaptured;
     }
 
-    void SceneEditingViewportClient::UpdatePlayModePointerConfine()
+    WindowCursorClipRect SceneEditingViewportClient::MakeViewportImageClipRect() const
     {
-        if (!WindowSystem::HasInstance())
-        {
-            return;
-        }
-
-        const ViewportFrameState& frame = GetFrameState();
-        const bool wantClip = IsFocused()
-            && frame.ImageSize.x > 1.0f
-            && frame.ImageSize.y > 1.0f;
-
-        if (!wantClip)
-        {
-            ClearPlayModePointerConfine();
-            return;
-        }
-
         WindowCursorClipRect clipRect;
-        clipRect.bEnabled = true;
+        const ViewportFrameState& frame = GetFrameState();
+        clipRect.bEnabled = frame.ImageSize.x > 1.0f && frame.ImageSize.y > 1.0f;
         clipRect.Left = static_cast<int>(std::floor(frame.ImageMin.x));
         clipRect.Top = static_cast<int>(std::floor(frame.ImageMin.y));
         clipRect.Right = static_cast<int>(std::ceil(frame.ImageMin.x + frame.ImageSize.x));
         clipRect.Bottom = static_cast<int>(std::ceil(frame.ImageMin.y + frame.ImageSize.y));
-        WindowSystem::Get().SetCursorClipRect(clipRect);
-        m_bPlayPointerClipActive = true;
+        return clipRect;
+    }
+
+    void SceneEditingViewportClient::SetImGuiCursorDriveEnabled(bool enabled)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        if (enabled)
+        {
+            io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+            m_bImGuiCursorDriveSuppressed = false;
+        }
+        else
+        {
+            io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+            m_bImGuiCursorDriveSuppressed = true;
+        }
+    }
+
+    void SceneEditingViewportClient::SyncPointerModeFromPlayTransition()
+    {
+        const bool playing = IsPlayModeViewActive();
+        if (playing && !m_bPlayModeActiveLastFrame)
+        {
+            m_bPlayPointerCaptured = true;
+            if (InputSystem::HasInstance())
+            {
+                InputSystem::Get().SetEditorGameplayCaptureActive(true);
+            }
+        }
+        else if (!playing && m_bPlayModeActiveLastFrame)
+        {
+            m_bPlayPointerCaptured = true;
+            if (InputSystem::HasInstance())
+            {
+                InputSystem::Get().SetEditorGameplayCaptureActive(true);
+            }
+        }
+        m_bPlayModeActiveLastFrame = playing;
+    }
+
+    void SceneEditingViewportClient::HandlePlayPointerCaptureInput()
+    {
+        if (!InputSystem::HasInstance())
+        {
+            return;
+        }
+
+        const bool wantTextInput = ImGui::GetIO().WantTextInput;
+
+        if (!wantTextInput && InputSystem::KeyPressed(InputKeys::Key_Escape) && m_Context != nullptr)
+        {
+            m_Context->GetPlayModeService().Stop();
+            return;
+        }
+
+        if (m_bPlayPointerCaptured)
+        {
+            if (!wantTextInput && InputSystem::KeyPressed(InputKeys::Key_LeftAlt))
+            {
+                m_bPlayPointerCaptured = false;
+                InputSystem::Get().SetEditorGameplayCaptureActive(false);
+            }
+            return;
+        }
+
+        // Released: click Scene viewport image to recapture.
+        if (IsHovered() && InputSystem::KeyPressed(InputKeys::Mouse_Left))
+        {
+            m_bPlayPointerCaptured = true;
+            InputSystem::Get().SetEditorGameplayCaptureActive(true);
+        }
+    }
+
+    void SceneEditingViewportClient::ApplyPointerPolicy(ViewportPointerMode mode)
+    {
+        if (!WindowSystem::HasInstance())
+        {
+            m_PointerMode = mode;
+            return;
+        }
+
+        WindowSystem& window = WindowSystem::Get();
+        const bool wantHideAndClip =
+            mode == ViewportPointerMode::EditNavigate || mode == ViewportPointerMode::PieCaptured;
+
+        if (wantHideAndClip)
+        {
+            SetImGuiCursorDriveEnabled(false);
+            window.SetCursorVisible(false);
+            WindowCursorClipRect clipRect = MakeViewportImageClipRect();
+            if (!clipRect.bEnabled)
+            {
+                clipRect.bEnabled = false;
+                window.SetCursorClipRect(clipRect);
+            }
+            else
+            {
+                window.SetCursorClipRect(clipRect);
+            }
+        }
+        else
+        {
+            WindowCursorClipRect clearRect;
+            clearRect.bEnabled = false;
+            window.SetCursorClipRect(clearRect);
+            window.SetCursorVisible(true);
+            SetImGuiCursorDriveEnabled(true);
+        }
+
+        m_PointerMode = mode;
     }
 
     void SceneEditingViewportClient::SyncObservedScene()
@@ -838,8 +929,7 @@ namespace minEngine
             }
         }
 
-        WindowSystem::Get().SetCursorVisible(!m_IsNavigating);
-
+        // Cursor hide/clip applied in EndFrame via ApplyPointerPolicy (ED-F23).
     }
 
 
@@ -1084,7 +1174,7 @@ namespace minEngine
 
     {
 
-        const Vector2 mousePosition = InputSystem::GetMousePosition();
+        const Vector2 mousePosition = InputSystem::GetMouse2DAbsolute();
 
         if (!m_HasLastMousePositionSample)
 

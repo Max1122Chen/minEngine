@@ -113,6 +113,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F20` | Editor 可选链接外部游戏 SHARED（Dev 宿主；链接期模块） | **Done**（S03 **Cancelled**，不升温） | — | [Design](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md) · [Impl](./Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md) · minCraft `ENG-GAP-001` |
 | `ED-F21` | 游戏模块始终链接 minEngine（consumer 契约；去双构建） | **Done** | — | [Design](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md) · [Impl](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_IMPLEMENTATION.md) · minCraft `ENG-GAP-006-B` |
 | `ED-F22` | `MinEngine_GameModuleStartup` 钩子 | **Cancelled** | — | [Design](./Editor/ED-F22_GAME_MODULE_STARTUP_DESIGN.md) · 世界搭建归游戏仓/场景；原 ED-F20-S03 / `ENG-GAP-006-C` |
+| `ED-F23` | Viewport Pointer Capture UX（Navigate + PIE Captured/Released） | **Done** | — | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Done**（P0 伞） | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
 | `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Done** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
@@ -175,7 +176,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
 | `CORE` | **F32** | F27–F28 **Done**；**F31 Draft**（BeginPlay/EndPlay 底座）· **F29/F30 Draft**（消费面）；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
-| `ED` | **F23** | F12–**F21 Done**（F22 Cancelled）；**F11** In Progress；F10 占位 |
+| `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
 | `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F12 Deferred |
 | `LAUN` | F02 | F01 Done |

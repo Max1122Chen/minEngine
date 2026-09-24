@@ -3,8 +3,7 @@
 
 
 #include "Viewport/EditorViewportClient.h"
-
-
+#include "Runtime/Function/Render/WindowSystem.h"
 
 #include <limits>
 
@@ -61,7 +60,8 @@ namespace minEngine
 
         bool IsNavigating() const { return m_IsNavigating; }
 
-
+        /** ED-F23: PIE pointer captured into game (hidden+clip); false when Released to Editor. */
+        bool IsPlayPointerCaptured() const;
 
         void SetInputBlockedByGizmo(bool blocked);
 
@@ -105,9 +105,21 @@ namespace minEngine
         bool IsPlayModeViewActive() const;
         Scene* GetViewTargetScene() const;
         void SyncPlayModeCamera();
-        void UpdatePlayModePointerConfine();
-        void ClearPlayModePointerConfine();
         static CameraComponent* FindViewCameraInScene(Scene* scene);
+
+        enum class ViewportPointerMode
+        {
+            Off,
+            EditNavigate,
+            PieCaptured,
+            PieReleased,
+        };
+
+        void HandlePlayPointerCaptureInput();
+        void SyncPointerModeFromPlayTransition();
+        void ApplyPointerPolicy(ViewportPointerMode mode);
+        void SetImGuiCursorDriveEnabled(bool enabled);
+        WindowCursorClipRect MakeViewportImageClipRect() const;
 
 
 
@@ -150,7 +162,10 @@ namespace minEngine
 
         bool m_IsNavigating = false;
 
-        bool m_bPlayPointerClipActive = false;
+        bool m_bPlayModeActiveLastFrame = false;
+        bool m_bPlayPointerCaptured = true;
+        ViewportPointerMode m_PointerMode = ViewportPointerMode::Off;
+        bool m_bImGuiCursorDriveSuppressed = false;
 
         bool m_CameraStateInitialized = false;
 

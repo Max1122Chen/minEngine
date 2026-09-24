@@ -1,11 +1,21 @@
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-24（BUG-EDITOR-004 S03 In Progress）
+Last updated: 2026-09-24（ED-F23 Done）
+
+### 2026-09-24 - ED-F23 Done (Viewport Pointer Capture)
+- Unified Navigate/PIE policy: clip + Raw intent; Captured hide; Released show.
+- Esc=Stop; Left Alt=Release; click viewport=Capture; F29 gate + EditorGameplayCaptureActive.
+- Viewport toolbar hint; `gameplay-input-gate` PASS; Editor build PASS.
+- **Next:** commit draft.
+
+### 2026-09-24 - ED-F23 In Progress (Viewport Pointer Capture)
+- Design + Registry; implement Navigate/PIE Captured·Released policy.
+- **Prior:** BUG-EDITOR-004 S03 committed (`d5ea5d5`).
 
 ### 2026-09-24 - BUG-EDITOR-004 S03 Fixed (edge look intent)
 - Clip 边界：Raw Input → virtual Mouse2D；GetMousePosition 仍 physical。
 - Editor build PASS；手验边界持续看向 OK。
-- **Next:** commit S03.
+- **Commit:** `d5ea5d5`.
 
 ### 2026-09-24 - BUG-CORE-004 / BUG-EDITOR-004 Fixed
 - **S01:** EndFrameDeviceEdgeCleanup on gated Tick; gameplay-input-gate + scroll clear unit PASS.

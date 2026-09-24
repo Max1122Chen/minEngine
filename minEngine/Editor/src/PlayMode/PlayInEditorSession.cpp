@@ -8,6 +8,7 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/UI/UISystem.h"
+#include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Shell/IEditorContext.h"
@@ -248,6 +249,12 @@ namespace minEngine
             WindowCursorClipRect clearRect;
             clearRect.bEnabled = false;
             WindowSystem::Get().SetCursorClipRect(clearRect);
+            WindowSystem::Get().SetCursorVisible(true);
+        }
+
+        if (InputSystem::HasInstance())
+        {
+            InputSystem::Get().SetEditorGameplayCaptureActive(true);
         }
     }
 

@@ -43,11 +43,20 @@ namespace minEngine
 
         /**
          * CORE-F29: whether gameplay IMC→IA should update this frame.
-         * - HasBegunPlayWorld → true (PIE / host after DispatchBeginPlay)
+         * - HasBegunPlayWorld → true (PIE / host after DispatchBeginPlay), and when an Editor
+         *   viewport exists, also requires EditorGameplayCaptureActive (ED-F23).
          * - Editor shell (viewport registered) without begun world → false (Edit)
          * - No editor shell → true (standalone / Playground compat until host DispatchBeginPlay)
          */
         bool IsGameplayInputEnabled() const;
+
+        /**
+         * ED-F23: Editor sets false while PIE pointer is Released (still Playing).
+         * Ignored when no Editor scene viewport is registered (standalone stays on).
+         * Default true so BeginPlay without an explicit release still enables gameplay.
+         */
+        void SetEditorGameplayCaptureActive(bool active);
+        bool IsEditorGameplayCaptureActive() const { return m_bEditorGameplayCaptureActive; }
 
         void AddInputComponent(InputComponent* component);
         void RemoveInputComponent(InputComponent* component);
@@ -71,6 +80,8 @@ namespace minEngine
         static bool MouseButtonReleased(const InputKey& key) { return KeyReleased(key); }
 
         static Vector2 GetMousePosition();
+        /** Absolute Mouse2D key value (virtual while cursor-clip preserve is on; physical otherwise). */
+        static Vector2 GetMouse2DAbsolute();
         static Vector2 GetMouseScrollDelta();
 
         /**
@@ -119,5 +130,6 @@ namespace minEngine
         Vector2 m_PhysicalMousePos = Vector2(0.0f, 0.0f);
         Vector2 m_VirtualMousePos = Vector2(0.0f, 0.0f);
         bool m_bPreserveMouseIntentBeyondClip = false;
+        bool m_bEditorGameplayCaptureActive = true;
     };
 }

@@ -125,13 +125,51 @@ namespace minEngine
             SceneManager::Get().SetEditorSceneViewport(nullptr);
             return true;
         }
+
+        bool RunCaptureFlagGatesWhilePlaying()
+        {
+            GameplayInputGateTestScope scope;
+
+            SceneViewport dummyViewport;
+            SceneManager::Get().SetEditorSceneViewport(&dummyViewport);
+
+            const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("input-gate-capture");
+            scene->DispatchBeginPlay();
+
+            if (!scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: after BeginPlay with default capture should enable.");
+                SceneManager::Get().SetEditorSceneViewport(nullptr);
+                return false;
+            }
+
+            scope.GetInput().SetEditorGameplayCaptureActive(false);
+            if (scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: capture false while Playing must disable IMC (ED-F23).");
+                SceneManager::Get().SetEditorSceneViewport(nullptr);
+                return false;
+            }
+
+            scope.GetInput().SetEditorGameplayCaptureActive(true);
+            if (!scope.GetInput().IsGameplayInputEnabled())
+            {
+                ME_LOG(LogTest, Error, "GameplayInputGate: capture true while Playing must enable IMC.");
+                SceneManager::Get().SetEditorSceneViewport(nullptr);
+                return false;
+            }
+
+            SceneManager::Get().SetEditorSceneViewport(nullptr);
+            return true;
+        }
     }
 
     bool RunGameplayInputGateTests()
     {
         return RunStandaloneEnabledWithoutEditorViewport()
             && RunEditorViewportBlocksUntilBeginPlay()
-            && RunGatedTickStillClearsMouseScroll();
+            && RunGatedTickStillClearsMouseScroll()
+            && RunCaptureFlagGatesWhilePlaying();
     }
 }
 

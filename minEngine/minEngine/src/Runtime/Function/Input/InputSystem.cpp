@@ -41,19 +41,31 @@ namespace minEngine
         }
 
         const SceneManager& sceneManager = SceneManager::Get();
+        const bool hasEditorShell = sceneManager.GetEditorSceneViewport() != nullptr;
+
         if (sceneManager.HasBegunPlayWorld())
         {
+            // ED-F23: while Editor shell is up, Released PIE must gate IMC even though BeginPlay is true.
+            if (hasEditorShell)
+            {
+                return m_bEditorGameplayCaptureActive;
+            }
             return true;
         }
 
         // Editor document Edit: viewport registered, no simulating world.
-        if (sceneManager.GetEditorSceneViewport() != nullptr)
+        if (hasEditorShell)
         {
             return false;
         }
 
         // Standalone / tests without editor shell — keep prior always-on until host DispatchBeginPlay.
         return true;
+    }
+
+    void InputSystem::SetEditorGameplayCaptureActive(bool active)
+    {
+        m_bEditorGameplayCaptureActive = active;
     }
 
     void InputSystem::ClearGameplayActionEvents()
@@ -367,6 +379,16 @@ namespace minEngine
 
     Vector2 InputSystem::GetMousePosition()
     {
+        return Get().m_PhysicalMousePos;
+    }
+
+    Vector2 InputSystem::GetMouse2DAbsolute()
+    {
+        auto it = Get().m_KeyStateMap.find(InputKeys::Mouse2D);
+        if (it != Get().m_KeyStateMap.end())
+        {
+            return Vector2(it->second.RawValue.x, it->second.RawValue.y);
+        }
         return Get().m_PhysicalMousePos;
     }
 
