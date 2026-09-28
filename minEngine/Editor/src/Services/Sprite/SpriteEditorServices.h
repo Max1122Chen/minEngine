@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Services/Graph/GraphEditorResult.h"
+#include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
 
 #include "Runtime/Core/Math/Math.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -57,6 +59,11 @@ namespace minEngine
             const std::shared_ptr<Sprite>& sprite);
 
         GraphEditorResult RebuildAtlas(SpriteAtlas& atlas, RHI& rhi);
+
+        GraphEditorResult SetAtlasPadding(
+            SpriteAtlas& atlas,
+            int32_t padding,
+            SpriteAtlasPaddingMode mode);
 
         GraphEditorResult SaveSprite(const Sprite& sprite);
         GraphEditorResult SaveAtlas(const SpriteAtlas& atlas);

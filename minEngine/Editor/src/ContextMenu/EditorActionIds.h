@@ -15,6 +15,7 @@ namespace minEngine
         RevealInExplorer,
         ImportAsset,
         Refresh,
+        CreateFolder,
         FocusInViewport,
         OpenAsset,
         CreateEmptyGameObject,

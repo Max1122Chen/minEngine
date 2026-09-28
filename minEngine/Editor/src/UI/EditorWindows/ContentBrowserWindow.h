@@ -7,6 +7,7 @@
 
 #include <cstring>
 #include <string>
+#include <vector>
 
 struct ImDrawList;
 struct ImVec2;
@@ -62,7 +63,7 @@ namespace minEngine
                             bool drawLabel = true,
                             bool drawFolderIcon = false);
         void DrawDirectoryTile(const AssetTreeModel::DirectoryNode& directoryNode);
-        void DrawAssetTile(const AssetMeta& meta, int tileIndex, bool selected);
+        void DrawAssetTile(const AssetMeta& meta, int tileIndex, int assetListIndex, bool selected);
         void DrawTileAssetIcon(const AssetMeta& meta,
                                const ImVec2& iconMin,
                                const ImVec2& iconMax,
@@ -78,17 +79,29 @@ namespace minEngine
         void ActivateAssetFromBrowser(const AssetMeta& assetMeta);
         void SelectAsset(const AssetMeta* meta);
         void SelectDirectory(std::string_view relativePath);
+        void ApplyAssetClickSelection(const AssetMeta& meta, int assetIndexInCurrentList);
+        void SyncSelectionToWorkflow();
         void SyncSelectionFromWorkflow();
+        bool IsAssetPathSelected(std::string_view assetPath) const;
+        void DrawCreateFolderModal();
+        void DrawBatchRenameModal();
         void DrawContentBrowserContextMenu(ContentBrowserHitKind hitKind,
                                            std::string_view directoryRel,
                                            const AssetMeta* assetForContext);
 
         void TryCaptureF2RenameRequest();
         void TryConsumePendingRenameRequest();
+        void TryConsumePendingFolderRenameRequest();
         void BeginAssetRename(const AssetMeta& meta);
         bool CommitAssetRename(const std::string& newStem);
         void CancelAssetRename();
         bool IsRenamingAssetPath(std::string_view assetPath) const;
+        void BeginDirectoryRename(std::string_view directoryRel);
+        bool CommitDirectoryRename(const std::string& newName);
+        void CancelDirectoryRename();
+        bool IsRenamingDirectoryPath(std::string_view directoryRel) const;
+        void TryAcceptAssetDropOnDirectory(std::string_view targetDirectoryRel);
+        void BeginAssetDragPayload();
 
         float ResolveTileOuterHeight() const;
         std::string BuildEllipsizedLabel(const char* text, float maxWidth) const;
@@ -99,11 +112,21 @@ namespace minEngine
         const std::string m_Id = "ContentBrowser";
         const std::string m_Title = "Content Browser";
         int m_SelectedAssetIndex = -1;
+        int m_ShiftAnchorAssetIndex = -1;
         std::string m_SelectedDirectoryRelativePath;
 
         std::string m_RenamingAssetPath;
         std::string m_RenamingAssetExtension;
         bool m_RequestRenameFocus = false;
         char m_RenameBuffer[256] = {};
+
+        bool m_ShowCreateFolderModal = false;
+        std::string m_CreateFolderParentRel;
+        char m_CreateFolderNameBuffer[128] = {};
+
+        std::string m_RenamingDirectoryRel;
+        bool m_ShowBatchRenameModal = false;
+        std::vector<std::string> m_BatchRenamePaths;
+        char m_BatchRenameStemBuffer[128] = {};
     };
 }

@@ -5,7 +5,10 @@
 #include "SubEditor/Scene/SceneEditor.h"
 #include "SubEditor/Sprite/SpriteEditor.h"
 #include "SubEditor/SpriteAtlas/SpriteAtlasEditor.h"
+#include "Services/Asset/AssetEditorServices.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
+#include "Services/ContentBrowser/ContentBrowserSelection.h"
+#include "Shell/Document/EditorDocumentSession.h"
 #include "Services/Inspector/InspectorModule.h"
 #include "Services/Sprite/SpriteEditorServices.h"
 #include "Shell/EditorCommandStack.h"
@@ -37,6 +40,7 @@
 
 #include "imgui.h"
 
+#include <algorithm>
 #include <filesystem>
 
 namespace minEngine
@@ -163,6 +167,8 @@ namespace minEngine
         {
             HandleImportDialogAction(importAction);
         }
+
+        DrawDeleteConfirmModal();
     }
 
     bool AssetWorkflowModule::IsSceneDirty() const
@@ -1259,44 +1265,231 @@ namespace minEngine
 
     void AssetWorkflowModule::DeleteSelectedAsset(bool bUnpackOpenPrefabInstanceRefs)
     {
-        const AssetMeta* selected = GetSelectedAsset();
-        if (selected == nullptr)
+        std::vector<std::string> paths;
+        if (m_Context != nullptr)
+        {
+            paths = m_Context->GetContentBrowser().GetSelection().GetSelectedAssetPaths();
+        }
+        if (paths.empty())
+        {
+            const AssetMeta* selected = GetSelectedAsset();
+            if (selected != nullptr)
+            {
+                paths.push_back(selected->AssetPath);
+            }
+        }
+        if (paths.empty())
         {
             return;
         }
+        RequestConfirmDeleteAssets(std::move(paths), bUnpackOpenPrefabInstanceRefs);
+    }
 
-        const std::string assetPath = selected->AssetPath;
-        const std::string assetType = selected->AssetType;
-
-        if (assetType == "Prefab" && m_Context != nullptr)
+    void AssetWorkflowModule::RequestConfirmDeleteAssets(
+        std::vector<std::string> paths,
+        bool bUnpackOpenPrefabInstanceRefs)
+    {
+        if (paths.empty())
         {
-            if (SceneEditor* sceneEditor = GetSceneEditor(m_Context))
+            return;
+        }
+        m_PendingDeleteIsFolder = false;
+        m_PendingDeleteFolder.clear();
+        m_PendingDeletePaths = std::move(paths);
+        m_PendingDeleteUnpack = bUnpackOpenPrefabInstanceRefs;
+        m_DeleteWarningLines = CollectDeleteWarnings(m_PendingDeletePaths);
+        m_ShowDeleteConfirm = true;
+    }
+
+    void AssetWorkflowModule::RequestConfirmDeleteFolder(std::string directoryRel)
+    {
+        if (directoryRel.empty())
+        {
+            // Content root delete is never allowed.
+            ME_LOG(LogEditor, Error, "Cannot delete content root.");
+            return;
+        }
+        m_PendingDeleteIsFolder = true;
+        m_PendingDeleteFolder = std::move(directoryRel);
+        m_PendingDeletePaths.clear();
+        m_PendingDeleteUnpack = false;
+        m_DeleteWarningLines.clear();
+        m_DeleteWarningLines.push_back("Only empty folders can be deleted.");
+        m_ShowDeleteConfirm = true;
+    }
+
+    bool AssetWorkflowModule::TryBatchRenameAssets(
+        const std::vector<std::string>& orderedPaths,
+        std::string_view baseStem,
+        std::string& outError)
+    {
+        outError.clear();
+        AssetEditorServices services;
+        const AssetEditorResult result = services.BatchRename(orderedPaths, baseStem);
+        if (!result.Ok)
+        {
+            outError = result.Message;
+            return false;
+        }
+        RefreshContentBrowser();
+        return true;
+    }
+
+    std::vector<std::string> AssetWorkflowModule::CollectDeleteWarnings(
+        const std::vector<std::string>& paths)
+    {
+        std::vector<std::string> warnings;
+        if (m_Context == nullptr)
+        {
+            return warnings;
+        }
+
+        EditorDocumentHost& host = m_Context->GetDocumentHost();
+        SceneEditor* sceneEditor = GetSceneEditor(m_Context);
+
+        for (const std::string& path : paths)
+        {
+            if (const EditorDocumentSession* session = host.FindSessionByAssetKey(path))
             {
-                if (sceneEditor->GetPrefabStages().HasStage(assetPath))
-                {
-                    ME_LOG(
-                        LogEditor,
-                        Error,
-                        "DeleteSelectedAsset: close Prefab Stage for '{}' before deleting.",
-                        assetPath);
-                    return;
-                }
+                warnings.push_back(
+                    path + (session->IsDirty() ? " is open (dirty)." : " is open in an editor session."));
+            }
+            if (sceneEditor != nullptr && sceneEditor->GetPrefabStages().HasStage(path))
+            {
+                warnings.push_back(path + " has an open Prefab Stage — close it before deleting.");
+            }
+            const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(path);
+            if (meta != nullptr && meta->AssetType == "Prefab")
+            {
+                warnings.push_back(
+                    path + ": Prefab instance refs in the open scene are a hard gate (use Unpack & Delete if needed).");
             }
         }
 
-        std::string errorMessage;
-        if (!AssetManager::Get().DeleteAsset(assetPath, errorMessage, bUnpackOpenPrefabInstanceRefs))
+        if (warnings.empty())
         {
-            ME_LOG(LogEditor, Error, "DeleteSelectedAsset failed for '{}': {}", assetPath, errorMessage);
+            warnings.push_back("No loaded-session warnings (full reference graph is Out of scope).");
+        }
+        return warnings;
+    }
+
+    void AssetWorkflowModule::DrawDeleteConfirmModal()
+    {
+        if (!m_ShowDeleteConfirm)
+        {
             return;
         }
 
+        ImGui::OpenPopup("Delete Assets##AssetWorkflow");
+        if (!ImGui::BeginPopupModal("Delete Assets##AssetWorkflow", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            return;
+        }
+
+        if (m_PendingDeleteIsFolder)
+        {
+            ImGui::Text("Delete empty folder?");
+            ImGui::TextUnformatted(m_PendingDeleteFolder.c_str());
+        }
+        else
+        {
+            ImGui::Text("Delete %d asset(s)?", static_cast<int>(m_PendingDeletePaths.size()));
+            const int showCount = (std::min)(8, static_cast<int>(m_PendingDeletePaths.size()));
+            for (int i = 0; i < showCount; ++i)
+            {
+                ImGui::BulletText("%s", m_PendingDeletePaths[static_cast<size_t>(i)].c_str());
+            }
+            if (static_cast<int>(m_PendingDeletePaths.size()) > showCount)
+            {
+                ImGui::Text("...and %d more", static_cast<int>(m_PendingDeletePaths.size()) - showCount);
+            }
+        }
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Warnings:");
+        for (const std::string& line : m_DeleteWarningLines)
+        {
+            ImGui::BulletText("%s", line.c_str());
+        }
+
+        if (ImGui::Button("Delete", ImVec2(120, 0)))
+        {
+            ExecutePendingDelete();
+            m_ShowDeleteConfirm = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0)))
+        {
+            m_ShowDeleteConfirm = false;
+            m_PendingDeletePaths.clear();
+            m_PendingDeleteFolder.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    void AssetWorkflowModule::ExecutePendingDelete()
+    {
+        if (m_PendingDeleteIsFolder)
+        {
+            std::string error;
+            if (!AssetManager::Get().DeleteFolder(m_PendingDeleteFolder, error, true))
+            {
+                ME_LOG(LogEditor, Error, "DeleteFolder failed for '{}': {}", m_PendingDeleteFolder, error);
+            }
+            else
+            {
+                ME_LOG(LogEditor, Info, "Deleted folder '{}'", m_PendingDeleteFolder);
+                if (m_Context != nullptr)
+                {
+                    m_Context->GetContentBrowser().GetSelection().Clear();
+                }
+            }
+            m_PendingDeleteFolder.clear();
+            RefreshContentBrowser();
+            return;
+        }
+
+        for (const std::string& assetPath : m_PendingDeletePaths)
+        {
+            if (AssetManager::Get().FindAssetMetaByPath(assetPath) == nullptr)
+            {
+                continue;
+            }
+            const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(assetPath);
+            if (meta != nullptr && meta->AssetType == "Prefab" && m_Context != nullptr)
+            {
+                if (SceneEditor* sceneEditor = GetSceneEditor(m_Context))
+                {
+                    if (sceneEditor->GetPrefabStages().HasStage(assetPath))
+                    {
+                        ME_LOG(
+                            LogEditor,
+                            Error,
+                            "DeleteSelectedAsset: close Prefab Stage for '{}' before deleting.",
+                            assetPath);
+                        continue;
+                    }
+                }
+            }
+
+            std::string errorMessage;
+            if (!AssetManager::Get().DeleteAsset(assetPath, errorMessage, m_PendingDeleteUnpack))
+            {
+                ME_LOG(LogEditor, Error, "DeleteAsset failed for '{}': {}", assetPath, errorMessage);
+                continue;
+            }
+            ME_LOG(LogEditor, Info, "Deleted '{}'", assetPath);
+        }
+
         m_SelectedAssetPath.clear();
-        ME_LOG(
-            LogEditor,
-            Info,
-            "DeleteSelectedAsset: removed '{}'{}",
-            assetPath,
-            bUnpackOpenPrefabInstanceRefs ? " (unpacked open instances)" : "");
+        m_PendingDeletePaths.clear();
+        if (m_Context != nullptr)
+        {
+            m_Context->GetContentBrowser().GetSelection().Clear();
+        }
+        RefreshContentBrowser();
     }
 }
+

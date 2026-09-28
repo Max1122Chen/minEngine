@@ -21,6 +21,7 @@ namespace minEngine
         ContentBrowserHitKind HitKind = ContentBrowserHitKind::ListBackground;
         std::string CurrentDirectoryRel;
         std::vector<const AssetMeta*> SelectedAssets;
+        std::vector<std::string> SelectedDirectoryRels;
     };
 
 } // namespace minEngine

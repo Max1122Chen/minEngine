@@ -1,6 +1,28 @@
+## 2026-09-28 — ASSET-F04 内容工作流实现收口
+
+- **Feature:** ASSET-F04（仍 In Progress，待验收）
+- **CB:** SelectionSet 多选；空文件夹 New/Rename(F2·RMB)/Delete；资产拖拽 Move；批改名 Foo/Foo_1；Delete 确认 + session/Prefab 尽力警告
+- **Automation:** import 门面；folder move/rename/batch_rename；sprite / sprite_atlas ops（含 set_padding / rebuild / create_from_selection）
+- **Out 保持:** 非空 MoveFolder；全项目引用图硬门禁；新增 MCP 粗 Tool
+- **Verify:** `cmake --build minEngine/build --target Editor` OK
+
+## 2026-09-28 — ASSET-F04 S01/S02/S06 竖切开工
+
+- **Feature:** ASSET-F04 → **In Progress**
+- **Done:** ContentBrowserSelection（有序 + Primary）；CB Ctrl/Shift 多选；CreateFolder 菜单+弹窗；AssetManager folder API；AssetEditorServices Import 门面 + CreateFolder/Move/Rename；Automation sset.list_import_products / import / create_folder / move / 
+ename；Editor 已编过并拉起 MyMEProject
+- **Pending:** S03 Move UI、S04 批改名、S05 Delete 确认+警告、sprite.* Surface
+- **Verify:** cmake --build minEngine/build --target Editor OK；MaximumEditor.exe --project MyMEProject
+
 # minEngine Progress Log (for AI)
 
-Last updated: 2026-09-24（CORE-F32 Done）
+Last updated: 2026-09-28（ASSET-F04 Design Draft）
+
+### 2026-09-28 - ASSET-F04 Design Draft (CB Workflow + Automation)
+- **定位：** 引擎 Asset Workflow 能力补全（非 minCraft 专用后门）；外部驱动见 minCraft Atlas bake gap。
+- **锁定：** SelectionSet+Primary；批改名 Foo/Foo_1…；Delete=确认+尽力警告（引用图 Out）；MCP 只扩细 op。
+- **Docs：** [ASSET-F04 Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md)；Registry/ACTIVE_WORK Primary。
+- **Next：** Design Review → Implementation Plan；Draft 下不开大段代码。
 
 ### 2026-09-24 - CORE-F32 Done (Enhanced Input hold / InputTriggerDown)
 - **Fix A:** finalize `prevState = LastState`; reset tracker before Evaluate (avoid mapping NoTrigger pollution).

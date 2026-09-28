@@ -71,6 +71,15 @@ namespace minEngine
         const IEditorInspectorSource* GetInspectorSource() const;
 
         void DeleteSelectedAsset(bool bUnpackOpenPrefabInstanceRefs = false);
+        /** Queue delete confirm modal for selected asset paths (best-effort warnings). */
+        void RequestConfirmDeleteAssets(
+            std::vector<std::string> paths,
+            bool bUnpackOpenPrefabInstanceRefs = false);
+        void RequestConfirmDeleteFolder(std::string directoryRel);
+        bool TryBatchRenameAssets(
+            const std::vector<std::string>& orderedPaths,
+            std::string_view baseStem,
+            std::string& outError);
         bool TryReimportSelectedAsset();
 
         IEditorContext* GetEditorContext() const { return m_Context; }
@@ -106,6 +115,9 @@ namespace minEngine
 
         void HandleUnsavedDialogChoice(UnsavedChangesChoice choice);
         void HandleImportDialogAction(EditorImportDialogAction action);
+        void DrawDeleteConfirmModal();
+        void ExecutePendingDelete();
+        std::vector<std::string> CollectDeleteWarnings(const std::vector<std::string>& paths);
         void RefreshContentBrowser();
 
         static std::vector<const ImportProductDescriptor*> CollectCompatibleImportProducts(
@@ -118,6 +130,13 @@ namespace minEngine
 
         EditorUnsavedChangesDialog m_UnsavedDialog;
         EditorImportDialog m_ImportDialog;
+
+        bool m_ShowDeleteConfirm = false;
+        bool m_PendingDeleteUnpack = false;
+        bool m_PendingDeleteIsFolder = false;
+        std::vector<std::string> m_PendingDeletePaths;
+        std::string m_PendingDeleteFolder;
+        std::vector<std::string> m_DeleteWarningLines;
         std::function<void()> m_PendingProceed;
         std::function<bool()> m_PendingSave;
         PendingUnsavedCheckKind m_PendingCheckKind = PendingUnsavedCheckKind::None;

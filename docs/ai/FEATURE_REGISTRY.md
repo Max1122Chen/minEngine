@@ -125,6 +125,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ASSET-F01` | External Import Pipeline（Assimp → 引擎资产；MVP） | **Done**（MVP） | — | [Design](./Asset/ASSET-F01_IMPORT_PIPELINE_DESIGN.md) · [Impl](./Asset/ASSET-F01_IMPORT_PIPELINE_IMPLEMENTATION.md) · S04 / `.memesh` Deferred |
 | `ASSET-F02` | Formal Import/Load 注册式管线 + ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) |
 | `ASSET-F03` | Create Asset 身份契约（单对象·同步 meta·禁 Load 换身） | **Done** | — | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) · 吸收 F23-B Guid 根因 |
+| `ASSET-F04` | Content Browser Workflow + Asset Automation Parity（SelectionSet·文件夹·Move·批改名·Delete 警告·import/sprite MCP 挂线） | **In Progress** | — | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) · 解锁 minCraft Atlas bake；引用图硬门禁 Out |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Pose → palette → GPU） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · 旧 Placeholder `ANIM-F01_ANIMATION_SYSTEM_DESIGN.md` 已废弃勿用 |
 | `ANIM-F02` | Clip Playback（Track / Player / SMC / `.meaclip`） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |
 | `ANIM-F03` | Animation Graph MVP（FSM + Params + Pose Blend + Editor） | **In Progress** *(runtime+Editor 已合入；人型闭环 smoke 收口)* | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
@@ -176,7 +177,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
 | `CORE` | **F33** | F27–F32 Done（含 EI hold/Down）；F29/F30 Done；F23–F26 Prefab MVP **Done** |
-| `ASSET` | **F04** | F01–F03 Done；Async Lifetime 愿景见 Capability Roadmap |
+| `ASSET` | **F05** | F01–F03 Done；**F04** Draft（CB Workflow + Automation）；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
 | `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F12 Deferred |

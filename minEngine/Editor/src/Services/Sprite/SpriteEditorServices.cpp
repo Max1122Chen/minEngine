@@ -231,6 +231,17 @@ namespace minEngine
         return OkResult();
     }
 
+
+    GraphEditorResult SpriteEditorServices::SetAtlasPadding(
+        SpriteAtlas& atlas,
+        int32_t padding,
+        SpriteAtlasPaddingMode mode)
+    {
+        atlas.SetPadding(padding);
+        atlas.SetPaddingMode(mode);
+        return OkResult();
+    }
+
     GraphEditorResult SpriteEditorServices::SaveSprite(const Sprite& sprite)
     {
         if (!AssetManager::HasInstance())

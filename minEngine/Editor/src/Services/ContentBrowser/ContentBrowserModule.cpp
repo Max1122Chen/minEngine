@@ -22,7 +22,12 @@ namespace minEngine
             m_Model->Clear();
         }
         m_Model.reset();
+        m_Selection.Clear();
         m_PendingAssetRenamePath.clear();
+        m_PendingBatchRename = false;
+        m_PendingCreateFolder = false;
+        m_PendingCreateFolderParent.clear();
+        m_PendingFolderRenamePath.clear();
         m_Context = nullptr;
     }
 
@@ -47,4 +52,46 @@ namespace minEngine
         m_PendingAssetRenamePath.clear();
         return pending;
     }
+
+    void ContentBrowserModule::RequestBeginBatchRename()
+    {
+        m_PendingBatchRename = true;
+    }
+
+    bool ContentBrowserModule::ConsumePendingBatchRename()
+    {
+        const bool pending = m_PendingBatchRename;
+        m_PendingBatchRename = false;
+        return pending;
+    }
+
+    void ContentBrowserModule::RequestCreateFolderDialog(std::string parentDirectoryRel)
+    {
+        m_PendingCreateFolder = true;
+        m_PendingCreateFolderParent = std::move(parentDirectoryRel);
+    }
+
+    bool ContentBrowserModule::ConsumePendingCreateFolder(std::string& outParentDirectoryRel)
+    {
+        if (!m_PendingCreateFolder)
+        {
+            return false;
+        }
+        m_PendingCreateFolder = false;
+        outParentDirectoryRel = std::move(m_PendingCreateFolderParent);
+        m_PendingCreateFolderParent.clear();
+        return true;
+    }
+    void ContentBrowserModule::RequestBeginFolderRename(std::string directoryRel)
+    {
+        m_PendingFolderRenamePath = std::move(directoryRel);
+    }
+
+    std::string ContentBrowserModule::ConsumePendingFolderRenamePath()
+    {
+        std::string path = std::move(m_PendingFolderRenamePath);
+        m_PendingFolderRenamePath.clear();
+        return path;
+    }
+
 }

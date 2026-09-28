@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-24（CORE-F32 Done）
+Last updated: 2026-09-28（ASSET-F04 实现收口，待验收后 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,17 +11,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** （空 — 待选下一主线）
+**Primary：** `ASSET-F04` Content Browser Workflow + Asset Automation Parity（**Design Draft**）
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
-| 1 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
-| 2 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
-| 3 | CORE-F29 | Play-gated gameplay Input | **Done** | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
-| 4 | UI-F04 | ScreenUI Text / Font | **Done** | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) |
+| 0 | ASSET-F04 | CB Workflow + Automation（Selection·Folder·Move·批改名·Delete 警告·import/sprite 挂线） | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
+| 1 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
+| 2 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
+| 3 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
+| 4 | CORE-F29 | Play-gated gameplay Input | **Done** | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
+| 5 | UI-F04 | ScreenUI Text / Font | **Done** | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) |
 
-**下一动作：** 待定 Primary（minCraft 可验证 hold/Down；后置 Skylight / Atmosphere 仅研究）。
+**下一动作：** 人手验收（多选 / 文件夹改名删除 / 拖拽 Move / F2 批改名 / Delete 确认）；通过后 Registry → Done。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

@@ -131,6 +131,23 @@ namespace minEngine
             bool bUnpackOpenPrefabInstanceRefs);
         bool MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError);
         bool RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError);
+
+        /** Create an empty content folder (no .meta). parentRel empty = content root. */
+        bool CreateFolder(
+            const std::string& parentDirectoryRel,
+            const std::string& folderName,
+            std::string& outError,
+            std::string* outCreatedDirectoryRel = nullptr);
+        bool RenameFolder(
+            const std::string& directoryRel,
+            const std::string& newFolderName,
+            std::string& outError);
+        /** Default: reject non-empty directories. */
+        bool DeleteFolder(
+            const std::string& directoryRel,
+            std::string& outError,
+            bool requireEmpty = true);
+
         bool UnregisterAsset(const std::string& assetPath, std::string& outError);
         bool RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError);
 

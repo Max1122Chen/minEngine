@@ -16,6 +16,13 @@
 #include "Runtime/Resource/AssetMeta.h"
 #include "Services/Scene/ScenePropertyValueCodec.h"
 #include "Services/Asset/AssetEditorServices.h"
+#include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
+#include "Runtime/Function/Render/Sprite/Sprite.h"
+#include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Services/AssetWorkflowModule.h"
+#include "Services/Sprite/SpriteEditorServices.h"
 #include "Services/Control/EditorControlServices.h"
 #include "Services/TypeQuery/TypeQueryServices.h"
 #include "Shell/Document/EditorDocumentHost.h"
@@ -162,6 +169,86 @@ namespace minEngine
             "asset.delete",
             [this](IEditorContext& context, const AutomationRequest& request) {
                 return HandleDeleteAsset(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.list_import_products",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleListImportProducts(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.import",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleImportAsset(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.create_folder",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleCreateFolder(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.move",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleMoveAsset(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.rename",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleRenameAssetOp(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.rename_folder",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleRenameFolder(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.delete_folder",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleDeleteFolder(context, request);
+            });
+        m_Handlers.emplace(
+            "asset.batch_rename",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleBatchRename(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite.create_from_texture",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteCreateFromTexture(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite.save",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteSave(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite_atlas.create",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteAtlasCreate(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite_atlas.add_members",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteAtlasAddMembers(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite_atlas.set_padding",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteAtlasSetPadding(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite_atlas.rebuild",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteAtlasRebuild(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite_atlas.save",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteAtlasSave(context, request);
+            });
+        m_Handlers.emplace(
+            "sprite_atlas.create_from_selection",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteAtlasCreateFromSelection(context, request);
             });
         m_Handlers.emplace(
             "asset.open",
@@ -1529,4 +1616,424 @@ namespace minEngine
         }
         return FromEditorResult(request, MakeOk(), Json{{"revealed", true}});
     }
+    AutomationResponse EditorAutomationSurface::HandleListImportProducts(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::vector<AssetImportProductInfo> products;
+        const std::string source = request.Payload.value("sourcePath", request.Payload.value("extension", ""));
+        const AssetEditorResult result = context.GetAssetEditorServices().ListImportProducts(source, products);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+
+        Json productsJson = Json::array();
+        for (const AssetImportProductInfo& product : products)
+        {
+            Json required = Json::array();
+            for (const AssetImportOptionDescriptor& option : product.RequiredOptions)
+            {
+                required.push_back(Json{
+                    {"key", option.Key},
+                    {"type", option.Type},
+                    {"meaning", option.Meaning}});
+            }
+            Json optional = Json::array();
+            for (const AssetImportOptionDescriptor& option : product.OptionalOptions)
+            {
+                optional.push_back(Json{
+                    {"key", option.Key},
+                    {"type", option.Type},
+                    {"meaning", option.Meaning}});
+            }
+            productsJson.push_back(Json{
+                {"productId", product.ProductId},
+                {"displayName", product.DisplayName},
+                {"requiredOptions", std::move(required)},
+                {"optionalOptions", std::move(optional)},
+                {"notes", product.Notes}});
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"products", std::move(productsJson)}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleImportAsset(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::vector<AssetImportProductSpec> products;
+        if (request.Payload.contains("products") && request.Payload["products"].is_array())
+        {
+            for (const Json& item : request.Payload["products"])
+            {
+                AssetImportProductSpec spec;
+                spec.ProductId = item.value("productId", "");
+                if (item.contains("options") && item["options"].is_object())
+                {
+                    for (auto it = item["options"].begin(); it != item["options"].end(); ++it)
+                    {
+                        if (it.value().is_string())
+                        {
+                            spec.Options[it.key()] = it.value().get<std::string>();
+                        }
+                        else
+                        {
+                            spec.Options[it.key()] = it.value().dump();
+                        }
+                    }
+                }
+                products.push_back(std::move(spec));
+            }
+        }
+        else if (request.Payload.contains("productId"))
+        {
+            AssetImportProductSpec spec;
+            spec.ProductId = request.Payload.value("productId", "");
+            products.push_back(std::move(spec));
+        }
+
+        std::vector<AssetImportCreatedInfo> created;
+        std::vector<std::string> warnings;
+        const AssetEditorResult result = context.GetAssetEditorServices().Import(
+            request.Payload.value("sourcePath", ""),
+            request.Payload.value("destDirectory", ""),
+            products,
+            request.Payload.value("overwrite", false),
+            created,
+            warnings);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+
+        Json createdJson = Json::array();
+        for (const AssetImportCreatedInfo& info : created)
+        {
+            createdJson.push_back(Json{
+                {"path", info.AssetPath},
+                {"assetType", info.AssetTypeId},
+                {"guid", info.Guid}});
+        }
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{{"created", std::move(createdJson)}, {"warnings", warnings}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleCreateFolder(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::string created;
+        const AssetEditorResult result = context.GetAssetEditorServices().CreateFolder(
+            request.Payload.value("parentDirectory", ""),
+            request.Payload.value("name", ""),
+            created);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"path", created}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleMoveAsset(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const AssetEditorResult result = context.GetAssetEditorServices().Move(
+            request.Payload.value("oldPath", ""),
+            request.Payload.value("newPath", ""));
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"moved", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleRenameAssetOp(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const AssetEditorResult result = context.GetAssetEditorServices().Rename(
+            request.Payload.value("path", ""),
+            request.Payload.value("newFileName", ""));
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"renamed", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleRenameFolder(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const AssetEditorResult result = context.GetAssetEditorServices().RenameFolder(
+            request.Payload.value("path", request.Payload.value("directory", "")),
+            request.Payload.value("newName", ""));
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"renamed", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleDeleteFolder(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const AssetEditorResult result = context.GetAssetEditorServices().DeleteFolder(
+            request.Payload.value("path", request.Payload.value("directory", "")));
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"deleted", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleBatchRename(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::vector<std::string> paths;
+        if (request.Payload.contains("paths") && request.Payload["paths"].is_array())
+        {
+            for (const Json& item : request.Payload["paths"])
+            {
+                if (item.is_string())
+                {
+                    paths.push_back(item.get<std::string>());
+                }
+            }
+        }
+        const AssetEditorResult result = context.GetAssetEditorServices().BatchRename(
+            paths,
+            request.Payload.value("baseStem", ""));
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"renamed", true}, {"count", paths.size()}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteCreateFromTexture(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string texturePath = request.Payload.value("texturePath", "");
+        std::string loadError;
+        std::shared_ptr<Texture2D> texture = AssetManager::Get().LoadAsset<Texture2D>(texturePath);
+        if (texture == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load Texture2D: " + texturePath);
+        }
+
+        Vector4 rect(0.0f, 0.0f, 0.0f, 0.0f);
+        if (request.Payload.contains("sourceRect") && request.Payload["sourceRect"].is_array()
+            && request.Payload["sourceRect"].size() >= 4)
+        {
+            rect.x = request.Payload["sourceRect"][0].get<float>();
+            rect.y = request.Payload["sourceRect"][1].get<float>();
+            rect.z = request.Payload["sourceRect"][2].get<float>();
+            rect.w = request.Payload["sourceRect"][3].get<float>();
+        }
+
+        std::shared_ptr<Sprite> sprite;
+        std::string outPath;
+        std::string outGuid;
+        const GraphEditorResult result = context.GetSpriteEditorServices().CreateSpriteFromTexture(
+            texture,
+            rect,
+            request.Payload.value("directory", ""),
+            request.Payload.value("name", ""),
+            &sprite,
+            &outPath,
+            &outGuid);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"path", outPath}, {"guid", outGuid}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteSave(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string path = request.Payload.value("path", "");
+        std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(path);
+        if (sprite == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load Sprite: " + path);
+        }
+        const GraphEditorResult result = context.GetSpriteEditorServices().SaveSprite(*sprite);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"saved", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteAtlasCreate(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::shared_ptr<SpriteAtlas> atlas;
+        std::string outPath;
+        std::string outGuid;
+        const GraphEditorResult result = context.GetSpriteEditorServices().CreateAtlas(
+            request.Payload.value("directory", ""),
+            request.Payload.value("name", ""),
+            &atlas,
+            &outPath,
+            &outGuid);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"path", outPath}, {"guid", outGuid}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteAtlasAddMembers(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string atlasPath = request.Payload.value("atlasPath", "");
+        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        if (atlas == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+        }
+
+        std::vector<std::shared_ptr<Sprite>> sprites;
+        if (request.Payload.contains("spritePaths") && request.Payload["spritePaths"].is_array())
+        {
+            for (const Json& item : request.Payload["spritePaths"])
+            {
+                if (!item.is_string())
+                {
+                    continue;
+                }
+                std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(item.get<std::string>());
+                if (sprite != nullptr)
+                {
+                    sprites.push_back(sprite);
+                }
+            }
+        }
+
+        const GraphEditorResult result = context.GetSpriteEditorServices().AddAtlasMembers(
+            context.GetCommandStack(),
+            *atlas,
+            sprites);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"added", sprites.size()}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteAtlasSetPadding(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        if (atlas == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+        }
+
+        const int32_t padding = request.Payload.value("padding", atlas->GetPadding());
+        SpriteAtlasPaddingMode mode = atlas->GetPaddingMode();
+        const std::string modeStr = request.Payload.value("paddingMode", "");
+        if (modeStr == "DilateBorder" || modeStr == "dilate")
+        {
+            mode = SpriteAtlasPaddingMode::DilateBorder;
+        }
+        else if (modeStr == "PadWithZero" || modeStr == "zero" || !modeStr.empty())
+        {
+            if (modeStr == "PadWithZero" || modeStr == "zero")
+            {
+                mode = SpriteAtlasPaddingMode::PadWithZero;
+            }
+        }
+
+        const GraphEditorResult result =
+            context.GetSpriteEditorServices().SetAtlasPadding(*atlas, padding, mode);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"padding", padding}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteAtlasRebuild(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        (void)context;
+        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        if (atlas == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+        }
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (rhi == nullptr)
+        {
+            return MakeError(request, "InternalError", "RHI is not available.");
+        }
+        const GraphEditorResult result = context.GetSpriteEditorServices().RebuildAtlas(*atlas, *rhi);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"rebuilt", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteAtlasSave(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        if (atlas == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+        }
+        const GraphEditorResult result = context.GetSpriteEditorServices().SaveAtlas(*atlas);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"saved", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteAtlasCreateFromSelection(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        std::vector<const AssetMeta*> selected;
+        if (request.Payload.contains("spritePaths") && request.Payload["spritePaths"].is_array())
+        {
+            for (const Json& item : request.Payload["spritePaths"])
+            {
+                if (!item.is_string())
+                {
+                    continue;
+                }
+                if (const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(item.get<std::string>()))
+                {
+                    selected.push_back(meta);
+                }
+            }
+        }
+        if (!context.GetAssetWorkflow().TryCreateSpriteAtlasFromSelection(selected))
+        {
+            return MakeError(request, "InternalError", "Create atlas from selection failed.");
+        }
+        return FromEditorResult(request, MakeOk(), Json{{"created", true}});
+    }
+
 }

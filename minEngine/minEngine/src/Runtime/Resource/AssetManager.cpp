@@ -1468,6 +1468,200 @@ namespace minEngine
         return MoveAsset(oldRel, newRelPath.lexically_normal().generic_string(), outError);
     }
 
+    bool AssetManager::CreateFolder(
+        const std::string& parentDirectoryRel,
+        const std::string& folderName,
+        std::string& outError,
+        std::string* outCreatedDirectoryRel)
+    {
+        outError.clear();
+        if (outCreatedDirectoryRel != nullptr)
+        {
+            outCreatedDirectoryRel->clear();
+        }
+
+        if (folderName.empty()
+            || folderName.find('/') != std::string::npos
+            || folderName.find('\\') != std::string::npos
+            || folderName == "."
+            || folderName == "..")
+        {
+            outError = "invalid folder name";
+            return false;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        if (contentRoot.empty())
+        {
+            outError = "ProjectContentRoot is not set";
+            return false;
+        }
+
+        std::filesystem::path parentAbs = contentRoot;
+        if (!parentDirectoryRel.empty())
+        {
+            const std::string parentNorm = NormalizeProjectRelativeAssetPath(
+                (std::filesystem::path(parentDirectoryRel) / ".").lexically_normal().generic_string());
+            // NormalizeProjectRelative expects files; build parent manually.
+            parentAbs = contentRoot / std::filesystem::path(parentDirectoryRel);
+        }
+
+        const std::filesystem::path createdAbs = parentAbs / folderName;
+        if (std::filesystem::exists(createdAbs))
+        {
+            outError = "folder already exists";
+            return false;
+        }
+
+        NoteEditorFilesystemMutation(createdAbs);
+        std::error_code createError;
+        if (!std::filesystem::create_directories(createdAbs, createError) || createError)
+        {
+            outError = "failed to create folder: " + createError.message();
+            return false;
+        }
+
+        if (outCreatedDirectoryRel != nullptr)
+        {
+            std::filesystem::path rel = parentDirectoryRel.empty()
+                ? std::filesystem::path(folderName)
+                : (std::filesystem::path(parentDirectoryRel) / folderName);
+            *outCreatedDirectoryRel = rel.lexically_normal().generic_string();
+        }
+        return true;
+    }
+
+    bool AssetManager::RenameFolder(
+        const std::string& directoryRel,
+        const std::string& newFolderName,
+        std::string& outError)
+    {
+        outError.clear();
+        if (directoryRel.empty())
+        {
+            outError = "cannot rename content root";
+            return false;
+        }
+        if (newFolderName.empty()
+            || newFolderName.find('/') != std::string::npos
+            || newFolderName.find('\\') != std::string::npos)
+        {
+            outError = "invalid folder name";
+            return false;
+        }
+
+        // Non-empty folder rename (with registered assets) is deferred; only empty dirs for MVP.
+        const std::vector<const AssetMeta*> under =
+            FindAssetMetasUnderDirectory(directoryRel);
+        if (!under.empty())
+        {
+            outError = "folder is not empty (contains registered assets); move assets first";
+            return false;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        const std::filesystem::path oldAbs = contentRoot / std::filesystem::path(directoryRel);
+        if (!std::filesystem::exists(oldAbs) || !std::filesystem::is_directory(oldAbs))
+        {
+            outError = "folder does not exist";
+            return false;
+        }
+
+        // Reject if any filesystem child exists (empty-folder policy).
+        std::error_code iterError;
+        const auto it = std::filesystem::directory_iterator(oldAbs, iterError);
+        if (!iterError && it != std::filesystem::directory_iterator{})
+        {
+            outError = "folder is not empty on disk";
+            return false;
+        }
+
+        const std::filesystem::path newAbs = oldAbs.parent_path() / newFolderName;
+        if (std::filesystem::exists(newAbs))
+        {
+            outError = "destination folder already exists";
+            return false;
+        }
+
+        NoteEditorFilesystemMutation(oldAbs);
+        NoteEditorFilesystemMutation(newAbs);
+        std::error_code renameError;
+        std::filesystem::rename(oldAbs, newAbs, renameError);
+        if (renameError)
+        {
+            outError = "failed to rename folder: " + renameError.message();
+            return false;
+        }
+        return true;
+    }
+
+    bool AssetManager::DeleteFolder(
+        const std::string& directoryRel,
+        std::string& outError,
+        bool requireEmpty)
+    {
+        outError.clear();
+        if (directoryRel.empty())
+        {
+            outError = "cannot delete content root";
+            return false;
+        }
+
+        const std::vector<const AssetMeta*> under = FindAssetMetasUnderDirectory(directoryRel);
+        if (!under.empty())
+        {
+            outError = "folder contains registered assets";
+            return false;
+        }
+
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+        const std::filesystem::path absPath = contentRoot / std::filesystem::path(directoryRel);
+        if (!std::filesystem::exists(absPath))
+        {
+            return true;
+        }
+        if (!std::filesystem::is_directory(absPath))
+        {
+            outError = "path is not a directory";
+            return false;
+        }
+
+        if (requireEmpty)
+        {
+            std::error_code iterError;
+            const auto it = std::filesystem::directory_iterator(absPath, iterError);
+            if (!iterError && it != std::filesystem::directory_iterator{})
+            {
+                outError = "folder is not empty";
+                return false;
+            }
+        }
+
+        NoteEditorFilesystemMutation(absPath);
+        std::error_code removeError;
+        if (requireEmpty)
+        {
+            if (!std::filesystem::remove(absPath, removeError) || removeError)
+            {
+                outError = "failed to delete folder: " + removeError.message();
+                return false;
+            }
+        }
+        else
+        {
+            const auto removed = std::filesystem::remove_all(absPath, removeError);
+            if (removeError || removed == static_cast<std::uintmax_t>(-1))
+            {
+                outError = "failed to delete folder tree: " + removeError.message();
+                return false;
+            }
+        }
+        return true;
+    }
+
     std::shared_ptr<Asset> AssetManager::LoadAssetByPath(const std::string& path, std::string& outErrorMessage)
     {
         outErrorMessage.clear();

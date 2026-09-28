@@ -52,9 +52,26 @@ namespace minEngine
         Add({"reflect", "list_properties", "query", "reflect.list_properties", false, false, ""});
 
         Add({"asset", "list", "query", "asset.list", false, false, ""});
+        Add({"asset", "list_import_products", "query", "asset.list_import_products", false, false, "Discover products/options for a source"});
         Add({"asset", "create", "asset", "asset.create", false, false, "Not a Scene undo unit"});
+        Add({"asset", "import", "asset", "asset.import", false, false, "Unified import facade; products[] + options"});
         Add({"asset", "delete", "asset", "asset.delete", false, false, "Not a Scene undo unit"});
         Add({"asset", "open", "control", "asset.open", false, false, "Open and focus; no file dialog"});
+        Add({"asset", "create_folder", "asset", "asset.create_folder", false, false, "Empty content folder"});
+        Add({"asset", "move", "asset", "asset.move", false, false, "Move asset; Guid stable"});
+        Add({"asset", "rename", "asset", "asset.rename", false, false, "Rename asset file stem+ext"});
+        Add({"asset", "rename_folder", "asset", "asset.rename_folder", false, false, "Rename empty folder"});
+        Add({"asset", "delete_folder", "asset", "asset.delete_folder", false, false, "Delete empty folder"});
+        Add({"asset", "batch_rename", "asset", "asset.batch_rename", false, false, "Batch rename Foo/Foo_1..."});
+
+        Add({"sprite", "create_from_texture", "asset", "sprite.create_from_texture", false, false, "Create Sprite from Texture2D"});
+        Add({"sprite", "save", "asset", "sprite.save", false, false, "Save Sprite asset"});
+        Add({"sprite_atlas", "create", "asset", "sprite_atlas.create", false, false, "Create empty SpriteAtlas"});
+        Add({"sprite_atlas", "add_members", "asset", "sprite_atlas.add_members", false, false, "Add Sprite members"});
+        Add({"sprite_atlas", "set_padding", "asset", "sprite_atlas.set_padding", false, false, "Set atlas padding/mode"});
+        Add({"sprite_atlas", "rebuild", "asset", "sprite_atlas.rebuild", false, false, "Rebuild atlas (needs RHI)"});
+        Add({"sprite_atlas", "save", "asset", "sprite_atlas.save", false, false, "Save SpriteAtlas"});
+        Add({"sprite_atlas", "create_from_selection", "asset", "sprite_atlas.create_from_selection", false, false, "Create atlas from Sprite paths"});
 
         Add({"editor", "activate_session", "control", "editor.activate_session", true, false, ""});
         Add({"editor", "reveal_asset", "control", "editor.reveal_asset", false, false, ""});

@@ -381,12 +381,56 @@ namespace minEngine
                 editor.GetAssetWorkflow().TryCreateSpriteAtlasFromSelection(cbCtx->SelectedAssets);
             }
         };
+
+        class ContentBrowserCreateFolderAction final : public ContentBrowserScopedAction
+        {
+        public:
+            EditorActionId GetId() const override { return EditorActionId::CreateFolder; }
+            const char* GetLabel(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "New Folder";
+            }
+            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Create; }
+            int GetSortOrder() const override { return 5; }
+
+            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
+            {
+                return GetContext(ctx) != nullptr;
+            }
+
+            bool CanExecute(const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                if (cbCtx == nullptr)
+                {
+                    return false;
+                }
+                return cbCtx->HitKind == ContentBrowserHitKind::TreeDirectory
+                    || cbCtx->HitKind == ContentBrowserHitKind::ListBackground;
+            }
+
+            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "New Folder is available on folders or empty list areas.";
+            }
+
+            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                const std::string parent =
+                    cbCtx != nullptr ? cbCtx->CurrentDirectoryRel : std::string{};
+                editor.GetContentBrowser().RequestCreateFolderDialog(parent);
+            }
+        };
     }
 
     void RegisterContentBrowserBuiltInActions(EditorActionRegistry& registry)
     {
         registry.Register(std::make_unique<ContentBrowserImportAction>());
         registry.Register(std::make_unique<ContentBrowserRefreshAction>());
+        registry.Register(std::make_unique<ContentBrowserCreateFolderAction>());
         registry.Register(std::make_unique<ContentBrowserCreateSceneAction>());
         registry.Register(std::make_unique<ContentBrowserCreateMaterialAction>());
         registry.Register(std::make_unique<ContentBrowserCreateMaterialInstanceAction>());

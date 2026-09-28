@@ -5,6 +5,7 @@
 #include "Services/AssetWorkflowModule.h"
 #include "Services/ContentBrowser/AssetTreeModel.h"
 #include "Services/ContentBrowser/ContentBrowserModule.h"
+#include "Services/ContentBrowser/ContentBrowserSelection.h"
 #include "Services/Inspector/InspectorModule.h"
 #include "Shell/IEditorContext.h"
 
@@ -27,6 +28,8 @@
 #include "IconFontCppHeaders/IconsFontAwesome7.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -190,7 +193,50 @@ namespace minEngine
         m_Context.GetAssetWorkflow().SetContentBrowserInspectorActive(browserFocused);
         SyncSelectionFromWorkflow();
         TryConsumePendingRenameRequest();
+        TryConsumePendingFolderRenameRequest();
         TryCaptureF2RenameRequest();
+
+        if (m_Context.GetContentBrowser().ConsumePendingBatchRename())
+        {
+            m_BatchRenamePaths = m_Context.GetContentBrowser().GetSelection().GetSelectedAssetPaths();
+            if (!m_BatchRenamePaths.empty())
+            {
+                m_ShowBatchRenameModal = true;
+                std::memset(m_BatchRenameStemBuffer, 0, sizeof(m_BatchRenameStemBuffer));
+                const std::filesystem::path first{m_BatchRenamePaths.front()};
+                std::strncpy(
+                    m_BatchRenameStemBuffer,
+                    first.stem().string().c_str(),
+                    sizeof(m_BatchRenameStemBuffer) - 1);
+                ImGui::OpenPopup("BatchRenamePopup");
+            }
+        }
+
+        std::string createFolderParent;
+        if (m_Context.GetContentBrowser().ConsumePendingCreateFolder(createFolderParent))
+        {
+            m_ShowCreateFolderModal = true;
+            m_CreateFolderParentRel = std::move(createFolderParent);
+            std::memset(m_CreateFolderNameBuffer, 0, sizeof(m_CreateFolderNameBuffer));
+            std::strncpy(m_CreateFolderNameBuffer, "NewFolder", sizeof(m_CreateFolderNameBuffer) - 1);
+            ImGui::OpenPopup("CreateFolderPopup");
+        }
+
+        if (browserFocused && ImGui::IsKeyPressed(ImGuiKey_Delete, false)
+            && m_RenamingAssetPath.empty() && m_RenamingDirectoryRel.empty())
+        {
+            ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
+            const std::vector<std::string> assetPaths = selection.GetSelectedAssetPaths();
+            const std::vector<std::string> dirPaths = selection.GetSelectedDirectoryPaths();
+            if (!assetPaths.empty())
+            {
+                m_Context.GetAssetWorkflow().RequestConfirmDeleteAssets(assetPaths);
+            }
+            else if (dirPaths.size() == 1)
+            {
+                m_Context.GetAssetWorkflow().RequestConfirmDeleteFolder(dirPaths.front());
+            }
+        }
 
         DrawToolbar();
         DrawBreadcrumb();
@@ -206,6 +252,9 @@ namespace minEngine
         ImGui::BeginChild("ContentBrowserList", ImVec2(0.0f, 0.0f), true);
         DrawAssetTileGrid();
         ImGui::EndChild();
+
+        DrawCreateFolderModal();
+        DrawBatchRenameModal();
 
         ImGui::End();
     }
@@ -223,6 +272,8 @@ namespace minEngine
             m_Model.RebuildDirectoryTree();
             m_Model.RebuildCurrentDirectoryAssetList();
             m_SelectedAssetIndex = -1;
+            m_ShiftAnchorAssetIndex = -1;
+            m_Context.GetContentBrowser().GetSelection().Clear();
             m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
         }
     }
@@ -354,10 +405,20 @@ namespace minEngine
         if (ImGui::IsItemClicked())
         {
             m_Model.SetCurrentDirectory(node.RelativePath);
+            SelectDirectory(node.RelativePath);
         }
+
+        TryAcceptAssetDropOnDirectory(node.RelativePath);
 
         if (ImGui::BeginPopupContextItem())
         {
+            // Ensure directory is in selection for Rename/Delete menu ops.
+            if (m_Context.GetContentBrowser().GetSelection().GetSelectedDirectoryPaths().empty()
+                || m_Context.GetContentBrowser().GetSelection().GetSelectedDirectoryPaths().front()
+                    != node.RelativePath)
+            {
+                SelectDirectory(node.RelativePath);
+            }
             DrawContentBrowserContextMenu(
                 ContentBrowserHitKind::TreeDirectory,
                 node.RelativePath,
@@ -398,13 +459,28 @@ namespace minEngine
             return;
         }
 
-        const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
-        if (selected == nullptr)
+        ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
+        const std::vector<std::string> assetPaths = selection.GetSelectedAssetPaths();
+        if (assetPaths.size() > 1)
         {
+            m_Context.GetContentBrowser().RequestBeginBatchRename();
+            return;
+        }
+        if (assetPaths.size() == 1)
+        {
+            const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(assetPaths.front());
+            if (meta != nullptr)
+            {
+                BeginAssetRename(*meta);
+            }
             return;
         }
 
-        BeginAssetRename(*selected);
+        const std::vector<std::string> dirs = selection.GetSelectedDirectoryPaths();
+        if (dirs.size() == 1 && !dirs.front().empty())
+        {
+            BeginDirectoryRename(dirs.front());
+        }
     }
 
     void ContentBrowserWindow::TryConsumePendingRenameRequest()
@@ -514,8 +590,7 @@ namespace minEngine
             return;
         }
 
-        const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
-        const bool isSelected = selected != nullptr && selected->AssetPath == assetMeta.AssetPath;
+        const bool isSelected = IsAssetPathSelected(assetMeta.AssetPath);
         if (ImGui::Selectable(assetMeta.AssetName.c_str(), isSelected))
         {
             const std::string parentDirectory = std::filesystem::path(assetMeta.AssetPath)
@@ -523,7 +598,19 @@ namespace minEngine
                                                     .lexically_normal()
                                                     .generic_string();
             m_Model.SetCurrentDirectory(parentDirectory);
-            SelectAsset(&assetMeta);
+
+            const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
+            int listIndex = -1;
+            for (int index = 0; index < static_cast<int>(assets.size()); ++index)
+            {
+                if (assets[static_cast<size_t>(index)] != nullptr
+                    && assets[static_cast<size_t>(index)]->AssetPath == assetMeta.AssetPath)
+                {
+                    listIndex = index;
+                    break;
+                }
+            }
+            ApplyAssetClickSelection(assetMeta, listIndex >= 0 ? listIndex : 0);
         }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -685,6 +772,40 @@ namespace minEngine
         ImGui::PushID(directoryNode.RelativePath.c_str());
 
         const ImVec2 outerSize(ViewMetrics::TileOuterWidth, ResolveTileOuterHeight());
+
+        if (IsRenamingDirectoryPath(directoryNode.RelativePath))
+        {
+            ImGui::InvisibleButton("##dirTile_rename", outerSize);
+            const ImVec2 outerMin = ImGui::GetItemRectMin();
+            const ImVec2 outerMax = ImGui::GetItemRectMax();
+            DrawTileVisual(directoryNode.DisplayName.c_str(), true, nullptr, false, true);
+
+            const float labelTop =
+                outerMin.y + ViewMetrics::TilePadding + ViewMetrics::IconSize + ViewMetrics::IconLabelGap;
+            const float labelWidth = ViewMetrics::TileOuterWidth - 2.0f * ViewMetrics::TilePadding;
+            ImGuiWindow* window = ImGui::GetCurrentWindow();
+            const ImVec2 cursorMaxPosAfterTile = window->DC.CursorMaxPos;
+            ImGui::PushClipRect(outerMin, outerMax, true);
+            ImGui::SetCursorScreenPos(ImVec2(outerMin.x + ViewMetrics::TilePadding, labelTop));
+            ImGui::PushItemWidth(labelWidth);
+            EditorThemeScope renameFieldTheme = EditorWindowTheme::Field(m_Context.GetEditorAppearance());
+            const InlineRenameField::Result renameResult =
+                InlineRenameField::Draw(m_RenameBuffer, sizeof(m_RenameBuffer), m_RequestRenameFocus);
+            ImGui::PopItemWidth();
+            ImGui::PopClipRect();
+            window->DC.CursorMaxPos = cursorMaxPosAfterTile;
+            if (renameResult == InlineRenameField::Result::Commit)
+            {
+                CommitDirectoryRename(m_RenameBuffer);
+            }
+            else if (renameResult == InlineRenameField::Result::Cancel)
+            {
+                CancelDirectoryRename();
+            }
+            ImGui::PopID();
+            return;
+        }
+
         if (ImGui::InvisibleButton("##dirTile", outerSize))
         {
             SelectDirectory(directoryNode.RelativePath);
@@ -695,14 +816,21 @@ namespace minEngine
             m_Model.SetCurrentDirectory(directoryNode.RelativePath);
             m_SelectedAssetIndex = -1;
             m_SelectedDirectoryRelativePath.clear();
+            m_Context.GetContentBrowser().GetSelection().Clear();
             m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
         }
 
-        const bool selected = m_SelectedDirectoryRelativePath == directoryNode.RelativePath;
+        TryAcceptAssetDropOnDirectory(directoryNode.RelativePath);
+
+        const bool selected = m_SelectedDirectoryRelativePath == directoryNode.RelativePath
+            || (!m_Context.GetContentBrowser().GetSelection().GetSelectedDirectoryPaths().empty()
+                && m_Context.GetContentBrowser().GetSelection().GetSelectedDirectoryPaths().front()
+                    == directoryNode.RelativePath);
         DrawTileVisual(directoryNode.DisplayName.c_str(), selected, nullptr, true, true);
 
         if (ImGui::BeginPopupContextItem())
         {
+            SelectDirectory(directoryNode.RelativePath);
             DrawContentBrowserContextMenu(
                 ContentBrowserHitKind::TreeDirectory,
                 directoryNode.RelativePath,
@@ -713,7 +841,7 @@ namespace minEngine
         ImGui::PopID();
     }
 
-    void ContentBrowserWindow::DrawAssetTile(const AssetMeta& meta, const int tileIndex, const bool selected)
+    void ContentBrowserWindow::DrawAssetTile(const AssetMeta& meta, const int tileIndex, const int assetListIndex, const bool selected)
     {
         ImGui::PushID(tileIndex);
 
@@ -773,7 +901,14 @@ namespace minEngine
 
         if (ImGui::InvisibleButton("##tile", outerSize))
         {
-            SelectAsset(&meta);
+            ApplyAssetClickSelection(meta, assetListIndex);
+        }
+
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+        {
+            BeginAssetDragPayload();
+            ImGui::TextUnformatted(meta.AssetName.c_str());
+            ImGui::EndDragDropSource();
         }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -854,8 +989,8 @@ namespace minEngine
             }
 
             PlaceTileInGrid(tileIndex, columnCount, gridOrigin, tileHeight);
-            const bool selectedTile = (m_SelectedAssetIndex == index);
-            DrawAssetTile(*meta, tileIndex, selectedTile);
+            const bool selectedTile = IsAssetPathSelected(meta->AssetPath);
+            DrawAssetTile(*meta, tileIndex, index, selectedTile);
             ++tileIndex;
         }
 
@@ -878,15 +1013,155 @@ namespace minEngine
     void ContentBrowserWindow::SelectAsset(const AssetMeta* meta)
     {
         m_SelectedDirectoryRelativePath.clear();
-        m_Context.GetAssetWorkflow().SetSelectedAsset(meta);
-        SyncSelectionFromWorkflow();
+        ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
+        if (meta == nullptr)
+        {
+            selection.Clear();
+            m_SelectedAssetIndex = -1;
+            m_ShiftAnchorAssetIndex = -1;
+            m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
+            return;
+        }
+
+        selection.SetSingleAsset(meta->AssetPath);
+        SyncSelectionToWorkflow();
     }
 
     void ContentBrowserWindow::SelectDirectory(std::string_view relativePath)
     {
         m_SelectedDirectoryRelativePath = std::string(relativePath);
         m_SelectedAssetIndex = -1;
+        m_ShiftAnchorAssetIndex = -1;
+        m_Context.GetContentBrowser().GetSelection().SetSingleDirectory(relativePath);
         m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
+    }
+
+    void ContentBrowserWindow::ApplyAssetClickSelection(const AssetMeta& meta, int assetIndexInCurrentList)
+    {
+        ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
+        const bool ctrl = ImGui::GetIO().KeyCtrl;
+        const bool shift = ImGui::GetIO().KeyShift;
+
+        if (shift)
+        {
+            const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
+            std::vector<std::string> orderedPaths;
+            orderedPaths.reserve(assets.size());
+            for (const AssetMeta* assetMeta : assets)
+            {
+                if (assetMeta != nullptr)
+                {
+                    orderedPaths.push_back(assetMeta->AssetPath);
+                }
+            }
+
+            int anchor = m_ShiftAnchorAssetIndex;
+            if (anchor < 0)
+            {
+                anchor = assetIndexInCurrentList;
+            }
+            selection.SetAssetRange(orderedPaths, anchor, assetIndexInCurrentList);
+        }
+        else if (ctrl)
+        {
+            selection.ToggleAsset(meta.AssetPath);
+            m_ShiftAnchorAssetIndex = assetIndexInCurrentList;
+        }
+        else
+        {
+            selection.SetSingleAsset(meta.AssetPath);
+            m_ShiftAnchorAssetIndex = assetIndexInCurrentList;
+        }
+
+        m_SelectedDirectoryRelativePath.clear();
+        SyncSelectionToWorkflow();
+    }
+
+    void ContentBrowserWindow::SyncSelectionToWorkflow()
+    {
+        ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
+        const std::string primaryPath = selection.GetPrimaryAssetPath();
+        if (primaryPath.empty())
+        {
+            m_SelectedAssetIndex = -1;
+            m_Context.GetAssetWorkflow().SetSelectedAsset(nullptr);
+            return;
+        }
+
+        const AssetMeta* primaryMeta = AssetManager::Get().FindAssetMetaByPath(primaryPath);
+        m_Context.GetAssetWorkflow().SetSelectedAsset(primaryMeta);
+
+        const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
+        m_SelectedAssetIndex = -1;
+        for (int index = 0; index < static_cast<int>(assets.size()); ++index)
+        {
+            const AssetMeta* assetMeta = assets[static_cast<size_t>(index)];
+            if (assetMeta != nullptr && assetMeta->AssetPath == primaryPath)
+            {
+                m_SelectedAssetIndex = index;
+                break;
+            }
+        }
+    }
+
+    bool ContentBrowserWindow::IsAssetPathSelected(std::string_view assetPath) const
+    {
+        const ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
+        for (const ContentBrowserSelectionEntry& entry : selection.GetEntries())
+        {
+            if (entry.Kind == ContentBrowserSelectionKind::Asset && entry.Path == assetPath)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void ContentBrowserWindow::DrawCreateFolderModal()
+    {
+        if (!m_ShowCreateFolderModal)
+        {
+            return;
+        }
+
+        if (ImGui::BeginPopupModal("CreateFolderPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::TextUnformatted("Folder name:");
+            ImGui::InputText("##CreateFolderName", m_CreateFolderNameBuffer, sizeof(m_CreateFolderNameBuffer));
+
+            if (ImGui::Button("Create"))
+            {
+                std::string error;
+                std::string created;
+                if (AssetManager::Get().CreateFolder(
+                        m_CreateFolderParentRel,
+                        m_CreateFolderNameBuffer,
+                        error,
+                        &created))
+                {
+                    m_Model.RebuildDirectoryTree();
+                    m_Model.RebuildCurrentDirectoryAssetList();
+                    m_ShowCreateFolderModal = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                else
+                {
+                    ME_LOG(LogEditor, Error, "CreateFolder failed: {}", error);
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                m_ShowCreateFolderModal = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        else if (!ImGui::IsPopupOpen("CreateFolderPopup"))
+        {
+            // Keep popup open while modal flag is set.
+            ImGui::OpenPopup("CreateFolderPopup");
+        }
     }
 
     void ContentBrowserWindow::DrawContentBrowserContextMenu(
@@ -894,12 +1169,23 @@ namespace minEngine
         const std::string_view directoryRel,
         const AssetMeta* assetForContext)
     {
+        ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
         if (assetForContext != nullptr)
         {
-            const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
-            if (selected == nullptr || selected->AssetPath != assetForContext->AssetPath)
+            if (!IsAssetPathSelected(assetForContext->AssetPath))
             {
-                SelectAsset(assetForContext);
+                selection.SetSingleAsset(assetForContext->AssetPath);
+                SyncSelectionToWorkflow();
+            }
+        }
+        else if (hitKind == ContentBrowserHitKind::TreeDirectory && !directoryRel.empty())
+        {
+            const std::vector<std::string> dirs = selection.GetSelectedDirectoryPaths();
+            if (dirs.empty() || dirs.front() != directoryRel)
+            {
+                selection.SetSingleDirectory(directoryRel);
+                m_SelectedDirectoryRelativePath = std::string(directoryRel);
+                SyncSelectionToWorkflow();
             }
         }
 
@@ -907,44 +1193,206 @@ namespace minEngine
         cbContext->HitKind = hitKind;
         cbContext->CurrentDirectoryRel = std::string(directoryRel);
 
-        if (assetForContext != nullptr)
+        for (const std::string& assetPath : selection.GetSelectedAssetPaths())
         {
-            cbContext->SelectedAssets.push_back(assetForContext);
-        }
-        else
-        {
-            const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
-            if (selected != nullptr)
+            if (const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(assetPath))
             {
-                cbContext->SelectedAssets.push_back(selected);
+                cbContext->SelectedAssets.push_back(meta);
             }
         }
+        cbContext->SelectedDirectoryRels = selection.GetSelectedDirectoryPaths();
 
         EditorMenuContext menuContext;
         menuContext.Add(cbContext);
         m_Context.GetContextMenu().BuildAndDraw(m_Context, menuContext);
     }
 
-    void ContentBrowserWindow::SyncSelectionFromWorkflow()
+
+    void ContentBrowserWindow::TryConsumePendingFolderRenameRequest()
     {
-        const AssetMeta* selected = m_Context.GetAssetWorkflow().GetSelectedAsset();
-        if (selected == nullptr)
+        const std::string pending = m_Context.GetContentBrowser().ConsumePendingFolderRenamePath();
+        if (pending.empty())
         {
-            m_SelectedAssetIndex = -1;
+            return;
+        }
+        BeginDirectoryRename(pending);
+    }
+
+    void ContentBrowserWindow::BeginDirectoryRename(std::string_view directoryRel)
+    {
+        if (directoryRel.empty())
+        {
+            return;
+        }
+        CancelAssetRename();
+        m_RenamingDirectoryRel = std::string(directoryRel);
+        std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+        const std::string leaf = std::filesystem::path(m_RenamingDirectoryRel).filename().string();
+        std::strncpy(m_RenameBuffer, leaf.c_str(), sizeof(m_RenameBuffer) - 1);
+        m_RequestRenameFocus = true;
+        SelectDirectory(m_RenamingDirectoryRel);
+    }
+
+    void ContentBrowserWindow::CancelDirectoryRename()
+    {
+        m_RenamingDirectoryRel.clear();
+        m_RequestRenameFocus = false;
+        m_RenameBuffer[0] = '\0';
+    }
+
+    bool ContentBrowserWindow::IsRenamingDirectoryPath(std::string_view directoryRel) const
+    {
+        return !m_RenamingDirectoryRel.empty() && m_RenamingDirectoryRel == directoryRel;
+    }
+
+    bool ContentBrowserWindow::CommitDirectoryRename(const std::string& newName)
+    {
+        if (m_RenamingDirectoryRel.empty())
+        {
+            return false;
+        }
+        if (newName.empty() || newName.find('/') != std::string::npos || newName.find('\\') != std::string::npos)
+        {
+            CancelDirectoryRename();
+            return false;
+        }
+
+        const std::string oldRel = m_RenamingDirectoryRel;
+        std::string error;
+        if (!AssetManager::Get().RenameFolder(oldRel, newName, error))
+        {
+            ME_LOG(LogEditor, Error, "RenameFolder failed: {}", error);
+            CancelDirectoryRename();
+            return false;
+        }
+
+        const std::filesystem::path newRel =
+            std::filesystem::path(oldRel).parent_path() / newName;
+        const std::string newRelStr = newRel.lexically_normal().generic_string();
+        CancelDirectoryRename();
+        m_Model.RebuildDirectoryTree();
+        m_Model.RebuildCurrentDirectoryAssetList();
+        SelectDirectory(newRelStr);
+        return true;
+    }
+
+    void ContentBrowserWindow::BeginAssetDragPayload()
+    {
+        ContentBrowserSelection& selection = m_Context.GetContentBrowser().GetSelection();
+        std::vector<std::string> paths = selection.GetSelectedAssetPaths();
+        if (paths.empty())
+        {
             return;
         }
 
-        m_SelectedDirectoryRelativePath.clear();
-        const std::vector<const AssetMeta*>& assets = m_Model.GetAssetsInCurrentDirectory();
-        m_SelectedAssetIndex = -1;
-        for (int index = 0; index < static_cast<int>(assets.size()); ++index)
+        std::string blob;
+        const uint32_t count = static_cast<uint32_t>(paths.size());
+        blob.append(reinterpret_cast<const char*>(&count), sizeof(count));
+        for (const std::string& path : paths)
         {
-            const AssetMeta* assetMeta = assets[static_cast<size_t>(index)];
-            if (assetMeta != nullptr && assetMeta->AssetPath == selected->AssetPath)
+            blob.append(path);
+            blob.push_back('\0');
+        }
+        ImGui::SetDragDropPayload("CB_ASSET_PATHS", blob.data(), blob.size());
+    }
+
+    void ContentBrowserWindow::TryAcceptAssetDropOnDirectory(std::string_view targetDirectoryRel)
+    {
+        if (!ImGui::BeginDragDropTarget())
+        {
+            return;
+        }
+
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CB_ASSET_PATHS"))
+        {
+            if (payload->DataSize >= static_cast<int>(sizeof(uint32_t)))
             {
-                m_SelectedAssetIndex = index;
-                return;
+                const char* data = static_cast<const char*>(payload->Data);
+                uint32_t count = 0;
+                std::memcpy(&count, data, sizeof(count));
+                size_t offset = sizeof(count);
+                bool anyMoved = false;
+                for (uint32_t i = 0; i < count && offset < static_cast<size_t>(payload->DataSize); ++i)
+                {
+                    const char* pathCStr = data + offset;
+                    const std::string oldPath(pathCStr);
+                    offset += oldPath.size() + 1;
+                    if (oldPath.empty())
+                    {
+                        continue;
+                    }
+                    const std::filesystem::path leaf = std::filesystem::path(oldPath).filename();
+                    std::filesystem::path newRel{std::string(targetDirectoryRel)};
+                    newRel /= leaf;
+                    const std::string newPath = newRel.lexically_normal().generic_string();
+                    if (newPath == oldPath)
+                    {
+                        continue;
+                    }
+                    std::string error;
+                    if (!AssetManager::Get().MoveAsset(oldPath, newPath, error))
+                    {
+                        ME_LOG(LogEditor, Error, "MoveAsset '{}' -> '{}': {}", oldPath, newPath, error);
+                        continue;
+                    }
+                    anyMoved = true;
+                }
+                if (anyMoved)
+                {
+                    m_Model.RebuildDirectoryTree();
+                    m_Model.RebuildCurrentDirectoryAssetList();
+                    m_Context.GetContentBrowser().GetSelection().Clear();
+                    SyncSelectionToWorkflow();
+                }
             }
         }
+        ImGui::EndDragDropTarget();
+    }
+
+    void ContentBrowserWindow::DrawBatchRenameModal()
+    {
+        if (!m_ShowBatchRenameModal)
+        {
+            return;
+        }
+
+        if (ImGui::BeginPopupModal("BatchRenamePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Rename %d assets (base stem):", static_cast<int>(m_BatchRenamePaths.size()));
+            ImGui::InputText("##BatchRenameStem", m_BatchRenameStemBuffer, sizeof(m_BatchRenameStemBuffer));
+            if (ImGui::Button("Rename", ImVec2(120, 0)))
+            {
+                std::string error;
+                if (!m_Context.GetAssetWorkflow().TryBatchRenameAssets(
+                        m_BatchRenamePaths, m_BatchRenameStemBuffer, error))
+                {
+                    ME_LOG(LogEditor, Error, "Batch rename failed: {}", error);
+                }
+                else
+                {
+                    m_Context.GetContentBrowser().GetSelection().Clear();
+                    SyncSelectionToWorkflow();
+                }
+                m_ShowBatchRenameModal = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+            {
+                m_ShowBatchRenameModal = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        else if (!ImGui::IsPopupOpen("BatchRenamePopup"))
+        {
+            ImGui::OpenPopup("BatchRenamePopup");
+        }
+    }
+
+    void ContentBrowserWindow::SyncSelectionFromWorkflow()
+    {
+        // SelectionSet is authoritative for CB; keep local index for F2 / legacy paths.
+        SyncSelectionToWorkflow();
     }
 }

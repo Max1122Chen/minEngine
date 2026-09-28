@@ -14,6 +14,8 @@
 #include "SubEditor/Scene/SceneEditor.h"
 
 #include <limits>
+#include <string>
+#include <vector>
 #include <memory>
 
 namespace minEngine
@@ -27,6 +29,7 @@ namespace minEngine
             AssetTreeModel& model = editor.GetContentBrowser().GetModel();
             model.RebuildDirectoryTree();
             model.RebuildCurrentDirectoryAssetList();
+            editor.GetContentBrowser().GetSelection().Clear();
             editor.GetAssetWorkflow().SetSelectedAsset(nullptr);
         }
 
@@ -88,7 +91,7 @@ namespace minEngine
             {
                 if (const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx))
                 {
-                    return !cbCtx->SelectedAssets.empty();
+                    return !cbCtx->SelectedAssets.empty() || !cbCtx->SelectedDirectoryRels.empty();
                 }
                 return HasSceneGameObjectTarget(ctx);
             }
@@ -106,10 +109,25 @@ namespace minEngine
 
             void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
             {
-                if (FindContentBrowserContext(ctx) != nullptr)
+                if (const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx))
                 {
-                    editor.GetAssetWorkflow().DeleteSelectedAsset();
-                    RefreshContentBrowser(editor);
+                    if (!cbCtx->SelectedAssets.empty())
+                    {
+                        std::vector<std::string> paths;
+                        paths.reserve(cbCtx->SelectedAssets.size());
+                        for (const AssetMeta* meta : cbCtx->SelectedAssets)
+                        {
+                            if (meta != nullptr)
+                            {
+                                paths.push_back(meta->AssetPath);
+                            }
+                        }
+                        editor.GetAssetWorkflow().RequestConfirmDeleteAssets(std::move(paths));
+                    }
+                    else if (cbCtx->SelectedDirectoryRels.size() == 1)
+                    {
+                        editor.GetAssetWorkflow().RequestConfirmDeleteFolder(cbCtx->SelectedDirectoryRels.front());
+                    }
                     return;
                 }
 
@@ -145,10 +163,13 @@ namespace minEngine
             {
                 if (const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx))
                 {
-                    return (cbCtx->HitKind == ContentBrowserHitKind::TreeAsset
-                            || cbCtx->HitKind == ContentBrowserHitKind::TileAsset)
-                        && !cbCtx->SelectedAssets.empty()
-                        && cbCtx->SelectedAssets.front() != nullptr;
+                    if (!cbCtx->SelectedAssets.empty())
+                    {
+                        return true;
+                    }
+                    return cbCtx->HitKind == ContentBrowserHitKind::TreeDirectory
+                        && cbCtx->SelectedDirectoryRels.size() == 1
+                        && !cbCtx->SelectedDirectoryRels.front().empty();
                 }
 
                 if (const SceneInspectorMenuContext* inspectorCtx = FindSceneInspectorContext(ctx))
@@ -176,11 +197,21 @@ namespace minEngine
             {
                 if (const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx))
                 {
+                    if (cbCtx->SelectedAssets.size() > 1)
+                    {
+                        editor.GetContentBrowser().RequestBeginBatchRename();
+                        return;
+                    }
                     if (!cbCtx->SelectedAssets.empty() && cbCtx->SelectedAssets.front() != nullptr)
                     {
                         const AssetMeta& meta = *cbCtx->SelectedAssets.front();
                         editor.GetAssetWorkflow().SetSelectedAsset(&meta);
                         editor.GetContentBrowser().RequestBeginAssetRename(meta.AssetPath);
+                        return;
+                    }
+                    if (cbCtx->SelectedDirectoryRels.size() == 1)
+                    {
+                        editor.GetContentBrowser().RequestBeginFolderRename(cbCtx->SelectedDirectoryRels.front());
                     }
                     return;
                 }
@@ -265,7 +296,18 @@ namespace minEngine
             void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
             {
                 (void)ctx;
-                editor.GetAssetWorkflow().DeleteSelectedAsset(true);
+                std::vector<std::string> paths;
+                    if (const ContentBrowserMenuContext* cbCtx = FindContentBrowserContext(ctx))
+                    {
+                        for (const AssetMeta* meta : cbCtx->SelectedAssets)
+                        {
+                            if (meta != nullptr)
+                            {
+                                paths.push_back(meta->AssetPath);
+                            }
+                        }
+                    }
+                    editor.GetAssetWorkflow().RequestConfirmDeleteAssets(std::move(paths), true);
                 RefreshContentBrowser(editor);
             }
         };
