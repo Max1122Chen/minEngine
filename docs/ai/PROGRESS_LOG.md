@@ -1,3 +1,52 @@
+## 2026-09-29 — ASSET-F06 docs commit baseline; Status Planned
+
+- **Baseline:** AM.h ~483 / AM.cpp ~2906; Loaders 34 files ~3425 LOC; Save特化~10; Create特化~7; Load_Impl声明~19
+- **Impl note:** 迁类型时检查多重 Load/Save，禁止照搬旧链路
+- **Status:** Design → Planned；下一步 S01/S02 开工
+- **Docs:** F06 Client Surfaces + Baseline 附录
+
+## 2026-09-29 — ASSET-F06 补 Client Surfaces（Editor/Automation/MCP）
+
+- **Review:** 接触面含 AssetEditorServices、Automation asset.*、MCP（经 pipe）、CB 直连 Mutation、Workflow/Sprite/AnimGraph CreateAsset<T>、TreeModel Subscribe
+- **Contract:** 冻 Automation op；AM Mutation 签名保留转发；CreateAsset<T> 默认可留糖衣；Registry 事件等价
+- **Docs:** F06 增节 Client Surfaces + 验收/测试/切片联动
+- **Next:** 确认后 Planned / Readiness
+
+## 2026-09-29 — ASSET-F06 Design review 修订（Create→Saver / 去 SaveKind / Mutation 详化）
+
+- **Decision:** Create 合入 Saver；取消 AssetSaveKind（有 Save ⇒ 引擎序列化 helper）；ContentMutation 补齐请求模型与 API
+- **Docs:** F06 重写至可执行细度（~412 行）
+- **Next:** 用户确认 → Planned / Readiness
+
+## 2026-09-29 — ASSET-F06 Design 重写（可执行口径）
+
+- **Docs:** F06 全文收敛：AM 门面；Importer/Loader/Saver 可选能力矩阵；允许 Assimp/stb Load；Builtin 集中 Register；Texture 扩 Texture2D + 引擎侧文件
+- **Removed:** Codec/讨论口吻/禁 Assimp-on-Load 硬教条
+- **F05:** Meta/TL 注明与 F06 对齐方向
+- **Next:** Open Q 收口 → Planned / Readiness；再 Impl Plan
+
+## 2026-09-29 — ASSET-F06 Design 加细（类型关系 / 接口一致性）
+
+- **Docs:** F06 增补 Detailed Type Design：Pipeline 描述符、mermaid 关系图、按资产族落点表、控制流、目录布局
+- **Decision:** 统一 **注册习惯（U0）**，不引入强制 IAssetIO；Import 保持 Product 表；允许类型局部 class（U1）
+- **Open:** Mesh cook 是否进 F06 vs 续 F01；F04 验收与开工顺序
+- **Next:** 用户确认 U0 + Open Q6/Q7 → Planned / Readiness
+
+## 2026-09-29 — ASSET-F06 AssetManager Facade Design Draft
+
+- **Feature:** ASSET-F06 registered (**Draft**); L3 Refactor
+- **Decision:** AM 瘦门面 + 模块自注册；Import≠Load≠Save≠Create≠ContentMutation；废除模板特化脊柱；Save 用 SaveKind(S-A) 而非 Codec 双名；优先拆 Loader/Assimp-on-Load 混杂
+- **Order:** F06 before F05；F04 验收可并行
+- **Docs:** [ASSET-F06 Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md)；Registry/ACTIVE_WORK 已挂
+- **Next:** 用户确认 Open Questions → Design Review / Planned；大段编码前 L3 Readiness
+
+## 2026-09-29 — ASSET-F05 Texture cook Design Draft
+
+- **Feature:** ASSET-F05 registered (**Draft**)
+- **Decision:** L1 — Content 身份 .metex（设置 + cooked 像素）；源 PNG 进 Sources；Load 不依赖 raw；Color/Mask 通道语义；Inspector Recook
+- **Out:** 压缩矩阵、HDR、静默全盘迁移、Atlas generated 落盘
+- **Next:** 用户确认 Q1/Q2/Q4 → Planned + Impl Plan；勿与 F04 验收抢主线除非指定
+
 ## 2026-09-28 — ASSET-F04 内容工作流实现收口
 
 - **Feature:** ASSET-F04（仍 In Progress，待验收）

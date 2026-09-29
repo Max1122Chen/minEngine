@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-28（ASSET-F04 实现收口，待验收后 Done）
+Last updated: 2026-09-29 (ASSET-F06 Design rewritten; F05 queued; F04 pending accept)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,18 +11,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** `ASSET-F04` Content Browser Workflow + Asset Automation Parity（**Design Draft**）
+**Primary（待切换）：** `ASSET-F04` 验收收口 → 下一主线 **`ASSET-F06`** AM Facade 重构（先于 F05）
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | ASSET-F04 | CB Workflow + Automation（Selection·Folder·Move·批改名·Delete 警告·import/sprite 挂线） | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
-| 1 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
-| 2 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
-| 3 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
-| 4 | CORE-F29 | Play-gated gameplay Input | **Done** | [Design](./Platform/Core/CORE-F29_PLAY_GATED_GAMEPLAY_INPUT_DESIGN.md) |
-| 5 | UI-F04 | ScreenUI Text / Font | **Done** | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) |
+| 1 | ASSET-F06 | AssetManager Facade 重构（开闭；Import≠Load；自注册；Mutation） | **Draft** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
+| 2 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Draft** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) · **排队 F06 后** |
+| 3 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
+| 4 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
+| 5 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** 人手验收（多选 / 文件夹改名删除 / 拖拽 Move / F2 批改名 / Delete 确认）；通过后 Registry → Done。
+**下一动作：**（1）F04 人手验收 → Done；（2）F06 Open Questions / Design Review → Planned；（3）F05 待 F06 结构落地后再 Planned。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 
