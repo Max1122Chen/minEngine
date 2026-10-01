@@ -11,12 +11,13 @@ file(GLOB_RECURSE EDITOR_DEBUG_COMMAND_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/UI/Property/PropertyEditPolicy.cpp
 )
 
-# SPR-F04: Sprite authoring services + command stack (Editor sources linked into tests).
+# SPR-F04 / ED-F24: Sprite authoring services + AES + command stack (Editor sources linked into tests).
 set(SPRITE_AUTHORING_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Shell/EditorCommandStack.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Shell/EditorSettingsDefaults.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Commands/Sprite/EditorSpriteCommands.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Sprite/SpriteEditorServices.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Asset/AssetEditorServices.cpp
 )
 
 # TEST-F05: optional external / extra suite sources (off by default).

@@ -1232,13 +1232,19 @@ namespace minEngine
             return false;
         }
 
-        std::string errorMessage;
-        if (!AssetManager::Get().Reimport(selected->AssetPath, errorMessage))
+        if (m_Context == nullptr)
         {
-            ME_LOG(LogEditor, Error, 
+            return false;
+        }
+
+        const AssetEditorResult reimportResult =
+            m_Context->GetAssetEditorServices().Reimport(selected->AssetPath);
+        if (!reimportResult.Ok)
+        {
+            ME_LOG(LogEditor, Error,
                 "Reimport failed for '{}': {}",
                 selected->AssetPath,
-                errorMessage);
+                reimportResult.Message);
             return false;
         }
 
@@ -1505,20 +1511,28 @@ namespace minEngine
 
     void AssetWorkflowModule::ExecutePendingDelete()
     {
+        if (m_Context == nullptr)
+        {
+            return;
+        }
+
+        AssetEditorServices& assetServices = m_Context->GetAssetEditorServices();
         if (m_PendingDeleteIsFolder)
         {
-            std::string error;
-            if (!AssetManager::Get().DeleteFolder(m_PendingDeleteFolder, error, true))
+            const AssetEditorResult deleteResult = assetServices.DeleteFolder(m_PendingDeleteFolder);
+            if (!deleteResult.Ok)
             {
-                ME_LOG(LogEditor, Error, "DeleteFolder failed for '{}': {}", m_PendingDeleteFolder, error);
+                ME_LOG(
+                    LogEditor,
+                    Error,
+                    "DeleteFolder failed for '{}': {}",
+                    m_PendingDeleteFolder,
+                    deleteResult.Message);
             }
             else
             {
                 ME_LOG(LogEditor, Info, "Deleted folder '{}'", m_PendingDeleteFolder);
-                if (m_Context != nullptr)
-                {
-                    m_Context->GetContentBrowser().GetSelection().Clear();
-                }
+                m_Context->GetContentBrowser().GetSelection().Clear();
             }
             m_PendingDeleteFolder.clear();
             RefreshContentBrowser();
@@ -1531,27 +1545,12 @@ namespace minEngine
             {
                 continue;
             }
-            const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(assetPath);
-            if (meta != nullptr && meta->AssetType == "Prefab" && m_Context != nullptr)
-            {
-                if (SceneEditor* sceneEditor = GetSceneEditor(m_Context))
-                {
-                    if (sceneEditor->GetPrefabStages().HasStage(assetPath))
-                    {
-                        ME_LOG(
-                            LogEditor,
-                            Error,
-                            "DeleteSelectedAsset: close Prefab Stage for '{}' before deleting.",
-                            assetPath);
-                        continue;
-                    }
-                }
-            }
 
-            std::string errorMessage;
-            if (!AssetManager::Get().DeleteAsset(assetPath, errorMessage, m_PendingDeleteUnpack))
+            const AssetEditorResult deleteResult =
+                assetServices.Delete(*m_Context, assetPath, m_PendingDeleteUnpack);
+            if (!deleteResult.Ok)
             {
-                ME_LOG(LogEditor, Error, "DeleteAsset failed for '{}': {}", assetPath, errorMessage);
+                ME_LOG(LogEditor, Error, "DeleteAsset failed for '{}': {}", assetPath, deleteResult.Message);
                 continue;
             }
             ME_LOG(LogEditor, Info, "Deleted '{}'", assetPath);

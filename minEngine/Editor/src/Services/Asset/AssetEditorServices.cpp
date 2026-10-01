@@ -79,6 +79,7 @@ namespace minEngine
             "AnimationGraph",
             "Sprite",
             "SpriteAtlas",
+            "Texture2D",
         };
 
         for (const std::string_view allowed : kCreatableAssetTypeIds)
@@ -138,7 +139,10 @@ namespace minEngine
         return OkResult();
     }
 
-    AssetEditorResult AssetEditorServices::Delete(IEditorContext& context, std::string_view assetPath)
+    AssetEditorResult AssetEditorServices::Delete(
+        IEditorContext& context,
+        std::string_view assetPath,
+        bool unpackOpenPrefabInstanceRefs)
     {
         if (assetPath.empty())
         {
@@ -168,9 +172,28 @@ namespace minEngine
         }
 
         std::string errorMessage;
-        if (!AssetManager::Get().DeleteAsset(pathStorage, errorMessage, false))
+        if (!AssetManager::Get().DeleteAsset(pathStorage, errorMessage, unpackOpenPrefabInstanceRefs))
         {
             return Fail(errorMessage.empty() ? "DeleteAsset failed." : errorMessage);
+        }
+        return OkResult();
+    }
+
+    AssetEditorResult AssetEditorServices::Reimport(std::string_view assetPath)
+    {
+        if (assetPath.empty())
+        {
+            return Fail("path is required.");
+        }
+        if (!AssetManager::HasInstance())
+        {
+            return Fail("AssetManager is not available.");
+        }
+
+        std::string error;
+        if (!AssetManager::Get().Reimport(std::string(assetPath), error))
+        {
+            return Fail(error.empty() ? "Reimport failed." : error);
         }
         return OkResult();
     }
@@ -270,11 +293,26 @@ namespace minEngine
         for (const auto& [key, value] : spec.Options)
         {
             (void)value;
-            const bool known =
-                key == "skeletonAssetPath" || key == "animationIndex";
+            const bool known = key == "skeletonAssetPath" || key == "animationIndex"
+                || key == "channelSemantics" || key == "sRGB" || key == "wrapU" || key == "wrapV"
+                || key == "filter";
             if (!known)
             {
                 return Fail("Unknown import option '" + key + "' for product '" + spec.ProductId + "'.");
+            }
+        }
+
+        if (spec.ProductId == "Texture2D")
+        {
+            const auto semanticsIt = spec.Options.find("channelSemantics");
+            if (semanticsIt != spec.Options.end() && !semanticsIt->second.empty())
+            {
+                const std::string& semantics = semanticsIt->second;
+                if (semantics != "Color" && semantics != "SingleChannel" && semantics != "Mask")
+                {
+                    return Fail(
+                        "options.channelSemantics must be Color, SingleChannel, or Mask.");
+                }
             }
         }
 
@@ -489,6 +527,12 @@ namespace minEngine
                 {
                     return Fail("options.animationIndex must be an integer.");
                 }
+            }
+
+            const auto semanticsIt = spec.Options.find("channelSemantics");
+            if (semanticsIt != spec.Options.end() && !semanticsIt->second.empty())
+            {
+                request.ChannelSemantics = semanticsIt->second;
             }
 
             const ImportResult importResult = AssetManager::Get().Import(request);

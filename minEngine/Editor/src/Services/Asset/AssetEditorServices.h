@@ -62,7 +62,12 @@ namespace minEngine
             std::string& outPath,
             std::string& outGuid);
 
-        AssetEditorResult Delete(IEditorContext& context, std::string_view assetPath);
+        AssetEditorResult Delete(
+            IEditorContext& context,
+            std::string_view assetPath,
+            bool unpackOpenPrefabInstanceRefs = false);
+
+        AssetEditorResult Reimport(std::string_view assetPath);
 
         /** Discover compatible import products for a source path or extension (".fbx" / "png"). */
         AssetEditorResult ListImportProducts(

@@ -4,9 +4,9 @@
 - **ID:** `ED-F24`
 - **Type:** Refactor
 - **Complexity:** L2
-- **Status:** In Progress
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-10-01（S01–S03 Done）
+- **Last updated:** 2026-10-01（S01–S06 Done）
 - **Related:**
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - [ED-F18](./ED-F18_GUI_DEBUG_DOMAIN_SERVICE_CONVERGENCE_DESIGN.md)（Services = 中性原语；Surface/GUI = Client）
@@ -22,7 +22,7 @@
 
 **方案：** 让 AES 成为 Editor 侧**唯一资产库门面**（Automation 与 GUI 共用）。UI 继续拥有对话框/ImGui；Workflow/CB 只编排 UX，再调 AES。对齐 Create 类型集合；GUI 已有的 Reimport 补一层薄 `AES::Reimport`。
 
-**状态：** Design **Planned** — design-review 已过（Ready with deferred）；默认 Q1–Q5 已采纳；下一步 **S01**。
+**状态：** Design **Done**（S01–S06）；GUI 库操作经 AES；grep 门禁通过。
 
 ## Problem
 
@@ -295,9 +295,9 @@ AES::Create(type, dir, name):
 | **S01** | AES Create → allowlist + `CreateAssetByTypeId`；加入 MaterialInstance | **Done** |
 | **S02** | Workflow TryCreate* + Sprite/AnimGraph create → AES | **Done** |
 | **S03** | ImportAssetDialog → AES::Import（保留对话框/选择 UX） | **Done** |
-| **S04** | CB Move/Rename/CreateFolder（及 RenameFolder 若有）→ AES | 拖拽/重命名/文件夹失败展示 AES.Message |
-| **S05** | Delete 资产/文件夹 + Reimport → AES | Workflow 删除/重导经 AES |
-| **S06** | Grep 门禁 + F06/F04 短注 + Progress | DoD |
+| **S04** | CB Move/Rename/CreateFolder（及 RenameFolder 若有）→ AES | **Done** |
+| **S05** | Delete 资产/文件夹 + Reimport → AES | **Done** |
+| **S06** | Grep 门禁 + F06/F04 短注 + Progress | **Done** |
 
 ## Design Review
 

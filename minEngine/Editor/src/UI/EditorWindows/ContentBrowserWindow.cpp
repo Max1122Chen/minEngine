@@ -8,6 +8,7 @@
 #include "Services/ContentBrowser/ContentBrowserSelection.h"
 #include "Services/Inspector/InspectorModule.h"
 #include "Shell/IEditorContext.h"
+#include "Services/Asset/AssetEditorServices.h"
 
 #include "Services/Thumbnail/AssetThumbnailService.h"
 #include "UI/Appearance/EditorAppearance.h"
@@ -538,10 +539,11 @@ namespace minEngine
 
         const std::string oldPath = m_RenamingAssetPath;
         const std::string newFileName = newStem + m_RenamingAssetExtension;
-        std::string error;
-        if (!AssetManager::Get().RenameAsset(oldPath, newFileName, error))
+        const AssetEditorResult renameResult =
+            m_Context.GetAssetEditorServices().Rename(oldPath, newFileName);
+        if (!renameResult.Ok)
         {
-            ME_LOG(LogEditor, Error, "Content Browser rename failed: {}", error);
+            ME_LOG(LogEditor, Error, "Content Browser rename failed: {}", renameResult.Message);
             CancelAssetRename();
             return false;
         }
@@ -1131,13 +1133,12 @@ namespace minEngine
 
             if (ImGui::Button("Create"))
             {
-                std::string error;
                 std::string created;
-                if (AssetManager::Get().CreateFolder(
-                        m_CreateFolderParentRel,
-                        m_CreateFolderNameBuffer,
-                        error,
-                        &created))
+                const AssetEditorResult createResult = m_Context.GetAssetEditorServices().CreateFolder(
+                    m_CreateFolderParentRel,
+                    m_CreateFolderNameBuffer,
+                    created);
+                if (createResult.Ok)
                 {
                     m_Model.RebuildDirectoryTree();
                     m_Model.RebuildCurrentDirectoryAssetList();
@@ -1146,7 +1147,7 @@ namespace minEngine
                 }
                 else
                 {
-                    ME_LOG(LogEditor, Error, "CreateFolder failed: {}", error);
+                    ME_LOG(LogEditor, Error, "CreateFolder failed: {}", createResult.Message);
                 }
             }
             ImGui::SameLine();
@@ -1258,10 +1259,11 @@ namespace minEngine
         }
 
         const std::string oldRel = m_RenamingDirectoryRel;
-        std::string error;
-        if (!AssetManager::Get().RenameFolder(oldRel, newName, error))
+        const AssetEditorResult renameResult =
+            m_Context.GetAssetEditorServices().RenameFolder(oldRel, newName);
+        if (!renameResult.Ok)
         {
-            ME_LOG(LogEditor, Error, "RenameFolder failed: {}", error);
+            ME_LOG(LogEditor, Error, "RenameFolder failed: {}", renameResult.Message);
             CancelDirectoryRename();
             return false;
         }
@@ -1329,10 +1331,17 @@ namespace minEngine
                     {
                         continue;
                     }
-                    std::string error;
-                    if (!AssetManager::Get().MoveAsset(oldPath, newPath, error))
+                    const AssetEditorResult moveResult =
+                        m_Context.GetAssetEditorServices().Move(oldPath, newPath);
+                    if (!moveResult.Ok)
                     {
-                        ME_LOG(LogEditor, Error, "MoveAsset '{}' -> '{}': {}", oldPath, newPath, error);
+                        ME_LOG(
+                            LogEditor,
+                            Error,
+                            "MoveAsset '{}' -> '{}': {}",
+                            oldPath,
+                            newPath,
+                            moveResult.Message);
                         continue;
                     }
                     anyMoved = true;

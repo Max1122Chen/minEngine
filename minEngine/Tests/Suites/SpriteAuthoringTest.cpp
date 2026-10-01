@@ -3,6 +3,7 @@
 #include "Access/SceneManagerTestAccess.h"
 #include "EngineTestFixture.h"
 
+#include "Services/Asset/AssetEditorServices.h"
 #include "Services/Sprite/SpriteEditorServices.h"
 #include "Shell/EditorCommandStack.h"
 
@@ -219,10 +220,12 @@ TEST_CASE("sprite-authoring: create atlas add rebuild pipeline [full]")
         Texture2DLoader::CreateFromPixels(rhi, pixels, "Authoring_PipeTex", GenerateGUID());
     REQUIRE(texture.get() != nullptr);
 
+    AssetEditorServices assetServices;
     SpriteEditorServices services;
     std::shared_ptr<Sprite> sprite;
     std::string spritePath;
     const GraphEditorResult createSprite = services.CreateSpriteFromTexture(
+        assetServices,
         texture,
         Vector4(0.0f, 0.0f, 4.0f, 4.0f),
         project.GetSpritesDir(),
@@ -239,7 +242,7 @@ TEST_CASE("sprite-authoring: create atlas add rebuild pipeline [full]")
     std::shared_ptr<SpriteAtlas> atlas;
     std::string atlasPath;
     const GraphEditorResult createAtlas =
-        services.CreateAtlas(project.GetSpritesDir(), "PipeAtlas", &atlas, &atlasPath, nullptr);
+        services.CreateAtlas(assetServices, project.GetSpritesDir(), "PipeAtlas", &atlas, &atlasPath, nullptr);
     REQUIRE(createAtlas.Ok);
     REQUIRE(atlas);
     atlas->SetMaxSize(64);
