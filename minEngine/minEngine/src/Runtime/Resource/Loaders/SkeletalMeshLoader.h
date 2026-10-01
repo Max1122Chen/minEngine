@@ -46,7 +46,7 @@ namespace minEngine
     class SkeletalMeshLoader
     {
     public:
-        static bool ImportFromFile(
+        static bool ParseMeshFile(
             const std::string& path,
             SkeletalMeshImportData& outData,
             std::string* outError = nullptr);

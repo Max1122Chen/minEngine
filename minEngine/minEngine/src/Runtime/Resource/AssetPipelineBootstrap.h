@@ -6,6 +6,6 @@ namespace minEngine
 {
     class AssetManager;
 
-    /** Registers builtin LoadHandlers and ImportProducts on AssetManager. */
+    /** Registers builtin LoadHandlers, SaveHandlers, CreateHandlers, and ImportProducts on AssetManager. */
     void RegisterAllAssetPipelines(AssetManager& assetManager);
 }

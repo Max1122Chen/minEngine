@@ -64,10 +64,4 @@ namespace minEngine
 
         return environmentMap;
     }
-
-    template<>
-    std::shared_ptr<EnvironmentMap> AssetManager::LoadAsset_Impl<EnvironmentMap>(const AssetMeta& meta)
-    {
-        return EnvironmentMapLoader::Load(meta);
-    }
 }

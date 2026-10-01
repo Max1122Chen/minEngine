@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-09-29 (ASSET-F06 Design rewritten; F05 queued; F04 pending accept)
+Last updated: 2026-10-01 (ASSET-F06 Done; F04 pending accept; F05 next)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,18 +11,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（待切换）：** `ASSET-F04` 验收收口 → 下一主线 **`ASSET-F06`** AM Facade 重构（先于 F05）
+**Primary：** F04 人手验收可并行；下一引擎侧 Feature 建议 `ASSET-F05`（Texture cook）。`ASSET-F06` **Done**。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | ASSET-F04 | CB Workflow + Automation（Selection·Folder·Move·批改名·Delete 警告·import/sprite 挂线） | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
-| 1 | ASSET-F06 | AssetManager Facade 重构（开闭；Import≠Load；自注册；Mutation） | **Draft** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
-| 2 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Draft** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) · **排队 F06 后** |
+| 1 | ASSET-F06 | AssetManager Facade 重构（开闭；Import≠Load；自注册；Mutation） | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
+| 2 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Draft** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) · **F06 已清障，可升排** |
 | 3 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
 | 4 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | 5 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）F04 人手验收 → Done；（2）F06 Open Questions / Design Review → Planned；（3）F05 待 F06 结构落地后再 Planned。
+**下一动作：**（1）F04 人手验收；（2）`ASSET-F05` 设计升 Planned / Readiness 后实现；（3）由你安排下一活动。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

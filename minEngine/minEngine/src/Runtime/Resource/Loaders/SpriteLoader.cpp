@@ -1,12 +1,10 @@
 #include "Runtime/Resource/Loaders/SpriteLoader.h"
 
-#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
-#include "Runtime/Core/Serialization/JsonArchive.h"
-#include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Render/Sprite/Sprite.h"
 #include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
 #include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Resource/AssetSerializeHelper.h"
 
 namespace minEngine
 {
@@ -14,30 +12,11 @@ namespace minEngine
     {
         std::shared_ptr<Sprite> sprite = NewObject<Sprite>(meta.AssetName, nullptr, meta.Guid);
 
-        Serialization::JsonReaderArchive archive;
         const std::string absoluteAssetPath =
             AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
 
-        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::FromFile(
-            absoluteAssetPath,
-            sprite.get(),
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = true,
-            });
-        if (!deserializeResult.ok)
+        if (!AssetSerializeHelper::ReadObjectFromFile(absoluteAssetPath, *sprite, outError))
         {
-            if (outError)
-            {
-                *outError = deserializeResult.message;
-            }
-            ME_LOG(LogAsset, Error,
-                "SpriteLoader: deserialize failed for '{}' — {} (field: {})",
-                meta.AssetPath,
-                deserializeResult.message,
-                deserializeResult.fieldPath);
             return nullptr;
         }
 
@@ -50,61 +29,38 @@ namespace minEngine
         const std::string absoluteAssetPath =
             AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
 
-        Serialization::JsonWriterArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            absoluteAssetPath,
-            &asset,
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = false,
-            });
-        if (!result.ok)
+        if (!AssetSerializeHelper::WriteObjectToFile(absoluteAssetPath, asset, outError))
         {
-            if (outError)
-            {
-                *outError = result.message;
-            }
-            ME_LOG(LogAsset, Error,
-                "SpriteLoader: serialize failed for '{}' — {} (field: {})",
-                meta.AssetPath,
-                result.message,
-                result.fieldPath);
             return false;
         }
 
         return true;
     }
 
+    bool SpriteLoader::SaveHandler(
+        const AssetManager& /*manager*/,
+        const AssetMeta& meta,
+        const Asset& asset,
+        std::string& outError)
+    {
+        const Sprite* sprite = dynamic_cast<const Sprite*>(&asset);
+        if (sprite == nullptr)
+        {
+            outError = "SaveHandler: expected Sprite";
+            return false;
+        }
+        return Save(meta, *sprite, &outError);
+    }
+
     std::shared_ptr<SpriteAtlas> SpriteAtlasLoader::Load(const AssetMeta& meta, std::string* outError)
     {
         std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>(meta.AssetName, nullptr, meta.Guid);
 
-        Serialization::JsonReaderArchive archive;
         const std::string absoluteAssetPath =
             AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
 
-        const Serialization::SerializeResult deserializeResult = Serialization::Serializer::FromFile(
-            absoluteAssetPath,
-            atlas.get(),
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = true,
-            });
-        if (!deserializeResult.ok)
+        if (!AssetSerializeHelper::ReadObjectFromFile(absoluteAssetPath, *atlas, outError))
         {
-            if (outError)
-            {
-                *outError = deserializeResult.message;
-            }
-            ME_LOG(LogAsset, Error,
-                "SpriteAtlasLoader: deserialize failed for '{}' — {} (field: {})",
-                meta.AssetPath,
-                deserializeResult.message,
-                deserializeResult.fieldPath);
             return nullptr;
         }
 
@@ -118,42 +74,131 @@ namespace minEngine
         const std::string absoluteAssetPath =
             AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
 
-        Serialization::JsonWriterArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            absoluteAssetPath,
-            &asset,
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = false,
-            });
-        if (!result.ok)
+        return AssetSerializeHelper::WriteObjectToFile(absoluteAssetPath, asset, outError);
+    }
+
+    bool SpriteAtlasLoader::SaveHandler(
+        const AssetManager& /*manager*/,
+        const AssetMeta& meta,
+        const Asset& asset,
+        std::string& outError)
+    {
+        const SpriteAtlas* atlas = dynamic_cast<const SpriteAtlas*>(&asset);
+        if (atlas == nullptr)
         {
-            if (outError)
-            {
-                *outError = result.message;
-            }
-            ME_LOG(LogAsset, Error,
-                "SpriteAtlasLoader: serialize failed for '{}' — {} (field: {})",
-                meta.AssetPath,
-                result.message,
-                result.fieldPath);
+            outError = "SaveHandler: expected SpriteAtlas";
             return false;
         }
-
-        return true;
+        return Save(meta, *atlas, &outError);
     }
 
-    template<>
-    std::shared_ptr<Sprite> AssetManager::LoadAsset_Impl<Sprite>(const AssetMeta& meta)
+    std::shared_ptr<Asset> SpriteLoader::CreateHandler(
+        AssetManager& manager,
+        const std::string& assetName,
+        const std::string& directoryRel,
+        std::string& outError)
     {
-        return SpriteLoader::Load(meta);
+        const std::string relativePath =
+            manager.AllocateUniqueAssetRelativePath(directoryRel, assetName, ".mesprite");
+        if (relativePath.empty())
+        {
+            outError = "failed to allocate unique path";
+            ME_LOG(LogAsset, Error, "SpriteLoader::Create: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = manager.ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_LOG(LogAsset, Error,
+                "SpriteLoader::Create: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string spriteName = absolutePath.stem().string();
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<Sprite> sprite = NewObject<Sprite>(spriteName, nullptr, assetGuid);
+
+        if (!manager.SaveRegisteredAsset(AssetManager::MakePendingSaveMeta(relativePath, spriteName, "Sprite", assetGuid), *sprite))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        manager.NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = manager.RegisterAsset(relativePath, "Sprite", &assetGuid);
+        if (meta.AssetPath.empty())
+        {
+            ME_LOG(LogAsset, Error, "SpriteLoader::Create: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        manager.NoteEditorFilesystemMutation(manager.BuildMetaAbsolutePath(meta.AssetPath));
+        sprite->SetMeta(const_cast<AssetMeta*>(manager.FindAssetMetaByGuid(assetGuid)));
+        ME_LOG(LogAsset, Info, "SpriteLoader::Create: created '{}'.", meta.AssetPath);
+        manager.CacheCreatedAsset(meta.AssetPath, sprite);
+        return std::static_pointer_cast<Asset>(sprite);
     }
 
-    template<>
-    std::shared_ptr<SpriteAtlas> AssetManager::LoadAsset_Impl<SpriteAtlas>(const AssetMeta& meta)
+
+    std::shared_ptr<Asset> SpriteAtlasLoader::CreateHandler(
+        AssetManager& manager,
+        const std::string& assetName,
+        const std::string& directoryRel,
+        std::string& outError)
     {
-        return SpriteAtlasLoader::Load(meta);
+        const std::string relativePath =
+            manager.AllocateUniqueAssetRelativePath(directoryRel, assetName, ".mespriteatlas");
+        if (relativePath.empty())
+        {
+            outError = "failed to allocate unique path";
+            ME_LOG(LogAsset, Error, "SpriteAtlasLoader::Create: failed to allocate unique path for '{}'.", assetName);
+            return nullptr;
+        }
+
+        const std::filesystem::path absolutePath = manager.ResolveAssetAbsolutePath(relativePath);
+        std::error_code createError;
+        std::filesystem::create_directories(absolutePath.parent_path(), createError);
+        if (createError)
+        {
+            ME_LOG(LogAsset, Error,
+                "SpriteAtlasLoader::Create: failed to create directory '{}': {}",
+                absolutePath.parent_path().string(),
+                createError.message());
+            return nullptr;
+        }
+
+        const std::string atlasName = absolutePath.stem().string();
+        const GUID assetGuid = GenerateGUID();
+        std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>(atlasName, nullptr, assetGuid);
+
+        if (!manager.SaveRegisteredAsset(AssetManager::MakePendingSaveMeta(relativePath, atlasName, "SpriteAtlas", assetGuid), *atlas))
+        {
+            std::error_code removeError;
+            std::filesystem::remove(absolutePath, removeError);
+            return nullptr;
+        }
+
+        manager.NoteEditorFilesystemMutation(absolutePath);
+
+        AssetMeta meta = manager.RegisterAsset(relativePath, "SpriteAtlas", &assetGuid);
+        if (meta.AssetPath.empty())
+        {
+            ME_LOG(LogAsset, Error, "SpriteAtlasLoader::Create: RegisterAsset failed for '{}'.", relativePath);
+            return nullptr;
+        }
+
+        manager.NoteEditorFilesystemMutation(manager.BuildMetaAbsolutePath(meta.AssetPath));
+        atlas->SetMeta(const_cast<AssetMeta*>(manager.FindAssetMetaByGuid(assetGuid)));
+        ME_LOG(LogAsset, Info, "SpriteAtlasLoader::Create: created '{}'.", meta.AssetPath);
+        manager.CacheCreatedAsset(meta.AssetPath, atlas);
+        return std::static_pointer_cast<Asset>(atlas);
     }
+
 }

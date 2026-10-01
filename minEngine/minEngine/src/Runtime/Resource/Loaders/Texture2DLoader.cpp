@@ -150,10 +150,4 @@ namespace minEngine
         ImageLoader::Free(pixels);
         return texture;
     }
-
-    template<>
-    std::shared_ptr<Texture2D> AssetManager::LoadAsset_Impl<Texture2D>(const AssetMeta& meta)
-    {
-        return Texture2DLoader::LoadFromAssetMeta(meta);
-    }
 }

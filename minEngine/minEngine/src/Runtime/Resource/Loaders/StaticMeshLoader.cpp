@@ -19,7 +19,7 @@
 
 namespace minEngine
 {
-    bool StaticMeshLoader::ImportFromFile(
+    bool StaticMeshLoader::ParseMeshFile(
         const std::string& path,
         StaticMeshImportData& outData,
         std::string* outError)
@@ -345,17 +345,11 @@ namespace minEngine
         std::string error;
         const std::string absoluteAssetPath =
             AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
-        if (!ImportFromFile(absoluteAssetPath, importData, &error))
+        if (!ParseMeshFile(absoluteAssetPath, importData, &error))
         {
             return nullptr;
         }
 
         return CreateFromImportData(meta, importData);
-    }
-
-    template<>
-    std::shared_ptr<StaticMesh> AssetManager::LoadAsset_Impl<StaticMesh>(const AssetMeta& meta)
-    {
-        return StaticMeshLoader::LoadFromAssetMeta(meta);
     }
 }

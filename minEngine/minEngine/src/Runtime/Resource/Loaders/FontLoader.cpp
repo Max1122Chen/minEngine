@@ -101,10 +101,4 @@ namespace minEngine
         font->m_SourceExtension = extension;
         return font;
     }
-
-    template<>
-    std::shared_ptr<Font> AssetManager::LoadAsset_Impl<Font>(const AssetMeta& meta)
-    {
-        return FontLoader::LoadFromAssetMeta(meta);
-    }
 }

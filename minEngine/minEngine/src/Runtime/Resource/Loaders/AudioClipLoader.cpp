@@ -104,10 +104,4 @@ namespace minEngine
         clip->m_SourcePath = meta.AssetPath;
         return clip;
     }
-
-    template<>
-    std::shared_ptr<AudioClip> AssetManager::LoadAsset_Impl<AudioClip>(const AssetMeta& meta)
-    {
-        return AudioClipLoader::Load(meta, nullptr);
-    }
 }

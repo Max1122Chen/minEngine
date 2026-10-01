@@ -1,12 +1,25 @@
 #include "AssetManager.h"
+#include "AssetContentMutation.h"
 
 #include "AssetPipelineBootstrap.h"
 #include "AssetTypeRegistry.h"
 #include "Runtime/Resource/EditorFilesystemMutationPass.h"
 #include "Runtime/Resource/Loaders/AssimpMeshImportUtil.h"
-#include "Runtime/Resource/Loaders/SkeletalMeshLoader.h"
 #include "Runtime/Resource/Loaders/AnimationClipLoader.h"
 #include "Runtime/Resource/Loaders/AnimationGraphLoader.h"
+#include "Runtime/Resource/Loaders/AudioClipLoader.h"
+#include "Runtime/Resource/Loaders/EnvironmentMapLoader.h"
+#include "Runtime/Resource/Loaders/FontLoader.h"
+#include "Runtime/Resource/Loaders/LuaScriptLoader.h"
+#include "Runtime/Resource/Loaders/MaterialInstanceLoader.h"
+#include "Runtime/Resource/Loaders/MaterialLoader.h"
+#include "Runtime/Resource/Loaders/PrefabLoader.h"
+#include "Runtime/Resource/Loaders/SceneLoader.h"
+#include "Runtime/Resource/Loaders/SkeletalMeshLoader.h"
+#include "Runtime/Resource/Loaders/SkeletonLoader.h"
+#include "Runtime/Resource/Loaders/SpriteLoader.h"
+#include "Runtime/Resource/Loaders/StaticMeshLoader.h"
+#include "Runtime/Resource/Loaders/Texture2DLoader.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
@@ -25,7 +38,6 @@
 #include "Runtime/Function/Render/MaterialInstance.h"
 #include "Runtime/Function/Render/Sprite/Sprite.h"
 #include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
-#include "Runtime/Resource/Loaders/SpriteLoader.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Resource/LuaScript.h"
 #include "Runtime/Resource/AudioClip.h"
@@ -131,6 +143,8 @@ namespace minEngine
         m_Registry.Shutdown();
         m_LoadedAssetCache.clear();
         m_LoadHandlers.clear();
+        m_SaveHandlers.clear();
+        m_CreateHandlers.clear();
         m_ImportProducts.clear();
         EditorFilesystemMutationPass::Clear();
     }
@@ -541,480 +555,6 @@ namespace minEngine
         m_LoadedAssetCache[registryKey] = asset;
     }
 
-    ImportAssetResult AssetManager::ImportAsset(
-        const std::filesystem::path& sourcePath,
-        const std::filesystem::path& destDirectory,
-        bool bOverwriteExisting)
-    {
-        AssetRegistryBroadcastBatchScope batchScope;
-        ImportAssetResult result;
-
-        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
-        {
-            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
-            return result;
-        }
-
-        const PathRegistry& paths = PathRegistry::Get();
-        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-        if (contentRoot.empty())
-        {
-            result.ErrorMessage = "project content root is not set";
-            return result;
-        }
-
-        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
-            ? std::filesystem::weakly_canonical(destDirectory)
-            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
-
-        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
-        {
-            result.ErrorMessage = "destination directory is outside project Assets: " + absoluteDestDirectory.string();
-            return result;
-        }
-
-        const AssetTypeRegistry& typeRegistry = AssetTypeRegistry::Get();
-        std::string extension = sourcePath.extension().string();
-        std::transform(
-            extension.begin(),
-            extension.end(),
-            extension.begin(),
-            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-        if (extension == ".fbx" || extension == ".gltf")
-        {
-            result.ErrorMessage =
-                "external mesh source requires ImportExternalMesh (choose StaticMesh or SkeletalMesh): "
-                + sourcePath.extension().string();
-            return result;
-        }
-
-        const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(sourcePath);
-        if (assetTypeId.empty())
-        {
-            result.ErrorMessage = "unsupported file extension: " + extension;
-            return result;
-        }
-
-        const std::filesystem::path destFilePath = absoluteDestDirectory / sourcePath.filename();
-        if (std::filesystem::exists(destFilePath) && !bOverwriteExisting)
-        {
-            result.ErrorMessage = "destination file already exists: " + destFilePath.string();
-            return result;
-        }
-
-        NoteEditorFilesystemMutation(absoluteDestDirectory);
-        NoteEditorFilesystemMutation(destFilePath);
-
-        const std::filesystem::copy_options copyOptions = bOverwriteExisting
-            ? std::filesystem::copy_options::overwrite_existing
-            : std::filesystem::copy_options::none;
-        std::error_code copyError;
-        std::filesystem::copy_file(sourcePath, destFilePath, copyOptions, copyError);
-        if (copyError)
-        {
-            result.ErrorMessage = "copy failed: " + copyError.message();
-            return result;
-        }
-
-        result.Meta = RegisterAsset(destFilePath.string(), assetTypeId);
-        if (result.Meta.AssetPath.empty())
-        {
-            result.ErrorMessage = "failed to register imported asset";
-            return result;
-        }
-
-        if (bOverwriteExisting)
-        {
-            EvictLoadedAssetCache(result.Meta.AssetPath);
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
-
-        result.bSuccess = true;
-        return result;
-    }
-
-    ImportAssetResult AssetManager::ImportExternalMesh(
-        const std::filesystem::path& sourcePath,
-        const std::filesystem::path& destDirectory,
-        MeshImportProductType productType,
-        bool bOverwriteExisting)
-    {
-        AssetRegistryBroadcastBatchScope batchScope;
-        ImportAssetResult result;
-
-        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
-        {
-            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
-            return result;
-        }
-
-        if (!AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string())
-            && sourcePath.extension() != ".obj")
-        {
-            result.ErrorMessage =
-                "ImportExternalMesh expects .fbx/.gltf/.glb/.obj, got: "
-                + sourcePath.extension().string();
-            return result;
-        }
-
-        const PathRegistry& paths = PathRegistry::Get();
-        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-        if (contentRoot.empty())
-        {
-            result.ErrorMessage = "project content root is not set";
-            return result;
-        }
-
-        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
-            ? std::filesystem::weakly_canonical(destDirectory)
-            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
-
-        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
-        {
-            result.ErrorMessage =
-                "destination directory is outside project Assets: " + absoluteDestDirectory.string();
-            return result;
-        }
-
-        const std::filesystem::path sourcesDirectory = contentRoot / "Sources";
-        std::error_code sourcesCreateError;
-        std::filesystem::create_directories(sourcesDirectory, sourcesCreateError);
-        if (sourcesCreateError)
-        {
-            result.ErrorMessage =
-                "failed to create Assets/Sources: " + sourcesCreateError.message();
-            return result;
-        }
-
-        const std::filesystem::path sourceCopyPath = sourcesDirectory / sourcePath.filename();
-        if (!bOverwriteExisting
-            && std::filesystem::exists(sourceCopyPath)
-            && !std::filesystem::equivalent(sourceCopyPath, sourcePath))
-        {
-            // Allow re-import when the picker already pointed at Assets/Sources/file.
-            result.ErrorMessage = "import source already exists: " + sourceCopyPath.string();
-            return result;
-        }
-
-        NoteEditorFilesystemMutation(sourcesDirectory);
-        NoteEditorFilesystemMutation(sourceCopyPath);
-
-        if (!std::filesystem::exists(sourceCopyPath))
-        {
-            std::error_code copySourceError;
-            std::filesystem::copy_file(
-                sourcePath,
-                sourceCopyPath,
-                std::filesystem::copy_options::none,
-                copySourceError);
-            if (copySourceError)
-            {
-                result.ErrorMessage = "failed to copy source into Assets/Sources: "
-                    + copySourceError.message();
-                return result;
-            }
-        }
-        else if (bOverwriteExisting
-            && !std::filesystem::equivalent(sourceCopyPath, sourcePath))
-        {
-            // Reimport from a path that is not the Sources copy: refresh Sources from that path.
-            std::error_code copySourceError;
-            std::filesystem::copy_file(
-                sourcePath,
-                sourceCopyPath,
-                std::filesystem::copy_options::overwrite_existing,
-                copySourceError);
-            if (copySourceError)
-            {
-                result.ErrorMessage = "failed to refresh Assets/Sources copy: "
-                    + copySourceError.message();
-                return result;
-            }
-        }
-
-        const bool skeletal = productType == MeshImportProductType::SkeletalMesh;
-        const char* assetTypeId = skeletal ? "SkeletalMesh" : "StaticMesh";
-        const char* productExtension = skeletal ? ".glb" : ".obj";
-        const char* exportFormatId = skeletal ? "glb2" : "obj";
-
-        std::filesystem::path productFileName = sourcePath.stem();
-        productFileName += productExtension;
-        const std::filesystem::path productPath = absoluteDestDirectory / productFileName;
-        if (std::filesystem::exists(productPath) && !bOverwriteExisting)
-        {
-            result.ErrorMessage = "destination product already exists: " + productPath.string();
-            return result;
-        }
-
-        NoteEditorFilesystemMutation(absoluteDestDirectory);
-        NoteEditorFilesystemMutation(productPath);
-
-        std::string cookError;
-        if (!AssimpMeshImportUtil::CookExternalMeshToFile(
-                sourceCopyPath,
-                productPath,
-                exportFormatId,
-                &cookError))
-        {
-            result.ErrorMessage = cookError;
-            return result;
-        }
-
-        result.Meta = RegisterAsset(productPath.string(), assetTypeId);
-        if (result.Meta.AssetPath.empty())
-        {
-            result.ErrorMessage = "failed to register cooked mesh asset";
-            return result;
-        }
-
-        result.Meta.SourcePath = NormalizeProjectRelativeAssetPath(sourceCopyPath.string());
-        if (!WriteMetaFile(result.Meta))
-        {
-            result.ErrorMessage = "failed to write SourcePath into meta";
-            return result;
-        }
-        CacheMeta(result.Meta, true);
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
-
-        if (skeletal)
-        {
-            std::string skeletalCookError;
-            if (!SkeletalMeshLoader::FinishSkeletalImportCook(
-                    result.Meta,
-                    sourceCopyPath,
-                    &skeletalCookError))
-            {
-                result.ErrorMessage = skeletalCookError;
-                return result;
-            }
-
-            NoteEditorFilesystemMutation(
-                ResolveAssetAbsolutePath(
-                    SkeletalMeshLoader::BuildBuddyRelativePath(result.Meta.AssetPath)));
-            EvictLoadedAssetCache(
-                SkeletalMeshLoader::BuildBuddyRelativePath(result.Meta.AssetPath));
-            const std::filesystem::path meshPath(result.Meta.AssetPath);
-            const std::string skeletonRelative =
-                (meshPath.parent_path() / (meshPath.stem().string() + "_Skeleton.meskeleton"))
-                    .generic_string();
-            EvictLoadedAssetCache(skeletonRelative);
-        }
-
-        if (bOverwriteExisting)
-        {
-            EvictLoadedAssetCache(result.Meta.AssetPath);
-        }
-
-        result.bSuccess = true;
-        return result;
-    }
-
-    ImportAssetResult AssetManager::ImportAnimationClip(
-        const std::filesystem::path& sourcePath,
-        const std::filesystem::path& destDirectory,
-        std::string_view skeletonAssetPath,
-        int animationIndex,
-        bool bOverwriteExisting)
-    {
-        AssetRegistryBroadcastBatchScope batchScope;
-        ImportAssetResult result;
-
-        if (!std::filesystem::exists(sourcePath) || !std::filesystem::is_regular_file(sourcePath))
-        {
-            result.ErrorMessage = "source file does not exist: " + sourcePath.string();
-            return result;
-        }
-
-        if (!AssetTypeRegistry::IsExternalMeshSourceExtension(sourcePath.extension().string()))
-        {
-            result.ErrorMessage =
-                "ImportAnimationClip expects .fbx/.gltf/.glb, got: " + sourcePath.extension().string();
-            return result;
-        }
-
-        if (skeletonAssetPath.empty())
-        {
-            result.ErrorMessage = "skeletonAssetPath is empty";
-            return result;
-        }
-
-        const PathRegistry& paths = PathRegistry::Get();
-        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-        if (contentRoot.empty())
-        {
-            result.ErrorMessage = "project content root is not set";
-            return result;
-        }
-
-        std::shared_ptr<Skeleton> skeleton = LoadAsset<Skeleton>(std::string(skeletonAssetPath));
-        if (skeleton == nullptr)
-        {
-            result.ErrorMessage = "failed to load Skeleton: " + std::string(skeletonAssetPath);
-            return result;
-        }
-
-        std::filesystem::path absoluteDestDirectory = destDirectory.is_absolute()
-            ? std::filesystem::weakly_canonical(destDirectory)
-            : std::filesystem::weakly_canonical(contentRoot / destDirectory);
-
-        if (!IsUnderProjectContentRoot(absoluteDestDirectory))
-        {
-            result.ErrorMessage =
-                "destination directory is outside project Assets: " + absoluteDestDirectory.string();
-            return result;
-        }
-
-        const std::filesystem::path sourcesDirectory = contentRoot / "Sources";
-        std::error_code sourcesCreateError;
-        std::filesystem::create_directories(sourcesDirectory, sourcesCreateError);
-        if (sourcesCreateError)
-        {
-            result.ErrorMessage = "failed to create Assets/Sources: " + sourcesCreateError.message();
-            return result;
-        }
-
-        const std::filesystem::path sourceCopyPath = sourcesDirectory / sourcePath.filename();
-        NoteEditorFilesystemMutation(sourcesDirectory);
-        NoteEditorFilesystemMutation(sourceCopyPath);
-
-        if (!std::filesystem::exists(sourceCopyPath))
-        {
-            std::error_code copySourceError;
-            std::filesystem::copy_file(
-                sourcePath,
-                sourceCopyPath,
-                std::filesystem::copy_options::none,
-                copySourceError);
-            if (copySourceError)
-            {
-                result.ErrorMessage =
-                    "failed to copy source into Assets/Sources: " + copySourceError.message();
-                return result;
-            }
-        }
-        else if (!std::filesystem::equivalent(sourceCopyPath, sourcePath))
-        {
-            if (bOverwriteExisting)
-            {
-                std::error_code copySourceError;
-                std::filesystem::copy_file(
-                    sourcePath,
-                    sourceCopyPath,
-                    std::filesystem::copy_options::overwrite_existing,
-                    copySourceError);
-                if (copySourceError)
-                {
-                    result.ErrorMessage =
-                        "failed to refresh Assets/Sources copy: " + copySourceError.message();
-                    return result;
-                }
-            }
-            else
-            {
-                ME_LOG(LogAsset, Info, 
-                    "ImportAnimationClip: reusing existing Sources copy '{}'",
-                    sourceCopyPath.string());
-            }
-        }
-
-        AnimationClip importedClip;
-        std::string importError;
-        if (!AnimationClipLoader::ImportFromFile(
-                sourceCopyPath.string(),
-                skeleton,
-                animationIndex,
-                importedClip,
-                &importError))
-        {
-            result.ErrorMessage = importError;
-            return result;
-        }
-
-        std::filesystem::path productFileName = sourcePath.stem();
-        if (animationIndex > 0)
-        {
-            productFileName += "_";
-            productFileName += std::to_string(animationIndex);
-        }
-        productFileName += ".meaclip";
-        const std::filesystem::path productPath = absoluteDestDirectory / productFileName;
-        if (std::filesystem::exists(productPath) && !bOverwriteExisting)
-        {
-            result.ErrorMessage = "destination clip already exists: " + productPath.string();
-            return result;
-        }
-
-        NoteEditorFilesystemMutation(absoluteDestDirectory);
-        NoteEditorFilesystemMutation(productPath);
-
-        // Write clip + meta with a stable Guid before RegisterAsset (same order as Skeleton cook).
-        AssetMeta pendingMeta;
-        pendingMeta.AssetName = productFileName.stem().string();
-        pendingMeta.AssetPath =
-            NormalizeProjectRelativeAssetPath(productPath.string());
-        pendingMeta.AssetType = "AnimationClip";
-        pendingMeta.Guid = GenerateGUID();
-        if (pendingMeta.AssetPath.empty())
-        {
-            result.ErrorMessage = "failed to resolve AnimationClip destination path";
-            return result;
-        }
-
-        if (bOverwriteExisting)
-        {
-            if (const AssetMeta* existingMeta = FindAssetMetaByPath(pendingMeta.AssetPath))
-            {
-                pendingMeta.Guid = existingMeta->Guid;
-                if (!existingMeta->SourcePath.empty())
-                {
-                    pendingMeta.SourcePath = existingMeta->SourcePath;
-                }
-            }
-        }
-
-        importedClip.SetName(pendingMeta.AssetName);
-        importedClip.SetGuid(pendingMeta.Guid);
-
-        std::string saveError;
-        if (!AnimationClipLoader::Save(pendingMeta, importedClip, &saveError))
-        {
-            result.ErrorMessage = saveError;
-            return result;
-        }
-
-        if (!WriteOrUpdateMetaFile(pendingMeta))
-        {
-            result.ErrorMessage = "failed to write AnimationClip meta";
-            return result;
-        }
-
-        result.Meta = RegisterAsset(productPath.string(), "AnimationClip");
-        if (result.Meta.AssetPath.empty())
-        {
-            result.ErrorMessage = "failed to register AnimationClip asset";
-            return result;
-        }
-
-        result.Meta.SourcePath = NormalizeProjectRelativeAssetPath(sourceCopyPath.string());
-        if (!WriteMetaFile(result.Meta))
-        {
-            result.ErrorMessage = "failed to write SourcePath into meta";
-            return result;
-        }
-        CacheMeta(result.Meta, true);
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(result.Meta.AssetPath));
-
-        if (bOverwriteExisting)
-        {
-            EvictLoadedAssetCache(result.Meta.AssetPath);
-        }
-
-        result.bSuccess = true;
-        return result;
-    }
-
     bool AssetManager::WriteOrUpdateMetaFile(const AssetMeta& meta)
     {
         return WriteMetaFile(meta);
@@ -1113,7 +653,7 @@ namespace minEngine
 
     bool AssetManager::DeleteAsset(const std::string& assetPath, std::string& outError)
     {
-        return DeleteAsset(assetPath, outError, false);
+        return AssetContentMutation(*this).DeleteAsset(assetPath, outError, false);
     }
 
     bool AssetManager::DeleteAsset(
@@ -1121,96 +661,10 @@ namespace minEngine
         std::string& outError,
         bool bUnpackOpenPrefabInstanceRefs)
     {
-        AssetRegistryBroadcastBatchScope batchScope;
-        outError.clear();
-
-        const std::string projectRelative = NormalizeProjectRelativeAssetPath(assetPath);
-        if (projectRelative.empty())
-        {
-            outError = "invalid or out-of-project path";
-            return false;
-        }
-
-        const AssetMeta* metaPtr = FindAssetMetaByPath(projectRelative);
-        if (metaPtr == nullptr)
-        {
-            outError = "asset not registered";
-            return false;
-        }
-
-        const AssetMeta meta = *metaPtr;
-
-        if (meta.AssetType == "Prefab")
-        {
-            const std::vector<PrefabInstanceRef> refs =
-                PrefabUtility::FindInstanceRefsInEditorScene(meta.Guid);
-            if (!refs.empty())
-            {
-                if (!bUnpackOpenPrefabInstanceRefs)
-                {
-                    outError = PrefabUtility::FormatPrefabInstanceRefsMessage(projectRelative, refs);
-                    return false;
-                }
-
-                for (const PrefabInstanceRef& ref : refs)
-                {
-                    if (ref.Scene == nullptr)
-                    {
-                        continue;
-                    }
-
-                    std::string unpackError;
-                    if (!PrefabUtility::UnpackInstance(*ref.Scene, ref.RootInstanceGuid, &unpackError))
-                    {
-                        outError = unpackError.empty()
-                            ? "Failed to unpack Prefab instance before delete."
-                            : unpackError;
-                        return false;
-                    }
-                }
-            }
-        }
-        else
-        {
-            LogReferenceWarningsForDelete(meta);
-        }
-
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(projectRelative);
-        const std::filesystem::path metaAbsolutePath = BuildMetaAbsolutePath(projectRelative);
-
-        NoteEditorFilesystemMutation(absolutePath);
-        NoteEditorFilesystemMutation(metaAbsolutePath);
-
-        std::error_code removeError;
-        if (std::filesystem::exists(absolutePath))
-        {
-            removeError.clear();
-            if (!std::filesystem::remove(absolutePath, removeError) || removeError)
-            {
-                outError = "failed to remove asset file: " + removeError.message();
-                return false;
-            }
-        }
-
-        if (std::filesystem::exists(metaAbsolutePath))
-        {
-            removeError.clear();
-            if (!std::filesystem::remove(metaAbsolutePath, removeError) || removeError)
-            {
-                outError = "failed to remove meta file: " + removeError.message();
-                return false;
-            }
-        }
-
-        EvictLoadedAssetCache(projectRelative);
-        UncacheMeta(projectRelative);
-
-        if (meta.AssetType == "Scene" && SceneManager::HasInstance())
-        {
-            SceneManager::Get().UnregisterScene(meta.AssetName);
-        }
-
-        return true;
+        return AssetContentMutation(*this).DeleteAsset(
+            assetPath,
+            outError,
+            bUnpackOpenPrefabInstanceRefs);
     }
 
     bool AssetManager::UnregisterAsset(const std::string& assetPath, std::string& outError)
@@ -1324,148 +778,12 @@ namespace minEngine
 
     bool AssetManager::MoveAsset(const std::string& oldPath, const std::string& newPath, std::string& outError)
     {
-        AssetRegistryBroadcastBatchScope batchScope;
-        outError.clear();
-
-        const std::string oldRel = NormalizeProjectRelativeAssetPath(oldPath);
-        const std::string newRel = NormalizeProjectRelativeAssetPath(newPath);
-        if (oldRel.empty() || newRel.empty())
-        {
-            outError = "invalid or out-of-project path";
-            return false;
-        }
-
-        if (oldRel == newRel)
-        {
-            return true;
-        }
-
-        const AssetMeta* oldMetaPtr = FindAssetMetaByPath(oldRel);
-        if (oldMetaPtr == nullptr)
-        {
-            outError = "asset not registered";
-            return false;
-        }
-
-        if (FindAssetMetaByPath(newRel) != nullptr)
-        {
-            outError = "destination path is already registered";
-            return false;
-        }
-
-        const std::filesystem::path oldExtension = std::filesystem::path(oldRel).extension();
-        const std::filesystem::path newExtension = std::filesystem::path(newRel).extension();
-        if (oldExtension != newExtension)
-        {
-            outError = "asset extension must not change when moving";
-            return false;
-        }
-
-        const std::filesystem::path absoluteOld = ResolveAssetAbsolutePath(oldRel);
-        const std::filesystem::path absoluteNew = ResolveAssetAbsolutePath(newRel);
-        const std::filesystem::path metaAbsoluteOld = BuildMetaAbsolutePath(oldRel);
-        const std::filesystem::path metaAbsoluteNew = BuildMetaAbsolutePath(newRel);
-
-        const std::filesystem::path newParent = absoluteNew.parent_path();
-        if (!std::filesystem::exists(newParent) || !std::filesystem::is_directory(newParent))
-        {
-            outError = "destination parent directory does not exist";
-            return false;
-        }
-
-        if (std::filesystem::exists(absoluteNew))
-        {
-            outError = "destination file already exists";
-            return false;
-        }
-
-        if (!std::filesystem::exists(absoluteOld))
-        {
-            outError = "source asset file does not exist";
-            return false;
-        }
-
-        NoteEditorFilesystemMutation(absoluteOld);
-        NoteEditorFilesystemMutation(absoluteNew);
-        NoteEditorFilesystemMutation(metaAbsoluteOld);
-        NoteEditorFilesystemMutation(metaAbsoluteNew);
-        NoteEditorFilesystemMutation(newParent);
-
-        std::error_code renameError;
-        std::filesystem::rename(absoluteOld, absoluteNew, renameError);
-        if (renameError)
-        {
-            outError = "failed to rename asset file: " + renameError.message();
-            return false;
-        }
-
-        bool metaRenamed = false;
-        if (std::filesystem::exists(metaAbsoluteOld))
-        {
-            renameError.clear();
-            std::filesystem::rename(metaAbsoluteOld, metaAbsoluteNew, renameError);
-            if (renameError)
-            {
-                renameError.clear();
-                std::filesystem::rename(absoluteNew, absoluteOld, renameError);
-                outError = "failed to rename meta file: " + renameError.message();
-                return false;
-            }
-
-            metaRenamed = true;
-        }
-
-        AssetMeta updatedMeta = *oldMetaPtr;
-        if (!MoveRegistryEntry(oldRel, newRel, updatedMeta))
-        {
-            renameError.clear();
-            std::filesystem::rename(absoluteNew, absoluteOld, renameError);
-            if (metaRenamed)
-            {
-                renameError.clear();
-                std::filesystem::rename(metaAbsoluteNew, metaAbsoluteOld, renameError);
-            }
-
-            outError = "failed to update asset registry";
-            return false;
-        }
-
-        MoveLoadedAssetCacheKey(oldRel, newRel);
-
-        if (!WriteMetaFile(updatedMeta))
-        {
-            ME_LOG(LogAsset, Warn, "MoveAsset: meta file write failed after move to '{}'", newRel);
-        }
-
-        return true;
+        return AssetContentMutation(*this).MoveAsset(oldPath, newPath, outError);
     }
 
     bool AssetManager::RenameAsset(const std::string& oldPath, const std::string& newFileName, std::string& outError)
     {
-        outError.clear();
-
-        if (newFileName.empty())
-        {
-            outError = "new file name must not be empty";
-            return false;
-        }
-
-        if (newFileName.find('/') != std::string::npos || newFileName.find('\\') != std::string::npos)
-        {
-            outError = "new file name must not contain path separators";
-            return false;
-        }
-
-        const std::string oldRel = NormalizeProjectRelativeAssetPath(oldPath);
-        if (oldRel.empty())
-        {
-            outError = "invalid or out-of-project path";
-            return false;
-        }
-
-        const std::filesystem::path newRelPath =
-            std::filesystem::path(oldRel).parent_path() / newFileName;
-        return MoveAsset(oldRel, newRelPath.lexically_normal().generic_string(), outError);
+        return AssetContentMutation(*this).RenameAsset(oldPath, newFileName, outError);
     }
 
     bool AssetManager::CreateFolder(
@@ -1474,62 +792,11 @@ namespace minEngine
         std::string& outError,
         std::string* outCreatedDirectoryRel)
     {
-        outError.clear();
-        if (outCreatedDirectoryRel != nullptr)
-        {
-            outCreatedDirectoryRel->clear();
-        }
-
-        if (folderName.empty()
-            || folderName.find('/') != std::string::npos
-            || folderName.find('\\') != std::string::npos
-            || folderName == "."
-            || folderName == "..")
-        {
-            outError = "invalid folder name";
-            return false;
-        }
-
-        const PathRegistry& paths = PathRegistry::Get();
-        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-        if (contentRoot.empty())
-        {
-            outError = "ProjectContentRoot is not set";
-            return false;
-        }
-
-        std::filesystem::path parentAbs = contentRoot;
-        if (!parentDirectoryRel.empty())
-        {
-            const std::string parentNorm = NormalizeProjectRelativeAssetPath(
-                (std::filesystem::path(parentDirectoryRel) / ".").lexically_normal().generic_string());
-            // NormalizeProjectRelative expects files; build parent manually.
-            parentAbs = contentRoot / std::filesystem::path(parentDirectoryRel);
-        }
-
-        const std::filesystem::path createdAbs = parentAbs / folderName;
-        if (std::filesystem::exists(createdAbs))
-        {
-            outError = "folder already exists";
-            return false;
-        }
-
-        NoteEditorFilesystemMutation(createdAbs);
-        std::error_code createError;
-        if (!std::filesystem::create_directories(createdAbs, createError) || createError)
-        {
-            outError = "failed to create folder: " + createError.message();
-            return false;
-        }
-
-        if (outCreatedDirectoryRel != nullptr)
-        {
-            std::filesystem::path rel = parentDirectoryRel.empty()
-                ? std::filesystem::path(folderName)
-                : (std::filesystem::path(parentDirectoryRel) / folderName);
-            *outCreatedDirectoryRel = rel.lexically_normal().generic_string();
-        }
-        return true;
+        return AssetContentMutation(*this).CreateFolder(
+            parentDirectoryRel,
+            folderName,
+            outError,
+            outCreatedDirectoryRel);
     }
 
     bool AssetManager::RenameFolder(
@@ -1537,64 +804,7 @@ namespace minEngine
         const std::string& newFolderName,
         std::string& outError)
     {
-        outError.clear();
-        if (directoryRel.empty())
-        {
-            outError = "cannot rename content root";
-            return false;
-        }
-        if (newFolderName.empty()
-            || newFolderName.find('/') != std::string::npos
-            || newFolderName.find('\\') != std::string::npos)
-        {
-            outError = "invalid folder name";
-            return false;
-        }
-
-        // Non-empty folder rename (with registered assets) is deferred; only empty dirs for MVP.
-        const std::vector<const AssetMeta*> under =
-            FindAssetMetasUnderDirectory(directoryRel);
-        if (!under.empty())
-        {
-            outError = "folder is not empty (contains registered assets); move assets first";
-            return false;
-        }
-
-        const PathRegistry& paths = PathRegistry::Get();
-        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-        const std::filesystem::path oldAbs = contentRoot / std::filesystem::path(directoryRel);
-        if (!std::filesystem::exists(oldAbs) || !std::filesystem::is_directory(oldAbs))
-        {
-            outError = "folder does not exist";
-            return false;
-        }
-
-        // Reject if any filesystem child exists (empty-folder policy).
-        std::error_code iterError;
-        const auto it = std::filesystem::directory_iterator(oldAbs, iterError);
-        if (!iterError && it != std::filesystem::directory_iterator{})
-        {
-            outError = "folder is not empty on disk";
-            return false;
-        }
-
-        const std::filesystem::path newAbs = oldAbs.parent_path() / newFolderName;
-        if (std::filesystem::exists(newAbs))
-        {
-            outError = "destination folder already exists";
-            return false;
-        }
-
-        NoteEditorFilesystemMutation(oldAbs);
-        NoteEditorFilesystemMutation(newAbs);
-        std::error_code renameError;
-        std::filesystem::rename(oldAbs, newAbs, renameError);
-        if (renameError)
-        {
-            outError = "failed to rename folder: " + renameError.message();
-            return false;
-        }
-        return true;
+        return AssetContentMutation(*this).RenameFolder(directoryRel, newFolderName, outError);
     }
 
     bool AssetManager::DeleteFolder(
@@ -1602,65 +812,9 @@ namespace minEngine
         std::string& outError,
         bool requireEmpty)
     {
-        outError.clear();
-        if (directoryRel.empty())
-        {
-            outError = "cannot delete content root";
-            return false;
-        }
-
-        const std::vector<const AssetMeta*> under = FindAssetMetasUnderDirectory(directoryRel);
-        if (!under.empty())
-        {
-            outError = "folder contains registered assets";
-            return false;
-        }
-
-        const PathRegistry& paths = PathRegistry::Get();
-        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-        const std::filesystem::path absPath = contentRoot / std::filesystem::path(directoryRel);
-        if (!std::filesystem::exists(absPath))
-        {
-            return true;
-        }
-        if (!std::filesystem::is_directory(absPath))
-        {
-            outError = "path is not a directory";
-            return false;
-        }
-
-        if (requireEmpty)
-        {
-            std::error_code iterError;
-            const auto it = std::filesystem::directory_iterator(absPath, iterError);
-            if (!iterError && it != std::filesystem::directory_iterator{})
-            {
-                outError = "folder is not empty";
-                return false;
-            }
-        }
-
-        NoteEditorFilesystemMutation(absPath);
-        std::error_code removeError;
-        if (requireEmpty)
-        {
-            if (!std::filesystem::remove(absPath, removeError) || removeError)
-            {
-                outError = "failed to delete folder: " + removeError.message();
-                return false;
-            }
-        }
-        else
-        {
-            const auto removed = std::filesystem::remove_all(absPath, removeError);
-            if (removeError || removed == static_cast<std::uintmax_t>(-1))
-            {
-                outError = "failed to delete folder tree: " + removeError.message();
-                return false;
-            }
-        }
-        return true;
+        return AssetContentMutation(*this).DeleteFolder(directoryRel, outError, requireEmpty);
     }
+
 
     std::shared_ptr<Asset> AssetManager::LoadAssetByPath(const std::string& path, std::string& outErrorMessage)
     {
@@ -1771,6 +925,70 @@ namespace minEngine
         return it->second;
     }
 
+    void AssetManager::RegisterSaveHandler(std::string_view assetTypeId, AssetSaveHandlerFn handler)
+    {
+        if (assetTypeId.empty() || handler == nullptr)
+        {
+            ME_LOG(LogAsset, Error, "RegisterSaveHandler: assetTypeId and handler are required");
+            return;
+        }
+
+        m_SaveHandlers[std::string(assetTypeId)] = handler;
+    }
+
+    AssetSaveHandlerFn AssetManager::FindSaveHandler(std::string_view assetTypeId) const
+    {
+        const auto it = m_SaveHandlers.find(std::string(assetTypeId));
+        if (it == m_SaveHandlers.end())
+        {
+            return nullptr;
+        }
+
+        return it->second;
+    }
+
+    bool AssetManager::SaveRegisteredAsset(const AssetMeta& meta, const Asset& asset) const
+    {
+        const AssetSaveHandlerFn handler = FindSaveHandler(meta.AssetType);
+        if (handler == nullptr)
+        {
+            ME_LOG(LogAsset, Error, "SaveAsset: no Saver registered for type '{}'", meta.AssetType);
+            return false;
+        }
+
+        std::string error;
+        if (!handler(*this, meta, asset, error))
+        {
+            if (!error.empty())
+            {
+                ME_LOG(
+                    LogAsset,
+                    Error,
+                    "SaveAsset: '{}' ({}) failed: {}",
+                    meta.AssetPath,
+                    meta.AssetType,
+                    error);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    AssetMeta AssetManager::MakePendingSaveMeta(
+        const std::string& relativePath,
+        const std::string& assetName,
+        const std::string& assetType,
+        const GUID& guid)
+    {
+        AssetMeta meta;
+        meta.AssetPath = relativePath;
+        meta.AssetName = assetName;
+        meta.AssetType = assetType;
+        meta.Guid = guid;
+        return meta;
+    }
+
     void AssetManager::RegisterImportProduct(const ImportProductDescriptor& descriptor)
     {
         if (descriptor.ProductId.empty() || descriptor.Import == nullptr
@@ -1804,133 +1022,6 @@ namespace minEngine
         }
 
         return nullptr;
-    }
-
-    ImportResult AssetManager::MakeImportResultFromLegacy(const ImportAssetResult& legacy)
-    {
-        ImportResult result;
-        result.bSuccess = legacy.bSuccess;
-        result.ErrorMessage = legacy.ErrorMessage;
-        if (legacy.bSuccess && !legacy.Meta.AssetPath.empty())
-        {
-            result.Created.push_back(ImportCreatedAsset{
-                .AssetPath = legacy.Meta.AssetPath,
-                .AssetTypeId = legacy.Meta.AssetType,
-                .Guid = legacy.Meta.Guid});
-        }
-
-        return result;
-    }
-
-    bool AssetManager::AcceptsNativeCopyExtension(std::string_view extension)
-    {
-        if (AssetTypeRegistry::IsExternalMeshSourceExtension(extension))
-        {
-            return false;
-        }
-
-        std::string normalized(extension);
-        for (char& ch : normalized)
-        {
-            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-        }
-
-        // .obj stays cookable via StaticMesh product; NativeCopy still accepts other registered
-        // extensions (textures, .memtl, …). Infer rejects unknown extensions at Import time.
-        return !normalized.empty();
-    }
-
-    bool AssetManager::AcceptsExternalMeshCookExtension(std::string_view extension)
-    {
-        if (AssetTypeRegistry::IsExternalMeshSourceExtension(extension))
-        {
-            return true;
-        }
-
-        std::string normalized(extension);
-        for (char& ch : normalized)
-        {
-            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-        }
-
-        return normalized == ".obj";
-    }
-
-    bool AssetManager::AcceptsAnimationClipSourceExtension(std::string_view extension)
-    {
-        return AssetTypeRegistry::IsExternalMeshSourceExtension(extension);
-    }
-
-    ImportResult AssetManager::ImportProduct_NativeCopy(
-        AssetManager& manager, const ImportRequest& request)
-    {
-        return MakeImportResultFromLegacy(
-            manager.ImportAsset(
-                request.SourcePath, request.DestDirectory, request.bOverwriteExisting));
-    }
-
-    ImportResult AssetManager::ImportProduct_StaticMesh(
-        AssetManager& manager, const ImportRequest& request)
-    {
-        return MakeImportResultFromLegacy(manager.ImportExternalMesh(
-            request.SourcePath,
-            request.DestDirectory,
-            MeshImportProductType::StaticMesh,
-            request.bOverwriteExisting));
-    }
-
-    ImportResult AssetManager::ImportProduct_SkeletalMesh(
-        AssetManager& manager, const ImportRequest& request)
-    {
-        return MakeImportResultFromLegacy(manager.ImportExternalMesh(
-            request.SourcePath,
-            request.DestDirectory,
-            MeshImportProductType::SkeletalMesh,
-            request.bOverwriteExisting));
-    }
-
-    ImportResult AssetManager::ImportProduct_AnimationClip(
-        AssetManager& manager, const ImportRequest& request)
-    {
-        std::string skeletonAssetPath = request.SkeletonAssetPath;
-        if (skeletonAssetPath.empty())
-        {
-            const PathRegistry& paths = PathRegistry::Get();
-            const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-            std::filesystem::path absoluteDestDirectory = request.DestDirectory.is_absolute()
-                ? std::filesystem::weakly_canonical(request.DestDirectory)
-                : std::filesystem::weakly_canonical(contentRoot / request.DestDirectory);
-
-            const std::filesystem::path fallbackAbsolute =
-                absoluteDestDirectory
-                / (request.SourcePath.stem().string() + "_Skeleton.meskeleton");
-            if (std::filesystem::exists(fallbackAbsolute))
-            {
-                std::error_code relativeError;
-                const std::filesystem::path relativePath =
-                    std::filesystem::relative(fallbackAbsolute, contentRoot, relativeError);
-                if (!relativeError && !relativePath.empty())
-                {
-                    skeletonAssetPath = relativePath.generic_string();
-                }
-            }
-        }
-
-        if (skeletonAssetPath.empty())
-        {
-            ImportResult result;
-            result.ErrorMessage =
-                "AnimationClip import requires SkeletonAssetPath "
-                "(or an existing {stem}_Skeleton.meskeleton next to the destination)";
-            return result;
-        }
-
-        return MakeImportResultFromLegacy(manager.ImportAnimationClip(
-            request.SourcePath,
-            request.DestDirectory,
-            skeletonAssetPath,
-            request.AnimationIndex,
-            request.bOverwriteExisting));
     }
 
     ImportResult AssetManager::Import(const ImportRequest& request)
@@ -2045,115 +1136,141 @@ namespace minEngine
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_StaticMesh(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<StaticMesh>(
-            meta, outErrorMessage, "failed to load static mesh by guid");
+        return WrapLoadedAsset(
+            StaticMeshLoader::LoadFromAssetMeta(meta),
+            outErrorMessage,
+            "failed to load StaticMesh");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_SkeletalMesh(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<SkeletalMesh>(
-            meta, outErrorMessage, "failed to load skeletal mesh by guid");
+        return WrapLoadedAsset(
+            SkeletalMeshLoader::LoadFromAssetMeta(meta),
+            outErrorMessage,
+            "failed to load SkeletalMesh");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Skeleton(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<Skeleton>(
-            meta, outErrorMessage, "failed to load Skeleton");
+        return WrapLoadedAsset(SkeletonLoader::Load(meta), outErrorMessage, "failed to load Skeleton");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_AnimationClip(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<AnimationClip>(
-            meta, outErrorMessage, "failed to load AnimationClip");
+        return WrapLoadedAsset(
+            AnimationClipLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load AnimationClip");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_AnimationGraph(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<AnimationGraph>(
-            meta, outErrorMessage, "failed to load AnimationGraph");
+        return WrapLoadedAsset(
+            AnimationGraphLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load AnimationGraph");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Texture2D(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<Texture2D>(
-            meta, outErrorMessage, "failed to load texture2d by guid");
+        return WrapLoadedAsset(
+            Texture2DLoader::LoadFromAssetMeta(meta),
+            outErrorMessage,
+            "failed to load Texture2D");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Scene(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<Scene>(
-            meta, outErrorMessage, "failed to load scene by guid");
+        return WrapLoadedAsset(SceneLoader::Load(meta), outErrorMessage, "failed to load Scene");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Prefab(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<Prefab>(
-            meta, outErrorMessage, "failed to load prefab by guid");
+        return WrapLoadedAsset(
+            PrefabLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load Prefab");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Material(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<Material>(
-            meta, outErrorMessage, "failed to load material by guid");
+        return WrapLoadedAsset(
+            MaterialLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load Material");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_MaterialInstance(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<MaterialInstance>(
-            meta, outErrorMessage, "failed to load material instance by guid");
+        return WrapLoadedAsset(
+            MaterialInstanceLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load MaterialInstance");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Sprite(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<Sprite>(
-            meta, outErrorMessage, "failed to load sprite by guid");
+        return WrapLoadedAsset(
+            SpriteLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load Sprite");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_SpriteAtlas(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<SpriteAtlas>(
-            meta, outErrorMessage, "failed to load sprite atlas by guid");
+        return WrapLoadedAsset(
+            SpriteAtlasLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load SpriteAtlas");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Font(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<Font>(
-            meta, outErrorMessage, "failed to load font by guid");
+        return WrapLoadedAsset(
+            FontLoader::LoadFromAssetMeta(meta),
+            outErrorMessage,
+            "failed to load Font");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_LuaScript(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<LuaScript>(
-            meta, outErrorMessage, "failed to load lua script by guid");
+        return WrapLoadedAsset(
+            LuaScriptLoader::LoadFromAssetMeta(meta),
+            outErrorMessage,
+            "failed to load LuaScript");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_EnvironmentMap(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<EnvironmentMap>(
-            meta, outErrorMessage, "failed to load EnvironmentMap by guid");
+        return WrapLoadedAsset(
+            EnvironmentMapLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load EnvironmentMap");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_AudioClip(
-        AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage)
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
     {
-        return manager.LoadTypedAssetAsBase<AudioClip>(
-            meta, outErrorMessage, "failed to load AudioClip by guid");
+        return WrapLoadedAsset(
+            AudioClipLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load AudioClip");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_ShaderRemoved(
@@ -2165,6 +1282,20 @@ namespace minEngine
 
     std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)
     {
+        const std::string registryKey = NormalizeProjectRelativeAssetPath(meta.AssetPath);
+        if (!registryKey.empty())
+        {
+            const auto cacheIt = m_LoadedAssetCache.find(registryKey);
+            if (cacheIt != m_LoadedAssetCache.end())
+            {
+                std::shared_ptr<MEObject> cachedObject = cacheIt->second.lock();
+                if (cachedObject)
+                {
+                    return std::dynamic_pointer_cast<Asset>(cachedObject);
+                }
+            }
+        }
+
         const AssetLoadHandlerFn handler = FindLoadHandler(meta.AssetType);
         if (handler == nullptr)
         {
@@ -2172,735 +1303,130 @@ namespace minEngine
             return nullptr;
         }
 
-        return handler(*this, meta, outErrorMessage);
-    }
-
-    template<>
-    bool AssetManager::SaveAsset_Impl<Material>(const AssetMeta& meta, const Material& asset) const
-    {
-        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
-
-        Serialization::JsonWriterArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            absoluteAssetPath,
-            &asset,
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = false});
-
-        if (!result.ok)
+        std::shared_ptr<Asset> asset = handler(*this, meta, outErrorMessage);
+        if (asset == nullptr)
         {
-            ME_LOG(LogAsset, Error, "Failed to serialize material '{}'. Error: {}. Field path: {}",
-                          absoluteAssetPath,
-                          result.message,
-                          result.fieldPath);
-            return false;
+            return nullptr;
         }
 
-        return true;
-    }
-
-    template<>
-    bool AssetManager::SaveAsset_Impl<MaterialInstance>(
-        const AssetMeta& meta, const MaterialInstance& asset) const
-    {
-        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
-
-        Serialization::JsonWriterArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            absoluteAssetPath,
-            &asset,
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = false});
-
-        if (!result.ok)
+        if (!registryKey.empty())
         {
-            ME_LOG(LogAsset, Error,
-                "Failed to serialize material instance '{}'. Error: {}. Field path: {}",
-                absoluteAssetPath,
-                result.message,
-                result.fieldPath);
-            return false;
-        }
-
-        return true;
-    }
-
-    template<>
-    bool AssetManager::SaveAsset_Impl<Sprite>(const AssetMeta& meta, const Sprite& asset) const
-    {
-        std::string error;
-        if (!SpriteLoader::Save(meta, asset, &error))
-        {
-            ME_LOG(LogAsset, Error, "Failed to save Sprite '{}'. Error: {}", meta.AssetPath, error);
-            return false;
-        }
-        return true;
-    }
-
-    template<>
-    bool AssetManager::SaveAsset_Impl<SpriteAtlas>(const AssetMeta& meta, const SpriteAtlas& asset) const
-    {
-        std::string error;
-        if (!SpriteAtlasLoader::Save(meta, asset, &error))
-        {
-            ME_LOG(LogAsset, Error, "Failed to save SpriteAtlas '{}'. Error: {}", meta.AssetPath, error);
-            return false;
-        }
-        return true;
-    }
-
-    template<>
-    bool AssetManager::SaveAsset_Impl<Scene>(const AssetMeta& meta, const Scene& asset) const
-    {
-        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
-
-        Serialization::JsonWriterArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            absoluteAssetPath,
-            &asset,
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = false});
-
-        if (!result.ok)
-        {
-            ME_LOG(LogAsset, Error, "Failed to serialize scene '{}'. Error: {}. Field path: {}",
-                          absoluteAssetPath,
-                          result.message,
-                          result.fieldPath);
-            return false;
-        }
-
-        return true;
-    }
-
-    template<>
-    bool AssetManager::SaveAsset_Impl<Prefab>(const AssetMeta& meta, const Prefab& asset) const
-    {
-        const std::string absoluteAssetPath = ResolveAssetAbsolutePathString(meta.AssetPath);
-
-        Serialization::JsonWriterArchive archive;
-        const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-            absoluteAssetPath,
-            &asset,
-            archive,
-            Serialization::SerializerOptions{
-                .enumAsString = true,
-                .strictTypeCheck = false,
-                .skipUnknownField = false});
-
-        if (!result.ok)
-        {
-            ME_LOG(LogAsset, Error, "Failed to serialize prefab '{}'. Error: {}. Field path: {}",
-                          absoluteAssetPath,
-                          result.message,
-                          result.fieldPath);
-            return false;
-        }
-
-        return true;
-    }
-
-    namespace
-    {
-        std::string SanitizeAssetBaseName(std::string baseName)
-        {
-            if (baseName.empty())
+            m_LoadedAssetCache[registryKey] = asset;
+            const AssetMeta* registryMeta = FindAssetMetaByPath(registryKey);
+            if (registryMeta != nullptr)
             {
-                return "NewAsset";
+                asset->SetMeta(const_cast<AssetMeta*>(registryMeta));
+            }
+        }
+
+        return asset;
+    }
+
+
+    std::string AssetManager::AllocateUniqueAssetRelativePath(
+        std::string_view directoryRel,
+        std::string_view baseName,
+        std::string_view extension) const
+    {
+        std::string directory = std::string(directoryRel);
+        if (directory.empty())
+        {
+            directory = "Assets";
+        }
+
+        std::string sanitizedBase = std::string(baseName);
+        if (sanitizedBase.empty())
+        {
+            sanitizedBase = "NewAsset";
+        }
+        for (char& character : sanitizedBase)
+        {
+            const bool allowed = std::isalnum(static_cast<unsigned char>(character)) != 0
+                || character == '_' || character == '-';
+            if (!allowed)
+            {
+                character = '_';
+            }
+        }
+
+        const std::filesystem::path directoryPath(directory);
+        for (int suffixIndex = 0; suffixIndex < 1000; ++suffixIndex)
+        {
+            const std::string candidateBase = suffixIndex == 0
+                ? sanitizedBase
+                : sanitizedBase + "_" + std::to_string(suffixIndex);
+            const std::filesystem::path relativePath =
+                (directoryPath / (candidateBase + std::string(extension))).lexically_normal();
+            const std::string normalizedPath = relativePath.generic_string();
+
+            if (FindAssetMetaByPath(normalizedPath) != nullptr)
+            {
+                continue;
             }
 
-            for (char& character : baseName)
+            const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(normalizedPath);
+            std::error_code fileError;
+            if (!std::filesystem::exists(absolutePath, fileError))
             {
-                const bool allowed = std::isalnum(static_cast<unsigned char>(character)) != 0
-                    || character == '_' || character == '-';
-                if (!allowed)
-                {
-                    character = '_';
-                }
+                return normalizedPath;
             }
-
-            return baseName;
         }
 
-        std::string BuildUniqueProjectRelativeAssetPath(
-            const AssetManager& assetManager,
-            std::string_view directoryRel,
-            std::string_view baseName,
-            std::string_view extension)
-        {
-            std::string directory = std::string(directoryRel);
-            if (directory.empty())
-            {
-                directory = "Assets";
-            }
-
-            const std::string sanitizedBase = SanitizeAssetBaseName(std::string(baseName));
-            const std::filesystem::path directoryPath(directory);
-
-            for (int suffixIndex = 0; suffixIndex < 1000; ++suffixIndex)
-            {
-                const std::string candidateBase = suffixIndex == 0
-                    ? sanitizedBase
-                    : sanitizedBase + "_" + std::to_string(suffixIndex);
-                const std::filesystem::path relativePath =
-                    (directoryPath / (candidateBase + std::string(extension))).lexically_normal();
-                const std::string normalizedPath = relativePath.generic_string();
-
-                if (assetManager.FindAssetMetaByPath(normalizedPath) != nullptr)
-                {
-                    continue;
-                }
-
-                const std::filesystem::path absolutePath =
-                    assetManager.ResolveAssetAbsolutePath(normalizedPath);
-                std::error_code fileError;
-                if (!std::filesystem::exists(absolutePath, fileError))
-                {
-                    return normalizedPath;
-                }
-            }
-
-            return std::string();
-        }
-
-        bool WriteSceneAssetFile(const AssetManager& assetManager, const std::string& relativePath, const Scene& scene)
-        {
-            const std::string absoluteAssetPath = assetManager.ResolveAssetAbsolutePath(relativePath).string();
-
-            Serialization::JsonWriterArchive archive;
-            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-                absoluteAssetPath,
-                &scene,
-                archive,
-                Serialization::SerializerOptions{
-                    .enumAsString = true,
-                    .strictTypeCheck = false,
-                    .skipUnknownField = false});
-
-            if (!result.ok)
-            {
-                ME_LOG(LogAsset, Error, 
-                    "CreateAsset<Scene>: failed to serialize '{}'. Error: {}. Field path: {}",
-                    relativePath,
-                    result.message,
-                    result.fieldPath);
-                return false;
-            }
-
-            return true;
-        }
-
-        bool WritePrefabAssetFile(const AssetManager& assetManager, const std::string& relativePath, const Prefab& prefab)
-        {
-            const std::string absoluteAssetPath = assetManager.ResolveAssetAbsolutePath(relativePath).string();
-
-            Serialization::JsonWriterArchive archive;
-            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-                absoluteAssetPath,
-                &prefab,
-                archive,
-                Serialization::SerializerOptions{
-                    .enumAsString = true,
-                    .strictTypeCheck = false,
-                    .skipUnknownField = false});
-
-            if (!result.ok)
-            {
-                ME_LOG(LogAsset, Error,
-                    "CreateAsset<Prefab>: failed to serialize '{}'. Error: {}. Field path: {}",
-                    relativePath,
-                    result.message,
-                    result.fieldPath);
-                return false;
-            }
-
-            return true;
-        }
-
-        bool WriteMaterialAssetFile(
-            const AssetManager& assetManager,
-            const std::string& relativePath,
-            const Material& material)
-        {
-            const std::string absoluteAssetPath = assetManager.ResolveAssetAbsolutePath(relativePath).string();
-
-            Serialization::JsonWriterArchive archive;
-            const Serialization::SerializeResult result = Serialization::Serializer::ToFile(
-                absoluteAssetPath,
-                &material,
-                archive,
-                Serialization::SerializerOptions{
-                    .enumAsString = true,
-                    .strictTypeCheck = false,
-                    .skipUnknownField = false});
-
-            if (!result.ok)
-            {
-                ME_LOG(LogAsset, Error, 
-                    "CreateAsset<Material>: failed to serialize '{}'. Error: {}. Field path: {}",
-                    relativePath,
-                    result.message,
-                    result.fieldPath);
-                return false;
-            }
-
-            return true;
-        }
+        return std::string();
     }
 
-    template<>
-    std::shared_ptr<Scene> AssetManager::CreateAsset<Scene>(
+    void AssetManager::RegisterCreateHandler(std::string_view assetTypeId, AssetCreateHandlerFn handler)
+    {
+        if (assetTypeId.empty() || handler == nullptr)
+        {
+            ME_LOG(LogAsset, Error, "RegisterCreateHandler: assetTypeId and handler are required");
+            return;
+        }
+
+        m_CreateHandlers[std::string(assetTypeId)] = handler;
+    }
+
+    AssetCreateHandlerFn AssetManager::FindCreateHandler(std::string_view assetTypeId) const
+    {
+        const auto it = m_CreateHandlers.find(std::string(assetTypeId));
+        if (it == m_CreateHandlers.end())
+        {
+            return nullptr;
+        }
+
+        return it->second;
+    }
+
+    std::shared_ptr<Asset> AssetManager::CreateAssetByTypeId(
+        std::string_view assetTypeId,
         const std::string& assetName,
-        const std::string& directoryRel)
+        const std::string& directoryRel,
+        std::string& outError)
     {
-        const std::string relativePath =
-            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".mescene");
-        if (relativePath.empty())
+        outError.clear();
+        if (assetTypeId.empty())
         {
-            ME_LOG(LogAsset, Error, "CreateAsset<Scene>: failed to allocate unique path for '{}'.", assetName);
+            outError = "assetTypeId is empty";
             return nullptr;
         }
 
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
-        std::error_code createError;
-        std::filesystem::create_directories(absolutePath.parent_path(), createError);
-        if (createError)
+        if (FindSaveHandler(assetTypeId) == nullptr)
         {
-            ME_LOG(LogAsset, Error, 
-                "CreateAsset<Scene>: failed to create directory '{}': {}",
-                absolutePath.parent_path().string(),
-                createError.message());
+            outError = "no Saver registered for type '" + std::string(assetTypeId) + "'";
+            ME_LOG(LogAsset, Error, "CreateAsset: {}", outError);
             return nullptr;
         }
 
-        const std::string sceneName = absolutePath.stem().string();
-        const GUID assetGuid = GenerateGUID();
-        std::shared_ptr<Scene> scene = NewObject<Scene>(sceneName, nullptr, assetGuid);
-        scene->Reset();
-        scene->SetSceneName(sceneName);
-        scene->EnsureRenderScene();
-
-        if (!WriteSceneAssetFile(*this, relativePath, *scene))
+        const AssetCreateHandlerFn create = FindCreateHandler(assetTypeId);
+        if (create == nullptr)
         {
-            std::error_code removeError;
-            std::filesystem::remove(absolutePath, removeError);
+            outError = "no Create handler registered for type '" + std::string(assetTypeId) + "'";
+            ME_LOG(LogAsset, Error, "CreateAsset: {}", outError);
             return nullptr;
         }
 
-        NoteEditorFilesystemMutation(absolutePath);
-
-        AssetMeta meta = RegisterAsset(relativePath, "Scene", &assetGuid);
-        if (meta.AssetPath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<Scene>: RegisterAsset failed for '{}'.", relativePath);
-            return nullptr;
-        }
-
-        if (SceneManager::HasInstance())
-        {
-            SceneManager::Get().RegisterScene(meta.AssetName, meta.AssetPath);
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
-
-        ME_LOG(LogAsset, Info, "CreateAsset<Scene>: created '{}'.", meta.AssetPath);
-        CacheCreatedAsset(meta.AssetPath, scene);
-        return scene;
+        return create(*this, assetName, directoryRel, outError);
     }
 
-    template<>
-    std::shared_ptr<Prefab> AssetManager::CreateAsset<Prefab>(
-        const std::string& assetName,
-        const std::string& directoryRel)
-    {
-        const std::string relativePath =
-            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".meprefab");
-        if (relativePath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<Prefab>: failed to allocate unique path for '{}'.", assetName);
-            return nullptr;
-        }
-
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
-        std::error_code createError;
-        std::filesystem::create_directories(absolutePath.parent_path(), createError);
-        if (createError)
-        {
-            ME_LOG(LogAsset, Error,
-                "CreateAsset<Prefab>: failed to create directory '{}': {}",
-                absolutePath.parent_path().string(),
-                createError.message());
-            return nullptr;
-        }
-
-        const std::string prefabName = absolutePath.stem().string();
-        const GUID assetGuid = GenerateGUID();
-        std::shared_ptr<Prefab> prefab = NewObject<Prefab>(prefabName, nullptr, assetGuid);
-        std::shared_ptr<GameObject> rootObject = NewObject<GameObject>(prefabName, prefab.get());
-        rootObject->AddComponent<SceneComponent>();
-        prefab->AddTemplateObject(rootObject);
-        prefab->SetRootGuid(rootObject->GetGuid());
-
-        if (!WritePrefabAssetFile(*this, relativePath, *prefab))
-        {
-            std::error_code removeError;
-            std::filesystem::remove(absolutePath, removeError);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(absolutePath);
-
-        AssetMeta meta = RegisterAsset(relativePath, "Prefab", &assetGuid);
-        if (meta.AssetPath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<Prefab>: RegisterAsset failed for '{}'.", relativePath);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
-
-        ME_LOG(LogAsset, Info, "CreateAsset<Prefab>: created '{}'.", meta.AssetPath);
-        CacheCreatedAsset(meta.AssetPath, prefab);
-        return prefab;
-    }
-
-    template<>
-    std::shared_ptr<Material> AssetManager::CreateAsset<Material>(
-        const std::string& assetName,
-        const std::string& directoryRel)
-    {
-        const std::string relativePath =
-            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".memtl");
-        if (relativePath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<Material>: failed to allocate unique path for '{}'.", assetName);
-            return nullptr;
-        }
-
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
-        std::error_code createError;
-        std::filesystem::create_directories(absolutePath.parent_path(), createError);
-        if (createError)
-        {
-            ME_LOG(LogAsset, Error, 
-                "CreateAsset<Material>: failed to create directory '{}': {}",
-                absolutePath.parent_path().string(),
-                createError.message());
-            return nullptr;
-        }
-
-        const std::string materialName = absolutePath.stem().string();
-        const GUID assetGuid = GenerateGUID();
-        std::shared_ptr<Material> material = NewObject<Material>(materialName, nullptr, assetGuid);
-        material->m_ShadingModel = MaterialShadingModel::Unlit;
-
-        if (!WriteMaterialAssetFile(*this, relativePath, *material))
-        {
-            std::error_code removeError;
-            std::filesystem::remove(absolutePath, removeError);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(absolutePath);
-
-        AssetMeta meta = RegisterAsset(relativePath, "Material", &assetGuid);
-        if (meta.AssetPath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<Material>: RegisterAsset failed for '{}'.", relativePath);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
-
-        ME_LOG(LogAsset, Info, "CreateAsset<Material>: created '{}'.", meta.AssetPath);
-        CacheCreatedAsset(meta.AssetPath, material);
-        return material;
-    }
-
-    template<>
-    std::shared_ptr<MaterialInstance> AssetManager::CreateAsset<MaterialInstance>(
-        const std::string& assetName,
-        const std::string& directoryRel)
-    {
-        std::shared_ptr<Material> parent;
-        if (const AssetMeta* defaultMeta = FindAssetMetaByPath("Materials/DefaultMaterial.memtl"))
-        {
-            parent = LoadAsset<Material>(defaultMeta->AssetPath);
-        }
-        if (!parent)
-        {
-            const std::vector<const AssetMeta*> materials = FindAssetMetasByType("Material");
-            for (const AssetMeta* materialMeta : materials)
-            {
-                if (materialMeta == nullptr)
-                {
-                    continue;
-                }
-                parent = LoadAsset<Material>(materialMeta->AssetPath);
-                if (parent)
-                {
-                    break;
-                }
-            }
-        }
-        if (!parent)
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<MaterialInstance>: no Material parent available.");
-            return nullptr;
-        }
-
-        const std::string relativePath =
-            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".memi");
-        if (relativePath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<MaterialInstance>: failed to allocate unique path for '{}'.", assetName);
-            return nullptr;
-        }
-
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
-        std::error_code createError;
-        std::filesystem::create_directories(absolutePath.parent_path(), createError);
-        if (createError)
-        {
-            ME_LOG(LogAsset, Error,
-                "CreateAsset<MaterialInstance>: failed to create directory '{}': {}",
-                absolutePath.parent_path().string(),
-                createError.message());
-            return nullptr;
-        }
-
-        const std::string instanceName = absolutePath.stem().string();
-        const GUID assetGuid = GenerateGUID();
-        std::shared_ptr<MaterialInstance> instance = NewObject<MaterialInstance>(instanceName, nullptr, assetGuid);
-        if (!instance->InitializeParent(parent))
-        {
-            return nullptr;
-        }
-
-        AssetMeta writeMeta;
-        writeMeta.AssetName = instanceName;
-        writeMeta.AssetPath = relativePath;
-        writeMeta.AssetType = "MaterialInstance";
-        writeMeta.Guid = assetGuid;
-        if (!SaveAsset_Impl<MaterialInstance>(writeMeta, *instance))
-        {
-            std::error_code removeError;
-            std::filesystem::remove(absolutePath, removeError);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(absolutePath);
-
-        AssetMeta meta = RegisterAsset(relativePath, "MaterialInstance", &assetGuid);
-        if (meta.AssetPath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<MaterialInstance>: RegisterAsset failed for '{}'.", relativePath);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
-        instance->SetMeta(const_cast<AssetMeta*>(FindAssetMetaByGuid(assetGuid)));
-        ME_LOG(LogAsset, Info, "CreateAsset<MaterialInstance>: created '{}'.", meta.AssetPath);
-        CacheCreatedAsset(meta.AssetPath, instance);
-        return instance;
-    }
-
-    template<>
-    std::shared_ptr<Sprite> AssetManager::CreateAsset<Sprite>(
-        const std::string& assetName,
-        const std::string& directoryRel)
-    {
-        const std::string relativePath =
-            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".mesprite");
-        if (relativePath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<Sprite>: failed to allocate unique path for '{}'.", assetName);
-            return nullptr;
-        }
-
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
-        std::error_code createError;
-        std::filesystem::create_directories(absolutePath.parent_path(), createError);
-        if (createError)
-        {
-            ME_LOG(LogAsset, Error,
-                "CreateAsset<Sprite>: failed to create directory '{}': {}",
-                absolutePath.parent_path().string(),
-                createError.message());
-            return nullptr;
-        }
-
-        const std::string spriteName = absolutePath.stem().string();
-        const GUID assetGuid = GenerateGUID();
-        std::shared_ptr<Sprite> sprite = NewObject<Sprite>(spriteName, nullptr, assetGuid);
-
-        AssetMeta writeMeta;
-        writeMeta.AssetName = spriteName;
-        writeMeta.AssetPath = relativePath;
-        writeMeta.AssetType = "Sprite";
-        writeMeta.Guid = assetGuid;
-        if (!SaveAsset_Impl<Sprite>(writeMeta, *sprite))
-        {
-            std::error_code removeError;
-            std::filesystem::remove(absolutePath, removeError);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(absolutePath);
-
-        AssetMeta meta = RegisterAsset(relativePath, "Sprite", &assetGuid);
-        if (meta.AssetPath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<Sprite>: RegisterAsset failed for '{}'.", relativePath);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
-        sprite->SetMeta(const_cast<AssetMeta*>(FindAssetMetaByGuid(assetGuid)));
-        ME_LOG(LogAsset, Info, "CreateAsset<Sprite>: created '{}'.", meta.AssetPath);
-        CacheCreatedAsset(meta.AssetPath, sprite);
-        return sprite;
-    }
-
-    template<>
-    std::shared_ptr<SpriteAtlas> AssetManager::CreateAsset<SpriteAtlas>(
-        const std::string& assetName,
-        const std::string& directoryRel)
-    {
-        const std::string relativePath =
-            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".mespriteatlas");
-        if (relativePath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<SpriteAtlas>: failed to allocate unique path for '{}'.", assetName);
-            return nullptr;
-        }
-
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
-        std::error_code createError;
-        std::filesystem::create_directories(absolutePath.parent_path(), createError);
-        if (createError)
-        {
-            ME_LOG(LogAsset, Error,
-                "CreateAsset<SpriteAtlas>: failed to create directory '{}': {}",
-                absolutePath.parent_path().string(),
-                createError.message());
-            return nullptr;
-        }
-
-        const std::string atlasName = absolutePath.stem().string();
-        const GUID assetGuid = GenerateGUID();
-        std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>(atlasName, nullptr, assetGuid);
-
-        AssetMeta writeMeta;
-        writeMeta.AssetName = atlasName;
-        writeMeta.AssetPath = relativePath;
-        writeMeta.AssetType = "SpriteAtlas";
-        writeMeta.Guid = assetGuid;
-        if (!SaveAsset_Impl<SpriteAtlas>(writeMeta, *atlas))
-        {
-            std::error_code removeError;
-            std::filesystem::remove(absolutePath, removeError);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(absolutePath);
-
-        AssetMeta meta = RegisterAsset(relativePath, "SpriteAtlas", &assetGuid);
-        if (meta.AssetPath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<SpriteAtlas>: RegisterAsset failed for '{}'.", relativePath);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
-        atlas->SetMeta(const_cast<AssetMeta*>(FindAssetMetaByGuid(assetGuid)));
-        ME_LOG(LogAsset, Info, "CreateAsset<SpriteAtlas>: created '{}'.", meta.AssetPath);
-        CacheCreatedAsset(meta.AssetPath, atlas);
-        return atlas;
-    }
-
-    template<>
-    bool AssetManager::SaveAsset_Impl<AnimationGraph>(const AssetMeta& meta, const AnimationGraph& asset) const
-    {
-        std::string error;
-        if (!AnimationGraphLoader::Save(meta, asset, &error))
-        {
-            ME_LOG(LogAsset, Error, 
-                "Failed to save AnimationGraph '{}'. Error: {}",
-                meta.AssetPath,
-                error);
-            return false;
-        }
-        return true;
-    }
-
-    template<>
-    std::shared_ptr<AnimationGraph> AssetManager::CreateAsset<AnimationGraph>(
-        const std::string& assetName,
-        const std::string& directoryRel)
-    {
-        const std::string relativePath =
-            BuildUniqueProjectRelativeAssetPath(*this, directoryRel, assetName, ".meagraph");
-        if (relativePath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: failed to allocate unique path for '{}'.", assetName);
-            return nullptr;
-        }
-
-        const std::filesystem::path absolutePath = ResolveAssetAbsolutePath(relativePath);
-        std::error_code createError;
-        std::filesystem::create_directories(absolutePath.parent_path(), createError);
-        if (createError)
-        {
-            ME_LOG(LogAsset, Error, 
-                "CreateAsset<AnimationGraph>: failed to create directory '{}': {}",
-                absolutePath.parent_path().string(),
-                createError.message());
-            return nullptr;
-        }
-
-        const std::string graphName = absolutePath.stem().string();
-        const GUID assetGuid = GenerateGUID();
-        std::shared_ptr<AnimationGraph> graph = NewObject<AnimationGraph>(graphName, nullptr, assetGuid);
-
-        AssetMeta tempMeta;
-        tempMeta.AssetPath = relativePath;
-        tempMeta.AssetName = graphName;
-        tempMeta.AssetType = "AnimationGraph";
-        tempMeta.Guid = assetGuid;
-
-        std::string saveError;
-        if (!AnimationGraphLoader::Save(tempMeta, *graph, &saveError))
-        {
-            std::error_code removeError;
-            std::filesystem::remove(absolutePath, removeError);
-            ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: save failed: {}", saveError);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(absolutePath);
-
-        AssetMeta meta = RegisterAsset(relativePath, "AnimationGraph", &assetGuid);
-        if (meta.AssetPath.empty())
-        {
-            ME_LOG(LogAsset, Error, "CreateAsset<AnimationGraph>: RegisterAsset failed for '{}'.", relativePath);
-            return nullptr;
-        }
-
-        NoteEditorFilesystemMutation(BuildMetaAbsolutePath(meta.AssetPath));
-
-        ME_LOG(LogAsset, Info, "CreateAsset<AnimationGraph>: created '{}'.", meta.AssetPath);
-        CacheCreatedAsset(meta.AssetPath, graph);
-        return graph;
-    }
 
 }

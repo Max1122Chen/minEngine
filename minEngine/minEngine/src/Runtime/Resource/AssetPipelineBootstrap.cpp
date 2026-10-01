@@ -1,6 +1,15 @@
 #include "AssetPipelineBootstrap.h"
 
 #include "AssetManager.h"
+#include "Runtime/Resource/Importers/AnimationClipImporter.h"
+#include "Runtime/Resource/Importers/MeshImporter.h"
+#include "Runtime/Resource/Importers/NativeCopyImporter.h"
+#include "Runtime/Resource/Loaders/AnimationGraphLoader.h"
+#include "Runtime/Resource/Loaders/MaterialInstanceLoader.h"
+#include "Runtime/Resource/Loaders/MaterialLoader.h"
+#include "Runtime/Resource/Loaders/PrefabLoader.h"
+#include "Runtime/Resource/Loaders/SceneLoader.h"
+#include "Runtime/Resource/Loaders/SpriteLoader.h"
 
 namespace minEngine
 {
@@ -24,29 +33,45 @@ namespace minEngine
         assetManager.RegisterLoadHandler("AudioClip", &AssetManager::LoadHandler_AudioClip);
         assetManager.RegisterLoadHandler("Shader", &AssetManager::LoadHandler_ShaderRemoved);
 
+        assetManager.RegisterSaveHandler("Scene", &SceneLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("Prefab", &PrefabLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("Material", &MaterialLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("MaterialInstance", &MaterialInstanceLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("Sprite", &SpriteLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("SpriteAtlas", &SpriteAtlasLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("AnimationGraph", &AnimationGraphLoader::SaveHandler);
+
+        assetManager.RegisterCreateHandler("Scene", &SceneLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("Prefab", &PrefabLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("Material", &MaterialLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("MaterialInstance", &MaterialInstanceLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("Sprite", &SpriteLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("SpriteAtlas", &SpriteAtlasLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("AnimationGraph", &AnimationGraphLoader::CreateHandler);
+
         assetManager.RegisterImportProduct(ImportProductDescriptor{
             .ProductId = "NativeCopy",
             .DisplayName = "Native Asset (copy)",
-            .AcceptsSourceExtension = &AssetManager::AcceptsNativeCopyExtension,
+            .AcceptsSourceExtension = &NativeCopyImporter::AcceptsSourceExtension,
             .bNeedsSkeletonPicker = false,
-            .Import = &AssetManager::ImportProduct_NativeCopy});
+            .Import = &NativeCopyImporter::Import});
         assetManager.RegisterImportProduct(ImportProductDescriptor{
             .ProductId = "StaticMesh",
             .DisplayName = "Static Mesh",
-            .AcceptsSourceExtension = &AssetManager::AcceptsExternalMeshCookExtension,
+            .AcceptsSourceExtension = &MeshImporter::AcceptsSourceExtension,
             .bNeedsSkeletonPicker = false,
-            .Import = &AssetManager::ImportProduct_StaticMesh});
+            .Import = &MeshImporter::ImportStaticMesh});
         assetManager.RegisterImportProduct(ImportProductDescriptor{
             .ProductId = "SkeletalMesh",
             .DisplayName = "Skeletal Mesh",
-            .AcceptsSourceExtension = &AssetManager::AcceptsExternalMeshCookExtension,
+            .AcceptsSourceExtension = &MeshImporter::AcceptsSourceExtension,
             .bNeedsSkeletonPicker = false,
-            .Import = &AssetManager::ImportProduct_SkeletalMesh});
+            .Import = &MeshImporter::ImportSkeletalMesh});
         assetManager.RegisterImportProduct(ImportProductDescriptor{
             .ProductId = "AnimationClip",
             .DisplayName = "Animation Clip",
-            .AcceptsSourceExtension = &AssetManager::AcceptsAnimationClipSourceExtension,
+            .AcceptsSourceExtension = &AnimationClipImporter::AcceptsSourceExtension,
             .bNeedsSkeletonPicker = true,
-            .Import = &AssetManager::ImportProduct_AnimationClip});
+            .Import = &AnimationClipImporter::Import});
     }
 }

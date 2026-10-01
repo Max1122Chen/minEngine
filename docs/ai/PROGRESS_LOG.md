@@ -1,3 +1,31 @@
+## 2026-10-01 — ASSET-F06 S06 + Feature Done（Create→Saver）
+
+- **S06:** `RegisterCreateHandler` / `CreateAssetByTypeId`；`CreateAsset<T>` 薄糖衣（AssetTypeRegistry → typeId）
+- **CreateHandler:** Scene / Prefab / Material / MaterialInstance / Sprite / SpriteAtlas / AnimationGraph（Loader 侧）
+- **契约:** 无 Save 或无 Create → Create 失败（Mesh 等无 Create）
+- **规模:** AM.cpp ~1801→~1432；Create 特化 0；Bootstrap 注册 CreateHandlers
+- **验证:** minEngine + minEngineTests；`test asset-manager` / `prefab` / `smoke` PASSED（含 Material Create via MaterialLoader::Create）
+- **Status:** ASSET-F06 **Done**（S01–S06）
+- **Next:** 用户安排；候选 F04 验收 / ASSET-F05
+
+## 2026-09-29 — ASSET-F06 S05（Importers 迁出 + 符号分离）
+
+- **Importers/:** NativeCopyImporter、MeshImporter、AnimationClipImporter、AssetImportHelpers
+- **AM:** Import cook / ProductAccepts / ImportProduct_* 从 cpp 移除；保留 Import()/Reimport() 门面调度
+- **符号:** Static/SkeletalMeshLoader::ImportFromFile → ParseMeshFile（Load 侧）；Clip Assimp 解析迁入 AnimationClipImporter；AnimationClipLoader 仅 Load/Save .meaclip
+- **规模:** AM.cpp ~2402 → ~1801；AM.h ~435 → ~404
+- **验证:** minEngine Debug；asset-manager / prefab / smoke
+- **Next:** S06 Create → Saver
+
+## 2026-09-29 — ASSET-F06 S02–S04（Mutation / Saver / Load Handler）
+
+- **S02:** `AssetContentMutation` 独立（~462 行）；AM 转发 Folder/Move/Rename/Delete
+- **S03:** `AssetSerializeHelper`；`RegisterSaveHandler`；去掉 `SaveAsset_Impl`；Create 首次落盘走 Saver
+- **S04:** `LoadAsset<T>` / untyped Load 只走 Handler→Loader；去掉 `LoadAsset_Impl` 与 Handler→LoadAsset 回环；缓存集中 `LoadAssetByMeta_Internal`
+- **规模：** AM.cpp ~2906 → ~2402；AM.h ~483 → ~435；Load/Save 特化 0
+- **验证：** `minEngine` Debug；`minEngineTests.exe test asset-manager` / `prefab` / `lua-script-mvp`
+- **Next:** S05 Importers 迁出 AM.cpp
+
 ## 2026-09-29 — ASSET-F06 docs commit baseline; Status Planned
 
 - **Baseline:** AM.h ~483 / AM.cpp ~2906; Loaders 34 files ~3425 LOC; Save特化~10; Create特化~7; Load_Impl声明~19

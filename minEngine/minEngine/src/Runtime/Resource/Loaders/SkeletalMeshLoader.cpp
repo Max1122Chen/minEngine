@@ -112,7 +112,7 @@ namespace minEngine
         }
     }
 
-    bool SkeletalMeshLoader::ImportFromFile(
+    bool SkeletalMeshLoader::ParseMeshFile(
         const std::string& path,
         SkeletalMeshImportData& outData,
         std::string* outError)
@@ -627,7 +627,7 @@ namespace minEngine
         std::string* outError)
     {
         SkeletalMeshImportData importData;
-        if (!ImportFromFile(sourceAbsolutePath.string(), importData, outError))
+        if (!ParseMeshFile(sourceAbsolutePath.string(), importData, outError))
         {
             return false;
         }
@@ -728,7 +728,7 @@ namespace minEngine
         std::shared_ptr<Skeleton> skeleton;
         if (TryLoadBuddySkeleton(meta, skeleton))
         {
-            if (!ImportFromFile(absoluteAssetPath, importData, &error))
+            if (!ParseMeshFile(absoluteAssetPath, importData, &error))
             {
                 return nullptr;
             }
@@ -739,7 +739,7 @@ namespace minEngine
             "SkeletalMeshLoader: no '.meskmesh' buddy for '{}'; using legacy import (temporary skeleton).",
             meta.AssetPath);
 
-        if (!ImportFromFile(absoluteAssetPath, importData, &error))
+        if (!ParseMeshFile(absoluteAssetPath, importData, &error))
         {
             return nullptr;
         }
@@ -754,17 +754,5 @@ namespace minEngine
         }
 
         return CreateFromImportData(meta, importData, skeleton);
-    }
-
-    template<>
-    std::shared_ptr<SkeletalMesh> AssetManager::LoadAsset_Impl<SkeletalMesh>(const AssetMeta& meta)
-    {
-        return SkeletalMeshLoader::LoadFromAssetMeta(meta);
-    }
-
-    template<>
-    std::shared_ptr<Skeleton> AssetManager::LoadAsset_Impl<Skeleton>(const AssetMeta& meta)
-    {
-        return SkeletonLoader::Load(meta);
     }
 }

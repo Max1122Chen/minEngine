@@ -4,9 +4,9 @@
 - **ID:** `ASSET-F06`
 - **Type:** Refactor
 - **Complexity:** L3
-- **Status:** Planned
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-29（补 Client Surfaces：Editor/Automation/MCP）
+- **Last updated:** 2026-10-01（S06 Complete · Feature Done）
 - **Related:**
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - [ASSET-F02](./ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [ASSET-F03](./ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md)
@@ -358,87 +358,29 @@ MCP **不**直接链 Runtime；稳定 Automation op 名与 payload 即可，MCP 
 
 ### 按 Slice 的客户端改动预期
 
-| Slice | Runtime | Editor / Auto / MCP |
-|-------|---------|---------------------|
-| S02 Mutation | 新类 + AM 转发 | **期望 0** CB/Services 改动 |
-| S03–S04 Load/Save | Helper + Handler | Thumbnail/Preview 无感（糖衣）；Save 调用方无感 |
-| S05 Importers | 迁出 AM | Import Dialog / Services / sset.import **无感** |
-| S06 Create→Saver | 注册 Create | AssetEditorServices / Workflow / Sprite / AnimGraph / Tests：糖衣下 **小改或 0**；去掉糖衣则显式改 typeId |
-| 全程 | — | Automation/MCP 契约回归 |
-
-### 非目标（客户端）
-
-- 不新增 MCP 粗 Tool。
-- 不把 Automation 改成直连 Mutation（可后置）。
-- 不重做 Content Browser UI。
-
----
-
-## Boundaries
-
-**允许：** AM 调度；Saver 调 SerializeHelper；Mutation 改盘+Registry；外部 Register。
-
-**禁止：** AM 堆类型算法；无 Saver 却 Create 成功；引入 SaveKind/IAssetIO；Mutation 内 Load/Import；Mesh Save 顶点；Texture 常态改写 png。
-
-## Dependencies
-
-F02/F03、Registry、Serialization（有 Saver 的类型）。CB/Automation/F05 依赖本结构。
-
-## Ownership & Lifetime
-
-缓存属 AM；Registry 由 Import/Create/Register/Mutation 更新；Mutation/Loader/Saver 无全局表所有权。
-
-## Data Flow
-
-```text
-Import → Importer → 文件 → Register
-Load   → Loader → cache
-Save   → Saver → SerializeHelper → 盘
-Create → Saver.Create → Register → cache
-Mutation → 盘+meta → Registry → cache invalidate
-```
-
-## State & Invariants
-
-- F03；无能力失败；Mutation 失败不改 Registry；Save 失败保留旧文件。
-
-## Failure Model
-
-未知 TypeId、无 Load/Save/Create/Import、盘失败、序列化失败：明确错误消息。
-
-## Alternatives（已选定）
-
-| 主题 | 选定 |
-|------|------|
-| Create 归属 | **并入 Saver** |
-| SaveKind | **取消**；有 Save ⇒ 引擎序列化 |
-| 接口 | 函数表 |
-| Mesh Save | 无 |
-| Mutation | 独立类型 + AM 转发 |
-| CreateAsset<T> | **保留薄糖衣**（降 Editor 改动） |
-| Automation/MCP | **冻结 op 契约** |
+| Slice | 目标 | Status |
+|-------|------|--------|
+| S01 | 矩阵 + Inventory；禁新双轨 | Done（设计） |
+| S02 | ContentMutation + AM 转发 | Done |
+| S03 | SerializeHelper；废除 Save 特化；Saver.Save 挂接 | Done |
+| S04 | Load 仅 Handler；废 Load 特化 | Done |
+| S05 | Importers 迁出；符号分离 | Done |
+| S06 | Create 经 Saver；CreateAsset 糖衣；Automation create 回归 | Done |
+| → F05 | Texture Saver/Loader/Importer | After F06 |
 
 ## Complexity Assessment
 
-L3；Planned + Readiness 后大段编码。
+L3；**Done**（S02–S06 全部落地）。
 
 ## Open Questions
 
-1. F04 未验收是否开 Mutation 抽离 — 建议验收后或显式允许。
-2. Savers/ 独立目录 vs Loader 同文件 Save — 默认同模块文件即可，不强制目录。
-3. CreateAsset<T> 糖衣保留多久 — **默认长期保留薄糖衣**，避免 Editor 大面积改动。
+1. F04 未验收是否开 Mutation 抽离 — 已显式开工 S02。
+2. Savers/ 独立目录 vs Loader 同文件 Save — 默认同模块文件。
+3. CreateAsset<T> 糖衣 — 默认长期保留薄糖衣。
 
 ## Implementation Slices
 
-| Slice | 目标 |
-|-------|------|
-| S01 | 矩阵 + Inventory；禁新双轨 |
-| S02 | ContentMutation（按上节 API）+ AM 转发；**验证 CB/Services 零改或仅重链** |
-| S03 | SerializeHelper；废除 Save 特化；Saver.Save 挂接 |
-| S04 | Load 仅 Handler；废 Load 特化 |
-| S05 | Importers 迁出；符号分离 |
-| S06 | Bootstrap；Create 经 Saver；**清点并改 Editor CreateAsset 调用方**；Automation create 回归 |
-| → F05 | Texture Saver/Loader/Importer |
+见上「按 Slice 的客户端改动预期」表（S01–S06 Done）。
 
 ## Risks
 
@@ -450,14 +392,14 @@ L3；Planned + Readiness 后大段编码。
 
 ## Acceptance Criteria
 
-- [ ] 无 SaveKind；Save 注册为 fn 有无。
-- [ ] Create 仅通过 Saver.Create；无 Saver 则 Create 失败。
-- [ ] Mesh 无 Save/Create；Material 无 Import。
-- [ ] ContentMutation 具备上节 API 行为；AM 可转发。
-- [ ] 无 Load/Save 特化表；Import 不在 AM.cpp。
-- [ ] 无 IAssetIO；Register API 公开。
-- [ ] F05 可零改 AM 算法文件挂接。
-- [ ] L3 Readiness 后再大段编码。
+- [x] 无 SaveKind；Save 注册为 fn 有无。
+- [x] Create 仅通过 Saver.Create；无 Saver 则 Create 失败。
+- [x] Mesh 无 Save/Create；Material 无 Import。
+- [x] ContentMutation 具备上节 API 行为；AM 可转发。
+- [x] 无 Load/Save 特化表；Import 不在 AM.cpp。
+- [x] 无 IAssetIO；Register API 公开。
+- [x] F05 可零改 AM 算法文件挂接（RegisterLoad/Save/Create/ImportProduct）。
+- [x] 用户已批准大段编码。
 
 ## Test Plan
 
@@ -486,7 +428,21 @@ Forward-only。冲突文档更新 F05。
 | AssetPipelineBootstrap.cpp | ~52 行 |
 | 门面能力 | Load/Save/Create 特化 + ImportProduct + CRUD/Folder + Registry 委托 |
 
-**实现后对比：** 在 Progress / 本附录更新同表（行数、特化数、是否仍有 Assimp 在 Loader 公共 Import 符号、Mutation 是否独立文件）。
+**实现后对比（2026-10-01，S06 完成）：**
+
+| 度量 | 重构前 | S06 后 |
+|------|--------|--------|
+| AssetManager.h | ~483 | ~426 |
+| AssetManager.cpp | ~2906 | ~1432 |
+| LoadAsset_Impl | ~19 | 0 |
+| SaveAsset_Impl | ~10 | 0 |
+| CreateAsset<> 特化 | ~7 | 0（薄糖衣 → CreateAssetByTypeId） |
+| AssetContentMutation.cpp | — | ~462 |
+| AssetSerializeHelper | — | yes |
+| Importers/ | — | NativeCopy / Mesh / AnimationClip |
+| CreateHandler | AM 特化 | Scene/Prefab/Material/MI/Sprite/Atlas/AnimGraph |
+| Assimp | Loader+AM | ParseMeshFile (Load) / Importer (Import) |
+| Facade | specs+Import+CRUD | Load/Save/Create registry + Mutation + Importers/ |
 
 ### 实现注意：多重 Load / Save
 

@@ -42,7 +42,7 @@ namespace minEngine
     class StaticMeshLoader
     {
     public:
-        static bool ImportFromFile(
+        static bool ParseMeshFile(
             const std::string& path,
             StaticMeshImportData& outData,
             std::string* outError = nullptr);

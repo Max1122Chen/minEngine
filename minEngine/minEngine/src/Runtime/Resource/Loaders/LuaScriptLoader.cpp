@@ -71,10 +71,4 @@ namespace minEngine
         script->m_Source = std::move(source);
         return script;
     }
-
-    template<>
-    std::shared_ptr<LuaScript> AssetManager::LoadAsset_Impl<LuaScript>(const AssetMeta& meta)
-    {
-        return LuaScriptLoader::LoadFromAssetMeta(meta);
-    }
 }
