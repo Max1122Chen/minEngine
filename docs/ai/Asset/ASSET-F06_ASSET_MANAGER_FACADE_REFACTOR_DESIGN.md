@@ -355,6 +355,7 @@ MCP **不**直接链 Runtime；稳定 Automation op 名与 payload 即可，MCP 
 5. **CreateAsset<T>：** 允许保留为薄糖衣（CreateAsset(GetTypeId<T>(),…) + cast）；或删除后改所有调用方为 typeId — **默认保留糖衣**以降低 Editor 改动面，特化实现删除。
 6. **Registry 订阅：** Subscribe/Unsubscribe、Moved/Registered/Unregistered 对 TreeModel 行为等价；批量操作继续可用 Batch scope。
 7. **AssetEditorServices** 保持 Editor/Automation 的**推荐入口**；F06 不要求 MCP/Automation 改调 Mutation 或 Saver。
+8. **GUI 直连 AM（Import/Create/Mutation）** 在 F06 范围可接受；收敛工作见 [ED-F24](../Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md)。
 
 ### 按 Slice 的客户端改动预期
 

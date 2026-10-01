@@ -1842,6 +1842,7 @@ namespace minEngine
         std::string outPath;
         std::string outGuid;
         const GraphEditorResult result = context.GetSpriteEditorServices().CreateSpriteFromTexture(
+            context.GetAssetEditorServices(),
             texture,
             rect,
             request.Payload.value("directory", ""),
@@ -1882,6 +1883,7 @@ namespace minEngine
         std::string outPath;
         std::string outGuid;
         const GraphEditorResult result = context.GetSpriteEditorServices().CreateAtlas(
+            context.GetAssetEditorServices(),
             request.Payload.value("directory", ""),
             request.Payload.value("name", ""),
             &atlas,

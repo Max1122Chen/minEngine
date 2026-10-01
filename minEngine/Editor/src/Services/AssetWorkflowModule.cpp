@@ -567,14 +567,21 @@ namespace minEngine
             [this]() { return SaveSceneDocument(); },
             [this, directory]()
             {
-                std::shared_ptr<Scene> createdScene =
-                    AssetManager::Get().CreateAsset<Scene>("NewScene", directory);
-                if (!createdScene)
+                std::string createdPath;
+                std::string createdGuid;
+                const AssetEditorResult createResult = m_Context->GetAssetEditorServices().Create(
+                    "Scene",
+                    directory,
+                    "NewScene",
+                    createdPath,
+                    createdGuid);
+                if (!createResult.Ok)
                 {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: Create Scene failed — {}", createResult.Message);
                     return;
                 }
 
-                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdScene->GetGuid());
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(createdPath);
                 if (meta == nullptr)
                 {
                     ME_LOG(LogEditor, Warn, "AssetWorkflow: created scene has no registry meta.");
@@ -606,14 +613,21 @@ namespace minEngine
             [this]() { return SaveMaterialDocument(); },
             [this, directory]()
             {
-                std::shared_ptr<Material> createdMaterial =
-                    AssetManager::Get().CreateAsset<Material>("NewMaterial", directory);
-                if (!createdMaterial)
+                std::string createdPath;
+                std::string createdGuid;
+                const AssetEditorResult createResult = m_Context->GetAssetEditorServices().Create(
+                    "Material",
+                    directory,
+                    "NewMaterial",
+                    createdPath,
+                    createdGuid);
+                if (!createResult.Ok)
                 {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: Create Material failed — {}", createResult.Message);
                     return;
                 }
 
-                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdMaterial->GetGuid());
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(createdPath);
                 if (meta == nullptr)
                 {
                     ME_LOG(LogEditor, Warn, "AssetWorkflow: created material has no registry meta.");
@@ -645,14 +659,21 @@ namespace minEngine
             [this]() { return SaveSpriteDocument(); },
             [this, directory]()
             {
-                std::shared_ptr<Sprite> createdSprite =
-                    AssetManager::Get().CreateAsset<Sprite>("NewSprite", directory);
-                if (!createdSprite)
+                std::string createdPath;
+                std::string createdGuid;
+                const AssetEditorResult createResult = m_Context->GetAssetEditorServices().Create(
+                    "Sprite",
+                    directory,
+                    "NewSprite",
+                    createdPath,
+                    createdGuid);
+                if (!createResult.Ok)
                 {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: Create Sprite failed — {}", createResult.Message);
                     return;
                 }
 
-                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdSprite->GetGuid());
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(createdPath);
                 if (meta == nullptr)
                 {
                     ME_LOG(LogEditor, Warn, "AssetWorkflow: created sprite has no registry meta.");
@@ -684,17 +705,24 @@ namespace minEngine
             [this]() { return SaveSpriteAtlasDocument(); },
             [this, directory]()
             {
-                std::shared_ptr<SpriteAtlas> created =
-                    AssetManager::Get().CreateAsset<SpriteAtlas>("NewSpriteAtlas", directory);
-                if (!created)
+                std::string createdPath;
+                std::string createdGuid;
+                const AssetEditorResult createResult = m_Context->GetAssetEditorServices().Create(
+                    "SpriteAtlas",
+                    directory,
+                    "NewSpriteAtlas",
+                    createdPath,
+                    createdGuid);
+                if (!createResult.Ok)
                 {
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: Create SpriteAtlas failed — {}", createResult.Message);
                     return;
                 }
 
-                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(created->GetGuid());
+                const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(createdPath);
                 if (meta == nullptr)
                 {
-                    ME_LOG(LogEditor, Warn, "AssetWorkflow: created sprite atlas has no registry meta.");
+                    ME_LOG(LogEditor, Warn, "AssetWorkflow: created atlas has no registry meta.");
                     return;
                 }
 
@@ -749,8 +777,13 @@ namespace minEngine
                 SpriteEditorServices& services = m_Context->GetSpriteEditorServices();
                 std::shared_ptr<SpriteAtlas> atlas;
                 std::string atlasPath;
-                const GraphEditorResult createResult =
-                    services.CreateAtlas(directory, "NewSpriteAtlas", &atlas, &atlasPath, nullptr);
+                const GraphEditorResult createResult = services.CreateAtlas(
+                    m_Context->GetAssetEditorServices(),
+                    directory,
+                    "NewSpriteAtlas",
+                    &atlas,
+                    &atlasPath,
+                    nullptr);
                 if (!createResult.Ok || !atlas)
                 {
                     ME_LOG(LogEditor, Warn, "AssetWorkflow: CreateAtlas failed — {}", createResult.Message);
@@ -824,14 +857,21 @@ namespace minEngine
         }
 
         const std::string directory = std::string(directoryRel);
-        const std::shared_ptr<MaterialInstance> created =
-            AssetManager::Get().CreateAsset<MaterialInstance>("NewMaterialInstance", directory);
-        if (!created)
+        std::string createdPath;
+        std::string createdGuid;
+        const AssetEditorResult createResult = m_Context->GetAssetEditorServices().Create(
+            "MaterialInstance",
+            directory,
+            "NewMaterialInstance",
+            createdPath,
+            createdGuid);
+        if (!createResult.Ok)
         {
+            ME_LOG(LogEditor, Warn, "AssetWorkflow: Create MaterialInstance failed — {}", createResult.Message);
             return false;
         }
 
-        const AssetMeta* createdMeta = AssetManager::Get().FindAssetMetaByGuid(created->GetGuid());
+        const AssetMeta* createdMeta = AssetManager::Get().FindAssetMetaByPath(createdPath);
         if (createdMeta == nullptr)
         {
             ME_LOG(LogEditor, Warn, "AssetWorkflow: created material instance has no registry meta.");
@@ -1027,31 +1067,39 @@ namespace minEngine
         int successCount = 0;
         int failCount = 0;
 
+        const std::string destRel =
+            destDirectoryRel.empty() ? std::string(".") : std::string(destDirectoryRel);
+
+        AssetEditorServices& assetServices = m_Context->GetAssetEditorServices();
         {
             AssetManager::AssetRegistryBroadcastBatchScope batchScope;
             for (size_t index = 0; index < autoImportPaths.size(); ++index)
             {
-                ImportRequest importRequest;
-                importRequest.SourcePath = autoImportPaths[index];
-                importRequest.DestDirectory = destDirectory;
-                importRequest.ProductId = autoImportProductIds[index];
+                AssetImportProductSpec productSpec;
+                productSpec.ProductId = autoImportProductIds[index];
 
-                const ImportResult importResult = AssetManager::Get().Import(importRequest);
-                if (!importResult.bSuccess)
+                std::vector<AssetImportCreatedInfo> created;
+                std::vector<std::string> warnings;
+                const AssetEditorResult importResult = assetServices.Import(
+                    autoImportPaths[index].string(),
+                    destRel,
+                    {productSpec},
+                    false,
+                    created,
+                    warnings);
+                if (!importResult.Ok)
                 {
                     ++failCount;
-                    ME_LOG(LogEditor, Error, 
+                    ME_LOG(LogEditor, Error,
                         "ImportAssetDialog: failed to import '{}': {}",
                         autoImportPaths[index].string(),
-                        importResult.ErrorMessage);
+                        importResult.Message);
                     continue;
                 }
 
                 ++successCount;
-                const std::string createdPath = importResult.Created.empty()
-                    ? std::string()
-                    : importResult.Created.front().AssetPath;
-                ME_LOG(LogEditor, Info, 
+                const std::string createdPath = created.empty() ? std::string() : created.front().AssetPath;
+                ME_LOG(LogEditor, Info,
                     "ImportAssetDialog: imported '{}' as '{}' (product '{}')",
                     autoImportPaths[index].string(),
                     createdPath,
@@ -1110,39 +1158,65 @@ namespace minEngine
         int successCount = 0;
         int failCount = 0;
 
+        const PathRegistry& paths = PathRegistry::Get();
+        const std::filesystem::path projectContentRoot = paths.GetProjectContentRoot();
+        std::string destRel = ".";
+        if (!projectContentRoot.empty())
+        {
+            std::error_code relativeError;
+            const std::filesystem::path relativeDest =
+                std::filesystem::relative(destDirectory, projectContentRoot, relativeError);
+            if (!relativeError)
+            {
+                destRel = relativeDest.generic_string();
+                if (destRel.empty())
+                {
+                    destRel = ".";
+                }
+            }
+        }
+
+        AssetImportProductSpec productSpec;
+        productSpec.ProductId = productId;
+        if (!skeletonAssetPath.empty())
+        {
+            productSpec.Options["skeletonAssetPath"] = skeletonAssetPath;
+        }
+
+        AssetEditorServices& assetServices = m_Context->GetAssetEditorServices();
         AssetManager::AssetRegistryBroadcastBatchScope batchScope;
         for (const std::filesystem::path& sourcePath : sourcePaths)
         {
-            ImportRequest importRequest;
-            importRequest.SourcePath = sourcePath;
-            importRequest.DestDirectory = destDirectory;
-            importRequest.ProductId = productId;
-            importRequest.SkeletonAssetPath = skeletonAssetPath;
-
-            const ImportResult importResult = AssetManager::Get().Import(importRequest);
-            if (!importResult.bSuccess)
+            std::vector<AssetImportCreatedInfo> created;
+            std::vector<std::string> warnings;
+            const AssetEditorResult importResult = assetServices.Import(
+                sourcePath.string(),
+                destRel,
+                {productSpec},
+                false,
+                created,
+                warnings);
+            if (!importResult.Ok)
             {
                 ++failCount;
-                ME_LOG(LogEditor, Error, 
+                ME_LOG(LogEditor, Error,
                     "ImportAssetDialog: failed to import '{}' as '{}': {}",
                     sourcePath.string(),
                     productId,
-                    importResult.ErrorMessage);
+                    importResult.Message);
                 continue;
             }
 
             ++successCount;
-            const std::string createdPath = importResult.Created.empty()
-                ? std::string()
-                : importResult.Created.front().AssetPath;
-            ME_LOG(LogEditor, Info, 
+            const std::string createdPath = created.empty() ? std::string() : created.front().AssetPath;
+            ME_LOG(LogEditor, Info,
                 "ImportAssetDialog: '{}' → '{}' (product '{}')",
                 sourcePath.string(),
                 createdPath,
                 productId);
         }
 
-        ME_LOG(LogEditor, Info, 
+        ME_LOG(LogEditor, Info,
             "ImportAssetDialog product import: {} succeeded, {} failed.",
             successCount,
             failCount);

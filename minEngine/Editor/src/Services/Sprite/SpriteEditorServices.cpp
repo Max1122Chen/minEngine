@@ -1,6 +1,7 @@
 #include "Services/Sprite/SpriteEditorServices.h"
 
 #include "Commands/Sprite/EditorSpriteCommands.h"
+#include "Services/Asset/AssetEditorServices.h"
 #include "Shell/EditorCommandStack.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
@@ -30,6 +31,7 @@ namespace minEngine
     }
 
     GraphEditorResult SpriteEditorServices::CreateSpriteFromTexture(
+        AssetEditorServices& assetServices,
         const std::shared_ptr<Texture2D>& texture,
         const Vector4& sourceRectPx,
         std::string_view directory,
@@ -64,16 +66,26 @@ namespace minEngine
             return Fail(GraphEditorError::Internal, "AssetManager is not available.");
         }
 
-        std::shared_ptr<Sprite> sprite =
-            AssetManager::Get().CreateAsset<Sprite>(std::string(name), std::string(directory));
+        std::string createdPath;
+        std::string createdGuid;
+        const AssetEditorResult createResult =
+            assetServices.Create("Sprite", directory, name, createdPath, createdGuid);
+        if (!createResult.Ok)
+        {
+            return Fail(
+                GraphEditorError::Internal,
+                createResult.Message.empty() ? "Create Sprite failed." : createResult.Message);
+        }
+
+        std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(createdPath);
         if (!sprite)
         {
-            return Fail(GraphEditorError::Internal, "CreateAsset<Sprite> failed.");
+            return Fail(GraphEditorError::Internal, "Failed to load created Sprite.");
         }
 
         sprite->ConfigureFromTexture(texture, sourceRectPx);
 
-        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(sprite->GetGuid());
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(createdPath);
         if (meta == nullptr)
         {
             return Fail(GraphEditorError::Internal, "Created Sprite has no registry meta.");
@@ -118,6 +130,7 @@ namespace minEngine
     }
 
     GraphEditorResult SpriteEditorServices::CreateAtlas(
+        AssetEditorServices& assetServices,
         std::string_view directory,
         std::string_view name,
         std::shared_ptr<SpriteAtlas>* outAtlas,
@@ -146,14 +159,24 @@ namespace minEngine
             return Fail(GraphEditorError::Internal, "AssetManager is not available.");
         }
 
-        std::shared_ptr<SpriteAtlas> atlas =
-            AssetManager::Get().CreateAsset<SpriteAtlas>(std::string(name), std::string(directory));
-        if (!atlas)
+        std::string createdPath;
+        std::string createdGuid;
+        const AssetEditorResult createResult =
+            assetServices.Create("SpriteAtlas", directory, name, createdPath, createdGuid);
+        if (!createResult.Ok)
         {
-            return Fail(GraphEditorError::Internal, "CreateAsset<SpriteAtlas> failed.");
+            return Fail(
+                GraphEditorError::Internal,
+                createResult.Message.empty() ? "Create SpriteAtlas failed." : createResult.Message);
         }
 
-        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(atlas->GetGuid());
+        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(createdPath);
+        if (!atlas)
+        {
+            return Fail(GraphEditorError::Internal, "Failed to load created SpriteAtlas.");
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(createdPath);
         if (meta == nullptr)
         {
             return Fail(GraphEditorError::Internal, "Created SpriteAtlas has no registry meta.");

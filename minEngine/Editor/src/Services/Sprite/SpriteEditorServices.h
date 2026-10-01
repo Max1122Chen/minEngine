@@ -13,6 +13,7 @@
 
 namespace minEngine
 {
+    class AssetEditorServices;
     class EditorCommandStack;
     class RHI;
     class Sprite;
@@ -28,6 +29,7 @@ namespace minEngine
     {
     public:
         GraphEditorResult CreateSpriteFromTexture(
+            AssetEditorServices& assetServices,
             const std::shared_ptr<Texture2D>& texture,
             const Vector4& sourceRectPx,
             std::string_view directory,
@@ -42,6 +44,7 @@ namespace minEngine
             const Vector4& sourceRectPx);
 
         GraphEditorResult CreateAtlas(
+            AssetEditorServices& assetServices,
             std::string_view directory,
             std::string_view name,
             std::shared_ptr<SpriteAtlas>* outAtlas,

@@ -11,6 +11,8 @@
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
 
+#include "Services/Asset/AssetEditorServices.h"
+#include "Shell/IEditorContext.h"
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 
 #include <vector>
@@ -159,13 +161,18 @@ namespace minEngine
         ImGui::SameLine();
         if (ImGui::Button("New Graph"))
         {
-            std::shared_ptr<AnimationGraph> created =
-                AssetManager::Get().CreateAsset<AnimationGraph>("NewAnimGraph", "Assets/Animations");
-            if (created)
+            std::string createdPath;
+            std::string createdGuid;
+            const AssetEditorResult createResult = m_Context.GetAssetEditorServices().Create(
+                "AnimationGraph",
+                "Assets/Animations",
+                "NewAnimGraph",
+                createdPath,
+                createdGuid);
+            if (createResult.Ok)
             {
                 animGraphEditor->RefreshGraphList();
-                if (const AssetMeta* meta =
-                        AssetManager::Get().FindAssetMetaByGuid(created->GetGuid()))
+                if (const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(createdPath))
                 {
                     animGraphEditor->OpenSession(meta);
                 }
@@ -173,6 +180,10 @@ namespace minEngine
                 {
                     ME_LOG(LogEditor, Warn, "AnimGraphWindow: created graph has no registry meta.");
                 }
+            }
+            else
+            {
+                ME_LOG(LogEditor, Warn, "AnimGraphWindow: Create AnimationGraph failed — {}", createResult.Message);
             }
         }
     }

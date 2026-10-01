@@ -1,3 +1,23 @@
+## 2026-10-01 — ED-F24 S01–S03（Create allowlist + GUI Create/Import→AES）
+
+- **S01:** `AssetEditorServices::Create` → allowlist + `CreateAssetByTypeId`；白名单含 MaterialInstance
+- **S02:** Workflow TryCreate*、Sprite Create*/Atlas、AnimGraph New Graph → AES；Sprite API 注入 `AssetEditorServices&`
+- **S03:** `ImportAssetDialog` / product 选择确认 → `AES::Import`（先填 products）
+- **验证:** Editor Debug 构建通过
+- **Next:** S04 CB Mutation 直连 → AES
+
+## 2026-10-01 — ED-F24 / ASSET-F05 design-review 落地；开 ED-F24 S01
+
+- **Review:** 两份 Design Mode A → Ready with deferred；中文主文；补 Import products 合同、AES 自动导入、NativeCopy 互斥、Recook=Reimport
+- **Status:** ED-F24 → Planned → **In Progress（S01）**；F05 保持 Planned
+- **实现顺序:** ED-F24 S01（Create allowlist + MIC）→ …；F05 S01 随后/并行
+
+## 2026-10-01 — ED-F24 Design Draft + ASSET-F05 Planned（post-F06）
+
+- **ED-F24:** GUI CB/Workflow Import·Create·Mutation 收敛到 `AssetEditorServices`；Create 白名单对齐（含 MIC）；可选 `Reimport` 包装；切片 S01–S06
+- **ASSET-F05:** Design 重写对齐 F06 Register*；`.metex` + Texture2DImporter/Loader；NativeCopy 让出图片；Slice S01–S06；Status **Planned**
+- **Next:** 用户确认默认倾向 → L2 design-review → 择一开 S01
+
 ## 2026-10-01 — ASSET-F06 S06 + Feature Done（Create→Saver）
 
 - **S06:** `RegisterCreateHandler` / `CreateAssetByTypeId`；`CreateAsset<T>` 薄糖衣（AssetTypeRegistry → typeId）

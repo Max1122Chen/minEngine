@@ -1,457 +1,418 @@
-# ASSET-F05 — Texture2D Cooked Asset（引擎侧纹理资产）— Design Spec
+# ASSET-F05 — Texture2D 引擎侧 Cook 资产 — Design Spec
 
 ## Meta
 - **ID:** `ASSET-F05`
 - **Type:** Feature
 - **Complexity:** L2
-- **Status:** Draft
+- **Status:** Planned
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-29
+- **Last updated:** 2026-10-01（design-review 修订）
 - **Related:**
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
-  - [ASSET-F02](./ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [ASSET-F03](./ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) · [ASSET-F04](./ASSET-F04_CONTENT_WORKFLOW_DESIGN.md)
-  - [ASSET-F06](./ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md)（**先于本 Feature**）
+  - [ASSET-F02](./ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [ASSET-F03](./ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md)
+  - [ASSET-F04](./ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) · [ASSET-F06](./ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md)（**Done**）
+  - [ED-F24](../Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md)（GUI/MCP 经 AES；Create allowlist 可挂 Texture2D）
   - [RND-F22](../Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md)（Sampler 已分离；本 Feature 不重做）
   - [SPR-F02](../Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md)（曾提 `.metex` Deferred）
-  - 外部驱动（非权威）：minCraft `ENGINE_FEEDBACK_PROMPT_TEXTURE_IMPORT_CHANNELS.md`
-- **Depends on:** **ASSET-F06**（AM Facade / Import≠Load / 模块自注册）落地后实现；ImageLoader；Texture2D / RHI；AssetMeta Guid 契约（F03）
+  - 外部驱动（非权威）：minCraft 灰度通道反馈
+- **Depends on:** **ASSET-F06 Done**（RegisterLoad/Save/Create/ImportProduct）；ImageLoader；Texture2D / RHI；F03 Guid
 - **Blocks:** 稳定灰度 Color 导入；SpriteAtlas 与 Texture 共用像素合同；后续压缩/mip cook
 
 ## TL;DR
 
-**问题：** Texture2D 身份几乎等于 Content 里的 PNG/JPG（NativeCopy）；无引擎导入设置、无 cook 产物。1 通道灰度按 `RED` 上传后被 RGB 采样 → 发红。用途语义无处持久化，改意图也无法 Reimport。
+**问题：** Texture2D 身份几乎等于 Content 里的 PNG/JPG（NativeCopy）；无导入设置、无 cook 产物、无 Reimport。1 通道灰度按 `RED` 上传后被当 RGB 采样 → 发红。
 
-**方案（L1）：** 将 Texture2D 提升为引擎 cook 资产 **`.metex`**（+ `.meta` Guid）。源图进入 `Assets/Sources/…`（或等价源树），Content 身份是 `.metex`。Cook 写入：**导入设置**（含通道语义）+ **已应用设置后的像素载荷**。运行时 Load **只读 `.metex`**，不再把 raw PNG 当作资产本身。Inspector / Automation 可改设置并触发 Recook。
+**方案：** 将 Texture2D 提升为引擎 cook 资产 **`.metex`**（+ `.meta` Guid）。源图可追溯（`SourcePath`）；Content 身份是 `.metex`（设置 + 已 cook 像素）。Load **只读** `.metex`。通过 F06 钩子注册：`Texture2DImporter` Product + Loader 的 Save/Create/Load。Inspector / `asset.import` options 驱动 Recook。
 
-**当前：** Design **Draft** — **实现排队在 ASSET-F06 之后**；口径待与 F06 对齐（扩展 Texture2D + 引擎侧资产文件，像素可仍 png） — 命名 `Texture2DImporter`；Sources 自动导入为 In（默认可关）。
+**状态：** Design **Planned**；design-review **Ready with deferred**。S01 前须拍板 `.metex` 容器与 NativeCopy 互斥验收；自动导入入口见下。
 
 ## Problem
 
-1. `AssetTypeRegistry` 将 Texture2D 扩展绑为 `.png/.jpg/.jpeg`；导入 = NativeCopy。
-2. `Texture2DLoader::LoadFromAssetMeta` 直接 `ImageLoader` 解源文件 → `CreateFromPixels`（`channels==1` → `TextureFormat::RED`）。
-3. `AssetMeta.SourcePath` / `Reimport` 未覆盖 Texture2D；无 `SaveAsset_Impl<Texture2D>` / `CreateAsset<Texture2D>`。
-4. Sprite / Material 已是引擎 `.me*` 数据模型；Texture 是例外。
-5. SpriteAtlas Rebuild 通过成员 Texture 的 **磁盘路径** 再 `ImageLoader`，与「资产=PNG」耦合。
+1. `AssetTypeRegistry` 将 Texture2D 绑在 `.png/.jpg/.jpeg`；导入 = **NativeCopy**。
+2. `Texture2DLoader::LoadFromAssetMeta` → `ImageLoader` → `CreateFromPixels`（`channels==1` → `TextureFormat::RED`）。
+3. 无 Texture 的 `SourcePath` / Reimport；无 SaveHandler / CreateHandler / ImportProduct `Texture2D`。
+4. Sprite / Material 已是 `.me*` 引擎文件；Texture 是例外。
+5. SpriteAtlas Rebuild 仍假定成员磁盘路径是图片文件。
 
 ## Requirements
 
-- Texture2D **Content 身份** 为引擎文件（推荐扩展名 `.metex`），Guid 仍在 sidecar `.meta`（F03 不变）。
-- 导入 PNG/JPG：**源保留可追溯** + **cook 出 `.metex`**（设置 + 像素），不再仅 NativeCopy 进 Content 当资产。
-- 至少两种通道语义（名称可微调）：
-  - **Color**（默认颜色路径）：1ch → 扩 RGB8/RGBA8 且 R=G=B（A=255 若 RGBA），或文档化的等价 cook；颜色采样不发红。
-  - **SingleChannel / Mask**：保留单通道 cook（R8）；着色器约定读 `.r`。
-- 设置持久化在资产侧；**Inspector 可改 → Recook**；Automation 同一字段。
-- Load：从 `.metex` 建 `Texture2D` + 上传 GPU；**不要求**运行时存在源 PNG（源仅服务 Reimport/Recook）。
-- SpriteAtlas / Sprite 取源像素：优先引擎资产像素 API（读 cook 缓冲或等价），不依赖「资产路径必须是 PNG」。
-- 3/4 通道既有视觉行为默认不变；显式 Mask 路径可测。
-- 迁移：存量 Content 内 PNG+meta 有过渡策略（见 Migration）。
-- **Sources 自动导入：** 监视 `Assets/Sources/**` 新增 PNG/JPG，按格式特征默认设置后导入为 `.metex`（可关）；Content 裸图不自动 Register。
+- Texture2D 的 **Content 身份** = `.metex`（+ sidecar `.meta` Guid；F03 不变）。
+- 导入 PNG/JPG：源可追溯 + cook 出 `.metex`（设置 + 像素）；**不再**把 NativeCopy 当资产身份。
+- 通道语义（名称可微调）：
+  - **Color**（默认）：1ch → 扩为 **RGB8** 且 R=G=B；颜色采样不发红。
+  - **SingleChannel / Mask**：保留 R8；着色器读 `.r`。
+- 设置落在 `.metex`；Inspector 改 → Recook；Automation 经 `asset.import` options / 既有 edit 面（不新增 MCP 粗 Tool）。
+- Load：仅从 `.metex` 建 `Texture2D` + GPU；运行时不要求源 PNG 存在。
+- Authoring 像素 API 供 Atlas / 预览 / Recook；**禁止**假定 `meta.AssetPath` 扩展名是图片。
+- 3/4 通道既有视觉默认不变；Mask 路径可测。
+- 存量 Content PNG+meta 有迁移策略（见 Migration）。
+- 可选：监视 Content 树新增 raw 图 → 同一 Importer（默认开，可关）。
 
 ## Constraints
 
-- 遵守 ASSET-F03：单对象、Guid 稳定；Load 不换身。
+- F03：单对象、Guid 稳定；Load 不换身。
 - 不引入完整 UE DerivedData / 多平台 cook 矩阵（L2 Out）。
-- 不把 minCraft / biome tint 塞进 Core。
-- 不新增 MCP 粗 Tool；挂既有 `asset.import` / edit 面。
-- 验证：相关单测或 smoke（WORKFLOW_PROFILE `tests-required`）。
+- Core 不出现 minCraft / biome 类型。
+- 不新增 MCP 粗 Tool；用 `asset.import` / 既有 edit。
+- ED-F24 落地后 Editor create/import 优先走 AES；F05 **不得**再造第三条 Editor Import 入口。
+- 验证：单测或 smoke（WORKFLOW_PROFILE `tests-required`）。
 
 ## Preferences
 
-- 扩展名对齐仓内惯例：`.metex`（SPR-F02 已占名意向）。
-- 导入 Product 名：`Texture2D`（或 `Texture2DCook`）；图片不再默认走 `NativeCopy`。
-- 文档中英可混；Progress 可用中文摘要。
+- 扩展名：`.metex`（SPR-F02 意向）。
+- ProductId：`Texture2D`。
+- 图片扩展名退出 NativeCopy Accepts（或 NativeCopy 拒绝图片并提示改用 Texture2D）。
+- 本文中文主文；标识符英文。
 
 ## Assumptions
 
-- 编辑器进程具备 RHI 时才上传；无 RHI 的 headless 测可只验证 cook 文件与像素布局。
-- 近期不强制 ASTC/BC 压缩；cook 像素以 LDR 未压缩（或引擎已有格式）为主。
-- HDR 等距柱状图等特殊路径可本 Feature **Deferred**（单独注明）。
+- 正常 Editor Load 需要 RHI；无头测可只验 cook 字节。
+- MVP cook = 未压缩 LDR；ASTC/BC Deferred。
+- HDR / 等距柱状图等特殊路径 Deferred。
 
 ## Non-Goals
 
 - 全项目引用图 / 依赖分析。
-- 自动识别「草遮罩 vs 石头色图」。
-- Biome / 顶点色 tint（玩法侧）。
+- 自动识别「草遮罩 vs 反照率」。
+- Biome / 顶点色 tint 玩法。
 - 完整压缩格式表、流式 mips、VT。
-- 强制一次删光所有 Content PNG（允许过渡期双路径）。
-- SpriteAtlas generated page 落盘（可随后用 `.metex`，不绑死本期验收）。
+- 一次强制删光所有 Content PNG（允许过渡）。
+- 本期必须把 SpriteAtlas 生成页落成 `.metex`（API 预留即可；页 cook Out）。
 
-## Current Architecture
+## Current Architecture（F06 之后）
 
 ```text
-PNG/JPG --NativeCopy--> Content/*.png + .meta
-                              |
-                         Load: ImageLoader --> CreateFromPixels --> Texture2D(RHI)
+PNG/JPG --NativeCopyImporter--> Content/*.png + .meta
+                                      |
+                                 LoadHandler_Texture2D
+                                      |
+                                 Texture2DLoader::LoadFromAssetMeta
+                                      |
+                                 ImageLoader --> CreateFromPixels --> Texture2D(RHI)
+
+Bootstrap 现状：
+  RegisterLoadHandler("Texture2D", ...)
+  RegisterImportProduct(NativeCopy)  # 含 png/jpg 等
+  # 无 SaveHandler / CreateHandler / Texture2D Product
 ```
 
-- Material/Sprite：`.memtl` / `.mesprite` JSON + GuidRef。
-- Mesh cook：源进 `Assets/Sources`，产品进 Content，`SourcePath` 可 Reimport。
-- Texture：**无** SourcePath 管线、无 Save、无导入设置。
+F06 已提供扩展点，F05 **无需**改 AM 算法大文件即可挂接（Reimport 类型分派等薄改除外）：
+
+| 钩子 | Texture 今天 | F05 目标 |
+|------|--------------|----------|
+| `RegisterLoadHandler` | 有 | Load **cooked** `.metex` |
+| `RegisterSaveHandler` | 无 | 有——写 `.metex` |
+| `RegisterCreateHandler` | 无 | 可选空/默认 Texture Create |
+| `RegisterImportProduct` | 仅 NativeCopy | ProductId `Texture2D` → `Texture2DImporter` |
+| `Reimport` | 不支持 | 有 SourcePath 的 Texture2D 分支 |
 
 ## Proposed Architecture
 
 ```text
-                    ┌─────────────────────────────┐
-                    │  Source image (PNG/JPG)     │
-                    │  Assets/Sources/...         │
-                    └─────────────┬───────────────┘
-                                  │ Import / Recook
-                                  ▼
-                    ┌─────────────────────────────┐
-                    │  Texture2DImporter       │
-                    │  (decode → apply settings   │
-                    │   → write .metex payload)   │
-                    └─────────────┬───────────────┘
-                                  │
-          ┌───────────────────────┼───────────────────────┐
-          ▼                       ▼                       ▼
-   Content/*.metex         *.metex.meta              AssetRegistry
-   (settings+pixels)       (Guid, SourcePath)        AssetType=Texture2D
-          │
-          ▼ Load
-   Texture2DLoader::LoadCooked → Texture2D + RHI
-          │
-          ▼ Authoring pixels API
-   SpriteAtlas / Editor preview / Recook
+源 PNG/JPG（Sources 或 Content 下 raw，未注册）
+        │
+        ▼ Import / Recook / AutoImport
+ Texture2DImporter  （解码 → 应用设置 → 写 .metex）
+        │
+        ├─ Content/Foo.metex          （设置 + cooked 像素）
+        ├─ Content/Foo.metex.meta     （Guid，AssetType=Texture2D，SourcePath）
+        └─ AssetRegistry
+        │
+        ▼ Load
+ Texture2DLoader::LoadFromAssetMeta → Texture2D + RHI
+        │
+        ▼ Authoring
+ TryGetCookedPixels → SpriteAtlas / 预览 / Recook 校验
 ```
 
-### 资产磁盘形态（推荐）
+### Bootstrap 注册（规范）
+
+```text
+RegisterLoadHandler("Texture2D", LoadHandler_Texture2D)      # 已有；实现改读 .metex
+RegisterSaveHandler("Texture2D", Texture2DLoader::SaveHandler)
+RegisterCreateHandler("Texture2D", Texture2DLoader::CreateHandler)  # 若本期做空创建
+RegisterImportProduct({
+  ProductId = "Texture2D",
+  AcceptsSourceExtension = Texture2DImporter::Accepts...,
+  Import = Texture2DImporter::Import,
+  ...
+})
+# NativeCopy：停止接受 .png/.jpg/.jpeg
+```
+
+### 磁盘形态
 
 | 文件 | 内容 |
 |------|------|
-| `Foo.metex` | 引擎 cook 文档：导入设置 + 像素描述 + **已 cook 像素**（见格式） |
-| `Foo.metex.meta` | 标准 `AssetMeta`：`AssetType=Texture2D`，`SourcePath`→源图，Guid |
-| `Assets/Sources/.../Foo.png` | 可编辑源；**不是** Content 身份 |
+| `Foo.metex` | Cook 文档：导入设置 + 像素布局 + **已 cook 像素** |
+| `Foo.metex.meta` | AssetMeta：类型 Texture2D、Guid、SourcePath → 源图 |
+| 源图 | 可编辑；**不是** Content 资产身份 |
 
-**`.metex` 逻辑布局（实施可选 JSON+sidecar 或单文件分节；须一种真源）：**
+**`.metex` 逻辑布局**（Impl 二选一；验收 = Load 不读 PNG）：
 
 ```text
-Header / JSON:
-  version
-  width, height
-  cookedFormat          # e.g. RGB8 / RGBA8 / R8
+Header/JSON:
+  version, width, height
+  cookedFormat          # RGB8 / RGBA8 / R8
   channelSemantics      # Color | SingleChannel
-  sRGB                  # bool（Color 默认倾向 true；Mask 默认 false）
-  wrapU/V, filter       # 与现 Sampler/Wrapping 对齐的最小集
-  sourceHash?           # 可选，便于脏检测
+  sRGB                  # Color 默认 true；Mask 默认 false
+  wrapU/V, filter       # 与 RND-F22 Sampler 字段对齐的最小集
+  sourceHash?           # 可选脏检测
 
 Payload:
   cookedPixels[]        # row-major，与 cookedFormat 一致
 ```
 
-实施默认倾向：**单文件** = JSON header + base64/raw chunk，或 **JSON + `Foo.metex.bin`**。择一写入 Impl；验收只要求「Load 不读 PNG」。
+实现默认倾向：单文件（JSON 头 + raw/base64）**或** JSON + `Foo.metex.bin`——Impl Plan 选定。
 
-### 通道语义（cook 合同）
+### 通道语义合同
 
-| Semantics | 1ch 源 | 3/4ch 源 | 采样约定 |
-|-----------|--------|----------|----------|
-| **Color**（默认） | 扩 RGB(A)，R=G=B | 保持（必要时补 A） | `tex.rgb` 为颜色 |
-| **SingleChannel** | cook 为 R8 | 取 R（或导入选项指定通道）→ R8 | 只读 `.r` |
+| Semantics | 1ch 源 | 3/4ch 源 | 采样 |
+|-----------|--------|----------|------|
+| **Color**（默认） | 扩为 **RGB8**，R=G=B（MVP 固定；不默认 RGBA8） | 保持（必要时补 A） | `tex.rgb` 为颜色 |
+| **SingleChannel** | cook 为 R8 | 取 R（或选项）→ R8 | 只读 `.r` |
 
-默认：未标注且走 Texture 导入 → **Color**。
+### Import Product
 
-### 导入 Product
+- ProductId `Texture2D`；Accepts `.png/.jpg/.jpeg`。
+- 流程：保留/拷贝源 → cook → `DestDirectory/Name.metex` → Register + SourcePath（对齐 mesh）。
+- `asset.list_import_products` / `asset.import`：暴露 `channelSemantics`，可选 `sRGB` / wrap / filter。
+- Editor 入口经 AES（ED-F24）；GUI **不得**直调 Importer。
+- **NativeCopy 互斥（S01 可测合同）：** `NativeCopyImporter::AcceptsSourceExtension` 对 `.png/.jpg/.jpeg` 返回 false；`ListImportProducts("x.png")` **仅**含 `Texture2D`。
 
-- 新 Product：`Texture2D`（Accepts `.png/.jpg/.jpeg`）。
-- **图片扩展名不再 Accepts 进 NativeCopy**（或 NativeCopy 对图片返回引导改用 Texture2D Product）。
-- 流程对齐 mesh：`copy → Sources` → cook → `DestDirectory/Name.metex` → Register + SourcePath。
-- `asset.list_import_products` / `asset.import`：暴露 `channelSemantics` 等 options。
+### Save / Create / Recook
 
-### 编辑器改意图
-
-1. Inspector 编辑 `.metex` 设置（至少 ChannelSemantics、sRGB、Filter/Wrap）。
-2. Apply → **Recook**（读 `SourcePath`；失败则报错且不写坏 Guid）。
-3. Save `.metex`；刷新已加载 `Texture2D`（F03：同 Guid 对象更新像素/RHI，禁止换身）。
+| 操作 | 行为 |
+|------|------|
+| **Save** | 经 SaveHandler 把当前设置 + cooked 缓冲写入 `.metex` |
+| **Create** | MVP **支持**：极小默认像素（如 1×1 Color），便于日后 AES allowlist；也可先 Import-only——**默认：支持 Create** |
+| **Recook / Reimport** | **同一路径**：`AM::Reimport`（及 Importer 内部 helper）读 SourcePath + 当前 `.metex` 设置 → cook → 替换 payload → 刷新同 Guid `Texture2D`。Inspector「Apply」= 持久化设置后走该路径。 |
+| **Reimport（对外）** | Editor/AES 只暴露 Reimport；不另造平行 Recook API |
 
 ### Authoring 像素 API
 
 ```text
-Texture2DCookedPixelsView / TryGetCookedPixels(texture|path)
-  → width, height, format, bytes
+TryGetCookedPixels(texture|assetPath) → width, height, format, bytes 视图
 ```
 
-- Atlas Rebuild、预览、Recook 校验走此 API。
-- **禁止**假定 `meta.AssetPath` 扩展名是图片。
+- Atlas Rebuild / 预览 / Recook 校验走此 API。
+- **禁止：** 仅靠 `ImageLoader(meta.AssetPath)` 作为 Atlas 唯一路径。
 
+## Naming
 
-## Naming（与 Mesh/Anim 现状对齐）
+F06 之后 Mesh/Clip 已用 `Importers/*` + `RegisterImportProduct`。Texture 同模式：
 
-### 骨骼网格 / 动画今天怎么导？（没有引擎侧 *Importer 类型）
-
-现状是 **F02 注册式 Product + AssetManager 成员/静态 handler + Loader/Util**，不是独立 SkeletalMeshImporter 类：
-
-`	ext
-EditorImportDialog / asset.import
-  → AssetManager::Import(request) 按 ProductId 查表
-  → ImportProduct_SkeletalMesh / StaticMesh / AnimationClip
-  → ImportExternalMesh / ImportAnimationClip
-  → AssimpMeshImportUtil::Cook… / AnimationClipLoader（写 Content 产品 + Sources 拷贝 + SourcePath）
-  → RegisterAsset(.glb / .meaclip + .meta)
-
-Load 时另走 LoadHandler → SkeletalMeshLoader 等（内部会用到 Assimp::Importer，那是第三方库类名）
-`
-
-登记点：AssetPipelineBootstrap::RegisterImportProduct({ ProductId, Import = &ImportProduct_… })。
-
-因此：**「有没有叫 Importer 的东西」≠ 有没有导入管线。** Mesh 的 cook 逻辑活在 AssimpMeshImportUtil + AssetManager::ImportExternalMesh*。
-
-### Texture 命名决策
-
-**不采用**全局 ImportService（撞 F02 整仓 Import 语义）。
-
-| 方案 | 决策 |
+| 名称 | 职责 |
 |------|------|
-| A. 完全镜像 Mesh | ImportProduct_Texture2D + Texture2DCookUtil（无 Importer 后缀） |
-| B. 类型名 Texture2DImporter | 可读；**本质仍是 Product handler / cook util**，由 Bootstrap 注册 |
+| `Texture2DImporter` | Product Import + cook/recook 辅助 |
+| `Texture2DLoader` | Load / SaveHandler / CreateHandler |
+| ProductId `Texture2D` | Bootstrap 注册键 |
 
-**默认采用 B 作文档名**；实现可落成 Texture2DImporter 类 **或** ImportProduct_Texture2D + util——验收不绑类名，绑 Product Texture2D + .metex 合同。
-
-| 动词 | 含义 |
-|------|------|
-| **import** | Product 入口（Register、写 meta、可选挪/留源） |
-| **cook** | 源像素→.metex 载荷 |
-| **load** | Texture2DLoader：.metex→Texture2D+RHI |
+不引入全局 ImportService 类型。`ImageLoader` 只是解码后端，不是资产身份。
 
 ## Responsibilities
 
-| Unit | Responsible for | Not responsible for |
-|------|-----------------|---------------------|
-| `Texture2DImporter` | decode 源、应用语义、写/读 `.metex`、Recook；供 Product / Sources 自动扫描调用 | 全局 Import 编排；ImGui；MCP JSON |
-| `Texture2DLoader` | Load cooked → `Texture2D`+RHI；过渡期 legacy PNG | 猜用途 |
-| `AssetManager` / Import Product `Texture2D` | 登记 Product、Register、Reimport 入口 | 像素算法细节 |
-| **Sources 自动导入（Editor）** | 监视 `Assets/Sources` 新增图片 → debounce → 同一 Importer | Content 裸 PNG Register；无开关的强制导入 |
-| `AssetMeta` | Guid、Path、Type、SourcePath | 通道语义正文（在 `.metex`） |
-| `Texture2D` | 运行时 RHI + 可选缓存的 cooked 描述 | 持有源 PNG 路径当身份 |
-| Editor Inspector / Automation | 改设置、触发 Recook | 自写磁盘格式 |
-| SpriteAtlasPacker | 经像素 API 取成员源 | 直接 ImageLoader(PNG path) 作为唯一路径 |
+| 单元 | 负责 | 不负责 |
+|------|------|--------|
+| `Texture2DImporter` | 解码源、应用语义、写/读 cook、Recook | MCP JSON；ImGui；AES 编排 |
+| `Texture2DLoader` | Load `.metex`→Texture2D+RHI；Save/Create；迁移期 legacy PNG Load | 猜测用途 |
+| `AssetManager` | Register* 分派；Reimport 入口；Mutation | 像素算法 |
+| `AssetEditorServices` | Editor Import/Create 入口（ED-F24 后） | cook 格式细节 |
+| 自动导入（Editor） | 监视 Content 新 raw 图 → debounce → 同一 Importer | `RegisterAsset(png)` |
+| `AssetMeta` | Guid、路径、类型、SourcePath | 通道语义正文（在 `.metex`） |
+| `Texture2D` | 运行时 RHI + 可选缓存 cook 描述 | 把源 PNG 路径当身份 |
+| SpriteAtlasPacker | 经像素 API 取源 | 以 ImageLoader(PNG path) 为唯一路径 |
 
 ## Boundaries
 
-- **允许：** Import/Recook/Load/Atlas → Texture2DImporter / Loader → AssetManager。
-- **禁止：** 游戏仓/MCP 把 Content PNG 再当 Texture 身份（过渡期除外）；Surface 内复制 cook；Core 出现 minCraft 类型。
-- **设置真源：** `.metex` body；`.meta` 只身份与 SourcePath。
-- **源文件：** `Assets/Sources/**` raw **不**注册为 Texture、**不**单独出 Texture `.meta`。
-- **自动导入：** 仅 Sources；走 Importer；默认开、可关；禁止 `RegisterAsset(png)`。
+- **允许：** Import/Recook/Load/Atlas → Importer/Loader → AM；Editor 客户端 → AES → AM。
+- **禁止：** 迁移窗口结束后游戏/MCP 仍把 Content PNG 当 Texture 身份；Surface 内复制 cook；Core 出现 minCraft 类型；对 raw png 做 `RegisterAsset` 当 Texture2D。
+- **设置真源：** `.metex` body；`.meta` 仅身份 + SourcePath。
+- **自动导入：** 同一 Importer；默认开；永不把 raw 注册为 Texture。
 
 ## Dependencies
 
-- Depends on: ImageLoader、AssetManager、RHI、现有 Sampler 字段（RND-F22）。
-- Depended on by: Sprite、SpriteAtlas、Material 默认贴图、UI Image、minCraft 块图集 bake。
-- 新方向：Content 扩展名 Texture2D → `.metex`；Sources 承担 raw。
+- 依赖：F06 Register*；ImageLoader；RHI；RND-F22 sampler 字段；F03 Guid。
+- 软依赖：ED-F24（GUI/MCP 单入口）。F05 可先落 Product/Loader；CB Import 在 ED-F24 S03 前可能仍双入口。
+- 被依赖：Sprite、SpriteAtlas、Material 贴图、UI Image、minCraft atlas bake。
 
 ## Ownership & Lifetime
 
-- Guid / Registry：AssetManager（F03）。
-- Cooked 像素磁盘：`.metex`（+可选 bin）由 Texture2DImporter 写；Load 后 GPU 由 `Texture2D` 持有。
-- 源图：Sources 树；删除 `.metex` 不自动删源（可警告）。
-- Recook：更新同路径文件与同 Guid 运行时对象。
+- Guid / Registry：AM（F03）。
+- 磁盘 cooked：Importer/Loader 写入；Load 后 GPU 由 `Texture2D` 持有。
+- 源文件：工程树；删 `.metex` 不自动删源（可警告）。
+- Recook：同路径 + 同 Guid 对象更新。
 
 ## Data Flow
 
-`Source PNG → decode → apply ChannelSemantics/sRGB rules → cooked buffer → write .metex → Register`  
-`Load: read .metex → Texture2D fields → RHICreateTexture2D`  
-`Edit settings → Recook from SourcePath → replace payload → refresh RHI`
+```text
+源 PNG → 解码 → 应用 ChannelSemantics/sRGB → cooked 缓冲 → 写 .metex → Register
+Load: 读 .metex → Texture2D 字段 → RHICreateTexture2D
+改设置 → Recook(SourcePath) → 替换 payload → 刷新 RHI（同 Guid）
+```
 
 ## Control Flow
 
-- GUI Import Dialog / `asset.import` → Import Product `Texture2D`。
-- Inspector Apply → Texture2DImporter::Recook。
-- `AssetManager::Reimport` 扩展支持 Texture2D（有 SourcePath）。
-- Atlas Rebuild → `TryGetCookedPixels`（失败再 fallback 过渡策略）。
+- GUI Import / `asset.import` → Product `Texture2D`（ED-F24 Done 后经 AES）。
+- Inspector Apply → Recook → SaveHandler / 文件替换。
+- `AM::Reimport` → Texture2D 分支。
+- Atlas Rebuild → `TryGetCookedPixels`（仅迁移期允许 legacy fallback）。
 
 ## State & Invariants
 
-- Content 中 Texture2D 的 **canonical** 扩展为 `.metex`（新资产）。
-- Guid 在 Recook / 迁移中不变。
-- Color cook 的 1ch 结果：通道数 ≥3 且 R=G=B（验收可测）。
-- SingleChannel cook：单通道；文档标明采样 `.r`。
-- 无 SourcePath 时 Recook 失败（可提示重新指定源）。
+- 新 Texture2D 规范扩展名：`.metex`。
+- Recook / 迁移过程 Guid 不变。
+- Color 1ch cook：通道数 ≥ 3 且 R=G=B（可测）。
+- SingleChannel cook：单通道；文档标明读 `.r`。
+- 无 SourcePath 时 Recook 失败并给出明确错误。
 
 ## API / Interface Semantics
 
 ### Import
 
 - `productId: "Texture2D"`
-- options: `channelSemantics`（默认 Color）、可选 `sRGB`、`wrap`、`filter`
-- out: `.metex` path + Guid
+- options：`channelSemantics`（默认 Color），可选 `sRGB`、`wrap`、`filter`
+- 输出：`.metex` 路径 + Guid
 
 ### Recook / Reimport
 
 - 输入：已注册 Texture2D 路径或 Guid
-- 读 SourcePath + 当前 `.metex` 设置（或覆盖 options）
-- 失败：不破坏旧 cook 文件（写临时再替换）或明确回滚策略（Impl 定一种）
+- 读 SourcePath + 当前设置（options 可覆盖）
+- 失败：不破坏 Guid；写临时再替换 **或** 明确回滚（Impl 选一种）
 
 ### Load
 
-- 仅 cooked；legacy PNG Load 见 Migration
+- 新资产仅 cooked；legacy PNG Load 仅迁移期
 
-### Pixels
+### 像素 API
 
-- 只读视图；调用方不释放底层除非 API 说明所有权
+- 只读视图；所有权在 API 上写明
 
 ## Failure Model
 
 | 失败 | 行为 |
 |------|------|
-| 源缺失 / 损坏 | Import/Recook 失败；保留旧 `.metex` |
+| 源缺失/损坏 | Import/Recook 失败；保留旧 `.metex` |
 | 未知 semantics | 拒绝 |
-| legacy PNG 在过渡关闭后 Load | 明确错误并提示迁移 |
-| 无 RHI 的 Load | 测环境可只解析 cook；Editor 正常路径要 RHI |
+| 硬切后仍 Load legacy PNG | 明确错误 + 迁移提示 |
+| 无 RHI 的 Load | 测试可只解析 cook；Editor 正常路径要 RHI |
 
 ## Alternatives & Trade-offs
 
-### Option A（推荐）— L1 `.metex` = 设置 + cooked 像素
-
-- **Pros：** 运行时不依赖 PNG；与「提升为引擎资产」一致；通道语义一次 bake 进像素。
-- **Cons：** 文件变大；需迁移与双路径；Atlas 要改取像素方式。
-
-### Option B — L0 仅 meta 设置，Load 仍解 PNG
-
-- **Pros：** 改动小。
-- **Cons：** **不满足**「不再只看 raw」；源丢失即无法 Load；否决为正式目标（可作极短增量 spike，非本 Feature Done）。
-
-### Option C — 仅 GPU swizzle（Godot L8）不 cook 文件
-
-- **Pros：** 省磁盘。
-- **Cons：** 仍以 PNG 为身份；设置难持久化；与 L1 目标不符。可作 Color 的**额外**运行时优化，不替代 `.metex`。
-
-**选定：A。**
+| 方案 | 结论 |
+|------|------|
+| **A** `.metex` = 设置 + cooked 像素 | **选定**——运行时不依赖 PNG |
+| **B** 仅 meta 设置，Load 仍解 PNG | 不满足 Done 标准——否决 |
+| **C** 仅 GPU swizzle（无 cook 文件） | 不可作唯一方案——否决；可后置优化 |
 
 ## Integration Impact
 
-- `AssetTypeRegistry`：Texture2D 扩展 → `.metex`；文件对话框更新。
-- NativeCopy：去掉图片 Accepts 或互斥。
-- CB 缩略图：对 `.metex` 走 cook/加载预览。
-- GuidRef：迁移时 **保持 Guid**，避免全项目坏引用。
-- minCraft：重新导入块贴图或跑迁移后灰度 Color 正常。
+- `AssetTypeRegistry`：Texture2D 扩展 → `.metex`；对话框更新。
+- NativeCopy：去掉图片 Accepts（或互斥拒绝）。
+- CB 缩略图：经 cook/Load 预览，不假定 png 扩展名。
+- GuidRef：迁移 **保留 Guid**。
+- ED-F24：CreateHandler 就绪后把 `Texture2D` 加入 AES allowlist。
+- minCraft：重导/迁移块贴图以修复灰度 Color。
 
 ## Migration / Compatibility
 
 | 阶段 | 行为 |
 |------|------|
-| **S0–S2** | 新导入只产 `.metex`；Load **仍接受** legacy Content PNG（警告日志） |
-| **S3** | 提供迁移：`PNG+meta` → 写入 `.metex`、设 SourcePath（可将 PNG 移到 Sources 或复制）、**保留 Guid**、更新 Registry 路径；可选批量命令 |
-| **S4+** | 文档宣布 legacy Load Deprecated；开关或后续 Feature 再硬删 |
+| **S01–S02** | 新导入只产 `.metex`；Load **仍接受** legacy Content PNG（**警告**） |
+| **S05** | 迁移命令/工具：PNG+meta → `.metex`，设 SourcePath，**保留 Guid**，更新 Registry 路径 |
+| **S06+** | 文档宣布 legacy Load Deprecated；硬删留给后续若需要 |
 
 兼容承诺：迁移工具保留 Guid；不承诺永久双路径。
 
-## Verification Strategy
+## 自动导入（监视 Content）
 
-- 单测：1ch PNG + Color → cook 后通道 3/4 且 R=G=B；Mask → R8。
-- 单测：Load `.metex` 不打开源 PNG（源可临时改名仍能 Load）。
-- 单测/手验：改 semantics Recook 后行为切换。
-- 回归：RGB/RGBA 导入视觉与 Guid 引用场景。
-- Atlas：成员为 `.metex` 时 Rebuild 不发红（Color）。
-- Editor smoke：Import → Inspector 改 → 保存 → 重开项目。
-
-
-## 自动导入（监视 Assets/**）
-
-**目标：** 不预设「用户必须把图放进 Sources」；监视**项目 Content 根（通常即 Assets/）**下新增的 raw 图，按格式特征默认导入为 .metex。仍走 **同一** Product / Importer，禁止 RegisterAsset(png)。
-
-### 触发与范围
+**目标：** 用户可不先学 Sources，直接把 PNG 丢进 Content。监视**项目 Content 根**；**新增** PNG/JPG 时 debounce，经 **`AES::Import`（ProductId=`Texture2D`）** 导入——与手动 Import / MCP **同源**。**禁止** Watcher 直调 `Texture2DImporter`。若本切片早于 ED-F24 S03，允许过渡直连 `AM::Import`，须在 Progress 标明例外并在 ED-F24 S03 后改回 AES。raw 可留在磁盘但**不注册**。
 
 | 规则 | 约定 |
 |------|------|
-| 监视根 | **项目 Content 根**（PathRegistry::GetProjectContentRoot()，即 CB 所看的 Assets 树） |
-| 事件 | **新增** PNG/JPG/JPEG（MVP）；源更新自动 Recook 默认 Off（Q8） |
-| 忽略 | .metex / .meta / 非图片；已是某 Texture SourcePath 的文件；Editor 自身写盘 mutation |
-| Debounce | 合并短时间连续写（解压/批量拷贝） |
-| 幂等 | 已有 .metex 且 SourcePath→该文件 → 跳过创建 |
-| 开关 | AutoImportTextures（**默认 On**，可关） |
+| 根 | `PathRegistry::GetProjectContentRoot()` |
+| 事件 | MVP：**创建**图片；源变更自动 Recook 默认 **关** |
+| 忽略 | `.metex` / `.meta` / 非图片；已是某 Texture 的 SourcePath；Editor 自身写盘回声 |
+| Debounce | 解压/批量拷贝合并 |
+| 幂等 | 已有 `.metex` 且 SourcePath→该文件 → 跳过 |
+| 开关 | `AutoImportTextures` 默认 **开** |
 
-### 「格式特征」默认（MVP）
+自动导入默认语义：**Color**（含 1ch 扩展）。永不自动选 SingleChannel。
 
-| 特征 | 默认 |
-|------|------|
-| 1/3/4ch LDR | channelSemantics=Color（1ch 扩 RGB） |
-| 3ch / 4ch | RGB8 / RGBA8；sRGB On |
-| jpeg/jpg | Color；无 alpha |
+默认输出：与 `Foo.png` 同目录生成 `Foo.metex`（+ `.meta`）；SourcePath 指向留下的 raw。
 
-**不**自动选 SingleChannel。
+```text
+手动 Import / asset.import / 自动导入  ─┐
+  （均经 AES::Import，过渡可 AM::Import）─┼→ Texture2D Product → .metex
+                                         ┘
+```
 
-### 输出路径与源文件处置
-
-- 默认：在**同目录**生成 oo.metex（+ .meta），SourcePath 指向同目录留下的 oo.png（raw **可以**继续躺在 Assets 下，但**不是**注册资产）。
-- **不强制**搬进 Assets/Sources/（Sources 仍可供手动 Import / mesh 管线使用，非纹理强制习惯）。
-- 目标 .metex 已存在且 SourcePath 不同 → 跳过并日志，不覆盖。
-
-`	ext
-手动 Import / asset.import  ──┐
-                              ├→ Texture2D Product / Importer → .metex
-Assets/** Watcher 自动导入 ───┘
-`
-
-## Content Browser（必须跟随）
-
-CB **已经**按 Registry 列资产瓦片（FindAssetMetasUnderDirectory），不是「文件夹里每个文件都是资产」。F05 落地后合同：
+## Content Browser 合同
 
 | 项 | 约定 |
 |----|------|
-| Texture 瓦片 | **只显示**已注册的 .metex（AssetType=Texture2D） |
-| Raw PNG/JPG | **不**再作为 Texture 注册 → **CB 资产区不展示**（即使文件仍在磁盘） |
-| 目录树 | 仍扫真实文件夹；可含「只有 raw、尚无 .metex」的目录；自动导入开启后应很快出现 .metex |
-| 缩略图 / 预览 | 对 .metex 走 Loader/cook 像素或轻量预览路径，**禁止**假定路径扩展名是 png |
-| 过渡期 | legacy 仍注册的 Content PNG 可继续显示并打 Deprecated；迁移后消失 |
-| 用户可见文案 | Import / 自动导入完成后 CB 刷新；可选状态栏「Imported foo.png → foo.metex」 |
-
-**验收：** 新项目拖一张 PNG 进 Assets/Textures/ →（自动或手动）得到 .metex → CB 只见纹理资产瓦片，不见「又当资产又当源」的双份 Texture 身份。
+| Texture 瓦片 | 只显示已注册 `.metex`（AssetType=Texture2D） |
+| Raw PNG/JPG | 不是 Texture 资产 → **不**作为 Texture 瓦片列出 |
+| 目录树 | 真实文件夹；自动导入完成前可能短暂只有 raw |
+| 缩略图 | cook/Load 预览；**禁止**假定扩展名是 png |
+| 过渡 | legacy 已注册 PNG 可标 Deprecated，迁移后消失 |
 
 ## Open Questions
 
-| # | 问题 | 挡实现？ | 默认倾向 |
-|---|------|----------|----------|
-| Q1 | `.metex` 单文件 vs JSON+`.bin` | 否 | 单文件分节或 JSON+bin，Impl 选一 |
-| Q2 | 存量 PNG 是否自动迁移 | 否 | 先工具/命令；不静默改全盘 |
-| Q3 | HDR / 非 8-bit | 否 | **Deferred** |
-| Q4 | Color 是否允许「R8 + 强制 swizzle」省空间 | 否 | MVP **扩 RGB**；swizzle 优化后置 |
-| Q5 | 与 ASSET-F04 并行 | 否 | F04 验收不堵 F05 Design；实现可并行 |
-| Q6 | Generated Atlas 页是否本期落 `.metex` | 否 | **Out**；API 预留即可 |
-| Q7 | Assets 自动导入默认开？ | 否 | **On**；可关 |
-| Q8 | 源更新是否自动 Recook？ | 否 | MVP 仅**新增**；更新 Recook 默认 Off |
-| Q9 | 叫 ImportService？ | 否 | **否** → `Texture2DImporter` |
+| # | 问题 | 挡实现？ | 默认（Planned 已采纳） |
+|---|------|----------|------------------------|
+| Q1 | `.metex` 单文件 vs JSON+`.bin` | S01 须拍板 | **S01 默认：单文件**（JSON 头 + 二进制/chunk）；若实现受阻再改 JSON+bin |
+| Q2 | 是否静默自动迁移全库 legacy PNG？ | 否 | 工具/命令；**禁止**静默改全盘 |
+| Q3 | HDR | 否 | **Deferred** |
+| Q4 | Color 用 R8+swizzle 省空间？ | 否 | MVP **扩 RGB** |
+| Q5 | 与 ED-F24 并行？ | 否 | Product/Loader 可先落；GUI Import 随 ED-F24 收敛 |
+| Q6 | 本期 Atlas 页落 `.metex`？ | 否 | **Out** |
+| Q7 | 自动导入默认开？ | 否 | **开** |
+| Q8 | 源更新自动 Recook？ | 否 | MVP **关**（仅监视新增） |
+| Q9 | MVP 是否做空 CreateAsset Texture2D？ | 否 | **是**（极小默认），便于 AES allowlist |
 
-## Slice Plan（草案）
+## Slice Plan
 
 | Slice | 目标 | 验收 |
 |-------|------|------|
-| **S01** | 格式 + Texture2DImporter + Product `Texture2D` + Registry `.metex` | 显式导入产 `.metex`；Load 不读 PNG |
-| **S02** | ChannelSemantics Color/Mask + 单测 | 灰度 Color 不发红；Mask 为 R8 |
-| **S03** | Inspector 设置 + Recook + Reimport | 改意图生效 |
-| **S04** | Sources 自动导入（debounce + 默认 Color + 幂等） | 丢 PNG 进 Sources 得 `.metex`；可关 |
-| **S05** | 像素 API；Atlas/预览；legacy PNG 警告 | Atlas 成员 `.metex` OK |
-| **S06** | 迁移命令 + 文档短节 | Guid 保留样本迁移成功 |
+| **S01** | 单文件 `.metex` + Importer + Product `Texture2D` + Registry 扩展名 + NativeCopy 拒 png/jpg/jpeg | 显式导入 → `.metex`；Load 不打开 PNG；`ListImportProducts(png)` 仅 Texture2D |
+| **S02** | Color / SingleChannel cook + 测试 | 灰度 Color 不发红；Mask 为 R8 |
+| **S03** | SaveHandler + CreateHandler + Reimport + Bootstrap | Save 往返；有 SourcePath 可 Reimport |
+| **S04** | Inspector 设置 + Recook | 改语义可见生效 |
+| **S05** | 像素 API + Atlas/预览；legacy Load 警告 | Atlas 成员 `.metex` OK |
+| **S06** | 自动导入 + 迁移命令 + 文档；AES allowlist Texture2D（若 ED-F24 就绪） | 丢 PNG → `.metex`；Guid 保留迁移样例 |
 
 ## Design Review
 
-- **Verdict:** Pending
-- **Reviewer / date:**
+- **Verdict:** Ready with deferred items
+- **Reviewer / date:** agent design-review · 2026-10-01（Mode A）
 - **Link or summary:**
+  - 已补：自动导入经 AES；NativeCopy↔Texture2D 互斥验收；Recook=Reimport 同路径；1ch Color→RGB8；S01 默认单文件 `.metex`。
+  - 延后：HDR、Atlas 页 cook、静默全库迁移。
+  - 实现顺序：可与 ED-F24 并行；**建议先 ED-F24 S01**，再 F05 S01（或紧随）。
 
 ## Implementation Readiness
 
-- [x] Requirements understood
-- [x] Constraints identified
-- [x] Relevant existing architecture inspected
-- [x] Responsibilities and boundaries defined
-- [x] Key dependencies understood
-- [x] Ownership/lifetime resolved or N/A
-- [x] Major state/invariants resolved or N/A
-- [x] API semantics sufficiently defined
-- [x] Important failure modes considered
-- [x] Alternatives considered where meaningful
-- [x] Integration impact understood
-- [x] Verification strategy exists
-- [ ] Unresolved questions resolved or explicitly deferred/accepted（Q1–Q6 默认已写，待你确认）
+- [x] Requirements 已理解
+- [x] Constraints 已识别
+- [x] F06 后架构已核对
+- [x] 职责/边界已定义
+- [x] Register* 集成已定义
+- [x] 失败/迁移/验证已定义
+- [x] 备选已比较
+- [x] 开放问题有默认（Q1–Q9）
+- [x] Design-review 通过
+- [ ] Implementation Plan 对齐切片（S01 开工前补短节即可）
 
-**Ready for implementation?** `no` — 待你确认默认倾向（尤其 Q1/Q2/Q4）后改为 Planned，并开 Implementation Plan。
+**Ready for implementation?** `yes` — 在 ED-F24 S01 之后（或并行）开 **F05-S01**；S01 检查清单含容器形态 + NativeCopy 互斥测。
 
 ## Acceptance Checklist
 
-- [ ] Design review（L2）
-- [ ] Implementation plan traces to design
-- [ ] Progress / Registry 同步
-- [ ] 新 Texture 导入 → `.metex`；运行时 Load 不依赖 raw
-- [ ] Color / Mask 合同 + 可 Recook
-- [ ] Atlas 像素路径与 Guid 迁移策略落地
-- [ ] 无新增 MCP 粗 Tool；F03 Guid 契约保持
+- [x] Design review（L2）
+- [ ] Implementation plan 可追溯到设计
+- [ ] Progress / Registry / ACTIVE_WORK 同步
+- [ ] 新 Texture 导入 → `.metex`；Load 不依赖 raw
+- [ ] Color / Mask 合同 + Recook
+- [ ] Atlas 像素 API 路径；Guid 迁移策略
+- [ ] NativeCopy 不再把 png 当 Texture 身份
+- [ ] 无新增 MCP 粗 Tool；F03 Guid 保持

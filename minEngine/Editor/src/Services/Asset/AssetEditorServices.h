@@ -98,6 +98,7 @@ namespace minEngine
     private:
         static AssetEditorResult OkResult();
         static AssetEditorResult Fail(std::string message);
+        static bool IsCreatableAssetTypeId(std::string_view assetTypeId);
 
         static std::string NormalizeExtensionToken(std::string_view sourcePathOrExt);
         static void FillProductInfo(const class ImportProductDescriptor& product, AssetImportProductInfo& outInfo);

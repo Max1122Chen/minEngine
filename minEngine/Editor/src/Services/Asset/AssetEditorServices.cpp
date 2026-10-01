@@ -4,20 +4,15 @@
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
-#include "Runtime/Function/Animation/AnimationGraph.h"
-#include "Runtime/Function/Framework/Scene/Scene.h"
-#include "Runtime/Function/Render/Material.h"
-#include "Runtime/Function/Render/Sprite/Sprite.h"
-#include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
+#include "Runtime/Resource/Asset.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
 
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
 #include <string>
-
-#include "Runtime/Core/Paths/PathRegistry.h"
 
 namespace minEngine
 {
@@ -75,6 +70,28 @@ namespace minEngine
         return OkResult();
     }
 
+    bool AssetEditorServices::IsCreatableAssetTypeId(std::string_view assetTypeId)
+    {
+        static constexpr std::string_view kCreatableAssetTypeIds[] = {
+            "Scene",
+            "Material",
+            "MaterialInstance",
+            "AnimationGraph",
+            "Sprite",
+            "SpriteAtlas",
+        };
+
+        for (const std::string_view allowed : kCreatableAssetTypeIds)
+        {
+            if (assetTypeId == allowed)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     AssetEditorResult AssetEditorServices::Create(
         std::string_view assetType,
         std::string_view directory,
@@ -94,70 +111,28 @@ namespace minEngine
         }
 
         const std::string typeStorage(assetType);
-        const std::string directoryStorage(directory);
-        const std::string nameStorage(name);
-        GUID createdGuid;
-        bool created = false;
-
-        if (typeStorage == "Scene")
-        {
-            if (std::shared_ptr<Scene> asset = AssetManager::Get().CreateAsset<Scene>(nameStorage, directoryStorage))
-            {
-                createdGuid = asset->GetGuid();
-                created = true;
-            }
-        }
-        else if (typeStorage == "Material")
-        {
-            if (std::shared_ptr<Material> asset =
-                    AssetManager::Get().CreateAsset<Material>(nameStorage, directoryStorage))
-            {
-                createdGuid = asset->GetGuid();
-                created = true;
-            }
-        }
-        else if (typeStorage == "AnimationGraph")
-        {
-            if (std::shared_ptr<AnimationGraph> asset =
-                    AssetManager::Get().CreateAsset<AnimationGraph>(nameStorage, directoryStorage))
-            {
-                createdGuid = asset->GetGuid();
-                created = true;
-            }
-        }
-        else if (typeStorage == "Sprite")
-        {
-            if (std::shared_ptr<Sprite> asset =
-                    AssetManager::Get().CreateAsset<Sprite>(nameStorage, directoryStorage))
-            {
-                createdGuid = asset->GetGuid();
-                created = true;
-            }
-        }
-        else if (typeStorage == "SpriteAtlas")
-        {
-            if (std::shared_ptr<SpriteAtlas> asset =
-                    AssetManager::Get().CreateAsset<SpriteAtlas>(nameStorage, directoryStorage))
-            {
-                createdGuid = asset->GetGuid();
-                created = true;
-            }
-        }
-        else
+        if (!IsCreatableAssetTypeId(typeStorage))
         {
             return Fail("assetType '" + typeStorage + "' is not in the create whitelist.");
         }
 
-        if (!created)
+        std::string createError;
+        const std::shared_ptr<Asset> created = AssetManager::Get().CreateAssetByTypeId(
+            typeStorage,
+            std::string(name),
+            std::string(directory),
+            createError);
+        if (created == nullptr)
         {
-            return Fail("CreateAsset failed.");
+            return Fail(createError.empty() ? "CreateAsset failed." : createError);
         }
 
-        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(createdGuid);
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByGuid(created->GetGuid());
         if (meta == nullptr)
         {
             return Fail("Created asset has no registry meta.");
         }
+
         outPath = meta->AssetPath;
         outGuid = meta->Guid.ToString();
         return OkResult();
